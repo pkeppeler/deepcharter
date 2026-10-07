@@ -5,7 +5,6 @@ set -euo pipefail
 
 tools=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 root=$(cd "$tools/.." && pwd)
-script=$tools/package-friends-build.sh
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
@@ -30,17 +29,27 @@ mkdir -p "$fake"
 echo '{"schemaVersion":1,"id":"deepcharter"}' >"$fake/fabric.mod.json"
 (cd "$fake" && zip -q -X "$work/deepcharter-0.0.0.jar" fabric.mod.json)
 
-dist=$work/dist
-build() { DEEPCHARTER_JAR=$work/deepcharter-0.0.0.jar DIST_DIR=$dist "$script" "$@"; }
+# The script writes to <repo>/build/dist, so run a copy of the tools, docs and gradle.properties.
+repo=$work/repo
+mkdir -p "$repo/tools" "$repo/docs"
+cp "$tools/package-friends-build.sh" "$repo/tools/"
+cp "$root/docs/PLAYING.md" "$repo/docs/"
+cp "$root/gradle.properties" "$repo/"
+script=$repo/tools/package-friends-build.sh
+dist=$repo/build/dist
+mod_version=$(sed -n 's/^version=//p' "$root/gradle.properties")
+label=$mod_version-test
+build() { DEEPCHARTER_JAR=$work/deepcharter-0.0.0.jar "$script" "$@"; }
 
-ok "builds with a version" build 9.9.9
-mrpack=$dist/deepcharter-friends-9.9.9.mrpack
-serverzip=$dist/deepcharter-server-9.9.9.zip
+ok "builds with a version" build "$label"
+mrpack=$dist/deepcharter-friends-$label.mrpack
+serverzip=$dist/deepcharter-server-$label.zip
 ok "writes the .mrpack" test -f "$mrpack"
 ok "writes the server zip" test -f "$serverzip"
 ok "writes PLAYING.md" test -f "$dist/PLAYING.md"
 fails "PLAYING.md has no unfilled placeholder" grep -q '{{' "$dist/PLAYING.md"
-ok "PLAYING.md stamps the version" grep -q '9\.9\.9' "$dist/PLAYING.md"
+ok "PLAYING.md stamps the version" grep -qF -- "$label" "$dist/PLAYING.md"
+fails "docs/PLAYING.md has no stale 'not in this build yet'" grep -qi 'not in this build yet' "$root/docs/PLAYING.md"
 for needle in 'Prism' 'sneak' 'jump' 'sprint' '#57' 'Known issues' 'Report a bug'; do
   ok "PLAYING.md mentions $needle" grep -qi -- "$needle" "$dist/PLAYING.md"
 done
@@ -50,14 +59,14 @@ index=$work/modrinth.index.json
 unzip -p "$mrpack" modrinth.index.json >"$index"
 audit=$root/docs/tooling/sodium-lithium-audit.md
 validate_index() {
-  python3 -I - "$index" "$audit" <<'PY'
+  python3 -I - "$index" "$audit" "$label" <<'PY'
 import json, re, sys
 
 index = json.load(open(sys.argv[1]))
 audit = open(sys.argv[2]).read()
 assert index["formatVersion"] == 1
 assert index["game"] == "minecraft"
-assert index["versionId"] == "9.9.9"
+assert index["versionId"] == sys.argv[3]
 assert index["name"]
 assert index["dependencies"] == {"minecraft": "26.3", "fabric-loader": "0.19.5"}, index["dependencies"]
 files = {f["path"]: f for f in index["files"]}
@@ -86,13 +95,13 @@ ok "our jar is in overrides/mods" grep -qx 'overrides/mods/deepcharter-0.0.0.jar
 fails ".mrpack bundles no third-party jar" grep -E '\.jar$' <(grep -vx 'overrides/mods/deepcharter-0.0.0.jar' "$mrpack_entries")
 
 # Server zip
-ok "server zip has our jar" grep -qx 'deepcharter-server-9.9.9/mods/deepcharter-0.0.0.jar' "$serverzip_entries"
-fails "server zip bundles no other jar" grep -E '\.jar$' <(grep -vx 'deepcharter-server-9.9.9/mods/deepcharter-0.0.0.jar' "$serverzip_entries")
+ok "server zip has our jar" grep -qx "deepcharter-server-$label/mods/deepcharter-0.0.0.jar" "$serverzip_entries"
+fails "server zip bundles no other jar" grep -E '\.jar$' <(grep -vx "deepcharter-server-$label/mods/deepcharter-0.0.0.jar" "$serverzip_entries")
 for f in start.sh server.properties eula.txt mods.lock; do
-  ok "server zip has $f" grep -qx "deepcharter-server-9.9.9/$f" "$serverzip_entries"
+  ok "server zip has $f" grep -qx "deepcharter-server-$label/$f" "$serverzip_entries"
 done
 unzip -q "$serverzip" -d "$work/server"
-srv=$work/server/deepcharter-server-9.9.9
+srv=$work/server/deepcharter-server-$label
 ok "eula.txt says eula=false" grep -qx 'eula=false' "$srv/eula.txt"
 fails "eula.txt never says eula=true" grep -q 'eula=true' "$srv/eula.txt"
 ok "start.sh is valid bash" bash -n "$srv/start.sh"
@@ -111,8 +120,8 @@ printf '#!/bin/sh\necho %s >&2\n' "'openjdk version \"25.0.1\" 2026-10-20'" >"$s
 chmod +x "$stub/java"
 eula_run() { (cd "$srv" && PATH="$stub:$PATH" ./start.sh); }
 fails "start.sh refuses with eula=false" eula_run
-# shellcheck disable=SC2016 # expanded by the inner bash
-ok "start.sh names the EULA when it refuses" bash -c 'cd "$1" && PATH="$2:$PATH" ./start.sh 2>&1 | grep -q eula' _ "$srv" "$stub"
+eula_msg=$(eula_run 2>&1 || true)
+ok "start.sh names the EULA when it refuses" grep -q eula <<<"$eula_msg"
 printf '#!/bin/sh\necho %s >&2\n' "'openjdk version \"21.0.4\" 2026-07-16'" >"$stub/java"
 fails "start.sh refuses Java 21" eula_run
 
@@ -125,17 +134,67 @@ fails "server zip has no XGen or private path" grep -Eiq "$forbidden" "$serverzi
 mkdir -p "$fake/private"
 echo x >"$fake/private/pack.ogg"
 (cd "$fake" && zip -q -X -r "$work/bad.jar" fabric.mod.json private)
-fails "refuses a jar containing private/" env DEEPCHARTER_JAR="$work/bad.jar" DIST_DIR="$work/dist-bad" "$script" 9.9.9
+fails "refuses a jar containing private/" env DEEPCHARTER_JAR="$work/bad.jar" "$script" "$label"
 rm -rf "$fake/private"
 mkdir -p "$fake/original_flash_game"
 echo x >"$fake/original_flash_game/a.swf"
 (cd "$fake" && zip -q -X -r "$work/bad2.jar" fabric.mod.json original_flash_game)
-fails "refuses a jar containing original_flash_game/" env DEEPCHARTER_JAR="$work/bad2.jar" DIST_DIR="$work/dist-bad" "$script" 9.9.9
+fails "refuses a jar containing original_flash_game/" env DEEPCHARTER_JAR="$work/bad2.jar" "$script" "$label"
+
+# A large jar (listing over 64 KB, forbidden path first) must be refused: `unzip | grep -q`
+# under pipefail used to let it through.
+big=$work/big
+mkdir -p "$big/private"
+echo x >"$big/private/pack.ogg"
+for i in $(seq 1 3000); do echo x >"$big/pad-entry-with-a-long-name-to-fill-the-listing-$i.txt"; done
+(cd "$big" && zip -q -X -r "$work/big.jar" private ./*.txt)
+ok "large jar listing exceeds 64 KB" test "$(unzip -Z1 "$work/big.jar" | wc -c)" -gt 65536
+fails "refuses a large jar with private/ first" env DEEPCHARTER_JAR="$work/big.jar" "$script" "$label"
+
+# start.sh with everything already "downloaded": a stray jar must stop it before java -jar runs.
+# The pinned hashes are real, so this run uses a test-local fixture: tiny files, a test-local
+# mods.lock carrying their real sha512, and the launcher_sha256 line of the extracted copy
+# (not the shipped script) rewritten to the fixture's sha256. Stub curl fails if it is called.
+run=$work/run
+mkdir -p "$run"
+unzip -q "$serverzip" -d "$run"
+rsrv=$run/deepcharter-server-$label
+sed -i.bak 's/^eula=false$/eula=true/' "$rsrv/eula.txt"
+launcher_file=$(sed -n 's/^launcher=//p' "$rsrv/start.sh")
+echo fixture-mod >"$rsrv/mods/fixture-mod.jar"
+echo fixture-launcher >"$rsrv/$launcher_file"
+mod_sha512=$(shasum -a 512 "$rsrv/mods/fixture-mod.jar" | cut -d' ' -f1)
+fixture_launcher_sha256=$(shasum -a 256 "$rsrv/$launcher_file" | cut -d' ' -f1)
+printf '%s fixture-mod.jar https://example.invalid/fixture-mod.jar\n' "$mod_sha512" >"$rsrv/mods.lock"
+sed -i.bak "s/^launcher_sha256=.*/launcher_sha256=$fixture_launcher_sha256/" "$rsrv/start.sh"
+rstub=$work/rstub
+mkdir -p "$rstub"
+cat >"$rstub/java" <<'STUB'
+#!/bin/sh
+if [ "$1" = "-version" ]; then echo 'openjdk version "25.0.1" 2026-10-20' >&2; exit 0; fi
+echo "$@" >>"$JAVA_LOG"
+STUB
+printf '#!/bin/sh\necho "curl called: $*" >&2\nexit 99\n' >"$rstub/curl"
+chmod +x "$rstub/java" "$rstub/curl"
+export JAVA_LOG=$work/java.log
+real_run() { (cd "$rsrv" && PATH="$rstub:$PATH" ./start.sh); }
+
+: >"$JAVA_LOG"
+ok "start.sh launches the launcher jar when mods/ is clean" real_run
+ok "start.sh passed the launcher jar to java -jar" grep -qF -- "-jar $launcher_file" "$JAVA_LOG"
+
+echo evil >"$rsrv/mods/evil.jar"
+: >"$JAVA_LOG"
+fails "start.sh refuses a stray jar in mods/" real_run
+stray_msg=$(real_run 2>&1 || true)
+ok "start.sh names the stray jar" grep -q 'unexpected jar in mods/: evil.jar' <<<"$stray_msg"
+ok "start.sh never ran java -jar with a stray jar" test ! -s "$JAVA_LOG"
 
 # Arguments
+fails "refuses a label that does not start with the mod version" build "0.0.0-x"
 fails "refuses no version" build
-fails "refuses a version with a slash" build ../x
-fails "refuses a missing jar" env DEEPCHARTER_JAR="$work/none.jar" DIST_DIR="$work/dist-none" "$script" 9.9.9
+fails "refuses a version with a slash" build "$mod_version/../x"
+fails "refuses a missing jar" env DEEPCHARTER_JAR="$work/none.jar" "$script" "$label"
 
 if [[ $failures -ne 0 ]]; then
   echo "$failures failure(s)" >&2

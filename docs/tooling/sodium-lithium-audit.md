@@ -99,6 +99,15 @@ cp sodium-fabric-0.9.2+mc26.3.jar lithium-fabric-0.26.2+mc26.3.jar build/run/cli
 
 Result: `BUILD SUCCESSFUL`, exit 0. The log shows Fabric Loader 0.19.5 loading `sodium 0.9.2+mc26.3` and `lithium 0.26.2+mc26.3` next to Fabric API 0.162.0+26.3 and `deepcharter`, Sodium on the Apple M2 GL surface, and the client tests running to completion (three server starts, the last one ending with a `/deepcharter layer goto` to layer 2). MixinExtras 0.5.5 is satisfied by Fabric Loader 0.19.5. No mod-conflict or mixin error appeared. This is a dev-only run dir; the mods are not Gradle dependencies.
 
+## Other third-party code the packaging fetches
+
+- **Fabric server launcher** (not covered by the review above). The server zip's `start.sh` downloads `fabric-server-mc.26.3-loader.0.19.5-launcher.1.1.2.jar` from `https://meta.fabricmc.net/v2/versions/loader/26.3/0.19.5/1.1.2/server/jar` and runs it. It is Fabric's own bootstrap jar; on first run it downloads Mojang's server jar and the libraries. Pinned sha256: `0b56ad54d762172e8b8748e467f584f071e4dedecd93dc336cf2c68837e790be` (182 KB, fetched twice on 2026-10-07 with the same hash). I did not read its code. meta.fabricmc.net generates this jar on request, so the hash may change if meta regenerates it. `start.sh` then refuses to run the jar (fails closed). Flag this for the M2 demo: re-pin after checking the new jar.
+- **Fabric API 0.162.0+26.3** is a first-party Fabric platform dependency, pinned by sha1/sha512 above. The `.mrpack` links it and the server's `mods.lock` fetches it, both hash-checked.
+
+## Limits of the packaging leak guard
+
+`tools/package-friends-build.sh` refuses a mod jar whose entry names match `original_flash_game`, `private/`, `*.swf` or `xgen`. This is best-effort: it checks the names of the outer jar's entries only, not file contents or nested archives. What keeps XGen assets out in practice is that they never enter the source tree (`original_flash_game/` and `private/` are ignored by the repo).
+
 ## Not verified
 
 - Behaviour beyond the scan: I did not read the mixin sources, so I cannot rule out gameplay interactions beyond what the gate run exercises.

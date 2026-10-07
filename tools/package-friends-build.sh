@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the friends build into build/dist/ (or $DIST_DIR):
+# Builds the friends build into build/dist/:
 #   deepcharter-friends-<version>.mrpack  Modrinth modpack (format v1): pinned CDN links + our jar
 #   deepcharter-server-<version>.zip      our jar, start.sh, server.properties, eula.txt (eula=false)
 #   PLAYING.md                            install and play notes (from docs/PLAYING.md)
@@ -9,8 +9,11 @@
 # access beyond `./gradlew build` (skipped when DEEPCHARTER_JAR is set).
 #
 # Usage: tools/package-friends-build.sh <version>
-# Env:   DEEPCHARTER_JAR  use this jar instead of running ./gradlew build (tests)
-#        DIST_DIR         output directory (default: build/dist)
+#   <version> is the release label. It must start with the `version=` in gradle.properties
+#   (the mod's own version), e.g. 0.2.0 or 0.2.0-friends1.
+# Env:   DEEPCHARTER_JAR  use this jar instead of running ./gradlew build (CI, tests)
+# The leak guard below is best-effort: it checks the entry names of the mod jar only, not
+# the contents of files or nested archives.
 set -euo pipefail
 
 if [[ $# -ne 1 ]]; then
@@ -24,7 +27,17 @@ if [[ ! $version =~ ^[0-9A-Za-z][0-9A-Za-z._+-]*$ ]]; then
 fi
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-dist=${DIST_DIR:-$root/build/dist}
+dist=$root/build/dist
+
+mod_version=$(sed -n 's/^version=//p' "$root/gradle.properties")
+if [[ -z $mod_version || $mod_version == *$'\n'* ]]; then
+  echo "error: need exactly one version= line in gradle.properties" >&2
+  exit 1
+fi
+if [[ $version != "$mod_version"* ]]; then
+  echo "error: version '$version' must start with the mod version $mod_version (gradle.properties)" >&2
+  exit 2
+fi
 
 minecraft_version=26.3
 loader_version=0.19.5
@@ -50,23 +63,25 @@ if [[ -n ${DEEPCHARTER_JAR:-} ]]; then
   jar=$DEEPCHARTER_JAR
 else
   (cd "$root" && ./gradlew build -q)
-  jar=
-  for candidate in "$root"/build/libs/deepcharter-*.jar; do
-    case $candidate in *-sources.jar | *-dev.jar | *-javadoc.jar) continue ;; esac
-    jar=$candidate
-  done
+  jar=$root/build/libs/deepcharter-$mod_version.jar
 fi
-if [[ -z $jar || ! -f $jar ]]; then
-  echo "error: no mod jar found (set DEEPCHARTER_JAR or run ./gradlew build)" >&2
+if [[ ! -f $jar ]]; then
+  echo "error: mod jar $jar not found (set DEEPCHARTER_JAR or run ./gradlew build)" >&2
   exit 1
 fi
 jar_name=$(basename "$jar")
 
 # Never ship Flash-game assets or private files, whatever the jar or tree holds.
 forbidden='(^|/)(original_flash_game|private)(/|$)|\.swf$|(^|/)xgen'
-if unzip -Z1 "$jar" | grep -Eiq "$forbidden"; then
+# Capture the listing first: `unzip | grep -q` under pipefail fails open on a large jar
+# (grep exits at the first match, unzip dies of SIGPIPE, the pipeline reads as "no match").
+if ! entries=$(unzip -Z1 "$jar"); then
+  echo "error: cannot list $jar" >&2
+  exit 1
+fi
+if grep -Eiq "$forbidden" <<<"$entries"; then
   echo "error: $jar contains a forbidden path:" >&2
-  unzip -Z1 "$jar" | grep -Ei "$forbidden" >&2
+  grep -Ei "$forbidden" <<<"$entries" | head -5 >&2
   exit 1
 fi
 
@@ -177,6 +192,15 @@ while read -r sha512 file url; do
   fetch "\$url" "mods/\$file" 512 "\$sha512"
 done <mods.lock
 fetch "\$launcher_url" "\$launcher" 256 "\$launcher_sha256"
+
+# Nothing unverified may load: every jar in mods/ is ours or a lock entry (hash-checked above).
+for jar in mods/*.jar; do
+  [[ -e \$jar ]] || continue
+  name=\${jar#mods/}
+  if grep -qF " \$name " mods.lock || [[ \$name == "$jar_name" ]]; then continue; fi
+  echo "error: unexpected jar in mods/: \$name (remove it)" >&2
+  exit 1
+done
 
 exec java -Xms2G -Xmx4G -jar "\$launcher" nogui
 START

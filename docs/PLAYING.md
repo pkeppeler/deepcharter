@@ -25,7 +25,7 @@ You need a Minecraft Java Edition account.
 - **Dismount:** sneak (default Left Shift).
 - **Move:** W A S D steer the pod.
 - **Rotor:** hold jump (Space) to lift.
-- **Drill:** sprint (default Left Ctrl). Drilling is not in this build yet (issue #30). The control is listed so you know where it will be.
+- **Drill:** sprint (default Left Ctrl). Sprint while on the ground drills down; push into a wall to drill sideways.
 - **Refuel:** right-click the pod while holding coal or charcoal.
 - **Operator commands** (ops only): `/deepcharter pod spawn` puts a pod next to you, `/deepcharter layer goto <n>` moves you to the surface of layer n, `/deepcharter pod dump` empties the ridden pod's cargo.
 
