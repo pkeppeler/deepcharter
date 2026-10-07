@@ -5,18 +5,27 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
+import net.minecraft.commands.CommandSource;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtAccounter;
+import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
+import net.minecraft.server.permissions.PermissionSet;
 import net.minecraft.world.level.storage.SavedDataStorage;
 
 import io.github.pkeppeler.deepcharter.charter.Charter;
@@ -100,28 +109,95 @@ public class CharterCoreTest {
 		UUID director = UUID.randomUUID();
 		UUID crew = UUID.randomUUID();
 		CharterId id;
-		Path dir;
+		Path dir = tempDir();
 		try {
-			dir = Files.createTempDirectory("charter-restart");
+			try (SavedDataStorage first = storage(server, dir)) {
+				CharterData data = first.computeIfAbsent(CharterData.TYPE);
+				id = crewed(helper, data, director, crew);
+				expectDone(helper, data.deposit(id, 750), "depositing");
+				expectDone(helper, data.recordDeepestPoint(id, 312), "recording depth");
+				first.saveAndJoin();
+			}
+			try (SavedDataStorage second = storage(server, dir)) {
+				Charter loaded = second.computeIfAbsent(CharterData.TYPE).find(id)
+						.orElseThrow(() -> helper.assertionException("the charter should have been saved"));
+				if (!loaded.director().equals(Optional.of(director)) || !loaded.crew().equals(List.of(crew))
+						|| loaded.account() != 750 || loaded.deepestPoint() != 312) {
+					throw helper.assertionException("the charter should load as it was saved: %s", loaded);
+				}
+			}
+		} finally {
+			deleteTree(dir);
+		}
+		helper.succeed();
+	}
+
+	/**
+	 * Guards the datafixer type of {@link CharterData#TYPE}: a file saved by an older Minecraft goes through the real fixer on
+	 * load and must come out unchanged. Keep it green on every Minecraft bump.
+	 */
+	@GameTest
+	public void aFileFromAnOlderMinecraftLoadsUnchanged(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		int olderDataVersion = 4000;
+		Path dir = tempDir();
+		try {
+			CharterId id;
+			try (SavedDataStorage first = storage(server, dir)) {
+				CharterData data = first.computeIfAbsent(CharterData.TYPE);
+				id = crewed(helper, data, UUID.randomUUID(), UUID.randomUUID());
+				expectDone(helper, data.deposit(id, 99), "depositing");
+				first.saveAndJoin();
+			}
+			Path file = savedFile(dir);
+			CompoundTag stamped = NbtIo.readCompressed(file, NbtAccounter.unlimitedHeap());
+			if (NbtUtils.getDataVersion(stamped) <= olderDataVersion) {
+				throw helper.assertionException("the test needs a saved DataVersion above %s, got %s", olderDataVersion, NbtUtils.getDataVersion(stamped));
+			}
+			Tag savedBody = stamped.get("data");
+			NbtIo.writeCompressed(NbtUtils.addDataVersion(stamped, olderDataVersion), file);
+
+			try (SavedDataStorage second = storage(server, dir)) {
+				CharterData loaded = second.computeIfAbsent(CharterData.TYPE);
+				Tag reloaded = CharterData.CODEC.encodeStart(NbtOps.INSTANCE, loaded).getOrThrow();
+				if (!reloaded.equals(savedBody) || loaded.find(id).isEmpty()) {
+					throw helper.assertionException("the fixer changed the charter data: saved %s, loaded %s", savedBody, reloaded);
+				}
+			}
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		} finally {
+			deleteTree(dir);
+		}
+		helper.succeed();
+	}
+
+	private static SavedDataStorage storage(MinecraftServer server, Path dir) {
+		return new SavedDataStorage(dir, server.getFixerUpper(), server.registryAccess());
+	}
+
+	private static Path tempDir() {
+		try {
+			return Files.createTempDirectory("charter-saved-data");
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
-		try (SavedDataStorage first = new SavedDataStorage(dir, server.getFixerUpper(), server.registryAccess())) {
-			CharterData data = first.computeIfAbsent(CharterData.TYPE);
-			id = crewed(helper, data, director, crew);
-			expectDone(helper, data.deposit(id, 750), "depositing");
-			expectDone(helper, data.recordDeepestPoint(id, 312), "recording depth");
-			first.saveAndJoin();
+	}
+
+	private static Path savedFile(Path dir) throws IOException {
+		try (Stream<Path> files = Files.walk(dir)) {
+			return files.filter(path -> path.toString().endsWith(".dat")).findFirst().orElseThrow();
 		}
-		try (SavedDataStorage second = new SavedDataStorage(dir, server.getFixerUpper(), server.registryAccess())) {
-			Charter loaded = second.computeIfAbsent(CharterData.TYPE).find(id)
-					.orElseThrow(() -> helper.assertionException("the charter should have been saved"));
-			if (!loaded.director().equals(Optional.of(director)) || !loaded.crew().equals(List.of(crew))
-					|| loaded.account() != 750 || loaded.deepestPoint() != 312) {
-				throw helper.assertionException("the charter should load as it was saved: %s", loaded);
+	}
+
+	private static void deleteTree(Path dir) {
+		try (Stream<Path> files = Files.walk(dir)) {
+			for (Path path : files.sorted(Comparator.reverseOrder()).toList()) {
+				Files.delete(path);
 			}
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
 		}
-		helper.succeed();
 	}
 
 	@GameTest
@@ -141,6 +217,19 @@ public class CharterCoreTest {
 		expectRefused(helper, CharterRefusal.INVALID_AMOUNT, data.deposit(id, -5), "depositing a negative amount");
 		if (data.find(id).orElseThrow().account() != 0) {
 			throw helper.assertionException("the account should be empty, not negative");
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aDepositThatOverflowsTheAccountIsRefused(GameTestHelper helper) {
+		CharterData data = new CharterData();
+		CharterId id = crewed(helper, data, UUID.randomUUID());
+		expectDone(helper, data.deposit(id, Long.MAX_VALUE), "filling the account");
+
+		expectRefused(helper, CharterRefusal.ACCOUNT_FULL, data.deposit(id, 1), "depositing into a full account");
+		if (data.find(id).orElseThrow().account() != Long.MAX_VALUE) {
+			throw helper.assertionException("a refused deposit must not change the balance");
 		}
 		helper.succeed();
 	}
@@ -306,8 +395,73 @@ public class CharterCoreTest {
 		helper.succeed();
 	}
 
-	private static void run(MinecraftServer server, MockPlayer player, String arguments) {
-		var source = player.player().createCommandSourceStack().withPermission(LevelBasedPermissionSet.GAMEMASTER);
+	@GameTest
+	public void theCommandsNeedGamemasterPermission(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		MockPlayer player = MockPlayers.join(helper, "CmdNoRights");
+
+		run(server, player, LevelBasedPermissionSet.ALL, "found \"" + uniqueName() + "\"");
+		if (Charters.charterOf(server, player.player().getUUID()).isPresent()) {
+			throw helper.assertionException("a player without permission must not found a charter");
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aCrewMemberCannotApproveByCommand(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		MockPlayer director = MockPlayers.join(helper, "CmdBoss");
+		MockPlayer crew = MockPlayers.join(helper, "CmdHand");
+		MockPlayer applicant = MockPlayers.join(helper, "CmdHopeful");
+		UUID directorId = director.player().getUUID();
+		UUID crewId = crew.player().getUUID();
+		UUID applicantId = applicant.player().getUUID();
+		expectDone(helper, Charters.found(server, directorId, uniqueName()), "founding");
+		CharterId id = Charters.charterOf(server, directorId).orElseThrow().id();
+		expectDone(helper, Charters.apply(server, crewId, id), "the crew member applying");
+		expectDone(helper, Charters.approve(server, directorId, crewId), "approving the crew member");
+		expectDone(helper, Charters.apply(server, applicantId, id), "the applicant applying");
+
+		List<Component> messages = run(server, crew, LevelBasedPermissionSet.GAMEMASTER, "approve CmdHopeful");
+		if (messages.stream().noneMatch(message -> message.contains(CharterRefusal.NOT_THE_DIRECTOR.message()))) {
+			throw helper.assertionException("the command should report %s, got %s", CharterRefusal.NOT_THE_DIRECTOR, messages);
+		}
+		if (Charters.charterOf(server, applicantId).isPresent()) {
+			throw helper.assertionException("the applicant must not join on a crew member's say");
+		}
+		helper.succeed();
+	}
+
+	/** Runs {@code /deepcharter charter <arguments>} as {@code player} with {@code permission}, and returns what the command said. */
+	private static List<Component> run(MinecraftServer server, MockPlayer player, PermissionSet permission, String arguments) {
+		List<Component> messages = new ArrayList<>();
+		CommandSource recorder = new CommandSource() {
+			@Override
+			public void sendSystemMessage(Component message) {
+				messages.add(message);
+			}
+
+			@Override
+			public boolean acceptsSuccess() {
+				return true;
+			}
+
+			@Override
+			public boolean acceptsFailure() {
+				return true;
+			}
+
+			@Override
+			public boolean shouldInformAdmins() {
+				return false;
+			}
+		};
+		CommandSourceStack source = player.player().createCommandSourceStack().withPermission(permission).withSource(recorder);
 		server.getCommands().performPrefixedCommand(source, "deepcharter charter " + arguments);
+		return messages;
+	}
+
+	private static void run(MinecraftServer server, MockPlayer player, String arguments) {
+		run(server, player, LevelBasedPermissionSet.GAMEMASTER, arguments);
 	}
 }

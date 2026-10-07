@@ -9,7 +9,7 @@ Every charter of a world is saved in one `SavedData` (`charter/CharterData`), ke
 - **One SavedData per charter**: rejected. A world needs a lookup by player and by name, and it would have to load every file to answer. One small file holds all charters.
 - **A player attachment that names the charter**: rejected. The charter's state must outlive its people, and a dormant charter has none.
 - **Versioned through `Versioned.codec`**: the saved form is `{version, charters}`. Data of another version loads as `Unreadable`, is written back unchanged, and every use throws. This is the rule of [ADR 0006](0006-pod-seams-attachments-and-events.md), reused so a SavedData cannot decode wrongly and lose data.
-- **Datafixer type `SAVED_DATA_COMMAND_STORAGE`**: `SavedDataStorage` needs a non-null type to read an existing file. Our own version field does the real work; the vanilla fixers for that type find nothing of theirs to change.
+- **Datafixer type `SAVED_DATA_COMMAND_STORAGE`**: `SavedDataStorage` needs a non-null type to read an existing file. Our own version field does the real work; the vanilla fixers for that type find nothing of theirs to change. `CharterCoreTest.aFileFromAnOlderMinecraftLoadsUnchanged` guards this choice: it stamps a saved file with an older `DataVersion`, loads it through the real fixer and asserts the charters come out unchanged. It must stay green on every Minecraft bump.
 
 ## Rules
 

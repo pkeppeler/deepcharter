@@ -16,7 +16,8 @@ public enum CharterRefusal {
 	NO_APPLICATION,
 	NOT_ON_A_CHARTER,
 	INVALID_AMOUNT,
-	INSUFFICIENT_FUNDS;
+	INSUFFICIENT_FUNDS,
+	ACCOUNT_FULL;
 
 	public String translationKey() {
 		return "deepcharter.charter.refusal." + name().toLowerCase(Locale.ROOT);

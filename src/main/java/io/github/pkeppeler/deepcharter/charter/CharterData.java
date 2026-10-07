@@ -162,12 +162,16 @@ public final class CharterData extends SavedData {
 		return refused(CharterRefusal.NOT_ON_A_CHARTER);
 	}
 
-	/** Adds {@code amount}, which must be positive, to the account. */
+	/** Adds {@code amount}, which must be positive, to the account. A deposit that would pass {@code Long.MAX_VALUE} is refused. */
 	public Optional<CharterRefusal> deposit(CharterId id, long amount) {
 		if (amount <= 0) {
 			return refused(CharterRefusal.INVALID_AMOUNT);
 		}
-		return change(id, charter -> charter.withAccount(Math.addExact(charter.account(), amount)));
+		Optional<Charter> charter = find(id);
+		if (charter.isPresent() && charter.get().account() > Long.MAX_VALUE - amount) {
+			return refused(CharterRefusal.ACCOUNT_FULL);
+		}
+		return change(id, found -> found.withAccount(found.account() + amount));
 	}
 
 	/** Takes {@code amount}, which must be positive, from the account. The account never goes negative: an overdraft is refused. */

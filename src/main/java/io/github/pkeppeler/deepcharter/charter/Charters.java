@@ -9,7 +9,8 @@ import net.minecraft.server.MinecraftServer;
 
 /**
  * The server-side API of charters, and the one place the rest of the mod changes them. Each operation applies the rules of
- * {@link CharterData}, then fires the matching {@link CharterEvents} and tells the affected players' clients. A refused
+ * {@link CharterData}, tells the affected players' clients, then fires the matching {@link CharterEvents}, so a listener that
+ * throws cannot leave a client stale. A refused
  * operation does none of that. Call everything on the server thread.
  */
 public final class Charters {
@@ -40,8 +41,8 @@ public final class Charters {
 		Optional<CharterRefusal> refusal = data.found(founder, name, id);
 		if (refusal.isEmpty()) {
 			Charter charter = data.find(id).orElseThrow();
-			CharterEvents.FOUNDED.invoker().onFounded(server, charter);
 			sync(server, charter.roster());
+			CharterEvents.FOUNDED.invoker().onFounded(server, charter);
 		}
 		return refusal;
 	}
@@ -60,8 +61,8 @@ public final class Charters {
 		Optional<CharterRefusal> refusal = data.approve(director, applicant);
 		if (refusal.isEmpty()) {
 			Charter charter = data.charterOf(applicant).orElseThrow();
-			CharterEvents.JOINED.invoker().onJoined(server, charter, applicant);
 			sync(server, charter.roster());
+			CharterEvents.JOINED.invoker().onJoined(server, charter, applicant);
 		}
 		return refusal;
 	}
@@ -79,6 +80,8 @@ public final class Charters {
 			return refusal;
 		}
 		Charter after = data.find(before.get().id()).orElseThrow();
+		sync(server, List.of(player));
+		sync(server, after.roster());
 		CharterEvents.LEFT.invoker().onLeft(server, after, player);
 		if (before.get().isDirector(player)) {
 			if (after.dormant()) {
@@ -87,8 +90,6 @@ public final class Charters {
 				CharterEvents.DIRECTOR_CHANGED.invoker().onDirectorChanged(server, after, player, after.director().orElseThrow());
 			}
 		}
-		sync(server, List.of(player));
-		sync(server, after.roster());
 		return refusal;
 	}
 
@@ -115,8 +116,8 @@ public final class Charters {
 	private static Optional<CharterRefusal> changeAccount(MinecraftServer server, CharterId id, long delta, Optional<CharterRefusal> refusal) {
 		if (refusal.isEmpty()) {
 			Charter charter = find(server, id).orElseThrow();
-			CharterEvents.ACCOUNT_CHANGED.invoker().onAccountChanged(server, charter, delta);
 			sync(server, charter.roster());
+			CharterEvents.ACCOUNT_CHANGED.invoker().onAccountChanged(server, charter, delta);
 		}
 		return refusal;
 	}

@@ -9,6 +9,7 @@
   "deepcharter.charter.list.dormant": "%1$s: dormant, account %3$s",
   "deepcharter.charter.list.entry": "%s: %s people, account %s",
   "deepcharter.charter.list.header": "%s charters",
+  "deepcharter.charter.refusal.account_full": "The account cannot hold more",
   "deepcharter.charter.refusal.already_applied": "You have already applied to a charter",
   "deepcharter.charter.refusal.already_on_a_charter": "You are already on a charter or have an application open",
   "deepcharter.charter.refusal.charter_dormant": "That charter has no Director",

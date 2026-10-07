@@ -9,6 +9,6 @@ public final class CharterRegistry {
 
 	public static void register() {
 		CharterSyncPayload.register();
-		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> CharterSyncPayload.send(server, handler.getPlayer().getUUID()));
+		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> CharterSyncPayload.send(server, handler.getPlayer()));
 	}
 }

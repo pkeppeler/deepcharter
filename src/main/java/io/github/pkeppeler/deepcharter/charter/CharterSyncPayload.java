@@ -34,11 +34,22 @@ public record CharterSyncPayload(Optional<CharterView> charter) implements Custo
 	/** Tells {@code player}, if they are online, which charter they are on. */
 	public static void send(MinecraftServer server, UUID player) {
 		ServerPlayer online = server.getPlayerList().getPlayer(player);
-		if (online == null || !ServerPlayNetworking.canSend(online, TYPE)) {
+		if (online != null) {
+			send(server, online);
+		}
+	}
+
+	/**
+	 * Tells {@code player} which charter they are on. Use this form from the join event: the player is not yet in the
+	 * server's lookup by UUID at that point, so the UUID form would find nobody.
+	 */
+	public static void send(MinecraftServer server, ServerPlayer player) {
+		if (!ServerPlayNetworking.canSend(player, TYPE)) {
 			return;
 		}
-		Optional<CharterView> view = CharterData.get(server).charterOf(player).map(charter -> CharterView.of(charter, player));
-		ServerPlayNetworking.send(online, new CharterSyncPayload(view));
+		UUID id = player.getUUID();
+		Optional<CharterView> view = CharterData.get(server).charterOf(id).map(charter -> CharterView.of(charter, id));
+		ServerPlayNetworking.send(player, new CharterSyncPayload(view));
 	}
 
 	@Override
