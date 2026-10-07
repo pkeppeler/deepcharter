@@ -103,7 +103,13 @@ public final class Wrecks {
 		Map<CharterId, Charter> charters = chartersOf(level.getServer(), crew);
 		pod.ejectPassengers();
 		crew.forEach(member -> CrewFate.die(member, level));
-		charters.values().forEach(charter -> report(level, charter, pod));
+		for (Charter charter : charters.values()) {
+			try {
+				report(level, charter, pod);
+			} catch (RuntimeException e) {
+				DeepCharter.LOGGER.error("Could not report the wreck of pod {} to charter {}: the other charters are still told", pod.getUUID(), charter.id(), e);
+			}
+		}
 	}
 
 	/** A pod that comes into the world at hull 0 (saved before wrecks, or by {@code setHull} elsewhere) is a wreck too. */
@@ -116,6 +122,7 @@ public final class Wrecks {
 					pod.getUUID());
 			return;
 		}
+		DeepCharter.LOGGER.warn("Pod {} loaded with hull {} and is now a wreck (a corrupt saved hull loads as 0)", pod.getUUID(), pod.hull());
 		Versioned.modify(pod, WreckRegistry.STATE, state -> WreckState.WRECKED);
 	}
 

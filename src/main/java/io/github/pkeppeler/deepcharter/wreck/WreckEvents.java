@@ -8,6 +8,7 @@ import net.fabricmc.fabric.api.event.EventFactory;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 
+import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 
@@ -16,11 +17,15 @@ public final class WreckEvents {
 	/**
 	 * A charter was told that a pod of its crew became a wreck: the chat message to its online members has been sent.
 	 * Fires once for each charter on the pod when it went down, so a pod with no crew on a charter fires nothing.
-	 * {@code layer} is empty on the surface. A listener must not throw.
+	 * {@code layer} is empty on the surface. A listener that throws is logged and does not stop the others.
 	 */
 	public static final Event<Reported> REPORTED = EventFactory.createArrayBacked(Reported.class, listeners -> (server, charter, pod, layer, pos) -> {
 		for (Reported listener : listeners) {
-			listener.onReported(server, charter, pod, layer, pos);
+			try {
+				listener.onReported(server, charter, pod, layer, pos);
+			} catch (RuntimeException e) {
+				DeepCharter.LOGGER.error("A wreck report listener failed for pod {}: the other listeners still run", pod.getUUID(), e);
+			}
 		}
 	});
 

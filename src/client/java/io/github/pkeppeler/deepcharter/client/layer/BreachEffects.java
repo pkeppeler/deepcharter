@@ -11,6 +11,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.locale.Language;
 
 import io.github.pkeppeler.deepcharter.layer.BreachPayload;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 
 /**
  * What the client does after a crossing: a rumble (a sound and a short HUD jitter), a fade to black
@@ -28,6 +29,8 @@ public final class BreachEffects {
 	private static final int CHARACTERS_PER_TICK = 2;
 	/** Ticks the finished transmission stays up. */
 	private static final int HOLD_TICKS = 80;
+	/** The one line shown on arriving at the surface, which has no layer number to name. */
+	private static final String SURFACE_KEY = "deepcharter.surface.transmission.arrival";
 
 	/** A HUD offset in pixels. */
 	public record Offset(int x, int y) {
@@ -45,7 +48,8 @@ public final class BreachEffects {
 	/** Starts every effect. Called on the client thread when the payload arrives. */
 	public static void begin(BreachPayload payload) {
 		elapsed = 0;
-		transmission = transmissionKeys(payload.descent()).stream()
+		List<String> keys = payload.toLayer() == LayerChain.SURFACE ? List.of(SURFACE_KEY) : transmissionKeys(payload.descent());
+		transmission = keys.stream()
 				.map(key -> text(key, payload.toLayer()))
 				.toList();
 		Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.GENERIC_EXPLODE.value(), 0.4f, 0.8f));

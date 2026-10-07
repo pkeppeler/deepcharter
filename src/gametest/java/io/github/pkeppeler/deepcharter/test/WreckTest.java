@@ -1,7 +1,9 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.util.List;
 import java.util.Map;
 import java.util.OptionalInt;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -20,7 +22,14 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
@@ -29,12 +38,16 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.handbook.HandbookRegistry;
+import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -56,7 +69,13 @@ public class WreckTest {
 
 	private static final Map<UUID, Report> REPORTS = new ConcurrentHashMap<>();
 
+	private static final Input SNEAK = new Input(false, false, false, false, false, true, false);
+	private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
+	/** Pods whose crust bore costs 20 hull. Only the crust test adds to it. */
+	private static final Set<UUID> CRUST_PODS = ConcurrentHashMap.newKeySet();
+
 	static {
+		PodStats.MODIFY.register((pod, stats) -> CRUST_PODS.contains(pod.getUUID()) ? stats.withCrustHullDamage(20f) : stats);
 		WreckEvents.REPORTED.register((server, charter, pod, layer, pos) -> REPORTS.put(pod.getUUID(), new Report(charter, layer, pos)));
 	}
 
@@ -411,6 +430,256 @@ public class WreckTest {
 		} finally {
 			loaded.discard();
 		}
+	}
+
+	/** Joins a mock in the test level at {@code at}, whose client has reported loaded, so that damage reaches it. */
+	private static MockPlayer joinLoaded(GameTestHelper helper, String name, Vec3 at) {
+		MockPlayer mock = MockPlayers.join(helper, name);
+		mock.teleportTo(helper.getLevel(), at, 0, 0);
+		mock.player().connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+		return mock;
+	}
+
+	private static <T extends Entity> List<T> near(Entity center, Class<T> type) {
+		return center.level().getEntitiesOfClass(type, center.getBoundingBox().inflate(5));
+	}
+
+	private static List<ItemEntity> nearOre(Entity center) {
+		return near(center, ItemEntity.class).stream().filter(item -> OreRegistry.typeOf(item.getItem()).isPresent()).toList();
+	}
+
+	@GameTest
+	public void aDyingCrewMemberDropsItemsButNotTheHandbook(GameTestHelper helper) {
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer mock = joinLoaded(helper, "wreck-drops", pod.position());
+		try {
+			ServerPlayer player = mock.player();
+			player.getInventory().add(new ItemStack(Items.DIRT));
+			boolean hadHandbook = false;
+			for (ItemStack stack : player.getInventory()) {
+				hadHandbook |= stack.is(HandbookRegistry.HANDBOOK);
+			}
+			if (!hadHandbook) {
+				throw failure(helper, "setup: the pilot should hold the handbook");
+			}
+			player.startRiding(pod, true, false);
+			wreck(pod);
+			List<ItemEntity> items = near(player, ItemEntity.class);
+			if (items.stream().noneMatch(item -> item.getItem().is(Items.DIRT))) {
+				throw failure(helper, "the dirt should drop near the wreck, items: %s", items);
+			}
+			if (items.stream().anyMatch(item -> item.getItem().is(HandbookRegistry.HANDBOOK))) {
+				throw failure(helper, "the handbook must not drop: it is bound to its holder");
+			}
+			helper.succeed();
+		} finally {
+			mock.leave();
+			pod.discard();
+			clearFloor(helper);
+		}
+	}
+
+	@GameTest(maxTicks = 100)
+	public void aCrewMemberStillLoadingIsKilledOnceLoaded(GameTestHelper helper) {
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer mock = MockPlayers.join(helper, "wreck-loading");
+		mock.teleportTo(helper.getLevel(), pod.position(), 0, 0);
+		mock.player().startRiding(pod, true, false);
+		wreck(pod);
+		if (mock.player().isDeadOrDying()) {
+			throw failure(helper, "a player whose client has not loaded is immune, so the first kill should fail");
+		}
+		mock.player().connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+		helper.succeedWhen(() -> {
+			if (!mock.player().isDeadOrDying()) {
+				throw failure(helper, "the crew member should die once the client has loaded");
+			}
+			pod.discard();
+			clearFloor(helper);
+		});
+	}
+
+	@GameTest
+	public void everyRiderDiesWhateverTheirGameModeAndDismountedCrewLive(GameTestHelper helper) {
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer creative = joinLoaded(helper, "wreck-creative", pod.position());
+		MockPlayer survival = joinLoaded(helper, "wreck-survival", pod.position());
+		MockPlayer bystander = joinLoaded(helper, "wreck-bystander", pod.position().add(2, 0, 0));
+		try {
+			creative.player().setGameMode(GameType.CREATIVE);
+			survival.player().setGameMode(GameType.SURVIVAL);
+			// The pod has one seat, so the second rider is forced aboard.
+			creative.player().startRiding(pod, true, false);
+			survival.player().startRiding(pod, true, false);
+			if (pod.getPassengers().size() != 2) {
+				throw failure(helper, "setup: expected 2 riders, got %d", pod.getPassengers().size());
+			}
+			wreck(pod);
+			if (!creative.player().isDeadOrDying() || !survival.player().isDeadOrDying()) {
+				throw failure(helper, "both riders should die: creative dead=%s, survival dead=%s",
+						creative.player().isDeadOrDying(), survival.player().isDeadOrDying());
+			}
+			if (bystander.player().isDeadOrDying()) {
+				throw failure(helper, "crew who are not riding must not die");
+			}
+			helper.succeed();
+		} finally {
+			creative.leave();
+			survival.leave();
+			bystander.leave();
+			pod.discard();
+			clearFloor(helper);
+		}
+	}
+
+	@GameTest
+	public void salvageDropsWhatDoesNotFitAtThePlayer(GameTestHelper helper) {
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer mock = joinLoaded(helper, "wreck-full", pod.position().add(2, 0, 0));
+		try {
+			pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.GOLDIUM));
+			pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM));
+			for (int slot = 0; slot < 36; slot++) {
+				mock.player().getInventory().setItem(slot, new ItemStack(Items.STONE, 64));
+			}
+			wreck(pod);
+			int moved = Wrecks.salvage(mock.player(), pod);
+			if (moved != 2 || oreInInventory(mock) != 0 || nearOre(mock.player()).size() != 2) {
+				throw failure(helper, "2 ore should drop at the player: moved %d, held %d, dropped %d",
+						moved, oreInInventory(mock), nearOre(mock.player()).size());
+			}
+			if (!pod.cargo().entries().isEmpty()) {
+				throw failure(helper, "the bay should be empty");
+			}
+			helper.succeed();
+		} finally {
+			mock.leave();
+			pod.discard();
+			clearFloor(helper);
+		}
+	}
+
+	@GameTest
+	public void salvageOfAnEmptyBayDoesNothing(GameTestHelper helper) {
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer mock = joinLoaded(helper, "wreck-empty", pod.position().add(2, 0, 0));
+		try {
+			wreck(pod);
+			if (Wrecks.salvage(mock.player(), pod) != 0 || oreInInventory(mock) != 0) {
+				throw failure(helper, "an empty wreck gives nothing");
+			}
+			if (!UseEntityCallback.EVENT.invoker().interact(mock.player(), pod.level(), InteractionHand.MAIN_HAND, pod, null).consumesAction()) {
+				throw failure(helper, "using an empty wreck is still handled, so that the player is not seated or refuelled by accident");
+			}
+			helper.succeed();
+		} finally {
+			mock.leave();
+			pod.discard();
+			clearFloor(helper);
+		}
+	}
+
+	@GameTest
+	public void salvageOfUnreadableCargoReportsAndKeepsTheCargo(GameTestHelper helper) {
+		PodEntity original = helper.spawn(PodRegistry.POD, 2, 2, 2);
+		original.cargo().tryAdd(original, OreRegistry.stack(OreType.GOLDIUM));
+		PodEntity pod = reload(helper, original, null, tag -> tag.putInt("cargo_version", 99));
+		helper.getLevel().addFreshEntity(pod);
+		MockPlayer mock = joinLoaded(helper, "wreck-unreadable", pod.position().add(2, 0, 0));
+		try {
+			if (pod.cargo().isReadable()) {
+				throw failure(helper, "setup: the cargo should be unreadable");
+			}
+			wreck(pod);
+			if (Wrecks.salvage(mock.player(), pod) != 0 || oreInInventory(mock) != 0) {
+				throw failure(helper, "unreadable cargo gives nothing");
+			}
+			UseEntityCallback.EVENT.invoker().interact(mock.player(), pod.level(), InteractionHand.MAIN_HAND, pod, null);
+			if (pod.cargo().isReadable()) {
+				throw failure(helper, "salvage must leave the unreadable cargo as it was");
+			}
+			helper.succeed();
+		} finally {
+			mock.leave();
+			pod.discard();
+		}
+	}
+
+	@GameTest
+	public void sneakingOnAWreckStillOnlyOpensTheCargoView(GameTestHelper helper) {
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer mock = joinLoaded(helper, "wreck-sneak", pod.position().add(2, 0, 0));
+		try {
+			pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.GOLDIUM));
+			pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM));
+			wreck(pod);
+			mock.setInput(SNEAK);
+			InteractionResult result = UseEntityCallback.EVENT.invoker().interact(mock.player(), pod.level(), InteractionHand.MAIN_HAND, pod, null);
+			if (!result.consumesAction() || !(mock.player().containerMenu instanceof OreCargoMenu)) {
+				throw failure(helper, "sneak-use should open the cargo view, got %s with %s", result, mock.player().containerMenu);
+			}
+			if (oreInInventory(mock) != 0 || pod.cargo().entries().size() != 2) {
+				throw failure(helper, "sneak-use must not salvage: held %d, bay %d", oreInInventory(mock), pod.cargo().entries().size());
+			}
+			helper.succeed();
+		} finally {
+			mock.releaseInput();
+			mock.leave();
+			pod.discard();
+			clearFloor(helper);
+		}
+	}
+
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
+	public void aCrustBreachThatTakesTheLastHullKillsThePilotWhoDoesNotCross(GameTestHelper helper) {
+		int x = 4600;
+		int z = 3000;
+		ServerLevel one = helper.getLevel().getServer().getLevel(LayerChain.dimension(1));
+		if (one == null) {
+			throw failure(helper, "dimension %s did not load", LayerChain.dimension(1));
+		}
+		for (BlockPos pos : BlockPos.betweenClosed(x - 2, 0, z - 2, x + 2, 2, z + 2)) {
+			one.setBlock(pos, LayerBlocks.BREACH_CRUST.defaultBlockState(), Block.UPDATE_CLIENTS);
+		}
+		for (BlockPos pos : BlockPos.betweenClosed(x - 2, 1, z - 2, x + 2, 8, z + 2)) {
+			one.setBlock(pos, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
+		}
+		MockPlayer pilot = MockPlayers.join(helper, "wreck-crust");
+		pilot.teleportTo(one, new Vec3(x, 1, z), 0f, 0f);
+		PodEntity[] pod = {null};
+		int[] zeroSince = {-1};
+		FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, 1, z), () -> {
+			pilot.player().connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+			PodEntity created = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
+			created.setPos(x, 1, z);
+			one.addFreshEntity(created);
+			CRUST_PODS.add(created.getUUID());
+			created.setHull(15f);
+			pilot.player().startRiding(created, true, false);
+			pilot.setInput(SPRINT);
+			pod[0] = created;
+		});
+		helper.succeedWhen(() -> {
+			if (pod[0] == null || pod[0].hull() != 0f) {
+				throw failure(helper, "waiting for the crust bore to take the hull");
+			}
+			if (zeroSince[0] < 0) {
+				zeroSince[0] = helper.getTick();
+			}
+			if (helper.getTick() - zeroSince[0] < 20) {
+				throw failure(helper, "waiting to see whether the wreck crosses");
+			}
+			pilot.releaseInput();
+			CRUST_PODS.remove(pod[0].getUUID());
+			if (!pilot.player().isDeadOrDying() || !Wrecks.isWreck(pod[0])) {
+				throw failure(helper, "the pilot should be dead and the pod a wreck, dead=%s wreck=%s",
+						pilot.player().isDeadOrDying(), Wrecks.isWreck(pod[0]));
+			}
+			if (!pilot.player().level().dimension().equals(LayerChain.dimension(1)) || pod[0].isRemoved()) {
+				throw failure(helper, "the wreck must stay in layer 1, pilot in %s", pilot.player().level().dimension());
+			}
+			pod[0].discard();
+		});
 	}
 
 	private static PodEntity reload(GameTestHelper helper, PodEntity pod, CompoundTag attachments) {

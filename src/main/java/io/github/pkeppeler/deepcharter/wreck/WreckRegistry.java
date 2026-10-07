@@ -29,6 +29,7 @@ public final class WreckRegistry {
 	}
 
 	public static void register() {
+		CrewFate.init();
 		PodEvents.HULL_DEPLETED.register(Wrecks::onHullDepleted);
 		PodEvents.CAN_MOUNT.register((pod, passenger) -> !Wrecks.isWreck(pod));
 		PodEvents.IS_POWERED.register(pod -> !Wrecks.isWreck(pod));

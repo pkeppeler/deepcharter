@@ -46,6 +46,7 @@ import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 
 /**
  * Server GameTests for #60: stats overrides change what a pod does, the hull has a maximum, and fuel items come
@@ -616,17 +617,27 @@ public class PodStatsTest {
 			OVERRIDES.put(pod.getUUID(), stats -> stats.withCrustHullDamage(20f));
 			pod.setHull(15f);
 		});
+		int[] zeroSince = {-1};
 		helper.onEachTick(() -> {
 			if (!rig.ready() || rig.pod.hull() != 0f) {
 				return;
 			}
+			if (zeroSince[0] < 0) {
+				zeroSince[0] = helper.getTick();
+			}
+			// Wait a few ticks, so a second event or a late change would show.
+			if (helper.getTick() - zeroSince[0] < 5) {
+				return;
+			}
 			int events = DEPLETED.getOrDefault(rig.pod.getUUID(), 0);
+			boolean wreck = Wrecks.isWreck(rig.pod);
 			OVERRIDES.remove(rig.pod.getUUID());
 			DEPLETED.remove(rig.pod.getUUID());
 			rig.pod.discard();
-			if (events != 1) {
+			if (events != 1 || !wreck) {
 				throw helper.assertionException(Component.literal(
-						"a crust bore costing 20 should take a hull of 15 to 0 and fire HULL_DEPLETED once, got " + events + " events"));
+						"a crust bore costing 20 should take a hull of 15 to 0, fire HULL_DEPLETED once and leave a wreck, got "
+								+ events + " events, wreck " + wreck));
 			}
 			helper.succeed();
 		});

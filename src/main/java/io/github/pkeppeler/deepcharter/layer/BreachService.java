@@ -19,12 +19,13 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Breach crossing: a player who drops below their layer's floor appears at the same X/Z under the
  * ceiling of the next layer, and one who rises above a layer's top appears above the crust of the
- * layer above. A vehicle crosses as one with its passengers.
+ * layer above. A vehicle crosses as one with its passengers. The overworld is layer 0: its floor
+ * leads into layer 1, and the top of layer 1 leads back up to it.
  *
  * <p>Only players, and the vehicles that carry them, cross. The arrival point is
  * {@link LayerTuning#pocketHeight()} blocks inside the destination, so an entity has to move that
  * far before it could cross back: that distance is the hysteresis. The last layer's floor has no
- * crossing, and neither has the top of layer 1.
+ * crossing, and neither has the top of the overworld.
  *
  * <p>Survival and adventure players cannot break {@code breach_crust} by hand; creative players can.
  * Drills do it through {@link #breakCrust}.
@@ -55,7 +56,7 @@ public final class BreachService {
 	}
 
 	private static void crossEntities(ServerLevel level) {
-		OptionalInt found = LayerChain.layerOf(level.dimensionTypeRegistration().unwrapKey().orElseThrow().identifier());
+		OptionalInt found = LayerChain.indexOf(level.dimensionTypeRegistration().unwrapKey().orElseThrow().identifier());
 		if (found.isEmpty()) {
 			return;
 		}
@@ -71,7 +72,7 @@ public final class BreachService {
 			}
 			if (root.getY() < level.getMinY() && layer < layers) {
 				descending.add(root);
-			} else if (root.getY() > level.getMaxY() && layer > 1) {
+			} else if (root.getY() > level.getMaxY() && layer > LayerChain.SURFACE) {
 				ascending.add(root);
 			}
 		}
