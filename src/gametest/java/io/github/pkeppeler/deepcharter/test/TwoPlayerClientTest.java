@@ -67,7 +67,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 	private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
 
 	/** What the server holds for the flow: both pods, and the layer 1 columns each one bores. */
-	private record Rig(PodEntity realPod, PodEntity mockPod, int mockPodId, List<BlockPos> realColumns, List<BlockPos> mockColumns) {
+	private record Rig(PodEntity realPod, PodEntity mockPod, List<BlockPos> realColumns, List<BlockPos> mockColumns) {
 	}
 
 	/** What the server says about the crossing, read in one call so the two pilots are judged at the same moment. */
@@ -111,7 +111,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 		Rig rig = two.server().computeOnServer(server -> setUp(server, two));
 		context.waitFor(client -> client.player != null && client.player.getVehicle() instanceof PodEntity
 				&& client.level.dimension().equals(LayerChain.dimension(1))
-				&& client.level.getEntity(rig.mockPodId()) instanceof PodEntity, CLIENT_TICK_FUSE);
+				&& client.level.getEntity(rig.mockPod().getId()) instanceof PodEntity, CLIENT_TICK_FUSE);
 		context.runOnClient(client -> {
 			client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
 			client.player.setYRot(EAST);
@@ -200,8 +200,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 		box(one, STONE_ROW_Y, STONE_ROW_Y, Blocks.STONE);
 		box(one, FLOOR_Y, FLOOR_Y + 9, Blocks.AIR);
 		lamps(one);
-		ServerPlayer real = server.getPlayerList().getPlayers().stream()
-				.filter(player -> player != two.mock().player()).findFirst().orElseThrow();
+		ServerPlayer real = realPlayer(server, two.mock().player());
 		real.teleportTo(one, X, FLOOR_Y, Z, Set.of(), EAST, LOOK_DOWN, true);
 		int mockPodId = PodMovementClientTest.mountBoth(two);
 		PodEntity realPod = (PodEntity) real.getVehicle();
@@ -209,7 +208,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 		if (mockPod.getId() != mockPodId || realPod == mockPod || realPod.level() != one || mockPod.level() != one) {
 			throw new AssertionError("Each player should ride their own pod in layer_1");
 		}
-		return new Rig(realPod, mockPod, mockPodId, columns(realPod), columns(mockPod));
+		return new Rig(realPod, mockPod, columns(realPod), columns(mockPod));
 	}
 
 	/** The layer 1 columns a pod bores: its footprint on the block grid, as the drill picks it. */
@@ -296,7 +295,6 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 		}
 	}
 
-	/** One room for both pods. */
 	private static void box(ServerLevel level, int yFrom, int yTo, Block block) {
 		for (int x = X - ROOM_WEST; x <= X + ROOM_EAST; x++) {
 			for (int y = yFrom; y <= yTo; y++) {
