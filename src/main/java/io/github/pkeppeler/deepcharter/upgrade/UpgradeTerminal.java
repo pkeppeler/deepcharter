@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.upgrade;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -80,23 +81,15 @@ public final class UpgradeTerminal {
 	private static Optional<Component> runBuy(TerminalAction.Context context) {
 		Optional<ComponentTrack> track = context.args().getString(TRACK_KEY).flatMap(UpgradeTerminal::trackNamed);
 		Optional<Integer> tier = context.args().getInt(TIER_KEY);
-		Optional<Component> refusal;
-		if (track.isEmpty() || tier.isEmpty()) {
-			refusal = Optional.of(UpgradeRefusal.BAD_REQUEST.message());
-		} else {
-			refusal = buy(context.server(), context.player(), context.pos(), track.get(), tier.get());
-		}
+		Optional<Component> refusal = track.isEmpty() || tier.isEmpty()
+				? Optional.of(UpgradeRefusal.BAD_REQUEST.message())
+				: buy(context.server(), context.player(), context.pos(), track.get(), tier.get());
 		sendView(context.server(), context.player(), context.pos());
 		return refusal;
 	}
 
 	private static Optional<ComponentTrack> trackNamed(String id) {
-		for (ComponentTrack track : ComponentTrack.values()) {
-			if (track.id().equals(id)) {
-				return Optional.of(track);
-			}
-		}
-		return Optional.empty();
+		return Arrays.stream(ComponentTrack.values()).filter(track -> track.id().equals(id)).findFirst();
 	}
 
 	/** Empty when done, or why it was refused, with nothing changed. The player must be on a charter. */
