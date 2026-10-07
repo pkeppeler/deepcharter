@@ -122,14 +122,14 @@ public class NotesClientTest implements FabricClientGameTest {
 
 	private static void inTheRealGame(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			context.runOnClient(client -> check(ClientNotes.found().isEmpty(), "a new world has no notes"));
+			context.runOnClient(client -> check(ClientNotes.entries().isEmpty(), "a new world has no notes"));
 			singleplayer.getServer().runOnServer(server -> {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 				check(Charters.found(server, player.getUUID(), "Notes Test Co").isEmpty(), "the player founds a charter");
 				useNoteBlock(player, 1);
 				useNoteBlock(player, 10);
 			});
-			context.waitFor(client -> ClientNotes.found().equals(List.of(FIRST, TENTH)));
+			context.waitFor(client -> ClientNotes.entries().stream().map(HandbookNote::id).toList().equals(List.of(FIRST, TENTH)));
 			check(context.computeOnClient(client -> !ClientReadMarks.isRead(FIRST) && !ClientReadMarks.isRead(TENTH)), "the found notes are unread");
 
 			context.runOnClient(client -> HandbookScreen.open(client));

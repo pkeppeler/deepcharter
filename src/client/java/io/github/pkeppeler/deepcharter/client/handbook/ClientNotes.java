@@ -18,10 +18,6 @@ public final class ClientNotes {
 	private ClientNotes() {
 	}
 
-	public static List<Identifier> found() {
-		return found;
-	}
-
 	static void set(Collection<Identifier> newFound) {
 		found = newFound.stream().filter(Notes::exists).toList();
 	}
