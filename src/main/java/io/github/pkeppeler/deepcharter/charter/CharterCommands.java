@@ -35,13 +35,13 @@ public final class CharterCommands {
 	public static void init() {
 		FeatureCommands.register("charter", root -> root
 				.requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
-				.then(Commands.literal("found").then(nameArgument().executes(context -> found(context))))
-				.then(Commands.literal("apply").then(nameArgument().executes(context -> apply(context))))
-				.then(Commands.literal("approve").then(playerArgument().executes(context -> approve(context))))
-				.then(Commands.literal("deny").then(playerArgument().executes(context -> deny(context))))
-				.then(Commands.literal("leave").executes(context -> leave(context)))
-				.then(Commands.literal("info").executes(context -> info(context)))
-				.then(Commands.literal("list").executes(context -> list(context)))
+				.then(Commands.literal("found").then(nameArgument().executes(CharterCommands::found)))
+				.then(Commands.literal("apply").then(nameArgument().executes(CharterCommands::apply)))
+				.then(Commands.literal("approve").then(playerArgument().executes(CharterCommands::approve)))
+				.then(Commands.literal("deny").then(playerArgument().executes(CharterCommands::deny)))
+				.then(Commands.literal("leave").executes(CharterCommands::leave))
+				.then(Commands.literal("info").executes(CharterCommands::info))
+				.then(Commands.literal("list").executes(CharterCommands::list))
 				.then(account()));
 	}
 

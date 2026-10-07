@@ -102,13 +102,13 @@ public final class CharterData extends SavedData {
 	public Optional<CharterRefusal> found(UUID founder, String name, CharterId id) {
 		String trimmed = name.strip();
 		if (trimmed.isEmpty() || trimmed.length() > CharterTuning.DEFAULT.maxNameLength()) {
-			return refused(CharterRefusal.INVALID_NAME);
+			return Optional.of(CharterRefusal.INVALID_NAME);
 		}
 		if (charterOf(founder).isPresent() || applicationOf(founder).isPresent()) {
-			return refused(CharterRefusal.ALREADY_ON_A_CHARTER);
+			return Optional.of(CharterRefusal.ALREADY_ON_A_CHARTER);
 		}
 		if (findByName(trimmed).isPresent()) {
-			return refused(CharterRefusal.NAME_TAKEN);
+			return Optional.of(CharterRefusal.NAME_TAKEN);
 		}
 		readable().put(id, Charter.founded(id, trimmed, founder));
 		setDirty();
@@ -119,16 +119,16 @@ public final class CharterData extends SavedData {
 	public Optional<CharterRefusal> apply(UUID applicant, CharterId id) {
 		Optional<Charter> charter = find(id);
 		if (charter.isEmpty()) {
-			return refused(CharterRefusal.NO_SUCH_CHARTER);
+			return Optional.of(CharterRefusal.NO_SUCH_CHARTER);
 		}
 		if (charter.get().dormant()) {
-			return refused(CharterRefusal.CHARTER_DORMANT);
+			return Optional.of(CharterRefusal.CHARTER_DORMANT);
 		}
 		if (charterOf(applicant).isPresent()) {
-			return refused(CharterRefusal.ALREADY_ON_A_CHARTER);
+			return Optional.of(CharterRefusal.ALREADY_ON_A_CHARTER);
 		}
 		if (applicationOf(applicant).isPresent()) {
-			return refused(CharterRefusal.ALREADY_APPLIED);
+			return Optional.of(CharterRefusal.ALREADY_APPLIED);
 		}
 		replace(charter.get().withApplication(applicant));
 		return Optional.empty();
@@ -159,17 +159,17 @@ public final class CharterData extends SavedData {
 			replace(applied.get().withoutApplication(player));
 			return Optional.empty();
 		}
-		return refused(CharterRefusal.NOT_ON_A_CHARTER);
+		return Optional.of(CharterRefusal.NOT_ON_A_CHARTER);
 	}
 
 	/** Adds {@code amount}, which must be positive, to the account. A deposit that would pass {@code Long.MAX_VALUE} is refused. */
 	public Optional<CharterRefusal> deposit(CharterId id, long amount) {
 		if (amount <= 0) {
-			return refused(CharterRefusal.INVALID_AMOUNT);
+			return Optional.of(CharterRefusal.INVALID_AMOUNT);
 		}
 		Optional<Charter> charter = find(id);
 		if (charter.isPresent() && charter.get().account() > Long.MAX_VALUE - amount) {
-			return refused(CharterRefusal.ACCOUNT_FULL);
+			return Optional.of(CharterRefusal.ACCOUNT_FULL);
 		}
 		return change(id, found -> found.withAccount(found.account() + amount));
 	}
@@ -177,11 +177,11 @@ public final class CharterData extends SavedData {
 	/** Takes {@code amount}, which must be positive, from the account. The account never goes negative: an overdraft is refused. */
 	public Optional<CharterRefusal> spend(CharterId id, long amount) {
 		if (amount <= 0) {
-			return refused(CharterRefusal.INVALID_AMOUNT);
+			return Optional.of(CharterRefusal.INVALID_AMOUNT);
 		}
 		Optional<Charter> charter = find(id);
 		if (charter.isPresent() && charter.get().account() < amount) {
-			return refused(CharterRefusal.INSUFFICIENT_FUNDS);
+			return Optional.of(CharterRefusal.INSUFFICIENT_FUNDS);
 		}
 		return change(id, found -> found.withAccount(found.account() - amount));
 	}
@@ -189,7 +189,7 @@ public final class CharterData extends SavedData {
 	/** Raises the deepest point to {@code depth} if that is deeper than the record. A shallower depth changes nothing. */
 	public Optional<CharterRefusal> recordDeepestPoint(CharterId id, int depth) {
 		if (depth < 0) {
-			return refused(CharterRefusal.INVALID_AMOUNT);
+			return Optional.of(CharterRefusal.INVALID_AMOUNT);
 		}
 		return change(id, charter -> depth > charter.deepestPoint() ? charter.withDeepestPoint(depth) : charter);
 	}
@@ -197,10 +197,10 @@ public final class CharterData extends SavedData {
 	private Optional<CharterRefusal> decide(UUID director, UUID applicant, UnaryOperator<Charter> decision) {
 		Optional<Charter> charter = charterOf(director).filter(found -> found.isDirector(director));
 		if (charter.isEmpty()) {
-			return refused(CharterRefusal.NOT_THE_DIRECTOR);
+			return Optional.of(CharterRefusal.NOT_THE_DIRECTOR);
 		}
 		if (!charter.get().applications().contains(applicant)) {
-			return refused(CharterRefusal.NO_APPLICATION);
+			return Optional.of(CharterRefusal.NO_APPLICATION);
 		}
 		replace(decision.apply(charter.get()));
 		return Optional.empty();
@@ -209,7 +209,7 @@ public final class CharterData extends SavedData {
 	private Optional<CharterRefusal> change(CharterId id, UnaryOperator<Charter> change) {
 		Optional<Charter> charter = find(id);
 		if (charter.isEmpty()) {
-			return refused(CharterRefusal.NO_SUCH_CHARTER);
+			return Optional.of(CharterRefusal.NO_SUCH_CHARTER);
 		}
 		replace(change.apply(charter.get()));
 		return Optional.empty();
@@ -218,9 +218,5 @@ public final class CharterData extends SavedData {
 	private void replace(Charter charter) {
 		readable().put(charter.id(), charter);
 		setDirty();
-	}
-
-	private static Optional<CharterRefusal> refused(CharterRefusal refusal) {
-		return Optional.of(refusal);
 	}
 }
