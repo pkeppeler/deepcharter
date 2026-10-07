@@ -60,11 +60,9 @@ if git cat-file -e "${tip}:${pr}" 2>/dev/null; then
   entries=$(git ls-tree "${tip}:${pr}")
   old_pr_names=$(git ls-tree --name-only "${tip}:${pr}")
 fi
-i=0
-for f in "${files[@]}"; do
+for i in "${!files[@]}"; do
   name=${names[$i]}
-  i=$((i + 1))
-  blob=$(git hash-object -w -- "$f")
+  blob=$(git hash-object -w -- "${files[$i]}")
   entries=$(printf '%s\n' "$entries" | awk -F'\t' -v n="$name" '$2 != n && NF')
   entries=$(printf '%s\n100644 blob %s\t%s\n' "$entries" "$blob" "$name" | awk 'NF')
 done
