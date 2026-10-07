@@ -8,7 +8,7 @@ Builds on [ADR 0011](0011-the-surface-is-layer-0-with-an-open-floor.md) (the ove
 
 ## Decision
 
-- **Built in code, once, at server start.** `ColonyBuilder` runs on `SERVER_STARTED`. If `ColonySite` holds no colony, it flattens a pad of `ColonyTuning.padSize` (64) blocks centred on the world spawn, lays out the buildings from a table of offsets (a ruin, with open roofs), records the colony, and then sets the world spawn to the Continuity Office. Every other start finds the colony recorded and does nothing, so a ruin that players changed is never rebuilt. The record is written after the last block: a build that stops half way is built again over what it left.
+- **Built in code, once, at server start.** `ColonyBuilder` runs on `SERVER_STARTED`. If `ColonySite` holds no finished colony, it centres a pad of `ColonyTuning.padSize` (64) blocks on the world spawn, or on the nearest dry ground if the spawn is in water (a square spiral in steps of 4 chunks, 8 steps out; if there is none it logs an error and builds at the spawn). It flattens the pad, lays out the buildings from a table of offsets (a ruin, with open roofs), and then sets the world spawn to the Continuity Office and the `respawn_radius` game rule to 0, so a new player stands in the office. Every other start finds the colony finished and does nothing, so a ruin that players changed is never rebuilt. `ColonySite` records the pad's centre, its ground Y and its anchors before the first block, and a finished flag after the last. A build that stops half way is built again over the same pad at the recorded ground Y, and not at a ground read from the half-built world.
 - **Not a structure template, not worldgen.** The pad is flattened at the spawn the world already chose, which no structure placement could follow. There is no template data to keep in step with Minecraft's data versions.
 - **`ColonySite` is one versioned SavedData** with the `Unreadable` fallback of [ADR 0007](0007-charters-are-one-versioned-saved-data.md). It holds the pad centre and one block position per `ColonyAnchor`. Other features read it through `Colony`, which answers empty before the colony is built and on unreadable data, and logs the unreadable data once. `Colony.respawnPoint` is the Continuity Office, for a respawn redirect (#67). `ColonyEvents.BUILT` fires once when the colony is built.
 - **The terminals stand on their plinths from the start, unrepaired.** The builder places every registered terminal type that has a `ColonyAnchor` of the same name. The contract terminal has a bare plinth until #72 registers its type, and from the next new world its block stands there.
@@ -23,7 +23,8 @@ Builds on [ADR 0011](0011-the-surface-is-layer-0-with-an-open-floor.md) (the ove
 
 ## Consequences
 
-- The colony's centre is the world spawn when the colony was built, so a world made before this change gets its colony at its old spawn.
+- **Building clears a 64 x 64 x 24 volume at the colony centre. Builds there are lost.** The mod does not ask. It logs a warning when it builds in a world that has already run for more than two minutes. Start a new world for this version.
+
 - A chunk that loaded while the colony's data was unreadable gets no casing until it loads again.
 - The Conduit's X and Z, and the ore processor, are anchors. #68 (ore processor) and later features find them through `Colony.anchor`.
 - The layout is a table in `ColonyBuilder`. Moving a building changes the colony of new worlds only.

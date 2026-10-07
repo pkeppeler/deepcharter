@@ -31,6 +31,9 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.storage.LevelData;
+import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -45,6 +48,7 @@ import io.github.pkeppeler.deepcharter.colony.ColonyEvents;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.colony.ColonyTuning;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
@@ -244,10 +248,132 @@ public class ColonyTest {
 		if (!Colony.respawnPoint(server).equals(Optional.of(GlobalPos.of(Level.OVERWORLD, office)))) {
 			throw failure(helper, "Colony.respawnPoint should give the Continuity Office, gave %s", Colony.respawnPoint(server));
 		}
+		if (server.getGameRules().get(GameRules.RESPAWN_RADIUS) != 0) {
+			throw failure(helper, "the respawn radius should be 0 so a new player stands in the office, it is %s", server.getGameRules().get(GameRules.RESPAWN_RADIUS));
+		}
 		if (!overworld.getBlockState(office.below()).isSolid() || !overworld.getBlockState(office).isAir() || !overworld.getBlockState(office.above()).isAir()) {
 			throw failure(helper, "a player cannot stand at the world spawn %s", office.toShortString());
 		}
 		helper.succeed();
+	}
+
+	@GameTest
+	public void aSpawnInWaterMakesTheBuildSearchForDryGround(GameTestHelper helper) {
+		ServerLevel level = server(helper).overworld();
+		// A lake 181 blocks across on the flat ground, far from every other test.
+		int lake = 9000;
+		int half = 90;
+		level.getChunk(lake >> 4, lake >> 4);
+		int surface = level.getHeight(Heightmap.Types.WORLD_SURFACE, lake, lake);
+		for (int x = lake - half; x <= lake + half; x++) {
+			for (int z = lake - half; z <= lake + half; z++) {
+				level.setBlock(new BlockPos(x, surface, z), Blocks.WATER.defaultBlockState(), 2);
+			}
+		}
+		BlockPos wet = new BlockPos(lake, 0, lake);
+		Optional<BlockPos> found = ColonyBuilder.findDryGround(level, wet);
+		if (found.isEmpty()) {
+			throw failure(helper, "no dry ground was found beside a lake of %s blocks", 2 * half + 1);
+		}
+		BlockPos centre = found.get();
+		int padHalf = ColonyTuning.DEFAULT.padSize() / 2;
+		if (Math.abs(centre.getX() - lake) <= half + padHalf - 1 && Math.abs(centre.getZ() - lake) <= half + padHalf - 1) {
+			throw failure(helper, "the dry ground %s still reaches into the lake", centre.toShortString());
+		}
+		if (!level.getFluidState(new BlockPos(centre.getX(), level.getHeight(Heightmap.Types.WORLD_SURFACE, centre.getX(), centre.getZ()) - 1, centre.getZ())).isEmpty()) {
+			throw failure(helper, "the centre %s of the dry ground is in water", centre.toShortString());
+		}
+		// On dry ground the spawn itself is the centre.
+		BlockPos dry = new BlockPos(9500, 0, 9500);
+		if (!ColonyBuilder.findDryGround(level, dry).equals(Optional.of(dry))) {
+			throw failure(helper, "a spawn on dry ground should be the centre, got %s", ColonyBuilder.findDryGround(level, dry));
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aBuildThatStoppedHalfWayIsBuiltAgainAtTheSameGround(GameTestHelper helper) {
+		MinecraftServer server = server(helper);
+		ServerLevel overworld = server.overworld();
+		ColonySite.Placed before = placed(helper);
+		Tag current = ColonySite.CODEC.encodeStart(NbtOps.INSTANCE, ColonySite.get(server)).getOrThrow();
+		CompoundTag unfinished = ((CompoundTag) current).copy();
+		unfinished.getCompound("colony").orElseThrow().putBoolean("finished", false);
+		ColonySite interrupted = ColonySite.CODEC.parse(NbtOps.INSTANCE, unfinished).getOrThrow();
+		if (interrupted.isBuilt() || interrupted.started().isEmpty()) {
+			throw failure(helper, "the interrupted record should be begun and not finished");
+		}
+		ColonySite world = ColonySite.get(server);
+		var spawn = server.getRespawnData();
+		server.getDataStorage().set(ColonySite.TYPE, interrupted);
+		try {
+			if (!ColonyBuilder.buildIfNeeded(server)) {
+				throw failure(helper, "an unfinished colony should be built again");
+			}
+			if (!ColonySite.get(server).placed().equals(Optional.of(before))) {
+				throw failure(helper, "the rebuilt colony differs: %s, expected %s", ColonySite.get(server).placed(), before);
+			}
+			// Built over itself at the recorded ground: the statue stands where it did, and no second pad sits above the first.
+			BlockPos statue = before.anchors().get(ColonyAnchor.STATUE);
+			if (!overworld.getBlockState(statue).is(Blocks.STONE_BRICKS)) {
+				throw failure(helper, "the statue's pedestal is not at %s after the rebuild", statue.toShortString());
+			}
+			for (BlockPos corner : List.of(before.center().offset(9, 1, 9), before.center().offset(-30, 1, -30), before.center().offset(28, 1, 28))) {
+				if (!overworld.getBlockState(corner).isAir()) {
+					throw failure(helper, "a second pad sits above the first at %s: %s", corner.toShortString(), overworld.getBlockState(corner));
+				}
+			}
+		} finally {
+			server.getDataStorage().set(ColonySite.TYPE, world);
+			server.setRespawnData(LevelData.RespawnData.of(spawn.dimension(), spawn.pos(), spawn.yaw(), spawn.pitch()));
+		}
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
+	public void aBreachCrossingAtTheConduitLeavesItWholeAndArrivesBesideIt(GameTestHelper helper) {
+		MinecraftServer server = server(helper);
+		BlockPos centre = placed(helper).anchors().get(ColonyAnchor.CONDUIT);
+		int radius = ColonyTuning.DEFAULT.conduitRadius();
+		// The arrival pocket reaches pocketRadius blocks out, so from here it touches the casing.
+		double x = centre.getX() + radius + LayerTuning.DEFAULT.pocketRadius() + 0.5;
+		double z = centre.getZ() + 0.5;
+		ServerLevel surface = server.overworld();
+		ServerLevel one = level(helper, 1);
+		for (int y = surface.getMinY(); y <= surface.getMinY() + 10; y++) {
+			surface.setBlock(BlockPos.containing(x, y, z), Blocks.AIR.defaultBlockState(), 3);
+		}
+		MockPlayer mock = MockPlayers.join(helper, "conduit-breach");
+		mock.teleportTo(surface, new Vec3(x, surface.getMinY() + 6, z), 0, 0);
+		int[] ticking = {0};
+		FarChunks.awaitEntityTicking(helper, surface, mock.player().blockPosition(), () -> ticking[0]++);
+		for (BlockPos corner : corners(centre)) {
+			FarChunks.awaitEntityTicking(helper, one, corner.atY(one.getMinY() + 8), () -> ticking[0]++);
+		}
+		helper.onEachTick(() -> {
+			ServerPlayer player = mock.player();
+			if (ticking[0] == 5 && player.level().dimension().equals(surface.dimension())) {
+				player.setPos(player.getX(), player.getY() - 1, player.getZ());
+			}
+		});
+		helper.succeedWhen(() -> {
+			ServerPlayer player = mock.player();
+			if (!player.level().dimension().equals(one.dimension())) {
+				throw failure(helper, "waiting for the crossing into layer 1");
+			}
+			if (Math.abs(player.getX() - x) < 0.01 && Math.abs(player.getZ() - z) < 0.01) {
+				throw failure(helper, "the player arrived at the requested column %s, which touches the casing", player.blockPosition().toShortString());
+			}
+			for (int cx = centre.getX() - radius; cx <= centre.getX() + radius; cx++) {
+				for (int cz = centre.getZ() - radius; cz <= centre.getZ() + radius; cz++) {
+					for (int y = one.getMaxY() - LayerTuning.DEFAULT.pocketHeight() - 1; y <= one.getMaxY(); y++) {
+						if (!one.getBlockState(new BlockPos(cx, y, cz)).is(ColonyBlocks.CONDUIT)) {
+							throw failure(helper, "the crossing carved the casing at (%s, %s, %s)", cx, y, cz);
+						}
+					}
+				}
+			}
+		});
 	}
 
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)

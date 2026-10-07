@@ -6,10 +6,12 @@ import java.util.OptionalInt;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.dimension.DimensionType;
 
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 
@@ -32,7 +34,12 @@ public final class Conduit {
 	}
 
 	private static void onChunkLoad(ServerLevel level, LevelChunk chunk) {
-		OptionalInt layer = LayerChain.indexOf(level.dimensionTypeRegistration().unwrapKey().orElseThrow().identifier());
+		// A dimension type given inline by a data pack has no key: it is no layer. A callback never throws.
+		Optional<ResourceKey<DimensionType>> type = level.dimensionTypeRegistration().unwrapKey();
+		if (type.isEmpty()) {
+			return;
+		}
+		OptionalInt layer = LayerChain.indexOf(type.get().identifier());
 		if (layer.isEmpty()) {
 			return;
 		}

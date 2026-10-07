@@ -21,7 +21,7 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 
 /**
- * Where the colony is: set once, when the colony is built at world spawn, and never changed. Holds the {@link ColonyAnchor}s.
+ * Where the colony is: set when its build begins at world spawn, marked finished when the build ends, and never moved. Holds the {@link ColonyAnchor}s.
  * Gameplay code reads it through {@link Colony}, which never throws.
  *
  * <p>The saved form has a {@link #VERSION}. Data of another version loads as unreadable, is written back unchanged, and every
@@ -32,15 +32,18 @@ public final class ColonySite extends SavedData {
 	private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "colony");
 
 	/**
-	 * A built colony.
+	 * A colony, begun or built.
 	 *
-	 * @param center  the centre of the pad: the world spawn at the time the colony was built, at ground level
-	 * @param anchors every anchor, so a colony saved without one is unreadable and not half there
+	 * @param center   the centre of the pad at ground level: its Y is fixed when the build begins, so a build that stops half way
+	 *                 is built again at the same height
+	 * @param anchors  every anchor, so a colony saved without one is unreadable and not half there
+	 * @param finished false while the build is under way
 	 */
-	public record Placed(BlockPos center, Map<ColonyAnchor, BlockPos> anchors) {
+	public record Placed(BlockPos center, Map<ColonyAnchor, BlockPos> anchors, boolean finished) {
 		private static final Codec<Placed> CODEC = RecordCodecBuilder.<Placed>create(instance -> instance.group(
 				BlockPos.CODEC.fieldOf("center").forGetter(Placed::center),
-				Codec.unboundedMap(ColonyAnchor.CODEC, BlockPos.CODEC).fieldOf("anchors").forGetter(Placed::anchors)).apply(instance, Placed::new))
+				Codec.unboundedMap(ColonyAnchor.CODEC, BlockPos.CODEC).fieldOf("anchors").forGetter(Placed::anchors),
+				Codec.BOOL.fieldOf("finished").forGetter(Placed::finished)).apply(instance, Placed::new))
 				.validate(placed -> placed.anchors().keySet().containsAll(List.of(ColonyAnchor.values()))
 						? DataResult.success(placed)
 						: DataResult.error(() -> "the colony is saved without every anchor"));
@@ -117,22 +120,34 @@ public final class ColonySite extends SavedData {
 		return placed;
 	}
 
-	/** True once the colony has been built. */
+	/** True once the colony has been built to the end. */
 	public boolean isBuilt() {
-		return readable().isPresent();
+		return readable().filter(Placed::finished).isPresent();
 	}
 
-	/** The built colony, or empty before it is built. */
-	public Optional<Placed> placed() {
+	/** The colony, finished or not: empty only before the build begins. */
+	public Optional<Placed> started() {
 		return readable();
 	}
 
-	/** Records the colony. It is built once: a second call throws. */
-	void place(Placed colony) {
-		if (readable().isPresent()) {
-			throw new IllegalStateException("the colony is already built");
+	/** The built colony, or empty before it is built, and while its build is under way. */
+	public Optional<Placed> placed() {
+		return readable().filter(Placed::finished);
+	}
+
+	/** Records where the colony will be, before its first block. It begins once: a second call throws. */
+	void begin(Placed colony) {
+		if (readable().isPresent() || colony.finished()) {
+			throw new IllegalStateException("the colony has begun already, or was given as finished");
 		}
 		placed = Optional.of(colony);
+		setDirty();
+	}
+
+	/** Marks the colony built to the end. */
+	void finish() {
+		Placed begun = readable().orElseThrow(() -> new IllegalStateException("the colony has not begun"));
+		placed = Optional.of(new Placed(begun.center(), begun.anchors(), true));
 		setDirty();
 	}
 }

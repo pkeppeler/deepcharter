@@ -12,6 +12,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -32,8 +33,12 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
  * {@link ColonyTuning#padSize()} blocks a side with every building of the lore canon (section 11), all in ruins. The layout is
  * code, not a template: it is a table of offsets from the pad's centre, north is -Z.
  *
- * <p>It builds only while {@link ColonySite} holds no colony, and records the colony after the last block, so a build that
- * stops half way is built again from the same spawn, over what it left. It then sets the world spawn to the Continuity Office.
+ * <p>The pad is centred on the world spawn, or on the nearest dry ground if the spawn is in water ({@link #findDryGround}).
+ * Building clears a volume of the pad's size and {@link ColonyTuning#clearHeight()} blocks high: whatever stood there is lost.
+ *
+ * <p>It records the pad's centre and ground before the first block ({@link ColonySite#begin}) and marks the colony finished
+ * after the last, so a build that stops half way is built again over the same pad, at the recorded ground. It then sets the
+ * world spawn to the Continuity Office and the respawn radius to 0, so a new player stands in the office.
  */
 public final class ColonyBuilder {
 	/** A block set without neighbour updates, so a bed or a door built in two steps is not broken by the first. */
@@ -43,11 +48,14 @@ public final class ColonyBuilder {
 
 	private final ServerLevel level;
 	private final BlockPos centre;
+	/** False when only the anchors are wanted: nothing is read from or written to the level. */
+	private final boolean placing;
 	private final Map<ColonyAnchor, BlockPos> anchors = new EnumMap<>(ColonyAnchor.class);
 
-	private ColonyBuilder(ServerLevel level, BlockPos centre) {
+	private ColonyBuilder(ServerLevel level, BlockPos centre, boolean placing) {
 		this.level = level;
 		this.centre = centre;
+		this.placing = placing;
 	}
 
 	public static void init() {
@@ -55,8 +63,8 @@ public final class ColonyBuilder {
 	}
 
 	/**
-	 * Builds the colony if the world has none and its data is readable. Returns whether it built one. A second call, as on
-	 * a restart, changes nothing.
+	 * Builds the colony if the world has none finished and its data is readable. Returns whether it built one. A second call,
+	 * as on a restart, changes nothing.
 	 */
 	public static boolean buildIfNeeded(MinecraftServer server) {
 		Optional<ColonySite> site = Colony.readable(server);
@@ -64,41 +72,103 @@ public final class ColonyBuilder {
 			return false;
 		}
 		ServerLevel overworld = server.overworld();
-		// The server's own answer is the default until the first tick; the saved world data is the spawn the world chose.
-		LevelData.RespawnData spawn = server.getWorldData().overworldData().getRespawnData();
-		ColonyBuilder builder = new ColonyBuilder(overworld, new BlockPos(spawn.pos().getX(), 0, spawn.pos().getZ()));
-		ColonySite.Placed placed = builder.build();
-		site.get().place(placed);
+		ColonySite.Placed started = site.get().started().orElseGet(() -> begin(server, overworld, site.get()));
+		new ColonyBuilder(overworld, started.center(), true).build(started);
+		site.get().finish();
+		ColonySite.Placed placed = site.get().placed().orElseThrow();
 		BlockPos office = placed.anchors().get(ColonyAnchor.CONTINUITY_OFFICE);
 		server.setRespawnData(LevelData.RespawnData.of(Level.OVERWORLD, office, 0.0F, 0.0F));
+		// Players spawn within this many blocks of the world spawn: 0 keeps them in the Continuity Office.
+		server.getGameRules().set(GameRules.RESPAWN_RADIUS, 0, server);
 		DeepCharter.LOGGER.info("Built the colony at {}", placed.center().toShortString());
 		ColonyEvents.BUILT.invoker().onBuilt(server, placed);
 		return true;
 	}
 
-	private ColonySite.Placed build() {
+	/** Chooses the pad and records it, before any block is set. */
+	private static ColonySite.Placed begin(MinecraftServer server, ServerLevel overworld, ColonySite site) {
+		// The server's own answer is the default until the first tick; the saved world data is the spawn the world chose.
+		LevelData.RespawnData spawn = server.getWorldData().overworldData().getRespawnData();
+		BlockPos wanted = new BlockPos(spawn.pos().getX(), 0, spawn.pos().getZ());
+		BlockPos centre = findDryGround(overworld, wanted).orElseGet(() -> {
+			DeepCharter.LOGGER.error("No dry ground within {} blocks of the world spawn {} {}: building the colony at the spawn anyway, on water",
+					ColonyTuning.DEFAULT.searchRings() * ColonyTuning.DEFAULT.searchStepChunks() * 16, wanted.getX(), wanted.getZ());
+			return wanted;
+		});
+		long played = overworld.getGameTime();
+		if (played > ColonyTuning.DEFAULT.freshWorldTicks()) {
+			DeepCharter.LOGGER.warn("Building the colony in a world that has run for {} ticks: it replaces everything in the {} x {} x {} blocks at {} {}",
+					played, ColonyTuning.DEFAULT.padSize(), ColonyTuning.DEFAULT.padSize(), ColonyTuning.DEFAULT.clearHeight(), centre.getX(), centre.getZ());
+		}
+		loadPadChunks(overworld, centre);
+		BlockPos ground = centre.atY(new ColonyBuilder(overworld, centre, true).groundAt(centre.getX(), centre.getZ()));
+		ColonySite.Placed started = new ColonySite.Placed(ground, new ColonyBuilder(overworld, ground, false).layOutAnchors(), false);
+		site.begin(started);
+		return started;
+	}
+
+	/**
+	 * The centre of dry ground nearest to {@code from}, searched in a square spiral in steps of
+	 * {@link ColonyTuning#searchStepChunks()} chunks up to {@link ColonyTuning#searchRings()} steps out. A centre is dry when
+	 * its middle, its corners and the middles of its sides have no fluid at the surface. Empty when none is found.
+	 */
+	public static Optional<BlockPos> findDryGround(ServerLevel level, BlockPos from) {
+		int step = ColonyTuning.DEFAULT.searchStepChunks() * 16;
+		for (int ring = 0; ring <= ColonyTuning.DEFAULT.searchRings(); ring++) {
+			for (int dx = -ring; dx <= ring; dx++) {
+				for (int dz = -ring; dz <= ring; dz++) {
+					if (Math.max(Math.abs(dx), Math.abs(dz)) == ring && isDry(level, from.getX() + dx * step, from.getZ() + dz * step)) {
+						return Optional.of(new BlockPos(from.getX() + dx * step, 0, from.getZ() + dz * step));
+					}
+				}
+			}
+		}
+		return Optional.empty();
+	}
+
+	private static boolean isDry(ServerLevel level, int x, int z) {
 		int half = ColonyTuning.DEFAULT.padSize() / 2;
-		int minX = centre.getX() - half;
-		int minZ = centre.getZ() - half;
-		int maxX = minX + ColonyTuning.DEFAULT.padSize() - 1;
-		int maxZ = minZ + ColonyTuning.DEFAULT.padSize() - 1;
-		for (int chunkX = minX >> 4; chunkX <= maxX >> 4; chunkX++) {
-			for (int chunkZ = minZ >> 4; chunkZ <= maxZ >> 4; chunkZ++) {
+		for (int dx = -half; dx <= half; dx += half) {
+			for (int dz = -half; dz <= half; dz += half) {
+				// The height of a chunk that is not loaded reads as the floor, so load it first.
+				level.getChunk((x + dx) >> 4, (z + dz) >> 4);
+				int top = level.getHeight(Heightmap.Types.WORLD_SURFACE, x + dx, z + dz) - 1;
+				if (!level.getFluidState(new BlockPos(x + dx, top, z + dz)).isEmpty()) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
+	private static void loadPadChunks(ServerLevel level, BlockPos centre) {
+		int half = ColonyTuning.DEFAULT.padSize() / 2;
+		for (int chunkX = (centre.getX() - half) >> 4; chunkX <= (centre.getX() + half - 1) >> 4; chunkX++) {
+			for (int chunkZ = (centre.getZ() - half) >> 4; chunkZ <= (centre.getZ() + half - 1) >> 4; chunkZ++) {
 				level.getChunk(chunkX, chunkZ);
 			}
 		}
-		int ground = groundAt(centre.getX(), centre.getZ());
-		BlockPos groundCentre = centre.atY(ground);
-		flatten(minX, minZ, maxX, maxZ, ground);
-		layOut(groundCentre);
-		ColonySite.Placed placed = new ColonySite.Placed(groundCentre, anchors);
+	}
+
+	private Map<ColonyAnchor, BlockPos> layOutAnchors() {
+		layOut(centre);
+		return anchors;
+	}
+
+	private void build(ColonySite.Placed started) {
+		int half = ColonyTuning.DEFAULT.padSize() / 2;
+		loadPadChunks(level, centre);
+		flatten(centre.getX() - half, centre.getZ() - half, centre.getX() + half - 1, centre.getZ() + half - 1, centre.getY());
+		layOut(centre);
+		if (!anchors.equals(started.anchors())) {
+			throw new IllegalStateException("the colony's layout changed since its build began: " + started.anchors() + " became " + anchors);
+		}
 		// The pad's chunks are loaded already, so the Conduit's overworld part is set now and not when they load.
-		for (int chunkX = minX >> 4; chunkX <= maxX >> 4; chunkX++) {
-			for (int chunkZ = minZ >> 4; chunkZ <= maxZ >> 4; chunkZ++) {
-				Conduit.place(level, level.getChunk(chunkX, chunkZ), placed, LayerChain.SURFACE);
+		for (int chunkX = (centre.getX() - half) >> 4; chunkX <= (centre.getX() + half - 1) >> 4; chunkX++) {
+			for (int chunkZ = (centre.getZ() - half) >> 4; chunkZ <= (centre.getZ() + half - 1) >> 4; chunkZ++) {
+				Conduit.place(level, level.getChunk(chunkX, chunkZ), started, LayerChain.SURFACE);
 			}
 		}
-		return placed;
 	}
 
 	/** The Y of the ground at X and Z: the highest block that is not air, water, foliage or a tree. */
@@ -332,7 +402,7 @@ public final class ColonyBuilder {
 	}
 
 	private void set(BlockPos pos, BlockState state) {
-		if (!level.getBlockState(pos).equals(state)) {
+		if (placing && !level.getBlockState(pos).equals(state)) {
 			level.setBlock(pos, state, FLAGS);
 		}
 	}

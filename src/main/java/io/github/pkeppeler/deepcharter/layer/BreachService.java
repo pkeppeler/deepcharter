@@ -33,7 +33,7 @@ import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
  * Drills do it through {@link #breakCrust}.
  */
 public final class BreachService {
-	/** How far a crossing looks for a pocket column free of block entities. */
+	/** How far a crossing looks for a pocket column free of protected blocks. */
 	private static final int SEARCH_RADIUS = 16;
 
 	private BreachService() {
@@ -118,8 +118,9 @@ public final class BreachService {
 
 	/**
 	 * Makes room for an arrival: air for {@code pocketHeight} blocks up from {@code bottom},
-	 * {@code pocketRadius} blocks out each way, over a solid floor. Block entities and the Conduit's casing are never
-	 * deleted, so a column whose pocket holds one is skipped for the nearest clear one. Returns the column used.
+	 * {@code pocketRadius} blocks out each way, over a solid floor. A protected block, which is a block entity or the
+	 * Conduit's casing, is never deleted, so a column whose pocket holds one is skipped for the nearest clear one.
+	 * Returns the column used.
 	 */
 	private static BlockPos preparePocket(ServerLevel level, BlockPos bottom, LayerTuning tuning) {
 		for (int ring = 0; ring <= SEARCH_RADIUS; ring++) {
@@ -129,17 +130,17 @@ public final class BreachService {
 						continue;
 					}
 					BlockPos column = bottom.offset(dx, 0, dz);
-					if (!holdsBlockEntity(level, column, tuning)) {
+					if (!holdsProtectedBlock(level, column, tuning)) {
 						carve(level, column, tuning);
 						return column;
 					}
 				}
 			}
 		}
-		throw new IllegalStateException("No pocket free of block entities within " + SEARCH_RADIUS + " blocks of " + bottom);
+		throw new IllegalStateException("No pocket free of protected blocks within " + SEARCH_RADIUS + " blocks of " + bottom);
 	}
 
-	private static boolean holdsBlockEntity(ServerLevel level, BlockPos bottom, LayerTuning tuning) {
+	private static boolean holdsProtectedBlock(ServerLevel level, BlockPos bottom, LayerTuning tuning) {
 		int radius = tuning.pocketRadius();
 		for (int dx = -radius; dx <= radius; dx++) {
 			for (int dz = -radius; dz <= radius; dz++) {
