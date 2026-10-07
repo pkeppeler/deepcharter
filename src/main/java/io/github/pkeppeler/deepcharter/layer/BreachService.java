@@ -16,6 +16,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.Vec3;
 
+import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
+
 /**
  * Breach crossing: a player who drops below their layer's floor appears at the same X/Z under the
  * ceiling of the next layer, and one who rises above a layer's top appears above the crust of the
@@ -116,8 +118,8 @@ public final class BreachService {
 
 	/**
 	 * Makes room for an arrival: air for {@code pocketHeight} blocks up from {@code bottom},
-	 * {@code pocketRadius} blocks out each way, over a solid floor. Block entities are never deleted, so
-	 * a column whose pocket holds one is skipped for the nearest clear one. Returns the column used.
+	 * {@code pocketRadius} blocks out each way, over a solid floor. Block entities and the Conduit's casing are never
+	 * deleted, so a column whose pocket holds one is skipped for the nearest clear one. Returns the column used.
 	 */
 	private static BlockPos preparePocket(ServerLevel level, BlockPos bottom, LayerTuning tuning) {
 		for (int ring = 0; ring <= SEARCH_RADIUS; ring++) {
@@ -142,7 +144,8 @@ public final class BreachService {
 		for (int dx = -radius; dx <= radius; dx++) {
 			for (int dz = -radius; dz <= radius; dz++) {
 				for (int dy = -1; dy < tuning.pocketHeight(); dy++) {
-					if (level.getBlockEntity(bottom.offset(dx, dy, dz)) != null) {
+					BlockPos pos = bottom.offset(dx, dy, dz);
+					if (level.getBlockEntity(pos) != null || level.getBlockState(pos).is(ColonyBlocks.CONDUIT)) {
 						return true;
 					}
 				}

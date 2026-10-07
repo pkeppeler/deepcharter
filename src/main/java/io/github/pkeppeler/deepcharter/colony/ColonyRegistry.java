@@ -1,11 +1,11 @@
 package io.github.pkeppeler.deepcharter.colony;
 
+/** Registers the Conduit block. {@link ColonySite} is a SavedData and needs no registration. */
 public final class ColonyRegistry {
-	// Registers ColonySite and the Conduit. Empty until #64.
-
 	private ColonyRegistry() {
 	}
 
 	public static void register() {
+		ColonyBlocks.register();
 	}
 }
