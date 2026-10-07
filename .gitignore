@@ -1,0 +1,28 @@
+# Original Motherload (XGen Studios): never commit
+/original_flash_game/
+# Private assets, e.g. the resource pack with original audio: never commit
+/private/
+# Read-only reference clones (fabric-api, loom, loader): never built
+/reference/
+# Gradle / build
+.gradle/
+build/
+out/
+run/
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+/bin/
+# Python
+__pycache__/
+# macOS
+.DS_Store
+# Claude Code local settings
+.claude/settings.local.json
+# Third-party cheat-client jars used only by minecraft-dev-mcp's own tests: keep local, never commit
+/tooling/minecraft-dev-mcp/ai_reference/meteor-client-*.jar
+/tooling/minecraft-dev-mcp/__tests__/fixtures/meteor-client-*.jar

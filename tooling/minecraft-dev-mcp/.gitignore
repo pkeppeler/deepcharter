@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Cache and logs
+*.log
+.cache/
+cache.db
+cache.db-journal
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+
+# Environment
+.env
+.env.local
+
+# MCP cache (for development)
+dev-cache/
+
+# VineFlower temporary files (created during decompilation)
+libraries/
+versions/
+logs/
+
+# AI reference materials (ignore subdirectories but keep test JARs)
+ai_reference/FabricMod-Remapper/
+ai_reference/mojang2tiny/
+ai_reference/tiny-remapper/
+ai_reference/mapping-io/
+ai_reference/*-remapped-*.jar
+
+# Tools build artifacts (but keep the final JARs for distribution)
+tools/*/build/*
+!tools/*/build/libs/
+!tools/*/build/libs/*.jar
+tools/*/.gradle/
+tools/*/gradle/
+tools/*/gradlew
+tools/*/gradlew.bat
+/.pi/skills
+/.pi
