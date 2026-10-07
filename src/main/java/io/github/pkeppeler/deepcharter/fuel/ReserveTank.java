@@ -31,6 +31,7 @@ import net.minecraft.world.item.ItemStack;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
@@ -109,15 +110,13 @@ public final class ReserveTank {
 		PodStats before = PodStats.of(pod);
 		Versioned.modify(pod, STATE, state -> new State(true));
 		PodStats after = PodStats.of(pod);
-		float full = PodTuning.DEFAULT.shell().fullFuel();
-		// Keep the litres: the stored percent is of a bigger tank now.
-		float fuel = Math.min(full, pod.fuel() * before.tankLitres() / after.tankLitres());
+		PodComponents.rescaleFuel(pod, before, after);
 		if (pod.stranded()) {
 			// Stranded means dry. The reserve is full, so the pod leaves with its litres.
-			fuel = Math.min(full, fuel + FuelTuning.DEFAULT.reserveLitres() / after.tankLitres() * full);
+			float full = PodTuning.DEFAULT.shell().fullFuel();
+			pod.setFuel(Math.min(full, pod.fuel() + FuelTuning.DEFAULT.reserveLitres() / after.tankLitres() * full));
 			pod.setStranded(false);
 		}
-		pod.setFuel(fuel);
 		return true;
 	}
 
