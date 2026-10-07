@@ -10,6 +10,7 @@ import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.ClientboundKeepAlivePacket;
 import net.minecraft.network.protocol.common.ServerboundKeepAlivePacket;
+import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -26,6 +27,7 @@ public final class MockPlayer {
 	private final Connection connection;
 	private final EmbeddedChannel channel;
 	private final BooleanSupplier ownerDone;
+	private boolean loaded;
 
 	MockPlayer(MinecraftServer server, ServerPlayer player, Connection connection, EmbeddedChannel channel,
 			BooleanSupplier ownerDone) {
@@ -55,10 +57,32 @@ public final class MockPlayer {
 		setInput(Input.EMPTY);
 	}
 
+	/**
+	 * Report the client as loaded, as a real one does after joining, so the player can take
+	 * damage. {@link MockPlayers#join} does this unless asked not to. A loaded mock also
+	 * confirms every change of dimension on the next server tick, so it stays damageable after
+	 * a breach crossing or a portal.
+	 */
+	public void markLoaded() {
+		loaded = true;
+		player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+		confirmDimensionChange();
+	}
+
+	/**
+	 * Confirm a change of dimension, as a real client does. Until then the server treats the
+	 * player as mid-change and it takes no damage. {@link #teleportTo} calls this; call it
+	 * yourself after any other change of dimension, such as a portal or a breach crossing.
+	 */
+	public void confirmDimensionChange() {
+		player.hasChangedDimension();
+	}
+
 	public void teleportTo(ServerLevel level, Vec3 pos, float yRot, float xRot) {
 		if (!player.teleportTo(level, pos.x, pos.y, pos.z, Set.of(), yRot, xRot, true)) {
 			throw new IllegalStateException("Mock player " + player.getGameProfile().name() + " could not teleport to " + pos);
 		}
+		confirmDimensionChange();
 	}
 
 	/** Disconnect and remove the player. Safe to call when it has already left. */
@@ -83,6 +107,9 @@ public final class MockPlayer {
 		if (ownerDone.getAsBoolean()) {
 			leave();
 			return;
+		}
+		if (loaded) {
+			confirmDimensionChange();
 		}
 		connection.tick();
 		Object outbound;

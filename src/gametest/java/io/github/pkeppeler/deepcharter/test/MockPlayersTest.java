@@ -6,9 +6,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.util.Util;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.portal.TeleportTransition;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerCommonPacketListenerImpl;
 
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 
@@ -79,6 +85,48 @@ public class MockPlayersTest {
 			} catch (ReflectiveOperationException e) {
 				throw reflectionFailure("keepAliveTime or keepAlivePending", e);
 			}
+		});
+	}
+
+	/** The helper's contract: a default mock can be hurt, an unloaded one is immune to everything. */
+	@GameTest
+	public void loadedMockTakesDamageAndUnloadedDoesNot(GameTestHelper helper) {
+		ServerPlayer loaded = MockPlayers.join(helper, "loaded").player();
+		ServerPlayer unloaded = MockPlayers.joinUnloaded(helper, "unloaded").player();
+		// The server's default game mode is not survival, and a creative player takes no damage either.
+		loaded.setGameMode(GameType.SURVIVAL);
+		unloaded.setGameMode(GameType.SURVIVAL);
+		float loadedBefore = loaded.getHealth();
+		float unloadedBefore = unloaded.getHealth();
+		loaded.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), 2.0F);
+		unloaded.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), 2.0F);
+		if (loaded.getHealth() >= loadedBefore) {
+			throw helper.assertionException("loaded mock took no damage: %s of %s", loaded.getHealth(), loadedBefore);
+		}
+		if (unloaded.getHealth() != unloadedBefore) {
+			throw helper.assertionException("unloaded mock took damage: %s of %s", unloaded.getHealth(), unloadedBefore);
+		}
+		helper.succeed();
+	}
+
+	/** A crossing the mock never confirms leaves a player immune, so a loaded mock confirms it itself. */
+	@GameTest
+	public void loadedMockStaysDamageableAfterChangingDimension(GameTestHelper helper) {
+		ServerPlayer player = MockPlayers.join(helper, "crosser").player();
+		player.setGameMode(GameType.SURVIVAL);
+		ServerLevel other = helper.getLevel().getServer().getLevel(LayerChain.dimension(1));
+		player.teleport(new TeleportTransition(other, new Vec3(0.5, 8, 0.5), Vec3.ZERO, 0, 0,
+				TeleportTransition.DO_NOTHING));
+		if (!player.isChangingDimension()) {
+			throw helper.assertionException("the crossing did not leave the player mid-change, so this test proves nothing");
+		}
+		helper.runAfterDelay(2, () -> {
+			float before = player.getHealth();
+			player.hurtServer(other, other.damageSources().generic(), 2.0F);
+			if (player.getHealth() >= before) {
+				throw helper.assertionException("loaded mock is immune after changing dimension");
+			}
+			helper.succeed();
 		});
 	}
 
