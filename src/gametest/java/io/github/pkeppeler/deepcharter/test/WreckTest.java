@@ -73,8 +73,6 @@ public class WreckTest {
 	private static final int FLOOR_Y = 1;
 	private static final int FLOOR_RADIUS = 3;
 	private static final int IDLE_TICKS = 100;
-	/** A little over the 200 ticks that a crew kill is retried before it is given up. */
-	private static final int GIVE_UP_TICKS = 260;
 	private static final String ATTACHMENTS_KEY = "fabric:attachments";
 	private static final String HULL_KEY = "hull";
 
@@ -853,29 +851,31 @@ public class WreckTest {
 		}
 	}
 
-	@GameTest(maxTicks = GIVE_UP_TICKS)
-	public void aCrewMemberWhoSurvivesTheWreckKeepsTheirRespawnPoint(GameTestHelper helper) {
+	@GameTest
+	public void aCrewMemberWhoLeavesBeforeTheKillLandsKeepsTheirRespawnPoint(GameTestHelper helper) {
 		PodEntity pod = spawnOnFloor(helper);
-		MockPlayer mock = MockPlayers.joinUnloaded(helper, "wreck-survivor");
-		RespawnConfig bed = bedConfig(helper);
-		mock.player().setRespawnPosition(bed, false);
-		mock.teleportTo(helper.getLevel(), pod.position(), 0, 0);
-		mock.player().startRiding(pod, true, false);
-		wreck(pod);
-		if (mock.player().isDeadOrDying() || bed.equals(mock.player().getRespawnConfig())) {
-			throw failure(helper, "setup: the player is immune, and the respawn point is redirected while the kill is retried");
-		}
-		helper.succeedWhen(() -> {
-			if (!bed.equals(mock.player().getRespawnConfig())) {
-				throw failure(helper, "waiting for the kill to be given up: the respawn point is %s", mock.player().getRespawnConfig());
+		MockPlayer mock = MockPlayers.joinUnloaded(helper, "wreck-leaver");
+		try {
+			RespawnConfig bed = bedConfig(helper);
+			ServerPlayer player = mock.player();
+			player.setRespawnPosition(bed, false);
+			mock.teleportTo(helper.getLevel(), pod.position(), 0, 0);
+			player.startRiding(pod, true, false);
+			wreck(pod);
+			if (player.isDeadOrDying() || bed.equals(player.getRespawnConfig())) {
+				throw failure(helper, "setup: the player is immune, and the respawn point is redirected while the kill is retried");
 			}
-			if (mock.player().isDeadOrDying()) {
-				throw failure(helper, "the player was not meant to die");
+			mock.leave();
+			if (!bed.equals(player.getRespawnConfig())) {
+				throw failure(helper, "a player who leaves alive must keep their respawn point, it is %s", player.getRespawnConfig());
 			}
+			helper.succeed();
+		} finally {
+			mock.leave();
 			pod.discard();
 			clearBed(helper);
 			clearFloor(helper);
-		});
+		}
 	}
 
 	private static PodEntity reload(GameTestHelper helper, PodEntity pod, CompoundTag attachments) {
