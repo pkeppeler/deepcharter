@@ -38,7 +38,6 @@ jobs:
       SDL_VIDEO_DRIVER: offscreen
       # Mesa software rendering (llvmpipe): the runner has no GPU.
       LIBGL_ALWAYS_SOFTWARE: "1"
-      RUN_DIR: build/run/clientGameTest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -50,19 +49,16 @@ jobs:
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
           cache-read-only: false
-      # EGL and Mesa's software GL driver, for SDL's offscreen video driver.
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libegl1 libegl-mesa0 libgl1-mesa-dri
       # One backend, not a matrix, to save minutes. `version` is the data version that
       # stops Minecraft's datafixer from resetting the backend to its default
       # (OptionsForceDefaultGraphicsApiFix).
       - name: Choose the OpenGL backend
         run: |
-          mkdir -p "$RUN_DIR"
-          printf 'version:4896\npreferredGraphicsBackend:"opengl"\n' > "$RUN_DIR/options.txt"
+          mkdir -p build/run/clientGameTest
+          printf 'version:4896\npreferredGraphicsBackend:"opengl"\n' > build/run/clientGameTest/options.txt
       # Minecraft logs "Failed to create backend" and then hangs, so watch the log and
-      # fail at once. With one backend in the options, one such line is fatal. A run that
-      # shows no window within 3 minutes is also failed. After a clean run, assert the
-      # backend really is OpenGL, so a Minecraft bump that resets options fails loudly.
+      # fail at once. The final assertion catches a Minecraft bump that resets options.txt.
       # -x deleteGameTestRunDir: Loom deletes the run dir first, which would delete options.txt.
       - name: Client GameTests
         run: |
