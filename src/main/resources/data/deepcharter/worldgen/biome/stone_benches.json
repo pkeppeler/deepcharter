@@ -22,7 +22,9 @@
     [],
     [],
     [],
-    [],
+    [
+      "deepcharter:fill_stone_benches"
+    ],
     [],
     [],
     [],

@@ -22,7 +22,9 @@
     [],
     [],
     [],
-    [],
+    [
+      "deepcharter:fill_deep_claim"
+    ],
     [],
     [],
     [],

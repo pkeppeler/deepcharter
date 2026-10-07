@@ -94,7 +94,7 @@ SPEC §7 says "later tiers reveal hazards". It does not say how scanner v1 shows
 
 ## 2026-10-07: PR #24 (#4 play-test loop) failed review cycle 2
 
-**Status:** open, needs a user decision.
+**Status:** resolved 2026-10-07. The user removed the two-cycle limit for this project, so the orchestrator fixes the timeout and runs the gate again. Nothing is needed from the user.
 
 **What is blocked:** merging `tools/play.sh` and `tools/play-setup.sh`, the mcpfabric dev bridge. M1 can continue without this: PR recordings come from the in-game evidence pipeline (#5), not from mcpfabric.
 

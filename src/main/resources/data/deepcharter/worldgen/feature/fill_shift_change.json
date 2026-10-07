@@ -1,0 +1,44 @@
+{
+  "type": "deepcharter:zone_fill",
+  "zone": 1,
+  "ores": [
+    {
+      "block": "deepcharter:ironium_ore",
+      "chance": 0.013333
+    },
+    {
+      "block": "deepcharter:bronzium_ore",
+      "chance": 0.016
+    },
+    {
+      "block": "deepcharter:silverium_ore",
+      "chance": 0.0165
+    },
+    {
+      "block": "deepcharter:goldium_ore",
+      "chance": 0.003167
+    },
+    {
+      "block": "deepcharter:platinium_ore",
+      "chance": 0.0005
+    },
+    {
+      "block": "deepcharter:cicatrium_ore",
+      "chance": 0.0002
+    }
+  ],
+  "hazards": [
+    {
+      "block": "deepcharter:company_rock",
+      "chance": 0.05
+    },
+    {
+      "block": "minecraft:lava",
+      "chance": 0.025
+    },
+    {
+      "block": "deepcharter:gas_pocket",
+      "chance": 0.025
+    }
+  ]
+}
