@@ -15,7 +15,7 @@
 #        AUDIO_MAP  id-to-file map (default tools/audio-pack-map.txt)
 set -euo pipefail
 
-root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
 src=${AUDIO_SRC:-$root/original_flash_game/extracted/sounds}
 map=${AUDIO_MAP:-$root/tools/audio-pack-map.txt}
 namespace=deepcharter
@@ -43,18 +43,24 @@ while [[ -n $existing && ! -d $existing ]]; do
 done
 out=$(cd -P "${existing:-/}" && pwd)$rest
 
+# First layer: only private/ is for private audio, whatever .gitignore says.
+if [[ $out != "$root"/private/* ]]; then
+  echo "error: output '$out' must be inside $root/private/" >&2
+  exit 1
+fi
+
 pack=$out/deepcharter-audio-pack
 zipfile=$out/deepcharter-audio-pack.zip
 
-# Fail closed: a path outside the repo, behind a symlink, or not ignored all make
-# check-ignore exit non-zero, and every one of those is a refusal.
-for path in "$out" "$pack" "$zipfile"; do
-  if ! git -C "$root" check-ignore -q -- "$path"; then
-    echo "error: refusing to write to '$path': git check-ignore does not confirm it is git-ignored" >&2
-    echo "       The output must be inside the repo and covered by .gitignore (for example private/)." >&2
-    exit 1
-  fi
-done
+# Second layer, fail closed: a path behind a symlink or not ignored makes check-ignore exit
+# non-zero, and each of those is a refusal. Checking <out> covers the pack and the zip: git
+# ignores everything under an ignored directory, and a tracked file inside <out> (such as a
+# force-added zip) makes <out> report as not ignored.
+if ! git -C "$root" check-ignore -q -- "$out"; then
+  echo "error: refusing to write to '$out': git check-ignore does not confirm it is git-ignored" >&2
+  echo "       The output must be covered by .gitignore and hold no tracked files." >&2
+  exit 1
+fi
 
 for tool in ffmpeg zip; do
   if ! command -v "$tool" >/dev/null 2>&1; then
@@ -140,7 +146,7 @@ mkdir -p "$sounds_dir"
     refs=
     for name in ${files[$i]}; do
       n=$((n + 1))
-      ffmpeg -v error -nostdin -y -i "$src/$name" -vn "${codec_args[@]}" "$sounds_dir/${base}_$n.ogg" >&2
+      ffmpeg -v error -nostdin -y -i "$src/$name" -vn -map_metadata -1 "${codec_args[@]}" "$sounds_dir/${base}_$n.ogg" >&2
       refs+="${refs:+, }\"$namespace:${base}_$n\""
     done
     printf '%s  "%s": { "replace": true, "sounds": [%s] }' "$sep" "$id" "$refs"

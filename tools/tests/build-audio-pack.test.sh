@@ -111,14 +111,42 @@ ok "the default output exists" test -f "$repo/private/audio/deepcharter-audio-pa
 
 # Refusals: the output path must be confirmed ignored by git.
 ok "accepts an output path reached through a symlink to the repo" build "$work/link/private/via-link"
-fails "refuses an output path that is not git-ignored" build "$repo/build/audio"
-fails "wrote nothing to the refused path" test -e "$repo/build/audio"
-fails "refuses an output path outside the repo" build "$work/elsewhere"
+refuses() { # refuses <description> <expected error text> <script args...>: exits non-zero and says why
+  local description=$1 text=$2 output
+  shift 2
+  if output=$(build "$@" 2>&1); then
+    check "$description" 1
+  elif grep -qF -- "$text" <<<"$output"; then
+    check "$description" 0
+  else
+    check "$description (wrong error: $(head -1 <<<"$output"))" 1
+  fi
+}
+# Not under private/ at all.
+refuses "refuses an output path outside the repo" 'must be inside' "$work/elsewhere"
 fails "wrote nothing outside the repo" test -e "$work/elsewhere"
-fails "refuses a .. segment that leaves the ignored dir" build "$repo/private/../build/audio"
+refuses "refuses a .. segment that leaves the ignored dir" 'must not contain' "$repo/private/../build/audio"
 fails "refuses two arguments" build "$out" "$out"
-refusal=$(build "$repo/build/audio" 2>&1 || true)
-ok "the refusal says why" grep -q 'git-ignored' <<<"$refusal"
+# Ignored by git, but not under private/: the first layer still refuses.
+printf '/private/\n/build/\n' >"$repo/.gitignore"
+refuses "refuses an ignored path that is not under private/" 'must be inside' "$repo/build/audio"
+fails "wrote nothing under build/" test -e "$repo/build/audio"
+
+# Under private/ but not ignored: the second layer refuses.
+printf '/build/\n' >"$repo/.gitignore"
+refuses "refuses an output path that is not git-ignored" 'git-ignored' "$repo/private/open"
+fails "wrote nothing to the refused path" test -e "$repo/private/open"
+printf '/private/\n' >"$repo/.gitignore"
+
+# Tracked files inside the output. Git ignores everything under an ignored directory, so only
+# a tracked file (a force-added zip or pack path) makes the output report as not ignored.
+mkdir -p "$repo/private/zipcase" "$repo/private/packcase"
+touch "$repo/private/zipcase/deepcharter-audio-pack.zip" "$repo/private/packcase/deepcharter-audio-pack"
+git -C "$repo" add -f private/zipcase/deepcharter-audio-pack.zip private/packcase/deepcharter-audio-pack
+refuses "refuses when a tracked file sits at the zip path" 'git-ignored' "$repo/private/zipcase"
+fails "wrote no pack when the zip path was refused" test -e "$repo/private/zipcase/assets"
+refuses "refuses when a tracked file sits at the pack path" 'git-ignored' "$repo/private/packcase"
+fails "wrote no zip when the pack path was refused" test -e "$repo/private/packcase/deepcharter-audio-pack.zip"
 
 # Source problems.
 build_missing() { mkdir -p "$repo/empty"; AUDIO_SRC=$repo/empty AUDIO_MAP=$repo/map.txt "$script" "$repo/private/other"; }
