@@ -1,0 +1,112 @@
+// Lang files are generated: each feature owns src/lang/<locale>/<feature>.json.
+// A key may appear in exactly one fragment; any duplicate fails the build.
+abstract class MergeLang extends DefaultTask {
+	@InputDirectory @PathSensitive(PathSensitivity.RELATIVE)
+	abstract DirectoryProperty getPartsDir()
+	@OutputDirectory
+	abstract DirectoryProperty getOutputDir()
+
+	static Map<String, String> merge(Map<String, File> parts) {
+		def owner = [:]
+		def merged = new TreeMap<String, String>()
+		parts.each { name, file ->
+			def json = new groovy.json.JsonSlurper().parse(file, "UTF-8")
+			json.each { k, v ->
+				if (!(v instanceof String)) throw new GradleException("Lang value for '${k}' in ${name} is not a string")
+				if (owner.containsKey(k)) {
+					throw new GradleException("Duplicate lang key '${k}' in ${owner[k]} and ${name}: one owner per key")
+				}
+				owner[k] = name
+				merged[k] = v
+			}
+		}
+		return merged
+	}
+
+	// Flat string map, UTF-8 literal characters; only quote, backslash and control characters are escaped.
+	static String write(Map<String, String> map) {
+		def esc = { String s ->
+			def sb = new StringBuilder()
+			s.each { String c ->
+				switch (c) {
+					case '"': sb << '\\"'; break
+					case '\\': sb << '\\\\'; break
+					case '\n': sb << '\\n'; break
+					case '\r': sb << '\\r'; break
+					case '\t': sb << '\\t'; break
+					default: sb << (c.charAt(0) < (char) 0x20 ? String.format('\\u%04x', (int) c.charAt(0)) : c)
+				}
+			}
+			sb.toString()
+		}
+		return '{\n' + map.collect { k, v -> "  \"${esc(k)}\": \"${esc(v)}\"" }.join(',\n') + '\n}\n'
+	}
+
+	@TaskAction
+	void run() {
+		def root = partsDir.get().asFile
+		def out = outputDir.get().asFile
+		out.deleteDir()
+		def locales = root.listFiles({ it.isDirectory() } as FileFilter)
+		if (locales == null || locales.length == 0) throw new GradleException("No locale directories in ${root}")
+		locales.sort().each { locale ->
+			def files = locale.listFiles({ it.name.endsWith('.json') } as FileFilter)
+			if (files == null || files.length == 0) throw new GradleException("No lang fragments in ${locale}")
+			def parts = new TreeMap<String, File>()
+			files.each { parts[it.name] = it }
+			def target = new File(out, "assets/deepcharter/lang/${locale.name}.json")
+			target.parentFile.mkdirs()
+			target.setText(write(merge(parts)), "UTF-8")
+		}
+	}
+}
+
+def mergeLang = tasks.register("mergeLang", MergeLang) {
+	partsDir = layout.projectDirectory.dir("src/lang")
+	outputDir = layout.buildDirectory.dir("generated/lang")
+}
+
+tasks.named("processResources") { from(mergeLang) }
+
+// Build-time checks, run in `check`: duplicates fail, sorted output, literal UTF-8, jar contents.
+def checkLang = tasks.register("checkLang") {
+	dependsOn mergeLang, tasks.named("jar")
+	def generated = mergeLang.flatMap { it.outputDir.file("assets/deepcharter/lang/en_us.json") }
+	def jarFile = tasks.named("jar").flatMap { it.archiveFile }
+	def tmp = layout.buildDirectory.dir("tmp/checkLang")
+	inputs.file generated
+	inputs.file jarFile
+	outputs.dir tmp
+	doLast {
+		def dir = tmp.get().asFile
+		dir.deleteDir()
+		dir.mkdirs()
+		def a = new File(dir, "a.json")
+		a.setText('{"x.k": "1"}', "UTF-8")
+		def b = new File(dir, "b.json")
+		b.setText('{"x.k": "1"}', "UTF-8")
+		def rejected = false
+		try {
+			MergeLang.merge([a: a, b: b])
+		} catch (GradleException e) {
+			rejected = e.message.startsWith("Duplicate lang key 'x.k'")
+		}
+		if (!rejected) throw new GradleException("Duplicate lang key was not rejected")
+
+		def keys = new groovy.json.JsonSlurper().parse(generated.get().asFile, "UTF-8").keySet() as List
+		if (keys != keys.sort(false)) throw new GradleException("Generated en_us.json is not sorted")
+
+		def u = new File(dir, "u.json")
+		u.setText('{"x.u": "a \\u2014 b \\u00e9 \\"q\\""}', "UTF-8")
+		def text = MergeLang.write(MergeLang.merge([u: u]))
+		if (!text.contains('a — b é \\"q\\"')) throw new GradleException("Non-ASCII characters were not written literally: ${text}")
+		if (new groovy.json.JsonSlurper().parseText(text)["x.u"] != 'a — b é "q"') throw new GradleException("Non-ASCII output does not round-trip")
+
+		def names = []
+		new java.util.zip.ZipFile(jarFile.get().asFile).withCloseable { z -> z.entries().each { names << it.name } }
+		if (!names.contains("assets/deepcharter/lang/en_us.json")) throw new GradleException("Jar lacks assets/deepcharter/lang/en_us.json")
+		def leaked = names.findAll { it.contains("lang-parts") || it.startsWith("src/lang") || it.startsWith("lang/") }
+		if (leaked) throw new GradleException("Lang fragments leaked into the jar: ${leaked}")
+	}
+}
+tasks.named("check") { dependsOn checkLang }
