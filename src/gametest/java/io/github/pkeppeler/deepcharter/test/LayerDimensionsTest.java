@@ -186,6 +186,29 @@ public class LayerDimensionsTest {
 		helper.succeed();
 	}
 
+	/** A far, never-loaded column: goto must generate the target chunk, not read an empty heightmap. */
+	@GameTest
+	public void gotoGeneratesAnUnloadedTargetChunk(GameTestHelper helper) throws CommandSyntaxException {
+		MinecraftServer server = helper.getLevel().getServer();
+		MockPlayer mock = MockPlayers.join(server, "layer-goto-far");
+		try {
+			mock.player().setPos(200_000.5, 80, 200_000.5);
+			ServerLevel layer = level(helper, 1);
+			if (layer.getChunkSource().getChunkNow(200_000 >> 4, 200_000 >> 4) != null) {
+				throw helper.assertionException("the far chunk was already loaded, so the test proves nothing");
+			}
+			var source = mock.player().createCommandSourceStack().withPermission(LevelBasedPermissionSet.GAMEMASTER);
+			server.getCommands().getDispatcher().execute("deepcharter layer goto 1", source);
+			double y = mock.player().position().y;
+			if (y < layer.getMinY() + crustThickness(helper, 1) || y > layer.getMaxY()) {
+				throw helper.assertionException("player placed at y=%s, outside the layer", y);
+			}
+		} finally {
+			mock.leave();
+		}
+		helper.succeed();
+	}
+
 	/** The height of the bottom flat-generator layer of the shipped dimension, which is the crust. */
 	private static int crustThickness(GameTestHelper helper, int layer) {
 		try {
