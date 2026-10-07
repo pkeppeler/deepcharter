@@ -38,6 +38,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodFuel;
 import io.github.pkeppeler.deepcharter.pod.PodFuelItems;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -461,9 +462,9 @@ public class PodCargoFuelTest {
 
 	@GameTest
 	public void drainOrderIsIdleThenMovingThenDrilling(GameTestHelper helper) {
-		float idle = PodFuel.drainPercentPerTick(PodFuel.Activity.IDLE);
-		float moving = PodFuel.drainPercentPerTick(PodFuel.Activity.MOVING);
-		float drilling = PodFuel.drainPercentPerTick(PodFuel.Activity.DRILLING);
+		float idle = PodFuel.drainPercentPerTick(PodStats.base(), PodFuel.Activity.IDLE);
+		float moving = PodFuel.drainPercentPerTick(PodStats.base(), PodFuel.Activity.MOVING);
+		float drilling = PodFuel.drainPercentPerTick(PodStats.base(), PodFuel.Activity.DRILLING);
 		if (!(0f < idle && idle < moving && moving < drilling)) {
 			throw helper.assertionException("drain should rise idle < moving < drilling, got %s %s %s", idle, moving, drilling);
 		}

@@ -17,16 +17,12 @@ public final class PodMovement {
 	public static void init() {
 	}
 
-	/** Called every pod tick, on both sides; only the server moves the pod. */
-	public static void tick(PodEntity pod) {
-		if (pod.level().isClientSide()) {
-			return;
-		}
+	/** Called every pod tick, on the server only. */
+	public static void tick(PodEntity pod, PodStats stats) {
 		if (pod.cargoMass() < 0) {
 			throw new IllegalStateException("pod cargo mass must not be negative, got " + pod.cargoMass());
 		}
 		PodTuning.Movement tuning = PodTuning.DEFAULT.movement();
-		PodStats stats = PodStats.of(pod);
 		// A pod without power (stranded, or a PodEvents listener says so) ignores its pilot.
 		ServerPlayer pilot = PodEvents.isPowered(pod) && pod.getControllingPassenger() instanceof ServerPlayer player ? player : null;
 		Input input = pilot == null ? Input.EMPTY : pilot.getLastClientInput();

@@ -3,14 +3,19 @@ package io.github.pkeppeler.deepcharter.pod;
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;
 
+import net.minecraft.resources.Identifier;
+
+import io.github.pkeppeler.deepcharter.DeepCharter;
+
 /**
  * What a pod is worth right now: the numbers that movement, drill, fuel and cargo read. {@link #of} starts from
  * {@link PodTuning} and passes the result through every {@link #MODIFY} listener, so a feature (a part, a pump, a
  * damaged hull) changes a stat from its own code and never edits pod internals. Read stats through {@code of(pod)},
  * once for each use, and never keep the result: it is a snapshot.
  *
- * <p>Fabric calls the listeners in registration order, and each gets what the last one returned. For an order
- * that matters (an additive bonus before a multiplier) register in a Fabric phase. A listener must answer from
+ * <p>Each listener gets what the last one returned. The phases run in this order: {@link #BASE} (parts and
+ * additions), Fabric's default phase, then {@link #CAP} (tier caps, which must see the final value). Inside one
+ * phase the order is registration order. Register with {@code MODIFY.register(PodStats.BASE, listener)}. A listener must answer from
  * state it can read on whichever side it is called, since {@code of} may run on the client too, and must not call
  * {@code of} for the same pod. {@code of} runs for each pod on each tick, so a listener must be cheap.
  *
@@ -39,6 +44,11 @@ public record PodStats(float maxHull, float horizontalSpeed, float enginePower, 
 		float crustHullDamage, float alignSpeed, int cargoSlots, float tankLitres, float idleLitresPerSecond,
 		float movingLitresPerSecond, float drillingLitresPerSecond) {
 
+	/** The phase of parts and additions: it runs before the default phase and {@link #CAP}. */
+	public static final Identifier BASE = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "base");
+	/** The phase of caps, such as a tier limit: it runs last, so it limits what every other listener made. */
+	public static final Identifier CAP = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "cap");
+
 	/** Changes a pod's stats. A listener returns the stats it was given or a derived copy, never null. */
 	public static final Event<Modifier> MODIFY = EventFactory.createArrayBacked(Modifier.class, listeners -> (pod, stats) -> {
 		PodStats result = stats;
@@ -50,6 +60,11 @@ public record PodStats(float maxHull, float horizontalSpeed, float enginePower, 
 		}
 		return result;
 	});
+
+	static {
+		MODIFY.addPhaseOrdering(BASE, Event.DEFAULT_PHASE);
+		MODIFY.addPhaseOrdering(Event.DEFAULT_PHASE, CAP);
+	}
 
 	public PodStats {
 		requirePositive("maxHull", maxHull);

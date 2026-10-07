@@ -41,21 +41,13 @@ public final class PodDrill {
 	}
 
 	/** Above sea level the depth is negative; the drill is no faster for it. */
-	public static int drillTicks(float hardness, int depthFeet) {
-		return drillTicks(PodStats.base(), hardness, depthFeet);
-	}
-
-	/** As {@link #drillTicks(float, int)}, for a pod with these stats. */
 	public static int drillTicks(PodStats stats, float hardness, int depthFeet) {
 		double ticks = hardness * stats.ticksPerHardness() * (1 + Math.max(0, depthFeet) / 1000.0);
 		return Math.max(1, (int) Math.ceil(ticks));
 	}
 
-	/** Called every pod tick, on both sides; only the server drills. */
-	public static void tick(PodEntity pod) {
-		if (pod.level().isClientSide()) {
-			return;
-		}
+	/** Called every pod tick, on the server only. */
+	static void tick(PodEntity pod, PodStats stats) {
 		Direction wanted = PodEvents.isPowered(pod) ? wantedDirection(pod) : null;
 		if (wanted == null) {
 			stop(pod);
@@ -64,7 +56,6 @@ public final class PodDrill {
 		Slab slab = Slab.of(pod, wanted);
 		// Centre before judging the slab: a pod straddling a third column can see an all-air footprint, and
 		// sliding onto it (off a ledge, past a wall's edge) is how it reaches something to drill.
-		PodStats stats = PodStats.of(pod);
 		boolean centred = centre(pod, slab, stats);
 		if (!slab.hasWork() || !slab.allowed()) {
 			stop(pod);

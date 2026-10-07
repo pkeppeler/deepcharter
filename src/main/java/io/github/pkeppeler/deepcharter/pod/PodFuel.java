@@ -26,11 +26,6 @@ public final class PodFuel {
 				entity instanceof PodEntity pod ? refuel(player, hand, pod) : InteractionResult.PASS);
 	}
 
-	/** Fuel burned per tick, in percent of the tank, by a pod nothing modifies. */
-	public static float drainPercentPerTick(Activity activity) {
-		return drainPercentPerTick(PodStats.base(), activity);
-	}
-
 	/** Fuel burned per tick, in percent of the tank, by a pod with these stats. */
 	public static float drainPercentPerTick(PodStats stats, Activity activity) {
 		float litresPerSecond = switch (activity) {
@@ -46,12 +41,12 @@ public final class PodFuel {
 		return fuelPercent <= PodTuning.DEFAULT.fuel().lowFuelPercent();
 	}
 
-	/** Called every pod tick, on both sides; only the server burns fuel, and a pod without power burns none. */
-	public static void tick(PodEntity pod) {
-		if (pod.level().isClientSide() || !PodEvents.isPowered(pod)) {
+	/** Called every pod tick, on the server only; a pod without power burns no fuel. */
+	static void tick(PodEntity pod, PodStats stats) {
+		if (!PodEvents.isPowered(pod)) {
 			return;
 		}
-		float fuel = Math.max(0f, pod.fuel() - drainPercentPerTick(PodStats.of(pod), activity(pod)));
+		float fuel = Math.max(0f, pod.fuel() - drainPercentPerTick(stats, activity(pod)));
 		pod.setFuel(fuel);
 		if (fuel <= 0f) {
 			pod.setStranded(true);
@@ -68,13 +63,18 @@ public final class PodFuel {
 
 	private static InteractionResult refuel(Player player, InteractionHand hand, PodEntity pod) {
 		ItemStack stack = player.getItemInHand(hand);
-		OptionalDouble litres = PodFuelItems.litresOf(stack);
 		float full = PodTuning.DEFAULT.shell().fullFuel();
-		if (litres.isEmpty() || pod.fuel() >= full) {
+		// The client decides from the synced tag: the litres table is the server's alone.
+		if (!stack.is(PodFuelItems.TAG) || pod.fuel() >= full) {
 			return InteractionResult.PASS;
 		}
 		if (pod.level().isClientSide()) {
 			return InteractionResult.SUCCESS;
+		}
+		OptionalDouble litres = PodFuelItems.litresOf(stack);
+		if (litres.isEmpty()) {
+			// Tagged but with no litres entry: logged when the data loaded, and not fuel.
+			return InteractionResult.PASS;
 		}
 		float added = litresToPercent(PodStats.of(pod), (float) litres.getAsDouble());
 		pod.setFuel(Math.min(full, pod.fuel() + added));

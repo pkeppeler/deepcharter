@@ -22,10 +22,24 @@ The hull is hull points with a maximum, `PodStats.maxHull`. `PodEntity.setHull` 
 
 ## Fuel items are data
 
-An item is pod fuel when it is in the `deepcharter:pod_fuel` item tag. The litres it gives are one JSON file for each item under `data/<namespace>/pod_fuel/` (`{"item": ..., "litres": ...}`). A tagged item with no litres entry, or an item with two, fails the reload and the server start with the item named.
+An item is pod fuel when it is in the `deepcharter:pod_fuel` item tag. The litres it gives are one JSON file for each item. The file's path is the item's id, so `data/minecraft/pod_fuel/coal.json` holds `{"litres": 2.0}` for coal. A file of the same path in a later pack replaces an earlier one, so the pack order decides. The table is server-only and is never synced: a client decides from the synced tag alone.
+
+A bad datapack never stops the server:
+
+- A table file that does not parse, or names no item, is logged at ERROR and skipped.
+- A tagged item with no litres entry is logged at ERROR, with the item named, at server start and after each `/reload`.
+- In both cases the item is not fuel.
+
+## Phases
+
+`PodStats.MODIFY` has two phases of our own, ordered `BASE`, Fabric's default phase, `CAP`. Parts and additions register in `BASE`. A cap such as a tier limit registers in `CAP`, so it sees the final value whatever the registration order.
 
 ## Consequences
 
 - A feature changes a pod by registering one listener, in its own package.
-- Stats are a snapshot: code that keeps a `PodStats` across ticks reads old numbers.
+- Stats are a snapshot: `PodEntity.tick` takes one for the whole tick, and code that keeps a `PodStats` across ticks reads old numbers.
 - The gravity and drag of the rotor, and the fuel beep thresholds, are not stats. They are physics and interface values, still read from `PodTuning`.
+- Fuel is stored as a percent of the tank. When `tankLitres` changes (#69), the feature must rescale the stored percent to keep the litres constant.
+- `OreCargoMenu` is fixed at 7 slots. #65 must size it from the stats.
+- The HUD prints the hull as a percent, and `maxHull` is not synced. #65 or #70 must fix both.
+- A bad fuel datapack is logged and skipped, as above, and does not stop the server.
