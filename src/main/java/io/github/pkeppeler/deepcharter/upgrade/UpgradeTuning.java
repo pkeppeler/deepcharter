@@ -9,9 +9,10 @@ import java.util.Map;
  *
  * @param tracks     for each {@link ComponentTrack}, what each tier is worth and costs
  * @param tierCaps   the best part tier each chassis takes, by chassis id (SPEC section 7)
+ * @param parkedRadius how many blocks from a terminal's centre a pod still counts as parked at it
  */
-public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks, Map<String, Integer> tierCaps) {
-	public static final UpgradeTuning DEFAULT = new UpgradeTuning(defaultTracks(), Map.of("mole", 2));
+public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks, Map<String, Integer> tierCaps, double parkedRadius) {
+	public static final UpgradeTuning DEFAULT = new UpgradeTuning(defaultTracks(), Map.of("mole", 2), 8.0);
 
 	/**
 	 * One track's table, with one entry for each tier from 0 (stock) up. {@code values} are the original's reference
@@ -32,6 +33,9 @@ public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks, Map<String, Integ
 	public UpgradeTuning {
 		tracks = Map.copyOf(tracks);
 		tierCaps = Map.copyOf(tierCaps);
+		if (!(parkedRadius > 0.0)) {
+			throw new IllegalArgumentException("the radius a pod is parked within must be above 0, got " + parkedRadius);
+		}
 		for (ComponentTrack track : ComponentTrack.values()) {
 			Tiers tiers = tracks.get(track);
 			if (tiers == null || tiers.values().size() != track.maxTier() + 1) {

@@ -2,6 +2,19 @@
 
 The orchestrator writes this log during unattended runs. It never stops for a blocker: it records the blocker here and moves on to the next ready work. Newest entries come first. When an entry is resolved, its status changes to **resolved**, with the date and the reason.
 
+## 2026-10-07: Subagents hit the usage limit (work paused, resumes by itself)
+
+**Status:** open. Nothing is needed from the user unless they want to spend more.
+
+At 11:35 ET every subagent stopped with "You've hit your session limit · resets 9:10am (America/New_York)". The next reset is 2026-10-08 at 09:10 ET. Before the stop, 26 PRs were merged. The work in progress was saved to GitHub:
+
+- PR #134 (#70 repair station) is a draft again. Its review fixes were half done, and the WIP is pushed.
+- #77 (founding Mole and hangar) has no PR yet. The WIP is on branch `77-founding-mole-hangar`.
+- PR #135 (#78 Notes) and PR #136 (#130 ADR gate) wait for review.
+- #76, #127 and #132 had not started, so nothing was lost.
+
+The orchestrator did not move the subagents to a different model to get past the limit. That would use more of the plan, or paid overage, and the rules say to ask the user before money is spent. The loop resumes after the reset. To continue sooner, raise the limit or say so.
+
 ## 2026-10-07: The lore branch's ADR number is taken (a note for the lore session)
 
 **Status:** open, for the lore session. Nothing waits on it.
