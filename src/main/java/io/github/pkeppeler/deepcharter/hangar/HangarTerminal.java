@@ -121,7 +121,7 @@ public final class HangarTerminal {
 
 	/**
 	 * Restores the wreck nearest to the console, within {@link HangarTuning#wreckRadius()} blocks, for money and the catalyst. Only
-	 * a charter that may pilot the wreck can buy it back. The founding Mole is not a wreck to restore until it is repaired.
+	 * a charter that may access the wreck ({@link PodComponents#mayAccess}) can buy it back. The founding Mole is not a wreck to restore until it is repaired.
 	 */
 	private static Optional<Component> restoreWreck(TerminalAction.Context context) {
 		MinecraftServer server = context.server();
@@ -140,8 +140,9 @@ public final class HangarTerminal {
 			return refuse("no_wreck");
 		}
 		PodEntity wreck = nearest.get();
-		if (!mayRestore(server, wreck, charter)) {
-			return refuse("not_your_wreck", PodComponents.registration(wreck).orElseThrow().serial());
+		if (!PodComponents.mayAccess(wreck, Optional.of(charter))) {
+			return PodComponents.registration(wreck).map(registration -> refuse("not_your_wreck", registration.serial()))
+					.orElseGet(() -> refuse("wreck_unreadable"));
 		}
 		float hull = wreck.maxHull();
 		if (!(hull > 0f)) {
@@ -167,20 +168,6 @@ public final class HangarTerminal {
 		}
 		player.sendOverlayMessage(Component.translatable("deepcharter.hangar.restored", tuning.restoreMoney()));
 		return Optional.empty();
-	}
-
-	/**
-	 * Whether the charter may restore the pod: the same rule as piloting it. A pod nobody owns is anyone's, and so is one whose
-	 * charter is gone or dormant.
-	 * TODO: use {@code PodComponents.mayAccess(pod, Optional<Charter>)} from PR #126 once it is on main.
-	 */
-	private static boolean mayRestore(MinecraftServer server, PodEntity pod, Charter charter) {
-		Optional<PodComponents.Registration> registration = PodComponents.registration(pod);
-		if (registration.isEmpty()) {
-			return true;
-		}
-		Optional<Charter> owner = Charters.find(server, registration.get().owner());
-		return owner.isEmpty() || owner.get().dormant() || owner.get().id().equals(charter.id());
 	}
 
 	private static int count(Inventory inventory, Item item) {
