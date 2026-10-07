@@ -3,7 +3,9 @@
 #
 # Refuses (nonzero exit, one "REFUSED:" line) unless the PR is open, not a draft,
 # labelled `review-passed` with a `review-passed <head sha>` comment for the
-# current head (see tools/mark-review-passed.sh), mergeable, and every check is
+# current head (see tools/mark-review-passed.sh), closes exactly its branch's
+# issue (the body's Closes/Fixes/Resolves #N set is {N} for branch `<N>-<slug>`),
+# mergeable, and every check is
 # `pass` or `skipping` (at least one check, and all of REQUIRED_CHECKS passing). A
 # check's state is its newest non-skipped run, so a later skipped run cannot hide
 # a failure.
@@ -41,6 +43,24 @@ state=$(pr_field state .state)
 [[ $state == OPEN ]] || refuse "is not open (state: $state)"
 
 [[ $(pr_field isDraft .isDraft) == false ]] || refuse "is a draft"
+
+# The PR must close exactly the issue its branch (<issue>-<slug>) is named for.
+branch=$(pr_field headRefName .headRefName) || refuse "has no readable head branch"
+[[ $branch =~ ^([0-9]+)- ]] || refuse "has head branch '$branch', not <issue>-<slug>"
+issue=${BASH_REMATCH[1]}
+body=$(pr_field body .body) || refuse "has no readable body"
+# Fail closed: GitHub also closes on `Closes owner/repo#N` and `Closes <issue URL>`,
+# which the plain-#N set below cannot see, so any such form is refused outright.
+keyword='(^|[^[:alnum:]])(close[sd]?|fix(e[sd])?|resolve[sd]?):?[[:space:]]+'
+odd=$(grep -oiE "${keyword}([^[:space:]#]+#[0-9]+|https?://[^[:space:]]+)" <<<"$body" | tr '\n' ';' || true)
+[[ -z $odd ]] || refuse "body has a closing reference that is not a plain '#N': ${odd%;} (use 'Closes #$issue')"
+# No match is the "no Closes" case below, so a grep exit of 1 is not an error.
+closes=$({ grep -oiE "${keyword}#[0-9]+" <<<"$body" \
+  | grep -oE '[0-9]+$' | sort -un | tr '\n' ' '; } || true)
+closes=${closes% }
+[[ -n $closes ]] || refuse "body has no 'Closes #$issue' (branch $branch is for issue #$issue)"
+[[ $closes == "$issue" ]] \
+  || refuse "body closes #${closes// / #} but branch $branch is for issue #$issue only (the Closes/Fixes/Resolves set must be exactly {#$issue})"
 
 pr_field labels '.labels[].name' | grep -qx 'review-passed' \
   || refuse "lacks the review-passed label" # pipe-grep-q: fail-closed — a missed match (SIGPIPE) only refuses the merge
