@@ -75,11 +75,12 @@ public class ScannerHudTest implements FabricClientGameTest {
 	}
 
 	/** A screenshot of the HUD, read cell by cell. */
-	public record HudShot(BufferedImage image, int guiWidth, int scale) {
+	public record HudShot(BufferedImage image, int guiWidth, int guiHeight, int scale) {
 		/** Takes a screenshot of the current frame. */
 		public static HudShot take(ClientGameTestContext context, String screenshotName) {
 			int[] window = context.computeOnClient(client -> new int[] {
-					client.getWindow().getWidth(), client.getWindow().getGuiScaledWidth(), client.getWindow().getGuiScale()});
+					client.getWindow().getWidth(), client.getWindow().getGuiScaledWidth(),
+					client.getWindow().getGuiScaledHeight(), client.getWindow().getGuiScale()});
 			Path file = context.takeScreenshot(screenshotName);
 			BufferedImage image;
 			try {
@@ -90,14 +91,14 @@ public class ScannerHudTest implements FabricClientGameTest {
 			if (image.getWidth() != window[0]) {
 				throw new AssertionError("the screenshot is " + image.getWidth() + " wide but the window is " + window[0]);
 			}
-			return new HudShot(image, window[1], window[2]);
+			return new HudShot(image, window[1], window[2], window[3]);
 		}
 
 		/** The RGB of the middle of the HUD cell {@code ahead} and {@code up} from the pod. */
 		public int pixel(int ahead, int up) {
-			int half = TUNING.cellPixels() * scale / 2;
-			int x = ScannerHud.cellLeft(guiWidth, ahead) * scale + half;
-			int y = ScannerHud.cellTop(up) * scale + half;
+			int half = ScannerHud.cellSize(guiWidth, guiHeight) * scale / 2;
+			int x = ScannerHud.cellLeft(guiWidth, guiHeight, ahead) * scale + half;
+			int y = ScannerHud.cellTop(guiWidth, guiHeight, up) * scale + half;
 			return image.getRGB(x, y) & RGB;
 		}
 	}
@@ -156,8 +157,28 @@ public class ScannerHudTest implements FabricClientGameTest {
 		});
 	}
 
+	/** The whole panel, down to its bottom-right cell, stays on screen at small GUI sizes. */
+	private static void expectPanelFitsSmallScreens() {
+		int[][] guiSizes = {{427, 240}, {320, 180}, {240, 135}, {200, 100}};
+		for (int[] size : guiSizes) {
+			int width = size[0];
+			int height = size[1];
+			int cell = ScannerHud.cellSize(width, height);
+			int right = ScannerHud.cellLeft(width, height, TUNING.halfWidth()) + cell;
+			int bottom = ScannerHud.cellTop(width, height, -TUNING.down()) + cell;
+			if (right > width || bottom > height || ScannerHud.cellLeft(width, height, -TUNING.halfWidth()) < 0) {
+				throw new AssertionError("at GUI %dx%d the panel ends at (%d, %d) with %dpx cells: off screen"
+						.formatted(width, height, right, bottom, cell));
+			}
+		}
+		if (ScannerHud.cellSize(427, 240) != TUNING.cellPixels()) {
+			throw new AssertionError("a roomy GUI should keep the tuned cell size " + TUNING.cellPixels());
+		}
+	}
+
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		expectPanelFitsSmallScreens();
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			TestServerContext server = singleplayer.getServer();
 			server.runCommand("time set midnight");

@@ -7,6 +7,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
@@ -22,11 +23,9 @@ public final class ScanSlice {
 
 	private static final ScannerTuning TUNING = ScannerTuning.DEFAULT;
 
-	private final Direction facing;
 	private final Cell[] cells;
 
-	private ScanSlice(Direction facing, Cell[] cells) {
-		this.facing = facing;
+	private ScanSlice(Cell[] cells) {
 		this.cells = cells;
 	}
 
@@ -42,11 +41,7 @@ public final class ScanSlice {
 				cells[index(ahead, up)] = classify(level, pos, level.getBlockState(pos));
 			}
 		}
-		return new ScanSlice(facing, cells);
-	}
-
-	public Direction facing() {
-		return facing;
+		return new ScanSlice(cells);
 	}
 
 	public Cell cell(int ahead, int up) {
@@ -65,6 +60,10 @@ public final class ScanSlice {
 		if (state.is(ORES)) {
 			return new Cell.Ore(state.getBlock());
 		}
+		// Fluids are named explicitly so the rule does not depend on their collision shapes.
+		if (state.getBlock() instanceof LiquidBlock) {
+			return Cell.AIR;
+		}
 		return state.getCollisionShape(level, pos).isEmpty() ? Cell.AIR : Cell.ROCK;
 	}
 
@@ -73,7 +72,10 @@ public final class ScanSlice {
 		Cell AIR = new Air();
 		Cell ROCK = new Rock();
 
-		/** Open space: air, fluid, plants, anything a pod could pass through. */
+		/**
+		 * Anything without a collision shape, and any fluid: air, water, lava, plants. Fluids read as open space in
+		 * scanner v1; hazards arrive with a later tier (SPEC section 7).
+		 */
 		record Air() implements Cell {
 		}
 

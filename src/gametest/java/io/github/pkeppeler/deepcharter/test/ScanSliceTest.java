@@ -46,7 +46,7 @@ public class ScanSliceTest {
 	private static void expect(GameTestHelper helper, ScanSlice slice, int ahead, int up, Cell expected) {
 		Cell actual = slice.cell(ahead, up);
 		if (!actual.equals(expected)) {
-			throw helper.assertionException("cell (ahead %d, up %d) should be %s, was %s", ahead, up, expected, actual);
+			throw helper.assertionException("cell (ahead %d, up %d) should be %s, was %s".formatted(ahead, up, expected, actual));
 		}
 	}
 
@@ -159,19 +159,40 @@ public class ScanSliceTest {
 	}
 
 	@GameTest
-	public void everyOreInTheOresTagIsAnOre(GameTestHelper helper) {
+	public void orePlainAndDeepslateAndCoalAreOreButABlockOfGoldIsRock(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		BlockPos origin = origin(helper);
 		clearBox(level, origin);
 		try {
 			place(level, origin.offset(1, 0, 0), Blocks.DEEPSLATE_GOLD_ORE.defaultBlockState());
 			place(level, origin.offset(2, 0, 0), Blocks.COAL_ORE.defaultBlockState());
-			// Stone and a gold block are solid but not ore.
+			// A gold block is solid but not in #c:ores.
 			place(level, origin.offset(3, 0, 0), Blocks.GOLD_BLOCK.defaultBlockState());
 			ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST);
 			expect(helper, slice, 1, 0, new Cell.Ore(Blocks.DEEPSLATE_GOLD_ORE));
 			expect(helper, slice, 2, 0, new Cell.Ore(Blocks.COAL_ORE));
 			expect(helper, slice, 3, 0, Cell.ROCK);
+			helper.succeed();
+		} finally {
+			clearBox(level, origin);
+		}
+	}
+
+	/** Pins scanner v1: fluids and plants are open space until a hazard tier says otherwise. */
+	@GameTest
+	public void waterLavaAndPlantsReadAsAir(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos origin = origin(helper);
+		clearBox(level, origin);
+		try {
+			place(level, origin.offset(1, 0, 0), Blocks.WATER.defaultBlockState());
+			// Apart from the water: lava next to water turns to stone.
+			place(level, origin.offset(6, 0, 0), Blocks.LAVA.defaultBlockState());
+			place(level, origin.offset(3, 0, 0), Blocks.SHORT_GRASS.defaultBlockState());
+			ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST);
+			expect(helper, slice, 1, 0, Cell.AIR);
+			expect(helper, slice, 6, 0, Cell.AIR);
+			expect(helper, slice, 3, 0, Cell.AIR);
 			helper.succeed();
 		} finally {
 			clearBox(level, origin);

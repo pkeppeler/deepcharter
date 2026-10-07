@@ -29,6 +29,7 @@ public final class ScannerHud {
 	private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "scanner");
 	private static final TagKey<Block> GOLD_ORES = TagKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath("c", "ores/gold"));
 	private static final ScannerTuning TUNING = ScannerTuning.DEFAULT;
+	private static final Component TITLE = Component.translatable("deepcharter.scanner.title");
 	private static final int TITLE_HEIGHT = 10;
 	private static final int FRAME = 1;
 	private static final int WHITE = 0xFFFFFFFF;
@@ -46,15 +47,25 @@ public final class ScannerHud {
 		HudElementRegistry.addLast(ID, ScannerHud::extract);
 	}
 
+	/**
+	 * GUI pixels per cell: the tuned size when the panel fits the GUI, otherwise the largest that does,
+	 * down to 1. Below that the panel clips; the 41 rows need a GUI about 60 pixels tall.
+	 */
+	public static int cellSize(int guiWidth, int guiHeight) {
+		int fitWidth = (guiWidth - 2 * (TUNING.margin() + FRAME)) / TUNING.columns();
+		int fitHeight = (guiHeight - 2 * (TUNING.margin() + FRAME) - TITLE_HEIGHT) / TUNING.rows();
+		return Math.max(1, Math.min(TUNING.cellPixels(), Math.min(fitWidth, fitHeight)));
+	}
+
 	/** Left edge in GUI pixels of the cell {@code ahead} blocks along the facing. */
-	public static int cellLeft(int guiWidth, int ahead) {
-		return guiWidth - TUNING.margin() - FRAME - TUNING.columns() * TUNING.cellPixels()
-				+ (ahead + TUNING.halfWidth()) * TUNING.cellPixels();
+	public static int cellLeft(int guiWidth, int guiHeight, int ahead) {
+		int cell = cellSize(guiWidth, guiHeight);
+		return guiWidth - TUNING.margin() - FRAME - TUNING.columns() * cell + (ahead + TUNING.halfWidth()) * cell;
 	}
 
 	/** Top edge in GUI pixels of the cell {@code up} blocks above the pod's feet. */
-	public static int cellTop(int up) {
-		return TUNING.margin() + TITLE_HEIGHT + FRAME + (TUNING.up() - up) * TUNING.cellPixels();
+	public static int cellTop(int guiWidth, int guiHeight, int up) {
+		return TUNING.margin() + TITLE_HEIGHT + FRAME + (TUNING.up() - up) * cellSize(guiWidth, guiHeight);
 	}
 
 	private static void tick(Minecraft client) {
@@ -78,32 +89,34 @@ public final class ScannerHud {
 		}
 		Minecraft client = Minecraft.getInstance();
 		int guiWidth = client.getWindow().getGuiScaledWidth();
-		int cell = TUNING.cellPixels();
-		int left = cellLeft(guiWidth, -TUNING.halfWidth());
-		int right = cellLeft(guiWidth, TUNING.halfWidth()) + cell;
-		int top = cellTop(TUNING.up());
-		int bottom = cellTop(-TUNING.down()) + cell;
+		int guiHeight = client.getWindow().getGuiScaledHeight();
+		int cell = cellSize(guiWidth, guiHeight);
+		int left = cellLeft(guiWidth, guiHeight, -TUNING.halfWidth());
+		int right = cellLeft(guiWidth, guiHeight, TUNING.halfWidth()) + cell;
+		int top = cellTop(guiWidth, guiHeight, TUNING.up());
+		int bottom = cellTop(guiWidth, guiHeight, -TUNING.down()) + cell;
 
 		graphics.fill(left - FRAME, TUNING.margin(), right + FRAME, bottom + FRAME, TUNING.frameColor());
-		graphics.text(client.font, Component.translatable("deepcharter.scanner.title"), left, TUNING.margin() + 1, WHITE);
+		graphics.text(client.font, TITLE, left, TUNING.margin() + 1, WHITE);
 		graphics.fill(left, top, right, bottom, TUNING.airColor());
 		for (int up = TUNING.up(); up >= -TUNING.down(); up--) {
 			for (int ahead = -TUNING.halfWidth(); ahead <= TUNING.halfWidth(); ahead++) {
 				Cell found = scanned.cell(ahead, up);
 				if (!(found instanceof Cell.Air)) {
-					fillCell(graphics, guiWidth, ahead, up, colour(found));
+					fillCell(graphics, guiWidth, guiHeight, ahead, up, colour(found));
 				}
 			}
 		}
 		for (int up = 0; up <= POD_CELLS_UP; up++) {
-			fillCell(graphics, guiWidth, 0, up, TUNING.podColor());
+			fillCell(graphics, guiWidth, guiHeight, 0, up, TUNING.podColor());
 		}
 	}
 
-	private static void fillCell(GuiGraphicsExtractor graphics, int guiWidth, int ahead, int up, int colour) {
-		int x = cellLeft(guiWidth, ahead);
-		int y = cellTop(up);
-		graphics.fill(x, y, x + TUNING.cellPixels(), y + TUNING.cellPixels(), colour);
+	private static void fillCell(GuiGraphicsExtractor graphics, int guiWidth, int guiHeight, int ahead, int up, int colour) {
+		int cell = cellSize(guiWidth, guiHeight);
+		int x = cellLeft(guiWidth, guiHeight, ahead);
+		int y = cellTop(guiWidth, guiHeight, up);
+		graphics.fill(x, y, x + cell, y + cell, colour);
 	}
 
 	/** Opaque ARGB for a cell; ore gets its own colour per ore, falling back to a generic one. */
