@@ -33,6 +33,9 @@ jobs:
       && (github.event.action != 'labeled' || github.event.label.name == 'gameplay') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      XVFB_ARGS: -screen 0 1280x720x24 +extension GLX +render -noreset
+      LIBGL_ALWAYS_SOFTWARE: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -50,12 +53,6 @@ jobs:
       - name: Check software GL
         run: xvfb-run -a -s "$XVFB_ARGS" glxinfo -B
         timeout-minutes: 2
-        env:
-          XVFB_ARGS: -screen 0 1280x720x24 +extension GLX +render -noreset
-          LIBGL_ALWAYS_SOFTWARE: "1"
       - name: Client GameTests
         run: xvfb-run -a -s "$XVFB_ARGS" ./gradlew runClientGameTest
         timeout-minutes: 15
-        env:
-          XVFB_ARGS: -screen 0 1280x720x24 +extension GLX +render -noreset
-          LIBGL_ALWAYS_SOFTWARE: "1"

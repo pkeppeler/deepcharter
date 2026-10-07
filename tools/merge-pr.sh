@@ -79,7 +79,7 @@ while IFS=$'\t' read -r bucket name; do
     *) refuse "has a check that is not passing: $name (newest non-skipped run: $bucket)" ;;
   esac
 done <<<"$checks"
-for required in ${REQUIRED_CHECKS[@]+"${REQUIRED_CHECKS[@]}"}; do
+for required in "${REQUIRED_CHECKS[@]}"; do
   grep -qxF "pass"$'\t'"$required" <<<"$checks" && continue
   if grep -qxF "skipping"$'\t'"$required" <<<"$checks"; then
     refuse "has a required check that was only skipped: $required"
