@@ -1,11 +1,15 @@
 package io.github.pkeppeler.deepcharter.terminal;
 
+/** Registers the terminal parts and types (with their blocks, items and block entity) and the three payloads. */
 public final class TerminalRegistry {
-	// Registers TerminalBlock, its block entity and TerminalTypes. Empty until #59.
-
 	private TerminalRegistry() {
 	}
 
 	public static void register() {
+		TerminalParts.register();
+		TerminalTypes.register();
+		TerminalViewPayload.register();
+		TerminalOpenPayload.register();
+		TerminalActionPayload.register();
 	}
 }

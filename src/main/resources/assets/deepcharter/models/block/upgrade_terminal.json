@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/orientable_with_bottom",
+  "textures": {
+    "top": "deepcharter:block/terminal_top",
+    "bottom": "deepcharter:block/terminal_side",
+    "side": "deepcharter:block/terminal_side",
+    "front": "deepcharter:block/upgrade_terminal_front"
+  }
+}

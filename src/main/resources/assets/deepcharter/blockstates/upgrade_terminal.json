@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "deepcharter:block/upgrade_terminal"
+    },
+    "facing=east": {
+      "model": "deepcharter:block/upgrade_terminal",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "deepcharter:block/upgrade_terminal",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "deepcharter:block/upgrade_terminal",
+      "y": 270
+    }
+  }
+}
