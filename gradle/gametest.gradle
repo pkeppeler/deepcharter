@@ -1,6 +1,4 @@
-// Each runGameTest starts from a fresh server world. Only the world dir is removed:
-// the rest of build/run/gameTest (eula, server.properties, mods) is Loom's, and the
-// client gametest run dir is untouched.
+// World only: eula/server.properties/mods under build/run/gameTest are Loom's.
 def deleteGameTestWorld = tasks.register("deleteGameTestWorld", Delete) {
 	delete layout.buildDirectory.dir("run/gameTest/world")
 }
