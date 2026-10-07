@@ -23,8 +23,6 @@ public class PodEntity extends Entity {
 	private static final String HULL_KEY = "hull";
 	private static final String FUEL_KEY = "fuel";
 	private static final String STRANDED_KEY = "stranded";
-	private static final String CARGO_USED_KEY = "cargo_used";
-	private static final String CARGO_MASS_KEY = "cargo_mass";
 
 	// Not synced: M1 has only the Mole, and its hitbox comes from the entity type.
 	private Chassis chassis = Chassis.MOLE;
@@ -117,13 +115,11 @@ public class PodEntity extends Entity {
 		setHull(required(input, HULL_KEY, Codec.FLOAT));
 		setFuel(required(input, FUEL_KEY, Codec.FLOAT));
 		setStranded(required(input, STRANDED_KEY, Codec.BOOL));
-		setCargoUsed(required(input, CARGO_USED_KEY, Codec.INT));
-		setCargoMass(required(input, CARGO_MASS_KEY, Codec.FLOAT));
 		// Flying, drilling and the drill direction are transient: a loaded pod starts idle.
 		setFlying(false);
 		setDrilling(false);
 		setDrillDirection(Direction.DOWN);
-		cargo.load(input);
+		cargo.load(input, this);
 	}
 
 	@Override
@@ -132,8 +128,6 @@ public class PodEntity extends Entity {
 		output.putFloat(HULL_KEY, hull());
 		output.putFloat(FUEL_KEY, fuel());
 		output.putBoolean(STRANDED_KEY, stranded());
-		output.putInt(CARGO_USED_KEY, cargoUsed());
-		output.putFloat(CARGO_MASS_KEY, cargoMass());
 		cargo.save(output);
 	}
 

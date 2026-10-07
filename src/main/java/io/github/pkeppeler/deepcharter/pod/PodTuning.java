@@ -36,32 +36,17 @@ public record PodTuning(Shell shell, Movement movement, Drill drill, Cargo cargo
 		public static final Drill DEFAULT = new Drill();
 	}
 
-	/**
-	 * The cargo bay. Mass shares a unit with {@link Movement#enginePower}. The pod climbs only while
-	 * thrust beats gravity, so with more mass than enginePower * gravity / thrustAcceleration it cannot
-	 * take off (see {@code PodCargo.takeoffMassLimit}).
-	 *
-	 * @param slots           ore the bay holds, one per slot whatever its mass
-	 * @param defaultOreMass  mass of an ore whose caller gives none; placeholder until ores have their own
-	 *                        (the original's 1 to 12, scaled by three, puts a bay of Diamond well past the power)
-	 */
+	/** Bay size and the placeholder ore mass (mass shares a unit with enginePower, 100 = no lift at all). */
 	public record Cargo(int slots, float defaultOreMass) {
 		public static final Cargo DEFAULT = new Cargo(7, 20f);
 	}
 
 	/**
-	 * Tank and burn rates, from the original's stock pod: a 10 L tank, idle 0.063 L/s, flying 0.19 L/s,
-	 * drilling 0.32 L/s. {@link PodData#FUEL} holds a percentage of the tank: litres / tankLitres * 100.
-	 *
-	 * @param tankLitres            what 100% means
-	 * @param idleLitresPerSecond   burn with the engine on and the pod still, always on
-	 * @param movingLitresPerSecond burn while driving or flying
-	 * @param drillingLitresPerSecond burn while drilling
-	 * @param lowFuelPercent        the beep sounds at this percentage and below
-	 * @param refuelLitres          what one coal or charcoal puts in the tank
+	 * Original stock-pod tank and rates; FUEL is a percentage of the tank (litres / tankLitres * 100).
+	 * refuelLitres is invented. The beep sounds at lowFuelPercent and below, faster at urgentFuelPercent.
 	 */
 	public record Fuel(float tankLitres, float idleLitresPerSecond, float movingLitresPerSecond,
-			float drillingLitresPerSecond, float lowFuelPercent, float refuelLitres) {
-		public static final Fuel DEFAULT = new Fuel(10f, 0.063f, 0.19f, 0.32f, 21f, 2f);
+			float drillingLitresPerSecond, float lowFuelPercent, float urgentFuelPercent, float refuelLitres) {
+		public static final Fuel DEFAULT = new Fuel(10f, 0.063f, 0.19f, 0.32f, 21f, 6f, 2f);
 	}
 }

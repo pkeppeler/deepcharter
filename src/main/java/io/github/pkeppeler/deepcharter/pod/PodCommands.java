@@ -15,9 +15,9 @@ public final class PodCommands {
 	}
 
 	public static void init() {
-		FeatureCommands.register("pod", root -> root
+		FeatureCommands.register("pod", root -> root.then(Commands.literal("spawn")
 				.requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
-				.then(Commands.literal("spawn").executes(PodCommands::spawn)));
+				.executes(PodCommands::spawn)));
 	}
 
 	private static int spawn(CommandContext<CommandSourceStack> context) {

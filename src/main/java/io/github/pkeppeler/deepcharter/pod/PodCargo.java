@@ -32,18 +32,15 @@ public final class PodCargo {
 				Codec.FLOAT.fieldOf("mass").forGetter(Entry::mass)).apply(instance, Entry::new));
 
 		public Entry {
-			if (mass < 0f) {
-				throw new IllegalArgumentException("ore mass must not be negative: " + mass);
+			if (!(mass >= 0f)) {
+				throw new IllegalArgumentException("ore mass must be a number, not negative: " + mass);
 			}
 		}
 	}
 
 	private final List<Entry> entries = new ArrayList<>();
 
-	/**
-	 * Mass above which a pod cannot take off: the rotor thrusts {@code thrustAcceleration * lift / enginePower}
-	 * and the pod climbs only while that beats gravity.
-	 */
+	/** Mass at or above which a pod cannot take off: there thrust no longer beats gravity. */
 	public static float takeoffMassLimit() {
 		PodTuning.Movement movement = PodTuning.DEFAULT.movement();
 		return movement.enginePower() * movement.gravity() / movement.thrustAcceleration();
@@ -56,7 +53,7 @@ public final class PodCargo {
 
 	/** Server only: adds one ore of the given mass (not negative) if a slot is free, and returns whether it did. */
 	public boolean tryAdd(PodEntity pod, Block ore, float mass) {
-		requireServer(pod);
+		requireOwnServerPod(pod);
 		if (entries.size() >= PodTuning.DEFAULT.cargo().slots()) {
 			return false;
 		}
@@ -67,7 +64,7 @@ public final class PodCargo {
 
 	/** Server only: empties the bay and returns how many ore it held. */
 	public int dump(PodEntity pod) {
-		requireServer(pod);
+		requireOwnServerPod(pod);
 		int dumped = entries.size();
 		entries.clear();
 		sync(pod);
@@ -87,7 +84,10 @@ public final class PodCargo {
 		pod.setCargoMass(mass);
 	}
 
-	private static void requireServer(PodEntity pod) {
+	private void requireOwnServerPod(PodEntity pod) {
+		if (pod.cargo() != this) {
+			throw new IllegalArgumentException("this cargo bay belongs to another pod");
+		}
 		if (pod.level().isClientSide()) {
 			throw new IllegalStateException("cargo changes only on the server");
 		}
@@ -99,8 +99,8 @@ public final class PodCargo {
 		entries.forEach(list::add);
 	}
 
-	/** Restores the cargo saved by {@link #save}; the pod's synced counts load with the pod itself. */
-	public void load(ValueInput input) {
+	/** Restores the cargo saved by {@link #save} and derives the pod's synced counts from it. */
+	public void load(ValueInput input, PodEntity pod) {
 		entries.clear();
 		ValueInput.TypedInputList<Entry> list = input.list(CARGO_KEY, Entry.CODEC)
 				.orElseThrow(() -> new IllegalStateException("saved pod has no '" + CARGO_KEY + "'"));
@@ -109,12 +109,13 @@ public final class PodCargo {
 			throw new IllegalStateException("saved cargo has " + entries.size() + " ore, the bay holds "
 					+ PodTuning.DEFAULT.cargo().slots());
 		}
+		sync(pod);
 	}
 
 	public static void init() {
-		FeatureCommands.register("pod", root -> root
+		FeatureCommands.register("pod", root -> root.then(Commands.literal("dump")
 				.requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
-				.then(Commands.literal("dump").executes(PodCargo::dumpRiddenPod)));
+				.executes(PodCargo::dumpRiddenPod)));
 	}
 
 	private static int dumpRiddenPod(CommandContext<CommandSourceStack> context) {

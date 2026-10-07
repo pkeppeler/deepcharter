@@ -8,10 +8,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
-/**
- * Fuel drain, refuelling and stranding. {@link PodData#FUEL} is a percentage of the tank:
- * litres / {@code tankLitres} * 100, so 100 is full whatever the tank size.
- */
+/** Fuel drain, refuelling and stranding; FUEL is a percentage, so 100 is full whatever the tank size. */
 public final class PodFuel {
 	private static final float TICKS_PER_SECOND = 20f;
 

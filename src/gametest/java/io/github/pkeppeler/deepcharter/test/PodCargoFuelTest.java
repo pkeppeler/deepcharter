@@ -5,7 +5,13 @@ import java.util.List;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.ProblemReporter;
@@ -21,6 +27,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.TagValueInput;
+import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
 
@@ -126,12 +133,249 @@ public class PodCargoFuelTest {
 
 	@GameTest
 	public void takeoffLimitIsWhereThrustMatchesGravity(GameTestHelper helper) {
-		PodTuning.Movement movement = PodTuning.DEFAULT.movement();
-		float expected = movement.enginePower() * movement.gravity() / movement.thrustAcceleration();
-		if (Math.abs(PodCargo.takeoffMassLimit() - expected) > 1e-4) {
-			throw helper.assertionException("the takeoff limit should be %s, got %s", expected, PodCargo.takeoffMassLimit());
+		// Independent of the formula: power 100 * gravity 0.08 / thrust 0.16.
+		if (Math.abs(PodCargo.takeoffMassLimit() - 50f) > 1e-4) {
+			throw helper.assertionException("the takeoff limit should be 50, got %s", PodCargo.takeoffMassLimit());
 		}
 		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 60)
+	public void massExactlyAtTheLimitCannotLift(GameTestHelper helper) {
+		PodEntity pod = spawnPod(helper, 0);
+		MockPlayer pilot = seatPilot(helper, pod);
+		pod.cargo().tryAdd(pod, Blocks.DIAMOND_ORE, PodCargo.takeoffMassLimit());
+		double startY = pod.getY();
+		pilot.setInput(JUMP);
+		helper.runAfterDelay(20, () -> {
+			try {
+				if (pod.getY() - startY > 1e-6) {
+					throw helper.assertionException("a pod at exactly the limit should not lift, rose %s", pod.getY() - startY);
+				}
+				helper.succeed();
+			} finally {
+				cleanUp(helper, pod, pilot);
+			}
+		});
+	}
+
+	private static ValueInput inputOf(ServerLevel level, CompoundTag tag) {
+		return TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), tag);
+	}
+
+	private static CompoundTag savedPod(ServerLevel level, PodEntity pod) {
+		TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
+		pod.saveWithoutId(output);
+		return output.buildResult();
+	}
+
+	@GameTest
+	public void loadDerivesTheCountsFromTheEntries(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
+		PodEntity copy = helper.spawn(PodRegistry.POD, 4, 2, 2);
+		try {
+			pod.cargo().tryAdd(pod, Blocks.IRON_ORE, 4f);
+			pod.cargo().tryAdd(pod, Blocks.GOLD_ORE, 6f);
+			CompoundTag tag = savedPod(level, pod);
+			// Stale or tampered counts from an older format must not matter.
+			tag.putInt("cargo_used", 7);
+			tag.putFloat("cargo_mass", 999f);
+			copy.cargo().load(inputOf(level, tag), copy);
+			if (copy.cargoUsed() != 2 || copy.cargoMass() != 10f) {
+				throw helper.assertionException("counts should derive from the 2 entries as 2/10, got %s/%s", copy.cargoUsed(), copy.cargoMass());
+			}
+			helper.succeed();
+		} finally {
+			pod.discard();
+			copy.discard();
+		}
+	}
+
+	@GameTest
+	public void loadFailsLoudWithoutCargoKey(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
+		try {
+			CompoundTag tag = savedPod(level, pod);
+			tag.remove("cargo");
+			try {
+				pod.cargo().load(inputOf(level, tag), pod);
+			} catch (IllegalStateException expected) {
+				helper.succeed();
+				return;
+			}
+			throw helper.assertionException("loading a save with no cargo key should throw");
+		} finally {
+			pod.discard();
+		}
+	}
+
+	@GameTest
+	public void loadFailsLoudWithMoreThanSevenEntries(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
+		try {
+			for (int i = 0; i < CARGO.slots(); i++) {
+				pod.cargo().tryAdd(pod, Blocks.IRON_ORE, 1f);
+			}
+			CompoundTag tag = savedPod(level, pod);
+			ListTag list = tag.getListOrEmpty("cargo");
+			list.add(list.getFirst().copy());
+			try {
+				pod.cargo().load(inputOf(level, tag), pod);
+			} catch (IllegalStateException expected) {
+				helper.succeed();
+				return;
+			}
+			throw helper.assertionException("loading 8 ore into a 7-slot bay should throw");
+		} finally {
+			pod.discard();
+		}
+	}
+
+	@GameTest
+	public void anotherPodsEntryPointAndBadMassAreRefused(GameTestHelper helper) {
+		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
+		PodEntity other = helper.spawn(PodRegistry.POD, 4, 2, 2);
+		try {
+			boolean crossed = false;
+			try {
+				pod.cargo().tryAdd(other, Blocks.IRON_ORE, 1f);
+			} catch (IllegalArgumentException expected) {
+				crossed = true;
+			}
+			boolean nan = false;
+			try {
+				pod.cargo().tryAdd(pod, Blocks.IRON_ORE, Float.NaN);
+			} catch (IllegalArgumentException expected) {
+				nan = true;
+			}
+			if (!crossed || !nan || pod.cargoUsed() != 0 || other.cargoUsed() != 0) {
+				throw helper.assertionException("a foreign pod and a NaN mass must both throw and change nothing, crossed %s nan %s", crossed, nan);
+			}
+			helper.succeed();
+		} finally {
+			pod.discard();
+			other.discard();
+		}
+	}
+
+	private static CommandSourceStack source(MockPlayer player, LevelBasedPermissionSet permissions) {
+		return player.player().createCommandSourceStack().withPermission(permissions);
+	}
+
+	@GameTest
+	public void dumpCommandFailsWhenNotRidingAPod(GameTestHelper helper) {
+		MockPlayer player = MockPlayers.join(helper, "walker");
+		try {
+			int result = helper.getLevel().getServer().getCommands().getDispatcher()
+					.execute("deepcharter pod dump", source(player, LevelBasedPermissionSet.GAMEMASTER));
+			if (result != 0) {
+				throw helper.assertionException("dump with no pod should fail with 0, got %s", result);
+			}
+			helper.succeed();
+		} catch (CommandSyntaxException e) {
+			throw helper.assertionException("dump should be allowed for an op: %s", e.getMessage());
+		} finally {
+			player.leave();
+		}
+	}
+
+	@GameTest(maxTicks = 80)
+	public void dumpCommandEmptiesCargoAndRestoresLift(GameTestHelper helper) {
+		PodEntity pod = spawnPod(helper, 0);
+		MockPlayer pilot = seatPilot(helper, pod);
+		pod.cargo().tryAdd(pod, Blocks.DIAMOND_ORE, PodCargo.takeoffMassLimit() + 10f);
+		pod.cargo().tryAdd(pod, Blocks.DIAMOND_ORE, 1f);
+		try {
+			int result = helper.getLevel().getServer().getCommands().getDispatcher()
+					.execute("deepcharter pod dump", source(pilot, LevelBasedPermissionSet.GAMEMASTER));
+			if (result != 2 || pod.cargoUsed() != 0 || pod.cargoMass() != 0f) {
+				throw helper.assertionException("dump should empty 2 ore, got %s, left %s/%s", result, pod.cargoUsed(), pod.cargoMass());
+			}
+		} catch (CommandSyntaxException e) {
+			cleanUp(helper, pod, pilot);
+			throw helper.assertionException("dump should be allowed for an op: %s", e.getMessage());
+		}
+		double startY = pod.getY();
+		pilot.setInput(JUMP);
+		helper.runAfterDelay(15, () -> {
+			try {
+				if (pod.getY() - startY < 1.0) {
+					throw helper.assertionException("after the dump command the pod should lift, rose %s", pod.getY() - startY);
+				}
+				helper.succeed();
+			} finally {
+				cleanUp(helper, pod, pilot);
+			}
+		});
+	}
+
+	@GameTest
+	public void dumpCommandRefusesANonOp(GameTestHelper helper) {
+		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
+		MockPlayer pilot = seatPilot(helper, pod);
+		pod.cargo().tryAdd(pod, Blocks.IRON_ORE, 1f);
+		try {
+			boolean refused = false;
+			try {
+				helper.getLevel().getServer().getCommands().getDispatcher()
+						.execute("deepcharter pod dump", source(pilot, LevelBasedPermissionSet.ALL));
+			} catch (CommandSyntaxException expected) {
+				refused = true;
+			}
+			if (!refused || pod.cargoUsed() != 1) {
+				throw helper.assertionException("a non-op must be refused and the cargo kept, refused %s used %s", refused, pod.cargoUsed());
+			}
+			helper.succeed();
+		} finally {
+			pilot.leave();
+			pod.discard();
+		}
+	}
+
+	@GameTest
+	public void spawnCommandIsOpOnly(GameTestHelper helper) {
+		MockPlayer player = MockPlayers.join(helper, "spawner");
+		try {
+			var dispatcher = helper.getLevel().getServer().getCommands().getDispatcher();
+			boolean refused = false;
+			try {
+				dispatcher.execute("deepcharter pod spawn", source(player, LevelBasedPermissionSet.ALL));
+			} catch (CommandSyntaxException expected) {
+				refused = true;
+			}
+			int result = dispatcher.execute("deepcharter pod spawn", source(player, LevelBasedPermissionSet.GAMEMASTER));
+			if (!refused || result != 1) {
+				throw helper.assertionException("spawn must be refused to a non-op (%s) and run for an op (result %s)", refused, result);
+			}
+			helper.succeed();
+		} catch (CommandSyntaxException e) {
+			throw helper.assertionException("spawn should be allowed for an op: %s", e.getMessage());
+		} finally {
+			player.leave();
+		}
+	}
+
+	@GameTest
+	public void creativeRefuelKeepsTheCoal(GameTestHelper helper) {
+		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
+		MockPlayer player = MockPlayers.join(helper, "creative-refueler");
+		try {
+			player.player().setGameMode(GameType.CREATIVE);
+			pod.setFuel(30f);
+			player.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.COAL, 3));
+			useOnPod(player, pod);
+			int left = player.player().getItemInHand(InteractionHand.MAIN_HAND).getCount();
+			if (pod.fuel() <= 30f || left != 3) {
+				throw helper.assertionException("a creative refuel should add fuel and keep the coal, fuel %s left %s", pod.fuel(), left);
+			}
+			helper.succeed();
+		} finally {
+			player.leave();
+			pod.discard();
+		}
 	}
 
 	@GameTest(maxTicks = 80)
