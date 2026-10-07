@@ -96,11 +96,18 @@ runs() {
   done
 }
 
-# files <status:path>...: fake PR file lines as the script's --jq prints them
-# (status, path), one per line.
+# files <status:path[:previous]>...: fake PR file lines as the script's --jq prints
+# them (status, path, previous path or empty), one per line.
 files() {
-  local spec
-  for spec in "$@"; do printf '%s\t%s\n' "${spec%%:*}" "${spec#*:}"; done
+  local spec status rest path previous
+  for spec in "$@"; do
+    status=${spec%%:*}
+    rest=${spec#*:}
+    path=${rest%%:*}
+    previous=
+    [[ $rest == *:* ]] && previous=${rest#*:}
+    printf '%s\t%s\t%s\n' "$status" "$path" "$previous"
+  done
 }
 
 # The production REQUIRED_CHECKS, so no case depends on its value: the default
@@ -198,8 +205,14 @@ adr_msg="adds docs/adr/0007-new-slug.md but ADR 0007 already exists on origin/ma
 refusal "ADR number clash" "$adr_msg" "STUB_FILES=$(files added:docs/adr/0007-new-slug.md)"
 refusal "ADR clash beside other files" "ADR 0007 already exists" \
   "STUB_FILES=$(files modified:README.md added:docs/adr/0007-new-slug.md)"
-refusal "ADR clash of a renamed-in file" "ADR 0007 already exists" \
-  "STUB_FILES=$(files renamed:docs/adr/0007-new-slug.md)"
+refusal "ADR rename to a number held by a different ADR" "ADR 0007 already exists" \
+  "STUB_FILES=$(files renamed:docs/adr/0007-new-slug.md:docs/adr/0018-eighteen.md)"
+refusal "two added ADRs with one new number" "adds docs/adr/0019-b.md but also adds docs/adr/0019-a.md with ADR 0019" \
+  "STUB_FILES=$(files added:docs/adr/0019-a.md added:docs/adr/0019-b.md)"
+run_script "STUB_FILES=$(files renamed:docs/adr/0018-renamed.md:docs/adr/0018-eighteen.md)"
+exited "same-number ADR rename merges" 0
+run_script "STUB_FILES=$(files removed:docs/adr/0018-eighteen.md added:docs/adr/0018-new.md)"
+exited "removed ADR and added ADR of the same number merges" 0
 refusal "next free number counts the PR's own ADRs" "the next free number is 0021" \
   "STUB_FILES=$(files added:docs/adr/0020-mine.md added:docs/adr/0007-new-slug.md)"
 refusal "ADR file list unreadable" "could not read its changed files" STUB_FILES_FAIL=1
