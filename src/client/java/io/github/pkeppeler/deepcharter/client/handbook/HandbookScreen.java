@@ -35,8 +35,8 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
  *
  * <p>What each chapter shows is decided by {@link HandbookVisibility}, before the screen is made: this class only draws the pages
  * it is given. It reports a chapter the first time the player flips to it, if the chapter is fully visible and not yet read, and
- * the owner of the screen sends that to the server ({@link #open}). The notes are not drawn yet beyond an empty state: #78 fills
- * them in.
+ * the owner of the screen sends that to the server ({@link #open}). The Notes tab lists the Notes the charter has found, unread ones
+ * marked; opening a Note shows its text and reports it the same way, once, if it is not read yet.
  */
 public class HandbookScreen extends Screen {
 	private static final HandbookScreenTuning T = HandbookScreenTuning.DEFAULT;
@@ -47,6 +47,13 @@ public class HandbookScreen extends Screen {
 	private static final int TOP_MARGIN = 14;
 	private static final int CONTENT_TOP = 14;
 	private static final int PARAGRAPH_GAP = 5;
+
+	/** One line of the Notes list: the box it fills, and the Note a click on it opens. */
+	public record NoteRow(Identifier note, int left, int top, int right, int bottom) {
+		boolean contains(double x, double y) {
+			return x >= left && x < right && y >= top && y < bottom;
+		}
+	}
 
 	/** One line of a contents page: the box it fills, and the page a click on it goes to. */
 	public record ContentsEntry(int page, int left, int top, int right, int bottom) {
@@ -60,13 +67,15 @@ public class HandbookScreen extends Screen {
 	private final Map<Integer, Integer> chapterPages;
 	private final Predicate<Identifier> isRead;
 	private final Consumer<Identifier> onViewed;
-	private final List<Component> notes;
+	private final List<HandbookNote> notes;
 	private final Set<Identifier> reported = new HashSet<>();
 
 	private int page;
 	private int previousPage;
 	private int flipTicks;
 	private boolean notesTab;
+	private Identifier openNote;
+	private int noteScroll;
 
 	private int paperLeft;
 	private int paperTop;
@@ -80,14 +89,15 @@ public class HandbookScreen extends Screen {
 	private PaperButton next;
 	private PaperButton handbookTab;
 	private PaperButton notesButton;
+	private PaperButton noteBack;
 
 	/**
 	 * @param pages    the pages of the Handbook tab, from {@link HandbookPages#of}
-	 * @param isRead   whether the player has already read a chapter
-	 * @param onViewed told the id of a full chapter the player has just flipped to, once, if it is not read yet
+	 * @param isRead   whether the player has already read an entry: a chapter or a Note
+	 * @param onViewed told the id of a chapter or Note the player has just opened, once, if it is not read yet
 	 * @param notes    what the Notes tab lists; empty shows its empty state
 	 */
-	public HandbookScreen(List<HandbookPage> pages, Predicate<Identifier> isRead, Consumer<Identifier> onViewed, List<Component> notes) {
+	public HandbookScreen(List<HandbookPage> pages, Predicate<Identifier> isRead, Consumer<Identifier> onViewed, List<HandbookNote> notes) {
 		super(Component.translatable("deepcharter.handbook.screen.title"));
 		if (pages.isEmpty()) {
 			throw new IllegalArgumentException("the handbook needs at least one page");
@@ -113,7 +123,7 @@ public class HandbookScreen extends Screen {
 		Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();
 		HandbookChapters.all(client.getConnection().registryAccess()).forEach(chapter -> chapters.put(chapter.key().identifier(), chapter.value()));
 		client.gui.setScreen(new HandbookScreen(HandbookPages.of(chapters, ClientHandbook.completed()), ClientReadMarks::isRead,
-				chapter -> ClientPlayNetworking.send(new HandbookReadPayload(chapter)), List.of()));
+				entry -> ClientPlayNetworking.send(new HandbookReadPayload(entry)), ClientNotes.entries()));
 	}
 
 	/**
@@ -154,6 +164,7 @@ public class HandbookScreen extends Screen {
 
 	public void showNotes() {
 		notesTab = true;
+		openNote = null;
 		updateButtons();
 	}
 
@@ -165,6 +176,61 @@ public class HandbookScreen extends Screen {
 	/** Whether the Notes tab shows its empty state. */
 	public boolean notesEmpty() {
 		return notes.isEmpty();
+	}
+
+	/** Whether the player has yet to read {@code note}, which the Notes list marks. */
+	public boolean noteUnread(Identifier note) {
+		return !isRead.test(note);
+	}
+
+	/** The Note being read on the Notes tab, or null while the tab shows the list. */
+	public Identifier openNote() {
+		return openNote;
+	}
+
+	/** Opens {@code note} on the Notes tab. Reports it as viewed the first time, if it is not read yet. An id the tab does not list is ignored. */
+	public void openNote(Identifier note) {
+		if (notes.stream().noneMatch(entry -> entry.id().equals(note))) {
+			return;
+		}
+		notesTab = true;
+		openNote = note;
+		if (noteUnread(note) && reported.add(note)) {
+			onViewed.accept(note);
+		}
+		updateButtons();
+	}
+
+	/** Back from a Note to the list. */
+	public void closeNote() {
+		openNote = null;
+		updateButtons();
+	}
+
+	/**
+	 * The rows of the Notes list that fit on the sheet from the scroll position, top to bottom. Needs the screen to be initialised.
+	 * The same boxes are drawn and are the click targets.
+	 */
+	public List<NoteRow> noteRows() {
+		List<NoteRow> rows = new ArrayList<>();
+		int y = notesTop();
+		for (int index = noteScroll; index < notes.size() && y + font.lineHeight + 2 <= bottom(); index++) {
+			rows.add(new NoteRow(notes.get(index).id(), textLeft, y - 1, textLeft + textWidth, y + font.lineHeight + 2));
+			y += font.lineHeight + 4;
+		}
+		return rows;
+	}
+
+	private int notesTop() {
+		return paperTop + TOP_MARGIN + Math.round(font.lineHeight * 1.25f) + 2 + PARAGRAPH_GAP;
+	}
+
+	private static String label(HandbookNote note) {
+		return String.format("N%02d", note.number());
+	}
+
+	private HandbookNote note(Identifier id) {
+		return notes.stream().filter(entry -> entry.id().equals(id)).findFirst().orElseThrow();
 	}
 
 	@Override
@@ -187,6 +253,8 @@ public class HandbookScreen extends Screen {
 		notesButton = addRenderableWidget(new PaperButton(tabX + T.tabWidth() + 2, tabY, T.tabWidth(), T.tabHeight(),
 				Component.translatable("deepcharter.handbook.screen.tab.notes"), button -> showNotes()));
 		int buttonY = paperTop + paperHeight - T.buttonHeight() - 4;
+		noteBack = addRenderableWidget(new PaperButton(textLeft, buttonY, T.buttonWidth(), T.buttonHeight(),
+				Component.translatable("deepcharter.handbook.notes.back"), button -> closeNote()));
 		back = addRenderableWidget(new PaperButton(textLeft, buttonY, T.buttonWidth(), T.buttonHeight(),
 				Component.translatable("deepcharter.handbook.screen.back"), button -> goTo(page - 1)));
 		next = addRenderableWidget(new PaperButton(paperLeft + paperWidth - T.padding() - T.buttonWidth(), buttonY, T.buttonWidth(), T.buttonHeight(),
@@ -202,6 +270,7 @@ public class HandbookScreen extends Screen {
 		next.visible = !notesTab;
 		back.active = !notesTab && page > 0;
 		next.active = !notesTab && page < pages.size() - 1;
+		noteBack.visible = notesTab && openNote != null;
 		handbookTab.setSelected(!notesTab);
 		notesButton.setSelected(notesTab);
 	}
@@ -241,6 +310,14 @@ public class HandbookScreen extends Screen {
 		if (super.mouseClicked(event, doubleClick)) {
 			return true;
 		}
+		if (notesTab && openNote == null) {
+			for (NoteRow row : noteRows()) {
+				if (row.contains(event.x(), event.y())) {
+					openNote(row.note());
+					return true;
+				}
+			}
+		}
 		if (flipTicks == 0 && !notesTab) {
 			if (pages.get(page) instanceof HandbookPage.Contents contents) {
 				for (ContentsEntry entry : contentsEntries(contents)) {
@@ -252,6 +329,16 @@ public class HandbookScreen extends Screen {
 			}
 		}
 		return false;
+	}
+
+	@Override
+	public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+		if (notesTab && openNote == null && scrollY != 0) {
+			int visible = Math.max(1, noteRows().size());
+			noteScroll = Mth.clamp(noteScroll - (int) Math.signum(scrollY), 0, Math.max(0, notes.size() - visible));
+			return true;
+		}
+		return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
 	}
 
 	@Override
@@ -421,15 +508,38 @@ public class HandbookScreen extends Screen {
 	}
 
 	private void drawNotes(GuiGraphicsExtractor graphics) {
+		if (openNote != null) {
+			drawNote(graphics, note(openNote));
+			return;
+		}
 		int y = PaperDraw.centered(graphics, font, tr("notes.heading"), centerX(), paperTop + TOP_MARGIN, 1.25f, T.inkColor()) + PARAGRAPH_GAP;
 		if (notes.isEmpty()) {
 			y = PaperDraw.centered(graphics, font, tr("notes.empty"), centerX(), y + PARAGRAPH_GAP * 3, 1, T.inkColor()) + 2;
 			PaperDraw.wrapped(graphics, font, tr("notes.hint"), textLeft, y, textWidth, T.faintInkColor());
 			return;
 		}
-		for (Component note : notes) {
-			y = PaperDraw.wrapped(graphics, font, note, textLeft, y, textWidth, T.marginInkColor()) + PARAGRAPH_GAP;
+		for (NoteRow row : noteRows()) {
+			HandbookNote note = note(row.note());
+			boolean unread = noteUnread(note.id());
+			int color = unread ? T.inkColor() : T.faintInkColor();
+			Component status = unread ? tr("notes.new") : null;
+			int statusWidth = status == null ? 0 : font.width(status) + 4;
+			String line = tr("notes.entry", label(note), note.title()).getString();
+			if (font.width(PaperDraw.ink(Component.literal(line), color)) > textWidth - statusWidth) {
+				line = font.plainSubstrByWidth(line, textWidth - statusWidth - font.width("...")) + "...";
+			}
+			graphics.text(font, PaperDraw.ink(Component.literal(line), color), textLeft, row.top() + 1, OPAQUE | color, false);
+			if (status != null) {
+				graphics.text(font, PaperDraw.ink(status, T.stampColor()), textLeft + textWidth - statusWidth + 4, row.top() + 1, OPAQUE | T.stampColor(), false);
+			}
 		}
+	}
+
+	private void drawNote(GuiGraphicsExtractor graphics, HandbookNote note) {
+		int y = PaperDraw.wrapped(graphics, font, tr("notes.label", label(note)), textLeft, paperTop + TOP_MARGIN, textWidth, T.faintInkColor());
+		y = PaperDraw.wrapped(graphics, font, note.title(), textLeft, y + 3, textWidth, T.inkColor());
+		graphics.fill(textLeft, y + 1, textLeft + textWidth, y + 2, OPAQUE | T.inkColor());
+		PaperDraw.wrapped(graphics, font, note.text(), textLeft, y + PARAGRAPH_GAP + 2, textWidth, T.marginInkColor());
 	}
 
 	/** A previous miner's note in pencil, in the margin column, if the sheet has one and the language file has a note for it. */

@@ -21,15 +21,16 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 
 /**
- * Serverbound: the sender has viewed a chapter in the handbook screen. The server marks the chapter read for the sender, and only
- * the sender. Nothing the client says is trusted: the chapter must exist, and the sender's charter must be allowed to read all of
- * it ({@link HandbookVisibility#FULL}), so a modified client cannot mark a classified chapter. A request that fails a check is
- * dropped without a reply. A player whose saved read marks cannot be read is logged once and skipped.
+ * Serverbound: the sender has opened an entry in the handbook screen: a chapter, or a Note. The server marks it read for the
+ * sender, and only the sender. Nothing the client says is trusted: a chapter must exist, and the sender's charter must be allowed
+ * to read all of it ({@link HandbookVisibility#FULL}), so a modified client cannot mark a classified chapter; a Note must be one the
+ * sender's charter has found ({@link Notes#foundFor}). A request that fails a check
+ * is dropped without a reply. A player whose saved read marks cannot be read is logged once and skipped.
  */
-public record HandbookReadPayload(Identifier chapter) implements CustomPacketPayload {
+public record HandbookReadPayload(Identifier entry) implements CustomPacketPayload {
 	public static final Type<HandbookReadPayload> TYPE = new Type<>(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook_read"));
 	public static final StreamCodec<RegistryFriendlyByteBuf, HandbookReadPayload> CODEC = StreamCodec.composite(
-			Identifier.STREAM_CODEC, HandbookReadPayload::chapter,
+			Identifier.STREAM_CODEC, HandbookReadPayload::entry,
 			HandbookReadPayload::new);
 
 	/** Players already reported as unreadable, so that a repeated request logs nothing more. */
@@ -39,25 +40,26 @@ public record HandbookReadPayload(Identifier chapter) implements CustomPacketPay
 	static void register() {
 		PayloadTypeRegistry.serverboundPlay().register(TYPE, CODEC);
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> REPORTED.clear());
-		ServerPlayNetworking.registerGlobalReceiver(TYPE, (payload, context) -> handle(context.server(), context.player(), payload.chapter()));
+		ServerPlayNetworking.registerGlobalReceiver(TYPE, (payload, context) -> handle(context.server(), context.player(), payload.entry()));
 	}
 
-	/** Marks {@code chapter} read for {@code player} if the request passes every check. Returns whether the chapter is now marked. */
-	public static boolean handle(MinecraftServer server, ServerPlayer player, Identifier chapter) {
+	/** Marks {@code entry} read for {@code player} if the request passes every check. Returns whether the entry is now marked. */
+	public static boolean handle(MinecraftServer server, ServerPlayer player, Identifier entry) {
 		if (player.getAttachedOrCreate(HandbookRegistry.READ_MARKS) instanceof Versioned.Unreadable<ReadMarks> unreadable) {
 			if (REPORTED.add(player.getUUID())) {
 				DeepCharter.LOGGER.error("Not marking {} read for {}: their read marks have saved version {} that this build cannot read",
-						chapter, player.getGameProfile().name(), unreadable.version());
+						entry, player.getGameProfile().name(), unreadable.version());
 			}
 			return false;
 		}
-		if (ReadMarks.isRead(player, chapter)) {
+		if (ReadMarks.isRead(player, entry)) {
 			return true;
 		}
-		if (!viewableFor(server, player.getUUID(), chapter)) {
+		boolean allowed = Notes.exists(entry) ? Notes.foundFor(server, player.getUUID()).contains(entry) : viewableFor(server, player.getUUID(), entry);
+		if (!allowed) {
 			return false;
 		}
-		ReadMarks.mark(player, chapter);
+		ReadMarks.mark(player, entry);
 		return true;
 	}
 
