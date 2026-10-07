@@ -50,6 +50,8 @@ public class PodCargoFuelTest {
 
 	private static final PodTuning.Cargo CARGO = PodTuning.DEFAULT.cargo();
 	private static final PodTuning.Fuel FUEL = PodTuning.DEFAULT.fuel();
+	// Independent of the formula: power 100 * gravity 0.08 / thrust 0.16.
+	private static final float TAKEOFF_MASS_LIMIT = 50f;
 	private static final float FULL_FUEL = PodTuning.DEFAULT.shell().fullFuel();
 
 	private static void fillFloor(GameTestHelper helper, Block block) {
@@ -131,20 +133,11 @@ public class PodCargoFuelTest {
 		}
 	}
 
-	@GameTest
-	public void takeoffLimitIsWhereThrustMatchesGravity(GameTestHelper helper) {
-		// Independent of the formula: power 100 * gravity 0.08 / thrust 0.16.
-		if (Math.abs(PodCargo.takeoffMassLimit() - 50f) > 1e-4) {
-			throw helper.assertionException("the takeoff limit should be 50, got %s", PodCargo.takeoffMassLimit());
-		}
-		helper.succeed();
-	}
-
 	@GameTest(maxTicks = 60)
 	public void massExactlyAtTheLimitCannotLift(GameTestHelper helper) {
 		PodEntity pod = spawnPod(helper, 0);
 		MockPlayer pilot = seatPilot(helper, pod);
-		pod.cargo().tryAdd(pod, Blocks.DIAMOND_ORE, PodCargo.takeoffMassLimit());
+		pod.cargo().tryAdd(pod, Blocks.DIAMOND_ORE, TAKEOFF_MASS_LIMIT);
 		double startY = pod.getY();
 		pilot.setInput(JUMP);
 		helper.runAfterDelay(20, () -> {
@@ -286,7 +279,7 @@ public class PodCargoFuelTest {
 	public void dumpCommandEmptiesCargoAndRestoresLift(GameTestHelper helper) {
 		PodEntity pod = spawnPod(helper, 0);
 		MockPlayer pilot = seatPilot(helper, pod);
-		pod.cargo().tryAdd(pod, Blocks.DIAMOND_ORE, PodCargo.takeoffMassLimit() + 10f);
+		pod.cargo().tryAdd(pod, Blocks.DIAMOND_ORE, TAKEOFF_MASS_LIMIT + 10f);
 		pod.cargo().tryAdd(pod, Blocks.DIAMOND_ORE, 1f);
 		try {
 			int result = helper.getLevel().getServer().getCommands().getDispatcher()
@@ -383,7 +376,7 @@ public class PodCargoFuelTest {
 		PodEntity pod = spawnPod(helper, 0);
 		MockPlayer pilot = seatPilot(helper, pod);
 		// Past the limit but under the engine power: the rotor spins (flying) yet the pod cannot climb.
-		float each = (PodCargo.takeoffMassLimit() + 10f) / 2;
+		float each = (TAKEOFF_MASS_LIMIT + 10f) / 2;
 		pod.cargo().tryAdd(pod, Blocks.DIAMOND_ORE, each);
 		pod.cargo().tryAdd(pod, Blocks.DIAMOND_ORE, each);
 		double startY = pod.getY();
@@ -415,7 +408,7 @@ public class PodCargoFuelTest {
 	public void justUnderTheLimitStillLifts(GameTestHelper helper) {
 		PodEntity pod = spawnPod(helper, 0);
 		MockPlayer pilot = seatPilot(helper, pod);
-		pod.cargo().tryAdd(pod, Blocks.DIAMOND_ORE, PodCargo.takeoffMassLimit() - 10f);
+		pod.cargo().tryAdd(pod, Blocks.DIAMOND_ORE, TAKEOFF_MASS_LIMIT - 10f);
 		double startY = pod.getY();
 		pilot.setInput(JUMP);
 		helper.runAfterDelay(40, () -> {

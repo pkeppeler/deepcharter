@@ -40,12 +40,6 @@ public final class PodCargo {
 
 	private final List<Entry> entries = new ArrayList<>();
 
-	/** Mass at or above which a pod cannot take off: there thrust no longer beats gravity. */
-	public static float takeoffMassLimit() {
-		PodTuning.Movement movement = PodTuning.DEFAULT.movement();
-		return movement.enginePower() * movement.gravity() / movement.thrustAcceleration();
-	}
-
 	/** Server only: adds one ore of the default mass if a slot is free, and returns whether it did. */
 	public boolean tryAdd(PodEntity pod, Block ore) {
 		return tryAdd(pod, ore, PodTuning.DEFAULT.cargo().defaultOreMass());
