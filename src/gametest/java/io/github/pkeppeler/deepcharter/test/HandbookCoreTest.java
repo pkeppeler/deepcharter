@@ -11,14 +11,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Stream;
-
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.LogEvent;
-import org.apache.logging.log4j.core.appender.AbstractAppender;
-import org.apache.logging.log4j.core.config.Property;
 
 import com.mojang.serialization.DataResult;
 
@@ -72,6 +65,7 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookRegistry;
 import io.github.pkeppeler.deepcharter.handbook.HandbookSyncPayload;
 import io.github.pkeppeler.deepcharter.handbook.HandbookTuning;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
+import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 
@@ -88,8 +82,6 @@ public class HandbookCoreTest {
 	private static final Identifier NOTE = directive("sample/note");
 	private static final int POLL_BUDGET_TICKS = 200;
 	private static final int HOTBAR_SIZE = 9;
-	// Attached once and never removed: another test's appender on the same logger loses its events when one is removed mid-run.
-	private static final CapturingAppender LOG = CapturingAppender.attach();
 
 	private static Identifier directive(String path) {
 		return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook/" + path);
@@ -435,7 +427,8 @@ public class HandbookCoreTest {
 		CompoundTag future = futureVersion();
 		HandbookProgressData unreadable = HandbookProgressData.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow();
 		HandbookProgressData original = HandbookProgressData.get(server);
-		int logged = LOG.errors().size();
+		// The line names no id, but it is the only one that says "saved handbook progress", and the swap lasts one tick.
+		LogCapture log = LogCapture.start("saved handbook progress");
 		// Everything runs inside this one tick, so no other test sees the swapped data.
 		server.getDataStorage().set(HandbookProgressData.TYPE, unreadable);
 		try {
@@ -450,8 +443,8 @@ public class HandbookCoreTest {
 		} finally {
 			server.getDataStorage().set(HandbookProgressData.TYPE, original);
 		}
-		if (LOG.unreadableSince(logged).size() != 1) {
-			throw helper.assertionException("unreadable progress is logged once, not %s times: %s", LOG.unreadableSince(logged).size(), LOG.unreadableSince(logged));
+		if (log.errors().size() != 1) {
+			throw helper.assertionException("unreadable progress is logged once, not %s times: %s", log.errors().size(), log.errors());
 		}
 		if (!future.equals(HandbookProgressData.CODEC.encodeStart(NbtOps.INSTANCE, unreadable).getOrThrow())) {
 			throw helper.assertionException("unreadable progress must round-trip unchanged");
@@ -466,7 +459,7 @@ public class HandbookCoreTest {
 		CompoundTag future = futureVersion();
 		CharterData unreadable = CharterData.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow();
 		CharterData original = CharterData.get(server);
-		int logged = LOG.errors().size();
+		LogCapture log = LogCapture.start("saved charters");
 		server.getDataStorage().set(CharterData.TYPE, unreadable);
 		try {
 			for (int round = 0; round < 3; round++) {
@@ -480,8 +473,8 @@ public class HandbookCoreTest {
 		} finally {
 			server.getDataStorage().set(CharterData.TYPE, original);
 		}
-		if (LOG.unreadableSince(logged).size() != 1) {
-			throw helper.assertionException("unreadable charters are logged once, not %s times: %s", LOG.unreadableSince(logged).size(), LOG.unreadableSince(logged));
+		if (log.errors().size() != 1) {
+			throw helper.assertionException("unreadable charters are logged once, not %s times: %s", log.errors().size(), log.errors());
 		}
 		if (!future.equals(CharterData.CODEC.encodeStart(NbtOps.INSTANCE, unreadable).getOrThrow())) {
 			throw helper.assertionException("unreadable charters must round-trip unchanged");
@@ -677,38 +670,6 @@ public class HandbookCoreTest {
 			}
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
-		}
-	}
-
-	/** Collects the ERROR lines of the mod's logger while attached. */
-	private static final class CapturingAppender extends AbstractAppender {
-		private final List<String> errors = new CopyOnWriteArrayList<>();
-
-		private CapturingAppender() {
-			super("handbook-core-test", null, null, true, Property.EMPTY_ARRAY);
-		}
-
-		static CapturingAppender attach() {
-			CapturingAppender appender = new CapturingAppender();
-			appender.start();
-			((org.apache.logging.log4j.core.Logger) LogManager.getLogger(DeepCharter.MOD_ID)).addAppender(appender);
-			return appender;
-		}
-
-		List<String> errors() {
-			return errors;
-		}
-
-		/** The ERROR lines about unreadable saved data that were logged after the first {@code start} lines. */
-		List<String> unreadableSince(int start) {
-			return errors.subList(start, errors.size()).stream().filter(line -> line.contains("cannot read")).toList();
-		}
-
-		@Override
-		public void append(LogEvent event) {
-			if (event.getLevel() == Level.ERROR) {
-				errors.add(event.getMessage().getFormattedMessage());
-			}
 		}
 	}
 
