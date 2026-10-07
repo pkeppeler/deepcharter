@@ -81,7 +81,7 @@ The Employer's factory complex in the Furnace. Its central bronze figure stands 
 _Avoid_: factory, Refinery, Great Work
 
 **Sleeper**:
-The vast creature whose body is the deep. Never named, gendered or explained in player-facing text.
+The vast creature whose body is the deep. Player-facing text only hints at it: never a name, a gender or an explanation.
 _Avoid_: Mother, god, Leviathan
 
 **Motherload**:
@@ -217,8 +217,8 @@ The night in Colony Year 23 when the Employer called every worker down and Prosp
 _Avoid_: the incident, the evacuation
 
 **Retained**:
-A miner rebuilt after death so many times that they went hollow and lampless, and still work in the deep.
-_Avoid_: zombie, undead, Long-Term Staff (the Employer's euphemism)
+A miner rebuilt after death so many times that they went hollow and lampless, and still work in the deep. The word comes from the Employer's own records.
+_Avoid_: zombie, undead, Long-Term Staff (the Employer's older euphemism)
 
 **Continuity Event**:
 The Employer's name for a death and the rebuild that follows it.
@@ -230,7 +230,7 @@ _Avoid_: echo, recording
 
 **Controlling Interest**:
 The deed the final boss offers the charter. Signing it or burning it ends the charter's story.
-_Avoid_: deed, contract
+_Avoid_: contract (means the Employment Contract)
 
 **Renunciation**:
 Throwing the Controlling Interest into the Furnace. The true ending: it kills the final boss and costs the charter its whole account.

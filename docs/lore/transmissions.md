@@ -25,7 +25,7 @@ The full script, settled 2026-10-07. Canon and context: [LORE.md](../LORE.md). T
 >
 > We're so glad you're here. Have a productive shift!
 >
-> — Joy, Personnel, on behalf of Mr. H. Colom, Chairman
+> — Joy, Personnel, on behalf of H. Colom, Chairman
 
 **T02 · Event: fuel pump repaired · Personnel · B1**
 > The fuel pump is back online, which means YOU are officially in business! A signing bonus has been credited to your charter. Fuel is the lifeblood of every Colom pod, so fill up often. Have a productive shift!
@@ -50,7 +50,7 @@ The full script, settled 2026-10-07. Canon and context: [LORE.md](../LORE.md). T
 > Your first descent! Personnel is proud of you. A first-descent bonus has been credited to your account. Every foot down is a foot closer to retirement!
 
 **T08 · L1 Stone Benches · Hal** (`▌INCOMING — POD MOLE-0117`)
-> Well, I'll be. Another signal down here. Thought I was the last one working this rock. Name's Hal. Hal Brennan. Twenty-two years on the Claim, and Friday I'm done. If you need anything, sing out. I'm usually somewhere below you.
+> Well, I'll be. Somebody on the line. Haven't heard a new voice down here in years. Name's Hal. Hal Brennan. Twenty-two years on the Claim, and Friday I'm done. If you need anything, sing out. I'm usually somewhere below you.
 
 **T09 · L1 Stone Benches, lower half · Personnel · B2**
 > Look at you go! [CHARTER] is already outpacing projections. A productivity bonus has been credited. Personnel would like to remind you that unexplained sounds in the Claim are almost always settling rock.
@@ -63,13 +63,13 @@ The full script, settled 2026-10-07. Canon and context: [LORE.md](../LORE.md). T
 > `▌SIGNAL LOST`
 
 **T11 · Breach 1→2 · Personnel · B2**
-> Congratulations on your first breach! You're now working the Old Workings, Prosperity's original mine levels. Our sensors report some seismic activity at this depth, along with a little radio interference. Any garbled transmissions you receive are atmospheric. Please disregard them!
+> Congratulations on your first breach! You're now working the Old Workings, Prosperity's original mine levels. The Workings can be a little noisy: you may feel the odd tremor and hear some crosstalk on your radio. Crosstalk is a known fault on the Company side. No action is required!
 
 **T12 · L2 Upper Levels · relay** (`POD MOLE-0388 — LOOP 14,002`)
 > …all hands, they said. All hands to Head Office, triple pay. Nobody's ever been to Head Office. Benny's gone ahead without his lamp. Why would he leave his lamp. Why are we all going down.
 
 **T13 · L2 Upper Levels · Hal**
-> Kid, piece of advice. If you stop to rest down here, don't leave her dark. Keep the lights on. Things come to dark pods. …Listen to me, an old man fussing. Friday I'm done.
+> Here's something nobody tells you, kid. If you stop to rest down here, don't leave her dark. Keep the lights on. Things come to dark pods. …Listen to me, an old man fussing. Friday I'm done.
 
 **T14 · L2 Shift Change · Personnel · B2**
 > You've found Shift Change, our historic underground rail hub! It's a little dusty, but it's a proud part of Prosperity's heritage. Please do not punch any time cards. All shifts are currently accounted for.
@@ -100,7 +100,7 @@ The full script, settled 2026-10-07. Canon and context: [LORE.md](../LORE.md). T
 
 *(The Lamp & Pick is a burned-out shell. Only the bandstand's footings remain.)*
 
-**T21 · L3 Spore Fields · relay** (`POD BADGER-0031 — LOOP 14,720`)
+**T21 · L3 Spore Fields · relay** (`POD BADGER-0031 — LOOP 15,157`)
 > We're not coming up. You can tell Personnel we quit. It's quiet down here, and nobody's counting anything. It doesn't hurt. It doesn't hurt at all.
 
 **T22 · L3 the Quiet · no sender**
@@ -131,24 +131,30 @@ The full script, settled 2026-10-07. Canon and context: [LORE.md](../LORE.md). T
 **T28 · L4 the Basin · Personnel**
 > Your charter's Continuity Events to date: [DEATHS]. Thank you for your continued service! Remember, Continuity Events are recorded for training purposes. Recorded for training— recorded for training— recorded for training purposes.
 
-**T29 · Breach 4→5 · Personnel · B4**
+**T29 · Breach 4→5 · Personnel · B4** (the first echo)
+> `▌INCOMING — PERSONNEL, H. COLOM & CO.`
+> `▌ECHO — .OC & MOLOC .H ,LENNOSREP`
+>
 > Welcome to the Lattice! Staff who reach Layer 5 are eligible for our Senior Personnel—
 >
 > `▌TEMPLATE ENDS`
 
-**T30 · L5 Geode Fields · Personnel · B4** (the first echo)
+**T30 · L5 Geode Fields · Personnel · B4**
 > `▌INCOMING — PERSONNEL, H. COLOM & CO.`
 > `▌ECHO — .OC & MOLOC .H ,LENNOSREP`
 >
 > Beautiful, isn't it? A friendly reminder that drilling noise carries a long way in the Lattice. Please work quietly. The geology appreciates it!
 
 **T31 · L5 Singing Halls · many sources**
-> …please disregard… …turn your lamp on… …all hands to Head Office… …hold the light… …Friday… …please disregard…
+> …no action is required… …turn your lamp on… …all hands to Head Office… …hold the light… …Friday… …no action is required…
 
 **T32 · L5 the Switchboard · many sources, in Hal's voice**
 > [CREW]? [CREW]? That you, kids? I can hear you all the way down here. Everybody can hear you down here.
 
 **T33 · L5 the Switchboard · Personnel, Template 0**
+> `▌INCOMING — PERSONNEL, TEMPLATE 0`
+> `▌ECHO — 0 ETALPMET ,LENNOSREP`
+>
 > This is Joy. This one isn't a template. The Chairman says after Friday I'll be unavailable, so I've spent the week recording the rest: the welcomes, the bonuses, the congratulations. I'm sorry about all of them. Every bonus is bait. Whatever he offers you at the bottom, don't sign it. Keep your lamp lit. Oh, it's still recording, isn't it. I'm—
 >
 > `▌END OF TEMPLATE`
@@ -230,6 +236,9 @@ The full script, settled 2026-10-07. Canon and context: [LORE.md](../LORE.md). T
 > THERE IS NO ONE IN THE CHAIR. THERE IS ONLY THE CHAIR.
 
 **T52 · Event: Head Office broken; the Controlling Interest drops · the Chairman**
+
+*(The sender reads THE CHAIRMAN again: the mask is talking, and Moloch through it.)*
+
 > …Every notice said turn back. You came anyway. That is what we look for in a Chairman. The position is yours. Take it. All of it. The money, the pods, the men in the lines. Sign, and none of it will ever stop.
 
 **T53a · Event: Controlling Interest signed**

@@ -22,7 +22,7 @@ A Note is found in the world. When any member of a charter picks one up, it goes
 > Thank you for your years of service!
 
 **N03 · The chapel visitors' book, last entry** · the chapel
-> CY 23, Friday. For Hal, on his last day. For everyone on the night shift.
+> CY 23, Friday. For Hal, on his last day. For everyone on the Night Shift.
 
 *(Unsigned. The handwriting matches the margin notes.)*
 
@@ -61,7 +61,7 @@ A Note is found in the world. When any member of a charter picks one up, it goes
 > IN: 23:00 FRI
 > OUT: ——
 
-*(Every card in the rack reads IN 23:00 FRI. None reads OUT.)*
+*(Every card in the rack but one reads IN 23:00 FRI. None reads OUT. The one unpunched card is ACHTERBERG, R.)*
 
 **N10 · Ines's log** · Prospector's Run, in the Prospector
 > CY 19. We broke through below the Workings today. Caves full of light, Tomas, light growing out of the walls. Best day of my life.
@@ -69,6 +69,8 @@ A Note is found in the world. When any member of a charter picks one up, it goes
 > CY 19, later. Tomas went back down alone. When he came up he'd left his lamp behind. He says he doesn't need it. He says it's brighter without.
 >
 > CY 20. He doesn't sleep. He walks the rail line at night with no lamp, all the way to the end and back.
+>
+> CY 20. The Badger boys quit today and went down our shaft. Pell says it's quieter down there than anywhere up here.
 >
 > CY 20. He didn't come back from the rail line. I'm leaving the Prospector at the end of it with the lights on, so he can find her. I'm taking our old shaft down on foot to find him.
 

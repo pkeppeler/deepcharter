@@ -140,6 +140,7 @@ The **Employee Handbook** is a company-issued onboarding manual.
 - The official chapters end with "Further documentation is restricted to Senior Personnel."
 - From then on the back section fills only with **Notes** found in the world: wreck logs, torn pages, miners' scribbles.
 - A Note picked up by anyone in a charter goes into every member's handbook, unread for each person.
+- Revisions may also add stamped pages: a disciplinary notice, the Chairmen's Book or the Ledger. They carry no rules ([lore/handbook.md](lore/handbook.md#revisions)).
 
 ### Directives and progress
 
@@ -328,7 +329,7 @@ Original lore with the original game's shape (a cheerful employer, vanishing min
 | Act | Layers | Beats |
 |-----|--------|-------|
 | 1 | 1–2 | The employer's cheerful Personnel pays bonuses while you repair Prosperity; the first garbled relays; something moving in the dark. |
-| 2 | 3–5 | Wrecks and relays of the crews lost on the Night Shift; the Employment Contract's fine print is unredacted; the Chairman's name echoes backwards in the Lattice. |
+| 2 | 3–5 | Wrecks and relays of the vanished crews; the Employment Contract's fine print is unredacted; the Chairman's name echoes backwards in the Lattice. |
 | 3 | 6–7 | The Chairman takes over the charter's account: orders to turn back, every threat with a receipt; THE EYES. |
 | Finale | 8 | Head Office, the reveal, the two-phase boss and the choice. |
 

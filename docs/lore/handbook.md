@@ -195,7 +195,7 @@ Entries in many hands, oldest first. Each hand is smaller and plainer than the o
 
 > *(A. Fell, CY 23)* The Night Shift is called. Four hundred pairs of hands. It will not be enough. It is never enough.
 
-> *(A. Fell, CY 61)* It was never ore. It grows it, the way a body grows bone. I have spent sixty-one years feeding the fire, and the fire has given me nothing back. Below the Ramp, older mouths than mine are eating what I could never reach. If you are reading this, you have done what none of us would. Further documentation is restricted to—
+> *(A. Fell, CY 61)* It was never ore. Ore does not grow back. I have spent sixty-one years feeding the fire, and the fire has given me nothing back. Below the Ramp, older mouths than mine are eating what I could never reach. If you are reading this, you have done what none of us would. Further documentation is restricted to—
 >
 > *(the rest of the page is burned away)*
 

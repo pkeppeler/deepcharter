@@ -38,11 +38,11 @@ H. Colom & Company has reopened Prosperity, a mining colony that emptied in one 
 2. **The lure never goes dark.** No story beat ever blocks selling, buying or upgrading. The Chairman's threats come with a receipt. This protects pillar 1.
 3. The handbook can change its tone, never its rules.
 4. Faith is quiet and unnamed. No denomination, no quoted scripture, no sermons. It shows in the miners' private lives: a candle, a hymn, a prayer card.
-5. The thing at the bottom is never named, gendered or explained in game text.
+5. The thing at the bottom is never named, gendered or explained in game text. The game hints; it never explains.
 6. **No children in the deep.** In scripture, Moloch is the idol children were sacrificed to. We keep his shape and his hunger and nothing else: no child characters, victims or sacrifice imagery. Miners may mention their families.
 7. **No gore** (the default; the user may lift it). Horror comes from wrongness and absence: an empty cab, a loop counter, a punch clock still ticking.
 8. Every story change after the finale is presentation for that charter only, never a world edit.
-9. Homage, not copy: no line from the original game, no Natas, no Mars.
+9. Homage, not copy. Beats may echo the original game (a retiring miner, an altimeter's rating, a strike that goes wrong), but no line or distinctive phrase is reused. No Natas, no Mars.
 
 ## 3. The spine
 
@@ -133,14 +133,13 @@ Dates are Colony Years (CY). Now is CY 61.
 - **Before memory:** the Sleeper sleeps. Moloch fastens on and burrows toward the heart.
 - **Long before the colony:** the Company. Chairmen come and go, every one a man who signed.
 - **CY 0:** Survey One, a Behemoth under Commander Augustin Fell, sinks the Conduit through seven layers to the Furnace. Fell goes ahead alone "to interview for a position" and signs. Prosperity is founded the same year.
-- **CY 0–19, the Boom:** 400 miners work layers 1–2. Death is an inconvenience: the Continuity Office rebuilds you. Veterans rebuilt too many times go quiet and stop using their lamps. Personnel calls them "Long-Term Staff"; the miners call them the Retained.
+- **CY 0–19, the Boom:** 400 miners work layers 1–2. Death is an inconvenience: the Continuity Office rebuilds you. Veterans rebuilt too many times go quiet and stop using their lamps. Personnel's leaflets call them "Long-Term Staff"; the Continuity Office's records mark them "retained", and the miners took that word: the Retained.
 - **CY 1:** Hal Brennan starts on the Claim.
 - **CY 3:** Roz Achterberg arrives.
 - **CY 19:** Ines and Tomas Kell take the Prospector below the Workings and drill a shaft into the Hollows. Tomas comes back without his lamp.
-- **CY 20:** Ines leaves the Prospector at the end of the Workings' rail line, lights on for Tomas, and walks down their old shaft after him. Neither comes back.
-- **CY 21:** the Badger's three-man crew quits and walks down into the Hollows.
-- **CY 22:** shift steward Roz Achterberg follows the Conduit and finds that it goes *down*. She organises a walkout for Saturday.
-- **CY 23, Friday, the Night Shift.** It is Hal's last day; his send-off is booked at the Lamp & Pick. At 23:00 the Company calls all hands to Head Office at triple pay.
+- **CY 20:** the Badger's three-man crew quits and walks down the Kells' shaft into the Hollows. Later that year, Ines leaves the Prospector at the end of the Workings' rail line, lights on for Tomas, and walks down the same shaft after him. None of them comes back.
+- **CY 22:** shift steward Roz Achterberg follows the Conduit and finds that it goes *down*. She organises a walkout.
+- **CY 23, Friday, the Night Shift,** the night before the walkout. It is Hal's last day; his send-off is booked at the Lamp & Pick. At 23:00 the Company calls all hands to Head Office at triple pay.
   - The Retained walk down.
   - The living go in nine convoys. Convoy Nine drowns in layer 4.
   - Hal takes his Mole down after Convoy Nine, which his wife, Mags Okoro, is leading. His pod goes dark at Black Water, and he is rebuilt into the dark.
@@ -165,9 +164,9 @@ Dates are Colony Years (CY). Now is CY 61.
 
 - **Joy, Personnel** (acts 1–2). Every cheerful message and every bonus is one of her pre-recorded templates, with the system filling in your name. In act 2 the templates misfire. In the Lattice you hear **Template 0**, the one she recorded for herself. She is gone; her voice greets you at Head Office anyway.
 - **H. Colom, the Chairman** (act 3 and the finale). Augustin Fell under the mask. Victorian gravitas, treats you as his property, ridiculous underneath. His corporate words curdle as he talks: *"…consumed. Concluded."*
-- **Hal Brennan, MOLE-0117.** A friendly old hand who gives tips and retires on Friday after "twenty-two years." His last Friday was the Night Shift, when he went down after his wife's convoy. He is Retained, still on the radio, and doesn't know. In layer 4 you find his Mole, its last log entry dated that Friday.
+- **Hal Brennan, MOLE-0117.** A friendly old hand who gives tips and retires on Friday after "twenty-two years." His last Friday was the Night Shift, when he went down after his wife's convoy. He is Retained, still on the radio under his pod's call sign though the pod lies in layer 4, and he doesn't know. In layer 4 you find his Mole, its last log entry dated that Friday.
 - **Ines and Tomas Kell, the Prospector.** Ines's relay begs Tomas to turn his lamp on; her last Note is in the Hollows: *"It's quiet here. I'm going to stay a little."* The lampless figure on layer 2's rail line might be Tomas. The game never confirms it.
-- **The Badger's crew.** Abe Pell, Sonny Orrin and Kit Dace, three drillers who quit in CY 21 and walked down into the Hollows. Their wreck has grown into a shrine.
+- **The Badger's crew.** Abe Pell, Sonny Orrin and Kit Dace, three drillers who quit in CY 20 and walked down into the Hollows. Their wreck has grown into a shrine.
 - **Convoy Nine.** The drowned procession in layer 4, led by Captain Mags Okoro, Hal's wife, in HAULER-0009. Their beacons loop an original miners' hymn, their lamps are still lit under the water, and their faces through the glass are peaceful. *"Water's warm. Doesn't feel like drowning. Feels like being held."*
 - **Roz Achterberg, "—R."** Shift steward, organiser of the walkout, the one who refused the Night Shift. Her margin notes are in every handbook. Her Notes run from layer 3 to the Furnace; her Crawler is a wreck at layer 6's Checkpoint; she sends act-3 transmissions as "Source unknown." In the Furnace, hers is the one Retained lamp still lit. Her thesis, which is the game's: *"He can't take what you won't give him."*
 - **Benny.** A miner who went ahead without his lamp on the Night Shift. Hal still thinks Benny is buying at his send-off. Mentioned, never met.
@@ -191,7 +190,7 @@ Altimeter tricks are presentation only; the real depth is always what the game u
 Zones: **Topsoil Claims → Stone Benches → Deep Claim.**
 
 - Hand-dug first-generation shafts, lunch pails, candle niches with stubs and prayer cards. The Conduit's casing runs down beside the colony.
-- Personnel pays milestone bonuses. Hal's first transmission: *"Another signal down here."*
+- Personnel pays milestone bonuses. Hal's first transmission: *"Somebody on the line."*
 - Near the floor, a two-second fragment: *"…don't look at the walls when it goes quiet…"*
 - Story beats: the bootstrap, the colony's first repairs, a world that feels merely abandoned.
 
@@ -200,9 +199,9 @@ Zones: **Topsoil Claims → Stone Benches → Deep Claim.**
 Zones: **Upper Levels → Shift Change → Prospector's Run.**
 
 - **Upper Levels:** collapsed galleries, timber props, ore carts loaded and never hauled.
-- **Shift Change:** the colony's underground rail hub. A punch clock still ticking; 400 time cards, every one punched IN at 23:00 on the Friday, none OUT.
+- **Shift Change:** the colony's underground rail hub. A punch clock still ticking; 400 time cards: all but one punched IN at 23:00 on the Friday, none OUT. The unpunched card is Roz's.
 - **Prospector's Run:** the rail line to the breach, the Prospector wreck with one light still on, and **something moving in the dark**: a lampless figure walking the rails. It never attacks. It never stops.
-- Relays with loop counters. Personnel: *"Any garbled transmissions you receive are atmospheric. Please disregard them!"*
+- Relays with loop counters. Personnel: *"Crosstalk is a known fault on the Company side. No action is required!"*
 - The handbook ends here: *"Further documentation is restricted to Senior Personnel,"* and Roz's margin: *"Nobody's ever been promoted."*
 - Altimeter: the digits flicker now and then.
 - Catalyst (proposal): Cicatrium, to restore the Prospector.
@@ -264,8 +263,8 @@ Zones: **Rib Vaults → Old Furnaces → the Watching Wall → Floor of Bones.**
 
 Zones: **Intake → the Works → the Boardroom.** The Ramp lies below.
 
-- **Intake:** the Conduit pours ore into the fire. The Retained work the lines under a sign: *Smile! You're on Company premises.* Hal is among them, with his radio. Roz's lamp is still lit, third line from the fire.
-- **The Works:** assembly lines where every chassis you ever salvaged was built, and the bronze figure at the centre of Head Office, nearly finished.
+- **Intake:** the Conduit pours ore into the fire. The Retained work the lines under a sign: *Smile! You're on Company premises.* Hal is among them, with his radio.
+- **The Works:** assembly lines where every chassis you ever salvaged was built, and the bronze figure at the centre of Head Office, nearly finished. Roz works the third line from the fire, her lamp still lit.
 - **The Boardroom:** a long table at the edge of the fire.
 - Joy's last template welcomes you to Head Office. Handbook Rev. 4.
 - Altimeter: YOU ARE ON COMPANY PREMISES.
@@ -275,9 +274,9 @@ Zones: **Intake → the Works → the Boardroom.** The Ramp lies below.
 
 Combat details belong to the creatures session ([#13](https://github.com/pkeppeler/deepcharter/issues/13)); this is the story's shape.
 
-1. **Phase 1, the Chairman.** Fell in a frock coat and the smiling bronze mask, hands always open. The sender field reverses: H. COLOM → MOLOCH. He is pompous and ridiculous, and mocking him is the right response.
+1. **Phase 1, the Chairman.** Fell in a frock coat and the smiling bronze mask, hands always open. The sender field's letters slide into MOLOCH. He is pompous and ridiculous, and mocking him is the right response.
 2. **Phase 2, Head Office stands up.** The bronze figure rises, built from what *this charter* sold, so each charter fights its own. You break it with drill and charge, but you cannot kill it: everything it is made of was given to it.
-3. **The offer.** The mask crawls out of the wreck, small and hollow, with Moloch speaking through it: *"Every notice said turn back. You came anyway. That is what we look for in a Chairman. Take it. All of it."* The **Controlling Interest** drops: a physical deed. The wreck of Head Office, the richest haul in the game, is part of what is offered.
+3. **The offer.** The mask crawls out of the wreck, small and hollow, with Moloch speaking through it: *"…Every notice said turn back. You came anyway. That is what we look for in a Chairman. The position is yours. Take it. All of it."* The **Controlling Interest** drops: a physical deed. The wreck of Head Office, the richest haul in the game, is part of what is offered.
 4. **Signing** (the Director only, at the Boardroom table). Final and permanent.
    - The Director becomes the Chairman. The deed binds to him, impossible to lose, and his suit lamp goes dark for good. Both follow him even if he leaves the charter.
    - The wreck's wealth and a recurring dividend are credited, from the labour of the Retained, who never rest. Every dividend notice asks for more.
@@ -287,7 +286,7 @@ Combat details belong to the creatures session ([#13](https://github.com/pkeppel
 5. **Renunciation** (anyone in the charter holding the deed throws it into the Furnace). The true ending, and the only thing that kills him.
    - An idol given nothing cannot live. The mask burns in its own fire, and the wreck of Head Office slumps into it.
    - Every coin in the charter's account goes with it. Serial numbers burn off every pod and component: the parts read UNNUMBERED, and they are yours. (Binding to the charter is unchanged; the rules never change.)
-   - The Retained lay down their tools, and their lamps go out one by one: rest. Hal: *"Is it Friday? Feels like Friday."* His channel closes after 38 years.
+   - The Retained lay down their tools and sit down where they stand, one by one: rest. Hal: *"Is it Friday? Feels like Friday."* His channel closes after 38 years.
    - Silence. Then one heartbeat that knocks everyone flat.
    - The Boardroom floor cracks. Beneath it an eye the size of the arena opens and looks at you. It closes. No transmission covers this moment.
    - Light rises from the crack, and every crew member receives an **Unnumbered Lamp**: no serial number, nobody's property, and it never goes out. It belongs to the player, not the charter.
