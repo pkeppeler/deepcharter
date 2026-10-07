@@ -10,5 +10,7 @@ public final class ColonyInit {
 
 	public static void init() {
 		ColonyRegistry.register();
+		ColonyBuilder.init();
+		Conduit.init();
 	}
 }

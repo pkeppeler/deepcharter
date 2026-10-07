@@ -4,6 +4,7 @@
     "deepcharter:fuel_pump",
     "deepcharter:ore_processor",
     "deepcharter:upgrade_terminal",
-    "deepcharter:repair_station"
+    "deepcharter:repair_station",
+    "deepcharter:contract_terminal"
   ]
 }

@@ -41,6 +41,7 @@
 			"io.github.pkeppeler.deepcharter.test.FuelPumpTest",
 			"io.github.pkeppeler.deepcharter.test.RepairStationTest",
 			"io.github.pkeppeler.deepcharter.test.UpgradeTerminalTest",
+			"io.github.pkeppeler.deepcharter.test.ContractTerminalTest",
 			"io.github.pkeppeler.deepcharter.test.ScannerTiersTest",
 			"io.github.pkeppeler.deepcharter.test.PodLightsTest",
 			"io.github.pkeppeler.deepcharter.test.TowingTest",
