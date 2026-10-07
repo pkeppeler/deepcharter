@@ -162,6 +162,18 @@ public class PodEntity extends Entity {
 		return false;
 	}
 
+	/** The server moves the pod from the pilot's input (PodMovement); the default would trust a player pilot's client. */
+	@Override
+	public boolean isClientAuthoritative() {
+		return false;
+	}
+
+	/** The pilot's own client must follow the server's pod too, not simulate it (the default trusts the local pilot). */
+	@Override
+	protected boolean isLocalClientAuthoritative() {
+		return false;
+	}
+
 	@Override
 	public InteractionResult interact(Player player, InteractionHand hand, Vec3 location) {
 		if (player.isSecondaryUseActive() || !canAddPassenger(player)) {
