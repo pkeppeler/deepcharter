@@ -1,6 +1,12 @@
+import contextlib
+import io
+import json
+import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -9,23 +15,24 @@ import roadmap as r  # noqa: E402
 PR20 = r.Link(20, "https://x/pull/20")
 
 
-def fixture(handoff=("Handoff", "https://x/issues/14"), prs=()):
+def fixture(handoff=r.Handoff("Handoff", "https://x/issues/14"), prs=()):
     milestones = (
         r.Milestone(
             1,
             "M0 First",
             "First thing.",
             (
-                r.Issue(1, "Done [one]", "https://x/issues/1", True, (PR20,)),
-                r.Issue(2, "Todo", "https://x/issues/2", False, ()),
-                r.Issue(4, "Hand closed", "https://x/issues/4", True, ()),
+                r.Issue(1, "Done [one]", "https://x/issues/1", True, "COMPLETED", (PR20,)),
+                r.Issue(2, "Todo", "https://x/issues/2", False, None, ()),
+                r.Issue(4, "Hand closed", "https://x/issues/4", True, "COMPLETED", ()),
+                r.Issue(5, "Dropped", "https://x/issues/5", True, "NOT_PLANNED", ()),
             ),
         ),
         r.Milestone(
             2,
             "M1 Second",
             "Second.",
-            (r.Issue(3, "Waiting", "https://x/issues/3", False, ()),),
+            (r.Issue(3, "Waiting", "https://x/issues/3", False, None, ()),),
         ),
         r.Milestone(3, "M2 Nothing", "", ()),
     )
@@ -57,16 +64,19 @@ class RenderTest(unittest.TestCase):
         self.assertEqual(r.status_word(1, 3), "In progress")
         self.assertEqual(r.status_word(3, 3), "Done")
         out = render()
-        self.assertIn("Status: In progress (2 of 3 closed)", out)
+        self.assertIn("Status: In progress (3 of 4 closed)", out)
         self.assertIn("Status: Not started (0 of 1 closed)", out)
 
     def test_closed_issue_names_pr(self):
         out = render()
         self.assertIn(
-            "- [x] Closed by [PR #20](https://x/pull/20): [#1 Done \\[one\\]](https://x/issues/1)",
+            "- [x] Completed by [PR #20](https://x/pull/20): [#1 Done \\[one\\]](https://x/issues/1)",
             out,
         )
-        self.assertIn("- [x] Closed (no PR): [#4 Hand closed]", out)
+        self.assertIn("- [x] Completed (no PR): [#4 Hand closed]", out)
+
+    def test_not_planned_issue(self):
+        self.assertIn("- [x] Not planned (no PR): [#5 Dropped]", render())
 
     def test_open_issue(self):
         self.assertIn("- [ ] Open: [#2 Todo](https://x/issues/2)", render())
@@ -79,18 +89,24 @@ class RenderTest(unittest.TestCase):
 
     def test_in_flight_stages(self):
         prs = [
-            r.PullRequest(5, "A", "https://x/pull/5", False, ("stage:implemented",)),
-            r.PullRequest(6, "B", "https://x/pull/6", True, ("infra", "stage:reviewed")),
-            r.PullRequest(7, "C", "https://x/pull/7", False, ("stage:simplified",)),
-            r.PullRequest(8, "D", "https://x/pull/8", False, ("review-passed", "stage:simplified")),
-            r.PullRequest(9, "E", "https://x/pull/9", False, ()),
+            r.PullRequest(5, "A", "https://x/pull/5", False, ("stage:implemented",), ()),
+            r.PullRequest(6, "B", "https://x/pull/6", True, ("infra", "stage:reviewed"), ()),
+            r.PullRequest(8, "D", "https://x/pull/8", False, ("review-passed", "stage:simplified"), ()),
+            r.PullRequest(9, "E", "https://x/pull/9", False, (), ()),
         ]
         out = render(prs=prs)
         self.assertIn("Stage: Implemented, waiting for review", out)
         self.assertIn("(draft)\n  - Stage: Reviewed, waiting for simplify", out)
-        self.assertIn("Stage: Simplified, waiting for final review", out)
         self.assertIn("[PR #8 D](https://x/pull/8)\n  - Stage: Review passed, ready to merge", out)
         self.assertIn("Stage: No stage yet", out)
+
+    def test_simplified_stage(self):
+        pr = r.PullRequest(7, "C", "https://x/pull/7", False, ("stage:simplified",), ())
+        self.assertIn("Stage: Simplified, waiting for final review", render(prs=[pr]))
+
+    def test_pr_names_closed_issue(self):
+        pr = r.PullRequest(7, "C", "https://x/pull/7", False, (), (r.Link(15, "https://x/issues/15"),))
+        self.assertIn("  - Closes: [#15](https://x/issues/15)", render(prs=[pr]))
 
     def test_no_prs(self):
         self.assertIn("Nothing in flight.", render())
@@ -109,43 +125,181 @@ def _page(nodes, more=False):
     return {"pageInfo": {"hasNextPage": more}, "nodes": nodes}
 
 
-class ParseTest(unittest.TestCase):
-    def test_only_merged_prs_count_and_milestones_sorted(self):
-        closed_issue = {
-            "number": 1,
-            "title": "t",
-            "url": "u",
-            "state": "CLOSED",
-            "closedByPullRequestsReferences": {
-                "nodes": [
-                    {"number": 9, "url": "p9", "merged": False},
-                    {"number": 8, "url": "p8", "merged": True},
-                ]
-            },
-        }
-        repo = {
-            "milestones": _page(
-                [
-                    {"number": 2, "title": "b", "description": None, "issues": _page([])},
-                    {"number": 1, "title": "a", "description": "d", "issues": _page([closed_issue])},
-                ]
-            ),
-            "pullRequests": _page([]),
-            "handoff": {"nodes": []},
-        }
-        milestones, _, handoff = r.parse_github(repo)
-        self.assertEqual([m.number for m in milestones], [1, 2])
-        self.assertEqual(milestones[0].issues[0].closed_by, (r.Link(8, "p8"),))
-        self.assertIsNone(handoff)
+def _issue(**kw):
+    base = {
+        "number": 1,
+        "title": "t",
+        "url": "u",
+        "state": "CLOSED",
+        "stateReason": "COMPLETED",
+        "closedByPullRequestsReferences": _page(
+            [{"number": 9, "url": "p9", "merged": False}, {"number": 8, "url": "p8", "merged": True}]
+        ),
+    }
+    return {**base, **kw}
 
-    def test_truncated_page_fails_loud(self):
-        repo = {
-            "milestones": _page([], more=True),
-            "pullRequests": _page([]),
-            "handoff": {"nodes": []},
+
+def _pr(**kw):
+    base = {
+        "number": 5,
+        "title": "p",
+        "url": "pu",
+        "isDraft": False,
+        "labels": _page([{"name": "stage:simplified"}, {"name": "infra"}]),
+        "closingIssuesReferences": _page([{"number": 15, "url": "iu"}]),
+    }
+    return {**base, **kw}
+
+
+def _repo(**kw):
+    base = {
+        "milestones": _page(
+            [
+                {"number": 2, "title": "b", "description": None, "issues": _page([])},
+                {"number": 1, "title": "a", "description": "d", "issues": _page([_issue()])},
+            ]
+        ),
+        "pullRequests": _page([_pr()]),
+        "handoff": _page([{"number": 14, "title": "H", "url": "hu"}]),
+    }
+    return {**base, **kw}
+
+
+class ParseTest(unittest.TestCase):
+    def test_parses_records(self):
+        roadmap = r.parse_github(_repo(), ())
+        self.assertEqual([m.number for m in roadmap.milestones], [1, 2])
+        issue = roadmap.milestones[0].issues[0]
+        self.assertEqual(issue.closed_by, (r.Link(8, "p8"),))
+        self.assertEqual(issue.close_reason, "COMPLETED")
+        pr = roadmap.pull_requests[0]
+        self.assertEqual(pr.labels, ("infra", "stage:simplified"))
+        self.assertEqual(pr.closes, (r.Link(15, "iu"),))
+        self.assertEqual(roadmap.handoff, r.Handoff("H", "hu"))
+
+    def test_simplified_label_renders_as_simplified(self):
+        out = r.render(r.parse_github(_repo(), ()), "now")
+        self.assertIn("Stage: Simplified, waiting for final review", out)
+        self.assertIn("Closes: [#15](iu)", out)
+
+    def test_no_handoff(self):
+        self.assertIsNone(r.parse_github(_repo(handoff=_page([])), ()).handoff)
+
+    def test_two_handoffs_fail(self):
+        two = _page([{"number": 1, "title": "a", "url": "x"}, {"number": 2, "title": "b", "url": "y"}])
+        with self.assertRaisesRegex(r.RoadmapError, "found 2"):
+            r.parse_github(_repo(handoff=two), ())
+
+    def test_every_truncated_connection_fails_loud(self):
+        cases = {
+            "milestones": _repo(milestones=_page([], more=True)),
+            "open PRs": _repo(pullRequests=_page([], more=True)),
+            "handoff": _repo(handoff=_page([], more=True)),
+            "issues in milestone": _repo(
+                milestones=_page([{"number": 1, "title": "a", "description": "", "issues": _page([], more=True)}])
+            ),
+            "closing PRs": _repo(
+                milestones=_page(
+                    [
+                        {
+                            "number": 1,
+                            "title": "a",
+                            "description": "",
+                            "issues": _page(
+                                [_issue(closedByPullRequestsReferences=_page([], more=True))]
+                            ),
+                        }
+                    ]
+                )
+            ),
+            "labels": _repo(pullRequests=_page([_pr(labels=_page([], more=True))])),
+            "closing issues": _repo(pullRequests=_page([_pr(closingIssuesReferences=_page([], more=True))])),
         }
-        with self.assertRaises(r.RoadmapError):
-            r.parse_github(repo)
+        for what, repo in cases.items():
+            with self.subTest(what):
+                with self.assertRaisesRegex(r.RoadmapError, f"too many .*{what.split()[0]}"):
+                    r.parse_github(repo, ())
+
+
+def _completed(returncode=0, stdout="", stderr=""):
+    return subprocess.CompletedProcess([], returncode, stdout, stderr)
+
+
+class GhGraphqlTest(unittest.TestCase):
+    def call(self, **run_kw):
+        with mock.patch.object(r.subprocess, "run", **run_kw):
+            return r.gh_graphql("q", "o", "n")
+
+    def test_success(self):
+        out = self.call(return_value=_completed(stdout=json.dumps({"data": {"a": 1}})))
+        self.assertEqual(out, {"a": 1})
+
+    def test_nonzero_exit(self):
+        with self.assertRaisesRegex(r.RoadmapError, "gh failed \\(exit 4\\): boom"):
+            self.call(return_value=_completed(4, stderr="boom\n"))
+
+    def test_gh_missing(self):
+        with self.assertRaisesRegex(r.RoadmapError, "gh is not installed"):
+            self.call(side_effect=FileNotFoundError())
+
+    def test_invalid_json(self):
+        with self.assertRaisesRegex(r.RoadmapError, "invalid JSON"):
+            self.call(return_value=_completed(stdout="not json"))
+
+    def test_graphql_errors(self):
+        payload = json.dumps({"errors": [{"message": "bad"}], "data": None})
+        with self.assertRaisesRegex(r.RoadmapError, "GraphQL errors"):
+            self.call(return_value=_completed(stdout=payload))
+
+
+class MainTest(unittest.TestCase):
+    def run_main(self, argv):
+        err = io.StringIO()
+        with mock.patch.object(sys, "argv", argv), contextlib.redirect_stderr(err):
+            code = r.main()
+        return code, err.getvalue()
+
+    def test_gh_failure_exits_1_with_message(self):
+        with mock.patch.object(r.subprocess, "run", return_value=_completed(1, stderr="no auth")):
+            code, err = self.run_main(["roadmap.py"])
+        self.assertEqual(code, 1)
+        self.assertEqual(err, "roadmap.py: gh failed (exit 1): no auth\n")
+
+    def test_arguments_rejected(self):
+        code, err = self.run_main(["roadmap.py", "x"])
+        self.assertEqual(code, 2)
+        self.assertIn("takes no arguments", err)
+
+    def test_writes_output(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "ROADMAP.md"
+            stdout = json.dumps({"data": {"repository": _repo()}})
+            with (
+                mock.patch.object(r.subprocess, "run", return_value=_completed(stdout=stdout)),
+                mock.patch.object(r, "OUTPUT", out),
+                contextlib.redirect_stdout(io.StringIO()),
+            ):
+                code, _ = self.run_main(["roadmap.py"])
+            self.assertEqual(code, 0)
+            self.assertIn("Generated by tools/roadmap.py: do not edit", out.read_text(encoding="utf-8"))
+
+
+class ReadAdrsTest(unittest.TestCase):
+    def test_title_from_first_heading_skipping_front_matter(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "0002-b.md").write_text("---\nstatus: accepted\n---\n\n# Second\n\n# Other\n")
+            (Path(tmp) / "0001-a.md").write_text("# First\n")
+            (Path(tmp) / "notes.txt").write_text("# ignored\n")
+            self.assertEqual(
+                r.read_adrs(Path(tmp)),
+                (r.Doc("adr/0001-a.md", "First"), r.Doc("adr/0002-b.md", "Second")),
+            )
+
+    def test_missing_heading_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "0001-a.md").write_text("no heading\n")
+            with self.assertRaisesRegex(r.RoadmapError, "no '# ' heading"):
+                r.read_adrs(Path(tmp))
 
 
 if __name__ == "__main__":

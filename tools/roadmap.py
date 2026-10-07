@@ -1,11 +1,3 @@
-"""Build docs/ROADMAP.md from GitHub.
-
-Usage: python3 -I tools/roadmap.py   (no arguments, any cwd)
-
-Fetching (gh + local ADR files) is separate from render(), a pure function
-from plain data to a markdown string.
-"""
-
 from __future__ import annotations
 
 import json
@@ -30,6 +22,7 @@ STAGE_WORDS = {
     "review-passed": "Review passed, ready to merge",
 }
 NO_STAGE_WORD = "No stage yet"
+CLOSE_WORDS = {"COMPLETED": "Completed", "NOT_PLANNED": "Not planned"}
 PAGE = 100
 
 QUERY = """
@@ -42,8 +35,9 @@ query($owner: String!, $name: String!) {
         issues(first: %(page)d, orderBy: {field: CREATED_AT, direction: ASC}) {
           pageInfo { hasNextPage }
           nodes {
-            number title state url
+            number title state stateReason url
             closedByPullRequestsReferences(first: 10, includeClosedPrs: true) {
+              pageInfo { hasNextPage }
               nodes { number url merged }
             }
           }
@@ -52,9 +46,14 @@ query($owner: String!, $name: String!) {
     }
     pullRequests(states: OPEN, first: %(page)d, orderBy: {field: CREATED_AT, direction: ASC}) {
       pageInfo { hasNextPage }
-      nodes { number title url isDraft labels(first: 20) { nodes { name } } }
+      nodes {
+        number title url isDraft
+        labels(first: 20) { pageInfo { hasNextPage } nodes { name } }
+        closingIssuesReferences(first: 10) { pageInfo { hasNextPage } nodes { number url } }
+      }
     }
     handoff: issues(labels: ["%(handoff)s"], states: OPEN, first: 5) {
+      pageInfo { hasNextPage }
       nodes { number title url }
     }
   }
@@ -69,11 +68,18 @@ class Link:
 
 
 @dataclass(frozen=True)
+class Handoff:
+    title: str
+    url: str
+
+
+@dataclass(frozen=True)
 class Issue:
     number: int
     title: str
     url: str
     closed: bool
+    close_reason: str | None  # GitHub stateReason, only for closed issues
     closed_by: tuple[Link, ...]  # merged PRs only
 
 
@@ -92,6 +98,7 @@ class PullRequest:
     url: str
     draft: bool
     labels: tuple[str, ...]
+    closes: tuple[Link, ...]
 
 
 @dataclass(frozen=True)
@@ -104,7 +111,7 @@ class Doc:
 class Roadmap:
     milestones: tuple[Milestone, ...]  # in milestone-number order
     pull_requests: tuple[PullRequest, ...]
-    handoff: tuple[str, str] | None  # (title, url)
+    handoff: Handoff | None
     adrs: tuple[Doc, ...]
 
 
@@ -126,7 +133,6 @@ def status_word(closed: int, total: int) -> str:
 
 
 def _text(s: str) -> str:
-    """Make a title safe inside a markdown link label."""
     return " ".join(s.split()).replace("[", "\\[").replace("]", "\\]")
 
 
@@ -141,10 +147,11 @@ def _render_issue(issue: Issue) -> str:
     link = f"[#{issue.number} {_text(issue.title)}]({issue.url})"
     if not issue.closed:
         return f"- [ ] Open: {link}"
+    word = CLOSE_WORDS.get(issue.close_reason or "", "Closed")
     if issue.closed_by:
         prs = ", ".join(f"[PR #{p.number}]({p.url})" for p in issue.closed_by)
-        return f"- [x] Closed by {prs}: {link}"
-    return f"- [x] Closed (no PR): {link}"
+        return f"- [x] {word} by {prs}: {link}"
+    return f"- [x] {word} (no PR): {link}"
 
 
 def render(roadmap: Roadmap, updated: str) -> str:
@@ -159,8 +166,7 @@ def render(roadmap: Roadmap, updated: str) -> str:
         "",
     ]
     if roadmap.handoff:
-        title, url = roadmap.handoff
-        out.append(f"- Session handoff: [{_text(title)}]({url})")
+        out.append(f"- Session handoff: [{_text(roadmap.handoff.title)}]({roadmap.handoff.url})")
     else:
         out.append("- Session handoff: none found")
     out.append("- Spec: [SPEC.md](SPEC.md)")
@@ -173,6 +179,9 @@ def render(roadmap: Roadmap, updated: str) -> str:
             draft = " (draft)" if pr.draft else ""
             out.append(f"- [PR #{pr.number} {_text(pr.title)}]({pr.url}){draft}")
             out.append(f"  - Stage: {_stage(pr.labels)}")
+            if pr.closes:
+                issues = ", ".join(f"[#{i.number}]({i.url})" for i in pr.closes)
+                out.append(f"  - Closes: {issues}")
     else:
         out.append("Nothing in flight.")
     out += ["", "## Milestones"]
@@ -198,10 +207,8 @@ def render(roadmap: Roadmap, updated: str) -> str:
 # ----------------------------------------------------------------- fetching
 
 
-def gh_graphql(query: str, **variables: str) -> dict:
-    cmd = ["gh", "api", "graphql", "-f", f"query={query}"]
-    for key, value in variables.items():
-        cmd += ["-f", f"{key}={value}"]
+def gh_graphql(query: str, owner: str, name: str) -> dict:
+    cmd = ["gh", "api", "graphql", "-f", f"query={query}", "-f", f"owner={owner}", "-f", f"name={name}"]
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
     except FileNotFoundError:
@@ -219,47 +226,50 @@ def gh_graphql(query: str, **variables: str) -> dict:
 
 def _require_complete(connection: dict, what: str) -> None:
     if connection["pageInfo"]["hasNextPage"]:
-        raise RoadmapError(f"more than {PAGE} {what}: add pagination to tools/roadmap.py")
+        raise RoadmapError(f"too many {what}: add pagination to tools/roadmap.py")
 
 
-def parse_github(
-    repository: dict,
-) -> tuple[tuple[Milestone, ...], tuple[PullRequest, ...], tuple[str, str] | None]:
+def parse_github(repository: dict, adrs: tuple[Doc, ...]) -> Roadmap:
     _require_complete(repository["milestones"], "milestones")
     _require_complete(repository["pullRequests"], "open PRs")
+    _require_complete(repository["handoff"], f"open '{HANDOFF_LABEL}' issues")
     milestones = []
     for m in repository["milestones"]["nodes"]:
         _require_complete(m["issues"], f"issues in milestone {m['title']}")
-        issues = tuple(
-            Issue(
-                number=i["number"],
-                title=i["title"],
-                url=i["url"],
-                closed=i["state"] == "CLOSED",
-                closed_by=tuple(
-                    Link(p["number"], p["url"])
-                    for p in i["closedByPullRequestsReferences"]["nodes"]
-                    if p["merged"]
-                ),
+        issues = []
+        for i in m["issues"]["nodes"]:
+            closers = i["closedByPullRequestsReferences"]
+            _require_complete(closers, f"closing PRs for issue #{i['number']}")
+            issues.append(
+                Issue(
+                    number=i["number"],
+                    title=i["title"],
+                    url=i["url"],
+                    closed=i["state"] == "CLOSED",
+                    close_reason=i["stateReason"],
+                    closed_by=tuple(Link(p["number"], p["url"]) for p in closers["nodes"] if p["merged"]),
+                )
             )
-            for i in m["issues"]["nodes"]
+        milestones.append(Milestone(m["number"], m["title"], m["description"] or "", tuple(issues)))
+    prs = []
+    for p in repository["pullRequests"]["nodes"]:
+        _require_complete(p["labels"], f"labels on PR #{p['number']}")
+        _require_complete(p["closingIssuesReferences"], f"closing issues on PR #{p['number']}")
+        prs.append(
+            PullRequest(
+                number=p["number"],
+                title=p["title"],
+                url=p["url"],
+                draft=p["isDraft"],
+                labels=tuple(sorted(label["name"] for label in p["labels"]["nodes"])),
+                closes=tuple(Link(i["number"], i["url"]) for i in p["closingIssuesReferences"]["nodes"]),
+            )
         )
-        milestones.append(Milestone(m["number"], m["title"], m["description"] or "", issues))
-    prs = tuple(
-        PullRequest(
-            p["number"],
-            p["title"],
-            p["url"],
-            p["isDraft"],
-            tuple(sorted(label["name"] for label in p["labels"]["nodes"])),
-        )
-        for p in repository["pullRequests"]["nodes"]
-    )
     handoffs = repository["handoff"]["nodes"]
     if len(handoffs) > 1:
         raise RoadmapError(f"expected one open '{HANDOFF_LABEL}' issue, found {len(handoffs)}")
-    handoff = (handoffs[0]["title"], handoffs[0]["url"]) if handoffs else None
-    return tuple(sorted(milestones, key=lambda m: m.number)), prs, handoff
+    handoff = Handoff(handoffs[0]["title"], handoffs[0]["url"]) if handoffs else None
+    return Roadmap(tuple(sorted(milestones, key=lambda m: m.number)), tuple(prs), handoff, adrs)
 
 
 def read_adrs(adr_dir: Path) -> tuple[Doc, ...]:
@@ -274,9 +284,8 @@ def read_adrs(adr_dir: Path) -> tuple[Doc, ...]:
 
 def fetch() -> Roadmap:
     owner, name = REPO.split("/")
-    repository = gh_graphql(QUERY, owner=owner, name=name)["repository"]
-    milestones, prs, handoff = parse_github(repository)
-    return Roadmap(milestones, prs, handoff, read_adrs(ADR_DIR))
+    repository = gh_graphql(QUERY, owner, name)["repository"]
+    return parse_github(repository, read_adrs(ADR_DIR))
 
 
 def main() -> int:
