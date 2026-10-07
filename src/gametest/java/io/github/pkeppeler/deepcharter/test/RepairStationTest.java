@@ -12,6 +12,7 @@ import java.util.function.Consumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.GlobalPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
@@ -43,6 +44,8 @@ import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.colony.Colony;
+import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
@@ -523,10 +526,10 @@ public class RepairStationTest {
 		});
 	}
 
-	/** Worlds' spawn, where the teleporters land until the colony is built. */
+	/** Where the teleporters land: the colony's Continuity Office, or the world spawn when there is no colony. */
 	private static Vec3 spawn(MinecraftServer server) {
-		LevelData.RespawnData data = server.overworld().getRespawnData();
-		return Vec3.atBottomCenterOf(data.pos());
+		BlockPos at = Colony.respawnPoint(server).map(GlobalPos::pos).orElseGet(() -> server.overworld().getRespawnData().pos());
+		return Vec3.atBottomCenterOf(at);
 	}
 
 	/** The Mole has one seat and no other chassis exists, so a test that wants a second rider gives this pod a second seat. */
@@ -670,6 +673,30 @@ public class RepairStationTest {
 	}
 
 	@GameTest
+	public void aTeleportGoesToTheColonyEvenWhenTheWorldSpawnMovedAway(GameTestHelper helper) {
+		withStation(helper, station -> {
+			MinecraftServer server = helper.getLevel().getServer();
+			ServerLevel overworld = server.overworld();
+			BlockPos office = Colony.respawnPoint(server).orElseThrow().pos();
+			LevelData.RespawnData original = overworld.getRespawnData();
+			overworld.setRespawnData(LevelData.RespawnData.of(Level.OVERWORLD, new BlockPos(office.getX() + 5000, 64, office.getZ()), 0f, 0f));
+			try {
+				board(helper, station);
+				if (!useFromHotbar(helper, station, Consumable.MATTER_TRANSMITTER).consumesAction()) {
+					throw helper.assertionException("the transmitter should work");
+				}
+			} finally {
+				overworld.setRespawnData(original);
+			}
+			Vec3 pod = station.pod().position();
+			if (station.pod().level() != overworld || Math.hypot(pod.x - (office.getX() + 0.5), pod.z - (office.getZ() + 0.5)) > 1.0) {
+				throw helper.assertionException("the pod should be at the Continuity Office %s, is at %s in %s", office, pod, station.pod().level().dimension());
+			}
+			helper.succeed();
+		});
+	}
+
+	@GameTest
 	public void aTeleportToAnUnloadedChunkLoadsItAndArrives(GameTestHelper helper) {
 		withStation(helper, station -> {
 			ServerLevel overworld = helper.getLevel().getServer().overworld();
@@ -699,12 +726,15 @@ public class RepairStationTest {
 	}
 
 	/**
-	 * Runs {@code body} with the world spawn (where the teleporters land) moved to column {@code x}, 0 and its blocks changed, and
-	 * puts both back after. The body gets the first free block above the ground there.
+	 * Runs {@code body} with the colony unbuilt and the world spawn (where the teleporters then land) moved to column {@code x}, 0
+	 * and its blocks changed, and puts all three back after. The body gets the first free block above the ground there and must
+	 * not await.
 	 */
 	private static void withSpawnColumn(GameTestHelper helper, int x, boolean load, Consumer<BlockPos> body, BlockPos... touched) {
 		ServerLevel overworld = helper.getLevel().getServer().overworld();
 		LevelData.RespawnData original = overworld.getRespawnData();
+		ColonySite colony = ColonySite.get(overworld.getServer());
+		overworld.getServer().getDataStorage().set(ColonySite.TYPE, new ColonySite());
 		overworld.setRespawnData(LevelData.RespawnData.of(Level.OVERWORLD, new BlockPos(x, 64, 0), 0f, 0f));
 		if (load) {
 			overworld.getChunk(x >> 4, 0);
@@ -720,6 +750,7 @@ public class RepairStationTest {
 		} finally {
 			saved.forEach((at, state) -> overworld.setBlock(at, state, 3));
 			overworld.setRespawnData(original);
+			overworld.getServer().getDataStorage().set(ColonySite.TYPE, colony);
 		}
 	}
 

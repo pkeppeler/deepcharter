@@ -18,6 +18,7 @@ import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
+import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.pod.PodCargo;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
@@ -34,12 +35,14 @@ final class Teleports {
 	}
 
 	/**
-	 * Where the teleporters take a pod: the colony. The colony (#64) is not built yet, so this is the world spawn. When
-	 * {@code Colony.respawnPoint(server)} exists, it replaces the body of this method and nothing else.
+	 * Where the teleporters take a pod: the colony's respawn point, or the world spawn while the colony is not built or its
+	 * data is unreadable.
 	 */
 	static GlobalPos destination(MinecraftServer server) {
-		LevelData.RespawnData spawn = server.overworld().getRespawnData();
-		return GlobalPos.of(spawn.dimension(), spawn.pos());
+		return Colony.respawnPoint(server).orElseGet(() -> {
+			LevelData.RespawnData spawn = server.overworld().getRespawnData();
+			return GlobalPos.of(spawn.dimension(), spawn.pos());
+		});
 	}
 
 	/** Sends {@code pod}, at most {@code scatter} blocks from the destination. Empty when it went, or the reason it did not. */
