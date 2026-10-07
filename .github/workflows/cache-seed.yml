@@ -23,7 +23,13 @@ permissions:
   contents: read
 
 jobs:
-  seed:
+  # The job id must stay `build`: setup-gradle's Gradle User Home cache key includes
+  # the job id, and ci.yml's job is `build`. Its restore keys then match this entry
+  # as "most recent entry saved for the same OS and job id" (and, failing that, the
+  # same OS), falling back from the PR branch to main. See
+  # docs/setup-gradle.md, "Cache keys" and "Finding a matching cache entry", at
+  # gradle/actions 3f5f9ada. The workflow name differs, so the closer tier misses.
+  build:
     name: seed
     runs-on: ubuntu-latest
     timeout-minutes: 20

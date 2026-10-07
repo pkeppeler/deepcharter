@@ -7,10 +7,17 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, labeled, ready_for_review]
 
-# Label events get their own group, so a label added mid-run (the pipeline adds
-# stage labels constantly) cannot cancel a real client run on the same PR.
+# Runs that will do real work (same condition as the job's `if`) share one group
+# per PR, so a PR opened with `gameplay` set runs the client tests once, not once
+# for `opened` and once for `labeled`. Runs that will skip (any other label, added
+# mid-run by the pipeline) get a group of their own, so they cannot cancel a real run.
 concurrency:
-  group: client-${{ github.event.pull_request.number }}-${{ github.event.action == 'labeled' && 'label' || 'code' }}
+  group: >-
+    ${{ (!github.event.pull_request.draft
+    && contains(github.event.pull_request.labels.*.name, 'gameplay')
+    && (github.event.action != 'labeled' || github.event.label.name == 'gameplay'))
+    && format('client-{0}', github.event.pull_request.number)
+    || format('client-{0}-skip-{1}', github.event.pull_request.number, github.run_id) }}
   cancel-in-progress: true
 
 permissions:
