@@ -44,5 +44,18 @@ jobs:
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
           cache-read-only: false
-      - run: sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri
-      - run: xvfb-run -a ./gradlew runClientGameTest
+      # xvfb-run's default screen is 640x480x8, which has no GLX visual Mesa accepts.
+      # Software GL (llvmpipe) needs a 24-bit screen with the GLX extension.
+      - run: sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 mesa-utils
+      - name: Check software GL
+        run: xvfb-run -a -s "$XVFB_ARGS" glxinfo -B
+        timeout-minutes: 2
+        env:
+          XVFB_ARGS: -screen 0 1280x720x24 +extension GLX +render -noreset
+          LIBGL_ALWAYS_SOFTWARE: "1"
+      - name: Client GameTests
+        run: xvfb-run -a -s "$XVFB_ARGS" ./gradlew runClientGameTest
+        timeout-minutes: 15
+        env:
+          XVFB_ARGS: -screen 0 1280x720x24 +extension GLX +render -noreset
+          LIBGL_ALWAYS_SOFTWARE: "1"
