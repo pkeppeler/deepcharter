@@ -31,7 +31,7 @@ final class PaperButton extends Button {
 	@Override
 	protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		boolean lit = isHoveredOrFocused() && active;
-		graphics.fill(getX(), getY(), getRight(), getBottom(), selected || lit ? (lit && !selected ? HOVER_FILL : T.paperColor()) : T.paperEdgeColor());
+		graphics.fill(getX(), getY(), getRight(), getBottom(), selected ? T.paperColor() : lit ? HOVER_FILL : T.paperEdgeColor());
 		PaperDraw.border(graphics, getX(), getY(), getRight(), getBottom(), T.paperEdgeColor() | OPAQUE);
 		Font font = Minecraft.getInstance().font;
 		Component label = PaperDraw.ink(getMessage(), active ? T.inkColor() : DISABLED_INK);

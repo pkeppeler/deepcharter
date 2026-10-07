@@ -111,5 +111,4 @@ final class PaperDraw {
 		}
 		return lineY + font.lineHeight + 3;
 	}
-
 }
