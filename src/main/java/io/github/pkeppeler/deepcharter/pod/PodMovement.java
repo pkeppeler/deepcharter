@@ -68,7 +68,7 @@ public final class PodMovement {
 	 * Snap WASD to one horizontal axis, relative to where the pilot looks. Forward and back win over
 	 * strafing, so a diagonal press never moves diagonally. Null when no direction key is held.
 	 */
-	private static Direction driveDirection(Input input, float pilotYaw) {
+	static Direction driveDirection(Input input, float pilotYaw) {
 		Direction facing = Direction.fromYRot(pilotYaw);
 		if (input.forward() != input.backward()) {
 			return input.forward() ? facing : facing.getOpposite();

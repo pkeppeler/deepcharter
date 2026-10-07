@@ -27,6 +27,8 @@ public class PodEntity extends Entity {
 	// Not synced: M1 has only the Mole, and its hitbox comes from the entity type.
 	private Chassis chassis = Chassis.MOLE;
 	private final PodCargo cargo = new PodCargo();
+	// Neither saved nor synced: a loaded pod starts its slab over. Server only.
+	private PodDrill.Progress drillProgress;
 
 	public PodEntity(EntityType<? extends PodEntity> type, Level level) {
 		super(type, level);
@@ -38,6 +40,15 @@ public class PodEntity extends Entity {
 
 	public PodCargo cargo() {
 		return cargo;
+	}
+
+	/** The slab the drill is partway through, or null. Written only by PodDrill. */
+	PodDrill.Progress drillProgress() {
+		return drillProgress;
+	}
+
+	void setDrillProgress(PodDrill.Progress progress) {
+		drillProgress = progress;
 	}
 
 	public float hull() {
