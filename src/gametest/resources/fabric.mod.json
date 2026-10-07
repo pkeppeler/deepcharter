@@ -64,6 +64,7 @@
 			"io.github.pkeppeler.deepcharter.test.CharterCoreClientTest",
 			"io.github.pkeppeler.deepcharter.test.CrtUiKitClientTest",
 			"io.github.pkeppeler.deepcharter.test.OreCargoClientTest",
+			"io.github.pkeppeler.deepcharter.test.PodComponentsClientTest",
 			"io.github.pkeppeler.deepcharter.test.TerminalFrameworkClientTest",
 			"io.github.pkeppeler.deepcharter.test.TransmissionsClientTest",
 			"io.github.pkeppeler.deepcharter.test.HandbookScreenClientTest",
@@ -100,7 +101,9 @@
 			"io.github.pkeppeler.deepcharter.test.evidence.TowingScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.LayerStructuresScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.ProspectorChassisScenario",
+			"io.github.pkeppeler.deepcharter.test.evidence.OrePlacementScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.M2SliceScenario",
+			"io.github.pkeppeler.deepcharter.test.evidence.WreckScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.HandbookCoreScenario"
 		]
 	},

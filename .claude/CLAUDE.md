@@ -9,6 +9,7 @@ The user is hands-off on this project except for top-level calls. They don't rea
   - `reviewer` cycle 1, with fixes made
   - `simplifier`
   - `reviewer` cycle 2 passed
+- **No cap on review cycles.** If a Critical survives cycle 2, fix it and run the gate again until it passes. Never park a PR for the user because of a failed review cycle.
 - **Merge only when all checks are green.** GitHub Free gives a private repo no branch protection, so this rule is enforced by us, not by GitHub. Merge only through `tools/merge-pr.sh <n>`. It refuses and gives the reason.
 
 ## Ask the user only for

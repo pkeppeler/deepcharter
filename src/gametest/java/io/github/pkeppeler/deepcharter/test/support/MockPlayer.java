@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 
@@ -8,8 +10,10 @@ import io.netty.util.ReferenceCountUtil;
 
 import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import net.minecraft.network.protocol.common.ClientboundKeepAlivePacket;
 import net.minecraft.network.protocol.common.ServerboundKeepAlivePacket;
+import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -26,6 +30,8 @@ public final class MockPlayer {
 	private final Connection connection;
 	private final EmbeddedChannel channel;
 	private final BooleanSupplier ownerDone;
+	private final List<Component> actionBar = new ArrayList<>();
+	private boolean loaded;
 
 	MockPlayer(MinecraftServer server, ServerPlayer player, Connection connection, EmbeddedChannel channel,
 			BooleanSupplier ownerDone) {
@@ -34,6 +40,11 @@ public final class MockPlayer {
 		this.connection = connection;
 		this.channel = channel;
 		this.ownerDone = ownerDone;
+	}
+
+	/** Every action-bar message the server has sent this player so far, oldest first. */
+	public List<Component> actionBarMessages() {
+		return List.copyOf(actionBar);
 	}
 
 	public ServerPlayer player() {
@@ -55,10 +66,30 @@ public final class MockPlayer {
 		setInput(Input.EMPTY);
 	}
 
+	/**
+	 * Report the client as loaded, so the player can take damage, and confirm the dimension
+	 * change. A loaded mock re-confirms every dimension change each tick.
+	 */
+	public void markLoaded() {
+		loaded = true;
+		player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+		confirmDimensionChange();
+	}
+
+	/**
+	 * Confirm a change of dimension, as a real client does. Until then the server treats the
+	 * player as mid-change and it takes no damage. {@link #teleportTo} calls this; call it
+	 * yourself after any other change of dimension, such as a portal or a breach crossing.
+	 */
+	public void confirmDimensionChange() {
+		player.hasChangedDimension();
+	}
+
 	public void teleportTo(ServerLevel level, Vec3 pos, float yRot, float xRot) {
 		if (!player.teleportTo(level, pos.x, pos.y, pos.z, Set.of(), yRot, xRot, true)) {
 			throw new IllegalStateException("Mock player " + player.getGameProfile().name() + " could not teleport to " + pos);
 		}
+		confirmDimensionChange();
 	}
 
 	/** Disconnect and remove the player. Safe to call when it has already left. */
@@ -84,10 +115,16 @@ public final class MockPlayer {
 			leave();
 			return;
 		}
+		if (loaded) {
+			confirmDimensionChange();
+		}
 		connection.tick();
 		Object outbound;
 		while ((outbound = channel.readOutbound()) != null) {
 			try {
+				if (outbound instanceof ClientboundSystemChatPacket chat && chat.overlay()) {
+					actionBar.add(chat.content());
+				}
 				if (outbound instanceof ClientboundKeepAlivePacket keepAlive && player.connection != null) {
 					player.connection.handleKeepAlive(new ServerboundKeepAlivePacket(keepAlive.getId()));
 				}

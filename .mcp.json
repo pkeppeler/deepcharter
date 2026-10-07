@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "mcpfabric": {
+      "command": "${HOME}/.local/share/deepcharter/bin/mcpfabric-mcp",
+      "args": []
+    }
+  }
+}

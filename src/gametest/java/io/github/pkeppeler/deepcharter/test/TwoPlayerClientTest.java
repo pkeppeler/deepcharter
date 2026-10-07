@@ -198,6 +198,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 		ServerLevel one = server.getLevel(LayerChain.dimension(1));
 		box(one, 0, 2, LayerBlocks.BREACH_CRUST);
 		box(one, STONE_ROW_Y, STONE_ROW_Y, Blocks.STONE);
+		shell(one);
 		box(one, FLOOR_Y, FLOOR_Y + 9, Blocks.AIR);
 		lamps(one);
 		ServerPlayer real = realPlayer(server, two.mock().player());
@@ -300,6 +301,20 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 			for (int y = yFrom; y <= yTo; y++) {
 				for (int z = Z - ROOM_RADIUS_Z; z <= Z + ROOM_RADIUS_Z; z++) {
 					level.setBlock(new BlockPos(x, y, z), block.defaultBlockState(), 3);
+				}
+			}
+		}
+	}
+
+	/**
+	 * One block of stone around and over the room. Worldgen puts lava in the rock here, and lava next to a room flows in.
+	 * Placed with no neighbour updates (flag 2), so nothing wakes the lava outside it.
+	 */
+	private static void shell(ServerLevel level) {
+		for (int x = X - ROOM_WEST - 1; x <= X + ROOM_EAST + 1; x++) {
+			for (int y = STONE_ROW_Y; y <= FLOOR_Y + 10; y++) {
+				for (int z = Z - ROOM_RADIUS_Z - 1; z <= Z + ROOM_RADIUS_Z + 1; z++) {
+					level.setBlock(new BlockPos(x, y, z), Blocks.STONE.defaultBlockState(), 2);
 				}
 			}
 		}
