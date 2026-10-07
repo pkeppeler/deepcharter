@@ -12,6 +12,7 @@ import java.util.Set;
 import net.fabricmc.fabric.api.event.registry.DynamicRegistries;
 
 import net.minecraft.core.Holder;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -47,7 +48,12 @@ public final class HandbookChapters {
 
 	/** The server's chapters in handbook order: by {@code order}, then by id. */
 	public static List<Holder.Reference<HandbookChapter>> all(MinecraftServer server) {
-		return server.registryAccess().lookupOrThrow(KEY).listElements()
+		return all(server.registryAccess());
+	}
+
+	/** The chapters of {@code registries} in handbook order. The client calls this with the registries the server synced. */
+	public static List<Holder.Reference<HandbookChapter>> all(HolderLookup.Provider registries) {
+		return registries.lookupOrThrow(KEY).listElements()
 				.sorted(Comparator.<Holder.Reference<HandbookChapter>>comparingInt(chapter -> chapter.value().order())
 						.thenComparing(chapter -> chapter.key().identifier()))
 				.toList();
