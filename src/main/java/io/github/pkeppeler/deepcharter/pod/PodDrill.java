@@ -29,7 +29,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
  */
 public final class PodDrill {
 	/** Ore the cargo bay keeps; it includes the convention tag {@code c:ores}. */
-	public static final TagKey<Block> POD_ORE = TagKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "pod_ore"));
+	private static final TagKey<Block> POD_ORE = TagKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "pod_ore"));
 
 	private static final double EPSILON = 1e-3;
 	private static final double ALIGNED = 1e-6;
