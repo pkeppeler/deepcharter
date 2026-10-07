@@ -23,6 +23,8 @@ __pycache__/
 .DS_Store
 # Claude Code local settings
 .claude/settings.local.json
+# Claude Code agent worktrees
+/.claude/worktrees/
 # Third-party cheat-client jars used only by minecraft-dev-mcp's own tests: keep local, never commit
 /tooling/minecraft-dev-mcp/ai_reference/meteor-client-*.jar
 /tooling/minecraft-dev-mcp/__tests__/fixtures/meteor-client-*.jar
