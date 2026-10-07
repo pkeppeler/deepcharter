@@ -24,8 +24,8 @@ import net.minecraft.world.entity.Entity;
  *   <li>{@link #AFTER_TICK}: lights (#75), towing (#76)</li>
  * </ul>
  *
- * <p>Pod stats (#60) and components (#65) are not events: {@code PodStats.of(pod)} is the seam for
- * them. Unload and crossing of a pod need no hook of ours: use Fabric's
+ * <p>Pod stats (#60) and components (#65) are not events of this class: {@code PodStats.of(pod)} is the seam for
+ * them, and a feature changes a stat by registering on {@link PodStats#MODIFY}. Unload and crossing of a pod need no hook of ours: use Fabric's
  * {@code ServerEntityEvents.ENTITY_UNLOAD} and {@link io.github.pkeppeler.deepcharter.layer.BreachEvents#CROSSED}.
  */
 public final class PodEvents {
