@@ -1,20 +1,19 @@
 package io.github.pkeppeler.deepcharter.layer;
 
+import java.util.OptionalInt;
+
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
 import net.minecraft.world.level.dimension.DimensionType;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 
-/**
- * The chain of layer dimensions, {@code deepcharter:layer_1}, {@code layer_2} and so on, each
- * with a dimension type of the same id. Layer thickness is read from the dimension-type
- * registry, which the server syncs to clients, so the client computes the same chain.
- */
+/** The layer dimensions {@code deepcharter:layer_<n>}, each with a dimension type of the same id. */
 public final class LayerChain {
 	private static final String PREFIX = "layer_";
 
@@ -29,16 +28,24 @@ public final class LayerChain {
 		return ResourceKey.create(Registries.DIMENSION_TYPE, id(layer));
 	}
 
-	/** The layer a dimension type belongs to (1-based), or 0 if it is not a layer. */
-	public static int indexOf(Identifier dimensionType) {
+	/**
+	 * The layer (1-based) a dimension type belongs to; empty for any non-layer type, which is the
+	 * surface. A {@code deepcharter:layer_*} id that is not a positive number is a bug.
+	 */
+	public static OptionalInt layerOf(Identifier dimensionType) {
 		if (!dimensionType.getNamespace().equals(DeepCharter.MOD_ID) || !dimensionType.getPath().startsWith(PREFIX)) {
-			return 0;
+			return OptionalInt.empty();
 		}
+		int layer;
 		try {
-			return Math.max(0, Integer.parseInt(dimensionType.getPath().substring(PREFIX.length())));
+			layer = Integer.parseInt(dimensionType.getPath().substring(PREFIX.length()));
 		} catch (NumberFormatException e) {
-			return 0;
+			throw new IllegalArgumentException("Malformed layer dimension type: " + dimensionType, e);
 		}
+		if (layer < 1) {
+			throw new IllegalArgumentException("Layer numbers start at 1: " + dimensionType);
+		}
+		return OptionalInt.of(layer);
 	}
 
 	/** How many layers the registry holds, counting from layer 1 without gaps. */
@@ -51,10 +58,10 @@ public final class LayerChain {
 		return count;
 	}
 
-	/** Depth of the top of a layer, in blocks: the surface's floor depth plus the layers above it. */
+	/** Layer 1 starts at the overworld's floor; each later layer starts where the one above ends. */
 	public static int topDepth(RegistryAccess registries, int layer) {
 		Registry<DimensionType> types = registries.lookupOrThrow(Registries.DIMENSION_TYPE);
-		int depth = LayerTuning.DEFAULT.firstLayerDepth();
+		int depth = LayerTuning.DEFAULT.seaLevel() - types.getValueOrThrow(BuiltinDimensionTypes.OVERWORLD).minY();
 		for (int above = 1; above < layer; above++) {
 			depth += types.getValueOrThrow(type(above)).height();
 		}

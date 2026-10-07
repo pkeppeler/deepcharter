@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.UncheckedIOException;
 import java.io.Reader;
 
 import com.google.gson.JsonElement;
@@ -24,7 +25,6 @@ import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 
@@ -42,11 +42,8 @@ public class LayerDimensionsTest {
 		helper.succeed();
 	}
 
-	/**
-	 * The GameTest server bakes its world from the {@code minecraft:flat_all_dimensions} preset
-	 * and ignores data-pack dimensions, so the test mod's copy of that preset adds the layers.
-	 * This keeps the copy equal to the shipped dimension JSON, and the JSON's crust equal to the tuning.
-	 */
+	// The GameTest server ignores data-pack dimensions and bakes its world from the test mod's copy
+	// of minecraft:flat_all_dimensions; this keeps that copy equal to the shipped dimension JSON.
 	@GameTest
 	public void testPresetMatchesTheShippedDimensions(GameTestHelper helper) throws IOException {
 		JsonObject preset = read(helper, "/data/minecraft/worldgen/world_preset/flat_all_dimensions.json").getAsJsonObject();
@@ -56,9 +53,6 @@ public class LayerDimensionsTest {
 			if (!shipped.equals(preset.getAsJsonObject("dimensions").get(id))) {
 				throw helper.assertionException("flat_all_dimensions preset entry %s differs from the shipped dimension", id);
 			}
-			int crust = shipped.getAsJsonObject().getAsJsonObject("generator").getAsJsonObject("settings")
-					.getAsJsonArray("layers").get(0).getAsJsonObject().get("height").getAsInt();
-			expectInt(helper, crust, LayerTuning.DEFAULT.crustThickness());
 		}
 		helper.succeed();
 	}
@@ -86,8 +80,8 @@ public class LayerDimensionsTest {
 	@GameTest
 	public void crustIsAtTheFloor(GameTestHelper helper) {
 		Block crust = BuiltInRegistries.BLOCK.getValue(CRUST_ID);
-		int thickness = LayerTuning.DEFAULT.crustThickness();
 		for (int layer = 1; layer <= 2; layer++) {
+			int thickness = crustThickness(helper, layer);
 			ServerLevel level = level(helper, layer);
 			int floor = level.getMinY();
 			for (int dy = 0; dy < thickness; dy++) {
@@ -144,11 +138,18 @@ public class LayerDimensionsTest {
 		MockPlayer mock = MockPlayers.join(server, "layer-goto-denied");
 		try {
 			var source = mock.player().createCommandSourceStack().withPermission(LevelBasedPermissionSet.ALL);
+			var before = mock.player().level().dimension();
 			try {
 				server.getCommands().getDispatcher().execute("deepcharter layer goto 1", source);
 				throw helper.assertionException("a non-op ran /deepcharter layer goto");
-			} catch (CommandSyntaxException expected) {
-				// denied
+			} catch (CommandSyntaxException denied) {
+				if (!denied.getType().equals(CommandSyntaxException.BUILT_IN_EXCEPTIONS.dispatcherUnknownCommand())
+						&& !denied.getType().equals(CommandSyntaxException.BUILT_IN_EXCEPTIONS.dispatcherUnknownArgument())) {
+					throw helper.assertionException("expected an unknown-command failure, got %s", denied.getMessage());
+				}
+			}
+			if (!mock.player().level().dimension().equals(before)) {
+				throw helper.assertionException("a denied non-op still changed dimension");
 			}
 		} finally {
 			mock.leave();
@@ -168,19 +169,32 @@ public class LayerDimensionsTest {
 				throw helper.assertionException("player is in %s after goto 2", level.dimension());
 			}
 			Vec3 pos = mock.player().position();
-			if (pos.y < level.getMinY() + LayerTuning.DEFAULT.crustThickness() || pos.y > level.getMaxY()) {
+			if (pos.y < level.getMinY() + crustThickness(helper, 2) || pos.y > level.getMaxY()) {
 				throw helper.assertionException("player placed at y=%s, outside the layer", pos.y);
 			}
 			try {
 				server.getCommands().getDispatcher().execute("deepcharter layer goto 3", source);
 				throw helper.assertionException("goto 3 should fail: only 2 layers exist");
-			} catch (CommandSyntaxException expected) {
-				// out of range
+			} catch (CommandSyntaxException outOfRange) {
+				if (!outOfRange.getMessage().contains("No layer 3")) {
+					throw helper.assertionException("expected the no-such-layer failure, got %s", outOfRange.getMessage());
+				}
 			}
 		} finally {
 			mock.leave();
 		}
 		helper.succeed();
+	}
+
+	/** The height of the bottom flat-generator layer of the shipped dimension, which is the crust. */
+	private static int crustThickness(GameTestHelper helper, int layer) {
+		try {
+			return read(helper, "/data/deepcharter/dimension/layer_" + layer + ".json").getAsJsonObject()
+					.getAsJsonObject("generator").getAsJsonObject("settings")
+					.getAsJsonArray("layers").get(0).getAsJsonObject().get("height").getAsInt();
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
 	}
 
 	private static JsonElement read(GameTestHelper helper, String resource) throws IOException {
