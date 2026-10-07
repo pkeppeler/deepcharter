@@ -152,7 +152,7 @@ for path in ${added_adrs[@]+"${added_adrs[@]}"}; do
   seen+="$path"$'\n'
 done
 
-# In-game code (src/main/, src/client/) needs a demo: the `demo` label and a
+# In-game code (src/main/, src/client/, src/lang/) needs a demo: the `demo` label and a
 # pr-media/<n>/ image in the body, or the `no-demo` label and a `No demo: <reason>`
 # line. Embedded pr-media needs the `demo` label, so the label stays true. Reuses
 # pr_files, so an unreadable list has already refused.
@@ -164,7 +164,7 @@ if grep -qE "$media_any" <<<"$body" && ! has_label demo; then
 fi
 in_game=
 while IFS=$'\t' read -r _ path previous; do
-  if [[ $path =~ ^src/(main|client)/ || $previous =~ ^src/(main|client)/ ]]; then
+  if [[ $path =~ ^src/(main|client|lang)/ || $previous =~ ^src/(main|client|lang)/ ]]; then
     in_game=$path
     break
   fi

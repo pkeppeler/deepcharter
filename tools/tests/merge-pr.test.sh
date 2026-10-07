@@ -234,7 +234,7 @@ exited "non-ADR files under docs/adr merge" 0
 run_script "STUB_FILES=$(files modified:docs/adr/0007-seven.md removed:docs/adr/0018-eighteen.md)"
 exited "PR modifying or removing an existing ADR merges" 0
 
-# Demo gate: in-game code (src/main/, src/client/) needs the `demo` label plus an
+# Demo gate: in-game code (src/main/, src/client/, src/lang/) needs the `demo` label plus an
 # embedded pr-media/7/ image, or the `no-demo` label plus a `No demo:` line.
 # Embedded pr-media needs the `demo` label. Default labels: infra, review-passed.
 game=$(files modified:src/main/java/Foo.java)
@@ -250,6 +250,10 @@ refusal "client change with no demo" "changes in-game code (src/client/java/Bar.
   "STUB_FILES=$(files modified:README.md added:src/client/java/Bar.java)"
 refusal "assets change with no demo" "changes in-game code (src/main/resources/assets/x/lang/en_us.json)" \
   "STUB_FILES=$(files modified:src/main/resources/assets/x/lang/en_us.json)"
+refusal "lang fragment change with no demo" "changes in-game code (src/lang/en_us/x.json)" \
+  "STUB_FILES=$(files modified:src/lang/en_us/x.json)"
+refusal "no-demo reason empty under CRLF" "no 'No demo: <reason>' line" "STUB_FILES=$game" "STUB_LABELS=$nodemo_labels" \
+  "STUB_BODY=Closes #12"$'\r'"${nl}No demo:"$'\r'
 refusal "rename out of in-game code with no demo" "changes in-game code" \
   "STUB_FILES=$(files renamed:docs/Foo.java:src/main/java/Foo.java)"
 refusal "demo label without media" "label but its body embeds no pr-media/7/" "STUB_FILES=$game" "STUB_LABELS=$demo_labels"
@@ -276,6 +280,8 @@ run_script "STUB_FILES=$game" "STUB_LABELS=$demo_labels" "STUB_BODY=$png"
 exited "in-game change with demo label and png merges" 0
 run_script "STUB_FILES=$game" "STUB_LABELS=$nodemo_labels" "STUB_BODY=Closes #12${nl}No demo: logic only, nothing visible."
 exited "in-game change with no-demo reason merges" 0
+run_script "STUB_FILES=$game" "STUB_LABELS=$nodemo_labels" "STUB_BODY=Closes #12"$'\r'"${nl}No demo: logic only"$'\r'
+exited "no-demo reason line with CRLF merges" 0
 run_script "STUB_FILES=$(files modified:src/client/java/Bar.java)" "STUB_LABELS=$demo_labels" "STUB_BODY=$gif"
 exited "client change with demo merges" 0
 run_script "STUB_LABELS=$demo_labels" "STUB_BODY=$gif"
