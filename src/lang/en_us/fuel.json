@@ -1,1 +1,17 @@
-{}
+{
+  "item.deepcharter.biofuel": "Biofuel",
+  "item.deepcharter.reserve_tank": "Reserve Tank",
+  "message.deepcharter.fuel.bad_amount": "The pump needs a whole number of litres",
+  "message.deepcharter.fuel.cannot_pay": "The account cannot pay $%s",
+  "message.deepcharter.fuel.no_pod": "No pod you may fuel is parked at the pump",
+  "message.deepcharter.fuel.no_room": "The tank has room for %s litres only",
+  "message.deepcharter.fuel.reserve_fitted": "That pod has a reserve tank already",
+  "message.deepcharter.fuel.reserve_not_yours": "That pod belongs to another charter",
+  "message.deepcharter.fuel.reserve_unreadable": "This pod has data from another version of the mod",
+  "message.deepcharter.fuel.tank_full": "The tank is full",
+  "screen.deepcharter.fuel_pump.buy": "BUY %s L",
+  "screen.deepcharter.fuel_pump.fill": "FILL UP",
+  "screen.deepcharter.fuel_pump.no_pod": "NO POD PARKED AT THE PUMP",
+  "screen.deepcharter.fuel_pump.online": "FUEL PUMP ONLINE. $%s A LITRE.",
+  "screen.deepcharter.fuel_pump.tank": "TANK %s / %s L"
+}
