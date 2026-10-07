@@ -5,7 +5,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.player.Input;
-import net.minecraft.world.phys.Vec3;
 
 /**
  * Server-authoritative pod movement: treads on the ground, a rotor to climb. The server reads the
@@ -23,17 +22,21 @@ public final class PodMovement {
 		if (pod.level().isClientSide()) {
 			return;
 		}
+		if (pod.cargoMass() < 0) {
+			throw new IllegalStateException("pod cargo mass must not be negative, got " + pod.cargoMass());
+		}
 		PodTuning.Movement tuning = PodTuning.DEFAULT.movement();
-		Input input = pilotInput(pod);
+		// A stranded pod is powered off: it ignores its pilot.
+		ServerPlayer pilot = !pod.stranded() && pod.getControllingPassenger() instanceof ServerPlayer player ? player : null;
+		Input input = pilot == null ? Input.EMPTY : pilot.getLastClientInput();
 
-		Vec3 velocity = pod.getDeltaMovement();
-		Direction drive = driveDirection(input, pod);
+		Direction drive = pilot == null ? null : driveDirection(input, pilot.getYRot());
 		double vx = drive == null ? 0 : drive.getStepX() * tuning.horizontalSpeed();
 		double vz = drive == null ? 0 : drive.getStepZ() * tuning.horizontalSpeed();
 
 		float lift = Math.max(0f, tuning.enginePower() - pod.cargoMass());
 		boolean thrusting = input.jump() && lift > 0f;
-		double vy = velocity.y;
+		double vy = pod.getDeltaMovement().y;
 		if (thrusting) {
 			vy += tuning.thrustAcceleration() * lift / tuning.enginePower();
 		}
@@ -42,8 +45,9 @@ public final class PodMovement {
 		pod.setFlying(thrusting);
 		pod.setDeltaMovement(vx, vy, vz);
 		pod.move(MoverType.SELF, pod.getDeltaMovement());
-		if (pod.verticalCollision) {
-			// Entity.move does not clear the speed it ran into, so a landing would keep its fall speed.
+		// Entity.move leaves the speed it ran into. Clear it only if it still points into the surface, so a bounce survives.
+		double after = pod.getDeltaMovement().y;
+		if (pod.verticalCollision && (pod.verticalCollisionBelow ? after < 0 : after > 0)) {
 			pod.setDeltaMovement(pod.getDeltaMovement().multiply(1, 0, 1));
 		}
 	}
@@ -54,26 +58,18 @@ public final class PodMovement {
 			return;
 		}
 		PodTuning.Movement tuning = PodTuning.DEFAULT.movement();
-		double excess =fallDistance - tuning.hardLandingDistance();
+		double excess = fallDistance - tuning.hardLandingDistance();
 		if (excess > 0) {
 			pod.setHull(Math.max(0f, pod.hull() - (float) (excess * tuning.hullDamagePerBlock() * damageMultiplier)));
 		}
-	}
-
-	/** The pilot's input, or none when the pod has no pilot or is stranded (powered off, so it ignores the pilot). */
-	private static Input pilotInput(PodEntity pod) {
-		if (pod.stranded() || !(pod.getControllingPassenger() instanceof ServerPlayer pilot)) {
-			return Input.EMPTY;
-		}
-		return pilot.getLastClientInput();
 	}
 
 	/**
 	 * Snap WASD to one horizontal axis, relative to where the pilot looks. Forward and back win over
 	 * strafing, so a diagonal press never moves diagonally. Null when no direction key is held.
 	 */
-	private static Direction driveDirection(Input input, PodEntity pod) {
-		Direction facing = Direction.fromYRot(pod.getControllingPassenger() == null ? pod.getYRot() : pod.getControllingPassenger().getYRot());
+	private static Direction driveDirection(Input input, float pilotYaw) {
+		Direction facing = Direction.fromYRot(pilotYaw);
 		if (input.forward() != input.backward()) {
 			return input.forward() ? facing : facing.getOpposite();
 		}

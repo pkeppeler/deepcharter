@@ -10,6 +10,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodMovement;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -215,6 +216,64 @@ public class PodMovementTest {
 				rig.finish();
 			}
 		});
+	}
+
+	@GameTest(maxTicks = 100)
+	public void landingStopsTheFallSpeed(GameTestHelper helper) {
+		PodEntity pod = Rig.buildEmpty(helper, 3);
+		helper.runAfterDelay(30, () -> {
+			try {
+				if (!pod.onGround() || pod.getDeltaMovement().y != 0) {
+					throw helper.assertionException("a landed pod should rest with no vertical speed, onGround %s, velocity %s",
+							pod.onGround(), pod.getDeltaMovement());
+				}
+				helper.succeed();
+			} finally {
+				pod.discard();
+				clearFloor(helper);
+			}
+		});
+	}
+
+	@GameTest(maxTicks = 100)
+	public void ceilingStopsTheClimb(GameTestHelper helper) {
+		Rig rig = Rig.build(helper, 0, SOUTH);
+		BlockPos ceiling = new BlockPos(FLOOR_RADIUS, FLOOR_Y + 5, FLOOR_RADIUS);
+		helper.setBlock(ceiling, Blocks.STONE);
+		double limit = helper.absolutePos(ceiling).getY() - rig.pod.getBbHeight();
+		rig.pilot.setInput(JUMP);
+		helper.runAfterDelay(40, () -> {
+			try {
+				if (rig.pod.getY() > limit + EPSILON || rig.pod.getY() < limit - 0.2 || rig.pod.getDeltaMovement().y > 0) {
+					throw helper.assertionException("the pod should stop against the ceiling at y %s, y %s, velocity %s",
+							limit, rig.pod.getY(), rig.pod.getDeltaMovement());
+				}
+				helper.succeed();
+			} finally {
+				helper.setBlock(ceiling, Blocks.AIR);
+				rig.finish();
+			}
+		});
+	}
+
+	@GameTest
+	public void negativeCargoMassFailsLoud(GameTestHelper helper) {
+		PodEntity pod = Rig.buildEmpty(helper, 0);
+		try {
+			pod.setCargoMass(-1f);
+			try {
+				PodMovement.tick(pod);
+			} catch (IllegalStateException expected) {
+				helper.succeed();
+				return;
+			} finally {
+				pod.setCargoMass(0f);
+			}
+			throw helper.assertionException("a negative cargo mass must throw, not add lift");
+		} finally {
+			pod.discard();
+			clearFloor(helper);
+		}
 	}
 
 	@GameTest(maxTicks = 100)
