@@ -2,6 +2,7 @@
   "block.deepcharter.hangar_console": "Hangar Console",
   "deepcharter.hangar.bought": "Bought a refurbished %s, %s, for $%s",
   "deepcharter.hangar.refusal.bay_full": "The bay has no free place for another Mole",
+  "deepcharter.hangar.refusal.founding_pending": "The founding Mole is not repaired yet",
   "deepcharter.hangar.refusal.insufficient_funds": "The charter account needs $%s",
   "deepcharter.hangar.refusal.missing_catalyst": "You need %s of %s in your pack",
   "deepcharter.hangar.refusal.no_bay": "The hangar is not built",

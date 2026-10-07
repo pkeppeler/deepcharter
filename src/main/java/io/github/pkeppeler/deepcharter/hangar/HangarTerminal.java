@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.hangar;
 
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
@@ -43,7 +44,7 @@ import io.github.pkeppeler.deepcharter.wreck.Wrecks;
  * ({@link #RESTORE_WRECK}). Both actions take no arguments, so the client sends nothing the server must trust.
  *
  * <p>An action does every check, and everything that can throw or refuse, before it takes money or the catalyst: a refusal
- * changes nothing. The money goes last.
+ * changes nothing. The catalyst and money go last.
  */
 public final class HangarTerminal {
 	public static final Identifier BUY_MOLE = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "buy_mole");
@@ -76,6 +77,9 @@ public final class HangarTerminal {
 		if (data.isEmpty()) {
 			return refuse("unreadable");
 		}
+		if (!data.get().state().founded()) {
+			return refuse("founding_pending");
+		}
 		Optional<BlockPos> anchor = Colony.anchor(server, ColonyAnchor.HANGAR);
 		if (anchor.isEmpty()) {
 			return refuse("no_bay");
@@ -105,24 +109,21 @@ public final class HangarTerminal {
 			}
 			return refuse("serials_unreadable");
 		}
+		String serial = PodComponents.registration(pod).orElseThrow().serial();
 		if (!level.addFreshEntity(pod)) {
 			return refuse("pod_failed");
 		}
-		data.get().hold(charter.id(), pod.getUUID());
 		Optional<CharterRefusal> refusal = Charters.spend(server, charter.id(), price);
 		if (refusal.isPresent()) {
 			pod.discard();
 			throw new IllegalStateException("a purchase that passed the funds check was refused: " + refusal.get());
 		}
-		context.player().sendOverlayMessage(Component.translatable("deepcharter.hangar.bought", pod.chassis().id().toUpperCase(Locale.ROOT),
-				PodComponents.registration(pod).orElseThrow().serial(), price));
+		data.get().hold(charter.id(), pod.getUUID());
+		context.player().sendOverlayMessage(Component.translatable("deepcharter.hangar.bought", pod.chassis().id().toUpperCase(Locale.ROOT), serial, price));
 		return Optional.empty();
 	}
 
-	/**
-	 * Restores the wreck nearest to the console, within {@link HangarTuning#wreckRadius()} blocks, for money and the catalyst. Only
-	 * a charter that may access the wreck ({@link PodComponents#mayAccess}) can buy it back. The founding Mole is not a wreck to restore until it is repaired.
-	 */
+	/** Restores the nearest wreck in reach of the console that the charter may access, for money and the catalyst. */
 	private static Optional<Component> restoreWreck(TerminalAction.Context context) {
 		MinecraftServer server = context.server();
 		HangarTuning tuning = HangarTuning.DEFAULT;
@@ -133,17 +134,19 @@ public final class HangarTerminal {
 		Charter charter = context.charter().orElseThrow(() -> new IllegalStateException("the hangar console is for charters only"));
 		ServerPlayer player = context.player();
 		Vec3 console = Vec3.atCenterOf(context.pos());
-		Optional<PodEntity> nearest = player.level().getEntitiesOfClass(PodEntity.class, new AABB(context.pos()).inflate(tuning.wreckRadius())).stream()
+		List<PodEntity> inReach = player.level().getEntitiesOfClass(PodEntity.class, new AABB(context.pos()).inflate(tuning.wreckRadius())).stream()
 				.filter(pod -> Wrecks.isWreck(pod) && !Hangar.isUnrepairedDerelict(data.get(), pod) && pod.position().distanceTo(console) <= tuning.wreckRadius())
-				.min(Comparator.comparingDouble(pod -> pod.position().distanceToSqr(console)));
-		if (nearest.isEmpty()) {
+				.sorted(Comparator.comparingDouble(pod -> pod.position().distanceToSqr(console)))
+				.toList();
+		if (inReach.isEmpty()) {
 			return refuse("no_wreck");
 		}
-		PodEntity wreck = nearest.get();
-		if (!PodComponents.mayAccess(wreck, Optional.of(charter))) {
-			return PodComponents.registration(wreck).map(registration -> refuse("not_your_wreck", registration.serial()))
+		Optional<PodEntity> usable = inReach.stream().filter(pod -> PodComponents.mayAccess(pod, Optional.of(charter))).findFirst();
+		if (usable.isEmpty()) {
+			return PodComponents.registration(inReach.getFirst()).map(registration -> refuse("not_your_wreck", registration.serial()))
 					.orElseGet(() -> refuse("wreck_unreadable"));
 		}
+		PodEntity wreck = usable.get();
 		float hull = wreck.maxHull();
 		if (!(hull > 0f)) {
 			return refuse("restore_failed");

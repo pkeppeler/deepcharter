@@ -19,6 +19,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
@@ -220,6 +221,16 @@ public class FoundingMoleHangarTest {
 		return pod;
 	}
 
+	/** A wreck owned by {@code owner}, standing at {@code at} in the world. */
+	private static PodEntity wreckAt(GameTestHelper helper, Vec3 at, CharterId owner) {
+		PodEntity pod = PodRegistry.POD.create(helper.getLevel(), EntitySpawnReason.TRIGGERED);
+		pod.setPos(at);
+		helper.getLevel().addFreshEntity(pod);
+		PodComponents.register(pod, owner);
+		pod.damageHull(pod.maxHull());
+		return pod;
+	}
+
 	private static void give(ServerPlayer player, Item item, int count) {
 		for (int i = 0; i < count; i++) {
 			player.getInventory().add(new ItemStack(item));
@@ -236,11 +247,36 @@ public class FoundingMoleHangarTest {
 		return total;
 	}
 
-	/** Repairs the hangar console in the repair state, as if the founding Mole had been repaired by someone. */
-	private static void repairTheConsole(GameTestHelper helper) {
+	/** Puts the four parts into the repair state, so the console works but the founding Mole is not recorded as repaired. */
+	private static void insertTheParts(GameTestHelper helper) {
 		RepairState state = RepairState.get(server(helper));
 		for (Item part : PARTS) {
 			expect(helper, state.insert(HangarTerminal.TYPE, part).isEmpty(), "inserting %s straight into the repair state should work", part);
+		}
+	}
+
+	/** A hangar record in which the founding Mole is repaired, as the saved form of an empty one with {@code founded} set. */
+	private static HangarData foundedHangar() {
+		CompoundTag saved = ((CompoundTag) HangarData.CODEC.encodeStart(NbtOps.INSTANCE, new HangarData()).getOrThrow()).copy();
+		saved.putBoolean("founded", true);
+		return HangarData.CODEC.parse(NbtOps.INSTANCE, saved).getOrThrow();
+	}
+
+	/** Repairs the console and the founding Mole, as if someone had: the world's hangar record is the one {@link #withFreshWorld} swapped in. */
+	private static void repairTheConsole(GameTestHelper helper) {
+		insertTheParts(helper);
+		server(helper).getDataStorage().set(HangarData.TYPE, foundedHangar());
+	}
+
+	/** Runs {@code body} with a fresh repair state and puts the world's back after. */
+	private static void withFreshRepairs(GameTestHelper helper, Runnable body) {
+		MinecraftServer server = server(helper);
+		RepairState repairs = RepairState.get(server);
+		server.getDataStorage().set(RepairState.TYPE, new RepairState());
+		try {
+			body.run();
+		} finally {
+			server.getDataStorage().set(RepairState.TYPE, repairs);
 		}
 	}
 
@@ -375,6 +411,24 @@ public class FoundingMoleHangarTest {
 	}
 
 	@GameTest(maxTicks = MAX_TICKS)
+	public void aMoleIsNotForSaleUntilTheFoundingMoleIsRepaired(GameTestHelper helper) {
+		inTheHangar(helper, before -> withFreshWorld(helper, () -> {
+			insertTheParts(helper);
+			MockPlayer buyer = member(helper, "Early Buyer");
+			BlockPos console = console(helper, buyer);
+			deposit(helper, buyer, RICH);
+
+			expectRefused(helper, act(buyer.player(), console, HangarTerminal.BUY_MOLE), "buying before the founding Mole is repaired");
+			expect(helper, balance(helper, buyer) == RICH && madeSince(helper, before).isEmpty(), "the refusal takes nothing and makes no pod");
+
+			server(helper).getDataStorage().set(HangarData.TYPE, foundedHangar());
+			expectDone(helper, act(buyer.player(), console, HangarTerminal.BUY_MOLE), "buying once the founding Mole is repaired");
+			clearFloor(helper);
+			helper.succeed();
+		}));
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
 	public void aRefurbishedMoleRefusesOnInsufficientFundsAndChangesNothing(GameTestHelper helper) {
 		inTheHangar(helper, before -> withFreshWorld(helper, () -> {
 			repairTheConsole(helper);
@@ -434,6 +488,50 @@ public class FoundingMoleHangarTest {
 	}
 
 	@GameTest(maxTicks = MAX_TICKS)
+	public void aStrangersNearerWreckDoesNotBlockTheRestoreOfYourOwn(GameTestHelper helper) {
+		inTheHangar(helper, before -> withFreshWorld(helper, () -> {
+			repairTheConsole(helper);
+			MockPlayer owner = member(helper, "Owner");
+			MockPlayer stranger = member(helper, "Neighbour");
+			BlockPos console = console(helper, owner);
+			PodEntity strangers = wreckAt(helper, helper.absoluteVec(new Vec3(2.5, 2, 2.5)), charterOf(helper, stranger).id());
+			PodEntity own = pod(helper, Optional.of(charterOf(helper, owner).id()), true);
+			expect(helper, strangers.position().distanceTo(Vec3.atCenterOf(console)) < own.position().distanceTo(Vec3.atCenterOf(console)),
+					"the stranger's wreck is nearer the console");
+			deposit(helper, owner, RICH);
+			give(owner.player(), CATALYST, HangarTuning.DEFAULT.restoreCatalysts());
+
+			expectDone(helper, act(owner.player(), console, HangarTerminal.RESTORE_WRECK), "restoring your own wreck past a stranger's nearer one");
+			expect(helper, !Wrecks.isWreck(own) && Wrecks.isWreck(strangers), "the owner's wreck is restored and the stranger's is not");
+			clearFloor(helper);
+			helper.succeed();
+		}));
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void theWorldsDerelictNearestTheConsoleDoesNotBlockTheRestoreOfYourOwn(GameTestHelper helper) {
+		inTheHangar(helper, before -> withFreshRepairs(helper, () -> {
+			insertTheParts(helper);
+			MinecraftServer server = server(helper);
+			BlockPos console = Hangar.consolePos(server).orElseThrow(() -> failure(helper, "the hangar should have a console"));
+			PodEntity derelict = Hangar.derelict(server).orElseThrow();
+			MockPlayer owner = member(helper, "Bay Salvager");
+			stand(helper, owner, console);
+			BlockPos anchor = hangarAnchor(helper);
+			PodEntity own = wreckAt(helper, Vec3.atBottomCenterOf(anchor.offset(-4, 0, 6)), charterOf(helper, owner).id());
+			expect(helper, derelict.position().distanceTo(Vec3.atCenterOf(console)) < own.position().distanceTo(Vec3.atCenterOf(console)),
+					"the derelict is nearer the console than the charter's wreck");
+			deposit(helper, owner, RICH);
+			give(owner.player(), CATALYST, HangarTuning.DEFAULT.restoreCatalysts());
+
+			expectDone(helper, act(owner.player(), console, HangarTerminal.RESTORE_WRECK), "restoring your own wreck farther than the derelict");
+			expect(helper, !Wrecks.isWreck(own) && Wrecks.isWreck(derelict) && PodComponents.registration(derelict).isEmpty(),
+					"the charter's wreck is restored and the derelict is left alone");
+			helper.succeed();
+		}));
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
 	public void aRestoreRefusesWithoutTheCatalystOrTheMoneyAndChangesNothing(GameTestHelper helper) {
 		inTheHangar(helper, before -> withFreshWorld(helper, () -> {
 			repairTheConsole(helper);
@@ -472,6 +570,7 @@ public class FoundingMoleHangarTest {
 			PodEntity worldDerelict = podsInTheHangar(helper).stream().filter(pod -> before.contains(pod.getUUID())).findFirst().orElseThrow();
 			Vec3 home = worldDerelict.position();
 			worldDerelict.setPos(home.add(0, 100, 0));
+			server(helper).getDataStorage().set(HangarData.TYPE, new HangarData());
 			try {
 				Hangar.placeDerelict(server(helper), Colony.placed(server(helper)).orElseThrow());
 				PodEntity derelict = Hangar.derelict(server(helper)).orElseThrow();
@@ -530,7 +629,7 @@ public class FoundingMoleHangarTest {
 					"nothing changed while the hangar was unreadable");
 
 			// The serials are unreadable: a purchase is refused before it takes anything.
-			server.getDataStorage().set(HangarData.TYPE, new HangarData());
+			server.getDataStorage().set(HangarData.TYPE, foundedHangar());
 			Tag serials = Serials.CODEC.encodeStart(NbtOps.INSTANCE, new Serials()).getOrThrow();
 			CompoundTag futureSerials = ((CompoundTag) serials).copy();
 			futureSerials.putInt("version", Integer.parseInt(FUTURE_SERIALS));
