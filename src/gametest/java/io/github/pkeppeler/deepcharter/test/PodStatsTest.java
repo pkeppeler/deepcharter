@@ -607,12 +607,28 @@ public class PodStatsTest {
 
 	@GameTest(maxTicks = FAR_TICKS)
 	public void aCrustBoreThatTakesTheLastHullFiresHullDepleted(GameTestHelper helper) {
-		borePodThroughCrust(helper, 4128, 15f, 20f, crossed -> {
-			int events = DEPLETED.getOrDefault(crossed.getUUID(), 0);
-			if (crossed.hull() != 0f || events != 1) {
-				throw helper.assertionException(Component.literal(
-						"a crust bore costing 20 should take a hull of 15 to 0 and fire HULL_DEPLETED once, got hull " + crossed.hull() + " and " + events + " events"));
+		// Since #67 a pod at hull 0 is a wreck: the drill stops with the power and the pilot dies, so the pod does not cross.
+		int x = 4128;
+		ServerLevel one = layer(helper, 1);
+		box(one, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
+		box(one, x - 2, x + 2, 1, 8, Z - 2, Z + 2, Blocks.AIR);
+		FarRig rig = FarRig.await(helper, one, new Vec3(x, 1, Z), "crust-stats-" + x, pod -> {
+			OVERRIDES.put(pod.getUUID(), stats -> stats.withCrustHullDamage(20f));
+			pod.setHull(15f);
+		});
+		helper.onEachTick(() -> {
+			if (!rig.ready() || rig.pod.hull() != 0f) {
+				return;
 			}
+			int events = DEPLETED.getOrDefault(rig.pod.getUUID(), 0);
+			OVERRIDES.remove(rig.pod.getUUID());
+			DEPLETED.remove(rig.pod.getUUID());
+			rig.pod.discard();
+			if (events != 1) {
+				throw helper.assertionException(Component.literal(
+						"a crust bore costing 20 should take a hull of 15 to 0 and fire HULL_DEPLETED once, got " + events + " events"));
+			}
+			helper.succeed();
 		});
 	}
 

@@ -99,7 +99,8 @@
 			"io.github.pkeppeler.deepcharter.test.evidence.TowingScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.LayerStructuresScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.ProspectorChassisScenario",
-			"io.github.pkeppeler.deepcharter.test.evidence.M2SliceScenario"
+			"io.github.pkeppeler.deepcharter.test.evidence.M2SliceScenario",
+			"io.github.pkeppeler.deepcharter.test.evidence.WreckScenario"
 		]
 	},
 	"depends": {
