@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.scanner;
 
 public final class ScannerRegistry {
-	// Filled by #9: scanner registrations, if any (ScanSlice itself is plain shared code).
+	// The scanner registers nothing: ScanSlice is plain shared code and its ore tag is data.
 
 	private ScannerRegistry() {
 	}

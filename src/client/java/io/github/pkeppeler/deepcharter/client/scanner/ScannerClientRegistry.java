@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.scanner;
 
 public final class ScannerClientRegistry {
-	// Filled by #9: scanner client registrations, if any.
+	// The scanner has no client registrations: ScannerHud registers its own HUD element and tick hook.
 
 	private ScannerClientRegistry() {
 	}
