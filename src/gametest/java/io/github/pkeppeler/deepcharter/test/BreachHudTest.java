@@ -105,7 +105,7 @@ public class BreachHudTest implements FabricClientGameTest {
 			// The transmission types out and finishes with the whole text.
 			context.waitFor(client -> !BreachEffects.transmissionShown().isEmpty());
 			context.waitFor(client -> BreachEffects.transmissionShown().equals(BreachEffects.transmissionFull()));
-				List<String> full = context.computeOnClient(client -> BreachEffects.transmissionFull());
+			List<String> full = context.computeOnClient(client -> BreachEffects.transmissionFull());
 			if (full.isEmpty() || full.stream().anyMatch(String::isBlank)) {
 				throw new AssertionError("The stub transmission should have text on every line, has " + full);
 			}

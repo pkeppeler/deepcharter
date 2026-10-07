@@ -12,7 +12,7 @@ public final class Altimeter {
 	private Altimeter() {
 	}
 
-	/** The reading for the client's player. Public so tests can check the text without reading pixels. */
+	/** The reading for the client's player. */
 	public static Component reading(Minecraft client) {
 		int feet = Depth.feet(Depth.of(client.level, client.player.getBlockY()));
 		// Locale.US so the thousands separator is the same on every machine.

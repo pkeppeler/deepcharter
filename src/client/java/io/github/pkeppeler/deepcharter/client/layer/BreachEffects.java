@@ -23,7 +23,7 @@ public final class BreachEffects {
 	/** Ticks spent fading to black, then held fully black, before fading back for the rest of {@link #FADE_TICKS}. */
 	private static final int FADE_IN_TICKS = 8;
 	private static final int BLACK_TICKS = 4;
-	public static final int JITTER_TICKS = 10;
+	private static final int JITTER_TICKS = 10;
 	private static final int JITTER_PIXELS = 3;
 	private static final int CHARACTERS_PER_TICK = 2;
 	/** Ticks the finished transmission stays up. */
