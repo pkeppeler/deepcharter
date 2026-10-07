@@ -2,7 +2,6 @@ package io.github.pkeppeler.deepcharter.test;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.UncheckedIOException;
 import java.io.Reader;
 
 import com.google.gson.JsonElement;
@@ -25,6 +24,7 @@ import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 
@@ -209,15 +209,9 @@ public class LayerDimensionsTest {
 		helper.succeed();
 	}
 
-	/** The height of the bottom flat-generator layer of the shipped dimension, which is the crust. */
+	/** The crust rows at each floor; the layer material rule (data/deepcharter/worldgen/material_rule/layer.json) must match. */
 	private static int crustThickness(GameTestHelper helper, int layer) {
-		try {
-			return read(helper, "/data/deepcharter/dimension/layer_" + layer + ".json").getAsJsonObject()
-					.getAsJsonObject("generator").getAsJsonObject("settings")
-					.getAsJsonArray("layers").get(0).getAsJsonObject().get("height").getAsInt();
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
-		}
+		return LayerTuning.DEFAULT.crustThickness();
 	}
 
 	private static JsonElement read(GameTestHelper helper, String resource) throws IOException {
