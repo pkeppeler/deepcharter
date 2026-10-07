@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.handbook;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentSyncPredicate;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -37,12 +38,13 @@ public final class HandbookRegistry {
 
 	public static void register() {
 		HandbookChapters.register();
+		ServerLifecycleEvents.SERVER_STARTED.register(HandbookChapters::validate);
 		HandbookProgress.register();
 		HandbookItems.register();
 	}
 
 	private static Item registerHandbook() {
 		ResourceKey<Item> key = ResourceKey.create(Registries.ITEM, HANDBOOK_ID);
-		return Registry.register(BuiltInRegistries.ITEM, key, new Item(new Item.Properties().setId(key).stacksTo(1)));
+		return Registry.register(BuiltInRegistries.ITEM, key, new HandbookItem(new Item.Properties().setId(key).stacksTo(1)));
 	}
 }

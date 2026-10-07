@@ -59,6 +59,11 @@ public final class HandbookProgressData extends SavedData {
 		return server.getDataStorage().computeIfAbsent(TYPE);
 	}
 
+	/** False when the saved progress is of a version this build cannot read: {@link #completed} and {@link #complete} then throw. */
+	public boolean isReadable() {
+		return unreadable.isEmpty();
+	}
+
 	/** The directives {@code charter} has completed. Throws if the saved data is of a version this build cannot read. */
 	public Set<Identifier> completed(CharterId charter) {
 		return Set.copyOf(readable().getOrDefault(charter, Set.of()));

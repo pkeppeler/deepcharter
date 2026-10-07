@@ -1,18 +1,37 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Stream;
+
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.appender.AbstractAppender;
+import org.apache.logging.log4j.core.config.Property;
 
 import com.mojang.serialization.DataResult;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.advancements.triggers.CriteriaTriggers;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtAccounter;
+import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -30,19 +49,28 @@ import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.BundleContents;
+import net.minecraft.world.item.component.ItemContainerContents;
+import net.minecraft.world.level.storage.SavedDataStorage;
 import net.minecraft.world.level.entity.EntityTypeTest;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charter;
+import io.github.pkeppeler.deepcharter.charter.CharterData;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.handbook.Directives;
+import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
 import io.github.pkeppeler.deepcharter.handbook.HandbookItems;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgress;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgressData;
+import io.github.pkeppeler.deepcharter.handbook.HandbookRegistry;
+import io.github.pkeppeler.deepcharter.handbook.HandbookSyncPayload;
+import io.github.pkeppeler.deepcharter.handbook.HandbookTuning;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -60,6 +88,8 @@ public class HandbookCoreTest {
 	private static final Identifier NOTE = directive("sample/note");
 	private static final int POLL_BUDGET_TICKS = 200;
 	private static final int HOTBAR_SIZE = 9;
+	// Attached once and never removed: another test's appender on the same logger loses its events when one is removed mid-run.
+	private static final CapturingAppender LOG = CapturingAppender.attach();
 
 	private static Identifier directive(String path) {
 		return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook/" + path);
@@ -290,12 +320,15 @@ public class HandbookCoreTest {
 					}
 				}
 				tried[0] = true;
-				throw helper.assertionException("tried to move the handbook into the chest; waiting to see where it ends up");
-			}
-			for (int index = 0; index < chest.getContainerSize(); index++) {
-				if (HandbookItems.isHandbook(chest.getItem(index))) {
-					throw helper.assertionException("the chest holds a handbook");
+				// Before the end-of-tick sweep runs, the chest must really have received the handbook: otherwise this test proves nothing.
+				if (handbooksIn(chest) != 1 || handbooksHeld(player) != 0) {
+					helper.fail("the quick move should put the handbook in the chest before the sweep, chest holds " + handbooksIn(chest)
+							+ ", player holds " + handbooksHeld(player));
 				}
+				throw helper.assertionException("moved the handbook into the chest; waiting to see where it ends up");
+			}
+			if (handbooksIn(chest) != 0) {
+				throw helper.assertionException("the chest holds a handbook");
 			}
 			if (handbooksHeld(player) != 1) {
 				throw helper.assertionException("the player keeps exactly one handbook, holds %s", handbooksHeld(player));
@@ -385,6 +418,320 @@ public class HandbookCoreTest {
 			throw helper.assertionException("current read marks must load as they were saved, got %s", reloaded);
 		}
 		helper.succeed();
+	}
+
+	private static CompoundTag futureVersion() {
+		CompoundTag future = new CompoundTag();
+		future.putInt("version", 99);
+		future.putString("shape", "from a later build");
+		return future;
+	}
+
+	@GameTest
+	public void unreadableProgressNeverThrowsFromATickAJoinOrFire(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		ServerPlayer player = MockPlayers.join(helper, "Reader").player();
+		found(helper, server, player);
+		CompoundTag future = futureVersion();
+		HandbookProgressData unreadable = HandbookProgressData.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow();
+		HandbookProgressData original = HandbookProgressData.get(server);
+		int logged = LOG.errors().size();
+		// Everything runs inside this one tick, so no other test sees the swapped data.
+		server.getDataStorage().set(HandbookProgressData.TYPE, unreadable);
+		try {
+			for (int round = 0; round < 3; round++) {
+				HandbookProgress.sweep(player);
+				HandbookSyncPayload.send(server, player);
+				Directives.fire(player, CUSTOM_DIRECTIVE);
+				if (!HandbookProgress.completedFor(server, player.getUUID()).isEmpty()) {
+					throw helper.assertionException("unreadable progress reads as empty");
+				}
+			}
+		} finally {
+			server.getDataStorage().set(HandbookProgressData.TYPE, original);
+		}
+		if (LOG.unreadableSince(logged).size() != 1) {
+			throw helper.assertionException("unreadable progress is logged once, not %s times: %s", LOG.unreadableSince(logged).size(), LOG.unreadableSince(logged));
+		}
+		if (!future.equals(HandbookProgressData.CODEC.encodeStart(NbtOps.INSTANCE, unreadable).getOrThrow())) {
+			throw helper.assertionException("unreadable progress must round-trip unchanged");
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void unreadableCharterDataNeverThrowsFromATickAJoinOrFire(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		ServerPlayer player = MockPlayers.join(helper, "Reader").player();
+		CompoundTag future = futureVersion();
+		CharterData unreadable = CharterData.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow();
+		CharterData original = CharterData.get(server);
+		int logged = LOG.errors().size();
+		server.getDataStorage().set(CharterData.TYPE, unreadable);
+		try {
+			for (int round = 0; round < 3; round++) {
+				HandbookProgress.sweep(player);
+				HandbookSyncPayload.send(server, player);
+				Directives.fire(player, CUSTOM_DIRECTIVE);
+				if (!HandbookProgress.completedFor(server, player.getUUID()).isEmpty()) {
+					throw helper.assertionException("progress on unreadable charters reads as empty");
+				}
+			}
+		} finally {
+			server.getDataStorage().set(CharterData.TYPE, original);
+		}
+		if (LOG.unreadableSince(logged).size() != 1) {
+			throw helper.assertionException("unreadable charters are logged once, not %s times: %s", LOG.unreadableSince(logged).size(), LOG.unreadableSince(logged));
+		}
+		if (!future.equals(CharterData.CODEC.encodeStart(NbtOps.INSTANCE, unreadable).getOrThrow())) {
+			throw helper.assertionException("unreadable charters must round-trip unchanged");
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aDirectiveDefinedTwiceFailsLoudAndNamesBothChapters(GameTestHelper helper) {
+		Identifier first = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "one");
+		Identifier second = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "two");
+		HandbookChapter.Entry entry = new HandbookChapter.Entry(CUSTOM_DIRECTIVE, Component.literal("x"));
+		Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();
+		chapters.put(first, new HandbookChapter(0, Component.literal("one"), List.of(entry)));
+		chapters.put(second, new HandbookChapter(1, Component.literal("two"), List.of(entry)));
+		try {
+			HandbookChapters.collectDirectives(chapters);
+		} catch (IllegalStateException expected) {
+			String message = String.valueOf(expected.getMessage());
+			if (!message.contains(first.toString()) || !message.contains(second.toString()) || !message.contains(CUSTOM_DIRECTIVE.toString())) {
+				throw helper.assertionException("the error must name the directive and both chapters, got: %s", message);
+			}
+			helper.succeed();
+			return;
+		}
+		throw helper.assertionException("a directive in two chapters must fail loud");
+	}
+
+	@GameTest
+	public void noDirectiveIsDefinedTwiceInTheShippedChapters(GameTestHelper helper) {
+		HandbookChapters.validate(helper.getLevel().getServer());
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aBundleRefusesTheHandbookOnTheCursor(GameTestHelper helper) {
+		ServerPlayer player = MockPlayers.join(helper, "Bundler").player();
+		if (HandbookRegistry.HANDBOOK.canFitInsideContainerItems()) {
+			throw helper.assertionException("the handbook must not fit inside container items");
+		}
+		player.getInventory().add(new ItemStack(Items.BUNDLE));
+		AbstractContainerMenu menu = player.containerMenu;
+		Slot bundleSlot = menu.slots.stream().filter(slot -> slot.getItem().is(Items.BUNDLE)).findFirst().orElseThrow();
+		menu.setCarried(new ItemStack(HandbookRegistry.HANDBOOK));
+		menu.clicked(bundleSlot.index, 0, ContainerInput.PICKUP, player);
+		for (Slot slot : menu.slots) {
+			if (handbooksInside(slot.getItem()) != 0) {
+				throw helper.assertionException("the bundle took the handbook");
+			}
+		}
+		if (handbooksInside(menu.getCarried()) != 0) {
+			throw helper.assertionException("the bundle on the cursor took the handbook");
+		}
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = POLL_BUDGET_TICKS)
+	public void aHandbookHiddenInABundleOrShulkerIsStripped(GameTestHelper helper) {
+		ServerPlayer player = MockPlayers.join(helper, "Smuggler").player();
+		boolean[] planted = {false};
+		helper.succeedWhen(() -> {
+			if (!planted[0]) {
+				if (handbooksHeld(player) != 1) {
+					throw helper.assertionException("waiting for the handbook to be issued");
+				}
+				ItemStack bundle = new ItemStack(Items.BUNDLE);
+				bundle.set(DataComponents.BUNDLE_CONTENTS, BundleContents.EMPTY.copyWithContents(Stream.of(new ItemStack(HandbookRegistry.HANDBOOK))));
+				ItemStack shulker = new ItemStack(Items.SHULKER_BOX);
+				shulker.set(DataComponents.CONTAINER, ItemContainerContents.fromItems(List.of(new ItemStack(HandbookRegistry.HANDBOOK))));
+				player.getInventory().add(bundle);
+				player.getInventory().add(shulker);
+				planted[0] = true;
+				if (handbooksInside(bundle) != 1 || handbooksInside(shulker) != 1) {
+					helper.fail("the test must plant a handbook in each stack");
+				}
+				throw helper.assertionException("planted handbooks in a bundle and a shulker box; waiting for the sweep");
+			}
+			for (int index = 0; index < player.getInventory().getContainerSize(); index++) {
+				if (handbooksInside(player.getInventory().getItem(index)) != 0) {
+					throw helper.assertionException("a handbook is still inside a stack in slot %s", index);
+				}
+			}
+			if (handbooksHeld(player) != 1) {
+				throw helper.assertionException("the player ends with exactly one handbook, holds %s", handbooksHeld(player));
+			}
+		});
+	}
+
+	@GameTest(maxTicks = POLL_BUDGET_TICKS)
+	public void aSoloPlayerCarriesNoCreditIntoACharter(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		ServerPlayer joiner = MockPlayers.join(helper, "Joiner").player();
+		ServerPlayer director = MockPlayers.join(helper, "Director").player();
+		CriteriaTriggers.SLEPT_IN_BED.trigger(joiner);
+		CharterId id = found(helper, server, director);
+
+		join(helper, server, id, director, joiner);
+
+		boolean[] retried = {false};
+		helper.runAfterDelay(HandbookTuning.DEFAULT.progressPollTicks() * 3L, () -> {
+			expectComplete(helper, server, joiner, VANILLA_DIRECTIVE, false);
+			CriteriaTriggers.SLEPT_IN_BED.trigger(joiner);
+			retried[0] = true;
+		});
+		helper.succeedWhen(() -> {
+			if (!retried[0]) {
+				throw helper.assertionException("waiting to check that the earlier advancement earned nothing");
+			}
+			expectComplete(helper, server, director, VANILLA_DIRECTIVE, true);
+		});
+	}
+
+	@GameTest(maxTicks = POLL_BUDGET_TICKS)
+	public void aPlayerWhoLeavesACharterCarriesNoCreditToTheNext(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		ServerPlayer mover = MockPlayers.join(helper, "Mover").player();
+		ServerPlayer otherDirector = MockPlayers.join(helper, "OtherDirector").player();
+		found(helper, server, mover);
+		Directives.fire(mover, CUSTOM_DIRECTIVE);
+		expectComplete(helper, server, mover, CUSTOM_DIRECTIVE, true);
+		CharterId other = found(helper, server, otherDirector);
+
+		expectDone(helper, Charters.leave(server, mover.getUUID()), "leaving");
+		join(helper, server, other, otherDirector, mover);
+
+		helper.runAfterDelay(HandbookTuning.DEFAULT.progressPollTicks() * 3L, () -> {
+			expectComplete(helper, server, mover, CUSTOM_DIRECTIVE, false);
+			helper.succeed();
+		});
+	}
+
+	/**
+	 * Guards the datafixer type of {@link HandbookProgressData#TYPE}: a file saved by an older Minecraft goes through the real fixer on
+	 * load and must come out unchanged. Keep it green on every Minecraft bump.
+	 */
+	@GameTest
+	public void aProgressFileFromAnOlderMinecraftLoadsUnchanged(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		int olderDataVersion = 4000;
+		Path dir = tempDir();
+		try {
+			CharterId id = CharterId.random();
+			try (SavedDataStorage first = storage(server, dir)) {
+				HandbookProgressData data = first.computeIfAbsent(HandbookProgressData.TYPE);
+				data.complete(id, CUSTOM_DIRECTIVE);
+				first.saveAndJoin();
+			}
+			Path file = savedFile(dir);
+			CompoundTag stamped = NbtIo.readCompressed(file, NbtAccounter.unlimitedHeap());
+			if (NbtUtils.getDataVersion(stamped) <= olderDataVersion) {
+				throw helper.assertionException("the test needs a saved DataVersion above %s, got %s", olderDataVersion, NbtUtils.getDataVersion(stamped));
+			}
+			Tag savedBody = stamped.get("data");
+			NbtIo.writeCompressed(NbtUtils.addDataVersion(stamped, olderDataVersion), file);
+
+			try (SavedDataStorage second = storage(server, dir)) {
+				HandbookProgressData loaded = second.computeIfAbsent(HandbookProgressData.TYPE);
+				Tag reloaded = HandbookProgressData.CODEC.encodeStart(NbtOps.INSTANCE, loaded).getOrThrow();
+				if (!reloaded.equals(savedBody) || !loaded.completed(id).equals(Set.of(CUSTOM_DIRECTIVE))) {
+					throw helper.assertionException("the fixer changed the progress data: saved %s, loaded %s", savedBody, reloaded);
+				}
+			}
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		} finally {
+			deleteTree(dir);
+		}
+		helper.succeed();
+	}
+
+	private static SavedDataStorage storage(MinecraftServer server, Path dir) {
+		return new SavedDataStorage(dir, server.getFixerUpper(), server.registryAccess());
+	}
+
+	private static Path tempDir() {
+		try {
+			return Files.createTempDirectory("handbook-saved-data");
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
+
+	private static Path savedFile(Path dir) throws IOException {
+		try (Stream<Path> files = Files.walk(dir)) {
+			return files.filter(path -> path.toString().endsWith(".dat")).findFirst().orElseThrow();
+		}
+	}
+
+	private static void deleteTree(Path dir) {
+		try (Stream<Path> files = Files.walk(dir)) {
+			for (Path path : files.sorted(Comparator.reverseOrder()).toList()) {
+				Files.delete(path);
+			}
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
+
+	/** Collects the ERROR lines of the mod's logger while attached. */
+	private static final class CapturingAppender extends AbstractAppender {
+		private final List<String> errors = new CopyOnWriteArrayList<>();
+
+		private CapturingAppender() {
+			super("handbook-core-test", null, null, true, Property.EMPTY_ARRAY);
+		}
+
+		static CapturingAppender attach() {
+			CapturingAppender appender = new CapturingAppender();
+			appender.start();
+			((org.apache.logging.log4j.core.Logger) LogManager.getLogger(DeepCharter.MOD_ID)).addAppender(appender);
+			return appender;
+		}
+
+		List<String> errors() {
+			return errors;
+		}
+
+		/** The ERROR lines about unreadable saved data that were logged after the first {@code start} lines. */
+		List<String> unreadableSince(int start) {
+			return errors.subList(start, errors.size()).stream().filter(line -> line.contains("cannot read")).toList();
+		}
+
+		@Override
+		public void append(LogEvent event) {
+			if (event.getLevel() == Level.ERROR) {
+				errors.add(event.getMessage().getFormattedMessage());
+			}
+		}
+	}
+
+	private static int handbooksIn(Container container) {
+		int found = 0;
+		for (int index = 0; index < container.getContainerSize(); index++) {
+			found += HandbookItems.isHandbook(container.getItem(index)) ? 1 : 0;
+		}
+		return found;
+	}
+
+	/** Handbooks stored inside {@code stack} as bundle or container contents, however deep. */
+	private static int handbooksInside(ItemStack stack) {
+		int found = 0;
+		BundleContents bundle = stack.get(DataComponents.BUNDLE_CONTENTS);
+		if (bundle != null) {
+			found += bundle.itemCopies().mapToInt(inner -> (HandbookItems.isHandbook(inner) ? 1 : 0) + handbooksInside(inner)).sum();
+		}
+		ItemContainerContents contents = stack.get(DataComponents.CONTAINER);
+		if (contents != null) {
+			found += contents.itemCopies().mapToInt(inner -> (HandbookItems.isHandbook(inner) ? 1 : 0) + handbooksInside(inner)).sum();
+		}
+		return found;
 	}
 
 	private static void expectUseThrows(GameTestHelper helper, Runnable use, String what) {

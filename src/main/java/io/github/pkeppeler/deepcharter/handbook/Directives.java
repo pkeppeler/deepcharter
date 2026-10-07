@@ -4,12 +4,12 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+
+import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.charter.Charters;
 
 /**
  * Completes a handbook directive. Any feature calls this when a player does the thing a directive
@@ -20,7 +20,6 @@ import net.minecraft.server.level.ServerPlayer;
  * without any call here (see {@link HandbookProgress#sweep}).
  */
 public final class Directives {
-	private static final Logger LOGGER = LoggerFactory.getLogger(Directives.class);
 	private static final Set<Identifier> WARNED_UNKNOWN = new HashSet<>();
 
 	private Directives() {
@@ -29,16 +28,20 @@ public final class Directives {
 	/**
 	 * Completes {@code directive} for {@code player}'s whole charter. A directive that is already done stays done. A player on
 	 * no charter completes nothing. A directive no chapter defines completes nothing and is logged once: a feature may call
-	 * this before the chapter that defines the directive exists.
+	 * this before the chapter that defines the directive exists. While the saved charters or progress are unreadable this logs
+	 * once and does nothing, so a gameplay callback that calls it never throws.
 	 */
 	public static void fire(ServerPlayer player, Identifier directive) {
 		Objects.requireNonNull(player, "player");
 		Objects.requireNonNull(directive, "directive");
 		MinecraftServer server = player.level().getServer();
-		if (!HandbookChapters.directives(server).contains(directive)) {
+		if (!HandbookChapters.directivesOrEmpty(server).contains(directive)) {
 			if (WARNED_UNKNOWN.add(directive)) {
-				LOGGER.warn("Directives.fire: no handbook chapter defines directive {}, so nothing was completed", directive);
+				DeepCharter.LOGGER.warn("Directives.fire: no handbook chapter defines directive {}, so nothing was completed", directive);
 			}
+			return;
+		}
+		if (HandbookProgress.readableData(server).isEmpty() || Charters.charterOf(server, player.getUUID()).isEmpty()) {
 			return;
 		}
 		HandbookRegistry.DIRECTIVE_TRIGGER.trigger(player, directive);

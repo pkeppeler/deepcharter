@@ -17,6 +17,14 @@ public final class Charters {
 	private Charters() {
 	}
 
+	/**
+	 * False when the saved charters are of a version this build cannot read, so every call here that reads them throws. Code on a
+	 * tick, join or sync path checks this first and skips.
+	 */
+	public static boolean isReadable(MinecraftServer server) {
+		return CharterData.get(server).isReadable();
+	}
+
 	/** The charter {@code player} is on, as Director or crew. */
 	public static Optional<Charter> charterOf(MinecraftServer server, UUID player) {
 		return CharterData.get(server).charterOf(player);
