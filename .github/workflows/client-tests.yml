@@ -34,9 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      # No X server: with no DISPLAY, SDL3 (Minecraft 26.3 sets no video driver of its
-      # own) cannot use x11 or wayland, so it uses its offscreen driver, which gets
-      # an OpenGL context from EGL. Naming it keeps a stray DISPLAY from changing that.
+      # No X server: SDL3's offscreen driver gets its GL context from EGL; naming it beats a stray DISPLAY.
       SDL_VIDEO_DRIVER: offscreen
       # Mesa software rendering (llvmpipe): the runner has no GPU.
       LIBGL_ALWAYS_SOFTWARE: "1"
@@ -62,7 +60,9 @@ jobs:
           mkdir -p "$RUN_DIR"
           printf 'version:4896\npreferredGraphicsBackend:"opengl"\n' > "$RUN_DIR/options.txt"
       # Minecraft logs "Failed to create backend" and then hangs, so watch the log and
-      # fail the job at once. With one backend in the options, one such line is fatal.
+      # fail at once. With one backend in the options, one such line is fatal. A run that
+      # shows no window within 3 minutes is also failed. After a clean run, assert the
+      # backend really is OpenGL, so a Minecraft bump that resets options fails loudly.
       # -x deleteGameTestRunDir: Loom deletes the run dir first, which would delete options.txt.
       - name: Client GameTests
         run: |
@@ -70,13 +70,33 @@ jobs:
           ./gradlew runClientGameTest -x deleteGameTestRunDir > "$log" 2>&1 &
           gradle_pid=$!
           tail -n +1 -f "$log" --pid="$gradle_pid" &
+          tail_pid=$!
+          stop_gradle() {
+            echo "::error::$1"
+            kill "$gradle_pid" 2>/dev/null || true
+            ./gradlew --stop > /dev/null 2>&1 || true
+            wait "$tail_pid" 2>/dev/null || true
+            exit 1
+          }
+          deadline=$((SECONDS + 180))
           while kill -0 "$gradle_pid" 2>/dev/null; do
             if grep -q 'Failed to create backend' "$log"; then
-              echo "::error::Minecraft could not create a graphics backend"
-              kill "$gradle_pid"
-              exit 1
+              stop_gradle "Minecraft could not create a graphics backend"
+            fi
+            if [ "$SECONDS" -ge "$deadline" ] \
+              && ! grep -q 'Created window using SDL video driver' "$log"; then
+              stop_gradle "No Minecraft window after 3 minutes"
             fi
             sleep 2
           done
-          wait "$gradle_pid"
-        timeout-minutes: 15
+          status=0
+          wait "$gradle_pid" || status=$?
+          wait "$tail_pid" || true
+          if [ "$status" -ne 0 ]; then
+            exit "$status"
+          fi
+          if ! grep -q 'Using graphics backend OpenGL' "$log"; then
+            echo "::error::The client did not use the OpenGL backend that options.txt asks for"
+            exit 1
+          fi
+        timeout-minutes: 8
