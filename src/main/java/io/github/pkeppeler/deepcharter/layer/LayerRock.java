@@ -35,7 +35,7 @@ public final class LayerRock {
 	}
 
 	/** True for rock in layer 2 and below. */
-	public static boolean isOutOfReachOfHands(Level level, BlockState state) {
+	private static boolean isOutOfReachOfHands(Level level, BlockState state) {
 		OptionalInt layer = LayerChain.layerOf(level.dimensionTypeRegistration().unwrapKey().orElseThrow().identifier());
 		return layer.isPresent() && layer.getAsInt() > 1 && state.is(DEEP_ROCK);
 	}

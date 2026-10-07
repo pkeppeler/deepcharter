@@ -34,10 +34,6 @@ public final class Zones {
 	 * @param id    the biome of the zone, {@code deepcharter:<name>}
 	 */
 	public record Zone(int layer, int index, Identifier id) {
-		/** The lang key of the zone's name, which is its biome's. */
-		public String translationKey() {
-			return "biome." + id.getNamespace() + "." + id.getPath();
-		}
 	}
 
 	/** Checks at server start that the names cover every layer of the chain. */
@@ -79,7 +75,7 @@ public final class Zones {
 	}
 
 	/** The biome of a zone; the layer must have zones defined. */
-	public static Identifier biome(int layer, int index) {
+	private static Identifier biome(int layer, int index) {
 		if (layer < 1 || layer > NAMES.size()) {
 			throw new IllegalStateException("Layer " + layer + " has no zones defined");
 		}
