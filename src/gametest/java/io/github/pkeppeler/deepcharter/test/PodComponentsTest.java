@@ -147,6 +147,25 @@ public class PodComponentsTest {
 	}
 
 	@GameTest
+	public void rescaleFuelKeepsTheLitresAndClampsToFull(GameTestHelper helper) {
+		CharterId charter = charter(helper);
+		PodEntity pod = ownedPod(helper, charter);
+		try {
+			PodStats tank = PodStats.base().withTankLitres(10f);
+			pod.setFuel(60f);
+			PodComponents.rescaleFuel(pod, tank, tank.withTankLitres(10f));
+			expectEqual(helper, "fuel after an equal tank", 60f, pod.fuel());
+			PodComponents.rescaleFuel(pod, tank, tank.withTankLitres(20f));
+			expectEqual(helper, "fuel after a doubled tank", 30f, pod.fuel());
+			PodComponents.rescaleFuel(pod, tank.withTankLitres(20f), tank.withTankLitres(1f));
+			expectEqual(helper, "fuel after a tank 20 times smaller", 100f, pod.fuel());
+			helper.succeed();
+		} finally {
+			pod.discard();
+		}
+	}
+
+	@GameTest
 	public void aTierThreePartOnAMoleDoesExactlyWhatTierTwoDoes(GameTestHelper helper) {
 		CharterId charter = charter(helper);
 		PodEntity capped = ownedPod(helper, charter);
