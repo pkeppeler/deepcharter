@@ -18,6 +18,11 @@ public final class ClientReadMarks {
 	private ClientReadMarks() {
 	}
 
+	/** Forgets that a problem was reported, so that the next world logs its own. Called when the client leaves a world. */
+	static void reset() {
+		reported = false;
+	}
+
 	public static boolean isRead(Identifier entry) {
 		return read().contains(entry);
 	}

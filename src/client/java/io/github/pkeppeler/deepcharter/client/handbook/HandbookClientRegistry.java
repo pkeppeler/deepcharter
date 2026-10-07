@@ -14,7 +14,10 @@ public final class HandbookClientRegistry {
 
 	public static void register() {
 		ClientPlayNetworking.registerGlobalReceiver(HandbookSyncPayload.TYPE, (payload, context) -> ClientHandbook.set(payload.completed()));
-		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> ClientHandbook.set(List.of()));
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+			ClientHandbook.set(List.of());
+			ClientReadMarks.reset();
+		});
 		HandbookKeys.register();
 	}
 }

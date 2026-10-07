@@ -12,6 +12,8 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
 import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
@@ -26,6 +28,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookPage;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookPages;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
+import io.github.pkeppeler.deepcharter.client.handbook.RedactionText;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
 import io.github.pkeppeler.deepcharter.handbook.HandbookItems;
 import io.github.pkeppeler.deepcharter.handbook.HandbookReadPayload;
@@ -43,7 +46,13 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 	private static final Identifier NO_SUCH_CHAPTER = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "no_such_chapter");
 	/** Chapters 1 to 4 of the synthetic handbook, each with two directives named {@code d<chapter>_<n>}. */
 	private static final int CHAPTERS = 4;
-	private static final int FRONT_PAGES = 4;
+	/** Cover, slip, letter, and two contents pages: four chapters at three entries a page. */
+	private static final int FRONT_PAGES = 5;
+	private static final int SPEC_CHAPTERS = 9;
+	/** A window so small that the sheet is at its minimum size. */
+	private static final int MIN_WINDOW_WIDTH = 200;
+	private static final int MIN_WINDOW_HEIGHT = 100;
+	private static final int LEFT_MOUSE = 1;
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
@@ -55,6 +64,10 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 		pagesAreBoundInOrderWithVisibilityOnTheChapters();
 		viewingOnlyFullChaptersMarksThemReadOnce(context);
 		notesTabShowsAnEmptyState(context);
+		theServerRefusesWhatTheCharterMayNotRead();
+		redactionMarksSplitIntoWordsAndAnOddCountRedactsTheTail();
+		marginKeysCarryTheNamespaceAndThePath();
+		everyChapterOfNineHasAnEntryAndAClickTargetAtMinimumSize(context);
 		readMarksRoundTripThroughTheSavedFormat();
 		inTheRealGame(context);
 	}
@@ -130,7 +143,7 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 		check(pages.get(0) instanceof HandbookPage.Cover, "the cover comes first");
 		check(pages.get(1) instanceof HandbookPage.Slip, "the issue slip comes second");
 		check(pages.get(2) instanceof HandbookPage.Letter, "the Founder's letter comes third");
-		check(pages.get(3) instanceof HandbookPage.Contents, "the contents come fourth");
+		check(pages.get(3) instanceof HandbookPage.Contents && pages.get(4) instanceof HandbookPage.Contents, "the contents come next, over two pages");
 		check(pages.getLast() instanceof HandbookPage.Appendix, "the end page comes last");
 		HandbookVisibility[] expected = {HandbookVisibility.FULL, HandbookVisibility.FULL, HandbookVisibility.PREVIEW, HandbookVisibility.CLASSIFIED};
 		for (int chapter = 1; chapter <= CHAPTERS; chapter++) {
@@ -175,6 +188,99 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 			check(screen.notesEmpty(), "with no notes the Notes tab shows its empty state");
 			screen.showHandbook();
 			check(!screen.onNotesTab(), "the handbook tab opens again");
+		});
+	}
+
+	/** Four chapters in registry order: the id list and the directive list must match by index. */
+	private static void theServerRefusesWhatTheCharterMayNotRead() {
+		List<Identifier> ids = List.of(chapterId(1), chapterId(2), chapterId(3), chapterId(4));
+		Identifier unknown = chapterId(9);
+		check(HandbookReadPayload.viewable(ids, directives(), done(1), chapterId(1)), "a completed chapter is viewable");
+		check(HandbookReadPayload.viewable(ids, directives(), done(1), chapterId(2)), "the current chapter is viewable");
+		check(!HandbookReadPayload.viewable(ids, directives(), done(1), chapterId(3)), "the next chapter is refused: only its title shows");
+		check(!HandbookReadPayload.viewable(ids, directives(), done(1), chapterId(4)), "a classified chapter is refused");
+		check(!HandbookReadPayload.viewable(ids, directives(), done(1), unknown), "an unknown chapter is refused");
+		check(HandbookReadPayload.viewable(ids, directives(), Set.of(), chapterId(1)), "with nothing done the first chapter is viewable");
+		check(!HandbookReadPayload.viewable(ids, directives(), Set.of(), chapterId(2)), "with nothing done the second chapter is refused");
+		check(!HandbookReadPayload.viewable(ids, directives(), done(1, 2, 3), chapterId(9)), "an unknown chapter is refused when all are done");
+		check(HandbookReadPayload.viewable(ids, directives(), done(1, 2, 3, 4), chapterId(4)), "every chapter is viewable when all are done");
+		check(!HandbookReadPayload.viewable(List.of(), List.of(), Set.of(), chapterId(1)), "nothing is viewable with no chapters");
+	}
+
+	private static void redactionMarksSplitIntoWordsAndAnOddCountRedactsTheTail() {
+		List<RedactionText.Token> tokens = RedactionText.parse("report ||unusual findings|| to ||Mgmt||.");
+		check(tokens.equals(List.of(
+				new RedactionText.Token("report", false, false),
+				new RedactionText.Token("unusual", true, true),
+				new RedactionText.Token("findings", true, true),
+				new RedactionText.Token("to", false, true),
+				new RedactionText.Token("Mgmt", true, true),
+				new RedactionText.Token(".", false, false))), "a pair of marks redacts the words between them, got " + tokens);
+		List<RedactionText.Token> odd = RedactionText.parse("open ||secret tail");
+		check(odd.equals(List.of(
+				new RedactionText.Token("open", false, false),
+				new RedactionText.Token("secret", true, true),
+				new RedactionText.Token("tail", true, true))), "an odd count of marks redacts the tail, got " + odd);
+		check(RedactionText.parse("").isEmpty() && RedactionText.parse("||||").isEmpty(), "no words give no tokens");
+		check(RedactionText.parse("  lead").equals(List.of(new RedactionText.Token("lead", false, false))), "a leading space is dropped");
+	}
+
+	private static void marginKeysCarryTheNamespaceAndThePath() {
+		check(HandbookScreen.marginKey(SAMPLE_CHAPTER).equals("deepcharter.handbook.chapter.deepcharter.sample.margin"),
+				"the margin key is " + HandbookScreen.marginKey(SAMPLE_CHAPTER));
+		check(HandbookScreen.marginKey(Identifier.fromNamespaceAndPath("other", "a/b")).equals("deepcharter.handbook.chapter.other.a.b.margin"),
+				"a slash in the path becomes a dot");
+		check(!HandbookScreen.marginKey(Identifier.fromNamespaceAndPath("other", "sample")).equals(HandbookScreen.marginKey(SAMPLE_CHAPTER)),
+				"two namespaces do not share a note");
+	}
+
+	private static Map<Identifier, HandbookChapter> spec(int count) {
+		Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();
+		for (int chapter = 1; chapter <= count; chapter++) {
+			chapters.put(chapterId(chapter), new HandbookChapter(chapter,
+					Component.literal("PLACEHOLDER: a rather long chapter title number " + chapter),
+					List.of(new HandbookChapter.Entry(directive(chapter, 1), Component.literal("one")))));
+		}
+		return chapters;
+	}
+
+	/** Nine chapters (docs/SPEC.md) on a sheet at its minimum size: no chapter may fall off the contents. */
+	private static void everyChapterOfNineHasAnEntryAndAClickTargetAtMinimumSize(ClientGameTestContext context) {
+		context.runOnClient(client -> {
+			List<HandbookPage> pages = HandbookPages.of(spec(SPEC_CHAPTERS), done(1));
+			HandbookScreen screen = new HandbookScreen(pages, id -> false, id -> { }, List.of());
+			screen.init(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT);
+			List<Integer> seen = new ArrayList<>();
+			for (int index = 0; index < pages.size(); index++) {
+				if (!(pages.get(index) instanceof HandbookPage.Contents contents)) {
+					continue;
+				}
+				screen.goTo(index);
+				for (int tick = 0; tick < HandbookScreenTuning.DEFAULT.flipTicks(); tick++) {
+					screen.tick();
+				}
+				List<HandbookScreen.ContentsEntry> entries = screen.contentsEntries(contents);
+				check(entries.size() == contents.count(), "a contents page lists its " + contents.count() + " chapters, got " + entries.size());
+				for (HandbookScreen.ContentsEntry entry : entries) {
+					check(entry.bottom() <= screen.contentsBottom(), "entry for page " + entry.page() + " ends at " + entry.bottom()
+							+ ", below the sheet's text area at " + screen.contentsBottom());
+					seen.add(((HandbookPage.Chapter) pages.get(entry.page())).number());
+					screen.goTo(index);
+					double x = entry.left() + 2;
+					double y = (entry.top() + entry.bottom()) / 2.0;
+					MouseButtonEvent click = new MouseButtonEvent(x, y, new MouseButtonInfo(LEFT_MOUSE, 0));
+					check(screen.mouseClicked(click, false), "the entry for page " + entry.page() + " is a click target");
+					check(screen.page() == entry.page(), "clicking the entry goes to page " + entry.page() + ", was " + screen.page());
+					for (int tick = 0; tick < HandbookScreenTuning.DEFAULT.flipTicks(); tick++) {
+						screen.tick();
+					}
+					screen.goTo(index);
+					for (int tick = 0; tick < HandbookScreenTuning.DEFAULT.flipTicks(); tick++) {
+						screen.tick();
+					}
+				}
+			}
+			check(seen.equals(List.of(1, 2, 3, 4, 5, 6, 7, 8, 9)), "every chapter has exactly one entry, in order, got " + seen);
 		});
 	}
 
@@ -229,8 +335,8 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 				var player = server.getPlayerList().getPlayers().getFirst();
 				check(!HandbookReadPayload.handle(server, player, NO_SUCH_CHAPTER), "the server refuses a chapter that does not exist");
 				check(!ReadMarks.isRead(player, NO_SUCH_CHAPTER), "a chapter that does not exist is not marked");
-				check(HandbookReadPayload.viewable(server, player.getUUID(), SAMPLE_CHAPTER), "the first chapter is viewable");
-				check(!HandbookReadPayload.viewable(server, player.getUUID(), SAMPLE_SLEEP), "a directive id is not a chapter");
+				check(HandbookReadPayload.viewableFor(server, player.getUUID(), SAMPLE_CHAPTER), "the first chapter is viewable");
+				check(!HandbookReadPayload.viewableFor(server, player.getUUID(), SAMPLE_SLEEP), "a directive id is not a chapter");
 				check(HandbookReadPayload.handle(server, player, SAMPLE_CHAPTER), "viewing a chapter again is accepted and changes nothing");
 			});
 

@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.handbook;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -47,19 +48,20 @@ public class HandbookScreen extends Screen {
 	private static final int CONTENT_TOP = 14;
 	private static final int PARAGRAPH_GAP = 5;
 
-	/** A part of the contents page that jumps to a page when clicked. */
-	private record Hit(int left, int top, int right, int bottom, int page) {
+	/** One line of a contents page: the box it fills, and the page a click on it goes to. */
+	public record ContentsEntry(int page, int left, int top, int right, int bottom) {
 		boolean contains(double x, double y) {
 			return x >= left && x < right && y >= top && y < bottom;
 		}
 	}
 
 	private final List<HandbookPage> pages;
+	/** The index in {@link #pages} of each chapter page, by chapter number. */
+	private final Map<Integer, Integer> chapterPages;
 	private final Predicate<Identifier> isRead;
 	private final Consumer<Identifier> onViewed;
 	private final List<Component> notes;
 	private final Set<Identifier> reported = new HashSet<>();
-	private final List<Hit> hits = new ArrayList<>();
 
 	private int page;
 	private int previousPage;
@@ -91,6 +93,13 @@ public class HandbookScreen extends Screen {
 			throw new IllegalArgumentException("the handbook needs at least one page");
 		}
 		this.pages = List.copyOf(pages);
+		Map<Integer, Integer> byNumber = new HashMap<>();
+		for (int index = 0; index < this.pages.size(); index++) {
+			if (this.pages.get(index) instanceof HandbookPage.Chapter chapter) {
+				byNumber.put(chapter.number(), index);
+			}
+		}
+		this.chapterPages = Map.copyOf(byNumber);
 		this.isRead = isRead;
 		this.onViewed = onViewed;
 		this.notes = List.copyOf(notes);
@@ -105,6 +114,14 @@ public class HandbookScreen extends Screen {
 		HandbookChapters.all(client.getConnection().registryAccess()).forEach(chapter -> chapters.put(chapter.key().identifier(), chapter.value()));
 		client.gui.setScreen(new HandbookScreen(HandbookPages.of(chapters, ClientHandbook.completed()), ClientReadMarks::isRead,
 				chapter -> ClientPlayNetworking.send(new HandbookReadPayload(chapter)), List.of()));
+	}
+
+	/**
+	 * The lang key of the margin note of a chapter: {@code deepcharter.handbook.chapter.<namespace>.<path>.margin}, with each
+	 * {@code /} of the path turned into a dot, so that two namespaces never share a note.
+	 */
+	public static String marginKey(Identifier chapter) {
+		return "deepcharter.handbook.chapter." + chapter.getNamespace() + "." + chapter.getPath().replace('/', '.') + ".margin";
 	}
 
 	public int page() {
@@ -225,10 +242,12 @@ public class HandbookScreen extends Screen {
 			return true;
 		}
 		if (flipTicks == 0 && !notesTab) {
-			for (Hit hit : hits) {
-				if (hit.contains(event.x(), event.y())) {
-					goTo(hit.page());
-					return true;
+			if (pages.get(page) instanceof HandbookPage.Contents contents) {
+				for (ContentsEntry entry : contentsEntries(contents)) {
+					if (entry.contains(event.x(), event.y())) {
+						goTo(entry.page());
+						return true;
+					}
 				}
 			}
 		}
@@ -237,7 +256,6 @@ public class HandbookScreen extends Screen {
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-		hits.clear();
 		int shown = page;
 		float squeeze = 1;
 		if (flipTicks > 0 && !notesTab) {
@@ -266,7 +284,7 @@ public class HandbookScreen extends Screen {
 			case HandbookPage.Cover cover -> drawCover(graphics);
 			case HandbookPage.Slip slip -> drawSlip(graphics);
 			case HandbookPage.Letter letter -> drawLetter(graphics);
-			case HandbookPage.Contents contents -> drawContents(graphics);
+			case HandbookPage.Contents contents -> drawContents(graphics, contents);
 			case HandbookPage.Chapter chapter -> drawChapter(graphics, chapter);
 			case HandbookPage.Appendix appendix -> drawAppendix(graphics);
 		}
@@ -312,30 +330,52 @@ public class HandbookScreen extends Screen {
 		margin(graphics, "deepcharter.handbook.letter.margin", paperTop + CONTENT_TOP * 2);
 	}
 
-	private void drawContents(GuiGraphicsExtractor graphics) {
-		int y = PaperDraw.centered(graphics, font, tr("contents.heading"), centerX(), paperTop + TOP_MARGIN, 1.25f, T.inkColor()) + PARAGRAPH_GAP;
-		for (int index = 0; index < pages.size(); index++) {
-			if (!(pages.get(index) instanceof HandbookPage.Chapter chapter)) {
-				continue;
-			}
-			if (y + font.lineHeight > bottom()) {
-				break;
-			}
+	/** The lowest y a contents entry may reach: the top of the Back and Next buttons, less a gap. */
+	public int contentsBottom() {
+		return bottom();
+	}
+
+	/**
+	 * The entries of one contents page, top to bottom, every one on one line. Needs the screen to be initialised. The same boxes
+	 * are drawn and are the click targets.
+	 */
+	public List<ContentsEntry> contentsEntries(HandbookPage.Contents contents) {
+		List<ContentsEntry> entries = new ArrayList<>();
+		int y = contentsTop();
+		for (int number = contents.firstChapter(); number < contents.firstChapter() + contents.count(); number++) {
+			int pageIndex = chapterPages.get(number);
+			entries.add(new ContentsEntry(pageIndex, textLeft, y - 1, textLeft + textWidth, y + font.lineHeight + 2));
+			y += font.lineHeight + 4;
+		}
+		return entries;
+	}
+
+	private int contentsTop() {
+		return paperTop + TOP_MARGIN + Math.round(font.lineHeight * 1.25f) + 2 + PARAGRAPH_GAP;
+	}
+
+	private void drawContents(GuiGraphicsExtractor graphics, HandbookPage.Contents contents) {
+		Component heading = contents.parts() > 1 ? tr("contents.heading.part", contents.part(), contents.parts()) : tr("contents.heading");
+		PaperDraw.centered(graphics, font, heading, centerX(), paperTop + TOP_MARGIN, 1.25f, T.inkColor());
+		for (ContentsEntry box : contentsEntries(contents)) {
+			HandbookPage.Chapter chapter = (HandbookPage.Chapter) pages.get(box.page());
+			int y = box.top() + 1;
 			if (chapter.visibility() == HandbookVisibility.CLASSIFIED) {
-				y = PaperDraw.redacted(graphics, font, I18n.get("deepcharter.handbook.contents.entry.classified", chapter.number()),
+				PaperDraw.redacted(graphics, font, I18n.get("deepcharter.handbook.contents.entry.classified", chapter.number()),
 						textLeft, y, textWidth, T.inkColor());
 				continue;
 			}
-			Component entry = tr("contents.entry", chapter.number(), chapter.chapter().title());
 			Component status = chapter.isComplete() ? tr("contents.done") : chapter.visibility() == HandbookVisibility.FULL && !isRead.test(chapter.id()) ? tr("contents.new") : null;
 			int statusWidth = status == null ? 0 : font.width(status) + 4;
-			int lineTop = y;
-			y = PaperDraw.wrapped(graphics, font, entry, textLeft, y, textWidth - statusWidth, T.inkColor());
-			if (status != null) {
-				graphics.text(font, PaperDraw.ink(status, T.stampColor()), textLeft + textWidth - statusWidth + 4, lineTop, OPAQUE | T.stampColor(), false);
+			String line = tr("contents.entry", chapter.number(), chapter.chapter().title()).getString();
+			int lineWidth = textWidth - statusWidth;
+			if (font.width(PaperDraw.ink(Component.literal(line), T.inkColor())) > lineWidth) {
+				line = font.plainSubstrByWidth(line, lineWidth - font.width("...")) + "...";
 			}
-			hits.add(new Hit(textLeft, lineTop - 1, textLeft + textWidth, y + 1, index));
-			y += 3;
+			graphics.text(font, PaperDraw.ink(Component.literal(line), T.inkColor()), textLeft, y, OPAQUE | T.inkColor(), false);
+			if (status != null) {
+				graphics.text(font, PaperDraw.ink(status, T.stampColor()), textLeft + textWidth - statusWidth + 4, y, OPAQUE | T.stampColor(), false);
+			}
 		}
 	}
 
@@ -359,7 +399,7 @@ public class HandbookScreen extends Screen {
 			y = PaperDraw.wrapped(graphics, font, tr(key, directive.text()), textLeft, y, textWidth, T.inkColor()) + 3;
 		}
 		if (chapter.visibility() == HandbookVisibility.FULL) {
-			margin(graphics, "deepcharter.handbook.chapter." + chapter.id().getPath() + ".margin", paperTop + CONTENT_TOP * 2);
+			margin(graphics, marginKey(chapter.id()), paperTop + CONTENT_TOP * 2);
 		}
 		if (chapter.visibility() == HandbookVisibility.PREVIEW) {
 			PaperDraw.stamp(graphics, font, tr("chapter.stamp.coming"), centerX(), bottom() - 28, 8, T.stampColor());

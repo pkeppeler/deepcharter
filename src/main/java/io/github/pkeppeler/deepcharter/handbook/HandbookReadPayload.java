@@ -5,6 +5,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 
@@ -37,14 +38,12 @@ public record HandbookReadPayload(Identifier chapter) implements CustomPacketPay
 	/** Registers the payload type and its receiver. */
 	static void register() {
 		PayloadTypeRegistry.serverboundPlay().register(TYPE, CODEC);
+		ServerLifecycleEvents.SERVER_STOPPED.register(server -> REPORTED.clear());
 		ServerPlayNetworking.registerGlobalReceiver(TYPE, (payload, context) -> handle(context.server(), context.player(), payload.chapter()));
 	}
 
 	/** Marks {@code chapter} read for {@code player} if the request passes every check. Returns whether the chapter is now marked. */
 	public static boolean handle(MinecraftServer server, ServerPlayer player, Identifier chapter) {
-		if (!viewable(server, player.getUUID(), chapter)) {
-			return false;
-		}
 		if (player.getAttachedOrCreate(HandbookRegistry.READ_MARKS) instanceof Versioned.Unreadable<ReadMarks> unreadable) {
 			if (REPORTED.add(player.getUUID())) {
 				DeepCharter.LOGGER.error("Not marking {} read for {}: their read marks have saved version {} that this build cannot read",
@@ -52,24 +51,34 @@ public record HandbookReadPayload(Identifier chapter) implements CustomPacketPay
 			}
 			return false;
 		}
-		if (!ReadMarks.isRead(player, chapter)) {
-			ReadMarks.mark(player, chapter);
+		if (ReadMarks.isRead(player, chapter)) {
+			return true;
 		}
+		if (!viewableFor(server, player.getUUID(), chapter)) {
+			return false;
+		}
+		ReadMarks.mark(player, chapter);
 		return true;
 	}
 
 	/** Whether {@code chapter} exists and the charter of {@code player} may read all of it. */
-	public static boolean viewable(MinecraftServer server, UUID player, Identifier chapter) {
+	public static boolean viewableFor(MinecraftServer server, UUID player, Identifier chapter) {
 		List<Holder.Reference<HandbookChapter>> chapters = HandbookChapters.all(server.registryAccess());
-		List<HandbookVisibility> visibility = HandbookVisibility.of(
+		return viewable(chapters.stream().map(entry -> entry.key().identifier()).toList(),
 				chapters.stream().map(entry -> entry.value().directives().stream().map(HandbookChapter.Entry::id).toList()).toList(),
-				HandbookProgress.completedFor(server, player));
-		for (int index = 0; index < chapters.size(); index++) {
-			if (chapters.get(index).key().identifier().equals(chapter)) {
-				return visibility.get(index) == HandbookVisibility.FULL;
-			}
-		}
-		return false;
+				HandbookProgress.completedFor(server, player), chapter);
+	}
+
+	/**
+	 * Whether {@code chapter} is one of {@code chapterIds} and is {@link HandbookVisibility#FULL} for a charter that completed
+	 * {@code completed}. Pure.
+	 *
+	 * @param chapterIds the chapter ids in handbook order
+	 * @param directives the directive ids of each chapter, in the same order as {@code chapterIds}
+	 */
+	public static boolean viewable(List<Identifier> chapterIds, List<List<Identifier>> directives, Set<Identifier> completed, Identifier chapter) {
+		int index = chapterIds.indexOf(chapter);
+		return index >= 0 && HandbookVisibility.of(directives, completed).get(index) == HandbookVisibility.FULL;
 	}
 
 	@Override

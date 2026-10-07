@@ -21,8 +21,11 @@ public sealed interface HandbookPage {
 	record Letter() implements HandbookPage {
 	}
 
-	/** The table of contents. It lists every {@link Chapter} page that follows. */
-	record Contents() implements HandbookPage {
+	/**
+	 * One page of the table of contents. The contents flow over {@code parts} pages, so that every chapter has an entry on any size
+	 * of sheet. This page lists {@code count} chapters, from number {@code firstChapter} (counted from 1). {@code part} counts from 1.
+	 */
+	record Contents(int part, int parts, int firstChapter, int count) implements HandbookPage {
 	}
 
 	/**

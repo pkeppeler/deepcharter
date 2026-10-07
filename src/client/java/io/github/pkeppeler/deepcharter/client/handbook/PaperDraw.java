@@ -1,8 +1,5 @@
 package io.github.pkeppeler.deepcharter.client.handbook;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
@@ -54,11 +51,6 @@ final class PaperDraw {
 		return lineY;
 	}
 
-	/** How many lines {@code text} takes when wrapped to {@code width}. */
-	static int lines(Font font, Component text, int width) {
-		return font.split(text, width).size();
-	}
-
 	/** Draws {@code text} centred on {@code centerX}, enlarged {@code scale} times. Returns the y below it. */
 	static int centered(GuiGraphicsExtractor graphics, Font font, Component text, int centerX, int y, float scale, int color) {
 		Component styled = ink(text, color);
@@ -98,7 +90,7 @@ final class PaperDraw {
 		int cursor = x;
 		int lineY = y;
 		boolean previousRedacted = false;
-		for (Token token : tokens(text)) {
+		for (RedactionText.Token token : RedactionText.parse(text)) {
 			Component word = ink(Component.literal(token.text()), color);
 			int wordWidth = font.width(word);
 			int gap = token.spaceBefore() ? spaceWidth : 0;
@@ -120,36 +112,4 @@ final class PaperDraw {
 		return lineY + font.lineHeight + 3;
 	}
 
-	/** One word of a redacted text, and whether a space came before it. */
-	private record Token(String text, boolean redacted, boolean spaceBefore) {
-	}
-
-	private static List<Token> tokens(String text) {
-		List<Token> tokens = new ArrayList<>();
-		String[] segments = text.split("\\|\\|", -1);
-		boolean space = false;
-		for (int index = 0; index < segments.length; index++) {
-			boolean redacted = index % 2 == 1;
-			StringBuilder word = new StringBuilder();
-			for (char letter : segments[index].toCharArray()) {
-				if (letter == ' ') {
-					if (!word.isEmpty()) {
-						tokens.add(new Token(word.toString(), redacted, space));
-						word.setLength(0);
-					}
-					space = true;
-				} else {
-					if (word.isEmpty() && tokens.isEmpty()) {
-						space = false;
-					}
-					word.append(letter);
-				}
-			}
-			if (!word.isEmpty()) {
-				tokens.add(new Token(word.toString(), redacted, space));
-				space = false;
-			}
-		}
-		return tokens;
-	}
 }
