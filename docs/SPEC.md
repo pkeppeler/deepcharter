@@ -1,6 +1,6 @@
 # Deep Charter: vision and feature spec
 
-Vision spec — settled 2026-10-06; numbers and lore pending.
+Vision spec — settled 2026-10-06; numbers pending. Lore settled 2026-10-07 in [LORE.md](LORE.md).
 
 Terms in **bold** or capitalised as glossary terms are defined in [CONTEXT.md](../CONTEXT.md). Original game numbers: [REFERENCE.md](../original_flash_game/REFERENCE.md).
 
@@ -29,7 +29,8 @@ Pillars, ranked. The higher one wins a conflict.
 ### Surface and colony
 
 - **Surface:** vanilla-style frontier (terrain, trees, animals, vanilla ores near the surface for the bootstrap, vanilla night monsters). No villages or settlements. No Nether or End; the depths replace them.
-- **Colony:** one derelict mining colony per world, at spawn. Its terminals are repaired once per world: when any charter fixes one, every charter can use it.
+- **Colony:** one derelict mining colony per world, at spawn, named Prosperity. Its terminals are repaired once per world: when any charter fixes one, every charter can use it. The contract terminal works from the start.
+- **Conduit:** an undiggable Company pipe runs from the colony's ore processor straight down through every layer, at the same coordinates in each, ending in the Furnace. It is a landmark and the story's first clue ([LORE.md](LORE.md#8-prosperity)).
 - **Width:** unlimited, no border.
 - **Performance:** layer height drives cost, because Minecraft generates whole columns. Keep layers moderately tall. If world files grow large, add a tool to trim unvisited chunks.
 
@@ -48,10 +49,10 @@ Pillars, ranked. The higher one wins a conflict.
 
 ### Story layers
 
-About 8 story layers, roughly 6–8 hours each: a 60+ hour campaign, finale at the bottom of the last. Themes are a draft for the lore session.
+About 8 story layers, roughly 6–8 hours each: a 60+ hour campaign, finale at the bottom of the last. Themes are settled; each layer's lore, zones and beats are in [LORE.md](LORE.md#11-layers).
 
-| # | Name | Draft theme |
-|---|------|-------------|
+| # | Name | Theme |
+|---|------|-------|
 | 1 | The Claim | Dirt and stone, first ores (Ironium, Bronzium, Silverium, Goldium), previous miners' abandoned shafts. Teaches the loop. |
 | 2 | The Old Workings | Collapsed colony mine levels, rails, salvageable pod wrecks (including the Prospector wreck), first garbled transmissions, something moving in the dark. |
 | 3 | Fungal Hollows | Huge caverns of glowing fungi (natural light), spore-gas hazards, first real on-foot exploration. |
@@ -59,7 +60,7 @@ About 8 story layers, roughly 6–8 hours each: a 60+ hour campaign, finale at t
 | 5 | The Lattice | Crystal and geode, emerald and ruby. Sound resonance attracts things; scanner interference. |
 | 6 | The Magma Belt | Lava rivers and heat; the radiator becomes vital. The employer starts saying "turn back". |
 | 7 | The Ossuary | Colossal bones and ancient structures, things that aren't fossils. "THE EYES." |
-| 8 | The Furnace | The employer's true factories, the reveal, the final boss. |
+| 8 | The Furnace | Head Office, the employer's true factories; the reveal; the final boss and the choice. |
 
 ### Ramp
 
@@ -128,7 +129,7 @@ The **Employee Handbook** is a company-issued onboarding manual.
 
 ### Voice and visibility
 
-- **Voice:** the employer's cheerful corporate voice. Previous miners' handwritten margin notes tell a different story. The handbook can be "revised" as the story turns; details go to the lore session.
+- **Voice:** the employer's cheerful corporate voice. Previous miners' handwritten margin notes tell a different story. The handbook is "revised" five times as the story turns. Revisions change its tone, never its rules. Text, margin notes and revisions: [lore/handbook.md](lore/handbook.md).
 - **Visibility:** show only the road just ahead, and never spoil.
   - The current Directives are explicit.
   - The next chapter shows its title and Directive list.
@@ -305,35 +306,42 @@ The Behemoth's anchor mode is a temporary outpost.
 
 ## 12. Death and failure
 
-- Normal Minecraft respawn: the surface, or an outpost's beds.
+- Normal Minecraft respawn: the surface, or an outpost's beds. In the fiction this is the employer's Continuity Plan, and each death is a Continuity Event ([LORE.md](LORE.md#8-prosperity)).
 - The pod's wreck stays at depth with its cargo, ready for a salvage run.
 - Running out of fuel strands the pod (section 7).
 
 ## 13. Creatures and combat
 
-**Details deferred** to a dedicated creatures and combat session.
+**Details deferred** to a dedicated creatures and combat session. Lore hooks: [LORE.md section 14](LORE.md#14-hooks-for-the-creatures-session).
 
 - Rare, unsettling creatures in each layer, plus layer bosses. Dread wins over action.
 - Bosses mix pod fights and on-foot fights, by layer.
 - Pod combat uses mining gear first (drill, explosives, charge launcher), turrets later.
 - On foot: normal Minecraft combat plus suit gear.
 
-## 14. Story skeleton and transmissions
+## 14. Story and transmissions
 
-**Lore session pending.** Original lore with the same shape as the original game's, expanded and "unabridged". Layer themes (section 3), the employer's name and the transmission text are all workshopped there.
+Settled 2026-10-07. Canon, with spoilers: [LORE.md](LORE.md). Player-facing text: [lore/transmissions.md](lore/transmissions.md), [lore/handbook.md](lore/handbook.md) and [lore/notes.md](lore/notes.md).
+
+Original lore with the original game's shape (a cheerful employer, vanishing miners, orders to turn back, a two-phase boss), expanded and "unabridged". Darkness in the manner of Tolkien and Lewis: evil is real, hollow and beaten, and the deepest thing in the world is good and not safe. Tone and guardrails: [LORE.md section 2](LORE.md#2-tone).
 
 | Act | Layers | Beats |
 |-----|--------|-------|
-| 1 | 1–2 | A cheerful employer pays bonuses while you repair the colony; the first garbled messages. |
-| 2 | 3–5 | Intercepted transmissions and logs from wrecks of vanished crews; the fine print of your Employment Contract starts to matter. |
-| 3 | 6–7 | Orders to turn back; threats of "termination". |
-| Finale | 8 | The reveal and a two-phase boss. |
+| 1 | 1–2 | The employer's cheerful Personnel pays bonuses while you repair Prosperity; the first garbled relays; something moving in the dark. |
+| 2 | 3–5 | Wrecks and relays of the crews lost on the Night Shift; the Employment Contract's fine print is unredacted; the Chairman's name echoes backwards in the Lattice. |
+| 3 | 6–7 | The Chairman takes over the charter's account: orders to turn back, every threat with a receipt; THE EYES. |
+| Finale | 8 | Head Office, the reveal, the two-phase boss and the choice. |
 
-- **Post-game hook:** the boss was not the bottom. Whatever he was mining for, or guarding, is deeper still. This justifies the uncharted layers and future story layers.
-- **Employer:** a new character with a hidden-name trick like the original's "Mr. Natas" (Satan backwards). Named in the lore session.
-- **Transmissions** go to the whole charter, triggered by the charter's deepest point reached.
+- **Employer:** H. Colom & Co. H. COLOM reversed is MOLOCH: the hidden-name trick, with clues in layers 1, 5 and 7 and the reveal on screen in layer 8.
+- **The reveal:** the Company is the lure of a parasite fastened to the heart of a vast sleeping creature whose body is the deep. Ore is what the creature grows, and everything sold goes down the Conduit to the parasite's Furnace.
+- **The finale is a choice** ([ADR 0006](adr/0006-the-finale-is-won-by-renunciation.md)). The fight breaks the boss but cannot kill him, and he offers the charter a **Controlling Interest**.
+  - **Renunciation**, the true ending: anyone in the charter throws the Controlling Interest into the Furnace, which kills the boss. The charter loses its whole account, and every crew member receives an **Unnumbered Lamp**, a suit lamp that never runs out.
+  - **Signing**, by the Director only, is final and permanent. The Director becomes the Chairman, keeps the boss's payout, draws a recurring dividend, carries the Controlling Interest for good, and his suit lamp never works again. The epilogue is grim.
+- **Post-game hook:** the Ramp is the wall around the creature's heart, the Motherload, and in the uncharted layers below it older things gnaw. Both endings lead there. A splice is the creature stirring ("the depths moved").
+- Every change after the finale is presentation for that charter only, never a world edit.
+- **Transmissions** go to the whole charter. Most trigger at the charter's deepest point reached; the bootstrap repairs and the finale beats trigger on events.
 - A personal build could swap in the original's transmission text ([REFERENCE.md](../original_flash_game/REFERENCE.md)).
-- **Altimeter:** tricks from the original (garbling past a depth, "-66666 ft." in hell) inspire our own. "UNCHARTED" shows below the ramp.
+- **Altimeter:** each layer has its own trick, presentation only ([LORE.md](LORE.md#11-layers)). "UNCHARTED" shows below the ramp.
 
 ## 15. Presentation
 
@@ -367,12 +375,14 @@ Surface, repairing the colony, the Mole, the onboarding handbook (implied by the
 
 - Very late game: a way to drill up or angle upward? A pod upgraded at an outpost may not fit back up its own shaft, possibly by design.
 - Final crew-role design, after the prototype.
-- Lore session: the employer's name, layer themes, transmissions.
+- Gore stays out by default ([LORE.md guardrail 7](LORE.md#guardrails)); lift it only on the user's say.
+- Finale numbers and rules: the dividend's size and cadence, and how the Chairman's dead suit lamp and the Unnumbered Lamp sit with the suit lamp's battery track.
+- Records board extras proposed by the lore: a Continuity Events column, and a lamp or mask mark for each charter after the finale.
 - Creatures and combat session.
 - Numbers tuning: layer thicknesses, prices, drill speeds.
 - Duration and size of earthquake and cave-in blockages, per layer.
 - Public release: name and branding, licence, original soundtrack sourcing.
 - Competition between charters (a later update).
 - A trimming tool for chunks nobody visits, if world size becomes a problem.
-- Exact "couple of component tiers" cadence for catalysts, and which layer supplies which catalyst.
+- Exact "couple of component tiers" cadence for catalysts, and which layer supplies which catalyst. Names proposed in [LORE.md](LORE.md#6-motifs).
 - Exact component tier caps per chassis.
