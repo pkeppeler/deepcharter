@@ -1,11 +1,14 @@
 package io.github.pkeppeler.deepcharter.client.fuel;
 
-public final class FuelClientRegistry {
-	// Registers the fuel screens, renderers and HUD elements. Empty until #69.
+import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreens;
+import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 
+/** Registers the fuel pump's screen. */
+public final class FuelClientRegistry {
 	private FuelClientRegistry() {
 	}
 
 	public static void register() {
+		TerminalScreens.register(TerminalTypes.FUEL_PUMP, FuelPumpScreen::new);
 	}
 }

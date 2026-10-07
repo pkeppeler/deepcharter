@@ -51,8 +51,13 @@ public final class ComponentItems {
 	public static ItemStack mint(MinecraftServer server, ComponentTrack track, int tier, CharterId charter) {
 		track.requirePartTier(tier);
 		String serial = Serials.get(server).next(track.id().toUpperCase(Locale.ROOT));
+		return stackOf(track, new PartLabel(tier, charter, serial));
+	}
+
+	/** A stack of the part {@code label} describes, such as the one a pod gave up. */
+	public static ItemStack stackOf(ComponentTrack track, PartLabel label) {
 		ItemStack stack = new ItemStack(item(track));
-		stack.set(LABEL, new PartLabel(tier, charter, serial));
+		stack.set(LABEL, label);
 		return stack;
 	}
 

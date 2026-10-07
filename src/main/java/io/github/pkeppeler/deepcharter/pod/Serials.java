@@ -56,6 +56,11 @@ public final class Serials extends SavedData {
 		return server.getDataStorage().computeIfAbsent(TYPE);
 	}
 
+	/** False when the saved serials are of a version this build cannot read, so {@link #next} throws. Check it on a gameplay path. */
+	public boolean isReadable() {
+		return unreadable.isEmpty();
+	}
+
 	/** The next serial of {@code prefix}, such as {@code MOLE-0001}. */
 	public String next(String prefix) {
 		if (unreadable.isPresent()) {

@@ -1,6 +1,7 @@
 {
   "values": [
     "minecraft:coal",
-    "minecraft:charcoal"
+    "minecraft:charcoal",
+    "deepcharter:biofuel"
   ]
 }

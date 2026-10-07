@@ -17,6 +17,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.client.fuel.FuelPumpScreen;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreen;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreens;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
@@ -125,7 +126,8 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
 				"the inserted part's button now reads inserted");
 
 		context.clickScreenButton("INSERT " + partLabel(TerminalTypes.FUEL_PUMP, 1));
-		context.waitFor(client -> client.gui.screen() instanceof TerminalScreen open && open.online(), WAIT_TICKS);
+		// The repaired pump opens its own screen (#69), not the generic online one.
+		context.waitFor(client -> client.gui.screen() instanceof FuelPumpScreen, WAIT_TICKS);
 		boolean repaired = singleplayer.getServer().computeOnServer(server -> RepairState.get(server).repaired(TerminalTypes.FUEL_PUMP));
 		check(repaired, "the server has the pump repaired");
 		int carried = singleplayer.getServer().computeOnServer(server -> server.getPlayerList().getPlayers().getFirst().getInventory()
@@ -140,8 +142,9 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
 		check(context.computeOnClient(client -> client.gui.screen() == null), "the repair does not widen the range");
 
 		request(context, scene.pump());
-		TerminalScreen screen = awaitScreen(context);
-		check(screen.online(), "a repaired terminal opens online");
+		context.waitForScreen(FuelPumpScreen.class);
+		FuelPumpScreen screen = context.computeOnClient(client -> (FuelPumpScreen) client.gui.screen());
+		check(screen.view().repaired(), "a repaired terminal opens online");
 		context.waitFor(client -> screen.typewriter().done(), WAIT_TICKS);
 		check(screen.typewriter().text().contains("ONLINE"), "the online text says so, got '" + screen.typewriter().text() + "'");
 		context.waitTicks(5);
