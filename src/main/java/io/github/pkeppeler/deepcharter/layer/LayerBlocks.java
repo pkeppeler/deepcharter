@@ -20,7 +20,6 @@ public final class LayerBlocks {
 	private static final Identifier BREACH_CRUST_ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "breach_crust");
 
 	// The layer dimension JSONs stack 3 of these at each floor; their flat generators must match.
-	// Placeholder hardness: #28 owns how drills cross it.
 	public static final Block BREACH_CRUST = registerBlock(BREACH_CRUST_ID,
 			key -> new Block(BlockBehaviour.Properties.of().setId(key).strength(5.0F, 6.0F).sound(SoundType.STONE).noLootTable()));
 
