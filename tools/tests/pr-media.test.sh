@@ -113,6 +113,26 @@ guarded '^$' 1 "$work/files/a.gif"
 check "guard allows a replace-and-add publish" $?
 check "guard-clean publish keeps the old file" "$(tree | grep -q '^1/old.png:'; echo $?)" # pipe-grep-q: fail-closed — a missed match yields nonzero, which fails the check
 
+# --- subdirectory run into an EXISTING PR folder, with relative input paths ---
+make_remote
+mkdir -p "$work/clone/build/evidence/demo"
+echo rel-gif >"$work/clone/build/evidence/demo/n.gif"
+(cd "$work/clone/build/evidence/demo" && "$script" 1 n.gif) >"$work/out" 2>"$work/err"
+check "subdirectory publish into an existing PR folder succeeds" $?
+check "existing PR file survives a subdirectory run" "$(tree | grep -q '^1/old.png:'; echo $?)" # pipe-grep-q: fail-closed — a missed match yields nonzero, which fails the check
+check "new file lands in the existing PR folder" "$(tree | grep -q '^1/n.gif:'; echo $?)" # pipe-grep-q: fail-closed — a missed match yields nonzero, which fails the check
+
+# The guard still catches a drop when the script runs from a subdirectory.
+make_remote
+mkdir -p "$work/clone/build/evidence/demo"
+before=$(tree)
+if (cd "$work/clone/build/evidence/demo" && DROP=$'\told.png$' PATH="$work/dropbin:$PATH" "$script" 1 "$work/files/a.gif") >"$work/out" 2>"$work/err"; then
+  check "subdirectory run: PR folder that loses a file is refused" 1
+else
+  check "subdirectory run: PR folder that loses a file is refused" 0
+fi
+check "subdirectory run: guard leaves pr-media alone" "$(if [[ $(tree) == "$before" ]]; then echo 0; else echo 1; fi)"
+
 # --- rejected input ---
 before=$(tree)
 rejects() { # rejects <description> <args...>

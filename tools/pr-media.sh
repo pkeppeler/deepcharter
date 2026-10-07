@@ -30,6 +30,7 @@ pr=$1
 shift
 
 names=()
+files=()
 for f in "$@"; do
   [[ -f $f ]] || { echo "not a file: $f" >&2; exit 1; }
   name=$(basename "$f")
@@ -39,7 +40,12 @@ for f in "$@"; do
     [[ $seen != "$name" ]] || { echo "two files named '$name'" >&2; exit 1; }
   done
   names+=("$name")
+  files+=("$(cd "$(dirname "$f")" && pwd)/$name")
 done
+
+# Run every git call below from the top level: `git ls-tree <tree-ish>` filters
+# by the current directory's prefix, which would hide other entries.
+cd "$(git rev-parse --show-toplevel)"
 
 # Current pr-media tip. A concurrent push makes the final push fail instead of clobbering.
 git ls-remote --exit-code --heads "$remote" "$branch" >/dev/null 2>&1 \
@@ -55,7 +61,7 @@ if git cat-file -e "${tip}:${pr}" 2>/dev/null; then
   old_pr_names=$(git ls-tree --name-only "${tip}:${pr}")
 fi
 i=0
-for f in "$@"; do
+for f in "${files[@]}"; do
   name=${names[$i]}
   i=$((i + 1))
   blob=$(git hash-object -w -- "$f")

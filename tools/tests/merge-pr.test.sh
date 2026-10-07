@@ -154,6 +154,13 @@ refusal "empty body" "body has no 'Closes #12'" STUB_BODY=
 refusal "closes branch issue and another" "body closes #12 #13 but" "STUB_BODY=Closes #12
 Fixes #13"
 refusal "closes two others" "body closes #13 #14 but" "STUB_BODY=Closes #13, resolves #14"
+odd_msg="closing reference that is not a plain '#N'"
+refusal "cross-repo close of the same number" "$odd_msg: Closes pkeppeler/deepcharter#12" "STUB_BODY=Closes pkeppeler/deepcharter#12"
+refusal "cross-repo close of another repo" "$odd_msg: Fixes owner/repo#54" "STUB_BODY=Fixes owner/repo#54"
+refusal "URL close" "$odd_msg: Resolves https://github.com/pkeppeler/deepcharter/issues/12" \
+  "STUB_BODY=Resolves https://github.com/pkeppeler/deepcharter/issues/12"
+refusal "cross-repo close beside a valid one" "$odd_msg: Fixes owner/repo#54" "STUB_BODY=Closes #12
+Fixes owner/repo#54"
 refusal "branch without issue number" "has head branch 'main-fix', not <issue>-<slug>" STUB_BRANCH=main-fix
 refusal "branch number without slug" "not <issue>-<slug>" STUB_BRANCH=12
 for body in "closes #12" "FIXES #12" "Resolves #12" "Context text.

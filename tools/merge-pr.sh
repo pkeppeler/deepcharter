@@ -49,8 +49,13 @@ branch=$(pr_field headRefName .headRefName) || refuse "has no readable head bran
 [[ $branch =~ ^([0-9]+)- ]] || refuse "has head branch '$branch', not <issue>-<slug>"
 issue=${BASH_REMATCH[1]}
 body=$(pr_field body .body) || refuse "has no readable body"
+# Fail closed: GitHub also closes on `Closes owner/repo#N` and `Closes <issue URL>`,
+# which the plain-#N set below cannot see, so any such form is refused outright.
+keyword='(^|[^[:alnum:]])(close[sd]?|fix(e[sd])?|resolve[sd]?):?[[:space:]]+'
+odd=$(grep -oiE "${keyword}([^[:space:]#]+#[0-9]+|https?://[^[:space:]]+)" <<<"$body" | tr '\n' ';' || true)
+[[ -z $odd ]] || refuse "body has a closing reference that is not a plain '#N': ${odd%;} (use 'Closes #$issue')"
 # No match is the "no Closes" case below, so a grep exit of 1 is not an error.
-closes=$({ grep -oiE '(^|[^[:alnum:]])(close[sd]?|fix(e[sd])?|resolve[sd]?):?[[:space:]]+#[0-9]+' <<<"$body" \
+closes=$({ grep -oiE "${keyword}#[0-9]+" <<<"$body" \
   | grep -oE '[0-9]+$' | sort -un | tr '\n' ' '; } || true)
 closes=${closes% }
 [[ -n $closes ]] || refuse "body has no 'Closes #$issue' (branch $branch is for issue #$issue)"
