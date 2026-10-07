@@ -147,10 +147,6 @@ public final class HangarTerminal {
 					.orElseGet(() -> refuse("wreck_unreadable"));
 		}
 		PodEntity wreck = usable.get();
-		float hull = wreck.maxHull();
-		if (!(hull > 0f)) {
-			return refuse("restore_failed");
-		}
 		if (charter.account() < tuning.restoreMoney()) {
 			return refuse("insufficient_funds", tuning.restoreMoney());
 		}
@@ -159,7 +155,7 @@ public final class HangarTerminal {
 			return refuse("missing_catalyst", tuning.restoreCatalysts(), new ItemStack(catalyst).getHoverName().getString());
 		}
 		try {
-			Wrecks.restore(wreck, hull);
+			Wrecks.restore(wreck, wreck.maxHull());
 		} catch (IllegalStateException unreadable) {
 			DeepCharter.LOGGER.error("Could not restore pod {}: {}", wreck.getUUID(), unreadable.getMessage());
 			return refuse("restore_failed");
