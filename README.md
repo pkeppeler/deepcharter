@@ -42,7 +42,7 @@ A new part that needs its own `init()` and has no feature of its own gets a stub
 - **A mapping the code calls permanent (ids, numbers, block-state encodings) is pinned by a test with literal expected values, not only by a test that the keys exist.**
 - **A terminal action that spends does everything that can throw or refuse before the spend.**
 - **Mixins** live in `<feature>/mixin/`, are registered in `deepcharter.mixins.json`, and are used only where no Fabric event reaches; an ADR names the target method.
-- Every M2 issue's test classes and evidence scenario already exist as stubs (below), so no issue edits the gametest `fabric.mod.json`. #53 creates `client/ui/` for the UI kit; it needs no init line.
+- Every M2 issue's test classes and evidence scenario already exist as stubs (below), so no issue edits the gametest `fabric.mod.json`, except that a PR may add one line there for each new evidence scenario it registers. #53 creates `client/ui/` for the UI kit; it needs no init line.
 
 ### Tests
 

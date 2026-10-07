@@ -73,6 +73,7 @@
 			"io.github.pkeppeler.deepcharter.test.FuelPumpClientTest",
 			"io.github.pkeppeler.deepcharter.test.SoundWiringClientTest",
 			"io.github.pkeppeler.deepcharter.test.ContractTerminalClientTest",
+			"io.github.pkeppeler.deepcharter.test.RepairStationClientTest",
 			"io.github.pkeppeler.deepcharter.test.UpgradeTerminalClientTest",
 			"io.github.pkeppeler.deepcharter.test.ScannerTiersClientTest",
 			"io.github.pkeppeler.deepcharter.test.TowingClientTest",
@@ -96,6 +97,7 @@
 			"io.github.pkeppeler.deepcharter.test.evidence.OreProcessorScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.FuelPumpScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.ContractTerminalScenario",
+			"io.github.pkeppeler.deepcharter.test.evidence.RepairStationScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.UpgradeTerminalScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.ScannerTiersScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.PodLightsScenario",
@@ -106,6 +108,8 @@
 			"io.github.pkeppeler.deepcharter.test.evidence.M2SliceScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.WreckScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.HandbookCoreScenario",
+			"io.github.pkeppeler.deepcharter.test.evidence.PodCargoFuelScenario",
+			"io.github.pkeppeler.deepcharter.test.evidence.CharterCoreScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.HangarScenario"
 		]
 	},
