@@ -84,9 +84,9 @@ public final class PodFuelItems {
 		for (Item item : fuelItems) {
 			if (!table.containsKey(item)) {
 				missing.add(item);
+				Identifier id = BuiltInRegistries.ITEM.getKey(item);
 				DeepCharter.LOGGER.error("Item {} is in the #{} tag but has no litres entry, so it is not pod fuel: add data/{}/{}/{}.json",
-						BuiltInRegistries.ITEM.getKey(item), TAG.location(), BuiltInRegistries.ITEM.getKey(item).getNamespace(),
-						DIRECTORY, BuiltInRegistries.ITEM.getKey(item).getPath());
+						id, TAG.location(), id.getNamespace(), DIRECTORY, id.getPath());
 			}
 		}
 		return missing;
