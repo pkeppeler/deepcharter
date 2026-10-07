@@ -423,7 +423,15 @@ public class PodDrillTest {
 				throw failure(helper, "the pod arrived at %s, expected near (%d, %d)", crossed.position(), x, Z);
 			}
 			if (count(one, x - 1, x, 0, 0, Z - 1, Z, Blocks.AIR) != 4) {
-				throw failure(helper, "the crust under the pod was not broken");
+				List<String> air = new java.util.ArrayList<>();
+				for (int bx = x - 3; bx <= x + 3; bx++) {
+					for (int bz = Z - 3; bz <= Z + 3; bz++) {
+						if (!one.getBlockState(new BlockPos(bx, 0, bz)).is(LayerBlocks.BREACH_CRUST)) {
+							air.add(bx + "," + bz + "=" + one.getBlockState(new BlockPos(bx, 0, bz)).getBlock());
+						}
+					}
+				}
+				throw failure(helper, "the crust under the pod was not broken: pod at %s, non-crust y=0 cells %s", crossed.position(), air);
 			}
 			if (!one.getBlockState(new BlockPos(x + 1, 0, Z)).is(LayerBlocks.BREACH_CRUST)) {
 				throw failure(helper, "the bore took crust outside the pod's 2 x 2");
