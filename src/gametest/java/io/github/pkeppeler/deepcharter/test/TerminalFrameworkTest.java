@@ -58,6 +58,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.charter.Charter;
+import io.github.pkeppeler.deepcharter.charter.CharterData;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
@@ -444,6 +445,41 @@ public class TerminalFrameworkTest {
 				throw helper.assertionException("unreadable data must be written back unchanged, got %s", written);
 			}
 		});
+		helper.succeed();
+	}
+
+	@GameTest
+	public void unreadableCharterDataRefusesInsteadOfThrowing(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		MockPlayer member = charterMember(helper, "Stranded");
+		BlockPos pump = place(helper, TerminalTypes.FUEL_PUMP, 0);
+		BlockPos open = place(helper, TerminalTestTypes.OPEN, 1);
+		stand(helper, member, pump, 2);
+		give(member.player(), TerminalTypes.FUEL_PUMP.parts().getFirst(), 1);
+		CompoundTag future = new CompoundTag();
+		future.putInt("version", CharterData.VERSION + 1);
+		future.putString("shape", "from a newer build");
+		CharterData unreadable = CharterData.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow();
+		CharterData original = CharterData.get(server);
+		server.getDataStorage().set(CharterData.TYPE, unreadable);
+		try {
+			expectRefused(helper, TerminalRefusal.STATE_UNREADABLE, Terminals.open(member.player(), pump), "opening with unreadable charter data");
+			expectRefused(helper, TerminalRefusal.STATE_UNREADABLE, Terminals.insertPart(member.player(), pump, TerminalTypes.FUEL_PUMP.parts().getFirst()),
+					"inserting with unreadable charter data");
+			expectRefused(helper, TerminalRefusal.STATE_UNREADABLE, Terminals.act(member.player(), open, TerminalTestTypes.PING, new CompoundTag()),
+					"an action at a terminal for anyone, which still needs the charter lookup");
+			helper.getLevel().getBlockState(pump).useWithoutItem(helper.getLevel(), member.player(),
+					new BlockHitResult(Vec3.atCenterOf(pump), Direction.UP, pump, false));
+			if (count(member.player(), TerminalTypes.FUEL_PUMP.parts().getFirst()) != 1) {
+				throw helper.assertionException("a refused request keeps the part");
+			}
+			Tag written = CharterData.CODEC.encodeStart(NbtOps.INSTANCE, unreadable).getOrThrow();
+			if (!future.equals(written)) {
+				throw helper.assertionException("unreadable charter data must be written back unchanged, got %s", written);
+			}
+		} finally {
+			server.getDataStorage().set(CharterData.TYPE, original);
+		}
 		helper.succeed();
 	}
 

@@ -22,8 +22,10 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 
 /**
  * The server-side API of terminals, and the one place a player's request reaches one. Every request is checked first, in this
- * order: the terminal exists, the player is within {@link TerminalTuning#maxDistance()} blocks, the player is on a charter, and
- * then what the request needs of the terminal's repair state. A refused request changes nothing, and the player is told why.
+ * order: the player is within {@link TerminalTuning#maxDistance()} blocks, the block is a terminal, the charter data is readable,
+ * the player is on a charter (for a charter-only terminal), the repair data is readable (for a terminal that needs repair), and
+ * then what the request needs of the repair state. Unreadable saved data is refused as {@code STATE_UNREADABLE}, never thrown.
+ * A refused request changes nothing, and the player is told why.
  * Call everything on the server thread.
  */
 public final class Terminals {
@@ -33,6 +35,7 @@ public final class Terminals {
 	public static final String PART_KEY = "part";
 
 	private static boolean loggedUnreadable;
+	private static boolean loggedUnreadableCharters;
 
 	private Terminals() {
 	}
@@ -102,6 +105,13 @@ public final class Terminals {
 		}
 		TerminalType type = terminal.type();
 		MinecraftServer server = player.level().getServer();
+		if (!Charters.isReadable(server)) {
+			if (!loggedUnreadableCharters) {
+				loggedUnreadableCharters = true;
+				DeepCharter.LOGGER.error("The saved charters are of a version this build cannot read: terminals are refused until the world is opened by a build that reads them");
+			}
+			return new Access.Denied(TerminalRefusal.STATE_UNREADABLE);
+		}
 		Optional<Charter> charter = Charters.charterOf(server, player.getUUID());
 		if (type.access() == TerminalType.Access.CHARTER_ONLY && charter.isEmpty()) {
 			return new Access.Denied(TerminalRefusal.NOT_ON_A_CHARTER);
