@@ -147,8 +147,9 @@ public class PodShellTest {
 		pod.setHull(37.5f);
 		pod.setFuel(12.25f);
 		pod.setStranded(true);
-		pod.setCargoUsed(7);
-		pod.setCargoMass(41.5f);
+		for (int i = 0; i < 7; i++) {
+			pod.cargo().tryAdd(pod, net.minecraft.world.level.block.Blocks.IRON_ORE, 5.5f);
+		}
 		pod.setFlying(true);
 		pod.setDrilling(true);
 		pod.setDrillDirection(Direction.NORTH);
@@ -166,7 +167,7 @@ public class PodShellTest {
 				throw helper.assertionException("loaded a %s instead of a pod", loaded);
 			}
 			if (copy.chassis() != Chassis.MOLE || copy.hull() != 37.5f || copy.fuel() != 12.25f || !copy.stranded()
-					|| copy.cargoUsed() != 7 || copy.cargoMass() != 41.5f) {
+					|| copy.cargoUsed() != 7 || copy.cargoMass() != 38.5f) {
 				throw helper.assertionException("pod data did not survive save and load: hull %s fuel %s stranded %s cargo %s/%s",
 						copy.hull(), copy.fuel(), copy.stranded(), copy.cargoUsed(), copy.cargoMass());
 			}

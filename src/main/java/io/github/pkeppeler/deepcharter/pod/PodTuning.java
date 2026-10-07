@@ -36,13 +36,17 @@ public record PodTuning(Shell shell, Movement movement, Drill drill, Cargo cargo
 		public static final Drill DEFAULT = new Drill();
 	}
 
-	/** Filled by #31. */
-	public record Cargo() {
-		public static final Cargo DEFAULT = new Cargo();
+	/** Bay size and the placeholder ore mass (mass shares a unit with enginePower, 100 = no lift at all). */
+	public record Cargo(int slots, float defaultOreMass) {
+		public static final Cargo DEFAULT = new Cargo(7, 20f);
 	}
 
-	/** Filled by #31. */
-	public record Fuel() {
-		public static final Fuel DEFAULT = new Fuel();
+	/**
+	 * Original stock-pod tank and rates; FUEL is a percentage of the tank (litres / tankLitres * 100).
+	 * refuelLitres is invented. The beep sounds at lowFuelPercent and below, faster at urgentFuelPercent.
+	 */
+	public record Fuel(float tankLitres, float idleLitresPerSecond, float movingLitresPerSecond,
+			float drillingLitresPerSecond, float lowFuelPercent, float urgentFuelPercent, float refuelLitres) {
+		public static final Fuel DEFAULT = new Fuel(10f, 0.063f, 0.19f, 0.32f, 21f, 6f, 2f);
 	}
 }
