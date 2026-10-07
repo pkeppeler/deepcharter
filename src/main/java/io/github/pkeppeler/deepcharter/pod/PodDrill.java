@@ -8,4 +8,8 @@ public final class PodDrill {
 
 	public static void init() {
 	}
+
+	/** Called every pod tick, on both sides. */
+	public static void tick(PodEntity pod) {
+	}
 }
