@@ -6,6 +6,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 
 /**
@@ -17,9 +18,9 @@ public final class TransmissionTriggers {
 	private TransmissionTriggers() {
 	}
 
-	/** A descent fires the transmissions of the breach into the layer. An ascent fires nothing. */
+	/** A descent fires the transmissions of the breach into the layer, and the climb out into the surface fires those of the surface. Another ascent fires nothing. */
 	public static void onCrossed(Entity entity, ServerLevel from, ServerLevel to, int fromLayer, int toLayer) {
-		if (!(entity instanceof ServerPlayer player) || toLayer <= fromLayer) {
+		if (!(entity instanceof ServerPlayer player) || (toLayer < fromLayer && toLayer != LayerChain.SURFACE)) {
 			return;
 		}
 		MinecraftServer server = from.getServer();
@@ -29,9 +30,6 @@ public final class TransmissionTriggers {
 
 	/** Fires the transmissions of the zone each charter member stands in. */
 	public static void pollZones(MinecraftServer server) {
-		if (server.getTickCount() % TransmissionTuning.DEFAULT.zonePollTicks() != 0) {
-			return;
-		}
 		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
 			Charters.charterOf(server, player.getUUID()).ifPresent(charter -> {
 				// The poll is also where a bonus that a full account refused is tried again.

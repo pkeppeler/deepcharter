@@ -166,6 +166,15 @@
 			"trigger": {
 				"type": "event"
 			}
+		},
+		{
+			"id": "deepcharter:surface_arrival",
+			"sender": "colony_beacon",
+			"framing": "relay",
+			"trigger": {
+				"type": "breach",
+				"to_layer": 0
+			}
 		}
 	]
 }

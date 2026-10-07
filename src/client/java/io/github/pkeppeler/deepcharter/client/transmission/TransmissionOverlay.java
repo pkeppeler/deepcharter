@@ -2,13 +2,17 @@ package io.github.pkeppeler.deepcharter.client.transmission;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 
+import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
@@ -46,6 +50,8 @@ public final class TransmissionOverlay {
 	}
 
 	private static final Deque<TransmissionPayload> PENDING = new ArrayDeque<>();
+	/** The transmissions already reported as dropped, so that one broken id logs once. */
+	private static final Set<Identifier> DROPPED = new HashSet<>();
 	private static Current current;
 	private static int heldTicks;
 	/** Set by the letter hook, which can fire several times in a tick, and played once at the end of the tick. */
@@ -68,10 +74,21 @@ public final class TransmissionOverlay {
 		return text.replace(CHARTER_FIELD, charter).replace(DIRECTOR_FIELD, director);
 	}
 
-	/** Queues a transmission the server sent. It starts when the one on screen has finished. */
+	/**
+	 * Queues a transmission the server sent. It starts when the one on screen has finished. A transmission that cannot be shown (the data
+	 * file does not list it, or a lang key is missing) is dropped with one log line: this runs in the packet handler, and a throw there
+	 * would disconnect the player.
+	 */
 	public static void enqueue(TransmissionPayload payload) {
-		// A transmission or a lang key that does not exist is found now, not when the player is looking at the screen.
-		build(payload);
+		try {
+			// Found now, not when the player is looking at the screen.
+			build(payload);
+		} catch (RuntimeException e) {
+			if (DROPPED.add(payload.transmission())) {
+				DeepCharter.LOGGER.error("Dropped transmission {}: it cannot be shown", payload.transmission(), e);
+			}
+			return;
+		}
 		PENDING.add(payload);
 	}
 

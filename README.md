@@ -35,14 +35,15 @@ A new part that needs its own `init()` and has no feature of its own gets a stub
 - **A change to a persisted format (pod save, SavedData, attachment) carries a version, with an `Unreadable` fallback for unknown versions, plus a GameTest that loads the previous format and asserts the outcome (migrate, or fail loud).** A decode that skips entries silently is a drop.
 - **Pods change through `PodEvents`, not through edits to the pod.** `HULL_DEPLETED` (hull reached 0), `CAN_MOUNT` (veto boarding), `IS_POWERED` (cut power: no movement, no drill, no fuel burn), `EXTRA_MASS` (cuts lift like cargo; a negative or NaN total throws), `IGNORES_BLOCK_COLLISION` (pass through blocks) and `AFTER_TICK` (server tick end). Everything is server-side. Predicates are ANDed (one no vetoes), except `IGNORES_BLOCK_COLLISION`, where one yes is enough. Call the static helpers `PodEvents.canMount`, `isPowered`, `extraMass` and `ignoresBlockCollision`, never the invokers. With no listener, a pod behaves as in M1. Fabric events cannot be unregistered, so a test listener must act only on the pods that test marks. `PodStats.of(pod)` (#60) is the seam for stats.
 - **Call the stubs without waiting.** `Directives.fire(ServerPlayer, Identifier)` (`handbook/`, filled by #61) completes a handbook directive for the player's charter. `Transmissions.fire(CharterId, Identifier)` (`transmission/`, filled by #62) fires a transmission once for a charter. Both do nothing until their issue lands, and their signatures are frozen. `charter/CharterId` is a record around a random UUID made when a charter is founded, never reused and never a player's UUID, with a `CODEC` and a `STREAM_CODEC`. #52 builds the charter around it.
-- Every M2 issue's test classes and evidence scenario already exist as stubs (below), so no issue edits a `fabric.mod.json`. #53 creates `client/ui/` for the UI kit; it needs no init line.
+- **Mixins** live in `<feature>/mixin/`, are registered in `deepcharter.mixins.json`, and are used only where no Fabric event reaches; an ADR names the target method.
+- Every M2 issue's test classes and evidence scenario already exist as stubs (below), so no issue edits the gametest `fabric.mod.json`. #53 creates `client/ui/` for the UI kit; it needs no init line.
 
 ### Tests
 
 Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest/.../test/`:
 
 - Add test classes and evidence scenarios to the stubs that already exist, which are registered in `src/gametest/resources/fabric.mod.json`. A server stub is `<Thing>Test`, a client stub `<Thing>ClientTest`, a scenario `evidence/<Thing>Scenario` named `m2-<thing>`. A scenario stub throws "stub: #N fills it" when it is selected, and does nothing in a plain run.
-- Before you drive an entity in a far chunk, await entity ticking: `test/support/FarChunks.awaitEntityTicking`.
+- Before you drive an entity in a far chunk, await entity ticking: `test/support/FarChunks.awaitEntityTicking`. It forces the chunk, so nothing else needs to keep it loaded.
 - `test/support/MockPlayers` joins a real server-side player with no client behind it.
 - `test/support/TwoPlayerServer` starts a dedicated server in a client GameTest, joins the real client, then joins one mock player.
 - `test/evidence/` holds the PR evidence scenarios (see `tools/record-evidence.sh`).

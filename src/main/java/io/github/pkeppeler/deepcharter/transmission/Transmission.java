@@ -10,6 +10,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.StringRepresentable;
 
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 
 /**
@@ -136,11 +137,14 @@ public record Transmission(Identifier id, String sender, Framing framing, Trigge
 			}
 		}
 
-		/** A charter member descends through the breach into {@code toLayer}. */
+		/**
+		 * A charter member crosses a breach into {@code toLayer}: a descent into layer 2 or deeper, or the climb out into the surface,
+		 * which is layer 0. Any other ascent fires nothing.
+		 */
 		record Breach(int toLayer) implements Trigger {
 			public Breach {
-				if (toLayer < 2) {
-					throw new IllegalArgumentException("a breach leads into layer 2 or deeper, got " + toLayer);
+				if (toLayer != LayerChain.SURFACE && toLayer < 2) {
+					throw new IllegalArgumentException("a breach leads into the surface or into layer 2 or deeper, got " + toLayer);
 				}
 			}
 

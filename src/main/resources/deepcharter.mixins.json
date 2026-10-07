@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "package": "io.github.pkeppeler.deepcharter.surface.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "BaseFireBlockMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

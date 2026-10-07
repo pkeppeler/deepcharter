@@ -161,11 +161,13 @@ public class TransmissionsTest {
 	}
 
 	@GameTest
-	public void theCatalogListsT01ToT18WithTheThreeBonuses(GameTestHelper helper) {
-		List<Identifier> expected = Stream.iterate(1, number -> number + 1).limit(18).map(number -> id(String.format("t%02d", number))).toList();
+	public void theCatalogListsT01ToT18AndTheSurfaceArrivalWithTheThreeBonuses(GameTestHelper helper) {
+		List<Identifier> expected = Stream.concat(
+				Stream.iterate(1, number -> number + 1).limit(18).map(number -> id(String.format("t%02d", number))),
+				Stream.of(id("surface_arrival"))).toList();
 		List<Identifier> actual = TransmissionCatalog.all().stream().map(Transmission::id).toList();
 		if (!actual.equals(expected)) {
-			throw helper.assertionException("the catalog should list T01 to T18 in order, lists %s", actual);
+			throw helper.assertionException("the catalog should list T01 to T18 in order, then the surface arrival, lists %s", actual);
 		}
 		// Written out here, not read from the tuning, so the test checks the amounts rather than repeating them.
 		Map<Transmission.Bonus, Long> amounts = Map.of(Transmission.Bonus.B1, 1_000L, Transmission.Bonus.B2, 3_000L, Transmission.Bonus.B3, 10_000L);
@@ -211,7 +213,8 @@ public class TransmissionsTest {
 					throw helper.assertionException("%s needs the lang key %s", transmission.id(), key);
 				}
 			}
-			if (!lang.get(transmission.bodyKey()).getAsString().contains("[CHARTER]") || !lang.get(transmission.bodyKey()).getAsString().contains("[DIRECTOR]")) {
+			boolean placeholder = transmission.id().getPath().matches("t\\d\\d");
+			if (placeholder && (!lang.get(transmission.bodyKey()).getAsString().contains("[CHARTER]") || !lang.get(transmission.bodyKey()).getAsString().contains("[DIRECTOR]"))) {
 				throw helper.assertionException("the placeholder text of %s should show both fields", transmission.id());
 			}
 		}
@@ -712,6 +715,31 @@ public class TransmissionsTest {
 				throw helper.assertionException("t05 is sent once and pays B1 once: %s, account %s", delivered, account(helper, charter));
 			}
 		});
+	}
+
+	/** The climb out of layer 1 into the surface fires the surface arrival; the climb from layer 3 to 2 fires nothing, and neither does a descent into 1. */
+	@GameTest
+	public void climbingOutIntoTheSurfaceFiresTheSurfaceArrivalAndNoOtherAscentDoes(GameTestHelper helper) {
+		MinecraftServer server = server(helper);
+		ServerLevel surface = server.getLevel(LayerChain.dimension(LayerChain.SURFACE));
+		ServerLevel one = server.getLevel(LayerChain.dimension(1));
+		ServerLevel two = server.getLevel(LayerChain.dimension(2));
+		withFreshWorldData(helper, data -> {
+			MockPlayer crew = MockPlayers.join(helper, "tx-surface");
+			CharterId charter = directCharter(helper, crew.player().getUUID());
+			BreachEvents.CROSSED.invoker().onCrossed(crew.player(), two, one, 2, 1);
+			BreachEvents.CROSSED.invoker().onCrossed(crew.player(), surface, one, LayerChain.SURFACE, 1);
+			BreachEvents.CROSSED.invoker().onCrossed(crew.player(), two, one, 3, 2);
+			if (!deliveredTo(crew).isEmpty()) {
+				throw helper.assertionException("only the climb into the surface sends something, sent %s", deliveredTo(crew));
+			}
+			BreachEvents.CROSSED.invoker().onCrossed(crew.player(), one, surface, 1, LayerChain.SURFACE);
+			BreachEvents.CROSSED.invoker().onCrossed(crew.player(), one, surface, 1, LayerChain.SURFACE);
+			if (!deliveredTo(crew).equals(ids("surface_arrival")) || !data.progress(charter).fired().equals(ids("surface_arrival"))) {
+				throw helper.assertionException("climbing out of layer 1 should send the surface arrival once: %s", deliveredTo(crew));
+			}
+		});
+		helper.succeed();
 	}
 
 	@GameTest(maxTicks = TRIGGER_TICKS)

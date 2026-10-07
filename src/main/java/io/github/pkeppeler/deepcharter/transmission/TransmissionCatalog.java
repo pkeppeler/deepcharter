@@ -53,12 +53,12 @@ public final class TransmissionCatalog {
 
 	/** The transmissions that fire when a charter member descends into {@code toLayer}. */
 	public static List<Transmission> forBreach(int toLayer) {
-		return all().stream().filter(transmission -> transmission.trigger().equals(new Transmission.Trigger.Breach(toLayer))).toList();
+		return all().stream().filter(transmission -> transmission.trigger() instanceof Transmission.Trigger.Breach breach && breach.toLayer() == toLayer).toList();
 	}
 
 	/** The transmissions that fire when a charter member stands in zone {@code zone} of {@code layer}. */
 	public static List<Transmission> forZone(int layer, int zone) {
-		return all().stream().filter(transmission -> transmission.trigger().equals(new Transmission.Trigger.Zone(layer, zone))).toList();
+		return all().stream().filter(transmission -> transmission.trigger() instanceof Transmission.Trigger.Zone found && found.layer() == layer && found.zone() == zone).toList();
 	}
 
 	private static Map<Identifier, Transmission> load() {
