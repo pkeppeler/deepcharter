@@ -88,8 +88,8 @@ write_sparse_patterns() {
   git -C "$dir" config core.sparseCheckoutCone false
 }
 
-# Fails if an agent-config file, any dot-file or dot-directory (other than the clone's own
-# top-level .git) or any symlink is in a clone. Independent of the patterns.
+# Fails if an agent-config file, any dot-entry (other than the clone's top-level
+# .git) or any symlink is in a clone. Independent of the patterns.
 assert_clean() {
   local dir="$1" hits p
   local args=(-type l -o -name '.*')
@@ -130,7 +130,6 @@ sync_one() {
     die "$name: git ls-remote failed for $url (exit $rc): $err"
   fi
 
-  mkdir -p "$dir"
   if [[ ! -d "$dir/.git" ]]; then
     git init --quiet "$dir"
     git -C "$dir" remote add origin "$url"
@@ -149,7 +148,6 @@ sync_one() {
   echo "$name: synced to $tag"
 }
 
-mkdir -p "$ref_dir"
 for spec in "${specs[@]}"; do
   IFS='|' read -r name upstream key prefix <<<"$spec"
   sync_one "$name" "$upstream" "$key" "$prefix"
