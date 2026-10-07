@@ -8,6 +8,7 @@ import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
  * they are for the breach crust and deep rock. A pod drill has its own check in {@code PodDrill}.
  */
 public final class CompanyRock {
+	// If a soft block ever joins the undiggable tag, add a client AttackBlockCallback as LayerRock does, so a swing starts no crack.
 	private CompanyRock() {
 	}
 

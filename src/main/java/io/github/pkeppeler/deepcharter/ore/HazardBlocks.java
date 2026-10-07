@@ -29,9 +29,9 @@ public final class HazardBlocks {
 	public static final Block COMPANY_ROCK = registerBlock(id("company_rock"),
 			key -> new Block(BlockBehaviour.Properties.of().setId(key).strength(-1.0F, 3600000.0F).sound(SoundType.STONE).noLootTable()));
 
-	/** Looks like stone, which is the point: it vents when it is removed (see {@link GasHazard}). */
+	/** Looks like stone, which is the point: it vents when it is mined (see {@link GasHazard}). */
 	public static final Block GAS_POCKET = registerBlock(id("gas_pocket"),
-			key -> new GasPocketBlock(BlockBehaviour.Properties.of().setId(key).strength(1.5F, 6.0F).sound(SoundType.STONE).noLootTable()));
+			key -> new Block(BlockBehaviour.Properties.of().setId(key).strength(1.5F, 6.0F).sound(SoundType.STONE).noLootTable()));
 
 	private HazardBlocks() {
 	}

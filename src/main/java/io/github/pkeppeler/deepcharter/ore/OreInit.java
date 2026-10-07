@@ -12,5 +12,6 @@ public final class OreInit {
 		OreRegistry.register();
 		OreEncumbrance.init();
 		CompanyRock.init();
+		GasHazard.init();
 	}
 }

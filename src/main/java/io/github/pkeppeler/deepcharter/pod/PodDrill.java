@@ -6,6 +6,7 @@ import java.util.OptionalInt;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
@@ -17,6 +18,7 @@ import io.github.pkeppeler.deepcharter.layer.BreachService;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.ore.GasHazard;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 
@@ -59,6 +61,9 @@ public final class PodDrill {
 		// sliding onto it (off a ledge, past a wall's edge) is how it reaches something to drill.
 		boolean centred = centre(pod, slab, stats);
 		if (!slab.hasWork() || !slab.allowed()) {
+			if (slab.hasCompanyRock() && pod.getControllingPassenger() instanceof ServerPlayer pilot && pod.tickCount % 40 == 0) {
+				pilot.sendOverlayMessage(Component.translatable("deepcharter.ore.company_rock_refused"));
+			}
 			stop(pod);
 			return;
 		}
@@ -139,6 +144,10 @@ public final class PodDrill {
 			return cells.getFirst();
 		}
 
+		boolean hasCompanyRock() {
+			return cells.stream().anyMatch(pos -> state(pos).is(HazardBlocks.UNDIGGABLE));
+		}
+
 		boolean hasWork() {
 			return cells.stream().anyMatch(pos -> breakable(state(pos)));
 		}
@@ -190,6 +199,9 @@ public final class PodDrill {
 						}
 					});
 					level.destroyBlock(pos, false);
+					if (state.is(HazardBlocks.GAS_POCKET)) {
+						GasHazard.vent(level, pos);
+					}
 				}
 			}
 			if (crust) {

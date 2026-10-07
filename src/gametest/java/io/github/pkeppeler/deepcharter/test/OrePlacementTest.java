@@ -11,6 +11,9 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.piston.PistonBaseBlock;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
@@ -23,6 +26,7 @@ import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.ore.GasHazard;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
@@ -184,6 +188,7 @@ public class OrePlacementTest {
 		}
 		level.setBlock(centre, HazardBlocks.GAS_POCKET.defaultBlockState(), 2);
 		level.destroyBlock(centre, false);
+		GasHazard.vent(level, centre);
 
 		for (BlockPos pos : BlockPos.betweenClosed(centre.offset(-3, -3, -3), centre.offset(3, 3, 3))) {
 			BlockState state = level.getBlockState(pos);
@@ -234,6 +239,7 @@ public class OrePlacementTest {
 		// A second pocket in the blast: the blast is one event, so it is one payment.
 		level.setBlock(centre.east(), HazardBlocks.GAS_POCKET.defaultBlockState(), 2);
 		level.destroyBlock(centre, false);
+		GasHazard.vent(level, centre);
 
 		float damage = GasHazard.damage(Depth.feet(Depth.of(level, centre.getY())), OreTuning.DEFAULT.stockRadiator());
 		if (damage <= 0f || damage >= before) {
@@ -401,6 +407,172 @@ public class OrePlacementTest {
 			control.pod.discard();
 			helper.succeed();
 		});
+	}
+
+	/** Gas vents when it is mined (see {@code GasHazard}): by hand here, by a drill in {@code aPodDrillingIntoGasPaysTheBlast}. */
+	@GameTest
+	public void handBreakingAGasPocketVentsIt(GameTestHelper helper) {
+		ServerLevel level = layer(helper, 1);
+		BlockPos centre = new BlockPos(7400, 60, Z);
+		stoneCube(level, centre, 3);
+		MockPlayer mock = MockPlayers.join(helper, "gas-hands");
+		mock.teleportTo(level, Vec3.atBottomCenterOf(centre.above(6)), 0, 0);
+		mock.player().setGameMode(GameType.SURVIVAL);
+		level.setBlock(centre, HazardBlocks.GAS_POCKET.defaultBlockState(), 2);
+		if (!mock.player().gameMode.destroyBlock(centre)) {
+			throw failure(helper, "a survival player could not break a gas pocket by hand in layer_1");
+		}
+		for (BlockPos pos : BlockPos.betweenClosed(centre.offset(-3, -3, -3), centre.offset(3, 3, 3))) {
+			boolean inside = Math.abs(pos.getX() - centre.getX()) <= 1 && Math.abs(pos.getY() - centre.getY()) <= 1
+					&& Math.abs(pos.getZ() - centre.getZ()) <= 1;
+			if (inside != level.getBlockState(pos).isAir()) {
+				throw failure(helper, "after a hand break %s is %s, expected %s", pos.toShortString(), level.getBlockState(pos).getBlock(), inside ? "air" : "stone");
+			}
+		}
+		helper.succeed();
+	}
+
+	/** A pocket that is removed by anything but mining (a command, carving, fluid, a moved block) is only removed. */
+	@GameTest
+	public void removingAGasPocketWithoutMiningItDoesNotVent(GameTestHelper helper) {
+		ServerLevel level = layer(helper, 1);
+		BlockPos centre = new BlockPos(7500, 60, Z);
+		int[] flags = {Block.UPDATE_ALL, Block.UPDATE_ALL | Block.UPDATE_MOVE_BY_PISTON, Block.UPDATE_CLIENTS};
+		for (int flag : flags) {
+			stoneCube(level, centre, 3);
+			level.setBlock(centre, HazardBlocks.GAS_POCKET.defaultBlockState(), 2);
+			level.setBlock(centre, Blocks.AIR.defaultBlockState(), flag);
+			expectCubeIsStoneAroundAir(helper, level, centre, "setBlock with flags " + flag);
+		}
+		stoneCube(level, centre, 3);
+		level.setBlock(centre, HazardBlocks.GAS_POCKET.defaultBlockState(), 2);
+		level.setBlock(centre, Blocks.WATER.defaultBlockState(), 3);
+		expectCubeIsStoneAroundAir(helper, level, centre, "fluid replacing it");
+		stoneCube(level, centre, 3);
+		level.setBlock(centre, HazardBlocks.GAS_POCKET.defaultBlockState(), 2);
+		level.destroyBlock(centre, false);
+		expectCubeIsStoneAroundAir(helper, level, centre, "destroyBlock");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aPistonMovingAGasPocketDoesNotVentIt(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos gas = helper.absolutePos(new BlockPos(1, 4, 1));
+		stoneCube(level, gas, 3);
+		level.setBlock(gas.east(), Blocks.AIR.defaultBlockState(), 2);
+		level.setBlock(gas, HazardBlocks.GAS_POCKET.defaultBlockState(), 2);
+		level.setBlock(gas.west(), Blocks.PISTON.defaultBlockState().setValue(PistonBaseBlock.FACING, Direction.EAST), 2);
+		level.setBlock(gas.west().above(), Blocks.REDSTONE_BLOCK.defaultBlockState(), 3);
+		helper.runAfterDelay(15, () -> {
+			if (!level.getBlockState(gas.east()).is(HazardBlocks.GAS_POCKET)) {
+				throw failure(helper, "the piston did not move the gas pocket (found %s), so the test proved nothing", level.getBlockState(gas.east()).getBlock());
+			}
+			for (BlockPos near : new BlockPos[] {gas.above(), gas.below(), gas.north(), gas.south(), gas.above().north()}) {
+				if (!level.getBlockState(near).is(Blocks.STONE)) {
+					throw failure(helper, "the moved gas pocket blasted %s", near.toShortString());
+				}
+			}
+			helper.succeed();
+		});
+	}
+
+	/** A crossing carves a pocket with lava and gas around it: the carve seals them out, so nothing flows or blasts in. */
+	@GameTest(maxTicks = 400)
+	public void aDescendingArrivalPocketIsSealedAgainstLavaAndGas(GameTestHelper helper) {
+		ServerLevel from = layer(helper, 1);
+		ServerLevel to = layer(helper, 2);
+		BlockPos bottom = new BlockPos(7600, to.getMaxY() - LayerTuning.DEFAULT.pocketHeight(), Z);
+		expectSealedArrival(helper, "seal-down", from, new Vec3(7600.5, from.getMinY() - 2, Z + 0.5), to, bottom, true);
+	}
+
+	@GameTest(maxTicks = 400)
+	public void anAscendingArrivalPocketIsSealedAgainstLavaAndGas(GameTestHelper helper) {
+		ServerLevel from = layer(helper, 2);
+		ServerLevel to = layer(helper, 1);
+		BlockPos bottom = new BlockPos(7700, to.getMinY() + LayerTuning.DEFAULT.crustThickness(), Z);
+		expectSealedArrival(helper, "seal-up", from, new Vec3(7700.5, from.getMaxY() + 2, Z + 0.5), to, bottom, false);
+	}
+
+	private static void expectSealedArrival(GameTestHelper helper, String name, ServerLevel from, Vec3 start, ServerLevel to, BlockPos bottom, boolean floorIsRock) {
+		int radius = LayerTuning.DEFAULT.pocketRadius();
+		int height = LayerTuning.DEFAULT.pocketHeight();
+		int reach = radius + 1;
+		// Lava and gas on every face of the shell: the sides, the ceiling and (where it is not the crust) the floor.
+		for (int i = -radius; i <= radius; i += radius) {
+			for (int dy = 0; dy < height; dy += 2) {
+				to.setBlock(bottom.offset(reach, dy, i), Blocks.LAVA.defaultBlockState(), 2);
+				to.setBlock(bottom.offset(-reach, dy, i), Blocks.LAVA.defaultBlockState(), 2);
+				to.setBlock(bottom.offset(i, dy, reach), Blocks.LAVA.defaultBlockState(), 2);
+				to.setBlock(bottom.offset(i, dy, -reach), Blocks.LAVA.defaultBlockState(), 2);
+				to.setBlock(bottom.offset(reach, dy + 1, i), HazardBlocks.GAS_POCKET.defaultBlockState(), 2);
+				to.setBlock(bottom.offset(i, dy + 1, -reach), HazardBlocks.GAS_POCKET.defaultBlockState(), 2);
+			}
+			to.setBlock(bottom.offset(i, height, 0), Blocks.LAVA.defaultBlockState(), 2);
+			if (floorIsRock) {
+				to.setBlock(bottom.offset(i, -1, 0), Blocks.LAVA.defaultBlockState(), 2);
+			}
+		}
+		MockPlayer mock = MockPlayers.join(helper, name);
+		mock.teleportTo(from, start, 0, 0);
+		long[] arrivedAt = {-1};
+		helper.onEachTick(() -> {
+			if (!mock.player().level().dimension().equals(to.dimension())) {
+				return;
+			}
+			if (arrivedAt[0] < 0) {
+				arrivedAt[0] = helper.getTick();
+			}
+			for (BlockPos pos : BlockPos.betweenClosed(bottom.offset(-radius, 0, -radius), bottom.offset(radius, height - 1, radius))) {
+				if (!to.getBlockState(pos).isAir()) {
+					throw failure(helper, "the arrival pocket holds %s at %s %d ticks after arrival", to.getBlockState(pos).getBlock(),
+							pos.toShortString(), helper.getTick() - arrivedAt[0]);
+				}
+			}
+			if (mock.player().getHealth() < mock.player().getMaxHealth()) {
+				throw failure(helper, "the arriving player was hurt: health %s", mock.player().getHealth());
+			}
+			if (helper.getTick() - arrivedAt[0] >= 100) {
+				helper.succeed();
+			}
+		});
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void aPilotIsToldWhenCompanyRockRefusesTheDrill(GameTestHelper helper) {
+		int x = 9300;
+		int floor = 60;
+		ServerLevel level = layer(helper, 1);
+		room(level, x, floor);
+		level.setBlock(new BlockPos(x - 1, floor - 1, Z - 1), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2);
+		Rig rig = Rig.await(helper, level, new Vec3(x, floor, Z), "company-pilot");
+		helper.onEachTick(() -> {
+			if (!rig.ready()) {
+				return;
+			}
+			for (Component message : rig.pilot.actionBarMessages()) {
+				if (message.getContents() instanceof TranslatableContents translatable
+						&& translatable.getKey().equals("deepcharter.ore.company_rock_refused")) {
+					rig.pod.discard();
+					helper.succeed();
+					return;
+				}
+			}
+			if (rig.pod.tickCount > 200) {
+				throw failure(helper, "the pilot got no company-rock message in 200 pod ticks: %s", rig.pilot.actionBarMessages());
+			}
+		});
+	}
+
+	private static void expectCubeIsStoneAroundAir(GameTestHelper helper, ServerLevel level, BlockPos centre, String what) {
+		for (BlockPos pos : BlockPos.betweenClosed(centre.offset(-3, -3, -3), centre.offset(3, 3, 3))) {
+			boolean isCentre = pos.equals(centre);
+			BlockState state = level.getBlockState(pos);
+			boolean right = isCentre ? !state.is(Blocks.STONE) : state.is(Blocks.STONE);
+			if (!right) {
+				throw failure(helper, "%s: %s is %s, so the pocket vented", what, pos.toShortString(), state.getBlock());
+			}
+		}
 	}
 
 	// Sampling and counting.

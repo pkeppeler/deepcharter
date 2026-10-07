@@ -15,6 +15,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.levelgen.feature.Feature;
 
 import io.github.pkeppeler.deepcharter.layer.Zones;
@@ -22,7 +23,7 @@ import io.github.pkeppeler.deepcharter.layer.Zones;
 /**
  * Fills one zone of a layer, one stone block at a time: each block becomes an ore with the chance of its entry
  * (the first entry that the roll falls in), and a block that is not ore becomes a hazard in the same way with a
- * second roll. The chances come from the original game's rows (see the zone tables in ADR 0012), so a block is
+ * second roll. The chances come from the original game's rows (see the zone tables in ADR 0015), so a block is
  * judged on its own, as a tile was.
  *
  * <p>It is a placed feature of the zone's own biome with no placement modifiers, so it runs once for each chunk, at
@@ -72,32 +73,35 @@ public record ZoneFillFeature(int zone, List<Entry> ores, List<Entry> hazards) i
 		ChunkAccess chunk = level.getChunk(origin);
 		boolean placed = false;
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-		int sectionIndex = Integer.MIN_VALUE;
-		boolean hasStone = false;
-		for (int y = minY; y < minY + height; y++) {
-			if (Zones.index(minY, height, y) != zone) {
+		// The zone is a run of rows (a third of the layer); find its ends once.
+		int low = minY;
+		while (Zones.index(minY, height, low) != zone) {
+			low++;
+		}
+		int high = low;
+		while (high + 1 < minY + height && Zones.index(minY, height, high + 1) == zone) {
+			high++;
+		}
+		for (int index = chunk.getSectionIndex(low); index <= chunk.getSectionIndex(high); index++) {
+			LevelChunkSection section = chunk.getSection(index);
+			if (section.hasOnlyAir() || !section.maybeHas(state -> state.is(Blocks.STONE))) {
 				continue;
 			}
-			if (chunk.getSectionIndex(y) != sectionIndex) {
-				sectionIndex = chunk.getSectionIndex(y);
-				hasStone = chunk.getSection(sectionIndex).maybeHas(state -> state.is(Blocks.STONE));
-			}
-			if (!hasStone) {
-				continue;
-			}
-			for (int x = firstX; x < firstX + 16; x++) {
-				for (int z = firstZ; z < firstZ + 16; z++) {
-					pos.set(x, y, z);
-					if (!chunk.getBlockState(pos).is(Blocks.STONE)) {
-						continue;
-					}
-					Block block = roll(ores, random);
-					if (block == null) {
-						block = roll(hazards, random);
-					}
-					if (block != null) {
-						chunk.setBlockState(pos, block.defaultBlockState(), Block.UPDATE_CLIENTS);
-						placed = true;
+			int sectionY = chunk.getSectionYFromSectionIndex(index) << 4;
+			for (int y = Math.max(low, sectionY); y <= Math.min(high, sectionY + 15); y++) {
+				for (int x = 0; x < 16; x++) {
+					for (int z = 0; z < 16; z++) {
+						if (!section.getBlockState(x, y & 15, z).is(Blocks.STONE)) {
+							continue;
+						}
+						Block block = roll(ores, random);
+						if (block == null) {
+							block = roll(hazards, random);
+						}
+						if (block != null) {
+							chunk.setBlockState(pos.set(firstX + x, y, firstZ + z), block.defaultBlockState(), Block.UPDATE_CLIENTS);
+							placed = true;
+						}
 					}
 				}
 			}
