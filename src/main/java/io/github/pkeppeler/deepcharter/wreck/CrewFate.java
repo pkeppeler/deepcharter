@@ -117,8 +117,9 @@ final class CrewFate {
 			return;
 		}
 		Optional<GlobalPos> office = Colony.respawnPoint(server);
-		for (UUID id : Set.copyOf(WOKEN)) {
-			WOKEN.remove(id);
+		Set<UUID> ids = Set.copyOf(WOKEN);
+		WOKEN.clear();
+		for (UUID id : ids) {
 			ServerPlayer player = server.getPlayerList().getPlayer(id);
 			if (player != null && office.isPresent()) {
 				Vec3 at = Vec3.atBottomCenterOf(office.get().pos());
