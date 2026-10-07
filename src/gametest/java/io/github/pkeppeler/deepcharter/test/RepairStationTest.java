@@ -168,14 +168,7 @@ public class RepairStationTest {
 	}
 
 	private static int count(ServerPlayer player, Consumable consumable) {
-		Inventory inventory = player.getInventory();
-		int total = 0;
-		for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
-			if (inventory.getItem(slot).is(RepairRegistry.item(consumable))) {
-				total += inventory.getItem(slot).getCount();
-			}
-		}
-		return total;
+		return player.getInventory().countItem(RepairRegistry.item(consumable));
 	}
 
 	/** Puts one of the item in the selected hotbar slot, makes the player the pod's pilot, and uses it as a right click does. */

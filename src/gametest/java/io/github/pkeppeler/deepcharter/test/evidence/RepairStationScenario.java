@@ -29,7 +29,6 @@ import io.github.pkeppeler.deepcharter.test.RepairStationClientTest;
 public class RepairStationScenario extends EvidenceScenario {
 	private static final int TICKS_PER_FRAME = 3;
 	private static final int HOLD_FRAMES = 6;
-	private static final int WAIT_TICKS = 200;
 	private static final int ROCK_RADIUS = 3;
 	private static final int AWAY_BLOCKS = 48;
 	private static final int HOTBAR = 9;
