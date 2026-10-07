@@ -31,6 +31,13 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
  * Layer 1 is crust at y 0-2, stone at y 3-102, then air up to the ceiling row at y 191.
  */
 public class PodDrillTest {
+	/**
+	 * Far layer chunks generate on worker threads while game ticks run as fast as the CPU allows, so on a slow
+	 * runner a pod can sit un-ticked for thousands of ticks. Anything about what a pod does is therefore timed in
+	 * the pod's own {@code tickCount}, and the longest bore here is under 700 pod ticks: a test that passes
+	 * ends at once, so a large budget costs nothing.
+	 */
+	private static final int MAX_TICKS = 20000;
 	private static final int Z = 3000;
 	private static final float EAST = -90f;
 
@@ -52,7 +59,7 @@ public class PodDrillTest {
 		}
 	}
 
-	@GameTest(maxTicks = 600)
+	@GameTest(maxTicks = MAX_TICKS)
 	public void aDownwardBoreIsExactlyTwoByTwoByN(GameTestHelper helper) {
 		int x = 3000;
 		int floor = 60;
@@ -92,7 +99,7 @@ public class PodDrillTest {
 		});
 	}
 
-	@GameTest(maxTicks = 600)
+	@GameTest(maxTicks = MAX_TICKS)
 	public void drillingSidewaysNeedsGroundUnderThePod(GameTestHelper helper) {
 		int x = 3064;
 		int floor = 60;
@@ -129,7 +136,7 @@ public class PodDrillTest {
 		});
 	}
 
-	@GameTest(maxTicks = 300)
+	@GameTest(maxTicks = MAX_TICKS)
 	public void aWallUnderTheCeilingIsNeverBored(GameTestHelper helper) {
 		ServerLevel level = layer(helper, 1);
 		int ceiling = level.getMaxY();
@@ -143,7 +150,7 @@ public class PodDrillTest {
 			if (rig.pod.drilling()) {
 				throw failure(helper, "the pod started drilling a slab that reaches the ceiling row");
 			}
-			if (helper.getTick() < 150) {
+			if (rig.pod.tickCount < 150) {
 				return;
 			}
 			if (!rig.pod.horizontalCollision) {
@@ -158,7 +165,7 @@ public class PodDrillTest {
 	}
 
 	/** The control for the test above: the same wall one row lower is bored, so the ceiling rule is not a blanket refusal. */
-	@GameTest(maxTicks = 600)
+	@GameTest(maxTicks = MAX_TICKS)
 	public void aWallOneRowBelowTheCeilingIsBored(GameTestHelper helper) {
 		ServerLevel level = layer(helper, 1);
 		int top = level.getMaxY() - 1;
@@ -176,7 +183,7 @@ public class PodDrillTest {
 		});
 	}
 
-	@GameTest(maxTicks = 900)
+	@GameTest(maxTicks = MAX_TICKS)
 	public void drillingIsSlowerDeeperDown(GameTestHelper helper) {
 		ServerLevel level = layer(helper, 1);
 		int shallowFloor = 150;
@@ -230,7 +237,7 @@ public class PodDrillTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 600)
+	@GameTest(maxTicks = MAX_TICKS)
 	public void oreGoesToCargoAndStoneIsDestroyed(GameTestHelper helper) {
 		int x = 3384;
 		int floor = 60;
@@ -257,7 +264,7 @@ public class PodDrillTest {
 		});
 	}
 
-	@GameTest(maxTicks = 600)
+	@GameTest(maxTicks = MAX_TICKS)
 	public void aFullBayLosesTheOreAndDrillingGoesOn(GameTestHelper helper) {
 		int x = 3448;
 		int floor = 60;
@@ -287,7 +294,7 @@ public class PodDrillTest {
 	}
 
 	/** The hitbox straddles three columns but the bore is two wide: a pod held up by the third column alone must still get on with it. */
-	@GameTest(maxTicks = 600)
+	@GameTest(maxTicks = MAX_TICKS)
 	public void aPodOnALedgeInTheThirdColumnCentresAndDrillsDown(GameTestHelper helper) {
 		int x = 3640;
 		int floor = 60;
@@ -309,7 +316,7 @@ public class PodDrillTest {
 		});
 	}
 
-	@GameTest(maxTicks = 600)
+	@GameTest(maxTicks = MAX_TICKS)
 	public void aPodAgainstAWallInTheThirdColumnCentresAndDrillsSideways(GameTestHelper helper) {
 		int x = 3704;
 		int floor = 60;
@@ -333,7 +340,7 @@ public class PodDrillTest {
 		});
 	}
 
-	@GameTest(maxTicks = 900)
+	@GameTest(maxTicks = MAX_TICKS)
 	public void theLastCrustRowCrossesThePodAndItsPilotIntoTheNextLayer(GameTestHelper helper) {
 		int x = 3512;
 		ServerLevel one = layer(helper, 1);
@@ -370,7 +377,7 @@ public class PodDrillTest {
 		});
 	}
 
-	@GameTest(maxTicks = 200)
+	@GameTest(maxTicks = MAX_TICKS)
 	public void theLastLayersCrustIsNotDrilled(GameTestHelper helper) {
 		int x = 3576;
 		ServerLevel two = layer(helper, 2);
@@ -382,7 +389,7 @@ public class PodDrillTest {
 			if (rig.pod.drilling()) {
 				throw failure(helper, "the pod drills the floor of the last layer, which leads nowhere");
 			}
-			if (helper.getTick() < 100) {
+			if (rig.pod.tickCount < 100) {
 				return;
 			}
 			if (!rig.pod.onGround() || !two.getBlockState(new BlockPos(x, 2, Z)).is(LayerBlocks.BREACH_CRUST)) {
