@@ -36,7 +36,8 @@ import net.minecraft.server.network.CommonListenerCookie;
  *       has not answered one for 15 seconds.</li>
  * </ul>
  * <p>A mock is loaded by default, so it takes damage like a real player, provided its game
- * mode allows that: the server's default is not survival. Use {@link #joinUnloaded} for one
+ * mode allows that. Damage tests must call {@code setGameMode(SURVIVAL)}, because GameTest
+ * players default to creative. Use {@link #joinUnloaded} for one
  * that is immune whatever its game mode.
  *
  * <p>A mock joined for a GameTest never outlives it: the end-of-tick sweep removes it once the
