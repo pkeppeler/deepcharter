@@ -10,17 +10,26 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreen;
+import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreens;
+import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
+import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
+import io.github.pkeppeler.deepcharter.client.ui.CrtTextField;
+import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.support.TerminalTestTypes;
 
 /**
  * Client GameTest for #59: the offline screen opens and renders, a part button puts a part in through the server, the screen
@@ -33,7 +42,7 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
 	private static final int REFUSAL_TICKS = 20;
 
 	/** The three terminals the test places, as absolute positions. */
-	private record Scene(BlockPos pump, BlockPos processor, BlockPos farPump) {
+	private record Scene(BlockPos pump, BlockPos processor, BlockPos farPump, BlockPos open) {
 	}
 
 	@Override
@@ -46,6 +55,7 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
 			lockedTerminalHasDeadButtons(context, scene);
 			partButtonsRepairThroughTheServer(context, singleplayer, scene);
 			onlineScreenOpensOnceRepaired(context, scene);
+			customScreenUpdatesInPlace(context, scene);
 		}
 	}
 
@@ -56,9 +66,11 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
 			throw new AssertionError("founding should succeed");
 		}
 		BlockPos here = player.blockPosition();
-		Scene scene = new Scene(here.relative(Direction.EAST, 2), here.relative(Direction.SOUTH, 2), here.relative(Direction.EAST, FAR_BLOCKS));
+		Scene scene = new Scene(here.relative(Direction.EAST, 2), here.relative(Direction.SOUTH, 2), here.relative(Direction.EAST, FAR_BLOCKS),
+				here.relative(Direction.WEST, 2));
 		server.overworld().setBlock(scene.pump(), TerminalTypes.FUEL_PUMP.block().defaultBlockState(), 3);
 		server.overworld().setBlock(scene.processor(), TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(), 3);
+		server.overworld().setBlock(scene.open(), TerminalTestTypes.OPEN.block().defaultBlockState(), 3);
 		server.overworld().setBlock(scene.farPump(), TerminalTypes.FUEL_PUMP.block().defaultBlockState(), 3);
 		TerminalTypes.all().forEach(type -> type.parts().forEach(part -> player.getInventory().add(new ItemStack(part))));
 		return scene;
@@ -139,6 +151,64 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
 		TerminalScreen processor = awaitScreen(context);
 		check(!processor.online() && processor.view().unlocked(), "with the pump repaired the processor's parts can go in");
 		context.setScreen(() -> null);
+	}
+
+	/** A feature's own online screen keeps its text field when the server answers an action: it is updated, not replaced. */
+	private static void customScreenUpdatesInPlace(ClientGameTestContext context, Scene scene) {
+		TerminalScreens.register(TerminalTestTypes.OPEN, InPlaceScreen::new);
+		request(context, scene.open());
+		context.waitForScreen(InPlaceScreen.class);
+		InPlaceScreen screen = context.computeOnClient(client -> (InPlaceScreen) client.gui.screen());
+		check(screen.view().repaired() && screen.view().parts().isEmpty(), "a terminal with no repair opens online, with no parts");
+		context.runOnClient(client -> screen.field().setValue("RIGGS"));
+		context.runOnClient(client -> ClientPlayNetworking.send(new TerminalActionPayload(scene.open(), TerminalTestTypes.PING, new CompoundTag())));
+		context.waitFor(client -> screen.updates() == 1, WAIT_TICKS);
+		check(context.computeOnClient(client -> client.gui.screen() == screen), "the action's answer must not replace the screen");
+		check(screen.field().getValue().equals("RIGGS"), "the text field keeps its text, got '" + screen.field().getValue() + "'");
+		context.setScreen(() -> null);
+	}
+
+	/** A screen with a text field, standing in for a feature's own online screen. */
+	private static final class InPlaceScreen extends CrtScreen implements TerminalViewScreen {
+		private TerminalView view;
+		private CrtTextField field;
+		private int updates;
+
+		private InPlaceScreen(TerminalView view) {
+			super(Component.literal("IN PLACE"));
+			this.view = view;
+		}
+
+		@Override
+		protected void layout() {
+			String typed = field == null ? "" : field.getValue();
+			field = addRenderableWidget(new CrtTextField(font, 30, 30, width - 60, 14, Component.literal("NAME")));
+			field.setValue(typed);
+		}
+
+		@Override
+		public boolean accepts(TerminalView other) {
+			return view.pos().equals(other.pos());
+		}
+
+		@Override
+		public void update(TerminalView newer) {
+			view = newer;
+			updates++;
+			rebuildWidgets();
+		}
+
+		TerminalView view() {
+			return view;
+		}
+
+		CrtTextField field() {
+			return field;
+		}
+
+		int updates() {
+			return updates;
+		}
 	}
 
 	private static String partLabel(TerminalType type, int index) {

@@ -32,6 +32,8 @@ public final class Terminals {
 	/** The key of the part id in the args of {@link #INSERT_PART}. */
 	public static final String PART_KEY = "part";
 
+	private static boolean loggedUnreadable;
+
 	private Terminals() {
 	}
 
@@ -49,6 +51,7 @@ public final class Terminals {
 			case Access.Denied denied -> refuse(player, denied.refusal());
 			case Access.Granted granted -> {
 				sendView(player, pos, granted.type());
+				TerminalEvents.OPENED.invoker().onOpened(player.level().getServer(), granted.type(), player);
 				yield Optional.empty();
 			}
 		};
@@ -82,7 +85,7 @@ public final class Terminals {
 	}
 
 	private sealed interface Access {
-		record Granted(TerminalType type, Charter charter) implements Access {
+		record Granted(TerminalType type, Optional<Charter> charter) implements Access {
 		}
 
 		record Denied(TerminalRefusal refusal) implements Access {
@@ -97,14 +100,32 @@ public final class Terminals {
 		if (!(player.level().getBlockEntity(pos) instanceof TerminalBlockEntity terminal)) {
 			return new Access.Denied(TerminalRefusal.NO_SUCH_TERMINAL);
 		}
-		Optional<Charter> charter = Charters.charterOf(player.level().getServer(), player.getUUID());
-		if (charter.isEmpty()) {
+		TerminalType type = terminal.type();
+		MinecraftServer server = player.level().getServer();
+		Optional<Charter> charter = Charters.charterOf(server, player.getUUID());
+		if (type.access() == TerminalType.Access.CHARTER_ONLY && charter.isEmpty()) {
 			return new Access.Denied(TerminalRefusal.NOT_ON_A_CHARTER);
 		}
-		return new Access.Granted(terminal.type(), charter.get());
+		// Gameplay code never throws on unreadable saved data: it refuses, and the data stays as it was.
+		if (type.needsRepair() && !RepairState.get(server).isReadable()) {
+			logUnreadableOnce(RepairState.get(server));
+			return new Access.Denied(TerminalRefusal.STATE_UNREADABLE);
+		}
+		return new Access.Granted(type, charter);
+	}
+
+	private static void logUnreadableOnce(RepairState state) {
+		if (!loggedUnreadable) {
+			loggedUnreadable = true;
+			DeepCharter.LOGGER.error("The saved terminal repairs have version {} that this build cannot read: terminals that need repair are refused until the world is opened by a build that reads it",
+					state.unreadableVersion().orElse("?"));
+		}
 	}
 
 	private static Optional<TerminalRefusal> insert(ServerPlayer player, Access.Granted access, CompoundTag args) {
+		if (!access.type().needsRepair()) {
+			return Optional.of(TerminalRefusal.ALREADY_REPAIRED);
+		}
 		MinecraftServer server = player.level().getServer();
 		RepairState state = RepairState.get(server);
 		Optional<Item> part = args.getString(PART_KEY).map(Identifier::tryParse).flatMap(BuiltInRegistries.ITEM::getOptional);
@@ -123,7 +144,7 @@ public final class Terminals {
 			throw new IllegalStateException("a part that passed the check was refused: " + unexpected);
 		});
 		if (state.repaired(access.type())) {
-			TerminalEvents.REPAIRED.invoker().onRepaired(server, access.type(), access.charter(), player);
+			TerminalEvents.REPAIRED.invoker().onRepaired(server, access.type(), access.charter().orElseThrow(), player);
 		}
 		return Optional.empty();
 	}
@@ -140,7 +161,7 @@ public final class Terminals {
 
 	private static Optional<TerminalRefusal> run(ServerPlayer player, Access.Granted access, BlockPos pos, Identifier action, CompoundTag args) {
 		MinecraftServer server = player.level().getServer();
-		if (!RepairState.get(server).repaired(access.type())) {
+		if (access.type().needsRepair() && !RepairState.get(server).repaired(access.type())) {
 			return Optional.of(TerminalRefusal.UNREPAIRED);
 		}
 		Optional<TerminalAction> handler = TerminalActions.find(access.type(), action);

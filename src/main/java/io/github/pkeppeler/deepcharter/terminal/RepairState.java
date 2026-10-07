@@ -74,6 +74,16 @@ public final class RepairState extends SavedData {
 				inserted.entrySet().stream().map(entry -> new Entry(entry.getKey(), List.copyOf(entry.getValue()))).toList()));
 	}
 
+	/** False when the saved data is of a version this build cannot read. Gameplay code asks this and refuses, instead of calling what throws. */
+	public boolean isReadable() {
+		return unreadable.isEmpty();
+	}
+
+	/** The saved version of unreadable data, for a log line. */
+	public Optional<String> unreadableVersion() {
+		return unreadable.map(Versioned.Unreadable::version);
+	}
+
 	private Map<Identifier, List<Identifier>> readable() {
 		if (unreadable.isPresent()) {
 			throw new IllegalStateException("the saved terminal repairs have version " + unreadable.get().version()
@@ -122,11 +132,5 @@ public final class RepairState extends SavedData {
 			setDirty();
 		}
 		return refusal;
-	}
-
-	/** Forgets every repair. For tests and for an operator who wants a world's colony derelict again. */
-	public void reset() {
-		readable().clear();
-		setDirty();
 	}
 }

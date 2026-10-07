@@ -9,14 +9,16 @@ The colony's terminals are repaired once per world: when any charter fixes one, 
 - **Repair state on the block entity**: rejected. A world has one colony terminal per type but may have more blocks of a type (outposts, #64 and later), and the repair must be shared. The block entity holds no data: it marks a block as a working terminal and names its type.
 - **Repair state per charter**: rejected. It contradicts SPEC section 3.
 - **Versioned through `Versioned.codec`**: the saved form is `{version, terminals}`. Data of another version loads as `Unreadable`, is written back unchanged, and every use throws. This is [ADR 0006](0006-pod-seams-attachments-and-events.md) and [ADR 0007](0007-charters-are-one-versioned-saved-data.md) again, with the same datafixer type. `TerminalFrameworkTest.aFileFromAnOlderMinecraftLoadsUnchanged` guards it.
-- **A type is registered with `TerminalTypes.register(id, parts[, prerequisite])`.** That makes the block and its item and adds the block to the one block entity type. The prerequisite is what makes the repair order: parts go in only once the prerequisite is repaired. The four colony terminals are registered in order: pump, processor, upgrade, repair.
+- **A type is registered with `TerminalTypes.register(id, parts[, prerequisite])`, or `registerAlwaysOnline(id, access)`.** That makes the block and its item and adds the block to the one block entity type. The prerequisite is what makes the repair order: parts go in only once the prerequisite is repaired. The four colony terminals are registered in order: pump, processor, upgrade, repair.
+- **A type has an access policy and an optional repair.** `Access` is `CHARTER_ONLY` or `ANYONE`. A type with no repair is always online, has no offline screen and runs actions at once. The contract terminal of #72 is such a type, for anyone, because a player with no charter founds one there.
 - **Parts are saved by item id**, so a part that a later build removes stays in the file instead of being dropped.
 
 ## Rules
 
-- A request is checked in this order: the terminal exists, the player is within 6 blocks of it (eye to block centre), the player is on a charter, then what it needs of the repair state. A refusal changes nothing and tells the player why.
+- A request is checked in this order: the player is within 6 blocks of the block (eye to block centre), the block is a terminal, the player is on a charter (for `CHARTER_ONLY` types), the repair data is readable (for types with repair), then what it needs of the repair state. A refusal changes nothing and tells the player why.
+- Unreadable repair data is refused as `STATE_UNREADABLE` and logged once. Gameplay code never throws on it, and the data is written back unchanged. Only explicit calls such as `Terminals.isRepaired` throw.
 - An unrepaired terminal opens, offline: it is where parts go in. Every other action needs a repaired terminal and a handler registered with `TerminalActions.register`.
-- Terminals cannot be broken in survival (hardness -1, as bedrock).
+- Terminals cannot be broken in survival (hardness -1, as bedrock), and the Wither and the Ender Dragon cannot break them: the blocks are in the tag `deepcharter:terminals`, which `wither_immune` and `dragon_immune` include. A new terminal block goes into that tag.
 
 ## Consequences
 

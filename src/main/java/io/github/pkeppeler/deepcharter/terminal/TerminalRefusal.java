@@ -20,6 +20,8 @@ public enum TerminalRefusal {
 	ALREADY_INSERTED,
 	MISSING_PART,
 	NO_SUCH_ACTION,
+	/** The world's saved repair data is of a version this build cannot read, so no terminal that needs repair state works. */
+	STATE_UNREADABLE,
 	/** The action's own handler refused: the player was told why. */
 	ACTION_REFUSED;
 

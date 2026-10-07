@@ -28,10 +28,10 @@ public final class TerminalScreens {
 		}
 	}
 
-	/** Shows {@code view}: updates the open screen of the same terminal, or opens a new one. Call on the client thread. */
+	/** Shows {@code view}: updates the open screen if it accepts the view, or opens a new one. Call on the client thread. */
 	static void show(TerminalView view) {
 		Minecraft client = Minecraft.getInstance();
-		if (client.gui.screen() instanceof TerminalScreen open && open.accepts(view)) {
+		if (client.gui.screen() instanceof TerminalViewScreen open && open.accepts(view)) {
 			open.update(view);
 			return;
 		}

@@ -38,7 +38,11 @@ public record TerminalView(BlockPos pos, Identifier type, boolean repaired, bool
 		parts = List.copyOf(parts);
 	}
 
+	/** A terminal that needs no repair is always online, whatever the state. */
 	static TerminalView of(BlockPos pos, TerminalType type, RepairState state) {
+		if (!type.needsRepair()) {
+			return new TerminalView(pos.immutable(), type.id(), true, true, List.of());
+		}
 		boolean repaired = state.repaired(type);
 		boolean unlocked = repaired || type.prerequisite().map(state::repaired).orElse(true);
 		List<Identifier> inserted = state.inserted(type).stream().map(TerminalType::partId).toList();

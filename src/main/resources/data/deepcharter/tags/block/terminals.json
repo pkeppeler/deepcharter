@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "deepcharter:fuel_pump",
+    "deepcharter:ore_processor",
+    "deepcharter:upgrade_terminal",
+    "deepcharter:repair_station"
+  ]
+}

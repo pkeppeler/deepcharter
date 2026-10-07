@@ -12,6 +12,7 @@
   "deepcharter.terminal.refusal.not_a_part": "That is not a part of this terminal",
   "deepcharter.terminal.refusal.not_on_a_charter": "Only a charter can use a terminal",
   "deepcharter.terminal.refusal.prerequisite_unrepaired": "Repair the earlier terminal first",
+  "deepcharter.terminal.refusal.state_unreadable": "This world has terminal data from another version of the mod",
   "deepcharter.terminal.refusal.too_far": "You are too far from the terminal",
   "deepcharter.terminal.refusal.unrepaired": "The terminal is offline",
   "item.deepcharter.crusher_gear": "Crusher Gear",

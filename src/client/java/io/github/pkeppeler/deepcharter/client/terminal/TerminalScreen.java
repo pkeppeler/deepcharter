@@ -9,7 +9,6 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
@@ -31,7 +30,7 @@ import io.github.pkeppeler.deepcharter.terminal.Terminals;
  * <p>A terminal feature replaces the online screen with its own through {@link TerminalScreens#register}. The offline screen is
  * the same for every type. The screen never decides anything: the server checks every press.
  */
-public final class TerminalScreen extends CrtScreen {
+public final class TerminalScreen extends CrtScreen implements TerminalViewScreen {
 	private static final int MARGIN = 24;
 	private static final int BUTTON_WIDTH = 200;
 	private static final int BUTTON_HEIGHT = 20;
@@ -63,13 +62,15 @@ public final class TerminalScreen extends CrtScreen {
 	}
 
 	/** True when {@code other} is the same terminal in the same mode, so this screen can take it with {@link #update}. */
-	boolean accepts(TerminalView other) {
+	@Override
+	public boolean accepts(TerminalView other) {
 		return view.pos().equals(other.pos()) && view.type().equals(other.type())
 				&& view.repaired() == other.repaired() && view.unlocked() == other.unlocked();
 	}
 
 	/** Shows a newer view of the same terminal, keeping the typewriter where it is. */
-	void update(TerminalView newer) {
+	@Override
+	public void update(TerminalView newer) {
 		view = newer;
 		rebuildWidgets();
 	}
@@ -107,8 +108,9 @@ public final class TerminalScreen extends CrtScreen {
 	}
 
 	private static String partName(TerminalView.PartStatus part) {
-		Item item = BuiltInRegistries.ITEM.getOptional(part.part()).orElseThrow(() -> new IllegalStateException("unknown part " + part.part()));
-		return new ItemStack(item).getHoverName().getString().toUpperCase(Locale.ROOT);
+		// An id this build does not know (a part from a newer server) still shows, as "?", and the server decides what the button does.
+		return BuiltInRegistries.ITEM.getOptional(part.part())
+				.map(item -> new ItemStack(item).getHoverName().getString().toUpperCase(Locale.ROOT)).orElse("?");
 	}
 
 	private void insert(TerminalView.PartStatus part) {

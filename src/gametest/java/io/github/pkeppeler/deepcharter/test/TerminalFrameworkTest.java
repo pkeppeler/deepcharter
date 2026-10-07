@@ -15,16 +15,21 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import io.netty.buffer.Unpooled;
+
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtAccounter;
@@ -32,24 +37,30 @@ import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.chat.Component;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.SavedDataStorage;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
-import io.github.pkeppeler.deepcharter.terminal.TerminalActions;
+import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalBlockEntity;
 import io.github.pkeppeler.deepcharter.terminal.TerminalEvents;
 import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
@@ -58,34 +69,45 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TerminalTestTypes;
 
 /**
  * Server GameTests for #59: the repair order, a repair seen by a second charter, validated actions, saved state, and the rest
- * of the terminal rules (parts, recipes, unbreakable blocks, registration).
+ * of the terminal rules (access, unreadable data, parts, recipes, unbreakable blocks, registration).
  *
- * <p>The repair state is one per world, so these tests share it. Each one does all its work inside its first tick and
- * resets the state before and after, so no two of them overlap.
+ * <p>The repair state is one per world. A test that repairs things swaps in a fresh {@link RepairState} for its own duration
+ * ({@link #withState}) and puts the world's back at the end. Each such test does all its work inside its first tick, so no two
+ * of them overlap. Test handlers live on the test-only types of {@link TerminalTestTypes}, never on a colony terminal.
  */
 public class TerminalFrameworkTest {
-	private static final Identifier PING = Identifier.fromNamespaceAndPath("deepcharter_test", "ping");
-	private static final Identifier DENY = Identifier.fromNamespaceAndPath("deepcharter_test", "deny");
+	private static final List<TerminalType> COLONY = List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR,
+			TerminalTypes.UPGRADE_TERMINAL, TerminalTypes.REPAIR_STATION);
 	private static final Identifier UNKNOWN = Identifier.fromNamespaceAndPath("deepcharter_test", "unknown");
 	private static final Set<String> RECIPE_INGREDIENTS = Set.of("minecraft:iron_ingot", "minecraft:copper_ingot", "minecraft:redstone");
+	private static final TagKey<Block> TERMINALS = TagKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath("deepcharter", "terminals"));
 
 	private static final List<Identifier> REPAIRED_LOG = new ArrayList<>();
-	private static int pings;
-	private static Optional<Charter> lastPinger = Optional.empty();
+	private static final List<String> OPENED_LOG = new ArrayList<>();
 
 	static {
-		for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR)) {
-			TerminalActions.register(type, PING, context -> {
-				pings++;
-				lastPinger = Optional.of(context.charter());
-				return Optional.empty();
-			});
-		}
-		TerminalActions.register(TerminalTypes.FUEL_PUMP, DENY, context -> Optional.of(Component.literal("denied for the test")));
 		TerminalEvents.REPAIRED.register((server, type, charter, player) -> REPAIRED_LOG.add(type.id()));
+		TerminalEvents.OPENED.register((server, type, player) -> OPENED_LOG.add(type.id() + "/" + player.getGameProfile().name()));
+	}
+
+	/** Runs {@code body} with {@code state} as the world's repair state, and puts the world's own back after. */
+	private static void withState(MinecraftServer server, RepairState state, Runnable body) {
+		RepairState original = RepairState.get(server);
+		server.getDataStorage().set(RepairState.TYPE, state);
+		try {
+			body.run();
+		} finally {
+			server.getDataStorage().set(RepairState.TYPE, original);
+		}
+	}
+
+	private static void withFreshState(MinecraftServer server, Consumer<RepairState> body) {
+		RepairState fresh = new RepairState();
+		withState(server, fresh, () -> body.accept(fresh));
 	}
 
 	private static BlockPos place(GameTestHelper helper, TerminalType type, int x) {
@@ -96,12 +118,18 @@ public class TerminalFrameworkTest {
 
 	/** A mock player, in survival, founding a charter of their own. */
 	private static MockPlayer charterMember(GameTestHelper helper, String name) {
-		MockPlayer mock = MockPlayers.join(helper, name);
-		mock.player().setGameMode(GameType.SURVIVAL);
+		MockPlayer mock = outsider(helper, name);
 		MinecraftServer server = helper.getLevel().getServer();
 		if (Charters.found(server, mock.player().getUUID(), name + " " + UUID.randomUUID().toString().substring(0, 8)).isPresent()) {
 			throw helper.assertionException("founding a charter for %s should succeed", name);
 		}
+		return mock;
+	}
+
+	/** A mock player, in survival, on no charter. */
+	private static MockPlayer outsider(GameTestHelper helper, String name) {
+		MockPlayer mock = MockPlayers.join(helper, name);
+		mock.player().setGameMode(GameType.SURVIVAL);
 		return mock;
 	}
 
@@ -118,7 +146,7 @@ public class TerminalFrameworkTest {
 	}
 
 	private static void giveAllParts(ServerPlayer player) {
-		TerminalTypes.all().forEach(type -> type.parts().forEach(part -> give(player, part, 1)));
+		COLONY.forEach(type -> type.parts().forEach(part -> give(player, part, 1)));
 	}
 
 	private static int count(ServerPlayer player, Item item) {
@@ -144,9 +172,8 @@ public class TerminalFrameworkTest {
 		}
 	}
 
-	/** Repairs {@code type} for the world straight in the saved data, leaving no events. */
-	private static void repairDirectly(GameTestHelper helper, TerminalType type) {
-		RepairState state = RepairState.get(helper.getLevel().getServer());
+	/** Repairs {@code type} straight in {@code state}, leaving no events. */
+	private static void repairDirectly(GameTestHelper helper, RepairState state, TerminalType type) {
 		type.parts().forEach(part -> expectDone(helper, state.insert(type, part), "inserting " + part));
 	}
 
@@ -157,22 +184,19 @@ public class TerminalFrameworkTest {
 	@GameTest
 	public void theRepairOrderHolds(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
-		RepairState state = RepairState.get(server);
-		state.reset();
-		REPAIRED_LOG.clear();
-		try {
+		withFreshState(server, state -> {
+			REPAIRED_LOG.clear();
 			MockPlayer mock = charterMember(helper, "Repairer");
 			ServerPlayer player = mock.player();
 			giveAllParts(player);
-			int x = 0;
 			List<BlockPos> positions = new ArrayList<>();
-			for (TerminalType type : TerminalTypes.all()) {
-				positions.add(place(helper, type, x++));
+			for (int x = 0; x < COLONY.size(); x++) {
+				positions.add(place(helper, COLONY.get(x), x));
 			}
 			stand(helper, mock, positions.getFirst(), 2);
 
-			for (int step = 1; step < TerminalTypes.all().size(); step++) {
-				TerminalType early = TerminalTypes.all().get(step);
+			for (int step = 1; step < COLONY.size(); step++) {
+				TerminalType early = COLONY.get(step);
 				Item part = early.parts().getFirst();
 				int held = count(player, part);
 				expectRefused(helper, TerminalRefusal.PREREQUISITE_UNREPAIRED, Terminals.insertPart(player, positions.get(step), part),
@@ -182,8 +206,8 @@ public class TerminalFrameworkTest {
 				}
 			}
 
-			for (int step = 0; step < TerminalTypes.all().size(); step++) {
-				TerminalType type = TerminalTypes.all().get(step);
+			for (int step = 0; step < COLONY.size(); step++) {
+				TerminalType type = COLONY.get(step);
 				for (int i = 0; i < type.parts().size(); i++) {
 					if (state.repaired(type)) {
 						throw helper.assertionException("%s is repaired before its last part: %s of %s", type.id(), i, type.parts().size());
@@ -196,30 +220,26 @@ public class TerminalFrameworkTest {
 				if (REPAIRED_LOG.size() != step + 1 || !REPAIRED_LOG.getLast().equals(type.id())) {
 					throw helper.assertionException("REPAIRED should fire once for %s, log is %s", type.id(), REPAIRED_LOG);
 				}
-				if (step + 2 < TerminalTypes.all().size()) {
-					TerminalType skipped = TerminalTypes.all().get(step + 2);
+				if (step + 2 < COLONY.size()) {
+					TerminalType skipped = COLONY.get(step + 2);
 					expectRefused(helper, TerminalRefusal.PREREQUISITE_UNREPAIRED,
 							Terminals.insertPart(player, positions.get(step + 2), skipped.parts().getFirst()),
-							"a part of " + skipped.id() + " while " + TerminalTypes.all().get(step + 1).id() + " is not repaired");
+							"a part of " + skipped.id() + " while " + COLONY.get(step + 1).id() + " is not repaired");
 				}
 			}
-			if (REPAIRED_LOG.size() != 4) {
+			if (REPAIRED_LOG.size() != COLONY.size()) {
 				throw helper.assertionException("REPAIRED fires once per terminal, log is %s", REPAIRED_LOG);
 			}
 			expectRefused(helper, TerminalRefusal.ALREADY_REPAIRED, Terminals.insertPart(player, positions.getFirst(), TerminalTypes.FUEL_PUMP.parts().getFirst()),
 					"a part into a repaired terminal");
-		} finally {
-			state.reset();
-		}
+		});
 		helper.succeed();
 	}
 
 	@GameTest
 	public void onlyTheRightPartsGoInOnce(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
-		RepairState state = RepairState.get(server);
-		state.reset();
-		try {
+		withFreshState(server, state -> {
 			MockPlayer mock = charterMember(helper, "Fitter");
 			ServerPlayer player = mock.player();
 			BlockPos pump = place(helper, TerminalTypes.FUEL_PUMP, 0);
@@ -243,18 +263,15 @@ public class TerminalFrameworkTest {
 			if (count(player, own) != 1) {
 				throw helper.assertionException("the refused second insert must keep the part");
 			}
-		} finally {
-			state.reset();
-		}
+		});
 		helper.succeed();
 	}
 
 	@GameTest
 	public void aRepairIsVisibleToASecondCharter(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
-		RepairState state = RepairState.get(server);
-		state.reset();
-		try {
+		TerminalType type = TerminalTestTypes.REPAIRABLE;
+		withFreshState(server, state -> {
 			MockPlayer first = charterMember(helper, "FirstCharter");
 			MockPlayer second = charterMember(helper, "SecondCharter");
 			Charter firstCharter = Charters.charterOf(server, first.player().getUUID()).orElseThrow();
@@ -262,74 +279,171 @@ public class TerminalFrameworkTest {
 			if (firstCharter.id().equals(secondCharter.id())) {
 				throw helper.assertionException("the test needs two charters");
 			}
-			BlockPos pump = place(helper, TerminalTypes.FUEL_PUMP, 0);
-			stand(helper, first, pump, 2);
-			stand(helper, second, pump, 3);
-			giveAllParts(first.player());
+			BlockPos terminal = place(helper, type, 0);
+			stand(helper, first, terminal, 2);
+			stand(helper, second, terminal, 3);
+			give(first.player(), Items.FLINT, 1);
 
-			int before = pings;
-			expectRefused(helper, TerminalRefusal.UNREPAIRED, Terminals.act(second.player(), pump, PING, new CompoundTag()),
+			int before = TerminalTestTypes.pings();
+			expectRefused(helper, TerminalRefusal.UNREPAIRED, Terminals.act(second.player(), terminal, TerminalTestTypes.PING, new CompoundTag()),
 					"the second charter's action before any repair");
 
-			TerminalTypes.FUEL_PUMP.parts().forEach(part -> expectDone(helper, Terminals.insertPart(first.player(), pump, part), "the first charter inserting"));
+			expectDone(helper, Terminals.insertPart(first.player(), terminal, Items.FLINT), "the first charter inserting");
 
-			expectDone(helper, Terminals.act(second.player(), pump, PING, new CompoundTag()), "the second charter's action after the first repaired");
-			if (pings != before + 1 || lastPinger.map(Charter::id).filter(secondCharter.id()::equals).isEmpty()) {
-				throw helper.assertionException("the action should run once, for the second charter: pings %s -> %s, charter %s", before, pings, lastPinger);
+			expectDone(helper, Terminals.act(second.player(), terminal, TerminalTestTypes.PING, new CompoundTag()), "the second charter's action after the first repaired");
+			if (TerminalTestTypes.pings() != before + 1
+					|| !TerminalTestTypes.lastPinger().equals(Optional.of(Optional.of(secondCharter)))) {
+				throw helper.assertionException("the action should run once, for the second charter: pings %s -> %s, charter %s",
+						before, TerminalTestTypes.pings(), TerminalTestTypes.lastPinger());
 			}
-			expectRefused(helper, TerminalRefusal.UNREPAIRED, Terminals.act(second.player(), place(helper, TerminalTypes.ORE_PROCESSOR, 1), PING, new CompoundTag()),
-					"an action at a terminal nobody has repaired");
-		} finally {
-			state.reset();
-		}
+		});
 		helper.succeed();
 	}
 
 	@GameTest
 	public void actionsAreValidated(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
-		RepairState state = RepairState.get(server);
-		state.reset();
-		try {
+		TerminalType type = TerminalTestTypes.REPAIRABLE;
+		withFreshState(server, state -> {
 			MockPlayer member = charterMember(helper, "Member");
-			MockPlayer outsider = MockPlayers.join(helper, "Outsider");
-			outsider.player().setGameMode(GameType.SURVIVAL);
-			BlockPos pump = place(helper, TerminalTypes.FUEL_PUMP, 0);
-			BlockPos processor = place(helper, TerminalTypes.ORE_PROCESSOR, 1);
-			repairDirectly(helper, TerminalTypes.FUEL_PUMP);
+			MockPlayer outsider = outsider(helper, "Outsider");
+			BlockPos terminal = place(helper, type, 0);
 			CompoundTag none = new CompoundTag();
-			int before = pings;
+			int before = TerminalTestTypes.pings();
 
-			stand(helper, member, pump, 5.5);
-			expectDone(helper, Terminals.act(member.player(), pump, PING, none), "an action from inside the range");
-			expectDone(helper, Terminals.open(member.player(), pump), "opening from inside the range");
-			if (pings != before + 1) {
+			stand(helper, member, terminal, 2);
+			expectRefused(helper, TerminalRefusal.UNREPAIRED, Terminals.act(member.player(), terminal, TerminalTestTypes.PING, none), "an action at an unrepaired terminal");
+			repairDirectly(helper, state, type);
+
+			stand(helper, member, terminal, 5.5);
+			expectDone(helper, Terminals.act(member.player(), terminal, TerminalTestTypes.PING, none), "an action from inside the range");
+			expectDone(helper, Terminals.open(member.player(), terminal), "opening from inside the range");
+			if (TerminalTestTypes.pings() != before + 1) {
 				throw helper.assertionException("the action should have run once");
 			}
 
-			stand(helper, member, pump, 6.5);
-			expectRefused(helper, TerminalRefusal.TOO_FAR, Terminals.act(member.player(), pump, PING, none), "an action from too far");
-			expectRefused(helper, TerminalRefusal.TOO_FAR, Terminals.open(member.player(), pump), "opening from too far");
+			stand(helper, member, terminal, 6.5);
+			expectRefused(helper, TerminalRefusal.TOO_FAR, Terminals.act(member.player(), terminal, TerminalTestTypes.PING, none), "an action from too far");
+			expectRefused(helper, TerminalRefusal.TOO_FAR, Terminals.open(member.player(), terminal), "opening from too far");
 
-			stand(helper, outsider, pump, 2);
-			expectRefused(helper, TerminalRefusal.NOT_ON_A_CHARTER, Terminals.act(outsider.player(), pump, PING, none), "an action from a player on no charter");
-			expectRefused(helper, TerminalRefusal.NOT_ON_A_CHARTER, Terminals.open(outsider.player(), pump), "opening by a player on no charter");
+			stand(helper, outsider, terminal, 2);
+			expectRefused(helper, TerminalRefusal.NOT_ON_A_CHARTER, Terminals.act(outsider.player(), terminal, TerminalTestTypes.PING, none), "an action from a player on no charter");
+			expectRefused(helper, TerminalRefusal.NOT_ON_A_CHARTER, Terminals.open(outsider.player(), terminal), "opening by a player on no charter");
 
-			stand(helper, member, processor, 2);
-			expectRefused(helper, TerminalRefusal.UNREPAIRED, Terminals.act(member.player(), processor, PING, none), "an action at an unrepaired terminal");
+			stand(helper, member, terminal, 2);
+			expectRefused(helper, TerminalRefusal.NO_SUCH_ACTION, Terminals.act(member.player(), terminal, UNKNOWN, none), "an action nobody registered");
+			expectRefused(helper, TerminalRefusal.ACTION_REFUSED, Terminals.act(member.player(), terminal, TerminalTestTypes.DENY, none), "an action whose handler refuses");
+			expectRefused(helper, TerminalRefusal.NO_SUCH_TERMINAL, Terminals.act(member.player(), terminal.above(3), TerminalTestTypes.PING, none), "an action at a position with no terminal");
+			expectRefused(helper, TerminalRefusal.NO_SUCH_TERMINAL, Terminals.open(member.player(), terminal.above(3)), "opening a position with no terminal");
 
-			stand(helper, member, pump, 2);
-			expectRefused(helper, TerminalRefusal.NO_SUCH_ACTION, Terminals.act(member.player(), pump, UNKNOWN, none), "an action nobody registered");
-			expectRefused(helper, TerminalRefusal.ACTION_REFUSED, Terminals.act(member.player(), pump, DENY, none), "an action whose handler refuses");
-			expectRefused(helper, TerminalRefusal.NO_SUCH_TERMINAL, Terminals.act(member.player(), pump.above(3), PING, none), "an action at a position with no terminal");
-			expectRefused(helper, TerminalRefusal.NO_SUCH_TERMINAL, Terminals.open(member.player(), pump.above(3)), "opening a position with no terminal");
-
-			if (pings != before + 1) {
-				throw helper.assertionException("no refused action may have run its handler, pings went from %s to %s", before, pings);
+			if (TerminalTestTypes.pings() != before + 1) {
+				throw helper.assertionException("no refused action may have run its handler, pings went from %s to %s", before, TerminalTestTypes.pings());
 			}
-		} finally {
-			state.reset();
-		}
+		});
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aSpoofedPositionOnAnotherBlockIsNoTerminal(GameTestHelper helper) {
+		MockPlayer member = charterMember(helper, "Spoofer");
+		BlockPos chest = helper.absolutePos(new BlockPos(0, 1, 0));
+		helper.setBlock(new BlockPos(0, 1, 0), Blocks.CHEST.defaultBlockState());
+		stand(helper, member, chest, 2);
+		expectRefused(helper, TerminalRefusal.NO_SUCH_TERMINAL, Terminals.open(member.player(), chest), "opening a chest as a terminal");
+		expectRefused(helper, TerminalRefusal.NO_SUCH_TERMINAL, Terminals.act(member.player(), chest, TerminalTestTypes.PING, new CompoundTag()),
+				"an action at a chest");
+		expectRefused(helper, TerminalRefusal.NO_SUCH_TERMINAL, Terminals.insertPart(member.player(), chest, Items.FLINT), "a part into a chest");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aTerminalWithNoRepairWorksForAnyoneFromTheStart(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		TerminalType type = TerminalTestTypes.OPEN;
+		withFreshState(server, state -> {
+			MockPlayer outsider = outsider(helper, "Newcomer");
+			BlockPos terminal = place(helper, type, 0);
+			stand(helper, outsider, terminal, 2);
+			int before = TerminalTestTypes.pings();
+			OPENED_LOG.clear();
+
+			if (type.needsRepair() || !type.parts().isEmpty() || type.access() != TerminalType.Access.ANYONE || !Terminals.isRepaired(server, type)) {
+				throw helper.assertionException("the open terminal needs no repair, and is online for anyone");
+			}
+			expectDone(helper, Terminals.open(outsider.player(), terminal), "a player on no charter opening it");
+			expectDone(helper, Terminals.act(outsider.player(), terminal, TerminalTestTypes.PING, new CompoundTag()), "a player on no charter acting at it");
+			if (TerminalTestTypes.pings() != before + 1 || !TerminalTestTypes.lastPinger().equals(Optional.of(Optional.empty()))
+					|| !OPENED_LOG.equals(List.of(type.id() + "/Newcomer"))) {
+				throw helper.assertionException("the action runs with no charter and the open is announced once: pings %s -> %s, charter %s, opened %s",
+						before, TerminalTestTypes.pings(), TerminalTestTypes.lastPinger(), OPENED_LOG);
+			}
+			expectRefused(helper, TerminalRefusal.ALREADY_REPAIRED, Terminals.insertPart(outsider.player(), terminal, Items.FLINT), "a part into a terminal that needs none");
+
+			stand(helper, outsider, terminal, 6.5);
+			expectRefused(helper, TerminalRefusal.TOO_FAR, Terminals.open(outsider.player(), terminal), "opening it from too far");
+			if (!state.inserted(type).isEmpty()) {
+				throw helper.assertionException("a terminal with no repair has no parts in the state");
+			}
+		});
+		helper.succeed();
+	}
+
+	@GameTest
+	public void blockUseOpensTheTerminalOnTheServer(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		withFreshState(server, state -> {
+			MockPlayer member = charterMember(helper, "User");
+			BlockPos pump = place(helper, TerminalTypes.FUEL_PUMP, 0);
+			stand(helper, member, pump, 2);
+			OPENED_LOG.clear();
+
+			BlockState blockState = helper.getLevel().getBlockState(pump);
+			blockState.useWithoutItem(helper.getLevel(), member.player(), new BlockHitResult(Vec3.atCenterOf(pump), Direction.UP, pump, false));
+			if (!OPENED_LOG.equals(List.of(TerminalTypes.FUEL_PUMP.id() + "/User"))) {
+				throw helper.assertionException("using the block should open the terminal for the player, opened: %s", OPENED_LOG);
+			}
+			stand(helper, member, pump, 6.5);
+			OPENED_LOG.clear();
+			blockState.useWithoutItem(helper.getLevel(), member.player(), new BlockHitResult(Vec3.atCenterOf(pump), Direction.UP, pump, false));
+			if (!OPENED_LOG.isEmpty()) {
+				throw helper.assertionException("using the block from too far must not open it: %s", OPENED_LOG);
+			}
+		});
+		helper.succeed();
+	}
+
+	@GameTest
+	public void unreadableRepairDataRefusesInsteadOfThrowing(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		CompoundTag future = new CompoundTag();
+		future.putInt("version", RepairState.VERSION + 1);
+		future.putString("shape", "from a newer build");
+		RepairState unreadable = RepairState.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow();
+		withState(server, unreadable, () -> {
+			MockPlayer member = charterMember(helper, "Unlucky");
+			MockPlayer outsider = outsider(helper, "Newcomer");
+			BlockPos pump = place(helper, TerminalTypes.FUEL_PUMP, 0);
+			BlockPos open = place(helper, TerminalTestTypes.OPEN, 1);
+			stand(helper, member, pump, 2);
+			stand(helper, outsider, open, 2);
+			give(member.player(), TerminalTypes.FUEL_PUMP.parts().getFirst(), 1);
+			OPENED_LOG.clear();
+
+			expectRefused(helper, TerminalRefusal.STATE_UNREADABLE, Terminals.open(member.player(), pump), "opening with unreadable repair data");
+			expectRefused(helper, TerminalRefusal.STATE_UNREADABLE, Terminals.insertPart(member.player(), pump, TerminalTypes.FUEL_PUMP.parts().getFirst()),
+					"inserting with unreadable repair data");
+			helper.getLevel().getBlockState(pump).useWithoutItem(helper.getLevel(), member.player(),
+					new BlockHitResult(Vec3.atCenterOf(pump), Direction.UP, pump, false));
+			if (count(member.player(), TerminalTypes.FUEL_PUMP.parts().getFirst()) != 1 || !OPENED_LOG.isEmpty()) {
+				throw helper.assertionException("a refused request keeps the part and opens nothing");
+			}
+			expectDone(helper, Terminals.open(outsider.player(), open), "a terminal that needs no repair state still opens");
+
+			Tag written = RepairState.CODEC.encodeStart(NbtOps.INSTANCE, unreadable).getOrThrow();
+			if (!future.equals(written)) {
+				throw helper.assertionException("unreadable data must be written back unchanged, got %s", written);
+			}
+		});
 		helper.succeed();
 	}
 
@@ -365,10 +479,22 @@ public class TerminalFrameworkTest {
 	}
 
 	@GameTest
+	public void theWitherAndTheDragonCannotBreakTerminals(GameTestHelper helper) {
+		for (TerminalType type : TerminalTypes.all()) {
+			BlockState state = type.block().defaultBlockState();
+			if (type.id().getNamespace().equals("deepcharter")
+					&& (!state.is(TERMINALS) || !state.is(BlockTags.WITHER_IMMUNE) || !state.is(BlockTags.DRAGON_IMMUNE))) {
+				throw helper.assertionException("%s must be in deepcharter:terminals, wither_immune and dragon_immune", type.id());
+			}
+		}
+		helper.succeed();
+	}
+
+	@GameTest
 	public void everyTerminalNeedsTwoOrThreePartsMadeOfIronCopperAndRedstone(GameTestHelper helper) {
 		Set<String> used = new HashSet<>();
 		Set<Item> allParts = new HashSet<>();
-		for (TerminalType type : TerminalTypes.all()) {
+		for (TerminalType type : COLONY) {
 			if (type.parts().size() < 2 || type.parts().size() > 3) {
 				throw helper.assertionException("%s needs 2 or 3 parts, has %s", type.id(), type.parts().size());
 			}
@@ -414,19 +540,18 @@ public class TerminalFrameworkTest {
 
 	@GameTest
 	public void theColonyTerminalsFormOneChain(GameTestHelper helper) {
-		List<TerminalType> order = List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL, TerminalTypes.REPAIR_STATION);
-		if (!TerminalTypes.all().equals(order)) {
-			throw helper.assertionException("the chain is pump, processor, upgrade, repair: %s", TerminalTypes.all());
-		}
 		if (TerminalTypes.FUEL_PUMP.prerequisite().isPresent()) {
 			throw helper.assertionException("the pump is first and has no prerequisite");
 		}
-		for (int i = 1; i < order.size(); i++) {
-			if (!order.get(i).prerequisite().equals(Optional.of(order.get(i - 1)))) {
-				throw helper.assertionException("%s should need %s first", order.get(i).id(), order.get(i - 1).id());
+		for (int i = 1; i < COLONY.size(); i++) {
+			if (!COLONY.get(i).prerequisite().equals(Optional.of(COLONY.get(i - 1)))) {
+				throw helper.assertionException("%s should need %s first", COLONY.get(i).id(), COLONY.get(i - 1).id());
 			}
 		}
-		for (TerminalType type : order) {
+		if (!TerminalTypes.all().subList(0, COLONY.size()).equals(COLONY)) {
+			throw helper.assertionException("the colony terminals are registered first, in order: %s", TerminalTypes.all());
+		}
+		for (TerminalType type : TerminalTypes.all()) {
 			if (TerminalTypes.get(type.id()).orElse(null) != type || TerminalTypes.of(type.block()).orElse(null) != type) {
 				throw helper.assertionException("%s should be found by id and by block", type.id());
 			}
@@ -439,8 +564,10 @@ public class TerminalFrameworkTest {
 		Item aPart = TerminalTypes.FUEL_PUMP.parts().getFirst();
 		Item free = Items.STICK;
 		Identifier fresh = Identifier.fromNamespaceAndPath("deepcharter_test", "never_registered");
+		int before = TerminalTypes.all().size();
 		List<Runnable> bad = List.of(
 				() -> TerminalTypes.register(TerminalTypes.FUEL_PUMP.id(), List.of(free)),
+				() -> TerminalTypes.registerAlwaysOnline(TerminalTypes.FUEL_PUMP.id(), TerminalType.Access.ANYONE),
 				() -> TerminalTypes.register(fresh, List.of()),
 				() -> TerminalTypes.register(fresh, List.of(free, free)),
 				() -> TerminalTypes.register(fresh, List.of(aPart)));
@@ -455,10 +582,39 @@ public class TerminalFrameworkTest {
 				throw helper.assertionException("bad registration %s should throw IllegalArgumentException", i);
 			}
 		}
-		if (TerminalTypes.get(fresh).isPresent() || TerminalTypes.all().size() != 4) {
+		if (TerminalTypes.get(fresh).isPresent() || TerminalTypes.all().size() != before) {
 			throw helper.assertionException("a refused registration must leave nothing behind");
 		}
 		helper.succeed();
+	}
+
+	@GameTest
+	public void anOversizedActionPayloadDoesNotDecode(GameTestHelper helper) {
+		BlockPos pos = helper.absolutePos(BlockPos.ZERO);
+		CompoundTag small = new CompoundTag();
+		small.putString(Terminals.PART_KEY, "deepcharter:pump_motor");
+		CompoundTag big = new CompoundTag();
+		big.putString("junk", "x".repeat(TerminalActionPayload.MAX_ARGS_BYTES * 4));
+		if (!decodes(helper, pos, small)) {
+			throw helper.assertionException("a small args compound should decode");
+		}
+		if (decodes(helper, pos, big)) {
+			throw helper.assertionException("args of more than %s bytes should not decode", TerminalActionPayload.MAX_ARGS_BYTES);
+		}
+		helper.succeed();
+	}
+
+	private static boolean decodes(GameTestHelper helper, BlockPos pos, CompoundTag args) {
+		RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), helper.getLevel().registryAccess());
+		BlockPos.STREAM_CODEC.encode(buf, pos);
+		Identifier.STREAM_CODEC.encode(buf, Terminals.INSERT_PART);
+		ByteBufCodecs.COMPOUND_TAG.encode(buf, args);
+		try {
+			TerminalActionPayload payload = TerminalActionPayload.CODEC.decode(buf);
+			return payload.args().equals(args);
+		} catch (RuntimeException tooBig) {
+			return false;
+		}
 	}
 
 	@GameTest
@@ -529,6 +685,9 @@ public class TerminalFrameworkTest {
 		future.putString("shape", "from a newer build");
 
 		RepairState data = RepairState.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow();
+		if (data.isReadable() || !data.unreadableVersion().equals(Optional.of(Integer.toString(RepairState.VERSION + 1)))) {
+			throw helper.assertionException("data of another version is unreadable and names its version, got %s", data.unreadableVersion());
+		}
 		boolean threw = false;
 		try {
 			data.repaired(TerminalTypes.FUEL_PUMP);

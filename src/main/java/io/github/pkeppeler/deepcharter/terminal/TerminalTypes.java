@@ -19,11 +19,14 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.terminal.TerminalType.Access;
 
 /**
  * Every kind of terminal. {@link #register} makes the block and its item, and adds the block to the one block entity type.
  * A type's repair state is world-wide (SPEC section 3), and parts go in only once the prerequisite is repaired, so a chain of
  * types is a repair order.
+ *
+ * <p>A type with no repair ({@link #registerAlwaysOnline}) works from the start, as the contract terminal of #72 does.
  *
  * <p>The four colony terminals are registered here, in the order the world is repaired: pump, processor, upgrade, repair
  * (#59). Their issues add actions and screens to them: {@link TerminalActions#register}, and on the client
@@ -52,21 +55,27 @@ public final class TerminalTypes {
 		return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path);
 	}
 
-	/** Registers the first terminal of a chain: its parts can go in at once. */
+	/** Registers the first terminal of a chain, for charters only: its parts can go in at once. */
 	public static TerminalType register(Identifier id, List<Item> parts) {
-		return create(id, parts, Optional.empty());
+		return create(id, Access.CHARTER_ONLY, Optional.of(new TerminalType.Repair(parts, Optional.empty())));
 	}
 
-	/** Registers a terminal whose parts go in only once {@code prerequisite} is repaired. */
+	/** Registers a terminal, for charters only, whose parts go in only once {@code prerequisite} is repaired. */
 	public static TerminalType register(Identifier id, List<Item> parts, TerminalType prerequisite) {
-		return create(id, parts, Optional.of(prerequisite));
+		return create(id, Access.CHARTER_ONLY, Optional.of(new TerminalType.Repair(parts, Optional.of(prerequisite))));
 	}
 
-	private static TerminalType create(Identifier id, List<Item> parts, Optional<TerminalType> prerequisite) {
+	/** Registers a terminal that needs no repair: it is online from the start, with no offline screen. */
+	public static TerminalType registerAlwaysOnline(Identifier id, Access access) {
+		return create(id, access, Optional.empty());
+	}
+
+	private static TerminalType create(Identifier id, Access access, Optional<TerminalType.Repair> repair) {
 		if (TYPES.containsKey(id)) {
 			throw new IllegalArgumentException("terminal type " + id + " is already registered");
 		}
-		if (parts.isEmpty()) {
+		List<Item> parts = repair.map(TerminalType.Repair::parts).orElse(List.of());
+		if (repair.isPresent() && parts.isEmpty()) {
 			throw new IllegalArgumentException("terminal type " + id + " needs at least one part");
 		}
 		if (new HashSet<>(parts).size() != parts.size()) {
@@ -84,7 +93,7 @@ public final class TerminalTypes {
 		ResourceKey<Item> itemKey = ResourceKey.create(Registries.ITEM, id);
 		Registry.register(BuiltInRegistries.ITEM, itemKey, new BlockItem(block, new Item.Properties().setId(itemKey).useBlockDescriptionPrefix()));
 		TerminalBlockEntity.TYPE.addValidBlock(block);
-		TerminalType type = new TerminalType(id, block, parts, prerequisite);
+		TerminalType type = new TerminalType(id, block, access, repair);
 		TYPES.put(id, type);
 		USED_PARTS.addAll(parts);
 		return type;
