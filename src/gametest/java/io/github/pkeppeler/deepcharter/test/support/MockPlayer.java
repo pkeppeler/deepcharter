@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.util.ReferenceCountUtil;
@@ -24,12 +25,15 @@ public final class MockPlayer {
 	private final ServerPlayer player;
 	private final Connection connection;
 	private final EmbeddedChannel channel;
+	private final BooleanSupplier ownerDone;
 
-	MockPlayer(MinecraftServer server, ServerPlayer player, Connection connection, EmbeddedChannel channel) {
+	MockPlayer(MinecraftServer server, ServerPlayer player, Connection connection, EmbeddedChannel channel,
+			BooleanSupplier ownerDone) {
 		this.server = server;
 		this.player = player;
 		this.connection = connection;
 		this.channel = channel;
+		this.ownerDone = ownerDone;
 	}
 
 	public ServerPlayer player() {
@@ -57,8 +61,12 @@ public final class MockPlayer {
 		}
 	}
 
-	/** Disconnect and remove the player. */
+	/** Disconnect and remove the player. Safe to call when it has already left. */
 	public void leave() {
+		if (!isOnline()) {
+			MockPlayers.forget(this);
+			return;
+		}
 		connection.disconnect(Component.literal("mock player left"));
 		connection.handleDisconnection();
 		MockPlayers.forget(this);
@@ -74,6 +82,10 @@ public final class MockPlayer {
 	 * each keep-alive as a real client would.
 	 */
 	void tick() {
+		if (ownerDone.getAsBoolean()) {
+			leave();
+			return;
+		}
 		connection.tick();
 		Object outbound;
 		while ((outbound = channel.readOutbound()) != null) {

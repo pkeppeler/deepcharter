@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import java.lang.reflect.Field;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
@@ -17,19 +18,34 @@ public class MockPlayersTest {
 
 	@GameTest(maxTicks = TICKS + 100)
 	public void mockPlayerSurvivesOneMinuteOfTicks(GameTestHelper helper) {
-		MockPlayer mock = MockPlayers.join(helper.getLevel().getServer(), "stays-online");
+		MockPlayer mock = MockPlayers.join(helper, "stays-online");
 		if (!mock.isOnline()) {
 			throw helper.assertionException("mock player is not on the player list after joining");
 		}
 		helper.runAfterDelay(TICKS, () -> {
-			try {
-				if (!mock.isOnline()) {
-					throw helper.assertionException("mock player left the player list within %d ticks", TICKS);
-				}
-			} finally {
-				mock.leave();
+			if (!mock.isOnline()) {
+				throw helper.assertionException("mock player left the player list within %d ticks", TICKS);
 			}
 			helper.succeed();
+		});
+	}
+
+	/** A mock owned by a test is removed once that test is done: the sweep, not the test, cleans up. */
+	@GameTest
+	public void mockPlayerIsRemovedWhenItsOwnerIsDone(GameTestHelper helper) {
+		AtomicBoolean ownerDone = new AtomicBoolean();
+		MockPlayer mock = MockPlayers.join(helper.getLevel().getServer(), "owned", ownerDone::get);
+		helper.runAfterDelay(5, () -> {
+			if (!mock.isOnline()) {
+				throw helper.assertionException("mock player left before its owner was done");
+			}
+			ownerDone.set(true);
+			helper.runAfterDelay(5, () -> {
+				if (mock.isOnline()) {
+					throw helper.assertionException("mock player outlived its owner");
+				}
+				helper.succeed();
+			});
 		});
 	}
 
@@ -40,12 +56,11 @@ public class MockPlayersTest {
 	 */
 	@GameTest
 	public void mockPlayerAnswersKeepAlives(GameTestHelper helper) {
-		MockPlayer mock = MockPlayers.join(helper.getLevel().getServer(), "answers-keep-alives");
+		MockPlayer mock = MockPlayers.join(helper, "answers-keep-alives");
 		try {
 			setField(mock.player().connection, "keepAliveTime", Util.getMillis() - 16_000L);
 		} catch (ReflectiveOperationException e) {
-			mock.leave();
-			throw new IllegalStateException(e);
+			throw reflectionFailure("keepAliveTime", e);
 		}
 		helper.runAfterDelay(5, () -> {
 			try {
@@ -61,12 +76,15 @@ public class MockPlayersTest {
 					throw helper.assertionException("mock player left the player list");
 				}
 			} catch (ReflectiveOperationException e) {
-				throw new IllegalStateException(e);
-			} finally {
-				mock.leave();
+				throw reflectionFailure("keepAliveTime or keepAlivePending", e);
 			}
 			helper.succeed();
 		});
+	}
+
+	private static IllegalStateException reflectionFailure(String field, ReflectiveOperationException e) {
+		return new IllegalStateException("Cannot access ServerCommonPacketListenerImpl." + field
+				+ ", likely a mapping change in Minecraft", e);
 	}
 
 	private static Field field(String name) throws NoSuchFieldException {
