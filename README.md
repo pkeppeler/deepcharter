@@ -14,3 +14,5 @@ Prerequisite: JDK 25. Gradle comes from the wrapper.
 ```
 
 Tests live in `src/gametest/`.
+
+`tools/play.sh` launches the dev client with the pinned mcpfabric bridge into a fresh test world. See [docs/tooling/play-test.md](docs/tooling/play-test.md).
