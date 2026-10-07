@@ -6,6 +6,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 
+import net.fabricmc.fabric.api.event.Event;
+import net.fabricmc.fabric.api.event.EventFactory;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 
 import net.minecraft.network.chat.Component;
@@ -16,6 +18,7 @@ import net.minecraft.server.players.NameAndId;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.Charter;
+import io.github.pkeppeler.deepcharter.charter.CharterData;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
@@ -36,27 +39,24 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 public final class ContractTerminal {
 	public static final TerminalType TYPE = TerminalTypes.registerAlwaysOnline(id("contract_terminal"), TerminalType.Access.ANYONE);
 
-	/** Found a charter named {@code args.name}. */
-	public static final Identifier FOUND = id("charter_found");
-	/** Apply to the charter named {@code args.name}. */
-	public static final Identifier APPLY = id("charter_apply");
-	/** As Director, approve the applicant named {@code args.name}. */
-	public static final Identifier APPROVE = id("charter_approve");
-	/** As Director, turn down the applicant named {@code args.name}. */
-	public static final Identifier DENY = id("charter_deny");
-	/** Leave the charter, or withdraw the application. */
-	public static final Identifier LEAVE = id("charter_leave");
-	/** The key of the name in the args of every action that takes one. */
-	public static final String NAME_KEY = "name";
+	/**
+	 * The server worked out a {@link ContractState} for {@code player} and is sending it. Fires whether or not the player's client
+	 * can take it, so a test with a mock player can watch the pushes.
+	 */
+	public static final Event<Pushed> PUSHED = EventFactory.createArrayBacked(Pushed.class, listeners -> (player, state) -> {
+		for (Pushed listener : listeners) {
+			listener.onPushed(player, state);
+		}
+	});
 
 	static {
-		TerminalActions.register(TYPE, FOUND, context -> byName(context, CharterRefusal.INVALID_NAME,
+		TerminalActions.register(TYPE, ContractActions.FOUND, context -> byName(context, CharterRefusal.INVALID_NAME,
 				name -> Charters.found(context.server(), context.player().getUUID(), name)));
-		TerminalActions.register(TYPE, APPLY, context -> byName(context, CharterRefusal.NO_SUCH_CHARTER, name -> Charters.findByName(context.server(), name)
+		TerminalActions.register(TYPE, ContractActions.APPLY, context -> byName(context, CharterRefusal.NO_SUCH_CHARTER, name -> Charters.findByName(context.server(), name)
 				.map(charter -> Charters.apply(context.server(), context.player().getUUID(), charter.id()))
 				.orElse(Optional.of(CharterRefusal.NO_SUCH_CHARTER))));
-		TerminalActions.register(TYPE, APPROVE, context -> answer(context, applicantNamed(context), Charters::approve));
-		TerminalActions.register(TYPE, DENY, context -> {
+		TerminalActions.register(TYPE, ContractActions.APPROVE, context -> answer(context, applicantNamed(context), Charters::approve));
+		TerminalActions.register(TYPE, ContractActions.DENY, context -> {
 			Optional<UUID> applicant = applicantNamed(context);
 			Optional<Component> refusal = answer(context, applicant, Charters::deny);
 			// A denial has no charter event, so the Director's list and the applicant's status are refreshed here.
@@ -66,7 +66,16 @@ public final class ContractTerminal {
 			}
 			return refusal;
 		});
-		TerminalActions.register(TYPE, LEAVE, context -> report(context, Charters.leave(context.server(), context.player().getUUID())));
+		TerminalActions.register(TYPE, ContractActions.LEAVE, context -> {
+			// Withdrawing an application fires no charter event, so the Director's list and the applicant's status are refreshed here.
+			Optional<Charter> applied = CharterData.get(context.server()).applicationOf(context.player().getUUID());
+			Optional<Component> refusal = report(context, Charters.leave(context.server(), context.player().getUUID()));
+			if (refusal.isEmpty() && applied.isPresent()) {
+				refresh(context.server(), context.player().getUUID());
+				applied.get().director().ifPresent(director -> refresh(context.server(), director));
+			}
+			return refusal;
+		});
 	}
 
 	private ContractTerminal() {
@@ -81,7 +90,7 @@ public final class ContractTerminal {
 	}
 
 	private static Optional<String> nameArg(TerminalAction.Context context) {
-		return context.args().getString(NAME_KEY);
+		return context.args().getString(ContractActions.NAME_KEY);
 	}
 
 	private static Optional<Component> byName(TerminalAction.Context context, CharterRefusal missing, Function<String, Optional<CharterRefusal>> run) {
@@ -102,7 +111,9 @@ public final class ContractTerminal {
 		if (name.isEmpty() || charter.isEmpty()) {
 			return Optional.empty();
 		}
-		return charter.get().applications().stream().filter(applicant -> displayName(context.server(), applicant).equals(name.get())).findFirst();
+		List<UUID> matches = charter.get().applications().stream().filter(applicant -> displayName(context.server(), applicant).equals(name.get())).toList();
+		// Two applicants with one name: refuse, so the Director never answers the wrong one.
+		return matches.size() == 1 ? Optional.of(matches.getFirst()) : Optional.empty();
 	}
 
 	private static Optional<Component> report(TerminalAction.Context context, Optional<CharterRefusal> refusal) {
@@ -122,6 +133,7 @@ public final class ContractTerminal {
 	}
 
 	private static void send(ServerPlayer player, ContractState state) {
+		PUSHED.invoker().onPushed(player, state);
 		if (ServerPlayNetworking.canSend(player, ContractStatePayload.TYPE)) {
 			ServerPlayNetworking.send(player, new ContractStatePayload(state));
 		}
@@ -134,18 +146,31 @@ public final class ContractTerminal {
 		if (own.isPresent()) {
 			Charter charter = own.get();
 			if (!charter.isDirector(player)) {
-				return new ContractState(ContractState.Role.CREW, charter.name(), List.of(), List.of(), Optional.empty());
+				return new ContractState(ContractState.Role.CREW, charter.name(), List.of(), 0, List.of(), 0, Optional.empty());
 			}
 			List<String> applicants = charter.applications().stream().map(applicant -> displayName(server, applicant)).limit(rows).toList();
-			return new ContractState(ContractState.Role.DIRECTOR, charter.name(), List.of(), applicants, Optional.empty());
+			return new ContractState(ContractState.Role.DIRECTOR, charter.name(), List.of(), 0, applicants, charter.applications().size(), Optional.empty());
 		}
-		Optional<Charter> applied = Charters.all(server).stream().filter(charter -> charter.applications().contains(player)).findFirst();
+		Optional<Charter> applied = CharterData.get(server).applicationOf(player);
 		if (applied.isPresent()) {
-			return new ContractState(ContractState.Role.APPLICANT, applied.get().name(), List.of(), List.of(), Optional.empty());
+			return new ContractState(ContractState.Role.APPLICANT, applied.get().name(), List.of(), 0, List.of(), 0, Optional.empty());
 		}
 		List<String> open = Charters.all(server).stream().filter(charter -> !charter.dormant()).map(Charter::name)
-				.sorted(Comparator.comparing(String::toLowerCase)).limit(rows).toList();
-		return new ContractState(ContractState.Role.NONE, "", open, List.of(), Optional.empty());
+				.sorted(Comparator.comparing(String::toLowerCase)).toList();
+		return new ContractState(ContractState.Role.NONE, "", open.stream().limit(rows).toList(), open.size(), List.of(), 0, Optional.empty());
+	}
+
+	/** Refreshes every online player on no charter and no application: their list of charters just changed. */
+	static void refreshUnaffiliated(MinecraftServer server) {
+		if (!Charters.isReadable(server)) {
+			return;
+		}
+		for (ServerPlayer online : server.getPlayerList().getPlayers()) {
+			ContractState state = stateOf(server, online.getUUID());
+			if (state.role() == ContractState.Role.NONE) {
+				send(online, state);
+			}
+		}
 	}
 
 	/** A player's name: the online one, else the server's cache of names, else the start of the id, which nobody can mistake for a name. */
@@ -155,6 +180,11 @@ public final class ContractTerminal {
 			return online.getGameProfile().name();
 		}
 		return server.services().nameToIdCache().get(player).map(NameAndId::name).orElseGet(() -> player.toString().substring(0, 8));
+	}
+
+	@FunctionalInterface
+	public interface Pushed {
+		void onPushed(ServerPlayer player, ContractState state);
 	}
 
 	@FunctionalInterface

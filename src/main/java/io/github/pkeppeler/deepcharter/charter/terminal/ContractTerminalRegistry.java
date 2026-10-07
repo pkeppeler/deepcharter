@@ -25,7 +25,11 @@ public final class ContractTerminalRegistry {
 				ContractTerminal.refresh(server, player.getUUID());
 			}
 		});
-		CharterEvents.FOUNDED.register((server, charter) -> charter.director().ifPresent(director -> ContractTerminal.refresh(server, director)));
+		CharterEvents.FOUNDED.register((server, charter) -> {
+			charter.director().ifPresent(director -> ContractTerminal.refresh(server, director));
+			ContractTerminal.refreshUnaffiliated(server);
+		});
+		CharterEvents.WENT_DORMANT.register((server, charter) -> ContractTerminal.refreshUnaffiliated(server));
 		CharterEvents.APPLIED.register((server, charter, applicant) -> refreshAround(server, charter, applicant));
 		CharterEvents.JOINED.register((server, charter, player) -> refreshAround(server, charter, player));
 		CharterEvents.LEFT.register((server, charter, player) -> refreshAround(server, charter, player));

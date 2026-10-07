@@ -1,8 +1,11 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
@@ -17,6 +20,7 @@ import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.charter.terminal.ContractActions;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractState;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractState.Role;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
@@ -52,7 +56,7 @@ public class ContractTerminalTest {
 
 	private static CompoundTag name(String name) {
 		CompoundTag args = new CompoundTag();
-		args.putString(ContractTerminal.NAME_KEY, name);
+		args.putString(ContractActions.NAME_KEY, name);
 		return args;
 	}
 
@@ -88,7 +92,7 @@ public class ContractTerminalTest {
 		expectRole(helper, server, player, Role.NONE, "before founding");
 
 		String charter = uniqueName("Founders");
-		expectDone(helper, Terminals.act(player, pos, ContractTerminal.FOUND, name(charter)), "founding a charter");
+		expectDone(helper, Terminals.act(player, pos, ContractActions.FOUND, name(charter)), "founding a charter");
 		Optional<Charter> found = Charters.charterOf(server, player.getUUID());
 		if (found.isEmpty() || !found.get().name().equals(charter) || !found.get().isDirector(player.getUUID())) {
 			throw helper.assertionException("the founder should direct the charter %s, got %s", charter, found);
@@ -107,9 +111,9 @@ public class ContractTerminalTest {
 		ServerPlayer director = visitor(helper, "Directress", pos).player();
 		ServerPlayer applicant = visitor(helper, "Applicant", pos).player();
 		String charter = uniqueName("Applicants");
-		expectDone(helper, Terminals.act(director, pos, ContractTerminal.FOUND, name(charter)), "founding");
+		expectDone(helper, Terminals.act(director, pos, ContractActions.FOUND, name(charter)), "founding");
 
-		expectDone(helper, Terminals.act(applicant, pos, ContractTerminal.APPLY, name(charter)), "applying");
+		expectDone(helper, Terminals.act(applicant, pos, ContractActions.APPLY, name(charter)), "applying");
 		ContractState waiting = state(server, applicant);
 		if (waiting.role() != Role.APPLICANT || !waiting.charter().equals(charter)) {
 			throw helper.assertionException("the applicant should be waiting on %s, got %s", charter, waiting);
@@ -119,15 +123,15 @@ public class ContractTerminalTest {
 			throw helper.assertionException("the Director should see exactly Applicant, got %s", applicants);
 		}
 
-		expectRefused(helper, Terminals.act(applicant, pos, ContractTerminal.APPROVE, name("Applicant")), "an applicant approving themselves");
+		expectRefused(helper, Terminals.act(applicant, pos, ContractActions.APPROVE, name("Applicant")), "an applicant approving themselves");
 		expectRole(helper, server, applicant, Role.APPLICANT, "after approving themselves");
-		expectDone(helper, Terminals.act(director, pos, ContractTerminal.APPROVE, name("Applicant")), "approving");
+		expectDone(helper, Terminals.act(director, pos, ContractActions.APPROVE, name("Applicant")), "approving");
 		expectRole(helper, server, applicant, Role.CREW, "after approval");
 		if (!state(server, director).applicants().isEmpty()) {
 			throw helper.assertionException("an approved application leaves the Director's list");
 		}
 
-		expectDone(helper, Terminals.act(applicant, pos, ContractTerminal.LEAVE, new CompoundTag()), "a member leaving");
+		expectDone(helper, Terminals.act(applicant, pos, ContractActions.LEAVE, new CompoundTag()), "a member leaving");
 		expectRole(helper, server, applicant, Role.NONE, "after leaving");
 		helper.succeed();
 	}
@@ -139,13 +143,13 @@ public class ContractTerminalTest {
 		ServerPlayer director = visitor(helper, "Judge", pos).player();
 		ServerPlayer first = visitor(helper, "Hopeful", pos).player();
 		String charter = uniqueName("Judged");
-		expectDone(helper, Terminals.act(director, pos, ContractTerminal.FOUND, name(charter)), "founding");
-		expectDone(helper, Terminals.act(first, pos, ContractTerminal.APPLY, name(charter)), "applying");
-		expectDone(helper, Terminals.act(director, pos, ContractTerminal.DENY, name("Hopeful")), "denying");
+		expectDone(helper, Terminals.act(director, pos, ContractActions.FOUND, name(charter)), "founding");
+		expectDone(helper, Terminals.act(first, pos, ContractActions.APPLY, name(charter)), "applying");
+		expectDone(helper, Terminals.act(director, pos, ContractActions.DENY, name("Hopeful")), "denying");
 		expectRole(helper, server, first, Role.NONE, "after a denial");
 
-		expectDone(helper, Terminals.act(first, pos, ContractTerminal.APPLY, name(charter)), "applying again");
-		expectDone(helper, Terminals.act(first, pos, ContractTerminal.LEAVE, new CompoundTag()), "withdrawing");
+		expectDone(helper, Terminals.act(first, pos, ContractActions.APPLY, name(charter)), "applying again");
+		expectDone(helper, Terminals.act(first, pos, ContractActions.LEAVE, new CompoundTag()), "withdrawing");
 		expectRole(helper, server, first, Role.NONE, "after withdrawing");
 		if (!state(server, director).applicants().isEmpty()) {
 			throw helper.assertionException("a withdrawn application leaves the Director's list");
@@ -160,48 +164,155 @@ public class ContractTerminalTest {
 		ServerPlayer director = visitor(helper, "Careful", pos).player();
 		ServerPlayer stranger = visitor(helper, "Stranger", pos).player();
 		String charter = uniqueName("Careful");
-		expectDone(helper, Terminals.act(director, pos, ContractTerminal.FOUND, name(charter)), "founding");
+		expectDone(helper, Terminals.act(director, pos, ContractActions.FOUND, name(charter)), "founding");
 		int charters = Charters.all(server).size();
 
 		CompoundTag wrongType = new CompoundTag();
-		wrongType.put(ContractTerminal.NAME_KEY, IntTag.valueOf(7));
-		expectRefused(helper, Terminals.act(stranger, pos, ContractTerminal.FOUND, new CompoundTag()), "founding with no name");
-		expectRefused(helper, Terminals.act(stranger, pos, ContractTerminal.FOUND, wrongType), "founding with a name that is not text");
-		expectRefused(helper, Terminals.act(stranger, pos, ContractTerminal.FOUND, name("   ")), "founding with a blank name");
-		expectRefused(helper, Terminals.act(stranger, pos, ContractTerminal.FOUND, name("x".repeat(500))), "founding with an oversized name");
-		expectRefused(helper, Terminals.act(stranger, pos, ContractTerminal.FOUND, name(charter.toUpperCase())), "founding a name another charter has");
-		expectRefused(helper, Terminals.act(stranger, pos, ContractTerminal.APPLY, name(uniqueName("Nowhere"))), "applying to a charter that does not exist");
-		expectRefused(helper, Terminals.act(stranger, pos, ContractTerminal.APPROVE, name("Stranger")), "approving with no charter");
-		expectRefused(helper, Terminals.act(stranger, pos, ContractTerminal.DENY, new CompoundTag()), "denying with no name");
-		expectRefused(helper, Terminals.act(stranger, pos, ContractTerminal.LEAVE, new CompoundTag()), "leaving with no charter");
+		wrongType.put(ContractActions.NAME_KEY, IntTag.valueOf(7));
+		expectRefused(helper, Terminals.act(stranger, pos, ContractActions.FOUND, new CompoundTag()), "founding with no name");
+		expectRefused(helper, Terminals.act(stranger, pos, ContractActions.FOUND, wrongType), "founding with a name that is not text");
+		expectRefused(helper, Terminals.act(stranger, pos, ContractActions.FOUND, name("   ")), "founding with a blank name");
+		expectRefused(helper, Terminals.act(stranger, pos, ContractActions.FOUND, name("x".repeat(500))), "founding with an oversized name");
+		expectRefused(helper, Terminals.act(stranger, pos, ContractActions.FOUND, name(charter.toUpperCase())), "founding a name another charter has");
+		expectRefused(helper, Terminals.act(stranger, pos, ContractActions.APPLY, name(uniqueName("Nowhere"))), "applying to a charter that does not exist");
+		expectRefused(helper, Terminals.act(stranger, pos, ContractActions.APPROVE, name("Stranger")), "approving with no charter");
+		expectRefused(helper, Terminals.act(stranger, pos, ContractActions.DENY, new CompoundTag()), "denying with no name");
+		expectRefused(helper, Terminals.act(stranger, pos, ContractActions.LEAVE, new CompoundTag()), "leaving with no charter");
 		if (Charters.all(server).size() != charters || Charters.charterOf(server, stranger.getUUID()).isPresent()) {
 			throw helper.assertionException("a refused request changes nothing");
 		}
 
-		expectDone(helper, Terminals.act(stranger, pos, ContractTerminal.APPLY, name(charter)), "applying");
-		expectRefused(helper, Terminals.act(stranger, pos, ContractTerminal.APPLY, name(charter)), "applying twice");
-		expectRefused(helper, Terminals.act(stranger, pos, ContractTerminal.FOUND, name(uniqueName("Rival"))), "founding while an application is open");
-		expectRefused(helper, Terminals.act(director, pos, ContractTerminal.APPROVE, name("Nobody")), "approving a player who did not apply");
-		expectRefused(helper, Terminals.act(director, pos, ContractTerminal.APPROVE, new CompoundTag()), "approving with no name");
+		expectDone(helper, Terminals.act(stranger, pos, ContractActions.APPLY, name(charter)), "applying");
+		expectRefused(helper, Terminals.act(stranger, pos, ContractActions.APPLY, name(charter)), "applying twice");
+		expectRefused(helper, Terminals.act(stranger, pos, ContractActions.FOUND, name(uniqueName("Rival"))), "founding while an application is open");
+		expectRefused(helper, Terminals.act(director, pos, ContractActions.APPROVE, name("Nobody")), "approving a player who did not apply");
+		expectRefused(helper, Terminals.act(director, pos, ContractActions.APPROVE, new CompoundTag()), "approving with no name");
 		expectRole(helper, server, stranger, Role.APPLICANT, "after the refusals");
 		helper.succeed();
 	}
 
 	@GameTest
-	public void theListsAreCapped(GameTestHelper helper) {
+	public void theListsAreCappedAndSayHowManyExist(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		BlockPos pos = place(helper);
 		ServerPlayer viewer = visitor(helper, "Browser", pos).player();
+		ServerPlayer director = visitor(helper, "Crowded", pos).player();
 		int cap = ContractTerminalTuning.DEFAULT.listedRows();
+		int before = state(server, viewer).charterCount();
 		for (int i = 0; i < cap + 2; i++) {
 			if (Charters.found(server, UUID.randomUUID(), uniqueName("Listed")).isPresent()) {
 				throw helper.assertionException("founding a charter for a list test should succeed");
 			}
 		}
-		int listed = state(server, viewer).charters().size();
-		if (listed != cap) {
-			throw helper.assertionException("the charters offered are capped at %s, got %s", cap, listed);
+		ContractState seen = state(server, viewer);
+		if (seen.charters().size() != cap || seen.charterCount() != before + cap + 2) {
+			throw helper.assertionException("the charters offered are capped at %s and counted in full, got %s of %s (was %s)", cap, seen.charters().size(), seen.charterCount(), before);
+		}
+
+		expectDone(helper, Terminals.act(director, pos, ContractActions.FOUND, name(uniqueName("Crowded"))), "founding");
+		Charter crowded = Charters.charterOf(server, director.getUUID()).orElseThrow();
+		for (int i = 0; i < cap + 2; i++) {
+			if (Charters.apply(server, UUID.randomUUID(), crowded.id()).isPresent()) {
+				throw helper.assertionException("an application for a list test should succeed");
+			}
+		}
+		ContractState waiting = state(server, director);
+		if (waiting.applicants().size() != cap || waiting.applicantCount() != cap + 2) {
+			throw helper.assertionException("the applicants listed are capped at %s and counted in full, got %s of %s", cap, waiting.applicants().size(), waiting.applicantCount());
 		}
 		helper.succeed();
+	}
+
+	@GameTest
+	public void anApplicationMadeAnyWayReachesTheDirector(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		BlockPos pos = place(helper);
+		ServerPlayer director = visitor(helper, "Watcher", pos).player();
+		ServerPlayer applicant = visitor(helper, "Caller", pos).player();
+		expectDone(helper, Terminals.act(director, pos, ContractActions.FOUND, name(uniqueName("Watched"))), "founding");
+		Charter charter = Charters.charterOf(server, director.getUUID()).orElseThrow();
+		PUSHED.clear();
+
+		// Not through the terminal: the charter event alone must tell the Director.
+		if (Charters.apply(server, applicant.getUUID(), charter.id()).isPresent()) {
+			throw helper.assertionException("the application should succeed");
+		}
+		expectPushed(helper, director, state -> state.applicants().equals(List.of("Caller")) && state.applicantCount() == 1, "the Director sees the application at once");
+		expectPushed(helper, applicant, state -> state.role() == Role.APPLICANT, "the applicant sees they are waiting");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void withdrawingTellsTheApplicantAndTheDirector(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		BlockPos pos = place(helper);
+		ServerPlayer director = visitor(helper, "Keeper", pos).player();
+		ServerPlayer applicant = visitor(helper, "Wavering", pos).player();
+		expectDone(helper, Terminals.act(director, pos, ContractActions.FOUND, name(uniqueName("Kept"))), "founding");
+		expectDone(helper, Terminals.act(applicant, pos, ContractActions.APPLY, name(Charters.charterOf(server, director.getUUID()).orElseThrow().name())), "applying");
+		PUSHED.clear();
+
+		expectDone(helper, Terminals.act(applicant, pos, ContractActions.LEAVE, new CompoundTag()), "withdrawing");
+		expectPushed(helper, applicant, state -> state.role() == Role.NONE, "the applicant's screen leaves APPLICANT");
+		expectPushed(helper, director, state -> state.applicants().isEmpty() && state.applicantCount() == 0, "the Director's list loses the applicant");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aViewerWithNoCharterSeesCharterListChanges(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		BlockPos pos = place(helper);
+		ServerPlayer viewer = visitor(helper, "Window", pos).player();
+		// A name that sorts first, so the five-row cap cannot hide it.
+		String charter = "!" + uniqueName("Fresh");
+		UUID founder = UUID.randomUUID();
+		PUSHED.clear();
+
+		if (Charters.found(server, founder, charter).isPresent()) {
+			throw helper.assertionException("founding should succeed");
+		}
+		expectPushed(helper, viewer, state -> state.role() == Role.NONE && state.charters().contains(charter), "a newly founded charter appears for a player on no charter");
+
+		PUSHED.clear();
+		if (Charters.leave(server, founder).isPresent()) {
+			throw helper.assertionException("the lone Director leaving should succeed");
+		}
+		expectPushed(helper, viewer, state -> state.role() == Role.NONE && !state.charters().contains(charter), "a dormant charter leaves the list");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aDirectorCannotAnswerAnotherCharterApplicant(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		BlockPos pos = place(helper);
+		ServerPlayer directorA = visitor(helper, "DirectorA", pos).player();
+		ServerPlayer directorB = visitor(helper, "DirectorB", pos).player();
+		ServerPlayer applicant = visitor(helper, "Candidate", pos).player();
+		expectDone(helper, Terminals.act(directorA, pos, ContractActions.FOUND, name(uniqueName("Alpha"))), "founding A");
+		expectDone(helper, Terminals.act(directorB, pos, ContractActions.FOUND, name(uniqueName("Beta"))), "founding B");
+		Charter a = Charters.charterOf(server, directorA.getUUID()).orElseThrow();
+		expectDone(helper, Terminals.act(applicant, pos, ContractActions.APPLY, name(a.name())), "applying to A");
+
+		expectRefused(helper, Terminals.act(directorB, pos, ContractActions.APPROVE, name("Candidate")), "B approving A's applicant");
+		expectRefused(helper, Terminals.act(directorB, pos, ContractActions.DENY, name("Candidate")), "B denying A's applicant");
+		Charter after = Charters.find(server, a.id()).orElseThrow();
+		if (!after.applications().equals(List.of(applicant.getUUID())) || Charters.charterOf(server, applicant.getUUID()).isPresent()) {
+			throw helper.assertionException("A's application must be untouched by B");
+		}
+		helper.succeed();
+	}
+
+	/** The state last pushed to each player since the log was cleared. */
+	private static final Map<UUID, ContractState> PUSHED = new HashMap<>();
+
+	static {
+		ContractTerminal.PUSHED.register((player, state) -> PUSHED.put(player.getUUID(), state));
+	}
+
+	private static void expectPushed(GameTestHelper helper, ServerPlayer player, Predicate<ContractState> wanted, String what) {
+		ContractState last = PUSHED.get(player.getUUID());
+		if (last == null || !wanted.test(last)) {
+			throw helper.assertionException("%s: last state pushed to %s was %s", what, player.getGameProfile().name(), last);
+		}
 	}
 }

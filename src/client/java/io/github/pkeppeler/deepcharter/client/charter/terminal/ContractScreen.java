@@ -12,8 +12,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 import io.github.pkeppeler.deepcharter.charter.CharterTuning;
+import io.github.pkeppeler.deepcharter.charter.terminal.ContractActions;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractState;
-import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
@@ -111,18 +111,18 @@ public final class ContractScreen extends CrtScreen implements TerminalViewScree
 				nameField.setMaxLength(CharterTuning.DEFAULT.maxNameLength());
 				nameField.setValue(typed);
 				addRenderableWidget(new CrtButton(MARGIN, ROWS_TOP + ROW_PITCH + 2, columnWidth, ROW_HEIGHT,
-						Component.translatable("screen.deepcharter.contract.found"), button -> send(ContractTerminal.FOUND, nameField.getValue())));
-				rows(shown.charters(), rightX, columnWidth, "screen.deepcharter.contract.apply", ContractTerminal.APPLY);
+						Component.translatable("screen.deepcharter.contract.found"), button -> send(ContractActions.FOUND, nameField.getValue())));
+				rows(shown.charters(), rightX, columnWidth, "screen.deepcharter.contract.apply", ContractActions.APPLY);
 			}
 			case APPLICANT -> addRenderableWidget(new CrtButton(actionX, closeY, ACTION_WIDTH, ROW_HEIGHT,
-					Component.translatable("screen.deepcharter.contract.withdraw"), button -> send(ContractTerminal.LEAVE, "")));
+					Component.translatable("screen.deepcharter.contract.withdraw"), button -> send(ContractActions.LEAVE, "")));
 			case CREW -> addRenderableWidget(new CrtButton(actionX, closeY, ACTION_WIDTH, ROW_HEIGHT,
-					Component.translatable("screen.deepcharter.contract.leave"), button -> send(ContractTerminal.LEAVE, "")));
+					Component.translatable("screen.deepcharter.contract.leave"), button -> send(ContractActions.LEAVE, "")));
 			case DIRECTOR -> {
-				rows(shown.applicants(), MARGIN, columnWidth, "screen.deepcharter.contract.approve", ContractTerminal.APPROVE);
-				rows(shown.applicants(), rightX, columnWidth, "screen.deepcharter.contract.deny", ContractTerminal.DENY);
+				rows(shown.applicants(), MARGIN, columnWidth, "screen.deepcharter.contract.approve", ContractActions.APPROVE);
+				rows(shown.applicants(), rightX, columnWidth, "screen.deepcharter.contract.deny", ContractActions.DENY);
 				addRenderableWidget(new CrtButton(actionX, closeY, ACTION_WIDTH, ROW_HEIGHT,
-						Component.translatable("screen.deepcharter.contract.leave"), button -> send(ContractTerminal.LEAVE, "")));
+						Component.translatable("screen.deepcharter.contract.leave"), button -> send(ContractActions.LEAVE, "")));
 			}
 		}
 	}
@@ -139,16 +139,22 @@ public final class ContractScreen extends CrtScreen implements TerminalViewScree
 
 	private void send(Identifier action, String name) {
 		CompoundTag args = new CompoundTag();
-		args.putString(ContractTerminal.NAME_KEY, name);
+		args.putString(ContractActions.NAME_KEY, name);
 		ClientPlayNetworking.send(new TerminalActionPayload(view.pos(), action, args));
 	}
 
 	private Component status(ContractState shown) {
 		return switch (shown.role()) {
-			case NONE -> Component.translatable("screen.deepcharter.contract.status.none");
+			case NONE -> Component.translatable("screen.deepcharter.contract.status.none")
+					.append(shown.charterCount() > shown.charters().size()
+							? Component.literal(" ").append(Component.translatable("screen.deepcharter.contract.more", shown.charterCount() - shown.charters().size()))
+							: Component.empty());
 			case APPLICANT -> Component.translatable("screen.deepcharter.contract.status.applicant", shown.charter());
 			case CREW -> Component.translatable("screen.deepcharter.contract.status.crew", shown.charter());
-			case DIRECTOR -> Component.translatable("screen.deepcharter.contract.status.director", shown.charter(), shown.applicants().size());
+			case DIRECTOR -> Component.translatable("screen.deepcharter.contract.status.director", shown.charter(), shown.applicantCount())
+					.append(shown.applicantCount() > shown.applicants().size()
+							? Component.literal(" ").append(Component.translatable("screen.deepcharter.contract.shown", shown.applicants().size(), shown.applicantCount()))
+							: Component.empty());
 		};
 	}
 
