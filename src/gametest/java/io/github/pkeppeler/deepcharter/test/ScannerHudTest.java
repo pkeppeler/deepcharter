@@ -76,7 +76,6 @@ public class ScannerHudTest implements FabricClientGameTest {
 
 	/** A screenshot of the HUD, read cell by cell. */
 	public record HudShot(BufferedImage image, int guiWidth, int guiHeight, int scale) {
-		/** Takes a screenshot of the current frame. */
 		public static HudShot take(ClientGameTestContext context, String screenshotName) {
 			int[] window = context.computeOnClient(client -> new int[] {
 					client.getWindow().getWidth(), client.getWindow().getGuiScaledWidth(),

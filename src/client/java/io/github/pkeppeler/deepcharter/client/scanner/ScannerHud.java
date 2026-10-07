@@ -120,7 +120,7 @@ public final class ScannerHud {
 	}
 
 	/** Opaque ARGB for a cell; ore gets its own colour per ore, falling back to a generic one. */
-	static int colour(Cell cell) {
+	private static int colour(Cell cell) {
 		return switch (cell) {
 			case Cell.Air air -> TUNING.airColor();
 			case Cell.Rock rock -> TUNING.rockColor();

@@ -12,7 +12,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 /**
  * A vertical slice of blocks in a pod's facing plane: one block thick, running along {@code facing}
- * and centred on {@code origin}. Plain shared code over any {@link BlockGetter}, so sonar can reuse it.
+ * and centred on {@code origin}. Shared code over any {@link BlockGetter}.
  *
  * <p>Cells are addressed by {@code ahead} (blocks along the facing, negative behind) and {@code up}
  * (blocks above the origin, negative below). An unloaded chunk reads as air.
@@ -67,7 +67,7 @@ public final class ScanSlice {
 		return state.getCollisionShape(level, pos).isEmpty() ? Cell.AIR : Cell.ROCK;
 	}
 
-	/** What a cell holds. Hazards join here once any exist. */
+	/** What a cell holds. */
 	public sealed interface Cell {
 		Cell AIR = new Air();
 		Cell ROCK = new Rock();
