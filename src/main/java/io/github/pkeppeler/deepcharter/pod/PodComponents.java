@@ -246,35 +246,70 @@ public final class PodComponents {
 	}
 
 	private static boolean canMount(PodEntity pod, Entity passenger) {
-		if (pod.getAttached(STATE) instanceof Versioned.Unreadable<State>) {
-			// Who owns the pod is unknown, and an unknown owner is not everyone: refuse. read() logs it once.
-			read(pod);
+		if (!(passenger instanceof ServerPlayer player)) {
+			return !unreadable(pod);
+		}
+		MinecraftServer server = player.level().getServer();
+		Optional<Charter> charter;
+		try {
+			charter = Charters.charterOf(server, player.getUUID());
+		} catch (IllegalStateException unreadable) {
+			logChartersUnreadable(unreadable);
+			return !unreadable(pod);
+		}
+		if (mayAccess(pod, charter)) {
+			return true;
+		}
+		// Denied: say whose pod it is, unless the pod's own state is what cannot be read.
+		if (!unreadable(pod)) {
+			Registration registration = read(pod).registration().orElseThrow();
+			player.sendSystemMessage(Component.translatable("message.deepcharter.pod.not_crew", registration.serial(),
+					Charters.find(server, registration.owner()).orElseThrow().name()), true);
+		}
+		return false;
+	}
+
+	/**
+	 * The one rule of who may act on a pod (mount it, sell its cargo, fit its parts) for {@code charter}, the acting player's
+	 * charter if they are on one. Features ask this and never reimplement it.
+	 * <ul>
+	 *   <li>Components the build cannot read: no. Who owns the pod is unknown, and unknown is not everyone.</li>
+	 *   <li>An unowned pod: anyone.</li>
+	 *   <li>An owner that is gone or dormant cannot crew its pods, so they must not stay locked: anyone.</li>
+	 *   <li>Otherwise only the owner charter.</li>
+	 * </ul>
+	 * Saved charters this build cannot read leave no owner to check against: the owner check is skipped (logged once).
+	 */
+	public static boolean mayAccess(PodEntity pod, Optional<Charter> charter) {
+		if (unreadable(pod)) {
 			return false;
 		}
 		Optional<Registration> registration = read(pod).registration();
-		if (registration.isEmpty() || !(passenger instanceof ServerPlayer player)) {
+		if (registration.isEmpty()) {
 			return true;
 		}
-		MinecraftServer server = player.level().getServer();
 		try {
-			Optional<Charter> owner = Charters.find(server, registration.get().owner());
-			// A charter that is gone or has nobody left cannot crew its pods, so they must not stay locked.
+			Optional<Charter> owner = Charters.find(pod.level().getServer(), registration.get().owner());
 			if (owner.isEmpty() || owner.get().dormant()) {
 				return true;
 			}
-			Optional<Charter> charter = Charters.charterOf(server, player.getUUID());
-			if (charter.isPresent() && charter.get().id().equals(registration.get().owner())) {
-				return true;
-			}
-			player.sendSystemMessage(Component.translatable("message.deepcharter.pod.not_crew", registration.get().serial(), owner.get().name()), true);
-			return false;
+			return charter.isPresent() && charter.get().id().equals(registration.get().owner());
 		} catch (IllegalStateException unreadable) {
-			// The saved charters are of a version this build cannot read, so there is no owner to check against: skip the check.
-			if (!chartersUnreadableLogged) {
-				chartersUnreadableLogged = true;
-				DeepCharter.LOGGER.error("Pod ownership is not checked, because the saved charters cannot be read: {}", unreadable.getMessage());
-			}
+			logChartersUnreadable(unreadable);
 			return true;
+		}
+	}
+
+	/** True when the pod's components are unreadable; logs once, through {@link #read}. */
+	private static boolean unreadable(PodEntity pod) {
+		read(pod);
+		return pod.getAttached(STATE) instanceof Versioned.Unreadable<State>;
+	}
+
+	private static void logChartersUnreadable(IllegalStateException unreadable) {
+		if (!chartersUnreadableLogged) {
+			chartersUnreadableLogged = true;
+			DeepCharter.LOGGER.error("Pod ownership is not checked, because the saved charters cannot be read: {}", unreadable.getMessage());
 		}
 	}
 

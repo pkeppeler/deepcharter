@@ -12,6 +12,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.client.fuel.FuelPumpScreen;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreen;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
@@ -59,13 +60,14 @@ public class TerminalFrameworkScenario extends EvidenceScenario {
 				String label = "INSERT " + new ItemStack(TerminalTypes.FUEL_PUMP.parts().get(part)).getHoverName().getString().toUpperCase(Locale.ROOT);
 				context.clickScreenButton(label);
 				int inserted = part + 1;
-				context.waitFor(client -> client.gui.screen() instanceof TerminalScreen open
-						&& (open.online() || open.view().parts().stream().filter(status -> status.inserted()).count() == inserted), WAIT_TICKS);
+				// The repaired pump opens its own screen (#69).
+				context.waitFor(client -> client.gui.screen() instanceof FuelPumpScreen || client.gui.screen() instanceof TerminalScreen open
+						&& open.view().parts().stream().filter(status -> status.inserted()).count() == inserted, WAIT_TICKS);
 				hold(context);
 			}
 
-			context.waitFor(client -> client.gui.screen() instanceof TerminalScreen open && open.online(), WAIT_TICKS);
-			TerminalScreen online = context.computeOnClient(client -> (TerminalScreen) client.gui.screen());
+			context.waitForScreen(FuelPumpScreen.class);
+			FuelPumpScreen online = context.computeOnClient(client -> (FuelPumpScreen) client.gui.screen());
 			for (int i = 0; i < TYPING_FRAMES && !online.typewriter().done(); i++) {
 				context.waitTicks(TICKS_PER_FRAME);
 				frame(context);
