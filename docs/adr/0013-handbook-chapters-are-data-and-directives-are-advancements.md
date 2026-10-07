@@ -14,6 +14,15 @@ Builds on [ADR 0005](0005-build-our-own-handbook.md). A chapter is one JSON file
 - **Advancements mirror the current charter**: a player's directive advancements are made to match their charter on join, on founding or joining a charter, and on leaving one. The player is given the advancements of the directives the charter has done and loses the others. What a player did alone, or on another charter, therefore earns the new charter nothing, and the player can earn it again there. The poll cannot credit a charter from an old advancement.
 - **Read marks**: a per-player attachment, versioned, kept on death.
 
+## Handbook content keys
+
+For the lore session. The handbook screen (#66) reads these lang keys from `src/lang/en_us/handbook.json`.
+
+- **Margin note**: `deepcharter.handbook.chapter.<namespace>.<path>.margin`, where `<path>` is the chapter id path with each `/` turned into a dot. Example: chapter `deepcharter:sample` uses `deepcharter.handbook.chapter.deepcharter.sample.margin`. A chapter with no such key has no note.
+- A margin note shows only for a chapter that is fully visible (completed or current), and only when the sheet is at least 220 px wide. A narrower sheet hides every margin note. A margin note is a plain translatable: it takes no `||` marks.
+- **Redaction**: `||text||` draws a black bar over `text`. Only two kinds of string accept it: the contents entries (`deepcharter.handbook.contents.entry.classified`) and the Appendix A lines (`deepcharter.handbook.appendix.line.1` to `.3`). An odd number of `||` marks redacts the rest of the string.
+- The contents flow over several pages, three chapters to a page, and each entry is one line cut with `...`. Keep chapter titles short.
+
 ## Considered Options
 
 - **Detect an advancement completing with a mixin**: rejected for now. The repo has no mixins, and a mixin needs edits to `fabric.mod.json`. Instead each online player's directive advancements are polled every `HandbookTuning.progressPollTicks` (10) ticks, and `Directives.fire` checks at once. A vanilla trigger therefore completes a directive up to half a second late. If that is too slow, a mixin on `PlayerAdvancements.award` replaces the poll and nothing else changes.
@@ -31,5 +40,6 @@ Builds on [ADR 0005](0005-build-our-own-handbook.md). A chapter is one JSON file
 
 ## Limits
 
+- **"Never spoil" holds in the screen only.** Chapters are a synced registry, so the data of a classified chapter still reaches every client. A player who reads the registry or the packets can see it.
 - **The bound item is enforced without mixins.** The sweep runs at the end of each tick and Fabric has no hook for a menu closing. A player who puts the handbook in a chest and closes the chest in the same tick leaves it there, and gets a new one at once. A bundle or shulker box refuses the handbook, and the sweep strips one planted inside by other means.
 - **`/reload` does not re-read chapters.** The chapters are a world registry (`DynamicRegistries.registerSynced`), which the server reads once at start, like biomes. The Fabric API keeps these apart from its reloadable registries (`registerReloadable`). A chapter change needs a restart. Advancements are reloaded by `/reload`, so a directive advancement change takes effect at once. This was read from the API, not tested with a live `/reload`.
