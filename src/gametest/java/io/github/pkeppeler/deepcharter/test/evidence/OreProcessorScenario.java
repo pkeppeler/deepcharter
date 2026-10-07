@@ -85,6 +85,8 @@ public class OreProcessorScenario extends EvidenceScenario {
 			hold(context);
 			screenshot(context, "processor-after-inventory-sale");
 			context.setScreen(() -> null);
+			hold(context);
+			screenshot(context, "account-hud");
 		}
 	}
 

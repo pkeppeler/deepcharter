@@ -15,7 +15,7 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 
-/** The charter's name and balance in the top right corner, shown while the player is on a charter. */
+/** The charter's name and balance, at the left edge halfway down so it clears the pod readout and the altimeter. Shown while on a charter. */
 public final class AccountHud {
 	private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "account");
 	private static final int MARGIN = 4;
@@ -38,6 +38,6 @@ public final class AccountHud {
 			return;
 		}
 		Font font = Minecraft.getInstance().font;
-		graphics.text(font, text.get(), graphics.guiWidth() - MARGIN - font.width(text.get()), MARGIN, CrtTuning.DEFAULT.phosphorColor());
+		graphics.text(font, text.get(), MARGIN, graphics.guiHeight() / 2, CrtTuning.DEFAULT.phosphorColor());
 	}
 }

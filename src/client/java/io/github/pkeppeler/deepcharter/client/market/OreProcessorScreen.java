@@ -89,16 +89,18 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 		CrtTuning tuning = CrtTuning.DEFAULT;
 		CrtDraw.glowText(graphics, font, title.getString().toUpperCase(Locale.ROOT), MARGIN, MARGIN, tuning.phosphorColor());
 		CrtDraw.border(graphics, MARGIN - 6, MARGIN + font.lineHeight + 4, width - MARGIN + 6, MARGIN + font.lineHeight + 5, tuning.dimColor());
-		int y = drawTypewriter(graphics, typewriter, MARGIN, MARGIN + font.lineHeight + 14, width - 2 * MARGIN) + GAP;
+		int top = drawTypewriter(graphics, typewriter, MARGIN, MARGIN + font.lineHeight + 14, width - 2 * MARGIN) + GAP * 2;
+		CrtDraw.glowText(graphics, font, accountLine(), MARGIN, top, tuning.phosphorColor());
 		if (typewriter.done()) {
+			int y = top;
+			int x = MARGIN + BUTTON_WIDTH + 2 * GAP;
 			for (OreType ore : OreType.values()) {
 				String price = Component.translatable("screen.deepcharter.processor.price",
 						Component.translatable(OreRegistry.item(ore).getDescriptionId()).getString().toUpperCase(Locale.ROOT), ore.value()).getString();
-				CrtDraw.glowText(graphics, font, price, MARGIN, y, tuning.dimColor());
+				CrtDraw.glowText(graphics, font, price, x, y, tuning.dimColor());
 				y += font.lineHeight + 2;
 			}
 		}
-		CrtDraw.glowText(graphics, font, accountLine(), width - MARGIN - font.width(accountLine()), MARGIN, tuning.phosphorColor());
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 	}
 }
