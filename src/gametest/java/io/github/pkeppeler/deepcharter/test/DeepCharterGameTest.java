@@ -1,17 +1,20 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.fabricmc.loader.api.FabricLoader;
 
-import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.world.level.block.Blocks;
 
 public class DeepCharterGameTest {
 	@GameTest
-	public void placedBlockIsPresent(GameTestHelper helper) {
-		BlockPos pos = new BlockPos(0, 1, 0);
-		helper.setBlock(pos, Blocks.STONE);
-		helper.assertBlockPresent(Blocks.STONE, pos);
+	public void modIsLoaded(GameTestHelper helper) {
+		FabricLoader loader = FabricLoader.getInstance();
+		if (!loader.isModLoaded("deepcharter")) {
+			throw helper.assertionException("deepcharter is not loaded");
+		}
+		if (!loader.isModLoaded("deepcharter-test")) {
+			throw helper.assertionException("deepcharter-test is not loaded");
+		}
 		helper.succeed();
 	}
 }
