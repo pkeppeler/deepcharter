@@ -9,7 +9,7 @@
 set -euo pipefail
 
 repo=pkeppeler/deepcharter
-# Check names that must be present on the PR. Filled in by the CI task (#2).
+# Check names that must be present on the PR.
 REQUIRED_CHECKS=()
 
 if [[ $# -ne 1 || ! $1 =~ ^[0-9]+$ ]]; then

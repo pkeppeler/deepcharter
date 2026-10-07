@@ -80,7 +80,7 @@ fail() { cases=$((cases + 1)); failures=$((failures + 1)); echo "FAIL $1"; }
 
 reset() { rm -f "$LOG" "$LOG.merged" "$LOG.push"; : >"$LOG"; }
 
-# run_script [VAR=value ...]: run merge-pr.sh on PR 7 with stub env overrides.
+# run_script [VAR=value ...]: run $SCRIPT (default merge-pr.sh) on PR 7 with stub env overrides.
 run_script() {
   reset
   rc=0
@@ -227,16 +227,12 @@ check_args "non-numeric argument" abc
 check_args "trailing newline" $'7\n'
 
 # mark-review-passed.sh
-reset
-rc=0
-out=$(env STUB_SHA=def456 PATH="$work/bin:$PATH" bash "$mark" 7 2>&1) || rc=$?
+SCRIPT=$mark run_script STUB_SHA=def456
 exited "mark-review-passed exits 0" 0
 logged "mark reads head sha" "gh pr view 7 -R pkeppeler/deepcharter --json headRefOid --jq .headRefOid"
 logged "mark comments exact body" "gh pr comment 7 -R pkeppeler/deepcharter --body review-passed def456"
 logged "mark adds label" "gh pr edit 7 -R pkeppeler/deepcharter --add-label review-passed"
-reset
-rc=0
-out=$(env STUB_ORIGIN=git@github.com:someone/else.git PATH="$work/bin:$PATH" bash "$mark" 7 2>&1) || rc=$?
+SCRIPT=$mark run_script STUB_ORIGIN=git@github.com:someone/else.git
 exited "mark refuses wrong origin" 1
 not_logged "mark wrong origin calls no gh" "^gh"
 reset
