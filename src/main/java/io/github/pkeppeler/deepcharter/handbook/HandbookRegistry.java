@@ -40,6 +40,7 @@ public final class HandbookRegistry {
 		HandbookChapters.register();
 		ServerLifecycleEvents.SERVER_STARTED.register(HandbookChapters::validate);
 		HandbookProgress.register();
+		HandbookReadPayload.register();
 		HandbookItems.register();
 	}
 
