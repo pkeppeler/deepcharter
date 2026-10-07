@@ -35,6 +35,10 @@ import net.minecraft.server.network.CommonListenerCookie;
  *   <li>answers every {@code ClientboundKeepAlivePacket}, because vanilla kicks a player that
  *       has not answered one for 15 seconds.</li>
  * </ul>
+ * <p>A mock is loaded by default, so it takes damage like a real player. Damage tests must call
+ * {@code setGameMode(SURVIVAL)}, because GameTest players default to creative.
+ * {@link #joinUnloaded} gives one that is immune.
+ *
  * <p>A mock joined for a GameTest never outlives it: the end-of-tick sweep removes it once the
  * test is done, whether it passed, failed or timed out. A mock joined without an owner lives
  * until the server stops or {@link MockPlayer#leave} is called.
@@ -74,6 +78,11 @@ public final class MockPlayers {
 	 * server tick.
 	 */
 	public static MockPlayer join(MinecraftServer server, String name, BooleanSupplier ownerDone) {
+		return join(server, name, ownerDone, true);
+	}
+
+	// An unloaded player is still loading to the server, so it takes no damage, kill included.
+	private static MockPlayer join(MinecraftServer server, String name, BooleanSupplier ownerDone, boolean loaded) {
 		if (!server.isSameThread()) {
 			throw new IllegalStateException("MockPlayers.join must run on the server thread");
 		}
@@ -84,8 +93,17 @@ public final class MockPlayers {
 		EmbeddedChannel channel = new EmbeddedChannel(connection);
 		server.getPlayerList().placeNewPlayer(connection, player, cookie);
 		MockPlayer mock = new MockPlayer(server, player, connection, channel, ownerDone);
+		if (loaded) {
+			mock.markLoaded();
+		}
 		ACTIVE.add(mock);
 		return mock;
+	}
+
+	/** Join a mock player owned by a GameTest that has not reported itself loaded, so it takes no damage. */
+	public static MockPlayer joinUnloaded(GameTestHelper helper, String name) {
+		GameTestInfo info = testInfo(helper);
+		return join(helper.getLevel().getServer(), name, info::isDone, false);
 	}
 
 	// GameTestHelper has no public accessor for its test, and this is the only way to know when it ends.

@@ -32,7 +32,7 @@ A bad datapack never stops the server:
 
 ## Phases
 
-`PodStats.MODIFY` has two phases of our own, ordered `BASE`, Fabric's default phase, `CAP`. Parts and additions register in `BASE`. A cap such as a tier limit registers in `CAP`, so it sees the final value whatever the registration order.
+`PodStats.MODIFY` has two phases of our own, ordered `BASE`, Fabric's default phase, `CAP`. Parts and additions register in `BASE`. A cap such as a tier limit registers in `CAP`, so it sees the final value whatever the registration order. Parts (#65) do not use `CAP`: a chassis tier cap limits the part's own contribution, the tier it works at, so it never removes what other features add to the same stat.
 
 ## Consequences
 

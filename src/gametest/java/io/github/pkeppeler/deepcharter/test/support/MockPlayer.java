@@ -13,6 +13,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import net.minecraft.network.protocol.common.ClientboundKeepAlivePacket;
 import net.minecraft.network.protocol.common.ServerboundKeepAlivePacket;
+import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -30,6 +31,7 @@ public final class MockPlayer {
 	private final EmbeddedChannel channel;
 	private final BooleanSupplier ownerDone;
 	private final List<Component> actionBar = new ArrayList<>();
+	private boolean loaded;
 
 	MockPlayer(MinecraftServer server, ServerPlayer player, Connection connection, EmbeddedChannel channel,
 			BooleanSupplier ownerDone) {
@@ -64,10 +66,30 @@ public final class MockPlayer {
 		setInput(Input.EMPTY);
 	}
 
+	/**
+	 * Report the client as loaded, so the player can take damage, and confirm the dimension
+	 * change. A loaded mock re-confirms every dimension change each tick.
+	 */
+	public void markLoaded() {
+		loaded = true;
+		player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+		confirmDimensionChange();
+	}
+
+	/**
+	 * Confirm a change of dimension, as a real client does. Until then the server treats the
+	 * player as mid-change and it takes no damage. {@link #teleportTo} calls this; call it
+	 * yourself after any other change of dimension, such as a portal or a breach crossing.
+	 */
+	public void confirmDimensionChange() {
+		player.hasChangedDimension();
+	}
+
 	public void teleportTo(ServerLevel level, Vec3 pos, float yRot, float xRot) {
 		if (!player.teleportTo(level, pos.x, pos.y, pos.z, Set.of(), yRot, xRot, true)) {
 			throw new IllegalStateException("Mock player " + player.getGameProfile().name() + " could not teleport to " + pos);
 		}
+		confirmDimensionChange();
 	}
 
 	/** Disconnect and remove the player. Safe to call when it has already left. */
@@ -92,6 +114,9 @@ public final class MockPlayer {
 		if (ownerDone.getAsBoolean()) {
 			leave();
 			return;
+		}
+		if (loaded) {
+			confirmDimensionChange();
 		}
 		connection.tick();
 		Object outbound;

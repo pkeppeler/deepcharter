@@ -4,13 +4,14 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
 
+import net.fabricmc.fabric.api.menu.v1.ExtendedMenuType;
+
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.world.flag.FeatureFlags;
-import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -43,9 +44,10 @@ public final class OreRegistry {
 		}
 	}
 
-	public static final MenuType<OreCargoMenu> CARGO_MENU = Registry.register(BuiltInRegistries.MENU,
+	/** The cargo menu. It opens with the bay's slot count, because that is a stat and not a constant. */
+	public static final ExtendedMenuType<OreCargoMenu, Integer> CARGO_MENU = Registry.register(BuiltInRegistries.MENU,
 			Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "cargo"),
-			new MenuType<>(OreCargoMenu::new, FeatureFlags.VANILLA_SET));
+			new ExtendedMenuType<>((containerId, inventory, slotCount) -> new OreCargoMenu(containerId, slotCount), ByteBufCodecs.VAR_INT));
 
 	private OreRegistry() {
 	}
