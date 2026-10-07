@@ -61,6 +61,7 @@ The lore and creatures sessions are user sessions run from [prompts/](prompts/),
   - an enumerated "What it does" list a non-coder can follow
   - inline GIFs, with linked MP4s and screenshots
   - media hosted on the `pr-media` branch
+  - the `demo` label, or `no-demo` with a `No demo: <reason>` body line (the merge gate checks)
 
   Load `writing-pr-descriptions` for the narrative.
 - **Third-party code stays untrusted until audited.** Never commit XGen's assets: `original_flash_game/` and `private/` are git-ignored.

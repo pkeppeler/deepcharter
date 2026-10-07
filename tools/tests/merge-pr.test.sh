@@ -33,7 +33,9 @@ case "$1 $2" in
       isDraft) echo "${STUB_DRAFT-false}" ;;
       headRefName) echo "${STUB_BRANCH-12-some-slug}" ;;
       body) printf '%s\n' "${STUB_BODY-Closes #12}" ;;
-      labels) echo "${STUB_LABELS-infra
+      labels)
+        [[ ${STUB_LABELS_FAIL-0} == 1 ]] && exit 1
+        echo "${STUB_LABELS-infra
 review-passed}" ;;
       comments) echo "\"${STUB_COMMENT-review-passed ${STUB_SHA-abc123}}\"" ;;
       mergeable) echo "${STUB_MERGEABLE-MERGEABLE}" ;;
@@ -231,6 +233,55 @@ run_script "STUB_FILES=$(files added:docs/adr/README.md added:docs/adr/0007-seve
 exited "non-ADR files under docs/adr merge" 0
 run_script "STUB_FILES=$(files modified:docs/adr/0007-seven.md removed:docs/adr/0018-eighteen.md)"
 exited "PR modifying or removing an existing ADR merges" 0
+
+# Demo gate: in-game code (src/main/, src/client/) needs the `demo` label plus an
+# embedded pr-media/7/ image, or the `no-demo` label plus a `No demo:` line.
+# Embedded pr-media needs the `demo` label. Default labels: infra, review-passed.
+game=$(files modified:src/main/java/Foo.java)
+nl=$'\n'
+gif="Closes #12${nl}![demo](https://github.com/pkeppeler/deepcharter/blob/pr-media/7/run.gif?raw=true)"
+png="Closes #12${nl}![shot](https://github.com/pkeppeler/deepcharter/blob/pr-media/7/shot.png?raw=true)"
+demo_labels="infra${nl}review-passed${nl}demo"
+nodemo_labels="infra${nl}review-passed${nl}no-demo"
+refusal "in-game change with no demo" "changes in-game code (src/main/java/Foo.java) with no demo" "STUB_FILES=$game"
+refusal "refusal names the recorder" "tools/record-evidence.sh" "STUB_FILES=$game"
+refusal "refusal names the no-demo fix" "label it 'no-demo' and add a body line 'No demo: <reason>'" "STUB_FILES=$game"
+refusal "client change with no demo" "changes in-game code (src/client/java/Bar.java)" \
+  "STUB_FILES=$(files modified:README.md added:src/client/java/Bar.java)"
+refusal "assets change with no demo" "changes in-game code (src/main/resources/assets/x/lang/en_us.json)" \
+  "STUB_FILES=$(files modified:src/main/resources/assets/x/lang/en_us.json)"
+refusal "rename out of in-game code with no demo" "changes in-game code" \
+  "STUB_FILES=$(files renamed:docs/Foo.java:src/main/java/Foo.java)"
+refusal "demo label without media" "label but its body embeds no pr-media/7/" "STUB_FILES=$game" "STUB_LABELS=$demo_labels"
+refusal "demo label with other PR's media" "embeds no pr-media/7/" "STUB_FILES=$game" "STUB_LABELS=$demo_labels" \
+  "STUB_BODY=Closes #12${nl}pr-media/8/run.gif"
+refusal "demo label with non-image media" "embeds no pr-media/7/" "STUB_FILES=$game" "STUB_LABELS=$demo_labels" \
+  "STUB_BODY=Closes #12${nl}pr-media/7/run.mp4"
+refusal "no-demo label without a reason line" "no 'No demo: <reason>' line" "STUB_FILES=$game" "STUB_LABELS=$nodemo_labels"
+refusal "no-demo reason line is empty" "no 'No demo: <reason>' line" "STUB_FILES=$game" "STUB_LABELS=$nodemo_labels" \
+  "STUB_BODY=Closes #12${nl}No demo:   "
+refusal "no-demo reason not at line start" "no 'No demo: <reason>' line" "STUB_FILES=$game" "STUB_LABELS=$nodemo_labels" \
+  "STUB_BODY=Closes #12${nl}- No demo: tooling only"
+refusal "both demo and no-demo labels" "both the 'demo' and 'no-demo' labels" "STUB_FILES=$game" \
+  "STUB_LABELS=$demo_labels${nl}no-demo" "STUB_BODY=$gif${nl}No demo: x"
+refusal "media without the demo label" "embeds pr-media media but lacks the 'demo' label" "STUB_BODY=$gif"
+refusal "media without the demo label on in-game change" "embeds pr-media media but lacks the 'demo' label" \
+  "STUB_BODY=$png" "STUB_FILES=$game" "STUB_LABELS=$nodemo_labels"
+refusal "demo label lookalike does not count" "with no demo" "STUB_FILES=$game" "STUB_LABELS=infra${nl}review-passed${nl}demos"
+refusal "labels unreadable" "has no readable labels" "STUB_FILES=$game" STUB_LABELS_FAIL=1
+run_script "STUB_FILES=$game" "STUB_LABELS=$demo_labels" "STUB_BODY=$gif"
+exited "in-game change with demo label and gif merges" 0
+logged "demo merge invocation" "$merge_line"
+run_script "STUB_FILES=$game" "STUB_LABELS=$demo_labels" "STUB_BODY=$png"
+exited "in-game change with demo label and png merges" 0
+run_script "STUB_FILES=$game" "STUB_LABELS=$nodemo_labels" "STUB_BODY=Closes #12${nl}No demo: logic only, nothing visible."
+exited "in-game change with no-demo reason merges" 0
+run_script "STUB_FILES=$(files modified:src/client/java/Bar.java)" "STUB_LABELS=$demo_labels" "STUB_BODY=$gif"
+exited "client change with demo merges" 0
+run_script "STUB_LABELS=$demo_labels" "STUB_BODY=$gif"
+exited "non-game PR with demo label and media merges" 0
+run_script "STUB_FILES=$(files modified:tools/merge-pr.sh added:src/test/java/T.java added:src/mainly/x.java)"
+exited "non-game files need no demo" 0
 
 refusal "missing label" "REFUSED: PR #7 lacks the review-passed label" STUB_LABELS=infra
 refusal "no labels at all" "REFUSED: PR #7 lacks the review-passed label" STUB_LABELS=
