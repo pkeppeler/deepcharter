@@ -171,7 +171,7 @@ public final class PodDrill {
 			return ticks;
 		}
 
-		/** A full bay loses the ore: a drill that refused would trap the pod in its own tunnel (SPEC: only ore is kept). */
+		/** A full bay, or cargo that cannot be read, loses the ore: a drill that refused would trap the pod in its own tunnel (SPEC: only ore is kept). */
 		void bore(PodEntity pod) {
 			boolean crust = false;
 			for (BlockPos pos : cells) {
@@ -183,7 +183,13 @@ public final class PodDrill {
 					crust = true;
 					BreachService.breakCrust(level, pos);
 				} else {
-					OreRegistry.typeOf(state.getBlock()).ifPresent(ore -> pod.cargo().tryAdd(pod, OreRegistry.stack(ore)));
+					OreRegistry.typeOf(state.getBlock()).ifPresent(ore -> {
+						if (pod.cargo().isReadable()) {
+							pod.cargo().tryAdd(pod, OreRegistry.stack(ore));
+						} else {
+							pod.cargo().logDiscardedOre(pod);
+						}
+					});
 					level.destroyBlock(pos, false);
 				}
 			}

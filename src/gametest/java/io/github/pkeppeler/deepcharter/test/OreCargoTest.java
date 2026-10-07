@@ -329,9 +329,9 @@ public class OreCargoTest {
 			if (copy.cargoUsed() != 0 || !copy.cargo().entries().isEmpty() || copy.cargoMass() != 0f) {
 				throw failure(helper, "the old vanilla ore must be dropped, the bay holds %s", copy.cargo().entries());
 			}
-			String expected = log.errors().stream().filter(line -> line.contains(copy.getUUID().toString()) && line.contains("2")).findFirst().orElse(null);
-			if (expected == null) {
-				throw failure(helper, "the drop must be logged at ERROR with the pod's UUID and the count 2, logged %s", log.errors());
+			String expected = "Pod " + copy.getUUID() + " was saved before ore items: dropped 2 cargo entries, which were vanilla ores";
+			if (!log.errors().contains(expected)) {
+				throw failure(helper, "the drop must be logged at ERROR as \"%s\", logged %s", expected, log.errors());
 			}
 			// Once saved again it is the current format, and reads back as the empty bay it is.
 			CompoundTag resaved = savedPod(level, copy);
@@ -371,6 +371,45 @@ public class OreCargoTest {
 			pod.discard();
 			copy.discard();
 		}
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void drillingOreIntoUnreadableCargoLosesTheOreLogsOnceAndKeepsTheData(GameTestHelper helper) {
+		int x = 3328;
+		int floor = 60;
+		ServerLevel level = layer(helper, 1);
+		room(level, x, floor);
+		level.setBlock(new BlockPos(x - 1, floor - 1, Z - 1), OreRegistry.block(OreType.IRONIUM).defaultBlockState(), 3);
+		level.setBlock(new BlockPos(x, floor - 1, Z), OreRegistry.block(OreType.GOLDIUM).defaultBlockState(), 3);
+		MockPlayer pilot = MockPlayers.join(helper, "ore-unreadable");
+		PodEntity pod = pod(level, pilot, new Vec3(x, floor, Z));
+		pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.SILVERIUM));
+		CompoundTag tag = savedPod(level, pod);
+		tag.putInt("cargo_version", 99);
+		pod.cargo().load(inputOf(level, tag), pod);
+		CapturingAppender log = CapturingAppender.attach();
+		pilot.setInput(SPRINT);
+		helper.onEachTick(() -> {
+			if (count(level, x - 1, x, floor - 1, floor - 1, Z - 1, Z, Blocks.AIR) != 4) {
+				return;
+			}
+			pilot.releaseInput();
+			try {
+				String once = "Pod " + pod.getUUID() + ": cargo unreadable, drilled ore discarded";
+				long logged = log.errors().stream().filter(once::equals).count();
+				if (logged != 1) {
+					throw failure(helper, "two drilled ores must log \"%s\" exactly once, logged %d times in %s", once, logged, log.errors());
+				}
+				if (!savedPod(level, pod).get("cargo").equals(tag.get("cargo")) || pod.cargoUsed() != 0) {
+					throw failure(helper, "the unreadable cargo must be saved back unchanged and nothing added, got %s", savedPod(level, pod).get("cargo"));
+				}
+				helper.succeed();
+			} finally {
+				log.detach();
+				pod.discard();
+				pilot.leave();
+			}
+		});
 	}
 
 	@GameTest

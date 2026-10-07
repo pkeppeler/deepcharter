@@ -97,6 +97,7 @@ public final class PodCargo {
 	private final List<Entry> entries = new ArrayList<>();
 	/** The saved cargo this build cannot read, or null when the cargo is readable. */
 	private Unreadable unreadable;
+	private boolean discardLogged;
 
 	/** Server only: adds one ore at its real mass if a slot is free, and returns whether it did. Anything but ore throws. */
 	public boolean tryAdd(PodEntity pod, ItemStack ore) {
@@ -125,6 +126,19 @@ public final class PodCargo {
 		entries.clear();
 		sync(pod);
 		return dumped;
+	}
+
+	/** False while the saved cargo is unreadable: the bay then takes no ore, and {@link #tryAdd} and {@link #dump} throw. */
+	public boolean isReadable() {
+		return unreadable == null;
+	}
+
+	/** Logs, once for each load of the cargo, that a drilled ore was lost because the cargo is unreadable. */
+	public void logDiscardedOre(PodEntity pod) {
+		if (!discardLogged) {
+			discardLogged = true;
+			DeepCharter.LOGGER.error("Pod {}: cargo unreadable, drilled ore discarded", pod.getUUID());
+		}
 	}
 
 	/** The bay's entries; empty while the saved cargo is unreadable. */
@@ -174,6 +188,7 @@ public final class PodCargo {
 	public void load(ValueInput input, PodEntity pod) {
 		entries.clear();
 		unreadable = null;
+		discardLogged = false;
 		List<Tag> raw = new ArrayList<>();
 		input.list(CARGO_KEY, Codec.PASSTHROUGH)
 				.orElseThrow(() -> new IllegalStateException("saved pod has no '" + CARGO_KEY + "'"))
@@ -182,7 +197,7 @@ public final class PodCargo {
 		if (version.isEmpty()) {
 			// Saved before ore items: every entry was a vanilla ore block, which is no longer cargo.
 			if (!raw.isEmpty()) {
-				DeepCharter.LOGGER.error("Pod {} was saved before ore items, and its {} cargo entries were vanilla ores: dropped",
+				DeepCharter.LOGGER.error("Pod {} was saved before ore items: dropped {} cargo entries, which were vanilla ores",
 						pod.getUUID(), raw.size());
 			}
 			sync(pod);
