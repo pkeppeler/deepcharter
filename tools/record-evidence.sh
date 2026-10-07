@@ -19,7 +19,6 @@
 set -euo pipefail
 
 FPS=15
-GIF_WIDTH=800
 GIF_MAX_BYTES=$((5 * 1024 * 1024))
 
 if [[ $# -lt 1 || $# -gt 2 || ! $1 =~ ^[a-z0-9][a-z0-9-]*$ || ( $# -eq 2 && $2 != --no-run ) ]]; then
@@ -39,21 +38,24 @@ fi
 [[ -f $out/frames/frame-0001.png ]] \
   || { echo "no frames in $out/frames: is '$scenario' a scenario name?" >&2; exit 1; }
 
-# yuv420p needs even dimensions; scale to GIF_WIDTH (even) with an even height.
+# Frames are already 800x450 (EvidenceScenario), so both outputs keep that size.
 ffmpeg -v error -y -framerate "$FPS" -i "$out/frames/frame-%04d.png" \
-  -vf "scale=${GIF_WIDTH}:-2" -c:v libx264 -pix_fmt yuv420p -movflags +faststart \
+  -c:v libx264 -pix_fmt yuv420p -movflags +faststart \
   "$out/$scenario.mp4"
 
 ffmpeg -v error -y -framerate "$FPS" -i "$out/frames/frame-%04d.png" \
-  -vf "scale=${GIF_WIDTH}:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle" \
+  -vf "split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle" \
   -loop 0 "$out/$scenario.gif"
 
 size=$(stat -f %z "$out/$scenario.gif" 2>/dev/null || stat -c %s "$out/$scenario.gif")
 if (( size > GIF_MAX_BYTES )); then
-  echo "GIF is $size bytes, over the $GIF_MAX_BYTES budget: record fewer frames" >&2
+  rm -f "$out/$scenario.gif"
+  echo "GIF was $size bytes, over the $GIF_MAX_BYTES budget (deleted): record fewer frames" >&2
   exit 1
 fi
 
 echo "mp4: $out/$scenario.mp4"
 echo "gif: $out/$scenario.gif ($size bytes)"
-ls "$out"/screenshots/*.png 2>/dev/null | sed 's/^/screenshot: /'
+for shot in "$out"/screenshots/*.png; do
+  [[ -e $shot ]] && echo "screenshot: $shot"
+done

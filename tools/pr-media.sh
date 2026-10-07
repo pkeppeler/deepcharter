@@ -14,13 +14,11 @@
 #   tools/record-evidence.sh camera-turn
 #   tools/pr-media.sh 42 build/evidence/camera-turn/camera-turn.{gif,mp4} \
 #       build/evidence/camera-turn/screenshots/*.png
-#
-# PR_MEDIA_REMOTE overrides the remote (default: origin). Tests use a local bare repo.
 set -euo pipefail
 
 repo=pkeppeler/deepcharter
-branch=pr-media
-remote=${PR_MEDIA_REMOTE:-origin}
+branch="pr-media"
+remote=origin
 
 if [[ $# -lt 2 || ! $1 =~ ^[0-9]+$ ]]; then
   echo "usage: tools/pr-media.sh <pr-number> <file>..." >&2
@@ -33,8 +31,8 @@ names=()
 for f in "$@"; do
   [[ -f $f ]] || { echo "not a file: $f" >&2; exit 1; }
   name=$(basename "$f")
-  [[ $name =~ ^[A-Za-z0-9._-]+$ ]] \
-    || { echo "unsupported file name '$name': use letters, digits, '.', '_' and '-'" >&2; exit 1; }
+  [[ $name =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] \
+    || { echo "unsupported file name '$name': start with a letter or digit, then use letters, digits, '.', '_' and '-'" >&2; exit 1; }
   for seen in ${names[@]+"${names[@]}"}; do
     [[ $seen != "$name" ]] || { echo "two files named '$name'" >&2; exit 1; }
   done
@@ -42,8 +40,10 @@ for f in "$@"; do
 done
 
 # Current pr-media tip. A concurrent push makes the final push fail instead of clobbering.
+git ls-remote --exit-code --heads "$remote" "$branch" >/dev/null 2>&1 \
+  || { echo "no ${branch} branch on ${remote}: create the orphan branch ${branch} first" >&2; exit 1; }
 git fetch -q "$remote" "refs/heads/${branch}"
-tip=$(git rev-parse FETCH_HEAD^{commit})
+tip=$(git rev-parse "FETCH_HEAD^{commit}")
 
 # New <pr>/ tree: the existing entries minus same-named files, plus the new blobs.
 entries=""
