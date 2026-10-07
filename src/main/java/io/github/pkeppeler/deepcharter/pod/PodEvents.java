@@ -11,9 +11,9 @@ import net.minecraft.world.entity.Entity;
  *
  * <p>Every hook runs on the server only, except where a hook says otherwise. Predicates are
  * combined with AND: one listener that says no is enough ({@link #IGNORES_BLOCK_COLLISION} is the
- * one OR). Call the {@code PodEvents} static
- * methods ({@link #canMount}, {@link #isPowered}, {@link #extraMass}), not the events' invokers, so
- * the built-in rules and the validation stay in one place.
+ * one OR). Call the static methods ({@link #canMount}, {@link #isPowered}, {@link #extraMass},
+ * {@link #ignoresBlockCollision}), not the events' invokers, so the built-in rules and the
+ * validation stay in one place.
  *
  * <ul>
  *   <li>{@link #HULL_DEPLETED}: wrecks (#67)</li>

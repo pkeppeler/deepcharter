@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
@@ -27,14 +28,14 @@ public final class TestAttachments implements ModInitializer {
 	public record Example(int counter) {
 		public static final Example DEFAULT = new Example(0);
 		public static final MapCodec<Example> BODY = RecordCodecBuilder.mapCodec(instance -> instance.group(
-				com.mojang.serialization.Codec.INT.fieldOf("counter").forGetter(Example::counter)).apply(instance, Example::new));
+				Codec.INT.fieldOf("counter").forGetter(Example::counter)).apply(instance, Example::new));
 		public static final StreamCodec<ByteBuf, Example> STREAM = ByteBufCodecs.VAR_INT.map(Example::new, Example::counter);
 	}
 
 	public record Other(String text) {
 		public static final Other DEFAULT = new Other("");
 		public static final MapCodec<Other> BODY = RecordCodecBuilder.mapCodec(instance -> instance.group(
-				com.mojang.serialization.Codec.STRING.fieldOf("text").forGetter(Other::text)).apply(instance, Other::new));
+				Codec.STRING.fieldOf("text").forGetter(Other::text)).apply(instance, Other::new));
 	}
 
 	/** Persistent and synced to every client that tracks the pod. */

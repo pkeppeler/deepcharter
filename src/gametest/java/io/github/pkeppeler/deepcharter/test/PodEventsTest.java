@@ -262,26 +262,17 @@ public class PodEventsTest {
 
 	@GameTest
 	public void aNegativeExtraMassFailsLoudly(GameTestHelper helper) {
-		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
-		NEGATIVE_MASS.add(pod.getUUID());
-		try {
-			try {
-				PodEvents.extraMass(pod);
-			} catch (IllegalStateException expected) {
-				helper.succeed();
-				return;
-			}
-			throw failure(helper, "a negative extra mass must be refused");
-		} finally {
-			NEGATIVE_MASS.remove(pod.getUUID());
-			pod.discard();
-		}
+		assertExtraMassRefused(helper, NEGATIVE_MASS, "a negative extra mass must be refused");
 	}
 
 	@GameTest
 	public void aNaNExtraMassFailsLoudly(GameTestHelper helper) {
+		assertExtraMassRefused(helper, NAN_MASS, "a NaN extra mass must be refused");
+	}
+
+	private static void assertExtraMassRefused(GameTestHelper helper, Set<UUID> badListener, String message) {
 		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
-		NAN_MASS.add(pod.getUUID());
+		badListener.add(pod.getUUID());
 		try {
 			try {
 				PodEvents.extraMass(pod);
@@ -289,9 +280,9 @@ public class PodEventsTest {
 				helper.succeed();
 				return;
 			}
-			throw failure(helper, "a NaN extra mass must be refused");
+			throw failure(helper, message);
 		} finally {
-			NAN_MASS.remove(pod.getUUID());
+			badListener.remove(pod.getUUID());
 			pod.discard();
 		}
 	}

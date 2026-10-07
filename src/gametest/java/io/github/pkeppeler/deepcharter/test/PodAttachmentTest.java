@@ -178,7 +178,6 @@ public class PodAttachmentTest {
 	}
 
 	/** M1's crossing, with a piloted pod: the arriving pod is a new entity, and the attachment must be on it. */
-	// Server ticks run far faster than a fresh far chunk generates, and it does not tick entities until it has, so wait on the pod's own ticks: a generous cap.
 	@GameTest(maxTicks = 12000)
 	public void theAttachmentSurvivesABreachCrossing(GameTestHelper helper) {
 		double x = 2000.5;

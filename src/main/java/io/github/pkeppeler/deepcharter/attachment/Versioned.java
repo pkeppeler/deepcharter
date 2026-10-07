@@ -50,9 +50,8 @@ public sealed interface Versioned<T> {
 	record Unreadable<T>(Tag raw) implements Versioned<T> {
 		/** The saved version, or "missing" when there is none. */
 		public String version() {
-			return raw instanceof CompoundTag compound && compound.get(VERSION_KEY) != null
-					? String.valueOf(compound.get(VERSION_KEY))
-					: "missing";
+			Tag version = raw instanceof CompoundTag compound ? compound.get(VERSION_KEY) : null;
+			return version == null ? "missing" : String.valueOf(version);
 		}
 	}
 
