@@ -7,7 +7,8 @@
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"io.github.pkeppeler.deepcharter.test.support.TestAttachments"
+			"io.github.pkeppeler.deepcharter.test.support.TestAttachments",
+			"io.github.pkeppeler.deepcharter.test.support.TerminalTestTypes"
 		],
 		"fabric-gametest": [
 			"io.github.pkeppeler.deepcharter.test.DeepCharterGameTest",
@@ -63,6 +64,7 @@
 			"io.github.pkeppeler.deepcharter.test.CharterCoreClientTest",
 			"io.github.pkeppeler.deepcharter.test.CrtUiKitClientTest",
 			"io.github.pkeppeler.deepcharter.test.OreCargoClientTest",
+			"io.github.pkeppeler.deepcharter.test.PodComponentsClientTest",
 			"io.github.pkeppeler.deepcharter.test.TerminalFrameworkClientTest",
 			"io.github.pkeppeler.deepcharter.test.TransmissionsClientTest",
 			"io.github.pkeppeler.deepcharter.test.HandbookScreenClientTest",
@@ -100,6 +102,7 @@
 			"io.github.pkeppeler.deepcharter.test.evidence.LayerStructuresScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.ProspectorChassisScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.M2SliceScenario",
+			"io.github.pkeppeler.deepcharter.test.evidence.WreckScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.HandbookCoreScenario"
 		]
 	},

@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "deepcharter:block/ore_processor"
+    },
+    "facing=east": {
+      "model": "deepcharter:block/ore_processor",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "deepcharter:block/ore_processor",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "deepcharter:block/ore_processor",
+      "y": 270
+    }
+  }
+}
