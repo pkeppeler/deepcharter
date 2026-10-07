@@ -1,7 +1,10 @@
 package io.github.pkeppeler.deepcharter.market;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.WeakHashMap;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -18,6 +21,7 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodCargo;
+import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
 
@@ -28,20 +32,15 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
  * range, the charter and the repair state.
  */
 public final class OreProcessor {
-	/** Sells the cargo of every pod of the player's charter parked within {@link MarketTuning#processorRadius()} of the processor. */
+	/** Sells the cargo of every pod the player may access ({@link PodComponents#mayAccess}) parked within {@link MarketTuning#processorRadius()} of the processor. */
 	public static final Identifier SELL_CARGO = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "sell_cargo");
 	/** Sells every ore the player carries. */
 	public static final Identifier SELL_INVENTORY = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "sell_inventory");
 
-	private OreProcessor() {
-	}
+	/** Pods whose unreadable cargo was logged, so each is logged once. */
+	private static final Set<PodEntity> SKIPPED_LOGGED = Collections.newSetFromMap(new WeakHashMap<>());
 
-	/**
-	 * The one place that decides whether {@code pod} may be sold from for {@code charter}. Pod ownership (#65) is not merged
-	 * yet, so every pod parked at the processor counts; when #65 lands this becomes "the pod belongs to the charter".
-	 */
-	static boolean mayTradeFor(PodEntity pod, Charter charter) {
-		return true;
+	private OreProcessor() {
 	}
 
 	public static Optional<Component> sellCargo(TerminalAction.Context context) {
@@ -50,20 +49,27 @@ public final class OreProcessor {
 		if (pods.isEmpty()) {
 			return Optional.of(Component.translatable("deepcharter.market.refusal.no_pod"));
 		}
-		if (pods.stream().anyMatch(pod -> !pod.cargo().isReadable())) {
+		List<PodEntity> readable = pods.stream().filter(pod -> pod.cargo().isReadable()).toList();
+		int skipped = pods.size() - readable.size();
+		for (PodEntity pod : pods) {
+			if (!pod.cargo().isReadable() && SKIPPED_LOGGED.add(pod)) {
+				DeepCharter.LOGGER.error("Pod {}: cargo unreadable, not sold", pod.getUUID());
+			}
+		}
+		if (readable.isEmpty()) {
 			return Optional.of(Component.translatable("deepcharter.market.refusal.unreadable_cargo"));
 		}
 		long total = 0;
 		int count = 0;
-		for (PodEntity pod : pods) {
+		for (PodEntity pod : readable) {
 			for (PodCargo.Entry entry : pod.cargo().entries()) {
-				total += value(entry.stack());
-				count++;
+				total += value(entry.stack()) * entry.stack().getCount();
+				count += entry.stack().getCount();
 			}
 		}
-		Optional<Component> refusal = credit(context, charter, total, count);
+		Optional<Component> refusal = credit(context, charter, total, count, skipped);
 		if (refusal.isEmpty()) {
-			pods.forEach(pod -> pod.cargo().dump(pod));
+			readable.forEach(pod -> pod.cargo().dump(pod));
 		}
 		return refusal;
 	}
@@ -80,7 +86,7 @@ public final class OreProcessor {
 				count += stack.getCount();
 			}
 		}
-		Optional<Component> refusal = credit(context, charter, total, count);
+		Optional<Component> refusal = credit(context, charter, total, count, 0);
 		if (refusal.isEmpty()) {
 			for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
 				if (OreRegistry.typeOf(inventory.getItem(slot)).isPresent()) {
@@ -92,7 +98,7 @@ public final class OreProcessor {
 	}
 
 	/** Credits {@code total} dollars for {@code count} ore and tells the player, or returns why not. */
-	private static Optional<Component> credit(TerminalAction.Context context, Charter charter, long total, int count) {
+	private static Optional<Component> credit(TerminalAction.Context context, Charter charter, long total, int count, int skipped) {
 		if (count == 0) {
 			return Optional.of(Component.translatable("deepcharter.market.refusal.nothing_to_sell"));
 		}
@@ -101,7 +107,8 @@ public final class OreProcessor {
 			return Optional.of(refusal.get().message());
 		}
 		ServerPlayer player = context.player();
-		player.sendOverlayMessage(Component.translatable("deepcharter.market.sold", count, total));
+		player.sendOverlayMessage(skipped == 0 ? Component.translatable("deepcharter.market.sold", count, total)
+				: Component.translatable("deepcharter.market.sold_skipped", count, total, skipped));
 		return Optional.empty();
 	}
 
@@ -113,6 +120,6 @@ public final class OreProcessor {
 		double radius = MarketTuning.DEFAULT.processorRadius();
 		Vec3 centre = Vec3.atCenterOf(context.pos());
 		return context.player().level().getEntitiesOfClass(PodEntity.class, new AABB(centre, centre).inflate(radius),
-				pod -> pod.position().distanceToSqr(centre) <= radius * radius && mayTradeFor(pod, charter));
+				pod -> pod.position().distanceToSqr(centre) <= radius * radius && PodComponents.mayAccess(pod, Optional.of(charter)));
 	}
 }

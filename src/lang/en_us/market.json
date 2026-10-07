@@ -3,6 +3,7 @@
   "deepcharter.market.refusal.nothing_to_sell": "There is no ore to sell",
   "deepcharter.market.refusal.unreadable_cargo": "A pod's cargo was saved by another version of the mod and cannot be sold",
   "deepcharter.market.sold": "Sold %s ore for $%s",
+  "deepcharter.market.sold_skipped": "Sold %s ore for $%s. %s pod(s) skipped: cargo unreadable",
   "hud.deepcharter.account": "%s  $%s",
   "screen.deepcharter.processor.account": "ACCOUNT $%s",
   "screen.deepcharter.processor.close": "CLOSE",

@@ -21,11 +21,14 @@ import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
 
+import io.github.pkeppeler.deepcharter.attachment.Versioned;
+import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.market.MarketTuning;
 import io.github.pkeppeler.deepcharter.market.OreProcessor;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
@@ -34,6 +37,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 
@@ -308,6 +312,129 @@ public class OreProcessorTest {
 			}
 			if (balance(server, player) != 0) {
 				throw helper.assertionException("nothing sold must credit nothing");
+			}
+		});
+		helper.succeed();
+	}
+
+	/** Registers {@code pod} to the charter of {@code owner}. */
+	private static void register(MinecraftServer server, PodEntity pod, ServerPlayer owner) {
+		PodComponents.register(pod, Charters.charterOf(server, owner.getUUID()).orElseThrow().id());
+	}
+
+	@GameTest
+	public void anotherChartersPodIsNeitherSoldNorDumped(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		withProcessorOnline(server, () -> {
+			MockPlayer mock = player(helper, "Thief", true);
+			MockPlayer rival = player(helper, "Rival", true);
+			ServerPlayer player = mock.player();
+			BlockPos processor = processorFor(helper, mock);
+			PodEntity theirs = podAt(helper, beside(processor, 4), OreType.EINSTEINIUM);
+			register(server, theirs, rival.player());
+			try {
+				long before = balance(server, player);
+				expectKey(helper, NO_POD, OreProcessor.sellCargo(context(server, player, processor)), "selling the cargo of another charter's pod");
+				PodEntity mine = podAt(helper, beside(processor, -4), OreType.IRONIUM);
+				register(server, mine, player);
+				try {
+					expectDone(helper, Terminals.act(player, processor, OreProcessor.SELL_CARGO, new CompoundTag()), "selling beside a rival's pod");
+					if (balance(server, player) != before + OreType.IRONIUM.value() || mine.cargoUsed() != 0
+							|| theirs.cargoUsed() != 1 || theirs.cargo().entries().size() != 1) {
+						throw helper.assertionException("only the own pod may be sold and dumped: balance %s -> %s, rival cargo %s",
+								before, balance(server, player), theirs.cargo().entries());
+					}
+				} finally {
+					mine.discard();
+				}
+			} finally {
+				theirs.discard();
+			}
+		});
+		helper.succeed();
+	}
+
+	@GameTest
+	public void anUnownedPodAndADormantOwnersPodAreSold(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		withProcessorOnline(server, () -> {
+			MockPlayer mock = player(helper, "Salvager", true);
+			MockPlayer lapsed = player(helper, "Lapsed", true);
+			ServerPlayer player = mock.player();
+			BlockPos processor = processorFor(helper, mock);
+			PodEntity unowned = podAt(helper, beside(processor, 4), OreType.IRONIUM);
+			PodEntity dormant = podAt(helper, beside(processor, -4), OreType.GOLDIUM);
+			register(server, dormant, lapsed.player());
+			try {
+				Optional<CharterRefusal> left = Charters.leave(server, lapsed.player().getUUID());
+				if (left.isPresent()) {
+					throw helper.assertionException("leaving should succeed, was refused: %s", left.get());
+				}
+				long before = balance(server, player);
+				expectDone(helper, Terminals.act(player, processor, OreProcessor.SELL_CARGO, new CompoundTag()), "selling unowned and dormant pods");
+				if (balance(server, player) != before + worth(OreType.IRONIUM, OreType.GOLDIUM) || unowned.cargoUsed() != 0 || dormant.cargoUsed() != 0) {
+					throw helper.assertionException("an unowned pod and a dormant owner's pod are anyone's: balance %s -> %s", before, balance(server, player));
+				}
+			} finally {
+				unowned.discard();
+				dormant.discard();
+			}
+		});
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aPodWithUnreadableComponentsIsNotSold(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		withProcessorOnline(server, () -> {
+			MockPlayer mock = player(helper, "Doubter", true);
+			ServerPlayer player = mock.player();
+			BlockPos processor = processorFor(helper, mock);
+			PodEntity pod = podAt(helper, beside(processor, 4), OreType.GOLDIUM);
+			pod.setAttached(PodComponents.STATE, new Versioned.Unreadable<PodComponents.State>(new CompoundTag()));
+			try {
+				expectKey(helper, NO_POD, OreProcessor.sellCargo(context(server, player, processor)), "selling a pod whose owner is unknown");
+				if (pod.cargoUsed() != 1 || balance(server, player) != 0) {
+					throw helper.assertionException("a pod with unreadable components must keep its cargo");
+				}
+			} finally {
+				pod.discard();
+			}
+		});
+		helper.succeed();
+	}
+
+	@GameTest
+	public void anUnreadableCargoIsSkippedAndTheOtherPodsAreSold(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		ServerLevel level = helper.getLevel();
+		withProcessorOnline(server, () -> {
+			MockPlayer mock = player(helper, "Sorter", true);
+			ServerPlayer player = mock.player();
+			BlockPos processor = processorFor(helper, mock);
+			PodEntity good = podAt(helper, beside(processor, 4), OreType.SILVERIUM);
+			PodEntity bad = podAt(helper, beside(processor, -4), OreType.GOLDIUM);
+			LogCapture log = LogCapture.start(bad.getUUID().toString());
+			try {
+				TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
+				bad.saveWithoutId(output);
+				CompoundTag tag = output.buildResult();
+				tag.putInt("cargo_version", 99);
+				bad.cargo().load(TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), tag), bad);
+				long before = balance(server, player);
+				expectDone(helper, Terminals.act(player, processor, OreProcessor.SELL_CARGO, new CompoundTag()), "selling beside an unreadable pod");
+				expectKey(helper, NOTHING_TO_SELL, OreProcessor.sellCargo(context(server, player, processor)), "selling again");
+				String once = "Pod " + bad.getUUID() + ": cargo unreadable, not sold";
+				long logged = log.errors().stream().filter(once::equals).count();
+				if (balance(server, player) != before + OreType.SILVERIUM.value() || good.cargoUsed() != 0 || bad.cargo().isReadable()) {
+					throw helper.assertionException("the readable pod is sold and the unreadable one is left: balance %s -> %s", before, balance(server, player));
+				}
+				if (logged != 1) {
+					throw helper.assertionException("the skipped pod is logged once, \"%s\" appeared %s times in %s", once, logged, log.errors());
+				}
+			} finally {
+				good.discard();
+				bad.discard();
 			}
 		});
 		helper.succeed();
