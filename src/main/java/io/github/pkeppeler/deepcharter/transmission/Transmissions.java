@@ -1,9 +1,10 @@
 package io.github.pkeppeler.deepcharter.transmission;
 
 import java.util.Objects;
-import java.util.UUID;
 
 import net.minecraft.resources.Identifier;
+
+import io.github.pkeppeler.deepcharter.charter.CharterId;
 
 /**
  * Fires a transmission for a charter. Any feature calls this when the event a transmission waits
@@ -16,13 +17,11 @@ public final class Transmissions {
 	}
 
 	/**
-	 * Fires {@code transmission} once for the charter whose id is {@code charterId}; a charter that
-	 * has it already is not sent it again. The charter is identified by its UUID because #52 defines
-	 * the Charter type after this stub: #52 keys charters by a UUID, and may add an overload that
-	 * takes a Charter, but this signature stays.
+	 * Fires {@code transmission} once for {@code charter}; a charter that has it already is not sent
+	 * it again.
 	 */
-	public static void fire(UUID charterId, Identifier transmission) {
-		Objects.requireNonNull(charterId, "charterId");
+	public static void fire(CharterId charter, Identifier transmission) {
+		Objects.requireNonNull(charter, "charter");
 		Objects.requireNonNull(transmission, "transmission");
 	}
 }

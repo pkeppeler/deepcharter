@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.DoubleConsumer;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
@@ -18,6 +19,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
@@ -38,6 +40,8 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 public class PodEventsTest {
 	private static final int FLOOR_Y = 1;
 	private static final int FLOOR_RADIUS = 3;
+	/** The pod starts at z 3.5 with a 1.9-wide hull, so a wall at z 5 stops it after 0.55 blocks. */
+	private static final int WALL_Z = 5;
 	private static final Input JUMP = new Input(false, false, false, false, true, false, false);
 
 	private static final Map<UUID, Integer> DEPLETED = new ConcurrentHashMap<>();
@@ -46,6 +50,9 @@ public class PodEventsTest {
 	private static final Set<UUID> UNPOWERED = ConcurrentHashMap.newKeySet();
 	private static final Set<UUID> HEAVY = ConcurrentHashMap.newKeySet();
 	private static final Set<UUID> NEGATIVE_MASS = ConcurrentHashMap.newKeySet();
+	private static final Set<UUID> NAN_MASS = ConcurrentHashMap.newKeySet();
+	private static final Set<UUID> PASS_THROUGH = ConcurrentHashMap.newKeySet();
+	private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
 
 	static {
 		PodEvents.HULL_DEPLETED.register(pod -> DEPLETED.merge(pod.getUUID(), 1, Integer::sum));
@@ -54,6 +61,8 @@ public class PodEventsTest {
 		PodEvents.IS_POWERED.register(pod -> !UNPOWERED.contains(pod.getUUID()));
 		PodEvents.EXTRA_MASS.register(pod -> HEAVY.contains(pod.getUUID()) ? PodTuning.DEFAULT.movement().enginePower() : 0f);
 		PodEvents.EXTRA_MASS.register(pod -> NEGATIVE_MASS.contains(pod.getUUID()) ? -1f : 0f);
+		PodEvents.EXTRA_MASS.register(pod -> NAN_MASS.contains(pod.getUUID()) ? Float.NaN : 0f);
+		PodEvents.IGNORES_BLOCK_COLLISION.register(pod -> PASS_THROUGH.contains(pod.getUUID()));
 	}
 
 	private static PodEntity spawnOnFloor(GameTestHelper helper) {
@@ -90,6 +99,9 @@ public class PodEventsTest {
 			}
 			if (PodEvents.extraMass(pod) != 0f) {
 				throw failure(helper, "extra mass should default to 0, got %s", PodEvents.extraMass(pod));
+			}
+			if (PodEvents.ignoresBlockCollision(pod)) {
+				throw failure(helper, "a pod should collide with blocks by default");
 			}
 			pod.setStranded(true);
 			if (PodEvents.isPowered(pod)) {
@@ -263,6 +275,79 @@ public class PodEventsTest {
 		} finally {
 			NEGATIVE_MASS.remove(pod.getUUID());
 			pod.discard();
+		}
+	}
+
+	@GameTest
+	public void aNaNExtraMassFailsLoudly(GameTestHelper helper) {
+		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
+		NAN_MASS.add(pod.getUUID());
+		try {
+			try {
+				PodEvents.extraMass(pod);
+			} catch (IllegalStateException expected) {
+				helper.succeed();
+				return;
+			}
+			throw failure(helper, "a NaN extra mass must be refused");
+		} finally {
+			NAN_MASS.remove(pod.getUUID());
+			pod.discard();
+		}
+	}
+
+	@GameTest
+	public void aPodStopsAtAWallByDefault(GameTestHelper helper) {
+		driveIntoWall(helper, false, moved -> {
+			if (moved > 1.0) {
+				throw failure(helper, "a pod must stop at the wall by default, moved %s south", moved);
+			}
+		});
+	}
+
+	@GameTest
+	public void aListenerLetsAPodPassThroughABlock(GameTestHelper helper) {
+		driveIntoWall(helper, true, moved -> {
+			if (moved < 1.5) {
+				throw failure(helper, "a pod told to ignore block collision should pass through the wall, moved only %s south", moved);
+			}
+		});
+	}
+
+	/** Drives a pod south into a wall for ten ticks, then hands the distance it moved to {@code check}. */
+	private static void driveIntoWall(GameTestHelper helper, boolean passThrough, DoubleConsumer check) {
+		PodEntity pod = spawnOnFloor(helper);
+		setWall(helper, Blocks.STONE);
+		MockPlayer pilot = MockPlayers.join(helper, "events-wall");
+		pilot.teleportTo(helper.getLevel(), pod.position(), 0f, 0f);
+		if (!pilot.player().startRiding(pod)) {
+			throw failure(helper, "the pilot could not mount the pod");
+		}
+		double startZ = pod.getZ();
+		if (passThrough) {
+			PASS_THROUGH.add(pod.getUUID());
+		}
+		pilot.setInput(FORWARD);
+		helper.runAfterDelay(10, () -> {
+			try {
+				check.accept(pod.getZ() - startZ);
+				helper.succeed();
+			} finally {
+				PASS_THROUGH.remove(pod.getUUID());
+				pilot.leave();
+				pod.discard();
+				clearFloor(helper);
+				setWall(helper, Blocks.AIR);
+			}
+		});
+	}
+
+	/** A wall across the floor's south half, which a pod driving south from the middle hits after about half a block. */
+	private static void setWall(GameTestHelper helper, Block block) {
+		for (int x = 0; x <= 2 * FLOOR_RADIUS; x++) {
+			for (int y = FLOOR_Y + 1; y <= FLOOR_Y + 3; y++) {
+				helper.setBlock(new BlockPos(x, y, WALL_Z), block);
+			}
 		}
 	}
 

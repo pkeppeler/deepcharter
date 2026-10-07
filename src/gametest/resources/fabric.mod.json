@@ -6,6 +6,9 @@
 	"license": "All-Rights-Reserved",
 	"environment": "*",
 	"entrypoints": {
+		"main": [
+			"io.github.pkeppeler.deepcharter.test.support.TestAttachments"
+		],
 		"fabric-gametest": [
 			"io.github.pkeppeler.deepcharter.test.DeepCharterGameTest",
 			"io.github.pkeppeler.deepcharter.test.MockPlayersTest",

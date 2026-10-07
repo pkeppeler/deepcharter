@@ -32,6 +32,5 @@ public final class PodRegistry {
 		// Touching this class registers the entity type. Load the data class too, so that the
 		// synced data ids are assigned at startup, the same way on both sides.
 		PodData.init();
-		PodAttachments.init();
 	}
 }

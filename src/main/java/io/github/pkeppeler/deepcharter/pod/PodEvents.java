@@ -10,7 +10,8 @@ import net.minecraft.world.entity.Entity;
  * With no listener registered, every hook leaves the pod's M1 behaviour as it was.
  *
  * <p>Every hook runs on the server only, except where a hook says otherwise. Predicates are
- * combined with AND: one listener that says no is enough. Call the {@code PodEvents} static
+ * combined with AND: one listener that says no is enough ({@link #IGNORES_BLOCK_COLLISION} is the
+ * one OR). Call the {@code PodEvents} static
  * methods ({@link #canMount}, {@link #isPowered}, {@link #extraMass}), not the events' invokers, so
  * the built-in rules and the validation stay in one place.
  *
@@ -19,6 +20,7 @@ import net.minecraft.world.entity.Entity;
  *   <li>{@link #CAN_MOUNT}: ownership (#65), wrecks (#67)</li>
  *   <li>{@link #IS_POWERED}: wrecks (#67), lights (#75)</li>
  *   <li>{@link #EXTRA_MASS}: towing (#76)</li>
+ *   <li>{@link #IGNORES_BLOCK_COLLISION}: towing (#76)</li>
  *   <li>{@link #AFTER_TICK}: lights (#75), towing (#76)</li>
  * </ul>
  *
@@ -63,6 +65,16 @@ public final class PodEvents {
 		return total;
 	});
 
+	/** Whether the pod passes through blocks (a towed pod, #76). Unlike the other predicates this is an OR: one yes is enough. */
+	public static final Event<IgnoresBlockCollision> IGNORES_BLOCK_COLLISION = EventFactory.createArrayBacked(IgnoresBlockCollision.class, listeners -> pod -> {
+		for (IgnoresBlockCollision listener : listeners) {
+			if (listener.ignoresBlockCollision(pod)) {
+				return true;
+			}
+		}
+		return false;
+	});
+
 	/** Fired at the end of each server tick of the pod, after its own movement, drill and fuel. */
 	public static final Event<AfterTick> AFTER_TICK = EventFactory.createArrayBacked(AfterTick.class, listeners -> pod -> {
 		for (AfterTick listener : listeners) {
@@ -78,6 +90,11 @@ public final class PodEvents {
 		return CAN_MOUNT.invoker().canMount(pod, passenger);
 	}
 
+	/** True when a listener says the pod passes through blocks. */
+	public static boolean ignoresBlockCollision(PodEntity pod) {
+		return IGNORES_BLOCK_COLLISION.invoker().ignoresBlockCollision(pod);
+	}
+
 	/** True unless the pod is stranded (the built-in reason) or a listener says it has no power. */
 	public static boolean isPowered(PodEntity pod) {
 		return !pod.stranded() && IS_POWERED.invoker().isPowered(pod);
@@ -86,6 +103,7 @@ public final class PodEvents {
 	/** The listeners' total extra mass. A negative or NaN total is a bug in a listener, so it fails loudly. */
 	public static float extraMass(PodEntity pod) {
 		float mass = EXTRA_MASS.invoker().extraMass(pod);
+		// NaN fails >= 0, so this refuses it too. Deliberate: a listener bug must not become a silent no-lift pod.
 		if (!(mass >= 0f)) {
 			throw new IllegalStateException("pod extra mass must not be negative, got " + mass);
 		}
@@ -112,6 +130,11 @@ public final class PodEvents {
 	@FunctionalInterface
 	public interface ExtraMass {
 		float extraMass(PodEntity pod);
+	}
+
+	@FunctionalInterface
+	public interface IgnoresBlockCollision {
+		boolean ignoresBlockCollision(PodEntity pod);
 	}
 
 	@FunctionalInterface
