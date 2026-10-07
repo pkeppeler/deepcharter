@@ -13,12 +13,12 @@ import io.github.pkeppeler.deepcharter.layer.Zones;
  * A player on no charter fires nothing. The third kind, the event, is fired by the feature that owns the event, through
  * {@link Transmissions#fire}.
  */
-final class TransmissionTriggers {
+public final class TransmissionTriggers {
 	private TransmissionTriggers() {
 	}
 
 	/** A descent fires the transmissions of the breach into the layer. An ascent fires nothing. */
-	static void onCrossed(Entity entity, ServerLevel from, ServerLevel to, int fromLayer, int toLayer) {
+	public static void onCrossed(Entity entity, ServerLevel from, ServerLevel to, int fromLayer, int toLayer) {
 		if (!(entity instanceof ServerPlayer player) || toLayer <= fromLayer) {
 			return;
 		}
@@ -27,16 +27,19 @@ final class TransmissionTriggers {
 				TransmissionCatalog.forBreach(toLayer).forEach(transmission -> Transmissions.fire(server, charter.id(), transmission.id())));
 	}
 
-	/** Every {@link TransmissionTuning#zonePollTicks()} ticks, fires the transmissions of the zone each charter member stands in. */
-	static void pollZones(MinecraftServer server) {
+	/** Fires the transmissions of the zone each charter member stands in. */
+	public static void pollZones(MinecraftServer server) {
 		if (server.getTickCount() % TransmissionTuning.DEFAULT.zonePollTicks() != 0) {
 			return;
 		}
 		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-			Charters.charterOf(server, player.getUUID()).ifPresent(charter ->
-					Zones.of(player.level(), player.getBlockY()).ifPresent(zone ->
-							TransmissionCatalog.forZone(zone.layer(), zone.index())
-									.forEach(transmission -> Transmissions.fire(server, charter.id(), transmission.id()))));
+			Charters.charterOf(server, player.getUUID()).ifPresent(charter -> {
+				// The poll is also where a bonus that a full account refused is tried again.
+				Transmissions.payPending(server, TransmissionData.get(server), charter.id());
+				Zones.of(player.level(), player.getBlockY()).ifPresent(zone ->
+						TransmissionCatalog.forZone(zone.layer(), zone.index())
+								.forEach(transmission -> Transmissions.fire(server, charter.id(), transmission.id())));
+			});
 		}
 	}
 }

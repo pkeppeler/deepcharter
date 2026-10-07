@@ -1,26 +1,37 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
+
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.NbtUtils;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
@@ -33,6 +44,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterData;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.layer.BreachEvents;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -41,26 +53,40 @@ import io.github.pkeppeler.deepcharter.transmission.Transmission;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionCatalog;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionEvents;
+import io.github.pkeppeler.deepcharter.transmission.TransmissionTriggers;
 import io.github.pkeppeler.deepcharter.transmission.Transmissions;
 
 /**
  * Server GameTests for #62: each transmission fires once and in order, repair transmissions replay for a charter founded later,
- * bonuses are credited exactly once (also across a restart and a replay), and a charter is sent its queue when a member is online.
+ * bonuses are credited exactly once (also across a restart, a replay and a full account), every member of a charter is sent what they
+ * missed on their own login, and unreadable or broken data never fails a tick, a login or a crossing.
  *
- * <p>Every test of the run shares one world, and the world's transmission data remembers the repair transmissions of all of them. A
- * test that needs exact state therefore passes a {@link TransmissionData} of its own, and makes its charters with
- * {@link #directCharter} so no founding or joining hook touches the world's data. The tests of the hooks use the world's data and
- * assert only on what must be there.
+ * <p>Every test of the run shares one world. A test that needs exact state passes a {@link TransmissionData} of its own and makes its
+ * charters with {@link #directCharter}, so no hook touches the world's data. A test that goes through the hooks swaps a fresh
+ * {@link TransmissionData} into the world's storage for the length of one server tick, in {@link #withFreshWorldData}, and puts the old
+ * one back: nothing a test writes is seen by another, and no production reset exists. The two real-trigger tests span many ticks, so they
+ * use the world's data as it is and only look at their own player.
  */
 public class TransmissionsTest {
 	/** What each player has been sent, in order. A Fabric event cannot be unregistered, so this filters by player UUID. */
 	private static final Map<UUID, List<Identifier>> DELIVERED = new ConcurrentHashMap<>();
+	/** Players for whom the test's second listener throws, to see that a throwing listener loses nothing. */
+	private static final Set<UUID> THROWING = ConcurrentHashMap.newKeySet();
 	/** Real ticks for a zone or breach trigger to fire: the zone poll every 20 ticks, or a fall and a crossing. */
 	private static final int TRIGGER_TICKS = 400;
+	/** Columns of the two real-trigger tests. No other test class uses X or Z from 6000 to 6999. */
+	private static final double BREACH_COLUMN = 6400.5;
+	private static final double ZONE_COLUMN = 6600.5;
+	private static final String LANG_RESOURCE = "/assets/deepcharter/lang/en_us.json";
 
 	static {
 		TransmissionEvents.DELIVERED.register((server, charter, player, transmission) ->
 				DELIVERED.computeIfAbsent(player.getUUID(), uuid -> new CopyOnWriteArrayList<>()).add(transmission.id()));
+		TransmissionEvents.DELIVERED.register((server, charter, player, transmission) -> {
+			if (THROWING.contains(player.getUUID())) {
+				throw new IllegalStateException("a listener of the test throws");
+			}
+		});
 	}
 
 	private static Identifier id(String name) {
@@ -99,6 +125,25 @@ public class TransmissionsTest {
 		String name = uniqueName();
 		expectDone(helper, Charters.found(server(helper), founder, name), "founding");
 		return Charters.findByName(server(helper), name).orElseThrow().id();
+	}
+
+	/**
+	 * Runs {@code body} with {@code replacement} as the world's transmission data and puts the world's own data back afterwards, in the
+	 * same server tick, so no other test sees either.
+	 */
+	private static void withWorldData(GameTestHelper helper, TransmissionData replacement, Consumer<TransmissionData> body) {
+		SavedDataStorage storage = server(helper).getDataStorage();
+		TransmissionData original = storage.computeIfAbsent(TransmissionData.TYPE);
+		storage.set(TransmissionData.TYPE, replacement);
+		try {
+			body.accept(replacement);
+		} finally {
+			storage.set(TransmissionData.TYPE, original);
+		}
+	}
+
+	private static void withFreshWorldData(GameTestHelper helper, Consumer<TransmissionData> body) {
+		withWorldData(helper, new TransmissionData(), body);
 	}
 
 	private static void expectDone(GameTestHelper helper, Optional<CharterRefusal> refusal, String what) {
@@ -146,6 +191,33 @@ public class TransmissionsTest {
 		helper.succeed();
 	}
 
+	/** A missing lang key would reach a player as a thrown packet handler, so it fails here, in the tests. */
+	@GameTest
+	public void everyTransmissionHasItsLangKeys(GameTestHelper helper) {
+		JsonObject lang;
+		try (InputStream stream = TransmissionsTest.class.getResourceAsStream(LANG_RESOURCE)) {
+			if (stream == null) {
+				throw helper.assertionException("missing resource %s", LANG_RESOURCE);
+			}
+			try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
+				lang = JsonParser.parseReader(reader).getAsJsonObject();
+			}
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+		for (Transmission transmission : TransmissionCatalog.all()) {
+			for (String key : List.of(transmission.senderKey(), transmission.framing().headerKey(), transmission.bodyKey())) {
+				if (!lang.has(key) || lang.get(key).getAsString().isBlank()) {
+					throw helper.assertionException("%s needs the lang key %s", transmission.id(), key);
+				}
+			}
+			if (!lang.get(transmission.bodyKey()).getAsString().contains("[CHARTER]") || !lang.get(transmission.bodyKey()).getAsString().contains("[DIRECTOR]")) {
+				throw helper.assertionException("the placeholder text of %s should show both fields", transmission.id());
+			}
+		}
+		helper.succeed();
+	}
+
 	@GameTest
 	public void eachTransmissionFiresOnceAndInOrder(GameTestHelper helper) {
 		MinecraftServer server = server(helper);
@@ -163,79 +235,90 @@ public class TransmissionsTest {
 			throw helper.assertionException("with a member online each should be sent at once, once, in order: %s", deliveredTo(crew));
 		}
 		TransmissionData.Progress progress = data.progress(charter);
-		if (!progress.fired().equals(ids("t03", "t01", "t04")) || !progress.queue().isEmpty()) {
-			throw helper.assertionException("the fired set keeps all three and the sent queue is empty: %s", progress);
+		if (!progress.fired().equals(ids("t03", "t01", "t04")) || !progress.unsent(crew.player().getUUID()).isEmpty()) {
+			throw helper.assertionException("the fired set keeps all three and the member has been sent them: %s", progress);
 		}
 		helper.succeed();
 	}
 
+	/** A charter of three, one online when a transmission fires: the two offline members are each sent it on their next login, once. */
 	@GameTest
-	public void aQueueWaitsForAMemberAndIsDeliveredInOrder(GameTestHelper helper) {
+	public void everyMemberIsSentWhatTheyMissedOnTheirOwnLogin(GameTestHelper helper) {
 		MinecraftServer server = server(helper);
 		TransmissionData data = new TransmissionData();
-		UUID absent = UUID.randomUUID();
-		CharterId charter = directCharter(helper, absent);
+		MockPlayer director = MockPlayers.join(helper, "tx-m1");
+		MockPlayer second = MockPlayers.join(helper, "tx-m2");
+		MockPlayer third = MockPlayers.join(helper, "tx-m3");
+		CharterId charter = directCharter(helper, director.player().getUUID(), second.player().getUUID(), third.player().getUUID());
+		// The two crew members are offline when it fires. They keep the player objects they logged in with, which a login passes in.
+		second.leave();
+		third.leave();
 
-		Transmissions.fire(server, data, charter, id("t06"));
-		Transmissions.fire(server, data, charter, id("t01"));
-		Transmissions.fire(server, data, charter, id("t06"));
-		Transmissions.fire(server, data, charter, id("t07"));
-		TransmissionData.Progress waiting = data.progress(charter);
-		if (!waiting.fired().equals(ids("t06", "t01", "t07")) || !waiting.queue().equals(ids("t06", "t01", "t07"))) {
-			throw helper.assertionException("with nobody online the queue holds each once, in order: %s", waiting);
+		Transmissions.fire(server, data, charter, id("t17"));
+		if (!deliveredTo(director).equals(ids("t17")) || !deliveredTo(second).isEmpty() || !deliveredTo(third).isEmpty()) {
+			throw helper.assertionException("only the online member is sent it at once: %s, %s, %s", deliveredTo(director), deliveredTo(second), deliveredTo(third));
 		}
 
-		// A member comes online: the queue is sent in order, once each, and is then empty.
-		MockPlayer crew = MockPlayers.join(helper, "tx-queue");
-		UUID crewId = crew.player().getUUID();
-		CharterData charters = CharterData.get(server);
-		expectDone(helper, charters.apply(crewId, charter), "applying");
-		expectDone(helper, charters.approve(absent, crewId), "approving");
-		Transmissions.deliver(server, data, charter);
-		if (!deliveredTo(crew).equals(ids("t06", "t01", "t07"))) {
-			throw helper.assertionException("the queue should arrive in order, once each: %s", deliveredTo(crew));
+		Transmissions.deliverTo(server, data, charter, second.player());
+		Transmissions.deliverTo(server, data, charter, second.player());
+		if (!deliveredTo(second).equals(ids("t17")) || !deliveredTo(third).isEmpty()) {
+			throw helper.assertionException("the second member's login sends it once, and only to them: %s, %s", deliveredTo(second), deliveredTo(third));
 		}
-		Transmissions.deliver(server, data, charter);
-		TransmissionData.Progress after = data.progress(charter);
-		if (deliveredTo(crew).size() != 3 || !after.queue().isEmpty() || !after.fired().equals(ids("t06", "t01", "t07"))) {
-			throw helper.assertionException("a second delivery sends nothing, and the fired set stays: %s, %s", deliveredTo(crew), after);
+		Transmissions.fire(server, data, charter, id("t18"));
+		Transmissions.deliverTo(server, data, charter, third.player());
+		Transmissions.deliverTo(server, data, charter, second.player());
+		if (!deliveredTo(third).equals(ids("t17", "t18")) || !deliveredTo(second).equals(ids("t17", "t18"))
+				|| !deliveredTo(director).equals(ids("t17", "t18"))) {
+			throw helper.assertionException("each member has been sent each once, in order: %s, %s, %s",
+					deliveredTo(director), deliveredTo(second), deliveredTo(third));
 		}
 		helper.succeed();
 	}
 
+	/** A member who joins later starts at the beginning and is sent the charter's story so far. Leaving forgets how far they were. */
 	@GameTest
-	public void aMemberWhoJoinsIsSentTheQueue(GameTestHelper helper) {
+	public void aMemberWhoJoinsLaterIsSentTheStorySoFar(GameTestHelper helper) {
 		MinecraftServer server = server(helper);
-		UUID director = UUID.randomUUID();
-		CharterId charter = directCharter(helper, director);
-		Transmissions.fire(server, charter, id("t17"));
-		Transmissions.fire(server, charter, id("t18"));
-		Transmissions.fire(server, charter, id("t17"));
-		if (!TransmissionData.get(server).progress(charter).queue().equals(ids("t17", "t18"))) {
-			throw helper.assertionException("nobody is online, so t17 and t18 wait: %s", TransmissionData.get(server).progress(charter));
-		}
+		withFreshWorldData(helper, data -> {
+			UUID director = UUID.randomUUID();
+			CharterId charter = directCharter(helper, director);
+			Transmissions.fire(server, charter, id("t17"));
+			Transmissions.fire(server, charter, id("t18"));
 
-		MockPlayer crew = MockPlayers.join(helper, "tx-join");
-		UUID crewId = crew.player().getUUID();
-		expectDone(helper, Charters.apply(server, crewId, charter), "applying");
-		expectDone(helper, Charters.approve(server, director, crewId), "approving");
-		if (!deliveredTo(crew).equals(ids("t17", "t18"))) {
-			throw helper.assertionException("joining sends the queue, in order, once each: %s", deliveredTo(crew));
-		}
-		if (!TransmissionData.get(server).progress(charter).queue().isEmpty()) {
-			throw helper.assertionException("the queue should be empty after delivery");
-		}
+			MockPlayer crew = MockPlayers.join(helper, "tx-join");
+			UUID crewId = crew.player().getUUID();
+			expectDone(helper, Charters.apply(server, crewId, charter), "applying");
+			expectDone(helper, Charters.approve(server, director, crewId), "approving");
+			if (!deliveredTo(crew).equals(ids("t17", "t18"))) {
+				throw helper.assertionException("joining sends the story so far, in order, once each: %s", deliveredTo(crew));
+			}
+			if (data.progress(charter).cursors().get(crewId) != 2) {
+				throw helper.assertionException("the member has been sent both: %s", data.progress(charter));
+			}
+
+			expectDone(helper, Charters.leave(server, crewId), "leaving");
+			if (data.progress(charter).cursors().containsKey(crewId)) {
+				throw helper.assertionException("leaving should forget the member's place: %s", data.progress(charter));
+			}
+			expectDone(helper, Charters.apply(server, crewId, charter), "applying again");
+			expectDone(helper, Charters.approve(server, director, crewId), "approving again");
+			if (!deliveredTo(crew).equals(ids("t17", "t18", "t17", "t18"))) {
+				throw helper.assertionException("a member who returns is sent the story again from the start: %s", deliveredTo(crew));
+			}
+		});
 		helper.succeed();
 	}
 
 	@GameTest
 	public void theFrozenSignatureFiresOnTheRunningServer(GameTestHelper helper) {
-		CharterId charter = directCharter(helper, UUID.randomUUID());
-		Transmissions.fire(charter, id("t17"));
-		Transmissions.fire(charter, id("t17"));
-		if (!TransmissionData.get(server(helper)).progress(charter).fired().equals(ids("t17"))) {
-			throw helper.assertionException("fire(CharterId, Identifier) should fire once on the running server");
-		}
+		withFreshWorldData(helper, data -> {
+			CharterId charter = directCharter(helper, UUID.randomUUID());
+			Transmissions.fire(charter, id("t17"));
+			Transmissions.fire(charter, id("t17"));
+			if (!data.progress(charter).fired().equals(ids("t17"))) {
+				throw helper.assertionException("fire(CharterId, Identifier) should fire once on the running server");
+			}
+		});
 		helper.succeed();
 	}
 
@@ -285,23 +368,25 @@ public class TransmissionsTest {
 		helper.succeed();
 	}
 
-	/** The whole path with the world's data and its hooks: a charter founded through {@code Charters} is sent what the world fired. */
+	/** The whole path with the hooks: a charter founded through {@code Charters} is sent what the world fired. */
 	@GameTest
 	public void foundingACharterSendsItTheRepairsTheWorldHasFired(GameTestHelper helper) {
 		MinecraftServer server = server(helper);
-		CharterId first = directCharter(helper, UUID.randomUUID());
-		Transmissions.fire(server, first, id("t12"));
-		Transmissions.fire(server, first, id("t18"));
+		withFreshWorldData(helper, data -> {
+			CharterId first = directCharter(helper, UUID.randomUUID());
+			Transmissions.fire(server, first, id("t12"));
+			Transmissions.fire(server, first, id("t18"));
 
-		MockPlayer founder = MockPlayers.join(helper, "tx-found");
-		CharterId later = foundedCharter(helper, founder.player().getUUID());
-		if (!deliveredTo(founder).contains(id("t12")) || deliveredTo(founder).contains(id("t18"))) {
-			throw helper.assertionException("founding should send t12, a repair, and not t18: %s", deliveredTo(founder));
-		}
-		Transmissions.fire(server, later, id("t12"));
-		if (deliveredTo(founder).stream().filter(id("t12")::equals).count() != 1) {
-			throw helper.assertionException("t12 should not be sent twice: %s", deliveredTo(founder));
-		}
+			MockPlayer founder = MockPlayers.join(helper, "tx-found");
+			CharterId later = foundedCharter(helper, founder.player().getUUID());
+			if (!deliveredTo(founder).equals(ids("t12"))) {
+				throw helper.assertionException("founding should send t12, a repair, and not t18: %s", deliveredTo(founder));
+			}
+			Transmissions.fire(server, later, id("t12"));
+			if (deliveredTo(founder).size() != 1) {
+				throw helper.assertionException("t12 should not be sent twice: %s", deliveredTo(founder));
+			}
+		});
 		helper.succeed();
 	}
 
@@ -368,35 +453,80 @@ public class TransmissionsTest {
 		helper.succeed();
 	}
 
+	/**
+	 * A bonus the account cannot take is kept, and paid once when there is room: on the next fire, login or zone poll. The account is
+	 * filled to the brim, so a deposit of any size is refused.
+	 */
 	@GameTest
-	public void theFiredSetAndTheQueueSurviveARestart(GameTestHelper helper) {
+	public void aBonusThatAFullAccountRefusesIsKeptAndPaidOnce(GameTestHelper helper) {
+		MinecraftServer server = server(helper);
+		TransmissionData data = new TransmissionData();
+		CharterId charter = directCharter(helper, UUID.randomUUID());
+		expectDone(helper, Charters.deposit(server, charter, Long.MAX_VALUE), "filling the account");
+
+		Transmissions.fire(server, data, charter, id("t05"));
+		if (account(helper, charter) != Long.MAX_VALUE || !data.progress(charter).pending().equals(List.of(Transmission.Bonus.B1))
+				|| !data.progress(charter).fired().equals(ids("t05"))) {
+			throw helper.assertionException("the refused B1 should wait, the transmission still fired: account %s, %s", account(helper, charter), data.progress(charter));
+		}
+		// Still full: the next fire tries again and keeps it.
+		Transmissions.fire(server, data, charter, id("t17"));
+		if (!data.progress(charter).pending().equals(List.of(Transmission.Bonus.B1))) {
+			throw helper.assertionException("a full account keeps the bonus waiting: %s", data.progress(charter));
+		}
+		expectDone(helper, Charters.spend(server, charter, 1_000), "making room");
+		Transmissions.fire(server, data, charter, id("t18"));
+		if (account(helper, charter) != Long.MAX_VALUE || !data.progress(charter).pending().isEmpty()) {
+			throw helper.assertionException("B1 should be paid once there is room: account %s, %s", account(helper, charter), data.progress(charter));
+		}
+		expectDone(helper, Charters.spend(server, charter, 1_000), "making room again");
+		Transmissions.fire(server, data, charter, id("t05"));
+		Transmissions.fire(server, data, charter, id("t01"));
+		if (account(helper, charter) != Long.MAX_VALUE - 1_000) {
+			throw helper.assertionException("a paid bonus is not paid again: %s", account(helper, charter));
+		}
+
+		// A login and a zone poll retry as well.
+		TransmissionData other = new TransmissionData();
+		CharterId second = directCharter(helper, UUID.randomUUID());
+		expectDone(helper, Charters.deposit(server, second, Long.MAX_VALUE), "filling the second account");
+		Transmissions.fire(server, other, second, id("t05"));
+		expectDone(helper, Charters.spend(server, second, 1_000), "making room for the second");
+		Transmissions.payPending(server, other, second);
+		if (account(helper, second) != Long.MAX_VALUE || !other.progress(second).pending().isEmpty()) {
+			throw helper.assertionException("paying what is pending should credit B1: %s", account(helper, second));
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void theFiredSetTheCursorsAndThePendingBonusesSurviveARestart(GameTestHelper helper) {
 		MinecraftServer server = server(helper);
 		CharterId charter = CharterId.random();
+		UUID member = UUID.randomUUID();
 		Path dir = tempDir();
 		try {
 			try (SavedDataStorage first = storage(server, dir)) {
 				TransmissionData data = first.computeIfAbsent(TransmissionData.TYPE);
 				requireFired(helper, data, charter, "t01", true);
 				requireFired(helper, data, charter, "t02", true);
-				data.takeQueue(charter);
+				data.markSent(charter, member, 2);
 				requireFired(helper, data, charter, "t03", true);
+				data.addPending(charter, Transmission.Bonus.B2);
 				first.saveAndJoin();
 			}
 			try (SavedDataStorage second = storage(server, dir)) {
 				TransmissionData data = second.computeIfAbsent(TransmissionData.TYPE);
 				TransmissionData.Progress progress = data.progress(charter);
-				if (!progress.fired().equals(ids("t01", "t02", "t03")) || !progress.queue().equals(ids("t03"))) {
-					throw helper.assertionException("the fired set and the queue should load as saved: %s", progress);
+				if (!progress.fired().equals(ids("t01", "t02", "t03")) || !progress.unsent(member).equals(ids("t03"))
+						|| !progress.pending().equals(List.of(Transmission.Bonus.B2))) {
+					throw helper.assertionException("the state should load as saved: %s", progress);
 				}
 				if (!data.replays().equals(ids("t02"))) {
 					throw helper.assertionException("the replay list should load as saved: %s", data.replays());
 				}
 				requireFired(helper, data, charter, "t02", false);
 				requireFired(helper, data, charter, "t03", false);
-				requireFired(helper, data, charter, "t04", true);
-				if (!data.takeQueue(charter).equals(ids("t03", "t04"))) {
-					throw helper.assertionException("the queue keeps its order across a restart");
-				}
 			}
 		} finally {
 			deleteTree(dir);
@@ -405,10 +535,13 @@ public class TransmissionsTest {
 	}
 
 	@GameTest
-	public void dataOfAnotherVersionIsKeptAndFailsLoud(GameTestHelper helper) {
+	public void dataOfAnotherVersionIsKeptAndFailsLoudOnExplicitUse(GameTestHelper helper) {
 		for (CompoundTag saved : List.of(versioned(TransmissionData.VERSION + 1), versioned(0), new CompoundTag())) {
 			saved.putString("shape", "from another build");
 			TransmissionData data = TransmissionData.CODEC.parse(NbtOps.INSTANCE, saved).getOrThrow();
+			if (data.isUsable()) {
+				throw helper.assertionException("data of another version must not be usable: %s", saved);
+			}
 			expectThrows(helper, "reading unreadable transmission data", () -> data.progress(CharterId.random()));
 			expectThrows(helper, "firing into unreadable transmission data", () -> data.fire(CharterId.random(), TransmissionCatalog.require(id("t01"))));
 			Tag written = TransmissionData.CODEC.encodeStart(NbtOps.INSTANCE, data).getOrThrow();
@@ -420,8 +553,96 @@ public class TransmissionsTest {
 		brokenBody.putString("charters", "not a list");
 		TransmissionData data = TransmissionData.CODEC.parse(NbtOps.INSTANCE, brokenBody).getOrThrow();
 		expectThrows(helper, "using a body that does not parse", data::replays);
-		if (!brokenBody.equals(TransmissionData.CODEC.encodeStart(NbtOps.INSTANCE, data).getOrThrow())) {
-			throw helper.assertionException("a body that does not parse must be written back unchanged");
+		if (data.isUsable() || !brokenBody.equals(TransmissionData.CODEC.encodeStart(NbtOps.INSTANCE, data).getOrThrow())) {
+			throw helper.assertionException("a body that does not parse is unusable and must be written back unchanged");
+		}
+		helper.succeed();
+	}
+
+	/**
+	 * With unreadable data in the world, nothing a player does may throw: a zone poll, a login, a crossing, a founding and a direct fire
+	 * each do nothing and leave the data as it was. Only an explicit read of the data throws.
+	 */
+	@GameTest
+	public void unreadableDataNeverFailsATickALoginOrACrossing(GameTestHelper helper) {
+		MinecraftServer server = server(helper);
+		CompoundTag saved = versioned(TransmissionData.VERSION + 1);
+		saved.putString("shape", "from a newer build");
+		TransmissionData unreadable = TransmissionData.CODEC.parse(NbtOps.INSTANCE, saved).getOrThrow();
+		MockPlayer crew = MockPlayers.join(helper, "tx-unreadable");
+		CharterId charter = directCharter(helper, crew.player().getUUID());
+		ServerLevel one = server.getLevel(LayerChain.dimension(1));
+		ServerLevel two = server.getLevel(LayerChain.dimension(2));
+		crew.player().setNoGravity(true);
+		crew.teleportTo(two, new Vec3(BREACH_COLUMN, two.getMinY() + two.getHeight() / 2, BREACH_COLUMN), 0, 0);
+
+		withWorldData(helper, unreadable, data -> {
+			for (int repeat = 0; repeat < 3; repeat++) {
+				TransmissionTriggers.pollZones(server);
+				Transmissions.deliverOnLogin(server, crew.player());
+				BreachEvents.CROSSED.invoker().onCrossed(crew.player(), one, two, 1, 2);
+				Transmissions.fire(charter, id("t01"));
+				Transmissions.deliver(server, data, charter);
+				Transmissions.replayTo(server, data, charter);
+				Transmissions.payPending(server, data, charter);
+				Transmissions.forget(server, data, charter, crew.player().getUUID());
+			}
+			MockPlayer founder = MockPlayers.join(helper, "tx-unreadable-founder");
+			foundedCharter(helper, founder.player().getUUID());
+			expectDone(helper, Charters.apply(server, UUID.randomUUID(), charter), "applying");
+			expectDone(helper, Charters.approve(server, crew.player().getUUID(), Charters.find(server, charter).orElseThrow().applications().getFirst()), "approving");
+			expectDone(helper, Charters.leave(server, crew.player().getUUID()), "leaving");
+			expectThrows(helper, "an explicit read of unreadable data", () -> data.progress(charter));
+			Tag written = TransmissionData.CODEC.encodeStart(NbtOps.INSTANCE, data).getOrThrow();
+			if (!saved.equals(written)) {
+				throw helper.assertionException("the unreadable data must be left as it was: %s", written);
+			}
+		});
+		if (!deliveredTo(crew).isEmpty()) {
+			throw helper.assertionException("nothing is sent from unreadable data: %s", deliveredTo(crew));
+		}
+		helper.succeed();
+	}
+
+	/**
+	 * A saved id that the data file no longer lists is skipped, and the rest are sent; a listener that throws loses nothing.
+	 */
+	@GameTest
+	public void aMissingIdIsSkippedAndAThrowingListenerLosesNothing(GameTestHelper helper) {
+		MinecraftServer server = server(helper);
+		MockPlayer crew = MockPlayers.join(helper, "tx-broken");
+		UUID crewId = crew.player().getUUID();
+		CharterId charter = directCharter(helper, crewId);
+
+		CompoundTag entry = new CompoundTag();
+		entry.put("charter", CharterId.CODEC.encodeStart(NbtOps.INSTANCE, charter).getOrThrow());
+		ListTag fired = new ListTag();
+		fired.add(StringTag.valueOf("deepcharter:t99"));
+		fired.add(StringTag.valueOf("deepcharter:t01"));
+		entry.put("fired", fired);
+		entry.put("cursors", new ListTag());
+		entry.put("pending_bonuses", new ListTag());
+		ListTag charters = new ListTag();
+		charters.add(entry);
+		CompoundTag saved = versioned(TransmissionData.VERSION);
+		saved.put("charters", charters);
+		saved.put("replays", new ListTag());
+		TransmissionData data = TransmissionData.CODEC.parse(NbtOps.INSTANCE, saved).getOrThrow();
+
+		Transmissions.deliver(server, data, charter);
+		if (!deliveredTo(crew).equals(ids("t01")) || !data.progress(charter).unsent(crewId).isEmpty()) {
+			throw helper.assertionException("t99 should be skipped and t01 sent: %s, %s", deliveredTo(crew), data.progress(charter));
+		}
+
+		THROWING.add(crewId);
+		try {
+			Transmissions.fire(server, data, charter, id("t06"));
+			Transmissions.fire(server, data, charter, id("t07"));
+		} finally {
+			THROWING.remove(crewId);
+		}
+		if (!deliveredTo(crew).equals(ids("t01", "t06", "t07")) || !data.progress(charter).unsent(crewId).isEmpty()) {
+			throw helper.assertionException("a throwing listener should lose nothing: %s, %s", deliveredTo(crew), data.progress(charter));
 		}
 		helper.succeed();
 	}
@@ -441,6 +662,7 @@ public class TransmissionsTest {
 				TransmissionData data = first.computeIfAbsent(TransmissionData.TYPE);
 				requireFired(helper, data, charter, "t02", true);
 				requireFired(helper, data, charter, "t05", true);
+				data.markSent(charter, UUID.randomUUID(), 1);
 				first.saveAndJoin();
 			}
 			Path file = savedFile(dir);
@@ -469,20 +691,18 @@ public class TransmissionsTest {
 	@GameTest(maxTicks = TRIGGER_TICKS)
 	public void aBreachCrossingFiresItsTransmissionAndItsBonusForTheCharter(GameTestHelper helper) {
 		MinecraftServer server = server(helper);
-		double x = 3000.5;
-		double z = 3000.5;
 		ServerLevel one = server.getLevel(LayerChain.dimension(1));
 		ServerLevel two = server.getLevel(LayerChain.dimension(2));
 		// Generate the arrival area in layer 2 now so the crossing does not wait on it.
 		for (int dx = -2; dx <= 2; dx++) {
 			for (int dz = -2; dz <= 2; dz++) {
-				two.getChunk((int) x / 16 + dx, (int) z / 16 + dz);
+				two.getChunk((int) BREACH_COLUMN / 16 + dx, (int) BREACH_COLUMN / 16 + dz);
 			}
 		}
 		MockPlayer crew = MockPlayers.join(helper, "tx-breach");
 		CharterId charter = foundedCharter(helper, crew.player().getUUID());
 		crew.player().setPermanentlyInvulnerable(true);
-		crew.teleportTo(one, new Vec3(x, one.getMinY() - 1, z), 0, 0);
+		crew.teleportTo(one, new Vec3(BREACH_COLUMN, one.getMinY() - 1, BREACH_COLUMN), 0, 0);
 		helper.succeedWhen(() -> {
 			List<Identifier> delivered = deliveredTo(crew);
 			if (!delivered.contains(id("t05"))) {
@@ -503,15 +723,13 @@ public class TransmissionsTest {
 		crew.player().setPermanentlyInvulnerable(true);
 		// Held in place, so the player stays in the zone it was put in.
 		crew.player().setNoGravity(true);
-		double x = 3200.5;
-		double z = 3200.5;
 		// The middle third of layer 2 is zone 1 and the bottom third is zone 2.
 		int middle = two.getMinY() + two.getHeight() / 2;
 		int bottom = two.getMinY() + 4;
 		if (Zones.of(two, middle).orElseThrow().index() != 1 || Zones.of(two, bottom).orElseThrow().index() != 2) {
 			throw helper.assertionException("the test's heights should be in zones 1 and 2");
 		}
-		crew.teleportTo(two, new Vec3(x, middle, z), 0, 0);
+		crew.teleportTo(two, new Vec3(ZONE_COLUMN, middle, ZONE_COLUMN), 0, 0);
 		boolean[] moved = {false};
 		helper.succeedWhen(() -> {
 			List<Identifier> delivered = deliveredTo(crew);
@@ -520,7 +738,7 @@ public class TransmissionsTest {
 			}
 			if (!moved[0]) {
 				moved[0] = true;
-				crew.teleportTo(two, new Vec3(x, bottom, z), 0, 0);
+				crew.teleportTo(two, new Vec3(ZONE_COLUMN, bottom, ZONE_COLUMN), 0, 0);
 			}
 			if (!delivered.contains(id("t09"))) {
 				throw helper.assertionException("standing in zone 2 of layer 2 should send t09, sent %s", delivered);

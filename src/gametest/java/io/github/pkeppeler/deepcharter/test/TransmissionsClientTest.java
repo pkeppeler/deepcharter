@@ -46,6 +46,8 @@ public class TransmissionsClientTest implements FabricClientGameTest {
 	private static final int DELIVERY_TICKS = 600;
 	/** A fuse on client ticks for a wait that has no other limit. About 3 minutes at 20 ticks a second. */
 	private static final int CLIENT_TICK_FUSE = 3600;
+	/** Player count once the client has dropped: the mock stays online. */
+	private static final int MOCK_ONLY = 1;
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
@@ -109,18 +111,22 @@ public class TransmissionsClientTest implements FabricClientGameTest {
 				BreachEffects.reset();
 				TransmissionOverlay.reset();
 			});
+
+			// A transmission the data file does not list must be dropped, not thrown from the packet handler, which would disconnect the player.
+			context.runOnClient(client -> TransmissionOverlay.enqueue(new TransmissionPayload(id("t99"), CREW_NAME, player)));
+			if (context.computeOnClient(client -> TransmissionOverlay.waiting() != 0 || TransmissionOverlay.active())) {
+				throw new AssertionError("An unknown transmission should be dropped");
+			}
 		}
 	}
 
 	/**
 	 * The mock player founds the charter and the real client joins it. A live transmission arrives, typed in the colour of its framing.
-	 * A second one waits behind it. Then the client disconnects, two transmissions fire while it is away, and the login alone delivers them.
+	 * A second one waits behind it. Then the client disconnects while the mock stays online, two transmissions fire while it is away, and
+	 * its own login alone delivers them, from where it left off.
 	 */
 	private static void transmissionsReachTheClientInOrderAndOnLogin(ClientGameTestContext context) {
-		TwoPlayerServer two = TwoPlayerServer.start(context);
-		// TwoPlayerServer.close closes its own connection, which fails once the test has closed it to reconnect.
-		boolean reconnecting = false;
-		try {
+		try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
 			UUID mock = two.mock().player().getUUID();
 			CharterId charter = two.server().computeOnServer(server -> {
 				if (Charters.found(server, mock, TWO_PLAYER_NAME).isPresent()) {
@@ -159,38 +165,30 @@ public class TransmissionsClientTest implements FabricClientGameTest {
 				throw new AssertionError("A transmission from an unknown sender has a red header");
 			}
 
-			// Offline: the mock leaves too, because the server has one slot for a real login. Nobody is online, so these wait in the queue.
-			two.server().runOnServer(server -> two.mock().leave());
-			reconnecting = true;
+			// Offline: the client leaves, the mock stays. The mock is sent these at once, the client when it logs in again.
 			two.connection().close();
 			context.waitFor(client -> client.level == null);
-			for (int tick = 0; two.server().computeOnServer(server -> server.getPlayerCount()) > 0; tick++) {
+			for (int tick = 0; two.server().computeOnServer(server -> server.getPlayerCount()) > MOCK_ONLY; tick++) {
 				if (tick > CLIENT_TICK_FUSE) {
-					throw new AssertionError("the server never dropped the disconnected players");
+					throw new AssertionError("the server never dropped the disconnected client");
 				}
 				context.waitTick();
 			}
-			List<Identifier> queued = two.server().computeOnServer(server -> {
+			List<Identifier> missed = two.server().computeOnServer(server -> {
 				Transmissions.fire(server, charter, id("t07"));
 				Transmissions.fire(server, charter, id("t09"));
-				return TransmissionData.get(server).progress(charter).queue();
+				return TransmissionData.get(server).progress(charter).unsent(real);
 			});
-			if (!queued.equals(List.of(id("t07"), id("t09")))) {
-				throw new AssertionError("Nobody is online, so t07 and t09 should wait in order, the queue is " + queued);
+			if (!missed.equals(List.of(id("t07"), id("t09")))) {
+				throw new AssertionError("The offline client has not been sent t07 and t09, in order: " + missed);
 			}
 
 			try (var connection = two.server().connect()) {
 				context.waitFor(client -> TransmissionOverlay.transmission().map(Transmission::id).equals(Optional.of(id("t07"))), DELIVERY_TICKS);
 				context.waitFor(client -> TransmissionOverlay.transmission().map(Transmission::id).equals(Optional.of(id("t09"))), DELIVERY_TICKS);
-				if (!two.server().computeOnServer(server -> TransmissionData.get(server).progress(charter).queue().isEmpty())) {
-					throw new AssertionError("The queue should be empty once the login has delivered it");
+				if (!two.server().computeOnServer(server -> TransmissionData.get(server).progress(charter).unsent(real).isEmpty())) {
+					throw new AssertionError("Nothing should be left to send the client once the login has delivered it");
 				}
-			}
-		} finally {
-			if (reconnecting) {
-				two.server().close();
-			} else {
-				two.close();
 			}
 		}
 	}
