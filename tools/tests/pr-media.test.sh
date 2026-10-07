@@ -71,13 +71,55 @@ check "first PR's files survive a second PR" "$(if [[ $survivors -eq 4 ]]; then 
 commits=$("$real_git" -C "$bare" rev-list --count pr-media)
 check "history is linear with one commit per publish" "$(if [[ $commits -eq 4 ]]; then echo 0; else echo 1; fi)"
 
+# --- run from a subdirectory: other PRs' folders survive ---
+make_remote
+mkdir -p "$work/clone/build/evidence/demo"
+(cd "$work/clone/build/evidence/demo" && "$script" 7 "$work/files/a.gif") >"$work/out" 2>"$work/err"
+check "publish from a subdirectory succeeds" $?
+check "subdirectory run keeps PR 1's folder" "$(tree | grep -q '^1/old.png:'; echo $?)" # pipe-grep-q: fail-closed — a missed match yields nonzero, which fails the check
+check "subdirectory run publishes the file" "$(tree | grep -q '^7/a.gif:'; echo $?)" # pipe-grep-q: fail-closed — a missed match yields nonzero, which fails the check
+root_names=$("$real_git" -C "$bare" ls-tree --name-only pr-media | tr '\n' ' ')
+check "root holds exactly the old and new folders" "$(if [[ $root_names == "1 7 " ]]; then echo 0; else echo 1; fi)"
+
+# --- the guard: a tree that loses an entry is never pushed ---
+# A git wrapper drops matching lines from `git mktree` input, standing in for a
+# regression in tree building. The production script has no seam for this.
+mkdir "$work/dropbin"
+cat >"$work/dropbin/git" <<STUB
+#!/usr/bin/env bash
+if [[ \$1 == mktree ]]; then
+  grep -vE "\$DROP" | "$real_git" "\$@"
+  exit \${PIPESTATUS[1]}
+fi
+exec "$real_git" "\$@"
+STUB
+chmod +x "$work/dropbin/git"
+guarded() { # guarded <drop regex> <pr> <file>...
+  local drop=$1
+  shift
+  (cd "$work/clone" && DROP=$drop PATH="$work/dropbin:$PATH" "$script" "$@") >"$work/out" 2>"$work/err"
+}
+make_remote
+before=$(tree)
+tip_before=$("$real_git" -C "$bare" rev-parse pr-media)
+if guarded $'\t1$' 7 "$work/files/a.gif"; then check "root that drops a folder is refused" 1; else check "root that drops a folder is refused" 0; fi
+check "root guard names the problem" "$(grep -q 'would drop top-level entries' "$work/err"; echo $?)"
+check "root guard leaves pr-media alone" "$(if [[ $("$real_git" -C "$bare" rev-parse pr-media) == "$tip_before" ]]; then echo 0; else echo 1; fi)"
+if guarded $'\told.png$' 1 "$work/files/a.gif"; then check "PR folder that loses a file is refused" 1; else check "PR folder that loses a file is refused" 0; fi
+check "PR guard names the problem" "$(grep -q 'would lose files' "$work/err"; echo $?)"
+check "PR guard leaves pr-media alone" "$(if [[ $(tree) == "$before" ]]; then echo 0; else echo 1; fi)"
+# The same wrapper with nothing to drop publishes normally (the guard has no false positive).
+guarded '^$' 1 "$work/files/a.gif"
+check "guard allows a replace-and-add publish" $?
+check "guard-clean publish keeps the old file" "$(tree | grep -q '^1/old.png:'; echo $?)" # pipe-grep-q: fail-closed — a missed match yields nonzero, which fails the check
+
 # --- rejected input ---
 before=$(tree)
 rejects() { # rejects <description> <args...>
   local desc=$1
   shift
   if run "$@"; then check "$desc is rejected" 1; else check "$desc is rejected" 0; fi
-  check "$desc leaves pr-media alone" "$([[ $(tree) == "$before" ]]; echo $?)"
+  check "$desc leaves pr-media alone" "$(if [[ $(tree) == "$before" ]]; then echo 0; else echo 1; fi)"
 }
 rejects "non-numeric PR number" abc "$work/files/a.gif"
 rejects "missing file" 9 "$work/files/none.gif"

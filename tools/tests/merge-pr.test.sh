@@ -31,6 +31,8 @@ case "$1 $2" in
       state)
         if [[ -e $LOG.merged ]]; then echo "${STUB_STATE_AFTER-MERGED}"; else echo "${STUB_STATE-OPEN}"; fi ;;
       isDraft) echo "${STUB_DRAFT-false}" ;;
+      headRefName) echo "${STUB_BRANCH-12-some-slug}" ;;
+      body) printf '%s\n' "${STUB_BODY-Closes #12}" ;;
       labels) echo "${STUB_LABELS-infra
 review-passed}" ;;
       comments) echo "\"${STUB_COMMENT-review-passed ${STUB_SHA-abc123}}\"" ;;
@@ -143,6 +145,28 @@ merge_line="gh pr merge 7 -R pkeppeler/deepcharter --squash --delete-branch --ma
 refusal "closed PR" "REFUSED: PR #7 is not open" STUB_STATE=CLOSED
 refusal "merged PR" "REFUSED: PR #7 is not open" STUB_STATE=MERGED
 refusal "draft PR" "REFUSED: PR #7 is a draft" STUB_DRAFT=true
+# Closes #N: the body's Closes/Fixes/Resolves set must be exactly {branch issue}.
+# The default stub is branch 12-some-slug with body "Closes #12".
+mismatch="but branch 12-some-slug is for issue #12 only"
+refusal "closes another issue" "$mismatch" "STUB_BODY=Closes #13"
+refusal "no closes line" "body has no 'Closes #12'" "STUB_BODY=Just a description of #12"
+refusal "empty body" "body has no 'Closes #12'" STUB_BODY=
+refusal "closes branch issue and another" "body closes #12 #13 but" "STUB_BODY=Closes #12
+Fixes #13"
+refusal "closes two others" "body closes #13 #14 but" "STUB_BODY=Closes #13, resolves #14"
+refusal "branch without issue number" "has head branch 'main-fix', not <issue>-<slug>" STUB_BRANCH=main-fix
+refusal "branch number without slug" "not <issue>-<slug>" STUB_BRANCH=12
+for body in "closes #12" "FIXES #12" "Resolves #12" "Context text.
+
+Closes #12
+More text." "Closes #12 and Closes #12" "Closes: #12"; do
+  run_script "STUB_BODY=$body"
+  exited "matching close is merged: ${body%%$'\n'*}" 0
+  logged "matching close merge invocation" "$merge_line"
+done
+run_script "STUB_BODY=See #13. Closes #12" STUB_BRANCH=12-x
+exited "mention of another issue without a keyword is fine" 0
+
 refusal "missing label" "REFUSED: PR #7 lacks the review-passed label" STUB_LABELS=infra
 refusal "no labels at all" "REFUSED: PR #7 lacks the review-passed label" STUB_LABELS=
 refusal "similar label only" "REFUSED: PR #7 lacks the review-passed label" STUB_LABELS=review-passed-ish
