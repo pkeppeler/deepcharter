@@ -2,7 +2,6 @@ package io.github.pkeppeler.deepcharter.test;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.UncheckedIOException;
 import java.io.Reader;
 
 import com.google.gson.JsonElement;
@@ -25,6 +24,7 @@ import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 
@@ -81,7 +81,7 @@ public class LayerDimensionsTest {
 	public void crustIsAtTheFloor(GameTestHelper helper) {
 		Block crust = BuiltInRegistries.BLOCK.getValue(CRUST_ID);
 		for (int layer = 1; layer <= 2; layer++) {
-			int thickness = crustThickness(helper, layer);
+			int thickness = LayerTuning.DEFAULT.crustThickness();
 			ServerLevel level = level(helper, layer);
 			int floor = level.getMinY();
 			for (int dy = 0; dy < thickness; dy++) {
@@ -169,7 +169,7 @@ public class LayerDimensionsTest {
 				throw helper.assertionException("player is in %s after goto 2", level.dimension());
 			}
 			Vec3 pos = mock.player().position();
-			if (pos.y < level.getMinY() + crustThickness(helper, 2) || pos.y > level.getMaxY()) {
+			if (pos.y < level.getMinY() + LayerTuning.DEFAULT.crustThickness() || pos.y > level.getMaxY()) {
 				throw helper.assertionException("player placed at y=%s, outside the layer", pos.y);
 			}
 			try {
@@ -200,24 +200,13 @@ public class LayerDimensionsTest {
 			var source = mock.player().createCommandSourceStack().withPermission(LevelBasedPermissionSet.GAMEMASTER);
 			server.getCommands().getDispatcher().execute("deepcharter layer goto 1", source);
 			double y = mock.player().position().y;
-			if (y < layer.getMinY() + crustThickness(helper, 1) || y > layer.getMaxY()) {
+			if (y < layer.getMinY() + LayerTuning.DEFAULT.crustThickness() || y > layer.getMaxY()) {
 				throw helper.assertionException("player placed at y=%s, outside the layer", y);
 			}
 		} finally {
 			mock.leave();
 		}
 		helper.succeed();
-	}
-
-	/** The height of the bottom flat-generator layer of the shipped dimension, which is the crust. */
-	private static int crustThickness(GameTestHelper helper, int layer) {
-		try {
-			return read(helper, "/data/deepcharter/dimension/layer_" + layer + ".json").getAsJsonObject()
-					.getAsJsonObject("generator").getAsJsonObject("settings")
-					.getAsJsonArray("layers").get(0).getAsJsonObject().get("height").getAsInt();
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
-		}
 	}
 
 	private static JsonElement read(GameTestHelper helper, String resource) throws IOException {
