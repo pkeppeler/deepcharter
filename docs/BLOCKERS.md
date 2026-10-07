@@ -2,6 +2,41 @@
 
 The orchestrator writes this log during unattended runs. It never stops for a blocker: it records the blocker here and moves on to the next ready work. Newest entries come first. When an entry is resolved, its status changes to **resolved**, with the date and the reason.
 
+## 2026-10-07: M1 demo is ready (#10)
+
+**Status:** open, for the user to watch. Nothing waits on it.
+
+All M1 prototypes are merged. On a real dedicated server, two players each pilot a Mole. They drill down through layer 1 with the scanner on, breach the crust, and arrive in the darker layer 2.
+
+![Two pods drill through layer 1 and breach into layer 2](https://github.com/pkeppeler/deepcharter/blob/pr-media/93/m1-two-pods.gif?raw=true)
+
+### What each piece does
+1. **The Mole pod**: you ride it and it holds one pilot. It has hull, fuel and cargo gauges. See [PR #40](https://github.com/pkeppeler/deepcharter/blob/pr-media/40/pod-rider-third-person.png?raw=true).
+2. **Driving and rotor flight**: it drives on one axis at a time and never diagonally. Jump is the rotor. Hard landings damage the hull. See [the drive GIF](https://github.com/pkeppeler/deepcharter/blob/pr-media/44/pod-drive.gif?raw=true) (PR #44).
+3. **Drilling**: sprint to drill down, and push into a wall to drill sideways. It never drills up. Ore goes to cargo, and the floor crust is slow and hurts the hull. See [the drill GIF](https://github.com/pkeppeler/deepcharter/blob/pr-media/86/pod-drill.gif?raw=true) (PR #86).
+4. **Cargo, lift and fuel**: 7 ore slots, and weight cuts lift. Fuel drains when idle, faster when moving, and fastest when drilling. An empty tank strands the pod. Coal refuels it. (PR #48)
+5. **Layers and the breach**: layer 1 and layer 2 each get darker with depth. The altimeter reads in feet. A breach plays a rumble, a fade to black and a typed transmission. See [the breach GIF](https://github.com/pkeppeler/deepcharter/blob/pr-media/49/breach-crossing.gif?raw=true) (PRs #41, #42, #49).
+6. **The scanner**: a side-view minimap of ore around the pod. It stays readable at midnight and in the dark layers. See [the scanner GIF](https://github.com/pkeppeler/deepcharter/blob/pr-media/46/scanner-hud.gif?raw=true) (PR #46).
+
+### How to try it yourself
+`./gradlew runClient` opens a dev client. In a creative or op world, run these commands:
+- `/deepcharter pod spawn`: spawns a Mole. Use the Mole to get in, and sneak to get out.
+- `/deepcharter layer goto 1`: goes to layer 1. Hold sprint on the ground to drill down.
+- `/deepcharter pod dump`: empties the cargo.
+
+### What we learned
+- **Fuel balance:** one breach at the floor of layer 1 uses about **90% of a stock tank**. Is this intended, or should a breach cost less?
+- **Lag:** pod movement is controlled by the server. On a local server, the lag is about 0.2 blocks. Real network latency adds about 0.4 blocks of start and stop delay. The M2 friends playtest will show this, and a fallback exists.
+- **Test reliability:** CI now runs the in-game tests on GitHub's machines. Each test run uses a fresh world, and the tests wait for real entity ticks. Two flaky tests and two fail-open shell checks were fixed.
+- **The 2-player proof covers** the dedicated server and one real client. Player 2's own client and real latency move to the M2 playtest.
+
+### Questions for you (none of them blocks work)
+1. The fuel cost of a breach (above).
+2. How the scanner shows water and lava: see the "fluids" entry below.
+3. PR #24, the play-test bridge: see the entry below.
+
+M2 has started: #51-#85. Its foundation (#51) is in review.
+
 ## 2026-10-07: M2 is planned. These items need the user (none blocks the work)
 
 **Status:** open, for the user to see. M2 work continues with placeholders.
