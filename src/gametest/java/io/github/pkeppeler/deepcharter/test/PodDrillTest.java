@@ -402,8 +402,22 @@ public class PodDrillTest {
 		box(one, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
 		box(one, x - 2, x + 2, 1, 8, Z - 2, Z + 2, Blocks.AIR);
 		float[] hullBefore = {Float.NaN};
+		StringBuilder history = new StringBuilder();
+		String[] last = {""};
 		Rig rig = Rig.await(helper, one, new Vec3(x, 1, Z), 0f, "drill-crust", SPRINT, pod -> hullBefore[0] = pod.hull());
 		helper.onEachTick(() -> {
+			StringBuilder now = new StringBuilder();
+			for (int y = 0; y <= 2; y++) {
+				for (int bx = x - 1; bx <= x; bx++) {
+					for (int bz = Z - 1; bz <= Z; bz++) {
+						now.append(one.getBlockState(new BlockPos(bx, y, bz)).getBlock().getDescriptionId().replace("block.", "")).append(' ');
+					}
+				}
+			}
+			if (!now.toString().equals(last[0])) {
+				last[0] = now.toString();
+				history.append("t").append(helper.getTick()).append(" ready=").append(rig.ready()).append(": ").append(now).append("| ");
+			}
 			if (!rig.ready()) {
 				return;
 			}
@@ -423,15 +437,7 @@ public class PodDrillTest {
 				throw failure(helper, "the pod arrived at %s, expected near (%d, %d)", crossed.position(), x, Z);
 			}
 			if (count(one, x - 1, x, 0, 0, Z - 1, Z, Blocks.AIR) != 4) {
-				List<String> air = new java.util.ArrayList<>();
-				for (int bx = x - 3; bx <= x + 3; bx++) {
-					for (int bz = Z - 3; bz <= Z + 3; bz++) {
-						if (!one.getBlockState(new BlockPos(bx, 0, bz)).is(LayerBlocks.BREACH_CRUST)) {
-							air.add(bx + "," + bz + "=" + one.getBlockState(new BlockPos(bx, 0, bz)).getBlock());
-						}
-					}
-				}
-				throw failure(helper, "the crust under the pod was not broken: pod at %s, non-crust y=0 cells %s", crossed.position(), air);
+				throw failure(helper, "the crust under the pod was not broken. history %s", history);
 			}
 			if (!one.getBlockState(new BlockPos(x + 1, 0, Z)).is(LayerBlocks.BREACH_CRUST)) {
 				throw failure(helper, "the bore took crust outside the pod's 2 x 2");
