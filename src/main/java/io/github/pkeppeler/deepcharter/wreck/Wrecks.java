@@ -1,6 +1,5 @@
 package io.github.pkeppeler.deepcharter.wreck;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -163,14 +162,12 @@ public final class Wrecks {
 		Component message = layer.isPresent()
 				? Component.translatable("deepcharter.wreck.report.layer", layer.getAsInt(), pos.getX(), pos.getY(), pos.getZ())
 				: Component.translatable("deepcharter.wreck.report.surface", pos.getX(), pos.getY(), pos.getZ());
-		List<ServerPlayer> online = new ArrayList<>();
 		for (var member : charter.roster()) {
 			ServerPlayer player = server.getPlayerList().getPlayer(member);
 			if (player != null) {
-				online.add(player);
+				player.sendSystemMessage(message);
 			}
 		}
-		online.forEach(player -> player.sendSystemMessage(message));
 		WreckEvents.REPORTED.invoker().onReported(server, charter, pod, layer, pos);
 	}
 }
