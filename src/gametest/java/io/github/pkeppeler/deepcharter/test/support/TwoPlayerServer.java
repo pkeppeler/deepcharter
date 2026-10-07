@@ -29,12 +29,16 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerCon
 public final class TwoPlayerServer implements AutoCloseable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TwoPlayerServer.class);
 	private static final String MOCK_NAME = "MockPilot";
+	/** Real-login slots of the test server: the mock holds one, so a reconnect needs a second. */
+	private static final int PLAYER_LIMIT = 2;
 
+	private final ClientGameTestContext context;
 	private final TestDedicatedServerContext server;
 	private final TestDedicatedServerConnection connection;
 	private final MockPlayer mock;
 
-	private TwoPlayerServer(TestDedicatedServerContext server, TestDedicatedServerConnection connection, MockPlayer mock) {
+	private TwoPlayerServer(ClientGameTestContext context, TestDedicatedServerContext server, TestDedicatedServerConnection connection, MockPlayer mock) {
+		this.context = context;
 		this.server = server;
 		this.connection = connection;
 		this.mock = mock;
@@ -48,6 +52,7 @@ public final class TwoPlayerServer implements AutoCloseable {
 		int port = freePort();
 		Properties properties = new Properties();
 		properties.setProperty("server-port", Integer.toString(port));
+		properties.setProperty("max-players", Integer.toString(PLAYER_LIMIT));
 		LOGGER.info("TwoPlayerServer: dedicated server on port {}", port);
 		TestDedicatedServerContext server = context.worldBuilder().createServer(properties);
 		TestDedicatedServerConnection connection = null;
@@ -55,7 +60,7 @@ public final class TwoPlayerServer implements AutoCloseable {
 			connection = server.connect();
 			MockPlayer mock = server.computeOnServer(minecraftServer -> MockPlayers.join(minecraftServer, MOCK_NAME));
 			context.waitFor(client -> client.level != null && client.level.players().size() == 2);
-			return new TwoPlayerServer(server, connection, mock);
+			return new TwoPlayerServer(context, server, connection, mock);
 		} catch (RuntimeException | Error e) {
 			if (connection != null) {
 				connection.close();
@@ -92,7 +97,10 @@ public final class TwoPlayerServer implements AutoCloseable {
 			server.runOnServer(minecraftServer -> mock.leave());
 		} finally {
 			try {
-				connection.close();
+				// The test may have closed its connection already, to reconnect.
+				if (context.computeOnClient(client -> client.level != null)) {
+					connection.close();
+				}
 			} finally {
 				server.close();
 			}

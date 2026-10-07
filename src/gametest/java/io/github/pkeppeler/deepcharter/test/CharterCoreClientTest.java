@@ -58,10 +58,7 @@ public class CharterCoreClientTest implements FabricClientGameTest {
 	 * Last, the client disconnects and reconnects: the login sync alone must give it the charter back.
 	 */
 	private static void crewAndDirectorChangesReachTheClient(ClientGameTestContext context) {
-		TwoPlayerServer two = TwoPlayerServer.start(context);
-		// TwoPlayerServer.close closes its own connection, which fails once the test has closed it to reconnect.
-		boolean reconnecting = false;
-		try {
+		try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
 			UUID mock = two.mock().player().getUUID();
 			UUID real = two.server().computeOnServer(server -> server.getPlayerList().getPlayers().stream()
 					.map(player -> player.getUUID()).filter(uuid -> !uuid.equals(mock)).findFirst().orElseThrow());
@@ -86,25 +83,16 @@ public class CharterCoreClientTest implements FabricClientGameTest {
 			});
 			context.waitFor(client -> ClientCharter.view().filter(view -> view.people() == 1 && view.director()).isPresent());
 
-			// The test server has one slot for a real login, and the mock holds it while it is online: it leaves too.
-			two.server().runOnServer(server -> two.mock().leave());
-			reconnecting = true;
 			two.connection().close();
 			context.waitFor(client -> client.level == null);
-			for (int tick = 0; two.server().computeOnServer(server -> server.getPlayerCount()) > 0; tick++) {
+			for (int tick = 0; two.server().computeOnServer(server -> server.getPlayerCount()) > 1; tick++) {
 				if (tick > CLIENT_TICK_FUSE) {
-					throw new AssertionError("the server never dropped the disconnected players");
+					throw new AssertionError("the server never dropped the disconnected client");
 				}
 				context.waitTick();
 			}
 			try (var connection = two.server().connect()) {
 				context.waitFor(client -> ClientCharter.view().filter(view -> view.name().equals(TWO_PLAYER_NAME) && view.director()).isPresent());
-			}
-		} finally {
-			if (reconnecting) {
-				two.server().close();
-			} else {
-				two.close();
 			}
 		}
 	}
