@@ -7,7 +7,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Inventory;
@@ -16,8 +15,6 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
-import io.github.pkeppeler.deepcharter.attachment.Versioned;
-import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
@@ -111,29 +108,7 @@ public final class RepairStation {
 		double radius = RepairTuning.DEFAULT.parkRadius();
 		return context.player().level().getEntitiesOfClass(PodEntity.class, new AABB(pos).inflate(radius)).stream()
 				.filter(pod -> pod.position().distanceToSqr(centre) <= radius * radius)
-				.filter(pod -> mayUse(context.server(), pod, context.charter()))
+				.filter(pod -> PodComponents.mayAccess(pod, context.charter()))
 				.min(Comparator.comparingDouble(pod -> pod.position().distanceToSqr(centre)));
-	}
-
-	// TODO switch to PodComponents.mayAccess (#126)
-	/** The rule of {@code PodComponents.canMount}, without its message: who may use the pod. */
-	private static boolean mayUse(MinecraftServer server, PodEntity pod, Optional<Charter> charter) {
-		if (pod.getAttached(PodComponents.STATE) instanceof Versioned.Unreadable<?>) {
-			return false;
-		}
-		Optional<PodComponents.Registration> registration = PodComponents.registration(pod);
-		if (registration.isEmpty()) {
-			return true;
-		}
-		try {
-			Optional<Charter> owner = Charters.find(server, registration.get().owner());
-			if (owner.isEmpty() || owner.get().dormant()) {
-				return true;
-			}
-			return charter.isPresent() && charter.get().id().equals(registration.get().owner());
-		} catch (IllegalStateException unreadable) {
-			// Unreadable charters: canMount skips the check too (the terminal framework refuses before this is reached).
-			return true;
-		}
 	}
 }
