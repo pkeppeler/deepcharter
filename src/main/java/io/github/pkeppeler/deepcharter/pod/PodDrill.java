@@ -41,16 +41,13 @@ public final class PodDrill {
 	}
 
 	/** Above sea level the depth is negative; the drill is no faster for it. */
-	public static int drillTicks(float hardness, int depthFeet) {
-		double ticks = hardness * PodTuning.DEFAULT.drill().ticksPerHardness() * (1 + Math.max(0, depthFeet) / 1000.0);
+	public static int drillTicks(PodStats stats, float hardness, int depthFeet) {
+		double ticks = hardness * stats.ticksPerHardness() * (1 + Math.max(0, depthFeet) / 1000.0);
 		return Math.max(1, (int) Math.ceil(ticks));
 	}
 
-	/** Called every pod tick, on both sides; only the server drills. */
-	public static void tick(PodEntity pod) {
-		if (pod.level().isClientSide()) {
-			return;
-		}
+	/** Called every pod tick, on the server only. */
+	static void tick(PodEntity pod, PodStats stats) {
 		Direction wanted = PodEvents.isPowered(pod) ? wantedDirection(pod) : null;
 		if (wanted == null) {
 			stop(pod);
@@ -59,7 +56,7 @@ public final class PodDrill {
 		Slab slab = Slab.of(pod, wanted);
 		// Centre before judging the slab: a pod straddling a third column can see an all-air footprint, and
 		// sliding onto it (off a ledge, past a wall's edge) is how it reaches something to drill.
-		boolean centred = centre(pod, slab);
+		boolean centred = centre(pod, slab, stats);
 		if (!slab.hasWork() || !slab.allowed()) {
 			stop(pod);
 			return;
@@ -71,12 +68,12 @@ public final class PodDrill {
 		}
 		Progress progress = pod.drillProgress();
 		int ticks = progress != null && progress.continues(wanted, slab.origin()) ? progress.ticks() + 1 : 1;
-		if (ticks < slab.drillTicks()) {
+		if (ticks < slab.drillTicks(stats)) {
 			pod.setDrillProgress(new Progress(wanted, slab.origin(), ticks));
 			return;
 		}
 		pod.setDrillProgress(null);
-		slab.bore(pod);
+		slab.bore(pod, stats);
 	}
 
 	private static void stop(PodEntity pod) {
@@ -98,8 +95,8 @@ public final class PodDrill {
 	}
 
 	/** Slides the pod toward the centre of its bore; true once there. The centre is inside blocks the pod already overlaps. */
-	private static boolean centre(PodEntity pod, Slab slab) {
-		double speed = PodTuning.DEFAULT.drill().alignSpeed();
+	private static boolean centre(PodEntity pod, Slab slab, PodStats stats) {
+		double speed = stats.alignSpeed();
 		double dx = slab.centreX() - pod.getX();
 		double dz = slab.centreZ() - pod.getZ();
 		pod.setPos(pod.getX() + Mth.clamp(dx, -speed, speed), pod.getY(), pod.getZ() + Mth.clamp(dz, -speed, speed));
@@ -159,20 +156,20 @@ public final class PodDrill {
 			return true;
 		}
 
-		int drillTicks() {
+		int drillTicks(PodStats stats) {
 			int depth = Depth.feet(Depth.of(level, cells.stream().mapToInt(BlockPos::getY).min().orElseThrow()));
 			int ticks = 1;
 			for (BlockPos pos : cells) {
 				BlockState state = state(pos);
 				if (breakable(state)) {
-					ticks = Math.max(ticks, PodDrill.drillTicks(state.getDestroySpeed(level, pos), depth));
+					ticks = Math.max(ticks, PodDrill.drillTicks(stats, state.getDestroySpeed(level, pos), depth));
 				}
 			}
 			return ticks;
 		}
 
 		/** A full bay, or cargo that cannot be read, loses the ore: a drill that refused would trap the pod in its own tunnel (SPEC: only ore is kept). */
-		void bore(PodEntity pod) {
+		void bore(PodEntity pod, PodStats stats) {
 			boolean crust = false;
 			for (BlockPos pos : cells) {
 				BlockState state = state(pos);
@@ -194,7 +191,7 @@ public final class PodDrill {
 				}
 			}
 			if (crust) {
-				pod.setHull(Math.max(0f, pod.hull() - PodTuning.DEFAULT.drill().crustHullDamage()));
+				pod.damageHull(stats.crustHullDamage());
 			}
 		}
 
