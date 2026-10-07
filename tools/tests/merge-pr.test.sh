@@ -39,6 +39,11 @@ review-passed}" ;;
       mergeable) echo "${STUB_MERGEABLE-MERGEABLE}" ;;
     esac ;;
   "api repos/"*)
+    if [[ $2 == */pulls/*/files* ]]; then
+      [[ ${STUB_FILES_FAIL-0} == 1 ]] && exit 1
+      printf '%s' "${STUB_FILES-}"
+      exit 0
+    fi
     echo "${STUB_RUNS-$DEFAULT_RUNS}"
     exit "${STUB_RUNS_RC:-0}" ;;
   "pr merge") touch "$LOG.merged"; exit "${STUB_MERGE_RC:-0}" ;;
@@ -49,6 +54,12 @@ cat >"$work/bin/git" <<'STUB'
 #!/usr/bin/env bash
 echo "git $*" >>"$LOG"
 case "$1" in
+  fetch) [[ ${STUB_FETCH_FAIL-0} == 1 ]] && exit 1 ;;
+  ls-tree)
+    [[ ${STUB_MAIN_ADRS_FAIL-0} == 1 ]] && exit 1
+    printf '%s' "${STUB_MAIN_ADRS-docs/adr/0007-seven.md
+docs/adr/0018-eighteen.md
+}" ;;
   remote) echo "${STUB_ORIGIN-git@github.com:pkeppeler/deepcharter.git}" ;;
   cat-file) [[ ${STUB_ROADMAP_PRESENT-1} == 1 ]] || exit 1 ;;
   worktree) if [[ $2 == add ]]; then mkdir -p "$4"; fi ;;
@@ -83,6 +94,13 @@ runs() {
     if [[ $st == in_progress || $st == queued ]]; then status=$st; concl=; fi
     printf '%s\t2026-01-01T00:00:%02dZ\t%s\t%s\t%s\n' "$n" "$i" "$i" "$status" "$concl"
   done
+}
+
+# files <status:path>...: fake PR file lines as the script's --jq prints them
+# (status, path), one per line.
+files() {
+  local spec
+  for spec in "$@"; do printf '%s\t%s\n' "${spec%%:*}" "${spec#*:}"; done
 }
 
 # The production REQUIRED_CHECKS, so no case depends on its value: the default
@@ -173,6 +191,33 @@ More text." "Closes #12 and Closes #12" "Closes: #12"; do
 done
 run_script "STUB_BODY=See #13. Closes #12" STUB_BRANCH=12-x
 exited "mention of another issue without a keyword is fine" 0
+
+# ADR numbers: a PR may not ADD docs/adr/NNNN-*.md when NNNN is already on
+# origin/main (any slug). Main's default ADRs are 0007 and 0018; next free is 0019.
+adr_msg="adds docs/adr/0007-new-slug.md but ADR 0007 already exists on origin/main (docs/adr/0007-seven.md); the next free number is 0019"
+refusal "ADR number clash" "$adr_msg" "STUB_FILES=$(files added:docs/adr/0007-new-slug.md)"
+refusal "ADR clash beside other files" "ADR 0007 already exists" \
+  "STUB_FILES=$(files modified:README.md added:docs/adr/0007-new-slug.md)"
+refusal "ADR clash of a renamed-in file" "ADR 0007 already exists" \
+  "STUB_FILES=$(files renamed:docs/adr/0007-new-slug.md)"
+refusal "next free number counts the PR's own ADRs" "the next free number is 0021" \
+  "STUB_FILES=$(files added:docs/adr/0020-mine.md added:docs/adr/0007-new-slug.md)"
+refusal "ADR file list unreadable" "could not read its changed files" STUB_FILES_FAIL=1
+refusal "origin/main fetch fails" "could not read the ADR list on origin/main" STUB_FETCH_FAIL=1
+refusal "origin/main ADR list unreadable" "could not read the ADR list on origin/main" STUB_MAIN_ADRS_FAIL=1
+refusal "origin/main ADR list empty" "could not read the ADR list on origin/main" STUB_MAIN_ADRS=
+run_script "STUB_FILES=$(files added:docs/adr/0019-free.md)"
+exited "new ADR with a free number merges" 0
+logged "ADR merge invocation" "$merge_line"
+logged "ADR list read from origin/main" "git ls-tree --name-only origin/main docs/adr/"
+run_script "STUB_FILES=$(files added:README.md modified:tools/merge-pr.sh)"
+exited "PR with no ADR merges" 0
+run_script STUB_FILES=
+exited "PR with no files merges" 0
+run_script "STUB_FILES=$(files added:docs/adr/README.md added:docs/adr/0007-seven.md.bak added:docs/adr/sub/0007-x.md)"
+exited "non-ADR files under docs/adr merge" 0
+run_script "STUB_FILES=$(files modified:docs/adr/0007-seven.md removed:docs/adr/0018-eighteen.md)"
+exited "PR modifying or removing an existing ADR merges" 0
 
 refusal "missing label" "REFUSED: PR #7 lacks the review-passed label" STUB_LABELS=infra
 refusal "no labels at all" "REFUSED: PR #7 lacks the review-passed label" STUB_LABELS=

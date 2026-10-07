@@ -5,6 +5,7 @@
 # labelled `review-passed` with a `review-passed <head sha>` comment for the
 # current head (see tools/mark-review-passed.sh), closes exactly its branch's
 # issue (the body's Closes/Fixes/Resolves #N set is {N} for branch `<N>-<slug>`),
+# adds no docs/adr/NNNN-*.md whose NNNN is already on origin/main (any slug),
 # mergeable, and every check is
 # `pass` or `skipping` (at least one check, and all of REQUIRED_CHECKS passing). A
 # check's state is its newest non-skipped run, so a later skipped run cannot hide
@@ -61,6 +62,31 @@ closes=${closes% }
 [[ -n $closes ]] || refuse "body has no 'Closes #$issue' (branch $branch is for issue #$issue)"
 [[ $closes == "$issue" ]] \
   || refuse "body closes #${closes// / #} but branch $branch is for issue #$issue only (the Closes/Fixes/Resolves set must be exactly {#$issue})"
+
+# A PR may not ADD docs/adr/NNNN-*.md when NNNN is already on origin/main (parallel
+# PRs pick numbers on their own). Fail closed: an unreadable list refuses.
+pr_files=$(gh api "repos/$repo/pulls/$pr/files?per_page=100" --paginate \
+  --jq '.[] | [.status, .filename] | @tsv') || refuse "could not read its changed files"
+git fetch origin main >/dev/null 2>&1 || refuse "could not read the ADR list on origin/main (fetch failed)"
+main_adrs=$(git ls-tree --name-only origin/main docs/adr/) || main_adrs=
+[[ -n $main_adrs ]] || refuse "could not read the ADR list on origin/main"
+adr_re='^docs/adr/([0-9]{4})-[^/]+\.md$'
+max_adr=0
+for path in $main_adrs; do
+  [[ $path =~ $adr_re ]] && max_adr=$((10#${BASH_REMATCH[1]} > max_adr ? 10#${BASH_REMATCH[1]} : max_adr))
+done
+added_adrs=()
+while IFS=$'\t' read -r status path; do
+  [[ $status == added || $status == renamed ]] && [[ $path =~ $adr_re ]] || continue
+  added_adrs+=("$path")
+  max_adr=$((10#${BASH_REMATCH[1]} > max_adr ? 10#${BASH_REMATCH[1]} : max_adr))
+done <<<"$pr_files"
+for path in ${added_adrs[@]+"${added_adrs[@]}"}; do
+  [[ $path =~ $adr_re ]]
+  number=${BASH_REMATCH[1]}
+  clash=$(grep -E "^docs/adr/$number-" <<<"$main_adrs" | head -1 || true)
+  [[ -z $clash ]] || refuse "adds $path but ADR $number already exists on origin/main ($clash); the next free number is $(printf '%04d' $((max_adr + 1)))"
+done
 
 pr_field labels '.labels[].name' | grep -qx 'review-passed' \
   || refuse "lacks the review-passed label" # pipe-grep-q: fail-closed — a missed match (SIGPIPE) only refuses the merge
