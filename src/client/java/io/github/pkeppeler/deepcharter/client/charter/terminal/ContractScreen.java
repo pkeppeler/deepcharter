@@ -114,17 +114,18 @@ public final class ContractScreen extends CrtScreen implements TerminalViewScree
 						Component.translatable("screen.deepcharter.contract.found"), button -> send(ContractActions.FOUND, nameField.getValue())));
 				rows(shown.charters(), rightX, columnWidth, "screen.deepcharter.contract.apply", ContractActions.APPLY);
 			}
-			case APPLICANT -> addRenderableWidget(new CrtButton(actionX, closeY, ACTION_WIDTH, ROW_HEIGHT,
-					Component.translatable("screen.deepcharter.contract.withdraw"), button -> send(ContractActions.LEAVE, "")));
-			case CREW -> addRenderableWidget(new CrtButton(actionX, closeY, ACTION_WIDTH, ROW_HEIGHT,
-					Component.translatable("screen.deepcharter.contract.leave"), button -> send(ContractActions.LEAVE, "")));
+			case APPLICANT -> leaveButton(actionX, closeY, "screen.deepcharter.contract.withdraw");
+			case CREW -> leaveButton(actionX, closeY, "screen.deepcharter.contract.leave");
 			case DIRECTOR -> {
 				rows(shown.applicants(), MARGIN, columnWidth, "screen.deepcharter.contract.approve", ContractActions.APPROVE);
 				rows(shown.applicants(), rightX, columnWidth, "screen.deepcharter.contract.deny", ContractActions.DENY);
-				addRenderableWidget(new CrtButton(actionX, closeY, ACTION_WIDTH, ROW_HEIGHT,
-						Component.translatable("screen.deepcharter.contract.leave"), button -> send(ContractActions.LEAVE, "")));
+				leaveButton(actionX, closeY, "screen.deepcharter.contract.leave");
 			}
 		}
+	}
+
+	private void leaveButton(int x, int y, String labelKey) {
+		addRenderableWidget(new CrtButton(x, y, ACTION_WIDTH, ROW_HEIGHT, Component.translatable(labelKey), button -> send(ContractActions.LEAVE, "")));
 	}
 
 	/** One button per name in a column, each sending its action with the full name. */
