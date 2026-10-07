@@ -15,6 +15,8 @@
 #
 # The clone stays outside the repo so its CLAUDE.md/AGENTS.md never load here.
 # Prints the verified jar path on the last line of stdout.
+# `tools/play-setup.sh --print-sha256` prints the pinned jar hash and exits: the
+# one place the hash lives, which play.sh uses to re-check the launch copy.
 set -euo pipefail
 
 home="${DEEPCHARTER_HOME:-$HOME/.local/share/deepcharter}"
@@ -28,6 +30,8 @@ jar="$home/jars/$jar_name"
 clone="$home/mcpfabric"
 config="$home/mcpfabric.config.json"
 wrapper="$home/bin/mcpfabric-mcp"
+
+if [[ "${1:-}" == "--print-sha256" ]]; then echo "$jar_sha256"; exit 0; fi
 
 die() { echo "play-setup: $*" >&2; exit 1; }
 sha256_of() { shasum -a 256 "$1" | cut -d' ' -f1; }
@@ -46,14 +50,21 @@ if [[ ! -f "$jar" ]]; then
 fi
 [[ "$(sha256_of "$jar")" == "$jar_sha256" ]] || die "cached jar $jar does not match the pinned sha256; delete it and re-run"
 
-# 2. MCP server: pinned clone, built without install scripts.
-if [[ ! -d "$clone/.git" ]]; then
-  git clone --quiet "$server_repo" "$clone" >&2
-  git -C "$clone" checkout --quiet "$server_commit"
+# 2. MCP server: pinned clone, built without install scripts. A clone at the wrong
+# commit, or interrupted mid-way, is not repaired in place.
+if [[ ! -e "$clone" ]]; then
+  git clone --quiet "$server_repo" "$clone" >&2 || { rm -rf "$clone"; die "clone failed"; }
+  git -C "$clone" checkout --quiet "$server_commit" || die "checkout failed; delete $clone and re-run"
 fi
-[[ "$(git -C "$clone" rev-parse HEAD)" == "$server_commit" ]] || die "$clone is not at $server_commit"
-if [[ ! -f "$clone/mcp-server/dist/index.js" ]]; then
-  (cd "$clone/mcp-server" && npm ci --ignore-scripts >&2 && npm run build >&2)
+[[ "$(git -C "$clone" rev-parse HEAD 2>/dev/null || true)" == "$server_commit" ]] \
+  || die "$clone is not a clean checkout of $server_commit; delete $clone and re-run"
+# Built only when the marker, written after a successful build, exists.
+build_ok="$clone/mcp-server/.build-ok"
+if [[ ! -f "$build_ok" || ! -f "$clone/mcp-server/dist/index.js" ]]; then
+  rm -f "$build_ok"
+  (cd "$clone/mcp-server" && npm ci --ignore-scripts >&2 && npm run build >&2) \
+    || die "build failed; delete $clone and re-run"
+  : > "$build_ok"
 fi
 
 # 3. Bridge config: created once, flags set via a JSON tool.

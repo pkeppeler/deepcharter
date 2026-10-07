@@ -42,4 +42,4 @@ Permissions in `.claude/settings.json`:
 - **deny:** `kick_player`.
 - Everything else (`break_block`, `place_block`, `use_item`, `attack_entity` and similar) prompts by default.
 
-Screenshots are the full framebuffer, so keep the window small. The bridge port is 25599, so run one play client at a time.
+Screenshots are the full framebuffer, so keep the window small.
