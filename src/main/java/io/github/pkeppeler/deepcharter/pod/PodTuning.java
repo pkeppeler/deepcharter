@@ -32,17 +32,15 @@ public record PodTuning(Shell shell, Movement movement, Drill drill, Cargo cargo
 	}
 
 	/**
-	 * Drill rates. Hardness is the block's vanilla destroy speed, so stone (1.5) takes 24 ticks at the surface,
-	 * the original stock drill's 1.2 s per tile (REFERENCE.md). Time grows by 1 + depthFt/1000, as in the original.
+	 * Drill rates. Hardness is the block's vanilla destroy speed, so stone (1.5) takes 24 ticks at the surface, the
+	 * original stock drill's 1.2 s per tile.
 	 *
 	 * @param ticksPerHardness ticks at the surface per point of hardness
-	 * @param crustTimeFactor  extra time factor for breach crust on top of its hardness (5, so 3.3 times stone at 1; a stock
-	 *                         tank lasts about 625 drilling ticks, so a higher factor would put a crossing out of reach)
 	 * @param crustHullDamage  hull percentage points lost for each crust slab bored
-	 * @param alignSpeed       blocks per tick the pod slides to centre itself in its bore before drilling
+	 * @param alignSpeed       blocks per tick the pod slides to centre itself in its bore
 	 */
-	public record Drill(float ticksPerHardness, float crustTimeFactor, float crustHullDamage, double alignSpeed) {
-		public static final Drill DEFAULT = new Drill(16f, 1f, 8f, 0.1);
+	public record Drill(float ticksPerHardness, float crustHullDamage, double alignSpeed) {
+		public static final Drill DEFAULT = new Drill(16f, 8f, 0.1);
 	}
 
 	/** Bay size and the placeholder ore mass (mass shares a unit with enginePower, 100 = no lift at all). */

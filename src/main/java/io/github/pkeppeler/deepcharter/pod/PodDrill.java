@@ -2,9 +2,7 @@ package io.github.pkeppeler.deepcharter.pod;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.OptionalInt;
-import java.util.WeakHashMap;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -26,16 +24,8 @@ import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 
 /**
- * Pod drilling (SPEC section 7). Sprint on the ground bores down; pushing into a wall on the ground bores
- * sideways; there is no way to bore up. The bore is the pod's footprint, one slab at a time: the pod slides to
- * centre itself on the nearest 2 x 2 (sized by the chassis), waits out the slab's drill time, then breaks the
- * whole slab and moves into it (gravity does so when going down, the pilot's push when going sideways).
- *
- * <p>A slab is refused as a whole, so the bore is never ragged, when any cell of it is unbreakable, is
- * outside the world, is in the top row of the level (a layer's ceiling), or is breach crust in the last layer.
- * Ore goes to the cargo bay; with a full bay it is destroyed, because a drill that refused would trap a pod
- * in its own tunnel (SPEC: only ore is kept, everything else is destroyed). Ore mass is the placeholder
- * {@link PodTuning.Cargo#defaultOreMass()} until ores have weights.
+ * Pod drilling (SPEC section 7): sprint bores down, pushing into a wall bores sideways, never up. The bore is the
+ * pod's footprint, one slab at a time.
  */
 public final class PodDrill {
 	/** Ore the cargo bay keeps; it includes the convention tag {@code c:ores}. */
@@ -44,11 +34,12 @@ public final class PodDrill {
 	private static final double EPSILON = 1e-3;
 	private static final double ALIGNED = 1e-6;
 
-	/** The slab being bored: its first cell identifies it, so a different slab or direction starts over. Server only. */
-	private record Progress(Direction direction, BlockPos slabOrigin, int ticks) {
+	/** Ticks spent on one slab; a different slab or direction starts over. */
+	record Progress(Direction direction, BlockPos slabOrigin, int ticks) {
+		boolean continues(Direction direction, BlockPos slabOrigin) {
+			return this.direction == direction && this.slabOrigin.equals(slabOrigin);
+		}
 	}
-
-	private static final Map<PodEntity, Progress> PROGRESS = new WeakHashMap<>();
 
 	private PodDrill() {
 	}
@@ -56,10 +47,9 @@ public final class PodDrill {
 	public static void init() {
 	}
 
-	/** Ticks to bore one slab whose hardest block has this hardness, at this depth. No faster than at sea level. */
-	public static int drillTicks(float hardness, int depthFeet, boolean crust) {
-		PodTuning.Drill tuning = PodTuning.DEFAULT.drill();
-		double ticks = hardness * tuning.ticksPerHardness() * (1 + Math.max(0, depthFeet) / 1000.0) * (crust ? tuning.crustTimeFactor() : 1f);
+	/** Above sea level the depth is negative; the drill is no faster for it. */
+	public static int drillTicks(float hardness, int depthFeet) {
+		double ticks = hardness * PodTuning.DEFAULT.drill().ticksPerHardness() * (1 + Math.max(0, depthFeet) / 1000.0);
 		return Math.max(1, (int) Math.ceil(ticks));
 	}
 
@@ -74,28 +64,31 @@ public final class PodDrill {
 			return;
 		}
 		Slab slab = Slab.of(pod, wanted);
+		// Centre before judging the slab: a pod straddling a third column can see an all-air footprint, and
+		// sliding onto it (off a ledge, past a wall's edge) is how it reaches something to drill.
+		boolean centred = centre(pod, slab);
 		if (!slab.hasWork() || !slab.allowed()) {
 			stop(pod);
 			return;
 		}
 		pod.setDrilling(true);
 		pod.setDrillDirection(wanted);
-		if (!centre(pod, slab)) {
+		if (!centred) {
 			return;
 		}
-		Progress progress = PROGRESS.get(pod);
-		int ticks = progress != null && progress.direction == wanted && progress.slabOrigin.equals(slab.origin()) ? progress.ticks + 1 : 1;
+		Progress progress = pod.drillProgress();
+		int ticks = progress != null && progress.continues(wanted, slab.origin()) ? progress.ticks() + 1 : 1;
 		if (ticks < slab.drillTicks()) {
-			PROGRESS.put(pod, new Progress(wanted, slab.origin(), ticks));
+			pod.setDrillProgress(new Progress(wanted, slab.origin(), ticks));
 			return;
 		}
-		PROGRESS.remove(pod);
+		pod.setDrillProgress(null);
 		slab.bore(pod);
 	}
 
 	private static void stop(PodEntity pod) {
 		pod.setDrilling(false);
-		PROGRESS.remove(pod);
+		pod.setDrillProgress(null);
 	}
 
 	/** Down on sprint, a horizontal direction on a push into a wall; null when the pod is not on the ground or is not asked to drill. */
@@ -104,29 +97,14 @@ public final class PodDrill {
 			return null;
 		}
 		Input input = pilot.getLastClientInput();
-		Direction drive = driveDirection(input, pilot.getYRot());
+		Direction drive = PodMovement.driveDirection(input, pilot.getYRot());
 		if (drive != null) {
 			return pod.horizontalCollision ? drive : null;
 		}
 		return input.sprint() ? Direction.DOWN : null;
 	}
 
-	/** The same snap as PodMovement's drive: forward and back win over strafing, one axis only. Null when no direction key is held. */
-	private static Direction driveDirection(Input input, float pilotYaw) {
-		Direction facing = Direction.fromYRot(pilotYaw);
-		if (input.forward() != input.backward()) {
-			return input.forward() ? facing : facing.getOpposite();
-		}
-		if (input.left() != input.right()) {
-			return input.right() ? facing.getClockWise() : facing.getCounterClockWise();
-		}
-		return null;
-	}
-
-	/**
-	 * Slides the pod toward the centre of its bore, {@link PodTuning.Drill#alignSpeed()} a tick. Returns true once
-	 * it is there. The centre lies inside the blocks the pod already overlaps, so this never moves it into a wall.
-	 */
+	/** Slides the pod toward the centre of its bore; true once there. The centre is inside blocks the pod already overlaps. */
 	private static boolean centre(PodEntity pod, Slab slab) {
 		double speed = PodTuning.DEFAULT.drill().alignSpeed();
 		double dx = slab.centreX() - pod.getX();
@@ -137,7 +115,6 @@ public final class PodDrill {
 
 	/** The cells one bore step removes, and what is in them. */
 	private record Slab(ServerLevel level, List<BlockPos> cells, double centreX, double centreZ) {
-		/** The slab in front of the pod in {@code direction}; sized by its chassis. */
 		static Slab of(PodEntity pod, Direction direction) {
 			Chassis chassis = pod.chassis();
 			int width = Mth.ceil(chassis.width());
@@ -171,12 +148,11 @@ public final class PodDrill {
 			return cells.getFirst();
 		}
 
-		/** True when at least one cell holds something to break. */
 		boolean hasWork() {
 			return cells.stream().anyMatch(pos -> breakable(state(pos)));
 		}
 
-		/** False when any cell would make the bore ragged or break what must not break. */
+		/** A slab is refused whole, so the bore is never ragged: unbreakable, outside the world, the ceiling row, or last-layer crust. */
 		boolean allowed() {
 			for (BlockPos pos : cells) {
 				BlockState state = state(pos);
@@ -196,13 +172,13 @@ public final class PodDrill {
 			for (BlockPos pos : cells) {
 				BlockState state = state(pos);
 				if (breakable(state)) {
-					ticks = Math.max(ticks, PodDrill.drillTicks(state.getDestroySpeed(level, pos), depth, state.is(LayerBlocks.BREACH_CRUST)));
+					ticks = Math.max(ticks, PodDrill.drillTicks(state.getDestroySpeed(level, pos), depth));
 				}
 			}
 			return ticks;
 		}
 
-		/** Breaks every breakable cell: ore into the bay (or lost when it is full), crust through the breach service, with hull damage. */
+		/** A full bay loses the ore: a drill that refused would trap the pod in its own tunnel (SPEC: only ore is kept). */
 		void bore(PodEntity pod) {
 			boolean crust = false;
 			for (BlockPos pos : cells) {
@@ -229,12 +205,11 @@ public final class PodDrill {
 			return level.getBlockState(pos);
 		}
 
-		/** Air and fluid are not drilled: the bore goes through them. */
 		private static boolean breakable(BlockState state) {
 			return !state.isAir() && !(state.getBlock() instanceof LiquidBlock);
 		}
 
-		/** The crust of the last layer has nothing under it, so a hole through it would only drop the pod into the void. */
+		/** The last layer's crust has nothing under it: a hole would only drop the pod into the void. */
 		private boolean crustLeadsOn() {
 			OptionalInt layer = LayerChain.layerOf(level.dimensionTypeRegistration().unwrapKey().orElseThrow().identifier());
 			return layer.isEmpty() || layer.getAsInt() < LayerChain.count(level.registryAccess());

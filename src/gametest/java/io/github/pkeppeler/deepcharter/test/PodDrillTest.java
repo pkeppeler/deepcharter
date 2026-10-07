@@ -218,13 +218,13 @@ public class PodDrillTest {
 	@GameTest
 	public void drillTimeIsHardnessTimesDepthFactor(GameTestHelper helper) {
 		// Stone is 1.5: the original's 1.2 s a tile at the surface, doubling at 1,000 ft.
-		expectTicks(helper, PodDrill.drillTicks(1.5f, 0, false), 24);
-		expectTicks(helper, PodDrill.drillTicks(1.5f, 1000, false), 48);
-		expectTicks(helper, PodDrill.drillTicks(1.5f, 3000, false), 96);
+		expectTicks(helper, PodDrill.drillTicks(1.5f, 0), 24);
+		expectTicks(helper, PodDrill.drillTicks(1.5f, 1000), 48);
+		expectTicks(helper, PodDrill.drillTicks(1.5f, 3000), 96);
 		// Above sea level the depth is negative: the drill gets no faster for it.
-		expectTicks(helper, PodDrill.drillTicks(1.5f, -500, false), 24);
+		expectTicks(helper, PodDrill.drillTicks(1.5f, -500), 24);
 		// Crust is hardness 5: slower than stone at the same depth.
-		if (PodDrill.drillTicks(5f, 1000, true) <= PodDrill.drillTicks(1.5f, 1000, false)) {
+		if (PodDrill.drillTicks(5f, 1000) <= PodDrill.drillTicks(1.5f, 1000)) {
 			throw failure(helper, "crust must drill slower than stone");
 		}
 		helper.succeed();
@@ -278,11 +278,58 @@ public class PodDrillTest {
 			}
 			rig.pilot.releaseInput();
 			List<Block> kept = rig.pod.cargo().entries().stream().map(PodCargo.Entry::ore).toList();
-			if (kept.size() != slots || kept.contains(Blocks.DIAMOND_ORE)) {
+			if (rig.pod.cargoUsed() != slots || kept.size() != slots || kept.contains(Blocks.DIAMOND_ORE)) {
 				throw failure(helper, "a full bay must keep its %d coal and lose the diamond, it holds %s", slots, kept);
 			}
 			rig.pod.discard();
 			helper.succeed();
+		});
+	}
+
+	/** The hitbox straddles three columns but the bore is two wide: a pod held up by the third column alone must still get on with it. */
+	@GameTest(maxTicks = 600)
+	public void aPodOnALedgeInTheThirdColumnCentresAndDrillsDown(GameTestHelper helper) {
+		int x = 3640;
+		int floor = 60;
+		ServerLevel level = layer(helper, 1);
+		room(level, x, floor, 4);
+		// Only column x+1 reaches the pod; under columns x-1 and x the ground is three blocks lower.
+		box(level, x - 1, x, floor - 3, floor - 1, Z - 4, Z + 4, Blocks.AIR);
+		Rig rig = Rig.build(helper, level, new Vec3(x + 0.3, floor, Z), 0f, "drill-ledge");
+		rig.pilot.setInput(SPRINT);
+		helper.succeedWhen(() -> {
+			if (count(level, x - 1, x, floor - 4, floor - 4, Z - 1, Z, Blocks.AIR) != 4) {
+				throw failure(helper, "the pod on the ledge did not bore the 2 x 2 below it, it is at %s", rig.pod.position());
+			}
+			if (count(level, x + 1, x + 1, floor - 1, floor - 1, Z - 1, Z, Blocks.STONE) != 2) {
+				throw failure(helper, "the bore took the ledge column too");
+			}
+			rig.pilot.releaseInput();
+			rig.pod.discard();
+		});
+	}
+
+	@GameTest(maxTicks = 600)
+	public void aPodAgainstAWallInTheThirdColumnCentresAndDrillsSideways(GameTestHelper helper) {
+		int x = 3704;
+		int floor = 60;
+		ServerLevel level = layer(helper, 1);
+		room(level, x, floor, 4);
+		// A one-column wall the pod's hitbox touches but its 2 x 2 bore does not, then a full wall behind it.
+		box(level, x + 2, x + 2, floor, floor + 10, Z + 1, Z + 1, Blocks.STONE);
+		wall(level, x + 4, x + 5, Z, floor, floor + 10);
+		Rig rig = Rig.build(helper, level, new Vec3(x + 0.3, floor, Z + 0.3), EAST, "drill-edge");
+		rig.pilot.setInput(FORWARD);
+		helper.succeedWhen(() -> {
+			if (count(level, x + 4, x + 4, floor, floor + 1, Z - 1, Z, Blocks.AIR) != 4) {
+				throw failure(helper, "the pod did not bore the full wall behind the one-column wall, it is at %s", rig.pod.position());
+			}
+			if (!level.getBlockState(new BlockPos(x + 2, floor, Z + 1)).is(Blocks.STONE)
+					|| !level.getBlockState(new BlockPos(x + 4, floor, Z + 1)).is(Blocks.STONE)) {
+				throw failure(helper, "the bore reached a column outside the pod's 2 x 2");
+			}
+			rig.pilot.releaseInput();
+			rig.pod.discard();
 		});
 	}
 
@@ -304,10 +351,10 @@ public class PodDrillTest {
 			if (!(rig.pilot.player().getVehicle() instanceof PodEntity crossed) || crossed.level() != rig.pilot.player().level()) {
 				throw failure(helper, "the pilot crossed without the pod: riding %s", rig.pilot.player().getVehicle());
 			}
-			float expectedHull = hullBefore - PodTuning.DEFAULT.drill().crustHullDamage();
+			float expectedHull = hullBefore - 8f;
 			if (Math.abs(crossed.hull() - expectedHull) > 0.01f) {
-				throw failure(helper, "boring one crust row should cost %s hull, the pod has %s of %s",
-						PodTuning.DEFAULT.drill().crustHullDamage(), crossed.hull(), hullBefore);
+				throw failure(helper, "boring one crust row should cost 8 hull, the pod has %s of %s",
+						crossed.hull(), hullBefore);
 			}
 			if (Math.abs(crossed.getX() - x) > 1 || Math.abs(crossed.getZ() - Z) > 1) {
 				throw failure(helper, "the pod arrived at %s, expected near (%d, %d)", crossed.position(), x, Z);
@@ -347,7 +394,7 @@ public class PodDrillTest {
 	}
 
 	private static int expectedTicks(ServerLevel level, int y) {
-		return PodDrill.drillTicks(Blocks.STONE.defaultBlockState().getDestroySpeed(level, BlockPos.ZERO), Depth.feet(Depth.of(level, y)), false);
+		return PodDrill.drillTicks(Blocks.STONE.defaultBlockState().getDestroySpeed(level, BlockPos.ZERO), Depth.feet(Depth.of(level, y)));
 	}
 
 	private static void expectNear(GameTestHelper helper, int actual, int expected, String label) {
