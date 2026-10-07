@@ -2,6 +2,20 @@
 
 The orchestrator writes this log during unattended runs. It never stops for a blocker: it records the blocker here and moves on to the next ready work. Newest entries come first. When an entry is resolved, its status changes to **resolved**, with the date and the reason.
 
+## 2026-10-07: M2 is planned. These items need the user (none blocks the work)
+
+**Status:** open, for the user to see. M2 work continues with placeholders.
+
+M2 (#51-#85) ends with a playable build for you and your friends (#85: v0.2.0). These parts are yours to decide:
+- **Sharing:** you send the build to your friends, or add them to the repo. The agents never publish or upload anything.
+- **Hosting:** the server can run on your Mac (port forwarding) or behind a tunnel or VPS. A paid tunnel or VPS costs money, so you choose.
+- **The Minecraft server EULA:** you accept it when you run the server zip. The zip ships with `eula=false`.
+- **The private audio pack:** #57 builds a pack from the original game's sounds into `private/`. Git ignores that folder. You give it to your friends privately. It is never committed or uploaded.
+- **The lore text:** your lore session (PR #34) supplies the transmission, Note and handbook text. The agents use placeholders until it merges.
+- **The creatures session (#13):** the lampless figure (#83) is a placeholder until then.
+- **Roadmap note:** the Prospector chassis (#82) moves from M3 to M2. SPEC §5 (chapter 9) and §16 put its salvage in the onboarding. This is not a change to the SPEC, but you should know.
+- **SPEC §8 (provisional):** the Prospector navigator seat strains the "no passengers" rule. I will raise it at the demo.
+
 ## 2026-10-07: How should the scanner show fluids? (a question, not a blocker)
 
 **Status:** open, for a decision by the user. Work continues with a default.
