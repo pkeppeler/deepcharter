@@ -5,8 +5,13 @@ package io.github.pkeppeler.deepcharter.pod;
  * the same lines. Add one component per tunable to your part's record and give it its value where
  * that record's {@code DEFAULT} is built; read it as {@code PodTuning.DEFAULT.movement().thing()}.
  */
-public record PodTuning(Movement movement, Drill drill, Cargo cargo, Fuel fuel) {
-	public static final PodTuning DEFAULT = new PodTuning(Movement.DEFAULT, Drill.DEFAULT, Cargo.DEFAULT, Fuel.DEFAULT);
+public record PodTuning(Shell shell, Movement movement, Drill drill, Cargo cargo, Fuel fuel) {
+	public static final PodTuning DEFAULT = new PodTuning(Shell.DEFAULT, Movement.DEFAULT, Drill.DEFAULT, Cargo.DEFAULT, Fuel.DEFAULT);
+
+	/** Gauges a new pod starts with, as percentages. */
+	public record Shell(float fullHull, float fullFuel) {
+		public static final Shell DEFAULT = new Shell(100f, 100f);
+	}
 
 	/** Filled by #29. */
 	public record Movement() {
