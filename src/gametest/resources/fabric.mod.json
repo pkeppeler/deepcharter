@@ -109,7 +109,8 @@
 			"io.github.pkeppeler.deepcharter.test.evidence.WreckScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.HandbookCoreScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.PodCargoFuelScenario",
-			"io.github.pkeppeler.deepcharter.test.evidence.CharterCoreScenario"
+			"io.github.pkeppeler.deepcharter.test.evidence.CharterCoreScenario",
+			"io.github.pkeppeler.deepcharter.test.evidence.HangarScenario"
 		]
 	},
 	"depends": {
