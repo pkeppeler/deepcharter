@@ -7,6 +7,7 @@ import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -36,26 +37,25 @@ public class TowingClientTest implements FabricClientGameTest {
 	private static final double CLIENT_LAG_BLOCKS = 1.5;
 	private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
 
-	/** The two pods' ids on the server, which are also their ids on the client, and the tower's UUID. */
-	private record Rig(int towerId, int towedId, UUID towerUuid) {
+	/** The two pods by UUID: a pod whose chunk is unloaded and loaded again comes back as a new entity with a new id. */
+	private record Rig(UUID tower, UUID towed) {
 	}
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
 		try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
 			Rig rig = two.server().computeOnServer(server -> setUp(server.overworld(), two));
-			context.waitFor(client -> client.level.getEntity(rig.towerId()) instanceof PodEntity
-					&& client.level.getEntity(rig.towedId()) instanceof PodEntity towed
-					&& Optional.of(rig.towerUuid()).equals(PodTowing.towerId(towed)));
-			Vec3 towedStart = context.computeOnClient(client -> client.level.getEntity(rig.towedId()).position());
+			context.waitFor(client -> pod(client, rig.tower()) != null && pod(client, rig.towed()) != null
+					&& Optional.of(rig.tower()).equals(PodTowing.towerId(pod(client, rig.towed()))));
+			Vec3 towedStart = context.computeOnClient(client -> pod(client, rig.towed()).position());
 
 			two.server().runOnServer(server -> two.mock().setInput(FORWARD));
 			context.waitTicks(DRIVE_TICKS);
 			two.server().runOnServer(server -> two.mock().releaseInput());
 			context.waitTicks(10);
 
-			Vec3 towedEnd = context.computeOnClient(client -> client.level.getEntity(rig.towedId()).position());
-			Vec3 towerEnd = context.computeOnClient(client -> client.level.getEntity(rig.towerId()).position());
+			Vec3 towedEnd = context.computeOnClient(client -> pod(client, rig.towed()).position());
+			Vec3 towerEnd = context.computeOnClient(client -> pod(client, rig.tower()).position());
 			double followed = towedEnd.subtract(towedStart).horizontalDistance();
 			if (followed < MIN_FOLLOWED_BLOCKS) {
 				throw new AssertionError("The client should see the towed pod follow its tower, it moved " + followed + " blocks");
@@ -66,12 +66,17 @@ public class TowingClientTest implements FabricClientGameTest {
 			}
 
 			two.server().runOnServer(server -> {
-				if (!PodTowing.detach((PodEntity) server.overworld().getEntity(rig.towedId()))) {
+				if (!PodTowing.detach((PodEntity) server.overworld().getEntity(rig.towed()))) {
 					throw new AssertionError("the towed pod should have a cable to take off");
 				}
 			});
-			context.waitFor(client -> client.level.getEntity(rig.towedId()) instanceof PodEntity towed && !PodTowing.isTowed(towed));
+			context.waitFor(client -> pod(client, rig.towed()) != null && !PodTowing.isTowed(pod(client, rig.towed())));
 		}
+	}
+
+	/** The client's copy of the pod, or null while it does not see it. */
+	private static PodEntity pod(Minecraft client, UUID id) {
+		return client.level.getEntity(id) instanceof PodEntity pod ? pod : null;
 	}
 
 	/** A stone slab high above the terrain, the real player on it, the mock in a tower with a pod on a cable behind it. */
@@ -89,7 +94,7 @@ public class TowingClientTest implements FabricClientGameTest {
 			throw new AssertionError("the mock pilot could not mount the tower");
 		}
 		PodTowing.attach(tower, towed);
-		return new Rig(tower.getId(), towed.getId(), tower.getUUID());
+		return new Rig(tower.getUUID(), towed.getUUID());
 	}
 
 	private static PodEntity spawn(ServerLevel level, Vec3 at) {
