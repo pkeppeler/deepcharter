@@ -19,7 +19,7 @@
 # Read-only reference material, never part of the build: nothing in the Gradle
 # build may include reference/. Only source and build files are checked out (a
 # sparse-checkout allowlist), and every run verifies that no agent config,
-# dot-directory or symlink is present, so a clone can never act as
+# dot-entry or symlink is present, so a clone can never act as
 # instructions in a Claude Code session.
 set -euo pipefail
 
@@ -43,10 +43,10 @@ allowed=(
 # Agent-config files, matched case-insensitively by name. Negated in the sparse
 # patterns (an allowed type such as *.json can still be agent config) and
 # checked for after every checkout, independent of the patterns. Agent-config
-# directories are not listed: every dot-directory is excluded (see below).
+# dot-entries are not listed: every dot-file and dot-directory is excluded
+# (see below).
 agent_names=(
-  'claude*.md' 'agents.md' 'gemini.md' '.cursorrules' '.windsurfrules'
-  '.clinerules' '*.mdc' '.mcp.json' 'copilot-instructions.md'
+  'claude*.md' 'agents.md' 'gemini.md' '*.mdc' 'copilot-instructions.md'
 )
 
 die() { echo "reference-sync: error: $*" >&2; exit 1; }
@@ -73,28 +73,29 @@ for spec in "${specs[@]}"; do
 done
 
 # Writes the sparse-checkout patterns: the allowlist, then the negations of
-# agent-config files and of every dot-directory at any depth.
+# agent-config files and of every dot-file and dot-directory at any depth.
 write_sparse_patterns() {
   local dir="$1" p
   mkdir -p "$dir/.git/info"
   {
     printf '%s\n' "${allowed[@]}"
     for p in "${agent_names[@]}"; do printf '!%s\n' "$p"; done
-    # `!.*/` alone leaves the files inside a dot-directory checked out.
-    printf '%s\n' '!**/.*/**'
+    # Both are needed: `!**/.*` leaves the files inside a dot-directory
+    # checked out, and `!**/.*/**` leaves dot-files themselves.
+    printf '%s\n' '!**/.*' '!**/.*/**'
   } >"$dir/.git/info/sparse-checkout"
   git -C "$dir" config core.sparseCheckout true
   git -C "$dir" config core.sparseCheckoutCone false
 }
 
-# Fails if an agent-config file, any dot-directory (other than the clone's own
-# .git) or any symlink is in a clone. Independent of the patterns.
+# Fails if an agent-config file, any dot-file or dot-directory (other than the clone's own
+# top-level .git) or any symlink is in a clone. Independent of the patterns.
 assert_clean() {
   local dir="$1" hits p
-  local args=(-type l -o \( -type d -name '.*' \))
+  local args=(-type l -o -name '.*')
   for p in "${agent_names[@]}"; do args+=(-o -iname "$p"); done
   hits="$(find "$dir" -mindepth 1 -path "$dir/.git" -prune -o \( "${args[@]}" \) -print)"
-  [[ -z "$hits" ]] || die "agent config, dot-directory or symlink present in $dir:
+  [[ -z "$hits" ]] || die "agent config, dot-entry or symlink present in $dir:
 $hits"
 }
 
