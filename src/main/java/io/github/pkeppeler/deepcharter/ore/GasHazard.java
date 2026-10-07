@@ -51,9 +51,10 @@ public final class GasHazard {
 		venting = true;
 		try {
 			int radius = OreTuning.DEFAULT.blastRadius();
+			// stockRadiator stands in for the pod's radiator until a PodStats stat gives it (#65 may add one).
 			float damage = damage(Depth.feet(Depth.of(level, pos.getY())), OreTuning.DEFAULT.stockRadiator());
 			for (PodEntity pod : level.getEntitiesOfClass(PodEntity.class, new AABB(pos).inflate(radius))) {
-				hurt(pod, damage);
+				pod.damageHull(damage);
 			}
 			for (BlockPos cell : BlockPos.betweenClosed(pos.offset(-radius, -radius, -radius), pos.offset(radius, radius, radius))) {
 				if (level.getBlockState(cell).is(HazardBlocks.NATURAL_ROCK)) {
@@ -63,13 +64,5 @@ public final class GasHazard {
 		} finally {
 			venting = false;
 		}
-	}
-
-	/**
-	 * The one place a blast touches a pod. {@code OreTuning.stockRadiator} stands in for the pod's radiator until a
-	 * {@code PodStats} stat gives it (#65 may add one); then {@code vent} reads it from {@code PodStats.of(pod)}.
-	 */
-	private static void hurt(PodEntity pod, float damage) {
-		pod.damageHull(damage);
 	}
 }
