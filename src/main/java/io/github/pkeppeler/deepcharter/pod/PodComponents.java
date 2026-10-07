@@ -220,13 +220,21 @@ public final class PodComponents {
 		PodStats before = PodStats.of(pod);
 		Versioned.modify(pod, STATE, change);
 		PodStats after = PodStats.of(pod);
-		if (after.tankLitres() != before.tankLitres()) {
-			float full = PodTuning.DEFAULT.shell().fullFuel();
-			pod.setFuel(Math.min(full, pod.fuel() * before.tankLitres() / after.tankLitres()));
-		}
+		rescaleFuel(pod, before, after);
 		if (pod.hull() > 0f) {
 			// A pod with no hull left is a wreck (#67), and a part must not repair it. setHull holds the result to the new maximum.
 			pod.setHull(pod.hull() + Math.max(0f, after.maxHull() - before.maxHull()));
+		}
+	}
+
+	/**
+	 * Keeps the litres in the tank when the tank size moves from {@code before} to {@code after}: the stored percent is of the new
+	 * size (ADR 0010). Does nothing when the size is the same. Server only, like every change to a pod.
+	 */
+	public static void rescaleFuel(PodEntity pod, PodStats before, PodStats after) {
+		if (after.tankLitres() != before.tankLitres()) {
+			float full = PodTuning.DEFAULT.shell().fullFuel();
+			pod.setFuel(Math.min(full, pod.fuel() * before.tankLitres() / after.tankLitres()));
 		}
 	}
 
