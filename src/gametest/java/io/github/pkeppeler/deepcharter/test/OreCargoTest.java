@@ -1,11 +1,21 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.appender.AbstractAppender;
+import org.apache.logging.log4j.core.config.Property;
 
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -15,16 +25,22 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.BundleContents;
+import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
+import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.phys.Vec3;
 
+import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
@@ -288,6 +304,252 @@ public class OreCargoTest {
 		} finally {
 			player.leave();
 			pod.discard();
+		}
+	}
+
+	@GameTest
+	public void cargoSavedBeforeOreItemsIsDroppedWithAnErrorLog(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
+		PodEntity copy = helper.spawn(PodRegistry.POD, 4, 2, 2);
+		CapturingAppender log = CapturingAppender.attach();
+		try {
+			CompoundTag tag = savedPod(level, pod);
+			// The pre-#56 format: no version, and a vanilla ore block in each entry.
+			ListTag old = new ListTag();
+			for (int i = 0; i < 2; i++) {
+				CompoundTag entry = new CompoundTag();
+				entry.putString("ore", "minecraft:iron_ore");
+				entry.putFloat("mass", 1f);
+				old.add(entry);
+			}
+			tag.put("cargo", old);
+			tag.remove("cargo_version");
+			copy.cargo().load(inputOf(level, tag), copy);
+			if (copy.cargoUsed() != 0 || !copy.cargo().entries().isEmpty() || copy.cargoMass() != 0f) {
+				throw failure(helper, "the old vanilla ore must be dropped, the bay holds %s", copy.cargo().entries());
+			}
+			String expected = log.errors().stream().filter(line -> line.contains(copy.getUUID().toString()) && line.contains("2")).findFirst().orElse(null);
+			if (expected == null) {
+				throw failure(helper, "the drop must be logged at ERROR with the pod's UUID and the count 2, logged %s", log.errors());
+			}
+			// Once saved again it is the current format, and reads back as the empty bay it is.
+			CompoundTag resaved = savedPod(level, copy);
+			if (!resaved.contains("cargo_version") || !resaved.getListOrEmpty("cargo").isEmpty()) {
+				throw failure(helper, "the migrated cargo should save as an empty list with a version, saved %s", resaved);
+			}
+			helper.succeed();
+		} finally {
+			log.detach();
+			pod.discard();
+			copy.discard();
+		}
+	}
+
+	@GameTest
+	public void cargoOfAFutureVersionIsKeptAndRefusesChanges(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
+		PodEntity copy = helper.spawn(PodRegistry.POD, 4, 2, 2);
+		try {
+			pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.GOLDIUM));
+			CompoundTag tag = savedPod(level, pod);
+			tag.putInt("cargo_version", 99);
+			ListTag future = tag.getListOrEmpty("cargo");
+			CompoundTag extra = new CompoundTag();
+			extra.putString("shape_from_the_future", "kept as it is");
+			future.add(extra);
+			copy.cargo().load(inputOf(level, tag), copy);
+			CompoundTag resaved = savedPod(level, copy);
+			if (!resaved.get("cargo").equals(tag.get("cargo")) || resaved.getIntOr("cargo_version", -1) != 99) {
+				throw failure(helper, "a cargo of version 99 must be saved back unchanged, got %s and version %s", resaved.get("cargo"), resaved.get("cargo_version"));
+			}
+			expectNamesPod(helper, copy, () -> copy.cargo().tryAdd(copy, OreRegistry.stack(OreType.IRONIUM)));
+			expectNamesPod(helper, copy, () -> copy.cargo().dump(copy));
+			helper.succeed();
+		} finally {
+			pod.discard();
+			copy.discard();
+		}
+	}
+
+	@GameTest
+	public void aNonOreStackInTheSaveKeepsTheCargoAndDoesNotCrashTheLoad(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
+		pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.GOLDIUM));
+		CompoundTag tag = savedPod(level, pod);
+		pod.discard();
+		CompoundTag vanilla = new CompoundTag();
+		CompoundTag stack = new CompoundTag();
+		stack.putString("id", "minecraft:iron_ore");
+		stack.putInt("count", 1);
+		vanilla.put("stack", stack);
+		vanilla.putFloat("mass", 1f);
+		tag.getListOrEmpty("cargo").add(vanilla);
+		PodEntity loaded = (PodEntity) EntityType.create(PodRegistry.POD, inputOf(level, tag), level, EntitySpawnReason.LOAD)
+				.orElseThrow(() -> failure(helper, "the pod with a vanilla stack in its cargo did not load"));
+		try {
+			CompoundTag resaved = savedPod(level, loaded);
+			if (!resaved.get("cargo").equals(tag.get("cargo"))) {
+				throw failure(helper, "the cargo with an unreadable entry must be saved back unchanged, got %s", resaved.get("cargo"));
+			}
+			expectNamesPod(helper, loaded, () -> loaded.cargo().tryAdd(loaded, OreRegistry.stack(OreType.IRONIUM)));
+			helper.succeed();
+		} finally {
+			loaded.discard();
+		}
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void oreInABundleSlowsAPlayer(GameTestHelper helper) {
+		ItemStack bundle = new ItemStack(Items.BUNDLE);
+		bundle.set(DataComponents.BUNDLE_CONTENTS, new BundleContents(List.of()).copyWithContents(java.util.stream.Stream.of(OreRegistry.stack(OreType.EINSTEINIUM))));
+		expectSpeedFraction(helper, "bundle-walker", player -> player.getInventory().add(bundle), 1 - OreType.EINSTEINIUM.mass() * OreTuning.DEFAULT.slowdownPerMass());
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void oreInAShulkerBoxSlowsAPlayer(GameTestHelper helper) {
+		ItemStack box = new ItemStack(Items.SHULKER_BOX);
+		box.set(DataComponents.CONTAINER, ItemContainerContents.fromItems(List.of(OreRegistry.stack(OreType.GOLDIUM), OreRegistry.stack(OreType.GOLDIUM))));
+		expectSpeedFraction(helper, "shulker-walker", player -> player.getInventory().add(box), 1 - 2 * OreType.GOLDIUM.mass() * OreTuning.DEFAULT.slowdownPerMass());
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void oreInTheOffhandSlowsAPlayer(GameTestHelper helper) {
+		expectSpeedFraction(helper, "offhand-walker", player -> player.setItemInHand(InteractionHand.OFF_HAND, OreRegistry.stack(OreType.PLATINIUM)),
+				1 - OreType.PLATINIUM.mass() * OreTuning.DEFAULT.slowdownPerMass());
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void theSlowdownStopsAtTheCap(GameTestHelper helper) {
+		expectSpeedFraction(helper, "cap-walker", player -> {
+			for (int i = 0; i < 6; i++) {
+				player.getInventory().add(OreRegistry.stack(OreType.EINSTEINIUM));
+			}
+		}, 1 - OreTuning.DEFAULT.maxSlowdown());
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void theSlowdownIsSetOnceNotEveryTick(GameTestHelper helper) {
+		MockPlayer walker = MockPlayers.join(helper, "once-walker");
+		ServerPlayer player = walker.player();
+		player.getInventory().add(OreRegistry.stack(OreType.EINSTEINIUM));
+		AttributeModifier[] first = {null};
+		int[] ticks = {0};
+		helper.onEachTick(() -> {
+			AttributeModifier now = player.getAttribute(Attributes.MOVEMENT_SPEED).getModifiers().stream()
+					.filter(modifier -> modifier.id().getPath().equals("ore_load")).findFirst().orElse(null);
+			if (now == null) {
+				return;
+			}
+			if (first[0] == null) {
+				first[0] = now;
+				return;
+			}
+			if (now != first[0]) {
+				walker.leave();
+				throw failure(helper, "the modifier was replaced while the load did not change: every replacement sends a packet");
+			}
+			if (++ticks[0] >= 20) {
+				walker.leave();
+				helper.succeed();
+			}
+		});
+	}
+
+	@GameTest
+	public void clickingTheCargoScreenChangesNothing(GameTestHelper helper) {
+		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
+		MockPlayer player = MockPlayers.join(helper, "ore-clicker");
+		try {
+			pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.SILVERIUM));
+			player.teleportTo(helper.getLevel(), pod.position().add(2, 0, 0), 0f, 0f);
+			player.setInput(SNEAK);
+			UseEntityCallback.EVENT.invoker().interact(player.player(), pod.level(), InteractionHand.MAIN_HAND, pod, null);
+			OreCargoMenu menu = (OreCargoMenu) player.player().containerMenu;
+			menu.clicked(0, 0, ContainerInput.PICKUP, player.player());
+			if (!menu.getCarried().isEmpty()) {
+				throw failure(helper, "picking up from a read-only slot must give nothing, got %s", menu.getCarried());
+			}
+			menu.setCarried(new ItemStack(Items.DIAMOND));
+			menu.clicked(3, 0, ContainerInput.PICKUP, player.player());
+			menu.clicked(0, 0, ContainerInput.QUICK_MOVE, player.player());
+			if (!menu.getCarried().is(Items.DIAMOND) || pod.cargo().entries().size() != 1 || menu.shownOre().size() != 1) {
+				throw failure(helper, "clicks must not move ore, carried %s, bay %s", menu.getCarried(), pod.cargo().entries());
+			}
+			helper.succeed();
+		} finally {
+			player.leave();
+			pod.discard();
+		}
+	}
+
+	private static void expectNamesPod(GameTestHelper helper, PodEntity pod, Runnable action) {
+		try {
+			action.run();
+		} catch (IllegalStateException expected) {
+			if (!expected.getMessage().contains(pod.getUUID().toString())) {
+				throw failure(helper, "the error must name the pod %s, it says: %s", pod.getUUID(), expected.getMessage());
+			}
+			return;
+		}
+		throw failure(helper, "changing an unreadable cargo must throw");
+	}
+
+	/** Gives a joined player something to carry, then waits for the walking speed to become the bare speed times {@code fraction}. */
+	private static void expectSpeedFraction(GameTestHelper helper, String name, java.util.function.Consumer<ServerPlayer> carry, double fraction) {
+		MockPlayer walker = MockPlayers.join(helper, name);
+		ServerPlayer player = walker.player();
+		double bare = player.getAttributeValue(Attributes.MOVEMENT_SPEED);
+		carry.accept(player);
+		helper.onEachTick(() -> {
+			if (Math.abs(player.getAttributeValue(Attributes.MOVEMENT_SPEED) - bare * fraction) < EPSILON) {
+				walker.leave();
+				helper.succeed();
+			}
+		});
+	}
+
+	private static CompoundTag savedPod(ServerLevel level, PodEntity pod) {
+		TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
+		pod.saveWithoutId(output);
+		return output.buildResult();
+	}
+
+	private static ValueInput inputOf(ServerLevel level, CompoundTag tag) {
+		return TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), tag);
+	}
+
+	/** Collects the ERROR lines of the mod's logger while attached. */
+	private static final class CapturingAppender extends AbstractAppender {
+		private final List<String> errors = new CopyOnWriteArrayList<>();
+
+		private CapturingAppender() {
+			super("ore-cargo-test", null, null, true, Property.EMPTY_ARRAY);
+		}
+
+		static CapturingAppender attach() {
+			CapturingAppender appender = new CapturingAppender();
+			appender.start();
+			((org.apache.logging.log4j.core.Logger) LogManager.getLogger(DeepCharter.MOD_ID)).addAppender(appender);
+			return appender;
+		}
+
+		void detach() {
+			((org.apache.logging.log4j.core.Logger) LogManager.getLogger(DeepCharter.MOD_ID)).removeAppender(this);
+			stop();
+		}
+
+		List<String> errors() {
+			return errors;
+		}
+
+		@Override
+		public void append(LogEvent event) {
+			if (event.getLevel() == Level.ERROR) {
+				errors.add(event.getMessage().getFormattedMessage());
+			}
 		}
 	}
 
