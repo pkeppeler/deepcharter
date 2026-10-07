@@ -142,9 +142,6 @@ public final class PodComponents {
 		AXES.put(ComponentTrack.FUEL_TANK, List.of(new Axis(PodStats::tankLitres, PodStats::withTankLitres, false)));
 		AXES.put(ComponentTrack.CARGO_BAY, List.of(new Axis(stats -> (float) stats.cargoSlots(),
 				(stats, slots) -> stats.withCargoSlots(Math.round(slots)), false)));
-		for (ComponentTrack track : ComponentTrack.values()) {
-			AXES.putIfAbsent(track, List.of());
-		}
 	}
 
 	private PodComponents() {
@@ -234,15 +231,14 @@ public final class PodComponents {
 	}
 
 	private static PodStats applyParts(PodEntity pod, PodStats stats) {
-		State state = read(pod);
 		PodStats result = stats;
-		for (Map.Entry<ComponentTrack, PartLabel> part : state.parts().entrySet()) {
-			List<Axis> axes = AXES.get(part.getKey());
-			if (axes.isEmpty() || !counts(state, part.getValue())) {
+		for (Map.Entry<ComponentTrack, List<Axis>> track : AXES.entrySet()) {
+			int tier = effectiveTier(pod, track.getKey());
+			if (tier == 0) {
 				continue;
 			}
-			float ratio = UpgradeTuning.DEFAULT.ratio(part.getKey(), cappedTier(pod, part.getValue()));
-			for (Axis axis : axes) {
+			float ratio = UpgradeTuning.DEFAULT.ratio(track.getKey(), tier);
+			for (Axis axis : track.getValue()) {
 				result = axis.scale(result, ratio);
 			}
 		}
