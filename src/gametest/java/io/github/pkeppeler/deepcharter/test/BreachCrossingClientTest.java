@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.util.Set;
 import java.util.UUID;
 
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -34,7 +35,7 @@ public class BreachCrossingClientTest implements FabricClientGameTest {
 				ServerLevel one = server.getLevel(LayerChain.dimension(1));
 				openShaft(one, X);
 				openShaft(one, X + 2);
-				realPlayer(server, mock).teleportTo(one, X, 8, Z, java.util.Set.of(), 0, 0, true);
+				realPlayer(server, mock).teleportTo(one, X, 8, Z, Set.of(), 0, 0, true);
 				mock.teleportTo(one, new Vec3(X + 2, 8, Z), 0, 0);
 			});
 
