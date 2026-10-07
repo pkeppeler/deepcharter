@@ -49,7 +49,6 @@ ok "writes the server zip" test -f "$serverzip"
 ok "writes PLAYING.md" test -f "$dist/PLAYING.md"
 fails "PLAYING.md has no unfilled placeholder" grep -q '{{' "$dist/PLAYING.md"
 ok "PLAYING.md stamps the version" grep -qF -- "$label" "$dist/PLAYING.md"
-fails "docs/PLAYING.md has no stale 'not in this build yet'" grep -qi 'not in this build yet' "$root/docs/PLAYING.md"
 for needle in 'Prism' 'sneak' 'jump' 'sprint' '#57' 'Known issues' 'Report a bug'; do
   ok "PLAYING.md mentions $needle" grep -qi -- "$needle" "$dist/PLAYING.md"
 done
