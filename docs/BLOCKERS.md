@@ -2,6 +2,12 @@
 
 The orchestrator writes this log during unattended runs. It never stops for a blocker: it records the blocker here and moves on to the next ready work. Newest entries come first. When an entry is resolved, its status changes to **resolved**, with the date and the reason.
 
+## 2026-10-07: The lore branch's ADR number is taken (a note for the lore session)
+
+**Status:** open, for the lore session. Nothing waits on it.
+
+The lore branch `12-lore-bible` (PR #34) adds `docs/adr/0006-the-finale-is-won-by-renunciation.md`. On main, 0006 is now `0006-pod-seams-attachments-and-events.md`. Numbers 0007 to 0010 and 0013 are also in use or claimed by open PRs. Before PR #34 merges, give the finale ADR the next free number, and update any links to it. I did not change the lore branch.
+
 ## 2026-10-07: M1 demo is ready (#10)
 
 **Status:** open, for the user to watch. Nothing waits on it.
