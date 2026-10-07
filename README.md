@@ -22,7 +22,7 @@ Code is grouped by feature under `io.github.pkeppeler.deepcharter`: `layer/`, `p
 - `XInit.init()`, called once from `DeepCharter` (`XClientInit.init()` from `DeepCharterClient`). It calls the `init()` of each part, so adding a part edits the feature, never the entrypoints.
 - `XRegistry.register()`: its entities, blocks, items and other registrations.
 - `XTuning`: one record of tunables, read as `XTuning.DEFAULT.thing()`.
-- Lang keys: one file, `assets/deepcharter/lang/en_us.json`. Keep keys sorted and prefixed by feature.
+- Lang keys: one fragment per feature, `src/lang/en_us/<feature>.json` (outside the resources source set, so it stays out of the jar), merged and sorted into `assets/deepcharter/lang/en_us.json` at build time. That file is generated: never edit it. A key lives in exactly one fragment; a duplicate fails the build.
 - Commands, always added with `FeatureCommands.register("<feature>", ...)`, which puts them under `/deepcharter <feature>`.
 
 Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest/.../test/`:

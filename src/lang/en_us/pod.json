@@ -1,0 +1,12 @@
+{
+  "commands.deepcharter.pod.spawn.failed": "Could not spawn a pod here",
+  "commands.deepcharter.pod.spawn.success": "Spawned a pod",
+  "deepcharter.pod.dump.no_pod": "You are not riding a pod",
+  "deepcharter.pod.dump.success": "Dumped %s ore",
+  "entity.deepcharter.pod": "Pod",
+  "hud.deepcharter.pod.cargo": "Cargo %s",
+  "hud.deepcharter.pod.depth": "Y %s",
+  "hud.deepcharter.pod.fuel": "Fuel %s%%",
+  "hud.deepcharter.pod.hull": "Hull %s%%",
+  "hud.deepcharter.pod.stranded": "STRANDED"
+}

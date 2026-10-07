@@ -1,0 +1,4 @@
+{
+  "deepcharter.layer.goto.no_such_layer": "No layer %s: the chain has %s layers",
+  "deepcharter.layer.goto.success": "Moved to layer %s"
+}
