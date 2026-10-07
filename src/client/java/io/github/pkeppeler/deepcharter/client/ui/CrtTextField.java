@@ -10,8 +10,8 @@ import net.minecraft.network.chat.Component;
  * {@link EditBox}'s; this class only draws the frame, which is brighter while the field has focus.
  */
 public final class CrtTextField extends EditBox {
-	/** Pixels the frame sits outside the widget rectangle, so the borderless text does not touch it. */
-	private static final int FRAME = 3;
+	/** Pixels the frame sits outside the widget rectangle, so the borderless text does not touch it. Leave this much room around the field. */
+	public static final int FRAME = 3;
 
 	public CrtTextField(Font font, int x, int y, int width, int height, Component hint) {
 		super(font, x, y, width, height, hint);
