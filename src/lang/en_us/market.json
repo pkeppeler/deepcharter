@@ -1,1 +1,13 @@
-{}
+{
+  "deepcharter.market.refusal.no_pod": "No pod is parked at the processor",
+  "deepcharter.market.refusal.nothing_to_sell": "There is no ore to sell",
+  "deepcharter.market.refusal.unreadable_cargo": "A pod's cargo was saved by another version of the mod and cannot be sold",
+  "deepcharter.market.sold": "Sold %s ore for $%s",
+  "hud.deepcharter.account": "%s  $%s",
+  "screen.deepcharter.processor.account": "ACCOUNT $%s",
+  "screen.deepcharter.processor.close": "CLOSE",
+  "screen.deepcharter.processor.intro": "ORE PROCESSOR ONLINE. FEED IT ORE; THE CHARTER ACCOUNT IS PAID AT THESE RATES.",
+  "screen.deepcharter.processor.price": "%s  $%s",
+  "screen.deepcharter.processor.sell_cargo": "SELL ALL POD CARGO",
+  "screen.deepcharter.processor.sell_inventory": "SELL ALL CARRIED ORE"
+}
