@@ -113,6 +113,5 @@ cp -R "$template_dir/world" "$play_dir/saves/$world_name"
 rm -f "$play_dir/saves/$world_name/session.lock"
 
 # exec drops the EXIT trap and keeps this PID, so the lock now names the client.
-rm -f "$server_log" "$server_fifo"
 trap - EXIT
 exec ./gradlew runPlay "$@"
