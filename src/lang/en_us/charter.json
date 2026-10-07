@@ -1,4 +1,5 @@
 {
+  "block.deepcharter.contract_terminal": "Contract Terminal",
   "deepcharter.charter.apply.success": "Applied to %s",
   "deepcharter.charter.approve.success": "%s joined the charter as crew",
   "deepcharter.charter.deny.success": "Turned down %s",
@@ -21,5 +22,19 @@
   "deepcharter.charter.refusal.no_such_charter": "No such charter",
   "deepcharter.charter.refusal.not_on_a_charter": "You are not on a charter",
   "deepcharter.charter.refusal.not_the_director": "Only a Director can do that",
-  "deepcharter.charter.spend.success": "Took %s from %s"
+  "deepcharter.charter.spend.success": "Took %s from %s",
+  "screen.deepcharter.contract.apply": "APPLY: %s",
+  "screen.deepcharter.contract.approve": "APPROVE %s",
+  "screen.deepcharter.contract.deny": "DENY %s",
+  "screen.deepcharter.contract.found": "FOUND CHARTER",
+  "screen.deepcharter.contract.intro": "H. COLOM AND CO. EXTRACTION, REFINING, PERSONNEL. THE CONTRACT TERMINAL IS ALWAYS ONLINE. NIHIL REDDITUR.",
+  "screen.deepcharter.contract.leave": "LEAVE CHARTER",
+  "screen.deepcharter.contract.loading": "RETRIEVING YOUR FILE...",
+  "screen.deepcharter.contract.name_hint": "CHARTER NAME",
+  "screen.deepcharter.contract.refused": "REFUSED: %s",
+  "screen.deepcharter.contract.status.applicant": "YOUR APPLICATION TO %s IS PENDING.",
+  "screen.deepcharter.contract.status.crew": "CREW OF %s.",
+  "screen.deepcharter.contract.status.director": "DIRECTOR OF %s. APPLICATIONS WAITING: %s.",
+  "screen.deepcharter.contract.status.none": "NO CHARTER ON FILE. FOUND ONE, OR APPLY TO ONE.",
+  "screen.deepcharter.contract.withdraw": "WITHDRAW"
 }
