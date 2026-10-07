@@ -40,6 +40,7 @@ A new part that needs its own `init()` and has no feature of its own gets a stub
 Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest/.../test/`:
 
 - Add test classes and evidence scenarios to the stubs that already exist, which are registered in `src/gametest/resources/fabric.mod.json`. A server stub is `<Thing>Test`, a client stub `<Thing>ClientTest`, a scenario `evidence/<Thing>Scenario` named `m2-<thing>`. A scenario stub throws "stub: #N fills it" when it is selected, and does nothing in a plain run.
+- Before you drive an entity in a far chunk, await entity ticking: `test/support/FarChunks.awaitEntityTicking`.
 - `test/support/MockPlayers` joins a real server-side player with no client behind it.
 - `test/support/TwoPlayerServer` starts a dedicated server in a client GameTest, joins the real client, then joins one mock player.
 - `test/evidence/` holds the PR evidence scenarios (see `tools/record-evidence.sh`).

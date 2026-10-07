@@ -28,6 +28,7 @@ import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestAttachments;
@@ -37,6 +38,8 @@ import io.github.pkeppeler.deepcharter.test.support.TestAttachments.Other;
 /** Server GameTests for the versioned pod attachment pattern: defaults, save/load, unreadable versions and a breach crossing. */
 public class PodAttachmentTest {
 	private static final String ATTACHMENTS_KEY = "fabric:attachments";
+	/** Ticks the pod needs, once its chunk ticks, to fall through the shaft and cross. */
+	private static final int CROSSING_TICKS = 200;
 
 	@GameTest
 	public void aNewPodHasTheDefaultAttachment(GameTestHelper helper) {
@@ -178,31 +181,37 @@ public class PodAttachmentTest {
 	}
 
 	/** M1's crossing, with a piloted pod: the arriving pod is a new entity, and the attachment must be on it. */
-	@GameTest(maxTicks = 12000)
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + CROSSING_TICKS)
 	public void theAttachmentSurvivesABreachCrossing(GameTestHelper helper) {
 		double x = 2000.5;
 		double z = 2000.5;
 		ServerLevel one = layer(helper, 1);
 		openShaft(one, x, z);
-		PodEntity pod = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
-		pod.setPos(x, 8, z);
-		one.addFreshEntity(pod);
-		Versioned.modify(pod, TestAttachments.EXAMPLE, example -> new Example(7));
 		MockPlayer mock = MockPlayers.join(helper, "attachment-crossing");
 		mock.teleportTo(one, new Vec3(x, 8, z), 0, 0);
-		if (!mock.player().startRiding(pod, true, false)) {
-			throw failure(helper, "the mock could not board the pod");
-		}
+		PodEntity[] pod = {null};
+		FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, 8, z), () -> {
+			pod[0] = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
+			pod[0].setPos(x, 8, z);
+			one.addFreshEntity(pod[0]);
+			Versioned.modify(pod[0], TestAttachments.EXAMPLE, example -> new Example(7));
+			if (!mock.player().startRiding(pod[0], true, false)) {
+				throw failure(helper, "the mock could not board the pod");
+			}
+		});
 		// The pod falls by itself (PodMovement brings its own gravity) and leaves layer_1 through the open floor.
 		helper.succeedWhen(() -> {
+			if (pod[0] == null) {
+				throw failure(helper, "waiting for the chunk at %s to tick entities", BlockPos.containing(x, 8, z));
+			}
 			ServerPlayer player = mock.player();
 			if (!player.level().dimension().equals(LayerChain.dimension(2))) {
-				throw failure(helper, "the rider is still in %s (pod ticked %s times)", player.level().dimension(), pod.tickCount);
+				throw failure(helper, "the rider is still in %s (pod ticked %s times)", player.level().dimension(), pod[0].tickCount);
 			}
 			if (!(player.getVehicle() instanceof PodEntity arrived)) {
 				throw failure(helper, "the rider is on %s after crossing, not a pod", player.getVehicle());
 			}
-			if (arrived == pod || !pod.isRemoved()) {
+			if (arrived == pod[0] || !pod[0].isRemoved()) {
 				throw failure(helper, "expected a new pod instance after the crossing and the old one removed");
 			}
 			if (!new Example(7).equals(Versioned.require(arrived, TestAttachments.EXAMPLE))) {
