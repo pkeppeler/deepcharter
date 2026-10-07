@@ -9,16 +9,18 @@
 #   reference/fabric-loader  github.com/FabricMC/fabric-loader  loader_version      tag "<v>"   (e.g. 0.19.5)
 #
 # Versions are read from PROPERTIES_FILE (default: gradle.properties at the repo
-# root). A missing file, missing/empty key, or missing upstream tag is a hard error.
+# root). A missing file, missing/empty key, or missing upstream tag is a hard
+# error. With a duplicate key the last one wins, as in Gradle.
 #
-# Idempotent: a re-run at the same versions only checks local state. A version
+# Idempotent: a re-run at the same versions only checks local state (and
+# re-applies the current checkout patterns, repairing an older clone). A version
 # bump re-fetches the new tag and moves the clone to it.
 #
 # Read-only reference material, never part of the build: nothing in the Gradle
-# build may include reference/. Agent config files (CLAUDE.md, AGENTS.md,
-# .claude/, .agents/, .mcp.json, .cursor/, .github/copilot-instructions.md) are
-# excluded from the checkouts with a sparse-checkout, so they never load as
-# instructions in a Claude Code session.
+# build may include reference/. Only source and build files are checked out (a
+# sparse-checkout allowlist), and every run verifies that no agent config or
+# symlink is present, so a clone can never act as instructions in a Claude Code
+# session.
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -32,26 +34,35 @@ specs=(
   "fabric-loader|FabricMC/fabric-loader|loader_version|"
 )
 
-# Non-cone sparse-checkout patterns: everything except agent config (at any depth).
-sparse_patterns='/*
-!CLAUDE.md
-!AGENTS.md
-!.claude/
-!.agents/
-!.mcp.json
-!.cursor/
-!/.github/copilot-instructions.md'
+# Allowlist of checked-out files (sparse-checkout globs, matched at any depth).
+allowed=(
+  '*.java' '*.kt' '*.kts' '*.gradle' '*.groovy' '*.json' '*.properties'
+  '*.accesswidener' '*.classtweaker' '*.toml' '*.xml' '*.txt'
+  'README.md' 'LICENSE*'
+)
+# Agent config, matched case-insensitively by name. Negated in the sparse
+# patterns (an allowed type such as *.json can still be agent config) and
+# checked for after every checkout, independent of the patterns.
+agent_names=(
+  'claude*.md' 'agents.md' 'gemini.md' '.cursorrules' '.windsurfrules'
+  '.clinerules' '*.mdc' '.mcp.json' 'copilot-instructions.md'
+)
+agent_dirs=(
+  .claude .agents .cursor .gemini .codex .continue .roo .windsurf .github
+)
 
 die() { echo "reference-sync: error: $*" >&2; exit 1; }
 
 [[ -f "$props" ]] || die "properties file not found: $props"
 
-# Prints the value of a key from the properties file; fails if absent or empty.
+# Prints the value of a key from the properties file (last match wins); fails if
+# absent or empty.
 prop() {
   local key="$1" value
   value="$(awk -F= -v k="$key" '
     { sub(/\r$/, ""); gsub(/^[ \t]+|[ \t]+$/, "", $1) }
-    $1 == k { v = $0; sub(/^[^=]*=/, "", v); gsub(/^[ \t]+|[ \t]+$/, "", v); print v; exit }
+    $1 == k { v = $0; sub(/^[^=]*=/, "", v); gsub(/^[ \t]+|[ \t]+$/, "", v); last = v }
+    END { print last }
   ' "$props")"
   [[ -n "$value" ]] || die "key '$key' is missing or empty in $props"
   printf '%s\n' "$value"
@@ -63,14 +74,26 @@ for spec in "${specs[@]}"; do
   prop "$key" >/dev/null
 done
 
-# Fails if agent config survived in a clone (guards the sparse-checkout).
-assert_no_agent_config() {
-  local dir="$1" hits
-  hits="$(find "$dir" -path "$dir/.git" -prune -o \( \
-    -name CLAUDE.md -o -name AGENTS.md -o -name .claude -o -name .agents \
-    -o -name .mcp.json -o -name .cursor -o -path '*/.github/copilot-instructions.md' \
-    \) -print)"
-  [[ -z "$hits" ]] || die "agent config present in $dir:
+# Writes the sparse-checkout patterns: the allowlist, then agent-config negations.
+write_sparse_patterns() {
+  local dir="$1" p
+  mkdir -p "$dir/.git/info"
+  {
+    printf '%s\n' "${allowed[@]}"
+    for p in "${agent_names[@]}"; do printf '!%s\n' "$p"; done
+    for p in "${agent_dirs[@]}"; do printf '!%s/\n' "$p"; done
+  } >"$dir/.git/info/sparse-checkout"
+  git -C "$dir" config core.sparseCheckout true
+  git -C "$dir" config core.sparseCheckoutCone false
+}
+
+# Fails if agent config or any symlink is in a clone. Independent of the patterns.
+assert_clean() {
+  local dir="$1" hits p
+  local args=(-type l)
+  for p in "${agent_names[@]}" "${agent_dirs[@]}"; do args+=(-o -iname "$p"); done
+  hits="$(find "$dir" -path "$dir/.git" -prune -o \( "${args[@]}" \) -print)"
+  [[ -z "$hits" ]] || die "agent config or symlink present in $dir:
 $hits"
 }
 
@@ -82,30 +105,35 @@ sync_one() {
   dir="$ref_dir/$name"
   url="https://github.com/$upstream.git"
 
-  # Quick check: clone already at this tag's commit, tree clean of agent config.
+  # Quick check: clone already at this tag's commit.
   if [[ -d "$dir/.git" ]]; then
     local want have
     want="$(git -C "$dir" rev-parse --verify --quiet "refs/tags/$tag^{commit}" || true)"
     have="$(git -C "$dir" rev-parse HEAD 2>/dev/null || true)"
     if [[ -n "$want" && "$want" == "$have" ]]; then
-      assert_no_agent_config "$dir"
+      # Self-heal: re-apply the current patterns so a pattern change repairs this clone.
+      write_sparse_patterns "$dir"
+      git -C "$dir" sparse-checkout reapply
+      assert_clean "$dir"
       echo "$name: already at $tag"
       return
     fi
   fi
 
-  git ls-remote --exit-code --tags "$url" "refs/tags/$tag" >/dev/null 2>&1 \
-    || die "$name: no tag '$tag' in $url (from $key=$version in $props)"
+  local rc=0 err
+  err="$(git ls-remote --exit-code --tags "$url" "refs/tags/$tag" 2>&1 >/dev/null)" || rc=$?
+  if [[ $rc -eq 2 ]]; then
+    die "$name: no tag '$tag' in $url (from $key=$version in $props)"
+  elif [[ $rc -ne 0 ]]; then
+    die "$name: git ls-remote failed for $url (exit $rc): $err"
+  fi
 
   mkdir -p "$dir"
   if [[ ! -d "$dir/.git" ]]; then
     git init --quiet "$dir"
     git -C "$dir" remote add origin "$url"
   fi
-  git -C "$dir" config core.sparseCheckout true
-  git -C "$dir" config core.sparseCheckoutCone false
-  mkdir -p "$dir/.git/info"
-  printf '%s\n' "$sparse_patterns" >"$dir/.git/info/sparse-checkout"
+  write_sparse_patterns "$dir"
 
   git -C "$dir" fetch --quiet --depth 1 --no-tags origin "refs/tags/$tag:refs/tags/$tag"
   git -C "$dir" checkout --quiet --force --detach "refs/tags/$tag"
@@ -115,7 +143,7 @@ sync_one() {
     [[ "$old" == "$tag" ]] || git -C "$dir" tag --delete "$old" >/dev/null
   done < <(git -C "$dir" tag --list)
 
-  assert_no_agent_config "$dir"
+  assert_clean "$dir"
   echo "$name: synced to $tag"
 }
 
