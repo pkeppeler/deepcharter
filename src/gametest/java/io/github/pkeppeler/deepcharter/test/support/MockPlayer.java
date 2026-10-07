@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 
@@ -8,6 +10,7 @@ import io.netty.util.ReferenceCountUtil;
 
 import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import net.minecraft.network.protocol.common.ClientboundKeepAlivePacket;
 import net.minecraft.network.protocol.common.ServerboundKeepAlivePacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
@@ -27,6 +30,7 @@ public final class MockPlayer {
 	private final Connection connection;
 	private final EmbeddedChannel channel;
 	private final BooleanSupplier ownerDone;
+	private final List<Component> actionBar = new ArrayList<>();
 	private boolean loaded;
 
 	MockPlayer(MinecraftServer server, ServerPlayer player, Connection connection, EmbeddedChannel channel,
@@ -36,6 +40,11 @@ public final class MockPlayer {
 		this.connection = connection;
 		this.channel = channel;
 		this.ownerDone = ownerDone;
+	}
+
+	/** Every action-bar message the server has sent this player so far, oldest first. */
+	public List<Component> actionBarMessages() {
+		return List.copyOf(actionBar);
 	}
 
 	public ServerPlayer player() {
@@ -113,6 +122,9 @@ public final class MockPlayer {
 		Object outbound;
 		while ((outbound = channel.readOutbound()) != null) {
 			try {
+				if (outbound instanceof ClientboundSystemChatPacket chat && chat.overlay()) {
+					actionBar.add(chat.content());
+				}
 				if (outbound instanceof ClientboundKeepAlivePacket keepAlive && player.connection != null) {
 					player.connection.handleKeepAlive(new ServerboundKeepAlivePacket(keepAlive.getId()));
 				}
