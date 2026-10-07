@@ -37,8 +37,7 @@ review-passed}" ;;
       mergeable) echo "${STUB_MERGEABLE-MERGEABLE}" ;;
     esac ;;
   "pr checks")
-    echo "${STUB_CHECKS-pass	build
-skipping	docs}"
+    echo "${STUB_CHECKS-$DEFAULT_CHECKS}"
     exit "${STUB_CHECKS_RC:-0}" ;;
   "pr merge") touch "$LOG.merged"; exit "${STUB_MERGE_RC:-0}" ;;
 esac
@@ -69,6 +68,19 @@ echo "python3 $*" >>"$LOG"
 exit "${STUB_ROADMAP_RC:-0}"
 STUB
 chmod +x "$work/bin/"*
+
+# The production REQUIRED_CHECKS, so no case depends on its value: the default
+# fake checks report each one as passing, plus an unrelated skipped one.
+required=$(sed -n 's/^REQUIRED_CHECKS=(\(.*\))$/\1/p' "$script")
+[[ -n $required ]] || { echo "cannot read REQUIRED_CHECKS from $script" >&2; exit 1; }
+tab=$'\t'
+DEFAULT_CHECKS="skipping${tab}docs"
+SKIPPING_REQUIRED=""
+for name in $required; do
+  DEFAULT_CHECKS+=$'\n'"pass${tab}$name"
+  SKIPPING_REQUIRED+="skipping${tab}$name"$'\n'
+done
+export DEFAULT_CHECKS
 
 cases=0
 failures=0
@@ -113,7 +125,6 @@ refusal() {
 wt() { grep -o '[^ ]*/wt' "$LOG" | head -1; }
 
 merge_line="gh pr merge 7 -R pkeppeler/deepcharter --squash --delete-branch --match-head-commit abc123"
-tab=$'\t'
 
 refusal "closed PR" "REFUSED: PR #7 is not open" STUB_STATE=CLOSED
 refusal "merged PR" "REFUSED: PR #7 is not open" STUB_STATE=MERGED
@@ -142,7 +153,7 @@ refusal "wrong origin" "REFUSED: origin is" STUB_ORIGIN=git@github.com:someone/e
 # Required checks: a copy of the script with the array filled in (the production
 # script has no override seam).
 mkdir "$work/tools"
-sed 's/^REQUIRED_CHECKS=()$/REQUIRED_CHECKS=(build lint)/' "$script" >"$work/tools/merge-pr.sh"
+sed 's/^REQUIRED_CHECKS=(.*)$/REQUIRED_CHECKS=(build lint)/' "$script" >"$work/tools/merge-pr.sh"
 grep -q 'REQUIRED_CHECKS=(build lint)' "$work/tools/merge-pr.sh" || fail "required-checks copy was not patched"
 SCRIPT=$work/tools/merge-pr.sh refusal "required check absent" "lacks required check: lint" \
   "STUB_CHECKS=pass${tab}build"
@@ -153,6 +164,15 @@ SCRIPT=$work/tools/merge-pr.sh run_script "STUB_CHECKS=pass${tab}build
 pass${tab}lint"
 exited "all required checks present merges" 0
 logged "required-checks merge invocation" "$merge_line"
+
+# The production names: dropping any one of them is refused.
+for name in $required; do
+  others=""
+  for other in $required; do
+    [[ $other == "$name" ]] || others+="pass${tab}$other"$'\n'
+  done
+  refusal "production check $name absent" "lacks required check: $name" "STUB_CHECKS=${others}skipping${tab}docs"
+done
 
 # Happy path: roadmap changed, so it is committed and pushed.
 run_script STUB_ROADMAP_CHANGED=1
@@ -167,7 +187,7 @@ logged "worktree removed" "git worktree remove --force $(wt)"
 logged "worktree pruned" "git worktree prune"
 
 # Skipping checks only is fine; unchanged roadmap is not committed.
-run_script "STUB_CHECKS=skipping${tab}docs"
+run_script "STUB_CHECKS=${SKIPPING_REQUIRED}skipping${tab}docs"
 exited "skipping-only checks merge" 0
 logged "skipping-only merge invocation" "$merge_line"
 not_logged "unchanged roadmap not committed" "git -C .* commit"

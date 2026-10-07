@@ -9,8 +9,8 @@
 set -euo pipefail
 
 repo=pkeppeler/deepcharter
-# Check names that must be present on the PR.
-REQUIRED_CHECKS=()
+# Job names (ci.yml) that run on every PR; the label-gated client job is not listed.
+REQUIRED_CHECKS=(build tool-tests)
 
 if [[ $# -ne 1 || ! $1 =~ ^[0-9]+$ ]]; then
   echo "usage: tools/merge-pr.sh <pr-number>" >&2
