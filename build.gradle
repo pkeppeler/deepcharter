@@ -13,6 +13,22 @@ loom {
 			sourceSet sourceSets.client
 		}
 	}
+
+	runs {
+		// Play-test client. Its own run dir, so the mcpfabric jar that tools/play.sh
+		// places in run/play/mods is loaded here and nowhere else (audit condition 1).
+		play {
+			client()
+			runDir "run/play"
+			programArgs "--quickPlaySingleplayer", "deepcharter-playtest", "--width", "854", "--height", "480"
+		}
+		// Throwaway dedicated server that tools/play.sh uses once to generate the
+		// test world template (quick play cannot create a missing world).
+		playWorld {
+			server()
+			runDir "run/play-world"
+		}
+	}
 }
 
 fabricApi {

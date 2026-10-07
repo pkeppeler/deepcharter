@@ -15,7 +15,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.InteractionHand;
@@ -167,8 +166,6 @@ public class WreckTest {
 	public void aMountedPilotIsDismountedAndDies(GameTestHelper helper) {
 		PodEntity pod = spawnOnFloor(helper);
 		MockPlayer mock = MockPlayers.join(helper, "wreck-pilot");
-		// A player whose client has not reported loaded is immune to all damage, which no real crew member is for long.
-		mock.player().connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
 		try {
 			if (!mock.player().startRiding(pod, true, false)) {
 				throw failure(helper, "the mock could not board the pod");
@@ -432,11 +429,10 @@ public class WreckTest {
 		}
 	}
 
-	/** Joins a mock in the test level at {@code at}, whose client has reported loaded, so that damage reaches it. */
+	/** Joins a mock in the test level at {@code at}, so that damage reaches it. */
 	private static MockPlayer joinLoaded(GameTestHelper helper, String name, Vec3 at) {
 		MockPlayer mock = MockPlayers.join(helper, name);
 		mock.teleportTo(helper.getLevel(), at, 0, 0);
-		mock.player().connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
 		return mock;
 	}
 
@@ -482,14 +478,14 @@ public class WreckTest {
 	@GameTest(maxTicks = 100)
 	public void aCrewMemberStillLoadingIsKilledOnceLoaded(GameTestHelper helper) {
 		PodEntity pod = spawnOnFloor(helper);
-		MockPlayer mock = MockPlayers.join(helper, "wreck-loading");
+		MockPlayer mock = MockPlayers.joinUnloaded(helper, "wreck-loading");
 		mock.teleportTo(helper.getLevel(), pod.position(), 0, 0);
 		mock.player().startRiding(pod, true, false);
 		wreck(pod);
 		if (mock.player().isDeadOrDying()) {
 			throw failure(helper, "a player whose client has not loaded is immune, so the first kill should fail");
 		}
-		mock.player().connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+		mock.markLoaded();
 		helper.succeedWhen(() -> {
 			if (!mock.player().isDeadOrDying()) {
 				throw failure(helper, "the crew member should die once the client has loaded");
@@ -650,9 +646,7 @@ public class WreckTest {
 		PodEntity[] pod = {null};
 		long[] zeroSince = {-1};
 		FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, 1, z), () -> {
-			// A mock never confirms its change of dimension, and until a player does, it is immune to damage.
-			pilot.player().hasChangedDimension();
-			pilot.player().connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+			pilot.confirmDimensionChange();
 			PodEntity created = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
 			created.setPos(x, 1, z);
 			one.addFreshEntity(created);
