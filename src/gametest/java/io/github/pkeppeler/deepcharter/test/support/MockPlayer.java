@@ -58,10 +58,8 @@ public final class MockPlayer {
 	}
 
 	/**
-	 * Report the client as loaded, as a real one does after joining, so the player can take
-	 * damage. {@link MockPlayers#join} does this unless asked not to. A loaded mock also
-	 * confirms every change of dimension on the next server tick, so it stays damageable after
-	 * a breach crossing or a portal.
+	 * Report the client as loaded, so the player can take damage, and confirm the dimension
+	 * change. A loaded mock re-confirms every dimension change each tick.
 	 */
 	public void markLoaded() {
 		loaded = true;
