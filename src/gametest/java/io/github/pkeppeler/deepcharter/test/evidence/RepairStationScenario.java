@@ -49,13 +49,13 @@ public class RepairStationScenario extends EvidenceScenario {
 			screenshot(context, "station");
 
 			context.clickScreenButton("REPAIR ALL");
-			context.waitFor(client -> singleplayer.getServer().computeOnServer(server -> scene.pod().hull() == scene.pod().maxHull()), WAIT_TICKS);
+			RepairStationClientTest.awaitServer(context, () -> singleplayer.getServer().computeOnServer(server -> scene.pod().hull() == scene.pod().maxHull()));
 			hold(context);
 			context.clickScreenButton("BUY DYNAMITE $2000");
-			context.waitFor(client -> singleplayer.getServer().computeOnServer(server -> carried(server, Consumable.DYNAMITE)) == 1, WAIT_TICKS);
+			RepairStationClientTest.awaitServer(context, () -> singleplayer.getServer().computeOnServer(server -> carried(server, Consumable.DYNAMITE)) == 1);
 			hold(context);
 			context.clickScreenButton("BUY MATTER TRANSMITTER $10000");
-			context.waitFor(client -> singleplayer.getServer().computeOnServer(server -> carried(server, Consumable.MATTER_TRANSMITTER)) == 1, WAIT_TICKS);
+			RepairStationClientTest.awaitServer(context, () -> singleplayer.getServer().computeOnServer(server -> carried(server, Consumable.MATTER_TRANSMITTER)) == 1);
 			hold(context);
 			context.setScreen(() -> null);
 
@@ -83,6 +83,13 @@ public class RepairStationScenario extends EvidenceScenario {
 			// Carried far from the colony, then back with the transmitter.
 			singleplayer.getServer().runOnServer(server -> {
 				PodEntity pod = scene.pod();
+				// The rest of the rock is cleared away, so that the transmitter's landing at the spawn is free.
+				BlockPos middle = BlockPos.containing(pod.getBoundingBox().getCenter());
+				for (BlockPos cell : BlockPos.betweenClosed(middle.offset(-ROCK_RADIUS, -1, -ROCK_RADIUS), middle.offset(ROCK_RADIUS, ROCK_RADIUS, ROCK_RADIUS))) {
+					if (server.overworld().getBlockState(cell).is(Blocks.STONE)) {
+						server.overworld().setBlock(cell, Blocks.AIR.defaultBlockState(), 3);
+					}
+				}
 				Vec3 far = pod.position().add(AWAY_BLOCKS, 0, 0);
 				int ground = server.overworld().getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, (int) far.x, (int) far.z);
 				pod.teleport(new TeleportTransition(server.overworld(), new Vec3(far.x, ground, far.z), Vec3.ZERO, pod.getYRot(), pod.getXRot(), TeleportTransition.DO_NOTHING));

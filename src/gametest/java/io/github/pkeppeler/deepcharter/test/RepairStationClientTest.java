@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import java.util.List;
+import java.util.function.BooleanSupplier;
 
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -31,6 +32,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
  */
 public class RepairStationClientTest implements FabricClientGameTest {
 	private static final int WAIT_TICKS = 200;
+	private static final int POLL_TICKS = 2;
 	private static final long START_BALANCE = 100_000;
 	private static final float DAMAGE = 40f;
 
@@ -47,18 +49,29 @@ public class RepairStationClientTest implements FabricClientGameTest {
 			context.waitForScreen(RepairStationScreen.class);
 
 			context.clickScreenButton("REPAIR 10 HP ($150)");
-			context.waitFor(client -> hull(singleplayer, scene) == scene.pod().maxHull() - DAMAGE + 10f, WAIT_TICKS);
+			awaitServer(context, () -> hull(singleplayer, scene) == scene.pod().maxHull() - DAMAGE + 10f);
 			check(account(singleplayer, scene) == START_BALANCE - 150, "10 HP cost $150, the account is $" + account(singleplayer, scene));
 
 			context.clickScreenButton("BUY DYNAMITE $2000");
-			context.waitFor(client -> carried(singleplayer, Consumable.DYNAMITE) == 1, WAIT_TICKS);
+			awaitServer(context, () -> carried(singleplayer, Consumable.DYNAMITE) == 1);
 			check(account(singleplayer, scene) == START_BALANCE - 150 - 2_000, "the dynamite cost $2000, the account is $" + account(singleplayer, scene));
 
 			context.clickScreenButton("REPAIR ALL");
-			context.waitFor(client -> hull(singleplayer, scene) == scene.pod().maxHull(), WAIT_TICKS);
+			awaitServer(context, () -> hull(singleplayer, scene) == scene.pod().maxHull());
 			check(account(singleplayer, scene) == START_BALANCE - 150 - 2_000 - 30 * 15, "the rest of the hull cost $450, the account is $" + account(singleplayer, scene));
 			context.setScreen(() -> null);
 		}
+	}
+
+	/** Waits for server state that {@code condition} reads through {@code computeOnServer}, which {@code waitFor} may not call (it runs on the client thread). */
+	public static void awaitServer(ClientGameTestContext context, BooleanSupplier condition) {
+		for (int waited = 0; waited < WAIT_TICKS; waited += POLL_TICKS) {
+			if (condition.getAsBoolean()) {
+				return;
+			}
+			context.waitTicks(POLL_TICKS);
+		}
+		throw new AssertionError("the server state did not change within " + WAIT_TICKS + " ticks");
 	}
 
 	/** The player founds a charter, a repaired station stands beside them, and the charter's damaged pod is parked at it. */

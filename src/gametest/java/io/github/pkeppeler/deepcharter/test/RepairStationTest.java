@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -46,6 +47,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -534,7 +536,18 @@ public class RepairStationTest {
 		return Vec3.atBottomCenterOf(data.pos());
 	}
 
-	private static void teleportFromLayerOne(GameTestHelper helper, Consumable teleporter, double x, double z, double scatter) {
+	/** The Mole has one seat and no other chassis exists, so a test that wants a second rider gives this pod a second seat. */
+	private static void addSeat(GameTestHelper helper, PodEntity pod) {
+		try {
+			Field chassis = PodEntity.class.getDeclaredField("chassis");
+			chassis.setAccessible(true);
+			chassis.set(pod, new Chassis("mole", 2, Chassis.MOLE.width(), Chassis.MOLE.height()));
+		} catch (ReflectiveOperationException failure) {
+			throw helper.assertionException("could not add a seat: %s", failure);
+		}
+	}
+
+	private static void teleportFromLayerOne(GameTestHelper helper, Consumable teleporter, double x, double z, double scatter, boolean withPassenger) {
 		ServerLevel one = helper.getLevel().getServer().getLevel(LayerChain.dimension(1));
 		if (one == null) {
 			throw helper.assertionException("layer 1 did not load");
@@ -547,6 +560,8 @@ public class RepairStationTest {
 		});
 		Charter charter = Charters.charterOf(server, pilot.player().getUUID()).orElseThrow();
 		pilot.teleportTo(one, new Vec3(x, 40, z), 0, 0);
+		MockPlayer passenger = MockPlayers.join(helper, "Stowaway");
+		passenger.teleportTo(one, new Vec3(x, 40, z), 0, 0);
 		BlockPos at = BlockPos.containing(x, 40, z);
 		boolean[] used = {false};
 		FarChunks.awaitEntityTicking(helper, one, at, () -> {
@@ -558,6 +573,12 @@ public class RepairStationTest {
 			pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM));
 			if (!pilot.player().startRiding(pod, true, false)) {
 				throw helper.assertionException("the pilot could not board the pod");
+			}
+			if (withPassenger) {
+				addSeat(helper, pod);
+			}
+			if (withPassenger && !passenger.player().startRiding(pod, true, false)) {
+				throw helper.assertionException("the second rider could not board the pod");
 			}
 			ServerPlayer player = pilot.player();
 			player.getInventory().setItem(player.getInventory().getSelectedSlot(), new ItemStack(RepairRegistry.item(teleporter)));
@@ -577,6 +598,13 @@ public class RepairStationTest {
 			}
 			if (arrived.level() != player.level()) {
 				throw helper.assertionException("the pod is in %s, the pilot in %s", arrived.level().dimension(), player.level().dimension());
+			}
+			if (withPassenger) {
+				// The arrived pod is a new entity built from the Mole's one seat, so the extra rider stands beside it: carried, not left behind.
+				ServerPlayer second = passenger.player();
+				if (second.level() != arrived.level() || second.position().distanceTo(arrived.position()) > 3.0) {
+					throw helper.assertionException("the second rider should arrive beside the pod in %s, is at %s in %s", arrived.level().dimension(), second.position(), second.level().dimension());
+				}
 			}
 			Vec3 target = spawn(server);
 			double away = Math.hypot(arrived.getX() - target.x, arrived.getZ() - target.z);
@@ -606,12 +634,22 @@ public class RepairStationTest {
 
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
 	public void theMatterTransmitterTakesThePodAndPilotAcrossDimensionsAndSpillsTheCargo(GameTestHelper helper) {
-		teleportFromLayerOne(helper, Consumable.MATTER_TRANSMITTER, 2400.5, 2400.5, 0.0);
+		teleportFromLayerOne(helper, Consumable.MATTER_TRANSMITTER, 2400.5, 2400.5, 0.0, false);
+	}
+
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+	public void theMatterTransmitterTakesASecondPassengerToo(GameTestHelper helper) {
+		teleportFromLayerOne(helper, Consumable.MATTER_TRANSMITTER, 2600.5, 2600.5, 0.0, true);
 	}
 
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
 	public void theQuantumTeleporterLandsWithinItsScatter(GameTestHelper helper) {
-		teleportFromLayerOne(helper, Consumable.QUANTUM_TELEPORTER, 2500.5, 2500.5, RepairTuning.DEFAULT.quantumScatter());
+		teleportFromLayerOne(helper, Consumable.QUANTUM_TELEPORTER, 2500.5, 2500.5, RepairTuning.DEFAULT.quantumScatter(), false);
+	}
+
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+	public void theQuantumTeleporterTakesASecondPassengerToo(GameTestHelper helper) {
+		teleportFromLayerOne(helper, Consumable.QUANTUM_TELEPORTER, 2700.5, 2700.5, RepairTuning.DEFAULT.quantumScatter(), true);
 	}
 
 	@GameTest
@@ -792,13 +830,18 @@ public class RepairStationTest {
 		});
 	}
 
-	/** Puts a damaged pod owned by whoever {@code owner} makes beside the station, repairs, and says whether it was repaired. */
+	/** Puts a damaged pod that {@code setUp} registers beside the station, has the station's pilot repair, and says whether it was repaired. */
 	private static boolean repairsPodOf(GameTestHelper helper, Station station, Consumer<PodEntity> setUp) {
+		return repairsPodOf(helper, station, station.pilot(), setUp);
+	}
+
+	/** {@link #repairsPodOf(GameTestHelper, Station, Consumer)} with {@code actor} pressing the button. */
+	private static boolean repairsPodOf(GameTestHelper helper, Station station, MockPlayer actor, Consumer<PodEntity> setUp) {
 		station.pod().discard();
 		PodEntity other = helper.spawn(PodRegistry.POD, new Vec3(3.5, 1, 0.5));
 		other.setHull(other.maxHull() - 20f);
 		setUp.accept(other);
-		Optional<TerminalRefusal> refusal = Terminals.act(station.pilot().player(), station.pos(), RepairStation.REPAIR, hp(5));
+		Optional<TerminalRefusal> refusal = Terminals.act(actor.player(), station.pos(), RepairStation.REPAIR, hp(5));
 		boolean repaired = refusal.isEmpty() && other.hull() == other.maxHull() - 15f;
 		if (refusal.isPresent() && other.hull() != other.maxHull() - 20f) {
 			throw helper.assertionException("a refused repair changed the hull to %s", other.hull());
@@ -808,7 +851,7 @@ public class RepairStationTest {
 	}
 
 	@GameTest
-	public void theOwnershipRuleMirrorsCanMount(GameTestHelper helper) {
+	public void repairFollowsPodComponentsMayAccess(GameTestHelper helper) {
 		withStation(helper, station -> {
 			MinecraftServer server = helper.getLevel().getServer();
 			fund(helper, station, 100_000);
@@ -837,6 +880,37 @@ public class RepairStationTest {
 			}
 			if (repairsPodOf(helper, station, pod -> pod.setAttached(PodComponents.STATE, new Versioned.Unreadable<PodComponents.State>(new CompoundTag())))) {
 				throw helper.assertionException("a pod whose owner cannot be read must be refused");
+			}
+
+			MockPlayer member = MockPlayers.join(helper, "Crew Member");
+			member.player().setGameMode(GameType.SURVIVAL);
+			member.teleportTo(helper.getLevel(), station.pilot().player().position(), 0, 0);
+			Charters.apply(server, member.player().getUUID(), station.charter().id()).ifPresent(refusal -> {
+				throw helper.assertionException("applying to the charter: %s", refusal);
+			});
+			Charters.approve(server, station.pilot().player().getUUID(), member.player().getUUID()).ifPresent(refusal -> {
+				throw helper.assertionException("approving the member: %s", refusal);
+			});
+			if (!repairsPodOf(helper, station, member, pod -> PodComponents.register(pod, station.charter().id()))) {
+				throw helper.assertionException("a charter member may repair the charter's pod");
+			}
+
+			MockPlayer outsider = MockPlayers.join(helper, "Outsider");
+			outsider.player().setGameMode(GameType.SURVIVAL);
+			outsider.teleportTo(helper.getLevel(), station.pilot().player().position(), 0, 0);
+			Charters.found(server, outsider.player().getUUID(), "Outsiders " + UUID.randomUUID().toString().substring(0, 8)).ifPresent(refusal -> {
+				throw helper.assertionException("founding the outsiders' charter: %s", refusal);
+			});
+			Charters.deposit(server, Charters.charterOf(server, outsider.player().getUUID()).orElseThrow().id(), 1_000);
+			if (repairsPodOf(helper, station, outsider, pod -> PodComponents.register(pod, station.charter().id()))) {
+				throw helper.assertionException("a player of another charter must not repair this charter's pod");
+			}
+
+			MockPlayer drifter = MockPlayers.join(helper, "Drifter");
+			drifter.player().setGameMode(GameType.SURVIVAL);
+			drifter.teleportTo(helper.getLevel(), station.pilot().player().position(), 0, 0);
+			if (repairsPodOf(helper, station, drifter, pod -> PodComponents.register(pod, station.charter().id()))) {
+				throw helper.assertionException("a player with no charter must not repair a charter's pod");
 			}
 			helper.succeed();
 		});
