@@ -38,7 +38,7 @@ import io.github.pkeppeler.deepcharter.pod.PodTuning;
 /**
  * A second tank on a pod (SPEC: stranded pods wait for "rescue or a reserve tank"). It is a separate attachment, not a part on the
  * fuel tank track: a part replaces the one on its track, and a reserve is fitted besides the tank part and is not charter-stamped
- * (ADR 0016).
+ * (ADR 0019).
  *
  * <p>A pod with a reserve has {@link FuelTuning#reserveLitres()} more litres of capacity. The listener adds them after the tank part
  * scales the tank, so the reserve is always exactly that many litres whatever tier the tank is. Fitting one keeps the litres in the

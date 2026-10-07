@@ -296,6 +296,59 @@ public class FuelPumpTest {
 	}
 
 	@GameTest
+	public void aDormantOwnersPodIsServedToAnyCharter(GameTestHelper helper) {
+		Scene scene = scene(helper, 50);
+		run(helper, scene, s -> {
+			MinecraftServer server = helper.getLevel().getServer();
+			UUID founder = UUID.randomUUID();
+			if (Charters.found(server, founder, "Dormant Pump Test " + CHARTERS.incrementAndGet()).isPresent()) {
+				throw helper.assertionException("founding the dormant charter should succeed");
+			}
+			CharterId dormant = Charters.charterOf(server, founder).orElseThrow().id();
+			if (Charters.leave(server, founder).isPresent() || !Charters.find(server, dormant).orElseThrow().dormant()) {
+				throw helper.assertionException("the only director leaving should make the charter dormant");
+			}
+			PodEntity orphan = helper.spawn(PodRegistry.POD, new Vec3(3.5, 2, 1.5));
+			PodComponents.register(orphan, dormant);
+			s.pod().setPos(s.pod().position().add(TUNING.pumpRadius() + 3, 0, 0));
+			try {
+				orphan.setFuel(0f);
+				expectDone(helper, buy(s, 2), "buying into a pod whose owner charter is dormant");
+				expectEqual(helper, "litres in the dormant charter's pod", 2f, litres(orphan));
+				expectEqual(helper, "dollars", 48, balance(helper, s.charter()));
+			} finally {
+				orphan.discard();
+			}
+		});
+	}
+
+	@GameTest
+	public void anExactPurchaseBeyondTheRoomIsRefused(GameTestHelper helper) {
+		// 4.2 litres of room: 5.8 of 10 litres is in the tank. BUY n is exact, so it takes whole litres of the room only.
+		Scene scene = scene(helper, 50);
+		run(helper, scene, s -> {
+			s.pod().setFuel(58f);
+			expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(s, 5), "buying 5 litres into 4.2 litres of room");
+			expectEqual(helper, "dollars after the refusal", 50, balance(helper, s.charter()));
+			expectEqual(helper, "litres after the refusal", 5.8f, litres(s.pod()));
+			expectDone(helper, buy(s, 4), "buying 4 litres into 4.2 litres of room");
+			expectEqual(helper, "dollars after buying 4", 46, balance(helper, s.charter()));
+			expectEqual(helper, "litres after buying 4", 9.8f, litres(s.pod()));
+		});
+	}
+
+	@GameTest
+	public void fillRoundsFractionalRoomUpToAWholeLitre(GameTestHelper helper) {
+		Scene scene = scene(helper, 50);
+		run(helper, scene, s -> {
+			s.pod().setFuel(58f);
+			expectDone(helper, fill(s), "filling 4.2 litres of room");
+			expectEqual(helper, "dollars after the fill", 45, balance(helper, s.charter()));
+			expectEqual(helper, "litres after the fill", TANK, litres(s.pod()));
+		});
+	}
+
+	@GameTest
 	public void anUnrepairedPumpSellsNothing(GameTestHelper helper) {
 		Scene scene = scene(helper, 50);
 		try {
