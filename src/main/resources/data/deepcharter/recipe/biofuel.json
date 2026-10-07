@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "#deepcharter:biofuel_crops",
+    "#deepcharter:biofuel_crops",
+    "#deepcharter:biofuel_crops",
+    "#deepcharter:biofuel_crops"
+  ],
+  "result": {
+    "id": "deepcharter:biofuel",
+    "count": 1
+  }
+}
