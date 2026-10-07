@@ -1,8 +1,12 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+
+import com.google.gson.JsonParser;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
@@ -157,6 +161,12 @@ public class BreachCrossingTest {
 			boolean inTwo = mock.player().level().dimension().equals(LayerChain.dimension(2));
 			if (inTwo && arrivedAt[0] < 0) {
 				arrivedAt[0] = helper.getTick();
+				ServerLevel two = layer(helper, 2);
+				double y = mock.player().getY();
+				// Strictly inside both crossing lines (y < minY goes down, y > maxY goes up), with margin.
+				if (y - two.getMinY() < 1 || two.getMaxY() - y < 1) {
+					throw failure(helper, "arrival y=%s is not at least 1 block inside layer_2 [%s, %s]", y, two.getMinY(), two.getMaxY());
+				}
 			}
 			if (arrivedAt[0] >= 0) {
 				if (!inTwo) {
@@ -206,11 +216,77 @@ public class BreachCrossingTest {
 		if (!mock.player().gameMode.destroyBlock(stone)) {
 			throw failure(helper, "the hand-break guard stopped an ordinary block");
 		}
+		mock.player().setGameMode(GameType.ADVENTURE);
+		if (mock.player().gameMode.destroyBlock(pos) || !one.getBlockState(pos).is(LayerBlocks.BREACH_CRUST)) {
+			throw failure(helper, "an adventure player broke the crust by hand");
+		}
+		mock.player().setGameMode(GameType.CREATIVE);
+		if (!mock.player().gameMode.destroyBlock(pos) || !one.getBlockState(pos).isAir()) {
+			throw failure(helper, "a creative player could not break the crust");
+		}
+		one.setBlock(pos, LayerBlocks.BREACH_CRUST.defaultBlockState(), 3);
 		if (!BreachService.breakCrust(one, pos)) {
 			throw failure(helper, "the drill hook refused to break the crust");
 		}
 		if (!one.getBlockState(pos).isAir()) {
 			throw failure(helper, "the crust is still there after the drill hook");
+		}
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 200)
+	public void arrivalPocketHasASolidFloor(GameTestHelper helper) {
+		double x = 1700.5;
+		double z = 1700.5;
+		ServerLevel two = layer(helper, 2);
+		openShaft(layer(helper, 1), x, z);
+		MockPlayer mock = MockPlayers.join(helper, "breach-floor");
+		mock.teleportTo(layer(helper, 1), new Vec3(x, 8, z), 0, 0);
+		fallWhileInLayerOne(helper, mock);
+		helper.succeedWhen(() -> {
+			expectIn(helper, mock.player(), 2);
+			BlockPos floor = mock.player().blockPosition().below();
+			if (two.getBlockState(floor).isAir()) {
+				throw failure(helper, "no floor under the arrival at %s", floor);
+			}
+		});
+	}
+
+	@GameTest(maxTicks = 200)
+	public void crossingKeepsBlockEntities(GameTestHelper helper) {
+		double x = 1800.5;
+		double z = 1800.5;
+		ServerLevel two = layer(helper, 2);
+		BlockPos chest = BlockPos.containing(x, two.getMaxY() - LayerTuning.DEFAULT.pocketHeight() + 1, z);
+		two.setBlock(chest, Blocks.CHEST.defaultBlockState(), 3);
+		openShaft(layer(helper, 1), x, z);
+		MockPlayer mock = MockPlayers.join(helper, "breach-chest");
+		mock.teleportTo(layer(helper, 1), new Vec3(x, 8, z), 0, 0);
+		fallWhileInLayerOne(helper, mock);
+		helper.succeedWhen(() -> {
+			expectIn(helper, mock.player(), 2);
+			if (!two.getBlockState(chest).is(Blocks.CHEST) || two.getBlockEntity(chest) == null) {
+				throw failure(helper, "the crossing deleted the chest at %s", chest);
+			}
+		});
+	}
+
+	/** The test world's layers are generated from the shipped JSON; the tuning must not drift from it. */
+	@GameTest
+	public void crustThicknessMatchesTheShippedLayers(GameTestHelper helper) throws IOException {
+		for (int layer = 1; layer <= 2; layer++) {
+			String resource = "/data/deepcharter/dimension/layer_" + layer + ".json";
+			try (var stream = BreachCrossingTest.class.getResourceAsStream(resource)) {
+				if (stream == null) {
+					throw failure(helper, "missing classpath resource %s", resource);
+				}
+				int height = JsonParser.parseReader(new InputStreamReader(stream)).getAsJsonObject()
+						.getAsJsonObject("generator").getAsJsonObject("settings")
+						.getAsJsonArray("layers").get(0).getAsJsonObject().get("height").getAsInt();
+				if (height != LayerTuning.DEFAULT.crustThickness()) {
+					throw failure(helper, "layer_%d crust is %d blocks, LayerTuning.crustThickness is %d", layer, height, LayerTuning.DEFAULT.crustThickness());
+				}
+			}
 		}
 		helper.succeed();
 	}
