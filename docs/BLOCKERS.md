@@ -4,7 +4,7 @@ The orchestrator writes this log during unattended runs. It never stops for a bl
 
 ## 2026-10-07: Subagents hit the usage limit (work paused, resumes by itself)
 
-**Status:** open. Nothing is needed from the user unless they want to spend more.
+**Status:** resolved 2026-10-07 18:30 ET. Subagents run again, and the loop resumed.
 
 At 11:35 ET every subagent stopped with "You've hit your session limit · resets 9:10am (America/New_York)". The next reset is 2026-10-08 at 09:10 ET. Before the stop, 26 PRs were merged. The work in progress was saved to GitHub:
 
