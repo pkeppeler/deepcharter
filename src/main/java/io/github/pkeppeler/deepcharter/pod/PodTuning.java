@@ -13,9 +13,22 @@ public record PodTuning(Shell shell, Movement movement, Drill drill, Cargo cargo
 		public static final Shell DEFAULT = new Shell(100f, 100f);
 	}
 
-	/** Filled by #29. */
-	public record Movement() {
-		public static final Movement DEFAULT = new Movement();
+	/**
+	 * Treads and rotor. Speeds are blocks per tick, accelerations blocks per tick squared, powers and
+	 * masses share one unit, damage is in hull percentage points.
+	 *
+	 * @param horizontalSpeed     speed along the one axis the pilot drives
+	 * @param enginePower         rotor power; lift is this minus the cargo mass
+	 * @param thrustAcceleration  upward acceleration at full lift (lift equal to engine power)
+	 * @param maxClimbSpeed       the rotor cannot push the pod up faster than this
+	 * @param gravity             downward acceleration; entities default to none, so the pod brings its own
+	 * @param verticalDrag        per-tick factor on vertical speed, so a fall has a terminal speed
+	 * @param hardLandingDistance a fall of this many blocks or fewer does no damage
+	 * @param hullDamagePerBlock  hull damage for each block fallen beyond the threshold
+	 */
+	public record Movement(float horizontalSpeed, float enginePower, float thrustAcceleration, float maxClimbSpeed,
+			float gravity, float verticalDrag, float hardLandingDistance, float hullDamagePerBlock) {
+		public static final Movement DEFAULT = new Movement(0.2f, 100f, 0.16f, 0.35f, 0.08f, 0.98f, 4f, 5f);
 	}
 
 	/** Filled by #30. */

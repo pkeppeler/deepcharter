@@ -51,22 +51,23 @@ public class MockPlayersTest {
 
 	/**
 	 * Server GameTests finish in seconds, so the 15 s keep-alive never comes due on its own.
-	 * Backdate the listener's last keep-alive instead: the server must send one, and the mock
-	 * must answer it, or the player would be kicked 15 s later.
+	 * Backdate the listener's last keep-alive instead, then poll every tick: the server must
+	 * send one, and the mock must answer it, or the player would be kicked 15 s later.
 	 */
-	@GameTest
+	@GameTest(maxTicks = 100)
 	public void mockPlayerAnswersKeepAlives(GameTestHelper helper) {
 		MockPlayer mock = MockPlayers.join(helper, "answers-keep-alives");
+		long backdated = Util.getMillis() - 16_000L;
 		try {
-			setField(mock.player().connection, "keepAliveTime", Util.getMillis() - 16_000L);
+			setField(mock.player().connection, "keepAliveTime", backdated);
 		} catch (ReflectiveOperationException e) {
 			throw reflectionFailure("keepAliveTime", e);
 		}
-		helper.runAfterDelay(5, () -> {
+		helper.succeedWhen(() -> {
 			try {
 				long sentAt = (long) getField(mock.player().connection, "keepAliveTime");
 				boolean pending = (boolean) getField(mock.player().connection, "keepAlivePending");
-				if (Util.getMillis() - sentAt > 5_000L) {
+				if (sentAt <= backdated) {
 					throw helper.assertionException("the server never sent a keep-alive to the mock player");
 				}
 				if (pending) {
@@ -78,7 +79,6 @@ public class MockPlayersTest {
 			} catch (ReflectiveOperationException e) {
 				throw reflectionFailure("keepAliveTime or keepAlivePending", e);
 			}
-			helper.succeed();
 		});
 	}
 
