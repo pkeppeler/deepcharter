@@ -555,12 +555,13 @@ public class RepairStationTest {
 			throw helper.assertionException("founding the charter: %s", refusal);
 		});
 		Charter charter = Charters.charterOf(server, pilot.player().getUUID()).orElseThrow();
-		pilot.teleportTo(one, new Vec3(x, 40, z), 0, 0);
 		MockPlayer passenger = MockPlayers.join(helper, "Stowaway");
-		passenger.teleportTo(one, new Vec3(x, 40, z), 0, 0);
 		BlockPos at = BlockPos.containing(x, 40, z);
 		boolean[] used = {false};
 		FarChunks.awaitEntityTicking(helper, one, at, () -> {
+			// Only now: layer 1 is solid rock, and a rider put there while the chunk loads suffocates on a slow runner.
+			pilot.teleportTo(one, new Vec3(x, 40, z), 0, 0);
+			passenger.teleportTo(one, new Vec3(x, 40, z), 0, 0);
 			PodEntity pod = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
 			pod.setPos(x, 40, z);
 			one.addFreshEntity(pod);
