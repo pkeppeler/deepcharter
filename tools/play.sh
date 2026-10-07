@@ -17,6 +17,7 @@ template_dir="$repo_root/run/play-world"
 world_name="deepcharter-playtest"   # must match programArgs of runPlay in build.gradle
 bridge_port=25599                   # mcpfabric default; one bridge per machine
 lock_dir="$play_dir/.lock"
+stop_timeout_s="${PLAY_STOP_TIMEOUT:-60}"   # how long the world server gets to stop after `stop`
 
 die() { echo "play: $*" >&2; exit 1; }
 
@@ -79,6 +80,15 @@ if [[ ! -f "$template_dir/world/level.dat" ]]; then
   [[ -n "$done_seen" ]] || die "server never reported Done within 300s"
   echo stop >&3
   exec 3>&-
+  for _ in $(seq 1 "$stop_timeout_s"); do
+    kill -0 "$server_pid" 2>/dev/null || break
+    sleep 1
+  done
+  # Only the process this script started; cleanup also stops its children.
+  if kill -0 "$server_pid" 2>/dev/null; then
+    kill "$server_pid" 2>/dev/null || true
+    die "world server did not stop"
+  fi
   wait "$server_pid" || { tail -n 40 "$server_log" >&2; die "world server failed"; }
   server_pid=""
   rm -f "$server_log" "$server_fifo"

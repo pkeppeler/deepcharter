@@ -1,0 +1,6 @@
+// World only: eula/server.properties/mods under build/run/gameTest are Loom's.
+def deleteGameTestWorld = tasks.register("deleteGameTestWorld", Delete) {
+	delete layout.buildDirectory.dir("run/gameTest/world")
+}
+
+tasks.named("runGameTest") { dependsOn deleteGameTestWorld }

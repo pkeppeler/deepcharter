@@ -1,0 +1,98 @@
+# Client GameTests, only for PRs labelled `gameplay`. Separate from ci.yml so the
+# `labeled` trigger exists only here: any other label starts this run with its job
+# skipped (no runner, seconds), and never touches the build.
+name: Client tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, ready_for_review]
+
+# Runs that will do real work (same condition as the job's `if`) share one group
+# per PR, so a PR opened with `gameplay` set runs the client tests once, not once
+# for `opened` and once for `labeled`. Runs that will skip (any other label, added
+# mid-run by the pipeline) get a group of their own, so they cannot cancel a real run.
+concurrency:
+  group: >-
+    ${{ (!github.event.pull_request.draft
+    && contains(github.event.pull_request.labels.*.name, 'gameplay')
+    && (github.event.action != 'labeled' || github.event.label.name == 'gameplay'))
+    && format('client-{0}', github.event.pull_request.number)
+    || format('client-{0}-skip-{1}', github.event.pull_request.number, github.run_id) }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  client-gametest:
+    name: client-gametest
+    # Not a draft, labelled gameplay, and for a label event, the label added is gameplay.
+    if: >-
+      ${{ !github.event.pull_request.draft
+      && contains(github.event.pull_request.labels.*.name, 'gameplay')
+      && (github.event.action != 'labeled' || github.event.label.name == 'gameplay') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # No X server: SDL3's offscreen driver gets its GL context from EGL; naming it beats a stray DISPLAY.
+      SDL_VIDEO_DRIVER: offscreen
+      # Mesa software rendering (llvmpipe): the runner has no GPU.
+      LIBGL_ALWAYS_SOFTWARE: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: 25
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-read-only: false
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libegl1 libegl-mesa0 libgl1-mesa-dri
+      # One backend, not a matrix, to save minutes. `version` is the data version that
+      # stops Minecraft's datafixer from resetting the backend to its default
+      # (OptionsForceDefaultGraphicsApiFix).
+      - name: Choose the OpenGL backend
+        run: |
+          mkdir -p build/run/clientGameTest
+          printf 'version:4896\npreferredGraphicsBackend:"opengl"\n' > build/run/clientGameTest/options.txt
+      # Minecraft logs "Failed to create backend" and then hangs, so watch the log and
+      # fail at once. The final assertion catches a Minecraft bump that resets options.txt.
+      # -x deleteGameTestRunDir: Loom deletes the run dir first, which would delete options.txt.
+      - name: Client GameTests
+        run: |
+          log="$RUNNER_TEMP/client-gametest.log"
+          ./gradlew runClientGameTest -x deleteGameTestRunDir > "$log" 2>&1 &
+          gradle_pid=$!
+          tail -n +1 -f "$log" --pid="$gradle_pid" &
+          tail_pid=$!
+          stop_gradle() {
+            echo "::error::$1"
+            kill "$gradle_pid" 2>/dev/null || true
+            ./gradlew --stop > /dev/null 2>&1 || true
+            wait "$tail_pid" 2>/dev/null || true
+            exit 1
+          }
+          deadline=$((SECONDS + 180))
+          while kill -0 "$gradle_pid" 2>/dev/null; do
+            if grep -q 'Failed to create backend' "$log"; then
+              stop_gradle "Minecraft could not create a graphics backend"
+            fi
+            if [ "$SECONDS" -ge "$deadline" ] \
+              && ! grep -q 'Created window using SDL video driver' "$log"; then
+              stop_gradle "No Minecraft window after 3 minutes"
+            fi
+            sleep 2
+          done
+          status=0
+          wait "$gradle_pid" || status=$?
+          wait "$tail_pid" || true
+          if [ "$status" -ne 0 ]; then
+            exit "$status"
+          fi
+          if ! grep -q 'Using graphics backend OpenGL' "$log"; then
+            echo "::error::The client did not use the OpenGL backend that options.txt asks for"
+            exit 1
+          fi
+        timeout-minutes: 8

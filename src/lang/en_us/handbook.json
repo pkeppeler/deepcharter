@@ -1,0 +1,16 @@
+{
+  "deepcharter.handbook.chapter.sample.title": "PLACEHOLDER: Sample Chapter",
+  "deepcharter.handbook.complete.no_charter": "%s was not completed: you are on no charter",
+  "deepcharter.handbook.complete.success": "Completed %s for your charter",
+  "deepcharter.handbook.complete.unknown": "No handbook chapter defines the directive %s",
+  "deepcharter.handbook.directive.sample.custom": "PLACEHOLDER: do the thing our own code watches for",
+  "deepcharter.handbook.directive.sample.sleep": "PLACEHOLDER: sleep in a bed",
+  "deepcharter.handbook.give.full": "Your inventory is full",
+  "deepcharter.handbook.give.success": "Gave you a handbook",
+  "deepcharter.handbook.progress.done": "done: %s",
+  "deepcharter.handbook.progress.header": "%s of %s directives done",
+  "deepcharter.handbook.progress.open": "open: %s",
+  "deepcharter.handbook.read.success": "Marked %s read",
+  "deepcharter.handbook.unread.success": "Marked %s unread",
+  "item.deepcharter.handbook": "Employee Handbook"
+}

@@ -1,0 +1,20 @@
+{
+  "order": 0,
+  "title": {
+    "translate": "deepcharter.handbook.chapter.sample.title"
+  },
+  "directives": [
+    {
+      "id": "deepcharter:handbook/sample/sleep",
+      "text": {
+        "translate": "deepcharter.handbook.directive.sample.sleep"
+      }
+    },
+    {
+      "id": "deepcharter:handbook/sample/custom",
+      "text": {
+        "translate": "deepcharter.handbook.directive.sample.custom"
+      }
+    }
+  ]
+}

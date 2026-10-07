@@ -1,0 +1,17 @@
+{
+  "type": "deepcharter:layer_1",
+  "generator": {
+    "type": "minecraft:noise",
+    "biome_source": {
+      "type": "deepcharter:zones",
+      "min_y": 0,
+      "height": 192,
+      "biomes": [
+        "deepcharter:topsoil_claims",
+        "deepcharter:stone_benches",
+        "deepcharter:deep_claim"
+      ]
+    },
+    "settings": "deepcharter:layer_1"
+  }
+}

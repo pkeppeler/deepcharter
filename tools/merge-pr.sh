@@ -3,14 +3,18 @@
 #
 # Refuses (nonzero exit, one "REFUSED:" line) unless the PR is open, not a draft,
 # labelled `review-passed` with a `review-passed <head sha>` comment for the
-# current head (see tools/mark-review-passed.sh), mergeable, and every check is
-# `pass` or `skipping` (at least one check, and all of REQUIRED_CHECKS present).
+# current head (see tools/mark-review-passed.sh), closes exactly its branch's
+# issue (the body's Closes/Fixes/Resolves #N set is {N} for branch `<N>-<slug>`),
+# mergeable, and every check is
+# `pass` or `skipping` (at least one check, and all of REQUIRED_CHECKS passing). A
+# check's state is its newest non-skipped run, so a later skipped run cannot hide
+# a failure.
 # Then squash-merges pinned to that head sha and regenerates docs/ROADMAP.md.
 set -euo pipefail
 
 repo=pkeppeler/deepcharter
-# Check names that must be present on the PR.
-REQUIRED_CHECKS=()
+# Job names (ci.yml) that run on every PR; the label-gated client job is not listed.
+REQUIRED_CHECKS=(build tool-tests)
 
 if [[ $# -ne 1 || ! $1 =~ ^[0-9]+$ ]]; then
   echo "usage: tools/merge-pr.sh <pr-number>" >&2
@@ -40,31 +44,67 @@ state=$(pr_field state .state)
 
 [[ $(pr_field isDraft .isDraft) == false ]] || refuse "is a draft"
 
+# The PR must close exactly the issue its branch (<issue>-<slug>) is named for.
+branch=$(pr_field headRefName .headRefName) || refuse "has no readable head branch"
+[[ $branch =~ ^([0-9]+)- ]] || refuse "has head branch '$branch', not <issue>-<slug>"
+issue=${BASH_REMATCH[1]}
+body=$(pr_field body .body) || refuse "has no readable body"
+# Fail closed: GitHub also closes on `Closes owner/repo#N` and `Closes <issue URL>`,
+# which the plain-#N set below cannot see, so any such form is refused outright.
+keyword='(^|[^[:alnum:]])(close[sd]?|fix(e[sd])?|resolve[sd]?):?[[:space:]]+'
+odd=$(grep -oiE "${keyword}([^[:space:]#]+#[0-9]+|https?://[^[:space:]]+)" <<<"$body" | tr '\n' ';' || true)
+[[ -z $odd ]] || refuse "body has a closing reference that is not a plain '#N': ${odd%;} (use 'Closes #$issue')"
+# No match is the "no Closes" case below, so a grep exit of 1 is not an error.
+closes=$({ grep -oiE "${keyword}#[0-9]+" <<<"$body" \
+  | grep -oE '[0-9]+$' | sort -un | tr '\n' ' '; } || true)
+closes=${closes% }
+[[ -n $closes ]] || refuse "body has no 'Closes #$issue' (branch $branch is for issue #$issue)"
+[[ $closes == "$issue" ]] \
+  || refuse "body closes #${closes// / #} but branch $branch is for issue #$issue only (the Closes/Fixes/Resolves set must be exactly {#$issue})"
+
 pr_field labels '.labels[].name' | grep -qx 'review-passed' \
-  || refuse "lacks the review-passed label"
+  || refuse "lacks the review-passed label" # pipe-grep-q: fail-closed — a missed match (SIGPIPE) only refuses the merge
 
 # Bodies are compared whole (as JSON strings), so a longer comment cannot match.
 pr_field comments '.comments[].body|@json' | grep -qxF "\"review-passed $sha\"" \
-  || refuse "has no 'review-passed $sha' comment for the current head (re-run tools/mark-review-passed.sh)"
+  || refuse "has no 'review-passed $sha' comment for the current head (re-run tools/mark-review-passed.sh)" # pipe-grep-q: fail-closed — a missed match (SIGPIPE) only refuses the merge
 
 mergeable=$(pr_field mergeable .mergeable)
 [[ $mergeable == MERGEABLE ]] || refuse "is not mergeable (mergeable: $mergeable)"
 
-# `gh pr checks` exits 8 while checks are pending and 1 when none are reported;
-# the output decides, so the exit code is ignored. Lines are "bucket<TAB>name".
-checks=$(gh pr checks "$pr" -R "$repo" --json name,bucket \
-  --jq '.[] | "\(.bucket)\t\(.name)"' 2>&1 || true)
-if ! grep -q $'\t' <<<"$checks"; then
-  refuse "has no checks reported for $sha (zero checks is not a pass): $(tr '\n' ' ' <<<"$checks")"
+# Checks come from the check-runs API, not `gh pr checks`: workflows that run on
+# label events add a skipped run under the same name as an earlier real one, and
+# the default (latest per name) view would let that skipped run hide a failure.
+# One line per run: name, start time, id, status, conclusion. A run that has not
+# started sorts newest. Runs are ordered by start time, then id (monotonic).
+run_lines=$(gh api "repos/$repo/commits/$sha/check-runs?filter=all&per_page=100" --paginate \
+  --jq '.check_runs[] | [.name, (.started_at // "9999-12-31T23:59:59Z"), (.id | tostring), .status, (.conclusion // "")] | @tsv' 2>&1 || true)
+if ! grep -q $'\t' <<<"$run_lines"; then
+  refuse "has no checks reported for $sha (zero checks is not a pass): $(tr '\n' ' ' <<<"$run_lines")"
 fi
+# Per name, the deciding run is the newest one that is not skipped: only a
+# `success` passes, anything else (running, failed, cancelled, ...) refuses. A name
+# whose runs were all skipped is "skipping". Output lines are "verdict<TAB>name".
+checks=$(grep $'\t' <<<"$run_lines" | LC_ALL=C sort -t $'\t' -k1,1 -k2,2 -k3,3n | awk -F'\t' '
+  function flush() {
+    if (name == "") return
+    print (state == "" ? "skipping" : state == "success" ? "pass" : state) "\t" name
+  }
+  $1 != name { flush(); name = $1; state = "" }
+  { s = ($4 == "completed") ? $5 : $4; if (s != "skipped") state = s }
+  END { flush() }')
 while IFS=$'\t' read -r bucket name; do
   case $bucket in
     pass | skipping) ;;
-    *) refuse "has a check that is not passing: $name (bucket: $bucket)" ;;
+    *) refuse "has a check that is not passing: $name (newest non-skipped run: $bucket)" ;;
   esac
-done < <(grep $'\t' <<<"$checks")
-for required in ${REQUIRED_CHECKS[@]+"${REQUIRED_CHECKS[@]}"}; do
-  grep -q $'\t'"$required\$" <<<"$checks" || refuse "lacks required check: $required"
+done <<<"$checks"
+for required in "${REQUIRED_CHECKS[@]}"; do
+  grep -qxF "pass"$'\t'"$required" <<<"$checks" && continue
+  if grep -qxF "skipping"$'\t'"$required" <<<"$checks"; then
+    refuse "has a required check that was only skipped: $required"
+  fi
+  refuse "lacks required check: $required"
 done
 
 # gh can merge on GitHub and then fail on local cleanup (branch checked out in a

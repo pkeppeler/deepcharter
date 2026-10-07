@@ -1,0 +1,101 @@
+{
+  "dimensions": {
+    "deepcharter:layer_1": {
+      "type": "deepcharter:layer_1",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "deepcharter:zones",
+          "min_y": 0,
+          "height": 192,
+          "biomes": [
+            "deepcharter:topsoil_claims",
+            "deepcharter:stone_benches",
+            "deepcharter:deep_claim"
+          ]
+        },
+        "settings": "deepcharter:layer_1"
+      }
+    },
+    "deepcharter:layer_2": {
+      "type": "deepcharter:layer_2",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "deepcharter:zones",
+          "min_y": 0,
+          "height": 256,
+          "biomes": [
+            "deepcharter:upper_levels",
+            "deepcharter:shift_change",
+            "deepcharter:prospectors_run"
+          ]
+        },
+        "settings": "deepcharter:layer_2"
+      }
+    },
+    "minecraft:overworld": {
+      "type": "minecraft:overworld",
+      "generator": {
+        "type": "minecraft:flat",
+        "settings": {
+          "biome": "minecraft:desert",
+          "features": false,
+          "lakes": false,
+          "layers": [
+            {
+              "block": "minecraft:bedrock",
+              "height": 1
+            },
+            {
+              "block": "minecraft:sandstone",
+              "height": 67
+            }
+          ]
+        }
+      }
+    },
+    "minecraft:the_end": {
+      "type": "minecraft:the_end",
+      "generator": {
+        "type": "minecraft:flat",
+        "settings": {
+          "biome": "minecraft:the_end",
+          "features": false,
+          "lakes": false,
+          "layers": [
+            {
+              "block": "minecraft:bedrock",
+              "height": 1
+            },
+            {
+              "block": "minecraft:end_stone",
+              "height": 3
+            }
+          ]
+        }
+      }
+    },
+    "minecraft:the_nether": {
+      "type": "minecraft:the_nether",
+      "generator": {
+        "type": "minecraft:flat",
+        "settings": {
+          "biome": "minecraft:basalt_deltas",
+          "features": false,
+          "lakes": false,
+          "layers": [
+            {
+              "block": "minecraft:bedrock",
+              "height": 1
+            },
+            {
+              "block": "minecraft:basalt",
+              "height": 3
+            }
+          ]
+        }
+      }
+    }
+  }
+}

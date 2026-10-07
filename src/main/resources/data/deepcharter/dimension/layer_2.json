@@ -1,0 +1,17 @@
+{
+  "type": "deepcharter:layer_2",
+  "generator": {
+    "type": "minecraft:noise",
+    "biome_source": {
+      "type": "deepcharter:zones",
+      "min_y": 0,
+      "height": 256,
+      "biomes": [
+        "deepcharter:upper_levels",
+        "deepcharter:shift_change",
+        "deepcharter:prospectors_run"
+      ]
+    },
+    "settings": "deepcharter:layer_2"
+  }
+}

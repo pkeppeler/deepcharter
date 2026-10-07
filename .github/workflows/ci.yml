@@ -1,0 +1,61 @@
+# Runs on every PR. Label events are deliberately not triggers here (they live in
+# client-tests.yml), so adding a label never re-runs or cancels the build.
+# The job names below are the REQUIRED_CHECKS in tools/merge-pr.sh; renaming one
+# means changing both.
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: 25
+      # Reads the cache seeded on main (cache-seed.yml); writable so later pushes to
+      # the same PR also reuse what this run built.
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-read-only: false
+      - run: ./gradlew build
+
+  tool-tests:
+    name: tool-tests
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # build-audio-pack.test.sh needs ffmpeg. It makes its own synthetic tones; CI never
+      # has, reads or needs the original game audio.
+      - name: install ffmpeg
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+      - run: python3 -I -m unittest discover -s tools/tests -p 'test_*.py'
+      - name: bash tool tests
+        run: |
+          for t in tools/tests/*.test.sh; do
+            echo "::group::$t"
+            bash "$t" || { echo "::error::$t failed"; exit 1; }
+            echo "::endgroup::"
+          done
+      - run: shellcheck tools/*.sh tools/tests/*.sh

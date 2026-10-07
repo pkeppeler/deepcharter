@@ -1,0 +1,19 @@
+{
+  "block.deepcharter.bronzium_ore": "Bronzium Ore",
+  "block.deepcharter.cicatrium_ore": "Cicatrium Ore",
+  "block.deepcharter.einsteinium_ore": "Einsteinium Ore",
+  "block.deepcharter.goldium_ore": "Goldium Ore",
+  "block.deepcharter.ironium_ore": "Ironium Ore",
+  "block.deepcharter.platinium_ore": "Platinium Ore",
+  "block.deepcharter.silverium_ore": "Silverium Ore",
+  "container.deepcharter.cargo": "Cargo bay",
+  "item.deepcharter.bronzium": "Bronzium",
+  "item.deepcharter.cicatrium": "Cicatrium",
+  "item.deepcharter.einsteinium": "Einsteinium",
+  "item.deepcharter.goldium": "Goldium",
+  "item.deepcharter.ironium": "Ironium",
+  "item.deepcharter.platinium": "Platinium",
+  "item.deepcharter.silverium": "Silverium",
+  "screen.deepcharter.cargo.empty": "Empty",
+  "screen.deepcharter.cargo.mass": "Mass %s"
+}
