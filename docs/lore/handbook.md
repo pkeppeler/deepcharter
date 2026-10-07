@@ -159,7 +159,7 @@ The redacted clauses, as Rev. 2 reveals them:
 
 ## Revisions
 
-Each revision arrives with a notice at the top of the handbook (*"Your Employee Handbook has been updated (Rev. N). Changes are marked ▸."*) and a mark beside each changed passage. Rules text never changes.
+Each revision arrives with a notice at the top of the handbook (*"Your Employee Handbook has been updated (Rev. N). Changes are marked ▸."*) and a mark beside each changed passage.
 
 | Rev. | Trigger | Changes |
 |------|---------|---------|

@@ -324,7 +324,7 @@ The Behemoth's anchor mode is a temporary outpost.
 
 Settled 2026-10-07. Canon, with spoilers: [LORE.md](LORE.md). Player-facing text: [lore/transmissions.md](lore/transmissions.md), [lore/handbook.md](lore/handbook.md) and [lore/notes.md](lore/notes.md).
 
-Original lore with the original game's shape (a cheerful employer, vanishing miners, orders to turn back, a two-phase boss), expanded and "unabridged". Darkness in the manner of Tolkien and Lewis: evil is real, hollow and beaten, and the deepest thing in the world is good and not safe. Tone and guardrails: [LORE.md section 2](LORE.md#2-tone).
+Original lore with the original game's shape (a cheerful employer, vanishing miners, orders to turn back, a two-phase boss), expanded and "unabridged". Tone and guardrails: [LORE.md section 2](LORE.md#2-tone).
 
 | Act | Layers | Beats |
 |-----|--------|-------|
@@ -334,11 +334,11 @@ Original lore with the original game's shape (a cheerful employer, vanishing min
 | Finale | 8 | Head Office, the reveal, the two-phase boss and the choice. |
 
 - **Employer:** H. Colom & Co. H. COLOM reversed is MOLOCH: the hidden-name trick, with clues in layers 1, 5 and 7 and the reveal on screen in layer 8.
-- **The reveal:** the Company is the lure of a parasite fastened to the heart of a vast sleeping creature whose body is the deep. Ore is what the creature grows, and everything sold goes down the Conduit to the parasite's Furnace.
-- **The finale is a choice** ([ADR 0006](adr/0006-the-finale-is-won-by-renunciation.md)). The fight breaks the boss but cannot kill him, and he offers the charter a **Controlling Interest**.
-  - **Renunciation**, the true ending: anyone in the charter throws the Controlling Interest into the Furnace, which kills the boss. The charter loses its whole account, and every crew member receives an **Unnumbered Lamp**, a suit lamp that never runs out.
-  - **Signing**, by the Director only, is final and permanent. The Director becomes the Chairman, keeps the boss's payout, draws a recurring dividend, carries the Controlling Interest for good, and his suit lamp never works again. The epilogue is grim.
-- **Post-game hook:** the Ramp is the wall around the creature's heart, the Motherload, and in the uncharted layers below it older things gnaw. Both endings lead there. A splice is the creature stirring ("the depths moved").
+- **The reveal:** the Company is the lure of a parasite in the heart of a vast sleeping creature whose body is the deep. Everything sold goes down the Conduit to the parasite's Furnace ([LORE.md](LORE.md#3-the-spine)).
+- **The finale is a choice** ([ADR 0006](adr/0006-the-finale-is-won-by-renunciation.md), [LORE.md](LORE.md#12-the-finale)). The fight breaks the boss but cannot kill him, and he offers the charter a **Controlling Interest**.
+  - **Renunciation**, the true ending: anyone in the charter throws it into the Furnace, which kills the boss. The charter loses its whole account, and every crew member receives an **Unnumbered Lamp**.
+  - **Signing**, by the Director only, is final and permanent. The Director becomes the Chairman, with a payout and a recurring dividend, and his suit lamp never works again. The epilogue is grim.
+- **Post-game hook:** the Ramp is the wall around the creature's heart, the Motherload. Both endings lead to the uncharted layers below it ([LORE.md](LORE.md#13-post-game)). A splice is the creature stirring ("the depths moved").
 - Every change after the finale is presentation for that charter only, never a world edit.
 - **Transmissions** go to the whole charter. Most trigger at the charter's deepest point reached; the bootstrap repairs and the finale beats trigger on events.
 - A personal build could swap in the original's transmission text ([REFERENCE.md](../original_flash_game/REFERENCE.md)).

@@ -175,9 +175,9 @@ Dates are Colony Years (CY). Now is CY 61.
 
 ## 10. The three channels
 
-- **Transmissions** carry the story: [lore/transmissions.md](lore/transmissions.md). Most trigger at the charter's deepest point reached; the bootstrap repairs and the finale beats trigger on events. Personnel pays bonuses in acts 1–2; in act 3 the Chairman sends receipts.
+- **Transmissions** carry the story: [lore/transmissions.md](lore/transmissions.md), which owns the triggers. Personnel pays bonuses in acts 1–2; in act 3 the Chairman sends receipts.
 - **Relays** are transmissions from wrecks' beacons, repeating a dead crew's last words once a day since they died. The loop counter is part of the horror.
-- **The handbook** carries the rules through layer 2, then falls silent. Its **revisions** change its tone, never its rules; Roz's **margin notes** argue with it. See [lore/handbook.md](lore/handbook.md).
+- **The handbook** carries the rules through layer 2, then falls silent. Its **revisions** change the tone; Roz's **margin notes** argue with it. See [lore/handbook.md](lore/handbook.md).
 - **Notes** are the found record: wreck logs, torn pages, time cards, a hymn sheet. See [lore/notes.md](lore/notes.md). (The Chairmen's Book and the Ledger are handbook pages, not Notes.)
 - **Work orders** carry small story beats (proposal): "Restore the Founder's hands" (Bronzium) in act 1; Personnel's "Morale Initiative" in act 2. They never stop paying.
 
