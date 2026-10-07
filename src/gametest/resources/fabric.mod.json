@@ -63,6 +63,7 @@
 			"io.github.pkeppeler.deepcharter.test.CharterCoreClientTest",
 			"io.github.pkeppeler.deepcharter.test.CrtUiKitClientTest",
 			"io.github.pkeppeler.deepcharter.test.OreCargoClientTest",
+			"io.github.pkeppeler.deepcharter.test.PodComponentsClientTest",
 			"io.github.pkeppeler.deepcharter.test.TerminalFrameworkClientTest",
 			"io.github.pkeppeler.deepcharter.test.TransmissionsClientTest",
 			"io.github.pkeppeler.deepcharter.test.HandbookScreenClientTest",

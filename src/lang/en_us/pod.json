@@ -7,6 +7,6 @@
   "hud.deepcharter.pod.cargo": "Cargo %s",
   "hud.deepcharter.pod.depth": "Y %s",
   "hud.deepcharter.pod.fuel": "Fuel %s%%",
-  "hud.deepcharter.pod.hull": "Hull %s%%",
+  "hud.deepcharter.pod.hull": "Hull %s/%s",
   "hud.deepcharter.pod.stranded": "STRANDED"
 }

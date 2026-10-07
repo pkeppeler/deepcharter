@@ -1,1 +1,13 @@
-{}
+{
+  "item.deepcharter.part.serial": "Serial %s",
+  "item.deepcharter.part.tier": "Tier %s",
+  "item.deepcharter.part.unlabelled": "No tier, charter or serial: not a real part",
+  "item.deepcharter.part_cargo_bay": "Cargo bay part",
+  "item.deepcharter.part_drill": "Drill part",
+  "item.deepcharter.part_engine": "Engine part",
+  "item.deepcharter.part_fuel_tank": "Fuel tank part",
+  "item.deepcharter.part_hull": "Hull part",
+  "item.deepcharter.part_lights": "Lights part",
+  "item.deepcharter.part_radiator": "Radiator part",
+  "item.deepcharter.part_scanner": "Scanner part"
+}

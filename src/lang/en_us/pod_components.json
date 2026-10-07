@@ -1,1 +1,3 @@
-{}
+{
+  "message.deepcharter.pod.not_crew": "Pod %s belongs to %s. Only its crew can pilot it."
+}
