@@ -29,7 +29,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerCon
 public final class TwoPlayerServer implements AutoCloseable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TwoPlayerServer.class);
 	private static final String MOCK_NAME = "MockPilot";
-	/** Real-login slots of the test server: the mock holds one, so a reconnect needs a second. */
+	/** The server's max-players. The mock counts against it, so one slot is left for a real login. */
 	private static final int PLAYER_LIMIT = 2;
 
 	private final ClientGameTestContext context;

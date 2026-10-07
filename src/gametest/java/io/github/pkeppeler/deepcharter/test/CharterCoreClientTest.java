@@ -24,6 +24,8 @@ public class CharterCoreClientTest implements FabricClientGameTest {
 	private static final String TWO_PLAYER_NAME = "Two Player Charter";
 	/** A fuse on client ticks for a wait that has no other limit. About 3 minutes at 20 ticks a second. */
 	private static final int CLIENT_TICK_FUSE = 3600;
+	/** Player count once the client has dropped: the mock stays online. */
+	private static final int MOCK_ONLY = 1;
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
@@ -85,7 +87,7 @@ public class CharterCoreClientTest implements FabricClientGameTest {
 
 			two.connection().close();
 			context.waitFor(client -> client.level == null);
-			for (int tick = 0; two.server().computeOnServer(server -> server.getPlayerCount()) > 1; tick++) {
+			for (int tick = 0; two.server().computeOnServer(server -> server.getPlayerCount()) > MOCK_ONLY; tick++) {
 				if (tick > CLIENT_TICK_FUSE) {
 					throw new AssertionError("the server never dropped the disconnected client");
 				}
