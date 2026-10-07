@@ -122,7 +122,7 @@ public class TowingTest {
 		}
 	}
 
-	@GameTest
+	@GameTest(maxTicks = 100)
 	public void aTowedPodTrailsItsTowerWithoutFallingOrTakingDamage(GameTestHelper helper) {
 		PodEntity tower = helper.spawn(PodRegistry.POD, new Vec3(4.5, 4, 4.5));
 		PodEntity towed = helper.spawn(PodRegistry.POD, new Vec3(3.5, 4, 4.5));
@@ -132,11 +132,10 @@ public class TowingTest {
 		PodTowing.attach(tower, towed);
 		int[] step = {0};
 		helper.onEachTick(() -> {
-			if (step[0] < 24) {
-				step[0]++;
-				tower.setPos(towerStart.x + 0.25 * step[0], towerStart.y, towerStart.z);
-				tower.setDeltaMovement(Vec3.ZERO);
-			}
+			// The tower is pinned in the air: it walks 6 blocks east and then stays, so the towed pod's sinking could only be its own.
+			step[0] = Math.min(step[0] + 1, 24);
+			tower.setPos(towerStart.x + 0.25 * step[0], towerStart.y, towerStart.z);
+			tower.setDeltaMovement(Vec3.ZERO);
 		});
 		helper.runAfterDelay(40, () -> {
 			try {
@@ -210,7 +209,7 @@ public class TowingTest {
 		});
 	}
 
-	@GameTest
+	@GameTest(maxTicks = 100)
 	public void aTowedPodsMassCutsTheTowersLift(GameTestHelper helper) {
 		fillFloor(helper, Blocks.STONE);
 		PodEntity tower = helper.spawn(PodRegistry.POD, new Vec3(FLOOR_RADIUS + 0.5, FLOOR_Y + 1, FLOOR_RADIUS + 0.5));
