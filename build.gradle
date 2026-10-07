@@ -32,9 +32,79 @@ dependencies {
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 }
 
+// Lang files are generated: each feature owns src/main/resources/lang-parts/<locale>/<feature>.json.
+// A key may appear in exactly one fragment; any duplicate fails the build.
+abstract class MergeLang extends DefaultTask {
+	@InputDirectory @PathSensitive(PathSensitivity.RELATIVE)
+	abstract DirectoryProperty getPartsDir()
+	@OutputDirectory
+	abstract DirectoryProperty getOutputDir()
+
+	static Map<String, Object> merge(Map<String, File> parts) {
+		def owner = [:]
+		def merged = new TreeMap<String, Object>()
+		parts.each { name, file ->
+			new groovy.json.JsonSlurper().parse(file).each { k, v ->
+				if (owner.containsKey(k)) {
+					throw new GradleException("Duplicate lang key '${k}' in ${owner[k]} and ${name}: one owner per key")
+				}
+				owner[k] = name
+				merged[k] = v
+			}
+		}
+		return merged
+	}
+
+	@TaskAction
+	void run() {
+		outputDir.get().asFile.deleteDir()
+		partsDir.get().asFile.listFiles({ it.isDirectory() } as FileFilter).sort().each { locale ->
+			def parts = new TreeMap<String, File>()
+			locale.listFiles({ it.name.endsWith('.json') } as FileFilter).each { parts[it.name] = it }
+			def out = new File(outputDir.get().asFile, "assets/deepcharter/lang/${locale.name}.json")
+			out.parentFile.mkdirs()
+			out.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(merge(parts))) + '\n'
+		}
+	}
+}
+
+def mergeLang = tasks.register("mergeLang", MergeLang) {
+	partsDir = layout.projectDirectory.dir("src/main/resources/lang-parts")
+	outputDir = layout.buildDirectory.dir("generated/lang")
+}
+
+// Proves a duplicate key fails and the generated en_us.json is sorted; runs in `check`.
+def checkLangMerge = tasks.register("checkLangMerge") {
+	dependsOn mergeLang
+	def generated = mergeLang.flatMap { it.outputDir.file("assets/deepcharter/lang/en_us.json") }
+	def tmp = layout.buildDirectory.dir("tmp/checkLangMerge")
+	inputs.file generated
+	outputs.dir tmp
+	doLast {
+		def dir = tmp.get().asFile
+		dir.deleteDir()
+		dir.mkdirs()
+		def a = new File(dir, "a.json")
+		a.text = '{"x.k": "1"}'
+		def b = new File(dir, "b.json")
+		b.text = '{"x.k": "1"}'
+		def rejected = false
+		try {
+			MergeLang.merge([a: a, b: b])
+		} catch (GradleException e) {
+			rejected = e.message.startsWith("Duplicate lang key 'x.k'")
+		}
+		if (!rejected) throw new GradleException("Duplicate lang key was not rejected")
+		def keys = new groovy.json.JsonSlurper().parse(generated.get().asFile).keySet() as List
+		if (keys != keys.sort(false)) throw new GradleException("Generated en_us.json is not sorted")
+	}
+}
+tasks.named("check") { dependsOn checkLangMerge }
+
 processResources {
 	def version = project.version
 	inputs.property "version", version
+	from(mergeLang)
 
 	filesMatching("fabric.mod.json") {
 		expand "version": version
