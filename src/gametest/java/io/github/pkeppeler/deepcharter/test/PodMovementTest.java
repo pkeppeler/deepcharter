@@ -33,8 +33,7 @@ public class PodMovementTest {
 	/** A pod standing on a small stone floor, with a mock pilot seated and looking along {@code yaw}. */
 	private record Rig(GameTestHelper helper, PodEntity pod, MockPlayer pilot) {
 		static Rig build(GameTestHelper helper, double height, float yaw) {
-			fillFloor(helper, Blocks.STONE);
-			PodEntity pod = helper.spawn(PodRegistry.POD, new Vec3(FLOOR_RADIUS + 0.5, FLOOR_Y + 1 + height, FLOOR_RADIUS + 0.5));
+			PodEntity pod = buildEmpty(helper, height);
 			MockPlayer pilot = MockPlayers.join(helper, "pod-pilot");
 			pilot.teleportTo(helper.getLevel(), pod.position(), yaw, 0f);
 			if (!pilot.player().startRiding(pod)) {
