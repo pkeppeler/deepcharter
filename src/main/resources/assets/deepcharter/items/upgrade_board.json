@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "deepcharter:item/upgrade_board"
+  }
+}
