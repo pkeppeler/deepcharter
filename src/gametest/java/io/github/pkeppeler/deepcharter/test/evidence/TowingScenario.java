@@ -6,6 +6,7 @@ import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
@@ -21,8 +22,9 @@ import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
 /**
  * Evidence scenario "m2-towing": the real client watches from the side while a mock pilot drives a pod with another pod on a
- * cable behind it across a stone slab, then drills straight down. The slab's east face is open beside the bore, so the towed
- * pod can be seen following the tower into the shaft.
+ * cable behind it across a stone slab, then drills straight down. The pods are named TOWER and TOWED, the cable is drawn between
+ * them, and the cable message stays on the bar. The slab's east face is open beside the bore, so the towed pod can be seen
+ * following the tower into the shaft.
  */
 public class TowingScenario extends EvidenceScenario {
 	private static final int X = 900;
@@ -32,6 +34,8 @@ public class TowingScenario extends EvidenceScenario {
 	private static final int SLAB_WEST = 6;
 	private static final int PLATFORM_FROM = 4;
 	private static final int PLATFORM_TO = 10;
+	/** Chat lines (the join messages) stay on screen for 10 seconds. */
+	private static final int CHAT_FADE_TICKS = 220;
 	private static final int DRIVE_TICKS = 40;
 	private static final int TICKS_PER_FRAME = 4;
 	private static final int DRILL_TICKS_PER_FRAME = 16;
@@ -53,19 +57,19 @@ public class TowingScenario extends EvidenceScenario {
 		try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
 			UUID[] tower = {null};
 			two.server().runOnServer(server -> tower[0] = setUp(server.overworld(), two));
-			context.waitTicks(40);
-			frame(context);
+			context.waitTicks(CHAT_FADE_TICKS);
+			look(context, two);
 
 			double startY = towerY(two, tower[0]);
 			two.server().runOnServer(server -> two.mock().setInput(FORWARD));
 			for (int ticks = 0; ticks < DRIVE_TICKS; ticks += TICKS_PER_FRAME) {
 				context.waitTicks(TICKS_PER_FRAME);
-				frame(context);
+				look(context, two);
 			}
 			two.server().runOnServer(server -> two.mock().releaseInput());
 			context.waitTicks(10);
-			frame(context);
-			screenshot(context, "towing-on-the-flat");
+			look(context, two);
+			still(context, two, "towing-on-the-flat");
 
 			two.server().runOnServer(server -> {
 				watch(server.overworld(), two, SHAFT_PITCH);
@@ -75,7 +79,7 @@ public class TowingScenario extends EvidenceScenario {
 			while (startY - towerY(two, tower[0]) < DRILL_DEPTH && ticks < MAX_DRILL_TICKS) {
 				context.waitTicks(DRILL_TICKS_PER_FRAME);
 				ticks += DRILL_TICKS_PER_FRAME;
-				frame(context);
+				look(context, two);
 			}
 			two.server().runOnServer(server -> two.mock().releaseInput());
 			if (startY - towerY(two, tower[0]) < DRILL_DEPTH) {
@@ -83,10 +87,31 @@ public class TowingScenario extends EvidenceScenario {
 			}
 			for (int i = 0; i < 6; i++) {
 				context.waitTicks(TICKS_PER_FRAME);
-				frame(context);
+				look(context, two);
 			}
-			screenshot(context, "towed-pod-in-the-shaft");
+			still(context, two, "towed-pod-in-the-shaft");
 		}
+	}
+
+	/** One frame with the cable message on the bar and no toast or chat line over the pods. */
+	private void look(ClientGameTestContext context, TwoPlayerServer two) {
+		clean(context, two);
+		frame(context);
+	}
+
+	private void still(ClientGameTestContext context, TwoPlayerServer two, String name) {
+		clean(context, two);
+		screenshot(context, name);
+	}
+
+	/** The dedicated server's join toasts would cover the screen; its chat lines are waited out (see {@link #CHAT_FADE_TICKS}). */
+	private static void clean(ClientGameTestContext context, TwoPlayerServer two) {
+		two.server().runOnServer(server -> watcher(server.overworld(), two).sendOverlayMessage(Component.translatable("message.deepcharter.towing.attached")));
+		context.runOnClient(client -> client.gui.toastManager().clear());
+	}
+
+	private static ServerPlayer watcher(ServerLevel level, TwoPlayerServer two) {
+		return level.getServer().getPlayerList().getPlayers().stream().filter(player -> player != two.mock().player()).findFirst().orElseThrow();
 	}
 
 	/** The tower's height. Looked up by UUID: a pod whose chunk is unloaded and loaded again is a new entity. */
@@ -103,8 +128,8 @@ public class TowingScenario extends EvidenceScenario {
 		watch(level, two, WATCH_PITCH);
 		Vec3 at = new Vec3(X - 0.5, FLOOR_Y, Z - 4.5);
 		two.mock().teleportTo(level, at, 0, 0);
-		PodEntity tower = spawn(level, at);
-		PodEntity towed = spawn(level, at.add(-2, 0, -1));
+		PodEntity tower = spawn(level, at, "TOWER");
+		PodEntity towed = spawn(level, at.add(-2, 0, -1), "TOWED");
 		if (!two.mock().player().startRiding(tower)) {
 			throw new AssertionError("the mock pilot could not mount the tower");
 		}
@@ -115,14 +140,14 @@ public class TowingScenario extends EvidenceScenario {
 
 	/** Puts the real player on the platform's edge, facing the slab and looking {@code pitch} degrees down. */
 	private static void watch(ServerLevel level, TwoPlayerServer two, float pitch) {
-		ServerPlayer real = level.getServer().getPlayerList().getPlayers().stream()
-				.filter(player -> player != two.mock().player()).findFirst().orElseThrow();
-		real.teleportTo(level, X + PLATFORM_FROM + 0.5, FLOOR_Y, Z + 3.5, Set.of(), WATCH_WEST, pitch, true);
+		watcher(level, two).teleportTo(level, X + PLATFORM_FROM + 0.5, FLOOR_Y, Z + 3.5, Set.of(), WATCH_WEST, pitch, true);
 	}
 
-	private static PodEntity spawn(ServerLevel level, Vec3 at) {
+	private static PodEntity spawn(ServerLevel level, Vec3 at, String name) {
 		PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
 		pod.setPos(at);
+		pod.setCustomName(Component.literal(name));
+		pod.setCustomNameVisible(true);
 		level.addFreshEntity(pod);
 		return pod;
 	}

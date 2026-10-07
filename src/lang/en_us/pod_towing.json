@@ -1,9 +1,12 @@
 {
   "item.deepcharter.tow_cable": "Tow Cable",
   "message.deepcharter.towing.attached": "Cable fitted: your pod is towing it",
+  "message.deepcharter.towing.being_towed": "Your pod is being towed",
   "message.deepcharter.towing.detached": "Cable taken off",
   "message.deepcharter.towing.refused.already_towed": "That pod is on another cable already",
   "message.deepcharter.towing.refused.already_towing": "Your pod is towing a pod already",
+  "message.deepcharter.towing.refused.not_allowed_to_free": "Only the pod's owner or the tower's crew can take that cable off",
+  "message.deepcharter.towing.refused.not_allowed_to_tow": "That pod belongs to another charter, so you cannot tow it",
   "message.deepcharter.towing.refused.not_riding": "Sit in a pod to fit a cable from it",
   "message.deepcharter.towing.refused.same_pod": "A pod cannot tow itself",
   "message.deepcharter.towing.refused.too_far": "That pod is out of reach of the cable",

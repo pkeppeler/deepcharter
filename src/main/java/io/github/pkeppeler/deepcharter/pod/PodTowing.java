@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.pod;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -19,6 +20,7 @@ import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 
 import net.minecraft.core.UUIDUtil;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -32,24 +34,30 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.level.portal.TeleportTransition;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
+import io.github.pkeppeler.deepcharter.charter.Charter;
+import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
 
 /**
  * The tow cable between two pods. A player riding a pod uses a {@link PodRegistry#TOW_CABLE} on another pod within
- * {@link TowTuning#reach()} to make it the towed pod of theirs, and uses it on a towed pod to take the cable off. Anyone can tow
- * any pod, whoever owns it: the cable touches neither cargo nor parts, so it does not ask {@link PodComponents#mayAccess}.
+ * {@link TowTuning#reach()} to make it the towed pod of theirs, and uses it on a towed pod to take the cable off. A pod moved
+ * where its owner did not choose needs a rule for who may do it: a player may tow a pod only when {@link PodComponents#mayAccess}
+ * lets their charter at it, and the tower's charter or the towed pod's owner charter may free it, so an owner can always recover a
+ * pod someone else towed.
  *
  * <p>The link is one versioned attachment on the towed pod, {@link #STATE}, holding the tower's UUID. It is saved and synced, and a
  * pod keeps its UUID when a breach recreates it, so the link outlives unloading and crossing. While the tower is in the towed pod's
  * level the towed pod passes through blocks ({@link PodEvents#IGNORES_BLOCK_COLLISION}), is held still or pulled in to
  * {@link TowTuning#trailDistance()} from the tower at the end of each tick ({@link PodEvents#AFTER_TICK}), and its mass and its
  * cargo's cut the tower's lift ({@link PodEvents#EXTRA_MASS}). With no tower in the level it is an ordinary pod that still remembers
- * the cable. A tower with a player crossing a breach carries the pod it tows across with it.
+ * the cable. A pod freed, or left by its tower, inside blocks is moved to the nearest open space. A tower with a player crossing a
+ * breach carries the pod it tows across with it, to the trail distance from the tower. The cable is drawn as particles.
  *
  * <p>A tower tows one pod, a towed pod tows none, and a pod is on one cable. The listeners run every tick and on a crossing, so they
  * never throw on an unreadable state: they log once for each pod and read it as no cable. {@link #attach} and {@link #detach} are
@@ -58,8 +66,16 @@ import io.github.pkeppeler.deepcharter.layer.BreachEvents;
 public final class PodTowing {
 	public static final int VERSION = 1;
 
+	/** Blocks along a search line between the candidate positions for a pod to leave rock by. */
+	private static final double OPEN_STEP = 0.25;
+	/** Blocks a pod is moved at most to leave rock when its tower gives no direction. */
+	private static final double OPEN_REACH = 8.0;
+	private static final Vec3[] OPEN_DIRECTIONS = {new Vec3(0, 1, 0), new Vec3(1, 0, 0), new Vec3(-1, 0, 0), new Vec3(0, 0, 1), new Vec3(0, 0, -1), new Vec3(0, -1, 0)};
+
 	/** Pods whose unreadable cable has been logged, so a tick path logs once for each pod and not once for each tick. */
 	private static final Set<PodEntity> UNREADABLE_LOGGED = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
+	/** Pods that found no open space to leave rock for, so a tick path logs once for each pod. */
+	private static final Set<PodEntity> STUCK_LOGGED = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
 
 	/** The pod this one is towed by, if any. */
 	public record State(Optional<UUID> tower) {
@@ -78,7 +94,7 @@ public final class PodTowing {
 
 	/** Why a cable cannot be fitted from one pod to another. */
 	public enum Refusal {
-		NOT_RIDING, SAME_POD, TOO_FAR, ALREADY_TOWED, TOWER_IS_TOWED, TOWED_TOWS, ALREADY_TOWING, UNREADABLE;
+		NOT_RIDING, NOT_ALLOWED_TO_TOW, NOT_ALLOWED_TO_FREE, SAME_POD, TOO_FAR, ALREADY_TOWED, TOWER_IS_TOWED, TOWED_TOWS, ALREADY_TOWING, UNREADABLE;
 
 		public Component message() {
 			return Component.translatable("message.deepcharter.towing.refused." + name().toLowerCase(Locale.ROOT));
@@ -169,7 +185,9 @@ public final class PodTowing {
 		if (Versioned.require(towed, STATE).tower().isEmpty()) {
 			return false;
 		}
+		Optional<Vec3> toward = tower(towed).map(PodEntity::position);
 		Versioned.modify(towed, STATE, state -> State.EMPTY);
+		leaveRock(towed, toward);
 		return true;
 	}
 
@@ -189,6 +207,9 @@ public final class PodTowing {
 	}
 
 	private static float towedMass(PodEntity tower) {
+		if (isTowed(tower)) {
+			return 0f;
+		}
 		float mass = 0f;
 		for (PodEntity towed : towedBy(tower)) {
 			mass += TowTuning.DEFAULT.baseMass() + towed.cargoMass();
@@ -203,6 +224,9 @@ public final class PodTowing {
 	private static void follow(PodEntity towed) {
 		Optional<PodEntity> tower = tower(towed);
 		if (tower.isEmpty()) {
+			if (isTowed(towed)) {
+				leaveRock(towed, Optional.empty());
+			}
 			return;
 		}
 		Vec3 anchor = tower.get().position();
@@ -212,6 +236,60 @@ public final class PodTowing {
 		towed.setPos(away.lengthSqr() > trail * trail ? anchor.add(away.normalize().scale(trail)) : held);
 		towed.setDeltaMovement(Vec3.ZERO);
 		towed.resetFallDistance();
+		drawCable(tower.get(), towed);
+	}
+
+	/** Particles along the line between the two pods' middles every {@link TowTuning#cableInterval()} ticks, at most {@link TowTuning#cableMaxParticles()}. */
+	private static void drawCable(PodEntity tower, PodEntity towed) {
+		TowTuning tuning = TowTuning.DEFAULT;
+		if (towed.tickCount % tuning.cableInterval() != 0 || !(towed.level() instanceof ServerLevel level)) {
+			return;
+		}
+		Vec3 from = tower.getBoundingBox().getCenter();
+		Vec3 line = towed.getBoundingBox().getCenter().subtract(from);
+		int count = Math.min(tuning.cableMaxParticles(), (int) Math.ceil(line.length() / tuning.cableSpacing()));
+		for (int i = 1; i <= count; i++) {
+			Vec3 at = from.add(line.scale((double) i / (count + 1)));
+			level.sendParticles(ParticleTypes.END_ROD, at.x, at.y, at.z, 1, 0, 0, 0, 0);
+		}
+	}
+
+	/**
+	 * If the pod's box is inside blocks, moves it to the nearest open position along the line toward {@code toward}, or, with no
+	 * line or none open on it, the nearest along an axis. A pod passes through rock while towed and must not be left in it when
+	 * the cable comes off or the tower is lost. Logs once and leaves the pod if there is no open space within reach. Never throws.
+	 */
+	private static void leaveRock(PodEntity pod, Optional<Vec3> toward) {
+		Level level = pod.level();
+		AABB box = pod.getBoundingBox();
+		if (level.noCollision(pod, box)) {
+			return;
+		}
+		Vec3 line = toward.map(target -> target.subtract(pod.position())).orElse(Vec3.ZERO);
+		Optional<Vec3> open = line.lengthSqr() < 1e-6 ? Optional.empty() : firstOpen(pod, box, List.of(line.normalize()), line.length());
+		open = open.or(() -> firstOpen(pod, box, List.of(OPEN_DIRECTIONS), OPEN_REACH));
+		if (open.isEmpty()) {
+			if (STUCK_LOGGED.add(pod)) {
+				DeepCharter.LOGGER.error("Pod {} is inside blocks with no open space within {} blocks: it is left where it is", pod.getUUID(), OPEN_REACH);
+			}
+			return;
+		}
+		pod.setPos(pod.position().add(open.get()));
+		pod.setDeltaMovement(Vec3.ZERO);
+		pod.resetFallDistance();
+	}
+
+	/** The smallest move, tried in the order of {@code directions} at each distance, that puts {@code box} in open space. */
+	private static Optional<Vec3> firstOpen(PodEntity pod, AABB box, List<Vec3> directions, double reach) {
+		for (double distance = OPEN_STEP; distance <= reach; distance += OPEN_STEP) {
+			for (Vec3 direction : directions) {
+				Vec3 move = direction.scale(distance);
+				if (pod.level().noCollision(pod, box.move(move))) {
+					return Optional.of(move);
+				}
+			}
+		}
+		return Optional.empty();
 	}
 
 	/** A pod that crosses a breach takes the pods it tows across too, to the same spot. */
@@ -226,7 +304,7 @@ public final class PodTowing {
 				DeepCharter.LOGGER.error("Pod {} cannot cross to {} with its tower {}: it stays behind on its cable", pod.getUUID(), to.dimension(), tower.getUUID());
 				continue;
 			}
-			Entity arrived = pod.teleport(new TeleportTransition(to, tower.position(), Vec3.ZERO, pod.getYRot(), pod.getXRot(), TeleportTransition.DO_NOTHING));
+			Entity arrived = pod.teleport(new TeleportTransition(to, trailSpot(tower, pod), Vec3.ZERO, pod.getYRot(), pod.getXRot(), TeleportTransition.DO_NOTHING));
 			if (arrived == null) {
 				DeepCharter.LOGGER.error("Vanilla refused to take pod {} to {} with its tower {}: it stays behind on its cable", pod.getUUID(), to.dimension(), tower.getUUID());
 				continue;
@@ -238,6 +316,15 @@ public final class PodTowing {
 		}
 	}
 
+	/** {@link TowTuning#trailDistance()} from the tower, level with it, on the side the pod was on, or behind the tower if it was straight above or below. */
+	private static Vec3 trailSpot(PodEntity tower, PodEntity towed) {
+		Vec3 side = new Vec3(towed.getX() - tower.getX(), 0, towed.getZ() - tower.getZ());
+		if (side.lengthSqr() < 1e-6) {
+			side = Vec3.directionFromRotation(0, tower.getYRot()).scale(-1);
+		}
+		return tower.position().add(side.normalize().scale(TowTuning.DEFAULT.trailDistance()));
+	}
+
 	private static InteractionResult onUse(Player player, Level level, InteractionHand hand, Entity entity, EntityHitResult hit) {
 		if (!(entity instanceof PodEntity target) || !player.getItemInHand(hand).is(PodRegistry.TOW_CABLE) || player.isSpectator()) {
 			return InteractionResult.PASS;
@@ -246,13 +333,29 @@ public final class PodTowing {
 			// The client guesses a hit and the server settles it.
 			return InteractionResult.SUCCESS;
 		}
+		Optional<Charter> charter;
+		try {
+			charter = Charters.charterOf(serverPlayer.level().getServer(), serverPlayer.getUUID());
+		} catch (IllegalStateException unreadable) {
+			DeepCharter.LOGGER.error("Charters cannot be read, so {} cannot use a tow cable", serverPlayer.getGameProfile().name(), unreadable);
+			serverPlayer.sendOverlayMessage(Refusal.UNREADABLE.message());
+			return InteractionResult.FAIL;
+		}
 		if (isTowed(target)) {
+			if (!mayFree(target, charter)) {
+				serverPlayer.sendOverlayMessage(Refusal.NOT_ALLOWED_TO_FREE.message());
+				return InteractionResult.FAIL;
+			}
 			detach(target);
 			serverPlayer.sendOverlayMessage(Component.translatable("message.deepcharter.towing.detached"));
 			return InteractionResult.SUCCESS;
 		}
 		if (!(player.getVehicle() instanceof PodEntity tower)) {
 			serverPlayer.sendOverlayMessage(Refusal.NOT_RIDING.message());
+			return InteractionResult.FAIL;
+		}
+		if (!PodComponents.mayAccess(target, charter)) {
+			serverPlayer.sendOverlayMessage(Refusal.NOT_ALLOWED_TO_TOW.message());
 			return InteractionResult.FAIL;
 		}
 		Optional<Refusal> refusal = refusal(tower, target);
@@ -262,7 +365,17 @@ public final class PodTowing {
 		}
 		attach(tower, target);
 		serverPlayer.sendOverlayMessage(Component.translatable("message.deepcharter.towing.attached"));
+		for (Entity rider : target.getPassengers()) {
+			if (rider instanceof ServerPlayer pilot) {
+				pilot.sendOverlayMessage(Component.translatable("message.deepcharter.towing.being_towed"));
+			}
+		}
 		return InteractionResult.SUCCESS;
+	}
+
+	/** The towed pod's owner can always take the cable off, and so can whoever may use the tower. */
+	private static boolean mayFree(PodEntity towed, Optional<Charter> charter) {
+		return PodComponents.mayAccess(towed, charter) || tower(towed).filter(tower -> PodComponents.mayAccess(tower, charter)).isPresent();
 	}
 
 	private static void requireServer(PodEntity pod) {
