@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.colony;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 
@@ -17,6 +18,7 @@ import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CandleBlock;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BedPart;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -142,10 +144,15 @@ public final class ColonyBuilder {
 	}
 
 	private static void loadPadChunks(ServerLevel level, BlockPos centre) {
+		forEachPadChunk(level, centre, chunk -> {
+		});
+	}
+
+	private static void forEachPadChunk(ServerLevel level, BlockPos centre, Consumer<LevelChunk> action) {
 		int half = ColonyTuning.DEFAULT.padSize() / 2;
 		for (int chunkX = (centre.getX() - half) >> 4; chunkX <= (centre.getX() + half - 1) >> 4; chunkX++) {
 			for (int chunkZ = (centre.getZ() - half) >> 4; chunkZ <= (centre.getZ() + half - 1) >> 4; chunkZ++) {
-				level.getChunk(chunkX, chunkZ);
+				action.accept(level.getChunk(chunkX, chunkZ));
 			}
 		}
 	}
@@ -164,11 +171,7 @@ public final class ColonyBuilder {
 			throw new IllegalStateException("the colony's layout changed since its build began: " + started.anchors() + " became " + anchors);
 		}
 		// The pad's chunks are loaded already, so the Conduit's overworld part is set now and not when they load.
-		for (int chunkX = (centre.getX() - half) >> 4; chunkX <= (centre.getX() + half - 1) >> 4; chunkX++) {
-			for (int chunkZ = (centre.getZ() - half) >> 4; chunkZ <= (centre.getZ() + half - 1) >> 4; chunkZ++) {
-				Conduit.place(level, level.getChunk(chunkX, chunkZ), started, LayerChain.SURFACE);
-			}
-		}
+		forEachPadChunk(level, centre, chunk -> Conduit.place(level, chunk, started, LayerChain.SURFACE));
 	}
 
 	/** The Y of the ground at X and Z: the highest block that is not air, water, foliage or a tree. */
