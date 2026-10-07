@@ -24,8 +24,8 @@ import io.github.pkeppeler.deepcharter.attachment.Versioned;
  * Serverbound: the sender has opened an entry in the handbook screen: a chapter, or a Note. The server marks it read for the
  * sender, and only the sender. Nothing the client says is trusted: a chapter must exist, and the sender's charter must be allowed
  * to read all of it ({@link HandbookVisibility#FULL}), so a modified client cannot mark a classified chapter; a Note must be one the
- * sender's charter has found ({@link Notes#foundFor}). A request that fails a check is
- * dropped without a reply. A player whose saved read marks cannot be read is logged once and skipped.
+ * sender's charter has found ({@link Notes#foundFor}). A request that fails a check
+ * is dropped without a reply. A player whose saved read marks cannot be read is logged once and skipped.
  */
 public record HandbookReadPayload(Identifier entry) implements CustomPacketPayload {
 	public static final Type<HandbookReadPayload> TYPE = new Type<>(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook_read"));

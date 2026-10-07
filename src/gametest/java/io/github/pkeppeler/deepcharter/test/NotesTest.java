@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -268,6 +270,29 @@ public class NotesTest {
 			throw helper.assertionException("a Note that does not exist is UNKNOWN, was %s", result);
 		}
 		expectNotes(helper, server, director, List.of());
+		helper.succeed();
+	}
+
+	@GameTest
+	public void theNoteMappingIsPinned(GameTestHelper helper) {
+		List<String> expectedIds = List.of("deepcharter:note/n01", "deepcharter:note/n02", "deepcharter:note/n03", "deepcharter:note/n04",
+				"deepcharter:note/n05", "deepcharter:note/n06", "deepcharter:note/n07", "deepcharter:note/n08", "deepcharter:note/n09",
+				"deepcharter:note/n10", "deepcharter:note/n11");
+		if (!Notes.id(1).toString().equals("deepcharter:note/n01") || !Notes.id(11).toString().equals("deepcharter:note/n11")) {
+			throw helper.assertionException("Notes.id(1) and Notes.id(11) changed: %s, %s", Notes.id(1), Notes.id(11));
+		}
+		if (!Notes.all().stream().map(Identifier::toString).toList().equals(expectedIds)) {
+			throw helper.assertionException("Notes.all() changed: %s", Notes.all());
+		}
+		Collection<Integer> numbers = NoteBlock.NOTE.getPossibleValues();
+		if (Collections.min(numbers) != 1 || Collections.max(numbers) != 29 || numbers.size() != 29 || Notes.MAX_NUMBER != 29) {
+			throw helper.assertionException("the Note block range changed: %s, MAX_NUMBER %s", numbers, Notes.MAX_NUMBER);
+		}
+		String prayerCard = Language.getInstance().getOrDefault(Notes.titleKey(Notes.id(7)));
+		String log = Language.getInstance().getOrDefault(Notes.titleKey(Notes.id(10)));
+		if (!prayerCard.equals("Prayer card") || !log.equals("Ines's log")) {
+			throw helper.assertionException("N07 and N10 titles changed: %s, %s", prayerCard, log);
+		}
 		helper.succeed();
 	}
 
