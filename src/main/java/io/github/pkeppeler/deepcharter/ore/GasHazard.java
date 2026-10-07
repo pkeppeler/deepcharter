@@ -54,10 +54,10 @@ public final class GasHazard {
 	}
 
 	/**
-	 * The one place a blast touches a pod. #60's {@code PodStats} will give the pod's radiator for
-	 * {@code OreTuning.stockRadiator} and its hull maximum, and {@code PodEntity.damageHull} will replace the line.
+	 * The one place a blast touches a pod. {@code OreTuning.stockRadiator} stands in for the pod's radiator until a
+	 * {@code PodStats} stat gives it (#65 may add one); then {@code vent} reads it from {@code PodStats.of(pod)}.
 	 */
 	private static void hurt(PodEntity pod, float damage) {
-		pod.setHull(Math.max(0f, pod.hull() - damage));
+		pod.damageHull(damage);
 	}
 }

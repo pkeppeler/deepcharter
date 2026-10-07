@@ -19,7 +19,7 @@ Ore and hazards (SPEC sections 4 and 10) are placed by one worldgen feature per 
 
 ## Consequences
 
-- #60's `PodStats` replaces `OreTuning.stockRadiator` and `PodEntity.setHull` where `GasHazard` hurts a pod. That is the one call site.
+- `GasHazard.hurt` is the one call site that touches a pod, through `PodEntity.damageHull`. A `PodStats` radiator stat, when one exists, replaces `OreTuning.stockRadiator` there.
 - Chunk generation costs more: the feature reads every stone block of a third of the layer.
 - Chunks that exist keep the ore they have. A change to a table shows only in chunks not yet generated, like a change to the noise (ADR 0009).
 - Gas hurts pods only: a player on foot who breaks a pocket by hand clears the blocks and takes no damage.
