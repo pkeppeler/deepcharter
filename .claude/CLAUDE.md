@@ -26,9 +26,27 @@ The lore and creatures sessions are user sessions run from [prompts/](prompts/),
 - **Branches:** `<issue>-<slug>`. Changes are squash-merged and branches are deleted automatically.
 - **CI minutes are rationed** (Free plan, about 2,000 minutes a month). Run heavy client-test and recording jobs only on PRs that change gameplay or rendering. Otherwise run them locally.
 - **Sessions:**
-  - At the start of a session, read the open milestone's issues and continue the highest-priority one.
   - Start a fresh session once context passes about 200k tokens.
   - For unattended runs, use `/loop` in dynamic mode.
+
+## Handoff between sessions
+
+- **At session start**, the SessionStart hook (`.claude/hooks/session-start.sh`) injects three things:
+  - the pinned **Orchestrator handoff** issue (label `handoff`)
+  - open PRs with their pipeline stage
+  - local-only git state
+
+  Resume in-flight work first, then the open milestone's issues in priority order.
+- **Nothing in flight lives only on this Mac.** Push branches early and open draft PRs.
+- **Advance a PR's stage label as it moves:** `stage:implemented`, then `stage:reviewed`, then `stage:simplified`, then `review-passed`. The merge gate requires `review-passed`.
+- **Background agents die with the session.** Before ending or clearing a session, let them finish, or record each one in the handoff as abandoned, with its issue and the stage reached.
+- **Before ending or clearing a session**, rewrite the handoff issue body:
+  - Updated: the date and time
+  - In flight: each issue or PR, its stage, and the exact next action
+  - Next: what to pick up after that
+  - Local-only state
+  - Decisions pending
+  - Notes, including gotchas the next session needs
 
 ## Feedback loop
 
