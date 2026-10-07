@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Edit(./**)",
+      "Bash(./gradlew *)",
+      "Bash(java *)",
+      "Bash(git *)",
+      "Bash(gh pr *)",
+      "Bash(gh issue *)",
+      "Bash(gh run *)",
+      "Bash(gh workflow *)",
+      "Bash(gh label *)",
+      "Bash(gh api repos/pkeppeler/deepcharter*)",
+      "Bash(ffmpeg *)",
+      "Bash(ffprobe *)",
+      "Bash(screencapture *)",
+      "Bash(brew install *)",
+      "Bash(python3 -I *)",
+      "Bash(node *)",
+      "Bash(npm ci*)",
+      "Bash(npm run *)"
+    ],
+    "deny": [
+      "Bash(gh repo delete*)",
+      "Bash(gh repo edit *--visibility*)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push * --force*)",
+      "Bash(git push * -f*)"
+    ]
+  }
+}
