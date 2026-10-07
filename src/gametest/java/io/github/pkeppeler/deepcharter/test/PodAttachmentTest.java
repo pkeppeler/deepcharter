@@ -38,6 +38,8 @@ import io.github.pkeppeler.deepcharter.test.support.TestAttachments.Other;
 /** Server GameTests for the versioned pod attachment pattern: defaults, save/load, unreadable versions and a breach crossing. */
 public class PodAttachmentTest {
 	private static final String ATTACHMENTS_KEY = "fabric:attachments";
+	/** Ticks the pod needs, once its chunk ticks, to fall through the shaft and cross. */
+	private static final int CROSSING_TICKS = 200;
 
 	@GameTest
 	public void aNewPodHasTheDefaultAttachment(GameTestHelper helper) {
@@ -179,7 +181,7 @@ public class PodAttachmentTest {
 	}
 
 	/** M1's crossing, with a piloted pod: the arriving pod is a new entity, and the attachment must be on it. */
-	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + CROSSING_TICKS)
 	public void theAttachmentSurvivesABreachCrossing(GameTestHelper helper) {
 		double x = 2000.5;
 		double z = 2000.5;

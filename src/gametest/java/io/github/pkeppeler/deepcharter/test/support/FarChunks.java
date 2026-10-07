@@ -6,10 +6,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 
 /**
- * A GameTest world is fresh, so a chunk far from the origin takes real time to generate and to
- * start ticking entities. An entity spawned there does not tick until then, so a fixed tick
- * budget counted from the spawn is unreliable. Await entity ticking before you drive an entity
- * in a far chunk. Something must keep the chunk loaded (a player at the position, or a ticket).
+ * Awaits entity ticking in a far chunk of a fresh world. Something must keep the chunk loaded
+ * (a player or a ticket), and the test method must call this, never a tick callback.
  */
 public final class FarChunks {
 	/** Server ticks that {@link #awaitEntityTicking} waits. Add this to a test's own {@code maxTicks}. */
@@ -19,15 +17,17 @@ public final class FarChunks {
 	}
 
 	/**
-	 * Runs {@code then} on the first tick when {@code pos} in {@code level} is entity-ticking. Fails
-	 * the test, naming the position and dimension, if that takes more than {@link #AWAIT_BUDGET_TICKS}.
-	 * Call this from the test method, not from a callback. {@code then} runs inside the GameTest tick
-	 * loop, so it can spawn and move entities but must not call {@code onEachTick}, {@code succeedWhen}
-	 * or {@code runAfterDelay} (vanilla then modifies its callback map while iterating it and crashes).
-	 * Register those first and let them wait for what {@code then} sets.
+	 * Runs {@code then} on the first tick when {@code pos} in {@code level} is entity-ticking, or fails the
+	 * test with the position and dimension after {@link #AWAIT_BUDGET_TICKS}. {@code then} must not register
+	 * tick callbacks: register them first and let them wait for what {@code then} sets.
+	 *
+	 * @throws IllegalStateException if called after the test's first tick, because registering a tick callback
+	 *         there crashes vanilla's GameTest loop with an unrelated NullPointerException
 	 */
 	public static void awaitEntityTicking(GameTestHelper helper, ServerLevel level, BlockPos pos, Runnable then) {
-		long deadline = helper.getTick() + AWAIT_BUDGET_TICKS;
+		if (helper.getTick() != 0) {
+			throw new IllegalStateException("FarChunks.awaitEntityTicking must be called from the test method, not from a tick callback");
+		}
 		boolean[] done = {false};
 		helper.onEachTick(() -> {
 			if (done[0]) {
@@ -36,8 +36,7 @@ public final class FarChunks {
 			if (level.isPositionEntityTicking(pos)) {
 				done[0] = true;
 				then.run();
-			} else if (helper.getTick() > deadline) {
-				done[0] = true;
+			} else if (helper.getTick() > AWAIT_BUDGET_TICKS) {
 				throw helper.assertionException(Component.literal(String.format(
 						"%s in %s was not entity-ticking after %d ticks", pos.toShortString(), level.dimension(), AWAIT_BUDGET_TICKS)));
 			}

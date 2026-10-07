@@ -37,6 +37,10 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
  * the columns it carves do not touch another test's.
  */
 public class BreachCrossingTest {
+	/** Ticks a fall, once the chunk ticks, needs to cross a breach and be checked. */
+	private static final int CROSSING_TICKS = 200;
+	/** Ticks the no-bounce test needs: the crossing plus 100 ticks of watching. */
+	private static final int NO_BOUNCE_TICKS = 300;
 	/** Crossings seen per entity UUID. A UUID survives a crossing, so this follows recreated entities. */
 	private static final Map<UUID, Integer> CROSSINGS = new ConcurrentHashMap<>();
 
@@ -44,7 +48,7 @@ public class BreachCrossingTest {
 		BreachEvents.CROSSED.register((entity, from, to, fromLayer, toLayer) -> CROSSINGS.merge(entity.getUUID(), 1, Integer::sum));
 	}
 
-	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + CROSSING_TICKS)
 	public void fallingPlayerArrivesAtTheSameXZ(GameTestHelper helper) {
 		double x = 1000.5;
 		double z = 1000.5;
@@ -65,7 +69,7 @@ public class BreachCrossingTest {
 		});
 	}
 
-	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + CROSSING_TICKS)
 	public void crossingCarvesAPocketUnderTheCeiling(GameTestHelper helper) {
 		double x = 1100.5;
 		double z = 1100.5;
@@ -98,7 +102,7 @@ public class BreachCrossingTest {
 		});
 	}
 
-	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + CROSSING_TICKS)
 	public void playerInAMinecartCrossesStillRiding(GameTestHelper helper) {
 		double x = 1200.5;
 		double z = 1200.5;
@@ -151,7 +155,7 @@ public class BreachCrossingTest {
 		});
 	}
 
-	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + NO_BOUNCE_TICKS)
 	public void noBouncingOverOneHundredTicks(GameTestHelper helper) {
 		double x = 1400.5;
 		double z = 1400.5;
@@ -237,7 +241,7 @@ public class BreachCrossingTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + CROSSING_TICKS)
 	public void arrivalPocketHasASolidFloor(GameTestHelper helper) {
 		double x = 1700.5;
 		double z = 1700.5;
@@ -255,7 +259,7 @@ public class BreachCrossingTest {
 		});
 	}
 
-	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + CROSSING_TICKS)
 	public void crossingKeepsBlockEntities(GameTestHelper helper) {
 		double x = 1800.5;
 		double z = 1800.5;
@@ -294,10 +298,7 @@ public class BreachCrossingTest {
 		helper.succeed();
 	}
 
-	/**
-	 * A mock has no client to apply gravity, so drop it a block a tick for as long as it is in
-	 * layer_1. It starts once the mock's chunk is entity-ticking, because a far chunk of a fresh world takes time.
-	 */
+	/** A mock has no client gravity, so drop it a block a tick while in layer_1, once its chunk ticks. */
 	private static void fallWhileInLayerOne(GameTestHelper helper, MockPlayer mock) {
 		boolean[] ticking = {false};
 		FarChunks.awaitEntityTicking(helper, layer(helper, 1), mock.player().blockPosition(), () -> ticking[0] = true);

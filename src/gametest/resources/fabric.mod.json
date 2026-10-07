@@ -12,6 +12,7 @@
 		"fabric-gametest": [
 			"io.github.pkeppeler.deepcharter.test.DeepCharterGameTest",
 			"io.github.pkeppeler.deepcharter.test.MockPlayersTest",
+			"io.github.pkeppeler.deepcharter.test.FarChunksTest",
 			"io.github.pkeppeler.deepcharter.test.FeatureCommandsTest",
 			"io.github.pkeppeler.deepcharter.test.LayerDimensionsTest",
 			"io.github.pkeppeler.deepcharter.test.PodShellTest",
