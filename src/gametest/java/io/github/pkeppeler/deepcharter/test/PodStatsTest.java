@@ -617,7 +617,7 @@ public class PodStatsTest {
 			OVERRIDES.put(pod.getUUID(), stats -> stats.withCrustHullDamage(20f));
 			pod.setHull(15f);
 		});
-		int[] zeroSince = {-1};
+		long[] zeroSince = {-1};
 		helper.onEachTick(() -> {
 			if (!rig.ready() || rig.pod.hull() != 0f) {
 				return;

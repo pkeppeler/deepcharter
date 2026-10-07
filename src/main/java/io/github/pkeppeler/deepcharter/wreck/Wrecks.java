@@ -83,8 +83,11 @@ public final class Wrecks {
 		cargo.dump(pod);
 		for (PodCargo.Entry entry : ore) {
 			ItemStack stack = entry.stack().copy();
-			if (!player.getInventory().add(stack)) {
+			// Ore does not stack, so a free slot is the only room. Checked first because a creative player's add() discards what does not fit.
+			if (player.getInventory().getFreeSlot() < 0) {
 				player.spawnAtLocation(player.level(), stack);
+			} else {
+				player.getInventory().add(stack);
 			}
 		}
 		player.sendSystemMessage(Component.translatable("deepcharter.wreck.salvage.success", ore.size()));

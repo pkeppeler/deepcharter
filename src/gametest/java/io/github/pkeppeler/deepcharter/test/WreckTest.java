@@ -500,7 +500,7 @@ public class WreckTest {
 	}
 
 	@GameTest
-	public void everyRiderDiesWhateverTheirGameModeAndDismountedCrewLive(GameTestHelper helper) {
+	public void aCreativeRiderDiesAndPlayersNotRidingLive(GameTestHelper helper) {
 		PodEntity pod = spawnOnFloor(helper);
 		MockPlayer creative = joinLoaded(helper, "wreck-creative", pod.position());
 		MockPlayer survival = joinLoaded(helper, "wreck-survival", pod.position());
@@ -508,16 +508,17 @@ public class WreckTest {
 		try {
 			creative.player().setGameMode(GameType.CREATIVE);
 			survival.player().setGameMode(GameType.SURVIVAL);
-			// The pod has one seat, so the second rider is forced aboard.
+			// The Mole has one seat and even a forced second rider does not stay, so the rider is one at a time.
 			creative.player().startRiding(pod, true, false);
-			survival.player().startRiding(pod, true, false);
-			if (pod.getPassengers().size() != 2) {
-				throw failure(helper, "setup: expected 2 riders, got %d", pod.getPassengers().size());
+			if (pod.getPassengers().size() != 1) {
+				throw failure(helper, "setup: expected 1 rider, got %d", pod.getPassengers().size());
 			}
 			wreck(pod);
-			if (!creative.player().isDeadOrDying() || !survival.player().isDeadOrDying()) {
-				throw failure(helper, "both riders should die: creative dead=%s, survival dead=%s",
-						creative.player().isDeadOrDying(), survival.player().isDeadOrDying());
+			if (!creative.player().isDeadOrDying()) {
+				throw failure(helper, "a creative rider should die");
+			}
+			if (survival.player().isDeadOrDying()) {
+				throw failure(helper, "a survival player who is not riding must not die");
 			}
 			if (bystander.player().isDeadOrDying()) {
 				throw failure(helper, "crew who are not riding must not die");
@@ -647,8 +648,10 @@ public class WreckTest {
 		MockPlayer pilot = MockPlayers.join(helper, "wreck-crust");
 		pilot.teleportTo(one, new Vec3(x, 1, z), 0f, 0f);
 		PodEntity[] pod = {null};
-		int[] zeroSince = {-1};
+		long[] zeroSince = {-1};
 		FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, 1, z), () -> {
+			// A mock never confirms its change of dimension, and until a player does, it is immune to damage.
+			pilot.player().hasChangedDimension();
 			pilot.player().connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
 			PodEntity created = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
 			created.setPos(x, 1, z);
@@ -672,8 +675,9 @@ public class WreckTest {
 			pilot.releaseInput();
 			CRUST_PODS.remove(pod[0].getUUID());
 			if (!pilot.player().isDeadOrDying() || !Wrecks.isWreck(pod[0])) {
-				throw failure(helper, "the pilot should be dead and the pod a wreck, dead=%s wreck=%s",
-						pilot.player().isDeadOrDying(), Wrecks.isWreck(pod[0]));
+				throw failure(helper, "the pilot should be dead and the pod a wreck, dead=%s wreck=%s health=%s loaded=%s vehicle=%s",
+						pilot.player().isDeadOrDying(), Wrecks.isWreck(pod[0]), pilot.player().getHealth(),
+						pilot.player().connection.hasClientLoaded(), pilot.player().getVehicle());
 			}
 			if (!pilot.player().level().dimension().equals(LayerChain.dimension(1)) || pod[0].isRemoved()) {
 				throw failure(helper, "the wreck must stay in layer 1, pilot in %s", pilot.player().level().dimension());
