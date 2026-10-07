@@ -36,10 +36,9 @@ review-passed}" ;;
       comments) echo "\"${STUB_COMMENT-review-passed ${STUB_SHA-abc123}}\"" ;;
       mergeable) echo "${STUB_MERGEABLE-MERGEABLE}" ;;
     esac ;;
-  "pr checks")
-    echo "${STUB_CHECKS-pass	build
-skipping	docs}"
-    exit "${STUB_CHECKS_RC:-0}" ;;
+  "api repos/"*)
+    echo "${STUB_RUNS-$DEFAULT_RUNS}"
+    exit "${STUB_RUNS_RC:-0}" ;;
   "pr merge") touch "$LOG.merged"; exit "${STUB_MERGE_RC:-0}" ;;
 esac
 STUB
@@ -69,6 +68,33 @@ echo "python3 $*" >>"$LOG"
 exit "${STUB_ROADMAP_RC:-0}"
 STUB
 chmod +x "$work/bin/"*
+
+# runs <name:id:state>...: fake check-run lines as the script's --jq prints them
+# (name, start time, id, status, conclusion). state is a conclusion, or
+# in_progress/queued for a run that has not finished. A higher id is a newer run.
+runs() {
+  local spec n i st status concl
+  for spec in "$@"; do
+    IFS=: read -r n i st <<<"$spec"
+    status=completed
+    concl=$st
+    if [[ $st == in_progress || $st == queued ]]; then status=$st; concl=; fi
+    printf '%s\t2026-01-01T00:00:%02dZ\t%s\t%s\t%s\n' "$n" "$i" "$i" "$status" "$concl"
+  done
+}
+
+# The production REQUIRED_CHECKS, so no case depends on its value: the default
+# fake runs report each one as succeeding, plus an unrelated skipped one.
+required=$(sed -n 's/^REQUIRED_CHECKS=(\(.*\))$/\1/p' "$script")
+[[ -n $required ]] || { echo "cannot read REQUIRED_CHECKS from $script" >&2; exit 1; }
+default_specs=(docs:1:skipped)
+skipped_required_specs=(docs:1:skipped)
+for name in $required; do
+  default_specs+=("$name:2:success")
+  skipped_required_specs+=("$name:2:skipped")
+done
+DEFAULT_RUNS=$(runs "${default_specs[@]}")
+export DEFAULT_RUNS
 
 cases=0
 failures=0
@@ -113,7 +139,6 @@ refusal() {
 wt() { grep -o '[^ ]*/wt' "$LOG" | head -1; }
 
 merge_line="gh pr merge 7 -R pkeppeler/deepcharter --squash --delete-branch --match-head-commit abc123"
-tab=$'\t'
 
 refusal "closed PR" "REFUSED: PR #7 is not open" STUB_STATE=CLOSED
 refusal "merged PR" "REFUSED: PR #7 is not open" STUB_STATE=MERGED
@@ -124,35 +149,59 @@ refusal "similar label only" "REFUSED: PR #7 lacks the review-passed label" STUB
 refusal "no review marker" "has no 'review-passed abc123' comment" STUB_COMMENT=
 refusal "stale review marker" "has no 'review-passed abc123' comment" STUB_COMMENT="review-passed 999999"
 refusal "marker with extra text" "has no 'review-passed abc123' comment" "STUB_COMMENT=review-passed abc123 please"
-refusal "zero checks" "REFUSED: PR #7 has no checks reported" STUB_CHECKS= STUB_CHECKS_RC=1
-refusal "pending check" "REFUSED: PR #7 has a check that is not passing: lint (bucket: pending)" \
-  "STUB_CHECKS=pass${tab}build
-pending${tab}lint" STUB_CHECKS_RC=8
-refusal "failing check" "(bucket: fail)" "STUB_CHECKS=pass${tab}build
-fail${tab}lint"
-refusal "cancelled check" "(bucket: cancel)" "STUB_CHECKS=cancel${tab}build
-pass${tab}lint"
+refusal "zero checks" "REFUSED: PR #7 has no checks reported" STUB_RUNS= STUB_RUNS_RC=1
+refusal "pending check" "REFUSED: PR #7 has a check that is not passing: lint (newest non-skipped run: in_progress)" \
+  "STUB_RUNS=$(runs build:1:success lint:2:in_progress)"
+refusal "queued check" "(newest non-skipped run: queued)" "STUB_RUNS=$(runs build:1:success lint:2:queued)"
+refusal "failing check" "(newest non-skipped run: failure)" "STUB_RUNS=$(runs build:1:success lint:2:failure)"
+refusal "cancelled check" "(newest non-skipped run: cancelled)" "STUB_RUNS=$(runs build:1:cancelled lint:2:success)"
+refusal "timed out check" "(newest non-skipped run: timed_out)" "STUB_RUNS=$(runs lint:1:timed_out)"
+refusal "action required check" "(newest non-skipped run: action_required)" "STUB_RUNS=$(runs lint:1:action_required)"
+refusal "stale check" "(newest non-skipped run: stale)" "STUB_RUNS=$(runs lint:1:stale)"
+
+# Same-name runs: a later skipped run (a label event) must not hide a real result.
+refusal "failed run then newer skipped run" "lint (newest non-skipped run: failure)" \
+  "STUB_RUNS=$(runs lint:1:failure lint:2:skipped)"
+refusal "in-progress run then newer skipped run" "lint (newest non-skipped run: in_progress)" \
+  "STUB_RUNS=$(runs lint:1:in_progress lint:2:skipped)"
+refusal "newer skipped run listed first" "lint (newest non-skipped run: failure)" \
+  "STUB_RUNS=$(runs lint:2:skipped lint:1:failure)"
+refusal "newer failure after success" "lint (newest non-skipped run: failure)" \
+  "STUB_RUNS=$(runs lint:1:success lint:2:failure)"
+run_script "STUB_RUNS=$(runs build:1:success tool-tests:1:success lint:1:failure lint:2:success lint:3:skipped)"
+exited "failed run then newer success merges" 0
+logged "merge after re-run" "$merge_line"
 refusal "conflicting PR" "REFUSED: PR #7 is not mergeable" STUB_MERGEABLE=CONFLICTING
 refusal "unknown mergeability" "REFUSED: PR #7 is not mergeable" STUB_MERGEABLE=UNKNOWN
 refusal "gh pr view fails silently" "REFUSED: PR #7 could not be read" STUB_VIEW_FAIL=1
-refusal "zero checks includes gh output" "no checks reported on the branch" \
-  "STUB_CHECKS=no checks reported on the branch" STUB_CHECKS_RC=1
+refusal "zero checks includes gh output" "gh: Not Found" "STUB_RUNS=gh: Not Found" STUB_RUNS_RC=1
 refusal "wrong origin" "REFUSED: origin is" STUB_ORIGIN=git@github.com:someone/else.git
 
 # Required checks: a copy of the script with the array filled in (the production
 # script has no override seam).
 mkdir "$work/tools"
-sed 's/^REQUIRED_CHECKS=()$/REQUIRED_CHECKS=(build lint)/' "$script" >"$work/tools/merge-pr.sh"
+sed 's/^REQUIRED_CHECKS=(.*)$/REQUIRED_CHECKS=(build lint)/' "$script" >"$work/tools/merge-pr.sh"
 grep -q 'REQUIRED_CHECKS=(build lint)' "$work/tools/merge-pr.sh" || fail "required-checks copy was not patched"
 SCRIPT=$work/tools/merge-pr.sh refusal "required check absent" "lacks required check: lint" \
-  "STUB_CHECKS=pass${tab}build"
+  "STUB_RUNS=$(runs build:1:success)"
 SCRIPT=$work/tools/merge-pr.sh refusal "required check name is exact" "lacks required check: build" \
-  "STUB_CHECKS=pass${tab}prebuild
-pass${tab}lint"
-SCRIPT=$work/tools/merge-pr.sh run_script "STUB_CHECKS=pass${tab}build
-pass${tab}lint"
+  "STUB_RUNS=$(runs prebuild:1:success lint:1:success)"
+SCRIPT=$work/tools/merge-pr.sh refusal "required check only skipped" "required check that was only skipped: lint" \
+  "STUB_RUNS=$(runs build:1:success lint:1:skipped lint:2:skipped)"
+SCRIPT=$work/tools/merge-pr.sh run_script "STUB_RUNS=$(runs build:1:success lint:1:success)"
 exited "all required checks present merges" 0
 logged "required-checks merge invocation" "$merge_line"
+
+# The production names: dropping any one of them is refused.
+for name in $required; do
+  others=(docs:1:skipped)
+  for other in $required; do
+    [[ $other == "$name" ]] || others+=("$other:2:success")
+  done
+  refusal "production check $name absent" "lacks required check: $name" "STUB_RUNS=$(runs "${others[@]}")"
+  refusal "production check $name only skipped" "required check that was only skipped: $name" \
+    "STUB_RUNS=$(runs "${others[@]}" "$name:3:skipped")"
+done
 
 # Happy path: roadmap changed, so it is committed and pushed.
 run_script STUB_ROADMAP_CHANGED=1
@@ -166,10 +215,13 @@ logged "roadmap pushed to main" "git -C $(wt) push origin HEAD:main"
 logged "worktree removed" "git worktree remove --force $(wt)"
 logged "worktree pruned" "git worktree prune"
 
-# Skipping checks only is fine; unchanged roadmap is not committed.
-run_script "STUB_CHECKS=skipping${tab}docs"
-exited "skipping-only checks merge" 0
-logged "skipping-only merge invocation" "$merge_line"
+# A skipped non-required check is fine (the default runs include one); the
+# unchanged roadmap is not committed. Runs are read from the pinned sha, all pages.
+run_script
+exited "skipped non-required check merges" 0
+logged "skipped non-required merge invocation" "$merge_line"
+logged "check-runs read for pinned sha" "gh api repos/pkeppeler/deepcharter/commits/abc123/check-runs?filter=all&per_page=100 --paginate --jq .check_runs[] | [.name, (.started_at // \"9999-12-31T23:59:59Z\"), (.id | tostring), .status, (.conclusion // \"\")] | @tsv"
+refusal "every check skipped" "required check that was only skipped" "STUB_RUNS=$(runs "${skipped_required_specs[@]}")"
 not_logged "unchanged roadmap not committed" "git -C .* commit"
 
 # gh pr merge exits nonzero after merging on GitHub (local cleanup failure).

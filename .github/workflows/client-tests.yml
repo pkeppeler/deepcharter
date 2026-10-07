@@ -1,0 +1,58 @@
+# Client GameTests, only for PRs labelled `gameplay`. Separate from ci.yml so the
+# `labeled` trigger exists only here: any other label starts this run with its job
+# skipped (no runner, seconds), and never touches the build.
+name: Client tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, ready_for_review]
+
+# Runs that will do real work (same condition as the job's `if`) share one group
+# per PR, so a PR opened with `gameplay` set runs the client tests once, not once
+# for `opened` and once for `labeled`. Runs that will skip (any other label, added
+# mid-run by the pipeline) get a group of their own, so they cannot cancel a real run.
+concurrency:
+  group: >-
+    ${{ (!github.event.pull_request.draft
+    && contains(github.event.pull_request.labels.*.name, 'gameplay')
+    && (github.event.action != 'labeled' || github.event.label.name == 'gameplay'))
+    && format('client-{0}', github.event.pull_request.number)
+    || format('client-{0}-skip-{1}', github.event.pull_request.number, github.run_id) }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  client-gametest:
+    name: client-gametest
+    # Not a draft, labelled gameplay, and for a label event, the label added is gameplay.
+    if: >-
+      ${{ !github.event.pull_request.draft
+      && contains(github.event.pull_request.labels.*.name, 'gameplay')
+      && (github.event.action != 'labeled' || github.event.label.name == 'gameplay') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      XVFB_ARGS: -screen 0 1280x720x24 +extension GLX +render -noreset
+      LIBGL_ALWAYS_SOFTWARE: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: 25
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-read-only: false
+      # xvfb-run's default screen is 640x480x8, which has no GLX visual Mesa accepts.
+      # Software GL (llvmpipe) needs a 24-bit screen with the GLX extension.
+      - run: sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 mesa-utils
+      - name: Check software GL
+        run: xvfb-run -a -s "$XVFB_ARGS" glxinfo -B
+        timeout-minutes: 2
+      - name: Client GameTests
+        run: xvfb-run -a -s "$XVFB_ARGS" ./gradlew runClientGameTest
+        timeout-minutes: 15
