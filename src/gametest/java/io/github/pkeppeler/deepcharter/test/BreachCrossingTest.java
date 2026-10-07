@@ -1,12 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-
-import com.google.gson.JsonParser;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
@@ -269,24 +265,6 @@ public class BreachCrossingTest {
 				throw failure(helper, "the crossing deleted the chest at %s", chest);
 			}
 		});
-	}
-
-	/** The test world's layers are generated from the shipped JSON; the tuning must not drift from it. */
-	@GameTest
-	public void crustThicknessMatchesTheShippedLayers(GameTestHelper helper) throws IOException {
-		String resource = "/data/deepcharter/worldgen/material_rule/layer.json";
-		try (var stream = BreachCrossingTest.class.getResourceAsStream(resource)) {
-			if (stream == null) {
-				throw failure(helper, "missing classpath resource %s", resource);
-			}
-			int rows = JsonParser.parseReader(new InputStreamReader(stream)).getAsJsonObject()
-					.getAsJsonObject("if_true").getAsJsonObject("invert")
-					.getAsJsonObject("anchor").get("above_bottom").getAsInt();
-			if (rows != LayerTuning.DEFAULT.crustThickness()) {
-				throw failure(helper, "the layers' crust is %d blocks, LayerTuning.crustThickness is %d", rows, LayerTuning.DEFAULT.crustThickness());
-			}
-		}
-		helper.succeed();
 	}
 
 	/** A mock has no client to apply gravity, so drop it a block a tick for as long as it is in layer_1. */

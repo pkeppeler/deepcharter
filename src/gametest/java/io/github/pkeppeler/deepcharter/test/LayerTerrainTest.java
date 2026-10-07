@@ -3,13 +3,17 @@ package io.github.pkeppeler.deepcharter.test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.player.Input;
@@ -126,16 +130,38 @@ public class LayerTerrainTest {
 		}
 		for (int layer = 1; layer <= 2; layer++) {
 			ServerLevel level = layer(helper, layer);
-			for (int bad : new int[] {level.getMinY() - 1, level.getMaxY() + 1}) {
-				try {
-					Zones.of(level, bad);
-					throw failure(helper, "layer_%d y=%d is outside the layer and should throw", layer, bad);
-				} catch (IllegalArgumentException expected) {
-					// outside the layer: no zone
+			for (int bad : new int[] {level.getMinY() - 1, level.getMaxY() + 1, Integer.MIN_VALUE, Integer.MAX_VALUE}) {
+				if (Zones.of(level, bad).isPresent()) {
+					throw failure(helper, "layer_%d y=%d is outside the layer and should have no zone", layer, bad);
 				}
 			}
 		}
 		helper.succeed();
+	}
+
+	/** A layer past the named ones has no zone, and never throws: callers pass any player Y every tick. */
+	@GameTest
+	public void anUnnamedLayerHasNoZone(GameTestHelper helper) {
+		if (Zones.of(3, 0, 192, 100).isPresent() || Zones.of(0, 0, 192, 100).isPresent()) {
+			throw failure(helper, "a layer without names has a zone");
+		}
+		if (Zones.of(1, 0, 192, 100).isEmpty()) {
+			throw failure(helper, "layer 1 has no zone at y=100");
+		}
+		helper.succeed();
+	}
+
+	/** The names must cover every layer in the chain; this is the start-up check, run here as well. */
+	@GameTest
+	public void zoneNamesCoverEveryLayerInTheChain(GameTestHelper helper) {
+		Zones.requireNamesFor(LayerChain.count(helper.getLevel().registryAccess()));
+		try {
+			Zones.requireNamesFor(LayerChain.count(helper.getLevel().registryAccess()) + 1);
+		} catch (IllegalStateException expected) {
+			helper.succeed();
+			return;
+		}
+		throw failure(helper, "a chain longer than the named layers passed the check");
 	}
 
 	@GameTest
@@ -176,6 +202,10 @@ public class LayerTerrainTest {
 		if (!mock.player().gameMode.destroyBlock(pos.east())) {
 			throw failure(helper, "the guard stopped dirt, which is not rock");
 		}
+		two.setBlock(pos.west(), Blocks.IRON_ORE.defaultBlockState(), 3);
+		if (mock.player().gameMode.destroyBlock(pos.west()) || !two.getBlockState(pos.west()).is(Blocks.IRON_ORE)) {
+			throw failure(helper, "a survival player broke iron ore by hand in layer_2");
+		}
 		mock.player().setGameMode(GameType.ADVENTURE);
 		if (mock.player().gameMode.destroyBlock(pos) || !two.getBlockState(pos).is(Blocks.STONE)) {
 			throw failure(helper, "an adventure player broke rock by hand in layer_2");
@@ -191,6 +221,35 @@ public class LayerTerrainTest {
 			throw failure(helper, "a survival player could not break rock by hand in layer_1");
 		}
 		helper.succeed();
+	}
+
+	/** The attack callback runs on the client too, so a refused swing starts no crack animation. */
+	@GameTest
+	public void startingToBreakDeepRockByHandIsRefused(GameTestHelper helper) {
+		MockPlayer mock = MockPlayers.join(helper, "terrain-attack");
+		ServerLevel one = layer(helper, 1);
+		ServerLevel two = layer(helper, 2);
+		BlockPos pos = new BlockPos(1750, 80, 1750);
+		two.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
+		one.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
+		two.setBlock(pos.east(), Blocks.DIRT.defaultBlockState(), 3);
+		mock.teleportTo(two, Vec3.atBottomCenterOf(pos.above(4)), 0, 0);
+		mock.player().setGameMode(GameType.SURVIVAL);
+		expectAttack(helper, mock, two, pos, InteractionResult.FAIL);
+		expectAttack(helper, mock, two, pos.east(), InteractionResult.PASS);
+		mock.player().setGameMode(GameType.CREATIVE);
+		expectAttack(helper, mock, two, pos, InteractionResult.PASS);
+		mock.teleportTo(one, Vec3.atBottomCenterOf(pos.above(4)), 0, 0);
+		mock.player().setGameMode(GameType.SURVIVAL);
+		expectAttack(helper, mock, one, pos, InteractionResult.PASS);
+		helper.succeed();
+	}
+
+	private static void expectAttack(GameTestHelper helper, MockPlayer mock, ServerLevel level, BlockPos pos, InteractionResult expected) {
+		InteractionResult result = AttackBlockCallback.EVENT.invoker().interact(mock.player(), level, InteractionHand.MAIN_HAND, pos, Direction.UP);
+		if (result != expected) {
+			throw failure(helper, "attacking %s in %s gave %s, expected %s", pos, level.dimension().identifier(), result, expected);
+		}
 	}
 
 	@GameTest(maxTicks = MAX_TICKS)

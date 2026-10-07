@@ -81,7 +81,7 @@ public class LayerDimensionsTest {
 	public void crustIsAtTheFloor(GameTestHelper helper) {
 		Block crust = BuiltInRegistries.BLOCK.getValue(CRUST_ID);
 		for (int layer = 1; layer <= 2; layer++) {
-			int thickness = crustThickness(helper, layer);
+			int thickness = LayerTuning.DEFAULT.crustThickness();
 			ServerLevel level = level(helper, layer);
 			int floor = level.getMinY();
 			for (int dy = 0; dy < thickness; dy++) {
@@ -169,7 +169,7 @@ public class LayerDimensionsTest {
 				throw helper.assertionException("player is in %s after goto 2", level.dimension());
 			}
 			Vec3 pos = mock.player().position();
-			if (pos.y < level.getMinY() + crustThickness(helper, 2) || pos.y > level.getMaxY()) {
+			if (pos.y < level.getMinY() + LayerTuning.DEFAULT.crustThickness() || pos.y > level.getMaxY()) {
 				throw helper.assertionException("player placed at y=%s, outside the layer", pos.y);
 			}
 			try {
@@ -200,18 +200,13 @@ public class LayerDimensionsTest {
 			var source = mock.player().createCommandSourceStack().withPermission(LevelBasedPermissionSet.GAMEMASTER);
 			server.getCommands().getDispatcher().execute("deepcharter layer goto 1", source);
 			double y = mock.player().position().y;
-			if (y < layer.getMinY() + crustThickness(helper, 1) || y > layer.getMaxY()) {
+			if (y < layer.getMinY() + LayerTuning.DEFAULT.crustThickness() || y > layer.getMaxY()) {
 				throw helper.assertionException("player placed at y=%s, outside the layer", y);
 			}
 		} finally {
 			mock.leave();
 		}
 		helper.succeed();
-	}
-
-	/** The crust rows at each floor; the layer material rule (data/deepcharter/worldgen/material_rule/layer.json) must match. */
-	private static int crustThickness(GameTestHelper helper, int layer) {
-		return LayerTuning.DEFAULT.crustThickness();
 	}
 
 	private static JsonElement read(GameTestHelper helper, String resource) throws IOException {

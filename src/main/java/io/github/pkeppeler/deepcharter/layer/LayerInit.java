@@ -14,6 +14,7 @@ public final class LayerInit {
 		BreachService.init();
 		BreachPayload.init();
 		LayerRock.init();
+		Zones.init();
 		LayerStructures.init();
 	}
 }

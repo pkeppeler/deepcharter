@@ -28,7 +28,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 /**
  * Server GameTests for pod drilling, driven by a mock pilot's input in layer_1 (and layer_2, for the
  * last crust). Each test has its own X, so the blocks it changes never touch another test's.
- * Each test builds the stone it drills, so the noise terrain of the layers does not matter.
+ * Layer 1 is crust at y 0-2, stone at y 3-102, then air up to the ceiling row at y 191.
  */
 public class PodDrillTest {
 	/**

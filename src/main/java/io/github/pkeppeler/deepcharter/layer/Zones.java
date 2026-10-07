@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
 
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
 
@@ -38,17 +40,33 @@ public final class Zones {
 		}
 	}
 
-	/**
-	 * The zone at {@code y} in a layer; empty on the surface. A layer with no zones defined is a bug, and so is a
-	 * {@code y} outside the layer.
-	 */
+	/** Checks at server start that the names cover every layer of the chain. */
+	public static void init() {
+		ServerLifecycleEvents.SERVER_STARTED.register(server -> requireNamesFor(LayerChain.count(server.registryAccess())));
+	}
+
+	/** A chain with a layer that has no zone names is a bug, found at start-up and not on a tick. */
+	public static void requireNamesFor(int layers) {
+		if (layers > NAMES.size()) {
+			throw new IllegalStateException("The chain has " + layers + " layers but only " + NAMES.size() + " have zone names");
+		}
+	}
+
+	/** The zone at {@code y}; empty on the surface and outside the layer's height, so any player Y is safe to ask. */
 	public static Optional<Zone> of(Level level, int y) {
 		OptionalInt found = LayerChain.layerOf(level.dimensionTypeRegistration().unwrapKey().orElseThrow().identifier());
 		if (found.isEmpty()) {
 			return Optional.empty();
 		}
-		int layer = found.getAsInt();
-		int index = index(level.getMinY(), level.getHeight(), y);
+		return of(found.getAsInt(), level.getMinY(), level.getHeight(), y);
+	}
+
+	/** The zone at {@code y} of a layer of {@code height} blocks from {@code minY}; empty for an unnamed layer or an outside y. */
+	public static Optional<Zone> of(int layer, int minY, int height, int y) {
+		if (layer < 1 || layer > NAMES.size() || y < minY || y >= minY + height) {
+			return Optional.empty();
+		}
+		int index = index(minY, height, y);
 		return Optional.of(new Zone(layer, index, biome(layer, index)));
 	}
 
