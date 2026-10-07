@@ -5,6 +5,7 @@
     "deepcharter:ore_processor",
     "deepcharter:upgrade_terminal",
     "deepcharter:repair_station",
-    "deepcharter:hangar_console"
+    "deepcharter:hangar_console",
+    "deepcharter:contract_terminal"
   ]
 }

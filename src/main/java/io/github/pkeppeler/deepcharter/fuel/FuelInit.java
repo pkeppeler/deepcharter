@@ -10,5 +10,7 @@ public final class FuelInit {
 
 	public static void init() {
 		FuelRegistry.register();
+		FuelPump.init();
+		ReserveTank.init();
 	}
 }

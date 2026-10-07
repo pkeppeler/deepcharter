@@ -1,11 +1,15 @@
 package io.github.pkeppeler.deepcharter.client.market;
 
-public final class MarketClientRegistry {
-	// Registers the market screens, renderers and HUD elements. Empty until #68.
+import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreens;
+import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 
+/** The ore processor's screen, and the account HUD. */
+public final class MarketClientRegistry {
 	private MarketClientRegistry() {
 	}
 
 	public static void register() {
+		TerminalScreens.register(TerminalTypes.ORE_PROCESSOR, OreProcessorScreen::new);
+		AccountHud.init();
 	}
 }
