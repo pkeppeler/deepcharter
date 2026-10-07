@@ -10,7 +10,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.Blocks;
 
-import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
+import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 
 /**
@@ -39,7 +40,14 @@ public class BreachCrossingScenario extends EvidenceScenario {
 	protected void run(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			context.waitFor(client -> client.player != null && client.level != null);
-			singleplayer.getServer().runOnServer(server -> server.getPlayerList().getPlayers().getFirst().setPermanentlyInvulnerable(true));
+			// A transmission goes to a charter, so the player founds one: the crossing then brings its transmission.
+			singleplayer.getServer().runOnServer(server -> {
+				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+				player.setPermanentlyInvulnerable(true);
+				if (Charters.found(server, player.getUUID(), "Breach Crew").isPresent()) {
+					throw new AssertionError("founding the charter should succeed");
+				}
+			});
 
 			// The same row of quartz pillars at the same distances, so only the light and fog differ.
 			lookDownTheRow(context, singleplayer, 1);
@@ -71,8 +79,7 @@ public class BreachCrossingScenario extends EvidenceScenario {
 				if (context.computeOnClient(client -> client.gui.screen() == null)) {
 					frame(context);
 				}
-				boolean typed = context.computeOnClient(client -> !BreachEffects.transmissionFull().isEmpty()
-						&& BreachEffects.transmissionShown().equals(BreachEffects.transmissionFull()));
+				boolean typed = context.computeOnClient(client -> TransmissionOverlay.typed());
 				if (typed && typedAt < 0) {
 					typedAt = tick;
 				}

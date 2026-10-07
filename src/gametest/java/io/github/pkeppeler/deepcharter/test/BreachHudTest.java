@@ -4,7 +4,6 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.function.ToIntFunction;
@@ -16,13 +15,11 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import javax.imageio.ImageIO;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.locale.Language;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
 import io.github.pkeppeler.deepcharter.client.layer.Altimeter;
 import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
-import io.github.pkeppeler.deepcharter.layer.BreachPayload;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 
@@ -67,14 +64,8 @@ public class BreachHudTest implements FabricClientGameTest {
 			float peak = 0;
 			int startedAt = -1;
 			int clearedAt = -1;
-			int lastShown = 0;
 			for (int tick = 0; tick < PATIENCE && clearedAt < 0; tick++) {
 				float alpha = context.computeOnClient(client -> BreachEffects.fadeAlpha(0f));
-				int shown = context.computeOnClient(client -> BreachEffects.transmissionShown().stream().mapToInt(String::length).sum());
-				if (shown < lastShown) {
-					throw new AssertionError("The transmission untyped itself: " + lastShown + " then " + shown + " characters");
-				}
-				lastShown = shown;
 				if (alpha > 0 && startedAt < 0) {
 					startedAt = tick;
 				}
@@ -101,22 +92,6 @@ public class BreachHudTest implements FabricClientGameTest {
 			if (!context.computeOnClient(client -> client.level.dimension().equals(LayerChain.dimension(2)))) {
 				throw new AssertionError("The crossing should have put the client in layer 2");
 			}
-
-			// The transmission types out and finishes with the whole text.
-			context.waitFor(client -> !BreachEffects.transmissionShown().isEmpty());
-			context.waitFor(client -> BreachEffects.transmissionShown().equals(BreachEffects.transmissionFull()));
-			List<String> full = context.computeOnClient(client -> BreachEffects.transmissionFull());
-			if (full.isEmpty() || full.stream().anyMatch(String::isBlank)) {
-				throw new AssertionError("The stub transmission should have text on every line, has " + full);
-			}
-			// A missing lang key would render as the raw key, so check each one exists.
-			for (boolean descent : new boolean[] {true, false}) {
-				for (String key : BreachEffects.transmissionKeys(descent)) {
-					if (!context.computeOnClient(client -> Language.getInstance().has(key))) {
-						throw new AssertionError("Transmission lang key missing from en_us.json: " + key);
-					}
-				}
-			}
 		}
 	}
 
@@ -132,7 +107,7 @@ public class BreachHudTest implements FabricClientGameTest {
 		if (brightestInPodReadout(context.takeScreenshot("breach-hud-before-fade")) < 200) {
 			throw new AssertionError("The pod readout should be visible before the fade, or this check proves nothing");
 		}
-		context.runOnClient(client -> BreachEffects.begin(new BreachPayload(1, 2)));
+		context.runOnClient(client -> BreachEffects.begin());
 		context.waitFor(client -> BreachEffects.fadeAlpha(0f) >= 1f);
 		int brightest = brightestInPodReadout(context.takeScreenshot("breach-hud-fade-peak"));
 		if (brightest > 8) {

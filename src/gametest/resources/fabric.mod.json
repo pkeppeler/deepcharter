@@ -7,7 +7,8 @@
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"io.github.pkeppeler.deepcharter.test.support.TestAttachments"
+			"io.github.pkeppeler.deepcharter.test.support.TestAttachments",
+			"io.github.pkeppeler.deepcharter.test.support.TerminalTestTypes"
 		],
 		"fabric-gametest": [
 			"io.github.pkeppeler.deepcharter.test.DeepCharterGameTest",

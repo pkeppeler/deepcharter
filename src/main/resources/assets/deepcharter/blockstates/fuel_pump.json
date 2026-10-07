@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "deepcharter:block/fuel_pump"
+    },
+    "facing=east": {
+      "model": "deepcharter:block/fuel_pump",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "deepcharter:block/fuel_pump",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "deepcharter:block/fuel_pump",
+      "y": 270
+    }
+  }
+}
