@@ -17,11 +17,8 @@ public final class PodMovement {
 	public static void init() {
 	}
 
-	/** Called every pod tick, on both sides; only the server moves the pod. */
-	public static void tick(PodEntity pod) {
-		if (pod.level().isClientSide()) {
-			return;
-		}
+	/** Called every pod tick, on the server only. */
+	public static void tick(PodEntity pod, PodStats stats) {
 		if (pod.cargoMass() < 0) {
 			throw new IllegalStateException("pod cargo mass must not be negative, got " + pod.cargoMass());
 		}
@@ -31,16 +28,16 @@ public final class PodMovement {
 		Input input = pilot == null ? Input.EMPTY : pilot.getLastClientInput();
 
 		Direction drive = pilot == null ? null : driveDirection(input, pilot.getYRot());
-		double vx = drive == null ? 0 : drive.getStepX() * tuning.horizontalSpeed();
-		double vz = drive == null ? 0 : drive.getStepZ() * tuning.horizontalSpeed();
+		double vx = drive == null ? 0 : drive.getStepX() * stats.horizontalSpeed();
+		double vz = drive == null ? 0 : drive.getStepZ() * stats.horizontalSpeed();
 
-		float lift = Math.max(0f, tuning.enginePower() - pod.cargoMass() - PodEvents.extraMass(pod));
+		float lift = Math.max(0f, stats.enginePower() - pod.cargoMass() - PodEvents.extraMass(pod));
 		boolean thrusting = input.jump() && lift > 0f;
 		double vy = pod.getDeltaMovement().y;
 		if (thrusting) {
-			vy += tuning.thrustAcceleration() * lift / tuning.enginePower();
+			vy += stats.thrustAcceleration() * lift / stats.enginePower();
 		}
-		vy = Math.min((vy - tuning.gravity()) * tuning.verticalDrag(), tuning.maxClimbSpeed());
+		vy = Math.min((vy - tuning.gravity()) * tuning.verticalDrag(), stats.maxClimbSpeed());
 
 		pod.setFlying(thrusting);
 		pod.setDeltaMovement(vx, vy, vz);
@@ -59,10 +56,10 @@ public final class PodMovement {
 		if (pod.level().isClientSide()) {
 			return;
 		}
-		PodTuning.Movement tuning = PodTuning.DEFAULT.movement();
-		double excess = fallDistance - tuning.hardLandingDistance();
+		PodStats stats = PodStats.of(pod);
+		double excess = fallDistance - stats.hardLandingDistance();
 		if (excess > 0) {
-			pod.setHull(Math.max(0f, pod.hull() - (float) (excess * tuning.hullDamagePerBlock() * damageMultiplier)));
+			pod.damageHull((float) (excess * stats.hullDamagePerBlock() * damageMultiplier));
 		}
 	}
 

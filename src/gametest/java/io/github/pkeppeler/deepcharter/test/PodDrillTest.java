@@ -24,6 +24,7 @@ import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodDrill;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -269,13 +270,13 @@ public class PodDrillTest {
 	@GameTest
 	public void drillTimeIsHardnessTimesDepthFactor(GameTestHelper helper) {
 		// Stone is 1.5: the original's 1.2 s a tile at the surface, doubling at 1,000 ft.
-		expectTicks(helper, PodDrill.drillTicks(1.5f, 0), 24);
-		expectTicks(helper, PodDrill.drillTicks(1.5f, 1000), 48);
-		expectTicks(helper, PodDrill.drillTicks(1.5f, 3000), 96);
+		expectTicks(helper, PodDrill.drillTicks(PodStats.base(), 1.5f, 0), 24);
+		expectTicks(helper, PodDrill.drillTicks(PodStats.base(), 1.5f, 1000), 48);
+		expectTicks(helper, PodDrill.drillTicks(PodStats.base(), 1.5f, 3000), 96);
 		// Above sea level the depth is negative: the drill gets no faster for it.
-		expectTicks(helper, PodDrill.drillTicks(1.5f, -500), 24);
+		expectTicks(helper, PodDrill.drillTicks(PodStats.base(), 1.5f, -500), 24);
 		// Crust is hardness 5: slower than stone at the same depth.
-		if (PodDrill.drillTicks(5f, 1000) <= PodDrill.drillTicks(1.5f, 1000)) {
+		if (PodDrill.drillTicks(PodStats.base(), 5f, 1000) <= PodDrill.drillTicks(PodStats.base(), 1.5f, 1000)) {
 			throw failure(helper, "crust must drill slower than stone");
 		}
 		helper.succeed();
@@ -458,7 +459,7 @@ public class PodDrillTest {
 	}
 
 	private static int expectedTicks(ServerLevel level, int y) {
-		return PodDrill.drillTicks(Blocks.STONE.defaultBlockState().getDestroySpeed(level, BlockPos.ZERO), Depth.feet(Depth.of(level, y)));
+		return PodDrill.drillTicks(PodStats.base(), Blocks.STONE.defaultBlockState().getDestroySpeed(level, BlockPos.ZERO), Depth.feet(Depth.of(level, y)));
 	}
 
 	private static void expectNear(GameTestHelper helper, int actual, int expected, String label) {
