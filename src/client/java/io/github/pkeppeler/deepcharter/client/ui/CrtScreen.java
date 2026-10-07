@@ -1,6 +1,5 @@
 package io.github.pkeppeler.deepcharter.client.ui;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,8 +20,9 @@ import net.minecraft.network.chat.Style;
  * its widgets in {@link #layout()}. {@code init()} is final here and calls {@code layout()}; {@link #typewriter}
  * throws if called from it. Time runs in ticks, so the reveal speed is the same at any frame rate.
  *
- * <p>Override {@link #extractRenderState} and draw your own text before calling {@code super}: the base draws the
- * widgets and then the scanlines, and anything drawn after {@code super} sits over the scanlines.
+ * <p>Override {@link #extractRenderState} and draw your own content BEFORE calling {@code super}: the base draws
+ * the widgets and then the scanlines over everything, so content drawn before {@code super} gets the scanlines
+ * and content drawn after it would sit on top of them.
  *
  * <p>Typewriter text is plain and single-coloured; the colour is chosen per typewriter. The screen narrates the
  * full text of every typewriter once, when it opens, as part of {@link #getNarrationMessage()}.
@@ -125,10 +125,8 @@ public abstract class CrtScreen extends Screen {
 		CrtTuning tuning = CrtTuning.DEFAULT;
 		Font font = this.font;
 		if (entry.cachedRevealed != writer.revealed() || entry.cachedWidth != wrapWidth) {
-			List<String> lines = new ArrayList<>();
-			font.getSplitter().splitLines(FormattedText.of(writer.visible()), wrapWidth, Style.EMPTY)
-					.forEach(line -> lines.add(line.getString()));
-			entry.lines = lines;
+			entry.lines = font.getSplitter().splitLines(FormattedText.of(writer.visible()), wrapWidth, Style.EMPTY)
+					.stream().map(FormattedText::getString).toList();
 			entry.cachedRevealed = writer.revealed();
 			entry.cachedWidth = wrapWidth;
 		}
