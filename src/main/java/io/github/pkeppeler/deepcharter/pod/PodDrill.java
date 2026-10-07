@@ -58,7 +58,7 @@ public final class PodDrill {
 		if (pod.level().isClientSide()) {
 			return;
 		}
-		Direction wanted = pod.stranded() ? null : wantedDirection(pod);
+		Direction wanted = !PodEvents.isPowered(pod) ? null : wantedDirection(pod);
 		if (wanted == null) {
 			stop(pod);
 			return;

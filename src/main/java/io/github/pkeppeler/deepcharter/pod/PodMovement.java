@@ -26,15 +26,15 @@ public final class PodMovement {
 			throw new IllegalStateException("pod cargo mass must not be negative, got " + pod.cargoMass());
 		}
 		PodTuning.Movement tuning = PodTuning.DEFAULT.movement();
-		// A stranded pod is powered off: it ignores its pilot.
-		ServerPlayer pilot = !pod.stranded() && pod.getControllingPassenger() instanceof ServerPlayer player ? player : null;
+		// A pod without power (stranded, or a PodEvents listener says so) ignores its pilot.
+		ServerPlayer pilot = PodEvents.isPowered(pod) && pod.getControllingPassenger() instanceof ServerPlayer player ? player : null;
 		Input input = pilot == null ? Input.EMPTY : pilot.getLastClientInput();
 
 		Direction drive = pilot == null ? null : driveDirection(input, pilot.getYRot());
 		double vx = drive == null ? 0 : drive.getStepX() * tuning.horizontalSpeed();
 		double vz = drive == null ? 0 : drive.getStepZ() * tuning.horizontalSpeed();
 
-		float lift = Math.max(0f, tuning.enginePower() - pod.cargoMass());
+		float lift = Math.max(0f, tuning.enginePower() - pod.cargoMass() - PodEvents.extraMass(pod));
 		boolean thrusting = input.jump() && lift > 0f;
 		double vy = pod.getDeltaMovement().y;
 		if (thrusting) {

@@ -56,7 +56,11 @@ public class PodEntity extends Entity {
 	}
 
 	public void setHull(float hull) {
+		float before = hull();
 		entityData.set(PodData.HULL, hull);
+		if (before > 0f && hull <= 0f && !level().isClientSide()) {
+			PodEvents.HULL_DEPLETED.invoker().onHullDepleted(this);
+		}
 	}
 
 	public float fuel() {
@@ -123,7 +127,8 @@ public class PodEntity extends Entity {
 	@Override
 	protected void readAdditionalSaveData(ValueInput input) {
 		chassis = Chassis.byId(required(input, CHASSIS_KEY, Codec.STRING));
-		setHull(required(input, HULL_KEY, Codec.FLOAT));
+		// Not setHull: loading a pod that has no hull left is not the hull running out.
+		entityData.set(PodData.HULL, required(input, HULL_KEY, Codec.FLOAT));
 		setFuel(required(input, FUEL_KEY, Codec.FLOAT));
 		setStranded(required(input, STRANDED_KEY, Codec.BOOL));
 		// Flying, drilling and the drill direction are transient: a loaded pod starts idle.
@@ -154,6 +159,9 @@ public class PodEntity extends Entity {
 		PodMovement.tick(this);
 		PodDrill.tick(this);
 		PodFuel.tick(this);
+		if (!level().isClientSide()) {
+			PodEvents.AFTER_TICK.invoker().afterTick(this);
+		}
 	}
 
 	@Override
@@ -192,7 +200,8 @@ public class PodEntity extends Entity {
 
 	@Override
 	protected boolean canAddPassenger(Entity passenger) {
-		return getPassengers().size() < chassis.seats();
+		// Only the server asks the listeners: the client guesses, and the server settles it.
+		return getPassengers().size() < chassis.seats() && (level().isClientSide() || PodEvents.canMount(this, passenger));
 	}
 
 	@Override
