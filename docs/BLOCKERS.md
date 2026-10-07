@@ -2,6 +2,19 @@
 
 The orchestrator writes this log during unattended runs. It never stops for a blocker: it records the blocker here and moves on to the next ready work. Newest entries come first. When an entry is resolved, its status changes to **resolved**, with the date and the reason.
 
+## 2026-10-07: How should the scanner show fluids? (a question, not a blocker)
+
+**Status:** open, for a decision by the user. Work continues with a default.
+
+SPEC §7 says "later tiers reveal hazards". It does not say how scanner v1 shows water and lava. **The default in PR #46:** fluids show as open space, the same as air. A test pins this, so a later change is visible.
+
+**The risk with the default:** a pilot can fly into lava that the scanner shows as empty.
+
+**The options are:**
+- (a) Keep the default until the hazard tier exists.
+- (b) Show lava in its own color now.
+- (c) Show all fluids in their own color now.
+
 ## 2026-10-07: M0 demo is ready (the milestone ends with a demo to the user)
 
 **Status:** open, for the user to view. Nothing waits on it: M1 is in progress.
