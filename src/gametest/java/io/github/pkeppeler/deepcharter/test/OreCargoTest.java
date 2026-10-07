@@ -1,13 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.LogEvent;
-import org.apache.logging.log4j.core.appender.AbstractAppender;
-import org.apache.logging.log4j.core.config.Property;
 
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -40,7 +33,6 @@ import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.phys.Vec3;
 
-import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
@@ -50,6 +42,7 @@ import io.github.pkeppeler.deepcharter.pod.PodCargo;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
+import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 
@@ -312,7 +305,7 @@ public class OreCargoTest {
 		ServerLevel level = helper.getLevel();
 		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
 		PodEntity copy = helper.spawn(PodRegistry.POD, 4, 2, 2);
-		CapturingAppender log = CapturingAppender.attach();
+		LogCapture log = LogCapture.start(copy.getUUID().toString());
 		try {
 			CompoundTag tag = savedPod(level, pod);
 			// The pre-#56 format: no version, and a vanilla ore block in each entry.
@@ -340,7 +333,6 @@ public class OreCargoTest {
 			}
 			helper.succeed();
 		} finally {
-			log.detach();
 			pod.discard();
 			copy.discard();
 		}
@@ -387,7 +379,7 @@ public class OreCargoTest {
 		CompoundTag tag = savedPod(level, pod);
 		tag.putInt("cargo_version", 99);
 		pod.cargo().load(inputOf(level, tag), pod);
-		CapturingAppender log = CapturingAppender.attach();
+		LogCapture log = LogCapture.start(pod.getUUID().toString());
 		pilot.setInput(SPRINT);
 		helper.onEachTick(() -> {
 			if (count(level, x - 1, x, floor - 1, floor - 1, Z - 1, Z, Blocks.AIR) != 4) {
@@ -405,7 +397,6 @@ public class OreCargoTest {
 				}
 				helper.succeed();
 			} finally {
-				log.detach();
 				pod.discard();
 				pilot.leave();
 			}
@@ -558,38 +549,6 @@ public class OreCargoTest {
 
 	private static ValueInput inputOf(ServerLevel level, CompoundTag tag) {
 		return TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), tag);
-	}
-
-	/** Collects the ERROR lines of the mod's logger while attached. */
-	private static final class CapturingAppender extends AbstractAppender {
-		private final List<String> errors = new CopyOnWriteArrayList<>();
-
-		private CapturingAppender() {
-			super("ore-cargo-test", null, null, true, Property.EMPTY_ARRAY);
-		}
-
-		static CapturingAppender attach() {
-			CapturingAppender appender = new CapturingAppender();
-			appender.start();
-			((org.apache.logging.log4j.core.Logger) LogManager.getLogger(DeepCharter.MOD_ID)).addAppender(appender);
-			return appender;
-		}
-
-		void detach() {
-			((org.apache.logging.log4j.core.Logger) LogManager.getLogger(DeepCharter.MOD_ID)).removeAppender(this);
-			stop();
-		}
-
-		List<String> errors() {
-			return errors;
-		}
-
-		@Override
-		public void append(LogEvent event) {
-			if (event.getLevel() == Level.ERROR) {
-				errors.add(event.getMessage().getFormattedMessage());
-			}
-		}
 	}
 
 	private static void fillBay(PodEntity pod, OreType type, int count) {

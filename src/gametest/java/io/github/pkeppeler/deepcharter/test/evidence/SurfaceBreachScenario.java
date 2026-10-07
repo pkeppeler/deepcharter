@@ -13,7 +13,9 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.Heightmap;
 
+import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
+import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 
@@ -51,6 +53,10 @@ public class SurfaceBreachScenario extends EvidenceScenario {
 			singleplayer.getServer().runOnServer(server -> {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 				player.setPermanentlyInvulnerable(true);
+				// A transmission goes to a charter: the climb out into the surface brings the surface-arrival transmission.
+				if (Charters.found(server, player.getUUID(), "Surface Crew").isPresent()) {
+					throw new AssertionError("founding the charter should succeed");
+				}
 				player.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false));
 			});
 
@@ -87,11 +93,10 @@ public class SurfaceBreachScenario extends EvidenceScenario {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 				player.teleportTo(surface, X, surface.getMinY() + SHAFT_HEIGHT - 1, Z, Set.of(), 0, 70, true);
 			});
-			recordUntilTransmissionTyped(context, "falling into layer 1");
+			recordUntilFadeEnds(context, "falling into layer 1");
 			screenshot(context, "layer-1-arrival");
 
-			// Up and out of the top of layer 1, once the first crossing's transmission is gone.
-			context.waitFor(client -> BreachEffects.transmissionFull().isEmpty());
+			// Up and out of the top of layer 1.
 			singleplayer.getServer().runOnServer(server -> {
 				ServerLevel surface = server.overworld();
 				BlockPos column = BlockPos.containing(X, 0, Z);
@@ -143,6 +148,23 @@ public class SurfaceBreachScenario extends EvidenceScenario {
 		}
 	}
 
+	/** Records a frame per tick until the fade of the crossing that just happened has come and gone. Entering layer 1 has no transmission. */
+	private void recordUntilFadeEnds(ClientGameTestContext context, String what) {
+		boolean faded = false;
+		for (int tick = 0; tick < PATIENCE; tick++) {
+			if (context.computeOnClient(client -> client.gui.screen() == null)) {
+				frame(context);
+			}
+			float alpha = context.computeOnClient(client -> BreachEffects.fadeAlpha(0f));
+			faded |= alpha > 0;
+			if (faded && alpha == 0) {
+				return;
+			}
+			context.waitTick();
+		}
+		throw new AssertionError("The fade never ended within " + PATIENCE + " frames of " + what);
+	}
+
 	/** Records a frame per tick until the transmission of the crossing that just happened has finished typing. */
 	private void recordUntilTransmissionTyped(ClientGameTestContext context, String what) {
 		int typedAt = -1;
@@ -152,8 +174,7 @@ public class SurfaceBreachScenario extends EvidenceScenario {
 			if (context.computeOnClient(client -> client.gui.screen() == null)) {
 				frame(context);
 			}
-			boolean typed = context.computeOnClient(client -> !BreachEffects.transmissionFull().isEmpty()
-					&& BreachEffects.transmissionShown().equals(BreachEffects.transmissionFull()));
+			boolean typed = context.computeOnClient(client -> TransmissionOverlay.typed());
 			if (typed && typedAt < 0) {
 				typedAt = tick;
 			}
