@@ -13,6 +13,7 @@ import io.netty.buffer.Unpooled;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -27,6 +28,7 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
+import io.github.pkeppeler.deepcharter.pod.Serials;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
@@ -279,23 +281,145 @@ public class UpgradeTerminalTest {
 		});
 	}
 
-	/** The rule of PodComponents.canMount: a pod nobody owns is anyone's, and the view must not throw for it. */
+	/** An unowned pod is anyone's to park (the canMount rule) but takes no purchase: its parts would be void and a refill a repair. */
 	@GameTest
-	public void anUnownedPodIsAnyonesAndHasNoSerialInTheView(GameTestHelper helper) {
+	public void anUnregisteredPodIsRefusedAndTheViewHasNoSerial(GameTestHelper helper) {
 		withRepairedTerminal(helper, () -> {
 			Scene scene = scene(helper, 10_000);
 			try {
 				scene.pod().discard();
 				PodEntity unowned = helper.spawn(PodRegistry.POD, 2, 1, 2);
 				Scene bare = new Scene(scene.mock(), scene.player(), scene.charter(), scene.terminal(), unowned);
-				UpgradeView.Pod shown = UpgradeTerminal.view(helper.getLevel().getServer(), scene.player(), scene.terminal()).pod().orElseThrow();
+				MinecraftServer server = helper.getLevel().getServer();
+				UpgradeView.Pod shown = UpgradeTerminal.view(server, scene.player(), scene.terminal()).pod().orElseThrow();
 				if (!shown.serial().isEmpty()) {
 					throw failure(helper, "an unowned pod has no serial, got %s", shown.serial());
 				}
-				expectDone(helper, buy(bare, ComponentTrack.DRILL, 1), "buying for an unowned pod");
-				expectEqual(helper, "the account", 9_250, balance(helper, bare));
+				unowned.setHull(40f);
+				expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(bare, ComponentTrack.HULL, 1), "a purchase for an unregistered pod");
+				expectSame(helper, UpgradeTerminal.buy(server, scene.player(), scene.terminal(), ComponentTrack.HULL, 1),
+						Optional.of(UpgradeRefusal.NOT_REGISTERED.message()), "the reason");
+				expectEqual(helper, "the account", 10_000, balance(helper, bare));
+				expectEqual(helper, "a refused hull is no repair", 40f, unowned.hull());
 				helper.succeed();
 			} finally {
+				clean(helper, scene);
+			}
+		});
+	}
+
+	@GameTest
+	public void aPodOfADormantOrMissingOwnerIsAnyones(GameTestHelper helper) {
+		withRepairedTerminal(helper, () -> {
+			Scene scene = scene(helper, 10_000);
+			PodEntity dormantPod = null;
+			try {
+				MinecraftServer server = helper.getLevel().getServer();
+				scene.pod().discard();
+				// Missing: the owner id belongs to no charter.
+				PodEntity missing = helper.spawn(PodRegistry.POD, 2, 1, 2);
+				PodComponents.register(missing, CharterId.random());
+				Scene toMissing = new Scene(scene.mock(), scene.player(), scene.charter(), scene.terminal(), missing);
+				expectDone(helper, buy(toMissing, ComponentTrack.DRILL, 1), "buying for a pod whose owner charter is gone");
+				if (PodComponents.partOf(missing, ComponentTrack.DRILL).isEmpty()) {
+					throw failure(helper, "the part should be in the pod of the missing owner");
+				}
+				missing.discard();
+
+				// Dormant: the only member left.
+				UUID founder = UUID.randomUUID();
+				if (Charters.found(server, founder, "Dormant " + UUID.randomUUID().toString().substring(0, 8)).isPresent()) {
+					throw failure(helper, "founding should succeed");
+				}
+				CharterId dormant = Charters.charterOf(server, founder).orElseThrow().id();
+				Charters.leave(server, founder);
+				if (!Charters.find(server, dormant).orElseThrow().dormant()) {
+					throw failure(helper, "the charter should be dormant");
+				}
+				dormantPod = helper.spawn(PodRegistry.POD, 2, 1, 2);
+				PodComponents.register(dormantPod, dormant);
+				Scene toDormant = new Scene(scene.mock(), scene.player(), scene.charter(), scene.terminal(), dormantPod);
+				expectDone(helper, buy(toDormant, ComponentTrack.ENGINE, 1), "buying for a pod whose owner charter is dormant");
+				if (PodComponents.partOf(dormantPod, ComponentTrack.ENGINE).isEmpty()) {
+					throw failure(helper, "the part should be in the pod of the dormant owner");
+				}
+				helper.succeed();
+			} finally {
+				clean(helper, scene);
+				if (dormantPod != null) {
+					dormantPod.discard();
+				}
+			}
+		});
+	}
+
+	@GameTest
+	public void theNearerOfTwoOwnPodsGetsThePart(GameTestHelper helper) {
+		withRepairedTerminal(helper, () -> {
+			Scene scene = scene(helper, 10_000);
+			PodEntity farther = null;
+			try {
+				farther = helper.spawn(PodRegistry.POD, 6, 1, 2);
+				PodComponents.register(farther, scene.charter());
+				expectDone(helper, buy(scene, ComponentTrack.CARGO_BAY, 1), "buying with two own pods parked");
+				if (PodComponents.partOf(scene.pod(), ComponentTrack.CARGO_BAY).isEmpty() || PodComponents.partOf(farther, ComponentTrack.CARGO_BAY).isPresent()) {
+					throw failure(helper, "the nearer pod should get the part, and only it");
+				}
+				helper.succeed();
+			} finally {
+				clean(helper, scene);
+				if (farther != null) {
+					farther.discard();
+				}
+			}
+		});
+	}
+
+	@GameTest
+	public void theParkedRadiusIsHonouredAtItsEdge(GameTestHelper helper) {
+		withRepairedTerminal(helper, () -> {
+			Scene scene = scene(helper, 10_000);
+			try {
+				double radius = UpgradeTuning.DEFAULT.parkedRadius();
+				Vec3 centre = Vec3.atCenterOf(scene.terminal());
+				scene.pod().setPos(centre.x + radius + 0.1, centre.y, centre.z);
+				expectSame(helper, UpgradeTerminal.buy(helper.getLevel().getServer(), scene.player(), scene.terminal(), ComponentTrack.DRILL, 1),
+						Optional.of(UpgradeRefusal.NO_POD.message()), "a pod just outside the radius");
+				scene.pod().setPos(centre.x + radius - 0.1, centre.y, centre.z);
+				expectDone(helper, buy(scene, ComponentTrack.DRILL, 1), "a pod just inside the radius");
+				helper.succeed();
+			} finally {
+				clean(helper, scene);
+			}
+		});
+	}
+
+	@GameTest
+	public void unreadableSerialsRefuseBeforeTheSpend(GameTestHelper helper) {
+		withRepairedTerminal(helper, () -> {
+			MinecraftServer server = helper.getLevel().getServer();
+			Serials original = Serials.get(server);
+			CompoundTag future = new CompoundTag();
+			future.putInt("version", 99);
+			Serials unreadable = Serials.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow();
+			Scene scene = scene(helper, 10_000);
+			try {
+				server.getDataStorage().set(Serials.TYPE, unreadable);
+				int carriedBefore = carried(scene.player());
+				scene.pod().setHull(40f);
+				expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(scene, ComponentTrack.HULL, 1), "a purchase with unreadable serials");
+				expectSame(helper, UpgradeTerminal.buy(server, scene.player(), scene.terminal(), ComponentTrack.HULL, 1),
+						Optional.of(UpgradeRefusal.SERIALS_UNREADABLE.message()), "the reason");
+				expectEqual(helper, "the account", 10_000, balance(helper, scene));
+				expectEqual(helper, "the hull", 40f, scene.pod().hull());
+				if (PodComponents.partOf(scene.pod(), ComponentTrack.HULL).isPresent() || !drops(helper, scene).isEmpty()
+						|| carried(scene.player()) != carriedBefore) {
+					throw failure(helper, "a refused purchase must install, drop and give nothing: part %s, drops %s, carried %s of %s",
+							PodComponents.partOf(scene.pod(), ComponentTrack.HULL), drops(helper, scene), carried(scene.player()), carriedBefore);
+				}
+				helper.succeed();
+			} finally {
+				server.getDataStorage().set(Serials.TYPE, original);
 				clean(helper, scene);
 			}
 		});
@@ -416,6 +540,15 @@ public class UpgradeTerminalTest {
 		args.putString(UpgradeTerminal.TRACK_KEY, track);
 		args.putInt(UpgradeTerminal.TIER_KEY, tier);
 		return args;
+	}
+
+	/** How many items the player carries. */
+	private static int carried(ServerPlayer player) {
+		int total = 0;
+		for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+			total += player.getInventory().getItem(slot).getCount();
+		}
+		return total;
 	}
 
 	private static long balance(GameTestHelper helper, Scene scene) {

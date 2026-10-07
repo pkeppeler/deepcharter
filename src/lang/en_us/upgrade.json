@@ -2,6 +2,8 @@
   "deepcharter.upgrade.refusal.bad_request": "The terminal does not sell that part",
   "deepcharter.upgrade.refusal.no_pod": "Park a pod of your charter at the terminal first",
   "deepcharter.upgrade.refusal.not_an_upgrade": "The pod already has that part or a better one",
+  "deepcharter.upgrade.refusal.not_registered": "The pod has no owner: register it first",
+  "deepcharter.upgrade.refusal.serials_unreadable": "This world has serial data from another version of the mod",
   "deepcharter.upgrade.refusal.not_your_pod": "The pod parked here belongs to another charter",
   "deepcharter.upgrade.track.cargo_bay": "CARGO BAY",
   "deepcharter.upgrade.track.drill": "DRILL",

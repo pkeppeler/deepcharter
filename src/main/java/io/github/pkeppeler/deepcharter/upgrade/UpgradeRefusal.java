@@ -12,6 +12,10 @@ public enum UpgradeRefusal {
 	NO_POD,
 	/** A pod is parked at the terminal, but none of the player's charter's. */
 	NOT_YOUR_POD,
+	/** The pod has no owner, so a part in it would be void and a refill would repair it. */
+	NOT_REGISTERED,
+	/** The world's saved serials are of a version this build cannot read, so no part can be minted. */
+	SERIALS_UNREADABLE,
 	/** The pod has a part of this track that is as good or better, and works for the charter. */
 	NOT_AN_UPGRADE;
 

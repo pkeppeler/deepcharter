@@ -114,7 +114,8 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 					: Component.translatable("screen.deepcharter.upgrade.buy", tier, price, capped);
 			CrtButton button = addRenderableWidget(new CrtButton(tierX, LIST_TOP + (tier - 1) * (ROW_HEIGHT + ROW_GAP),
 					tierWidth, ROW_HEIGHT, label, pressed -> buy(selected, offered)));
-			button.active = !here && balance >= price;
+			// An unregistered pod (no serial) takes no parts: they would be void.
+			button.active = !here && balance >= price && !pod.serial().isEmpty();
 		}
 	}
 
