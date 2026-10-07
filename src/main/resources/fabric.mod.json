@@ -1,0 +1,29 @@
+{
+	"schemaVersion": 1,
+	"id": "deepcharter",
+	"version": "${version}",
+	"name": "Deep Charter",
+	"description": "A co-op Minecraft total conversion in the spirit of Motherload.",
+	"authors": [
+		"Peter Keppeler"
+	],
+	"contact": {
+		"sources": "https://github.com/pkeppeler/deepcharter"
+	},
+	"license": "All-Rights-Reserved",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"io.github.pkeppeler.deepcharter.DeepCharter"
+		],
+		"client": [
+			"io.github.pkeppeler.deepcharter.client.DeepCharterClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
