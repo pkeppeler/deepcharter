@@ -33,7 +33,7 @@ import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
  * across the breach into layer 2. The evidence scenario "m1-two-pods" replays the same flow with a recording.
  */
 public class TwoPlayerClientTest implements FabricClientGameTest {
-	/** Layer 1 is crust at y 0-2, then stone; the pods stand a row above the crust, so the stone row is their first bore. */
+	// Layer 1 is crust at y 0-2, then stone; the pods stand a row above the crust, so the stone row is their first bore.
 	private static final int X = 4000;
 	private static final int Z = 4000;
 	private static final int FLOOR_Y = 4;
@@ -49,11 +49,14 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 	 * un-ticked for a long time. Waits on what a pod does are therefore counted in the pod's own {@code tickCount}. A bore
 	 * through the stone row and the crust takes under 700 of them; a run that passes ends at once, so the budget is free.
 	 */
-	private static final int POD_TICK_BUDGET = 6000;
+	private static final int POD_TICK_BUDGET = 3000;
 	/** Pod ticks before the pilots start drilling: long enough to settle on the floor and be scanned. */
 	private static final int POD_TICKS_TO_SETTLE = 40;
-	/** A fuse on client ticks, for the case that no pod ticks at all, which a pod-tick budget cannot catch. */
-	private static final int CLIENT_TICK_FUSE = 30000;
+	/**
+	 * A fuse on client ticks, for the case that no pod ticks at all, which a pod-tick budget cannot catch. It is the pod-tick
+	 * budget plus margin, about 3 minutes at 20 ticks a second, so a hang fails with a message inside CI's 8-minute step.
+	 */
+	private static final int CLIENT_TICK_FUSE = POD_TICK_BUDGET + 600;
 	private static final int POLL_TICKS = 4;
 	private static final int TICKS_PER_FRAME = 16;
 	private static final int TICKS_PER_FADE_FRAME = 2;
@@ -94,6 +97,16 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 	 * its own breach fade and scanner. Calls {@code frame} at a steady pace, and faster during a fade.
 	 */
 	public static void crossTogether(ClientGameTestContext context, TwoPlayerServer two, Runnable frame) {
+		CameraType previousCamera = context.computeOnClient(client -> client.options.getCameraType());
+		try {
+			drive(context, two, frame);
+		} finally {
+			context.getInput().releaseKey(options -> options.keySprint);
+			context.runOnClient(client -> client.options.setCameraType(previousCamera));
+		}
+	}
+
+	private static void drive(ClientGameTestContext context, TwoPlayerServer two, Runnable frame) {
 		UUID mockId = two.mock().player().getUUID();
 		Rig rig = two.server().computeOnServer(server -> setUp(server, two));
 		context.waitFor(client -> client.player != null && client.player.getVehicle() instanceof PodEntity
@@ -110,6 +123,12 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 		expectScannerShowsPod(context, "m1-two-pods-layer-1");
 
 		BlockPos mockStone = rig.mockColumns().getFirst().atY(STONE_ROW_Y);
+		// A cell in a chunk the client has not loaded reads as air, so wait for the stone before expecting it gone.
+		context.waitFor(client -> client.level.getBlockState(mockStone).is(Blocks.STONE), CLIENT_TICK_FUSE);
+		float idleFade = context.computeOnClient(client -> BreachEffects.fadeAlpha(0f));
+		if (idleFade != 0f) {
+			throw new AssertionError("A breach fade is already running before the drive, so it could not be this crossing's: " + idleFade);
+		}
 		two.server().runOnServer(server -> {
 			rig.realPod().setFuel(100f);
 			rig.mockPod().setFuel(100f);
@@ -180,6 +199,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 		box(one, 0, 2, LayerBlocks.BREACH_CRUST);
 		box(one, STONE_ROW_Y, STONE_ROW_Y, Blocks.STONE);
 		box(one, FLOOR_Y, FLOOR_Y + 9, Blocks.AIR);
+		lamps(one);
 		ServerPlayer real = server.getPlayerList().getPlayers().stream()
 				.filter(player -> player != two.mock().player()).findFirst().orElseThrow();
 		real.teleportTo(one, X, FLOOR_Y, Z, Set.of(), EAST, LOOK_DOWN, true);
@@ -276,7 +296,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 		}
 	}
 
-	/** One room for both pods, with a few lamps for the recording. */
+	/** One room for both pods. */
 	private static void box(ServerLevel level, int yFrom, int yTo, Block block) {
 		for (int x = X - ROOM_WEST; x <= X + ROOM_EAST; x++) {
 			for (int y = yFrom; y <= yTo; y++) {
@@ -285,11 +305,13 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 				}
 			}
 		}
-		if (block == Blocks.AIR && yFrom == FLOOR_Y) {
-			for (int x = X - 3; x <= X + 11; x += 4) {
-				level.setBlock(new BlockPos(x, FLOOR_Y + 3, Z + 4), Blocks.GLOWSTONE.defaultBlockState(), 3);
-				level.setBlock(new BlockPos(x, FLOOR_Y + 3, Z - 4), Blocks.GLOWSTONE.defaultBlockState(), 3);
-			}
+	}
+
+	/** Lamps along both walls, for the recording. */
+	private static void lamps(ServerLevel level) {
+		for (int x = X - 3; x <= X + 11; x += 4) {
+			level.setBlock(new BlockPos(x, FLOOR_Y + 3, Z + 4), Blocks.GLOWSTONE.defaultBlockState(), 3);
+			level.setBlock(new BlockPos(x, FLOOR_Y + 3, Z - 4), Blocks.GLOWSTONE.defaultBlockState(), 3);
 		}
 	}
 }
