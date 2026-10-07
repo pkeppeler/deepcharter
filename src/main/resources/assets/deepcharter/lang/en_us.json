@@ -1,10 +1,13 @@
 {
-	"entity.deepcharter.pod": "Pod",
-	"commands.deepcharter.pod.spawn.success": "Spawned a pod",
-	"commands.deepcharter.pod.spawn.failed": "Could not spawn a pod here",
-	"hud.deepcharter.pod.hull": "Hull %s%%",
-	"hud.deepcharter.pod.fuel": "Fuel %s%%",
-	"hud.deepcharter.pod.cargo": "Cargo %s",
-	"hud.deepcharter.pod.depth": "Y %s",
-	"hud.deepcharter.pod.stranded": "STRANDED"
+  "block.deepcharter.breach_crust": "Breach Crust",
+  "commands.deepcharter.pod.spawn.failed": "Could not spawn a pod here",
+  "commands.deepcharter.pod.spawn.success": "Spawned a pod",
+  "deepcharter.layer.goto.no_such_layer": "No layer %s: the chain has %s layers",
+  "deepcharter.layer.goto.success": "Moved to layer %s",
+  "entity.deepcharter.pod": "Pod",
+  "hud.deepcharter.pod.cargo": "Cargo %s",
+  "hud.deepcharter.pod.depth": "Y %s",
+  "hud.deepcharter.pod.fuel": "Fuel %s%%",
+  "hud.deepcharter.pod.hull": "Hull %s%%",
+  "hud.deepcharter.pod.stranded": "STRANDED"
 }
