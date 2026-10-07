@@ -5,7 +5,8 @@
 # labelled `review-passed` with a `review-passed <head sha>` comment for the
 # current head (see tools/mark-review-passed.sh), closes exactly its branch's
 # issue (the body's Closes/Fixes/Resolves #N set is {N} for branch `<N>-<slug>`),
-# mergeable, and every check is
+# adds no docs/adr/NNNN-*.md whose NNNN is already on origin/main (any slug) or twice in the PR,
+# mergeable, shows a demo if it changes in-game code (see the demo check below), and every check is
 # `pass` or `skipping` (at least one check, and all of REQUIRED_CHECKS passing). A
 # check's state is its newest non-skipped run, so a later skipped run cannot hide
 # a failure.
@@ -62,8 +63,9 @@ closes=${closes% }
 [[ $closes == "$issue" ]] \
   || refuse "body closes #${closes// / #} but branch $branch is for issue #$issue only (the Closes/Fixes/Resolves set must be exactly {#$issue})"
 
-pr_field labels '.labels[].name' | grep -qx 'review-passed' \
-  || refuse "lacks the review-passed label" # pipe-grep-q: fail-closed — a missed match (SIGPIPE) only refuses the merge
+labels=$(pr_field labels '.labels[].name') || refuse "has no readable labels"
+has_label() { grep -qxF -- "$1" <<<"$labels"; }
+has_label review-passed || refuse "lacks the review-passed label"
 
 # Bodies are compared whole (as JSON strings), so a longer comment cannot match.
 pr_field comments '.comments[].body|@json' | grep -qxF "\"review-passed $sha\"" \
@@ -106,6 +108,80 @@ for required in "${REQUIRED_CHECKS[@]}"; do
   fi
   refuse "lacks required check: $required"
 done
+
+# A PR may not ADD docs/adr/NNNN-*.md when NNNN is already on origin/main (parallel
+# PRs pick numbers on their own), or twice among its own added ADRs. A path the PR
+# vacates (renamed away or removed) no longer holds its number. Fail closed: an
+# unreadable list refuses.
+pr_files=$(gh api "repos/$repo/pulls/$pr/files?per_page=100" --paginate \
+  --jq '.[] | [.status, .filename, (.previous_filename // "")] | @tsv') || refuse "could not read its changed files"
+git fetch origin main >/dev/null 2>&1 || refuse "could not read the ADR list on origin/main (fetch failed)"
+main_adrs=$(git ls-tree --name-only origin/main docs/adr/) || main_adrs=
+[[ -n $main_adrs ]] || refuse "could not read the ADR list on origin/main"
+adr_re='^docs/adr/([0-9]{4})-[^/]+\.md$'
+vacated=$'\n'
+added_adrs=()
+max_adr=0
+while IFS=$'\t' read -r status path previous; do
+  if [[ $status == removed ]]; then
+    vacated+="$path"$'\n'
+  elif [[ $status == renamed && -n $previous ]]; then
+    vacated+="$previous"$'\n'
+  fi
+  [[ $status == added || $status == renamed ]] || continue
+  [[ $path =~ $adr_re ]] || continue
+  added_adrs+=("$path")
+  max_adr=$((10#${BASH_REMATCH[1]} > max_adr ? 10#${BASH_REMATCH[1]} : max_adr))
+done <<<"$pr_files"
+kept_adrs=
+for path in $main_adrs; do
+  [[ $path =~ $adr_re ]] || continue
+  max_adr=$((10#${BASH_REMATCH[1]} > max_adr ? 10#${BASH_REMATCH[1]} : max_adr))
+  [[ $vacated != *$'\n'"$path"$'\n'* ]] || continue
+  kept_adrs+="$path"$'\n'
+done
+next_free=$(printf '%04d' $((max_adr + 1)))
+seen=
+for path in ${added_adrs[@]+"${added_adrs[@]}"}; do
+  [[ $path =~ $adr_re ]]
+  number=${BASH_REMATCH[1]}
+  clash=$(grep -E "^docs/adr/$number-" <<<"$kept_adrs" | head -1 || true)
+  [[ -z $clash ]] || refuse "adds $path but ADR $number already exists on origin/main ($clash); the next free number is $next_free"
+  twin=$(grep -E "^docs/adr/$number-" <<<"$seen" | head -1 || true)
+  [[ -z $twin ]] || refuse "adds $path but also adds $twin with ADR $number; the next free number is $next_free"
+  seen+="$path"$'\n'
+done
+
+# In-game code (src/main/, src/client/, src/lang/) needs a demo: the `demo` label and a
+# pr-media/<n>/ image in the body, or the `no-demo` label and a `No demo: <reason>`
+# line. Embedded pr-media needs the `demo` label, so the label stays true. Reuses
+# pr_files, so an unreadable list has already refused.
+demo_fix="record with tools/record-evidence.sh and tools/pr-media.sh, embed the pr-media/$pr/ image in the body and label it 'demo'; or label it 'no-demo' and add a body line 'No demo: <reason>'"
+media_any='pr-media/[0-9]+/[^[:space:]()]+\.(gif|png)'
+media_own="pr-media/$pr/[^[:space:]()]+\\.(gif|png)"
+if grep -qE "$media_any" <<<"$body" && ! has_label demo; then
+  refuse "embeds pr-media media but lacks the 'demo' label (label it 'demo', or remove the media)"
+fi
+in_game=
+while IFS=$'\t' read -r _ path previous; do
+  if [[ $path =~ ^src/(main|client|lang)/ || $previous =~ ^src/(main|client|lang)/ ]]; then
+    in_game=$path
+    break
+  fi
+done <<<"$pr_files"
+if [[ -n $in_game ]]; then
+  if has_label demo && has_label no-demo; then
+    refuse "changes in-game code ($in_game) but has both the 'demo' and 'no-demo' labels; keep one"
+  elif has_label demo; then
+    grep -qE "$media_own" <<<"$body" \
+      || refuse "changes in-game code ($in_game) with the 'demo' label but its body embeds no pr-media/$pr/ .gif or .png: $demo_fix"
+  elif has_label no-demo; then
+    grep -qE '^No demo:[[:space:]]*[^[:space:]]' <<<"$body" \
+      || refuse "changes in-game code ($in_game) with the 'no-demo' label but its body has no 'No demo: <reason>' line"
+  else
+    refuse "changes in-game code ($in_game) with no demo: $demo_fix"
+  fi
+fi
 
 # gh can merge on GitHub and then fail on local cleanup (branch checked out in a
 # worktree), so a nonzero exit is judged by the PR's real state.

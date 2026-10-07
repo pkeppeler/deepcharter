@@ -1,1 +1,24 @@
-{}
+{
+  "block.deepcharter.hangar_console": "Hangar Console",
+  "deepcharter.hangar.bought": "Bought a refurbished %s, %s, for $%s",
+  "deepcharter.hangar.refusal.bay_full": "The bay has no free place for another Mole",
+  "deepcharter.hangar.refusal.founding_pending": "The founding Mole is not repaired yet",
+  "deepcharter.hangar.refusal.insufficient_funds": "The charter account needs $%s",
+  "deepcharter.hangar.refusal.missing_catalyst": "You need %s of %s in your pack",
+  "deepcharter.hangar.refusal.no_bay": "The hangar is not built",
+  "deepcharter.hangar.refusal.no_wreck": "There is no wreck near the console",
+  "deepcharter.hangar.refusal.not_your_wreck": "%s belongs to another charter",
+  "deepcharter.hangar.refusal.pod_failed": "The hangar could not make the pod",
+  "deepcharter.hangar.refusal.restore_failed": "The hangar could not restore the wreck",
+  "deepcharter.hangar.refusal.serials_unreadable": "The serial numbers are from another version of the mod",
+  "deepcharter.hangar.refusal.unreadable": "The hangar records are from another version of the mod",
+  "deepcharter.hangar.refusal.wreck_unreadable": "The wreck's records are from another version of the mod",
+  "deepcharter.hangar.restored": "Wreck restored for $%s",
+  "item.deepcharter.drill_head": "Drill Head",
+  "item.deepcharter.fuel_injector": "Fuel Injector",
+  "item.deepcharter.rotor_hub": "Rotor Hub",
+  "item.deepcharter.tread_assembly": "Tread Assembly",
+  "screen.deepcharter.hangar.buy": "BUY REFURBISHED MOLE: $%s + $%s PER POD",
+  "screen.deepcharter.hangar.restore": "RESTORE NEAREST WRECK: $%s + %s %s",
+  "screen.deepcharter.hangar.welcome": "HANGAR ONLINE. THE FOUNDING MOLE IS REPAIRED."
+}
