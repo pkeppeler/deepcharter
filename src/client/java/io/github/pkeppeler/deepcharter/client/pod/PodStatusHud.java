@@ -28,10 +28,13 @@ public final class PodStatusHud {
 		HudElementRegistry.addLast(ID, PodStatusHud::extract);
 	}
 
-	/** Public so tests can check the text without reading pixels. */
+	/**
+	 * Public so tests can check the text without reading pixels. The hull is shown as points out of the most the pod's parts allow:
+	 * the client works the maximum out itself, from the synced component state ({@link io.github.pkeppeler.deepcharter.pod.PodComponents#STATE}).
+	 */
 	public static List<Component> lines(PodEntity pod) {
 		List<Component> lines = new ArrayList<>();
-		lines.add(Component.translatable("hud.deepcharter.pod.hull", Math.round(pod.hull())));
+		lines.add(Component.translatable("hud.deepcharter.pod.hull", Math.round(pod.hull()), Math.round(pod.maxHull())));
 		lines.add(Component.translatable("hud.deepcharter.pod.fuel", Math.round(pod.fuel())));
 		lines.add(Component.translatable("hud.deepcharter.pod.cargo", pod.cargoUsed()));
 		lines.add(Component.translatable("hud.deepcharter.pod.depth", Math.round(pod.getY())));
