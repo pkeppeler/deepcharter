@@ -20,6 +20,9 @@
 			"io.github.pkeppeler.deepcharter.client.DeepCharterClient"
 		]
 	},
+	"mixins": [
+		"deepcharter.mixins.json"
+	],
 	"depends": {
 		"fabricloader": ">=0.19.5",
 		"minecraft": "~26.3",

@@ -75,6 +75,11 @@ public final class CharterData extends SavedData {
 		return charters;
 	}
 
+	/** False when the saved charters are of a version this build cannot read: every other method then throws. */
+	public boolean isReadable() {
+		return unreadable.isEmpty();
+	}
+
 	public Collection<Charter> all() {
 		return List.copyOf(readable().values());
 	}
