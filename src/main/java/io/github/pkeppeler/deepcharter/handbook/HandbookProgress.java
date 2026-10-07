@@ -114,8 +114,7 @@ public final class HandbookProgress {
 
 	/** The progress data, or empty (logged once for each saved-data object) when the saved charters or the saved progress are unreadable. */
 	static Optional<HandbookProgressData> readableData(MinecraftServer server) {
-		if (!Charters.isReadable(server)) {
-			reportOnce(CharterData.get(server), "the saved charters have a version this build cannot read, so the handbook skips progress");
+		if (!chartersReadable(server)) {
 			return Optional.empty();
 		}
 		HandbookProgressData data = HandbookProgressData.get(server);
@@ -126,7 +125,17 @@ public final class HandbookProgress {
 		return Optional.of(data);
 	}
 
-	private static void reportOnce(Object owner, String message) {
+	/** Whether the saved charters can be read. When they cannot, logs once for each saved-data object, so every handbook path shares one line. */
+	static boolean chartersReadable(MinecraftServer server) {
+		if (Charters.isReadable(server)) {
+			return true;
+		}
+		reportOnce(CharterData.get(server), "the saved charters have a version this build cannot read, so the handbook skips progress and notes");
+		return false;
+	}
+
+	/** Logs {@code message} as an error the first time it is called for {@code owner}. */
+	static void reportOnce(Object owner, String message) {
 		if (REPORTED.add(owner)) {
 			DeepCharter.LOGGER.error("{}", message);
 		}

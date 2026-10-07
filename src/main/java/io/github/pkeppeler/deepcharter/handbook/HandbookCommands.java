@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.handbook;
 
 import java.util.Set;
 
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -9,10 +10,12 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.IdentifierArgument;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
 
 import io.github.pkeppeler.deepcharter.command.FeatureCommands;
 
@@ -22,6 +25,7 @@ import io.github.pkeppeler.deepcharter.command.FeatureCommands;
  */
 public final class HandbookCommands {
 	private static final String ID = "id";
+	private static final String NUMBER = "number";
 
 	private HandbookCommands() {
 	}
@@ -33,7 +37,9 @@ public final class HandbookCommands {
 				.then(Commands.literal("complete").then(idArgument().executes(HandbookCommands::complete)))
 				.then(Commands.literal("read").then(idArgument().executes(HandbookCommands::read)))
 				.then(Commands.literal("unread").then(idArgument().executes(HandbookCommands::unread)))
-				.then(Commands.literal("progress").executes(HandbookCommands::progress)));
+				.then(Commands.literal("progress").executes(HandbookCommands::progress))
+				.then(Commands.literal("note").then(Commands.literal("place")
+						.then(Commands.argument(NUMBER, IntegerArgumentType.integer(1, Notes.MAX_NUMBER)).executes(HandbookCommands::placeNote)))));
 	}
 
 	private static RequiredArgumentBuilder<CommandSourceStack, Identifier> idArgument() {
@@ -78,6 +84,16 @@ public final class HandbookCommands {
 		Identifier entry = IdentifierArgument.getId(context, ID);
 		ReadMarks.unmark(context.getSource().getPlayerOrException(), entry);
 		context.getSource().sendSuccess(() -> Component.translatable("deepcharter.handbook.unread.success", entry.toString()), false);
+		return 1;
+	}
+
+	/** Puts the Note block of Note {@code number} on the block in front of the player: how a test or a world builder places one. */
+	private static int placeNote(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+		ServerPlayer player = context.getSource().getPlayerOrException();
+		int number = IntegerArgumentType.getInteger(context, NUMBER);
+		BlockPos pos = player.blockPosition().relative(player.getDirection());
+		player.level().setBlock(pos, NoteBlock.stateOf(number), Block.UPDATE_ALL);
+		context.getSource().sendSuccess(() -> Component.translatable("deepcharter.handbook.note.place.success", number), true);
 		return 1;
 	}
 
