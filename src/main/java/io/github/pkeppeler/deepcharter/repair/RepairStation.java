@@ -42,6 +42,7 @@ public final class RepairStation {
 	public static final Identifier BUY = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "buy");
 	public static final String HP_KEY = "hp";
 	public static final String ITEM_KEY = "item";
+	private static final double HULL_PRECISION = 1000.0;
 
 	private RepairStation() {
 	}
@@ -65,18 +66,19 @@ public final class RepairStation {
 		if (pod.hull() <= 0f || Wrecks.isWreck(pod)) {
 			return Consumables.refusal("wreck");
 		}
-		float missing = pod.maxHull() - pod.hull();
-		if (missing <= 0f) {
+		// Hull is a float: the gap is rounded to a thousandth of a point, so float noise cannot add a dollar.
+		double missing = Math.round(((double) pod.maxHull() - pod.hull()) * HULL_PRECISION) / HULL_PRECISION;
+		if (missing <= 0.0) {
 			return Consumables.refusal("hull_full");
 		}
-		float repaired = Math.min(requested.get(), missing);
+		double repaired = Math.min(requested.get(), missing);
 		// A part of a hull point is charged as a whole dollar, rounded up.
 		long cost = (long) Math.ceil(repaired * RepairTuning.DEFAULT.repairCostPerHp());
 		Optional<CharterRefusal> unpaid = Charters.spend(context.server(), context.charter().orElseThrow().id(), cost);
 		if (unpaid.isPresent()) {
 			return Optional.of(unpaid.get().message());
 		}
-		pod.setHull(pod.hull() + repaired);
+		pod.setHull(pod.hull() + (float) repaired);
 		pod.level().playSound(null, pod.getX(), pod.getY(), pod.getZ(), DeepSound.REPAIR_NANOBOTS.event(), SoundSource.PLAYERS);
 		return Optional.empty();
 	}

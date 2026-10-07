@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -16,6 +17,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.util.ProblemReporter;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -25,13 +27,20 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.storage.LevelData;
+import net.minecraft.world.level.storage.TagValueInput;
+import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
+import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charter;
+import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
@@ -603,6 +612,259 @@ public class RepairStationTest {
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
 	public void theQuantumTeleporterLandsWithinItsScatter(GameTestHelper helper) {
 		teleportFromLayerOne(helper, Consumable.QUANTUM_TELEPORTER, 2500.5, 2500.5, RepairTuning.DEFAULT.quantumScatter());
+	}
+
+	@GameTest
+	public void thePilotStaysSeatedAcrossATeleportWithinOneDimension(GameTestHelper helper) {
+		// The Mole has one seat and a seat is the only way onto a pod, so the pilot is the one passenger there can be.
+		withStation(helper, station -> {
+			PodEntity pod = station.pod();
+			board(helper, station);
+			Vec3 before = pod.position();
+			if (!useFromHotbar(helper, station, Consumable.MATTER_TRANSMITTER).consumesAction()) {
+				throw helper.assertionException("the transmitter should work");
+			}
+			MinecraftServer server = helper.getLevel().getServer();
+			if (pod.position().distanceTo(before) < 100 || Math.abs(pod.getX() - spawn(server).x) > 1.0) {
+				throw helper.assertionException("the pod should be at the spawn, is at %s", pod.position());
+			}
+			if (station.pilot().player().getVehicle() != pod) {
+				throw helper.assertionException("the pilot should still ride the pod, rides %s", station.pilot().player().getVehicle());
+			}
+			if (station.pilot().player().position().distanceTo(pod.position()) > 3.0) {
+				throw helper.assertionException("the pilot is at %s, the pod at %s", station.pilot().player().position(), pod.position());
+			}
+			helper.succeed();
+		});
+	}
+
+	@GameTest
+	public void aTeleportToAnUnloadedChunkLoadsItAndArrives(GameTestHelper helper) {
+		withStation(helper, station -> {
+			ServerLevel overworld = helper.getLevel().getServer().overworld();
+			int x = 9000;
+			if (overworld.hasChunk(x >> 4, 0)) {
+				throw helper.assertionException("chunk %d should not be loaded before the test", x >> 4);
+			}
+			withSpawnColumn(helper, x, false, ground -> {
+				board(helper, station);
+				if (!useFromHotbar(helper, station, Consumable.MATTER_TRANSMITTER).consumesAction()) {
+					throw helper.assertionException("the transmitter should work into an unloaded chunk");
+				}
+				if (Math.abs(station.pod().getX() - (x + 0.5)) > 1.0 || station.pod().level() != overworld) {
+					throw helper.assertionException("the pod should be at x=%d, is at %s", x, station.pod().position());
+				}
+				if (station.pilot().player().getVehicle() != station.pod()) {
+					throw helper.assertionException("the pilot should still ride the pod");
+				}
+				// The chunk is loaded now: the pod must stand on its ground, not at the bottom of the world an unloaded chunk reports.
+				int surface = overworld.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, new BlockPos(x, 64, 0)).getY();
+				if (surface <= overworld.getMinY() || Math.abs(station.pod().getY() - surface) > 0.01) {
+					throw helper.assertionException("the pod should stand at y=%d, is at y=%s", surface, station.pod().getY());
+				}
+			});
+			helper.succeed();
+		});
+	}
+
+	/**
+	 * Runs {@code body} with the world spawn (where the teleporters land) moved to column {@code x}, 0 and its blocks changed, and
+	 * puts both back after. The body gets the first free block above the ground there.
+	 */
+	private static void withSpawnColumn(GameTestHelper helper, int x, boolean load, Consumer<BlockPos> body, BlockPos... touched) {
+		ServerLevel overworld = helper.getLevel().getServer().overworld();
+		LevelData.RespawnData original = overworld.getRespawnData();
+		overworld.setRespawnData(LevelData.RespawnData.of(Level.OVERWORLD, new BlockPos(x, 64, 0), 0f, 0f));
+		if (load) {
+			overworld.getChunk(x >> 4, 0);
+		}
+		BlockPos ground = overworld.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, new BlockPos(x, 64, 0));
+		Map<BlockPos, BlockState> saved = new HashMap<>();
+		for (BlockPos offset : touched) {
+			BlockPos at = ground.offset(offset);
+			saved.put(at, overworld.getBlockState(at));
+		}
+		try {
+			body.accept(ground);
+		} finally {
+			saved.forEach((at, state) -> overworld.setBlock(at, state, 3));
+			overworld.setRespawnData(original);
+		}
+	}
+
+	private static void expectTeleportRefused(GameTestHelper helper, Station station, Consumable teleporter, String why) {
+		PodEntity pod = station.pod();
+		Vec3 before = pod.position();
+		ServerLevel level = (ServerLevel) pod.level();
+		int cargo = pod.cargo().entries().size();
+		board(helper, station);
+		if (useFromHotbar(helper, station, teleporter).consumesAction()) {
+			throw helper.assertionException("%s: the teleporter should have been refused; pod at %s, spawn %s, level %s", why, pod.position(), spawn(helper.getLevel().getServer()), pod.level().dimension());
+		}
+		if (!pod.position().equals(before) || pod.level() != level) {
+			throw helper.assertionException("%s: the pod moved from %s to %s", why, before, pod.position());
+		}
+		if (pod.cargo().entries().size() != cargo) {
+			throw helper.assertionException("%s: the bay held %d ore and now holds %d", why, cargo, pod.cargo().entries().size());
+		}
+		if (!level.getEntitiesOfClass(ItemEntity.class, pod.getBoundingBox().inflate(8)).isEmpty()) {
+			throw helper.assertionException("%s: cargo was spilled by a refused teleport", why);
+		}
+		if (station.pilot().player().getVehicle() != pod) {
+			throw helper.assertionException("%s: the pilot left the pod", why);
+		}
+		expectSpent(helper, station.pilot().player(), teleporter, 1, why + ": the item is kept");
+	}
+
+	@GameTest
+	public void aTeleportOntoLavaIsRefusedAndNothingChanges(GameTestHelper helper) {
+		withStation(helper, station -> {
+			station.pod().cargo().tryAdd(station.pod(), OreRegistry.stack(OreType.IRONIUM));
+			withSpawnColumn(helper, 6000, true, ground -> {
+				helper.getLevel().getServer().overworld().setBlock(ground, Blocks.LAVA.defaultBlockState(), 3);
+				expectTeleportRefused(helper, station, Consumable.MATTER_TRANSMITTER, "lava at the landing");
+			}, BlockPos.ZERO);
+			helper.succeed();
+		});
+	}
+
+	@GameTest
+	public void aTeleportIntoAWallIsRefusedAndNothingChanges(GameTestHelper helper) {
+		withStation(helper, station -> {
+			station.pod().cargo().tryAdd(station.pod(), OreRegistry.stack(OreType.IRONIUM));
+			BlockPos[] pillar = {BlockPos.ZERO.east(), BlockPos.ZERO.east().above(), BlockPos.ZERO.east().above(2), BlockPos.ZERO.east().above(3)};
+			withSpawnColumn(helper, 6100, true, ground -> {
+				for (BlockPos offset : pillar) {
+					helper.getLevel().getServer().overworld().setBlock(ground.offset(offset), Blocks.STONE.defaultBlockState(), 3);
+				}
+				expectTeleportRefused(helper, station, Consumable.MATTER_TRANSMITTER, "a wall at the landing");
+			}, pillar);
+			helper.succeed();
+		});
+	}
+
+	@GameTest
+	public void theQuantumTeleporterTriesOtherSpotsBeforeRefusing(GameTestHelper helper) {
+		withStation(helper, station -> {
+			// The exact column is lava, but the quantum scatter has other spots to try.
+			withSpawnColumn(helper, 6200, true, ground -> {
+				helper.getLevel().getServer().overworld().setBlock(ground, Blocks.LAVA.defaultBlockState(), 3);
+				board(helper, station);
+				boolean worked = false;
+				for (int attempt = 0; attempt < 10 && !worked; attempt++) {
+					worked = useFromHotbar(helper, station, Consumable.QUANTUM_TELEPORTER).consumesAction();
+				}
+				if (!worked) {
+					throw helper.assertionException("the quantum teleporter should find a spot off the lava");
+				}
+				if (station.pod().position().distanceTo(Vec3.atBottomCenterOf(ground)) < 0.5) {
+					throw helper.assertionException("the pod landed on the lava column");
+				}
+			}, BlockPos.ZERO);
+			helper.succeed();
+		});
+	}
+
+	@GameTest
+	public void aTeleportWithUnreadableCargoIsRefusedAndNothingChanges(GameTestHelper helper) {
+		withStation(helper, station -> {
+			PodEntity pod = station.pod();
+			ServerLevel level = helper.getLevel();
+			pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM));
+			TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
+			pod.saveWithoutId(output);
+			CompoundTag tag = output.buildResult();
+			tag.putInt("cargo_version", 99);
+			pod.cargo().load(TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), tag), pod);
+			if (pod.cargo().isReadable()) {
+				throw helper.assertionException("the cargo should be unreadable now");
+			}
+			Vec3 before = pod.position();
+			board(helper, station);
+			if (useFromHotbar(helper, station, Consumable.MATTER_TRANSMITTER).consumesAction()) {
+				throw helper.assertionException("a pod with unreadable cargo must not teleport");
+			}
+			if (!pod.position().equals(before) || pod.cargo().isReadable()) {
+				throw helper.assertionException("the pod and its kept cargo must stay as they were");
+			}
+			expectSpent(helper, station.pilot().player(), Consumable.MATTER_TRANSMITTER, 1, "the item is kept");
+			helper.succeed();
+		});
+	}
+
+	/** Puts a damaged pod owned by whoever {@code owner} makes beside the station, repairs, and says whether it was repaired. */
+	private static boolean repairsPodOf(GameTestHelper helper, Station station, Consumer<PodEntity> setUp) {
+		station.pod().discard();
+		PodEntity other = helper.spawn(PodRegistry.POD, new Vec3(3.5, 1, 0.5));
+		other.setHull(other.maxHull() - 20f);
+		setUp.accept(other);
+		Optional<TerminalRefusal> refusal = Terminals.act(station.pilot().player(), station.pos(), RepairStation.REPAIR, hp(5));
+		boolean repaired = refusal.isEmpty() && other.hull() == other.maxHull() - 15f;
+		if (refusal.isPresent() && other.hull() != other.maxHull() - 20f) {
+			throw helper.assertionException("a refused repair changed the hull to %s", other.hull());
+		}
+		other.discard();
+		return repaired;
+	}
+
+	@GameTest
+	public void theOwnershipRuleMirrorsCanMount(GameTestHelper helper) {
+		withStation(helper, station -> {
+			MinecraftServer server = helper.getLevel().getServer();
+			fund(helper, station, 100_000);
+			if (!repairsPodOf(helper, station, pod -> { })) {
+				throw helper.assertionException("an unregistered pod is anyone's, so it should be repaired");
+			}
+			if (!repairsPodOf(helper, station, pod -> PodComponents.register(pod, CharterId.random()))) {
+				throw helper.assertionException("a pod whose owner charter is gone is anyone's, so it should be repaired");
+			}
+			MockPlayer lone = MockPlayers.join(helper, "Dormant Director");
+			Charters.found(server, lone.player().getUUID(), "Dormant " + UUID.randomUUID().toString().substring(0, 8)).ifPresent(refusal -> {
+				throw helper.assertionException("founding the dormant charter: %s", refusal);
+			});
+			CharterId dormant = Charters.charterOf(server, lone.player().getUUID()).orElseThrow().id();
+			Charters.leave(server, lone.player().getUUID()).ifPresent(refusal -> {
+				throw helper.assertionException("leaving: %s", refusal);
+			});
+			if (!Charters.find(server, dormant).orElseThrow().dormant()) {
+				throw helper.assertionException("the charter should be dormant now");
+			}
+			if (!repairsPodOf(helper, station, pod -> PodComponents.register(pod, dormant))) {
+				throw helper.assertionException("a pod of a dormant charter is anyone's, so it should be repaired");
+			}
+			if (!repairsPodOf(helper, station, pod -> PodComponents.register(pod, station.charter().id()))) {
+				throw helper.assertionException("the player's own charter's pod should be repaired");
+			}
+			if (repairsPodOf(helper, station, pod -> pod.setAttached(PodComponents.STATE, new Versioned.Unreadable<PodComponents.State>(new CompoundTag())))) {
+				throw helper.assertionException("a pod whose owner cannot be read must be refused");
+			}
+			helper.succeed();
+		});
+	}
+
+	@GameTest
+	public void aPartOfAHullPointIsChargedRoundedUp(GameTestHelper helper) {
+		withStation(helper, station -> {
+			PodEntity pod = station.pod();
+			fund(helper, station, 1_000);
+			pod.setHull(pod.maxHull() - 0.5f);
+			expectDone(helper, Terminals.act(station.pilot().player(), station.pos(), RepairStation.REPAIR_TOTAL, new CompoundTag()), "repairing half a point");
+			expectHull(helper, pod, pod.maxHull(), "after half a point");
+			expectAccount(helper, station, 1_000 - 8, "7.5 dollars are charged as 8");
+			helper.succeed();
+		});
+	}
+
+	@GameTest
+	public void floatNoiseInTheHullDoesNotAddADollar(GameTestHelper helper) {
+		withStation(helper, station -> {
+			PodEntity pod = station.pod();
+			fund(helper, station, 1_000);
+			pod.setHull(pod.maxHull() - 3.00001f);
+			expectDone(helper, Terminals.act(station.pilot().player(), station.pos(), RepairStation.REPAIR_TOTAL, new CompoundTag()), "repairing 3 points");
+			expectAccount(helper, station, 1_000 - 3 * PER_HP, "3 points cost $45 whatever the float noise");
+			helper.succeed();
+		});
 	}
 
 	@GameTest
