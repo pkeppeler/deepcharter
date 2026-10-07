@@ -63,7 +63,6 @@ public class MockPlayersTest {
 		} catch (ReflectiveOperationException e) {
 			throw reflectionFailure("keepAliveTime", e);
 		}
-		// succeedWhen re-runs each tick until it stops throwing, and fails on the last tick otherwise.
 		helper.succeedWhen(() -> {
 			try {
 				long sentAt = (long) getField(mock.player().connection, "keepAliveTime");
