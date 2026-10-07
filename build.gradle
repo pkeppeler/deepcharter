@@ -33,6 +33,7 @@ dependencies {
 }
 
 apply from: "gradle/lang.gradle"
+apply from: "gradle/gametest.gradle"
 
 processResources {
 	def version = project.version
