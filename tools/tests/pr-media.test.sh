@@ -54,15 +54,15 @@ run 7 "$work/files/a.gif" "$work/files/b.mp4"
 check "first publish succeeds" $?
 check "snippet inlines the GIF" "$(grep -qF '![a](https://github.com/pkeppeler/deepcharter/blob/pr-media/7/a.gif?raw=true)' "$work/out"; echo $?)"
 check "snippet links the MP4" "$(grep -qF '[Watch the MP4: b.mp4](https://github.com/pkeppeler/deepcharter/blob/pr-media/7/b.mp4?raw=true)' "$work/out"; echo $?)"
-check "pre-existing PR 1 folder survives" "$(tree | grep -q '^1/old.png:'; echo $?)"
+check "pre-existing PR 1 folder survives" "$(tree | grep -q '^1/old.png:'; echo $?)" # pipe-grep-q: fail-closed — a missed match yields nonzero, which fails the check
 
 echo gif-two >"$work/files/a.gif"
 run 7 "$work/files/a.gif" "$work/files/s.png"
 check "re-run for the same PR succeeds" $?
 replaced=$(tree | grep '^7/a.gif:')
 check "same-named file is replaced" "$(if [[ $replaced == "7/a.gif:$(blob_of gif-two)" ]]; then echo 0; else echo 1; fi)"
-check "unmentioned file in the PR folder is kept" "$(tree | grep -q '^7/b.mp4:'; echo $?)"
-check "new file is added" "$(tree | grep -q '^7/s.png:'; echo $?)"
+check "unmentioned file in the PR folder is kept" "$(tree | grep -q '^7/b.mp4:'; echo $?)" # pipe-grep-q: fail-closed — a missed match yields nonzero, which fails the check
+check "new file is added" "$(tree | grep -q '^7/s.png:'; echo $?)" # pipe-grep-q: fail-closed — a missed match yields nonzero, which fails the check
 
 run 8 "$work/files/b.mp4"
 check "second PR publishes" $?
@@ -121,7 +121,9 @@ fi
 check "race loser is a non-fast-forward rejection" "$(grep -qiE 'rejected|non-fast-forward|fetch first' "$work/err"; echo $?)"
 tip=$("$real_git" -C "$bare" rev-parse pr-media)
 check "rival's commit is still the tip" "$(if [[ $tip == "$(cat "$work/rival")" ]]; then echo 0; else echo 1; fi)"
-check "loser's files were not published" "$(if tree | grep -q '^5/'; then echo 1; else echo 0; fi)"
+listing=$(tree)
+loser_files=$(grep '^5/' <<<"$listing" || true)
+check "loser's files were not published" "$(if [[ -n $loser_files ]]; then echo 1; else echo 0; fi)"
 
 # --- the caller's working tree and index are untouched ---
 make_remote

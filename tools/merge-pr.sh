@@ -42,12 +42,10 @@ state=$(pr_field state .state)
 
 [[ $(pr_field isDraft .isDraft) == false ]] || refuse "is a draft"
 
-pr_field labels '.labels[].name' | grep -qx 'review-passed' \
-  || refuse "lacks the review-passed label"
+pr_field labels '.labels[].name' | grep -qx 'review-passed' || refuse "lacks the review-passed label" # pipe-grep-q: fail-closed — a missed match (SIGPIPE) only refuses the merge
 
 # Bodies are compared whole (as JSON strings), so a longer comment cannot match.
-pr_field comments '.comments[].body|@json' | grep -qxF "\"review-passed $sha\"" \
-  || refuse "has no 'review-passed $sha' comment for the current head (re-run tools/mark-review-passed.sh)"
+pr_field comments '.comments[].body|@json' | grep -qxF "\"review-passed $sha\"" || refuse "has no 'review-passed $sha' comment for the current head (re-run tools/mark-review-passed.sh)" # pipe-grep-q: fail-closed — a missed match (SIGPIPE) only refuses the merge
 
 mergeable=$(pr_field mergeable .mergeable)
 [[ $mergeable == MERGEABLE ]] || refuse "is not mergeable (mergeable: $mergeable)"
