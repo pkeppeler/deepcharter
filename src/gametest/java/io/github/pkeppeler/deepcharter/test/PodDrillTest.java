@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
@@ -24,6 +25,7 @@ import io.github.pkeppeler.deepcharter.pod.PodDrill;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 
@@ -34,30 +36,61 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
  */
 public class PodDrillTest {
 	/**
-	 * Far layer chunks generate on worker threads while game ticks run as fast as the CPU allows, so on a slow
-	 * runner a pod can sit un-ticked for thousands of ticks. Anything about what a pod does is therefore timed in
-	 * the pod's own {@code tickCount}, and the longest bore here is under 700 pod ticks: a test that passes
-	 * ends at once, so a large budget costs nothing.
+	 * Server ticks a test needs once its far chunk ticks entities. Anything about what a pod does is timed in the
+	 * pod's own {@code tickCount}, and the longest bore here is under 700 pod ticks: a test that passes ends at
+	 * once, so the margin costs nothing.
 	 */
-	private static final int MAX_TICKS = 20000;
+	private static final int DRILL_MARGIN_TICKS = 1000;
+	private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + DRILL_MARGIN_TICKS;
 	private static final int Z = 3000;
 	private static final float EAST = -90f;
 
 	private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
 	private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
 
-	/** A pod with a mock pilot seated in it, in {@code level}. */
-	private record Rig(PodEntity pod, MockPlayer pilot) {
-		static Rig build(GameTestHelper helper, ServerLevel level, Vec3 at, float yaw, String name) {
+	/**
+	 * A mock pilot, and the pod it sits in once the far chunk ticks entities. The pilot joins and moves there at
+	 * once, which keeps the chunk loaded; {@link #pod} stays null until the chunk ticks, so a callback must check
+	 * {@link #ready} before it reads the pod.
+	 */
+	private static final class Rig {
+		private final MockPlayer pilot;
+		private PodEntity pod;
+
+		private Rig(MockPlayer pilot) {
+			this.pilot = pilot;
+		}
+
+		boolean ready() {
+			return pod != null;
+		}
+
+		/** Like the longer {@code await}, with nothing to do to the pod first. */
+		static Rig await(GameTestHelper helper, ServerLevel level, Vec3 at, float yaw, String name, Input input) {
+			return await(helper, level, at, yaw, name, input, pod -> {
+			});
+		}
+
+		/**
+		 * Must be called from the test method. When {@code at} ticks entities it seats the pilot in a new pod, runs
+		 * {@code prepare} on the pod, then applies {@code input}.
+		 */
+		static Rig await(GameTestHelper helper, ServerLevel level, Vec3 at, float yaw, String name, Input input, Consumer<PodEntity> prepare) {
 			MockPlayer pilot = MockPlayers.join(helper, name);
 			pilot.teleportTo(level, at, yaw, 0f);
-			PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
-			pod.setPos(at);
-			level.addFreshEntity(pod);
-			if (!pilot.player().startRiding(pod)) {
-				throw failure(helper, "the pilot could not mount the pod");
-			}
-			return new Rig(pod, pilot);
+			Rig rig = new Rig(pilot);
+			FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
+				PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+				pod.setPos(at);
+				level.addFreshEntity(pod);
+				if (!pilot.player().startRiding(pod)) {
+					throw failure(helper, "the pilot could not mount the pod");
+				}
+				prepare.accept(pod);
+				pilot.setInput(input);
+				rig.pod = pod;
+			});
+			return rig;
 		}
 	}
 
@@ -69,10 +102,12 @@ public class PodDrillTest {
 		ServerLevel level = layer(helper, 1);
 		room(level, x, floor, 4);
 		// Off the block grid on purpose: the pod must centre itself, and bore the nearest 2 x 2.
-		Rig rig = Rig.build(helper, level, new Vec3(x + 0.3, floor, Z + 0.8), 0f, "drill-bore");
-		rig.pilot.setInput(SPRINT);
+		Rig rig = Rig.await(helper, level, new Vec3(x + 0.3, floor, Z + 0.8), 0f, "drill-bore", SPRINT);
 		boolean[] released = {false};
 		helper.onEachTick(() -> {
+			if (!rig.ready()) {
+				return;
+			}
 			if (!released[0] && count(level, x - 1, x, floor - n, floor - 1, Z, Z + 1, Blocks.AIR) == 4 * n) {
 				rig.pilot.releaseInput();
 				released[0] = true;
@@ -109,10 +144,12 @@ public class PodDrillTest {
 		room(level, x, floor, 4);
 		wall(level, x + 2, x + 5, Z, floor, floor + 10);
 		// A wall of stone two blocks east, and a pod that starts four blocks up: it meets the wall while falling.
-		Rig rig = Rig.build(helper, level, new Vec3(x + 0.3, floor + 4, Z + 0.3), EAST, "drill-ground");
-		rig.pilot.setInput(FORWARD);
+		Rig rig = Rig.await(helper, level, new Vec3(x + 0.3, floor + 4, Z + 0.3), EAST, "drill-ground", FORWARD);
 		int[] airborneAgainstWall = {0};
 		helper.onEachTick(() -> {
+			if (!rig.ready()) {
+				return;
+			}
 			PodEntity pod = rig.pod;
 			if (!pod.onGround() && pod.horizontalCollision) {
 				airborneAgainstWall[0]++;
@@ -146,9 +183,11 @@ public class PodDrillTest {
 		int floor = ceiling - 1;
 		room(level, x, floor, 4);
 		wall(level, x + 2, x + 3, Z, floor, ceiling);
-		Rig rig = Rig.build(helper, level, new Vec3(x + 0.3, floor, Z + 0.3), EAST, "drill-ceiling");
-		rig.pilot.setInput(FORWARD);
+		Rig rig = Rig.await(helper, level, new Vec3(x + 0.3, floor, Z + 0.3), EAST, "drill-ceiling", FORWARD);
 		helper.onEachTick(() -> {
+			if (!rig.ready()) {
+				return;
+			}
 			if (rig.pod.drilling()) {
 				throw failure(helper, "the pod started drilling a slab that reaches the ceiling row");
 			}
@@ -175,9 +214,11 @@ public class PodDrillTest {
 		int floor = top - 1;
 		room(level, x, floor, 4);
 		wall(level, x + 2, x + 3, Z, floor, top);
-		Rig rig = Rig.build(helper, level, new Vec3(x + 0.3, floor, Z + 0.3), EAST, "drill-below-ceiling");
-		rig.pilot.setInput(FORWARD);
+		Rig rig = Rig.await(helper, level, new Vec3(x + 0.3, floor, Z + 0.3), EAST, "drill-below-ceiling", FORWARD);
 		helper.succeedWhen(() -> {
+			if (!rig.ready()) {
+				throw failure(helper, "waiting for the far chunk to tick entities");
+			}
 			if (count(level, x + 2, x + 2, floor, top, Z - 1, Z, Blocks.AIR) != 4) {
 				throw failure(helper, "the wall one row below the ceiling was not bored");
 			}
@@ -194,13 +235,14 @@ public class PodDrillTest {
 		int deepX = 3320;
 		stoneBed(level, shallowX, shallowFloor);
 		stoneBed(level, deepX, deepFloor);
-		Rig shallow = Rig.build(helper, level, new Vec3(shallowX, shallowFloor, Z), 0f, "drill-shallow");
-		Rig deep = Rig.build(helper, level, new Vec3(deepX, deepFloor, Z), 0f, "drill-deep");
-		shallow.pilot.setInput(SPRINT);
-		deep.pilot.setInput(SPRINT);
+		Rig shallow = Rig.await(helper, level, new Vec3(shallowX, shallowFloor, Z), 0f, "drill-shallow", SPRINT);
+		Rig deep = Rig.await(helper, level, new Vec3(deepX, deepFloor, Z), 0f, "drill-deep", SPRINT);
 		int[] shallowTicks = {-1};
 		int[] deepTicks = {-1};
 		helper.onEachTick(() -> {
+			if (!shallow.ready() || !deep.ready()) {
+				return;
+			}
 			if (shallowTicks[0] < 0 && level.getBlockState(new BlockPos(shallowX, shallowFloor - 1, Z)).isAir()) {
 				shallowTicks[0] = shallow.pod.tickCount;
 				shallow.pilot.releaseInput();
@@ -247,9 +289,11 @@ public class PodDrillTest {
 		room(level, x, floor, 4);
 		level.setBlock(new BlockPos(x - 1, floor - 1, Z - 1), OreRegistry.block(OreType.IRONIUM).defaultBlockState(), 3);
 		level.setBlock(new BlockPos(x, floor - 1, Z), OreRegistry.block(OreType.EINSTEINIUM).defaultBlockState(), 3);
-		Rig rig = Rig.build(helper, level, new Vec3(x, floor, Z), 0f, "drill-ore");
-		rig.pilot.setInput(SPRINT);
+		Rig rig = Rig.await(helper, level, new Vec3(x, floor, Z), 0f, "drill-ore", SPRINT);
 		helper.onEachTick(() -> {
+			if (!rig.ready()) {
+				return;
+			}
 			if (count(level, x - 1, x, floor - 1, floor - 1, Z - 1, Z, Blocks.AIR) != 4) {
 				return;
 			}
@@ -273,15 +317,18 @@ public class PodDrillTest {
 		ServerLevel level = layer(helper, 1);
 		room(level, x, floor, 4);
 		level.setBlock(new BlockPos(x, floor - 1, Z), OreRegistry.block(OreType.EINSTEINIUM).defaultBlockState(), 3);
-		Rig rig = Rig.build(helper, level, new Vec3(x, floor, Z), 0f, "drill-full");
 		int slots = PodTuning.DEFAULT.cargo().slots();
-		for (int i = 0; i < slots; i++) {
-			if (!rig.pod.cargo().tryAdd(rig.pod, OreRegistry.stack(OreType.BRONZIUM))) {
-				throw failure(helper, "could not fill slot %d of %d", i, slots);
+		Rig rig = Rig.await(helper, level, new Vec3(x, floor, Z), 0f, "drill-full", SPRINT, pod -> {
+			for (int i = 0; i < slots; i++) {
+				if (!pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.BRONZIUM))) {
+					throw failure(helper, "could not fill slot %d of %d", i, slots);
+				}
 			}
-		}
-		rig.pilot.setInput(SPRINT);
+		});
 		helper.onEachTick(() -> {
+			if (!rig.ready()) {
+				return;
+			}
 			if (count(level, x - 1, x, floor - 1, floor - 1, Z - 1, Z, Blocks.AIR) != 4) {
 				return;
 			}
@@ -304,9 +351,11 @@ public class PodDrillTest {
 		room(level, x, floor, 4);
 		// Only column x+1 reaches the pod; under columns x-1 and x the ground is three blocks lower.
 		box(level, x - 1, x, floor - 3, floor - 1, Z - 4, Z + 4, Blocks.AIR);
-		Rig rig = Rig.build(helper, level, new Vec3(x + 0.3, floor, Z), 0f, "drill-ledge");
-		rig.pilot.setInput(SPRINT);
+		Rig rig = Rig.await(helper, level, new Vec3(x + 0.3, floor, Z), 0f, "drill-ledge", SPRINT);
 		helper.succeedWhen(() -> {
+			if (!rig.ready()) {
+				throw failure(helper, "waiting for the far chunk to tick entities");
+			}
 			if (count(level, x - 1, x, floor - 4, floor - 4, Z - 1, Z, Blocks.AIR) != 4) {
 				throw failure(helper, "the pod on the ledge did not bore the 2 x 2 below it, it is at %s", rig.pod.position());
 			}
@@ -327,9 +376,11 @@ public class PodDrillTest {
 		// A one-column wall the pod's hitbox touches but its 2 x 2 bore does not, then a full wall behind it.
 		box(level, x + 2, x + 2, floor, floor + 10, Z + 1, Z + 1, Blocks.STONE);
 		wall(level, x + 4, x + 5, Z, floor, floor + 10);
-		Rig rig = Rig.build(helper, level, new Vec3(x + 0.3, floor, Z + 0.3), EAST, "drill-edge");
-		rig.pilot.setInput(FORWARD);
+		Rig rig = Rig.await(helper, level, new Vec3(x + 0.3, floor, Z + 0.3), EAST, "drill-edge", FORWARD);
 		helper.succeedWhen(() -> {
+			if (!rig.ready()) {
+				throw failure(helper, "waiting for the far chunk to tick entities");
+			}
 			if (count(level, x + 4, x + 4, floor, floor + 1, Z - 1, Z, Blocks.AIR) != 4) {
 				throw failure(helper, "the pod did not bore the full wall behind the one-column wall, it is at %s", rig.pod.position());
 			}
@@ -349,10 +400,12 @@ public class PodDrillTest {
 		// Whatever an earlier run left, three crust rows; then clear the top two and the stone above in a 5 x 5, so one is left under the pod.
 		box(one, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
 		box(one, x - 2, x + 2, 1, 8, Z - 2, Z + 2, Blocks.AIR);
-		Rig rig = Rig.build(helper, one, new Vec3(x, 1, Z), 0f, "drill-crust");
-		float hullBefore = rig.pod.hull();
-		rig.pilot.setInput(SPRINT);
+		float[] hullBefore = {Float.NaN};
+		Rig rig = Rig.await(helper, one, new Vec3(x, 1, Z), 0f, "drill-crust", SPRINT, pod -> hullBefore[0] = pod.hull());
 		helper.onEachTick(() -> {
+			if (!rig.ready()) {
+				return;
+			}
 			if (!rig.pilot.player().level().dimension().equals(LayerChain.dimension(2))) {
 				return;
 			}
@@ -360,10 +413,10 @@ public class PodDrillTest {
 			if (!(rig.pilot.player().getVehicle() instanceof PodEntity crossed) || crossed.level() != rig.pilot.player().level()) {
 				throw failure(helper, "the pilot crossed without the pod: riding %s", rig.pilot.player().getVehicle());
 			}
-			float expectedHull = hullBefore - 8f;
+			float expectedHull = hullBefore[0] - 8f;
 			if (Math.abs(crossed.hull() - expectedHull) > 0.01f) {
 				throw failure(helper, "boring one crust row should cost 8 hull, the pod has %s of %s",
-						crossed.hull(), hullBefore);
+						crossed.hull(), hullBefore[0]);
 			}
 			if (Math.abs(crossed.getX() - x) > 1 || Math.abs(crossed.getZ() - Z) > 1) {
 				throw failure(helper, "the pod arrived at %s, expected near (%d, %d)", crossed.position(), x, Z);
@@ -385,9 +438,11 @@ public class PodDrillTest {
 		ServerLevel two = layer(helper, 2);
 		box(two, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
 		box(two, x - 2, x + 2, 3, 10, Z - 2, Z + 2, Blocks.AIR);
-		Rig rig = Rig.build(helper, two, new Vec3(x, 3, Z), 0f, "drill-last-crust");
-		rig.pilot.setInput(SPRINT);
+		Rig rig = Rig.await(helper, two, new Vec3(x, 3, Z), 0f, "drill-last-crust", SPRINT);
 		helper.onEachTick(() -> {
+			if (!rig.ready()) {
+				return;
+			}
 			if (rig.pod.drilling()) {
 				throw failure(helper, "the pod drills the floor of the last layer, which leads nowhere");
 			}

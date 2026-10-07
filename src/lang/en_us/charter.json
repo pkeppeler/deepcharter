@@ -1,1 +1,25 @@
-{}
+{
+  "deepcharter.charter.apply.success": "Applied to %s",
+  "deepcharter.charter.approve.success": "%s joined the charter as crew",
+  "deepcharter.charter.deny.success": "Turned down %s",
+  "deepcharter.charter.deposit.success": "Deposited %s into %s",
+  "deepcharter.charter.found.success": "Founded the charter %s",
+  "deepcharter.charter.info": "%s: %s people, %s applications, account %s, deepest point %s",
+  "deepcharter.charter.leave.success": "You left your charter",
+  "deepcharter.charter.list.dormant": "%1$s: dormant, account %3$s",
+  "deepcharter.charter.list.entry": "%s: %s people, account %s",
+  "deepcharter.charter.list.header": "%s charters",
+  "deepcharter.charter.refusal.account_full": "The account cannot hold more",
+  "deepcharter.charter.refusal.already_applied": "You have already applied to a charter",
+  "deepcharter.charter.refusal.already_on_a_charter": "You are already on a charter or have an application open",
+  "deepcharter.charter.refusal.charter_dormant": "That charter has no Director",
+  "deepcharter.charter.refusal.insufficient_funds": "The account does not hold that much",
+  "deepcharter.charter.refusal.invalid_amount": "The amount must be more than zero",
+  "deepcharter.charter.refusal.invalid_name": "A charter name cannot be blank or too long",
+  "deepcharter.charter.refusal.name_taken": "Another charter has that name",
+  "deepcharter.charter.refusal.no_application": "That player has not applied",
+  "deepcharter.charter.refusal.no_such_charter": "No such charter",
+  "deepcharter.charter.refusal.not_on_a_charter": "You are not on a charter",
+  "deepcharter.charter.refusal.not_the_director": "Only a Director can do that",
+  "deepcharter.charter.spend.success": "Took %s from %s"
+}

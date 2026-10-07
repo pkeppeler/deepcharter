@@ -21,8 +21,10 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 public class BreachCrossingScenario extends EvidenceScenario {
 	private static final double X = 2000.5;
 	private static final double Z = 2000.5;
-	/** Layer 1's stone ends at y 102 and layer 2's at y 132 (see the test world preset). */
-	private static final int[] STANDING_Y = {103, 133};
+	/** Where the player stands. The terrain is noise, so a stone floor and an open room are built here first. */
+	private static final int STANDING_Y = 100;
+	private static final int ROOM_LENGTH = 56;
+	private static final int ROOM_HEIGHT = 10;
 	private static final int SHAFT_TOP = 30;
 	private static final int PATIENCE = 400;
 	/** Frames recorded once the transmission has finished typing. */
@@ -92,7 +94,17 @@ public class BreachCrossingScenario extends EvidenceScenario {
 	private void lookDownTheRow(ClientGameTestContext context, TestSingleplayerContext singleplayer, int layer) {
 		singleplayer.getServer().runOnServer(server -> {
 			ServerLevel level = server.getLevel(LayerChain.dimension(layer));
-			int standing = STANDING_Y[layer - 1];
+			int standing = STANDING_Y;
+			int column = (int) X;
+			int row = (int) Z;
+			for (int x = column - 3; x <= column + ROOM_LENGTH; x++) {
+				for (int z = row - 5; z <= row + 5; z++) {
+					level.setBlock(new BlockPos(x, standing - 1, z), Blocks.STONE.defaultBlockState(), 3);
+					for (int dy = 0; dy < ROOM_HEIGHT; dy++) {
+						level.setBlock(new BlockPos(x, standing + dy, z), Blocks.AIR.defaultBlockState(), 3);
+					}
+				}
+			}
 			int[] distances = {4, 8, 14, 20, 28, 38, 50};
 			for (int i = 0; i < distances.length; i++) {
 				BlockPos base = BlockPos.containing(X + distances[i], standing, Z + (i % 2 == 0 ? -2 : 2));

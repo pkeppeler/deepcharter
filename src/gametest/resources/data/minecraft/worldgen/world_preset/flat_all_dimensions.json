@@ -3,45 +3,35 @@
     "deepcharter:layer_1": {
       "type": "deepcharter:layer_1",
       "generator": {
-        "type": "minecraft:flat",
-        "settings": {
-          "biome": "minecraft:plains",
-          "features": true,
-          "lakes": false,
-          "layers": [
-            {
-              "block": "deepcharter:breach_crust",
-              "height": 3
-            },
-            {
-              "block": "minecraft:stone",
-              "height": 100
-            }
-          ],
-          "structure_overrides": []
-        }
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "deepcharter:zones",
+          "min_y": 0,
+          "height": 192,
+          "biomes": [
+            "deepcharter:topsoil_claims",
+            "deepcharter:stone_benches",
+            "deepcharter:deep_claim"
+          ]
+        },
+        "settings": "deepcharter:layer_1"
       }
     },
     "deepcharter:layer_2": {
       "type": "deepcharter:layer_2",
       "generator": {
-        "type": "minecraft:flat",
-        "settings": {
-          "biome": "minecraft:plains",
-          "features": true,
-          "lakes": false,
-          "layers": [
-            {
-              "block": "deepcharter:breach_crust",
-              "height": 3
-            },
-            {
-              "block": "minecraft:stone",
-              "height": 130
-            }
-          ],
-          "structure_overrides": []
-        }
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "deepcharter:zones",
+          "min_y": 0,
+          "height": 256,
+          "biomes": [
+            "deepcharter:upper_levels",
+            "deepcharter:shift_change",
+            "deepcharter:prospectors_run"
+          ]
+        },
+        "settings": "deepcharter:layer_2"
       }
     },
     "minecraft:overworld": {

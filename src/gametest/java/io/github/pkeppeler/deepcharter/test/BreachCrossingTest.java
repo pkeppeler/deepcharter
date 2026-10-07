@@ -1,12 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-
-import com.google.gson.JsonParser;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
@@ -276,26 +272,6 @@ public class BreachCrossingTest {
 				throw failure(helper, "the crossing deleted the chest at %s", chest);
 			}
 		});
-	}
-
-	/** The test world's layers are generated from the shipped JSON; the tuning must not drift from it. */
-	@GameTest
-	public void crustThicknessMatchesTheShippedLayers(GameTestHelper helper) throws IOException {
-		for (int layer = 1; layer <= 2; layer++) {
-			String resource = "/data/deepcharter/dimension/layer_" + layer + ".json";
-			try (var stream = BreachCrossingTest.class.getResourceAsStream(resource)) {
-				if (stream == null) {
-					throw failure(helper, "missing classpath resource %s", resource);
-				}
-				int height = JsonParser.parseReader(new InputStreamReader(stream)).getAsJsonObject()
-						.getAsJsonObject("generator").getAsJsonObject("settings")
-						.getAsJsonArray("layers").get(0).getAsJsonObject().get("height").getAsInt();
-				if (height != LayerTuning.DEFAULT.crustThickness()) {
-					throw failure(helper, "layer_%d crust is %d blocks, LayerTuning.crustThickness is %d", layer, height, LayerTuning.DEFAULT.crustThickness());
-				}
-			}
-		}
-		helper.succeed();
 	}
 
 	/** A mock has no client gravity, so drop it a block a tick while in layer_1, once its chunk ticks. */
