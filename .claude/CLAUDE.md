@@ -9,7 +9,7 @@ The user is hands-off on this project except for top-level calls. They don't rea
   - `reviewer` cycle 1, with fixes made
   - `simplifier`
   - `reviewer` cycle 2 passed
-- **Merge only when all checks are green.** GitHub Free gives a private repo no branch protection, so this rule is enforced by us, not by GitHub. Once `tools/merge-pr.sh` exists, merge only through it.
+- **Merge only when all checks are green.** GitHub Free gives a private repo no branch protection, so this rule is enforced by us, not by GitHub. Merge only through `tools/merge-pr.sh <n>`. It refuses and gives the reason.
 
 ## Ask the user only for
 
@@ -38,7 +38,7 @@ The lore and creatures sessions are user sessions run from [prompts/](prompts/),
 
   Resume in-flight work first, then the open milestone's issues in priority order.
 - **Nothing in flight lives only on this Mac.** Push branches early and open draft PRs.
-- **Advance a PR's stage label as it moves:** `stage:implemented`, then `stage:reviewed`, then `stage:simplified`, then `review-passed`. The merge gate requires `review-passed`.
+- **Advance a PR's stage label as it moves:** `stage:implemented`, then `stage:reviewed`, then `stage:simplified`. When cycle 2 passes, run `tools/mark-review-passed.sh <n>`. It adds `review-passed` and pins the pass to the head sha. A push after that voids the pass, and the PR needs a new cycle-2 review.
 - **Background agents die with the session.** Before ending or clearing a session, let them finish, or record each one in the handoff as abandoned, with its issue and the stage reached.
 - **Before ending or clearing a session**, rewrite the handoff issue body:
   - Updated: the date and time
