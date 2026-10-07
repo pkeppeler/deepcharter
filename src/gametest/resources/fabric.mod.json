@@ -10,7 +10,8 @@
 			"io.github.pkeppeler.deepcharter.test.DeepCharterGameTest"
 		],
 		"fabric-client-gametest": [
-			"io.github.pkeppeler.deepcharter.test.DeepCharterClientGameTest"
+			"io.github.pkeppeler.deepcharter.test.DeepCharterClientGameTest",
+			"io.github.pkeppeler.deepcharter.test.evidence.CameraTurnScenario"
 		]
 	},
 	"depends": {
