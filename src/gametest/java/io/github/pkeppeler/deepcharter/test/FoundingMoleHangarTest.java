@@ -102,9 +102,23 @@ public class FoundingMoleHangarTest {
 		return Colony.anchor(server(helper), ColonyAnchor.HANGAR).orElseThrow(() -> failure(helper, "the colony was not built when the server started"));
 	}
 
-	/** Waits for the hangar's chunk to tick, then runs {@code body}. */
+	/**
+	 * Waits for the hangar's chunk to tick and for its entities to load (a tick or more after the chunk ticks), then runs
+	 * {@code body} with the pods that stood in the hangar before it.
+	 */
 	private static void inTheHangar(GameTestHelper helper, Consumer<Set<UUID>> body) {
-		FarChunks.awaitEntityTicking(helper, server(helper).overworld(), hangarAnchor(helper), () -> {
+		boolean[] chunkTicks = {false};
+		boolean[] done = {false};
+		FarChunks.awaitEntityTicking(helper, server(helper).overworld(), hangarAnchor(helper), () -> chunkTicks[0] = true);
+		helper.onEachTick(() -> {
+			if (!chunkTicks[0] || done[0]) {
+				return;
+			}
+			if (Hangar.derelict(server(helper)).isEmpty()) {
+				expect(helper, helper.getTick() <= FarChunks.AWAIT_BUDGET_TICKS, "the derelict Mole did not load in %s ticks", FarChunks.AWAIT_BUDGET_TICKS);
+				return;
+			}
+			done[0] = true;
 			Set<UUID> before = new HashSet<>();
 			podsInTheHangar(helper).forEach(pod -> before.add(pod.getUUID()));
 			try {
@@ -454,14 +468,22 @@ public class FoundingMoleHangarTest {
 					&& count(stranger.player(), CATALYST) == HangarTuning.DEFAULT.restoreCatalysts(), "a restore of another charter's wreck changes nothing");
 
 			// The founding Mole is not a wreck to buy back: it is repaired with its four parts. The real console stands beside it.
-			Hangar.placeDerelict(server(helper), Colony.placed(server(helper)).orElseThrow());
-			PodEntity derelict = Hangar.derelict(server(helper)).orElseThrow();
-			BlockPos hangarConsole = Hangar.consolePos(server(helper)).orElseThrow(() -> failure(helper, "the hangar should have a console"));
-			expect(helper, server(helper).overworld().getBlockState(hangarConsole).is(HangarTerminal.TYPE.block()), "the colony stands a console in the hangar");
-			stand(helper, stranger, hangarConsole);
-			expectRefused(helper, act(stranger.player(), hangarConsole, HangarTerminal.RESTORE_WRECK), "restoring the derelict Mole");
-			expect(helper, Wrecks.isWreck(derelict) && PodComponents.registration(derelict).isEmpty() && balance(helper, stranger) == RICH,
-					"the derelict Mole stays a wreck that nobody owns");
+			// This world's own derelict is not in the fresh hangar record, so it stands out of reach while the fresh one is tested.
+			PodEntity worldDerelict = podsInTheHangar(helper).stream().filter(pod -> before.contains(pod.getUUID())).findFirst().orElseThrow();
+			Vec3 home = worldDerelict.position();
+			worldDerelict.setPos(home.add(0, 100, 0));
+			try {
+				Hangar.placeDerelict(server(helper), Colony.placed(server(helper)).orElseThrow());
+				PodEntity derelict = Hangar.derelict(server(helper)).orElseThrow();
+				BlockPos hangarConsole = Hangar.consolePos(server(helper)).orElseThrow(() -> failure(helper, "the hangar should have a console"));
+				expect(helper, server(helper).overworld().getBlockState(hangarConsole).is(HangarTerminal.TYPE.block()), "the colony stands a console in the hangar");
+				stand(helper, stranger, hangarConsole);
+				expectRefused(helper, act(stranger.player(), hangarConsole, HangarTerminal.RESTORE_WRECK), "restoring the derelict Mole");
+				expect(helper, Wrecks.isWreck(derelict) && PodComponents.registration(derelict).isEmpty() && balance(helper, stranger) == RICH,
+						"the derelict Mole stays a wreck that nobody owns");
+			} finally {
+				worldDerelict.setPos(home);
+			}
 			clearFloor(helper);
 			helper.succeed();
 		}));
@@ -491,6 +513,7 @@ public class FoundingMoleHangarTest {
 			deposit(helper, player, RICH);
 			give(player.player(), CATALYST, 2);
 			PodEntity wreck = pod(helper, Optional.of(charterOf(helper, player).id()), true);
+			PodEntity odd = pod(helper, Optional.of(charterOf(helper, player).id()), false);
 			int pods = podsInTheHangar(helper).size();
 
 			// The hangar record is unreadable: the colony event, the repair event and both actions skip it.
@@ -519,7 +542,6 @@ public class FoundingMoleHangarTest {
 			expect(helper, balance(helper, player) == RICH && podsInTheHangar(helper).size() == pods, "a purchase refused for the serials takes nothing and makes no pod");
 
 			// A pod whose wreck state is unreadable is not a wreck the hangar can see.
-			PodEntity odd = pod(helper, Optional.of(charterOf(helper, player).id()), false);
 			odd.setAttached(WreckRegistry.STATE, new Versioned.Unreadable<>(new CompoundTag()));
 			wreck.discard();
 			expectRefused(helper, act(player.player(), console, HangarTerminal.RESTORE_WRECK), "restoring a pod with unreadable wreck state");
