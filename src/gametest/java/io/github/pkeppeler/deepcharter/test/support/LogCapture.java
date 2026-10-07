@@ -11,12 +11,7 @@ import org.apache.logging.log4j.core.config.Property;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 
-/**
- * One log capture for every GameTest. Its appender is attached to the mod's logger once, on first use, and never
- * detached: GameTests of a batch interleave on the server thread, and appenders with the same name replace each other
- * on one logger, so a per-test attach and detach loses or misplaces events. A test calls {@link #start} and then reads
- * only the messages that contain its own key, such as a pod UUID, so concurrent tests cannot see each other's.
- */
+/** Attached once and never detached: same-named appenders on one logger collide. */
 public final class LogCapture {
 	private static final Appender APPENDER = Appender.attach();
 

@@ -443,8 +443,9 @@ public class HandbookCoreTest {
 		} finally {
 			server.getDataStorage().set(HandbookProgressData.TYPE, original);
 		}
-		if (log.errors().size() != 1) {
-			throw helper.assertionException("unreadable progress is logged once, not %s times: %s", log.errors().size(), log.errors());
+		List<String> errors = log.errors();
+		if (errors.size() != 1) {
+			throw helper.assertionException("unreadable progress is logged once, not %s times: %s", errors.size(), errors);
 		}
 		if (!future.equals(HandbookProgressData.CODEC.encodeStart(NbtOps.INSTANCE, unreadable).getOrThrow())) {
 			throw helper.assertionException("unreadable progress must round-trip unchanged");
@@ -473,8 +474,9 @@ public class HandbookCoreTest {
 		} finally {
 			server.getDataStorage().set(CharterData.TYPE, original);
 		}
-		if (log.errors().size() != 1) {
-			throw helper.assertionException("unreadable charters are logged once, not %s times: %s", log.errors().size(), log.errors());
+		List<String> errors = log.errors();
+		if (errors.size() != 1) {
+			throw helper.assertionException("unreadable charters are logged once, not %s times: %s", errors.size(), errors);
 		}
 		if (!future.equals(CharterData.CODEC.encodeStart(NbtOps.INSTANCE, unreadable).getOrThrow())) {
 			throw helper.assertionException("unreadable charters must round-trip unchanged");
