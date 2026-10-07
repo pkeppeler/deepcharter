@@ -91,18 +91,16 @@ class RenderTest(unittest.TestCase):
         prs = [
             r.PullRequest(5, "A", "https://x/pull/5", False, ("stage:implemented",), ()),
             r.PullRequest(6, "B", "https://x/pull/6", True, ("infra", "stage:reviewed"), ()),
+            r.PullRequest(7, "C", "https://x/pull/7", False, ("stage:simplified",), ()),
             r.PullRequest(8, "D", "https://x/pull/8", False, ("review-passed", "stage:simplified"), ()),
             r.PullRequest(9, "E", "https://x/pull/9", False, (), ()),
         ]
         out = render(prs=prs)
         self.assertIn("Stage: Implemented, waiting for review", out)
+        self.assertIn("Stage: Simplified, waiting for final review", out)
         self.assertIn("(draft)\n  - Stage: Reviewed, waiting for simplify", out)
         self.assertIn("[PR #8 D](https://x/pull/8)\n  - Stage: Review passed, ready to merge", out)
         self.assertIn("Stage: No stage yet", out)
-
-    def test_simplified_stage(self):
-        pr = r.PullRequest(7, "C", "https://x/pull/7", False, ("stage:simplified",), ())
-        self.assertIn("Stage: Simplified, waiting for final review", render(prs=[pr]))
 
     def test_pr_names_closed_issue(self):
         pr = r.PullRequest(7, "C", "https://x/pull/7", False, (), (r.Link(15, "https://x/issues/15"),))
@@ -177,11 +175,6 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(pr.closes, (r.Link(15, "iu"),))
         self.assertEqual(roadmap.handoff, r.Handoff("H", "hu"))
 
-    def test_simplified_label_renders_as_simplified(self):
-        out = r.render(r.parse_github(_repo(), ()), "now")
-        self.assertIn("Stage: Simplified, waiting for final review", out)
-        self.assertIn("Closes: [#15](iu)", out)
-
     def test_no_handoff(self):
         self.assertIsNone(r.parse_github(_repo(handoff=_page([])), ()).handoff)
 
@@ -228,7 +221,7 @@ def _completed(returncode=0, stdout="", stderr=""):
 class GhGraphqlTest(unittest.TestCase):
     def call(self, **run_kw):
         with mock.patch.object(r.subprocess, "run", **run_kw):
-            return r.gh_graphql("q", "o", "n")
+            return r.gh_graphql()
 
     def test_success(self):
         out = self.call(return_value=_completed(stdout=json.dumps({"data": {"a": 1}})))
@@ -286,20 +279,20 @@ class MainTest(unittest.TestCase):
 
 class ReadAdrsTest(unittest.TestCase):
     def test_title_from_first_heading_skipping_front_matter(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(r, "ADR_DIR", Path(tmp)):
             (Path(tmp) / "0002-b.md").write_text("---\nstatus: accepted\n---\n\n# Second\n\n# Other\n")
             (Path(tmp) / "0001-a.md").write_text("# First\n")
             (Path(tmp) / "notes.txt").write_text("# ignored\n")
             self.assertEqual(
-                r.read_adrs(Path(tmp)),
+                r.read_adrs(),
                 (r.Doc("adr/0001-a.md", "First"), r.Doc("adr/0002-b.md", "Second")),
             )
 
     def test_missing_heading_fails(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(r, "ADR_DIR", Path(tmp)):
             (Path(tmp) / "0001-a.md").write_text("no heading\n")
             with self.assertRaisesRegex(r.RoadmapError, "no '# ' heading"):
-                r.read_adrs(Path(tmp))
+                r.read_adrs()
 
 
 if __name__ == "__main__":

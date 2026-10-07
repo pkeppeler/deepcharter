@@ -207,8 +207,9 @@ def render(roadmap: Roadmap, updated: str) -> str:
 # ----------------------------------------------------------------- fetching
 
 
-def gh_graphql(query: str, owner: str, name: str) -> dict:
-    cmd = ["gh", "api", "graphql", "-f", f"query={query}", "-f", f"owner={owner}", "-f", f"name={name}"]
+def gh_graphql() -> dict:
+    owner, name = REPO.split("/")
+    cmd = ["gh", "api", "graphql", "-f", f"query={QUERY}", "-f", f"owner={owner}", "-f", f"name={name}"]
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
     except FileNotFoundError:
@@ -272,9 +273,9 @@ def parse_github(repository: dict, adrs: tuple[Doc, ...]) -> Roadmap:
     return Roadmap(tuple(sorted(milestones, key=lambda m: m.number)), tuple(prs), handoff, adrs)
 
 
-def read_adrs(adr_dir: Path) -> tuple[Doc, ...]:
+def read_adrs() -> tuple[Doc, ...]:
     docs = []
-    for path in sorted(adr_dir.glob("*.md")):
+    for path in sorted(ADR_DIR.glob("*.md")):
         match = re.search(r"^# (.+)$", path.read_text(encoding="utf-8"), re.MULTILINE)
         if not match:
             raise RoadmapError(f"{path} has no '# ' heading")
@@ -283,9 +284,7 @@ def read_adrs(adr_dir: Path) -> tuple[Doc, ...]:
 
 
 def fetch() -> Roadmap:
-    owner, name = REPO.split("/")
-    repository = gh_graphql(QUERY, owner, name)["repository"]
-    return parse_github(repository, read_adrs(ADR_DIR))
+    return parse_github(gh_graphql()["repository"], read_adrs())
 
 
 def main() -> int:
