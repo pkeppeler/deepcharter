@@ -40,9 +40,9 @@ public final class PodFuel {
 		return fuelPercent <= PodTuning.DEFAULT.fuel().lowFuelPercent();
 	}
 
-	/** Called every pod tick, on both sides; only the server burns fuel, and a stranded pod is powered off. */
+	/** Called every pod tick, on both sides; only the server burns fuel, and a pod without power burns none. */
 	public static void tick(PodEntity pod) {
-		if (pod.level().isClientSide() || pod.stranded()) {
+		if (pod.level().isClientSide() || !PodEvents.isPowered(pod)) {
 			return;
 		}
 		float fuel = Math.max(0f, pod.fuel() - drainPercentPerTick(activity(pod)));
