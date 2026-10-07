@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.client.layer;
 
+import java.util.List;
+
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 
 import net.minecraft.client.DeltaTracker;
@@ -13,8 +16,12 @@ import net.minecraft.util.ARGB;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 
 /**
- * The altimeter, top centre (the pod readout is top left), always on screen while in a world (on the surface, in a layer, in or out of a pod),
- * then the breach fade over everything with the transmission typed on top of it.
+ * The altimeter, top centre (the pod readout is top left), always on screen while in a world. Then the
+ * breach fade over the whole HUD, with the transmission typed on top of it.
+ *
+ * <p>The fade is a full blackout, so it is registered when the client has started, after every mod's
+ * initializer has registered its own elements. {@code addLast} puts it after all of them, so no other
+ * HUD element draws over the black. An element registered later than that would draw over it.
  */
 public final class BreachHud {
 	private static final Identifier ALTIMETER = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "altimeter");
@@ -28,8 +35,7 @@ public final class BreachHud {
 
 	public static void init() {
 		HudElementRegistry.addLast(ALTIMETER, BreachHud::extractAltimeter);
-		// Registered after the altimeter, so the fade covers it.
-		HudElementRegistry.addLast(BREACH, BreachHud::extractBreach);
+		ClientLifecycleEvents.CLIENT_STARTED.register(client -> HudElementRegistry.addLast(BREACH, BreachHud::extractBreach));
 	}
 
 	private static void extractAltimeter(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
@@ -38,9 +44,9 @@ public final class BreachHud {
 			return;
 		}
 		Component reading = Altimeter.reading(client);
-		int[] jitter = BreachEffects.jitter();
-		int x = (graphics.guiWidth() - client.font.width(reading)) / 2 + jitter[0];
-		graphics.text(client.font, reading, x, MARGIN + jitter[1], WHITE);
+		BreachEffects.Offset jitter = BreachEffects.jitter();
+		int x = (graphics.guiWidth() - client.font.width(reading)) / 2 + jitter.x();
+		graphics.text(client.font, reading, x, MARGIN + jitter.y(), WHITE);
 	}
 
 	private static void extractBreach(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
@@ -48,15 +54,12 @@ public final class BreachHud {
 		if (alpha > 0f) {
 			graphics.fill(0, 0, graphics.guiWidth(), graphics.guiHeight(), ARGB.color(Math.round(alpha * 255), 0, 0, 0));
 		}
-		String shown = BreachEffects.transmissionShown();
-		if (shown.isEmpty()) {
-			return;
-		}
+		List<String> shown = BreachEffects.transmissionShown();
 		Font font = Minecraft.getInstance().font;
-		int[] jitter = BreachEffects.jitter();
-		int y = graphics.guiHeight() / 2 - font.lineHeight + jitter[1];
-		for (String line : shown.split("\n", -1)) {
-			graphics.text(font, line, graphics.guiWidth() / 2 - font.width(line) / 2 + jitter[0], y, TRANSMISSION_GREEN);
+		BreachEffects.Offset jitter = BreachEffects.jitter();
+		int y = graphics.guiHeight() / 2 - font.lineHeight + jitter.y();
+		for (String line : shown) {
+			graphics.text(font, line, graphics.guiWidth() / 2 - font.width(line) / 2 + jitter.x(), y, TRANSMISSION_GREEN);
 			y += font.lineHeight + 4;
 		}
 	}

@@ -35,6 +35,11 @@ public record BreachPayload(int fromLayer, int toLayer) implements CustomPacketP
 		});
 	}
 
+	/** True for a descent into a deeper layer, false for an ascent. */
+	public boolean descent() {
+		return toLayer > fromLayer;
+	}
+
 	@Override
 	public Type<BreachPayload> type() {
 		return TYPE;

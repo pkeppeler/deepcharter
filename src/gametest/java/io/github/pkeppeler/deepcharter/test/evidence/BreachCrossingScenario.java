@@ -50,6 +50,13 @@ public class BreachCrossingScenario extends EvidenceScenario {
 				for (int y = one.getMinY(); y <= SHAFT_TOP; y++) {
 					one.setBlock(column.atY(y), Blocks.AIR.defaultBlockState(), 3);
 				}
+				// Generate the arrival area in layer 2 now so the client has less to wait for after the crossing.
+				ServerLevel two = server.getLevel(LayerChain.dimension(2));
+				for (int dx = -2; dx <= 2; dx++) {
+					for (int dz = -2; dz <= 2; dz++) {
+						two.getChunk(column.getX() / 16 + dx, column.getZ() / 16 + dz);
+					}
+				}
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 				player.teleportTo(one, X, SHAFT_TOP - 1, Z, Set.of(), 0, 70, true);
 			});
@@ -57,7 +64,11 @@ public class BreachCrossingScenario extends EvidenceScenario {
 
 			int typedAt = -1;
 			for (int tick = 0; tick < PATIENCE; tick++) {
-				frame(context);
+				// Vanilla covers the HUD with a "Loading terrain" screen while the client waits for the new layer's
+				// chunks. It is not part of the effect being shown, so leave those frames out.
+				if (context.computeOnClient(client -> client.gui.screen() == null)) {
+					frame(context);
+				}
 				boolean typed = context.computeOnClient(client -> !BreachEffects.transmissionFull().isEmpty()
 						&& BreachEffects.transmissionShown().equals(BreachEffects.transmissionFull()));
 				if (typed && typedAt < 0) {

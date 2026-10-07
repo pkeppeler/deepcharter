@@ -1,5 +1,10 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Path;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.function.ToIntFunction;
@@ -8,13 +13,18 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
+import javax.imageio.ImageIO;
+
 import net.minecraft.client.Minecraft;
+import net.minecraft.locale.Language;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
 import io.github.pkeppeler.deepcharter.client.layer.Altimeter;
 import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
+import io.github.pkeppeler.deepcharter.layer.BreachPayload;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
 
 /** Client GameTest: the altimeter string matches the depth maths, and a crossing starts and clears the fade. */
 public class BreachHudTest implements FabricClientGameTest {
@@ -22,6 +32,9 @@ public class BreachHudTest implements FabricClientGameTest {
 	private static final double Z = 2000.5;
 	/** Real ticks to wait for something that should take a handful. */
 	private static final int PATIENCE = 200;
+	/** Pixels of the screen's top-left corner that the pod readout's four lines cover, at any GUI scale up to 4. */
+	private static final int POD_READOUT_WIDTH = 60;
+	private static final int POD_READOUT_HEIGHT = 40;
 
 	/** Written out here, not read from Depth, so the test checks the maths rather than repeating it. */
 	private static final int SEA_LEVEL = 63;
@@ -33,6 +46,8 @@ public class BreachHudTest implements FabricClientGameTest {
 	public void runTest(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			context.waitFor(client -> client.player != null && client.level != null);
+
+			assertFadeCoversPodHud(context, singleplayer);
 
 			// On the surface the altimeter reads sea level minus Y.
 			assertAltimeter(context, "the surface", client -> SEA_LEVEL - client.player.getBlockY());
@@ -55,7 +70,7 @@ public class BreachHudTest implements FabricClientGameTest {
 			int lastShown = 0;
 			for (int tick = 0; tick < PATIENCE && clearedAt < 0; tick++) {
 				float alpha = context.computeOnClient(client -> BreachEffects.fadeAlpha(0f));
-				int shown = context.computeOnClient(client -> BreachEffects.transmissionShown().length());
+				int shown = context.computeOnClient(client -> BreachEffects.transmissionShown().stream().mapToInt(String::length).sum());
 				if (shown < lastShown) {
 					throw new AssertionError("The transmission untyped itself: " + lastShown + " then " + shown + " characters");
 				}
@@ -90,9 +105,58 @@ public class BreachHudTest implements FabricClientGameTest {
 			// The transmission types out and finishes with the whole text.
 			context.waitFor(client -> !BreachEffects.transmissionShown().isEmpty());
 			context.waitFor(client -> BreachEffects.transmissionShown().equals(BreachEffects.transmissionFull()));
-			if (BreachEffects.transmissionFull().isBlank()) {
-				throw new AssertionError("The stub transmission has no text");
+				List<String> full = context.computeOnClient(client -> BreachEffects.transmissionFull());
+			if (full.isEmpty() || full.stream().anyMatch(String::isBlank)) {
+				throw new AssertionError("The stub transmission should have text on every line, has " + full);
 			}
+			// A missing lang key would render as the raw key, so check each one exists.
+			for (boolean descent : new boolean[] {true, false}) {
+				for (String key : BreachEffects.transmissionKeys(descent)) {
+					if (!context.computeOnClient(client -> Language.getInstance().has(key))) {
+						throw new AssertionError("Transmission lang key missing from en_us.json: " + key);
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * The fade is a full blackout, so it must draw over the pod readout (registered by another part of
+	 * the mod). The registry does not expose its order, so this looks at pixels: the readout's corner
+	 * has bright text before the fade and none at its black plateau.
+	 */
+	private static void assertFadeCoversPodHud(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+		PodShellClientTest.mountFirstPlayer(singleplayer.getServer());
+		context.waitFor(client -> client.player.getVehicle() instanceof PodEntity);
+		context.waitTicks(5);
+		if (brightestInPodReadout(context.takeScreenshot("breach-hud-before-fade")) < 200) {
+			throw new AssertionError("The pod readout should be visible before the fade, or this check proves nothing");
+		}
+		context.runOnClient(client -> BreachEffects.begin(new BreachPayload(1, 2)));
+		context.waitFor(client -> BreachEffects.fadeAlpha(0f) >= 1f);
+		int brightest = brightestInPodReadout(context.takeScreenshot("breach-hud-fade-peak"));
+		if (brightest > 8) {
+			throw new AssertionError("The fade should black out the pod readout, but a pixel of brightness " + brightest + " shows through");
+		}
+		context.runOnClient(client -> BreachEffects.reset());
+		singleplayer.getServer().runOnServer(server -> server.getPlayerList().getPlayers().getFirst().stopRiding());
+		context.waitFor(client -> client.player.getVehicle() == null);
+	}
+
+	/** The brightest colour channel in the top-left corner of the screenshot, where the pod readout draws. */
+	private static int brightestInPodReadout(Path screenshot) {
+		try {
+			BufferedImage image = ImageIO.read(screenshot.toFile());
+			int brightest = 0;
+			for (int x = 0; x < POD_READOUT_WIDTH; x++) {
+				for (int y = 0; y < POD_READOUT_HEIGHT; y++) {
+					int argb = image.getRGB(x, y);
+					brightest = Math.max(brightest, Math.max((argb >> 16) & 0xFF, Math.max((argb >> 8) & 0xFF, argb & 0xFF)));
+				}
+			}
+			return brightest;
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
 		}
 	}
 
