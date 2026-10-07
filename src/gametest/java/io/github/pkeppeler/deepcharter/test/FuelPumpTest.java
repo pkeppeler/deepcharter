@@ -272,6 +272,30 @@ public class FuelPumpTest {
 	}
 
 	@GameTest
+	public void aPodWithUnreadableComponentsIsNotServed(GameTestHelper helper) {
+		Scene scene = scene(helper, 50);
+		CompoundTag future = new CompoundTag();
+		future.putInt("version", 99);
+		CompoundTag attachments = new CompoundTag();
+		attachments.put(PodComponents.STATE.identifier().toString(), future);
+		Vec3 spot = scene.pod().position();
+		Entity loaded = reload(helper, scene.pod(), attachments);
+		try {
+			loaded.setPos(spot);
+			helper.getLevel().addFreshEntity(loaded);
+			PodEntity copy = (PodEntity) loaded;
+			copy.setFuel(0f);
+			withRepairedPump(helper.getLevel().getServer(), () ->
+					expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(scene, 1), "buying into a pod whose owner cannot be read"));
+			expectEqual(helper, "litres", 0f, litres(copy));
+			expectEqual(helper, "dollars", 50, balance(helper, scene.charter()));
+			helper.succeed();
+		} finally {
+			loaded.discard();
+		}
+	}
+
+	@GameTest
 	public void anUnrepairedPumpSellsNothing(GameTestHelper helper) {
 		Scene scene = scene(helper, 50);
 		try {

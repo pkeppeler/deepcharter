@@ -31,7 +31,6 @@ import net.minecraft.world.item.ItemStack;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charters;
-import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
@@ -154,9 +153,7 @@ public final class ReserveTank {
 		if (!Charters.isReadable(server)) {
 			return Optional.of(Component.translatable("message.deepcharter.fuel.reserve_unreadable"));
 		}
-		boolean allowed = Charters.charterOf(server, player.getUUID())
-				.map(charter -> FuelPump.mayServe(pod, charter.id()))
-				.orElseGet(() -> PodComponents.registration(pod).isEmpty());
+		boolean allowed = FuelPump.mayServe(server, pod, Charters.charterOf(server, player.getUUID()).map(charter -> charter.id()));
 		return allowed ? Optional.empty() : Optional.of(Component.translatable("message.deepcharter.fuel.reserve_not_yours"));
 	}
 }

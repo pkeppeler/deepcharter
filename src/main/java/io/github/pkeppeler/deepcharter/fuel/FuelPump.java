@@ -14,6 +14,8 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.attachment.Versioned;
+import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -63,9 +65,31 @@ public final class FuelPump {
 				.stream().sorted(Comparator.comparingDouble(pod -> pod.position().distanceToSqr(centre))).toList();
 	}
 
-	/** A pod nobody owns is anyone's; any other is the owner charter's. */
-	public static boolean mayServe(PodEntity pod, CharterId charter) {
-		return PodComponents.registration(pod).map(registration -> registration.owner().equals(charter)).orElse(true);
+	/**
+	 * Mirrors the ownership rule of {@code PodComponents.canMount} exactly: an unreadable pod state refuses; an unowned pod, or one
+	 * whose owner charter is gone or dormant, is anyone's; any other is its owner charter's members'. When the saved charters
+	 * cannot be read there is no owner to check against, so it allows, as {@code canMount} does. Never throws.
+	 */
+	// TODO switch to PodComponents.mayAccess (#126)
+	public static boolean mayServe(MinecraftServer server, PodEntity pod, Optional<CharterId> charter) {
+		if (pod.getAttached(PodComponents.STATE) instanceof Versioned.Unreadable<PodComponents.State>) {
+			// registration() would read this as unowned, so it is checked first. It logs once.
+			PodComponents.registration(pod);
+			return false;
+		}
+		Optional<PodComponents.Registration> registration = PodComponents.registration(pod);
+		if (registration.isEmpty()) {
+			return true;
+		}
+		try {
+			Optional<Charter> owner = Charters.find(server, registration.get().owner());
+			if (owner.isEmpty() || owner.get().dormant()) {
+				return true;
+			}
+			return charter.map(registration.get().owner()::equals).orElse(false);
+		} catch (IllegalStateException unreadable) {
+			return true;
+		}
 	}
 
 	/** The litres in the tank now. */
@@ -93,7 +117,7 @@ public final class FuelPump {
 			return Optional.of(CharterRefusal.NOT_ON_A_CHARTER.message());
 		}
 		Optional<PodEntity> parked = parkedPods(context.player().level(), context.pos()).stream()
-				.filter(pod -> mayServe(pod, charter.get())).findFirst();
+				.filter(pod -> mayServe(server, pod, charter)).findFirst();
 		if (parked.isEmpty()) {
 			return Optional.of(Component.translatable("message.deepcharter.fuel.no_pod"));
 		}
