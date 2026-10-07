@@ -23,12 +23,12 @@ import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTextField;
+import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
-import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.TerminalTestTypes;
 
 /**
@@ -126,7 +126,7 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
 
 		context.clickScreenButton("INSERT " + partLabel(TerminalTypes.FUEL_PUMP, 1));
 		context.waitFor(client -> client.gui.screen() instanceof TerminalScreen open && open.online(), WAIT_TICKS);
-		boolean repaired = singleplayer.getServer().computeOnServer(server -> Terminals.isRepaired(server, TerminalTypes.FUEL_PUMP));
+		boolean repaired = singleplayer.getServer().computeOnServer(server -> RepairState.get(server).repaired(TerminalTypes.FUEL_PUMP));
 		check(repaired, "the server has the pump repaired");
 		int carried = singleplayer.getServer().computeOnServer(server -> server.getPlayerList().getPlayers().getFirst().getInventory()
 				.countItem(TerminalTypes.FUEL_PUMP.parts().getFirst()));

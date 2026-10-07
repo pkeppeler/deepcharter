@@ -40,11 +40,6 @@ public final class Terminals {
 	private Terminals() {
 	}
 
-	/** True when {@code type} is repaired, for every charter of the world. */
-	public static boolean isRepaired(MinecraftServer server, TerminalType type) {
-		return RepairState.get(server).repaired(type);
-	}
-
 	/**
 	 * Opens the terminal at {@code pos} for {@code player}: sends the client its {@link TerminalView}. An unrepaired terminal
 	 * opens too, as its offline screen, which is where parts go in.

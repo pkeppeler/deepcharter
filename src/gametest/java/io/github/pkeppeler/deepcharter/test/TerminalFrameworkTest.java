@@ -368,7 +368,7 @@ public class TerminalFrameworkTest {
 			int before = TerminalTestTypes.pings();
 			OPENED_LOG.clear();
 
-			if (type.needsRepair() || !type.parts().isEmpty() || type.access() != TerminalType.Access.ANYONE || !Terminals.isRepaired(server, type)) {
+			if (type.needsRepair() || !type.parts().isEmpty() || type.access() != TerminalType.Access.ANYONE || !RepairState.get(server).repaired(type)) {
 				throw helper.assertionException("the open terminal needs no repair, and is online for anyone");
 			}
 			expectDone(helper, Terminals.open(outsider.player(), terminal), "a player on no charter opening it");
