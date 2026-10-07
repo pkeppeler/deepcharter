@@ -26,21 +26,22 @@ public final class PodMovement {
 			throw new IllegalStateException("pod cargo mass must not be negative, got " + pod.cargoMass());
 		}
 		PodTuning.Movement tuning = PodTuning.DEFAULT.movement();
+		PodStats stats = PodStats.of(pod);
 		// A pod without power (stranded, or a PodEvents listener says so) ignores its pilot.
 		ServerPlayer pilot = PodEvents.isPowered(pod) && pod.getControllingPassenger() instanceof ServerPlayer player ? player : null;
 		Input input = pilot == null ? Input.EMPTY : pilot.getLastClientInput();
 
 		Direction drive = pilot == null ? null : driveDirection(input, pilot.getYRot());
-		double vx = drive == null ? 0 : drive.getStepX() * tuning.horizontalSpeed();
-		double vz = drive == null ? 0 : drive.getStepZ() * tuning.horizontalSpeed();
+		double vx = drive == null ? 0 : drive.getStepX() * stats.horizontalSpeed();
+		double vz = drive == null ? 0 : drive.getStepZ() * stats.horizontalSpeed();
 
-		float lift = Math.max(0f, tuning.enginePower() - pod.cargoMass() - PodEvents.extraMass(pod));
+		float lift = Math.max(0f, stats.enginePower() - pod.cargoMass() - PodEvents.extraMass(pod));
 		boolean thrusting = input.jump() && lift > 0f;
 		double vy = pod.getDeltaMovement().y;
 		if (thrusting) {
-			vy += tuning.thrustAcceleration() * lift / tuning.enginePower();
+			vy += stats.thrustAcceleration() * lift / stats.enginePower();
 		}
-		vy = Math.min((vy - tuning.gravity()) * tuning.verticalDrag(), tuning.maxClimbSpeed());
+		vy = Math.min((vy - tuning.gravity()) * tuning.verticalDrag(), stats.maxClimbSpeed());
 
 		pod.setFlying(thrusting);
 		pod.setDeltaMovement(vx, vy, vz);
@@ -59,10 +60,10 @@ public final class PodMovement {
 		if (pod.level().isClientSide()) {
 			return;
 		}
-		PodTuning.Movement tuning = PodTuning.DEFAULT.movement();
-		double excess = fallDistance - tuning.hardLandingDistance();
+		PodStats stats = PodStats.of(pod);
+		double excess = fallDistance - stats.hardLandingDistance();
 		if (excess > 0) {
-			pod.setHull(Math.max(0f, pod.hull() - (float) (excess * tuning.hullDamagePerBlock() * damageMultiplier)));
+			pod.damageHull((float) (excess * stats.hullDamagePerBlock() * damageMultiplier));
 		}
 	}
 

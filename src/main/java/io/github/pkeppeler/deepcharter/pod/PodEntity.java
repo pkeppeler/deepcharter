@@ -51,16 +51,35 @@ public class PodEntity extends Entity {
 		drillProgress = progress;
 	}
 
+	/** Hull points left. At most {@link #maxHull} after any change here; a pod loaded with more keeps it until the next change. */
 	public float hull() {
 		return entityData.get(PodData.HULL);
 	}
 
+	/** The most hull the pod can have, from its stats. */
+	public float maxHull() {
+		return PodStats.of(this).maxHull();
+	}
+
+	/** Sets the hull, held between 0 and {@link #maxHull}. A NaN is a bug in the caller, so it throws. */
 	public void setHull(float hull) {
+		if (Float.isNaN(hull)) {
+			throw new IllegalArgumentException("pod hull must be a number");
+		}
 		float before = hull();
-		entityData.set(PodData.HULL, hull);
-		if (before > 0f && hull <= 0f && !level().isClientSide()) {
+		float clamped = Math.max(0f, Math.min(hull, maxHull()));
+		entityData.set(PodData.HULL, clamped);
+		if (before > 0f && clamped <= 0f && !level().isClientSide()) {
 			PodEvents.HULL_DEPLETED.invoker().onHullDepleted(this);
 		}
+	}
+
+	/** Takes {@code damage} (not negative) off the hull; reaching 0 fires {@link PodEvents#HULL_DEPLETED}. */
+	public void damageHull(float damage) {
+		if (!(damage >= 0f)) {
+			throw new IllegalArgumentException("pod hull damage must be a number, not negative, got " + damage);
+		}
+		setHull(hull() - damage);
 	}
 
 	public float fuel() {

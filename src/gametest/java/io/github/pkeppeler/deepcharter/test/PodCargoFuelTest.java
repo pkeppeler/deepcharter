@@ -36,6 +36,7 @@ import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodCargo;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodFuel;
+import io.github.pkeppeler.deepcharter.pod.PodFuelItems;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -207,7 +208,7 @@ public class PodCargoFuelTest {
 	}
 
 	@GameTest
-	public void loadFailsLoudWithMoreThanSevenEntries(GameTestHelper helper) {
+	public void loadKeepsMoreThanSevenEntriesAndTheBayRefusesMore(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
 		try {
@@ -217,13 +218,12 @@ public class PodCargoFuelTest {
 			CompoundTag tag = savedPod(level, pod);
 			ListTag list = tag.getListOrEmpty("cargo");
 			list.add(list.getFirst().copy());
-			try {
-				pod.cargo().load(inputOf(level, tag), pod);
-			} catch (IllegalStateException expected) {
-				helper.succeed();
-				return;
+			// The bay's size is a stat that other features change (PodStats), so a load does not judge it.
+			pod.cargo().load(inputOf(level, tag), pod);
+			if (pod.cargoUsed() != CARGO.slots() + 1 || pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM), 1f)) {
+				throw helper.assertionException("8 ore should load into a 7-slot bay, which then refuses more, got %s used", pod.cargoUsed());
 			}
-			throw helper.assertionException("loading 8 ore into a 7-slot bay should throw");
+			helper.succeed();
 		} finally {
 			pod.discard();
 		}
@@ -561,7 +561,7 @@ public class PodCargoFuelTest {
 			pod.setFuel(30f);
 			player.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.COAL, 3));
 			InteractionResult result = useOnPod(player, pod);
-			float expected = 30f + FUEL.refuelLitres() / FUEL.tankLitres() * 100f;
+			float expected = 30f + (float) PodFuelItems.litresOf(new ItemStack(Items.COAL)).orElseThrow() / FUEL.tankLitres() * 100f;
 			int left = player.player().getItemInHand(InteractionHand.MAIN_HAND).getCount();
 			if (!result.consumesAction() || Math.abs(pod.fuel() - expected) > 0.5f || left != 2) {
 				throw helper.assertionException("coal should bring fuel to %s and use one item, got result %s fuel %s left %s",

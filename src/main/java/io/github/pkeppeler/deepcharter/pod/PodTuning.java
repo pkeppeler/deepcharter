@@ -8,14 +8,14 @@ package io.github.pkeppeler.deepcharter.pod;
 public record PodTuning(Shell shell, Movement movement, Drill drill, Cargo cargo, Fuel fuel) {
 	public static final PodTuning DEFAULT = new PodTuning(Shell.DEFAULT, Movement.DEFAULT, Drill.DEFAULT, Cargo.DEFAULT, Fuel.DEFAULT);
 
-	/** Gauges a new pod starts with, as percentages. */
+	/** Stock hull points (and the stock maximum, see PodStats) and fuel percentage of a new pod. */
 	public record Shell(float fullHull, float fullFuel) {
 		public static final Shell DEFAULT = new Shell(100f, 100f);
 	}
 
 	/**
 	 * Treads and rotor. Speeds are blocks per tick, accelerations blocks per tick squared, powers and
-	 * masses share one unit, damage is in hull percentage points.
+	 * masses share one unit, damage is in hull points.
 	 *
 	 * @param horizontalSpeed     speed along the one axis the pilot drives
 	 * @param enginePower         rotor power; lift is this minus the cargo mass
@@ -36,7 +36,7 @@ public record PodTuning(Shell shell, Movement movement, Drill drill, Cargo cargo
 	 * original stock drill's 1.2 s per tile.
 	 *
 	 * @param ticksPerHardness ticks at the surface per point of hardness
-	 * @param crustHullDamage  hull percentage points lost for each crust slab bored
+	 * @param crustHullDamage  hull points lost for each crust slab bored
 	 * @param alignSpeed       blocks per tick the pod slides to centre itself in its bore
 	 */
 	public record Drill(float ticksPerHardness, float crustHullDamage, double alignSpeed) {
@@ -50,10 +50,10 @@ public record PodTuning(Shell shell, Movement movement, Drill drill, Cargo cargo
 
 	/**
 	 * Original stock-pod tank and rates; FUEL is a percentage of the tank (litres / tankLitres * 100).
-	 * refuelLitres is invented. The beep sounds at lowFuelPercent and below, faster at urgentFuelPercent.
+	 * What a fuel item gives is data (PodFuelItems). The beep sounds at lowFuelPercent and below, faster at urgentFuelPercent.
 	 */
 	public record Fuel(float tankLitres, float idleLitresPerSecond, float movingLitresPerSecond,
-			float drillingLitresPerSecond, float lowFuelPercent, float urgentFuelPercent, float refuelLitres) {
-		public static final Fuel DEFAULT = new Fuel(10f, 0.063f, 0.19f, 0.32f, 21f, 6f, 2f);
+			float drillingLitresPerSecond, float lowFuelPercent, float urgentFuelPercent) {
+		public static final Fuel DEFAULT = new Fuel(10f, 0.063f, 0.19f, 0.32f, 21f, 6f);
 	}
 }
