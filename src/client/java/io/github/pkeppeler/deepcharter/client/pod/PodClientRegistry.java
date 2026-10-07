@@ -1,11 +1,14 @@
 package io.github.pkeppeler.deepcharter.client.pod;
 
-public final class PodClientRegistry {
-	// Filled by #27: the pod renderer.
+import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 
+import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+
+public final class PodClientRegistry {
 	private PodClientRegistry() {
 	}
 
 	public static void register() {
+		EntityRendererRegistry.register(PodRegistry.POD, PodRenderer::new);
 	}
 }

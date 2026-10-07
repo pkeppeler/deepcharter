@@ -1,0 +1,10 @@
+{
+	"entity.deepcharter.pod": "Pod",
+	"commands.deepcharter.pod.spawn.success": "Spawned a pod",
+	"commands.deepcharter.pod.spawn.failed": "Could not spawn a pod here",
+	"hud.deepcharter.pod.hull": "Hull %s%%",
+	"hud.deepcharter.pod.fuel": "Fuel %s%%",
+	"hud.deepcharter.pod.cargo": "Cargo %s",
+	"hud.deepcharter.pod.depth": "Y %s",
+	"hud.deepcharter.pod.stranded": "STRANDED"
+}
