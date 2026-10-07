@@ -27,6 +27,8 @@ import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
+import io.github.pkeppeler.deepcharter.ore.OreRegistry;
+import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodData;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -148,7 +150,7 @@ public class PodShellTest {
 		pod.setFuel(12.25f);
 		pod.setStranded(true);
 		for (int i = 0; i < 7; i++) {
-			pod.cargo().tryAdd(pod, net.minecraft.world.level.block.Blocks.IRON_ORE, 5.5f);
+			pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM), 5.5f);
 		}
 		pod.setFlying(true);
 		pod.setDrilling(true);

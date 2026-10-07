@@ -6,31 +6,24 @@ import java.util.OptionalInt;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Input;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
-import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.layer.BreachService;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 
 /**
  * Pod drilling (SPEC section 7): sprint bores down, pushing into a wall bores sideways, never up. The bore is the
  * pod's footprint, one slab at a time.
  */
 public final class PodDrill {
-	/** Ore the cargo bay keeps; it includes the convention tag {@code c:ores}. */
-	private static final TagKey<Block> POD_ORE = TagKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "pod_ore"));
-
 	private static final double EPSILON = 1e-3;
 	private static final double ALIGNED = 1e-6;
 
@@ -178,7 +171,7 @@ public final class PodDrill {
 			return ticks;
 		}
 
-		/** A full bay loses the ore: a drill that refused would trap the pod in its own tunnel (SPEC: only ore is kept). */
+		/** A full bay, or cargo that cannot be read, loses the ore: a drill that refused would trap the pod in its own tunnel (SPEC: only ore is kept). */
 		void bore(PodEntity pod) {
 			boolean crust = false;
 			for (BlockPos pos : cells) {
@@ -190,9 +183,13 @@ public final class PodDrill {
 					crust = true;
 					BreachService.breakCrust(level, pos);
 				} else {
-					if (state.is(POD_ORE)) {
-						pod.cargo().tryAdd(pod, state.getBlock());
-					}
+					OreRegistry.typeOf(state.getBlock()).ifPresent(ore -> {
+						if (pod.cargo().isReadable()) {
+							pod.cargo().tryAdd(pod, OreRegistry.stack(ore));
+						} else {
+							pod.cargo().logDiscardedOre(pod);
+						}
+					});
 					level.destroyBlock(pos, false);
 				}
 			}

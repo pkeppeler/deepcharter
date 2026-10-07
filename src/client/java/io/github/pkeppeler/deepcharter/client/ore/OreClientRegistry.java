@@ -1,11 +1,14 @@
 package io.github.pkeppeler.deepcharter.client.ore;
 
-public final class OreClientRegistry {
-	// Registers the ore screens, renderers and HUD elements. Empty until #56.
+import net.minecraft.client.gui.screens.MenuScreens;
 
+import io.github.pkeppeler.deepcharter.ore.OreRegistry;
+
+public final class OreClientRegistry {
 	private OreClientRegistry() {
 	}
 
 	public static void register() {
+		MenuScreens.register(OreRegistry.CARGO_MENU, OreCargoScreen::new);
 	}
 }

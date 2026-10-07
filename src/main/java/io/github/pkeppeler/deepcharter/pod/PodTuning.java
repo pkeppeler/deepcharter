@@ -43,9 +43,9 @@ public record PodTuning(Shell shell, Movement movement, Drill drill, Cargo cargo
 		public static final Drill DEFAULT = new Drill(16f, 8f, 0.1);
 	}
 
-	/** Bay size and the placeholder ore mass (mass shares a unit with enginePower, 100 = no lift at all). */
-	public record Cargo(int slots, float defaultOreMass) {
-		public static final Cargo DEFAULT = new Cargo(7, 20f);
+	/** Bay size. Ore mass shares a unit with enginePower (100 = no lift at all) and lives in {@code OreType}. */
+	public record Cargo(int slots) {
+		public static final Cargo DEFAULT = new Cargo(7);
 	}
 
 	/**
