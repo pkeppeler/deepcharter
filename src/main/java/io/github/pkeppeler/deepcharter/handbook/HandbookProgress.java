@@ -108,7 +108,7 @@ public final class HandbookProgress {
 			}
 		}
 		if (changed) {
-			sync(server, charter.get().roster());
+			charter.get().roster().forEach(member -> HandbookSyncPayload.send(server, member));
 		}
 	}
 
@@ -179,9 +179,5 @@ public final class HandbookProgress {
 		List<String> list = new ArrayList<>();
 		criteria.forEach(list::add);
 		return list;
-	}
-
-	private static void sync(MinecraftServer server, Iterable<UUID> players) {
-		players.forEach(player -> HandbookSyncPayload.send(server, player));
 	}
 }
