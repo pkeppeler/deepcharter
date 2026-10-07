@@ -7,11 +7,33 @@
 	"environment": "*",
 	"entrypoints": {
 		"fabric-gametest": [
-			"io.github.pkeppeler.deepcharter.test.DeepCharterGameTest"
+			"io.github.pkeppeler.deepcharter.test.DeepCharterGameTest",
+			"io.github.pkeppeler.deepcharter.test.MockPlayersTest",
+			"io.github.pkeppeler.deepcharter.test.FeatureCommandsTest",
+			"io.github.pkeppeler.deepcharter.test.LayerDimensionsTest",
+			"io.github.pkeppeler.deepcharter.test.PodShellTest",
+			"io.github.pkeppeler.deepcharter.test.BreachCrossingTest",
+			"io.github.pkeppeler.deepcharter.test.PodMovementTest",
+			"io.github.pkeppeler.deepcharter.test.PodDrillTest",
+			"io.github.pkeppeler.deepcharter.test.PodCargoFuelTest",
+			"io.github.pkeppeler.deepcharter.test.ScanSliceTest"
 		],
 		"fabric-client-gametest": [
 			"io.github.pkeppeler.deepcharter.test.DeepCharterClientGameTest",
-			"io.github.pkeppeler.deepcharter.test.evidence.CameraTurnScenario"
+			"io.github.pkeppeler.deepcharter.test.TwoPlayerClientTest",
+			"io.github.pkeppeler.deepcharter.test.PodShellClientTest",
+			"io.github.pkeppeler.deepcharter.test.BreachCrossingClientTest",
+			"io.github.pkeppeler.deepcharter.test.PodMovementClientTest",
+			"io.github.pkeppeler.deepcharter.test.PodDrillClientTest",
+			"io.github.pkeppeler.deepcharter.test.BreachHudTest",
+			"io.github.pkeppeler.deepcharter.test.ScannerHudTest",
+			"io.github.pkeppeler.deepcharter.test.evidence.CameraTurnScenario",
+			"io.github.pkeppeler.deepcharter.test.evidence.PodShellScenario",
+			"io.github.pkeppeler.deepcharter.test.evidence.PodDriveScenario",
+			"io.github.pkeppeler.deepcharter.test.evidence.PodDrillScenario",
+			"io.github.pkeppeler.deepcharter.test.evidence.ScannerHudScenario",
+			"io.github.pkeppeler.deepcharter.test.evidence.BreachCrossingScenario",
+			"io.github.pkeppeler.deepcharter.test.evidence.TwoPodsScenario"
 		]
 	},
 	"depends": {
