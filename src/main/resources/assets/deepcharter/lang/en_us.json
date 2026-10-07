@@ -4,6 +4,8 @@
   "commands.deepcharter.pod.spawn.success": "Spawned a pod",
   "deepcharter.layer.goto.no_such_layer": "No layer %s: the chain has %s layers",
   "deepcharter.layer.goto.success": "Moved to layer %s",
+  "deepcharter.pod.dump.no_pod": "You are not riding a pod",
+  "deepcharter.pod.dump.success": "Dumped %s ore",
   "entity.deepcharter.pod": "Pod",
   "hud.deepcharter.pod.cargo": "Cargo %s",
   "hud.deepcharter.pod.depth": "Y %s",
