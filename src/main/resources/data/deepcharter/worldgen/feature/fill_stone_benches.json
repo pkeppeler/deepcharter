@@ -1,0 +1,28 @@
+{
+  "type": "deepcharter:zone_fill",
+  "zone": 1,
+  "ores": [
+    {
+      "block": "deepcharter:ironium_ore",
+      "chance": 0.02
+    },
+    {
+      "block": "deepcharter:bronzium_ore",
+      "chance": 0.024
+    },
+    {
+      "block": "deepcharter:silverium_ore",
+      "chance": 0.005
+    },
+    {
+      "block": "deepcharter:goldium_ore",
+      "chance": 0.001
+    }
+  ],
+  "hazards": [
+    {
+      "block": "deepcharter:company_rock",
+      "chance": 0.02
+    }
+  ]
+}

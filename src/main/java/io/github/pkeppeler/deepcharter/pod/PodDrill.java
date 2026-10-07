@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.layer.BreachService;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 
 /**
@@ -152,7 +153,8 @@ public final class PodDrill {
 				if (level.isOutsideBuildHeight(pos) || pos.getY() >= level.getMaxY()) {
 					return false;
 				}
-				if (breakable(state) && (state.getDestroySpeed(level, pos) < 0 || state.is(LayerBlocks.BREACH_CRUST) && !crustLeadsOn())) {
+				if (breakable(state) && (state.getDestroySpeed(level, pos) < 0 || state.is(HazardBlocks.UNDIGGABLE)
+						|| state.is(LayerBlocks.BREACH_CRUST) && !crustLeadsOn())) {
 					return false;
 				}
 			}
