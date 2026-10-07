@@ -10,16 +10,25 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.state.BlockBehaviour;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 
-/** Registers the handbook item, the {@code deepcharter:directive} criterion, the read-marks attachment, the chapters and the sync. */
+/** Registers the handbook item, the Note block, the {@code deepcharter:directive} criterion, the read-marks attachment, the chapters and the sync. */
 public final class HandbookRegistry {
 	public static final Identifier HANDBOOK_ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook");
 
 	public static final Item HANDBOOK = registerHandbook();
+
+	public static final Identifier NOTE_ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "note");
+
+	/** A Note lying in the world, with its item. Unbreakable in survival: it is a find, not a resource. */
+	public static final Block NOTE = registerNote();
 
 	public static final DirectiveTrigger DIRECTIVE_TRIGGER = Registry.register(BuiltInRegistries.TRIGGER_TYPES,
 			Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "directive"), new DirectiveTrigger());
@@ -41,7 +50,17 @@ public final class HandbookRegistry {
 		ServerLifecycleEvents.SERVER_STARTED.register(HandbookChapters::validate);
 		HandbookProgress.register();
 		HandbookReadPayload.register();
+		Notes.register();
 		HandbookItems.register();
+	}
+
+	private static Block registerNote() {
+		ResourceKey<Block> blockKey = ResourceKey.create(Registries.BLOCK, NOTE_ID);
+		Block block = Registry.register(BuiltInRegistries.BLOCK, blockKey, new NoteBlock(BlockBehaviour.Properties.of().setId(blockKey)
+				.strength(-1.0F, 3600000.0F).sound(SoundType.WOOL).noOcclusion().noLootTable()));
+		ResourceKey<Item> itemKey = ResourceKey.create(Registries.ITEM, NOTE_ID);
+		Registry.register(BuiltInRegistries.ITEM, itemKey, new BlockItem(block, new Item.Properties().setId(itemKey).useBlockDescriptionPrefix()));
+		return block;
 	}
 
 	private static Item registerHandbook() {

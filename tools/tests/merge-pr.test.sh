@@ -33,12 +33,19 @@ case "$1 $2" in
       isDraft) echo "${STUB_DRAFT-false}" ;;
       headRefName) echo "${STUB_BRANCH-12-some-slug}" ;;
       body) printf '%s\n' "${STUB_BODY-Closes #12}" ;;
-      labels) echo "${STUB_LABELS-infra
+      labels)
+        [[ ${STUB_LABELS_FAIL-0} == 1 ]] && exit 1
+        echo "${STUB_LABELS-infra
 review-passed}" ;;
       comments) echo "\"${STUB_COMMENT-review-passed ${STUB_SHA-abc123}}\"" ;;
       mergeable) echo "${STUB_MERGEABLE-MERGEABLE}" ;;
     esac ;;
   "api repos/"*)
+    if [[ $2 == */pulls/*/files* ]]; then
+      [[ ${STUB_FILES_FAIL-0} == 1 ]] && exit 1
+      printf '%s' "${STUB_FILES-}"
+      exit 0
+    fi
     echo "${STUB_RUNS-$DEFAULT_RUNS}"
     exit "${STUB_RUNS_RC:-0}" ;;
   "pr merge") touch "$LOG.merged"; exit "${STUB_MERGE_RC:-0}" ;;
@@ -49,6 +56,12 @@ cat >"$work/bin/git" <<'STUB'
 #!/usr/bin/env bash
 echo "git $*" >>"$LOG"
 case "$1" in
+  fetch) [[ ${STUB_FETCH_FAIL-0} == 1 ]] && exit 1 ;;
+  ls-tree)
+    [[ ${STUB_MAIN_ADRS_FAIL-0} == 1 ]] && exit 1
+    printf '%s' "${STUB_MAIN_ADRS-docs/adr/0007-seven.md
+docs/adr/0018-eighteen.md
+}" ;;
   remote) echo "${STUB_ORIGIN-git@github.com:pkeppeler/deepcharter.git}" ;;
   cat-file) [[ ${STUB_ROADMAP_PRESENT-1} == 1 ]] || exit 1 ;;
   worktree) if [[ $2 == add ]]; then mkdir -p "$4"; fi ;;
@@ -82,6 +95,20 @@ runs() {
     concl=$st
     if [[ $st == in_progress || $st == queued ]]; then status=$st; concl=; fi
     printf '%s\t2026-01-01T00:00:%02dZ\t%s\t%s\t%s\n' "$n" "$i" "$i" "$status" "$concl"
+  done
+}
+
+# files <status:path[:previous]>...: fake PR file lines as the script's --jq prints
+# them (status, path, previous path or empty), one per line.
+files() {
+  local spec status rest path previous
+  for spec in "$@"; do
+    status=${spec%%:*}
+    rest=${spec#*:}
+    path=${rest%%:*}
+    previous=
+    [[ $rest == *:* ]] && previous=${rest#*:}
+    printf '%s\t%s\t%s\n' "$status" "$path" "$previous"
   done
 }
 
@@ -173,6 +200,94 @@ More text." "Closes #12 and Closes #12" "Closes: #12"; do
 done
 run_script "STUB_BODY=See #13. Closes #12" STUB_BRANCH=12-x
 exited "mention of another issue without a keyword is fine" 0
+
+# ADR numbers: a PR may not ADD docs/adr/NNNN-*.md when NNNN is already on
+# origin/main (any slug). Main's default ADRs are 0007 and 0018; next free is 0019.
+adr_msg="adds docs/adr/0007-new-slug.md but ADR 0007 already exists on origin/main (docs/adr/0007-seven.md); the next free number is 0019"
+refusal "ADR number clash" "$adr_msg" "STUB_FILES=$(files added:docs/adr/0007-new-slug.md)"
+refusal "ADR clash beside other files" "ADR 0007 already exists" \
+  "STUB_FILES=$(files modified:README.md added:docs/adr/0007-new-slug.md)"
+refusal "ADR rename to a number held by a different ADR" "ADR 0007 already exists" \
+  "STUB_FILES=$(files renamed:docs/adr/0007-new-slug.md:docs/adr/0018-eighteen.md)"
+refusal "two added ADRs with one new number" "adds docs/adr/0019-b.md but also adds docs/adr/0019-a.md with ADR 0019" \
+  "STUB_FILES=$(files added:docs/adr/0019-a.md added:docs/adr/0019-b.md)"
+run_script "STUB_FILES=$(files renamed:docs/adr/0018-renamed.md:docs/adr/0018-eighteen.md)"
+exited "same-number ADR rename merges" 0
+run_script "STUB_FILES=$(files removed:docs/adr/0018-eighteen.md added:docs/adr/0018-new.md)"
+exited "removed ADR and added ADR of the same number merges" 0
+refusal "next free number counts the PR's own ADRs" "the next free number is 0021" \
+  "STUB_FILES=$(files added:docs/adr/0020-mine.md added:docs/adr/0007-new-slug.md)"
+refusal "ADR file list unreadable" "could not read its changed files" STUB_FILES_FAIL=1
+refusal "origin/main fetch fails" "could not read the ADR list on origin/main" STUB_FETCH_FAIL=1
+refusal "origin/main ADR list unreadable" "could not read the ADR list on origin/main" STUB_MAIN_ADRS_FAIL=1
+refusal "origin/main ADR list empty" "could not read the ADR list on origin/main" STUB_MAIN_ADRS=
+run_script "STUB_FILES=$(files added:docs/adr/0019-free.md)"
+exited "new ADR with a free number merges" 0
+logged "ADR merge invocation" "$merge_line"
+logged "ADR list read from origin/main" "git ls-tree --name-only origin/main docs/adr/"
+run_script "STUB_FILES=$(files added:README.md modified:tools/merge-pr.sh)"
+exited "PR with no ADR merges" 0
+run_script STUB_FILES=
+exited "PR with no files merges" 0
+run_script "STUB_FILES=$(files added:docs/adr/README.md added:docs/adr/0007-seven.md.bak added:docs/adr/sub/0007-x.md)"
+exited "non-ADR files under docs/adr merge" 0
+run_script "STUB_FILES=$(files modified:docs/adr/0007-seven.md removed:docs/adr/0018-eighteen.md)"
+exited "PR modifying or removing an existing ADR merges" 0
+
+# Demo gate: in-game code (src/main/, src/client/, src/lang/) needs the `demo` label plus an
+# embedded pr-media/7/ image, or the `no-demo` label plus a `No demo:` line.
+# Embedded pr-media needs the `demo` label. Default labels: infra, review-passed.
+game=$(files modified:src/main/java/Foo.java)
+nl=$'\n'
+gif="Closes #12${nl}![demo](https://github.com/pkeppeler/deepcharter/blob/pr-media/7/run.gif?raw=true)"
+png="Closes #12${nl}![shot](https://github.com/pkeppeler/deepcharter/blob/pr-media/7/shot.png?raw=true)"
+demo_labels="infra${nl}review-passed${nl}demo"
+nodemo_labels="infra${nl}review-passed${nl}no-demo"
+refusal "in-game change with no demo" "changes in-game code (src/main/java/Foo.java) with no demo" "STUB_FILES=$game"
+refusal "refusal names the recorder" "tools/record-evidence.sh" "STUB_FILES=$game"
+refusal "refusal names the no-demo fix" "label it 'no-demo' and add a body line 'No demo: <reason>'" "STUB_FILES=$game"
+refusal "client change with no demo" "changes in-game code (src/client/java/Bar.java)" \
+  "STUB_FILES=$(files modified:README.md added:src/client/java/Bar.java)"
+refusal "assets change with no demo" "changes in-game code (src/main/resources/assets/x/lang/en_us.json)" \
+  "STUB_FILES=$(files modified:src/main/resources/assets/x/lang/en_us.json)"
+refusal "lang fragment change with no demo" "changes in-game code (src/lang/en_us/x.json)" \
+  "STUB_FILES=$(files modified:src/lang/en_us/x.json)"
+refusal "no-demo reason empty under CRLF" "no 'No demo: <reason>' line" "STUB_FILES=$game" "STUB_LABELS=$nodemo_labels" \
+  "STUB_BODY=Closes #12"$'\r'"${nl}No demo:"$'\r'
+refusal "rename out of in-game code with no demo" "changes in-game code" \
+  "STUB_FILES=$(files renamed:docs/Foo.java:src/main/java/Foo.java)"
+refusal "demo label without media" "label but its body embeds no pr-media/7/" "STUB_FILES=$game" "STUB_LABELS=$demo_labels"
+refusal "demo label with other PR's media" "embeds no pr-media/7/" "STUB_FILES=$game" "STUB_LABELS=$demo_labels" \
+  "STUB_BODY=Closes #12${nl}pr-media/8/run.gif"
+refusal "demo label with non-image media" "embeds no pr-media/7/" "STUB_FILES=$game" "STUB_LABELS=$demo_labels" \
+  "STUB_BODY=Closes #12${nl}pr-media/7/run.mp4"
+refusal "no-demo label without a reason line" "no 'No demo: <reason>' line" "STUB_FILES=$game" "STUB_LABELS=$nodemo_labels"
+refusal "no-demo reason line is empty" "no 'No demo: <reason>' line" "STUB_FILES=$game" "STUB_LABELS=$nodemo_labels" \
+  "STUB_BODY=Closes #12${nl}No demo:   "
+refusal "no-demo reason not at line start" "no 'No demo: <reason>' line" "STUB_FILES=$game" "STUB_LABELS=$nodemo_labels" \
+  "STUB_BODY=Closes #12${nl}- No demo: tooling only"
+refusal "both demo and no-demo labels" "both the 'demo' and 'no-demo' labels" "STUB_FILES=$game" \
+  "STUB_LABELS=$demo_labels${nl}no-demo" "STUB_BODY=$gif${nl}No demo: x"
+refusal "media without the demo label" "embeds pr-media media but lacks the 'demo' label" "STUB_BODY=$gif"
+refusal "media without the demo label on in-game change" "embeds pr-media media but lacks the 'demo' label" \
+  "STUB_BODY=$png" "STUB_FILES=$game" "STUB_LABELS=$nodemo_labels"
+refusal "demo label lookalike does not count" "with no demo" "STUB_FILES=$game" "STUB_LABELS=infra${nl}review-passed${nl}demos"
+refusal "labels unreadable" "has no readable labels" "STUB_FILES=$game" STUB_LABELS_FAIL=1
+run_script "STUB_FILES=$game" "STUB_LABELS=$demo_labels" "STUB_BODY=$gif"
+exited "in-game change with demo label and gif merges" 0
+logged "demo merge invocation" "$merge_line"
+run_script "STUB_FILES=$game" "STUB_LABELS=$demo_labels" "STUB_BODY=$png"
+exited "in-game change with demo label and png merges" 0
+run_script "STUB_FILES=$game" "STUB_LABELS=$nodemo_labels" "STUB_BODY=Closes #12${nl}No demo: logic only, nothing visible."
+exited "in-game change with no-demo reason merges" 0
+run_script "STUB_FILES=$game" "STUB_LABELS=$nodemo_labels" "STUB_BODY=Closes #12"$'\r'"${nl}No demo: logic only"$'\r'
+exited "no-demo reason line with CRLF merges" 0
+run_script "STUB_FILES=$(files modified:src/client/java/Bar.java)" "STUB_LABELS=$demo_labels" "STUB_BODY=$gif"
+exited "client change with demo merges" 0
+run_script "STUB_LABELS=$demo_labels" "STUB_BODY=$gif"
+exited "non-game PR with demo label and media merges" 0
+run_script "STUB_FILES=$(files modified:tools/merge-pr.sh added:src/test/java/T.java added:src/mainly/x.java)"
+exited "non-game files need no demo" 0
 
 refusal "missing label" "REFUSED: PR #7 lacks the review-passed label" STUB_LABELS=infra
 refusal "no labels at all" "REFUSED: PR #7 lacks the review-passed label" STUB_LABELS=
