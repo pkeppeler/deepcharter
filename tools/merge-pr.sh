@@ -120,6 +120,7 @@ main_adrs=$(git ls-tree --name-only origin/main docs/adr/) || main_adrs=
 adr_re='^docs/adr/([0-9]{4})-[^/]+\.md$'
 vacated=$'\n'
 added_adrs=()
+max_adr=0
 while IFS=$'\t' read -r status path previous; do
   if [[ $status == removed ]]; then
     vacated+="$path"$'\n'
@@ -129,18 +130,14 @@ while IFS=$'\t' read -r status path previous; do
   [[ $status == added || $status == renamed ]] || continue
   [[ $path =~ $adr_re ]] || continue
   added_adrs+=("$path")
+  max_adr=$((10#${BASH_REMATCH[1]} > max_adr ? 10#${BASH_REMATCH[1]} : max_adr))
 done <<<"$pr_files"
-max_adr=0
 kept_adrs=
 for path in $main_adrs; do
   [[ $path =~ $adr_re ]] || continue
   max_adr=$((10#${BASH_REMATCH[1]} > max_adr ? 10#${BASH_REMATCH[1]} : max_adr))
   [[ $vacated != *$'\n'"$path"$'\n'* ]] || continue
   kept_adrs+="$path"$'\n'
-done
-for path in ${added_adrs[@]+"${added_adrs[@]}"}; do
-  [[ $path =~ $adr_re ]]
-  max_adr=$((10#${BASH_REMATCH[1]} > max_adr ? 10#${BASH_REMATCH[1]} : max_adr))
 done
 next_free=$(printf '%04d' $((max_adr + 1)))
 seen=
