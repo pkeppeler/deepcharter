@@ -29,6 +29,7 @@ import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
+import io.github.pkeppeler.deepcharter.charter.CharterData;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
@@ -146,25 +147,31 @@ public class PodComponentsTest {
 	}
 
 	@GameTest
-	public void theMoleIsCappedAtTierTwoByAListenerThatRunsLast(GameTestHelper helper) {
+	public void aTierThreePartOnAMoleDoesExactlyWhatTierTwoDoes(GameTestHelper helper) {
 		CharterId charter = charter(helper);
-		PodEntity pod = ownedPod(helper, charter);
+		PodEntity capped = ownedPod(helper, charter);
+		PodEntity within = ownedPod(helper, charter);
 		try {
-			install(helper, pod, ComponentTrack.HULL, 3, charter);
-			install(helper, pod, ComponentTrack.CARGO_BAY, 4, charter);
-			install(helper, pod, ComponentTrack.SCANNER, 4, charter);
-			PodStats stats = PodStats.of(pod);
-			expectEqual(helper, "tier 3 hull on a Mole", 300f, stats.maxHull());
-			expectEqual(helper, "tier 4 bay on a Mole", 25f, stats.cargoSlots());
-			expectEqual(helper, "tier 4 scanner on a Mole", 2f, PodComponents.effectiveTier(pod, ComponentTrack.SCANNER));
-			expectEqual(helper, "the part itself keeps its tier", 3f, PodComponents.partOf(pod, ComponentTrack.HULL).orElseThrow().tier());
+			for (ComponentTrack track : new ComponentTrack[] {ComponentTrack.HULL, ComponentTrack.CARGO_BAY, ComponentTrack.FUEL_TANK,
+					ComponentTrack.ENGINE, ComponentTrack.DRILL}) {
+				install(helper, capped, track, 4, charter);
+				install(helper, within, track, 2, charter);
+			}
+			install(helper, capped, ComponentTrack.SCANNER, 4, charter);
+			if (!PodStats.of(capped).equals(PodStats.of(within))) {
+				throw failure(helper, "tier 4 parts on a Mole should give the stats of tier 2: %s against %s", PodStats.of(capped), PodStats.of(within));
+			}
+			expectEqual(helper, "tier 4 hull on a Mole", 300f, PodStats.of(capped).maxHull());
+			expectEqual(helper, "tier 4 scanner on a Mole", 2f, PodComponents.effectiveTier(capped, ComponentTrack.SCANNER));
+			expectEqual(helper, "the part itself keeps its tier", 4f, PodComponents.partOf(capped, ComponentTrack.HULL).orElseThrow().tier());
 
-			// A listener in the default phase that adds hull runs before the cap, so the cap limits that too.
-			pod.addTag(BOOSTED);
-			expectEqual(helper, "the cap sees what a default-phase listener added", 300f, PodStats.of(pod).maxHull());
+			// Another feature's bonus on the same track still counts: the cap limits the part, not the stat.
+			capped.addTag(BOOSTED);
+			expectEqual(helper, "a boost on a capped hull", 1300f, PodStats.of(capped).maxHull());
 			helper.succeed();
 		} finally {
-			pod.discard();
+			capped.discard();
+			within.discard();
 		}
 	}
 
@@ -355,8 +362,8 @@ public class PodComponentsTest {
 					|| PodComponents.effectiveTier(copy, ComponentTrack.HULL) != 0) {
 				throw failure(helper, "an unreadable state should read as nothing");
 			}
-			if (!PodEvents.canMount(copy, player.player())) {
-				throw failure(helper, "an unreadable owner is skipped, so the pod is not locked");
+			if (PodEvents.canMount(copy, player.player())) {
+				throw failure(helper, "a pod whose owner cannot be read must refuse every pilot");
 			}
 			// An explicit change fails loud instead of overwriting the kept data.
 			try {
@@ -468,6 +475,86 @@ public class PodComponentsTest {
 			if (pod != null) {
 				pod.discard();
 			}
+		}
+	}
+
+	@GameTest
+	public void aDormantOrMissingOwnerCharterLocksNobodyOut(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		MockPlayer director = MockPlayers.join(helper, "components-dormant-director");
+		MockPlayer stranger = MockPlayers.join(helper, "components-dormant-stranger");
+		PodEntity dormantPod = null;
+		PodEntity missingPod = null;
+		try {
+			expectNoRefusal(helper, Charters.found(server, director.player().getUUID(), "Dormant " + CHARTERS.incrementAndGet()));
+			CharterId owner = Charters.charterOf(server, director.player().getUUID()).orElseThrow().id();
+			dormantPod = ownedPod(helper, owner);
+			missingPod = ownedPod(helper, CharterId.random());
+			if (stranger.player().startRiding(dormantPod)) {
+				throw failure(helper, "a stranger must not board a pod of a charter that has people");
+			}
+			expectNoRefusal(helper, Charters.leave(server, director.player().getUUID()));
+			if (!Charters.find(server, owner).orElseThrow().dormant()) {
+				throw failure(helper, "the charter should be dormant now");
+			}
+			if (!stranger.player().startRiding(dormantPod)) {
+				throw failure(helper, "a pod of a dormant charter should be anyone's");
+			}
+			stranger.player().stopRiding();
+			if (!stranger.player().startRiding(missingPod)) {
+				throw failure(helper, "a pod of a charter that does not exist should be anyone's");
+			}
+			helper.succeed();
+		} finally {
+			director.leave();
+			stranger.leave();
+			if (dormantPod != null) {
+				dormantPod.discard();
+			}
+			if (missingPod != null) {
+				missingPod.discard();
+			}
+		}
+	}
+
+	@GameTest
+	public void registeringAPodWithPartsAlreadyInstalledKeepsLitresAndDamage(GameTestHelper helper) {
+		CharterId charter = charter(helper);
+		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
+		try {
+			install(helper, pod, ComponentTrack.FUEL_TANK, 1, charter);
+			install(helper, pod, ComponentTrack.HULL, 1, charter);
+			pod.setFuel(60f);
+			pod.setHull(70f);
+			// Until now the parts were void. The owner makes them count: the tank grows and the hull grows.
+			PodComponents.register(pod, charter);
+			expectEqual(helper, "tank litres after registering", 15f, PodStats.of(pod).tankLitres());
+			expectEqual(helper, "fuel percent keeps the 6 litres", 40f, pod.fuel());
+			expectEqual(helper, "hull keeps the 30 points of damage", 140f, pod.hull());
+			helper.succeed();
+		} finally {
+			pod.discard();
+		}
+	}
+
+	@GameTest
+	public void unreadableSavedChartersAreSkippedWhenCheckingOwnership(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		MockPlayer player = MockPlayers.join(helper, "components-bad-charters");
+		PodEntity pod = ownedPod(helper, charter(helper));
+		CharterData good = CharterData.get(server);
+		try {
+			CompoundTag future = new CompoundTag();
+			future.putInt("version", 99);
+			server.getDataStorage().set(CharterData.TYPE, CharterData.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow());
+			if (!PodEvents.canMount(pod, player.player())) {
+				throw failure(helper, "with unreadable charters the owner cannot be checked, so the pod must not lock");
+			}
+			helper.succeed();
+		} finally {
+			server.getDataStorage().set(CharterData.TYPE, good);
+			player.leave();
+			pod.discard();
 		}
 	}
 

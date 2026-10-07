@@ -1,13 +1,14 @@
 package io.github.pkeppeler.deepcharter.pod;
 
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.WeakHashMap;
+import java.util.function.UnaryOperator;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -47,22 +48,22 @@ import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
  * breach with the pod.
  *
  * <p>Parts change the pod through {@link PodStats#MODIFY} and nothing else: a part's effect is added in
- * {@link PodStats#BASE}, and the chassis' tier cap is applied in {@link PodStats#CAP}, so it limits what every other listener
- * made, but only on the tracks where a part is above the cap. A part stamped with another charter than the pod's owner is
+ * {@link PodStats#BASE}, at the part's tier or the chassis' tier cap if that is lower, so the cap limits the part and never
+ * what other features add to the same stat. A part stamped with another charter than the pod's owner is
  * void (SPEC section 6): it stays installed and does nothing. A pod with no owner has no charter whose parts count, so all
  * of its parts are void.
  *
  * <p>Only the owner charter's members can pilot a pod ({@link PodEvents#CAN_MOUNT}). Anyone can refuel it ({@link PodFuel}
  * asks nobody) and, from #76, tow it. A pod with no owner, such as one spawned by a command, is anyone's.
  *
- * <p>The listeners run on every tick and on the client, so they never throw on an unreadable state: they log once and read
- * it as an unowned pod with no parts. {@link #register} and {@link #install} are explicit changes and do throw.
+ * <p>The listeners run on every tick and on the client, so they never throw on an unreadable state: they log once, read it
+ * as a pod with no parts, and refuse every pilot, because the owner is unknown. {@link #register} and {@link #install} are explicit changes and do throw.
  */
 public final class PodComponents {
 	public static final int VERSION = 1;
 
 	/** Pods whose unreadable state has been logged, so a tick path logs once for each pod and not once for each tick. */
-	private static final Set<UUID> UNREADABLE_LOGGED = ConcurrentHashMap.newKeySet();
+	private static final Set<PodEntity> UNREADABLE_LOGGED = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
 	private static volatile boolean chartersUnreadableLogged;
 
 	/** A pod's owner charter and its serial number. */
@@ -127,14 +128,6 @@ public final class PodComponents {
 			float value = read.apply(stats);
 			return write.apply(stats, lowerIsBetter ? value / ratio : value * ratio);
 		}
-
-		/** {@code stats}, with this stat held to what the stock pod would reach with a part of {@code ratio}. */
-		PodStats limit(PodStats stats, PodStats stock, float ratio) {
-			float ceiling = read.apply(scale(stock, ratio));
-			float value = read.apply(stats);
-			boolean beyond = lowerIsBetter ? value < ceiling : value > ceiling;
-			return beyond ? write.apply(stats, ceiling) : stats;
-		}
 	}
 
 	/** The stats of each track. The radiator, scanner and lights move none: they are read through {@link #effectiveTier}. */
@@ -159,7 +152,6 @@ public final class PodComponents {
 
 	public static void init() {
 		PodStats.MODIFY.register(PodStats.BASE, PodComponents::applyParts);
-		PodStats.MODIFY.register(PodStats.CAP, PodComponents::capTiers);
 		PodEvents.CAN_MOUNT.register(PodComponents::canMount);
 	}
 
@@ -183,6 +175,11 @@ public final class PodComponents {
 		if (label == null || !counts(state, label)) {
 			return 0;
 		}
+		return cappedTier(pod, label);
+	}
+
+	/** The one place a chassis' tier cap applies: the tier a counted part works at. */
+	private static int cappedTier(PodEntity pod, PartLabel label) {
 		return Math.min(label.tier(), UpgradeTuning.DEFAULT.tierCap(pod.chassis().id()));
 	}
 
@@ -196,15 +193,14 @@ public final class PodComponents {
 			throw new IllegalStateException("pod " + pod.getUUID() + " is already registered");
 		}
 		String serial = Serials.get(server).next(pod.chassis().id().toUpperCase(Locale.ROOT));
-		Versioned.modify(pod, STATE, state -> new State(Optional.of(new Registration(owner, serial)), state.parts()));
+		change(pod, state -> new State(Optional.of(new Registration(owner, serial)), state.parts()));
 	}
 
 	/**
 	 * Server only: installs the part in the stack, over the part of its track that is there, and returns that one. The stack is
 	 * left alone: whoever installs it takes it. A stack that is not a labelled part throws.
 	 *
-	 * <p>A part of another charter installs and then does nothing. Fuel and hull follow the change: a new tank keeps the
-	 * litres the pod holds (the stored percent is rescaled, ADR 0010), and a bigger hull keeps the damage the pod has taken.
+	 * <p>A part of another charter installs and then does nothing. Fuel and hull follow the change, see {@link #change}.
 	 */
 	public static Optional<PartLabel> install(PodEntity pod, ItemStack stack) {
 		requireServer(pod);
@@ -214,8 +210,18 @@ public final class PodComponents {
 				.orElseThrow(() -> new IllegalArgumentException("pod part has no label: " + stack));
 		track.requirePartTier(label.tier());
 		Optional<PartLabel> replaced = Optional.ofNullable(Versioned.require(pod, STATE).parts().get(track));
+		change(pod, state -> state.with(track, label));
+		return replaced;
+	}
+
+	/**
+	 * Changes the state, and keeps what the pod holds while its stats move: a new tank keeps the litres (the stored percent is
+	 * rescaled, ADR 0010), and a bigger hull keeps the damage taken. Registering an owner can change the stats too, because
+	 * it makes the parts installed before it count.
+	 */
+	private static void change(PodEntity pod, UnaryOperator<State> change) {
 		PodStats before = PodStats.of(pod);
-		Versioned.modify(pod, STATE, state -> state.with(track, label));
+		Versioned.modify(pod, STATE, change);
 		PodStats after = PodStats.of(pod);
 		if (after.tankLitres() != before.tankLitres()) {
 			float full = PodTuning.DEFAULT.shell().fullFuel();
@@ -225,7 +231,6 @@ public final class PodComponents {
 			// A pod with no hull left is a wreck (#67), and a part must not repair it. setHull holds the result to the new maximum.
 			pod.setHull(pod.hull() + Math.max(0f, after.maxHull() - before.maxHull()));
 		}
-		return replaced;
 	}
 
 	private static PodStats applyParts(PodEntity pod, PodStats stats) {
@@ -236,7 +241,7 @@ public final class PodComponents {
 			if (axes.isEmpty() || !counts(state, part.getValue())) {
 				continue;
 			}
-			float ratio = UpgradeTuning.DEFAULT.ratio(part.getKey(), part.getValue().tier());
+			float ratio = UpgradeTuning.DEFAULT.ratio(part.getKey(), cappedTier(pod, part.getValue()));
 			for (Axis axis : axes) {
 				result = axis.scale(result, ratio);
 			}
@@ -244,38 +249,28 @@ public final class PodComponents {
 		return result;
 	}
 
-	private static PodStats capTiers(PodEntity pod, PodStats stats) {
-		State state = read(pod);
-		int cap = UpgradeTuning.DEFAULT.tierCap(pod.chassis().id());
-		PodStats stock = PodStats.base();
-		PodStats result = stats;
-		for (Map.Entry<ComponentTrack, PartLabel> part : state.parts().entrySet()) {
-			List<Axis> axes = AXES.get(part.getKey());
-			// Only a part above the cap is limited, so a stat that no such part touches keeps what other features made of it.
-			if (axes.isEmpty() || part.getValue().tier() <= cap || !counts(state, part.getValue())) {
-				continue;
-			}
-			float ratio = UpgradeTuning.DEFAULT.ratio(part.getKey(), cap);
-			for (Axis axis : axes) {
-				result = axis.limit(result, stock, ratio);
-			}
-		}
-		return result;
-	}
-
 	private static boolean canMount(PodEntity pod, Entity passenger) {
+		if (pod.getAttached(STATE) instanceof Versioned.Unreadable<State>) {
+			// Who owns the pod is unknown, and an unknown owner is not everyone: refuse. read() logs it once.
+			read(pod);
+			return false;
+		}
 		Optional<Registration> registration = read(pod).registration();
 		if (registration.isEmpty() || !(passenger instanceof ServerPlayer player)) {
 			return true;
 		}
 		MinecraftServer server = player.level().getServer();
 		try {
+			Optional<Charter> owner = Charters.find(server, registration.get().owner());
+			// A charter that is gone or has nobody left cannot crew its pods, so they must not stay locked.
+			if (owner.isEmpty() || owner.get().dormant()) {
+				return true;
+			}
 			Optional<Charter> charter = Charters.charterOf(server, player.getUUID());
 			if (charter.isPresent() && charter.get().id().equals(registration.get().owner())) {
 				return true;
 			}
-			String owner = Charters.find(server, registration.get().owner()).map(Charter::name).orElse("?");
-			player.sendSystemMessage(Component.translatable("message.deepcharter.pod.not_crew", registration.get().serial(), owner), true);
+			player.sendSystemMessage(Component.translatable("message.deepcharter.pod.not_crew", registration.get().serial(), owner.get().name()), true);
 			return false;
 		} catch (IllegalStateException unreadable) {
 			// The saved charters are of a version this build cannot read, so there is no owner to check against: skip the check.
@@ -298,8 +293,8 @@ public final class PodComponents {
 			case null -> State.EMPTY;
 			case Versioned.Readable<State> readable -> readable.value();
 			case Versioned.Unreadable<State> unreadable -> {
-				if (UNREADABLE_LOGGED.add(pod.getUUID())) {
-					DeepCharter.LOGGER.error("Pod {} has components saved as version {}, which this build cannot read: it runs as an unowned pod with stock parts and keeps the saved data",
+				if (UNREADABLE_LOGGED.add(pod)) {
+					DeepCharter.LOGGER.error("Pod {} has components saved as version {}, which this build cannot read: it runs with stock parts, nobody can pilot it, and the saved data is kept",
 							pod.getUUID(), unreadable.version());
 				}
 				yield State.EMPTY;
