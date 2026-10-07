@@ -5,6 +5,7 @@
 # labelled `review-passed` with a `review-passed <head sha>` comment for the
 # current head (see tools/mark-review-passed.sh), closes exactly its branch's
 # issue (the body's Closes/Fixes/Resolves #N set is {N} for branch `<N>-<slug>`),
+# adds no docs/adr/NNNN-*.md whose NNNN is already on origin/main (any slug) or twice in the PR,
 # mergeable, and every check is
 # `pass` or `skipping` (at least one check, and all of REQUIRED_CHECKS passing). A
 # check's state is its newest non-skipped run, so a later skipped run cannot hide
@@ -105,6 +106,49 @@ for required in "${REQUIRED_CHECKS[@]}"; do
     refuse "has a required check that was only skipped: $required"
   fi
   refuse "lacks required check: $required"
+done
+
+# A PR may not ADD docs/adr/NNNN-*.md when NNNN is already on origin/main (parallel
+# PRs pick numbers on their own), or twice among its own added ADRs. A path the PR
+# vacates (renamed away or removed) no longer holds its number. Fail closed: an
+# unreadable list refuses.
+pr_files=$(gh api "repos/$repo/pulls/$pr/files?per_page=100" --paginate \
+  --jq '.[] | [.status, .filename, (.previous_filename // "")] | @tsv') || refuse "could not read its changed files"
+git fetch origin main >/dev/null 2>&1 || refuse "could not read the ADR list on origin/main (fetch failed)"
+main_adrs=$(git ls-tree --name-only origin/main docs/adr/) || main_adrs=
+[[ -n $main_adrs ]] || refuse "could not read the ADR list on origin/main"
+adr_re='^docs/adr/([0-9]{4})-[^/]+\.md$'
+vacated=$'\n'
+added_adrs=()
+max_adr=0
+while IFS=$'\t' read -r status path previous; do
+  if [[ $status == removed ]]; then
+    vacated+="$path"$'\n'
+  elif [[ $status == renamed && -n $previous ]]; then
+    vacated+="$previous"$'\n'
+  fi
+  [[ $status == added || $status == renamed ]] || continue
+  [[ $path =~ $adr_re ]] || continue
+  added_adrs+=("$path")
+  max_adr=$((10#${BASH_REMATCH[1]} > max_adr ? 10#${BASH_REMATCH[1]} : max_adr))
+done <<<"$pr_files"
+kept_adrs=
+for path in $main_adrs; do
+  [[ $path =~ $adr_re ]] || continue
+  max_adr=$((10#${BASH_REMATCH[1]} > max_adr ? 10#${BASH_REMATCH[1]} : max_adr))
+  [[ $vacated != *$'\n'"$path"$'\n'* ]] || continue
+  kept_adrs+="$path"$'\n'
+done
+next_free=$(printf '%04d' $((max_adr + 1)))
+seen=
+for path in ${added_adrs[@]+"${added_adrs[@]}"}; do
+  [[ $path =~ $adr_re ]]
+  number=${BASH_REMATCH[1]}
+  clash=$(grep -E "^docs/adr/$number-" <<<"$kept_adrs" | head -1 || true)
+  [[ -z $clash ]] || refuse "adds $path but ADR $number already exists on origin/main ($clash); the next free number is $next_free"
+  twin=$(grep -E "^docs/adr/$number-" <<<"$seen" | head -1 || true)
+  [[ -z $twin ]] || refuse "adds $path but also adds $twin with ADR $number; the next free number is $next_free"
+  seen+="$path"$'\n'
 done
 
 # gh can merge on GitHub and then fail on local cleanup (branch checked out in a
