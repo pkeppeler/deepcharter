@@ -15,15 +15,11 @@ import net.minecraft.world.level.block.state.BlockState;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 
-/**
- * Placeholder pod model: a slab of raw copper block under the rider, as wide as the hitbox. It follows
- * vanilla's TntRenderer: extract copies the entity into a render state, submit draws that state.
- * The real model replaces this.
- */
+/** Placeholder model, following vanilla's TntRenderer: extract copies the entity to a render state, submit draws it. */
 public class PodRenderer extends EntityRenderer<PodEntity, PodRenderState> {
 	private static final BlockDisplayContext DISPLAY_CONTEXT = BlockDisplayContext.create();
 	private static final BlockState HULL_BLOCK = Blocks.RAW_COPPER_BLOCK.defaultBlockState();
-	/** The slab is as tall as the seat is high, so the rider sits on it. */
+	// As tall as the seat is high, so the rider sits on it.
 	private static final float SLAB_HEIGHT = 0.9f;
 
 	private final BlockModelResolver blockModelResolver;

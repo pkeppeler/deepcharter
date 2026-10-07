@@ -1,8 +1,17 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -28,6 +37,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 
 /** Server GameTests for pod spawn, mount, dismount, seats and save/load. */
 public class PodShellTest {
+	private static final int EXPECTED_DATA_FIELDS = 8;
 	private static final Input SNEAK = new Input(false, false, false, false, false, true, false);
 
 	@GameTest
@@ -139,6 +149,9 @@ public class PodShellTest {
 		pod.setStranded(true);
 		pod.setCargoUsed(7);
 		pod.setCargoMass(41.5f);
+		pod.setFlying(true);
+		pod.setDrilling(true);
+		pod.setDrillDirection(Direction.NORTH);
 		TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
 		pod.saveWithoutId(output);
 		pod.discard();
@@ -157,6 +170,9 @@ public class PodShellTest {
 				throw helper.assertionException("pod data did not survive save and load: hull %s fuel %s stranded %s cargo %s/%s",
 						copy.hull(), copy.fuel(), copy.stranded(), copy.cargoUsed(), copy.cargoMass());
 			}
+			if (copy.flying() || copy.drilling() || copy.drillDirection() != Direction.DOWN) {
+				throw helper.assertionException("flying, drilling and drill direction are transient and must reset on load");
+			}
 			helper.succeed();
 		} finally {
 			loaded.discard();
@@ -164,14 +180,62 @@ public class PodShellTest {
 	}
 
 	@GameTest
-	public void everyDataFieldIsDeclaredInPodData(GameTestHelper helper) {
-		// Data ids are assigned in class-init order: one class, so client and server cannot disagree.
-		for (var field : PodEntity.class.getDeclaredFields()) {
+	public void everyDataFieldIsDeclaredInPodData(GameTestHelper helper) throws Exception {
+		// Data ids are assigned in class-init order: one class, so the client and server cannot disagree.
+		List<Integer> ids = new ArrayList<>();
+		for (Field field : PodData.class.getDeclaredFields()) {
 			if (field.getType() == EntityDataAccessor.class) {
-				throw helper.assertionException("PodEntity declares synced data %s; declare it in PodData", field.getName());
+				ids.add(((EntityDataAccessor<?>) field.get(null)).id());
+			}
+		}
+		Collections.sort(ids);
+		if (ids.size() != EXPECTED_DATA_FIELDS) {
+			throw helper.assertionException("PodData should declare %d fields, found %d", EXPECTED_DATA_FIELDS, ids.size());
+		}
+		for (int i = 1; i < ids.size(); i++) {
+			if (ids.get(i) != ids.get(i - 1) + 1) {
+				throw helper.assertionException("PodData ids should be consecutive, got %s", ids);
+			}
+		}
+		Path podPackage = Path.of(PodEntity.class.getResource("PodEntity.class").toURI()).getParent();
+		try (var classes = Files.list(podPackage)) {
+			for (Path file : classes.filter(f -> f.toString().endsWith(".class")).toList()) {
+				String name = file.getFileName().toString();
+				Class<?> type = Class.forName(PodEntity.class.getPackageName() + "." + name.substring(0, name.length() - ".class".length()));
+				if (type == PodData.class) {
+					continue;
+				}
+				for (Field field : type.getDeclaredFields()) {
+					if (field.getType() == EntityDataAccessor.class) {
+						throw helper.assertionException("%s declares synced data %s; declare it in PodData", type.getSimpleName(), field.getName());
+					}
+				}
 			}
 		}
 		helper.succeed();
+	}
+
+	@GameTest
+	public void loadingASavedPodWithoutHullFails(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
+		TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
+		pod.saveWithoutId(output);
+		pod.discard();
+		CompoundTag tag = output.buildResult();
+		tag.remove("hull");
+		try {
+			EntityType.create(PodRegistry.POD, TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), tag),
+					level, EntitySpawnReason.LOAD).ifPresent(Entity::discard);
+		} catch (RuntimeException expected) {
+			// Entity.load wraps what readAdditionalSaveData throws in a crash report.
+			if (!(expected.getCause() instanceof IllegalStateException)) {
+				throw expected;
+			}
+			helper.succeed();
+			return;
+		}
+		throw helper.assertionException("a saved pod without a hull must not load as a full tank");
 	}
 
 	@GameTest

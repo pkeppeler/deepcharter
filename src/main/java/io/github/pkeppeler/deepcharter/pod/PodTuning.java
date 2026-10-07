@@ -8,7 +8,7 @@ package io.github.pkeppeler.deepcharter.pod;
 public record PodTuning(Shell shell, Movement movement, Drill drill, Cargo cargo, Fuel fuel) {
 	public static final PodTuning DEFAULT = new PodTuning(Shell.DEFAULT, Movement.DEFAULT, Drill.DEFAULT, Cargo.DEFAULT, Fuel.DEFAULT);
 
-	/** Filled by #27: the gauges a new pod starts with. Hull and fuel are percentages of a full pod. */
+	/** Gauges a new pod starts with, as percentages. */
 	public record Shell(float fullHull, float fullFuel) {
 		public static final Shell DEFAULT = new Shell(100f, 100f);
 	}

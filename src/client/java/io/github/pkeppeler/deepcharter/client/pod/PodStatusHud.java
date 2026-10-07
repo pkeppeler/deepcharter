@@ -15,11 +15,7 @@ import net.minecraft.resources.Identifier;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 
-/**
- * Text readout of the pod the player is riding: hull, fuel, cargo and depth, down the left edge.
- * It is plain text on purpose: the real HUD design comes later, and every value here is already
- * synced data, so it only changes how they are drawn.
- */
+/** Plain text readout of the ridden pod; the real HUD design comes later. */
 public final class PodStatusHud {
 	private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "pod_status");
 	private static final int MARGIN = 4;
@@ -32,7 +28,7 @@ public final class PodStatusHud {
 		HudElementRegistry.addLast(ID, PodStatusHud::extract);
 	}
 
-	/** The lines the HUD shows for a pod. Public so that tests can check them without reading pixels. */
+	/** Public so tests can check the text without reading pixels. */
 	public static List<Component> lines(PodEntity pod) {
 		List<Component> lines = new ArrayList<>();
 		lines.add(Component.translatable("hud.deepcharter.pod.hull", Math.round(pod.hull())));

@@ -14,10 +14,7 @@ public final class PodRegistry {
 	private static final ResourceKey<EntityType<?>> POD_KEY =
 			ResourceKey.create(Registries.ENTITY_TYPE, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "pod"));
 
-	/**
-	 * The pod. The hitbox is the Mole's. A rider's feet sit 0.9 above the pod's, at its middle
-	 * and above its hull. Position updates go out every tick, because a pod moves fast.
-	 */
+	// Seat 0.9 up: the rider sits on the hull. Updates every tick because pods move fast.
 	public static final EntityType<PodEntity> POD = Registry.register(
 			BuiltInRegistries.ENTITY_TYPE,
 			POD_KEY,
