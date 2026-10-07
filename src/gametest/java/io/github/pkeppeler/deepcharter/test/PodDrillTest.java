@@ -10,6 +10,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
@@ -17,7 +18,8 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.pod.PodCargo;
+import io.github.pkeppeler.deepcharter.ore.OreRegistry;
+import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodDrill;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -243,8 +245,8 @@ public class PodDrillTest {
 		int floor = 60;
 		ServerLevel level = layer(helper, 1);
 		room(level, x, floor, 4);
-		level.setBlock(new BlockPos(x - 1, floor - 1, Z - 1), Blocks.IRON_ORE.defaultBlockState(), 3);
-		level.setBlock(new BlockPos(x, floor - 1, Z), Blocks.DIAMOND_ORE.defaultBlockState(), 3);
+		level.setBlock(new BlockPos(x - 1, floor - 1, Z - 1), OreRegistry.block(OreType.IRONIUM).defaultBlockState(), 3);
+		level.setBlock(new BlockPos(x, floor - 1, Z), OreRegistry.block(OreType.EINSTEINIUM).defaultBlockState(), 3);
 		Rig rig = Rig.build(helper, level, new Vec3(x, floor, Z), 0f, "drill-ore");
 		rig.pilot.setInput(SPRINT);
 		helper.onEachTick(() -> {
@@ -252,9 +254,9 @@ public class PodDrillTest {
 				return;
 			}
 			rig.pilot.releaseInput();
-			List<Block> kept = rig.pod.cargo().entries().stream().map(PodCargo.Entry::ore).toList();
-			if (kept.size() != 2 || !kept.contains(Blocks.IRON_ORE) || !kept.contains(Blocks.DIAMOND_ORE)) {
-				throw failure(helper, "cargo should hold exactly the iron and the diamond ore, it holds %s", kept);
+			List<Item> kept = rig.pod.cargo().entries().stream().map(entry -> entry.stack().getItem()).toList();
+			if (kept.size() != 2 || !kept.contains(OreRegistry.item(OreType.IRONIUM)) || !kept.contains(OreRegistry.item(OreType.EINSTEINIUM))) {
+				throw failure(helper, "cargo should hold exactly the Ironium and the Einsteinium, it holds %s", kept);
 			}
 			if (rig.pod.cargoUsed() != 2) {
 				throw failure(helper, "the synced cargo count is %d, expected 2", rig.pod.cargoUsed());
@@ -270,11 +272,11 @@ public class PodDrillTest {
 		int floor = 60;
 		ServerLevel level = layer(helper, 1);
 		room(level, x, floor, 4);
-		level.setBlock(new BlockPos(x, floor - 1, Z), Blocks.DIAMOND_ORE.defaultBlockState(), 3);
+		level.setBlock(new BlockPos(x, floor - 1, Z), OreRegistry.block(OreType.EINSTEINIUM).defaultBlockState(), 3);
 		Rig rig = Rig.build(helper, level, new Vec3(x, floor, Z), 0f, "drill-full");
 		int slots = PodTuning.DEFAULT.cargo().slots();
 		for (int i = 0; i < slots; i++) {
-			if (!rig.pod.cargo().tryAdd(rig.pod, Blocks.COAL_ORE)) {
+			if (!rig.pod.cargo().tryAdd(rig.pod, OreRegistry.stack(OreType.BRONZIUM))) {
 				throw failure(helper, "could not fill slot %d of %d", i, slots);
 			}
 		}
@@ -284,9 +286,9 @@ public class PodDrillTest {
 				return;
 			}
 			rig.pilot.releaseInput();
-			List<Block> kept = rig.pod.cargo().entries().stream().map(PodCargo.Entry::ore).toList();
-			if (rig.pod.cargoUsed() != slots || kept.size() != slots || kept.contains(Blocks.DIAMOND_ORE)) {
-				throw failure(helper, "a full bay must keep its %d coal and lose the diamond, it holds %s", slots, kept);
+			List<Item> kept = rig.pod.cargo().entries().stream().map(entry -> entry.stack().getItem()).toList();
+			if (rig.pod.cargoUsed() != slots || kept.size() != slots || kept.contains(OreRegistry.item(OreType.EINSTEINIUM))) {
+				throw failure(helper, "a full bay must keep its %d Bronzium and lose the Einsteinium, it holds %s", slots, kept);
 			}
 			rig.pod.discard();
 			helper.succeed();

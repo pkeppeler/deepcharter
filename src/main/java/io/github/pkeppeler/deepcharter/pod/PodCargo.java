@@ -8,50 +8,74 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.level.block.Block;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 
 import com.mojang.brigadier.context.CommandContext;
 
+import net.fabricmc.fabric.api.event.player.UseEntityCallback;
+
 import io.github.pkeppeler.deepcharter.command.FeatureCommands;
+import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
+import io.github.pkeppeler.deepcharter.ore.OreRegistry;
+import io.github.pkeppeler.deepcharter.ore.OreType;
 
 /**
- * A pod's cargo bay: ore entries, one per slot, each with a mass. Ore is a cargo entry, not an item, for now.
- * The synced {@link PodData#CARGO_USED} and {@link PodData#CARGO_MASS} mirror the entries; only this class writes them.
+ * A pod's cargo bay: ore items, one per slot, each with a mass. Only the mod's ore is cargo: a vanilla ore or any
+ * other stack is refused. The synced {@link PodData#CARGO_USED} and {@link PodData#CARGO_MASS} mirror the entries;
+ * only this class writes them.
  */
 public final class PodCargo {
 	private static final String CARGO_KEY = "cargo";
 
-	/** One ore in one slot. */
-	public record Entry(Block ore, float mass) {
+	/** One ore in one slot. The stack is the ore item; the mass is what it adds to the pod's cargo mass. */
+	public record Entry(ItemStack stack, float mass) {
 		static final Codec<Entry> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-				BuiltInRegistries.BLOCK.byNameCodec().fieldOf("ore").forGetter(Entry::ore),
+				ItemStack.CODEC.fieldOf("stack").forGetter(Entry::stack),
 				Codec.FLOAT.fieldOf("mass").forGetter(Entry::mass)).apply(instance, Entry::new));
 
 		public Entry {
+			if (OreRegistry.typeOf(stack).isEmpty()) {
+				throw new IllegalArgumentException("only ore is cargo, not " + stack);
+			}
 			if (!(mass >= 0f)) {
 				throw new IllegalArgumentException("ore mass must be a number, not negative: " + mass);
 			}
+			stack = stack.copy();
+		}
+
+		/** The stack is mutable and has no value equality of its own, so compare what it holds. */
+		@Override
+		public boolean equals(Object other) {
+			return other instanceof Entry entry && mass == entry.mass && ItemStack.matches(stack, entry.stack);
+		}
+
+		@Override
+		public int hashCode() {
+			return 31 * ItemStack.hashItemAndComponents(stack) + Float.hashCode(mass);
 		}
 	}
 
 	private final List<Entry> entries = new ArrayList<>();
 
-	/** Server only: adds one ore of the default mass if a slot is free, and returns whether it did. */
-	public boolean tryAdd(PodEntity pod, Block ore) {
-		return tryAdd(pod, ore, PodTuning.DEFAULT.cargo().defaultOreMass());
+	/** Server only: adds one ore at its real mass if a slot is free, and returns whether it did. Anything but ore throws. */
+	public boolean tryAdd(PodEntity pod, ItemStack ore) {
+		return tryAdd(pod, ore, OreRegistry.typeOf(ore).map(OreType::mass)
+				.orElseThrow(() -> new IllegalArgumentException("only ore is cargo, not " + ore)));
 	}
 
-	/** Server only: adds one ore of the given mass (not negative) if a slot is free, and returns whether it did. */
-	public boolean tryAdd(PodEntity pod, Block ore, float mass) {
+	/** Server only: adds one ore at the given mass (not negative) if a slot is free, and returns whether it did. */
+	public boolean tryAdd(PodEntity pod, ItemStack ore, float mass) {
 		requireOwnServerPod(pod);
+		Entry entry = new Entry(ore, mass);
 		if (entries.size() >= PodTuning.DEFAULT.cargo().slots()) {
 			return false;
 		}
-		entries.add(new Entry(ore, mass));
+		entries.add(entry);
 		sync(pod);
 		return true;
 	}
@@ -110,6 +134,15 @@ public final class PodCargo {
 		FeatureCommands.register("pod", root -> root.then(Commands.literal("dump")
 				.requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
 				.executes(PodCargo::dumpRiddenPod)));
+		UseEntityCallback.EVENT.register((player, level, hand, entity, hit) -> {
+			if (!(entity instanceof PodEntity pod) || !player.isSecondaryUseActive() || player.isSpectator()) {
+				return InteractionResult.PASS;
+			}
+			if (player instanceof ServerPlayer serverPlayer) {
+				OreCargoMenu.open(serverPlayer, pod);
+			}
+			return InteractionResult.SUCCESS;
+		});
 	}
 
 	private static int dumpRiddenPod(CommandContext<CommandSourceStack> context) {

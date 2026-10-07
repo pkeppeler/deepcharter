@@ -10,5 +10,6 @@ public final class OreInit {
 
 	public static void init() {
 		OreRegistry.register();
+		OreEncumbrance.init();
 	}
 }

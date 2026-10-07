@@ -31,6 +31,8 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
 
+import io.github.pkeppeler.deepcharter.ore.OreRegistry;
+import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodCargo;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodFuel;
@@ -97,14 +99,14 @@ public class PodCargoFuelTest {
 		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
 		try {
 			for (int i = 0; i < CARGO.slots(); i++) {
-				if (!pod.cargo().tryAdd(pod, Blocks.IRON_ORE, 1f)) {
+				if (!pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM), 1f)) {
 					throw helper.assertionException("ore %s of %s should fit", i + 1, CARGO.slots());
 				}
 			}
 			if (CARGO.slots() != 7 || pod.cargoUsed() != 7) {
 				throw helper.assertionException("the bay should have 7 slots, all used, got %s slots and %s used", CARGO.slots(), pod.cargoUsed());
 			}
-			if (pod.cargo().tryAdd(pod, Blocks.GOLD_ORE, 1f)) {
+			if (pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.GOLDIUM), 1f)) {
 				throw helper.assertionException("a full bay must refuse another ore");
 			}
 			if (pod.cargoUsed() != 7 || pod.cargoMass() != 7f || pod.cargo().entries().size() != 7) {
@@ -120,10 +122,10 @@ public class PodCargoFuelTest {
 	public void everyOreAddsItsMass(GameTestHelper helper) {
 		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
 		try {
-			pod.cargo().tryAdd(pod, Blocks.IRON_ORE, 3f);
-			pod.cargo().tryAdd(pod, Blocks.DIAMOND_ORE, 30f);
-			pod.cargo().tryAdd(pod, Blocks.COAL_ORE);
-			float expected = 3f + 30f + CARGO.defaultOreMass();
+			pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM), 3f);
+			pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.EINSTEINIUM), 30f);
+			pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.BRONZIUM));
+			float expected = 3f + 30f + OreType.BRONZIUM.mass();
 			if (pod.cargoMass() != expected || pod.cargoUsed() != 3) {
 				throw helper.assertionException("mass should be %s over 3 slots, got %s over %s", expected, pod.cargoMass(), pod.cargoUsed());
 			}
@@ -137,7 +139,7 @@ public class PodCargoFuelTest {
 	public void massExactlyAtTheLimitCannotLift(GameTestHelper helper) {
 		PodEntity pod = spawnPod(helper, 0);
 		MockPlayer pilot = seatPilot(helper, pod);
-		pod.cargo().tryAdd(pod, Blocks.DIAMOND_ORE, TAKEOFF_MASS_LIMIT);
+		pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.EINSTEINIUM), TAKEOFF_MASS_LIMIT);
 		double startY = pod.getY();
 		pilot.setInput(JUMP);
 		helper.runAfterDelay(20, () -> {
@@ -168,8 +170,8 @@ public class PodCargoFuelTest {
 		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
 		PodEntity copy = helper.spawn(PodRegistry.POD, 4, 2, 2);
 		try {
-			pod.cargo().tryAdd(pod, Blocks.IRON_ORE, 4f);
-			pod.cargo().tryAdd(pod, Blocks.GOLD_ORE, 6f);
+			pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM), 4f);
+			pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.GOLDIUM), 6f);
 			CompoundTag tag = savedPod(level, pod);
 			// Stale or tampered counts from an older format must not matter.
 			tag.putInt("cargo_used", 7);
@@ -210,7 +212,7 @@ public class PodCargoFuelTest {
 		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
 		try {
 			for (int i = 0; i < CARGO.slots(); i++) {
-				pod.cargo().tryAdd(pod, Blocks.IRON_ORE, 1f);
+				pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM), 1f);
 			}
 			CompoundTag tag = savedPod(level, pod);
 			ListTag list = tag.getListOrEmpty("cargo");
@@ -234,13 +236,13 @@ public class PodCargoFuelTest {
 		try {
 			boolean crossed = false;
 			try {
-				pod.cargo().tryAdd(other, Blocks.IRON_ORE, 1f);
+				pod.cargo().tryAdd(other, OreRegistry.stack(OreType.IRONIUM), 1f);
 			} catch (IllegalArgumentException expected) {
 				crossed = true;
 			}
 			boolean nan = false;
 			try {
-				pod.cargo().tryAdd(pod, Blocks.IRON_ORE, Float.NaN);
+				pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM), Float.NaN);
 			} catch (IllegalArgumentException expected) {
 				nan = true;
 			}
@@ -279,8 +281,8 @@ public class PodCargoFuelTest {
 	public void dumpCommandEmptiesCargoAndRestoresLift(GameTestHelper helper) {
 		PodEntity pod = spawnPod(helper, 0);
 		MockPlayer pilot = seatPilot(helper, pod);
-		pod.cargo().tryAdd(pod, Blocks.DIAMOND_ORE, TAKEOFF_MASS_LIMIT + 10f);
-		pod.cargo().tryAdd(pod, Blocks.DIAMOND_ORE, 1f);
+		pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.EINSTEINIUM), TAKEOFF_MASS_LIMIT + 10f);
+		pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.EINSTEINIUM), 1f);
 		try {
 			int result = helper.getLevel().getServer().getCommands().getDispatcher()
 					.execute("deepcharter pod dump", source(pilot, LevelBasedPermissionSet.GAMEMASTER));
@@ -309,7 +311,7 @@ public class PodCargoFuelTest {
 	public void dumpCommandRefusesANonOp(GameTestHelper helper) {
 		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
 		MockPlayer pilot = seatPilot(helper, pod);
-		pod.cargo().tryAdd(pod, Blocks.IRON_ORE, 1f);
+		pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM), 1f);
 		try {
 			boolean refused = false;
 			try {
@@ -377,8 +379,8 @@ public class PodCargoFuelTest {
 		MockPlayer pilot = seatPilot(helper, pod);
 		// Past the limit but under the engine power: the rotor spins (flying) yet the pod cannot climb.
 		float each = (TAKEOFF_MASS_LIMIT + 10f) / 2;
-		pod.cargo().tryAdd(pod, Blocks.DIAMOND_ORE, each);
-		pod.cargo().tryAdd(pod, Blocks.DIAMOND_ORE, each);
+		pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.EINSTEINIUM), each);
+		pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.EINSTEINIUM), each);
 		double startY = pod.getY();
 		pilot.setInput(JUMP);
 		helper.runAfterDelay(15, () -> {
@@ -408,7 +410,7 @@ public class PodCargoFuelTest {
 	public void justUnderTheLimitStillLifts(GameTestHelper helper) {
 		PodEntity pod = spawnPod(helper, 0);
 		MockPlayer pilot = seatPilot(helper, pod);
-		pod.cargo().tryAdd(pod, Blocks.DIAMOND_ORE, TAKEOFF_MASS_LIMIT - 10f);
+		pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.EINSTEINIUM), TAKEOFF_MASS_LIMIT - 10f);
 		double startY = pod.getY();
 		pilot.setInput(JUMP);
 		helper.runAfterDelay(40, () -> {
@@ -427,9 +429,9 @@ public class PodCargoFuelTest {
 	public void cargoSurvivesSaveAndLoad(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
-		pod.cargo().tryAdd(pod, Blocks.IRON_ORE, 3f);
-		pod.cargo().tryAdd(pod, Blocks.GOLD_ORE, 6f);
-		pod.cargo().tryAdd(pod, Blocks.DIAMOND_ORE, 30f);
+		pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM), 3f);
+		pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.GOLDIUM), 6f);
+		pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.EINSTEINIUM), 30f);
 		List<PodCargo.Entry> before = List.copyOf(pod.cargo().entries());
 		TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
 		pod.saveWithoutId(output);
