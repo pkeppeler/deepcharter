@@ -1,0 +1,5 @@
+{
+  "block.deepcharter.breach_crust": "Breach Crust",
+  "deepcharter.layer.goto.success": "Moved to layer %s",
+  "deepcharter.layer.goto.no_such_layer": "No layer %s: the chain has %s layers"
+}

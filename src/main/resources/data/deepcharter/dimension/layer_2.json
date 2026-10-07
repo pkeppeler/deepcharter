@@ -1,0 +1,22 @@
+{
+  "type": "deepcharter:layer_2",
+  "generator": {
+    "type": "minecraft:flat",
+    "settings": {
+      "biome": "minecraft:plains",
+      "features": true,
+      "lakes": false,
+      "layers": [
+        {
+          "block": "deepcharter:breach_crust",
+          "height": 3
+        },
+        {
+          "block": "minecraft:stone",
+          "height": 130
+        }
+      ],
+      "structure_overrides": []
+    }
+  }
+}
