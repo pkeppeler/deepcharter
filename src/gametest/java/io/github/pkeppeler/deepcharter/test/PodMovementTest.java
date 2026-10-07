@@ -12,6 +12,7 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodMovement;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -261,7 +262,7 @@ public class PodMovementTest {
 		try {
 			pod.setCargoMass(-1f);
 			try {
-				PodMovement.tick(pod);
+				PodMovement.tick(pod, PodStats.of(pod));
 			} catch (IllegalStateException expected) {
 				helper.succeed();
 				return;

@@ -17,6 +17,8 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
 
+import io.github.pkeppeler.deepcharter.DeepCharter;
+
 /** A pod: a vehicle with seats and no walkable interior (ADR 0004). Part logic hooks in through tick() and the accessors. */
 public class PodEntity extends Entity {
 	private static final String CHASSIS_KEY = "chassis";
@@ -51,16 +53,35 @@ public class PodEntity extends Entity {
 		drillProgress = progress;
 	}
 
+	/** Hull points left. At most {@link #maxHull} after any change here; a pod loaded with more keeps it until the next change. */
 	public float hull() {
 		return entityData.get(PodData.HULL);
 	}
 
+	/** The most hull the pod can have, from its stats. */
+	public float maxHull() {
+		return PodStats.of(this).maxHull();
+	}
+
+	/** Sets the hull, held between 0 and {@link #maxHull}. A NaN is a bug in the caller, so it throws. */
 	public void setHull(float hull) {
+		if (Float.isNaN(hull)) {
+			throw new IllegalArgumentException("pod hull must be a number");
+		}
 		float before = hull();
-		entityData.set(PodData.HULL, hull);
-		if (before > 0f && hull <= 0f && !level().isClientSide()) {
+		float clamped = Math.max(0f, Math.min(hull, maxHull()));
+		entityData.set(PodData.HULL, clamped);
+		if (before > 0f && clamped <= 0f && !level().isClientSide()) {
 			PodEvents.HULL_DEPLETED.invoker().onHullDepleted(this);
 		}
+	}
+
+	/** Takes {@code damage} (not negative) off the hull; reaching 0 fires {@link PodEvents#HULL_DEPLETED}. */
+	public void damageHull(float damage) {
+		if (!(damage >= 0f)) {
+			throw new IllegalArgumentException("pod hull damage must be a number, not negative, got " + damage);
+		}
+		setHull(hull() - damage);
 	}
 
 	public float fuel() {
@@ -128,7 +149,12 @@ public class PodEntity extends Entity {
 	protected void readAdditionalSaveData(ValueInput input) {
 		chassis = Chassis.byId(required(input, CHASSIS_KEY, Codec.STRING));
 		// Not setHull: loading a pod that has no hull left is not the hull running out.
-		entityData.set(PodData.HULL, required(input, HULL_KEY, Codec.FLOAT));
+		float hull = required(input, HULL_KEY, Codec.FLOAT);
+		if (!Float.isFinite(hull) || hull < 0f) {
+			DeepCharter.LOGGER.error("Pod {} was saved with hull {}, which is not a hull: it loads with none", getUUID(), hull);
+			hull = 0f;
+		}
+		entityData.set(PodData.HULL, hull);
 		setFuel(required(input, FUEL_KEY, Codec.FLOAT));
 		setStranded(required(input, STRANDED_KEY, Codec.BOOL));
 		// Flying, drilling and the drill direction are transient: a loaded pod starts idle.
@@ -155,13 +181,17 @@ public class PodEntity extends Entity {
 	@Override
 	public void tick() {
 		super.tick();
-		// Movement first so drilling sees the new position; fuel last so it sees what the pod did.
-		PodMovement.tick(this);
-		PodDrill.tick(this);
-		PodFuel.tick(this);
-		if (!level().isClientSide()) {
-			PodEvents.AFTER_TICK.invoker().afterTick(this);
+		// Everything a pod does on its own is the server's: clients only see the result.
+		if (level().isClientSide()) {
+			return;
 		}
+		// One snapshot of the stats for the whole tick, so the three parts agree on what the pod is.
+		PodStats stats = PodStats.of(this);
+		// Movement first so drilling sees the new position; fuel last so it sees what the pod did.
+		PodMovement.tick(this, stats);
+		PodDrill.tick(this, stats);
+		PodFuel.tick(this, stats);
+		PodEvents.AFTER_TICK.invoker().afterTick(this);
 	}
 
 	@Override

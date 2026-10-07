@@ -110,7 +110,7 @@ public final class PodCargo {
 		requireOwnServerPod(pod);
 		requireReadable(pod);
 		Entry entry = new Entry(ore, mass);
-		if (entries.size() >= PodTuning.DEFAULT.cargo().slots()) {
+		if (entries.size() >= PodStats.of(pod).cargoSlots()) {
 			return false;
 		}
 		entries.add(entry);
@@ -212,11 +212,9 @@ public final class PodCargo {
 			sync(pod);
 			return;
 		}
+		// Not checked against the slots: the bay's size is a stat that other features change, and a pod whose bay
+		// shrank since it was saved must still load. A bay over its size refuses ore until it is under it again.
 		entries.addAll(decoded);
-		if (entries.size() > PodTuning.DEFAULT.cargo().slots()) {
-			throw new IllegalStateException("saved cargo has " + entries.size() + " ore, the bay holds "
-					+ PodTuning.DEFAULT.cargo().slots());
-		}
 		sync(pod);
 	}
 
