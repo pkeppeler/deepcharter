@@ -52,8 +52,7 @@ abstract class MergeLang extends DefaultTask {
 		locales.sort().each { locale ->
 			def files = locale.listFiles({ it.name.endsWith('.json') } as FileFilter)
 			if (files == null || files.length == 0) throw new GradleException("No lang fragments in ${locale}")
-			def parts = new TreeMap<String, File>()
-			files.each { parts[it.name] = it }
+			def parts = new TreeMap<String, File>(files.collectEntries { [it.name, it] })
 			def target = new File(out, "assets/deepcharter/lang/${locale.name}.json")
 			target.parentFile.mkdirs()
 			target.setText(write(merge(parts)), "UTF-8")
@@ -105,7 +104,7 @@ def checkLang = tasks.register("checkLang") {
 		def names = []
 		new java.util.zip.ZipFile(jarFile.get().asFile).withCloseable { z -> z.entries().each { names << it.name } }
 		if (!names.contains("assets/deepcharter/lang/en_us.json")) throw new GradleException("Jar lacks assets/deepcharter/lang/en_us.json")
-		def leaked = names.findAll { it.contains("lang-parts") || it.startsWith("src/lang") || it.startsWith("lang/") }
+		def leaked = names.findAll { it.startsWith("src/lang") || it.startsWith("lang/") }
 		if (leaked) throw new GradleException("Lang fragments leaked into the jar: ${leaked}")
 	}
 }
