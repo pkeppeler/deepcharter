@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.market;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -49,13 +50,15 @@ public final class OreProcessor {
 		if (pods.isEmpty()) {
 			return Optional.of(Component.translatable("deepcharter.market.refusal.no_pod"));
 		}
-		List<PodEntity> readable = pods.stream().filter(pod -> pod.cargo().isReadable()).toList();
-		int skipped = pods.size() - readable.size();
+		List<PodEntity> readable = new ArrayList<>();
 		for (PodEntity pod : pods) {
-			if (!pod.cargo().isReadable() && SKIPPED_LOGGED.add(pod)) {
+			if (pod.cargo().isReadable()) {
+				readable.add(pod);
+			} else if (SKIPPED_LOGGED.add(pod)) {
 				DeepCharter.LOGGER.error("Pod {}: cargo unreadable, not sold", pod.getUUID());
 			}
 		}
+		int skipped = pods.size() - readable.size();
 		if (readable.isEmpty()) {
 			return Optional.of(Component.translatable("deepcharter.market.refusal.unreadable_cargo"));
 		}
@@ -102,9 +105,9 @@ public final class OreProcessor {
 		if (count == 0) {
 			return Optional.of(Component.translatable("deepcharter.market.refusal.nothing_to_sell"));
 		}
-		Optional<CharterRefusal> refusal = Charters.deposit(context.server(), charter.id(), total);
+		Optional<Component> refusal = Charters.deposit(context.server(), charter.id(), total).map(CharterRefusal::message);
 		if (refusal.isPresent()) {
-			return Optional.of(refusal.get().message());
+			return refusal;
 		}
 		ServerPlayer player = context.player();
 		player.sendOverlayMessage(skipped == 0 ? Component.translatable("deepcharter.market.sold", count, total)
