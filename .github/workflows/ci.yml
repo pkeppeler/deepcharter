@@ -46,6 +46,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # build-audio-pack.test.sh needs ffmpeg. It makes its own synthetic tones; CI never
+      # has, reads or needs the original game audio.
+      - name: install ffmpeg
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
       - run: python3 -I -m unittest discover -s tools/tests -p 'test_*.py'
       - name: bash tool tests
         run: |

@@ -1,0 +1,53 @@
+{
+	"pod.engine_idle": { "sounds": [{ "name": "minecraft:block.beacon.ambient", "type": "event" }] },
+	"pod.engine_drive": { "sounds": [{ "name": "minecraft:entity.minecart.riding", "type": "event" }] },
+	"pod.engine_drill_side": { "sounds": [{ "name": "minecraft:block.grindstone.use", "type": "event" }] },
+	"pod.engine_drill_down": { "sounds": [{ "name": "minecraft:block.grindstone.use", "type": "event", "pitch": 0.8 }] },
+	"pod.rotor": { "sounds": [{ "name": "minecraft:entity.bat.takeoff", "type": "event" }] },
+	"pod.transform_land": { "sounds": [{ "name": "minecraft:block.piston.extend", "type": "event" }] },
+	"pod.transform_launch": { "sounds": [{ "name": "minecraft:block.piston.contract", "type": "event" }] },
+	"pod.crash": { "sounds": [{ "name": "minecraft:block.anvil.land", "type": "event" }] },
+	"pod.explosion": { "sounds": [{ "name": "minecraft:entity.generic.explode", "type": "event" }] },
+
+	"drill.dig": { "sounds": [{ "name": "minecraft:block.stone.break", "type": "event" }] },
+	"drill.blocked": { "sounds": [{ "name": "minecraft:block.chain.hit", "type": "event" }] },
+	"drill.lava": { "sounds": [{ "name": "minecraft:block.lava.extinguish", "type": "event" }] },
+	"drill.dynamite": { "sounds": [{ "name": "minecraft:entity.tnt.primed", "type": "event" }] },
+	"drill.plastic": { "sounds": [{ "name": "minecraft:entity.generic.explode", "type": "event", "pitch": 0.7 }] },
+
+	"cargo.collect": { "sounds": [{ "name": "minecraft:entity.item.pickup", "type": "event" }] },
+	"cargo.jettison": { "sounds": [{ "name": "minecraft:entity.item.pickup", "type": "event", "pitch": 0.6 }] },
+	"cargo.full": { "sounds": [{ "name": "minecraft:block.note_block.bass", "type": "event" }] },
+
+	"fuel.low": { "sounds": [{ "name": "minecraft:block.note_block.pling", "type": "event" }] },
+	"fuel.refuel": { "sounds": [{ "name": "minecraft:item.bucket.fill_lava", "type": "event" }] },
+	"repair.nanobots": { "sounds": [{ "name": "minecraft:block.anvil.use", "type": "event" }] },
+
+	"breach.rumble": { "sounds": [{ "name": "minecraft:entity.ravager.step", "type": "event", "pitch": 0.5 }] },
+	"breach.cross": { "sounds": [{ "name": "minecraft:block.portal.travel", "type": "event", "volume": 0.3 }] },
+
+	"scanner.ping": { "sounds": [{ "name": "minecraft:block.note_block.chime", "type": "event" }] },
+	"scanner.sweep": { "sounds": [{ "name": "minecraft:block.sculk_sensor.clicking", "type": "event" }] },
+
+	"ui.typewriter": { "sounds": [{ "name": "minecraft:block.note_block.hat", "type": "event" }] },
+	"ui.hover": { "sounds": [{ "name": "minecraft:block.note_block.hat", "type": "event", "pitch": 1.5 }] },
+	"ui.select": { "sounds": [{ "name": "minecraft:ui.button.click", "type": "event" }] },
+	"ui.confirm": { "sounds": [{ "name": "minecraft:block.note_block.bell", "type": "event" }] },
+	"ui.purchase": { "sounds": [{ "name": "minecraft:entity.experience_orb.pickup", "type": "event" }] },
+	"ui.sale": { "sounds": [{ "name": "minecraft:entity.villager.trade", "type": "event" }] },
+	"ui.error": { "sounds": [{ "name": "minecraft:block.note_block.didgeridoo", "type": "event" }] },
+	"ui.refused": { "sounds": [{ "name": "minecraft:entity.villager.no", "type": "event" }] },
+
+	"terminal.power_on": { "sounds": [{ "name": "minecraft:block.beacon.activate", "type": "event" }] },
+	"terminal.teleport": { "sounds": [{ "name": "minecraft:entity.enderman.teleport", "type": "event" }] },
+
+	"transmission.incoming": { "sounds": [{ "name": "minecraft:block.note_block.bit", "type": "event" }] },
+	"transmission.menace": { "sounds": [{ "name": "minecraft:entity.wither.ambient", "type": "event" }] },
+
+	"mothership.arrive": { "sounds": [{ "name": "minecraft:entity.phantom.swoop", "type": "event" }] },
+	"mothership.idle": { "sounds": [{ "name": "minecraft:block.beacon.ambient", "type": "event", "pitch": 0.6 }] },
+	"mothership.leave": { "sounds": [{ "name": "minecraft:entity.firework_rocket.launch", "type": "event" }] },
+
+	"alarm.fuel_critical": { "sounds": [{ "name": "minecraft:block.note_block.pling", "type": "event", "pitch": 1.5 }] },
+	"alarm.hull_critical": { "sounds": [{ "name": "minecraft:block.note_block.bass", "type": "event", "pitch": 0.6 }] }
+}

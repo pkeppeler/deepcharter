@@ -1,0 +1,67 @@
+# Sound event id -> source file names in original_flash_game/extracted/sounds.
+# One line per event: the id, then one or more file names (several = variants, the game picks one).
+# Ids and file names only. No audio ever goes in this file or in git.
+# Every id here must be a DeepSound in src/main/java/.../sound/DeepSound.java (SoundEventsTest checks it).
+
+# Pod engine and movement
+pod.engine_idle        1993_idle_100.wav.mp3
+pod.engine_drive       1999_idle_130.wav.mp3
+pod.engine_drill_side  1997_idle_120.wav.mp3
+pod.engine_drill_down  2003_idle_150.wav.mp3
+pod.rotor              2021_rotor_90.wav.mp3
+pod.transform_land     2039_transform.wav.mp3
+pod.transform_launch   2040_transform2.wav.mp3
+pod.crash              1975_crash2.wav.mp3
+pod.explosion          1423_explosion.wav.mp3
+
+# Drill
+drill.dig              1978_drill_100.wav.mp3 1979_drill_101.wav.mp3 1980_drill_102.wav.mp3 1981_drill_103.wav.mp3 1982_drill_104.wav.mp3
+drill.blocked          1971_clink.wav.mp3
+drill.lava             2006_lava.wav.mp3
+drill.dynamite         1986_dynamite2.wav.mp3
+drill.plastic          1970_c42.wav.mp3
+
+# Cargo
+cargo.collect          1973_collect_mineral2.wav.flv
+cargo.jettison         2004_jettison.wav.mp3
+cargo.full             1989_error3.wav.mp3
+
+# Fuel and repair
+fuel.low               1992_fuelLow.wav.flv
+fuel.refuel            2014_refuel.wav.mp3
+repair.nanobots        2011_nanobots.wav.mp3
+
+# Breach and quakes
+breach.rumble          1070.mp3
+breach.cross           2007_mattertrans.wav.mp3
+
+# Scanner
+scanner.ping           1457.mp3
+scanner.sweep          2013_quantum.wav.mp3
+
+# UI and typewriter
+ui.typewriter          1974_computerTypeLetter.wav.mp3
+ui.hover               199_computerTypeLetter2.wav.mp3
+ui.select              200_selectUpgrade.wav.mp3
+ui.confirm             2038_select_upgrade2.wav.mp3
+ui.purchase            2012_purchase.wav.mp3
+ui.sale                2028_sale.wav.mp3
+ui.error               1987_error.wav.mp3
+ui.refused             1988_error2.wav.mp3
+
+# Terminals
+terminal.power_on      1457.mp3
+terminal.teleport      2013_quantum.wav.mp3
+
+# Transmissions
+transmission.incoming  2041_transmission.wav.mp3
+transmission.menace    2005_laugh.wav.mp3
+
+# Opening drop-off
+mothership.arrive      2008_mothershipArrive.wav.mp3
+mothership.idle        2009_mothershipIdle.wav.mp3
+mothership.leave       2010_mothershipLeave.wav.flv
+
+# Alarms
+alarm.fuel_critical    1992_fuelLow.wav.flv
+alarm.hull_critical    1988_error2.wav.mp3
