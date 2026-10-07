@@ -63,12 +63,10 @@ public final class MockPlayer {
 
 	/** Disconnect and remove the player. Safe to call when it has already left. */
 	public void leave() {
-		if (!isOnline()) {
-			MockPlayers.forget(this);
-			return;
+		if (isOnline()) {
+			connection.disconnect(Component.literal("mock player left"));
+			connection.handleDisconnection();
 		}
-		connection.disconnect(Component.literal("mock player left"));
-		connection.handleDisconnection();
 		MockPlayers.forget(this);
 	}
 

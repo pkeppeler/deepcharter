@@ -89,11 +89,7 @@ public final class TwoPlayerServer implements AutoCloseable {
 	@Override
 	public void close() {
 		try {
-			server.runOnServer(minecraftServer -> {
-				if (mock.isOnline()) {
-					mock.leave();
-				}
-			});
+			server.runOnServer(minecraftServer -> mock.leave());
 		} finally {
 			try {
 				connection.close();
