@@ -8,11 +8,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseFireBlock;
 
-/**
- * No dimension is a portal dimension, so a fire placed in an obsidian frame never makes a nether portal
- * (SPEC section 3). Flint and steel, fire charges, dispensers and spreading fire all end in
- * {@code BaseFireBlock.onPlace}, which asks this method first. A portal block placed by a command still works.
- */
+/** No dimension is a portal dimension (SPEC section 3), so a fire in an obsidian frame never lights a portal. */
 @Mixin(BaseFireBlock.class)
 public abstract class BaseFireBlockMixin {
 	@Inject(method = "inPortalDimension", at = @At("HEAD"), cancellable = true)

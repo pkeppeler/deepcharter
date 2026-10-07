@@ -45,8 +45,8 @@ public final class LayerChain {
 	}
 
 	/**
-	 * The layer (1-based) a dimension type belongs to; empty for any non-layer type, which is the
-	 * surface. A {@code deepcharter:layer_*} id that is not a positive number is a bug.
+	 * The layer (1-based) a dimension type belongs to; empty for any non-layer type: the surface, the
+	 * Nether or the End. A {@code deepcharter:layer_*} id that is not a positive number is a bug.
 	 */
 	public static OptionalInt layerOf(Identifier dimensionType) {
 		if (!dimensionType.getNamespace().equals(DeepCharter.MOD_ID) || !dimensionType.getPath().startsWith(PREFIX)) {

@@ -1,13 +1,26 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.net.URL;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import com.mojang.serialization.JsonOps;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
@@ -22,11 +35,13 @@ import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.vehicle.minecart.Minecart;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.portal.PortalShape;
 import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 import net.minecraft.world.level.levelgen.material.rule.MaterialRule;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.phys.Vec3;
 
+import io.github.pkeppeler.deepcharter.layer.BreachEvents;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
@@ -41,6 +56,16 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 public class SurfaceBreachTest {
 	/** Ticks a fall, once the chunk ticks, needs to cross a breach and be checked. */
 	private static final int CROSSING_TICKS = 200;
+	/** Crossings from layer 0 into layer 1 seen per entity UUID, so a test can tell the event fired for its player. */
+	private static final Map<UUID, Integer> FROM_SURFACE = new ConcurrentHashMap<>();
+
+	static {
+		BreachEvents.CROSSED.register((entity, from, to, fromLayer, toLayer) -> {
+			if (fromLayer == LayerChain.SURFACE && toLayer == 1) {
+				FROM_SURFACE.merge(entity.getUUID(), 1, Integer::sum);
+			}
+		});
+	}
 
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + CROSSING_TICKS)
 	public void fallingOutOfTheOverworldFloorArrivesInLayerOne(GameTestHelper helper) {
@@ -48,13 +73,15 @@ public class SurfaceBreachTest {
 		double z = 2500.5;
 		ServerLevel surface = surface(helper);
 		openShaft(surface, x, z);
-		keepLoaded(surface, x, z);
 		MockPlayer mock = MockPlayers.join(helper, "surface-falls");
 		mock.teleportTo(surface, new Vec3(x, surface.getMinY() + 6, z), 0, 0);
 		fallWhileIn(helper, mock, surface);
 		helper.succeedWhen(() -> {
 			ServerPlayer player = mock.player();
 			expectIn(helper, player, LayerChain.dimension(1));
+			if (FROM_SURFACE.getOrDefault(player.getUUID(), 0) != 1) {
+				throw failure(helper, "expected one CROSSED event from layer 0, saw %s", FROM_SURFACE.get(player.getUUID()));
+			}
 			if (Math.abs(player.getX() - x) > 0.5 || Math.abs(player.getZ() - z) > 0.5) {
 				throw failure(helper, "arrived at x=%s z=%s, expected %s %s", player.getX(), player.getZ(), x, z);
 			}
@@ -71,7 +98,6 @@ public class SurfaceBreachTest {
 		double z = 2600.5;
 		ServerLevel surface = surface(helper);
 		openShaft(surface, x, z);
-		keepLoaded(surface, x, z);
 		MockPlayer mock = MockPlayers.join(helper, "surface-rides");
 		double y = surface.getMinY() + 6;
 		mock.teleportTo(surface, new Vec3(x, y, z), 0, 0);
@@ -144,6 +170,36 @@ public class SurfaceBreachTest {
 		helper.succeed();
 	}
 
+	/** Our copy of the overworld rule must be vanilla's, with exactly the bedrock floor step removed. */
+	@GameTest
+	public void theOverworldRuleIsVanillasMinusTheBedrockFloor(GameTestHelper helper) throws IOException {
+		String path = "data/minecraft/worldgen/material_rule/overworld.json";
+		List<URL> copies = Collections.list(SurfaceBreachTest.class.getClassLoader().getResources(path));
+		URL vanilla = copies.stream().filter(url -> url.toString().contains("minecraft-") && url.toString().contains(".jar"))
+				.findFirst().orElseThrow(() -> failure(helper, "no copy of %s in the Minecraft jar among %s", path, copies));
+		URL ours = copies.stream().filter(url -> !url.equals(vanilla)).findFirst()
+				.orElseThrow(() -> failure(helper, "no deepcharter copy of %s among %s", path, copies));
+		JsonObject original = readJson(vanilla).getAsJsonObject();
+		JsonArray steps = original.getAsJsonArray("sequence");
+		JsonArray kept = new JsonArray();
+		int removed = 0;
+		for (JsonElement step : steps) {
+			if (step.equals(new JsonPrimitive("minecraft:bedrock_floor"))) {
+				removed++;
+			} else {
+				kept.add(step);
+			}
+		}
+		if (removed != 1) {
+			throw failure(helper, "vanilla's overworld rule has %d bedrock_floor steps, expected 1", removed);
+		}
+		original.add("sequence", kept);
+		if (!original.equals(readJson(ours))) {
+			throw failure(helper, "our overworld rule differs from vanilla's minus bedrock_floor (vanilla: %s, ours: %s)", vanilla, ours);
+		}
+		helper.succeed();
+	}
+
 	@GameTest
 	public void villagesOutpostsAndStrongholdsAreGone(GameTestHelper helper) {
 		var sets = helper.getLevel().registryAccess().lookupOrThrow(Registries.STRUCTURE_SET);
@@ -169,6 +225,10 @@ public class SurfaceBreachTest {
 			}
 		}
 		BlockPos inside = origin.offset(1, 1, 0);
+		// Control: the frame is valid, so only the missing portal dimension can stop the portal.
+		if (PortalShape.findEmptyPortalShape(surface, inside, Direction.Axis.X).isEmpty()) {
+			throw failure(helper, "the obsidian frame is not a valid portal frame");
+		}
 		surface.setBlock(inside, Blocks.FIRE.defaultBlockState(), 3);
 		for (int dx = 1; dx <= 2; dx++) {
 			for (int dy = 1; dy <= 3; dy++) {
@@ -192,20 +252,17 @@ public class SurfaceBreachTest {
 		});
 	}
 
-	/**
-	 * A mock player teleported within its own dimension does not load chunks around itself, because it never
-	 * answers the teleport. A forced chunk keeps the column ticking instead. Forced chunks last as long as the
-	 * test world does.
-	 */
-	private static void keepLoaded(ServerLevel level, double x, double z) {
-		level.setChunkForced(BlockPos.containing(x, 0, z).getX() >> 4, BlockPos.containing(x, 0, z).getZ() >> 4, true);
-	}
-
 	/** Clear the floor of {@code level} at one column, so an entity above it falls straight out of the world. */
 	private static void openShaft(ServerLevel level, double x, double z) {
 		BlockPos column = BlockPos.containing(x, 0, z);
 		for (int y = level.getMinY(); y <= level.getMinY() + 10; y++) {
 			level.setBlock(column.atY(y), Blocks.AIR.defaultBlockState(), 3);
+		}
+	}
+
+	private static JsonElement readJson(URL url) throws IOException {
+		try (Reader reader = new InputStreamReader(url.openStream())) {
+			return JsonParser.parseReader(reader);
 		}
 	}
 

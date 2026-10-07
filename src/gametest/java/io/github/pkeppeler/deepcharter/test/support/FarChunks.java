@@ -6,8 +6,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 
 /**
- * Awaits entity ticking in a far chunk of a fresh world. Something must keep the chunk loaded
- * (a player or a ticket), and the test method must call this, never a tick callback.
+ * Awaits entity ticking in a far chunk of a fresh world. The test method must call this, never a tick
+ * callback. It forces the chunk, because a mock player teleported within its own dimension never loads
+ * chunks around itself. A forced chunk stays forced as long as the test world does.
  */
 public final class FarChunks {
 	/** Server ticks that {@link #awaitEntityTicking} waits. Add this to a test's own {@code maxTicks}. */
@@ -28,6 +29,7 @@ public final class FarChunks {
 		if (helper.getTick() != 0) {
 			throw new IllegalStateException("FarChunks.awaitEntityTicking must be called from the test method, not from a tick callback");
 		}
+		level.setChunkForced(pos.getX() >> 4, pos.getZ() >> 4, true);
 		boolean[] done = {false};
 		helper.onEachTick(() -> {
 			if (done[0]) {
