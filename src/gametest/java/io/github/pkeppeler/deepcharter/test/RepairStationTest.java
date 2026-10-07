@@ -60,6 +60,7 @@ import io.github.pkeppeler.deepcharter.repair.RepairStation;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
+import io.github.pkeppeler.deepcharter.terminal.TerminalTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
@@ -280,7 +281,7 @@ public class RepairStationTest {
 			PodEntity pod = station.pod();
 			pod.setHull(pod.maxHull() - 20f);
 			fund(helper, station, 1_000);
-			float tooFar = (float) RepairTuning.DEFAULT.parkRadius() + 2f;
+			float tooFar = (float) TerminalTuning.DEFAULT.parkedRadius() + 2f;
 			pod.setPos(Vec3.atCenterOf(station.pos()).add(tooFar, 0, 0));
 			expectRefused(helper, Terminals.act(station.pilot().player(), station.pos(), RepairStation.REPAIR, hp(5)), "repairing a pod parked out of reach");
 			pod.setPos(Vec3.atCenterOf(station.pos()).add(2, 0, 0));

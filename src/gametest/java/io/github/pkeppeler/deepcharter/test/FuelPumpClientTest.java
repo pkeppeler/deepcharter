@@ -29,6 +29,7 @@ import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.terminal.Terminals;
 
 /**
  * Client GameTest for #69: the pump screen shows the account and the parked pod's tank, its buttons are live only when a press
@@ -62,7 +63,7 @@ public class FuelPumpClientTest implements FabricClientGameTest {
 			context.waitFor(client -> screen.typewriter().done(), WAIT_TICKS);
 			check(screen.typewriter().text().contains("$1 A LITRE"), "the screen names the price, got '" + screen.typewriter().text() + "'");
 			context.waitFor(client -> ClientCharter.view().isPresent() && ClientCharter.view().get().balance() == START_BALANCE
-					&& !FuelPump.parkedPods(client.level, scene.pump()).isEmpty(), WAIT_TICKS);
+					&& !Terminals.parkedPods(client.level, scene.pump()).isEmpty(), WAIT_TICKS);
 
 			// 2 of 10 litres: there is room for 5 but not for 10.
 			check(live(context, screen, "BUY 1 L") && live(context, screen, "BUY 5 L") && !live(context, screen, "BUY 10 L") && live(context, screen, "FILL UP"),
@@ -128,7 +129,7 @@ public class FuelPumpClientTest implements FabricClientGameTest {
 	}
 
 	private static float litres(Minecraft client, Scene scene) {
-		List<PodEntity> pods = FuelPump.parkedPods(client.level, scene.pump());
+		List<PodEntity> pods = Terminals.parkedPods(client.level, scene.pump());
 		return pods.isEmpty() ? -1f : FuelPump.litres(pods.getFirst());
 	}
 
