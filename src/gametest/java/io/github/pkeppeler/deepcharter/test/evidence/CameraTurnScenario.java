@@ -5,9 +5,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 
 /**
  * Example scenario: load into a world and turn the camera through a full circle.
- *
- * To add a scenario: copy this class, change name() and run(), and list the class under
- * "fabric-client-gametest" in src/gametest/resources/fabric.mod.json.
+ * See tools/record-evidence.sh for how to add one.
  */
 public class CameraTurnScenario extends EvidenceScenario {
 	private static final int FRAMES = 45;

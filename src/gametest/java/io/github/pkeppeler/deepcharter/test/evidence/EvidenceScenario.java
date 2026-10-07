@@ -20,8 +20,8 @@ import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptio
  *   build/evidence/NAME/screenshots/*.png            still screenshots
  */
 public abstract class EvidenceScenario implements FabricClientGameTest {
-	public static final int WIDTH = 800;
-	public static final int HEIGHT = 450;
+	private static final int WIDTH = 800;
+	private static final int HEIGHT = 450;
 
 	private int frame;
 	private Path framesDir;
