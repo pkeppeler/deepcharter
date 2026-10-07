@@ -11,7 +11,7 @@ public final class LayerClientRegistry {
 	}
 
 	public static void register() {
-		ClientPlayNetworking.registerGlobalReceiver(BreachPayload.TYPE, (payload, context) -> BreachEffects.begin(payload));
+		ClientPlayNetworking.registerGlobalReceiver(BreachPayload.TYPE, (payload, context) -> BreachEffects.begin());
 		ClientTickEvents.END_CLIENT_TICK.register(client -> BreachEffects.tick());
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> BreachEffects.reset());
 		BreachHud.init();

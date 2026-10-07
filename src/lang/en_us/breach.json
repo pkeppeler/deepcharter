@@ -1,7 +1,4 @@
 {
   "block.deepcharter.breach_crust": "Breach Crust",
-  "deepcharter.breach.altimeter": "%s ft.",
-  "deepcharter.breach.transmission.ascent.1": "> SIGNAL RESTORED. YOU ARE BACK IN LAYER %s.",
-  "deepcharter.breach.transmission.descent.1": "> BREACH CONFIRMED. WELCOME TO LAYER %s.",
-  "deepcharter.breach.transmission.descent.2": "> THE EMPLOYER WISHES YOU A PRODUCTIVE SHIFT."
+  "deepcharter.breach.altimeter": "%s ft."
 }
