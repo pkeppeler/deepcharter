@@ -10,6 +10,8 @@
 # `pass` or `skipping` (at least one check, and all of REQUIRED_CHECKS passing). A
 # check's state is its newest non-skipped run, so a later skipped run cannot hide
 # a failure.
+# Refuses if origin/main commits made since the PR's latest successful CI run was created (minus a
+# 2-minute margin) changed anything outside docs (`docs/**`, `*.md`, `.papercuts.jsonl`).
 # Then squash-merges pinned to that head sha and regenerates docs/ROADMAP.md.
 set -euo pipefail
 
@@ -109,13 +111,54 @@ for required in "${REQUIRED_CHECKS[@]}"; do
   refuse "lacks required check: $required"
 done
 
+# The CI run above tested the merge ref against main as it was then. If main has
+# since changed code, a PR with no textual conflict can still break main once
+# squashed. The PR's latest successful `CI` run for this head sha gives a creation
+# time; every origin/main commit since then (minus a margin) is a change the run may
+# not have seen. Cancelled or failed runs are skipped so they cannot narrow the window.
+# A "Re-run jobs" keeps `created_at`, so it can only cause a conservative refusal, which
+# a close and reopen fixes. The run's pull_requests[].base.sha reports the PR's current
+# base, not the tested one, so it is no use. Fail closed on any unreadable step.
+# Docs-only commits are allowed (the roadmap regen commits after every merge).
+git fetch origin main >/dev/null 2>&1 || refuse "could not read origin/main (fetch failed)"
+ci_run=$(gh api "repos/$repo/actions/runs?head_sha=$sha&event=pull_request&per_page=100" --paginate \
+  --jq '.workflow_runs[] | select(.name == "CI" and .status == "completed" and .conclusion == "success") | .id' 2>/dev/null \
+  | sort -n | tail -1) || ci_run=
+[[ $ci_run =~ ^[0-9]+$ ]] || refuse "has no successful CI run for $sha (cannot tell what main it was tested against)" # pipe-tail: an unreadable list leaves ci_run empty and refuses
+ci_created=$(gh api "repos/$repo/actions/runs/$ci_run" --jq .created_at 2>/dev/null) || ci_created=
+ts_re='^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$'
+[[ $ci_created =~ $ts_re ]] || refuse "has no readable creation time on its CI run $ci_run (cannot tell what main it was tested against)"
+# Two minutes of margin before the run was created, so a merge racing it is
+# counted (a false refusal only costs a close and reopen). GNU date first, then BSD.
+ci_since=$(date -u -d "$ci_created - 2 minutes" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null \
+  || date -u -j -v-2M -f %Y-%m-%dT%H:%M:%SZ "$ci_created" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null) \
+  || refuse "could not compute the margin before its CI run creation time $ci_created"
+main_commits=$(git log --format=%H --since="$ci_since" origin/main) \
+  || refuse "could not list the commits on origin/main since $ci_since"
+code_moved=()
+for commit in $main_commits; do
+  files=$(git show --name-only --format= --no-renames "$commit") \
+    || refuse "could not read the files changed by origin/main commit $commit"
+  while IFS= read -r path; do
+    case $path in
+      '' | docs/* | *.md | .papercuts.jsonl) ;;
+      *) code_moved+=("$path") ;;
+    esac
+  done <<<"$files"
+done
+if [[ ${#code_moved[@]} -gt 0 ]]; then
+  shown=${code_moved[*]:0:5}
+  more=
+  [[ ${#code_moved[@]} -le 5 ]] || more=" (+$((${#code_moved[@]} - 5)) more)"
+  refuse "main changed since its CI run (CI run $ci_run created $ci_created): ${shown// /, }$more; re-run CI on a fresh merge ref with 'gh pr close $pr && gh pr reopen $pr' (the head sha is unchanged, so the review pass stays valid)"
+fi
+
 # A PR may not ADD docs/adr/NNNN-*.md when NNNN is already on origin/main (parallel
 # PRs pick numbers on their own), or twice among its own added ADRs. A path the PR
 # vacates (renamed away or removed) no longer holds its number. Fail closed: an
 # unreadable list refuses.
 pr_files=$(gh api "repos/$repo/pulls/$pr/files?per_page=100" --paginate \
   --jq '.[] | [.status, .filename, (.previous_filename // "")] | @tsv') || refuse "could not read its changed files"
-git fetch origin main >/dev/null 2>&1 || refuse "could not read the ADR list on origin/main (fetch failed)"
 main_adrs=$(git ls-tree --name-only origin/main docs/adr/) || main_adrs=
 [[ -n $main_adrs ]] || refuse "could not read the ADR list on origin/main"
 adr_re='^docs/adr/([0-9]{4})-[^/]+\.md$'
