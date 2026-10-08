@@ -1,6 +1,5 @@
 # Runs on every PR. Label events are deliberately not triggers here (they live in
 # client-tests.yml), so adding a label never re-runs or cancels the build.
-# Both jobs run on the self-hosted Mac runner (docs/tooling/ci-runner.md); no GitHub minutes.
 # The job names below are the REQUIRED_CHECKS in tools/merge-pr.sh; renaming one
 # means changing both.
 name: CI
@@ -20,14 +19,9 @@ jobs:
   build:
     name: build
     if: ${{ !github.event.pull_request.draft }}
-    runs-on: [self-hosted, macOS, ARM64, deepcharter]
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      # Self-hosted: keep CI's Gradle state apart from the user's ~/.gradle (local agents use it
-      # concurrently). Sibling of the runner's _temp, so it survives between jobs (_temp is wiped).
-      # The runner context is not available in job-level env, hence this step.
-      - name: isolate Gradle home
-        run: echo "GRADLE_USER_HOME=$(dirname "$RUNNER_TEMP")/gradle-home" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -36,33 +30,30 @@ jobs:
         with:
           distribution: temurin
           java-version: 25
-      # The persistent GRADLE_USER_HOME is the cache on this runner, so the GitHub
-      # cache (cache-seed.yml, ubuntu jobs) is off here.
+      # Reads the cache seeded on main (cache-seed.yml); writable so later pushes to
+      # the same PR also reuse what this run built.
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
-          cache-disabled: true
+          cache-read-only: false
       - run: ./gradlew build
 
   tool-tests:
     name: tool-tests
     if: ${{ !github.event.pull_request.draft }}
-    runs-on: [self-hosted, macOS, ARM64, deepcharter]
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # The runner's launchd service has a minimal PATH; Homebrew holds ffmpeg and shellcheck.
       # build-audio-pack.test.sh needs ffmpeg. It makes its own synthetic tones; CI never
       # has, reads or needs the original game audio.
-      - name: check tools (ffmpeg, shellcheck)
+      - name: install ffmpeg
+        # Skip the recommended packages (GUI, audio and GPU libraries) the tones test never uses.
+        # Skip the index update too; refresh it only if the image index is stale.
         run: |
-          echo /opt/homebrew/bin >> "$GITHUB_PATH"
-          export PATH="/opt/homebrew/bin:$PATH"
-          for tool in ffmpeg shellcheck; do
-            command -v "$tool" >/dev/null \
-              || { echo "::error::$tool missing on the runner; install with: brew install $tool"; exit 1; }
-          done
+          sudo apt-get install -y -q --no-install-recommends ffmpeg \
+            || { sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends ffmpeg; }
       - run: python3 -I -m unittest discover -s tools/tests -p 'test_*.py'
       - name: bash tool tests
         run: |

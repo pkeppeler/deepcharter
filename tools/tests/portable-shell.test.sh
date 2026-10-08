@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Lint: forbid BSD-only shell forms in tools/ (CI runs on GNU/Linux, dev runs on macOS).
+# Lint: forbid BSD-only shell forms in tools/ and .githooks/ (CI runs on GNU/Linux, dev runs on macOS).
 #   stat -f             GNU: filesystem status, exits 0, so a `|| stat -c` fallback never runs
 #   sed -i '' / sed -i ""  GNU sed reads '' as the script's file argument and fails
 #   date -j / date -v   BSD date only
@@ -104,6 +104,7 @@ check "annotated: reason required, reasoned line passes" "$(printf '%s\n' "$tmp/
 # --- the repo ---
 files=()
 while IFS= read -r f; do files+=("$f"); done < <(find "$root/tools" -name '*.sh' -type f | sort)
+for hook in "$root"/.githooks/*; do [[ -f $hook ]] && files+=("$hook"); done
 check "repo: scan covers shell files" "yes" "$([[ ${#files[@]} -gt 0 ]] && echo yes || echo no)"
 hits=$(scan "${files[@]}")
 if [[ -n $hits ]]; then
