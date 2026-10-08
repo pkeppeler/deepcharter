@@ -2,14 +2,17 @@ package io.github.pkeppeler.deepcharter.test;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.DoubleSummaryStatistics;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.function.ToDoubleFunction;
 
 import org.slf4j.Logger;
@@ -34,6 +37,7 @@ import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.layer.LavaHazard;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -54,9 +58,11 @@ import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
  * breach into layer 2, over the real worldgen, with the real drill, fuel, hull, lava and breach code. It reports how many bores
  * survive, the hull and pilot health that lava costs, and how far ahead the scanner had the lava in its view.
  *
- * <p>The default run is a smoke case of {@link #SMOKE_BORES} bores, which proves the harness and takes a few seconds. The
- * measurement is the same test with {@value #BORES_ENV}{@code =<n>} in the environment, for example
- * {@code DEEPCHARTER_LAVA_BORES=60 tools/gametest.sh 'lava_bore_test*'}; it prints the lines that start with {@code [lava-bore]}.
+ * <p>The default run is a smoke case of {@link #SMOKE_BORES} bores: a control through the crust, and a bore that meets a lava block
+ * placed in its path. It proves the harness in seconds. The measurement is the same test with {@value #BORES_ENV}{@code =<n>} in
+ * the environment, for example {@code DEEPCHARTER_LAVA_BORES=100 tools/gametest.sh 'lava_bore_test*'}: n full bores side by side,
+ * in chunks of one world seed, printing the lines that start with {@code [lava-bore]}. {@value #RIDER_ENV}{@code =shielded} runs
+ * the what-if in which lava cannot hurt the pilot (the harness restores its health; the game does not shield a rider).
  *
  * <p>The pilot is a bot with no reaction: it holds sprint, and so bores straight down until the pod is dead, the pilot is dead or
  * the pod is through. Layer 1's rock is full of company rock, which the drill refuses (a clean 2 x 2 column over the whole layer is
@@ -68,6 +74,7 @@ public class LavaBoreTest {
 	private static final Logger LOGGER = LoggerFactory.getLogger(LavaBoreTest.class);
 
 	static final String BORES_ENV = "DEEPCHARTER_LAVA_BORES";
+	private static final String REQUESTED_BORES = System.getenv(BORES_ENV);
 	/** {@value #SHIELDED} runs the what-if in which lava cannot hurt the pilot; unset is the game as it is. */
 	static final String RIDER_ENV = "DEEPCHARTER_LAVA_BORES_RIDER";
 	private static final String SHIELDED = "shielded";
@@ -79,6 +86,11 @@ public class LavaBoreTest {
 	 */
 	private static final int SMOKE_CROSSING_Y = 3;
 	private static final int SMOKE_LAVA_Y = 24;
+	/**
+	 * The lava block the smoke bore must meet first, 3 slabs below its start: above any lava the seed put in the shaft's way, and in the scanner's view from the first scan.
+	 * It is in the scan plane (the pod faces south, so the plane is the pod's x) and in the pod's footprint.
+	 */
+	private static final int SMOKE_LAVA_BLOCK_Y = 21;
 	private static final int NO_SHAFT = Integer.MIN_VALUE;
 	/** From this many bores the report prints a verdict as well: fewer say nothing about a rate. */
 	private static final int VERDICT_FROM = 30;
@@ -88,7 +100,7 @@ public class LavaBoreTest {
 	private static final int SCANNER_TIER = 1;
 	/**
 	 * Lava counts as shown in time when it was in the scanner's view at least this many slabs before the pod touched it:
-	 * a quarter of the tier 1 scanner's reach below the pod, which at about two seconds a slab is some sixteen seconds of warning.
+	 * a quarter of the tier 1 scanner's reach below the pod, which at the measured 36 pod ticks a slab (24 ticks of stone at the surface, slower with depth, plus the bot's sidesteps) is about 15 seconds of warning.
 	 */
 	private static final int IN_TIME_SLABS = ScannerTuning.DEFAULT.tierOneArea().down() / 4;
 
@@ -109,8 +121,6 @@ public class LavaBoreTest {
 	private static final int NO_PROGRESS_TICKS = 2000;
 	private static final int BORE_TICK_BUDGET = 20000;
 	private static final int LAVA_BODY_LIMIT = 256;
-	/** The pod's own reach for lava (LavaHazard.TOUCH_REACH): lava this close to its box is touching it. */
-	private static final double TOUCH_REACH = 0.01;
 	private static final float REFUEL_BELOW_PERCENT = 3f;
 
 	private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
@@ -171,13 +181,15 @@ public class LavaBoreTest {
 		private final String zone;
 		private final int contactY;
 		private final int slabsShownAhead;
+		private final int contactCellsShownAhead;
 		float hullLost;
 		int ticks;
 
-		Encounter(String zone, int contactY, int slabsShownAhead) {
+		Encounter(String zone, int contactY, int slabsShownAhead, int contactCellsShownAhead) {
 			this.zone = zone;
 			this.contactY = contactY;
 			this.slabsShownAhead = slabsShownAhead;
+			this.contactCellsShownAhead = contactCellsShownAhead;
 		}
 
 		String zone() {
@@ -188,9 +200,17 @@ public class LavaBoreTest {
 			return contactY;
 		}
 
-		/** Slabs between the lava first being in the scanner's view and the pod touching it; -1 when the scanner never had it. */
+		/**
+		 * Slabs between any block of the connected body of lava being in the scanner's view and the pod touching it; -1 when the scanner
+		 * never had any. This is an upper bound on what a pilot could use: the body may be seen by a cell far from the one that burns.
+		 */
 		int slabsShownAhead() {
 			return slabsShownAhead;
+		}
+
+		/** As {@link #slabsShownAhead}, for the lava blocks the pod actually touched: the strict figure. */
+		int contactCellsShownAhead() {
+			return contactCellsShownAhead;
 		}
 
 		boolean shownAtAll() {
@@ -269,7 +289,7 @@ public class LavaBoreTest {
 		MinecraftServer server = helper.getLevel().getServer();
 		ServerLevel level = layer(helper, 1);
 		int count = boreCount(helper);
-		boolean smoke = System.getenv(BORES_ENV) == null || System.getenv(BORES_ENV).isBlank();
+		boolean smoke = REQUESTED_BORES == null || REQUESTED_BORES.isBlank();
 		List<Bore> bores = new ArrayList<>();
 		CharterId charter = null;
 		for (int i = 0; i < count; i++) {
@@ -311,7 +331,7 @@ public class LavaBoreTest {
 	}
 
 	private static int boreCount(GameTestHelper helper) {
-		String value = System.getenv(BORES_ENV);
+		String value = REQUESTED_BORES;
 		if (value == null || value.isBlank()) {
 			return SMOKE_BORES;
 		}
@@ -352,6 +372,10 @@ public class LavaBoreTest {
 		if (bore.shaftBottomY != NO_SHAFT) {
 			RoomCarver.carve(level, bore.centreX - 1, bore.centreX, bore.shaftBottomY, top, bore.centreZ - 1, bore.centreZ, Blocks.AIR);
 			feetY = bore.shaftBottomY;
+			if (bore.shaftBottomY == SMOKE_LAVA_Y) {
+				// One lava block in the footprint, below the pod: the encounter and scanner path run whatever the seed gave this chunk.
+				RoomCarver.carve(level, bore.centreX, bore.centreX, SMOKE_LAVA_BLOCK_Y, SMOKE_LAVA_BLOCK_Y, bore.centreZ, bore.centreZ, Blocks.LAVA);
+			}
 		}
 		PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
 		pod.setPos(bore.centreX, feetY, bore.centreZ);
@@ -398,7 +422,7 @@ public class LavaBoreTest {
 		bore.pod = pod;
 		bore.pilotTicks++;
 		ServerLevel level = bore.level;
-		boolean touching = touchesLava(level, pod);
+		boolean touching = LavaHazard.touchesLava(pod);
 		boolean burning = player.isOnFire() || player.isInLava();
 
 		float hullLost = bore.lastHull - pod.hull();
@@ -454,7 +478,7 @@ public class LavaBoreTest {
 		if (bore.pilotTicks - bore.lastProgressTick > NO_PROGRESS_TICKS || bore.pilotTicks > BORE_TICK_BUDGET) {
 			finish(bore, Outcome.STALLED, "no progress at " + pod.position() + " onGround " + pod.onGround() + " drilling " + pod.drilling()
 					+ " phase " + bore.phase + " side " + bore.side + " stranded " + pod.stranded() + " fuel " + pod.fuel() + " hcol " + pod.horizontalCollision
-					+ " delta " + pod.getDeltaMovement() + " input " + player.getLastClientInput() + " yaw " + player.getYRot() + "/" + pod.getYRot() + " below " + cellsBelow(level, pod) + " ahead-sides " + cellsBeside(level, pod), pod);
+					+ " delta " + pod.getDeltaMovement() + " input " + player.getLastClientInput() + " yaw " + player.getYRot() + "/" + pod.getYRot() + " below " + cellsBelow(level, pod), pod);
 			pod.discard();
 			bore.pilot.releaseInput();
 			return;
@@ -531,6 +555,7 @@ public class LavaBoreTest {
 		return order[0];
 	}
 
+	/** For the message of a stalled bore only: what is under the pod, and whether the drill may change it (it refuses at an unloaded chunk edge). */
 	private static List<String> cellsBelow(ServerLevel level, PodEntity pod) {
 		int lowX = (int) Math.floor(pod.getX() - 0.5);
 		int lowZ = (int) Math.floor(pod.getZ() - 0.5);
@@ -545,20 +570,6 @@ public class LavaBoreTest {
 		return cells;
 	}
 
-	private static List<String> cellsBeside(ServerLevel level, PodEntity pod) {
-		int lowX = (int) Math.floor(pod.getX() - 0.5);
-		int lowZ = (int) Math.floor(pod.getZ() - 0.5);
-		int y = pod.blockPosition().getY();
-		List<String> cells = new ArrayList<>();
-		for (int x : new int[] {lowX - 1, lowX + 2}) {
-			for (int z = lowZ; z <= lowZ + 1; z++) {
-				cells.add(level.getBlockState(new BlockPos(x, y, z)).getBlock().builtInRegistryHolder().key().identifier().getPath());
-				cells.add(level.getBlockState(new BlockPos(x, y + 1, z)).getBlock().builtInRegistryHolder().key().identifier().getPath());
-			}
-		}
-		return cells;
-	}
-
 	private static void finish(Bore bore, Outcome outcome, String cause, PodEntity pod) {
 		bore.outcome = outcome;
 		bore.cause = cause;
@@ -567,12 +578,6 @@ public class LavaBoreTest {
 	}
 
 	// ---- lava ----
-
-	/** The same test as LavaHazard's: lava in or touching the pod's box. */
-	private static boolean touchesLava(ServerLevel level, PodEntity pod) {
-		return new LoadedBlocks(level).getBlockStates(pod.getBoundingBox().inflate(TOUCH_REACH))
-				.anyMatch(state -> state.getFluidState().is(FluidTags.LAVA));
-	}
 
 	/** Reads the scanner as the game does and notes each lava block it shows as open space, with how high the pod was when it first did. */
 	private static void noteLavaInView(ServerLevel level, PodEntity pod, Bore bore, int feetY) {
@@ -598,11 +603,13 @@ public class LavaBoreTest {
 
 	/** The pod has just touched lava: the whole body of lava it touches, and the earliest slab at which the scanner had any of it in view. */
 	private static Encounter encounter(ServerLevel level, PodEntity pod, Bore bore) {
-		AABB box = pod.getBoundingBox().inflate(TOUCH_REACH);
+		AABB box = pod.getBoundingBox().inflate(LavaHazard.TOUCH_REACH);
 		Set<BlockPos> body = new HashSet<>();
+		Set<BlockPos> touched = new HashSet<>();
 		ArrayDeque<BlockPos> frontier = new ArrayDeque<>();
 		for (BlockPos pos : BlockPos.betweenClosed(BlockPos.containing(box.minX, box.minY, box.minZ), BlockPos.containing(box.maxX, box.maxY, box.maxZ))) {
 			if (level.getFluidState(pos).is(FluidTags.LAVA) && body.add(pos.immutable())) {
+				touched.add(pos.immutable());
 				frontier.add(pos.immutable());
 			}
 		}
@@ -616,10 +623,16 @@ public class LavaBoreTest {
 			}
 		}
 		int contactY = pod.blockPosition().getY();
-		int shown = body.stream().map(bore.shownAt::get).filter(java.util.Objects::nonNull).mapToInt(Integer::intValue).max().orElse(Integer.MIN_VALUE);
-		int ahead = shown == Integer.MIN_VALUE ? -1 : shown - contactY;
+		int ahead = slabsAhead(body, bore, contactY);
+		int contactAhead = slabsAhead(touched, bore, contactY);
 		String zone = Zones.of(level, contactY).map(found -> found.id().getPath()).orElse("outside");
-		return new Encounter(zone, contactY, ahead);
+		return new Encounter(zone, contactY, ahead, contactAhead);
+	}
+
+	/** How many slabs above {@code contactY} the pod was when the scanner first had any of {@code cells} in view; -1 for never. */
+	private static int slabsAhead(Set<BlockPos> cells, Bore bore, int contactY) {
+		int shown = cells.stream().map(bore.shownAt::get).filter(Objects::nonNull).mapToInt(Integer::intValue).max().orElse(Integer.MIN_VALUE);
+		return shown == Integer.MIN_VALUE ? -1 : shown - contactY;
 	}
 
 	// ---- the report ----
@@ -651,6 +664,10 @@ public class LavaBoreTest {
 		LOGGER.info("[lava-bore] lava encounters: {} ({} per bore); in the scanner's view at all {} ({}), >= 1 slab ahead {} ({}), >= {} slabs ahead {} ({})",
 				encounters.size(), String.format("%.2f", encounters.size() / (double) n), shown, percent(shown, encounters.size()),
 				inTimeForOne, percent(inTimeForOne, encounters.size()), IN_TIME_SLABS, inTime, percent(inTime, encounters.size()));
+		long contactInTime = encounters.stream().filter(e -> e.contactCellsShownAhead() >= IN_TIME_SLABS).count();
+		long contactShown = encounters.stream().filter(e -> e.contactCellsShownAhead() >= 0).count();
+		LOGGER.info("[lava-bore] strict, the lava blocks actually touched: in view at all {} ({}), >= {} slabs ahead {} ({}). The figures above are for the whole connected body, an upper bound",
+				contactShown, percent(contactShown, encounters.size()), IN_TIME_SLABS, contactInTime, percent(contactInTime, encounters.size()));
 		LOGGER.info("[lava-bore] hull lost per encounter:       {}; ticks touching lava per encounter: {}",
 				distributionOf(encounters.stream().mapToDouble(e -> e.hullLost).toArray()), distributionOf(encounters.stream().mapToDouble(e -> e.ticks).toArray()));
 		List<Encounter> firsts = bores.stream().filter(b -> !b.encounters.isEmpty()).map(b -> b.encounters.getFirst()).toList();
@@ -658,9 +675,13 @@ public class LavaBoreTest {
 		LOGGER.info("[lava-bore] first lava of a bore: {}; >= {} slabs ahead {} ({}); slabs ahead (-1 = never in view): {}",
 				firsts.size(), IN_TIME_SLABS, firstInTime, percent(firstInTime, firsts.size()),
 				distributionOf(firsts.stream().mapToDouble(Encounter::slabsShownAhead).toArray()));
-		Map<String, Long> byZone = new java.util.TreeMap<>();
+		int deepClaimTop = Zones.span(0, 192, 2).high();
+		LOGGER.info("[lava-bore] slabs bored in Deep Claim before the first lava (mean {}; 1 / that is the lava chance per slab, censored by the bores that end first); hull left when a bore ended in lava: {}",
+				String.format("%.1f", firsts.stream().filter(e -> e.zone().equals("deep_claim") || e.zone().equals("stone_benches")).mapToInt(e -> Math.max(0, deepClaimTop - e.contactY() + 1)).average().orElse(0)),
+				distribution(bores.stream().filter(b -> b.outcome == Outcome.DIED && b.cause.endsWith("in lava")).toList(), b -> b.endHull));
+		Map<String, Long> byZone = new TreeMap<>();
 		encounters.forEach(e -> byZone.merge(e.zone(), 1L, Long::sum));
-		LOGGER.info("[lava-bore] encounters by zone: {}", byZone);
+		LOGGER.info("[lava-bore] encounters by zone (the first of each bore is the bulk): {}", byZone);
 		LOGGER.info("[lava-bore] the bot: {} sidesteps per bore, {} tanks per bore, {} pod ticks per bore",
 				String.format("%.1f", bores.stream().mapToInt(b -> b.sidesteps).average().orElse(0)),
 				String.format("%.1f", bores.stream().mapToInt(b -> b.tanks).average().orElse(0)),
@@ -689,8 +710,8 @@ public class LavaBoreTest {
 			return "none";
 		}
 		double[] sorted = values.clone();
-		java.util.Arrays.sort(sorted);
-		DoubleSummaryStatistics stats = java.util.Arrays.stream(sorted).summaryStatistics();
+		Arrays.sort(sorted);
+		DoubleSummaryStatistics stats = Arrays.stream(sorted).summaryStatistics();
 		return String.format("mean %.1f, min %.1f, p10 %.1f, p50 %.1f, p90 %.1f, p99 %.1f, max %.1f",
 				stats.getAverage(), sorted[0], rank(sorted, 10), rank(sorted, 50), rank(sorted, 90), rank(sorted, 99), sorted[sorted.length - 1]);
 	}
@@ -705,8 +726,11 @@ public class LavaBoreTest {
 	}
 
 	/**
-	 * What the test asserts: the harness measured something. A measurement run asserts no rate. The smoke case asserts that the
-	 * control crossed, and that no bore got stuck, because a bore the bot cannot finish says nothing about lava.
+	 * What the test asserts: the harness measured something. A measurement run asserts no rate. The smoke case asserts that no bore got
+	 * stuck (a bore the bot cannot finish says nothing about lava), that the bore with a placed lava block records it as an encounter the
+	 * scanner had in view, and that the control crossed. The game test world has a fixed seed (vanilla's GameTestServer uses 0, and the
+	 * same columns gave the same start heights and first lava on every run), but the smoke case does not lean on it: the lava is placed,
+	 * and the control bores only the crust under a shaft cut through whatever the seed made.
 	 */
 	private static void check(GameTestHelper helper, List<Bore> bores, boolean smoke) {
 		int reach = ScannerTuning.DEFAULT.tierOneArea().down() + ScannerTuning.DEFAULT.tierOneArea().up();
@@ -721,6 +745,11 @@ public class LavaBoreTest {
 		List<String> stuck = bores.stream().filter(b -> b.outcome == Outcome.STALLED).map(b -> "bore " + b.index + " " + b.cause).toList();
 		if (!stuck.isEmpty()) {
 			throw helper.assertionException(Component.literal("the bot got stuck, so the harness measures nothing: " + stuck));
+		}
+		Bore lavaBore = bores.get(1);
+		if (lavaBore.encounters.isEmpty() || lavaBore.encounters.getFirst().contactCellsShownAhead() < 1) {
+			throw helper.assertionException(Component.literal("the smoke bore meets a lava block that was placed in its path and in the scan plane, so it must record an encounter that the scanner had in view ahead of contact: "
+					+ lavaBore.encounters.stream().map(e -> e.zone() + "@" + e.contactY() + " body +" + e.slabsShownAhead() + " contact +" + e.contactCellsShownAhead()).toList()));
 		}
 		Bore control = bores.getFirst();
 		if (control.outcome != Outcome.SURVIVED || control.endHull >= control.startHull) {
