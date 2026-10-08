@@ -47,6 +47,7 @@ import io.github.pkeppeler.deepcharter.colony.ColonyBuilder;
 import io.github.pkeppeler.deepcharter.colony.ColonyEvents;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.colony.ColonyTuning;
+import io.github.pkeppeler.deepcharter.hangar.Hangar;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -305,6 +306,9 @@ public class ColonyTest {
 		}
 		ColonySite world = ColonySite.get(server);
 		var spawn = server.getRespawnData();
+		// The rebuild flattens the pad and re-lays everything but the hangar console, which only the hangar places, with its derelict.
+		BlockPos console = Hangar.consolePos(server).orElseThrow(() -> failure(helper, "the hangar should have a console"));
+		BlockState consoleBefore = overworld.getBlockState(console);
 		server.getDataStorage().set(ColonySite.TYPE, interrupted);
 		try {
 			if (!ColonyBuilder.buildIfNeeded(server)) {
@@ -326,6 +330,7 @@ public class ColonyTest {
 		} finally {
 			server.getDataStorage().set(ColonySite.TYPE, world);
 			server.setRespawnData(LevelData.RespawnData.of(spawn.dimension(), spawn.pos(), spawn.yaw(), spawn.pitch()));
+			overworld.setBlock(console, consoleBefore, 3);
 		}
 		helper.succeed();
 	}
@@ -420,7 +425,6 @@ public class ColonyTest {
 		BlockPos centre = placed(helper).anchors().get(ColonyAnchor.CONDUIT);
 		int layers = LayerChain.count(server.registryAccess());
 		MockPlayer mock = MockPlayers.join(helper, "conduit-hands");
-		mock.player().setGameMode(GameType.SURVIVAL);
 		int[] loaded = {0};
 		for (int layer = 0; layer <= layers; layer++) {
 			ServerLevel level = level(helper, layer);
@@ -431,6 +435,8 @@ public class ColonyTest {
 				throw failure(helper, "waiting for the Conduit's chunks to tick");
 			}
 			ServerPlayer player = mock.player();
+			// Creative while it waited at the join point inside the colony's foundation, where survival could suffocate.
+			player.setGameMode(GameType.SURVIVAL);
 			for (int layer = 0; layer <= layers; layer++) {
 				ServerLevel level = level(helper, layer);
 				player.teleportTo(level, centre.getX() + 0.5, level.getMinY() + 20, centre.getZ() + 4.5, Set.of(), 0, 0, true);
