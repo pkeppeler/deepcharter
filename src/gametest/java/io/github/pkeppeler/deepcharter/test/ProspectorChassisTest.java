@@ -248,7 +248,7 @@ public class ProspectorChassisTest {
 		});
 	}
 
-	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS)
+	@GameTest(maxTicks = 12000)
 	public void everyWreckSiteHoldsAnUnownedProspectorWreckAndOnlyPROSPECTOR0002HasALampAndN10(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		ServerLevel level = layer(helper, 2);

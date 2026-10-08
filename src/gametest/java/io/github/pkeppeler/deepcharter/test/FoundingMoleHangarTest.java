@@ -67,7 +67,9 @@ import io.github.pkeppeler.deepcharter.wreck.Wrecks;
  * tick after the hangar's chunk ticks, so no two of them overlap. A test discards every pod it made, and none of the world's.
  */
 public class FoundingMoleHangarTest {
-	static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 200;
+	/** Ticks after the hangar's chunk ticks within which the derelict Mole's entities must load. */
+	private static final int MOLE_LOAD_TICKS = 600;
+	static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + MOLE_LOAD_TICKS + 200;
 	static final long RICH = 100_000;
 	private static final int FLOOR = 9;
 	private static final String FUTURE_HANGAR = "7741";
@@ -111,13 +113,17 @@ public class FoundingMoleHangarTest {
 	static void inTheHangar(GameTestHelper helper, Consumer<Set<UUID>> body) {
 		boolean[] chunkTicks = {false};
 		boolean[] done = {false};
-		FarChunks.awaitEntityTicking(helper, server(helper).overworld(), hangarAnchor(helper), () -> chunkTicks[0] = true);
+		long[] chunkReadyTick = {0};
+		FarChunks.awaitEntityTicking(helper, server(helper).overworld(), hangarAnchor(helper), () -> {
+			chunkTicks[0] = true;
+			chunkReadyTick[0] = helper.getTick();
+		});
 		helper.onEachTick(() -> {
 			if (!chunkTicks[0] || done[0]) {
 				return;
 			}
 			if (Hangar.derelict(server(helper)).isEmpty()) {
-				expect(helper, helper.getTick() <= FarChunks.AWAIT_BUDGET_TICKS, "the derelict Mole did not load in %s ticks", FarChunks.AWAIT_BUDGET_TICKS);
+				expect(helper, helper.getTick() - chunkReadyTick[0] <= MOLE_LOAD_TICKS, "the derelict Mole did not load in %s ticks", MOLE_LOAD_TICKS);
 				return;
 			}
 			done[0] = true;

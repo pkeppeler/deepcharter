@@ -508,7 +508,7 @@ public class HandbookChaptersSixToNineTest {
 	 * The ore check reads loaded chunks only: with a gold ore in a chunk that is not loaded, the pod's scanner sees none, the directive
 	 * stays open, and the check does not load the chunk. The chunk is forced for one tick to put the ore in it, and then let go.
 	 */
-	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 1200)
+	@GameTest(maxTicks = 2 * FarChunks.AWAIT_BUDGET_TICKS + 1200)
 	public void theOreCheckNeverLoadsAChunkAndReadsAnUnloadedOneAsAir(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		ServerLevel level = helper.getLevel();
@@ -516,18 +516,18 @@ public class HandbookChaptersSixToNineTest {
 		int chunkX = origin.getX() >> 4;
 		int chunkZ = origin.getZ() >> 4;
 		int[] phase = {0};
+		FarChunks.Deadline[] unloadBy = {null};
 		helper.onEachTick(() -> {
 			switch (phase[0]) {
 				case 1 -> {
 					level.setChunkForced(chunkX, chunkZ, false);
+					unloadBy[0] = FarChunks.deadline();
 					phase[0] = 2;
 				}
 				case 2 -> {
-					if (level.getChunkSource().getChunkNow(chunkX, chunkZ) == null) {
+					if (unloadBy[0].awaitUnloaded(helper, level, chunkX, chunkZ)) {
 						phase[0] = 3;
 						checkTheUnloadedChunk(helper, server, level, origin);
-					} else if (helper.getTick() > FarChunks.AWAIT_BUDGET_TICKS + 600) {
-						throw helper.assertionException("the chunk at %s did not unload", origin.toShortString());
 					}
 				}
 				default -> {

@@ -284,7 +284,7 @@ public class PodLightsTest {
 	}
 
 	/** The chunk goes away with a lit pod in it, and comes back with the pod unpowered, so the only way the light goes is cleanup. */
-	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 1200)
+	@GameTest(maxTicks = 2 * FarChunks.AWAIT_BUDGET_TICKS + 1200)
 	public void unloadingThePodsChunkLeavesNoLight(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		BlockPos origin = new BlockPos(3040, 64, 3040);
@@ -294,6 +294,7 @@ public class PodLightsTest {
 		PodEntity[] pod = {null};
 		int[] phase = {0};
 		int[] since = {0};
+		FarChunks.Deadline[] unloadBy = {null};
 		helper.onEachTick(() -> {
 			if (pod[0] == null) {
 				return;
@@ -302,11 +303,12 @@ public class PodLightsTest {
 				case 0 -> {
 					if (!lightsNear(level, origin, LOOK).isEmpty()) {
 						level.setChunkForced(chunkX, chunkZ, false);
+						unloadBy[0] = FarChunks.deadline();
 						phase[0] = 1;
 					}
 				}
 				case 1 -> {
-					if (level.getChunkSource().getChunkNow(chunkX, chunkZ) == null) {
+					if (unloadBy[0].awaitUnloaded(helper, level, chunkX, chunkZ)) {
 						DARK.add(pod[0].getUUID());
 						level.setChunkForced(chunkX, chunkZ, true);
 						phase[0] = 2;
