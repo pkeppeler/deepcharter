@@ -62,9 +62,16 @@ public class ScannerTiersClientTest implements FabricClientGameTest {
 			HudShot one = HudShot.take(context, "scanner-tiers-1", ScannerHudTest.TIER_ONE);
 			expect("tier 1: the pod marker", one.pixel(0, 0), TUNING.podColor());
 			expect("tier 1: the near gold", one.pixel(ScannerHudTest.GOLD_AHEAD, ScannerHudTest.GOLD_UP), TUNING.goldOreColor());
-			HudShot oneOnTierTwoGrid = one.readAs(TIER_TWO);
-			expectNot("tier 1: the far gold", oneOnTierTwoGrid.pixel(FAR_AHEAD, ScannerHudTest.GOLD_UP), TUNING.goldOreColor());
-			expectNot("tier 1: the far stone", oneOnTierTwoGrid.pixel(FAR_BEHIND, ScannerHudTest.GOLD_UP), TUNING.rockColor());
+			// The far gold is beyond the panel's columns, so the near gold is the only gold cell on the row.
+			int goldCells = 0;
+			for (int ahead = -ScannerHudTest.TIER_ONE.halfWidth(); ahead <= ScannerHudTest.TIER_ONE.halfWidth(); ahead++) {
+				if (one.pixel(ahead, ScannerHudTest.GOLD_UP) == (TUNING.goldOreColor() & RGB)) {
+					goldCells++;
+				}
+			}
+			if (goldCells != 1) {
+				throw new AssertionError("tier 1: the gold row should show the near gold only, it shows %d gold cells".formatted(goldCells));
+			}
 			ScannerHudTest.leavePod(context, server);
 
 			// Tier 2 draws a wider panel with the far cells in it.

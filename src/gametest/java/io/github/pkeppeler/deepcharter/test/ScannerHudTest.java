@@ -116,11 +116,6 @@ public class ScannerHudTest implements FabricClientGameTest {
 			return new HudShot(image, window[1], window[2], window[3], area);
 		}
 
-		/** The same screenshot read with the geometry of another area. */
-		public HudShot readAs(ScanArea other) {
-			return new HudShot(image, guiWidth, guiHeight, scale, other);
-		}
-
 		/** The RGB of the middle of the HUD cell {@code ahead} and {@code up} from the pod. */
 		public int pixel(int ahead, int up) {
 			int half = ScannerHud.cellSize(guiWidth, guiHeight, area) * scale / 2;
