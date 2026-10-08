@@ -49,9 +49,11 @@ jobs:
       pr: ${{ steps.resolve.outputs.pr }}
       scenario: ${{ steps.resolve.outputs.scenario }}
     steps:
+      # Build what will merge (the merge ref, as CI does), not the PR head: a stale base would
+      # test old code. Needs the PR to be mergeable; GitHub makes no merge ref on a conflict.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.head.sha || format('refs/pull/{0}/head', inputs.pr) }}
+          ref: ${{ format('refs/pull/{0}/merge', github.event.pull_request.number || inputs.pr) }}
           persist-credentials: false
       - name: Resolve the PR and scenario
         id: resolve
@@ -126,13 +128,13 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      # The PR head's scripts, as in capture: asking needs write access to the repo anyway, and
+      # needs write access to the repo anyway, and the default branch would lack these scripts until the PR that adds them merges.
       # the default branch would lack these scripts until the PR that adds them merges.
       # Credentials stay persisted because pr-media.sh pushes with them; nothing here uploads
       # the workspace, so zizmor's artipacked finding does not apply.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 # zizmor: ignore[artipacked]
         with:
-          ref: ${{ github.event.pull_request.head.sha || format('refs/pull/{0}/head', inputs.pr) }}
+          ref: ${{ format('refs/pull/{0}/merge', github.event.pull_request.number || inputs.pr) }}
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: evidence
