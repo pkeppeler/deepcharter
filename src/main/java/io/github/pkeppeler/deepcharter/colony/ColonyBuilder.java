@@ -270,15 +270,16 @@ public final class ColonyBuilder {
 		}
 	}
 
-	/** The Founder: bronze, arms out and palms up, on a pedestal in the middle of the square. */
+	/**
+	 * The Founder: bronze, arms out and palms up, on a pedestal in the middle of the square. The hands are missing: the first work
+	 * order restores them ({@link FounderStatue}).
+	 */
 	private void statue(BlockPos ground) {
 		BlockState bronze = Blocks.COPPER_BLOCK.waxed().unaffected().defaultBlockState();
 		fill(ground, -1, 1, -1, 1, 2, 1, Blocks.STONE_BRICKS.defaultBlockState());
 		anchors.put(ColonyAnchor.STATUE, ground.above());
 		fill(ground, 0, 3, 0, 0, 5, 0, bronze);
 		fill(ground, -2, 6, 0, 2, 6, 0, bronze);
-		set(ground.offset(-3, 6, 0), Blocks.CUT_COPPER_SLAB.waxed().unaffected().defaultBlockState());
-		set(ground.offset(3, 6, 0), Blocks.CUT_COPPER_SLAB.waxed().unaffected().defaultBlockState());
 		set(ground.offset(0, 7, 0), bronze);
 	}
 
