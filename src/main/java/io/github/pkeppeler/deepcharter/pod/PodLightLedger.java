@@ -2,7 +2,6 @@ package io.github.pkeppeler.deepcharter.pod;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 import com.mojang.serialization.Codec;
@@ -15,6 +14,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.attachment.SavedState;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 
 /** Every light block a pod placed and has not taken away, so a sweep can tell a stale one from a builder's (ADR 0024). */
@@ -29,21 +29,14 @@ public final class PodLightLedger extends SavedData {
 	// Datafixer type: vanilla applies it to saved data it reads. Ours has a version of its own, so the vanilla fixers find nothing to fix.
 	public static final SavedDataType<PodLightLedger> TYPE = new SavedDataType<>(ID, PodLightLedger::new, CODEC, DataFixTypes.SAVED_DATA_COMMAND_STORAGE);
 
-	private final Set<GlobalPos> placed = new HashSet<>();
-	private final Optional<Versioned.Unreadable<List<GlobalPos>>> unreadable;
+	private final SavedState<Set<GlobalPos>> state;
 
 	public PodLightLedger() {
-		this.unreadable = Optional.empty();
+		this.state = SavedState.fresh(ID, VERSION, new HashSet<>());
 	}
 
 	private PodLightLedger(Versioned<List<GlobalPos>> loaded) {
-		switch (loaded) {
-			case Versioned.Readable<List<GlobalPos>> readable -> {
-				placed.addAll(readable.value());
-				unreadable = Optional.empty();
-			}
-			case Versioned.Unreadable<List<GlobalPos>> raw -> unreadable = Optional.of(raw);
-		}
+		this.state = SavedState.load(ID, VERSION, loaded, HashSet::new);
 	}
 
 	/** The world's ledger. Call on the server thread. */
@@ -51,45 +44,31 @@ public final class PodLightLedger extends SavedData {
 		return server.getDataStorage().computeIfAbsent(TYPE);
 	}
 
-	/** False when the saved ledger is of a version this build cannot read, so {@link #record} and {@link #forget} throw. */
+	/** False (logged once) when the saved ledger is of a version this build cannot read, so {@link #record}, {@link #forget} and {@link #entries} throw. */
 	public boolean isReadable() {
-		return unreadable.isEmpty();
-	}
-
-	/** The saved version of an unreadable ledger, for the log; throws if the ledger is readable. */
-	String unreadableVersion() {
-		return unreadable.orElseThrow(() -> new IllegalStateException("the ledger is readable")).version();
+		return state.isReadable();
 	}
 
 	/** Notes a light block that is about to be placed at {@code pos}. */
 	public void record(GlobalPos pos) {
-		requireReadable();
-		if (placed.add(pos)) {
+		if (state.orThrow().add(pos)) {
 			setDirty();
 		}
 	}
 
 	/** Forgets {@code pos}, once its block is gone or was never placed. */
 	public void forget(GlobalPos pos) {
-		requireReadable();
-		if (placed.remove(pos)) {
+		if (state.orThrow().remove(pos)) {
 			setDirty();
 		}
 	}
 
-	/** A copy of the entries. */
+	/** A copy of the entries. Throws if the saved ledger is unreadable. */
 	public Set<GlobalPos> entries() {
-		return Set.copyOf(placed);
-	}
-
-	private void requireReadable() {
-		if (unreadable.isPresent()) {
-			throw new IllegalStateException("the saved pod light ledger has version " + unreadableVersion()
-					+ " that this build cannot read (it reads " + VERSION + ")");
-		}
+		return Set.copyOf(state.orThrow());
 	}
 
 	private Versioned<List<GlobalPos>> versioned() {
-		return unreadable.<Versioned<List<GlobalPos>>>map(raw -> raw).orElseGet(() -> Versioned.of(List.copyOf(placed)));
+		return state.versioned(List::copyOf);
 	}
 }

@@ -18,6 +18,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.attachment.SavedState;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 
 /**
@@ -68,22 +69,14 @@ public final class ColonySite extends SavedData {
 	// Datafixer type: as for CharterData (ADR 0007), vanilla's fixers find nothing of theirs in a file that carries our own version.
 	public static final SavedDataType<ColonySite> TYPE = new SavedDataType<>(ID, ColonySite::new, CODEC, DataFixTypes.SAVED_DATA_COMMAND_STORAGE);
 
-	private Optional<Placed> placed = Optional.empty();
-	private final Optional<Versioned.Unreadable<Optional<Placed>>> unreadable;
-	private boolean loggedUnreadable;
+	private final SavedState<Optional<Placed>> state;
 
 	public ColonySite() {
-		this.unreadable = Optional.empty();
+		this.state = SavedState.fresh(ID, VERSION, Optional.empty());
 	}
 
 	private ColonySite(Versioned<Optional<Placed>> loaded) {
-		switch (loaded) {
-			case Versioned.Readable<Optional<Placed>> readable -> {
-				placed = readable.value();
-				unreadable = Optional.empty();
-			}
-			case Versioned.Unreadable<Optional<Placed>> raw -> unreadable = Optional.of(raw);
-		}
+		this.state = SavedState.load(ID, VERSION, loaded, placed -> placed);
 	}
 
 	/** The world's colony site. Call on the server thread. */
@@ -92,32 +85,16 @@ public final class ColonySite extends SavedData {
 	}
 
 	private Versioned<Optional<Placed>> versioned() {
-		return unreadable.<Versioned<Optional<Placed>>>map(raw -> raw).orElseGet(() -> Versioned.of(placed));
+		return state.versioned(placed -> placed);
 	}
 
-	/** False when the saved data is of a version this build cannot read: every other method then throws. */
+	/** False (logged once) when the saved data is of a version this build cannot read: every other method then throws. */
 	public boolean isReadable() {
-		return unreadable.isEmpty();
-	}
-
-	/** The saved version of unreadable data, for a log line. */
-	public Optional<String> unreadableVersion() {
-		return unreadable.map(Versioned.Unreadable::version);
-	}
-
-	/** True the first time it is asked, so a callback logs unreadable data once per site and then skips. */
-	boolean firstUnreadableReport() {
-		boolean first = !loggedUnreadable;
-		loggedUnreadable = true;
-		return first;
+		return state.isReadable();
 	}
 
 	private Optional<Placed> readable() {
-		if (unreadable.isPresent()) {
-			throw new IllegalStateException("the saved colony has version " + unreadable.get().version()
-					+ " that this build cannot read (it reads " + VERSION + ")");
-		}
-		return placed;
+		return state.orThrow();
 	}
 
 	/** True once the colony has been built to the end. */
@@ -140,14 +117,14 @@ public final class ColonySite extends SavedData {
 		if (readable().isPresent() || colony.finished()) {
 			throw new IllegalStateException("the colony has begun already, or was given as finished");
 		}
-		placed = Optional.of(colony);
+		state.set(Optional.of(colony));
 		setDirty();
 	}
 
 	/** Marks the colony built to the end. */
 	void finish() {
 		Placed begun = readable().orElseThrow(() -> new IllegalStateException("the colony has not begun"));
-		placed = Optional.of(new Placed(begun.center(), begun.anchors(), true));
+		state.set(Optional.of(new Placed(begun.center(), begun.anchors(), true)));
 		setDirty();
 	}
 }

@@ -60,7 +60,6 @@ import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 public final class PodComponents {
 	public static final int VERSION = 1;
 
-	private static volatile boolean chartersUnreadableLogged;
 
 	/** A pod's owner charter and its serial number. */
 	public record Registration(CharterId owner, String serial) {
@@ -266,13 +265,11 @@ public final class PodComponents {
 			return !unreadable(pod);
 		}
 		MinecraftServer server = player.level().getServer();
-		Optional<Charter> charter;
-		try {
-			charter = Charters.charterOf(server, player.getUUID());
-		} catch (IllegalStateException unreadable) {
-			logChartersUnreadable(unreadable);
+		if (!Charters.isReadable(server)) {
+			// Without the charters nobody's ownership can be checked: a readable pod is open, as in mayAccess.
 			return !unreadable(pod);
 		}
+		Optional<Charter> charter = Charters.charterOf(server, player.getUUID());
 		if (mayAccess(pod, charter)) {
 			return true;
 		}
@@ -309,24 +306,16 @@ public final class PodComponents {
 		if (registration.isEmpty()) {
 			return Optional.empty();
 		}
-		try {
-			return Charters.find(pod.level().getServer(), registration.get().owner()).filter(owner -> !owner.dormant());
-		} catch (IllegalStateException unreadable) {
-			logChartersUnreadable(unreadable);
+		MinecraftServer server = pod.level().getServer();
+		if (!Charters.isReadable(server)) {
 			return Optional.empty();
 		}
+		return Charters.find(server, registration.get().owner()).filter(owner -> !owner.dormant());
 	}
 
 	/** True when the pod's components are unreadable; logs once, through {@link Versioned#readable}. */
 	private static boolean unreadable(PodEntity pod) {
 		return Versioned.readable(pod, STATE).isEmpty();
-	}
-
-	private static void logChartersUnreadable(IllegalStateException unreadable) {
-		if (!chartersUnreadableLogged) {
-			chartersUnreadableLogged = true;
-			DeepCharter.LOGGER.error("Pod ownership is not checked, because the saved charters cannot be read: {}", unreadable.getMessage());
-		}
 	}
 
 	private static boolean counts(State state, PartLabel label) {

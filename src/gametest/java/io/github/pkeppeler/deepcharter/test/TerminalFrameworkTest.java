@@ -11,7 +11,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -78,6 +80,7 @@ import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TerminalTestTypes;
+import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 
 /**
  * Server GameTests for #59: the repair order, a repair seen by a second charter, validated actions, saved state, and the rest
@@ -423,35 +426,33 @@ public class TerminalFrameworkTest {
 	@GameTest
 	public void unreadableRepairDataRefusesInsteadOfThrowing(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
-		CompoundTag future = new CompoundTag();
-		future.putInt("version", RepairState.VERSION + 1);
-		future.putString("shape", "from a newer build");
-		RepairState unreadable = RepairState.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow();
-		withState(server, unreadable, () -> {
-			MockPlayer member = charterMember(helper, "Unlucky");
-			MockPlayer outsider = outsider(helper, "Newcomer");
-			BlockPos pump = place(helper, TerminalTypes.FUEL_PUMP, 0);
-			BlockPos open = place(helper, TerminalTestTypes.OPEN, 1);
-			stand(helper, member, pump, 2);
-			stand(helper, outsider, open, 2);
-			give(member.player(), TerminalTypes.FUEL_PUMP.parts().getFirst(), 1);
-			OPENED_LOG.clear();
+		MockPlayer member = charterMember(helper, "Unlucky");
+		MockPlayer outsider = outsider(helper, "Newcomer");
+		BlockPos pump = place(helper, TerminalTypes.FUEL_PUMP, 0);
+		BlockPos open = place(helper, TerminalTestTypes.OPEN, 1);
+		stand(helper, member, pump, 2);
+		stand(helper, outsider, open, 2);
+		give(member.player(), TerminalTypes.FUEL_PUMP.parts().getFirst(), 1);
+		OPENED_LOG.clear();
 
-			expectRefused(helper, TerminalRefusal.STATE_UNREADABLE, Terminals.open(member.player(), pump), "opening with unreadable repair data");
-			expectRefused(helper, TerminalRefusal.STATE_UNREADABLE, Terminals.insertPart(member.player(), pump, TerminalTypes.FUEL_PUMP.parts().getFirst()),
-					"inserting with unreadable repair data");
-			helper.getLevel().getBlockState(pump).useWithoutItem(helper.getLevel(), member.player(),
-					new BlockHitResult(Vec3.atCenterOf(pump), Direction.UP, pump, false));
-			if (count(member.player(), TerminalTypes.FUEL_PUMP.parts().getFirst()) != 1 || !OPENED_LOG.isEmpty()) {
-				throw helper.assertionException("a refused request keeps the part and opens nothing");
-			}
+		Map<String, Runnable> paths = new LinkedHashMap<>();
+		paths.put("open", () -> expectRefused(helper, TerminalRefusal.STATE_UNREADABLE, Terminals.open(member.player(), pump),
+				"opening with unreadable repair data"));
+		paths.put("insert", () -> expectRefused(helper, TerminalRefusal.STATE_UNREADABLE,
+				Terminals.insertPart(member.player(), pump, TerminalTypes.FUEL_PUMP.parts().getFirst()), "inserting with unreadable repair data"));
+		paths.put("use", () -> helper.getLevel().getBlockState(pump).useWithoutItem(helper.getLevel(), member.player(),
+				new BlockHitResult(Vec3.atCenterOf(pump), Direction.UP, pump, false)));
+		paths.put("terminal that needs no repair", () -> {
+			int opened = OPENED_LOG.size();
 			expectDone(helper, Terminals.open(outsider.player(), open), "a terminal that needs no repair state still opens");
-
-			Tag written = RepairState.CODEC.encodeStart(NbtOps.INSTANCE, unreadable).getOrThrow();
-			if (!future.equals(written)) {
-				throw helper.assertionException("unreadable data must be written back unchanged, got %s", written);
+			if (OPENED_LOG.size() != opened + 1) {
+				throw helper.assertionException("the terminal that needs no repair state opens once");
 			}
 		});
+		UnreadableChecks.assertSavedDataNoThrow(helper, "repair state", server, RepairState.TYPE, paths);
+		if (count(member.player(), TerminalTypes.FUEL_PUMP.parts().getFirst()) != 1 || OPENED_LOG.stream().anyMatch(entry -> entry.startsWith(TerminalTypes.FUEL_PUMP.id().toString()))) {
+			throw helper.assertionException("a refused request keeps the part and opens nothing");
+		}
 		helper.succeed();
 	}
 
@@ -463,29 +464,18 @@ public class TerminalFrameworkTest {
 		BlockPos open = place(helper, TerminalTestTypes.OPEN, 1);
 		stand(helper, member, pump, 2);
 		give(member.player(), TerminalTypes.FUEL_PUMP.parts().getFirst(), 1);
-		CompoundTag future = new CompoundTag();
-		future.putInt("version", CharterData.VERSION + 1);
-		future.putString("shape", "from a newer build");
-		CharterData unreadable = CharterData.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow();
-		CharterData original = CharterData.get(server);
-		server.getDataStorage().set(CharterData.TYPE, unreadable);
-		try {
-			expectRefused(helper, TerminalRefusal.STATE_UNREADABLE, Terminals.open(member.player(), pump), "opening with unreadable charter data");
-			expectRefused(helper, TerminalRefusal.STATE_UNREADABLE, Terminals.insertPart(member.player(), pump, TerminalTypes.FUEL_PUMP.parts().getFirst()),
-					"inserting with unreadable charter data");
-			expectRefused(helper, TerminalRefusal.STATE_UNREADABLE, Terminals.act(member.player(), open, TerminalTestTypes.PING, new CompoundTag()),
-					"an action at a terminal for anyone, which still needs the charter lookup");
-			helper.getLevel().getBlockState(pump).useWithoutItem(helper.getLevel(), member.player(),
-					new BlockHitResult(Vec3.atCenterOf(pump), Direction.UP, pump, false));
-			if (count(member.player(), TerminalTypes.FUEL_PUMP.parts().getFirst()) != 1) {
-				throw helper.assertionException("a refused request keeps the part");
-			}
-			Tag written = CharterData.CODEC.encodeStart(NbtOps.INSTANCE, unreadable).getOrThrow();
-			if (!future.equals(written)) {
-				throw helper.assertionException("unreadable charter data must be written back unchanged, got %s", written);
-			}
-		} finally {
-			server.getDataStorage().set(CharterData.TYPE, original);
+		Map<String, Runnable> paths = new LinkedHashMap<>();
+		paths.put("open", () -> expectRefused(helper, TerminalRefusal.STATE_UNREADABLE, Terminals.open(member.player(), pump),
+				"opening with unreadable charter data"));
+		paths.put("insert", () -> expectRefused(helper, TerminalRefusal.STATE_UNREADABLE,
+				Terminals.insertPart(member.player(), pump, TerminalTypes.FUEL_PUMP.parts().getFirst()), "inserting with unreadable charter data"));
+		paths.put("action at a terminal for anyone", () -> expectRefused(helper, TerminalRefusal.STATE_UNREADABLE,
+				Terminals.act(member.player(), open, TerminalTestTypes.PING, new CompoundTag()), "an action at a terminal for anyone, which still needs the charter lookup"));
+		paths.put("use", () -> helper.getLevel().getBlockState(pump).useWithoutItem(helper.getLevel(), member.player(),
+				new BlockHitResult(Vec3.atCenterOf(pump), Direction.UP, pump, false)));
+		UnreadableChecks.assertSavedDataNoThrow(helper, "terminals on unreadable charters", server, CharterData.TYPE, paths);
+		if (count(member.player(), TerminalTypes.FUEL_PUMP.parts().getFirst()) != 1) {
+			throw helper.assertionException("a refused request keeps the part");
 		}
 		helper.succeed();
 	}

@@ -1,6 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -39,6 +41,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 
 /**
  * Server GameTests for #80: a charter hands ore in for a work order at the ore processor. Progress is the charter's own and
@@ -370,28 +373,25 @@ public class WorkOrdersTest {
 			ServerPlayer player = mock.player();
 			BlockPos processor = processorFor(helper, mock);
 			carry(player, OreType.BRONZIUM, 10);
-			CompoundTag future = new CompoundTag();
-			future.putInt("version", 99);
-			future.putString("progress", "something this build has never seen");
-			WorkOrderData unreadable = WorkOrderData.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow();
-			server.getDataStorage().set(WorkOrderData.TYPE, unreadable);
-
+			WorkOrderData unreadable = WorkOrderData.CODEC.parse(NbtOps.INSTANCE, UnreadableChecks.futureData()).getOrThrow();
 			if (unreadable.isReadable() || !unreadable.unreadableVersion().equals(Optional.of("99"))) {
 				throw helper.assertionException("version 99 should load as unreadable, got %s", unreadable.unreadableVersion());
 			}
-			expectKey(helper, UNREADABLE, WorkOrders.deliver(context(server, player, processor), WorkOrder.FOUNDERS_HANDS), "a delivery on unreadable data");
-			expectRefused(helper, TerminalRefusal.ACTION_REFUSED, Terminals.act(player, processor, WorkOrders.DELIVER, orderArgs(WorkOrder.FOUNDERS_HANDS)),
-					"a delivery on unreadable data through the terminal");
-			WorkOrdersView view = WorkOrders.view(server, player, Charters.charterOf(server, player.getUUID()), processor);
-			if (view.readable() || !view.orders().isEmpty()) {
-				throw helper.assertionException("the view of unreadable data lists no order, got %s", view);
-			}
+			Optional<Charter> charter = Charters.charterOf(server, player.getUUID());
+			Map<String, Runnable> paths = new LinkedHashMap<>();
+			paths.put("delivery", () -> expectKey(helper, UNREADABLE, WorkOrders.deliver(context(server, player, processor), WorkOrder.FOUNDERS_HANDS),
+					"a delivery on unreadable data"));
+			paths.put("delivery through the terminal", () -> expectRefused(helper, TerminalRefusal.ACTION_REFUSED,
+					Terminals.act(player, processor, WorkOrders.DELIVER, orderArgs(WorkOrder.FOUNDERS_HANDS)), "a delivery on unreadable data through the terminal"));
+			paths.put("view", () -> {
+				WorkOrdersView view = WorkOrders.view(server, player, charter, processor);
+				if (view.readable() || !view.orders().isEmpty()) {
+					throw helper.assertionException("the view of unreadable data lists no order, got %s", view);
+				}
+			});
+			UnreadableChecks.assertSavedDataNoThrow(helper, "work orders", server, WorkOrderData.TYPE, paths);
 			if (carried(player, OreType.BRONZIUM) != 10) {
 				throw helper.assertionException("a refused delivery must keep the ore");
-			}
-			Tag written = WorkOrderData.CODEC.encodeStart(NbtOps.INSTANCE, unreadable).getOrThrow();
-			if (!written.equals(future)) {
-				throw helper.assertionException("unreadable data must be written back as it was read, got %s", written);
 			}
 			// A body of this version that does not parse (here: more handed in than the order asks) is kept unread, not dropped.
 			CompoundTag entry = new CompoundTag();

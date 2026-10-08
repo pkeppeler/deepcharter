@@ -17,6 +17,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.attachment.SavedState;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 
 /**
@@ -41,21 +42,18 @@ public final class CharterData extends SavedData {
 	// Datafixer type: vanilla applies it to saved data it reads. Our data has a version of its own, so the vanilla fixers find nothing to fix.
 	public static final SavedDataType<CharterData> TYPE = new SavedDataType<>(ID, CharterData::new, CODEC, DataFixTypes.SAVED_DATA_COMMAND_STORAGE);
 
-	private final Map<CharterId, Charter> charters = new LinkedHashMap<>();
-	private final Optional<Versioned.Unreadable<List<Charter>>> unreadable;
+	private final SavedState<Map<CharterId, Charter>> state;
 
 	public CharterData() {
-		this.unreadable = Optional.empty();
+		this.state = SavedState.fresh(ID, VERSION, new LinkedHashMap<>());
 	}
 
 	private CharterData(Versioned<List<Charter>> loaded) {
-		switch (loaded) {
-			case Versioned.Readable<List<Charter>> readable -> {
-				readable.value().forEach(charter -> charters.put(charter.id(), charter));
-				unreadable = Optional.empty();
-			}
-			case Versioned.Unreadable<List<Charter>> raw -> unreadable = Optional.of(raw);
-		}
+		this.state = SavedState.load(ID, VERSION, loaded, charters -> {
+			Map<CharterId, Charter> byId = new LinkedHashMap<>();
+			charters.forEach(charter -> byId.put(charter.id(), charter));
+			return byId;
+		});
 	}
 
 	/** The world's charters. Call on the server thread. */
@@ -64,20 +62,16 @@ public final class CharterData extends SavedData {
 	}
 
 	private Versioned<List<Charter>> versioned() {
-		return unreadable.<Versioned<List<Charter>>>map(raw -> raw).orElseGet(() -> Versioned.of(List.copyOf(charters.values())));
+		return state.versioned(charters -> List.copyOf(charters.values()));
 	}
 
 	private Map<CharterId, Charter> readable() {
-		if (unreadable.isPresent()) {
-			throw new IllegalStateException("the saved charters have version " + unreadable.get().version()
-					+ " that this build cannot read (it reads " + VERSION + ")");
-		}
-		return charters;
+		return state.orThrow();
 	}
 
-	/** False when the saved charters are of a version this build cannot read: every other method then throws. */
+	/** False (logged once) when the saved charters are of a version this build cannot read: every other method then throws. */
 	public boolean isReadable() {
-		return unreadable.isEmpty();
+		return state.isReadable();
 	}
 
 	public Collection<Charter> all() {

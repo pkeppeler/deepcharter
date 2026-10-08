@@ -1,6 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -13,7 +15,6 @@ import io.netty.buffer.Unpooled;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtOps;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -37,6 +38,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.PartLabel;
@@ -399,18 +401,16 @@ public class UpgradeTerminalTest {
 	public void unreadableSerialsRefuseBeforeTheSpend(GameTestHelper helper) {
 		withRepairedTerminal(helper, () -> {
 			MinecraftServer server = helper.getLevel().getServer();
-			Serials original = Serials.get(server);
-			CompoundTag future = new CompoundTag();
-			future.putInt("version", 99);
-			Serials unreadable = Serials.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow();
 			Scene scene = scene(helper, 10_000);
 			try {
-				server.getDataStorage().set(Serials.TYPE, unreadable);
 				int carriedBefore = carried(scene.player());
 				scene.pod().setHull(40f);
-				expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(scene, ComponentTrack.HULL, 1), "a purchase with unreadable serials");
-				expectSame(helper, UpgradeTerminal.buy(server, scene.player(), scene.terminal(), ComponentTrack.HULL, 1),
-						Optional.of(UpgradeRefusal.SERIALS_UNREADABLE.message()), "the reason");
+				Map<String, Runnable> paths = new LinkedHashMap<>();
+				paths.put("purchase", () -> expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(scene, ComponentTrack.HULL, 1),
+						"a purchase with unreadable serials"));
+				paths.put("purchase reason", () -> expectSame(helper, UpgradeTerminal.buy(server, scene.player(), scene.terminal(), ComponentTrack.HULL, 1),
+						Optional.of(UpgradeRefusal.SERIALS_UNREADABLE.message()), "the reason"));
+				UnreadableChecks.assertSavedDataNoThrow(helper, "serials", server, Serials.TYPE, paths);
 				expectEqual(helper, "the account", 10_000, balance(helper, scene));
 				expectEqual(helper, "the hull", 40f, scene.pod().hull());
 				if (PodComponents.partOf(scene.pod(), ComponentTrack.HULL).isPresent() || !drops(helper, scene).isEmpty()
@@ -420,7 +420,6 @@ public class UpgradeTerminalTest {
 				}
 				helper.succeed();
 			} finally {
-				server.getDataStorage().set(Serials.TYPE, original);
 				clean(helper, scene);
 			}
 		});

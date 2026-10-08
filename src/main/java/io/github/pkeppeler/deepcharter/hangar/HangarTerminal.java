@@ -1,12 +1,9 @@
 package io.github.pkeppeler.deepcharter.hangar;
 
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.Set;
-import java.util.WeakHashMap;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -56,9 +53,6 @@ public final class HangarTerminal {
 	 */
 	public static final TerminalType TYPE = TerminalTypes.register(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "hangar_console"), HangarParts.ALL);
 
-	/** Serials whose unreadable data has been logged, so a refused purchase logs once for each and not once for each press. */
-	private static final Set<Serials> UNREADABLE_SERIALS_LOGGED = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
-
 	private HangarTerminal() {
 	}
 
@@ -100,16 +94,11 @@ public final class HangarTerminal {
 			return refuse("pod_failed");
 		}
 		pod.setPos(slot.get());
-		try {
-			PodComponents.register(pod, charter.id());
-		} catch (IllegalStateException unreadable) {
-			// The saved serials are of a version this build cannot read, so no pod is registered: nothing has been taken yet.
-			Serials serials = Serials.get(server);
-			if (UNREADABLE_SERIALS_LOGGED.add(serials)) {
-				DeepCharter.LOGGER.error("The hangar sells no Mole, because the saved serials cannot be read: {}", unreadable.getMessage());
-			}
+		if (!Serials.get(server).isReadable()) {
+			// No pod is registered without a serial: nothing has been taken yet.
 			return refuse("serials_unreadable");
 		}
+		PodComponents.register(pod, charter.id());
 		String serial = PodComponents.registration(pod).orElseThrow().serial();
 		if (!level.addFreshEntity(pod)) {
 			return refuse("pod_failed");
@@ -152,7 +141,6 @@ public final class HangarTerminal {
 		// A wreck nobody owns is registered to the charter that restores it, and that takes a serial.
 		boolean unowned = PodComponents.registration(wreck).isEmpty();
 		if (unowned && !Serials.get(server).isReadable()) {
-			logSerialsUnreadable(server, "restores no unowned wreck");
 			return refuse("serials_unreadable");
 		}
 		if (charter.account() < cost.money()) {
@@ -181,13 +169,6 @@ public final class HangarTerminal {
 		player.sendOverlayMessage(Component.translatable("deepcharter.hangar.restored", cost.money()));
 		cost.transmission().ifPresent(transmission -> Transmissions.fire(server, charter.id(), transmission));
 		return Optional.empty();
-	}
-
-	private static void logSerialsUnreadable(MinecraftServer server, String consequence) {
-		Serials serials = Serials.get(server);
-		if (UNREADABLE_SERIALS_LOGGED.add(serials)) {
-			DeepCharter.LOGGER.error("The hangar {}, because the saved serials cannot be read", consequence);
-		}
 	}
 
 	private static int count(Inventory inventory, Item item) {

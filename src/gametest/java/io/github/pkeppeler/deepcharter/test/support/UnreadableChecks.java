@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import java.util.List;
 import java.util.Map;
 
 import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
@@ -7,6 +8,10 @@ import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.level.saveddata.SavedDataType;
 
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 
@@ -32,6 +37,32 @@ public final class UnreadableChecks {
 	/** Makes {@code type} on {@code owner} unreadable, as it is after a load of a world saved by a newer build. */
 	public static <T> void makeUnreadable(AttachmentTarget owner, AttachmentType<Versioned<T>> type) {
 		owner.setAttached(type, new Versioned.Unreadable<>(futureData()));
+	}
+
+	/**
+	 * Swaps saved data of a future version in for the world's {@code type}, runs {@link #assertNoThrow} on the paths, and puts the
+	 * world's own data back. Also asserts that the unreadable data is logged exactly once, and is written back as it was read.
+	 * Everything runs inside the test's one tick, so no other test sees the swapped data.
+	 */
+	public static <T extends SavedData> void assertSavedDataNoThrow(GameTestHelper helper, String feature, MinecraftServer server,
+			SavedDataType<T> type, Map<String, Runnable> paths) {
+		CompoundTag future = futureData();
+		T unreadable = type.codec().parse(NbtOps.INSTANCE, future).getOrThrow();
+		T original = server.getDataStorage().computeIfAbsent(type);
+		LogCapture log = LogCapture.start(type.id().toString());
+		server.getDataStorage().set(type, unreadable);
+		try {
+			assertNoThrow(helper, feature, paths);
+		} finally {
+			server.getDataStorage().set(type, original);
+		}
+		List<String> errors = log.errors();
+		if (errors.size() != 1) {
+			throw helper.assertionException("%s: unreadable %s should be logged once, not %s times: %s", feature, type.id(), errors.size(), errors);
+		}
+		if (!future.equals(type.codec().encodeStart(NbtOps.INSTANCE, unreadable).getOrThrow())) {
+			throw helper.assertionException("%s: unreadable %s must be written back unchanged", feature, type.id());
+		}
 	}
 
 	/**

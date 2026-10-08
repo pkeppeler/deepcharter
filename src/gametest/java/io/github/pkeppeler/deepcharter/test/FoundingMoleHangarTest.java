@@ -597,6 +597,8 @@ public class FoundingMoleHangarTest {
 			Tag current = HangarData.CODEC.encodeStart(NbtOps.INSTANCE, HangarData.get(server)).getOrThrow();
 			CompoundTag future = ((CompoundTag) current).copy();
 			future.putInt("version", Integer.parseInt(FUTURE_HANGAR));
+			// Started before the first check of the data: the data logs the first time anything asks if it is readable.
+			LogCapture hangarLog = LogCapture.start(FUTURE_HANGAR);
 			HangarData unreadable = HangarData.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow();
 			expect(helper, !unreadable.isReadable() && HangarData.CODEC.encodeStart(NbtOps.INSTANCE, unreadable).getOrThrow().equals(future),
 					"data of version %s loads as unreadable and is written back unchanged", FUTURE_HANGAR);
@@ -617,7 +619,6 @@ public class FoundingMoleHangarTest {
 			int pods = podsInTheHangar(helper).size();
 
 			// The hangar record is unreadable: the colony event, the repair event and both actions skip it.
-			LogCapture hangarLog = LogCapture.start(FUTURE_HANGAR);
 			server.getDataStorage().set(HangarData.TYPE, unreadable);
 			// Only the derelict is skipped: the console is a block and is placed even when the hangar record cannot be read.
 			BlockPos hangarConsole = Hangar.consolePos(server).orElseThrow();

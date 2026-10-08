@@ -21,6 +21,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.attachment.SavedState;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 
@@ -71,22 +72,14 @@ public final class HangarData extends SavedData {
 	// Datafixer type: as for CharterData (ADR 0007), vanilla's fixers find nothing of theirs in a file that carries our own version.
 	public static final SavedDataType<HangarData> TYPE = new SavedDataType<>(ID, HangarData::new, CODEC, DataFixTypes.SAVED_DATA_COMMAND_STORAGE);
 
-	private State state = State.EMPTY;
-	private final Optional<Versioned.Unreadable<State>> unreadable;
-	private boolean loggedUnreadable;
+	private final SavedState<State> saved;
 
 	public HangarData() {
-		this.unreadable = Optional.empty();
+		this.saved = SavedState.fresh(ID, VERSION, State.EMPTY);
 	}
 
 	private HangarData(Versioned<State> loaded) {
-		switch (loaded) {
-			case Versioned.Readable<State> readable -> {
-				state = readable.value();
-				unreadable = Optional.empty();
-			}
-			case Versioned.Unreadable<State> raw -> unreadable = Optional.of(raw);
-		}
+		this.saved = SavedState.load(ID, VERSION, loaded, state -> state);
 	}
 
 	/** The world's hangar data. Call on the server thread. */
@@ -96,37 +89,24 @@ public final class HangarData extends SavedData {
 
 	/** The world's hangar data if it is readable; otherwise empty, after logging that once per data. Never throws. */
 	public static Optional<HangarData> readable(MinecraftServer server) {
-		HangarData data = get(server);
-		if (data.isReadable()) {
-			return Optional.of(data);
-		}
-		if (!data.loggedUnreadable) {
-			data.loggedUnreadable = true;
-			DeepCharter.LOGGER.error("The saved hangar has version {} that this build cannot read: the hangar places no Mole and restores no wreck until the world is opened by a build that reads it",
-					data.unreadable.orElseThrow().version());
-		}
-		return Optional.empty();
+		return Optional.of(get(server)).filter(HangarData::isReadable);
 	}
 
 	private Versioned<State> versioned() {
-		return unreadable.<Versioned<State>>map(raw -> raw).orElseGet(() -> Versioned.of(state));
+		return saved.versioned(state -> state);
 	}
 
-	/** False when the saved data is of a version this build cannot read: every other method then throws. */
+	/** False (logged once) when the saved data is of a version this build cannot read: every other method then throws. */
 	public boolean isReadable() {
-		return unreadable.isEmpty();
+		return saved.isReadable();
 	}
 
 	public State state() {
-		if (unreadable.isPresent()) {
-			throw new IllegalStateException("the saved hangar has version " + unreadable.get().version()
-					+ " that this build cannot read (it reads " + VERSION + ")");
-		}
-		return state;
+		return saved.orThrow();
 	}
 
 	private void change(UnaryOperator<State> change) {
-		state = change.apply(state());
+		saved.set(change.apply(state()));
 		setDirty();
 	}
 

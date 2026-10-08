@@ -1,12 +1,10 @@
 package io.github.pkeppeler.deepcharter.handbook;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.WeakHashMap;
 
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -17,9 +15,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
-import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.Charter;
-import io.github.pkeppeler.deepcharter.charter.CharterData;
 import io.github.pkeppeler.deepcharter.charter.CharterEvents;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -38,9 +34,6 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
  * is an explicit call and throws instead.
  */
 public final class HandbookProgress {
-	/** Saved-data objects already reported as unreadable. A reload makes a new object, which is reported again. */
-	private static final Set<Object> REPORTED = Collections.newSetFromMap(new WeakHashMap<>());
-
 	private HandbookProgress() {
 	}
 
@@ -115,31 +108,10 @@ public final class HandbookProgress {
 
 	/** The progress data, or empty (logged once for each saved-data object) when the saved charters or the saved progress are unreadable. */
 	static Optional<HandbookProgressData> readableData(MinecraftServer server) {
-		if (!chartersReadable(server)) {
+		if (!Charters.isReadable(server)) {
 			return Optional.empty();
 		}
-		HandbookProgressData data = HandbookProgressData.get(server);
-		if (!data.isReadable()) {
-			reportOnce(data, "the saved handbook progress has a version this build cannot read, so the handbook skips it and keeps it unchanged");
-			return Optional.empty();
-		}
-		return Optional.of(data);
-	}
-
-	/** Whether the saved charters can be read. When they cannot, logs once for each saved-data object, so every handbook path shares one line. */
-	static boolean chartersReadable(MinecraftServer server) {
-		if (Charters.isReadable(server)) {
-			return true;
-		}
-		reportOnce(CharterData.get(server), "the saved charters have a version this build cannot read, so the handbook skips progress and notes");
-		return false;
-	}
-
-	/** Logs {@code message} as an error the first time it is called for {@code owner}. */
-	static void reportOnce(Object owner, String message) {
-		if (REPORTED.add(owner)) {
-			DeepCharter.LOGGER.error("{}", message);
-		}
+		return Optional.of(HandbookProgressData.get(server)).filter(HandbookProgressData::isReadable);
 	}
 
 	private static void refreshAll(MinecraftServer server, Iterable<UUID> players) {

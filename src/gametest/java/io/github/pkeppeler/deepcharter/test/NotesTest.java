@@ -7,7 +7,9 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -44,7 +46,7 @@ import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.handbook.NotesData;
 import io.github.pkeppeler.deepcharter.handbook.NotesSyncPayload;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
-import io.github.pkeppeler.deepcharter.test.support.LogCapture;
+import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 
 /**
@@ -330,45 +332,25 @@ public class NotesTest {
 		helper.succeed();
 	}
 
-	private static CompoundTag futureVersion() {
-		CompoundTag future = new CompoundTag();
-		future.putInt("version", 99);
-		future.putString("shape", "from a later build");
-		return future;
-	}
-
 	@GameTest
 	public void unreadableNotesNeverThrowFromAUseAJoinOrASync(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		ServerPlayer player = MockPlayers.join(helper, "Reader").player();
 		found(helper, server, player);
-		CompoundTag future = futureVersion();
-		NotesData unreadable = NotesData.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow();
-		NotesData original = NotesData.get(server);
-		LogCapture log = LogCapture.start("saved handbook notes");
-		// Everything runs inside this one tick, so no other test sees the swapped data.
-		server.getDataStorage().set(NotesData.TYPE, unreadable);
-		try {
-			for (int round = 0; round < 3; round++) {
-				FindResult result = Notes.find(player, FIRST);
-				if (result != FindResult.UNREADABLE) {
-					throw helper.assertionException("finding with unreadable notes is UNREADABLE, was %s", result);
-				}
-				NotesSyncPayload.send(server, player);
-				if (!notesOf(server, player).isEmpty() || HandbookReadPayload.handle(server, player, FIRST)) {
-					throw helper.assertionException("unreadable notes read as empty and mark nothing");
-				}
+		Map<String, Runnable> paths = new LinkedHashMap<>();
+		paths.put("use", () -> {
+			FindResult result = Notes.find(player, FIRST);
+			if (result != FindResult.UNREADABLE) {
+				throw helper.assertionException("finding with unreadable notes is UNREADABLE, was %s", result);
 			}
-		} finally {
-			server.getDataStorage().set(NotesData.TYPE, original);
-		}
-		List<String> errors = log.errors();
-		if (errors.size() != 1) {
-			throw helper.assertionException("unreadable notes are logged once, not %s times: %s", errors.size(), errors);
-		}
-		if (!future.equals(NotesData.CODEC.encodeStart(NbtOps.INSTANCE, unreadable).getOrThrow())) {
-			throw helper.assertionException("unreadable notes must round-trip unchanged");
-		}
+		});
+		paths.put("sync", () -> NotesSyncPayload.send(server, player));
+		paths.put("read request", () -> {
+			if (!notesOf(server, player).isEmpty() || HandbookReadPayload.handle(server, player, FIRST)) {
+				throw helper.assertionException("unreadable notes read as empty and mark nothing");
+			}
+		});
+		UnreadableChecks.assertSavedDataNoThrow(helper, "notes", server, NotesData.TYPE, paths);
 		helper.succeed();
 	}
 

@@ -122,15 +122,10 @@ public final class Notes {
 
 	/** The Notes data, or empty (logged once for each saved-data object) when the saved charters or the saved Notes are unreadable. */
 	private static Optional<NotesData> readableData(MinecraftServer server) {
-		if (!HandbookProgress.chartersReadable(server)) {
+		if (!Charters.isReadable(server)) {
 			return Optional.empty();
 		}
-		NotesData data = NotesData.get(server);
-		if (!data.isReadable()) {
-			HandbookProgress.reportOnce(data, "the saved handbook notes have a version this build cannot read, so the handbook skips them and keeps them unchanged");
-			return Optional.empty();
-		}
-		return Optional.of(data);
+		return Optional.of(NotesData.get(server)).filter(NotesData::isReadable);
 	}
 
 	private static void sendAll(MinecraftServer server, Iterable<UUID> players) {

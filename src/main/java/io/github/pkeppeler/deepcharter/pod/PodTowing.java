@@ -24,6 +24,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -320,14 +321,12 @@ public final class PodTowing {
 			// The client guesses a hit and the server settles it.
 			return InteractionResult.SUCCESS;
 		}
-		Optional<Charter> charter;
-		try {
-			charter = Charters.charterOf(serverPlayer.level().getServer(), serverPlayer.getUUID());
-		} catch (IllegalStateException unreadable) {
-			DeepCharter.LOGGER.error("Charters cannot be read, so {} cannot use a tow cable", serverPlayer.getGameProfile().name(), unreadable);
+		MinecraftServer server = serverPlayer.level().getServer();
+		if (!Charters.isReadable(server)) {
 			serverPlayer.sendOverlayMessage(Refusal.UNREADABLE.message());
 			return InteractionResult.FAIL;
 		}
+		Optional<Charter> charter = Charters.charterOf(server, serverPlayer.getUUID());
 		if (isTowed(target)) {
 			if (!mayFree(target, charter)) {
 				serverPlayer.sendOverlayMessage(Refusal.NOT_ALLOWED_TO_FREE.message());

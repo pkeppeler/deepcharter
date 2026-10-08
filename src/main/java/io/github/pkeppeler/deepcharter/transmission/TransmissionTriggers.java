@@ -24,12 +24,18 @@ public final class TransmissionTriggers {
 			return;
 		}
 		MinecraftServer server = from.getServer();
+		if (!Charters.isReadable(server)) {
+			return;
+		}
 		Charters.charterOf(server, player.getUUID()).ifPresent(charter ->
 				TransmissionCatalog.forBreach(toLayer).forEach(transmission -> Transmissions.fire(server, charter.id(), transmission.id())));
 	}
 
 	/** Fires the transmissions of the zone each charter member stands in. */
 	public static void pollZones(MinecraftServer server) {
+		if (!Charters.isReadable(server)) {
+			return;
+		}
 		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
 			Charters.charterOf(server, player.getUUID()).ifPresent(charter -> {
 				// The poll is also where a bonus that a full account refused is tried again.
