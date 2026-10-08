@@ -44,6 +44,7 @@ public class PodLavaScenario extends EvidenceScenario {
 				ServerLevel one = server.getLevel(LayerChain.dimension(1));
 				box(one, FLOOR_Y - 1, FLOOR_Y - 1, 6, Blocks.STONE);
 				box(one, FLOOR_Y, FLOOR_Y + 8, 6, Blocks.STONE);
+				// room-carver: a room cut inside the solid stone box built just above, so no worldgen lava is in or beside it; the scenario places its own lava
 				box(one, FLOOR_Y, FLOOR_Y + 7, 5, Blocks.AIR);
 				for (BlockPos lamp : new BlockPos[] {
 						new BlockPos(X + 4, FLOOR_Y + 3, Z), new BlockPos(X - 4, FLOOR_Y + 3, Z),

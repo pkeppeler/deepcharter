@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,6 +15,7 @@ import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
+import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel.Run;
@@ -40,6 +43,21 @@ public class EconomyAffordabilityTest {
 	/** A later charter's first refurbished Mole, with no pod yet, and its second one. */
 	private static final int REFURBISHED_FIRST_RUNS = 2;
 	private static final int REFURBISHED_SECOND_RUNS = 3;
+
+	/**
+	 * Each repair station item against the run of the layer where it starts to matter (the transmitter, a layer 3 item, is measured in
+	 * layer 2 runs), as a band of that run's net. See {@link Consumable} for the scale.
+	 */
+	private record Target(boolean layerTwo, double minRuns, double maxRuns) {
+	}
+
+	private static final Map<Consumable, Target> ITEM_TARGETS = Map.of(
+			Consumable.RESERVE_FUEL_TANK, new Target(false, 0.25, 1),
+			Consumable.DYNAMITE, new Target(false, 0.25, 1),
+			Consumable.QUANTUM_TELEPORTER, new Target(true, 1.5, 2),
+			Consumable.PLASTIC_EXPLOSIVES, new Target(true, 0.25, 1),
+			Consumable.HULL_NANOBOTS, new Target(true, 0.25, 1),
+			Consumable.MATTER_TRANSMITTER, new Target(true, 3.5, 4));
 
 	private static Run stockRunInLayerOne() {
 		return EarlyRunModel.run(Zone.load("topsoil_claims"), PodStats.base(), 0);
@@ -135,6 +153,49 @@ public class EconomyAffordabilityTest {
 		long sold = (long) order.quantity() * OreType.BRONZIUM.value();
 		if (order.reward() != sold) {
 			throw failure(helper, "the order pays $%d, but its %d bronzium sell for $%d", order.reward(), order.quantity(), sold);
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void everyRepairItemIsAffordableForTheLayerItMattersIn(GameTestHelper helper) {
+		if (ITEM_TARGETS.size() != Consumable.values().length) {
+			throw failure(helper, "the test has targets for %d items, the shop sells %d", ITEM_TARGETS.size(), Consumable.values().length);
+		}
+		Run layerOne = stockRunInLayerOne();
+		Run layerTwo = upgradedRunInLayerTwo();
+		for (Consumable item : Consumable.values()) {
+			Target target = ITEM_TARGETS.get(item);
+			Run run = target.layerTwo() ? layerTwo : layerOne;
+			double runs = item.price() / run.net();
+			LOGGER.info("[economy] {} ${}: {} runs of ${}", item, item.price(), runs, Math.round(run.net()));
+			if (runs > target.maxRuns() || runs < target.minRuns()) {
+				throw failure(helper, "%s costs $%d, which is %.2f runs of $%.0f; %.2f to %.2f are allowed", item, item.price(), runs,
+						run.net(), target.minRuns(), target.maxRuns());
+			}
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void theDearerItemOfEachPairCostsMore(GameTestHelper helper) {
+		if (Consumable.DYNAMITE.price() >= Consumable.PLASTIC_EXPLOSIVES.price()) {
+			throw failure(helper, "the plastic explosives outdo the dynamite, so they must cost more than its $%d, not $%d",
+					Consumable.DYNAMITE.price(), Consumable.PLASTIC_EXPLOSIVES.price());
+		}
+		if (Consumable.QUANTUM_TELEPORTER.price() >= Consumable.MATTER_TRANSMITTER.price()) {
+			throw failure(helper, "the transmitter must cost more than the teleporter's $%d, not $%d",
+					Consumable.QUANTUM_TELEPORTER.price(), Consumable.MATTER_TRANSMITTER.price());
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void theNanobotsCostMoreThanMendingTheSameHullAtTheStation(GameTestHelper helper) {
+		long atStation = Math.round(RepairTuning.DEFAULT.nanobotHp()) * RepairTuning.DEFAULT.repairCostPerHp();
+		if (Consumable.HULL_NANOBOTS.price() <= atStation) {
+			throw failure(helper, "the nanobots cost $%d, no more than the $%d that the station charges for their %.0f HP",
+					Consumable.HULL_NANOBOTS.price(), atStation, RepairTuning.DEFAULT.nanobotHp());
 		}
 		helper.succeed();
 	}

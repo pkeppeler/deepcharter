@@ -16,6 +16,7 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.vehicle.minecart.Minecart;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
@@ -27,6 +28,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 
 /**
  * Server GameTests for breach crossing for players and vehicles. Each test uses its own X/Z so
@@ -289,9 +291,7 @@ public class BreachCrossingTest {
 	/** Clear the floor of {@code level} at one column, so an entity above it falls straight out of the layer. */
 	private static void openShaft(ServerLevel level, double x, double z) {
 		BlockPos column = BlockPos.containing(x, 0, z);
-		for (int y = level.getMinY(); y <= level.getMinY() + 10; y++) {
-			level.setBlock(column.atY(y), Blocks.AIR.defaultBlockState(), 3);
-		}
+		RoomCarver.carve(level, column.atY(level.getMinY()), column.atY(level.getMinY() + 10), Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
 	}
 
 	// assertionException(String, Object...) leaves the placeholders unfilled in the report.

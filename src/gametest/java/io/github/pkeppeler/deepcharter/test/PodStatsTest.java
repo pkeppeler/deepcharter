@@ -35,7 +35,6 @@ import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -47,6 +46,7 @@ import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 
 /**
@@ -107,6 +107,7 @@ public class PodStatsTest {
 		}
 		OVERRIDES.remove(pod.getUUID());
 		pod.discard();
+		// room-carver: clears the floor of the overworld test structure, not layer rock
 		fillFloor(helper, Blocks.AIR);
 	}
 
@@ -527,9 +528,8 @@ public class PodStatsTest {
 		int x = 4000;
 		int floor = 60;
 		ServerLevel level = layer(helper, 1);
-		RoomSeal.seal(level, new BlockPos(x - 3, floor - 8, Z - 3), new BlockPos(x + 8, floor + 10, Z + 4));
-		box(level, x - 3, x + 8, floor - 8, floor - 1, Z - 3, Z + 4, Blocks.STONE);
-		box(level, x - 3, x + 8, floor, floor + 10, Z - 3, Z + 4, Blocks.AIR);
+		RoomCarver.carve(level, x - 3, x + 8, floor - 8, floor - 1, Z - 3, Z + 4, Blocks.STONE);
+		RoomCarver.carve(level, x - 3, x + 8, floor, floor + 10, Z - 3, Z + 4, Blocks.AIR);
 		FarRig[] rigs = new FarRig[2];
 		int[] columns = {x, x + 5};
 		for (int i = 0; i < 2; i++) {
@@ -572,9 +572,8 @@ public class PodStatsTest {
 	/** Boring the one crust row left under a pod in layer 1 with the pod's hull and crust damage set; checks the pod that arrives in layer 2. */
 	private static void borePodThroughCrust(GameTestHelper helper, int x, float hull, float crustDamage, Consumer<PodEntity> check) {
 		ServerLevel one = layer(helper, 1);
-		RoomSeal.seal(one, new BlockPos(x - 2, 0, Z - 2), new BlockPos(x + 2, 8, Z + 2));
-		box(one, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
-		box(one, x - 2, x + 2, 1, 8, Z - 2, Z + 2, Blocks.AIR);
+		RoomCarver.carve(one, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
+		RoomCarver.carve(one, x - 2, x + 2, 1, 8, Z - 2, Z + 2, Blocks.AIR);
 		UUID[] id = new UUID[1];
 		FarRig rig = FarRig.await(helper, one, new Vec3(x, 1, Z), "crust-stats-" + x, pod -> {
 			id[0] = pod.getUUID();
@@ -614,9 +613,8 @@ public class PodStatsTest {
 		// Since #67 a pod at hull 0 is a wreck: the drill stops with the power and the pilot dies, so the pod does not cross.
 		int x = 4128;
 		ServerLevel one = layer(helper, 1);
-		RoomSeal.seal(one, new BlockPos(x - 2, 0, Z - 2), new BlockPos(x + 2, 8, Z + 2));
-		box(one, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
-		box(one, x - 2, x + 2, 1, 8, Z - 2, Z + 2, Blocks.AIR);
+		RoomCarver.carve(one, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
+		RoomCarver.carve(one, x - 2, x + 2, 1, 8, Z - 2, Z + 2, Blocks.AIR);
 		FarRig rig = FarRig.await(helper, one, new Vec3(x, 1, Z), "crust-stats-" + x, pod -> {
 			OVERRIDES.put(pod.getUUID(), stats -> stats.withCrustHullDamage(20f));
 			pod.setHull(15f);

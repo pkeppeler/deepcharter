@@ -110,6 +110,7 @@ public class OrePlacementScenario extends EvidenceScenario {
 		for (int dx = -6; dx < ROOM_LENGTH - 6; dx++) {
 			for (int dz = -ROOM_HALF_WIDTH; dz <= ROOM_HALF_WIDTH; dz++) {
 				for (int dy = 0; dy < ROOM_HEIGHT; dy++) {
+					// room-carver: left unsealed on purpose: the scenario shows the worldgen lava that stays in the wall of a room cut with no neighbour updates
 					level.setBlock(origin.offset(dx, dy, dz), Blocks.AIR.defaultBlockState(), 2);
 				}
 			}
