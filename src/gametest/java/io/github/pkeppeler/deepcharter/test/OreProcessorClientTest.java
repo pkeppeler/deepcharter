@@ -34,6 +34,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Client GameTest for #68: the account HUD shows the charter's balance, the processor screen opens, and each sell button sells
@@ -41,7 +42,6 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
  */
 public class OreProcessorClientTest implements FabricClientGameTest {
 	private static final String CHARTER = "Processor Test Charter";
-	private static final int WAIT_TICKS = 200;
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
@@ -49,24 +49,24 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			BlockPos processor = singleplayer.getServer().computeOnServer(OreProcessorClientTest::setUp);
 
-			context.waitFor(client -> hud(client).equals(CHARTER + "  $0"), WAIT_TICKS);
+			ClientWait.until(context, "the hud showing $0 cargo", client -> hud(client).equals(CHARTER + "  $0"), client -> "hud '" + hud(client) + "'");
 			check(hud(context).equals(CHARTER + "  $0"), "the HUD shows the charter and an empty account, got '" + hud(context) + "'");
 
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(processor)));
-			context.waitForScreen(OreProcessorScreen.class);
+			ClientWait.screen(context, OreProcessorScreen.class);
 			OreProcessorScreen screen = context.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
-			context.waitFor(client -> screen.typewriter().done(), WAIT_TICKS);
+			ClientWait.until(context, "the processor screen finished typing", client -> screen.typewriter().done(), client -> "typewriter text '" + screen.typewriter().text() + "'");
 
 			long cargo = OreType.GOLDIUM.value() + OreType.PLATINIUM.value();
 			context.clickScreenButton("SELL ALL POD CARGO");
-			context.waitFor(client -> hud(client).endsWith("$" + cargo), WAIT_TICKS);
+			ClientWait.until(context, "the hud showing the loaded cargo", client -> hud(client).endsWith("$" + cargo), client -> "hud '" + hud(client) + "'");
 			check(context.computeOnClient(client -> client.gui.screen() == screen), "a sale updates the screen in place");
 			check(context.computeOnClient(client -> OreProcessorScreen.accountLine()).equals("ACCOUNT $" + cargo),
 					"the screen shows the new balance, got '" + context.computeOnClient(client -> OreProcessorScreen.accountLine()) + "'");
 
 			long carried = OreType.IRONIUM.value() + OreType.SILVERIUM.value();
 			context.clickScreenButton("SELL ALL CARRIED ORE");
-			context.waitFor(client -> hud(client).endsWith("$" + (cargo + carried)), WAIT_TICKS);
+			ClientWait.until(context, "the hud showing the carried ore added", client -> hud(client).endsWith("$" + (cargo + carried)), client -> "hud '" + hud(client) + "'");
 			check(hud(context).equals(CHARTER + "  $" + (cargo + carried)), "the HUD shows the total, got '" + hud(context) + "'");
 			int ore = singleplayer.getServer().computeOnServer(server -> {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
@@ -83,7 +83,7 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 				}
 			});
 			context.clickScreenButton("DELIVER BRONZIUM");
-			context.waitFor(client -> screen.orderLines().getLast().endsWith("DONE"), WAIT_TICKS);
+			ClientWait.until(context, "the last work order DONE", client -> screen.orderLines().getLast().endsWith("DONE"), client -> "order lines " + screen.orderLines());
 			check(singleplayer.getServer().computeOnServer(WorkOrdersTest::handsRestored), "the Founder's hands are restored");
 			singleplayer.getServer().runOnServer(server -> FounderStatue.handPositions(server).orElseThrow()
 					.forEach(pos -> server.overworld().setBlock(pos, Blocks.AIR.defaultBlockState(), 3)));
@@ -94,9 +94,9 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 					Charters.charterOfOrThrow(server, server.getPlayerList().getPlayers().getFirst().getUUID()).orElseThrow().id(),
 					LayerChain.topDepth(server.registryAccess(), 3)));
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(processor)));
-			context.waitForScreen(OreProcessorScreen.class);
+			ClientWait.screen(context, OreProcessorScreen.class);
 			OreProcessorScreen two = context.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
-			context.waitFor(client -> two.typewriter().done(), WAIT_TICKS);
+			ClientWait.until(context, "the second processor screen finished typing", client -> two.typewriter().done(), client -> "typewriter text '" + two.typewriter().text() + "'");
 			List<String> expectedLines = List.of("WORK ORDERS", "RESTORE THE FOUNDER'S HANDS", "DONE", "MORALE INITIATIVE", "0 / 10 SILVERIUM");
 			check(context.computeOnClient(client -> two.orderLines()).equals(expectedLines),
 					"two orders are listed, got " + context.computeOnClient(client -> two.orderLines()));
@@ -111,7 +111,7 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 			for (int round = 1; round <= 2; round++) {
 				String done = "0 / 10 SILVERIUM  DONE x" + round;
 				context.clickScreenButton("DELIVER SILVERIUM");
-				context.waitFor(client -> two.orderLines().getLast().equals(done), WAIT_TICKS);
+				ClientWait.until(context, "the second screen's last order done", client -> two.orderLines().getLast().equals(done), client -> "order lines " + two.orderLines());
 			}
 			int left = singleplayer.getServer().computeOnServer(server -> server.getPlayerList().getPlayers().getFirst().getInventory()
 					.countItem(OreRegistry.item(OreType.SILVERIUM)));
@@ -125,7 +125,7 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 				context.setScreen(() -> new OreProcessorScreen(manyView));
 				OreProcessorScreen crowded = context.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
 				context.runOnClient(client -> crowded.resize(size[0], size[1]));
-				context.waitFor(client -> crowded.typewriter().done(), WAIT_TICKS);
+				ClientWait.until(context, "the crowded screen finished typing", client -> crowded.typewriter().done(), client -> "typewriter text '" + crowded.typewriter().text() + "'");
 				int rows = context.computeOnClient(client -> crowded.orderRows().size());
 				check(rows >= 1 && rows < 5, "the rows are bounded by the room: " + rows + " of 5 at " + size[0] + " by " + size[1]);
 				int pages = (5 + rows - 1) / rows;
@@ -135,13 +135,13 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 				for (int page = 2; page <= pages; page++) {
 					context.clickScreenButton(">");
 					String heading = "WORK ORDERS  " + page + "/" + pages;
-					context.waitFor(client -> crowded.orderLines().getFirst().equals(heading), WAIT_TICKS);
+					ClientWait.until(context, "the crowded screen's first line at the heading", client -> crowded.orderLines().getFirst().equals(heading), client -> "order lines " + crowded.orderLines());
 					checkLayout(context, crowded, "page " + page + " at " + size[0] + " by " + size[1]);
 				}
 				check(context.computeOnClient(client -> crowded.orderRows().size()) == 5 - (pages - 1) * rows, "the last page holds the rest");
 				check(!context.computeOnClient(client -> button(crowded, ">").active), "no page after the last");
 				context.clickScreenButton("<");
-				context.waitFor(client -> crowded.orderLines().getFirst().equals("WORK ORDERS  " + (pages - 1) + "/" + pages), WAIT_TICKS);
+				ClientWait.until(context, "the crowded screen back on the previous page", client -> crowded.orderLines().getFirst().equals("WORK ORDERS  " + (pages - 1) + "/" + pages), client -> "order lines " + crowded.orderLines());
 			}
 			context.setScreen(() -> null);
 		}

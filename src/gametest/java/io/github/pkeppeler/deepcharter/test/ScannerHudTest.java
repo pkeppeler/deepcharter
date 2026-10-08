@@ -29,6 +29,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
@@ -80,7 +81,7 @@ public class ScannerHudTest implements FabricClientGameTest {
 	 */
 	public static void rideWithGoldAhead(ClientGameTestContext context, TestServerContext server, int scannerTier) {
 		mountFirstPlayer(server, scannerTier);
-		context.waitFor(client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
+		ClientWait.until(context, "the client riding a pod", client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
 		BlockPos gold = server.computeOnServer(minecraftServer -> {
 			ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
 			PodEntity pod = (PodEntity) player.getVehicle();
@@ -93,7 +94,7 @@ public class ScannerHudTest implements FabricClientGameTest {
 			place(player.level(), row.relative(facing, GOLD_AHEAD + 2), Blocks.STONE);
 			return row.relative(facing, GOLD_AHEAD);
 		});
-		context.waitFor(client -> client.level.getBlockState(gold).is(Blocks.GOLD_ORE));
+		ClientWait.until(context, "the gold ore block", client -> client.level.getBlockState(gold).is(Blocks.GOLD_ORE));
 		context.waitTicks(2 * TUNING.rescanTicks() + 2);
 	}
 
@@ -150,7 +151,7 @@ public class ScannerHudTest implements FabricClientGameTest {
 			player.stopRiding();
 			pod.discard();
 		});
-		context.waitFor(client -> client.player.getVehicle() == null);
+		ClientWait.until(context, "the player out of the pod", client -> client.player.getVehicle() == null);
 	}
 
 	private static void dismountAndExpectNoHud(ClientGameTestContext context, TestServerContext server, String label) {
@@ -237,7 +238,7 @@ public class ScannerHudTest implements FabricClientGameTest {
 			dismountAndExpectNoHud(context, server, "scanner-surface-midnight");
 
 			goToLayer(server, 2);
-			context.waitFor(client -> client.level.dimension().identifier().getPath().equals("layer_2"));
+			ClientWait.until(context, "the client in layer_2", client -> client.level.dimension().identifier().getPath().equals("layer_2"));
 			context.waitTicks(40);
 			rideWithGoldAhead(context, server, 1);
 			expectGoldRow(context, "scanner-layer-2");

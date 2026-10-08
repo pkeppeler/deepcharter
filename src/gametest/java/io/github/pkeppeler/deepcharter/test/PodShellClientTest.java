@@ -14,6 +14,7 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /** Client GameTest: the client sees itself riding a pod. */
 public class PodShellClientTest implements FabricClientGameTest {
@@ -39,7 +40,7 @@ public class PodShellClientTest implements FabricClientGameTest {
 		ClientTestLog.start(this);
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			mountFirstPlayer(singleplayer.getServer());
-			context.waitFor(client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
+			ClientWait.until(context, "the client riding a pod", client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
 
 			float hull = context.computeOnClient(client -> ((PodEntity) client.player.getVehicle()).hull());
 			if (hull != DAMAGED_HULL) {
@@ -58,7 +59,7 @@ public class PodShellClientTest implements FabricClientGameTest {
 
 			singleplayer.getServer().runOnServer(minecraftServer ->
 					minecraftServer.getPlayerList().getPlayers().getFirst().stopRiding());
-			context.waitFor(client -> client.player.getVehicle() == null);
+			ClientWait.until(context, "the player out of the pod", client -> client.player.getVehicle() == null);
 		}
 	}
 }

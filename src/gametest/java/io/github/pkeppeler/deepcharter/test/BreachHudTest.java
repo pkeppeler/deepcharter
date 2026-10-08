@@ -22,6 +22,7 @@ import io.github.pkeppeler.deepcharter.client.layer.Altimeter;
 import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /** Client GameTest: the altimeter string matches the depth maths, and a crossing starts and clears the fade. */
 public class BreachHudTest implements FabricClientGameTest {
@@ -43,7 +44,7 @@ public class BreachHudTest implements FabricClientGameTest {
 	public void runTest(ClientGameTestContext context) {
 		ClientTestLog.start(this);
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			context.waitFor(client -> client.player != null && client.level != null);
+			ClientWait.until(context, "the client in the world", client -> client.player != null && client.level != null);
 
 			assertFadeCoversPodHud(context, singleplayer);
 
@@ -52,7 +53,7 @@ public class BreachHudTest implements FabricClientGameTest {
 
 			// In layer 1 low enough that the reading is over a thousand feet, so it has a thousands separator.
 			teleport(singleplayer, 1, 5);
-			context.waitFor(client -> client.level.dimension().equals(LayerChain.dimension(1)));
+			ClientWait.until(context, "the client in layer_1", client -> client.level.dimension().equals(LayerChain.dimension(1)));
 			assertAltimeter(context, "layer 1", client ->
 					SEA_LEVEL - OVERWORLD_MIN_Y + LAYER_1_HEIGHT - client.player.getBlockY());
 			String deep = context.computeOnClient(client -> Altimeter.reading(client).getString());
@@ -103,20 +104,20 @@ public class BreachHudTest implements FabricClientGameTest {
 	 */
 	private static void assertFadeCoversPodHud(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
 		PodShellClientTest.mountFirstPlayer(singleplayer.getServer());
-		context.waitFor(client -> client.player.getVehicle() instanceof PodEntity);
+		ClientWait.until(context, "the client riding a pod", client -> client.player.getVehicle() instanceof PodEntity);
 		context.waitTicks(5);
 		if (brightestInPodReadout(context.takeScreenshot("breach-hud-before-fade")) < 200) {
 			throw new AssertionError("The pod readout should be visible before the fade, or this check proves nothing");
 		}
 		context.runOnClient(client -> BreachEffects.begin());
-		context.waitFor(client -> BreachEffects.fadeAlpha(0f) >= 1f);
+		ClientWait.until(context, "the breach fade complete", client -> BreachEffects.fadeAlpha(0f) >= 1f);
 		int brightest = brightestInPodReadout(context.takeScreenshot("breach-hud-fade-peak"));
 		if (brightest > 8) {
 			throw new AssertionError("The fade should black out the pod readout, but a pixel of brightness " + brightest + " shows through");
 		}
 		context.runOnClient(client -> BreachEffects.reset());
 		singleplayer.getServer().runOnServer(server -> server.getPlayerList().getPlayers().getFirst().stopRiding());
-		context.waitFor(client -> client.player.getVehicle() == null);
+		ClientWait.until(context, "the player out of the pod", client -> client.player.getVehicle() == null);
 	}
 
 	/** The brightest colour channel in the top-left corner of the screenshot, where the pod readout draws. */

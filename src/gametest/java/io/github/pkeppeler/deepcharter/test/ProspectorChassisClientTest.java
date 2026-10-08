@@ -20,6 +20,7 @@ import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
@@ -47,10 +48,10 @@ public class ProspectorChassisClientTest implements FabricClientGameTest {
 			UUID mockId = two.mock().player().getUUID();
 			two.server().runOnServer(server -> buildRoom(server.overworld(), two));
 			// The client must have the room before the players board, or the boarding reaches it before the pod does.
-			context.waitFor(client -> client.level.getBlockState(new BlockPos(X, FLOOR_Y - 1, Z)).is(Blocks.STONE)
+			ClientWait.until(context, "the room's stone floor and air above it", client -> client.level.getBlockState(new BlockPos(X, FLOOR_Y - 1, Z)).is(Blocks.STONE)
 					&& client.level.getBlockState(new BlockPos(X + 1, FLOOR_Y, Z)).isAir());
 			int podId = two.server().computeOnServer(server -> board(server.overworld(), two));
-			context.waitFor(client -> client.player != null && client.player.getVehicle() instanceof PodEntity pod
+			ClientWait.until(context, "the client riding the pod with two passengers", client -> client.player != null && client.player.getVehicle() instanceof PodEntity pod
 					&& pod.getId() == podId && pod.getPassengers().size() == 2);
 			context.runOnClient(client -> client.gui.toastManager().clear());
 			context.waitTicks(2 * ScannerTuning.DEFAULT.rescanTicks() + 2);
@@ -75,7 +76,7 @@ public class ProspectorChassisClientTest implements FabricClientGameTest {
 			}
 
 			two.server().runOnServer(server -> two.mock().player().stopRiding());
-			context.waitFor(client -> client.player.getVehicle() instanceof PodEntity pod && pod.getPassengers().size() == 1);
+			ClientWait.until(context, "the pod with one passenger", client -> client.player.getVehicle() instanceof PodEntity pod && pod.getPassengers().size() == 1);
 			context.waitTicks(2);
 			ScannerHudTest.HudShot pilot = ScannerHudTest.HudShot.take(context, "prospector-pilot", ScannerHudTest.TIER_ONE);
 			if (whitePixels(pilot) == 0) {

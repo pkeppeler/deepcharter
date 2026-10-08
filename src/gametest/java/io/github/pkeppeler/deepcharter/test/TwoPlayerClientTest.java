@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.IntSupplier;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -26,6 +27,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
@@ -113,9 +115,9 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 	private static void drive(ClientGameTestContext context, TwoPlayerServer two, Runnable frame) {
 		UUID mockId = two.mock().player().getUUID();
 		Rig rig = two.server().computeOnServer(server -> setUp(server, two));
-		context.waitFor(client -> client.player != null && client.player.getVehicle() instanceof PodEntity
+		ClientWait.until(context, "the real client riding a pod in layer_1 with the mock's pod in view", client -> client.player != null && client.player.getVehicle() instanceof PodEntity
 				&& client.level.dimension().equals(LayerChain.dimension(1))
-				&& client.level.getEntity(rig.mockPod().getId()) instanceof PodEntity, CLIENT_TICK_FUSE);
+				&& client.level.getEntity(rig.mockPod().getId()) instanceof PodEntity);
 		context.runOnClient(client -> {
 			client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
 			client.player.setYRot(EAST);
@@ -128,7 +130,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 
 		BlockPos mockStone = rig.mockColumns().getFirst().atY(STONE_ROW_Y);
 		// A cell in a chunk the client has not loaded reads as air, so wait for the stone before expecting it gone.
-		context.waitFor(client -> client.level.getBlockState(mockStone).is(Blocks.STONE), CLIENT_TICK_FUSE);
+		ClientWait.until(context, "the mock stone block", client -> client.level.getBlockState(mockStone).is(Blocks.STONE));
 		float idleFade = context.computeOnClient(client -> BreachEffects.fadeAlpha(0f));
 		if (idleFade != 0f) {
 			throw new AssertionError("A breach fade is already running before the drive, so it could not be this crossing's: " + idleFade);
@@ -252,14 +254,9 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 
 	/** Waits until both of the original pods have ticked {@code ticks} times. */
 	private static void awaitPodTicks(ClientGameTestContext context, TwoPlayerServer two, Rig rig, int ticks) {
-		for (int waited = 0; waited < CLIENT_TICK_FUSE; waited += POLL_TICKS) {
-			int least = two.server().computeOnServer(server -> Math.min(rig.realPod().tickCount, rig.mockPod().tickCount));
-			if (least >= ticks) {
-				return;
-			}
-			context.waitTicks(POLL_TICKS);
-		}
-		throw new AssertionError("The pods never reached " + ticks + " ticks");
+		IntSupplier least = () -> two.server().computeOnServer(server -> Math.min(rig.realPod().tickCount, rig.mockPod().tickCount));
+		ClientWait.until(context, "both pods ticked " + ticks + " times", () -> least.getAsInt() >= ticks,
+				() -> "the least ticked pod at " + least.getAsInt());
 	}
 
 	/** Server and client agree: both pilots ride a pod in layer_2, the crust under both pods is gone, and the client has the mock's pod. */
@@ -278,10 +275,10 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 				}
 			}
 		});
-		context.waitFor(client -> client.level.dimension().equals(LayerChain.dimension(2))
+		ClientWait.until(context, "both players riding pods in layer_2", client -> client.level.dimension().equals(LayerChain.dimension(2))
 				&& client.player.getVehicle() instanceof PodEntity
 				&& client.level.getPlayerByUUID(mockId) != null
-				&& client.level.getPlayerByUUID(mockId).getVehicle() instanceof PodEntity, CLIENT_TICK_FUSE);
+				&& client.level.getPlayerByUUID(mockId).getVehicle() instanceof PodEntity);
 		boolean containsMockPod = context.computeOnClient(client -> {
 			Entity pod = client.level.getPlayerByUUID(mockId).getVehicle();
 			return client.level.getEntity(pod.getId()) == pod;

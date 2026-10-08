@@ -22,6 +22,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
 import io.github.pkeppeler.deepcharter.pod.TowTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
 /**
@@ -33,8 +34,6 @@ public class TowingClientTest implements FabricClientGameTest {
 	private static final int Z = 700;
 	private static final int FLOOR_Y = 200;
 	private static final int DRIVE_TICKS = 60;
-	/** Slow CI runners run the server well behind the client, so a step may need far more than a local run's few ticks. */
-	private static final int WAIT_TICKS = 600;
 	private static final double MIN_FOLLOWED_BLOCKS = 5;
 	/** What the client's pods may disagree by: each one is interpolated from what the server last sent. */
 	private static final double CLIENT_LAG_BLOCKS = 1.5;
@@ -79,13 +78,9 @@ public class TowingClientTest implements FabricClientGameTest {
 		}
 	}
 
-	/** Waits for {@code condition} on the client, and on a timeout fails naming {@code step}: Fabric's own message does not. */
+	/** Waits on the wall clock for {@code condition} on the client, and on a timeout fails naming {@code step}. */
 	private static void awaitClient(ClientGameTestContext context, String step, Predicate<Minecraft> condition) {
-		try {
-			context.waitFor(condition, WAIT_TICKS);
-		} catch (AssertionError e) {
-			throw new AssertionError("Timed out after " + WAIT_TICKS + " ticks waiting for: " + step, e);
-		}
+		ClientWait.until(context, step, condition);
 	}
 
 	/** The client's copy of the pod, or null while it does not see it. */

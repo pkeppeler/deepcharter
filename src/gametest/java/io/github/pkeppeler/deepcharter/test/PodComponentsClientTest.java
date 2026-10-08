@@ -85,7 +85,7 @@ public class PodComponentsClientTest implements FabricClientGameTest {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 				OreCargoMenu.open(player, (PodEntity) player.getVehicle());
 			});
-			context.waitForScreen(OreCargoScreen.class);
+			ClientWait.screen(context, OreCargoScreen.class);
 			ClientWait.until(context, "the cargo menu with its " + LOAD.length + " ore",
 					client -> client.player.containerMenu instanceof OreCargoMenu menu && menu.shownOre().size() == LOAD.length,
 					client -> client.player.containerMenu instanceof OreCargoMenu menu ? menu.shownOre().size() + " ore" : "no cargo menu");

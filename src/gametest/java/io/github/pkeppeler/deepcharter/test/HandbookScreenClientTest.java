@@ -35,6 +35,7 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookItems;
 import io.github.pkeppeler.deepcharter.handbook.HandbookReadPayload;
 import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Client GameTest for #66. The visibility model and the page order are pure logic and are checked first, with no game running.
@@ -419,16 +420,16 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 	private static void inTheRealGame(ClientGameTestContext context) {
 		check(HandbookKeys.OPEN.getDefaultKey().getValue() == InputConstants.KEY_H, "the handbook key is H by default");
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			context.waitFor(client -> handbookSlot(client.player.getInventory()) >= 0);
+			ClientWait.until(context, "the handbook in the inventory", client -> handbookSlot(client.player.getInventory()) >= 0);
 			context.runOnClient(client -> client.player.getInventory().setSelectedSlot(handbookSlot(client.player.getInventory())));
 
 			context.getInput().pressKey(HandbookKeys.OPEN);
-			context.waitForScreen(HandbookScreen.class);
+			ClientWait.screen(context, HandbookScreen.class);
 			context.runOnClient(client -> client.gui.screen().keyPressed(new KeyEvent(InputConstants.KEY_H, 0, 0)));
-			context.waitFor(client -> client.gui.screen() == null);
+			ClientWait.until(context, "the handbook screen closed", client -> client.gui.screen() == null);
 
 			context.getInput().pressKey(options -> options.keyUse);
-			context.waitForScreen(HandbookScreen.class);
+			ClientWait.screen(context, HandbookScreen.class);
 			context.takeScreenshot("handbook-cover");
 			HandbookScreen screen = context.computeOnClient(client -> (HandbookScreen) client.gui.screen());
 
@@ -449,7 +450,7 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 			context.runOnClient(client -> screen.goTo(chapterPage));
 			context.waitTicks(HandbookScreenTuning.current().flipTicks() + 2);
 			context.takeScreenshot("handbook-chapter");
-			context.waitFor(client -> ClientReadMarks.isRead(SAMPLE_CHAPTER));
+			ClientWait.until(context, "the sample chapter marked read", client -> ClientReadMarks.isRead(SAMPLE_CHAPTER));
 			check(singleplayer.getServer().computeOnServer(server -> ReadMarks.isRead(server.getPlayerList().getPlayers().getFirst(), SAMPLE_CHAPTER)),
 					"the server holds the read mark");
 			check(singleplayer.getServer().computeOnServer(server -> !ReadMarks.isRead(server.getPlayerList().getPlayers().getFirst(), NO_SUCH_CHAPTER)),

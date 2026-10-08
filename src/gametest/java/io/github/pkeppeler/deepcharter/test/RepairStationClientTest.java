@@ -25,14 +25,13 @@ import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Client GameTest for #70: the repair station screen opens, and its repair and buy buttons send the actions the server
  * acts on (the server's answer is checked, not the screen's own state).
  */
 public class RepairStationClientTest implements FabricClientGameTest {
-	private static final int WAIT_TICKS = 200;
-	private static final int POLL_TICKS = 2;
 	private static final long START_BALANCE = 100_000;
 	private static final float DAMAGE = 40f;
 
@@ -47,7 +46,7 @@ public class RepairStationClientTest implements FabricClientGameTest {
 			Scene scene = singleplayer.getServer().computeOnServer(RepairStationClientTest::setUp);
 
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.station())));
-			context.waitForScreen(RepairStationScreen.class);
+			ClientWait.screen(context, RepairStationScreen.class);
 
 			context.clickScreenButton("REPAIR 10 HP ($10)");
 			awaitServer(context, () -> hull(singleplayer, scene) == scene.pod().maxHull() - DAMAGE + 10f);
@@ -66,13 +65,7 @@ public class RepairStationClientTest implements FabricClientGameTest {
 
 	/** Waits for server state that {@code condition} reads through {@code computeOnServer}, which {@code waitFor} may not call (it runs on the client thread). */
 	public static void awaitServer(ClientGameTestContext context, BooleanSupplier condition) {
-		for (int waited = 0; waited < WAIT_TICKS; waited += POLL_TICKS) {
-			if (condition.getAsBoolean()) {
-				return;
-			}
-			context.waitTicks(POLL_TICKS);
-		}
-		throw new AssertionError("the server state did not change within " + WAIT_TICKS + " ticks");
+		ClientWait.until(context, "the server state to change", condition, () -> "the condition still false");
 	}
 
 	/** The player founds a charter, a repaired station stands beside them, and the charter's damaged pod is parked at it. */
