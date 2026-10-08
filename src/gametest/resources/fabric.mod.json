@@ -50,7 +50,8 @@
 			"io.github.pkeppeler.deepcharter.test.LayerStructuresTest",
 			"io.github.pkeppeler.deepcharter.test.HandbookChaptersOneToFiveTest",
 			"io.github.pkeppeler.deepcharter.test.ProspectorChassisTest",
-			"io.github.pkeppeler.deepcharter.test.HandbookChaptersSixToNineTest"
+			"io.github.pkeppeler.deepcharter.test.HandbookChaptersSixToNineTest",
+			"io.github.pkeppeler.deepcharter.test.WorkOrdersTest"
 		],
 		"fabric-client-gametest": [
 			"io.github.pkeppeler.deepcharter.test.DeepCharterClientGameTest",
@@ -114,7 +115,8 @@
 			"io.github.pkeppeler.deepcharter.test.evidence.CharterReviveScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.HangarScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.PodLavaScenario",
-			"io.github.pkeppeler.deepcharter.test.evidence.HandbookContentScenario"
+			"io.github.pkeppeler.deepcharter.test.evidence.HandbookContentScenario",
+			"io.github.pkeppeler.deepcharter.test.evidence.WorkOrdersScenario"
 		]
 	},
 	"depends": {
