@@ -68,11 +68,28 @@ public final class LayerStructures {
 				StructurePlan plan = new StructurePlan(site, level, chunk);
 				plan.seal();
 				site.kind().draw(plan, site.height());
+				if (site.kind() == StructureKind.WRECK) {
+					boolean famous = prospector(level.getServer()).filter(site::equals).isPresent();
+					if (famous) {
+						ProspectorWrecks.light(plan);
+					}
+					placeWreck(level, site, chunk, famous);
+				}
 			}
 		} catch (RuntimeException e) {
 			if (LOGGED_FAILURE.compareAndSet(false, true)) {
 				DeepCharter.LOGGER.error("Layer structures failed in chunk {} of layer {}; this and later chunks may lack theirs", chunk.getPos(), layer.getAsInt(), e);
 			}
+		}
+	}
+
+	/** A pod that cannot be made is logged and skips its own site only: it must not drop the blocks of the other sites in the chunk. */
+	private static void placeWreck(ServerLevel level, StructureSite site, LevelChunk chunk, boolean famous) {
+		try {
+			ProspectorWrecks.place(level, site, chunk.getPos(), famous);
+		} catch (RuntimeException e) {
+			DeepCharter.LOGGER.error("The Prospector wreck at the site {} in chunk {} of {} failed; the site stays without a pod",
+					site.origin().toShortString(), chunk.getPos(), level.dimension().identifier(), e);
 		}
 	}
 
@@ -113,8 +130,8 @@ public final class LayerStructures {
 	}
 
 	/**
-	 * The wreck site that is PROSPECTOR-0002's: the one nearest the Conduit in layer 2. Empty before the colony is built or
-	 * when its data is unreadable. A later issue (#82) puts the pod there.
+	 * The wreck site that is PROSPECTOR-0002's: the one nearest the Conduit in layer 2, with a lamp burning and Note N10
+	 * ({@link ProspectorWrecks}). Empty before the colony is built or when its data is unreadable.
 	 */
 	public static Optional<StructureSite> prospector(MinecraftServer server) {
 		StructureKind kind = StructureKind.WRECK;

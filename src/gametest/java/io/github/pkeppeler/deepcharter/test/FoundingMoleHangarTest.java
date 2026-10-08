@@ -41,6 +41,7 @@ import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
+import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
@@ -66,13 +67,13 @@ import io.github.pkeppeler.deepcharter.wreck.Wrecks;
  * tick after the hangar's chunk ticks, so no two of them overlap. A test discards every pod it made, and none of the world's.
  */
 public class FoundingMoleHangarTest {
-	private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 200;
-	private static final long RICH = 100_000;
+	static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 200;
+	static final long RICH = 100_000;
 	private static final int FLOOR = 9;
 	private static final String FUTURE_HANGAR = "7741";
 	private static final String FUTURE_SERIALS = "7742";
 
-	private static final Item CATALYST = OreRegistry.item(HangarTuning.DEFAULT.catalyst());
+	static final Item CATALYST = OreRegistry.item(HangarTuning.DEFAULT.catalyst());
 	private static final List<Item> PARTS = HangarParts.ALL;
 	private static final List<String> REPAIRED_BY = new ArrayList<>();
 
@@ -85,17 +86,17 @@ public class FoundingMoleHangarTest {
 	}
 
 	// assertionException(String, Object...) leaves the placeholders unfilled in the report.
-	private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+	static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
 		return helper.assertionException(Component.literal(String.format(format, args)));
 	}
 
-	private static void expect(GameTestHelper helper, boolean condition, String format, Object... args) {
+	static void expect(GameTestHelper helper, boolean condition, String format, Object... args) {
 		if (!condition) {
 			throw failure(helper, format, args);
 		}
 	}
 
-	private static MinecraftServer server(GameTestHelper helper) {
+	static MinecraftServer server(GameTestHelper helper) {
 		return helper.getLevel().getServer();
 	}
 
@@ -107,7 +108,7 @@ public class FoundingMoleHangarTest {
 	 * Waits for the hangar's chunk to tick and for its entities to load (a tick or more after the chunk ticks), then runs
 	 * {@code body} with the pods that stood in the hangar before it.
 	 */
-	private static void inTheHangar(GameTestHelper helper, Consumer<Set<UUID>> body) {
+	static void inTheHangar(GameTestHelper helper, Consumer<Set<UUID>> body) {
 		boolean[] chunkTicks = {false};
 		boolean[] done = {false};
 		FarChunks.awaitEntityTicking(helper, server(helper).overworld(), hangarAnchor(helper), () -> chunkTicks[0] = true);
@@ -132,7 +133,7 @@ public class FoundingMoleHangarTest {
 	}
 
 	/** Runs {@code body} with a fresh hangar record, repair state and serials, and puts the world's own back after. */
-	private static void withFreshWorld(GameTestHelper helper, Runnable body) {
+	static void withFreshWorld(GameTestHelper helper, Runnable body) {
 		MinecraftServer server = server(helper);
 		HangarData hangar = HangarData.get(server);
 		RepairState repairs = RepairState.get(server);
@@ -150,7 +151,7 @@ public class FoundingMoleHangarTest {
 	}
 
 	/** Every pod standing in or near the hangar bay, wherever it came from. */
-	private static List<PodEntity> podsInTheHangar(GameTestHelper helper) {
+	static List<PodEntity> podsInTheHangar(GameTestHelper helper) {
 		return server(helper).overworld().getEntitiesOfClass(PodEntity.class,
 				new AABB(hangarAnchor(helper)).inflate(HangarTuning.DEFAULT.bayRadius() + 4));
 	}
@@ -159,7 +160,7 @@ public class FoundingMoleHangarTest {
 		return podsInTheHangar(helper).stream().filter(pod -> !before.contains(pod.getUUID())).toList();
 	}
 
-	private static MockPlayer member(GameTestHelper helper, String name) {
+	static MockPlayer member(GameTestHelper helper, String name) {
 		MockPlayer mock = MockPlayers.join(helper, name);
 		mock.player().setGameMode(GameType.SURVIVAL);
 		if (Charters.found(server(helper), mock.player().getUUID(), name + " " + UUID.randomUUID().toString().substring(0, 8)).isPresent()) {
@@ -168,28 +169,28 @@ public class FoundingMoleHangarTest {
 		return mock;
 	}
 
-	private static Charter charterOf(GameTestHelper helper, MockPlayer mock) {
+	static Charter charterOf(GameTestHelper helper, MockPlayer mock) {
 		return Charters.charterOf(server(helper), mock.player().getUUID()).orElseThrow();
 	}
 
-	private static long balance(GameTestHelper helper, MockPlayer mock) {
+	static long balance(GameTestHelper helper, MockPlayer mock) {
 		return charterOf(helper, mock).account();
 	}
 
-	private static void deposit(GameTestHelper helper, MockPlayer mock, long amount) {
+	static void deposit(GameTestHelper helper, MockPlayer mock, long amount) {
 		if (Charters.deposit(server(helper), charterOf(helper, mock).id(), amount).isPresent()) {
 			throw failure(helper, "depositing %s should succeed", amount);
 		}
 	}
 
 	/** Puts the player 2 blocks from the middle of {@code pos}, eyes level with it. */
-	private static void stand(GameTestHelper helper, MockPlayer mock, BlockPos pos) {
+	static void stand(GameTestHelper helper, MockPlayer mock, BlockPos pos) {
 		Vec3 centre = Vec3.atCenterOf(pos);
 		mock.teleportTo(helper.getLevel(), new Vec3(centre.x + 2, centre.y - mock.player().getEyeHeight(), centre.z), 0, 0);
 	}
 
 	/** A floor with a console on it, and the player next to it. The wrecks of a test lie on this floor. */
-	private static BlockPos console(GameTestHelper helper, MockPlayer mock) {
+	static BlockPos console(GameTestHelper helper, MockPlayer mock) {
 		for (int x = 0; x < FLOOR; x++) {
 			for (int z = 0; z < FLOOR; z++) {
 				helper.setBlock(new BlockPos(x, 1, z), Blocks.STONE);
@@ -202,7 +203,7 @@ public class FoundingMoleHangarTest {
 		return pos;
 	}
 
-	private static void clearFloor(GameTestHelper helper) {
+	static void clearFloor(GameTestHelper helper) {
 		for (int x = 0; x < FLOOR; x++) {
 			for (int z = 0; z < FLOOR; z++) {
 				helper.setBlock(new BlockPos(x, 1, z), Blocks.AIR);
@@ -231,13 +232,13 @@ public class FoundingMoleHangarTest {
 		return pod;
 	}
 
-	private static void give(ServerPlayer player, Item item, int count) {
+	static void give(ServerPlayer player, Item item, int count) {
 		for (int i = 0; i < count; i++) {
 			player.getInventory().add(new ItemStack(item));
 		}
 	}
 
-	private static int count(ServerPlayer player, Item item) {
+	static int count(ServerPlayer player, Item item) {
 		int total = 0;
 		for (ItemStack stack : player.getInventory()) {
 			if (stack.is(item)) {
@@ -263,7 +264,7 @@ public class FoundingMoleHangarTest {
 	}
 
 	/** Repairs the console and the founding Mole, as if someone had: the world's hangar record is the one {@link #withFreshWorld} swapped in. */
-	private static void repairTheConsole(GameTestHelper helper) {
+	static void repairTheConsole(GameTestHelper helper) {
 		insertTheParts(helper);
 		server(helper).getDataStorage().set(HangarData.TYPE, foundedHangar());
 	}
@@ -280,15 +281,15 @@ public class FoundingMoleHangarTest {
 		}
 	}
 
-	private static Optional<TerminalRefusal> act(ServerPlayer player, BlockPos pos, Identifier action) {
+	static Optional<TerminalRefusal> act(ServerPlayer player, BlockPos pos, Identifier action) {
 		return Terminals.act(player, pos, action, new CompoundTag());
 	}
 
-	private static void expectRefused(GameTestHelper helper, Optional<TerminalRefusal> actual, String what) {
+	static void expectRefused(GameTestHelper helper, Optional<TerminalRefusal> actual, String what) {
 		expect(helper, actual.equals(Optional.of(TerminalRefusal.ACTION_REFUSED)), "%s should be refused by the hangar, got %s", what, actual);
 	}
 
-	private static void expectDone(GameTestHelper helper, Optional<TerminalRefusal> actual, String what) {
+	static void expectDone(GameTestHelper helper, Optional<TerminalRefusal> actual, String what) {
 		expect(helper, actual.isEmpty(), "%s should work, was refused: %s", what, actual);
 	}
 
@@ -464,13 +465,13 @@ public class FoundingMoleHangarTest {
 			CharterId charter = charterOf(helper, owner).id();
 			PodEntity wreck = pod(helper, Optional.of(charter), true);
 			deposit(helper, owner, RICH);
-			give(owner.player(), CATALYST, HangarTuning.DEFAULT.restoreCatalysts() + 1);
+			give(owner.player(), CATALYST, HangarTuning.DEFAULT.restoreCost(Chassis.MOLE).catalysts() + 1);
 			expect(helper, Wrecks.isWreck(wreck) && !PodEvents.isPowered(wreck), "the pod starts as a wreck");
 
 			expectDone(helper, act(owner.player(), console, HangarTerminal.RESTORE_WRECK), "restoring a wreck");
-			expect(helper, balance(helper, owner) == RICH - HangarTuning.DEFAULT.restoreMoney(), "restoring costs $%s: the account holds %s",
-					HangarTuning.DEFAULT.restoreMoney(), balance(helper, owner));
-			expect(helper, count(owner.player(), CATALYST) == 1, "restoring uses up %s catalyst, the player holds %s", HangarTuning.DEFAULT.restoreCatalysts(),
+			expect(helper, balance(helper, owner) == RICH - HangarTuning.DEFAULT.restoreCost(Chassis.MOLE).money(), "restoring costs $%s: the account holds %s",
+					HangarTuning.DEFAULT.restoreCost(Chassis.MOLE).money(), balance(helper, owner));
+			expect(helper, count(owner.player(), CATALYST) == 1, "restoring uses up %s catalyst, the player holds %s", HangarTuning.DEFAULT.restoreCost(Chassis.MOLE).catalysts(),
 					count(owner.player(), CATALYST));
 			expect(helper, !Wrecks.isWreck(wreck) && wreck.hull() == wreck.maxHull(), "the restored pod is whole: hull %s of %s", wreck.hull(), wreck.maxHull());
 			expect(helper, PodEvents.canMount(wreck, owner.player()) && PodEvents.isPowered(wreck), "the restored pod can be piloted and has power");
@@ -499,7 +500,7 @@ public class FoundingMoleHangarTest {
 			expect(helper, strangers.position().distanceTo(Vec3.atCenterOf(console)) < own.position().distanceTo(Vec3.atCenterOf(console)),
 					"the stranger's wreck is nearer the console");
 			deposit(helper, owner, RICH);
-			give(owner.player(), CATALYST, HangarTuning.DEFAULT.restoreCatalysts());
+			give(owner.player(), CATALYST, HangarTuning.DEFAULT.restoreCost(Chassis.MOLE).catalysts());
 
 			expectDone(helper, act(owner.player(), console, HangarTerminal.RESTORE_WRECK), "restoring your own wreck past a stranger's nearer one");
 			expect(helper, !Wrecks.isWreck(own) && Wrecks.isWreck(strangers), "the owner's wreck is restored and the stranger's is not");
@@ -522,7 +523,7 @@ public class FoundingMoleHangarTest {
 			expect(helper, derelict.position().distanceTo(Vec3.atCenterOf(console)) < own.position().distanceTo(Vec3.atCenterOf(console)),
 					"the derelict is nearer the console than the charter's wreck");
 			deposit(helper, owner, RICH);
-			give(owner.player(), CATALYST, HangarTuning.DEFAULT.restoreCatalysts());
+			give(owner.player(), CATALYST, HangarTuning.DEFAULT.restoreCost(Chassis.MOLE).catalysts());
 
 			expectDone(helper, act(owner.player(), console, HangarTerminal.RESTORE_WRECK), "restoring your own wreck farther than the derelict");
 			expect(helper, !Wrecks.isWreck(own) && Wrecks.isWreck(derelict) && PodComponents.registration(derelict).isEmpty(),
@@ -541,7 +542,7 @@ public class FoundingMoleHangarTest {
 			stand(helper, stranger, console);
 			CharterId charter = charterOf(helper, owner).id();
 			PodEntity wreck = pod(helper, Optional.of(charter), true);
-			long money = HangarTuning.DEFAULT.restoreMoney();
+			long money = HangarTuning.DEFAULT.restoreCost(Chassis.MOLE).money();
 
 			// Money but no catalyst.
 			deposit(helper, owner, RICH);
@@ -553,17 +554,17 @@ public class FoundingMoleHangarTest {
 			stand(helper, poor, console);
 			PodEntity poorWreck = pod(helper, Optional.of(charterOf(helper, poor).id()), true);
 			deposit(helper, poor, money - 1);
-			give(poor.player(), CATALYST, HangarTuning.DEFAULT.restoreCatalysts());
+			give(poor.player(), CATALYST, HangarTuning.DEFAULT.restoreCost(Chassis.MOLE).catalysts());
 			expectRefused(helper, act(poor.player(), console, HangarTerminal.RESTORE_WRECK), "restoring a dollar short");
 			expect(helper, Wrecks.isWreck(poorWreck) && balance(helper, poor) == money - 1
-					&& count(poor.player(), CATALYST) == HangarTuning.DEFAULT.restoreCatalysts(), "a restore without the money changes nothing");
+					&& count(poor.player(), CATALYST) == HangarTuning.DEFAULT.restoreCost(Chassis.MOLE).catalysts(), "a restore without the money changes nothing");
 
 			// Both, but the wreck belongs to another charter.
 			deposit(helper, stranger, RICH);
-			give(stranger.player(), CATALYST, HangarTuning.DEFAULT.restoreCatalysts());
+			give(stranger.player(), CATALYST, HangarTuning.DEFAULT.restoreCost(Chassis.MOLE).catalysts());
 			expectRefused(helper, act(stranger.player(), console, HangarTerminal.RESTORE_WRECK), "restoring another charter's wreck");
 			expect(helper, Wrecks.isWreck(wreck) && balance(helper, stranger) == RICH
-					&& count(stranger.player(), CATALYST) == HangarTuning.DEFAULT.restoreCatalysts(), "a restore of another charter's wreck changes nothing");
+					&& count(stranger.player(), CATALYST) == HangarTuning.DEFAULT.restoreCost(Chassis.MOLE).catalysts(), "a restore of another charter's wreck changes nothing");
 
 			// The founding Mole is not a wreck to buy back: it is repaired with its four parts. The real console stands beside it.
 			// This world's own derelict is not in the fresh hangar record, so it stands out of reach while the fresh one is tested.

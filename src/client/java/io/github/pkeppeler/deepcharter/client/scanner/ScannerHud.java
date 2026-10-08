@@ -10,6 +10,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Block;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
@@ -38,8 +39,6 @@ public final class ScannerHud {
 	private static final int ALTIMETER_HALF_WIDTH = 36;
 	/** GUI pixels kept clear between the altimeter and the panel. */
 	private static final int ALTIMETER_GAP = 4;
-	/** A Mole is two blocks tall: the pod fills the feet cell and the one above. */
-	private static final int POD_CELLS_UP = 1;
 
 	private static ScanSlice slice;
 	private static int ticksUntilScan;
@@ -115,7 +114,9 @@ public final class ScannerHud {
 				}
 			}
 		}
-		for (int up = 0; up <= POD_CELLS_UP; up++) {
+		// The cells above the feet cell that the ridden pod fills: 1 for a Mole (two blocks tall), 2 for a Prospector.
+		int podCellsUp = client.player.getVehicle() instanceof PodEntity pod ? Mth.ceil(pod.chassis().height()) - 1 : 0;
+		for (int up = 0; up <= podCellsUp; up++) {
 			fillCell(graphics, guiWidth, guiHeight, area, 0, up, TUNING.podColor());
 		}
 	}

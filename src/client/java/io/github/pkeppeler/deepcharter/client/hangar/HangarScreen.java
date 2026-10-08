@@ -20,6 +20,7 @@ import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
+import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 
@@ -31,6 +32,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 public final class HangarScreen extends CrtScreen implements TerminalViewScreen {
 	private static final int MARGIN = 24;
 	private static final int BUTTON_WIDTH = 260;
+	private static final int RESTORE_WIDTH = 420;
 	private static final int BUTTON_HEIGHT = 20;
 	private static final int GAP = 6;
 	private static final int CLOSE_WIDTH = 90;
@@ -71,8 +73,12 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 		addRenderableWidget(new CrtButton(MARGIN, buyY, BUTTON_WIDTH, BUTTON_HEIGHT,
 				Component.translatable("screen.deepcharter.hangar.buy", tuning.refurbishedMole(), tuning.registrationFee()),
 				button -> send(HangarTerminal.BUY_MOLE)));
-		addRenderableWidget(new CrtButton(MARGIN, restoreY, BUTTON_WIDTH, BUTTON_HEIGHT,
-				Component.translatable("screen.deepcharter.hangar.restore", tuning.restoreMoney(), tuning.restoreCatalysts(), catalyst),
+		// The wreck the server restores is the nearest one, so the button names the price of each chassis.
+		HangarTuning.RestoreCost mole = tuning.restoreCost(Chassis.MOLE);
+		HangarTuning.RestoreCost prospector = tuning.restoreCost(Chassis.PROSPECTOR);
+		addRenderableWidget(new CrtButton(MARGIN, restoreY, RESTORE_WIDTH, BUTTON_HEIGHT,
+				Component.translatable("screen.deepcharter.hangar.restore", mole.money(), mole.catalysts(),
+						prospector.money(), prospector.catalysts(), catalyst),
 				button -> send(HangarTerminal.RESTORE_WRECK)));
 	}
 

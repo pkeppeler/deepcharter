@@ -19,6 +19,6 @@
   "item.deepcharter.rotor_hub": "Rotor Hub",
   "item.deepcharter.tread_assembly": "Tread Assembly",
   "screen.deepcharter.hangar.buy": "BUY REFURBISHED MOLE: $%s + $%s PER POD",
-  "screen.deepcharter.hangar.restore": "RESTORE NEAREST WRECK: $%s + %s %s",
+  "screen.deepcharter.hangar.restore": "RESTORE NEAREST WRECK: MOLE $%s + %s, PROSPECTOR $%s + %s (%s)",
   "screen.deepcharter.hangar.welcome": "HANGAR ONLINE. THE FOUNDING MOLE IS REPAIRED."
 }
