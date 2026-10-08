@@ -31,6 +31,7 @@ Last updated: 2026-10-08 01:25 UTC
   - [The hangar is a terminal, and its repair founds the Mole](adr/0021-the-hangar-is-a-terminal-and-its-repair-founds-the-mole.md)
   - [A terminal view carries its type's feature, and "a pod parked here" is one rule](adr/0023-a-terminal-view-carries-its-types-feature-and-a-parked-pod-is-one-rule.md)
   - [Pod light blocks are recorded in a ledger before they are placed](adr/0024-pod-light-blocks-are-recorded-in-a-ledger-before-they-are-placed.md)
+  - [Layer structures are drawn from the seed when a fresh chunk loads](adr/0025-layer-structures-are-drawn-from-the-seed-when-a-fresh-chunk-loads.md)
   - [A dormant charter is revived by the first player who asks, and keeps its name](adr/0026-a-dormant-charter-is-revived-by-the-first-player-who-asks.md)
 
 ## In flight
@@ -41,9 +42,6 @@ Last updated: 2026-10-08 01:25 UTC
 - [PR #139 M2: towing](https://github.com/pkeppeler/deepcharter/pull/139)
   - Stage: Review passed, ready to merge
   - Closes: [#76](https://github.com/pkeppeler/deepcharter/issues/76)
-- [PR #156 M2: layer structures and Note placement](https://github.com/pkeppeler/deepcharter/pull/156)
-  - Stage: Review passed, ready to merge
-  - Closes: [#79](https://github.com/pkeppeler/deepcharter/issues/79)
 - [PR #162 Lava damages pods](https://github.com/pkeppeler/deepcharter/pull/162)
   - Stage: Review passed, ready to merge
   - Closes: [#121](https://github.com/pkeppeler/deepcharter/issues/121)
@@ -92,7 +90,7 @@ Prove the riskiest pieces: layer chain and breach crossing, the Mole pod in mult
 
 ### M2 Vertical slice
 
-Status: In progress (53 of 70 closed)
+Status: In progress (54 of 70 closed)
 
 Surface, colony repair, Mole, onboarding handbook, layers 1-2, terminals, scanner, fuel and wreck rules, charters. Ends with a playable build for the user and friends.
 
@@ -129,7 +127,7 @@ Surface, colony repair, Mole, onboarding handbook, layers 1-2, terminals, scanne
 - [ ] Open: [#76 M2: towing](https://github.com/pkeppeler/deepcharter/issues/76)
 - [x] Completed by [PR #137](https://github.com/pkeppeler/deepcharter/pull/137): [#77 M2: founding Mole and hangar](https://github.com/pkeppeler/deepcharter/issues/77)
 - [x] Completed by [PR #135](https://github.com/pkeppeler/deepcharter/pull/135): [#78 M2: Notes (shared finds, handbook back section)](https://github.com/pkeppeler/deepcharter/issues/78)
-- [ ] Open: [#79 M2: layer structures and Note placement](https://github.com/pkeppeler/deepcharter/issues/79)
+- [x] Completed by [PR #156](https://github.com/pkeppeler/deepcharter/pull/156): [#79 M2: layer structures and Note placement](https://github.com/pkeppeler/deepcharter/issues/79)
 - [ ] Open: [#80 M2 (stretch): work orders v1](https://github.com/pkeppeler/deepcharter/issues/80)
 - [ ] Open: [#81 M2: handbook content, chapters 1-5](https://github.com/pkeppeler/deepcharter/issues/81)
 - [ ] Open: [#82 M2: Prospector chassis and its restore](https://github.com/pkeppeler/deepcharter/issues/82)
