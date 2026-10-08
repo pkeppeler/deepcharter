@@ -15,10 +15,11 @@ import java.util.Arrays;
  * @param structureSpacing  each kind of structure has one site in every square of this many blocks (a multiple of 16)
  * @param structureFloorMargin  structures keep this many blocks above the floor of the layer, clear of the crust and the rock floor
  * @param structureCeilingMargin  structures keep this many blocks below the top of the layer, clear of the rock roof
+ * @param lavaHullPerSecond hull points a pod loses each second while it is in or touching lava, before a radiator
  */
 public record LayerTuning(int seaLevel, double feetPerBlock, int crustThickness, int pocketRadius, int pocketHeight,
-		int structureSpacing, int structureFloorMargin, int structureCeilingMargin) {
-	public static final LayerTuning DEFAULT = new LayerTuning(63, 3.28, 3, 2, 4, 384, 24, 56);
+		int structureSpacing, int structureFloorMargin, int structureCeilingMargin, float lavaHullPerSecond) {
+	public static final LayerTuning DEFAULT = new LayerTuning(63, 3.28, 3, 2, 4, 384, 24, 56, 10f);
 
 	public LayerTuning {
 		if (structureSpacing <= 0 || structureSpacing % 16 != 0) {

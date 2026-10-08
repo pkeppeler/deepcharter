@@ -26,6 +26,7 @@ import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
@@ -238,6 +239,7 @@ public class PodAttachmentTest {
 	/** Clear a 3x3 shaft through the floor of {@code level}, wide enough for the pod's 1.9-block hull. */
 	private static void openShaft(ServerLevel level, double x, double z) {
 		BlockPos column = BlockPos.containing(x, 0, z);
+		RoomSeal.seal(level, column.offset(-1, 0, -1).atY(level.getMinY()), column.offset(1, 0, 1).atY(level.getMinY() + 10));
 		for (int dx = -1; dx <= 1; dx++) {
 			for (int dz = -1; dz <= 1; dz++) {
 				for (int y = level.getMinY(); y <= level.getMinY() + 10; y++) {

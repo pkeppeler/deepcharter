@@ -39,7 +39,8 @@ All M1 prototypes are merged. On a real dedicated server, two players each pilot
 
 ### How to try it yourself
 `./gradlew runClient` opens a dev client. In a creative or op world, run these commands:
-- `/deepcharter pod spawn`: spawns a Mole. Use the Mole to get in, and sneak to get out.
+- `/deepcharter charter found <name>`: founds a charter (once). A scanner counts only on a pod of your charter.
+- `/deepcharter pod spawn`: spawns a Mole of your charter with a tier 1 scanner (without a charter, a bare Mole with no scanner). Use the Mole to get in, and sneak to get out.
 - `/deepcharter layer goto 1`: goes to layer 1. Hold sprint on the ground to drill down.
 - `/deepcharter pod dump`: empties the cargo.
 

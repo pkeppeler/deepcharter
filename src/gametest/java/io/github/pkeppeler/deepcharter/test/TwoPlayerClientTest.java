@@ -25,6 +25,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
+import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
 /**
@@ -207,6 +208,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 		int mockPodId = PodMovementClientTest.mountBoth(two);
 		PodEntity realPod = (PodEntity) real.getVehicle();
 		PodEntity mockPod = (PodEntity) two.mock().player().getVehicle();
+		ScannerPods.fit(server, real, realPod, 1);
 		if (mockPod.getId() != mockPodId || realPod == mockPod || realPod.level() != one || mockPod.level() != one) {
 			throw new AssertionError("Each player should ride their own pod in layer_1");
 		}
@@ -288,7 +290,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 
 	/** The scanner is drawn while riding: its pod marker is in the middle of the pod's cells, whatever else is on screen. */
 	private static void expectScannerShowsPod(ClientGameTestContext context, String screenshotName) {
-		ScannerHudTest.HudShot shot = ScannerHudTest.HudShot.take(context, screenshotName);
+		ScannerHudTest.HudShot shot = ScannerHudTest.HudShot.take(context, screenshotName, ScannerHudTest.TIER_ONE);
 		int actual = shot.pixel(0, 0);
 		int expected = ScannerTuning.DEFAULT.podColor() & RGB;
 		if (actual != expected) {
