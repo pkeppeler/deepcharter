@@ -10,7 +10,9 @@ package io.github.pkeppeler.deepcharter.layer;
  * @param pocketRadius   a crossing carves a pocket this many blocks out from the arrival column on each side
  * @param pocketHeight   blocks of air in that pocket; an entity arrives at its bottom, so this is also how far
  *                       from the crossing line it starts
+ * @param lavaHullPerSecond hull points a pod loses each second while it is in or touching lava, before a radiator
  */
-public record LayerTuning(int seaLevel, double feetPerBlock, int crustThickness, int pocketRadius, int pocketHeight) {
-	public static final LayerTuning DEFAULT = new LayerTuning(63, 3.28, 3, 2, 4);
+public record LayerTuning(int seaLevel, double feetPerBlock, int crustThickness, int pocketRadius, int pocketHeight,
+		float lavaHullPerSecond) {
+	public static final LayerTuning DEFAULT = new LayerTuning(63, 3.28, 3, 2, 4, 10f);
 }
