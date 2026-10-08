@@ -1,0 +1,10 @@
+{
+  "criteria": {
+    "fired": {
+      "trigger": "deepcharter:directive",
+      "conditions": {
+        "directive": "deepcharter:handbook/meet_the_mole/board_mole"
+      }
+    }
+  }
+}

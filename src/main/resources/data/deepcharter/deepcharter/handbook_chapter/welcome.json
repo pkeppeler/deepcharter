@@ -1,0 +1,38 @@
+{
+  "order": 1,
+  "title": {
+    "translate": "deepcharter.handbook.chapter.deepcharter.welcome.title"
+  },
+  "directives": [
+    {
+      "id": "deepcharter:handbook/welcome/gather_wood",
+      "text": {
+        "translate": "deepcharter.handbook.directive.welcome.gather_wood"
+      }
+    },
+    {
+      "id": "deepcharter:handbook/welcome/craft_crafting_table",
+      "text": {
+        "translate": "deepcharter.handbook.directive.welcome.craft_crafting_table"
+      }
+    },
+    {
+      "id": "deepcharter:handbook/welcome/craft_stone_tools",
+      "text": {
+        "translate": "deepcharter.handbook.directive.welcome.craft_stone_tools"
+      }
+    },
+    {
+      "id": "deepcharter:handbook/welcome/mine_iron_ore",
+      "text": {
+        "translate": "deepcharter.handbook.directive.welcome.mine_iron_ore"
+      }
+    },
+    {
+      "id": "deepcharter:handbook/welcome/smelt_iron",
+      "text": {
+        "translate": "deepcharter.handbook.directive.welcome.smelt_iron"
+      }
+    }
+  ]
+}

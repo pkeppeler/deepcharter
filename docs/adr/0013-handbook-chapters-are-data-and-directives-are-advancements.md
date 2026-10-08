@@ -20,7 +20,8 @@ For the lore session. The handbook screen (#66) reads these lang keys from `src/
 
 - **Margin note**: `deepcharter.handbook.chapter.<namespace>.<path>.margin`, where `<path>` is the chapter id path with each `/` turned into a dot. Example: chapter `deepcharter:sample` uses `deepcharter.handbook.chapter.deepcharter.sample.margin`. A chapter with no such key has no note.
 - A margin note shows only for a chapter that is fully visible (completed or current), and only when the sheet is at least 220 px wide. A narrower sheet hides every margin note. A margin note is a plain translatable: it takes no `||` marks.
-- **Redaction**: `||text||` draws a black bar over `text`. Only two kinds of string accept it: the contents entries (`deepcharter.handbook.contents.entry.classified`) and the Appendix A lines (`deepcharter.handbook.appendix.line.1` to `.3`). An odd number of `||` marks redacts the rest of the string.
+- **Text pages and Appendix A** have their own keys: see [ADR 0028](0028-chapters-one-to-five-complete-from-the-events-that-own-the-deed.md).
+- **Redaction**: `||text||` draws a black bar over `text`. Only two kinds of string accept it: the contents entries (`deepcharter.handbook.contents.entry.classified`) and the clauses of Appendix A (`deepcharter.handbook.appendix.page.<n>`, one clause to a line). An odd number of `||` marks redacts the rest of the string.
 - The contents flow over several pages, three chapters to a page, and each entry is one line cut with `...`. Keep chapter titles short.
 
 ## Considered Options

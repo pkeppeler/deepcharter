@@ -90,7 +90,7 @@ public class HandbookScreenScenario extends EvidenceScenario {
 		return done;
 	}
 
-	/** Four chapters. The first reuses the id {@code deepcharter:sample}, which has a margin note in the lang file. */
+	/** Four chapters. The first reuses the id {@code deepcharter:sample}, the fixture chapter of the real-game test. */
 	private static Map<Identifier, HandbookChapter> chapters() {
 		String[] titles = {"Welcome to the Colony", "Fixing the Terminals", "Driving the Mole", "The Deep"};
 		Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();

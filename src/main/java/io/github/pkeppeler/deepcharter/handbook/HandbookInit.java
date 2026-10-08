@@ -11,5 +11,6 @@ public final class HandbookInit {
 	public static void init() {
 		HandbookRegistry.register();
 		HandbookCommands.init();
+		HandbookTriggers.init();
 	}
 }
