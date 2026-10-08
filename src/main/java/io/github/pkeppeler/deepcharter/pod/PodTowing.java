@@ -19,7 +19,6 @@ import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 
 import net.minecraft.core.UUIDUtil;
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -238,7 +237,7 @@ public final class PodTowing {
 		int count = Math.min(tuning.cableMaxParticles(), (int) Math.ceil(line.length() / tuning.cableSpacing()));
 		for (int i = 1; i <= count; i++) {
 			Vec3 at = from.add(line.scale((double) i / (count + 1)));
-			level.sendParticles(ParticleTypes.END_ROD, at.x, at.y, at.z, 1, 0, 0, 0, 0);
+			level.sendParticles(PodRegistry.TOW_CABLE_PARTICLE, at.x, at.y, at.z, 1, 0, 0, 0, 0);
 		}
 	}
 
