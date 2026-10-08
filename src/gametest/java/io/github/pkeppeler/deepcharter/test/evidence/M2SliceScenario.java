@@ -7,7 +7,6 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
@@ -45,7 +44,6 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.portal.TeleportTransition;
-import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -130,9 +128,6 @@ public class M2SliceScenario extends EvidenceScenario {
 	private static final int ROOM_WEST = 6;
 	private static final int ROOM_EAST = 16;
 	private static final int ROOM_RADIUS_Z = 6;
-	private static final int LAYER_1_SIZE = 192;
-
-	private static final String STAGE_ENV = "SCRATCH85_STAGES";
 
 	private TwoPlayerServer two;
 	private ClientGameTestContext ctx;
@@ -153,7 +148,6 @@ public class M2SliceScenario extends EvidenceScenario {
 
 	@Override
 	protected void run(ClientGameTestContext context) {
-		int stages = System.getenv(STAGE_ENV) == null ? 99 : Integer.parseInt(System.getenv(STAGE_ENV));
 		registerCaptions();
 		try (TwoPlayerServer server = TwoPlayerServer.start(context)) {
 			two = server;
@@ -162,7 +156,7 @@ public class M2SliceScenario extends EvidenceScenario {
 			List<Runnable> beats = List.of(this::foundTheCharter, this::starterItems, this::repairColonyTerminals, this::repairFoundingMole,
 					this::refuel, this::boardAndDrillDown, this::sellOre, this::buyScanner, this::diveToTheDeepClaim, this::crossTheBreach,
 					this::lamplessFigure, this::wreckSite, this::towHome, this::repairHullAndRestore, this::workOrder, this::theOldWorkingsFloor);
-			for (int i = 0; i < beats.size() && i < stages; i++) {
+			for (int i = 0; i < beats.size(); i++) {
 				beat = i + 1;
 				beats.get(i).run();
 			}
@@ -194,7 +188,7 @@ public class M2SliceScenario extends EvidenceScenario {
 		onServer(server -> {
 			ServerPlayer real = real(server);
 			expectNoRefusal(Charters.found(server, real.getUUID(), "Riggs and Sons"), "founding");
-			charter = Charters.charterOf(server, real.getUUID()).orElseThrow().id();
+			charter = Charters.charterOfOrThrow(server, real.getUUID()).orElseThrow().id();
 			ServerPlayer mock = two.mock().player();
 			expectNoRefusal(Charters.apply(server, mock.getUUID(), charter), "applying");
 			expectNoRefusal(Charters.approve(server, real.getUUID(), mock.getUUID()), "approving");
@@ -204,7 +198,7 @@ public class M2SliceScenario extends EvidenceScenario {
 		snap(HOLD_FRAMES);
 		still("02-charter-founded-with-crewmate");
 		onServer(server -> {
-			Charter founded = Charters.find(server, charter).orElseThrow();
+			Charter founded = Charters.findOrThrow(server, charter).orElseThrow();
 			if (!founded.onRoster(two.mock().player().getUUID()) || !founded.onRoster(real(server).getUUID())) {
 				throw new AssertionError("both players should be on the charter's roster");
 			}
@@ -529,14 +523,16 @@ public class M2SliceScenario extends EvidenceScenario {
 	/** A rail drift this long runs from the wreck bay's west wall, in the structure's own axis {@code u}, to where the figure starts. */
 	private static final int DRIFT_LENGTH = 40;
 	/** Where the Mole is set in the drift, in {@code u}: the bay's west wall is at -7. */
-	private static final double MOLE_AT_U = -16;
+	private static final double MOLE_AT_U = -10;
+	/** Where the figure starts: the far end of the drift is lit by the lava behind it (a figure fades when it is lit), so it starts where the drift is dark. */
+	private static final int FIGURE_AT_U = -27;
 
 	private void lamplessFigure() {
-		say("11. SHORTCUT: the Mole is carried to Prospector's Run, the floor of layer 2, to a rail drift beside a wreck bay. A figure with no lamp walks the drift.");
+		say("11. SHORTCUT: the Mole is carried to Prospector's Run, the floor of layer 2, to a rail drift cut beside a wreck bay.");
 		clearTransmission();
 		StructureSite site = onServer(server -> LayerStructures.prospector(server).orElseThrow());
 		Vec3 bay = at(site, 0, 0, 0);
-		Vec3 figureStart = at(site, -DRIFT_LENGTH, 0, 0);
+		Vec3 figureStart = at(site, FIGURE_AT_U, 0, 0);
 		Vec3 moleAt = at(site, MOLE_AT_U, 0, 0);
 		onServer(server -> {
 			ServerLevel level = server.getLevel(LayerChain.dimension(2));
@@ -561,6 +557,23 @@ public class M2SliceScenario extends EvidenceScenario {
 		onServer(server -> {
 			ServerLevel level = server.getLevel(LayerChain.dimension(2));
 			cutDrift(level, site);
+			pod(server, mole).teleportTo(level, moleAt.x, moleAt.y, moleAt.z, Set.of(), yawToward(moleAt, figureStart), 0f, true);
+			return null;
+		});
+		board(mole);
+		ctx.waitFor(client -> client.gui.screen() == null, WAIT_TICKS);
+		float towardFigure = yawToward(moleAt, figureStart);
+		// From the pilot's own eyes: from behind, the Mole and its rider would stand in front of the drift.
+		ctx.runOnClient(client -> {
+			client.options.setCameraType(CameraType.FIRST_PERSON);
+			client.player.setYRot(towardFigure);
+			client.player.setXRot(6f);
+		});
+		// Arriving in Prospector's Run brings a transmission, and it is read before the figure comes.
+		showTransmission("32a-transmission-in-prospectors-run");
+		say("11. SHORTCUT: the figure is placed at the far end of the drift. It walks toward the Mole.");
+		onServer(server -> {
+			ServerLevel level = server.getLevel(LayerChain.dimension(2));
 			LamplessFigure made = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
 			made.setPos(figureStart);
 			made.setHeading(site.alongZ() ? Direction.SOUTH : Direction.EAST);
@@ -568,22 +581,14 @@ public class M2SliceScenario extends EvidenceScenario {
 				throw new AssertionError("the world did not take the figure at " + figureStart);
 			}
 			figure[0] = made;
-			pod(server, mole).teleportTo(level, moleAt.x, moleAt.y, moleAt.z, Set.of(), yawToward(moleAt, figureStart), 0f, true);
 			return null;
 		});
-		board(mole);
-		ctx.waitFor(client -> client.gui.screen() == null, WAIT_TICKS);
-		float towardFigure = yawToward(moleAt, figureStart);
-		ctx.runOnClient(client -> {
-			client.player.setYRot(towardFigure);
-			client.player.setXRot(6f);
-		});
-		ctx.waitTicks(40);
+		ctx.waitTicks(10);
 		boolean shotWalk = false;
 		for (int frames = 0; frames < 200 && !onServer(server -> figure[0].fadeFraction() > 0); frames++) {
 			ctx.waitTicks(TICKS_PER_FRAME);
 			capture();
-			if (!shotWalk && onServer(server -> figure[0].position().distanceTo(pod(server, mole).position()) < 23)) {
+			if (!shotWalk && onServer(server -> figure[0].position().distanceTo(pod(server, mole).position()) < 16)) {
 				still("33-the-lampless-figure-walks-out-of-the-dark");
 				shotWalk = true;
 			}
@@ -626,7 +631,10 @@ public class M2SliceScenario extends EvidenceScenario {
 		StructureSite site = onServer(server -> LayerStructures.prospector(server).orElseThrow());
 		Vec3 bay = at(site, 0, 0, 0);
 		Vec3 moleAt = at(site, MOLE_AT_U, 0, 0);
-		ctx.runOnClient(client -> client.player.setYRot(yawToward(moleAt, bay)));
+		ctx.runOnClient(client -> {
+			client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+			client.player.setYRot(yawToward(moleAt, bay));
+		});
 		ctx.waitTicks(10);
 		ctx.getInput().holdKey(options -> options.keyUp);
 		int ticks = 0;
@@ -782,10 +790,25 @@ public class M2SliceScenario extends EvidenceScenario {
 		say("16. The wreck is registered to the charter by its serials: it is " + serial + " now, not PROSPECTOR-0002.");
 		showTransmission("48-t17-transmission");
 		Vec3 wreckAt = onServer(server -> pod(server, prospector).position());
-		stand(wreckAt.add(-9, 0, 0), wreckAt.add(0, 1.2, 0));
+		// The hangar's walls are in the way at ground level, so the camera hovers over them.
+		onServer(server -> {
+			ServerPlayer real = real(server);
+			real.getAbilities().mayfly = true;
+			real.getAbilities().flying = true;
+			real.onUpdateAbilities();
+			return null;
+		});
+		stand(wreckAt.add(-2, 7, 3), wreckAt.add(0, 1, 0));
 		ctx.waitTicks(30);
 		snap(HOLD_FRAMES);
 		still("49-the-restored-prospector");
+		onServer(server -> {
+			ServerPlayer real = real(server);
+			real.getAbilities().flying = false;
+			real.getAbilities().mayfly = false;
+			real.onUpdateAbilities();
+			return null;
+		});
 	}
 
 	private void workOrder() {
@@ -1006,8 +1029,6 @@ public class M2SliceScenario extends EvidenceScenario {
 	}
 
 	private void useKey() {
-		ctx.runOnClient(client -> System.out.println("M2SLICE-USE beat " + beat + " target " + client.hitResult + " at " + client.player.position()
-				+ " pitch " + client.player.getXRot() + " yaw " + client.player.getYRot() + " camera " + client.options.getCameraType()));
 		ctx.getInput().pressKey(options -> options.keyUse);
 	}
 

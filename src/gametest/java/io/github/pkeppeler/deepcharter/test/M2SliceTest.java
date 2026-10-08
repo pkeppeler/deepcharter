@@ -10,7 +10,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -146,7 +145,7 @@ public class M2SliceTest {
 
 			// The charter: the director founds it, the crewmate joins, and it has money.
 			expect(helper, Charters.found(server, first.getUUID(), HandbookChaptersOneToFiveTest.uniqueName()).isEmpty(), "founding should succeed");
-			CharterId charter = Charters.charterOf(server, first.getUUID()).orElseThrow().id();
+			CharterId charter = Charters.charterOfOrThrow(server, first.getUUID()).orElseThrow().id();
 			expect(helper, Charters.apply(server, second.getUUID(), charter).isEmpty() && Charters.approve(server, first.getUUID(), second.getUUID()).isEmpty()
 					&& Charters.deposit(server, charter, FUNDS).isEmpty(), "the crewmate should join the charter, which is then funded");
 
