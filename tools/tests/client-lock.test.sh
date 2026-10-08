@@ -35,7 +35,7 @@ trap cleanup EXIT
 
 failures=0
 check() { # check <description> <condition-result: 0 = ok>
-  if [[ $2 -eq 0 ]]; then echo "ok   $1"; else echo "FAIL $1"; failures=$((failures + 1)); fi
+  if [[ $2 -eq 0 ]]; then echo "ok   [${SECONDS}s] $1"; else echo "FAIL $1"; failures=$((failures + 1)); fi
 }
 
 # make_proj <dir>: a scratch project with the stub runClient task and the script applied.
@@ -66,7 +66,9 @@ real_home=${GRADLE_USER_HOME:-$HOME/.gradle}
 export GRADLE_USER_HOME=$work/gradle-home
 mkdir -p "$GRADLE_USER_HOME"
 if [[ -d $real_home/wrapper ]]; then ln -s "$real_home/wrapper" "$GRADLE_USER_HOME/wrapper"; fi
-echo "org.gradle.daemon.idletimeout=60000" >"$GRADLE_USER_HOME/gradle.properties"
+# Small, quick-starting daemons: up to a dozen run at once and nothing here needs heap.
+printf '%s\n' "org.gradle.daemon.idletimeout=60000" "org.gradle.jvmargs=-Xmx192m -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Xshare:auto" \
+  >"$GRADLE_USER_HOME/gradle.properties"
 # Set by each lane: proj, locks, holder0, holder1, order.
 
 # run <name> [env...]: runs runClient in the foreground (configuration cache on), output in $work/<name>.out.
