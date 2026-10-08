@@ -104,19 +104,11 @@ public class LamplessFigure extends PathfinderMob {
 		return false;
 	}
 
-	public Direction heading() {
-		return heading;
-	}
-
 	public void setHeading(Direction heading) {
 		if (heading.getAxis().isVertical()) {
 			throw new IllegalArgumentException("a figure walks the level, not " + heading);
 		}
 		this.heading = heading;
-	}
-
-	public boolean isFading() {
-		return entityData.get(FADE) > 0;
 	}
 
 	/** 0 when whole, up to 1 as it goes. */

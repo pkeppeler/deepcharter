@@ -109,7 +109,7 @@ public class LamplessFigureScenario extends EvidenceScenario {
 
 	private static boolean isFading(TestSingleplayerContext singleplayer, LamplessFigure figure) {
 		boolean[] fading = {false};
-		singleplayer.getServer().runOnServer(server -> fading[0] = figure.isFading());
+		singleplayer.getServer().runOnServer(server -> fading[0] = figure.fadeFraction() > 0);
 		return fading[0];
 	}
 

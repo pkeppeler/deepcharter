@@ -441,7 +441,7 @@ public class LamplessFigureTest {
 			}
 			ticks++;
 			if (ticks < QUIET_TICKS) {
-				if (figure.isFading() || !figure.isAlive()) {
+				if (figure.fadeFraction() > 0 || !figure.isAlive()) {
 					throw failure(helper, "the figure faded after %d ticks with nothing near it", ticks);
 				}
 				return;
@@ -451,7 +451,7 @@ public class LamplessFigureTest {
 				cause.run();
 				return;
 			}
-			if (fadingAt < 0 && figure.isFading()) {
+			if (fadingAt < 0 && figure.fadeFraction() > 0) {
 				fadingAt = ticks;
 			}
 			if (figure.isRemoved()) {
