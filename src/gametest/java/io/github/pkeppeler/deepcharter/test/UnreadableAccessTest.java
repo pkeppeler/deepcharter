@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -16,8 +17,10 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
+import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterData;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
+import io.github.pkeppeler.deepcharter.charter.CharterView;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.charter.CharterSyncPayload;
 import io.github.pkeppeler.deepcharter.fuel.ReserveTank;
@@ -208,6 +211,39 @@ public class UnreadableAccessTest {
 		} finally {
 			mock.leave();
 			pod.discard();
+		}
+	}
+
+	/** The join sync's payload: the player's view when charters are readable, nothing (and no throw) when they are not. */
+	@GameTest
+	public void theCharterSyncPayloadIsEmptyWhenChartersAreUnreadableAndTheViewWhenReadable(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		MockPlayer mock = MockPlayers.join(helper, "unreadable-sync-payload");
+		UUID id = mock.player().getUUID();
+		try {
+			Optional<CharterSyncPayload> none = CharterSyncPayload.payloadFor(server, id);
+			if (none.isEmpty() || none.get().charter().isPresent()) {
+				throw helper.assertionException("a player on no charter is sent the no-charter view, got %s", none);
+			}
+			if (Charters.found(server, id, "Sync " + id.toString().substring(0, 8)).isPresent()) {
+				throw helper.assertionException("founding should succeed");
+			}
+			Charter charter = Charters.charterOfOrThrow(server, id).orElseThrow();
+			Optional<CharterSyncPayload> on = CharterSyncPayload.payloadFor(server, id);
+			if (!on.equals(Optional.of(new CharterSyncPayload(Optional.of(CharterView.of(charter, id)))))) {
+				throw helper.assertionException("a player on a charter is sent that charter's view, got %s", on);
+			}
+			Map<String, Runnable> paths = new LinkedHashMap<>();
+			paths.put("payload", () -> {
+				if (CharterSyncPayload.payloadFor(server, id).isPresent()) {
+					throw new IllegalStateException("unreadable charters send nothing");
+				}
+			});
+			UnreadableChecks.assertSavedDataNoThrow(helper, "charter sync payload", server, CharterData.TYPE, paths);
+			helper.succeed();
+		} finally {
+			Charters.leave(server, id);
+			mock.leave();
 		}
 	}
 
