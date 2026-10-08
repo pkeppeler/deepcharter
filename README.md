@@ -17,6 +17,8 @@ Tests live in `src/gametest/`.
 
 On macOS, client GameTests, `tools/record-evidence.sh` and `tools/play.sh` render with Vulkan (MoltenVK), so they run with the screen locked. Set `DEEPCHARTER_GL=1` to use OpenGL instead (for example for Iris shaders).
 
+On macOS only one game client runs at a time. `runClient`, `runPlay` and `runClientGameTest` (so also `tools/play.sh` and `tools/record-evidence.sh`) take a machine-wide lock, `~/.cache/deepcharter/client.lock`, and a second run prints `Waiting for the game client lock, held by <worktree> ... PID <n>` until the first ends. Do not check `pgrep` first. The OS frees the lock when its holder exits or dies, so Ctrl-C and crashes need no cleanup. [gradle/clientlock.gradle](gradle/clientlock.gradle) holds the details.
+
 `tools/play.sh` launches the dev client with the pinned mcpfabric bridge into a fresh test world. See [docs/tooling/play-test.md](docs/tooling/play-test.md).
 
 ## Code layout
