@@ -5,7 +5,6 @@ package io.github.pkeppeler.deepcharter.repair;
  * {@link Consumable}.
  *
  * @param repairCostPerHp   dollars for each hull point the station repairs (the original's $15)
- * @param parkRadius        blocks from the station within which a pod counts as parked at it, measured from the pod's position
  * @param itemCooldownTicks ticks before the same item can be used again (the original's half second)
  * @param reserveLitres     litres the Reserve Fuel Tank adds (the original's 25)
  * @param nanobotHp         hull points the Hull Repair Nanobots add (the original's 30)
@@ -13,7 +12,7 @@ package io.github.pkeppeler.deepcharter.repair;
  * @param plasticRadius     the same for the plastic explosives, so 2 is 5 x 5 x 5
  * @param quantumScatter    blocks, at most, that the Quantum Teleporter lands from the destination ("results may vary")
  */
-public record RepairTuning(long repairCostPerHp, double parkRadius, int itemCooldownTicks, float reserveLitres, float nanobotHp,
+public record RepairTuning(long repairCostPerHp, int itemCooldownTicks, float reserveLitres, float nanobotHp,
 		int dynamiteRadius, int plasticRadius, double quantumScatter) {
-	public static final RepairTuning DEFAULT = new RepairTuning(15L, 8.0, 10, 25f, 30f, 1, 2, 8.0);
+	public static final RepairTuning DEFAULT = new RepairTuning(15L, 10, 25f, 30f, 1, 2, 8.0);
 }

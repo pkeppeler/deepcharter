@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.terminal;
 
+import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
 
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -10,15 +12,20 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.pod.PodComponents;
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
 
 /**
  * The server-side API of terminals, and the one place a player's request reaches one. Every request is checked first, in this
@@ -48,7 +55,7 @@ public final class Terminals {
 		return switch (access(player, pos)) {
 			case Access.Denied denied -> refuse(player, denied.refusal());
 			case Access.Granted granted -> {
-				sendView(player, pos, granted.type());
+				sendView(player, pos, granted);
 				TerminalEvents.OPENED.invoker().onOpened(player.level().getServer(), granted.type(), player);
 				yield Optional.empty();
 			}
@@ -69,7 +76,7 @@ public final class Terminals {
 				if (refusal.isPresent()) {
 					yield refuse(player, refusal.get());
 				}
-				sendView(player, pos, granted.type());
+				sendView(player, pos, granted);
 				TerminalEvents.ACTED.invoker().onActed(player.level().getServer(), granted.type(), player, action);
 				yield Optional.empty();
 			}
@@ -81,6 +88,24 @@ public final class Terminals {
 		CompoundTag args = new CompoundTag();
 		args.putString(PART_KEY, BuiltInRegistries.ITEM.getKey(part).toString());
 		return act(player, pos, INSERT_PART, args);
+	}
+
+	/**
+	 * The pods parked at the terminal at {@code pos}, nearest first: within {@link TerminalTuning#parkedRadius()} blocks of its
+	 * middle, and neither flying nor drilling. Safe on both sides, but it knows no owners: a client uses it to draw a screen,
+	 * and the server serves from {@link #parkedPods(ServerLevel, BlockPos, Optional)}.
+	 */
+	public static List<PodEntity> parkedPods(Level level, BlockPos pos) {
+		double radius = TerminalTuning.DEFAULT.parkedRadius();
+		Vec3 centre = Vec3.atCenterOf(pos);
+		return level.getEntitiesOfClass(PodEntity.class, new AABB(pos).inflate(radius),
+						pod -> !pod.flying() && !pod.drilling() && pod.position().distanceToSqr(centre) <= radius * radius)
+				.stream().sorted(Comparator.comparingDouble(pod -> pod.position().distanceToSqr(centre))).toList();
+	}
+
+	/** The pods of {@link #parkedPods(Level, BlockPos)} that {@code charter}, the acting player's if on one, may use ({@link PodComponents#mayAccess}). */
+	public static List<PodEntity> parkedPods(ServerLevel level, BlockPos pos, Optional<Charter> charter) {
+		return parkedPods(level, pos).stream().filter(pod -> PodComponents.mayAccess(pod, charter)).toList();
 	}
 
 	private sealed interface Access {
@@ -191,9 +216,12 @@ public final class Terminals {
 		return Optional.of(refusal);
 	}
 
-	private static void sendView(ServerPlayer player, BlockPos pos, TerminalType type) {
+	private static void sendView(ServerPlayer player, BlockPos pos, Access.Granted access) {
 		if (ServerPlayNetworking.canSend(player, TerminalViewPayload.TYPE)) {
-			ServerPlayNetworking.send(player, new TerminalViewPayload(TerminalView.of(pos, type, RepairState.get(player.level().getServer()))));
+			MinecraftServer server = player.level().getServer();
+			TerminalView view = TerminalView.of(pos, access.type(), RepairState.get(server));
+			Optional<TerminalFeature> feature = TerminalFeatures.supply(access.type(), view.repaired(), server, player, access.charter(), pos);
+			ServerPlayNetworking.send(player, new TerminalViewPayload(view.withFeature(feature)));
 		}
 	}
 }

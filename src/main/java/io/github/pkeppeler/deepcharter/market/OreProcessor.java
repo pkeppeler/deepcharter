@@ -12,8 +12,6 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.Charter;
@@ -22,9 +20,9 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodCargo;
-import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
+import io.github.pkeppeler.deepcharter.terminal.Terminals;
 
 /**
  * The two sales of the ore processor terminal. Each sells every ore at once, at the {@link OreType#value()} of each, and credits
@@ -33,7 +31,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
  * range, the charter and the repair state.
  */
 public final class OreProcessor {
-	/** Sells the cargo of every pod the player may access ({@link PodComponents#mayAccess}) parked within {@link MarketTuning#processorRadius()} of the processor. */
+	/** Sells the cargo of every pod the player may access parked at the processor ({@link Terminals#parkedPods}). */
 	public static final Identifier SELL_CARGO = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "sell_cargo");
 	/** Sells every ore the player carries. */
 	public static final Identifier SELL_INVENTORY = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "sell_inventory");
@@ -120,9 +118,6 @@ public final class OreProcessor {
 	}
 
 	private static List<PodEntity> podsAt(TerminalAction.Context context, Charter charter) {
-		double radius = MarketTuning.DEFAULT.processorRadius();
-		Vec3 centre = Vec3.atCenterOf(context.pos());
-		return context.player().level().getEntitiesOfClass(PodEntity.class, new AABB(centre, centre).inflate(radius),
-				pod -> pod.position().distanceToSqr(centre) <= radius * radius && PodComponents.mayAccess(pod, Optional.of(charter)));
+		return Terminals.parkedPods(context.player().level(), context.pos(), Optional.of(charter));
 	}
 }

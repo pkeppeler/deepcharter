@@ -1,9 +1,7 @@
 package io.github.pkeppeler.deepcharter.repair;
 
-import java.util.Comparator;
 import java.util.Optional;
 
-import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -11,18 +9,16 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
-import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActions;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 
 /**
@@ -100,14 +96,8 @@ public final class RepairStation {
 		return Optional.empty();
 	}
 
-	/** The nearest pod within {@link RepairTuning#parkRadius} of the station that the player's charter may use. */
+	/** The nearest pod parked at the station ({@link Terminals#parkedPods}) that the player's charter may use. */
 	private static Optional<PodEntity> parkedPod(TerminalAction.Context context) {
-		BlockPos pos = context.pos();
-		Vec3 centre = Vec3.atCenterOf(pos);
-		double radius = RepairTuning.DEFAULT.parkRadius();
-		return context.player().level().getEntitiesOfClass(PodEntity.class, new AABB(pos).inflate(radius)).stream()
-				.filter(pod -> pod.position().distanceToSqr(centre) <= radius * radius)
-				.filter(pod -> PodComponents.mayAccess(pod, context.charter()))
-				.min(Comparator.comparingDouble(pod -> pod.position().distanceToSqr(centre)));
+		return Terminals.parkedPods(context.player().level(), context.pos(), context.charter()).stream().findFirst();
 	}
 }
