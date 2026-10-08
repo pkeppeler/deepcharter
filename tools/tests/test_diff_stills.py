@@ -111,6 +111,25 @@ class DiffStillsTest(unittest.TestCase):
         self.assertEqual(2, code)
         self.assertIn("no PNGs", err)
 
+    def test_noise_floor_hides_a_noisy_family_and_keeps_a_real_change(self):
+        # 12 pixels: "lava-noisy" changes 2 of them by 60 (16.67%), "grass" changes 2 of them by 60 too.
+        for name in ("lava-noisy", "grass"):
+            png(self.a / f"{name}.png", grey)
+            png(self.b / f"{name}.png", lambda x, y: (100, 100, 100) if (x, y) in ((0, 0), (1, 1)) else grey(x, y))
+        code, out, _ = run(str(self.a), str(self.b), "--noise", "lava=2:20", "--noise", "=2:1")
+        self.assertEqual(1, code)
+        self.assertNotIn("lava-noisy", out)
+        self.assertIn("grass", out)
+        # A larger tolerance for the family also hides it, and the longest prefix wins over the catch-all.
+        code, out, _ = run(str(self.a), str(self.b), "--noise", "lava=200:0", "--noise", "=2:1")
+        self.assertNotIn("lava-noisy", out)
+        self.assertIn("1 of 2 stills differ", out)
+
+    def test_bad_noise_spec_is_a_usage_error(self):
+        png(self.a / "x.png", grey)
+        png(self.b / "x.png", grey)
+        self.assertEqual(2, run(str(self.a), str(self.b), "--noise", "oops")[0])
+
     def test_all_png_filters_decode(self):
         # A 2 x 2 RGB image written with filter types 1 to 4 on its second row, decoded back to the same pixels.
         rows = [bytes([10, 20, 30, 40, 50, 60]), bytes([15, 25, 35, 45, 55, 65])]

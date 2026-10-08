@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -22,11 +24,13 @@ import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ParticleStatus;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -149,9 +153,11 @@ public class DesignTourScenario extends EvidenceScenario {
 	private static final long SETTLE_LIMIT_NANOS = 90_000_000_000L;
 	/** Ticks between two looks at whether the world has settled. */
 	private static final int SETTLE_POLL_TICKS = 2;
+	/** The world counts as settled after this many looks in a row that find it ready: light and meshes arrive some ticks late. */
+	private static final int SETTLE_STABLE_POLLS = 5;
 	/** Where the cursor is parked when a screen is open: well outside the window, so that no slot or button is hovered. */
 	private static final double OFF_SCREEN = -10_000;
-	/** The breach fade is shot at the first client tick where it is half black: tick 4 of its 8 ticks of fading in, the same every run. */
+	/** The breach fade is shot at the first client tick where it is half black: tick 4 of its 8 ticks of fading in. */
 	private static final float FADE_SHOT_ALPHA = 0.5f;
 
 	private ClientGameTestContext ctx;
@@ -159,6 +165,8 @@ public class DesignTourScenario extends EvidenceScenario {
 	private BlockPos ground;
 	private Map<ColonyAnchor, BlockPos> anchors;
 	private CharterId charter;
+	/** The mobs the tour made itself (the lampless figures it poses): settle leaves them, and clears every other mob. */
+	private final Set<UUID> tourMobs = ConcurrentHashMap.newKeySet();
 
 	@Override
 	protected String name() {
@@ -224,10 +232,12 @@ public class DesignTourScenario extends EvidenceScenario {
 		});
 	}
 
-	/** A mob of the world (a cow, a villager) or a loose item or orb: what the tour never shows. The mod's own mobs are the tour's. */
-	private static boolean isStray(Entity entity) {
-		boolean thing = entity instanceof Mob || entity instanceof ItemEntity || entity instanceof ExperienceOrb;
-		return thing && !BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).getNamespace().equals(DeepCharter.MOD_ID);
+	/**
+	 * A mob the tour did not make, or a loose item or orb: a cow of the world, a lampless figure that the rails spawned on their own.
+	 * The tour never shows one, because where it walks is different every run.
+	 */
+	private boolean isStray(Entity entity) {
+		return (entity instanceof Mob && !tourMobs.contains(entity.getUUID())) || entity instanceof ItemEntity || entity instanceof ExperienceOrb;
 	}
 
 	/**
@@ -238,6 +248,8 @@ public class DesignTourScenario extends EvidenceScenario {
 	 */
 	private void settle(String stillName) {
 		long deadline = System.nanoTime() + SETTLE_LIMIT_NANOS;
+		int stable = 0;
+		String lastPose = null;
 		while (true) {
 			serverDo(server -> {
 				for (ServerLevel level : server.getAllLevels()) {
@@ -255,15 +267,26 @@ public class DesignTourScenario extends EvidenceScenario {
 				ctx.getInput().setCursorPos(OFF_SCREEN, OFF_SCREEN);
 			}
 			ctx.waitTicks(SETTLE_POLL_TICKS);
-			boolean ready = ctx.computeOnClient(client -> {
+			boolean lit = serverGet(server -> {
+				for (ServerLevel level : server.getAllLevels()) {
+					if (level.getLightEngine().hasLightWork()) {
+						return false;
+					}
+				}
+				return true;
+			});
+			boolean ready = lit && ctx.computeOnClient(client -> {
 				for (Entity entity : client.level.entitiesForRendering()) {
 					if (isStray(entity)) {
 						return false;
 					}
 				}
-				return client.levelRenderer.hasRenderedAllSections();
+				return chunksLoaded(client) && client.levelRenderer.hasRenderedAllSections();
 			});
-			if (ready) {
+			String pose = ctx.computeOnClient(DesignTourScenario::pose);
+			stable = ready && pose.equals(lastPose) ? stable + 1 : 0;
+			lastPose = pose;
+			if (stable >= SETTLE_STABLE_POLLS) {
 				return;
 			}
 			if (System.nanoTime() > deadline) {
@@ -271,6 +294,29 @@ public class DesignTourScenario extends EvidenceScenario {
 						+ SETTLE_LIMIT_NANOS / 1_000_000_000L + " s");
 			}
 		}
+	}
+
+	/** Where the camera is, and the pod it rides if it rides one: a pod still gliding to a halt is not settled. */
+	private static String pose(Minecraft client) {
+		Entity camera = client.getCameraEntity();
+		String pose = camera.position() + " " + camera.getYRot() + " " + camera.getXRot();
+		Entity vehicle = camera.getVehicle();
+		return vehicle == null ? pose : pose + " " + vehicle.position() + " " + vehicle.getYRot();
+	}
+
+	/** True when the client holds every chunk of the square of its render distance round the player: the far trees are in the picture. */
+	private static boolean chunksLoaded(Minecraft client) {
+		int radius = client.options.getEffectiveRenderDistance();
+		int centreX = client.player.chunkPosition().x();
+		int centreZ = client.player.chunkPosition().z();
+		for (int x = centreX - radius; x <= centreX + radius; x++) {
+			for (int z = centreZ - radius; z <= centreZ + radius; z++) {
+				if (client.level.getChunkSource().getChunk(x, z, ChunkStatus.FULL, false) == null) {
+					return false;
+				}
+			}
+		}
+		return true;
 	}
 
 	// ------------------------------------------------------------------------------------------------ handbook, items
@@ -758,10 +804,12 @@ public class DesignTourScenario extends EvidenceScenario {
 
 		// Lit: the lights part is a light source round the pod.
 		PodEntity litMole = spawnPod(PodRegistry.POD, 0, base, 0f, true);
+		awaitLight(litMole);
 		ctx.waitTicks(30);
 		podAngles("mole-lit-dark", 0, base, 5.5, 1.9, FSB);
 		serverDo(server -> litMole.discard());
 		PodEntity litProspector = spawnPod(PodRegistry.PROSPECTOR, 0, base, 0f, true);
+		awaitLight(litProspector);
 		ctx.waitTicks(30);
 		podAngles("prospector-lit-dark", 0, base, 7.5, 2.9, FSB);
 		serverDo(server -> litProspector.discard());
@@ -772,6 +820,7 @@ public class DesignTourScenario extends EvidenceScenario {
 			LamplessFigure f = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
 			f.setPos(base);
 			f.setNoAi(true);
+			tourMobs.add(f.getUUID());
 			level.addFreshEntity(f);
 			return f;
 		});
@@ -799,6 +848,7 @@ public class DesignTourScenario extends EvidenceScenario {
 			LamplessFigure f = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
 			f.setPos(base.add(-6, 0, 0));
 			f.setHeading(Direction.EAST);
+			tourMobs.add(f.getUUID());
 			level.addFreshEntity(f);
 			return f;
 		});
@@ -1216,9 +1266,30 @@ public class DesignTourScenario extends EvidenceScenario {
 			player.onUpdateAbilities();
 			player.teleportTo(server.getLevel(LayerChain.dimension(layer)), eye.x, eye.y - EYE, eye.z, Set.of(), yaw, pitch, true);
 		});
+		// Arrived exactly, looking exactly: a camera still a block short, or a turn short, makes a different picture.
 		ctx.waitFor(client -> client.level.dimension().equals(LayerChain.dimension(layer))
-				&& client.player.distanceToSqr(eye.x, eye.y - EYE, eye.z) < 1.0, WAIT);
+				&& client.player.distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
+				&& Math.abs(Mth.wrapDegrees(client.player.getYRot() - yaw)) < 0.01f
+				&& Math.abs(client.player.getXRot() - pitch) < 0.01f, WAIT);
 		ctx.waitTicks(wait);
+	}
+
+	/**
+	 * Waits, on a wall-clock limit, until the lights part of {@code pod} holds its light block in the pod's column. The pod puts it
+	 * there on a tick of its own, and takes the one of a pod that stood in the same place before, so it is not there at once.
+	 */
+	private void awaitLight(PodEntity pod) {
+		long deadline = System.nanoTime() + SETTLE_LIMIT_NANOS;
+		while (!serverGet(server -> {
+			ServerLevel level = server.getLevel(LayerChain.dimension(0));
+			return BlockPos.betweenClosedStream(BlockPos.containing(pod.getX(), pod.getBoundingBox().minY, pod.getZ()),
+					BlockPos.containing(pod.getX(), pod.getBoundingBox().maxY, pod.getZ())).anyMatch(pos -> level.getBlockState(pos).is(Blocks.LIGHT));
+		})) {
+			if (System.nanoTime() > deadline) {
+				throw new AssertionError("the lights part of " + pod + " never placed its light");
+			}
+			ctx.waitTicks(SETTLE_POLL_TICKS);
+		}
 	}
 
 	/** A named still, with no toast, chat line or transmission over it. */
@@ -1226,6 +1297,8 @@ public class DesignTourScenario extends EvidenceScenario {
 		ctx.runOnClient(client -> {
 			client.gui.toastManager().clear();
 			client.gui.hud.getChat().clearMessages(false);
+			// The vanilla "Press Left Shift to dismount" hint fades by its own timer, so it is never in a still.
+			client.gui.hud.setOverlayMessage(Component.empty(), false);
 		});
 		clearTransmissions();
 		settle(stillName);

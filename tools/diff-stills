@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compares two directories of stills and reports the ones that differ.
 
-Usage: tools/diff-stills <dirA> <dirB> [--tolerance N] [--out DIR]
+Usage: tools/diff-stills <dirA> <dirB> [--tolerance N] [--noise PREFIX=TOL:PERCENT ...] [--design-tour] [--out DIR]
 
 Each directory holds PNGs of the same names (the output of tools/record-evidence.sh design-tour is
 build/evidence/design-tour/screenshots; a directory that has no PNGs of its own but has a screenshots/
@@ -14,6 +14,11 @@ subdirectory is read from there). A pixel counts as changed when any of its chan
 With --out DIR, each of those stills also gets two PNGs in DIR:
     NAME-side-by-side.png   A on the left, B on the right
     NAME-diff.png           B dimmed, every changed pixel in red
+
+Noise floors: some stills never come out the same twice (animated lava, the breach fade, a pod HUD's vignette). A floor
+PREFIX=TOL:PERCENT gives the stills whose name starts with PREFIX their own tolerance TOL (channel delta) and hides them
+while at most PERCENT of their pixels changed beyond it. The longest matching prefix wins. --noise may repeat; --design-tour
+adds the floors measured on the design-tour (DESIGN_TOUR_NOISE below). A real art change should stand well above a floor.
 
 A still that is in only one directory, or whose size differs, is listed too and gets no images.
 Exit status: 0 when no still differs, 1 when some do, 2 on a usage error or an unreadable PNG.
@@ -29,6 +34,19 @@ PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 # Colour type -> channels per pixel. Only 8-bit, non-interlaced PNGs are read: that is what the game writes.
 CHANNELS = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}
 DEFAULT_TOLERANCE = 2
+# Measured over pairs of design-tour runs of one commit (README, "Before and after stills"): the most that noise changed in each
+# family of stills, rounded up. PREFIX, channel tolerance, percent of pixels.
+DESIGN_TOUR_NOISE = [
+    ("hud-breach-fade", 70, 0.0),      # runs on client ticks; the tick of the shot varies with load
+    ("hud-pod-", 12, 4.0),             # the screen-edge vignette (delta 10), and the rider's arm
+    ("hud-scanner-", 12, 4.0),
+    ("layer-2-cave-", 2, 6.0),         # animated lava texture
+    ("mole-", 12, 2.0),                # pod lights in the dark room: light block timing
+    ("prospector-", 12, 2.0),
+    ("lampless-", 2, 0.3),             # the figure's idle animation
+    ("structure-", 14, 1.0),           # ambient light and lava glow of the caves
+    ("", DEFAULT_TOLERANCE, 1.0),      # everything else: far trees at the edge of the loaded chunks
+]
 
 
 class Image:
@@ -199,7 +217,16 @@ def stills_of(directory):
     return found
 
 
-def diff_directories(dir_a, dir_b, tolerance, out_dir=None):
+def floor_for(name, tolerance, noise):
+    """Returns (tolerance, percent floor) for a still: the longest matching noise prefix, else the plain tolerance and no floor."""
+    best = None
+    for prefix, tol, percent in noise:
+        if name.startswith(prefix) and (best is None or len(prefix) > len(best[0])):
+            best = (prefix, tol, percent)
+    return (tolerance, 0.0) if best is None else (best[1], best[2])
+
+
+def diff_directories(dir_a, dir_b, tolerance, out_dir=None, noise=()):
     """Returns table rows (name, percent changed, max delta, note), worst first. Writes the images when out_dir is given."""
     stills_a, stills_b = stills_of(dir_a), stills_of(dir_b)
     if not stills_a and not stills_b:
@@ -218,10 +245,12 @@ def diff_directories(dir_a, dir_b, tolerance, out_dir=None):
         if (a.width, a.height) != (b.width, b.height):
             rows.append((name, 100.0, None, f"size {a.width}x{a.height} vs {b.width}x{b.height}"))
             continue
-        changed, biggest, mask = compare(a, b, tolerance)
-        if changed == 0:
+        still_tolerance, floor = floor_for(Path(name).stem, tolerance, noise)
+        changed, biggest, mask = compare(a, b, still_tolerance)
+        percent = 100.0 * changed / (a.width * a.height)
+        if changed == 0 or percent <= floor:
             continue
-        rows.append((name, 100.0 * changed / (a.width * a.height), biggest, ""))
+        rows.append((name, percent, biggest, ""))
         if out_dir is not None:
             Path(out_dir).mkdir(parents=True, exist_ok=True)
             stem = Path(name).stem
@@ -246,12 +275,23 @@ def main(argv=None):
     parser.add_argument("dir_b")
     parser.add_argument("--tolerance", type=int, default=DEFAULT_TOLERANCE, metavar="N",
                         help=f"a channel that differs by at most N (0-255) is the same (default {DEFAULT_TOLERANCE})")
+    parser.add_argument("--noise", action="append", default=[], metavar="PREFIX=TOL:PERCENT",
+                        help="stills named PREFIX* use channel tolerance TOL and are hidden while at most PERCENT of pixels changed")
+    parser.add_argument("--design-tour", action="store_true", help="apply the noise floors measured on the design-tour stills")
     parser.add_argument("--out", metavar="DIR", help="write NAME-side-by-side.png and NAME-diff.png of each differing still here")
     args = parser.parse_args(argv)
     if not 0 <= args.tolerance <= 255:
         parser.error("--tolerance must be between 0 and 255")
+    noise = list(DESIGN_TOUR_NOISE) if args.design_tour else []
     try:
-        rows, total = diff_directories(args.dir_a, args.dir_b, args.tolerance, args.out)
+        for spec in args.noise:
+            prefix, _, rest = spec.partition("=")
+            tol, _, percent = rest.partition(":")
+            noise.append((prefix, int(tol), float(percent)))
+    except ValueError:
+        parser.error("--noise takes PREFIX=TOL:PERCENT, for example hud-pod-=12:4")
+    try:
+        rows, total = diff_directories(args.dir_a, args.dir_b, args.tolerance, args.out, noise)
     except (ValueError, OSError, zlib.error) as error:
         print(f"diff-stills: {error}", file=sys.stderr)
         return 2
