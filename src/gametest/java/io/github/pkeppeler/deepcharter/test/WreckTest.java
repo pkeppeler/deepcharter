@@ -19,6 +19,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer.RespawnConfig;
@@ -47,6 +48,7 @@ import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charter;
+import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
@@ -56,6 +58,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -284,6 +287,174 @@ public class WreckTest {
 			pod.discard();
 			clearFloor(helper);
 		}
+	}
+
+	private static Charter found(GameTestHelper helper, MockPlayer mock) {
+		MinecraftServer server = helper.getLevel().getServer();
+		Charters.found(server, mock.player().getUUID(), uniqueName()).ifPresent(refusal -> {
+			throw failure(helper, "could not found a charter: %s", refusal);
+		});
+		return Charters.charterOf(server, mock.player().getUUID()).orElseThrow();
+	}
+
+	/** How many wreck reports this player has been sent in chat. */
+	private static long reportsTo(MockPlayer mock) {
+		return mock.chatMessages().stream()
+				.filter(message -> message.getContents() instanceof TranslatableContents contents && contents.getKey().startsWith("deepcharter.wreck.report."))
+				.count();
+	}
+
+	/** Runs {@code check} after the mocks have read the chat the wreck sent, then cleans up. */
+	private static void afterReports(GameTestHelper helper, PodEntity pod, List<MockPlayer> mocks, Runnable check) {
+		helper.runAfterDelay(3, () -> {
+			try {
+				check.run();
+				helper.succeed();
+			} finally {
+				mocks.forEach(MockPlayer::leave);
+				pod.discard();
+				clearFloor(helper);
+			}
+		});
+	}
+
+	@GameTest
+	public void anUnmannedOwnedWreckTellsItsOwnerCharter(GameTestHelper helper) {
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer owner = MockPlayers.join(helper, "wreck-owner");
+		Charter charter = found(helper, owner);
+		PodComponents.register(pod, charter.id());
+		wreck(pod);
+		afterReports(helper, pod, List.of(owner), () -> {
+			if (reportsTo(owner) != 1) {
+				throw failure(helper, "the owner should be told once, was told %d times", reportsTo(owner));
+			}
+			Report report = REPORTS.get(pod.getUUID());
+			if (report == null || !report.charter().id().equals(charter.id())) {
+				throw failure(helper, "the report should name the owner charter, was %s", report);
+			}
+		});
+	}
+
+	@GameTest
+	public void everyOnlineMemberOfTheOwnerCharterIsToldAndAnOfflineOneIsNot(GameTestHelper helper) {
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer director = MockPlayers.join(helper, "wreck-director");
+		MockPlayer online = MockPlayers.join(helper, "wreck-online");
+		MockPlayer offline = MockPlayers.join(helper, "wreck-offline");
+		MinecraftServer server = helper.getLevel().getServer();
+		Charter charter = found(helper, director);
+		for (MockPlayer member : List.of(online, offline)) {
+			if (Charters.apply(server, member.player().getUUID(), charter.id()).isPresent()
+					|| Charters.approve(server, director.player().getUUID(), member.player().getUUID()).isPresent()) {
+				throw failure(helper, "could not add %s to the charter", member.player().getName().getString());
+			}
+		}
+		offline.leave();
+		PodComponents.register(pod, charter.id());
+		wreck(pod);
+		afterReports(helper, pod, List.of(director, online), () -> {
+			if (reportsTo(director) != 1 || reportsTo(online) != 1 || reportsTo(offline) != 0) {
+				throw failure(helper, "expected 1, 1, 0 reports (director, online, offline), got %d, %d, %d",
+						reportsTo(director), reportsTo(online), reportsTo(offline));
+			}
+		});
+	}
+
+	@GameTest
+	public void aRiderOffTheOwnerCharterIsNotToldOfAnOwnedWreck(GameTestHelper helper) {
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer owner = MockPlayers.join(helper, "wreck-own");
+		MockPlayer rider = MockPlayers.join(helper, "wreck-rider");
+		Charter ownerCharter = found(helper, owner);
+		found(helper, rider);
+		PodComponents.register(pod, ownerCharter.id());
+		if (!rider.player().startRiding(pod, true, false)) {
+			throw failure(helper, "the rider could not board the pod");
+		}
+		wreck(pod);
+		afterReports(helper, pod, List.of(owner, rider), () -> {
+			if (reportsTo(owner) != 1 || reportsTo(rider) != 0) {
+				throw failure(helper, "only the owner should be told, got owner %d, rider %d", reportsTo(owner), reportsTo(rider));
+			}
+		});
+	}
+
+	@GameTest
+	public void aRiderWhoIsOnTheOwnerCharterIsToldOnce(GameTestHelper helper) {
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer owner = MockPlayers.join(helper, "wreck-pilot");
+		Charter charter = found(helper, owner);
+		PodComponents.register(pod, charter.id());
+		if (!owner.player().startRiding(pod, true, false)) {
+			throw failure(helper, "the pilot could not board the pod");
+		}
+		wreck(pod);
+		afterReports(helper, pod, List.of(owner), () -> {
+			if (reportsTo(owner) != 1) {
+				throw failure(helper, "the pilot should be told once, was told %d times", reportsTo(owner));
+			}
+		});
+	}
+
+	@GameTest
+	public void anUnownedWreckStillTellsTheRidersCharters(GameTestHelper helper) {
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer rider = MockPlayers.join(helper, "wreck-unowned");
+		Charter charter = found(helper, rider);
+		if (!rider.player().startRiding(pod, true, false)) {
+			throw failure(helper, "the rider could not board the pod");
+		}
+		wreck(pod);
+		afterReports(helper, pod, List.of(rider), () -> {
+			Report report = REPORTS.get(pod.getUUID());
+			if (reportsTo(rider) != 1 || report == null || !report.charter().id().equals(charter.id())) {
+				throw failure(helper, "the rider's charter should be told once, got %d reports and %s", reportsTo(rider), report);
+			}
+		});
+	}
+
+	@GameTest
+	public void anOwnerCharterThatIsGoneFallsBackToTheRiders(GameTestHelper helper) {
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer rider = MockPlayers.join(helper, "wreck-gone");
+		found(helper, rider);
+		PodComponents.register(pod, CharterId.random());
+		if (!rider.player().startRiding(pod, true, false)) {
+			throw failure(helper, "the rider could not board the pod");
+		}
+		wreck(pod);
+		afterReports(helper, pod, List.of(rider), () -> {
+			if (reportsTo(rider) != 1) {
+				throw failure(helper, "the rider's charter should be told once, was told %d times", reportsTo(rider));
+			}
+		});
+	}
+
+	@GameTest
+	public void aDormantOwnerCharterFallsBackToTheRiders(GameTestHelper helper) {
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer founder = MockPlayers.join(helper, "wreck-dormant");
+		MockPlayer rider = MockPlayers.join(helper, "wreck-dormant-rider");
+		MinecraftServer server = helper.getLevel().getServer();
+		Charter dormant = found(helper, founder);
+		found(helper, rider);
+		Charters.leave(server, founder.player().getUUID()).ifPresent(refusal -> {
+			throw failure(helper, "the founder could not leave: %s", refusal);
+		});
+		if (!Charters.find(server, dormant.id()).orElseThrow().dormant()) {
+			throw failure(helper, "the charter should be dormant");
+		}
+		PodComponents.register(pod, dormant.id());
+		if (!rider.player().startRiding(pod, true, false)) {
+			throw failure(helper, "the rider could not board the pod");
+		}
+		wreck(pod);
+		afterReports(helper, pod, List.of(founder, rider), () -> {
+			if (reportsTo(rider) != 1) {
+				throw failure(helper, "the rider's charter should be told once, was told %d times", reportsTo(rider));
+			}
+		});
 	}
 
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 40)

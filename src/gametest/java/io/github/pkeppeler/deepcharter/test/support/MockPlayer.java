@@ -31,6 +31,7 @@ public final class MockPlayer {
 	private final EmbeddedChannel channel;
 	private final BooleanSupplier ownerDone;
 	private final List<Component> actionBar = new ArrayList<>();
+	private final List<Component> chat = new ArrayList<>();
 	private boolean loaded;
 
 	MockPlayer(MinecraftServer server, ServerPlayer player, Connection connection, EmbeddedChannel channel,
@@ -45,6 +46,11 @@ public final class MockPlayer {
 	/** Every action-bar message the server has sent this player so far, oldest first. */
 	public List<Component> actionBarMessages() {
 		return List.copyOf(actionBar);
+	}
+
+	/** Every chat message (not action bar) the server has sent this player so far, oldest first. Read on the mock's tick, so it lags by one. */
+	public List<Component> chatMessages() {
+		return List.copyOf(chat);
 	}
 
 	public ServerPlayer player() {
@@ -122,8 +128,8 @@ public final class MockPlayer {
 		Object outbound;
 		while ((outbound = channel.readOutbound()) != null) {
 			try {
-				if (outbound instanceof ClientboundSystemChatPacket chat && chat.overlay()) {
-					actionBar.add(chat.content());
+				if (outbound instanceof ClientboundSystemChatPacket packet) {
+					(packet.overlay() ? actionBar : chat).add(packet.content());
 				}
 				if (outbound instanceof ClientboundKeepAlivePacket keepAlive && player.connection != null) {
 					player.connection.handleKeepAlive(new ServerboundKeepAlivePacket(keepAlive.getId()));
