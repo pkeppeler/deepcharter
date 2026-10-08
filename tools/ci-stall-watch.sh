@@ -4,6 +4,7 @@
 # client JVM also hosts the dedicated TwoPlayerServer, so one dump covers both. Exits when
 # WATCHED_PID is gone, so it cannot outlive Gradle. Prints to stdout, never touches LOG.
 # Usage: tools/ci-stall-watch.sh LOG WATCHED_PID [SILENCE_SECONDS=60]
+# With no Knot JVM, dumps every JVM except Gradle's daemon/wrapper and jps itself.
 # Env: STALL_POLL (seconds between checks, default 2)
 set -euo pipefail
 
@@ -24,19 +25,25 @@ game_pids() {
   jps -l | awk '/launch\.knot\.Knot/ { print $1 }'
 }
 
+# Fallback: the one stall you get is the one you cannot repeat, so dump any other JVM.
+other_pids() {
+  jps -l | awk '!/Gradle|gradle|sun\.tools\.jps|jdk\.jcmd/ { print $1 }'
+}
+
 dump_threads() {
   local pids pid
   echo "::group::Thread dump: $log silent for ${silence}s"
   pids=$(game_pids || true)
   if [[ -z $pids ]]; then
-    echo "No Knot JVM found; JVMs running:"
+    echo "No Knot JVM found; dumping the other JVMs:"
     jps -l || true
+    pids=$(other_pids || true)
   fi
   while IFS= read -r pid; do
     [[ -n $pid ]] || continue
     echo "--- jstack $pid"
     if command -v timeout >/dev/null; then
-      timeout 30 jstack "$pid" || echo "jstack $pid failed"
+      timeout -k 5 30 jstack "$pid" || echo "jstack $pid failed"
     else
       jstack "$pid" || echo "jstack $pid failed"
     fi

@@ -71,7 +71,8 @@ jobs:
           tail -n +1 -f "$log" --pid="$gradle_pid" &
           tail_pid=$!
           # Thread dump of the client JVM (it hosts TwoPlayerServer too) when the log is silent
-          # for 60 s. It exits when Gradle does; the trap is the backstop on every other exit.
+          # for 60 s. A dump during a long world load or a dedicated-server start is expected
+          # noise, not a failure. It exits when Gradle does; the trap is the backstop on every other exit.
           tools/ci-stall-watch.sh "$log" "$gradle_pid" 60 &
           watch_pid=$!
           trap 'kill "$watch_pid" 2>/dev/null || true' EXIT

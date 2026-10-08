@@ -14,7 +14,9 @@ mkdir -p "$work/bin"
 cat >"$work/bin/jps" <<'S'
 #!/usr/bin/env bash
 echo "111 org.gradle.launcher.daemon.bootstrap.GradleDaemon"
-echo "222 net.fabricmc.loader.impl.launch.knot.KnotClient"
+[[ ${JPS_MODE:-} == noknot ]] || echo "222 net.fabricmc.loader.impl.launch.knot.KnotClient"
+[[ ${JPS_MODE:-} != noknot ]] || echo "333 com.example.Other"
+echo "444 jdk.jcmd/sun.tools.jps.Jps"
 S
 cat >"$work/bin/jstack" <<'S'
 #!/usr/bin/env bash
@@ -61,5 +63,20 @@ if kill -0 "$watcher" 2>/dev/null; then
 else
   check "watcher exits when the watched process is gone" gone gone
 fi
+
+# No Knot JVM: dump the other JVMs, not Gradle or jps itself.
+: >"$log"
+sleep 300 &
+watched=$!
+JPS_MODE=noknot PATH="$work/bin:$PATH" STALL_POLL=0.2 bash "$tools/ci-stall-watch.sh" "$log" "$watched" 2 >"$out" &
+watcher=$!
+sleep 4
+check "fallback dumps a non-Gradle JVM" 1 "$(grep -c 'FAKE-STACK for 333' "$out" || true)"
+check "fallback skips the Gradle daemon" 0 "$(grep -c 'FAKE-STACK for 111' "$out" || true)"
+check "fallback skips jps itself" 0 "$(grep -c 'FAKE-STACK for 444' "$out" || true)"
+kill "$watched"
+wait "$watched" 2>/dev/null || true
+watched=""
+wait "$watcher" 2>/dev/null || true
 
 exit "$((failures > 0))"
