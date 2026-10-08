@@ -15,9 +15,6 @@ tasks.named("runGameTest") { dependsOn deleteGameTestWorld }
 // Order: the suite shares world state between classes and depends on today's order, so
 // src/gametest/entrypoint-order.txt pins it; listed classes come first in that order, every other
 // class after them, sorted by name. A new class needs no line there.
-// The task fails (so the build fails) on a class named *Test or *Scenario that matches none of
-// those, on a class that matches both server and client, on an empty list, and on a line in the
-// order file that names no class.
 def generatedGametestResources = layout.buildDirectory.dir("generated/gametest-resources")
 def generateGametestModJson = tasks.register("generateGametestModJson") {
 	def javaRoot = file("src/gametest/java")
@@ -46,8 +43,7 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 				return
 			}
 			def isServer = (text =~ /@GameTest\b/).find()
-			def isClient = (text =~ /\bimplements\s+[^{]*\bFabricClientGameTest\b/).find() \
-				|| (text =~ /\bextends\s+EvidenceScenario\b/).find()
+			def isClient = (text =~ /\bimplements\s+[^{]*\bFabricClientGameTest\b|\bextends\s+EvidenceScenario\b/).find()
 			if (isServer && isClient) {
 				problems << "${className} has both an @GameTest method and is a client GameTest; split it in two"
 			} else if (isServer) {
@@ -68,14 +64,14 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 		pinned.countBy { it }.findAll { it.value > 1 }.each { line, count ->
 			problems << "${line} appears ${count} times in src/gametest/entrypoint-order.txt; keep one line"
 		}
-		pinned.findAll { !(it in server) && !(it in client) }.each {
+		pinned.findAll { !(it in server + client) }.each {
 			problems << "${it} is in src/gametest/entrypoint-order.txt but is not a registered test class; remove the line"
 		}
-		def ordered = { names -> pinned.findAll { it in names } + names.findAll { !(it in pinned) }.sort() }
 		if (!problems.isEmpty()) {
 			throw new GradleException("gametest entrypoints:\n  " + problems.join("\n  "))
 		}
 
+		def ordered = { names -> pinned.findAll { it in names } + names.findAll { !(it in pinned) }.sort() }
 		def json = template.text
 		["SERVER_TESTS": server, "CLIENT_TESTS": client].each { token, names ->
 			def placeholder = "\"@${token}@\""
