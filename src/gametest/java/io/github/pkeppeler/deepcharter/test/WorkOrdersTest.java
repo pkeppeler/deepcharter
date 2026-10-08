@@ -42,6 +42,7 @@ import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
+import io.github.pkeppeler.deepcharter.test.support.WorldData;
 
 /**
  * Server GameTests for #80: a charter hands ore in for a work order at the ore processor. Progress is the charter's own and
@@ -58,20 +59,16 @@ public class WorkOrdersTest {
 	private static final String UNREADABLE = "deepcharter.market.refusal.work_orders_unreadable";
 	private static final String NO_STATUE = "deepcharter.market.refusal.no_statue";
 
-	private static void withProcessorOnline(MinecraftServer server, Runnable body) {
-		RepairState originalRepairs = RepairState.get(server);
-		WorkOrderData originalOrders = WorkOrderData.get(server);
+	static void withProcessorOnline(MinecraftServer server, Runnable body) {
 		RepairState fresh = new RepairState();
-		server.getDataStorage().set(RepairState.TYPE, fresh);
-		server.getDataStorage().set(WorkOrderData.TYPE, new WorkOrderData());
 		try {
-			for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR)) {
-				type.parts().forEach(part -> fresh.insert(type, part));
-			}
-			body.run();
+			WorldData.swap(server).with(RepairState.TYPE, fresh).with(WorkOrderData.TYPE, new WorkOrderData()).run(() -> {
+				for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR)) {
+					type.parts().forEach(part -> fresh.insert(type, part));
+				}
+				body.run();
+			});
 		} finally {
-			server.getDataStorage().set(RepairState.TYPE, originalRepairs);
-			server.getDataStorage().set(WorkOrderData.TYPE, originalOrders);
 			clearHands(server);
 		}
 	}
@@ -80,7 +77,7 @@ public class WorkOrdersTest {
 		FounderStatue.handPositions(server).orElseThrow().forEach(pos -> server.overworld().setBlock(pos, Blocks.AIR.defaultBlockState(), 3));
 	}
 
-	private static MockPlayer player(GameTestHelper helper, String name, boolean onCharter) {
+	static MockPlayer player(GameTestHelper helper, String name, boolean onCharter) {
 		MockPlayer mock = MockPlayers.join(helper, name);
 		mock.player().setGameMode(GameType.SURVIVAL);
 		MinecraftServer server = helper.getLevel().getServer();
@@ -91,7 +88,7 @@ public class WorkOrdersTest {
 	}
 
 	/** The processor at a fixed place in the test, and the player standing two blocks from it. */
-	private static BlockPos processorFor(GameTestHelper helper, MockPlayer mock) {
+	static BlockPos processorFor(GameTestHelper helper, MockPlayer mock) {
 		BlockPos relative = new BlockPos(2, 1, 2);
 		helper.setBlock(relative, TerminalTypes.ORE_PROCESSOR.block().defaultBlockState());
 		BlockPos pos = helper.absolutePos(relative);
@@ -100,43 +97,43 @@ public class WorkOrdersTest {
 		return pos;
 	}
 
-	private static void carry(ServerPlayer player, OreType ore, int count) {
+	static void carry(ServerPlayer player, OreType ore, int count) {
 		for (int i = 0; i < count; i++) {
 			player.getInventory().add(OreRegistry.stack(ore));
 		}
 	}
 
-	private static int carried(ServerPlayer player, OreType ore) {
+	static int carried(ServerPlayer player, OreType ore) {
 		return player.getInventory().countItem(OreRegistry.item(ore));
 	}
 
-	private static Charter charter(MinecraftServer server, ServerPlayer player) {
+	static Charter charter(MinecraftServer server, ServerPlayer player) {
 		return Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow();
 	}
 
-	private static CompoundTag orderArgs(WorkOrder order) {
+	static CompoundTag orderArgs(WorkOrder order) {
 		CompoundTag args = new CompoundTag();
 		args.putString(WorkOrders.ORDER_KEY, order.id().toString());
 		return args;
 	}
 
-	private static TerminalAction.Context context(MinecraftServer server, ServerPlayer player, BlockPos pos) {
+	static TerminalAction.Context context(MinecraftServer server, ServerPlayer player, BlockPos pos) {
 		return new TerminalAction.Context(server, player, Charters.charterOfOrThrow(server, player.getUUID()), TerminalTypes.ORE_PROCESSOR, pos, new CompoundTag());
 	}
 
-	private static void expectDone(GameTestHelper helper, Optional<TerminalRefusal> refusal, String what) {
+	static void expectDone(GameTestHelper helper, Optional<TerminalRefusal> refusal, String what) {
 		if (refusal.isPresent()) {
 			throw helper.assertionException("%s should succeed, was refused: %s", what, refusal.get());
 		}
 	}
 
-	private static void expectRefused(GameTestHelper helper, TerminalRefusal expected, Optional<TerminalRefusal> actual, String what) {
+	static void expectRefused(GameTestHelper helper, TerminalRefusal expected, Optional<TerminalRefusal> actual, String what) {
 		if (!actual.equals(Optional.of(expected))) {
 			throw helper.assertionException("%s should be refused with %s, got %s", what, expected, actual);
 		}
 	}
 
-	private static void expectKey(GameTestHelper helper, String key, Optional<Component> refusal, String what) {
+	static void expectKey(GameTestHelper helper, String key, Optional<Component> refusal, String what) {
 		if (refusal.isEmpty() || !(refusal.get().getContents() instanceof TranslatableContents contents) || !contents.getKey().equals(key)) {
 			throw helper.assertionException("%s should be refused with %s, got %s", what, key, refusal);
 		}
@@ -314,9 +311,8 @@ public class WorkOrdersTest {
 			MockPlayer member = player(helper, "Member", true);
 			member.teleportTo(helper.getLevel(), drifter.player().position(), 0, 0);
 			carry(member.player(), OreType.BRONZIUM, 10);
-			server.getDataStorage().set(RepairState.TYPE, new RepairState());
-			expectRefused(helper, TerminalRefusal.UNREPAIRED, Terminals.act(member.player(), processor, WorkOrders.DELIVER, orderArgs(WorkOrder.FOUNDERS_HANDS)),
-					"a delivery at an unrepaired processor");
+			WorldData.with(server, RepairState.TYPE, new RepairState(), () -> expectRefused(helper, TerminalRefusal.UNREPAIRED,
+					Terminals.act(member.player(), processor, WorkOrders.DELIVER, orderArgs(WorkOrder.FOUNDERS_HANDS)), "a delivery at an unrepaired processor"));
 			if (carried(drifter.player(), OreType.BRONZIUM) != 10 || carried(member.player(), OreType.BRONZIUM) != 10) {
 				throw helper.assertionException("a refused delivery must take no ore");
 			}
@@ -327,18 +323,13 @@ public class WorkOrdersTest {
 	@GameTest
 	public void aColonyThatCannotBeFoundRefusesTheCompletionBeforeTakingOre(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
-		ColonySite original = ColonySite.get(server);
 		withProcessorOnline(server, () -> {
 			MockPlayer mock = player(helper, "Surveyor", true);
 			ServerPlayer player = mock.player();
 			BlockPos processor = processorFor(helper, mock);
 			carry(player, OreType.BRONZIUM, 10);
-			server.getDataStorage().set(ColonySite.TYPE, new ColonySite());
-			try {
-				expectKey(helper, NO_STATUE, WorkOrders.deliver(context(server, player, processor), WorkOrder.FOUNDERS_HANDS), "a completion with no statue to restore");
-			} finally {
-				server.getDataStorage().set(ColonySite.TYPE, original);
-			}
+			WorldData.with(server, ColonySite.TYPE, new ColonySite(), () -> expectKey(helper, NO_STATUE,
+					WorkOrders.deliver(context(server, player, processor), WorkOrder.FOUNDERS_HANDS), "a completion with no statue to restore"));
 			if (carried(player, OreType.BRONZIUM) != 10 || WorkOrderData.get(server).delivered(charter(server, player).id(), WorkOrder.FOUNDERS_HANDS) != 0) {
 				throw helper.assertionException("a refused completion must keep the ore and the progress");
 			}
@@ -398,6 +389,7 @@ public class WorkOrdersTest {
 			entry.putString("charter", UUID.randomUUID().toString());
 			entry.putString("order", "founders_hands");
 			entry.putInt("delivered", 99);
+			entry.putInt("rounds", 0);
 			ListTag progress = new ListTag();
 			progress.add(entry);
 			CompoundTag overfull = new CompoundTag();
@@ -419,13 +411,13 @@ public class WorkOrdersTest {
 			BlockPos processor = processorFor(helper, mock);
 			Optional<Charter> charter = Charters.charterOfOrThrow(server, player.getUUID());
 			WorkOrdersView fresh = WorkOrders.view(server, player, charter, processor);
-			if (!fresh.equals(new WorkOrdersView(true, List.of(new WorkOrdersView.Entry(WorkOrder.FOUNDERS_HANDS, 0))))) {
+			if (!fresh.equals(new WorkOrdersView(true, List.of(new WorkOrdersView.Entry(WorkOrder.FOUNDERS_HANDS, 0, 0))))) {
 				throw helper.assertionException("a new charter has handed in nothing, got %s", fresh);
 			}
 			carry(player, OreType.BRONZIUM, 4);
 			expectDone(helper, Terminals.act(player, processor, WorkOrders.DELIVER, orderArgs(WorkOrder.FOUNDERS_HANDS)), "a delivery");
 			WorkOrdersView after = WorkOrders.view(server, player, charter, processor);
-			if (!after.equals(new WorkOrdersView(true, List.of(new WorkOrdersView.Entry(WorkOrder.FOUNDERS_HANDS, 4))))) {
+			if (!after.equals(new WorkOrdersView(true, List.of(new WorkOrdersView.Entry(WorkOrder.FOUNDERS_HANDS, 4, 0))))) {
 				throw helper.assertionException("the view should show four in, got %s", after);
 			}
 		});

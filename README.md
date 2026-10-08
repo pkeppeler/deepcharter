@@ -15,6 +15,8 @@ Prerequisite: JDK 25. Gradle comes from the wrapper.
 
 Tests live in `src/gametest/`.
 
+On macOS, client GameTests and `tools/record-evidence.sh` render with Vulkan (MoltenVK), so they run with the screen locked. Set `DEEPCHARTER_GL=1` to use OpenGL instead (for example for Iris shaders).
+
 `tools/play.sh` launches the dev client with the pinned mcpfabric bridge into a fresh test world. See [docs/tooling/play-test.md](docs/tooling/play-test.md).
 
 ## Code layout
@@ -51,7 +53,7 @@ A new part that needs its own `init()` and has no feature of its own gets a stub
 
 Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest/.../test/`:
 
-- Add test classes and evidence scenarios to the stubs that already exist. `gradle/gametest.gradle` generates the gametest `fabric.mod.json` entrypoint lists from the classes (an `@GameTest` method, `implements FabricClientGameTest`, or `extends EvidenceScenario`) and fails the build for a `*Test` or `*Scenario` class it cannot register; never edit a list. The lists are sorted by name, and no test may depend on that order. A test that swaps a world-global saved record (`getDataStorage().set(...)`: colony, hangar, repair state, serials) restores it in a `finally` on the same tick; `WorldDataGuard` stops the server GameTest run if a swap lives into the next tick. `./gradlew runGameTest -PgametestOrder=reverse` runs the server suite in reverse name order to catch a leak. A server stub is `<Thing>Test`, a client stub `<Thing>ClientTest`, a scenario `evidence/<Thing>Scenario` named `m2-<thing>`. A scenario stub throws "stub: #N fills it" when it is selected, and does nothing in a plain run.
+- Add test classes and evidence scenarios to the stubs that already exist. `gradle/gametest.gradle` generates the gametest `fabric.mod.json` entrypoint lists from the classes (an `@GameTest` method, `implements FabricClientGameTest`, or `extends EvidenceScenario`) and fails the build for a `*Test` or `*Scenario` class it cannot register; never edit a list. The lists are sorted by name, and no test may depend on that order. A test that swaps a world-global saved record (colony, hangar, repair state, serials) does it through `WorldData.with` or `WorldData.swap` (`test/support`), which set, run the body and restore in a `finally` on the same tick; a direct `getDataStorage().set(` in `src/gametest` fails the build. `WorldDataGuard` stops the server GameTest run if a swap lives into the next tick. `./gradlew runGameTest -PgametestOrder=reverse` runs the server suite in reverse name order to catch a leak. A server stub is `<Thing>Test`, a client stub `<Thing>ClientTest`, a scenario `evidence/<Thing>Scenario` named `m2-<thing>`. A scenario stub throws "stub: #N fills it" when it is selected, and does nothing in a plain run.
 - A GameTest that cuts air into generated layer rock calls `RoomSeal.seal` first (generated lava and gas flood the cut otherwise).
 - Run one GameTest, or a prefix of them, with `tools/gametest.sh '<test_id or prefix*>'` (quote the `*`). It runs `./gradlew runGameTest` from the repo root it lives in, sets the filter through `JAVA_TOOL_OPTIONS` (a bare `-D` on the Gradle command line is ignored), and fails when no test matches.
 - Before you drive an entity in a far chunk, await entity ticking: `test/support/FarChunks.awaitEntityTicking`. It forces the chunk, so nothing else needs to keep it loaded.
@@ -59,3 +61,7 @@ Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest
 - `test/support/TwoPlayerServer` starts a dedicated server in a client GameTest, joins the real client, then joins one mock player.
 - `test/evidence/` holds the PR evidence scenarios (see `tools/record-evidence.sh`).
 - Wait on entity ticks, not server ticks: chunks far from the players do not tick at first in a fresh world.
+
+## License
+
+[MIT](LICENSE). Data files copied from Minecraft (for example the vanilla material rule, ADR 0011) belong to Mojang and are not relicensed by this license.

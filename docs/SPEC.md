@@ -21,6 +21,7 @@ Pillars, ranked. The higher one wins a conflict.
 - **Group size:** 2–4 core, up to about 8 supported.
 - **Platform:** Fabric, Minecraft 26.3 (unobfuscated, Java 25). See [ADR 0002](adr/0002-fabric-on-26-3.md).
 - **Distribution:** one Modrinth modpack (the mod plus Sodium and Lithium), installed through Prism or a similar launcher.
+- **Recommended optional client mods** (never required; PR #234, [art direction](design/art-direction.md)): a dynamic-lights mod (LambDynamicLights) so held lamps and moving pods light the world smoothly, and an opt-in custom shader pack through Iris on OpenGL (Iris crashes on 26.3's Vulkan backend). Players without them see the plain ledgered light.
 - **Servers:** dedicated servers supported from day one. Hosted on the user's Mac first (friends outside the home network need port-forwarding or a tunnel); a rented host later.
 - **Assets:** our own. The friends build uses a private resource pack with the user's extracted original Motherload music and sounds; it is never published. Soundtrack sourcing for a public build is open (possibly one per layer).
 
@@ -28,27 +29,34 @@ Pillars, ranked. The higher one wins a conflict.
 
 ### Surface and colony
 
-- **Surface:** vanilla-style frontier (terrain, trees, animals, vanilla ores near the surface for the bootstrap, vanilla night monsters). No villages or settlements. No Nether or End; the depths replace them.
+- **Surface:** our own regolith plains, craters and terraced mesas, under a slow dusk-to-night sky that never reaches full day (PR #234, [art direction](design/art-direction.md), [ADR 0030](adr/0030-art-direction-decisions.md)). It is dry and bare: no sea, no grass, no trees, no animals, within the tall-world limits of [ADR 0029](adr/0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md). Vanilla night monsters are replaced by the creatures session's work; until then the surface has none. Early ore access (iron and the like) is decided with the bootstrap in [#245](https://github.com/pkeppeler/deepcharter/issues/245). No villages or settlements besides the colony. No Nether or End; the depths replace them.
+- **Never called Mars:** the world may look like Mars, but the game never calls it Mars (lore guardrail).
 - **Colony:** one derelict mining colony per world, at spawn. Its terminals are repaired once per world: when any charter fixes one, every charter can use it.
 - **Width:** unlimited, no border.
-- **Performance:** layer height drives cost, because Minecraft generates whole columns. Keep layers moderately tall. If world files grow large, add a tool to trim unvisited chunks.
+- **Performance:** world height drives cost, because Minecraft generates whole columns. Keep layers about 256 blocks or less, and uncharted worlds 2048 tall. If world files grow large, add a tool to trim unvisited chunks.
 
 ### Layers
 
 - The underground is a chain of layers. Each layer's floor leads into the top of the next.
-- Each layer is its own dimension (own ambient light, fog, sky). The depth readout is computed: layer offset plus local Y. See [ADR 0003](adr/0003-depth-as-chained-layer-dimensions.md).
+- The surface and story layers 1–8 share one tall dimension, the **campaign world**. A layer is a Y band with its own ambient light, fog and sky, set by biome. The depth readout is computed: layer offset plus local Y. See [ADR 0029](adr/0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md).
 - Layers vary in thickness.
 - **Zones:** each layer has 2–4 zones. Ore value, hazards, creatures and atmosphere step up between zones.
 
 ### Breaches
 
 - A breach is a crust at each layer boundary. It is a soft gate: any drill can get through, slowly and painfully (heat, hull damage).
-- Crossing is an event: rumble, short fade, a transmission, new music.
+- Crossing is an event: rumble, a transmission, new music. There is no teleport and no fade.
 - You can go too deep too early, and you will regret it.
+
+### Seams and grained crust
+
+- Below the campaign world, the worlds are 2048 tall. Each joins the next at a **seam**: a fast background swap. The pod carries all its riders.
+- The swap happens inside a **grained crust** (working name; the lore session names it). It has a vertical grain and flexes on a slow pulse. Rules: no sideways digging, placed blocks crumble, fluids are absorbed, and anything that stops in it is squeezed.
+- Seed-chosen **decoys** (set so that about a third of restricted crusts are seams) follow the same rules, so a seam cannot be told from a decoy.
 
 ### Story layers
 
-About 8 story layers, roughly 6–8 hours each: a 60+ hour campaign, finale at the bottom of the last. Themes are a draft for the lore session.
+About 8 story layers, roughly 6–8 hours each: a 60+ hour campaign, finale at the bottom of the last. The campaign world ends at the finale's floor, where a seam leads to the Ramp. Themes are a draft for the lore session.
 
 | # | Name | Draft theme |
 |---|------|-------------|
@@ -63,11 +71,11 @@ About 8 story layers, roughly 6–8 hours each: a 60+ hour campaign, finale at t
 
 ### Ramp
 
-A few hundred blocks at the bottom of the last story layer where drilling gets exponentially harder. You can continue, but it is not worth it. It makes the end of the campaign obvious.
+A few hundred blocks at the top of the first uncharted world, below the seam at the finale's floor, where drilling gets exponentially harder. You can continue, but it is not worth it. It makes the end of the campaign obvious.
 
 ### Uncharted layers
 
-- Below the ramp, without limit. Remixes of story-layer themes, each much harder than the one above; rewards grow far more slowly than difficulty.
+- Below the ramp, without limit: a chain of 2048-tall worlds. Remixes of story-layer themes, each much harder than the one above; rewards grow far more slowly than difficulty.
 - A bragging-rights grind for the records board.
 - The altimeter reads "UNCHARTED".
 - No rated materials exist for them, so no outpost there can be made habitable.
@@ -75,7 +83,7 @@ A few hundred blocks at the bottom of the last story layer where drilling gets e
 ### Splice rule
 
 - A layer's content is fixed the first time any charter breaks into it.
-- An update adding story layer N+1 splices it into the chain below the last story layer and above the ramp. Breaking through N's floor leads into the new layer; its floor leads into whatever already existed.
+- An update adding story layer N+1 splices it in as a new world at the seam between the finale and the Ramp. The seam moves to the new world's floor; it is not a seam inside the campaign world. Breaking through N's floor leads into the new layer; its floor leads into whatever already existed.
 - Nothing built is lost. Existing layers keep their terrain; their depth readings shift.
 - Players already down there get a "the depths moved" story event.
 - No shaft can reach a spliced layer early, so pre-mining is impossible.
@@ -90,7 +98,7 @@ A few hundred blocks at the bottom of the last story layer where drilling gets e
 
 ### Bootstrap
 
-- Start like normal Minecraft: hand-gathering and crafting.
+- Start from the colony's salvage and fungal "wood" (PR #234): salvage crates and wrecked prefabs supply wood, cloth and scrap. The crates are littered around the colony within a set block radius, not only at it. Hardy alien fungus stalks in craters and caves are gatherable stand-ins for trees. Hand-gathering and crafting follow from that.
 - Repair the colony's terminals one by one (fuel pump, then ore processor, then upgrade terminal, and so on). Each is a crafting goal; the employer gets in touch as they come back online.
 - The first charter also repairs the founding pod (the Mole) in the colony hangar.
 
@@ -337,7 +345,8 @@ The Behemoth's anchor mode is a temporary outpost.
 
 ## 15. Presentation
 
-- **Art:** consistent with vanilla (16× textures); chunky pod models made in Blockbench. Assets are AI-assisted, with the user curating.
+- **Art:** 16× textures with GTNH-style layers (overlays, emissive glow, animated active states, connected textures), as decided in [art-direction.md](design/art-direction.md) (PR #234). Pod models are made in Blockbench and rendered with GeckoLib.
+- **AI-assisted assets:** AI image models are allowed, curated by the user. Style consistency is managed with a reference sheet and curation. Any public release needs Modrinth's "Contains AI-generated content" disclosure, and Modrinth bans projects whose content is primarily or entirely AI-made, so the project must not become that. A local image model on the user's Mac is a separate install the user approves when needed. The private original audio and art are never used or copied.
 - **UI:** retro CRT-terminal style with typewriter text, like the original's shops and transmissions.
 - **Audio:** the friends build uses the private resource pack (section 2). Original audio list: [REFERENCE.md](../original_flash_game/REFERENCE.md). Public soundtrack is open.
 
@@ -369,7 +378,8 @@ Surface, repairing the colony, the Mole, the onboarding handbook (implied by the
 - Final crew-role design, after the prototype.
 - Lore session: the employer's name, layer themes, transmissions.
 - Creatures and combat session.
-- Numbers tuning: layer thicknesses, prices, drill speeds.
+- What happens to dropped items and mobs that fall to a seam.
+- Numbers tuning: layer thicknesses, drill speeds, and the prices past layer 2. The early prices (parts, scanner, lights, the Mole and Prospector, repairs) were scaled to a run's income in [PR 206](https://github.com/pkeppeler/deepcharter/pull/206).
 - Duration and size of earthquake and cave-in blockages, per layer.
 - Public release: name and branding, licence, original soundtrack sourcing.
 - Competition between charters (a later update).
