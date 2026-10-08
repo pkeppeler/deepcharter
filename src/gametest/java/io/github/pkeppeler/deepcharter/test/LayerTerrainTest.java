@@ -33,6 +33,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
+import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.layer.gen.ZoneBiomeSource;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
@@ -277,6 +278,7 @@ public class LayerTerrainTest {
 		int x = 1800;
 		int z = 1800;
 		int floor = 80;
+		RoomSeal.seal(two, new BlockPos(x - 4, floor - 6, z - 4), new BlockPos(x + 3, floor + 10, z + 3));
 		box(two, x - 4, x + 3, floor - 6, floor - 1, z - 4, z + 3, Blocks.STONE);
 		box(two, x - 4, x + 3, floor, floor + 10, z - 4, z + 3, Blocks.AIR);
 		MockPlayer pilot = MockPlayers.join(helper, "terrain-drill");
@@ -439,6 +441,18 @@ public class LayerTerrainTest {
 		BlockPos lava = new BlockPos(3, 2, 3);
 		helper.setBlock(lava, Blocks.LAVA);
 		// A tier 2 radiator takes 0.75 of the stock damage (UpgradeTuning).
+		afterLavaTicks(helper, pod, lava, () -> expectLavaHull(helper, pod, LayerTuning.DEFAULT.lavaHullPerSecond() / 20f * 0.75f));
+	}
+
+	@GameTest(maxTicks = LAVA_TEST_TICKS + 20)
+	public void aRadiatorAboveTheChassisTierCapWorksAtTheCap(GameTestHelper helper) {
+		PodEntity pod = lavaPod(helper, 3.5);
+		CharterId owner = CharterId.random();
+		PodComponents.register(pod, owner);
+		PodComponents.install(pod, ComponentItems.mint(helper.getLevel().getServer(), ComponentTrack.RADIATOR, 3, owner));
+		BlockPos lava = new BlockPos(3, 2, 3);
+		helper.setBlock(lava, Blocks.LAVA);
+		// The Mole caps components at tier 2, so a tier 3 radiator still takes 0.75.
 		afterLavaTicks(helper, pod, lava, () -> expectLavaHull(helper, pod, LayerTuning.DEFAULT.lavaHullPerSecond() / 20f * 0.75f));
 	}
 

@@ -402,8 +402,6 @@ public class PodDrillTest {
 		// Seal first: generated rock around the room holds lava that floods the cleared air before the pod ticks.
 		RoomSeal.seal(one, new BlockPos(x - 2, 0, Z - 2), new BlockPos(x + 2, 8, Z + 2));
 		box(one, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
-		// Stone walls and a roof round the room keep the world's lava (#121) out of the pod's way.
-		box(one, x - 3, x + 3, 1, 9, Z - 3, Z + 3, Blocks.STONE);
 		box(one, x - 2, x + 2, 1, 8, Z - 2, Z + 2, Blocks.AIR);
 		float[] hullBefore = {Float.NaN};
 		Rig rig = Rig.await(helper, one, new Vec3(x, 1, Z), 0f, "drill-crust", SPRINT, pod -> hullBefore[0] = pod.hull());
@@ -441,6 +439,7 @@ public class PodDrillTest {
 	public void theLastLayersCrustIsNotDrilled(GameTestHelper helper) {
 		int x = 3576;
 		ServerLevel two = layer(helper, 2);
+		RoomSeal.seal(two, new BlockPos(x - 2, 0, Z - 2), new BlockPos(x + 2, 10, Z + 2));
 		box(two, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
 		box(two, x - 2, x + 2, 3, 10, Z - 2, Z + 2, Blocks.AIR);
 		Rig rig = Rig.await(helper, two, new Vec3(x, 3, Z), 0f, "drill-last-crust", SPRINT);

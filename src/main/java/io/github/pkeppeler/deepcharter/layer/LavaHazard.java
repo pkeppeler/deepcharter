@@ -26,7 +26,7 @@ public final class LavaHazard {
 	}
 
 	private static void tick(PodEntity pod) {
-		if (pod.hull() <= 0f || !touchesLava(pod)) {
+		if (!touchesLava(pod)) {
 			return;
 		}
 		float radiator = UpgradeTuning.DEFAULT.ratio(ComponentTrack.RADIATOR, PodComponents.effectiveTier(pod, ComponentTrack.RADIATOR));
