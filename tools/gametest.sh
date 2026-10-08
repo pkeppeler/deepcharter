@@ -1,11 +1,31 @@
 #!/usr/bin/env bash
 # Usage: tools/gametest.sh <filter>
+#        tools/gametest.sh --client <class[,class...]>
 #
 # Runs the server GameTests whose id matches <filter>: a full id or a prefix
 # ending in `*` (for example `pod_drill_test*`). A leading `deepcharter-test:`
 # is accepted and not doubled. Runs from the repo root this script lives in,
 # and keeps any JAVA_TOOL_OPTIONS already set. Fails when no test matches.
+#
+# --client runs ./gradlew runClientGameTest -PclientTests=<list>: only the client
+# test classes matching a comma-separated list of simple names or globs
+# (`HangarClientTest`, `Pod*ClientTest`). gradle/gametest.gradle fails the build
+# when a term matches no class. Opens a game window and takes a client lock slot.
 set -euo pipefail
+
+if [[ ${1-} == --client ]]; then
+  clients=${2-}
+  if [[ $# -ne 2 || -z $clients ]]; then
+    echo "usage: tools/gametest.sh --client <class[,class...]>   (e.g. 'HangarClientTest')" >&2
+    exit 2
+  fi
+  if [[ ! $clients =~ ^[A-Za-z0-9_.*,-]+$ ]]; then
+    echo "gametest.sh: client filter may contain only letters, digits, _ . - , *" >&2
+    exit 2
+  fi
+  cd "$(dirname "${BASH_SOURCE[0]}")/.."
+  exec ./gradlew runClientGameTest "-PclientTests=$clients"
+fi
 
 filter=${1-}
 filter=${filter#deepcharter-test:}
