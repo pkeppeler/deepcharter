@@ -176,6 +176,14 @@ public final class PodComponents {
 		return cappedTier(pod, label);
 	}
 
+	/**
+	 * What the pod's radiator multiplies heat damage by: 1.0 (stock) for no radiator or a void or unreadable part, lower for
+	 * a better one. Lava and gas both read it.
+	 */
+	public static float radiatorRatio(PodEntity pod) {
+		return UpgradeTuning.DEFAULT.ratio(ComponentTrack.RADIATOR, effectiveTier(pod, ComponentTrack.RADIATOR));
+	}
+
 	/** The one place a chassis' tier cap applies: the tier a counted part works at. */
 	private static int cappedTier(PodEntity pod, PartLabel label) {
 		return Math.min(label.tier(), UpgradeTuning.DEFAULT.tierCap(pod.chassis().id()));
