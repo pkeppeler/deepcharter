@@ -17,7 +17,7 @@
   "message.deepcharter.repair.wreck": "A wreck cannot be repaired here: only the hangar can restore it",
   "screen.deepcharter.repair.buy": "BUY %s $%s",
   "screen.deepcharter.repair.hull": "HULL %s / %s",
-  "screen.deepcharter.repair.intro": "Emendation Station online. Park your pod beside it to repair the hull, $15 a point.",
+  "screen.deepcharter.repair.intro": "Emendation Station online. Park your pod beside it to repair the hull. Each point has its price on the button.",
   "screen.deepcharter.repair.no_pod": "No pod of yours is parked here",
   "screen.deepcharter.repair.repair": "REPAIR %s HP ($%s)",
   "screen.deepcharter.repair.total": "REPAIR ALL"

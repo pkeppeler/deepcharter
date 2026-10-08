@@ -17,7 +17,7 @@ public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks, Map<String, Integ
 	 * One track's table, with one entry for each tier from 0 (stock) up. {@code values} are the original's reference
 	 * numbers where it has them (drill speed, hull points, engine power, tank litres, radiator damage multiplier, bay
 	 * slots) and invented ones for the scanner (a multiplier of the stock scanner area, 0 for none) and the lights (a
-	 * light level, 0 for none). {@code prices} are the original's dollars, to be scaled when the economy is tuned.
+	 * light level, 0 for none). {@code prices} are dollars, scaled to what a run earns (see {@link #defaultTracks}).
 	 */
 	public record Tiers(List<Float> values, List<Long> prices) {
 		public Tiers {
@@ -75,20 +75,27 @@ public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks, Map<String, Integ
 		return tier;
 	}
 
+	/**
+	 * The prices are the original's dollars times 1/4 (SPEC section 4: "scaled to fit"). A stock Mole's early run in layer 1
+	 * nets about $115 and one in layer 2, with tier 2 parts, about $400 (EconomyAffordabilityTest), so a tier 1 part is two runs
+	 * away and each tier up costs about the 2.5 to 5 times the one below that the original's ladder has. The tiers beyond
+	 * what layers 1 and 2 pay for keep that ladder, and are for the M3 play-test to tune.
+	 */
 	private static Map<ComponentTrack, Tiers> defaultTracks() {
 		Map<ComponentTrack, Tiers> tracks = new EnumMap<>(ComponentTrack.class);
-		List<Long> standardPrices = List.of(0L, 750L, 2000L, 5000L, 20000L, 100000L, 500000L);
+		List<Long> standardPrices = List.of(0L, 200L, 500L, 1250L, 5000L, 25000L, 125000L);
 		tracks.put(ComponentTrack.DRILL, new Tiers(List.of(2f, 2.8f, 4f, 5f, 7f, 9.5f, 12f), standardPrices));
 		tracks.put(ComponentTrack.HULL, new Tiers(List.of(10f, 17f, 30f, 50f, 80f, 120f, 180f), standardPrices));
 		tracks.put(ComponentTrack.ENGINE, new Tiers(List.of(150f, 160f, 170f, 180f, 190f, 200f, 210f), standardPrices));
 		tracks.put(ComponentTrack.FUEL_TANK, new Tiers(List.of(10f, 15f, 25f, 40f, 60f, 100f, 150f), standardPrices));
 		tracks.put(ComponentTrack.RADIATOR, new Tiers(List.of(1.0f, 0.9f, 0.75f, 0.6f, 0.4f, 0.2f),
-				List.of(0L, 2000L, 5000L, 20000L, 100000L, 500000L)));
+				List.of(0L, 500L, 1250L, 5000L, 25000L, 125000L)));
 		tracks.put(ComponentTrack.CARGO_BAY, new Tiers(List.of(7f, 15f, 25f, 40f, 70f, 120f),
-				List.of(0L, 750L, 2000L, 5000L, 20000L, 100000L)));
-		// Invented: the original has no scanner and no lights.
-		tracks.put(ComponentTrack.SCANNER, new Tiers(List.of(0f, 0.5f, 0.75f, 1f, 1.5f), List.of(0L, 1500L, 4000L, 12000L, 40000L)));
-		tracks.put(ComponentTrack.LIGHTS, new Tiers(List.of(0f, 6f, 9f, 12f, 15f), List.of(0L, 500L, 1500L, 5000L, 15000L)));
+				List.of(0L, 200L, 500L, 1250L, 5000L, 25000L)));
+		// Invented: the original has no scanner and no lights. The scanner is bought in the onboarding (handbook chapter 6), so
+		// it takes the standard ladder. Lights are the cheaper part, a quarter of the first guess.
+		tracks.put(ComponentTrack.SCANNER, new Tiers(List.of(0f, 0.5f, 0.75f, 1f, 1.5f), List.of(0L, 200L, 500L, 1250L, 5000L)));
+		tracks.put(ComponentTrack.LIGHTS, new Tiers(List.of(0f, 6f, 9f, 12f, 15f), List.of(0L, 125L, 375L, 1250L, 3750L)));
 		return tracks;
 	}
 }

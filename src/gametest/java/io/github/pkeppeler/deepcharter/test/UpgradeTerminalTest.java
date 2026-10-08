@@ -71,7 +71,7 @@ public class UpgradeTerminalTest {
 			Scene scene = scene(helper, 10_000);
 			try {
 				expectDone(helper, buy(scene, ComponentTrack.HULL, 1), "buying a tier 1 hull");
-				expectEqual(helper, "account after the 750 hull", 9_250, balance(helper, scene));
+				expectEqual(helper, "account after the 200 hull", 9_800, balance(helper, scene));
 				PartLabel first = PodComponents.partOf(scene.pod(), ComponentTrack.HULL).orElseThrow();
 				if (first.tier() != 1 || !first.charter().equals(scene.charter())) {
 					throw failure(helper, "the hull should be a tier 1 part of the charter, got %s", first);
@@ -81,7 +81,7 @@ public class UpgradeTerminalTest {
 				}
 
 				expectDone(helper, buy(scene, ComponentTrack.HULL, 2), "buying a tier 2 hull");
-				expectEqual(helper, "account after the 2000 hull", 7_250, balance(helper, scene));
+				expectEqual(helper, "account after the 500 hull", 9_300, balance(helper, scene));
 				PartLabel second = PodComponents.partOf(scene.pod(), ComponentTrack.HULL).orElseThrow();
 				if (second.tier() != 2 || second.serial().equals(first.serial())) {
 					throw failure(helper, "the hull should be a new tier 2 part, got %s after %s", second, first);
@@ -147,9 +147,9 @@ public class UpgradeTerminalTest {
 			Scene scene = scene(helper, 50_000);
 			try {
 				long price = UpgradeTuning.DEFAULT.price(ComponentTrack.HULL, 4);
-				expectEqual(helper, "the original price of a tier 4 hull", 20_000, price);
+				expectEqual(helper, "the price of a tier 4 hull", 5_000, price);
 				expectDone(helper, buy(scene, ComponentTrack.HULL, 4), "buying a tier 4 hull for a Mole");
-				expectEqual(helper, "the full price is charged", 30_000, balance(helper, scene));
+				expectEqual(helper, "the full price is charged", 45_000, balance(helper, scene));
 				expectEqual(helper, "the part keeps its tier", 4, PodComponents.partOf(scene.pod(), ComponentTrack.HULL).orElseThrow().tier());
 				expectEqual(helper, "the pod runs it as the cap", 2, PodComponents.effectiveTier(scene.pod(), ComponentTrack.HULL));
 				expectEqual(helper, "maximum hull of a capped part", 300f, PodStats.of(scene.pod()).maxHull());
@@ -170,13 +170,13 @@ public class UpgradeTerminalTest {
 	@GameTest
 	public void anInsufficientAccountRefusesAndChangesNothing(GameTestHelper helper) {
 		withRepairedTerminal(helper, () -> {
-			Scene scene = scene(helper, 749);
+			Scene scene = scene(helper, 199);
 			PodEntity pod = scene.pod();
 			try {
 				pod.setHull(40f);
 				pod.setFuel(30f);
-				expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(scene, ComponentTrack.HULL, 1), "a 750 hull for 749");
-				expectEqual(helper, "the account", 749, balance(helper, scene));
+				expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(scene, ComponentTrack.HULL, 1), "a 200 hull for 199");
+				expectEqual(helper, "the account", 199, balance(helper, scene));
 				expectEqual(helper, "hull", 40f, pod.hull());
 				expectEqual(helper, "fuel", 30f, pod.fuel());
 				if (PodComponents.partOf(pod, ComponentTrack.HULL).isPresent() || !drops(helper, scene).isEmpty()) {
@@ -259,7 +259,7 @@ public class UpgradeTerminalTest {
 				expectDone(helper, buy(scene, ComponentTrack.HULL, 3), "buying a tier 3 hull");
 				expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(scene, ComponentTrack.HULL, 3), "the same tier again");
 				expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(scene, ComponentTrack.HULL, 2), "a lower tier");
-				expectEqual(helper, "only the one purchase was charged", 10_000 - 5_000, balance(helper, scene));
+				expectEqual(helper, "only the one purchase was charged", 10_000 - 1_250, balance(helper, scene));
 				helper.succeed();
 			} finally {
 				clean(helper, scene);
@@ -277,7 +277,7 @@ public class UpgradeTerminalTest {
 				expectEqual(helper, "a void part does nothing", 0, PodComponents.effectiveTier(scene.pod(), ComponentTrack.ENGINE));
 				expectDone(helper, buy(scene, ComponentTrack.ENGINE, 2), "buying the tier of the void part");
 				expectEqual(helper, "the void part is replaced by a part that works", 2, PodComponents.effectiveTier(scene.pod(), ComponentTrack.ENGINE));
-				expectEqual(helper, "the account", 8_000, balance(helper, scene));
+				expectEqual(helper, "the account", 9_500, balance(helper, scene));
 				helper.succeed();
 			} finally {
 				clean(helper, scene);

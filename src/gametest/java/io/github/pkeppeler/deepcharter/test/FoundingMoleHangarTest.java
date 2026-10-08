@@ -357,7 +357,7 @@ public class FoundingMoleHangarTest {
 	}
 
 	@GameTest(maxTicks = MAX_TICKS)
-	public void aRefurbishedMoleCostsFiveHundredPlusTwoFiftyForEachPodTheCharterHas(GameTestHelper helper) {
+	public void aRefurbishedMoleCostsOneFiftyPlusSeventyFiveForEachPodTheCharterHas(GameTestHelper helper) {
 		inTheHangar(helper, before -> withFreshWorld(helper, () -> {
 			repairTheConsole(helper);
 			MockPlayer buyer = member(helper, "Buyer");
@@ -372,7 +372,7 @@ public class FoundingMoleHangarTest {
 			pod(helper, Optional.of(charterOf(helper, newcomer).id()), false);
 			pod(helper, Optional.of(charterOf(helper, newcomer).id()), false);
 
-			long[] prices = {500 + 250, 500 + 250 * 2, 500 + 250 * 3};
+			long[] prices = {150 + 75, 150 + 75 * 2, 150 + 75 * 3};
 			long expected = RICH;
 			for (int owned = 1; owned <= prices.length; owned++) {
 				long price = prices[owned - 1];
@@ -388,12 +388,12 @@ public class FoundingMoleHangarTest {
 				PodEntity newest = bought.stream().filter(pod -> !pod.isRemoved() && PodComponents.registration(pod).isPresent()
 						&& PodComponents.registration(pod).get().owner().equals(charter)).reduce((a, b) -> b).orElseThrow();
 				expect(helper, !Wrecks.isWreck(newest) && newest.hull() > 0f, "a refurbished Mole works");
-				// The bought pod is a pod of the charter now, so the next one costs $250 more.
+				// The bought pod is a pod of the charter now, so the next one costs $75 more.
 			}
-			// A charter with two pods pays $500 + $500, and is not charged for the buyer's pods.
+			// A charter with two pods pays $150 + $150, and is not charged for the buyer's pods.
 			long newcomerBefore = balance(helper, newcomer);
 			expectDone(helper, act(newcomer.player(), console, HangarTerminal.BUY_MOLE), "the newcomer buying");
-			expect(helper, newcomerBefore - balance(helper, newcomer) == 500 + 250 * 2, "the newcomer has two pods, so it pays $1000: it paid %s",
+			expect(helper, newcomerBefore - balance(helper, newcomer) == 150 + 75 * 2, "the newcomer has two pods, so it pays $300: it paid %s",
 					newcomerBefore - balance(helper, newcomer));
 			clearFloor(helper);
 			helper.succeed();

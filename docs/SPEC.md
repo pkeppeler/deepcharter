@@ -376,7 +376,7 @@ Surface, repairing the colony, the Mole, the onboarding handbook (implied by the
 - Lore session: the employer's name, layer themes, transmissions.
 - Creatures and combat session.
 - What happens to dropped items and mobs that fall to a seam.
-- Numbers tuning: layer thicknesses, prices, drill speeds.
+- Numbers tuning: layer thicknesses, drill speeds, and the prices past layer 2. The early prices (parts, scanner, lights, the Mole and Prospector, repairs) were scaled to a run's income in [PR 206](https://github.com/pkeppeler/deepcharter/pull/206).
 - Duration and size of earthquake and cave-in blockages, per layer.
 - Public release: name and branding, licence, original soundtrack sourcing.
 - Competition between charters (a later update).

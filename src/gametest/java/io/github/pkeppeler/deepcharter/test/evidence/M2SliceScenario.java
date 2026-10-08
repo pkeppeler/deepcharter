@@ -396,9 +396,9 @@ public class M2SliceScenario extends EvidenceScenario {
 	}
 
 	private void buyScanner() {
-		say("8. Handbook chapters 5 and 6. SHORTCUT: $3,000 is granted. A scanner and lights are bought on the real upgrade screen.");
+		say("8. Handbook chapters 5 and 6. SHORTCUT: $400 is granted. A scanner and lights are bought on the real upgrade screen.");
 		onServer(server -> {
-			Charters.deposit(server, charter, 3_000);
+			Charters.deposit(server, charter, 400);
 			return null;
 		});
 		BlockPos terminal = colony.anchors().get(ColonyAnchor.UPGRADE_TERMINAL);
@@ -409,13 +409,13 @@ public class M2SliceScenario extends EvidenceScenario {
 		still("24-upgrade-terminal");
 		click("SCANNER  T0");
 		snap(HOLD_FRAMES);
-		click("BUY TIER 1  $1500");
+		click("BUY TIER 1  $200");
 		awaitServer(server -> directiveDone(server, "seeing_below/install_scanner"));
 		snap(HOLD_FRAMES);
 		still("25-scanner-bought");
 		click("LIGHTS  T0");
 		snap(2);
-		click("BUY TIER 1  $500");
+		click("BUY TIER 1  $125");
 		awaitServer(server -> PodComponents.partOf(pod(server, mole), ComponentTrack.LIGHTS).isPresent());
 		snap(HOLD_FRAMES);
 		still("26-lights-bought");
@@ -693,9 +693,9 @@ public class M2SliceScenario extends EvidenceScenario {
 		readHandbook("staying_safe", "44-handbook-chapter-7-staying-safe");
 		readHandbook("first_breach", "45-handbook-chapter-8-first-breach");
 
-		say("16. The wreck is in reach of the hangar console. SHORTCUT: $5,000 and 3 Cicatrium are granted. The console restores PROSPECTOR-0002.");
+		say("16. The wreck is in reach of the hangar console. SHORTCUT: $1,500 and 3 Cicatrium are granted. The console restores PROSPECTOR-0002.");
 		onServer(server -> {
-			Charters.deposit(server, charter, 5_000);
+			Charters.deposit(server, charter, 1_500);
 			for (int i = 0; i < 3; i++) {
 				stash(real(server), OreRegistry.stack(OreType.CICATRIUM));
 			}
