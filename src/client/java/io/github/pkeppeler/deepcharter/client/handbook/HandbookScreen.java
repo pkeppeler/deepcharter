@@ -602,13 +602,13 @@ public class HandbookScreen extends Screen {
 		PaperDraw.wrapped(graphics, font, note.text(), textLeft, y + PARAGRAPH_GAP + 2, textWidth, T.marginInkColor());
 	}
 
-	/** A previous miner's note in pencil, in the margin column, if the sheet has one and the language file has a note for it. */
 	/** Draws the rule under a page title that ends at {@code y}, and returns where the text below it starts. */
 	private int titleRule(GuiGraphicsExtractor graphics, int y) {
 		graphics.fill(textLeft, y + 1, textLeft + textWidth, y + 2, OPAQUE | T.inkColor());
 		return y + PARAGRAPH_GAP + 2;
 	}
 
+	/** A previous miner's note in pencil, in the margin column, if the sheet has one and the language file has a note for it. */
 	private void margin(GuiGraphicsExtractor graphics, String key, int y) {
 		if (marginWidth <= 0 || !Language.getInstance().has(key)) {
 			return;
