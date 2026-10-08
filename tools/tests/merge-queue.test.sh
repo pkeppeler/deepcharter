@@ -48,12 +48,29 @@ esac
 exit 0
 STUB
 
-# git: only worktree list --porcelain answers (from $ST/worktrees); the rest is logged.
+# git: everything is logged. Answers: worktree list --porcelain (from $ST/worktrees);
+# `-C <path> status --porcelain` is dirty when <path> is a line of $ST/dirty;
+# rev-parse of refs/heads/B prints $ST/tip.B (default sha<N> for branch N-slug, else fails);
+# merge-base --is-ancestor succeeds only when $ST/ancestor exists; worktree remove fails
+# when $ST/remove_fails exists; pull --ff-only fails when $ST/pull_fails exists.
 cat >"$work/bin/git" <<'STUB'
 #!/usr/bin/env bash
 echo "git $*" >>"$LOG"
-if [[ $1 == worktree && $2 == list ]]; then cat "$ST/worktrees" 2>/dev/null || true; fi
-if [[ $1 == worktree && $2 == remove && -e $ST/remove_fails ]]; then exit 1; fi
+case "$1" in
+  worktree)
+    if [[ $2 == list ]]; then cat "$ST/worktrees" 2>/dev/null || true; fi
+    if [[ $2 == remove && -e $ST/remove_fails ]]; then exit 1; fi ;;
+  rev-parse)
+    b=${!#}
+    b=${b#refs/heads/}
+    if [[ -e $ST/tip.$b ]]; then cat "$ST/tip.$b"
+    elif [[ $b == [0-9]*-slug ]]; then echo "sha${b%%-*}"
+    else exit 1; fi ;;
+  merge-base) [[ -e $ST/ancestor ]] || exit 1 ;;
+  -C)
+    if [[ $3 == status ]] && grep -qxF -- "$2" "$ST/dirty" 2>/dev/null; then echo " M file"; fi
+    if [[ $3 == pull && -e $ST/pull_fails ]]; then exit 1; fi ;;
+esac
 exit 0
 STUB
 
@@ -80,6 +97,12 @@ case ${flag-} in
   other) echo MERGED >"$ST/state.$n" ;;
 esac
 exit "$rc"
+STUB
+# mv: with MV_RACE=<pid>, a live process takes the lock just before the rename of $1.
+cat >"$work/bin/mv" <<'STUB'
+#!/usr/bin/env bash
+if [[ -n ${MV_RACE-} && -L $1 ]]; then rm -f "$1"; ln -s "$MV_RACE" "$1"; fi
+exec /bin/mv "$@"
 STUB
 chmod +x "$work/bin/"* "$work/gate"
 
@@ -108,7 +131,7 @@ run_q() {
   # shellcheck disable=SC2086 # QENV is a deliberate word list of VAR=value
   out=$(env ${QENV-} PATH="$work/bin:$PATH" MERGE_PR="$work/gate" MERGE_QUEUE_LOCK="$work/lock" \
     MERGE_QUEUE_CI_POLL=5 MERGE_QUEUE_STALE_SLEEP=9 MERGE_QUEUE_UNKNOWN_SLEEP=3 \
-    bash "$script" "$@" 2>&1) || rc=$?
+    bash "${SCRIPT:-$script}" "$@" 2>&1) || rc=$?
 }
 
 logged() { if grep -qxF -- "$2" "$LOG"; then pass "$1"; else fail "$1 (missing: $2)"; fi; }
@@ -121,21 +144,20 @@ count() { # <name> <fixed string> <expected count>
   if [[ $n -eq $3 ]]; then pass "$1"; else fail "$1 (got $n of '$2', wanted $3)"; fi
 }
 
-# A primary checkout on main, plus the PR's worktree on branch 7-slug and an unrelated one.
+# Worktree fixtures live under a fake primary checkout, $W (real directories, since
+# cleanup compares real paths). wt_entry <path> <head> [branch]: one `worktree list
+# --porcelain` block; no branch means a detached HEAD.
+W=$work/main
+S=$W/.claude/worktrees/seven
+mkdir -p "$W/.claude/worktrees/seven" "$W/.claude/worktrees/other" "$W/.claude/worktrees/agent1" "$work/elsewhere/ext"
+wt_entry() {
+  printf 'worktree %s\nHEAD %s\n' "$1" "$2"
+  if [[ -n ${3-} ]]; then echo "branch refs/heads/$3"; else echo detached; fi
+  echo
+}
+# The primary on main, the PR's worktree on branch 7-slug (head sha7) and an unrelated one.
 worktrees() {
-  cat >"$ST/worktrees" <<EOF
-worktree /repo/main
-HEAD aaaa
-branch refs/heads/main
-
-worktree /repo/wt/seven
-HEAD bbbb
-branch refs/heads/7-slug
-
-worktree /repo/wt/other
-HEAD cccc
-branch refs/heads/9-slug
-EOF
+  { wt_entry "$W" aaaa main; wt_entry "$S" sha7 7-slug; wt_entry "$W/.claude/worktrees/other" cccc 9-slug; } >"$ST/worktrees"
 }
 
 # --- clean merge, with cleanup ---
@@ -147,24 +169,123 @@ exited "clean merge: exit 0" 0
 printed "clean merge: summary lists #7 as merged" "merged:  #7"
 printed "clean merge: nothing stopped" "stopped: none"
 count "clean merge: gate ran once" "merge-pr 7" 1
-logged "cleanup: unlocks the PR's worktree (found by branch)" "git worktree unlock /repo/wt/seven"
-logged "cleanup: removes the PR's worktree" "git worktree remove --force /repo/wt/seven"
-logged "cleanup: deletes the local branch" "git branch -D 7-slug"
-logged "cleanup: updates main in the primary checkout" "git -C /repo/main pull --rebase --autostash"
-not_logged "cleanup: leaves the other worktree" "/repo/wt/other"
-not_logged "cleanup: never removes the primary checkout" "remove --force /repo/main"
-if [[ ! -e $work/lock ]]; then pass "lock: released after a run"; else fail "lock: released after a run"; fi
+logged "cleanup: unlocks the PR's worktree (found by branch)" "git worktree unlock $S"
+logged "cleanup: removes the PR's worktree without --force" "git worktree remove $S"
+not_logged "cleanup: never forces" "--force"
+logged "cleanup: deletes the local branch (tip is the PR head)" "git branch -D 7-slug"
+logged "cleanup: fast-forwards main in the primary checkout" "git -C $W pull --ff-only"
+not_logged "cleanup: never rebases" "--rebase"
+not_logged "cleanup: leaves the other worktree" ".claude/worktrees/other"
+not_logged "cleanup: never removes the primary checkout" "remove $W\$"
+if [[ ! -e $work/lock && ! -L $work/lock ]]; then pass "lock: released after a run"; else fail "lock: released after a run"; fi
 
-# --- cleanup: failing removal is a warning; main on another branch is not pulled ---
+# --- cleanup: a worktree that will not go is left, with its branch ---
 reset
 worktrees
-sed -i.bak 's#refs/heads/main#refs/heads/feature#' "$ST/worktrees"
 touch "$ST/remove_fails"
 gate 7 1 "0 merged"
 run_q 7
-exited "cleanup problems: still exit 0" 0
-printed "cleanup: warns when the worktree cannot be removed" "WARNING could not remove worktree /repo/wt/seven"
-not_logged "cleanup: no pull when the primary checkout is not on main" "pull --rebase"
+exited "remove refused: still exit 0" 0
+printed "remove refused: says it left the worktree" "left: $S (git worktree remove refused)"
+not_logged "remove refused: branch kept" "git branch -D"
+
+# --- cleanup: main on another branch is not pulled ---
+reset
+worktrees
+{ wt_entry "$W" aaaa feature; wt_entry "$S" sha7 7-slug; } >"$ST/worktrees"
+gate 7 1 "0 merged"
+run_q 7
+printed "main elsewhere: says why main was not updated" "left: main not updated (primary checkout $W is on 'feature')"
+not_logged "main elsewhere: no pull" "pull"
+
+# --- cleanup: a dirty primary checkout is not pulled ---
+reset
+worktrees
+echo "$W" >"$ST/dirty"
+gate 7 1 "0 merged"
+run_q 7
+printed "dirty primary: says why main was not updated" "has uncommitted changes"
+not_logged "dirty primary: no pull" "pull"
+logged "dirty primary: the PR worktree is still removed" "git worktree remove $S"
+
+# --- cleanup: a dirty worktree is left whole ---
+reset
+worktrees
+echo "$S" >"$ST/dirty"
+gate 7 1 "0 merged"
+run_q 7
+exited "dirty worktree: still exit 0" 0
+printed "dirty worktree: reported as left" "left: $S (dirty)"
+not_logged "dirty worktree: not removed" "worktree remove"
+not_logged "dirty worktree: not unlocked" "worktree unlock"
+not_logged "dirty worktree: branch kept" "git branch -D"
+
+# --- cleanup: the worktree running the queue is never removed ---
+reset
+mkdir -p "$W/.claude/worktrees/q/tools"
+cp "$script" "$W/.claude/worktrees/q/tools/merge-queue.sh"
+{ wt_entry "$W" aaaa main; wt_entry "$W/.claude/worktrees/q" sha7 7-slug; } >"$ST/worktrees"
+gate 7 1 "0 merged"
+SCRIPT=$W/.claude/worktrees/q/tools/merge-queue.sh run_q 7
+printed "own root: reported as left" "(it is running this queue)"
+not_logged "own root: not removed" "worktree remove"
+not_logged "own root: branch kept" "git branch -D"
+
+# --- cleanup: a worktree outside <primary>/.claude/worktrees is never touched ---
+reset
+{ wt_entry "$W" aaaa main; wt_entry "$work/elsewhere/ext" sha7 7-slug; } >"$ST/worktrees"
+gate 7 1 "0 merged"
+run_q 7
+printed "outside path: reported as left" "left: $work/elsewhere/ext (not under"
+not_logged "outside path: not removed" "worktree remove"
+not_logged "outside path: not unlocked" "worktree unlock"
+not_logged "outside path: branch kept" "git branch -D"
+
+# --- cleanup: no branch worktree; a detached one at the head sha is removed, no branch deleted ---
+reset
+{ wt_entry "$W" aaaa main; wt_entry "$W/.claude/worktrees/agent1" sha7; } >"$ST/worktrees"
+gate 7 1 "0 merged"
+run_q 7
+logged "detached by sha: worktree removed" "git worktree remove $W/.claude/worktrees/agent1"
+not_logged "detached by sha: no branch deleted" "git branch -D"
+
+# --- cleanup: a worktree-agent-* branch matched by head sha; that branch goes, not the PR's ---
+reset
+{ wt_entry "$W" aaaa main; wt_entry "$W/.claude/worktrees/agent1" sha7 worktree-agent-abc; } >"$ST/worktrees"
+echo sha7 >"$ST/tip.worktree-agent-abc"
+gate 7 1 "0 merged"
+run_q 7
+logged "agent branch by sha: worktree removed" "git worktree remove $W/.claude/worktrees/agent1"
+logged "agent branch by sha: its own branch deleted" "git branch -D worktree-agent-abc"
+not_logged "agent branch by sha: the PR's branch name untouched" "git branch -D 7-slug"
+
+# --- cleanup: a sha match outside .claude/worktrees is not a match ---
+reset
+{ wt_entry "$W" aaaa main; wt_entry "$work/elsewhere/ext" sha7 worktree-agent-abc; } >"$ST/worktrees"
+gate 7 1 "0 merged"
+run_q 7
+not_logged "sha match outside: nothing removed" "worktree remove"
+not_logged "sha match outside: no branch deleted" "git branch -D worktree-agent-abc"
+
+# --- cleanup: a branch tip that is neither the PR head nor on origin/main is kept ---
+reset
+worktrees
+echo other999 >"$ST/tip.7-slug"
+gate 7 1 "0 merged"
+run_q 7
+logged "unmerged tip: worktree (clean) removed" "git worktree remove $S"
+printed "unmerged tip: branch reported as left" "left: branch 7-slug (its tip other999"
+not_logged "unmerged tip: branch kept" "git branch -D"
+
+# --- cleanup: a different tip that is on origin/main goes ---
+reset
+worktrees
+echo other999 >"$ST/tip.7-slug"
+touch "$ST/ancestor"
+gate 7 1 "0 merged"
+run_q 7
+logged "ancestor tip: fetched origin/main first" "git fetch origin main"
+logged "ancestor tip: branch deleted" "git branch -D 7-slug"
 
 # --- waits for CI on the head ---
 reset
@@ -223,7 +344,7 @@ run_q 7
 exited "already merged: exit 0" 0
 not_logged "already merged: gate not run" "merge-pr 7"
 printed "already merged: listed as skipped" "skipped: #7 (already merged)"
-logged "already merged: still cleans up the worktree" "git worktree remove --force /repo/wt/seven"
+logged "already merged: still cleans up the worktree" "git worktree remove $S"
 
 # --- merged by someone else during our refusal: no close of a merged PR ---
 reset
@@ -271,27 +392,55 @@ printed "closed: says why" "is not open (state: CLOSED)"
 reset
 sleep 60 &
 holder_pid=$!
-mkdir "$work/lock"
-echo "$holder_pid" >"$work/lock/pid"
+ln -s "$holder_pid" "$work/lock"
 gate 7 1 "0 merged"
 run_q 7
 exited "lock: second instance refuses while the holder lives" 3
 printed "lock: message names the holder" "another merge queue is running (PID $holder_pid"
 not_logged "lock: refused instance touches nothing" "merge-pr 7"
-if [[ -d $work/lock && $(cat "$work/lock/pid") == "$holder_pid" ]]; then pass "lock: refused instance leaves the holder's lock"; else fail "lock: refused instance leaves the holder's lock"; fi
+if [[ $(readlink "$work/lock") == "$holder_pid" ]]; then pass "lock: refused instance leaves the holder's lock"; else fail "lock: refused instance leaves the holder's lock"; fi
+
+# A live holder swapped in between our read and our rename of a dead lock: we put it back.
+dead_pid=$(bash -c 'echo $$')
+rm -f "$work/lock"
+ln -s "$dead_pid" "$work/lock"
+QENV="MV_RACE=$holder_pid" run_q 7
+exited "lock race: a live lock moved aside by mistake is restored, queue refuses" 3
+printed "lock race: names the live holder" "another merge queue is running (PID $holder_pid"
+if [[ $(readlink "$work/lock") == "$holder_pid" ]]; then pass "lock race: live holder's lock is back in place"; else fail "lock race: live holder's lock is back in place"; fi
+if ls "$work"/lock.dead.* >/dev/null 2>&1; then fail "lock race: no aside file left"; else pass "lock race: no aside file left"; fi
+
 kill "$holder_pid" 2>/dev/null || true
 wait "$holder_pid" 2>/dev/null || true
+holder_pid=
 run_q 7
 exited "lock: a dead holder's lock is taken over" 0
 printed "lock: takeover is announced" "taking over a stale lock"
-if [[ ! -e $work/lock ]]; then pass "lock: released after takeover run"; else fail "lock: released after takeover run"; fi
-holder_pid=
+if [[ ! -e $work/lock && ! -L $work/lock ]]; then pass "lock: released after takeover run"; else fail "lock: released after takeover run"; fi
+if ls "$work"/lock.dead.* >/dev/null 2>&1; then fail "lock: takeover leaves no aside file"; else pass "lock: takeover leaves no aside file"; fi
+
+# An unreadable lock counts as held: wait, re-read, then refuse; it is never removed.
+reset
+: >"$work/lock"
+gate 7 1 "0 merged"
+run_q 7
+exited "lock unreadable: refuses" 3
+printed "lock unreadable: says so" "could not take the merge queue lock"
+logged "lock unreadable: waited before re-reading" "sleep 1"
+if [[ -f $work/lock ]]; then pass "lock unreadable: left in place"; else fail "lock unreadable: left in place"; fi
+
+# A directory (the old lock format) is held too, and nothing is created inside it.
+reset
+mkdir "$work/lock"
+run_q 7
+exited "lock directory: refuses" 3
+if [[ -z $(ls -A "$work/lock") ]]; then pass "lock directory: nothing created inside"; else fail "lock directory: nothing created inside"; fi
 
 # --- lock released when the queue stops ---
 reset
 gate 7 1 "1" "REFUSED: PR #7 nope"
 run_q 7
-if [[ ! -e $work/lock ]]; then pass "lock: released after a stopped run"; else fail "lock: released after a stopped run"; fi
+if [[ ! -e $work/lock && ! -L $work/lock ]]; then pass "lock: released after a stopped run"; else fail "lock: released after a stopped run"; fi
 
 # --- usage ---
 reset

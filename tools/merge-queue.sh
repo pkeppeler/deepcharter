@@ -8,14 +8,20 @@
 #     for CI again, retry (up to MERGE_QUEUE_STALE_RETRIES, default 3)
 #   - refusal "mergeable: UNKNOWN": sleep, retry (up to MERGE_QUEUE_UNKNOWN_RETRIES, default 4)
 #   - any other refusal: stop the queue and print the reason
-# After a merge, removes the PR's worktree (found in `git worktree list` by its head
-# branch), deletes its local branch and updates main in the primary checkout.
+# After a merge, cleanup never loses work. It removes the PR's worktree only when that
+# worktree is under <primary>/.claude/worktrees/, is clean, and is not the one running
+# this queue; it uses plain `git worktree remove` (no --force). The worktree is found in
+# `git worktree list` by its branch (the PR's head branch), else by HEAD equal to the PR's
+# head sha (a worktree-agent-<id> branch). Its branch is deleted only when the tip is the
+# PR's head sha or an ancestor of origin/main. Then main in the primary checkout is
+# fast-forwarded, only when it is on main and clean.
 # Prints a summary (merged, skipped, stopped and why, not attempted). Exit 0 unless stopped.
 #
-# One instance at a time: an atomic `mkdir` lock holding the owner PID, at
-# ~/.cache/deepcharter/merge-queue.lock (machine-wide, so every worktree shares it). A
-# second instance refuses at once (exit 3) and does not wait: its PR list may be stale by
-# the time it would get the lock. A lock whose PID is dead is taken over.
+# One instance at a time: a symlink lock (`ln -s <pid>`: atomic, and the PID is in it from
+# the first instant) at ~/.cache/deepcharter/merge-queue.lock (machine-wide, so every
+# worktree shares it). A second instance refuses at once (exit 3) and does not wait: its PR
+# list may be stale by the time it would get the lock. A lock whose PID is dead is renamed
+# aside (only one process wins the rename) and replaced. An unreadable lock counts as held.
 #
 # Test seams: MERGE_PR (gate script), MERGE_QUEUE_LOCK, MERGE_QUEUE_{CI_POLL,CI_MAX,
 # STALE_SLEEP,UNKNOWN_SLEEP} (seconds), MERGE_QUEUE_{STALE,UNKNOWN}_RETRIES.
@@ -44,25 +50,50 @@ say() { echo "queue: $*"; }
 
 # --- single instance ---
 mkdir -p "$(dirname "$lock")"
-if ! mkdir "$lock" 2>/dev/null; then
-  holder=$(cat "$lock/pid" 2>/dev/null || true)
-  if [[ $holder =~ ^[0-9]+$ ]] && kill -0 "$holder" 2>/dev/null; then
-    echo "REFUSED: another merge queue is running (PID $holder, lock $lock); wait for it to finish" >&2
-    exit 3
-  fi
-  say "taking over a stale lock (owner PID '${holder:-unknown}' is not running)"
-  rm -f "$lock/pid"
-  rmdir "$lock" 2>/dev/null || true
-  mkdir "$lock" 2>/dev/null || { echo "REFUSED: lost the race for the merge queue lock $lock" >&2; exit 3; }
-fi
-echo $$ >"$lock/pid"
+refuse_lock() {
+  echo "REFUSED: $1" >&2
+  exit 3
+}
+acquire_lock() {
+  local holder moved
+  for _ in 1 2 3 4 5 6; do
+    if [[ -d $lock && ! -L $lock ]]; then
+      # Not our format (ln -s would create the link inside it): treat as held.
+      refuse_lock "$lock is a directory, not a queue lock; remove it if no queue is running"
+    fi
+    if ln -s "$$" "$lock" 2>/dev/null; then
+      return 0
+    fi
+    holder=$(readlink "$lock" 2>/dev/null || true)
+    if [[ ! $holder =~ ^[0-9]+$ ]]; then
+      # Gone between the ln and the read: try again. Unreadable: held, wait and re-read.
+      if [[ -e $lock || -L $lock ]]; then sleep 1; fi
+      continue
+    fi
+    if kill -0 "$holder" 2>/dev/null; then
+      refuse_lock "another merge queue is running (PID $holder, lock $lock); wait for it to finish"
+    fi
+    say "taking over a stale lock (owner PID $holder is not running)"
+    # Rename it aside: of several processes doing this, one wins the rename.
+    if mv "$lock" "$lock.dead.$$" 2>/dev/null; then
+      moved=$(readlink "$lock.dead.$$" 2>/dev/null || true)
+      if [[ $moved != "$holder" ]]; then
+        # Someone replaced the dead lock before our rename, so we moved a live one: put it back.
+        ln -s "$moved" "$lock" 2>/dev/null || true
+      fi
+      rm -f "$lock.dead.$$"
+    fi
+  done
+  refuse_lock "could not take the merge queue lock $lock (held or unreadable)"
+}
+acquire_lock
 tmp=$(mktemp -d)
 release() {
   rm -rf "$tmp"
-  rm -f "$lock/pid"
-  rmdir "$lock" 2>/dev/null || true
+  if [[ $(readlink "$lock" 2>/dev/null || true) == "$$" ]]; then rm -f "$lock"; fi
 }
 trap release EXIT
+trap 'exit 130' INT TERM
 
 pr_field() { gh pr view "$1" -R "$repo" --json "$2" --jq ".$2"; }
 pr_state() { pr_field "$1" state 2>/dev/null || echo unknown; }
@@ -84,47 +115,111 @@ wait_ci() {
   done
 }
 
-# cleanup_pr <branch>: remove the PR's worktree (found by branch), delete the branch,
-# update main in the primary checkout (the first worktree listed).
+# real <dir>: physical path of a directory, empty if it does not exist.
+real() { (cd "$1" 2>/dev/null && pwd -P) || true; }
+
+# delete_branch <branch> <sha>: delete it only if its tip is the PR head or is on origin/main.
+delete_branch() {
+  local victim=$1 sha=$2 tip
+  tip=$(git rev-parse --verify -q "refs/heads/$victim" 2>/dev/null || true)
+  if [[ -z $tip ]]; then
+    return 0
+  fi
+  if [[ -z $sha || $tip != "$sha" ]]; then
+    git fetch origin main >/dev/null 2>&1 || true
+    if ! git merge-base --is-ancestor "$tip" origin/main >/dev/null 2>&1; then
+      say "left: branch $victim (its tip ${tip:0:9} is neither the PR head nor on origin/main)"
+      return 0
+    fi
+  fi
+  if git branch -D "$victim" >/dev/null 2>&1; then
+    say "cleanup: deleted local branch $victim"
+  else
+    say "left: branch $victim (git branch -D failed)"
+  fi
+}
+
+# cleanup_pr <branch> <sha>: after a merge, remove the PR's worktree and branch and
+# fast-forward main, without losing work. Every skip says why. sha is the PR's head.
 cleanup_pr() {
-  local branch=$1 line listing path='' cur='' main='' mainbranch=''
-  listing=$(git worktree list --porcelain 2>/dev/null || true)
+  local branch=$1 sha=$2 line n=0 i found=0 victim main mainbranch main_real prefix path path_real
+  local wpath=() whead=() wbranch=()
   while IFS= read -r line; do
     case $line in
       "worktree "*)
-        cur=${line#worktree }
-        if [[ -z $main ]]; then main=$cur; fi
+        n=$((n + 1))
+        wpath[n]=${line#worktree }
+        whead[n]=''
+        wbranch[n]=''
         ;;
-      "branch "*)
-        if [[ $cur == "$main" ]]; then
-          mainbranch=${line#branch refs/heads/}
-        elif [[ ${line#branch refs/heads/} == "$branch" ]]; then
-          path=$cur
-        fi
-        ;;
+      "HEAD "*) whead[n]=${line#HEAD } ;;
+      "branch "*) wbranch[n]=${line#branch refs/heads/} ;;
     esac
-  done <<<"$listing"
-  if [[ -n $path ]]; then
-    if [[ $path == "$root" ]]; then
-      say "cleanup: worktree $path is running this queue; leaving it"
+  done <<<"$(git worktree list --porcelain 2>/dev/null || true)"
+  if ((n == 0)); then
+    say "left: everything (could not list worktrees)"
+    return 0
+  fi
+  main=${wpath[1]}
+  mainbranch=${wbranch[1]}
+  main_real=$(real "$main")
+  prefix=$main_real/.claude/worktrees/
+
+  # (a) the worktree on the PR's head branch, else (b) one under .claude/worktrees at its head sha.
+  for ((i = 2; i <= n; i++)); do
+    if [[ -n $branch && ${wbranch[i]} == "$branch" ]]; then
+      found=$i
+      break
+    fi
+  done
+  if ((found == 0)) && [[ -n $sha ]]; then
+    for ((i = 2; i <= n; i++)); do
+      if [[ ${whead[i]} == "$sha" && $(real "${wpath[i]}")/ == "$prefix"* ]]; then
+        found=$i
+        break
+      fi
+    done
+  fi
+
+  victim=$branch
+  if ((found > 0)); then
+    path=${wpath[found]}
+    victim=${wbranch[found]}
+    path_real=$(real "$path")
+    if [[ -z $path_real ]]; then
+      say "left: $path (missing)"
+      victim=''
+    elif [[ $path_real == "$(real "$root")" ]]; then
+      say "left: $path (it is running this queue)"
+      victim=''
+    elif [[ $path_real/ != "$prefix"* ]]; then
+      say "left: $path (not under $prefix)"
+      victim=''
+    elif [[ -n $(git -C "$path" status --porcelain 2>/dev/null || echo unreadable) ]]; then
+      say "left: $path (dirty)"
+      victim=''
     else
       git worktree unlock "$path" >/dev/null 2>&1 || true
-      if git worktree remove --force "$path" >/dev/null 2>&1; then
+      if git worktree remove "$path" >/dev/null 2>&1; then
         say "cleanup: removed worktree $path"
       else
-        say "cleanup: WARNING could not remove worktree $path"
+        say "left: $path (git worktree remove refused)"
+        victim=''
       fi
     fi
   fi
-  if git branch -D "$branch" >/dev/null 2>&1; then
-    say "cleanup: deleted local branch $branch"
+  if [[ -n $victim ]]; then
+    delete_branch "$victim" "$sha"
   fi
-  if [[ -n $main && $mainbranch == main ]]; then
-    if git -C "$main" pull --rebase --autostash >/dev/null 2>&1; then
-      say "cleanup: updated main in $main"
-    else
-      say "cleanup: WARNING could not update main in $main"
-    fi
+
+  if [[ $mainbranch != main ]]; then
+    say "left: main not updated (primary checkout $main is on '${mainbranch:-detached HEAD}')"
+  elif [[ -n $(git -C "$main" status --porcelain 2>/dev/null || echo unreadable) ]]; then
+    say "left: main not updated (primary checkout $main has uncommitted changes)"
+  elif git -C "$main" pull --ff-only >/dev/null 2>&1; then
+    say "cleanup: updated main in $main"
+  else
+    say "left: main not updated (git pull --ff-only failed in $main)"
   fi
 }
 
@@ -139,7 +234,8 @@ run_pr() {
     say "PR #$pr is already merged"
     result=skipped
     detail="already merged"
-    if [[ -n $branch ]]; then cleanup_pr "$branch"; fi
+    sha=$(pr_field "$pr" headRefOid 2>/dev/null || true)
+    if [[ -n $branch ]]; then cleanup_pr "$branch" "$sha"; fi
     return 0
   fi
   if [[ $state != OPEN || -z $branch ]]; then
@@ -173,7 +269,7 @@ run_pr() {
         result=skipped
         detail="merged by someone else"
       fi
-      cleanup_pr "$branch"
+      cleanup_pr "$branch" "$sha"
       return 0
     fi
     if [[ $rc -eq 0 ]]; then
