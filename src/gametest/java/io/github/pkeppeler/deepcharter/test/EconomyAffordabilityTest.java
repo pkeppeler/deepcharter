@@ -103,15 +103,17 @@ public class EconomyAffordabilityTest {
 		Run run = stockRunInLayerOne();
 		long first = HangarTuning.DEFAULT.refurbishedPrice(0);
 		long second = HangarTuning.DEFAULT.refurbishedPrice(1);
-		LOGGER.info("[economy] refurbished Mole: ${} for the first pod ({} runs), ${} for the second ({} runs)", first, run.toAfford(first),
-				second, run.toAfford(second));
-		if (run.toAfford(first) > REFURBISHED_FIRST_RUNS) {
+		int firstRuns = run.toAfford(first);
+		int secondRuns = run.toAfford(second);
+		LOGGER.info("[economy] refurbished Mole: ${} for the first pod ({} runs), ${} for the second ({} runs)", first, firstRuns,
+				second, secondRuns);
+		if (firstRuns > REFURBISHED_FIRST_RUNS) {
 			throw failure(helper, "a first refurbished Mole costs $%d, which is %d runs of $%.0f; at most %d are allowed",
-					first, run.toAfford(first), run.net(), REFURBISHED_FIRST_RUNS);
+					first, firstRuns, run.net(), REFURBISHED_FIRST_RUNS);
 		}
-		if (run.toAfford(second) > REFURBISHED_SECOND_RUNS) {
+		if (secondRuns > REFURBISHED_SECOND_RUNS) {
 			throw failure(helper, "a second refurbished Mole costs $%d, which is %d runs of $%.0f; at most %d are allowed",
-					second, run.toAfford(second), run.net(), REFURBISHED_SECOND_RUNS);
+					second, secondRuns, run.net(), REFURBISHED_SECOND_RUNS);
 		}
 		helper.succeed();
 	}

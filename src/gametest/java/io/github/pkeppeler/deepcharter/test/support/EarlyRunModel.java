@@ -40,7 +40,7 @@ public final class EarlyRunModel {
 	}
 
 	/** The ore of a zone: the chance of each sellable ore for one stone block. The catalyst is kept for the hangar, so it is not income. */
-	public record Zone(String name, Map<OreType, Double> chances) {
+	public record Zone(Map<OreType, Double> chances) {
 		/** The zone's fill, read from the same JSON that the world generator reads. */
 		public static Zone load(String name) {
 			Map<OreType, Double> chances = new EnumMap<>(OreType.class);
@@ -52,7 +52,7 @@ public final class EarlyRunModel {
 					}
 				}
 			}
-			return new Zone(name, chances);
+			return new Zone(chances);
 		}
 
 		double oreChance() {
