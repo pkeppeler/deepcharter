@@ -39,20 +39,29 @@ public final class EarlyRunModel {
 	private EarlyRunModel() {
 	}
 
-	/** The ore of a zone: the chance of each sellable ore for one stone block. The catalyst is kept for the hangar, so it is not income. */
-	public record Zone(Map<OreType, Double> chances) {
+	/**
+	 * The ore of a zone: the chance of each sellable ore for one stone block, and apart from them the chance of the catalyst
+	 * (Cicatrium). The catalyst is kept for the hangar, so it is not counted as income.
+	 */
+	public record Zone(Map<OreType, Double> chances, double catalystChance) {
 		/** The zone's fill, read from the same JSON that the world generator reads. */
 		public static Zone load(String name) {
 			Map<OreType, Double> chances = new EnumMap<>(OreType.class);
+			double catalystChance = 0;
 			for (JsonElement entry : json("/data/deepcharter/worldgen/feature/fill_" + name + ".json").getAsJsonArray("ores")) {
 				String block = entry.getAsJsonObject().get("block").getAsString();
+				double chance = entry.getAsJsonObject().get("chance").getAsDouble();
 				for (OreType type : OreType.values()) {
-					if (type != OreType.CICATRIUM && type.blockId().toString().equals(block)) {
-						chances.put(type, entry.getAsJsonObject().get("chance").getAsDouble());
+					if (type.blockId().toString().equals(block)) {
+						if (type == OreType.CICATRIUM) {
+							catalystChance = chance;
+						} else {
+							chances.put(type, chance);
+						}
 					}
 				}
 			}
-			return new Zone(chances);
+			return new Zone(chances, catalystChance);
 		}
 
 		double oreChance() {
@@ -64,8 +73,11 @@ public final class EarlyRunModel {
 		}
 	}
 
-	/** One run: how deep it bores, the fuel it burns, the ore it brings and what that is worth, before and after fuel. */
-	public record Run(int slabs, double litres, double ores, double gross, double net) {
+	/**
+	 * One run: how deep it bores, the fuel it burns, the ore it brings and what that is worth, before and after fuel, and the
+	 * Cicatrium it brings (in expectation, so a fraction).
+	 */
+	public record Run(int slabs, double litres, double ores, double gross, double net, double catalysts) {
 		/** Runs to earn {@code price}, rounded up. */
 		public int toAfford(long price) {
 			return (int) Math.ceil(price / net);
@@ -120,7 +132,8 @@ public final class EarlyRunModel {
 		double ores = slabs * cells * oreChance * YIELD;
 		double averageOre = zone.valuePerBlock() / oreChance;
 		double gross = averageOre * Math.min(ores, stats.cargoSlots());
-		return new Run(slabs, litres, ores, gross, gross - litres * FuelTuning.DEFAULT.pricePerLitre());
+		double catalysts = slabs * cells * zone.catalystChance() * YIELD;
+		return new Run(slabs, litres, ores, gross, gross - litres * FuelTuning.DEFAULT.pricePerLitre(), catalysts);
 	}
 
 	private static JsonObject json(String resource) {

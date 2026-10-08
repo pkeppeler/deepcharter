@@ -69,4 +69,9 @@ jobs:
             bash "$t" || { echo "::error::$t failed"; exit 1; }
             echo "::endgroup::"
           done
-      - run: shellcheck tools/*.sh tools/tests/*.sh .claude/hooks/*.sh
+      - name: shellcheck (pinned in tools/shellcheck.sh)
+        run: |
+          tools/shellcheck.sh install "$RUNNER_TEMP/shellcheck"
+          export PATH="$RUNNER_TEMP/shellcheck:$PATH"
+          shellcheck --version
+          tools/shellcheck.sh

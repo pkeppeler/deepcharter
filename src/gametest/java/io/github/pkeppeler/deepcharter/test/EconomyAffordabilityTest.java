@@ -40,6 +40,11 @@ public class EconomyAffordabilityTest {
 	/** The Prospector restore takes this many runs of a Mole with tier 2 parts in layer 2, at least and at most. */
 	private static final int RESTORE_RUNS_MIN = 3;
 	private static final int RESTORE_RUNS_MAX = 6;
+	/**
+	 * Cicatrium sells for $1,500. What a run finds of it in the deepest zone is at most this share of the run's other income (it is
+	 * about a fifth today). Half is room for a retune of the ore and still a stop for one that makes selling it the main income.
+	 */
+	private static final double CATALYST_SALE_SHARE = 0.5;
 	/** A later charter's first refurbished Mole, with no pod yet, and its second one. */
 	private static final int REFURBISHED_FIRST_RUNS = 2;
 	private static final int REFURBISHED_SECOND_RUNS = 3;
@@ -112,6 +117,34 @@ public class EconomyAffordabilityTest {
 		if (runs < RESTORE_RUNS_MIN || runs > RESTORE_RUNS_MAX) {
 			throw failure(helper, "the Prospector restore costs $%d, which is %d runs of $%.0f; %d to %d are allowed",
 					money, runs, run.net(), RESTORE_RUNS_MIN, RESTORE_RUNS_MAX);
+		}
+		helper.succeed();
+	}
+
+	/** The invariant of issue 209: the Company's advance covers the restore's Cicatrium, so the ore never gates the Prospector. */
+	@GameTest
+	public void theCompanyAdvanceIsAtLeastTheCicatriumTheProspectorRestoreTakes(GameTestHelper helper) {
+		HangarTuning.RestoreCost cost = HangarTuning.DEFAULT.restoreCost(Chassis.PROSPECTOR);
+		Run run = EarlyRunModel.run(Zone.load("prospectors_run"), EarlyRunModel.mole(2, 2, 2), EarlyRunModel.layerOneBlocks());
+		LOGGER.info("[economy] Prospector restore: {} Cicatrium, {} advanced; from ore alone, at {} per run in the deepest zone, it would take {} runs",
+				cost.catalysts(), cost.advance(), run.catalysts(), Math.ceil(cost.catalysts() / run.catalysts()));
+		if (cost.advance() < cost.catalysts()) {
+			throw failure(helper, "the Prospector restore takes %d Cicatrium but the Company advances only %d, so the ore gates it again",
+					cost.catalysts(), cost.advance());
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void cicatriumFoundInTheOreIsNotAnIncomeStream(GameTestHelper helper) {
+		Zone deepest = Zone.load("prospectors_run");
+		Run run = EarlyRunModel.run(deepest, EarlyRunModel.mole(2, 2, 2), EarlyRunModel.layerOneBlocks());
+		double sold = run.catalysts() * OreType.CICATRIUM.value();
+		LOGGER.info("[economy] a layer 2 run in prospectors_run: {} Cicatrium, ${} if sold, against ${} of other ore", run.catalysts(),
+				Math.round(sold), Math.round(run.net()));
+		if (sold > CATALYST_SALE_SHARE * run.net()) {
+			throw failure(helper, "Cicatrium sells for $%d, so a run's %.3f of it is $%.0f, over %.0f%% of the $%.0f that its other ore nets",
+					OreType.CICATRIUM.value(), run.catalysts(), sold, CATALYST_SALE_SHARE * 100, run.net());
 		}
 		helper.succeed();
 	}
