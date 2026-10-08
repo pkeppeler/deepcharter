@@ -450,7 +450,7 @@ public class HandbookScreen extends Screen {
 		int y = PaperDraw.centered(graphics, font, tr("letter.heading"), centerX(), paperTop + TOP_MARGIN, 1.25f, T.inkColor()) + PARAGRAPH_GAP;
 		y = PaperDraw.wrapped(graphics, font, tr("letter.body.1"), textLeft, y, textWidth, T.inkColor()) + PARAGRAPH_GAP;
 		y = PaperDraw.wrapped(graphics, font, tr("letter.body.2"), textLeft, y, textWidth, T.inkColor()) + PARAGRAPH_GAP;
-		PaperDraw.centered(graphics, font, tr("letter.signature"), textLeft + textWidth * 3 / 4, y + PARAGRAPH_GAP, 1, T.inkColor());
+		PaperDraw.centered(graphics, font, tr("letter.signature"), textLeft + textWidth * 3 / 4, y, 1, T.inkColor());
 		margin(graphics, "deepcharter.handbook.letter.margin", paperTop + CONTENT_TOP * 2);
 	}
 
