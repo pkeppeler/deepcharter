@@ -69,10 +69,10 @@ standard vanilla orange gradient and black sky with stars. The surface has no Ma
 |---|---|
 | What | A cave world in stone, 192 blocks tall (y 0 to 191), under a stone ceiling. No sky. Three zones of equal height, top to bottom: **Topsoil Claims**, **Stone Benches**, **Deep Claim**. |
 | Vanilla | **partly.** The rock is vanilla `minecraft:stone` and the cave shapes use vanilla noise (`cave_cheese`, `spaghetti_3d`). The ores, hazards and crust are the mod's. |
-| Dimension type | `data/deepcharter/dimension_type/layer_1.json`: `has_skylight: false`, `has_ceiling: true`, `has_fixed_time: true`, `skybox: none`, `ambient_light: 0.06`, ambient light colour `#1c1814`, sky light level 4, fog start 8 and end 64 blocks, `cardinal_light: nether`, music `deepcharter:music.layer_1` every 600 to 1800 ticks. |
-| Fog colour per zone | Topsoil Claims `#2a2118`, Stone Benches `#241c14`, Deep Claim `#1e1610` (`data/deepcharter/worldgen/biome/*.json`). |
+| Dimension type | `data/deepcharter/dimension_type/layer_1.json`: `has_skylight: false`, `has_ceiling: true`, `has_fixed_time: true`, `skybox: none`, `ambient_light: 0.06`, ambient light colour `#1c1814`, sky light level 4, fog start 8 and end 64 blocks, `cardinal_light: nether`, `visual/sky_light_color #7a7aff` (never seen: there is no sky, `sky_light_factor 0`), `timelines #minecraft:in_nether` (vanilla's Nether timeline, as a placeholder), music `deepcharter:music.layer_1` every 600 to 1800 ticks. |
+| Fog colour per zone | Topsoil Claims `#2a2118`, Stone Benches `#241c14`, Deep Claim `#1e1610` (`data/deepcharter/worldgen/biome/*.json`). Every one of the six biomes, in both layers, also sets `water_color #3f76e4`, vanilla's default water blue. |
 | Terrain | `data/deepcharter/worldgen/noise_settings/layer_1.json` and `density_function/layer_tunnels.json`: one density function (a floor gradient, a ceiling gradient, cheese caves, spaghetti tunnels), no surface rules except 3 blocks of Breach Crust at the floor (`material_rule/layer.json`). |
-| Blocks | Stone, 3 layers of Breach Crust at the floor, the 7 ores in the ore table below, Company Rock, lava, Gas Pocket (a stone-textured block). |
+| Blocks | Stone, 3 layers of Breach Crust at the floor, the five ores Ironium to Platinium (Platinium only in Deep Claim; see [Custom blocks](#2-custom-blocks)), Company Rock, lava, Gas Pocket (a stone-textured block). |
 | Light | Block light only. Ambient light is 0.06, so an unlit cave is nearly black. |
 | Swap | **(b)** the dimension type (light, fog distance, ambient colour, music), the biome `fog_color`, the noise settings (shape), `zone_fill` features (ore and hazard chances). **(a)** the textures of the mod blocks. Nothing in Java sets layer fog, sky or light. |
 
@@ -95,10 +95,10 @@ The breach at the floor of layer 1 (the way down):
 |---|---|
 | What | The same kind of cave world, 256 blocks tall (y 0 to 255). Zones: **Upper Levels**, **Shift Change**, **Prospector's Run**. |
 | Vanilla | **partly**, as layer 1. |
-| Dimension type | `data/deepcharter/dimension_type/layer_2.json`: as layer 1 but `ambient_light: 0.02`, ambient colour `#0c0a09`, fog start 2 and end 32 blocks, music `deepcharter:music.layer_2`. |
+| Dimension type | `data/deepcharter/dimension_type/layer_2.json`: as layer 1 but `ambient_light: 0.02`, ambient colour `#0c0a09`, fog start 2 and end 32 blocks, music `deepcharter:music.layer_2`. It has the same `visual/sky_light_color #7a7aff` and `timelines #minecraft:in_nether`. |
 | Fog colour per zone | Upper Levels `#1c1c24`, Shift Change `#181820`, Prospector's Run `#14141a`. |
 | Terrain | `noise_settings/layer_2.json`, the same density function as layer 1 over 256 blocks. |
-| Blocks | As layer 1, plus the Einsteinium and Cicatrium ores in the lower zones. |
+| Blocks | As layer 1, plus Cicatrium Ore (Shift Change and Prospector's Run) and Einsteinium Ore (Prospector's Run only); see [Custom blocks](#2-custom-blocks). |
 | Swap | As layer 1. |
 
 ![layer-2-cave-as-played-no-light](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/layer-2-cave-as-played-no-light.png?raw=true) ![layer-2-cave-south](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/layer-2-cave-south.png?raw=true)
@@ -380,7 +380,7 @@ These stills use night vision.
 | Gallery | 2, Upper Levels | `:45` | 27 x 5 x 4 | Cobblestone floor, a rail, oak-fence props with plank caps, raw-iron blocks, rubble at one end, a black-concrete board with Note N08 | A collapsed mine gallery |
 | Punch clock | 2, Shift Change | `:81` | 17 x 17 x 5 | Polished-andesite floor, two rails, stone-brick pillars, bookshelves, an iron-block clock with a sea lantern, Note N09 | A square station hall |
 | Rails | 2, Prospector's Run | `:106` | 65 x 5 x 4 | Coarse-dirt floor, one rail with gaps, oak-log and plank timbering every 8 | A long timbered drift |
-| Wreck | 2, Prospector's Run | `:128` | 13 x 13 x 5 | Deepslate-tile floor, blackstone scorch, a rail ending in the bay, iron and cobblestone debris; PROSPECTOR-0002's site has a pod, a lit lamp and Note N10 | A bay with a wrecked pod |
+| Wreck | 2, Prospector's Run | `:128` | 13 x 13 x 5 | Deepslate-tile floor, blackstone scorch, a rail ending in the bay, iron and cobblestone debris; two sites: PROSPECTOR-0002's (a wrecked Prospector, a lit lantern, three dark redstone lamps, Note N10 on a table) and an empty bay (no pod, no lamps, no Note) | A bay, with or without a wrecked pod |
 
 ![structure-topsoil-shaft-looking-down](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-topsoil-shaft-looking-down.png?raw=true) ![structure-topsoil-shaft-note-niche](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-topsoil-shaft-note-niche.png?raw=true)
 ![structure-topsoil-shaft-looking-up](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-topsoil-shaft-looking-up.png?raw=true) ![structure-benches-shaft-looking-down](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-benches-shaft-looking-down.png?raw=true)
@@ -414,7 +414,7 @@ All terminal screens share one look, the "CRT": near-black background, phosphor-
 text four times offset by 1 pixel, scanlines every 2 pixels, bloom at the top and bottom edges, boxed buttons, a typewriter that types the text.
 No screen uses a texture: every one is drawn with `fill()` and `text()` at fixed GUI coordinates. Vanilla: **no**.
 **Swap: (c)** for all of them: the colours are `client/ui/CrtTuning.java:36-38`; the draw code is `client/ui/CrtDraw.java:15-43`,
-`CrtButton.java:23`, `CrtScreen.java:144`; the layout of each screen is in its own file.
+`CrtButton.java:23`, and `CrtScreen.java:144` (the typewriter cursor block); the layout of each screen is in its own file.
 
 ### Handbook
 
@@ -434,7 +434,7 @@ an end page, the employment contract (Appendix A), and a Notes tab.
 | Source | `client/handbook/HandbookScreen.java`, `PaperDraw.java`, `PaperButton.java`, `HandbookScreenTuning.java`, `HandbookPages.java`; the chapters are data: `data/deepcharter/deepcharter/handbook_chapter/*.json` (9), text in `src/lang/en_us/handbook.json` |
 | Texture | None. Paper, binding and rules are `fill()` calls; the item sprite is `textures/item/handbook.png`, 16 x 16 |
 | Vanilla | no |
-| Swap | **(a)** `textures/item/handbook.png`; **(b)** chapter JSON and lang text; **(c)** the paper, `HandbookScreenTuning.java:46-48` (page size 320 x 200 and colours), `PaperDraw.java:12-41`, `PaperButton.java:16-18`, `HandbookScreen.java:601-616` |
+| Swap | **(a)** `textures/item/handbook.png`; **(b)** chapter JSON and lang text; **(c)** the paper, `HandbookScreenTuning.java:46-48` (page size 320 x 200 and colours), `PaperDraw.java:21-36` (`sheet`: shadow, paper, ruled lines, binding; `border`), `:66-77` (`stamp`), `:80-113` (redaction bars), `PaperButton.java:16-18` and `:34-35` (tab and button fill), `HandbookScreen.java:390-398` (the sheet and page number), `:428-617` (every page's draw code, with the stamps at `:435`, `:446`, `:531`, `:545-547`, `:555` and the rule and margin `fill()` calls at `:601`, `:607`, `:616`) |
 
 ### Offline terminal (the repair screen)
 
@@ -611,6 +611,14 @@ The mod ships no font. Every screen and HUD uses vanilla's default font. The CRT
 
 Nine handbook advancements, drawn by vanilla's toast. Swap **(b)**.
 
+### Not there at all
+
+Nothing of these exists yet, so there is nothing to restyle and each one is new work:
+
+- **Creative tab.** No `CreativeModeTab` is registered, so the mod's items and blocks are in no creative inventory tab.
+- **Mod icon.** `fabric.mod.json` has no `icon` field, and `assets/deepcharter/` has no icon file, so the mod list shows the default icon.
+- **Block entity renderer.** No `BlockEntityRenderer` is registered. Every block, the terminals included, is drawn by its blockstate and model only.
+
 ---
 
 ## Placeholders
@@ -636,9 +644,9 @@ Every look that is fixed in Java and cannot be replaced by swapping a resource-p
 | Pod models | A vanilla block scaled to a slab: Mole `minecraft:raw_copper_block`, Prospector `minecraft:iron_block`, wreck `minecraft:coal_block`; slab height 0.9 | `client/pod/PodRenderer.java:23`, `:25`, `:55-56`; `client/pod/PodClientRegistry.java:15-18` |
 | Lampless figure model | Vanilla zombie model; only the skin is a resource | `client/creature/LamplessFigureRenderer.java:20` |
 | CRT look (all terminal screens, account HUD, transmissions) | Colours (background `#050A06`, phosphor `#7CFC9A`, dim `#2E7A45`, hover `#123D20`), scanline spacing 2 and colour, glow, bloom, padding, typewriter speed | `client/ui/CrtTuning.java:36-38` |
-| CRT drawing | Background fill, scanlines, bloom bands, 4-way halo text, 1-pixel frames, button fill | `client/ui/CrtDraw.java:15-43`, `client/ui/CrtButton.java:23`, `client/ui/CrtScreen.java:144` |
+| CRT drawing | Background fill, scanlines, bloom bands, 4-way halo text, 1-pixel frames, button fill | `client/ui/CrtDraw.java:15-43`, `client/ui/CrtButton.java:23`; the typewriter cursor block is `client/ui/CrtScreen.java:144` |
 | Each terminal screen's layout | Fixed GUI coordinates and text; no textures | `client/terminal/TerminalScreen.java`, `client/fuel/FuelPumpScreen.java`, `client/market/OreProcessorScreen.java`, `client/upgrade/UpgradeScreen.java`, `client/repair/RepairStationScreen.java`, `client/hangar/HangarScreen.java`, `client/charter/terminal/ContractScreen.java` (refusal colour `:48`) |
-| Handbook paper | Page size 320 x 200, paper `#F1E4C3`, edge `#C9B48A`, binding, ink `#111111`, margin ink, stamp, redaction bars; every page element is `fill()` and `text()` | `client/handbook/HandbookScreenTuning.java:46-48`, `PaperDraw.java:12-41`, `PaperButton.java:16-18`, `HandbookScreen.java:601-616` |
+| Handbook paper | Page size 320 x 200, paper `#F1E4C3`, edge `#C9B48A`, binding, ink `#111111`, margin ink, stamp, redaction bars; every page element is `fill()` and `text()` | `client/handbook/HandbookScreenTuning.java:46-48`, `PaperDraw.java:21-36` (`sheet`: shadow, paper, ruled lines, binding; `border`), `:66-77` (`stamp`), `:80-113` (redaction bars), `PaperButton.java:16-18` and `:34-35` (tab and button fill), `HandbookScreen.java:390-398` (the sheet and page number), `:428-617` (every page's draw code, with the stamps at `:435`, `:446`, `:531`, `:545-547`, `:555` and the rule and margin `fill()` calls at `:601`, `:607`, `:616`) |
 | Pod status HUD | White text lines at top left, margin 4 | `client/pod/PodStatusHud.java:22-23`, `:54-56` |
 | Scanner HUD | Cell colours (air, rock, ore, gold, gas, pod, frame), 3-pixel cells, margin 4, panel layout, white title | `main/scanner/ScannerTuning.java:30-32`, `client/scanner/ScannerHud.java:35-37`, `:106-128` |
 | Altimeter | White text at top centre, margin 4 | `client/layer/BreachHud.java:26-27`, `:36-45` |

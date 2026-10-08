@@ -1,42 +1,57 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.BedBlock;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.CandleBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.client.charter.terminal.ContractScreen;
 import io.github.pkeppeler.deepcharter.client.fuel.FuelPumpScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.ClientHandbook;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookPage;
@@ -46,7 +61,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.client.hangar.HangarScreen;
 import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
 import io.github.pkeppeler.deepcharter.client.market.OreProcessorScreen;
-import io.github.pkeppeler.deepcharter.client.charter.terminal.ContractScreen;
+import io.github.pkeppeler.deepcharter.client.ore.OreCargoScreen;
 import io.github.pkeppeler.deepcharter.client.repair.RepairStationScreen;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreen;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
@@ -54,12 +69,15 @@ import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
+import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
 import io.github.pkeppeler.deepcharter.handbook.HandbookItems;
+import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
+import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
 import io.github.pkeppeler.deepcharter.hangar.Hangar;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.layer.BreachService;
@@ -87,9 +105,16 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 /**
  * Evidence scenario "design-tour" for #223: a fixed set of named stills of everything in the game as it looks today, so the design
  * overhaul can shoot the same views afterwards and show before and after. It is a reference shoot, not a story: the player is a
- * creative, invulnerable camera, and each still is taken from a named viewpoint that is computed from the world (the colony's pad,
- * the structure sites), so the same views come out in any seed. The still names are the file names, and docs/design/current-state.md
- * embeds them. A short orbit of the colony supplies the frames of the GIF.
+ * creative, invulnerable camera. The still names are the file names, and docs/design/current-state.md embeds them. A short orbit of
+ * the colony supplies the frames of the GIF.
+ *
+ * <p>Every view is derived from the world, never from fixed coordinates: the colony views are offsets from the {@link ColonyAnchor}
+ * of the building they show (the statue for the square), and the structure views are offsets in the axes of the structure site. A
+ * building that the overhaul moves, so moves its views with it. Each still that has a subject (the chapel candle, the statue
+ * column, a terminal, a lantern) is taken through {@link #shoot}, which first checks that a block of the subject stands within a few
+ * blocks of the point looked at, and that nothing else stands in the line of sight. When it does not, the tour throws an
+ * {@link AssertionError} that names the still, so that a moved or redrawn building fails the run, and no wrong picture is filed
+ * as the "after".
  *
  * <p>The order: handbook and item gallery, the surface by day, dusk and night, the colony, the terminal screens, the pods by day,
  * a dark room (pods lit and unlit, the lampless figure), the HUDs, layer 1, the breach into layer 2, layer 2 and its structures.
@@ -116,7 +141,6 @@ public class DesignTourScenario extends EvidenceScenario {
 	private BlockPos ground;
 	private Map<ColonyAnchor, BlockPos> anchors;
 	private CharterId charter;
-	private final List<String> stills = new ArrayList<>();
 
 	@Override
 	protected String name() {
@@ -151,7 +175,6 @@ public class DesignTourScenario extends EvidenceScenario {
 			layerTwo();
 			remainingTransmissions();
 		}
-		System.out.println("design-tour stills: " + stills.size() + " " + stills);
 	}
 
 	// ------------------------------------------------------------------------------------------------ handbook, items
@@ -180,7 +203,7 @@ public class DesignTourScenario extends EvidenceScenario {
 		for (int index = 0; index < pages.size(); index++) {
 			HandbookPage page = pages.get(index);
 			String kind = page.getClass().getSimpleName().toLowerCase();
-			boolean classified = page instanceof HandbookPage.Chapter chapter && chapter.visibility() != io.github.pkeppeler.deepcharter.handbook.HandbookVisibility.FULL;
+			boolean classified = page instanceof HandbookPage.Chapter chapter && chapter.visibility() != HandbookVisibility.FULL;
 			String key = classified ? "chapter-classified" : kind;
 			if (!seen.add(key) || (page instanceof HandbookPage.Contents contents && contents.part() > 1)) {
 				continue;
@@ -197,7 +220,7 @@ public class DesignTourScenario extends EvidenceScenario {
 	}
 
 	private static int handbookSlot(Minecraft client) {
-		for (int slot = 0; slot < net.minecraft.world.entity.player.Inventory.getSelectionSize(); slot++) {
+		for (int slot = 0; slot < Inventory.getSelectionSize(); slot++) {
 			if (HandbookItems.isHandbook(client.player.getInventory().getItem(slot))) {
 				return slot;
 			}
@@ -228,7 +251,6 @@ public class DesignTourScenario extends EvidenceScenario {
 			still("items-gallery-" + (page + 1));
 			ctx.setScreen(() -> null);
 		}
-		System.out.println("design-tour items: " + items.size());
 	}
 
 	// ------------------------------------------------------------------------------------------------ surface, colony
@@ -242,7 +264,7 @@ public class DesignTourScenario extends EvidenceScenario {
 			player.getAbilities().flying = true;
 			player.onUpdateAbilities();
 			player.setPermanentlyInvulnerable(true);
-			server.getGameRules().set(net.minecraft.world.level.gamerules.GameRules.SPAWN_MONSTERS, false, server);
+			server.getGameRules().set(GameRules.SPAWN_MONSTERS, false, server);
 			if (Charters.found(server, player.getUUID(), "Design Tour Co.").isPresent()) {
 				throw new AssertionError("founding the charter should succeed");
 			}
@@ -257,9 +279,75 @@ public class DesignTourScenario extends EvidenceScenario {
 		});
 	}
 
-	/** A point {@code dx} east and {@code dz} south of the pad's centre, {@code h} above the ground there. */
+	/** A point {@code dx} east and {@code dz} south of the middle of the square (the foot of the statue), {@code h} above it. */
 	private Vec3 p(double dx, double h, double dz) {
-		return new Vec3(ground.getX() + 0.5 + dx, ground.getY() + 1 + h, ground.getZ() + 0.5 + dz);
+		return rel(ColonyAnchor.STATUE, dx, h, dz);
+	}
+
+	/** A point {@code dx} east, {@code dy} up and {@code dz} south of the bottom centre of the block of {@code anchor}. */
+	private Vec3 rel(ColonyAnchor anchor, double dx, double dy, double dz) {
+		return Vec3.atBottomCenterOf(anchors.get(anchor)).add(dx, dy, dz);
+	}
+
+	/** What a still is of: a block that must stand within {@code radius} blocks of the point the camera looks at. */
+	private record Subject(String what, Predicate<BlockState> test, double radius) { }
+
+	private static Subject statue() {
+		return new Subject("the bronze statue", state -> state.is(Blocks.COPPER_BLOCK.waxed().unaffected()), 3);
+	}
+
+	/** Takes the named still of {@code target} from {@code eye}, after checking that the {@code subject} is really there. */
+	private void shoot(String stillName, int layer, Vec3 eye, Vec3 target, int wait, Subject subject) {
+		view(layer, eye, target, wait);
+		verify(stillName, layer, eye, target, subject);
+		still(stillName);
+	}
+
+	/**
+	 * Throws an {@link AssertionError} naming the still when the world has moved the subject: when no block of the subject is within
+	 * its radius of {@code target}, or when something else stands in the line of sight and hides it. A building that moves in the
+	 * overhaul then fails the tour loudly, and does not make it shoot the wrong thing.
+	 */
+	private void verify(String stillName, int layer, Vec3 eye, Vec3 target, Subject subject) {
+		String problem = serverGet(server -> {
+			ServerLevel level = server.getLevel(LayerChain.dimension(layer));
+			BlockPos centre = BlockPos.containing(target);
+			int reach = (int) Math.ceil(subject.radius());
+			boolean found = BlockPos.betweenClosedStream(centre.offset(-reach, -reach, -reach), centre.offset(reach, reach, reach))
+					.anyMatch(pos -> Vec3.atCenterOf(pos).distanceTo(target) <= subject.radius()
+							&& subject.test().test(level.getBlockState(pos)));
+			if (!found) {
+				return "no " + subject.what() + " within " + subject.radius() + " blocks of " + target;
+			}
+			BlockHitResult hit = level.clip(new ClipContext(eye, target, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, player(server)));
+			if (hit.getType() == HitResult.Type.MISS) {
+				return null;
+			}
+			BlockState first = level.getBlockState(hit.getBlockPos());
+			if (!subject.test().test(first) && hit.getLocation().distanceTo(target) > subject.radius() + 1) {
+				return first + " at " + hit.getBlockPos().toShortString() + " is in the way of " + subject.what();
+			}
+			return null;
+		});
+		if (problem != null) {
+			throw new AssertionError("still " + stillName + ": " + problem);
+		}
+	}
+
+	/** Throws, naming the still, if a building or a hill now stands where the pods are put: the 9 x 9 blocks round {@code stage}. */
+	private void expectOpenGround(String stillName, Vec3 stage) {
+		BlockPos centre = BlockPos.containing(stage);
+		BlockPos solid = serverGet(server -> BlockPos.betweenClosedStream(centre.offset(-4, 0, -4), centre.offset(4, 3, 4))
+				.filter(pos -> !server.overworld().getBlockState(pos).getCollisionShape(server.overworld(), pos).isEmpty())
+				.findFirst().map(BlockPos::immutable).orElse(null));
+		if (solid != null) {
+			throw new AssertionError("still " + stillName + ": " + solid.toShortString() + " is solid, so the pods' stage is not open ground");
+		}
+	}
+
+	/** The stage for the pods, on the open ground north-east of the square. */
+	private Vec3 stage() {
+		return p(22, 0, -18);
 	}
 
 	private void surface() {
@@ -288,63 +376,74 @@ public class DesignTourScenario extends EvidenceScenario {
 	}
 
 	private void colonyTour() {
-		view(0, p(0, 32, 62), p(0, 3, 0), 80);
-		still("colony-aerial-south");
-		view(0, p(-48, 30, -48), p(0, 3, 0), 30);
-		still("colony-aerial-northwest");
-		view(0, p(48, 30, -48), p(0, 3, 0), 30);
-		still("colony-aerial-northeast");
-		view(0, p(0, 80, 25), p(0, 0, 0), 30);
-		still("colony-from-straight-above");
-		view(0, p(0, EYE, 30), p(0, 4, 0), 30);
-		still("colony-from-the-south-edge");
+		Subject statue = statue();
+		shoot("colony-aerial-south", 0, p(0, 32, 62), p(0, 3, 0), 80, statue);
+		shoot("colony-aerial-northwest", 0, p(-48, 30, -48), p(0, 3, 0), 30, statue);
+		shoot("colony-aerial-northeast", 0, p(48, 30, -48), p(0, 3, 0), 30, statue);
+		shoot("colony-from-straight-above", 0, p(0, 80, 25), p(0, 0, 0), 30, statue);
+		shoot("colony-from-the-south-edge", 0, p(0, EYE, 30), p(0, 4, 0), 30, statue);
 
 		// The orbit for the GIF.
 		for (int i = 0; i < ORBIT_FRAMES; i++) {
 			double angle = 2 * Math.PI * i / ORBIT_FRAMES + Math.PI / 2;
-			view(0, p(Math.cos(angle) * ORBIT_RADIUS, ORBIT_HEIGHT, Math.sin(angle) * ORBIT_RADIUS), p(0, 3, 0), i == 0 ? 40 : 2);
+			Vec3 eye = p(Math.cos(angle) * ORBIT_RADIUS, ORBIT_HEIGHT, Math.sin(angle) * ORBIT_RADIUS);
+			view(0, eye, p(0, 3, 0), i == 0 ? 40 : 2);
+			if (i == 0) {
+				verify("colony-orbit", 0, eye, p(0, 3, 0), statue);
+			}
 			frame(ctx);
 		}
 
-		// Close-ups, each from the open side of the building (the doorway of a ruin, the south face of a plinth).
-		String[] plinths = {"fuel-pump", "ore-processor", "upgrade-terminal", "repair-station", "contract-terminal"};
-		int[] columns = {-8, -4, 0, 4, 8};
-		for (int i = 0; i < plinths.length; i++) {
-			view(0, p(columns[i], 3.0, -3.5), p(columns[i], 1.5, -8), 20);
-			still("terminal-" + plinths[i]);
+		// Close-ups, each from the open side of the building (the doorway of a ruin, the south face of a plinth). Every view is
+		// measured from the building's own anchor, so it follows the building when the colony is redrawn.
+		for (TerminalType type : TerminalTypes.all()) {
+			Optional<ColonyAnchor> anchor = ColonyAnchor.forTerminal(type);
+			if (anchor.isPresent()) {
+				Vec3 plinth = rel(anchor.get(), 0, 0, 0);
+				shoot("terminal-" + type.id().getPath().replace('_', '-'), 0, plinth.add(0, 2.0, 4.5), plinth.add(0, 0.5, 0), 20,
+						new Subject("the " + type.id().getPath() + " terminal", state -> state.is(type.block()), 1.5));
+			}
 		}
-		view(0, p(0, 5, 6), p(0, 1.5, -8), 20);
-		still("terminal-row");
-		view(0, p(7, 4, 8), p(0, 4, 0), 20);
-		still("statue-from-the-square");
-		view(0, p(3, 5.5, 3.5), p(0, 6, 0), 20);
-		still("statue-close");
-		view(0, p(-3, 8, 12), p(0, 5, 0), 20);
-		still("statue-hands-from-above");
-		view(0, p(6, 1.62, 0), p(18, 1.3, 0), 40);
-		still("continuity-office-from-the-square");
-		view(0, p(16, 2.5, 0), p(21, 1.5, -3), 20);
-		still("continuity-office-inside");
-		view(0, p(-9, 1.62, 7), p(-23, 1.3, 7), 40);
-		still("hangar-from-the-square");
-		view(0, p(-20, 1.62, -8), p(-20, 1.3, -18), 40);
-		still("chapel-from-the-square");
-		view(0, p(-20, 1.62, -12), p(-20.5, 1.3, -18), 20);
-		still("chapel-altar-and-candle");
-		view(0, p(18, 1.62, 6), p(18, 1.3, 15), 40);
-		still("bunkhouse-from-the-square");
-		view(0, p(-6, 1.62, 8), p(-6, 1.3, 17.5), 40);
-		still("pay-office-from-the-square");
-		view(0, p(6, 1.62, 8), p(6, 1.5, 18), 40);
-		still("personnel-office-from-the-square");
-		view(0, p(-22, 1.62, 10), p(-22, 1.3, 20), 40);
-		still("lamp-and-pick-from-the-square");
-		view(0, p(-4, 8, 4), p(-4, 8, -14), 30);
-		still("conduit-from-the-square");
-		view(0, p(-20, 10, -4), p(-4, 8, -14), 20);
-		still("conduit-from-the-west");
-		view(0, p(-4, 22, -26), p(-4, 6, -14), 20);
-		still("conduit-from-the-north");
+		Vec3 upgrade = rel(ColonyAnchor.UPGRADE_TERMINAL, 0, 0, 0);
+		shoot("terminal-row", 0, upgrade.add(0, 4, 14), upgrade.add(0, 0.5, 0), 20,
+				new Subject("a terminal", state -> TerminalTypes.all().stream().anyMatch(type -> state.is(type.block())), 1.5));
+		shoot("statue-from-the-square", 0, p(7, 4, 8), p(0, 4, 0), 20, statue);
+		shoot("statue-close", 0, p(3, 5.5, 3.5), p(0, 6, 0), 20, statue);
+		shoot("statue-hands-from-above", 0, p(-3, 8, 12), p(0, 5, 0), 20, statue);
+
+		Subject lectern = new Subject("the lectern", state -> state.is(Blocks.LECTERN), 2.5);
+		Vec3 office = rel(ColonyAnchor.CONTINUITY_OFFICE, 0, 0, 0);
+		shoot("continuity-office-from-the-square", 0, office.add(-12, EYE, 0), office.add(0, 1.3, 0), 40,
+				new Subject("the lectern", state -> state.is(Blocks.LECTERN), 6));
+		shoot("continuity-office-inside", 0, office.add(-2, 2.5, 0), office.add(3, 1.5, -3), 20, lectern);
+
+		Vec3 hangar = rel(ColonyAnchor.HANGAR, 0, 0, 0);
+		shoot("hangar-from-the-square", 0, hangar.add(14, EYE, 0), hangar.add(0, 1.3, 0), 40,
+				new Subject("the hangar's iron floor", state -> state.is(Blocks.IRON_BLOCK), 3));
+
+		Vec3 candle = rel(ColonyAnchor.CHAPEL_CANDLE, 0, 0, 0);
+		Subject lit = new Subject("the lit chapel candle", state -> state.is(Blocks.CANDLE) && state.getValue(CandleBlock.LIT), 1.5);
+		shoot("chapel-from-the-square", 0, candle.add(0, 0.62, 10), candle.add(0, 0.3, 0), 40, lit);
+		shoot("chapel-altar-and-candle", 0, candle.add(0, 0.62, 6), candle.add(-0.5, 0.3, 0), 20, lit);
+
+		Vec3 bunkhouse = rel(ColonyAnchor.BUNKHOUSE, 0, 0, 0);
+		shoot("bunkhouse-from-the-square", 0, bunkhouse.add(0, EYE, -9), bunkhouse.add(0, 1.3, 0), 40,
+				new Subject("a bed", state -> state.getBlock() instanceof BedBlock, 4));
+		Vec3 pay = rel(ColonyAnchor.PAY_OFFICE, 0, 0, 0);
+		shoot("pay-office-from-the-square", 0, pay.add(0, EYE, -7), pay.add(0, 1.3, 2.5), 40,
+				new Subject("the grille", state -> state.is(Blocks.IRON_BARS), 3));
+		Vec3 personnel = rel(ColonyAnchor.PERSONNEL_OFFICE, 0, 0, 0);
+		shoot("personnel-office-from-the-square", 0, personnel.add(0, EYE, -8), personnel.add(0, 1.5, 2), 40,
+				new Subject("Joy's calendar (a Note)", state -> state.getBlock() instanceof NoteBlock, 3));
+		Vec3 bar = rel(ColonyAnchor.LAMP_AND_PICK, 0, 0, 0);
+		shoot("lamp-and-pick-from-the-square", 0, bar.add(0, EYE, -8), bar.add(0, 1.3, 2), 40,
+				new Subject("the coal blocks of the bar", state -> state.is(Blocks.COAL_BLOCK), 3));
+
+		Vec3 conduit = rel(ColonyAnchor.CONDUIT, 0, 0, 0);
+		Subject casing = new Subject("the conduit casing", state -> state.is(ColonyBlocks.CONDUIT), 3);
+		shoot("conduit-from-the-square", 0, conduit.add(0, 8, 18), conduit.add(0, 8, 0), 30, casing);
+		shoot("conduit-from-the-west", 0, conduit.add(-16, 10, 10), conduit.add(0, 8, 0), 20, casing);
+		shoot("conduit-from-the-north", 0, conduit.add(0, 22, -12), conduit.add(0, 6, 0), 20, casing);
 	}
 
 	// ------------------------------------------------------------------------------------------------ terminals
@@ -355,9 +454,13 @@ public class DesignTourScenario extends EvidenceScenario {
 		Vec3 consoleEye = Vec3.atBottomCenterOf(console.west(2)).add(0, EYE, 0);
 		view(0, consoleEye, derelict.add(0, 1, 0), 60);
 		still("hangar-derelict-mole");
-		view(0, p(-17.5, 3, 5), derelict.add(0, 0.8, 0), 20);
+		Vec3 bay = rel(ColonyAnchor.HANGAR, 0, 0, 0);
+		if (derelict.distanceTo(bay) > 6) {
+			throw new AssertionError("still hangar-derelict-mole: the derelict Mole is " + derelict.distanceTo(bay) + " blocks from the hangar anchor");
+		}
+		view(0, bay.add(5.5, 3, -2), derelict.add(0, 0.8, 0), 20);
 		still("hangar-derelict-mole-from-the-door");
-		view(0, p(-28, 3, 12), derelict.add(0, 0.8, 0), 20);
+		view(0, bay.add(-5, 3, 5), derelict.add(0, 0.8, 0), 20);
 		still("hangar-derelict-mole-from-the-back");
 
 		// Offline: the screen where the parts go in.
@@ -385,9 +488,8 @@ public class DesignTourScenario extends EvidenceScenario {
 			player.getInventory().add(OreRegistry.stack(OreType.SILVERIUM));
 		});
 		Class<?>[] online = {FuelPumpScreen.class, OreProcessorScreen.class, UpgradeScreen.class, RepairStationScreen.class};
-		int[] columns = {-8, -4, 0, 4};
 		for (int i = 0; i < order.size(); i++) {
-			PodEntity pod = spawnPod(PodRegistry.POD, 0, p(columns[i] + 0.0, 0, -4.5), 0f, false);
+			PodEntity pod = spawnPod(PodRegistry.POD, 0, rel(anchorOf[i], 0, -1, 3.5), 0f, false);
 			serverDo(server -> {
 				pod.setFuel(34f);
 				pod.damageHull(pod.maxHull() * 0.45f);
@@ -474,7 +576,8 @@ public class DesignTourScenario extends EvidenceScenario {
 	private static final String[] FSB = {"front", "side", "back"};
 
 	private void podsByDay() {
-		Vec3 stage = p(22, 0, -18);
+		Vec3 stage = stage();
+		expectOpenGround("pods-by-day", stage);
 		PodEntity mole = spawnPod(PodRegistry.POD, 0, stage, 0f, false);
 		view(0, stage.add(0, 1.8, 6), stage.add(0, 1, 0), 60);
 		podAngles("mole-unlit-day", 0, stage, 5.5, 1.9, FSB);
@@ -506,7 +609,7 @@ public class DesignTourScenario extends EvidenceScenario {
 
 	/** Every block of the mod in a row on the pad, seven to a still, fronts to the camera. */
 	private void blockGallery() {
-		List<net.minecraft.world.level.block.Block> blocks = BuiltInRegistries.BLOCK.keySet().stream()
+		List<Block> blocks = BuiltInRegistries.BLOCK.keySet().stream()
 				.filter(id -> id.getNamespace().equals(DeepCharter.MOD_ID))
 				.sorted()
 				.map(BuiltInRegistries.BLOCK::getValue)
@@ -515,10 +618,10 @@ public class DesignTourScenario extends EvidenceScenario {
 		serverDo(server -> {
 			ServerLevel level = server.overworld();
 			for (int i = 0; i < blocks.size(); i++) {
-				var state = blocks.get(i).defaultBlockState();
-				if (state.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING)) {
-					state = state.setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING,
-							net.minecraft.core.Direction.SOUTH);
+				BlockState state = blocks.get(i).defaultBlockState();
+				if (state.hasProperty(BlockStateProperties.HORIZONTAL_FACING)) {
+					state = state.setValue(BlockStateProperties.HORIZONTAL_FACING,
+							Direction.SOUTH);
 				}
 				level.setBlock(row.offset(i, 0, 0), state, 3);
 			}
@@ -529,7 +632,6 @@ public class DesignTourScenario extends EvidenceScenario {
 			view(0, target.add(0, 1.2, 6), target, page == 0 ? 60 : 12);
 			still("block-gallery-" + (page + 1));
 		}
-		System.out.println("design-tour blocks: " + blocks.size() + " " + blocks);
 	}
 
 	// ------------------------------------------------------------------------------------------------ dark room
@@ -607,7 +709,7 @@ public class DesignTourScenario extends EvidenceScenario {
 			ServerLevel level = server.overworld();
 			LamplessFigure f = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
 			f.setPos(base.add(-6, 0, 0));
-			f.setHeading(net.minecraft.core.Direction.EAST);
+			f.setHeading(Direction.EAST);
 			level.addFreshEntity(f);
 			return f;
 		});
@@ -628,7 +730,7 @@ public class DesignTourScenario extends EvidenceScenario {
 
 	/** The pod's cargo screen, opened as a player does: sneak and use the pod. */
 	private void cargoScreen() {
-		Vec3 stage = p(22, 0, -18);
+		Vec3 stage = stage();
 		view(0, stage.add(0, EYE, -3), stage.add(2, 1, -3), 20);
 		PodEntity pod = spawnPod(PodRegistry.POD, 0, stage.add(2, 0, -3), 0f, false);
 		serverDo(server -> {
@@ -637,11 +739,11 @@ public class DesignTourScenario extends EvidenceScenario {
 			}
 			ServerPlayer player = player(server);
 			player.setShiftKeyDown(true);
-			net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.invoker()
-					.interact(player, player.level(), net.minecraft.world.InteractionHand.MAIN_HAND, pod, null);
+			UseEntityCallback.EVENT.invoker()
+					.interact(player, player.level(), InteractionHand.MAIN_HAND, pod, null);
 			player.setShiftKeyDown(false);
 		});
-		ctx.waitForScreen(io.github.pkeppeler.deepcharter.client.ore.OreCargoScreen.class);
+		ctx.waitForScreen(OreCargoScreen.class);
 		ctx.waitTicks(10);
 		still("screen-pod-cargo");
 		ctx.setScreen(() -> null);
@@ -650,7 +752,7 @@ public class DesignTourScenario extends EvidenceScenario {
 
 	private void hudsOnTheSurface() {
 		cargoScreen();
-		Vec3 stage = p(22, 0, -18);
+		Vec3 stage = stage();
 		view(0, stage.add(0, EYE, 0), stage.add(0, EYE, 20), 60);
 		ScannerHudTest.mountFirstPlayer(sp.getServer(), 0);
 		ctx.waitFor(client -> client.player.getVehicle() instanceof PodEntity, WAIT);
@@ -726,8 +828,8 @@ public class DesignTourScenario extends EvidenceScenario {
 			int niche = site.height() / 2;
 			view(1, at(site, 0, site.height() - 1.2, 0), at(site, 0, 0, 0), 120);
 			still("structure-" + name + "-looking-down");
-			view(1, at(site, -0.6, niche + 1.0, 0), at(site, 2, niche + 0.5, 0.5), 20);
-			still("structure-" + name + "-note-niche");
+			shoot("structure-" + name + "-note-niche", 1, at(site, -0.6, niche + 1.0, 0), at(site, 2, niche + 0.5, 0.5), 20,
+					new Subject("the Note in the niche", state -> state.getBlock() instanceof NoteBlock, 1.5));
 			view(1, at(site, 0.6, niche - 3, 0), at(site, 0, niche + 4, 0), 20);
 			still("structure-" + name + "-looking-up");
 		}
@@ -801,13 +903,11 @@ public class DesignTourScenario extends EvidenceScenario {
 			if (!faded && alpha > 0.4f && ctx.computeOnClient(client -> client.gui.screen() == null)) {
 				faded = true;
 				screenshot(ctx, "hud-breach-fade");
-				stills.add("hud-breach-fade");
 			}
 			Identifier current = ctx.computeOnClient(client -> TransmissionOverlay.transmission().map(Transmission::id).orElse(null));
 			boolean typed = ctx.computeOnClient(client -> TransmissionOverlay.typed());
 			if (typed && current != null && shot.add(current)) {
 				screenshot(ctx, "hud-transmission-" + current.getPath());
-				stills.add("hud-transmission-" + current.getPath());
 			}
 			tail = typed && current != null && current.equals(last) ? tail + 1 : 0;
 			last = current;
@@ -864,7 +964,6 @@ public class DesignTourScenario extends EvidenceScenario {
 
 		// The structures of layer 2.
 		for (StructureKind kind : StructureKind.inLayer(2)) {
-			String name = kind.name().toLowerCase().replace('_', '-');
 			if (kind == StructureKind.WRECK) {
 				continue;
 			}
@@ -873,28 +972,30 @@ public class DesignTourScenario extends EvidenceScenario {
 				case GALLERY -> {
 					view(2, at(site, -8, 2, 0), at(site, 12, 1.5, 0), 120);
 					still("structure-gallery-toward-the-rubble");
-					view(2, at(site, 6, 2, 0), at(site, -12, 1.5, 0), 20);
-					still("structure-gallery-quota-board");
-					view(2, at(site, -9.5, 2.2, 0.8), at(site, -12, 0.8, 0), 20);
-					still("structure-gallery-note-n08");
+					// The board is on the near end wall and the rubble at the far end, so stand toward the board's end, in the clear.
+					shoot("structure-gallery-quota-board", 2, at(site, -4, 1.8, 0), at(site, -12.5, 1.8, 0), 20,
+							new Subject("the quota board", state -> state.is(Blocks.CONCRETE.black()), 1.5));
+					shoot("structure-gallery-note-n08", 2, at(site, -9.5, 2.2, 0.8), at(site, -12, 0.8, 0), 20,
+							new Subject("Note N08", state -> state.getBlock() instanceof NoteBlock, 1.5));
 				}
 				case PUNCH_CLOCK -> {
 					view(2, at(site, -7, 3, -7), at(site, 2, 1, 2), 120);
 					still("structure-punch-clock-overview");
-					view(2, at(site, 2, 1.8, -1), at(site, 7.5, 1.5, 0), 20);
-					still("structure-punch-clock-shelves");
-					view(2, at(site, -4, 1.8, 3), at(site, -7, 1.5, 0), 20);
-					still("structure-punch-clock-lit-clock");
+					shoot("structure-punch-clock-shelves", 2, at(site, 2, 1.8, -1), at(site, 7.5, 1.5, 0), 20,
+							new Subject("the shelves", state -> state.is(Blocks.BOOKSHELF), 1.5));
+					// Down the middle of the hall, clear of the stone pillars, at the lit sea lantern above the clock.
+					shoot("structure-punch-clock-lit-clock", 2, at(site, -1, 2.2, 0), at(site, -7, 2.5, 0), 20,
+							new Subject("the lit sea lantern", state -> state.is(Blocks.SEA_LANTERN), 1.5));
 				}
 				case RAILS -> {
 					view(2, at(site, -30, 2, 0), at(site, 30, 1.5, 0), 120);
 					still("structure-rails-long-drift");
-					view(2, at(site, -10, 2, 1.5), at(site, 10, 1, 0), 20);
-					still("structure-rails-timbering");
+					// Head on at a timber set: its two posts and the cap across.
+					shoot("structure-rails-timbering", 2, at(site, -6, 1.7, 0), at(site, 0, 1.7, 0), 20,
+							new Subject("a timber post", state -> state.is(Blocks.OAK_LOG), 2.5));
 				}
 				default -> throw new AssertionError(kind + " has no views in the tour");
 			}
-			System.out.println("design-tour site " + name + " at " + site.origin().toShortString());
 		}
 
 		// The wreck sites: Prospector's wreck, with its lamp and Note N10, and an empty bay.
@@ -907,10 +1008,11 @@ public class DesignTourScenario extends EvidenceScenario {
 		still("structure-wreck-prospector-0002-side");
 		view(2, at(prospector, -5, 2, 0), pod, 20);
 		still("structure-wreck-prospector-0002-back");
-		view(2, at(prospector, -1, 1.8, -3), at(prospector, 3, 0.8, 2), 20);
-		still("structure-wreck-the-lamp");
-		view(2, at(prospector, 1.5, 1.6, 6), at(prospector, 0, 1.2, 4), 20);
-		still("structure-wreck-note-n10-on-the-table");
+		// The burning lamp is the lantern at (3, 2): close, from the side away from the pod, so the pod is not in front of it.
+		shoot("structure-wreck-the-lamp", 2, at(prospector, 5.5, 1.4, 3.8), at(prospector, 3, 0.6, 2), 20,
+				new Subject("the burning lantern", state -> state.is(Blocks.LANTERN), 1.2));
+		shoot("structure-wreck-note-n10-on-the-table", 2, at(prospector, 1.5, 1.6, 6), at(prospector, 0, 1.2, 4), 20,
+				new Subject("Note N10", state -> state.getBlock() instanceof NoteBlock, 1.5));
 		view(2, at(prospector, 4, 6, 4), at(prospector, 0, 0, 0), 20);
 		still("structure-wreck-from-above");
 		serverDo(server -> player(server).removeEffect(MobEffects.NIGHT_VISION));
@@ -958,7 +1060,7 @@ public class DesignTourScenario extends EvidenceScenario {
 			return 0;
 		}
 		int least = 8;
-		for (net.minecraft.core.Direction direction : net.minecraft.core.Direction.values()) {
+		for (Direction direction : Direction.values()) {
 			int free = 0;
 			while (free < least && level.getBlockState(pos.relative(direction, free + 1)).isAir()) {
 				free++;
@@ -1030,7 +1132,6 @@ public class DesignTourScenario extends EvidenceScenario {
 			}
 			ctx.waitTicks(10);
 			screenshot(ctx, "hud-transmission-" + id);
-			stills.add("hud-transmission-" + id);
 			clearTransmissions();
 		}
 	}
@@ -1068,7 +1169,6 @@ public class DesignTourScenario extends EvidenceScenario {
 		});
 		clearTransmissions();
 		screenshot(ctx, stillName);
-		stills.add(stillName);
 	}
 
 	private static ServerPlayer player(MinecraftServer server) {
