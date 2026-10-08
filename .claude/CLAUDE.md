@@ -21,6 +21,8 @@ The user is hands-off on this project except for top-level calls. They don't rea
 
 The lore and creatures sessions are user sessions run from [prompts/](prompts/), with creative liberty and only top-level questions.
 
+Dig mechanics, hazards and their counterplay, pod upgrades and consumables also carry creative liberty. When development uncovers a hazard or gap, turn it into gameplay rather than patching it out or asking. Settled SPEC decisions still go to the user.
+
 ## Backlog and state
 
 - **Durable state:** GitHub Issues and Milestones on `pkeppeler/deepcharter`. Use one issue per PR-sized change. The PR closes its issue.
