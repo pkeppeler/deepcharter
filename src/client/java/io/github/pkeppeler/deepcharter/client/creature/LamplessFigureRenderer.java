@@ -41,6 +41,12 @@ public class LamplessFigureRenderer extends HumanoidMobRenderer<LamplessFigure, 
 		return state.fade > 0 ? RenderTypes.entityTranslucent(TEXTURE) : super.getRenderType(state, bodyVisible, translucent, glowing);
 	}
 
+	/** The shadow goes with the body. */
+	@Override
+	protected float getShadowRadius(LamplessFigureRenderState state) {
+		return super.getShadowRadius(state) * (1f - state.fade);
+	}
+
 	@Override
 	protected int getModelTint(LamplessFigureRenderState state) {
 		return ARGB.white(1f - state.fade);

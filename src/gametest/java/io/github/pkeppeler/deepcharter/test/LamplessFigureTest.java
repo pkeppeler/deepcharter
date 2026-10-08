@@ -2,18 +2,25 @@ package io.github.pkeppeler.deepcharter.test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
@@ -25,6 +32,7 @@ import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.Vec3;
 
+import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
@@ -59,12 +67,19 @@ public class LamplessFigureTest {
 	private static final int QUIET_TICKS = 60;
 	private static final int LIT_LEVEL = 15;
 	private static final int RAIL_SITE_CELL = 9;
-	/** The respawn delay (400), a fade and the checks round it, with a margin. */
-	private static final int RESPAWN_TEST_TICKS = 800;
+	/** The respawn delay (400) twice, two fades, the light going out and the checks round them, with a margin. */
+	private static final int RESPAWN_TEST_TICKS = 1500;
+	/** Ticks a figure has to start fading after a cause: light spreads and a check comes round, both slow on a loaded runner. */
+	private static final int FADE_START_BUDGET_TICKS = 200;
+	/** Ticks a fade, once started, has to end: it counts one a tick whatever the load, so the margin is small. */
+	private static final int FADE_END_BUDGET_TICKS = CreatureTuning.DEFAULT.fadeTicks() + 20;
+	/** Test ticks for a fade test after the chunk is ready: the quiet walk, the start of the fade, the fade (40 ticks), and a margin. */
+	private static final int FADE_TEST_TICKS = QUIET_TICKS + FADE_START_BUDGET_TICKS + 100;
+	/** Ticks a killed or fallen figure has to be gone: the void hurts for 4 a tick and a death takes 20 ticks. */
+	private static final int REMOVAL_TICKS = 100;
+	private static final String MOD_NAMESPACE = "deepcharter";
 
 	private static final CreatureTuning TUNING = CreatureTuning.DEFAULT;
-	/** Ticks from a cause to the end of the figure: the next check, the fade, and a margin. */
-	private static final int FADE_BUDGET_TICKS = TUNING.fadeCheckTicks() + TUNING.fadeTicks() + 10;
 
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + WALK_TICKS + 40)
 	public void itWalksTheRailAndNeverStops(GameTestHelper helper) {
@@ -156,7 +171,81 @@ public class LamplessFigureTest {
 		});
 	}
 
-	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + QUIET_TICKS + 300)
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + REMOVAL_TICKS)
+	public void killRemovesIt(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos origin = slot(7);
+		LamplessFigure[] figure = {null};
+		expectRemovedWithin(helper, () -> figure[0] == null ? null : List.of(figure[0]));
+		FarChunks.awaitEntityTicking(helper, level, origin, () -> {
+			buildCorridor(level, origin);
+			figure[0] = spawnFigure(level, origin, 0, Direction.SOUTH);
+			figure[0].kill(level);
+		});
+	}
+
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + REMOVAL_TICKS)
+	public void fallingOutOfTheWorldRemovesIt(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos origin = slot(8);
+		LamplessFigure[] figure = {null};
+		expectRemovedWithin(helper, () -> figure[0] == null ? null : List.of(figure[0]));
+		FarChunks.awaitEntityTicking(helper, level, origin, () -> {
+			buildCorridor(level, origin);
+			figure[0] = spawnFigure(level, origin, 0, Direction.SOUTH);
+			figure[0].setPos(figure[0].getX(), level.getMinY() - 100, figure[0].getZ());
+		});
+	}
+
+	/**
+	 * The gate for every creature to come: each living entity type of the mod must die to {@code /kill}, which is what keeps a
+	 * creature from being unkillable by a blanket {@code isInvulnerableTo}. A type that cannot be made on its own (its factory gives
+	 * null) and a type that is no living entity are skipped, and the test names them in its log.
+	 */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + REMOVAL_TICKS)
+	public void everyLivingEntityTypeOfTheModDiesToKill(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos origin = slot(9);
+		List<LivingEntity> killed = new ArrayList<>();
+		expectRemovedWithin(helper, () -> killed.isEmpty() ? null : killed);
+		FarChunks.awaitEntityTicking(helper, level, origin, () -> {
+			buildCorridor(level, origin);
+			List<String> skipped = new ArrayList<>();
+			for (EntityType<?> type : BuiltInRegistries.ENTITY_TYPE) {
+				Identifier id = BuiltInRegistries.ENTITY_TYPE.getKey(type);
+				if (!id.getNamespace().equals(MOD_NAMESPACE)) {
+					continue;
+				}
+				Entity entity = type.create(level, EntitySpawnReason.COMMAND);
+				if (!(entity instanceof LivingEntity living)) {
+					skipped.add(id + (entity == null ? " (cannot be created on its own)" : " (not a living entity)"));
+					continue;
+				}
+				living.setPos(Vec3.atBottomCenterOf(origin));
+				level.addFreshEntity(living);
+				living.kill(level);
+				killed.add(living);
+			}
+			DeepCharter.LOGGER.info("everyLivingEntityTypeOfTheModDiesToKill: killed {}, skipped {}", killed, skipped);
+			if (killed.stream().noneMatch(LamplessFigure.class::isInstance)) {
+				throw failure(helper, "the gate did not try the lampless figure; it tried %s", killed);
+			}
+		});
+	}
+
+	@GameTest
+	public void waterDoesNotPushItAndALeadDoesNotHoldIt(GameTestHelper helper) {
+		LamplessFigure figure = CreatureRegistry.LAMPLESS_FIGURE.create(helper.getLevel(), EntitySpawnReason.COMMAND);
+		if (figure.isPushedByFluid()) {
+			throw failure(helper, "water pushes the figure");
+		}
+		if (figure.canBeLeashed()) {
+			throw failure(helper, "the figure can be leashed");
+		}
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + FADE_TEST_TICKS)
 	public void itFadesWhenAPlayerApproachesAndHurtsNobody(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		BlockPos origin = slot(2);
@@ -177,7 +266,7 @@ public class LamplessFigureTest {
 		};
 	}
 
-	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + QUIET_TICKS + 300)
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + FADE_TEST_TICKS)
 	public void itFadesWhenLit(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		BlockPos origin = slot(3);
@@ -189,20 +278,24 @@ public class LamplessFigureTest {
 		});
 	}
 
+	/**
+	 * Runs in the Nether, not layer 2, because the delay after a fade is kept for each level: a fade here would hold back the layer 2
+	 * tests' own spawns. The wiring of {@code tick()} is covered by the layer 2 test below and the delay logic does not look at the
+	 * dimension. The slot is far from every other test's.
+	 */
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + RESPAWN_TEST_TICKS)
-	public void aSiteHoldsOneFigureAndAnotherComesLaterOnTheRail(GameTestHelper helper) {
-		// The Nether, because the delay after a fade is kept for each level and the other tests fade figures in the Overworld.
+	public void aFadeDelaysTheNextFigureUntilTheDelayEndsOrAServerStarts(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel().getServer().getLevel(Level.NETHER);
 		BlockPos origin = slot(4);
 		StructureSite site = new StructureSite(StructureKind.RAILS, origin, true, 4, 0L);
-		LamplessFigure[] first = {null};
+		LamplessFigure[] figure = {null};
 		int[] phase = {0};
 		long[] fadedAt = {0};
 		helper.onEachTick(() -> {
-			if (first[0] == null) {
+			if (figure[0] == null) {
 				return;
 			}
-			if (phase[0] == 0 && first[0].isRemoved()) {
+			if (phase[0] == 0 && figure[0].isRemoved()) {
 				fadedAt[0] = level.getGameTime();
 				if (LamplessFigures.spawnAt(level, site).isPresent()) {
 					throw failure(helper, "a figure was spawned the tick after one faded");
@@ -210,30 +303,87 @@ public class LamplessFigureTest {
 				level.setBlock(origin.above(), light(TUNING.fadeBlockLight() + 3), 3);
 				phase[0] = 1;
 			} else if (phase[0] == 1 && level.getGameTime() - fadedAt[0] > TUNING.respawnDelayTicks() + 5) {
-				LamplessFigure second = LamplessFigures.spawnAt(level, site)
+				figure[0] = LamplessFigures.spawnAt(level, site)
 						.orElseThrow(() -> failure(helper, "no figure came back %d ticks after the first faded", level.getGameTime() - fadedAt[0]));
-				BlockPos feet = second.blockPosition();
-				second.discard();
+				BlockPos feet = figure[0].blockPosition();
 				if (!level.getBlockState(feet).is(BlockTags.RAILS)) {
 					throw failure(helper, "the second figure stands at %s, which is not a rail", feet.toShortString());
 				}
 				if (level.getBrightness(LightLayer.BLOCK, feet) >= TUNING.fadeBlockLight()) {
 					throw failure(helper, "the second figure appeared at %s, where the light is %d", feet.toShortString(), level.getBrightness(LightLayer.BLOCK, feet));
 				}
+				level.setBlock(origin.above(), light(LIT_LEVEL), 3);
+				phase[0] = 2;
+			} else if (phase[0] == 2 && figure[0].isRemoved()) {
+				level.setBlock(origin.above(), Blocks.AIR.defaultBlockState(), 3);
+				phase[0] = 3;
+			} else if (phase[0] == 3 && railsAreDark(level, origin)) {
+				// The light is out, so only the delay of the second fade can hold the next figure back.
+				if (LamplessFigures.spawnAt(level, site).isPresent()) {
+					throw failure(helper, "a figure was spawned in the delay after the second fade");
+				}
+				LamplessFigures.clearFadeDelays();
+				LamplessFigures.spawnAt(level, site).orElseThrow(() -> failure(helper, "no figure was spawned after the fade delays were cleared")).discard();
 				helper.succeed();
 			}
 		});
 		FarChunks.awaitEntityTicking(helper, level, origin, () -> {
 			buildCorridor(level, origin);
-			first[0] = LamplessFigures.spawnAt(level, site).orElseThrow(() -> failure(helper, "no figure was spawned on a rail site"));
-			if (!level.getBlockState(first[0].blockPosition()).is(BlockTags.RAILS)) {
-				throw failure(helper, "the figure stands at %s, which is not a rail", first[0].blockPosition().toShortString());
+			figure[0] = LamplessFigures.spawnAt(level, site).orElseThrow(() -> failure(helper, "no figure was spawned on a rail site"));
+			if (!level.getBlockState(figure[0].blockPosition()).is(BlockTags.RAILS)) {
+				throw failure(helper, "the figure stands at %s, which is not a rail", figure[0].blockPosition().toShortString());
 			}
 			if (LamplessFigures.spawnAt(level, site).isPresent()) {
 				throw failure(helper, "a second figure was spawned on a site that holds one");
 			}
 			level.setBlock(origin.above(), light(LIT_LEVEL), 3);
 		});
+	}
+
+	/** A level holds {@code maxPerLevel} figures however many sites ask. The End has no fades, no tick spawns and no other figure test. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 40)
+	public void aLevelHoldsNoMoreFiguresThanItsCap(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel().getServer().getLevel(Level.END);
+		List<StructureSite> sites = new ArrayList<>();
+		for (int i = 0; i <= TUNING.maxPerLevel(); i++) {
+			sites.add(new StructureSite(StructureKind.RAILS, slot(10 + i), true, 4, 0L));
+		}
+		int[] ready = {0};
+		for (StructureSite site : sites) {
+			FarChunks.awaitEntityTicking(helper, level, site.origin(), () -> {
+				buildCorridor(level, site.origin());
+				if (++ready[0] < sites.size()) {
+					return;
+				}
+				List<LamplessFigure> spawned = new ArrayList<>();
+				for (StructureSite each : sites) {
+					LamplessFigures.spawnAt(level, each).ifPresent(spawned::add);
+				}
+				int inLevel = level.getEntities(CreatureRegistry.LAMPLESS_FIGURE, figure -> true).size();
+				spawned.forEach(LamplessFigure::discard);
+				if (spawned.size() != TUNING.maxPerLevel() || inLevel != TUNING.maxPerLevel()) {
+					throw failure(helper, "%d sites asked: %d figures were spawned and %d stood in the level, not %d",
+							sites.size(), spawned.size(), inLevel, TUNING.maxPerLevel());
+				}
+				helper.succeed();
+			});
+		}
+	}
+
+	@GameTest
+	public void onlyTheRailLevelLooksForSitesAndOnlyOnTheInterval(GameTestHelper helper) {
+		int interval = TUNING.spawnIntervalTicks();
+		for (long time : new long[] {0, interval, 7L * interval}) {
+			expectSpawnTick(helper, LayerChain.dimension(StructureKind.RAILS.layer()), time, true);
+		}
+		for (long time : new long[] {1, interval - 1, interval + 1, 7L * interval + 3}) {
+			expectSpawnTick(helper, LayerChain.dimension(StructureKind.RAILS.layer()), time, false);
+		}
+		for (ResourceKey<Level> other : List.of(Level.OVERWORLD, Level.NETHER, Level.END, LayerChain.dimension(1), LayerChain.dimension(StructureKind.RAILS.layer() + 1))) {
+			expectSpawnTick(helper, other, 0, false);
+			expectSpawnTick(helper, other, interval, false);
+		}
+		helper.succeed();
 	}
 
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 1200)
@@ -273,14 +423,17 @@ public class LamplessFigureTest {
 		});
 	}
 
-	/** A figure that walks undisturbed for {@link #QUIET_TICKS}, then meets a cause, and must fade out and be gone. */
+	/**
+	 * A figure that walks undisturbed for {@link #QUIET_TICKS}, then meets a cause, and must fade out and be gone. The two waits
+	 * are bounded apart: first for the fade to start, whatever the light and the check interval take, then for the fade itself.
+	 */
 	private static final class FadeRun {
 		LamplessFigure figure;
 		ServerPlayer player;
 		Runnable onDone = () -> { };
 		private int ticks;
 		private int causeAt = -1;
-		private boolean seenFading;
+		private int fadingAt = -1;
 
 		void step(GameTestHelper helper, ServerLevel level, Runnable cause) {
 			if (figure == null) {
@@ -298,18 +451,62 @@ public class LamplessFigureTest {
 				cause.run();
 				return;
 			}
-			seenFading |= figure.isFading();
+			if (fadingAt < 0 && figure.isFading()) {
+				fadingAt = ticks;
+			}
 			if (figure.isRemoved()) {
-				if (!seenFading) {
+				if (fadingAt < 0) {
 					throw failure(helper, "the figure vanished without a fade");
 				}
 				onDone.run();
 				helper.succeed();
-			} else if (ticks - causeAt > FADE_BUDGET_TICKS) {
+			} else if (fadingAt < 0 && ticks - causeAt > FADE_START_BUDGET_TICKS) {
 				figure.discard();
-				throw failure(helper, "the figure had not faded %d ticks after the cause (fading: %s)", ticks - causeAt, seenFading);
+				throw failure(helper, "the figure had not started to fade %d ticks after the cause", ticks - causeAt);
+			} else if (fadingAt >= 0 && ticks - fadingAt > FADE_END_BUDGET_TICKS) {
+				figure.discard();
+				throw failure(helper, "the figure was still there %d ticks after it started to fade (%d ticks after the cause)", ticks - fadingAt, ticks - causeAt);
 			}
 		}
+	}
+
+	/**
+	 * Fails unless every entity {@code entities} gives (null while it has none yet) is dead at once and removed within
+	 * {@link #REMOVAL_TICKS}, and succeeds when all are removed.
+	 */
+	private static void expectRemovedWithin(GameTestHelper helper, Supplier<List<? extends LivingEntity>> entities) {
+		int[] since = {-1};
+		helper.onEachTick(() -> {
+			List<? extends LivingEntity> all = entities.get();
+			if (all == null) {
+				return;
+			}
+			if (since[0] < 0) {
+				since[0] = (int) helper.getTick();
+			}
+			if (all.stream().allMatch(Entity::isRemoved)) {
+				helper.succeed();
+			} else if ((int) helper.getTick() - since[0] > REMOVAL_TICKS - 10) {
+				List<? extends LivingEntity> left = all.stream().filter(entity -> !entity.isRemoved()).toList();
+				all.forEach(Entity::discard);
+				throw failure(helper, "%s still there %d ticks after the kill or the fall (health %s)", left, REMOVAL_TICKS - 10, left.stream().map(LivingEntity::getHealth).toList());
+			}
+		});
+	}
+
+	private static void expectSpawnTick(GameTestHelper helper, ResourceKey<Level> dimension, long gameTime, boolean expected) {
+		if (LamplessFigures.isSpawnTick(dimension, gameTime) != expected) {
+			throw failure(helper, "%s at game time %d: a spawn tick should be %s", dimension.identifier(), gameTime, expected);
+		}
+	}
+
+	private static boolean railsAreDark(ServerLevel level, BlockPos origin) {
+		for (int u = -HALF; u <= HALF; u++) {
+			if (level.getBrightness(LightLayer.BLOCK, origin.offset(0, 0, u)) >= TUNING.fadeBlockLight()) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	private static List<? extends LamplessFigure> figuresIn(ServerLevel level, StructureSite site) {

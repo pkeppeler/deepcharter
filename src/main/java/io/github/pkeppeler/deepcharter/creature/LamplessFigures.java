@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -38,7 +37,11 @@ import io.github.pkeppeler.deepcharter.layer.StructureSite;
  * {@link CreatureTuning#respawnDelayTicks} after the last one faded. Nothing is saved: a figure is made from the rails as they stand.
  */
 public final class LamplessFigures {
-	private static final AtomicBoolean LOGGED_FAILURE = new AtomicBoolean();
+	/** The rail level, kept so that a tick does not build the key again. */
+	private static final ResourceKey<Level> RAIL_LEVEL = LayerChain.dimension(StructureKind.RAILS.layer());
+
+	/** The failures already logged, each as a level and an exception class, so that a later and different one is not silent. Server thread only. */
+	private static final Set<String> LOGGED_FAILURES = new HashSet<>();
 
 	/** Game time at which the last figure of each level faded. Server thread only. */
 	private static final Map<ResourceKey<Level>, Long> LAST_FADE = new HashMap<>();
@@ -47,18 +50,27 @@ public final class LamplessFigures {
 	}
 
 	public static void init() {
-		ServerLifecycleEvents.SERVER_STARTING.register(server -> LAST_FADE.clear());
+		ServerLifecycleEvents.SERVER_STARTING.register(server -> clearFadeDelays());
 		ServerTickEvents.END_LEVEL_TICK.register(LamplessFigures::tick);
+	}
+
+	/** Forgets when figures last faded, as a new server does: the game time of the last one means nothing to it. */
+	public static void clearFadeDelays() {
+		LAST_FADE.clear();
+	}
+
+	/** Whether a level looks for sites to put a figure on at this game time: the rail level, every {@link CreatureTuning#spawnIntervalTicks}. */
+	public static boolean isSpawnTick(ResourceKey<Level> dimension, long gameTime) {
+		return dimension.equals(RAIL_LEVEL) && gameTime % CreatureTuning.DEFAULT.spawnIntervalTicks() == 0;
 	}
 
 	static void faded(ServerLevel level) {
 		LAST_FADE.put(level.dimension(), level.getGameTime());
 	}
 
-	/** A tick path: it logs a failure once and carries on. */
+	/** A tick path: it logs each kind of failure once for a level and carries on. */
 	private static void tick(ServerLevel level) {
-		if (!level.dimension().equals(LayerChain.dimension(StructureKind.RAILS.layer()))
-				|| level.getGameTime() % CreatureTuning.DEFAULT.spawnIntervalTicks() != 0) {
+		if (!isSpawnTick(level.dimension(), level.getGameTime())) {
 			return;
 		}
 		try {
@@ -75,7 +87,7 @@ public final class LamplessFigures {
 				}
 			}
 		} catch (RuntimeException e) {
-			if (LOGGED_FAILURE.compareAndSet(false, true)) {
+			if (LOGGED_FAILURES.add(level.dimension().identifier() + " " + e.getClass().getName())) {
 				DeepCharter.LOGGER.error("Spawning the lampless figure failed in {}; this and later spawns may not happen", level.dimension().identifier(), e);
 			}
 		}

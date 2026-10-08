@@ -5,6 +5,7 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.EntityType;
@@ -77,10 +78,20 @@ public class LamplessFigure extends PathfinderMob {
 		return level.getNearestPlayer(getX(), getY(), getZ(), tuning.approachBlocks(), EntitySelector.NO_SPECTATORS) != null;
 	}
 
-	/** Nothing hurts it, a fall and an explosion included; the void and /kill still remove it. */
+	/** Nothing hurts it, a fall and an explosion included; only what bypasses invulnerability does: the void and /kill. */
 	@Override
 	public boolean isInvulnerableTo(ServerLevel level, DamageSource source) {
-		return true;
+		return !source.is(DamageTypeTags.BYPASSES_INVULNERABILITY);
+	}
+
+	@Override
+	public boolean canBeLeashed() {
+		return false;
+	}
+
+	@Override
+	public boolean isPushedByFluid() {
+		return false;
 	}
 
 	@Override
