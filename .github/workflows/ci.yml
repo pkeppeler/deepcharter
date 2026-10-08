@@ -36,6 +36,11 @@ jobs:
         with:
           cache-read-only: false
       - run: ./gradlew build
+      # The client run tasks never run on Linux. A dry run with the lock forced on still checks that
+      # they serialize into the configuration cache (gradle/clientlock.gradle).
+      - run: ./gradlew runClient runClientGameTest runPlay --dry-run --configuration-cache
+        env:
+          DEEPCHARTER_CLIENT_LOCK: "1"
 
   tool-tests:
     name: tool-tests

@@ -51,6 +51,7 @@ dependencies {
 
 apply from: "gradle/lang.gradle"
 apply from: "gradle/gametest.gradle"
+apply from: "gradle/clientlock.gradle"
 
 processResources {
 	def version = project.version
