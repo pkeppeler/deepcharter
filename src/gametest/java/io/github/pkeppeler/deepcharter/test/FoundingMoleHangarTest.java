@@ -579,6 +579,23 @@ public class FoundingMoleHangarTest {
 	}
 
 	@GameTest(maxTicks = MAX_TICKS)
+	public void aHangarSavedBeforeTheAdvanceLoadsAsNothingUsed(GameTestHelper helper) {
+		inTheHangar(helper, before -> {
+			CharterId charter = charterOf(helper, member(helper, "Old Save")).id();
+			HangarData current = foundedHangar();
+			current.spendAdvance(charter, 3);
+			CompoundTag saved = ((CompoundTag) HangarData.CODEC.encodeStart(NbtOps.INSTANCE, current).getOrThrow()).copy();
+			expect(helper, saved.contains("advanced"), "the current format writes the advance, so removing it makes the old one: %s", saved);
+			// The format before PR 269: the same record, version 1, with no advanced field.
+			saved.remove("advanced");
+			HangarData loaded = HangarData.CODEC.parse(NbtOps.INSTANCE, saved).getOrThrow();
+			expect(helper, loaded.isReadable() && loaded.state().founded() && loaded.state().advanced().isEmpty() && loaded.advanceSpent(charter) == 0,
+					"a hangar saved with no advanced field loads readable, with its other fields, and nothing used: %s", loaded.isReadable() ? loaded.state() : "unreadable");
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
 	public void unreadableDataIsLoggedOnceAndSkippedWithoutThrowing(GameTestHelper helper) {
 		inTheHangar(helper, before -> withFreshWorld(helper, () -> {
 			MinecraftServer server = server(helper);

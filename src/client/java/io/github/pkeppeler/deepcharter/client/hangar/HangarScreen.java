@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.client.hangar;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Stream;
 
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 
@@ -23,6 +24,7 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
+import io.github.pkeppeler.deepcharter.hangar.HangarView;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
@@ -46,6 +48,7 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 
 	private TerminalView view;
 	private List<PriceLine> priceLines = List.of();
+	private List<PriceLine> advanceLines = List.of();
 	private final Typewriter typewriter;
 
 	public HangarScreen(TerminalView view) {
@@ -80,17 +83,17 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 		HangarTuning.RestoreCost mole = tuning.restoreCost(Chassis.MOLE);
 		HangarTuning.RestoreCost prospector = tuning.restoreCost(Chassis.PROSPECTOR);
 		String prices = Component.translatable("screen.deepcharter.hangar.restore_prices", mole.money(), mole.catalysts(),
-				prospector.money(), prospector.catalysts(), catalyst).getString()
-				+ " " + Component.translatable("screen.deepcharter.hangar.advance", prospector.advance(), catalyst).getString();
-		List<String> wrapped = font.getSplitter().splitLines(FormattedText.of(prices), width - 2 * MARGIN, Style.EMPTY)
-				.stream().map(FormattedText::getString).toList();
+				prospector.money(), prospector.catalysts(), catalyst).getString();
+		// The advance is a sentence of its own under the prices, and shows only while the charter has some of it left.
+		int advanceLeft = view.feature(HangarView.class).map(HangarView::advanceLeft).orElse(0);
+		List<String> advance = advanceLeft > 0
+				? wrap(Component.translatable("screen.deepcharter.hangar.advance", advanceLeft, catalyst).getString())
+				: List.of();
+		List<String> wrapped = wrap(prices);
 		int lineHeight = font.lineHeight + CrtTuning.current().lineSpacing();
-		int pricesY = closeY - GAP - wrapped.size() * lineHeight;
-		List<PriceLine> lines = new ArrayList<>();
-		for (int i = 0; i < wrapped.size(); i++) {
-			lines.add(new PriceLine(wrapped.get(i), MARGIN, pricesY + i * lineHeight));
-		}
-		priceLines = List.copyOf(lines);
+		int pricesY = closeY - GAP - (wrapped.size() + advance.size()) * lineHeight;
+		priceLines = placed(wrapped, pricesY, lineHeight);
+		advanceLines = placed(advance, pricesY + wrapped.size() * lineHeight, lineHeight);
 		int restoreY = pricesY - GAP - BUTTON_HEIGHT;
 		int buyY = restoreY - GAP - BUTTON_HEIGHT;
 		addRenderableWidget(new CrtButton(MARGIN, buyY, BUTTON_WIDTH, BUTTON_HEIGHT,
@@ -99,6 +102,18 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 		// The wreck the server restores is the nearest one, so the lines under the button name the price of each chassis.
 		addRenderableWidget(new CrtButton(MARGIN, restoreY, BUTTON_WIDTH, BUTTON_HEIGHT,
 				Component.translatable("screen.deepcharter.hangar.restore"), button -> send(HangarTerminal.RESTORE_WRECK)));
+	}
+
+	private List<String> wrap(String text) {
+		return font.getSplitter().splitLines(FormattedText.of(text), width - 2 * MARGIN, Style.EMPTY).stream().map(FormattedText::getString).toList();
+	}
+
+	private static List<PriceLine> placed(List<String> lines, int y, int lineHeight) {
+		List<PriceLine> placed = new ArrayList<>();
+		for (int i = 0; i < lines.size(); i++) {
+			placed.add(new PriceLine(lines.get(i), MARGIN, y + i * lineHeight));
+		}
+		return List.copyOf(placed);
 	}
 
 	/** The y below the header text once the welcome has typed out in full: the welcome lines, then the account line. */
@@ -111,6 +126,11 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 	/** The restore prices as drawn, one entry per wrapped line. */
 	public List<PriceLine> priceLines() {
 		return priceLines;
+	}
+
+	/** The line of the Company's advance as drawn, one entry per wrapped line; empty once the charter's advance is used. */
+	public List<PriceLine> advanceLines() {
+		return advanceLines;
 	}
 
 	private void send(Identifier action) {
@@ -126,7 +146,7 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 				.map(charter -> Component.translatable("screen.deepcharter.terminal.account", charter.balance()).getString())
 				.orElse("");
 		CrtDraw.glowText(graphics, font, account, MARGIN, below + GAP, tuning.phosphorColor());
-		for (PriceLine line : priceLines) {
+		for (PriceLine line : Stream.concat(priceLines.stream(), advanceLines.stream()).toList()) {
 			CrtDraw.glowText(graphics, font, line.text(), line.x(), line.y(), tuning.phosphorColor());
 		}
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
