@@ -6,7 +6,7 @@ Every visual is a drop-in skin ([#226](https://github.com/pkeppeler/deepcharter/
 
 ## The vision
 
-*Prosperity at dusk.* A rust-red world that is never named. (The lore's guardrail: it may look like Mars, but it is never called Mars.) Bare regolith, craters and terraced mesas under a sky that swings slowly between a Mars-style dusk and deep night, and never reaches full day. There is no grass, no tree, no animal and no water.
+*Prosperity at dusk.* A rust-red world that is never named. (The lore's guardrail: it may look like Mars, but it is never called Mars.) Bare regolith, craters and terraced mesas under a sky that swings slowly between a Mars-style dusk and deep night, and never reaches full day. There is no grass, no tree, no animal and no water. The one living thing is the hardy fungus of the bootstrap (section 11).
 
 In the middle of it sits a small Company town: roofed, signed prefabs of riveted steel under sodium lamps, with a headframe 40 to 60 blocks tall and a giant bronze Founder statue over the Conduit. The town is cheerful, gaudy and a little too clean. Under it, a black hole goes down forever.
 
@@ -20,6 +20,8 @@ Light tells the story. There are three kinds:
 
 Rules for all areas:
 
+- **Quiet faith (lore guardrail):** the chapel's one candle is the only white light in town, and dread is absence (made-up bunks, a lamp lit in an empty cab), never gore.
+
 - **Silhouettes** are big, simple and readable. Detail goes into texture and light, not into tiny geometry.
 - **Materials** are worn industrial: riveted plate, brass, cast iron, rubber, caged lamps, enamel signs, rust at the rivets, dust against every wall.
 - **Scale** is small people and pods in very large spaces, with a few huge landmarks.
@@ -30,12 +32,14 @@ Rules for all areas:
 - **Decision:** a slow dusk-to-night cycle that never reaches full day. The sky swings between a Mars-style dusk and deep night over real-time hours. The gameplay day and night clock keeps running underneath. Fix the square vanilla sun with a small round one, and the over-wide sun glow with a narrower, fainter one.
 - **Material, palette, silhouette:** butterscotch to rust to maroon sky, a pale-blue glow close round a small low sun, dust haze at the horizon, no clouds. At the dark end: near-black with hard stars and a small moon.
 - **Tools:** vanilla 26.3 timelines and environment attributes (tooling-options "Atmosphere"); a texture swap for the sun. Optional later: Nuit for a sister planet.
+- **Dust:** drifting dust is an `ambient_particles` attribute with a dust particle of our own.
 - **Skin and data:** `data/deepcharter/timeline/*.json` plus the `in_overworld` tag; `assets/minecraft/textures/environment/celestial/sun.png`. Sky data is server data and needs a world reopen. Tryout sources: `docs/design/tryouts/`.
 - **Not chosen:** a fixed dusk (no rhythm), eternal night (too hard to read the terrain), `has_fixed_time` (freezes gameplay time and breaks beds).
 
 ## 2. Surface
 
 - **Decision:** regolith plains, craters and terraced mesas, from our own generator. No living flora or fauna, no water.
+- **Living things:** none, except the bootstrap's gatherable fungal stalks (section 11). They are the same prop as the "dry white stalks" below: pale, hardy and dead-looking, and they can be gathered.
 - **Limits (ADR 0029):** about one material-rule condition per block, no sea and no aquifers, and every feature is measured against the 1.15x per-column bar.
 - **Material, palette, silhouette:** iron-oxide reds and ochres, dust beige, black basalt outcrops. Low contrast, so the land stays behind everything else. Long flat horizons broken by mesas and crater rims. Dead props only (survey stakes, dry white stalks, a fallen mast), each one measured.
 - **Tools:** vanilla worldgen JSON with density functions (`distance_to_point` for craters, `floor` and `round` for terraces) and weighted block-model variants (tooling-options "Surface").
@@ -70,7 +74,7 @@ Rules for all areas:
 ## 6. Layers 1 and 2
 
 - **Decision:** the original game's depth-band fog colours, darkened, with near-black ambient light and lamp tint doing the rest. Grades differ by place, never one grade everywhere.
-- **Material, palette, silhouette:** layer 1 fog brown going black, layer 2 a near-black green, dust in the lamp light. Own rock per layer: rust-brown packed regolith going to dark shale, then grey-green shale scarred by old workings. Company infrastructure and miners' traces as dressing.
+- **Material, palette, silhouette:** layer 1 fog brown going black, layer 2 a near-black green, dust in the lamp light. Own rock per layer: rust-brown packed regolith going to dark shale, then grey-green shale scarred by old workings. Company infrastructure and miners' traces as dressing. Company Rock becomes a basalt plug or stencilled Company concrete that belongs in rock, lava becomes flows and falls instead of single cubes, and the breach crust becomes a cracked, layered crust.
 - **Tools:** biome attributes (`fog_color`, `ambient_light_color`, `block_light_tint`), vanilla post effects for the per-layer grade, added when a player crosses a breach.
 - **Skin and data:** `data/deepcharter/worldgen/biome/*.json`, `assets/deepcharter/post_effect/*.json`, `shaders/post/*.fsh`.
 - **Not chosen:** pure black everywhere (layers lose their identity). The anatomy palette (the lore's hidden reading) stays a texture detail at most.
@@ -113,7 +117,7 @@ Rules for all areas:
 
 ## 11. Bootstrap
 
-- **Decision (replaces SPEC section 4's "start like normal Minecraft"):** colony salvage plus fungal "wood". Salvage crates and wrecked prefabs supply wood, cloth and scrap. Crates are littered around the colony within a set block radius, not only at it. Hardy alien fungus stalks in craters and caves are gatherable stand-ins for trees. They are surface features, so their cost is measured.
+- **Decision (replaces SPEC section 4's "start like normal Minecraft"):** colony salvage plus fungal "wood". Salvage crates and wrecked prefabs supply wood, cloth and scrap. Crates are littered around the colony within a set block radius, not only at it. Hardy alien fungus stalks in craters and caves are gatherable stand-ins for trees. Fungal stalks and scattered salvage crates are surface features, measured against ADR 0029's 1.15× bar.
 - **Material, palette, silhouette:** crates stencilled with the Company mark; pale, hardy stalks that look like they should not grow here.
 - **Tools:** loot tables, worldgen features, handbook chapter data.
 - **Skin and data:** `data/deepcharter/loot_table/**`, `data/deepcharter/worldgen/**`, `data/deepcharter/handbook/**` (chapter 1 directives change).
@@ -125,7 +129,7 @@ Milestone "Art direction overhaul (before M3)". Skins first.
 
 | Order | Issue | Area | Depends on |
 |---|---|---|---|
-| 0 | [#226](https://github.com/pkeppeler/deepcharter/issues/226) Skinnable visuals | all | none |
+| 0 | [#226](https://github.com/pkeppeler/deepcharter/issues/226) Skinnable visuals | all | PR 227 merging (design-tour) |
 | 1 | [#239](https://github.com/pkeppeler/deepcharter/issues/239) Dusk-to-night sky timeline and a round sun | 1 | #226 |
 | 2 | [#240](https://github.com/pkeppeler/deepcharter/issues/240) Regolith surface generator | 2 | #226 |
 | 3 | [#241](https://github.com/pkeppeler/deepcharter/issues/241) Layer 1 and 2 depth palettes and grades | 6 | #226, #240 |
@@ -139,8 +143,17 @@ Milestone "Art direction overhaul (before M3)". Skins first.
 | 11 | [#249](https://github.com/pkeppeler/deepcharter/issues/249) Sound drones and the Lamp Hymn | 9 | #226, #241 |
 | 12 | [#250](https://github.com/pkeppeler/deepcharter/issues/250) Lampless figure model | 10 | #226, #242 |
 
-Each issue closes with a before/after demo from the `design-tour` scenario (PR #227).
+Each issue closes with a before/after demo from the `design-tour` scenario, which arrives with PR 227 (still open when this was written).
 
-## Decisions that moved a settled line
+## Settled lines this changed
 
 SPEC sections 2, 3, 4 and 15 changed in PR #234, and [ADR 0030](../adr/0030-art-direction-decisions.md) records the hard-to-reverse calls.
+
+- **Section 3, "vanilla-style frontier":** replaced by our own bare regolith surface.
+- **Section 3, trees and animals:** removed. The surface has no trees and no animals.
+- **Section 3, "vanilla night monsters":** removed from the SPEC. The creatures session replaces them; until then the surface has none.
+- **Section 3, "vanilla ores near the surface for the bootstrap":** removed. Early ore access (iron and the like) is decided with the bootstrap in [#245](https://github.com/pkeppeler/deepcharter/issues/245).
+- **Section 4, "start like normal Minecraft":** replaced by salvage plus fungal wood.
+- **Section 15, "consistent with vanilla (16×)":** now 16× with GTNH-style layers.
+- **Section 15, "AI-assisted, with the user curating":** now spelled out (AI images allowed, curated, with disclosure).
+- **Section 2, distribution:** adds recommended optional client mods.

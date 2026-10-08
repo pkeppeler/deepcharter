@@ -1,5 +1,7 @@
 # Design overhaul 3: art direction options
 
+> Superseded by [art-direction.md](art-direction.md); this is the options record.
+
 Issue [#225](https://github.com/pkeppeler/deepcharter/issues/225), 2026-10-08. A fresh-eyes critique of the game as it looks today, a target look in words, and options for each area, for the user to decide. When the user decides, the chosen direction is added to this document and becomes the brief for the implementation issues.
 
 **Inputs:** the catalogue of every asset as seen in the game ([current-state.md](current-state.md), PR #227, 144 stills), the tooling research ([tooling-options.md](tooling-options.md), PR #228), the lore canon ([LORE.md](../LORE.md), PR #34), [SPEC](../SPEC.md) and [ADR 0029](../adr/0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md) (one tall campaign world, PR #219). The original game was studied privately from the local export; no file of it is copied, traced or linked here. Every image on this page is our own, shot in our game.

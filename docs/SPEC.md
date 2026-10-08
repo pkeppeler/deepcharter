@@ -29,7 +29,7 @@ Pillars, ranked. The higher one wins a conflict.
 
 ### Surface and colony
 
-- **Surface:** our own regolith plains, craters and terraced mesas, under a slow dusk-to-night sky that never reaches full day (PR #234, [art direction](design/art-direction.md), [ADR 0030](adr/0030-art-direction-decisions.md)). It is dry and bare: no sea, no grass, no trees, no animals, no vanilla night mobs, within the tall-world limits of [ADR 0029](adr/0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md). Its creatures belong to the creatures session. No villages or settlements besides the colony. No Nether or End; the depths replace them.
+- **Surface:** our own regolith plains, craters and terraced mesas, under a slow dusk-to-night sky that never reaches full day (PR #234, [art direction](design/art-direction.md), [ADR 0030](adr/0030-art-direction-decisions.md)). It is dry and bare: no sea, no grass, no trees, no animals, within the tall-world limits of [ADR 0029](adr/0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md). Vanilla night monsters are replaced by the creatures session's work; until then the surface has none. Early ore access (iron and the like) is decided with the bootstrap in [#245](https://github.com/pkeppeler/deepcharter/issues/245). No villages or settlements besides the colony. No Nether or End; the depths replace them.
 - **Never called Mars:** the world may look like Mars, but the game never calls it Mars (lore guardrail).
 - **Colony:** one derelict mining colony per world, at spawn. Its terminals are repaired once per world: when any charter fixes one, every charter can use it.
 - **Width:** unlimited, no border.
