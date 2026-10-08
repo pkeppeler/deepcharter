@@ -24,7 +24,7 @@ body=$(
 )
 
 existing=$(gh api --paginate "repos/${repo}/issues/${pr}/comments" \
-  --jq ".[] | select(.body | startswith(\"${marker}\")) | .id" | awk 'NR == 1')
+  --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"${marker}\"))) | .id" | awk 'NR == 1')
 
 if [[ -n $existing ]]; then
   gh api --method PATCH "repos/${repo}/issues/comments/${existing}" -f body="$body" >/dev/null

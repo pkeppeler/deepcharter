@@ -1,7 +1,7 @@
 # Runs the client GameTests headless on a Linux runner. Shared by client-tests.yml (all
 # tests) and record-evidence.yml (one evidence scenario). The caller checks out the repo
-# first; this action does the rest. Composite steps take no timeout, so the caller's job
-# timeout is the only one.
+# first; this action does the rest. Composite steps take no timeout, so the run step
+# enforces its own 15 minute deadline.
 name: Client GameTests
 description: Headless client GameTests on a Linux runner, optionally selecting one evidence scenario.
 
@@ -70,6 +70,9 @@ runs:
         while kill -0 "$gradle_pid" 2>/dev/null; do
           if grep -q 'Failed to create backend' "$log"; then
             stop_gradle "Minecraft could not create a graphics backend"
+          fi
+          if [ "$SECONDS" -ge 900 ]; then
+            stop_gradle "Client GameTests exceeded 15 minutes"
           fi
           if [ "$SECONDS" -ge "$deadline" ] \
             && ! grep -q 'Created window using SDL video driver' "$log"; then

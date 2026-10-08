@@ -145,11 +145,24 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          shopt -s nullglob
-          files=(evidence/screenshots/*.png evidence/*.gif evidence/*.mp4)
-          if (( ${#files[@]} == 0 )); then
+          # Find the media wherever upload-artifact put it: with no GIF or MP4 the common
+          # ancestor is screenshots/, so the PNGs land at the artifact root.
+          mapfile -t found < <(find evidence -type f \( -name '*.png' -o -name '*.gif' -o -name '*.mp4' \) | sort)
+          if (( ${#found[@]} == 0 )); then
             echo "::error::The artifact holds no media"
             exit 1
           fi
+          # Stills get the scenario as a prefix so two scenarios on one PR cannot collide.
+          mkdir publish
+          files=()
+          for f in "${found[@]}"; do
+            name=$(basename "$f")
+            case $name in
+              "$SCENARIO".*|"$SCENARIO"-*) ;;
+              *) name="$SCENARIO-$name" ;;
+            esac
+            cp "$f" "publish/$name"
+            files+=("publish/$name")
+          done
           tools/pr-media.sh "$PR" "${files[@]}" > snippet.md
           tools/ci-evidence-comment.sh "$PR" "$SCENARIO" snippet.md
