@@ -74,8 +74,6 @@ public class PodComponentsClientTest implements FabricClientGameTest {
 			if (maxHull != HULL_MAX) {
 				throw new AssertionError("The client should work out the pod's maximum hull " + HULL_MAX + " from the synced parts, got " + maxHull);
 			}
-			// The pod's entity data and its attachments reach the client in separate packets; wait for the hull.
-			context.waitFor(client -> ((PodEntity) client.player.getVehicle()).hull() == HULL_NOW);
 			List<Component> lines = context.computeOnClient(client -> PodStatusHud.lines((PodEntity) client.player.getVehicle()));
 			if (!lines.getFirst().getString().equals("Hull 150/300")) {
 				throw new AssertionError("The HUD should show the hull as 150/300, showed " + lines.getFirst().getString());
