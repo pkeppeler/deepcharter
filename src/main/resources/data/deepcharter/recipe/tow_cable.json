@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "I I",
+    "ILI",
+    "I I"
+  ],
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "L": "minecraft:lead"
+  },
+  "result": {
+    "id": "deepcharter:tow_cable",
+    "count": 1
+  }
+}
