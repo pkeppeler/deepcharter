@@ -34,7 +34,8 @@ public final class ClientPacks {
 			}
 			return Minecraft.getInstance().reloadResourcePacks();
 		});
-		context.waitFor(client -> reload.isDone());
+		// The reload overlay fades out after the reload is done; a still taken before that shows the loading logo.
+		context.waitFor(client -> reload.isDone() && client.gui.overlay() == null);
 		reload.join();
 	}
 }
