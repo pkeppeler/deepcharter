@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.CharterView;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
 /**
@@ -43,16 +44,16 @@ public class CharterCoreClientTest implements FabricClientGameTest {
 				}
 				Charters.deposit(server, Charters.charterOfOrThrow(server, player).orElseThrow().id(), FIRST_BALANCE);
 			});
-			context.waitFor(client -> ClientCharter.view().filter(view -> view.name().equals(NAME) && view.balance() == FIRST_BALANCE).isPresent());
+			ClientWait.until(context, "the founded charter at its first balance", client -> ClientCharter.view().filter(view -> view.name().equals(NAME) && view.balance() == FIRST_BALANCE).isPresent(), client -> "charter " + ClientCharter.view());
 
 			singleplayer.getServer().runOnServer(server -> {
 				UUID player = server.getPlayerList().getPlayers().getFirst().getUUID();
 				Charters.spend(server, Charters.charterOfOrThrow(server, player).orElseThrow().id(), FIRST_BALANCE - SECOND_BALANCE);
 			});
-			context.waitFor(client -> ClientCharter.view().map(CharterView::balance).equals(Optional.of(SECOND_BALANCE)));
+			ClientWait.until(context, "the second balance", client -> ClientCharter.view().map(CharterView::balance).equals(Optional.of(SECOND_BALANCE)), client -> "charter " + ClientCharter.view());
 
 			singleplayer.getServer().runOnServer(server -> Charters.leave(server, server.getPlayerList().getPlayers().getFirst().getUUID()));
-			context.waitFor(client -> ClientCharter.view().isEmpty());
+			ClientWait.until(context, "the charter gone", client -> ClientCharter.view().isEmpty(), client -> "charter " + ClientCharter.view());
 		}
 	}
 
@@ -77,17 +78,17 @@ public class CharterCoreClientTest implements FabricClientGameTest {
 					throw new AssertionError("applying and approving should succeed");
 				}
 			});
-			context.waitFor(client -> ClientCharter.view().filter(view -> view.name().equals(TWO_PLAYER_NAME) && view.people() == 2 && !view.director()).isPresent());
+			ClientWait.until(context, "the two-person charter", client -> ClientCharter.view().filter(view -> view.name().equals(TWO_PLAYER_NAME) && view.people() == 2 && !view.director()).isPresent(), client -> "charter " + ClientCharter.view());
 
 			two.server().runOnServer(server -> {
 				if (Charters.leave(server, mock).isPresent()) {
 					throw new AssertionError("the Director leaving should succeed");
 				}
 			});
-			context.waitFor(client -> ClientCharter.view().filter(view -> view.people() == 1 && view.director()).isPresent());
+			ClientWait.until(context, "the charter down to one person with the director", client -> ClientCharter.view().filter(view -> view.people() == 1 && view.director()).isPresent(), client -> "charter " + ClientCharter.view());
 
 			two.connection().close();
-			context.waitFor(client -> client.level == null);
+			ClientWait.until(context, "the client out of the world", client -> client.level == null);
 			for (int tick = 0; two.server().computeOnServer(server -> server.getPlayerCount()) > MOCK_ONLY; tick++) {
 				if (tick > CLIENT_TICK_FUSE) {
 					throw new AssertionError("the server never dropped the disconnected client");
@@ -95,7 +96,7 @@ public class CharterCoreClientTest implements FabricClientGameTest {
 				context.waitTick();
 			}
 			try (var connection = two.server().connect()) {
-				context.waitFor(client -> ClientCharter.view().filter(view -> view.name().equals(TWO_PLAYER_NAME) && view.director()).isPresent());
+				ClientWait.until(context, "the two-person charter led by the director", client -> ClientCharter.view().filter(view -> view.name().equals(TWO_PLAYER_NAME) && view.director()).isPresent(), client -> "charter " + ClientCharter.view());
 			}
 		}
 	}

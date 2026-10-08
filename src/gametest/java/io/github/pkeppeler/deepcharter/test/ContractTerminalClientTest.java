@@ -21,6 +21,7 @@ import io.github.pkeppeler.deepcharter.charter.terminal.ContractState.Role;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.client.charter.terminal.ContractScreen;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
 /**
@@ -32,7 +33,6 @@ import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 public class ContractTerminalClientTest implements FabricClientGameTest {
 	private static final String CHARTER = "Riggs and Sons";
 	private static final String MOCK_NAME = "MockPilot";
-	private static final int WAIT_TICKS = 200;
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
@@ -65,12 +65,12 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
 
 	private static ContractScreen open(ClientGameTestContext context, BlockPos terminal) {
 		context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(terminal)));
-		context.waitForScreen(ContractScreen.class);
+		ClientWait.screen(context, ContractScreen.class);
 		return context.computeOnClient(client -> (ContractScreen) client.gui.screen());
 	}
 
 	private static void awaitState(ClientGameTestContext context, Predicate<ContractState> wanted) {
-		context.waitFor(client -> client.gui.screen() instanceof ContractScreen open && open.state().filter(wanted).isPresent(), WAIT_TICKS);
+		ClientWait.until(context, "the contract screen in the wanted state", client -> client.gui.screen() instanceof ContractScreen open && open.state().filter(wanted).isPresent());
 	}
 
 	private static ContractScreen screen(ClientGameTestContext context) {

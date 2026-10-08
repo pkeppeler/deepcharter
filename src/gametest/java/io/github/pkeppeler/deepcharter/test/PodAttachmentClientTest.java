@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TestAttachments;
 import io.github.pkeppeler.deepcharter.test.support.TestAttachments.Example;
 
@@ -18,12 +19,12 @@ public class PodAttachmentClientTest implements FabricClientGameTest {
 		ClientTestLog.start(this);
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			PodShellClientTest.mountFirstPlayer(singleplayer.getServer());
-			context.waitFor(client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
+			ClientWait.until(context, "the client riding a pod", client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
 			singleplayer.getServer().runOnServer(server -> Versioned.modifyOrThrow(
 					server.getPlayerList().getPlayers().getFirst().getVehicle(), TestAttachments.EXAMPLE, example -> new Example(COUNTER)));
 
-			context.waitFor(client -> client.player.getVehicle() != null
-					&& Versioned.of(new Example(COUNTER)).equals(client.player.getVehicle().getAttached(TestAttachments.EXAMPLE)));
+			ClientWait.until(context, "the vehicle's example attachment at the counter", client -> client.player.getVehicle() != null
+					&& Versioned.of(new Example(COUNTER)).equals(client.player.getVehicle().getAttached(TestAttachments.EXAMPLE)), client -> "vehicle attachment " + (client.player.getVehicle() == null ? "none" : client.player.getVehicle().getAttached(TestAttachments.EXAMPLE)));
 		}
 	}
 }

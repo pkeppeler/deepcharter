@@ -24,6 +24,7 @@ import io.github.pkeppeler.deepcharter.client.theme.TransmissionLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDemoScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 
@@ -85,9 +86,9 @@ public class UiThemeClientTest implements FabricClientGameTest {
 	/** The body text, the field text, the header and the buttons of an open CRT screen all turn amber, none stays green. */
 	private static void aScreenThatIsOpenFollowsAReload(ClientGameTestContext context) {
 		context.setScreen(CrtDemoScreen::new);
-		context.waitForScreen(CrtDemoScreen.class);
+		ClientWait.screen(context, CrtDemoScreen.class);
 		CrtDemoScreen screen = context.computeOnClient(client -> (CrtDemoScreen) client.gui.screen());
-		context.waitFor(client -> screen.typewriter().done());
+		ClientWait.until(context, "the demo screen finished typing", client -> screen.typewriter().done(), client -> "typewriter text '" + screen.typewriter().text() + "'");
 		context.runOnClient(client -> "RIGGS".chars().forEach(c -> screen.charTyped(new CharacterEvent(c))));
 		context.waitTicks(15);
 		int greenBefore = pixelsOf(context, "ui-theme-open-before", GREEN);
@@ -112,7 +113,7 @@ public class UiThemeClientTest implements FabricClientGameTest {
 	/** The handbook's ink turns red on an open sheet. */
 	private static void theHandbookThatIsOpenFollowsAReload(ClientGameTestContext context) {
 		context.setScreen(() -> new HandbookScreen(List.of(new HandbookPage.Cover()), id -> true, id -> { }, List.of()));
-		context.waitForScreen(HandbookScreen.class);
+		ClientWait.screen(context, HandbookScreen.class);
 		context.waitTicks(10);
 		int inkBefore = pixelsOf(context, "ui-theme-handbook-before", 0x1B2A4E);
 		int redBefore = pixelsOf(context, "ui-theme-handbook-before-2", 0xB00020);
@@ -177,7 +178,7 @@ public class UiThemeClientTest implements FabricClientGameTest {
 	 */
 	private static int backgroundPixel(ClientGameTestContext context, String shotName) {
 		context.setScreen(CrtDemoScreen::new);
-		context.waitForScreen(CrtDemoScreen.class);
+		ClientWait.screen(context, CrtDemoScreen.class);
 		context.waitTicks(2);
 		int[] gui = context.computeOnClient(client -> new int[] {client.getWindow().getGuiScaledWidth(), client.getWindow().getGuiScaledHeight()});
 		Path shot = context.takeScreenshot(shotName);

@@ -56,17 +56,22 @@ public final class TwoPlayerServer implements AutoCloseable {
 		LOGGER.info("TwoPlayerServer: dedicated server on port {}", port);
 		TestDedicatedServerContext server = context.worldBuilder().createServer(properties);
 		TestDedicatedServerConnection connection = null;
+		String stage = "the real client joining the dedicated server, which Fabric waits on for 1200 ticks";
 		try {
 			connection = server.connect();
+			stage = "the mock player joining the server";
 			MockPlayer mock = server.computeOnServer(minecraftServer -> MockPlayers.join(minecraftServer, MOCK_NAME));
-			context.waitFor(client -> client.level != null && client.level.players().size() == 2);
+			stage = "the real client seeing both players";
+			ClientWait.until(context, "the real client and the mock both in the level",
+					client -> client.level != null && client.level.players().size() == 2,
+					client -> "players " + (client.level == null ? "no level" : client.level.players().size()));
 			return new TwoPlayerServer(context, server, connection, mock);
 		} catch (RuntimeException | Error e) {
 			if (connection != null) {
 				connection.close();
 			}
 			server.close();
-			throw e;
+			throw new AssertionError("TwoPlayerServer.start failed during " + stage, e);
 		}
 	}
 

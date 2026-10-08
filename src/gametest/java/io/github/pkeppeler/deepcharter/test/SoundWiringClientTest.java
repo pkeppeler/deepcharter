@@ -48,6 +48,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
 /**
@@ -56,7 +57,6 @@ import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
  * Event ids are literals on purpose: they are what the private audio pack is keyed by.
  */
 public class SoundWiringClientTest implements FabricClientGameTest {
-	private static final int WAIT_TICKS = 400;
 	private static final int SETTLE_TICKS = 60;
 	/** The layers that have music. A new layer fails the count check until its music is listed here. */
 	private static final List<String> LAYER_MUSIC = List.of("music.layer_1", "music.layer_2");
@@ -134,10 +134,10 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 				}
 				return pod.getId();
 			});
-			context.waitFor(client -> client.level.getEntity(podId) != null, WAIT_TICKS);
+			ClientWait.until(context, "the pod in the client's level", client -> client.level.getEntity(podId) != null);
 
 			// The client loads the pod a few times while the teleported player's chunks settle; count from the settled pod.
-			context.waitFor(client -> client.level.getEntity(podId) != null && client.level.getEntity(podId).tickCount > SETTLE_TICKS && heard.count("pod.engine_idle") > 0, WAIT_TICKS);
+			ClientWait.until(context, "the pod idling with its engine sound heard", client -> client.level.getEntity(podId) != null && client.level.getEntity(podId).tickCount > SETTLE_TICKS && heard.count("pod.engine_idle") > 0, client -> "pod " + client.level.getEntity(podId) + ", engine_idle heard " + heard.count("pod.engine_idle"));
 			long idleLoops = heard.count("pod.engine_idle");
 			context.waitTicks(SETTLE_TICKS);
 			check(heard.count("pod.engine_idle") == idleLoops, "a steady idle engine keeps one loop, not a new one every tick, heard " + heard.played);
@@ -236,7 +236,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 			context.waitTicks(SETTLE_TICKS);
 			open(context, scene.pump());
 			await(context, heard, "music.terminal again on a second terminal", client -> heard.count("music.terminal") == 2);
-			context.waitFor(client -> buy(client), WAIT_TICKS);
+			ClientWait.until(context, "the buy button live", client -> buy(client));
 			context.clickScreenButton("BUY 1 L");
 			await(context, heard, "ui.purchase", client -> heard.count("ui.purchase") > 0);
 			context.setScreen(() -> null);
@@ -261,7 +261,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 				int target = layer;
 				singleplayer.getServer().runOnServer(server -> server.getPlayerList().getPlayers().getFirst()
 						.teleportTo(server.getLevel(LayerChain.dimension(target)), 0.5, 100, 0.5, Set.of(), 0, 0, true));
-				context.waitFor(client -> client.level != null && client.level.dimension().equals(LayerChain.dimension(target)), WAIT_TICKS);
+				ClientWait.until(context, "the client in the target layer", client -> client.level != null && client.level.dimension().equals(LayerChain.dimension(target)));
 				String expected = LAYER_MUSIC.get(layer - 1);
 				Identifier music = context.computeOnClient(client -> {
 					Music playing = client.level.environmentAttributes().getValue(EnvironmentAttributes.BACKGROUND_MUSIC, client.player.position())
@@ -308,7 +308,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 
 	private static void open(ClientGameTestContext context, BlockPos terminal) {
 		context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(terminal)));
-		context.waitFor(client -> client.gui.screen() != null, WAIT_TICKS);
+		ClientWait.until(context, "a screen open", client -> client.gui.screen() != null);
 	}
 
 	/** The pump's buy button is live: the screen has seen the pod and the account. */
@@ -317,13 +317,9 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 				.anyMatch(child -> child instanceof CrtButton button && button.getMessage().getString().equals("BUY 1 L") && button.active);
 	}
 
-	/** waitFor, with what was awaited and what was heard in the failure. */
+	/** Waits on the wall clock, with what was awaited and what was heard in the failure. */
 	private static void await(ClientGameTestContext context, Heard heard, String what, Predicate<Minecraft> condition) {
-		try {
-			context.waitFor(condition, WAIT_TICKS);
-		} catch (AssertionError timeout) {
-			throw new AssertionError("timed out waiting for " + what + "; the client heard " + heard.played, timeout);
-		}
+		ClientWait.until(context, what, condition, client -> "the client heard " + heard.played);
 	}
 
 	private static void check(boolean condition, String message) {

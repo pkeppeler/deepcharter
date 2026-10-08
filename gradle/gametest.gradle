@@ -46,6 +46,16 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 	// and one in a file that reaches a layer level without LayerChain.dimension(.
 	def carveMarker = "// room-carver:"
 	def carveWrite = ~/\b(?:setBlock|setBlockState|setBlockAndUpdate|box|fill|fillFloor|fillRock)\s*\([^;]*\bBlocks\.(?:CAVE_)?AIR\b/
+	// A client GameTest or client test support file that waits with context.waitFor(pred[, ticks]) or waitForScreen waits on a tick budget
+	// (Fabric's default is 200 ticks). The client and server tick unthrottled, so the same budget is a different wall time under load,
+	// and the test flakes (issues 262, 277). Wait with ClientWait.until or ClientWait.screen, which poll a wall-clock deadline and name
+	// what they awaited and what they saw. A fixed span of ticks that is not a poll uses waitTicks. A waitFor that must stay carries the
+	// comment below, with a reason, on its line or the one above; a bare marker, or one inside a string, does not count.
+	// Evidence scenarios are not scanned.
+	def tickWaitMarker = "// tick-wait:"
+	def tickWaitReason = ~/\/\/ tick-wait:\s*\S/
+	def stringLiteral = ~/"(?:\\.|[^"\\\n])*"/
+	def tickWaitCall = ~/\bwaitFor(?:Screen)?\s*\(/
 	def guardSource = file("src/gametest/java/io/github/pkeppeler/deepcharter/test/support/WorldDataGuard.java")
 	inputs.files(mainSources).withPropertyName("mainSources")
 	outputs.file(outputFile)
@@ -81,6 +91,17 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 					def marked = [line, line - 1].any { it >= 0 && rawLines[it].contains(carveMarker) }
 					if (!marked) {
 						problems << "${className}:${line + 1} writes air in a file that touches a layer dimension; carve a room with RoomCarver.carve, which seals the shell against worldgen lava first, or mark a write that is not layer rock with '${carveMarker} <reason>'"
+					}
+				}
+			}
+			if ((text =~ /\bimplements\s+[^{]*\bFabricClientGameTest\b/).find() || className.contains(".test.support.")) {
+				def rawLines = source.readLines()
+				def tickWait = text =~ tickWaitCall
+				while (tickWait.find()) {
+					def line = text.substring(0, tickWait.start()).count("\n")
+					def marked = [line, line - 1].any { it >= 0 && (rawLines[it].replaceAll(stringLiteral, '""') =~ tickWaitReason).find() }
+					if (!marked) {
+						problems << "${className}:${line + 1} waits with waitFor or waitForScreen, a tick budget; poll the wall clock with ClientWait.until or ClientWait.screen, or mark a deliberate fixed-tick wait with '${tickWaitMarker} <reason>'"
 					}
 				}
 			}

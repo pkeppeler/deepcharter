@@ -30,6 +30,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Client GameTest for #69: the pump screen shows the account and the parked pod's tank, its buttons are live only when a press
@@ -40,7 +41,6 @@ public class FuelPumpClientTest implements FabricClientGameTest {
 	public static final long START_BALANCE = 20;
 	/** The pod starts with 2 of its 10 litres. */
 	public static final float START_FUEL_PERCENT = 20f;
-	private static final int WAIT_TICKS = 200;
 	private static final float EPSILON = 0.01f;
 	/** Marks the pod that burns no fuel while the test waits, so the litres can be compared exactly. */
 	private static final String FROZEN = "fuel-pump-test-frozen";
@@ -59,25 +59,25 @@ public class FuelPumpClientTest implements FabricClientGameTest {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			Scene scene = singleplayer.getServer().computeOnServer(FuelPumpClientTest::setUp);
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.pump())));
-			context.waitForScreen(FuelPumpScreen.class);
+			ClientWait.screen(context, FuelPumpScreen.class);
 			FuelPumpScreen screen = context.computeOnClient(client -> (FuelPumpScreen) client.gui.screen());
-			context.waitFor(client -> screen.typewriter().done(), WAIT_TICKS);
+			ClientWait.until(context, "the fuel pump screen finished typing", client -> screen.typewriter().done(), client -> "typewriter text '" + screen.typewriter().text() + "'");
 			check(screen.typewriter().text().contains("$1 A LITRE"), "the screen names the price, got '" + screen.typewriter().text() + "'");
-			context.waitFor(client -> ClientCharter.view().isPresent() && ClientCharter.view().get().balance() == START_BALANCE
-					&& !Terminals.parkedPods(client.level, scene.pump()).isEmpty(), WAIT_TICKS);
+			ClientWait.until(context, "the starting balance and a parked pod", client -> ClientCharter.view().isPresent() && ClientCharter.view().get().balance() == START_BALANCE
+					&& !Terminals.parkedPods(client.level, scene.pump()).isEmpty(), client -> "charter " + ClientCharter.view());
 
 			// 2 of 10 litres: there is room for 5 but not for 10.
 			check(live(context, screen, "BUY 1 L") && live(context, screen, "BUY 5 L") && !live(context, screen, "BUY 10 L") && live(context, screen, "FILL UP"),
 					"with 8 litres of room and $20, the 1 and 5 litre buttons and FILL UP are live and the 10 litre button is not");
 
 			context.clickScreenButton("BUY 5 L");
-			context.waitFor(client -> ClientCharter.view().get().balance() == START_BALANCE - 5, WAIT_TICKS);
-			context.waitFor(client -> Math.abs(litres(client, scene) - 7f) < EPSILON, WAIT_TICKS);
+			ClientWait.until(context, "the balance after the first purchase", client -> ClientCharter.view().get().balance() == START_BALANCE - 5, client -> "charter " + ClientCharter.view());
+			ClientWait.until(context, "7 L in the pod's tank", client -> Math.abs(litres(client, scene) - 7f) < EPSILON, client -> "litres " + litres(client, scene));
 			check(context.computeOnClient(client -> client.gui.screen() == screen), "the server's answer must not replace the screen");
 
 			context.clickScreenButton("FILL UP");
-			context.waitFor(client -> ClientCharter.view().get().balance() == START_BALANCE - 5 - 3, WAIT_TICKS);
-			context.waitFor(client -> Math.abs(litres(client, scene) - 10f) < EPSILON, WAIT_TICKS);
+			ClientWait.until(context, "the balance after the second purchase", client -> ClientCharter.view().get().balance() == START_BALANCE - 5 - 3, client -> "charter " + ClientCharter.view());
+			ClientWait.until(context, "10 L in the pod's tank", client -> Math.abs(litres(client, scene) - 10f) < EPSILON, client -> "litres " + litres(client, scene));
 			context.waitTicks(2);
 			check(!live(context, screen, "BUY 1 L") && !live(context, screen, "FILL UP"), "with a full tank no buy button is live");
 
@@ -86,7 +86,7 @@ public class FuelPumpClientTest implements FabricClientGameTest {
 				Charters.spend(server, scene.charter(), Charters.findOrThrow(server, scene.charter()).orElseThrow().account());
 				pod(server).setFuel(0f);
 			});
-			context.waitFor(client -> ClientCharter.view().get().balance() == 0 && litres(client, scene) < EPSILON, WAIT_TICKS);
+			ClientWait.until(context, "an empty account and a full-priced tank", client -> ClientCharter.view().get().balance() == 0 && litres(client, scene) < EPSILON, client -> "charter " + ClientCharter.view() + ", litres " + litres(client, scene));
 			context.waitTicks(2);
 			check(!live(context, screen, "BUY 1 L") && !live(context, screen, "FILL UP"), "with an empty account no buy button is live");
 			CompoundTag args = new CompoundTag();

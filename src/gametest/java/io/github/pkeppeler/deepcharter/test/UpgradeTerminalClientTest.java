@@ -29,6 +29,7 @@ import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
@@ -38,7 +39,6 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
  * pay for dead.
  */
 public class UpgradeTerminalClientTest implements FabricClientGameTest {
-	private static final int WAIT_TICKS = 200;
 	private static final long ACCOUNT = 30_000;
 
 	/** The terminal, and the id of the pod parked beside it. */
@@ -50,30 +50,30 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
 		ClientTestLog.start(this);
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			Scene scene = singleplayer.getServer().computeOnServer(UpgradeTerminalClientTest::setUp);
-			context.waitFor(client -> ClientCharter.view().map(charter -> charter.balance() == ACCOUNT).orElse(false), WAIT_TICKS);
+			ClientWait.until(context, "the account at its starting balance", client -> ClientCharter.view().map(charter -> charter.balance() == ACCOUNT).orElse(false), client -> "charter " + ClientCharter.view());
 
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.terminal())));
-			context.waitForScreen(UpgradeScreen.class);
+			ClientWait.screen(context, UpgradeScreen.class);
 			UpgradeScreen screen = context.computeOnClient(client -> (UpgradeScreen) client.gui.screen());
 			check(screen.upgrade().orElseThrow().pod().orElseThrow().cap() == 2, "the screen shows the Mole's cap of 2");
-			context.waitFor(client -> screen.typewriter().done(), WAIT_TICKS);
+			ClientWait.until(context, "the upgrade screen finished typing", client -> screen.typewriter().done(), client -> "typewriter text '" + screen.typewriter().text() + "'");
 			check(labels(context, screen).contains("DRILL  T0") && labels(context, screen).contains("FUEL TANK  T0"),
 					"every track is listed with its installed tier, got " + labels(context, screen));
 
 			context.clickScreenButton("HULL  T0");
-			context.waitFor(client -> screen.selected() == ComponentTrack.HULL, WAIT_TICKS);
+			ClientWait.until(context, "the hull track selected", client -> screen.selected() == ComponentTrack.HULL);
 			List<String> hull = labels(context, screen);
 			check(hull.contains("BUY TIER 1  $200") && hull.contains("BUY TIER 2  $500"), "the hull parts show their prices, got " + hull);
 			check(hull.contains("BUY TIER 3  $1250  (WORKS AS TIER 2)") && hull.contains("BUY TIER 4  $5000  (WORKS AS TIER 2)"),
 					"tiers above the cap say so, got " + hull);
 
 			context.clickScreenButton("BUY TIER 1  $200");
-			context.waitFor(client -> labels(client, screen).contains("TIER 1  INSTALLED"), WAIT_TICKS);
+			ClientWait.until(context, "the tier 1 install label", client -> labels(client, screen).contains("TIER 1  INSTALLED"));
 			check(singleplayer.getServer().computeOnServer(server2 -> PodComponents.partOf(pod(server2, scene), ComponentTrack.HULL)
 					.map(label -> label.tier() == 1).orElse(false)), "the server installed the tier 1 hull");
 
 			context.clickScreenButton("BUY TIER 4  $5000  (WORKS AS TIER 2)");
-			context.waitFor(client -> labels(client, screen).contains("TIER 4  INSTALLED  (WORKS AS TIER 2)"), WAIT_TICKS);
+			ClientWait.until(context, "the tier 4 install label", client -> labels(client, screen).contains("TIER 4  INSTALLED  (WORKS AS TIER 2)"));
 			boolean cappedAndDropped = singleplayer.getServer().computeOnServer(server2 -> {
 				PodEntity pod = pod(server2, scene);
 				boolean capped = PodComponents.effectiveTier(pod, ComponentTrack.HULL) == 2;

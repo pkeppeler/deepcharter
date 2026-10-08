@@ -36,9 +36,9 @@ public final class ClientPacks {
 			return found;
 		});
 		// A failed reload unselects every pack, and the reload's own future never completes, so watch the selection.
-		context.waitFor(client -> !client.getResourcePackRepository().getSelectedIds().contains(id));
+		ClientWait.until(context, "the pack deselected", client -> !client.getResourcePackRepository().getSelectedIds().contains(id));
 		context.waitTicks(20);
-		context.waitFor(client -> client.gui.overlay() == null);
+		ClientWait.until(context, "the resource reload overlay gone", client -> client.gui.overlay() == null);
 	}
 
 	private static void change(ClientGameTestContext context, String pack, boolean on) {
@@ -54,7 +54,7 @@ public final class ClientPacks {
 			return Minecraft.getInstance().reloadResourcePacks();
 		});
 		// The reload overlay fades out after the reload is done; a still taken before that shows the loading logo.
-		context.waitFor(client -> reload.isDone() && client.gui.overlay() == null);
+		ClientWait.until(context, "the resource reload done", client -> reload.isDone() && client.gui.overlay() == null);
 		reload.join();
 	}
 }

@@ -46,11 +46,11 @@ run_hook() {
 }
 
 nl=$'\n'
-check "normal push runs gradle and python" "0:5" "$(run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
+check "normal push runs gradle and python" "0:6" "$(run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "branch delete is skipped" "0:0" "$(run_hook "(delete) $zero refs/heads/b $sha$nl")"
 check "push to pr-media is skipped" "0:0" "$(run_hook "refs/heads/pr-media $sha refs/heads/pr-media $zero$nl")"
 check "empty push is skipped" "0:0" "$(run_hook "")"
-check "delete plus normal push still runs checks" "0:5" "$(run_hook "(delete) $zero refs/heads/a $sha${nl}refs/heads/b $sha refs/heads/b $zero$nl")"
+check "delete plus normal push still runs checks" "0:6" "$(run_hook "(delete) $zero refs/heads/a $sha${nl}refs/heads/b $sha refs/heads/b $zero$nl")"
 check "gradle failure blocks, python not reached" "1:1" "$(STUB_FAIL=gradle run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "failure message names the reason" "yes" "$(grep -q 'compile or checkstyle failed' "$work/out" && echo yes || echo no)"
 check "python failure blocks" "1:2" "$(STUB_FAIL=python run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
@@ -63,7 +63,7 @@ run_hook "refs/heads/b $sha refs/heads/b $zero$nl" >/dev/null
 check "pinned local version prints no warning" "no" "$(grep -q 'CI pins' "$work/out" && echo yes || echo no)"
 STUB_SC_VERSION=0.9.0 run_hook "refs/heads/b $sha refs/heads/b $zero$nl" >/dev/null
 check "other local version warns with both versions" "yes" "$(grep -q 'local version is 0.9.0 but CI pins 0.11.0' "$work/out" && echo yes || echo no)"
-check "last line without a newline still counts" "0:5" "$(run_hook "refs/heads/b $sha refs/heads/b $zero")"
+check "last line without a newline still counts" "0:6" "$(run_hook "refs/heads/b $sha refs/heads/b $zero")"
 
 # Missing shellcheck: warn, skip it, and let the push through. The PATH holds only the tools the hook needs.
 mkdir -p "$work/nosc"

@@ -16,6 +16,7 @@ import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
 /** Client GameTest: the client sees the mock pilot's blocks disappear, and only the pod's 2 x 2 of them. */
@@ -23,7 +24,6 @@ public class PodDrillClientTest implements FabricClientGameTest {
 	private static final int X = 500;
 	private static final int Z = 500;
 	private static final int FLOOR_Y = 200;
-	private static final int BORE_TICKS = 400;
 	private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
 
 	@Override
@@ -49,10 +49,10 @@ public class PodDrillClientTest implements FabricClientGameTest {
 				return pod.getId();
 			});
 			// The mock pod stands on a 2 x 2 of stone the client has loaded.
-			context.waitFor(client -> client.level.getEntity(podId) != null && !client.level.getBlockState(cell(X, FLOOR_Y - 1, Z)).isAir());
+			ClientWait.until(context, "the pod and the floor block under it", client -> client.level.getEntity(podId) != null && !client.level.getBlockState(cell(X, FLOOR_Y - 1, Z)).isAir());
 
 			two.server().runOnServer(server -> two.mock().setInput(SPRINT));
-			context.waitFor(client -> client.level.getBlockState(cell(X, FLOOR_Y - 1, Z)).isAir(), BORE_TICKS);
+			ClientWait.until(context, "the floor block bored out", client -> client.level.getBlockState(cell(X, FLOOR_Y - 1, Z)).isAir());
 			two.server().runOnServer(server -> two.mock().releaseInput());
 
 			for (BlockPos bored : new BlockPos[] {cell(X - 1, FLOOR_Y - 1, Z - 1), cell(X, FLOOR_Y - 1, Z - 1),
@@ -64,7 +64,7 @@ public class PodDrillClientTest implements FabricClientGameTest {
 			if (context.computeOnClient(client -> client.level.getBlockState(cell(X + 1, FLOOR_Y - 1, Z)).isAir())) {
 				throw new AssertionError("The client sees the bore wider than the pod's 2 x 2");
 			}
-			context.waitFor(client -> client.level.getEntity(podId).getY() < FLOOR_Y - 0.5);
+			ClientWait.until(context, "the pod below the floor", client -> client.level.getEntity(podId).getY() < FLOOR_Y - 0.5);
 		}
 	}
 

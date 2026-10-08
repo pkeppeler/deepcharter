@@ -42,7 +42,7 @@ public class OreCargoClientTest implements FabricClientGameTest {
 		ClientTestLog.start(this);
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			sneakUseLoadedPod(context, singleplayer);
-			context.waitForScreen(OreCargoScreen.class);
+			ClientWait.screen(context, OreCargoScreen.class);
 			int expected = Math.round(OreType.GOLDIUM.mass() + OreType.EINSTEINIUM.mass());
 			// The slot contents and the mass sync separately from the open-screen packet.
 			ClientWait.until(context, "the cargo menu with 2 ore and mass " + expected,
@@ -60,7 +60,7 @@ public class OreCargoClientTest implements FabricClientGameTest {
 			}
 
 			context.runOnClient(client -> client.player.closeContainer());
-			context.waitFor(client -> client.player.containerMenu == client.player.inventoryMenu);
+			ClientWait.until(context, "the inventory menu back", client -> client.player.containerMenu == client.player.inventoryMenu);
 		}
 	}
 }

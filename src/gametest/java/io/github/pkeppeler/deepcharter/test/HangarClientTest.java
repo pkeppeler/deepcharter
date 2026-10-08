@@ -18,19 +18,18 @@ import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.hangar.HangarView;
 import io.github.pkeppeler.deepcharter.terminal.TerminalFeature;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Client GameTest for #222: the hangar console shows the price of every action inside the screen, at the GUI size of an
  * 854 by 480 window (about 427 by 240) and at 320 by 240, the smallest GUI.
  */
 public class HangarClientTest implements FabricClientGameTest {
-	private static final int WAIT_TICKS = 200;
-
 	@Override
 	public void runTest(ClientGameTestContext context) {
 		ClientTestLog.start(this);
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			context.waitFor(client -> client.player != null && client.level != null);
+			ClientWait.until(context, "the client in the world", client -> client.player != null && client.level != null);
 			// The advance line shows while the charter has advance left, and is gone once it is used.
 			for (int advanceLeft : new int[] {3, 0}) {
 				TerminalView view = new TerminalView(BlockPos.ZERO, HangarTerminal.TYPE.id(), true, true, List.of(),
@@ -39,7 +38,8 @@ public class HangarClientTest implements FabricClientGameTest {
 					context.setScreen(() -> new HangarScreen(view));
 					HangarScreen screen = context.computeOnClient(client -> (HangarScreen) client.gui.screen());
 					context.runOnClient(client -> screen.resize(size[0], size[1]));
-					context.waitFor(client -> screen.typewriter().done(), WAIT_TICKS);
+					ClientWait.until(context, "the hangar screen finished typing", client -> screen.typewriter().done(),
+							client -> "typewriter text '" + screen.typewriter().text() + "'");
 					String problem = context.computeOnClient(client -> problem(screen, advanceLeft));
 					check(problem.isEmpty(), "with " + advanceLeft + " advance left, at " + size[0] + " by " + size[1] + ": " + problem);
 				}

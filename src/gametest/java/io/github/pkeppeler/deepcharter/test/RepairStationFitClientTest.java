@@ -23,6 +23,7 @@ import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.repair.RepairStationScreen;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Client GameTest for #268: the repair station fits the screen at the GUI size of an 854 by 480 window (about 427 by 240) and
@@ -45,7 +46,8 @@ public class RepairStationFitClientTest implements FabricClientGameTest {
 					throw new AssertionError("funding should succeed");
 				}
 			});
-			context.waitFor(client -> ClientCharter.view().map(charter -> charter.balance() > LONGEST_DEPOSIT).orElse(false));
+			ClientWait.until(context, "the account above the longest deposit", client -> ClientCharter.view().map(charter -> charter.balance() > LONGEST_DEPOSIT).orElse(false),
+					client -> "charter " + ClientCharter.view());
 			BlockPos farAway = scene.station().offset(FAR, 0, FAR);
 			// Both hull lines: the pod parked at the station, and no pod.
 			for (BlockPos at : List.of(scene.station(), farAway)) {

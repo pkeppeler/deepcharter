@@ -20,6 +20,7 @@ import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.test.RepairStationClientTest;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Evidence scenario "m2-repair-station" for #70: a charter repairs the hull at the station and buys dynamite and a matter
@@ -53,13 +54,16 @@ public class RepairStationScenario extends EvidenceScenario {
 			screenshot(context, "station");
 
 			RepairStationClientTest.clickRow(context, "REPAIR ALL");
-			RepairStationClientTest.awaitServer(context, () -> singleplayer.getServer().computeOnServer(server -> scene.pod().hull() == scene.pod().maxHull()));
+			ClientWait.until(context, "the pod fully repaired", () -> singleplayer.getServer().computeOnServer(server -> scene.pod().hull() == scene.pod().maxHull()),
+					() -> "hull " + singleplayer.getServer().computeOnServer(server -> scene.pod().hull()));
 			hold(context);
 			RepairStationClientTest.clickRow(context, "BUY DYNAMITE $100");
-			RepairStationClientTest.awaitServer(context, () -> singleplayer.getServer().computeOnServer(server -> carried(server, Consumable.DYNAMITE)) == 1);
+			ClientWait.until(context, "one dynamite carried", () -> singleplayer.getServer().computeOnServer(server -> carried(server, Consumable.DYNAMITE)) == 1,
+					() -> singleplayer.getServer().computeOnServer(server -> carried(server, Consumable.DYNAMITE)) + " dynamite");
 			hold(context);
 			RepairStationClientTest.clickRow(context, "BUY MATTER TRANSMITTER $1500");
-			RepairStationClientTest.awaitServer(context, () -> singleplayer.getServer().computeOnServer(server -> carried(server, Consumable.MATTER_TRANSMITTER)) == 1);
+			ClientWait.until(context, "one matter transmitter carried", () -> singleplayer.getServer().computeOnServer(server -> carried(server, Consumable.MATTER_TRANSMITTER)) == 1,
+					() -> singleplayer.getServer().computeOnServer(server -> carried(server, Consumable.MATTER_TRANSMITTER)) + " matter transmitters");
 			hold(context);
 			screenshot(context, "station-bottom");
 			context.setScreen(() -> null);
