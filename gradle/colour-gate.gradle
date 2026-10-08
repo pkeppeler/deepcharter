@@ -40,8 +40,8 @@ abstract class ColourGate {
 				inBlockComment = true
 				return
 			}
-			if (code =~ MARKER) return
 			code = code.replaceAll(/"(?:\\.|[^"\\])*"/, '""')
+			if (code =~ MARKER) return
 			def commentAt = code.indexOf("//")
 			if (commentAt >= 0) code = code.substring(0, commentAt)
 			code = code.replaceAll(/\/\*.*?\*\//, " ")

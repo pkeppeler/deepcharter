@@ -36,8 +36,8 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 	def mainSources = fileTree("src/main/java") { include "**/*.java" }
 	// A direct getDataStorage().set( (or a getDataStorage() kept in a variable, so a later set is not seen) leaks a world-global record
 	// if the code between it and its restore throws. Tests swap through WorldData; only WorldData and a swap marked with the comment
-	// below, which deliberately spans listener phases within one tick, call it directly. Scratch SavedDataStorage instances are fine.
-	def directSwapMarker = "// world-data: listener-phase swap"
+	// below, with a reason, which deliberately spans listener phases within one tick, call it directly. Scratch SavedDataStorage instances are fine.
+	def directSwapMarker = "// world-data:"
 	// A test or scenario that opens a room in layer rock with a direct air write skips the RoomSeal that keeps worldgen lava out of it
 	// (PR 229 found one that flooded). In a file that touches a layer dimension, only RoomCarver.carve, which seals first, writes a
 	// room's air. A setBlock, setBlockState, setBlockAndUpdate or box/fill helper call that names Blocks.AIR is flagged; a write that is not layer
@@ -53,8 +53,12 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 	// comment below, with a reason, on its line or the one above; a bare marker, or one inside a string, does not count.
 	// Evidence scenarios are not scanned.
 	def tickWaitMarker = "// tick-wait:"
-	def tickWaitReason = ~/\/\/ tick-wait:\s*\S/
+	// One rule for every marker in this file: `// <name>:` then a reason, on the raw line with string literals blanked, so a bare
+	// marker or one inside a string never counts. A gate asks hasMarker, never a plain contains.
 	def stringLiteral = ~/"(?:\\.|[^"\\\n])*"/
+	def hasMarker = { String rawLine, String marker ->
+		(rawLine.replaceAll(stringLiteral, '""') =~ "//\\s*${java.util.regex.Pattern.quote(marker.substring(2).trim())}\\s*\\S").find()
+	}
 	def tickWaitCall = ~/\bwaitFor(?:Screen)?\s*\(/
 	def guardSource = file("src/gametest/java/io/github/pkeppeler/deepcharter/test/support/WorldDataGuard.java")
 	inputs.files(mainSources).withPropertyName("mainSources")
@@ -77,9 +81,9 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 				def direct = text =~ /getDataStorage\(\)\s*\.\s*set\s*\(|getDataStorage\(\)\s*[;,)]/
 				while (direct.find()) {
 					def line = text.substring(0, direct.start()).count("\n")
-					def marked = [line, line - 1].any { it >= 0 && rawLines[it].contains(directSwapMarker) }
+					def marked = [line, line - 1].any { it >= 0 && hasMarker(rawLines[it], directSwapMarker) }
 					if (!marked) {
-						problems << "${className}:${line + 1} swaps or keeps getDataStorage() directly; swap a world-global record with WorldData.with, WorldData.swap or WorldData.replace, which restore it in a finally"
+						problems << "${className}:${line + 1} swaps or keeps getDataStorage() directly; swap a world-global record with WorldData.with, WorldData.swap or WorldData.replace, which restore it in a finally, or mark a deliberate listener-phase swap with '${directSwapMarker} <reason>'"
 					}
 				}
 			}
@@ -88,7 +92,7 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 				def carve = text =~ carveWrite
 				while (carve.find()) {
 					def line = text.substring(0, carve.start()).count("\n")
-					def marked = [line, line - 1].any { it >= 0 && rawLines[it].contains(carveMarker) }
+					def marked = [line, line - 1].any { it >= 0 && hasMarker(rawLines[it], carveMarker) }
 					if (!marked) {
 						problems << "${className}:${line + 1} writes air in a file that touches a layer dimension; carve a room with RoomCarver.carve, which seals the shell against worldgen lava first, or mark a write that is not layer rock with '${carveMarker} <reason>'"
 					}
@@ -99,7 +103,7 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 				def tickWait = text =~ tickWaitCall
 				while (tickWait.find()) {
 					def line = text.substring(0, tickWait.start()).count("\n")
-					def marked = [line, line - 1].any { it >= 0 && (rawLines[it].replaceAll(stringLiteral, '""') =~ tickWaitReason).find() }
+					def marked = [line, line - 1].any { it >= 0 && hasMarker(rawLines[it], tickWaitMarker) }
 					if (!marked) {
 						problems << "${className}:${line + 1} waits with waitFor or waitForScreen, a tick budget; poll the wall clock with ClientWait.until or ClientWait.screen, or mark a deliberate fixed-tick wait with '${tickWaitMarker} <reason>'"
 					}
