@@ -92,6 +92,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		ClientTestLog.start(this);
 		Heard heard = new Heard();
 		context.runOnClient(client -> client.getSoundManager().addListener(heard));
 		try {

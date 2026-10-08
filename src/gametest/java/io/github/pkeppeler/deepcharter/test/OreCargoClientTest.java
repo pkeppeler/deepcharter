@@ -38,6 +38,7 @@ public class OreCargoClientTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		ClientTestLog.start(this);
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			sneakUseLoadedPod(context, singleplayer);
 			context.waitForScreen(OreCargoScreen.class);

@@ -55,6 +55,7 @@ public class FuelPumpClientTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		ClientTestLog.start(this);
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			Scene scene = singleplayer.getServer().computeOnServer(FuelPumpClientTest::setUp);
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.pump())));

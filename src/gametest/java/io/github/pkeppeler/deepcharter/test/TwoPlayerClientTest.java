@@ -77,6 +77,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		ClientTestLog.start(this);
 		try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
 			int seen = context.computeOnClient(client -> client.level.players().size());
 			if (seen != 2) {
