@@ -9,6 +9,7 @@ public class ScannerTiersClientTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		ClientTestLog.start(this);
 		// Empty so that the stub passes: #74 writes the test.
 	}
 }

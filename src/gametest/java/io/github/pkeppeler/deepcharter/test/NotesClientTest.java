@@ -45,6 +45,7 @@ public class NotesClientTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		ClientTestLog.start(this);
 		theListMarksUnreadNotesAndOpeningOneReportsItOnce(context);
 		everyNoteOfTheSliceHasTextAndFitsTheListAtMinimumSize(context);
 		inTheRealGame(context);

@@ -56,6 +56,7 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		ClientTestLog.start(this);
 		nothingDoneShowsOneChapterAndPreviewsTheNext();
 		completedChaptersStayFullAndTheRoadMovesOn();
 		aPartlyDoneChapterIsStillTheCurrentOne();

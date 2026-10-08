@@ -36,6 +36,7 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		ClientTestLog.start(this);
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			BlockPos processor = singleplayer.getServer().computeOnServer(OreProcessorClientTest::setUp);
 

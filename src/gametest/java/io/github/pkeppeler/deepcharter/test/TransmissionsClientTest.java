@@ -51,6 +51,7 @@ public class TransmissionsClientTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		ClientTestLog.start(this);
 		aCrossingShowsItsTransmissionOverTheFade(context);
 		transmissionsReachTheClientInOrderAndOnLogin(context);
 	}

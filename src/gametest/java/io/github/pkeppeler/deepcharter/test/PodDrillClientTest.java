@@ -28,6 +28,7 @@ public class PodDrillClientTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		ClientTestLog.start(this);
 		try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
 			// A stone slab high above the terrain, with the real player on it beside the mock's pod.
 			int podId = two.server().computeOnServer(server -> {
