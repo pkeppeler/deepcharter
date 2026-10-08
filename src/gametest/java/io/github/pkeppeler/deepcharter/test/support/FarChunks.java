@@ -66,8 +66,7 @@ public final class FarChunks {
 				throw helper.assertionException(Component.literal(String.format("chunk %s in %s was not %s after %d s",
 						chunk, level.dimension(), awaited.text, WAIT_SECONDS)));
 			}
-			// Once per server tick, shared by every waiter, so N waiters do not make a tick N times as long. Every waiting
-			// tick still sleeps once, so the AWAIT_BUDGET_TICKS bound holds. GameTests run on the server thread only.
+			// One sleep per server tick across all waiters, so N waiters do not stretch a tick N times.
 			int tick = level.getServer().getTickCount();
 			if (tick == lastSleptTick) {
 				return;
@@ -98,9 +97,9 @@ public final class FarChunks {
 		if (helper.getTick() != 0) {
 			throw new IllegalStateException("FarChunks.awaitEntityTicking must be called from the test method, not from a tick callback");
 		}
-		level.setChunkForced(pos.getX() >> 4, pos.getZ() >> 4, true);
-		Deadline deadline = deadline();
 		ChunkPos chunk = new ChunkPos(pos.getX() >> 4, pos.getZ() >> 4);
+		level.setChunkForced(chunk.x(), chunk.z(), true);
+		Deadline deadline = deadline();
 		boolean[] done = {false};
 		helper.onEachTick(() -> {
 			if (done[0]) {
