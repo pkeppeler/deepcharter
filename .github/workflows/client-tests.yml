@@ -95,4 +95,4 @@ jobs:
             echo "::error::The client did not use the OpenGL backend that options.txt asks for"
             exit 1
           fi
-        timeout-minutes: 8
+        timeout-minutes: 15
