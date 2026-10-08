@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 
 import net.minecraft.server.MinecraftServer;
@@ -26,7 +27,7 @@ import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
  * Fails the server GameTest run when a test leaves the world's saved data swapped across a tick boundary.
  *
  * <p>GameTests in a batch interleave only between ticks. A test that swaps a world-global record
- * ({@code getDataStorage().set(TYPE, fresh)}) and puts the world's back in a {@code finally} on the same tick, with no wait in
+ * ({@code WorldData.with(server, TYPE, fresh, body)}) and puts the world's back in a {@code finally} on the same tick, with no wait in
  * between, is invisible to every other test. A swap that outlives its tick is seen by the tests that run in it, and makes the
  * suite depend on the order. No test needs one: a test that must change a record over many ticks sets it from a tick listener
  * that restores it in the same tick (see the poll test in {@code HandbookChaptersOneToFiveTest}).
@@ -42,6 +43,10 @@ public final class WorldDataGuard implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		ServerTickEvents.START_SERVER_TICK.register(WorldDataGuard::check);
+		ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
+			SEEN.clear();
+			WorldData.forgetSwappers();
+		});
 	}
 
 	private static void check(MinecraftServer server) {
@@ -52,8 +57,9 @@ public final class WorldDataGuard implements ModInitializer {
 			SavedData now = server.getDataStorage().computeIfAbsent(type);
 			SavedData before = SEEN.put(type, now);
 			if (before != null && before != now) {
-				throw new IllegalStateException("A test left the world's " + type.id() + " swapped across a tick. Restore it in a finally on the tick"
-						+ " that swapped it.");
+				throw new IllegalStateException("The world's " + type.id() + " was swapped across a tick; last swapped by "
+						+ WorldData.lastSwapper(type).orElse("a test that does not use WorldData") + ". Swap through WorldData, which restores it in a finally"
+						+ " on the tick that swapped it.");
 			}
 		}
 	}

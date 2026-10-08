@@ -55,6 +55,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.wreck.WreckRegistry;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 
@@ -141,19 +142,7 @@ public class FoundingMoleHangarTest {
 	/** Runs {@code body} with a fresh hangar record, repair state and serials, and puts the world's own back after. */
 	static void withFreshWorld(GameTestHelper helper, Runnable body) {
 		MinecraftServer server = server(helper);
-		HangarData hangar = HangarData.get(server);
-		RepairState repairs = RepairState.get(server);
-		Serials serials = Serials.get(server);
-		server.getDataStorage().set(HangarData.TYPE, new HangarData());
-		server.getDataStorage().set(RepairState.TYPE, new RepairState());
-		server.getDataStorage().set(Serials.TYPE, new Serials());
-		try {
-			body.run();
-		} finally {
-			server.getDataStorage().set(HangarData.TYPE, hangar);
-			server.getDataStorage().set(RepairState.TYPE, repairs);
-			server.getDataStorage().set(Serials.TYPE, serials);
-		}
+		WorldData.swap(server).with(HangarData.TYPE, new HangarData()).with(RepairState.TYPE, new RepairState()).with(Serials.TYPE, new Serials()).run(body);
 	}
 
 	/** Every pod standing in or near the hangar bay, wherever it came from. */
@@ -272,19 +261,13 @@ public class FoundingMoleHangarTest {
 	/** Repairs the console and the founding Mole, as if someone had: the world's hangar record is the one {@link #withFreshWorld} swapped in. */
 	static void repairTheConsole(GameTestHelper helper) {
 		insertTheParts(helper);
-		server(helper).getDataStorage().set(HangarData.TYPE, foundedHangar());
+		WorldData.replace(server(helper), HangarData.TYPE, foundedHangar());
 	}
 
 	/** Runs {@code body} with a fresh repair state and puts the world's back after. */
 	private static void withFreshRepairs(GameTestHelper helper, Runnable body) {
 		MinecraftServer server = server(helper);
-		RepairState repairs = RepairState.get(server);
-		server.getDataStorage().set(RepairState.TYPE, new RepairState());
-		try {
-			body.run();
-		} finally {
-			server.getDataStorage().set(RepairState.TYPE, repairs);
-		}
+		WorldData.with(server, RepairState.TYPE, new RepairState(), body);
 	}
 
 	static Optional<TerminalRefusal> act(ServerPlayer player, BlockPos pos, Identifier action) {
@@ -428,7 +411,7 @@ public class FoundingMoleHangarTest {
 			expectRefused(helper, act(buyer.player(), console, HangarTerminal.BUY_MOLE), "buying before the founding Mole is repaired");
 			expect(helper, balance(helper, buyer) == RICH && madeSince(helper, before).isEmpty(), "the refusal takes nothing and makes no pod");
 
-			server(helper).getDataStorage().set(HangarData.TYPE, foundedHangar());
+			WorldData.replace(server(helper), HangarData.TYPE, foundedHangar());
 			expectDone(helper, act(buyer.player(), console, HangarTerminal.BUY_MOLE), "buying once the founding Mole is repaired");
 			clearFloor(helper);
 			helper.succeed();
@@ -577,7 +560,7 @@ public class FoundingMoleHangarTest {
 			PodEntity worldDerelict = podsInTheHangar(helper).stream().filter(pod -> before.contains(pod.getUUID())).findFirst().orElseThrow();
 			Vec3 home = worldDerelict.position();
 			worldDerelict.setPos(home.add(0, 100, 0));
-			server(helper).getDataStorage().set(HangarData.TYPE, new HangarData());
+			WorldData.replace(server(helper), HangarData.TYPE, new HangarData());
 			try {
 				Hangar.onBuilt(server(helper), Colony.placed(server(helper)).orElseThrow());
 				PodEntity derelict = Hangar.derelict(server(helper)).orElseThrow();
@@ -625,7 +608,7 @@ public class FoundingMoleHangarTest {
 			int pods = podsInTheHangar(helper).size();
 
 			// The hangar record is unreadable: the colony event, the repair event and both actions skip it.
-			server.getDataStorage().set(HangarData.TYPE, unreadable);
+			WorldData.replace(server, HangarData.TYPE, unreadable);
 			// Only the derelict is skipped: the console is a block and is placed even when the hangar record cannot be read.
 			BlockPos hangarConsole = Hangar.consolePos(server).orElseThrow();
 			server.overworld().setBlock(hangarConsole, Blocks.AIR.defaultBlockState(), 3);
@@ -641,11 +624,11 @@ public class FoundingMoleHangarTest {
 					"nothing changed while the hangar was unreadable");
 
 			// The serials are unreadable: a purchase is refused before it takes anything.
-			server.getDataStorage().set(HangarData.TYPE, foundedHangar());
+			WorldData.replace(server, HangarData.TYPE, foundedHangar());
 			Tag serials = Serials.CODEC.encodeStart(NbtOps.INSTANCE, new Serials()).getOrThrow();
 			CompoundTag futureSerials = ((CompoundTag) serials).copy();
 			futureSerials.putInt("version", Integer.parseInt(FUTURE_SERIALS));
-			server.getDataStorage().set(Serials.TYPE, Serials.CODEC.parse(NbtOps.INSTANCE, futureSerials).getOrThrow());
+			WorldData.replace(server, Serials.TYPE, Serials.CODEC.parse(NbtOps.INSTANCE, futureSerials).getOrThrow());
 			LogCapture serialsLog = LogCapture.start(FUTURE_SERIALS);
 			expectRefused(helper, act(player.player(), console, HangarTerminal.BUY_MOLE), "buying with unreadable serials");
 			expectRefused(helper, act(player.player(), console, HangarTerminal.BUY_MOLE), "buying again with unreadable serials");

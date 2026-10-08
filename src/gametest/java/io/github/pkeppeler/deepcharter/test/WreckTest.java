@@ -68,6 +68,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.wreck.WreckEvents;
 import io.github.pkeppeler.deepcharter.wreck.WreckRegistry;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
@@ -469,13 +470,7 @@ public class WreckTest {
 		CompoundTag future = new CompoundTag();
 		future.putInt("version", 99);
 		CharterData unreadable = CharterData.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow();
-		CharterData original = CharterData.get(server);
-		server.getDataStorage().set(CharterData.TYPE, unreadable);
-		try {
-			wreck(pod);
-		} finally {
-			server.getDataStorage().set(CharterData.TYPE, original);
-		}
+		WorldData.with(server, CharterData.TYPE, unreadable, () -> wreck(pod));
 		afterReports(helper, pod, List.of(owner), () -> {
 			if (!Wrecks.isWreck(pod)) {
 				throw failure(helper, "the pod should still be a wreck");
@@ -1040,13 +1035,7 @@ public class WreckTest {
 	 * Nothing in {@code action} may await: GameTests run concurrently and would see the swap.
 	 */
 	private static void withColonySite(MinecraftServer server, ColonySite replacement, Runnable action) {
-		ColonySite world = ColonySite.get(server);
-		server.getDataStorage().set(ColonySite.TYPE, replacement);
-		try {
-			action.run();
-		} finally {
-			server.getDataStorage().set(ColonySite.TYPE, world);
-		}
+		WorldData.with(server, ColonySite.TYPE, replacement, action);
 	}
 
 	private static ColonySite unreadableColonySite(MinecraftServer server) {
