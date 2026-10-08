@@ -82,6 +82,14 @@ public record Charter(
 		return List.copyOf(roster);
 	}
 
+	/** A dormant charter with {@code player} as its Director. Name, account and deepest point are kept. */
+	public Charter revivedBy(UUID player) {
+		if (!dormant()) {
+			throw new IllegalStateException("charter " + name + " is not dormant");
+		}
+		return new Charter(id, name, Optional.of(player), List.of(), List.of(), account, deepestPoint);
+	}
+
 	public Charter withApplication(UUID applicant) {
 		List<UUID> applied = new ArrayList<>(applications);
 		applied.add(applicant);

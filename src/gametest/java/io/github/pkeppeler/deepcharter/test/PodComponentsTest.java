@@ -29,6 +29,7 @@ import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
+import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterData;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -47,6 +48,7 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.PartLabel;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
+import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 
 /**
  * Server GameTests for #65: parts change a pod's stats, a chassis caps their tier, another charter's parts are void,

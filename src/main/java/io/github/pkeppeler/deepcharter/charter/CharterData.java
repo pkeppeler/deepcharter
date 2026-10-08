@@ -139,6 +139,22 @@ public final class CharterData extends SavedData {
 		return Optional.empty();
 	}
 
+	/** {@code player} revives the dormant charter {@code id} and becomes its Director. Its name, account and deepest point are kept. */
+	public Optional<CharterRefusal> revive(UUID player, CharterId id) {
+		Optional<Charter> charter = find(id);
+		if (charter.isEmpty()) {
+			return Optional.of(CharterRefusal.NO_SUCH_CHARTER);
+		}
+		if (!charter.get().dormant()) {
+			return Optional.of(CharterRefusal.NOT_DORMANT);
+		}
+		if (charterOf(player).isPresent() || applicationOf(player).isPresent()) {
+			return Optional.of(CharterRefusal.ALREADY_ON_A_CHARTER);
+		}
+		replace(charter.get().revivedBy(player));
+		return Optional.empty();
+	}
+
 	/** The Director signs {@code applicant} on as the newest crew member. */
 	public Optional<CharterRefusal> approve(UUID director, UUID applicant) {
 		return decide(director, applicant, charter -> charter.withNewCrew(applicant));
