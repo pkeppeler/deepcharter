@@ -12,12 +12,25 @@ mkdir -p "$work/tools" "$work/bin" "$work/build/evidence/demo/frames" "$work/bui
 cp "$tools/record-evidence.sh" "$work/tools/"
 touch "$work/build/evidence/demo/frames/frame-0001.png" "$work/build/evidence/demo/screenshots/shot.png"
 
-# The stub logs its arguments and writes STUB_GIF_BYTES bytes to its last argument (the output file).
+# The stub logs its arguments and writes bytes to its last argument (the output file). A GIF gets the Nth
+# size of STUB_GIF_BYTES (space-separated; the last one repeats), so a test can make early tries too big.
 cat >"$work/bin/ffmpeg" <<'STUB'
 #!/usr/bin/env bash
 echo "$*" >>"$STUB_LOG"
 out=${*: -1}
-head -c "${STUB_GIF_BYTES:-100}" /dev/zero >"$out"
+bytes=100
+if [[ $out == *.gif.try ]]; then
+  if [[ -n ${STUB_GIF_FAIL:-} ]]; then
+    echo partial >"$out"
+    exit 1
+  fi
+  echo x >>"$STUB_LOG.gifs"
+  n=$(wc -l <"$STUB_LOG.gifs")
+  read -r -a sizes <<<"${STUB_GIF_BYTES:-100}"
+  (( n > ${#sizes[@]} )) && n=${#sizes[@]}
+  bytes=${sizes[n - 1]}
+fi
+head -c "$bytes" /dev/zero >"$out"
 STUB
 chmod +x "$work/bin/ffmpeg"
 export STUB_LOG=$work/ffmpeg.log
@@ -37,6 +50,7 @@ gif_gone() { [[ ! -e $work/build/evidence/demo/demo.gif ]]; }
 
 run() { # run <env assignments...>: runs the script, sets $code, fills $work/out and $work/err
   : >"$STUB_LOG"
+  : >"$STUB_LOG.gifs"
   code=0
   env "$@" PATH="$work/bin:$PATH" bash "$work/tools/record-evidence.sh" demo --no-run \
     >"$work/out" 2>"$work/err" || code=$?
@@ -61,15 +75,84 @@ check "unset env succeeds" exit_is 0
 check "unset env builds the GIF from all frames" log_lacks -start_number
 check "unset env does not cap the frame count" log_lacks -frames:v
 
-STUB_GIF_BYTES=$((5 * 1024 * 1024 + 1)) run GIF_FRAMES=
-check "unset env keeps the 5 MB default: over it fails" exit_is 1
+gif_tries() { [[ $(wc -l <"$STUB_LOG.gifs") -eq $1 ]]; }
+out_has() { grep -qF -- "$1" "$work/out"; }
+out_lacks() { ! grep -qF -- "$1" "$work/out"; }
+over=$((5 * 1024 * 1024 + 1))
+
+# A GIF that fits on the first try is built once, at full rate and size.
+run GIF_FRAMES=
+check "a GIF that fits is built once" gif_tries 1
+check "the first try is 15 fps at 800px" log_has "fps=15,scale=800:-1"
+
+try_gone() { [[ ! -e $work/build/evidence/demo/demo.gif.try ]]; }
+
+# GIF_LADDER is checked before any ffmpeg runs.
+run GIF_LADDER=
+check "an empty ladder exits 2" exit_is 2
+check "an empty ladder names the setting" err_has GIF_LADDER
+check "an empty ladder runs no ffmpeg" no_ffmpeg
+run GIF_LADDER=10
+check "a rung with no colon exits 2" exit_is 2
+check "a rung with no colon names the setting" err_has GIF_LADDER
+run "GIF_LADDER=10:800 fast:big"
+check "a non-numeric rung exits 2" exit_is 2
+check "a non-numeric rung runs no ffmpeg" no_ffmpeg
+
+# An ffmpeg failure leaves neither a partial GIF nor the temp file.
+rm -f "$work/build/evidence/demo/demo.gif"
+STUB_GIF_FAIL=1 run GIF_FRAMES=
+check "an ffmpeg failure fails the script" exit_is 1
+check "an ffmpeg failure leaves no GIF" gif_gone
+check "an ffmpeg failure leaves no temp file" try_gone
+
+# No frames: exit 1 before any ffmpeg.
+mv "$work/build/evidence/demo/frames/frame-0001.png" "$work/frame.hold"
+run GIF_FRAMES=
+check "no frames exits 1" exit_is 1
+check "no frames says so" err_has "no frames in"
+check "no frames runs no ffmpeg" no_ffmpeg
+mv "$work/frame.hold" "$work/build/evidence/demo/frames/frame-0001.png"
+
+# On CI the skip is also annotated; off CI it is not.
+STUB_GIF_BYTES=$over run GIF_FRAMES= GITHUB_ACTIONS=true
+check "on CI the skip prints a ::warning::" out_has "::warning::no GIF fits"
+STUB_GIF_BYTES=$over run GIF_FRAMES= GITHUB_ACTIONS=
+check "off CI the skip prints no ::warning::" out_lacks "::warning::"
+
+# Each try is a different size: the final warning reports the last one.
+STUB_GIF_BYTES="6000000 7000000 8000000 9000000 9500000 9600000 9700000" run GIF_FRAMES=
+check "the skip reports the last try's size" err_has "the last try was 9700000 bytes"
+check "a skip leaves no temp file" try_gone
+
+# Every try over the budget: the GIF is skipped with a warning naming the MP4, and the exit status is 0.
+STUB_GIF_BYTES=$over run GIF_FRAMES=
+check "a GIF no setting can fit still exits 0" exit_is 0
 check "an oversize GIF is deleted" gif_gone
+check "every rung is tried" gif_tries 7
+check "the lowest rung is 4 fps at 320px" log_has "fps=4,scale=320:-1"
+check "the skip warns and names the MP4" err_has "The MP4 is the evidence: "
+check "the skip prints no gif line" out_lacks "gif:"
+check "the MP4 line is still printed" out_has "mp4:"
+
+# Over on the first tries, then under: the retry stops at the first rung that fits and keeps the GIF.
+STUB_GIF_BYTES="$over $over 1000" run GIF_FRAMES=
+check "a retry that fits exits 0" exit_is 0
+check "the retry stops at the first fit" gif_tries 3
+check "the third rung is 10 fps at 640px" log_has "fps=10,scale=640:-1"
+check "the rung after the fit is not tried" log_lacks "fps=8,"
+check "the fitting GIF is kept" test -e "$work/build/evidence/demo/demo.gif"
+check "the gif line names the rung" out_has "1000 bytes, 10 fps, 640px"
 
 STUB_GIF_BYTES=$((5 * 1024 * 1024)) run GIF_FRAMES=
-check "unset env keeps the 5 MB default: at it passes" exit_is 0
+check "unset env keeps the 5 MB default: at it passes first try" gif_tries 1
 
-STUB_GIF_BYTES=$((5 * 1024 * 1024 + 1)) run GIF_MAX_BYTES=10000000
-check "GIF_MAX_BYTES raises the limit" exit_is 0
+STUB_GIF_BYTES=$over run GIF_MAX_BYTES=10000000
+check "GIF_MAX_BYTES raises the limit" gif_tries 1
+
+STUB_GIF_BYTES="$over 100" run GIF_LADDER="12:700 6:350"
+check "GIF_LADDER sets the rungs" log_has "fps=6,scale=350:-1"
+check "GIF_LADDER replaces the default rungs" log_lacks "fps=15,"
 
 run GIF_FRAMES=560-720
 check "a range starts at its first frame" log_has "-start_number 560"
