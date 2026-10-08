@@ -3,7 +3,6 @@
 <module name="Checker">
 	<module name="TreeWalker">
 		<module name="UnusedImports">
-			<property name="severity" value="error"/>
 			<message key="import.unused" value="Unused import: {0}"/>
 		</module>
 	</module>
