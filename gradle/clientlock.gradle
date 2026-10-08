@@ -1,10 +1,17 @@
-// One game client at a time on this Mac (#255). Every Loom client run (runClient, runPlay,
-// runClientGameTest), however it is started (./gradlew direct, tools/play.sh, tools/record-evidence.sh),
-// takes an fcntl lock on ~/.cache/deepcharter/client.lock in a doFirst and holds it until the build ends.
-// The OS drops an fcntl lock when its process dies, so Ctrl-C, kill -9 and crashes free it; no PID
-// liveness check is needed. client.lock.holder says who holds it, for the waiter's progress line.
-// The PID is the Gradle daemon's (a human finds the client JVM with `pgrep -P <pid>`).
+// At most DEEPCHARTER_CLIENT_SLOTS (default 2) game clients at a time on this Mac (#255, #270). Every
+// Loom client run (runClient, runPlay, runClientGameTest), however it is started (./gradlew direct,
+// tools/play.sh, tools/record-evidence.sh), takes a slot in a doFirst and holds it until the build ends.
+// A slot is an fcntl lock on its own file in ~/.cache/deepcharter: slot 0 is client.lock (the file PR 260's
+// single-lock code uses, so old and new worktrees never exceed the slot count together), slot N is
+// client.lock.N. The OS drops an fcntl lock when its process dies, so Ctrl-C, kill -9 and crashes free
+// the slot; no liveness check is needed for slots. <slot file>.holder says who holds a slot, for the
+// waiter's progress line. The PID is the Gradle daemon's (a human finds the client JVM with `pgrep -P <pid>`).
+// Waiters are served in arrival order: each writes a ticket (queue/<millis>-<pid>-<id>.ticket) and only
+// the oldest live ticket may take a free slot. A ticket whose PID is gone (kill -9) is skipped and removed.
+// The ticket is removed on acquire and when a wait is interrupted. A PR 260 waiter that polls
+// client.lock can still jump the queue until its worktree updates.
 // Only on macOS; DEEPCHARTER_CLIENT_LOCK=1 forces it on and =0 off (tools/tests/client-lock.test.sh).
+// DEEPCHARTER_CLIENT_SLOTS sets the slot count (default 2; 1 is one client at a time);
 // DEEPCHARTER_LOCK_DIR moves the lock directory; DEEPCHARTER_LOCK_POLL_MS sets the retry interval;
 // DEEPCHARTER_LOCK_TASKS (comma list) replaces the locked task names, for the test's stub task.
 import java.nio.channels.FileChannel
@@ -13,8 +20,10 @@ import java.nio.channels.OverlappingFileLockException
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
 import org.gradle.api.Action
+import org.gradle.api.GradleException
 import org.gradle.api.Task
 import org.gradle.api.provider.Provider
 import org.gradle.api.services.BuildService
@@ -22,74 +31,183 @@ import org.gradle.api.services.BuildServiceParameters
 
 abstract class ClientLock implements BuildService<BuildServiceParameters.None>, AutoCloseable {
 	private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger("deepcharter.clientlock")
+	private Path dir
 	private FileChannel channel
 	private FileLock held
 	private Path holderFile
+	private Path ticket
 
-	// Blocks until this build holds the lock. A second call in the same build returns at once.
+	// Blocks until this build holds a slot. A second call in the same build returns at once.
 	synchronized void acquire(String worktree, String task) {
 		if (held != null) {
 			return
 		}
 		def env = System.getenv()
-		Path dir = env["DEEPCHARTER_LOCK_DIR"] ? Path.of(env["DEEPCHARTER_LOCK_DIR"]) : Path.of(System.getProperty("user.home"), ".cache", "deepcharter")
+		dir = env["DEEPCHARTER_LOCK_DIR"] ? Path.of(env["DEEPCHARTER_LOCK_DIR"]) : Path.of(System.getProperty("user.home"), ".cache", "deepcharter")
 		long pollMs = (env["DEEPCHARTER_LOCK_POLL_MS"] ?: "2000") as long
-		Files.createDirectories(dir)
-		holderFile = dir.resolve("client.lock.holder")
-		Path lockFile = dir.resolve("client.lock")
-		channel = FileChannel.open(lockFile, StandardOpenOption.CREATE, StandardOpenOption.WRITE)
-		long lastNote = 0
+		int slots = (env["DEEPCHARTER_CLIENT_SLOTS"] ?: "2") as int
+		if (slots < 1) {
+			throw new GradleException("DEEPCHARTER_CLIENT_SLOTS must be at least 1, got ${slots}")
+		}
+		Path queueDir = dir.resolve("queue")
+		Files.createDirectories(queueDir)
+		long pid = ProcessHandle.current().pid()
+		ticket = writeTicket(queueDir, pid)
+		int slot = -1
 		try {
+			String lastNote = null
+			long lastNoteAt = 0
 			while (true) {
-				try {
-					held = channel.tryLock()
-				} catch (OverlappingFileLockException other) {
-					held = null // another build in this daemon JVM holds it
+				List<Path> live = liveTickets(queueDir)
+				int position = live.indexOf(ticket) + 1
+				if (position == 0) {
+					throw new GradleException("Queue ticket ${ticket} vanished")
 				}
-				if (held != null) {
-					break
+				if (position == 1) {
+					slot = tryTakeSlot(slots)
+					if (slot >= 0) {
+						break
+					}
 				}
+				String note = "queue position ${position} of ${live.size()}"
 				long now = System.currentTimeMillis()
-				if (lastNote == 0 || now - lastNote >= 10_000) {
-					LOG.lifecycle("Waiting for the game client lock, held by ${readHolder()}")
-					lastNote = now
+				if (note != lastNote || now - lastNoteAt >= 10_000) {
+					LOG.lifecycle("Waiting for a game client slot (${note}). ${describeSlots(slots)}")
+					lastNote = note
+					lastNoteAt = now
 				}
 				Thread.sleep(pollMs)
 			}
 		} catch (Throwable interrupted) {
-			channel.close() // a cancelled wait (Ctrl-C) must not leak the channel
-			channel = null
+			closeChannel() // a cancelled wait (Ctrl-C) must not leak a channel or a ticket
+			deleteTicket()
 			throw interrupted
 		}
-		Files.writeString(holderFile, "worktree ${worktree}, task ${task}, Gradle daemon PID ${ProcessHandle.current().pid()}\n", StandardCharsets.UTF_8)
-		LOG.lifecycle("Took the game client lock (${lockFile})")
+		holderFile = holderOf(slot)
+		Files.writeString(holderFile, "worktree ${worktree}, task ${task}, Gradle daemon PID ${pid}\n", StandardCharsets.UTF_8)
+		deleteTicket()
+		LOG.lifecycle("Took game client slot ${slot} (${slotFile(slot)})")
 	}
 
-	private String readHolder() {
+	private Path slotFile(int slot) {
+		return dir.resolve(slot == 0 ? "client.lock" : "client.lock.${slot}")
+	}
+
+	private Path holderOf(int slot) {
+		Path file = slotFile(slot)
+		return file.resolveSibling(file.fileName.toString() + ".holder")
+	}
+
+	// Takes the first free slot, or returns -1. Leaves the channel and lock in the fields on success.
+	private int tryTakeSlot(int slots) {
+		for (int slot = 0; slot < slots; slot++) {
+			FileChannel candidate = FileChannel.open(slotFile(slot), StandardOpenOption.CREATE, StandardOpenOption.WRITE)
+			FileLock lock = null
+			try {
+				try {
+					lock = candidate.tryLock()
+				} catch (OverlappingFileLockException other) {
+					lock = null // another build in this daemon JVM holds it
+				}
+			} catch (Throwable failed) {
+				candidate.close()
+				throw failed
+			}
+			if (lock != null) {
+				channel = candidate
+				held = lock
+				return slot
+			}
+			candidate.close()
+		}
+		return -1
+	}
+
+	private static Path writeTicket(Path queueDir, long pid) {
+		long now = System.currentTimeMillis()
+		String id = UUID.randomUUID().toString().substring(0, 8)
+		Path tmp = queueDir.resolve(String.format("%013d-%010d-%s.tmp", now, pid, id))
+		Path file = queueDir.resolve(String.format("%013d-%010d-%s.ticket", now, pid, id))
+		Files.writeString(tmp, "${now} ${pid}\n", StandardCharsets.UTF_8)
+		Files.move(tmp, file, StandardCopyOption.ATOMIC_MOVE) // never a half-written ticket
+		return file
+	}
+
+	// The tickets of live processes, oldest first. Removes those whose PID is gone.
+	private static List<Path> liveTickets(Path queueDir) {
+		List<Path> tickets = []
+		for (File file : (queueDir.toFile().listFiles() ?: new File[0])) {
+			if (!file.name.endsWith(".ticket")) {
+				continue
+			}
+			Path path = file.toPath()
+			if (ticketAlive(path)) {
+				tickets.add(path)
+			} else {
+				Files.deleteIfExists(path)
+			}
+		}
+		tickets.sort { it.fileName.toString() }
+		return tickets
+	}
+
+	private static boolean ticketAlive(Path ticket) {
+		try {
+			String[] fields = Files.readString(ticket, StandardCharsets.UTF_8).trim().split(" ")
+			return ProcessHandle.of(fields[1] as long).map { it.isAlive() }.orElse(false)
+		} catch (IOException | RuntimeException unreadable) {
+			return false // removed under us, or not a ticket this code wrote
+		}
+	}
+
+	private String describeSlots(int slots) {
+		List<String> parts = []
+		for (int slot = 0; slot < slots; slot++) { // not a closure: it cannot call private methods on the decorated service
+			parts.add("Slot ${slot}: ${readHolder(holderOf(slot))}".toString())
+		}
+		return parts.join("; ")
+	}
+
+	private static String readHolder(Path holderFile) {
 		try {
 			return Files.readString(holderFile, StandardCharsets.UTF_8).trim()
 		} catch (IOException unknown) {
-			return "an unknown process"
+			return "free or unknown"
 		}
+	}
+
+	private void deleteTicket() {
+		if (ticket != null) {
+			Files.deleteIfExists(ticket)
+			ticket = null
+		}
+	}
+
+	private void closeChannel() {
+		if (channel != null) {
+			channel.close()
+			channel = null
+		}
+		held = null
 	}
 
 	@Override
 	synchronized void close() {
 		try {
-			if (held != null) {
-				Files.deleteIfExists(holderFile)
-			}
+			deleteTicket()
 		} finally {
 			try {
 				if (held != null) {
-					held.release()
+					Files.deleteIfExists(holderFile)
 				}
 			} finally {
-				if (channel != null) {
-					channel.close()
+				try {
+					if (held != null) {
+						held.release()
+					}
+				} finally {
+					closeChannel()
 				}
-				held = null
-				channel = null
 			}
 		}
 	}
