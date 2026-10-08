@@ -315,6 +315,7 @@ public class LamplessFigureTest {
 				level.setBlock(origin.above(), light(LIT_LEVEL), 3);
 				phase[0] = 2;
 			} else if (phase[0] == 2 && figure[0].isRemoved()) {
+				// room-carver: removes a block this test placed itself in the overworld test structure, not layer rock
 				level.setBlock(origin.above(), Blocks.AIR.defaultBlockState(), 3);
 				phase[0] = 3;
 			} else if (phase[0] == 3 && railsAreDark(level, origin)) {
@@ -536,6 +537,7 @@ public class LamplessFigureTest {
 			for (int v = -3; v <= 3; v++) {
 				for (int y = -1; y <= 4; y++) {
 					boolean shell = y == -1 || y == 4 || Math.abs(u) == HALF + 1 || Math.abs(v) == 3;
+					// room-carver: a corridor closed by its own stone shell in the overworld test structure, not layer rock
 					level.setBlock(origin.offset(v, y, u), (shell ? Blocks.STONE : Blocks.AIR).defaultBlockState(), 3);
 				}
 			}

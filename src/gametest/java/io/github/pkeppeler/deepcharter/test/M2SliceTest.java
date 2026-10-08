@@ -224,6 +224,7 @@ public class M2SliceTest {
 				helper.getLevel().setBlock(ore, net.minecraft.world.level.block.Blocks.GOLD_ORE.defaultBlockState(), 3);
 				expect(helper, first.startRiding(mole, true, false), "the player should board the Mole");
 				poll(mole);
+				// room-carver: removes a block this test placed itself in the overworld test structure, not layer rock
 				helper.getLevel().setBlock(ore, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
 
 				// Chapter 7: the hull is repaired, and the crew reaches the Deep Claim.

@@ -297,12 +297,14 @@ public class HandbookChaptersSixToNineTest {
 				poll(mole);
 				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "a scanner nobody is flying", both, through(5, directive("seeing_below", "install_scanner")));
 				expect(helper, first.startRiding(mole, true, false), "the player should board the Mole");
+				// room-carver: removes a block this test placed itself in the overworld test structure, not layer rock
 				helper.getLevel().setBlock(ore, Blocks.AIR.defaultBlockState(), 3);
 				poll(mole);
 				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "flying a scanner with no ore in view", both, through(5, directive("seeing_below", "install_scanner")));
 				helper.getLevel().setBlock(ore, Blocks.GOLD_ORE.defaultBlockState(), 3);
 				poll(mole);
 				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "chapter 6", both, through(6));
+				// room-carver: removes a block this test placed itself in the overworld test structure, not layer rock
 				helper.getLevel().setBlock(ore, Blocks.AIR.defaultBlockState(), 3);
 				HandbookChaptersOneToFiveTest.expectRoadAt(helper, server, second, 6);
 

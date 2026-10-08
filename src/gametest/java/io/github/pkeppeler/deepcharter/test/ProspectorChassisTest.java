@@ -42,7 +42,6 @@ import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
-import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
@@ -56,6 +55,7 @@ import io.github.pkeppeler.deepcharter.pod.Serials;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
@@ -205,9 +205,8 @@ public class ProspectorChassisTest {
 	@GameTest(maxTicks = DRILL_TICKS)
 	public void aProspectorBoresThreeByThree(GameTestHelper helper) {
 		ServerLevel level = layer(helper, 1);
-		RoomSeal.seal(level, new BlockPos(BORE_X - 5, BORE_FLOOR - 8, BORE_Z - 5), new BlockPos(BORE_X + 5, BORE_FLOOR + 10, BORE_Z + 5));
-		fill(level, BORE_X - 5, BORE_X + 5, BORE_FLOOR - 8, BORE_FLOOR - 1, BORE_Z - 5, BORE_Z + 5, Blocks.STONE);
-		fill(level, BORE_X - 5, BORE_X + 5, BORE_FLOOR, BORE_FLOOR + 10, BORE_Z - 5, BORE_Z + 5, Blocks.AIR);
+		RoomCarver.carve(level, BORE_X - 5, BORE_X + 5, BORE_FLOOR - 8, BORE_FLOOR - 1, BORE_Z - 5, BORE_Z + 5, Blocks.STONE);
+		RoomCarver.carve(level, BORE_X - 5, BORE_X + 5, BORE_FLOOR, BORE_FLOOR + 10, BORE_Z - 5, BORE_Z + 5, Blocks.AIR);
 		MockPlayer pilot = MockPlayers.join(helper, "ProspectorBorer");
 		// Off the block grid on purpose: the pod must centre itself and bore the nearest 3 x 3.
 		Vec3 at = new Vec3(BORE_X + 0.3, BORE_FLOOR, BORE_Z + 0.8);
@@ -521,13 +520,8 @@ public class ProspectorChassisTest {
 
 	private static void openShaft(ServerLevel level, double x, double z) {
 		BlockPos column = BlockPos.containing(x, 0, z);
-		for (int dx = -1; dx <= 1; dx++) {
-			for (int dz = -1; dz <= 1; dz++) {
-				for (int y = level.getMinY(); y <= level.getMinY() + 10; y++) {
-					level.setBlock(column.offset(dx, 0, dz).atY(y), Blocks.AIR.defaultBlockState(), 3);
-				}
-			}
-		}
+		RoomCarver.carve(level, column.offset(-1, 0, -1).atY(level.getMinY()), column.offset(1, 0, 1).atY(level.getMinY() + 10),
+				Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
 	}
 
 	private static BlockPos conduit(GameTestHelper helper) {

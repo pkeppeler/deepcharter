@@ -48,6 +48,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 
 /**
  * Server GameTests for #76, the tow cable: a cable reaches 8 blocks, the towed pod trails its tower and passes through blocks,
@@ -738,6 +739,7 @@ public class TowingTest {
 		rider.leave();
 		tower.discard();
 		towed.discard();
+		// room-carver: clears a block of rock in the overworld test structure, not layer rock
 		fillRock(helper, Blocks.AIR);
 	}
 
@@ -752,6 +754,7 @@ public class TowingTest {
 		pilot.leave();
 		tower.discard();
 		towed.discard();
+		// room-carver: clears the floor of the overworld test structure, not layer rock
 		fillFloor(helper, Blocks.AIR);
 	}
 
@@ -781,13 +784,8 @@ public class TowingTest {
 	/** Clear a 3x3 shaft through the floor of {@code level}, wide enough for the pod's 1.9-block hull. */
 	private static void openShaft(ServerLevel level, double x, double z) {
 		BlockPos column = BlockPos.containing(x, 0, z);
-		for (int dx = -1; dx <= 1; dx++) {
-			for (int dz = -1; dz <= 1; dz++) {
-				for (int y = level.getMinY(); y <= level.getMinY() + 10; y++) {
-					level.setBlock(column.offset(dx, 0, dz).atY(y), Blocks.AIR.defaultBlockState(), 3);
-				}
-			}
-		}
+		RoomCarver.carve(level, column.offset(-1, 0, -1).atY(level.getMinY()), column.offset(1, 0, 1).atY(level.getMinY() + 10),
+				Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
 	}
 
 	private static ServerLevel layer(GameTestHelper helper, int layer) {

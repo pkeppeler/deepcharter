@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.repair;
 
 /**
- * Tunables for the repair feature, read as {@code RepairTuning.DEFAULT.thing()}. Item prices are the original's and live in
+ * Tunables for the repair feature, read as {@code RepairTuning.DEFAULT.thing()}. Item prices (issue 210, each with its rationale) live in
  * {@link Consumable}.
  *
  * @param repairCostPerHp   dollars for each hull point the station repairs. The original's $15 was for a 10 point hull; ours is

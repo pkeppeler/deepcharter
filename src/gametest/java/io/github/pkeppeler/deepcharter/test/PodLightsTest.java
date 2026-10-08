@@ -25,6 +25,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -33,7 +34,6 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
@@ -43,6 +43,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
@@ -161,6 +162,7 @@ public class PodLightsTest {
 			}
 			helper.succeed();
 		} finally {
+			// room-carver: removes a light this test placed itself
 			level.setBlock(foreign, Blocks.AIR.defaultBlockState(), 3);
 			pod.discard();
 		}
@@ -200,6 +202,7 @@ public class PodLightsTest {
 			helper.succeed();
 		} finally {
 			for (BlockPos cell : column) {
+				// room-carver: removes a light this test placed itself
 				level.setBlock(cell, Blocks.AIR.defaultBlockState(), 3);
 			}
 			pod.discard();
@@ -232,6 +235,7 @@ public class PodLightsTest {
 			helper.succeed();
 		} finally {
 			for (BlockPos cell : column) {
+				// room-carver: removes a light this test placed itself
 				level.setBlock(cell, Blocks.AIR.defaultBlockState(), 3);
 			}
 			pod.discard();
@@ -257,6 +261,7 @@ public class PodLightsTest {
 				throw failure(helper, "the swept light is still in the ledger");
 			}
 			expectLights(helper, "after the sweep", pod, 9, 15);
+			// room-carver: removes a light this test placed itself
 			level.setBlock(foreign, Blocks.AIR.defaultBlockState(), 3);
 			pod.discard();
 		});
@@ -540,14 +545,8 @@ public class PodLightsTest {
 	/** Clear a 3x3 shaft through the floor of {@code level}, wide enough for the pod's 1.9-block hull. */
 	private static void openShaft(ServerLevel level, double x, double z) {
 		BlockPos column = BlockPos.containing(x, 0, z);
-		RoomSeal.seal(level, column.offset(-1, 0, -1).atY(level.getMinY()), column.offset(1, 0, 1).atY(level.getMinY() + 10));
-		for (int dx = -1; dx <= 1; dx++) {
-			for (int dz = -1; dz <= 1; dz++) {
-				for (int y = level.getMinY(); y <= level.getMinY() + 10; y++) {
-					level.setBlock(column.offset(dx, 0, dz).atY(y), Blocks.AIR.defaultBlockState(), 3);
-				}
-			}
-		}
+		RoomCarver.carve(level, column.offset(-1, 0, -1).atY(level.getMinY()), column.offset(1, 0, 1).atY(level.getMinY() + 10),
+				Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
 	}
 
 	private static ServerLevel layer(GameTestHelper helper, int layer) {

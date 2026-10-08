@@ -53,13 +53,13 @@ public class RepairStationClientTest implements FabricClientGameTest {
 			awaitServer(context, () -> hull(singleplayer, scene) == scene.pod().maxHull() - DAMAGE + 10f);
 			check(account(singleplayer, scene) == START_BALANCE - 10, "10 HP cost $10, the account is $" + account(singleplayer, scene));
 
-			context.clickScreenButton("BUY DYNAMITE $2000");
+			context.clickScreenButton("BUY DYNAMITE $100");
 			awaitServer(context, () -> carried(singleplayer, Consumable.DYNAMITE) == 1);
-			check(account(singleplayer, scene) == START_BALANCE - 10 - 2_000, "the dynamite cost $2000, the account is $" + account(singleplayer, scene));
+			check(account(singleplayer, scene) == START_BALANCE - 10 - 100, "the dynamite cost $100, the account is $" + account(singleplayer, scene));
 
 			context.clickScreenButton("REPAIR ALL");
 			awaitServer(context, () -> hull(singleplayer, scene) == scene.pod().maxHull());
-			check(account(singleplayer, scene) == START_BALANCE - 10 - 2_000 - 30 * 1, "the rest of the hull cost $30, the account is $" + account(singleplayer, scene));
+			check(account(singleplayer, scene) == START_BALANCE - 10 - 100 - 30 * 1, "the rest of the hull cost $30, the account is $" + account(singleplayer, scene));
 			context.setScreen(() -> null);
 		}
 	}

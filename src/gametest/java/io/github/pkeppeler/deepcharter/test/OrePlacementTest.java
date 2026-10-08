@@ -33,7 +33,6 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
-import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.ore.GasHazard;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
@@ -46,6 +45,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
@@ -497,6 +497,7 @@ public class OrePlacementTest {
 		for (int flag : flags) {
 			stoneCube(level, centre, 3);
 			level.setBlock(centre, HazardBlocks.GAS_POCKET.defaultBlockState(), 2);
+			// room-carver: replaces a gas pocket in a stone cube to test its venting: not a room
 			level.setBlock(centre, Blocks.AIR.defaultBlockState(), flag);
 			expectCubeIsStoneAroundAir(helper, level, centre, "setBlock with flags " + flag);
 		}
@@ -516,6 +517,7 @@ public class OrePlacementTest {
 		ServerLevel level = helper.getLevel();
 		BlockPos gas = helper.absolutePos(new BlockPos(1, 4, 1));
 		stoneCube(level, gas, 3);
+		// room-carver: one block beside a gas pocket in the overworld test structure, not layer rock
 		level.setBlock(gas.east(), Blocks.AIR.defaultBlockState(), 2);
 		level.setBlock(gas, HazardBlocks.GAS_POCKET.defaultBlockState(), 2);
 		level.setBlock(gas.west(), Blocks.PISTON.defaultBlockState().setValue(PistonBaseBlock.FACING, Direction.EAST), 2);
@@ -764,14 +766,8 @@ public class OrePlacementTest {
 
 	/** Stone up to and including y=floor-1 under a 9 x 9 around (x, Z), and air for 10 blocks above it. */
 	private static void room(ServerLevel level, int x, int floor) {
-		RoomSeal.seal(level, new BlockPos(x - 4, floor - 8, Z - 4), new BlockPos(x + 4, floor + 10, Z + 4));
-		for (int bx = x - 4; bx <= x + 4; bx++) {
-			for (int bz = Z - 4; bz <= Z + 4; bz++) {
-				for (int y = floor - 8; y <= floor + 10; y++) {
-					level.setBlock(new BlockPos(bx, y, bz), (y < floor ? Blocks.STONE : Blocks.AIR).defaultBlockState(), 2);
-				}
-			}
-		}
+		RoomCarver.carve(level, x - 4, x + 4, floor - 8, floor - 1, Z - 4, Z + 4, Blocks.STONE);
+		RoomCarver.carve(level, x - 4, x + 4, floor, floor + 10, Z - 4, Z + 4, Blocks.AIR);
 	}
 
 	private static PodEntity pod(ServerLevel level, Vec3 at) {
