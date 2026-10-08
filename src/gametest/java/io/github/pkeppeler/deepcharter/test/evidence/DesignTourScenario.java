@@ -294,7 +294,7 @@ public class DesignTourScenario extends EvidenceScenario {
 		still("colony-aerial-northwest");
 		view(0, p(48, 30, -48), p(0, 3, 0), 30);
 		still("colony-aerial-northeast");
-		view(0, p(0, 90, 0.1), p(0, 0, 0), 30);
+		view(0, p(0, 80, 25), p(0, 0, 0), 30);
 		still("colony-from-straight-above");
 		view(0, p(0, EYE, 30), p(0, 4, 0), 30);
 		still("colony-from-the-south-edge");
@@ -321,23 +321,23 @@ public class DesignTourScenario extends EvidenceScenario {
 		still("statue-close");
 		view(0, p(-3, 8, 12), p(0, 5, 0), 20);
 		still("statue-hands-from-above");
-		view(0, p(6, 2.5, 0), p(18, 1.5, 0), 40);
+		view(0, p(6, 1.62, 0), p(18, 1.3, 0), 40);
 		still("continuity-office-from-the-square");
 		view(0, p(16, 2.5, 0), p(21, 1.5, -3), 20);
 		still("continuity-office-inside");
-		view(0, p(-9, 2.5, 7), p(-23, 1.5, 7), 40);
+		view(0, p(-9, 1.62, 7), p(-23, 1.3, 7), 40);
 		still("hangar-from-the-square");
-		view(0, p(-20, EYE + 1, -8), p(-20, 2, -18), 40);
+		view(0, p(-20, 1.62, -8), p(-20, 1.3, -18), 40);
 		still("chapel-from-the-square");
-		view(0, p(-20, EYE + 1, -12), p(-20.5, 2, -18), 20);
+		view(0, p(-20, 1.62, -12), p(-20.5, 1.3, -18), 20);
 		still("chapel-altar-and-candle");
-		view(0, p(18, 2.5, 6), p(18, 1.5, 15), 40);
+		view(0, p(18, 1.62, 6), p(18, 1.3, 15), 40);
 		still("bunkhouse-from-the-square");
-		view(0, p(-6, 2.5, 8), p(-6, 1.5, 17.5), 40);
+		view(0, p(-6, 1.62, 8), p(-6, 1.3, 17.5), 40);
 		still("pay-office-from-the-square");
-		view(0, p(6, 2.5, 8), p(6, 2, 18), 40);
+		view(0, p(6, 1.62, 8), p(6, 1.5, 18), 40);
 		still("personnel-office-from-the-square");
-		view(0, p(-22, 2.5, 10), p(-22, 1.5, 20), 40);
+		view(0, p(-22, 1.62, 10), p(-22, 1.3, 20), 40);
 		still("lamp-and-pick-from-the-square");
 		view(0, p(-4, 8, 4), p(-4, 8, -14), 30);
 		still("conduit-from-the-square");
@@ -626,7 +626,30 @@ public class DesignTourScenario extends EvidenceScenario {
 
 	// ------------------------------------------------------------------------------------------------ HUDs
 
+	/** The pod's cargo screen, opened as a player does: sneak and use the pod. */
+	private void cargoScreen() {
+		Vec3 stage = p(22, 0, -18);
+		view(0, stage.add(0, EYE, -3), stage.add(2, 1, -3), 20);
+		PodEntity pod = spawnPod(PodRegistry.POD, 0, stage.add(2, 0, -3), 0f, false);
+		serverDo(server -> {
+			for (OreType type : OreType.values()) {
+				pod.cargo().tryAdd(pod, OreRegistry.stack(type));
+			}
+			ServerPlayer player = player(server);
+			player.setShiftKeyDown(true);
+			net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.invoker()
+					.interact(player, player.level(), net.minecraft.world.InteractionHand.MAIN_HAND, pod, null);
+			player.setShiftKeyDown(false);
+		});
+		ctx.waitForScreen(io.github.pkeppeler.deepcharter.client.ore.OreCargoScreen.class);
+		ctx.waitTicks(10);
+		still("screen-pod-cargo");
+		ctx.setScreen(() -> null);
+		serverDo(server -> pod.discard());
+	}
+
 	private void hudsOnTheSurface() {
+		cargoScreen();
 		Vec3 stage = p(22, 0, -18);
 		view(0, stage.add(0, EYE, 0), stage.add(0, EYE, 20), 60);
 		ScannerHudTest.mountFirstPlayer(sp.getServer(), 0);
@@ -639,14 +662,26 @@ public class DesignTourScenario extends EvidenceScenario {
 		ctx.waitTicks(20);
 		still("hud-pod-in-third-person-surface");
 		ctx.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
-		ScannerHudTest.leavePod(ctx, sp.getServer());
+		leavePod();
 
 		ScannerHudTest.rideWithGoldAhead(ctx, sp.getServer(), 1);
 		fillPodForHud();
 		ctx.waitTicks(20);
 		still("hud-scanner-tier-1-surface");
-		ScannerHudTest.leavePod(ctx, sp.getServer());
+		leavePod();
 		hud(false);
+	}
+
+	/** Puts the player out of the pod they ride, if they ride one, and removes it. */
+	private void leavePod() {
+		serverDo(server -> {
+			ServerPlayer player = player(server);
+			if (player.getVehicle() instanceof PodEntity pod) {
+				player.stopRiding();
+				pod.discard();
+			}
+		});
+		ctx.waitFor(client -> client.player.getVehicle() == null, WAIT);
 	}
 
 	private void fillPodForHud() {
@@ -796,7 +831,26 @@ public class DesignTourScenario extends EvidenceScenario {
 		terrainViews(2, cell);
 
 		// A pod in the dark with a scanner: the HUD at depth.
-		view(2, cell, cell.add(1, 0, 0), 60);
+		// A sealed hall, so that no lava or gas of the cave reaches the pod.
+		Vec3 hall = serverGet(server -> {
+			ServerLevel two = server.getLevel(LayerChain.dimension(2));
+			int x = LAYER_X + 120;
+			int z = LAYER_Z + 120;
+			int floor = (two.getMinY() + two.getMaxY()) / 2;
+			for (int dx = -3; dx <= 3; dx++) {
+				for (int dz = -3; dz <= 3; dz++) {
+					two.getChunk((x >> 4) + dx, (z >> 4) + dz);
+				}
+			}
+			BlockPos min = new BlockPos(x - 6, floor, z - 6);
+			BlockPos max = new BlockPos(x + 6, floor + 7, z + 6);
+			RoomSeal.seal(two, min, max);
+			for (BlockPos pos : BlockPos.betweenClosed(min, max)) {
+				two.setBlock(pos.immutable(), Blocks.AIR.defaultBlockState(), 3);
+			}
+			return new Vec3(x + 0.5, floor + EYE, z + 0.5);
+		});
+		view(2, hall, hall.add(1, 0, 0), 60);
 		hud(true);
 		serverDo(server -> player(server).removeEffect(MobEffects.NIGHT_VISION));
 		ScannerHudTest.mountFirstPlayer(sp.getServer(), 4);
@@ -804,7 +858,7 @@ public class DesignTourScenario extends EvidenceScenario {
 		fillPodForHud();
 		ctx.waitTicks(80);
 		still("hud-scanner-tier-4-layer-2");
-		ScannerHudTest.leavePod(ctx, sp.getServer());
+		leavePod();
 		hud(false);
 		serverDo(server -> player(server).addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false)));
 
