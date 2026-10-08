@@ -75,5 +75,122 @@ run GIF_FRAMES=560-720
 check "a range starts at its first frame" log_has "-start_number 560"
 check "a range holds last-first+1 frames" log_has "-frames:v 161"
 
+# Scenario -> class mapping and the Gradle command line. A stub gradlew logs its arguments and the
+# scenario env var, so no game starts. The fixture scenarios sit in the tree the script scans.
+scen=$work/src/gametest/java/io/github/pkeppeler/deepcharter/test/evidence
+mkdir -p "$scen"
+cat >"$scen/DemoScenario.java" <<'JAVA'
+public class DemoScenario extends EvidenceScenario {
+	private String other() {
+		return "decoy";
+	}
+	@Override
+	protected String name() {
+		return "demo";
+	}
+}
+JAVA
+cat >"$scen/OtherScenario.java" <<'JAVA'
+public class OtherScenario extends EvidenceScenario {
+	protected String name() {
+		return "other-one";
+	}
+}
+JAVA
+cat >"$scen/TwinScenario.java" <<'JAVA'
+public class TwinScenario extends EvidenceScenario {
+	protected String name() {
+		return "other-one";
+	}
+}
+JAVA
+cat >"$scen/EvidenceScenario.java" <<'JAVA'
+public abstract class EvidenceScenario {
+	protected abstract String name();
+}
+JAVA
+cat >"$scen/PlainClientTest.java" <<'JAVA'
+public class PlainClientTest implements FabricClientGameTest {
+	String name() {
+		return "plain";
+	}
+}
+JAVA
+cat >"$work/gradlew" <<'STUB'
+#!/usr/bin/env bash
+echo "$* | ${DEEPCHARTER_EVIDENCE:-}" >>"$STUB_GRADLE_LOG"
+STUB
+chmod +x "$work/gradlew"
+export STUB_GRADLE_LOG=$work/gradle.log
+gradle_has() { grep -qF -- "$1" "$STUB_GRADLE_LOG"; }
+gradle_lacks() { ! grep -qF -- "$1" "$STUB_GRADLE_LOG"; }
+gradle_not_run() { [[ ! -s $STUB_GRADLE_LOG ]]; }
+
+record() { # record <args...>: runs the script with the game stubbed; sets $code, fills $work/out and $work/err
+  : >"$STUB_LOG"
+  : >"$STUB_GRADLE_LOG"
+  code=0
+  env PATH="$work/bin:$PATH" bash "$work/tools/record-evidence.sh" "$@" >"$work/out" 2>"$work/err" || code=$?
+}
+
+record demo
+check "a scenario records" exit_is 0
+check "a scenario runs only its own class" gradle_has "runClientGameTest -PclientTests=DemoScenario | demo"
+
+record decoy
+check "a string returned by another method is not an id" exit_is 1
+
+record demo --full-suite
+check "--full-suite records" exit_is 0
+check "--full-suite runs the whole client suite" gradle_lacks -PclientTests
+check "--full-suite still records the scenario" gradle_has "runClientGameTest | demo"
+
+record --full-suite demo
+check "flags before the scenario are refused" exit_is 2
+
+record demo --bogus
+check "an unknown flag exits 2" exit_is 2
+check "an unknown flag starts no game" gradle_not_run
+
+record nope
+check "an unknown scenario exits 1" exit_is 1
+check "an unknown scenario is named" err_has "'nope'"
+check "an unknown scenario lists the known ids" err_has "known: demo other-one"
+check "an unknown scenario starts no game" gradle_not_run
+
+record plain
+check "a client test that is not a scenario is not an id" exit_is 1
+
+record nope --full-suite
+check "an unknown scenario fails under --full-suite too" exit_is 1
+check "an unknown scenario under --full-suite starts no game" gradle_not_run
+
+record other-one
+check "an id two classes declare exits 1" exit_is 1
+check "a duplicate id names both classes" err_has "OtherScenario TwinScenario"
+check "a duplicate id starts no game" gradle_not_run
+
+record demo --print-class
+check "--print-class succeeds" exit_is 0
+check "--print-class prints the class alone" test "$(cat "$work/out")" = DemoScenario
+check "--print-class starts no game" gradle_not_run
+
+record nope --print-class
+check "--print-class on an unknown scenario exits 1" exit_is 1
+
+record demo --no-run
+check "--no-run starts no game" gradle_not_run
+check "--no-run still assembles the media" log_has "-framerate 15"
+
+# The real tree: every scenario id is unique and maps to a class that exists as a scenario file.
+real=$(cd "$tools/.." && pwd)
+ids=$(cd "$real" && eval "$(sed -n '/^scenario_classes() {/,/^}/p' tools/record-evidence.sh)" && scenario_classes)
+unique_ids() { [[ -n $ids && $(awk '{ print $1 }' <<<"$ids" | sort | uniq -d) == "" ]]; }
+check "every real scenario id is unique" unique_ids
+files_match() { # the number of ids equals the number of EvidenceScenario subclasses
+  [[ $(wc -l <<<"$ids" | tr -d ' ') -eq $(cd "$real" && grep -rlE '\bextends[[:space:]]+EvidenceScenario\b' src/gametest/java | wc -l | tr -d ' ') ]]
+}
+check "every real EvidenceScenario subclass yields one id" files_match
+
 if [[ $failures -ne 0 ]]; then echo "$failures failed"; exit 1; fi
 echo "all passed"

@@ -95,5 +95,21 @@ class ClientFilterTest(unittest.TestCase):
         self.assertEqual(entrypoints("fabric-gametest"), names("FixtureTest"))
 
 
+class RecordEvidenceMappingTest(unittest.TestCase):
+    """tools/record-evidence.sh finds a scenario's class by scanning the sources; the real tree's classes must pass the filter."""
+
+    def test_every_real_scenario_class_is_accepted_by_the_filter(self):
+        script = REPO / "tools/record-evidence.sh"
+        listing = subprocess.run(
+            ["bash", "-c", 'eval "$(sed -n \'/^scenario_classes() {/,/^}/p\' "$1")" && scenario_classes', "_", str(script)],
+            cwd=REPO, capture_output=True, text=True, check=True)
+        classes = sorted(line.split()[1] for line in listing.stdout.splitlines())
+        self.assertGreater(len(classes), 1)
+        result = generate(REPO / "src/gametest/java", f"-PclientTests={','.join(classes)}")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        listed = [name.rsplit(".", 1)[1] for name in entrypoints("fabric-client-gametest")]
+        self.assertEqual(listed, classes)
+
+
 if __name__ == "__main__":
     unittest.main()
