@@ -4,7 +4,7 @@ The orchestrator writes this log during unattended runs. It never stops for a bl
 
 ## 2026-10-08: GitHub Actions stopped running (billing), so nothing can merge
 
-**Status:** open. Needs the user (money).
+**Status:** resolved 2026-10-08. The user made the repo public, so standard runners cost no minutes. The held PRs merged through the gate. The text below is the original report.
 
 From about 10:51 UTC every CI job fails with zero steps: "The job was not started because recent account payments have failed or your spending limit needs to be increased" (first seen on run 37766192132). The 10:46 run had succeeded, so the Free plan's monthly Actions minutes have most likely run out. The orchestrator can't see billing (`gh` lacks the `user` scope).
 
