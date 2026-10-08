@@ -16,11 +16,17 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
  * {@code EconomyAffordabilityTest} holds each item to its band.
  */
 public enum Consumable {
+	// Layer 1 tool: under one stock layer-1 run, the cheap way past a 10 L tank.
 	RESERVE_FUEL_TANK("reserve_fuel_tank", 100),
+	// Layer 2 tool: under one layer-2 run, and above the station's price for the same 30 HP.
 	HULL_NANOBOTS("hull_nanobots", 350),
+	// Layer 1 tool: under one stock layer-1 run.
 	DYNAMITE("dynamite", 100),
+	// Layer 2 tool: under one layer-2 run, and above the dynamite it outdoes.
 	PLASTIC_EXPLOSIVES("plastic_explosives", 300),
+	// SPEC section 11: an expensive escape, about 2 layer-2 runs; the cargo drop is the rest of the cost.
 	QUANTUM_TELEPORTER("quantum_teleporter", 750),
+	// SPEC section 11: a layer-3 item measured as about 4 layer-2 runs; the cargo drop is the rest of the cost.
 	MATTER_TRANSMITTER("matter_transmitter", 1_500);
 
 	private final Identifier itemId;
