@@ -30,6 +30,7 @@ import net.minecraft.world.level.storage.SavedDataStorage;
 
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterData;
+import io.github.pkeppeler.deepcharter.charter.CharterCommands;
 import io.github.pkeppeler.deepcharter.charter.CharterEvents;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
@@ -393,6 +394,44 @@ public class CharterCoreTest {
 			throw helper.assertionException("/leave should remove the crew member");
 		}
 		helper.succeed();
+	}
+
+	@GameTest
+	public void countsReadSingularForOneAndPluralOtherwise(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		MockPlayer director = MockPlayers.join(helper, "CountDirector");
+		MockPlayer crew = MockPlayers.join(helper, "CountCrew");
+		String name = uniqueName();
+
+		expectText(helper, "1 charter", CharterCommands.count(CharterCommands.Noun.CHARTER, 1));
+		expectText(helper, "0 charters", CharterCommands.count(CharterCommands.Noun.CHARTER, 0));
+		expectText(helper, "2 charters", CharterCommands.count(CharterCommands.Noun.CHARTER, 2));
+
+		run(server, director, "found \"" + name + "\"");
+		run(server, crew, "apply \"" + name + "\"");
+		expectLine(helper, name + ": 1 person, 1 application, account 0, deepest point",
+				run(server, director, LevelBasedPermissionSet.GAMEMASTER, "info"), true);
+		expectLine(helper, name + ": 1 person, account 0", run(server, director, LevelBasedPermissionSet.GAMEMASTER, "list"), false);
+
+		run(server, director, "approve CountCrew");
+		expectLine(helper, name + ": 2 people, 0 applications, account 0, deepest point",
+				run(server, director, LevelBasedPermissionSet.GAMEMASTER, "info"), true);
+		expectLine(helper, name + ": 2 people, account 0", run(server, director, LevelBasedPermissionSet.GAMEMASTER, "list"), false);
+		helper.succeed();
+	}
+
+	private static void expectText(GameTestHelper helper, String expected, Component actual) {
+		if (!actual.getString().equals(expected)) {
+			throw helper.assertionException("expected \"%s\", got \"%s\"", expected, actual.getString());
+		}
+	}
+
+	private static void expectLine(GameTestHelper helper, String expected, List<Component> messages, boolean prefix) {
+		boolean found = messages.stream().map(Component::getString)
+				.anyMatch(line -> prefix ? line.startsWith(expected) : line.equals(expected));
+		if (!found) {
+			throw helper.assertionException("expected a line \"%s\", got %s", expected, messages.stream().map(Component::getString).toList());
+		}
 	}
 
 	@GameTest
