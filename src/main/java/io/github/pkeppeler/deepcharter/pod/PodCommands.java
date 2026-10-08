@@ -54,7 +54,7 @@ public final class PodCommands {
 		if (!(source.getEntity() instanceof ServerPlayer player)) {
 			return false;
 		}
-		Optional<CharterId> charter = Charters.charterOf(source.getServer(), player.getUUID()).map(Charter::id);
+		Optional<CharterId> charter = Charters.charterOfOrThrow(source.getServer(), player.getUUID()).map(Charter::id);
 		if (charter.isEmpty()) {
 			return false;
 		}

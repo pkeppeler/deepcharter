@@ -126,7 +126,7 @@ public final class Terminals {
 		if (!Charters.isReadable(server)) {
 			return new Access.Denied(TerminalRefusal.STATE_UNREADABLE);
 		}
-		Optional<Charter> charter = Charters.charterOf(server, player.getUUID());
+		Optional<Charter> charter = Charters.readableCharterOf(server, player.getUUID());
 		if (type.access() == TerminalType.Access.CHARTER_ONLY && charter.isEmpty()) {
 			return new Access.Denied(TerminalRefusal.NOT_ON_A_CHARTER);
 		}

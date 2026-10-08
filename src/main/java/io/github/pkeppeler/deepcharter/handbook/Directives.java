@@ -41,7 +41,7 @@ public final class Directives {
 			}
 			return;
 		}
-		if (HandbookProgress.readableData(server).isEmpty() || Charters.charterOf(server, player.getUUID()).isEmpty()) {
+		if (HandbookProgress.readableData(server).isEmpty() || Charters.readableCharterOf(server, player.getUUID()).isEmpty()) {
 			return;
 		}
 		HandbookRegistry.DIRECTIVE_TRIGGER.trigger(player, directive);

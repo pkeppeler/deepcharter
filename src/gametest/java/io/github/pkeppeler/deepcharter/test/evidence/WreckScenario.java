@@ -42,7 +42,7 @@ public class WreckScenario extends EvidenceScenario {
 				Charters.found(server, player.getUUID(), "Evidence Charter").ifPresent(refusal -> {
 					throw new AssertionError("could not found a charter: " + refusal);
 				});
-				CharterId charter = Charters.charterOf(server, player.getUUID()).orElseThrow().id();
+				CharterId charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id();
 				// Both pods belong to the player's charter, and nobody rides the doomed one: the owner is still told.
 				PodComponents.register(spawn(player, new Vec3(-2.5, 0, 6)), charter);
 				doomed[0] = spawn(player, new Vec3(2.5, 0, 6));

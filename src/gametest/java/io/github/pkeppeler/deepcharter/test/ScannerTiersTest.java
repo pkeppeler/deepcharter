@@ -220,7 +220,7 @@ public class ScannerTiersTest {
 			if (Charters.found(server, member.player().getUUID(), "Spawn scanner " + CHARTERS.incrementAndGet()).isPresent()) {
 				throw failure(helper, "could not found a charter");
 			}
-			CharterId charter = Charters.charterOf(server, member.player().getUUID()).orElseThrow().id();
+			CharterId charter = Charters.charterOfOrThrow(server, member.player().getUUID()).orElseThrow().id();
 			PodEntity fitted = spawnBy(helper, member, spawned);
 			PodEntity bare = spawnBy(helper, loner, spawned);
 			if (!PodComponents.registration(fitted).map(PodComponents.Registration::owner).equals(Optional.of(charter))
@@ -264,7 +264,7 @@ public class ScannerTiersTest {
 		if (Charters.found(helper.getLevel().getServer(), founder, "Scanner tiers " + CHARTERS.incrementAndGet()).isPresent()) {
 			throw failure(helper, "could not found a charter");
 		}
-		return Charters.charterOf(helper.getLevel().getServer(), founder).orElseThrow().id();
+		return Charters.charterOfOrThrow(helper.getLevel().getServer(), founder).orElseThrow().id();
 	}
 
 	private static PodEntity ownedPod(GameTestHelper helper, CharterId owner) {

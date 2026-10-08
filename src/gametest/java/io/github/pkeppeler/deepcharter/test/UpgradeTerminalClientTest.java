@@ -79,7 +79,7 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
 				boolean capped = PodComponents.effectiveTier(pod, ComponentTrack.HULL) == 2;
 				boolean dropped = pod.level().getEntitiesOfClass(ItemEntity.class, new AABB(scene.terminal()).inflate(20)).stream()
 						.anyMatch(item -> ComponentItems.labelOf(item.getItem()).map(label -> label.tier() == 1).orElse(false));
-				long account = Charters.charterOf(server2, server2.getPlayerList().getPlayers().getFirst().getUUID()).orElseThrow().account();
+				long account = Charters.charterOfOrThrow(server2, server2.getPlayerList().getPlayers().getFirst().getUUID()).orElseThrow().account();
 				return capped && dropped && account == ACCOUNT - 750 - 20_000;
 			});
 			check(cappedAndDropped, "the tier 4 hull works as tier 2, the tier 1 hull dropped, and the account paid 20750 in all");
@@ -97,7 +97,7 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
 		if (Charters.found(server, player.getUUID(), "Upgrade Test Charter").isPresent()) {
 			throw new AssertionError("founding should succeed");
 		}
-		CharterId charter = Charters.charterOf(server, player.getUUID()).orElseThrow().id();
+		CharterId charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id();
 		if (Charters.deposit(server, charter, ACCOUNT).isPresent()) {
 			throw new AssertionError("funding should succeed");
 		}

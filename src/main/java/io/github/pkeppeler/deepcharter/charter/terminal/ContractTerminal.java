@@ -107,7 +107,7 @@ public final class ContractTerminal {
 	/** The player named by the args among the applications to the acting player's charter. Empty when there is none. */
 	private static Optional<UUID> applicantNamed(TerminalAction.Context context) {
 		Optional<String> name = nameArg(context);
-		Optional<Charter> charter = Charters.charterOf(context.server(), context.player().getUUID());
+		Optional<Charter> charter = Charters.charterOfOrThrow(context.server(), context.player().getUUID());
 		if (name.isEmpty() || charter.isEmpty()) {
 			return Optional.empty();
 		}
@@ -142,7 +142,7 @@ public final class ContractTerminal {
 	/** Where {@code player} stands with the charters now. Throws when the saved charters cannot be read: check {@code Charters.isReadable} first. */
 	public static ContractState stateOf(MinecraftServer server, UUID player) {
 		int rows = ContractTerminalTuning.DEFAULT.listedRows();
-		Optional<Charter> own = Charters.charterOf(server, player);
+		Optional<Charter> own = Charters.charterOfOrThrow(server, player);
 		if (own.isPresent()) {
 			Charter charter = own.get();
 			if (!charter.isDirector(player)) {
@@ -155,7 +155,7 @@ public final class ContractTerminal {
 		if (applied.isPresent()) {
 			return new ContractState(ContractState.Role.APPLICANT, applied.get().name(), List.of(), 0, List.of(), 0, Optional.empty());
 		}
-		List<String> open = Charters.all(server).stream().filter(charter -> !charter.dormant()).map(Charter::name)
+		List<String> open = Charters.allOrThrow(server).stream().filter(charter -> !charter.dormant()).map(Charter::name)
 				.sorted(Comparator.comparing(String::toLowerCase)).toList();
 		return new ContractState(ContractState.Role.NONE, "", open.stream().limit(rows).toList(), open.size(), List.of(), 0, Optional.empty());
 	}

@@ -86,7 +86,7 @@ public final class UpgradeTerminal {
 		if (tier < 1 || tier > track.maxTier()) {
 			return Optional.of(UpgradeRefusal.BAD_REQUEST.message());
 		}
-		Charter charter = Charters.charterOf(server, player.getUUID()).orElseThrow();
+		Charter charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow();
 		PodEntity pod;
 		switch (parked(player, charter, terminal)) {
 			case Parked.None _ -> {

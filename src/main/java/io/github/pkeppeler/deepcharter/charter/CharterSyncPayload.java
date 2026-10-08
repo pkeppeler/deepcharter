@@ -48,7 +48,10 @@ public record CharterSyncPayload(Optional<CharterView> charter) implements Custo
 			return;
 		}
 		UUID id = player.getUUID();
-		Optional<CharterView> view = CharterData.get(server).charterOf(id).map(charter -> CharterView.of(charter, id));
+		if (!Charters.isReadable(server)) {
+			return;
+		}
+		Optional<CharterView> view = Charters.readableCharterOf(server, id).map(charter -> CharterView.of(charter, id));
 		ServerPlayNetworking.send(player, new CharterSyncPayload(view));
 	}
 

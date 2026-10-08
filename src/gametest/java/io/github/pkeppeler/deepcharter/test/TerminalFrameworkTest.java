@@ -286,8 +286,8 @@ public class TerminalFrameworkTest {
 		withFreshState(server, state -> {
 			MockPlayer first = charterMember(helper, "FirstCharter");
 			MockPlayer second = charterMember(helper, "SecondCharter");
-			Charter firstCharter = Charters.charterOf(server, first.player().getUUID()).orElseThrow();
-			Charter secondCharter = Charters.charterOf(server, second.player().getUUID()).orElseThrow();
+			Charter firstCharter = Charters.charterOfOrThrow(server, first.player().getUUID()).orElseThrow();
+			Charter secondCharter = Charters.charterOfOrThrow(server, second.player().getUUID()).orElseThrow();
 			if (firstCharter.id().equals(secondCharter.id())) {
 				throw helper.assertionException("the test needs two charters");
 			}
@@ -720,8 +720,8 @@ public class TerminalFrameworkTest {
 		future.putString("shape", "from a newer build");
 
 		RepairState data = RepairState.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow();
-		if (data.isReadable() || !data.unreadableVersion().equals(Optional.of(Integer.toString(RepairState.VERSION + 1)))) {
-			throw helper.assertionException("data of another version is unreadable and names its version, got %s", data.unreadableVersion());
+		if (data.isReadable()) {
+			throw helper.assertionException("data of another version should load as unreadable");
 		}
 		boolean threw = false;
 		try {
@@ -744,7 +744,7 @@ public class TerminalFrameworkTest {
 		MinecraftServer server = helper.getLevel().getServer();
 		MockPlayer member = charterMember(helper, "Parker");
 		MockPlayer other = charterMember(helper, "Stranger");
-		Charter ours = Charters.charterOf(server, member.player().getUUID()).orElseThrow();
+		Charter ours = Charters.charterOfOrThrow(server, member.player().getUUID()).orElseThrow();
 		BlockPos terminal = helper.absolutePos(new BlockPos(2, 1, 2));
 		Vec3 centre = Vec3.atCenterOf(terminal);
 		List<PodEntity> pods = new ArrayList<>();
@@ -753,7 +753,7 @@ public class TerminalFrameworkTest {
 			PodEntity near = pod(helper, centre.add(0, 0, 3), ours);
 			PodEntity edge = pod(helper, centre.add(0, 0, -7.9), ours);
 			PodEntity outside = pod(helper, centre.add(-8.1, 0, 0), ours);
-			PodEntity foreign = pod(helper, centre.add(1, 0, 0), Charters.charterOf(server, other.player().getUUID()).orElseThrow());
+			PodEntity foreign = pod(helper, centre.add(1, 0, 0), Charters.charterOfOrThrow(server, other.player().getUUID()).orElseThrow());
 			pods.addAll(List.of(far, near, edge, outside, foreign));
 
 			List<PodEntity> parked = Terminals.parkedPods(helper.getLevel(), terminal);

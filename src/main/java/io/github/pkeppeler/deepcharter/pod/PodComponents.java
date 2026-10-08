@@ -269,7 +269,7 @@ public final class PodComponents {
 			// Without the charters nobody's ownership can be checked: a readable pod is open, as in mayAccess.
 			return !unreadable(pod);
 		}
-		Optional<Charter> charter = Charters.charterOf(server, player.getUUID());
+		Optional<Charter> charter = Charters.readableCharterOf(server, player.getUUID());
 		if (mayAccess(pod, charter)) {
 			return true;
 		}
@@ -277,7 +277,7 @@ public final class PodComponents {
 		if (!unreadable(pod)) {
 			Registration registration = read(pod).registration().orElseThrow();
 			player.sendSystemMessage(Component.translatable("message.deepcharter.pod.not_crew", registration.serial(),
-					Charters.find(server, registration.owner()).orElseThrow().name()), true);
+					Charters.readableFind(server, registration.owner()).orElseThrow().name()), true);
 		}
 		return false;
 	}
@@ -306,11 +306,7 @@ public final class PodComponents {
 		if (registration.isEmpty()) {
 			return Optional.empty();
 		}
-		MinecraftServer server = pod.level().getServer();
-		if (!Charters.isReadable(server)) {
-			return Optional.empty();
-		}
-		return Charters.find(server, registration.get().owner()).filter(owner -> !owner.dormant());
+		return Charters.readableFind(pod.level().getServer(), registration.get().owner()).filter(owner -> !owner.dormant());
 	}
 
 	/** True when the pod's components are unreadable; logs once, through {@link Versioned#readable}. */

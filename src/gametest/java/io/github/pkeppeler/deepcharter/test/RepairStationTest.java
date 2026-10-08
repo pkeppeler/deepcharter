@@ -113,7 +113,7 @@ public class RepairStationTest {
 			if (Charters.found(server, pilot.player().getUUID(), name).isPresent()) {
 				throw helper.assertionException("founding the charter should succeed");
 			}
-			Charter charter = Charters.charterOf(server, pilot.player().getUUID()).orElseThrow();
+			Charter charter = Charters.charterOfOrThrow(server, pilot.player().getUUID()).orElseThrow();
 			pilot.teleportTo(helper.getLevel(), Vec3.atCenterOf(pos).add(2, -pilot.player().getEyeHeight(), 0), 0, 0);
 			PodEntity pod = helper.spawn(PodRegistry.POD, new Vec3(relative.getX() + 3.5, relative.getY(), relative.getZ() + 0.5));
 			PodComponents.register(pod, charter.id());
@@ -125,7 +125,7 @@ public class RepairStationTest {
 	}
 
 	private static long account(MinecraftServer server, Station station) {
-		return Charters.find(server, station.charter().id()).orElseThrow().account();
+		return Charters.findOrThrow(server, station.charter().id()).orElseThrow().account();
 	}
 
 	private static void fund(GameTestHelper helper, Station station, long amount) {
@@ -291,7 +291,7 @@ public class RepairStationTest {
 			if (Charters.found(helper.getLevel().getServer(), stranger.player().getUUID(), "Other " + UUID.randomUUID().toString().substring(0, 8)).isPresent()) {
 				throw helper.assertionException("founding the other charter should succeed");
 			}
-			PodComponents.register(foreign, Charters.charterOf(helper.getLevel().getServer(), stranger.player().getUUID()).orElseThrow().id());
+			PodComponents.register(foreign, Charters.charterOfOrThrow(helper.getLevel().getServer(), stranger.player().getUUID()).orElseThrow().id());
 			foreign.setHull(foreign.maxHull() - 20f);
 			pod.discard();
 			expectRefused(helper, Terminals.act(station.pilot().player(), station.pos(), RepairStation.REPAIR, hp(5)), "repairing another charter's pod");
@@ -556,7 +556,7 @@ public class RepairStationTest {
 		Charters.found(server, pilot.player().getUUID(), "Tele " + UUID.randomUUID().toString().substring(0, 8)).ifPresent(refusal -> {
 			throw helper.assertionException("founding the charter: %s", refusal);
 		});
-		Charter charter = Charters.charterOf(server, pilot.player().getUUID()).orElseThrow();
+		Charter charter = Charters.charterOfOrThrow(server, pilot.player().getUUID()).orElseThrow();
 		MockPlayer passenger = MockPlayers.join(helper, "Stowaway");
 		BlockPos at = BlockPos.containing(x, 40, z);
 		boolean[] used = {false};
@@ -893,11 +893,11 @@ public class RepairStationTest {
 			Charters.found(server, lone.player().getUUID(), "Dormant " + UUID.randomUUID().toString().substring(0, 8)).ifPresent(refusal -> {
 				throw helper.assertionException("founding the dormant charter: %s", refusal);
 			});
-			CharterId dormant = Charters.charterOf(server, lone.player().getUUID()).orElseThrow().id();
+			CharterId dormant = Charters.charterOfOrThrow(server, lone.player().getUUID()).orElseThrow().id();
 			Charters.leave(server, lone.player().getUUID()).ifPresent(refusal -> {
 				throw helper.assertionException("leaving: %s", refusal);
 			});
-			if (!Charters.find(server, dormant).orElseThrow().dormant()) {
+			if (!Charters.findOrThrow(server, dormant).orElseThrow().dormant()) {
 				throw helper.assertionException("the charter should be dormant now");
 			}
 			if (!repairsPodOf(helper, station, pod -> PodComponents.register(pod, dormant))) {
@@ -929,7 +929,7 @@ public class RepairStationTest {
 			Charters.found(server, outsider.player().getUUID(), "Outsiders " + UUID.randomUUID().toString().substring(0, 8)).ifPresent(refusal -> {
 				throw helper.assertionException("founding the outsiders' charter: %s", refusal);
 			});
-			Charters.deposit(server, Charters.charterOf(server, outsider.player().getUUID()).orElseThrow().id(), 1_000);
+			Charters.deposit(server, Charters.charterOfOrThrow(server, outsider.player().getUUID()).orElseThrow().id(), 1_000);
 			if (repairsPodOf(helper, station, outsider, pod -> PodComponents.register(pod, station.charter().id()))) {
 				throw helper.assertionException("a player of another charter must not repair this charter's pod");
 			}

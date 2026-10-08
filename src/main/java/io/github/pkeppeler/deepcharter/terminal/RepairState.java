@@ -77,11 +77,6 @@ public final class RepairState extends SavedData {
 		return state.isReadable();
 	}
 
-	/** The saved version of unreadable data. */
-	public Optional<String> unreadableVersion() {
-		return state.unreadableVersion();
-	}
-
 	private Map<Identifier, List<Identifier>> readable() {
 		return state.orThrow();
 	}

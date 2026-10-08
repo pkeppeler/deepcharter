@@ -18,6 +18,7 @@ import net.minecraft.server.level.ServerPlayer;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.CharterData;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
+import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.charter.CharterSyncPayload;
 import io.github.pkeppeler.deepcharter.fuel.ReserveTank;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgress;
@@ -35,7 +36,8 @@ import io.github.pkeppeler.deepcharter.pod.PodLightLedger;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
-import io.github.pkeppeler.deepcharter.pod.Serials;
+import io.github.pkeppeler.deepcharter.transmission.TransmissionCatalog;
+import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionTriggers;
 import io.github.pkeppeler.deepcharter.transmission.Transmissions;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
@@ -52,7 +54,9 @@ import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 /**
  * The safe accessor {@link Versioned#readable}, and the attachment-backed features' tick, join and callback paths against
  * unreadable data. The SavedData-backed features (charters, handbook progress, notes, colony, work orders, serials, repair state,
- * transmissions, hangar, pod lights) and pod cargo have their own tests, listed in the PR.
+ * transmissions, hangar, pod lights) and pod cargo have their own tests, listed in the PR. Serials are read by explicit purchases
+ * only, and their refusals run the real paths: {@code UpgradeTerminalTest.unreadableSerialsRefuseBeforeTheSpend} (the upgrade
+ * buy), {@code FoundingMoleHangarTest} (the hangar buy) and {@code ProspectorChassisTest} (the hangar restore).
  */
 public class UnreadableAccessTest {
 	private static final Identifier ENTRY = Identifier.fromNamespaceAndPath("deepcharter_test", "an_entry");
@@ -171,7 +175,8 @@ public class UnreadableAccessTest {
 		MockPlayer mock = MockPlayers.join(helper, "unreadable-charters");
 		ServerPlayer player = mock.player();
 		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
-		PodComponents.register(pod, CharterId.random());
+		CharterId charter = CharterId.random();
+		PodComponents.register(pod, charter);
 		AtomicInteger joins = new AtomicInteger();
 		try {
 			Map<String, Runnable> paths = new LinkedHashMap<>();
@@ -179,6 +184,19 @@ public class UnreadableAccessTest {
 			paths.put("handbook poll", () -> HandbookProgress.sweep(player));
 			paths.put("transmission zone poll", () -> TransmissionTriggers.pollZones(server));
 			paths.put("transmission login", () -> Transmissions.deliverOnLogin(server, player));
+			paths.put("transmission fire", () -> Transmissions.fire(server, TransmissionData.get(server), charter, TransmissionCatalog.all().getFirst().id()));
+			paths.put("transmission fire for the running server", () -> Transmissions.fire(charter, TransmissionCatalog.all().getFirst().id()));
+			paths.put("transmission replay", () -> Transmissions.replayTo(server, TransmissionData.get(server), charter));
+			paths.put("transmission deliver", () -> {
+				Transmissions.deliver(server, TransmissionData.get(server), charter);
+				Transmissions.deliverTo(server, TransmissionData.get(server), charter, player);
+			});
+			paths.put("readable charter forms", () -> {
+				if (Charters.readableCharterOf(server, player.getUUID()).isPresent() || Charters.readableFind(server, charter).isPresent()
+						|| Charters.readableAll(server).isPresent()) {
+					throw new IllegalStateException("unreadable charters read as nothing");
+				}
+			});
 			paths.put("breach crossing", () -> TransmissionTriggers.onCrossed(player, level, level, 1, 2));
 			paths.put("pod ownership", () -> {
 				PodComponents.ownerCharter(pod);
@@ -205,26 +223,11 @@ public class UnreadableAccessTest {
 					throw new IllegalStateException("unreadable work orders show no orders");
 				}
 			});
-			paths.put("check", () -> WorkOrderData.get(server).isReadable());
 			UnreadableChecks.assertSavedDataNoThrow(helper, "work orders", server, WorkOrderData.TYPE, paths);
 			helper.succeed();
 		} finally {
 			mock.leave();
 		}
-	}
-
-	/** Serials are read by explicit purchases only; the terminal refusals are tested with their scenes. */
-	@GameTest
-	public void unreadableSerialsAreCheckedWithoutThrowing(GameTestHelper helper) {
-		MinecraftServer server = helper.getLevel().getServer();
-		Map<String, Runnable> paths = new LinkedHashMap<>();
-		paths.put("check", () -> {
-			if (Serials.get(server).isReadable()) {
-				throw new IllegalStateException("the swapped serials are unreadable");
-			}
-		});
-		UnreadableChecks.assertSavedDataNoThrow(helper, "serials", server, Serials.TYPE, paths);
-		helper.succeed();
 	}
 
 	@GameTest

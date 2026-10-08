@@ -3,7 +3,6 @@ package io.github.pkeppeler.deepcharter.market;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
@@ -81,11 +80,6 @@ public final class WorkOrderData extends SavedData {
 	/** False (logged once) when the saved data is of a version this build cannot read: every other method then throws. */
 	public boolean isReadable() {
 		return state.isReadable();
-	}
-
-	/** The saved version of unreadable data. */
-	public Optional<String> unreadableVersion() {
-		return state.unreadableVersion();
 	}
 
 	/** How many the charter has handed in for {@code order}. */

@@ -110,7 +110,7 @@ public class OreProcessorTest {
 	}
 
 	private static long balance(MinecraftServer server, ServerPlayer player) {
-		return Charters.charterOf(server, player.getUUID()).orElseThrow().account();
+		return Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().account();
 	}
 
 	private static int ores(ServerPlayer player) {
@@ -150,7 +150,7 @@ public class OreProcessorTest {
 	}
 
 	private static TerminalAction.Context context(MinecraftServer server, ServerPlayer player, BlockPos pos) {
-		return new TerminalAction.Context(server, player, Charters.charterOf(server, player.getUUID()), TerminalTypes.ORE_PROCESSOR, pos, new CompoundTag());
+		return new TerminalAction.Context(server, player, Charters.charterOfOrThrow(server, player.getUUID()), TerminalTypes.ORE_PROCESSOR, pos, new CompoundTag());
 	}
 
 	@GameTest
@@ -246,7 +246,7 @@ public class OreProcessorTest {
 			PodEntity pod = podAt(helper, beside(processor, 4), OreType.GOLDIUM);
 			carry(player, OreType.IRONIUM);
 			try {
-				Charters.deposit(server, Charters.charterOf(server, player.getUUID()).orElseThrow().id(), Long.MAX_VALUE - 10);
+				Charters.deposit(server, Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id(), Long.MAX_VALUE - 10);
 				long before = balance(server, player);
 				expectRefused(helper, TerminalRefusal.ACTION_REFUSED, Terminals.act(player, processor, OreProcessor.SELL_CARGO, new CompoundTag()),
 						"a cargo sale into a full account");
@@ -319,7 +319,7 @@ public class OreProcessorTest {
 
 	/** Registers {@code pod} to the charter of {@code owner}. */
 	private static void register(MinecraftServer server, PodEntity pod, ServerPlayer owner) {
-		PodComponents.register(pod, Charters.charterOf(server, owner.getUUID()).orElseThrow().id());
+		PodComponents.register(pod, Charters.charterOfOrThrow(server, owner.getUUID()).orElseThrow().id());
 	}
 
 	@GameTest

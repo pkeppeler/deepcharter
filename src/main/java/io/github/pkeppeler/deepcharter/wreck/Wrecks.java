@@ -97,8 +97,6 @@ public final class Wrecks {
 
 	static void onHullDepleted(PodEntity pod) {
 		if (!isReadable(pod)) {
-			DeepCharter.LOGGER.error("Pod {} ran out of hull but its saved wreck state is unreadable: it is not made a wreck, and the state is kept",
-					pod.getUUID());
 			return;
 		}
 		Versioned.modifyOrThrow(pod, WreckRegistry.STATE, state -> WreckState.WRECKED);
@@ -122,8 +120,6 @@ public final class Wrecks {
 			return;
 		}
 		if (!isReadable(pod)) {
-			DeepCharter.LOGGER.error("Pod {} has no hull but its saved wreck state is unreadable: it is not made a wreck, and the state is kept",
-					pod.getUUID());
 			return;
 		}
 		DeepCharter.LOGGER.warn("Pod {} loaded with hull {} and is now a wreck (a corrupt saved hull loads as 0)", pod.getUUID(), pod.hull());
@@ -164,7 +160,7 @@ public final class Wrecks {
 			return charters;
 		}
 		for (Entity member : crew) {
-			Charters.charterOf(server, member.getUUID()).ifPresent(charter -> charters.putIfAbsent(charter.id(), charter));
+			Charters.readableCharterOf(server, member.getUUID()).ifPresent(charter -> charters.putIfAbsent(charter.id(), charter));
 		}
 		return charters;
 	}

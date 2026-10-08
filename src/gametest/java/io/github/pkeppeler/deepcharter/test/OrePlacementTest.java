@@ -280,7 +280,7 @@ public class OrePlacementTest {
 			if (refusal.isPresent()) {
 				throw failure(helper, "the charter was refused for founder %s: %s", founder, refusal);
 			}
-			CharterId charter = Charters.charterOf(server, founder).orElseThrow().id();
+			CharterId charter = Charters.charterOfOrThrow(server, founder).orElseThrow().id();
 			stoneCube(level, centre, 3);
 			PodEntity cooled = pod(level, Vec3.atBottomCenterOf(centre.above()));
 			PodComponents.register(cooled, charter);

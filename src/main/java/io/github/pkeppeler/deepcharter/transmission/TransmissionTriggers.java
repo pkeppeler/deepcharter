@@ -24,10 +24,7 @@ public final class TransmissionTriggers {
 			return;
 		}
 		MinecraftServer server = from.getServer();
-		if (!Charters.isReadable(server)) {
-			return;
-		}
-		Charters.charterOf(server, player.getUUID()).ifPresent(charter ->
+		Charters.readableCharterOf(server, player.getUUID()).ifPresent(charter ->
 				TransmissionCatalog.forBreach(toLayer).forEach(transmission -> Transmissions.fire(server, charter.id(), transmission.id())));
 	}
 
@@ -37,7 +34,7 @@ public final class TransmissionTriggers {
 			return;
 		}
 		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-			Charters.charterOf(server, player.getUUID()).ifPresent(charter -> {
+			Charters.readableCharterOf(server, player.getUUID()).ifPresent(charter -> {
 				// The poll is also where a bonus that a full account refused is tried again.
 				Transmissions.payPending(server, TransmissionData.get(server), charter.id());
 				Zones.of(player.level(), player.getBlockY()).ifPresent(zone ->

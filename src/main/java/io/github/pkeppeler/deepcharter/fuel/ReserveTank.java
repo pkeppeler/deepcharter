@@ -133,7 +133,7 @@ public final class ReserveTank {
 		if (!Charters.isReadable(server)) {
 			return Optional.of(Component.translatable("message.deepcharter.fuel.reserve_unreadable"));
 		}
-		boolean allowed = PodComponents.mayAccess(pod, Charters.charterOf(server, player.getUUID()));
+		boolean allowed = PodComponents.mayAccess(pod, Charters.readableCharterOf(server, player.getUUID()));
 		return allowed ? Optional.empty() : Optional.of(Component.translatable("message.deepcharter.fuel.reserve_not_yours"));
 	}
 }

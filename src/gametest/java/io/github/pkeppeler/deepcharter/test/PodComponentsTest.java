@@ -465,7 +465,7 @@ public class PodComponentsTest {
 		PodEntity pod = null;
 		try {
 			expectNoRefusal(helper, Charters.found(server, director.player().getUUID(), "Podowners " + CHARTERS.incrementAndGet()));
-			CharterId owner = Charters.charterOf(server, director.player().getUUID()).orElseThrow().id();
+			CharterId owner = Charters.charterOfOrThrow(server, director.player().getUUID()).orElseThrow().id();
 			expectNoRefusal(helper, Charters.apply(server, crew.player().getUUID(), owner));
 			expectNoRefusal(helper, Charters.approve(server, director.player().getUUID(), crew.player().getUUID()));
 			expectNoRefusal(helper, Charters.found(server, rival.player().getUUID(), "Rivals " + CHARTERS.incrementAndGet()));
@@ -508,14 +508,14 @@ public class PodComponentsTest {
 		PodEntity missingPod = null;
 		try {
 			expectNoRefusal(helper, Charters.found(server, director.player().getUUID(), "Dormant " + CHARTERS.incrementAndGet()));
-			CharterId owner = Charters.charterOf(server, director.player().getUUID()).orElseThrow().id();
+			CharterId owner = Charters.charterOfOrThrow(server, director.player().getUUID()).orElseThrow().id();
 			dormantPod = ownedPod(helper, owner);
 			missingPod = ownedPod(helper, CharterId.random());
 			if (stranger.player().startRiding(dormantPod)) {
 				throw failure(helper, "a stranger must not board a pod of a charter that has people");
 			}
 			expectNoRefusal(helper, Charters.leave(server, director.player().getUUID()));
-			if (!Charters.find(server, owner).orElseThrow().dormant()) {
+			if (!Charters.findOrThrow(server, owner).orElseThrow().dormant()) {
 				throw failure(helper, "the charter should be dormant now");
 			}
 			if (!stranger.player().startRiding(dormantPod)) {
@@ -548,11 +548,11 @@ public class PodComponentsTest {
 		PodEntity pod = null;
 		try {
 			expectNoRefusal(helper, Charters.found(server, director.player().getUUID(), "Revived " + CHARTERS.incrementAndGet()));
-			CharterId owner = Charters.charterOf(server, director.player().getUUID()).orElseThrow().id();
+			CharterId owner = Charters.charterOfOrThrow(server, director.player().getUUID()).orElseThrow().id();
 			pod = ownedPod(helper, owner);
 			pod.damageHull(pod.maxHull());
 			expectNoRefusal(helper, Charters.leave(server, director.player().getUUID()));
-			if (!PodComponents.mayAccess(pod, Charters.charterOf(server, stranger.player().getUUID()))) {
+			if (!PodComponents.mayAccess(pod, Charters.charterOfOrThrow(server, stranger.player().getUUID()))) {
 				throw failure(helper, "while the charter is dormant its pod is anyone's");
 			}
 			if (PodComponents.ownerCharter(pod).isPresent()) {
@@ -569,7 +569,7 @@ public class PodComponentsTest {
 			if (!Wrecks.isWreck(pod)) {
 				throw failure(helper, "reviving a charter does not repair its wrecked pod");
 			}
-			if (!PodComponents.mayAccess(pod, Charters.charterOf(server, reviver.player().getUUID()))) {
+			if (!PodComponents.mayAccess(pod, Charters.charterOfOrThrow(server, reviver.player().getUUID()))) {
 				throw failure(helper, "the new Director may act on the pod");
 			}
 			helper.succeed();
@@ -647,7 +647,7 @@ public class PodComponentsTest {
 		PodEntity pod = null;
 		try {
 			expectNoRefusal(helper, Charters.found(server, owner.player().getUUID(), "Refuelled " + CHARTERS.incrementAndGet()));
-			pod = ownedPod(helper, Charters.charterOf(server, owner.player().getUUID()).orElseThrow().id());
+			pod = ownedPod(helper, Charters.charterOfOrThrow(server, owner.player().getUUID()).orElseThrow().id());
 			pod.setFuel(50f);
 			outsider.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.COAL));
 			InteractionResult result = UseEntityCallback.EVENT.invoker().interact(
@@ -702,7 +702,7 @@ public class PodComponentsTest {
 		MinecraftServer server = helper.getLevel().getServer();
 		UUID founder = UUID.randomUUID();
 		expectNoRefusal(helper, Charters.found(server, founder, "Components " + CHARTERS.incrementAndGet()));
-		return Charters.charterOf(server, founder).orElseThrow().id();
+		return Charters.charterOfOrThrow(server, founder).orElseThrow().id();
 	}
 
 	private static PodEntity ownedPod(GameTestHelper helper, CharterId owner) {

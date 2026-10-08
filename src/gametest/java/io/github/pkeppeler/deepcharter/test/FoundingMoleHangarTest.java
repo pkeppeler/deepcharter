@@ -170,7 +170,7 @@ public class FoundingMoleHangarTest {
 	}
 
 	static Charter charterOf(GameTestHelper helper, MockPlayer mock) {
-		return Charters.charterOf(server(helper), mock.player().getUUID()).orElseThrow();
+		return Charters.charterOfOrThrow(server(helper), mock.player().getUUID()).orElseThrow();
 	}
 
 	static long balance(GameTestHelper helper, MockPlayer mock) {

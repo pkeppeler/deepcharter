@@ -72,7 +72,7 @@ public final class HandbookProgress {
 		if (data.isEmpty()) {
 			return Set.of();
 		}
-		return Charters.charterOf(server, player).map(charter -> data.get().completed(charter.id())).orElse(Set.of());
+		return Charters.readableCharterOf(server, player).map(charter -> data.get().completed(charter.id())).orElse(Set.of());
 	}
 
 	/**
@@ -85,7 +85,7 @@ public final class HandbookProgress {
 		if (readable.isEmpty()) {
 			return;
 		}
-		Optional<Charter> charter = Charters.charterOf(server, player.getUUID());
+		Optional<Charter> charter = Charters.readableCharterOf(server, player.getUUID());
 		if (charter.isEmpty()) {
 			return;
 		}
@@ -137,7 +137,7 @@ public final class HandbookProgress {
 		if (data.isEmpty()) {
 			return;
 		}
-		Set<Identifier> done = Charters.charterOf(server, player.getUUID()).map(charter -> data.get().completed(charter.id())).orElse(Set.of());
+		Set<Identifier> done = Charters.readableCharterOf(server, player.getUUID()).map(charter -> data.get().completed(charter.id())).orElse(Set.of());
 		for (Identifier directive : HandbookChapters.directivesOrEmpty(server)) {
 			AdvancementHolder advancement = server.getAdvancements().get(directive);
 			if (advancement == null) {

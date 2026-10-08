@@ -160,7 +160,7 @@ public class TransmissionsTest {
 	}
 
 	private static long account(GameTestHelper helper, CharterId charter) {
-		return Charters.find(server(helper), charter).orElseThrow().account();
+		return Charters.findOrThrow(server(helper), charter).orElseThrow().account();
 	}
 
 	@GameTest

@@ -326,7 +326,7 @@ public final class PodTowing {
 			serverPlayer.sendOverlayMessage(Refusal.UNREADABLE.message());
 			return InteractionResult.FAIL;
 		}
-		Optional<Charter> charter = Charters.charterOf(server, serverPlayer.getUUID());
+		Optional<Charter> charter = Charters.readableCharterOf(server, serverPlayer.getUUID());
 		if (isTowed(target)) {
 			if (!mayFree(target, charter)) {
 				serverPlayer.sendOverlayMessage(Refusal.NOT_ALLOWED_TO_FREE.message());

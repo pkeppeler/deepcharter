@@ -71,7 +71,7 @@ public class LamplessFigureScenario extends EvidenceScenario {
 				pod[0] = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
 				pod[0].setPos(Vec3.atBottomCenterOf(floor.above().east(POD_BESIDE_RAIL)));
 				level.addFreshEntity(pod[0]);
-				PodComponents.register(pod[0], Charters.charterOf(server, player.getUUID()).orElseThrow().id());
+				PodComponents.register(pod[0], Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id());
 				figure[0] = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
 				figure[0].setPos(Vec3.atBottomCenterOf(floor.above().south(FIGURE_START)));
 				figure[0].setHeading(Direction.SOUTH);

@@ -153,7 +153,7 @@ public class UpgradeTerminalTest {
 				expectEqual(helper, "the pod runs it as the cap", 2, PodComponents.effectiveTier(scene.pod(), ComponentTrack.HULL));
 				expectEqual(helper, "maximum hull of a capped part", 300f, PodStats.of(scene.pod()).maxHull());
 
-				UpgradeView.Pod shown = UpgradeTerminal.view(helper.getLevel().getServer(), scene.player(), Charters.charterOf(helper.getLevel().getServer(), scene.player().getUUID()), scene.terminal()).pod().orElseThrow();
+				UpgradeView.Pod shown = UpgradeTerminal.view(helper.getLevel().getServer(), scene.player(), Charters.charterOfOrThrow(helper.getLevel().getServer(), scene.player().getUUID()), scene.terminal()).pod().orElseThrow();
 				expectEqual(helper, "the view shows the cap", 2, shown.cap());
 				UpgradeView.Slot hull = shown.slots().stream().filter(slot -> slot.track() == ComponentTrack.HULL).findFirst().orElseThrow();
 				if (hull.installed() != 4 || hull.effective() != 2) {
@@ -216,7 +216,7 @@ public class UpgradeTerminalTest {
 				if (PodComponents.partOf(foreign, ComponentTrack.ENGINE).isPresent()) {
 					throw failure(helper, "a pod of another charter must not get the part");
 				}
-				UpgradeView view = UpgradeTerminal.view(server, scene.player(), Charters.charterOf(server, scene.player().getUUID()), scene.terminal());
+				UpgradeView view = UpgradeTerminal.view(server, scene.player(), Charters.charterOfOrThrow(server, scene.player().getUUID()), scene.terminal());
 				if (view.pod().isPresent() || !view.foreignPod()) {
 					throw failure(helper, "the view should say another charter's pod is parked, got %s", view);
 				}
@@ -294,7 +294,7 @@ public class UpgradeTerminalTest {
 				PodEntity unowned = helper.spawn(PodRegistry.POD, 2, 1, 2);
 				Scene bare = new Scene(scene.mock(), scene.player(), scene.charter(), scene.terminal(), unowned);
 				MinecraftServer server = helper.getLevel().getServer();
-				UpgradeView.Pod shown = UpgradeTerminal.view(server, scene.player(), Charters.charterOf(server, scene.player().getUUID()), scene.terminal()).pod().orElseThrow();
+				UpgradeView.Pod shown = UpgradeTerminal.view(server, scene.player(), Charters.charterOfOrThrow(server, scene.player().getUUID()), scene.terminal()).pod().orElseThrow();
 				if (!shown.serial().isEmpty()) {
 					throw failure(helper, "an unowned pod has no serial, got %s", shown.serial());
 				}
@@ -334,9 +334,9 @@ public class UpgradeTerminalTest {
 				if (Charters.found(server, founder, "Dormant " + UUID.randomUUID().toString().substring(0, 8)).isPresent()) {
 					throw failure(helper, "founding should succeed");
 				}
-				CharterId dormant = Charters.charterOf(server, founder).orElseThrow().id();
+				CharterId dormant = Charters.charterOfOrThrow(server, founder).orElseThrow().id();
 				Charters.leave(server, founder);
-				if (!Charters.find(server, dormant).orElseThrow().dormant()) {
+				if (!Charters.findOrThrow(server, dormant).orElseThrow().dormant()) {
 					throw failure(helper, "the charter should be dormant");
 				}
 				dormantPod = helper.spawn(PodRegistry.POD, 2, 1, 2);
@@ -434,7 +434,7 @@ public class UpgradeTerminalTest {
 				expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(scene, ComponentTrack.HULL, 1), "a purchase for a pod with unreadable parts");
 				expectEqual(helper, "the account", 10_000, balance(helper, scene));
 				// The view is built on a request path: it must not throw either.
-				UpgradeTerminal.view(helper.getLevel().getServer(), scene.player(), Charters.charterOf(helper.getLevel().getServer(), scene.player().getUUID()), scene.terminal());
+				UpgradeTerminal.view(helper.getLevel().getServer(), scene.player(), Charters.charterOfOrThrow(helper.getLevel().getServer(), scene.player().getUUID()), scene.terminal());
 				helper.succeed();
 			} finally {
 				clean(helper, scene);
@@ -498,7 +498,7 @@ public class UpgradeTerminalTest {
 		if (Charters.found(server, player.getUUID(), "Upgrade " + UUID.randomUUID().toString().substring(0, 8)).isPresent()) {
 			throw helper.assertionException("founding a charter should succeed");
 		}
-		CharterId charter = Charters.charterOf(server, player.getUUID()).orElseThrow().id();
+		CharterId charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id();
 		if (Charters.deposit(server, charter, account).isPresent()) {
 			throw helper.assertionException("funding the account should succeed");
 		}
@@ -517,7 +517,7 @@ public class UpgradeTerminalTest {
 		if (Charters.found(server, founder, "Other " + UUID.randomUUID().toString().substring(0, 8)).isPresent()) {
 			throw helper.assertionException("founding the other charter should succeed");
 		}
-		return Charters.charterOf(server, founder).orElseThrow().id();
+		return Charters.charterOfOrThrow(server, founder).orElseThrow().id();
 	}
 
 	private static void clean(GameTestHelper helper, Scene scene) {
@@ -552,7 +552,7 @@ public class UpgradeTerminalTest {
 	}
 
 	private static long balance(GameTestHelper helper, Scene scene) {
-		return Charters.find(helper.getLevel().getServer(), scene.charter()).orElseThrow().account();
+		return Charters.findOrThrow(helper.getLevel().getServer(), scene.charter()).orElseThrow().account();
 	}
 
 	/** The labels of the part items lying around the terminal. */

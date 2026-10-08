@@ -96,7 +96,7 @@ public final class Notes {
 		if (data.isEmpty()) {
 			return FindResult.UNREADABLE;
 		}
-		Optional<Charter> charter = Charters.charterOf(server, finder.getUUID());
+		Optional<Charter> charter = Charters.readableCharterOf(server, finder.getUUID());
 		if (charter.isEmpty()) {
 			return FindResult.NO_CHARTER;
 		}
@@ -116,7 +116,7 @@ public final class Notes {
 		if (data.isEmpty()) {
 			return List.of();
 		}
-		Set<Identifier> found = Charters.charterOf(server, player).map(charter -> data.get().found(charter.id())).orElse(Set.of());
+		Set<Identifier> found = Charters.readableCharterOf(server, player).map(charter -> data.get().found(charter.id())).orElse(Set.of());
 		return ALL.stream().filter(found::contains).toList();
 	}
 

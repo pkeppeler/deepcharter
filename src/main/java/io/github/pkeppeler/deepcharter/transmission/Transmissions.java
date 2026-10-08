@@ -79,10 +79,10 @@ public final class Transmissions {
 	/** {@link #fire(CharterId, Identifier)} with the transmission state in {@code data}. */
 	public static void fire(MinecraftServer server, TransmissionData data, CharterId charter, Identifier transmission) {
 		Transmission fired = TransmissionCatalog.require(transmission);
-		Charter found = requireCharter(server, charter);
-		if (!data.isReadable()) {
+		if (!readable(server, data)) {
 			return;
 		}
+		Charter found = requireCharter(server, charter);
 		payPending(server, data, charter);
 		if (!data.fire(charter, fired)) {
 			return;
@@ -97,15 +97,18 @@ public final class Transmissions {
 	 * first fired, and sends them to its online members. They pay no bonus: the bonus was for the charter that did the work.
 	 */
 	public static void replayTo(MinecraftServer server, TransmissionData data, CharterId charter) {
+		if (!readable(server, data)) {
+			return;
+		}
 		Charter found = requireCharter(server, charter);
-		if (data.isReadable() && !data.replayTo(charter).isEmpty()) {
+		if (!data.replayTo(charter).isEmpty()) {
 			deliver(server, data, found);
 		}
 	}
 
 	/** Sends every online member of {@code charter} what they have not been sent, in order. */
 	public static void deliver(MinecraftServer server, TransmissionData data, CharterId charter) {
-		if (data.isReadable()) {
+		if (readable(server, data)) {
 			deliver(server, data, requireCharter(server, charter));
 		}
 	}
@@ -115,7 +118,7 @@ public final class Transmissions {
 	 * player in: the server's lookup by UUID does not find a player in their own join event.
 	 */
 	public static void deliverTo(MinecraftServer server, TransmissionData data, CharterId charter, ServerPlayer player) {
-		if (data.isReadable()) {
+		if (readable(server, data)) {
 			sendUnsent(server, data, requireCharter(server, charter), player);
 		}
 	}
@@ -123,10 +126,10 @@ public final class Transmissions {
 	/** Called when a player logs in: pays what is pending for their charter, and sends them what they missed. */
 	public static void deliverOnLogin(MinecraftServer server, ServerPlayer player) {
 		TransmissionData data = TransmissionData.get(server);
-		if (!data.isReadable() || !Charters.isReadable(server)) {
+		if (!readable(server, data)) {
 			return;
 		}
-		Charters.charterOf(server, player.getUUID()).ifPresent(charter -> {
+		Charters.readableCharterOf(server, player.getUUID()).ifPresent(charter -> {
 			payPending(server, data, charter.id());
 			sendUnsent(server, data, charter, player);
 		});
@@ -235,7 +238,12 @@ public final class Transmissions {
 		return server.services().nameToIdCache().get(director.get()).map(NameAndId::name).orElse(UNKNOWN_DIRECTOR);
 	}
 
+	/** True when both the transmission data and the saved charters can be read; logs once for each that cannot. Never throws. */
+	private static boolean readable(MinecraftServer server, TransmissionData data) {
+		return data.isReadable() && Charters.isReadable(server);
+	}
+
 	private static Charter requireCharter(MinecraftServer server, CharterId charter) {
-		return Charters.find(server, charter).orElseThrow(() -> new IllegalArgumentException("No charter " + charter.value()));
+		return Charters.readableFind(server, charter).orElseThrow(() -> new IllegalArgumentException("No charter " + charter.value()));
 	}
 }

@@ -284,7 +284,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 		if (Charters.found(server, player.getUUID(), "Sound Test Charter").isPresent()) {
 			throw new AssertionError("founding should succeed");
 		}
-		var charter = Charters.charterOf(server, player.getUUID()).orElseThrow().id();
+		var charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id();
 		if (Charters.deposit(server, charter, 20).isPresent()) {
 			throw new AssertionError("the deposit should succeed");
 		}

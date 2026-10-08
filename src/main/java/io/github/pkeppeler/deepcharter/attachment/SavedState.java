@@ -66,11 +66,6 @@ public final class SavedState<T> {
 		return readable().isPresent();
 	}
 
-	/** The saved version of unreadable data, for a message. Does not log. */
-	public Optional<String> unreadableVersion() {
-		return Optional.ofNullable(unreadable).map(Versioned.Unreadable::version);
-	}
-
 	/** The live value. Throws if the saved data is unreadable: for the class's own explicit operations. */
 	public T orThrow() {
 		if (unreadable != null) {

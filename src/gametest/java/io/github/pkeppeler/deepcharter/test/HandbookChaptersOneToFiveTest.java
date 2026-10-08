@@ -295,7 +295,7 @@ public class HandbookChaptersOneToFiveTest {
 			if (Charters.found(server, first.getUUID(), uniqueName()).isPresent()) {
 				throw helper.assertionException("founding should succeed");
 			}
-			CharterId charter = Charters.charterOf(server, first.getUUID()).orElseThrow().id();
+			CharterId charter = Charters.charterOfOrThrow(server, first.getUUID()).orElseThrow().id();
 			if (Charters.apply(server, second.getUUID(), charter).isPresent() || Charters.approve(server, first.getUUID(), second.getUUID()).isPresent()
 					|| Charters.deposit(server, charter, 10_000).isPresent()) {
 				throw helper.assertionException("the second player should join the charter, which is then funded");
@@ -498,7 +498,7 @@ public class HandbookChaptersOneToFiveTest {
 			foundCharter(helper, server, member);
 			drifter.player().setGameMode(GameType.SURVIVAL);
 			Set<Identifier> memberBefore = Set.copyOf(completed(server, member.player()));
-			Charter charter = Charters.charterOf(server, member.player().getUUID()).orElseThrow();
+			Charter charter = Charters.charterOfOrThrow(server, member.player().getUUID()).orElseThrow();
 			for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL, HangarTerminal.TYPE)) {
 				TerminalEvents.REPAIRED.invoker().onRepaired(server, type, charter, drifter.player());
 				for (Identifier action : List.of(FuelPump.BUY, FuelPump.FILL, OreProcessor.SELL_CARGO, OreProcessor.SELL_INVENTORY, UpgradeTerminal.BUY,
@@ -535,7 +535,7 @@ public class HandbookChaptersOneToFiveTest {
 		try {
 			foundCharter(helper, server, pilot);
 			pod = helper.spawn(PodRegistry.POD, 2, 1, 2);
-			PodComponents.register(pod, Charters.charterOf(server, pilot.player().getUUID()).orElseThrow().id());
+			PodComponents.register(pod, Charters.charterOfOrThrow(server, pilot.player().getUUID()).orElseThrow().id());
 			if (!pilot.player().startRiding(pod, true, false)) {
 				throw helper.assertionException("the player should board the pod");
 			}
@@ -578,7 +578,7 @@ public class HandbookChaptersOneToFiveTest {
 		try {
 			foundCharter(helper, server, pilot);
 			pod = helper.spawn(PodRegistry.POD, 2, 1, 2);
-			Charter charter = Charters.charterOf(server, pilot.player().getUUID()).orElseThrow();
+			Charter charter = Charters.charterOfOrThrow(server, pilot.player().getUUID()).orElseThrow();
 			PodComponents.register(pod, charter.id());
 			if (!pilot.player().startRiding(pod, true, false)) {
 				throw helper.assertionException("the player should board the pod");
@@ -652,7 +652,7 @@ public class HandbookChaptersOneToFiveTest {
 			server.getDataStorage().set(Serials.TYPE, new Serials());
 			try {
 				foundCharter(helper, server, buyer);
-				if (Charters.deposit(server, Charters.charterOf(server, buyer.player().getUUID()).orElseThrow().id(), 100_000).isPresent()) {
+				if (Charters.deposit(server, Charters.charterOfOrThrow(server, buyer.player().getUUID()).orElseThrow().id(), 100_000).isPresent()) {
 					throw helper.assertionException("depositing should succeed");
 				}
 				for (Item part : HangarTerminal.TYPE.parts()) {

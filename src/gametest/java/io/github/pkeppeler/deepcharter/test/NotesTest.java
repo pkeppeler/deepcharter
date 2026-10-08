@@ -71,7 +71,7 @@ public class NotesTest {
 	/** A charter with {@code director} as Director and {@code crew} as its crew. */
 	private static CharterId found(GameTestHelper helper, MinecraftServer server, ServerPlayer director, ServerPlayer... crew) {
 		expectDone(helper, Charters.found(server, director.getUUID(), uniqueName()), "founding");
-		Charter charter = Charters.charterOf(server, director.getUUID()).orElseThrow();
+		Charter charter = Charters.charterOfOrThrow(server, director.getUUID()).orElseThrow();
 		for (ServerPlayer member : crew) {
 			join(helper, server, charter.id(), director, member);
 		}

@@ -721,7 +721,7 @@ public class TowingTest {
 		if (Charters.found(server, founder, "Towing Test " + CHARTERS.incrementAndGet()).isPresent()) {
 			throw failure(helper, "founding the charter should succeed");
 		}
-		return Charters.charterOf(server, founder).orElseThrow().id();
+		return Charters.charterOfOrThrow(server, founder).orElseThrow().id();
 	}
 
 	private static void fillRock(GameTestHelper helper, Block block) {
