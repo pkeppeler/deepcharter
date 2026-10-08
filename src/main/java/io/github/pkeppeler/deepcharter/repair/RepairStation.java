@@ -2,7 +2,6 @@ package io.github.pkeppeler.deepcharter.repair;
 
 import java.util.Optional;
 
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
@@ -93,7 +92,6 @@ public final class RepairStation {
 			return Optional.of(unpaid.get().message());
 		}
 		inventory.add(stack);
-		player.level().playSound(null, player.getX(), player.getY(), player.getZ(), DeepSound.UI_PURCHASE.event(), SoundSource.PLAYERS);
 		return Optional.empty();
 	}
 

@@ -1,6 +1,14 @@
 {
   "ambient_light": 0.06,
   "attributes": {
+    "minecraft:audio/background_music": {
+      "default": {
+        "max_delay": 1800,
+        "min_delay": 600,
+        "replace_current_music": true,
+        "sound": "deepcharter:music.layer_1"
+      }
+    },
     "minecraft:gameplay/bed_rule": {
       "can_set_spawn": "never",
       "can_sleep": "never",

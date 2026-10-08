@@ -314,8 +314,8 @@ public class FoundingMoleHangarTest {
 			expect(helper, reloaded.state().derelict().equals(Optional.of(derelict.getUUID())), "the saved hangar names the derelict, it names %s", reloaded.state());
 
 			withFreshWorld(helper, () -> {
-				Hangar.placeDerelict(server, placed);
-				Hangar.placeDerelict(server, placed);
+				Hangar.onBuilt(server, placed);
+				Hangar.onBuilt(server, placed);
 				int added = podsInTheHangar(helper).size() - pods;
 				expect(helper, added == 1, "a hangar with no record places one derelict, and not one for each call: it placed %s", added);
 			});
@@ -328,7 +328,7 @@ public class FoundingMoleHangarTest {
 		inTheHangar(helper, before -> withFreshWorld(helper, () -> {
 			MinecraftServer server = server(helper);
 			REPAIRED_BY.clear();
-			Hangar.placeDerelict(server, Colony.placed(server).orElseThrow());
+			Hangar.onBuilt(server, Colony.placed(server).orElseThrow());
 			PodEntity derelict = Hangar.derelict(server).orElseThrow();
 			MockPlayer first = member(helper, "Founder");
 			MockPlayer second = member(helper, "Latecomer");
@@ -572,7 +572,7 @@ public class FoundingMoleHangarTest {
 			worldDerelict.setPos(home.add(0, 100, 0));
 			server(helper).getDataStorage().set(HangarData.TYPE, new HangarData());
 			try {
-				Hangar.placeDerelict(server(helper), Colony.placed(server(helper)).orElseThrow());
+				Hangar.onBuilt(server(helper), Colony.placed(server(helper)).orElseThrow());
 				PodEntity derelict = Hangar.derelict(server(helper)).orElseThrow();
 				BlockPos hangarConsole = Hangar.consolePos(server(helper)).orElseThrow(() -> failure(helper, "the hangar should have a console"));
 				expect(helper, server(helper).overworld().getBlockState(hangarConsole).is(HangarTerminal.TYPE.block()), "the colony stands a console in the hangar");
@@ -618,7 +618,11 @@ public class FoundingMoleHangarTest {
 			// The hangar record is unreadable: the colony event, the repair event and both actions skip it.
 			LogCapture hangarLog = LogCapture.start(FUTURE_HANGAR);
 			server.getDataStorage().set(HangarData.TYPE, unreadable);
-			Hangar.placeDerelict(server, placed);
+			// Only the derelict is skipped: the console is a block and is placed even when the hangar record cannot be read.
+			BlockPos hangarConsole = Hangar.consolePos(server).orElseThrow();
+			server.overworld().setBlock(hangarConsole, Blocks.AIR.defaultBlockState(), 3);
+			Hangar.onBuilt(server, placed);
+			expect(helper, server.overworld().getBlockState(hangarConsole).is(HangarTerminal.TYPE.block()), "the console is placed although the hangar data is unreadable");
 			ColonyEvents.BUILT.invoker().onBuilt(server, placed);
 			TerminalEvents.REPAIRED.invoker().onRepaired(server, HangarTerminal.TYPE, charterOf(helper, player), player.player());
 			expectRefused(helper, act(player.player(), console, HangarTerminal.BUY_MOLE), "buying with an unreadable hangar");

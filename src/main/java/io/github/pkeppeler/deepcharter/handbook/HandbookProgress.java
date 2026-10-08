@@ -49,6 +49,7 @@ public final class HandbookProgress {
 		HandbookSyncPayload.register();
 		ServerPlayerEvents.JOIN.register(player -> refresh(player.level().getServer(), player));
 		CharterEvents.FOUNDED.register((server, charter) -> refreshAll(server, charter.roster()));
+		CharterEvents.REVIVED.register((server, charter, director) -> refreshAll(server, List.of(director)));
 		CharterEvents.JOINED.register((server, charter, player) -> refreshAll(server, List.of(player)));
 		CharterEvents.LEFT.register((server, charter, player) -> refreshAll(server, List.of(player)));
 		ServerTickEvents.END_SERVER_TICK.register(server -> {

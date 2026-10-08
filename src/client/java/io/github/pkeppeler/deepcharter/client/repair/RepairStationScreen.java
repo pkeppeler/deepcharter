@@ -13,6 +13,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
+import io.github.pkeppeler.deepcharter.client.sound.TypewriterSound;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
@@ -47,7 +48,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 	public RepairStationScreen(TerminalView view) {
 		super(Component.translatable(TerminalTypes.REPAIR_STATION.block().getDescriptionId()));
 		this.view = view;
-		this.typewriter = typewriter(Component.translatable("screen.deepcharter.repair.intro"), (index, letter) -> { });
+		this.typewriter = typewriter(Component.translatable("screen.deepcharter.repair.intro"), new TypewriterSound());
 	}
 
 	@Override

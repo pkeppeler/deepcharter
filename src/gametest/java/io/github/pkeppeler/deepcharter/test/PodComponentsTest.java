@@ -29,6 +29,7 @@ import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
+import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterData;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -47,6 +48,7 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.PartLabel;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
+import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 
 /**
  * Server GameTests for #65: parts change a pod's stats, a chassis caps their tier, another charter's parts are void,
@@ -532,6 +534,51 @@ public class PodComponentsTest {
 			}
 			if (missingPod != null) {
 				missingPod.discard();
+			}
+		}
+	}
+
+	/** Pod ownership is the charter id, so a revived charter takes its pods back; a wreck stays a wreck and nothing done meanwhile is undone. */
+	@GameTest
+	public void aRevivedCharterTakesItsPodsBackAndTheirWreckStateStays(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		MockPlayer director = MockPlayers.join(helper, "components-revive-director");
+		MockPlayer reviver = MockPlayers.join(helper, "components-revive-new");
+		MockPlayer stranger = MockPlayers.join(helper, "components-revive-stranger");
+		PodEntity pod = null;
+		try {
+			expectNoRefusal(helper, Charters.found(server, director.player().getUUID(), "Revived " + CHARTERS.incrementAndGet()));
+			CharterId owner = Charters.charterOf(server, director.player().getUUID()).orElseThrow().id();
+			pod = ownedPod(helper, owner);
+			pod.damageHull(pod.maxHull());
+			expectNoRefusal(helper, Charters.leave(server, director.player().getUUID()));
+			if (!PodComponents.mayAccess(pod, Charters.charterOf(server, stranger.player().getUUID()))) {
+				throw failure(helper, "while the charter is dormant its pod is anyone's");
+			}
+			if (PodComponents.ownerCharter(pod).isPresent()) {
+				throw failure(helper, "a dormant charter owns no pod for the others");
+			}
+
+			expectNoRefusal(helper, Charters.revive(server, reviver.player().getUUID(), owner));
+			if (PodComponents.ownerCharter(pod).map(Charter::id).filter(owner::equals).isEmpty()) {
+				throw failure(helper, "the revived charter owns its pod again");
+			}
+			if (stranger.player().startRiding(pod)) {
+				throw failure(helper, "a stranger must not board the pod of a revived charter");
+			}
+			if (!Wrecks.isWreck(pod)) {
+				throw failure(helper, "reviving a charter does not repair its wrecked pod");
+			}
+			if (!PodComponents.mayAccess(pod, Charters.charterOf(server, reviver.player().getUUID()))) {
+				throw failure(helper, "the new Director may act on the pod");
+			}
+			helper.succeed();
+		} finally {
+			director.leave();
+			reviver.leave();
+			stranger.leave();
+			if (pod != null) {
+				pod.discard();
 			}
 		}
 	}

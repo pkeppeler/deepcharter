@@ -15,7 +15,7 @@ Every charter of a world is saved in one `SavedData` (`charter/CharterData`), ke
 
 - A player is on at most one charter, as Director or crew, or has one open application. Names are unique, ignoring case.
 - The crew list is in seniority order. When the Director leaves, the first crew member takes over.
-- A charter with nobody left is dormant. It keeps its name, account and progress, and it cannot be applied to. Reviving a dormant charter is not part of M2.
+- A charter with nobody left is dormant. It keeps its name, account and progress, and it cannot be applied to. A player can revive it and become its Director ([ADR 0026](0026-a-dormant-charter-is-revived-by-the-first-player-who-asks.md)).
 - The account never goes negative, and nothing moves money between charters. An overdraft is refused and changes nothing.
 - The client is sent a `CharterView` (name, balance, deepest point, whether it is the Director, head count) and never another player's UUID.
 

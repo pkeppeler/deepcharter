@@ -31,7 +31,8 @@ public final class RoomSeal {
 		}
 	}
 
-	private static boolean needsSealing(BlockState state) {
+	/** True for a block that worldgen leaves in rock and that wakes when a neighbour changes: a fluid or a gas pocket. */
+	static boolean needsSealing(BlockState state) {
 		return !state.getFluidState().isEmpty() || state.is(HazardBlocks.GAS_POCKET);
 	}
 }
