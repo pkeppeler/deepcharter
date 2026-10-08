@@ -48,6 +48,7 @@ import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charter;
+import io.github.pkeppeler.deepcharter.charter.CharterData;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.Colony;
@@ -453,6 +454,64 @@ public class WreckTest {
 		afterReports(helper, pod, List.of(founder, rider), () -> {
 			if (reportsTo(rider) != 1) {
 				throw failure(helper, "the rider's charter should be told once, was told %d times", reportsTo(rider));
+			}
+		});
+	}
+
+	/** The saved charters cannot be read: the hull-0 path does not throw, nobody is told, and the pod is still a wreck. */
+	@GameTest
+	public void unreadableCharterDataTellsNobodyAndStillWrecksTheOwnedPod(GameTestHelper helper) {
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer owner = MockPlayers.join(helper, "wreck-unread-charters");
+		MinecraftServer server = helper.getLevel().getServer();
+		Charter charter = found(helper, owner);
+		PodComponents.register(pod, charter.id());
+		CompoundTag future = new CompoundTag();
+		future.putInt("version", 99);
+		CharterData unreadable = CharterData.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow();
+		CharterData original = CharterData.get(server);
+		server.getDataStorage().set(CharterData.TYPE, unreadable);
+		try {
+			wreck(pod);
+		} finally {
+			server.getDataStorage().set(CharterData.TYPE, original);
+		}
+		afterReports(helper, pod, List.of(owner), () -> {
+			if (!Wrecks.isWreck(pod)) {
+				throw failure(helper, "the pod should still be a wreck");
+			}
+			if (reportsTo(owner) != 0 || REPORTS.containsKey(pod.getUUID())) {
+				throw failure(helper, "nobody is told while the charters cannot be read, owner was told %d times", reportsTo(owner));
+			}
+		});
+	}
+
+	/** The pod's components cannot be read: its owner is unknown, so it is treated as unowned and the riders' charters are told. */
+	@GameTest
+	public void aPodWithUnreadableComponentsIsTreatedAsUnownedForTheNotice(GameTestHelper helper) {
+		PodEntity original = spawnOnFloor(helper);
+		MockPlayer rider = MockPlayers.join(helper, "wreck-unread-components");
+		Charter charter = found(helper, rider);
+		PodComponents.register(original, charter.id());
+		CompoundTag future = new CompoundTag();
+		future.putInt("version", 99);
+		CompoundTag attachments = new CompoundTag();
+		attachments.put(PodComponents.STATE.identifier().toString(), future);
+		Vec3 spot = original.position();
+		PodEntity pod = reload(helper, original, attachments);
+		pod.setPos(spot);
+		helper.getLevel().addFreshEntity(pod);
+		if (!(pod.getAttached(PodComponents.STATE) instanceof Versioned.Unreadable<?>)) {
+			throw failure(helper, "setup: the components should be unreadable");
+		}
+		if (!rider.player().startRiding(pod, true, false)) {
+			throw failure(helper, "the rider could not board the pod");
+		}
+		wreck(pod);
+		afterReports(helper, pod, List.of(rider), () -> {
+			Report report = REPORTS.get(pod.getUUID());
+			if (reportsTo(rider) != 1 || report == null || !report.charter().id().equals(charter.id())) {
+				throw failure(helper, "the rider's charter should be told once, got %d reports and %s", reportsTo(rider), report);
 			}
 		});
 	}
