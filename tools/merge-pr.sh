@@ -112,16 +112,14 @@ for required in "${REQUIRED_CHECKS[@]}"; do
 done
 
 # The CI run above tested the merge ref against main as it was then. If main has
-# since changed code (a rename, an API change), a PR with no textual conflict can
-# still break main once squashed. The PR's latest successful `CI` workflow run (event
-# pull_request, this head sha) gives a creation time; every commit on origin/main since
-# then (minus a safety margin) is a change the run may not have seen. A cancelled or
-# failed later run is skipped, not used, so it cannot narrow the window. A "Re-run
-# jobs" keeps `created_at`, so it can only cause a conservative refusal, which a close
-# and reopen fixes. The run's
-# pull_requests[].base.sha is no use: it reports the PR's current base, not the
-# tested one. Fail closed on any unreadable step. Docs-only commits are allowed (the
-# roadmap regen commits after every merge).
+# since changed code, a PR with no textual conflict can still break main once
+# squashed. The PR's latest successful `CI` run for this head sha gives a creation
+# time; every origin/main commit since then (minus a margin) is a change the run may
+# not have seen. Cancelled or failed runs are skipped so they cannot narrow the window.
+# A "Re-run jobs" keeps `created_at`, so it can only cause a conservative refusal, which
+# a close and reopen fixes. The run's pull_requests[].base.sha reports the PR's current
+# base, not the tested one, so it is no use. Fail closed on any unreadable step.
+# Docs-only commits are allowed (the roadmap regen commits after every merge).
 git fetch origin main >/dev/null 2>&1 || refuse "could not read origin/main (fetch failed)"
 ci_run=$(gh api "repos/$repo/actions/runs?head_sha=$sha&event=pull_request&per_page=100" --paginate \
   --jq '.workflow_runs[] | select(.name == "CI" and .status == "completed" and .conclusion == "success") | .id' 2>/dev/null \
@@ -137,19 +135,17 @@ ci_since=$(date -u -d "$ci_created - 2 minutes" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null 
   || refuse "could not compute the margin before its CI run creation time $ci_created"
 main_commits=$(git log --format=%H --since="$ci_since" origin/main) \
   || refuse "could not list the commits on origin/main since $ci_since"
-moved=
+code_moved=()
 for commit in $main_commits; do
   files=$(git show --name-only --format= --no-renames "$commit") \
     || refuse "could not read the files changed by origin/main commit $commit"
-  moved+="$files"$'\n'
+  while IFS= read -r path; do
+    case $path in
+      '' | docs/* | *.md | .papercuts.jsonl) ;;
+      *) code_moved+=("$path") ;;
+    esac
+  done <<<"$files"
 done
-code_moved=()
-while IFS= read -r path; do
-  case $path in
-    '' | docs/* | *.md | .papercuts.jsonl) ;;
-    *) code_moved+=("$path") ;;
-  esac
-done <<<"$moved"
 if [[ ${#code_moved[@]} -gt 0 ]]; then
   shown=${code_moved[*]:0:5}
   more=
