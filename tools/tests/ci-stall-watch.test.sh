@@ -33,7 +33,7 @@ out=$work/watch.out
 sleep 300 &
 watched=$!
 
-PATH="$work/bin:$PATH" STALL_POLL=0.2 bash "$tools/ci-stall-watch.sh" "$log" "$watched" 1 >"$out" &
+PATH="$work/bin:$PATH" STALL_POLL=0.2 bash "$tools/ci-stall-watch.sh" "$log" "$watched" 2 >"$out" &
 watcher=$!
 
 # Growing log: no dump.
@@ -41,13 +41,13 @@ for _ in 1 2 3 4 5 6; do echo line >>"$log"; sleep 0.4; done
 check "no dump while the log grows" 0 "$(grep -c 'FAKE-STACK' "$out" || true)"
 
 # Silence: exactly one dump, of the Knot JVM only.
-sleep 3
+sleep 4
 check "one dump per silence" 1 "$(grep -c 'FAKE-STACK for 222' "$out" || true)"
 check "the Gradle daemon is not dumped" 0 "$(grep -c 'FAKE-STACK for 111' "$out" || true)"
 
 # Growth then silence again: a second dump.
 echo more >>"$log"
-sleep 3
+sleep 4
 check "second dump after the log grows and goes quiet" 2 "$(grep -c 'FAKE-STACK for 222' "$out" || true)"
 
 # The watcher ends with the watched process.
