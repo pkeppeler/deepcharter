@@ -63,6 +63,7 @@ final class CrewFate {
 		ServerPlayConnectionEvents.DISCONNECT.register(
 				(handler, server) -> WAKE_AT_OFFICE.remove(handler.getPlayer().getUUID()));
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
+			PENDING.clear();
 			WAKE_AT_OFFICE.clear();
 			WOKEN.clear();
 			REPORTED.clear();
