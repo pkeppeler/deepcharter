@@ -20,3 +20,36 @@ Mechanics invented under the creative liberty of the `designing-mechanics` skill
 **Open questions.**
 - Should a later chassis restore (the Badger) carry an advance too, or is Cicatrium from the ore the intended wait there?
 - Should an unspent advance lapse if a charter restores a Mole wreck first? Today it does not: only the Prospector has one.
+
+## Lava and the bore (issues 231, 232)
+
+**Problem.** Lava floods a bore through layer rock. Deep Claim holds 1.25% lava per stone block, and a bore opens the cells beside it, so lava runs into the shaft. Pod damage is 10 hull per second (`lavaHullPerSecond`).
+
+**The ladder (issue 232).** By hand: lining blocks placed from the seat. Then a liner upgrade that lines a ring every few slabs. Then a heat-shield hull track. See the lava example in the `designing-mechanics` skill.
+
+### Lava vs. a straight bore: measured
+
+Issue 231. `LavaBoreTest` bores 100 columns of layer 1 side by side, from the top of the rock (about y 150 to 170) to the breach into layer 2. The pod is a stock Mole with a tier 1 scanner. It uses the real drill, fuel, hull, lava and breach code over real worldgen. The pilot is a bot that holds sprint and never reacts. It steps 2 blocks aside when company rock refuses a slab (a clean straight column is about one in ten thousand), and it tops up the tank when low (about 10 tanks a bore). The run takes about 2 minutes for 100 bores, once the game is built. Command: [README](../../README.md).
+
+| | Game as it is | What-if: pod shields its pilot |
+|---|---|---|
+| Bores that reach layer 2 | 0 of 100 | 0 of 100 |
+| Bores that touch lava | 96 | 96 |
+| Died in lava | 96 (88 by the pilot first) | 96 (hull) |
+| Died of a fall or gas, no lava | 4 | 4 |
+| Hull lost to lava per bore: p50 / p90 | 26 / 50 | 100 / 100 |
+| Hull lost per encounter: p50 / p90 | 26 / 50 | 100 / 100 |
+| Seconds in lava per encounter: p50 / p90 | 2.6 / 5.0 | 10 / 10 (hull gone) |
+
+- **Where.** 89 of 96 first contacts are in Deep Claim, and most are in its first slabs: a bore has about a 14% chance of lava each slab. The other 7 are lava just under the zone line, touched from Stone Benches.
+- **The pilot dies first.** Vanilla lava kills a seated pilot in about 2.6 seconds, with 74 of 100 hull left. LavaHazard leaves riders to vanilla's rule, so the hull never matters in the game as it is.
+- **Even shielded, one encounter takes the whole hull** from a pod that keeps boring. The flood follows the shaft down.
+- **Scanner.** The tier 1 slice showed the lava that killed the pod in 38 of 96 cases (40%) at all, and 8 or more slabs ahead (a quarter of its 32-down reach, about 16 seconds) in 34 (35%). The slice is one plane. It shows lava as open space, the same as air (BLOCKERS: fluids).
+- **Other killers.** A fall into a cavern costs 35 to 100 hull, and a gas blast about 40 to 50 at this depth. Gas and falls are as deadly as lava.
+
+**Reading it for 232.** A never-reacting bot cannot pass, by design: any lava density that lets it pass removes the hazard. No tuning was changed. What the numbers say is that counterplay must exist before Deep Claim. A heat-shield hull is useless while the pilot burns first. The scanner must tell lava from air to be of any use.
+
+**Open questions.**
+- Should the pod shield its pilot from lava, as it does from gas? (A) Recommended: yes, and then the heat-shield track decides how long a pilot has.
+- Should the tier 1 scanner mark lava, or is that a later tier's job (BLOCKERS: fluids)? (A) Recommended: a thermal sensor tier that shows lava, and a full-plane view of the bore's 2 x 2.
+- Fuel: a layer 1 descent takes about 10 tanks. Is that intended?
