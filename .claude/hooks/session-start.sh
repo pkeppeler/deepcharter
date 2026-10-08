@@ -3,11 +3,12 @@
 # Network calls are bounded; a failure degrades to a note and never blocks the session.
 cd "$(dirname "$0")/../.." || exit 0
 R=pkeppeler/deepcharter
-t() { perl -e 'alarm shift; exec @ARGV' 15 "$@" 2>/dev/null; }
+# Worst case: limit check 8 s + handoff 15 s + PR list 15 s = 38 s, under the 60 s hook timeout.
+t() { perl -e 'alarm shift; exec @ARGV' "${T:-15}" "$@" 2>/dev/null; }
 
 {
   # Public-repo guard: the interaction limit must stay collaborators_only with more than 14 days left.
-  limits=$(t gh api "repos/$R/interaction-limits") || limits=""
+  limits=$(T=8 t gh api "repos/$R/interaction-limits") || limits=""
   if [ -z "$limits" ]; then
     echo "(could not check the interaction limit: gh failed)"
     echo
@@ -15,14 +16,23 @@ t() { perl -e 'alarm shift; exec @ARGV' 15 "$@" 2>/dev/null; }
     warn=$(printf %s "$limits" | python3 -I -c '
 import json, sys
 from datetime import datetime, timedelta, timezone
-d = json.load(sys.stdin)
+try:
+    d = json.load(sys.stdin)
+except ValueError:
+    print("interaction limit: could not parse the response")
+    sys.exit(0)
 if d.get("limit") != "collaborators_only":
     print("the limit is " + repr(d.get("limit", "missing")) + ", not collaborators_only")
 else:
-    exp = datetime.fromisoformat(d["expires_at"].replace("Z", "+00:00"))
-    if exp - datetime.now(timezone.utc) < timedelta(days=14):
+    try:
+        exp = datetime.fromisoformat(d["expires_at"].replace("Z", "+00:00"))
+        left = exp - datetime.now(timezone.utc)
+    except (KeyError, ValueError, TypeError, AttributeError):
+        print("interaction limit: could not parse expires_at")
+        sys.exit(0)
+    if left < timedelta(days=14):
         print("the limit expires at " + d["expires_at"] + ", within 14 days")
-') || warn="could not parse the interaction-limit response"
+' 2>/dev/null) || warn="interaction limit: could not parse the response"
     if [ -n "$warn" ]; then
       echo "################################################################"
       echo "## WARNING: PUBLIC REPO INTERACTION LIMIT NEEDS RENEWING NOW"

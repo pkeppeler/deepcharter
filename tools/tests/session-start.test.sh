@@ -35,7 +35,7 @@ run_hook() {
 in_days() { python3 -I -c '
 import sys
 from datetime import datetime, timedelta, timezone
-print((datetime.now(timezone.utc) + timedelta(days=int(sys.argv[1]))).strftime("%Y-%m-%dT%H:%M:%SZ"))' "$1"; }
+print((datetime.now(timezone.utc) + timedelta(days=float(sys.argv[1]))).strftime("%Y-%m-%dT%H:%M:%SZ"))' "$1"; }
 has() { if grep -qF -- "$1" <<<"$out"; then echo yes; else echo no; fi; }
 
 out=$(LIMITS_JSON='{}' run_hook)
@@ -53,6 +53,29 @@ check "expiring in 3 days has renew command" yes "$(has "$renew")"
 out=$(LIMITS_JSON='{"limit":"collaborators_only","expires_at":"'"$(in_days 150)"'"}' run_hook)
 check "healthy limit has no warning" no "$(has 'WARNING')"
 check "healthy limit prints no gh failure note" no "$(has 'could not check the interaction limit')"
+
+out=$(LIMITS_JSON='{"limit":"collaborators_only","expires_at":"'"$(in_days 13.9)"'"}' run_hook)
+check "expiring in 13.9 days warns" yes "$(has "$renew")"
+
+out=$(LIMITS_JSON='{"limit":"collaborators_only","expires_at":"'"$(in_days 14.5)"'"}' run_hook)
+check "expiring in 14.5 days is silent" no "$(has 'WARNING')"
+
+offset=$(in_days 150)
+out=$(LIMITS_JSON='{"limit":"collaborators_only","expires_at":"'"${offset%Z}+00:00"'"}' run_hook)
+check "+00:00 offset parses, healthy is silent" no "$(has 'WARNING')"
+
+out=$(LIMITS_JSON='{"limit":"collaborators_only","expires_at":null}' run_hook)
+check "null expires_at says it could not parse" yes "$(has 'could not parse expires_at')"
+check "null expires_at has renew command" yes "$(has "$renew")"
+check "null expires_at has no traceback" no "$(has 'Traceback')"
+
+out=$(LIMITS_JSON='{"limit":"collaborators_only"}' run_hook)
+check "missing expires_at says it could not parse" yes "$(has 'could not parse expires_at')"
+check "missing expires_at has no traceback" no "$(has 'Traceback')"
+
+out=$(LIMITS_JSON='not json' run_hook)
+check "bad JSON says it could not parse" yes "$(has 'could not parse the response')"
+check "bad JSON has no traceback" no "$(has 'Traceback')"
 
 out=$(GH_MODE=fail run_hook)
 check "gh failure notes it" yes "$(has '(could not check the interaction limit: gh failed)')"
