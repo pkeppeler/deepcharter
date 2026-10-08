@@ -16,6 +16,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
@@ -53,6 +54,8 @@ public class LamplessFigureTest {
 	private static final int WINDOW_TICKS = 20;
 	/** Blocks of path in {@link #WINDOW_TICKS} below which the figure has stopped; it walks about three times as far. */
 	private static final double MIN_WINDOW_PATH = 0.5;
+	/** Blocks in a tick below which the figure is standing, as it does for a tick at a wall. */
+	private static final double TURN_EPSILON = 1e-4;
 	private static final int QUIET_TICKS = 60;
 	private static final int LIT_LEVEL = 15;
 	private static final int RAIL_SITE_CELL = 9;
@@ -70,7 +73,7 @@ public class LamplessFigureTest {
 		List<Vec3> track = new ArrayList<>();
 		LamplessFigure[] figure = {null};
 		helper.onEachTick(() -> {
-			if (figure[0] == null) {
+			if (figure[0] == null || track.size() >= WALK_TICKS) {
 				return;
 			}
 			if (!figure[0].isAlive()) {
@@ -83,11 +86,12 @@ public class LamplessFigureTest {
 			figure[0].discard();
 			expectNeverStopped(helper, track);
 			int turns = 0;
-			for (int i = 2; i < track.size(); i++) {
-				double before = track.get(i - 1).z - track.get(i - 2).z;
-				double after = track.get(i).z - track.get(i - 1).z;
-				if (before * after < 0) {
-					turns++;
+			double lastDirection = 0;
+			for (int i = 1; i < track.size(); i++) {
+				double step = track.get(i).z - track.get(i - 1).z;
+				if (Math.abs(step) > TURN_EPSILON) {
+					turns += lastDirection * step < 0 ? 1 : 0;
+					lastDirection = step;
 				}
 			}
 			if (turns < 2) {
@@ -187,7 +191,8 @@ public class LamplessFigureTest {
 
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + RESPAWN_TEST_TICKS)
 	public void aSiteHoldsOneFigureAndAnotherComesLaterOnTheRail(GameTestHelper helper) {
-		ServerLevel level = helper.getLevel();
+		// The Nether, because the delay after a fade is kept for each level and the other tests fade figures in the Overworld.
+		ServerLevel level = helper.getLevel().getServer().getLevel(Level.NETHER);
 		BlockPos origin = slot(4);
 		StructureSite site = new StructureSite(StructureKind.RAILS, origin, true, 4, 0L);
 		LamplessFigure[] first = {null};

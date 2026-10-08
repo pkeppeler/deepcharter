@@ -3,7 +3,7 @@ package io.github.pkeppeler.deepcharter.creature;
 /**
  * Tunables for the creature feature, read as {@code CreatureTuning.DEFAULT.thing()}.
  *
- * @param walkSpeed          the figure's movement speed attribute; a player walks at 0.1
+ * @param walkSpeed          the figure's movement speed attribute; 0.22 is about 2 blocks a second
  * @param approachBlocks     a player this close to the figure makes it fade
  * @param fadeBlockLight     block light at the figure's feet at which it fades: a pod's lights, a torch, lava
  * @param fadeTicks          ticks from the start of a fade to the figure's end
@@ -16,7 +16,7 @@ package io.github.pkeppeler.deepcharter.creature;
  */
 public record CreatureTuning(float walkSpeed, double approachBlocks, int fadeBlockLight, int fadeTicks, int fadeCheckTicks,
 		int spawnIntervalTicks, double spawnRangeBlocks, int maxPerSite, int maxPerLevel, int respawnDelayTicks) {
-	public static final CreatureTuning DEFAULT = new CreatureTuning(0.1f, 8, 3, 40, 5, 100, 96, 1, 3, 400);
+	public static final CreatureTuning DEFAULT = new CreatureTuning(0.22f, 8, 3, 40, 5, 100, 96, 1, 3, 400);
 
 	public CreatureTuning {
 		if (walkSpeed <= 0 || approachBlocks <= 0 || fadeBlockLight < 1 || fadeBlockLight > 15 || fadeTicks < 1 || fadeCheckTicks < 1
