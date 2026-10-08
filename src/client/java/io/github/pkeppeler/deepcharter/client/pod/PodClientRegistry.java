@@ -15,7 +15,7 @@ public final class PodClientRegistry {
 	public static void register() {
 		EntityRendererRegistry.register(PodRegistry.POD, context -> new PodRenderer(context, Chassis.MOLE));
 		EntityRendererRegistry.register(PodRegistry.PROSPECTOR, context -> new PodRenderer(context, Chassis.PROSPECTOR));
-		// The cable's motion is the vanilla end rod's, which it replaced; its sprite is the pack's particles/tow_cable.json.
+		// The motion of the end rod it replaced; the sprite is the pack's.
 		ParticleProviderRegistry.getInstance().register(PodRegistry.TOW_CABLE_PARTICLE, EndRodParticle.Provider::new);
 	}
 }

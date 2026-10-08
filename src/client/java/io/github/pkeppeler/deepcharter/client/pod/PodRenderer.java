@@ -21,14 +21,9 @@ import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 
-/**
- * Draws a pod from resource-pack models (ADR 0033), so a pack changes the look with no Java. Each model is asked for through an
- * item model definition ({@link PodSkins}), the same way vanilla draws a held item. Models are authored at true size, centred on
- * the entity in x and z with the floor at y 0, so nothing here scales them. The drill is its own model, turned about its
- * axis while the pod drills.
- */
+/** Draws a pod from resource-pack item models, so a pack changes its look with no Java (ADR 0033). */
 public class PodRenderer extends EntityRenderer<PodEntity, PodRenderState> {
-	/** The pivot the drill turns about, in blocks from the entity's feet: the middle of the hull, as the pod models are authored. */
+	/** The middle of the hull, as the models are authored. */
 	private static final float DRILL_PIVOT_Y = 0.45f;
 	private static final float DRILL_DEGREES_PER_TICK = 45f;
 
@@ -46,7 +41,7 @@ public class PodRenderer extends EntityRenderer<PodEntity, PodRenderState> {
 		skins = PodSkins.of(chassis);
 	}
 
-	/** A stack whose only job is to name a model: any item will do, as the item model component overrides its own. */
+	/** The item is a stand-in; the component names the model. */
 	private static ItemStack modelStack(Identifier model) {
 		ItemStack stack = new ItemStack(Items.STONE);
 		stack.set(DataComponents.ITEM_MODEL, model);
@@ -100,8 +95,7 @@ public class PodRenderer extends EntityRenderer<PodEntity, PodRenderState> {
 
 	private static void submitPart(ItemStackRenderState part, PodRenderState state, PoseStack poseStack, SubmitNodeCollector collector) {
 		if (!part.isEmpty()) {
-			// Item rendering centres a model on the origin (it moves it by -0.5 on each axis); undo that, as the models are
-			// authored in block space.
+			// Item rendering centres a model; undo it, as the models are authored in block space.
 			poseStack.pushPose();
 			poseStack.translate(0.5, 0.5, 0.5);
 			part.submit(poseStack, collector, state.lightCoords, OverlayTexture.NO_OVERLAY, state.outlineColor);
@@ -109,7 +103,7 @@ public class PodRenderer extends EntityRenderer<PodEntity, PodRenderState> {
 		}
 	}
 
-	/** Turns the drill model, which is authored pointing down, to point along {@code direction}. */
+	/** The drill model is authored pointing down. */
 	private static void aim(PoseStack poseStack, Direction direction) {
 		switch (direction) {
 			case DOWN -> { }

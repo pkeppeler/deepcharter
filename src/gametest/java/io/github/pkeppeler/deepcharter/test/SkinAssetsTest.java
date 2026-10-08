@@ -19,11 +19,10 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import net.minecraft.world.entity.EntityType;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.pod.PodSkins;
-import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.Chassis;
 
 /**
  * Server GameTests for #258 (ADR 0033): every pod, wreck and drill model and every mod particle has the resource files a skin
@@ -32,10 +31,8 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 public class SkinAssetsTest {
 	@GameTest
 	public void everyPodModelHasItsFiles(GameTestHelper helper) throws IOException {
-		List<EntityType<?>> pods = List.of(PodRegistry.POD, PodRegistry.PROSPECTOR);
-		for (EntityType<?> type : pods) {
-			PodSkins skins = PodSkins.of(PodRegistry.chassisOf(type));
-			for (Identifier id : skins.all()) {
+		for (Chassis chassis : Chassis.all()) {
+			for (Identifier id : PodSkins.of(chassis).all()) {
 				checkModelFiles(helper, id);
 			}
 		}

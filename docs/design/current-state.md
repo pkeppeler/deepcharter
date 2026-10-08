@@ -572,7 +572,7 @@ advancements under `data/deepcharter/advancement/handbook/`) are vanilla. Swap *
 ### Particles
 
 The mod defines one particle type, `deepcharter:tow_cable` (#258), along the tow cable between two pods
-(`main/pod/PodTowing.java:241`, density in `TowTuning.java`). It moves like the vanilla end rod it replaced. Vanilla: **no** (the sprite). Swap: **(a)** `assets/deepcharter/particles/tow_cable.json` and `textures/particle/tow_cable.png`.
+(`main/pod/PodTowing.java:240`, density in `TowTuning.java`). It moves like the vanilla end rod it replaced. Vanilla: **no** (the sprite). Swap: **(a)** `assets/deepcharter/particles/tow_cable.json` and `textures/particle/tow_cable.png`.
 Not shot: it needs two pods and a tow cable in motion (the `m2-towing` scenario shows it).
 
 ### Lighting
@@ -657,7 +657,7 @@ Every look that is fixed in Java and cannot be replaced by swapping a resource-p
 | Colony layout and palette | Every building, its size, position and blocks, the ground and paving noise, the statue and the pipe | `main/colony/ColonyBuilder.java:193-390`, `main/colony/FounderStatue.java:26`, `main/colony/Conduit.java:66` |
 | Layer structures | The size, blocks and layout of the 7 structures, and where Notes and candles sit | `main/layer/StructureKind.java:21-150` |
 | Pod lights | A vanilla light block at the pod's position; the level comes from the part's tier value; no lamp is drawn | `main/pod/PodLights.java:25-90`, `main/upgrade/UpgradeTuning.java` |
-| ~~Tow cable~~ | Done in #258: the mod particle `deepcharter:tow_cable` (`particles/tow_cable.json`, `textures/particle/tow_cable.png`), drawn along the line between the pods | `main/pod/PodTowing.java:241` |
+| ~~Tow cable~~ | Done in #258: the mod particle `deepcharter:tow_cable` (`particles/tow_cable.json`, `textures/particle/tow_cable.png`), drawn along the line between the pods | `main/pod/PodTowing.java:240` |
 | Colony terminals' facing and place | All face south on a plinth row at z -8 | `main/colony/ColonyBuilder.java:259-275` |
 
 ---
