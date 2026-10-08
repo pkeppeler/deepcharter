@@ -26,9 +26,8 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 	}
 	inputs.property("order", order)
 	// An input, so changing the filter regenerates the list.
-	def clientFilter = providers.gradleProperty("clientTests").getOrElse("")
-	def clientFilterSet = providers.gradleProperty("clientTests").isPresent()
-	inputs.property("clientTests", clientFilterSet ? "set:" + clientFilter : "")
+	def clientFilter = providers.gradleProperty("clientTests").orNull
+	inputs.property("clientTests", clientFilter).optional(true)
 	def outputFile = generatedGametestResources.map { it.file("fabric.mod.json") }
 	def sources = fileTree(javaRoot) { include "**/*.java" }
 	inputs.files(sources).withPropertyName("gametestSources")
@@ -118,7 +117,7 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 			throw new GradleException("gametest entrypoints:\n  " + problems.join("\n  "))
 		}
 
-		if (clientFilterSet) {
+		if (clientFilter != null) {
 			def terms = clientFilter.split(",", -1).collect { it.trim() }
 			if (terms.any { it.isEmpty() }) {
 				throw new GradleException("-PclientTests is '${clientFilter}', expected comma-separated client test class names or globs")
