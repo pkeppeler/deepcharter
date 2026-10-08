@@ -65,3 +65,8 @@ mothership.leave       2010_mothershipLeave.wav.flv
 # Alarms
 alarm.fuel_critical    1992_fuelLow.wav.flv
 alarm.hull_critical    1988_error2.wav.mp3
+
+# Music: one per layer (the dimension music attribute), and one while a terminal is open
+music.layer_1          1968_BGM_main.wav.mp3
+music.layer_2          1967_BGM_core.wav.mp3
+music.terminal         1969_BGM_shop.wav.mp3

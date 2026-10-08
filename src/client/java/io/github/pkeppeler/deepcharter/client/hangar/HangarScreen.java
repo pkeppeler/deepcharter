@@ -10,6 +10,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
+import io.github.pkeppeler.deepcharter.client.sound.TypewriterSound;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
@@ -40,7 +41,7 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 	public HangarScreen(TerminalView view) {
 		super(Component.translatable(HangarTerminal.TYPE.block().getDescriptionId()));
 		this.view = view;
-		this.typewriter = typewriter(Component.translatable("screen.deepcharter.hangar.welcome"), (index, letter) -> { });
+		this.typewriter = typewriter(Component.translatable("screen.deepcharter.hangar.welcome"), new TypewriterSound());
 	}
 
 	@Override

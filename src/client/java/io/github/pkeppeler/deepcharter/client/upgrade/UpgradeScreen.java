@@ -10,6 +10,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
+import io.github.pkeppeler.deepcharter.client.sound.TypewriterSound;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
@@ -48,7 +49,7 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 	public UpgradeScreen(TerminalView view) {
 		super(Component.translatable("block.deepcharter.upgrade_terminal"));
 		this.view = view;
-		this.typewriter = typewriter(Component.translatable("screen.deepcharter.upgrade.intro"), (index, letter) -> { });
+		this.typewriter = typewriter(Component.translatable("screen.deepcharter.upgrade.intro"), new TypewriterSound());
 	}
 
 	@Override

@@ -14,6 +14,7 @@ import net.minecraft.resources.Identifier;
 import io.github.pkeppeler.deepcharter.charter.CharterTuning;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractActions;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractState;
+import io.github.pkeppeler.deepcharter.client.sound.TypewriterSound;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
@@ -54,7 +55,7 @@ public final class ContractScreen extends CrtScreen implements TerminalViewScree
 	public ContractScreen(TerminalView view) {
 		super(Component.translatable("block.deepcharter.contract_terminal"));
 		this.view = view;
-		this.typewriter = typewriter(Component.translatable("screen.deepcharter.contract.intro"), (index, letter) -> { });
+		this.typewriter = typewriter(Component.translatable("screen.deepcharter.contract.intro"), new TypewriterSound());
 	}
 
 	@Override
