@@ -1,6 +1,8 @@
 # Pre-push hook
 
-`.githooks/pre-push` gives early feedback before CI. It compiles every source set, runs checkstyle and runs the Python tool tests (about a minute warm). CI is still the gate. The hook does not run GameTests or the bash tool tests.
+`.githooks/pre-push` gives early feedback before CI. It compiles every source set, runs checkstyle and runs the Python tool tests and shellcheck (about a minute warm). CI is still the gate. The hook does not run GameTests or the bash tool tests.
+
+`tools/shellcheck.sh` holds the pinned shellcheck version and the file list. CI installs that version. The hook warns if your local shellcheck differs from the pin, and skips shellcheck with a warning if it is not installed.
 
 It skips pushes that only delete a branch and pushes to `pr-media`. On failure it prints which step failed.
 

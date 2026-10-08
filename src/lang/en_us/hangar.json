@@ -14,12 +14,14 @@
   "deepcharter.hangar.refusal.unreadable": "The hangar records are from another version of the mod",
   "deepcharter.hangar.refusal.wreck_unreadable": "The wreck's records are from another version of the mod",
   "deepcharter.hangar.restored": "Wreck restored for $%s",
+  "deepcharter.hangar.restored_advance": "Restored for $%s, with %s %s advanced",
   "item.deepcharter.drill_head": "Drill Head",
   "item.deepcharter.fuel_injector": "Fuel Injector",
   "item.deepcharter.rotor_hub": "Rotor Hub",
   "item.deepcharter.tread_assembly": "Tread Assembly",
   "screen.deepcharter.hangar.buy": "BUY REFURBISHED MOLE: $%s + $%s PER POD",
   "screen.deepcharter.hangar.restore": "RESTORE NEAREST WRECK",
+  "screen.deepcharter.hangar.advance": "THE COMPANY ADVANCES %s %s FOR A FIRST PROSPECTOR, AGAINST YOUR CONTRACT.",
   "screen.deepcharter.hangar.restore_prices": "RESTORE PRICES: MOLE $%s + %s, PROSPECTOR $%s + %s (%s)",
   "screen.deepcharter.hangar.welcome": "HANGAR ONLINE. THE FOUNDING MOLE IS REPAIRED."
 }
