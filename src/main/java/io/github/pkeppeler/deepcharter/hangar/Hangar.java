@@ -53,7 +53,7 @@ public final class Hangar {
 	}
 
 	static void register() {
-		ColonyEvents.BUILT.register(Hangar::placeDerelict);
+		ColonyEvents.BUILT.register(Hangar::onBuilt);
 		TerminalEvents.REPAIRED.register(Hangar::onRepaired);
 		ServerEntityEvents.ENTITY_LOAD.register(Hangar::onLoad);
 	}
@@ -64,16 +64,19 @@ public final class Hangar {
 	}
 
 	/**
-	 * Puts the console in the hangar and the derelict Mole on the hangar anchor, once: the hangar records the Mole, so a world
-	 * that has one never gets a second. A colony built before the hangar existed is not given one.
+	 * Makes sure the console stands in the hangar, then puts the derelict Mole on the hangar anchor, once: the hangar records the
+	 * Mole, so a world that has one never gets a second. The console is ensured on every build, because a build that stopped half
+	 * way and runs again clears the pad and with it the console; its repair is in {@code RepairState}, so it comes back as it was.
+	 * A colony built before the hangar existed is not given one.
 	 */
-	public static void placeDerelict(MinecraftServer server, ColonySite.Placed colony) {
+	public static void onBuilt(MinecraftServer server, ColonySite.Placed colony) {
+		ServerLevel level = server.overworld();
+		BlockPos anchor = colony.anchors().get(ColonyAnchor.HANGAR);
+		placeConsole(level, anchor);
 		Optional<HangarData> data = HangarData.readable(server);
 		if (data.isEmpty() || data.get().state().derelict().isPresent()) {
 			return;
 		}
-		ServerLevel level = server.overworld();
-		BlockPos anchor = colony.anchors().get(ColonyAnchor.HANGAR);
 		PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.STRUCTURE);
 		if (pod == null) {
 			DeepCharter.LOGGER.error("Could not make the derelict Mole for the hangar: the pod was not created");
@@ -86,12 +89,15 @@ public final class Hangar {
 			return;
 		}
 		data.get().placeDerelict(pod.getUUID());
+		DeepCharter.LOGGER.info("Placed the derelict Mole {} in the hangar at {}", pod.getUUID(), anchor.toShortString());
+	}
+
+	private static void placeConsole(ServerLevel level, BlockPos anchor) {
 		BlockPos console = anchor.offset(CONSOLE_OFFSET);
-		BlockState state = HangarTerminal.TYPE.block().defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.WEST);
 		if (!level.getBlockState(console).is(HangarTerminal.TYPE.block())) {
+			BlockState state = HangarTerminal.TYPE.block().defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.WEST);
 			level.setBlock(console, state, 3);
 		}
-		DeepCharter.LOGGER.info("Placed the derelict Mole {} in the hangar at {}", pod.getUUID(), anchor.toShortString());
 	}
 
 	/** The founding Mole, if it is placed and loaded. */
