@@ -36,7 +36,8 @@ abstract class ClientLock implements BuildService<BuildServiceParameters.None>, 
 		long pollMs = (env["DEEPCHARTER_LOCK_POLL_MS"] ?: "2000") as long
 		Files.createDirectories(dir)
 		holderFile = dir.resolve("client.lock.holder")
-		channel = FileChannel.open(dir.resolve("client.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE)
+		Path lockFile = dir.resolve("client.lock")
+		channel = FileChannel.open(lockFile, StandardOpenOption.CREATE, StandardOpenOption.WRITE)
 		long lastNote = 0
 		try {
 			while (true) {
@@ -61,7 +62,7 @@ abstract class ClientLock implements BuildService<BuildServiceParameters.None>, 
 			throw interrupted
 		}
 		Files.writeString(holderFile, "worktree ${worktree}, task ${task}, Gradle daemon PID ${ProcessHandle.current().pid()}\n", StandardCharsets.UTF_8)
-		LOG.lifecycle("Took the game client lock (${dir.resolve('client.lock')})")
+		LOG.lifecycle("Took the game client lock (${lockFile})")
 	}
 
 	private String readHolder() {
