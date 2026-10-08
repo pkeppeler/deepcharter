@@ -159,9 +159,10 @@ public final class PodDrill {
 		 * loaded chunks waits until the next one is loaded; a pilot's view keeps the chunks around a bore loaded).
 		 */
 		boolean allowed() {
+			LoadedBlocks blocks = blocks();
 			for (BlockPos pos : cells) {
-				BlockState state = state(pos);
-				if (level.isOutsideBuildHeight(pos) || pos.getY() >= level.getMaxY() || !blocks().canChange(pos)) {
+				BlockState state = blocks.getBlockState(pos);
+				if (level.isOutsideBuildHeight(pos) || pos.getY() >= level.getMaxY() || !blocks.canChange(pos)) {
 					return false;
 				}
 				if (breakable(state) && (state.getDestroySpeed(level, pos) < 0 || state.is(HazardBlocks.UNDIGGABLE)

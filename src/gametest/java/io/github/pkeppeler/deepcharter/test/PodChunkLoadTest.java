@@ -106,15 +106,9 @@ public class PodChunkLoadTest {
 		Site site = new Site(2);
 		ServerLevel level = helper.getLevel();
 		MockPlayer pilot = MockPlayers.join(helper, "edge-pilot");
-		PodEntity[] pod = {null};
 		tickAtTheEdge(helper, level, site, DRILL_TICKS, () -> {
 			// Aligned to its 2 x 2 bore, whose east column is the edge column, so the drill has no reason to slide the pod and its pilot over the edge.
-			pod[0] = litPod(helper, level, new Vec3(site.minX() + 15.0, FLOOR_Y + 1, site.minZ() + 9.0));
-			if (!pilot.player().startRiding(pod[0], true, false)) {
-				throw helper.assertionException("the pilot could not mount the pod");
-			}
-			pilot.setInput(SPRINT);
-			return pod[0];
+			return sprintingPod(helper, level, pilot, new Vec3(site.minX() + 15.0, FLOOR_Y + 1, site.minZ() + 9.0));
 		}, () -> {
 			BlockPos edgeCell = new BlockPos(site.minX() + 15, FLOOR_Y, site.minZ() + 9);
 			if (!level.getBlockState(edgeCell).is(Blocks.STONE)) {
@@ -136,15 +130,9 @@ public class PodChunkLoadTest {
 		int pocketX = site.minX() + 14;
 		int pocketZ = site.minZ() + 9;
 		BlockPos pocket = new BlockPos(pocketX, FLOOR_Y, pocketZ);
-		PodEntity[] pod = {null};
 		tickAtTheEdge(helper, level, site, GAS_DRILL_TICKS, () -> {
 			level.setBlock(pocket, HazardBlocks.GAS_POCKET.defaultBlockState(), BUILD_FLAGS);
-			pod[0] = litPod(helper, level, new Vec3(pocketX, FLOOR_Y + 1, pocketZ));
-			if (!pilot.player().startRiding(pod[0], true, false)) {
-				throw helper.assertionException("the pilot could not mount the pod");
-			}
-			pilot.setInput(SPRINT);
-			return pod[0];
+			return sprintingPod(helper, level, pilot, new Vec3(pocketX, FLOOR_Y + 1, pocketZ));
 		}, () -> {
 			if (!level.getBlockState(pocket).isAir()) {
 				throw helper.assertionException("the pod should have drilled out the gas pocket, it left " + level.getBlockState(pocket));
@@ -229,6 +217,16 @@ public class PodChunkLoadTest {
 				}
 			}
 		}
+	}
+
+	/** A lit pod at {@code at} with {@code pilot} aboard, sprinting. */
+	private static PodEntity sprintingPod(GameTestHelper helper, ServerLevel level, MockPlayer pilot, Vec3 at) {
+		PodEntity pod = litPod(helper, level, at);
+		if (!pilot.player().startRiding(pod, true, false)) {
+			throw helper.assertionException("the pilot could not mount the pod");
+		}
+		pilot.setInput(SPRINT);
+		return pod;
 	}
 
 	/** A pod with a lights part, standing at {@code at}. */
