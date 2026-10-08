@@ -29,6 +29,16 @@ final class UiThemeLoader extends SimplePreparableReloadListener<UiTheme> {
 
 	@Override
 	protected UiTheme prepare(ResourceManager manager, ProfilerFiller profiler) {
+		try {
+			return load(manager);
+		} catch (RuntimeException e) {
+			// Vanilla reports a failed reload without the cause; the log line names the pack and key.
+			DeepCharter.LOGGER.error("The UI theme did not load, so the resource reload fails: {}", e.getMessage());
+			throw e;
+		}
+	}
+
+	private static UiTheme load(ResourceManager manager) {
 		Map<String, ThemeData> areas = new TreeMap<>();
 		for (String area : UiTheme.AREAS) {
 			Identifier file = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, DIRECTORY + "/" + area + ".json");

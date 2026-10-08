@@ -28,9 +28,9 @@ public record HudLook(
 		return UiTheme.current().hud();
 	}
 
-	static HudLook of(ThemeData d) {
+	public static HudLook of(ThemeData d) {
 		return new HudLook(d.integer("podStatusMargin", 0), d.integer("podStatusLineGap", 0), d.color("podStatusColor"),
-				d.integer("altimeterMargin", 0), d.color("altimeterColor"), d.integer("accountMargin", 0), d.decimal("accountY"),
+				d.integer("altimeterMargin", 0), d.color("altimeterColor"), d.integer("accountMargin", 0), d.decimal("accountY", 0, 1),
 				d.color("accountColor"));
 	}
 }

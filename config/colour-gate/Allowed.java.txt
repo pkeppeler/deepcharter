@@ -11,4 +11,8 @@ class Allowed {
 	int g = theme.color("phosphor");
 	String h = "0xFF7CFC9A in a string is not a colour";
 	long i = 0xFFFFL;
+	Object j = style.applyFormat(ChatFormatting.BOLD);
+	int k = Integer.parseInt(text);
+	int l = Integer.parseInt(text, 10);
+	int m = Colors.opaque(theme.color("ink"));
 }

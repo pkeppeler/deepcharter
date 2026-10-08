@@ -13,4 +13,10 @@ class Flagged {
 	int k = 0xFFFFFFFF; // colour-ok:
 	/* block comment */ int l = 0xFF000000;
 	String m = "//"; int n = 0xFF000000;
+	int o = ARGB.colorFromFloat(1f, 1f, 0f, 0f);
+	int p = ARGB.opaque(color);
+	Object q = ChatFormatting.GOLD;
+	Object r = style.withColor(ChatFormatting.DARK_GRAY);
+	Object t = TextColor.fromRgb(color);
+	int u = Integer.parseInt(hex, 16);
 }

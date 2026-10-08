@@ -78,6 +78,10 @@ public class AssetCompletenessTest {
 			if (!BuiltInRegistries.ENTITY_TYPE.containsKey(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path))) {
 				problems.add("ENTITIES_DRAWN_FROM_VANILLA_BLOCKS lists " + path + ", which is not a registered entity: remove it");
 			}
+			if (AssetCompletenessTest.class.getResource(resource("textures/entity/" + path + ".png")) != null) {
+				problems.add("entity " + path + " now has " + resource("textures/entity/" + path + ".png")
+						+ ": it is drawn from its own assets, so remove it from ENTITIES_DRAWN_FROM_VANILLA_BLOCKS");
+			}
 		}
 		finish(helper, problems);
 	}

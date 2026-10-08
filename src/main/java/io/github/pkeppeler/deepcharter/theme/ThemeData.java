@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.theme;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -33,16 +34,20 @@ public final class ThemeData {
 
 	private final String area;
 	private final Map<String, JsonPrimitive> values;
+	/** For each key, the source of the layer whose value won, so a range error can name the pack. */
+	private final Map<String, String> sources;
 	private final Set<String> read = new HashSet<>();
 
-	private ThemeData(String area, Map<String, JsonPrimitive> values) {
+	private ThemeData(String area, Map<String, JsonPrimitive> values, Map<String, String> sources) {
 		this.area = area;
 		this.values = values;
+		this.sources = sources;
 	}
 
 	/** Merges {@code layers}, lowest priority first. Throws {@link IllegalArgumentException} naming the pack and key of a bad value. */
 	public static ThemeData parse(String area, List<Layer> layers) {
 		Map<String, JsonPrimitive> merged = new LinkedHashMap<>();
+		Map<String, String> sources = new HashMap<>();
 		for (Layer layer : layers) {
 			JsonObject object;
 			try {
@@ -56,9 +61,10 @@ public final class ThemeData {
 			}
 			for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
 				merged.put(entry.getKey(), checked(area, layer.source(), entry.getKey(), entry.getValue()));
+				sources.put(entry.getKey(), layer.source());
 			}
 		}
-		return new ThemeData(area, merged);
+		return new ThemeData(area, merged, sources);
 	}
 
 	private static JsonPrimitive checked(String area, String source, String key, JsonElement value) {
@@ -104,9 +110,14 @@ public final class ThemeData {
 
 	/** {@link #integer(String)}, and at least {@code min}. */
 	public int integer(String key, int min) {
+		return integer(key, min, Integer.MAX_VALUE);
+	}
+
+	/** {@link #integer(String)}, and from {@code min} to {@code max}. */
+	public int integer(String key, int min, int max) {
 		int number = integer(key);
-		if (number < min) {
-			throw new IllegalArgumentException("theme area '%s', key '%s' must be at least %d, got %d".formatted(area, key, min, number));
+		if (number < min || number > max) {
+			throw invalid(key, "must be from %d to %d, got %d".formatted(min, max, number));
 		}
 		return number;
 	}
@@ -117,6 +128,29 @@ public final class ThemeData {
 			throw wrongKind(key, "a number");
 		}
 		return value.getAsDouble();
+	}
+
+	/** {@link #decimal(String)}, and from {@code min} to {@code max}. */
+	public double decimal(String key, double min, double max) {
+		double number = decimal(key);
+		if (!(number >= min && number <= max)) {
+			throw invalid(key, "must be from %s to %s, got %s".formatted(min, max, number));
+		}
+		return number;
+	}
+
+	/** An error for a value that is out of range, naming the area, the key and the pack the value came from. */
+	public IllegalArgumentException invalid(String key, String problem) {
+		return new IllegalArgumentException("theme area '%s', key '%s' (from %s) %s".formatted(area, key, sources.getOrDefault(key, "no pack"), problem));
+	}
+
+	/** An error for keys that are fine alone and wrong together, naming each key and its pack. */
+	public IllegalArgumentException conflict(String problem, String... keys) {
+		StringBuilder message = new StringBuilder("theme area '%s': %s (".formatted(area, problem));
+		for (int i = 0; i < keys.length; i++) {
+			message.append(i == 0 ? "" : ", ").append("'%s' from %s".formatted(keys[i], sources.getOrDefault(keys[i], "no pack")));
+		}
+		return new IllegalArgumentException(message.append(")").toString());
 	}
 
 	/** The keys no read has asked for yet, sorted: after a loader has built everything, what is left is a typo or a stale key. */
@@ -136,6 +170,6 @@ public final class ThemeData {
 	}
 
 	private IllegalStateException wrongKind(String key, String wanted) {
-		return new IllegalStateException("theme area '%s', key '%s' must be %s".formatted(area, key, wanted));
+		return new IllegalStateException("theme area '%s', key '%s' (from %s) must be %s".formatted(area, key, sources.getOrDefault(key, "no pack"), wanted));
 	}
 }

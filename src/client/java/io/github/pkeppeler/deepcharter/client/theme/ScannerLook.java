@@ -31,7 +31,7 @@ public record ScannerLook(
 		return UiTheme.current().scanner();
 	}
 
-	static ScannerLook of(ThemeData d) {
+	public static ScannerLook of(ThemeData d) {
 		return new ScannerLook(d.integer("cellPixels", 1), d.integer("margin", 0), d.color("titleColor"), d.color("airColor"),
 				d.color("rockColor"), d.color("oreColor"), d.color("goldOreColor"), d.color("gasColor"), d.color("podColor"),
 				d.color("frameColor"));

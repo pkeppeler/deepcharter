@@ -3,7 +3,8 @@
 //
 // What it flags, in code under src/client/java outside client/theme/ (the loader, where a colour is parsed):
 //   - a hex literal of six or more digits, 0xFF7CFC9A, 0x00FFFFFF, 0xFF_00_00
-//   - ARGB.color( and argb( calls, and CommonColors.NAME
+//   - ARGB.color(, ARGB.colorFromFloat(, ARGB.opaque( and argb( calls, CommonColors.NAME, a ChatFormatting colour such as
+//     ChatFormatting.GOLD, TextColor.fromRgb( and Integer.parseInt(text, 16)
 // A line that must keep one (a mask, say) ends with `// colour-ok: <reason>`; the reason is required. Comment-only lines and the
 // text of a trailing comment are not scanned. Decimal colours and `ARGB.white(alpha)` are not flagged.
 //
@@ -15,6 +16,10 @@ abstract class ColourGate {
 		/\bargb\s*\(/,
 		/\bARGB\s*\.\s*color\s*\(/,
 		/\bCommonColors\s*\./,
+		/\bARGB\s*\.\s*(colorFromFloat|opaque)\s*\(/,
+		/\bChatFormatting\s*\.\s*(BLACK|DARK_BLUE|DARK_GREEN|DARK_AQUA|DARK_RED|DARK_PURPLE|GOLD|GRAY|DARK_GRAY|BLUE|GREEN|AQUA|RED|LIGHT_PURPLE|YELLOW|WHITE)\b/,
+		/\bTextColor\s*\.\s*fromRgb\s*\(/,
+		/\bInteger\s*\.\s*parseInt\s*\([^;]*,\s*16\s*\)/,
 	]
 	static final String MARKER = /\/\/\s*colour-ok:\s*\S/
 

@@ -16,10 +16,17 @@ public final class TestPacks implements ModInitializer {
 	/** Recolours the CRT terminals from phosphor green to amber, naming only the keys that change. */
 	public static final String AMBER_CRT = "amber_crt";
 
+	/** Has one bad colour in {@code crt.json}, so a reload with it must fail and name the pack. */
+	public static final String BAD_CRT = "bad_crt";
+	/** Turns the handbook's ink red. */
+	public static final String RED_INK = "red_ink";
+
 	@Override
 	public void onInitialize() {
-		ResourceLoader.registerBuiltinPack(Identifier.fromNamespaceAndPath("deepcharter-test", AMBER_CRT),
-				FabricLoader.getInstance().getModContainer("deepcharter-test").orElseThrow(),
-				Component.literal("Amber CRT (test pack)"), PackActivationType.NORMAL);
+		for (String pack : new String[] {AMBER_CRT, BAD_CRT, RED_INK}) {
+			ResourceLoader.registerBuiltinPack(Identifier.fromNamespaceAndPath("deepcharter-test", pack),
+					FabricLoader.getInstance().getModContainer("deepcharter-test").orElseThrow(),
+					Component.literal(pack + " (test pack)"), PackActivationType.NORMAL);
+		}
 	}
 }

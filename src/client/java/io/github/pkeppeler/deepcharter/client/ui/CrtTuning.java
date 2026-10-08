@@ -48,11 +48,7 @@ public record CrtTuning(
 	}
 
 	public static CrtTuning of(ThemeData d) {
-		double lettersPerSecond = d.decimal("lettersPerSecond");
-		if (lettersPerSecond <= 0) {
-			throw new IllegalArgumentException("theme area 'crt', key 'lettersPerSecond' must be positive, got " + lettersPerSecond);
-		}
-		return new CrtTuning(lettersPerSecond, d.integer("cursorBlinkTicks", 1), d.integer("scanlineSpacing", 1), d.color("scanlineColor"),
+		return new CrtTuning(d.decimal("lettersPerSecond", 0.1, 1000), d.integer("cursorBlinkTicks", 1), d.integer("scanlineSpacing", 1), d.color("scanlineColor"),
 				d.color("glowColor"), d.integer("bloomHeight", 0), d.color("bloomColor"), d.color("backgroundColor"), d.color("phosphorColor"),
 				d.color("dimColor"), d.color("hoverFillColor"), d.color("refusalColor"), d.integer("padding", 0), d.integer("lineSpacing", 0),
 				d.integer("buttonLabelOffset", 0), d.integer("headerRuleInset", 0), d.integer("headerRuleGap", 0));

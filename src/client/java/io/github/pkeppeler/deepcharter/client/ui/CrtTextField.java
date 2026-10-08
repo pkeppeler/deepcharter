@@ -16,7 +16,6 @@ public final class CrtTextField extends EditBox {
 	public CrtTextField(Font font, int x, int y, int width, int height, Component hint) {
 		super(font, x, y, width, height, hint);
 		setBordered(false);
-		setTextColor(CrtTuning.current().phosphorColor());
 		setTextShadow(false);
 		setHint(hint);
 	}
@@ -24,6 +23,8 @@ public final class CrtTextField extends EditBox {
 	@Override
 	public void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		CrtTuning tuning = CrtTuning.current();
+		// Set at each draw, not once, so a reload restyles a field that is open.
+		setTextColor(tuning.phosphorColor());
 		int left = getX() - FRAME;
 		int top = getY() - FRAME;
 		int right = getRight() + FRAME;

@@ -18,7 +18,7 @@ public record CargoLook(int textColor) {
 		return UiTheme.current().cargo();
 	}
 
-	static CargoLook of(ThemeData d) {
+	public static CargoLook of(ThemeData d) {
 		return new CargoLook(d.color("textColor"));
 	}
 }

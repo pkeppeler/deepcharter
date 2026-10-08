@@ -89,10 +89,6 @@ public record HandbookScreenTuning(
 	}
 
 	private static int alpha(ThemeData d, String key) {
-		int alpha = d.integer(key, 0);
-		if (alpha > 255) {
-			throw new IllegalArgumentException("theme area 'handbook', key '" + key + "' must be at most 255, got " + alpha);
-		}
-		return alpha;
+		return d.integer(key, 0, 255);
 	}
 }

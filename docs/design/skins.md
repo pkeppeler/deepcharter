@@ -35,6 +35,10 @@ One flat JSON object. A colour is a string, `"#RRGGBB"` (opaque) or `"#AARRGGBB"
 
 The key names are the component names of the matching record: `CrtTuning` for `crt.json`, `HandbookScreenTuning`, and `ScannerLook`, `HudLook`, `TransmissionLook`, `BreachLook`, `CargoLook` in `client/theme/`. Each record's Javadoc says what a key does. The mod's own file at the bottom lists every key and is the reference.
 
+An open screen follows the reload at once. A typewriter's speed is read when it starts, so it applies to the next text.
+
+Limits keep a skin from breaking play: the breach fade and shake are at most 100 ticks, a transmission stays up at most 1200 ticks, `centerY` and `accountY` are from 0 to 1, and the transmission panel must be wider than twice the CRT padding. A value out of range fails the reload and names the pack.
+
 A pack's file is merged over the mod's key by key, so name only what changes. A bad colour, or a number out of range, fails the reload and the log names the pack, area and key. A key nothing reads is a warning in the log, usually a typo.
 
 What stays in Java, on purpose: the position and size of the widgets on each terminal screen (they match hit areas and the server's menu), the scanner's reach, and any timing that gates play.

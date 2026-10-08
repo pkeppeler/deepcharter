@@ -46,14 +46,12 @@ public final class CrtDraw {
 	}
 
 	/**
-	 * A terminal screen's title in capitals in bright phosphor at {@code margin}, and the dim rule under it. Returns the y below the rule's
-	 * top, where the screen's next line starts when it adds its own gap.
+	 * A terminal screen's title in capitals in bright phosphor at {@code margin}, and the dim rule under it.
 	 */
-	public static int header(GuiGraphicsExtractor graphics, Font font, String title, int margin, int width) {
+	public static void header(GuiGraphicsExtractor graphics, Font font, String title, int margin, int width) {
 		CrtTuning tuning = CrtTuning.current();
 		glowText(graphics, font, title, margin, margin, tuning.phosphorColor());
 		int ruleTop = margin + font.lineHeight + tuning.headerRuleGap();
 		border(graphics, margin - tuning.headerRuleInset(), ruleTop, width - margin + tuning.headerRuleInset(), ruleTop + 1, tuning.dimColor());
-		return ruleTop;
 	}
 }

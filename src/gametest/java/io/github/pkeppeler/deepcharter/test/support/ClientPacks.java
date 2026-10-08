@@ -22,6 +22,24 @@ public final class ClientPacks {
 		change(context, pack, false);
 	}
 
+	/**
+	 * Selects the pack and reloads, for a pack whose reload must fail. Vanilla puts the previous packs back, so this returns once the
+	 * game has settled again, whatever became of the reload.
+	 */
+	public static void enableExpectingFailure(ClientGameTestContext context, String pack) {
+		CompletableFuture<Void> reload = context.computeOnClient(client -> {
+			PackRepository repository = client.getResourcePackRepository();
+			repository.reload();
+			String id = repository.getAvailableIds().stream().filter(candidate -> candidate.endsWith(pack)).findFirst().orElseThrow();
+			repository.addPack(id);
+			return Minecraft.getInstance().reloadResourcePacks();
+		});
+		context.waitFor(client -> reload.isDone());
+		// The failed reload starts a second one with the vanilla packs.
+		context.waitTicks(20);
+		context.waitFor(client -> client.gui.overlay() == null);
+	}
+
 	private static void change(ClientGameTestContext context, String pack, boolean on) {
 		CompletableFuture<Void> reload = context.computeOnClient(client -> {
 			PackRepository repository = client.getResourcePackRepository();

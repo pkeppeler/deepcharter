@@ -4,12 +4,17 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
+import java.util.List;
 
 import javax.imageio.ImageIO;
 
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 
+import net.minecraft.client.input.CharacterEvent;
+
+import io.github.pkeppeler.deepcharter.client.handbook.HandbookPage;
+import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.client.theme.BreachLook;
 import io.github.pkeppeler.deepcharter.client.theme.CargoLook;
@@ -19,6 +24,7 @@ import io.github.pkeppeler.deepcharter.client.theme.TransmissionLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDemoScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
+import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 
 /**
@@ -26,6 +32,9 @@ import io.github.pkeppeler.deepcharter.test.support.TestPacks;
  * one colour changes that colour on the next reload (which is what F3+T does) and nothing else, on screen as well as in the record.
  */
 public class UiThemeClientTest implements FabricClientGameTest {
+	private static final int GREEN = 0x7CFC9A;
+	private static final int AMBER = 0xFFB000;
+
 	@Override
 	public void runTest(ClientGameTestContext context) {
 		ClientTestLog.start(this);
@@ -67,6 +76,99 @@ public class UiThemeClientTest implements FabricClientGameTest {
 		// Off again, back to the default, on screen too.
 		expect("phosphor after the pack is off", 0xFF7CFC9A, context.computeOnClient(client -> CrtTuning.current()).phosphorColor());
 		expect("screen background pixel after the pack is off", 0x050A06, backgroundPixel(context, "ui-theme-restored"));
+
+		aScreenThatIsOpenFollowsAReload(context);
+		theHandbookThatIsOpenFollowsAReload(context);
+		aBrokenPackFailsTheReloadAndLeavesTheThemeAlone(context);
+	}
+
+	/** The body text, the field text, the header and the buttons of an open CRT screen all turn amber, none stays green. */
+	private static void aScreenThatIsOpenFollowsAReload(ClientGameTestContext context) {
+		context.setScreen(CrtDemoScreen::new);
+		context.waitForScreen(CrtDemoScreen.class);
+		CrtDemoScreen screen = context.computeOnClient(client -> (CrtDemoScreen) client.gui.screen());
+		context.waitFor(client -> screen.typewriter().done());
+		context.runOnClient(client -> "RIGGS".chars().forEach(c -> screen.charTyped(new CharacterEvent(c))));
+		context.waitTicks(15);
+		int greenBefore = pixelsOf(context, "ui-theme-open-before", GREEN);
+		int amberBefore = pixelsOf(context, "ui-theme-open-before-2", AMBER);
+		if (greenBefore == 0 || amberBefore != 0) {
+			throw new AssertionError("Before the pack the open screen should draw green text, not amber: green %d, amber %d".formatted(greenBefore, amberBefore));
+		}
+		ClientPacks.enable(context, TestPacks.AMBER_CRT);
+		try {
+			context.waitTicks(15);
+			int green = pixelsOf(context, "ui-theme-open-after", GREEN);
+			int amber = pixelsOf(context, "ui-theme-open-after-2", AMBER);
+			if (green != 0 || amber == 0) {
+				throw new AssertionError("After the reload the screen that stayed open should draw amber text only: green %d, amber %d".formatted(green, amber));
+			}
+		} finally {
+			ClientPacks.disable(context, TestPacks.AMBER_CRT);
+			context.setScreen(() -> null);
+		}
+	}
+
+	/** The handbook's ink turns red on an open sheet. */
+	private static void theHandbookThatIsOpenFollowsAReload(ClientGameTestContext context) {
+		context.setScreen(() -> new HandbookScreen(List.of(new HandbookPage.Cover()), id -> true, id -> { }, List.of()));
+		context.waitForScreen(HandbookScreen.class);
+		context.waitTicks(10);
+		int inkBefore = pixelsOf(context, "ui-theme-handbook-before", 0x1B2A4E);
+		int redBefore = pixelsOf(context, "ui-theme-handbook-before-2", 0xB00020);
+		if (inkBefore == 0 || redBefore != 0) {
+			throw new AssertionError("Before the pack the handbook should draw blue ink: blue %d, red %d".formatted(inkBefore, redBefore));
+		}
+		ClientPacks.enable(context, TestPacks.RED_INK);
+		try {
+			context.waitTicks(10);
+			int ink = pixelsOf(context, "ui-theme-handbook-after", 0x1B2A4E);
+			int red = pixelsOf(context, "ui-theme-handbook-after-2", 0xB00020);
+			if (ink != 0 || red == 0) {
+				throw new AssertionError("After the reload the open handbook should draw red ink only: blue %d, red %d".formatted(ink, red));
+			}
+		} finally {
+			ClientPacks.disable(context, TestPacks.RED_INK);
+			context.setScreen(() -> null);
+		}
+	}
+
+	/** A pack with a bad colour fails the reload, the log names the pack, and the theme in force is the one from before. */
+	private static void aBrokenPackFailsTheReloadAndLeavesTheThemeAlone(ClientGameTestContext context) {
+		CrtTuning before = context.computeOnClient(client -> CrtTuning.current());
+		LogCapture log = LogCapture.start(TestPacks.BAD_CRT);
+		ClientPacks.enableExpectingFailure(context, TestPacks.BAD_CRT);
+		try {
+			List<String> errors = log.errors();
+			if (errors.isEmpty()) {
+				throw new AssertionError("A pack with a bad colour should fail the reload with a log line that names the pack");
+			}
+			if (!errors.getFirst().contains("phosphorColor")) {
+				throw new AssertionError("The log line should name the key, was: " + errors.getFirst());
+			}
+			expect("the theme after the failed reload", before, context.computeOnClient(client -> CrtTuning.current()));
+		} finally {
+			ClientPacks.disable(context, TestPacks.BAD_CRT);
+		}
+	}
+
+	/** How many pixels of a screenshot are exactly {@code rgb}. */
+	private static int pixelsOf(ClientGameTestContext context, String shotName, int rgb) {
+		Path shot = context.takeScreenshot(shotName);
+		try {
+			BufferedImage image = ImageIO.read(shot.toFile());
+			int count = 0;
+			for (int y = 0; y < image.getHeight(); y++) {
+				for (int x = 0; x < image.getWidth(); x++) {
+					if ((image.getRGB(x, y) & 0xFFFFFF) == rgb) {
+						count++;
+					}
+				}
+			}
+			return count;
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
 	}
 
 	/**
