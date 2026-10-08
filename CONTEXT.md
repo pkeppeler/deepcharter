@@ -44,6 +44,22 @@ _Avoid_: shop, store, vendor
 One link in the underground chain, with its own light, fog and sky. Its floor leads into the top of the next.
 _Avoid_: level, biome, dimension (that is the implementation)
 
+**Campaign world**:
+The one tall world that holds the surface and all story layers. Crossing a breach in it has no teleport.
+_Avoid_: main dimension
+
+**Seam**:
+The join between two tall worlds below the campaign, crossed by a fast background swap inside a grained crust.
+_Avoid_: portal, loading screen
+
+**Grained crust**:
+A crust with a vertical grain that flexes on a slow pulse. It allows no sideways digging or placing, absorbs fluids and squeezes anything that stops in it. Working name.
+_Avoid_: seam crust, no-build zone
+
+**Decoy**:
+A grained crust that is not a seam, chosen from the world seed.
+_Avoid_: fake seam
+
 **Story layer**:
 One of the roughly 8 hand-authored layers that make up the campaign.
 _Avoid_: authored layer, main layer

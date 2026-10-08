@@ -31,20 +31,27 @@ Pillars, ranked. The higher one wins a conflict.
 - **Surface:** vanilla-style frontier (terrain, trees, animals, vanilla ores near the surface for the bootstrap, vanilla night monsters). No villages or settlements. No Nether or End; the depths replace them.
 - **Colony:** one derelict mining colony per world, at spawn. Its terminals are repaired once per world: when any charter fixes one, every charter can use it.
 - **Width:** unlimited, no border.
-- **Performance:** layer height drives cost, because Minecraft generates whole columns. Keep layers moderately tall. If world files grow large, add a tool to trim unvisited chunks.
+- **Performance:** world height drives cost, because Minecraft generates whole columns. Keep layers about 256 blocks or less, and uncharted worlds 2048 tall. If world files grow large, add a tool to trim unvisited chunks.
 
 ### Layers
 
 - The underground is a chain of layers. Each layer's floor leads into the top of the next.
-- Each layer is its own dimension (own ambient light, fog, sky). The depth readout is computed: layer offset plus local Y. See [ADR 0003](adr/0003-depth-as-chained-layer-dimensions.md).
+- The surface and story layers 1–8 share one tall dimension, the **campaign world**. A layer is a Y band with its own ambient light, fog and sky, set by biome. The depth readout is computed: layer offset plus local Y. See [ADR 0029](adr/0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md).
+- Layers average 256 blocks or less.
 - Layers vary in thickness.
 - **Zones:** each layer has 2–4 zones. Ore value, hazards, creatures and atmosphere step up between zones.
 
 ### Breaches
 
 - A breach is a crust at each layer boundary. It is a soft gate: any drill can get through, slowly and painfully (heat, hull damage).
-- Crossing is an event: rumble, short fade, a transmission, new music.
+- Crossing is an event: rumble, a transmission, new music. There is no teleport and no fade.
 - You can go too deep too early, and you will regret it.
+
+### Seams and grained crust
+
+- Below the campaign world, each uncharted world is 2048 tall and joins the next at a **seam**: a fast background swap. The pod carries all its riders.
+- The swap happens inside a **grained crust** (working name; the lore session names it). It has a vertical grain and flexes on a slow pulse. Rules: no sideways digging, placed blocks crumble, fluids are absorbed, and anything that stops in it is squeezed.
+- Seed-chosen **decoys** (about 1 in 3 of the other crusts) follow the same rules, so a seam cannot be told from a decoy.
 
 ### Story layers
 
@@ -67,7 +74,7 @@ A few hundred blocks at the bottom of the last story layer where drilling gets e
 
 ### Uncharted layers
 
-- Below the ramp, without limit. Remixes of story-layer themes, each much harder than the one above; rewards grow far more slowly than difficulty.
+- Below the ramp, without limit: a chain of 2048-tall worlds. Remixes of story-layer themes, each much harder than the one above; rewards grow far more slowly than difficulty.
 - A bragging-rights grind for the records board.
 - The altimeter reads "UNCHARTED".
 - No rated materials exist for them, so no outpost there can be made habitable.
@@ -75,7 +82,7 @@ A few hundred blocks at the bottom of the last story layer where drilling gets e
 ### Splice rule
 
 - A layer's content is fixed the first time any charter breaks into it.
-- An update adding story layer N+1 splices it into the chain below the last story layer and above the ramp. Breaking through N's floor leads into the new layer; its floor leads into whatever already existed.
+- An update adding story layer N+1 splices it into the chain below the last story layer and above the ramp, as a new world at the seam between the finale and the Ramp. Breaking through N's floor leads into the new layer; its floor leads into whatever already existed.
 - Nothing built is lost. Existing layers keep their terrain; their depth readings shift.
 - Players already down there get a "the depths moved" story event.
 - No shaft can reach a spliced layer early, so pre-mining is impossible.
@@ -369,6 +376,8 @@ Surface, repairing the colony, the Mole, the onboarding handbook (implied by the
 - Final crew-role design, after the prototype.
 - Lore session: the employer's name, layer themes, transmissions.
 - Creatures and combat session.
+- Does the surface fit in the campaign world? If not, a seam at the surface floor ([ADR 0029](adr/0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md)).
+- What happens to dropped items and mobs that fall to a seam.
 - Numbers tuning: layer thicknesses, prices, drill speeds.
 - Duration and size of earthquake and cave-in blockages, per layer.
 - Public release: name and branding, licence, original soundtrack sourcing.
