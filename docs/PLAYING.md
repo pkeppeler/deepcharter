@@ -29,6 +29,9 @@ You need a Minecraft Java Edition account.
 - **Rotor:** hold jump (Space) to lift.
 - **Drill:** sprint (default Left Ctrl). Sprint while on the ground drills down; push into a wall to drill sideways.
 - **Refuel:** right-click the pod while holding coal or charcoal.
+- **Terminals:** right-click one in the colony (fuel pump, ore processor, upgrade terminal, repair station, hangar console). A terminal that is offline takes the parts that repair it: put them in from its screen. Park your pod beside a terminal to use it on the pod.
+- **Handbook:** press H. It lists nine chapters of directives that tick off as you do them. Right-click a sheet of paper in the world to file its Note.
+- **Tow cable:** ride a pod, hold a tow cable and right-click another pod. Right-click a towed pod with the cable to take it off.
 - **Operator commands** (ops only): `/deepcharter pod spawn` puts a pod next to you, `/deepcharter layer goto <n>` moves you to the surface of layer n, `/deepcharter pod dump` empties the ridden pod's cargo.
 
 ## Private audio pack
@@ -39,7 +42,7 @@ Host only: with the extracted originals in `original_flash_game/extracted/sounds
 
 ## Known issues
 
-- Content is partial: placeholder text, sounds and models; the drill, shops and most layers are not in yet.
+- Content is partial: only the surface and layers 1 and 2 exist, with placeholder text, sounds and models. The lore and the creatures are unfinished.
 - Pods can run out of fuel and strand you. Bring coal.
 - Sodium and Lithium are speed mods and are not ours. If something looks wrong, remove them from the instance (**Edit, Mods**) and check whether the problem goes away. Say so in your report.
 - Do not add other mods. Iris does not support this Sodium version yet, and old Sodium add-ons are blocked by it.

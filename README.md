@@ -45,7 +45,7 @@ A new part that needs its own `init()` and has no feature of its own gets a stub
 - **A terminal action that spends does everything that can throw or refuse before the spend.**
 - **State held in memory to undo a change to player-owned persistent data (a respawn point, an inventory) is itself persisted, or the change is not made.**
 - **Mixins** live in `<feature>/mixin/`, are registered in `deepcharter.mixins.json`, and are used only where no Fabric event reaches; an ADR names the target method.
-- Every M2 issue's test classes and evidence scenario already exist as stubs (below), so no issue edits the gametest `fabric.mod.json`, except that a PR may add one line there for each new evidence scenario it registers. #53 creates `client/ui/` for the UI kit; it needs no init line.
+- Every M2 issue's test classes and evidence scenario already exist as stubs (below), so no issue edits the gametest `fabric.mod.json`, except that a PR may add one line there for each new test class or evidence scenario that has no stub. #53 creates `client/ui/` for the UI kit; it needs no init line.
 
 ### Tests
 

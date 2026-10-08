@@ -58,11 +58,16 @@ public final class FarChunks {
 			return reached;
 		}
 
+		/** Whether the {@link #WAIT_SECONDS} have passed. For a waiter with no {@code GameTestHelper}, such as a client scenario. */
+		public boolean expired() {
+			return System.nanoTime() - endNanos > 0;
+		}
+
 		private void pause(GameTestHelper helper, ServerLevel level, ChunkPos chunk, Awaited awaited, boolean reached) {
 			if (reached) {
 				return;
 			}
-			if (System.nanoTime() - endNanos > 0) {
+			if (expired()) {
 				throw helper.assertionException(Component.literal(String.format("chunk %s in %s was not %s after %d s",
 						chunk, level.dimension(), awaited.text, WAIT_SECONDS)));
 			}
