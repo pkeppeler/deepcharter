@@ -71,7 +71,7 @@ public final class TwoPlayerServer implements AutoCloseable {
 				connection.close();
 			}
 			server.close();
-			throw new AssertionError("TwoPlayerServer.start failed during " + stage + ": " + e, e);
+			throw new AssertionError("TwoPlayerServer.start failed during " + stage, e);
 		}
 	}
 

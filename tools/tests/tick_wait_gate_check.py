@@ -100,7 +100,7 @@ class TickWaitGateTest(unittest.TestCase):
             result = generate(self.fixture(directory))
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
-    def check_fails(self, name: str, class_line: str, statement: str, label: str):
+    def check_fails(self, name: str, class_line: str, statement: str, label: str, line: int = 4):
         with tempfile.TemporaryDirectory() as directory:
             root = self.fixture(directory)
             write(root, name, f"""
@@ -114,7 +114,7 @@ class TickWaitGateTest(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0, f"the gate should fail the build for {label}")
             output = result.stdout + result.stderr
             module = name.removesuffix(".java").replace("/", ".")
-            self.assertIn(f"{module}:4 waits with waitFor or waitForScreen", output)
+            self.assertIn(f"{module}:{line} waits with waitFor or waitForScreen", output)
             self.assertIn("ClientWait.until", output)
             self.assertNotIn("MarkedClientTest", output)
             self.assertNotIn("FixtureScenario", output)
@@ -123,6 +123,13 @@ class TickWaitGateTest(unittest.TestCase):
         for label, statement in VIOLATIONS.items():
             with self.subTest(label):
                 self.check_fails("TicksClientTest.java", "public class TicksClientTest implements FabricClientGameTest", statement, label)
+
+    def test_marker_without_a_reason_or_in_a_string_does_not_count(self):
+        client = "public class TicksClientTest implements FabricClientGameTest"
+        bare = "// tick-wait:\n        context.waitFor(client -> true, 5);"
+        self.check_fails("TicksClientTest.java", client, bare, "a bare marker", line=5)
+        in_string = 'String note = "// tick-wait: not a comment"; context.waitFor(client -> true, 5);'
+        self.check_fails("TicksClientTest.java", client, in_string, "a marker in a string")
 
     def test_tick_wait_in_client_test_support_fails(self):
         self.check_fails("support/TicksSupport.java", "public class TicksSupport", VIOLATIONS["tick budget"], "support")

@@ -15,7 +15,7 @@ import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 public final class LavaHazard {
 	private static final int TICKS_PER_SECOND = 20;
 	/** How far past the pod's box a lava block still counts as touching it. */
-	private static final double TOUCH_REACH = 0.01;
+	public static final double TOUCH_REACH = 0.01;
 
 	private LavaHazard() {
 	}
@@ -33,7 +33,7 @@ public final class LavaHazard {
 	}
 
 	/** Lava in an unloaded chunk is not seen: the probe reaches over a chunk edge, and a plain read there would load the chunk. */
-	private static boolean touchesLava(PodEntity pod) {
+	public static boolean touchesLava(PodEntity pod) {
 		return new LoadedBlocks(pod.level()).getBlockStates(pod.getBoundingBox().inflate(TOUCH_REACH))
 				.anyMatch(state -> state.getFluidState().is(FluidTags.LAVA));
 	}

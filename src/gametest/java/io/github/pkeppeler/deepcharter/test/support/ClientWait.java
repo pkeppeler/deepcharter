@@ -66,7 +66,8 @@ public final class ClientWait {
 	/** What the client is showing, for a failure message: the level, whether it has a player, what the player rides, and the open screen. */
 	public static String describe(Minecraft client) {
 		String level = client.level == null ? "no level" : client.level.dimension().identifier().toString();
-		String player = client.player == null ? "no player" : "a player";
+		String player = client.player == null ? "no player"
+				: "a player at " + client.player.blockPosition().toShortString() + " in " + (client.gameMode == null ? "no game mode" : client.gameMode.getPlayerMode());
 		String vehicle = client.player == null || client.player.getVehicle() == null ? "no vehicle" : client.player.getVehicle().getType().toString();
 		String screen = client.gui.screen() == null ? "no screen" : client.gui.screen().getClass().getSimpleName();
 		return level + ", " + player + ", " + vehicle + ", " + screen;

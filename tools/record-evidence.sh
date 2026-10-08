@@ -22,7 +22,9 @@
 #
 # A long scenario (m2-slice is over a thousand frames) is too big for one GIF. GIF_FRAMES=<first>-<last>
 # builds the GIF from that range of frames only, as a highlight; the MP4 still holds every frame.
-# GIF_MAX_BYTES raises the size limit (default 5 MB). For example:
+# GIF_MAX_BYTES raises the size limit (default 5 MB). Over it, the GIF is rebuilt at a lower frame rate and
+# width (GIF_LADDER, "fps:width ..." best first, down to 4 fps at 320px) until it fits. If no rung fits, the
+# GIF is skipped with a warning naming the MP4, and the script still exits 0, locally and on CI. For example:
 #   GIF_FRAMES=560-720 GIF_MAX_BYTES=10000000 tools/record-evidence.sh m2-slice --no-run
 #
 # To add a scenario: copy src/gametest/java/.../test/evidence/CameraTurnScenario.java,
@@ -34,6 +36,7 @@ set -euo pipefail
 FPS=15
 GIF_MAX_BYTES=${GIF_MAX_BYTES:-$((5 * 1024 * 1024))}
 GIF_FRAMES=${GIF_FRAMES:-}
+GIF_LADDER=${GIF_LADDER-"15:800 10:800 10:640 8:560 6:480 5:400 4:320"}
 
 usage() {
   echo "usage: tools/record-evidence.sh <scenario> [--no-run] [--full-suite]  |  --print-class" >&2
@@ -55,6 +58,15 @@ for flag in "$@"; do
 done
 if [[ ! $GIF_MAX_BYTES =~ ^[1-9][0-9]*$ || ( -n $GIF_FRAMES && ! $GIF_FRAMES =~ ^[1-9][0-9]*-[1-9][0-9]*$ ) ]]; then
   echo "GIF_MAX_BYTES must be a number of bytes, and GIF_FRAMES a range such as 560-720" >&2
+  exit 2
+fi
+# ${GIF_LADDER-...} keeps an empty value empty, so it fails here instead of silently using the default.
+ladder_ok=1
+for rung in $GIF_LADDER; do
+  [[ $rung =~ ^[0-9]+:[0-9]+$ ]] || ladder_ok=0
+done
+if [[ -z ${GIF_LADDER//[[:space:]]/} || $ladder_ok -eq 0 ]]; then
+  echo "GIF_LADDER must be a list of fps:width rungs such as \"10:800 6:480\"" >&2
   exit 2
 fi
 
@@ -115,20 +127,42 @@ if [[ -n $GIF_FRAMES ]]; then
   fi
   gif_input=(-framerate "$FPS" -start_number "$first" -i "$out/frames/frame-%04d.png" -frames:v $((last - first + 1)))
 fi
-ffmpeg -v error -y "${gif_input[@]}" \
-  -vf "split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle" \
-  -loop 0 "$out/$scenario.gif"
-
-size=$(wc -c <"$out/$scenario.gif")
-size=${size// /}
-if (( size > GIF_MAX_BYTES )); then
-  rm -f "$out/$scenario.gif"
-  echo "GIF was $size bytes, over the $GIF_MAX_BYTES budget (deleted): record fewer frames" >&2
-  exit 1
+# Try the rungs of GIF_LADDER (fps:width, best first) until the GIF fits GIF_MAX_BYTES. A lower fps drops
+# frames but keeps real-time playback (the frame delay grows to match); a lower width shrinks every frame.
+gif=$out/$scenario.gif
+# Each try is encoded to $gif.try and moved into place only when it fits, so a partial or oversize GIF
+# never sits at the real path, including when ffmpeg fails (set -e) and the trap runs.
+trap 'rm -f "$gif.try"' EXIT
+built=0
+size=0
+gif_fps=
+gif_width=
+for rung in $GIF_LADDER; do
+  gif_fps=${rung%:*}
+  gif_width=${rung#*:}
+  ffmpeg -v error -y "${gif_input[@]}" \
+    -vf "fps=$gif_fps,scale=$gif_width:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle" \
+    -loop 0 -f gif "$gif.try"
+  size=$(wc -c <"$gif.try")
+  size=${size// /}
+  if (( size <= GIF_MAX_BYTES )); then
+    mv "$gif.try" "$gif"
+    built=1
+    break
+  fi
+  echo "GIF at $gif_fps fps, ${gif_width}px was $size bytes, over the $GIF_MAX_BYTES budget; trying smaller" >&2
+done
+if (( ! built )); then
+  rm -f "$gif"
+  gif_warning="no GIF fits the $GIF_MAX_BYTES budget (the last try was $size bytes), so none is made. The MP4 is the evidence: $out/$scenario.mp4"
+  echo "warning: $gif_warning" >&2
+  if [[ -n ${GITHUB_ACTIONS:-} ]]; then echo "::warning::$gif_warning"; fi
 fi
 
 echo "mp4: $out/$scenario.mp4"
-echo "gif: $out/$scenario.gif ($size bytes)"
+if (( built )); then
+  echo "gif: $gif ($size bytes, $gif_fps fps, ${gif_width}px)"
+fi
 for shot in "$out"/screenshots/*.png; do
-  [[ -e $shot ]] && echo "screenshot: $shot"
+  if [[ -e $shot ]]; then echo "screenshot: $shot"; fi
 done
