@@ -12,16 +12,22 @@ tasks.named("runGameTest") { dependsOn deleteGameTestWorld }
 //   server GameTest    a class with an @GameTest method       -> fabric-gametest
 //   client GameTest    implements FabricClientGameTest        -> fabric-client-gametest
 //   evidence scenario  extends EvidenceScenario               -> fabric-client-gametest
+// Order: the suite shares world state between classes and depends on today's order, so
+// src/gametest/entrypoint-order.txt pins it; listed classes come first in that order, every other
+// class after them, sorted by name. A new class needs no line there.
 // The task fails (so the build fails) on a class named *Test or *Scenario that matches none of
-// those, on a class that matches both server and client, and on an empty list.
+// those, on a class that matches both server and client, on an empty list, and on a line in the
+// order file that names no class.
 def generatedGametestResources = layout.buildDirectory.dir("generated/gametest-resources")
 def generateGametestModJson = tasks.register("generateGametestModJson") {
 	def javaRoot = file("src/gametest/java")
 	def template = file("src/gametest/fabric.mod.template.json")
+	def orderFile = file("src/gametest/entrypoint-order.txt")
 	def outputFile = generatedGametestResources.map { it.file("fabric.mod.json") }
 	def sources = fileTree(javaRoot) { include "**/*.java" }
 	inputs.files(sources).withPropertyName("gametestSources")
 	inputs.file(template).withPropertyName("template")
+	inputs.file(orderFile).withPropertyName("orderFile")
 	outputs.file(outputFile)
 
 	doLast {
@@ -55,6 +61,11 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 		if (client.isEmpty()) {
 			problems << "no client GameTest or evidence scenario found under src/gametest/java"
 		}
+		def pinned = orderFile.readLines().collect { it.trim() }.findAll { !it.isEmpty() && !it.startsWith("#") }
+		pinned.findAll { !(it in server) && !(it in client) }.each {
+			problems << "${it} is in src/gametest/entrypoint-order.txt but is not a registered test class; remove the line"
+		}
+		def ordered = { names -> pinned.findAll { it in names } + names.findAll { !(it in pinned) }.sort() }
 		if (!problems.isEmpty()) {
 			throw new GradleException("gametest entrypoints:\n  " + problems.join("\n  "))
 		}
@@ -65,7 +76,7 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 			if (!json.contains(placeholder)) {
 				throw new GradleException("${template} lacks the ${placeholder} placeholder")
 			}
-			json = json.replace(placeholder, names.sort().collect { "\"${it}\"" }.join(",\n\t\t\t"))
+			json = json.replace(placeholder, ordered(names).collect { "\"${it}\"" }.join(",\n\t\t\t"))
 		}
 		outputFile.get().asFile.text = json
 	}
