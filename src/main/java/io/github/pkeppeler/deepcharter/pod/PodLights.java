@@ -1,6 +1,5 @@
 package io.github.pkeppeler.deepcharter.pod;
 
-import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
@@ -23,23 +22,7 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 
-/**
- * The pod's lights (SPEC section 7, the lights track): a powered pod with a lights part holds one vanilla {@code light}
- * block in its own column, at the part's level, and moves it with the pod. A stranded or wrecked pod is unpowered
- * ({@link PodEvents#isPowered}), so it is dark.
- *
- * <p>A light block is world state and outlives the pod, so it is never left behind. The pod takes its block away when it
- * moves, loses power, loses the part, is removed (which covers unloading, a breach crossing and a wreck being removed), and
- * when the server stops. A crash skips all of that, so every block is recorded in the {@link PodLightLedger} before it is
- * placed, and each dimension sweeps the recorded blocks that no pod holds, as soon as their chunk is loaded.
- *
- * <p>The pod never replaces a block that is not air, and takes away only a block that is still a {@code light} block at a
- * position it recorded: a builder's light block is not touched. The light always sits in the pod's own column, so it is in the
- * pod's chunk and goes with the pod.
- *
- * <p>The listeners run on every tick, so they never throw: a ledger this build cannot read is logged once and the pod
- * places no light.
- */
+/** A powered pod with a lights part holds one vanilla light block in its own column and moves it with the pod; a ledger sweep removes the ones a crash leaves (ADR 0024). */
 public final class PodLights {
 	/** Where a pod's light is, and in what dimension. */
 	private record Lit(ServerLevel level, BlockPos pos, int lightLevel) {
@@ -49,13 +32,14 @@ public final class PodLights {
 	}
 
 	/** The light each pod holds now. Server thread only; weak, so a pod that vanished without an event does not leak. */
-	private static final Map<PodEntity, Lit> LIT = Collections.synchronizedMap(new WeakHashMap<>());
-	private static volatile boolean ledgerUnreadableLogged;
+	private static final Map<PodEntity, Lit> LIT = new WeakHashMap<>();
+	private static boolean ledgerUnreadableLogged;
 
 	private PodLights() {
 	}
 
 	public static void init() {
+		ServerLifecycleEvents.SERVER_STARTING.register(server -> ledgerUnreadableLogged = false);
 		PodEvents.AFTER_TICK.register(PodLights::afterTick);
 		ServerEntityEvents.ENTITY_UNLOAD.register(PodLights::onUnload);
 		ServerTickEvents.END_LEVEL_TICK.register(PodLights::sweep);
@@ -173,12 +157,10 @@ public final class PodLights {
 	}
 
 	private static void releaseAll() {
-		synchronized (LIT) {
-			for (Lit held : LIT.values()) {
-				release(held);
-			}
-			LIT.clear();
+		for (Lit held : LIT.values()) {
+			release(held);
 		}
+		LIT.clear();
 	}
 
 	/** Takes away the recorded light blocks of this dimension that no pod holds and whose chunk is loaded. */
@@ -204,8 +186,6 @@ public final class PodLights {
 	}
 
 	private static Set<GlobalPos> heldIn(ServerLevel level) {
-		synchronized (LIT) {
-			return LIT.values().stream().filter(lit -> lit.level() == level).map(Lit::global).collect(Collectors.toSet());
-		}
+		return LIT.values().stream().filter(lit -> lit.level() == level).map(Lit::global).collect(Collectors.toSet());
 	}
 }

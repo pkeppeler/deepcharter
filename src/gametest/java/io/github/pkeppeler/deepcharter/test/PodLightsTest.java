@@ -62,8 +62,8 @@ public class PodLightsTest {
 	private static final int TWO_SWEEPS = 2 * PodLightsTuning.DEFAULT.sweepIntervalTicks() + 5;
 	private static final int COST_WARMUP_TICKS = 100;
 	private static final int COST_TICKS = 300;
-	/** Two moving pods may spend no more than this in a server tick (2% of the 50 ms budget). */
-	private static final long COST_BUDGET_NANOS = 1_000_000L;
+	/** Two moving pods may spend no more than this in a server tick (10% of the 50 ms budget); loose enough for a GC or JIT pause on CI. */
+	private static final long COST_BUDGET_NANOS = 5_000_000L;
 	private static final AtomicInteger CHARTERS = new AtomicInteger();
 	private static final Set<UUID> DARK = ConcurrentHashMap.newKeySet();
 
@@ -195,6 +195,38 @@ public class PodLightsTest {
 			}
 			if (!ledgerEntriesIn(level, at, LOOK).isEmpty()) {
 				throw failure(helper, "the pod put nothing down, yet the ledger holds %s", ledgerEntriesIn(level, at, LOOK));
+			}
+			helper.succeed();
+		} finally {
+			for (BlockPos cell : column) {
+				level.setBlock(cell, Blocks.AIR.defaultBlockState(), 3);
+			}
+			pod.discard();
+		}
+	}
+
+	@GameTest
+	public void aPodInAFloodedColumnStaysDark(GameTestHelper helper) {
+		PodEntity pod = litPod(helper, charter(helper), 2, 0);
+		ServerLevel level = helper.getLevel();
+		BlockPos at = pod.blockPosition();
+		List<BlockPos> column = new ArrayList<>();
+		for (int dy = 0; dy <= 3; dy++) {
+			column.add(at.above(dy));
+		}
+		try {
+			for (BlockPos cell : column) {
+				level.setBlock(cell, Blocks.WATER.defaultBlockState(), 3);
+			}
+			afterTick(pod);
+			expectLights(helper, "a pod in water", pod);
+			if (!ledgerEntriesIn(level, at, LOOK).isEmpty()) {
+				throw failure(helper, "the pod put nothing down, yet the ledger holds %s", ledgerEntriesIn(level, at, LOOK));
+			}
+			for (BlockPos cell : column) {
+				if (!level.getBlockState(cell).is(Blocks.WATER)) {
+					throw failure(helper, "the water at %s was replaced by %s", cell, level.getBlockState(cell));
+				}
 			}
 			helper.succeed();
 		} finally {

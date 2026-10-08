@@ -17,17 +17,7 @@ import net.minecraft.world.level.saveddata.SavedDataType;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 
-/**
- * Every light block a pod has placed and not yet taken away, saved with the world. A light block is world state and outlives
- * the pod that placed it, so after a crash the ledger is how a stale one is told from a light a builder placed:
- * {@link PodLights} sweeps the entries that no pod holds, and only those.
- *
- * <p>An entry is written before its block is placed, and vanilla saves the chunks and this data in one pass on one tick,
- * so a save never holds the block without the entry.
- *
- * <p>The saved form has a {@link #VERSION}. Data of another version loads as unreadable and is written back unchanged;
- * {@link PodLights} then places no light, because a light it could not record could not be cleaned up.
- */
+/** Every light block a pod placed and has not taken away, so a sweep can tell a stale one from a builder's (ADR 0024). */
 public final class PodLightLedger extends SavedData {
 	public static final int VERSION = 1;
 	private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "pod_light_ledger");
