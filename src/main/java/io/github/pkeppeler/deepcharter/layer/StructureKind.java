@@ -201,6 +201,8 @@ public enum StructureKind {
 	private static void shaft(StructurePlan p, int height, int note) {
 		p.air(-1, 0, -1, 1, height - 1, 1);
 		p.box(-1, -1, -1, 1, -1, 1, Blocks.STONE_BRICKS.defaultBlockState());
+		// The ladder hangs on this column, so it is solid whatever rock the shaft was cut through.
+		p.box(-2, 0, -1, -2, height - 1, -1, Blocks.STONE_BRICKS.defaultBlockState());
 		for (int y = 3; y < height; y += 8) {
 			for (int u = -2; u <= 2; u++) {
 				for (int v = -2; v <= 2; v++) {

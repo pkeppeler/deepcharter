@@ -12,6 +12,7 @@ import net.minecraft.world.level.block.RailBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
 import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
 
@@ -22,7 +23,7 @@ import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
  * only, never on the order of drawing, so the parts always agree.
  *
  * <p>Blocks are set without neighbour updates and without {@code onPlace}, so a rail or a candle never reaches into a
- * neighbouring chunk that is not loaded. The Conduit's casing is never overwritten.
+ * neighbouring chunk that is not loaded. The Conduit's casing is never overwritten. {@link #seal} runs before the carve.
  */
 final class StructurePlan {
 	private static final int FLAGS = Block.UPDATE_SKIP_ON_PLACE;
@@ -37,6 +38,28 @@ final class StructurePlan {
 		this.level = level;
 		this.chunk = chunk;
 		this.chunkPos = chunk.getPos();
+	}
+
+	/**
+	 * Replaces every fluid and gas pocket in the structure's bounds and the one-block shell round them (the part in this chunk)
+	 * with stone, before the carve: the walls, roof and floor are rock that the zone fill (ADR 0015) may have left lava or gas
+	 * in, and lava has no fluid tick until a neighbour changes. The neighbour chunk seals its own part of the shell. The flags
+	 * wake nothing, so no lava beside the shell is told that its neighbour changed. See {@link RoomSeal}.
+	 */
+	void seal() {
+		BoundingBox bounds = site.bounds();
+		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+		for (int x = Math.max(bounds.minX() - 1, chunkPos.getMinBlockX()); x <= Math.min(bounds.maxX() + 1, chunkPos.getMaxBlockX()); x++) {
+			for (int z = Math.max(bounds.minZ() - 1, chunkPos.getMinBlockZ()); z <= Math.min(bounds.maxZ() + 1, chunkPos.getMaxBlockZ()); z++) {
+				for (int y = Math.max(bounds.minY() - 1, level.getMinY()); y <= Math.min(bounds.maxY() + 1, level.getMaxY()); y++) {
+					pos.set(x, y, z);
+					if (RoomSeal.needsSealing(chunk.getBlockState(pos))) {
+						chunk.setBlockState(pos, Blocks.STONE.defaultBlockState(), FLAGS);
+						level.getLightEngine().checkBlock(pos);
+					}
+				}
+			}
+		}
 	}
 
 	void set(int u, int y, int v, BlockState state) {

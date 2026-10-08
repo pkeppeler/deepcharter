@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.layer;
 
+import java.util.Arrays;
+
 /**
  * Tunables for the layer feature. Add one component per tunable and give it its value in
  * {@link #DEFAULT}; read it as {@code LayerTuning.DEFAULT.thing()}.
@@ -21,6 +23,11 @@ public record LayerTuning(int seaLevel, double feetPerBlock, int crustThickness,
 	public LayerTuning {
 		if (structureSpacing <= 0 || structureSpacing % 16 != 0) {
 			throw new IllegalArgumentException("structureSpacing must be a positive multiple of 16, got " + structureSpacing);
+		}
+		// A site keeps reach + 1 blocks from its cell's edge, so that its shell lies in the cell too; the cell needs room left to place it.
+		int widest = Arrays.stream(StructureKind.values()).mapToInt(StructureKind::reach).max().orElseThrow();
+		if (structureSpacing <= 2 * (widest + 1)) {
+			throw new IllegalArgumentException("structureSpacing " + structureSpacing + " leaves no room for a structure of reach " + widest);
 		}
 	}
 }

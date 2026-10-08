@@ -108,7 +108,8 @@ public class LayerStructuresScenario extends EvidenceScenario {
 			ServerLevel level = server.getLevel(LayerChain.dimension(kind.layer()));
 			StructureSite site = kind == StructureKind.WRECK
 					? LayerStructures.prospector(server).orElseThrow(() -> new AssertionError("the colony was not built when the world started"))
-					: StructureSite.in(level.getSeed(), kind, level.getMinY(), level.getHeight(), CELL, CELL);
+					: StructureSite.in(level.getSeed(), kind, level.getMinY(), level.getHeight(), CELL, CELL,
+							Colony.anchor(server, ColonyAnchor.CONDUIT).orElseThrow(() -> new AssertionError("the colony was not built when the world started")));
 			BoundingBox box = site.bounds();
 			for (int chunkX = box.minX() >> 4; chunkX <= box.maxX() >> 4; chunkX++) {
 				for (int chunkZ = box.minZ() >> 4; chunkZ <= box.maxZ() >> 4; chunkZ++) {

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 
@@ -16,16 +17,13 @@ import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
+import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 
 /**
- * Layer structures: shafts with candle niches in layer 1; galleries, the punch clock hall, the rail line and wreck sites in
- * layer 2 ({@link StructureKind}). Each kind has one site in every square of {@link LayerTuning#structureSpacing()} blocks,
- * placed by {@link StructureSite#in} from the world seed alone.
- *
- * <p>It is not a worldgen structure. A chunk that has just generated draws the part of every site that touches it, when it
- * loads (ADR 0025), so a site needs no record and a chunk saved with its structure is never drawn on again.
+ * Layer structures ({@link StructureKind}), drawn when a fresh chunk of a layer loads and placed by {@link StructureSite#in}.
+ * Where a site stands, what a chunk draws and what it leaves alone is in ADR 0025.
  */
 public final class LayerStructures {
 	/**
@@ -33,6 +31,9 @@ public final class LayerStructures {
 	 * away, and any site in a cell three out is more than 2 spacings away, so two out cannot miss the nearest.
 	 */
 	private static final int NEAREST_CELLS = 2;
+
+	private static final AtomicBoolean LOGGED_FAILURE = new AtomicBoolean();
+	private static final AtomicBoolean LOGGED_NO_COLONY = new AtomicBoolean();
 
 	private LayerStructures() {
 	}
@@ -55,22 +56,36 @@ public final class LayerStructures {
 		if (layer.isEmpty()) {
 			return;
 		}
-		for (StructureSite site : sitesIn(level.getSeed(), layer.getAsInt(), level.getMinY(), level.getHeight(), chunk.getPos())) {
-			site.kind().draw(new StructurePlan(site, level, chunk), site.height());
+		Optional<BlockPos> conduit = Colony.anchor(level.getServer(), ColonyAnchor.CONDUIT);
+		if (conduit.isEmpty()) {
+			if (LOGGED_NO_COLONY.compareAndSet(false, true)) {
+				DeepCharter.LOGGER.warn("A chunk of layer {} generated before the colony was built, so it gets no structures", layer.getAsInt());
+			}
+			return;
+		}
+		try {
+			for (StructureSite site : sitesIn(level.getSeed(), layer.getAsInt(), level.getMinY(), level.getHeight(), chunk.getPos(), conduit.get())) {
+				StructurePlan plan = new StructurePlan(site, level, chunk);
+				plan.seal();
+				site.kind().draw(plan, site.height());
+			}
+		} catch (RuntimeException e) {
+			if (LOGGED_FAILURE.compareAndSet(false, true)) {
+				DeepCharter.LOGGER.error("Layer structures failed in chunk {} of layer {}; this and later chunks may lack theirs", chunk.getPos(), layer.getAsInt(), e);
+			}
 		}
 	}
 
-	/** The sites of the layer whose structure touches {@code chunk}. */
-	public static List<StructureSite> sitesIn(long worldSeed, int layer, int minY, int levelHeight, ChunkPos chunk) {
+	/** The sites of the layer whose structure, or the shell round it, touches {@code chunk}. */
+	public static List<StructureSite> sitesIn(long worldSeed, int layer, int minY, int levelHeight, ChunkPos chunk, BlockPos conduit) {
 		int spacing = LayerTuning.DEFAULT.structureSpacing();
-		// A structure lies wholly in its cell and a cell is a whole number of chunks, so the chunk's own cell is the only one to ask.
 		int cellX = Math.floorDiv(chunk.getMinBlockX(), spacing);
 		int cellZ = Math.floorDiv(chunk.getMinBlockZ(), spacing);
 		List<StructureSite> sites = new ArrayList<>();
 		for (StructureKind kind : StructureKind.inLayer(layer)) {
-			StructureSite site = StructureSite.in(worldSeed, kind, minY, levelHeight, cellX, cellZ);
+			StructureSite site = StructureSite.in(worldSeed, kind, minY, levelHeight, cellX, cellZ, conduit);
 			BoundingBox bounds = site.bounds();
-			if (bounds.intersects(chunk.getMinBlockX(), chunk.getMinBlockZ(), chunk.getMaxBlockX(), chunk.getMaxBlockZ())) {
+			if (bounds.intersects(chunk.getMinBlockX() - 1, chunk.getMinBlockZ() - 1, chunk.getMaxBlockX() + 1, chunk.getMaxBlockZ() + 1)) {
 				sites.add(site);
 			}
 		}
@@ -78,7 +93,7 @@ public final class LayerStructures {
 	}
 
 	/** The site of {@code kind} nearest to {@code target} on the map (heights do not count), in the layer {@code kind} belongs to. */
-	public static StructureSite nearest(long worldSeed, StructureKind kind, int minY, int levelHeight, BlockPos target) {
+	public static StructureSite nearest(long worldSeed, StructureKind kind, int minY, int levelHeight, BlockPos target, BlockPos conduit) {
 		int spacing = LayerTuning.DEFAULT.structureSpacing();
 		int targetCellX = Math.floorDiv(target.getX(), spacing);
 		int targetCellZ = Math.floorDiv(target.getZ(), spacing);
@@ -86,7 +101,7 @@ public final class LayerStructures {
 		double nearestDistance = Double.MAX_VALUE;
 		for (int cellX = targetCellX - NEAREST_CELLS; cellX <= targetCellX + NEAREST_CELLS; cellX++) {
 			for (int cellZ = targetCellZ - NEAREST_CELLS; cellZ <= targetCellZ + NEAREST_CELLS; cellZ++) {
-				StructureSite site = StructureSite.in(worldSeed, kind, minY, levelHeight, cellX, cellZ);
+				StructureSite site = StructureSite.in(worldSeed, kind, minY, levelHeight, cellX, cellZ, conduit);
 				double distance = Math.pow(site.origin().getX() - target.getX(), 2) + Math.pow(site.origin().getZ() - target.getZ(), 2);
 				if (distance < nearestDistance) {
 					nearest = site;
@@ -108,6 +123,6 @@ public final class LayerStructures {
 			throw new IllegalStateException("Layer " + kind.layer() + " is not loaded, so the Prospector's site is not known");
 		}
 		return Colony.anchor(server, ColonyAnchor.CONDUIT)
-				.map(conduit -> nearest(level.getSeed(), kind, level.getMinY(), level.getHeight(), conduit));
+				.map(conduit -> nearest(level.getSeed(), kind, level.getMinY(), level.getHeight(), conduit, conduit));
 	}
 }
