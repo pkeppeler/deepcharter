@@ -1,0 +1,20 @@
+{
+  "order": 3,
+  "title": {
+    "translate": "deepcharter.handbook.chapter.deepcharter.meet_the_mole.title"
+  },
+  "directives": [
+    {
+      "id": "deepcharter:handbook/meet_the_mole/repair_mole",
+      "text": {
+        "translate": "deepcharter.handbook.directive.meet_the_mole.repair_mole"
+      }
+    },
+    {
+      "id": "deepcharter:handbook/meet_the_mole/board_mole",
+      "text": {
+        "translate": "deepcharter.handbook.directive.meet_the_mole.board_mole"
+      }
+    }
+  ]
+}

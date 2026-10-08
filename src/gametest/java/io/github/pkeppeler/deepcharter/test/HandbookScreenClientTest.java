@@ -139,12 +139,14 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 
 	private static void pagesAreBoundInOrderWithVisibilityOnTheChapters() {
 		List<HandbookPage> pages = HandbookPages.of(chapters(), done(1));
-		check(pages.size() == FRONT_PAGES + CHAPTERS + 1, "the pages are the front pages, the chapters and the end page, got " + pages.size());
+		long contract = pages.stream().filter(HandbookPage.Contract.class::isInstance).count();
+		check(pages.size() == FRONT_PAGES + CHAPTERS + 1 + contract, "the pages are the front pages, the chapters, the end page and Appendix A, got " + pages.size());
 		check(pages.get(0) instanceof HandbookPage.Cover, "the cover comes first");
 		check(pages.get(1) instanceof HandbookPage.Slip, "the issue slip comes second");
 		check(pages.get(2) instanceof HandbookPage.Letter, "the Founder's letter comes third");
 		check(pages.get(3) instanceof HandbookPage.Contents && pages.get(4) instanceof HandbookPage.Contents, "the contents come next, over two pages");
-		check(pages.getLast() instanceof HandbookPage.Appendix, "the end page comes last");
+		check(pages.get(FRONT_PAGES + CHAPTERS) instanceof HandbookPage.Appendix, "the end page comes after the chapters");
+		check(pages.subList(FRONT_PAGES + CHAPTERS + 1, pages.size()).stream().allMatch(HandbookPage.Contract.class::isInstance), "Appendix A comes last");
 		HandbookVisibility[] expected = {HandbookVisibility.FULL, HandbookVisibility.FULL, HandbookVisibility.PREVIEW, HandbookVisibility.CLASSIFIED};
 		for (int chapter = 1; chapter <= CHAPTERS; chapter++) {
 			HandbookPage.Chapter page = (HandbookPage.Chapter) pages.get(FRONT_PAGES + chapter - 1);

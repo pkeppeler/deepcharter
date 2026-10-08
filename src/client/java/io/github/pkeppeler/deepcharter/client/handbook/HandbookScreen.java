@@ -63,8 +63,10 @@ public class HandbookScreen extends Screen {
 	}
 
 	private final List<HandbookPage> pages;
-	/** The index in {@link #pages} of each chapter page, by chapter number. */
+	/** The index in {@link #pages} of the first page of each chapter, by chapter number. */
 	private final Map<Integer, Integer> chapterPages;
+	/** The page of directives of each chapter, by chapter number. */
+	private final Map<Integer, HandbookPage.Chapter> chapters;
 	private final Predicate<Identifier> isRead;
 	private final Consumer<Identifier> onViewed;
 	private final List<HandbookNote> notes;
@@ -103,13 +105,21 @@ public class HandbookScreen extends Screen {
 			throw new IllegalArgumentException("the handbook needs at least one page");
 		}
 		this.pages = List.copyOf(pages);
-		Map<Integer, Integer> byNumber = new HashMap<>();
+		Map<Integer, Integer> firstPages = new HashMap<>();
+		Map<Integer, HandbookPage.Chapter> byNumber = new HashMap<>();
 		for (int index = 0; index < this.pages.size(); index++) {
-			if (this.pages.get(index) instanceof HandbookPage.Chapter chapter) {
-				byNumber.put(chapter.number(), index);
+			switch (this.pages.get(index)) {
+				case HandbookPage.ChapterText text -> firstPages.putIfAbsent(text.number(), index);
+				case HandbookPage.Chapter chapter -> {
+					firstPages.putIfAbsent(chapter.number(), index);
+					byNumber.put(chapter.number(), chapter);
+				}
+				default -> {
+				}
 			}
 		}
-		this.chapterPages = Map.copyOf(byNumber);
+		this.chapterPages = Map.copyOf(firstPages);
+		this.chapters = Map.copyOf(byNumber);
 		this.isRead = isRead;
 		this.onViewed = onViewed;
 		this.notes = List.copyOf(notes);
@@ -131,7 +141,26 @@ public class HandbookScreen extends Screen {
 	 * {@code /} of the path turned into a dot, so that two namespaces never share a note.
 	 */
 	public static String marginKey(Identifier chapter) {
-		return "deepcharter.handbook.chapter." + chapter.getNamespace() + "." + chapter.getPath().replace('/', '.') + ".margin";
+		return chapterKey(chapter) + ".margin";
+	}
+
+	/** The lang key of page {@code part} (from 1) of the text of a chapter: the chapter's key, then {@code .text.<part>}. */
+	public static String textKey(Identifier chapter, int part) {
+		return chapterKey(chapter) + ".text." + part;
+	}
+
+	/** The lang key of the margin note beside page {@code part} of the text of a chapter. */
+	public static String textMarginKey(Identifier chapter, int part) {
+		return textKey(chapter, part) + ".margin";
+	}
+
+	/** The lang key of page {@code part} (from 1) of Appendix A. Its clauses are separated by a newline. */
+	public static String contractKey(int part) {
+		return "deepcharter.handbook.appendix.page." + part;
+	}
+
+	private static String chapterKey(Identifier chapter) {
+		return "deepcharter.handbook.chapter." + chapter.getNamespace() + "." + chapter.getPath().replace('/', '.');
 	}
 
 	public int page() {
@@ -151,9 +180,13 @@ public class HandbookScreen extends Screen {
 		previousPage = page;
 		page = target;
 		flipTicks = T.flipTicks();
-		if (pages.get(page) instanceof HandbookPage.Chapter chapter && chapter.visibility() == HandbookVisibility.FULL
-				&& !isRead.test(chapter.id()) && reported.add(chapter.id())) {
-			onViewed.accept(chapter.id());
+		Identifier viewed = switch (pages.get(page)) {
+			case HandbookPage.Chapter chapter when chapter.visibility() == HandbookVisibility.FULL -> chapter.id();
+			case HandbookPage.ChapterText text -> text.id();
+			default -> null;
+		};
+		if (viewed != null && !isRead.test(viewed) && reported.add(viewed)) {
+			onViewed.accept(viewed);
 		}
 		updateButtons();
 	}
@@ -372,8 +405,10 @@ public class HandbookScreen extends Screen {
 			case HandbookPage.Slip slip -> drawSlip(graphics);
 			case HandbookPage.Letter letter -> drawLetter(graphics);
 			case HandbookPage.Contents contents -> drawContents(graphics, contents);
+			case HandbookPage.ChapterText text -> drawChapterText(graphics, text);
 			case HandbookPage.Chapter chapter -> drawChapter(graphics, chapter);
 			case HandbookPage.Appendix appendix -> drawAppendix(graphics);
+			case HandbookPage.Contract contract -> drawContract(graphics, contract);
 		}
 	}
 
@@ -392,6 +427,7 @@ public class HandbookScreen extends Screen {
 
 	private void drawCover(GuiGraphicsExtractor graphics) {
 		int y = PaperDraw.centered(graphics, font, tr("cover.company"), centerX(), paperTop + TOP_MARGIN + 6, 1, T.faintInkColor());
+		y = PaperDraw.centered(graphics, font, tr("cover.divisions"), centerX(), y, 1, T.faintInkColor());
 		Component title = tr("cover.title");
 		float scale = Math.min(2f, (float) textWidth / Math.max(1, font.width(PaperDraw.ink(title, T.inkColor()))));
 		y = PaperDraw.centered(graphics, font, title, centerX(), y + 14, scale, T.inkColor());
@@ -406,6 +442,7 @@ public class HandbookScreen extends Screen {
 		Component charter = ClientCharter.view().map(view -> (Component) Component.literal(view.name())).orElseGet(() -> tr("slip.no_charter"));
 		y = PaperDraw.wrapped(graphics, font, tr("slip.charter", charter), textLeft, y, textWidth, T.inkColor()) + PARAGRAPH_GAP * 2;
 		PaperDraw.wrapped(graphics, font, tr("slip.note"), textLeft, y, textWidth, T.inkColor());
+		margin(graphics, "deepcharter.handbook.slip.margin", paperTop + CONTENT_TOP * 2);
 		PaperDraw.stamp(graphics, font, tr("slip.stamp"), centerX(), bottom() - 28, 6, T.stampColor());
 	}
 
@@ -413,7 +450,7 @@ public class HandbookScreen extends Screen {
 		int y = PaperDraw.centered(graphics, font, tr("letter.heading"), centerX(), paperTop + TOP_MARGIN, 1.25f, T.inkColor()) + PARAGRAPH_GAP;
 		y = PaperDraw.wrapped(graphics, font, tr("letter.body.1"), textLeft, y, textWidth, T.inkColor()) + PARAGRAPH_GAP;
 		y = PaperDraw.wrapped(graphics, font, tr("letter.body.2"), textLeft, y, textWidth, T.inkColor()) + PARAGRAPH_GAP;
-		PaperDraw.centered(graphics, font, tr("letter.signature"), textLeft + textWidth * 3 / 4, y + PARAGRAPH_GAP, 1.5f, T.inkColor());
+		PaperDraw.centered(graphics, font, tr("letter.signature"), textLeft + textWidth * 3 / 4, y + PARAGRAPH_GAP, 1, T.inkColor());
 		margin(graphics, "deepcharter.handbook.letter.margin", paperTop + CONTENT_TOP * 2);
 	}
 
@@ -445,7 +482,7 @@ public class HandbookScreen extends Screen {
 		Component heading = contents.parts() > 1 ? tr("contents.heading.part", contents.part(), contents.parts()) : tr("contents.heading");
 		PaperDraw.centered(graphics, font, heading, centerX(), paperTop + TOP_MARGIN, 1.25f, T.inkColor());
 		for (ContentsEntry box : contentsEntries(contents)) {
-			HandbookPage.Chapter chapter = (HandbookPage.Chapter) pages.get(box.page());
+			HandbookPage.Chapter chapter = chapters.get(chapterNumberAt(box.page()));
 			int y = box.top() + 1;
 			if (chapter.visibility() == HandbookVisibility.CLASSIFIED) {
 				PaperDraw.redacted(graphics, font, I18n.get("deepcharter.handbook.contents.entry.classified", chapter.number()),
@@ -464,6 +501,24 @@ public class HandbookScreen extends Screen {
 				graphics.text(font, PaperDraw.ink(status, T.stampColor()), textLeft + textWidth - statusWidth + 4, y, OPAQUE | T.stampColor(), false);
 			}
 		}
+	}
+
+	private int chapterNumberAt(int pageIndex) {
+		return switch (pages.get(pageIndex)) {
+			case HandbookPage.ChapterText text -> text.number();
+			case HandbookPage.Chapter chapter -> chapter.number();
+			default -> throw new IllegalArgumentException("page " + pageIndex + " is not a chapter page");
+		};
+	}
+
+	/** A page of the text of a chapter: its label and title, the text, and the margin note beside it if the language file has one. */
+	private void drawChapterText(GuiGraphicsExtractor graphics, HandbookPage.ChapterText text) {
+		int y = PaperDraw.wrapped(graphics, font, tr("chapter.label", text.number()), textLeft, paperTop + TOP_MARGIN, textWidth, T.faintInkColor());
+		y = PaperDraw.wrapped(graphics, font, text.chapter().title(), textLeft, y + 3, textWidth, T.inkColor());
+		graphics.fill(textLeft, y + 1, textLeft + textWidth, y + 2, OPAQUE | T.inkColor());
+		y += PARAGRAPH_GAP + 2;
+		PaperDraw.wrapped(graphics, font, Component.translatable(textKey(text.id(), text.part())), textLeft, y, textWidth, T.inkColor());
+		margin(graphics, textMarginKey(text.id(), text.part()), paperTop + CONTENT_TOP * 2);
 	}
 
 	private void drawChapter(GuiGraphicsExtractor graphics, HandbookPage.Chapter chapter) {
@@ -497,14 +552,21 @@ public class HandbookScreen extends Screen {
 
 	private void drawAppendix(GuiGraphicsExtractor graphics) {
 		int y = PaperDraw.centered(graphics, font, tr("appendix.heading"), centerX(), paperTop + TOP_MARGIN, 1.25f, T.inkColor()) + PARAGRAPH_GAP;
-		y = PaperDraw.wrapped(graphics, font, tr("appendix.restricted"), textLeft, y, textWidth, T.inkColor()) + PARAGRAPH_GAP;
-		graphics.fill(textLeft, y, textLeft + textWidth, y + 1, OPAQUE | T.inkColor());
-		y += PARAGRAPH_GAP;
-		y = PaperDraw.wrapped(graphics, font, tr("appendix.title"), textLeft, y, textWidth, T.faintInkColor()) + 2;
-		for (int line = 1; line <= 3 && y + font.lineHeight < bottom(); line++) {
-			y = PaperDraw.redacted(graphics, font, I18n.get("deepcharter.handbook.appendix.line." + line), textLeft, y, textWidth, T.inkColor());
+		PaperDraw.wrapped(graphics, font, tr("appendix.restricted"), textLeft, y, textWidth, T.inkColor());
+		PaperDraw.stamp(graphics, font, tr("appendix.stamp"), centerX(), bottom() - 28, -9, T.stampColor());
+	}
+
+	/** A page of Appendix A: its title, and the clauses of the page, one a paragraph, with a black bar over each redacted word. */
+	private void drawContract(GuiGraphicsExtractor graphics, HandbookPage.Contract contract) {
+		Component heading = contract.parts() > 1 ? tr("appendix.title.part", Component.translatable("deepcharter.handbook.appendix.title"), contract.part(), contract.parts())
+				: tr("appendix.title");
+		int y = PaperDraw.wrapped(graphics, font, heading, textLeft, paperTop + TOP_MARGIN, textWidth, T.faintInkColor());
+		graphics.fill(textLeft, y + 1, textLeft + textWidth, y + 2, OPAQUE | T.inkColor());
+		y += PARAGRAPH_GAP + 2;
+		for (String clause : I18n.get(contractKey(contract.part())).split("\n")) {
+			y = PaperDraw.redacted(graphics, font, clause, textLeft, y, textWidth, T.inkColor()) + PARAGRAPH_GAP;
 		}
-		PaperDraw.stamp(graphics, font, tr("appendix.stamp"), centerX(), bottom() - 18, -9, T.stampColor());
+		margin(graphics, contractKey(contract.part()) + ".margin", paperTop + CONTENT_TOP * 2);
 	}
 
 	private void drawNotes(GuiGraphicsExtractor graphics) {

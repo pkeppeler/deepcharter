@@ -1,0 +1,26 @@
+{
+  "order": 2,
+  "title": {
+    "translate": "deepcharter.handbook.chapter.deepcharter.back_online.title"
+  },
+  "directives": [
+    {
+      "id": "deepcharter:handbook/back_online/repair_fuel_pump",
+      "text": {
+        "translate": "deepcharter.handbook.directive.back_online.repair_fuel_pump"
+      }
+    },
+    {
+      "id": "deepcharter:handbook/back_online/repair_ore_processor",
+      "text": {
+        "translate": "deepcharter.handbook.directive.back_online.repair_ore_processor"
+      }
+    },
+    {
+      "id": "deepcharter:handbook/back_online/repair_upgrade_terminal",
+      "text": {
+        "translate": "deepcharter.handbook.directive.back_online.repair_upgrade_terminal"
+      }
+    }
+  ]
+}
