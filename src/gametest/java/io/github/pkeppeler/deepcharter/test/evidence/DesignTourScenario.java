@@ -292,10 +292,6 @@ public class DesignTourScenario extends EvidenceScenario {
 	/** What a still is of: a block that must stand within {@code radius} blocks of the point the camera looks at. */
 	private record Subject(String what, Predicate<BlockState> test, double radius) { }
 
-	private static Subject statue() {
-		return new Subject("the bronze statue", state -> state.is(Blocks.COPPER_BLOCK.waxed().unaffected()), 3);
-	}
-
 	/** Takes the named still of {@code target} from {@code eye}, after checking that the {@code subject} is really there. */
 	private void shoot(String stillName, int layer, Vec3 eye, Vec3 target, int wait, Subject subject) {
 		view(layer, eye, target, wait);
@@ -377,7 +373,7 @@ public class DesignTourScenario extends EvidenceScenario {
 	}
 
 	private void colonyTour() {
-		Subject statue = statue();
+		Subject statue = new Subject("the bronze statue", state -> state.is(Blocks.COPPER_BLOCK.waxed().unaffected()), 3);
 		shoot("colony-aerial-south", 0, p(0, 32, 62), p(0, 3, 0), 80, statue);
 		shoot("colony-aerial-northwest", 0, p(-48, 30, -48), p(0, 3, 0), 30, statue);
 		shoot("colony-aerial-northeast", 0, p(48, 30, -48), p(0, 3, 0), 30, statue);
@@ -643,11 +639,7 @@ public class DesignTourScenario extends EvidenceScenario {
 		BlockPos floor = ground.offset(ROOM_OFFSET, 0, ROOM_OFFSET).atY(ROOM_Y);
 		serverDo(server -> {
 			ServerLevel level = server.overworld();
-			for (int cx = -2; cx <= 2; cx++) {
-				for (int cz = -2; cz <= 2; cz++) {
-					level.getChunk((floor.getX() >> 4) + cx, (floor.getZ() >> 4) + cz);
-				}
-			}
+			loadChunks(level, floor.getX(), floor.getZ(), 2);
 			for (int dx = -ROOM_RADIUS - 1; dx <= ROOM_RADIUS + 1; dx++) {
 				for (int dz = -ROOM_RADIUS - 1; dz <= ROOM_RADIUS + 1; dz++) {
 					for (int dy = 0; dy <= ROOM_HEIGHT + 1; dy++) {
@@ -691,7 +683,7 @@ public class DesignTourScenario extends EvidenceScenario {
 		});
 		view(0, base.add(0, 1.8, 5), base.add(0, 1.2, 0), 40);
 		still("lampless-figure-dark-no-night-vision");
-		serverDo(server -> player(server).addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false)));
+		nightVision();
 		ctx.waitTicks(10);
 		for (String angle : FSB) {
 			Vec3 eye = switch (angle) {
@@ -805,7 +797,6 @@ public class DesignTourScenario extends EvidenceScenario {
 		}
 	}
 
-	/** Shows or hides the HUD. */
 	private void hud(boolean shown) {
 		ctx.runOnClient(client -> setHidden(client, !shown));
 	}
@@ -815,11 +806,7 @@ public class DesignTourScenario extends EvidenceScenario {
 	private void layerOne() {
 		serverDo(server -> {
 			ServerLevel one = server.getLevel(LayerChain.dimension(1));
-			for (int dx = -3; dx <= 3; dx++) {
-				for (int dz = -3; dz <= 3; dz++) {
-					one.getChunk((LAYER_X >> 4) + dx, (LAYER_Z >> 4) + dz);
-				}
-			}
+			loadChunks(one, LAYER_X, LAYER_Z, 3);
 		});
 		Vec3 cell = serverGet(server -> openCell(server.getLevel(LayerChain.dimension(1))));
 		terrainViews(1, cell);
@@ -842,19 +829,12 @@ public class DesignTourScenario extends EvidenceScenario {
 		int z = LAYER_Z + 200;
 		serverDo(server -> {
 			ServerLevel one = server.getLevel(LayerChain.dimension(1));
-			for (int dx = -2; dx <= 2; dx++) {
-				for (int dz = -2; dz <= 2; dz++) {
-					one.getChunk((x >> 4) + dx, (z >> 4) + dz);
-				}
-			}
+			loadChunks(one, x, z, 2);
 			BlockPos min = new BlockPos(x - 3, 3, z - 3);
 			BlockPos max = new BlockPos(x + 3, 8, z + 3);
-			RoomSeal.seal(one, min, max);
-			for (BlockPos pos : BlockPos.betweenClosed(min, max)) {
-				one.setBlock(pos.immutable(), Blocks.AIR.defaultBlockState(), 3);
-			}
+			carveRoom(one, min, max);
 		});
-		serverDo(server -> player(server).addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false)));
+		nightVision();
 		view(1, new Vec3(x + 0.5, 6.5, z + 0.5), new Vec3(x + 0.5, 1.5, z + 1.5), 120);
 		still("layer-1-breach-crust-floor");
 		view(1, new Vec3(x - 2.5, 4.5, z - 2.5), new Vec3(x + 1.5, 3, z + 1.5), 20);
@@ -880,11 +860,7 @@ public class DesignTourScenario extends EvidenceScenario {
 		int z = LAYER_Z + 200;
 		serverDo(server -> {
 			ServerLevel two = server.getLevel(LayerChain.dimension(2));
-			for (int dx = -3; dx <= 3; dx++) {
-				for (int dz = -3; dz <= 3; dz++) {
-					two.getChunk((x >> 4) + dx, (z >> 4) + dz);
-				}
-			}
+			loadChunks(two, x, z, 3);
 		});
 		hud(true);
 		ctx.runOnClient(client -> client.player.getInventory().clearContent());
@@ -923,11 +899,7 @@ public class DesignTourScenario extends EvidenceScenario {
 	private void layerTwo() {
 		serverDo(server -> {
 			ServerLevel two = server.getLevel(LayerChain.dimension(2));
-			for (int dx = -3; dx <= 3; dx++) {
-				for (int dz = -3; dz <= 3; dz++) {
-					two.getChunk((LAYER_X >> 4) + dx, (LAYER_Z >> 4) + dz);
-				}
-			}
+			loadChunks(two, LAYER_X, LAYER_Z, 3);
 		});
 		hud(false);
 		Vec3 cell = serverGet(server -> openCell(server.getLevel(LayerChain.dimension(2))));
@@ -940,17 +912,10 @@ public class DesignTourScenario extends EvidenceScenario {
 			int x = LAYER_X + 120;
 			int z = LAYER_Z + 120;
 			int floor = (two.getMinY() + two.getMaxY()) / 2;
-			for (int dx = -3; dx <= 3; dx++) {
-				for (int dz = -3; dz <= 3; dz++) {
-					two.getChunk((x >> 4) + dx, (z >> 4) + dz);
-				}
-			}
+			loadChunks(two, x, z, 3);
 			BlockPos min = new BlockPos(x - 6, floor, z - 6);
 			BlockPos max = new BlockPos(x + 6, floor + 7, z + 6);
-			RoomSeal.seal(two, min, max);
-			for (BlockPos pos : BlockPos.betweenClosed(min, max)) {
-				two.setBlock(pos.immutable(), Blocks.AIR.defaultBlockState(), 3);
-			}
+			carveRoom(two, min, max);
 			return new Vec3(x + 0.5, floor + EYE, z + 0.5);
 		});
 		view(2, hall, hall.add(1, 0, 0), 60);
@@ -963,7 +928,7 @@ public class DesignTourScenario extends EvidenceScenario {
 		still("hud-scanner-tier-4-layer-2");
 		leavePod();
 		hud(false);
-		serverDo(server -> player(server).addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false)));
+		nightVision();
 
 		// The structures of layer 2.
 		for (StructureKind kind : StructureKind.inLayer(2)) {
@@ -1021,7 +986,7 @@ public class DesignTourScenario extends EvidenceScenario {
 		serverDo(server -> player(server).removeEffect(MobEffects.NIGHT_VISION));
 		view(2, at(prospector, 5, 2, 0), pod, 40);
 		still("structure-wreck-prospector-0002-no-night-vision");
-		serverDo(server -> player(server).addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false)));
+		nightVision();
 		BlockPos far = serverGet(server -> Colony.anchor(server, ColonyAnchor.CONDUIT).orElseThrow()).offset(384, 0, 384);
 		StructureSite bay = siteOf(StructureKind.WRECK, far);
 		view(2, at(bay, 5, 2.2, 0), at(bay, 0, 0.8, 0), 120);
@@ -1049,10 +1014,7 @@ public class DesignTourScenario extends EvidenceScenario {
 			int mid = (level.getMinY() + level.getMaxY()) / 2;
 			BlockPos min = new BlockPos(LAYER_X - 6, mid, LAYER_Z - 6);
 			BlockPos max = new BlockPos(LAYER_X + 6, mid + 6, LAYER_Z + 6);
-			RoomSeal.seal(level, min, max);
-			for (BlockPos pos : BlockPos.betweenClosed(min, max)) {
-				level.setBlock(pos.immutable(), Blocks.AIR.defaultBlockState(), 3);
-			}
+			carveRoom(level, min, max);
 			best = new BlockPos(LAYER_X, mid + 3, LAYER_Z);
 		}
 		return Vec3.atCenterOf(best).add(0, EYE - 0.5, 0);
@@ -1078,7 +1040,7 @@ public class DesignTourScenario extends EvidenceScenario {
 		serverDo(server -> player(server).removeEffect(MobEffects.NIGHT_VISION));
 		view(layer, cell, cell.add(0, 0, 10), 120);
 		still("layer-" + layer + "-cave-as-played-no-light");
-		serverDo(server -> player(server).addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false)));
+		nightVision();
 		String[] names = {"south", "west", "north", "east"};
 		Vec3[] offsets = {new Vec3(0, 0, 10), new Vec3(-10, 0, 0), new Vec3(0, 0, -10), new Vec3(10, 0, 0)};
 		for (int i = 0; i < names.length; i++) {
@@ -1172,6 +1134,27 @@ public class DesignTourScenario extends EvidenceScenario {
 		});
 		clearTransmissions();
 		screenshot(ctx, stillName);
+	}
+
+	private void nightVision() {
+		serverDo(server -> player(server).addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false)));
+	}
+
+	/** Loads the chunks within {@code radius} chunks of the one holding block column ({@code x}, {@code z}). */
+	private static void loadChunks(ServerLevel level, int x, int z, int radius) {
+		for (int dx = -radius; dx <= radius; dx++) {
+			for (int dz = -radius; dz <= radius; dz++) {
+				level.getChunk((x >> 4) + dx, (z >> 4) + dz);
+			}
+		}
+	}
+
+	/** Seals the box against the cave round it, then empties it. */
+	private static void carveRoom(ServerLevel level, BlockPos min, BlockPos max) {
+		RoomSeal.seal(level, min, max);
+		for (BlockPos pos : BlockPos.betweenClosed(min, max)) {
+			level.setBlock(pos.immutable(), Blocks.AIR.defaultBlockState(), 3);
+		}
 	}
 
 	private static ServerPlayer player(MinecraftServer server) {
