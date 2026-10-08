@@ -8,6 +8,7 @@
 	"pod.transform_launch": { "sounds": [{ "name": "minecraft:block.piston.contract", "type": "event" }] },
 	"pod.crash": { "sounds": [{ "name": "minecraft:block.anvil.land", "type": "event" }] },
 	"pod.explosion": { "sounds": [{ "name": "minecraft:entity.generic.explode", "type": "event" }] },
+	"pod.hull_burning": { "sounds": [{ "name": "minecraft:entity.generic.burn", "type": "event" }] },
 
 	"drill.dig": { "sounds": [{ "name": "minecraft:block.stone.break", "type": "event" }] },
 	"drill.blocked": { "sounds": [{ "name": "minecraft:block.chain.hit", "type": "event" }] },

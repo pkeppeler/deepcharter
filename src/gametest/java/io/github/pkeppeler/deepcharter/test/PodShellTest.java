@@ -39,7 +39,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 
 /** Server GameTests for pod spawn, mount, dismount, seats and save/load. */
 public class PodShellTest {
-	private static final int EXPECTED_DATA_FIELDS = 8;
+	private static final int EXPECTED_DATA_FIELDS = 9;
 	private static final Input SNEAK = new Input(false, false, false, false, false, true, false);
 
 	@GameTest

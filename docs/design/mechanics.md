@@ -21,38 +21,48 @@ Mechanics invented under the creative liberty of the `designing-mechanics` skill
 - Should a later chassis restore (the Badger) carry an advance too, or is Cicatrium from the ore the intended wait there?
 - Should an unspent advance lapse if a charter restores a Mole wreck first? Today it does not: only the Prospector has one.
 
-## Lava and the bore (issues 231, 232)
+## Lava and the bore (#231, #232, #288)
 
-**Problem.** Lava floods a bore through layer rock. Deep Claim holds 1.25% lava per stone block (the data value now; the 1.67% in issue 231 is layer 2's Upper Levels), and a bore opens the cells beside it, so lava runs into the shaft. Pod damage is 10 hull per second (`lavaHullPerSecond`).
+**Problem.** Lava floods a bore through layer rock. Deep Claim holds 1.25% lava per stone block (the data value now; the 1.67% in #231 is layer 2's Upper Levels), and a bore opens the cells beside it, so lava runs into the shaft. Pod damage is 10 hull per second (`lavaHullPerSecond`).
 
-**The ladder (issue 232).** By hand: lining blocks placed from the seat. Then a liner upgrade that lines a ring every few slabs. Then a heat-shield hull track. See the lava example in the `designing-mechanics` skill.
+**The pod shields its pilot (#288, A).** #231 measured that vanilla lava killed the seated pilot in about 2.6 seconds, long before the pod's hull mattered. That is instant death with no counterplay, so now the pod protects a seated pilot from lava, as it already does from gas.
+- A pilot seated in a working pod takes no lava damage and none from the burning lava starts, and its fire is put out each tick. This is `LavaHazard.allowDamage`, which refuses `lava` and `on_fire` damage for a rider of a pod that is not a wreck.
+- The hull takes the lava at the tuned rate instead: 10 hull per second, times the radiator factor. A stock Mole's 100 hull is 10 seconds in lava.
+- A player outside a pod burns by vanilla's rules. So does the crew of a wreck.
+- When the hull reaches 0 the pod is a wreck and its crew die with it (`CrewFate`), as for any other hull loss. The pilot's death is now the hull's, a few seconds after the first warning.
+- The cue. The pod flags `hullBurning` (synced) while lava touches it. The status HUD shows a line, "HULL BURNING", in the `podBurningColor` of `theme/hud.json`, and the pod hisses (`pod.hull_burning`, default asset `entity.generic.burn`, every `lavaCueTicks` = 15 ticks). A pilot sees the hull number fall and has a few seconds to turn the pod out of the lava.
+
+**The ladder (#232).** By hand: lining blocks placed from the seat. Then a liner upgrade that lines a ring every few slabs. Then a heat-shield hull track: it cuts the hull damage, and now it matters, because the hull is what lava takes. See the lava example in the `designing-mechanics` skill.
 
 ### Lava vs. a straight bore: measured
 
-Issue 231. `LavaBoreTest` bores 100 columns of layer 1 side by side, from the top of the rock (about y 150 to 170) to the breach into layer 2. The pod is a stock Mole with a tier 1 scanner. It uses the real drill, fuel, hull, lava and breach code over real worldgen. The pilot is a bot that holds sprint and never reacts. It steps 2 blocks aside when company rock refuses a slab (a clean straight column is about one in ten thousand, computed from the zone tables), and it tops up the tank when low (about 10 tanks a bore). The run takes about 2.5 minutes for 100 bores (159 s of server time on an 8-core Apple M2 under load; the whole command takes about 3 minutes). Command: [README](../../README.md). The columns share one world seed: the game test world has a fixed seed (0), and repeat runs gave the same start heights and first lava.
+#231 and #288. `LavaBoreTest` bores 100 columns of layer 1 side by side, from the top of the rock (about y 150 to 170) to the breach into layer 2. The pod is a stock Mole with a tier 1 scanner. It uses the real drill, fuel, hull, lava and breach code over real worldgen. The pilot is a bot that holds sprint and never reacts. It steps 2 blocks aside when company rock refuses a slab (a clean straight column is about one in ten thousand, computed from the zone tables), and it tops up the tank when low (about 10 tanks a bore). The run takes about 3 minutes for 100 bores (172 s of server time on an 8-core Apple M2 under load; the whole command takes about 3 minutes 20 seconds). Command: [README](../../README.md). The columns share one world seed: the game test world has a fixed seed (0), and repeat runs gave the same start heights and first lava.
 
-The bot is unrealistic in two opposite ways. It never reacts, which is harsh. It also refuels for free, which is kind. Neither changes the headline.
+The bot is unrealistic in two opposite ways. It never reacts, which is harsh. It also refuels for free, which is kind. Neither changes the headline. Before #288, a harness switch (`DEEPCHARTER_LAVA_BORES_RIDER=shielded`) healed the pilot to measure this case in advance. The game now does it, so the switch is removed.
 
-| | Game as it is | What-if: pod shields its pilot |
+| | Before (#287, the pilot burned) | After (#288, the pod shields the pilot) |
 |---|---|---|
 | Bores that reach layer 2 | 0 of 100 | 0 of 100 |
 | Bores that touch lava | 96 | 96 |
-| Died in lava | 96 (88 by the pilot first) | 96 (hull) |
+| Died in lava | 96 (88 by the pilot first) | 96 (0 by the pilot first; the hull ran out) |
 | Died of a fall or gas, no lava | 4 | 4 |
 | Hull lost to lava per bore: p50 / p90 | 26 / 50 | 100 / 100 |
-| Hull lost per encounter: p50 / p90 | 26 / 50 | 100 / 100 |
+| Hull lost per encounter: p50 / p90 (mean) | 26 / 50 | 100 / 100 (81) |
 | Seconds in lava per encounter: p50 / p90 | 2.6 / 5.0 | 10 / 10 (hull gone) |
 
+- **A lava encounter costs the whole hull of a pod that keeps boring.** The bot never turns out of the lava, and the flood follows the shaft down, so 10 seconds at 10 hull per second is all 100. The lowest encounter, 13 hull, is one cut short by another death. A pilot who reacts is the point of the cue and of the #232 ladder.
+- **No bore survives, by design.** A never-reacting bot cannot pass: any lava density that lets it pass removes the hazard. No tuning was changed.
+- **The pilot no longer dies first.** The "pilot health lost to lava" figure in the log reads 20 at p50 because the crew die when the hull runs out, not because lava burned them.
 - **Where.** 89 of 96 first contacts are in Deep Claim, and most are in its first slabs: the first lava comes after 6.0 slabs of Deep Claim on average, about 1 in 6 slabs (the bores end at the first lava, so this is a rough rate). The other 7 are lava just under the zone line, touched from Stone Benches.
-- **The pilot dies first.** Vanilla lava kills a seated pilot in about 2.6 seconds, with 74 of 100 hull left. LavaHazard leaves riders to vanilla's rule, so the hull never matters in the game as it is.
-- **Even shielded, one encounter takes the whole hull** from a pod that keeps boring. The flood follows the shaft down.
 - **Scanner.** "In time" is 8 slabs ahead, a quarter of the tier 1 32-down reach, about 15 seconds at the measured 36 pod ticks a slab. Counting any block of the connected lava body, the slice had it in view in 38 of 96 cases (40%), and 8 or more slabs ahead in 34 (35%). These are upper bounds. For the lava blocks the pod actually touched, it was in view in 13 of 96 (14%) and 8 or more slabs ahead in 12 (13%). The slice is one plane. It shows lava as open space, the same as air (BLOCKERS: fluids).
 - **Other killers.** A fall into a cavern costs 35 to 100 hull, and a gas blast about 40 to 50 at this depth. Gas and falls are as deadly as lava.
 
-**Reading it for 232.** A never-reacting bot cannot pass, by design: any lava density that lets it pass removes the hazard. No tuning was changed. What the numbers say is that counterplay must exist before Deep Claim. A heat-shield hull is useless while the pilot burns first. The scanner must tell lava from air to be of any use.
+**Reading it for #232.** Counterplay must exist before Deep Claim. The heat-shield track now has something to act on: it stretches the 10 seconds. The scanner must tell lava from air to be of any use.
+
+**Knobs.** `LayerTuning.lavaHullPerSecond` (10), `LayerTuning.lavaCueTicks` (15), `theme/hud.json` `podBurningColor`, the `pod.hull_burning` sound.
 
 **Open questions.**
-- Should the pod shield its pilot from lava, as it does from gas? (A) Recommended: yes, and then the heat-shield track decides how long a pilot has.
 - Should the tier 1 scanner mark lava, or is that a later tier's job (BLOCKERS: fluids)? (A) Recommended: a thermal sensor tier that shows lava, and a full-plane view of the bore's 2 x 2.
 - Falls (35 to 100 hull) and gas (about 40 to 50 hull, from the same 1.25% density) kill as surely as lava. Do they need counterplay on the same ladder?
-- Fuel: a layer 1 descent takes about 10 tanks. Is that intended? See issue 289 (fuel per descent).
+- Fuel: a layer 1 descent takes about 10 tanks. Is that intended? See #289 (fuel per descent).
+- Does the pilot need a reason to get out of the lava other than the hull? Today the cue is the HUD line and the hiss.

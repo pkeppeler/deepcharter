@@ -14,13 +14,15 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
+import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 
 /**
  * Evidence scenario "pod-lava": a pod sits in a closed room, lava appears under it, and the hull gauge drops until the hull
- * is down to a third. The pilot is in creative mode so that the pod, not the pilot, is what the lava ends.
+ * is down to a third. The pilot is in survival mode and stays unhurt: the pod shields its pilot, so the hull is what the lava takes (#288),
+ * and the status readout shows "HULL BURNING".
  */
 public class PodLavaScenario extends EvidenceScenario {
 	private static final int X = 5000;
@@ -52,7 +54,7 @@ public class PodLavaScenario extends EvidenceScenario {
 					one.setBlock(lamp, Blocks.GLOWSTONE.defaultBlockState(), 3);
 				}
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-				player.setGameMode(GameType.CREATIVE);
+				player.setGameMode(GameType.SURVIVAL);
 				player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), 0, LOOK_DOWN, true);
 				PodEntity pod = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
 				pod.setPos(X, FLOOR_Y, Z);
@@ -94,6 +96,17 @@ public class PodLavaScenario extends EvidenceScenario {
 			for (int i = 0; i < 4; i++) {
 				context.waitTicks(TICKS_PER_FRAME);
 				frame(context);
+			}
+			String pilot = singleplayer.getServer().computeOnServer(server -> {
+				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+				return player.isAlive() && player.getHealth() >= player.getMaxHealth() && !player.isOnFire() ? "" : "health " + player.getHealth() + ", fire ticks " + player.getRemainingFireTicks();
+			});
+			if (!pilot.isEmpty()) {
+				throw new AssertionError("The seated pilot should be unhurt and not on fire in the lava, but: " + pilot);
+			}
+			boolean cue = context.computeOnClient(client -> PodStatusHud.burningLine((PodEntity) client.player.getVehicle()).isPresent());
+			if (!cue) {
+				throw new AssertionError("The status readout should show the hull burning");
 			}
 			screenshot(context, "pod-lava-after");
 		}
