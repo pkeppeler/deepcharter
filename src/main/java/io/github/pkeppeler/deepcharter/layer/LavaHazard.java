@@ -5,6 +5,7 @@ import net.minecraft.tags.FluidTags;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
+import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 
 /**
  * Lava as a pod hazard (SPEC section 10): a pod in or touching lava loses hull each tick, and at 0 it is a wreck (#67).
@@ -31,8 +32,9 @@ public final class LavaHazard {
 		pod.damageHull(LayerTuning.DEFAULT.lavaHullPerSecond() / TICKS_PER_SECOND * radiator);
 	}
 
+	/** Lava in an unloaded chunk is not seen: the probe reaches over a chunk edge, and a plain read there would load the chunk. */
 	private static boolean touchesLava(PodEntity pod) {
-		return pod.level().getBlockStates(pod.getBoundingBox().inflate(TOUCH_REACH))
+		return new LoadedBlocks(pod.level()).getBlockStates(pod.getBoundingBox().inflate(TOUCH_REACH))
 				.anyMatch(state -> state.getFluidState().is(FluidTags.LAVA));
 	}
 }

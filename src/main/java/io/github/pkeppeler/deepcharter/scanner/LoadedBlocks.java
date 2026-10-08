@@ -30,6 +30,16 @@ public record LoadedBlocks(Level level) implements BlockGetter {
 		return level.hasChunkAt(pos) ? level.getFluidState(pos) : Fluids.EMPTY.defaultFluidState();
 	}
 
+	/**
+	 * True when a block at {@code pos} can be set or broken without loading a chunk. A change tells the four blocks around it,
+	 * which reads their chunks and loads one that is not there, so the position and each side of it must be loaded. Code that
+	 * changes a block on a tick path asks this first and leaves the block alone when the answer is no.
+	 */
+	public boolean canChange(BlockPos pos) {
+		return level.hasChunkAt(pos) && level.hasChunkAt(pos.north()) && level.hasChunkAt(pos.south())
+				&& level.hasChunkAt(pos.east()) && level.hasChunkAt(pos.west());
+	}
+
 	@Override
 	public int getHeight() {
 		return level.getHeight();
