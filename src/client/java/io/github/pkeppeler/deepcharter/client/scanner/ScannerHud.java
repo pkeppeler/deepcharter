@@ -14,12 +14,14 @@ import net.minecraft.world.level.block.Block;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice.Cell;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 
 /**
- * Side-view minimap of the ridden pod's surroundings, top right. Pod facing runs left to right.
+ * Side-view minimap of the ridden pod's surroundings, top right. Pod facing runs left to right. Drawn only while the pod has a
+ * working scanner; its reach and detail follow the scanner's tier ({@link ScanSlice}).
  *
  * <p>Draws only with fill() and text(), in the fixed colours of {@link ScannerTuning}: neither reads
  * world light, so the map is as readable in the dark of a deep layer as on the surface. It reads the
@@ -29,7 +31,6 @@ public final class ScannerHud {
 	private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "scanner");
 	private static final TagKey<Block> GOLD_ORES = TagKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath("c", "ores/gold"));
 	private static final ScannerTuning TUNING = ScannerTuning.DEFAULT;
-	private static final Component TITLE = Component.translatable("deepcharter.scanner.title");
 	private static final int TITLE_HEIGHT = 10;
 	private static final int FRAME = 1;
 	private static final int WHITE = 0xFFFFFFFF;
@@ -49,23 +50,23 @@ public final class ScannerHud {
 
 	/**
 	 * GUI pixels per cell: the tuned size when the panel fits the GUI, otherwise the largest that does,
-	 * down to 1. Below that the panel clips; the 41 rows need a GUI about 60 pixels tall.
+	 * down to 1. Below that the panel clips; a tier 1 panel's 41 rows need a GUI about 60 pixels tall.
 	 */
-	public static int cellSize(int guiWidth, int guiHeight) {
-		int fitWidth = (guiWidth - 2 * (TUNING.margin() + FRAME)) / TUNING.columns();
-		int fitHeight = (guiHeight - 2 * (TUNING.margin() + FRAME) - TITLE_HEIGHT) / TUNING.rows();
+	public static int cellSize(int guiWidth, int guiHeight, ScanArea area) {
+		int fitWidth = (guiWidth - 2 * (TUNING.margin() + FRAME)) / area.columns();
+		int fitHeight = (guiHeight - 2 * (TUNING.margin() + FRAME) - TITLE_HEIGHT) / area.rows();
 		return Math.max(1, Math.min(TUNING.cellPixels(), Math.min(fitWidth, fitHeight)));
 	}
 
 	/** Left edge in GUI pixels of the cell {@code ahead} blocks along the facing. */
-	public static int cellLeft(int guiWidth, int guiHeight, int ahead) {
-		int cell = cellSize(guiWidth, guiHeight);
-		return guiWidth - TUNING.margin() - FRAME - TUNING.columns() * cell + (ahead + TUNING.halfWidth()) * cell;
+	public static int cellLeft(int guiWidth, int guiHeight, ScanArea area, int ahead) {
+		int cell = cellSize(guiWidth, guiHeight, area);
+		return guiWidth - TUNING.margin() - FRAME - area.columns() * cell + (ahead + area.halfWidth()) * cell;
 	}
 
 	/** Top edge in GUI pixels of the cell {@code up} blocks above the pod's feet. */
-	public static int cellTop(int guiWidth, int guiHeight, int up) {
-		return TUNING.margin() + TITLE_HEIGHT + FRAME + (TUNING.up() - up) * cellSize(guiWidth, guiHeight);
+	public static int cellTop(int guiWidth, int guiHeight, ScanArea area, int up) {
+		return TUNING.margin() + TITLE_HEIGHT + FRAME + (area.up() - up) * cellSize(guiWidth, guiHeight, area);
 	}
 
 	private static void tick(Minecraft client) {
@@ -78,7 +79,7 @@ public final class ScannerHud {
 			ticksUntilScan--;
 			return;
 		}
-		slice = ScanSlice.scan(client.level, pod.blockPosition(), pod.getDirection());
+		slice = ScanSlice.scan(client.level, pod).orElse(null);
 		ticksUntilScan = TUNING.rescanTicks() - 1;
 	}
 
@@ -90,32 +91,33 @@ public final class ScannerHud {
 		Minecraft client = Minecraft.getInstance();
 		int guiWidth = client.getWindow().getGuiScaledWidth();
 		int guiHeight = client.getWindow().getGuiScaledHeight();
-		int cell = cellSize(guiWidth, guiHeight);
-		int left = cellLeft(guiWidth, guiHeight, -TUNING.halfWidth());
-		int right = cellLeft(guiWidth, guiHeight, TUNING.halfWidth()) + cell;
-		int top = cellTop(guiWidth, guiHeight, TUNING.up());
-		int bottom = cellTop(guiWidth, guiHeight, -TUNING.down()) + cell;
+		ScanArea area = scanned.area();
+		int cell = cellSize(guiWidth, guiHeight, area);
+		int left = cellLeft(guiWidth, guiHeight, area, -area.halfWidth());
+		int right = cellLeft(guiWidth, guiHeight, area, area.halfWidth()) + cell;
+		int top = cellTop(guiWidth, guiHeight, area, area.up());
+		int bottom = cellTop(guiWidth, guiHeight, area, -area.down()) + cell;
 
 		graphics.fill(left - FRAME, TUNING.margin(), right + FRAME, bottom + FRAME, TUNING.frameColor());
-		graphics.text(client.font, TITLE, left, TUNING.margin() + 1, WHITE);
+		graphics.text(client.font, Component.translatable("deepcharter.scanner.title", scanned.tier()), left, TUNING.margin() + 1, WHITE);
 		graphics.fill(left, top, right, bottom, TUNING.airColor());
-		for (int up = TUNING.up(); up >= -TUNING.down(); up--) {
-			for (int ahead = -TUNING.halfWidth(); ahead <= TUNING.halfWidth(); ahead++) {
+		for (int up = area.up(); up >= -area.down(); up--) {
+			for (int ahead = -area.halfWidth(); ahead <= area.halfWidth(); ahead++) {
 				Cell found = scanned.cell(ahead, up);
 				if (!(found instanceof Cell.Air)) {
-					fillCell(graphics, guiWidth, guiHeight, ahead, up, colour(found));
+					fillCell(graphics, guiWidth, guiHeight, area, ahead, up, colour(found));
 				}
 			}
 		}
 		for (int up = 0; up <= POD_CELLS_UP; up++) {
-			fillCell(graphics, guiWidth, guiHeight, 0, up, TUNING.podColor());
+			fillCell(graphics, guiWidth, guiHeight, area, 0, up, TUNING.podColor());
 		}
 	}
 
-	private static void fillCell(GuiGraphicsExtractor graphics, int guiWidth, int guiHeight, int ahead, int up, int colour) {
-		int cell = cellSize(guiWidth, guiHeight);
-		int x = cellLeft(guiWidth, guiHeight, ahead);
-		int y = cellTop(guiWidth, guiHeight, up);
+	private static void fillCell(GuiGraphicsExtractor graphics, int guiWidth, int guiHeight, ScanArea area, int ahead, int up, int colour) {
+		int cell = cellSize(guiWidth, guiHeight, area);
+		int x = cellLeft(guiWidth, guiHeight, area, ahead);
+		int y = cellTop(guiWidth, guiHeight, area, up);
 		graphics.fill(x, y, x + cell, y + cell, colour);
 	}
 
@@ -124,6 +126,7 @@ public final class ScannerHud {
 		return switch (cell) {
 			case Cell.Air air -> TUNING.airColor();
 			case Cell.Rock rock -> TUNING.rockColor();
+			case Cell.Gas gas -> TUNING.gasColor();
 			case Cell.Ore ore -> ore.block().defaultBlockState().is(GOLD_ORES) ? TUNING.goldOreColor() : TUNING.oreColor();
 		};
 	}
