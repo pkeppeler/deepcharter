@@ -259,7 +259,7 @@ public class HandbookChaptersSixToNineTest {
 				mock.player().setGameMode(GameType.SURVIVAL);
 			}
 			HandbookChaptersOneToFiveTest.foundCharter(helper, server, director);
-			CharterId charter = Charters.charterOf(server, first.getUUID()).orElseThrow().id();
+			CharterId charter = Charters.charterOfOrThrow(server, first.getUUID()).orElseThrow().id();
 			expect(helper, Charters.apply(server, second.getUUID(), charter).isEmpty() && Charters.approve(server, first.getUUID(), second.getUUID()).isEmpty()
 					&& Charters.deposit(server, charter, 20_000).isEmpty(), "the second player should join the charter, which is then funded");
 			List<ServerPlayer> both = List.of(first, second);
@@ -450,7 +450,7 @@ public class HandbookChaptersSixToNineTest {
 			drifter.player().setGameMode(GameType.SURVIVAL);
 			Set<Identifier> memberBefore = Set.copyOf(completed(server, member));
 			pod = helper.spawn(PodRegistry.POD, 2, 1, 2);
-			Charter charter = Charters.charterOf(server, member.player().getUUID()).orElseThrow();
+			Charter charter = Charters.charterOfOrThrow(server, member.player().getUUID()).orElseThrow();
 			ScannerPods.fit(server, member.player(), pod, 1);
 			helper.getLevel().setBlock(pod.blockPosition().above(2), Blocks.GOLD_ORE.defaultBlockState(), 3);
 			UpgradeEvents.BOUGHT.invoker().onBought(server, drifter.player(), pod, ComponentTrack.SCANNER, 1);
@@ -469,7 +469,7 @@ public class HandbookChaptersSixToNineTest {
 			PodEntity foreign = helper.spawn(PodRegistry.POD, 4, 1, 4);
 			foreignParts = foreign;
 			PodComponents.register(foreign, charter.id());
-			PodComponents.install(foreign, ComponentItems.mint(server, ComponentTrack.SCANNER, 1, Charters.charterOf(server, rival.player().getUUID()).orElseThrow().id()));
+			PodComponents.install(foreign, ComponentItems.mint(server, ComponentTrack.SCANNER, 1, Charters.charterOfOrThrow(server, rival.player().getUUID()).orElseThrow().id()));
 			helper.getLevel().setBlock(foreign.blockPosition().above(2), Blocks.GOLD_ORE.defaultBlockState(), 3);
 			expect(helper, member.player().startRiding(foreign, true, false), "the member should board the pod");
 			poll(foreign);
