@@ -37,7 +37,8 @@ import net.minecraft.server.network.CommonListenerCookie;
  * </ul>
  * <p>A mock is loaded by default, so it takes damage like a real player. Damage tests must call
  * {@code setGameMode(SURVIVAL)}, because GameTest players default to creative.
- * {@link #joinUnloaded} gives one that is immune.
+ * {@link #joinUnloaded} gives one that is immune, but only for vanilla's first 60 ticks: to wait safely
+ * for longer, stay in creative and switch to survival when the wait is over.
  *
  * <p>A mock joined for a GameTest never outlives it: the end-of-tick sweep removes it once the
  * test is done, whether it passed, failed or timed out. A mock joined without an owner lives
@@ -110,7 +111,10 @@ public final class MockPlayers {
 		return mock;
 	}
 
-	/** Join a mock player owned by a GameTest that has not reported itself loaded, so it takes no damage. */
+	/**
+	 * Join a mock player owned by a GameTest that has not reported itself loaded, so it takes no damage.
+	 * Vanilla treats any player as loaded after 60 ticks, so this only covers a short setup.
+	 */
 	public static MockPlayer joinUnloaded(GameTestHelper helper, String name) {
 		GameTestInfo info = testInfo(helper);
 		return join(helper.getLevel().getServer(), name, info::isDone, false);

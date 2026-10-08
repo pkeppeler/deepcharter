@@ -111,6 +111,7 @@
 			"io.github.pkeppeler.deepcharter.test.evidence.HandbookCoreScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.PodCargoFuelScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.CharterCoreScenario",
+			"io.github.pkeppeler.deepcharter.test.evidence.CharterReviveScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.HangarScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.PodLavaScenario"
 		]

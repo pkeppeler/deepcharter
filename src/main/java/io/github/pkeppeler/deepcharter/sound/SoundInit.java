@@ -10,5 +10,6 @@ public final class SoundInit {
 
 	public static void init() {
 		SoundRegistry.register();
+		TerminalSounds.init();
 	}
 }

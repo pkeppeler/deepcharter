@@ -64,6 +64,18 @@ public final class Charters {
 		return refusal;
 	}
 
+	/** {@code player} revives the dormant charter {@code id} and becomes its Director. */
+	public static Optional<CharterRefusal> revive(MinecraftServer server, UUID player, CharterId id) {
+		CharterData data = CharterData.get(server);
+		Optional<CharterRefusal> refusal = data.revive(player, id);
+		if (refusal.isEmpty()) {
+			Charter charter = data.find(id).orElseThrow();
+			sync(server, charter.roster());
+			CharterEvents.REVIVED.invoker().onRevived(server, charter, player);
+		}
+		return refusal;
+	}
+
 	public static Optional<CharterRefusal> approve(MinecraftServer server, UUID director, UUID applicant) {
 		CharterData data = CharterData.get(server);
 		Optional<CharterRefusal> refusal = data.approve(director, applicant);

@@ -10,6 +10,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
+import io.github.pkeppeler.deepcharter.client.sound.TypewriterSound;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
@@ -40,7 +41,7 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 	public OreProcessorScreen(TerminalView view) {
 		super(Component.translatable(TerminalTypes.ORE_PROCESSOR.block().getDescriptionId()));
 		this.view = view;
-		this.typewriter = typewriter(Component.translatable("screen.deepcharter.processor.intro"), (index, letter) -> { });
+		this.typewriter = typewriter(Component.translatable("screen.deepcharter.processor.intro"), new TypewriterSound());
 	}
 
 	@Override

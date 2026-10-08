@@ -51,7 +51,10 @@ public enum DeepSound {
 	MOTHERSHIP_IDLE("mothership.idle"),
 	MOTHERSHIP_LEAVE("mothership.leave"),
 	ALARM_FUEL_CRITICAL("alarm.fuel_critical"),
-	ALARM_HULL_CRITICAL("alarm.hull_critical");
+	ALARM_HULL_CRITICAL("alarm.hull_critical"),
+	MUSIC_LAYER_1("music.layer_1"),
+	MUSIC_LAYER_2("music.layer_2"),
+	MUSIC_TERMINAL("music.terminal");
 
 	private final String path;
 	private final SoundEvent event;
