@@ -37,6 +37,7 @@ tasks.register("runClient") {
 apply from: "$root/gradle/clientlock.gradle"
 S
 
+unset DEEPCHARTER_LOCK_TASKS
 export DEEPCHARTER_CLIENT_LOCK=1
 export DEEPCHARTER_LOCK_DIR=$work/locks
 export DEEPCHARTER_LOCK_POLL_MS=200
@@ -44,7 +45,7 @@ holder=$work/locks/client.lock.holder
 
 # start <name>: runs runClient in the background, releasing on $work/<name>.release; output in $work/<name>.out.
 start() {
-  HOLD_RELEASE=$work/$1.release "$root/gradlew" --no-daemon --console=plain -p "$proj" runClient >"$work/$1.out" 2>&1 &
+  HOLD_RELEASE=$work/$1.release "$root/gradlew" --no-daemon --configuration-cache --console=plain -p "$proj" runClient >"$work/$1.out" 2>&1 &
   pids+=("$!")
   last=$!
 }
@@ -89,18 +90,31 @@ c_daemon=$(sed -n 's/.*PID \([0-9][0-9]*\).*/\1/p' "$holder")
 start d
 d=$last
 waitfor "$work/d.out" "Waiting for the game client lock"; check "waiter d waits on c" $?
-touch "$work/d.release"
 kill -9 "$c_daemon"
-waitfor "$work/d.out" "FINISHED client"; check "waiter d reclaims the lock after the holder is killed" $?
+waitfor "$work/d.out" "RUNNING client"; check "waiter d reclaims the lock after the holder is killed" $?
+d_daemon=$(sed -n 's/.*PID \([0-9][0-9]*\).*/\1/p' "$holder")
+[[ -n $d_daemon && $d_daemon != "$c_daemon" ]] && kill -0 "$d_daemon" 2>/dev/null; check "holder file now names d's PID ($d_daemon), not c's" $?
+touch "$work/d.release"
+waitfor "$work/d.out" "FINISHED client"
 wait "$d"; check "waiter d exits cleanly" $?
 wait "$c" 2>/dev/null || true
 
 # 3. off switch
 touch "$work/e.release"
 rm -rf "$work/locks"
-DEEPCHARTER_CLIENT_LOCK=0 HOLD_RELEASE=$work/e.release "$root/gradlew" --no-daemon --console=plain -p "$proj" runClient >"$work/e.out" 2>&1
+DEEPCHARTER_CLIENT_LOCK=0 HOLD_RELEASE=$work/e.release "$root/gradlew" --no-daemon --configuration-cache --console=plain -p "$proj" runClient >"$work/e.out" 2>&1
 check "run with the lock off succeeds" $?
 absent "$work/locks"; check "run with the lock off creates no lock dir" $?
+
+# 4. configuration cache: the second run reuses the entry and still takes a fresh lock and releases it
+touch "$work/f.release"
+for n in 1 2; do
+  HOLD_RELEASE=$work/f.release "$root/gradlew" --no-daemon --configuration-cache --console=plain -p "$proj" runClient >"$work/f$n.out" 2>&1
+  check "cached run $n succeeds" $?
+  grep -q "Took the game client lock" "$work/f$n.out"; check "cached run $n takes the lock" $?
+  absent "$holder"; check "cached run $n releases the lock" $?
+done
+grep -q "Reusing configuration cache" "$work/f2.out"; check "second run reuses the configuration cache entry" $?
 
 if [[ $failures -ne 0 ]]; then
   echo "$failures failure(s)"
