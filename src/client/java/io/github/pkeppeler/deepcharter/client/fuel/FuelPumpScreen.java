@@ -12,6 +12,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
+import io.github.pkeppeler.deepcharter.client.sound.TypewriterSound;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
@@ -48,7 +49,7 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
 	public FuelPumpScreen(TerminalView view) {
 		super(Component.translatable(typeOf(view).block().getDescriptionId()));
 		this.view = view;
-		this.typewriter = typewriter(Component.translatable("screen.deepcharter.fuel_pump.online", FuelTuning.DEFAULT.pricePerLitre()), (index, letter) -> { });
+		this.typewriter = typewriter(Component.translatable("screen.deepcharter.fuel_pump.online", FuelTuning.DEFAULT.pricePerLitre()), new TypewriterSound());
 	}
 
 	private static TerminalType typeOf(TerminalView view) {

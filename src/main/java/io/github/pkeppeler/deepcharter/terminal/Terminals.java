@@ -69,6 +69,7 @@ public final class Terminals {
 				if (refusal.isPresent()) {
 					yield refuse(player, refusal.get());
 				}
+				TerminalEvents.ACTED.invoker().onActed(player.level().getServer(), granted.type(), player, action);
 				sendView(player, pos, granted.type());
 				yield Optional.empty();
 			}
@@ -186,6 +187,7 @@ public final class Terminals {
 		if (refusal != TerminalRefusal.ACTION_REFUSED) {
 			player.sendOverlayMessage(refusal.message());
 		}
+		TerminalEvents.REFUSED.invoker().onRefused(player, refusal);
 		return Optional.of(refusal);
 	}
 

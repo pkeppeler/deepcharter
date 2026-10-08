@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.terminal;
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;
 
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -28,7 +29,37 @@ public final class TerminalEvents {
 		}
 	});
 
+	/**
+	 * A terminal action ran and changed what it was asked to ({@link Terminals#INSERT_PART} included), just before the player's
+	 * screen is refreshed. A listener that throws stops the call, so the screen is not refreshed.
+	 */
+	public static final Event<Acted> ACTED = EventFactory.createArrayBacked(Acted.class, listeners -> (server, type, player, action) -> {
+		for (Acted listener : listeners) {
+			listener.onActed(server, type, player, action);
+		}
+	});
+
+	/**
+	 * A request to open a terminal or run one of its actions was refused, whatever the reason; the player has been told why.
+	 * A listener that throws stops the call.
+	 */
+	public static final Event<Refused> REFUSED = EventFactory.createArrayBacked(Refused.class, listeners -> (player, refusal) -> {
+		for (Refused listener : listeners) {
+			listener.onRefused(player, refusal);
+		}
+	});
+
 	private TerminalEvents() {
+	}
+
+	@FunctionalInterface
+	public interface Acted {
+		void onActed(MinecraftServer server, TerminalType type, ServerPlayer player, Identifier action);
+	}
+
+	@FunctionalInterface
+	public interface Refused {
+		void onRefused(ServerPlayer player, TerminalRefusal refusal);
 	}
 
 	@FunctionalInterface

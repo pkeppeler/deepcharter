@@ -49,5 +49,9 @@
 	"mothership.leave": { "sounds": [{ "name": "minecraft:entity.firework_rocket.launch", "type": "event" }] },
 
 	"alarm.fuel_critical": { "sounds": [{ "name": "minecraft:block.note_block.pling", "type": "event", "pitch": 1.5 }] },
-	"alarm.hull_critical": { "sounds": [{ "name": "minecraft:block.note_block.bass", "type": "event", "pitch": 0.6 }] }
+	"alarm.hull_critical": { "sounds": [{ "name": "minecraft:block.note_block.bass", "type": "event", "pitch": 0.6 }] },
+
+	"music.layer_1": { "sounds": [{ "name": "minecraft:music.overworld.deep_dark", "type": "event" }] },
+	"music.layer_2": { "sounds": [{ "name": "minecraft:music.end", "type": "event" }] },
+	"music.terminal": { "sounds": [{ "name": "minecraft:music.creative", "type": "event" }] }
 }

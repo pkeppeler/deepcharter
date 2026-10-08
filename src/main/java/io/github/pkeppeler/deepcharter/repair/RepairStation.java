@@ -97,7 +97,6 @@ public final class RepairStation {
 			return Optional.of(unpaid.get().message());
 		}
 		inventory.add(stack);
-		player.level().playSound(null, player.getX(), player.getY(), player.getZ(), DeepSound.UI_PURCHASE.event(), SoundSource.PLAYERS);
 		return Optional.empty();
 	}
 

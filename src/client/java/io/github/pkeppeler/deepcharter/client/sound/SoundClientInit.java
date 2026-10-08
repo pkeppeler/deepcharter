@@ -10,5 +10,7 @@ public final class SoundClientInit {
 
 	public static void init() {
 		SoundClientRegistry.register();
+		PodLoops.init();
+		TerminalMusic.init();
 	}
 }
