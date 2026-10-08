@@ -18,12 +18,19 @@ import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 
 /**
- * Every work order of the game: an employer's request to hand in a quantity of one ore for a reward. A charter does each order
- * once, and its progress is its own ({@link WorkOrderData}). Names are saved, so never rename one.
+ * Every work order of the game: an employer's request to hand in a quantity of one ore for a reward. Each charter's progress is
+ * its own ({@link WorkOrderData}). A one-shot order is done once; a {@linkplain #repeatable() repeatable} one opens its next round
+ * the moment a round completes. Names are saved, so never rename one.
  */
 public enum WorkOrder implements StringRepresentable {
 	/** Act 1. Completing it puts the Founder statue's hands back ({@code FounderStatue}). */
-	FOUNDERS_HANDS(OreType.BRONZIUM, 10, MarketTuning.DEFAULT.foundersHandsReward());
+	FOUNDERS_HANDS(OreType.BRONZIUM, 10, MarketTuning.DEFAULT.foundersHandsReward(), false, 0),
+	/**
+	 * Act 2, Personnel's "Morale Initiative" (LORE.md). The canon names the order and gives no text for it, so the title is the only
+	 * canon here; the ore, quantity and reward are placeholders. The reward is 25% over what the ore fetches at the ore processor, so
+	 * it follows the ore's value. It opens once the charter has reached layer 3.
+	 */
+	MORALE_INITIATIVE(OreType.SILVERIUM, 10, Math.round(10 * OreType.SILVERIUM.value() * 1.25), true, 3);
 
 	public static final Codec<WorkOrder> CODEC = StringRepresentable.fromEnum(WorkOrder::values);
 	public static final StreamCodec<ByteBuf, WorkOrder> STREAM_CODEC = Identifier.STREAM_CODEC.map(WorkOrder::require, WorkOrder::id);
@@ -31,11 +38,25 @@ public enum WorkOrder implements StringRepresentable {
 	private final OreType ore;
 	private final int quantity;
 	private final long reward;
+	private final boolean repeatable;
+	private final int unlockLayer;
 
-	WorkOrder(OreType ore, int quantity, long reward) {
+	WorkOrder(OreType ore, int quantity, long reward, boolean repeatable, int unlockLayer) {
 		this.ore = ore;
 		this.quantity = quantity;
 		this.reward = reward;
+		this.repeatable = repeatable;
+		this.unlockLayer = unlockLayer;
+	}
+
+	/** True when a completed round opens the next one at once, so the charter can do the order again and again. */
+	public boolean repeatable() {
+		return repeatable;
+	}
+
+	/** The layer a charter must have reached before the order is offered to it; 0 for an order offered from the start. */
+	public int unlockLayer() {
+		return unlockLayer;
 	}
 
 	/** The ore the order asks for. */
@@ -53,7 +74,7 @@ public enum WorkOrder implements StringRepresentable {
 		return quantity;
 	}
 
-	/** Dollars paid to the charter when it completes the order. */
+	/** Dollars paid to the charter each time it completes the order (each round, for a repeatable one). */
 	public long reward() {
 		return reward;
 	}

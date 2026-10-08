@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.pod;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Optional;
 
 import com.mojang.serialization.Codec;
@@ -116,6 +117,42 @@ public final class PodCargo {
 		entries.add(entry);
 		sync(pod);
 		return true;
+	}
+
+	/** How many of {@code ore} the bay holds; 0 while the saved cargo is unreadable. */
+	public int count(OreType ore) {
+		return entries.stream().filter(entry -> OreRegistry.typeOf(entry.stack()).orElseThrow() == ore).mapToInt(entry -> entry.stack().getCount()).sum();
+	}
+
+	/**
+	 * Server only: removes up to {@code amount} (at least 1) of {@code ore}, in the bay's order, and returns how many it removed: fewer
+	 * than asked when the bay holds fewer. An entry that holds more than is asked is shrunk and keeps its mass in proportion.
+	 */
+	public int take(PodEntity pod, OreType ore, int amount) {
+		requireOwnServerPod(pod);
+		requireReadable(pod);
+		if (amount < 1) {
+			throw new IllegalArgumentException("cannot take " + amount + " ore from the cargo");
+		}
+		int left = amount;
+		for (ListIterator<Entry> it = entries.listIterator(); it.hasNext() && left > 0;) {
+			Entry entry = it.next();
+			if (OreRegistry.typeOf(entry.stack()).orElseThrow() != ore) {
+				continue;
+			}
+			int held = entry.stack().getCount();
+			if (held <= left) {
+				it.remove();
+				left -= held;
+			} else {
+				it.set(new Entry(entry.stack().copyWithCount(held - left), entry.mass() * (held - left) / held));
+				left = 0;
+			}
+		}
+		if (left < amount) {
+			sync(pod);
+		}
+		return amount - left;
 	}
 
 	/** Server only: empties the bay and returns how many ore it held. */
