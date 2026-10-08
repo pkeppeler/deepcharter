@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import java.util.List;
+import java.util.function.IntConsumer;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
@@ -99,22 +102,45 @@ public final class FarChunks {
 	 *         there crashes vanilla's GameTest loop with an unrelated NullPointerException
 	 */
 	public static void awaitEntityTicking(GameTestHelper helper, ServerLevel level, BlockPos pos, Runnable then) {
+		awaitEntityTicking(helper, level, List.of(pos), index -> then.run());
+	}
+
+	/**
+	 * As the single-position form, for several columns at once with one tick callback. A test that waits for many chunks calls
+	 * this and not the single form in a loop: vanilla registers a callback for every tick of the test's {@code maxTicks}, and
+	 * each registration makes every tick of a long test slower. {@code then} runs with the index in {@code positions} of a
+	 * column on the first tick when it is entity-ticking; the failure after {@link #WAIT_SECONDS} names the first column still waiting.
+	 */
+	public static void awaitEntityTicking(GameTestHelper helper, ServerLevel level, List<BlockPos> positions, IntConsumer then) {
 		if (helper.getTick() != 0) {
 			throw new IllegalStateException("FarChunks.awaitEntityTicking must be called from the test method, not from a tick callback");
 		}
-		ChunkPos chunk = new ChunkPos(pos.getX() >> 4, pos.getZ() >> 4);
-		level.setChunkForced(chunk.x(), chunk.z(), true);
+		for (BlockPos pos : positions) {
+			level.setChunkForced(pos.getX() >> 4, pos.getZ() >> 4, true);
+		}
 		Deadline deadline = deadline();
-		boolean[] done = {false};
+		boolean[] done = new boolean[positions.size()];
+		int[] waiting = {positions.size()};
 		helper.onEachTick(() -> {
-			if (done[0]) {
+			if (waiting[0] == 0) {
 				return;
 			}
-			boolean reached = level.isPositionEntityTicking(pos);
-			deadline.pause(helper, level, chunk, Awaited.ENTITY_TICKING, reached);
-			if (reached) {
-				done[0] = true;
-				then.run();
+			int firstWaiting = -1;
+			for (int i = 0; i < done.length; i++) {
+				if (done[i]) {
+					continue;
+				}
+				if (level.isPositionEntityTicking(positions.get(i))) {
+					done[i] = true;
+					waiting[0]--;
+					then.accept(i);
+				} else if (firstWaiting < 0) {
+					firstWaiting = i;
+				}
+			}
+			if (firstWaiting >= 0) {
+				BlockPos pos = positions.get(firstWaiting);
+				deadline.pause(helper, level, new ChunkPos(pos.getX() >> 4, pos.getZ() >> 4), Awaited.ENTITY_TICKING, false);
 			}
 		});
 	}
