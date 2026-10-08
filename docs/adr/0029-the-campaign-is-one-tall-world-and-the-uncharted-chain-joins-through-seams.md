@@ -10,7 +10,7 @@ One dimension, the **campaign world**, holds the surface and story layers 1 to 8
 
 ## Decision
 
-- **Campaign world.** The surface stays the overworld, extended down to about `min_y` -2032, with `max_y` 320. A layer is a Y band. Layers average 256 blocks or less, so the campaign fits under the surface in vanilla's 4064 cap. The depth readout stays calculated.
+- **Campaign world.** The surface is the top band of the campaign world: the overworld dimension, extended down to about `min_y` -2032, with `max_y` 320. There is no seam at the surface floor. Our own generator makes every band, the surface included; vanilla surface terrain is not used. The surface is dry: `sea_level` is `min_y` and there are no aquifers. A layer is a Y band. Layers average 256 blocks or less, so the campaign fits under the surface in vanilla's 4064 cap. The depth readout stays calculated.
 - **Breach.** Inside the campaign world, a breach is physical crust between two Y bands. Crossing fires the breach event (rumble, transmission, new music). It has no teleport, no fade and no arrival pocket. Each layer's atmosphere comes from biome attributes.
 - **Uncharted worlds.** 2048 blocks tall, chained. 2048 costs 163 CPU-ms per new column and 4064 costs 310 (256 costs 31). Fast sideways travel at 4064 needs more than 8 cores. About 8 layers of 256 blocks fit one 2048 world.
 - **Seam.** Each tall world joins the next through a fast background swap:
@@ -25,7 +25,7 @@ One dimension, the **campaign world**, holds the surface and story layers 1 to 8
   - Anything that stops in the crust is squeezed: hull damage for a pod, squeeze damage on foot.
 - **Decoy.** A grained crust that is not a seam. The world seed chooses decoys among the other crusts, set so that about a third of restricted crusts are seams, so a seam cannot be told from a decoy. A story layer may set its crusts in its layer data instead.
 - **Ramp and splice.** The campaign world ends at the finale's floor, where a seam sits. The Ramp opens the first uncharted world, below that seam. A new story layer is a new world inserted at that seam, above the Ramp: the seam moves, and no seam appears inside the campaign world. The SPEC splice rules still hold.
-- **Sea level.** A tall dimension sets `sea_level` to `min_y`. Vanilla fills caves with lava below `min(-54, sea_level)`.
+- **Sea level.** A tall dimension sets `sea_level` to `min_y`. Vanilla hard-codes the lava level to `min(-54, sea_level)`, so a real sea level floods every layer cave with lava.
 
 ## Considered Options
 
@@ -33,12 +33,14 @@ One dimension, the **campaign world**, holds the surface and story layers 1 to 8
 - **Cubic Chunks.** Rejected (see #185 record). There is no Fabric port at any version. CubicChunks3 targets NeoForge 1.21.6 and says "Not yet usable or functional". Vanilla assumes column chunks, and `BlockPos` packs Y in 12 bits.
 - **One 4064-tall world.** Rejected. It caps depth, and it doubles every per-column cost: server heap 1188 MB against 518 MB, region file 179 KB against 92 KB per column, client heap 430 to 700 MB against 180 to 300 MB. A singleplayer client at 4064 sits near 1.9 GB of heap, against a 2 GB launcher default.
 - **Overlap band of mirrored blocks.** Rejected (see #185 record). No mod does it. Every band block must stay in sync across two copies, fluids and random ticks must run in one copy only, and lighting must work under two dimension types. The swap hitch stays.
+- **Vanilla surface terrain in the campaign world.** Rejected (phase 2 and 3 of #185, PR #187). It costs 1.8x CPU and 1.9x heap per column against the 2048 layer-only world, because 26.3 evaluates vanilla's density and ore-vein functions over the whole column height. Data-level Y guards do not help: `range_choice`, `interval_select` and `interpolated` sample every branch. Our own dry surface costs 1.03x, against a 1.15x bar. Skylight costs under 2%. A Java generator that delegates per band reached 1.3x but is fragile.
 - **Hide the swap behind a fade or a suppressed loading screen.** Rejected (see #185 record). `ClientPacketListener.handleRespawn` stops all sound and music, rebuilds every chunk mesh and builds a new player, frozen until the client acknowledges. Suppressing the loading screen leaves the hitch.
 
 ## Consequences
 
 - No dimension change in the campaign. A pod falls from the surface to the finale in one world.
-- **Fallback.** If putting the surface in the campaign world costs more than about 1.15 times the 2048 figures (issue #185, phase 2), the campaign world starts below the surface. A seam at the surface floor then joins the surface to layer 1. The rest of this ADR holds.
+- A vanilla surface would need a seam at the surface floor or a custom generator wrapper.
+- A lazy fill of the layer bands (placeholder rock until a player approaches) is a measured option, filed as #233. It is not needed now.
 - Horizontal speed is the limit in a tall world, not falling: a fall inside loaded columns is free, and new columns are not.
 - Keep the simulation distance low in tall worlds. Server tick cost grows with loaded sections.
 - A drilled shaft lets a pod reach a seam at terminal speed, so the 600-block lead is a minimum.

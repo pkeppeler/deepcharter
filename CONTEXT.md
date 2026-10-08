@@ -45,7 +45,7 @@ One link in the underground chain, with its own light, fog and sky. Its floor le
 _Avoid_: level, biome, dimension (that is the implementation)
 
 **Campaign world**:
-The one tall world that holds the surface and the story layers, ending at the finale's floor. Crossing a breach in it has no teleport.
+The one tall world that holds the surface as its top band and the story layers, ending at the finale's floor. Crossing a breach in it has no teleport.
 **Seam**:
 The join between two tall worlds, including the campaign world and the first uncharted world, crossed by a fast background swap inside a grained crust.
 _Avoid_: portal, loading screen

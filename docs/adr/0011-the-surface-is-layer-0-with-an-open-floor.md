@@ -4,7 +4,7 @@ status: accepted
 
 # The surface is layer 0, and its floor is open
 
-Amended by [ADR 0029](0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md): the surface and layers 1 to 8 share one dimension, so the cross-dimension crossing below (arrival at the same X/Z in another dimension, and the carved pocket) no longer applies there. The open floor, the structure sets and the portal rule stand. If the surface fallback in that ADR applies, the crossing returns at the surface floor as a seam.
+Amended by [ADR 0029](0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md): the surface and layers 1 to 8 share one dimension, so the cross-dimension crossing below (arrival at the same X/Z in another dimension, and the carved pocket) no longer applies there. The open floor, the structure sets and the portal rule stand.
 
 The overworld is the first link of the layer chain. Its floor leads into layer 1, and the top of layer 1 leads back up. The vanilla overworld is changed only where the chain needs it. SPEC section 3 removes the End, so the stronghold, which holds its portal, has no purpose. Pillager outposts go as settlement-adjacent.
 

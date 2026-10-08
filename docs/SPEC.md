@@ -28,7 +28,7 @@ Pillars, ranked. The higher one wins a conflict.
 
 ### Surface and colony
 
-- **Surface:** vanilla-style frontier (terrain, trees, animals, vanilla ores near the surface for the bootstrap, vanilla night monsters). No villages or settlements. No Nether or End; the depths replace them.
+- **Surface:** vanilla-style frontier (our own dry terrain with no sea, trees, animals, vanilla ores near the surface for the bootstrap, vanilla night monsters). No villages or settlements. No Nether or End; the depths replace them.
 - **Colony:** one derelict mining colony per world, at spawn. Its terminals are repaired once per world: when any charter fixes one, every charter can use it.
 - **Width:** unlimited, no border.
 - **Performance:** world height drives cost, because Minecraft generates whole columns. Keep layers about 256 blocks or less, and uncharted worlds 2048 tall. If world files grow large, add a tool to trim unvisited chunks.
@@ -375,7 +375,6 @@ Surface, repairing the colony, the Mole, the onboarding handbook (implied by the
 - Final crew-role design, after the prototype.
 - Lore session: the employer's name, layer themes, transmissions.
 - Creatures and combat session.
-- Does the surface fit in the campaign world? If not, a seam at the surface floor ([ADR 0029](adr/0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md)).
 - What happens to dropped items and mobs that fall to a seam.
 - Numbers tuning: layer thicknesses, prices, drill speeds.
 - Duration and size of earthquake and cave-in blockages, per layer.
