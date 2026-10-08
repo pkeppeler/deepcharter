@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.layer;
 
+import java.util.Arrays;
+
 /**
  * Tunables for the layer feature. Add one component per tunable and give it its value in
  * {@link #DEFAULT}; read it as {@code LayerTuning.DEFAULT.thing()}.
@@ -10,9 +12,23 @@ package io.github.pkeppeler.deepcharter.layer;
  * @param pocketRadius   a crossing carves a pocket this many blocks out from the arrival column on each side
  * @param pocketHeight   blocks of air in that pocket; an entity arrives at its bottom, so this is also how far
  *                       from the crossing line it starts
+ * @param structureSpacing  each kind of structure has one site in every square of this many blocks (a multiple of 16)
+ * @param structureFloorMargin  structures keep this many blocks above the floor of the layer, clear of the crust and the rock floor
+ * @param structureCeilingMargin  structures keep this many blocks below the top of the layer, clear of the rock roof
  * @param lavaHullPerSecond hull points a pod loses each second while it is in or touching lava, before a radiator
  */
 public record LayerTuning(int seaLevel, double feetPerBlock, int crustThickness, int pocketRadius, int pocketHeight,
-		float lavaHullPerSecond) {
-	public static final LayerTuning DEFAULT = new LayerTuning(63, 3.28, 3, 2, 4, 10f);
+		int structureSpacing, int structureFloorMargin, int structureCeilingMargin, float lavaHullPerSecond) {
+	public static final LayerTuning DEFAULT = new LayerTuning(63, 3.28, 3, 2, 4, 384, 24, 56, 10f);
+
+	public LayerTuning {
+		if (structureSpacing <= 0 || structureSpacing % 16 != 0) {
+			throw new IllegalArgumentException("structureSpacing must be a positive multiple of 16, got " + structureSpacing);
+		}
+		// A site keeps reach + 1 blocks from its cell's edge, so that its shell lies in the cell too; the cell needs room left to place it.
+		int widest = Arrays.stream(StructureKind.values()).mapToInt(StructureKind::reach).max().orElseThrow();
+		if (structureSpacing <= 2 * (widest + 1)) {
+			throw new IllegalArgumentException("structureSpacing " + structureSpacing + " leaves no room for a structure of reach " + widest);
+		}
+	}
 }
