@@ -81,12 +81,22 @@ public final class MockPlayers {
 		return join(server, name, ownerDone, true);
 	}
 
-	// An unloaded player is still loading to the server, so it takes no damage, kill included.
+	/** Join a mock player owned by a GameTest with the given id, as a player who comes back to the server. */
+	public static MockPlayer join(GameTestHelper helper, String name, UUID id) {
+		GameTestInfo info = testInfo(helper);
+		return join(helper.getLevel().getServer(), name, id, info::isDone, true);
+	}
+
 	private static MockPlayer join(MinecraftServer server, String name, BooleanSupplier ownerDone, boolean loaded) {
+		return join(server, name, UUID.randomUUID(), ownerDone, loaded);
+	}
+
+	// An unloaded player is still loading to the server, so it takes no damage, kill included.
+	private static MockPlayer join(MinecraftServer server, String name, UUID id, BooleanSupplier ownerDone, boolean loaded) {
 		if (!server.isSameThread()) {
 			throw new IllegalStateException("MockPlayers.join must run on the server thread");
 		}
-		GameProfile profile = new GameProfile(UUID.randomUUID(), name);
+		GameProfile profile = new GameProfile(id, name);
 		CommonListenerCookie cookie = CommonListenerCookie.createInitial(profile, false);
 		ServerPlayer player = new ServerPlayer(server, server.overworld(), profile, cookie.clientInformation());
 		Connection connection = new Connection(PacketFlow.SERVERBOUND);
