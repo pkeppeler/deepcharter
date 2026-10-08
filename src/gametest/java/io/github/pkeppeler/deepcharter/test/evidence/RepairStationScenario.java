@@ -47,15 +47,16 @@ public class RepairStationScenario extends EvidenceScenario {
 			hold(context);
 			screenshot(context, "station");
 
-			context.clickScreenButton("REPAIR ALL");
+			RepairStationClientTest.clickRow(context, "REPAIR ALL");
 			RepairStationClientTest.awaitServer(context, () -> singleplayer.getServer().computeOnServer(server -> scene.pod().hull() == scene.pod().maxHull()));
 			hold(context);
-			context.clickScreenButton("BUY DYNAMITE $100");
+			RepairStationClientTest.clickRow(context, "BUY DYNAMITE $100");
 			RepairStationClientTest.awaitServer(context, () -> singleplayer.getServer().computeOnServer(server -> carried(server, Consumable.DYNAMITE)) == 1);
 			hold(context);
-			context.clickScreenButton("BUY MATTER TRANSMITTER $1500");
+			RepairStationClientTest.clickRow(context, "BUY MATTER TRANSMITTER $1500");
 			RepairStationClientTest.awaitServer(context, () -> singleplayer.getServer().computeOnServer(server -> carried(server, Consumable.MATTER_TRANSMITTER)) == 1);
 			hold(context);
+			screenshot(context, "station-bottom");
 			context.setScreen(() -> null);
 
 			// Pilot the pod and bury it in rock, so that the blast shows.
