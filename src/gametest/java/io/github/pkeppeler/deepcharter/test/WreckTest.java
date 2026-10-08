@@ -12,10 +12,16 @@ import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.GlobalPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer.RespawnConfig;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -28,8 +34,13 @@ import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BedPart;
+import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
@@ -37,6 +48,8 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.colony.Colony;
+import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.handbook.HandbookRegistry;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
@@ -48,6 +61,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.wreck.WreckEvents;
@@ -678,6 +692,264 @@ public class WreckTest {
 			}
 			pod[0].discard();
 		});
+	}
+
+	private static MinecraftServer server(GameTestHelper helper) {
+		return helper.getLevel().getServer();
+	}
+
+	/** Builds a bed in the floor corner and returns a respawn config that names it. */
+	private static RespawnConfig bedConfig(GameTestHelper helper) {
+		BlockPos foot = new BlockPos(0, FLOOR_Y + 1, 0);
+		BlockState bed = Blocks.BED.red().defaultBlockState().setValue(BedBlock.FACING, Direction.EAST);
+		helper.setBlock(foot, bed.setValue(BedBlock.PART, BedPart.FOOT));
+		helper.setBlock(foot.east(), bed.setValue(BedBlock.PART, BedPart.HEAD));
+		return new RespawnConfig(LevelData.RespawnData.of(Level.OVERWORLD, helper.absolutePos(foot), 0f, 0f), false);
+	}
+
+	private static void clearBed(GameTestHelper helper) {
+		helper.setBlock(new BlockPos(0, FLOOR_Y + 1, 0), Blocks.AIR);
+		helper.setBlock(new BlockPos(1, FLOOR_Y + 1, 0), Blocks.AIR);
+	}
+
+	private static boolean near(Vec3 at, BlockPos block) {
+		return at.distanceToSqr(Vec3.atBottomCenterOf(block)) < 4;
+	}
+
+	/** The player clicks Respawn: the server handles the packet as it would from a client. Returns the new player. */
+	private static ServerPlayer respawn(ServerPlayer dead) {
+		dead.connection.handleClientCommand(new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
+		return dead.connection.getPlayer();
+	}
+
+	/** Runs {@code check} after the tick that moves a respawned crew to the office, then {@code cleanup}. */
+	private static void afterRespawnTick(GameTestHelper helper, Runnable cleanup, Runnable check) {
+		helper.runAfterDelay(2, () -> {
+			try {
+				check.run();
+				helper.succeed();
+			} finally {
+				cleanup.run();
+			}
+		});
+	}
+
+	@GameTest
+	public void aWreckKillRespawnsTheCrewAtTheOfficeEvenWithABedSet(GameTestHelper helper) {
+		MinecraftServer server = server(helper);
+		GlobalPos office = Colony.respawnPoint(server).orElseThrow(() -> failure(helper, "the colony was not built when the server started"));
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer mock = joinLoaded(helper, "wreck-respawn", pod.position());
+		RespawnConfig bed = bedConfig(helper);
+		ServerPlayer[] respawned = {null};
+		Runnable cleanup = () -> {
+			server.getPlayerList().remove(respawned[0] == null ? mock.player() : respawned[0]);
+			mock.leave();
+			pod.discard();
+			clearBed(helper);
+			clearFloor(helper);
+		};
+		try {
+			ServerPlayer player = mock.player();
+			player.setGameMode(GameType.SURVIVAL);
+			player.setRespawnPosition(bed, false);
+			player.startRiding(pod, true, false);
+			wreck(pod);
+			if (!player.isDeadOrDying()) {
+				throw failure(helper, "the pilot should be dead");
+			}
+			respawned[0] = respawn(player);
+			afterRespawnTick(helper, cleanup, () -> {
+				if (!near(respawned[0].position(), office.pos())) {
+					throw failure(helper, "the crew should respawn at the office %s, respawned at %s", office.pos().toShortString(), respawned[0].position());
+				}
+				if (!bed.equals(respawned[0].getRespawnConfig())) {
+					throw failure(helper, "the redirect changes no player data: the bed should still be set, but the respawn point is %s", respawned[0].getRespawnConfig());
+				}
+			});
+		} catch (RuntimeException e) {
+			cleanup.run();
+			throw e;
+		}
+	}
+
+	@GameTest
+	public void aCrewMemberWithNoBedRespawnsAtTheOfficeAndStillHasNoRespawnPoint(GameTestHelper helper) {
+		MinecraftServer server = server(helper);
+		GlobalPos office = Colony.respawnPoint(server).orElseThrow(() -> failure(helper, "the colony was not built when the server started"));
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer mock = joinLoaded(helper, "wreck-nobed", pod.position());
+		ServerPlayer[] respawned = {null};
+		Runnable cleanup = () -> {
+			server.getPlayerList().remove(respawned[0] == null ? mock.player() : respawned[0]);
+			mock.leave();
+			pod.discard();
+			clearFloor(helper);
+		};
+		try {
+			mock.player().setGameMode(GameType.SURVIVAL);
+			mock.player().startRiding(pod, true, false);
+			wreck(pod);
+			respawned[0] = respawn(mock.player());
+			afterRespawnTick(helper, cleanup, () -> {
+				if (!near(respawned[0].position(), office.pos())) {
+					throw failure(helper, "the crew should respawn at the office %s, respawned at %s", office.pos().toShortString(), respawned[0].position());
+				}
+				if (respawned[0].getRespawnConfig() != null) {
+					throw failure(helper, "the redirect changes no player data, but the respawn point is %s", respawned[0].getRespawnConfig());
+				}
+			});
+		} catch (RuntimeException e) {
+			cleanup.run();
+			throw e;
+		}
+	}
+
+	/**
+	 * Runs {@code action} with the colony's saved data replaced by {@code replacement}, and puts the real one back.
+	 * Nothing in {@code action} may await: GameTests run concurrently and would see the swap.
+	 */
+	private static void withColonySite(MinecraftServer server, ColonySite replacement, Runnable action) {
+		ColonySite world = ColonySite.get(server);
+		server.getDataStorage().set(ColonySite.TYPE, replacement);
+		try {
+			action.run();
+		} finally {
+			server.getDataStorage().set(ColonySite.TYPE, world);
+		}
+	}
+
+	private static ColonySite unreadableColonySite(MinecraftServer server) {
+		CompoundTag future = ((CompoundTag) ColonySite.CODEC.encodeStart(NbtOps.INSTANCE, ColonySite.get(server)).getOrThrow()).copy();
+		future.putInt("version", 7742);
+		return ColonySite.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow();
+	}
+
+	/** The colony's data is unreadable: the kill must not throw, the bed stays, and the owner is logged once however often they die. */
+	@GameTest
+	public void withoutAReadableColonyAWreckKillFallsBackToTheNormalRespawnAndLogsOncePerPlayer(GameTestHelper helper) {
+		MinecraftServer server = server(helper);
+		PodEntity pod = spawnOnFloor(helper);
+		String name = uniqueName();
+		MockPlayer mock = joinLoaded(helper, name, pod.position());
+		ServerPlayer[] respawned = {null};
+		LogCapture log = LogCapture.start(name);
+		try {
+			RespawnConfig bed = bedConfig(helper);
+			mock.player().setGameMode(GameType.SURVIVAL);
+			mock.player().setRespawnPosition(bed, false);
+			mock.player().startRiding(pod, true, false);
+			withColonySite(server, unreadableColonySite(server), () -> {
+				if (Colony.respawnPoint(server).isPresent()) {
+					throw failure(helper, "setup: the colony should have no respawn point");
+				}
+				wreck(pod);
+			});
+			if (!mock.player().isDeadOrDying()) {
+				throw failure(helper, "the pilot should still die");
+			}
+			if (!bed.equals(mock.player().getRespawnConfig())) {
+				throw failure(helper, "with no office the respawn point must be left alone, it is %s", mock.player().getRespawnConfig());
+			}
+			respawned[0] = respawn(mock.player());
+			if (!near(respawned[0].position(), bed.respawnData().pos())) {
+				throw failure(helper, "with no office the crew should respawn at the bed, respawned at %s", respawned[0].position());
+			}
+			if (log.errors().size() != 1 || !log.warnings().isEmpty()) {
+				throw failure(helper, "unreadable colony data should be logged as one error, was %s and %s", log.errors(), log.warnings());
+			}
+			PodEntity second = helper.spawn(PodRegistry.POD, new Vec3(FLOOR_RADIUS + 0.5, FLOOR_Y + 1, FLOOR_RADIUS + 0.5));
+			pod.discard();
+			respawned[0].teleportTo(helper.getLevel(), second.getX(), second.getY(), second.getZ(), Set.of(), 0f, 0f, true);
+			respawned[0].startRiding(second, true, false);
+			withColonySite(server, unreadableColonySite(server), () -> wreck(second));
+			second.discard();
+			if (log.errors().size() != 1) {
+				throw failure(helper, "a second kill of the same player should not log again, the errors are %s", log.errors());
+			}
+			helper.succeed();
+		} finally {
+			if (respawned[0] != null) {
+				server.getPlayerList().remove(respawned[0]);
+			}
+			mock.leave();
+			pod.discard();
+			clearBed(helper);
+			clearFloor(helper);
+		}
+	}
+
+	@GameTest
+	public void beforeTheColonyIsBuiltAWreckKillLogsAWarningNotAnError(GameTestHelper helper) {
+		MinecraftServer server = server(helper);
+		PodEntity pod = spawnOnFloor(helper);
+		String name = uniqueName();
+		MockPlayer mock = joinLoaded(helper, name, pod.position());
+		LogCapture log = LogCapture.start(name);
+		try {
+			mock.player().setGameMode(GameType.SURVIVAL);
+			mock.player().startRiding(pod, true, false);
+			withColonySite(server, new ColonySite(), () -> wreck(pod));
+			if (!mock.player().isDeadOrDying()) {
+				throw failure(helper, "the pilot should still die");
+			}
+			if (!log.errors().isEmpty() || log.warnings().size() != 1) {
+				throw failure(helper, "a colony that is not built should be logged as one warning, was %s and %s", log.errors(), log.warnings());
+			}
+			helper.succeed();
+		} finally {
+			mock.leave();
+			pod.discard();
+			clearFloor(helper);
+		}
+	}
+
+	/** A player marked to wake at the office who leaves and comes back dies an ordinary death: they wake at their bed. */
+	@GameTest
+	public void aCrewMemberWhoLeavesAndReturnsBeforeRespawningWakesAtTheirBed(GameTestHelper helper) {
+		MinecraftServer server = server(helper);
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer mock = MockPlayers.joinUnloaded(helper, "wreck-leaver");
+		UUID id = mock.player().getUUID();
+		RespawnConfig bed = bedConfig(helper);
+		MockPlayer[] returned = {null};
+		ServerPlayer[] respawned = {null};
+		Runnable cleanup = () -> {
+			if (respawned[0] != null) {
+				server.getPlayerList().remove(respawned[0]);
+			}
+			if (returned[0] != null) {
+				returned[0].leave();
+			}
+			mock.leave();
+			pod.discard();
+			clearBed(helper);
+			clearFloor(helper);
+		};
+		try {
+			ServerPlayer player = mock.player();
+			player.setRespawnPosition(bed, false);
+			mock.teleportTo(helper.getLevel(), pod.position(), 0, 0);
+			player.startRiding(pod, true, false);
+			wreck(pod);
+			if (player.isDeadOrDying()) {
+				throw failure(helper, "setup: the player is immune, and the kill is retried");
+			}
+			mock.leave();
+			returned[0] = MockPlayers.join(helper, "wreck-leaver", id);
+			returned[0].player().setGameMode(GameType.SURVIVAL);
+			returned[0].player().setRespawnPosition(bed, false);
+			returned[0].player().kill(helper.getLevel());
+			respawned[0] = respawn(returned[0].player());
+			afterRespawnTick(helper, cleanup, () -> {
+				if (!near(respawned[0].position(), bed.respawnData().pos())) {
+					throw failure(helper, "a player who left and came back should wake at their bed, woke at %s", respawned[0].position());
+				}
+			});
+		} catch (RuntimeException e) {
+			cleanup.run();
+			throw e;
+		}
 	}
 
 	private static PodEntity reload(GameTestHelper helper, PodEntity pod, CompoundTag attachments) {
