@@ -12,19 +12,29 @@ tasks.named("runGameTest") { dependsOn deleteGameTestWorld }
 //   server GameTest    a class with an @GameTest method       -> fabric-gametest
 //   client GameTest    implements FabricClientGameTest        -> fabric-client-gametest
 //   evidence scenario  extends EvidenceScenario               -> fabric-client-gametest
-// Order: the suite shares world state between classes and depends on today's order, so
-// src/gametest/entrypoint-order.txt pins it; listed classes come first in that order, every other
-// class after them, sorted by name. A new class needs no line there.
+// Order: classes are listed sorted by name. The suite must not depend on that order: -PgametestOrder=reverse
+// lists them in reverse name order, to catch a test that leaks world state into a later one.
 def generatedGametestResources = layout.buildDirectory.dir("generated/gametest-resources")
 def generateGametestModJson = tasks.register("generateGametestModJson") {
 	def javaRoot = file("src/gametest/java")
 	def template = file("src/gametest/fabric.mod.template.json")
-	def orderFile = file("src/gametest/entrypoint-order.txt")
+	def order = providers.gradleProperty("gametestOrder").getOrElse("name")
+	if (!(order in ["name", "reverse"])) {
+		throw new GradleException("-PgametestOrder is '${order}', expected name or reverse")
+	}
+	inputs.property("order", order)
 	def outputFile = generatedGametestResources.map { it.file("fabric.mod.json") }
 	def sources = fileTree(javaRoot) { include "**/*.java" }
 	inputs.files(sources).withPropertyName("gametestSources")
 	inputs.file(template).withPropertyName("template")
-	inputs.file(orderFile).withPropertyName("orderFile")
+	// WorldDataGuard must list every saved-data record of the mod, or it misses a swap of a new one.
+	def mainSources = fileTree("src/main/java") { include "**/*.java" }
+	// A direct getDataStorage().set( (or a getDataStorage() kept in a variable, so a later set is not seen) leaks a world-global record
+	// if the code between it and its restore throws. Tests swap through WorldData; only WorldData and a swap marked with the comment
+	// below, which deliberately spans listener phases within one tick, call it directly. Scratch SavedDataStorage instances are fine.
+	def directSwapMarker = "// world-data: listener-phase swap"
+	def guardSource = file("src/gametest/java/io/github/pkeppeler/deepcharter/test/support/WorldDataGuard.java")
+	inputs.files(mainSources).withPropertyName("mainSources")
 	outputs.file(outputFile)
 
 	doLast {
@@ -37,7 +47,18 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 			def simpleName = className.substring(className.lastIndexOf(".") + 1)
 			// Code only: comments and string literals (text blocks included) must not match.
 			def text = source.text.replaceAll(/(?s)"""(?:\\.|.)*?"""|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\/\*.*?\*\/|\/\/[^\n]*/) { match ->
-				match.startsWith("/") ? " " : "\"\""
+				(match.startsWith("/") ? " " : "\"\"") + match.replaceAll(/[^\n]/, "")
+			}
+			if (source.name != "WorldData.java") {
+				def rawLines = source.readLines()
+				def direct = text =~ /getDataStorage\(\)\s*\.\s*set\s*\(|getDataStorage\(\)\s*[;,)]/
+				while (direct.find()) {
+					def line = text.substring(0, direct.start()).count("\n")
+					def marked = [line, line - 1].any { it >= 0 && rawLines[it].contains(directSwapMarker) }
+					if (!marked) {
+						problems << "${className}:${line + 1} swaps or keeps getDataStorage() directly; swap a world-global record with WorldData.with, WorldData.swap or WorldData.replace, which restore it in a finally"
+					}
+				}
 			}
 			if (text =~ /\babstract\s+class\s/) {
 				return
@@ -60,18 +81,19 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 		if (client.isEmpty()) {
 			problems << "no client GameTest or evidence scenario found under src/gametest/java"
 		}
-		def pinned = orderFile.readLines().collect { it.trim() }.findAll { !it.isEmpty() && !it.startsWith("#") }
-		pinned.countBy { it }.findAll { it.value > 1 }.each { line, count ->
-			problems << "${line} appears ${count} times in src/gametest/entrypoint-order.txt; keep one line"
-		}
-		pinned.findAll { !(it in server + client) }.each {
-			problems << "${it} is in src/gametest/entrypoint-order.txt but is not a registered test class; remove the line"
+		def guarded = guardSource.text
+		mainSources.files.sort().each { source ->
+			(source.text =~ /SavedDataType<(\w+)>\s+TYPE\b/).each { match, record ->
+				if (!guarded.contains("${record}.TYPE")) {
+					problems << "${record} declares a SavedDataType, which ${guardSource.name} does not watch; add ${record}.TYPE to its WATCHED list"
+				}
+			}
 		}
 		if (!problems.isEmpty()) {
 			throw new GradleException("gametest entrypoints:\n  " + problems.join("\n  "))
 		}
 
-		def ordered = { names -> pinned.findAll { it in names } + names.findAll { !(it in pinned) }.sort() }
+		def ordered = { names -> order == "reverse" ? names.sort(false).reverse() : names.sort(false) }
 		def json = template.text
 		["SERVER_TESTS": server, "CLIENT_TESTS": client].each { token, names ->
 			def placeholder = "\"@${token}@\""

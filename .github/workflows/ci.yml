@@ -62,4 +62,4 @@ jobs:
             bash "$t" || { echo "::error::$t failed"; exit 1; }
             echo "::endgroup::"
           done
-      - run: shellcheck tools/*.sh tools/tests/*.sh
+      - run: shellcheck tools/*.sh tools/tests/*.sh .claude/hooks/*.sh

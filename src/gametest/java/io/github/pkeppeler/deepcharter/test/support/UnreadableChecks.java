@@ -48,14 +48,8 @@ public final class UnreadableChecks {
 			SavedDataType<T> type, Map<String, Runnable> paths) {
 		CompoundTag future = futureData();
 		T unreadable = type.codec().parse(NbtOps.INSTANCE, future).getOrThrow();
-		T original = server.getDataStorage().computeIfAbsent(type);
 		LogCapture log = LogCapture.start(type.id().toString());
-		server.getDataStorage().set(type, unreadable);
-		try {
-			assertNoThrow(helper, feature, paths);
-		} finally {
-			server.getDataStorage().set(type, original);
-		}
+		WorldData.with(server, type, unreadable, () -> assertNoThrow(helper, feature, paths));
 		List<String> errors = log.errors();
 		if (errors.size() != 1) {
 			throw helper.assertionException("%s: unreadable %s should be logged once, not %s times: %s", feature, type.id(), errors.size(), errors);

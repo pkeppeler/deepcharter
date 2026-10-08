@@ -72,6 +72,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
+import io.github.pkeppeler.deepcharter.test.support.WorldData;
 
 /**
  * Server GameTests for #64: the colony is built once at world spawn, its anchors persist, its terminals start offline, the world
@@ -88,7 +89,8 @@ public class ColonyTest {
 	private static final AtomicReference<GlobalPos> SPAWN_AT_START = new AtomicReference<>();
 
 	static {
-		ColonyEvents.BUILT.register((server, colony) -> SPAWN_AT_START.set(server.getRespawnData().globalPos()));
+		// Only the first build: tests that fire BUILT again later see the spawn the game test server moved.
+		ColonyEvents.BUILT.register((server, colony) -> SPAWN_AT_START.compareAndSet(null, server.getRespawnData().globalPos()));
 	}
 
 	@GameTest
@@ -132,15 +134,11 @@ public class ColonyTest {
 					throw failure(helper, "the anchors changed over a save: %s, reloaded %s", before, reloaded.placed());
 				}
 				// The restart itself: the reloaded record is the world's, and the start finds the colony built.
-				ColonySite world = ColonySite.get(server);
-				server.getDataStorage().set(ColonySite.TYPE, reloaded);
-				try {
+				WorldData.with(server, ColonySite.TYPE, reloaded, () -> {
 					if (ColonyBuilder.buildIfNeeded(server)) {
 						throw failure(helper, "a start with the reloaded record built the colony again");
 					}
-				} finally {
-					server.getDataStorage().set(ColonySite.TYPE, world);
-				}
+				});
 			}
 		} finally {
 			deleteTree(dir);
@@ -310,30 +308,29 @@ public class ColonyTest {
 		if (interrupted.isBuilt() || interrupted.started().isEmpty()) {
 			throw failure(helper, "the interrupted record should be begun and not finished");
 		}
-		ColonySite world = ColonySite.get(server);
 		var spawn = server.getRespawnData();
-		server.getDataStorage().set(ColonySite.TYPE, interrupted);
-		try {
-			if (!ColonyBuilder.buildIfNeeded(server)) {
-				throw failure(helper, "an unfinished colony should be built again");
-			}
-			if (!ColonySite.get(server).placed().equals(Optional.of(before))) {
-				throw failure(helper, "the rebuilt colony differs: %s, expected %s", ColonySite.get(server).placed(), before);
-			}
-			// Built over itself at the recorded ground: the statue stands where it did, and no second pad sits above the first.
-			BlockPos statue = before.anchors().get(ColonyAnchor.STATUE);
-			if (!overworld.getBlockState(statue).is(Blocks.STONE_BRICKS)) {
-				throw failure(helper, "the statue's pedestal is not at %s after the rebuild", statue.toShortString());
-			}
-			for (BlockPos corner : List.of(before.center().offset(9, 1, 9), before.center().offset(-30, 1, -30), before.center().offset(28, 1, 28))) {
-				if (!overworld.getBlockState(corner).isAir()) {
-					throw failure(helper, "a second pad sits above the first at %s: %s", corner.toShortString(), overworld.getBlockState(corner));
+		WorldData.with(server, ColonySite.TYPE, interrupted, () -> {
+			try {
+				if (!ColonyBuilder.buildIfNeeded(server)) {
+					throw failure(helper, "an unfinished colony should be built again");
 				}
+				if (!ColonySite.get(server).placed().equals(Optional.of(before))) {
+					throw failure(helper, "the rebuilt colony differs: %s, expected %s", ColonySite.get(server).placed(), before);
+				}
+				// Built over itself at the recorded ground: the statue stands where it did, and no second pad sits above the first.
+				BlockPos statue = before.anchors().get(ColonyAnchor.STATUE);
+				if (!overworld.getBlockState(statue).is(Blocks.STONE_BRICKS)) {
+					throw failure(helper, "the statue's pedestal is not at %s after the rebuild", statue.toShortString());
+				}
+				for (BlockPos corner : List.of(before.center().offset(9, 1, 9), before.center().offset(-30, 1, -30), before.center().offset(28, 1, 28))) {
+					if (!overworld.getBlockState(corner).isAir()) {
+						throw failure(helper, "a second pad sits above the first at %s: %s", corner.toShortString(), overworld.getBlockState(corner));
+					}
+				}
+			} finally {
+				server.setRespawnData(LevelData.RespawnData.of(spawn.dimension(), spawn.pos(), spawn.yaw(), spawn.pitch()));
 			}
-		} finally {
-			server.getDataStorage().set(ColonySite.TYPE, world);
-			server.setRespawnData(LevelData.RespawnData.of(spawn.dimension(), spawn.pos(), spawn.yaw(), spawn.pitch()));
-		}
+		});
 		helper.succeed();
 	}
 
@@ -346,44 +343,40 @@ public class ColonyTest {
 		Optional<UUID> derelict = HangarData.get(server).state().derelict();
 		int pods = overworld.getEntitiesOfClass(PodEntity.class, bay).size();
 		Item part = HangarParts.ALL.getFirst();
-		ColonySite world = ColonySite.get(server);
-		RepairState repairs = RepairState.get(server);
 		RepairState partlyRepaired = new RepairState();
 		if (partlyRepaired.insert(HangarTerminal.TYPE, part).isPresent()) {
 			throw failure(helper, "a fresh repair state should take the first hangar part");
 		}
 		var spawn = server.getRespawnData();
-		server.getDataStorage().set(ColonySite.TYPE, unfinishedCopy(server));
-		server.getDataStorage().set(RepairState.TYPE, partlyRepaired);
-		try {
-			if (!ColonyBuilder.buildIfNeeded(server)) {
-				throw failure(helper, "an unfinished colony should be built again");
+		WorldData.swap(server).with(ColonySite.TYPE, unfinishedCopy(server)).with(RepairState.TYPE, partlyRepaired).run(() -> {
+			try {
+				if (!ColonyBuilder.buildIfNeeded(server)) {
+					throw failure(helper, "an unfinished colony should be built again");
+				}
+				if (!overworld.getBlockState(console).is(HangarTerminal.TYPE.block()) || !(overworld.getBlockEntity(console) instanceof TerminalBlockEntity)) {
+					throw failure(helper, "the rebuilt colony has no hangar console at %s: %s", console.toShortString(), overworld.getBlockState(console));
+				}
+				if (!partlyRepaired.inserted(HangarTerminal.TYPE).equals(List.of(part))) {
+					throw failure(helper, "the rebuild changed the hangar's repair: %s", partlyRepaired.inserted(HangarTerminal.TYPE));
+				}
+				if (!HangarData.get(server).state().derelict().equals(derelict) || overworld.getEntitiesOfClass(PodEntity.class, bay).size() != pods) {
+					throw failure(helper, "the rebuild placed a second derelict Mole in the hangar");
+				}
+				MockPlayer mock = MockPlayers.join(helper, "rebuilt-console");
+				// The founded charter stays in the shared world: its name is unique, and the other founding tests leave theirs too.
+				if (Charters.found(server, mock.player().getUUID(), "Rebuilt Console " + UUID.randomUUID().toString().substring(0, 8)).isPresent()) {
+					throw failure(helper, "founding a charter should succeed");
+				}
+				Vec3 beside = Vec3.atCenterOf(console).add(2, -mock.player().getEyeHeight(), 0);
+				mock.teleportTo(overworld, beside, 0, 0);
+				Optional<TerminalRefusal> opened = Terminals.open(mock.player(), console);
+				if (opened.isPresent()) {
+					throw failure(helper, "a charter member should open the rebuilt console, it was refused: %s", opened);
+				}
+			} finally {
+				server.setRespawnData(LevelData.RespawnData.of(spawn.dimension(), spawn.pos(), spawn.yaw(), spawn.pitch()));
 			}
-			if (!overworld.getBlockState(console).is(HangarTerminal.TYPE.block()) || !(overworld.getBlockEntity(console) instanceof TerminalBlockEntity)) {
-				throw failure(helper, "the rebuilt colony has no hangar console at %s: %s", console.toShortString(), overworld.getBlockState(console));
-			}
-			if (!partlyRepaired.inserted(HangarTerminal.TYPE).equals(List.of(part))) {
-				throw failure(helper, "the rebuild changed the hangar's repair: %s", partlyRepaired.inserted(HangarTerminal.TYPE));
-			}
-			if (!HangarData.get(server).state().derelict().equals(derelict) || overworld.getEntitiesOfClass(PodEntity.class, bay).size() != pods) {
-				throw failure(helper, "the rebuild placed a second derelict Mole in the hangar");
-			}
-			MockPlayer mock = MockPlayers.join(helper, "rebuilt-console");
-			// The founded charter stays in the shared world: its name is unique, and the other founding tests leave theirs too.
-			if (Charters.found(server, mock.player().getUUID(), "Rebuilt Console " + UUID.randomUUID().toString().substring(0, 8)).isPresent()) {
-				throw failure(helper, "founding a charter should succeed");
-			}
-			Vec3 beside = Vec3.atCenterOf(console).add(2, -mock.player().getEyeHeight(), 0);
-			mock.teleportTo(overworld, beside, 0, 0);
-			Optional<TerminalRefusal> opened = Terminals.open(mock.player(), console);
-			if (opened.isPresent()) {
-				throw failure(helper, "a charter member should open the rebuilt console, it was refused: %s", opened);
-			}
-		} finally {
-			server.getDataStorage().set(ColonySite.TYPE, world);
-			server.getDataStorage().set(RepairState.TYPE, repairs);
-			server.setRespawnData(LevelData.RespawnData.of(spawn.dimension(), spawn.pos(), spawn.yaw(), spawn.pitch()));
-		}
+		});
 		helper.succeed();
 	}
 

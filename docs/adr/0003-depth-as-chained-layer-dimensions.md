@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by 0029
 ---
 
 # Depth is a chain of layer dimensions
