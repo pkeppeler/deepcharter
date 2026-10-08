@@ -29,9 +29,10 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 	inputs.file(template).withPropertyName("template")
 	// WorldDataGuard must list every saved-data record of the mod, or it misses a swap of a new one.
 	def mainSources = fileTree("src/main/java") { include "**/*.java" }
-	// A direct getDataStorage().set( leaks a world-global record if the code between it and its restore throws. Tests swap through
-	// WorldData; only the helper and the files that deliberately span listener phases within one tick call it directly.
-	def directSwapAllowed = ["WorldData.java", "HandbookChaptersOneToFiveTest.java"]
+	// A direct getDataStorage().set( (or a getDataStorage() kept in a variable, so a later set is not seen) leaks a world-global record
+	// if the code between it and its restore throws. Tests swap through WorldData; only WorldData and a swap marked with the comment
+	// below, which deliberately spans listener phases within one tick, call it directly. Scratch SavedDataStorage instances are fine.
+	def directSwapMarker = "// world-data: listener-phase swap"
 	def guardSource = file("src/gametest/java/io/github/pkeppeler/deepcharter/test/support/WorldDataGuard.java")
 	inputs.files(mainSources).withPropertyName("mainSources")
 	outputs.file(outputFile)
@@ -46,10 +47,18 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 			def simpleName = className.substring(className.lastIndexOf(".") + 1)
 			// Code only: comments and string literals (text blocks included) must not match.
 			def text = source.text.replaceAll(/(?s)"""(?:\\.|.)*?"""|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\/\*.*?\*\/|\/\/[^\n]*/) { match ->
-				match.startsWith("/") ? " " : "\"\""
+				(match.startsWith("/") ? " " : "\"\"") + match.replaceAll(/[^\n]/, "")
 			}
-			if (!(source.name in directSwapAllowed) && (text =~ /getDataStorage\(\)\s*\.\s*set\s*\(/).find()) {
-				problems << "${className} calls getDataStorage().set( directly; swap a world-global record with WorldData.with, WorldData.swap or WorldData.replace, which restore it in a finally"
+			if (source.name != "WorldData.java") {
+				def rawLines = source.readLines()
+				def direct = text =~ /getDataStorage\(\)\s*\.\s*set\s*\(|getDataStorage\(\)\s*[;,)]/
+				while (direct.find()) {
+					def line = text.substring(0, direct.start()).count("\n")
+					def marked = [line, line - 1].any { it >= 0 && rawLines[it].contains(directSwapMarker) }
+					if (!marked) {
+						problems << "${className}:${line + 1} swaps or keeps getDataStorage() directly; swap a world-global record with WorldData.with, WorldData.swap or WorldData.replace, which restore it in a finally"
+					}
+				}
 			}
 			if (text =~ /\babstract\s+class\s/) {
 				return

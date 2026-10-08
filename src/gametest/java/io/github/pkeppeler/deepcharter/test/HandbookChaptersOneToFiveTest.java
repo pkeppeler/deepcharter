@@ -640,12 +640,14 @@ public class HandbookChaptersOneToFiveTest {
 		endTick.register(BEFORE_THE_POLL, server -> {
 			if (server.getTickCount() <= ARMED_UNTIL.get() && server.getTickCount() % HandbookTuning.DEFAULT.triggerPollTicks() == 0) {
 				worldsRepairs = RepairState.get(server);
+				// world-data: listener-phase swap
 				server.getDataStorage().set(RepairState.TYPE,
 						repairedFor(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL));
 			}
 		});
 		endTick.register(AFTER_THE_POLL, server -> {
 			if (worldsRepairs != null) {
+				// world-data: listener-phase swap
 				server.getDataStorage().set(RepairState.TYPE, worldsRepairs);
 				worldsRepairs = null;
 				ARMED_UNTIL.set(-1);

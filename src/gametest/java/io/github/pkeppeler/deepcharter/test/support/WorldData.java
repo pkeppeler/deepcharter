@@ -57,7 +57,7 @@ public final class WorldData {
 		return new Swap(server);
 	}
 
-	/** The test method that swapped {@code type} last, if any did. */
+	/** The first caller outside this class that swapped {@code type} last, if any did: a test method, or a wrapper such as {@code withFreshWorld}. */
 	static Optional<String> lastSwapper(SavedDataType<?> type) {
 		return Optional.ofNullable(LAST_SWAPPER.get(type));
 	}
@@ -68,7 +68,7 @@ public final class WorldData {
 
 	private static String caller() {
 		return StackWalker.getInstance().walk(frames -> frames
-				.filter(frame -> !frame.getClassName().startsWith(WorldData.class.getName()))
+				.filter(frame -> !frame.getClassName().equals(WorldData.class.getName()) && !frame.getClassName().startsWith(WorldData.class.getName() + "$"))
 				.findFirst()
 				.map(frame -> frame.getClassName().substring(frame.getClassName().lastIndexOf('.') + 1) + "." + frame.getMethodName())
 				.orElse("an unknown test"));
@@ -98,15 +98,38 @@ public final class WorldData {
 		public <R> R call(Supplier<R> body) {
 			String swapper = caller();
 			List<Runnable> restores = new ArrayList<>();
+			R result;
 			try {
 				for (Entry<?> entry : entries) {
 					restores.add(entry.apply(server, swapper));
 				}
-				return body.get();
-			} finally {
-				for (int i = restores.size() - 1; i >= 0; i--) {
+				result = body.get();
+			} catch (Throwable thrown) {
+				restoreAll(restores, thrown);
+				throw thrown;
+			}
+			restoreAll(restores, null);
+			return result;
+		}
+
+		/** Puts every record back, in reverse order, even if one restore throws. A restore failure is suppressed on {@code primary}, or thrown when there is none. */
+		private static void restoreAll(List<Runnable> restores, Throwable primary) {
+			RuntimeException failed = null;
+			for (int i = restores.size() - 1; i >= 0; i--) {
+				try {
 					restores.get(i).run();
+				} catch (RuntimeException e) {
+					if (primary != null) {
+						primary.addSuppressed(e);
+					} else if (failed == null) {
+						failed = e;
+					} else {
+						failed.addSuppressed(e);
+					}
 				}
+			}
+			if (failed != null) {
+				throw failed;
 			}
 		}
 	}
