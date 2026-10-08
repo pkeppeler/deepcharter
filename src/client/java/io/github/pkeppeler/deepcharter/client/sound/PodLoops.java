@@ -112,7 +112,7 @@ public final class PodLoops {
 					Key key = new Key(pod.getId(), channel);
 					Optional<DeepSound> wanted = channel.soundOf(pod);
 					Loop playing = LOOPS.get(key);
-					if (playing != null && wanted.filter(playing.sound::equals).isPresent()) {
+					if (playing != null && wanted.equals(Optional.of(playing.sound))) {
 						continue;
 					}
 					if (playing != null) {
@@ -146,7 +146,7 @@ public final class PodLoops {
 
 		@Override
 		public void tick() {
-			if (pod.isRemoved() || pod.level() != Minecraft.getInstance().level || !channel.soundOf(pod).filter(sound::equals).isPresent()) {
+			if (pod.isRemoved() || pod.level() != Minecraft.getInstance().level || !channel.soundOf(pod).equals(Optional.of(sound))) {
 				end();
 				return;
 			}
