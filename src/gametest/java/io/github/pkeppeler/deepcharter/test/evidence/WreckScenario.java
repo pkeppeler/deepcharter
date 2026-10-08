@@ -10,11 +10,14 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.phys.Vec3;
 
+import io.github.pkeppeler.deepcharter.charter.CharterId;
+import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 
-/** Evidence scenario "m2-wrecks": a working pod loses its hull and goes dark, next to a working pod. */
+/** Evidence scenario "m2-wrecks": a working pod loses its hull and goes dark, next to a working pod, and the owner charter (the player, who is not riding) is told in chat. */
 public class WreckScenario extends EvidenceScenario {
 	private static final int FRAMES_BEFORE = 10;
 	private static final int FRAMES_AFTER = 14;
@@ -33,8 +36,14 @@ public class WreckScenario extends EvidenceScenario {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 				// The player faces +z (south). Two pods stand in front of the player, 5 blocks apart.
 				player.teleportTo(player.level(), player.getX(), player.getY(), player.getZ(), Set.of(), 0f, 0f, true);
-				spawn(player, new Vec3(-2.5, 0, 6));
+				Charters.found(server, player.getUUID(), "Evidence Charter").ifPresent(refusal -> {
+					throw new AssertionError("could not found a charter: " + refusal);
+				});
+				CharterId charter = Charters.charterOf(server, player.getUUID()).orElseThrow().id();
+				// Both pods belong to the player's charter, and nobody rides the doomed one: the owner is still told.
+				PodComponents.register(spawn(player, new Vec3(-2.5, 0, 6)), charter);
 				doomed[0] = spawn(player, new Vec3(2.5, 0, 6));
+				PodComponents.register(doomed[0], charter);
 			});
 			context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
 			context.waitTicks(60);

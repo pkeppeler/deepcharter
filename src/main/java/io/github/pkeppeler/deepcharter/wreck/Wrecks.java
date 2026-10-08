@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.wreck;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.OptionalInt;
 
 import net.minecraft.core.BlockPos;
@@ -25,6 +26,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodCargo;
+import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 
 /**
@@ -102,7 +104,7 @@ public final class Wrecks {
 		Versioned.modify(pod, WreckRegistry.STATE, state -> WreckState.WRECKED);
 		ServerLevel level = (ServerLevel) pod.level();
 		List<Entity> crew = List.copyOf(pod.getPassengers());
-		Map<CharterId, Charter> charters = chartersOf(level.getServer(), crew);
+		Map<CharterId, Charter> charters = chartersToTell(level.getServer(), pod, crew);
 		pod.ejectPassengers();
 		crew.forEach(member -> CrewFate.die(member, level));
 		for (Charter charter : charters.values()) {
@@ -145,9 +147,22 @@ public final class Wrecks {
 		return !(pod.getAttached(WreckRegistry.STATE) instanceof Versioned.Unreadable<WreckState>);
 	}
 
-	/** The charter of each player in the crew, once each. */
-	private static Map<CharterId, Charter> chartersOf(MinecraftServer server, List<Entity> crew) {
+	/**
+	 * Who is told: the pod's owner charter, and only it, even when nobody was riding. A pod with no live owner (unowned, or its
+	 * owner gone or dormant) tells the charter of each player in the crew, once each. Offline members are not told later: the
+	 * notice is a message for now, and is not kept.
+	 */
+	private static Map<CharterId, Charter> chartersToTell(MinecraftServer server, PodEntity pod, List<Entity> crew) {
 		Map<CharterId, Charter> charters = new LinkedHashMap<>();
+		Optional<Charter> owner = PodComponents.ownerCharter(pod);
+		if (owner.isPresent()) {
+			charters.put(owner.get().id(), owner.get());
+			return charters;
+		}
+		if (!Charters.isReadable(server)) {
+			DeepCharter.LOGGER.error("The wreck of pod {} is reported to nobody, because the saved charters cannot be read", pod.getUUID());
+			return charters;
+		}
 		for (Entity member : crew) {
 			Charters.charterOf(server, member.getUUID()).ifPresent(charter -> charters.putIfAbsent(charter.id(), charter));
 		}

@@ -313,6 +313,24 @@ public final class PodComponents {
 		}
 	}
 
+	/**
+	 * The charter that owns the pod and can act as its owner: empty for a pod nobody owns, and for an owner that is gone or dormant
+	 * (as in {@link #mayAccess}, such a pod is anyone's). Also empty when the pod's components or the saved charters cannot be
+	 * read; never throws.
+	 */
+	public static Optional<Charter> ownerCharter(PodEntity pod) {
+		Optional<Registration> registration = read(pod).registration();
+		if (registration.isEmpty()) {
+			return Optional.empty();
+		}
+		try {
+			return Charters.find(pod.level().getServer(), registration.get().owner()).filter(owner -> !owner.dormant());
+		} catch (IllegalStateException unreadable) {
+			logChartersUnreadable(unreadable);
+			return Optional.empty();
+		}
+	}
+
 	/** True when the pod's components are unreadable; logs once, through {@link #read}. */
 	private static boolean unreadable(PodEntity pod) {
 		read(pod);
