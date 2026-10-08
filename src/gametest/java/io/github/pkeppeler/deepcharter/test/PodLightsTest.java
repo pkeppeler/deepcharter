@@ -11,6 +11,9 @@ import java.util.stream.Collectors;
 
 import com.mojang.serialization.Dynamic;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.core.BlockPos;
@@ -27,7 +30,6 @@ import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
-import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
@@ -48,6 +50,7 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
  * UUID a test has put in {@link #DARK}.
  */
 public class PodLightsTest {
+	private static final Logger LOGGER = LoggerFactory.getLogger(PodLightsTest.class);
 	private static final int FLOOR_Y = 1;
 	private static final int FLOOR_RADIUS = 3;
 	private static final Vec3 SPAWN = new Vec3(FLOOR_RADIUS + 0.5, FLOOR_Y + 1, FLOOR_RADIUS + 0.5);
@@ -387,7 +390,7 @@ public class PodLightsTest {
 				total[stage] += spent;
 			}
 			if (tick == stages.length * ticksPerStage - 1) {
-				DeepCharter.LOGGER.info("pod lights tick cost, 2 pods, mean ns per server tick over {} ticks: standing lit {}, moving lit {}, no lights part {}",
+				LOGGER.info("pod lights tick cost, 2 pods, mean ns per server tick over {} ticks: standing lit {}, moving lit {}, no lights part {}",
 						COST_TICKS, total[0] / COST_TICKS, total[1] / COST_TICKS, total[2] / COST_TICKS);
 				for (PodEntity[] pods : stages) {
 					discardAll(pods);
