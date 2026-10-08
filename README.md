@@ -59,3 +59,7 @@ Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest
 - `test/support/TwoPlayerServer` starts a dedicated server in a client GameTest, joins the real client, then joins one mock player.
 - `test/evidence/` holds the PR evidence scenarios (see `tools/record-evidence.sh`).
 - Wait on entity ticks, not server ticks: chunks far from the players do not tick at first in a fresh world.
+
+## License
+
+[MIT](LICENSE). Data files copied from Minecraft (for example the vanilla material rule, ADR 0011) belong to Mojang and are not relicensed by this license.
