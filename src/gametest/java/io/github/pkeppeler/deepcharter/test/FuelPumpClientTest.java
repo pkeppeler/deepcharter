@@ -123,8 +123,9 @@ public class FuelPumpClientTest implements FabricClientGameTest {
 		return new Scene(pump, charter);
 	}
 
+	/** The test's own pod: the colony's hangar holds a derelict Mole too. */
 	private static PodEntity pod(MinecraftServer server) {
-		return server.overworld().getEntities(PodRegistry.POD, entity -> true).getFirst();
+		return server.overworld().getEntities(PodRegistry.POD, entity -> entity.entityTags().contains(FROZEN)).getFirst();
 	}
 
 	private static float litres(Minecraft client, Scene scene) {
