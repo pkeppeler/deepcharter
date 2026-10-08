@@ -35,7 +35,12 @@ case "$1 $2" in
       body) printf '%s\n' "${STUB_BODY-Closes #12}" ;;
       closingIssuesReferences)
         [[ ${STUB_CLOSING_FAIL-0} == 1 ]] && exit 1
-        [[ -z ${STUB_CLOSING-pkeppeler/deepcharter#12} ]] || printf '%s\n' "${STUB_CLOSING-pkeppeler/deepcharter#12}" ;;
+        # STUB_CLOSING_LATER, when set, answers every read after the first.
+        n=$(cat "$LOG.closing" 2>/dev/null || echo 0)
+        echo $((n + 1)) >"$LOG.closing"
+        set_now=${STUB_CLOSING-pkeppeler/deepcharter#12}
+        [[ $n -eq 0 ]] || set_now=${STUB_CLOSING_LATER-$set_now}
+        [[ -z $set_now ]] || printf '%s\n' "$set_now" ;;
       labels)
         [[ ${STUB_LABELS_FAIL-0} == 1 ]] && exit 1
         echo "${STUB_LABELS-infra
@@ -165,7 +170,7 @@ rc=0
 pass() { cases=$((cases + 1)); echo "ok   $1"; }
 fail() { cases=$((cases + 1)); failures=$((failures + 1)); echo "FAIL $1"; }
 
-reset() { rm -f "$LOG" "$LOG.merged" "$LOG.push"; : >"$LOG"; }
+reset() { rm -f "$LOG" "$LOG.merged" "$LOG.push" "$LOG.closing"; : >"$LOG"; }
 
 # run_script [VAR=value ...]: run $SCRIPT (default merge-pr.sh) on PR 7 with stub env overrides.
 run_script() {
@@ -210,7 +215,11 @@ refusal "draft PR" "REFUSED: PR #7 is a draft" STUB_DRAFT=true
 mismatch="but branch 12-some-slug is for issue #12 only"
 me=pkeppeler/deepcharter
 refusal "closes another issue" "$mismatch" "STUB_CLOSING=$me#13"
-refusal "no closing reference" "body has no 'Closes #12'" STUB_CLOSING=
+refusal "no closing reference" "has no closing reference (put 'Closes #12' in the body)" STUB_CLOSING=
+refusal "closing set changes before the merge" "closing set changed during the gate (was #12, now #12 #13); re-run" \
+  "STUB_CLOSING_LATER=$me#12
+$me#13"
+refusal "closing set emptied before the merge" "closing set changed during the gate (was #12, now empty)" STUB_CLOSING_LATER=
 refusal "closes branch issue and another" "closes #12 #13 but" "STUB_CLOSING=$me#12
 $me#13"
 refusal "closes two others" "closes #13 #14 but" "STUB_CLOSING=$me#13
