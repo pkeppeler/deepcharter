@@ -13,8 +13,10 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.level.block.Blocks;
 
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.colony.FounderStatue;
 import io.github.pkeppeler.deepcharter.client.market.AccountHud;
 import io.github.pkeppeler.deepcharter.client.market.OreProcessorScreen;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
@@ -64,6 +66,20 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 				return player.getInventory().countItem(OreRegistry.item(OreType.IRONIUM)) + player.getInventory().countItem(OreRegistry.item(OreType.SILVERIUM));
 			});
 			check(ore == 0, "the sold ore left the inventory, " + ore + " remain");
+
+			// #80: the work order is listed with no progress, and handing in ten Bronzium finishes it and restores the Founder's hands.
+			check(context.computeOnClient(client -> screen.orderLines()).equals(List.of("WORK ORDERS", "RESTORE THE FOUNDER'S HANDS", "0 / 10 BRONZIUM")),
+					"the screen lists the work order, got " + context.computeOnClient(client -> screen.orderLines()));
+			singleplayer.getServer().runOnServer(server -> {
+				for (int i = 0; i < 10; i++) {
+					server.getPlayerList().getPlayers().getFirst().getInventory().add(OreRegistry.stack(OreType.BRONZIUM));
+				}
+			});
+			context.clickScreenButton("DELIVER BRONZIUM");
+			context.waitFor(client -> screen.orderLines().getLast().endsWith("DONE"), WAIT_TICKS);
+			check(singleplayer.getServer().computeOnServer(FounderStatue::handsRestored), "the Founder's hands are restored");
+			singleplayer.getServer().runOnServer(server -> FounderStatue.handPositions(server).orElseThrow()
+					.forEach(pos -> server.overworld().setBlock(pos, Blocks.AIR.defaultBlockState(), 3)));
 			context.setScreen(() -> null);
 		}
 	}

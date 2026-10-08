@@ -38,6 +38,12 @@ public final class FounderStatue {
 
 	/** Puts both hands in place; a hand already there stays. Throws before the colony is built: check {@link #handPositions} first. */
 	public static void restoreHands(MinecraftServer server) {
-		throw new UnsupportedOperationException("stub: restoreHands");
+		List<BlockPos> positions = handPositions(server).orElseThrow(() -> new IllegalStateException("the colony is not built: the Founder has no hands to restore"));
+		ServerLevel overworld = server.overworld();
+		for (BlockPos pos : positions) {
+			// Loads the chunk first: a block set in an unloaded chunk is lost.
+			overworld.getChunk(pos);
+			overworld.setBlock(pos, hand(), Block.UPDATE_ALL);
+		}
 	}
 }
