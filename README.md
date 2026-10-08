@@ -62,6 +62,15 @@ Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest
 - `test/support/MockPlayers` joins a real server-side player with no client behind it.
 - `test/support/TwoPlayerServer` starts a dedicated server in a client GameTest, joins the real client, then joins one mock player.
 - `test/evidence/` holds the PR evidence scenarios (see `tools/record-evidence.sh`). When the Mac cannot render, add the `record` label to a PR whose body has a `Record: <scenario>` line (or run the `Record evidence` workflow with `pr` and `scenario`): CI runs the scenario headless, publishes its stills, GIF and MP4 to `pr-media/<pr>/`, and comments the markdown. Costs CI minutes, so only on request.
+- Before and after stills for an art PR (`design-tour`, the same views of the whole game):
+  1. Record before on `main`, from a checkout or worktree of `main` (never switch the main checkout): `tools/record-evidence.sh design-tour`. It takes about 30 minutes and ends in `build/evidence/design-tour/screenshots`. Copy that directory away, because the next run replaces it.
+  2. Record after on the PR branch the same way, and copy its `screenshots` directory away too.
+  3. Compare: `tools/diff-stills <before> <after> --out <dir>`.
+  4. Attach the table and the side-by-side image of each still the PR meant to change. A still in the table that the PR did not mean to change is a finding.
+
+  `tools/diff-stills <dirA> <dirB> [--tolerance N] [--out DIR]` needs only `python3`. It prints a table of the stills that changed (name, percent of pixels changed, largest channel delta; channels within `--tolerance` of each other, default 2, count as equal), and writes `NAME-side-by-side.png` and `NAME-diff.png` for each of them into `DIR`. It exits 1 when any still differs.
+
+  The tour is deterministic: two runs of one commit give an empty table, or a short list that the PR body explains. `DesignTourScenario` fixes the seed, stops the clock at noon and the weather clear, stops random ticks and mob spawning, clears mobs and particles before each still, parks the cursor off the window, shoots the breach fade at its fourth tick, and waits (on a wall-clock limit, not on tick counts) until the chunks have rendered. If a new still differs between runs, fix that in `DesignTourScenario.settle` or `pinWorld`, not by raising the tolerance.
 - Wait on entity ticks, not server ticks: chunks far from the players do not tick at first in a fresh world.
 
 ## License

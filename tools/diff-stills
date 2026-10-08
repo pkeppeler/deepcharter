@@ -1,0 +1,265 @@
+#!/usr/bin/env python3
+"""Compares two directories of stills and reports the ones that differ.
+
+Usage: tools/diff-stills <dirA> <dirB> [--tolerance N] [--out DIR]
+
+Each directory holds PNGs of the same names (the output of tools/record-evidence.sh design-tour is
+build/evidence/design-tour/screenshots; a directory that has no PNGs of its own but has a screenshots/
+subdirectory is read from there). A pixel counts as changed when any of its channels differs by more than N
+(0 to 255, default 2). Stills that differ beyond the tolerance are printed as a table, worst first:
+
+    still                         changed   max delta
+    surface-south-noon             3.41%          212
+
+With --out DIR, each of those stills also gets two PNGs in DIR:
+    NAME-side-by-side.png   A on the left, B on the right
+    NAME-diff.png           B dimmed, every changed pixel in red
+
+A still that is in only one directory, or whose size differs, is listed too and gets no images.
+Exit status: 0 when no still differs, 1 when some do, 2 on a usage error or an unreadable PNG.
+Standard library only (PNG is read and written with zlib).
+"""
+import argparse
+import struct
+import sys
+import zlib
+from pathlib import Path
+
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+# Colour type -> channels per pixel. Only 8-bit, non-interlaced PNGs are read: that is what the game writes.
+CHANNELS = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}
+DEFAULT_TOLERANCE = 2
+
+
+class Image:
+    """Width, height and RGB bytes (3 per pixel, row by row)."""
+
+    def __init__(self, width, height, rgb):
+        self.width = width
+        self.height = height
+        self.rgb = rgb
+
+
+def read_chunks(data, path):
+    if not data.startswith(PNG_SIGNATURE):
+        raise ValueError(f"{path}: not a PNG")
+    pos = len(PNG_SIGNATURE)
+    while pos + 8 <= len(data):
+        length, kind = struct.unpack(">I4s", data[pos:pos + 8])
+        body = data[pos + 8:pos + 8 + length]
+        yield kind, body
+        pos += 12 + length
+        if kind == b"IEND":
+            return
+
+
+def unfilter(raw, width, height, bpp, path):
+    stride = width * bpp
+    if len(raw) != height * (stride + 1):
+        raise ValueError(f"{path}: image data is {len(raw)} bytes, expected {height * (stride + 1)}")
+    out = bytearray(height * stride)
+    prior = bytes(stride)
+    for y in range(height):
+        start = y * (stride + 1)
+        kind = raw[start]
+        line = bytearray(raw[start + 1:start + 1 + stride])
+        if kind == 1:
+            for i in range(bpp, stride):
+                line[i] = (line[i] + line[i - bpp]) & 255
+        elif kind == 2:
+            for i in range(stride):
+                line[i] = (line[i] + prior[i]) & 255
+        elif kind == 3:
+            for i in range(stride):
+                left = line[i - bpp] if i >= bpp else 0
+                line[i] = (line[i] + ((left + prior[i]) >> 1)) & 255
+        elif kind == 4:
+            for i in range(stride):
+                a = line[i - bpp] if i >= bpp else 0
+                b = prior[i]
+                c = prior[i - bpp] if i >= bpp else 0
+                p = a + b - c
+                pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
+                predictor = a if pa <= pb and pa <= pc else (b if pb <= pc else c)
+                line[i] = (line[i] + predictor) & 255
+        elif kind != 0:
+            raise ValueError(f"{path}: unknown PNG filter {kind}")
+        out[y * stride:(y + 1) * stride] = line
+        prior = line
+    return out
+
+
+def decode_png(path):
+    """Reads a PNG file into an Image. Alpha is dropped: the stills are opaque screenshots."""
+    data = Path(path).read_bytes()
+    header = None
+    palette = b""
+    idat = bytearray()
+    for kind, body in read_chunks(data, path):
+        if kind == b"IHDR":
+            header = struct.unpack(">IIBBBBB", body)
+        elif kind == b"PLTE":
+            palette = body
+        elif kind == b"IDAT":
+            idat += body
+    if header is None:
+        raise ValueError(f"{path}: no IHDR chunk")
+    width, height, depth, colour, _, _, interlace = header
+    if depth != 8 or interlace != 0 or colour not in CHANNELS:
+        raise ValueError(f"{path}: only 8-bit non-interlaced PNGs are supported (depth {depth}, colour type {colour}, interlace {interlace})")
+    bpp = CHANNELS[colour]
+    pixels = unfilter(zlib.decompress(bytes(idat)), width, height, bpp, path)
+    count = width * height
+    if colour == 2:
+        rgb = bytes(pixels)
+    elif colour == 6:
+        rgb = bytearray(count * 3)
+        for channel in range(3):
+            rgb[channel::3] = pixels[channel::4]
+        rgb = bytes(rgb)
+    elif colour == 0:
+        rgb = bytearray(count * 3)
+        for channel in range(3):
+            rgb[channel::3] = pixels
+        rgb = bytes(rgb)
+    elif colour == 4:
+        rgb = bytearray(count * 3)
+        for channel in range(3):
+            rgb[channel::3] = pixels[0::2]
+        rgb = bytes(rgb)
+    else:
+        rgb = bytearray(count * 3)
+        for i, index in enumerate(pixels):
+            rgb[3 * i:3 * i + 3] = palette[3 * index:3 * index + 3]
+        rgb = bytes(rgb)
+    return Image(width, height, rgb)
+
+
+def encode_png(image):
+    """Writes an Image as an 8-bit RGB PNG."""
+    stride = image.width * 3
+    raw = bytearray()
+    for y in range(image.height):
+        raw.append(0)
+        raw += image.rgb[y * stride:(y + 1) * stride]
+
+    def chunk(kind, body):
+        crc = zlib.crc32(kind + body) & 0xFFFFFFFF
+        return struct.pack(">I", len(body)) + kind + body + struct.pack(">I", crc)
+
+    header = struct.pack(">IIBBBBB", image.width, image.height, 8, 2, 0, 0, 0)
+    return PNG_SIGNATURE + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(bytes(raw), 6)) + chunk(b"IEND", b"")
+
+
+def compare(a, b, tolerance):
+    """Returns (changed pixel count, max channel delta, mask of changed pixels as a bytearray of 0/1)."""
+    pixels = a.width * a.height
+    mask = bytearray(pixels)
+    changed = 0
+    biggest = 0
+    ra, rb = a.rgb, b.rgb
+    for p in range(pixels):
+        i = 3 * p
+        if ra[i:i + 3] == rb[i:i + 3]:
+            continue
+        delta = max(abs(ra[i] - rb[i]), abs(ra[i + 1] - rb[i + 1]), abs(ra[i + 2] - rb[i + 2]))
+        biggest = max(biggest, delta)
+        if delta > tolerance:
+            mask[p] = 1
+            changed += 1
+    return changed, biggest, mask
+
+
+def side_by_side(a, b):
+    stride = a.width * 3
+    rows = bytearray()
+    for y in range(a.height):
+        rows += a.rgb[y * stride:(y + 1) * stride] + b.rgb[y * stride:(y + 1) * stride]
+    return Image(a.width * 2, a.height, bytes(rows))
+
+
+def highlight(b, mask):
+    out = bytearray(len(b.rgb))
+    for p in range(b.width * b.height):
+        i = 3 * p
+        if mask[p]:
+            out[i:i + 3] = b"\xff\x00\x00"
+        else:
+            out[i:i + 3] = bytes(v // 3 for v in b.rgb[i:i + 3])
+    return Image(b.width, b.height, bytes(out))
+
+
+def stills_of(directory):
+    root = Path(directory)
+    if not root.is_dir():
+        raise ValueError(f"{directory}: not a directory")
+    found = {p.name: p for p in root.glob("*.png")}
+    if not found and (root / "screenshots").is_dir():
+        found = {p.name: p for p in (root / "screenshots").glob("*.png")}
+    return found
+
+
+def diff_directories(dir_a, dir_b, tolerance, out_dir=None):
+    """Returns table rows (name, percent changed, max delta, note), worst first. Writes the images when out_dir is given."""
+    stills_a, stills_b = stills_of(dir_a), stills_of(dir_b)
+    if not stills_a and not stills_b:
+        raise ValueError(f"no PNGs in {dir_a} or {dir_b}")
+    rows = []
+    for name in sorted(stills_a.keys() | stills_b.keys()):
+        if name not in stills_b:
+            rows.append((name, 100.0, None, "only in A"))
+            continue
+        if name not in stills_a:
+            rows.append((name, 100.0, None, "only in B"))
+            continue
+        if stills_a[name].read_bytes() == stills_b[name].read_bytes():
+            continue
+        a, b = decode_png(stills_a[name]), decode_png(stills_b[name])
+        if (a.width, a.height) != (b.width, b.height):
+            rows.append((name, 100.0, None, f"size {a.width}x{a.height} vs {b.width}x{b.height}"))
+            continue
+        changed, biggest, mask = compare(a, b, tolerance)
+        if changed == 0:
+            continue
+        rows.append((name, 100.0 * changed / (a.width * a.height), biggest, ""))
+        if out_dir is not None:
+            Path(out_dir).mkdir(parents=True, exist_ok=True)
+            stem = Path(name).stem
+            (Path(out_dir) / f"{stem}-side-by-side.png").write_bytes(encode_png(side_by_side(a, b)))
+            (Path(out_dir) / f"{stem}-diff.png").write_bytes(encode_png(highlight(b, mask)))
+    rows.sort(key=lambda row: (-row[1], row[0]))
+    return rows, len(stills_a.keys() | stills_b.keys())
+
+
+def format_table(rows):
+    width = max([len("still")] + [len(Path(row[0]).stem) for row in rows])
+    lines = [f"{'still':<{width}}  {'changed':>8}  {'max delta':>9}"]
+    for name, percent, biggest, note in rows:
+        delta = "-" if biggest is None else str(biggest)
+        lines.append(f"{Path(name).stem:<{width}}  {percent:>7.2f}%  {delta:>9}" + (f"  {note}" if note else ""))
+    return "\n".join(lines)
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(prog="diff-stills", description="Lists the stills that differ between two directories.")
+    parser.add_argument("dir_a")
+    parser.add_argument("dir_b")
+    parser.add_argument("--tolerance", type=int, default=DEFAULT_TOLERANCE, metavar="N",
+                        help=f"a channel that differs by at most N (0-255) is the same (default {DEFAULT_TOLERANCE})")
+    parser.add_argument("--out", metavar="DIR", help="write NAME-side-by-side.png and NAME-diff.png of each differing still here")
+    args = parser.parse_args(argv)
+    if not 0 <= args.tolerance <= 255:
+        parser.error("--tolerance must be between 0 and 255")
+    try:
+        rows, total = diff_directories(args.dir_a, args.dir_b, args.tolerance, args.out)
+    except (ValueError, OSError, zlib.error) as error:
+        print(f"diff-stills: {error}", file=sys.stderr)
+        return 2
+    if rows:
+        print(format_table(rows))
+    print(f"{len(rows)} of {total} stills differ (tolerance {args.tolerance})")
+    return 1 if rows else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

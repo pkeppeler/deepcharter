@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -23,13 +24,18 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ParticleStatus;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.ExperienceOrb;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -116,6 +122,10 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
  * {@link AssertionError} that names the still, so that a moved or redrawn building fails the run, and no wrong picture is filed
  * as the "after".
  *
+ * <p>Two runs of one commit give the same stills (tools/diff-stills compares them): the world is pinned by {@link #pinWorld} (seed,
+ * clock, weather, random ticks, mob spawning, particles) and every still goes through {@link #settle} first, which clears the mobs
+ * and the particles, parks the cursor off the window, and waits until the chunks have rendered. See docs/design/skins.md.
+ *
  * <p>The order: handbook and item gallery, the surface by day, dusk and night, the colony, the terminal screens, the pods by day,
  * a dark room (pods lit and unlit, the lampless figure), the HUDs, layer 1, the breach into layer 2, layer 2 and its structures.
  */
@@ -135,6 +145,14 @@ public class DesignTourScenario extends EvidenceScenario {
 	private static final int ITEMS_PER_PAGE = 36;
 	private static final long FUNDS = 5_000;
 	private static final int TERMINAL_TYPING_TICKS = 140;
+	/** The wall-clock limit of one settle. A world that has not settled by then fails the run, naming the still. */
+	private static final long SETTLE_LIMIT_NANOS = 90_000_000_000L;
+	/** Ticks between two looks at whether the world has settled. */
+	private static final int SETTLE_POLL_TICKS = 2;
+	/** Where the cursor is parked when a screen is open: well outside the window, so that no slot or button is hovered. */
+	private static final double OFF_SCREEN = -10_000;
+	/** The breach fade is shot at the first client tick where it is half black: tick 4 of its 8 ticks of fading in, the same every run. */
+	private static final float FADE_SHOT_ALPHA = 0.5f;
 
 	private ClientGameTestContext ctx;
 	private TestSingleplayerContext sp;
@@ -160,6 +178,7 @@ public class DesignTourScenario extends EvidenceScenario {
 			ground = colony.center();
 			anchors = colony.anchors();
 
+			pinWorld();
 			handbook();
 			itemGallery();
 			setUpCamera();
@@ -174,6 +193,83 @@ public class DesignTourScenario extends EvidenceScenario {
 			breachToLayerTwo();
 			layerTwo();
 			remainingTransmissions();
+		}
+	}
+
+	// ------------------------------------------------------------------------------------------------ determinism
+
+	/**
+	 * Pins everything that would make two runs of one commit differ, before the first still: the clock stops at noon, the weather is
+	 * clear and stays so, nothing grows or burns by random tick, no mob spawns, and particles are at their minimum. The seed is the
+	 * world's own (see {@link #run}). Mobs that the world generated, and particles already flying, are cleared by {@link #settle}.
+	 */
+	private void pinWorld() {
+		serverDo(server -> {
+			GameRules rules = server.getGameRules();
+			rules.set(GameRules.ADVANCE_TIME, false, server);
+			rules.set(GameRules.ADVANCE_WEATHER, false, server);
+			rules.set(GameRules.SPAWN_MOBS, false, server);
+			rules.set(GameRules.SPAWN_MONSTERS, false, server);
+			rules.set(GameRules.SPAWN_PATROLS, false, server);
+			rules.set(GameRules.SPAWN_PHANTOMS, false, server);
+			rules.set(GameRules.SPAWN_WANDERING_TRADERS, false, server);
+			rules.set(GameRules.SPAWN_WARDENS, false, server);
+			rules.set(GameRules.RANDOM_TICK_SPEED, 0, server);
+			command(server, "weather clear");
+			command(server, "time set noon");
+		});
+		ctx.runOnClient(client -> {
+			client.options.particles().set(ParticleStatus.MINIMAL);
+			client.options.bobView().set(false);
+		});
+	}
+
+	/** A mob of the world (a cow, a villager) or a loose item or orb: what the tour never shows. The mod's own mobs are the tour's. */
+	private static boolean isStray(Entity entity) {
+		boolean thing = entity instanceof Mob || entity instanceof ItemEntity || entity instanceof ExperienceOrb;
+		return thing && !BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).getNamespace().equals(DeepCharter.MOD_ID);
+	}
+
+	/**
+	 * Gets the world ready for a still: clears the mobs that chunk generation has put in view since the last one, clears the
+	 * particles, parks the cursor off the window when a screen is open (so no slot or button is hovered and no tooltip shows), and
+	 * waits until the client has removed the mobs and rendered every chunk section. The wait ends on those conditions, and fails
+	 * with an {@link AssertionError} naming the still after {@link #SETTLE_LIMIT_NANOS} of wall-clock time; it never counts ticks.
+	 */
+	private void settle(String stillName) {
+		long deadline = System.nanoTime() + SETTLE_LIMIT_NANOS;
+		while (true) {
+			serverDo(server -> {
+				for (ServerLevel level : server.getAllLevels()) {
+					List<Entity> strays = new ArrayList<>();
+					level.getAllEntities().forEach(entity -> {
+						if (isStray(entity)) {
+							strays.add(entity);
+						}
+					});
+					strays.forEach(Entity::discard);
+				}
+			});
+			ctx.runOnClient(client -> client.particleEngine.clearParticles());
+			if (ctx.computeOnClient(client -> client.gui.screen() != null)) {
+				ctx.getInput().setCursorPos(OFF_SCREEN, OFF_SCREEN);
+			}
+			ctx.waitTicks(SETTLE_POLL_TICKS);
+			boolean ready = ctx.computeOnClient(client -> {
+				for (Entity entity : client.level.entitiesForRendering()) {
+					if (isStray(entity)) {
+						return false;
+					}
+				}
+				return client.levelRenderer.hasRenderedAllSections();
+			});
+			if (ready) {
+				return;
+			}
+			if (System.nanoTime() > deadline) {
+				throw new AssertionError("still " + stillName + ": the world did not settle (mobs gone, chunks rendered) in "
+						+ SETTLE_LIMIT_NANOS / 1_000_000_000L + " s");
+			}
 		}
 	}
 
@@ -264,14 +360,11 @@ public class DesignTourScenario extends EvidenceScenario {
 			player.getAbilities().flying = true;
 			player.onUpdateAbilities();
 			player.setPermanentlyInvulnerable(true);
-			server.getGameRules().set(GameRules.SPAWN_MONSTERS, false, server);
 			if (Charters.found(server, player.getUUID(), "Design Tour Co.").isPresent()) {
 				throw new AssertionError("founding the charter should succeed");
 			}
 			charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id();
 			Charters.deposit(server, charter, FUNDS);
-			command(server, "weather clear");
-			command(server, "time set noon");
 		});
 		ctx.runOnClient(client -> {
 			client.options.setCameraType(CameraType.FIRST_PERSON);
@@ -880,7 +973,7 @@ public class DesignTourScenario extends EvidenceScenario {
 		Identifier last = null;
 		for (int tick = 0; tick < 1500 && !(shot.size() >= 2 && tail >= 12); tick++) {
 			float alpha = ctx.computeOnClient(client -> BreachEffects.fadeAlpha(0f));
-			if (!faded && alpha > 0.4f && ctx.computeOnClient(client -> client.gui.screen() == null)) {
+			if (!faded && alpha >= FADE_SHOT_ALPHA && ctx.computeOnClient(client -> client.gui.screen() == null)) {
 				faded = true;
 				screenshot(ctx, "hud-breach-fade");
 			}
@@ -1090,6 +1183,7 @@ public class DesignTourScenario extends EvidenceScenario {
 		hud(true);
 		for (String id : List.of("t02", "surface_arrival")) {
 			Identifier transmission = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, id);
+			settle("hud-transmission-" + id);
 			serverDo(server -> Transmissions.fire(server, charter, transmission));
 			boolean typed = false;
 			for (int tick = 0; tick < 1200 && !typed; tick++) {
@@ -1134,6 +1228,7 @@ public class DesignTourScenario extends EvidenceScenario {
 			client.gui.hud.getChat().clearMessages(false);
 		});
 		clearTransmissions();
+		settle(stillName);
 		screenshot(ctx, stillName);
 	}
 
