@@ -22,6 +22,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -45,6 +46,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -60,13 +62,18 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterData;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.pod.PodComponents;
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalBlockEntity;
 import io.github.pkeppeler.deepcharter.terminal.TerminalEvents;
 import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
+import io.github.pkeppeler.deepcharter.terminal.TerminalFeature;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -738,6 +745,94 @@ public class TerminalFrameworkTest {
 			throw helper.assertionException("unreadable data must be written back unchanged, got %s", written);
 		}
 		helper.succeed();
+	}
+
+	@GameTest
+	public void aPodIsParkedWithinEightBlocksOfTheMiddleOfTheTerminalAndIsServedNearestFirst(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		MockPlayer member = charterMember(helper, "Parker");
+		MockPlayer other = charterMember(helper, "Stranger");
+		Charter ours = Charters.charterOf(server, member.player().getUUID()).orElseThrow();
+		BlockPos terminal = helper.absolutePos(new BlockPos(2, 1, 2));
+		Vec3 centre = Vec3.atCenterOf(terminal);
+		List<PodEntity> pods = new ArrayList<>();
+		try {
+			PodEntity far = pod(helper, centre.add(5, 0, 0), ours);
+			PodEntity near = pod(helper, centre.add(0, 0, 3), ours);
+			PodEntity edge = pod(helper, centre.add(0, 0, -7.9), ours);
+			PodEntity outside = pod(helper, centre.add(-8.1, 0, 0), ours);
+			PodEntity foreign = pod(helper, centre.add(1, 0, 0), Charters.charterOf(server, other.player().getUUID()).orElseThrow());
+			pods.addAll(List.of(far, near, edge, outside, foreign));
+
+			List<PodEntity> parked = Terminals.parkedPods(helper.getLevel(), terminal);
+			if (!parked.equals(List.of(foreign, near, far, edge))) {
+				throw helper.assertionException("pods parked at a terminal are those within 8 blocks, nearest first: expected the foreign pod, the near, the far and the edge pod, got %s",
+						parked.stream().map(pod -> pod.position().subtract(centre)).toList());
+			}
+			List<PodEntity> ownedByTheMember = Terminals.parkedPods(helper.getLevel(), terminal, Optional.of(ours));
+			if (!ownedByTheMember.equals(List.of(near, far, edge))) {
+				throw helper.assertionException("a charter is served only the pods PodComponents.mayAccess allows it, nearest first, got %s",
+						ownedByTheMember.stream().map(pod -> pod.position().subtract(centre)).toList());
+			}
+			if (!Terminals.parkedPods(helper.getLevel(), terminal, Optional.empty()).equals(List.of())) {
+				throw helper.assertionException("a player on no charter may use no pod that a charter owns");
+			}
+			helper.succeed();
+		} finally {
+			pods.forEach(PodEntity::discard);
+		}
+	}
+
+	@GameTest
+	public void aTerminalViewCarriesItsTypesFeatureOnTheWire(GameTestHelper helper) {
+		BlockPos pos = new BlockPos(1, 2, 3);
+		TerminalView withFeature = new TerminalView(pos, TerminalTestTypes.OPEN.id(), true, true, List.of(), Optional.of(new TerminalTestTypes.Note("hello")));
+		TerminalView decoded = roundTrip(withFeature);
+		if (!decoded.equals(withFeature) || !decoded.feature(TerminalTestTypes.Note.class).equals(Optional.of(new TerminalTestTypes.Note("hello")))) {
+			throw helper.assertionException("a view should keep its feature across the wire, got %s from %s", decoded, withFeature);
+		}
+		if (decoded.feature(TerminalFeature.class).isEmpty() || decoded.feature(TerminalTestTypes.Note.class).isEmpty()) {
+			throw helper.assertionException("the feature should be readable by its class");
+		}
+		TerminalView without = new TerminalView(pos, TerminalTypes.FUEL_PUMP.id(), false, true, List.of(), Optional.empty());
+		if (!roundTrip(without).equals(without)) {
+			throw helper.assertionException("a view of a type with no feature should round-trip with none, got %s", roundTrip(without));
+		}
+		ByteBuf bytes = Unpooled.buffer();
+		TerminalView.STREAM_CODEC.encode(bytes, without);
+		TerminalView.STREAM_CODEC.encode(bytes, withFeature);
+		if (!TerminalView.STREAM_CODEC.decode(bytes).equals(without) || !TerminalView.STREAM_CODEC.decode(bytes).equals(withFeature) || bytes.isReadable()) {
+			throw helper.assertionException("a view of a type with no feature should leave the next view in the buffer readable");
+		}
+		boolean refused = false;
+		try {
+			roundTrip(new TerminalView(pos, TerminalTypes.FUEL_PUMP.id(), true, true, List.of(), Optional.of(new TerminalTestTypes.Note("x"))));
+		} catch (IllegalStateException unregistered) {
+			refused = true;
+		}
+		if (!refused) {
+			throw helper.assertionException("a feature on a type that registered none must fail loudly, not be dropped");
+		}
+		helper.succeed();
+	}
+
+	private static TerminalView roundTrip(TerminalView view) {
+		ByteBuf buffer = Unpooled.buffer();
+		TerminalView.STREAM_CODEC.encode(buffer, view);
+		TerminalView decoded = TerminalView.STREAM_CODEC.decode(buffer);
+		if (buffer.isReadable()) {
+			throw new IllegalStateException("the view left bytes unread");
+		}
+		return decoded;
+	}
+
+	private static PodEntity pod(GameTestHelper helper, Vec3 at, Charter owner) {
+		ServerLevel level = helper.getLevel();
+		PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+		pod.setPos(at);
+		level.addFreshEntity(pod);
+		PodComponents.register(pod, owner.id());
+		return pod;
 	}
 
 	private static SavedDataStorage storage(MinecraftServer server, Path dir) {

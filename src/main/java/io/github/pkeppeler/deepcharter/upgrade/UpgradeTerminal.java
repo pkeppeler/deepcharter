@@ -2,11 +2,8 @@ package io.github.pkeppeler.deepcharter.upgrade;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -16,11 +13,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
-import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -30,7 +24,9 @@ import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.pod.Serials;
 import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActions;
+import io.github.pkeppeler.deepcharter.terminal.TerminalFeatures;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.terminal.Terminals;
 
 /**
  * The upgrade terminal (SPEC section 7): a charter buys a part for the pod of its own that is parked at the terminal. The part
@@ -38,8 +34,8 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
  * As in the original, a new hull refills the hull and a new tank refills the tank. {@code PodComponents.install} alone does not:
  * it keeps the litres and the damage, because other callers need that.
  *
- * <p>A pod is parked at the terminal when it is within {@link UpgradeTuning#parkedRadius()} blocks of its centre and its owner
- * is the player's charter. A charter-owned pod nearer to the terminal wins over one farther away.
+ * <p>A pod is parked at the terminal as {@link Terminals#parkedPods} says, and is the player's to use as
+ * {@link PodComponents#mayAccess} says. A pod nearer to the terminal wins over one farther away.
  *
  * <p>Terminals have already checked distance, membership and repair when a handler here runs. The args are untrusted: the track
  * and tier are read defensively, and a part above the chassis' cap is allowed (it is shown and applied as capped).
@@ -47,8 +43,6 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 public final class UpgradeTerminal {
 	/** The action: buy the part named by {@link #TRACK_KEY} and {@link #TIER_KEY}. */
 	public static final Identifier BUY = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "upgrade_buy");
-	/** The action: send the player the {@link UpgradeView} of the terminal. The screen asks for it when it opens. */
-	public static final Identifier VIEW = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "upgrade_view");
 	/** The id of a {@link ComponentTrack}, such as {@code fuel_tank}. */
 	public static final String TRACK_KEY = "track";
 	/** An int, 1 up to the track's best tier. */
@@ -61,10 +55,7 @@ public final class UpgradeTerminal {
 
 	static void register() {
 		TerminalActions.register(TerminalTypes.UPGRADE_TERMINAL, BUY, UpgradeTerminal::runBuy);
-		TerminalActions.register(TerminalTypes.UPGRADE_TERMINAL, VIEW, context -> {
-			sendView(context.server(), context.player(), context.pos());
-			return Optional.empty();
-		});
+		TerminalFeatures.register(TerminalTypes.UPGRADE_TERMINAL, UpgradeView.STREAM_CODEC, UpgradeTerminal::view);
 	}
 
 	private sealed interface Parked {
@@ -81,11 +72,10 @@ public final class UpgradeTerminal {
 	private static Optional<Component> runBuy(TerminalAction.Context context) {
 		Optional<ComponentTrack> track = context.args().getString(TRACK_KEY).flatMap(UpgradeTerminal::trackNamed);
 		Optional<Integer> tier = context.args().getInt(TIER_KEY);
-		Optional<Component> refusal = track.isEmpty() || tier.isEmpty()
-				? Optional.of(UpgradeRefusal.BAD_REQUEST.message())
-				: buy(context.server(), context.player(), context.pos(), track.get(), tier.get());
-		sendView(context.server(), context.player(), context.pos());
-		return refusal;
+		if (track.isEmpty() || tier.isEmpty()) {
+			return Optional.of(UpgradeRefusal.BAD_REQUEST.message());
+		}
+		return buy(context.server(), context.player(), context.pos(), track.get(), tier.get());
 	}
 
 	private static Optional<ComponentTrack> trackNamed(String id) {
@@ -156,45 +146,20 @@ public final class UpgradeTerminal {
 
 	private static Parked parked(ServerPlayer player, Charter charter, BlockPos terminal) {
 		ServerLevel level = player.level();
-		Vec3 centre = Vec3.atCenterOf(terminal);
-		double radius = UpgradeTuning.DEFAULT.parkedRadius();
-		List<PodEntity> near = new ArrayList<>(level.getEntitiesOfClass(PodEntity.class, new AABB(centre, centre).inflate(radius),
-				pod -> pod.position().distanceTo(centre) <= radius));
-		near.sort(Comparator.comparingDouble(pod -> pod.position().distanceToSqr(centre)));
-		for (PodEntity pod : near) {
-			if (mayAccess(player.level().getServer(), pod, charter)) {
-				return new Parked.Ours(pod);
-			}
+		List<PodEntity> parked = Terminals.parkedPods(level, terminal);
+		Optional<PodEntity> ours = parked.stream().filter(pod -> PodComponents.mayAccess(pod, Optional.of(charter))).findFirst();
+		if (ours.isPresent()) {
+			return new Parked.Ours(ours.get());
 		}
-		return near.isEmpty() ? new Parked.None() : new Parked.Foreign();
-	}
-
-	/**
-	 * Mirrors {@code PodComponents.canMount} exactly: a pod with unreadable components is refused to everyone, an unowned pod
-	 * is anyone's, a pod whose owner charter is missing or dormant is anyone's, and any other pod is its owner's members'.
-	 * TODO switch to PodComponents.mayAccess (#126)
-	 */
-	private static boolean mayAccess(MinecraftServer server, PodEntity pod, Charter charter) {
-		if (pod.getAttached(PodComponents.STATE) instanceof Versioned.Unreadable<PodComponents.State>) {
-			return false;
-		}
-		Optional<PodComponents.Registration> registration = PodComponents.registration(pod);
-		if (registration.isEmpty()) {
-			return true;
-		}
-		Optional<Charter> owner = Charters.find(server, registration.get().owner());
-		if (owner.isEmpty() || owner.get().dormant()) {
-			return true;
-		}
-		return registration.get().owner().equals(charter.id());
+		return parked.isEmpty() ? new Parked.None() : new Parked.Foreign();
 	}
 
 	/** The view of the terminal at {@code terminal} for {@code player}, who must be on a charter. Never throws on unreadable pod data. */
-	public static UpgradeView view(MinecraftServer server, ServerPlayer player, BlockPos terminal) {
-		Charter charter = Charters.charterOf(server, player.getUUID()).orElseThrow();
+	public static UpgradeView view(MinecraftServer server, ServerPlayer player, Optional<Charter> onCharter, BlockPos terminal) {
+		Charter charter = onCharter.orElseThrow();
 		return switch (parked(player, charter, terminal)) {
-			case Parked.None _ -> new UpgradeView(terminal, Optional.empty(), false);
-			case Parked.Foreign _ -> new UpgradeView(terminal, Optional.empty(), true);
+			case Parked.None _ -> new UpgradeView(Optional.empty(), false);
+			case Parked.Foreign _ -> new UpgradeView(Optional.empty(), true);
 			case Parked.Ours ours -> {
 				PodEntity pod = ours.pod();
 				List<UpgradeView.Slot> slots = new ArrayList<>();
@@ -204,14 +169,9 @@ public final class UpgradeTerminal {
 				}
 				// An unowned pod is anyone's and has no serial: the screen words that.
 				String serial = PodComponents.registration(pod).map(PodComponents.Registration::serial).orElse("");
-				yield new UpgradeView(terminal, Optional.of(new UpgradeView.Pod(serial, UpgradeTuning.DEFAULT.tierCap(pod.chassis().id()), slots)), false);
+				yield new UpgradeView(Optional.of(new UpgradeView.Pod(serial, UpgradeTuning.DEFAULT.tierCap(pod.chassis().id()), slots)), false);
 			}
 		};
 	}
 
-	private static void sendView(MinecraftServer server, ServerPlayer player, BlockPos terminal) {
-		if (ServerPlayNetworking.canSend(player, UpgradeViewPayload.TYPE)) {
-			ServerPlayNetworking.send(player, new UpgradeViewPayload(view(server, player, terminal)));
-		}
-	}
 }
