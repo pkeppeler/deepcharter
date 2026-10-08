@@ -36,12 +36,12 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 	def directSwapMarker = "// world-data: listener-phase swap"
 	// A test or scenario that opens a room in layer rock with a direct air write skips the RoomSeal that keeps worldgen lava out of it
 	// (PR 229 found one that flooded). In a file that touches a layer dimension, only RoomCarver.carve, which seals first, writes a
-	// room's air. A setBlock, setBlockAndUpdate or box/fill helper call that names Blocks.AIR is flagged; a write that is not layer
+	// room's air. A setBlock, setBlockState, setBlockAndUpdate or box/fill helper call that names Blocks.AIR is flagged; a write that is not layer
 	// rock (the surface, one block inside a sealed room) carries the comment below, with its reason, on its line or the one above.
-	// This misses a carve whose air is not spelled Blocks.AIR, one through a differently named helper, and one in a file that
-	// reaches a layer level without LayerChain.dimension(.
+	// This misses a carve whose air is not spelled Blocks.AIR, one through destroyBlock, removeBlock or a differently named helper,
+	// and one in a file that reaches a layer level without LayerChain.dimension(.
 	def carveMarker = "// room-carver:"
-	def carveWrite = ~/\b(?:setBlock|setBlockAndUpdate|box|fill|fillFloor|fillRock)\s*\([^;]*\bBlocks\.(?:CAVE_)?AIR\b/
+	def carveWrite = ~/\b(?:setBlock|setBlockState|setBlockAndUpdate|box|fill|fillFloor|fillRock)\s*\([^;]*\bBlocks\.(?:CAVE_)?AIR\b/
 	def guardSource = file("src/gametest/java/io/github/pkeppeler/deepcharter/test/support/WorldDataGuard.java")
 	inputs.files(mainSources).withPropertyName("mainSources")
 	outputs.file(outputFile)

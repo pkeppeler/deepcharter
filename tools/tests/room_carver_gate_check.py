@@ -76,6 +76,7 @@ VIOLATIONS = {
     "box": "box(level, x - 2, x + 2, 1, 8, z - 2, z + 2, Blocks.AIR);",
     "ternary": "level.setBlock(pos, (y < floor ? Blocks.STONE : Blocks.AIR).defaultBlockState(), 2);",
     "multi-line": "level.setBlock(\n            pos,\n            Blocks.AIR.defaultBlockState(), 3);",
+    "chunk write": "chunk.setBlockState(pos, Blocks.AIR.defaultBlockState(), 0);",
     "cave air": "level.setBlockAndUpdate(pos, Blocks.CAVE_AIR.defaultBlockState());",
 }
 
