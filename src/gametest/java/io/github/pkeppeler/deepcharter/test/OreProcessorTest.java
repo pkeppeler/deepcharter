@@ -40,6 +40,7 @@ import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.WorldData;
 
 /**
  * Server GameTests for #68: "Sell All" at the ore processor credits exactly the {@link OreType} values, from the cargo of a pod
@@ -55,17 +56,13 @@ public class OreProcessorTest {
 	private static final String NOTHING_TO_SELL = "deepcharter.market.refusal.nothing_to_sell";
 
 	private static void withProcessorOnline(MinecraftServer server, Runnable body) {
-		RepairState original = RepairState.get(server);
 		RepairState fresh = new RepairState();
-		server.getDataStorage().set(RepairState.TYPE, fresh);
-		try {
+		WorldData.with(server, RepairState.TYPE, fresh, () -> {
 			for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR)) {
 				type.parts().forEach(part -> fresh.insert(type, part));
 			}
 			body.run();
-		} finally {
-			server.getDataStorage().set(RepairState.TYPE, original);
-		}
+		});
 	}
 
 	private static MockPlayer player(GameTestHelper helper, String name, boolean onCharter) {

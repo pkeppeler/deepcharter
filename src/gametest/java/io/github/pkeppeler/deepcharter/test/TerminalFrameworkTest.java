@@ -82,6 +82,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TerminalTestTypes;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
+import io.github.pkeppeler.deepcharter.test.support.WorldData;
 
 /**
  * Server GameTests for #59: the repair order, a repair seen by a second charter, validated actions, saved state, and the rest
@@ -108,13 +109,7 @@ public class TerminalFrameworkTest {
 
 	/** Runs {@code body} with {@code state} as the world's repair state, and puts the world's own back after. */
 	private static void withState(MinecraftServer server, RepairState state, Runnable body) {
-		RepairState original = RepairState.get(server);
-		server.getDataStorage().set(RepairState.TYPE, state);
-		try {
-			body.run();
-		} finally {
-			server.getDataStorage().set(RepairState.TYPE, original);
-		}
+		WorldData.with(server, RepairState.TYPE, state, body);
 	}
 
 	private static void withFreshState(MinecraftServer server, Consumer<RepairState> body) {

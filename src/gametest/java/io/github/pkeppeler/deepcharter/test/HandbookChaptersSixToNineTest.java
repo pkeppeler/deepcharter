@@ -60,6 +60,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeEvents;
@@ -244,194 +245,194 @@ public class HandbookChaptersSixToNineTest {
 	}
 
 	private static void runTheChapters(GameTestHelper helper, MinecraftServer server, ServerLevel one, ServerLevel two) {
-		RepairState repairs = RepairState.get(server);
-		server.getDataStorage().set(RepairState.TYPE, HandbookChaptersOneToFiveTest.repairedFor(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL, TerminalTypes.REPAIR_STATION));
-		List<PodEntity> pods = new ArrayList<>();
-		BlockPos terminal = helper.absolutePos(TERMINAL);
-		MockPlayer director = MockPlayers.join(helper, "Director");
-		MockPlayer crew = MockPlayers.join(helper, "Crew");
-		MockPlayer drifter = MockPlayers.join(helper, "Drifter");
-		MockPlayer rival = charterMember(helper, "Rival");
-		try {
-			ServerPlayer first = director.player();
-			ServerPlayer second = crew.player();
-			for (MockPlayer mock : List.of(director, crew, drifter)) {
-				mock.player().setGameMode(GameType.SURVIVAL);
-			}
-			HandbookChaptersOneToFiveTest.foundCharter(helper, server, director);
-			CharterId charter = Charters.charterOfOrThrow(server, first.getUUID()).orElseThrow().id();
-			expect(helper, Charters.apply(server, second.getUUID(), charter).isEmpty() && Charters.approve(server, first.getUUID(), second.getUUID()).isEmpty()
-					&& Charters.deposit(server, charter, 20_000).isEmpty(), "the second player should join the charter, which is then funded");
-			List<ServerPlayer> both = List.of(first, second);
-			// Chapters 1 to 5 are done by their own test; here they are done so that chapter 6 is the one the crew is on.
-			for (Item item : List.of(Items.OAK_LOG, Items.CRAFTING_TABLE, Items.STONE_AXE, Items.RAW_IRON, Items.IRON_INGOT)) {
-				HandbookChaptersOneToFiveTest.give(first, item);
-			}
-			for (String directive : through(5)) {
-				if (!directive.contains("/welcome/")) {
-					Directives.fire(first, id(directive));
+		WorldData.with(server, RepairState.TYPE, HandbookChaptersOneToFiveTest.repairedFor(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL,
+				TerminalTypes.REPAIR_STATION), () -> {
+			List<PodEntity> pods = new ArrayList<>();
+			BlockPos terminal = helper.absolutePos(TERMINAL);
+			MockPlayer director = MockPlayers.join(helper, "Director");
+			MockPlayer crew = MockPlayers.join(helper, "Crew");
+			MockPlayer drifter = MockPlayers.join(helper, "Drifter");
+			MockPlayer rival = charterMember(helper, "Rival");
+			try {
+				ServerPlayer first = director.player();
+				ServerPlayer second = crew.player();
+				for (MockPlayer mock : List.of(director, crew, drifter)) {
+					mock.player().setGameMode(GameType.SURVIVAL);
 				}
+				HandbookChaptersOneToFiveTest.foundCharter(helper, server, director);
+				CharterId charter = Charters.charterOfOrThrow(server, first.getUUID()).orElseThrow().id();
+				expect(helper, Charters.apply(server, second.getUUID(), charter).isEmpty() && Charters.approve(server, first.getUUID(), second.getUUID()).isEmpty()
+						&& Charters.deposit(server, charter, 20_000).isEmpty(), "the second player should join the charter, which is then funded");
+				List<ServerPlayer> both = List.of(first, second);
+				// Chapters 1 to 5 are done by their own test; here they are done so that chapter 6 is the one the crew is on.
+				for (Item item : List.of(Items.OAK_LOG, Items.CRAFTING_TABLE, Items.STONE_AXE, Items.RAW_IRON, Items.IRON_INGOT)) {
+					HandbookChaptersOneToFiveTest.give(first, item);
+				}
+				for (String directive : through(5)) {
+					if (!directive.contains("/welcome/")) {
+						Directives.fire(first, id(directive));
+					}
+				}
+				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "chapters 1 to 5", both, through(5));
+				HandbookChaptersOneToFiveTest.expectRoadAt(helper, server, first, 5);
+				HandbookChaptersOneToFiveTest.stand(helper, director, terminal);
+				HandbookChaptersOneToFiveTest.stand(helper, crew, terminal);
+
+				// Chapter 6: the scanner is bought at the upgrade terminal, then finds ore.
+				PodEntity mole = helper.spawn(PodRegistry.POD, 2, 1, 2);
+				pods.add(mole);
+				PodComponents.register(mole, charter);
+				mole.setPos(Vec3.atBottomCenterOf(terminal).add(2, 0, 2));
+				helper.getLevel().setBlock(terminal, TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(), 3);
+				CompoundTag args = new CompoundTag();
+				args.putString(UpgradeTerminal.TRACK_KEY, ComponentTrack.HULL.id());
+				args.putInt(UpgradeTerminal.TIER_KEY, 1);
+				HandbookChaptersOneToFiveTest.expectDone(helper, Terminals.act(first, terminal, UpgradeTerminal.BUY, args), "buying a hull");
+				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "buying a part that is not a scanner", both, through(5));
+				args.putString(UpgradeTerminal.TRACK_KEY, ComponentTrack.SCANNER.id());
+				HandbookChaptersOneToFiveTest.expectDone(helper, Terminals.act(first, terminal, UpgradeTerminal.BUY, args), "buying a scanner");
+				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "buying a scanner", both, through(5, directive("seeing_below", "install_scanner")));
+				BlockPos ore = mole.blockPosition().above(2);
+				helper.getLevel().setBlock(ore, Blocks.GOLD_ORE.defaultBlockState(), 3);
+				poll(mole);
+				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "a scanner nobody is flying", both, through(5, directive("seeing_below", "install_scanner")));
+				expect(helper, first.startRiding(mole, true, false), "the player should board the Mole");
+				helper.getLevel().setBlock(ore, Blocks.AIR.defaultBlockState(), 3);
+				poll(mole);
+				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "flying a scanner with no ore in view", both, through(5, directive("seeing_below", "install_scanner")));
+				helper.getLevel().setBlock(ore, Blocks.GOLD_ORE.defaultBlockState(), 3);
+				poll(mole);
+				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "chapter 6", both, through(6));
+				helper.getLevel().setBlock(ore, Blocks.AIR.defaultBlockState(), 3);
+				HandbookChaptersOneToFiveTest.expectRoadAt(helper, server, second, 6);
+
+				// Chapter 7: the hull is repaired at the station, and the crew reaches the Deep Claim.
+				first.stopRiding();
+				HandbookChaptersOneToFiveTest.stand(helper, director, terminal);
+				helper.getLevel().setBlock(terminal, TerminalTypes.REPAIR_STATION.block().defaultBlockState(), 3);
+				mole.damageHull(mole.maxHull() / 2);
+				HandbookChaptersOneToFiveTest.expectDone(helper, Terminals.act(first, terminal, RepairStation.REPAIR_TOTAL, new CompoundTag()), "repairing the hull");
+				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "the hull repair", both, through(6, directive("staying_safe", "repair_hull")));
+				HandbookTriggers.pollPlayer(server, first);
+				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "standing on the surface", both, through(6, directive("staying_safe", "repair_hull")));
+				director.teleportTo(one, new Vec3(9100.5, zoneY(one, 0), 9100.5), 0, 0);
+				HandbookTriggers.pollPlayer(server, first);
+				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "the top of the Claim", both, through(6, directive("staying_safe", "repair_hull")));
+				director.teleportTo(one, new Vec3(9100.5, zoneY(one, 2), 9100.5), 0, 0);
+				HandbookTriggers.pollPlayer(server, first);
+				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "chapter 7", both, through(7));
+				HandbookChaptersOneToFiveTest.expectRoadAt(helper, server, second, 7);
+
+				// Chapter 8: the first breach, from the Claim into the Old Workings.
+				BreachEvents.CROSSED.invoker().onCrossed(first, two, one, 2, 1);
+				BreachEvents.CROSSED.invoker().onCrossed(first, two, two, 2, 3);
+				PodEntity carried = podIn(helper, one, PodRegistry.POD, new Vec3(9100.5, zoneY(one, 2), 9100.5));
+				pods.add(carried);
+				BreachEvents.CROSSED.invoker().onCrossed(carried, one, two, 1, 2);
+				BreachEvents.CROSSED.invoker().onCrossed(drifter.player(), one, two, 1, 2);
+				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "a crossing that is not the first descent by a player of the charter", both, through(7));
+				BreachEvents.CROSSED.invoker().onCrossed(first, one, two, 1, 2);
+				director.teleportTo(two, new Vec3(9100.5, zoneY(two, 0), 9100.5), 0, 0);
+				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "chapter 8", both, through(8));
+				HandbookChaptersOneToFiveTest.expectRoadAt(helper, server, second, 8);
+
+				// Chapter 9: find the Prospector in the Workings, tow it to the colony, restore it, and take it to the floor.
+				director.teleportTo(two, new Vec3(9100.5, zoneY(two, 2), 9100.5), 0, 0);
+				double near = HandbookTuning.DEFAULT.findProspectorBlocks() / 2.0;
+				double far = HandbookTuning.DEFAULT.findProspectorBlocks() + 6.0;
+				PodEntity farWreck = podIn(helper, two, PodRegistry.PROSPECTOR, new Vec3(9100.5 + far, zoneY(two, 2), 9100.5));
+				PodEntity workingProspector = podIn(helper, two, PodRegistry.PROSPECTOR, new Vec3(9100.5 + near, zoneY(two, 2), 9100.5));
+				PodEntity moleWreck = podIn(helper, two, PodRegistry.POD, new Vec3(9100.5, zoneY(two, 2), 9100.5 + near));
+				pods.addAll(List.of(farWreck, workingProspector, moleWreck));
+				farWreck.damageHull(farWreck.maxHull());
+				moleWreck.damageHull(moleWreck.maxHull());
+				HandbookTriggers.pollPlayer(server, first);
+				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "a far wreck, a working Prospector and a wrecked Mole", both, through(8));
+				PodEntity wreck = podIn(helper, two, PodRegistry.PROSPECTOR, new Vec3(9100.5 - near, zoneY(two, 2), 9100.5));
+				pods.add(wreck);
+				wreck.damageHull(wreck.maxHull());
+				expect(helper, Wrecks.isWreck(wreck), "the Prospector should be a wreck");
+				HandbookTriggers.pollPlayer(server, first);
+				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "coming upon the wreck", both, through(8, directive("company_property", "find_prospector")));
+
+				director.teleportTo(server.overworld(), Vec3.atBottomCenterOf(Colony.placed(server).orElseThrow().center()), 0, 0);
+				ColonySite.Placed colony = Colony.placed(server).orElseThrow();
+				Vec3 pad = Vec3.atBottomCenterOf(colony.center());
+				PodEntity tower = helper.spawn(PodRegistry.POD, 2, 1, 2);
+				PodEntity wreckHome = helper.spawn(PodRegistry.PROSPECTOR, 4, 1, 4);
+				PodEntity otherTower = helper.spawn(PodRegistry.POD, 6, 1, 2);
+				PodEntity moleHome = helper.spawn(PodRegistry.POD, 8, 1, 2);
+				PodEntity unhitched = helper.spawn(PodRegistry.PROSPECTOR, 6, 1, 6);
+				pods.addAll(List.of(tower, wreckHome, otherTower, moleHome, unhitched));
+				wreckHome.damageHull(wreckHome.maxHull());
+				moleHome.damageHull(moleHome.maxHull());
+				Set<String> found = through(8, directive("company_property", "find_prospector"));
+				tower.setPos(pad);
+				wreckHome.setPos(pad.add(2, 0, 0));
+				PodTowing.attach(tower, wreckHome);
+				poll(wreckHome);
+				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "a Prospector towed by a pod with nobody at the controls", both, found);
+				expect(helper, first.startRiding(tower, true, false), "the player should board the tower");
+				otherTower.setPos(pad.add(0, 0, 4));
+				moleHome.setPos(pad.add(0, 0, 6));
+				PodTowing.attach(otherTower, moleHome);
+				expect(helper, second.startRiding(otherTower, true, false), "the crew should board the other tower");
+				poll(moleHome);
+				unhitched.setPos(pad.add(0, 0, -3));
+				poll(unhitched);
+				wreckHome.setPos(pad.add(60, 0, 0));
+				poll(wreckHome);
+				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "a Mole towed home, a Prospector that is not towed, and one towed far from the colony", both, found);
+				wreckHome.setPos(pad.add(2, 0, 0));
+				expect(helper, rival.player().startRiding(wreckHome, true, false), "the rival should board the towed Prospector");
+				poll(wreckHome);
+				Set<String> towed = with(found, directive("company_property", "tow_prospector"));
+				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "towing home", both, towed);
+				expect(helper, !completed(server, rival).contains(id(directive("company_property", "tow_prospector"))),
+						"a rider of the towed Prospector, of another charter, did not tow it: %s", completed(server, rival));
+				rival.player().stopRiding();
+				second.stopRiding();
+
+				// The hangar restores it, and it is the charter's to fly.
+				HangarEvents.RESTORED.invoker().onRestored(server, first, mole);
+				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "restoring a Mole", both, towed);
+				HangarEvents.RESTORED.invoker().onRestored(server, drifter.player(), wreckHome);
+				first.stopRiding();
+				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "a restore by a player on no charter", both, towed);
+				HangarEvents.RESTORED.invoker().onRestored(server, second, wreckHome);
+				Set<String> restored = with(towed, directive("company_property", "restore_prospector"));
+				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "restoring the Prospector", both, restored);
+				expect(helper, completed(server, drifter).isEmpty(), "a player on no charter completes nothing, got %s", completed(server, drifter));
+
+				// The floor of the Workings counts only from a Prospector's seat.
+				director.teleportTo(two, new Vec3(9100.5, zoneY(two, 2), 9100.5), 0, 0);
+				HandbookTriggers.pollPlayer(server, first);
+				PodEntity workingMole = podIn(helper, two, PodRegistry.POD, new Vec3(9100.5, zoneY(two, 2), 9100.5));
+				pods.add(workingMole);
+				expect(helper, first.startRiding(workingMole, true, false), "the player should board the Mole");
+				HandbookTriggers.pollPlayer(server, first);
+				first.stopRiding();
+				workingProspector.setPos(9100.5, zoneY(two, 0), 9100.5);
+				director.teleportTo(two, new Vec3(9100.5, zoneY(two, 0), 9100.5), 0, 0);
+				expect(helper, first.startRiding(workingProspector, true, false), "the player should board the Prospector");
+				HandbookTriggers.pollPlayer(server, first);
+				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "on foot, in a Mole and in a Prospector high in the Workings", both, restored);
+				first.stopRiding();
+				workingProspector.setPos(9100.5, zoneY(two, 2), 9100.5);
+				director.teleportTo(two, new Vec3(9100.5, zoneY(two, 2), 9100.5), 0, 0);
+				expect(helper, first.startRiding(workingProspector, true, false), "the player should board the Prospector");
+				HandbookTriggers.pollPlayer(server, first);
+				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "chapter 9", both, through(9));
+				HandbookChaptersOneToFiveTest.expectRoadAt(helper, server, second, 9);
+				helper.succeed();
+			} finally {
+				pods.forEach(PodEntity::discard);
+				director.leave();
+				crew.leave();
+				drifter.leave();
+				rival.leave();
 			}
-			HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "chapters 1 to 5", both, through(5));
-			HandbookChaptersOneToFiveTest.expectRoadAt(helper, server, first, 5);
-			HandbookChaptersOneToFiveTest.stand(helper, director, terminal);
-			HandbookChaptersOneToFiveTest.stand(helper, crew, terminal);
-
-			// Chapter 6: the scanner is bought at the upgrade terminal, then finds ore.
-			PodEntity mole = helper.spawn(PodRegistry.POD, 2, 1, 2);
-			pods.add(mole);
-			PodComponents.register(mole, charter);
-			mole.setPos(Vec3.atBottomCenterOf(terminal).add(2, 0, 2));
-			helper.getLevel().setBlock(terminal, TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(), 3);
-			CompoundTag args = new CompoundTag();
-			args.putString(UpgradeTerminal.TRACK_KEY, ComponentTrack.HULL.id());
-			args.putInt(UpgradeTerminal.TIER_KEY, 1);
-			HandbookChaptersOneToFiveTest.expectDone(helper, Terminals.act(first, terminal, UpgradeTerminal.BUY, args), "buying a hull");
-			HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "buying a part that is not a scanner", both, through(5));
-			args.putString(UpgradeTerminal.TRACK_KEY, ComponentTrack.SCANNER.id());
-			HandbookChaptersOneToFiveTest.expectDone(helper, Terminals.act(first, terminal, UpgradeTerminal.BUY, args), "buying a scanner");
-			HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "buying a scanner", both, through(5, directive("seeing_below", "install_scanner")));
-			BlockPos ore = mole.blockPosition().above(2);
-			helper.getLevel().setBlock(ore, Blocks.GOLD_ORE.defaultBlockState(), 3);
-			poll(mole);
-			HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "a scanner nobody is flying", both, through(5, directive("seeing_below", "install_scanner")));
-			expect(helper, first.startRiding(mole, true, false), "the player should board the Mole");
-			helper.getLevel().setBlock(ore, Blocks.AIR.defaultBlockState(), 3);
-			poll(mole);
-			HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "flying a scanner with no ore in view", both, through(5, directive("seeing_below", "install_scanner")));
-			helper.getLevel().setBlock(ore, Blocks.GOLD_ORE.defaultBlockState(), 3);
-			poll(mole);
-			HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "chapter 6", both, through(6));
-			helper.getLevel().setBlock(ore, Blocks.AIR.defaultBlockState(), 3);
-			HandbookChaptersOneToFiveTest.expectRoadAt(helper, server, second, 6);
-
-			// Chapter 7: the hull is repaired at the station, and the crew reaches the Deep Claim.
-			first.stopRiding();
-			HandbookChaptersOneToFiveTest.stand(helper, director, terminal);
-			helper.getLevel().setBlock(terminal, TerminalTypes.REPAIR_STATION.block().defaultBlockState(), 3);
-			mole.damageHull(mole.maxHull() / 2);
-			HandbookChaptersOneToFiveTest.expectDone(helper, Terminals.act(first, terminal, RepairStation.REPAIR_TOTAL, new CompoundTag()), "repairing the hull");
-			HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "the hull repair", both, through(6, directive("staying_safe", "repair_hull")));
-			HandbookTriggers.pollPlayer(server, first);
-			HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "standing on the surface", both, through(6, directive("staying_safe", "repair_hull")));
-			director.teleportTo(one, new Vec3(9100.5, zoneY(one, 0), 9100.5), 0, 0);
-			HandbookTriggers.pollPlayer(server, first);
-			HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "the top of the Claim", both, through(6, directive("staying_safe", "repair_hull")));
-			director.teleportTo(one, new Vec3(9100.5, zoneY(one, 2), 9100.5), 0, 0);
-			HandbookTriggers.pollPlayer(server, first);
-			HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "chapter 7", both, through(7));
-			HandbookChaptersOneToFiveTest.expectRoadAt(helper, server, second, 7);
-
-			// Chapter 8: the first breach, from the Claim into the Old Workings.
-			BreachEvents.CROSSED.invoker().onCrossed(first, two, one, 2, 1);
-			BreachEvents.CROSSED.invoker().onCrossed(first, two, two, 2, 3);
-			PodEntity carried = podIn(helper, one, PodRegistry.POD, new Vec3(9100.5, zoneY(one, 2), 9100.5));
-			pods.add(carried);
-			BreachEvents.CROSSED.invoker().onCrossed(carried, one, two, 1, 2);
-			BreachEvents.CROSSED.invoker().onCrossed(drifter.player(), one, two, 1, 2);
-			HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "a crossing that is not the first descent by a player of the charter", both, through(7));
-			BreachEvents.CROSSED.invoker().onCrossed(first, one, two, 1, 2);
-			director.teleportTo(two, new Vec3(9100.5, zoneY(two, 0), 9100.5), 0, 0);
-			HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "chapter 8", both, through(8));
-			HandbookChaptersOneToFiveTest.expectRoadAt(helper, server, second, 8);
-
-			// Chapter 9: find the Prospector in the Workings, tow it to the colony, restore it, and take it to the floor.
-			director.teleportTo(two, new Vec3(9100.5, zoneY(two, 2), 9100.5), 0, 0);
-			double near = HandbookTuning.DEFAULT.findProspectorBlocks() / 2.0;
-			double far = HandbookTuning.DEFAULT.findProspectorBlocks() + 6.0;
-			PodEntity farWreck = podIn(helper, two, PodRegistry.PROSPECTOR, new Vec3(9100.5 + far, zoneY(two, 2), 9100.5));
-			PodEntity workingProspector = podIn(helper, two, PodRegistry.PROSPECTOR, new Vec3(9100.5 + near, zoneY(two, 2), 9100.5));
-			PodEntity moleWreck = podIn(helper, two, PodRegistry.POD, new Vec3(9100.5, zoneY(two, 2), 9100.5 + near));
-			pods.addAll(List.of(farWreck, workingProspector, moleWreck));
-			farWreck.damageHull(farWreck.maxHull());
-			moleWreck.damageHull(moleWreck.maxHull());
-			HandbookTriggers.pollPlayer(server, first);
-			HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "a far wreck, a working Prospector and a wrecked Mole", both, through(8));
-			PodEntity wreck = podIn(helper, two, PodRegistry.PROSPECTOR, new Vec3(9100.5 - near, zoneY(two, 2), 9100.5));
-			pods.add(wreck);
-			wreck.damageHull(wreck.maxHull());
-			expect(helper, Wrecks.isWreck(wreck), "the Prospector should be a wreck");
-			HandbookTriggers.pollPlayer(server, first);
-			HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "coming upon the wreck", both, through(8, directive("company_property", "find_prospector")));
-
-			director.teleportTo(server.overworld(), Vec3.atBottomCenterOf(Colony.placed(server).orElseThrow().center()), 0, 0);
-			ColonySite.Placed colony = Colony.placed(server).orElseThrow();
-			Vec3 pad = Vec3.atBottomCenterOf(colony.center());
-			PodEntity tower = helper.spawn(PodRegistry.POD, 2, 1, 2);
-			PodEntity wreckHome = helper.spawn(PodRegistry.PROSPECTOR, 4, 1, 4);
-			PodEntity otherTower = helper.spawn(PodRegistry.POD, 6, 1, 2);
-			PodEntity moleHome = helper.spawn(PodRegistry.POD, 8, 1, 2);
-			PodEntity unhitched = helper.spawn(PodRegistry.PROSPECTOR, 6, 1, 6);
-			pods.addAll(List.of(tower, wreckHome, otherTower, moleHome, unhitched));
-			wreckHome.damageHull(wreckHome.maxHull());
-			moleHome.damageHull(moleHome.maxHull());
-			Set<String> found = through(8, directive("company_property", "find_prospector"));
-			tower.setPos(pad);
-			wreckHome.setPos(pad.add(2, 0, 0));
-			PodTowing.attach(tower, wreckHome);
-			poll(wreckHome);
-			HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "a Prospector towed by a pod with nobody at the controls", both, found);
-			expect(helper, first.startRiding(tower, true, false), "the player should board the tower");
-			otherTower.setPos(pad.add(0, 0, 4));
-			moleHome.setPos(pad.add(0, 0, 6));
-			PodTowing.attach(otherTower, moleHome);
-			expect(helper, second.startRiding(otherTower, true, false), "the crew should board the other tower");
-			poll(moleHome);
-			unhitched.setPos(pad.add(0, 0, -3));
-			poll(unhitched);
-			wreckHome.setPos(pad.add(60, 0, 0));
-			poll(wreckHome);
-			HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "a Mole towed home, a Prospector that is not towed, and one towed far from the colony", both, found);
-			wreckHome.setPos(pad.add(2, 0, 0));
-			expect(helper, rival.player().startRiding(wreckHome, true, false), "the rival should board the towed Prospector");
-			poll(wreckHome);
-			Set<String> towed = with(found, directive("company_property", "tow_prospector"));
-			HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "towing home", both, towed);
-			expect(helper, !completed(server, rival).contains(id(directive("company_property", "tow_prospector"))),
-					"a rider of the towed Prospector, of another charter, did not tow it: %s", completed(server, rival));
-			rival.player().stopRiding();
-			second.stopRiding();
-
-			// The hangar restores it, and it is the charter's to fly.
-			HangarEvents.RESTORED.invoker().onRestored(server, first, mole);
-			HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "restoring a Mole", both, towed);
-			HangarEvents.RESTORED.invoker().onRestored(server, drifter.player(), wreckHome);
-			first.stopRiding();
-			HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "a restore by a player on no charter", both, towed);
-			HangarEvents.RESTORED.invoker().onRestored(server, second, wreckHome);
-			Set<String> restored = with(towed, directive("company_property", "restore_prospector"));
-			HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "restoring the Prospector", both, restored);
-			expect(helper, completed(server, drifter).isEmpty(), "a player on no charter completes nothing, got %s", completed(server, drifter));
-
-			// The floor of the Workings counts only from a Prospector's seat.
-			director.teleportTo(two, new Vec3(9100.5, zoneY(two, 2), 9100.5), 0, 0);
-			HandbookTriggers.pollPlayer(server, first);
-			PodEntity workingMole = podIn(helper, two, PodRegistry.POD, new Vec3(9100.5, zoneY(two, 2), 9100.5));
-			pods.add(workingMole);
-			expect(helper, first.startRiding(workingMole, true, false), "the player should board the Mole");
-			HandbookTriggers.pollPlayer(server, first);
-			first.stopRiding();
-			workingProspector.setPos(9100.5, zoneY(two, 0), 9100.5);
-			director.teleportTo(two, new Vec3(9100.5, zoneY(two, 0), 9100.5), 0, 0);
-			expect(helper, first.startRiding(workingProspector, true, false), "the player should board the Prospector");
-			HandbookTriggers.pollPlayer(server, first);
-			HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "on foot, in a Mole and in a Prospector high in the Workings", both, restored);
-			first.stopRiding();
-			workingProspector.setPos(9100.5, zoneY(two, 2), 9100.5);
-			director.teleportTo(two, new Vec3(9100.5, zoneY(two, 2), 9100.5), 0, 0);
-			expect(helper, first.startRiding(workingProspector, true, false), "the player should board the Prospector");
-			HandbookTriggers.pollPlayer(server, first);
-			HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "chapter 9", both, through(9));
-			HandbookChaptersOneToFiveTest.expectRoadAt(helper, server, second, 9);
-			helper.succeed();
-		} finally {
-			pods.forEach(PodEntity::discard);
-			director.leave();
-			crew.leave();
-			drifter.leave();
-			rival.leave();
-			server.getDataStorage().set(RepairState.TYPE, repairs);
-		}
+		});
 	}
 
 	/**
@@ -674,20 +675,13 @@ public class HandbookChaptersSixToNineTest {
 				wrecked.setPos(Vec3.atBottomCenterOf(Colony.placed(server).orElseThrow().center()));
 				poll(wrecked);
 			};
-			server.getDataStorage().set(CharterData.TYPE, CharterData.CODEC.parse(NbtOps.INSTANCE, FUTURE).getOrThrow());
 			chartersReadable[0] = false;
 			try {
-				callbacks.run();
+				WorldData.with(server, CharterData.TYPE, CharterData.CODEC.parse(NbtOps.INSTANCE, FUTURE).getOrThrow(), callbacks);
 			} finally {
-				server.getDataStorage().set(CharterData.TYPE, charters);
 				chartersReadable[0] = true;
 			}
-			server.getDataStorage().set(HandbookProgressData.TYPE, HandbookProgressData.CODEC.parse(NbtOps.INSTANCE, FUTURE).getOrThrow());
-			try {
-				callbacks.run();
-			} finally {
-				server.getDataStorage().set(HandbookProgressData.TYPE, progress);
-			}
+			WorldData.with(server, HandbookProgressData.TYPE, HandbookProgressData.CODEC.parse(NbtOps.INSTANCE, FUTURE).getOrThrow(), callbacks);
 			expect(helper, CharterData.get(server) == charters && HandbookProgressData.get(server) == progress, "the saved data should be back in place");
 			helper.succeed();
 		} finally {
