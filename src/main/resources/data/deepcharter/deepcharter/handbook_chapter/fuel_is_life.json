@@ -1,0 +1,32 @@
+{
+  "order": 4,
+  "title": {
+    "translate": "deepcharter.handbook.chapter.deepcharter.fuel_is_life.title"
+  },
+  "directives": [
+    {
+      "id": "deepcharter:handbook/fuel_is_life/refuel_mole",
+      "text": {
+        "translate": "deepcharter.handbook.directive.fuel_is_life.refuel_mole"
+      }
+    },
+    {
+      "id": "deepcharter:handbook/fuel_is_life/fly_mole",
+      "text": {
+        "translate": "deepcharter.handbook.directive.fuel_is_life.fly_mole"
+      }
+    },
+    {
+      "id": "deepcharter:handbook/fuel_is_life/drill_down",
+      "text": {
+        "translate": "deepcharter.handbook.directive.fuel_is_life.drill_down"
+      }
+    },
+    {
+      "id": "deepcharter:handbook/fuel_is_life/return_to_colony",
+      "text": {
+        "translate": "deepcharter.handbook.directive.fuel_is_life.return_to_colony"
+      }
+    }
+  ]
+}

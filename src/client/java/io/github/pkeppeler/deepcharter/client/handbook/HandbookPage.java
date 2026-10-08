@@ -44,7 +44,18 @@ public sealed interface HandbookPage {
 		}
 	}
 
-	/** The end page: the end of the official chapters, and Appendix A with its redactions. */
+	/**
+	 * One page of the text of a full chapter, before the chapter's own page of directives. {@code part} counts from 1 of
+	 * {@code parts}.
+	 */
+	record ChapterText(int number, Identifier id, HandbookChapter chapter, int part, int parts) implements HandbookPage {
+	}
+
+	/** The end page: the end of the official chapters. */
 	record Appendix() implements HandbookPage {
+	}
+
+	/** One page of Appendix A, the employment contract, with its redactions. {@code part} counts from 1 of {@code parts}. */
+	record Contract(int part, int parts) implements HandbookPage {
 	}
 }

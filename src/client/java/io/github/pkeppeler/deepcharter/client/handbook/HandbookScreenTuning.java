@@ -44,7 +44,7 @@ public record HandbookScreenTuning(
 		int redactionColor,
 		int faintInkColor) {
 	public static final HandbookScreenTuning DEFAULT = new HandbookScreenTuning(
-			260, 200, 8, 8, 70, 56, 13, 46, 13, 6,
+			320, 200, 8, 8, 70, 56, 13, 46, 13, 6,
 			0x66000000, 0xFFF1E4C3, 0xFFC9B48A, 0xFF6B2D2D, 0xFF1B2A4E, 0xFF4A6A3A, 0xFFB3261E, 0xFF111111, 0xFF7A7058);
 
 	public HandbookScreenTuning {
