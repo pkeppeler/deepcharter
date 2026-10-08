@@ -5,20 +5,21 @@ import java.util.Optional;
 
 import io.netty.buffer.ByteBuf;
 
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 
+import io.github.pkeppeler.deepcharter.terminal.TerminalFeature;
+
 /**
  * What an upgrade terminal's screen needs beyond the generic terminal view: the pod parked at it, as the server sees it now.
+ * It rides on the view as the terminal's {@link TerminalFeature}.
  * Prices come from {@link UpgradeTuning}, which both sides have.
  *
  * @param pod        the player's charter's pod parked at the terminal, or empty
  * @param foreignPod true when no pod of the charter is parked but one of another charter (or of nobody) is
  */
-public record UpgradeView(BlockPos pos, Optional<Pod> pod, boolean foreignPod) {
+public record UpgradeView(Optional<Pod> pod, boolean foreignPod) implements TerminalFeature {
 	public static final StreamCodec<ByteBuf, UpgradeView> STREAM_CODEC = StreamCodec.composite(
-			BlockPos.STREAM_CODEC, UpgradeView::pos,
 			ByteBufCodecs.optional(Pod.STREAM_CODEC), UpgradeView::pod,
 			ByteBufCodecs.BOOL, UpgradeView::foreignPod,
 			UpgradeView::new);

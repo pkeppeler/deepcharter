@@ -297,19 +297,20 @@ public final class PodComponents {
 		if (unreadable(pod)) {
 			return false;
 		}
+		return ownerCharter(pod).map(owner -> charter.map(acting -> acting.id().equals(owner.id())).orElse(false)).orElse(true);
+	}
+
+	/** The charter that owns the pod. Empty when the pod is unowned or the owner is gone or dormant (anyone's); never throws. */
+	public static Optional<Charter> ownerCharter(PodEntity pod) {
 		Optional<Registration> registration = read(pod).registration();
 		if (registration.isEmpty()) {
-			return true;
+			return Optional.empty();
 		}
 		try {
-			Optional<Charter> owner = Charters.find(pod.level().getServer(), registration.get().owner());
-			if (owner.isEmpty() || owner.get().dormant()) {
-				return true;
-			}
-			return charter.isPresent() && charter.get().id().equals(registration.get().owner());
+			return Charters.find(pod.level().getServer(), registration.get().owner()).filter(owner -> !owner.dormant());
 		} catch (IllegalStateException unreadable) {
 			logChartersUnreadable(unreadable);
-			return true;
+			return Optional.empty();
 		}
 	}
 

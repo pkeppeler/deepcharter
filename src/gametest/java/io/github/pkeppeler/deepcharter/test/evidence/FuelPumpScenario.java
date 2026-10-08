@@ -6,8 +6,8 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.fuel.FuelPumpScreen;
-import io.github.pkeppeler.deepcharter.fuel.FuelPump;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
+import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.FuelPumpClientTest;
 
 /**
@@ -32,7 +32,7 @@ public class FuelPumpScenario extends EvidenceScenario {
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.pump())));
 			context.waitForScreen(FuelPumpScreen.class);
 			FuelPumpScreen screen = context.computeOnClient(client -> (FuelPumpScreen) client.gui.screen());
-			context.waitFor(client -> ClientCharter.view().isPresent() && !FuelPump.parkedPods(client.level, scene.pump()).isEmpty(), WAIT_TICKS);
+			context.waitFor(client -> ClientCharter.view().isPresent() && !Terminals.parkedPods(client.level, scene.pump()).isEmpty(), WAIT_TICKS);
 			for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
 				context.waitTicks(TICKS_PER_FRAME);
 				frame(context);

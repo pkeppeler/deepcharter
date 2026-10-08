@@ -6,15 +6,20 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
 import net.minecraft.client.CameraType;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
+import io.github.pkeppeler.deepcharter.charter.CharterId;
+import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 
-/** Evidence scenario "m2-wrecks": a working pod loses its hull and goes dark, next to a working pod. */
+/** Evidence scenario "m2-wrecks": a working pod loses its hull and goes dark, next to a working pod, and the owner charter (the player, who is not riding) is told in chat. */
 public class WreckScenario extends EvidenceScenario {
 	private static final int FRAMES_BEFORE = 10;
 	private static final int FRAMES_AFTER = 14;
@@ -33,8 +38,15 @@ public class WreckScenario extends EvidenceScenario {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 				// The player faces +z (south). Two pods stand in front of the player, 5 blocks apart.
 				player.teleportTo(player.level(), player.getX(), player.getY(), player.getZ(), Set.of(), 0f, 0f, true);
-				spawn(player, new Vec3(-2.5, 0, 6));
+				clearStage(player);
+				Charters.found(server, player.getUUID(), "Evidence Charter").ifPresent(refusal -> {
+					throw new AssertionError("could not found a charter: " + refusal);
+				});
+				CharterId charter = Charters.charterOf(server, player.getUUID()).orElseThrow().id();
+				// Both pods belong to the player's charter, and nobody rides the doomed one: the owner is still told.
+				PodComponents.register(spawn(player, new Vec3(-2.5, 0, 6)), charter);
 				doomed[0] = spawn(player, new Vec3(2.5, 0, 6));
+				PodComponents.register(doomed[0], charter);
 			});
 			context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
 			context.waitTicks(60);
@@ -54,6 +66,19 @@ public class WreckScenario extends EvidenceScenario {
 				frame(context);
 			}
 			screenshot(context, "working-pod-and-dark-wreck");
+		}
+	}
+
+	/** Opens a room of air in front of the player, so the pods are in view even when the spawn is inside the colony's buildings. */
+	private static void clearStage(ServerPlayer player) {
+		BlockPos origin = player.blockPosition();
+		for (int dx = -6; dx <= 6; dx++) {
+			for (int dz = 1; dz <= 10; dz++) {
+				player.level().setBlockAndUpdate(origin.offset(dx, -1, dz), Blocks.STONE.defaultBlockState());
+				for (int dy = 0; dy <= 5; dy++) {
+					player.level().setBlockAndUpdate(origin.offset(dx, dy, dz), Blocks.AIR.defaultBlockState());
+				}
+			}
 		}
 	}
 
