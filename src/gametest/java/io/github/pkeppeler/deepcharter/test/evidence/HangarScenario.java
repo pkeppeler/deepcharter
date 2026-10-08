@@ -125,7 +125,10 @@ public class HangarScenario extends EvidenceScenario {
 			long before = singleplayer.getServer().computeOnServer(HangarScenario::balance);
 			context.clickScreenButton("RESTORE NEAREST WRECK");
 			await(context, singleplayer, server -> balance(server) == before - restorePrice);
+			// The server's answer is a new view, which the screen takes in place: close it after that.
+			context.waitTicks(20);
 			context.setScreen(() -> null);
+			lookAt(singleplayer, console, wreckAt.add(0, 1, 0));
 			hold(context);
 			screenshot(context, "prospector-restored-on-the-advance");
 		}
