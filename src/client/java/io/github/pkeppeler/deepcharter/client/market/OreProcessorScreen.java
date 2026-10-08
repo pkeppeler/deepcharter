@@ -173,10 +173,10 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 
 	/** The second line of an order's row. */
 	private static String progressLine(WorkOrdersView.Entry entry) {
-		String ore = entry.order().oreName().getString().toUpperCase(Locale.ROOT);
 		if (entry.done()) {
 			return Component.translatable("screen.deepcharter.processor.order_done").getString();
 		}
+		String ore = entry.order().oreName().getString().toUpperCase(Locale.ROOT);
 		return entry.rounds() == 0 ? Component.translatable("screen.deepcharter.processor.order", entry.delivered(), entry.order().quantity(), ore).getString()
 				: Component.translatable("screen.deepcharter.processor.order_repeat", entry.delivered(), entry.order().quantity(), ore, entry.rounds()).getString();
 	}

@@ -153,9 +153,7 @@ public final class WorkOrders {
 		}
 		for (int hold = 0; hold < holds.size() && left > 0; hold++) {
 			PodEntity pod = holds.get(hold);
-			if (pod.cargo().count(order.ore()) > 0) {
-				left -= pod.cargo().take(pod, order.ore(), left);
-			}
+			left -= pod.cargo().take(pod, order.ore(), left);
 		}
 		if (left != 0) {
 			throw new IllegalStateException("counted " + amount + " " + order.ore() + " and could not take " + left + " of them");
