@@ -7,7 +7,10 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.AABB;
 
 import io.github.pkeppeler.deepcharter.layer.Depth;
+import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
+import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 
 /**
  * Gas pockets (SPEC section 10). A pocket that is mined, by a pod drill's bore or a player's hand, blasts the blocks
@@ -51,10 +54,11 @@ public final class GasHazard {
 		venting = true;
 		try {
 			int radius = OreTuning.DEFAULT.blastRadius();
-			// stockRadiator stands in for the pod's radiator until a PodStats stat gives it (#65 may add one).
-			float damage = damage(Depth.feet(Depth.of(level, pos.getY())), OreTuning.DEFAULT.stockRadiator());
+			int depthFeet = Depth.feet(Depth.of(level, pos.getY()));
 			for (PodEntity pod : level.getEntitiesOfClass(PodEntity.class, new AABB(pos).inflate(radius))) {
-				pod.damageHull(damage);
+				// Read as LavaHazard reads it: chassis-capped, and stock (ratio 1) for no part or a void one.
+				float radiator = UpgradeTuning.DEFAULT.ratio(ComponentTrack.RADIATOR, PodComponents.effectiveTier(pod, ComponentTrack.RADIATOR));
+				pod.damageHull(damage(depthFeet, radiator));
 			}
 			for (BlockPos cell : BlockPos.betweenClosed(pos.offset(-radius, -radius, -radius), pos.offset(radius, radius, radius))) {
 				if (level.getBlockState(cell).is(HazardBlocks.NATURAL_ROCK)) {

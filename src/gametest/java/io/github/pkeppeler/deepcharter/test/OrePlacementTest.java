@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +13,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.piston.PistonBaseBlock;
 import net.minecraft.server.level.ServerLevel;
@@ -24,6 +26,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.phys.Vec3;
 
+import io.github.pkeppeler.deepcharter.charter.CharterId;
+import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
@@ -33,11 +37,14 @@ import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreTuning;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
+import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
 /**
  * Server GameTests for #63: ore and hazards placed per zone, the gas formula and blast, and what hands and drills
@@ -241,7 +248,7 @@ public class OrePlacementTest {
 		level.destroyBlock(centre, false);
 		GasHazard.vent(level, centre);
 
-		float damage = GasHazard.damage(Depth.feet(Depth.of(level, centre.getY())), OreTuning.DEFAULT.stockRadiator());
+		float damage = GasHazard.damage(Depth.feet(Depth.of(level, centre.getY())), 1f);
 		if (damage <= 0f || damage >= before) {
 			throw failure(helper, "the test depth gives a damage of %s on a hull of %s", damage, before);
 		}
@@ -254,6 +261,48 @@ public class OrePlacementTest {
 		near.discard();
 		far.discard();
 		helper.succeed();
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void aTierTwoRadiatorTakesThreeQuartersOfAGasBlast(GameTestHelper helper) {
+		ServerLevel level = layer(helper, 1);
+		BlockPos centre = new BlockPos(7700, 60, Z);
+		FarChunks.awaitEntityTicking(helper, level, centre, () -> {
+			MinecraftServer server = level.getServer();
+			UUID founder = UUID.randomUUID();
+			if (Charters.found(server, founder, "Radiator gas").isPresent()) {
+				throw failure(helper, "the charter was refused");
+			}
+			CharterId charter = Charters.charterOf(server, founder).orElseThrow().id();
+			stoneCube(level, centre, 3);
+			PodEntity cooled = pod(level, Vec3.atBottomCenterOf(centre.above()));
+			PodComponents.register(cooled, charter);
+			PodComponents.install(cooled, ComponentItems.mint(server, ComponentTrack.RADIATOR, 2, charter));
+			float cooledLoss = ventLoss(level, centre, cooled);
+			cooled.discard();
+			stoneCube(level, centre, 3);
+			PodEntity stock = pod(level, Vec3.atBottomCenterOf(centre.above()));
+			float stockLoss = ventLoss(level, centre, stock);
+			stock.discard();
+
+			float base = GasHazard.damage(Depth.feet(Depth.of(level, centre.getY())), 1f);
+			if (Math.abs(stockLoss - base) > 1e-3f) {
+				throw failure(helper, "the stock pod lost %s, expected the base %s", stockLoss, base);
+			}
+			if (Math.abs(cooledLoss - 0.75f * base) > 1e-3f) {
+				throw failure(helper, "the tier 2 radiator pod lost %s, expected 0.75 x %s", cooledLoss, base);
+			}
+			helper.succeed();
+		});
+	}
+
+	/** The hull {@code pod} loses when a pocket at {@code centre} is mined. */
+	private static float ventLoss(ServerLevel level, BlockPos centre, PodEntity pod) {
+		float before = pod.hull();
+		level.setBlock(centre, HazardBlocks.GAS_POCKET.defaultBlockState(), 2);
+		level.destroyBlock(centre, false);
+		GasHazard.vent(level, centre);
+		return before - pod.hull();
 	}
 
 	/** The drill removes the pocket like any block, so nothing in {@code PodDrill} knows about gas. */
@@ -276,7 +325,7 @@ public class OrePlacementTest {
 			}
 			if (level.getBlockState(gas).isAir()) {
 				rig.pilot.releaseInput();
-				float damage = GasHazard.damage(Depth.feet(Depth.of(level, gas.getY())), OreTuning.DEFAULT.stockRadiator());
+				float damage = GasHazard.damage(Depth.feet(Depth.of(level, gas.getY())), 1f);
 				if (damage <= 0f) {
 					throw failure(helper, "the test depth gives no gas damage");
 				}
