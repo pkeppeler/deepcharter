@@ -1208,14 +1208,11 @@ public class M2SliceScenario extends EvidenceScenario {
 
 	/** The room in the Deep Claim: crust, a row of stone with ore in it, an airy room, lamps and ore in the walls. */
 	private static void buildRoom(ServerLevel level) {
-		box(level, level.getMinY(), level.getMinY() + LayerTuning.DEFAULT.crustThickness() - 1, LayerBlocks.BREACH_CRUST);
-		for (int x = X - ROOM_WEST - 1; x <= X + ROOM_EAST + 1; x++) {
-			for (int y = FLOOR_Y - 1; y <= FLOOR_Y + 10; y++) {
-				for (int z = Z - ROOM_RADIUS_Z - 1; z <= Z + ROOM_RADIUS_Z + 1; z++) {
-					level.setBlock(new BlockPos(x, y, z), Blocks.STONE.defaultBlockState(), 2);
-				}
-			}
-		}
+		RoomCarver.carve(level, X - ROOM_WEST, X + ROOM_EAST, level.getMinY(), level.getMinY() + LayerTuning.DEFAULT.crustThickness() - 1,
+				Z - ROOM_RADIUS_Z, Z + ROOM_RADIUS_Z, LayerBlocks.BREACH_CRUST);
+		// The wall ores sit in this stone shell, so it is carved sealed as well: lava must not be one block behind them.
+		RoomCarver.carve(level, X - ROOM_WEST - 1, X + ROOM_EAST + 1, FLOOR_Y - 1, FLOOR_Y + 10, Z - ROOM_RADIUS_Z - 1, Z + ROOM_RADIUS_Z + 1,
+				Blocks.STONE);
 		box(level, FLOOR_Y - 1, FLOOR_Y - 1, Blocks.STONE);
 		RoomCarver.carve(level, new BlockPos(X - ROOM_WEST, FLOOR_Y, Z - ROOM_RADIUS_Z), new BlockPos(X + ROOM_EAST, FLOOR_Y + 9, Z + ROOM_RADIUS_Z),
 				Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);

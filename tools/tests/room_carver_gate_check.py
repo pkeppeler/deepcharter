@@ -1,7 +1,9 @@
 """Tests the room-carver gate in gradle/gametest.gradle: a direct air write in a file that touches a layer dimension fails the build.
 
-Runs generateGametestModJson against a fixture tree (-PgametestJavaRoot), so it needs the repo's Gradle wrapper and takes a few seconds.
-Usage: python3 -I -m unittest discover -s tools/tests -p 'test_room_carver_gate.py'
+Runs generateGametestModJson against a fixture tree (-PgametestJavaRoot), so it needs the repo's Gradle wrapper on JDK 25 and takes a
+few seconds. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
+A passing run leaves the fixture's mod json in build/generated/gametest-resources; the next real build regenerates it.
+Usage: python3 -I tools/tests/room_carver_gate_check.py
 """
 import subprocess
 import tempfile
@@ -53,6 +55,14 @@ public class ReadsAndMentionsFixture {
     }
 }
 """,
+    "SameLineMarkerFixture.java": """
+public class SameLineMarkerFixture {
+    void one(ServerLevel level) {
+        level = server.getLevel(LayerChain.dimension(1));
+        level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3); // room-carver: one block of a sealed room
+    }
+}
+""",
     "SurfaceOnlyFixture.java": """
 public class SurfaceOnlyFixture {
     void clear(ServerLevel level) {
@@ -65,6 +75,7 @@ VIOLATIONS = {
     "setBlock": "level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);",
     "box": "box(level, x - 2, x + 2, 1, 8, z - 2, z + 2, Blocks.AIR);",
     "ternary": "level.setBlock(pos, (y < floor ? Blocks.STONE : Blocks.AIR).defaultBlockState(), 2);",
+    "multi-line": "level.setBlock(\n            pos,\n            Blocks.AIR.defaultBlockState(), 3);",
     "cave air": "level.setBlockAndUpdate(pos, Blocks.CAVE_AIR.defaultBlockState());",
 }
 

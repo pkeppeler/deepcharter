@@ -90,8 +90,8 @@ public class PodDrillScenario extends EvidenceScenario {
 
 	/** Crust rows, a row of stone under the pod, an open room above, and glowstone to light the shaft. */
 	private static void buildShaftRoom(ServerLevel level) {
-		box(level, 0, 2, LayerBlocks.BREACH_CRUST);
-		box(level, 3, FLOOR_Y - 1, Blocks.STONE);
+		RoomCarver.carve(level, X - 5, X + 5, 0, 2, Z - 5, Z + 5, LayerBlocks.BREACH_CRUST);
+		RoomCarver.carve(level, X - 5, X + 5, 3, FLOOR_Y - 1, Z - 5, Z + 5, Blocks.STONE);
 		// Worldgen scatters lava through layer 1's rock, and lava beside the room would flow in and into the shaft, so carve it sealed.
 		RoomCarver.carve(level, new BlockPos(X - 5, FLOOR_Y, Z - 5), new BlockPos(X + 5, FLOOR_Y + 9, Z + 5), Blocks.AIR.defaultBlockState(),
 				Block.UPDATE_ALL);

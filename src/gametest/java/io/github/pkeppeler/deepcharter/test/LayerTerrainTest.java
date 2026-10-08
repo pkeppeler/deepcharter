@@ -278,7 +278,7 @@ public class LayerTerrainTest {
 		int x = 1800;
 		int z = 1800;
 		int floor = 80;
-		box(two, x - 4, x + 3, floor - 6, floor - 1, z - 4, z + 3, Blocks.STONE);
+		RoomCarver.carve(two, x - 4, x + 3, floor - 6, floor - 1, z - 4, z + 3, Blocks.STONE);
 		RoomCarver.carve(two, x - 4, x + 3, floor, floor + 10, z - 4, z + 3, Blocks.AIR);
 		MockPlayer pilot = MockPlayers.join(helper, "terrain-drill");
 		Vec3 at = new Vec3(x, floor, z);

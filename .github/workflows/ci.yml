@@ -36,6 +36,8 @@ jobs:
         with:
           cache-read-only: false
       - run: ./gradlew build
+      - name: room-carver gate check
+        run: python3 -I tools/tests/room_carver_gate_check.py
 
   tool-tests:
     name: tool-tests

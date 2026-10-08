@@ -399,7 +399,7 @@ public class PodDrillTest {
 	public void theLastCrustRowCrossesThePodAndItsPilotIntoTheNextLayer(GameTestHelper helper) {
 		int x = 3512;
 		ServerLevel one = layer(helper, 1);
-		box(one, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
+		RoomCarver.carve(one, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
 		RoomCarver.carve(one, x - 2, x + 2, 1, 8, Z - 2, Z + 2, Blocks.AIR);
 		float[] hullBefore = {Float.NaN};
 		Rig rig = Rig.await(helper, one, new Vec3(x, 1, Z), 0f, "drill-crust", SPRINT, pod -> hullBefore[0] = pod.hull());
@@ -437,7 +437,7 @@ public class PodDrillTest {
 	public void theLastLayersCrustIsNotDrilled(GameTestHelper helper) {
 		int x = 3576;
 		ServerLevel two = layer(helper, 2);
-		box(two, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
+		RoomCarver.carve(two, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
 		RoomCarver.carve(two, x - 2, x + 2, 3, 10, Z - 2, Z + 2, Blocks.AIR);
 		Rig rig = Rig.await(helper, two, new Vec3(x, 3, Z), 0f, "drill-last-crust", SPRINT);
 		helper.onEachTick(() -> {
@@ -476,13 +476,13 @@ public class PodDrillTest {
 
 	/** Stone up to and including y=floor-1 under a 9 x 9 around (x, Z), and air for 10 blocks above it. */
 	private static void room(ServerLevel level, int x, int floor, int radius) {
-		box(level, x - radius, x + radius + 1, floor - 8, floor - 1, Z - radius, Z + radius, Blocks.STONE);
+		RoomCarver.carve(level, x - radius, x + radius + 1, floor - 8, floor - 1, Z - radius, Z + radius, Blocks.STONE);
 		RoomCarver.carve(level, x - radius, x + radius + 1, floor, floor + 10, Z - radius, Z + radius, Blocks.AIR);
 	}
 
 	/** Only the stone bed, for pods that drill straight down in open air. */
 	private static void stoneBed(ServerLevel level, int x, int floor) {
-		box(level, x - 4, x + 3, floor - 8, floor - 1, Z - 4, Z + 3, Blocks.STONE);
+		RoomCarver.carve(level, x - 4, x + 3, floor - 8, floor - 1, Z - 4, Z + 3, Blocks.STONE);
 		RoomCarver.carve(level, x - 4, x + 3, floor, floor + 10, Z - 4, Z + 3, Blocks.AIR);
 	}
 

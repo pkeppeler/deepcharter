@@ -205,7 +205,7 @@ public class ProspectorChassisTest {
 	@GameTest(maxTicks = DRILL_TICKS)
 	public void aProspectorBoresThreeByThree(GameTestHelper helper) {
 		ServerLevel level = layer(helper, 1);
-		fill(level, BORE_X - 5, BORE_X + 5, BORE_FLOOR - 8, BORE_FLOOR - 1, BORE_Z - 5, BORE_Z + 5, Blocks.STONE);
+		RoomCarver.carve(level, BORE_X - 5, BORE_X + 5, BORE_FLOOR - 8, BORE_FLOOR - 1, BORE_Z - 5, BORE_Z + 5, Blocks.STONE);
 		RoomCarver.carve(level, BORE_X - 5, BORE_X + 5, BORE_FLOOR, BORE_FLOOR + 10, BORE_Z - 5, BORE_Z + 5, Blocks.AIR);
 		MockPlayer pilot = MockPlayers.join(helper, "ProspectorBorer");
 		// Off the block grid on purpose: the pod must centre itself and bore the nearest 3 x 3.

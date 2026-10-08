@@ -69,7 +69,7 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 					}
 				}
 			}
-			if (source.name != "RoomCarver.java" && text.contains("LayerChain.dimension(")) {
+			if (text.contains("LayerChain.dimension(")) {
 				def rawLines = source.readLines()
 				def carve = text =~ carveWrite
 				while (carve.find()) {

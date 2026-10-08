@@ -571,7 +571,7 @@ public class OreCargoTest {
 
 	/** Stone bed under open air, the same shape as PodDrillTest's room. */
 	private static void room(ServerLevel level, int x, int floor) {
-		box(level, x - 4, x + 5, floor - 8, floor - 1, Z - 4, Z + 4, Blocks.STONE);
+		RoomCarver.carve(level, x - 4, x + 5, floor - 8, floor - 1, Z - 4, Z + 4, Blocks.STONE);
 		RoomCarver.carve(level, x - 4, x + 5, floor, floor + 10, Z - 4, Z + 4, Blocks.AIR);
 	}
 

@@ -8,18 +8,18 @@ import net.minecraft.world.level.block.state.BlockState;
 import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 
 /**
- * Cuts a room into the rock of a layer dimension, the one way a test or scenario may. It seals the shell with
- * {@link RoomSeal} first and fills the box after, because worldgen leaves lava in layer rock and a room that is opened
- * unsealed floods (PR 229). The gametest generator in {@code gradle/gametest.gradle} fails the build on a direct air write
- * in a file that touches a layer dimension.
+ * The one way a test or scenario may open a room in the rock of a layer dimension. It seals the shell with {@link RoomSeal}
+ * first and fills the box after, because worldgen leaves lava in layer rock and a room that is opened unsealed floods
+ * (PR 229). The gametest generator in {@code gradle/gametest.gradle} fails the build on a direct air write in a file that
+ * touches a layer dimension. A solid fill (a stone bed) goes through here too, so that its shell is sealed to the same depth.
  */
 public final class RoomCarver {
 	private RoomCarver() {
 	}
 
-	/** Seals the shell around the box from {@code min} to {@code max}, both inclusive, then fills the box with {@code fill}, notifying clients only. */
-	public static void carve(ServerLevel level, BlockPos min, BlockPos max, BlockState fill) {
-		carve(level, min, max, fill, Block.UPDATE_CLIENTS);
+	/** Seals the shell around the box between the corners {@code a} and {@code b} in either order, both inclusive, then fills the box with {@code fill}, notifying clients only. */
+	public static void carve(ServerLevel level, BlockPos a, BlockPos b, BlockState fill) {
+		carve(level, a, b, fill, Block.UPDATE_CLIENTS);
 	}
 
 	/** As {@link #carve(ServerLevel, BlockPos, BlockPos, BlockState)}, for a box given as inclusive coordinate ranges. */
@@ -28,12 +28,10 @@ public final class RoomCarver {
 	}
 
 	/** As {@link #carve(ServerLevel, BlockPos, BlockPos, BlockState)}, with the update flags of each block written. */
-	public static void carve(ServerLevel level, BlockPos min, BlockPos max, BlockState fill, int flags) {
+	public static void carve(ServerLevel level, BlockPos a, BlockPos b, BlockState fill, int flags) {
+		BlockPos min = new BlockPos(Math.min(a.getX(), b.getX()), Math.min(a.getY(), b.getY()), Math.min(a.getZ(), b.getZ()));
+		BlockPos max = new BlockPos(Math.max(a.getX(), b.getX()), Math.max(a.getY(), b.getY()), Math.max(a.getZ(), b.getZ()));
 		RoomSeal.seal(level, min, max);
-		fill(level, min, max, fill, flags);
-	}
-
-	private static void fill(ServerLevel level, BlockPos min, BlockPos max, BlockState fill, int flags) {
 		for (BlockPos pos : BlockPos.betweenClosed(min, max)) {
 			level.setBlock(pos, fill, flags);
 		}
