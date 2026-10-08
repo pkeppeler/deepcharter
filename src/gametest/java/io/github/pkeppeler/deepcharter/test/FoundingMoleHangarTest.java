@@ -579,6 +579,50 @@ public class FoundingMoleHangarTest {
 	}
 
 	@GameTest(maxTicks = MAX_TICKS)
+	public void aHangarSavedBeforeTheAdvanceLoadsAsNothingUsed(GameTestHelper helper) {
+		inTheHangar(helper, before -> {
+			CharterId charter = charterOf(helper, member(helper, "Old Save")).id();
+			HangarData current = foundedHangar();
+			current.spendAdvance(charter, 3);
+			CompoundTag saved = ((CompoundTag) HangarData.CODEC.encodeStart(NbtOps.INSTANCE, current).getOrThrow()).copy();
+			expect(helper, saved.contains("advanced"), "the current format writes the advance, so removing it makes the old one: %s", saved);
+			// The format before PR 269: the same record, version 1, with no advanced field.
+			saved.remove("advanced");
+			HangarData loaded = HangarData.CODEC.parse(NbtOps.INSTANCE, saved).getOrThrow();
+			expect(helper, loaded.isReadable() && loaded.state().founded() && loaded.state().advanced().isEmpty() && loaded.advanceSpent(charter) == 0,
+					"a hangar saved with no advanced field loads readable, with its other fields, and nothing used: %s", loaded.isReadable() ? loaded.state() : "unreadable");
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void theConsoleViewCarriesTheAdvanceEachCharterHasLeft(GameTestHelper helper) {
+		inTheHangar(helper, before -> withFreshWorld(helper, () -> {
+			MinecraftServer server = server(helper);
+			MockPlayer first = member(helper, "Part Used");
+			MockPlayer second = member(helper, "Untouched");
+			Charter firstCharter = charterOf(helper, first);
+			Charter secondCharter = charterOf(helper, second);
+			HangarData.get(server).spendAdvance(firstCharter.id(), 2);
+			expect(helper, HangarTerminal.view(server, first.player(), Optional.of(firstCharter), BlockPos.ZERO).advanceLeft() == 1,
+					"a charter that used 2 of 3 has 1 left");
+			expect(helper, HangarTerminal.view(server, second.player(), Optional.of(secondCharter), BlockPos.ZERO).advanceLeft() == 3,
+					"a charter that used none has 3 left, whatever another used");
+			HangarData.get(server).spendAdvance(firstCharter.id(), 5);
+			expect(helper, HangarTerminal.view(server, first.player(), Optional.of(firstCharter), BlockPos.ZERO).advanceLeft() == 0,
+					"a charter that used more than the advance has 0 left, never a negative");
+			expect(helper, HangarTerminal.view(server, first.player(), Optional.empty(), BlockPos.ZERO).advanceLeft() == 0, "no charter has no advance");
+
+			CompoundTag future = ((CompoundTag) HangarData.CODEC.encodeStart(NbtOps.INSTANCE, HangarData.get(server)).getOrThrow()).copy();
+			future.putInt("version", Integer.parseInt(FUTURE_HANGAR));
+			WorldData.replace(server, HangarData.TYPE, HangarData.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow());
+			expect(helper, HangarTerminal.view(server, second.player(), Optional.of(secondCharter), BlockPos.ZERO).advanceLeft() == 0,
+					"unreadable hangar records show no advance, and do not throw");
+			helper.succeed();
+		}));
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
 	public void unreadableDataIsLoggedOnceAndSkippedWithoutThrowing(GameTestHelper helper) {
 		inTheHangar(helper, before -> withFreshWorld(helper, () -> {
 			MinecraftServer server = server(helper);
