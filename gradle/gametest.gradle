@@ -38,11 +38,14 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 			def className = javaRoot.toPath().relativize(source.toPath()).toString()
 				.replaceAll(/\.java$/, "").replace(File.separator, ".")
 			def simpleName = className.substring(className.lastIndexOf(".") + 1)
-			def text = source.text
+			// Code only: comments and string literals (text blocks included) must not match.
+			def text = source.text.replaceAll(/(?s)"""(?:\\.|.)*?"""|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\/\*.*?\*\/|\/\/[^\n]*/) { match ->
+				match.startsWith("/") ? " " : "\"\""
+			}
 			if (text =~ /\babstract\s+class\s/) {
 				return
 			}
-			def isServer = text.contains("@GameTest")
+			def isServer = (text =~ /@GameTest\b/).find()
 			def isClient = (text =~ /\bimplements\s+[^{]*\bFabricClientGameTest\b/).find() \
 				|| (text =~ /\bextends\s+EvidenceScenario\b/).find()
 			if (isServer && isClient) {
@@ -62,6 +65,9 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 			problems << "no client GameTest or evidence scenario found under src/gametest/java"
 		}
 		def pinned = orderFile.readLines().collect { it.trim() }.findAll { !it.isEmpty() && !it.startsWith("#") }
+		pinned.countBy { it }.findAll { it.value > 1 }.each { line, count ->
+			problems << "${line} appears ${count} times in src/gametest/entrypoint-order.txt; keep one line"
+		}
 		pinned.findAll { !(it in server) && !(it in client) }.each {
 			problems << "${it} is in src/gametest/entrypoint-order.txt but is not a registered test class; remove the line"
 		}
