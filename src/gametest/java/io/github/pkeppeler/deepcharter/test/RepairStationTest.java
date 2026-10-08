@@ -77,14 +77,14 @@ import io.github.pkeppeler.deepcharter.wreck.Wrecks;
  * the whole chain repaired for its own duration ({@link #withStation}), and does all its work inside its first tick.
  */
 public class RepairStationTest {
-	/** The originals' prices (original_flash_game/REFERENCE.md section 3), written out so that the code cannot move them. */
-	private static final Map<Consumable, Long> ORIGINAL_PRICES = Map.of(
-			Consumable.RESERVE_FUEL_TANK, 2_000L,
-			Consumable.HULL_NANOBOTS, 7_500L,
-			Consumable.DYNAMITE, 2_000L,
-			Consumable.PLASTIC_EXPLOSIVES, 5_000L,
-			Consumable.QUANTUM_TELEPORTER, 2_000L,
-			Consumable.MATTER_TRANSMITTER, 10_000L);
+	/** The prices after issue 210 (see EconomyAffordabilityTest for why), written out so that the code cannot move them. */
+	private static final Map<Consumable, Long> SHOP_PRICES = Map.of(
+			Consumable.RESERVE_FUEL_TANK, 100L,
+			Consumable.HULL_NANOBOTS, 350L,
+			Consumable.DYNAMITE, 100L,
+			Consumable.PLASTIC_EXPLOSIVES, 300L,
+			Consumable.QUANTUM_TELEPORTER, 750L,
+			Consumable.MATTER_TRANSMITTER, 1_500L);
 	private static final long PER_HP = 1L;
 	private static final int ARENA = 4;
 
@@ -318,18 +318,18 @@ public class RepairStationTest {
 	}
 
 	@GameTest
-	public void theShopSellsTheSixItemsAtTheOriginalPrices(GameTestHelper helper) {
+	public void theShopSellsTheSixItemsAtTheirTunedPrices(GameTestHelper helper) {
 		withStation(helper, station -> {
-			if (ORIGINAL_PRICES.size() != Consumable.values().length) {
-				throw helper.assertionException("the shop sells %d items, the original six are %d", Consumable.values().length, ORIGINAL_PRICES.size());
+			if (SHOP_PRICES.size() != Consumable.values().length) {
+				throw helper.assertionException("the shop sells %d items, the six are %d", Consumable.values().length, SHOP_PRICES.size());
 			}
 			ServerPlayer player = station.pilot().player();
 			fund(helper, station, 100_000);
 			long balance = 100_000;
 			for (Consumable consumable : Consumable.values()) {
-				long price = ORIGINAL_PRICES.get(consumable);
+				long price = SHOP_PRICES.get(consumable);
 				if (consumable.price() != price) {
-					throw helper.assertionException("%s costs $%d, the original charges $%d", consumable, consumable.price(), price);
+					throw helper.assertionException("%s costs $%d, the shop charges $%d", consumable, consumable.price(), price);
 				}
 				expectDone(helper, Terminals.act(player, station.pos(), RepairStation.BUY, item(consumable)), "buying " + consumable);
 				balance -= price;
