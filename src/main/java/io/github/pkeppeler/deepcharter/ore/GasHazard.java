@@ -9,6 +9,7 @@ import net.minecraft.world.phys.AABB;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 
 /**
  * Gas pockets (SPEC section 10). A pocket that is mined, by a pod drill's bore or a player's hand, blasts the blocks
@@ -57,8 +58,10 @@ public final class GasHazard {
 				float radiator = PodComponents.radiatorRatio(pod);
 				pod.damageHull(damage(depthFeet, radiator));
 			}
+			// A blast at the edge of the loaded chunks clears the rock it can reach without loading one; the rest stays.
+			LoadedBlocks blocks = new LoadedBlocks(level);
 			for (BlockPos cell : BlockPos.betweenClosed(pos.offset(-radius, -radius, -radius), pos.offset(radius, radius, radius))) {
-				if (level.getBlockState(cell).is(HazardBlocks.NATURAL_ROCK)) {
+				if (blocks.getBlockState(cell).is(HazardBlocks.NATURAL_ROCK) && blocks.canChange(cell)) {
 					level.destroyBlock(cell.immutable(), false);
 				}
 			}
