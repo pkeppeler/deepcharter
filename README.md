@@ -15,7 +15,7 @@ Prerequisite: JDK 25. Gradle comes from the wrapper.
 
 Tests live in `src/gametest/`.
 
-On macOS, client GameTests and `tools/record-evidence.sh` render with Vulkan (MoltenVK), so they run with the screen locked. Set `DEEPCHARTER_GL=1` to use OpenGL instead (for example for Iris shaders).
+On macOS, client GameTests, `tools/record-evidence.sh` and `tools/play.sh` render with Vulkan (MoltenVK), so they run with the screen locked. Set `DEEPCHARTER_GL=1` to use OpenGL instead (for example for Iris shaders).
 
 `tools/play.sh` launches the dev client with the pinned mcpfabric bridge into a fresh test world. See [docs/tooling/play-test.md](docs/tooling/play-test.md).
 
