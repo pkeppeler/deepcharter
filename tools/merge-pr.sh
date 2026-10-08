@@ -10,6 +10,8 @@
 # `pass` or `skipping` (at least one check, and all of REQUIRED_CHECKS passing). A
 # check's state is its newest non-skipped run, so a later skipped run cannot hide
 # a failure.
+# Refuses if origin/main changed anything outside docs (`docs/**`, `*.md`,
+# `.papercuts.jsonl`) since the base the PR's latest CI run tested.
 # Then squash-merges pinned to that head sha and regenerates docs/ROADMAP.md.
 set -euo pipefail
 
@@ -109,13 +111,42 @@ for required in "${REQUIRED_CHECKS[@]}"; do
   refuse "lacks required check: $required"
 done
 
+# The CI run above tested the merge ref against main as it was then. If main has
+# since changed code (a rename, an API change), a PR with no textual conflict can
+# still break main once squashed. The base is read from the PR's latest completed
+# `CI` workflow run (event pull_request, this head sha): its pull_requests[].base.sha.
+# Fail closed on any unreadable step. Docs-only moves are allowed (the roadmap
+# regen commits after every merge).
+git fetch origin main >/dev/null 2>&1 || refuse "could not read origin/main (fetch failed)"
+ci_run=$(gh api "repos/$repo/actions/runs?head_sha=$sha&event=pull_request&per_page=100" --paginate \
+  --jq '.workflow_runs[] | select(.name == "CI" and .status == "completed") | .id' 2>/dev/null \
+  | sort -n | tail -1) || ci_run=
+[[ $ci_run =~ ^[0-9]+$ ]] || refuse "has no completed CI run for $sha (cannot tell what main it was tested against)" # pipe-tail: an unreadable list leaves ci_run empty and refuses
+ci_base=$(gh api "repos/$repo/actions/runs/$ci_run" \
+  --jq ".pull_requests[] | select(.number == $pr) | .base.sha" 2>/dev/null) || ci_base=
+[[ $ci_base =~ ^[0-9a-f]+$ ]] || refuse "has no base sha on its CI run $ci_run (cannot tell what main it was tested against)"
+moved=$(git diff --name-only --no-renames "$ci_base" origin/main) \
+  || refuse "could not compare origin/main with CI base $ci_base"
+code_moved=()
+while IFS= read -r path; do
+  case $path in
+    '' | docs/* | *.md | .papercuts.jsonl) ;;
+    *) code_moved+=("$path") ;;
+  esac
+done <<<"$moved"
+if [[ ${#code_moved[@]} -gt 0 ]]; then
+  shown=${code_moved[*]:0:5}
+  more=
+  [[ ${#code_moved[@]} -le 5 ]] || more=" (+$((${#code_moved[@]} - 5)) more)"
+  refuse "main changed since its CI run (base $ci_base): ${shown// /, }$more; re-run CI on a fresh merge ref with 'gh pr close $pr && gh pr reopen $pr' (the head sha is unchanged, so the review pass stays valid)"
+fi
+
 # A PR may not ADD docs/adr/NNNN-*.md when NNNN is already on origin/main (parallel
 # PRs pick numbers on their own), or twice among its own added ADRs. A path the PR
 # vacates (renamed away or removed) no longer holds its number. Fail closed: an
 # unreadable list refuses.
 pr_files=$(gh api "repos/$repo/pulls/$pr/files?per_page=100" --paginate \
   --jq '.[] | [.status, .filename, (.previous_filename // "")] | @tsv') || refuse "could not read its changed files"
-git fetch origin main >/dev/null 2>&1 || refuse "could not read the ADR list on origin/main (fetch failed)"
 main_adrs=$(git ls-tree --name-only origin/main docs/adr/) || main_adrs=
 [[ -n $main_adrs ]] || refuse "could not read the ADR list on origin/main"
 adr_re='^docs/adr/([0-9]{4})-[^/]+\.md$'

@@ -46,6 +46,18 @@ review-passed}" ;;
       printf '%s' "${STUB_FILES-}"
       exit 0
     fi
+    if [[ $2 == */actions/runs\?* ]]; then
+      [[ ${STUB_CI_RUNS_FAIL-0} == 1 ]] && exit 1
+      printf '%s' "${STUB_CI_RUNS-9001
+}"
+      exit 0
+    fi
+    if [[ $2 == */actions/runs/* ]]; then
+      [[ ${STUB_CI_BASE_FAIL-0} == 1 ]] && exit 1
+      printf '%s' "${STUB_CI_BASE-ba5e111
+}"
+      exit 0
+    fi
     echo "${STUB_RUNS-$DEFAULT_RUNS}"
     exit "${STUB_RUNS_RC:-0}" ;;
   "pr merge") touch "$LOG.merged"; exit "${STUB_MERGE_RC:-0}" ;;
@@ -57,6 +69,9 @@ cat >"$work/bin/git" <<'STUB'
 echo "git $*" >>"$LOG"
 case "$1" in
   fetch) [[ ${STUB_FETCH_FAIL-0} == 1 ]] && exit 1 ;;
+  diff)
+    [[ ${STUB_DIFF_FAIL-0} == 1 ]] && exit 1
+    printf '%s' "${STUB_MOVED-}" ;;
   ls-tree)
     [[ ${STUB_MAIN_ADRS_FAIL-0} == 1 ]] && exit 1
     printf '%s' "${STUB_MAIN_ADRS-docs/adr/0007-seven.md
@@ -218,7 +233,7 @@ exited "removed ADR and added ADR of the same number merges" 0
 refusal "next free number counts the PR's own ADRs" "the next free number is 0021" \
   "STUB_FILES=$(files added:docs/adr/0020-mine.md added:docs/adr/0007-new-slug.md)"
 refusal "ADR file list unreadable" "could not read its changed files" STUB_FILES_FAIL=1
-refusal "origin/main fetch fails" "could not read the ADR list on origin/main" STUB_FETCH_FAIL=1
+refusal "origin/main fetch fails" "could not read origin/main (fetch failed)" STUB_FETCH_FAIL=1
 refusal "origin/main ADR list unreadable" "could not read the ADR list on origin/main" STUB_MAIN_ADRS_FAIL=1
 refusal "origin/main ADR list empty" "could not read the ADR list on origin/main" STUB_MAIN_ADRS=
 run_script "STUB_FILES=$(files added:docs/adr/0019-free.md)"
@@ -348,6 +363,41 @@ for name in $required; do
   refusal "production check $name only skipped" "required check that was only skipped: $name" \
     "STUB_RUNS=$(runs "${others[@]}" "$name:3:skipped")"
 done
+
+# Stale CI base: the PR's latest CI workflow run tested the merge ref against some
+# main. If main has since changed anything outside docs, refuse.
+# Default stubs: the latest CI run's base is ba5e111 and main has not moved.
+stale_hint="gh pr close 7 && gh pr reopen 7"
+run_script
+exited "main not moved merges" 0
+logged "CI runs read for the pinned head sha" "gh api repos/pkeppeler/deepcharter/actions/runs?head_sha=abc123&event=pull_request&per_page=100 --paginate --jq .workflow_runs[] | select(.name == \"CI\" and .status == \"completed\") | .id"
+logged "latest CI run read" "gh api repos/pkeppeler/deepcharter/actions/runs/9001 --jq .pull_requests[] | select(.number == 7) | .base.sha"
+logged "main compared with the CI base" "git diff --name-only --no-renames ba5e111 origin/main"
+run_script "STUB_CI_RUNS=9001${nl}9005${nl}9003"
+exited "newest CI run is the one read" 0
+logged "newest CI run id used" "gh api repos/pkeppeler/deepcharter/actions/runs/9005 --jq .pull_requests[] | select(.number == 7) | .base.sha"
+run_script "STUB_MOVED=docs/ROADMAP.md${nl}docs/adr/0020-x.md${nl}README.md${nl}src/main/java/NOTES.md${nl}.papercuts.jsonl"
+exited "main moved only in docs, markdown and papercuts merges" 0
+logged "docs-only move still merges" "$merge_line"
+refusal "main moved in src" "main changed since its CI run" "STUB_MOVED=src/main/java/Charters.java"
+refusal "refusal names the moved path" "src/main/java/Charters.java" "STUB_MOVED=src/main/java/Charters.java"
+refusal "refusal gives the close/reopen fix" "$stale_hint" "STUB_MOVED=src/main/java/Charters.java"
+refusal "main moved in a build file" "$stale_hint" "STUB_MOVED=build.gradle"
+refusal "build file beside another path" "build.gradle" "STUB_MOVED=gradle.properties${nl}build.gradle"
+refusal "code beside docs still refuses" "tools/merge-pr.sh" "STUB_MOVED=docs/ROADMAP.md${nl}tools/merge-pr.sh"
+refusal "docs-looking directory outside docs/ refuses" "$stale_hint" "STUB_MOVED=docsx/a.txt"
+refusal "markdown lookalike refuses" "$stale_hint" "STUB_MOVED=src/main/md"
+refusal "nested papercuts lookalike refuses" "$stale_hint" "STUB_MOVED=sub/.papercuts.jsonl"
+refusal "refusal lists only the first paths" "(+2 more)" \
+  "STUB_MOVED=a.java${nl}b.java${nl}c.java${nl}d.java${nl}e.java${nl}f.java${nl}g.java"
+refusal "no CI run for the head" "no completed CI run for abc123" STUB_CI_RUNS=
+refusal "CI runs unreadable" "no completed CI run for abc123" STUB_CI_RUNS_FAIL=1
+refusal "CI run has no base for this PR" "has no base sha" STUB_CI_BASE=
+refusal "CI run base unreadable" "has no base sha" STUB_CI_BASE_FAIL=1
+refusal "CI run base is not a sha" "has no base sha" "STUB_CI_BASE=not-a-sha"
+refusal "base cannot be compared with main" "could not compare" STUB_DIFF_FAIL=1
+run_script
+logged "origin/main fetched before comparing" "git fetch origin main"
 
 # Happy path: roadmap changed, so it is committed and pushed.
 run_script STUB_ROADMAP_CHANGED=1
