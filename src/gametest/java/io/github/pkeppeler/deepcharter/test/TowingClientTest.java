@@ -46,6 +46,7 @@ public class TowingClientTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		ClientTestLog.start(this);
 		try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
 			Rig rig = two.server().computeOnServer(server -> setUp(server.overworld(), two));
 			awaitClient(context, "the client sees both pods with the cable between them", client -> pod(client, rig.tower()) != null

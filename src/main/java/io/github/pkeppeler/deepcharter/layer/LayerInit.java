@@ -16,5 +16,6 @@ public final class LayerInit {
 		LayerRock.init();
 		Zones.init();
 		LayerStructures.init();
+		LavaHazard.init();
 	}
 }

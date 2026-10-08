@@ -28,7 +28,7 @@ public class ScannerHudScenario extends EvidenceScenario {
 			server.runCommand("time set midnight");
 			context.waitTicks(40);
 
-			ScannerHudTest.rideWithGoldAhead(context, server);
+			ScannerHudTest.rideWithGoldAhead(context, server, 1);
 			screenshot(context, "scanner-surface-midnight");
 			frames(context);
 			// The flat surface world has only 4 blocks of ground under the pod.
@@ -38,7 +38,7 @@ public class ScannerHudScenario extends EvidenceScenario {
 			ScannerHudTest.goToLayer(server, 2);
 			context.waitFor(client -> client.level.dimension().identifier().getPath().equals("layer_2"));
 			context.waitTicks(40);
-			ScannerHudTest.rideWithGoldAhead(context, server);
+			ScannerHudTest.rideWithGoldAhead(context, server, 1);
 			screenshot(context, "scanner-layer-2");
 			frames(context);
 			addOre(context, server, -12, -20);
