@@ -4,6 +4,8 @@ status: accepted
 
 # A layer's zones are equal thirds by height, and each zone is a biome
 
+Amended by [ADR 0029](0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md): in the campaign world a layer is a Y band in one dimension, not a dimension of its own. Its height is its band, not a dimension type, and `Zones.of` works from the band's edges. Thirds, names and biomes stand.
+
 A layer is split into three zones of equal height, named in the lore canon (section 11). A zone is also a biome, `deepcharter:<name>`, so worldgen features, fog and mob rules attach to a zone as data. `Zones.of(level, y)` is the one place that says which zone a Y is in.
 
 ## Decision

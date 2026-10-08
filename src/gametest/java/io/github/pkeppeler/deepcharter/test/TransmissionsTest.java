@@ -52,6 +52,7 @@ import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
+import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionCatalog;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
@@ -135,14 +136,7 @@ public class TransmissionsTest {
 	 * same server tick, so no other test sees either.
 	 */
 	private static void withWorldData(GameTestHelper helper, TransmissionData replacement, Consumer<TransmissionData> body) {
-		SavedDataStorage storage = server(helper).getDataStorage();
-		TransmissionData original = storage.computeIfAbsent(TransmissionData.TYPE);
-		storage.set(TransmissionData.TYPE, replacement);
-		try {
-			body.accept(replacement);
-		} finally {
-			storage.set(TransmissionData.TYPE, original);
-		}
+		WorldData.with(server(helper), TransmissionData.TYPE, replacement, () -> body.accept(replacement));
 	}
 
 	private static void withFreshWorldData(GameTestHelper helper, Consumer<TransmissionData> body) {

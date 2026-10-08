@@ -56,6 +56,7 @@ import io.github.pkeppeler.deepcharter.pod.Serials;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -337,15 +338,14 @@ public class ProspectorChassisTest {
 			Tag serials = Serials.CODEC.encodeStart(NbtOps.INSTANCE, new Serials()).getOrThrow();
 			CompoundTag future = ((CompoundTag) serials).copy();
 			future.putInt("version", 7743);
-			Serials world = Serials.get(server);
-			server.getDataStorage().set(Serials.TYPE, Serials.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow());
-			try {
-				FoundingMoleHangarTest.expectRefused(helper, FoundingMoleHangarTest.act(owner.player(), console, HangarTerminal.RESTORE_WRECK),
-						"restoring with unreadable serials");
-				nothingChanged(helper, owner, wreck, charter, PRICE, CATALYSTS, "unreadable serials");
-			} finally {
-				server.getDataStorage().set(Serials.TYPE, world);
-			}
+			WorldData.with(server, Serials.TYPE, Serials.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow(), () -> {
+				try {
+					FoundingMoleHangarTest.expectRefused(helper, FoundingMoleHangarTest.act(owner.player(), console, HangarTerminal.RESTORE_WRECK),
+							"restoring with unreadable serials");
+					nothingChanged(helper, owner, wreck, charter, PRICE, CATALYSTS, "unreadable serials");
+				} finally {
+				}
+			});
 			FoundingMoleHangarTest.clearFloor(helper);
 			helper.succeed();
 		}));

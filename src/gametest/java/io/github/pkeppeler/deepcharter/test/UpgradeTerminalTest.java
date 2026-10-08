@@ -39,6 +39,7 @@ import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
+import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.PartLabel;
@@ -444,9 +445,7 @@ public class UpgradeTerminalTest {
 
 	@GameTest
 	public void aTerminalThatIsNotRepairedSellsNothing(GameTestHelper helper) {
-		RepairState original = RepairState.get(helper.getLevel().getServer());
-		helper.getLevel().getServer().getDataStorage().set(RepairState.TYPE, new RepairState());
-		try {
+		WorldData.with(helper.getLevel().getServer(), RepairState.TYPE, new RepairState(), () -> {
 			Scene scene = scene(helper, 10_000);
 			try {
 				expectRefused(helper, TerminalRefusal.UNREPAIRED, buy(scene, ComponentTrack.HULL, 1), "a purchase at an offline terminal");
@@ -455,9 +454,7 @@ public class UpgradeTerminalTest {
 			} finally {
 				clean(helper, scene);
 			}
-		} finally {
-			helper.getLevel().getServer().getDataStorage().set(RepairState.TYPE, original);
-		}
+		});
 	}
 
 	@GameTest
@@ -475,19 +472,13 @@ public class UpgradeTerminalTest {
 
 	private static void withRepairedTerminal(GameTestHelper helper, Runnable body) {
 		MinecraftServer server = helper.getLevel().getServer();
-		RepairState original = RepairState.get(server);
 		RepairState fresh = new RepairState();
 		for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL)) {
 			type.parts().forEach(part -> fresh.insert(type, part).ifPresent(refusal -> {
 				throw new IllegalStateException("repairing " + type.id() + ": " + refusal);
 			}));
 		}
-		server.getDataStorage().set(RepairState.TYPE, fresh);
-		try {
-			body.run();
-		} finally {
-			server.getDataStorage().set(RepairState.TYPE, original);
-		}
+		WorldData.with(server, RepairState.TYPE, fresh, body);
 	}
 
 	private static Scene scene(GameTestHelper helper, long account) {
