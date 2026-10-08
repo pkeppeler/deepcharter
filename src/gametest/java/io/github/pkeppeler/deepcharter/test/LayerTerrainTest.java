@@ -1,5 +1,9 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,17 +29,24 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import net.minecraft.world.phys.Vec3;
 
+import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
+import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.layer.gen.ZoneBiomeSource;
+import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
+import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
+import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 
-/** Server GameTests for #54: layer terrain, zones and biomes, and hand versus drill on deep rock. */
+/** Server GameTests for #54: layer terrain, zones and biomes, and hand versus drill on deep rock. #121 adds lava damage to pods. */
 public class LayerTerrainTest {
 	private static final Logger LOGGER = LoggerFactory.getLogger(LayerTerrainTest.class);
 
@@ -47,6 +58,15 @@ public class LayerTerrainTest {
 	private static final String[][] ZONES = {
 			{"topsoil_claims", "stone_benches", "deep_claim"},
 			{"upper_levels", "shift_change", "prospectors_run"}};
+
+	/** Server ticks seen for each pod a lava test marks. Fabric events cannot be unregistered, so this listens once. */
+	private static final Map<UUID, Integer> LAVA_TICKS = new ConcurrentHashMap<>();
+	private static final int LAVA_TEST_TICKS = 20;
+	private static final float EPSILON = 1e-3f;
+
+	static {
+		PodEvents.AFTER_TICK.register(pod -> LAVA_TICKS.computeIfPresent(pod.getUUID(), (id, ticks) -> ticks + 1));
+	}
 
 	@GameTest
 	public void theCrustFloorIsIntact(GameTestHelper helper) {
@@ -258,6 +278,7 @@ public class LayerTerrainTest {
 		int x = 1800;
 		int z = 1800;
 		int floor = 80;
+		RoomSeal.seal(two, new BlockPos(x - 4, floor - 6, z - 4), new BlockPos(x + 3, floor + 10, z + 3));
 		box(two, x - 4, x + 3, floor - 6, floor - 1, z - 4, z + 3, Blocks.STONE);
 		box(two, x - 4, x + 3, floor, floor + 10, z - 4, z + 3, Blocks.AIR);
 		MockPlayer pilot = MockPlayers.join(helper, "terrain-drill");
@@ -336,6 +357,103 @@ public class LayerTerrainTest {
 	/** The middle Y of a zone (0 is the top third), away from the edges, where the 4-block biome cells cannot disagree with it. */
 	private static int zoneMiddle(ServerLevel level, int zone) {
 		return level.getMinY() + level.getHeight() * (5 - 2 * zone) / 6;
+	}
+
+	/** Lays a stone floor and puts a pod on it at {@code podX} (relative), marked so {@link #LAVA_TICKS} counts its ticks. */
+	private static PodEntity lavaPod(GameTestHelper helper, double podX) {
+		for (int x = 0; x <= 8; x++) {
+			for (int z = 0; z <= 6; z++) {
+				helper.setBlock(new BlockPos(x, 1, z), Blocks.STONE);
+			}
+		}
+		PodEntity pod = helper.spawn(PodRegistry.POD, new Vec3(podX, 2, 3.5));
+		LAVA_TICKS.put(pod.getUUID(), 0);
+		return pod;
+	}
+
+	/** Runs {@code check} after {@link #LAVA_TEST_TICKS} ticks, then removes the pod and lava; the test passes if {@code check} does not throw. */
+	private static void afterLavaTicks(GameTestHelper helper, PodEntity pod, BlockPos lava, Runnable check) {
+		helper.runAfterDelay(LAVA_TEST_TICKS, () -> {
+			try {
+				check.run();
+			} finally {
+				LAVA_TICKS.remove(pod.getUUID());
+				pod.discard();
+				helper.setBlock(lava, Blocks.AIR);
+			}
+			helper.succeed();
+		});
+	}
+
+	private static void expectLavaHull(GameTestHelper helper, PodEntity pod, float perTick) {
+		int ticks = LAVA_TICKS.get(pod.getUUID());
+		float expected = pod.maxHull() - ticks * perTick;
+		if (ticks < LAVA_TEST_TICKS || Math.abs(pod.hull() - expected) > EPSILON) {
+			throw failure(helper, "after %d ticks the hull should be %s, found %s", ticks, expected, pod.hull());
+		}
+	}
+
+	@GameTest(maxTicks = LAVA_TEST_TICKS + 20)
+	public void lavaThePodIsInLowersTheHullAtTheTunedRate(GameTestHelper helper) {
+		PodEntity pod = lavaPod(helper, 3.5);
+		BlockPos lava = new BlockPos(3, 2, 3);
+		helper.setBlock(lava, Blocks.LAVA);
+		afterLavaTicks(helper, pod, lava, () -> expectLavaHull(helper, pod, LayerTuning.DEFAULT.lavaHullPerSecond() / 20f));
+	}
+
+	@GameTest(maxTicks = LAVA_TEST_TICKS + 20)
+	public void lavaOnlyTouchingThePodLowersTheHullToo(GameTestHelper helper) {
+		// The pod is 1.9 wide, so with its centre at 4.05 its east face is at x 5.0, where the lava block starts.
+		PodEntity pod = lavaPod(helper, 4.05);
+		BlockPos lava = new BlockPos(5, 2, 3);
+		helper.setBlock(lava, Blocks.LAVA);
+		afterLavaTicks(helper, pod, lava, () -> expectLavaHull(helper, pod, LayerTuning.DEFAULT.lavaHullPerSecond() / 20f));
+	}
+
+	@GameTest(maxTicks = LAVA_TEST_TICKS + 20)
+	public void aPodClearOfLavaTakesNoDamage(GameTestHelper helper) {
+		// The pod's east face is at x 4.45 and the lava starts at x 6.
+		PodEntity pod = lavaPod(helper, 3.5);
+		BlockPos lava = new BlockPos(6, 2, 3);
+		helper.setBlock(lava, Blocks.LAVA);
+		afterLavaTicks(helper, pod, lava, () -> expectLavaHull(helper, pod, 0f));
+	}
+
+	@GameTest(maxTicks = LAVA_TEST_TICKS + 20)
+	public void lavaCanTakeTheLastHullAndWreckThePod(GameTestHelper helper) {
+		PodEntity pod = lavaPod(helper, 3.5);
+		pod.setHull(1f);
+		BlockPos lava = new BlockPos(3, 2, 3);
+		helper.setBlock(lava, Blocks.LAVA);
+		afterLavaTicks(helper, pod, lava, () -> {
+			if (!Wrecks.isWreck(pod) || pod.hull() != 0f) {
+				throw failure(helper, "the lava should have taken the last hull and wrecked the pod, hull is %s", pod.hull());
+			}
+		});
+	}
+
+	@GameTest(maxTicks = LAVA_TEST_TICKS + 20)
+	public void aRadiatorCutsTheLavaDamage(GameTestHelper helper) {
+		PodEntity pod = lavaPod(helper, 3.5);
+		CharterId owner = CharterId.random();
+		PodComponents.register(pod, owner);
+		PodComponents.install(pod, ComponentItems.mint(helper.getLevel().getServer(), ComponentTrack.RADIATOR, 2, owner));
+		BlockPos lava = new BlockPos(3, 2, 3);
+		helper.setBlock(lava, Blocks.LAVA);
+		// A tier 2 radiator takes 0.75 of the stock damage (UpgradeTuning).
+		afterLavaTicks(helper, pod, lava, () -> expectLavaHull(helper, pod, LayerTuning.DEFAULT.lavaHullPerSecond() / 20f * 0.75f));
+	}
+
+	@GameTest(maxTicks = LAVA_TEST_TICKS + 20)
+	public void aRadiatorAboveTheChassisTierCapWorksAtTheCap(GameTestHelper helper) {
+		PodEntity pod = lavaPod(helper, 3.5);
+		CharterId owner = CharterId.random();
+		PodComponents.register(pod, owner);
+		PodComponents.install(pod, ComponentItems.mint(helper.getLevel().getServer(), ComponentTrack.RADIATOR, 3, owner));
+		BlockPos lava = new BlockPos(3, 2, 3);
+		helper.setBlock(lava, Blocks.LAVA);
+		// The Mole caps components at tier 2, so a tier 3 radiator still takes 0.75.
+		afterLavaTicks(helper, pod, lava, () -> expectLavaHull(helper, pod, LayerTuning.DEFAULT.lavaHullPerSecond() / 20f * 0.75f));
 	}
 
 	private static void expectBlock(GameTestHelper helper, ServerLevel level, BlockPos pos, Block block) {
