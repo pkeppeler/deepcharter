@@ -150,6 +150,7 @@ no_tickets() { [[ -z $(ls "$locks/queue" 2>/dev/null) ]]; }
 
 # Each lane is a function run in a background subshell by run_lanes, so it must not share files with another lane.
 lane_setup() { # lane_setup <lane>
+  pids=() # the lane kills only its own processes, not the lanes and streams the parent started before it
   proj=$work/proj-$1
   make_proj "$proj"
   locks=$work/locks-$1
@@ -337,24 +338,58 @@ lane_cache() {
   grep -q "Reusing configuration cache" "$work/f2.out"; check "second run reuses the configuration cache entry" $?
 }
 
-# run_lanes <lane...>: runs each lane function in the background with its output in $work/lane-<name>.log, waits for
-# them (every wait inside a lane is bounded, so this ends), prints the logs in order and counts a lane that did not
-# finish as a failure.
+# stream <lane>: prints the lane's log as it grows, each line prefixed with the lane name, so a hung lane shows its
+# progress in the CI log. It ends once the lane is over ($work/lane-<name>.over exists) and the log is flushed.
+stream() {
+  local log=$work/lane-$1.log n=0 total over
+  while true; do
+    over=0
+    if [[ -e $work/lane-$1.over ]]; then over=1; fi
+    total=$(wc -l <"$log")
+    if ((total > n)); then
+      tail -n +$((n + 1)) "$log" | head -n $((total - n)) | sed "s/^/[$1] /"
+      n=$total
+    fi
+    if ((over)); then return 0; fi
+    sleep 0.5
+  done
+}
+
+# run_lanes <lane...>: runs each lane function in the background with its output in $work/lane-<name>.log, streams the
+# logs, and counts a lane that did not finish as a failure. A watchdog kills the lanes after 3 x WAIT_SECS, so no
+# foreground build can hang the run (macOS has no `timeout`).
 run_lanes() {
-  local lane lane_pids=() i=0
+  local lane i=0 lane_pids=() stream_pids=() watchdog
   for lane in "$@"; do
     ( "lane_$lane"; echo "lane done" ) >"$work/lane-$lane.log" 2>&1 &
     lane_pids+=("$!")
+    pids+=("$!")
+    stream "$lane" &
+    stream_pids+=("$!")
+    pids+=("$!")
   done
+  (
+    sleep $((${WAIT_SECS:-120} * 3))
+    kill "${lane_pids[@]}" 2>/dev/null
+  ) >/dev/null 2>&1 & # no inherited stdout: a leftover sleep must not hold the caller's pipe open
+  watchdog=$!
+  pids+=("$watchdog")
   for lane in "$@"; do
     wait "${lane_pids[$i]}"
+    touch "$work/lane-$lane.over"
+    wait "${stream_pids[$i]}"
     i=$((i + 1))
-    echo "--- $lane"
-    cat "$work/lane-$lane.log"
     failures=$((failures + $(grep -c '^FAIL' "$work/lane-$lane.log")))
     grep -q '^lane done' "$work/lane-$lane.log"; check "lane $lane ran to the end" $?
   done
+  kill "$watchdog" 2>/dev/null
 }
+
+# One serial call first unpacks the Gradle distribution into the scratch home, so the lanes do not all contend on the
+# download lock. It is bounded like every other wait.
+{ "$root/gradlew" --version >"$work/warm.out" 2>&1; echo $? >"$work/warm.status"; } &
+pids+=("$!")
+waitfor "$work/warm.status" . && [[ $(<"$work/warm.status") -eq 0 ]]; check "the distribution is unpacked into the scratch home" $?
 run_lanes queue stale holders sigint cache
 
 if [[ $failures -ne 0 ]]; then
