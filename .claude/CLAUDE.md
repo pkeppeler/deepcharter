@@ -27,7 +27,7 @@ Dig mechanics, hazards and their counterplay, pod upgrades and consumables also 
 
 - **Durable state:** GitHub Issues and Milestones on `pkeppeler/deepcharter`. Use one issue per PR-sized change. The PR closes its issue.
 - **Branches:** `<issue>-<slug>`. Changes are squash-merged and branches are deleted automatically.
-- **CI minutes are rationed** (Free plan, about 2,000 minutes a month). Run heavy client-test and recording jobs only on PRs that change gameplay or rendering. Otherwise run them locally.
+- **CI minutes are rationed** (Free plan, about 2,000 minutes a month). `build` and `tool-tests` run on the self-hosted Mac runner for free ([docs/tooling/ci-runner.md](../docs/tooling/ci-runner.md)). Only client tests use paid minutes: run them and recording jobs only on PRs that change gameplay or rendering. Otherwise run them locally.
 - **Sessions:**
   - Start a fresh session once context passes about 200k tokens.
   - For unattended runs, use `/loop` in dynamic mode.
