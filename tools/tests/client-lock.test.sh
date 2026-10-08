@@ -5,7 +5,9 @@
 # a third waiting with both holders named, arrival order with three waiters, stale-ticket skip,
 # PID-reuse and dead-holder handling, DEEPCHARTER_CLIENT_SLOTS=1, kill -9 reclaim, a PR 260 holder
 # of client.lock (slot 0), SIGINT of a waiting --no-daemon build, the off switch and the
-# configuration cache. Every wait is on a log line or a file and is bounded; one 1 s sleep gates a negative check.
+# configuration cache. Every wait is on a log line or a file and is bounded; one 0.5 s sleep gates a negative check.
+# For speed the cases run as independent lanes in parallel, each with its own project, lock dir and queue, on one
+# warm scratch Gradle home (daemons are reused); only the SIGINT case uses --no-daemon, because it needs a plain client process.
 # Usage: tools/tests/client-lock.test.sh
 # Debug knobs: WAIT_SECS=<n> shortens each wait (default 120); KEEP_WORK=1 keeps the scratch dir.
 set -uo pipefail
@@ -15,8 +17,19 @@ work=$(cd "$(mktemp -d)" && pwd -P)
 pids=()
 cleanup() {
   local p
+  # Stop the daemons of the scratch Gradle home (only those: it is not the user's home).
+  if [[ -d ${GRADLE_USER_HOME:-} ]]; then "$root/gradlew" --stop >/dev/null 2>&1 || true; fi
   for p in "${pids[@]:-}"; do if [[ -n $p ]]; then kill "$p" 2>/dev/null || true; fi; done
-  if [[ -n ${KEEP_WORK:-} ]]; then echo "kept $work"; else rm -rf "$work"; fi
+  if [[ -n ${KEEP_WORK:-} ]]; then
+    echo "kept $work"
+  else
+    # a stopping daemon may still write its registry, which fails the first rm; retry, bounded
+    local i
+    for i in 1 2 3 4 5 6 7 8 9 10; do
+      if rm -rf "$work" 2>/dev/null; then break; fi
+      sleep 0.5
+    done
+  fi
 }
 trap cleanup EXIT
 
@@ -25,10 +38,11 @@ check() { # check <description> <condition-result: 0 = ok>
   if [[ $2 -eq 0 ]]; then echo "ok   $1"; else echo "FAIL $1"; failures=$((failures + 1)); fi
 }
 
-proj=$work/proj
-mkdir -p "$proj"
-echo "rootProject.name = 'lockprobe'" >"$proj/settings.gradle"
-cat >"$proj/build.gradle" <<S
+# make_proj <dir>: a scratch project with the stub runClient task and the script applied.
+make_proj() {
+  mkdir -p "$1"
+  echo "rootProject.name = 'lockprobe'" >"$1/settings.gradle"
+  cat >"$1/build.gradle" <<S
 tasks.register("runClient") {
 	doLast {
 		new File(System.getenv("ORDER_LOG")).append(System.getenv("HOLD_NAME") + "\n")
@@ -41,30 +55,36 @@ tasks.register("runClient") {
 }
 apply from: "$root/gradle/clientlock.gradle"
 S
+}
 
 unset DEEPCHARTER_LOCK_TASKS DEEPCHARTER_CLIENT_SLOTS
 export DEEPCHARTER_CLIENT_LOCK=1
-export DEEPCHARTER_LOCK_DIR=$work/locks
-export DEEPCHARTER_LOCK_POLL_MS=200
-locks=$work/locks
-holder0=$locks/client.lock.holder
-holder1=$locks/client.lock.1.holder
-order=$work/order
+export DEEPCHARTER_LOCK_POLL_MS=50
+# A scratch Gradle home shared by every case, so a build reuses a warm daemon instead of starting a cold JVM.
+# The wrapper's downloaded distribution is linked in, so nothing is fetched twice. Idle daemons expire by themselves.
+real_home=${GRADLE_USER_HOME:-$HOME/.gradle}
+export GRADLE_USER_HOME=$work/gradle-home
+mkdir -p "$GRADLE_USER_HOME"
+if [[ -d $real_home/wrapper ]]; then ln -s "$real_home/wrapper" "$GRADLE_USER_HOME/wrapper"; fi
+echo "org.gradle.daemon.idletimeout=60000" >"$GRADLE_USER_HOME/gradle.properties"
+# Set by each lane: proj, locks, holder0, holder1, order.
 
 # run <name> [env...]: runs runClient in the foreground (configuration cache on), output in $work/<name>.out.
+# It uses a daemon, except with $sigint set: Ctrl-C of a --no-daemon build must end the build's whole process tree.
 # The stub logs <name> to $order when it starts and holds until $work/<name>.release exists.
 # With $sigint set, SIGINT is not ignored, so a test can send Ctrl-C to the client.
 # (A background job of a script ignores SIGINT, and a JVM keeps that.)
 run() {
-  local name=$1 wrap=()
+  local name=$1 wrap=() daemon=()
   shift
   if [[ -n ${sigint:-} ]]; then
+    daemon=(--no-daemon)
     # shellcheck disable=SC2016 # $SIG is Perl, not a shell variable
     wrap=(perl -e '$SIG{INT} = "DEFAULT"; exec @ARGV')
   fi
   env HOLD_NAME="$name" ORDER_LOG="$order" HOLD_RELEASE="$work/$name.release" "$@" \
     ${wrap[@]+"${wrap[@]}"} \
-    "$root/gradlew" --no-daemon --configuration-cache --console=plain -p "$proj" runClient >"$work/$name.out" 2>&1
+    "$root/gradlew" ${daemon[@]+"${daemon[@]}"} --configuration-cache --console=plain -p "$proj" runClient >"$work/$name.out" 2>&1
 }
 
 # launch <run function> <name> [env...]: runs it in the background and writes its exit status to $work/<name>.status,
@@ -91,9 +111,9 @@ dead() { ! alive "$1"; }
 # poll <command...>: waits up to $WAIT_SECS (default 120) for the command to succeed.
 poll() {
   local i
-  for ((i = 0; i < ${WAIT_SECS:-120} * 10; i++)); do
+  for ((i = 0; i < ${WAIT_SECS:-120} * 20; i++)); do
     if "$@"; then return 0; fi
-    sleep 0.1
+    sleep 0.05
   done
   return 1
 }
@@ -125,7 +145,25 @@ time.sleep(600)
 # no_tickets: the queue dir holds no ticket.
 no_tickets() { [[ -z $(ls "$locks/queue" 2>/dev/null) ]]; }
 
-# 1. two concurrent holders, a third waiting
+# Each lane is a function run in a background subshell by run_lanes, so it must not share files with another lane.
+lane_setup() { # lane_setup <lane>
+  proj=$work/proj-$1
+  make_proj "$proj"
+  locks=$work/locks-$1
+  export DEEPCHARTER_LOCK_DIR=$locks
+  holder0=$locks/client.lock.holder
+  holder1=$locks/client.lock.1.holder
+  order=$work/order-$1
+  trap 'lane_cleanup' EXIT
+}
+lane_cleanup() {
+  local p
+  for p in "${pids[@]:-}"; do if [[ -n $p ]]; then kill "$p" 2>/dev/null || true; fi; done
+}
+
+# 1 and 2. two concurrent holders and a third waiting, then arrival order
+lane_queue() {
+lane_setup queue
 start a
 waitfor "$work/a.out" "RUNNING client"; check "first client takes a slot and runs" $?
 grep -q "worktree $proj" "$holder0"; check "slot 0 holder file names the worktree" $?
@@ -142,7 +180,7 @@ waitfor "$work/c.out" "Waiting for a game client slot (queue position 1 of 1).*S
 check "third client waits and the waiter line names both holders" $?
 ! grep -q "RUNNING client" "$work/c.out"; check "third client does not run while both slots are held" $?
 
-# 2. arrival order. A live ticket older than every waiter is a negative control: it must be served
+# arrival order. A live ticket older than every waiter is a negative control: it must be served
 # first, so while it lives nobody may take the free slot (a wrong "any live waiter wins" fails).
 sleep 600 &
 ctl_pid=$!
@@ -156,7 +194,7 @@ waitfor "$work/c.out" "queue position 2 of 4"; check "c moved behind the older c
 
 touch "$work/a.release"
 waitabsent "$holder0"; check "a frees slot 0" $?
-sleep 1 # 5 polls: the only fixed wait, and it gates a negative check, so it cannot make a pass flaky
+sleep 0.5 # 10 polls: the only fixed wait, and it gates a negative check, so it cannot make a pass flaky
 order_is "a b "; check "no waiter takes the free slot while an older live ticket waits" $?
 kill "$ctl_pid"
 waitfor "$work/c.out" "RUNNING client"; check "c, the oldest waiter, takes the slot once the control ticket is dead" $?
@@ -176,6 +214,10 @@ reap e "client e exits cleanly"
 absent "$holder0" && absent "$holder1"; check "holder files are gone after release" $?
 no_tickets; check "no tickets are left after every client ends" $?
 
+}
+
+lane_stale() {
+lane_setup stale
 # 3. stale tickets are skipped and removed: a dead PID, and a live PID with another start time (PID reuse)
 sleep 0 &
 dead=$!
@@ -214,6 +256,13 @@ reap i "SLOTS=1: waiter exits cleanly"
 waitfor "$work/h.status" . # h ends in whatever way the kill left it
 no_tickets; check "SLOTS=1: no tickets are left" $?
 
+}
+
+lane_holders() {
+lane_setup holders
+sleep 0 &
+dead=$! # a PID that is gone
+wait "$dead"
 # 5. a holder file left by a kill -9 does not name a dead holder in the waiter line
 rm -rf "$locks"
 hold_old "worktree ghost, task runClient, Gradle daemon PID $dead"; check "stand-in holds client.lock, holder file names a dead PID" $?
@@ -242,6 +291,10 @@ touch "$work/j.release" "$work/k.release"
 reap j "compat: client j exits cleanly"
 reap k "compat: client k exits cleanly"
 
+}
+
+lane_sigint() {
+lane_setup sigint
 # 7. Ctrl-C of a waiting --no-daemon build ends its whole process tree and frees its place in the queue
 rm -rf "$locks"
 rm -f "$order"
@@ -266,6 +319,10 @@ reap x "SIGINT: holder x exits cleanly"
 reap y "SIGINT: waiter y exits cleanly"
 no_tickets; check "SIGINT: no tickets are left" $?
 
+}
+
+lane_cache() {
+lane_setup cache
 # 8. off switch
 touch "$work/e2.release"
 rm -rf "$locks"
@@ -283,6 +340,28 @@ for n in 1 2; do
   absent "$holder0"; check "cached run $n releases the slot" $?
 done
 grep -q "Reusing configuration cache" "$work/f2.out"; check "second run reuses the configuration cache entry" $?
+
+}
+
+# run_lanes <lane...>: runs each lane function in the background with its output in $work/lane-<name>.log, waits for
+# them (every wait inside a lane is bounded, so this ends), prints the logs in order and counts a lane that did not
+# finish as a failure.
+run_lanes() {
+  local lane lane_pids=() i=0
+  for lane in "$@"; do
+    ( "lane_$lane"; echo "lane done" ) >"$work/lane-$lane.log" 2>&1 &
+    lane_pids+=("$!")
+  done
+  for lane in "$@"; do
+    wait "${lane_pids[$i]}"
+    i=$((i + 1))
+    echo "--- $lane"
+    cat "$work/lane-$lane.log"
+    failures=$((failures + $(grep -c '^FAIL' "$work/lane-$lane.log")))
+    grep -q '^lane done' "$work/lane-$lane.log"; check "lane $lane ran to the end" $?
+  done
+}
+run_lanes queue stale holders sigint cache
 
 if [[ $failures -ne 0 ]]; then
   echo "$failures failure(s)"
