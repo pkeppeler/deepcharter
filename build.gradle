@@ -75,11 +75,11 @@ java {
 	withSourcesJar()
 }
 
-// Client GameTests (and tools/record-evidence.sh, which runs them) use the Vulkan backend on macOS:
-// OpenGL hangs in SDL_GL_SwapWindow while the screen is locked (#251). Set DEEPCHARTER_GL=1 to keep
-// OpenGL, for example for Iris shader tryouts. Linux and CI are unchanged.
+// Client GameTests, tools/record-evidence.sh and the play-test client (tools/play.sh) use the Vulkan
+// backend on macOS: OpenGL hangs in SDL_GL_SwapWindow while the screen is locked (#251, #253). Set
+// DEEPCHARTER_GL=1 to keep OpenGL, for example for Iris shader tryouts. Linux and CI are unchanged.
 if (System.getProperty("os.name").toLowerCase().contains("mac") && System.getenv("DEEPCHARTER_GL") != "1") {
-	loom.runs.matching { it.name == "clientGameTest" }.configureEach {
+	loom.runs.matching { it.name in ["clientGameTest", "play"] }.configureEach {
 		programArgs "--graphicsBackend", "vulkan"
 	}
 }
