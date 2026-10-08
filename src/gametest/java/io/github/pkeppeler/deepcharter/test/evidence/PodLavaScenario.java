@@ -108,6 +108,9 @@ public class PodLavaScenario extends EvidenceScenario {
 			if (!cue) {
 				throw new AssertionError("The status readout should show the hull burning");
 			}
+			if (context.computeOnClient(client -> client.player.isOnFire())) {
+				throw new AssertionError("The local pilot should show no flames while the pod rides in lava");
+			}
 			screenshot(context, "pod-lava-after");
 		}
 	}

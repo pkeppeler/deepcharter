@@ -38,9 +38,7 @@ public final class LavaHazard {
 	private static void tick(PodEntity pod) {
 		// A wreck takes no hull damage, shows no burning and makes no sound.
 		boolean touching = !Wrecks.isWreck(pod) && touchesLava(pod);
-		if (pod.hullBurning() != touching) {
-			pod.setHullBurning(touching);
-		}
+		pod.setHullBurning(touching);
 		for (Entity rider : pod.getPassengers()) {
 			if (rider.getRemainingFireTicks() > 0) {
 				rider.clearFire();
