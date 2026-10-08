@@ -18,6 +18,7 @@ import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
@@ -47,8 +48,15 @@ public class PodChunkLoadTest {
 	private static final int FIRST_CHUNK_Z = 475;
 	/** Chunks between two tests' sites, so one test's loaded chunk is never another's neighbour. */
 	private static final int SITE_SPACING = 4;
-	/** Server ticks to wait for the lone chunk to generate; a test that passes ends at once. */
-	private static final int LOAD_BUDGET_TICKS = 2400;
+	/**
+	 * Wall-clock time to wait for the lone chunk to generate; a test that passes ends at once. Not a tick count: the test server
+	 * ticks as fast as it can, so a tick budget is only a few seconds, which a busy CI runner can spend before one far chunk is made.
+	 */
+	private static final int LOAD_BUDGET_SECONDS = 120;
+	/** Pause per server tick while the chunk generates, so the generation threads get the time and a tick count bounds the wait too. */
+	private static final int LOAD_POLL_MILLIS = 5;
+	/** Ticks that fit in {@link #LOAD_BUDGET_SECONDS} at one tick per {@link #LOAD_POLL_MILLIS}, with room to spare, so the budget fails a test first. */
+	private static final int LOAD_BUDGET_TICKS = LOAD_BUDGET_SECONDS * 1000 / LOAD_POLL_MILLIS * 2;
 	/** Pod ticks: more than the lights listener, the lava probe and the cable need to run twice over. */
 	private static final int POD_TICKS = 60;
 	/** Pod ticks for the drill to start boring its first slab of stone. */
@@ -92,13 +100,12 @@ public class PodChunkLoadTest {
 	public void aTowedPodAtAChunkEdgeLoadsNoNeighbour(GameTestHelper helper) {
 		Site site = new Site(1);
 		ServerLevel level = helper.getLevel();
-		PodEntity[] tower = {null};
 		tickAtTheEdge(helper, level, site, POD_TICKS, () -> {
 			PodEntity towed = litPod(helper, level, site.edge());
-			tower[0] = litPod(helper, level, site.middle());
-			PodTowing.attach(tower[0], towed);
+			PodTowing.attach(litPod(helper, level, site.middle()), towed);
 			return towed;
-		}, () -> tower[0].discard());
+		}, () -> {
+		});
 	}
 
 	@GameTest(maxTicks = LOAD_BUDGET_TICKS + DRILL_TICKS + 100)
@@ -175,36 +182,71 @@ public class PodChunkLoadTest {
 	/**
 	 * Loads the site's chunk with a ticket of radius 0, so no neighbour loads, and builds the floor. Then {@code spawn} puts the
 	 * pod to test in it, which is ticked {@code ticks} times, really and through the fired hook, with a check after each that nothing
-	 * around the site has loaded. {@code check} runs after the last tick, then the pod, the ticket and the test end. Call from the
-	 * test method: the one tick callback is registered here, because vanilla's GameTest loop crashes on one registered later.
+	 * around the site has loaded. {@code check} runs after the last tick, then the test ends. Whatever happens, the pods at the site
+	 * are discarded and the ticket is removed. Call from the test method: the one tick callback is registered here, because
+	 * vanilla's GameTest loop crashes on one registered later.
 	 */
 	private static void tickAtTheEdge(GameTestHelper helper, ServerLevel level, Site site, int ticks, Supplier<PodEntity> spawn, Runnable check) {
 		ChunkPos home = site.chunk();
 		level.getChunkSource().addTicketWithRadius(TicketType.FORCED, home, 0);
 		PodEntity[] pod = {null};
 		int[] ticked = {0};
+		long deadline = System.nanoTime() + LOAD_BUDGET_SECONDS * 1_000_000_000L;
 		helper.onEachTick(() -> {
-			if (pod[0] == null) {
-				if (level.getChunkSource().getChunkNow(home.x(), home.z()) == null) {
+			boolean finished = false;
+			try {
+				if (pod[0] == null) {
+					if (level.getChunkSource().getChunkNow(home.x(), home.z()) == null) {
+						waitForTheChunk(helper, site, deadline);
+						return;
+					}
+					expectUnloaded(helper, level, site, false, "once the chunk loaded");
+					buildFloor(level, site);
+					expectUnloaded(helper, level, site, false, "once the floor was built");
+					pod[0] = spawn.get();
 					return;
 				}
-				expectUnloaded(helper, level, site, false, "once the chunk loaded");
-				buildFloor(level, site);
-				expectUnloaded(helper, level, site, false, "once the floor was built");
-				pod[0] = spawn.get();
-				return;
+				pod[0].tick();
+				PodEvents.AFTER_TICK.invoker().afterTick(pod[0]);
+				ticked[0]++;
+				expectUnloaded(helper, level, site, false, "after pod tick " + ticked[0]);
+				if (ticked[0] == ticks) {
+					check.run();
+					finished = true;
+				}
+			} catch (Throwable failure) {
+				finished = true;
+				throw failure;
+			} finally {
+				if (finished) {
+					discardPods(level, site);
+					level.getChunkSource().removeTicketWithRadius(TicketType.FORCED, home, 0);
+				}
 			}
-			pod[0].tick();
-			PodEvents.AFTER_TICK.invoker().afterTick(pod[0]);
-			ticked[0]++;
-			expectUnloaded(helper, level, site, false, "after pod tick " + ticked[0]);
-			if (ticked[0] == ticks) {
-				check.run();
-				pod[0].discard();
-				level.getChunkSource().removeTicketWithRadius(TicketType.FORCED, home, 0);
-				helper.succeed();
-			}
+			helper.succeed();
 		});
+	}
+
+	/** Sleeps a moment so the generation threads get the time, and fails once the wall-clock budget for the chunk has run out. */
+	private static void waitForTheChunk(GameTestHelper helper, Site site, long deadline) {
+		if (System.nanoTime() - deadline > 0) {
+			throw helper.assertionException("chunk " + site.chunk() + " was still unloaded " + LOAD_BUDGET_SECONDS
+					+ " s after its forced ticket was added, and the test was waiting for it to load");
+		}
+		try {
+			Thread.sleep(LOAD_POLL_MILLIS);
+		} catch (InterruptedException interrupted) {
+			Thread.currentThread().interrupt();
+			throw helper.assertionException("interrupted while waiting for chunk " + site.chunk() + " to load");
+		}
+	}
+
+	/** Discards every pod standing in the site's chunk, the one under test and any that tow or ride it. */
+	private static void discardPods(ServerLevel level, Site site) {
+		AABB column = new AABB(site.minX() - 2, level.getMinY(), site.minZ() - 2, site.minX() + 18, level.getMaxY(), site.minZ() + 18);
+		for (PodEntity pod : level.getEntitiesOfClass(PodEntity.class, column)) {
+			pod.discard();
+		}
 	}
 
 	private static void buildFloor(ServerLevel level, Site site) {
