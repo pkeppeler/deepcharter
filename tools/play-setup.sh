@@ -34,7 +34,10 @@ wrapper="$home/bin/mcpfabric-mcp"
 if [[ "${1:-}" == "--print-sha256" ]]; then echo "$jar_sha256"; exit 0; fi
 
 die() { echo "play-setup: $*" >&2; exit 1; }
-sha256_of() { shasum -a 256 "$1" | cut -d' ' -f1; }
+sha256_of() {
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | cut -d' ' -f1
+  else shasum -a 256 "$1" | cut -d' ' -f1; fi   # portable: fallback when sha256sum is absent (macOS)
+}
 
 umask 077
 mkdir -p "$home/jars" "$home/bin"
