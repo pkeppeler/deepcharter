@@ -37,7 +37,6 @@ Pillars, ranked. The higher one wins a conflict.
 
 - The underground is a chain of layers. Each layer's floor leads into the top of the next.
 - The surface and story layers 1–8 share one tall dimension, the **campaign world**. A layer is a Y band with its own ambient light, fog and sky, set by biome. The depth readout is computed: layer offset plus local Y. See [ADR 0029](adr/0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md).
-- Layers average 256 blocks or less.
 - Layers vary in thickness.
 - **Zones:** each layer has 2–4 zones. Ore value, hazards, creatures and atmosphere step up between zones.
 
@@ -49,7 +48,7 @@ Pillars, ranked. The higher one wins a conflict.
 
 ### Seams and grained crust
 
-- Below the campaign world, the worlds are 2048 tall. Each joins the next at a **seam**: a fast background swap. The campaign world joins the first uncharted world the same way, at the finale's floor. The pod carries all its riders.
+- Below the campaign world, the worlds are 2048 tall. Each joins the next at a **seam**: a fast background swap. The pod carries all its riders.
 - The swap happens inside a **grained crust** (working name; the lore session names it). It has a vertical grain and flexes on a slow pulse. Rules: no sideways digging, placed blocks crumble, fluids are absorbed, and anything that stops in it is squeezed.
 - Seed-chosen **decoys** (set so that about a third of restricted crusts are seams) follow the same rules, so a seam cannot be told from a decoy.
 

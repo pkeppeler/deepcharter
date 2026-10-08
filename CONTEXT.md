@@ -51,7 +51,7 @@ The join between two tall worlds, including the campaign world and the first unc
 _Avoid_: portal, loading screen
 
 **Grained crust**:
-A crust with a vertical grain that flexes on a slow pulse. It allows no sideways digging or placing, absorbs fluids and squeezes anything that stops in it. Working name.
+A crust with a vertical grain that flexes on a slow pulse. Its rules are in the SPEC. Working name.
 _Avoid_: seam crust, no-build zone
 
 **Decoy**:

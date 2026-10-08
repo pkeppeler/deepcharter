@@ -6,7 +6,7 @@ status: accepted
 
 Supersedes [ADR 0003](0003-depth-as-chained-layer-dimensions.md). Amends [ADR 0011](0011-the-surface-is-layer-0-with-an-open-floor.md). Measurements: issue #185 and draft PR #187.
 
-One dimension, the **campaign world**, holds the surface and story layers 1 to 8. Below it, the uncharted layers are a chain of 2048-tall worlds. Crossing inside the campaign world has no teleport. Between tall worlds, a **seam** swaps the player in the background, inside a **grained crust**.
+One dimension, the **campaign world**, holds the surface and story layers 1 to 8. Below it, the uncharted layers are a chain of 2048-tall worlds, joined by **seams**.
 
 ## Decision
 
@@ -43,5 +43,4 @@ One dimension, the **campaign world**, holds the surface and story layers 1 to 8
 - Keep the simulation distance low in tall worlds. Server tick cost grows with loaded sections.
 - A drilled shaft lets a pod reach a seam at terminal speed, so the 600-block lead is a minimum.
 - ADR 0006 (a breach crossing recreates the pod) and ADR 0022 (the tower carries a towed pod across a breach) still hold at seams, where the entity crosses worlds. Inside the campaign world there is no crossing to recreate or carry through. Follow-up in #214 and #215.
-- Open: what happens to dropped items and mobs that fall to a seam.
 - The breach code (`BreachService`) crosses by teleport today. Its rewrite is separate work under the same milestone.
