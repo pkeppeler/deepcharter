@@ -25,6 +25,12 @@ echo "pre-push: compile and checkstyle (waits if another Gradle build holds the 
 echo "pre-push: tool unit tests" >&2
 python3 -I -m unittest discover -s tools/tests -p 'test_*.py' \
   || fail "tool unit tests"
+echo "pre-push: shellcheck" >&2
+if command -v shellcheck >/dev/null 2>&1; then
+  tools/shellcheck.sh || fail "shellcheck"
+else
+  echo "pre-push: shellcheck not found, skipping it (CI runs it)" >&2
+fi
 echo "pre-push: room-carver gate check (runs Gradle)" >&2
 python3 -I tools/tests/room_carver_gate_check.py \
   || fail "room-carver gate check"
