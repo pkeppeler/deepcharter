@@ -33,7 +33,7 @@ public class TallStackScenario extends EvidenceScenario {
 	private static final int Z = 4000;
 	/** Layer 1 starts here; the crust is the three rows from here up. */
 	private static final int SPLIT = 256;
-	private static final int FLOOR_Y = SPLIT + 8;
+	private static final int FLOOR_Y = SPLIT + 4;
 	private static final int TICKS_PER_FRAME = 16;
 	private static final int MAX_TICKS = 4000;
 	private static final int FALL_FRAMES = 14;
@@ -60,6 +60,7 @@ public class TallStackScenario extends EvidenceScenario {
 				player.teleportTo(level, X, FLOOR_Y, Z, Set.of(), 0, LOOK_DOWN, true);
 				PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
 				pod.setPos(X, FLOOR_Y, Z);
+				player.setPermanentlyInvulnerable(true);
 				level.addFreshEntity(pod);
 				if (!player.startRiding(pod)) {
 					throw new AssertionError("the player could not mount the pod");
@@ -77,14 +78,14 @@ public class TallStackScenario extends EvidenceScenario {
 			singleplayer.getServer().runOnServer(server -> ((PodEntity) server.getPlayerList().getPlayers().getFirst().getVehicle()).setFuel(100f));
 			context.getInput().holdKey(options -> options.keySprint);
 			int ticks = 0;
-			while (podY(context) > SPLIT - 40 && ticks < MAX_TICKS) {
+			while (podY(context) > SPLIT - 15 && ticks < MAX_TICKS) {
 				context.waitTicks(TICKS_PER_FRAME);
 				ticks += TICKS_PER_FRAME;
 				requireStack(context);
 				frame(context);
 			}
 			context.getInput().releaseKey(options -> options.keySprint);
-			if (podY(context) > SPLIT - 40) {
+			if (podY(context) > SPLIT - 15) {
 				throw new AssertionError("The pod did not drill through the crust and fall into layer 2's range within " + MAX_TICKS + " ticks");
 			}
 			context.runOnClient(client -> client.player.setXRot(LOOK_DOWN));
@@ -110,6 +111,10 @@ public class TallStackScenario extends EvidenceScenario {
 
 	/** Crust rows at the layer boundary, a row of stone under the pod, an open room above, and glowstone to light the shaft. */
 	private static void buildShaftRoom(ServerLevel level) {
+		// The 6 rows of rock the density interpolation leaves under the crust cost more fuel than the tank holds, so clear them.
+		box(level, SPLIT - 7, SPLIT - 1, Blocks.AIR);
+		// Layer 2's void under the crust is about 30 blocks deep and a pod that lands from it at speed is wrecked: a slime block floor catches it.
+		box(level, SPLIT - 18, SPLIT - 18, Blocks.SLIME_BLOCK);
 		box(level, SPLIT, SPLIT + 2, LayerBlocks.BREACH_CRUST);
 		box(level, SPLIT + 3, FLOOR_Y - 1, Blocks.STONE);
 		box(level, FLOOR_Y, FLOOR_Y + 9, Blocks.AIR);

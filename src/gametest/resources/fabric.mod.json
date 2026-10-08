@@ -56,6 +56,7 @@
 		"fabric-client-gametest": [
 			"io.github.pkeppeler.deepcharter.test.TallSpikeClientTest",
 			"io.github.pkeppeler.deepcharter.test.evidence.PodDrillScenario",
+			"io.github.pkeppeler.deepcharter.test.evidence.BreachCrossingScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.TallStackScenario"
 		]
 	},
