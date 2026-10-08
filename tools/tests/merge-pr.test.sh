@@ -48,8 +48,12 @@ review-passed}" ;;
     fi
     if [[ $2 == */actions/runs\?* ]]; then
       [[ ${STUB_CI_RUNS_FAIL-0} == 1 ]] && exit 1
-      printf '%s' "${STUB_CI_RUNS-9001
-}"
+      # STUB_CI_RUNS: "<id>[:<conclusion>]" lines (default success). Like the real
+      # --jq, only ids of runs the select clause asks for are printed.
+      while IFS=: read -r id concl; do
+        [[ -n $id ]] || continue
+        [[ $* != *'.conclusion == "success"'* || ${concl:-success} == success ]] && echo "$id"
+      done <<<"${STUB_CI_RUNS-9001}"
       exit 0
     fi
     if [[ $2 == */actions/runs/* ]]; then
@@ -375,15 +379,15 @@ for name in $required; do
 done
 
 # Stale CI base: the PR's latest CI workflow run tested the merge ref against whatever
-# main was then. Every main commit since the run started (minus a 2-minute margin)
+# main was then. Every main commit since the run was created (minus a 2-minute margin)
 # that changed anything outside docs refuses the merge. Default stubs: the latest CI
 # run was created 03:40:43Z (so the window opens 03:38:43Z) and main has no commits.
 stale_hint="gh pr close 7 && gh pr reopen 7"
 after="2026-10-08T03:47:00Z"
 run_script
 exited "no main commits since the CI run merges" 0
-logged "CI runs read for the pinned head sha" "gh api repos/pkeppeler/deepcharter/actions/runs?head_sha=abc123&event=pull_request&per_page=100 --paginate --jq .workflow_runs[] | select(.name == \"CI\" and .status == \"completed\") | .id"
-logged "latest CI run start read" "gh api repos/pkeppeler/deepcharter/actions/runs/9001 --jq .created_at"
+logged "CI runs read for the pinned head sha" "gh api repos/pkeppeler/deepcharter/actions/runs?head_sha=abc123&event=pull_request&per_page=100 --paginate --jq .workflow_runs[] | select(.name == \"CI\" and .status == \"completed\" and .conclusion == \"success\") | .id"
+logged "latest CI run creation time read" "gh api repos/pkeppeler/deepcharter/actions/runs/9001 --jq .created_at"
 logged "main read from two minutes before the run" "git log --format=%H --since=2026-10-08T03:38:43Z origin/main"
 run_script "STUB_CI_RUNS=9001${nl}9005${nl}9003"
 exited "newest CI run is the one read" 0
@@ -396,7 +400,7 @@ logged "each commit's files read" "git show --name-only --format= --no-renames c
 code_log="STUB_MAIN_LOG=c1 $after"
 refusal "main commit in src" "main changed since its CI run" "$code_log" STUB_SHOW_c1=src/main/java/Charters.java
 refusal "refusal names the moved path" "src/main/java/Charters.java" "$code_log" STUB_SHOW_c1=src/main/java/Charters.java
-refusal "refusal names the CI run start" "CI run 9001 started 2026-10-08T03:40:43Z" "$code_log" STUB_SHOW_c1=src/A.java
+refusal "refusal names the CI run creation time" "CI run 9001 created 2026-10-08T03:40:43Z" "$code_log" STUB_SHOW_c1=src/A.java
 refusal "refusal gives the close/reopen fix" "$stale_hint" "$code_log" STUB_SHOW_c1=src/main/java/Charters.java
 refusal "main commit in a build file" "$stale_hint" "$code_log" STUB_SHOW_c1=build.gradle
 refusal "build file beside another path" "build.gradle" "$code_log" "STUB_SHOW_c1=gradle.properties${nl}build.gradle"
@@ -411,11 +415,15 @@ refusal "refusal lists only the first paths" "(+2 more)" "$code_log" \
 refusal "commit inside the margin window counts" "src/M.java" "STUB_MAIN_LOG=c1 2026-10-08T03:39:30Z" STUB_SHOW_c1=src/M.java
 run_script "STUB_MAIN_LOG=c1 2026-10-08T03:30:00Z" STUB_SHOW_c1=src/Old.java
 exited "commit before the margin window is ignored" 0
-refusal "no CI run for the head" "no completed CI run for abc123" STUB_CI_RUNS=
-refusal "CI runs unreadable" "no completed CI run for abc123" STUB_CI_RUNS_FAIL=1
-refusal "CI run has no start time" "no readable start time on its CI run" STUB_CI_CREATED=
-refusal "CI run start unreadable" "no readable start time on its CI run" STUB_CI_CREATED_FAIL=1
-refusal "CI run start is not a timestamp" "no readable start time on its CI run" "STUB_CI_CREATED=yesterday"
+run_script "STUB_CI_RUNS=9001${nl}9005:cancelled${nl}9007:failure"
+exited "newer cancelled and failed CI runs are skipped" 0
+logged "older successful CI run used" "gh api repos/pkeppeler/deepcharter/actions/runs/9001 --jq .created_at"
+refusal "only unsuccessful CI runs" "no successful CI run for abc123" "STUB_CI_RUNS=9001:cancelled${nl}9002:failure"
+refusal "no CI run for the head" "no successful CI run for abc123" STUB_CI_RUNS=
+refusal "CI runs unreadable" "no successful CI run for abc123" STUB_CI_RUNS_FAIL=1
+refusal "CI run has no start time" "no readable creation time on its CI run" STUB_CI_CREATED=
+refusal "CI run start unreadable" "no readable creation time on its CI run" STUB_CI_CREATED_FAIL=1
+refusal "CI run start is not a timestamp" "no readable creation time on its CI run" "STUB_CI_CREATED=yesterday"
 refusal "main log unreadable" "could not list the commits on origin/main" STUB_LOG_FAIL=1
 refusal "commit files unreadable" "could not read the files changed by origin/main commit c1" "$code_log" STUB_SHOW_FAIL=1
 run_script
