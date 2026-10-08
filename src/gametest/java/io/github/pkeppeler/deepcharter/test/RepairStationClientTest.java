@@ -1,6 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -8,6 +10,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -49,19 +52,45 @@ public class RepairStationClientTest implements FabricClientGameTest {
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.station())));
 			context.waitForScreen(RepairStationScreen.class);
 
-			context.clickScreenButton("REPAIR 10 HP ($10)");
+			clickRow(context, "REPAIR 10 HP ($10)");
 			awaitServer(context, () -> hull(singleplayer, scene) == scene.pod().maxHull() - DAMAGE + 10f);
 			check(account(singleplayer, scene) == START_BALANCE - 10, "10 HP cost $10, the account is $" + account(singleplayer, scene));
 
-			context.clickScreenButton("BUY DYNAMITE $100");
+			clickRow(context, "BUY DYNAMITE $100");
 			awaitServer(context, () -> carried(singleplayer, Consumable.DYNAMITE) == 1);
 			check(account(singleplayer, scene) == START_BALANCE - 10 - 100, "the dynamite cost $100, the account is $" + account(singleplayer, scene));
 
-			context.clickScreenButton("REPAIR ALL");
+			clickRow(context, "REPAIR ALL");
 			awaitServer(context, () -> hull(singleplayer, scene) == scene.pod().maxHull());
 			check(account(singleplayer, scene) == START_BALANCE - 10 - 100 - 30 * 1, "the rest of the hull cost $30, the account is $" + account(singleplayer, scene));
 			context.setScreen(() -> null);
 		}
+	}
+
+	/**
+	 * Scrolls the open repair station until the button labelled {@code label} is shown, then clicks it: a small screen shows only
+	 * some rows. Fails when no row has the label, or when two do (the click would take the first).
+	 */
+	public static void clickRow(ClientGameTestContext context, String label) {
+		RepairStationScreen screen = context.computeOnClient(client -> (RepairStationScreen) client.gui.screen());
+		int matches = context.computeOnClient(client -> {
+			Set<Integer> rows = new HashSet<>();
+			int shownAt = 0;
+			for (int first = 0; first < screen.rowCount(); first++) {
+				screen.scrollTo(first);
+				List<Button> buttons = screen.children().stream().filter(Button.class::isInstance).map(Button.class::cast).toList();
+				for (int i = 0; i < buttons.size(); i++) {
+					if (buttons.get(i).getMessage().getString().equals(label) && rows.add(screen.firstRow() + i)) {
+						shownAt = screen.firstRow();
+					}
+				}
+			}
+			// Leave the list where the row is shown, so that the click finds it.
+			screen.scrollTo(shownAt);
+			return rows.size();
+		});
+		check(matches == 1, matches + " buttons in the repair station are labelled '" + label + "', not 1");
+		context.clickScreenButton(label);
 	}
 
 	/** Waits for server state that {@code condition} reads through {@code computeOnServer}, which {@code waitFor} may not call (it runs on the client thread). */
