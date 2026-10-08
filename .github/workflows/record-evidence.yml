@@ -128,7 +128,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      # needs write access to the repo anyway, and the default branch would lack these scripts until the PR that adds them merges.
+      # The PR merge ref's scripts, as in capture: asking needs write access to the repo anyway, and
       # the default branch would lack these scripts until the PR that adds them merges.
       # Credentials stay persisted because pr-media.sh pushes with them; nothing here uploads
       # the workspace, so zizmor's artipacked finding does not apply.
