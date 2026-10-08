@@ -400,6 +400,8 @@ public class PodDrillTest {
 		ServerLevel one = layer(helper, 1);
 		// Whatever an earlier run left, three crust rows; then clear the top two and the stone above in a 5 x 5, so one is left under the pod.
 		box(one, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
+		// Stone walls and a roof round the room keep the world's lava (#121) out of the pod's way.
+		box(one, x - 3, x + 3, 1, 9, Z - 3, Z + 3, Blocks.STONE);
 		box(one, x - 2, x + 2, 1, 8, Z - 2, Z + 2, Blocks.AIR);
 		float[] hullBefore = {Float.NaN};
 		Rig rig = Rig.await(helper, one, new Vec3(x, 1, Z), 0f, "drill-crust", SPRINT, pod -> hullBefore[0] = pod.hull());
