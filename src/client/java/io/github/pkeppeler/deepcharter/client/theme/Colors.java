@@ -13,7 +13,7 @@ public final class Colors {
 		return argb | ALPHA_MASK;
 	}
 
-	/** The colour without its alpha, as vanilla text styles take it. */
+	/** The colour without its alpha: as vanilla text styles take it, and the transparent far end of a gradient. */
 	public static int rgb(int argb) {
 		return argb & RGB_MASK;
 	}
@@ -21,10 +21,5 @@ public final class Colors {
 	/** The colour of {@code argb} at {@code alpha} (0 to 255). */
 	public static int withAlpha(int argb, int alpha) {
 		return rgb(argb) | alpha << 24;
-	}
-
-	/** {@code argb} with no opacity at all, the far end of a gradient from it. */
-	public static int transparent(int argb) {
-		return rgb(argb);
 	}
 }

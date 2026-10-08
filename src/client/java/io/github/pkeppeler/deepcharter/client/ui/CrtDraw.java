@@ -14,7 +14,7 @@ public final class CrtDraw {
 	public static void backdrop(GuiGraphicsExtractor graphics, int width, int height) {
 		CrtTuning tuning = CrtTuning.current();
 		graphics.fill(0, 0, width, height, tuning.backgroundColor());
-		int transparent = Colors.transparent(tuning.bloomColor());
+		int transparent = Colors.rgb(tuning.bloomColor());
 		graphics.fillGradient(0, 0, width, tuning.bloomHeight(), tuning.bloomColor(), transparent);
 		graphics.fillGradient(0, height - tuning.bloomHeight(), width, height, transparent, tuning.bloomColor());
 	}

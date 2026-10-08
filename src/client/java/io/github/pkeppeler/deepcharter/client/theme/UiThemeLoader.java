@@ -21,7 +21,7 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData.Layer;
 /**
  * Loads the UI theme with the client's resource packs, so F3+T re-reads it. Each area's file is read from every pack that has one, the
  * mod's own at the bottom, and merged key by key ({@link ThemeData}): a pack names only what it changes. A file that does not parse, or a
- * value that is not valid, fails the reload and names the pack, as a broken model does; vanilla then puts the old packs back.
+ * value that is not valid, fails the reload and names the pack, as a broken model does; vanilla then unselects every resource pack the player had on.
  */
 final class UiThemeLoader extends SimplePreparableReloadListener<UiTheme> {
 	static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "ui_theme");
