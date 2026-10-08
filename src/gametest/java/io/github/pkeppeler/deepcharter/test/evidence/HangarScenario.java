@@ -114,7 +114,7 @@ public class HangarScenario extends EvidenceScenario {
 		if (Charters.found(server, player.getUUID(), "Founding Charter").isPresent()) {
 			throw new AssertionError("founding should succeed");
 		}
-		if (Charters.deposit(server, Charters.charterOf(server, player.getUUID()).orElseThrow().id(), ACCOUNT).isPresent()) {
+		if (Charters.deposit(server, Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id(), ACCOUNT).isPresent()) {
 			throw new AssertionError("funding should succeed");
 		}
 		player.setPermanentlyInvulnerable(true);
@@ -127,7 +127,7 @@ public class HangarScenario extends EvidenceScenario {
 
 	private static long balance(MinecraftServer server) {
 		ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-		return Charters.charterOf(server, player.getUUID()).orElseThrow().account();
+		return Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().account();
 	}
 
 	/** Stands the player two blocks in front of the console (west of it), looking at {@code target}. */

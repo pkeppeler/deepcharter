@@ -7,8 +7,6 @@ import net.minecraft.core.GlobalPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.Level;
 
-import io.github.pkeppeler.deepcharter.DeepCharter;
-
 /**
  * The API of the colony for the rest of the mod. Every method is safe on a tick, join or callback path: before the colony is
  * built, or when its saved data is unreadable, it answers empty, and the unreadable data is logged once. Call on the server thread.
@@ -19,15 +17,7 @@ public final class Colony {
 
 	/** The colony site if its saved data is readable; otherwise empty, after logging that once per site. */
 	public static Optional<ColonySite> readable(MinecraftServer server) {
-		ColonySite site = ColonySite.get(server);
-		if (site.isReadable()) {
-			return Optional.of(site);
-		}
-		if (site.firstUnreadableReport()) {
-			DeepCharter.LOGGER.error("The saved colony has version {} that this build cannot read: the colony is not built or changed until the world is opened by a build that reads it",
-					site.unreadableVersion().orElse("?"));
-		}
-		return Optional.empty();
+		return Optional.of(ColonySite.get(server)).filter(ColonySite::isReadable);
 	}
 
 	/** The built colony, or empty before it is built or when its data is unreadable. */

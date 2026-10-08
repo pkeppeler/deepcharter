@@ -96,7 +96,7 @@ public final class Notes {
 		if (data.isEmpty()) {
 			return FindResult.UNREADABLE;
 		}
-		Optional<Charter> charter = Charters.charterOf(server, finder.getUUID());
+		Optional<Charter> charter = Charters.readableCharterOf(server, finder.getUUID());
 		if (charter.isEmpty()) {
 			return FindResult.NO_CHARTER;
 		}
@@ -116,21 +116,16 @@ public final class Notes {
 		if (data.isEmpty()) {
 			return List.of();
 		}
-		Set<Identifier> found = Charters.charterOf(server, player).map(charter -> data.get().found(charter.id())).orElse(Set.of());
+		Set<Identifier> found = Charters.readableCharterOf(server, player).map(charter -> data.get().found(charter.id())).orElse(Set.of());
 		return ALL.stream().filter(found::contains).toList();
 	}
 
 	/** The Notes data, or empty (logged once for each saved-data object) when the saved charters or the saved Notes are unreadable. */
 	private static Optional<NotesData> readableData(MinecraftServer server) {
-		if (!HandbookProgress.chartersReadable(server)) {
+		if (!Charters.isReadable(server)) {
 			return Optional.empty();
 		}
-		NotesData data = NotesData.get(server);
-		if (!data.isReadable()) {
-			HandbookProgress.reportOnce(data, "the saved handbook notes have a version this build cannot read, so the handbook skips them and keeps them unchanged");
-			return Optional.empty();
-		}
-		return Optional.of(data);
+		return Optional.of(NotesData.get(server)).filter(NotesData::isReadable);
 	}
 
 	private static void sendAll(MinecraftServer server, Iterable<UUID> players) {

@@ -104,7 +104,7 @@ public final class CharterCommands {
 	}
 
 	private static int info(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-		Optional<Charter> charter = Charters.charterOf(server(context), player(context).getUUID());
+		Optional<Charter> charter = Charters.charterOfOrThrow(server(context), player(context).getUUID());
 		if (charter.isEmpty()) {
 			return refuse(context, CharterRefusal.NOT_ON_A_CHARTER);
 		}
@@ -116,7 +116,7 @@ public final class CharterCommands {
 	}
 
 	private static int list(CommandContext<CommandSourceStack> context) {
-		Collection<Charter> charters = Charters.all(server(context));
+		Collection<Charter> charters = Charters.allOrThrow(server(context));
 		context.getSource().sendSuccess(() -> count(Noun.CHARTER, charters.size()), false);
 		for (Charter charter : charters) {
 			context.getSource().sendSuccess(() -> Component.translatable(

@@ -83,7 +83,7 @@ public class FuelPumpClientTest implements FabricClientGameTest {
 
 			// An empty account: nothing is live, and a press sent anyway is refused and changes nothing.
 			singleplayer.getServer().runOnServer(server -> {
-				Charters.spend(server, scene.charter(), Charters.find(server, scene.charter()).orElseThrow().account());
+				Charters.spend(server, scene.charter(), Charters.findOrThrow(server, scene.charter()).orElseThrow().account());
 				pod(server).setFuel(0f);
 			});
 			context.waitFor(client -> ClientCharter.view().get().balance() == 0 && litres(client, scene) < EPSILON, WAIT_TICKS);
@@ -108,7 +108,7 @@ public class FuelPumpClientTest implements FabricClientGameTest {
 		if (Charters.found(server, player.getUUID(), "Pump Test Charter").isPresent()) {
 			throw new AssertionError("founding the charter should succeed");
 		}
-		CharterId charter = Charters.charterOf(server, player.getUUID()).orElseThrow().id();
+		CharterId charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id();
 		if (Charters.deposit(server, charter, START_BALANCE).isPresent()) {
 			throw new AssertionError("the deposit should succeed");
 		}

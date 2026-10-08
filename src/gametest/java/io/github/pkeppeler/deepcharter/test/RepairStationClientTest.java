@@ -81,7 +81,7 @@ public class RepairStationClientTest implements FabricClientGameTest {
 		if (Charters.found(server, player.getUUID(), "Emendation Test Charter").isPresent()) {
 			throw new AssertionError("founding should succeed");
 		}
-		Charter charter = Charters.charterOf(server, player.getUUID()).orElseThrow();
+		Charter charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow();
 		RepairState state = RepairState.get(server);
 		for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL, TerminalTypes.REPAIR_STATION)) {
 			type.parts().forEach(part -> state.insert(type, part).ifPresent(refusal -> {
@@ -107,7 +107,7 @@ public class RepairStationClientTest implements FabricClientGameTest {
 	}
 
 	private static long account(TestSingleplayerContext singleplayer, Scene scene) {
-		return singleplayer.getServer().computeOnServer(server -> Charters.find(server, scene.charter().id()).orElseThrow().account());
+		return singleplayer.getServer().computeOnServer(server -> Charters.findOrThrow(server, scene.charter().id()).orElseThrow().account());
 	}
 
 	private static int carried(TestSingleplayerContext singleplayer, Consumable consumable) {

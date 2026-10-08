@@ -93,7 +93,7 @@ public class ContractTerminalTest {
 
 		String charter = uniqueName("Founders");
 		expectDone(helper, Terminals.act(player, pos, ContractActions.FOUND, name(charter)), "founding a charter");
-		Optional<Charter> found = Charters.charterOf(server, player.getUUID());
+		Optional<Charter> found = Charters.charterOfOrThrow(server, player.getUUID());
 		if (found.isEmpty() || !found.get().name().equals(charter) || !found.get().isDirector(player.getUUID())) {
 			throw helper.assertionException("the founder should direct the charter %s, got %s", charter, found);
 		}
@@ -165,7 +165,7 @@ public class ContractTerminalTest {
 		ServerPlayer stranger = visitor(helper, "Stranger", pos).player();
 		String charter = uniqueName("Careful");
 		expectDone(helper, Terminals.act(director, pos, ContractActions.FOUND, name(charter)), "founding");
-		int charters = Charters.all(server).size();
+		int charters = Charters.allOrThrow(server).size();
 
 		CompoundTag wrongType = new CompoundTag();
 		wrongType.put(ContractActions.NAME_KEY, IntTag.valueOf(7));
@@ -178,7 +178,7 @@ public class ContractTerminalTest {
 		expectRefused(helper, Terminals.act(stranger, pos, ContractActions.APPROVE, name("Stranger")), "approving with no charter");
 		expectRefused(helper, Terminals.act(stranger, pos, ContractActions.DENY, new CompoundTag()), "denying with no name");
 		expectRefused(helper, Terminals.act(stranger, pos, ContractActions.LEAVE, new CompoundTag()), "leaving with no charter");
-		if (Charters.all(server).size() != charters || Charters.charterOf(server, stranger.getUUID()).isPresent()) {
+		if (Charters.allOrThrow(server).size() != charters || Charters.charterOfOrThrow(server, stranger.getUUID()).isPresent()) {
 			throw helper.assertionException("a refused request changes nothing");
 		}
 
@@ -210,7 +210,7 @@ public class ContractTerminalTest {
 		}
 
 		expectDone(helper, Terminals.act(director, pos, ContractActions.FOUND, name(uniqueName("Crowded"))), "founding");
-		Charter crowded = Charters.charterOf(server, director.getUUID()).orElseThrow();
+		Charter crowded = Charters.charterOfOrThrow(server, director.getUUID()).orElseThrow();
 		for (int i = 0; i < cap + 2; i++) {
 			if (Charters.apply(server, UUID.randomUUID(), crowded.id()).isPresent()) {
 				throw helper.assertionException("an application for a list test should succeed");
@@ -230,7 +230,7 @@ public class ContractTerminalTest {
 		ServerPlayer director = visitor(helper, "Watcher", pos).player();
 		ServerPlayer applicant = visitor(helper, "Caller", pos).player();
 		expectDone(helper, Terminals.act(director, pos, ContractActions.FOUND, name(uniqueName("Watched"))), "founding");
-		Charter charter = Charters.charterOf(server, director.getUUID()).orElseThrow();
+		Charter charter = Charters.charterOfOrThrow(server, director.getUUID()).orElseThrow();
 		PUSHED.clear();
 
 		// Not through the terminal: the charter event alone must tell the Director.
@@ -249,7 +249,7 @@ public class ContractTerminalTest {
 		ServerPlayer director = visitor(helper, "Keeper", pos).player();
 		ServerPlayer applicant = visitor(helper, "Wavering", pos).player();
 		expectDone(helper, Terminals.act(director, pos, ContractActions.FOUND, name(uniqueName("Kept"))), "founding");
-		expectDone(helper, Terminals.act(applicant, pos, ContractActions.APPLY, name(Charters.charterOf(server, director.getUUID()).orElseThrow().name())), "applying");
+		expectDone(helper, Terminals.act(applicant, pos, ContractActions.APPLY, name(Charters.charterOfOrThrow(server, director.getUUID()).orElseThrow().name())), "applying");
 		PUSHED.clear();
 
 		expectDone(helper, Terminals.act(applicant, pos, ContractActions.LEAVE, new CompoundTag()), "withdrawing");
@@ -290,13 +290,13 @@ public class ContractTerminalTest {
 		ServerPlayer applicant = visitor(helper, "Candidate", pos).player();
 		expectDone(helper, Terminals.act(directorA, pos, ContractActions.FOUND, name(uniqueName("Alpha"))), "founding A");
 		expectDone(helper, Terminals.act(directorB, pos, ContractActions.FOUND, name(uniqueName("Beta"))), "founding B");
-		Charter a = Charters.charterOf(server, directorA.getUUID()).orElseThrow();
+		Charter a = Charters.charterOfOrThrow(server, directorA.getUUID()).orElseThrow();
 		expectDone(helper, Terminals.act(applicant, pos, ContractActions.APPLY, name(a.name())), "applying to A");
 
 		expectRefused(helper, Terminals.act(directorB, pos, ContractActions.APPROVE, name("Candidate")), "B approving A's applicant");
 		expectRefused(helper, Terminals.act(directorB, pos, ContractActions.DENY, name("Candidate")), "B denying A's applicant");
-		Charter after = Charters.find(server, a.id()).orElseThrow();
-		if (!after.applications().equals(List.of(applicant.getUUID())) || Charters.charterOf(server, applicant.getUUID()).isPresent()) {
+		Charter after = Charters.findOrThrow(server, a.id()).orElseThrow();
+		if (!after.applications().equals(List.of(applicant.getUUID())) || Charters.charterOfOrThrow(server, applicant.getUUID()).isPresent()) {
 			throw helper.assertionException("A's application must be untouched by B");
 		}
 		helper.succeed();

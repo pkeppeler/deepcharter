@@ -48,7 +48,6 @@ public final class UpgradeTerminal {
 	/** An int, 1 up to the track's best tier. */
 	public static final String TIER_KEY = "tier";
 
-	private static boolean loggedSerialsUnreadable;
 
 	private UpgradeTerminal() {
 	}
@@ -87,7 +86,7 @@ public final class UpgradeTerminal {
 		if (tier < 1 || tier > track.maxTier()) {
 			return Optional.of(UpgradeRefusal.BAD_REQUEST.message());
 		}
-		Charter charter = Charters.charterOf(server, player.getUUID()).orElseThrow();
+		Charter charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow();
 		PodEntity pod;
 		switch (parked(player, charter, terminal)) {
 			case Parked.None _ -> {
@@ -108,10 +107,6 @@ public final class UpgradeTerminal {
 		}
 		// Everything that can throw or refuse comes before the spend, so a charge always buys an install. A serial burnt by a later refusal is harmless.
 		if (!Serials.get(server).isReadable()) {
-			if (!loggedSerialsUnreadable) {
-				loggedSerialsUnreadable = true;
-				DeepCharter.LOGGER.error("The saved serials are of a version this build cannot read: the upgrade terminal sells nothing until the world is opened by a build that reads them");
-			}
 			return Optional.of(UpgradeRefusal.SERIALS_UNREADABLE.message());
 		}
 		ItemStack part = ComponentItems.mint(server, track, tier, charter.id());

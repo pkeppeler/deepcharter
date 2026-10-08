@@ -4,7 +4,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 import com.mojang.serialization.Codec;
@@ -17,6 +16,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.attachment.SavedState;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 
@@ -38,21 +38,18 @@ public final class NotesData extends SavedData {
 	// Datafixer type: vanilla applies it to saved data it reads. Our data has a version of its own, so the vanilla fixers find nothing to fix.
 	public static final SavedDataType<NotesData> TYPE = new SavedDataType<>(ID, NotesData::new, CODEC, DataFixTypes.SAVED_DATA_COMMAND_STORAGE);
 
-	private final Map<CharterId, Set<Identifier>> found = new LinkedHashMap<>();
-	private final Optional<Versioned.Unreadable<List<Entry>>> unreadable;
+	private final SavedState<Map<CharterId, Set<Identifier>>> state;
 
 	public NotesData() {
-		this.unreadable = Optional.empty();
+		this.state = SavedState.fresh(ID, VERSION, new LinkedHashMap<>());
 	}
 
 	private NotesData(Versioned<List<Entry>> loaded) {
-		switch (loaded) {
-			case Versioned.Readable<List<Entry>> readable -> {
-				readable.value().forEach(entry -> found.put(entry.charter(), new LinkedHashSet<>(entry.notes())));
-				unreadable = Optional.empty();
-			}
-			case Versioned.Unreadable<List<Entry>> raw -> unreadable = Optional.of(raw);
-		}
+		this.state = SavedState.load(ID, VERSION, loaded, entries -> {
+			Map<CharterId, Set<Identifier>> found = new LinkedHashMap<>();
+			entries.forEach(entry -> found.put(entry.charter(), new LinkedHashSet<>(entry.notes())));
+			return found;
+		});
 	}
 
 	/** The world's Notes. Call on the server thread. */
@@ -60,9 +57,9 @@ public final class NotesData extends SavedData {
 		return server.getDataStorage().computeIfAbsent(TYPE);
 	}
 
-	/** False when the saved Notes are of a version this build cannot read: {@link #found} and {@link #add} then throw. */
+	/** False (logged once) when the saved Notes are of a version this build cannot read: {@link #found} and {@link #add} then throw. */
 	public boolean isReadable() {
-		return unreadable.isEmpty();
+		return state.isReadable();
 	}
 
 	/** The Notes {@code charter} has found. Throws if the saved data is of a version this build cannot read. */
@@ -80,16 +77,11 @@ public final class NotesData extends SavedData {
 	}
 
 	private Versioned<List<Entry>> versioned() {
-		return unreadable.<Versioned<List<Entry>>>map(raw -> raw)
-				.orElseGet(() -> Versioned.of(found.entrySet().stream().map(entry -> new Entry(entry.getKey(), List.copyOf(entry.getValue()))).toList()));
+		return state.versioned(found -> found.entrySet().stream().map(entry -> new Entry(entry.getKey(), List.copyOf(entry.getValue()))).toList());
 	}
 
 	private Map<CharterId, Set<Identifier>> readable() {
-		if (unreadable.isPresent()) {
-			throw new IllegalStateException("the saved handbook notes have version " + unreadable.get().version()
-					+ " that this build cannot read (it reads " + VERSION + ")");
-		}
-		return found;
+		return state.orThrow();
 	}
 
 	/** One charter's found Notes, in the order they were found. */

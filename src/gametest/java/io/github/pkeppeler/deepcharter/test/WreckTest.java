@@ -295,7 +295,7 @@ public class WreckTest {
 		Charters.found(server, mock.player().getUUID(), uniqueName()).ifPresent(refusal -> {
 			throw failure(helper, "could not found a charter: %s", refusal);
 		});
-		return Charters.charterOf(server, mock.player().getUUID()).orElseThrow();
+		return Charters.charterOfOrThrow(server, mock.player().getUUID()).orElseThrow();
 	}
 
 	/** How many wreck reports this player has been sent in chat. */
@@ -443,7 +443,7 @@ public class WreckTest {
 		Charters.leave(server, founder.player().getUUID()).ifPresent(refusal -> {
 			throw failure(helper, "the founder could not leave: %s", refusal);
 		});
-		if (!Charters.find(server, dormant.id()).orElseThrow().dormant()) {
+		if (!Charters.findOrThrow(server, dormant.id()).orElseThrow().dormant()) {
 			throw failure(helper, "the charter should be dormant");
 		}
 		PodComponents.register(pod, dormant.id());

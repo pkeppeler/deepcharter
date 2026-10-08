@@ -17,10 +17,10 @@ public final class ScannerPods {
 
 	/** Server only. Founds a charter for {@code owner} if they have none, registers {@code pod} to it and installs a scanner of {@code tier} (1 or more). */
 	public static void fit(MinecraftServer server, ServerPlayer owner, PodEntity pod, int tier) {
-		if (Charters.charterOf(server, owner.getUUID()).isEmpty() && Charters.found(server, owner.getUUID(), "Scanner " + owner.getScoreboardName()).isPresent()) {
+		if (Charters.charterOfOrThrow(server, owner.getUUID()).isEmpty() && Charters.found(server, owner.getUUID(), "Scanner " + owner.getScoreboardName()).isPresent()) {
 			throw new AssertionError("the player could not found a charter");
 		}
-		CharterId charter = Charters.charterOf(server, owner.getUUID()).orElseThrow().id();
+		CharterId charter = Charters.charterOfOrThrow(server, owner.getUUID()).orElseThrow().id();
 		PodComponents.register(pod, charter);
 		PodComponents.install(pod, ComponentItems.mint(server, ComponentTrack.SCANNER, tier, charter));
 	}

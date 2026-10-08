@@ -6,7 +6,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 
@@ -42,7 +41,6 @@ public final class Transmissions {
 
 	/** The running server, for {@link #fire(CharterId, Identifier)}, whose frozen signature has no server. Set while one is running. */
 	private static MinecraftServer running;
-	private static final AtomicBoolean REPORTED_UNREADABLE = new AtomicBoolean();
 	private static final Set<Identifier> REPORTED_MISSING = new HashSet<>();
 
 	private Transmissions() {
@@ -50,7 +48,6 @@ public final class Transmissions {
 
 	static void started(MinecraftServer server) {
 		running = server;
-		REPORTED_UNREADABLE.set(false);
 		REPORTED_MISSING.clear();
 	}
 
@@ -82,10 +79,10 @@ public final class Transmissions {
 	/** {@link #fire(CharterId, Identifier)} with the transmission state in {@code data}. */
 	public static void fire(MinecraftServer server, TransmissionData data, CharterId charter, Identifier transmission) {
 		Transmission fired = TransmissionCatalog.require(transmission);
-		Charter found = requireCharter(server, charter);
-		if (!usable(data)) {
+		if (!readable(server, data)) {
 			return;
 		}
+		Charter found = requireCharter(server, charter);
 		payPending(server, data, charter);
 		if (!data.fire(charter, fired)) {
 			return;
@@ -100,15 +97,18 @@ public final class Transmissions {
 	 * first fired, and sends them to its online members. They pay no bonus: the bonus was for the charter that did the work.
 	 */
 	public static void replayTo(MinecraftServer server, TransmissionData data, CharterId charter) {
+		if (!readable(server, data)) {
+			return;
+		}
 		Charter found = requireCharter(server, charter);
-		if (usable(data) && !data.replayTo(charter).isEmpty()) {
+		if (!data.replayTo(charter).isEmpty()) {
 			deliver(server, data, found);
 		}
 	}
 
 	/** Sends every online member of {@code charter} what they have not been sent, in order. */
 	public static void deliver(MinecraftServer server, TransmissionData data, CharterId charter) {
-		if (usable(data)) {
+		if (readable(server, data)) {
 			deliver(server, data, requireCharter(server, charter));
 		}
 	}
@@ -118,7 +118,7 @@ public final class Transmissions {
 	 * player in: the server's lookup by UUID does not find a player in their own join event.
 	 */
 	public static void deliverTo(MinecraftServer server, TransmissionData data, CharterId charter, ServerPlayer player) {
-		if (usable(data)) {
+		if (readable(server, data)) {
 			sendUnsent(server, data, requireCharter(server, charter), player);
 		}
 	}
@@ -126,10 +126,10 @@ public final class Transmissions {
 	/** Called when a player logs in: pays what is pending for their charter, and sends them what they missed. */
 	public static void deliverOnLogin(MinecraftServer server, ServerPlayer player) {
 		TransmissionData data = TransmissionData.get(server);
-		if (!usable(data)) {
+		if (!data.isReadable()) {
 			return;
 		}
-		Charters.charterOf(server, player.getUUID()).ifPresent(charter -> {
+		Charters.readableCharterOf(server, player.getUUID()).ifPresent(charter -> {
 			payPending(server, data, charter.id());
 			sendUnsent(server, data, charter, player);
 		});
@@ -137,7 +137,7 @@ public final class Transmissions {
 
 	/** Tries again the bonuses of {@code charter} that its account refused. Each is credited once and removed; a full account keeps them. */
 	public static void payPending(MinecraftServer server, TransmissionData data, CharterId charter) {
-		if (!usable(data)) {
+		if (!data.isReadable()) {
 			return;
 		}
 		List<Transmission.Bonus> pending = data.progress(charter).pending();
@@ -155,21 +155,9 @@ public final class Transmissions {
 
 	/** {@code member} has left {@code charter}: forget how far they were, so that a return starts at the beginning. */
 	public static void forget(MinecraftServer server, TransmissionData data, CharterId charter, UUID member) {
-		if (usable(data)) {
+		if (data.isReadable()) {
 			data.forget(charter, member);
 		}
-	}
-
-	/** The one check before any use of saved data from a tick or an event: unreadable data does nothing, and is logged once. */
-	private static boolean usable(TransmissionData data) {
-		if (data.isUsable()) {
-			return true;
-		}
-		if (REPORTED_UNREADABLE.compareAndSet(false, true)) {
-			DeepCharter.LOGGER.error("The saved transmissions have version {} that this build cannot read: no transmission is sent or paid, and the data is kept as it is",
-					data.unreadableVersion());
-		}
-		return false;
 	}
 
 	private static void credit(MinecraftServer server, TransmissionData data, CharterId charter, Transmission.Bonus bonus) {
@@ -250,7 +238,12 @@ public final class Transmissions {
 		return server.services().nameToIdCache().get(director.get()).map(NameAndId::name).orElse(UNKNOWN_DIRECTOR);
 	}
 
+	/** True when both the transmission data and the saved charters can be read; logs once for each that cannot. Never throws. */
+	private static boolean readable(MinecraftServer server, TransmissionData data) {
+		return data.isReadable() && Charters.isReadable(server);
+	}
+
 	private static Charter requireCharter(MinecraftServer server, CharterId charter) {
-		return Charters.find(server, charter).orElseThrow(() -> new IllegalArgumentException("No charter " + charter.value()));
+		return Charters.readableFind(server, charter).orElseThrow(() -> new IllegalArgumentException("No charter " + charter.value()));
 	}
 }

@@ -18,7 +18,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
-import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 
@@ -33,13 +33,11 @@ public final class PodLights {
 
 	/** The light each pod holds now. Server thread only; weak, so a pod that vanished without an event does not leak. */
 	private static final Map<PodEntity, Lit> LIT = new WeakHashMap<>();
-	private static boolean ledgerUnreadableLogged;
 
 	private PodLights() {
 	}
 
 	public static void init() {
-		ServerLifecycleEvents.SERVER_STARTING.register(server -> ledgerUnreadableLogged = false);
 		PodEvents.AFTER_TICK.register(PodLights::afterTick);
 		ServerEntityEvents.ENTITY_UNLOAD.register(PodLights::onUnload);
 		ServerTickEvents.END_LEVEL_TICK.register(PodLights::sweep);
@@ -81,21 +79,22 @@ public final class PodLights {
 				|| pos.getY() < Math.floor(pod.getBoundingBox().minY) || pos.getY() > Math.floor(pod.getBoundingBox().maxY)) {
 			return false;
 		}
-		BlockState state = held.level().getBlockState(pos);
+		BlockState state = new LoadedBlocks(held.level()).getBlockState(pos);
 		return state.is(Blocks.LIGHT) && state.getValue(LightBlock.LEVEL) == lightLevel;
 	}
 
 	private static void place(PodEntity pod, ServerLevel level, int lightLevel) {
 		PodLightLedger ledger = PodLightLedger.get(level.getServer());
 		if (!ledger.isReadable()) {
-			if (!ledgerUnreadableLogged) {
-				ledgerUnreadableLogged = true;
-				DeepCharter.LOGGER.error("Pod lights are off: the saved light ledger has version {}, which this build cannot read, and a light it cannot record it could not clean up",
-						ledger.unreadableVersion());
-			}
+			// Pod lights are off: a light the ledger cannot record could not be cleaned up.
 			return;
 		}
-		BlockPos pos = freeCell(pod, level);
+		LoadedBlocks blocks = new LoadedBlocks(level);
+		// Dark until the chunks around the pod's column are loaded: setting a block tells its four sides, and that loads a chunk that is not there.
+		if (!blocks.canChange(pod.blockPosition())) {
+			return;
+		}
+		BlockPos pos = freeCell(pod, blocks);
 		if (pos == null) {
 			return;
 		}
@@ -107,18 +106,18 @@ public final class PodLights {
 	}
 
 	/** The first air cell of the pod's column, from its middle upward and then down; null when the column is solid. */
-	private static BlockPos freeCell(PodEntity pod, ServerLevel level) {
+	private static BlockPos freeCell(PodEntity pod, LoadedBlocks blocks) {
 		int low = (int) Math.floor(pod.getBoundingBox().minY);
 		int high = (int) Math.floor(pod.getBoundingBox().maxY);
 		int middle = Math.clamp((int) Math.floor(pod.getY() + pod.getBbHeight() / 2.0), low, high);
 		BlockPos.MutableBlockPos cell = new BlockPos.MutableBlockPos(pod.getBlockX(), 0, pod.getBlockZ());
 		for (int y = middle; y <= high; y++) {
-			if (level.getBlockState(cell.setY(y)).isAir()) {
+			if (blocks.getBlockState(cell.setY(y)).isAir()) {
 				return cell.immutable();
 			}
 		}
 		for (int y = middle - 1; y >= low; y--) {
-			if (level.getBlockState(cell.setY(y)).isAir()) {
+			if (blocks.getBlockState(cell.setY(y)).isAir()) {
 				return cell.immutable();
 			}
 		}
@@ -126,12 +125,12 @@ public final class PodLights {
 	}
 
 	/**
-	 * Takes the block away if it is still a light block and its chunk is loaded, and forgets it in the ledger. A block in
-	 * an unloaded chunk stays recorded, and the sweep takes it away when the chunk loads.
+	 * Takes the block away if it is still a light block and it can change without loading a chunk, and forgets it in the ledger. A
+	 * block in or next to an unloaded chunk stays recorded, and the sweep takes it away when the chunks load.
 	 */
 	private static void release(Lit held) {
 		ServerLevel level = held.level();
-		if (!level.hasChunkAt(held.pos())) {
+		if (!new LoadedBlocks(level).canChange(held.pos())) {
 			return;
 		}
 		clear(level, held.pos());
@@ -163,7 +162,7 @@ public final class PodLights {
 		LIT.clear();
 	}
 
-	/** Takes away the recorded light blocks of this dimension that no pod holds and whose chunk is loaded. */
+	/** Takes away the recorded light blocks of this dimension that no pod holds and that can change without loading a chunk. */
 	private static void sweep(ServerLevel level) {
 		if (level.getGameTime() % PodLightsTuning.DEFAULT.sweepIntervalTicks() != 0) {
 			return;
@@ -177,8 +176,9 @@ public final class PodLights {
 			return;
 		}
 		Set<GlobalPos> held = heldIn(level);
+		LoadedBlocks blocks = new LoadedBlocks(level);
 		for (GlobalPos entry : recorded) {
-			if (entry.dimension().equals(level.dimension()) && !held.contains(entry) && level.hasChunkAt(entry.pos())) {
+			if (entry.dimension().equals(level.dimension()) && !held.contains(entry) && blocks.canChange(entry.pos())) {
 				clear(level, entry.pos());
 				ledger.forget(entry);
 			}

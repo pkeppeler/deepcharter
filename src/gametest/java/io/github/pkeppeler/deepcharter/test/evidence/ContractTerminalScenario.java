@@ -73,7 +73,7 @@ public class ContractTerminalScenario extends EvidenceScenario {
 
 			two.server().runOnServer(server -> {
 				UUID director = server.getPlayerList().getPlayers().stream().map(ServerPlayer::getUUID).filter(uuid -> !uuid.equals(mock)).findFirst().orElseThrow();
-				Charters.apply(server, mock, Charters.charterOf(server, director).orElseThrow().id());
+				Charters.apply(server, mock, Charters.charterOfOrThrow(server, director).orElseThrow().id());
 			});
 			awaitState(context, state -> state.applicants().equals(List.of(MOCK_NAME)));
 			hold(context);

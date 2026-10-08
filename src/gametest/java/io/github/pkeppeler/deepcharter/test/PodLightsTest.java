@@ -284,7 +284,7 @@ public class PodLightsTest {
 	}
 
 	/** The chunk goes away with a lit pod in it, and comes back with the pod unpowered, so the only way the light goes is cleanup. */
-	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 1200)
+	@GameTest(maxTicks = 2 * FarChunks.AWAIT_BUDGET_TICKS + 1200)
 	public void unloadingThePodsChunkLeavesNoLight(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		BlockPos origin = new BlockPos(3040, 64, 3040);
@@ -294,6 +294,7 @@ public class PodLightsTest {
 		PodEntity[] pod = {null};
 		int[] phase = {0};
 		int[] since = {0};
+		FarChunks.Deadline[] unloadBy = {null};
 		helper.onEachTick(() -> {
 			if (pod[0] == null) {
 				return;
@@ -302,11 +303,12 @@ public class PodLightsTest {
 				case 0 -> {
 					if (!lightsNear(level, origin, LOOK).isEmpty()) {
 						level.setChunkForced(chunkX, chunkZ, false);
+						unloadBy[0] = FarChunks.deadline();
 						phase[0] = 1;
 					}
 				}
 				case 1 -> {
-					if (level.getChunkSource().getChunkNow(chunkX, chunkZ) == null) {
+					if (unloadBy[0].awaitUnloaded(helper, level, chunkX, chunkZ)) {
 						DARK.add(pod[0].getUUID());
 						level.setChunkForced(chunkX, chunkZ, true);
 						phase[0] = 2;
@@ -364,7 +366,7 @@ public class PodLightsTest {
 			if (Charters.found(server, mock.player().getUUID(), "Lights crossing " + CHARTERS.incrementAndGet()).isPresent()) {
 				throw failure(helper, "the charter was refused");
 			}
-			CharterId charter = Charters.charterOf(server, mock.player().getUUID()).orElseThrow().id();
+			CharterId charter = Charters.charterOfOrThrow(server, mock.player().getUUID()).orElseThrow().id();
 			PodComponents.register(pod[0], charter);
 			PodComponents.install(pod[0], ComponentItems.mint(server, ComponentTrack.LIGHTS, 2, charter));
 			if (!mock.player().startRiding(pod[0], true, false)) {
@@ -477,7 +479,7 @@ public class PodLightsTest {
 		if (refusal.isPresent()) {
 			throw failure(helper, "a charter step was refused: %s", refusal.get());
 		}
-		return Charters.charterOf(server, founder).orElseThrow().id();
+		return Charters.charterOfOrThrow(server, founder).orElseThrow().id();
 	}
 
 	/** The light blocks within {@link #LOOK} of {@code pod}, as their levels, sorted. */

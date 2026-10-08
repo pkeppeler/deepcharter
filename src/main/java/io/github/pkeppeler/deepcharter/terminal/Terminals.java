@@ -41,9 +41,6 @@ public final class Terminals {
 	/** The key of the part id in the args of {@link #INSERT_PART}. */
 	public static final String PART_KEY = "part";
 
-	private static boolean loggedUnreadable;
-	private static boolean loggedUnreadableCharters;
-
 	private Terminals() {
 	}
 
@@ -127,30 +124,17 @@ public final class Terminals {
 		TerminalType type = terminal.type();
 		MinecraftServer server = player.level().getServer();
 		if (!Charters.isReadable(server)) {
-			if (!loggedUnreadableCharters) {
-				loggedUnreadableCharters = true;
-				DeepCharter.LOGGER.error("The saved charters are of a version this build cannot read: terminals are refused until the world is opened by a build that reads them");
-			}
 			return new Access.Denied(TerminalRefusal.STATE_UNREADABLE);
 		}
-		Optional<Charter> charter = Charters.charterOf(server, player.getUUID());
+		Optional<Charter> charter = Charters.readableCharterOf(server, player.getUUID());
 		if (type.access() == TerminalType.Access.CHARTER_ONLY && charter.isEmpty()) {
 			return new Access.Denied(TerminalRefusal.NOT_ON_A_CHARTER);
 		}
 		// Gameplay code never throws on unreadable saved data: it refuses, and the data stays as it was.
 		if (type.needsRepair() && !RepairState.get(server).isReadable()) {
-			logUnreadableOnce(RepairState.get(server));
 			return new Access.Denied(TerminalRefusal.STATE_UNREADABLE);
 		}
 		return new Access.Granted(type, charter);
-	}
-
-	private static void logUnreadableOnce(RepairState state) {
-		if (!loggedUnreadable) {
-			loggedUnreadable = true;
-			DeepCharter.LOGGER.error("The saved terminal repairs have version {} that this build cannot read: terminals that need repair are refused until the world is opened by a build that reads it",
-					state.unreadableVersion().orElse("?"));
-		}
 	}
 
 	private static Optional<TerminalRefusal> insert(ServerPlayer player, Access.Granted access, CompoundTag args) {

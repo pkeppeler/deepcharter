@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -16,6 +17,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
@@ -49,6 +51,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionCatalog;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
@@ -157,7 +160,7 @@ public class TransmissionsTest {
 	}
 
 	private static long account(GameTestHelper helper, CharterId charter) {
-		return Charters.find(server(helper), charter).orElseThrow().account();
+		return Charters.findOrThrow(server(helper), charter).orElseThrow().account();
 	}
 
 	@GameTest
@@ -542,7 +545,7 @@ public class TransmissionsTest {
 		for (CompoundTag saved : List.of(versioned(TransmissionData.VERSION + 1), versioned(0), new CompoundTag())) {
 			saved.putString("shape", "from another build");
 			TransmissionData data = TransmissionData.CODEC.parse(NbtOps.INSTANCE, saved).getOrThrow();
-			if (data.isUsable()) {
+			if (data.isReadable()) {
 				throw helper.assertionException("data of another version must not be usable: %s", saved);
 			}
 			expectThrows(helper, "reading unreadable transmission data", () -> data.progress(CharterId.random()));
@@ -556,7 +559,7 @@ public class TransmissionsTest {
 		brokenBody.putString("charters", "not a list");
 		TransmissionData data = TransmissionData.CODEC.parse(NbtOps.INSTANCE, brokenBody).getOrThrow();
 		expectThrows(helper, "using a body that does not parse", data::replays);
-		if (data.isUsable() || !brokenBody.equals(TransmissionData.CODEC.encodeStart(NbtOps.INSTANCE, data).getOrThrow())) {
+		if (data.isReadable() || !brokenBody.equals(TransmissionData.CODEC.encodeStart(NbtOps.INSTANCE, data).getOrThrow())) {
 			throw helper.assertionException("a body that does not parse is unusable and must be written back unchanged");
 		}
 		helper.succeed();
@@ -569,9 +572,7 @@ public class TransmissionsTest {
 	@GameTest
 	public void unreadableDataNeverFailsATickALoginOrACrossing(GameTestHelper helper) {
 		MinecraftServer server = server(helper);
-		CompoundTag saved = versioned(TransmissionData.VERSION + 1);
-		saved.putString("shape", "from a newer build");
-		TransmissionData unreadable = TransmissionData.CODEC.parse(NbtOps.INSTANCE, saved).getOrThrow();
+		TransmissionData unreadable = TransmissionData.CODEC.parse(NbtOps.INSTANCE, UnreadableChecks.futureData()).getOrThrow();
 		MockPlayer crew = MockPlayers.join(helper, "tx-unreadable");
 		CharterId charter = directCharter(helper, crew.player().getUUID());
 		ServerLevel one = server.getLevel(LayerChain.dimension(1));
@@ -579,28 +580,33 @@ public class TransmissionsTest {
 		crew.player().setNoGravity(true);
 		crew.teleportTo(two, new Vec3(BREACH_COLUMN, two.getMinY() + two.getHeight() / 2, BREACH_COLUMN), 0, 0);
 
-		withWorldData(helper, unreadable, data -> {
-			for (int repeat = 0; repeat < 3; repeat++) {
-				TransmissionTriggers.pollZones(server);
-				Transmissions.deliverOnLogin(server, crew.player());
-				BreachEvents.CROSSED.invoker().onCrossed(crew.player(), one, two, 1, 2);
-				Transmissions.fire(charter, id("t01"));
-				Transmissions.deliver(server, data, charter);
-				Transmissions.replayTo(server, data, charter);
-				Transmissions.payPending(server, data, charter);
-				Transmissions.forget(server, data, charter, crew.player().getUUID());
-			}
-			MockPlayer founder = MockPlayers.join(helper, "tx-unreadable-founder");
+		expectThrows(helper, "an explicit read of unreadable data", () -> unreadable.progress(charter));
+		TransmissionData world = server.getDataStorage().computeIfAbsent(TransmissionData.TYPE);
+		Map<String, Runnable> paths = new LinkedHashMap<>();
+		paths.put("zone poll", () -> TransmissionTriggers.pollZones(server));
+		paths.put("login", () -> Transmissions.deliverOnLogin(server, crew.player()));
+		paths.put("crossing", () -> BreachEvents.CROSSED.invoker().onCrossed(crew.player(), one, two, 1, 2));
+		paths.put("fire", () -> Transmissions.fire(charter, id("t01")));
+		paths.put("deliver", () -> Transmissions.deliver(server, TransmissionData.get(server), charter));
+		paths.put("replay", () -> Transmissions.replayTo(server, TransmissionData.get(server), charter));
+		paths.put("pay pending", () -> Transmissions.payPending(server, TransmissionData.get(server), charter));
+		paths.put("forget", () -> Transmissions.forget(server, TransmissionData.get(server), charter, crew.player().getUUID()));
+		AtomicInteger visits = new AtomicInteger();
+		paths.put("charter events", () -> {
+			int visit = visits.incrementAndGet();
+			MockPlayer founder = MockPlayers.join(helper, "tx-unreadable-founder-" + visit);
 			foundedCharter(helper, founder.player().getUUID());
-			expectDone(helper, Charters.apply(server, UUID.randomUUID(), charter), "applying");
-			expectDone(helper, Charters.approve(server, crew.player().getUUID(), Charters.find(server, charter).orElseThrow().applications().getFirst()), "approving");
-			expectDone(helper, Charters.leave(server, crew.player().getUUID()), "leaving");
-			expectThrows(helper, "an explicit read of unreadable data", () -> data.progress(charter));
-			Tag written = TransmissionData.CODEC.encodeStart(NbtOps.INSTANCE, data).getOrThrow();
-			if (!saved.equals(written)) {
-				throw helper.assertionException("the unreadable data must be left as it was: %s", written);
+			if (visit == 1) {
+				UUID applicant = UUID.randomUUID();
+				expectDone(helper, Charters.apply(server, applicant, charter), "applying");
+				expectDone(helper, Charters.approve(server, crew.player().getUUID(), applicant), "approving");
+				expectDone(helper, Charters.leave(server, crew.player().getUUID()), "leaving");
 			}
 		});
+		UnreadableChecks.assertSavedDataNoThrow(helper, "transmissions", server, TransmissionData.TYPE, paths);
+		if (world != server.getDataStorage().computeIfAbsent(TransmissionData.TYPE)) {
+			throw helper.assertionException("the world's own data must be put back");
+		}
 		if (!deliveredTo(crew).isEmpty()) {
 			throw helper.assertionException("nothing is sent from unreadable data: %s", deliveredTo(crew));
 		}

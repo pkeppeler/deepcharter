@@ -62,7 +62,7 @@ public class PodLightsScenario extends EvidenceScenario {
 				pod[0].setPos(spot.x - 2.6, spot.y, spot.z + 3);
 				level.addFreshEntity(pod[0]);
 				Charters.found(server, player.getUUID(), "Demo Charter");
-				PodComponents.register(pod[0], Charters.charterOf(server, player.getUUID()).orElseThrow().id());
+				PodComponents.register(pod[0], Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id());
 			});
 			context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
 			context.waitTicks(60);

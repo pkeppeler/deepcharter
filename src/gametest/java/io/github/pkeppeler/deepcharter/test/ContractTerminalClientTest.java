@@ -54,7 +54,7 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
 
 			refusalsShowTheirMessage(context, screen);
 			foundByTypingAName(context);
-			Charter charter = two.server().computeOnServer(server -> Charters.charterOf(server, real).orElseThrow());
+			Charter charter = two.server().computeOnServer(server -> Charters.charterOfOrThrow(server, real).orElseThrow());
 			check(charter.name().equals(CHARTER) && charter.isDirector(real), "the server has the typed charter, directed by the client, got " + charter);
 
 			anotherPlayerAppliesAndIsDenied(context, two, mock, charter);
@@ -113,8 +113,8 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
 		awaitState(context, state -> state.applicants().equals(List.of(MOCK_NAME)));
 		context.clickScreenButton("DENY " + MOCK_NAME.toUpperCase());
 		awaitState(context, state -> state.applicants().isEmpty());
-		boolean turnedDown = two.server().computeOnServer(server -> Charters.charterOf(server, mock).isEmpty()
-				&& Charters.find(server, charter.id()).orElseThrow().applications().isEmpty());
+		boolean turnedDown = two.server().computeOnServer(server -> Charters.charterOfOrThrow(server, mock).isEmpty()
+				&& Charters.findOrThrow(server, charter.id()).orElseThrow().applications().isEmpty());
 		check(turnedDown, "a denied applicant is on no charter and has no application");
 	}
 
@@ -123,7 +123,7 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
 		awaitState(context, state -> state.applicants().equals(List.of(MOCK_NAME)));
 		context.clickScreenButton("APPROVE " + MOCK_NAME.toUpperCase());
 		awaitState(context, state -> state.applicants().isEmpty());
-		Charter after = two.server().computeOnServer(server -> Charters.charterOf(server, mock).orElseThrow());
+		Charter after = two.server().computeOnServer(server -> Charters.charterOfOrThrow(server, mock).orElseThrow());
 		check(after.id().equals(charter.id()) && !after.isDirector(mock) && after.isDirector(real), "the mock is crew of the client's charter");
 	}
 
@@ -150,7 +150,7 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
 
 		context.clickScreenButton("LEAVE CHARTER");
 		awaitState(context, state -> state.role() == Role.NONE);
-		boolean left = two.server().computeOnServer(server -> Charters.charterOf(server, real).isEmpty());
+		boolean left = two.server().computeOnServer(server -> Charters.charterOfOrThrow(server, real).isEmpty());
 		check(left, "the member left the charter on the server");
 		context.setScreen(() -> null);
 	}

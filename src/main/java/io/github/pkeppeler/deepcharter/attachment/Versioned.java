@@ -30,8 +30,9 @@ import net.minecraft.network.codec.StreamCodec;
  *
  * <p>Register an attachment as {@code AttachmentType<Versioned<Foo>>} with
  * {@code persistent(Versioned.codec(VERSION, FOO_BODY))} and
- * {@code initializer(() -> Versioned.of(Foo.DEFAULT))}. Read it with {@link #require} and change it
- * with {@link #modify}; both throw on {@link Unreadable}. The body codec writes the fields but no
+ * {@code initializer(() -> Versioned.of(Foo.DEFAULT))}. Read it on a tick, join, sync or callback path
+ * with {@link #readable}, which never throws and logs an unreadable value once. {@link #orThrow} and {@link #modifyOrThrow} throw
+ * on {@link Unreadable}: they are for explicit calls and commands only. The body codec writes the fields but no
  * version: this class writes {@code "version"}.
  *
  * <p>To change a value's shape, bump the version and make the decode read the old one too. Versions
@@ -100,17 +101,43 @@ public sealed interface Versioned<T> {
 		};
 	}
 
-	/** The current-version value of {@code type} on {@code owner}. Throws if the saved data is unreadable. */
-	static <T> T require(AttachmentTarget owner, AttachmentType<Versioned<T>> type) {
+	/**
+	 * The safe accessor, and the one to use on a tick, join, sync or gameplay-callback path: the current-version value of
+	 * {@code type} on {@code owner}, or empty when the saved data is unreadable. An unreadable value is logged once for each owner
+	 * and attachment, and left as it is. An attachment that was never set reads as its initial value and is not created. The caller
+	 * decides what empty means: skip, or the feature's stock behaviour. Never throws.
+	 */
+	static <T> Optional<T> readable(AttachmentTarget owner, AttachmentType<Versioned<T>> type) {
+		Versioned<T> versioned = owner.getAttached(type);
+		if (versioned == null) {
+			versioned = type.initializer().get();
+		}
+		return switch (versioned) {
+			case Readable<T> readable -> Optional.of(readable.value());
+			case Unreadable<T> unreadable -> {
+				UnreadableLog.once(owner, type, unreadable);
+				yield Optional.empty();
+			}
+		};
+	}
+
+	/**
+	 * The current-version value of {@code type} on {@code owner}. Throws if the saved data is unreadable, so it is for explicit
+	 * calls and commands only; a tick, join, sync or callback path uses {@link #readable}.
+	 */
+	static <T> T orThrow(AttachmentTarget owner, AttachmentType<Versioned<T>> type) {
 		return switch (owner.getAttachedOrCreate(type)) {
 			case Readable<T> readable -> readable.value();
 			case Unreadable<T> unreadable -> throw unreadable(owner, type, unreadable);
 		};
 	}
 
-	/** Replaces the value of {@code type} on {@code owner}. Throws if the saved data is unreadable, so it is never overwritten. */
-	static <T> T modify(AttachmentTarget owner, AttachmentType<Versioned<T>> type, UnaryOperator<T> change) {
-		T updated = change.apply(require(owner, type));
+	/**
+	 * Replaces the value of {@code type} on {@code owner}. Throws if the saved data is unreadable, so it is never overwritten: for
+	 * explicit calls and commands only, or after {@link #readable} has said the value is there.
+	 */
+	static <T> T modifyOrThrow(AttachmentTarget owner, AttachmentType<Versioned<T>> type, UnaryOperator<T> change) {
+		T updated = change.apply(orThrow(owner, type));
 		owner.setAttached(type, of(updated));
 		return updated;
 	}

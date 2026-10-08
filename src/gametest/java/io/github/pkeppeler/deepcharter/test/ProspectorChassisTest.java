@@ -248,7 +248,7 @@ public class ProspectorChassisTest {
 		});
 	}
 
-	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS)
+	@GameTest(maxTicks = 12000)
 	public void everyWreckSiteHoldsAnUnownedProspectorWreckAndOnlyPROSPECTOR0002HasALampAndN10(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		ServerLevel level = layer(helper, 2);
@@ -541,7 +541,7 @@ public class ProspectorChassisTest {
 		if (Charters.found(server, founder, "Prospector " + CHARTERS.incrementAndGet()).isPresent()) {
 			throw failure(helper, "founding a charter should succeed");
 		}
-		return Charters.charterOf(server, founder).orElseThrow().id();
+		return Charters.charterOfOrThrow(server, founder).orElseThrow().id();
 	}
 
 	private static ServerLevel layer(GameTestHelper helper, int layer) {

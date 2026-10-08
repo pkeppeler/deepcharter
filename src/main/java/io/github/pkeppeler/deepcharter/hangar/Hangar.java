@@ -34,6 +34,7 @@ import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.Serials;
 import io.github.pkeppeler.deepcharter.terminal.TerminalEvents;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
@@ -185,6 +186,10 @@ public final class Hangar {
 		CharterId founder = state.founder().get();
 		try {
 			if (PodComponents.registration(pod.get()).isEmpty()) {
+				if (!Serials.get(server).isReadable()) {
+					// Logged once by the check; the hangar tries again when the Mole loads.
+					return;
+				}
 				PodComponents.register(pod.get(), founder);
 			}
 			if (Wrecks.isWreck(pod.get())) {

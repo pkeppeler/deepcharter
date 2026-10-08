@@ -53,6 +53,8 @@
 			"io.github.pkeppeler.deepcharter.test.HandbookChaptersSixToNineTest",
 			"io.github.pkeppeler.deepcharter.test.LamplessFigureTest",
 			"io.github.pkeppeler.deepcharter.test.WorkOrdersTest",
+			"io.github.pkeppeler.deepcharter.test.UnreadableAccessTest",
+			"io.github.pkeppeler.deepcharter.test.PodChunkLoadTest",
 			"io.github.pkeppeler.deepcharter.test.M2SliceTest"
 		],
 		"fabric-client-gametest": [

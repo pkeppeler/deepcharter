@@ -62,9 +62,10 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookProgress;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgressData;
 import io.github.pkeppeler.deepcharter.handbook.HandbookRegistry;
 import io.github.pkeppeler.deepcharter.handbook.HandbookSyncPayload;
+import io.github.pkeppeler.deepcharter.handbook.HandbookTriggers;
 import io.github.pkeppeler.deepcharter.handbook.HandbookTuning;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
-import io.github.pkeppeler.deepcharter.test.support.LogCapture;
+import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 
 /**
@@ -98,7 +99,7 @@ public class HandbookCoreTest {
 	/** A charter with {@code director} as Director and {@code crew} as its crew. */
 	private static CharterId found(GameTestHelper helper, MinecraftServer server, ServerPlayer director, ServerPlayer... crew) {
 		expectDone(helper, Charters.found(server, director.getUUID(), uniqueName()), "founding");
-		Charter charter = Charters.charterOf(server, director.getUUID()).orElseThrow();
+		Charter charter = Charters.charterOfOrThrow(server, director.getUUID()).orElseThrow();
 		for (ServerPlayer member : crew) {
 			join(helper, server, charter.id(), director, member);
 		}
@@ -410,75 +411,35 @@ public class HandbookCoreTest {
 		helper.succeed();
 	}
 
-	private static CompoundTag futureVersion() {
-		CompoundTag future = new CompoundTag();
-		future.putInt("version", 99);
-		future.putString("shape", "from a later build");
-		return future;
-	}
-
 	@GameTest
 	public void unreadableProgressNeverThrowsFromATickAJoinOrFire(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		ServerPlayer player = MockPlayers.join(helper, "Reader").player();
 		found(helper, server, player);
-		CompoundTag future = futureVersion();
-		HandbookProgressData unreadable = HandbookProgressData.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow();
-		HandbookProgressData original = HandbookProgressData.get(server);
-		// The line names no id, but it is the only one that says "saved handbook progress", and the swap lasts one tick.
-		LogCapture log = LogCapture.start("saved handbook progress");
-		// Everything runs inside this one tick, so no other test sees the swapped data.
-		server.getDataStorage().set(HandbookProgressData.TYPE, unreadable);
-		try {
-			for (int round = 0; round < 3; round++) {
-				HandbookProgress.sweep(player);
-				HandbookSyncPayload.send(server, player);
-				Directives.fire(player, CUSTOM_DIRECTIVE);
-				if (!HandbookProgress.completedFor(server, player.getUUID()).isEmpty()) {
-					throw helper.assertionException("unreadable progress reads as empty");
-				}
-			}
-		} finally {
-			server.getDataStorage().set(HandbookProgressData.TYPE, original);
-		}
-		List<String> errors = log.errors();
-		if (errors.size() != 1) {
-			throw helper.assertionException("unreadable progress is logged once, not %s times: %s", errors.size(), errors);
-		}
-		if (!future.equals(HandbookProgressData.CODEC.encodeStart(NbtOps.INSTANCE, unreadable).getOrThrow())) {
-			throw helper.assertionException("unreadable progress must round-trip unchanged");
-		}
+		UnreadableChecks.assertSavedDataNoThrow(helper, "handbook progress", server, HandbookProgressData.TYPE, handbookPaths(helper, server, player));
 		helper.succeed();
+	}
+
+	/** The handbook's tick, join, sync and callback paths: a poll, a sync, a directive fired by a feature. */
+	private static Map<String, Runnable> handbookPaths(GameTestHelper helper, MinecraftServer server, ServerPlayer player) {
+		Map<String, Runnable> paths = new LinkedHashMap<>();
+		paths.put("tick poll", () -> HandbookProgress.sweep(player));
+		paths.put("sync", () -> HandbookSyncPayload.send(server, player));
+		paths.put("directive fired", () -> Directives.fire(player, CUSTOM_DIRECTIVE));
+		paths.put("repair credit", () -> HandbookTriggers.creditRepairs(server, player));
+		paths.put("progress read", () -> {
+			if (!HandbookProgress.completedFor(server, player.getUUID()).isEmpty()) {
+				throw helper.assertionException("unreadable data reads as empty");
+			}
+		});
+		return paths;
 	}
 
 	@GameTest
 	public void unreadableCharterDataNeverThrowsFromATickAJoinOrFire(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		ServerPlayer player = MockPlayers.join(helper, "Reader").player();
-		CompoundTag future = futureVersion();
-		CharterData unreadable = CharterData.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow();
-		CharterData original = CharterData.get(server);
-		LogCapture log = LogCapture.start("saved charters");
-		server.getDataStorage().set(CharterData.TYPE, unreadable);
-		try {
-			for (int round = 0; round < 3; round++) {
-				HandbookProgress.sweep(player);
-				HandbookSyncPayload.send(server, player);
-				Directives.fire(player, CUSTOM_DIRECTIVE);
-				if (!HandbookProgress.completedFor(server, player.getUUID()).isEmpty()) {
-					throw helper.assertionException("progress on unreadable charters reads as empty");
-				}
-			}
-		} finally {
-			server.getDataStorage().set(CharterData.TYPE, original);
-		}
-		List<String> errors = log.errors();
-		if (errors.size() != 1) {
-			throw helper.assertionException("unreadable charters are logged once, not %s times: %s", errors.size(), errors);
-		}
-		if (!future.equals(CharterData.CODEC.encodeStart(NbtOps.INSTANCE, unreadable).getOrThrow())) {
-			throw helper.assertionException("unreadable charters must round-trip unchanged");
-		}
+		UnreadableChecks.assertSavedDataNoThrow(helper, "handbook on unreadable charters", server, CharterData.TYPE, handbookPaths(helper, server, player));
 		helper.succeed();
 	}
 

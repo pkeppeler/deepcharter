@@ -19,7 +19,7 @@ public class PodAttachmentClientTest implements FabricClientGameTest {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			PodShellClientTest.mountFirstPlayer(singleplayer.getServer());
 			context.waitFor(client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
-			singleplayer.getServer().runOnServer(server -> Versioned.modify(
+			singleplayer.getServer().runOnServer(server -> Versioned.modifyOrThrow(
 					server.getPlayerList().getPlayers().getFirst().getVehicle(), TestAttachments.EXAMPLE, example -> new Example(COUNTER)));
 
 			context.waitFor(client -> client.player.getVehicle() != null

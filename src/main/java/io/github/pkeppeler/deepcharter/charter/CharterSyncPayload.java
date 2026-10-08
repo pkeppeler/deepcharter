@@ -47,9 +47,16 @@ public record CharterSyncPayload(Optional<CharterView> charter) implements Custo
 		if (!ServerPlayNetworking.canSend(player, TYPE)) {
 			return;
 		}
-		UUID id = player.getUUID();
-		Optional<CharterView> view = CharterData.get(server).charterOf(id).map(charter -> CharterView.of(charter, id));
-		ServerPlayNetworking.send(player, new CharterSyncPayload(view));
+		payloadFor(server, player.getUUID()).ifPresent(payload -> ServerPlayNetworking.send(player, payload));
+	}
+
+	/** What {@code player} is told: their charter's view, or none when they are on none. Empty, and never throws, when charters are unreadable. */
+	public static Optional<CharterSyncPayload> payloadFor(MinecraftServer server, UUID player) {
+		if (!Charters.isReadable(server)) {
+			return Optional.empty();
+		}
+		Optional<CharterView> view = Charters.readableCharterOf(server, player).map(charter -> CharterView.of(charter, player));
+		return Optional.of(new CharterSyncPayload(view));
 	}
 
 	@Override
