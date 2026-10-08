@@ -28,8 +28,8 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
  * player carries; the amount still owed is taken, no more. Handing in the last of it completes the order: it pays the reward and
  * has its effect ({@link WorkOrder}), once, because a finished order takes nothing more.
  *
- * <p>Every refusal comes before any ore is taken, and so does the one step that can still fail on completion, the payment of the
- * reward into a full account. The terminal has already checked the player's range, the charter and the repair state.
+ * <p>Every refusal comes before any ore is taken, including a reward that a full account could not take. The reward is paid last.
+ * The terminal has already checked the player's range, the charter and the repair state.
  */
 public final class WorkOrders {
 	/** The action: hand in the ore of the order named by {@link #ORDER_KEY}. */
@@ -76,14 +76,17 @@ public final class WorkOrders {
 			if (FounderStatue.handPositions(server).isEmpty()) {
 				return Optional.of(Component.translatable("deepcharter.market.refusal.no_statue"));
 			}
-			Optional<CharterRefusal> unpaid = Charters.deposit(server, charter.id(), order.reward());
-			if (unpaid.isPresent()) {
-				return Optional.of(unpaid.get().message());
+			if (charter.account() > Long.MAX_VALUE - order.reward()) {
+				return Optional.of(CharterRefusal.ACCOUNT_FULL.message());
 			}
 		}
+		// Nothing below this line may refuse: the ore is taken, the progress recorded, and the reward paid last.
 		take(inventory, order, amount);
 		data.add(charter.id(), order, amount);
 		if (completes) {
+			Charters.deposit(server, charter.id(), order.reward()).ifPresent(refusal -> {
+				DeepCharter.LOGGER.error("The reward of work order {} was checked and still refused ({}); the order is complete without it", order, refusal);
+			});
 			complete(server, order);
 		}
 		context.player().sendOverlayMessage(completes

@@ -86,6 +86,7 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 		int cargoY = inventoryY - GAP - BUTTON_HEIGHT;
 		addRenderableWidget(new CrtButton(MARGIN, cargoY, BUTTON_WIDTH, BUTTON_HEIGHT,
 				Component.translatable("screen.deepcharter.processor.sell_cargo"), button -> sell(OreProcessor.SELL_CARGO)));
+		// The buttons stack upward from the cargo button: a second order needs a layout check (issue 188).
 		int deliverY = cargoY - GAP - BUTTON_HEIGHT - GAP;
 		for (WorkOrdersView.Entry entry : openOrders()) {
 			addRenderableWidget(new CrtButton(MARGIN, deliverY, BUTTON_WIDTH, BUTTON_HEIGHT,

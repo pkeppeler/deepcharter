@@ -29,7 +29,8 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
  */
 public final class WorkOrderData extends SavedData {
 	public static final int VERSION = 1;
-	private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "work_orders");
+	/** The saved id of the data: never renamed, or every charter's progress is orphaned. */
+	public static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "work_orders");
 
 	private record Progress(CharterId charter, WorkOrder order, int delivered) {
 		private static final Codec<Progress> CODEC = RecordCodecBuilder.<Progress>create(instance -> instance.group(

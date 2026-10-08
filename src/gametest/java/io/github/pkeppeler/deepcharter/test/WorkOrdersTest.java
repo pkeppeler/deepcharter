@@ -248,6 +248,18 @@ public class WorkOrdersTest {
 		helper.succeed();
 	}
 
+	/** Both names are saved in the world: renaming either one orphans every charter's progress. */
+	@GameTest
+	public void theSavedNamesNeverChange(GameTestHelper helper) {
+		if (!"founders_hands".equals(WorkOrder.FOUNDERS_HANDS.getSerializedName())) {
+			throw helper.assertionException("the saved name of the Founder's hands order must stay founders_hands");
+		}
+		if (!"deepcharter:work_orders".equals(WorkOrderData.ID.toString())) {
+			throw helper.assertionException("the saved data id must stay deepcharter:work_orders");
+		}
+		helper.succeed();
+	}
+
 	@GameTest
 	public void aRefusedDeliveryTakesNoOreAndChangesNothing(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
