@@ -1,0 +1,32 @@
+{
+  "type": "deepcharter:tall_spike_surface",
+  "generator": {
+    "type": "deepcharter-test:band_delegating",
+    "biome_source": {
+      "type": "deepcharter-test:banded",
+      "split_y": -64,
+      "surface": {
+        "type": "minecraft:multi_noise",
+        "preset": "minecraft:overworld"
+      },
+      "deep": {
+        "type": "minecraft:fixed",
+        "biome": "minecraft:the_void"
+      }
+    },
+    "layer_biome_source": {
+      "type": "deepcharter:zones",
+      "min_y": -2032,
+      "height": 1968,
+      "biomes": [
+        "deepcharter:topsoil_claims",
+        "deepcharter:stone_benches",
+        "deepcharter:deep_claim"
+      ]
+    },
+    "surface_settings": "deepcharter:tall_spike3_surface_band",
+    "layer_settings": "deepcharter:tall_spike3_layer_band",
+    "split_y": -96,
+    "placeholder": true
+  }
+}

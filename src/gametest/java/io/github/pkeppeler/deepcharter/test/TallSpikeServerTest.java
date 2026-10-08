@@ -64,6 +64,173 @@ public class TallSpikeServerTest {
 		measure(helper, 2352, "tall_spike_surface_sea");
 	}
 
+	@GameTest(maxTicks = MAX_TICKS)
+	public void tall3v1a(GameTestHelper helper) {
+		measure(helper, 2352, "tall_spike3_v1a");
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void tall3v1b(GameTestHelper helper) {
+		measure(helper, 2352, "tall_spike3_v1b");
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void tall3v1c(GameTestHelper helper) {
+		measure(helper, 2352, "tall_spike3_v1c");
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void tall3v1d(GameTestHelper helper) {
+		measure(helper, 2352, "tall_spike3_v1d");
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void tall3v1e(GameTestHelper helper) {
+		measure(helper, 2352, "tall_spike3_v1e");
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void tall3own(GameTestHelper helper) {
+		measure(helper, 2352, "tall_spike3_own");
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void tall3ownb(GameTestHelper helper) {
+		measure(helper, 2352, "tall_spike3_own2");
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void tall3band(GameTestHelper helper) {
+		measure(helper, 2352, "tall_spike3_band");
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void tall3lazy(GameTestHelper helper) {
+		measure(helper, 2352, "tall_spike3_lazy");
+	}
+
+	/** Phase 3: fill 256-block layer bands later, in columns that were generated with a stone placeholder below the surface band. */
+	@GameTest(maxTicks = MAX_TICKS)
+	public void tall3latefill(GameTestHelper helper) {
+		ResourceKey<Level> key = ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", "tall_spike3_lazy"));
+		ServerLevel level = helper.getLevel().getServer().getLevel(key);
+		if (level == null) {
+			throw helper.assertionException("no dimension " + key);
+		}
+		for (int x = -RADIUS; x <= RADIUS; x++) {
+			for (int z = -RADIUS; z <= RADIUS; z++) {
+				level.setChunkForced(x, z, true);
+			}
+		}
+		LateFill fill = new LateFill(level);
+		helper.onEachTick(() -> {
+			if (fill.step()) {
+				helper.succeed();
+			}
+		});
+	}
+
+	/** The late fill as a state machine over ticks, because the light engine needs the server thread to finish its tasks. */
+	private static final class LateFill {
+		private static final String[] BANDS = {"a", "b", "c"};
+		private final ServerLevel level;
+		private final java.util.List<LevelChunk> chunks = new java.util.ArrayList<>();
+		private java.util.List<java.util.concurrent.CompletableFuture<net.minecraft.world.level.chunk.ChunkAccess>> pending = new java.util.ArrayList<>();
+		private int band;
+		private int stage = -1;
+		private long heapBefore;
+		private long cpu0;
+		private long t0;
+		private long cpu1;
+		private long t1;
+		private long cpu2;
+		private long t2;
+
+		LateFill(ServerLevel level) {
+			this.level = level;
+		}
+
+		/** Returns true when all bands are done. */
+		boolean step() {
+			if (stage == -1) {
+				for (int x = -RADIUS; x <= RADIUS; x++) {
+					for (int z = -RADIUS; z <= RADIUS; z++) {
+						LevelChunk chunk = level.getChunkSource().getChunkNow(x, z);
+						if (chunk == null) {
+							return false;
+						}
+						chunks.add(chunk);
+					}
+				}
+				heapBefore = usedHeap();
+				stage = 0;
+			}
+			if (stage == 0) {
+				var settings = level.registryAccess().lookupOrThrow(Registries.NOISE_SETTINGS)
+						.getOrThrow(ResourceKey.create(Registries.NOISE_SETTINGS, Identifier.fromNamespaceAndPath("deepcharter", "tall_spike3_band256_" + BANDS[band])));
+				var biomes = level.getChunkSource().getGenerator().getBiomeSource();
+				var generator = new net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator(biomes, settings);
+				cpu0 = processCpu();
+				t0 = System.nanoTime();
+				pending.clear();
+				for (LevelChunk chunk : chunks) {
+					pending.add(generator.buildTerrain(chunk, net.minecraft.world.level.levelgen.blending.Blender.empty(), level.getChunkSource().randomState(),
+							level.structureManager(), level.getBiomeManager(), null, biomes.possibleBiomes()));
+				}
+				stage = 1;
+				return false;
+			}
+			if (stage == 1) {
+				if (!pending.stream().allMatch(java.util.concurrent.CompletableFuture::isDone)) {
+					return false;
+				}
+				pending.forEach(java.util.concurrent.CompletableFuture::join);
+				cpu1 = processCpu();
+				t1 = System.nanoTime();
+				pending.clear();
+				var light = level.getChunkSource().getLightEngine();
+				for (LevelChunk chunk : chunks) {
+					chunk.initializeLightSources();
+					pending.add(light.lightChunk(chunk, false));
+				}
+				stage = 2;
+				return false;
+			}
+			if (stage == 2) {
+				if (!pending.stream().allMatch(java.util.concurrent.CompletableFuture::isDone)) {
+					return false;
+				}
+				cpu2 = processCpu();
+				t2 = System.nanoTime();
+				int columns = chunks.size();
+				long raw = 0;
+				long deflated = 0;
+				for (LevelChunk chunk : chunks) {
+					RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), level.registryAccess());
+					ClientboundLevelChunkWithLightPacket.STREAM_CODEC.encode(buf, new ClientboundLevelChunkWithLightPacket(chunk, level.getLightEngine(), null, null));
+					byte[] bytes = new byte[buf.readableBytes()];
+					buf.readBytes(bytes);
+					raw += bytes.length;
+					deflated += deflate(bytes);
+				}
+				long cpu3 = processCpu();
+				long t3 = System.nanoTime();
+				LOGGER.info("TALLSPIKE-LATEFILL band={} fillCpuMsPerColumn={} fillWallMsPerColumn={} lightCpuMsPerColumn={} lightWallMsPerColumn={} encodeCpuMsPerColumn={} encodeWallMsPerColumn={} packetRawPerColumn={} packetDeflatedPerColumn={}",
+						BANDS[band], String.format("%.1f", (cpu1 - cpu0) / 1e6 / columns), String.format("%.2f", (t1 - t0) / 1e6 / columns),
+						String.format("%.2f", (cpu2 - cpu1) / 1e6 / columns), String.format("%.2f", (t2 - t1) / 1e6 / columns),
+						String.format("%.2f", (cpu3 - cpu2) / 1e6 / columns), String.format("%.2f", (t3 - t2) / 1e6 / columns), raw / columns, deflated / columns);
+				band++;
+				if (band == BANDS.length) {
+					long heapAfter = usedHeap();
+					LOGGER.info("TALLSPIKE-LATEFILL heapBeforeMB={} heapAfterMB={} (three bands filled)", heapBefore >> 20, heapAfter >> 20);
+					return true;
+				}
+				stage = 0;
+			}
+			return false;
+		}
+	}
+
 	private static void measure(GameTestHelper helper, int height) {
 		measure(helper, height, "tall_spike_" + height);
 	}

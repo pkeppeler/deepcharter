@@ -57,5 +57,7 @@ public final class TestAttachments implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		SurfaceZonesBiomeSource.register();
+		BandedBiomeSource.register();
+		BandDelegatingGenerator.register();
 	}
 }
