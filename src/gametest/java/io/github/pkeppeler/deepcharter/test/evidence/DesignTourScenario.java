@@ -325,7 +325,8 @@ public class DesignTourScenario extends EvidenceScenario {
 			}
 			BlockState first = level.getBlockState(hit.getBlockPos());
 			if (!subject.test().test(first) && hit.getLocation().distanceTo(target) > subject.radius() + 1) {
-				return first + " at " + hit.getBlockPos().toShortString() + " is in the way of " + subject.what();
+				return first + " at " + hit.getBlockPos().toShortString() + " is in the way of " + subject.what()
+						+ " (from " + eye + " to " + target + ", hit at " + hit.getLocation() + ")";
 			}
 			return null;
 		});
@@ -405,7 +406,8 @@ public class DesignTourScenario extends EvidenceScenario {
 			}
 		}
 		Vec3 upgrade = rel(ColonyAnchor.UPGRADE_TERMINAL, 0, 0, 0);
-		shoot("terminal-row", 0, upgrade.add(0, 4, 14), upgrade.add(0, 0.5, 0), 20,
+		// From the south-east, so that the statue, which stands in line with the upgrade terminal, is not in the line of sight.
+		shoot("terminal-row", 0, upgrade.add(7, 4, 14), upgrade.add(0, 0.5, 0), 20,
 				new Subject("a terminal", state -> TerminalTypes.all().stream().anyMatch(type -> state.is(type.block())), 1.5));
 		shoot("statue-from-the-square", 0, p(7, 4, 8), p(0, 4, 0), 20, statue);
 		shoot("statue-close", 0, p(3, 5.5, 3.5), p(0, 6, 0), 20, statue);
@@ -436,7 +438,8 @@ public class DesignTourScenario extends EvidenceScenario {
 		shoot("personnel-office-from-the-square", 0, personnel.add(0, EYE, -8), personnel.add(0, 1.5, 2), 40,
 				new Subject("Joy's calendar (a Note)", state -> state.getBlock() instanceof NoteBlock, 3));
 		Vec3 bar = rel(ColonyAnchor.LAMP_AND_PICK, 0, 0, 0);
-		shoot("lamp-and-pick-from-the-square", 0, bar.add(0, EYE, -8), bar.add(0, 1.3, 2), 40,
+		// Its doorway faces the hangar's south wall, 2 blocks away, so it is shot from the square side, from above its east wall.
+		shoot("lamp-and-pick-from-the-square", 0, bar.add(16, 12, 0), bar.add(0, 0.3, 2), 40,
 				new Subject("the coal blocks of the bar", state -> state.is(Blocks.COAL_BLOCK), 3));
 
 		Vec3 conduit = rel(ColonyAnchor.CONDUIT, 0, 0, 0);
