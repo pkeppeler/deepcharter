@@ -180,6 +180,7 @@ public final class HangarTerminal {
 		}
 		player.sendOverlayMessage(Component.translatable("deepcharter.hangar.restored", cost.money()));
 		cost.transmission().ifPresent(transmission -> Transmissions.fire(server, charter.id(), transmission));
+		HangarEvents.RESTORED.invoker().onRestored(server, player, wreck);
 		return Optional.empty();
 	}
 

@@ -122,6 +122,7 @@ public final class UpgradeTerminal {
 		Optional<PartLabel> replaced = PodComponents.install(pod, part);
 		refill(pod, track);
 		replaced.ifPresent(label -> drop(pod, ComponentItems.stackOf(track, label)));
+		UpgradeEvents.BOUGHT.invoker().onBought(server, player, pod, track, tier);
 		return Optional.empty();
 	}
 

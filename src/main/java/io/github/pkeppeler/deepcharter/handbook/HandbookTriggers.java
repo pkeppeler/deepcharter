@@ -8,6 +8,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
@@ -17,19 +18,29 @@ import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.colony.ColonyTuning;
 import io.github.pkeppeler.deepcharter.fuel.FuelPump;
+import io.github.pkeppeler.deepcharter.hangar.HangarEvents;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
+import io.github.pkeppeler.deepcharter.layer.BreachEvents;
+import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.market.OreProcessor;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
+import io.github.pkeppeler.deepcharter.pod.PodTowing;
+import io.github.pkeppeler.deepcharter.repair.RepairStation;
+import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
+import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalEvents;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
+import io.github.pkeppeler.deepcharter.upgrade.UpgradeEvents;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTerminal;
+import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 
 /**
- * Completes the directives of chapters 1 to 5 from what happens in the game, through {@link Directives#fire}. The directives of
+ * Completes the directives of chapters 1 to 9 from what happens in the game, through {@link Directives#fire}. The directives of
  * chapter 1 are vanilla criteria and need nothing here (see their advancements). The rest listen to the events of the features
  * that own the deed, so no feature calls the handbook.
  *
@@ -40,6 +51,15 @@ import io.github.pkeppeler.deepcharter.upgrade.UpgradeTerminal;
  *       {@link #creditRepairs} completes the repair directives of every online player whose charter has not done them.</li>
  *   <li>A Mole with a pilot is polled every {@link HandbookTuning#triggerPollTicks()} ticks: boarding, flying, drilling down
  *       {@link HandbookTuning#drillDownBlocks()} blocks below the colony's ground, and returning to the colony after that.</li>
+ *   <li>A scanner bought ({@link UpgradeEvents#BOUGHT}), a hull repaired at the repair station, the first breach crossed
+ *       ({@link BreachEvents#CROSSED}) and a Prospector restored ({@link HangarEvents#RESTORED}) complete the directive of the
+ *       player who did it.</li>
+ *   <li>A pod with a pilot who has a working scanner is polled on the same ticks, until its charter has found ore: the scanner's own
+ *       slice, read from the chunks that are loaded, holds an ore. A towed Prospector is polled the same way: once it is in the
+ *       colony, its tower's players tow it home.</li>
+ *   <li>Every online player is polled on those ticks too ({@link #pollPlayer}) for what a place makes true: the Deep Claim, a
+ *       Prospector wreck within {@link HandbookTuning#findProspectorBlocks()} blocks, and the floor of the Old Workings from a
+ *       Prospector's seat.</li>
  * </ul>
  *
  * <p>Every callback here is on a gameplay path, so none of them throws: {@link Directives#fire} and
@@ -58,6 +78,20 @@ public final class HandbookTriggers {
 	private static final Identifier SELL_ORE = directive("every_sale_counts/sell_ore");
 	private static final Identifier BUY_COMPONENT = directive("every_sale_counts/buy_component");
 	private static final Identifier INSTALL_COMPONENT = directive("every_sale_counts/install_component");
+	private static final Identifier INSTALL_SCANNER = directive("seeing_below/install_scanner");
+	private static final Identifier FIND_ORE = directive("seeing_below/find_ore");
+	private static final Identifier REPAIR_HULL = directive("staying_safe/repair_hull");
+	private static final Identifier REACH_DEEP_CLAIM = directive("staying_safe/reach_deep_claim");
+	private static final Identifier BREACH_WORKINGS = directive("first_breach/breach_workings");
+	private static final Identifier FIND_PROSPECTOR = directive("company_property/find_prospector");
+	private static final Identifier TOW_PROSPECTOR = directive("company_property/tow_prospector");
+	private static final Identifier RESTORE_PROSPECTOR = directive("company_property/restore_prospector");
+	private static final Identifier REACH_WORKINGS_FLOOR = directive("company_property/reach_workings_floor");
+	/** Layer 1, the Claim, and layer 2, the Old Workings. */
+	private static final int THE_CLAIM = 1;
+	private static final int THE_OLD_WORKINGS = 2;
+	/** The zone at the bottom of a layer: the Deep Claim in layer 1, Prospector's Run in layer 2. */
+	private static final int FLOOR_ZONE = Zones.COUNT - 1;
 
 	private HandbookTriggers() {
 	}
@@ -70,9 +104,23 @@ public final class HandbookTriggers {
 		TerminalEvents.REPAIRED.register((server, type, charter, player) -> onRepaired(type, player));
 		TerminalEvents.ACTED.register((server, type, player, action) -> onActed(type, player, action));
 		PodEvents.AFTER_TICK.register(HandbookTriggers::onPodTick);
+		UpgradeEvents.BOUGHT.register((server, player, pod, track, tier) -> {
+			if (track == ComponentTrack.SCANNER) {
+				Directives.fire(player, INSTALL_SCANNER);
+			}
+		});
+		BreachEvents.CROSSED.register(HandbookTriggers::onCrossed);
+		HangarEvents.RESTORED.register((server, player, pod) -> {
+			if (pod.chassis().equals(Chassis.PROSPECTOR)) {
+				Directives.fire(player, RESTORE_PROSPECTOR);
+			}
+		});
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
 			if (server.getTickCount() % HandbookTuning.DEFAULT.triggerPollTicks() == 0) {
-				creditRepairs(server);
+				for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+					creditRepairs(server, player);
+					pollPlayer(server, player);
+				}
 			}
 		});
 	}
@@ -101,13 +149,15 @@ public final class HandbookTriggers {
 		} else if (type == HangarTerminal.TYPE && action.equals(HangarTerminal.BUY_MOLE)) {
 			// A charter that came after the founding charter repairs nothing: it buys a refurbished Mole.
 			Directives.fire(player, REPAIR_MOLE);
+		} else if (type == TerminalTypes.REPAIR_STATION && (action.equals(RepairStation.REPAIR) || action.equals(RepairStation.REPAIR_TOTAL))) {
+			Directives.fire(player, REPAIR_HULL);
 		}
 	}
 
-	/** Credits every online player, see {@link #creditRepairs(MinecraftServer, ServerPlayer)}. */
-	private static void creditRepairs(MinecraftServer server) {
-		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-			creditRepairs(server, player);
+	/** The first descent of a player from the Claim into the Old Workings. A vehicle's other riders are crossed on their own call. */
+	private static void onCrossed(Entity entity, ServerLevel from, ServerLevel to, int fromLayer, int toLayer) {
+		if (entity instanceof ServerPlayer player && fromLayer == THE_CLAIM && toLayer == THE_OLD_WORKINGS) {
+			Directives.fire(player, BREACH_WORKINGS);
 		}
 	}
 
@@ -127,8 +177,31 @@ public final class HandbookTriggers {
 		creditRepair(repairs, player, done, TerminalTypes.UPGRADE_TERMINAL, REPAIR_UPGRADE_TERMINAL);
 	}
 
-	/** Skeleton for #84. */
+	/**
+	 * Completes, for {@code player}'s charter, the directives that a place makes true: standing in the Deep Claim, coming within
+	 * {@link HandbookTuning#findProspectorBlocks()} blocks of a Prospector wreck, and being in a Prospector at the floor of the Old
+	 * Workings. Public so that a test can poll one player. Does nothing on the surface, and nothing while the saved progress is
+	 * unreadable; the reads for the other places wait until the player is in a layer.
+	 */
 	public static void pollPlayer(MinecraftServer server, ServerPlayer player) {
+		ServerLevel level = player.level();
+		Optional<Zones.Zone> zone = Zones.of(level, player.getBlockY());
+		if (zone.isEmpty()) {
+			return;
+		}
+		Set<Identifier> done = HandbookProgress.completedFor(server, player.getUUID());
+		boolean onTheFloor = zone.get().index() == FLOOR_ZONE;
+		fireOnce(player, done, REACH_DEEP_CLAIM, onTheFloor && zone.get().layer() == THE_CLAIM);
+		fireOnce(player, done, REACH_WORKINGS_FLOOR, onTheFloor && zone.get().layer() == THE_OLD_WORKINGS
+				&& player.getVehicle() instanceof PodEntity pod && pod.chassis().equals(Chassis.PROSPECTOR));
+		if (!done.contains(FIND_PROSPECTOR) && prospectorWreckNear(level, player)) {
+			Directives.fire(player, FIND_PROSPECTOR);
+		}
+	}
+
+	private static boolean prospectorWreckNear(ServerLevel level, ServerPlayer player) {
+		return !level.getEntitiesOfClass(PodEntity.class, player.getBoundingBox().inflate(HandbookTuning.DEFAULT.findProspectorBlocks()),
+				pod -> pod.chassis().equals(Chassis.PROSPECTOR) && Wrecks.isWreck(pod)).isEmpty();
 	}
 
 	private static void creditRepair(RepairState repairs, ServerPlayer player, Set<Identifier> done, TerminalType type, Identifier directive) {
@@ -138,19 +211,63 @@ public final class HandbookTriggers {
 	}
 
 	private static void onPodTick(PodEntity pod) {
-		if (pod.tickCount % HandbookTuning.DEFAULT.triggerPollTicks() != 0 || !pod.chassis().equals(Chassis.MOLE)) {
+		if (pod.tickCount % HandbookTuning.DEFAULT.triggerPollTicks() != 0) {
 			return;
+		}
+		if (pod.chassis().equals(Chassis.PROSPECTOR) && PodTowing.isTowed(pod)) {
+			towedProspector(pod);
 		}
 		for (Entity passenger : pod.getPassengers()) {
 			if (passenger instanceof ServerPlayer player) {
-				pilotedMole(pod, player);
+				pilotedPod(pod, player);
 			}
 		}
 	}
 
-	private static void pilotedMole(PodEntity pod, ServerPlayer player) {
+	private static void pilotedPod(PodEntity pod, ServerPlayer player) {
 		MinecraftServer server = player.level().getServer();
 		Set<Identifier> done = HandbookProgress.completedFor(server, player.getUUID());
+		if (!done.contains(FIND_ORE) && seesOre(pod)) {
+			Directives.fire(player, FIND_ORE);
+		}
+		if (pod.chassis().equals(Chassis.MOLE)) {
+			pilotedMole(pod, player, done);
+		}
+	}
+
+	/** The scanner's own slice, as the pod's scanner shows it, holds an ore. A pod with no working scanner sees none. */
+	private static boolean seesOre(PodEntity pod) {
+		Optional<ScanSlice> slice = ScanSlice.scan(new LoadedBlocks(pod.level()), pod);
+		if (slice.isEmpty()) {
+			return false;
+		}
+		for (int up = slice.get().area().up(); up >= -slice.get().area().down(); up--) {
+			for (int ahead = -slice.get().area().halfWidth(); ahead <= slice.get().area().halfWidth(); ahead++) {
+				if (slice.get().cell(ahead, up) instanceof ScanSlice.Cell.Ore) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/** A Prospector on a cable inside the colony: the players riding the pod that tows it have towed it home. */
+	private static void towedProspector(PodEntity towed) {
+		MinecraftServer server = towed.level().getServer();
+		Optional<ColonySite.Placed> colony = Colony.placed(server);
+		Optional<PodEntity> tower = PodTowing.tower(towed);
+		if (colony.isEmpty() || tower.isEmpty() || !inColony(towed, colony.get())) {
+			return;
+		}
+		for (Entity passenger : tower.get().getPassengers()) {
+			if (passenger instanceof ServerPlayer player) {
+				fireOnce(player, HandbookProgress.completedFor(server, player.getUUID()), TOW_PROSPECTOR, true);
+			}
+		}
+	}
+
+	private static void pilotedMole(PodEntity pod, ServerPlayer player, Set<Identifier> done) {
+		MinecraftServer server = player.level().getServer();
 		fireOnce(player, done, BOARD_MOLE, true);
 		fireOnce(player, done, FLY_MOLE, pod.flying());
 		Optional<ColonySite.Placed> colony = Colony.placed(server);

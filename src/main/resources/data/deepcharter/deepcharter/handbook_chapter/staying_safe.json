@@ -1,0 +1,20 @@
+{
+  "order": 7,
+  "title": {
+    "translate": "deepcharter.handbook.chapter.deepcharter.staying_safe.title"
+  },
+  "directives": [
+    {
+      "id": "deepcharter:handbook/staying_safe/repair_hull",
+      "text": {
+        "translate": "deepcharter.handbook.directive.staying_safe.repair_hull"
+      }
+    },
+    {
+      "id": "deepcharter:handbook/staying_safe/reach_deep_claim",
+      "text": {
+        "translate": "deepcharter.handbook.directive.staying_safe.reach_deep_claim"
+      }
+    }
+  ]
+}

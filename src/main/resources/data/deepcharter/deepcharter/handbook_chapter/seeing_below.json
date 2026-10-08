@@ -1,0 +1,20 @@
+{
+  "order": 6,
+  "title": {
+    "translate": "deepcharter.handbook.chapter.deepcharter.seeing_below.title"
+  },
+  "directives": [
+    {
+      "id": "deepcharter:handbook/seeing_below/install_scanner",
+      "text": {
+        "translate": "deepcharter.handbook.directive.seeing_below.install_scanner"
+      }
+    },
+    {
+      "id": "deepcharter:handbook/seeing_below/find_ore",
+      "text": {
+        "translate": "deepcharter.handbook.directive.seeing_below.find_ore"
+      }
+    }
+  ]
+}

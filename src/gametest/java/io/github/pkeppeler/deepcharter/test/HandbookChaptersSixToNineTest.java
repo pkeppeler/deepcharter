@@ -58,6 +58,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeEvents;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTerminal;
@@ -219,7 +220,7 @@ public class HandbookChaptersSixToNineTest {
 		helper.succeed();
 	}
 
-	/** The terminals this script uses are repaired in a fresh repair state, which the caller puts back. */
+	/** A fresh repair state with {@code types} repaired, in the order given: a terminal's prerequisite comes first. The caller puts the world's back. */
 	private static RepairState repairedFor(TerminalType... types) {
 		RepairState fresh = new RepairState();
 		for (TerminalType type : types) {
@@ -251,7 +252,7 @@ public class HandbookChaptersSixToNineTest {
 
 	private static void runTheChapters(GameTestHelper helper, MinecraftServer server, ServerLevel one, ServerLevel two) {
 		RepairState repairs = RepairState.get(server);
-		server.getDataStorage().set(RepairState.TYPE, repairedFor(TerminalTypes.UPGRADE_TERMINAL, TerminalTypes.REPAIR_STATION));
+		server.getDataStorage().set(RepairState.TYPE, repairedFor(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL, TerminalTypes.REPAIR_STATION));
 		List<PodEntity> pods = new ArrayList<>();
 		BlockPos terminal = helper.absolutePos(TERMINAL);
 		MockPlayer director = MockPlayers.join(helper, "Director");
@@ -445,6 +446,7 @@ public class HandbookChaptersSixToNineTest {
 		MockPlayer rival = charterMember(helper, "Rival");
 		MockPlayer drifter = MockPlayers.join(helper, "Drifter");
 		PodEntity pod = null;
+		PodEntity foreignParts = null;
 		try {
 			drifter.player().setGameMode(GameType.SURVIVAL);
 			Set<Identifier> memberBefore = Set.copyOf(completed(server, member));
@@ -463,31 +465,39 @@ public class HandbookChaptersSixToNineTest {
 			expect(helper, completed(server, drifter).isEmpty(), "a player on no charter completes nothing, got %s", completed(server, drifter));
 			drifter.player().stopRiding();
 
-			// A scanner that the rival's pilot did not fit, on a pod of the member's charter, is the member's to find ore with.
+			// A scanner that another charter stamped does nothing on the member's pod, so the member finds no ore with it.
 			rival.player().setGameMode(GameType.SURVIVAL);
-			expect(helper, rival.player().startRiding(pod, true, false), "the rival should board the pod");
-			poll(pod);
-			expectNothingNew(helper, server, "a rival flying the member's pod", member, memberBefore);
-			expect(helper, !completed(server, rival).contains(id(directive("seeing_below", "find_ore"))),
-					"the member's scanner does not work for the rival's charter, which has %s", completed(server, rival));
-			rival.player().stopRiding();
+			PodEntity foreign = helper.spawn(PodRegistry.POD, 4, 1, 4);
+			foreignParts = foreign;
+			PodComponents.register(foreign, charter.id());
+			PodComponents.install(foreign, ComponentItems.mint(server, ComponentTrack.SCANNER, 1, Charters.charterOf(server, rival.player().getUUID()).orElseThrow().id()));
+			helper.getLevel().setBlock(foreign.blockPosition().above(2), Blocks.GOLD_ORE.defaultBlockState(), 3);
+			expect(helper, member.player().startRiding(foreign, true, false), "the member should board the pod");
+			poll(foreign);
+			// Boarding a Mole is chapter 3's deed, so the check is for ore alone.
+			expect(helper, !completed(server, member).contains(id(directive("seeing_below", "find_ore"))),
+					"a scanner stamped by another charter should find no ore, the member has %s", completed(server, member));
+			member.player().stopRiding();
+			Set<Identifier> memberBoarded = Set.copyOf(completed(server, member));
 
 			UpgradeEvents.BOUGHT.invoker().onBought(server, rival.player(), pod, ComponentTrack.SCANNER, 1);
 			TerminalEvents.ACTED.invoker().onActed(server, TerminalTypes.REPAIR_STATION, rival.player(), RepairStation.REPAIR);
 			TerminalEvents.ACTED.invoker().onActed(server, TerminalTypes.REPAIR_STATION, rival.player(), RepairStation.BUY);
 			TerminalEvents.ACTED.invoker().onActed(server, TerminalTypes.UPGRADE_TERMINAL, rival.player(), RepairStation.REPAIR);
 			BreachEvents.CROSSED.invoker().onCrossed(rival.player(), layer(server, 1), layer(server, 2), 1, 2);
-			expectNothingNew(helper, server, "the rival's deeds", member, memberBefore);
+			expectNothingNew(helper, server, "the rival's deeds", member, memberBoarded);
 			Set<Identifier> rivals = completed(server, rival);
 			for (String done : List.of(directive("seeing_below", "install_scanner"), directive("staying_safe", "repair_hull"), directive("first_breach", "breach_workings"))) {
 				expect(helper, rivals.contains(id(done)), "the rival's own deed should complete %s for the rival's charter, which has %s", done, rivals);
 			}
 			expect(helper, !rivals.contains(id(directive("company_property", "restore_prospector"))), "nothing restored a Prospector: %s", rivals);
-			Charters.charterOf(server, member.player().getUUID()).orElseThrow(() -> helper.assertionException("the member's charter %s should be there", charter));
 			helper.succeed();
 		} finally {
 			if (pod != null) {
 				pod.discard();
+			}
+			if (foreignParts != null) {
+				foreignParts.discard();
 			}
 			member.leave();
 			rival.leave();
