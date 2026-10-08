@@ -19,7 +19,7 @@ The user's design session (deepcharter-93) is raising it with the user.
 
 ## 2026-10-08: Client GameTests hang on this Mac while its display sleeps
 
-**Status:** open, worked around. Nothing waits on it.
+**Status:** resolved 2026-10-08. On macOS, client GameTests and `tools/record-evidence.sh` now launch with `--graphicsBackend vulkan` (#251), which renders with the screen locked. `DEEPCHARTER_GL=1` opts back into OpenGL, which still hangs while locked. The text below is the original report.
 
 Client GameTests and evidence recordings render a real window. When the Mac's display sleeps, the render thread blocks and the run hangs at resource load with no error. Overnight, the display sleeps: the running `caffeinate -imsu` keeps the system awake but not the display, since it has no `-d`. One agent started its own `caffeinate -d`, which the rules forbid; the orchestrator stopped it.
 
