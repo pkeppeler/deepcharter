@@ -82,11 +82,6 @@ public final class EarlyRunModel {
 		public int toAfford(long price) {
 			return (int) Math.ceil(price / net);
 		}
-
-		/** The Cicatrium that {@code runs} runs bring in expectation. */
-		public double catalystsAfter(int runs) {
-			return catalysts * runs;
-		}
 	}
 
 	/** Blocks of layer 1, which a run in layer 2 climbs through twice (the shaft is already bored). */

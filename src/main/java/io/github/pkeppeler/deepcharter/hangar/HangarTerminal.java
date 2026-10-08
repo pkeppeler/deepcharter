@@ -151,8 +151,6 @@ public final class HangarTerminal {
 			return refuse("insufficient_funds", cost.money());
 		}
 		Item catalyst = OreRegistry.item(tuning.catalyst());
-		// The pack pays first. What it lacks is the Company's advance, up to what this charter has not yet used: it is never put in
-		// the pack, so it cannot be sold, and it is spent only here.
 		int fromPack = Math.min(count(player.getInventory(), catalyst), cost.catalysts());
 		int advanced = Math.min(cost.catalysts() - fromPack, Math.max(0, cost.advance() - data.get().advanceSpent(charter.id())));
 		if (fromPack + advanced < cost.catalysts()) {
