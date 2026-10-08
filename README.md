@@ -11,6 +11,7 @@ Prerequisite: JDK 25. Gradle comes from the wrapper.
 ./gradlew runClient         # launch the dev client (offline dev account)
 ./gradlew runGameTest       # server GameTests
 ./gradlew runClientGameTest # client GameTests (opens a game window)
+./gradlew runClientGameTest -PclientTests=HangarClientTest   # only the matching client test classes
 ```
 
 Tests live in `src/gametest/`.
@@ -57,6 +58,7 @@ Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest
 
 - Add test classes and evidence scenarios to the stubs that already exist. `gradle/gametest.gradle` generates the gametest `fabric.mod.json` entrypoint lists from the classes (an `@GameTest` method, `implements FabricClientGameTest`, or `extends EvidenceScenario`) and fails the build for a `*Test` or `*Scenario` class it cannot register; never edit a list. The lists are sorted by name, and no test may depend on that order. A test that swaps a world-global saved record (colony, hangar, repair state, serials) does it through `WorldData.with` or `WorldData.swap` (`test/support`), which set, run the body and restore in a `finally` on the same tick; a direct `getDataStorage().set(` in `src/gametest` fails the build. `WorldDataGuard` stops the server GameTest run if a swap lives into the next tick. `./gradlew runGameTest -PgametestOrder=reverse` runs the server suite in reverse name order to catch a leak. A server stub is `<Thing>Test`, a client stub `<Thing>ClientTest`, a scenario `evidence/<Thing>Scenario` named `m2-<thing>`. A scenario stub throws "stub: #N fills it" when it is selected, and does nothing in a plain run.
 - A GameTest that cuts air into generated layer rock calls `RoomSeal.seal` first (generated lava and gas flood the cut otherwise).
+- Run one client GameTest class with `./gradlew runClientGameTest -PclientTests=<filter>` or `tools/gametest.sh --client <filter>`. The filter is a comma-separated list of class names (simple or fully qualified) or globs (`Pod*ClientTest`; `*` matches any characters), matched against the client list that `generateGametestModJson` writes, and it also selects evidence scenarios. A term that matches no client class fails the build and names the term, so a typo never runs nothing and reports green. Without the property the list is the full one. The property is an input of the generation task, so changing it regenerates the list. A later plain `./gradlew build` or `runClientGameTest` regenerates the full list. `tools/tests/client_filter_gate_check.py` tests this (CI `build` job and pre-push hook).
 - Run one GameTest, or a prefix of them, with `tools/gametest.sh '<test_id or prefix*>'` (quote the `*`). It runs `./gradlew runGameTest` from the repo root it lives in, sets the filter through `JAVA_TOOL_OPTIONS` (a bare `-D` on the Gradle command line is ignored), and fails when no test matches.
 - Before you drive an entity in a far chunk, await entity ticking: `test/support/FarChunks.awaitEntityTicking`. It forces the chunk, so nothing else needs to keep it loaded.
 - `test/support/MockPlayers` joins a real server-side player with no client behind it.
