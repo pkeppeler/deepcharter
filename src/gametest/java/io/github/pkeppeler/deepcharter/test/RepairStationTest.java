@@ -84,7 +84,7 @@ public class RepairStationTest {
 			Consumable.PLASTIC_EXPLOSIVES, 5_000L,
 			Consumable.QUANTUM_TELEPORTER, 2_000L,
 			Consumable.MATTER_TRANSMITTER, 10_000L);
-	private static final long PER_HP = 15L;
+	private static final long PER_HP = 1L;
 	private static final int ARENA = 4;
 
 	/** A working repair station at {@code pos}, a pilot on a charter that owns {@code pod}, and the charter's id. */
@@ -197,7 +197,7 @@ public class RepairStationTest {
 	}
 
 	@GameTest
-	public void repairDebitsFifteenDollarsPerHpAndCapsAtMaxHull(GameTestHelper helper) {
+	public void repairDebitsTheTunedDollarsPerHpAndCapsAtMaxHull(GameTestHelper helper) {
 		withStation(helper, station -> {
 			PodEntity pod = station.pod();
 			float max = pod.maxHull();
@@ -949,10 +949,10 @@ public class RepairStationTest {
 		withStation(helper, station -> {
 			PodEntity pod = station.pod();
 			fund(helper, station, 1_000);
-			pod.setHull(pod.maxHull() - 0.5f);
-			expectDone(helper, Terminals.act(station.pilot().player(), station.pos(), RepairStation.REPAIR_TOTAL, new CompoundTag()), "repairing half a point");
-			expectHull(helper, pod, pod.maxHull(), "after half a point");
-			expectAccount(helper, station, 1_000 - 8, "7.5 dollars are charged as 8");
+			pod.setHull(pod.maxHull() - 2.5f);
+			expectDone(helper, Terminals.act(station.pilot().player(), station.pos(), RepairStation.REPAIR_TOTAL, new CompoundTag()), "repairing two and a half points");
+			expectHull(helper, pod, pod.maxHull(), "after two and a half points");
+			expectAccount(helper, station, 1_000 - 3, "2.5 dollars are charged as 3");
 			helper.succeed();
 		});
 	}
@@ -964,7 +964,7 @@ public class RepairStationTest {
 			fund(helper, station, 1_000);
 			pod.setHull(pod.maxHull() - 3.00001f);
 			expectDone(helper, Terminals.act(station.pilot().player(), station.pos(), RepairStation.REPAIR_TOTAL, new CompoundTag()), "repairing 3 points");
-			expectAccount(helper, station, 1_000 - 3 * PER_HP, "3 points cost $45 whatever the float noise");
+			expectAccount(helper, station, 1_000 - 3 * PER_HP, "3 points cost $3 whatever the float noise");
 			helper.succeed();
 		});
 	}

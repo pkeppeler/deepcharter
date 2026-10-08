@@ -63,16 +63,16 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
 			context.clickScreenButton("HULL  T0");
 			context.waitFor(client -> screen.selected() == ComponentTrack.HULL, WAIT_TICKS);
 			List<String> hull = labels(context, screen);
-			check(hull.contains("BUY TIER 1  $750") && hull.contains("BUY TIER 2  $2000"), "the hull parts show their prices, got " + hull);
-			check(hull.contains("BUY TIER 3  $5000  (WORKS AS TIER 2)") && hull.contains("BUY TIER 4  $20000  (WORKS AS TIER 2)"),
+			check(hull.contains("BUY TIER 1  $200") && hull.contains("BUY TIER 2  $500"), "the hull parts show their prices, got " + hull);
+			check(hull.contains("BUY TIER 3  $1250  (WORKS AS TIER 2)") && hull.contains("BUY TIER 4  $5000  (WORKS AS TIER 2)"),
 					"tiers above the cap say so, got " + hull);
 
-			context.clickScreenButton("BUY TIER 1  $750");
+			context.clickScreenButton("BUY TIER 1  $200");
 			context.waitFor(client -> labels(client, screen).contains("TIER 1  INSTALLED"), WAIT_TICKS);
 			check(singleplayer.getServer().computeOnServer(server2 -> PodComponents.partOf(pod(server2, scene), ComponentTrack.HULL)
 					.map(label -> label.tier() == 1).orElse(false)), "the server installed the tier 1 hull");
 
-			context.clickScreenButton("BUY TIER 4  $20000  (WORKS AS TIER 2)");
+			context.clickScreenButton("BUY TIER 4  $5000  (WORKS AS TIER 2)");
 			context.waitFor(client -> labels(client, screen).contains("TIER 4  INSTALLED  (WORKS AS TIER 2)"), WAIT_TICKS);
 			boolean cappedAndDropped = singleplayer.getServer().computeOnServer(server2 -> {
 				PodEntity pod = pod(server2, scene);
@@ -80,9 +80,9 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
 				boolean dropped = pod.level().getEntitiesOfClass(ItemEntity.class, new AABB(scene.terminal()).inflate(20)).stream()
 						.anyMatch(item -> ComponentItems.labelOf(item.getItem()).map(label -> label.tier() == 1).orElse(false));
 				long account = Charters.charterOfOrThrow(server2, server2.getPlayerList().getPlayers().getFirst().getUUID()).orElseThrow().account();
-				return capped && dropped && account == ACCOUNT - 750 - 20_000;
+				return capped && dropped && account == ACCOUNT - 200 - 5_000;
 			});
-			check(cappedAndDropped, "the tier 4 hull works as tier 2, the tier 1 hull dropped, and the account paid 20750 in all");
+			check(cappedAndDropped, "the tier 4 hull works as tier 2, the tier 1 hull dropped, and the account paid 5200 in all");
 
 			CrtButton unaffordable = context.computeOnClient(client -> screen.children().stream().filter(CrtButton.class::isInstance)
 					.map(CrtButton.class::cast).filter(button -> button.getMessage().getString().startsWith("BUY TIER 6")).findFirst().orElseThrow());
