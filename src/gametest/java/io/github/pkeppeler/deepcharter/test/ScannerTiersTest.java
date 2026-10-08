@@ -187,43 +187,66 @@ public class ScannerTiersTest {
 	}
 
 	/**
-	 * The slice is one block thick, but a bore is two wide, so the thermal tier marks a cell lava when lava is in the plane or within
-	 * {@link ScannerTuning#lavaSpread()} blocks to either side of it. Tier 1 reads only the plane. PR 287 measured that the plane alone
-	 * shows only 1 in 7 of the lava a pod touches.
+	 * The slice is one block thick, but a bore is two wide, so the thermal tier marks a cell when lava is in the plane (bright) or within
+	 * {@link ScannerTuning#lavaSpread()} blocks to either side of it (near). Tier 1 reads only the plane, and as open space. PR 287 measured
+	 * that the plane alone shows only 1 in 7 of the lava a pod touches.
 	 */
 	@GameTest
-	public void theThermalTierMarksLavaBesideThePlaneAndTierOneDoesNot(GameTestHelper helper) {
+	public void theThermalTierMarksLavaInThePlaneAndNearLavaBesideItAndTierOneDoesNot(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		BlockPos origin = origin(helper);
 		int spread = ScannerTuning.DEFAULT.lavaSpread();
 		if (spread != 2) {
 			throw failure(helper, "the thermal tier should reach 2 blocks either side of the plane (a 2 x 2 bore and a block of margin), got %d", spread);
 		}
-		// Perpendicular to an east-facing plane is the Z axis.
-		BlockPos near = origin.offset(5, -1, spread);
-		BlockPos otherSide = origin.offset(8, -1, -spread);
-		BlockPos tooFar = origin.offset(11, -1, spread + 1);
-		place(level, near, Blocks.LAVA);
-		place(level, otherSide, Blocks.LAVA);
-		place(level, tooFar, Blocks.LAVA);
+		// Perpendicular to an east-facing plane is the Z axis. Each column ahead holds lava at one offset from the plane.
+		int[] offsets = {0, 1, 2, -1, -2, 3, -3};
+		Cell[] expected = {Cell.LAVA, Cell.LAVA_NEAR, Cell.LAVA_NEAR, Cell.LAVA_NEAR, Cell.LAVA_NEAR, Cell.AIR, Cell.AIR};
+		for (int i = 0; i < offsets.length; i++) {
+			place(level, origin.offset(5 + 3 * i, -1, offsets[i]), Blocks.LAVA);
+		}
 		try {
 			for (int tier = 1; tier <= 4; tier++) {
 				ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, tier);
-				Cell reached = tier >= 2 ? Cell.LAVA : Cell.AIR;
-				if (!slice.cell(5, -1).equals(reached) || !slice.cell(8, -1).equals(reached)) {
-					throw failure(helper, "lava %d blocks beside the plane at tier %d should read as %s, read %s and %s", spread, tier, reached,
-							slice.cell(5, -1), slice.cell(8, -1));
-				}
-				if (!slice.cell(11, -1).equals(Cell.AIR)) {
-					throw failure(helper, "lava %d blocks beside the plane is out of reach at tier %d and should read as air, read %s", spread + 1, tier,
-							slice.cell(11, -1));
+				for (int i = 0; i < offsets.length; i++) {
+					Cell want = tier >= 2 ? expected[i] : Cell.AIR;
+					Cell got = slice.cell(5 + 3 * i, -1);
+					if (!got.equals(want)) {
+						throw failure(helper, "lava %d blocks beside the plane at tier %d should read as %s, read %s", offsets[i], tier, want, got);
+					}
 				}
 			}
 			helper.succeed();
 		} finally {
-			place(level, near, Blocks.AIR);
-			place(level, otherSide, Blocks.AIR);
-			place(level, tooFar, Blocks.AIR);
+			for (int i = 0; i < offsets.length; i++) {
+				place(level, origin.offset(5 + 3 * i, -1, offsets[i]), Blocks.AIR);
+			}
+		}
+	}
+
+	/** One cell holds one reading: ore, or gas, in the plane wins over lava beside it, and lava in the plane over lava beside it. */
+	@GameTest
+	public void oreAndGasInThePlaneWinOverLavaBesideIt(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos origin = origin(helper);
+		BlockPos ore = origin.offset(4, -3, 0);
+		BlockPos gas = origin.offset(7, -3, 0);
+		BlockPos[] lava = {ore.offset(0, 0, 1), gas.offset(0, 0, -1)};
+		place(level, ore, Blocks.GOLD_ORE);
+		place(level, gas, HazardBlocks.GAS_POCKET);
+		place(level, lava[0], Blocks.LAVA);
+		place(level, lava[1], Blocks.LAVA);
+		try {
+			ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, 3);
+			if (!slice.cell(4, -3).equals(new Cell.Ore(Blocks.GOLD_ORE)) || !slice.cell(7, -3).equals(Cell.GAS)) {
+				throw failure(helper, "ore and gas with lava beside them should keep their own readings, read %s and %s", slice.cell(4, -3), slice.cell(7, -3));
+			}
+			helper.succeed();
+		} finally {
+			place(level, ore, Blocks.AIR);
+			place(level, gas, Blocks.AIR);
+			place(level, lava[0], Blocks.AIR);
+			place(level, lava[1], Blocks.AIR);
 		}
 	}
 

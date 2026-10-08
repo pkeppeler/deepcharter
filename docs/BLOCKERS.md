@@ -102,7 +102,7 @@ SPEC §7 says "later tiers reveal hazards". It does not say how the scanner show
 
 **The risk with the default:** a pilot can fly into lava that the scanner shows as empty. PR #287 measured it: a tier 1 scanner showed the lava a pod touched, 8 or more slabs ahead, in 13% of cases.
 
-**The answer (#300, option (b)):** the thermal tier, scanner tier 2, marks lava in its own colour (`lavaColor` in `theme/scanner.json`). **Tier 1 keeps fluids as open space**, so the tier is worth buying. Water stays open space at every tier, because no water hazard exists. If one does, it gets its own tier and colour the same way. Option (c), all fluids in their own colour, is not planned.
+**The answer (#300, option (b)):** the thermal tier, scanner tier 2, marks lava in its own colour (`lavaColor`, `lavaNearColor` in `theme/scanner.json`). **Tier 1 keeps fluids as open space**, so the tier is worth buying. Water stays open space at every tier, because no water hazard exists. If one does, it gets its own tier and colour the same way. Option (c), all fluids in their own colour, is not planned.
 
 ## 2026-10-07: M0 demo is ready (the milestone ends with a demo to the user)
 

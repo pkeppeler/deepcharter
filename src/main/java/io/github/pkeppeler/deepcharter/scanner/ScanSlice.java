@@ -120,8 +120,11 @@ public final class ScanSlice {
 		if (showsGas && state.is(HazardBlocks.GAS_POCKET)) {
 			return Cell.GAS;
 		}
-		if (showsLava && lavaBeside(level, pos, facing)) {
-			return Cell.LAVA;
+		if (showsLava) {
+			Cell lava = lavaReading(level, pos, facing);
+			if (lava != null) {
+				return lava;
+			}
 		}
 		// Fluids are named explicitly so the rule does not depend on their collision shapes.
 		if (state.getBlock() instanceof LiquidBlock) {
@@ -131,18 +134,22 @@ public final class ScanSlice {
 	}
 
 	/**
-	 * Whether the block at {@code pos}, or one within {@link ScannerTuning#lavaSpread()} blocks either side of the plane at that spot, is lava.
-	 * The pod's bore is wider than the one-block plane, and lava beside the plane is lava the pod can touch.
+	 * {@link Cell#LAVA} when the block at {@code pos} is lava, {@link Cell#LAVA_NEAR} when only a block within {@link ScannerTuning#lavaSpread()}
+	 * blocks either side of the plane at that spot is, and null for neither. The pod's bore is wider than the one-block plane, and lava beside
+	 * the plane is lava the pod can touch.
 	 */
-	private static boolean lavaBeside(BlockGetter level, BlockPos pos, Direction facing) {
+	private static Cell lavaReading(BlockGetter level, BlockPos pos, Direction facing) {
+		if (level.getFluidState(pos).is(FluidTags.LAVA)) {
+			return Cell.LAVA;
+		}
 		Direction side = facing.getClockWise();
-		int spread = TUNING.lavaSpread();
-		for (int offset = -spread; offset <= spread; offset++) {
-			if (level.getFluidState(pos.relative(side, offset)).is(FluidTags.LAVA)) {
-				return true;
+		for (int distance = 1; distance <= TUNING.lavaSpread(); distance++) {
+			if (level.getFluidState(pos.relative(side, distance)).is(FluidTags.LAVA)
+					|| level.getFluidState(pos.relative(side, -distance)).is(FluidTags.LAVA)) {
+				return Cell.LAVA_NEAR;
 			}
 		}
-		return false;
+		return null;
 	}
 
 	/** What a cell holds. */
@@ -150,6 +157,7 @@ public final class ScanSlice {
 		Cell AIR = new Air();
 		Cell ROCK = new Rock();
 		Cell LAVA = new Lava();
+		Cell LAVA_NEAR = new LavaNear();
 		Cell GAS = new Gas();
 
 		/**
@@ -163,8 +171,12 @@ public final class ScanSlice {
 		record Rock() implements Cell {
 		}
 
-		/** A cell with lava in it, or within {@link ScannerTuning#lavaSpread()} blocks beside it, seen by a scanner of {@link ScannerTuning#lavaTier()} or better. */
+		/** A cell with lava in it, seen by a scanner of {@link ScannerTuning#lavaTier()} or better. */
 		record Lava() implements Cell {
+		}
+
+		/** A cell with no lava in it but lava within {@link ScannerTuning#lavaSpread()} blocks beside the plane, seen by a scanner of {@link ScannerTuning#lavaTier()} or better. */
+		record LavaNear() implements Cell {
 		}
 
 		/** A gas pocket, seen by a scanner of {@link ScannerTuning#gasTier()} or better. */

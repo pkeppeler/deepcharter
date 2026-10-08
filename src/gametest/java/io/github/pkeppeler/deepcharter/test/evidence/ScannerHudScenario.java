@@ -4,11 +4,15 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 
 /**
  * Evidence scenario "scanner-hud": the scanner on the surface at midnight, ore appearing in the
@@ -19,6 +23,8 @@ public class ScannerHudScenario extends EvidenceScenario {
 	private static final int FRAMES_PER_STEP = 6;
 	private static final int TICKS_PER_FRAME = 3;
 	private static final int LAVA_SHOT_TICKS = 100;
+	private static final int ROOM_RADIUS = 4;
+	private static final int ROOM_HEIGHT = 5;
 	/** Lava at (ahead, up), down in the rock and inside both tiers' reach. */
 	private static final int[][] LAVA = {{3, -9}, {4, -9}, {4, -10}, {-8, -15}, {-7, -15}};
 
@@ -44,6 +50,7 @@ public class ScannerHudScenario extends EvidenceScenario {
 			ScannerHudTest.goToLayer(server, 2);
 			context.waitFor(client -> client.level.dimension().identifier().getPath().equals("layer_2"));
 			context.waitTicks(40);
+			clearRoomAroundPlayer(server);
 			ScannerHudTest.rideWithGoldAhead(context, server, 1);
 			screenshot(context, "scanner-layer-2");
 			frames(context);
@@ -60,6 +67,16 @@ public class ScannerHudScenario extends EvidenceScenario {
 			// Seal the lava in stone again so that it has no time to flow.
 			placeLava(server, Blocks.STONE);
 		}
+	}
+
+	/** The layer 2 arrival point is in lava. A sealed room of air around the player keeps the pod out of it, so that the HUD does not burn. */
+	private static void clearRoomAroundPlayer(TestServerContext server) {
+		server.runOnServer(minecraftServer -> {
+			ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
+			BlockPos feet = player.blockPosition();
+			RoomCarver.carve((ServerLevel) player.level(), feet.offset(-ROOM_RADIUS, 0, -ROOM_RADIUS), feet.offset(ROOM_RADIUS, ROOM_HEIGHT, ROOM_RADIUS),
+					Blocks.AIR.defaultBlockState());
+		});
 	}
 
 	private void mountAndShoot(ClientGameTestContext context, TestServerContext server, int scannerTier, String screenshotName) {

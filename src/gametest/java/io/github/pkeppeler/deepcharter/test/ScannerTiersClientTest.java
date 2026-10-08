@@ -31,6 +31,8 @@ public class ScannerTiersClientTest implements FabricClientGameTest {
 	private static final int FLUID_UP = -2;
 	private static final int LAVA_AHEAD = 3;
 	private static final int WATER_AHEAD = -6;
+	/** Lava one block beside the plane, with air in the plane at that cell: the thermal tier draws it as near lava. */
+	private static final int NEAR_AHEAD = 8;
 
 	/** Puts gold {@link #FAR_AHEAD} ahead of the ridden pod and stone {@link #FAR_BEHIND} behind it, on the gold row. */
 	public static void placeFarCells(ClientGameTestContext context, TestServerContext server) {
@@ -43,6 +45,12 @@ public class ScannerTiersClientTest implements FabricClientGameTest {
 	public static void placeFluids(ClientGameTestContext context, TestServerContext server) {
 		ScannerHudTest.placeBesidePod(server, LAVA_AHEAD, FLUID_UP, Blocks.LAVA);
 		ScannerHudTest.placeBesidePod(server, WATER_AHEAD, FLUID_UP, Blocks.WATER);
+		ScannerHudTest.placeBesidePod(server, NEAR_AHEAD, FLUID_UP, Blocks.AIR);
+		server.runOnServer(minecraftServer -> {
+			PodEntity pod = (PodEntity) minecraftServer.getPlayerList().getPlayers().getFirst().getVehicle();
+			BlockPos beside = pod.blockPosition().relative(pod.getDirection(), NEAR_AHEAD).above(FLUID_UP).relative(pod.getDirection().getClockWise());
+			pod.level().setBlock(beside, Blocks.LAVA.defaultBlockState(), 3);
+		});
 		BlockPos lava = server.computeOnServer(minecraftServer -> {
 			PodEntity pod = (PodEntity) minecraftServer.getPlayerList().getPlayers().getFirst().getVehicle();
 			return pod.blockPosition().relative(pod.getDirection(), LAVA_AHEAD).above(FLUID_UP);
@@ -100,6 +108,7 @@ public class ScannerTiersClientTest implements FabricClientGameTest {
 			HudShot oneFluids = HudShot.take(context, "scanner-tiers-1-fluids", ScannerHudTest.TIER_ONE);
 			expect("tier 1: the lava reads as open space", oneFluids.pixel(LAVA_AHEAD, FLUID_UP), ScannerLook.current().airColor());
 			expect("tier 1: the water reads as open space", oneFluids.pixel(WATER_AHEAD, FLUID_UP), ScannerLook.current().airColor());
+			expect("tier 1: the lava beside the plane reads as open space", oneFluids.pixel(NEAR_AHEAD, FLUID_UP), ScannerLook.current().airColor());
 			ScannerHudTest.leavePod(context, server);
 
 			// Tier 2 draws a wider panel with the far cells in it.
@@ -114,7 +123,8 @@ public class ScannerTiersClientTest implements FabricClientGameTest {
 			// Tier 2 is the thermal tier: lava has its own colour, water is still open space.
 			placeFluids(context, server);
 			HudShot twoFluids = HudShot.take(context, "scanner-tiers-2-fluids", TIER_TWO);
-			expect("tier 2: the lava", twoFluids.pixel(LAVA_AHEAD, FLUID_UP), ScannerLook.current().lavaColor());
+			expect("tier 2: the lava in the plane", twoFluids.pixel(LAVA_AHEAD, FLUID_UP), ScannerLook.current().lavaColor());
+			expect("tier 2: the lava beside the plane", twoFluids.pixel(NEAR_AHEAD, FLUID_UP), ScannerLook.current().lavaNearColor());
 			expect("tier 2: the water reads as open space", twoFluids.pixel(WATER_AHEAD, FLUID_UP), ScannerLook.current().airColor());
 		}
 	}

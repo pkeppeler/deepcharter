@@ -136,6 +136,7 @@ public final class ScannerHud {
 			case Cell.Air air -> look.airColor();
 			case Cell.Rock rock -> look.rockColor();
 			case Cell.Lava lava -> look.lavaColor();
+			case Cell.LavaNear near -> look.lavaNearColor();
 			case Cell.Gas gas -> look.gasColor();
 			case Cell.Ore ore -> ore.block().defaultBlockState().is(GOLD_ORES) ? look.goldOreColor() : look.oreColor();
 		};
