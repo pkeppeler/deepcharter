@@ -3,7 +3,6 @@ package io.github.pkeppeler.deepcharter.test;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Predicate;
 
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -48,7 +47,7 @@ public class TowingClientTest implements FabricClientGameTest {
 		ClientTestLog.start(this);
 		try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
 			Rig rig = two.server().computeOnServer(server -> setUp(server.overworld(), two));
-			awaitClient(context, "the client sees both pods with the cable between them", client -> pod(client, rig.tower()) != null
+			ClientWait.until(context, "the client sees both pods with the cable between them", client -> pod(client, rig.tower()) != null
 					&& pod(client, rig.towed()) != null && Optional.of(rig.tower()).equals(PodTowing.towerId(pod(client, rig.towed()))));
 			Vec3 towedStart = context.computeOnClient(client -> pod(client, rig.towed()).position());
 
@@ -73,14 +72,9 @@ public class TowingClientTest implements FabricClientGameTest {
 					throw new AssertionError("the towed pod should have a cable to take off");
 				}
 			});
-			awaitClient(context, "the client sees the cable come off the towed pod", client -> pod(client, rig.towed()) != null
+			ClientWait.until(context, "the client sees the cable come off the towed pod", client -> pod(client, rig.towed()) != null
 					&& !PodTowing.isTowed(pod(client, rig.towed())));
 		}
-	}
-
-	/** Waits on the wall clock for {@code condition} on the client, and on a timeout fails naming {@code step}. */
-	private static void awaitClient(ClientGameTestContext context, String step, Predicate<Minecraft> condition) {
-		ClientWait.until(context, step, condition);
 	}
 
 	/** The client's copy of the pod, or null while it does not see it. */
