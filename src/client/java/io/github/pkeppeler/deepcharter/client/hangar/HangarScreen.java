@@ -83,7 +83,7 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 				prospector.money(), prospector.catalysts(), catalyst).getString();
 		List<String> wrapped = font.getSplitter().splitLines(FormattedText.of(prices), width - 2 * MARGIN, Style.EMPTY)
 				.stream().map(FormattedText::getString).toList();
-		int lineHeight = font.lineHeight + 1;
+		int lineHeight = font.lineHeight + CrtTuning.DEFAULT.lineSpacing();
 		int pricesY = closeY - GAP - wrapped.size() * lineHeight;
 		List<PriceLine> lines = new ArrayList<>();
 		for (int i = 0; i < wrapped.size(); i++) {
@@ -98,6 +98,13 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 		// The wreck the server restores is the nearest one, so the lines under the button name the price of each chassis.
 		addRenderableWidget(new CrtButton(MARGIN, restoreY, BUTTON_WIDTH, BUTTON_HEIGHT,
 				Component.translatable("screen.deepcharter.hangar.restore"), button -> send(HangarTerminal.RESTORE_WRECK)));
+	}
+
+	/** The y below the header text once the welcome has typed out in full: the welcome lines, then the account line. */
+	public int headerBottom() {
+		int welcomeLines = font.getSplitter().splitLines(FormattedText.of(typewriter.text()), width - 2 * MARGIN, Style.EMPTY).size();
+		int welcomeBottom = MARGIN + font.lineHeight + 14 + Math.max(welcomeLines, 1) * (font.lineHeight + CrtTuning.DEFAULT.lineSpacing());
+		return welcomeBottom + GAP + font.lineHeight;
 	}
 
 	/** The restore prices as drawn, one entry per wrapped line. */

@@ -49,7 +49,10 @@ public class HangarClientTest implements FabricClientGameTest {
 			if (button.getX() < 0 || button.getY() < 0 || button.getRight() > screen.width || button.getBottom() > screen.height) {
 				return "'" + label + "' leaves the " + screen.width + " by " + screen.height + " screen";
 			}
-			int textWidth = Minecraft.getInstance().font.width(label);
+			if (button.getY() < screen.headerBottom()) {
+				return "'" + label + "' starts at " + button.getY() + ", above the header text that ends at " + screen.headerBottom();
+			}
+			int textWidth =Minecraft.getInstance().font.width(label);
 			if (textWidth > button.getWidth()) {
 				return "'" + label + "' is " + textWidth + " wide in a button " + button.getWidth() + " wide";
 			}
