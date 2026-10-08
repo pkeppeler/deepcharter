@@ -36,22 +36,28 @@ public record ReadMarks(Set<Identifier> read) {
 		read = Set.copyOf(read);
 	}
 
+	/** Whether {@code player} has read {@code entry}. Marks that cannot be read show nothing as read (logged once). Never throws. */
 	public static boolean isRead(Player player, Identifier entry) {
-		return Versioned.require(player, HandbookRegistry.READ_MARKS).read().contains(entry);
+		return Versioned.readable(player, HandbookRegistry.READ_MARKS).map(marks -> marks.read().contains(entry)).orElse(false);
 	}
 
-	/** Marks {@code entry} read for {@code player}. Marking it again changes nothing. */
+	/** Whether the saved marks of {@code player} can be read. Logs once when not. */
+	public static boolean isReadable(Player player) {
+		return Versioned.readable(player, HandbookRegistry.READ_MARKS).isPresent();
+	}
+
+	/** Marks {@code entry} read for {@code player}. Marking it again changes nothing. Throws on unreadable marks: check {@link #isReadable} first on a callback path. */
 	public static void mark(Player player, Identifier entry) {
-		Versioned.modify(player, HandbookRegistry.READ_MARKS, marks -> {
+		Versioned.modifyOrThrow(player, HandbookRegistry.READ_MARKS, marks -> {
 			Set<Identifier> read = new HashSet<>(marks.read());
 			read.add(entry);
 			return new ReadMarks(read);
 		});
 	}
 
-	/** Marks {@code entry} unread again for {@code player}. */
+	/** Marks {@code entry} unread again for {@code player}. Throws on unreadable marks. */
 	public static void unmark(Player player, Identifier entry) {
-		Versioned.modify(player, HandbookRegistry.READ_MARKS, marks -> {
+		Versioned.modifyOrThrow(player, HandbookRegistry.READ_MARKS, marks -> {
 			Set<Identifier> read = new HashSet<>(marks.read());
 			read.remove(entry);
 			return new ReadMarks(read);

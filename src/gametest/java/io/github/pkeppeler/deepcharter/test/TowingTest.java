@@ -668,7 +668,7 @@ public class TowingTest {
 		FarChunks.awaitEntityTicking(helper, end, BlockPos.containing(x, 100, z), () -> {
 			stay[0] = spawn(end, x, 100, z);
 			logged[0] = LogCapture.start(stay[0].getUUID().toString());
-			Versioned.modify(stay[0], PodTowing.STATE, state -> new PodTowing.State(Optional.of(tower.getUUID())));
+			Versioned.modifyOrThrow(stay[0], PodTowing.STATE, state -> new PodTowing.State(Optional.of(tower.getUUID())));
 			if (!rider.player().startRiding(stay[0], true, false)) {
 				throw failure(helper, "the rider could not board");
 			}

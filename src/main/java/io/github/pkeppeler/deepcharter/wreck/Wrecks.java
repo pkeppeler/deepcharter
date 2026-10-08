@@ -43,7 +43,7 @@ public final class Wrecks {
 
 	/** True when the pod is a wreck. Safe on either side; the client sees the synced state. Unreadable state is not a wreck. */
 	public static boolean isWreck(PodEntity pod) {
-		return pod.getAttached(WreckRegistry.STATE) instanceof Versioned.Readable<WreckState> readable && readable.value().wrecked();
+		return Versioned.readable(pod, WreckRegistry.STATE).map(WreckState::wrecked).orElse(false);
 	}
 
 	/**
@@ -56,10 +56,10 @@ public final class Wrecks {
 		if (!(hull > 0f)) {
 			throw new IllegalArgumentException("a restored pod needs hull above 0, got " + hull);
 		}
-		if (!Versioned.require(pod, WreckRegistry.STATE).wrecked()) {
+		if (!Versioned.orThrow(pod, WreckRegistry.STATE).wrecked()) {
 			throw new IllegalStateException("pod " + pod.getUUID() + " is not a wreck");
 		}
-		Versioned.modify(pod, WreckRegistry.STATE, state -> WreckState.INTACT);
+		Versioned.modifyOrThrow(pod, WreckRegistry.STATE, state -> WreckState.INTACT);
 		pod.setHull(hull);
 	}
 
@@ -101,7 +101,7 @@ public final class Wrecks {
 					pod.getUUID());
 			return;
 		}
-		Versioned.modify(pod, WreckRegistry.STATE, state -> WreckState.WRECKED);
+		Versioned.modifyOrThrow(pod, WreckRegistry.STATE, state -> WreckState.WRECKED);
 		ServerLevel level = (ServerLevel) pod.level();
 		List<Entity> crew = List.copyOf(pod.getPassengers());
 		Map<CharterId, Charter> charters = chartersToTell(level.getServer(), pod, crew);
@@ -127,7 +127,7 @@ public final class Wrecks {
 			return;
 		}
 		DeepCharter.LOGGER.warn("Pod {} loaded with hull {} and is now a wreck (a corrupt saved hull loads as 0)", pod.getUUID(), pod.hull());
-		Versioned.modify(pod, WreckRegistry.STATE, state -> WreckState.WRECKED);
+		Versioned.modifyOrThrow(pod, WreckRegistry.STATE, state -> WreckState.WRECKED);
 	}
 
 	/** Using a wreck, without sneaking, salvages its cargo. Sneaking still looks into the bay, and a working pod is not touched. */
@@ -144,7 +144,7 @@ public final class Wrecks {
 
 	/** False only for saved state of a version this build cannot read. A pod that never had the state is readable. */
 	private static boolean isReadable(PodEntity pod) {
-		return !(pod.getAttached(WreckRegistry.STATE) instanceof Versioned.Unreadable<WreckState>);
+		return Versioned.readable(pod, WreckRegistry.STATE).isPresent();
 	}
 
 	/**

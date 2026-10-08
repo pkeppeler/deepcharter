@@ -20,7 +20,7 @@ A persistent attachment survives a save/load and a breach crossing with no copy 
 Every SavedData and attachment has a version, starting at 1. Fabric 2.2.31 loads all of an entity's attachments as one map and, if it fails to decode, silently drops the whole map; the next save then overwrites the real data. One bad entry would cost every feature its attachments on that pod. So a versioned codec never fails:
 
 - **On disk:** `Versioned.codec` decodes an unknown or missing version, or a body that does not parse, to `Versioned.Unreadable`. It keeps the raw data and writes it back unchanged. The other attachments on the pod load intact.
-- **In code:** `Versioned.require` and `Versioned.modify` throw on `Unreadable`, naming the owner, the attachment id and the saved version. Nothing reads it quietly, and nothing overwrites it.
+- **In code:** `Versioned.orThrow` and `Versioned.modifyOrThrow` (first named `require` and `modify`) throw on `Unreadable`, naming the owner, the attachment id and the saved version. Nothing reads it quietly, and nothing overwrites it.
 - **On the wire:** an unreadable value goes as a marker and arrives as `Unreadable`. A client that is given a version other than the one it reads throws, which disconnects it: client and server run different builds.
 
 ## `PodEvents` is the only pod seam

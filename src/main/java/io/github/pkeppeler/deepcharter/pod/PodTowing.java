@@ -71,8 +71,6 @@ public final class PodTowing {
 	private static final double OPEN_REACH = 8.0;
 	private static final Vec3[] OPEN_DIRECTIONS = {new Vec3(0, 1, 0), new Vec3(1, 0, 0), new Vec3(-1, 0, 0), new Vec3(0, 0, 1), new Vec3(0, 0, -1), new Vec3(0, -1, 0)};
 
-	/** Pods whose unreadable cable has been logged, so a tick path logs once for each pod and not once for each tick. */
-	private static final Set<PodEntity> UNREADABLE_LOGGED = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
 	/** Pods that found no open space to leave rock for, so a tick path logs once for each pod. */
 	private static final Set<PodEntity> STUCK_LOGGED = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
 
@@ -113,17 +111,7 @@ public final class PodTowing {
 
 	/** The UUID of the pod towing this one, whether or not it is in the world. An unreadable cable reads as none (logged once). Never throws. */
 	public static Optional<UUID> towerId(PodEntity pod) {
-		return switch (pod.getAttached(STATE)) {
-			case null -> Optional.empty();
-			case Versioned.Readable<State> readable -> readable.value().tower();
-			case Versioned.Unreadable<State> unreadable -> {
-				if (UNREADABLE_LOGGED.add(pod)) {
-					DeepCharter.LOGGER.error("Pod {} has its {} saved as version {}, which this build cannot read: it is not towed and the saved data is kept",
-							pod.getUUID(), STATE.identifier(), unreadable.version());
-				}
-				yield Optional.empty();
-			}
-		};
+		return Versioned.readable(pod, STATE).flatMap(State::tower);
 	}
 
 	/** True when the pod is on a cable, even if its tower is away. Safe on either side. */
@@ -136,10 +124,10 @@ public final class PodTowing {
 		if (tower == towed) {
 			return Optional.of(Refusal.SAME_POD);
 		}
-		if (tower.getAttached(STATE) instanceof Versioned.Unreadable<State> || towed.getAttached(STATE) instanceof Versioned.Unreadable<State>) {
-			// Reading logs them, once for each pod.
-			towerId(tower);
-			towerId(towed);
+		// Both are read before the test, so each unreadable pod is logged.
+		boolean towerReadable = Versioned.readable(tower, STATE).isPresent();
+		boolean towedReadable = Versioned.readable(towed, STATE).isPresent();
+		if (!towerReadable || !towedReadable) {
 			return Optional.of(Refusal.UNREADABLE);
 		}
 		if (isTowed(towed)) {
@@ -172,7 +160,7 @@ public final class PodTowing {
 		if (refusal.isPresent()) {
 			throw new IllegalStateException("pod " + tower.getUUID() + " cannot tow pod " + towed.getUUID() + ": " + refusal.get());
 		}
-		Versioned.modify(towed, STATE, state -> new State(Optional.of(tower.getUUID())));
+		Versioned.modifyOrThrow(towed, STATE, state -> new State(Optional.of(tower.getUUID())));
 	}
 
 	/**
@@ -181,11 +169,11 @@ public final class PodTowing {
 	 */
 	public static boolean detach(PodEntity towed) {
 		requireServer(towed);
-		if (Versioned.require(towed, STATE).tower().isEmpty()) {
+		if (Versioned.orThrow(towed, STATE).tower().isEmpty()) {
 			return false;
 		}
 		Optional<Vec3> toward = tower(towed).map(PodEntity::position);
-		Versioned.modify(towed, STATE, state -> State.EMPTY);
+		Versioned.modifyOrThrow(towed, STATE, state -> State.EMPTY);
 		leaveRock(towed, toward);
 		return true;
 	}
