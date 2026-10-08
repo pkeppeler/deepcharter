@@ -4,7 +4,7 @@
 # Refuses (nonzero exit, one "REFUSED:" line) unless the PR is open, not a draft,
 # labelled `review-passed` with a `review-passed <head sha>` comment for the
 # current head (see tools/mark-review-passed.sh), closes exactly its branch's
-# issue (the body's Closes/Fixes/Resolves #N set is {N} for branch `<N>-<slug>`),
+# issue (GitHub's closingIssuesReferences set is {N} for branch `<N>-<slug>`),
 # adds no docs/adr/NNNN-*.md whose NNNN is already on origin/main (any slug) or twice in the PR,
 # mergeable, shows a demo if it changes in-game code (see the demo check below), and every check is
 # `pass` or `skipping` (at least one check, and all of REQUIRED_CHECKS passing). A
@@ -52,18 +52,21 @@ branch=$(pr_field headRefName .headRefName) || refuse "has no readable head bran
 [[ $branch =~ ^([0-9]+)- ]] || refuse "has head branch '$branch', not <issue>-<slug>"
 issue=${BASH_REMATCH[1]}
 body=$(pr_field body .body) || refuse "has no readable body"
-# Fail closed: GitHub also closes on `Closes owner/repo#N` and `Closes <issue URL>`,
-# which the plain-#N set below cannot see, so any such form is refused outright.
-keyword='(^|[^[:alnum:]])(close[sd]?|fix(e[sd])?|resolve[sd]?):?[[:space:]]+'
-odd=$(grep -oiE "${keyword}([^[:space:]#]+#[0-9]+|https?://[^[:space:]]+)" <<<"$body" | tr '\n' ';' || true)
-[[ -z $odd ]] || refuse "body has a closing reference that is not a plain '#N': ${odd%;} (use 'Closes #$issue')"
-# No match is the "no Closes" case below, so a grep exit of 1 is not an error.
-closes=$({ grep -oiE "${keyword}#[0-9]+" <<<"$body" \
-  | grep -oE '[0-9]+$' | sort -un | tr '\n' ' '; } || true)
-closes=${closes% }
-[[ -n $closes ]] || refuse "body has no 'Closes #$issue' (branch $branch is for issue #$issue)"
-[[ $closes == "$issue" ]] \
-  || refuse "body closes #${closes// / #} but branch $branch is for issue #$issue only (the Closes/Fixes/Resolves set must be exactly {#$issue})"
+# GitHub's own parse of the body (keywords, cross-repo refs, URLs), not a regex of ours.
+# The set is GitHub's, so it can lag a body edit made just before the gate runs; it is
+# read again right before the merge. It also holds issues linked by hand in the sidebar.
+# One owner/repo#N per line; refs in this repo print as #N.
+closing_set() {
+  local refs
+  refs=$(pr_field closingIssuesReferences '.closingIssuesReferences[] | "\(.repository.owner.login)/\(.repository.name)#\(.number)"') \
+    || refuse "has no readable closing references"
+  closes=$(sort -u <<<"${refs//$repo#/#}" | grep . | tr '\n' ' ' || true) # grep: an empty set exits 1
+  closes=${closes% }
+}
+closing_set # sets $closes (not a subshell, so a refusal inside exits the script)
+[[ -n $closes ]] || refuse "has no closing reference (put 'Closes #$issue' in the body)"
+[[ $closes == "#$issue" ]] \
+  || refuse "body closes $closes but branch $branch is for issue #$issue only (the closing set must be exactly {#$issue})"
 
 labels=$(pr_field labels '.labels[].name') || refuse "has no readable labels"
 has_label() { grep -qxF -- "$1" <<<"$labels"; }
@@ -197,13 +200,13 @@ done
 
 # In-game code (src/main/, src/client/, src/lang/) needs a demo: the `demo` label and a
 # pr-media/<n>/ image in the body, or the `no-demo` label and a `No demo: <reason>`
-# line. Embedded pr-media needs the `demo` label, so the label stays true. Reuses
-# pr_files, so an unreadable list has already refused.
+# line. Linked or embedded pr-media media needs the `demo` label, so the label stays true.
+# Reuses pr_files, so an unreadable list has already refused.
 demo_fix="record with tools/record-evidence.sh and tools/pr-media.sh, embed the pr-media/$pr/ image in the body and label it 'demo'; or label it 'no-demo' and add a body line 'No demo: <reason>'"
 media_any='pr-media/[0-9]+/[^[:space:]()]+\.(gif|png)'
 media_own="pr-media/$pr/[^[:space:]()]+\\.(gif|png)"
 if grep -qE "$media_any" <<<"$body" && ! has_label demo; then
-  refuse "embeds pr-media media but lacks the 'demo' label (label it 'demo', or remove the media)"
+  refuse "links or embeds pr-media media but lacks the 'demo' label (label it 'demo', or remove the media)"
 fi
 in_game=
 while IFS=$'\t' read -r _ path previous; do
@@ -225,6 +228,12 @@ if [[ -n $in_game ]]; then
     refuse "changes in-game code ($in_game) with no demo: $demo_fix"
   fi
 fi
+
+# Read the closing set again: a body edit may have reached GitHub's parse after the first read.
+checked_closes=$closes
+closing_set
+[[ $closes == "$checked_closes" ]] \
+  || refuse "closing set changed during the gate (was ${checked_closes:-empty}, now ${closes:-empty}); re-run"
 
 # gh can merge on GitHub and then fail on local cleanup (branch checked out in a
 # worktree), so a nonzero exit is judged by the PR's real state.
