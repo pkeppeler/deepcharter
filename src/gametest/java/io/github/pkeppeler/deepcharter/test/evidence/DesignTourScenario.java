@@ -1,0 +1,1035 @@
+package io.github.pkeppeler.deepcharter.test.evidence;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Function;
+
+import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+
+import net.minecraft.client.CameraType;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.phys.Vec3;
+
+import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.charter.CharterId;
+import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.client.fuel.FuelPumpScreen;
+import io.github.pkeppeler.deepcharter.client.handbook.ClientHandbook;
+import io.github.pkeppeler.deepcharter.client.handbook.HandbookPage;
+import io.github.pkeppeler.deepcharter.client.handbook.HandbookPages;
+import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
+import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
+import io.github.pkeppeler.deepcharter.client.hangar.HangarScreen;
+import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
+import io.github.pkeppeler.deepcharter.client.market.OreProcessorScreen;
+import io.github.pkeppeler.deepcharter.client.charter.terminal.ContractScreen;
+import io.github.pkeppeler.deepcharter.client.repair.RepairStationScreen;
+import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreen;
+import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
+import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
+import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
+import io.github.pkeppeler.deepcharter.colony.Colony;
+import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
+import io.github.pkeppeler.deepcharter.colony.ColonySite;
+import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
+import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
+import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
+import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
+import io.github.pkeppeler.deepcharter.handbook.HandbookItems;
+import io.github.pkeppeler.deepcharter.hangar.Hangar;
+import io.github.pkeppeler.deepcharter.hangar.HangarParts;
+import io.github.pkeppeler.deepcharter.layer.BreachService;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerStructures;
+import io.github.pkeppeler.deepcharter.layer.RoomSeal;
+import io.github.pkeppeler.deepcharter.layer.StructureKind;
+import io.github.pkeppeler.deepcharter.layer.StructureSite;
+import io.github.pkeppeler.deepcharter.ore.OreRegistry;
+import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.pod.PodComponents;
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.terminal.RepairState;
+import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
+import io.github.pkeppeler.deepcharter.terminal.TerminalType;
+import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.ScannerHudTest;
+import io.github.pkeppeler.deepcharter.transmission.Transmission;
+import io.github.pkeppeler.deepcharter.transmission.Transmissions;
+import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
+import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
+
+/**
+ * Evidence scenario "design-tour" for #223: a fixed set of named stills of everything in the game as it looks today, so the design
+ * overhaul can shoot the same views afterwards and show before and after. It is a reference shoot, not a story: the player is a
+ * creative, invulnerable camera, and each still is taken from a named viewpoint that is computed from the world (the colony's pad,
+ * the structure sites), so the same views come out in any seed. The still names are the file names, and docs/design/current-state.md
+ * embeds them. A short orbit of the colony supplies the frames of the GIF.
+ *
+ * <p>The order: handbook and item gallery, the surface by day, dusk and night, the colony, the terminal screens, the pods by day,
+ * a dark room (pods lit and unlit, the lampless figure), the HUDs, layer 1, the breach into layer 2, layer 2 and its structures.
+ */
+public class DesignTourScenario extends EvidenceScenario {
+	private static final double EYE = 1.62;
+	private static final int WAIT = 400;
+	private static final int ORBIT_FRAMES = 26;
+	private static final int ORBIT_RADIUS = 52;
+	private static final int ORBIT_HEIGHT = 30;
+	/** The sealed dark room is built this far from the colony, at this height: no sky reaches it. */
+	private static final int ROOM_OFFSET = 300;
+	private static final int ROOM_Y = 200;
+	private static final int ROOM_RADIUS = 9;
+	private static final int ROOM_HEIGHT = 7;
+	private static final int LAYER_X = 2000;
+	private static final int LAYER_Z = 2000;
+	private static final int ITEMS_PER_PAGE = 36;
+	private static final long FUNDS = 5_000;
+	private static final int TERMINAL_TYPING_TICKS = 140;
+
+	private ClientGameTestContext ctx;
+	private TestSingleplayerContext sp;
+	private BlockPos ground;
+	private Map<ColonyAnchor, BlockPos> anchors;
+	private CharterId charter;
+	private final List<String> stills = new ArrayList<>();
+
+	@Override
+	protected String name() {
+		return "design-tour";
+	}
+
+	@Override
+	protected void run(ClientGameTestContext context) {
+		ctx = context;
+		// A real world, as a new player gets one: the vanilla terrain of the seed, not the flat world of the other scenarios.
+		try (TestSingleplayerContext singleplayer = context.worldBuilder().setUseConsistentSettings(false)
+				.adjustSettings(state -> state.setSeed("deepcharter-design-tour")).create()) {
+			sp = singleplayer;
+			context.waitFor(client -> client.player != null && client.level != null);
+			context.waitTicks(80);
+			ColonySite.Placed colony = serverGet(server -> Colony.placed(server).orElseThrow(() -> new AssertionError("no colony")));
+			ground = colony.center();
+			anchors = colony.anchors();
+
+			handbook();
+			itemGallery();
+			setUpCamera();
+			surface();
+			colonyTour();
+			terminalScreens();
+			podsByDay();
+			blockGallery();
+			darkRoom();
+			hudsOnTheSurface();
+			layerOne();
+			breachToLayerTwo();
+			layerTwo();
+			remainingTransmissions();
+		}
+		System.out.println("design-tour stills: " + stills.size() + " " + stills);
+	}
+
+	// ------------------------------------------------------------------------------------------------ handbook, items
+
+	private void handbook() {
+		ctx.waitFor(client -> handbookSlot(client) >= 0, WAIT);
+		ctx.runOnClient(client -> client.player.getInventory().setSelectedSlot(handbookSlot(client)));
+		ctx.getInput().pressKey(options -> options.keyUse);
+		ctx.waitForScreen(HandbookScreen.class);
+		ctx.waitTicks(HandbookScreenTuning.DEFAULT.flipTicks() + 10);
+		still("handbook-opened-from-the-item");
+		ctx.setScreen(() -> null);
+
+		// Built as HandbookScreen.open builds it: the shipped chapters only, with the progress the server synced.
+		ctx.setScreen(() -> {
+			Map<Identifier, HandbookChapter> shipped = new LinkedHashMap<>();
+			HandbookChapters.all(Minecraft.getInstance().getConnection().registryAccess()).stream()
+					.filter(entry -> !entry.key().identifier().getPath().equals("sample"))
+					.forEach(entry -> shipped.put(entry.key().identifier(), entry.value()));
+			return new HandbookScreen(HandbookPages.of(shipped, ClientHandbook.completed()), id -> true, id -> { }, List.of());
+		});
+		ctx.waitForScreen(HandbookScreen.class);
+		HandbookScreen screen = ctx.computeOnClient(client -> (HandbookScreen) client.gui.screen());
+		List<HandbookPage> pages = ctx.computeOnClient(client -> screen.pages());
+		Set<String> seen = new HashSet<>();
+		for (int index = 0; index < pages.size(); index++) {
+			HandbookPage page = pages.get(index);
+			String kind = page.getClass().getSimpleName().toLowerCase();
+			boolean classified = page instanceof HandbookPage.Chapter chapter && chapter.visibility() != io.github.pkeppeler.deepcharter.handbook.HandbookVisibility.FULL;
+			String key = classified ? "chapter-classified" : kind;
+			if (!seen.add(key) || (page instanceof HandbookPage.Contents contents && contents.part() > 1)) {
+				continue;
+			}
+			int target = index;
+			ctx.runOnClient(client -> screen.goTo(target));
+			ctx.waitTicks(HandbookScreenTuning.DEFAULT.flipTicks() + 6);
+			still("handbook-page-" + key);
+		}
+		ctx.runOnClient(client -> screen.showNotes());
+		ctx.waitTicks(6);
+		still("handbook-notes-tab");
+		ctx.setScreen(() -> null);
+	}
+
+	private static int handbookSlot(Minecraft client) {
+		for (int slot = 0; slot < net.minecraft.world.entity.player.Inventory.getSelectionSize(); slot++) {
+			if (HandbookItems.isHandbook(client.player.getInventory().getItem(slot))) {
+				return slot;
+			}
+		}
+		return -1;
+	}
+
+	/** Every item of the mod in the inventory screen, 36 to a page. Block items show their block model. */
+	private void itemGallery() {
+		List<Item> items = BuiltInRegistries.ITEM.keySet().stream()
+				.filter(id -> id.getNamespace().equals(DeepCharter.MOD_ID))
+				.sorted()
+				.map(BuiltInRegistries.ITEM::getValue)
+				.toList();
+		for (int page = 0; page * ITEMS_PER_PAGE < items.size(); page++) {
+			int first = page * ITEMS_PER_PAGE;
+			serverDo(server -> {
+				ServerPlayer player = player(server);
+				player.getInventory().clearContent();
+				for (int slot = 0; slot < ITEMS_PER_PAGE && first + slot < items.size(); slot++) {
+					player.getInventory().setItem(slot, new ItemStack(items.get(first + slot)));
+				}
+			});
+			ctx.waitTicks(4);
+			ctx.setScreen(() -> new InventoryScreen(Minecraft.getInstance().player));
+			ctx.waitForScreen(InventoryScreen.class);
+			ctx.waitTicks(6);
+			still("items-gallery-" + (page + 1));
+			ctx.setScreen(() -> null);
+		}
+		System.out.println("design-tour items: " + items.size());
+	}
+
+	// ------------------------------------------------------------------------------------------------ surface, colony
+
+	private void setUpCamera() {
+		serverDo(server -> {
+			ServerPlayer player = player(server);
+			player.setGameMode(GameType.CREATIVE);
+			player.getInventory().clearContent();
+			player.getAbilities().mayfly = true;
+			player.getAbilities().flying = true;
+			player.onUpdateAbilities();
+			player.setPermanentlyInvulnerable(true);
+			server.getGameRules().set(net.minecraft.world.level.gamerules.GameRules.SPAWN_MONSTERS, false, server);
+			if (Charters.found(server, player.getUUID(), "Design Tour Co.").isPresent()) {
+				throw new AssertionError("founding the charter should succeed");
+			}
+			charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id();
+			Charters.deposit(server, charter, FUNDS);
+			command(server, "weather clear");
+			command(server, "time set noon");
+		});
+		ctx.runOnClient(client -> {
+			client.options.setCameraType(CameraType.FIRST_PERSON);
+			setHidden(client, true);
+		});
+	}
+
+	/** A point {@code dx} east and {@code dz} south of the pad's centre, {@code h} above the ground there. */
+	private Vec3 p(double dx, double h, double dz) {
+		return new Vec3(ground.getX() + 0.5 + dx, ground.getY() + 1 + h, ground.getZ() + 0.5 + dz);
+	}
+
+	private void surface() {
+		// From the pad's south edge, where nothing of the colony is in the way to the south, east and west.
+		Vec3 stand = p(0, EYE, 28);
+		String[] names = {"south", "east", "west", "north"};
+		Vec3[] targets = {p(0, EYE, 128), p(100, EYE, 28), p(-100, EYE, 28), p(0, EYE, -72)};
+		view(0, stand, targets[0], 100);
+		for (int i = 0; i < names.length; i++) {
+			view(0, stand, targets[i], 20);
+			still("surface-" + names[i] + "-noon");
+		}
+		view(0, stand, p(0, EYE + 90, 70), 20);
+		still("sky-up-noon");
+		serverDo(server -> command(server, "time set 12500"));
+		view(0, stand, targets[0], 40);
+		still("surface-south-dusk");
+		view(0, stand, p(0, EYE + 70, 120), 20);
+		still("sky-up-dusk");
+		serverDo(server -> command(server, "time set 18000"));
+		view(0, stand, targets[3], 40);
+		still("surface-north-night");
+		view(0, stand, p(0, EYE + 90, 70), 20);
+		still("sky-up-night");
+		serverDo(server -> command(server, "time set noon"));
+	}
+
+	private void colonyTour() {
+		view(0, p(0, 32, 62), p(0, 3, 0), 80);
+		still("colony-aerial-south");
+		view(0, p(-48, 30, -48), p(0, 3, 0), 30);
+		still("colony-aerial-northwest");
+		view(0, p(48, 30, -48), p(0, 3, 0), 30);
+		still("colony-aerial-northeast");
+		view(0, p(0, 90, 0.1), p(0, 0, 0), 30);
+		still("colony-from-straight-above");
+		view(0, p(0, EYE, 30), p(0, 4, 0), 30);
+		still("colony-from-the-south-edge");
+
+		// The orbit for the GIF.
+		for (int i = 0; i < ORBIT_FRAMES; i++) {
+			double angle = 2 * Math.PI * i / ORBIT_FRAMES + Math.PI / 2;
+			view(0, p(Math.cos(angle) * ORBIT_RADIUS, ORBIT_HEIGHT, Math.sin(angle) * ORBIT_RADIUS), p(0, 3, 0), i == 0 ? 40 : 2);
+			frame(ctx);
+		}
+
+		// Close-ups, each from the open side of the building (the doorway of a ruin, the south face of a plinth).
+		String[] plinths = {"fuel-pump", "ore-processor", "upgrade-terminal", "repair-station", "contract-terminal"};
+		int[] columns = {-8, -4, 0, 4, 8};
+		for (int i = 0; i < plinths.length; i++) {
+			view(0, p(columns[i], 3.0, -3.5), p(columns[i], 1.5, -8), 20);
+			still("terminal-" + plinths[i]);
+		}
+		view(0, p(0, 5, 6), p(0, 1.5, -8), 20);
+		still("terminal-row");
+		view(0, p(7, 4, 8), p(0, 4, 0), 20);
+		still("statue-from-the-square");
+		view(0, p(3, 5.5, 3.5), p(0, 6, 0), 20);
+		still("statue-close");
+		view(0, p(-3, 8, 12), p(0, 5, 0), 20);
+		still("statue-hands-from-above");
+		view(0, p(6, 2.5, 0), p(18, 1.5, 0), 40);
+		still("continuity-office-from-the-square");
+		view(0, p(16, 2.5, 0), p(21, 1.5, -3), 20);
+		still("continuity-office-inside");
+		view(0, p(-9, 2.5, 7), p(-23, 1.5, 7), 40);
+		still("hangar-from-the-square");
+		view(0, p(-20, EYE + 1, -8), p(-20, 2, -18), 40);
+		still("chapel-from-the-square");
+		view(0, p(-20, EYE + 1, -12), p(-20.5, 2, -18), 20);
+		still("chapel-altar-and-candle");
+		view(0, p(18, 2.5, 6), p(18, 1.5, 15), 40);
+		still("bunkhouse-from-the-square");
+		view(0, p(-6, 2.5, 8), p(-6, 1.5, 17.5), 40);
+		still("pay-office-from-the-square");
+		view(0, p(6, 2.5, 8), p(6, 2, 18), 40);
+		still("personnel-office-from-the-square");
+		view(0, p(-22, 2.5, 10), p(-22, 1.5, 20), 40);
+		still("lamp-and-pick-from-the-square");
+		view(0, p(-4, 8, 4), p(-4, 8, -14), 30);
+		still("conduit-from-the-square");
+		view(0, p(-20, 10, -4), p(-4, 8, -14), 20);
+		still("conduit-from-the-west");
+		view(0, p(-4, 22, -26), p(-4, 6, -14), 20);
+		still("conduit-from-the-north");
+	}
+
+	// ------------------------------------------------------------------------------------------------ terminals
+
+	private void terminalScreens() {
+		Vec3 derelict = serverGet(server -> Hangar.derelict(server).orElseThrow().position());
+		BlockPos console = serverGet(server -> Hangar.consolePos(server).orElseThrow());
+		Vec3 consoleEye = Vec3.atBottomCenterOf(console.west(2)).add(0, EYE, 0);
+		view(0, consoleEye, derelict.add(0, 1, 0), 60);
+		still("hangar-derelict-mole");
+		view(0, p(-17.5, 3, 5), derelict.add(0, 0.8, 0), 20);
+		still("hangar-derelict-mole-from-the-door");
+		view(0, p(-28, 3, 12), derelict.add(0, 0.8, 0), 20);
+		still("hangar-derelict-mole-from-the-back");
+
+		// Offline: the screen where the parts go in.
+		List<TerminalType> order = List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL, TerminalTypes.REPAIR_STATION);
+		ColonyAnchor[] anchorOf = {ColonyAnchor.FUEL_PUMP, ColonyAnchor.ORE_PROCESSOR, ColonyAnchor.UPGRADE_TERMINAL, ColonyAnchor.REPAIR_STATION};
+		for (int i = 0; i < order.size(); i++) {
+			openTerminal(anchors.get(anchorOf[i]), TerminalScreen.class);
+			still("screen-" + order.get(i).id().getPath().replace('_', '-') + "-offline");
+			ctx.setScreen(() -> null);
+		}
+		openAt(console, consoleEye, TerminalScreen.class);
+		still("screen-hangar-console-offline");
+		ctx.setScreen(() -> null);
+
+		// Repair the four colony terminals at once, and park a worked pod at each one so the screens have something to show.
+		serverDo(server -> {
+			RepairState state = RepairState.get(server);
+			for (TerminalType type : order) {
+				type.parts().forEach(part -> state.insert(type, part));
+			}
+		});
+		serverDo(server -> {
+			ServerPlayer player = player(server);
+			player.getInventory().add(OreRegistry.stack(OreType.IRONIUM));
+			player.getInventory().add(OreRegistry.stack(OreType.SILVERIUM));
+		});
+		Class<?>[] online = {FuelPumpScreen.class, OreProcessorScreen.class, UpgradeScreen.class, RepairStationScreen.class};
+		int[] columns = {-8, -4, 0, 4};
+		for (int i = 0; i < order.size(); i++) {
+			PodEntity pod = spawnPod(PodRegistry.POD, 0, p(columns[i] + 0.0, 0, -4.5), 0f, false);
+			serverDo(server -> {
+				pod.setFuel(34f);
+				pod.damageHull(pod.maxHull() * 0.45f);
+				pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.GOLDIUM));
+				pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.PLATINIUM));
+			});
+			openTerminal(anchors.get(anchorOf[i]), online[i]);
+			still("screen-" + order.get(i).id().getPath().replace('_', '-') + "-online");
+			ctx.setScreen(() -> null);
+			serverDo(server -> pod.discard());
+		}
+		openTerminal(anchors.get(ColonyAnchor.CONTRACT_TERMINAL), ContractScreen.class);
+		still("screen-contract-terminal");
+		ctx.setScreen(() -> null);
+
+		// The hangar console takes its four parts and repairs the founding Mole.
+		view(0, consoleEye, Vec3.atCenterOf(console), 20);
+		serverDo(server -> {
+			ServerPlayer player = player(server);
+			for (Item part : HangarParts.ALL) {
+				player.getInventory().add(new ItemStack(part));
+				Terminals.insertPart(player, console, part).ifPresent(refusal -> {
+					throw new AssertionError("inserting " + part + ": " + refusal);
+				});
+			}
+		});
+		ctx.waitTicks(40);
+		openAt(console, consoleEye, HangarScreen.class);
+		still("screen-hangar-console-online");
+		ctx.setScreen(() -> null);
+		view(0, consoleEye, derelict.add(0, 1, 0), 40);
+		still("hangar-founding-mole-repaired");
+		serverDo(server -> player(server).getInventory().clearContent());
+	}
+
+	private void openTerminal(BlockPos terminal, Class<?> screen) {
+		Vec3 eye = Vec3.atCenterOf(terminal).add(0, 0.9, 2.6);
+		openAt(terminal, eye, screen);
+	}
+
+	private void openAt(BlockPos terminal, Vec3 eye, Class<?> screen) {
+		view(0, eye, Vec3.atCenterOf(terminal), 20);
+		ctx.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(terminal)));
+		ctx.waitFor(client -> screen.isInstance(client.gui.screen()), WAIT);
+		if (!TerminalViewScreen.class.isAssignableFrom(screen)) {
+			throw new AssertionError(screen + " is not a terminal screen");
+		}
+		ctx.waitTicks(TERMINAL_TYPING_TICKS);
+	}
+
+	// ------------------------------------------------------------------------------------------------ pods
+
+	private PodEntity spawnPod(EntityType<PodEntity> type, int layer, Vec3 at, float yaw, boolean lights) {
+		return serverGet(server -> {
+			ServerLevel level = server.getLevel(LayerChain.dimension(layer));
+			PodEntity pod = type.create(level, EntitySpawnReason.COMMAND);
+			pod.setPos(at);
+			pod.setYRot(yaw);
+			level.addFreshEntity(pod);
+			PodComponents.register(pod, charter);
+			if (lights) {
+				PodComponents.install(pod, ComponentItems.mint(server, ComponentTrack.LIGHTS, 2, charter));
+			}
+			return pod;
+		});
+	}
+
+	/** The pod stands facing south (yaw 0). Front is its south side, back its north, side its east. */
+	private void podAngles(String prefix, int layer, Vec3 base, double distance, double height, String[] angles) {
+		Vec3 centre = base.add(0, height / 2, 0);
+		for (String angle : angles) {
+			Vec3 eye = switch (angle) {
+				case "front" -> base.add(0, 1.8, distance);
+				case "side" -> base.add(distance, 1.8, 0);
+				case "back" -> base.add(0, 1.8, -distance);
+				case "top" -> base.add(0, distance + 1, 0.5 * distance);
+				default -> throw new IllegalArgumentException(angle);
+			};
+			view(layer, eye, centre, 12);
+			still(prefix + "-" + angle);
+		}
+	}
+
+	private static final String[] FSB = {"front", "side", "back"};
+
+	private void podsByDay() {
+		Vec3 stage = p(22, 0, -18);
+		PodEntity mole = spawnPod(PodRegistry.POD, 0, stage, 0f, false);
+		view(0, stage.add(0, 1.8, 6), stage.add(0, 1, 0), 60);
+		podAngles("mole-unlit-day", 0, stage, 5.5, 1.9, FSB);
+		podAngles("mole-unlit-day", 0, stage, 5.5, 1.9, new String[] {"top"});
+		serverDo(server -> mole.discard());
+		PodEntity prospector = spawnPod(PodRegistry.PROSPECTOR, 0, stage, 0f, false);
+		podAngles("prospector-unlit-day", 0, stage, 7.5, 2.9, FSB);
+		podAngles("prospector-unlit-day", 0, stage, 7.5, 2.9, new String[] {"top"});
+		serverDo(server -> prospector.discard());
+
+		// Wrecks: the hull gone to zero, the pod dark.
+		PodEntity wreckedMole = spawnPod(PodRegistry.POD, 0, stage.add(-3, 0, 0), 0f, false);
+		PodEntity wreckedProspector = spawnPod(PodRegistry.PROSPECTOR, 0, stage.add(3.5, 0, 0), 0f, false);
+		serverDo(server -> {
+			wreckedMole.damageHull(wreckedMole.maxHull());
+			wreckedProspector.damageHull(wreckedProspector.maxHull());
+		});
+		view(0, stage.add(0, 2.4, 8), stage.add(0, 1, 0), 40);
+		still("wrecks-mole-and-prospector-day");
+		view(0, stage.add(-3, 1.8, 5.5), stage.add(-3, 1, 0), 20);
+		still("wreck-mole-front-day");
+		view(0, stage.add(3.5, 2, 7), stage.add(3.5, 1.4, 0), 20);
+		still("wreck-prospector-front-day");
+		serverDo(server -> {
+			wreckedMole.discard();
+			wreckedProspector.discard();
+		});
+	}
+
+	/** Every block of the mod in a row on the pad, seven to a still, fronts to the camera. */
+	private void blockGallery() {
+		List<net.minecraft.world.level.block.Block> blocks = BuiltInRegistries.BLOCK.keySet().stream()
+				.filter(id -> id.getNamespace().equals(DeepCharter.MOD_ID))
+				.sorted()
+				.map(BuiltInRegistries.BLOCK::getValue)
+				.toList();
+		BlockPos row = ground.offset(-8, 1, 28);
+		serverDo(server -> {
+			ServerLevel level = server.overworld();
+			for (int i = 0; i < blocks.size(); i++) {
+				var state = blocks.get(i).defaultBlockState();
+				if (state.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING)) {
+					state = state.setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING,
+							net.minecraft.core.Direction.SOUTH);
+				}
+				level.setBlock(row.offset(i, 0, 0), state, 3);
+			}
+		});
+		for (int page = 0; page * 7 < blocks.size(); page++) {
+			int mid = Math.min(blocks.size() - 1, page * 7 + 3);
+			Vec3 target = Vec3.atCenterOf(row.offset(mid, 0, 0));
+			view(0, target.add(0, 1.2, 6), target, page == 0 ? 60 : 12);
+			still("block-gallery-" + (page + 1));
+		}
+		System.out.println("design-tour blocks: " + blocks.size() + " " + blocks);
+	}
+
+	// ------------------------------------------------------------------------------------------------ dark room
+
+	private void darkRoom() {
+		BlockPos floor = ground.offset(ROOM_OFFSET, 0, ROOM_OFFSET).atY(ROOM_Y);
+		serverDo(server -> {
+			ServerLevel level = server.overworld();
+			for (int cx = -2; cx <= 2; cx++) {
+				for (int cz = -2; cz <= 2; cz++) {
+					level.getChunk((floor.getX() >> 4) + cx, (floor.getZ() >> 4) + cz);
+				}
+			}
+			for (int dx = -ROOM_RADIUS - 1; dx <= ROOM_RADIUS + 1; dx++) {
+				for (int dz = -ROOM_RADIUS - 1; dz <= ROOM_RADIUS + 1; dz++) {
+					for (int dy = 0; dy <= ROOM_HEIGHT + 1; dy++) {
+						boolean shell = dy == 0 || dy == ROOM_HEIGHT + 1 || Math.abs(dx) == ROOM_RADIUS + 1 || Math.abs(dz) == ROOM_RADIUS + 1;
+						level.setBlock(floor.offset(dx, dy, dz), (shell ? Blocks.STONE : Blocks.AIR).defaultBlockState(), 3);
+					}
+				}
+			}
+		});
+		Vec3 base = Vec3.atBottomCenterOf(floor.above());
+		view(0, base.add(0, 1.8, 6), base.add(0, 1, 0), 120);
+
+		// Unlit first: a pod with no lights part in a room with no light at all.
+		PodEntity mole = spawnPod(PodRegistry.POD, 0, base, 0f, false);
+		view(0, base.add(0, 1.8, 5.5), base.add(0, 1, 0), 40);
+		still("mole-unlit-dark-front");
+		serverDo(server -> mole.discard());
+		PodEntity prospector = spawnPod(PodRegistry.PROSPECTOR, 0, base, 0f, false);
+		view(0, base.add(0, 1.8, 7.5), base.add(0, 1.4, 0), 40);
+		still("prospector-unlit-dark-front");
+		serverDo(server -> prospector.discard());
+
+		// Lit: the lights part is a light source round the pod.
+		PodEntity litMole = spawnPod(PodRegistry.POD, 0, base, 0f, true);
+		ctx.waitTicks(30);
+		podAngles("mole-lit-dark", 0, base, 5.5, 1.9, FSB);
+		serverDo(server -> litMole.discard());
+		PodEntity litProspector = spawnPod(PodRegistry.PROSPECTOR, 0, base, 0f, true);
+		ctx.waitTicks(30);
+		podAngles("prospector-lit-dark", 0, base, 7.5, 2.9, FSB);
+		serverDo(server -> litProspector.discard());
+
+		// The lampless figure, still, in the dark room: once with night vision so it can be seen, once as the player would see it.
+		LamplessFigure figure = serverGet(server -> {
+			ServerLevel level = server.overworld();
+			LamplessFigure f = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
+			f.setPos(base);
+			f.setNoAi(true);
+			level.addFreshEntity(f);
+			return f;
+		});
+		view(0, base.add(0, 1.8, 5), base.add(0, 1.2, 0), 40);
+		still("lampless-figure-dark-no-night-vision");
+		serverDo(server -> player(server).addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false)));
+		ctx.waitTicks(10);
+		for (String angle : FSB) {
+			Vec3 eye = switch (angle) {
+				case "front" -> base.add(0, 1.8, 4.5);
+				case "side" -> base.add(4.5, 1.8, 0);
+				default -> base.add(0, 1.8, -4.5);
+			};
+			view(0, eye, base.add(0, 1.2, 0), 12);
+			still("lampless-figure-" + angle);
+		}
+		view(0, base.add(0, 1.8, 2.2), base.add(0, 1.6, 0), 12);
+		still("lampless-figure-close");
+		serverDo(server -> figure.discard());
+
+		// Walking toward a lit pod: it fades near the light.
+		PodEntity lamp = spawnPod(PodRegistry.POD, 0, base.add(3, 0, 0), 0f, true);
+		LamplessFigure walker = serverGet(server -> {
+			ServerLevel level = server.overworld();
+			LamplessFigure f = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
+			f.setPos(base.add(-6, 0, 0));
+			f.setHeading(net.minecraft.core.Direction.EAST);
+			level.addFreshEntity(f);
+			return f;
+		});
+		view(0, base.add(-1, 2.2, 7), base.add(-1, 1.2, 0), 10);
+		for (int frames = 0; frames < 80 && !serverGet(server -> walker.fadeFraction() > 0 || walker.isRemoved()); frames++) {
+			ctx.waitTicks(3);
+		}
+		ctx.waitTicks(4);
+		still("lampless-figure-fading-by-a-lit-pod");
+		serverDo(server -> {
+			walker.discard();
+			lamp.discard();
+			player(server).removeEffect(MobEffects.NIGHT_VISION);
+		});
+	}
+
+	// ------------------------------------------------------------------------------------------------ HUDs
+
+	private void hudsOnTheSurface() {
+		Vec3 stage = p(22, 0, -18);
+		view(0, stage.add(0, EYE, 0), stage.add(0, EYE, 20), 60);
+		ScannerHudTest.mountFirstPlayer(sp.getServer(), 0);
+		ctx.waitFor(client -> client.player.getVehicle() instanceof PodEntity, WAIT);
+		fillPodForHud();
+		hud(true);
+		ctx.waitTicks(20);
+		still("hud-pod-status-and-altimeter-surface");
+		ctx.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
+		ctx.waitTicks(20);
+		still("hud-pod-in-third-person-surface");
+		ctx.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+		ScannerHudTest.leavePod(ctx, sp.getServer());
+
+		ScannerHudTest.rideWithGoldAhead(ctx, sp.getServer(), 1);
+		fillPodForHud();
+		ctx.waitTicks(20);
+		still("hud-scanner-tier-1-surface");
+		ScannerHudTest.leavePod(ctx, sp.getServer());
+		hud(false);
+	}
+
+	private void fillPodForHud() {
+		serverDo(server -> {
+			PodEntity pod = (PodEntity) player(server).getVehicle();
+			pod.setFuel(62f);
+			pod.damageHull(pod.maxHull() * 0.3f);
+			pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.GOLDIUM));
+			pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM));
+		});
+	}
+
+	private static void setHidden(Minecraft client, boolean hidden) {
+		if (client.gui.hud.isHidden() != hidden) {
+			client.gui.hud.toggle();
+		}
+	}
+
+	/** Shows or hides the HUD. */
+	private void hud(boolean shown) {
+		ctx.runOnClient(client -> setHidden(client, !shown));
+	}
+
+	// ------------------------------------------------------------------------------------------------ layer 1
+
+	private void layerOne() {
+		serverDo(server -> {
+			ServerLevel one = server.getLevel(LayerChain.dimension(1));
+			for (int dx = -3; dx <= 3; dx++) {
+				for (int dz = -3; dz <= 3; dz++) {
+					one.getChunk((LAYER_X >> 4) + dx, (LAYER_Z >> 4) + dz);
+				}
+			}
+		});
+		Vec3 cell = serverGet(server -> openCell(server.getLevel(LayerChain.dimension(1))));
+		terrainViews(1, cell);
+
+		// The structures of layer 1: the three shafts, one in each zone.
+		for (StructureKind kind : StructureKind.inLayer(1)) {
+			StructureSite site = siteOf(kind, null);
+			String name = kind.name().toLowerCase().replace('_', '-');
+			int niche = site.height() / 2;
+			view(1, at(site, 0, site.height() - 1.2, 0), at(site, 0, 0, 0), 120);
+			still("structure-" + name + "-looking-down");
+			view(1, at(site, -0.6, niche + 1.0, 0), at(site, 2, niche + 0.5, 0.5), 20);
+			still("structure-" + name + "-note-niche");
+			view(1, at(site, 0.6, niche - 3, 0), at(site, 0, niche + 4, 0), 20);
+			still("structure-" + name + "-looking-up");
+		}
+
+		// The breach crust: a room cut onto the floor of the layer, then the crust broken through.
+		int x = LAYER_X + 200;
+		int z = LAYER_Z + 200;
+		serverDo(server -> {
+			ServerLevel one = server.getLevel(LayerChain.dimension(1));
+			for (int dx = -2; dx <= 2; dx++) {
+				for (int dz = -2; dz <= 2; dz++) {
+					one.getChunk((x >> 4) + dx, (z >> 4) + dz);
+				}
+			}
+			BlockPos min = new BlockPos(x - 3, 3, z - 3);
+			BlockPos max = new BlockPos(x + 3, 8, z + 3);
+			RoomSeal.seal(one, min, max);
+			for (BlockPos pos : BlockPos.betweenClosed(min, max)) {
+				one.setBlock(pos.immutable(), Blocks.AIR.defaultBlockState(), 3);
+			}
+		});
+		serverDo(server -> player(server).addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false)));
+		view(1, new Vec3(x + 0.5, 6.5, z + 0.5), new Vec3(x + 0.5, 1.5, z + 1.5), 120);
+		still("layer-1-breach-crust-floor");
+		view(1, new Vec3(x - 2.5, 4.5, z - 2.5), new Vec3(x + 1.5, 3, z + 1.5), 20);
+		still("layer-1-breach-crust-floor-low");
+		serverDo(server -> {
+			ServerLevel one = server.getLevel(LayerChain.dimension(1));
+			for (int dx = -1; dx <= 1; dx++) {
+				for (int dz = -1; dz <= 1; dz++) {
+					for (int y = one.getMinY(); y <= one.getMinY() + 3; y++) {
+						BreachService.breakCrust(one, new BlockPos(x + dx, y, z + dz));
+					}
+				}
+			}
+		});
+		view(1, new Vec3(x + 0.5, 6.5, z + 0.5), new Vec3(x + 0.5, 1.5, z + 1.5), 40);
+		still("layer-1-breach-crust-broken");
+	}
+
+	// ------------------------------------------------------------------------------------------------ breach, layer 2
+
+	private void breachToLayerTwo() {
+		int x = LAYER_X + 200;
+		int z = LAYER_Z + 200;
+		serverDo(server -> {
+			ServerLevel two = server.getLevel(LayerChain.dimension(2));
+			for (int dx = -3; dx <= 3; dx++) {
+				for (int dz = -3; dz <= 3; dz++) {
+					two.getChunk((x >> 4) + dx, (z >> 4) + dz);
+				}
+			}
+		});
+		hud(true);
+		ctx.runOnClient(client -> client.player.getInventory().clearContent());
+		view(1, new Vec3(x + 0.5, 4.0, z + 0.5), new Vec3(x + 0.5, 0.5, z + 1.5), 30);
+		clearTransmissions();
+		still("hud-altimeter-layer-1-floor");
+		serverDo(server -> {
+			ServerLevel one = server.getLevel(LayerChain.dimension(1));
+			player(server).teleportTo(one, x + 0.5, one.getMinY() - 1, z + 0.5, Set.of(), 0, 60, true);
+		});
+
+		// The fade, then the two transmissions of the crossing, each shot once it has typed out.
+		boolean faded = false;
+		Set<Identifier> shot = new HashSet<>();
+		int tail = 0;
+		Identifier last = null;
+		for (int tick = 0; tick < 1500 && !(shot.size() >= 2 && tail >= 12); tick++) {
+			float alpha = ctx.computeOnClient(client -> BreachEffects.fadeAlpha(0f));
+			if (!faded && alpha > 0.4f && ctx.computeOnClient(client -> client.gui.screen() == null)) {
+				faded = true;
+				screenshot(ctx, "hud-breach-fade");
+				stills.add("hud-breach-fade");
+			}
+			Identifier current = ctx.computeOnClient(client -> TransmissionOverlay.transmission().map(Transmission::id).orElse(null));
+			boolean typed = ctx.computeOnClient(client -> TransmissionOverlay.typed());
+			if (typed && current != null && shot.add(current)) {
+				screenshot(ctx, "hud-transmission-" + current.getPath());
+				stills.add("hud-transmission-" + current.getPath());
+			}
+			tail = typed && current != null && current.equals(last) ? tail + 1 : 0;
+			last = current;
+			ctx.waitTick();
+		}
+		ctx.waitFor(client -> client.level.dimension().equals(LayerChain.dimension(2)), WAIT);
+		clearTransmissions();
+	}
+
+	private void layerTwo() {
+		serverDo(server -> {
+			ServerLevel two = server.getLevel(LayerChain.dimension(2));
+			for (int dx = -3; dx <= 3; dx++) {
+				for (int dz = -3; dz <= 3; dz++) {
+					two.getChunk((LAYER_X >> 4) + dx, (LAYER_Z >> 4) + dz);
+				}
+			}
+		});
+		hud(false);
+		Vec3 cell = serverGet(server -> openCell(server.getLevel(LayerChain.dimension(2))));
+		terrainViews(2, cell);
+
+		// A pod in the dark with a scanner: the HUD at depth.
+		view(2, cell, cell.add(1, 0, 0), 60);
+		hud(true);
+		serverDo(server -> player(server).removeEffect(MobEffects.NIGHT_VISION));
+		ScannerHudTest.mountFirstPlayer(sp.getServer(), 4);
+		ctx.waitFor(client -> client.player.getVehicle() instanceof PodEntity, WAIT);
+		fillPodForHud();
+		ctx.waitTicks(80);
+		still("hud-scanner-tier-4-layer-2");
+		ScannerHudTest.leavePod(ctx, sp.getServer());
+		hud(false);
+		serverDo(server -> player(server).addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false)));
+
+		// The structures of layer 2.
+		for (StructureKind kind : StructureKind.inLayer(2)) {
+			String name = kind.name().toLowerCase().replace('_', '-');
+			if (kind == StructureKind.WRECK) {
+				continue;
+			}
+			StructureSite site = siteOf(kind, null);
+			switch (kind) {
+				case GALLERY -> {
+					view(2, at(site, -8, 2, 0), at(site, 12, 1.5, 0), 120);
+					still("structure-gallery-toward-the-rubble");
+					view(2, at(site, 6, 2, 0), at(site, -12, 1.5, 0), 20);
+					still("structure-gallery-quota-board");
+					view(2, at(site, -9.5, 2.2, 0.8), at(site, -12, 0.8, 0), 20);
+					still("structure-gallery-note-n08");
+				}
+				case PUNCH_CLOCK -> {
+					view(2, at(site, -7, 3, -7), at(site, 2, 1, 2), 120);
+					still("structure-punch-clock-overview");
+					view(2, at(site, 2, 1.8, -1), at(site, 7.5, 1.5, 0), 20);
+					still("structure-punch-clock-shelves");
+					view(2, at(site, -4, 1.8, 3), at(site, -7, 1.5, 0), 20);
+					still("structure-punch-clock-lit-clock");
+				}
+				case RAILS -> {
+					view(2, at(site, -30, 2, 0), at(site, 30, 1.5, 0), 120);
+					still("structure-rails-long-drift");
+					view(2, at(site, -10, 2, 1.5), at(site, 10, 1, 0), 20);
+					still("structure-rails-timbering");
+				}
+				default -> throw new AssertionError(kind + " has no views in the tour");
+			}
+			System.out.println("design-tour site " + name + " at " + site.origin().toShortString());
+		}
+
+		// The wreck sites: Prospector's wreck, with its lamp and Note N10, and an empty bay.
+		StructureSite prospector = serverGet(server -> LayerStructures.prospector(server).orElseThrow());
+		loadSite(prospector);
+		Vec3 pod = at(prospector, 0, 1.2, 0);
+		view(2, at(prospector, 5, 2, 0), pod, 120);
+		still("structure-wreck-prospector-0002");
+		view(2, at(prospector, 0, 2, 5), pod, 20);
+		still("structure-wreck-prospector-0002-side");
+		view(2, at(prospector, -5, 2, 0), pod, 20);
+		still("structure-wreck-prospector-0002-back");
+		view(2, at(prospector, -1, 1.8, -3), at(prospector, 3, 0.8, 2), 20);
+		still("structure-wreck-the-lamp");
+		view(2, at(prospector, 1.5, 1.6, 6), at(prospector, 0, 1.2, 4), 20);
+		still("structure-wreck-note-n10-on-the-table");
+		view(2, at(prospector, 4, 6, 4), at(prospector, 0, 0, 0), 20);
+		still("structure-wreck-from-above");
+		serverDo(server -> player(server).removeEffect(MobEffects.NIGHT_VISION));
+		view(2, at(prospector, 5, 2, 0), pod, 40);
+		still("structure-wreck-prospector-0002-no-night-vision");
+		serverDo(server -> player(server).addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false)));
+		BlockPos far = serverGet(server -> Colony.anchor(server, ColonyAnchor.CONDUIT).orElseThrow()).offset(384, 0, 384);
+		StructureSite bay = siteOf(StructureKind.WRECK, far);
+		view(2, at(bay, 5, 2.2, 0), at(bay, 0, 0.8, 0), 120);
+		still("structure-wreck-empty-bay");
+	}
+
+	/** A cell of air with room round it, close to the layer's start column, as the middle of a cave. */
+	private static Vec3 openCell(ServerLevel level) {
+		BlockPos best = null;
+		int bestClearance = 0;
+		for (int x = LAYER_X - 40; x <= LAYER_X + 40; x += 2) {
+			for (int z = LAYER_Z - 40; z <= LAYER_Z + 40; z += 2) {
+				for (int y = level.getMinY() + 24; y <= level.getMaxY() - 40; y += 2) {
+					BlockPos pos = new BlockPos(x, y, z);
+					int clearance = clearance(level, pos);
+					if (clearance > bestClearance) {
+						best = pos;
+						bestClearance = clearance;
+					}
+				}
+			}
+		}
+		if (best == null) {
+			// No cave in reach: cut a hall into the rock, sealed first, so there is a place to stand.
+			int mid = (level.getMinY() + level.getMaxY()) / 2;
+			BlockPos min = new BlockPos(LAYER_X - 6, mid, LAYER_Z - 6);
+			BlockPos max = new BlockPos(LAYER_X + 6, mid + 6, LAYER_Z + 6);
+			RoomSeal.seal(level, min, max);
+			for (BlockPos pos : BlockPos.betweenClosed(min, max)) {
+				level.setBlock(pos.immutable(), Blocks.AIR.defaultBlockState(), 3);
+			}
+			best = new BlockPos(LAYER_X, mid + 3, LAYER_Z);
+		}
+		return Vec3.atCenterOf(best).add(0, EYE - 0.5, 0);
+	}
+
+	private static int clearance(ServerLevel level, BlockPos pos) {
+		if (!level.getBlockState(pos).isAir()) {
+			return 0;
+		}
+		int least = 8;
+		for (net.minecraft.core.Direction direction : net.minecraft.core.Direction.values()) {
+			int free = 0;
+			while (free < least && level.getBlockState(pos.relative(direction, free + 1)).isAir()) {
+				free++;
+			}
+			least = Math.min(least, free);
+		}
+		return least;
+	}
+
+	/** The cave: four ways round, up, down, and a view with no night vision, as it is played. */
+	private void terrainViews(int layer, Vec3 cell) {
+		serverDo(server -> player(server).removeEffect(MobEffects.NIGHT_VISION));
+		view(layer, cell, cell.add(0, 0, 10), 120);
+		still("layer-" + layer + "-cave-as-played-no-light");
+		serverDo(server -> player(server).addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false)));
+		String[] names = {"south", "west", "north", "east"};
+		Vec3[] offsets = {new Vec3(0, 0, 10), new Vec3(-10, 0, 0), new Vec3(0, 0, -10), new Vec3(10, 0, 0)};
+		for (int i = 0; i < names.length; i++) {
+			view(layer, cell, cell.add(offsets[i]), 20);
+			still("layer-" + layer + "-cave-" + names[i]);
+		}
+		view(layer, cell, cell.add(2, 10, 2), 20);
+		still("layer-" + layer + "-cave-up");
+		view(layer, cell, cell.add(2, -10, 2), 20);
+		still("layer-" + layer + "-cave-down");
+	}
+
+	// ------------------------------------------------------------------------------------------------ structures
+
+	private StructureSite siteOf(StructureKind kind, BlockPos near) {
+		StructureSite site = serverGet(server -> {
+			ServerLevel level = server.getLevel(LayerChain.dimension(kind.layer()));
+			BlockPos conduit = Colony.anchor(server, ColonyAnchor.CONDUIT).orElseThrow();
+			return LayerStructures.nearest(level.getSeed(), kind, level.getMinY(), level.getHeight(), near == null ? conduit : near, conduit);
+		});
+		loadSite(site);
+		return site;
+	}
+
+	private void loadSite(StructureSite site) {
+		serverDo(server -> {
+			ServerLevel level = server.getLevel(LayerChain.dimension(site.kind().layer()));
+			BoundingBox box = site.bounds();
+			for (int cx = box.minX() >> 4; cx <= box.maxX() >> 4; cx++) {
+				for (int cz = box.minZ() >> 4; cz <= box.maxZ() >> 4; cz++) {
+					level.getChunk(cx, cz, ChunkStatus.FULL);
+				}
+			}
+		});
+	}
+
+	/** The world position of a point in the structure's own axes, {@code y} up from the floor of its hollow. */
+	private static Vec3 at(StructureSite site, double u, double y, double v) {
+		BlockPos origin = site.origin();
+		return new Vec3(origin.getX() + 0.5 + (site.alongZ() ? v : u), origin.getY() + y, origin.getZ() + 0.5 + (site.alongZ() ? u : v));
+	}
+
+	// ------------------------------------------------------------------------------------------------ transmissions
+
+	private void remainingTransmissions() {
+		hud(true);
+		for (String id : List.of("t02", "surface_arrival")) {
+			Identifier transmission = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, id);
+			serverDo(server -> Transmissions.fire(server, charter, transmission));
+			boolean typed = false;
+			for (int tick = 0; tick < 1200 && !typed; tick++) {
+				typed = ctx.computeOnClient(client -> TransmissionOverlay.typed());
+				ctx.waitTick();
+			}
+			ctx.waitTicks(10);
+			screenshot(ctx, "hud-transmission-" + id);
+			stills.add("hud-transmission-" + id);
+			clearTransmissions();
+		}
+	}
+
+	private void clearTransmissions() {
+		for (int tick = 0; tick < 1500 && ctx.computeOnClient(client -> TransmissionOverlay.transmission().isPresent()); tick += 4) {
+			ctx.waitTicks(4);
+		}
+	}
+
+	// ------------------------------------------------------------------------------------------------ helpers
+
+	/** Puts the camera at {@code eye} in {@code layer}, looking at {@code target}, then waits {@code wait} ticks for chunks and light. */
+	private void view(int layer, Vec3 eye, Vec3 target, int wait) {
+		Vec3 d = target.subtract(eye);
+		float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z));
+		float pitch = (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z)));
+		serverDo(server -> {
+			ServerPlayer player = player(server);
+			player.setNoGravity(true);
+			player.getAbilities().flying = true;
+			player.onUpdateAbilities();
+			player.teleportTo(server.getLevel(LayerChain.dimension(layer)), eye.x, eye.y - EYE, eye.z, Set.of(), yaw, pitch, true);
+		});
+		ctx.waitFor(client -> client.level.dimension().equals(LayerChain.dimension(layer))
+				&& client.player.distanceToSqr(eye.x, eye.y - EYE, eye.z) < 1.0, WAIT);
+		ctx.waitTicks(wait);
+	}
+
+	/** A named still, with no toast, chat line or transmission over it. */
+	private void still(String stillName) {
+		ctx.runOnClient(client -> {
+			client.gui.toastManager().clear();
+			client.gui.hud.getChat().clearMessages(false);
+		});
+		clearTransmissions();
+		screenshot(ctx, stillName);
+		stills.add(stillName);
+	}
+
+	private static ServerPlayer player(MinecraftServer server) {
+		return server.getPlayerList().getPlayers().getFirst();
+	}
+
+	private static void command(MinecraftServer server, String command) {
+		server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), command);
+	}
+
+	private <T> T serverGet(Function<MinecraftServer, T> action) {
+		return sp.getServer().computeOnServer(action::apply);
+	}
+
+	private void serverDo(Consumer<MinecraftServer> action) {
+		sp.getServer().runOnServer(action::accept);
+	}
+}
