@@ -122,8 +122,8 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 			WorkOrdersView many = new WorkOrdersView(true, List.of(entry(0), entry(1), entry(2), entry(3), entry(4)));
 			TerminalView manyView = new TerminalView(processor, TerminalTypes.ORE_PROCESSOR.id(), true, true, List.of(), Optional.of(many));
 			for (int[] size : new int[][] {{427, 240}, {320, 240}}) {
-				OreProcessorScreen crowded = new OreProcessorScreen(manyView);
-				context.setScreen(() -> crowded);
+				context.setScreen(() -> new OreProcessorScreen(manyView));
+				OreProcessorScreen crowded = context.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
 				context.runOnClient(client -> crowded.resize(size[0], size[1]));
 				context.waitFor(client -> crowded.typewriter().done(), WAIT_TICKS);
 				int rows = context.computeOnClient(client -> crowded.orderRows().size());
