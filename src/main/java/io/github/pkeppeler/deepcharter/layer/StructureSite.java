@@ -7,7 +7,7 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
 /**
  * Where one structure stands: a pure function of the world seed, the kind and the spacing cell, so a chunk can ask for the
- * sites that touch it without any state (ADR 0023).
+ * sites that touch it without any state (ADR 0025).
  *
  * @param kind    what stands here
  * @param origin  the centre column at the floor of the hollow, so the floor block is one below

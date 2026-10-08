@@ -25,7 +25,7 @@ import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
  * placed by {@link StructureSite#in} from the world seed alone.
  *
  * <p>It is not a worldgen structure. A chunk that has just generated draws the part of every site that touches it, when it
- * loads (ADR 0023), so a site needs no record and a chunk saved with its structure is never drawn on again.
+ * loads (ADR 0025), so a site needs no record and a chunk saved with its structure is never drawn on again.
  */
 public final class LayerStructures {
 	/**
