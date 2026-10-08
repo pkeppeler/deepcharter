@@ -45,13 +45,13 @@ A new part that needs its own `init()` and has no feature of its own gets a stub
 - **A terminal action that spends does everything that can throw or refuse before the spend.**
 - **State held in memory to undo a change to player-owned persistent data (a respawn point, an inventory) is itself persisted, or the change is not made.**
 - **Mixins** live in `<feature>/mixin/`, are registered in `deepcharter.mixins.json`, and are used only where no Fabric event reaches; an ADR names the target method.
-- Every M2 issue's test classes and evidence scenario already exist as stubs (below), so no issue edits the gametest `fabric.mod.json`, except that a PR may add one line there for each new test class or evidence scenario that has no stub. #53 creates `client/ui/` for the UI kit; it needs no init line.
+- Every M2 issue's test classes and evidence scenario already exist as stubs (below). A new test class or scenario needs no registration (below). #53 creates `client/ui/` for the UI kit; it needs no init line.
 
 ### Tests
 
 Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest/.../test/`:
 
-- Add test classes and evidence scenarios to the stubs that already exist, which are registered in `src/gametest/resources/fabric.mod.json`. A server stub is `<Thing>Test`, a client stub `<Thing>ClientTest`, a scenario `evidence/<Thing>Scenario` named `m2-<thing>`. A scenario stub throws "stub: #N fills it" when it is selected, and does nothing in a plain run.
+- Add test classes and evidence scenarios to the stubs that already exist. `gradle/gametest.gradle` generates the gametest `fabric.mod.json` entrypoint lists from the classes (an `@GameTest` method, `implements FabricClientGameTest`, or `extends EvidenceScenario`) and fails the build for a `*Test` or `*Scenario` class it cannot register; never edit a list. A server stub is `<Thing>Test`, a client stub `<Thing>ClientTest`, a scenario `evidence/<Thing>Scenario` named `m2-<thing>`. A scenario stub throws "stub: #N fills it" when it is selected, and does nothing in a plain run.
 - A GameTest that cuts air into generated layer rock calls `RoomSeal.seal` first (generated lava and gas flood the cut otherwise).
 - Run one GameTest, or a prefix of them, with `tools/gametest.sh '<test_id or prefix*>'` (quote the `*`). It runs `./gradlew runGameTest` from the repo root it lives in, sets the filter through `JAVA_TOOL_OPTIONS` (a bare `-D` on the Gradle command line is ignored), and fails when no test matches.
 - Before you drive an entity in a far chunk, await entity ticking: `test/support/FarChunks.awaitEntityTicking`. It forces the chunk, so nothing else needs to keep it loaded.

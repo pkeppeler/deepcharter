@@ -4,3 +4,74 @@ def deleteGameTestWorld = tasks.register("deleteGameTestWorld", Delete) {
 }
 
 tasks.named("runGameTest") { dependsOn deleteGameTestWorld }
+
+// fabric.mod.json for the gametest mod is generated, so no PR edits a list to register a test.
+// The committed template is src/gametest/fabric.mod.template.json; this task fills its two
+// entrypoint placeholders from the classes under src/gametest/java and writes the result where
+// processGametestResources picks it up. Classes are sorted by content, not by name:
+//   server GameTest    a class with an @GameTest method       -> fabric-gametest
+//   client GameTest    implements FabricClientGameTest        -> fabric-client-gametest
+//   evidence scenario  extends EvidenceScenario               -> fabric-client-gametest
+// The task fails (so the build fails) on a class named *Test or *Scenario that matches none of
+// those, on a class that matches both server and client, and on an empty list.
+def generatedGametestResources = layout.buildDirectory.dir("generated/gametest-resources")
+def generateGametestModJson = tasks.register("generateGametestModJson") {
+	def javaRoot = file("src/gametest/java")
+	def template = file("src/gametest/fabric.mod.template.json")
+	def outputFile = generatedGametestResources.map { it.file("fabric.mod.json") }
+	def sources = fileTree(javaRoot) { include "**/*.java" }
+	inputs.files(sources).withPropertyName("gametestSources")
+	inputs.file(template).withPropertyName("template")
+	outputs.file(outputFile)
+
+	doLast {
+		def server = []
+		def client = []
+		def problems = []
+		sources.files.sort().each { source ->
+			def className = javaRoot.toPath().relativize(source.toPath()).toString()
+				.replaceAll(/\.java$/, "").replace(File.separator, ".")
+			def simpleName = className.substring(className.lastIndexOf(".") + 1)
+			def text = source.text
+			if (text =~ /\babstract\s+class\s/) {
+				return
+			}
+			def isServer = text.contains("@GameTest")
+			def isClient = (text =~ /\bimplements\s+[^{]*\bFabricClientGameTest\b/).find() \
+				|| (text =~ /\bextends\s+EvidenceScenario\b/).find()
+			if (isServer && isClient) {
+				problems << "${className} has both an @GameTest method and is a client GameTest; split it in two"
+			} else if (isServer) {
+				server << className
+			} else if (isClient) {
+				client << className
+			} else if (simpleName.endsWith("Test") || simpleName.endsWith("Scenario")) {
+				problems << "${className} is named like a test but has no @GameTest method, does not implement FabricClientGameTest and does not extend EvidenceScenario, so it would not be registered"
+			}
+		}
+		if (server.isEmpty()) {
+			problems << "no server GameTest class (a class with an @GameTest method) found under src/gametest/java"
+		}
+		if (client.isEmpty()) {
+			problems << "no client GameTest or evidence scenario found under src/gametest/java"
+		}
+		if (!problems.isEmpty()) {
+			throw new GradleException("gametest entrypoints:\n  " + problems.join("\n  "))
+		}
+
+		def json = template.text
+		["SERVER_TESTS": server, "CLIENT_TESTS": client].each { token, names ->
+			def placeholder = "\"@${token}@\""
+			if (!json.contains(placeholder)) {
+				throw new GradleException("${template} lacks the ${placeholder} placeholder")
+			}
+			json = json.replace(placeholder, names.sort().collect { "\"${it}\"" }.join(",\n\t\t\t"))
+		}
+		outputFile.get().asFile.text = json
+	}
+}
+
+tasks.named("processGametestResources") {
+	dependsOn generateGametestModJson
+	from(generatedGametestResources)
+}

@@ -18,9 +18,9 @@
 #   GIF_FRAMES=560-720 GIF_MAX_BYTES=10000000 tools/record-evidence.sh m2-slice --no-run
 #
 # To add a scenario: copy src/gametest/java/.../test/evidence/CameraTurnScenario.java,
-# change name() (this script's argument) and run(), call frame(context) once per
-# recorded frame and screenshot(context, "name") for stills, and list the class under
-# "fabric-client-gametest" in src/gametest/resources/fabric.mod.json.
+# change name() (this script's argument) and run(), and call frame(context) once per
+# recorded frame and screenshot(context, "name") for stills. The class is registered by
+# the generator in gradle/gametest.gradle; do not edit fabric.mod.json.
 set -euo pipefail
 
 FPS=15
