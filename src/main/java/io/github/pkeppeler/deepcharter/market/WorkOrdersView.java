@@ -21,15 +21,17 @@ public record WorkOrdersView(boolean readable, List<Entry> orders) implements Te
 			Entry.STREAM_CODEC.apply(ByteBufCodecs.list()), WorkOrdersView::orders,
 			WorkOrdersView::new);
 
-	/** One order and how much of it the charter has handed in. */
-	public record Entry(WorkOrder order, int delivered) {
+	/** One order, how much of the current round the charter has handed in, and how many rounds it has completed. */
+	public record Entry(WorkOrder order, int delivered, int rounds) {
 		public static final StreamCodec<ByteBuf, Entry> STREAM_CODEC = StreamCodec.composite(
 				WorkOrder.STREAM_CODEC, Entry::order,
 				ByteBufCodecs.VAR_INT, Entry::delivered,
+				ByteBufCodecs.VAR_INT, Entry::rounds,
 				Entry::new);
 
+		/** True for a one-shot order that is finished. A repeatable order is never done. */
 		public boolean done() {
-			return delivered >= order.quantity();
+			return !order.repeatable() && delivered >= order.quantity();
 		}
 	}
 
