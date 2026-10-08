@@ -4,7 +4,8 @@ package io.github.pkeppeler.deepcharter.repair;
  * Tunables for the repair feature, read as {@code RepairTuning.DEFAULT.thing()}. Item prices are the original's and live in
  * {@link Consumable}.
  *
- * @param repairCostPerHp   dollars for each hull point the station repairs (the original's $15)
+ * @param repairCostPerHp   dollars for each hull point the station repairs. The original's $15 was for a 10 point hull; ours is
+ *                          100 points, and $1 makes a full repair of the stock hull cost less than an early run's $115
  * @param itemCooldownTicks ticks before the same item can be used again (the original's half second)
  * @param reserveLitres     litres the Reserve Fuel Tank adds (the original's 25)
  * @param nanobotHp         hull points the Hull Repair Nanobots add (the original's 30)
@@ -14,5 +15,5 @@ package io.github.pkeppeler.deepcharter.repair;
  */
 public record RepairTuning(long repairCostPerHp, int itemCooldownTicks, float reserveLitres, float nanobotHp,
 		int dynamiteRadius, int plasticRadius, double quantumScatter) {
-	public static final RepairTuning DEFAULT = new RepairTuning(15L, 10, 25f, 30f, 1, 2, 8.0);
+	public static final RepairTuning DEFAULT = new RepairTuning(1L, 10, 25f, 30f, 1, 2, 8.0);
 }
