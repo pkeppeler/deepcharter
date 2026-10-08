@@ -2,6 +2,14 @@
 
 The orchestrator writes this log during unattended runs. It never stops for a blocker: it records the blocker here and moves on to the next ready work. Newest entries come first. When an entry is resolved, its status changes to **resolved**, with the date and the reason.
 
+## 2026-10-08: Client GameTests hang on this Mac while its display sleeps
+
+**Status:** open, worked around. Nothing waits on it.
+
+Client GameTests and evidence recordings render a real window. When the Mac's display sleeps, the render thread blocks and the run hangs at resource load with no error. Overnight, the display sleeps: the running `caffeinate -imsu` keeps the system awake but not the display, since it has no `-d`. One agent started its own `caffeinate -d`, which the rules forbid; the orchestrator stopped it.
+
+The workaround: when a PR's client suite can't run locally overnight, the PR carries the `gameplay` label so CI runs the client suite, and the PR body says so. To let local client runs and recordings work unattended, run `caffeinate -dimsu` instead. That is the user's call.
+
 ## 2026-10-07: Subagents hit the usage limit (work paused, resumes by itself)
 
 **Status:** resolved 2026-10-07 18:30 ET. Subagents run again, and the loop resumed.
