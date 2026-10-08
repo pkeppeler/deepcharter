@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.upgrade;
 
 import java.util.Locale;
+import java.util.Optional;
 
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 
@@ -61,9 +62,9 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 		rebuildWidgets();
 	}
 
-	/** The parked pod as the server sent it with the view. A repaired upgrade terminal always carries it. */
-	public UpgradeView upgrade() {
-		return view.feature(UpgradeView.class).orElseThrow(() -> new IllegalStateException("the upgrade terminal view at " + view.pos() + " carries no upgrade data"));
+	/** The parked pod as the server sent it with the view. A repaired upgrade terminal carries it; the screen draws "no pod" if it is missing. */
+	public Optional<UpgradeView> upgrade() {
+		return view.feature(UpgradeView.class);
 	}
 
 	public ComponentTrack selected() {
@@ -79,10 +80,11 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 		int closeY = LIST_TOP + ComponentTrack.values().length * (ROW_HEIGHT + ROW_GAP) + ROW_GAP;
 		addRenderableWidget(new CrtButton(MARGIN, closeY, CLOSE_WIDTH, ROW_HEIGHT,
 				Component.translatable("screen.deepcharter.terminal.close"), button -> onClose()));
-		if (upgrade().pod().isEmpty()) {
+		Optional<UpgradeView.Pod> shownPod = upgrade().flatMap(UpgradeView::pod);
+		if (shownPod.isEmpty()) {
 			return;
 		}
-		UpgradeView.Pod pod = upgrade().pod().get();
+		UpgradeView.Pod pod = shownPod.get();
 		int tierX = MARGIN + TRACK_WIDTH + COLUMN_GAP;
 		int tierWidth = Math.min(width - MARGIN - tierX, TIER_MAX_WIDTH);
 		for (UpgradeView.Slot slot : pod.slots()) {
@@ -143,13 +145,13 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 
 	/** The pod, its tier cap and the account, or why there is no pod. */
 	private String status() {
-		UpgradeView shown = upgrade();
-		if (shown.pod().isEmpty()) {
-			return Component.translatable(shown.foreignPod() ? "screen.deepcharter.upgrade.foreign_pod" : "screen.deepcharter.upgrade.no_pod").getString();
+		Optional<UpgradeView> shown = upgrade();
+		if (shown.isEmpty() || shown.get().pod().isEmpty()) {
+			return Component.translatable(shown.isPresent() && shown.get().foreignPod() ? "screen.deepcharter.upgrade.foreign_pod" : "screen.deepcharter.upgrade.no_pod").getString();
 		}
 		String account = ClientCharter.view()
 				.map(charter -> Component.translatable("screen.deepcharter.terminal.account", charter.balance()).getString()).orElse("");
-		UpgradeView.Pod pod = shown.pod().get();
+		UpgradeView.Pod pod = shown.get().pod().get();
 		Component line = pod.serial().isEmpty()
 				? Component.translatable("screen.deepcharter.upgrade.pod_unregistered", pod.cap())
 				: Component.translatable("screen.deepcharter.upgrade.pod", pod.serial(), pod.cap());

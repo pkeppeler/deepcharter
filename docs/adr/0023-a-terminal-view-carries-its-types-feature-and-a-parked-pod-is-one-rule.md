@@ -9,7 +9,7 @@ The four pod terminals each built the same two things apart ([ADR 0014](0014-ter
 ## Parked pods
 
 - **`Terminals.parkedPods(level, pos)`** lists the pods within `TerminalTuning.parkedRadius` (8 blocks) of the middle of the terminal block, nearest first, neither flying nor drilling. It knows no owners, so a client can use it to draw a screen. **`Terminals.parkedPods(level, pos, charter)`** keeps the pods `PodComponents.mayAccess` allows. The server serves the first one.
-- **One radius.** The ore processor used 10, the fuel pump 6, the upgrade terminal and the repair station 8. 8 is the middle, is more than the 6 blocks from which a terminal opens, and no test or recording placed a pod between 6 and 8 or beyond 8 of a terminal that relied on the old number. The four tunables are gone.
+- **One radius.** The ore processor used 10, the fuel pump 6, the upgrade terminal and the repair station 8. 8 is the middle, is more than the 6 blocks from which a terminal opens, and no test or recording placed a pod between 6 and 10 of a terminal that relied on the old number. The four tunables are gone.
 - **Private ownership copies are gone** (`FuelPump.mayServe`, the upgrade terminal's copy). They mirrored `canMount` before `mayAccess` existed.
 - **A moving pod is not parked.** The pump's rule (not flying, not drilling) now holds for every terminal.
 

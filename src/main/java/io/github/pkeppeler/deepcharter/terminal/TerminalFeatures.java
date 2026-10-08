@@ -17,7 +17,7 @@ import io.github.pkeppeler.deepcharter.charter.Charter;
 
 /**
  * Which {@link TerminalFeature} each terminal type adds to its view. Register while mods initialise, on both sides: the server
- * needs the supplier and the client needs the codec. A type with no feature sends none.
+ * needs the supplier and the client needs the codec. Every type writes a presence flag first, so a type with no feature sends one false byte and both sides read the same layout.
  */
 public final class TerminalFeatures {
 	private static final Map<Identifier, Registration<?>> REGISTRATIONS = new HashMap<>();
@@ -72,6 +72,9 @@ public final class TerminalFeatures {
 	private static final StreamCodec<ByteBuf, Optional<TerminalFeature>> NONE = new StreamCodec<>() {
 		@Override
 		public Optional<TerminalFeature> decode(ByteBuf buffer) {
+			if (ByteBufCodecs.BOOL.decode(buffer)) {
+				throw new IllegalStateException("the server sent a view feature for a terminal type that registered none here: the client and the server register different features");
+			}
 			return Optional.empty();
 		}
 
@@ -80,6 +83,7 @@ public final class TerminalFeatures {
 			if (feature.isPresent()) {
 				throw new IllegalStateException("a terminal type with no registered view feature cannot send one: " + feature.get());
 			}
+			ByteBufCodecs.BOOL.encode(buffer, false);
 		}
 	};
 }

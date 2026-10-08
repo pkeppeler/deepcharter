@@ -798,6 +798,12 @@ public class TerminalFrameworkTest {
 		if (!roundTrip(without).equals(without)) {
 			throw helper.assertionException("a view of a type with no feature should round-trip with none, got %s", roundTrip(without));
 		}
+		ByteBuf bytes = Unpooled.buffer();
+		TerminalView.STREAM_CODEC.encode(bytes, without);
+		TerminalView.STREAM_CODEC.encode(bytes, withFeature);
+		if (!TerminalView.STREAM_CODEC.decode(bytes).equals(without) || !TerminalView.STREAM_CODEC.decode(bytes).equals(withFeature) || bytes.isReadable()) {
+			throw helper.assertionException("a view of a type with no feature should leave the next view in the buffer readable");
+		}
 		boolean refused = false;
 		try {
 			roundTrip(new TerminalView(pos, TerminalTypes.FUEL_PUMP.id(), true, true, List.of(), Optional.of(new TerminalTestTypes.Note("x"))));

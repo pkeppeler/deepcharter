@@ -146,11 +146,12 @@ public final class UpgradeTerminal {
 
 	private static Parked parked(ServerPlayer player, Charter charter, BlockPos terminal) {
 		ServerLevel level = player.level();
-		Optional<PodEntity> ours = Terminals.parkedPods(level, terminal, Optional.of(charter)).stream().findFirst();
+		List<PodEntity> parked = Terminals.parkedPods(level, terminal);
+		Optional<PodEntity> ours = parked.stream().filter(pod -> PodComponents.mayAccess(pod, Optional.of(charter))).findFirst();
 		if (ours.isPresent()) {
 			return new Parked.Ours(ours.get());
 		}
-		return Terminals.parkedPods(level, terminal).isEmpty() ? new Parked.None() : new Parked.Foreign();
+		return parked.isEmpty() ? new Parked.None() : new Parked.Foreign();
 	}
 
 	/** The view of the terminal at {@code terminal} for {@code player}, who must be on a charter. Never throws on unreadable pod data. */
