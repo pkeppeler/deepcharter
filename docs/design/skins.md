@@ -12,6 +12,8 @@ Paths are under `src/main/resources/` in the repo and under `assets/deepcharter/
 | UI frames drawn as a panel (today: the pod cargo panel and slot) | `assets/deepcharter/textures/gui/sprites/cargo/panel.png` and `slot.png`, each with a nine-slice `.png.mcmeta` | F3+T |
 | Block look | `blockstates/<id>.json`, `models/block/<id>.json`, `textures/block/*.png` | F3+T |
 | Item look | `items/<id>.json` (item definition), `models/item/<id>.json`, `textures/item/*.png` | F3+T |
+| Pod look: hull, wreck and drill, per chassis (`mole`, `prospector`) | `items/pod/<chassis>.json`, `<chassis>_wreck.json`, `<chassis>_drill.json`, and `models/pod/` with the same names; textures wherever the model names them | F3+T |
+| Tow cable particle | `particles/tow_cable.json` and `textures/particle/tow_cable.png` | F3+T |
 | Entity texture (the lampless figure) | `textures/entity/<id>.png` | F3+T |
 | Text | `lang/en_us.json` (generated from `src/lang/en_us/<feature>.json`; never edit it) | F3+T |
 | Sounds | `sounds.json` and `sounds/*.ogg` | F3+T |
@@ -20,6 +22,10 @@ Paths are under `src/main/resources/` in the repo and under `assets/deepcharter/
 | Handbook text and chapters | `data/deepcharter/deepcharter/handbook_chapter/` and `lang` | world reopen |
 
 `ThemeTest` and `AssetCompletenessTest` guard the first rows: the theme parses, and every registered block, item and entity has the asset files above.
+
+### Pod models
+
+A pod model is a Java block/item model, which Blockbench exports, drawn at true size in block space: the entity stands at x and z 8, the floor is y 0. Set `uv` on a face wider than 16 pixels, or it samples outside the texture. The drill model is authored pointing down from the middle of the hull; the game aims it and turns it while the pod drills. The lampless figure keeps the vanilla zombie model and only its texture is a skin (ADR 0033). `SkinAssetsTest` checks that every pod model and particle has its files.
 
 ### What a theme file looks like
 
@@ -61,7 +67,6 @@ The test pack at `src/gametest/resources/resourcepacks/amber_crt/` is exactly th
 
 Not part of the UI theme; each lands its look as data from the start.
 
-- **#258:** pods, wrecks, the lampless figure and the tow cable become resource-pack models and particles.
 - **#239:** the sky, fog, sun and the layer-structure palette.
 - **#244:** the colony layout and palette.
 - **#249:** sound.

@@ -11,6 +11,11 @@ public record Chassis(String id, int seats, float width, float height) {
 
 	private static final List<Chassis> ALL = List.of(MOLE, PROSPECTOR);
 
+	/** Every chassis there is. */
+	public static List<Chassis> all() {
+		return ALL;
+	}
+
 	public Chassis {
 		if (seats < 1) {
 			throw new IllegalArgumentException("a chassis needs at least one seat: " + id);

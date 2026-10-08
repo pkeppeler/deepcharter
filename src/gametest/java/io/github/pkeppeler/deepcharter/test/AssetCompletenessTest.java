@@ -33,8 +33,8 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
  */
 public class AssetCompletenessTest {
 	/**
-	 * Entities drawn from a vanilla block, so they have no texture of their own until #258 makes them resource-pack models. Every other
-	 * registered entity needs {@code textures/entity/<id>.png}.
+	 * Pods render item models; see SkinAssetsTest. They have no entity texture. Every other registered entity needs
+	 * {@code textures/entity/<id>.png}.
 	 */
 	private static final Set<String> ENTITIES_DRAWN_FROM_VANILLA_BLOCKS = Set.of("pod", "prospector");
 

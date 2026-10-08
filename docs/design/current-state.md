@@ -34,7 +34,7 @@ or `...-as-played` show what a player sees; the other layer stills use night vis
 | Structures | 11 colony pieces (pad, square, plinth row, statue, 6 buildings, hangar, Conduit) and 7 layer structure kinds |
 | Screens | 10 shot (handbook, offline terminal, fuel pump, ore processor, upgrade, repair station, hangar console, contract, pod cargo, vanilla inventory), 1 not reachable (CRT demo) |
 | HUDs | 6 (pod status, scanner, altimeter, account, transmission overlay, breach fade) |
-| Particles | 1 vanilla particle used, none of the mod's own |
+| Particles | 1 (`deepcharter:tow_cable`, a mod particle type since #258) |
 | Sound events | 44, all vanilla placeholders; 3 music events |
 | Fonts | 0 (vanilla font) |
 | Tour stills | 144 |
@@ -571,8 +571,8 @@ advancements under `data/deepcharter/advancement/handbook/`) are vanilla. Swap *
 
 ### Particles
 
-The mod defines no particle type and has no particle texture. One vanilla particle is used: `END_ROD`, along the tow cable between two pods
-(`main/pod/PodTowing.java:241`, density in `TowTuning.java`). Vanilla: **yes** (the particle). Swap: **(c)** `PodTowing.java:241`; **(a)** the vanilla `end_rod` particle texture.
+The mod defines one particle type, `deepcharter:tow_cable` (#258), along the tow cable between two pods
+(`main/pod/PodTowing.java:240`, density in `TowTuning.java`). It moves like the vanilla end rod it replaced. Vanilla: **no** (the sprite). Swap: **(a)** `assets/deepcharter/particles/tow_cable.json` and `textures/particle/tow_cable.png`.
 Not shot: it needs two pods and a tow cable in motion (the `m2-towing` scenario shows it).
 
 ### Lighting
@@ -643,8 +643,8 @@ Every look that is fixed in Java and cannot be replaced by swapping a resource-p
 
 | Visual | What is fixed | Where |
 |---|---|---|
-| Pod models | A vanilla block scaled to a slab: Mole `minecraft:raw_copper_block`, Prospector `minecraft:iron_block`, wreck `minecraft:coal_block`; slab height 0.9 | `client/pod/PodRenderer.java:23`, `:25`, `:55-56`; `client/pod/PodClientRegistry.java:15-18` |
-| Lampless figure model | Vanilla zombie model; only the skin is a resource | `client/creature/LamplessFigureRenderer.java:20` |
+| ~~Pod models~~ | Done in #258 ([ADR 0033](../adr/0033-pod-models-are-item-models-and-the-figure-keeps-the-vanilla-model.md)): each chassis, wreck and drill is a resource-pack model under `assets/deepcharter/models/pod/` with an item definition under `items/pod/`. The default models are still slabs textured with vanilla raw copper, iron and coal. | `client/pod/PodRenderer.java`, `PodSkins.java` |
+| Lampless figure model | Vanilla zombie model; only the skin is a resource. A documented exception in ADR 0033: a bone rig comes with GeckoLib (#243) | `client/creature/LamplessFigureRenderer.java:20` |
 | CRT look (all terminal screens, account HUD, transmissions) | Colours (background `#050A06`, phosphor `#7CFC9A`, dim `#2E7A45`, hover `#123D20`), scanline spacing 2 and colour, glow, bloom, padding, typewriter speed | `client/ui/CrtTuning.java:36-38` |
 | CRT drawing | Background fill, scanlines, bloom bands, 4-way halo text, 1-pixel frames, button fill | `client/ui/CrtDraw.java:15-43`, `client/ui/CrtButton.java:23`; the typewriter cursor block is `client/ui/CrtScreen.java:144` |
 | Each terminal screen's layout | Fixed GUI coordinates and text; no textures | `client/terminal/TerminalScreen.java`, `client/fuel/FuelPumpScreen.java`, `client/market/OreProcessorScreen.java`, `client/upgrade/UpgradeScreen.java`, `client/repair/RepairStationScreen.java`, `client/hangar/HangarScreen.java`, `client/charter/terminal/ContractScreen.java` (refusal colour `:48`) |
@@ -659,7 +659,7 @@ Every look that is fixed in Java and cannot be replaced by swapping a resource-p
 | Colony layout and palette | Every building, its size, position and blocks, the ground and paving noise, the statue and the pipe | `main/colony/ColonyBuilder.java:193-390`, `main/colony/FounderStatue.java:26`, `main/colony/Conduit.java:66` |
 | Layer structures | The size, blocks and layout of the 7 structures, and where Notes and candles sit | `main/layer/StructureKind.java:21-150` |
 | Pod lights | A vanilla light block at the pod's position; the level comes from the part's tier value; no lamp is drawn | `main/pod/PodLights.java:25-90`, `main/upgrade/UpgradeTuning.java` |
-| Tow cable | Drawn only as `END_ROD` particles along the line between the pods | `main/pod/PodTowing.java:241` |
+| ~~Tow cable~~ | Done in #258: the mod particle `deepcharter:tow_cable` (`particles/tow_cable.json`, `textures/particle/tow_cable.png`), drawn along the line between the pods | `main/pod/PodTowing.java:240` |
 | Colony terminals' facing and place | All face south on a plinth row at z -8 | `main/colony/ColonyBuilder.java:259-275` |
 
 ---
