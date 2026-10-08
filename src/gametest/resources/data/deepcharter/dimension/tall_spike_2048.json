@@ -1,0 +1,17 @@
+{
+  "type": "deepcharter:tall_spike_2048",
+  "generator": {
+    "type": "minecraft:noise",
+    "biome_source": {
+      "type": "deepcharter:zones",
+      "min_y": -2032,
+      "height": 2048,
+      "biomes": [
+        "deepcharter:topsoil_claims",
+        "deepcharter:stone_benches",
+        "deepcharter:deep_claim"
+      ]
+    },
+    "settings": "deepcharter:tall_spike_2048"
+  }
+}
