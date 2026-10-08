@@ -130,4 +130,5 @@ rm -f "$play_dir/saves/$world_name/session.lock"
 
 # exec drops the EXIT trap and keeps this PID, so the lock now names the client.
 trap - EXIT
-exec ./gradlew runPlay "$@"
+# --no-daemon: Ctrl-C of a build that waits for a client slot must end it (gradle/clientlock.gradle).
+exec ./gradlew --no-daemon runPlay "$@"

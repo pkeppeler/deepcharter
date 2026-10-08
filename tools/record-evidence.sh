@@ -42,7 +42,8 @@ root=$PWD/build/evidence
 out=$root/$scenario
 
 if [[ ${2:-} != --no-run ]]; then
-  DEEPCHARTER_EVIDENCE=$scenario DEEPCHARTER_EVIDENCE_DIR=$root ./gradlew runClientGameTest
+  # --no-daemon: Ctrl-C of a build that waits for a client slot must end it (gradle/clientlock.gradle).
+  DEEPCHARTER_EVIDENCE=$scenario DEEPCHARTER_EVIDENCE_DIR=$root ./gradlew --no-daemon runClientGameTest
 fi
 
 [[ -f $out/frames/frame-0001.png ]] \
