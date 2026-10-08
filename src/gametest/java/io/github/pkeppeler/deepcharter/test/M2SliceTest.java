@@ -1,7 +1,9 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -15,7 +17,9 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
@@ -75,15 +79,31 @@ public class M2SliceTest {
 		ServerLevel one = layer(helper, server, 1);
 		ServerLevel two = layer(helper, server, 2);
 		AtomicInteger ready = new AtomicInteger();
+		// The colony's chunk too: a pod there is found by its UUID, which a cable needs, only once the chunk ticks entities.
+		List<Awaited> awaited = List.of(
+				Awaited.of(one, BlockPos.containing(X, zoneY(one, 2), Z)),
+				Awaited.of(two, BlockPos.containing(X, zoneY(two, 2), Z)),
+				Awaited.of(server.overworld(), Colony.placed(server).orElseThrow().center()));
+		Runnable allArrived = () -> runTheSlice(helper, server, one, two, awaited);
 		Runnable arrived = () -> {
-			if (ready.incrementAndGet() == 3) {
-				runTheSlice(helper, server, one, two);
+			if (ready.incrementAndGet() == awaited.size()) {
+				allArrived.run();
 			}
 		};
-		FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(X, zoneY(one, 2), Z), arrived);
-		FarChunks.awaitEntityTicking(helper, two, BlockPos.containing(X, zoneY(two, 2), Z), arrived);
-		// The colony's chunk too: a pod there is found by its UUID, which a cable needs, only once the chunk ticks entities.
-		FarChunks.awaitEntityTicking(helper, server.overworld(), Colony.placed(server).orElseThrow().center(), arrived);
+		awaited.forEach(wait -> FarChunks.awaitEntityTicking(helper, wait.level(), wait.pos(), arrived));
+	}
+
+	/** A chunk that the test waits for, and whether it was already forced before the test forced it. */
+	private record Awaited(ServerLevel level, BlockPos pos, boolean wasForced) {
+		static Awaited of(ServerLevel level, BlockPos pos) {
+			return new Awaited(level, pos, level.getForceLoadedChunks().contains(ChunkPos.pack(pos)));
+		}
+
+		void release() {
+			if (!wasForced) {
+				level.setChunkForced(pos.getX() >> 4, pos.getZ() >> 4, false);
+			}
+		}
 	}
 
 	private static ServerLevel layer(GameTestHelper helper, MinecraftServer server, int layer) {
@@ -122,7 +142,7 @@ public class M2SliceTest {
 		}
 	}
 
-	private static void runTheSlice(GameTestHelper helper, MinecraftServer server, ServerLevel one, ServerLevel two) {
+	private static void runTheSlice(GameTestHelper helper, MinecraftServer server, ServerLevel one, ServerLevel two, List<Awaited> awaited) {
 		RepairState repairs = RepairState.get(server);
 		HangarData hangar = HangarData.get(server);
 		Serials serials = Serials.get(server);
@@ -131,6 +151,9 @@ public class M2SliceTest {
 		server.getDataStorage().set(HangarData.TYPE, new HangarData());
 		server.getDataStorage().set(Serials.TYPE, new Serials());
 		server.getDataStorage().set(WorkOrderData.TYPE, new WorkOrderData());
+		// The statue's hands are shared with the world, so the test puts back what it found.
+		Map<BlockPos, BlockState> hands = new LinkedHashMap<>();
+		FounderStatue.handPositions(server).ifPresent(positions -> positions.forEach(pos -> hands.put(pos, server.overworld().getBlockState(pos))));
 		List<PodEntity> pods = new ArrayList<>();
 		MockPlayer director = MockPlayers.join(helper, "Director");
 		MockPlayer crew = MockPlayers.join(helper, "Crew");
@@ -289,8 +312,8 @@ public class M2SliceTest {
 			pods.forEach(PodEntity::discard);
 			director.leave();
 			crew.leave();
-			FounderStatue.handPositions(server).ifPresent(positions -> positions.forEach(pos ->
-					server.overworld().setBlock(pos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3)));
+			hands.forEach((pos, state) -> server.overworld().setBlock(pos, state, 3));
+			awaited.forEach(Awaited::release);
 			server.getDataStorage().set(RepairState.TYPE, repairs);
 			server.getDataStorage().set(HangarData.TYPE, hangar);
 			server.getDataStorage().set(Serials.TYPE, serials);

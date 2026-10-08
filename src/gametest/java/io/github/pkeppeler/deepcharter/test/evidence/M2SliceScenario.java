@@ -36,6 +36,7 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -77,6 +78,7 @@ import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
+import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
@@ -90,6 +92,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.M2SliceEndState;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -300,8 +303,8 @@ public class M2SliceScenario extends EvidenceScenario {
 	}
 
 	private void boardAndDrillDown() {
-		say("6. Handbook chapter 3 and 4. Board the Mole, fly it, drill down through the floor and into layer 1, then climb back home.");
-		say("SHORTCUT: the test world is superflat, so its bedrock floor is cleared under the bore and four ore blocks are planted in it.");
+		say("6. Handbook chapter 3 and 4. Board the Mole, fly it, drill down through the floor and into layer 1, then climb back home. "
+				+ "SHORTCUT: the test world is superflat, so its bedrock floor is cleared under the bore and four ore blocks are planted in it.");
 		onServer(server -> {
 			PodEntity pod = pod(server, mole);
 			ServerLevel overworld = server.overworld();
@@ -546,11 +549,8 @@ public class M2SliceScenario extends EvidenceScenario {
 			return null;
 		});
 		// Forced chunks load, and tick their entities: the figure is not added to a chunk that is only loaded.
-		awaitServer(server -> {
-			ServerLevel level = server.getLevel(LayerChain.dimension(2));
-			return level.isPositionEntityTicking(BlockPos.containing(figureStart)) && level.isPositionEntityTicking(BlockPos.containing(bay))
-					&& level.isPositionEntityTicking(BlockPos.containing(moleAt)) && !wrecksAt(server, bay).isEmpty();
-		});
+		awaitEntityTickingInLayer2(List.of(figureStart, bay, moleAt));
+		awaitServer(server -> !wrecksAt(server, bay).isEmpty());
 		prospector = onServer(server -> wrecksAt(server, bay).getFirst().getUUID());
 		LamplessFigure[] figure = {null};
 		dismount();
@@ -738,7 +738,10 @@ public class M2SliceScenario extends EvidenceScenario {
 			// Take the cable off the wreck.
 			ServerPlayer real = real(server);
 			real.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(PodRegistry.TOW_CABLE));
-			UseEntityCallback.EVENT.invoker().interact(real, real.level(), InteractionHand.MAIN_HAND, wreck, null);
+			InteractionResult result = UseEntityCallback.EVENT.invoker().interact(real, real.level(), InteractionHand.MAIN_HAND, wreck, null);
+			if (!result.consumesAction()) {
+				throw new AssertionError("the tow cable was not removed: " + result);
+			}
 			real.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
 			return null;
 		});
@@ -923,13 +926,13 @@ public class M2SliceScenario extends EvidenceScenario {
 
 	// ---------------------------------------------------------------- directive state
 
-	private static boolean directiveDone(MinecraftServer server, String path) {
-		return HandbookProgress.completedFor(server, server.getPlayerList().getPlayers().getFirst().getUUID())
+	private boolean directiveDone(MinecraftServer server, String path) {
+		return HandbookProgress.completedFor(server, real(server).getUUID())
 				.contains(Identifier.fromNamespaceAndPath("deepcharter", "handbook/" + path));
 	}
 
-	private static boolean chapterDone(MinecraftServer server, String chapter) {
-		Set<Identifier> done = HandbookProgress.completedFor(server, server.getPlayerList().getPlayers().getFirst().getUUID());
+	private boolean chapterDone(MinecraftServer server, String chapter) {
+		Set<Identifier> done = HandbookProgress.completedFor(server, real(server).getUUID());
 		return HandbookChapters.all(server.registryAccess()).stream()
 				.filter(entry -> entry.key().identifier().getPath().equals(chapter))
 				.flatMap(entry -> entry.value().directives().stream())
@@ -1103,6 +1106,29 @@ public class M2SliceScenario extends EvidenceScenario {
 		throw new AssertionError("the server did not reach the awaited state within " + WAIT_TICKS * 3 + " ticks (beat " + beat + ")");
 	}
 
+	/** Waits on the wall clock, not on ticks (the client and server tick unthrottled), and names the first layer 2 chunk that is not ticking entities. */
+	private void awaitEntityTickingInLayer2(List<Vec3> positions) {
+		FarChunks.Deadline deadline = FarChunks.deadline();
+		while (true) {
+			Vec3 waiting = onServer(server -> {
+				ServerLevel level = server.getLevel(LayerChain.dimension(2));
+				return positions.stream().filter(at -> !level.isPositionEntityTicking(BlockPos.containing(at))).findFirst().orElse(null);
+			});
+			if (waiting == null) {
+				return;
+			}
+			if (deadline.expired()) {
+				throw new AssertionError("chunk " + chunkOf(BlockPos.containing(waiting)) + " in " + LayerChain.dimension(2)
+						+ " was not entity-ticking after " + FarChunks.WAIT_SECONDS + " s (beat " + beat + ")");
+			}
+			ctx.waitTicks(1);
+		}
+	}
+
+	private static ChunkPos chunkOf(BlockPos pos) {
+		return new ChunkPos(pos.getX() >> 4, pos.getZ() >> 4);
+	}
+
 	private ServerPlayer real(MinecraftServer server) {
 		return server.getPlayerList().getPlayers().stream().filter(player -> player != two.mock().player()).findFirst().orElseThrow();
 	}
@@ -1219,7 +1245,7 @@ public class M2SliceScenario extends EvidenceScenario {
 		BlockPos low = new BlockPos(X - ROOM_WEST - 1, 0, Z - ROOM_RADIUS_Z - 1);
 		BlockPos high = new BlockPos(X + ROOM_EAST + 1, FLOOR_Y + 10, Z + ROOM_RADIUS_Z + 1);
 		RoomSeal.seal(level, low, high);
-		box(level, 0, 2, LayerBlocks.BREACH_CRUST);
+		box(level, level.getMinY(), level.getMinY() + LayerTuning.DEFAULT.crustThickness() - 1, LayerBlocks.BREACH_CRUST);
 		box(level, FLOOR_Y - 1, FLOOR_Y - 1, Blocks.STONE);
 		for (int x = X - ROOM_WEST - 1; x <= X + ROOM_EAST + 1; x++) {
 			for (int y = FLOOR_Y - 1; y <= FLOOR_Y + 10; y++) {
