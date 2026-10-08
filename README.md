@@ -57,5 +57,5 @@ Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest
 - Before you drive an entity in a far chunk, await entity ticking: `test/support/FarChunks.awaitEntityTicking`. It forces the chunk, so nothing else needs to keep it loaded.
 - `test/support/MockPlayers` joins a real server-side player with no client behind it.
 - `test/support/TwoPlayerServer` starts a dedicated server in a client GameTest, joins the real client, then joins one mock player.
-- `test/evidence/` holds the PR evidence scenarios (see `tools/record-evidence.sh`).
+- `test/evidence/` holds the PR evidence scenarios (see `tools/record-evidence.sh`). When the Mac cannot render, add the `record` label to a PR whose body has a `Record: <scenario>` line (or run the `Record evidence` workflow with `pr` and `scenario`): CI runs the scenario headless, publishes its stills, GIF and MP4 to `pr-media/<pr>/`, and comments the markdown. Costs CI minutes, so only on request.
 - Wait on entity ticks, not server ticks: chunks far from the players do not tick at first in a fresh world.

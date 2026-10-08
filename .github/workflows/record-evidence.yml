@@ -1,0 +1,154 @@
+# On-demand PR evidence: runs one evidence scenario in the client GameTest harness on the
+# runner (headless, like client-tests.yml) and publishes its in-game stills, plus a GIF and
+# MP4 built from its frames, to pr-media/<pr>/ with a PR comment holding the markdown.
+# For when the Mac's display sleeps and tools/record-evidence.sh cannot run.
+#
+# Two ways to ask, because CI minutes are rationed (about 2,000 a month) and this never runs unasked:
+#   - Add the `record` label to a PR whose body has a line `Record: <scenario>`. The label is
+#     removed when the run starts, so adding it again re-runs. This works from the PR itself,
+#     before the workflow is on main.
+#   - workflow_dispatch with `pr` and `scenario`: gh workflow run record-evidence.yml -f pr=42 -f scenario=camera-turn
+#     (GitHub only offers dispatch for a workflow file that is on the default branch).
+name: Record evidence
+
+on:
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number
+        required: true
+      scenario:
+        description: Evidence scenario name (see tools/record-evidence.sh)
+        required: true
+
+# One real run per PR at a time. Never cancel: a cancel could land mid-push to pr-media.
+# Any other label starts a run whose job is skipped; it gets a group of its own so it
+# cannot displace a queued real run.
+concurrency:
+  group: >-
+    ${{ (github.event_name == 'workflow_dispatch' || github.event.label.name == 'record')
+    && format('record-evidence-{0}', github.event.pull_request.number || inputs.pr)
+    || format('record-evidence-skip-{0}', github.run_id) }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    name: capture
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.label.name == 'record' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write # to remove the record label
+    outputs:
+      pr: ${{ steps.resolve.outputs.pr }}
+      scenario: ${{ steps.resolve.outputs.scenario }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || format('refs/pull/{0}/head', inputs.pr) }}
+          persist-credentials: false
+      - name: Resolve the PR and scenario
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          INPUT_SCENARIO: ${{ inputs.scenario }}
+        run: |
+          if [[ ! $PR_NUMBER =~ ^[0-9]+$ ]]; then
+            echo "::error::pr must be a number"
+            exit 1
+          fi
+          if [[ $EVENT == workflow_dispatch ]]; then
+            scenario=$INPUT_SCENARIO
+          else
+            # The first `Record: <scenario>` line of the body; CRs from the web editor are dropped.
+            scenario=$(printf '%s\n' "$PR_BODY" | tr -d '\r' \
+              | sed -n 's/^Record:[[:space:]]*\([a-z0-9][a-z0-9-]*\)[[:space:]]*$/\1/p' | awk 'NR == 1')
+            if [[ -z $scenario ]]; then
+              echo "::error::PR $PR_NUMBER has no 'Record: <scenario>' line in its body"
+              exit 1
+            fi
+          fi
+          if [[ ! $scenario =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+            echo "::error::'$scenario' is not a scenario name"
+            exit 1
+          fi
+          # Fail in seconds, not after a 10 minute client run, on a name no scenario declares.
+          if ! grep -rqF "return \"$scenario\";" src/gametest/java/io/github/pkeppeler/deepcharter/test/evidence; then
+            echo "::error::No evidence scenario is named '$scenario'"
+            exit 1
+          fi
+          echo "pr=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "scenario=$scenario" >> "$GITHUB_OUTPUT"
+          if [[ $EVENT == pull_request ]]; then
+            gh pr edit "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --remove-label record
+          fi
+      - uses: ./.github/actions/client-gametest
+        with:
+          evidence-scenario: ${{ steps.resolve.outputs.scenario }}
+      - name: Install ffmpeg
+        run: sudo apt-get install -y -q --no-install-recommends ffmpeg
+      # Reuses the Mac script's assembly (--no-run): MP4, GIF, GIF_MAX_BYTES. A GIF over budget
+      # is a warning, not a failure: the stills are the minimum and are already on disk.
+      - name: Build the GIF and MP4
+        env:
+          SCENARIO: ${{ steps.resolve.outputs.scenario }}
+        run: |
+          tools/record-evidence.sh "$SCENARIO" --no-run \
+            || echo "::warning::GIF or MP4 not built; publishing the stills only"
+      - name: Upload the evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: evidence
+          path: |
+            build/evidence/${{ steps.resolve.outputs.scenario }}/screenshots/*.png
+            build/evidence/${{ steps.resolve.outputs.scenario }}/*.gif
+            build/evidence/${{ steps.resolve.outputs.scenario }}/*.mp4
+          if-no-files-found: error
+          retention-days: 3
+
+  publish:
+    name: publish
+    needs: capture
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # contents: write cannot be limited to one branch; this job only ever pushes pr-media,
+    # through tools/pr-media.sh, which refuses to drop anything already there.
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      # The default branch's scripts, not the PR head's: this job holds the write token.
+      # Credentials stay persisted because pr-media.sh pushes with them; nothing here
+      # uploads the workspace, so zizmor's artipacked finding does not apply.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 # zizmor: ignore[artipacked]
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: evidence
+          path: evidence
+      - name: Publish to pr-media and comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ needs.capture.outputs.pr }}
+          SCENARIO: ${{ needs.capture.outputs.scenario }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          shopt -s nullglob
+          files=(evidence/screenshots/*.png evidence/*.gif evidence/*.mp4)
+          if (( ${#files[@]} == 0 )); then
+            echo "::error::The artifact holds no media"
+            exit 1
+          fi
+          tools/pr-media.sh "$PR" "${files[@]}" > snippet.md
+          tools/ci-evidence-comment.sh "$PR" "$SCENARIO" snippet.md
