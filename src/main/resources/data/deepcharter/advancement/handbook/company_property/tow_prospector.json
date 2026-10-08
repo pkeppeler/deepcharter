@@ -1,0 +1,10 @@
+{
+  "criteria": {
+    "fired": {
+      "trigger": "deepcharter:directive",
+      "conditions": {
+        "directive": "deepcharter:handbook/company_property/tow_prospector"
+      }
+    }
+  }
+}

@@ -50,6 +50,30 @@ public final class ScanSlice {
 		return tier == 0 ? Optional.empty() : Optional.of(scan(level, pod.blockPosition(), pod.getDirection(), tier));
 	}
 
+	/**
+	 * Whether {@link #scan(BlockGetter, PodEntity)} would show an ore: the same tier, area and facing, but it only asks each block
+	 * whether it is an ore, and stops at the first. False when the pod has no working scanner. Never throws on unreadable pod state.
+	 */
+	public static boolean hasOre(BlockGetter level, PodEntity pod) {
+		int tier = PodComponents.effectiveTier(pod, ComponentTrack.SCANNER);
+		if (tier == 0) {
+			return false;
+		}
+		ScanArea area = TUNING.area(tier);
+		BlockPos origin = pod.blockPosition();
+		Direction facing = pod.getDirection();
+		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+		for (int up = area.up(); up >= -area.down(); up--) {
+			for (int ahead = -area.halfWidth(); ahead <= area.halfWidth(); ahead++) {
+				pos.set(origin).move(facing, ahead).move(Direction.UP, up);
+				if (level.getBlockState(pos).is(ORES)) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
 	/** Reads the slice of a scanner of {@code tier} (1 or more) around {@code origin}, the pod's feet. */
 	public static ScanSlice scan(BlockGetter level, BlockPos origin, Direction facing, int tier) {
 		if (facing.getAxis().isVertical()) {

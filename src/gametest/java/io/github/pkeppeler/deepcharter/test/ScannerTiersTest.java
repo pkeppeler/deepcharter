@@ -210,6 +210,69 @@ public class ScannerTiersTest {
 		}
 	}
 
+	/** {@code hasOre} is the cheap form of "the slice holds an ore": it agrees with {@code scan} for every pod, with ore in and out of reach. */
+	@GameTest
+	public void hasOreAgreesWithTheScanForAFittedScanner(GameTestHelper helper) {
+		CharterId charter = charter(helper);
+		CharterId other = charter(helper);
+		PodEntity none = ownedPod(helper, charter);
+		PodEntity one = ownedPod(helper, charter);
+		PodEntity two = ownedPod(helper, charter);
+		PodEntity foreign = ownedPod(helper, charter);
+		ServerLevel level = helper.getLevel();
+		BlockPos feet = one.blockPosition();
+		Direction facing = one.getDirection();
+		// Past the reach of tier 1 and inside tier 2: above the 8 blocks that tier 1 sees up.
+		BlockPos beyondOne = feet.relative(facing, 3).above(ScannerTuning.DEFAULT.tierOneArea().up() + 2);
+		BlockPos near = feet.relative(facing, 2).above(1);
+		try {
+			install(helper, one, 1, charter);
+			install(helper, two, 2, charter);
+			install(helper, foreign, 2, other);
+			List<PodEntity> pods = List.of(none, one, two, foreign);
+			expectAgreement(helper, level, pods, "no ore around", List.of(false, false, false, false));
+			place(level, beyondOne, Blocks.GOLD_ORE);
+			expectAgreement(helper, level, pods, "ore past tier 1's reach", List.of(false, false, true, false));
+			place(level, near, Blocks.GOLD_ORE);
+			expectAgreement(helper, level, pods, "ore in reach", List.of(false, true, true, false));
+			level.setBlock(beyondOne, Blocks.AIR.defaultBlockState(), 2);
+			level.setBlock(near, Blocks.AIR.defaultBlockState(), 2);
+			expectAgreement(helper, level, pods, "the ore removed", List.of(false, false, false, false));
+			helper.succeed();
+		} finally {
+			level.setBlock(beyondOne, Blocks.AIR.defaultBlockState(), 2);
+			level.setBlock(near, Blocks.AIR.defaultBlockState(), 2);
+			none.discard();
+			one.discard();
+			two.discard();
+			foreign.discard();
+		}
+	}
+
+	/** Each pod's {@code hasOre} is what {@code expected} says, and is what a walk over its {@code scan} finds. */
+	private static void expectAgreement(GameTestHelper helper, ServerLevel level, List<PodEntity> pods, String when, List<Boolean> expected) {
+		for (int index = 0; index < pods.size(); index++) {
+			PodEntity pod = pods.get(index);
+			boolean scanned = ScanSlice.scan(level, pod).map(ScannerTiersTest::holdsOre).orElse(false);
+			boolean quick = ScanSlice.hasOre(level, pod);
+			if (quick != scanned || quick != expected.get(index)) {
+				throw failure(helper, "%s: pod %d hasOre was %s, the scan holds ore: %s, expected %s", when, index, quick, scanned, expected.get(index));
+			}
+		}
+	}
+
+	private static boolean holdsOre(ScanSlice slice) {
+		ScanArea area = slice.area();
+		for (int ahead = -area.halfWidth(); ahead <= area.halfWidth(); ahead++) {
+			for (int up = -area.down(); up <= area.up(); up++) {
+				if (slice.cell(ahead, up) instanceof Cell.Ore) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
 	@GameTest
 	public void spawnCommandFitsATierOneScannerForAPlayerOnACharter(GameTestHelper helper) {
 		MockPlayer member = MockPlayers.join(helper, "scanner-member");
