@@ -52,6 +52,7 @@ public class TallSpikeServerTest {
 			throw helper.assertionException("no dimension " + key);
 		}
 		long before = usedHeap();
+		long cpuStart = processCpu();
 		long start = System.nanoTime();
 		for (int x = -RADIUS; x <= RADIUS; x++) {
 			for (int z = -RADIUS; z <= RADIUS; z++) {
@@ -73,12 +74,34 @@ public class TallSpikeServerTest {
 			}
 			done[0] = true;
 			double genMs = (System.nanoTime() - start) / 1e6;
+			double cpuMs = (processCpu() - cpuStart) / 1e6;
+			double load = java.lang.management.ManagementFactory.getOperatingSystemMXBean().getSystemLoadAverage();
 			long after = usedHeap();
+			long[] bandAir = new long[32];
+			long[] bandAll = new long[32];
+			long airBlocks = 0;
+			long sampledBlocks = 0;
 			long raw = 0;
 			long deflated = 0;
 			for (int x = -RADIUS; x <= RADIUS; x++) {
 				for (int z = -RADIUS; z <= RADIUS; z++) {
 					LevelChunk chunk = level.getChunkSource().getChunkNow(x, z);
+					for (int index = 0; index < chunk.getSectionsCount(); index += 4) {
+						var section = chunk.getSection(index);
+						for (int bx = 0; bx < 16; bx++) {
+							for (int by = 0; by < 16; by++) {
+								for (int bz = 0; bz < 16; bz++) {
+									sampledBlocks++;
+									int band = (index * 16 + by) / 256;
+									bandAll[band]++;
+									if (section.getBlockState(bx, by, bz).isAir()) {
+										airBlocks++;
+										bandAir[band]++;
+									}
+								}
+							}
+						}
+					}
 					RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), level.registryAccess());
 					ClientboundLevelChunkWithLightPacket.STREAM_CODEC.encode(buf, new ClientboundLevelChunkWithLightPacket(chunk, level.getLightEngine(), null, null));
 					byte[] bytes = new byte[buf.readableBytes()];
@@ -87,13 +110,24 @@ public class TallSpikeServerTest {
 					deflated += deflate(bytes);
 				}
 			}
+			StringBuilder bands = new StringBuilder();
+			for (int b = 0; b < 32; b++) {
+				if (bandAll[b] > 0) {
+					bands.append(String.format("[%d..%d)=%.3f ", level.getMinY() + b * 256, level.getMinY() + b * 256 + 256, (double) bandAir[b] / bandAll[b]));
+				}
+			}
+			LOGGER.info("TALLSPIKE-BANDS height={} air by 256-block band from the bottom: {}", height, bands);
 			level.getServer().saveAllChunks(false, true, false);
 			long region = regionBytes(level, name);
-			LOGGER.info("TALLSPIKE-SERVER maxHeapMB={} height={} columns={} genMs={} msPerColumn={} heapBeforeMB={} heapAfterMB={} heapDeltaMB={} regionBytes={} packetRawPerColumn={} packetDeflatedPerColumn={}",
-					Runtime.getRuntime().maxMemory() >> 20, height, columns, Math.round(genMs), String.format("%.2f", genMs / columns), before >> 20, after >> 20, (after - before) >> 20,
-					region, raw / columns, deflated / columns);
+			LOGGER.info("TALLSPIKE-SERVER maxHeapMB={} height={} columns={} genMs={} msPerColumn={} cpuMsPerColumn={} loadAvg={} heapBeforeMB={} heapAfterMB={} heapDeltaMB={} regionBytes={} packetRawPerColumn={} packetDeflatedPerColumn={} airFraction={}",
+					Runtime.getRuntime().maxMemory() >> 20, height, columns, Math.round(genMs), String.format("%.2f", genMs / columns), String.format("%.1f", cpuMs / columns), String.format("%.1f", load), before >> 20, after >> 20, (after - before) >> 20,
+					region, raw / columns, deflated / columns, String.format("%.3f", (double) airBlocks / sampledBlocks));
 			helper.succeed();
 		});
+	}
+
+	private static long processCpu() {
+		return ((com.sun.management.OperatingSystemMXBean) java.lang.management.ManagementFactory.getOperatingSystemMXBean()).getProcessCpuTime();
 	}
 
 	private static long usedHeap() {

@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -19,7 +20,10 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+
+import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 
 /**
  * Throwaway client measurements for issue 185, run when TALLSPIKE_HEIGHT is 256, 2048 or 4064: arrive mid-depth in the test
@@ -46,6 +50,8 @@ public class TallSpikeClientTest implements FabricClientGameTest {
 			client.options.simulationDistance().set(RADIUS);
 			client.options.framerateLimit().set(260);
 			client.options.enableVsync().set(false);
+			// Minecraft caps an idle window at 30 FPS after 60 s without input, and a long server load alone triggers it.
+			client.options.inactivityFpsLimit().set(net.minecraft.client.InactivityFpsLimit.MINIMIZED);
 		});
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			context.waitFor(client -> client.player != null && client.level != null);
@@ -77,14 +83,24 @@ public class TallSpikeClientTest implements FabricClientGameTest {
 			int midY = minY + height / 2;
 			singleplayer.getServer().runOnServer(server -> {
 				BlockPos found = null;
+				if (System.getenv("TALLSPIKE_HALL") != null) {
+					// The same 33x16x33 hall at mid-depth in every dimension, so the visible geometry is equal across heights.
+					BlockPos low = new BlockPos(-16, midY, -16);
+					BlockPos high = new BlockPos(16, midY + 15, 16);
+					RoomSeal.seal(level, low, high);
+					for (BlockPos pos : BlockPos.betweenClosed(low, high)) {
+						level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
+					}
+					found = new BlockPos(0, midY, 0);
+				}
 				search:
-				for (int r = 0; r < 120 && found == null; r += 2) {
+				for (int r = 0; r < 150 && found == null; r += 2) {
 					for (int dx = -r; dx <= r; dx += 2) {
 						for (int dz = -r; dz <= r; dz += 2) {
 							if (Math.max(Math.abs(dx), Math.abs(dz)) != r) {
 								continue;
 							}
-							for (int dy = -24; dy <= 24; dy++) {
+							for (int dy = -96; dy <= 96; dy++) {
 								BlockPos pos = new BlockPos(dx, midY + dy, dz);
 								if (open(level, pos)) {
 									found = pos;
@@ -95,7 +111,12 @@ public class TallSpikeClientTest implements FabricClientGameTest {
 					}
 				}
 				if (found == null) {
-					throw new AssertionError("no cave near mid-depth");
+					found = new BlockPos(0, midY, 0);
+					RoomSeal.seal(level, found.offset(-2, 0, -2), found.offset(2, 3, 2));
+					for (BlockPos pos : BlockPos.betweenClosed(found.offset(-2, 0, -2), found.offset(2, 3, 2))) {
+						level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
+					}
+					LOGGER.info("TALLSPIKE-CLIENT height={} no cave within range, carved a 5x4x5 room", height);
 				}
 				spot[0] = found.getX() + 0.5;
 				spot[1] = found.getY();
@@ -104,6 +125,7 @@ public class TallSpikeClientTest implements FabricClientGameTest {
 			LOGGER.info("TALLSPIKE-CLIENT height={} spot={},{},{} midY={}", height, spot[0], spot[1], spot[2], midY);
 
 			// 3. Arrive and time the build.
+			long cpu0 = processCpu();
 			long t0 = System.nanoTime();
 			singleplayer.getServer().runOnServer(server -> {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
@@ -114,6 +136,7 @@ public class TallSpikeClientTest implements FabricClientGameTest {
 			long screenGoneAt = -1;
 			long builtAt = -1;
 			int stable = 0;
+			long buildCpuMs = -1;
 			List<String> trace = new ArrayList<>();
 			for (int tick = 0; tick < 6000 && builtAt < 0; tick++) {
 				context.waitTick();
@@ -139,6 +162,7 @@ public class TallSpikeClientTest implements FabricClientGameTest {
 				boolean ready = state[0] == 1 && state[1] == 1 && state[2] == 1 && state[3] == 0;
 				stable = ready ? stable + 1 : 0;
 				if (stable == STABLE_TICKS) {
+					buildCpuMs = (processCpu() - cpu0) / 1_000_000;
 					builtAt = now - (long) (STABLE_TICKS - 1) * 50_000_000L;
 				}
 			}
@@ -146,8 +170,8 @@ public class TallSpikeClientTest implements FabricClientGameTest {
 			if (builtAt < 0) {
 				throw new AssertionError("view never built");
 			}
-			LOGGER.info("TALLSPIKE-CLIENT height={} dimensionSwitchedMs={} loadingScreenGoneMs={} viewBuiltMs={}", height,
-					(dimensionAt - t0) / 1_000_000, (screenGoneAt - t0) / 1_000_000, (builtAt - t0) / 1_000_000);
+			LOGGER.info("TALLSPIKE-CLIENT height={} dimensionSwitchedMs={} loadingScreenGoneMs={} viewBuiltMs={} buildProcessCpuMs={}", height,
+					(dimensionAt - t0) / 1_000_000, (screenGoneAt - t0) / 1_000_000, (builtAt - t0) / 1_000_000, buildCpuMs);
 			context.waitTicks(40);
 			long total = usedHeap();
 			int visible = context.computeOnClient(client -> client.levelRenderer.visibleSections().size());
@@ -155,6 +179,12 @@ public class TallSpikeClientTest implements FabricClientGameTest {
 
 			// 4. FPS over 30 s, camera turning once.
 			List<Integer> samples = new ArrayList<>();
+			List<Double> mspt = new ArrayList<>();
+			long renderCpu0 = threadCpu("Render thread");
+			long serverCpu0 = threadCpu("Server thread");
+			long procCpu0 = processCpu();
+			long win0 = System.nanoTime();
+			double loadBefore = ManagementFactory.getOperatingSystemMXBean().getSystemLoadAverage();
 			int ticks = FPS_SECONDS * 20;
 			for (int tick = 0; tick < ticks; tick++) {
 				float yaw = 360f * tick / ticks;
@@ -162,12 +192,36 @@ public class TallSpikeClientTest implements FabricClientGameTest {
 				context.waitTick();
 				if (tick % 10 == 9) {
 					samples.add(context.computeOnClient(Minecraft::getFps));
+					mspt.add(singleplayer.getServer().computeOnServer(server -> server.getAverageTickTimeNanos() / 1e6));
 				}
 			}
+			double winS = (System.nanoTime() - win0) / 1e9;
+			long renderCpu = threadCpu("Render thread") - renderCpu0;
+			long serverCpu = threadCpu("Server thread") - serverCpu0;
+			long procCpu = processCpu() - procCpu0;
 			double average = samples.stream().mapToInt(Integer::intValue).average().orElse(0);
 			int min = samples.stream().mapToInt(Integer::intValue).min().orElse(0);
-			LOGGER.info("TALLSPIKE-CLIENT height={} fpsAvg={} fpsMin={} samples={} heapAfterFpsMB={}", height, String.format("%.1f", average), min, samples.size(), usedHeap() >> 20);
+			LOGGER.info("TALLSPIKE-CLIENT height={} fpsAvg={} fpsMin={} samples={} msptAvg={} loadAvgBefore={} loadAvgAfter={} cpus={} windowS={} renderCpuMsPerFrame={} serverCpuMsPerTick={} processCpuCores={} heapAfterFpsMB={}", height,
+					String.format("%.1f", average), min, samples.size(), String.format("%.1f", mspt.stream().mapToDouble(Double::doubleValue).average().orElse(0)),
+					String.format("%.1f", loadBefore), String.format("%.1f", ManagementFactory.getOperatingSystemMXBean().getSystemLoadAverage()),
+					Runtime.getRuntime().availableProcessors(), String.format("%.1f", winS),
+					String.format("%.2f", renderCpu / 1e6 / Math.max(1, average * winS)), String.format("%.2f", serverCpu / 1e6 / (winS * 20)),
+					String.format("%.2f", procCpu / 1e9 / winS), usedHeap() >> 20);
 		}
+	}
+
+	private static long processCpu() {
+		return ((com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean()).getProcessCpuTime();
+	}
+
+	private static long threadCpu(String name) {
+		java.lang.management.ThreadMXBean bean = ManagementFactory.getThreadMXBean();
+		for (java.lang.management.ThreadInfo info : bean.getThreadInfo(bean.getAllThreadIds())) {
+			if (info != null && info.getThreadName().equals(name)) {
+				return bean.getThreadCpuTime(info.getThreadId());
+			}
+		}
+		return 0;
 	}
 
 	private static boolean loaded(ServerLevel level) {

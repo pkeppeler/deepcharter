@@ -84,6 +84,6 @@
     "temperature": 0.0,
     "vegetation": 0.0
   },
-  "sea_level": 0,
+  "sea_level": -2032,
   "spawn_target": []
 }
