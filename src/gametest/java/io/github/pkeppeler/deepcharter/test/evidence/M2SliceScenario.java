@@ -544,12 +544,17 @@ public class M2SliceScenario extends EvidenceScenario {
 			Vec3 near = at(site, 7, 0, -3);
 			for (int chunkX = Math.min((int) far.x, (int) near.x) >> 4; chunkX <= Math.max((int) far.x, (int) near.x) >> 4; chunkX++) {
 				for (int chunkZ = Math.min((int) far.z, (int) near.z) >> 4; chunkZ <= Math.max((int) far.z, (int) near.z) >> 4; chunkZ++) {
-					level.getChunk(chunkX, chunkZ, ChunkStatus.FULL);
+					level.setChunkForced(chunkX, chunkZ, true);
 				}
 			}
 			return null;
 		});
-		awaitServer(server -> !wrecksAt(server, bay).isEmpty());
+		// Forced chunks load, and tick their entities: the figure is not added to a chunk that is only loaded.
+		awaitServer(server -> {
+			ServerLevel level = server.getLevel(LayerChain.dimension(2));
+			return level.isPositionEntityTicking(BlockPos.containing(figureStart)) && level.isPositionEntityTicking(BlockPos.containing(bay))
+					&& level.isPositionEntityTicking(BlockPos.containing(moleAt)) && !wrecksAt(server, bay).isEmpty();
+		});
 		prospector = onServer(server -> wrecksAt(server, bay).getFirst().getUUID());
 		LamplessFigure[] figure = {null};
 		dismount();
@@ -559,7 +564,9 @@ public class M2SliceScenario extends EvidenceScenario {
 			LamplessFigure made = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
 			made.setPos(figureStart);
 			made.setHeading(site.alongZ() ? Direction.SOUTH : Direction.EAST);
-			level.addFreshEntity(made);
+			if (!level.addFreshEntity(made)) {
+				throw new AssertionError("the world did not take the figure at " + figureStart);
+			}
 			figure[0] = made;
 			pod(server, mole).teleportTo(level, moleAt.x, moleAt.y, moleAt.z, Set.of(), yawToward(moleAt, figureStart), 0f, true);
 			return null;
@@ -576,13 +583,14 @@ public class M2SliceScenario extends EvidenceScenario {
 		for (int frames = 0; frames < 200 && !onServer(server -> figure[0].fadeFraction() > 0); frames++) {
 			ctx.waitTicks(TICKS_PER_FRAME);
 			capture();
-			if (!shotWalk && onServer(server -> figure[0].position().distanceTo(pod(server, mole).position()) < 20)) {
+			if (!shotWalk && onServer(server -> figure[0].position().distanceTo(pod(server, mole).position()) < 23)) {
 				still("33-the-lampless-figure-walks-out-of-the-dark");
 				shotWalk = true;
 			}
 		}
 		if (!onServer(server -> figure[0].fadeFraction() > 0)) {
-			throw new AssertionError("the figure never began to fade near the Mole");
+			throw new AssertionError("the figure never began to fade near the Mole: "
+					+ onServer(server -> figure[0].position() + ", " + figure[0].tickCount + " ticks old, removed " + figure[0].isRemoved() + ", Mole at " + pod(server, mole).position()));
 		}
 		say("11. It never attacks and never stops. It fades when it is lit or approached.");
 		snap(3);
@@ -597,16 +605,17 @@ public class M2SliceScenario extends EvidenceScenario {
 
 	/** A 3 x 4 drift with a rail down it, from the bay's west wall out {@link #DRIFT_LENGTH} blocks. Its shell is sealed first. */
 	private static void cutDrift(ServerLevel level, StructureSite site) {
-		BlockPos a = BlockPos.containing(at(site, -DRIFT_LENGTH - 1, -2, -2));
-		BlockPos b = BlockPos.containing(at(site, -6, 5, 2));
+		// The box that is cut: RoomSeal seals the shell round it, which is the floor, the ceiling, both walls and the far end.
+		BlockPos a = BlockPos.containing(at(site, -DRIFT_LENGTH, 0, -1));
+		BlockPos b = BlockPos.containing(at(site, -7, 3, 1));
 		RoomSeal.seal(level, new BlockPos(Math.min(a.getX(), b.getX()), a.getY(), Math.min(a.getZ(), b.getZ())),
 				new BlockPos(Math.max(a.getX(), b.getX()), b.getY(), Math.max(a.getZ(), b.getZ())));
 		BlockState rail = Blocks.RAIL.defaultBlockState().setValue(BlockStateProperties.RAIL_SHAPE, site.alongZ() ? RailShape.NORTH_SOUTH : RailShape.EAST_WEST);
-		for (int u = -DRIFT_LENGTH; u <= -6; u++) {
+		for (int u = -DRIFT_LENGTH; u <= -7; u++) {
 			for (int v = -1; v <= 1; v++) {
 				level.setBlock(BlockPos.containing(at(site, u, -1, v)), Blocks.COBBLESTONE.defaultBlockState(), 2);
 				for (int y = 0; y <= 3; y++) {
-					level.setBlock(BlockPos.containing(at(site, u, y, v)), v == 0 && y == 0 && u < -6 ? rail : Blocks.AIR.defaultBlockState(), 2);
+					level.setBlock(BlockPos.containing(at(site, u, y, v)), v == 0 && y == 0 ? rail : Blocks.AIR.defaultBlockState(), 2);
 				}
 			}
 		}
@@ -637,6 +646,7 @@ public class M2SliceScenario extends EvidenceScenario {
 
 		// On foot to Ines's log on the table, with the lamp that still burns.
 		dismount();
+		say("12. On foot: Ines's log (Note N10) lies on the table, beside the lamp that still burns.");
 		Vec3 table = at(site, 0, 1.03, 4);
 		standInLayer(2, at(site, 0, 0, 2), table);
 		ctx.waitTicks(40);
@@ -772,7 +782,7 @@ public class M2SliceScenario extends EvidenceScenario {
 		say("16. The wreck is registered to the charter by its serials: it is " + serial + " now, not PROSPECTOR-0002.");
 		showTransmission("48-t17-transmission");
 		Vec3 wreckAt = onServer(server -> pod(server, prospector).position());
-		stand(wreckAt.add(0, 0, 10), wreckAt.add(0, 1.2, 0));
+		stand(wreckAt.add(-9, 0, 0), wreckAt.add(0, 1.2, 0));
 		ctx.waitTicks(30);
 		snap(HOLD_FRAMES);
 		still("49-the-restored-prospector");
@@ -877,7 +887,6 @@ public class M2SliceScenario extends EvidenceScenario {
 		snap(HOLD_FRAMES);
 		still("55-the-prospector-on-the-floor-of-the-old-workings");
 		awaitServer(server -> chapterDone(server, "company_property"));
-		dismount();
 		readHandbook("company_property", "56-handbook-chapter-9-company-property");
 
 		onServer(server -> {
@@ -1027,7 +1036,7 @@ public class M2SliceScenario extends EvidenceScenario {
 			return;
 		}
 		var font = Minecraft.getInstance().font;
-		List<FormattedCharSequence> lines = font.split(text, width - 8);
+		List<FormattedCharSequence> lines = font.split(text, width * 5 / 6);
 		graphics.fill(0, 0, width, lines.size() * (font.lineHeight + 1) + 6, 0xB0000000);
 		int y = 4;
 		for (FormattedCharSequence line : lines) {
