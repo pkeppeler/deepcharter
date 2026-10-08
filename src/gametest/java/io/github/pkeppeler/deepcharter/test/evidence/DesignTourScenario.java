@@ -83,7 +83,6 @@ import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.layer.BreachService;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
-import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
@@ -97,6 +96,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
 import io.github.pkeppeler.deepcharter.transmission.Transmissions;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
@@ -644,6 +644,7 @@ public class DesignTourScenario extends EvidenceScenario {
 				for (int dz = -ROOM_RADIUS - 1; dz <= ROOM_RADIUS + 1; dz++) {
 					for (int dy = 0; dy <= ROOM_HEIGHT + 1; dy++) {
 						boolean shell = dy == 0 || dy == ROOM_HEIGHT + 1 || Math.abs(dx) == ROOM_RADIUS + 1 || Math.abs(dz) == ROOM_RADIUS + 1;
+						// room-carver: a room in the overworld closed by its own stone shell, not layer rock
 						level.setBlock(floor.offset(dx, dy, dz), (shell ? Blocks.STONE : Blocks.AIR).defaultBlockState(), 3);
 					}
 				}
@@ -832,7 +833,7 @@ public class DesignTourScenario extends EvidenceScenario {
 			loadChunks(one, x, z, 2);
 			BlockPos min = new BlockPos(x - 3, 3, z - 3);
 			BlockPos max = new BlockPos(x + 3, 8, z + 3);
-			carveRoom(one, min, max);
+			RoomCarver.carve(one, min, max, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
 		});
 		nightVision();
 		view(1, new Vec3(x + 0.5, 6.5, z + 0.5), new Vec3(x + 0.5, 1.5, z + 1.5), 120);
@@ -915,7 +916,7 @@ public class DesignTourScenario extends EvidenceScenario {
 			loadChunks(two, x, z, 3);
 			BlockPos min = new BlockPos(x - 6, floor, z - 6);
 			BlockPos max = new BlockPos(x + 6, floor + 7, z + 6);
-			carveRoom(two, min, max);
+			RoomCarver.carve(two, min, max, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
 			return new Vec3(x + 0.5, floor + EYE, z + 0.5);
 		});
 		view(2, hall, hall.add(1, 0, 0), 60);
@@ -1014,7 +1015,7 @@ public class DesignTourScenario extends EvidenceScenario {
 			int mid = (level.getMinY() + level.getMaxY()) / 2;
 			BlockPos min = new BlockPos(LAYER_X - 6, mid, LAYER_Z - 6);
 			BlockPos max = new BlockPos(LAYER_X + 6, mid + 6, LAYER_Z + 6);
-			carveRoom(level, min, max);
+			RoomCarver.carve(level, min, max, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
 			best = new BlockPos(LAYER_X, mid + 3, LAYER_Z);
 		}
 		return Vec3.atCenterOf(best).add(0, EYE - 0.5, 0);
@@ -1146,14 +1147,6 @@ public class DesignTourScenario extends EvidenceScenario {
 			for (int dz = -radius; dz <= radius; dz++) {
 				level.getChunk((x >> 4) + dx, (z >> 4) + dz);
 			}
-		}
-	}
-
-	/** Seals the box against the cave round it, then empties it. */
-	private static void carveRoom(ServerLevel level, BlockPos min, BlockPos max) {
-		RoomSeal.seal(level, min, max);
-		for (BlockPos pos : BlockPos.betweenClosed(min, max)) {
-			level.setBlock(pos.immutable(), Blocks.AIR.defaultBlockState(), 3);
 		}
 	}
 

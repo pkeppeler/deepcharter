@@ -39,16 +39,16 @@ run_hook() {
 }
 
 nl=$'\n'
-check "normal push runs gradle and python" "0:2" "$(run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
+check "normal push runs gradle and python" "0:3" "$(run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "branch delete is skipped" "0:0" "$(run_hook "(delete) $zero refs/heads/b $sha$nl")"
 check "push to pr-media is skipped" "0:0" "$(run_hook "refs/heads/pr-media $sha refs/heads/pr-media $zero$nl")"
 check "empty push is skipped" "0:0" "$(run_hook "")"
-check "delete plus normal push still runs checks" "0:2" "$(run_hook "(delete) $zero refs/heads/a $sha${nl}refs/heads/b $sha refs/heads/b $zero$nl")"
+check "delete plus normal push still runs checks" "0:3" "$(run_hook "(delete) $zero refs/heads/a $sha${nl}refs/heads/b $sha refs/heads/b $zero$nl")"
 check "gradle failure blocks, python not reached" "1:1" "$(STUB_FAIL=gradle run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "failure message names the reason" "yes" "$(grep -q 'compile or checkstyle failed' "$work/out" && echo yes || echo no)"
 check "python failure blocks" "1:2" "$(STUB_FAIL=python run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "python failure message names the reason" "yes" "$(grep -q 'tool unit tests failed' "$work/out" && echo yes || echo no)"
-check "last line without a newline still counts" "0:2" "$(run_hook "refs/heads/b $sha refs/heads/b $zero")"
+check "last line without a newline still counts" "0:3" "$(run_hook "refs/heads/b $sha refs/heads/b $zero")"
 
 # Git ignores a hook that is not executable, and the copy above is chmod'ed, so check the real file.
 check "hook is executable in the index" "100755" "$(git -C "$repo" ls-files -s .githooks/pre-push | cut -c1-6)"

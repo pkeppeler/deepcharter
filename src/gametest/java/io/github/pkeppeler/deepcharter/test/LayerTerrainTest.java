@@ -33,7 +33,6 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
-import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.layer.gen.ZoneBiomeSource;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
@@ -42,6 +41,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
@@ -278,9 +278,8 @@ public class LayerTerrainTest {
 		int x = 1800;
 		int z = 1800;
 		int floor = 80;
-		RoomSeal.seal(two, new BlockPos(x - 4, floor - 6, z - 4), new BlockPos(x + 3, floor + 10, z + 3));
-		box(two, x - 4, x + 3, floor - 6, floor - 1, z - 4, z + 3, Blocks.STONE);
-		box(two, x - 4, x + 3, floor, floor + 10, z - 4, z + 3, Blocks.AIR);
+		RoomCarver.carve(two, x - 4, x + 3, floor - 6, floor - 1, z - 4, z + 3, Blocks.STONE);
+		RoomCarver.carve(two, x - 4, x + 3, floor, floor + 10, z - 4, z + 3, Blocks.AIR);
 		MockPlayer pilot = MockPlayers.join(helper, "terrain-drill");
 		Vec3 at = new Vec3(x, floor, z);
 		pilot.teleportTo(two, at, 0f, 0f);
@@ -379,6 +378,7 @@ public class LayerTerrainTest {
 			} finally {
 				LAVA_TICKS.remove(pod.getUUID());
 				pod.discard();
+				// room-carver: removes a block this test placed itself (its lava) in the overworld test structure, not layer rock
 				helper.setBlock(lava, Blocks.AIR);
 			}
 			helper.succeed();

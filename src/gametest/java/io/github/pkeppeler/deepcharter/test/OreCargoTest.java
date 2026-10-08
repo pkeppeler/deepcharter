@@ -34,7 +34,6 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreTuning;
@@ -46,6 +45,7 @@ import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 
 /**
  * Server GameTests for ore items and the pod's item cargo. Timing follows PodDrillTest: wait on conditions with a
@@ -571,9 +571,8 @@ public class OreCargoTest {
 
 	/** Stone bed under open air, the same shape as PodDrillTest's room. */
 	private static void room(ServerLevel level, int x, int floor) {
-		RoomSeal.seal(level, new BlockPos(x - 4, floor - 8, Z - 4), new BlockPos(x + 5, floor + 10, Z + 4));
-		box(level, x - 4, x + 5, floor - 8, floor - 1, Z - 4, Z + 4, Blocks.STONE);
-		box(level, x - 4, x + 5, floor, floor + 10, Z - 4, Z + 4, Blocks.AIR);
+		RoomCarver.carve(level, x - 4, x + 5, floor - 8, floor - 1, Z - 4, Z + 4, Blocks.STONE);
+		RoomCarver.carve(level, x - 4, x + 5, floor, floor + 10, Z - 4, Z + 4, Blocks.AIR);
 	}
 
 	private static void box(ServerLevel level, int x1, int x2, int y1, int y2, int z1, int z2, Block block) {
