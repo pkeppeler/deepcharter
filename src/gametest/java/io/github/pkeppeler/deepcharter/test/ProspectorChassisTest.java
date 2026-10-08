@@ -39,15 +39,13 @@ import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.handbook.HandbookRegistry;
 import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
 import io.github.pkeppeler.deepcharter.handbook.Notes;
+import io.github.pkeppeler.deepcharter.hangar.HangarData;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
-import io.github.pkeppeler.deepcharter.layer.ProspectorWrecks;
 import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
-import io.github.pkeppeler.deepcharter.ore.OreRegistry;
-import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -286,21 +284,64 @@ public class ProspectorChassisTest {
 		});
 	}
 
-	@GameTest(maxTicks = 12000)
-	public void onlyPROSPECTOR0002sBayHoldsTheCicatriumTheRestoreNeeds(GameTestHelper helper) {
-		MinecraftServer server = helper.getLevel().getServer();
-		ServerLevel level = layer(helper, 2);
-		StructureSite ordinary = StructureSite.in(level.getSeed(), StructureKind.WRECK, level.getMinY(), level.getHeight(), WRECK_CELL, WRECK_CELL, conduit(helper));
-		StructureSite prospector = LayerStructures.prospector(server).orElseThrow(() -> failure(helper, "no Prospector site"));
-		generate(level, ordinary);
-		generate(level, prospector);
-		helper.succeedWhen(() -> {
-			generate(level, ordinary);
-			generate(level, prospector);
-			expect(helper, cicatrium(level, ordinary) == 0, "an ordinary wreck bay holds no Cicatrium, it holds %s", cicatrium(level, ordinary));
-			expect(helper, cicatrium(level, prospector) == ProspectorWrecks.FAMOUS_BAY_CICATRIUM && cicatrium(level, prospector) == CATALYSTS,
-					"PROSPECTOR-0002's bay holds the %s Cicatrium that a restore takes, it holds %s", CATALYSTS, cicatrium(level, prospector));
-		});
+	@GameTest(maxTicks = FoundingMoleHangarTest.MAX_TICKS)
+	public void aCharterWithNoCicatriumRestoresItsFirstProspectorOnTheCompanyAdvance(GameTestHelper helper) {
+		FoundingMoleHangarTest.inTheHangar(helper, before -> FoundingMoleHangarTest.withFreshWorld(helper, () -> {
+			FoundingMoleHangarTest.repairTheConsole(helper);
+			MockPlayer owner = FoundingMoleHangarTest.member(helper, "Advanced");
+			BlockPos console = FoundingMoleHangarTest.console(helper, owner);
+			CharterId charter = FoundingMoleHangarTest.charterOf(helper, owner).id();
+			PodEntity wreck = prospectorWreck(helper);
+			FoundingMoleHangarTest.deposit(helper, owner, PRICE);
+			expect(helper, FoundingMoleHangarTest.count(owner.player(), FoundingMoleHangarTest.CATALYST) == 0, "the player carries no Cicatrium");
+
+			FoundingMoleHangarTest.expectDone(helper, FoundingMoleHangarTest.act(owner.player(), console, HangarTerminal.RESTORE_WRECK),
+					"restoring the Prospector on the advance alone");
+			expect(helper, !Wrecks.isWreck(wreck) && FoundingMoleHangarTest.balance(helper, owner) == 0, "the Prospector is restored for its $1,500");
+			expect(helper, FoundingMoleHangarTest.count(owner.player(), FoundingMoleHangarTest.CATALYST) == 0,
+					"the advance is never put in the pack, so there is none to sell, the player holds %s",
+					FoundingMoleHangarTest.count(owner.player(), FoundingMoleHangarTest.CATALYST));
+			expect(helper, HangarData.get(FoundingMoleHangarTest.server(helper)).advanceSpent(charter) == CATALYSTS,
+					"the restore used the %s of the advance, %s are recorded", CATALYSTS, HangarData.get(FoundingMoleHangarTest.server(helper)).advanceSpent(charter));
+			FoundingMoleHangarTest.clearFloor(helper);
+			helper.succeed();
+		}));
+	}
+
+	@GameTest(maxTicks = FoundingMoleHangarTest.MAX_TICKS)
+	public void everyCharterGetsTheAdvanceOnceAndAnyWreckWillDo(GameTestHelper helper) {
+		FoundingMoleHangarTest.inTheHangar(helper, before -> FoundingMoleHangarTest.withFreshWorld(helper, () -> {
+			FoundingMoleHangarTest.repairTheConsole(helper);
+			MockPlayer first = FoundingMoleHangarTest.member(helper, "First Charter");
+			MockPlayer second = FoundingMoleHangarTest.member(helper, "Second Charter");
+			BlockPos console = FoundingMoleHangarTest.console(helper, first);
+			FoundingMoleHangarTest.stand(helper, second, console);
+			CharterId firstCharter = FoundingMoleHangarTest.charterOf(helper, first).id();
+			CharterId secondCharter = FoundingMoleHangarTest.charterOf(helper, second).id();
+			FoundingMoleHangarTest.deposit(helper, first, 2 * PRICE);
+			FoundingMoleHangarTest.deposit(helper, second, PRICE);
+
+			PodEntity one = prospectorWreck(helper);
+			FoundingMoleHangarTest.expectDone(helper, FoundingMoleHangarTest.act(first.player(), console, HangarTerminal.RESTORE_WRECK), "the first charter restoring a wreck");
+			expect(helper, !Wrecks.isWreck(one), "the first charter's wreck is restored");
+
+			// A second wreck, a different one: the first charter has had its advance, so with no Cicatrium of its own it is refused.
+			PodEntity two = helper.spawn(PodRegistry.PROSPECTOR, new Vec3(7.5, 2, 5.5));
+			two.damageHull(two.maxHull());
+			FoundingMoleHangarTest.expectRefused(helper, FoundingMoleHangarTest.act(first.player(), console, HangarTerminal.RESTORE_WRECK),
+					"the first charter restoring a second Prospector with no Cicatrium");
+			expect(helper, Wrecks.isWreck(two) && FoundingMoleHangarTest.balance(helper, first) == PRICE, "the refused restore took nothing");
+
+			// The second charter gets its own advance for the other wreck.
+			FoundingMoleHangarTest.expectDone(helper, FoundingMoleHangarTest.act(second.player(), console, HangarTerminal.RESTORE_WRECK), "the second charter restoring a wreck");
+			expect(helper, !Wrecks.isWreck(two) && PodComponents.registration(two).orElseThrow().owner().equals(secondCharter),
+					"the second charter restored the other wreck and owns it");
+			HangarData data = HangarData.get(FoundingMoleHangarTest.server(helper));
+			expect(helper, data.advanceSpent(firstCharter) == CATALYSTS && data.advanceSpent(secondCharter) == CATALYSTS,
+					"each charter used its advance once: %s and %s", data.advanceSpent(firstCharter), data.advanceSpent(secondCharter));
+			FoundingMoleHangarTest.clearFloor(helper);
+			helper.succeed();
+		}));
 	}
 
 	@GameTest(maxTicks = FoundingMoleHangarTest.MAX_TICKS)
@@ -350,6 +391,8 @@ public class ProspectorChassisTest {
 
 			FoundingMoleHangarTest.deposit(helper, owner, 1);
 			owner.player().getInventory().clearContent();
+			// The Company advances the Cicatrium once, so a charter that has had its advance is the one that can be short of it.
+			HangarData.get(server).spendAdvance(charter, CATALYSTS);
 			FoundingMoleHangarTest.give(owner.player(), FoundingMoleHangarTest.CATALYST, CATALYSTS - 1);
 			FoundingMoleHangarTest.expectRefused(helper, FoundingMoleHangarTest.act(owner.player(), console, HangarTerminal.RESTORE_WRECK), "restoring a Cicatrium short");
 			nothingChanged(helper, owner, wreck, charter, PRICE, CATALYSTS - 1, "a Cicatrium short");
@@ -521,17 +564,6 @@ public class ProspectorChassisTest {
 		BoundingBox box = site.bounds();
 		for (BlockPos pos : BlockPos.betweenClosed(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ())) {
 			if (level.getBlockState(pos).is(Blocks.LANTERN)) {
-				found++;
-			}
-		}
-		return found;
-	}
-
-	private static int cicatrium(ServerLevel level, StructureSite site) {
-		int found = 0;
-		BoundingBox box = site.bounds();
-		for (BlockPos pos : BlockPos.betweenClosed(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ())) {
-			if (level.getBlockState(pos).is(OreRegistry.block(OreType.CICATRIUM))) {
 				found++;
 			}
 		}

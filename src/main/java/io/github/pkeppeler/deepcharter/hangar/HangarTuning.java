@@ -17,8 +17,8 @@ import io.github.pkeppeler.deepcharter.pod.Chassis;
  * and the fee still grows with every pod.
  * <li>A Mole wreck's restore, $100: cheaper than a refurbished Mole, as before, for the tow it takes.
  * <li>The Prospector's restore, $1,500: about four layer 2 runs of a Mole with tier 2 parts, which is what is left to earn after
- * the onboarding's other buys, so it ends the onboarding as the SPEC intends. The three Cicatrium wait in PROSPECTOR-0002's bay
- * ({@code ProspectorWrecks.FAMOUS_BAY_CICATRIUM}); ore finds almost none in the early runs, and the economy test pins both.
+ * the onboarding's other buys, so it ends the onboarding as the SPEC intends. The three Cicatrium are the longer wait
+ * in the ore (about 50 runs in the deepest zone), so the Company advances them, once per charter, against its contract.
  * </ul>
  *
  * @param refurbishedMole   what a refurbished Mole costs before the registration fee
@@ -32,12 +32,16 @@ import io.github.pkeppeler.deepcharter.pod.Chassis;
 public record HangarTuning(long refurbishedMole, long registrationFee, Map<String, RestoreCost> restoreCosts, OreType catalyst,
 		double wreckRadius, int bayRadius, int slotSpacing) {
 	public static final HangarTuning DEFAULT = new HangarTuning(150, 75,
-			Map.of("mole", new RestoreCost(100, 1, Optional.empty()),
-					"prospector", new RestoreCost(1_500, 3, Optional.of(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "t17")))),
+			Map.of("mole", new RestoreCost(100, 1, 0, Optional.empty()),
+					"prospector", new RestoreCost(1_500, 3, 3, Optional.of(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "t17")))),
 			OreType.CICATRIUM, 24, 6, 3);
 
-	/** The dollars and the catalysts that restoring a wreck takes, and the transmission it fires for the charter, if it fires one. */
-	public record RestoreCost(long money, int catalysts, Optional<Identifier> transmission) {
+	/**
+	 * The dollars and the catalysts that restoring a wreck takes, the catalysts that the Company advances to each charter against
+	 * its contract for this restore (once per charter, spent only by a restore, never held in a pack, so it cannot be sold), and the
+	 * transmission it fires for the charter, if it fires one. An advance below the catalysts would gate the restore on ore again.
+	 */
+	public record RestoreCost(long money, int catalysts, int advance, Optional<Identifier> transmission) {
 	}
 
 	public HangarTuning {

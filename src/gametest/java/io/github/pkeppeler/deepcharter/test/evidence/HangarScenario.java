@@ -10,6 +10,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
@@ -19,14 +20,18 @@ import io.github.pkeppeler.deepcharter.client.hangar.HangarScreen;
 import io.github.pkeppeler.deepcharter.hangar.Hangar;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
+import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 
 /**
  * Evidence scenario "m2-hangar" for #77: the derelict Mole stands dark in the colony hangar. A charter puts the four parts into the
  * hangar console, which repairs the Mole and gives it to the charter as MOLE-0001. The console's screen then sells a refurbished
- * Mole, which stands in the bay beside the first. Stills of the derelict, the repaired Mole, the screen and the new Mole.
+ * Mole, which stands in the bay beside the first. Stills of the derelict, the repaired Mole, the screen and the new Mole. Last, a
+ * Prospector wreck is restored with no Cicatrium in the pack, on the Company's advance (issue 209).
  */
 public class HangarScenario extends EvidenceScenario {
 	private static final int TICKS_PER_FRAME = 3;
@@ -94,6 +99,35 @@ public class HangarScenario extends EvidenceScenario {
 			context.waitTicks(40);
 			hold(context);
 			screenshot(context, "two-moles-in-the-bay");
+
+			// Issue 209: a Prospector wreck beside the console, restored on the Company's advance with no Cicatrium in the pack.
+			Vec3 wreckAt = Vec3.atBottomCenterOf(console.west(6));
+			singleplayer.getServer().runOnServer(server -> {
+				PodEntity wreck = PodRegistry.PROSPECTOR.create(server.overworld(), EntitySpawnReason.COMMAND);
+				wreck.setPos(wreckAt);
+				wreck.setHull(0f);
+				server.overworld().addFreshEntity(wreck);
+			});
+			lookAt(singleplayer, console, wreckAt.add(0, 1, 0));
+			context.waitTicks(40);
+			hold(context);
+			screenshot(context, "a-prospector-wreck-by-the-console");
+			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(console)));
+			context.waitForScreen(HangarScreen.class);
+			HangarScreen advance = context.computeOnClient(client -> (HangarScreen) client.gui.screen());
+			for (int i = 0; i < TYPING_FRAMES && !advance.typewriter().done(); i++) {
+				context.waitTicks(TICKS_PER_FRAME);
+				frame(context);
+			}
+			hold(context);
+			screenshot(context, "the-company-advance-on-the-console");
+			long restorePrice = tuning.restoreCost(Chassis.PROSPECTOR).money();
+			long before = singleplayer.getServer().computeOnServer(HangarScenario::balance);
+			context.clickScreenButton("RESTORE NEAREST WRECK");
+			await(context, singleplayer, server -> balance(server) == before - restorePrice);
+			context.setScreen(() -> null);
+			hold(context);
+			screenshot(context, "prospector-restored-on-the-advance");
 		}
 	}
 

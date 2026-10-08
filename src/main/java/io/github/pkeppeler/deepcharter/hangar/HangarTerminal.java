@@ -41,6 +41,10 @@ import io.github.pkeppeler.deepcharter.wreck.Wrecks;
  * {@link Hangar}), and then the place to buy a refurbished Mole ({@link #BUY_MOLE}) and to restore a wreck
  * ({@link #RESTORE_WRECK}). Both actions take no arguments, so the client sends nothing the server must trust.
  *
+ * <p>A restore that takes catalysts may be paid in part from the Company's advance ({@link HangarTuning.RestoreCost#advance}): the
+ * Company lends each charter the Cicatrium of its first Prospector against its contract, because the ore does not pay that out in
+ * time (issue 209). The pack's Cicatrium is spent first.
+ *
  * <p>An action does every check, and everything that can throw or refuse, before it takes money or the catalyst: a refusal
  * changes nothing. The catalyst and money go last.
  */
@@ -147,7 +151,11 @@ public final class HangarTerminal {
 			return refuse("insufficient_funds", cost.money());
 		}
 		Item catalyst = OreRegistry.item(tuning.catalyst());
-		if (count(player.getInventory(), catalyst) < cost.catalysts()) {
+		// The pack pays first. What it lacks is the Company's advance, up to what this charter has not yet used: it is never put in
+		// the pack, so it cannot be sold, and it is spent only here.
+		int fromPack = Math.min(count(player.getInventory(), catalyst), cost.catalysts());
+		int advanced = Math.min(cost.catalysts() - fromPack, Math.max(0, cost.advance() - data.get().advanceSpent(charter.id())));
+		if (fromPack + advanced < cost.catalysts()) {
 			return refuse("missing_catalyst", cost.catalysts(), new ItemStack(catalyst).getHoverName().getString());
 		}
 		try {
@@ -161,12 +169,17 @@ public final class HangarTerminal {
 			// The name a wreck site gave it (PROSPECTOR-0002) is the wreck's: the registration names the pod now.
 			wreck.setCustomName(null);
 		}
-		take(player.getInventory(), catalyst, cost.catalysts());
+		take(player.getInventory(), catalyst, fromPack);
+		if (advanced > 0) {
+			data.get().spendAdvance(charter.id(), advanced);
+		}
 		Optional<CharterRefusal> refusal = Charters.spend(server, charter.id(), cost.money());
 		if (refusal.isPresent()) {
 			throw new IllegalStateException("a restore that passed the funds check was refused: " + refusal.get());
 		}
-		player.sendOverlayMessage(Component.translatable("deepcharter.hangar.restored", cost.money()));
+		player.sendOverlayMessage(advanced > 0
+				? Component.translatable("deepcharter.hangar.restored_advance", cost.money(), advanced, new ItemStack(catalyst).getHoverName().getString())
+				: Component.translatable("deepcharter.hangar.restored", cost.money()));
 		cost.transmission().ifPresent(transmission -> Transmissions.fire(server, charter.id(), transmission));
 		HangarEvents.RESTORED.invoker().onRestored(server, player, wreck);
 		return Optional.empty();

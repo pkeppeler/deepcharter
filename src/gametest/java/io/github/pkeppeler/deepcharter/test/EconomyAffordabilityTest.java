@@ -9,7 +9,6 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 
 import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
-import io.github.pkeppeler.deepcharter.layer.ProspectorWrecks;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
@@ -38,7 +37,10 @@ public class EconomyAffordabilityTest {
 	/** The Prospector restore takes this many runs of a Mole with tier 2 parts in layer 2, at least and at most. */
 	private static final int RESTORE_RUNS_MIN = 3;
 	private static final int RESTORE_RUNS_MAX = 6;
-	/** Cicatrium sells for $1,500: what a run finds of it in the deepest zone is at most this share of the run's other income. */
+	/**
+	 * Cicatrium sells for $1,500. What a run finds of it in the deepest zone is at most this share of the run's other income (it is
+	 * about a fifth today). Half is room for a retune of the ore and still a stop for one that makes selling it the main income.
+	 */
 	private static final double CATALYST_SALE_SHARE = 0.5;
 	/** A later charter's first refurbished Mole, with no pod yet, and its second one. */
 	private static final int REFURBISHED_FIRST_RUNS = 2;
@@ -101,18 +103,16 @@ public class EconomyAffordabilityTest {
 		helper.succeed();
 	}
 
+	/** The invariant of issue 209: the Company's advance covers the restore's Cicatrium, so the ore never gates the Prospector. */
 	@GameTest
-	public void theProspectorRestoresCicatriumIsInHandByTheTimeTheMoneyIs(GameTestHelper helper) {
-		Run run = upgradedRunInLayerTwo();
-		int runs = run.toAfford(HangarTuning.DEFAULT.restoreCost(Chassis.PROSPECTOR).money());
-		int needed = HangarTuning.DEFAULT.restoreCost(Chassis.PROSPECTOR).catalysts();
-		// The runs of the onboarding bore the Upper Levels, which hold none; PROSPECTOR-0002's bay is the sure source.
-		double expected = ProspectorWrecks.FAMOUS_BAY_CICATRIUM + run.catalystsAfter(runs);
-		LOGGER.info("[economy] Prospector restore: {} Cicatrium needed; {} in the wreck's bay and {} from {} runs of ore: {}", needed,
-				ProspectorWrecks.FAMOUS_BAY_CICATRIUM, run.catalystsAfter(runs), runs, expected);
-		if (expected < needed) {
-			throw failure(helper, "the restore needs %d Cicatrium; by the %d runs that earn its money a charter expects only %.2f",
-					needed, runs, expected);
+	public void theCompanyAdvanceIsAtLeastTheCicatriumTheProspectorRestoreTakes(GameTestHelper helper) {
+		HangarTuning.RestoreCost cost = HangarTuning.DEFAULT.restoreCost(Chassis.PROSPECTOR);
+		Run run = EarlyRunModel.run(Zone.load("prospectors_run"), EarlyRunModel.mole(2, 2, 2), EarlyRunModel.layerOneBlocks());
+		LOGGER.info("[economy] Prospector restore: {} Cicatrium, {} advanced; from ore alone, at {} per run in the deepest zone, it would take {} runs",
+				cost.catalysts(), cost.advance(), run.catalysts(), Math.ceil(cost.catalysts() / run.catalysts()));
+		if (cost.advance() < cost.catalysts()) {
+			throw failure(helper, "the Prospector restore takes %d Cicatrium but the Company advances only %d, so the ore gates it again",
+					cost.catalysts(), cost.advance());
 		}
 		helper.succeed();
 	}
