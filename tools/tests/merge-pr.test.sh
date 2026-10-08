@@ -33,6 +33,14 @@ case "$1 $2" in
       isDraft) echo "${STUB_DRAFT-false}" ;;
       headRefName) echo "${STUB_BRANCH-12-some-slug}" ;;
       body) printf '%s\n' "${STUB_BODY-Closes #12}" ;;
+      closingIssuesReferences)
+        [[ ${STUB_CLOSING_FAIL-0} == 1 ]] && exit 1
+        # STUB_CLOSING_LATER, when set, answers every read after the first.
+        n=$(cat "$LOG.closing" 2>/dev/null || echo 0)
+        echo $((n + 1)) >"$LOG.closing"
+        set_now=${STUB_CLOSING-pkeppeler/deepcharter#12}
+        [[ $n -eq 0 ]] || set_now=${STUB_CLOSING_LATER-$set_now}
+        [[ -z $set_now ]] || printf '%s\n' "$set_now" ;;
       labels)
         [[ ${STUB_LABELS_FAIL-0} == 1 ]] && exit 1
         echo "${STUB_LABELS-infra
@@ -162,7 +170,7 @@ rc=0
 pass() { cases=$((cases + 1)); echo "ok   $1"; }
 fail() { cases=$((cases + 1)); failures=$((failures + 1)); echo "FAIL $1"; }
 
-reset() { rm -f "$LOG" "$LOG.merged" "$LOG.push"; : >"$LOG"; }
+reset() { rm -f "$LOG" "$LOG.merged" "$LOG.push" "$LOG.closing"; : >"$LOG"; }
 
 # run_script [VAR=value ...]: run $SCRIPT (default merge-pr.sh) on PR 7 with stub env overrides.
 run_script() {
@@ -201,34 +209,36 @@ merge_line="gh pr merge 7 -R pkeppeler/deepcharter --squash --delete-branch --ma
 refusal "closed PR" "REFUSED: PR #7 is not open" STUB_STATE=CLOSED
 refusal "merged PR" "REFUSED: PR #7 is not open" STUB_STATE=MERGED
 refusal "draft PR" "REFUSED: PR #7 is a draft" STUB_DRAFT=true
-# Closes #N: the body's Closes/Fixes/Resolves set must be exactly {branch issue}.
-# The default stub is branch 12-some-slug with body "Closes #12".
+# Closing set: GitHub's own parse (`closingIssuesReferences`, one owner/repo#N per line,
+# STUB_CLOSING in the stub) must be exactly {this repo's branch issue}. The body is
+# not parsed. The default stub is branch 12-some-slug closing pkeppeler/deepcharter#12.
 mismatch="but branch 12-some-slug is for issue #12 only"
-refusal "closes another issue" "$mismatch" "STUB_BODY=Closes #13"
-refusal "no closes line" "body has no 'Closes #12'" "STUB_BODY=Just a description of #12"
-refusal "empty body" "body has no 'Closes #12'" STUB_BODY=
-refusal "closes branch issue and another" "body closes #12 #13 but" "STUB_BODY=Closes #12
-Fixes #13"
-refusal "closes two others" "body closes #13 #14 but" "STUB_BODY=Closes #13, resolves #14"
-odd_msg="closing reference that is not a plain '#N'"
-refusal "cross-repo close of the same number" "$odd_msg: Closes pkeppeler/deepcharter#12" "STUB_BODY=Closes pkeppeler/deepcharter#12"
-refusal "cross-repo close of another repo" "$odd_msg: Fixes owner/repo#54" "STUB_BODY=Fixes owner/repo#54"
-refusal "URL close" "$odd_msg: Resolves https://github.com/pkeppeler/deepcharter/issues/12" \
-  "STUB_BODY=Resolves https://github.com/pkeppeler/deepcharter/issues/12"
-refusal "cross-repo close beside a valid one" "$odd_msg: Fixes owner/repo#54" "STUB_BODY=Closes #12
-Fixes owner/repo#54"
+me=pkeppeler/deepcharter
+refusal "closes another issue" "$mismatch" "STUB_CLOSING=$me#13"
+refusal "no closing reference" "has no closing reference (put 'Closes #12' in the body)" STUB_CLOSING=
+refusal "closing set changes before the merge" "closing set changed during the gate (was #12, now #12 #13); re-run" \
+  "STUB_CLOSING_LATER=$me#12
+$me#13"
+refusal "closing set emptied before the merge" "closing set changed during the gate (was #12, now empty)" STUB_CLOSING_LATER=
+refusal "closes branch issue and another" "closes #12 #13 but" "STUB_CLOSING=$me#12
+$me#13"
+refusal "closes two others" "closes #13 #14 but" "STUB_CLOSING=$me#13
+$me#14"
+refusal "closes the same number in another repo" "closes owner/repo#12 but" "STUB_CLOSING=owner/repo#12"
+refusal "closes branch issue and another repo's" "closes #12 owner/repo#54 but" "STUB_CLOSING=$me#12
+owner/repo#54"
+refusal "closing references unreadable" "has no readable closing references" STUB_CLOSING_FAIL=1
 refusal "branch without issue number" "has head branch 'main-fix', not <issue>-<slug>" STUB_BRANCH=main-fix
 refusal "branch number without slug" "not <issue>-<slug>" STUB_BRANCH=12
-for body in "closes #12" "FIXES #12" "Resolves #12" "Context text.
-
-Closes #12
-More text." "Closes #12 and Closes #12" "Closes: #12"; do
-  run_script "STUB_BODY=$body"
-  exited "matching close is merged: ${body%%$'\n'*}" 0
-  logged "matching close merge invocation" "$merge_line"
-done
-run_script "STUB_BODY=See #13. Closes #12" STUB_BRANCH=12-x
-exited "mention of another issue without a keyword is fine" 0
+# Prose such as "the same fix #252 verified" is not a closing reference: GitHub's set decides.
+run_script "STUB_BODY=Closes #12
+Uses the same fix #252 verified."
+exited "noun 'fix #N' in prose does not count" 0
+logged "closing references read from GitHub" "gh pr view 7 -R pkeppeler/deepcharter --json closingIssuesReferences --jq .closingIssuesReferences[] | \"\(.repository.owner.login)/\(.repository.name)#\(.number)\""
+refusal "wrong closing set despite a matching body" "$mismatch" "STUB_BODY=Closes #12" "STUB_CLOSING=$me#13"
+run_script
+exited "matching closing reference is merged" 0
+logged "matching close merge invocation" "$merge_line"
 
 # ADR numbers: a PR may not ADD docs/adr/NNNN-*.md when NNNN is already on
 # origin/main (any slug). Main's default ADRs are 0007 and 0018; next free is 0019.
@@ -297,8 +307,8 @@ refusal "no-demo reason not at line start" "no 'No demo: <reason>' line" "STUB_F
   "STUB_BODY=Closes #12${nl}- No demo: tooling only"
 refusal "both demo and no-demo labels" "both the 'demo' and 'no-demo' labels" "STUB_FILES=$game" \
   "STUB_LABELS=$demo_labels${nl}no-demo" "STUB_BODY=$gif${nl}No demo: x"
-refusal "media without the demo label" "embeds pr-media media but lacks the 'demo' label" "STUB_BODY=$gif"
-refusal "media without the demo label on in-game change" "embeds pr-media media but lacks the 'demo' label" \
+refusal "media without the demo label" "links or embeds pr-media media but lacks the 'demo' label" "STUB_BODY=$gif"
+refusal "media without the demo label on in-game change" "links or embeds pr-media media but lacks the 'demo' label" \
   "STUB_BODY=$png" "STUB_FILES=$game" "STUB_LABELS=$nodemo_labels"
 refusal "demo label lookalike does not count" "with no demo" "STUB_FILES=$game" "STUB_LABELS=infra${nl}review-passed${nl}demos"
 refusal "labels unreadable" "has no readable labels" "STUB_FILES=$game" STUB_LABELS_FAIL=1
