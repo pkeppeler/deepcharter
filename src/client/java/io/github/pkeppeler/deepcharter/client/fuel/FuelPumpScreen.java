@@ -27,6 +27,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
+import io.github.pkeppeler.deepcharter.terminal.Terminals;
 
 /**
  * The online screen of the fuel pump: the account, the tank of the pod parked at the pump, and the original's buttons, a few
@@ -105,7 +106,7 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
 		if (minecraft == null || minecraft.level == null) {
 			return Optional.empty();
 		}
-		return FuelPump.parkedPods(minecraft.level, view.pos()).stream().findFirst();
+		return Terminals.parkedPods(minecraft.level, view.pos()).stream().findFirst();
 	}
 
 	private long balance() {

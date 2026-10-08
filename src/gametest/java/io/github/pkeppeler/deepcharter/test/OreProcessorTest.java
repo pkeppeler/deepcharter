@@ -24,7 +24,6 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
-import io.github.pkeppeler.deepcharter.market.MarketTuning;
 import io.github.pkeppeler.deepcharter.market.OreProcessor;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -34,6 +33,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
 import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
+import io.github.pkeppeler.deepcharter.terminal.TerminalTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
@@ -161,7 +161,7 @@ public class OreProcessorTest {
 			ServerPlayer player = mock.player();
 			BlockPos processor = processorFor(helper, mock);
 			PodEntity near = podAt(helper, beside(processor, 4), OreType.IRONIUM, OreType.GOLDIUM, OreType.EINSTEINIUM);
-			PodEntity far = podAt(helper, beside(processor, MarketTuning.DEFAULT.processorRadius() + 3), OreType.PLATINIUM);
+			PodEntity far = podAt(helper, beside(processor, TerminalTuning.DEFAULT.parkedRadius() + 3), OreType.PLATINIUM);
 			carry(player, OreType.BRONZIUM, OreType.CICATRIUM, OreType.SILVERIUM);
 			try {
 				long before = balance(server, player);

@@ -23,7 +23,7 @@ Code is grouped by feature under `io.github.pkeppeler.deepcharter`. The features
 
 - `XInit.init()`, called once from `DeepCharter` (`XClientInit.init()` from `DeepCharterClient`). It calls the `init()` of each part, so adding a part edits the feature, never the entrypoints.
 - `XRegistry.register()`: its entities, blocks, items and other registrations.
-- `XTuning`: one record of tunables, read as `XTuning.DEFAULT.thing()`.
+- `XTuning`, when the feature has tunables: one record of them, read as `XTuning.DEFAULT.thing()`.
 - Lang keys: one fragment per feature, `src/lang/en_us/<feature>.json` (outside the resources source set, so it stays out of the jar), merged and sorted into `assets/deepcharter/lang/en_us.json` at build time. That file is generated: never edit it. A key lives in exactly one fragment; a duplicate fails the build. An empty fragment is `{}`.
 - Commands, always added with `FeatureCommands.register("<feature>", ...)`, which puts them under `/deepcharter <feature>`. `charter` and `handbook` have a `XCommands` stub; add one to any other feature that needs it.
 

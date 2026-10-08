@@ -54,9 +54,7 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.terminal())));
 			context.waitForScreen(UpgradeScreen.class);
 			UpgradeScreen screen = context.computeOnClient(client -> (UpgradeScreen) client.gui.screen());
-			context.waitFor(client -> screen.upgrade().isPresent(), WAIT_TICKS);
-
-			check(screen.upgrade().get().pod().orElseThrow().cap() == 2, "the screen shows the Mole's cap of 2");
+			check(screen.upgrade().orElseThrow().pod().orElseThrow().cap() == 2, "the screen shows the Mole's cap of 2");
 			context.waitFor(client -> screen.typewriter().done(), WAIT_TICKS);
 			check(labels(context, screen).contains("DRILL  T0") && labels(context, screen).contains("FUEL TANK  T0"),
 					"every track is listed with its installed tier, got " + labels(context, screen));
