@@ -273,6 +273,116 @@ public class CharterCoreTest {
 	}
 
 	@GameTest
+	public void aPlayerRevivesADormantCharterAndBecomesItsDirector(GameTestHelper helper) {
+		CharterData data = new CharterData();
+		UUID director = UUID.randomUUID();
+		UUID reviver = UUID.randomUUID();
+		UUID crew = UUID.randomUUID();
+		CharterId id = crewed(helper, data, director);
+		expectDone(helper, data.deposit(id, 40), "depositing");
+		expectDone(helper, data.recordDeepestPoint(id, 120), "recording depth");
+		String name = data.find(id).orElseThrow().name();
+
+		expectRefused(helper, CharterRefusal.NOT_DORMANT, data.revive(reviver, id), "reviving a charter that has a Director");
+		expectDone(helper, data.leave(director), "the last person leaving");
+		expectRefused(helper, CharterRefusal.NO_SUCH_CHARTER, data.revive(reviver, CharterId.random()), "reviving nothing");
+		crewed(helper, data, reviver);
+		expectRefused(helper, CharterRefusal.ALREADY_ON_A_CHARTER, data.revive(reviver, id), "reviving as the Director of another charter");
+
+		UUID second = UUID.randomUUID();
+		expectDone(helper, data.revive(second, id), "reviving");
+		Charter revived = data.find(id).orElseThrow();
+		if (!revived.director().equals(Optional.of(second)) || !revived.crew().isEmpty() || !revived.applications().isEmpty()
+				|| !revived.name().equals(name) || revived.account() != 40 || revived.deepestPoint() != 120) {
+			throw helper.assertionException("the reviver should be Director of the same charter with its account and depth: %s", revived);
+		}
+		expectDone(helper, data.apply(crew, id), "applying to the revived charter");
+		expectDone(helper, data.approve(second, crew), "the new Director approving");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aRevivingPlayerWithAnApplicationOpenIsRefused(GameTestHelper helper) {
+		CharterData data = new CharterData();
+		UUID director = UUID.randomUUID();
+		UUID applicant = UUID.randomUUID();
+		CharterId dormant = crewed(helper, data, director);
+		CharterId open = crewed(helper, data, UUID.randomUUID());
+		expectDone(helper, data.leave(director), "the last person leaving");
+		expectDone(helper, data.apply(applicant, open), "applying");
+
+		expectRefused(helper, CharterRefusal.ALREADY_ON_A_CHARTER, data.revive(applicant, dormant), "reviving with an application open");
+		if (!data.find(dormant).orElseThrow().dormant()) {
+			throw helper.assertionException("a refused revival changes nothing");
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void revivingTellsListenersAndTheNewDirector(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		MockPlayer first = MockPlayers.join(helper, "ReviveFirst");
+		MockPlayer second = MockPlayers.join(helper, "ReviveSecond");
+		String name = uniqueName();
+		List<String> seen = new ArrayList<>();
+		CharterId[] mine = new CharterId[1];
+		CharterEvents.REVIVED.register((s, charter, director) -> {
+			if (charter.id().equals(mine[0])) {
+				seen.add("revived " + director.equals(second.player().getUUID()) + " " + charter.director().equals(Optional.of(director)));
+			}
+		});
+		try {
+			expectDone(helper, Charters.found(server, first.player().getUUID(), name), "found");
+			mine[0] = Charters.findByName(server, name).orElseThrow().id();
+			expectRefused(helper, CharterRefusal.NOT_DORMANT, Charters.revive(server, second.player().getUUID(), mine[0]), "reviving a live charter");
+			expectDone(helper, Charters.leave(server, first.player().getUUID()), "leave");
+			expectDone(helper, Charters.revive(server, second.player().getUUID(), mine[0]), "revive");
+			if (!seen.equals(List.of("revived true true"))) {
+				throw helper.assertionException("exactly one revived event, after the change: %s", seen);
+			}
+			if (!Charters.charterOf(server, second.player().getUUID()).orElseThrow().id().equals(mine[0])) {
+				throw helper.assertionException("the reviver should be on the charter");
+			}
+			helper.succeed();
+		} finally {
+			first.leave();
+			second.leave();
+		}
+	}
+
+	@GameTest
+	public void theReviveCommandAnswersInChat(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		MockPlayer director = MockPlayers.join(helper, "CmdReviveOld");
+		MockPlayer reviver = MockPlayers.join(helper, "CmdReviveNew");
+		String name = uniqueName();
+		try {
+			run(server, director, "found \"" + name + "\"");
+			List<Component> live = run(server, reviver, LevelBasedPermissionSet.GAMEMASTER, "revive \"" + name + "\"");
+			if (live.stream().noneMatch(message -> message.contains(CharterRefusal.NOT_DORMANT.message()))) {
+				throw helper.assertionException("reviving a live charter should say %s, got %s", CharterRefusal.NOT_DORMANT, live);
+			}
+			List<Component> missing = run(server, reviver, LevelBasedPermissionSet.GAMEMASTER, "revive \"" + name + " nowhere\"");
+			if (missing.stream().noneMatch(message -> message.contains(CharterRefusal.NO_SUCH_CHARTER.message()))) {
+				throw helper.assertionException("reviving nothing should say %s, got %s", CharterRefusal.NO_SUCH_CHARTER, missing);
+			}
+			run(server, director, "leave");
+			List<Component> done = run(server, reviver, LevelBasedPermissionSet.GAMEMASTER, "revive \"" + name.toUpperCase() + "\"");
+			if (done.stream().noneMatch(message -> message.contains(Component.translatable("deepcharter.charter.revive.success", name)))) {
+				throw helper.assertionException("the success reply should name the charter, got %s", done);
+			}
+			Charter revived = Charters.charterOf(server, reviver.player().getUUID()).orElseThrow();
+			if (!revived.name().equals(name) || !revived.isDirector(reviver.player().getUUID())) {
+				throw helper.assertionException("the command should make the player Director of %s: %s", name, revived);
+			}
+			helper.succeed();
+		} finally {
+			director.leave();
+			reviver.leave();
+		}
+	}
+
+	@GameTest
 	public void thePeopleRulesHold(GameTestHelper helper) {
 		CharterData data = new CharterData();
 		UUID director = UUID.randomUUID();

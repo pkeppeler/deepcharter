@@ -40,6 +40,7 @@ public final class CharterCommands {
 				.then(Commands.literal("apply").then(nameArgument().executes(CharterCommands::apply)))
 				.then(Commands.literal("approve").then(playerArgument().executes(CharterCommands::approve)))
 				.then(Commands.literal("deny").then(playerArgument().executes(CharterCommands::deny)))
+				.then(Commands.literal("revive").then(nameArgument().executes(CharterCommands::revive)))
 				.then(Commands.literal("leave").executes(CharterCommands::leave))
 				.then(Commands.literal("info").executes(CharterCommands::info))
 				.then(Commands.literal("list").executes(CharterCommands::list))
@@ -78,6 +79,14 @@ public final class CharterCommands {
 			return refuse(context, CharterRefusal.NO_SUCH_CHARTER);
 		}
 		return report(context, Charters.apply(server(context), player(context).getUUID(), charter.get().id()), "apply", charter.get().name());
+	}
+
+	private static int revive(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+		Optional<Charter> charter = Charters.findByName(server(context), StringArgumentType.getString(context, NAME));
+		if (charter.isEmpty()) {
+			return refuse(context, CharterRefusal.NO_SUCH_CHARTER);
+		}
+		return report(context, Charters.revive(server(context), player(context).getUUID(), charter.get().id()), "revive", charter.get().name());
 	}
 
 	private static int approve(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {

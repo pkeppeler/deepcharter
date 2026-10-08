@@ -2,7 +2,6 @@ package io.github.pkeppeler.deepcharter.fuel;
 
 import java.util.Optional;
 
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
