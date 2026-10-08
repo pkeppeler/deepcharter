@@ -13,8 +13,11 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import net.minecraft.world.level.block.Blocks;
+
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
+import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodDrill;
@@ -32,10 +35,6 @@ import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 public final class EarlyRunModel {
 	/** (A) The share of the expected ore that a player really gets: bore steps that miss a vein, a company rock to go round, a dead end. */
 	public static final double YIELD = 0.7;
-	/** (A) Vanilla stone, which the zone fill replaces. */
-	private static final float STONE_HARDNESS = 1.5f;
-	/** (A) The ore blocks' strength (OreRegistry); a slab with ore in it takes as long as its hardest block. */
-	private static final float ORE_HARDNESS = 3.0f;
 
 	private EarlyRunModel() {
 	}
@@ -97,14 +96,17 @@ public final class EarlyRunModel {
 		int width = (int) Math.ceil(Chassis.MOLE.width());
 		int cells = width * width;
 		double oreChance = zone.oreChance();
+		// A slab with ore in it takes as long as its hardest block; the zone fill replaces vanilla stone.
+		float stoneHardness = Blocks.STONE.defaultDestroyTime();
+		float oreHardness = zone.chances().keySet().stream().map(type -> OreRegistry.block(type).defaultDestroyTime()).max(Float::compare).orElseThrow();
 		double slabHasOre = 1 - Math.pow(1 - oreChance, cells);
 		double climbSecondsPerBlock = 1 / (stats.maxClimbSpeed() * 20);
 		int slabs = 0;
 		double litres = 0;
 		for (int next = 1;; next++) {
 			int depthFeet = (int) ((shaftBlocks + next / 2.0) * LayerTuning.DEFAULT.feetPerBlock());
-			double stoneTicks = PodDrill.drillTicks(stats, STONE_HARDNESS, depthFeet);
-			double oreTicks = PodDrill.drillTicks(stats, ORE_HARDNESS, depthFeet);
+			double stoneTicks = PodDrill.drillTicks(stats, stoneHardness, depthFeet);
+			double oreTicks = PodDrill.drillTicks(stats, oreHardness, depthFeet);
 			double drillSeconds = (stoneTicks * (1 - slabHasOre) + oreTicks * slabHasOre) / 20;
 			double climbSeconds = (shaftBlocks + next) * climbSecondsPerBlock;
 			double used = drillSeconds * next * stats.drillingLitresPerSecond() + climbSeconds * stats.movingLitresPerSecond()
