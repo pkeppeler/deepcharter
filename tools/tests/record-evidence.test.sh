@@ -155,6 +155,7 @@ check "an unknown flag starts no game" gradle_not_run
 record nope
 check "an unknown scenario exits 1" exit_is 1
 check "an unknown scenario is named" err_has "'nope'"
+check "an unknown scenario lists the known ids" err_has "known: demo other-one"
 check "an unknown scenario starts no game" gradle_not_run
 
 record plain

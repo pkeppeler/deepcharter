@@ -76,7 +76,7 @@ scenario_classes() {
 if (( ! no_run || print_class )); then
   classes=$(scenario_classes | awk -v id="$scenario" '$1 == id { print $2 }' | sort)
   if [[ -z $classes ]]; then
-    echo "no evidence scenario is named '$scenario' (no EvidenceScenario under src/gametest/java returns it from name())" >&2
+    echo "no evidence scenario is named '$scenario'; known: $(scenario_classes | awk '{ print $1 }' | sort | paste -sd' ' -)" >&2
     exit 1
   fi
   if [[ $classes == *$'\n'* ]]; then
