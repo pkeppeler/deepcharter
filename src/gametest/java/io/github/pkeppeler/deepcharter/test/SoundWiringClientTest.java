@@ -64,6 +64,9 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 	private static final int X = 500;
 	private static final int Z = 500;
 	private static final int FLOOR_Y = 200;
+	private static final int BURSTS = 12;
+	private static final int BURST_TICKS = 5;
+	private static final double BURST_BLOCKS = 0.5;
 
 	/** Every sound the client starts, in order. */
 	private static final class Heard implements SoundEventListener {
@@ -140,6 +143,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 			await(context, heard, client -> heard.count("pod.rotor") > 0 && heard.count("pod.engine_drive") > 0);
 			two.server().runOnServer(server -> two.mock().releaseInput());
 			await(context, heard, client -> heard.count("pod.engine_idle") > idleLoops);
+			movingHold(context, heard, two, podId);
 
 			two.server().runOnServer(server -> two.mock().setInput(SPRINT));
 			await(context, heard, client -> heard.count("pod.engine_drill_down") > 0);
@@ -160,6 +164,22 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 			await(context, heard, client -> heard.count("pod.engine_drill_side") > 0);
 			two.server().runOnServer(server -> two.mock().releaseInput());
 		}
+	}
+
+	/**
+	 * A pod that moves in bursts with rests between them is one driving engine, not an engine that swaps with the idle loop in
+	 * every rest. A burst is far over {@code movingSpeed} a tick and a rest is a few ticks.
+	 */
+	private static void movingHold(ClientGameTestContext context, Heard heard, TwoPlayerServer two, int podId) {
+		long driveBefore = heard.count("pod.engine_drive");
+		long idleBefore = heard.count("pod.engine_idle");
+		for (int burst = 0; burst < BURSTS; burst++) {
+			double x = X + (burst % 2) * BURST_BLOCKS;
+			two.server().runOnServer(server -> server.overworld().getEntity(podId).teleportTo(x, FLOOR_Y, Z - 1));
+			context.waitTicks(BURST_TICKS);
+		}
+		check(heard.count("pod.engine_drive") - driveBefore == 1, "a pod moving in bursts keeps one drive loop, heard " + heard.played);
+		check(heard.count("pod.engine_idle") == idleBefore, "a pod moving in bursts does not fall back to idle between them, heard " + heard.played);
 	}
 
 	private static void terminalsAndUi(ClientGameTestContext context, Heard heard) {
