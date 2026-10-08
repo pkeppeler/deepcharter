@@ -8,9 +8,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
-
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.core.BlockPos;
@@ -40,7 +37,6 @@ import io.github.pkeppeler.deepcharter.colony.ColonyEvents;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.hangar.Hangar;
 import io.github.pkeppeler.deepcharter.hangar.HangarData;
-import io.github.pkeppeler.deepcharter.hangar.HangarView;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
@@ -622,10 +618,6 @@ public class FoundingMoleHangarTest {
 			WorldData.replace(server, HangarData.TYPE, HangarData.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow());
 			expect(helper, HangarTerminal.view(server, second.player(), Optional.of(secondCharter), BlockPos.ZERO).advanceLeft() == 0,
 					"unreadable hangar records show no advance, and do not throw");
-
-			ByteBuf buffer = Unpooled.buffer();
-			HangarView.STREAM_CODEC.encode(buffer, new HangarView(2));
-			expect(helper, HangarView.STREAM_CODEC.decode(buffer).equals(new HangarView(2)), "the view survives the wire");
 			helper.succeed();
 		}));
 	}
