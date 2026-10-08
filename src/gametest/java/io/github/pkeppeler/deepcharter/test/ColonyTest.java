@@ -88,7 +88,8 @@ public class ColonyTest {
 	private static final AtomicReference<GlobalPos> SPAWN_AT_START = new AtomicReference<>();
 
 	static {
-		ColonyEvents.BUILT.register((server, colony) -> SPAWN_AT_START.set(server.getRespawnData().globalPos()));
+		// Only the first build: tests that fire BUILT again later see the spawn the game test server moved.
+		ColonyEvents.BUILT.register((server, colony) -> SPAWN_AT_START.compareAndSet(null, server.getRespawnData().globalPos()));
 	}
 
 	@GameTest
