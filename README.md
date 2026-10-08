@@ -68,6 +68,17 @@ Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest
 - `test/evidence/` holds the PR evidence scenarios (see `tools/record-evidence.sh`). `tools/record-evidence.sh <scenario>` runs only that scenario's class (`-PclientTests`), found by scanning for the `EvidenceScenario` whose `name()` returns the id, so a recording takes the scenario's own time plus client start-up; an unknown id fails before a client starts. `--full-suite` runs the whole client suite instead, `--print-class` prints the class. When the Mac cannot render, add the `record` label to a PR whose body has a `Record: <scenario>` line (or run the `Record evidence` workflow with `pr` and `scenario`): CI runs the scenario headless, publishes its stills, GIF and MP4 to `pr-media/<pr>/`, and comments the markdown. Costs CI minutes, so only on request.
 - Wait on entity ticks, not server ticks: chunks far from the players do not tick at first in a fresh world.
 
+## Merging
+
+Merge only through the gate, `tools/merge-pr.sh <n>` (it refuses and gives the reason). To merge several review-passed PRs, use the queue instead of a hand-rolled waiter: `tools/merge-queue.sh <n>...`.
+
+- It merges the PRs one at a time, in the order given. For each it waits until no workflow run for the head is unfinished, then runs the gate.
+- On a stale-base refusal it runs `gh pr close <n> && gh pr reopen <n>`, waits for CI again and retries (3 times). On `mergeable: UNKNOWN` it waits 30 s and retries (4 times).
+- A PR that is already merged is skipped. Any other refusal stops the queue and prints the reason.
+- After each merge, cleanup never loses work. It removes the PR's worktree with a plain `git worktree remove` (no `--force`), and only when that worktree is under `<primary checkout>/.claude/worktrees/`, has no uncommitted changes, and is not the one running the queue. Otherwise it prints `left: <path> (<why>)` and moves on. It finds the worktree by its branch (the PR's head branch), else by a `HEAD` equal to the PR's head sha (a `worktree-agent-<id>` branch, which is then the branch it deletes; a detached HEAD deletes none). It deletes the local branch only when its tip is the PR's head sha or is on `origin/main`. It then runs `git pull --ff-only` in the primary checkout, only when that is on `main` and clean; it never rebases or autostashes.
+- It prints each step as it happens and ends with a summary (merged, skipped, stopped and why, not attempted). Exit status is 0 unless it stopped.
+- Only one queue runs at a time (a symlink lock, `~/.cache/deepcharter/merge-queue.lock`, whose target is the owner's PID). A second one exits with status 3 and does not wait. A lock whose owner is dead is taken over; an unreadable one counts as held.
+
 ## License
 
 [MIT](LICENSE). Data files copied from Minecraft (for example the vanilla material rule, ADR 0011) belong to Mojang and are not relicensed by this license.
