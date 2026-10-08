@@ -83,6 +83,9 @@ public class SkinSwapScenario extends EvidenceScenario {
 				screenshot(context, "skin-swapped-drill-spinning");
 			} finally {
 				context.runOnClient(client -> removePack(client));
+				// Let the reload finish before the world closes; a reload still running at shutdown crashes the client.
+				context.waitFor(client -> !client.getResourcePackRepository().getSelectedIds().contains(PACK_ID));
+				context.waitTicks(80);
 				deleteTree(pack);
 			}
 		}
@@ -115,39 +118,35 @@ public class SkinSwapScenario extends EvidenceScenario {
 					""");
 			Path models = pack.resolve("assets/deepcharter/models/pod");
 			// A broader, lower hull in gold with a cabin on top. Block space, true size: 1.9 blocks is 30.4 pixels, centred on 8.
-			write(models.resolve("mole.json"), """
-					{
-					  "textures": {"body": "minecraft:block/gold_block", "cabin": "minecraft:block/light_blue_concrete", "particle": "minecraft:block/gold_block"},
-					  "elements": [
-					    {"name": "body", "from": [-7.2, 0, -7.2], "to": [23.2, 8, 23.2],
-					     "faces": {"north": {"texture": "#body"}, "east": {"texture": "#body"}, "south": {"texture": "#body"},
-					               "west": {"texture": "#body"}, "up": {"texture": "#body"}, "down": {"texture": "#body"}}},
-					    {"name": "cabin", "from": [2, 8, 2], "to": [14, 15, 14],
-					     "faces": {"north": {"texture": "#cabin"}, "east": {"texture": "#cabin"}, "south": {"texture": "#cabin"},
-					               "west": {"texture": "#cabin"}, "up": {"texture": "#cabin"}, "down": {"texture": "#cabin"}}}
-					  ]
-					}
-					""");
+			write(models.resolve("mole.json"), model("gold_block light_blue_concrete",
+					cube("body", "-7.2, 0, -7.2", "23.2, 8, 23.2", "gold_block"),
+					cube("cabin", "2, 8, 2", "14, 15, 14", "light_blue_concrete")));
 			// A drill with one red fin, so the turn shows. Authored pointing down from the middle of the hull.
-			write(models.resolve("mole_drill.json"), """
-					{
-					  "textures": {"shaft": "minecraft:block/iron_block", "fin": "minecraft:block/redstone_block", "particle": "minecraft:block/iron_block"},
-					  "elements": [
-					    {"name": "shaft", "from": [6.5, -10, 6.5], "to": [9.5, 7, 9.5],
-					     "faces": {"north": {"texture": "#shaft"}, "east": {"texture": "#shaft"}, "south": {"texture": "#shaft"},
-					               "west": {"texture": "#shaft"}, "up": {"texture": "#shaft"}, "down": {"texture": "#shaft"}}},
-					    {"name": "tip", "from": [7, -14, 7], "to": [9, -10, 9],
-					     "faces": {"north": {"texture": "#shaft"}, "east": {"texture": "#shaft"}, "south": {"texture": "#shaft"},
-					               "west": {"texture": "#shaft"}, "up": {"texture": "#shaft"}, "down": {"texture": "#shaft"}}},
-					    {"name": "fin", "from": [9.5, -14, 7.5], "to": [12.5, -6, 8.5],
-					     "faces": {"north": {"texture": "#fin"}, "east": {"texture": "#fin"}, "south": {"texture": "#fin"},
-					               "west": {"texture": "#fin"}, "up": {"texture": "#fin"}, "down": {"texture": "#fin"}}}
-					  ]
-					}
-					""");
+			write(models.resolve("mole_drill.json"), model("iron_block redstone_block",
+					cube("shaft", "5, -16, 5", "11, 7, 11", "iron_block"),
+					cube("fin", "11, -16, 7", "16, -4, 9", "redstone_block")));
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
+	}
+
+	/** A model of cubes. Faces carry an explicit uv: the default is the face's own coordinates, which leave the texture past 16 pixels. */
+	private static String model(String blocks, String... cubes) {
+		StringBuilder textures = new StringBuilder();
+		for (String block : blocks.split(" ")) {
+			textures.append("\"").append(block).append("\": \"minecraft:block/").append(block).append("\", ");
+		}
+		String particle = "\"particle\": \"minecraft:block/" + blocks.split(" ")[0] + "\"";
+		return "{\"textures\": {" + textures + particle + "}, \"elements\": [" + String.join(", ", cubes) + "]}";
+	}
+
+	private static String cube(String name, String from, String to, String texture) {
+		StringBuilder faces = new StringBuilder();
+		for (String face : new String[] {"north", "east", "south", "west", "up", "down"}) {
+			faces.append(faces.isEmpty() ? "" : ", ")
+					.append("\"").append(face).append("\": {\"uv\": [0, 0, 16, 16], \"texture\": \"").append("#").append(texture).append("\"}");
+		}
+		return "{\"name\": \"" + name + "\", \"from\": [" + from + "], \"to\": [" + to + "], \"faces\": {" + faces + "}}";
 	}
 
 	private static void write(Path file, String text) throws IOException {
