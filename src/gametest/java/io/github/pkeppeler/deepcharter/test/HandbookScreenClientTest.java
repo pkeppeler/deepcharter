@@ -14,6 +14,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.locale.Language;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
@@ -63,6 +64,9 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 		aLaterDirectiveDoneOutOfOrderSpoilsNothing();
 		everythingDoneLeavesNothingClassified();
 		pagesAreBoundInOrderWithVisibilityOnTheChapters();
+		textPagesComeBeforeTheirChapterAndOnlyForFullChapters();
+		contentsPointAtTheFirstPageOfAChapter(context);
+		viewingATextPageReportsItsChapterOnce(context);
 		viewingOnlyFullChaptersMarksThemReadOnce(context);
 		notesTabShowsAnEmptyState(context);
 		theServerRefusesWhatTheCharterMayNotRead();
@@ -141,6 +145,8 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 	private static void pagesAreBoundInOrderWithVisibilityOnTheChapters() {
 		List<HandbookPage> pages = HandbookPages.of(chapters(), done(1));
 		long contract = pages.stream().filter(HandbookPage.Contract.class::isInstance).count();
+		check(contract >= 1 && contract == keysFrom("deepcharter.handbook.appendix.page."),
+				"Appendix A has a page for each appendix.page.N key, and at least one: " + contract + " pages, " + keysFrom("deepcharter.handbook.appendix.page.") + " keys");
 		check(pages.size() == FRONT_PAGES + CHAPTERS + 1 + contract, "the pages are the front pages, the chapters, the end page and Appendix A, got " + pages.size());
 		check(pages.get(0) instanceof HandbookPage.Cover, "the cover comes first");
 		check(pages.get(1) instanceof HandbookPage.Slip, "the issue slip comes second");
@@ -154,6 +160,121 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 			check(page.number() == chapter && page.id().equals(chapterId(chapter)), "chapter " + chapter + " is in handbook order");
 			check(page.visibility() == expected[chapter - 1], "chapter " + chapter + " should be " + expected[chapter - 1] + ", was " + page.visibility());
 		}
+	}
+
+	/** How many keys {@code prefix + 1}, {@code prefix + 2}, ... in a row the language file has. */
+	private static int keysFrom(String prefix) {
+		int count = 0;
+		while (Language.getInstance().has(prefix + (count + 1))) {
+			count++;
+		}
+		return count;
+	}
+
+	private static final List<String> REAL_CHAPTERS = List.of("welcome", "back_online", "meet_the_mole", "fuel_is_life", "every_sale_counts");
+
+	/** The five shipped chapter ids, so that their real text keys in the language file decide the pages. */
+	private static Map<Identifier, HandbookChapter> realChapters() {
+		Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();
+		for (int chapter = 1; chapter <= REAL_CHAPTERS.size(); chapter++) {
+			chapters.put(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, REAL_CHAPTERS.get(chapter - 1)), new HandbookChapter(chapter,
+					Component.literal("Chapter " + chapter), List.of(new HandbookChapter.Entry(directive(chapter, 1), Component.literal("one")))));
+		}
+		return chapters;
+	}
+
+	private static Identifier real(String chapter) {
+		return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, chapter);
+	}
+
+	/** A page of a chapter as a short word: {@code text:<id>:<part>} or {@code chapter:<id>:<visibility>}; any other page is its class name. */
+	private static String describe(HandbookPage page) {
+		return switch (page) {
+			case HandbookPage.ChapterText text -> "text:" + text.id().getPath() + ":" + text.part() + "/" + text.parts();
+			case HandbookPage.Chapter chapter -> "chapter:" + chapter.id().getPath() + ":" + chapter.visibility();
+			default -> page.getClass().getSimpleName();
+		};
+	}
+
+	/**
+	 * With chapter 1 done, chapters 1 and 2 are full and 3 is a preview. Each full chapter has a page for each text key it has,
+	 * in order, before its own page; the preview and the classified chapters have none.
+	 */
+	private static void textPagesComeBeforeTheirChapterAndOnlyForFullChapters() {
+		List<HandbookPage> pages = HandbookPages.of(realChapters(), done(1));
+		check(keysFrom("deepcharter.handbook.chapter.deepcharter.back_online.text.") == 2, "back_online has two text keys in the language file");
+		check(keysFrom("deepcharter.handbook.chapter.deepcharter.welcome.text.") == 1, "welcome has one text key in the language file");
+		List<String> chapterPages = pages.stream().filter(page -> page instanceof HandbookPage.ChapterText || page instanceof HandbookPage.Chapter)
+				.map(HandbookScreenClientTest::describe).toList();
+		List<String> expected = List.of("text:welcome:1/1", "chapter:welcome:FULL", "text:back_online:1/2", "text:back_online:2/2", "chapter:back_online:FULL",
+				"chapter:meet_the_mole:PREVIEW", "chapter:fuel_is_life:CLASSIFIED", "chapter:every_sale_counts:CLASSIFIED");
+		check(chapterPages.equals(expected), "the chapter pages should be " + expected + ", got " + chapterPages);
+		check(pages.stream().filter(HandbookPage.Contents.class::isInstance).count() == 2, "five chapters take two contents pages");
+		List<HandbookPage> none = HandbookPages.of(realChapters(), Set.of());
+		check(none.stream().filter(HandbookPage.ChapterText.class::isInstance).map(page -> ((HandbookPage.ChapterText) page).id())
+				.allMatch(real("welcome")::equals), "with nothing done only the first chapter has text pages");
+	}
+
+	/** Every contents entry opens the first page of its chapter: the first text page when it has one, else its page of directives. */
+	private static void contentsPointAtTheFirstPageOfAChapter(ClientGameTestContext context) {
+		context.runOnClient(client -> {
+			List<HandbookPage> pages = HandbookPages.of(realChapters(), done(1));
+			HandbookScreen screen = new HandbookScreen(pages, id -> false, id -> { }, List.of());
+			screen.init(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT);
+			List<Integer> opened = new ArrayList<>();
+			for (HandbookPage page : pages) {
+				if (page instanceof HandbookPage.Contents contents) {
+					screen.contentsEntries(contents).forEach(entry -> opened.add(entry.page()));
+				}
+			}
+			List<Integer> expected = new ArrayList<>();
+			for (int number = 1; number <= REAL_CHAPTERS.size(); number++) {
+				for (int index = 0; index < pages.size(); index++) {
+					int chapterNumber = switch (pages.get(index)) {
+						case HandbookPage.ChapterText text -> text.number();
+						case HandbookPage.Chapter chapter -> chapter.number();
+						default -> -1;
+					};
+					if (chapterNumber == number) {
+						expected.add(index);
+						break;
+					}
+				}
+			}
+			check(opened.equals(expected), "the contents should open the pages " + expected + ", opened " + opened);
+			check(pages.get(opened.get(1)) instanceof HandbookPage.ChapterText text && text.id().equals(real("back_online")) && text.part() == 1,
+					"back_online opens on its first text page");
+			check(pages.get(opened.get(2)) instanceof HandbookPage.Chapter, "a previewed chapter opens on its page of directives");
+		});
+	}
+
+	/** A text page reports its chapter like the chapter's own page does: once, and not when the chapter is already read. */
+	private static void viewingATextPageReportsItsChapterOnce(ClientGameTestContext context) {
+		context.runOnClient(client -> {
+			List<HandbookPage> pages = HandbookPages.of(realChapters(), done(1));
+			int firstText = -1;
+			int secondText = -1;
+			for (int index = 0; index < pages.size(); index++) {
+				if (pages.get(index) instanceof HandbookPage.ChapterText text && text.id().equals(real("back_online"))) {
+					if (text.part() == 1) {
+						firstText = index;
+					} else {
+						secondText = index;
+					}
+				}
+			}
+			check(firstText >= 0 && secondText == firstText + 1, "back_online has two text pages in a row");
+			List<Identifier> viewed = new ArrayList<>();
+			HandbookScreen screen = new HandbookScreen(pages, id -> false, viewed::add, List.of());
+			screen.goTo(firstText);
+			check(viewed.equals(List.of(real("back_online"))), "its first text page reports the chapter, got " + viewed);
+			screen.goTo(secondText);
+			screen.goTo(firstText + 2);
+			check(viewed.equals(List.of(real("back_online"))), "the chapter is reported once for its text pages and its own page, got " + viewed);
+			List<Identifier> again = new ArrayList<>();
+			new HandbookScreen(pages, id -> true, again::add, List.of()).goTo(firstText);
+			check(again.isEmpty(), "a text page of a chapter already read reports nothing");
+		});
 	}
 
 	/** The screen is built by hand and never shown: flipping to a chapter reports it once, and only a full chapter is reported. */

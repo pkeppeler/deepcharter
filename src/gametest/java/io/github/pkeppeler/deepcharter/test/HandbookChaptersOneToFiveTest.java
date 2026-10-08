@@ -6,12 +6,14 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -23,6 +25,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -30,19 +33,26 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.charter.Charter;
+import io.github.pkeppeler.deepcharter.charter.CharterData;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.Colony;
+import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.fuel.FuelPump;
 import io.github.pkeppeler.deepcharter.hangar.HangarData;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
+import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgress;
+import io.github.pkeppeler.deepcharter.handbook.HandbookProgressData;
+import io.github.pkeppeler.deepcharter.handbook.HandbookTriggers;
 import io.github.pkeppeler.deepcharter.handbook.HandbookTuning;
 import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
 import io.github.pkeppeler.deepcharter.market.OreProcessor;
@@ -52,11 +62,14 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.Serials;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
+import io.github.pkeppeler.deepcharter.terminal.TerminalEvents;
 import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -118,32 +131,56 @@ public class HandbookChaptersOneToFiveTest {
 		helper.succeed();
 	}
 
-	/** Every title, directive line and text page is a real line of the language file, none a placeholder. */
+	private static final Pattern PROSE_KEY = Pattern.compile(
+			"deepcharter\\.handbook\\.(chapter\\..*\\.(text\\.\\d+(\\.margin)?|margin)|appendix\\..*)");
+
+	/**
+	 * Every title, directive line, text page, margin note and appendix line is a real line of the language file, none a placeholder.
+	 * The text keys are found by counting up from 1, and every prose key the file holds is checked, so a page added later is covered.
+	 */
 	@GameTest
 	public void everyChapterTextIsInTheLanguageFileAndIsNotAPlaceholder(GameTestHelper helper) {
 		JsonObject lang = lang();
 		List<String> keys = new ArrayList<>();
 		for (Map.Entry<String, HandbookChapter> chapter : shipped(helper.getLevel().getServer()).entrySet()) {
-			String path = chapter.getKey().substring(DeepCharter.MOD_ID.length() + 1);
-			keys.add("deepcharter.handbook.chapter.deepcharter." + path + ".title");
-			keys.add("deepcharter.handbook.chapter.deepcharter." + path + ".text.1");
-			keys.add("deepcharter.handbook.chapter.deepcharter." + path + ".margin");
+			String base = "deepcharter.handbook.chapter.deepcharter." + chapter.getKey().substring(DeepCharter.MOD_ID.length() + 1);
+			keys.add(base + ".title");
+			keys.add(base + ".margin");
 			chapter.getValue().directives().forEach(entry -> keys.add("deepcharter.handbook.directive."
 					+ entry.id().getPath().substring("handbook/".length()).replace('/', '.')));
+			keys.addAll(pagesFrom(lang, base + ".text."));
 		}
+		keys.addAll(pagesFrom(lang, "deepcharter.handbook.appendix.page."));
 		keys.addAll(List.of("deepcharter.handbook.cover.company", "deepcharter.handbook.cover.subtitle", "deepcharter.handbook.slip.note",
 				"deepcharter.handbook.slip.margin", "deepcharter.handbook.letter.body.1", "deepcharter.handbook.letter.body.2",
-				"deepcharter.handbook.letter.margin", "deepcharter.handbook.appendix.page.1", "deepcharter.handbook.appendix.page.2",
-				"deepcharter.handbook.appendix.page.3"));
+				"deepcharter.handbook.letter.margin", "deepcharter.handbook.appendix.margin"));
+		lang.keySet().stream().filter(key -> PROSE_KEY.matcher(key).matches()).forEach(keys::add);
+		for (String page : List.of("deepcharter.handbook.chapter.deepcharter.back_online.text.2", "deepcharter.handbook.appendix.page.3")) {
+			if (!keys.contains(page)) {
+				throw helper.assertionException("the pages should include %s", page);
+			}
+		}
 		for (String key : keys) {
 			if (!lang.has(key)) {
 				throw helper.assertionException("the language file should have %s", key);
 			}
-			if (lang.get(key).getAsString().contains("PLACEHOLDER")) {
+			if (lang.get(key).getAsString().isBlank() || lang.get(key).getAsString().contains("PLACEHOLDER")) {
 				throw helper.assertionException("%s should be real text, not a placeholder", key);
 			}
 		}
 		helper.succeed();
+	}
+
+	/** {@code prefix + 1}, {@code prefix + 2}, ... while the language file has them, each with its margin note key when it has one. */
+	private static List<String> pagesFrom(JsonObject lang, String prefix) {
+		List<String> keys = new ArrayList<>();
+		for (int page = 1; lang.has(prefix + page); page++) {
+			keys.add(prefix + page);
+			if (lang.has(prefix + page + ".margin")) {
+				keys.add(prefix + page + ".margin");
+			}
+		}
+		return keys;
 	}
 
 	private static JsonObject lang() {
@@ -369,36 +406,272 @@ public class HandbookChaptersOneToFiveTest {
 		}
 	}
 
-	/** A charter founded after the terminals were repaired is credited with the three repairs: they work for everyone, so there is nothing left to repair. */
-	@GameTest(maxTicks = 200)
-	public void aCharterFoundedAfterTheRepairsIsCreditedWithThem(GameTestHelper helper) {
-		MinecraftServer server = helper.getLevel().getServer();
+	/**
+	 * Runs {@code body} with the three terminals repaired in the world's repair state, and puts the world's own back before it
+	 * returns. Everything runs in the one tick, so no test running beside this one ever sees the swapped state.
+	 */
+	private static void withTheTerminalsRepaired(MinecraftServer server, Runnable body) {
 		RepairState original = RepairState.get(server);
 		RepairState fresh = new RepairState();
 		for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL)) {
 			type.parts().forEach(part -> fresh.insert(type, part));
 		}
 		server.getDataStorage().set(RepairState.TYPE, fresh);
+		try {
+			body.run();
+		} finally {
+			server.getDataStorage().set(RepairState.TYPE, original);
+		}
+	}
+
+	private static final Set<String> THREE_REPAIRS = Set.of(directive("back_online", "repair_fuel_pump"),
+			directive("back_online", "repair_ore_processor"), directive("back_online", "repair_upgrade_terminal"));
+
+	private static Set<Identifier> completed(MinecraftServer server, ServerPlayer player) {
+		return HandbookProgress.completedFor(server, player.getUUID());
+	}
+
+	/** A charter founded after the terminals were repaired is credited with the three repairs: they work for everyone, so there is nothing left to repair. */
+	@GameTest
+	public void aCharterFoundedAfterTheRepairsIsCreditedWithThem(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		RepairState world = RepairState.get(server);
 		MockPlayer late = MockPlayers.join(helper, "Latecomer");
 		try {
-			if (Charters.found(server, late.player().getUUID(), uniqueName()).isPresent()) {
-				throw helper.assertionException("founding should succeed");
+			foundCharter(helper, server, late);
+			expectCompleted(helper, server, "founding before any credit", List.of(late.player()), Set.of());
+			withTheTerminalsRepaired(server, () -> HandbookTriggers.creditRepairs(server, late.player()));
+			expectCompleted(helper, server, "founding after the repairs", List.of(late.player()), THREE_REPAIRS);
+			if (RepairState.get(server) != world) {
+				throw helper.assertionException("the world's own repair state should be back in place after the credit");
 			}
-			Set<String> repaired = Set.of(directive("back_online", "repair_fuel_pump"), directive("back_online", "repair_ore_processor"),
-					directive("back_online", "repair_upgrade_terminal"));
-			helper.runAfterDelay(HandbookTuning.DEFAULT.triggerPollTicks() * 3L, () -> {
-				try {
-					expectCompleted(helper, server, "founding after the repairs", List.of(late.player()), repaired);
-					helper.succeed();
-				} finally {
-					late.leave();
-					server.getDataStorage().set(RepairState.TYPE, original);
+			helper.succeed();
+		} finally {
+			late.leave();
+		}
+	}
+
+	private static void foundCharter(GameTestHelper helper, MinecraftServer server, MockPlayer mock) {
+		mock.player().setGameMode(GameType.SURVIVAL);
+		if (Charters.found(server, mock.player().getUUID(), uniqueName()).isPresent()) {
+			throw helper.assertionException("founding should succeed");
+		}
+	}
+
+	/** The credit is idempotent: a second poll changes nothing, and it reaches only the charter of the player it is given. */
+	@GameTest
+	public void creditingTheRepairsTwiceCompletesThemOnceAndLeavesOtherChartersAlone(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		MockPlayer late = MockPlayers.join(helper, "Latecomer");
+		MockPlayer bystander = MockPlayers.join(helper, "Bystander");
+		try {
+			foundCharter(helper, server, late);
+			foundCharter(helper, server, bystander);
+			Set<Identifier> bystanderBefore = Set.copyOf(completed(server, bystander.player()));
+			withTheTerminalsRepaired(server, () -> {
+				HandbookTriggers.creditRepairs(server, late.player());
+				Set<Identifier> once = Set.copyOf(completed(server, late.player()));
+				HandbookTriggers.creditRepairs(server, late.player());
+				if (!once.equals(completed(server, late.player()))) {
+					throw helper.assertionException("a second credit should change nothing, got %s after %s", completed(server, late.player()), once);
 				}
 			});
-		} catch (RuntimeException e) {
+			expectCompleted(helper, server, "two credits", List.of(late.player()), THREE_REPAIRS);
+			if (!bystanderBefore.equals(completed(server, bystander.player()))) {
+				throw helper.assertionException("another charter should be untouched, got %s from %s", completed(server, bystander.player()), bystanderBefore);
+			}
+			helper.succeed();
+		} finally {
 			late.leave();
-			server.getDataStorage().set(RepairState.TYPE, original);
-			throw e;
+			bystander.leave();
 		}
+	}
+
+	/** A pilot and a terminal user on no charter complete nothing for anyone, and nothing throws. */
+	@GameTest
+	public void aPilotAndATerminalUserOnNoCharterCompleteNothing(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		MockPlayer member = MockPlayers.join(helper, "Member");
+		MockPlayer drifter = MockPlayers.join(helper, "Drifter");
+		PodEntity pod = null;
+		try {
+			foundCharter(helper, server, member);
+			drifter.player().setGameMode(GameType.SURVIVAL);
+			Set<Identifier> memberBefore = Set.copyOf(completed(server, member.player()));
+			Charter charter = Charters.charterOf(server, member.player().getUUID()).orElseThrow();
+			for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL, HangarTerminal.TYPE)) {
+				TerminalEvents.REPAIRED.invoker().onRepaired(server, type, charter, drifter.player());
+				for (Identifier action : List.of(FuelPump.BUY, FuelPump.FILL, OreProcessor.SELL_CARGO, OreProcessor.SELL_INVENTORY, UpgradeTerminal.BUY,
+						HangarTerminal.BUY_MOLE)) {
+					TerminalEvents.ACTED.invoker().onActed(server, type, drifter.player(), action);
+				}
+			}
+			pod = helper.spawn(PodRegistry.POD, 2, 1, 2);
+			if (!drifter.player().startRiding(pod, true, false)) {
+				throw helper.assertionException("the player should board the pod");
+			}
+			pod.tickCount = 0;
+			PodEvents.AFTER_TICK.invoker().afterTick(pod);
+			if (!completed(server, drifter.player()).isEmpty() || !memberBefore.equals(completed(server, member.player()))) {
+				throw helper.assertionException("nothing should complete: the drifter has %s, the member %s from %s", completed(server, drifter.player()),
+						completed(server, member.player()), memberBefore);
+			}
+			helper.succeed();
+		} finally {
+			if (pod != null) {
+				pod.discard();
+			}
+			member.leave();
+			drifter.leave();
+		}
+	}
+
+	/** The pod poll runs on every {@code triggerPollTicks}th tick of the pod: a tick between two of them completes nothing. */
+	@GameTest
+	public void theBoardingPollSkipsATickThatIsNotAMultipleOfThePollInterval(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		MockPlayer pilot = MockPlayers.join(helper, "Pilot");
+		PodEntity pod = null;
+		try {
+			foundCharter(helper, server, pilot);
+			pod = helper.spawn(PodRegistry.POD, 2, 1, 2);
+			PodComponents.register(pod, Charters.charterOf(server, pilot.player().getUUID()).orElseThrow().id());
+			if (!pilot.player().startRiding(pod, true, false)) {
+				throw helper.assertionException("the player should board the pod");
+			}
+			int interval = HandbookTuning.DEFAULT.triggerPollTicks();
+			if (interval < 2) {
+				throw helper.assertionException("the test needs a poll interval above 1, got %s", interval);
+			}
+			pod.tickCount = 1;
+			PodEvents.AFTER_TICK.invoker().afterTick(pod);
+			pod.tickCount = interval + 1;
+			PodEvents.AFTER_TICK.invoker().afterTick(pod);
+			expectCompleted(helper, server, "ticks between polls", List.of(pilot.player()), Set.of());
+			pod.tickCount = interval;
+			PodEvents.AFTER_TICK.invoker().afterTick(pod);
+			expectCompleted(helper, server, "a poll tick", List.of(pilot.player()), Set.of(directive("meet_the_mole", "board_mole")));
+			helper.succeed();
+		} finally {
+			if (pod != null) {
+				pod.discard();
+			}
+			pilot.leave();
+		}
+	}
+
+	private static final CompoundTag FUTURE = futureVersion();
+
+	private static CompoundTag futureVersion() {
+		CompoundTag future = new CompoundTag();
+		future.putInt("version", 99);
+		future.putString("shape", "from a later build");
+		return future;
+	}
+
+	/** Every callback and the credit run once with the saved charters, then once with the saved progress, of a version this build cannot read. */
+	@GameTest
+	public void theCallbacksDoNotThrowOnUnreadableCharterOrProgressData(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		MockPlayer pilot = MockPlayers.join(helper, "Pilot");
+		PodEntity pod = null;
+		try {
+			foundCharter(helper, server, pilot);
+			pod = helper.spawn(PodRegistry.POD, 2, 1, 2);
+			Charter charter = Charters.charterOf(server, pilot.player().getUUID()).orElseThrow();
+			PodComponents.register(pod, charter.id());
+			if (!pilot.player().startRiding(pod, true, false)) {
+				throw helper.assertionException("the player should board the pod");
+			}
+			CharterData charters = CharterData.get(server);
+			HandbookProgressData progress = HandbookProgressData.get(server);
+			// Each swap lasts inside this one tick, so no other test sees it.
+			PodEntity riddenPod = pod;
+			Runnable callbacks = () -> {
+				for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL, HangarTerminal.TYPE)) {
+					TerminalEvents.REPAIRED.invoker().onRepaired(server, type, charter, pilot.player());
+					for (Identifier action : List.of(FuelPump.BUY, FuelPump.FILL, OreProcessor.SELL_CARGO, OreProcessor.SELL_INVENTORY, UpgradeTerminal.BUY,
+							HangarTerminal.BUY_MOLE)) {
+						TerminalEvents.ACTED.invoker().onActed(server, type, pilot.player(), action);
+					}
+				}
+				riddenPod.tickCount = 0;
+				PodEvents.AFTER_TICK.invoker().afterTick(riddenPod);
+				withTheTerminalsRepaired(server, () -> HandbookTriggers.creditRepairs(server, pilot.player()));
+			};
+			server.getDataStorage().set(CharterData.TYPE, CharterData.CODEC.parse(NbtOps.INSTANCE, FUTURE).getOrThrow());
+			try {
+				callbacks.run();
+			} finally {
+				server.getDataStorage().set(CharterData.TYPE, charters);
+			}
+			server.getDataStorage().set(HandbookProgressData.TYPE, HandbookProgressData.CODEC.parse(NbtOps.INSTANCE, FUTURE).getOrThrow());
+			try {
+				callbacks.run();
+			} finally {
+				server.getDataStorage().set(HandbookProgressData.TYPE, progress);
+			}
+			if (CharterData.get(server) != charters || HandbookProgressData.get(server) != progress) {
+				throw helper.assertionException("the saved data should be back in place");
+			}
+			expectCompleted(helper, server, "unreadable data", List.of(pilot.player()), Set.of());
+			helper.succeed();
+		} finally {
+			if (pod != null) {
+				pod.discard();
+			}
+			pilot.leave();
+		}
+	}
+
+	private static HangarData foundedHangar() {
+		CompoundTag saved = ((CompoundTag) HangarData.CODEC.encodeStart(NbtOps.INSTANCE, new HangarData()).getOrThrow()).copy();
+		saved.putBoolean("founded", true);
+		return HangarData.CODEC.parse(NbtOps.INSTANCE, saved).getOrThrow();
+	}
+
+	/**
+	 * A charter that came after the founding charter repairs no Mole: it buys a refurbished one at the hangar, and the purchase
+	 * completes "Repair the Mole".
+	 */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+	public void aLateCharterCompletesRepairTheMoleByBuyingOneAtTheHangar(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		BlockPos anchor = Colony.anchor(server, ColonyAnchor.HANGAR).orElseThrow(() -> helper.assertionException("the colony was not built when the server started"));
+		FarChunks.awaitEntityTicking(helper, server.overworld(), anchor, () -> {
+			HangarData hangar = HangarData.get(server);
+			RepairState repairs = RepairState.get(server);
+			Serials serials = Serials.get(server);
+			MockPlayer buyer = MockPlayers.join(helper, "Buyer");
+			AABB bay = new AABB(anchor).inflate(HangarTuning.DEFAULT.bayRadius() + 4);
+			Set<UUID> before = new HashSet<>();
+			server.overworld().getEntitiesOfClass(PodEntity.class, bay).forEach(pod -> before.add(pod.getUUID()));
+			// Everything runs inside this one tick, so no other test sees the swapped records.
+			server.getDataStorage().set(HangarData.TYPE, foundedHangar());
+			server.getDataStorage().set(RepairState.TYPE, new RepairState());
+			server.getDataStorage().set(Serials.TYPE, new Serials());
+			try {
+				foundCharter(helper, server, buyer);
+				if (Charters.deposit(server, Charters.charterOf(server, buyer.player().getUUID()).orElseThrow().id(), 100_000).isPresent()) {
+					throw helper.assertionException("depositing should succeed");
+				}
+				for (Item part : HangarTerminal.TYPE.parts()) {
+					RepairState.get(server).insert(HangarTerminal.TYPE, part);
+				}
+				BlockPos console = helper.absolutePos(TERMINAL);
+				helper.getLevel().setBlock(console, HangarTerminal.TYPE.block().defaultBlockState(), 3);
+				stand(helper, buyer, console);
+				expectCompleted(helper, server, "joining late", List.of(buyer.player()), Set.of());
+				expectDone(helper, Terminals.act(buyer.player(), console, HangarTerminal.BUY_MOLE, new CompoundTag()), "buying a Mole");
+				expectCompleted(helper, server, "buying a Mole", List.of(buyer.player()), Set.of(directive("meet_the_mole", "repair_mole")));
+				helper.succeed();
+			} finally {
+				server.overworld().getEntitiesOfClass(PodEntity.class, bay).stream().filter(pod -> !before.contains(pod.getUUID())).forEach(PodEntity::discard);
+				buyer.leave();
+				server.getDataStorage().set(HangarData.TYPE, hangar);
+				server.getDataStorage().set(RepairState.TYPE, repairs);
+				server.getDataStorage().set(Serials.TYPE, serials);
+			}
+		});
 	}
 }

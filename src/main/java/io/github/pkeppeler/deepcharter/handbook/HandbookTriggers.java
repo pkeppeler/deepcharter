@@ -104,18 +104,27 @@ public final class HandbookTriggers {
 		}
 	}
 
-	/** Completes the repair directives that a charter's online members have not done, for each terminal that is repaired. */
+	/** Credits every online player, see {@link #creditRepairs(MinecraftServer, ServerPlayer)}. */
 	private static void creditRepairs(MinecraftServer server) {
+		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+			creditRepairs(server, player);
+		}
+	}
+
+	/**
+	 * Completes, for {@code player}'s charter, the repair directive of each terminal that is already repaired and that the charter
+	 * has not done. Public so that a test can credit one player, and not every player on the server, from a repair state it
+	 * installs for one tick. Does nothing while the saved repairs, charters or progress are unreadable.
+	 */
+	public static void creditRepairs(MinecraftServer server, ServerPlayer player) {
 		RepairState repairs = RepairState.get(server);
 		if (!repairs.isReadable()) {
 			return;
 		}
-		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-			Set<Identifier> done = HandbookProgress.completedFor(server, player.getUUID());
-			creditRepair(repairs, player, done, TerminalTypes.FUEL_PUMP, REPAIR_FUEL_PUMP);
-			creditRepair(repairs, player, done, TerminalTypes.ORE_PROCESSOR, REPAIR_ORE_PROCESSOR);
-			creditRepair(repairs, player, done, TerminalTypes.UPGRADE_TERMINAL, REPAIR_UPGRADE_TERMINAL);
-		}
+		Set<Identifier> done = HandbookProgress.completedFor(server, player.getUUID());
+		creditRepair(repairs, player, done, TerminalTypes.FUEL_PUMP, REPAIR_FUEL_PUMP);
+		creditRepair(repairs, player, done, TerminalTypes.ORE_PROCESSOR, REPAIR_ORE_PROCESSOR);
+		creditRepair(repairs, player, done, TerminalTypes.UPGRADE_TERMINAL, REPAIR_UPGRADE_TERMINAL);
 	}
 
 	private static void creditRepair(RepairState repairs, ServerPlayer player, Set<Identifier> done, TerminalType type, Identifier directive) {

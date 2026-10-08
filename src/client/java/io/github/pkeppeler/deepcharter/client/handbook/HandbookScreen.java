@@ -553,6 +553,7 @@ public class HandbookScreen extends Screen {
 	private void drawAppendix(GuiGraphicsExtractor graphics) {
 		int y = PaperDraw.centered(graphics, font, tr("appendix.heading"), centerX(), paperTop + TOP_MARGIN, 1.25f, T.inkColor()) + PARAGRAPH_GAP;
 		PaperDraw.wrapped(graphics, font, tr("appendix.restricted"), textLeft, y, textWidth, T.inkColor());
+		margin(graphics, "deepcharter.handbook.appendix.margin", paperTop + CONTENT_TOP * 2);
 		PaperDraw.stamp(graphics, font, tr("appendix.stamp"), centerX(), bottom() - 28, -9, T.stampColor());
 	}
 
