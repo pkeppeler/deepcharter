@@ -54,7 +54,6 @@ import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalEvents;
-import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
@@ -223,15 +222,6 @@ public class HandbookChaptersSixToNineTest {
 		helper.succeed();
 	}
 
-	/** A fresh repair state with {@code types} repaired, in the order given: a terminal's prerequisite comes first. The caller puts the world's back. */
-	private static RepairState repairedFor(TerminalType... types) {
-		RepairState fresh = new RepairState();
-		for (TerminalType type : types) {
-			type.parts().forEach(part -> fresh.insert(type, part));
-		}
-		return fresh;
-	}
-
 	/**
 	 * The scripted run: two players on one charter do what each chapter asks, and the chapters complete one after the other, for both
 	 * of them at each step. The scanner is bought at the upgrade terminal and the hull repaired at the repair station, through the
@@ -255,7 +245,7 @@ public class HandbookChaptersSixToNineTest {
 
 	private static void runTheChapters(GameTestHelper helper, MinecraftServer server, ServerLevel one, ServerLevel two) {
 		RepairState repairs = RepairState.get(server);
-		server.getDataStorage().set(RepairState.TYPE, repairedFor(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL, TerminalTypes.REPAIR_STATION));
+		server.getDataStorage().set(RepairState.TYPE, HandbookChaptersOneToFiveTest.repairedFor(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL, TerminalTypes.REPAIR_STATION));
 		List<PodEntity> pods = new ArrayList<>();
 		BlockPos terminal = helper.absolutePos(TERMINAL);
 		MockPlayer director = MockPlayers.join(helper, "Director");

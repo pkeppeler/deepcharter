@@ -411,17 +411,22 @@ public class HandbookChaptersOneToFiveTest {
 		}
 	}
 
+	/** A fresh repair state with {@code types} repaired, in the order given: a terminal's prerequisite comes first. The caller puts the world's back. */
+	static RepairState repairedFor(TerminalType... types) {
+		RepairState fresh = new RepairState();
+		for (TerminalType type : types) {
+			type.parts().forEach(part -> fresh.insert(type, part));
+		}
+		return fresh;
+	}
+
 	/**
 	 * Runs {@code body} with the three terminals repaired in the world's repair state, and puts the world's own back before it
 	 * returns. Everything runs in the one tick, so no test running beside this one ever sees the swapped state.
 	 */
 	private static void withTheTerminalsRepaired(MinecraftServer server, Runnable body) {
 		RepairState original = RepairState.get(server);
-		RepairState fresh = new RepairState();
-		for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL)) {
-			type.parts().forEach(part -> fresh.insert(type, part));
-		}
-		server.getDataStorage().set(RepairState.TYPE, fresh);
+		server.getDataStorage().set(RepairState.TYPE, repairedFor(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL));
 		try {
 			body.run();
 		} finally {
@@ -646,11 +651,8 @@ public class HandbookChaptersOneToFiveTest {
 		endTick.register(BEFORE_THE_POLL, server -> {
 			if (server.getTickCount() <= ARMED_UNTIL.get() && server.getTickCount() % HandbookTuning.DEFAULT.triggerPollTicks() == 0) {
 				worldsRepairs = RepairState.get(server);
-				RepairState fresh = new RepairState();
-				for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL)) {
-					type.parts().forEach(part -> fresh.insert(type, part));
-				}
-				server.getDataStorage().set(RepairState.TYPE, fresh);
+				server.getDataStorage().set(RepairState.TYPE,
+						repairedFor(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL));
 			}
 		});
 		endTick.register(AFTER_THE_POLL, server -> {
