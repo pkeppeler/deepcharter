@@ -76,8 +76,8 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 			def text = source.text.replaceAll(/(?s)"""(?:\\.|.)*?"""|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\/\*.*?\*\/|\/\/[^\n]*/) { match ->
 				(match.startsWith("/") ? " " : "\"\"") + match.replaceAll(/[^\n]/, "")
 			}
+			def rawLines = blankLiterals(source.text).readLines()
 			if (source.name != "WorldData.java") {
-				def rawLines = blankLiterals(source.text).readLines()
 				def direct = text =~ /getDataStorage\(\)\s*\.\s*set\s*\(|getDataStorage\(\)\s*[;,)]/
 				while (direct.find()) {
 					def line = text.substring(0, direct.start()).count("\n")
@@ -88,7 +88,6 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 				}
 			}
 			if (text.contains("LayerChain.dimension(")) {
-				def rawLines = blankLiterals(source.text).readLines()
 				def carve = text =~ carveWrite
 				while (carve.find()) {
 					def line = text.substring(0, carve.start()).count("\n")
@@ -99,7 +98,6 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 				}
 			}
 			if ((text =~ /\bimplements\s+[^{]*\bFabricClientGameTest\b/).find() || className.contains(".test.support.")) {
-				def rawLines = blankLiterals(source.text).readLines()
 				def tickWait = text =~ tickWaitCall
 				while (tickWait.find()) {
 					def line = text.substring(0, tickWait.start()).count("\n")
