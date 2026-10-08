@@ -1,0 +1,23 @@
+{
+	"schemaVersion": 1,
+	"id": "deepcharter-test",
+	"version": "1.0.0",
+	"name": "Deep Charter tests",
+	"license": "All-Rights-Reserved",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"io.github.pkeppeler.deepcharter.test.support.TestAttachments",
+			"io.github.pkeppeler.deepcharter.test.support.TerminalTestTypes"
+		],
+		"fabric-gametest": [
+			"@SERVER_TESTS@"
+		],
+		"fabric-client-gametest": [
+			"@CLIENT_TESTS@"
+		]
+	},
+	"depends": {
+		"deepcharter": "*"
+	}
+}
