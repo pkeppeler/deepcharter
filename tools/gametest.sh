@@ -7,12 +7,9 @@
 # and keeps any JAVA_TOOL_OPTIONS already set. Fails when no test matches.
 set -euo pipefail
 
-if [[ $# -ne 1 || -z $1 ]]; then
-  echo "usage: tools/gametest.sh <filter>   (e.g. 'pod_drill_test*')" >&2
-  exit 2
-fi
-filter=${1#deepcharter-test:}
-if [[ -z $filter ]]; then
+filter=${1-}
+filter=${filter#deepcharter-test:}
+if [[ $# -ne 1 || -z $filter ]]; then
   echo "usage: tools/gametest.sh <filter>   (e.g. 'pod_drill_test*')" >&2
   exit 2
 fi
