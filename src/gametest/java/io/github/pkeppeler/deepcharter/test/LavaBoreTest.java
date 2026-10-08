@@ -98,8 +98,6 @@ public class LavaBoreTest {
 	private static final int SCANNER_TIER = 1;
 	/** The tier that marks lava (#300). The pod keeps its tier 1 scanner; the harness also reads what a scanner of this tier would show, from the same spot. */
 	private static final int THERMAL_TIER = ScannerTuning.DEFAULT.lavaTier();
-	/** Wall-clock nanoseconds of each thermal slice read, to price a scan: the HUD does the same read about 4 times a second. */
-	private static final List<Long> thermalScanNanos = new ArrayList<>();
 	/**
 	 * Lava counts as shown in time when it was in the scanner's view at least this many slabs before the pod touched it:
 	 * a quarter of the tier 1 scanner's reach below the pod, which at the measured 36 pod ticks a slab (24 ticks of stone at the surface, slower with depth, plus the bot's sidesteps) is about 15 seconds of warning.
@@ -593,9 +591,7 @@ public class LavaBoreTest {
 	 * Then reads a scanner of the thermal tier from the same spot and notes each lava block it marks as lava.
 	 */
 	private static void noteLavaInView(ServerLevel level, PodEntity pod, Bore bore, int feetY) {
-		long scanStart = System.nanoTime();
 		ScanSlice thermal = ScanSlice.scan(new LoadedBlocks(level), pod.blockPosition(), pod.getDirection(), THERMAL_TIER);
-		thermalScanNanos.add(System.nanoTime() - scanStart);
 		ScanArea thermalArea = thermal.area();
 		for (int up = thermalArea.up(); up >= -thermalArea.down(); up--) {
 			for (int ahead = -thermalArea.halfWidth(); ahead <= thermalArea.halfWidth(); ahead++) {
@@ -702,8 +698,6 @@ public class LavaBoreTest {
 		long contactShown = encounters.stream().filter(e -> e.contactCellsShownAhead() >= 0).count();
 		LOGGER.info("[lava-bore] strict, the lava blocks actually touched: in view at all {} ({}), >= {} slabs ahead {} ({}). The figures above are for the whole connected body, an upper bound",
 				contactShown, percent(contactShown, encounters.size()), IN_TIME_SLABS, contactInTime, percent(contactInTime, encounters.size()));
-		double[] scanMillis = thermalScanNanos.stream().mapToDouble(nanos -> nanos / 1e6).toArray();
-		LOGGER.info("[lava-bore] one thermal tier slice read, through LoadedBlocks, in ms ({} reads): {}", scanMillis.length, distributionOf(scanMillis));
 		long thermalContactInTime = encounters.stream().filter(e -> e.thermalContactCellsShownAhead() >= IN_TIME_SLABS).count();
 		long thermalContactShown = encounters.stream().filter(e -> e.thermalContactCellsShownAhead() >= 0).count();
 		long thermalInTime = encounters.stream().filter(e -> e.thermalSlabsShownAhead() >= IN_TIME_SLABS).count();
