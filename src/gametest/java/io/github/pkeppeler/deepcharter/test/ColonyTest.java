@@ -419,8 +419,7 @@ public class ColonyTest {
 		MinecraftServer server = server(helper);
 		BlockPos centre = placed(helper).anchors().get(ColonyAnchor.CONDUIT);
 		int layers = LayerChain.count(server.registryAccess());
-		MockPlayer mock = MockPlayers.joinUnloaded(helper, "conduit-hands");
-		mock.player().setGameMode(GameType.SURVIVAL);
+		MockPlayer mock = MockPlayers.join(helper, "conduit-hands");
 		int[] loaded = {0};
 		for (int layer = 0; layer <= layers; layer++) {
 			ServerLevel level = level(helper, layer);
@@ -431,8 +430,8 @@ public class ColonyTest {
 				throw failure(helper, "waiting for the Conduit's chunks to tick");
 			}
 			ServerPlayer player = mock.player();
-			// Joined unloaded, so waiting at the join point inside the colony's foundation could not harm it.
-			mock.markLoaded();
+			// Creative while it waited at the join point inside the colony's foundation, where survival could suffocate.
+			player.setGameMode(GameType.SURVIVAL);
 			for (int layer = 0; layer <= layers; layer++) {
 				ServerLevel level = level(helper, layer);
 				player.teleportTo(level, centre.getX() + 0.5, level.getMinY() + 20, centre.getZ() + 4.5, Set.of(), 0, 0, true);
