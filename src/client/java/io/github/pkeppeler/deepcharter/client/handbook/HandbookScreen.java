@@ -515,8 +515,7 @@ public class HandbookScreen extends Screen {
 	private void drawChapterText(GuiGraphicsExtractor graphics, HandbookPage.ChapterText text) {
 		int y = PaperDraw.wrapped(graphics, font, tr("chapter.label", text.number()), textLeft, paperTop + TOP_MARGIN, textWidth, T.faintInkColor());
 		y = PaperDraw.wrapped(graphics, font, text.chapter().title(), textLeft, y + 3, textWidth, T.inkColor());
-		graphics.fill(textLeft, y + 1, textLeft + textWidth, y + 2, OPAQUE | T.inkColor());
-		y += PARAGRAPH_GAP + 2;
+		y = titleRule(graphics, y);
 		PaperDraw.wrapped(graphics, font, Component.translatable(textKey(text.id(), text.part())), textLeft, y, textWidth, T.inkColor());
 		margin(graphics, textMarginKey(text.id(), text.part()), paperTop + CONTENT_TOP * 2);
 	}
@@ -533,8 +532,7 @@ public class HandbookScreen extends Screen {
 			return;
 		}
 		y = PaperDraw.wrapped(graphics, font, chapter.chapter().title(), textLeft, y + 3, textWidth, T.inkColor());
-		graphics.fill(textLeft, y + 1, textLeft + textWidth, y + 2, OPAQUE | T.inkColor());
-		y += PARAGRAPH_GAP + 2;
+		y = titleRule(graphics, y);
 		y = PaperDraw.wrapped(graphics, font, tr("chapter.directives"), textLeft, y, textWidth, T.faintInkColor()) + 2;
 		for (HandbookChapter.Entry directive : chapter.chapter().directives()) {
 			String key = chapter.completed().contains(directive.id()) ? "chapter.directive.done" : "chapter.directive.open";
@@ -562,8 +560,7 @@ public class HandbookScreen extends Screen {
 		Component heading = contract.parts() > 1 ? tr("appendix.title.part", Component.translatable("deepcharter.handbook.appendix.title"), contract.part(), contract.parts())
 				: tr("appendix.title");
 		int y = PaperDraw.wrapped(graphics, font, heading, textLeft, paperTop + TOP_MARGIN, textWidth, T.faintInkColor());
-		graphics.fill(textLeft, y + 1, textLeft + textWidth, y + 2, OPAQUE | T.inkColor());
-		y += PARAGRAPH_GAP + 2;
+		y = titleRule(graphics, y);
 		for (String clause : I18n.get(contractKey(contract.part())).split("\n")) {
 			y = PaperDraw.redacted(graphics, font, clause, textLeft, y, textWidth, T.inkColor()) + PARAGRAPH_GAP;
 		}
@@ -606,6 +603,12 @@ public class HandbookScreen extends Screen {
 	}
 
 	/** A previous miner's note in pencil, in the margin column, if the sheet has one and the language file has a note for it. */
+	/** Draws the rule under a page title that ends at {@code y}, and returns where the text below it starts. */
+	private int titleRule(GuiGraphicsExtractor graphics, int y) {
+		graphics.fill(textLeft, y + 1, textLeft + textWidth, y + 2, OPAQUE | T.inkColor());
+		return y + PARAGRAPH_GAP + 2;
+	}
+
 	private void margin(GuiGraphicsExtractor graphics, String key, int y) {
 		if (marginWidth <= 0 || !Language.getInstance().has(key)) {
 			return;
