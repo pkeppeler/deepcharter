@@ -11,7 +11,7 @@ work=$(cd "$(mktemp -d)" && pwd -P)
 pids=()
 cleanup() {
   local p
-  for p in "${pids[@]:-}"; do [[ -n $p ]] && kill "$p" 2>/dev/null || true; done
+  for p in "${pids[@]:-}"; do if [[ -n $p ]]; then kill "$p" 2>/dev/null || true; fi; done
   rm -rf "$work"
 }
 trap cleanup EXIT
