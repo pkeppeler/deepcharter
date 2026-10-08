@@ -5,7 +5,7 @@
 # a third waiting with both holders named, arrival order with three waiters, stale-ticket skip,
 # PID-reuse and dead-holder handling, DEEPCHARTER_CLIENT_SLOTS=1, kill -9 reclaim, a PR 260 holder
 # of client.lock (slot 0), SIGINT of a waiting --no-daemon build, the off switch and the
-# configuration cache. Every wait is on a log line or a file; one 1 s sleep gates a negative check.
+# configuration cache. Every wait is on a log line or a file and is bounded; one 1 s sleep gates a negative check.
 # Usage: tools/tests/client-lock.test.sh
 # Debug knobs: WAIT_SECS=<n> shortens each wait (default 120); KEEP_WORK=1 keeps the scratch dir.
 set -uo pipefail
@@ -53,70 +53,57 @@ order=$work/order
 
 # run <name> [env...]: runs runClient in the foreground (configuration cache on), output in $work/<name>.out.
 # The stub logs <name> to $order when it starts and holds until $work/<name>.release exists.
+# With $sigint set, SIGINT is not ignored, so a test can send Ctrl-C to the client.
+# (A background job of a script ignores SIGINT, and a JVM keeps that.)
 run() {
-  local name=$1
+  local name=$1 wrap=()
   shift
+  if [[ -n ${sigint:-} ]]; then
+    # shellcheck disable=SC2016 # $SIG is Perl, not a shell variable
+    wrap=(perl -e '$SIG{INT} = "DEFAULT"; exec @ARGV')
+  fi
   env HOLD_NAME="$name" ORDER_LOG="$order" HOLD_RELEASE="$work/$name.release" "$@" \
+    ${wrap[@]+"${wrap[@]}"} \
     "$root/gradlew" --no-daemon --configuration-cache --console=plain -p "$proj" runClient >"$work/$name.out" 2>&1
 }
 
-# start <name> [env...]: run in the background; the subshell PID is left in $last.
-start() {
-  run "$@" &
-  last=$!
-  pids+=("$last")
+# launch <run function> <name> [env...]: runs it in the background and writes its exit status to $work/<name>.status,
+# so reap can wait with a bound instead of a blocking `wait`.
+launch() {
+  local fn=$1
+  shift
+  { "$fn" "$@"; echo $? >"$work/$1.status"; } &
+  pids+=("$!")
 }
+start() { launch run "$@"; }
+start_int() { sigint=1 launch run "$@"; }
+
+# reap <name> <description>: the client ended with status 0 within the wait bound.
+reap() { waitfor "$work/$1.status" . && [[ $(<"$work/$1.status") -eq 0 ]]; check "$2" $?; }
 
 # holder_pid <holder file>: the Gradle daemon PID named in it.
 holder_pid() { sed -n 's/.*PID \([0-9][0-9]*\).*/\1/p' "$1"; }
 
 absent() { [[ ! -e $1 ]]; }
+alive() { [[ -n $1 ]] && kill -0 "$1" 2>/dev/null; }
+dead() { ! alive "$1"; }
 
-# waitfor <file> <pattern>: waits up to 120 s for the pattern to appear in the file.
-waitfor() {
+# poll <command...>: waits up to $WAIT_SECS (default 120) for the command to succeed.
+poll() {
   local i
   for ((i = 0; i < ${WAIT_SECS:-120} * 10; i++)); do
-    if grep -q -- "$2" "$1" 2>/dev/null; then return 0; fi
+    if "$@"; then return 0; fi
     sleep 0.1
   done
   return 1
 }
-
-alive() { [[ -n $1 ]] && kill -0 "$1" 2>/dev/null; }
+# waitfor <file> <pattern>, waitabsent <path>, waitdead <pid>
+waitfor() { poll grep -q -- "$2" "$1" 2>/dev/null; }
+waitabsent() { poll absent "$1"; }
+waitdead() { poll dead "$1"; }
 
 # order_is <names, each followed by a space>: the stubs started in exactly this order.
 order_is() { [[ $(tr '\n' ' ' <"$order") == "$1" ]]; }
-
-# waitabsent <path>: waits up to 120 s for the path to disappear.
-waitabsent() {
-  local i
-  for ((i = 0; i < ${WAIT_SECS:-120} * 10; i++)); do
-    if [[ ! -e $1 ]]; then return 0; fi
-    sleep 0.1
-  done
-  return 1
-}
-
-# waitdead <pid>: waits up to 120 s for the process to end.
-waitdead() {
-  local i
-  for ((i = 0; i < ${WAIT_SECS:-120} * 10; i++)); do
-    if ! kill -0 "$1" 2>/dev/null; then return 0; fi
-    sleep 0.1
-  done
-  return 1
-}
-
-# run_int <name> [env...]: like run, but SIGINT is not ignored, so a test can send Ctrl-C to the client.
-# (A background job of a script ignores SIGINT, and a JVM keeps that.)
-run_int() {
-  local name=$1
-  shift
-  # shellcheck disable=SC2016 # $SIG is Perl, not a shell variable
-  env HOLD_NAME="$name" ORDER_LOG="$order" HOLD_RELEASE="$work/$name.release" "$@" \
-    perl -e '$SIG{INT} = "DEFAULT"; exec @ARGV' \
-    "$root/gradlew" --no-daemon --configuration-cache --console=plain -p "$proj" runClient >"$work/$name.out" 2>&1
-}
 
 # hold_old <holder text>: a stand-in for PR 260 code. It holds the fcntl lock on client.lock; $old is its PID.
 hold_old() {
@@ -131,7 +118,7 @@ time.sleep(600)
 ' "$locks/client.lock" "$work/old.ready" &
   old=$!
   pids+=("$old")
-  waitfor "$work/old.ready" "held"
+  waitfor "$work/old.ready" "held" || return 1
   echo "$1" >"$holder0"
 }
 
@@ -140,20 +127,17 @@ no_tickets() { [[ -z $(ls "$locks/queue" 2>/dev/null) ]]; }
 
 # 1. two concurrent holders, a third waiting
 start a
-a=$last
 waitfor "$work/a.out" "RUNNING client"; check "first client takes a slot and runs" $?
 grep -q "worktree $proj" "$holder0"; check "slot 0 holder file names the worktree" $?
 pa=$(holder_pid "$holder0")
 alive "$pa"; check "slot 0 holder file names a live PID ($pa)" $?
 
 start b
-b=$last
 waitfor "$work/b.out" "RUNNING client"; check "second client runs at once beside the first (two slots)" $?
 pb=$(holder_pid "$holder1")
 alive "$pb" && [[ $pb != "$pa" ]]; check "slot 1 holder file names the second client's PID ($pb)" $?
 
 start c
-c=$last
 waitfor "$work/c.out" "Waiting for a game client slot (queue position 1 of 1).*Slot 0: worktree $proj.*PID $pa.*Slot 1: worktree $proj.*PID $pb"
 check "third client waits and the waiter line names both holders" $?
 ! grep -q "RUNNING client" "$work/c.out"; check "third client does not run while both slots are held" $?
@@ -165,10 +149,8 @@ ctl_pid=$!
 pids+=("$ctl_pid")
 echo "2 $ctl_pid 0" >"$locks/queue/0000000000002-$(printf '%010d' "$ctl_pid")-control.ticket"
 start d
-d=$last
 waitfor "$work/d.out" "queue position 3 of 3"; check "d queues behind the control ticket and c" $?
 start e
-e=$last
 waitfor "$work/e.out" "queue position 4 of 4"; check "e queues last" $?
 waitfor "$work/c.out" "queue position 2 of 4"; check "c moved behind the older control ticket" $?
 
@@ -186,11 +168,11 @@ touch "$work/c.release"
 waitfor "$work/e.out" "RUNNING client"; check "e takes the slot c frees" $?
 order_is "a b c d e "; check "start order is arrival order (a b c d e)" $?
 touch "$work/d.release" "$work/e.release"
-wait "$a"; check "client a exits cleanly" $?
-wait "$b"; check "client b exits cleanly" $?
-wait "$c"; check "client c exits cleanly" $?
-wait "$d"; check "client d exits cleanly" $?
-wait "$e"; check "client e exits cleanly" $?
+reap a "client a exits cleanly"
+reap b "client b exits cleanly"
+reap c "client c exits cleanly"
+reap d "client d exits cleanly"
+reap e "client e exits cleanly"
 absent "$holder0" && absent "$holder1"; check "holder files are gone after release" $?
 no_tickets; check "no tickets are left after every client ends" $?
 
@@ -208,22 +190,19 @@ recycled="$locks/queue/0000000000002-$(printf '%010d' "$reused")-recycled.ticket
 echo "2 $reused 1" >"$recycled"
 rm -f "$order"
 start g
-g=$last
 waitfor "$work/g.out" "RUNNING client"; check "client runs although stale tickets are older than its own" $?
 absent "$stale"; check "dead-PID ticket is removed" $?
 absent "$recycled"; check "reused-PID ticket is removed" $?
 touch "$work/g.release"
-wait "$g"; check "client g exits cleanly" $?
+reap g "client g exits cleanly"
 kill "$reused"
 
 # 4. DEEPCHARTER_CLIENT_SLOTS=1, and kill -9 of the holder frees the slot
 rm -f "$order"
 start h DEEPCHARTER_CLIENT_SLOTS=1
-h=$last
 waitfor "$work/h.out" "RUNNING client"; check "SLOTS=1: first client runs" $?
 h_daemon=$(holder_pid "$holder0")
 start i DEEPCHARTER_CLIENT_SLOTS=1
-i=$last
 waitfor "$work/i.out" "Waiting for a game client slot (queue position 1 of 1)"; check "SLOTS=1: second client waits" $?
 ! grep -q "Slot 1" "$work/i.out"; check "SLOTS=1: the waiter line lists slot 0 only" $?
 kill -9 "$h_daemon"
@@ -231,50 +210,44 @@ waitfor "$work/i.out" "RUNNING client"; check "SLOTS=1: waiter reclaims the slot
 i_daemon=$(holder_pid "$holder0")
 alive "$i_daemon" && [[ $i_daemon != "$h_daemon" ]]; check "holder file now names the waiter's PID ($i_daemon), not the dead one's" $?
 touch "$work/i.release"
-wait "$i"; check "SLOTS=1: waiter exits cleanly" $?
-wait "$h" 2>/dev/null || true
+reap i "SLOTS=1: waiter exits cleanly"
+waitfor "$work/h.status" . # h ends in whatever way the kill left it
 no_tickets; check "SLOTS=1: no tickets are left" $?
 
 # 5. a holder file left by a kill -9 does not name a dead holder in the waiter line
 rm -rf "$locks"
 hold_old "worktree ghost, task runClient, Gradle daemon PID $dead"; check "stand-in holds client.lock, holder file names a dead PID" $?
 start m DEEPCHARTER_CLIENT_SLOTS=1
-m=$last
 waitfor "$work/m.out" "Waiting for a game client slot (queue position 1 of 1). Slot 0: free or unknown"; check "waiter line reports a dead holder as free or unknown" $?
 ! grep -q "ghost" "$work/m.out"; check "waiter line does not name the dead holder" $?
 kill "$old"
 touch "$work/m.release"
 waitfor "$work/m.out" "RUNNING client"; check "waiter m runs once the stand-in ends" $?
-wait "$m"; check "waiter m exits cleanly" $?
+reap m "waiter m exits cleanly"
 
 # 6. PR 260 code holds client.lock: slot 0 stays busy, so only one more client fits
 rm -rf "$locks"
 hold_old "worktree old-pr260, task runClient, Gradle daemon PID $$"; check "stand-in for PR 260 code holds client.lock" $?
 rm -f "$order"
 start j
-j=$last
 waitfor "$work/j.out" "RUNNING client"; check "compat: a client runs in slot 1 while client.lock is held" $?
 grep -q "worktree $proj" "$holder1"; check "compat: slot 1 holder file names the new client" $?
 start k
-k=$last
 waitfor "$work/k.out" "Waiting for a game client slot (queue position 1 of 1).*Slot 0: worktree old-pr260"
 check "compat: the next client waits, naming the PR 260 holder" $?
 ! grep -q "RUNNING client" "$work/k.out"; check "compat: old and new code never exceed two clients" $?
 kill "$old"
 waitfor "$work/k.out" "RUNNING client"; check "compat: the waiter takes slot 0 once the PR 260 holder ends" $?
 touch "$work/j.release" "$work/k.release"
-wait "$j"; check "compat: client j exits cleanly" $?
-wait "$k"; check "compat: client k exits cleanly" $?
+reap j "compat: client j exits cleanly"
+reap k "compat: client k exits cleanly"
 
 # 7. Ctrl-C of a waiting --no-daemon build ends its whole process tree and frees its place in the queue
 rm -rf "$locks"
 rm -f "$order"
 start x DEEPCHARTER_CLIENT_SLOTS=1
-x=$last
 waitfor "$work/x.out" "RUNNING client"; check "SIGINT: holder x runs" $?
-run_int w DEEPCHARTER_CLIENT_SLOTS=1 &
-w=$!
-pids+=("$w")
+start_int w DEEPCHARTER_CLIENT_SLOTS=1
 waitfor "$work/w.out" "Waiting for a game client slot (queue position 1 of 1)"; check "SIGINT: waiter w waits" $?
 w_daemon=$(awk '{print $2}' "$locks"/queue/*.ticket)
 w_client=$(ps -o ppid= -p "$w_daemon" | tr -d ' ')
@@ -283,15 +256,14 @@ grep -q "Ctrl-C while waiting? also run ./gradlew --stop" "$work/w.out"; check "
 kill -INT "$w_client"
 waitdead "$w_client"; check "SIGINT: the waiter's client exits" $?
 waitdead "$w_daemon"; check "SIGINT: the waiter's daemon exits with its client (--no-daemon)" $?
-wait "$w" 2>/dev/null || true
+waitfor "$work/w.status" .
 start y DEEPCHARTER_CLIENT_SLOTS=1
-y=$last
 waitfor "$work/y.out" "queue position"; check "SIGINT: a later waiter y queues" $?
 touch "$work/x.release" "$work/y.release"
 waitfor "$work/y.out" "RUNNING client"; check "SIGINT: y runs after x, no ghost ticket ahead of it" $?
 order_is "x y "; check "SIGINT: the killed waiter never started" $?
-wait "$x"; check "SIGINT: holder x exits cleanly" $?
-wait "$y"; check "SIGINT: waiter y exits cleanly" $?
+reap x "SIGINT: holder x exits cleanly"
+reap y "SIGINT: waiter y exits cleanly"
 no_tickets; check "SIGINT: no tickets are left" $?
 
 # 8. off switch

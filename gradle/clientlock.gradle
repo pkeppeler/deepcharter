@@ -104,11 +104,9 @@ abstract class ClientLock implements BuildService<BuildServiceParameters.None>, 
 			FileChannel candidate = FileChannel.open(slotFile(slot), StandardOpenOption.CREATE, StandardOpenOption.WRITE)
 			FileLock lock = null
 			try {
-				try {
-					lock = candidate.tryLock()
-				} catch (OverlappingFileLockException other) {
-					lock = null // another build in this daemon JVM holds it
-				}
+				lock = candidate.tryLock()
+			} catch (OverlappingFileLockException other) {
+				// another build in this daemon JVM holds it
 			} catch (Throwable failed) {
 				candidate.close()
 				throw failed
@@ -126,8 +124,9 @@ abstract class ClientLock implements BuildService<BuildServiceParameters.None>, 
 	private static Path writeTicket(Path queueDir, long pid) {
 		long now = System.currentTimeMillis()
 		String id = UUID.randomUUID().toString().substring(0, 8)
-		Path tmp = queueDir.resolve(String.format("%013d-%010d-%s.tmp", now, pid, id))
-		Path file = queueDir.resolve(String.format("%013d-%010d-%s.ticket", now, pid, id))
+		String name = String.format("%013d-%010d-%s", now, pid, id)
+		Path tmp = queueDir.resolve(name + ".tmp")
+		Path file = queueDir.resolve(name + ".ticket")
 		Files.writeString(tmp, "${now} ${pid} ${startOf(ProcessHandle.current())}\n", StandardCharsets.UTF_8)
 		Files.move(tmp, file, StandardCopyOption.ATOMIC_MOVE) // never a half-written ticket
 		return file
@@ -173,7 +172,7 @@ abstract class ClientLock implements BuildService<BuildServiceParameters.None>, 
 
 	// startMillis 0 skips the start-time check (the OS did not report one).
 	private static boolean processAlive(long pid, long startMillis) {
-		def process =ProcessHandle.of(pid)
+		def process = ProcessHandle.of(pid)
 		if (!process.isPresent() || !process.get().isAlive()) {
 			return false
 		}
