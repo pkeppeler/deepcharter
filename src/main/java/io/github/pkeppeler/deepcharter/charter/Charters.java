@@ -38,11 +38,6 @@ public final class Charters {
 		return isReadable(server) ? CharterData.get(server).find(id) : Optional.empty();
 	}
 
-	/** Every charter, or empty when the saved charters are unreadable (logged once). Never throws. */
-	public static Optional<Collection<Charter>> readableAll(MinecraftServer server) {
-		return isReadable(server) ? Optional.of(CharterData.get(server).all()) : Optional.empty();
-	}
-
 	/** The charter {@code player} is on, as Director or crew. Throws when the saved charters are unreadable: for commands and explicit actions. */
 	public static Optional<Charter> charterOfOrThrow(MinecraftServer server, UUID player) {
 		return CharterData.get(server).charterOf(player);

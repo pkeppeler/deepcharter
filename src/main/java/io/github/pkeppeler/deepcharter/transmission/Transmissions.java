@@ -126,7 +126,7 @@ public final class Transmissions {
 	/** Called when a player logs in: pays what is pending for their charter, and sends them what they missed. */
 	public static void deliverOnLogin(MinecraftServer server, ServerPlayer player) {
 		TransmissionData data = TransmissionData.get(server);
-		if (!readable(server, data)) {
+		if (!data.isReadable()) {
 			return;
 		}
 		Charters.readableCharterOf(server, player.getUUID()).ifPresent(charter -> {
