@@ -549,6 +549,7 @@ public class RepairStationTest {
 			throw helper.assertionException("layer 1 did not load");
 		}
 		MinecraftServer server = helper.getLevel().getServer();
+		// Join unloaded: waiting at the join point inside the colony's foundation could not harm them.
 		MockPlayer pilot = MockPlayers.joinUnloaded(helper, "Teleportee");
 		pilot.player().setGameMode(GameType.SURVIVAL);
 		Charters.found(server, pilot.player().getUUID(), "Tele " + UUID.randomUUID().toString().substring(0, 8)).ifPresent(refusal -> {
@@ -559,7 +560,6 @@ public class RepairStationTest {
 		BlockPos at = BlockPos.containing(x, 40, z);
 		boolean[] used = {false};
 		FarChunks.awaitEntityTicking(helper, one, at, () -> {
-			// Riders joined unloaded, so waiting at the join point inside the colony's foundation could not harm them.
 			// Only now: layer 1 is solid rock, and a rider put there while the chunk loads suffocates on a slow runner.
 			pilot.teleportTo(one, new Vec3(x, 40, z), 0, 0);
 			passenger.teleportTo(one, new Vec3(x, 40, z), 0, 0);
