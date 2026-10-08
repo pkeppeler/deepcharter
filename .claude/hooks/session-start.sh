@@ -6,6 +6,33 @@ R=pkeppeler/deepcharter
 t() { perl -e 'alarm shift; exec @ARGV' 15 "$@" 2>/dev/null; }
 
 {
+  # Public-repo guard: the interaction limit must stay collaborators_only with more than 14 days left.
+  limits=$(t gh api "repos/$R/interaction-limits") || limits=""
+  if [ -z "$limits" ]; then
+    echo "(could not check the interaction limit: gh failed)"
+    echo
+  else
+    warn=$(printf %s "$limits" | python3 -I -c '
+import json, sys
+from datetime import datetime, timedelta, timezone
+d = json.load(sys.stdin)
+if d.get("limit") != "collaborators_only":
+    print("the limit is " + repr(d.get("limit", "missing")) + ", not collaborators_only")
+else:
+    exp = datetime.fromisoformat(d["expires_at"].replace("Z", "+00:00"))
+    if exp - datetime.now(timezone.utc) < timedelta(days=14):
+        print("the limit expires at " + d["expires_at"] + ", within 14 days")
+') || warn="could not parse the interaction-limit response"
+    if [ -n "$warn" ]; then
+      echo "################################################################"
+      echo "## WARNING: PUBLIC REPO INTERACTION LIMIT NEEDS RENEWING NOW"
+      echo "## $warn"
+      echo "## Run this first thing, before any other work:"
+      echo "gh api -X PUT repos/$R/interaction-limits -f limit=collaborators_only -f expiry=six_months"
+      echo "################################################################"
+      echo
+    fi
+  fi
   echo "## Orchestrator handoff (pinned issue)"
   t gh issue list --repo "$R" --label handoff --state open --limit 1 --json number,body \
     --jq '.[0] | "#\(.number)\n\(.body)"' || echo "(could not fetch the handoff issue)"
