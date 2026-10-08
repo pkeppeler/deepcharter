@@ -17,7 +17,8 @@ import io.github.pkeppeler.deepcharter.pod.Chassis;
  * and the fee still grows with every pod.
  * <li>A Mole wreck's restore, $100: cheaper than a refurbished Mole, as before, for the tow it takes.
  * <li>The Prospector's restore, $1,500: about four layer 2 runs of a Mole with tier 2 parts, which is what is left to earn after
- * the onboarding's other buys, so it ends the onboarding as the SPEC intends. The three Cicatrium are the longer wait.
+ * the onboarding's other buys, so it ends the onboarding as the SPEC intends. The three Cicatrium wait in PROSPECTOR-0002's bay
+ * ({@code ProspectorWrecks.FAMOUS_BAY_CICATRIUM}); ore finds almost none in the early runs, and the economy test pins both.
  * </ul>
  *
  * @param refurbishedMole   what a refurbished Mole costs before the registration fee

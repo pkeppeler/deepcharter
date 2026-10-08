@@ -9,6 +9,8 @@ import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
+import io.github.pkeppeler.deepcharter.ore.OreRegistry;
+import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 
@@ -17,7 +19,15 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
  * an unowned Prospector at hull 0, in the middle that the blueprint leaves clear. The one at the site nearest the Conduit is
  * PROSPECTOR-0002, with one lamp still burning and Note N10. Any charter may tow a wreck nobody owns to the hangar and restore it.
  */
-final class ProspectorWrecks {
+public final class ProspectorWrecks {
+	/**
+	 * Where PROSPECTOR-0002's bay holds Cicatrium ore, as {@code {u, v}} on the scorched floor, out at the corners that the debris
+	 * leaves: the scar of the reactor that burned. Three, the catalysts of one restore (HangarTuning), so the onboarding finds its
+	 * catalyst where it finds the wreck. No other bay holds any.
+	 */
+	private static final int[][] CICATRIUM_AT = {{5, -5}, {-5, 5}, {-5, -5}};
+	/** The Cicatrium ore blocks in PROSPECTOR-0002's bay. */
+	public static final int FAMOUS_BAY_CICATRIUM = CICATRIUM_AT.length;
 	/** The name the nearest wreck carries until a charter restores it; the registration names it after that. */
 	static final String FAMOUS_NAME = "PROSPECTOR-0002";
 	private static final int NOTE = 10;
@@ -49,7 +59,7 @@ final class ProspectorWrecks {
 		}
 	}
 
-	/** PROSPECTOR-0002's bay: three lamps gone dark, one burning, and Ines's log (N10) on a table. */
+	/** PROSPECTOR-0002's bay: three lamps gone dark, one burning, Ines's log (N10) on a table, and the Cicatrium at the corners. */
 	static void light(StructurePlan p) {
 		p.set(3, 0, 2, Blocks.LANTERN.defaultBlockState());
 		p.set(3, 0, -2, Blocks.REDSTONE_LAMP.defaultBlockState());
@@ -57,5 +67,8 @@ final class ProspectorWrecks {
 		p.set(-3, 0, 2, Blocks.REDSTONE_LAMP.defaultBlockState());
 		p.set(0, 0, 4, Blocks.SPRUCE_PLANKS.defaultBlockState());
 		p.set(0, 1, 4, NoteBlock.stateOf(NOTE));
+		for (int[] at : CICATRIUM_AT) {
+			p.set(at[0], 0, at[1], OreRegistry.block(OreType.CICATRIUM).defaultBlockState());
+		}
 	}
 }

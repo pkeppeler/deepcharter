@@ -9,6 +9,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 
 import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
+import io.github.pkeppeler.deepcharter.layer.ProspectorWrecks;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
@@ -37,6 +38,8 @@ public class EconomyAffordabilityTest {
 	/** The Prospector restore takes this many runs of a Mole with tier 2 parts in layer 2, at least and at most. */
 	private static final int RESTORE_RUNS_MIN = 3;
 	private static final int RESTORE_RUNS_MAX = 6;
+	/** Cicatrium sells for $1,500: what a run finds of it in the deepest zone is at most this share of the run's other income. */
+	private static final double CATALYST_SALE_SHARE = 0.5;
 	/** A later charter's first refurbished Mole, with no pod yet, and its second one. */
 	private static final int REFURBISHED_FIRST_RUNS = 2;
 	private static final int REFURBISHED_SECOND_RUNS = 3;
@@ -94,6 +97,36 @@ public class EconomyAffordabilityTest {
 		if (runs < RESTORE_RUNS_MIN || runs > RESTORE_RUNS_MAX) {
 			throw failure(helper, "the Prospector restore costs $%d, which is %d runs of $%.0f; %d to %d are allowed",
 					money, runs, run.net(), RESTORE_RUNS_MIN, RESTORE_RUNS_MAX);
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void theProspectorRestoresCicatriumIsInHandByTheTimeTheMoneyIs(GameTestHelper helper) {
+		Run run = upgradedRunInLayerTwo();
+		int runs = run.toAfford(HangarTuning.DEFAULT.restoreCost(Chassis.PROSPECTOR).money());
+		int needed = HangarTuning.DEFAULT.restoreCost(Chassis.PROSPECTOR).catalysts();
+		// The runs of the onboarding bore the Upper Levels, which hold none; PROSPECTOR-0002's bay is the sure source.
+		double expected = ProspectorWrecks.FAMOUS_BAY_CICATRIUM + run.catalystsAfter(runs);
+		LOGGER.info("[economy] Prospector restore: {} Cicatrium needed; {} in the wreck's bay and {} from {} runs of ore: {}", needed,
+				ProspectorWrecks.FAMOUS_BAY_CICATRIUM, run.catalystsAfter(runs), runs, expected);
+		if (expected < needed) {
+			throw failure(helper, "the restore needs %d Cicatrium; by the %d runs that earn its money a charter expects only %.2f",
+					needed, runs, expected);
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void cicatriumFoundInTheOreIsNotAnIncomeStream(GameTestHelper helper) {
+		Zone deepest = Zone.load("prospectors_run");
+		Run run = EarlyRunModel.run(deepest, EarlyRunModel.mole(2, 2, 2), EarlyRunModel.layerOneBlocks());
+		double sold = run.catalysts() * OreType.CICATRIUM.value();
+		LOGGER.info("[economy] a layer 2 run in prospectors_run: {} Cicatrium, ${} if sold, against ${} of other ore", run.catalysts(),
+				Math.round(sold), Math.round(run.net()));
+		if (sold > CATALYST_SALE_SHARE * run.net()) {
+			throw failure(helper, "Cicatrium sells for $%d, so a run's %.3f of it is $%.0f, over %.0f%% of the $%.0f that its other ore nets",
+					OreType.CICATRIUM.value(), run.catalysts(), sold, CATALYST_SALE_SHARE * 100, run.net());
 		}
 		helper.succeed();
 	}

@@ -42,9 +42,12 @@ import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
+import io.github.pkeppeler.deepcharter.layer.ProspectorWrecks;
 import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
+import io.github.pkeppeler.deepcharter.ore.OreRegistry;
+import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -283,6 +286,23 @@ public class ProspectorChassisTest {
 		});
 	}
 
+	@GameTest(maxTicks = 12000)
+	public void onlyPROSPECTOR0002sBayHoldsTheCicatriumTheRestoreNeeds(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		ServerLevel level = layer(helper, 2);
+		StructureSite ordinary = StructureSite.in(level.getSeed(), StructureKind.WRECK, level.getMinY(), level.getHeight(), WRECK_CELL, WRECK_CELL, conduit(helper));
+		StructureSite prospector = LayerStructures.prospector(server).orElseThrow(() -> failure(helper, "no Prospector site"));
+		generate(level, ordinary);
+		generate(level, prospector);
+		helper.succeedWhen(() -> {
+			generate(level, ordinary);
+			generate(level, prospector);
+			expect(helper, cicatrium(level, ordinary) == 0, "an ordinary wreck bay holds no Cicatrium, it holds %s", cicatrium(level, ordinary));
+			expect(helper, cicatrium(level, prospector) == ProspectorWrecks.FAMOUS_BAY_CICATRIUM && cicatrium(level, prospector) == CATALYSTS,
+					"PROSPECTOR-0002's bay holds the %s Cicatrium that a restore takes, it holds %s", CATALYSTS, cicatrium(level, prospector));
+		});
+	}
+
 	@GameTest(maxTicks = FoundingMoleHangarTest.MAX_TICKS)
 	public void restoringAProspectorCostsFifteenHundredAndThreeCicatriumRegistersItAndFiresT17(GameTestHelper helper) {
 		FoundingMoleHangarTest.inTheHangar(helper, before -> FoundingMoleHangarTest.withFreshWorld(helper, () -> {
@@ -501,6 +521,17 @@ public class ProspectorChassisTest {
 		BoundingBox box = site.bounds();
 		for (BlockPos pos : BlockPos.betweenClosed(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ())) {
 			if (level.getBlockState(pos).is(Blocks.LANTERN)) {
+				found++;
+			}
+		}
+		return found;
+	}
+
+	private static int cicatrium(ServerLevel level, StructureSite site) {
+		int found = 0;
+		BoundingBox box = site.bounds();
+		for (BlockPos pos : BlockPos.betweenClosed(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ())) {
+			if (level.getBlockState(pos).is(OreRegistry.block(OreType.CICATRIUM))) {
 				found++;
 			}
 		}

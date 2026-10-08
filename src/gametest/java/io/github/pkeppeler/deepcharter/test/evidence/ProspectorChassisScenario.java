@@ -107,6 +107,15 @@ public class ProspectorChassisScenario extends EvidenceScenario {
 			context.waitTicks(SETTLE_TICKS);
 			screenshot(context, "note-n10-on-the-table");
 			frame(context);
+			// The three Cicatrium in the corners of the bay: the catalyst of the restore.
+			fly(singleplayer, site, at(site, 0, 2.5, -1), at(site, -5, 0.5, -5));
+			context.waitTicks(SETTLE_TICKS);
+			screenshot(context, "cicatrium-in-the-bay-corner");
+			frame(context);
+			fly(singleplayer, site, at(site, -1, 2.5, 0), at(site, 5, 0.5, -5));
+			context.waitTicks(SETTLE_TICKS);
+			screenshot(context, "cicatrium-in-the-far-corner");
+			frame(context);
 		}
 	}
 
