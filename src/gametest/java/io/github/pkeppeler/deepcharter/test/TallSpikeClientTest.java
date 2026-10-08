@@ -43,7 +43,8 @@ public class TallSpikeClientTest implements FabricClientGameTest {
 		}
 		int height = Integer.parseInt(env);
 		int minY = height == 256 ? 0 : -2032;
-		String name = "tall_spike_" + height;
+		String name = System.getenv("TALLSPIKE_DIM") != null && !System.getenv("TALLSPIKE_DIM").isEmpty() ?System.getenv("TALLSPIKE_DIM") : "tall_spike_" + height;
+		boolean onSurface = "surface".equals(System.getenv("TALLSPIKE_SPOT"));
 		ResourceKey<Level> key = ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", name));
 		context.runOnClient(client -> {
 			client.options.renderDistance().set(RADIUS);
@@ -83,6 +84,10 @@ public class TallSpikeClientTest implements FabricClientGameTest {
 			int midY = minY + height / 2;
 			singleplayer.getServer().runOnServer(server -> {
 				BlockPos found = null;
+				if (onSurface) {
+					// Standing on the vanilla surface at the origin column.
+					found = new BlockPos(0, level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, 0, 0), 0);
+				}
 				if (System.getenv("TALLSPIKE_HALL") != null) {
 					// The same 33x16x33 hall at mid-depth in every dimension, so the visible geometry is equal across heights.
 					BlockPos low = new BlockPos(-16, midY, -16);
@@ -94,7 +99,7 @@ public class TallSpikeClientTest implements FabricClientGameTest {
 					found = new BlockPos(0, midY, 0);
 				}
 				search:
-				for (int r = 0; r < 150 && found == null; r += 2) {
+				for (int r = 0; r < 150 && found == null && !onSurface; r += 2) {
 					for (int dx = -r; dx <= r; dx += 2) {
 						for (int dz = -r; dz <= r; dz += 2) {
 							if (Math.max(Math.abs(dx), Math.abs(dz)) != r) {
@@ -122,7 +127,7 @@ public class TallSpikeClientTest implements FabricClientGameTest {
 				spot[1] = found.getY();
 				spot[2] = found.getZ() + 0.5;
 			});
-			LOGGER.info("TALLSPIKE-CLIENT height={} spot={},{},{} midY={}", height, spot[0], spot[1], spot[2], midY);
+			LOGGER.info("TALLSPIKE-CLIENT name={} height={} onSurface={} spot={},{},{} midY={}", name, height, onSurface, spot[0], spot[1], spot[2], midY);
 
 			// 3. Arrive and time the build.
 			long cpu0 = processCpu();
@@ -177,6 +182,9 @@ public class TallSpikeClientTest implements FabricClientGameTest {
 			int visible = context.computeOnClient(client -> client.levelRenderer.visibleSections().size());
 			LOGGER.info("TALLSPIKE-CLIENT height={} heapViewBuiltMB={} clientEstimateMB={} visibleSections={}", height, total >> 20, (total - serverOnly) >> 20, visible);
 
+			if (System.getenv("TALLSPIKE_NOFPS") != null) {
+				return;
+			}
 			// 4. FPS over 30 s, camera turning once.
 			List<Integer> samples = new ArrayList<>();
 			List<Double> mspt = new ArrayList<>();

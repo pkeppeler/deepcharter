@@ -56,5 +56,6 @@ public final class TestAttachments implements ModInitializer {
 	/** Loading this class registers the types; the entrypoint makes sure that happens at startup. */
 	@Override
 	public void onInitialize() {
+		SurfaceZonesBiomeSource.register();
 	}
 }

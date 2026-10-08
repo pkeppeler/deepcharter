@@ -164,6 +164,92 @@
         },
         "settings": "deepcharter:tall_spike_stack"
       }
+    },
+    "deepcharter:tall_spike_surface": {
+      "type": "deepcharter:tall_spike_surface",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "deepcharter-test:surface_zones",
+          "split_y": -64,
+          "surface": {
+            "type": "minecraft:multi_noise",
+            "preset": "minecraft:overworld"
+          },
+          "zones": {
+            "type": "deepcharter:zones",
+            "min_y": -2032,
+            "height": 1968,
+            "biomes": [
+              "deepcharter:topsoil_claims",
+              "deepcharter:stone_benches",
+              "deepcharter:deep_claim"
+            ]
+          }
+        },
+        "settings": "deepcharter:tall_spike_surface"
+      }
+    },
+    "deepcharter:tall_spike_surface_nosky": {
+      "type": "deepcharter:tall_spike_surface_nosky",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "deepcharter-test:surface_zones",
+          "split_y": -64,
+          "surface": {
+            "type": "minecraft:multi_noise",
+            "preset": "minecraft:overworld"
+          },
+          "zones": {
+            "type": "deepcharter:zones",
+            "min_y": -2032,
+            "height": 1968,
+            "biomes": [
+              "deepcharter:topsoil_claims",
+              "deepcharter:stone_benches",
+              "deepcharter:deep_claim"
+            ]
+          }
+        },
+        "settings": "deepcharter:tall_spike_surface"
+      }
+    },
+    "deepcharter:tall_spike_surface_sea": {
+      "type": "deepcharter:tall_spike_surface_sea",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "deepcharter-test:surface_zones",
+          "split_y": -64,
+          "surface": {
+            "type": "minecraft:multi_noise",
+            "preset": "minecraft:overworld"
+          },
+          "zones": {
+            "type": "deepcharter:zones",
+            "min_y": -2032,
+            "height": 1968,
+            "biomes": [
+              "deepcharter:topsoil_claims",
+              "deepcharter:stone_benches",
+              "deepcharter:deep_claim"
+            ]
+          }
+        },
+        "settings": "deepcharter:tall_spike_surface_sea"
+      }
+    },
+    "deepcharter:tall_spike_vanilla": {
+      "type": "minecraft:overworld",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "minecraft:multi_noise",
+          "preset": "minecraft:overworld"
+        },
+        "settings": "minecraft:overworld"
+      }
     }
   }
 }

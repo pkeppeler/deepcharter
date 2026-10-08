@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:sequence",
+  "sequence": [
+    {
+      "type": "minecraft:condition",
+      "if_true": {
+        "type": "minecraft:y_above",
+        "add_stone_depth": false,
+        "anchor": {
+          "absolute": -96
+        },
+        "surface_depth_multiplier": 0
+      },
+      "then_run": "minecraft:overworld"
+    },
+    "deepcharter:layer"
+  ]
+}

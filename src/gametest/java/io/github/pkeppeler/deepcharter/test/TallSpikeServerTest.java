@@ -44,14 +44,52 @@ public class TallSpikeServerTest {
 		measure(helper, 4064);
 	}
 
+	@GameTest(maxTicks = MAX_TICKS)
+	public void tallskyon(GameTestHelper helper) {
+		measure(helper, 2352, "tall_spike_surface");
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void tallskyoff(GameTestHelper helper) {
+		measure(helper, 2352, "tall_spike_surface_nosky");
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void tallvanilla(GameTestHelper helper) {
+		measure(helper, 384, "tall_spike_vanilla");
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void tallsea(GameTestHelper helper) {
+		measure(helper, 2352, "tall_spike_surface_sea");
+	}
+
 	private static void measure(GameTestHelper helper, int height) {
-		String name = "tall_spike_" + height;
+		measure(helper, height, "tall_spike_" + height);
+	}
+
+	private static java.util.Map<String, Long> threadCpuByGroup() {
+		java.lang.management.ThreadMXBean bean = java.lang.management.ManagementFactory.getThreadMXBean();
+		java.util.Map<String, Long> groups = new java.util.TreeMap<>();
+		for (java.lang.management.ThreadInfo info : bean.getThreadInfo(bean.getAllThreadIds())) {
+			if (info != null) {
+				long cpu = bean.getThreadCpuTime(info.getThreadId());
+				if (cpu > 0) {
+					groups.merge(info.getThreadName().replaceAll("[0-9]+", "#"), cpu, Long::sum);
+				}
+			}
+		}
+		return groups;
+	}
+
+	private static void measure(GameTestHelper helper, int height, String name) {
 		ResourceKey<Level> key = ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", name));
 		ServerLevel level = helper.getLevel().getServer().getLevel(key);
 		if (level == null) {
 			throw helper.assertionException("no dimension " + key);
 		}
 		long before = usedHeap();
+		java.util.Map<String, Long> threadsStart = threadCpuByGroup();
 		long cpuStart = processCpu();
 		long start = System.nanoTime();
 		for (int x = -RADIUS; x <= RADIUS; x++) {
@@ -75,6 +113,14 @@ public class TallSpikeServerTest {
 			done[0] = true;
 			double genMs = (System.nanoTime() - start) / 1e6;
 			double cpuMs = (processCpu() - cpuStart) / 1e6;
+			StringBuilder threads = new StringBuilder();
+			threadCpuByGroup().forEach((group, cpu) -> {
+				long ms = (cpu - threadsStart.getOrDefault(group, 0L)) / 1_000_000;
+				if (ms >= 50) {
+					threads.append(String.format("[%s=%.1f] ", group, (double) ms / columns));
+				}
+			});
+			LOGGER.info("TALLSPIKE-THREADS name={} cpuMsPerColumn by thread group: {}", name, threads);
 			double load = java.lang.management.ManagementFactory.getOperatingSystemMXBean().getSystemLoadAverage();
 			long after = usedHeap();
 			long[] bandAir = new long[32];
@@ -119,8 +165,8 @@ public class TallSpikeServerTest {
 			LOGGER.info("TALLSPIKE-BANDS height={} air by 256-block band from the bottom: {}", height, bands);
 			level.getServer().saveAllChunks(false, true, false);
 			long region = regionBytes(level, name);
-			LOGGER.info("TALLSPIKE-SERVER maxHeapMB={} height={} columns={} genMs={} msPerColumn={} cpuMsPerColumn={} loadAvg={} heapBeforeMB={} heapAfterMB={} heapDeltaMB={} regionBytes={} packetRawPerColumn={} packetDeflatedPerColumn={} airFraction={}",
-					Runtime.getRuntime().maxMemory() >> 20, height, columns, Math.round(genMs), String.format("%.2f", genMs / columns), String.format("%.1f", cpuMs / columns), String.format("%.1f", load), before >> 20, after >> 20, (after - before) >> 20,
+			LOGGER.info("TALLSPIKE-SERVER name={} seed={} maxHeapMB={} height={} columns={} genMs={} msPerColumn={} cpuMsPerColumn={} loadAvg={} heapBeforeMB={} heapAfterMB={} heapDeltaMB={} regionBytes={} packetRawPerColumn={} packetDeflatedPerColumn={} airFraction={}",
+					name, level.getSeed(), Runtime.getRuntime().maxMemory() >> 20, height, columns, Math.round(genMs), String.format("%.2f", genMs / columns), String.format("%.1f", cpuMs / columns), String.format("%.1f", load), before >> 20, after >> 20, (after - before) >> 20,
 					region, raw / columns, deflated / columns, String.format("%.3f", (double) airBlocks / sampledBlocks));
 			helper.succeed();
 		});
