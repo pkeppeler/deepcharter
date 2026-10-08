@@ -49,7 +49,11 @@ jobs:
       # build-audio-pack.test.sh needs ffmpeg. It makes its own synthetic tones; CI never
       # has, reads or needs the original game audio.
       - name: install ffmpeg
-        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+        # Skip the recommended packages (GUI, audio and GPU libraries) the tones test never uses.
+        # Skip the index update too; refresh it only if the image index is stale.
+        run: |
+          sudo apt-get install -y -q --no-install-recommends ffmpeg \
+            || { sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends ffmpeg; }
       - run: python3 -I -m unittest discover -s tools/tests -p 'test_*.py'
       - name: bash tool tests
         run: |

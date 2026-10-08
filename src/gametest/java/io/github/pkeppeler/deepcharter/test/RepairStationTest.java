@@ -550,8 +550,9 @@ public class RepairStationTest {
 			throw helper.assertionException("layer 1 did not load");
 		}
 		MinecraftServer server = helper.getLevel().getServer();
+		// Riders wait at the join point, inside the colony's foundation, while the far chunk loads. Creative takes no
+		// damage; an unloaded mock would be immune only for vanilla's first 60 ticks.
 		MockPlayer pilot = MockPlayers.join(helper, "Teleportee");
-		pilot.player().setGameMode(GameType.SURVIVAL);
 		Charters.found(server, pilot.player().getUUID(), "Tele " + UUID.randomUUID().toString().substring(0, 8)).ifPresent(refusal -> {
 			throw helper.assertionException("founding the charter: %s", refusal);
 		});
@@ -563,6 +564,7 @@ public class RepairStationTest {
 			// Only now: layer 1 is solid rock, and a rider put there while the chunk loads suffocates on a slow runner.
 			pilot.teleportTo(one, new Vec3(x, 40, z), 0, 0);
 			passenger.teleportTo(one, new Vec3(x, 40, z), 0, 0);
+			pilot.player().setGameMode(GameType.SURVIVAL);
 			PodEntity pod = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
 			pod.setPos(x, 40, z);
 			one.addFreshEntity(pod);

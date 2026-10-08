@@ -19,6 +19,7 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodDrill;
@@ -398,7 +399,8 @@ public class PodDrillTest {
 	public void theLastCrustRowCrossesThePodAndItsPilotIntoTheNextLayer(GameTestHelper helper) {
 		int x = 3512;
 		ServerLevel one = layer(helper, 1);
-		// Whatever an earlier run left, three crust rows; then clear the top two and the stone above in a 5 x 5, so one is left under the pod.
+		// Seal first: generated rock around the room holds lava that floods the cleared air before the pod ticks.
+		RoomSeal.seal(one, new BlockPos(x - 2, 0, Z - 2), new BlockPos(x + 2, 8, Z + 2));
 		box(one, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
 		box(one, x - 2, x + 2, 1, 8, Z - 2, Z + 2, Blocks.AIR);
 		float[] hullBefore = {Float.NaN};
@@ -476,12 +478,14 @@ public class PodDrillTest {
 
 	/** Stone up to and including y=floor-1 under a 9 x 9 around (x, Z), and air for 10 blocks above it. */
 	private static void room(ServerLevel level, int x, int floor, int radius) {
+		RoomSeal.seal(level, new BlockPos(x - radius, floor - 8, Z - radius), new BlockPos(x + radius + 1, floor + 10, Z + radius));
 		box(level, x - radius, x + radius + 1, floor - 8, floor - 1, Z - radius, Z + radius, Blocks.STONE);
 		box(level, x - radius, x + radius + 1, floor, floor + 10, Z - radius, Z + radius, Blocks.AIR);
 	}
 
 	/** Only the stone bed, for pods that drill straight down in open air. */
 	private static void stoneBed(ServerLevel level, int x, int floor) {
+		RoomSeal.seal(level, new BlockPos(x - 4, floor - 8, Z - 4), new BlockPos(x + 3, floor + 10, Z + 3));
 		box(level, x - 4, x + 3, floor - 8, floor - 1, Z - 4, Z + 3, Blocks.STONE);
 		box(level, x - 4, x + 3, floor, floor + 10, Z - 4, Z + 3, Blocks.AIR);
 	}
