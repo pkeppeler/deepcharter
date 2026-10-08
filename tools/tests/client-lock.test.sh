@@ -361,6 +361,7 @@ stream() {
 run_lanes() {
   local lane i=0 lane_pids=() stream_pids=() watchdog
   for lane in "$@"; do
+    : >"$work/lane-$lane.log" # exists before the streamer reads it
     ( "lane_$lane"; echo "lane done" ) >"$work/lane-$lane.log" 2>&1 &
     lane_pids+=("$!")
     pids+=("$!")
