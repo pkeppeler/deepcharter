@@ -1,0 +1,10 @@
+{
+  "replace": true,
+  "values": [
+    "#minecraft:universal",
+    "minecraft:day",
+    "deepcharter:tryout_sky",
+    "minecraft:moon",
+    "minecraft:early_game"
+  ]
+}

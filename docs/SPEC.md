@@ -21,6 +21,7 @@ Pillars, ranked. The higher one wins a conflict.
 - **Group size:** 2–4 core, up to about 8 supported.
 - **Platform:** Fabric, Minecraft 26.3 (unobfuscated, Java 25). See [ADR 0002](adr/0002-fabric-on-26-3.md).
 - **Distribution:** one Modrinth modpack (the mod plus Sodium and Lithium), installed through Prism or a similar launcher.
+- **Recommended optional client mods** (never required; PR #234, [art direction](design/art-direction.md)): a dynamic-lights mod (LambDynamicLights) so held lamps and moving pods light the world smoothly, and an opt-in custom shader pack through Iris on OpenGL (Iris crashes on 26.3's Vulkan backend). Players without them see the plain ledgered light.
 - **Servers:** dedicated servers supported from day one. Hosted on the user's Mac first (friends outside the home network need port-forwarding or a tunnel); a rented host later.
 - **Assets:** our own. The friends build uses a private resource pack with the user's extracted original Motherload music and sounds; it is never published. Soundtrack sourcing for a public build is open (possibly one per layer).
 
@@ -28,7 +29,8 @@ Pillars, ranked. The higher one wins a conflict.
 
 ### Surface and colony
 
-- **Surface:** vanilla-style frontier (our own dry terrain with no sea, trees, animals, vanilla ores near the surface for the bootstrap, vanilla night monsters). No villages or settlements. No Nether or End; the depths replace them.
+- **Surface:** our own regolith plains, craters and terraced mesas, under a slow dusk-to-night sky that never reaches full day (PR #234, [art direction](design/art-direction.md), [ADR 0030](adr/0030-art-direction-decisions.md)). It is dry and bare: no sea, no grass, no trees, no animals, within the tall-world limits of [ADR 0029](adr/0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md). Vanilla night monsters are replaced by the creatures session's work; until then the surface has none. Early ore access (iron and the like) is decided with the bootstrap in [#245](https://github.com/pkeppeler/deepcharter/issues/245). No villages or settlements besides the colony. No Nether or End; the depths replace them.
+- **Never called Mars:** the world may look like Mars, but the game never calls it Mars (lore guardrail).
 - **Colony:** one derelict mining colony per world, at spawn. Its terminals are repaired once per world: when any charter fixes one, every charter can use it.
 - **Width:** unlimited, no border.
 - **Performance:** world height drives cost, because Minecraft generates whole columns. Keep layers about 256 blocks or less, and uncharted worlds 2048 tall. If world files grow large, add a tool to trim unvisited chunks.
@@ -96,7 +98,7 @@ A few hundred blocks at the top of the first uncharted world, below the seam at 
 
 ### Bootstrap
 
-- Start like normal Minecraft: hand-gathering and crafting.
+- Start from the colony's salvage and fungal "wood" (PR #234): salvage crates and wrecked prefabs supply wood, cloth and scrap. The crates are littered around the colony within a set block radius, not only at it. Hardy alien fungus stalks in craters and caves are gatherable stand-ins for trees. Hand-gathering and crafting follow from that.
 - Repair the colony's terminals one by one (fuel pump, then ore processor, then upgrade terminal, and so on). Each is a crafting goal; the employer gets in touch as they come back online.
 - The first charter also repairs the founding pod (the Mole) in the colony hangar.
 
@@ -343,7 +345,8 @@ The Behemoth's anchor mode is a temporary outpost.
 
 ## 15. Presentation
 
-- **Art:** consistent with vanilla (16× textures); chunky pod models made in Blockbench. Assets are AI-assisted, with the user curating.
+- **Art:** 16× textures with GTNH-style layers (overlays, emissive glow, animated active states, connected textures), as decided in [art-direction.md](design/art-direction.md) (PR #234). Pod models are made in Blockbench and rendered with GeckoLib.
+- **AI-assisted assets:** AI image models are allowed, curated by the user. Style consistency is managed with a reference sheet and curation. Any public release needs Modrinth's "Contains AI-generated content" disclosure, and Modrinth bans projects whose content is primarily or entirely AI-made, so the project must not become that. A local image model on the user's Mac is a separate install the user approves when needed. The private original audio and art are never used or copied.
 - **UI:** retro CRT-terminal style with typewriter text, like the original's shops and transmissions.
 - **Audio:** the friends build uses the private resource pack (section 2). Original audio list: [REFERENCE.md](../original_flash_game/REFERENCE.md). Public soundtrack is open.
 

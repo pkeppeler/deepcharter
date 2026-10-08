@@ -1,0 +1,213 @@
+{
+  "clock": "minecraft:overworld",
+  "period_ticks": 24000,
+  "tracks": {
+    "minecraft:visual/sky_color": {
+      "keyframes": [
+        {
+          "ticks": 133,
+          "value": "#4a2820"
+        },
+        {
+          "ticks": 11867,
+          "value": "#4a2820"
+        },
+        {
+          "ticks": 13670,
+          "value": "#120a0c"
+        },
+        {
+          "ticks": 22330,
+          "value": "#120a0c"
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/fog_color": {
+      "keyframes": [
+        {
+          "ticks": 133,
+          "value": "#a0603c"
+        },
+        {
+          "ticks": 11867,
+          "value": "#a0603c"
+        },
+        {
+          "ticks": 13670,
+          "value": "#2a1610"
+        },
+        {
+          "ticks": 22330,
+          "value": "#2a1610"
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/sunrise_sunset_color": {
+      "keyframes": [
+        {
+          "ticks": 133,
+          "value": "#b08fb8e0"
+        },
+        {
+          "ticks": 11867,
+          "value": "#b08fb8e0"
+        },
+        {
+          "ticks": 13670,
+          "value": "#00000000"
+        },
+        {
+          "ticks": 22330,
+          "value": "#00000000"
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/sun_angle": {
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": 80.0
+        },
+        {
+          "ticks": 12000,
+          "value": 80.0
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/moon_angle": {
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": 250.0
+        },
+        {
+          "ticks": 12000,
+          "value": 250.0
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/star_brightness": {
+      "keyframes": [
+        {
+          "ticks": 133,
+          "value": 0.22
+        },
+        {
+          "ticks": 11867,
+          "value": 0.22
+        },
+        {
+          "ticks": 13670,
+          "value": 0.75
+        },
+        {
+          "ticks": 22330,
+          "value": 0.75
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/cloud_color": {
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": "#00000000"
+        },
+        {
+          "ticks": 12000,
+          "value": "#00000000"
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/sky_light_color": {
+      "keyframes": [
+        {
+          "ticks": 133,
+          "value": "#f0a878"
+        },
+        {
+          "ticks": 11867,
+          "value": "#f0a878"
+        },
+        {
+          "ticks": 13670,
+          "value": "#7068a0"
+        },
+        {
+          "ticks": 22330,
+          "value": "#7068a0"
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/sky_light_factor": {
+      "keyframes": [
+        {
+          "ticks": 133,
+          "value": 0.62
+        },
+        {
+          "ticks": 11867,
+          "value": 0.62
+        },
+        {
+          "ticks": 13670,
+          "value": 0.2
+        },
+        {
+          "ticks": 22330,
+          "value": 0.2
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/fog_start_distance": {
+      "keyframes": [
+        {
+          "ticks": 133,
+          "value": 20.0
+        },
+        {
+          "ticks": 11867,
+          "value": 20.0
+        },
+        {
+          "ticks": 13670,
+          "value": 10.0
+        },
+        {
+          "ticks": 22330,
+          "value": 10.0
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/fog_end_distance": {
+      "keyframes": [
+        {
+          "ticks": 133,
+          "value": 150.0
+        },
+        {
+          "ticks": 11867,
+          "value": 150.0
+        },
+        {
+          "ticks": 13670,
+          "value": 90.0
+        },
+        {
+          "ticks": 22330,
+          "value": 90.0
+        }
+      ],
+      "modifier": "override"
+    }
+  }
+}
