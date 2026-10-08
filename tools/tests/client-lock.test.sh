@@ -71,7 +71,8 @@ printf '%s\n' "org.gradle.daemon.idletimeout=60000" "org.gradle.jvmargs=-Xmx192m
   >"$GRADLE_USER_HOME/gradle.properties"
 # Set by each lane: proj, locks, holder0, holder1, order.
 
-# run <name> [env...]: runs runClient in the foreground (configuration cache on), output in $work/<name>.out.
+# run <name> [env...]: runs runClient in the foreground, output in $work/<name>.out. The configuration cache is on only
+# with cc=(--configuration-cache), which the cache lane sets: it costs a cold build seconds, and one lane covers it.
 # It uses a daemon, except with $sigint set: Ctrl-C of a --no-daemon build must end the build's whole process tree.
 # The stub logs <name> to $order when it starts and holds until $work/<name>.release exists.
 # With $sigint set, SIGINT is not ignored, so a test can send Ctrl-C to the client.
@@ -86,7 +87,7 @@ run() {
   fi
   env HOLD_NAME="$name" ORDER_LOG="$order" HOLD_RELEASE="$work/$name.release" "$@" \
     ${wrap[@]+"${wrap[@]}"} \
-    "$root/gradlew" ${daemon[@]+"${daemon[@]}"} --configuration-cache --console=plain -p "$proj" runClient >"$work/$name.out" 2>&1
+    "$root/gradlew" ${daemon[@]+"${daemon[@]}"} ${cc[@]+"${cc[@]}"} --console=plain -p "$proj" runClient >"$work/$name.out" 2>&1
 }
 
 # launch <run function> <name> [env...]: runs it in the background and writes its exit status to $work/<name>.status,
@@ -316,6 +317,7 @@ lane_sigint() {
 
 lane_cache() {
   lane_setup cache
+  cc=(--configuration-cache)
   # 8. off switch
   touch "$work/e2.release"
   rm -rf "$locks"
@@ -353,13 +355,6 @@ run_lanes() {
     grep -q '^lane done' "$work/lane-$lane.log"; check "lane $lane ran to the end" $?
   done
 }
-# One build first fills the scratch Gradle home (generated jars, script caches) and leaves a warm daemon, so the lanes
-# do not all pay that cost at once. The lock is off here; the lanes test it.
-proj=$work/proj-warm
-order=$work/order-warm
-make_proj "$proj"
-touch "$work/warm.release"
-run warm DEEPCHARTER_CLIENT_LOCK=0; check "warm-up build succeeds" $?
 run_lanes queue stale holders sigint cache
 
 if [[ $failures -ne 0 ]]; then
