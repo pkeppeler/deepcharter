@@ -83,8 +83,8 @@ public class RepairStationTest {
 			Consumable.HULL_NANOBOTS, 350L,
 			Consumable.DYNAMITE, 100L,
 			Consumable.PLASTIC_EXPLOSIVES, 300L,
-			Consumable.QUANTUM_TELEPORTER, 250L,
-			Consumable.MATTER_TRANSMITTER, 750L);
+			Consumable.QUANTUM_TELEPORTER, 750L,
+			Consumable.MATTER_TRANSMITTER, 1_500L);
 	private static final long PER_HP = 1L;
 	private static final int ARENA = 4;
 

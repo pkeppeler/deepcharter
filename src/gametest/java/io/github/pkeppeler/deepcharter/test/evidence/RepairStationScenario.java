@@ -53,7 +53,7 @@ public class RepairStationScenario extends EvidenceScenario {
 			context.clickScreenButton("BUY DYNAMITE $100");
 			RepairStationClientTest.awaitServer(context, () -> singleplayer.getServer().computeOnServer(server -> carried(server, Consumable.DYNAMITE)) == 1);
 			hold(context);
-			context.clickScreenButton("BUY MATTER TRANSMITTER $750");
+			context.clickScreenButton("BUY MATTER TRANSMITTER $1500");
 			RepairStationClientTest.awaitServer(context, () -> singleplayer.getServer().computeOnServer(server -> carried(server, Consumable.MATTER_TRANSMITTER)) == 1);
 			hold(context);
 			context.setScreen(() -> null);

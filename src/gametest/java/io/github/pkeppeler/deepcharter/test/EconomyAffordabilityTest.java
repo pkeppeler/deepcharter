@@ -45,19 +45,20 @@ public class EconomyAffordabilityTest {
 	private static final int REFURBISHED_SECOND_RUNS = 3;
 
 	/**
-	 * Issue 210: each repair station item against the run of the layer where it starts to matter. The first four are bought in
-	 * layers 1 and 2, so one run's net at most; the transmitter is a layer 3 item and may take two layer 2 runs.
+	 * Issue 210: each repair station item against the run of the layer where it starts to matter, as a share of that run's net.
+	 * The tools are bought in layers 1 and 2 and cost a quarter of a run to one run. SPEC section 11 calls the two teleport items
+	 * expensive emergency items, so they cost about 2 and 4 layer 2 runs (the transmitter is a layer 3 item, measured in layer 2 runs).
 	 */
-	private record Target(boolean layerTwo, int maxRuns) {
+	private record Target(boolean layerTwo, double minRuns, double maxRuns) {
 	}
 
 	private static final Map<Consumable, Target> ITEM_TARGETS = Map.of(
-			Consumable.RESERVE_FUEL_TANK, new Target(false, 1),
-			Consumable.DYNAMITE, new Target(false, 1),
-			Consumable.QUANTUM_TELEPORTER, new Target(true, 1),
-			Consumable.PLASTIC_EXPLOSIVES, new Target(true, 1),
-			Consumable.HULL_NANOBOTS, new Target(true, 1),
-			Consumable.MATTER_TRANSMITTER, new Target(true, 2));
+			Consumable.RESERVE_FUEL_TANK, new Target(false, 0.25, 1),
+			Consumable.DYNAMITE, new Target(false, 0.25, 1),
+			Consumable.QUANTUM_TELEPORTER, new Target(true, 1.5, 2),
+			Consumable.PLASTIC_EXPLOSIVES, new Target(true, 0.25, 1),
+			Consumable.HULL_NANOBOTS, new Target(true, 0.25, 1),
+			Consumable.MATTER_TRANSMITTER, new Target(true, 3.5, 4));
 
 	private static Run stockRunInLayerOne() {
 		return EarlyRunModel.run(Zone.load("topsoil_claims"), PodStats.base(), 0);
@@ -167,15 +168,28 @@ public class EconomyAffordabilityTest {
 		for (Consumable item : Consumable.values()) {
 			Target target = ITEM_TARGETS.get(item);
 			Run run = target.layerTwo() ? layerTwo : layerOne;
-			int runs = run.toAfford(item.price());
+			double runs = item.price() / run.net();
 			LOGGER.info("[economy] {} ${}: {} runs of ${}", item, item.price(), runs, Math.round(run.net()));
-			if (runs > target.maxRuns()) {
-				throw failure(helper, "%s costs $%d, which is %d runs of $%.0f; at most %d are allowed", item, item.price(), runs,
-						run.net(), target.maxRuns());
+			if (runs > target.maxRuns() || runs < target.minRuns()) {
+				throw failure(helper, "%s costs $%d, which is %.2f runs of $%.0f; %.2f to %.2f are allowed", item, item.price(), runs,
+						run.net(), target.minRuns(), target.maxRuns());
 			}
 			if (item.rationale().isBlank()) {
 				throw failure(helper, "%s has no pricing rationale", item);
 			}
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void theDearerItemOfEachPairCostsMore(GameTestHelper helper) {
+		if (Consumable.DYNAMITE.price() >= Consumable.PLASTIC_EXPLOSIVES.price()) {
+			throw failure(helper, "the plastic explosives outdo the dynamite, so they must cost more than its $%d, not $%d",
+					Consumable.DYNAMITE.price(), Consumable.PLASTIC_EXPLOSIVES.price());
+		}
+		if (Consumable.QUANTUM_TELEPORTER.price() >= Consumable.MATTER_TRANSMITTER.price()) {
+			throw failure(helper, "the transmitter must cost more than the teleporter's $%d, not $%d",
+					Consumable.QUANTUM_TELEPORTER.price(), Consumable.MATTER_TRANSMITTER.price());
 		}
 		helper.succeed();
 	}
