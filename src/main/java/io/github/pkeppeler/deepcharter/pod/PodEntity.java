@@ -150,7 +150,8 @@ public class PodEntity extends Entity {
 	protected void readAdditionalSaveData(ValueInput input) {
 		Chassis saved = Chassis.byId(required(input, CHASSIS_KEY, Codec.STRING));
 		if (saved != chassis) {
-			throw new IllegalStateException("a " + saved.id() + " was saved as a " + chassis.id() + " pod");
+			// The entity type decides the hitbox, so the type's chassis wins.
+			DeepCharter.LOGGER.error("Pod {} was saved as a {} but is a {}: it keeps the type's chassis", getUUID(), saved.id(), chassis.id());
 		}
 		// Not setHull: loading a pod that has no hull left is not the hull running out.
 		float hull = required(input, HULL_KEY, Codec.FLOAT);

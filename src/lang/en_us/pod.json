@@ -1,6 +1,7 @@
 {
   "commands.deepcharter.pod.spawn.failed": "Could not spawn a pod here",
   "commands.deepcharter.pod.spawn.success": "Spawned a pod",
+  "commands.deepcharter.pod.spawn.success_scanner": "Spawned a pod for your charter, with a tier 1 scanner",
   "deepcharter.pod.dump.no_pod": "You are not riding a pod",
   "deepcharter.pod.dump.success": "Dumped %s ore",
   "entity.deepcharter.pod": "Pod",

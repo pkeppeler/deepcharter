@@ -25,6 +25,7 @@ public class BreachCrossingClientTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		ClientTestLog.start(this);
 		try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
 			MockPlayer mock = two.mock();
 			UUID mockId = mock.player().getUUID();

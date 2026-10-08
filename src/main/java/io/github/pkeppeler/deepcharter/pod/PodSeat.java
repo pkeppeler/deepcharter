@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.pod;
 
+import java.util.Optional;
+
 import net.minecraft.world.entity.Entity;
 
 /**
@@ -11,13 +13,16 @@ public enum PodSeat {
 	PILOT,
 	NAVIGATOR;
 
-	/** The seat of {@code rider} in {@code pod}. A rider who is not aboard is a bug in the caller, so it throws. */
-	public static PodSeat of(PodEntity pod, Entity rider) {
+	/**
+	 * The seat of {@code rider} in {@code pod}, or empty when the rider is not in its passenger list. That happens on a client for
+	 * a tick or two while the pod and its passengers sync, so a render or tick path treats it as no readout and never throws.
+	 */
+	public static Optional<PodSeat> find(PodEntity pod, Entity rider) {
 		int index = pod.getPassengers().indexOf(rider);
 		if (index < 0) {
-			throw new IllegalArgumentException(rider + " is not riding pod " + pod.getUUID());
+			return Optional.empty();
 		}
-		return index == 0 ? PILOT : NAVIGATOR;
+		return Optional.of(index == 0 ? PILOT : NAVIGATOR);
 	}
 
 	/** True when the seat shows the pod's hull, fuel, cargo and depth, and sounds its low-fuel beep. */

@@ -10,6 +10,8 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions;
 
+import io.github.pkeppeler.deepcharter.test.ClientTestLog;
+
 /**
  * Base class for PR evidence scenarios. Run with tools/record-evidence.sh, which sets
  * DEEPCHARTER_EVIDENCE to the scenario name and DEEPCHARTER_EVIDENCE_DIR to build/evidence.
@@ -38,6 +40,7 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
 		if (!name().equals(System.getenv("DEEPCHARTER_EVIDENCE"))) {
 			return;
 		}
+		ClientTestLog.start(this);
 		String root = System.getenv("DEEPCHARTER_EVIDENCE_DIR");
 		if (root == null) {
 			throw new IllegalStateException("DEEPCHARTER_EVIDENCE_DIR is not set; run via tools/record-evidence.sh");

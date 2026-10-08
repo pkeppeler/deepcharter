@@ -29,6 +29,7 @@ public class CharterCoreClientTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		ClientTestLog.start(this);
 		nameAndBalanceReachTheClient(context);
 		crewAndDirectorChangesReachTheClient(context);
 	}

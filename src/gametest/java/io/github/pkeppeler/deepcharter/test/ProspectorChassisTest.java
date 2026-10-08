@@ -38,6 +38,7 @@ import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.handbook.HandbookRegistry;
 import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
+import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
@@ -48,7 +49,9 @@ import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodSeat;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
+import io.github.pkeppeler.deepcharter.pod.PodTowing;
 import io.github.pkeppeler.deepcharter.pod.Serials;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -75,6 +78,8 @@ public class ProspectorChassisTest {
 	private static final int BORE_FLOOR = 60;
 	private static final int BORE_DEPTH = 3;
 	private static final int DRIVE_TICKS = 40;
+	/** Ticks a pod needs, once its chunk ticks, to fall through the shaft and cross. */
+	private static final int CROSSING_TICKS = 200;
 	private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
 	private static final Input FORWARD_AND_SPRINT = new Input(true, false, false, false, false, false, true);
 	private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
@@ -105,14 +110,18 @@ public class ProspectorChassisTest {
 			} finally {
 				loaded.discard();
 			}
-			// A pod saved with one chassis and loaded into another one's type is a corrupt save, so it fails loud.
+			// A pod saved with one chassis and loaded into another one's type keeps the type's chassis: it logs and never throws.
+			Entity mismatched = EntityType.create(PodRegistry.POD, TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), saved),
+					level, EntitySpawnReason.LOAD).orElseThrow(() -> failure(helper, "a Prospector's save must still load into a Mole's type"));
 			try {
-				EntityType.create(PodRegistry.POD, TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), saved),
-						level, EntitySpawnReason.LOAD).ifPresent(Entity::discard);
-				throw failure(helper, "a Prospector's save must not load as a Mole");
-			} catch (RuntimeException refused) {
-				expect(helper, causes(refused).contains("a prospector was saved as a mole pod"),
-						"the load refuses a Prospector's save in a Mole for its chassis, it said: %s", causes(refused));
+				expect(helper, mismatched instanceof PodEntity copy && copy.chassis() == Chassis.MOLE && copy.getBbWidth() == 1.9f
+						&& copy.getBbHeight() == 1.9f, "a Prospector's save in a Mole's type keeps the Mole chassis and hitbox, it loaded as %s", mismatched);
+				// The save carries the Prospector's uuid, which is still in the level.
+				mismatched.setUUID(UUID.randomUUID());
+				expect(helper, level.addFreshEntity(mismatched) && level.getEntity(mismatched.getUUID()) == mismatched,
+						"the pod with the mismatched chassis is in the level");
+			} finally {
+				mismatched.discard();
 			}
 			helper.succeed();
 		} finally {
@@ -252,6 +261,9 @@ public class ProspectorChassisTest {
 		generate(level, ordinary);
 		generate(level, prospector);
 		helper.succeedWhen(() -> {
+			// Loading the chunks again must not add a second pod to either site.
+			generate(level, ordinary);
+			generate(level, prospector);
 			PodEntity plain = wreckAt(helper, level, ordinary);
 			expect(helper, plain.getCustomName() == null && PodComponents.registration(plain).isEmpty(),
 					"an ordinary wreck is unnamed and nobody owns it");
@@ -265,6 +277,8 @@ public class ProspectorChassisTest {
 					"PROSPECTOR-0002 has exactly one lamp still burning, it has %s", lanterns(level, prospector));
 			expect(helper, notes(level, prospector).equals(List.of(10)),
 					"PROSPECTOR-0002 holds Note N10 and no other, it holds %s", notes(level, prospector));
+			expect(helper, Notes.exists(Notes.id(10)) && Notes.id(notes(level, prospector).getFirst()).equals(Notes.id(10)),
+					"the lamp's Note is the Note %s, Ines's log", Notes.id(10));
 		});
 	}
 
@@ -360,12 +374,81 @@ public class ProspectorChassisTest {
 		}));
 	}
 
-	private static String causes(Throwable error) {
-		StringBuilder messages = new StringBuilder();
-		for (Throwable cause = error; cause != null; cause = cause.getCause()) {
-			messages.append(cause.getMessage()).append(" / ");
-		}
-		return messages.toString();
+	/** A Prospector with a pilot and a navigator crosses a breach and both arrive in the same seats. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + CROSSING_TICKS)
+	public void aProspectorCrossesABreachWithBothRidersInTheirSeats(GameTestHelper helper) {
+		double x = 3700.5;
+		double z = 3700.5;
+		ServerLevel one = layer(helper, 1);
+		openShaft(one, x, z);
+		MockPlayer pilot = MockPlayers.join(helper, "prospector-cross-pilot");
+		MockPlayer navigator = MockPlayers.join(helper, "prospector-cross-navigator");
+		pilot.teleportTo(one, new Vec3(x, 8, z), 0, 0);
+		navigator.teleportTo(one, new Vec3(x, 8, z), 0, 0);
+		PodEntity[] pod = {null};
+		FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, 8, z), () -> {
+			pod[0] = PodRegistry.PROSPECTOR.create(one, EntitySpawnReason.COMMAND);
+			pod[0].setPos(x, 8, z);
+			one.addFreshEntity(pod[0]);
+			if (!pilot.player().startRiding(pod[0], true, false) || !navigator.player().startRiding(pod[0], true, false)) {
+				throw failure(helper, "the mocks could not board the Prospector");
+			}
+		});
+		helper.succeedWhen(() -> {
+			if (pod[0] == null) {
+				throw failure(helper, "waiting for the chunk at %s to tick entities", BlockPos.containing(x, 8, z));
+			}
+			expect(helper, pilot.player().level().dimension().equals(LayerChain.dimension(2)),
+					"the pilot should have crossed to layer 2, is in %s", pilot.player().level().dimension());
+			expect(helper, pilot.player().getVehicle() instanceof PodEntity arrived && arrived.chassis() == Chassis.PROSPECTOR
+					&& arrived.getUUID().equals(pod[0].getUUID()), "the pilot rides the same Prospector after crossing, rides %s", pilot.player().getVehicle());
+			PodEntity arrived = (PodEntity) pilot.player().getVehicle();
+			expect(helper, arrived.getPassengers().size() == 2 && arrived.getPassengers().get(0) == pilot.player()
+					&& arrived.getPassengers().get(1) == navigator.player(),
+					"the pilot is still first aboard and the navigator second after crossing, the passengers are %s", arrived.getPassengers());
+			expect(helper, arrived.getControllingPassenger() == pilot.player() && PodSeat.find(arrived, navigator.player()).orElseThrow() == PodSeat.NAVIGATOR,
+					"the pilot still controls and the navigator is still the navigator");
+		});
+	}
+
+	/** Riders in a towed Prospector cross with it, still in the pod they boarded and in the order they boarded. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + CROSSING_TICKS)
+	public void aTowedProspectorKeepsBothRidersInTheirSeatsAcrossABreach(GameTestHelper helper) {
+		double x = 3800.5;
+		double z = 3800.5;
+		ServerLevel one = layer(helper, 1);
+		openShaft(one, x, z);
+		MockPlayer pilot = MockPlayers.join(helper, "prospector-tow-pilot");
+		MockPlayer navigator = MockPlayers.join(helper, "prospector-tow-navigator");
+		pilot.teleportTo(one, new Vec3(x, 10, z), 0, 0);
+		navigator.teleportTo(one, new Vec3(x, 10, z), 0, 0);
+		PodEntity[] pods = {null, null};
+		FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, 8, z), () -> {
+			pods[0] = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
+			pods[0].setPos(x, 8, z);
+			one.addFreshEntity(pods[0]);
+			pods[1] = PodRegistry.PROSPECTOR.create(one, EntitySpawnReason.COMMAND);
+			pods[1].setPos(x, 10, z);
+			one.addFreshEntity(pods[1]);
+			PodTowing.attach(pods[0], pods[1]);
+			if (!pilot.player().startRiding(pods[1], true, false) || !navigator.player().startRiding(pods[1], true, false)) {
+				throw failure(helper, "the mocks could not board the towed Prospector");
+			}
+		});
+		helper.succeedWhen(() -> {
+			if (pods[1] == null) {
+				throw failure(helper, "waiting for the chunk at %s to tick entities", BlockPos.containing(x, 8, z));
+			}
+			expect(helper, pilot.player().level().dimension().equals(LayerChain.dimension(2)) && navigator.player().level().dimension().equals(LayerChain.dimension(2)),
+					"both riders of the towed Prospector should have crossed to layer 2, they are in %s and %s",
+					pilot.player().level().dimension(), navigator.player().level().dimension());
+			expect(helper, pilot.player().getVehicle() instanceof PodEntity towed && towed.chassis() == Chassis.PROSPECTOR && PodTowing.isTowed(towed),
+					"the first rider is still in the towed Prospector on its cable, is in %s", pilot.player().getVehicle());
+			PodEntity towed = (PodEntity) pilot.player().getVehicle();
+			expect(helper, towed.getPassengers().size() == 2 && towed.getPassengers().get(0) == pilot.player()
+					&& towed.getPassengers().get(1) == navigator.player(),
+					"the riders keep the order they boarded in the towed Prospector, the passengers are %s", towed.getPassengers());
+		});
 	}
 
 	private static void nothingChanged(GameTestHelper helper, MockPlayer owner, PodEntity wreck, CharterId charter, long money, int catalysts, String why) {
@@ -434,6 +517,17 @@ public class ProspectorChassisTest {
 			}
 		}
 		return found;
+	}
+
+	private static void openShaft(ServerLevel level, double x, double z) {
+		BlockPos column = BlockPos.containing(x, 0, z);
+		for (int dx = -1; dx <= 1; dx++) {
+			for (int dz = -1; dz <= 1; dz++) {
+				for (int y = level.getMinY(); y <= level.getMinY() + 10; y++) {
+					level.setBlock(column.offset(dx, 0, dz).atY(y), Blocks.AIR.defaultBlockState(), 3);
+				}
+			}
+		}
 	}
 
 	private static BlockPos conduit(GameTestHelper helper) {

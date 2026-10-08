@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 public class DeepCharterClientGameTest implements FabricClientGameTest {
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		ClientTestLog.start(this);
 		if (!FabricLoader.getInstance().isModLoaded("deepcharter")) {
 			throw new AssertionError("deepcharter is not loaded on the client");
 		}

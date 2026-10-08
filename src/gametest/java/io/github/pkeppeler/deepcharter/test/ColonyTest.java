@@ -57,6 +57,7 @@ import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
+import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
@@ -539,6 +540,7 @@ public class ColonyTest {
 		int floor = 60;
 		int roomFrom = centre.getX() - radius - 8;
 		int roomTo = centre.getX() - radius - 1;
+		RoomSeal.seal(level, new BlockPos(roomFrom, floor, centre.getZ() - 4), new BlockPos(roomTo, floor + 10, centre.getZ() + 4));
 		// Stone under the room, air over it, and the casing east of it, which the chunk load has set.
 		for (int x = roomFrom; x <= roomTo; x++) {
 			for (int z = centre.getZ() - 4; z <= centre.getZ() + 4; z++) {

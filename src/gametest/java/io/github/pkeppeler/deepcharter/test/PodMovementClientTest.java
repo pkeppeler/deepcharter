@@ -70,6 +70,7 @@ public class PodMovementClientTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		ClientTestLog.start(this);
 		try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
 			int mockPodId = mountBoth(two);
 			context.waitFor(client -> client.player.getVehicle() instanceof PodEntity && client.level.getEntity(mockPodId) != null);

@@ -22,6 +22,7 @@ import net.minecraft.world.level.block.CandleBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.chunk.ImposterProtoChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
@@ -52,8 +53,8 @@ public class LayerStructuresTest {
 	/** How near a colony Note is to the anchor of its building, in blocks on the map. */
 	private static final double NEAR_ANCHOR = 6;
 	private static final int PROSPECTOR_CELLS = 6;
-	/** Spacing cells that only one test each loads, so that a chunk is generated for the first time inside that test. */
-	private static final int SEAL_CELL = 5;
+	/** Far from the layer-2 tests, so nothing makes this chunk full first. */
+	private static final int SEAL_CELL = 30;
 	private static final int DISK_CELL = 6;
 	private static final int CASING_CELL = 7;
 	private static final int SEAM_CELL = 8;
@@ -254,6 +255,10 @@ public class LayerStructuresTest {
 		// The chunk of the site's centre, stopped before it is full: the zone fill has run, and the structure is not drawn yet.
 		ChunkPos chunkPos = ChunkPos.containing(site.origin());
 		ChunkAccess proto = level.getChunk(chunkPos.x(), chunkPos.z(), ChunkStatus.FEATURES);
+		if (proto instanceof ImposterProtoChunk) {
+			throw failure(helper, "%s: chunk already FULL, another test loaded it; writes would be dropped (got %s)",
+					chunkPos, proto.getClass().getSimpleName());
+		}
 		BlockState lava = Blocks.LAVA.defaultBlockState();
 		BlockState gas = HazardBlocks.GAS_POCKET.defaultBlockState();
 		// Lava in the wall beside the hollow (the shell, outside the bounds) and gas in its roof, within this chunk.

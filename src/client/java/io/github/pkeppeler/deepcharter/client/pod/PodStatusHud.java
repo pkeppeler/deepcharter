@@ -47,7 +47,7 @@ public final class PodStatusHud {
 
 	private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
 		Minecraft client = Minecraft.getInstance();
-		if (client.player == null || !(client.player.getVehicle() instanceof PodEntity pod) || !PodSeat.of(pod, client.player).showsPodStatus()) {
+		if (client.player == null || !(client.player.getVehicle() instanceof PodEntity pod) || !PodSeat.find(pod, client.player).filter(PodSeat::showsPodStatus).isPresent()) {
 			return;
 		}
 		Font font = client.font;

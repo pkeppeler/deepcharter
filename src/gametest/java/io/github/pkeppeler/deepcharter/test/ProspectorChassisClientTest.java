@@ -19,6 +19,7 @@ import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
+import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
 /**
@@ -40,6 +41,7 @@ public class ProspectorChassisClientTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		ClientTestLog.start(this);
 		try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
 			UUID mockId = two.mock().player().getUUID();
 			two.server().runOnServer(server -> buildRoom(server.overworld(), two));
@@ -61,7 +63,7 @@ public class ProspectorChassisClientTest implements FabricClientGameTest {
 				throw new AssertionError("The client should see itself as the navigator of a two-seat Prospector piloted by the mock player");
 			}
 
-			ScannerHudTest.HudShot navigator = ScannerHudTest.HudShot.take(context, "prospector-navigator");
+			ScannerHudTest.HudShot navigator = ScannerHudTest.HudShot.take(context, "prospector-navigator", ScannerHudTest.TIER_ONE);
 			for (int up = 0; up < POD_CELLS; up++) {
 				expectPixel(navigator, "the navigator's scanner marks cell " + up + " of the Prospector", up, ScannerTuning.DEFAULT.podColor());
 			}
@@ -74,7 +76,7 @@ public class ProspectorChassisClientTest implements FabricClientGameTest {
 			two.server().runOnServer(server -> two.mock().player().stopRiding());
 			context.waitFor(client -> client.player.getVehicle() instanceof PodEntity pod && pod.getPassengers().size() == 1);
 			context.waitTicks(2);
-			ScannerHudTest.HudShot pilot = ScannerHudTest.HudShot.take(context, "prospector-pilot");
+			ScannerHudTest.HudShot pilot = ScannerHudTest.HudShot.take(context, "prospector-pilot", ScannerHudTest.TIER_ONE);
 			if (whitePixels(pilot) == 0) {
 				throw new AssertionError("With the pilot gone the client takes the controls and should see the pod status lines");
 			}
@@ -92,7 +94,7 @@ public class ProspectorChassisClientTest implements FabricClientGameTest {
 		two.mock().teleportTo(level, new Vec3(X + 0.5, FLOOR_Y, Z + 0.5), 0f, 0f);
 	}
 
-	/** Seats the mock first and the real player second in a new Prospector. Returns the pod's id. */
+	/** Seats the mock first and the real player second in a new Prospector with a tier 1 scanner owned by the real player. Returns the pod's id. */
 	private static int board(ServerLevel level, TwoPlayerServer two) {
 		ServerPlayer real = level.getServer().getPlayerList().getPlayers().stream()
 				.filter(player -> player != two.mock().player()).findFirst().orElseThrow();
@@ -103,6 +105,8 @@ public class ProspectorChassisClientTest implements FabricClientGameTest {
 		if (!two.mock().player().startRiding(pod) || !real.startRiding(pod)) {
 			throw new AssertionError("Both players should board the Prospector");
 		}
+		// Since scanner tiers, only a fitted scanner draws the panel. It is fitted after boarding: a registered pod admits its crew only.
+		ScannerPods.fit(level.getServer(), real, pod, 1);
 		return pod.getId();
 	}
 

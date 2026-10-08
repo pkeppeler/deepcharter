@@ -73,13 +73,23 @@ public final class LayerStructures {
 					if (famous) {
 						ProspectorWrecks.light(plan);
 					}
-					ProspectorWrecks.place(level, site, chunk.getPos(), famous);
+					placeWreck(level, site, chunk, famous);
 				}
 			}
 		} catch (RuntimeException e) {
 			if (LOGGED_FAILURE.compareAndSet(false, true)) {
 				DeepCharter.LOGGER.error("Layer structures failed in chunk {} of layer {}; this and later chunks may lack theirs", chunk.getPos(), layer.getAsInt(), e);
 			}
+		}
+	}
+
+	/** A pod that cannot be made is logged and skips its own site only: it must not drop the blocks of the other sites in the chunk. */
+	private static void placeWreck(ServerLevel level, StructureSite site, LevelChunk chunk, boolean famous) {
+		try {
+			ProspectorWrecks.place(level, site, chunk.getPos(), famous);
+		} catch (RuntimeException e) {
+			DeepCharter.LOGGER.error("The Prospector wreck at the site {} in chunk {} of {} failed; the site stays without a pod",
+					site.origin().toShortString(), chunk.getPos(), level.dimension().identifier(), e);
 		}
 	}
 

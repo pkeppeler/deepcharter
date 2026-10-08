@@ -439,6 +439,7 @@ public class PodDrillTest {
 	public void theLastLayersCrustIsNotDrilled(GameTestHelper helper) {
 		int x = 3576;
 		ServerLevel two = layer(helper, 2);
+		RoomSeal.seal(two, new BlockPos(x - 2, 0, Z - 2), new BlockPos(x + 2, 10, Z + 2));
 		box(two, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
 		box(two, x - 2, x + 2, 3, 10, Z - 2, Z + 2, Blocks.AIR);
 		Rig rig = Rig.await(helper, two, new Vec3(x, 3, Z), 0f, "drill-last-crust", SPRINT);
