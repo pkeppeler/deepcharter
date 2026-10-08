@@ -27,6 +27,10 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 	def sources = fileTree(javaRoot) { include "**/*.java" }
 	inputs.files(sources).withPropertyName("gametestSources")
 	inputs.file(template).withPropertyName("template")
+	// WorldDataGuard must list every saved-data record of the mod, or it misses a swap of a new one.
+	def mainSources = fileTree("src/main/java") { include "**/*.java" }
+	def guardSource = file("src/gametest/java/io/github/pkeppeler/deepcharter/test/support/WorldDataGuard.java")
+	inputs.files(mainSources).withPropertyName("mainSources")
 	outputs.file(outputFile)
 
 	doLast {
@@ -61,6 +65,14 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 		}
 		if (client.isEmpty()) {
 			problems << "no client GameTest or evidence scenario found under src/gametest/java"
+		}
+		def guarded = guardSource.text
+		mainSources.files.sort().each { source ->
+			(source.text =~ /SavedDataType<(\w+)>\s+TYPE\b/).each { match, record ->
+				if (!guarded.contains("${record}.TYPE")) {
+					problems << "${record} declares a SavedDataType, which ${guardSource.name} does not watch; add ${record}.TYPE to its WATCHED list"
+				}
+			}
 		}
 		if (!problems.isEmpty()) {
 			throw new GradleException("gametest entrypoints:\n  " + problems.join("\n  "))

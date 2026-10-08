@@ -35,8 +35,8 @@ import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
  * server is watched: the client suite's integrated server is not.
  */
 public final class WorldDataGuard implements ModInitializer {
-	private static final List<SavedDataType<?>> WATCHED = List.of(CharterData.TYPE, ColonySite.TYPE, HandbookProgressData.TYPE, NotesData.TYPE,
-			HangarData.TYPE, WorkOrderData.TYPE, PodLightLedger.TYPE, Serials.TYPE, RepairState.TYPE, TransmissionData.TYPE);
+	private static final List<SavedDataType<?>> WATCHED = List.of(CharterData.TYPE, ColonySite.TYPE, HandbookProgressData.TYPE,
+			NotesData.TYPE, HangarData.TYPE, WorkOrderData.TYPE, PodLightLedger.TYPE, Serials.TYPE, RepairState.TYPE, TransmissionData.TYPE);
 	private static final Map<SavedDataType<?>, SavedData> SEEN = new HashMap<>();
 
 	@Override
