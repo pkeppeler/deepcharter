@@ -45,9 +45,8 @@ public class EconomyAffordabilityTest {
 	private static final int REFURBISHED_SECOND_RUNS = 3;
 
 	/**
-	 * Issue 210: each repair station item against the run of the layer where it starts to matter, as a share of that run's net.
-	 * The tools are bought in layers 1 and 2 and cost a quarter of a run to one run. SPEC section 11 calls the two teleport items
-	 * expensive emergency items, so they cost about 2 and 4 layer 2 runs (the transmitter is a layer 3 item, measured in layer 2 runs).
+	 * Each repair station item against the run of the layer where it starts to matter (the transmitter, a layer 3 item, is measured in
+	 * layer 2 runs), as a band of that run's net. See {@link Consumable} for the scale.
 	 */
 	private record Target(boolean layerTwo, double minRuns, double maxRuns) {
 	}
@@ -173,9 +172,6 @@ public class EconomyAffordabilityTest {
 			if (runs > target.maxRuns() || runs < target.minRuns()) {
 				throw failure(helper, "%s costs $%d, which is %.2f runs of $%.0f; %.2f to %.2f are allowed", item, item.price(), runs,
 						run.net(), target.minRuns(), target.maxRuns());
-			}
-			if (item.rationale().isBlank()) {
-				throw failure(helper, "%s has no pricing rationale", item);
 			}
 		}
 		helper.succeed();

@@ -16,21 +16,19 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
  * {@code EconomyAffordabilityTest} holds each item to its band.
  */
 public enum Consumable {
-	RESERVE_FUEL_TANK("reserve_fuel_tank", 100, "layer 1: under one stock layer 1 run ($115), as the cheapest way past a 10 L tank"),
-	HULL_NANOBOTS("hull_nanobots", 350, "layer 2: under one layer 2 run ($397), and above the $30 the station charges for the same 30 HP"),
-	DYNAMITE("dynamite", 100, "layer 1: under one stock layer 1 run ($115), a tool for every dig"),
-	PLASTIC_EXPLOSIVES("plastic_explosives", 300, "layer 2: under one layer 2 run ($397), and above the dynamite it outdoes"),
-	QUANTUM_TELEPORTER("quantum_teleporter", 750, "layer 2: about two layer 2 runs ($397 each), an expensive emergency exit (SPEC section 11)"),
-	MATTER_TRANSMITTER("matter_transmitter", 1_500, "layer-3 item, measured as 4 layer 2 runs ($397 each), the dearest emergency exit (SPEC section 11)");
+	RESERVE_FUEL_TANK("reserve_fuel_tank", 100),
+	HULL_NANOBOTS("hull_nanobots", 350),
+	DYNAMITE("dynamite", 100),
+	PLASTIC_EXPLOSIVES("plastic_explosives", 300),
+	QUANTUM_TELEPORTER("quantum_teleporter", 750),
+	MATTER_TRANSMITTER("matter_transmitter", 1_500);
 
 	private final Identifier itemId;
 	private final long price;
-	private final String rationale;
 
-	Consumable(String path, long price, String rationale) {
+	Consumable(String path, long price) {
 		this.itemId = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path);
 		this.price = price;
-		this.rationale = rationale;
 	}
 
 	public Identifier itemId() {
@@ -40,11 +38,6 @@ public enum Consumable {
 	/** Dollars, taken from the charter's account. */
 	public long price() {
 		return price;
-	}
-
-	/** Why the item costs what it does, in one line. */
-	public String rationale() {
-		return rationale;
 	}
 
 	public static Optional<Consumable> byItemId(Identifier id) {
