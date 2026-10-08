@@ -16,11 +16,7 @@ t() { perl -e 'alarm shift; exec @ARGV' "${T:-15}" "$@" 2>/dev/null; }
     warn=$(printf %s "$limits" | python3 -I -c '
 import json, sys
 from datetime import datetime, timedelta, timezone
-try:
-    d = json.load(sys.stdin)
-except ValueError:
-    print("interaction limit: could not parse the response")
-    sys.exit(0)
+d = json.load(sys.stdin)  # bad JSON exits nonzero: the caller reports a parse error
 if d.get("limit") != "collaborators_only":
     print("the limit is " + repr(d.get("limit", "missing")) + ", not collaborators_only")
 else:
