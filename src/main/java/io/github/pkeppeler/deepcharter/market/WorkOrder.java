@@ -27,9 +27,10 @@ public enum WorkOrder implements StringRepresentable {
 	FOUNDERS_HANDS(OreType.BRONZIUM, 10, MarketTuning.DEFAULT.foundersHandsReward(), false, 0),
 	/**
 	 * Act 2, Personnel's "Morale Initiative" (LORE.md). The canon names the order and gives no text for it, so the title is the only
-	 * canon here; the ore, quantity and reward are placeholders. It opens once the charter has reached layer 3.
+	 * canon here; the ore, quantity and reward are placeholders. The reward is 25% over what the ore fetches at the ore processor, so
+	 * it follows the ore's value. It opens once the charter has reached layer 3.
 	 */
-	MORALE_INITIATIVE(OreType.SILVERIUM, 10, MarketTuning.DEFAULT.moraleInitiativeReward(), true, 3);
+	MORALE_INITIATIVE(OreType.SILVERIUM, 10, Math.round(10 * OreType.SILVERIUM.value() * 1.25), true, 3);
 
 	public static final Codec<WorkOrder> CODEC = StringRepresentable.fromEnum(WorkOrder::values);
 	public static final StreamCodec<ByteBuf, WorkOrder> STREAM_CODEC = Identifier.STREAM_CODEC.map(WorkOrder::require, WorkOrder::id);

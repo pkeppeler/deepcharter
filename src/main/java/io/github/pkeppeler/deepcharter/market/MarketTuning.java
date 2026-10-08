@@ -5,9 +5,7 @@ package io.github.pkeppeler.deepcharter.market;
  *
  * @param foundersHandsReward dollars the charter that restores the Founder's hands is paid, at completion. It is what the ten Bronzium
  *                            would have fetched at the ore processor, so the story beat costs the charter nothing.
- * @param moraleInitiativeReward dollars paid for each round of the Morale Initiative. A placeholder, 25% over what its ten Silverium fetch
- *                            (1000) at the ore processor: the order beats selling, but only by the cost of the trip.
  */
-public record MarketTuning(long foundersHandsReward, long moraleInitiativeReward) {
-	public static final MarketTuning DEFAULT = new MarketTuning(600, 1250);
+public record MarketTuning(long foundersHandsReward) {
+	public static final MarketTuning DEFAULT = new MarketTuning(600);
 }

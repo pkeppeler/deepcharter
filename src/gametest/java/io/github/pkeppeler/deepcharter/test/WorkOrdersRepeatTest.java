@@ -23,6 +23,7 @@ import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
+import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
@@ -346,6 +347,83 @@ public class WorkOrdersRepeatTest {
 		helper.succeed();
 	}
 
+	/** One delivery carries what is still owed from the inventory into the holds, nearest first, across more than one hold. */
+	@GameTest
+	public void oneDeliveryDrawsOnTheInventoryAndSeveralHoldsNearestFirst(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		WorkOrdersTest.withProcessorOnline(server, () -> {
+			MockPlayer mock = WorkOrdersTest.player(helper, "Convoy", true);
+			ServerPlayer player = mock.player();
+			BlockPos processor = WorkOrdersTest.processorFor(helper, mock);
+			reachLayerThree(server, player);
+			PodEntity far = podBeside(helper, processor, 5, ores(OreType.SILVERIUM, 5));
+			PodEntity near = podBeside(helper, processor, 3, ores(OreType.SILVERIUM, 4));
+			try {
+				WorkOrdersTest.carry(player, OreType.SILVERIUM, 3);
+				long before = balance(server, player);
+				WorkOrdersTest.expectDone(helper, Terminals.act(player, processor, WorkOrders.DELIVER, WorkOrdersTest.orderArgs(MORALE)),
+						"a delivery across the inventory and two holds");
+				if (WorkOrdersTest.carried(player, OreType.SILVERIUM) != 0 || near.cargoUsed() != 0 || far.cargoUsed() != 2) {
+					throw helper.assertionException("3 from the inventory, 4 from the nearer hold and 3 of the 5 in the farther: %s carried, %s near, %s far",
+							WorkOrdersTest.carried(player, OreType.SILVERIUM), near.cargoUsed(), far.cargoUsed());
+				}
+				for (PodEntity pod : new PodEntity[] {near, far}) {
+					float mass = (float) pod.cargo().entries().stream().mapToDouble(entry -> entry.mass()).sum();
+					if (pod.cargoUsed() != pod.cargo().entries().size() || Math.abs(pod.cargoMass() - mass) > 1e-4f) {
+						throw helper.assertionException("a pod's synced cargo must follow the removal: used %s for %s entries, mass %s for %s",
+								pod.cargoUsed(), pod.cargo().entries().size(), pod.cargoMass(), mass);
+					}
+				}
+				expectProgress(helper, server, player, MORALE, 0, 1, "after the delivery across holds");
+				if (balance(server, player) != before + MORALE.reward()) {
+					throw helper.assertionException("exactly one round should be paid");
+				}
+			} finally {
+				near.discard();
+				far.discard();
+			}
+		});
+		helper.succeed();
+	}
+
+	/** Spend last: a refusal that comes after the ore is counted still leaves the holds and the progress as they were. */
+	@GameTest
+	public void aRefusedDeliveryLeavesTheHoldsUntouched(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		WorkOrdersTest.withProcessorOnline(server, () -> {
+			MockPlayer mock = WorkOrdersTest.player(helper, "Refused", true);
+			ServerPlayer player = mock.player();
+			BlockPos processor = WorkOrdersTest.processorFor(helper, mock);
+			// A pod has seven slots, so ten Silverium take two holds.
+			PodEntity pod = podBeside(helper, processor, 3, ores(OreType.SILVERIUM, 7));
+			PodEntity second = podBeside(helper, processor, 4, ores(OreType.SILVERIUM, 3));
+			try {
+				WorkOrdersTest.expectKey(helper, LOCKED, WorkOrders.deliver(WorkOrdersTest.context(server, player, processor), MORALE),
+						"a delivery of a locked order from a hold");
+				expectHoldsUntouched(helper, pod, second, server, player, "the locked order");
+				reachLayerThree(server, player);
+				long before = balance(server, player);
+				Charters.deposit(server, WorkOrdersTest.charter(server, player).id(), Long.MAX_VALUE - 10 - before);
+				if (WorkOrders.deliver(WorkOrdersTest.context(server, player, processor), MORALE).filter(CharterRefusal.ACCOUNT_FULL.message()::equals).isEmpty()) {
+					throw helper.assertionException("a reward that does not fit the account should refuse the completing delivery");
+				}
+				expectHoldsUntouched(helper, pod, second, server, player, "the full account");
+			} finally {
+				pod.discard();
+				second.discard();
+			}
+		});
+		helper.succeed();
+	}
+
+	private static void expectHoldsUntouched(GameTestHelper helper, PodEntity pod, PodEntity second, MinecraftServer server, ServerPlayer player, String when) {
+		if (pod.cargoUsed() != 7 || pod.cargo().entries().size() != 7 || pod.cargo().count(OreType.SILVERIUM) != 7
+				|| second.cargoUsed() != 3 || second.cargo().entries().size() != 3 || second.cargo().count(OreType.SILVERIUM) != 3) {
+			throw helper.assertionException("%s: the holds must keep their 10 Silverium, used %s and %s", when, pod.cargoUsed(), second.cargoUsed());
+		}
+		expectProgress(helper, server, player, MORALE, 0, 0, when);
+	}
+
 	@GameTest
 	public void takingFromTheCargoRemovesWholeOreAndKeepsTheRest(GameTestHelper helper) {
 		PodEntity pod = podAt(helper, helper.absoluteVec(new Vec3(1, 1, 1)),
@@ -478,7 +556,7 @@ public class WorkOrdersRepeatTest {
 	@GameTest
 	public void theMoraleInitiativeNameAndNumbersArePinned(GameTestHelper helper) {
 		if (!"morale_initiative".equals(MORALE.getSerializedName()) || MORALE.quantity() != 10 || MORALE.ore() != OreType.SILVERIUM
-				|| MORALE.reward() != 1250 || MORALE.unlockLayer() != 3 || WorkOrder.FOUNDERS_HANDS.unlockLayer() != 0) {
+				|| MORALE.reward() != 1250 || MORALE.reward() != Math.round(MORALE.quantity() * MORALE.ore().value() * 1.25) || MORALE.unlockLayer() != 3 || WorkOrder.FOUNDERS_HANDS.unlockLayer() != 0) {
 			throw helper.assertionException("the Morale Initiative is saved as morale_initiative: 10 Silverium for $1250 from layer 3");
 		}
 		if (WorkOrder.values().length != 2) {
