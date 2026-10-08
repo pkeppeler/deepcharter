@@ -21,6 +21,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.GasHazard;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
+import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 
 /**
  * Pod drilling (SPEC section 7): sprint bores down, pushing into a wall bores sideways, never up. The bore is the
@@ -152,11 +153,15 @@ public final class PodDrill {
 			return cells.stream().anyMatch(pos -> breakable(state(pos)));
 		}
 
-		/** A slab is refused whole, so the bore is never ragged: unbreakable, outside the world, the ceiling row, or last-layer crust. */
+		/**
+		 * A slab is refused whole, so the bore is never ragged: unbreakable, outside the world, the ceiling row, last-layer crust, or
+		 * a cell that cannot change without loading a chunk (breaking a block tells its four sides, so a bore at the edge of the
+		 * loaded chunks waits until the next one is loaded; a pilot's view keeps the chunks around a bore loaded).
+		 */
 		boolean allowed() {
 			for (BlockPos pos : cells) {
 				BlockState state = state(pos);
-				if (level.isOutsideBuildHeight(pos) || pos.getY() >= level.getMaxY()) {
+				if (level.isOutsideBuildHeight(pos) || pos.getY() >= level.getMaxY() || !blocks().canChange(pos)) {
 					return false;
 				}
 				if (breakable(state) && (state.getDestroySpeed(level, pos) < 0 || state.is(HazardBlocks.UNDIGGABLE)
@@ -210,7 +215,12 @@ public final class PodDrill {
 		}
 
 		private BlockState state(BlockPos pos) {
-			return level.getBlockState(pos);
+			return blocks().getBlockState(pos);
+		}
+
+		/** A cell in an unloaded chunk reads as air, so the plain read never loads the chunk next door at the edge of a bore. */
+		private LoadedBlocks blocks() {
+			return new LoadedBlocks(level);
 		}
 
 		private static boolean breakable(BlockState state) {

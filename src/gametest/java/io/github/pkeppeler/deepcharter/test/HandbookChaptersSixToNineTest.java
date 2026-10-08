@@ -557,8 +557,8 @@ public class HandbookChaptersSixToNineTest {
 			expect(helper, !level.hasChunkAt(origin), "the pod's chunk should be unloaded");
 			expect(helper, !ScanSlice.hasOre(new LoadedBlocks(level), pod), "an ore in an unloaded chunk should not be seen");
 			expect(helper, level.getChunkSource().getChunkNow(chunkX, chunkZ) == null, "the ore check should not have loaded the chunk");
-			// Only the ore check is held to leaving the chunk unloaded: another listener of the pod's tick loads it, and does so without a rider too.
 			poll(pod);
+			expect(helper, level.getChunkSource().getChunkNow(chunkX, chunkZ) == null, "no listener of the pod's tick should have loaded the chunk");
 			pod.setPos(home);
 			expect(helper, !completed(server, pilot).contains(id(directive("seeing_below", "find_ore"))),
 					"find_ore should stay open, the pilot has %s", completed(server, pilot));
