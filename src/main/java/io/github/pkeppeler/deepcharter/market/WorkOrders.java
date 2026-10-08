@@ -67,9 +67,9 @@ public final class WorkOrders {
 			return Optional.of(Component.translatable("deepcharter.market.refusal.order_done"));
 		}
 		Inventory inventory = context.player().getInventory();
-		int amount = Math.min(owed, carried(inventory, order));
+		int amount = Math.min(owed, inventory.countItem(OreRegistry.item(order.ore())));
 		if (amount == 0) {
-			return Optional.of(Component.translatable("deepcharter.market.refusal.no_order_ore", oreName(order)));
+			return Optional.of(Component.translatable("deepcharter.market.refusal.no_order_ore", order.oreName()));
 		}
 		boolean completes = amount == owed;
 		if (completes) {
@@ -91,7 +91,7 @@ public final class WorkOrders {
 		}
 		context.player().sendOverlayMessage(completes
 				? Component.translatable("deepcharter.market.order_completed", Component.translatable(order.titleKey()), order.reward())
-				: Component.translatable("deepcharter.market.order_delivered", amount, oreName(order), owed - amount));
+				: Component.translatable("deepcharter.market.order_delivered", amount, order.oreName(), owed - amount));
 		return Optional.empty();
 	}
 
@@ -99,14 +99,6 @@ public final class WorkOrders {
 		switch (order) {
 			case FOUNDERS_HANDS -> FounderStatue.restoreHands(server);
 		}
-	}
-
-	private static Component oreName(WorkOrder order) {
-		return Component.translatable(OreRegistry.item(order.ore()).getDescriptionId());
-	}
-
-	private static int carried(Inventory inventory, WorkOrder order) {
-		return inventory.countItem(OreRegistry.item(order.ore()));
 	}
 
 	/** Takes {@code amount} of the order's ore, which the caller has counted. */

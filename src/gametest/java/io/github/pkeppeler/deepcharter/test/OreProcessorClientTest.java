@@ -77,7 +77,7 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 			});
 			context.clickScreenButton("DELIVER BRONZIUM");
 			context.waitFor(client -> screen.orderLines().getLast().endsWith("DONE"), WAIT_TICKS);
-			check(singleplayer.getServer().computeOnServer(FounderStatue::handsRestored), "the Founder's hands are restored");
+			check(singleplayer.getServer().computeOnServer(WorkOrdersTest::handsRestored), "the Founder's hands are restored");
 			singleplayer.getServer().runOnServer(server -> FounderStatue.handPositions(server).orElseThrow()
 					.forEach(pos -> server.overworld().setBlock(pos, Blocks.AIR.defaultBlockState(), 3)));
 			context.setScreen(() -> null);

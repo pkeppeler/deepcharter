@@ -8,11 +8,13 @@ import com.mojang.serialization.Codec;
 
 import io.netty.buffer.ByteBuf;
 
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.StringRepresentable;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 
 /**
@@ -21,22 +23,29 @@ import io.github.pkeppeler.deepcharter.ore.OreType;
  */
 public enum WorkOrder implements StringRepresentable {
 	/** Act 1. Completing it puts the Founder statue's hands back ({@code FounderStatue}). */
-	FOUNDERS_HANDS(OreType.BRONZIUM, 10);
+	FOUNDERS_HANDS(OreType.BRONZIUM, 10, MarketTuning.DEFAULT.foundersHandsReward());
 
 	public static final Codec<WorkOrder> CODEC = StringRepresentable.fromEnum(WorkOrder::values);
 	public static final StreamCodec<ByteBuf, WorkOrder> STREAM_CODEC = Identifier.STREAM_CODEC.map(WorkOrder::require, WorkOrder::id);
 
 	private final OreType ore;
 	private final int quantity;
+	private final long reward;
 
-	WorkOrder(OreType ore, int quantity) {
+	WorkOrder(OreType ore, int quantity, long reward) {
 		this.ore = ore;
 		this.quantity = quantity;
+		this.reward = reward;
 	}
 
 	/** The ore the order asks for. */
 	public OreType ore() {
 		return ore;
+	}
+
+	/** The display name of {@link #ore()}. */
+	public Component oreName() {
+		return Component.translatable(OreRegistry.item(ore).getDescriptionId());
 	}
 
 	/** How many of that ore completes the order. */
@@ -46,9 +55,7 @@ public enum WorkOrder implements StringRepresentable {
 
 	/** Dollars paid to the charter when it completes the order. */
 	public long reward() {
-		return switch (this) {
-			case FOUNDERS_HANDS -> MarketTuning.DEFAULT.foundersHandsReward();
-		};
+		return reward;
 	}
 
 	/** The lang key of the order's title. */

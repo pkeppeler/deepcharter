@@ -90,7 +90,7 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 		int deliverY = cargoY - GAP - BUTTON_HEIGHT - GAP;
 		for (WorkOrdersView.Entry entry : openOrders()) {
 			addRenderableWidget(new CrtButton(MARGIN, deliverY, BUTTON_WIDTH, BUTTON_HEIGHT,
-					Component.translatable("screen.deepcharter.processor.deliver", oreName(entry.order()).getString().toUpperCase(Locale.ROOT)),
+					Component.translatable("screen.deepcharter.processor.deliver", entry.order().oreName().getString().toUpperCase(Locale.ROOT)),
 					button -> deliver(entry.order())));
 			deliverY -= GAP + BUTTON_HEIGHT;
 		}
@@ -103,10 +103,6 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 	/** The orders the charter can still hand ore in for. */
 	private List<WorkOrdersView.Entry> openOrders() {
 		return orders().map(orders -> orders.orders().stream().filter(entry -> !entry.done()).toList()).orElse(List.of());
-	}
-
-	private static Component oreName(WorkOrder order) {
-		return Component.translatable(OreRegistry.item(order.ore()).getDescriptionId());
 	}
 
 	private void sell(Identifier action) {
@@ -125,17 +121,16 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 		if (orders.isEmpty()) {
 			return List.of();
 		}
-		List<String> lines = new ArrayList<>();
 		if (!orders.get().readable()) {
-			lines.add(Component.translatable("screen.deepcharter.processor.orders_unreadable").getString());
-			return lines;
+			return List.of(Component.translatable("screen.deepcharter.processor.orders_unreadable").getString());
 		}
+		List<String> lines = new ArrayList<>();
 		lines.add(Component.translatable("screen.deepcharter.processor.orders").getString());
 		for (WorkOrdersView.Entry entry : orders.get().orders()) {
 			lines.add(Component.translatable(entry.order().titleKey()).getString().toUpperCase(Locale.ROOT));
 			lines.add(entry.done() ? Component.translatable("screen.deepcharter.processor.order_done").getString()
 					: Component.translatable("screen.deepcharter.processor.order", entry.delivered(), entry.order().quantity(),
-							oreName(entry.order()).getString().toUpperCase(Locale.ROOT)).getString());
+							entry.order().oreName().getString().toUpperCase(Locale.ROOT)).getString());
 		}
 		return lines;
 	}

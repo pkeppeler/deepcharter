@@ -31,11 +31,6 @@ public final class FounderStatue {
 		return Colony.placed(server).map(colony -> HAND_OFFSETS.stream().map(offset -> colony.center().offset(offset)).toList());
 	}
 
-	/** True when both hands are in place. False before the colony is built. */
-	public static boolean handsRestored(MinecraftServer server) {
-		return handPositions(server).map(positions -> positions.stream().allMatch(pos -> server.overworld().getBlockState(pos).equals(hand()))).orElse(false);
-	}
-
 	/** Puts both hands in place; a hand already there stays. Throws before the colony is built: check {@link #handPositions} first. */
 	public static void restoreHands(MinecraftServer server) {
 		List<BlockPos> positions = handPositions(server).orElseThrow(() -> new IllegalStateException("the colony is not built: the Founder has no hands to restore"));

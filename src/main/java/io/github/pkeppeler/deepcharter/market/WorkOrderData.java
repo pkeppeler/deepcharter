@@ -111,11 +111,6 @@ public final class WorkOrderData extends SavedData {
 		return delivered.getOrDefault(new Key(charter, order), 0);
 	}
 
-	/** True once the charter has handed in the whole of {@code order}. */
-	public boolean done(CharterId charter, WorkOrder order) {
-		return delivered(charter, order) >= order.quantity();
-	}
-
 	/** Records {@code amount} more handed in. It must be at least 1 and must not take the order past its quantity. */
 	void add(CharterId charter, WorkOrder order, int amount) {
 		int total = delivered(charter, order) + amount;

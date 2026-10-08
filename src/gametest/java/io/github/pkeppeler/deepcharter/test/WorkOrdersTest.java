@@ -139,8 +139,12 @@ public class WorkOrdersTest {
 		}
 	}
 
+	static boolean handsRestored(MinecraftServer server) {
+		return FounderStatue.handPositions(server).map(positions -> positions.stream().allMatch(pos -> server.overworld().getBlockState(pos).equals(FounderStatue.hand()))).orElse(false);
+	}
+
 	private static void expectHands(GameTestHelper helper, MinecraftServer server, boolean restored, String when) {
-		if (FounderStatue.handsRestored(server) != restored) {
+		if (handsRestored(server) != restored) {
 			throw helper.assertionException("%s: the Founder's hands should be %s", when, restored ? "restored" : "missing");
 		}
 	}
@@ -240,8 +244,8 @@ public class WorkOrdersTest {
 			second.teleportTo(helper.getLevel(), first.player().position(), 0, 0);
 			expectDone(helper, Terminals.act(second.player(), processor, WorkOrders.DELIVER, orderArgs(WorkOrder.FOUNDERS_HANDS)), "the second charter's delivery");
 			WorkOrderData data = WorkOrderData.get(server);
-			if (data.delivered(charter(server, second.player()).id(), WorkOrder.FOUNDERS_HANDS) != 3 || data.done(charter(server, second.player()).id(), WorkOrder.FOUNDERS_HANDS)
-					|| !data.done(charter(server, first.player()).id(), WorkOrder.FOUNDERS_HANDS)) {
+			if (data.delivered(charter(server, second.player()).id(), WorkOrder.FOUNDERS_HANDS) != 3 || data.delivered(charter(server, second.player()).id(), WorkOrder.FOUNDERS_HANDS) >= WorkOrder.FOUNDERS_HANDS.quantity()
+					|| data.delivered(charter(server, first.player()).id(), WorkOrder.FOUNDERS_HANDS) < WorkOrder.FOUNDERS_HANDS.quantity()) {
 				throw helper.assertionException("each charter keeps its own progress");
 			}
 		});
