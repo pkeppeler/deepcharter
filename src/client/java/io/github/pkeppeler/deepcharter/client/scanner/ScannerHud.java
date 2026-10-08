@@ -8,6 +8,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.Mth;
 import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.block.Block;
@@ -33,10 +34,9 @@ public final class ScannerHud {
 	private static final int TITLE_HEIGHT = 10;
 	private static final int FRAME = 1;
 	private static final int WHITE = 0xFFFFFFFF;
-	/** A Mole is two blocks tall: the pod fills the feet cell and the one above. */
-	private static final int POD_CELLS_UP = 1;
-
 	private static ScanSlice slice;
+	/** The cells above the feet cell that the ridden pod fills: 1 for a Mole, which is two blocks tall, 2 for a Prospector. */
+	private static int podCellsUp;
 	private static int ticksUntilScan;
 
 	private ScannerHud() {
@@ -79,6 +79,7 @@ public final class ScannerHud {
 			return;
 		}
 		slice = ScanSlice.scan(client.level, pod.blockPosition(), pod.getDirection());
+		podCellsUp = Mth.ceil(pod.chassis().height()) - 1;
 		ticksUntilScan = TUNING.rescanTicks() - 1;
 	}
 
@@ -107,7 +108,7 @@ public final class ScannerHud {
 				}
 			}
 		}
-		for (int up = 0; up <= POD_CELLS_UP; up++) {
+		for (int up = 0; up <= podCellsUp; up++) {
 			fillCell(graphics, guiWidth, guiHeight, 0, up, TUNING.podColor());
 		}
 	}

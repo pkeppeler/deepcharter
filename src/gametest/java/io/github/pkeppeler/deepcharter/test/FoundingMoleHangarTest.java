@@ -41,6 +41,7 @@ import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
+import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
@@ -464,13 +465,13 @@ public class FoundingMoleHangarTest {
 			CharterId charter = charterOf(helper, owner).id();
 			PodEntity wreck = pod(helper, Optional.of(charter), true);
 			deposit(helper, owner, RICH);
-			give(owner.player(), CATALYST, HangarTuning.DEFAULT.restoreCatalysts() + 1);
+			give(owner.player(), CATALYST, HangarTuning.DEFAULT.restoreCost(Chassis.MOLE).catalysts() + 1);
 			expect(helper, Wrecks.isWreck(wreck) && !PodEvents.isPowered(wreck), "the pod starts as a wreck");
 
 			expectDone(helper, act(owner.player(), console, HangarTerminal.RESTORE_WRECK), "restoring a wreck");
-			expect(helper, balance(helper, owner) == RICH - HangarTuning.DEFAULT.restoreMoney(), "restoring costs $%s: the account holds %s",
-					HangarTuning.DEFAULT.restoreMoney(), balance(helper, owner));
-			expect(helper, count(owner.player(), CATALYST) == 1, "restoring uses up %s catalyst, the player holds %s", HangarTuning.DEFAULT.restoreCatalysts(),
+			expect(helper, balance(helper, owner) == RICH - HangarTuning.DEFAULT.restoreCost(Chassis.MOLE).money(), "restoring costs $%s: the account holds %s",
+					HangarTuning.DEFAULT.restoreCost(Chassis.MOLE).money(), balance(helper, owner));
+			expect(helper, count(owner.player(), CATALYST) == 1, "restoring uses up %s catalyst, the player holds %s", HangarTuning.DEFAULT.restoreCost(Chassis.MOLE).catalysts(),
 					count(owner.player(), CATALYST));
 			expect(helper, !Wrecks.isWreck(wreck) && wreck.hull() == wreck.maxHull(), "the restored pod is whole: hull %s of %s", wreck.hull(), wreck.maxHull());
 			expect(helper, PodEvents.canMount(wreck, owner.player()) && PodEvents.isPowered(wreck), "the restored pod can be piloted and has power");
@@ -499,7 +500,7 @@ public class FoundingMoleHangarTest {
 			expect(helper, strangers.position().distanceTo(Vec3.atCenterOf(console)) < own.position().distanceTo(Vec3.atCenterOf(console)),
 					"the stranger's wreck is nearer the console");
 			deposit(helper, owner, RICH);
-			give(owner.player(), CATALYST, HangarTuning.DEFAULT.restoreCatalysts());
+			give(owner.player(), CATALYST, HangarTuning.DEFAULT.restoreCost(Chassis.MOLE).catalysts());
 
 			expectDone(helper, act(owner.player(), console, HangarTerminal.RESTORE_WRECK), "restoring your own wreck past a stranger's nearer one");
 			expect(helper, !Wrecks.isWreck(own) && Wrecks.isWreck(strangers), "the owner's wreck is restored and the stranger's is not");
@@ -522,7 +523,7 @@ public class FoundingMoleHangarTest {
 			expect(helper, derelict.position().distanceTo(Vec3.atCenterOf(console)) < own.position().distanceTo(Vec3.atCenterOf(console)),
 					"the derelict is nearer the console than the charter's wreck");
 			deposit(helper, owner, RICH);
-			give(owner.player(), CATALYST, HangarTuning.DEFAULT.restoreCatalysts());
+			give(owner.player(), CATALYST, HangarTuning.DEFAULT.restoreCost(Chassis.MOLE).catalysts());
 
 			expectDone(helper, act(owner.player(), console, HangarTerminal.RESTORE_WRECK), "restoring your own wreck farther than the derelict");
 			expect(helper, !Wrecks.isWreck(own) && Wrecks.isWreck(derelict) && PodComponents.registration(derelict).isEmpty(),
@@ -541,7 +542,7 @@ public class FoundingMoleHangarTest {
 			stand(helper, stranger, console);
 			CharterId charter = charterOf(helper, owner).id();
 			PodEntity wreck = pod(helper, Optional.of(charter), true);
-			long money = HangarTuning.DEFAULT.restoreMoney();
+			long money = HangarTuning.DEFAULT.restoreCost(Chassis.MOLE).money();
 
 			// Money but no catalyst.
 			deposit(helper, owner, RICH);
@@ -553,17 +554,17 @@ public class FoundingMoleHangarTest {
 			stand(helper, poor, console);
 			PodEntity poorWreck = pod(helper, Optional.of(charterOf(helper, poor).id()), true);
 			deposit(helper, poor, money - 1);
-			give(poor.player(), CATALYST, HangarTuning.DEFAULT.restoreCatalysts());
+			give(poor.player(), CATALYST, HangarTuning.DEFAULT.restoreCost(Chassis.MOLE).catalysts());
 			expectRefused(helper, act(poor.player(), console, HangarTerminal.RESTORE_WRECK), "restoring a dollar short");
 			expect(helper, Wrecks.isWreck(poorWreck) && balance(helper, poor) == money - 1
-					&& count(poor.player(), CATALYST) == HangarTuning.DEFAULT.restoreCatalysts(), "a restore without the money changes nothing");
+					&& count(poor.player(), CATALYST) == HangarTuning.DEFAULT.restoreCost(Chassis.MOLE).catalysts(), "a restore without the money changes nothing");
 
 			// Both, but the wreck belongs to another charter.
 			deposit(helper, stranger, RICH);
-			give(stranger.player(), CATALYST, HangarTuning.DEFAULT.restoreCatalysts());
+			give(stranger.player(), CATALYST, HangarTuning.DEFAULT.restoreCost(Chassis.MOLE).catalysts());
 			expectRefused(helper, act(stranger.player(), console, HangarTerminal.RESTORE_WRECK), "restoring another charter's wreck");
 			expect(helper, Wrecks.isWreck(wreck) && balance(helper, stranger) == RICH
-					&& count(stranger.player(), CATALYST) == HangarTuning.DEFAULT.restoreCatalysts(), "a restore of another charter's wreck changes nothing");
+					&& count(stranger.player(), CATALYST) == HangarTuning.DEFAULT.restoreCost(Chassis.MOLE).catalysts(), "a restore of another charter's wreck changes nothing");
 
 			// The founding Mole is not a wreck to buy back: it is repaired with its four parts. The real console stands beside it.
 			// This world's own derelict is not in the fresh hangar record, so it stands out of reach while the fresh one is tested.

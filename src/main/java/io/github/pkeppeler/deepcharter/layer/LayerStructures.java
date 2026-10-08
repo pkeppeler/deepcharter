@@ -68,6 +68,13 @@ public final class LayerStructures {
 				StructurePlan plan = new StructurePlan(site, level, chunk);
 				plan.seal();
 				site.kind().draw(plan, site.height());
+				if (site.kind() == StructureKind.WRECK) {
+					boolean famous = prospector(level.getServer()).filter(site::equals).isPresent();
+					if (famous) {
+						ProspectorWrecks.light(plan);
+					}
+					ProspectorWrecks.place(level, site, chunk.getPos(), famous);
+				}
 			}
 		} catch (RuntimeException e) {
 			if (LOGGED_FAILURE.compareAndSet(false, true)) {
@@ -113,8 +120,8 @@ public final class LayerStructures {
 	}
 
 	/**
-	 * The wreck site that is PROSPECTOR-0002's: the one nearest the Conduit in layer 2. Empty before the colony is built or
-	 * when its data is unreadable. A later issue (#82) puts the pod there.
+	 * The wreck site that is PROSPECTOR-0002's: the one nearest the Conduit in layer 2, with a lamp burning and Note N10
+	 * ({@link ProspectorWrecks}). Empty before the colony is built or when its data is unreadable.
 	 */
 	public static Optional<StructureSite> prospector(MinecraftServer server) {
 		StructureKind kind = StructureKind.WRECK;

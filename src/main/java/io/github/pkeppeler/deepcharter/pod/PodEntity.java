@@ -26,14 +26,15 @@ public class PodEntity extends Entity {
 	private static final String FUEL_KEY = "fuel";
 	private static final String STRANDED_KEY = "stranded";
 
-	// Not synced: M1 has only the Mole, and its hitbox comes from the entity type.
-	private Chassis chassis = Chassis.MOLE;
+	// Not synced: the entity type says which chassis a pod is, and its hitbox comes from the type too (ADR 0027).
+	private final Chassis chassis;
 	private final PodCargo cargo = new PodCargo();
 	// Neither saved nor synced: a loaded pod starts its slab over. Server only.
 	private PodDrill.Progress drillProgress;
 
 	public PodEntity(EntityType<? extends PodEntity> type, Level level) {
 		super(type, level);
+		chassis = PodRegistry.chassisOf(type);
 	}
 
 	public Chassis chassis() {
@@ -147,7 +148,10 @@ public class PodEntity extends Entity {
 
 	@Override
 	protected void readAdditionalSaveData(ValueInput input) {
-		chassis = Chassis.byId(required(input, CHASSIS_KEY, Codec.STRING));
+		Chassis saved = Chassis.byId(required(input, CHASSIS_KEY, Codec.STRING));
+		if (saved != chassis) {
+			throw new IllegalStateException("a " + saved.id() + " was saved as a " + chassis.id() + " pod");
+		}
 		// Not setHull: loading a pod that has no hull left is not the hull running out.
 		float hull = required(input, HULL_KEY, Codec.FLOAT);
 		if (!Float.isFinite(hull) || hull < 0f) {

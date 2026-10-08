@@ -7,6 +7,7 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodFuel;
+import io.github.pkeppeler.deepcharter.pod.PodSeat;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 
@@ -25,7 +26,7 @@ public final class LowFuelBeep {
 	}
 
 	private static void tick(Minecraft client) {
-		if (client.player == null || !(client.player.getVehicle() instanceof PodEntity pod)
+		if (client.player == null || !(client.player.getVehicle() instanceof PodEntity pod) || !PodSeat.of(pod, client.player).showsPodStatus()
 				|| pod.stranded() || !PodFuel.isLow(pod.fuel())) {
 			ticksSinceBeep = SLOW_INTERVAL_TICKS;
 			return;

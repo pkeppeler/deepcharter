@@ -14,6 +14,7 @@ import net.minecraft.resources.Identifier;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodSeat;
 
 /** Plain text readout of the ridden pod; the real HUD design comes later. */
 public final class PodStatusHud {
@@ -46,7 +47,7 @@ public final class PodStatusHud {
 
 	private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
 		Minecraft client = Minecraft.getInstance();
-		if (client.player == null || !(client.player.getVehicle() instanceof PodEntity pod)) {
+		if (client.player == null || !(client.player.getVehicle() instanceof PodEntity pod) || !PodSeat.of(pod, client.player).showsPodStatus()) {
 			return;
 		}
 		Font font = client.font;

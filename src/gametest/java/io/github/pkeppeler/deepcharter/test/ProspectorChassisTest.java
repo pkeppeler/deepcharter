@@ -21,7 +21,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Input;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -111,8 +110,9 @@ public class ProspectorChassisTest {
 				EntityType.create(PodRegistry.POD, TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), saved),
 						level, EntitySpawnReason.LOAD).ifPresent(Entity::discard);
 				throw failure(helper, "a Prospector's save must not load as a Mole");
-			} catch (IllegalStateException expected) {
-				// The load refuses it.
+			} catch (RuntimeException refused) {
+				expect(helper, causes(refused).contains("a prospector was saved as a mole pod"),
+						"the load refuses a Prospector's save in a Mole for its chassis, it said: %s", causes(refused));
 			}
 			helper.succeed();
 		} finally {
@@ -147,7 +147,7 @@ public class ProspectorChassisTest {
 		}
 	}
 
-	@GameTest
+	@GameTest(maxTicks = 3 * DRIVE_TICKS)
 	public void twoPlayersRideAndOnlyThePilotDrives(GameTestHelper helper) {
 		PodEntity pod = helper.spawn(PodRegistry.PROSPECTOR, 4, 2, 4);
 		for (int x = 0; x < 9; x++) {
@@ -314,7 +314,8 @@ public class ProspectorChassisTest {
 			nothingChanged(helper, owner, wreck, charter, PRICE - 1, CATALYSTS, "a dollar short");
 
 			FoundingMoleHangarTest.deposit(helper, owner, 1);
-			owner.player().getInventory().removeItem(new ItemStack(FoundingMoleHangarTest.CATALYST, 1));
+			owner.player().getInventory().clearContent();
+			FoundingMoleHangarTest.give(owner.player(), FoundingMoleHangarTest.CATALYST, CATALYSTS - 1);
 			FoundingMoleHangarTest.expectRefused(helper, FoundingMoleHangarTest.act(owner.player(), console, HangarTerminal.RESTORE_WRECK), "restoring a Cicatrium short");
 			nothingChanged(helper, owner, wreck, charter, PRICE, CATALYSTS - 1, "a Cicatrium short");
 
@@ -357,6 +358,14 @@ public class ProspectorChassisTest {
 			FoundingMoleHangarTest.clearFloor(helper);
 			helper.succeed();
 		}));
+	}
+
+	private static String causes(Throwable error) {
+		StringBuilder messages = new StringBuilder();
+		for (Throwable cause = error; cause != null; cause = cause.getCause()) {
+			messages.append(cause.getMessage()).append(" / ");
+		}
+		return messages.toString();
 	}
 
 	private static void nothingChanged(GameTestHelper helper, MockPlayer owner, PodEntity wreck, CharterId charter, long money, int catalysts, String why) {
