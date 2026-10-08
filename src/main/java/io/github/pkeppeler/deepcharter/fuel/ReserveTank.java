@@ -1,9 +1,6 @@
 package io.github.pkeppeler.deepcharter.fuel;
 
-import java.util.Collections;
 import java.util.Optional;
-import java.util.Set;
-import java.util.WeakHashMap;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
@@ -24,7 +21,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
@@ -51,9 +47,6 @@ import io.github.pkeppeler.deepcharter.pod.PodTuning;
  */
 public final class ReserveTank {
 	public static final int VERSION = 1;
-
-	/** Pods whose unreadable reserve has been logged, so a tick path logs once for each pod and not once for each tick. */
-	private static final Set<Entity> UNREADABLE_LOGGED = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
 
 	/** Whether the pod has a reserve tank fitted. */
 	public record State(boolean installed) {
@@ -82,18 +75,7 @@ public final class ReserveTank {
 
 	/** True when the pod has a reserve tank. An unreadable state reads as none (logged once for the pod). Never throws. */
 	public static boolean isInstalled(PodEntity pod) {
-		Versioned<State> versioned = pod.getAttached(STATE);
-		return switch (versioned) {
-			case null -> false;
-			case Versioned.Readable<State> readable -> readable.value().installed();
-			case Versioned.Unreadable<State> unreadable -> {
-				if (UNREADABLE_LOGGED.add(pod)) {
-					DeepCharter.LOGGER.error("Pod {} has its {} saved as version {}, which this build cannot read: it runs without a reserve tank and the saved data is kept",
-							pod.getUUID(), STATE.identifier(), unreadable.version());
-				}
-				yield false;
-			}
-		};
+		return Versioned.readable(pod, STATE).map(State::installed).orElse(false);
 	}
 
 	/**
@@ -104,11 +86,11 @@ public final class ReserveTank {
 		if (pod.level().isClientSide()) {
 			throw new IllegalStateException("a reserve tank is fitted on the server only");
 		}
-		if (Versioned.require(pod, STATE).installed()) {
+		if (Versioned.orThrow(pod, STATE).installed()) {
 			return false;
 		}
 		PodStats before = PodStats.of(pod);
-		Versioned.modify(pod, STATE, state -> new State(true));
+		Versioned.modifyOrThrow(pod, STATE, state -> new State(true));
 		PodStats after = PodStats.of(pod);
 		PodComponents.rescaleFuel(pod, before, after);
 		if (pod.stranded()) {
@@ -142,8 +124,7 @@ public final class ReserveTank {
 	/** Why the player cannot fit a reserve tank to the pod, or empty. Never throws. */
 	private static Optional<Component> refusal(ServerPlayer player, PodEntity pod) {
 		MinecraftServer server = player.level().getServer();
-		if (pod.getAttached(STATE) instanceof Versioned.Unreadable<State>) {
-			isInstalled(pod);
+		if (Versioned.readable(pod, STATE).isEmpty()) {
 			return Optional.of(Component.translatable("message.deepcharter.fuel.reserve_unreadable"));
 		}
 		if (isInstalled(pod)) {
@@ -152,7 +133,7 @@ public final class ReserveTank {
 		if (!Charters.isReadable(server)) {
 			return Optional.of(Component.translatable("message.deepcharter.fuel.reserve_unreadable"));
 		}
-		boolean allowed = PodComponents.mayAccess(pod, Charters.charterOf(server, player.getUUID()));
+		boolean allowed = PodComponents.mayAccess(pod, Charters.readableCharterOf(server, player.getUUID()));
 		return allowed ? Optional.empty() : Optional.of(Component.translatable("message.deepcharter.fuel.reserve_not_yours"));
 	}
 }

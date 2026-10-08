@@ -3,9 +3,7 @@ package io.github.pkeppeler.deepcharter.handbook;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 
@@ -18,7 +16,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
-import io.github.pkeppeler.deepcharter.attachment.Versioned;
 
 /**
  * Serverbound: the sender has opened an entry in the handbook screen: a chapter, or a Note. The server marks it read for the
@@ -33,23 +30,15 @@ public record HandbookReadPayload(Identifier entry) implements CustomPacketPaylo
 			Identifier.STREAM_CODEC, HandbookReadPayload::entry,
 			HandbookReadPayload::new);
 
-	/** Players already reported as unreadable, so that a repeated request logs nothing more. */
-	private static final Set<UUID> REPORTED = ConcurrentHashMap.newKeySet();
-
 	/** Registers the payload type and its receiver. */
 	static void register() {
 		PayloadTypeRegistry.serverboundPlay().register(TYPE, CODEC);
-		ServerLifecycleEvents.SERVER_STOPPED.register(server -> REPORTED.clear());
 		ServerPlayNetworking.registerGlobalReceiver(TYPE, (payload, context) -> handle(context.server(), context.player(), payload.entry()));
 	}
 
 	/** Marks {@code entry} read for {@code player} if the request passes every check. Returns whether the entry is now marked. */
 	public static boolean handle(MinecraftServer server, ServerPlayer player, Identifier entry) {
-		if (player.getAttachedOrCreate(HandbookRegistry.READ_MARKS) instanceof Versioned.Unreadable<ReadMarks> unreadable) {
-			if (REPORTED.add(player.getUUID())) {
-				DeepCharter.LOGGER.error("Not marking {} read for {}: their read marks have saved version {} that this build cannot read",
-						entry, player.getGameProfile().name(), unreadable.version());
-			}
+		if (!ReadMarks.isReadable(player)) {
 			return false;
 		}
 		if (ReadMarks.isRead(player, entry)) {

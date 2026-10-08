@@ -80,25 +80,25 @@ public class CharterCoreTest {
 		UUID crewId = crew.player().getUUID();
 
 		expectDone(helper, Charters.found(server, directorId, uniqueName()), "founding");
-		Charter founded = Charters.charterOf(server, directorId).orElseThrow();
+		Charter founded = Charters.charterOfOrThrow(server, directorId).orElseThrow();
 		if (!founded.director().equals(Optional.of(directorId)) || !founded.crew().isEmpty() || founded.account() != 0) {
 			throw helper.assertionException("a new charter has its founder as Director, no crew and an empty account: %s", founded);
 		}
 
 		expectDone(helper, Charters.apply(server, crewId, founded.id()), "applying");
-		if (Charters.charterOf(server, crewId).isPresent()
-				|| !Charters.find(server, founded.id()).orElseThrow().applications().equals(List.of(crewId))) {
+		if (Charters.charterOfOrThrow(server, crewId).isPresent()
+				|| !Charters.findOrThrow(server, founded.id()).orElseThrow().applications().equals(List.of(crewId))) {
 			throw helper.assertionException("an application is pending, not a membership");
 		}
 		expectDone(helper, Charters.approve(server, directorId, crewId), "approving");
-		Charter joined = Charters.charterOf(server, crewId).orElseThrow();
+		Charter joined = Charters.charterOfOrThrow(server, crewId).orElseThrow();
 		if (!joined.id().equals(founded.id()) || !joined.crew().equals(List.of(crewId)) || !joined.applications().isEmpty()) {
 			throw helper.assertionException("the applicant should now be crew: %s", joined);
 		}
 
 		expectDone(helper, Charters.leave(server, crewId), "the crew leaving");
-		if (Charters.charterOf(server, crewId).isPresent()
-				|| !Charters.find(server, founded.id()).orElseThrow().crew().isEmpty()) {
+		if (Charters.charterOfOrThrow(server, crewId).isPresent()
+				|| !Charters.findOrThrow(server, founded.id()).orElseThrow().crew().isEmpty()) {
 			throw helper.assertionException("the crew member should be gone");
 		}
 		helper.succeed();
@@ -340,7 +340,7 @@ public class CharterCoreTest {
 			if (!seen.equals(List.of("revived true true"))) {
 				throw helper.assertionException("exactly one revived event, after the change: %s", seen);
 			}
-			if (!Charters.charterOf(server, second.player().getUUID()).orElseThrow().id().equals(mine[0])) {
+			if (!Charters.charterOfOrThrow(server, second.player().getUUID()).orElseThrow().id().equals(mine[0])) {
 				throw helper.assertionException("the reviver should be on the charter");
 			}
 			helper.succeed();
@@ -371,7 +371,7 @@ public class CharterCoreTest {
 			if (done.stream().noneMatch(message -> message.contains(Component.translatable("deepcharter.charter.revive.success", name)))) {
 				throw helper.assertionException("the success reply should name the charter, got %s", done);
 			}
-			Charter revived = Charters.charterOf(server, reviver.player().getUUID()).orElseThrow();
+			Charter revived = Charters.charterOfOrThrow(server, reviver.player().getUUID()).orElseThrow();
 			if (!revived.name().equals(name) || !revived.isDirector(reviver.player().getUUID())) {
 				throw helper.assertionException("the command should make the player Director of %s: %s", name, revived);
 			}
@@ -460,7 +460,7 @@ public class CharterCoreTest {
 		CharterEvents.ACCOUNT_CHANGED.register((s, charter, delta) -> record(seen, mine, charter, "account " + delta));
 
 		expectDone(helper, Charters.found(server, director, uniqueName()), "founding");
-		mine[0] = Charters.charterOf(server, director).orElseThrow().id();
+		mine[0] = Charters.charterOfOrThrow(server, director).orElseThrow().id();
 		expectDone(helper, Charters.apply(server, crew, mine[0]), "applying");
 		expectDone(helper, Charters.approve(server, director, crew), "approving");
 		expectDone(helper, Charters.deposit(server, mine[0], 25), "depositing");
@@ -494,13 +494,13 @@ public class CharterCoreTest {
 		run(server, director, "account deposit \"" + name + "\" 90");
 		run(server, director, "account spend \"" + name + "\" 200");
 
-		Charter charter = Charters.charterOf(server, crew.player().getUUID())
+		Charter charter = Charters.charterOfOrThrow(server, crew.player().getUUID())
 				.orElseThrow(() -> helper.assertionException("the commands should have made the crew member join"));
 		if (!charter.name().equals(name) || charter.account() != 90) {
 			throw helper.assertionException("the deposit works and the overdraft is refused: %s", charter);
 		}
 		run(server, crew, "leave");
-		if (Charters.charterOf(server, crew.player().getUUID()).isPresent()) {
+		if (Charters.charterOfOrThrow(server, crew.player().getUUID()).isPresent()) {
 			throw helper.assertionException("/leave should remove the crew member");
 		}
 		helper.succeed();
@@ -563,7 +563,7 @@ public class CharterCoreTest {
 		MockPlayer player = MockPlayers.join(helper, "CmdNoRights");
 
 		run(server, player, LevelBasedPermissionSet.ALL, "found \"" + uniqueName() + "\"");
-		if (Charters.charterOf(server, player.player().getUUID()).isPresent()) {
+		if (Charters.charterOfOrThrow(server, player.player().getUUID()).isPresent()) {
 			throw helper.assertionException("a player without permission must not found a charter");
 		}
 		helper.succeed();
@@ -579,7 +579,7 @@ public class CharterCoreTest {
 		UUID crewId = crew.player().getUUID();
 		UUID applicantId = applicant.player().getUUID();
 		expectDone(helper, Charters.found(server, directorId, uniqueName()), "founding");
-		CharterId id = Charters.charterOf(server, directorId).orElseThrow().id();
+		CharterId id = Charters.charterOfOrThrow(server, directorId).orElseThrow().id();
 		expectDone(helper, Charters.apply(server, crewId, id), "the crew member applying");
 		expectDone(helper, Charters.approve(server, directorId, crewId), "approving the crew member");
 		expectDone(helper, Charters.apply(server, applicantId, id), "the applicant applying");
@@ -588,7 +588,7 @@ public class CharterCoreTest {
 		if (messages.stream().noneMatch(message -> message.contains(CharterRefusal.NOT_THE_DIRECTOR.message()))) {
 			throw helper.assertionException("the command should report %s, got %s", CharterRefusal.NOT_THE_DIRECTOR, messages);
 		}
-		if (Charters.charterOf(server, applicantId).isPresent()) {
+		if (Charters.charterOfOrThrow(server, applicantId).isPresent()) {
 			throw helper.assertionException("the applicant must not join on a crew member's say");
 		}
 		helper.succeed();

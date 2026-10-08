@@ -364,7 +364,7 @@ public class PodLightsTest {
 			if (Charters.found(server, mock.player().getUUID(), "Lights crossing " + CHARTERS.incrementAndGet()).isPresent()) {
 				throw failure(helper, "the charter was refused");
 			}
-			CharterId charter = Charters.charterOf(server, mock.player().getUUID()).orElseThrow().id();
+			CharterId charter = Charters.charterOfOrThrow(server, mock.player().getUUID()).orElseThrow().id();
 			PodComponents.register(pod[0], charter);
 			PodComponents.install(pod[0], ComponentItems.mint(server, ComponentTrack.LIGHTS, 2, charter));
 			if (!mock.player().startRiding(pod[0], true, false)) {
@@ -477,7 +477,7 @@ public class PodLightsTest {
 		if (refusal.isPresent()) {
 			throw failure(helper, "a charter step was refused: %s", refusal.get());
 		}
-		return Charters.charterOf(server, founder).orElseThrow().id();
+		return Charters.charterOfOrThrow(server, founder).orElseThrow().id();
 	}
 
 	/** The light blocks within {@link #LOOK} of {@code pod}, as their levels, sorted. */

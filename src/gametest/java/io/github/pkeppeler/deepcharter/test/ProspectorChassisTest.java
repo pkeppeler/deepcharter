@@ -541,7 +541,7 @@ public class ProspectorChassisTest {
 		if (Charters.found(server, founder, "Prospector " + CHARTERS.incrementAndGet()).isPresent()) {
 			throw failure(helper, "founding a charter should succeed");
 		}
-		return Charters.charterOf(server, founder).orElseThrow().id();
+		return Charters.charterOfOrThrow(server, founder).orElseThrow().id();
 	}
 
 	private static ServerLevel layer(GameTestHelper helper, int layer) {

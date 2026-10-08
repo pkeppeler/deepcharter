@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.pod;
 
 import java.util.Map;
-import java.util.Optional;
 import java.util.TreeMap;
 
 import com.mojang.serialization.Codec;
@@ -13,6 +12,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.attachment.SavedState;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 
 /**
@@ -34,21 +34,14 @@ public final class Serials extends SavedData {
 	public static final SavedDataType<Serials> TYPE = new SavedDataType<>(ID, Serials::new, CODEC, DataFixTypes.SAVED_DATA_COMMAND_STORAGE);
 
 	/** How many serials of each prefix have been handed out. */
-	private final Map<String, Integer> issued = new TreeMap<>();
-	private final Optional<Versioned.Unreadable<Map<String, Integer>>> unreadable;
+	private final SavedState<Map<String, Integer>> state;
 
 	public Serials() {
-		this.unreadable = Optional.empty();
+		this.state = SavedState.fresh(ID, VERSION, new TreeMap<>());
 	}
 
 	private Serials(Versioned<Map<String, Integer>> loaded) {
-		switch (loaded) {
-			case Versioned.Readable<Map<String, Integer>> readable -> {
-				issued.putAll(readable.value());
-				unreadable = Optional.empty();
-			}
-			case Versioned.Unreadable<Map<String, Integer>> raw -> unreadable = Optional.of(raw);
-		}
+		this.state = SavedState.load(ID, VERSION, loaded, TreeMap::new);
 	}
 
 	/** The world's serials. Call on the server thread. */
@@ -56,17 +49,14 @@ public final class Serials extends SavedData {
 		return server.getDataStorage().computeIfAbsent(TYPE);
 	}
 
-	/** False when the saved serials are of a version this build cannot read, so {@link #next} throws. Check it on a gameplay path. */
+	/** False (logged once) when the saved serials are of a version this build cannot read, so {@link #next} throws. Check it on a gameplay path. */
 	public boolean isReadable() {
-		return unreadable.isEmpty();
+		return state.isReadable();
 	}
 
-	/** The next serial of {@code prefix}, such as {@code MOLE-0001}. */
+	/** The next serial of {@code prefix}, such as {@code MOLE-0001}. Throws if the saved serials are unreadable. */
 	public String next(String prefix) {
-		if (unreadable.isPresent()) {
-			throw new IllegalStateException("the saved serials have version " + unreadable.get().version()
-					+ " that this build cannot read (it reads " + VERSION + ")");
-		}
+		Map<String, Integer> issued = state.orThrow();
 		if (prefix.isBlank()) {
 			throw new IllegalArgumentException("a serial needs a prefix");
 		}
@@ -76,6 +66,6 @@ public final class Serials extends SavedData {
 	}
 
 	private Versioned<Map<String, Integer>> versioned() {
-		return unreadable.<Versioned<Map<String, Integer>>>map(raw -> raw).orElseGet(() -> Versioned.of(Map.copyOf(issued)));
+		return state.versioned(Map::copyOf);
 	}
 }

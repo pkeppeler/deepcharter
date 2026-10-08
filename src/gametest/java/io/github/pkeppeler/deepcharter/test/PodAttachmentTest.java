@@ -46,7 +46,7 @@ public class PodAttachmentTest {
 	public void aNewPodHasTheDefaultAttachment(GameTestHelper helper) {
 		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
 		try {
-			if (!Versioned.require(pod, TestAttachments.EXAMPLE).equals(Example.DEFAULT)) {
+			if (!Versioned.orThrow(pod, TestAttachments.EXAMPLE).equals(Example.DEFAULT)) {
 				throw failure(helper, "a new pod should carry %s", Example.DEFAULT);
 			}
 			helper.succeed();
@@ -58,10 +58,10 @@ public class PodAttachmentTest {
 	@GameTest
 	public void theAttachmentSurvivesSaveAndLoad(GameTestHelper helper) {
 		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
-		Versioned.modify(pod, TestAttachments.EXAMPLE, example -> new Example(42));
+		Versioned.modifyOrThrow(pod, TestAttachments.EXAMPLE, example -> new Example(42));
 		Entity loaded = reload(helper, pod, null);
 		try {
-			if (!new Example(42).equals(Versioned.require(loaded, TestAttachments.EXAMPLE))) {
+			if (!new Example(42).equals(Versioned.orThrow(loaded, TestAttachments.EXAMPLE))) {
 				throw failure(helper, "the attachment did not survive save and load, got %s", loaded.getAttached(TestAttachments.EXAMPLE));
 			}
 			helper.succeed();
@@ -93,7 +93,7 @@ public class PodAttachmentTest {
 		PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
 		Entity loaded = reload(helper, pod, attachments);
 		try {
-			if (!new Other("hi").equals(Versioned.require(loaded, TestAttachments.OTHER))) {
+			if (!new Other("hi").equals(Versioned.orThrow(loaded, TestAttachments.OTHER))) {
 				throw failure(helper, "the valid attachment was lost: %s", loaded.getAttached(TestAttachments.OTHER));
 			}
 			if (!(loaded.getAttached(TestAttachments.EXAMPLE) instanceof Versioned.Unreadable<Example> unreadable)) {
@@ -103,7 +103,7 @@ public class PodAttachmentTest {
 				throw failure(helper, "the unreadable value should report version 99, got %s", unreadable.version());
 			}
 			try {
-				Versioned.require(loaded, TestAttachments.EXAMPLE);
+				Versioned.orThrow(loaded, TestAttachments.EXAMPLE);
 				throw failure(helper, "reading an unreadable attachment must fail loud");
 			} catch (IllegalStateException expected) {
 				if (!expected.getMessage().contains(exampleKey) || !expected.getMessage().contains("99")) {
@@ -111,7 +111,7 @@ public class PodAttachmentTest {
 				}
 			}
 			try {
-				Versioned.modify(loaded, TestAttachments.EXAMPLE, example -> new Example(1));
+				Versioned.modifyOrThrow(loaded, TestAttachments.EXAMPLE, example -> new Example(1));
 				throw failure(helper, "modifying an unreadable attachment must fail rather than overwrite it");
 			} catch (IllegalStateException expected) {
 				// Expected.
@@ -195,7 +195,7 @@ public class PodAttachmentTest {
 			pod[0] = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
 			pod[0].setPos(x, 8, z);
 			one.addFreshEntity(pod[0]);
-			Versioned.modify(pod[0], TestAttachments.EXAMPLE, example -> new Example(7));
+			Versioned.modifyOrThrow(pod[0], TestAttachments.EXAMPLE, example -> new Example(7));
 			if (!mock.player().startRiding(pod[0], true, false)) {
 				throw failure(helper, "the mock could not board the pod");
 			}
@@ -215,7 +215,7 @@ public class PodAttachmentTest {
 			if (arrived == pod[0] || !pod[0].isRemoved()) {
 				throw failure(helper, "expected a new pod instance after the crossing and the old one removed");
 			}
-			if (!new Example(7).equals(Versioned.require(arrived, TestAttachments.EXAMPLE))) {
+			if (!new Example(7).equals(Versioned.orThrow(arrived, TestAttachments.EXAMPLE))) {
 				throw failure(helper, "the attachment did not cross with the pod, got %s", arrived.getAttached(TestAttachments.EXAMPLE));
 			}
 		});

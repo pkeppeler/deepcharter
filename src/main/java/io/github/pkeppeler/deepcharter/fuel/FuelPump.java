@@ -85,7 +85,7 @@ public final class FuelPump {
 		}
 		int roomLitres = (int) Math.ceil(room - FULL_TOLERANCE);
 		long price = FuelTuning.DEFAULT.pricePerLitre();
-		long affordable = Charters.find(server, charter.get()).orElseThrow().account() / price;
+		long affordable = Charters.findOrThrow(server, charter.get()).orElseThrow().account() / price;
 		int minimum = partial ? 1 : litres;
 		if (affordable < minimum) {
 			return Optional.of(Component.translatable("message.deepcharter.fuel.cannot_pay", price * minimum));

@@ -1,14 +1,11 @@
 package io.github.pkeppeler.deepcharter.pod;
 
-import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
-import java.util.WeakHashMap;
 import java.util.function.UnaryOperator;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -63,9 +60,6 @@ import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 public final class PodComponents {
 	public static final int VERSION = 1;
 
-	/** Pods whose unreadable state has been logged, so a tick path logs once for each pod and not once for each tick. */
-	private static final Set<PodEntity> UNREADABLE_LOGGED = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
-	private static volatile boolean chartersUnreadableLogged;
 
 	/** A pod's owner charter and its serial number. */
 	public record Registration(CharterId owner, String serial) {
@@ -195,7 +189,7 @@ public final class PodComponents {
 	 */
 	public static void register(PodEntity pod, CharterId owner) {
 		MinecraftServer server = requireServer(pod);
-		if (Versioned.require(pod, STATE).registration().isPresent()) {
+		if (Versioned.orThrow(pod, STATE).registration().isPresent()) {
 			throw new IllegalStateException("pod " + pod.getUUID() + " is already registered");
 		}
 		String serial = Serials.get(server).next(pod.chassis().id().toUpperCase(Locale.ROOT));
@@ -215,7 +209,7 @@ public final class PodComponents {
 		PartLabel label = ComponentItems.labelOf(stack)
 				.orElseThrow(() -> new IllegalArgumentException("pod part has no label: " + stack));
 		track.requirePartTier(label.tier());
-		Optional<PartLabel> replaced = Optional.ofNullable(Versioned.require(pod, STATE).parts().get(track));
+		Optional<PartLabel> replaced = Optional.ofNullable(Versioned.orThrow(pod, STATE).parts().get(track));
 		change(pod, state -> state.with(track, label));
 		return replaced;
 	}
@@ -227,7 +221,7 @@ public final class PodComponents {
 	 */
 	private static void change(PodEntity pod, UnaryOperator<State> change) {
 		PodStats before = PodStats.of(pod);
-		Versioned.modify(pod, STATE, change);
+		Versioned.modifyOrThrow(pod, STATE, change);
 		PodStats after = PodStats.of(pod);
 		rescaleFuel(pod, before, after);
 		if (pod.hull() > 0f) {
@@ -271,13 +265,11 @@ public final class PodComponents {
 			return !unreadable(pod);
 		}
 		MinecraftServer server = player.level().getServer();
-		Optional<Charter> charter;
-		try {
-			charter = Charters.charterOf(server, player.getUUID());
-		} catch (IllegalStateException unreadable) {
-			logChartersUnreadable(unreadable);
+		if (!Charters.isReadable(server)) {
+			// Without the charters nobody's ownership can be checked: a readable pod is open, as in mayAccess.
 			return !unreadable(pod);
 		}
+		Optional<Charter> charter = Charters.readableCharterOf(server, player.getUUID());
 		if (mayAccess(pod, charter)) {
 			return true;
 		}
@@ -285,7 +277,7 @@ public final class PodComponents {
 		if (!unreadable(pod)) {
 			Registration registration = read(pod).registration().orElseThrow();
 			player.sendSystemMessage(Component.translatable("message.deepcharter.pod.not_crew", registration.serial(),
-					Charters.find(server, registration.owner()).orElseThrow().name()), true);
+					Charters.readableFind(server, registration.owner()).orElseThrow().name()), true);
 		}
 		return false;
 	}
@@ -314,25 +306,12 @@ public final class PodComponents {
 		if (registration.isEmpty()) {
 			return Optional.empty();
 		}
-		try {
-			return Charters.find(pod.level().getServer(), registration.get().owner()).filter(owner -> !owner.dormant());
-		} catch (IllegalStateException unreadable) {
-			logChartersUnreadable(unreadable);
-			return Optional.empty();
-		}
+		return Charters.readableFind(pod.level().getServer(), registration.get().owner()).filter(owner -> !owner.dormant());
 	}
 
-	/** True when the pod's components are unreadable; logs once, through {@link #read}. */
+	/** True when the pod's components are unreadable; logs once, through {@link Versioned#readable}. */
 	private static boolean unreadable(PodEntity pod) {
-		read(pod);
-		return pod.getAttached(STATE) instanceof Versioned.Unreadable<State>;
-	}
-
-	private static void logChartersUnreadable(IllegalStateException unreadable) {
-		if (!chartersUnreadableLogged) {
-			chartersUnreadableLogged = true;
-			DeepCharter.LOGGER.error("Pod ownership is not checked, because the saved charters cannot be read: {}", unreadable.getMessage());
-		}
+		return Versioned.readable(pod, STATE).isEmpty();
 	}
 
 	private static boolean counts(State state, PartLabel label) {
@@ -341,18 +320,7 @@ public final class PodComponents {
 
 	/** The pod's state, or the empty one when it was never set or is unreadable (logged once). Never throws: listeners call it. */
 	private static State read(PodEntity pod) {
-		Versioned<State> versioned = pod.getAttached(STATE);
-		return switch (versioned) {
-			case null -> State.EMPTY;
-			case Versioned.Readable<State> readable -> readable.value();
-			case Versioned.Unreadable<State> unreadable -> {
-				if (UNREADABLE_LOGGED.add(pod)) {
-					DeepCharter.LOGGER.error("Pod {} has components saved as version {}, which this build cannot read: it runs with stock parts, nobody can pilot it, and the saved data is kept",
-							pod.getUUID(), unreadable.version());
-				}
-				yield State.EMPTY;
-			}
-		};
+		return Versioned.readable(pod, STATE).orElse(State.EMPTY);
 	}
 
 	private static MinecraftServer requireServer(PodEntity pod) {

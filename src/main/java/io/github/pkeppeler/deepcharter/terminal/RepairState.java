@@ -18,6 +18,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.attachment.SavedState;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 
 /**
@@ -47,21 +48,18 @@ public final class RepairState extends SavedData {
 	// Datafixer type: as for CharterData (ADR 0007), vanilla's fixers find nothing of theirs in a file that carries our own version.
 	public static final SavedDataType<RepairState> TYPE = new SavedDataType<>(ID, RepairState::new, CODEC, DataFixTypes.SAVED_DATA_COMMAND_STORAGE);
 
-	private final Map<Identifier, List<Identifier>> inserted = new LinkedHashMap<>();
-	private final Optional<Versioned.Unreadable<List<Entry>>> unreadable;
+	private final SavedState<Map<Identifier, List<Identifier>>> state;
 
 	public RepairState() {
-		this.unreadable = Optional.empty();
+		this.state = SavedState.fresh(ID, VERSION, new LinkedHashMap<>());
 	}
 
 	private RepairState(Versioned<List<Entry>> loaded) {
-		switch (loaded) {
-			case Versioned.Readable<List<Entry>> readable -> {
-				readable.value().forEach(entry -> inserted.put(entry.type(), new ArrayList<>(entry.parts())));
-				unreadable = Optional.empty();
-			}
-			case Versioned.Unreadable<List<Entry>> raw -> unreadable = Optional.of(raw);
-		}
+		this.state = SavedState.load(ID, VERSION, loaded, entries -> {
+			Map<Identifier, List<Identifier>> inserted = new LinkedHashMap<>();
+			entries.forEach(entry -> inserted.put(entry.type(), new ArrayList<>(entry.parts())));
+			return inserted;
+		});
 	}
 
 	/** The world's repair state. Call on the server thread. */
@@ -70,26 +68,17 @@ public final class RepairState extends SavedData {
 	}
 
 	private Versioned<List<Entry>> versioned() {
-		return unreadable.<Versioned<List<Entry>>>map(raw -> raw).orElseGet(() -> Versioned.of(
-				inserted.entrySet().stream().map(entry -> new Entry(entry.getKey(), List.copyOf(entry.getValue()))).toList()));
+		return state.versioned(inserted ->
+				inserted.entrySet().stream().map(entry -> new Entry(entry.getKey(), List.copyOf(entry.getValue()))).toList());
 	}
 
-	/** False when the saved data is of a version this build cannot read. Gameplay code asks this and refuses, instead of calling what throws. */
+	/** False (logged once) when the saved data is of a version this build cannot read. Gameplay code asks this and refuses, instead of calling what throws. */
 	public boolean isReadable() {
-		return unreadable.isEmpty();
-	}
-
-	/** The saved version of unreadable data, for a log line. */
-	public Optional<String> unreadableVersion() {
-		return unreadable.map(Versioned.Unreadable::version);
+		return state.isReadable();
 	}
 
 	private Map<Identifier, List<Identifier>> readable() {
-		if (unreadable.isPresent()) {
-			throw new IllegalStateException("the saved terminal repairs have version " + unreadable.get().version()
-					+ " that this build cannot read (it reads " + VERSION + ")");
-		}
-		return inserted;
+		return state.orThrow();
 	}
 
 	private List<Identifier> insertedIds(TerminalType type) {

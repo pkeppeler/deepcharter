@@ -18,7 +18,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
-import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 
@@ -33,13 +32,11 @@ public final class PodLights {
 
 	/** The light each pod holds now. Server thread only; weak, so a pod that vanished without an event does not leak. */
 	private static final Map<PodEntity, Lit> LIT = new WeakHashMap<>();
-	private static boolean ledgerUnreadableLogged;
 
 	private PodLights() {
 	}
 
 	public static void init() {
-		ServerLifecycleEvents.SERVER_STARTING.register(server -> ledgerUnreadableLogged = false);
 		PodEvents.AFTER_TICK.register(PodLights::afterTick);
 		ServerEntityEvents.ENTITY_UNLOAD.register(PodLights::onUnload);
 		ServerTickEvents.END_LEVEL_TICK.register(PodLights::sweep);
@@ -88,11 +85,7 @@ public final class PodLights {
 	private static void place(PodEntity pod, ServerLevel level, int lightLevel) {
 		PodLightLedger ledger = PodLightLedger.get(level.getServer());
 		if (!ledger.isReadable()) {
-			if (!ledgerUnreadableLogged) {
-				ledgerUnreadableLogged = true;
-				DeepCharter.LOGGER.error("Pod lights are off: the saved light ledger has version {}, which this build cannot read, and a light it cannot record it could not clean up",
-						ledger.unreadableVersion());
-			}
+			// Pod lights are off: a light the ledger cannot record could not be cleaned up.
 			return;
 		}
 		BlockPos pos = freeCell(pod, level);

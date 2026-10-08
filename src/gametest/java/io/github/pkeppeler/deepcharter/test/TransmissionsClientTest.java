@@ -133,7 +133,7 @@ public class TransmissionsClientTest implements FabricClientGameTest {
 				if (Charters.found(server, mock, TWO_PLAYER_NAME).isPresent()) {
 					throw new AssertionError("founding should succeed");
 				}
-				return Charters.charterOf(server, mock).orElseThrow().id();
+				return Charters.charterOfOrThrow(server, mock).orElseThrow().id();
 			});
 			UUID real = two.server().computeOnServer(server -> server.getPlayerList().getPlayers().stream()
 					.map(player -> player.getUUID()).filter(uuid -> !uuid.equals(mock)).findFirst().orElseThrow());

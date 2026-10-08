@@ -59,7 +59,6 @@ public final class WorkOrders {
 		Charter charter = context.charter().orElseThrow();
 		WorkOrderData data = WorkOrderData.get(server);
 		if (!data.isReadable()) {
-			logUnreadable(data);
 			return Optional.of(Component.translatable("deepcharter.market.refusal.work_orders_unreadable"));
 		}
 		int owed = order.quantity() - data.delivered(charter.id(), order);
@@ -115,18 +114,10 @@ public final class WorkOrders {
 		}
 	}
 
-	private static void logUnreadable(WorkOrderData data) {
-		if (data.firstUnreadableReport()) {
-			DeepCharter.LOGGER.error("The saved work orders have version {} that this build cannot read: no work order takes ore until the world is opened by a build that reads them",
-					data.unreadableVersion().orElse("?"));
-		}
-	}
-
 	/** The work orders of the player's charter, for the processor's screen. Never throws on unreadable saved data. */
 	public static WorkOrdersView view(MinecraftServer server, ServerPlayer player, Optional<Charter> charter, BlockPos pos) {
 		WorkOrderData data = WorkOrderData.get(server);
 		if (!data.isReadable()) {
-			logUnreadable(data);
 			return new WorkOrdersView(false, List.of());
 		}
 		Charter own = charter.orElseThrow();

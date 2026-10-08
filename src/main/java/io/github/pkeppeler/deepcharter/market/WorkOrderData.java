@@ -3,7 +3,6 @@ package io.github.pkeppeler.deepcharter.market;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
@@ -17,6 +16,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.attachment.SavedState;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 
@@ -53,22 +53,18 @@ public final class WorkOrderData extends SavedData {
 	// Datafixer type: as for ColonySite, vanilla's fixers find nothing of theirs in a file that carries our own version.
 	public static final SavedDataType<WorkOrderData> TYPE = new SavedDataType<>(ID, WorkOrderData::new, CODEC, DataFixTypes.SAVED_DATA_COMMAND_STORAGE);
 
-	private final Map<Key, Integer> delivered = new HashMap<>();
-	private final Optional<Versioned.Unreadable<List<Progress>>> unreadable;
-	private boolean loggedUnreadable;
+	private final SavedState<Map<Key, Integer>> state;
 
 	public WorkOrderData() {
-		this.unreadable = Optional.empty();
+		this.state = SavedState.fresh(ID, VERSION, new HashMap<>());
 	}
 
 	private WorkOrderData(Versioned<List<Progress>> loaded) {
-		switch (loaded) {
-			case Versioned.Readable<List<Progress>> readable -> {
-				readable.value().forEach(progress -> delivered.put(new Key(progress.charter(), progress.order()), progress.delivered()));
-				unreadable = Optional.empty();
-			}
-			case Versioned.Unreadable<List<Progress>> raw -> unreadable = Optional.of(raw);
-		}
+		this.state = SavedState.load(ID, VERSION, loaded, list -> {
+			Map<Key, Integer> delivered = new HashMap<>();
+			list.forEach(progress -> delivered.put(new Key(progress.charter(), progress.order()), progress.delivered()));
+			return delivered;
+		});
 	}
 
 	/** The world's work order progress. Call on the server thread. */
@@ -77,38 +73,18 @@ public final class WorkOrderData extends SavedData {
 	}
 
 	private Versioned<List<Progress>> versioned() {
-		return unreadable.<Versioned<List<Progress>>>map(raw -> raw).orElseGet(() -> Versioned.of(delivered.entrySet().stream()
-				.map(entry -> new Progress(entry.getKey().charter(), entry.getKey().order(), entry.getValue())).toList()));
+		return state.versioned(delivered -> delivered.entrySet().stream()
+				.map(entry -> new Progress(entry.getKey().charter(), entry.getKey().order(), entry.getValue())).toList());
 	}
 
-	/** False when the saved data is of a version this build cannot read: every other method then throws. */
+	/** False (logged once) when the saved data is of a version this build cannot read: every other method then throws. */
 	public boolean isReadable() {
-		return unreadable.isEmpty();
-	}
-
-	/** The saved version of unreadable data, for a log line. */
-	public Optional<String> unreadableVersion() {
-		return unreadable.map(Versioned.Unreadable::version);
-	}
-
-	/** True the first time it is asked, so a callback logs unreadable data once and then skips. */
-	boolean firstUnreadableReport() {
-		boolean first = !loggedUnreadable;
-		loggedUnreadable = true;
-		return first;
-	}
-
-	private void requireReadable() {
-		if (unreadable.isPresent()) {
-			throw new IllegalStateException("the saved work orders have version " + unreadable.get().version()
-					+ " that this build cannot read (it reads " + VERSION + ")");
-		}
+		return state.isReadable();
 	}
 
 	/** How many the charter has handed in for {@code order}. */
 	public int delivered(CharterId charter, WorkOrder order) {
-		requireReadable();
-		return delivered.getOrDefault(new Key(charter, order), 0);
+		return state.orThrow().getOrDefault(new Key(charter, order), 0);
 	}
 
 	/** Records {@code amount} more handed in. It must be at least 1 and must not take the order past its quantity. */
@@ -117,7 +93,7 @@ public final class WorkOrderData extends SavedData {
 		if (amount < 1 || total > order.quantity()) {
 			throw new IllegalArgumentException("cannot hand in " + amount + " more for " + order + " with " + delivered(charter, order) + " in");
 		}
-		delivered.put(new Key(charter, order), total);
+		state.orThrow().put(new Key(charter, order), total);
 		setDirty();
 	}
 }

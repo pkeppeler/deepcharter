@@ -41,13 +41,13 @@ public class CharterCoreClientTest implements FabricClientGameTest {
 				if (Charters.found(server, player, NAME).isPresent()) {
 					throw new AssertionError("founding should succeed");
 				}
-				Charters.deposit(server, Charters.charterOf(server, player).orElseThrow().id(), FIRST_BALANCE);
+				Charters.deposit(server, Charters.charterOfOrThrow(server, player).orElseThrow().id(), FIRST_BALANCE);
 			});
 			context.waitFor(client -> ClientCharter.view().filter(view -> view.name().equals(NAME) && view.balance() == FIRST_BALANCE).isPresent());
 
 			singleplayer.getServer().runOnServer(server -> {
 				UUID player = server.getPlayerList().getPlayers().getFirst().getUUID();
-				Charters.spend(server, Charters.charterOf(server, player).orElseThrow().id(), FIRST_BALANCE - SECOND_BALANCE);
+				Charters.spend(server, Charters.charterOfOrThrow(server, player).orElseThrow().id(), FIRST_BALANCE - SECOND_BALANCE);
 			});
 			context.waitFor(client -> ClientCharter.view().map(CharterView::balance).equals(Optional.of(SECOND_BALANCE)));
 
@@ -70,7 +70,7 @@ public class CharterCoreClientTest implements FabricClientGameTest {
 				if (Charters.found(server, mock, TWO_PLAYER_NAME).isPresent()) {
 					throw new AssertionError("founding should succeed");
 				}
-				return Charters.charterOf(server, mock).orElseThrow().id();
+				return Charters.charterOfOrThrow(server, mock).orElseThrow().id();
 			});
 			two.server().runOnServer(server -> {
 				if (Charters.apply(server, real, id).isPresent() || Charters.approve(server, mock, real).isPresent()) {

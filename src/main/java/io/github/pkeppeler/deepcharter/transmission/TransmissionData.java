@@ -5,7 +5,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 import com.mojang.serialization.Codec;
@@ -21,6 +20,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.attachment.SavedState;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 
@@ -37,7 +37,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
  * <p>This holds the state and its rules only. {@link Transmissions} adds delivery and bonuses on top of it. Call on the server thread.
  *
  * <p>The saved form has a {@link #VERSION}. Data of another version loads as unreadable, is written back unchanged, and
- * {@link #isUsable()} is false: {@link Transmissions} then does nothing and logs once, so a newer world is never overwritten and no
+ * {@link #isReadable()} is false: {@link Transmissions} then does nothing and logs once, so a newer world is never overwritten and no
  * tick or login fails. Every method here throws on unreadable data ({@code docs/adr/0007}).
  */
 public final class TransmissionData extends SavedData {
@@ -147,23 +147,22 @@ public final class TransmissionData extends SavedData {
 	// Datafixer type: vanilla applies it to saved data it reads. Our data has a version of its own, so the vanilla fixers find nothing to fix.
 	public static final SavedDataType<TransmissionData> TYPE = new SavedDataType<>(ID, TransmissionData::new, CODEC, DataFixTypes.SAVED_DATA_COMMAND_STORAGE);
 
-	private final Map<CharterId, Progress> charters = new LinkedHashMap<>();
-	private final List<Identifier> replays = new ArrayList<>();
-	private final Optional<Versioned.Unreadable<Body>> unreadable;
+	/** What the class works on: each charter's progress, and the world's replay list. */
+	private record Live(Map<CharterId, Progress> charters, List<Identifier> replays) {
+	}
+
+	private final SavedState<Live> state;
 
 	public TransmissionData() {
-		this.unreadable = Optional.empty();
+		this.state = SavedState.fresh(ID, VERSION, new Live(new LinkedHashMap<>(), new ArrayList<>()));
 	}
 
 	private TransmissionData(Versioned<Body> loaded) {
-		switch (loaded) {
-			case Versioned.Readable<Body> readable -> {
-				readable.value().charters().forEach(entry -> charters.put(entry.charter(), entry.progress()));
-				replays.addAll(readable.value().replays());
-				unreadable = Optional.empty();
-			}
-			case Versioned.Unreadable<Body> raw -> unreadable = Optional.of(raw);
-		}
+		this.state = SavedState.load(ID, VERSION, loaded, body -> {
+			Live live = new Live(new LinkedHashMap<>(), new ArrayList<>(body.replays()));
+			body.charters().forEach(entry -> live.charters().put(entry.charter(), entry.progress()));
+			return live;
+		});
 	}
 
 	/** The world's transmission state. Call on the server thread. */
@@ -172,37 +171,27 @@ public final class TransmissionData extends SavedData {
 	}
 
 	private Versioned<Body> versioned() {
-		return unreadable.<Versioned<Body>>map(raw -> raw).orElseGet(() -> Versioned.of(new Body(
-				charters.entrySet().stream().map(entry -> new Entry(entry.getKey(), entry.getValue())).toList(), List.copyOf(replays))));
+		return state.versioned(live -> new Body(
+				live.charters().entrySet().stream().map(entry -> new Entry(entry.getKey(), entry.getValue())).toList(), List.copyOf(live.replays())));
 	}
 
-	/** False when the saved data is of a version this build cannot read. Never throws: check it before using the data from a tick or an event. */
-	public boolean isUsable() {
-		return unreadable.isEmpty();
+	/** False (logged once) when the saved data is of a version this build cannot read. Never throws: check it before using the data from a tick or an event. */
+	public boolean isReadable() {
+		return state.isReadable();
 	}
 
-	/** The version of unreadable saved data, for a log line; "missing" when there is none. */
-	public String unreadableVersion() {
-		return unreadable.map(Versioned.Unreadable::version).orElseThrow(() -> new IllegalStateException("the transmission data is readable"));
-	}
-
-	private void requireReadable() {
-		if (unreadable.isPresent()) {
-			throw new IllegalStateException("the saved transmissions have version " + unreadable.get().version()
-					+ " that this build cannot read (it reads " + VERSION + ")");
-		}
+	private Live live() {
+		return state.orThrow();
 	}
 
 	/** What {@code charter} has fired and been sent. A charter that has fired nothing has none of either. */
 	public Progress progress(CharterId charter) {
-		requireReadable();
-		return charters.getOrDefault(charter, Progress.EMPTY);
+		return live().charters().getOrDefault(charter, Progress.EMPTY);
 	}
 
 	/** The repair transmissions fired live so far, in the order they first fired. */
 	public List<Identifier> replays() {
-		requireReadable();
-		return List.copyOf(replays);
+		return List.copyOf(live().replays());
 	}
 
 	/**
@@ -214,8 +203,8 @@ public final class TransmissionData extends SavedData {
 		if (!add(charter, transmission.id())) {
 			return false;
 		}
-		if (transmission.replay() && !replays.contains(transmission.id())) {
-			replays.add(transmission.id());
+		if (transmission.replay() && !live().replays().contains(transmission.id())) {
+			live().replays().add(transmission.id());
 		}
 		return true;
 	}
@@ -225,9 +214,8 @@ public final class TransmissionData extends SavedData {
 	 * fired, and returns them. Called for a charter that has just been founded.
 	 */
 	public List<Identifier> replayTo(CharterId charter) {
-		requireReadable();
 		List<Identifier> added = new ArrayList<>();
-		for (Identifier id : replays) {
+		for (Identifier id : live().replays()) {
 			if (add(charter, id)) {
 				added.add(id);
 			}
@@ -242,7 +230,7 @@ public final class TransmissionData extends SavedData {
 			throw new IllegalArgumentException("cannot have sent " + sent + " of " + progress.fired().size());
 		}
 		if (sent > progress.cursors().getOrDefault(member, 0)) {
-			charters.put(charter, progress.withSent(member, sent));
+			live().charters().put(charter, progress.withSent(member, sent));
 			setDirty();
 		}
 	}
@@ -251,7 +239,7 @@ public final class TransmissionData extends SavedData {
 	public void forget(CharterId charter, UUID member) {
 		Progress progress = progress(charter);
 		if (progress.cursors().containsKey(member)) {
-			charters.put(charter, progress.without(member));
+			live().charters().put(charter, progress.without(member));
 			setDirty();
 		}
 	}
@@ -261,7 +249,7 @@ public final class TransmissionData extends SavedData {
 		Progress progress = progress(charter);
 		List<Transmission.Bonus> pending = new ArrayList<>(progress.pending());
 		pending.add(bonus);
-		charters.put(charter, progress.withPending(pending));
+		live().charters().put(charter, progress.withPending(pending));
 		setDirty();
 	}
 
@@ -273,7 +261,7 @@ public final class TransmissionData extends SavedData {
 			throw new IllegalStateException("charter " + charter.value() + " has no pending bonus");
 		}
 		pending.removeFirst();
-		charters.put(charter, progress.withPending(pending));
+		live().charters().put(charter, progress.withPending(pending));
 		setDirty();
 	}
 
@@ -282,7 +270,7 @@ public final class TransmissionData extends SavedData {
 		if (progress.fired().contains(id)) {
 			return false;
 		}
-		charters.put(charter, progress.withFired(id));
+		live().charters().put(charter, progress.withFired(id));
 		setDirty();
 		return true;
 	}

@@ -18,19 +18,33 @@ public final class Charters {
 	}
 
 	/**
-	 * False when the saved charters are of a version this build cannot read, so every call here that reads them throws. Code on a
-	 * tick, join or sync path checks this first and skips.
+	 * False when the saved charters are of a version this build cannot read, so every call here that reads them throws. Logs once
+	 * when not. The readable forms below check this themselves; check it first only to guard several reads at once.
 	 */
 	public static boolean isReadable(MinecraftServer server) {
 		return CharterData.get(server).isReadable();
 	}
 
-	/** The charter {@code player} is on, as Director or crew. */
-	public static Optional<Charter> charterOf(MinecraftServer server, UUID player) {
+	/**
+	 * The charter {@code player} is on, as Director or crew; empty when they are on none or the saved charters are unreadable
+	 * (logged once). Never throws: for tick, join, sync and callback paths.
+	 */
+	public static Optional<Charter> readableCharterOf(MinecraftServer server, UUID player) {
+		return isReadable(server) ? CharterData.get(server).charterOf(player) : Optional.empty();
+	}
+
+	/** The charter with this id; empty when there is none or the saved charters are unreadable (logged once). Never throws. */
+	public static Optional<Charter> readableFind(MinecraftServer server, CharterId id) {
+		return isReadable(server) ? CharterData.get(server).find(id) : Optional.empty();
+	}
+
+	/** The charter {@code player} is on, as Director or crew. Throws when the saved charters are unreadable: for commands and explicit actions. */
+	public static Optional<Charter> charterOfOrThrow(MinecraftServer server, UUID player) {
 		return CharterData.get(server).charterOf(player);
 	}
 
-	public static Optional<Charter> find(MinecraftServer server, CharterId id) {
+	/** The charter with this id. Throws when the saved charters are unreadable: for commands and explicit actions. */
+	public static Optional<Charter> findOrThrow(MinecraftServer server, CharterId id) {
 		return CharterData.get(server).find(id);
 	}
 
@@ -39,7 +53,8 @@ public final class Charters {
 		return CharterData.get(server).findByName(name);
 	}
 
-	public static Collection<Charter> all(MinecraftServer server) {
+	/** Every charter. Throws when the saved charters are unreadable: for commands and explicit actions. */
+	public static Collection<Charter> allOrThrow(MinecraftServer server) {
 		return CharterData.get(server).all();
 	}
 
@@ -135,7 +150,7 @@ public final class Charters {
 
 	private static Optional<CharterRefusal> changeAccount(MinecraftServer server, CharterId id, long delta, Optional<CharterRefusal> refusal) {
 		if (refusal.isEmpty()) {
-			Charter charter = find(server, id).orElseThrow();
+			Charter charter = findOrThrow(server, id).orElseThrow();
 			sync(server, charter.roster());
 			CharterEvents.ACCOUNT_CHANGED.invoker().onAccountChanged(server, charter, delta);
 		}

@@ -19,7 +19,6 @@ public final class HandbookClientRegistry {
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
 			ClientHandbook.set(List.of());
 			ClientNotes.set(List.of());
-			ClientReadMarks.reset();
 		});
 		HandbookKeys.register();
 	}

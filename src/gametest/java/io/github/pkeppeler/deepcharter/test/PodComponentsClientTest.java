@@ -45,7 +45,7 @@ public class PodComponentsClientTest implements FabricClientGameTest {
 				if (Charters.found(server, player.getUUID(), "Client components").isPresent()) {
 					throw new AssertionError("the player could not found a charter");
 				}
-				CharterId charter = Charters.charterOf(server, player.getUUID()).orElseThrow().id();
+				CharterId charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id();
 				PodEntity pod = PodRegistry.POD.create(player.level(), EntitySpawnReason.COMMAND);
 				pod.setPos(player.position());
 				player.level().addFreshEntity(pod);

@@ -5,7 +5,9 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -67,9 +69,9 @@ import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
-import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 
 /**
  * Server GameTests for #64: the colony is built once at world spawn, its anchors persist, its terminals start offline, the world
@@ -182,13 +184,7 @@ public class ColonyTest {
 	@GameTest
 	public void dataOfAnotherVersionIsKeptAndTheCallbackPathsSkipIt(GameTestHelper helper) {
 		MinecraftServer server = server(helper);
-		Tag current = ColonySite.CODEC.encodeStart(NbtOps.INSTANCE, ColonySite.get(server)).getOrThrow();
-		CompoundTag future = ((CompoundTag) current).copy();
-		future.putInt("version", 7741);
-		ColonySite unreadable = ColonySite.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow();
-		if (unreadable.isReadable() || !ColonySite.CODEC.encodeStart(NbtOps.INSTANCE, unreadable).getOrThrow().equals(future)) {
-			throw failure(helper, "data of version 7741 should load as unreadable and be written back unchanged");
-		}
+		ColonySite unreadable = ColonySite.CODEC.parse(NbtOps.INSTANCE, UnreadableChecks.futureData()).getOrThrow();
 		try {
 			unreadable.isBuilt();
 			throw failure(helper, "an explicit use of unreadable data should throw");
@@ -196,24 +192,20 @@ public class ColonyTest {
 			// Explicit API calls throw; tick, join and callback paths do not.
 		}
 
-		LogCapture log = LogCapture.start("version 7741");
-		ColonySite world = ColonySite.get(server);
-		server.getDataStorage().set(ColonySite.TYPE, unreadable);
-		try {
-			// A start, the lookups of other features, and a chunk load (the far chunk is made by asking for it).
-			if (ColonyBuilder.buildIfNeeded(server) || ColonyBuilder.buildIfNeeded(server)) {
-				throw failure(helper, "a colony was built over unreadable data");
+		Map<String, Runnable> paths = new LinkedHashMap<>();
+		// A start, the lookups of other features, and a chunk load (the far chunk is made by asking for it).
+		paths.put("start", () -> {
+			if (ColonyBuilder.buildIfNeeded(server)) {
+				throw new IllegalStateException("a colony was built over unreadable data");
 			}
+		});
+		paths.put("lookups", () -> {
 			if (Colony.placed(server).isPresent() || Colony.anchor(server, ColonyAnchor.CONDUIT).isPresent() || Colony.respawnPoint(server).isPresent()) {
-				throw failure(helper, "unreadable data answered a lookup");
+				throw new IllegalStateException("unreadable data answered a lookup");
 			}
-			server.getLevel(LayerChain.dimension(1)).getChunk(7000 >> 4, 7000 >> 4);
-		} finally {
-			server.getDataStorage().set(ColonySite.TYPE, world);
-		}
-		if (log.errors().size() != 1) {
-			throw failure(helper, "unreadable data should be logged once, was logged %s: %s", log.errors().size(), log.errors());
-		}
+		});
+		paths.put("chunk load", () -> server.getLevel(LayerChain.dimension(1)).getChunk(7000 >> 4, 7000 >> 4));
+		UnreadableChecks.assertSavedDataNoThrow(helper, "colony", server, ColonySite.TYPE, paths);
 		helper.succeed();
 	}
 
