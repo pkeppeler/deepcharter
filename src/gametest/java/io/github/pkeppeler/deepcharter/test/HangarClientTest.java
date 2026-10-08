@@ -43,6 +43,7 @@ public class HangarClientTest implements FabricClientGameTest {
 
 	/** Every button and price line lies inside the screen, a button holds its whole label, and no price line is under a button. */
 	private static String problem(HangarScreen screen) {
+		Font font = Minecraft.getInstance().font;
 		List<Button> buttons = screen.children().stream().filter(Button.class::isInstance).map(Button.class::cast).toList();
 		for (Button button : buttons) {
 			String label = button.getMessage().getString();
@@ -52,12 +53,11 @@ public class HangarClientTest implements FabricClientGameTest {
 			if (button.getY() < screen.headerBottom()) {
 				return "'" + label + "' starts at " + button.getY() + ", above the header text that ends at " + screen.headerBottom();
 			}
-			int textWidth =Minecraft.getInstance().font.width(label);
+			int textWidth = font.width(label);
 			if (textWidth > button.getWidth()) {
 				return "'" + label + "' is " + textWidth + " wide in a button " + button.getWidth() + " wide";
 			}
 		}
-		Font font = Minecraft.getInstance().font;
 		if (screen.priceLines().isEmpty()) {
 			return "the screen shows no restore prices";
 		}
