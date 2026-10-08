@@ -26,7 +26,7 @@ public final class LowFuelBeep {
 	}
 
 	private static void tick(Minecraft client) {
-		if (client.player == null || !(client.player.getVehicle() instanceof PodEntity pod) || !PodSeat.find(pod, client.player).filter(PodSeat::showsPodStatus).isPresent()
+		if (client.player == null || !(client.player.getVehicle() instanceof PodEntity pod) || !PodSeat.showsPodStatus(pod, client.player)
 				|| pod.stranded() || !PodFuel.isLow(pod.fuel())) {
 			ticksSinceBeep = SLOW_INTERVAL_TICKS;
 			return;

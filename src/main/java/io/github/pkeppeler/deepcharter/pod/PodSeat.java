@@ -25,8 +25,8 @@ public enum PodSeat {
 		return Optional.of(index == 0 ? PILOT : NAVIGATOR);
 	}
 
-	/** True when the seat shows the pod's hull, fuel, cargo and depth, and sounds its low-fuel beep. */
-	public boolean showsPodStatus() {
-		return this == PILOT;
+	/** True when {@code rider} is the pilot, who sees the pod's hull, fuel, cargo and depth and hears its low-fuel beep. */
+	public static boolean showsPodStatus(PodEntity pod, Entity rider) {
+		return find(pod, rider).filter(seat -> seat == PILOT).isPresent();
 	}
 }
