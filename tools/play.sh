@@ -102,7 +102,12 @@ find "$play_dir/mods" -mindepth 1 -delete
 cp "$jar" "$play_dir/mods/"
 launch_jar="$play_dir/mods/$(basename "$jar")"
 [[ "$(find "$play_dir/mods" -type f | wc -l | tr -d ' ')" == 1 ]] || die "mods dir must hold exactly one jar"
-[[ "$(shasum -a 256 "$launch_jar" | cut -d' ' -f1)" == "$jar_sha256" ]] \
+if command -v sha256sum >/dev/null 2>&1; then
+  launch_sha256="$(sha256sum "$launch_jar" | cut -d' ' -f1)"
+else
+  launch_sha256="$(shasum -a 256 "$launch_jar" | cut -d' ' -f1)"   # portable: fallback when sha256sum is absent (macOS)
+fi
+[[ "$launch_sha256" == "$jar_sha256" ]] \
   || die "$launch_jar does not match the pinned sha256, refusing to launch"
 
 # The mod rewrites its config at every launch; the master copy lives outside the repo.
@@ -113,7 +118,8 @@ install -m 600 "$home/mcpfabric.config.json" "$play_dir/config/mcpfabric.config.
 # The game writes these keys itself, so replace them on every launch.
 touch "$play_dir/options.txt"
 for opt in onboardAccessibility:false pauseOnLostFocus:false; do
-  sed -i '' "/^${opt%%:*}:/d" "$play_dir/options.txt"
+  sed -i.bak "/^${opt%%:*}:/d" "$play_dir/options.txt"
+  rm -f "$play_dir/options.txt.bak"
   echo "$opt" >> "$play_dir/options.txt"
 done
 

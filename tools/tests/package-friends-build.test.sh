@@ -162,8 +162,11 @@ sed -i.bak 's/^eula=false$/eula=true/' "$rsrv/eula.txt"
 launcher_file=$(sed -n 's/^launcher=//p' "$rsrv/start.sh")
 echo fixture-mod >"$rsrv/mods/fixture-mod.jar"
 echo fixture-launcher >"$rsrv/$launcher_file"
-mod_sha512=$(shasum -a 512 "$rsrv/mods/fixture-mod.jar" | cut -d' ' -f1)
-fixture_launcher_sha256=$(shasum -a 256 "$rsrv/$launcher_file" | cut -d' ' -f1)
+hash_of() { # hash_of <bits> <file>
+  if command -v "sha$1sum" >/dev/null 2>&1; then "sha$1sum" "$2" | cut -d' ' -f1; else shasum -a "$1" "$2" | cut -d' ' -f1; fi
+}
+mod_sha512=$(hash_of 512 "$rsrv/mods/fixture-mod.jar")
+fixture_launcher_sha256=$(hash_of 256 "$rsrv/$launcher_file")
 printf '%s fixture-mod.jar https://example.invalid/fixture-mod.jar\n' "$mod_sha512" >"$rsrv/mods.lock"
 sed -i.bak "s/^launcher_sha256=.*/launcher_sha256=$fixture_launcher_sha256/" "$rsrv/start.sh"
 rstub=$work/rstub
