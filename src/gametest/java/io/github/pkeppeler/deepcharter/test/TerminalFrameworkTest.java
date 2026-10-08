@@ -64,6 +64,7 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterData;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.handbook.HandbookTriggers;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -442,6 +443,7 @@ public class TerminalFrameworkTest {
 				Terminals.insertPart(member.player(), pump, TerminalTypes.FUEL_PUMP.parts().getFirst()), "inserting with unreadable repair data"));
 		paths.put("use", () -> helper.getLevel().getBlockState(pump).useWithoutItem(helper.getLevel(), member.player(),
 				new BlockHitResult(Vec3.atCenterOf(pump), Direction.UP, pump, false)));
+		paths.put("handbook repair credit", () -> HandbookTriggers.creditRepairs(server, member.player()));
 		paths.put("terminal that needs no repair", () -> {
 			int opened = OPENED_LOG.size();
 			expectDone(helper, Terminals.open(outsider.player(), open), "a terminal that needs no repair state still opens");

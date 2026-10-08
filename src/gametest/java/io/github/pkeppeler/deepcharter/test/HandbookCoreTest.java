@@ -62,6 +62,7 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookProgress;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgressData;
 import io.github.pkeppeler.deepcharter.handbook.HandbookRegistry;
 import io.github.pkeppeler.deepcharter.handbook.HandbookSyncPayload;
+import io.github.pkeppeler.deepcharter.handbook.HandbookTriggers;
 import io.github.pkeppeler.deepcharter.handbook.HandbookTuning;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
@@ -425,6 +426,7 @@ public class HandbookCoreTest {
 		paths.put("tick poll", () -> HandbookProgress.sweep(player));
 		paths.put("sync", () -> HandbookSyncPayload.send(server, player));
 		paths.put("directive fired", () -> Directives.fire(player, CUSTOM_DIRECTIVE));
+		paths.put("repair credit", () -> HandbookTriggers.creditRepairs(server, player));
 		paths.put("progress read", () -> {
 			if (!HandbookProgress.completedFor(server, player.getUUID()).isEmpty()) {
 				throw helper.assertionException("unreadable data reads as empty");
