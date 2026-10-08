@@ -8,6 +8,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.core.BlockPos;
@@ -37,6 +40,7 @@ import io.github.pkeppeler.deepcharter.colony.ColonyEvents;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.hangar.Hangar;
 import io.github.pkeppeler.deepcharter.hangar.HangarData;
+import io.github.pkeppeler.deepcharter.hangar.HangarView;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
@@ -593,6 +597,37 @@ public class FoundingMoleHangarTest {
 					"a hangar saved with no advanced field loads readable, with its other fields, and nothing used: %s", loaded.isReadable() ? loaded.state() : "unreadable");
 			helper.succeed();
 		});
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void theConsoleViewCarriesTheAdvanceEachCharterHasLeft(GameTestHelper helper) {
+		inTheHangar(helper, before -> withFreshWorld(helper, () -> {
+			MinecraftServer server = server(helper);
+			MockPlayer first = member(helper, "Part Used");
+			MockPlayer second = member(helper, "Untouched");
+			Charter firstCharter = charterOf(helper, first);
+			Charter secondCharter = charterOf(helper, second);
+			HangarData.get(server).spendAdvance(firstCharter.id(), 2);
+			expect(helper, HangarTerminal.view(server, first.player(), Optional.of(firstCharter), BlockPos.ZERO).advanceLeft() == 1,
+					"a charter that used 2 of 3 has 1 left");
+			expect(helper, HangarTerminal.view(server, second.player(), Optional.of(secondCharter), BlockPos.ZERO).advanceLeft() == 3,
+					"a charter that used none has 3 left, whatever another used");
+			HangarData.get(server).spendAdvance(firstCharter.id(), 5);
+			expect(helper, HangarTerminal.view(server, first.player(), Optional.of(firstCharter), BlockPos.ZERO).advanceLeft() == 0,
+					"a charter that used more than the advance has 0 left, never a negative");
+			expect(helper, HangarTerminal.view(server, first.player(), Optional.empty(), BlockPos.ZERO).advanceLeft() == 0, "no charter has no advance");
+
+			CompoundTag future = ((CompoundTag) HangarData.CODEC.encodeStart(NbtOps.INSTANCE, HangarData.get(server)).getOrThrow()).copy();
+			future.putInt("version", Integer.parseInt(FUTURE_HANGAR));
+			WorldData.replace(server, HangarData.TYPE, HangarData.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow());
+			expect(helper, HangarTerminal.view(server, second.player(), Optional.of(secondCharter), BlockPos.ZERO).advanceLeft() == 0,
+					"unreadable hangar records show no advance, and do not throw");
+
+			ByteBuf buffer = Unpooled.buffer();
+			HangarView.STREAM_CODEC.encode(buffer, new HangarView(2));
+			expect(helper, HangarView.STREAM_CODEC.decode(buffer).equals(new HangarView(2)), "the view survives the wire");
+			helper.succeed();
+		}));
 	}
 
 	@GameTest(maxTicks = MAX_TICKS)

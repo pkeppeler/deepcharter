@@ -30,9 +30,9 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.Serials;
+import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActions;
 import io.github.pkeppeler.deepcharter.terminal.TerminalFeatures;
-import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.transmission.Transmissions;
@@ -69,13 +69,12 @@ public final class HangarTerminal {
 	}
 
 	/** What the Prospector's advance has left for the viewing charter. Never throws: unreadable records show none. */
-	private static HangarView view(MinecraftServer server, ServerPlayer player, Optional<Charter> charter, BlockPos pos) {
+	public static HangarView view(MinecraftServer server, ServerPlayer player, Optional<Charter> charter, BlockPos pos) {
 		Optional<HangarData> data = HangarData.readable(server);
 		if (data.isEmpty() || charter.isEmpty()) {
 			return new HangarView(0);
 		}
-		int advance = HangarTuning.DEFAULT.restoreCost(Chassis.PROSPECTOR).advance();
-		return new HangarView(Math.max(0, advance - data.get().advanceSpent(charter.get().id())));
+		return new HangarView(data.get().advanceLeft(charter.get().id(), HangarTuning.DEFAULT.restoreCost(Chassis.PROSPECTOR).advance()));
 	}
 
 	private static Optional<Component> refuse(String reason, Object... args) {
@@ -165,7 +164,7 @@ public final class HangarTerminal {
 		}
 		Item catalyst = OreRegistry.item(tuning.catalyst());
 		int fromPack = Math.min(count(player.getInventory(), catalyst), cost.catalysts());
-		int advanced = Math.min(cost.catalysts() - fromPack, Math.max(0, cost.advance() - data.get().advanceSpent(charter.id())));
+		int advanced = Math.min(cost.catalysts() - fromPack, data.get().advanceLeft(charter.id(), cost.advance()));
 		if (fromPack + advanced < cost.catalysts()) {
 			return refuse("missing_catalyst", cost.catalysts(), new ItemStack(catalyst).getHoverName().getString());
 		}

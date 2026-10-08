@@ -351,6 +351,28 @@ public class ProspectorChassisTest {
 	}
 
 	@GameTest(maxTicks = FoundingMoleHangarTest.MAX_TICKS)
+	public void aRestoreShortOfPackAndAdvanceSpendsNothing(GameTestHelper helper) {
+		FoundingMoleHangarTest.inTheHangar(helper, before -> FoundingMoleHangarTest.withFreshWorld(helper, () -> {
+			FoundingMoleHangarTest.repairTheConsole(helper);
+			MockPlayer owner = FoundingMoleHangarTest.member(helper, "Short Both");
+			BlockPos console = FoundingMoleHangarTest.console(helper, owner);
+			CharterId charter = FoundingMoleHangarTest.charterOf(helper, owner).id();
+			PodEntity wreck = prospectorWreck(helper);
+			HangarData.get(FoundingMoleHangarTest.server(helper)).spendAdvance(charter, CATALYSTS - 1);
+			FoundingMoleHangarTest.deposit(helper, owner, PRICE);
+			// 1 left of the advance and none in the pack: 1 of the 3 is missing.
+			FoundingMoleHangarTest.give(owner.player(), FoundingMoleHangarTest.CATALYST, 1);
+			FoundingMoleHangarTest.expectRefused(helper, FoundingMoleHangarTest.act(owner.player(), console, HangarTerminal.RESTORE_WRECK),
+					"restoring short of the pack and the advance together");
+			nothingChanged(helper, owner, wreck, charter, PRICE, 1, "Cicatrium, pack and advance both short");
+			expect(helper, HangarData.get(FoundingMoleHangarTest.server(helper)).advanceSpent(charter) == CATALYSTS - 1,
+					"the refused restore spent none more of the advance, %s are recorded", HangarData.get(FoundingMoleHangarTest.server(helper)).advanceSpent(charter));
+			FoundingMoleHangarTest.clearFloor(helper);
+			helper.succeed();
+		}));
+	}
+
+	@GameTest(maxTicks = FoundingMoleHangarTest.MAX_TICKS)
 	public void everyCharterGetsTheAdvanceOnceAndAnyWreckWillDo(GameTestHelper helper) {
 		FoundingMoleHangarTest.inTheHangar(helper, before -> FoundingMoleHangarTest.withFreshWorld(helper, () -> {
 			FoundingMoleHangarTest.repairTheConsole(helper);

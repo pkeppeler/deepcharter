@@ -3,7 +3,6 @@ package io.github.pkeppeler.deepcharter.client.hangar;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.stream.Stream;
 
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 
@@ -146,7 +145,10 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 				.map(charter -> Component.translatable("screen.deepcharter.terminal.account", charter.balance()).getString())
 				.orElse("");
 		CrtDraw.glowText(graphics, font, account, MARGIN, below + GAP, tuning.phosphorColor());
-		for (PriceLine line : Stream.concat(priceLines.stream(), advanceLines.stream()).toList()) {
+		for (PriceLine line : priceLines) {
+			CrtDraw.glowText(graphics, font, line.text(), line.x(), line.y(), tuning.phosphorColor());
+		}
+		for (PriceLine line : advanceLines) {
 			CrtDraw.glowText(graphics, font, line.text(), line.x(), line.y(), tuning.phosphorColor());
 		}
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
