@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.charter;
 
 import java.util.Collection;
+import java.util.Locale;
 import java.util.Optional;
 
 import com.mojang.brigadier.arguments.LongArgumentType;
@@ -100,19 +101,33 @@ public final class CharterCommands {
 		}
 		Charter found = charter.get();
 		context.getSource().sendSuccess(() -> Component.translatable("deepcharter.charter.info",
-				found.name(), found.roster().size(), found.applications().size(), found.account(), found.deepestPoint()), false);
+				found.name(), count(Noun.PERSON, found.roster().size()), count(Noun.APPLICATION, found.applications().size()), found.account(), found.deepestPoint()), false);
 		return 1;
 	}
 
 	private static int list(CommandContext<CommandSourceStack> context) {
 		Collection<Charter> charters = Charters.all(server(context));
-		context.getSource().sendSuccess(() -> Component.translatable("deepcharter.charter.list.header", charters.size()), false);
+		context.getSource().sendSuccess(() -> count(Noun.CHARTER, charters.size()), false);
 		for (Charter charter : charters) {
 			context.getSource().sendSuccess(() -> Component.translatable(
 					charter.dormant() ? "deepcharter.charter.list.dormant" : "deepcharter.charter.list.entry",
-					charter.name(), charter.roster().size(), charter.account()), false);
+					charter.name(), count(Noun.PERSON, charter.roster().size()), charter.account()), false);
 		}
 		return charters.size();
+	}
+
+	/** A noun with a singular and a plural lang key. */
+	public enum Noun {
+		CHARTER, PERSON, APPLICATION;
+
+		private String key(int amount) {
+			return "deepcharter.charter.count." + name().toLowerCase(Locale.ROOT) + (amount == 1 ? ".one" : ".other");
+		}
+	}
+
+	/** "1 charter", "2 charters": the amount with its noun in the right number. */
+	public static Component count(Noun noun, int amount) {
+		return Component.translatable(noun.key(amount), amount);
 	}
 
 	private static int changeAccount(CommandContext<CommandSourceStack> context, String verb, AccountChange change) {
