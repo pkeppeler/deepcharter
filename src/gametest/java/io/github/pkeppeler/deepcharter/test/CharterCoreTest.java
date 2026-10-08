@@ -420,6 +420,19 @@ public class CharterCoreTest {
 		helper.succeed();
 	}
 
+	@GameTest
+	public void everyCountNounHasSingularAndPluralText(GameTestHelper helper) {
+		for (CharterCommands.Noun noun : CharterCommands.Noun.values()) {
+			for (int amount : new int[] {1, 2}) {
+				String text = CharterCommands.count(noun, amount).getString();
+				if (text.contains("deepcharter.") || !text.startsWith(amount + " ")) {
+					throw helper.assertionException("%s x%d has no lang text, got \"%s\"", noun, amount, text);
+				}
+			}
+		}
+		helper.succeed();
+	}
+
 	private static void expectText(GameTestHelper helper, String expected, Component actual) {
 		if (!actual.getString().equals(expected)) {
 			throw helper.assertionException("expected \"%s\", got \"%s\"", expected, actual.getString());

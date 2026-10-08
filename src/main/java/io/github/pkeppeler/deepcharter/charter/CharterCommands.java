@@ -101,7 +101,8 @@ public final class CharterCommands {
 		}
 		Charter found = charter.get();
 		context.getSource().sendSuccess(() -> Component.translatable("deepcharter.charter.info",
-				found.name(), count(Noun.PERSON, found.roster().size()), count(Noun.APPLICATION, found.applications().size()), found.account(), found.deepestPoint()), false);
+				found.name(), count(Noun.PERSON, found.roster().size()), count(Noun.APPLICATION, found.applications().size()),
+				found.account(), found.deepestPoint()), false);
 		return 1;
 	}
 
@@ -116,7 +117,7 @@ public final class CharterCommands {
 		return charters.size();
 	}
 
-	/** A noun with a singular and a plural lang key. */
+	/** A noun with a singular and a plural lang key. Public, with {@link #count}, so the cross-package GameTest can pin every noun. */
 	public enum Noun {
 		CHARTER, PERSON, APPLICATION;
 
