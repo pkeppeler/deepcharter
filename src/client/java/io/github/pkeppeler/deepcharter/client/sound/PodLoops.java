@@ -1,16 +1,15 @@
 package io.github.pkeppeler.deepcharter.client.sound;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Function;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.resources.sounds.AbstractTickableSoundInstance;
 import net.minecraft.core.Direction;
 import net.minecraft.sounds.SoundSource;
@@ -50,38 +49,46 @@ public final class PodLoops {
 	}
 
 	private static final Map<Key, Loop> LOOPS = new HashMap<>();
-	private static final Set<Integer> MOVING = new HashSet<>();
+	/** Pod id to the ticks it still counts as moving: {@link SoundTuning#movingHoldTicks} after its last move. */
+	private static final Map<Integer, Integer> MOVING = new HashMap<>();
 	private static Map<Integer, Vec3> lastPositions = new HashMap<>();
+	private static ClientLevel trackedLevel;
 
 	private PodLoops() {
 	}
 
 	public static void init() {
 		ClientTickEvents.END_CLIENT_TICK.register(PodLoops::tick);
-		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
-			LOOPS.clear();
-			MOVING.clear();
-			lastPositions = new HashMap<>();
-		});
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> reset(null));
+	}
+
+	/** Ends every loop and forgets every pod: the pods of the old level are not the pods of {@code level}. */
+	private static void reset(ClientLevel level) {
+		LOOPS.values().forEach(Loop::end);
+		LOOPS.clear();
+		MOVING.clear();
+		lastPositions = new HashMap<>();
+		trackedLevel = level;
 	}
 
 	private static Optional<DeepSound> engine(PodEntity pod) {
 		if (pod.drilling()) {
 			return Optional.of(pod.drillDirection() == Direction.DOWN ? DeepSound.POD_ENGINE_DRILL_DOWN : DeepSound.POD_ENGINE_DRILL_SIDE);
 		}
-		return Optional.of(MOVING.contains(pod.getId()) ? DeepSound.POD_ENGINE_DRIVE : DeepSound.POD_ENGINE_IDLE);
+		return Optional.of(MOVING.containsKey(pod.getId()) ? DeepSound.POD_ENGINE_DRIVE : DeepSound.POD_ENGINE_IDLE);
 	}
 
 	/** Records which pods moved since the last client tick. A pod's own old position is not that: a remote pod is lerped. */
 	private static void trackMovement(Minecraft client) {
 		double speed = SoundTuning.DEFAULT.movingSpeed();
 		Map<Integer, Vec3> positions = new HashMap<>();
-		MOVING.clear();
+		MOVING.replaceAll((id, ticks) -> ticks - 1);
+		MOVING.values().removeIf(ticks -> ticks <= 0);
 		for (Entity entity : client.level.entitiesForRendering()) {
 			if (entity instanceof PodEntity pod) {
 				Vec3 last = lastPositions.get(pod.getId());
 				if (last != null && last.distanceToSqr(pod.position()) > speed * speed) {
-					MOVING.add(pod.getId());
+					MOVING.put(pod.getId(), SoundTuning.DEFAULT.movingHoldTicks());
 				}
 				positions.put(pod.getId(), pod.position());
 			}
@@ -91,6 +98,9 @@ public final class PodLoops {
 
 	private static void tick(Minecraft client) {
 		LOOPS.values().removeIf(Loop::isStopped);
+		if (client.level != trackedLevel) {
+			reset(client.level);
+		}
 		if (client.level == null) {
 			return;
 		}
@@ -119,7 +129,7 @@ public final class PodLoops {
 		}
 	}
 
-	/** Follows its pod and ends itself when the pod is gone or no longer in the state the loop is for. */
+	/** Follows its pod and ends itself when the pod is gone, in another level, or no longer in the state the loop is for. */
 	private static final class Loop extends AbstractTickableSoundInstance {
 		private final PodEntity pod;
 		private final Channel channel;
@@ -136,7 +146,7 @@ public final class PodLoops {
 
 		@Override
 		public void tick() {
-			if (pod.isRemoved() || !channel.soundOf(pod).filter(sound::equals).isPresent()) {
+			if (pod.isRemoved() || pod.level() != Minecraft.getInstance().level || !channel.soundOf(pod).filter(sound::equals).isPresent()) {
 				end();
 				return;
 			}
@@ -149,6 +159,7 @@ public final class PodLoops {
 			z = pod.getZ();
 		}
 
+		/** {@code stop()} is protected: the outer class ends loops through this. */
 		private void end() {
 			stop();
 		}

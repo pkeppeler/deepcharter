@@ -28,10 +28,13 @@ public final class TerminalMusic {
 	}
 
 	private static void tick(Minecraft client) {
-		if (!(client.gui.screen() instanceof TerminalViewScreen) || (playing != null && !playing.isStopped())) {
+		if (!(client.gui.screen() instanceof TerminalViewScreen)) {
 			return;
 		}
 		client.getMusicManager().stopPlaying();
+		if (playing != null && !playing.isStopped()) {
+			return;
+		}
 		playing = new Music();
 		client.getSoundManager().play(playing);
 	}

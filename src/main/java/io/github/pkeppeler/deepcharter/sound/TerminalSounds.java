@@ -22,15 +22,15 @@ import io.github.pkeppeler.deepcharter.upgrade.UpgradeTerminal;
  * actions below, and the error sound of every refusal. An action not listed here makes no sound of its own.
  */
 public final class TerminalSounds {
-	private static final Map<Identifier, DeepSound> ACTIONS = Map.of(
-			OreProcessor.SELL_CARGO, DeepSound.UI_SALE,
-			OreProcessor.SELL_INVENTORY, DeepSound.UI_SALE,
-			FuelPump.BUY, DeepSound.UI_PURCHASE,
-			FuelPump.FILL, DeepSound.UI_PURCHASE,
-			UpgradeTerminal.BUY, DeepSound.UI_PURCHASE,
-			RepairStation.BUY, DeepSound.UI_PURCHASE,
-			HangarTerminal.BUY_MOLE, DeepSound.UI_PURCHASE,
-			HangarTerminal.RESTORE_WRECK, DeepSound.UI_PURCHASE);
+	private static final Map<Identifier, DeepSound> ACTIONS = Map.ofEntries(
+			Map.entry(OreProcessor.SELL_CARGO, DeepSound.UI_SALE),
+			Map.entry(OreProcessor.SELL_INVENTORY, DeepSound.UI_SALE),
+			Map.entry(FuelPump.BUY, DeepSound.UI_PURCHASE),
+			Map.entry(FuelPump.FILL, DeepSound.UI_PURCHASE),
+			Map.entry(UpgradeTerminal.BUY, DeepSound.UI_PURCHASE),
+			Map.entry(RepairStation.BUY, DeepSound.UI_PURCHASE),
+			Map.entry(HangarTerminal.BUY_MOLE, DeepSound.UI_PURCHASE),
+			Map.entry(HangarTerminal.RESTORE_WRECK, DeepSound.UI_PURCHASE));
 
 	private TerminalSounds() {
 	}
@@ -46,6 +46,9 @@ public final class TerminalSounds {
 	}
 
 	private static void playTo(ServerPlayer player, DeepSound sound) {
+		if (player.connection == null) {
+			return;
+		}
 		Holder<SoundEvent> event = BuiltInRegistries.SOUND_EVENT.wrapAsHolder(sound.event());
 		player.connection.send(new ClientboundSoundEntityPacket(event, SoundSource.PLAYERS, player, 1f, 1f, player.getRandom().nextLong()));
 	}

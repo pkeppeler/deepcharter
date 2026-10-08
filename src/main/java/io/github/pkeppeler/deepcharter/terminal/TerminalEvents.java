@@ -30,8 +30,8 @@ public final class TerminalEvents {
 	});
 
 	/**
-	 * A terminal action ran and changed what it was asked to ({@link Terminals#INSERT_PART} included), just before the player's
-	 * screen is refreshed. A listener that throws stops the call, so the screen is not refreshed.
+	 * A terminal action ran and changed what it was asked to ({@link Terminals#INSERT_PART} included), just after the player's
+	 * screen is refreshed. A listener that throws stops the call, but the action has taken effect and the screen is current.
 	 */
 	public static final Event<Acted> ACTED = EventFactory.createArrayBacked(Acted.class, listeners -> (server, type, player, action) -> {
 		for (Acted listener : listeners) {

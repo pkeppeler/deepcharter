@@ -69,8 +69,8 @@ public final class Terminals {
 				if (refusal.isPresent()) {
 					yield refuse(player, refusal.get());
 				}
-				TerminalEvents.ACTED.invoker().onActed(player.level().getServer(), granted.type(), player, action);
 				sendView(player, pos, granted.type());
+				TerminalEvents.ACTED.invoker().onActed(player.level().getServer(), granted.type(), player, action);
 				yield Optional.empty();
 			}
 		};

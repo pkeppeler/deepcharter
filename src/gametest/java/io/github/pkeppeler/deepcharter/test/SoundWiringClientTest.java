@@ -14,6 +14,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.SoundInstance;
+import net.minecraft.client.sounds.SoundManager;
 import net.minecraft.client.sounds.SoundEventListener;
 import net.minecraft.client.sounds.WeighedSoundEvents;
 import net.minecraft.core.BlockPos;
@@ -75,6 +76,12 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 			if (seen.add(sound)) {
 				played.add(sound.getIdentifier());
 			}
+		}
+
+		/** Whether a sound with this path is playing now, as the sound engine sees it. */
+		boolean isPlaying(SoundManager sounds, String path) {
+			Identifier id = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path);
+			return seen.stream().anyMatch(sound -> id.equals(sound.getIdentifier()) && sounds.isActive(sound));
 		}
 
 		long count(String path) {
@@ -188,6 +195,19 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 			context.clickScreenButton("BUY 1 L");
 			await(context, heard, client -> heard.count("ui.purchase") > 0);
 			context.setScreen(() -> null);
+
+			// A pod loop ends with the level: its pilot rides on a level change in no case, but the old level's pod stays in the world.
+			singleplayer.getServer().runOnServer(server -> {
+				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+				if (!player.startRiding(server.overworld().getEntity(scene.podId()))) {
+					throw new AssertionError("the player could not mount the pod");
+				}
+			});
+			await(context, heard, client -> heard.isPlaying(client.getSoundManager(), "pod.engine_idle"));
+			singleplayer.getServer().runOnServer(server -> server.getPlayerList().getPlayers().getFirst()
+					.teleportTo(server.getLevel(LayerChain.dimension(1)), 0.5, 100, 0.5, Set.of(), 0, 0, true));
+			await(context, heard, client -> client.level.dimension().equals(LayerChain.dimension(1))
+					&& !heard.isPlaying(client.getSoundManager(), "pod.engine_idle"));
 
 			// Each layer's dimension carries its music, and the client plays what the dimension says.
 			int layers = singleplayer.getServer().computeOnServer(server -> LayerChain.count(server.registryAccess()));
