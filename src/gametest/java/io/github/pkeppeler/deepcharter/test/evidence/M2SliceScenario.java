@@ -6,7 +6,9 @@ import java.util.Map;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.BooleanSupplier;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
@@ -289,10 +291,7 @@ public class M2SliceScenario extends EvidenceScenario {
 			return null;
 		});
 		BlockPos pump = colony.anchors().get(ColonyAnchor.FUEL_PUMP);
-		stand(new Vec3(-8, FEET_Y, -5.5), Vec3.atCenterOf(pump));
-		ctx.waitTicks(30);
-		useKey();
-		ctx.waitForScreen(FuelPumpScreen.class);
+		openTerminal(new Vec3(-8, FEET_Y, -5.5), pump, FuelPumpScreen.class);
 		snap(HOLD_FRAMES);
 		still("12-pump-before-fuel");
 		click("FILL UP");
@@ -343,19 +342,8 @@ public class M2SliceScenario extends EvidenceScenario {
 		// Drill down: the floor, the dirt, the planted ore, and out of the world into layer 1.
 		ctx.runOnClient(client -> client.player.setXRot(40f));
 		ctx.getInput().holdKey(options -> options.keySprint);
-		int ticks = 0;
-		boolean shot = false;
-		while (!onServer(server -> podIn(server, mole, LayerChain.dimension(1)))) {
-			ctx.waitTicks(TICKS_PER_FRAME);
-			capture();
-			if (!shot && onServer(server -> findPod(server, mole).filter(pod -> pod.getY() < FEET_Y - 1).isPresent())) {
-				still("17-drilling-down-in-the-colony");
-				shot = true;
-			}
-			if ((ticks += TICKS_PER_FRAME) > WAIT_TICKS * 3) {
-				throw new AssertionError("The Mole did not cross into layer 1 within " + ticks + " ticks");
-			}
-		}
+		recordUntil(server -> podIn(server, mole, LayerChain.dimension(1)), WAIT_TICKS * 3, "The Mole did not cross into layer 1",
+				stillOnce(server -> findPod(server, mole).filter(pod -> pod.getY() < FEET_Y - 1).isPresent(), "17-drilling-down-in-the-colony"));
 		say("6. Layer 1. The Mole has crossed the breach. The drill goes on, which completes \"drill down\".");
 		// The crossing gave the server a new player state, so the held key is pressed again for the server to see it.
 		ctx.getInput().releaseKey(options -> options.keySprint);
@@ -375,14 +363,7 @@ public class M2SliceScenario extends EvidenceScenario {
 
 		// Climb back out, through the ceiling of layer 1 and the shaft, to the colony.
 		ctx.getInput().holdKey(options -> options.keyJump);
-		ticks = 0;
-		while (!onServer(server -> podIn(server, mole, Level.OVERWORLD))) {
-			ctx.waitTicks(TICKS_PER_FRAME);
-			capture();
-			if ((ticks += TICKS_PER_FRAME) > WAIT_TICKS) {
-				throw new AssertionError("The Mole did not climb back to the overworld within " + ticks + " ticks");
-			}
-		}
+		recordUntil(server -> podIn(server, mole, Level.OVERWORLD), WAIT_TICKS, "The Mole did not climb back to the overworld", () -> { });
 		ctx.getInput().releaseKey(options -> options.keyJump);
 		say("6. The Mole climbs back up the shaft it bored and is home in the colony, with ore in its bay.");
 		awaitServer(server -> directiveDone(server, "fuel_is_life/return_to_colony"));
@@ -404,10 +385,7 @@ public class M2SliceScenario extends EvidenceScenario {
 		useKey();
 		ctx.waitForScreen(OreProcessorScreen.class);
 		OreProcessorScreen screen = ctx.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
-		for (int i = 0; i < 45 && !screen.typewriter().done(); i++) {
-			ctx.waitTicks(TICKS_PER_FRAME);
-			capture();
-		}
+		recordUntilTyped(screen.typewriter()::done, 45);
 		snap(HOLD_FRAMES);
 		still("22-processor-with-cargo");
 		click("SELL ALL POD CARGO");
@@ -424,15 +402,9 @@ public class M2SliceScenario extends EvidenceScenario {
 			return null;
 		});
 		BlockPos terminal = colony.anchors().get(ColonyAnchor.UPGRADE_TERMINAL);
-		stand(new Vec3(0, FEET_Y, VIEW_Z), Vec3.atCenterOf(terminal));
-		ctx.waitTicks(30);
-		useKey();
-		ctx.waitForScreen(UpgradeScreen.class);
+		openTerminal(new Vec3(0, FEET_Y, VIEW_Z), terminal, UpgradeScreen.class);
 		UpgradeScreen screen = ctx.computeOnClient(client -> (UpgradeScreen) client.gui.screen());
-		for (int i = 0; i < 40 && !screen.typewriter().done(); i++) {
-			ctx.waitTicks(TICKS_PER_FRAME);
-			capture();
-		}
+		recordUntilTyped(screen.typewriter()::done, 40);
 		snap(HOLD_FRAMES);
 		still("24-upgrade-terminal");
 		click("SCANNER  T0");
@@ -500,19 +472,8 @@ public class M2SliceScenario extends EvidenceScenario {
 		snap(HOLD_FRAMES);
 		ctx.runOnClient(client -> client.player.setXRot(35f));
 		ctx.getInput().holdKey(options -> options.keySprint);
-		int ticks = 0;
-		boolean shot = false;
-		while (!onServer(server -> podIn(server, mole, LayerChain.dimension(2)))) {
-			ctx.waitTicks(TICKS_PER_FRAME);
-			capture();
-			if (!shot && onServer(server -> findPod(server, mole).filter(pod -> pod.getY() < FLOOR_Y - 1).isPresent())) {
-				still("31-boring-through-the-crust");
-				shot = true;
-			}
-			if ((ticks += TICKS_PER_FRAME) > WAIT_TICKS * 5) {
-				throw new AssertionError("The Mole did not cross into layer 2 within " + ticks + " ticks");
-			}
-		}
+		recordUntil(server -> podIn(server, mole, LayerChain.dimension(2)), WAIT_TICKS * 5, "The Mole did not cross into layer 2",
+				stillOnce(server -> findPod(server, mole).filter(pod -> pod.getY() < FLOOR_Y - 1).isPresent(), "31-boring-through-the-crust"));
 		ctx.getInput().releaseKey(options -> options.keySprint);
 		ctx.waitFor(client -> client.level.dimension().equals(LayerChain.dimension(2)), WAIT_TICKS);
 		say("10. Layer 2, the Old Workings. The first breach is crossed.");
@@ -637,14 +598,7 @@ public class M2SliceScenario extends EvidenceScenario {
 		});
 		ctx.waitTicks(10);
 		ctx.getInput().holdKey(options -> options.keyUp);
-		int ticks = 0;
-		while (!onServer(server -> pod(server, mole).position().distanceTo(bay) < 7)) {
-			ctx.waitTicks(TICKS_PER_FRAME);
-			capture();
-			if ((ticks += TICKS_PER_FRAME) > WAIT_TICKS) {
-				throw new AssertionError("The Mole did not drive into the wreck's bay within " + ticks + " ticks");
-			}
-		}
+		recordUntil(server -> pod(server, mole).position().distanceTo(bay) < 7, WAIT_TICKS, "The Mole did not drive into the wreck's bay", () -> { });
 		ctx.getInput().releaseKey(options -> options.keyUp);
 		ctx.waitTicks(30);
 		snap(HOLD_FRAMES);
@@ -669,16 +623,7 @@ public class M2SliceScenario extends EvidenceScenario {
 		say("13. The tow cable goes on the wreck. SHORTCUT: the cable is handed over, not crafted.");
 		board(mole);
 		refuelWithCoal();
-		onServer(server -> {
-			ServerPlayer real = real(server);
-			real.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(PodRegistry.TOW_CABLE));
-			InteractionResult result = UseEntityCallback.EVENT.invoker().interact(real, real.level(), InteractionHand.MAIN_HAND, pod(server, prospector), null);
-			if (!result.consumesAction()) {
-				throw new AssertionError("the tow cable was not fitted: " + result);
-			}
-			real.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
-			return null;
-		});
+		useTowCable("fitted");
 		snap(HOLD_FRAMES);
 		still("39-the-wreck-on-the-cable");
 	}
@@ -716,14 +661,7 @@ public class M2SliceScenario extends EvidenceScenario {
 		snap(HOLD_FRAMES);
 		still("40-towing-at-the-edge-of-the-colony");
 		ctx.getInput().holdKey(options -> options.keyUp);
-		int ticks = 0;
-		while (!onServer(server -> pod(server, mole).getX() > -26)) {
-			ctx.waitTicks(TICKS_PER_FRAME);
-			capture();
-			if ((ticks += TICKS_PER_FRAME) > WAIT_TICKS * 2) {
-				throw new AssertionError("The Mole did not tow the wreck into the colony within " + ticks + " ticks");
-			}
-		}
+		recordUntil(server -> pod(server, mole).getX() > -26, WAIT_TICKS * 2, "The Mole did not tow the wreck into the colony", () -> { });
 		ctx.getInput().releaseKey(options -> options.keyUp);
 		awaitServer(server -> directiveDone(server, "company_property/tow_prospector"));
 		snap(HOLD_FRAMES);
@@ -733,18 +671,7 @@ public class M2SliceScenario extends EvidenceScenario {
 	private void repairHullAndRestore() {
 		say("15. Handbook chapter 7. The crust cost the Mole hull. SHORTCUT: the Mole is moved by hand to the repair station.");
 		BlockPos station = colony.anchors().get(ColonyAnchor.REPAIR_STATION);
-		onServer(server -> {
-			PodEntity wreck = pod(server, prospector);
-			// Take the cable off the wreck.
-			ServerPlayer real = real(server);
-			real.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(PodRegistry.TOW_CABLE));
-			InteractionResult result = UseEntityCallback.EVENT.invoker().interact(real, real.level(), InteractionHand.MAIN_HAND, wreck, null);
-			if (!result.consumesAction()) {
-				throw new AssertionError("the tow cable was not removed: " + result);
-			}
-			real.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
-			return null;
-		});
+		useTowCable("removed");
 		dismount();
 		onServer(server -> {
 			PodEntity tower = pod(server, mole);
@@ -754,10 +681,7 @@ public class M2SliceScenario extends EvidenceScenario {
 			tower.teleportTo(server.overworld(), 6.5, FEET_Y, -3.5, Set.of(), 0f, 0f, true);
 			return null;
 		});
-		stand(new Vec3(4, FEET_Y, VIEW_Z), Vec3.atCenterOf(station));
-		ctx.waitTicks(30);
-		useKey();
-		ctx.waitForScreen(RepairStationScreen.class);
+		openTerminal(new Vec3(4, FEET_Y, VIEW_Z), station, RepairStationScreen.class);
 		snap(HOLD_FRAMES);
 		still("42-repair-station");
 		click("REPAIR ALL");
@@ -778,10 +702,7 @@ public class M2SliceScenario extends EvidenceScenario {
 			return null;
 		});
 		BlockPos console = onServer(server -> Hangar.consolePos(server).orElseThrow());
-		stand(Vec3.atBottomCenterOf(console.west(2)), Vec3.atCenterOf(console));
-		ctx.waitTicks(30);
-		useKey();
-		ctx.waitForScreen(HangarScreen.class);
+		openTerminal(Vec3.atBottomCenterOf(console.west(2)), console, HangarScreen.class);
 		snap(HOLD_FRAMES);
 		still("46-hangar-console-with-a-wreck-in-reach");
 		clickStartingWith("RESTORE NEAREST WRECK");
@@ -832,10 +753,7 @@ public class M2SliceScenario extends EvidenceScenario {
 		useKey();
 		ctx.waitForScreen(OreProcessorScreen.class);
 		OreProcessorScreen screen = ctx.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
-		for (int i = 0; i < 45 && !screen.typewriter().done(); i++) {
-			ctx.waitTicks(TICKS_PER_FRAME);
-			capture();
-		}
+		recordUntilTyped(screen.typewriter()::done, 45);
 		snap(HOLD_FRAMES);
 		still("50-the-work-order-on-the-processor");
 		click("DELIVER BRONZIUM");
@@ -863,10 +781,7 @@ public class M2SliceScenario extends EvidenceScenario {
 		ctx.waitForScreen(OreProcessorScreen.class);
 		OreProcessorScreen done = ctx.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
 		ctx.waitFor(client -> done.orderLines().getLast().endsWith("DONE"), WAIT_TICKS);
-		for (int i = 0; i < 45 && !done.typewriter().done(); i++) {
-			ctx.waitTicks(TICKS_PER_FRAME);
-			capture();
-		}
+		recordUntilTyped(done.typewriter()::done, 45);
 		snap(HOLD_FRAMES);
 		still("52-work-order-done");
 		ctx.setScreen(() -> null);
@@ -943,10 +858,7 @@ public class M2SliceScenario extends EvidenceScenario {
 
 	private void repairTerminal(TerminalType type, ColonyAnchor anchor, Class<? extends Screen> online, String name) {
 		BlockPos pos = colony.anchors().get(anchor);
-		stand(new Vec3(pos.getX() + 0.5, FEET_Y, pos.getZ() + 2.5), Vec3.atCenterOf(pos));
-		ctx.waitTicks(30);
-		useKey();
-		ctx.waitForScreen(TerminalScreen.class);
+		openTerminal(new Vec3(pos.getX() + 0.5, FEET_Y, pos.getZ() + 2.5), pos, TerminalScreen.class);
 		snap(HOLD_FRAMES);
 		for (var part : type.parts()) {
 			click("INSERT " + new ItemStack(part).getHoverName().getString().toUpperCase(Locale.ROOT));
@@ -1006,9 +918,7 @@ public class M2SliceScenario extends EvidenceScenario {
 			capture();
 		}
 		snap(HOLD_FRAMES);
-		ctx.waitTicks(1);
-		System.out.println("M2SLICE-FRAME " + captured + " beat " + beat + " " + still);
-		screenshot(ctx, still);
+		shoot(still);
 		clearTransmission();
 	}
 
@@ -1018,6 +928,28 @@ public class M2SliceScenario extends EvidenceScenario {
 			ctx.waitTicks(TICKS_PER_FRAME);
 			capture();
 		}
+	}
+
+	/** Stands at {@code feet} facing the terminal, uses it, and waits for the screen. */
+	private void openTerminal(Vec3 feet, BlockPos terminal, Class<? extends Screen> screen) {
+		stand(feet, Vec3.atCenterOf(terminal));
+		ctx.waitTicks(30);
+		useKey();
+		ctx.waitForScreen(screen);
+	}
+
+	/** The pilot uses a tow cable on the wreck, which fits it or takes it off; {@code outcome} names which, for the failure message. */
+	private void useTowCable(String outcome) {
+		onServer(server -> {
+			ServerPlayer real = real(server);
+			real.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(PodRegistry.TOW_CABLE));
+			InteractionResult result = UseEntityCallback.EVENT.invoker().interact(real, real.level(), InteractionHand.MAIN_HAND, pod(server, prospector), null);
+			if (!result.consumesAction()) {
+				throw new AssertionError("the tow cable was not " + outcome + ": " + result);
+			}
+			real.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+			return null;
+		});
 	}
 
 	private void click(String label) {
@@ -1085,9 +1017,45 @@ public class M2SliceScenario extends EvidenceScenario {
 
 	private void still(String name) {
 		clearTransmission();
+		shoot(name);
+	}
+
+	private void shoot(String name) {
 		ctx.waitTicks(1);
 		System.out.println("M2SLICE-FRAME " + captured + " beat " + beat + " " + name);
 		screenshot(ctx, name);
+	}
+
+	/** Records frames until the typewriter has typed everything out, or {@code maxFrames} have passed. */
+	private void recordUntilTyped(BooleanSupplier done, int maxFrames) {
+		for (int i = 0; i < maxFrames && !done.getAsBoolean(); i++) {
+			ctx.waitTicks(TICKS_PER_FRAME);
+			capture();
+		}
+	}
+
+	/** Records frames until the server reaches {@code reached}, running {@code eachFrame} after each; fails after {@code maxTicks}. */
+	private void recordUntil(Predicate<MinecraftServer> reached, int maxTicks, String failure, Runnable eachFrame) {
+		int ticks = 0;
+		while (!onServer(reached::test)) {
+			ctx.waitTicks(TICKS_PER_FRAME);
+			capture();
+			eachFrame.run();
+			if ((ticks += TICKS_PER_FRAME) > maxTicks) {
+				throw new AssertionError(failure + " within " + ticks + " ticks");
+			}
+		}
+	}
+
+	/** Takes {@code name} the first time the server reaches {@code when}. */
+	private Runnable stillOnce(Predicate<MinecraftServer> when, String name) {
+		boolean[] shot = {false};
+		return () -> {
+			if (!shot[0] && onServer(when::test)) {
+				still(name);
+				shot[0] = true;
+			}
+		};
 	}
 
 	// ---------------------------------------------------------------- world helpers
@@ -1246,7 +1214,6 @@ public class M2SliceScenario extends EvidenceScenario {
 		BlockPos high = new BlockPos(X + ROOM_EAST + 1, FLOOR_Y + 10, Z + ROOM_RADIUS_Z + 1);
 		RoomSeal.seal(level, low, high);
 		box(level, level.getMinY(), level.getMinY() + LayerTuning.DEFAULT.crustThickness() - 1, LayerBlocks.BREACH_CRUST);
-		box(level, FLOOR_Y - 1, FLOOR_Y - 1, Blocks.STONE);
 		for (int x = X - ROOM_WEST - 1; x <= X + ROOM_EAST + 1; x++) {
 			for (int y = FLOOR_Y - 1; y <= FLOOR_Y + 10; y++) {
 				for (int z = Z - ROOM_RADIUS_Z - 1; z <= Z + ROOM_RADIUS_Z + 1; z++) {
