@@ -153,7 +153,7 @@ for rung in $GIF_LADDER; do
   echo "GIF at $gif_fps fps, ${gif_width}px was $size bytes, over the $GIF_MAX_BYTES budget; trying smaller" >&2
 done
 if (( ! built )); then
-  rm -f "$gif" "$gif.try"
+  rm -f "$gif"
   gif_warning="no GIF fits the $GIF_MAX_BYTES budget (the last try was $size bytes), so none is made. The MP4 is the evidence: $out/$scenario.mp4"
   echo "warning: $gif_warning" >&2
   if [[ -n ${GITHUB_ACTIONS:-} ]]; then echo "::warning::$gif_warning"; fi

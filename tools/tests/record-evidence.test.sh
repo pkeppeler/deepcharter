@@ -85,7 +85,6 @@ run GIF_FRAMES=
 check "a GIF that fits is built once" gif_tries 1
 check "the first try is 15 fps at 800px" log_has "fps=15,scale=800:-1"
 
-# Every try over the budget: the GIF is skipped with a warning naming the MP4, and the exit status is 0.
 try_gone() { [[ ! -e $work/build/evidence/demo/demo.gif.try ]]; }
 
 # GIF_LADDER is checked before any ffmpeg runs.
@@ -126,6 +125,7 @@ STUB_GIF_BYTES="6000000 7000000 8000000 9000000 9500000 9600000 9700000" run GIF
 check "the skip reports the last try's size" err_has "the last try was 9700000 bytes"
 check "a skip leaves no temp file" try_gone
 
+# Every try over the budget: the GIF is skipped with a warning naming the MP4, and the exit status is 0.
 STUB_GIF_BYTES=$over run GIF_FRAMES=
 check "a GIF no setting can fit still exits 0" exit_is 0
 check "an oversize GIF is deleted" gif_gone
