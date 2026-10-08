@@ -12,6 +12,15 @@ if [[ $# -ne 1 || -z $1 ]]; then
   exit 2
 fi
 filter=${1#deepcharter-test:}
+if [[ -z $filter ]]; then
+  echo "usage: tools/gametest.sh <filter>   (e.g. 'pod_drill_test*')" >&2
+  exit 2
+fi
+# The JVM splits JAVA_TOOL_OPTIONS on whitespace, so a space would become extra JVM options.
+if [[ ! $filter =~ ^[A-Za-z0-9_:*.-]+$ ]]; then
+  echo "gametest.sh: filter may contain only letters, digits, _ . - : *" >&2
+  exit 2
+fi
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 

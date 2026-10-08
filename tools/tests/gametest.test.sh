@@ -60,6 +60,19 @@ run
 check "no argument is a usage error" "$((status == 2 ? 0 : 1))"
 check "usage goes to stderr" "$(grep -qF 'usage:' "$work/err"; echo $?)"
 
+run a b
+check "two arguments is a usage error" "$((status == 2 ? 0 : 1))"
+
+run ''
+check "empty argument is a usage error" "$((status == 2 ? 0 : 1))"
+
+run 'deepcharter-test:'
+check "bare deepcharter-test: is a usage error" "$((status == 2 ? 0 : 1))"
+
+run 'a b'
+check "filter with a space is rejected" "$((status == 2 ? 0 : 1))"
+check "space rejection names the allowed characters" "$(grep -qF 'filter may contain only letters, digits, _ . - : *' "$work/err"; echo $?)"
+
 STUB_OUT='Test selection matcher (deepcharter-test:nope*) found no tests' STUB_STATUS=255 run 'nope*'
 check "no-match fails with status 1" "$((status == 1 ? 0 : 1))"
 check "no-match message names the filter" "$(grep -qF 'matched no GameTests' "$work/err" && grep -qF 'deepcharter-test:nope*' "$work/err"; echo $?)"
