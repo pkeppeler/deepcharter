@@ -84,7 +84,7 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 				+ " " + Component.translatable("screen.deepcharter.hangar.advance", prospector.advance(), catalyst).getString();
 		List<String> wrapped = font.getSplitter().splitLines(FormattedText.of(prices), width - 2 * MARGIN, Style.EMPTY)
 				.stream().map(FormattedText::getString).toList();
-		int lineHeight = font.lineHeight + CrtTuning.DEFAULT.lineSpacing();
+		int lineHeight = font.lineHeight + CrtTuning.current().lineSpacing();
 		int pricesY = closeY - GAP - wrapped.size() * lineHeight;
 		List<PriceLine> lines = new ArrayList<>();
 		for (int i = 0; i < wrapped.size(); i++) {
@@ -104,7 +104,7 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 	/** The y below the header text once the welcome has typed out in full: the welcome lines, then the account line. */
 	public int headerBottom() {
 		int welcomeLines = font.getSplitter().splitLines(FormattedText.of(typewriter.text()), width - 2 * MARGIN, Style.EMPTY).size();
-		int welcomeBottom = MARGIN + font.lineHeight + 14 + Math.max(welcomeLines, 1) * (font.lineHeight + CrtTuning.DEFAULT.lineSpacing());
+		int welcomeBottom = MARGIN + font.lineHeight + 14 + Math.max(welcomeLines, 1) * (font.lineHeight + CrtTuning.current().lineSpacing());
 		return welcomeBottom + GAP + font.lineHeight;
 	}
 
@@ -119,9 +119,8 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-		CrtTuning tuning = CrtTuning.DEFAULT;
-		CrtDraw.glowText(graphics, font, title.getString().toUpperCase(Locale.ROOT), MARGIN, MARGIN, tuning.phosphorColor());
-		CrtDraw.border(graphics, MARGIN - 6, MARGIN + font.lineHeight + 4, width - MARGIN + 6, MARGIN + font.lineHeight + 5, tuning.dimColor());
+		CrtTuning tuning = CrtTuning.current();
+		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), MARGIN, width);
 		int below = drawTypewriter(graphics, typewriter, MARGIN, MARGIN + font.lineHeight + 14, width - 2 * MARGIN);
 		String account = ClientCharter.view()
 				.map(charter -> Component.translatable("screen.deepcharter.terminal.account", charter.balance()).getString())

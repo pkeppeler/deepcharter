@@ -13,14 +13,13 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodSeat;
 
-/** Plain text readout of the ridden pod; the real HUD design comes later. */
+/** Plain text readout of the ridden pod; its margin, spacing and colour are the HUD theme's. */
 public final class PodStatusHud {
 	private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "pod_status");
-	private static final int MARGIN = 4;
-	private static final int WHITE = 0xFFFFFFFF;
 
 	private PodStatusHud() {
 	}
@@ -51,10 +50,11 @@ public final class PodStatusHud {
 			return;
 		}
 		Font font = client.font;
-		int y = MARGIN;
+		HudLook look = HudLook.current();
+		int y = look.podStatusMargin();
 		for (Component line : lines(pod)) {
-			graphics.text(font, line, MARGIN, y, WHITE);
-			y += font.lineHeight + 2;
+			graphics.text(font, line, look.podStatusMargin(), y, look.podStatusColor());
+			y += font.lineHeight + look.podStatusLineGap();
 		}
 	}
 }

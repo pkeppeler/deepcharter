@@ -20,6 +20,7 @@ import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
@@ -60,8 +61,14 @@ public class PodComponentsClientTest implements FabricClientGameTest {
 					throw new AssertionError("the charter's founder could not mount the pod");
 				}
 			});
-			context.waitFor(client -> client.player != null && client.player.getVehicle() instanceof PodEntity pod
-					&& PodComponents.registration(pod).isPresent());
+			// The registration, the parts and the hull reach the client in separate packets: wait for each value read below.
+			ClientWait.until(context, "the pod with its registration, parts and hull of " + HULL_NOW + "/" + HULL_MAX,
+					client -> client.player != null && client.player.getVehicle() instanceof PodEntity pod
+							&& PodComponents.registration(pod).isPresent()
+							&& Math.round(pod.maxHull()) == HULL_MAX && pod.hull() == HULL_NOW,
+					client -> client.player != null && client.player.getVehicle() instanceof PodEntity pod
+							? "registration=" + PodComponents.registration(pod).isPresent() + ", maxHull=" + pod.maxHull() + ", hull=" + pod.hull()
+							: "no pod under the player");
 
 			int maxHull = context.computeOnClient(client -> Math.round(((PodEntity) client.player.getVehicle()).maxHull()));
 			if (maxHull != HULL_MAX) {
@@ -81,6 +88,9 @@ public class PodComponentsClientTest implements FabricClientGameTest {
 				OreCargoMenu.open(player, (PodEntity) player.getVehicle());
 			});
 			context.waitForScreen(OreCargoScreen.class);
+			ClientWait.until(context, "the cargo menu with its " + LOAD.length + " ore",
+					client -> client.player.containerMenu instanceof OreCargoMenu menu && menu.shownOre().size() == LOAD.length,
+					client -> client.player.containerMenu instanceof OreCargoMenu menu ? menu.shownOre().size() + " ore" : "no cargo menu");
 			int slots = context.computeOnClient(client -> ((OreCargoMenu) client.player.containerMenu).cargoSlots());
 			int menuSlots = context.computeOnClient(client -> client.player.containerMenu.slots.size());
 			int shown = context.computeOnClient(client -> ((OreCargoMenu) client.player.containerMenu).shownOre().size());

@@ -87,8 +87,8 @@ public class BreachHudTest implements FabricClientGameTest {
 			}
 			int length = clearedAt - startedAt;
 			// Sampling is per tick, so allow a few ticks either side of the nominal length.
-			if (length < BreachEffects.FADE_TICKS - 3 || length > BreachEffects.FADE_TICKS + 5) {
-				throw new AssertionError("The fade should last about " + BreachEffects.FADE_TICKS + " ticks, lasted " + length);
+			if (length < BreachEffects.fadeTicks() - 3 || length > BreachEffects.fadeTicks() + 5) {
+				throw new AssertionError("The fade should last about " + BreachEffects.fadeTicks() + " ticks, lasted " + length);
 			}
 			if (!context.computeOnClient(client -> client.level.dimension().equals(LayerChain.dimension(2)))) {
 				throw new AssertionError("The crossing should have put the client in layer 2");

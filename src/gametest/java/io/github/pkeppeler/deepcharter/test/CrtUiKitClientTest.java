@@ -99,7 +99,7 @@ public class CrtUiKitClientTest implements FabricClientGameTest {
 	private static void defaultRateIsTheTuningRate() {
 		Typewriter writer = new Typewriter(TEXT, (index, letter) -> { });
 		writer.advance(0.1);
-		int expected = (int) Math.min(TEXT.length(), 0.1 * CrtTuning.DEFAULT.lettersPerSecond());
+		int expected = (int) Math.min(TEXT.length(), 0.1 * CrtTuning.current().lettersPerSecond());
 		check(writer.revealed() == expected, "0.1 s reveals the tuned rate, got " + writer.revealed() + " expected " + expected);
 	}
 

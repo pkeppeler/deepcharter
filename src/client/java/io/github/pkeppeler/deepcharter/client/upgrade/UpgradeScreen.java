@@ -136,9 +136,8 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-		CrtTuning tuning = CrtTuning.DEFAULT;
-		CrtDraw.glowText(graphics, font, title.getString().toUpperCase(Locale.ROOT), MARGIN, MARGIN, tuning.phosphorColor());
-		CrtDraw.border(graphics, MARGIN - 6, MARGIN + font.lineHeight + 4, width - MARGIN + 6, MARGIN + font.lineHeight + 5, tuning.dimColor());
+		CrtTuning tuning = CrtTuning.current();
+		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), MARGIN, width);
 		int below = drawTypewriter(graphics, typewriter, MARGIN, MARGIN + font.lineHeight + 10, width - 2 * MARGIN);
 		CrtDraw.glowText(graphics, font, status(), MARGIN, below, tuning.phosphorColor());
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);

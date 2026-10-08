@@ -8,9 +8,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import net.minecraft.util.ARGB;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.client.theme.BreachLook;
+import io.github.pkeppeler.deepcharter.client.theme.Colors;
+import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 
 /**
  * The altimeter, top centre (the pod readout is top left), always on screen while in a world. Then the
@@ -23,8 +25,6 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 public final class BreachHud {
 	private static final Identifier ALTIMETER = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "altimeter");
 	private static final Identifier BREACH = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "breach_fade");
-	private static final int MARGIN = 4;
-	private static final int WHITE = 0xFFFFFFFF;
 
 	private BreachHud() {
 	}
@@ -42,13 +42,14 @@ public final class BreachHud {
 		Component reading = Altimeter.reading(client);
 		BreachEffects.Offset jitter = BreachEffects.jitter();
 		int x = (graphics.guiWidth() - client.font.width(reading)) / 2 + jitter.x();
-		graphics.text(client.font, reading, x, MARGIN + jitter.y(), WHITE);
+		HudLook look = HudLook.current();
+		graphics.text(client.font, reading, x, look.altimeterMargin() + jitter.y(), look.altimeterColor());
 	}
 
 	private static void extractBreach(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
 		float alpha = BreachEffects.fadeAlpha(deltaTracker.getGameTimeDeltaPartialTick(false));
 		if (alpha > 0f) {
-			graphics.fill(0, 0, graphics.guiWidth(), graphics.guiHeight(), ARGB.color(Math.round(alpha * 255), 0, 0, 0));
+			graphics.fill(0, 0, graphics.guiWidth(), graphics.guiHeight(), Colors.withAlpha(BreachLook.current().fadeColor(), Math.round(alpha * 255)));
 		}
 	}
 }

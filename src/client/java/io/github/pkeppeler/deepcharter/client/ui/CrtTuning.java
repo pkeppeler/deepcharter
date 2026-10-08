@@ -1,7 +1,11 @@
 package io.github.pkeppeler.deepcharter.client.ui;
 
+import io.github.pkeppeler.deepcharter.client.theme.UiTheme;
+import io.github.pkeppeler.deepcharter.theme.ThemeData;
+
 /**
- * Tunables for the CRT UI kit, read as {@code CrtTuning.DEFAULT.thing()}. Colours are ARGB; all lengths are GUI pixels.
+ * The look of the CRT UI kit, read as {@code CrtTuning.current()} from {@code theme/crt.json} (ADR 0032). Colours are ARGB; all lengths are
+ * GUI pixels. Read it on every draw and never keep it: a resource reload swaps in a new one.
  *
  * @param lettersPerSecond typewriter speed
  * @param cursorBlinkTicks ticks the typewriter block cursor stays on, then off
@@ -14,9 +18,12 @@ package io.github.pkeppeler.deepcharter.client.ui;
  * @param phosphorColor bright text and borders
  * @param dimColor idle borders and disabled text
  * @param hoverFillColor button fill under the mouse or focus
+ * @param refusalColor the contract terminal's refusal line
  * @param padding space between a frame and what it holds
  * @param lineSpacing space between wrapped text lines, on top of the font height
  * @param buttonLabelOffset pixels the button label sits below the centre, which looks level with the glow
+ * @param headerRuleInset pixels the rule under a screen's title reaches past the margins on each side
+ * @param headerRuleGap pixels between the title and the rule under it
  */
 public record CrtTuning(
 		double lettersPerSecond,
@@ -30,10 +37,20 @@ public record CrtTuning(
 		int phosphorColor,
 		int dimColor,
 		int hoverFillColor,
+		int refusalColor,
 		int padding,
 		int lineSpacing,
-		int buttonLabelOffset) {
-	public static final CrtTuning DEFAULT = new CrtTuning(
-			40, 10, 2, 0x58000000, 0x307CFC9A, 24, 0x2878FF9A,
-			0xFF050A06, 0xFF7CFC9A, 0xFF2E7A45, 0xFF123D20, 6, 2, 1);
+		int buttonLabelOffset,
+		int headerRuleInset,
+		int headerRuleGap) {
+	public static CrtTuning current() {
+		return UiTheme.current().crt();
+	}
+
+	public static CrtTuning of(ThemeData d) {
+		return new CrtTuning(d.decimal("lettersPerSecond", 0.1, 1000), d.integer("cursorBlinkTicks", 1), d.integer("scanlineSpacing", 1), d.color("scanlineColor"),
+				d.color("glowColor"), d.integer("bloomHeight", 0), d.color("bloomColor"), d.color("backgroundColor"), d.color("phosphorColor"),
+				d.color("dimColor"), d.color("hoverFillColor"), d.color("refusalColor"), d.integer("padding", 0), d.integer("lineSpacing", 0),
+				d.integer("buttonLabelOffset", 0), d.integer("headerRuleInset", 0), d.integer("headerRuleGap", 0));
+	}
 }

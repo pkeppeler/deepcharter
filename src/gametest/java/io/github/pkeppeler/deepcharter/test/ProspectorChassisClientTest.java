@@ -15,6 +15,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
+import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -65,9 +66,9 @@ public class ProspectorChassisClientTest implements FabricClientGameTest {
 
 			ScannerHudTest.HudShot navigator = ScannerHudTest.HudShot.take(context, "prospector-navigator", ScannerHudTest.TIER_ONE);
 			for (int up = 0; up < POD_CELLS; up++) {
-				expectPixel(navigator, "the navigator's scanner marks cell " + up + " of the Prospector", up, ScannerTuning.DEFAULT.podColor());
+				expectPixel(navigator, "the navigator's scanner marks cell " + up + " of the Prospector", up, ScannerLook.current().podColor());
 			}
-			expectPixel(navigator, "the cell above the Prospector is air", POD_CELLS, ScannerTuning.DEFAULT.airColor());
+			expectPixel(navigator, "the cell above the Prospector is air", POD_CELLS, ScannerLook.current().airColor());
 			int navigatorText = whitePixels(navigator);
 			if (navigatorText != 0) {
 				throw new AssertionError("The navigator should see the scanner only, but " + navigatorText + " pixels of status text are on screen");

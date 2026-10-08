@@ -23,6 +23,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
 import io.github.pkeppeler.deepcharter.client.scanner.ScannerHud;
+import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -135,10 +136,10 @@ public class ScannerHudTest implements FabricClientGameTest {
 
 	private static void expectGoldRow(ClientGameTestContext context, String label) {
 		HudShot shot = HudShot.take(context, label, TIER_ONE);
-		expectPixel(shot, label + " gold", GOLD_AHEAD, GOLD_UP, TUNING.goldOreColor());
-		expectPixel(shot, label + " air before", GOLD_AHEAD - 1, GOLD_UP, TUNING.airColor());
-		expectPixel(shot, label + " air after", GOLD_AHEAD + 1, GOLD_UP, TUNING.airColor());
-		expectPixel(shot, label + " rock", GOLD_AHEAD + 2, GOLD_UP, TUNING.rockColor());
+		expectPixel(shot, label + " gold", GOLD_AHEAD, GOLD_UP, ScannerLook.current().goldOreColor());
+		expectPixel(shot, label + " air before", GOLD_AHEAD - 1, GOLD_UP, ScannerLook.current().airColor());
+		expectPixel(shot, label + " air after", GOLD_AHEAD + 1, GOLD_UP, ScannerLook.current().airColor());
+		expectPixel(shot, label + " rock", GOLD_AHEAD + 2, GOLD_UP, ScannerLook.current().rockColor());
 	}
 
 	/** Puts the first player out of the pod and removes the pod. */
@@ -156,7 +157,7 @@ public class ScannerHudTest implements FabricClientGameTest {
 		leavePod(context, server);
 		context.waitTicks(2 * TUNING.rescanTicks() + 2);
 		int actual = HudShot.take(context, label + "-dismounted", TIER_ONE).pixel(GOLD_AHEAD, GOLD_UP);
-		if (actual == (TUNING.goldOreColor() & RGB)) {
+		if (actual == (ScannerLook.current().goldOreColor() & RGB)) {
 			throw new AssertionError(label + ": the scanner HUD must not draw when the player is not riding a pod");
 		}
 	}
@@ -197,8 +198,8 @@ public class ScannerHudTest implements FabricClientGameTest {
 				}
 			}
 		}
-		if (ScannerHud.cellSize(427, 240, TIER_ONE) != TUNING.cellPixels()) {
-			throw new AssertionError("a roomy GUI should keep the tuned cell size " + TUNING.cellPixels());
+		if (ScannerHud.cellSize(427, 240, TIER_ONE) != ScannerLook.current().cellPixels()) {
+			throw new AssertionError("a roomy GUI should keep the tuned cell size " + ScannerLook.current().cellPixels());
 		}
 	}
 

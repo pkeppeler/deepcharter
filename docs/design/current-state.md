@@ -639,6 +639,8 @@ Already marked placeholder in code or issues:
 
 Every look that is fixed in Java and cannot be replaced by swapping a resource-pack file or a data value. These block a drop-in reskin.
 
+**Since #226** the UI rows (CRT look and drawing, handbook paper, pod status HUD, scanner HUD, altimeter, account HUD, transmission overlay, breach fade, pod cargo screen) are resource-pack data, no longer fixed in Java: see [skins.md](skins.md). Their `file:line` entries below are as of #227. What stays in Java from those rows: the position and size of each terminal screen's widgets, and the scanner's reach.
+
 | Visual | What is fixed | Where |
 |---|---|---|
 | ~~Pod models~~ | Done in #258 ([ADR 0033](../adr/0033-pod-models-are-item-models-and-the-figure-keeps-the-vanilla-model.md)): each chassis, wreck and drill is a resource-pack model under `assets/deepcharter/models/pod/` with an item definition under `items/pod/`. The default models are still slabs textured with vanilla raw copper, iron and coal. | `client/pod/PodRenderer.java`, `PodSkins.java` |
