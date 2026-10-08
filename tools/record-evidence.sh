@@ -36,7 +36,7 @@ set -euo pipefail
 FPS=15
 GIF_MAX_BYTES=${GIF_MAX_BYTES:-$((5 * 1024 * 1024))}
 GIF_FRAMES=${GIF_FRAMES:-}
-GIF_LADDER=${GIF_LADDER:-"15:800 10:800 10:640 8:560 6:480 5:400 4:320"}
+GIF_LADDER=${GIF_LADDER-"15:800 10:800 10:640 8:560 6:480 5:400 4:320"}
 
 usage() {
   echo "usage: tools/record-evidence.sh <scenario> [--no-run] [--full-suite]  |  --print-class" >&2
@@ -58,6 +58,15 @@ for flag in "$@"; do
 done
 if [[ ! $GIF_MAX_BYTES =~ ^[1-9][0-9]*$ || ( -n $GIF_FRAMES && ! $GIF_FRAMES =~ ^[1-9][0-9]*-[1-9][0-9]*$ ) ]]; then
   echo "GIF_MAX_BYTES must be a number of bytes, and GIF_FRAMES a range such as 560-720" >&2
+  exit 2
+fi
+# ${GIF_LADDER-...} keeps an empty value empty, so it fails here instead of silently using the default.
+ladder_ok=1
+for rung in $GIF_LADDER; do
+  [[ $rung =~ ^[0-9]+:[0-9]+$ ]] || ladder_ok=0
+done
+if [[ -z ${GIF_LADDER//[[:space:]]/} || $ladder_ok -eq 0 ]]; then
+  echo "GIF_LADDER must be a list of fps:width rungs such as \"10:800 6:480\"" >&2
   exit 2
 fi
 
@@ -121,6 +130,9 @@ fi
 # Try the rungs of GIF_LADDER (fps:width, best first) until the GIF fits GIF_MAX_BYTES. A lower fps drops
 # frames but keeps real-time playback (the frame delay grows to match); a lower width shrinks every frame.
 gif=$out/$scenario.gif
+# Each try is encoded to $gif.try and moved into place only when it fits, so a partial or oversize GIF
+# never sits at the real path, including when ffmpeg fails (set -e) and the trap runs.
+trap 'rm -f "$gif.try"' EXIT
 built=0
 size=0
 gif_fps=
@@ -130,18 +142,21 @@ for rung in $GIF_LADDER; do
   gif_width=${rung#*:}
   ffmpeg -v error -y "${gif_input[@]}" \
     -vf "fps=$gif_fps,scale=$gif_width:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle" \
-    -loop 0 "$gif"
-  size=$(wc -c <"$gif")
+    -loop 0 -f gif "$gif.try"
+  size=$(wc -c <"$gif.try")
   size=${size// /}
   if (( size <= GIF_MAX_BYTES )); then
+    mv "$gif.try" "$gif"
     built=1
     break
   fi
   echo "GIF at $gif_fps fps, ${gif_width}px was $size bytes, over the $GIF_MAX_BYTES budget; trying smaller" >&2
 done
 if (( ! built )); then
-  rm -f "$gif"
-  echo "warning: no GIF fits the $GIF_MAX_BYTES budget (the last try was $size bytes), so none is made. The MP4 is the evidence: $out/$scenario.mp4" >&2
+  rm -f "$gif" "$gif.try"
+  gif_warning="no GIF fits the $GIF_MAX_BYTES budget (the last try was $size bytes), so none is made. The MP4 is the evidence: $out/$scenario.mp4"
+  echo "warning: $gif_warning" >&2
+  if [[ -n ${GITHUB_ACTIONS:-} ]]; then echo "::warning::$gif_warning"; fi
 fi
 
 echo "mp4: $out/$scenario.mp4"

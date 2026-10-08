@@ -19,7 +19,11 @@ cat >"$work/bin/ffmpeg" <<'STUB'
 echo "$*" >>"$STUB_LOG"
 out=${*: -1}
 bytes=100
-if [[ $out == *.gif ]]; then
+if [[ $out == *.gif.try ]]; then
+  if [[ -n ${STUB_GIF_FAIL:-} ]]; then
+    echo partial >"$out"
+    exit 1
+  fi
   echo x >>"$STUB_LOG.gifs"
   n=$(wc -l <"$STUB_LOG.gifs")
   read -r -a sizes <<<"${STUB_GIF_BYTES:-100}"
@@ -82,6 +86,46 @@ check "a GIF that fits is built once" gif_tries 1
 check "the first try is 15 fps at 800px" log_has "fps=15,scale=800:-1"
 
 # Every try over the budget: the GIF is skipped with a warning naming the MP4, and the exit status is 0.
+try_gone() { [[ ! -e $work/build/evidence/demo/demo.gif.try ]]; }
+
+# GIF_LADDER is checked before any ffmpeg runs.
+run GIF_LADDER=
+check "an empty ladder exits 2" exit_is 2
+check "an empty ladder names the setting" err_has GIF_LADDER
+check "an empty ladder runs no ffmpeg" no_ffmpeg
+run GIF_LADDER=10
+check "a rung with no colon exits 2" exit_is 2
+check "a rung with no colon names the setting" err_has GIF_LADDER
+run "GIF_LADDER=10:800 fast:big"
+check "a non-numeric rung exits 2" exit_is 2
+check "a non-numeric rung runs no ffmpeg" no_ffmpeg
+
+# An ffmpeg failure leaves neither a partial GIF nor the temp file.
+rm -f "$work/build/evidence/demo/demo.gif"
+STUB_GIF_FAIL=1 run GIF_FRAMES=
+check "an ffmpeg failure fails the script" exit_is 1
+check "an ffmpeg failure leaves no GIF" gif_gone
+check "an ffmpeg failure leaves no temp file" try_gone
+
+# No frames: exit 1 before any ffmpeg.
+mv "$work/build/evidence/demo/frames/frame-0001.png" "$work/frame.hold"
+run GIF_FRAMES=
+check "no frames exits 1" exit_is 1
+check "no frames says so" err_has "no frames in"
+check "no frames runs no ffmpeg" no_ffmpeg
+mv "$work/frame.hold" "$work/build/evidence/demo/frames/frame-0001.png"
+
+# On CI the skip is also annotated; off CI it is not.
+STUB_GIF_BYTES=$over run GIF_FRAMES= GITHUB_ACTIONS=true
+check "on CI the skip prints a ::warning::" out_has "::warning::no GIF fits"
+STUB_GIF_BYTES=$over run GIF_FRAMES= GITHUB_ACTIONS=
+check "off CI the skip prints no ::warning::" out_lacks "::warning::"
+
+# Each try is a different size: the final warning reports the last one.
+STUB_GIF_BYTES="6000000 7000000 8000000 9000000 9500000 9600000 9700000" run GIF_FRAMES=
+check "the skip reports the last try's size" err_has "the last try was 9700000 bytes"
+check "a skip leaves no temp file" try_gone
+
 STUB_GIF_BYTES=$over run GIF_FRAMES=
 check "a GIF no setting can fit still exits 0" exit_is 0
 check "an oversize GIF is deleted" gif_gone

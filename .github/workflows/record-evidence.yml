@@ -101,8 +101,9 @@ jobs:
           client-tests: ${{ steps.resolve.outputs.class }}
       - name: Install ffmpeg
         run: sudo apt-get install -y -q --no-install-recommends ffmpeg
-      # Reuses the Mac script's assembly (--no-run): MP4, GIF, GIF_MAX_BYTES. A GIF over budget
-      # is a warning, not a failure: the stills are the minimum and are already on disk.
+      # Reuses the Mac script's assembly (--no-run): MP4, GIF, GIF_MAX_BYTES. A GIF over
+      # budget is retried smaller; if none fits, the script warns (::warning::) and exits 0 with the MP4. A
+      # real failure (no frames, ffmpeg error) becomes a warning here: the stills are already on disk.
       - name: Build the GIF and MP4
         env:
           SCENARIO: ${{ steps.resolve.outputs.scenario }}
