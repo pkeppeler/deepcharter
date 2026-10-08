@@ -51,8 +51,9 @@
 			"io.github.pkeppeler.deepcharter.test.HandbookChaptersOneToFiveTest",
 			"io.github.pkeppeler.deepcharter.test.ProspectorChassisTest",
 			"io.github.pkeppeler.deepcharter.test.HandbookChaptersSixToNineTest",
+			"io.github.pkeppeler.deepcharter.test.LamplessFigureTest",
 			"io.github.pkeppeler.deepcharter.test.WorkOrdersTest",
-				"io.github.pkeppeler.deepcharter.test.UnreadableAccessTest"
+			"io.github.pkeppeler.deepcharter.test.UnreadableAccessTest"
 		],
 		"fabric-client-gametest": [
 			"io.github.pkeppeler.deepcharter.test.DeepCharterClientGameTest",
@@ -116,6 +117,7 @@
 			"io.github.pkeppeler.deepcharter.test.evidence.CharterReviveScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.HangarScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.PodLavaScenario",
+			"io.github.pkeppeler.deepcharter.test.evidence.LamplessFigureScenario",
 			"io.github.pkeppeler.deepcharter.test.evidence.WorkOrdersScenario"
 		]
 	},

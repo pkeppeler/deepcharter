@@ -10,5 +10,6 @@ public final class CreatureInit {
 
 	public static void init() {
 		CreatureRegistry.register();
+		LamplessFigures.init();
 	}
 }
