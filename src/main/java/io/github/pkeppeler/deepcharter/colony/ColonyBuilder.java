@@ -26,6 +26,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.storage.LevelData;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
@@ -285,6 +286,8 @@ public final class ColonyBuilder {
 	private void continuityOffice(BlockPos ground) {
 		fill(ground, 14, 0, -4, 22, 0, 4, Blocks.POLISHED_ANDESITE.defaultBlockState());
 		fill(ground, 17, 0, -1, 19, 0, 1, Blocks.CONCRETE.lightBlue().defaultBlockState());
+		// N04, the Continuity Plan leaflet, on the shelves.
+		set(ground.offset(15, 3, -3), NoteBlock.stateOf(4));
 		ruinedWalls(ground, 14, -4, 22, 4, 4, Blocks.SMOOTH_STONE.defaultBlockState());
 		fill(ground, 14, 1, 0, 14, 2, 0, Blocks.AIR.defaultBlockState());
 		set(ground.offset(21, 1, -3), Blocks.LECTERN.defaultBlockState());
@@ -307,6 +310,9 @@ public final class ColonyBuilder {
 		ruinedWalls(ground, -22, -19, -18, -13, 5, Blocks.STONE_BRICKS.defaultBlockState());
 		fill(ground, -20, 1, -13, -20, 2, -13, Blocks.AIR.defaultBlockState());
 		set(ground.offset(-20, 1, -18), Blocks.STONE_BRICKS.defaultBlockState());
+		// N03, the visitors' book, on a second block of the altar.
+		set(ground.offset(-21, 1, -18), Blocks.STONE_BRICKS.defaultBlockState());
+		set(ground.offset(-21, 2, -18), NoteBlock.stateOf(3));
 		BlockPos candle = ground.offset(-20, 2, -18);
 		set(candle, Blocks.CANDLE.defaultBlockState().setValue(CandleBlock.LIT, true));
 		anchors.put(ColonyAnchor.CHAPEL_CANDLE, candle);
@@ -344,16 +350,18 @@ public final class ColonyBuilder {
 		for (int dx = -9; dx <= -3; dx += 2) {
 			set(ground.offset(dx, 1, 20), Blocks.BARREL.defaultBlockState());
 		}
+		// N02, a pay stub, on a barrel.
+		set(ground.offset(-5, 2, 20), NoteBlock.stateOf(2));
 		anchors.put(ColonyAnchor.PAY_OFFICE, ground.offset(-6, 1, 15));
 	}
 
-	/** Joy's desk, with a note block on it: she recorded the templates. */
+	/** Joy's desk, with her calendar (N01) on it: she recorded the templates. */
 	private void personnelOffice(BlockPos ground) {
 		fill(ground, 2, 0, 14, 10, 0, 22, Blocks.DYED_TERRACOTTA.white().defaultBlockState());
 		ruinedWalls(ground, 2, 14, 10, 22, 4, Blocks.DYED_TERRACOTTA.white().defaultBlockState());
 		fill(ground, 6, 1, 14, 6, 2, 14, Blocks.AIR.defaultBlockState());
 		fill(ground, 5, 1, 20, 7, 1, 20, Blocks.SPRUCE_PLANKS.defaultBlockState());
-		set(ground.offset(6, 2, 20), Blocks.NOTE_BLOCK.defaultBlockState());
+		set(ground.offset(6, 2, 20), NoteBlock.stateOf(1));
 		anchors.put(ColonyAnchor.PERSONNEL_OFFICE, ground.offset(6, 1, 16));
 	}
 

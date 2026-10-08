@@ -31,6 +31,7 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
+import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.ore.GasHazard;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
@@ -757,6 +758,7 @@ public class OrePlacementTest {
 
 	/** Stone up to and including y=floor-1 under a 9 x 9 around (x, Z), and air for 10 blocks above it. */
 	private static void room(ServerLevel level, int x, int floor) {
+		RoomSeal.seal(level, new BlockPos(x - 4, floor - 8, Z - 4), new BlockPos(x + 4, floor + 10, Z + 4));
 		for (int bx = x - 4; bx <= x + 4; bx++) {
 			for (int bz = Z - 4; bz <= Z + 4; bz++) {
 				for (int y = floor - 8; y <= floor + 10; y++) {

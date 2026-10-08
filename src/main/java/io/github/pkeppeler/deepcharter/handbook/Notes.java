@@ -77,6 +77,7 @@ public final class Notes {
 		NotesSyncPayload.register();
 		ServerPlayerEvents.JOIN.register(player -> NotesSyncPayload.send(player.level().getServer(), player));
 		CharterEvents.FOUNDED.register((server, charter) -> sendAll(server, charter.roster()));
+		CharterEvents.REVIVED.register((server, charter, director) -> sendAll(server, List.of(director)));
 		CharterEvents.JOINED.register((server, charter, player) -> sendAll(server, List.of(player)));
 		CharterEvents.LEFT.register((server, charter, player) -> sendAll(server, List.of(player)));
 	}

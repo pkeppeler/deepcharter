@@ -74,6 +74,28 @@ public final class Zones {
 		return COUNT - 1 - (int) ((long) (y - minY) * COUNT / height);
 	}
 
+	/**
+	 * The heights of one zone, both ends included.
+	 *
+	 * @param low  the lowest Y of the zone
+	 * @param high the highest Y of the zone
+	 */
+	public record Span(int low, int high) {
+		public int size() {
+			return high - low + 1;
+		}
+	}
+
+	/** The Y range of zone {@code index} (0 for the top third) of {@code height} blocks from {@code minY}: the Ys for which {@link #index} answers it. */
+	public static Span span(int minY, int height, int index) {
+		if (index < 0 || index >= COUNT) {
+			throw new IllegalArgumentException("A layer has zones 0 to " + (COUNT - 1) + ", not " + index);
+		}
+		int low = minY + Math.ceilDiv((COUNT - 1 - index) * height, COUNT);
+		int high = index == 0 ? minY + height - 1 : minY + Math.ceilDiv((COUNT - index) * height, COUNT) - 1;
+		return new Span(low, high);
+	}
+
 	/** The biome of a zone; the layer must have zones defined. */
 	private static Identifier biome(int layer, int index) {
 		if (layer < 1 || layer > NAMES.size()) {

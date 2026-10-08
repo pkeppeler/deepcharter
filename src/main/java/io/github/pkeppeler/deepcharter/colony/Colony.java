@@ -42,7 +42,7 @@ public final class Colony {
 
 	/**
 	 * The colony's respawn point, the Continuity Office, for a crew that has no other. Empty before the colony is built or
-	 * when its data is unreadable. Wrecks (#67) redirects a respawn here.
+	 * when its data is unreadable. Wrecks move a respawned crew here one tick after the respawn.
 	 */
 	public static Optional<GlobalPos> respawnPoint(MinecraftServer server) {
 		return anchor(server, ColonyAnchor.CONTINUITY_OFFICE).map(pos -> GlobalPos.of(Level.OVERWORLD, pos));

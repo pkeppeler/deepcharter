@@ -54,6 +54,13 @@ public final class CharterEvents {
 		}
 	});
 
+	/** A player revived the dormant charter and is now its Director. The charter keeps its account, progress and pods. */
+	public static final Event<Revived> REVIVED = EventFactory.createArrayBacked(Revived.class, listeners -> (server, charter, director) -> {
+		for (Revived listener : listeners) {
+			listener.onRevived(server, charter, director);
+		}
+	});
+
 	/** The account changed by {@code delta}: positive for a deposit, negative for a spend. */
 	public static final Event<AccountChanged> ACCOUNT_CHANGED = EventFactory.createArrayBacked(AccountChanged.class, listeners -> (server, charter, delta) -> {
 		for (AccountChanged listener : listeners) {
@@ -92,6 +99,11 @@ public final class CharterEvents {
 	@FunctionalInterface
 	public interface WentDormant {
 		void onWentDormant(MinecraftServer server, Charter charter);
+	}
+
+	@FunctionalInterface
+	public interface Revived {
+		void onRevived(MinecraftServer server, Charter charter, UUID director);
 	}
 
 	@FunctionalInterface
