@@ -18,6 +18,7 @@ import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /** Client GameTest for #56: sneak-using a loaded pod opens a cargo screen that shows the ore and its mass. */
 public class OreCargoClientTest implements FabricClientGameTest {
@@ -42,13 +43,18 @@ public class OreCargoClientTest implements FabricClientGameTest {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			sneakUseLoadedPod(context, singleplayer);
 			context.waitForScreen(OreCargoScreen.class);
+			int expected = Math.round(OreType.GOLDIUM.mass() + OreType.EINSTEINIUM.mass());
+			// The slot contents and the mass sync separately from the open-screen packet.
+			ClientWait.until(context, "the cargo menu with 2 ore and mass " + expected,
+					client -> client.player.containerMenu instanceof OreCargoMenu menu && menu.shownOre().size() == 2 && menu.cargoMass() == expected,
+					client -> client.player.containerMenu instanceof OreCargoMenu menu
+							? menu.shownOre().size() + " ore, mass " + menu.cargoMass() : "no cargo menu");
 
 			List<ItemStack> shown = context.computeOnClient(client -> ((OreCargoMenu) client.player.containerMenu).shownOre());
 			if (shown.size() != 2 || !shown.get(0).is(OreRegistry.item(OreType.GOLDIUM)) || !shown.get(1).is(OreRegistry.item(OreType.EINSTEINIUM))) {
 				throw new AssertionError("The cargo screen should show the Goldium and the Einsteinium, it shows " + shown);
 			}
 			int mass = context.computeOnClient(client -> ((OreCargoMenu) client.player.containerMenu).cargoMass());
-			int expected = Math.round(OreType.GOLDIUM.mass() + OreType.EINSTEINIUM.mass());
 			if (mass != expected) {
 				throw new AssertionError("The cargo screen should show mass " + expected + ", it shows " + mass);
 			}
