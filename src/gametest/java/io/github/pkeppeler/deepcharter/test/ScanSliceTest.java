@@ -9,13 +9,14 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 
+import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice.Cell;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 
 /** Server GameTests for the scanner slice grid. */
 public class ScanSliceTest {
-	private static final ScannerTuning TUNING = ScannerTuning.DEFAULT;
+	private static final ScanArea AREA = ScannerTuning.DEFAULT.tierOneArea();
 	/** Well above the flat test world, so a 32-block dive stays inside the build limits. */
 	private static final int ORIGIN_Y = 100;
 
@@ -26,9 +27,9 @@ public class ScanSliceTest {
 
 	/** Air in both slice planes (east-west and north-south) and a block beyond each edge, so a test starts from a known world. */
 	private static void clearBox(ServerLevel level, BlockPos origin) {
-		int reach = TUNING.halfWidth() + 1;
+		int reach = AREA.halfWidth() + 1;
 		for (int along = -reach; along <= reach; along++) {
-			for (int y = -TUNING.down() - 1; y <= TUNING.up() + 1; y++) {
+			for (int y = -AREA.down() - 1; y <= AREA.up() + 1; y++) {
 				level.setBlock(origin.offset(along, y, 0), Blocks.AIR.defaultBlockState(), 2);
 				level.setBlock(origin.offset(0, y, along), Blocks.AIR.defaultBlockState(), 2);
 			}
@@ -52,8 +53,8 @@ public class ScanSliceTest {
 
 	private static int count(ScanSlice slice, Class<? extends Cell> kind) {
 		int n = 0;
-		for (int ahead = -TUNING.halfWidth(); ahead <= TUNING.halfWidth(); ahead++) {
-			for (int up = -TUNING.down(); up <= TUNING.up(); up++) {
+		for (int ahead = -AREA.halfWidth(); ahead <= AREA.halfWidth(); ahead++) {
+			for (int up = -AREA.down(); up <= AREA.up(); up++) {
 				if (kind.isInstance(slice.cell(ahead, up))) {
 					n++;
 				}
@@ -75,7 +76,7 @@ public class ScanSliceTest {
 			// Off the slice plane for an east or west facing: must not show.
 			place(level, origin.offset(3, -2, 1), Blocks.GOLD_ORE.defaultBlockState());
 
-			ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST);
+			ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, 1);
 			expect(helper, slice, 3, -2, new Cell.Ore(Blocks.GOLD_ORE));
 			expect(helper, slice, -1, -1, Cell.ROCK);
 			expect(helper, slice, 0, -1, Cell.ROCK);
@@ -111,7 +112,7 @@ public class ScanSliceTest {
 			place(level, origin.offset(0, 9, 0), stone);
 			place(level, origin.offset(0, -33, 0), stone);
 
-			ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST);
+			ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, 1);
 			expect(helper, slice, 24, 8, Cell.ROCK);
 			expect(helper, slice, -24, 8, Cell.ROCK);
 			expect(helper, slice, 24, -32, Cell.ROCK);
@@ -145,13 +146,13 @@ public class ScanSliceTest {
 			place(level, origin.offset(0, 0, 7), Blocks.STONE.defaultBlockState());
 
 			Cell gold = new Cell.Ore(Blocks.GOLD_ORE);
-			expect(helper, ScanSlice.scan(level, origin, Direction.EAST), 5, 0, gold);
-			expect(helper, ScanSlice.scan(level, origin, Direction.WEST), -5, 0, gold);
-			expect(helper, ScanSlice.scan(level, origin, Direction.SOUTH), 7, 0, Cell.ROCK);
-			expect(helper, ScanSlice.scan(level, origin, Direction.NORTH), -7, 0, Cell.ROCK);
+			expect(helper, ScanSlice.scan(level, origin, Direction.EAST, 1), 5, 0, gold);
+			expect(helper, ScanSlice.scan(level, origin, Direction.WEST, 1), -5, 0, gold);
+			expect(helper, ScanSlice.scan(level, origin, Direction.SOUTH, 1), 7, 0, Cell.ROCK);
+			expect(helper, ScanSlice.scan(level, origin, Direction.NORTH, 1), -7, 0, Cell.ROCK);
 			// The other axis is not in the plane.
-			expect(helper, ScanSlice.scan(level, origin, Direction.SOUTH), 5, 0, Cell.AIR);
-			expect(helper, ScanSlice.scan(level, origin, Direction.EAST), 7, 0, Cell.AIR);
+			expect(helper, ScanSlice.scan(level, origin, Direction.SOUTH, 1), 5, 0, Cell.AIR);
+			expect(helper, ScanSlice.scan(level, origin, Direction.EAST, 1), 7, 0, Cell.AIR);
 			helper.succeed();
 		} finally {
 			clearBox(level, origin);
@@ -168,7 +169,7 @@ public class ScanSliceTest {
 			place(level, origin.offset(2, 0, 0), Blocks.COAL_ORE.defaultBlockState());
 			// A gold block is solid but not in #c:ores.
 			place(level, origin.offset(3, 0, 0), Blocks.GOLD_BLOCK.defaultBlockState());
-			ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST);
+			ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, 1);
 			expect(helper, slice, 1, 0, new Cell.Ore(Blocks.DEEPSLATE_GOLD_ORE));
 			expect(helper, slice, 2, 0, new Cell.Ore(Blocks.COAL_ORE));
 			expect(helper, slice, 3, 0, Cell.ROCK);
@@ -189,7 +190,7 @@ public class ScanSliceTest {
 			// Apart from the water: lava next to water turns to stone.
 			place(level, origin.offset(6, 0, 0), Blocks.LAVA.defaultBlockState());
 			place(level, origin.offset(3, 0, 0), Blocks.SHORT_GRASS.defaultBlockState());
-			ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST);
+			ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, 1);
 			expect(helper, slice, 1, 0, Cell.AIR);
 			expect(helper, slice, 6, 0, Cell.AIR);
 			expect(helper, slice, 3, 0, Cell.AIR);
@@ -202,7 +203,7 @@ public class ScanSliceTest {
 	@GameTest
 	public void scanningVerticallyRefusesAFacingThatIsNotHorizontal(GameTestHelper helper) {
 		try {
-			ScanSlice.scan(helper.getLevel(), origin(helper), Direction.DOWN);
+			ScanSlice.scan(helper.getLevel(), origin(helper), Direction.DOWN, 1);
 		} catch (IllegalArgumentException expected) {
 			helper.succeed();
 			return;
