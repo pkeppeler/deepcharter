@@ -12,5 +12,6 @@ public final class PodClientInit {
 		PodClientRegistry.register();
 		PodStatusHud.init();
 		LowFuelBeep.init();
+		PilotFire.init();
 	}
 }

@@ -22,6 +22,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 
 /**
  * Server GameTests for #288: a seated pilot is shielded from lava, so the hull is what lava takes; a player outside a pod burns
@@ -103,6 +104,31 @@ public class LavaShieldTest {
 			pod.discard();
 			helper.succeed();
 		});
+	}
+
+	@GameTest(maxTicks = 40)
+	public void aWreckInLavaIsNotBurningAndStaysSilent(GameTestHelper helper) {
+		floor(helper);
+		helper.setBlock(new BlockPos(3, 2, 3), Blocks.LAVA);
+		PodEntity pod = helper.spawn(PodRegistry.POD, new Vec3(3.5, 2, 3.5));
+		pod.setHull(0f);
+		helper.runAfterDelay(30, () -> {
+			if (!Wrecks.isWreck(pod) || pod.hullBurning()) {
+				throw failure(helper, "a wreck in lava should be a wreck and not flag a burning hull, wreck %s burning %s", Wrecks.isWreck(pod), pod.hullBurning());
+			}
+			pod.discard();
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = 20)
+	public void thePodIsFireImmune(GameTestHelper helper) {
+		PodEntity pod = helper.spawn(PodRegistry.POD, new Vec3(3.5, 2, 3.5));
+		if (!pod.fireImmune()) {
+			throw failure(helper, "the pod should be fire-immune so it shows no flames");
+		}
+		pod.discard();
+		helper.succeed();
 	}
 
 	@GameTest(maxTicks = LAVA_TICKS + 20)

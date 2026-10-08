@@ -173,8 +173,8 @@ public class PodShellTest {
 				throw helper.assertionException("pod data did not survive save and load: hull %s fuel %s stranded %s cargo %s/%s",
 						copy.hull(), copy.fuel(), copy.stranded(), copy.cargoUsed(), copy.cargoMass());
 			}
-			if (copy.flying() || copy.drilling() || copy.drillDirection() != Direction.DOWN) {
-				throw helper.assertionException("flying, drilling and drill direction are transient and must reset on load");
+			if (copy.flying() || copy.drilling() || copy.hullBurning() || copy.drillDirection() != Direction.DOWN) {
+				throw helper.assertionException("flying, drilling, hull burning and drill direction are transient and must reset on load");
 			}
 			helper.succeed();
 		} finally {

@@ -36,7 +36,8 @@ public final class LavaHazard {
 	}
 
 	private static void tick(PodEntity pod) {
-		boolean touching = touchesLava(pod);
+		// A wreck takes no hull damage, shows no burning and makes no sound.
+		boolean touching = !Wrecks.isWreck(pod) && touchesLava(pod);
 		if (pod.hullBurning() != touching) {
 			pod.setHullBurning(touching);
 		}
@@ -55,10 +56,10 @@ public final class LavaHazard {
 		}
 	}
 
-	/** A pilot seated in a working pod takes no lava damage and none from the fire lava lit; everything else is vanilla's. */
+	/** A pilot seated in a working pod takes no damage from lava and none from {@code on_fire}, whatever lit it; everything else is vanilla's. */
 	private static boolean allowDamage(LivingEntity entity, DamageSource source, float amount) {
-		boolean lava = source.is(DamageTypes.LAVA) || source.is(DamageTypes.ON_FIRE);
-		if (lava && entity.getVehicle() instanceof PodEntity pod && !Wrecks.isWreck(pod)) {
+		boolean shieldedDamage = source.is(DamageTypes.LAVA) || source.is(DamageTypes.ON_FIRE);
+		if (shieldedDamage && entity.getVehicle() instanceof PodEntity pod && !Wrecks.isWreck(pod)) {
 			// Lava lights its victim before it hurts, and the rider ticks after the pod: put the fire out here, or the pilot burns between pod ticks.
 			entity.clearFire();
 			return false;
