@@ -8,16 +8,26 @@ import net.minecraft.resources.Identifier;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 
 /**
- * The six items the repair station sells, at the original's prices (original_flash_game/REFERENCE.md section 3). The
- * original's debug Core Teleporter is not sold, so it is not here.
+ * The six items the repair station sells. The original's debug Core Teleporter is not sold, so it is not here.
+ *
+ * <p>Prices follow issue 201's scale (PR 206), not the original's $2,000 to $10,000. The tools cost a quarter of a run to one run's net
+ * of the layer where they start to matter; SPEC section 11 calls the two teleport items expensive, so they cost about 2 and 4 layer 2
+ * runs. A stock Mole's run in layer 1 nets about $115 and a Mole with tier 2 parts in layer 2 about $397 ({@code EarlyRunModel});
+ * {@code EconomyAffordabilityTest} holds each item to its band.
  */
 public enum Consumable {
-	RESERVE_FUEL_TANK("reserve_fuel_tank", 2_000),
-	HULL_NANOBOTS("hull_nanobots", 7_500),
-	DYNAMITE("dynamite", 2_000),
-	PLASTIC_EXPLOSIVES("plastic_explosives", 5_000),
-	QUANTUM_TELEPORTER("quantum_teleporter", 2_000),
-	MATTER_TRANSMITTER("matter_transmitter", 10_000);
+	// Layer 1 tool: under one stock layer-1 run, the cheap way past a 10 L tank.
+	RESERVE_FUEL_TANK("reserve_fuel_tank", 100),
+	// Layer 2 tool: under one layer-2 run, and above the station's price for the same 30 HP.
+	HULL_NANOBOTS("hull_nanobots", 350),
+	// Layer 1 tool: under one stock layer-1 run.
+	DYNAMITE("dynamite", 100),
+	// Layer 2 tool: under one layer-2 run, and above the dynamite it outdoes.
+	PLASTIC_EXPLOSIVES("plastic_explosives", 300),
+	// SPEC section 11: an expensive escape, about 2 layer-2 runs; the cargo drop is the rest of the cost.
+	QUANTUM_TELEPORTER("quantum_teleporter", 750),
+	// SPEC section 11: a layer-3 item measured as about 4 layer-2 runs; the cargo drop is the rest of the cost.
+	MATTER_TRANSMITTER("matter_transmitter", 1_500);
 
 	private final Identifier itemId;
 	private final long price;
