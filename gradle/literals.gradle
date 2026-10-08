@@ -1,0 +1,46 @@
+// Shared by the source gates (gametest.gradle, colour-gate.gradle): blankLiterals(text) replaces every string literal with "", every
+// text block with "" (its lines become empty) and every char literal with '', and keeps comments as they are, so a gate that looks for a
+// `// <name>: <reason>` marker never counts one that sits inside a literal. Newlines are kept, so line numbers still line up.
+ext.blankLiterals = { String text ->
+	def out = new StringBuilder()
+	int i = 0
+	int n = text.length()
+	while (i < n) {
+		char c = text.charAt(i)
+		if (text.startsWith('"""', i)) {
+			i += 3
+			out.append('""')
+			while (i < n && !text.startsWith('"""', i)) {
+				if (text.charAt(i) == (char) '\\' && i + 1 < n) {
+					if (text.charAt(i + 1) == (char) '\n') out.append('\n')
+					i += 2
+				} else {
+					if (text.charAt(i) == (char) '\n') out.append('\n')
+					i++
+				}
+			}
+			i += 3
+		} else if (c == (char) '"' || c == (char) '\'') {
+			i++
+			out.append(c).append(c)
+			while (i < n && text.charAt(i) != c && text.charAt(i) != (char) '\n') {
+				i += (text.charAt(i) == (char) '\\' && i + 1 < n && text.charAt(i + 1) != (char) '\n') ? 2 : 1
+			}
+			if (i < n && text.charAt(i) == c) i++
+		} else if (text.startsWith("//", i)) {
+			int end = text.indexOf('\n', i)
+			if (end < 0) end = n
+			out.append(text, i, end)
+			i = end
+		} else if (text.startsWith("/*", i)) {
+			int end = text.indexOf("*/", i + 2)
+			end = end < 0 ? n : end + 2
+			out.append(text, i, end)
+			i = end
+		} else {
+			out.append(c)
+			i++
+		}
+	}
+	return out.toString()
+}

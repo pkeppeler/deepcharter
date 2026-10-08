@@ -50,6 +50,7 @@ dependencies {
 }
 
 apply from: "gradle/lang.gradle"
+apply from: "gradle/literals.gradle"
 apply from: "gradle/gametest.gradle"
 apply from: "gradle/colour-gate.gradle"
 apply from: "gradle/clientlock.gradle"

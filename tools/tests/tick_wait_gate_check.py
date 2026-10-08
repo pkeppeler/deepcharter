@@ -130,6 +130,8 @@ class TickWaitGateTest(unittest.TestCase):
         self.check_fails("TicksClientTest.java", client, bare, "a bare marker", line=5)
         in_string = 'String note = "// tick-wait: not a comment"; context.waitFor(client -> true, 5);'
         self.check_fails("TicksClientTest.java", client, in_string, "a marker in a string")
+        text_block = 'String note = """\n            // tick-wait: in a text block\n            """; context.waitFor(client -> true, 5);'
+        self.check_fails("TicksClientTest.java", client, text_block, "a marker in a text block", line=6)
 
     def test_tick_wait_in_client_test_support_fails(self):
         self.check_fails("support/TicksSupport.java", "public class TicksSupport", VIOLATIONS["tick budget"], "support")

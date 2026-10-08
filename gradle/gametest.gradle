@@ -15,6 +15,7 @@ tasks.named("runGameTest") { dependsOn deleteGameTestWorld }
 // Filter: -PclientTests=<name or glob>[,...] keeps only matching client classes, so one client test can run alone (see README).
 // Order: classes are listed sorted by name. The suite must not depend on that order: -PgametestOrder=reverse
 // lists them in reverse name order, to catch a test that leaks world state into a later one.
+def blankLiterals = project.ext.blankLiterals
 def generatedGametestResources = layout.buildDirectory.dir("generated/gametest-resources")
 def generateGametestModJson = tasks.register("generateGametestModJson") {
 	// -PgametestJavaRoot points the scan at another tree, so tools/tests/test_room_carver_gate.py can feed it fixtures.
@@ -53,11 +54,10 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 	// comment below, with a reason, on its line or the one above; a bare marker, or one inside a string, does not count.
 	// Evidence scenarios are not scanned.
 	def tickWaitMarker = "// tick-wait:"
-	// One rule for every marker in this file: `// <name>:` then a reason, on the raw line with string literals blanked, so a bare
-	// marker or one inside a string never counts. A gate asks hasMarker, never a plain contains.
-	def stringLiteral = ~/"(?:\\.|[^"\\\n])*"/
+	// One rule for every marker in this file: `// <name>:` then a reason, on the line with literals blanked (blankLiterals), so a bare
+	// marker or one inside a string, text block or char literal never counts. A gate asks hasMarker, never a plain contains.
 	def hasMarker = { String rawLine, String marker ->
-		(rawLine.replaceAll(stringLiteral, '""') =~ "//\\s*${java.util.regex.Pattern.quote(marker.substring(2).trim())}\\s*\\S").find()
+		(rawLine =~ "//\\s*${java.util.regex.Pattern.quote(marker.substring(2).trim())}\\s*\\S").find()
 	}
 	def tickWaitCall = ~/\bwaitFor(?:Screen)?\s*\(/
 	def guardSource = file("src/gametest/java/io/github/pkeppeler/deepcharter/test/support/WorldDataGuard.java")
@@ -77,7 +77,7 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 				(match.startsWith("/") ? " " : "\"\"") + match.replaceAll(/[^\n]/, "")
 			}
 			if (source.name != "WorldData.java") {
-				def rawLines = source.readLines()
+				def rawLines = blankLiterals(source.text).readLines()
 				def direct = text =~ /getDataStorage\(\)\s*\.\s*set\s*\(|getDataStorage\(\)\s*[;,)]/
 				while (direct.find()) {
 					def line = text.substring(0, direct.start()).count("\n")
@@ -88,7 +88,7 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 				}
 			}
 			if (text.contains("LayerChain.dimension(")) {
-				def rawLines = source.readLines()
+				def rawLines = blankLiterals(source.text).readLines()
 				def carve = text =~ carveWrite
 				while (carve.find()) {
 					def line = text.substring(0, carve.start()).count("\n")
@@ -99,7 +99,7 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 				}
 			}
 			if ((text =~ /\bimplements\s+[^{]*\bFabricClientGameTest\b/).find() || className.contains(".test.support.")) {
-				def rawLines = source.readLines()
+				def rawLines = blankLiterals(source.text).readLines()
 				def tickWait = text =~ tickWaitCall
 				while (tickWait.find()) {
 					def line = text.substring(0, tickWait.start()).count("\n")

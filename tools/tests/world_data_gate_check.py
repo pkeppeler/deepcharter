@@ -104,6 +104,7 @@ public class SwapsFixture {{
         self.check_fails(f"        // world-data:\n        {SWAP}", "a bare marker", 5)
         self.check_fails(f"        {SWAP} // world-data:   ", "a same-line bare marker", 4)
         self.check_fails(f'        String note = "// world-data: not a comment"; {SWAP}', "a marker in a string", 4)
+        self.check_fails(f'        String note = """\n            // world-data: in a text block\n            """; {SWAP}', "a marker in a text block", 6)
 
 
 if __name__ == "__main__":

@@ -147,6 +147,8 @@ public class FloodedRoomFixture {{
         self.check_marker_fails(f"        // room-carver:\n        {air}", "a bare marker", 6)
         self.check_marker_fails(f"        {air} // room-carver:   ", "a same-line bare marker", 5)
         self.check_marker_fails(f'        String note = "// room-carver: not a comment"; {air}', "a marker in a string", 5)
+        self.check_marker_fails(f'        String note = """\n            // room-carver: in a text block\n            """; {air}', "a marker in a text block", 7)
+        self.check_marker_fails(f"        char q = '\"'; String note = \"// room-carver: after a quote char\"; {air}", "a marker after a quote char literal", 5)
 
 
 if __name__ == "__main__":
