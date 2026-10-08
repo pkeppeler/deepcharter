@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
 import com.google.gson.JsonObject;
@@ -631,7 +631,10 @@ public class HandbookChaptersOneToFiveTest {
 
 	private static final Identifier BEFORE_THE_POLL = Identifier.fromNamespaceAndPath("deepcharter-test", "before_the_handbook_poll");
 	private static final Identifier AFTER_THE_POLL = Identifier.fromNamespaceAndPath("deepcharter-test", "after_the_handbook_poll");
-	private static final AtomicBoolean REPAIRS_ARMED = new AtomicBoolean();
+	/** The last server tick on which the swap below may happen, or -1 when it is not armed. It runs out by itself, so a test that times out leaves nothing armed. */
+	private static final AtomicInteger ARMED_UNTIL = new AtomicInteger(-1);
+	/** A GameTest environment of its own: the batches run one after another, so nothing else runs while the real listener sees the swapped state. */
+	private static final String ALONE = "deepcharter-test:alone";
 	private static RepairState worldsRepairs;
 
 	// The handbook's own END_SERVER_TICK listener is in the default phase: the swap goes in just before it and comes out just after it,
@@ -641,7 +644,7 @@ public class HandbookChaptersOneToFiveTest {
 		endTick.addPhaseOrdering(BEFORE_THE_POLL, Event.DEFAULT_PHASE);
 		endTick.addPhaseOrdering(Event.DEFAULT_PHASE, AFTER_THE_POLL);
 		endTick.register(BEFORE_THE_POLL, server -> {
-			if (REPAIRS_ARMED.get() && server.getTickCount() % HandbookTuning.DEFAULT.triggerPollTicks() == 0) {
+			if (server.getTickCount() <= ARMED_UNTIL.get() && server.getTickCount() % HandbookTuning.DEFAULT.triggerPollTicks() == 0) {
 				worldsRepairs = RepairState.get(server);
 				RepairState fresh = new RepairState();
 				for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL)) {
@@ -654,7 +657,7 @@ public class HandbookChaptersOneToFiveTest {
 			if (worldsRepairs != null) {
 				server.getDataStorage().set(RepairState.TYPE, worldsRepairs);
 				worldsRepairs = null;
-				REPAIRS_ARMED.set(false);
+				ARMED_UNTIL.set(-1);
 			}
 		});
 	}
@@ -662,15 +665,17 @@ public class HandbookChaptersOneToFiveTest {
 	/**
 	 * The server tick listener that {@code HandbookTriggers.init()} registers credits a charter founded after the repairs, on a tick
 	 * that is a multiple of {@code triggerPollTicks}: the repaired state is in place for that tick only, and nobody is credited before.
+	 * The listener credits every online player, so the test runs in an environment of its own, in a batch of its own, with no other
+	 * test's player online; and the swap is armed for the next poll tick only, so a timeout leaves it disarmed.
 	 */
-	@GameTest(maxTicks = 100)
+	@GameTest(maxTicks = 100, environment = ALONE)
 	public void theServerTickListenerCreditsTheRepairsOnAPollTick(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		RepairState world = RepairState.get(server);
 		MockPlayer late = MockPlayers.join(helper, "Latecomer");
 		foundCharter(helper, server, late);
 		expectCompleted(helper, server, "founding before the poll", List.of(late.player()), Set.of());
-		REPAIRS_ARMED.set(true);
+		ARMED_UNTIL.set(server.getTickCount() + HandbookTuning.DEFAULT.triggerPollTicks());
 		helper.succeedWhen(() -> {
 			expectCompleted(helper, server, "a poll tick", List.of(late.player()), THREE_REPAIRS);
 			if (RepairState.get(server) != world || worldsRepairs != null) {

@@ -2,7 +2,9 @@ package io.github.pkeppeler.deepcharter.handbook;
 
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 
+import com.google.common.base.Suppliers;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 
 import net.minecraft.core.Direction;
@@ -217,38 +219,24 @@ public final class HandbookTriggers {
 		if (pod.chassis().equals(Chassis.PROSPECTOR) && PodTowing.isTowed(pod)) {
 			towedProspector(pod);
 		}
+		// The scan reads thousands of blocks: it runs once for the pod, and only when a rider's charter still lacks the directive.
+		Supplier<Boolean> seesOre = Suppliers.memoize(() -> ScanSlice.hasOre(new LoadedBlocks(pod.level()), pod));
 		for (Entity passenger : pod.getPassengers()) {
 			if (passenger instanceof ServerPlayer player) {
-				pilotedPod(pod, player);
+				pilotedPod(pod, player, seesOre);
 			}
 		}
 	}
 
-	private static void pilotedPod(PodEntity pod, ServerPlayer player) {
+	private static void pilotedPod(PodEntity pod, ServerPlayer player, Supplier<Boolean> seesOre) {
 		MinecraftServer server = player.level().getServer();
 		Set<Identifier> done = HandbookProgress.completedFor(server, player.getUUID());
-		if (!done.contains(FIND_ORE) && seesOre(pod)) {
+		if (!done.contains(FIND_ORE) && seesOre.get()) {
 			Directives.fire(player, FIND_ORE);
 		}
 		if (pod.chassis().equals(Chassis.MOLE)) {
 			pilotedMole(pod, player, done);
 		}
-	}
-
-	/** The scanner's own slice, as the pod's scanner shows it, holds an ore. A pod with no working scanner sees none. */
-	private static boolean seesOre(PodEntity pod) {
-		Optional<ScanSlice> slice = ScanSlice.scan(new LoadedBlocks(pod.level()), pod);
-		if (slice.isEmpty()) {
-			return false;
-		}
-		for (int up = slice.get().area().up(); up >= -slice.get().area().down(); up--) {
-			for (int ahead = -slice.get().area().halfWidth(); ahead <= slice.get().area().halfWidth(); ahead++) {
-				if (slice.get().cell(ahead, up) instanceof ScanSlice.Cell.Ore) {
-					return true;
-				}
-			}
-		}
-		return false;
 	}
 
 	/** A Prospector on a cable inside the colony: the players riding the pod that tows it have towed it home. */

@@ -12,6 +12,7 @@ import com.google.gson.JsonObject;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
@@ -49,6 +50,8 @@ import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
 import io.github.pkeppeler.deepcharter.repair.RepairStation;
+import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
+import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalEvents;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
@@ -258,6 +261,7 @@ public class HandbookChaptersSixToNineTest {
 		MockPlayer director = MockPlayers.join(helper, "Director");
 		MockPlayer crew = MockPlayers.join(helper, "Crew");
 		MockPlayer drifter = MockPlayers.join(helper, "Drifter");
+		MockPlayer rival = charterMember(helper, "Rival");
 		try {
 			ServerPlayer first = director.player();
 			ServerPlayer second = crew.player();
@@ -389,9 +393,13 @@ public class HandbookChaptersSixToNineTest {
 			poll(wreckHome);
 			HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "a Mole towed home, a Prospector that is not towed, and one towed far from the colony", both, found);
 			wreckHome.setPos(pad.add(2, 0, 0));
+			expect(helper, rival.player().startRiding(wreckHome, true, false), "the rival should board the towed Prospector");
 			poll(wreckHome);
 			Set<String> towed = with(found, directive("company_property", "tow_prospector"));
 			HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "towing home", both, towed);
+			expect(helper, !completed(server, rival).contains(id(directive("company_property", "tow_prospector"))),
+					"a rider of the towed Prospector, of another charter, did not tow it: %s", completed(server, rival));
+			rival.player().stopRiding();
 			second.stopRiding();
 
 			// The hangar restores it, and it is the charter's to fly.
@@ -431,6 +439,7 @@ public class HandbookChaptersSixToNineTest {
 			director.leave();
 			crew.leave();
 			drifter.leave();
+			rival.leave();
 			server.getDataStorage().set(RepairState.TYPE, repairs);
 		}
 	}
@@ -502,6 +511,73 @@ public class HandbookChaptersSixToNineTest {
 			member.leave();
 			rival.leave();
 			drifter.leave();
+		}
+	}
+
+	/**
+	 * The ore check reads loaded chunks only: with a gold ore in a chunk that is not loaded, the pod's scanner sees none, the directive
+	 * stays open, and the check does not load the chunk. The chunk is forced for one tick to put the ore in it, and then let go.
+	 */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 1200)
+	public void theOreCheckNeverLoadsAChunkAndReadsAnUnloadedOneAsAir(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		ServerLevel level = helper.getLevel();
+		BlockPos origin = new BlockPos(7_200, 64, 7_200);
+		int chunkX = origin.getX() >> 4;
+		int chunkZ = origin.getZ() >> 4;
+		int[] phase = {0};
+		helper.onEachTick(() -> {
+			switch (phase[0]) {
+				case 1 -> {
+					level.setChunkForced(chunkX, chunkZ, false);
+					phase[0] = 2;
+				}
+				case 2 -> {
+					if (level.getChunkSource().getChunkNow(chunkX, chunkZ) == null) {
+						phase[0] = 3;
+						checkTheUnloadedChunk(helper, server, level, origin);
+					} else if (helper.getTick() > FarChunks.AWAIT_BUDGET_TICKS + 600) {
+						throw helper.assertionException("the chunk at %s did not unload", origin.toShortString());
+					}
+				}
+				default -> {
+				}
+			}
+		});
+		FarChunks.awaitEntityTicking(helper, level, origin, () -> {
+			level.setBlock(origin.relative(Direction.SOUTH, 3), Blocks.GOLD_ORE.defaultBlockState(), 3);
+			phase[0] = 1;
+		});
+	}
+
+	/** In the one tick where the chunk is known to be unloaded: the pod stands in it, the ore is 3 ahead, and nothing may load it. */
+	private static void checkTheUnloadedChunk(GameTestHelper helper, MinecraftServer server, ServerLevel level, BlockPos origin) {
+		int chunkX = origin.getX() >> 4;
+		int chunkZ = origin.getZ() >> 4;
+		MockPlayer pilot = charterMember(helper, "Pilot");
+		PodEntity pod = null;
+		try {
+			pod = helper.spawn(PodRegistry.POD, 2, 1, 2);
+			ScannerPods.fit(server, pilot.player(), pod, 1);
+			expect(helper, pilot.player().startRiding(pod, true, false), "the player should board the pod");
+			Vec3 home = pod.position();
+			pod.setYRot(0f);
+			expect(helper, pod.getDirection() == Direction.SOUTH, "the pod should face south, faces %s", pod.getDirection());
+			pod.setPos(Vec3.atBottomCenterOf(origin));
+			expect(helper, !level.hasChunkAt(origin), "the pod's chunk should be unloaded");
+			expect(helper, !ScanSlice.hasOre(new LoadedBlocks(level), pod), "an ore in an unloaded chunk should not be seen");
+			expect(helper, level.getChunkSource().getChunkNow(chunkX, chunkZ) == null, "the ore check should not have loaded the chunk");
+			// Only the ore check is held to leaving the chunk unloaded: another listener of the pod's tick loads it, and does so without a rider too.
+			poll(pod);
+			pod.setPos(home);
+			expect(helper, !completed(server, pilot).contains(id(directive("seeing_below", "find_ore"))),
+					"find_ore should stay open, the pilot has %s", completed(server, pilot));
+			helper.succeed();
+		} finally {
+			if (pod != null) {
+				pod.discard();
+			}
+			pilot.leave();
 		}
 	}
 
