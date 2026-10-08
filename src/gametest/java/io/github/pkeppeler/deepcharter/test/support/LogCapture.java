@@ -32,9 +32,18 @@ public final class LogCapture {
 	}
 
 	public List<String> errors() {
+		return messages(Level.ERROR);
+	}
+
+	/** The WARN messages logged after {@link #start} that contain the key. */
+	public List<String> warnings() {
+		return messages(Level.WARN);
+	}
+
+	private List<String> messages(Level level) {
 		List<Event> events = APPENDER.events;
 		return events.subList(from, events.size()).stream()
-				.filter(event -> event.level() == Level.ERROR && event.message().contains(key))
+				.filter(event -> event.level() == level && event.message().contains(key))
 				.map(Event::message)
 				.toList();
 	}

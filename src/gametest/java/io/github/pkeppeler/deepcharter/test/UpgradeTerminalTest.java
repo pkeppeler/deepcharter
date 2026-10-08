@@ -31,6 +31,7 @@ import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.Serials;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
+import io.github.pkeppeler.deepcharter.terminal.TerminalTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
@@ -150,7 +151,7 @@ public class UpgradeTerminalTest {
 				expectEqual(helper, "the pod runs it as the cap", 2, PodComponents.effectiveTier(scene.pod(), ComponentTrack.HULL));
 				expectEqual(helper, "maximum hull of a capped part", 300f, PodStats.of(scene.pod()).maxHull());
 
-				UpgradeView.Pod shown = UpgradeTerminal.view(helper.getLevel().getServer(), scene.player(), scene.terminal()).pod().orElseThrow();
+				UpgradeView.Pod shown = UpgradeTerminal.view(helper.getLevel().getServer(), scene.player(), Charters.charterOf(helper.getLevel().getServer(), scene.player().getUUID()), scene.terminal()).pod().orElseThrow();
 				expectEqual(helper, "the view shows the cap", 2, shown.cap());
 				UpgradeView.Slot hull = shown.slots().stream().filter(slot -> slot.track() == ComponentTrack.HULL).findFirst().orElseThrow();
 				if (hull.installed() != 4 || hull.effective() != 2) {
@@ -213,7 +214,7 @@ public class UpgradeTerminalTest {
 				if (PodComponents.partOf(foreign, ComponentTrack.ENGINE).isPresent()) {
 					throw failure(helper, "a pod of another charter must not get the part");
 				}
-				UpgradeView view = UpgradeTerminal.view(server, scene.player(), scene.terminal());
+				UpgradeView view = UpgradeTerminal.view(server, scene.player(), Charters.charterOf(server, scene.player().getUUID()), scene.terminal());
 				if (view.pod().isPresent() || !view.foreignPod()) {
 					throw failure(helper, "the view should say another charter's pod is parked, got %s", view);
 				}
@@ -291,7 +292,7 @@ public class UpgradeTerminalTest {
 				PodEntity unowned = helper.spawn(PodRegistry.POD, 2, 1, 2);
 				Scene bare = new Scene(scene.mock(), scene.player(), scene.charter(), scene.terminal(), unowned);
 				MinecraftServer server = helper.getLevel().getServer();
-				UpgradeView.Pod shown = UpgradeTerminal.view(server, scene.player(), scene.terminal()).pod().orElseThrow();
+				UpgradeView.Pod shown = UpgradeTerminal.view(server, scene.player(), Charters.charterOf(server, scene.player().getUUID()), scene.terminal()).pod().orElseThrow();
 				if (!shown.serial().isEmpty()) {
 					throw failure(helper, "an unowned pod has no serial, got %s", shown.serial());
 				}
@@ -380,7 +381,7 @@ public class UpgradeTerminalTest {
 		withRepairedTerminal(helper, () -> {
 			Scene scene = scene(helper, 10_000);
 			try {
-				double radius = UpgradeTuning.DEFAULT.parkedRadius();
+				double radius = TerminalTuning.DEFAULT.parkedRadius();
 				Vec3 centre = Vec3.atCenterOf(scene.terminal());
 				scene.pod().setPos(centre.x + radius + 0.1, centre.y, centre.z);
 				expectSame(helper, UpgradeTerminal.buy(helper.getLevel().getServer(), scene.player(), scene.terminal(), ComponentTrack.DRILL, 1),
@@ -434,7 +435,7 @@ public class UpgradeTerminalTest {
 				expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(scene, ComponentTrack.HULL, 1), "a purchase for a pod with unreadable parts");
 				expectEqual(helper, "the account", 10_000, balance(helper, scene));
 				// The view is built on a request path: it must not throw either.
-				UpgradeTerminal.view(helper.getLevel().getServer(), scene.player(), scene.terminal());
+				UpgradeTerminal.view(helper.getLevel().getServer(), scene.player(), Charters.charterOf(helper.getLevel().getServer(), scene.player().getUUID()), scene.terminal());
 				helper.succeed();
 			} finally {
 				clean(helper, scene);
@@ -462,7 +463,7 @@ public class UpgradeTerminalTest {
 
 	@GameTest
 	public void theViewSurvivesTheWire(GameTestHelper helper) {
-		UpgradeView view = new UpgradeView(new BlockPos(1, 2, 3), Optional.of(new UpgradeView.Pod("MOLE-0001", 2,
+		UpgradeView view = new UpgradeView(Optional.of(new UpgradeView.Pod("MOLE-0001", 2,
 				List.of(new UpgradeView.Slot(ComponentTrack.HULL, 4, 2), new UpgradeView.Slot(ComponentTrack.LIGHTS, 0, 0)))), false);
 		ByteBuf buffer = Unpooled.buffer();
 		UpgradeView.STREAM_CODEC.encode(buffer, view);
