@@ -12,6 +12,11 @@
 #
 # --no-run only re-assembles existing frames (skips the game).
 #
+# A long scenario (m2-slice is over a thousand frames) is too big for one GIF. GIF_FRAMES=<first>-<last>
+# builds the GIF from that range of frames only, as a highlight; the MP4 still holds every frame.
+# GIF_MAX_BYTES raises the size limit (default 5 MB). For example:
+#   GIF_FRAMES=560-720 GIF_MAX_BYTES=10000000 tools/record-evidence.sh m2-slice --no-run
+#
 # To add a scenario: copy src/gametest/java/.../test/evidence/CameraTurnScenario.java,
 # change name() (this script's argument) and run(), call frame(context) once per
 # recorded frame and screenshot(context, "name") for stills, and list the class under
@@ -19,13 +24,18 @@
 set -euo pipefail
 
 FPS=15
-GIF_MAX_BYTES=$((5 * 1024 * 1024))
+GIF_MAX_BYTES=${GIF_MAX_BYTES:-$((5 * 1024 * 1024))}
+GIF_FRAMES=${GIF_FRAMES:-}
 
 if [[ $# -lt 1 || $# -gt 2 || ! $1 =~ ^[a-z0-9][a-z0-9-]*$ || ( $# -eq 2 && $2 != --no-run ) ]]; then
   echo "usage: tools/record-evidence.sh <scenario> [--no-run]" >&2
   exit 2
 fi
 scenario=$1
+if [[ ! $GIF_MAX_BYTES =~ ^[1-9][0-9]*$ || ( -n $GIF_FRAMES && ! $GIF_FRAMES =~ ^[1-9][0-9]*-[1-9][0-9]*$ ) ]]; then
+  echo "GIF_MAX_BYTES must be a number of bytes, and GIF_FRAMES a range such as 560-720" >&2
+  exit 2
+fi
 
 cd "$(dirname "$0")/.."
 root=$PWD/build/evidence
@@ -43,7 +53,18 @@ ffmpeg -v error -y -framerate "$FPS" -i "$out/frames/frame-%04d.png" \
   -c:v libx264 -pix_fmt yuv420p -movflags +faststart \
   "$out/$scenario.mp4"
 
-ffmpeg -v error -y -framerate "$FPS" -i "$out/frames/frame-%04d.png" \
+# The GIF holds every frame, or the GIF_FRAMES range.
+gif_input=(-framerate "$FPS" -i "$out/frames/frame-%04d.png")
+if [[ -n $GIF_FRAMES ]]; then
+  first=${GIF_FRAMES%-*}
+  last=${GIF_FRAMES#*-}
+  if (( first > last )); then
+    echo "GIF_FRAMES $GIF_FRAMES: the first frame is after the last" >&2
+    exit 2
+  fi
+  gif_input=(-framerate "$FPS" -start_number "$first" -i "$out/frames/frame-%04d.png" -frames:v $((last - first + 1)))
+fi
+ffmpeg -v error -y "${gif_input[@]}" \
   -vf "split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle" \
   -loop 0 "$out/$scenario.gif"
 

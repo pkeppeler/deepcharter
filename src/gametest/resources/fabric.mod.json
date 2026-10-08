@@ -52,7 +52,8 @@
 			"io.github.pkeppeler.deepcharter.test.ProspectorChassisTest",
 			"io.github.pkeppeler.deepcharter.test.HandbookChaptersSixToNineTest",
 			"io.github.pkeppeler.deepcharter.test.LamplessFigureTest",
-			"io.github.pkeppeler.deepcharter.test.WorkOrdersTest"
+			"io.github.pkeppeler.deepcharter.test.WorkOrdersTest",
+			"io.github.pkeppeler.deepcharter.test.M2SliceTest"
 		],
 		"fabric-client-gametest": [
 			"io.github.pkeppeler.deepcharter.test.DeepCharterClientGameTest",
