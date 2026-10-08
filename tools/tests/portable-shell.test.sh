@@ -20,7 +20,7 @@ scan() {
       function check(text, nexttext) {
         if (text ~ /# portable: [^ ]/) return 0
         if (text ~ /(^|[^[:alnum:]_.-])stat[ \t]+-f/) return 1
-        if (text ~ /(^|[^[:alnum:]_.-])sed[ \t]+(-[A-Za-z]+[ \t]+)*-i[ \t]*(\047\047|"")/) return 1
+        if (text ~ /(^|[^[:alnum:]_.-])sed[ \t]+(-[A-Za-z]+[ \t]+)*(-[A-Za-z]*i[ \t]*|--in-place=)(\047\047|"")/) return 1
         if (text ~ /(^|[^[:alnum:]_.-])date[ \t]+-[jv]/) return 1
         if (text ~ /(^|[^[:alnum:]_.-])mkfile([^[:alnum:]_-]|$)/) return 1  # portable: lint pattern, not a call
         if (text ~ /(^|[^[:alnum:]_.-])shasum([^[:alnum:]_-]|$)/) {  # portable: lint pattern, not a call
@@ -61,8 +61,11 @@ st=stat sd=sed dt=date mk=mk""file sh=sha""sum q="'"
   echo "$sh -a 256 f"
   echo "x | $sh"
   echo "/usr/bin/$st -f %z f"
+  echo "$sd -Ei $q$q /x/d f"
+  echo "$sd -ni $q$q /x/d f"
+  echo "$sd --in-place=$q$q /x/d f"
 } >"$tmp/positive.sh"
-check "positive: every BSD-only form is caught" "$(printf '%s\n' "$tmp/positive.sh:"{1..10})" "$(scan "$tmp/positive.sh")"
+check "positive: every BSD-only form is caught" "$(printf '%s\n' "$tmp/positive.sh:"{1..13})" "$(scan "$tmp/positive.sh")"
 
 {
   echo "n=\$($st -c %s f)"

@@ -118,7 +118,8 @@ install -m 600 "$home/mcpfabric.config.json" "$play_dir/config/mcpfabric.config.
 # The game writes these keys itself, so replace them on every launch.
 touch "$play_dir/options.txt"
 for opt in onboardAccessibility:false pauseOnLostFocus:false; do
-  sed -i.bak "/^${opt%%:*}:/d" "$play_dir/options.txt" && rm -f "$play_dir/options.txt.bak"
+  sed -i.bak "/^${opt%%:*}:/d" "$play_dir/options.txt"
+  rm -f "$play_dir/options.txt.bak"
   echo "$opt" >> "$play_dir/options.txt"
 done
 
