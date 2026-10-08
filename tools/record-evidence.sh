@@ -68,7 +68,8 @@ ffmpeg -v error -y "${gif_input[@]}" \
   -vf "split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle" \
   -loop 0 "$out/$scenario.gif"
 
-size=$(stat -f %z "$out/$scenario.gif" 2>/dev/null || stat -c %s "$out/$scenario.gif")
+size=$(wc -c <"$out/$scenario.gif")
+size=${size// /}
 if (( size > GIF_MAX_BYTES )); then
   rm -f "$out/$scenario.gif"
   echo "GIF was $size bytes, over the $GIF_MAX_BYTES budget (deleted): record fewer frames" >&2
