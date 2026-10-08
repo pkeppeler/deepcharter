@@ -96,27 +96,50 @@ public class PodLightsTest {
 		}
 	}
 
-	@GameTest
+	/**
+	 * Looks only along the pod's path, not {@link #LOOK} around it: the tests of a run share a row of structures whose pod grids
+	 * overlap, so a light of a pod in another test can stand within {@link #LOOK} blocks. Waits for the settled state, because a
+	 * release that cannot change its block yet (an unloaded neighbour chunk) leaves the old light for the next sweep.
+	 */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS)
 	public void theLightFollowsThePodAndLeavesNoTrail(GameTestHelper helper) {
 		PodEntity pod = litPod(helper, charter(helper), 2, 0);
-		try {
-			afterTick(pod);
-			BlockPos first = onlyLight(helper, pod);
-			for (int step = 1; step <= 4; step++) {
-				pod.setPos(pod.getX() + 1, pod.getY(), pod.getZ());
-				afterTick(pod);
-				BlockPos now = onlyLight(helper, pod);
-				if (now.equals(first)) {
-					throw failure(helper, "after %d blocks the light is still at %s", step, first);
+		ServerLevel level = (ServerLevel) pod.level();
+		BlockPos start = pod.blockPosition();
+		FarChunks.Deadline deadline = FarChunks.deadline();
+		int[] step = {0};
+		BlockPos[] before = {null};
+		helper.onEachTick(() -> {
+			try {
+				List<BlockPos> lights = lightsOnPath(level, start, pod);
+				boolean settled = lights.size() == 1 && isInPod(lights.getFirst(), pod);
+				deadline.await(helper, level, settled, () -> String.format(
+						"after %d blocks the pod at %s should hold one light inside it, but lights on its path were %s and ledger entries %s",
+						step[0], pod.blockPosition(), lights, ledgerOnPath(level, start, pod)));
+				if (!settled) {
+					return;
 				}
+				BlockPos now = lights.getFirst();
+				if (now.equals(before[0])) {
+					throw failure(helper, "after %d blocks the light is still at %s", step[0], now);
+				}
+				before[0] = now;
+				if (step[0] < 4) {
+					step[0]++;
+					pod.setPos(pod.getX() + 1, pod.getY(), pod.getZ());
+					return;
+				}
+				Set<GlobalPos> ledger = ledgerOnPath(level, start, pod);
+				if (ledger.size() != 1) {
+					throw failure(helper, "the ledger should hold the one light, holds %s", ledger);
+				}
+				pod.discard();
+				helper.succeed();
+			} catch (RuntimeException e) {
+				pod.discard();
+				throw e;
 			}
-			if (ledgerEntries(pod).size() != 1) {
-				throw failure(helper, "the ledger should hold the one light, holds %s", ledgerEntries(pod));
-			}
-			helper.succeed();
-		} finally {
-			pod.discard();
-		}
+		});
 	}
 
 	@GameTest
@@ -500,18 +523,32 @@ public class PodLightsTest {
 		}
 	}
 
-	/** The pod's one light, which must be in the pod's own column and inside its height. */
-	private static BlockPos onlyLight(GameTestHelper helper, PodEntity pod) {
-		List<BlockPos> found = lightsNear((ServerLevel) pod.level(), pod.blockPosition(), LOOK);
-		if (found.size() != 1) {
-			throw failure(helper, "expected one light near the pod, found %s", found);
+	/** The light blocks within a block of the pod's path from {@code start} to where it is now. */
+	private static List<BlockPos> lightsOnPath(ServerLevel level, BlockPos start, PodEntity pod) {
+		BlockPos now = pod.blockPosition();
+		List<BlockPos> found = new ArrayList<>();
+		for (BlockPos pos : BlockPos.betweenClosed(start.getX() - 1, now.getY() - 2, now.getZ() - 1, now.getX() + 1, now.getY() + 2, now.getZ() + 1)) {
+			if (level.getBlockState(pos).is(Blocks.LIGHT)) {
+				found.add(pos.immutable());
+			}
 		}
-		BlockPos light = found.getFirst();
-		if (light.getX() != pod.blockPosition().getX() || light.getZ() != pod.blockPosition().getZ()
-				|| light.getY() < Math.floor(pod.getBoundingBox().minY) || light.getY() > Math.floor(pod.getBoundingBox().maxY)) {
-			throw failure(helper, "the light at %s is not inside the pod at %s", light, pod.getBoundingBox());
-		}
-		return light;
+		return found;
+	}
+
+	private static Set<GlobalPos> ledgerOnPath(ServerLevel level, BlockPos start, PodEntity pod) {
+		BlockPos now = pod.blockPosition();
+		return PodLightLedger.get(level.getServer()).entries().stream()
+				.filter(entry -> entry.dimension().equals(level.dimension())
+						&& entry.pos().getX() >= start.getX() - 1 && entry.pos().getX() <= now.getX() + 1
+						&& Math.abs(entry.pos().getZ() - now.getZ()) <= 1
+						&& Math.abs(entry.pos().getY() - now.getY()) <= 2)
+				.collect(Collectors.toUnmodifiableSet());
+	}
+
+	/** True when {@code light} is in the pod's own column and inside its height. */
+	private static boolean isInPod(BlockPos light, PodEntity pod) {
+		return light.getX() == pod.blockPosition().getX() && light.getZ() == pod.blockPosition().getZ()
+				&& light.getY() >= Math.floor(pod.getBoundingBox().minY) && light.getY() <= Math.floor(pod.getBoundingBox().maxY);
 	}
 
 	private static List<BlockPos> lightsNear(ServerLevel level, BlockPos around, int radius) {

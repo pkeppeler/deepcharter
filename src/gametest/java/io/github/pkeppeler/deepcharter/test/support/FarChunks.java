@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test.support;
 
 import java.util.List;
 import java.util.function.IntConsumer;
+import java.util.function.Supplier;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -57,8 +58,16 @@ public final class FarChunks {
 		 */
 		public boolean awaitUnloaded(GameTestHelper helper, ServerLevel level, int chunkX, int chunkZ) {
 			boolean reached = level.getChunkSource().getChunkNow(chunkX, chunkZ) == null;
-			pause(helper, level, new ChunkPos(chunkX, chunkZ), Awaited.UNLOADED, reached);
+			pause(helper, level, () -> timeout(new ChunkPos(chunkX, chunkZ), level, Awaited.UNLOADED), reached);
 			return reached;
+		}
+
+		/**
+		 * Call once per tick while waiting for any state that is not a chunk: pass whether it has settled. When it has not, sleeps
+		 * briefly, and fails the test with {@code failure} once {@link #WAIT_SECONDS} have passed. The message is built only then.
+		 */
+		public void await(GameTestHelper helper, ServerLevel level, boolean settled, Supplier<String> failure) {
+			pause(helper, level, failure, settled);
 		}
 
 		/** Whether the {@link #WAIT_SECONDS} have passed. For a waiter with no {@code GameTestHelper}, such as a client scenario. */
@@ -66,13 +75,16 @@ public final class FarChunks {
 			return System.nanoTime() - endNanos > 0;
 		}
 
-		private void pause(GameTestHelper helper, ServerLevel level, ChunkPos chunk, Awaited awaited, boolean reached) {
+		private static String timeout(ChunkPos chunk, ServerLevel level, Awaited awaited) {
+			return String.format("chunk %s in %s was not %s after %d s", chunk, level.dimension(), awaited.text, WAIT_SECONDS);
+		}
+
+		private void pause(GameTestHelper helper, ServerLevel level, Supplier<String> failure, boolean reached) {
 			if (reached) {
 				return;
 			}
 			if (expired()) {
-				throw helper.assertionException(Component.literal(String.format("chunk %s in %s was not %s after %d s",
-						chunk, level.dimension(), awaited.text, WAIT_SECONDS)));
+				throw helper.assertionException(Component.literal(failure.get()));
 			}
 			// One sleep per server tick across all waiters, so N waiters do not stretch a tick N times.
 			int tick = level.getServer().getTickCount();
@@ -140,7 +152,7 @@ public final class FarChunks {
 			}
 			if (firstWaiting >= 0) {
 				BlockPos pos = positions.get(firstWaiting);
-				deadline.pause(helper, level, new ChunkPos(pos.getX() >> 4, pos.getZ() >> 4), Awaited.ENTITY_TICKING, false);
+				deadline.pause(helper, level, () -> Deadline.timeout(new ChunkPos(pos.getX() >> 4, pos.getZ() >> 4), level, Awaited.ENTITY_TICKING), false);
 			}
 		});
 	}
