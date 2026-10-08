@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param rockColor solid rock
  * @param oreColor ore
  * @param goldOreColor gold ore
+ * @param lavaColor a lava cell, on a scanner that marks lava
  * @param gasColor a gas pocket
  * @param podColor the ridden pod
  * @param frameColor the panel's frame
@@ -24,6 +25,7 @@ public record ScannerLook(
 		int rockColor,
 		int oreColor,
 		int goldOreColor,
+		int lavaColor,
 		int gasColor,
 		int podColor,
 		int frameColor) {
@@ -33,7 +35,7 @@ public record ScannerLook(
 
 	public static ScannerLook of(ThemeData d) {
 		return new ScannerLook(d.integer("cellPixels", 1), d.integer("margin", 0), d.color("titleColor"), d.color("airColor"),
-				d.color("rockColor"), d.color("oreColor"), d.color("goldOreColor"), d.color("gasColor"), d.color("podColor"),
+				d.color("rockColor"), d.color("oreColor"), d.color("goldOreColor"), d.color("lavaColor"), d.color("gasColor"), d.color("podColor"),
 				d.color("frameColor"));
 	}
 }

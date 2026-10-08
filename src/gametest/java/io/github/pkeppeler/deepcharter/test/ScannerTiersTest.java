@@ -22,6 +22,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LiquidBlock;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -135,26 +136,116 @@ public class ScannerTiersTest {
 		}
 	}
 
-	/** Fluids keep the docs/BLOCKERS.md default at every tier until the user decides. */
+	/** Water is open space at every tier: there is no water hazard yet (docs/BLOCKERS.md). */
 	@GameTest
-	public void fluidsStayOpenSpaceAtEveryTier(GameTestHelper helper) {
+	public void waterStaysOpenSpaceAtEveryTier(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		BlockPos origin = origin(helper);
 		BlockPos water = origin.offset(1, 0, 0);
-		BlockPos lava = origin.offset(6, 0, 0);
 		place(level, water, Blocks.WATER);
-		place(level, lava, Blocks.LAVA);
 		try {
 			for (int tier = 1; tier <= 4; tier++) {
 				ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, tier);
-				if (!slice.cell(1, 0).equals(Cell.AIR) || !slice.cell(6, 0).equals(Cell.AIR)) {
-					throw failure(helper, "water and lava should read as air at tier %d, read %s and %s", tier, slice.cell(1, 0), slice.cell(6, 0));
+				if (!slice.cell(1, 0).equals(Cell.AIR)) {
+					throw failure(helper, "water should read as air at tier %d, read %s", tier, slice.cell(1, 0));
 				}
 			}
 			helper.succeed();
 		} finally {
 			place(level, water, Blocks.AIR);
-			place(level, lava, Blocks.AIR);
+		}
+	}
+
+	/** Tier 1 keeps lava as open space, so the thermal tier is worth buying; from tier 2 a source and a flowing cell are marked. */
+	@GameTest
+	public void lavaIsOpenSpaceAtTierOneAndMarkedFromTheThermalTier(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos origin = origin(helper);
+		BlockPos source = origin.offset(6, 0, 0);
+		BlockPos flowing = origin.offset(7, -3, 0);
+		place(level, source, Blocks.LAVA);
+		if (!level.setBlock(flowing, Blocks.LAVA.defaultBlockState().setValue(LiquidBlock.LEVEL, 3), 2)) {
+			throw failure(helper, "could not place flowing lava at %s", flowing);
+		}
+		try {
+			if (ScannerTuning.DEFAULT.lavaTier() != 2) {
+				throw failure(helper, "the thermal tier is tier 2, the best a Mole can fit, got %d", ScannerTuning.DEFAULT.lavaTier());
+			}
+			for (int tier = 1; tier <= 4; tier++) {
+				Cell expected = tier >= 2 ? Cell.LAVA : Cell.AIR;
+				ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, tier);
+				if (!slice.cell(6, 0).equals(expected) || !slice.cell(7, -3).equals(expected)) {
+					throw failure(helper, "lava at tier %d should read as %s, read %s (source) and %s (flowing)", tier, expected,
+							slice.cell(6, 0), slice.cell(7, -3));
+				}
+			}
+			helper.succeed();
+		} finally {
+			place(level, source, Blocks.AIR);
+			place(level, flowing, Blocks.AIR);
+		}
+	}
+
+	/**
+	 * The slice is one block thick, but a bore is two wide, so the thermal tier marks a cell lava when lava is in the plane or within
+	 * {@link ScannerTuning#lavaSpread()} blocks to either side of it. Tier 1 reads only the plane. PR 287 measured that the plane alone
+	 * shows only 1 in 7 of the lava a pod touches.
+	 */
+	@GameTest
+	public void theThermalTierMarksLavaBesideThePlaneAndTierOneDoesNot(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos origin = origin(helper);
+		int spread = ScannerTuning.DEFAULT.lavaSpread();
+		if (spread != 2) {
+			throw failure(helper, "the thermal tier should reach 2 blocks either side of the plane (a 2 x 2 bore and a block of margin), got %d", spread);
+		}
+		// Perpendicular to an east-facing plane is the Z axis.
+		BlockPos near = origin.offset(5, -1, spread);
+		BlockPos otherSide = origin.offset(8, -1, -spread);
+		BlockPos tooFar = origin.offset(11, -1, spread + 1);
+		place(level, near, Blocks.LAVA);
+		place(level, otherSide, Blocks.LAVA);
+		place(level, tooFar, Blocks.LAVA);
+		try {
+			for (int tier = 1; tier <= 4; tier++) {
+				ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, tier);
+				Cell reached = tier >= 2 ? Cell.LAVA : Cell.AIR;
+				if (!slice.cell(5, -1).equals(reached) || !slice.cell(8, -1).equals(reached)) {
+					throw failure(helper, "lava %d blocks beside the plane at tier %d should read as %s, read %s and %s", spread, tier, reached,
+							slice.cell(5, -1), slice.cell(8, -1));
+				}
+				if (!slice.cell(11, -1).equals(Cell.AIR)) {
+					throw failure(helper, "lava %d blocks beside the plane is out of reach at tier %d and should read as air, read %s", spread + 1, tier,
+							slice.cell(11, -1));
+				}
+			}
+			helper.succeed();
+		} finally {
+			place(level, near, Blocks.AIR);
+			place(level, otherSide, Blocks.AIR);
+			place(level, tooFar, Blocks.AIR);
+		}
+	}
+
+	/** Lava beside ore and gas does not hide them. */
+	@GameTest
+	public void lavaDoesNotHideNeighbouringOreOrGas(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos origin = origin(helper);
+		place(level, origin.offset(4, -2, 0), Blocks.LAVA);
+		place(level, origin.offset(5, -2, 0), Blocks.GOLD_ORE);
+		place(level, origin.offset(6, -2, 0), HazardBlocks.GAS_POCKET);
+		try {
+			ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, 3);
+			if (!slice.cell(4, -2).equals(Cell.LAVA) || !slice.cell(5, -2).equals(new Cell.Ore(Blocks.GOLD_ORE)) || !slice.cell(6, -2).equals(Cell.GAS)) {
+				throw failure(helper, "lava, ore and gas side by side should read as lava, gold and gas, read %s, %s, %s",
+						slice.cell(4, -2), slice.cell(5, -2), slice.cell(6, -2));
+			}
+			helper.succeed();
+		} finally {
+			for (int ahead = 4; ahead <= 6; ahead++) {
+				place(level, origin.offset(ahead, -2, 0), Blocks.AIR);
+			}
 		}
 	}
 

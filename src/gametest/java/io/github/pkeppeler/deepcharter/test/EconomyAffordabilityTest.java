@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
+import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel.Run;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel.Zone;
@@ -90,6 +91,24 @@ public class EconomyAffordabilityTest {
 				throw failure(helper, "tier 1 %s costs $%d, which is %d runs of $%.0f; at most %d are allowed",
 						track.id(), price, runs, run.net(), allowed);
 			}
+		}
+		helper.succeed();
+	}
+
+	/**
+	 * The thermal tier (#300) is the scanner's tier 2, which the standard ladder prices with the other tier 2 parts. A tier 2 part is a
+	 * layer 2 buy: a run there, with tier 2 parts, pays for it in two runs at most.
+	 */
+	@GameTest
+	public void theThermalScannerTierIsAffordableAfterOneOrTwoLayerTwoRuns(GameTestHelper helper) {
+		Run run = upgradedRunInLayerTwo();
+		int tier = ScannerTuning.DEFAULT.lavaTier();
+		long price = UpgradeTuning.DEFAULT.price(ComponentTrack.SCANNER, tier);
+		int runs = run.toAfford(price);
+		LOGGER.info("[economy] thermal scanner, tier {} ${}: {} layer 2 runs of {}", tier, price, runs, run);
+		if (runs > EARLY_BUY_RUNS) {
+			throw failure(helper, "the thermal scanner (tier %d) costs $%d, which is %d layer 2 runs of $%.0f; at most %d are allowed",
+					tier, price, runs, run.net(), EARLY_BUY_RUNS);
 		}
 		helper.succeed();
 	}

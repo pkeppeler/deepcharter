@@ -75,8 +75,8 @@ public class ThemeLooksTest {
 
 	@GameTest
 	public void theDefaultHudLooksAreTheOldOnes(GameTestHelper helper) {
-		expect(helper, "scanner", new ScannerLook(3, 4, 0xFFFFFFFF, 0xFF101820, 0xFF5C5248, 0xFFE8E8F0, 0xFFFFD21E, 0xFFE040E0, 0xFF38F06E,
-				0xFF000000), ScannerLook.of(area("scanner", null)));
+		expect(helper, "scanner", new ScannerLook(3, 4, 0xFFFFFFFF, 0xFF101820, 0xFF5C5248, 0xFFE8E8F0, 0xFFFFD21E, 0xFFFF5A1E, 0xFFE040E0,
+				0xFF38F06E, 0xFF000000), ScannerLook.of(area("scanner", null)));
 		expect(helper, "hud", new HudLook(4, 2, 0xFFFFFFFF, 0xFFFF5522, 4, 0xFFFFFFFF, 4, 0.5, 0xFF7CFC9A), HudLook.of(area("hud", null)));
 		expect(helper, "transmission", new TransmissionLook(0xEA050A06, 0xFF7CFC9A, 0xFF7CFC9A, 0xFFFFC857, 0xFFFF5A4F, 320, 16, 0.4, 6, 100),
 				TransmissionLook.of(area("transmission", null)));

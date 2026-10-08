@@ -6,6 +6,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Block;
@@ -80,12 +81,13 @@ public final class ScanSlice {
 			throw new IllegalArgumentException("a slice runs along a horizontal facing, not " + facing);
 		}
 		ScanArea area = TUNING.area(tier);
+		boolean showsLava = TUNING.showsLava(tier);
 		boolean showsGas = TUNING.showsGas(tier);
 		Cell[] cells = new Cell[area.columns() * area.rows()];
 		for (int up = area.up(); up >= -area.down(); up--) {
 			for (int ahead = -area.halfWidth(); ahead <= area.halfWidth(); ahead++) {
 				BlockPos pos = origin.relative(facing, ahead).above(up);
-				cells[index(area, ahead, up)] = classify(level, pos, level.getBlockState(pos), showsGas);
+				cells[index(area, ahead, up)] = classify(level, pos, level.getBlockState(pos), facing, showsLava, showsGas);
 			}
 		}
 		return new ScanSlice(tier, area, cells);
@@ -111,12 +113,15 @@ public final class ScanSlice {
 		return (area.up() - up) * area.columns() + ahead + area.halfWidth();
 	}
 
-	private static Cell classify(BlockGetter level, BlockPos pos, BlockState state, boolean showsGas) {
+	private static Cell classify(BlockGetter level, BlockPos pos, BlockState state, Direction facing, boolean showsLava, boolean showsGas) {
 		if (state.is(ORES)) {
 			return new Cell.Ore(state.getBlock());
 		}
 		if (showsGas && state.is(HazardBlocks.GAS_POCKET)) {
 			return Cell.GAS;
+		}
+		if (showsLava && lavaBeside(level, pos, facing)) {
+			return Cell.LAVA;
 		}
 		// Fluids are named explicitly so the rule does not depend on their collision shapes.
 		if (state.getBlock() instanceof LiquidBlock) {
@@ -125,21 +130,41 @@ public final class ScanSlice {
 		return state.getCollisionShape(level, pos).isEmpty() ? Cell.AIR : Cell.ROCK;
 	}
 
+	/**
+	 * Whether the block at {@code pos}, or one within {@link ScannerTuning#lavaSpread()} blocks either side of the plane at that spot, is lava.
+	 * The pod's bore is wider than the one-block plane, and lava beside the plane is lava the pod can touch.
+	 */
+	private static boolean lavaBeside(BlockGetter level, BlockPos pos, Direction facing) {
+		Direction side = facing.getClockWise();
+		int spread = TUNING.lavaSpread();
+		for (int offset = -spread; offset <= spread; offset++) {
+			if (level.getFluidState(pos.relative(side, offset)).is(FluidTags.LAVA)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	/** What a cell holds. */
 	public sealed interface Cell {
 		Cell AIR = new Air();
 		Cell ROCK = new Rock();
+		Cell LAVA = new Lava();
 		Cell GAS = new Gas();
 
 		/**
-		 * Anything without a collision shape, and any fluid: air, water, lava, plants. Fluids read as open space at every
-		 * tier until the user decides otherwise (docs/BLOCKERS.md).
+		 * Anything without a collision shape, and any fluid: air, water, plants, and lava on a scanner below {@link ScannerTuning#lavaTier()}.
+		 * Water reads as open space at every tier: there is no water hazard (docs/BLOCKERS.md).
 		 */
 		record Air() implements Cell {
 		}
 
 		/** Solid, and not ore. Below {@link ScannerTuning#gasTier()} this includes gas pockets, which look like stone. */
 		record Rock() implements Cell {
+		}
+
+		/** A cell with lava in it, or within {@link ScannerTuning#lavaSpread()} blocks beside it, seen by a scanner of {@link ScannerTuning#lavaTier()} or better. */
+		record Lava() implements Cell {
 		}
 
 		/** A gas pocket, seen by a scanner of {@link ScannerTuning#gasTier()} or better. */

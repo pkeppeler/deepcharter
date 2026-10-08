@@ -61,10 +61,34 @@ The bot is unrealistic in two opposite ways. It never reacts, which is harsh. It
 
 **Reading it for #232.** Counterplay must exist before Deep Claim. The heat-shield track now has something to act on: it stretches the 10 seconds. The scanner must tell lava from air to be of any use.
 
-**Knobs.** `LayerTuning.lavaHullPerSecond` (10), `LayerTuning.lavaCueTicks` (15), `theme/hud.json` `podBurningColor`, the `pod.hull_burning` sound.
+### The thermal scanner tier (#300, A)
+
+**Problem.** The tier 1 scanner draws lava as open space (BLOCKERS: fluids), and its slice is one block thick while a bore is two wide. So it showed the lava a pod touched, 8 or more slabs ahead, in 13% of bores.
+
+**The tier.** Scanner tier 2, the best a Mole can fit, is the thermal tier (`ScannerTuning.lavaTier`).
+- A cell of the minimap is marked in `lavaColor` (`theme/scanner.json`, orange) when lava is in the plane there or within 2 blocks of either side of it (`lavaSpread`: the 2 x 2 bore and a block of margin). Lava in the rock beside the shaft shows too: heat in the wall ahead. Ore and gas keep their colours when they share a cell.
+- Tier 1 is unchanged: lava is open space. That is what makes tier 2 worth its price. Water is open space at every tier, because no water hazard exists.
+- Price: the standard ladder's $500, unchanged. Reason: a tier 2 part pays back in about two runs of layer 2 with tier 2 parts, and the thermal tier is a layer 2 purchase (`EconomyAffordabilityTest`).
+- Tier 3 keeps gas, so the ladder reads: ore, then lava, then gas.
+
+### Thermal scanner vs. a straight bore: measured
+
+#300. The same 100 bores as above (`DEEPCHARTER_LAVA_BORES=100`). The pod keeps its tier 1 scanner, and the harness also reads what a tier 2 scanner would mark from the same spot. "In time" is still 8 slabs ahead.
+
+| Lava, 8 or more slabs ahead | Tier 1 (open space) | Thermal, the plane only (`lavaSpread` 0) | Thermal, 2 blocks either side (as shipped) |
+|---|---|---|---|
+| Lava blocks the pod touched (strict) | 12 of 96 (13%) | 13 of 96 (14%) | 26 of 96 (27%) |
+| Any block of the connected lava body | 34 of 96 (35%) | 38 of 96 (40%) | 91 of 96 (95%) |
+
+- **Marking lava alone does little.** The plane is one block thick, so tier 2 with the plane only gained one case (13% to 14%). The lava that burns the pod is mostly beside the plane. The projection to either side is what makes the tier useful.
+- **Strict understates it.** The blocks "touched" include lava that flowed into the shaft after the scan, which no scan could have shown. The whole-body figure is the one that matches the pilot's question, "is there lava ahead of me?": 95% against 35%.
+- **The bot still dies.** It never reads the scanner, so survival is unchanged (0 of 100). The figures say what a pilot could have seen.
+- The "plane only" column is a run with `lavaSpread` set to 0.
+
+**Knobs.** `ScannerTuning.lavaTier` (2), `ScannerTuning.lavaSpread` (2), `theme/scanner.json` `lavaColor`, `LayerTuning.lavaHullPerSecond` (10), `LayerTuning.lavaCueTicks` (15), `theme/hud.json` `podBurningColor`, the `pod.hull_burning` sound.
 
 **Open questions.**
-- Should the tier 1 scanner mark lava, or is that a later tier's job (BLOCKERS: fluids)? (A) Recommended: a thermal sensor tier that shows lava, and a full-plane view of the bore's 2 x 2.
+- ~~Should the tier 1 scanner mark lava, or is that a later tier's job (BLOCKERS: fluids)?~~ Answered by #300: a later tier's job. See the thermal tier above.
 - Falls (35 to 100 hull) and gas (about 40 to 50 hull, from the same 1.25% density) kill as surely as lava. Do they need counterplay on the same ladder?
 - Fuel: a layer 1 descent takes about 10 tanks. Is that intended? See #289 (fuel per descent).
 - Does the pilot need a reason to get out of the lava other than the hull? Today the cue is the HUD line and the hiss.
