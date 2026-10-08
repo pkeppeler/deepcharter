@@ -618,7 +618,11 @@ public class FoundingMoleHangarTest {
 			// The hangar record is unreadable: the colony event, the repair event and both actions skip it.
 			LogCapture hangarLog = LogCapture.start(FUTURE_HANGAR);
 			server.getDataStorage().set(HangarData.TYPE, unreadable);
+			// Only the derelict is skipped: the console is a block and is placed even when the hangar record cannot be read.
+			BlockPos hangarConsole = Hangar.consolePos(server).orElseThrow();
+			server.overworld().setBlock(hangarConsole, Blocks.AIR.defaultBlockState(), 3);
 			Hangar.onBuilt(server, placed);
+			expect(helper, server.overworld().getBlockState(hangarConsole).is(HangarTerminal.TYPE.block()), "the console is placed although the hangar data is unreadable");
 			ColonyEvents.BUILT.invoker().onBuilt(server, placed);
 			TerminalEvents.REPAIRED.invoker().onRepaired(server, HangarTerminal.TYPE, charterOf(helper, player), player.player());
 			expectRefused(helper, act(player.player(), console, HangarTerminal.BUY_MOLE), "buying with an unreadable hangar");

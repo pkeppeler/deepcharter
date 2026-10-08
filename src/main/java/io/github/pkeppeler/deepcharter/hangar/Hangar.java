@@ -64,10 +64,8 @@ public final class Hangar {
 	}
 
 	/**
-	 * Makes sure the console stands in the hangar, then puts the derelict Mole on the hangar anchor, once: the hangar records the
-	 * Mole, so a world that has one never gets a second. The console is ensured on every build, because a build that stopped half
-	 * way and runs again clears the pad and with it the console; its repair is in {@code RepairState}, so it comes back as it was.
-	 * A colony built before the hangar existed is not given one.
+	 * Places the console on every build, since a rebuild clears the pad (its repair lives in {@code RepairState}), and the
+	 * derelict Mole once. A colony built before the hangar existed is not given one.
 	 */
 	public static void onBuilt(MinecraftServer server, ColonySite.Placed colony) {
 		ServerLevel level = server.overworld();

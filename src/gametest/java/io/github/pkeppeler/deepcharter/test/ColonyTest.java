@@ -301,15 +301,19 @@ public class ColonyTest {
 		helper.succeed();
 	}
 
+	/** The colony record as it stands now, with its build marked unfinished, as after a build that stopped half way. */
+	private static ColonySite unfinishedCopy(MinecraftServer server) {
+		CompoundTag unfinished = ((CompoundTag) ColonySite.CODEC.encodeStart(NbtOps.INSTANCE, ColonySite.get(server)).getOrThrow()).copy();
+		unfinished.getCompound("colony").orElseThrow().putBoolean("finished", false);
+		return ColonySite.CODEC.parse(NbtOps.INSTANCE, unfinished).getOrThrow();
+	}
+
 	@GameTest
 	public void aBuildThatStoppedHalfWayIsBuiltAgainAtTheSameGround(GameTestHelper helper) {
 		MinecraftServer server = server(helper);
 		ServerLevel overworld = server.overworld();
 		ColonySite.Placed before = placed(helper);
-		Tag current = ColonySite.CODEC.encodeStart(NbtOps.INSTANCE, ColonySite.get(server)).getOrThrow();
-		CompoundTag unfinished = ((CompoundTag) current).copy();
-		unfinished.getCompound("colony").orElseThrow().putBoolean("finished", false);
-		ColonySite interrupted = ColonySite.CODEC.parse(NbtOps.INSTANCE, unfinished).getOrThrow();
+		ColonySite interrupted = unfinishedCopy(server);
 		if (interrupted.isBuilt() || interrupted.started().isEmpty()) {
 			throw failure(helper, "the interrupted record should be begun and not finished");
 		}
@@ -349,8 +353,6 @@ public class ColonyTest {
 		Optional<UUID> derelict = HangarData.get(server).state().derelict();
 		int pods = overworld.getEntitiesOfClass(PodEntity.class, bay).size();
 		Item part = HangarParts.ALL.getFirst();
-		CompoundTag unfinished = ((CompoundTag) ColonySite.CODEC.encodeStart(NbtOps.INSTANCE, ColonySite.get(server)).getOrThrow()).copy();
-		unfinished.getCompound("colony").orElseThrow().putBoolean("finished", false);
 		ColonySite world = ColonySite.get(server);
 		RepairState repairs = RepairState.get(server);
 		RepairState partlyRepaired = new RepairState();
@@ -358,7 +360,7 @@ public class ColonyTest {
 			throw failure(helper, "a fresh repair state should take the first hangar part");
 		}
 		var spawn = server.getRespawnData();
-		server.getDataStorage().set(ColonySite.TYPE, ColonySite.CODEC.parse(NbtOps.INSTANCE, unfinished).getOrThrow());
+		server.getDataStorage().set(ColonySite.TYPE, unfinishedCopy(server));
 		server.getDataStorage().set(RepairState.TYPE, partlyRepaired);
 		try {
 			if (!ColonyBuilder.buildIfNeeded(server)) {
@@ -374,6 +376,7 @@ public class ColonyTest {
 				throw failure(helper, "the rebuild placed a second derelict Mole in the hangar");
 			}
 			MockPlayer mock = MockPlayers.join(helper, "rebuilt-console");
+			// The founded charter stays in the shared world: its name is unique, and the other founding tests leave theirs too.
 			if (Charters.found(server, mock.player().getUUID(), "Rebuilt Console " + UUID.randomUUID().toString().substring(0, 8)).isPresent()) {
 				throw failure(helper, "founding a charter should succeed");
 			}
