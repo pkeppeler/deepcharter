@@ -49,13 +49,13 @@ Pillars, ranked. The higher one wins a conflict.
 
 ### Seams and grained crust
 
-- Below the campaign world, each uncharted world is 2048 tall and joins the next at a **seam**: a fast background swap. The pod carries all its riders.
+- Below the campaign world, the worlds are 2048 tall. Each joins the next at a **seam**: a fast background swap. The campaign world joins the first uncharted world the same way, at the finale's floor. The pod carries all its riders.
 - The swap happens inside a **grained crust** (working name; the lore session names it). It has a vertical grain and flexes on a slow pulse. Rules: no sideways digging, placed blocks crumble, fluids are absorbed, and anything that stops in it is squeezed.
-- Seed-chosen **decoys** (about 1 in 3 of the other crusts) follow the same rules, so a seam cannot be told from a decoy.
+- Seed-chosen **decoys** (set so that about a third of restricted crusts are seams) follow the same rules, so a seam cannot be told from a decoy.
 
 ### Story layers
 
-About 8 story layers, roughly 6–8 hours each: a 60+ hour campaign, finale at the bottom of the last. Themes are a draft for the lore session.
+About 8 story layers, roughly 6–8 hours each: a 60+ hour campaign, finale at the bottom of the last. The campaign world ends at the finale's floor, where a seam leads to the Ramp. Themes are a draft for the lore session.
 
 | # | Name | Draft theme |
 |---|------|-------------|
@@ -70,7 +70,7 @@ About 8 story layers, roughly 6–8 hours each: a 60+ hour campaign, finale at t
 
 ### Ramp
 
-A few hundred blocks at the bottom of the last story layer where drilling gets exponentially harder. You can continue, but it is not worth it. It makes the end of the campaign obvious.
+A few hundred blocks at the top of the first uncharted world, below the seam at the finale's floor, where drilling gets exponentially harder. You can continue, but it is not worth it. It makes the end of the campaign obvious.
 
 ### Uncharted layers
 
@@ -82,7 +82,7 @@ A few hundred blocks at the bottom of the last story layer where drilling gets e
 ### Splice rule
 
 - A layer's content is fixed the first time any charter breaks into it.
-- An update adding story layer N+1 splices it into the chain below the last story layer and above the ramp, as a new world at the seam between the finale and the Ramp. Breaking through N's floor leads into the new layer; its floor leads into whatever already existed.
+- An update adding story layer N+1 splices it in as a new world at the seam between the finale and the Ramp. The seam moves to the new world's floor; it is not a seam inside the campaign world. Breaking through N's floor leads into the new layer; its floor leads into whatever already existed.
 - Nothing built is lost. Existing layers keep their terrain; their depth readings shift.
 - Players already down there get a "the depths moved" story event.
 - No shaft can reach a spliced layer early, so pre-mining is impossible.

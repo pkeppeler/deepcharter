@@ -45,11 +45,9 @@ One link in the underground chain, with its own light, fog and sky. Its floor le
 _Avoid_: level, biome, dimension (that is the implementation)
 
 **Campaign world**:
-The one tall world that holds the surface and all story layers. Crossing a breach in it has no teleport.
-_Avoid_: main dimension
-
+The one tall world that holds the surface and the story layers, ending at the finale's floor. Crossing a breach in it has no teleport.
 **Seam**:
-The join between two tall worlds below the campaign, crossed by a fast background swap inside a grained crust.
+The join between two tall worlds, including the campaign world and the first uncharted world, crossed by a fast background swap inside a grained crust.
 _Avoid_: portal, loading screen
 
 **Grained crust**:
@@ -65,7 +63,7 @@ One of the roughly 8 hand-authored layers that make up the campaign.
 _Avoid_: authored layer, main layer
 
 **Uncharted layer**:
-A layer below the ramp: a harder remix of a story-layer theme, with no limit on depth. The altimeter reads "UNCHARTED".
+A layer in the uncharted worlds, below the ramp: a harder remix of a story-layer theme, with no limit on depth. The altimeter reads "UNCHARTED".
 _Avoid_: endless layer, post-game layer
 
 **Zone**:
@@ -77,11 +75,11 @@ The soft crust at a layer boundary. Any drill can pass, at a heavy cost. Crossin
 _Avoid_: barrier, wall, gate
 
 **Ramp**:
-The stretch at the bottom of the last story layer where drilling gets exponentially harder.
+The stretch at the top of the first uncharted world, below the finale's seam, where drilling gets exponentially harder.
 _Avoid_: floor, bedrock
 
 **Splice**:
-Adding a new story layer into the chain of existing worlds without losing anything built. A layer's content is fixed once any charter breaks into it.
+Adding a new story layer, as a new world at the seam above the Ramp, into the chain of existing worlds without losing anything built. A layer's content is fixed once any charter breaks into it.
 _Avoid_: insert, migration
 
 ### Pods

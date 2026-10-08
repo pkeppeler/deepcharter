@@ -23,17 +23,17 @@ One dimension, the **campaign world**, holds the surface and story layers 1 to 8
   - A placed block crumbles on the next pulse. Nothing drops.
   - Fluids are absorbed.
   - Anything that stops in the crust is squeezed: hull damage for a pod, squeeze damage on foot.
-- **Decoy.** A grained crust that is not a seam. The world seed chooses decoys among the other crusts, about 1 in 3, so a seam cannot be told from a decoy. A story layer may set its crusts in its layer data instead.
-- **Splice.** A new story layer is a new world, inserted at the seam between the finale and the Ramp. The SPEC splice rules still hold.
+- **Decoy.** A grained crust that is not a seam. The world seed chooses decoys among the other crusts, set so that about a third of restricted crusts are seams, so a seam cannot be told from a decoy. A story layer may set its crusts in its layer data instead.
+- **Ramp and splice.** The campaign world ends at the finale's floor, where a seam sits. The Ramp opens the first uncharted world, below that seam. A new story layer is a new world inserted at that seam, above the Ramp: the seam moves, and no seam appears inside the campaign world. The SPEC splice rules still hold.
 - **Sea level.** A tall dimension sets `sea_level` to `min_y`. Vanilla fills caves with lava below `min(-54, sea_level)`.
 
 ## Considered Options
 
-- **Immersive Portals.** Rejected. It is abandoned at 1.21.1, its repo was archived in 2026-04, and no 26.x port exists except solo forks that are days old. It has 165 mixins and about 70k lines. Multi-rider vehicles through its portals are untested.
-- **Cubic Chunks.** Rejected. There is no Fabric port at any version. CubicChunks3 (NeoForge 1.21.6) calls itself "not usable". Vanilla assumes column chunks, and `BlockPos` packs Y in 12 bits.
+- **Immersive Portals.** Rejected (research record: [#185](https://github.com/pkeppeler/deepcharter/issues/185#issuecomment-6058215544)). The last official release is for 1.21.1, the repo was archived on 2026-04-21, and no 26.x build exists except solo forks that are days old. It is about 70k lines with 181 mixins in 1.21.1 and 165 in the 26.3 fork. Vehicle crossing rebuilds the vehicle per rider, nothing handles several riders, and the 26.3 fork has no vehicle tests.
+- **Cubic Chunks.** Rejected (see #185 record). There is no Fabric port at any version. CubicChunks3 targets NeoForge 1.21.6 and says "Not yet usable or functional". Vanilla assumes column chunks, and `BlockPos` packs Y in 12 bits.
 - **One 4064-tall world.** Rejected. It caps depth, and it doubles every per-column cost: server heap 1188 MB against 518 MB, region file 179 KB against 92 KB per column, client heap 430 to 700 MB against 180 to 300 MB. A singleplayer client at 4064 sits near 1.9 GB of heap, against a 2 GB launcher default.
-- **Overlap band of mirrored blocks.** Rejected. Two copies of the blocks must stay in sync, and the client still hitches when it loads the other world.
-- **Hide the swap behind a fade or a suppressed loading screen.** Rejected. Vanilla's respawn path rebuilds every mesh, stops all sound and freezes the player.
+- **Overlap band of mirrored blocks.** Rejected (see #185 record). No mod does it. Every band block must stay in sync across two copies, fluids and random ticks must run in one copy only, and lighting must work under two dimension types. The swap hitch stays.
+- **Hide the swap behind a fade or a suppressed loading screen.** Rejected (see #185 record). `ClientPacketListener.handleRespawn` stops all sound and music, rebuilds every chunk mesh and builds a new player, frozen until the client acknowledges. Suppressing the loading screen leaves the hitch.
 
 ## Consequences
 
@@ -42,5 +42,6 @@ One dimension, the **campaign world**, holds the surface and story layers 1 to 8
 - Horizontal speed is the limit in a tall world, not falling: a fall inside loaded columns is free, and new columns are not.
 - Keep the simulation distance low in tall worlds. Server tick cost grows with loaded sections.
 - A drilled shaft lets a pod reach a seam at terminal speed, so the 600-block lead is a minimum.
+- ADR 0006 (a breach crossing recreates the pod) and ADR 0022 (the tower carries a towed pod across a breach) still hold at seams, where the entity crosses worlds. Inside the campaign world there is no crossing to recreate or carry through. Follow-up in #214 and #215.
 - Open: what happens to dropped items and mobs that fall to a seam.
 - The breach code (`BreachService`) crosses by teleport today. Its rewrite is separate work under the same milestone.
