@@ -80,7 +80,8 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 		HangarTuning.RestoreCost mole = tuning.restoreCost(Chassis.MOLE);
 		HangarTuning.RestoreCost prospector = tuning.restoreCost(Chassis.PROSPECTOR);
 		String prices = Component.translatable("screen.deepcharter.hangar.restore_prices", mole.money(), mole.catalysts(),
-				prospector.money(), prospector.catalysts(), catalyst).getString();
+				prospector.money(), prospector.catalysts(), catalyst).getString()
+				+ " " + Component.translatable("screen.deepcharter.hangar.advance", prospector.advance(), catalyst).getString();
 		List<String> wrapped = font.getSplitter().splitLines(FormattedText.of(prices), width - 2 * MARGIN, Style.EMPTY)
 				.stream().map(FormattedText::getString).toList();
 		int lineHeight = font.lineHeight + CrtTuning.DEFAULT.lineSpacing();
