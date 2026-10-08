@@ -13,7 +13,7 @@ Issue [#225](https://github.com/pkeppeler/deepcharter/issues/225), 2026-10-08. A
 - **The target in one line:** a rust-red world held at dusk, where a small Company town of riveted steel and sodium lamps sits over a black hole that goes down forever, and the only true light is the lamp you carry.
 - **The recommended set:** eternal dusk sky; our own bare regolith surface with craters and rifts; a prefab Company town under one monumental headframe; pods that grow from a Motherload capsule (the Mole) to an Atlantis-style digger (the Behemoth); 16x textures with GTNH-style layers and glow; per-layer fog from the original's depth colours; terminals framed as physical machines; three kinds of light (true lamp, Company sodium, the deep's own).
 - **Decisions that change settled SPEC lines:** the vanilla surface (§3) and the "start like normal Minecraft" bootstrap (§4), texture resolution and "AI-assisted assets" (§15), and optional mods in the pack (§2). See [Decisions for the user](#5-decisions-for-the-user).
-- **Tryouts in the game:** four data-only looks (today, eternal dusk, eternal night, dusk plus a colour grade), shot from the same views. See [section 4](#4-tryouts-in-the-game).
+- **Tryouts in the game:** four data-only looks (today, eternal dusk, eternal night, dusk plus a colour grade), shot from the same views. A dusk sky changes the mood a lot for one data file, but grass, trees and vanilla walls still say "Minecraft" under it. See [section 4](#4-tryouts-in-the-game).
 
 ---
 
@@ -28,12 +28,12 @@ Ranked by how much each cause hurts the first impression. Each one names the sti
 - Stills: [surface-south-noon], [surface-east-noon], [colony-aerial-south], [colony-aerial-northwest], [statue-from-the-square] (a cow by the terminals), [pay-office-from-the-square] (a cow in the doorway), [hud-pod-status-and-altimeter-surface] (an armadillo by the pod).
 - Fails Motherload: its surface is a bare strip of brown soil under the sky, a handful of shops, and nothing alive. The soil is the game. Grass and trees are the single strongest "this is Minecraft" signal.
 - Fails the lore: Prosperity is a company town on a hostile world that emptied in one night. Grazing cattle say "safe and alive". They also contradict "400 bunks, all made up" and the silence of the last 38 years.
-- The colony pad is cut into the hills as a flat plate with sheer three-block cliffs at its edges ([colony-aerial-northwest], [colony-aerial-northeast]), so it reads as pasted on, not built on.
+- The colony pad is cut into the hills as a flat plate with sheer cliffs at its edges ([colony-aerial-northwest], [colony-aerial-northeast]), so it reads as pasted on, not built on.
 
 **2. The sky and light are a sunny Minecraft day.** Blue sky, the white square sun, white clouds, the vanilla orange dusk band, and the vanilla 20-minute day.
 
 - Stills: [sky-up-noon], [surface-south-dusk], [sky-up-dusk], [surface-north-night], [colony-from-the-south-edge].
-- Fails Motherload: the user remembers its world as "eternally dusk or night". In fact the original cycles day and night about once a minute, but almost all play happens underground against dark depth colours, so the felt mood is dark. Our surface is bright for half of every play hour.
+- Fails Motherload: the user remembers its world as "eternally dusk or night". In fact the original cycles day and night about once a minute, but almost all play happens underground against dark depth colours, so the felt mood is dark. Our surface is bright for about half of every 20-minute day.
 - Fails the lore: "a lamp is life" needs darkness around the lamp. A sunlit colony has nowhere for a lamp to matter.
 
 **3. The pod is a stretched vanilla block.** The Mole is raw copper, the Prospector is an iron block, a wreck is a coal block, each squashed to 0.9 blocks tall. It has no front, no drill, no window, no lamp and no treads. The player sits on top of it in the open, holding whatever is in their hand.
@@ -62,7 +62,7 @@ Ranked by how much each cause hurts the first impression. Each one names the sti
 - Fails Motherload: its shops are physical machines: grimy riveted metal panels, rounded CRT glass, cogs at the corners, bevelled red and green buttons, and a chrome model-number nameplate. Its HUD is diegetic: a red hull cylinder, an amber fuel can and a yellow altimeter.
 - Fails the lore: the Company's cheerful voice has no visual home. Its terminals could carry the bull logo, "Deeper Together!" and Personnel's smile.
 
-**7. The layer dressing is a vanilla mineshaft.** Oak planks, rails, cobblestone, bookshelves, a sea lantern clock, white quartz props. Company Rock is a riveted steel plate set into natural rock, so it reads as a misplaced poster. Lava sits as single glowing cubes in walls. The breach crust is a flat rust-red tile like netherrack.
+**7. The layer dressing is a vanilla mineshaft.** Oak planks, rails, cobblestone, bookshelves, a sea lantern clock, white quartz props. Company Rock is a riveted steel plate set into natural rock, so it reads as a misplaced poster. Lava sits as single glowing cubes in walls. The breach crust is a flat rust-red tile like netherrack. A vanilla nameplate ("PROSPECTOR-0002") floats over the wreck.
 
 - Stills: [structure-gallery-toward-the-rubble], [structure-punch-clock-overview], [structure-rails-long-drift], [structure-wreck-prospector-0002], [layer-2-cave-south], [layer-2-cave-east], [layer-1-breach-crust-floor].
 - Fails Motherload: each depth band has its own colour behind the tunnels (brown, near-black, dark green, teal, navy, plum, amber, red), so you feel the depth change. Our two layers are the same grey stone.
@@ -150,7 +150,7 @@ Each option gives what it looks like, a reference, what it serves, the cost and 
 - Serves: the user's "eternally dusk"; Motherload's dark mood; lamps matter at the colony.
 - Cost: low. One timeline file and one tag ([tryouts/dusk-sky.json](tryouts/dusk-sky.json)), tuned in the game. A GameTest samples the sky at noon and midnight.
 - Skin or code: **drop-in data**. A client atmosphere layer (one reload listener, tooling doc) would let F3+T reload it; optional.
-- Risks: the timeline must come after `minecraft:day` in the tag to override it (see [section 4](#4-tryouts-in-the-game)). The sun's square shape is vanilla; a round, smaller sun is a texture swap (`textures/environment/celestial/sun.png`).
+- Risks: the timeline must come after `minecraft:day` in the tag; the tryout confirmed that it then overrides vanilla's day and the biome's sky. The big square vanilla sun on the horizon looks out of place; a small, round sun is a texture swap (`textures/environment/celestial/sun.png`). The blue glow needs a lower alpha than the tryout's.
 
 **B. Eternal night.**
 
@@ -180,7 +180,7 @@ Each option gives what it looks like, a reference, what it serves, the cost and 
 
 **Why A:** it is the user's own words, it costs one data file, and it keeps gameplay day and night (beds, spawning) separate from the look. Look and gameplay are separate dials in 26.3: the timeline can hold the sky at dusk while `gameplay/sky_light_level` still decides whether monsters spawn.
 
-**Sky extras (any option):** a larger moon or a visible sister planet is a texture swap for one moon at vanilla's fixed size; two moons or a large planet need the optional Nuit mod or a mixin (tooling doc). Dust in the air is an `ambient_particles` attribute (data).
+**Sky extras (any option):** a different moon or a sister planet is a texture swap, but vanilla draws one moon at a fixed size; a large planet or two moons need the optional Nuit mod or a mixin (tooling doc). Dust in the air is an `ambient_particles` attribute (data), with a dust particle of our own (see [section 4](#4-tryouts-in-the-game), finding 11).
 
 ### 3.2 The surface: terrain, blocks, colour, flora
 
@@ -276,12 +276,12 @@ Every option needs a real entity model: Blockbench sources, GeckoLib 5.5.7 at ru
 **B. The Atlantis digger.**
 
 - Looks: long and heavy like a locomotive, riveted plate, a churning cutter head of toothed rings at the front, twin caged headlamps, an exhaust stack, tracks under the front and big wheels behind.
-- Reference: the Digger driven by "Mole" in *Atlantis: The Lost Empire* (2001): "a massive vehicle like a tank or locomotive with a huge spinning, churning drill at the front with many teeth", treads at the front and large rear wheels on a differential that drives the drill; the largest vehicle of the expedition's convoy ([Atlantis wiki: Digger](https://atlantisthelostempire.fandom.com/wiki/Digger)). The film's vehicles were designed from early-20th-century technology by Matt Codd and Jim Martin among four production designers, with Mike Mignola setting the angular style ([Wikipedia](https://en.wikipedia.org/wiki/Atlantis:_The_Lost_Empire)); concept art in [*The Art of Atlantis*](https://www.scbwi.org/books/0786853277) and [this gallery](https://characterdesignreferences.com/art-of-animation-1/art-of-atlantis-the-lost-empire).
+- Reference: the Digger driven by "Mole" in *Atlantis: The Lost Empire* (2001): "a massive vehicle like a tank or locomotive with a huge spinning, churning drill at the front with many teeth", treads at the front and large rear wheels on a differential that drives the drill; the largest vehicle of the expedition's convoy ([Atlantis wiki: Digger](https://atlantisthelostempire.fandom.com/wiki/Digger)). The team studied early-20th-century technology for the vehicles; Matt Codd and Jim Martin drew the submarine *Ulysses*, and Mike Mignola, one of four production designers, set the film's angular style ([Wikipedia](https://en.wikipedia.org/wiki/Atlantis:_The_Lost_Empire)); concept art in [*The Art of Atlantis*](https://www.scbwi.org/books/0786853277) and [this gallery](https://characterdesignreferences.com/art-of-animation-1/art-of-atlantis-the-lost-empire).
 - Serves: weight, menace and industry; the Company's machines.
 - Cost: medium to high; a long body does not fit a 1.9-block Mole bore.
 - Risks: a locomotive is wrong for a one-seat Mole that has to fly. Too big for the early game.
 
-**C. A hybrid ladder: Motherload at the top, Atlantis at the bottom.** **Recommended.**
+**C. A hybrid ladder: Motherload for the first chassis, Atlantis for the last.** **Recommended.**
 
 - Looks: the chassis ladder grows from one reference to the other.
   - **Mole:** a Motherload-style capsule (A) built in Atlantis materials: riveted plates, brass trim, a caged headlamp pair, a spiral drill whose cone is made of cutter rings.
@@ -476,7 +476,66 @@ Its behaviour belongs to the creatures session (#13). These are looks only; each
 
 ## 4. Tryouts in the game
 
-The tryout stills are being shot; this section follows in the next commit.
+Four looks, made with data files only (no code), shot in the game from the same views on the design-tour seed. In every grid:
+
+| | |
+|---|---|
+| **Top left:** today | **Top right:** eternal dusk (3.1 A) |
+| **Bottom left:** eternal night (3.1 B) | **Bottom right:** eternal dusk plus a colour grade |
+
+- **Surface:** the dusk and night skies are timelines ([dusk-sky.json](tryouts/dusk-sky.json), [night-sky.json](tryouts/night-sky.json)) added after vanilla's day in the overworld's timeline tag ([in_overworld.json](tryouts/in_overworld.json)). The terrain is still the vanilla savanna, because only the sky was changed.
+- **Layers, in the three new looks:** the fog colours follow the original's depth bands (layer 1 brown going black, layer 2 a near-black green), fog from 2 to 40 blocks in layer 1 and 2 to 28 in layer 2, a darker ambient colour, and faint drifting ash. The lamp tint (`block_light_tint`) is sodium amber in dusk and grade, cold white in night. Each layer view has one lamp-strength light (level 14) at the camera, as a pod's lights part places, and no night vision.
+- **Grade:** a post effect ([grade.json](tryouts/grade.json), [grade.fsh](tryouts/grade.fsh)) that pulls greens toward olive-brown, lowers saturation, warms the shadows and adds a vignette.
+
+**Surface, looking south:**
+
+![tryout-surface-south-day](https://github.com/pkeppeler/deepcharter/blob/pr-media/234/tryout-surface-south-day.png?raw=true)
+
+**Surface, looking west toward the sun:**
+
+![tryout-surface-west-day](https://github.com/pkeppeler/deepcharter/blob/pr-media/234/tryout-surface-west-day.png?raw=true)
+
+**The colony from the air:**
+
+![tryout-colony-aerial-day](https://github.com/pkeppeler/deepcharter/blob/pr-media/234/tryout-colony-aerial-day.png?raw=true)
+
+**The colony from the south edge, at gameplay night:**
+
+![tryout-colony-south-edge-night](https://github.com/pkeppeler/deepcharter/blob/pr-media/234/tryout-colony-south-edge-night.png?raw=true)
+
+**Layer 2, by lamp light (amber in dusk and grade, cold white in night):**
+
+![tryout-layer-2-lamp-east](https://github.com/pkeppeler/deepcharter/blob/pr-media/234/tryout-layer-2-lamp-east.png?raw=true)
+
+**The Prospector wreck in layer 2, as played:**
+
+![tryout-layer-2-wreck-as-played](https://github.com/pkeppeler/deepcharter/blob/pr-media/234/tryout-layer-2-wreck-as-played.png?raw=true)
+
+**Layer 1, a large cavern by lamp light:**
+
+![tryout-layer-1-lamp-west](https://github.com/pkeppeler/deepcharter/blob/pr-media/234/tryout-layer-1-lamp-west.png?raw=true)
+
+More grids: [surface east](https://github.com/pkeppeler/deepcharter/blob/pr-media/234/tryout-surface-east-day.png?raw=true), [surface south at night](https://github.com/pkeppeler/deepcharter/blob/pr-media/234/tryout-surface-south-night.png?raw=true), [colony from the air at night](https://github.com/pkeppeler/deepcharter/blob/pr-media/234/tryout-colony-aerial-night.png?raw=true), [colony from the south edge by day](https://github.com/pkeppeler/deepcharter/blob/pr-media/234/tryout-colony-south-edge-day.png?raw=true), layer 1 [south](https://github.com/pkeppeler/deepcharter/blob/pr-media/234/tryout-layer-1-lamp-south.png?raw=true) and [east](https://github.com/pkeppeler/deepcharter/blob/pr-media/234/tryout-layer-1-lamp-east.png?raw=true), layer 2 [south](https://github.com/pkeppeler/deepcharter/blob/pr-media/234/tryout-layer-2-lamp-south.png?raw=true) and [west](https://github.com/pkeppeler/deepcharter/blob/pr-media/234/tryout-layer-2-lamp-west.png?raw=true). Every single still is also on `pr-media/234/`, named `<look>--<view>.png` (for example [dusk--surface-south-day](https://github.com/pkeppeler/deepcharter/blob/pr-media/234/dusk--surface-south-day.png?raw=true)).
+
+### What the tryouts show
+
+1. **The sky alone changes the mood a lot, for one data file.** The dusk timeline turns the blue noon into a rust evening with a haze; the night timeline gives a maroon starfield.
+2. **The sky alone cannot hide Minecraft.** Grass, acacias and the colony's vanilla walls still read as "Minecraft at sunset". Even with the grade, the tree shapes give it away. This confirms that the surface (3.2) and the colony materials (3.3) must change, not only the light.
+3. **The override works.** A timeline listed after `minecraft:day` in the tag wins over vanilla's day and over the savanna's own sky colour. This settles the open question in the tooling doc.
+4. **The vanilla sun is now the most "Minecraft" thing in the sky.** At a fixed low angle the big white square sits on the horizon (surface west). Replace it with a small, round, pale sun texture.
+5. **The pale-blue sun glow is too wide at this strength.** It paints a grey band across a third of the sky (colony from the air). Lower its alpha and keep it near the sun.
+6. **Night (3.1 B) is moody, but the colony is barely readable** without its own lamps. Night needs the lit colony of 3.3 first.
+7. **Lamp tint is a strong, cheap lever below ground.** Amber warms the rock; cold white turns layer 2 blue-grey and clinical. It is the simplest way to tell the true lamp, Company light and the deep's own light apart (3.8), and to give each layer a mood.
+8. **Layer 2's near-black green fog reads as a different place** from layer 1's brown, even in a dark scene. Good for "you are somewhere new" after a breach.
+9. **Fog colour shows only at the edge of the light.** In layer 1's large cavern the lamp does not reach the walls, so the views are mostly fog and darkness. Tune fog as played, never under night vision.
+10. **One grade everywhere is wrong.** It unifies the surface palette but crushes the layers to near black. Use a grade per place: a stronger one on the surface, a light one below.
+11. **Vanilla white ash reads as square flakes near the camera.** Drifting dust needs a particle of our own.
+
+**Recommendation after the tryouts:** eternal dusk (3.1 A) with a smaller sun glow and a new sun texture; per-layer fog from the depth bands; amber for Company light and warm white for true lamps; a per-place grade later, once the new surface exists.
+
+To try a look: copy `dusk-sky.json` or `night-sky.json` to `data/deepcharter/timeline/tryout_sky.json` and `in_overworld.json` to `data/minecraft/tags/timeline/in_overworld.json` in any data pack, then open a new world. For the grade, copy `grade.json` to `assets/deepcharter/post_effect/tryout_grade.json` and `grade.fsh` to `assets/deepcharter/shaders/post/tryout_grade.fsh`, then run `/posteffect add @s deepcharter:tryout_grade`.
+
+*How they were shot:* a throwaway scenario (`art-tryout`) on a detached worktree with PR #220's harness fix, never committed. The Mac's screen locked during the session, which stops OpenGL client runs; the Vulkan backend (`--graphicsBackend vulkan`) ran normally on the locked screen.
 
 ---
 
