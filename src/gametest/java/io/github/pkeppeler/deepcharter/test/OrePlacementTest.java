@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -27,6 +28,7 @@ import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
+import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
@@ -46,6 +48,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
+import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 
 /**
  * Server GameTests for #63: ore and hazards placed per zone, the gas formula and blast, and what hands and drills
@@ -235,44 +238,47 @@ public class OrePlacementTest {
 		helper.succeed();
 	}
 
-	@GameTest
+	@GameTest(maxTicks = MAX_TICKS)
 	public void aGasBlastCostsAPodDepthTimesRadiator(GameTestHelper helper) {
 		ServerLevel level = layer(helper, 1);
 		BlockPos centre = new BlockPos(7100, 60, Z);
-		stoneCube(level, centre, 3);
-		PodEntity near = pod(level, Vec3.atBottomCenterOf(centre.above()));
-		PodEntity far = pod(level, Vec3.atBottomCenterOf(centre.offset(10, 1, 0)));
-		float before = near.hull();
-		level.setBlock(centre, HazardBlocks.GAS_POCKET.defaultBlockState(), 2);
-		// A second pocket in the blast: the blast is one event, so it is one payment.
-		level.setBlock(centre.east(), HazardBlocks.GAS_POCKET.defaultBlockState(), 2);
-		level.destroyBlock(centre, false);
-		GasHazard.vent(level, centre);
+		FarChunks.awaitEntityTicking(helper, level, centre, () -> {
+			stoneCube(level, centre, 3);
+			PodEntity near = pod(level, Vec3.atBottomCenterOf(centre.above()));
+			PodEntity far = pod(level, Vec3.atBottomCenterOf(centre.offset(10, 1, 0)));
+			float before = near.hull();
+			level.setBlock(centre, HazardBlocks.GAS_POCKET.defaultBlockState(), 2);
+			// A second pocket in the blast: the blast is one event, so it is one payment.
+			level.setBlock(centre.east(), HazardBlocks.GAS_POCKET.defaultBlockState(), 2);
+			level.destroyBlock(centre, false);
+			GasHazard.vent(level, centre);
 
-		float damage = GasHazard.damage(Depth.feet(Depth.of(level, centre.getY())), 1f);
-		if (damage <= 0f || damage >= before) {
-			throw failure(helper, "the test depth gives a damage of %s on a hull of %s", damage, before);
-		}
-		if (Math.abs(near.hull() - (before - damage)) > 1e-3f) {
-			throw failure(helper, "the pod's hull is %s after the blast, expected %s - %s = %s", near.hull(), before, damage, before - damage);
-		}
-		if (far.hull() != before) {
-			throw failure(helper, "a pod 10 blocks away was hurt: hull %s", far.hull());
-		}
-		near.discard();
-		far.discard();
-		helper.succeed();
+			float damage = GasHazard.damage(Depth.feet(Depth.of(level, centre.getY())), 1f);
+			if (damage <= 0f || damage >= before) {
+				throw failure(helper, "the test depth gives a damage of %s on a hull of %s", damage, before);
+			}
+			if (Math.abs(near.hull() - (before - damage)) > 1e-3f) {
+				throw failure(helper, "the pod's hull is %s after the blast, expected %s - %s = %s", near.hull(), before, damage, before - damage);
+			}
+			if (far.hull() != before) {
+				throw failure(helper, "a pod 10 blocks away was hurt: hull %s", far.hull());
+			}
+			near.discard();
+			far.discard();
+			helper.succeed();
+		});
 	}
 
 	@GameTest(maxTicks = MAX_TICKS)
 	public void aTierTwoRadiatorTakesThreeQuartersOfAGasBlast(GameTestHelper helper) {
 		ServerLevel level = layer(helper, 1);
-		BlockPos centre = new BlockPos(7700, 60, Z);
+		BlockPos centre = new BlockPos(7800, 60, Z);
 		FarChunks.awaitEntityTicking(helper, level, centre, () -> {
 			MinecraftServer server = level.getServer();
 			UUID founder = UUID.randomUUID();
-			if (Charters.found(server, founder, "Radiator gas").isPresent()) {
-				throw failure(helper, "the charter was refused");
+			Optional<CharterRefusal> refusal = Charters.found(server, founder, "Radiator gas");
+			if (refusal.isPresent()) {
+				throw failure(helper, "the charter was refused for founder %s: %s", founder, refusal);
 			}
 			CharterId charter = Charters.charterOf(server, founder).orElseThrow().id();
 			stoneCube(level, centre, 3);
@@ -290,8 +296,8 @@ public class OrePlacementTest {
 			if (Math.abs(stockLoss - base) > 1e-3f) {
 				throw failure(helper, "the stock pod lost %s, expected the base %s", stockLoss, base);
 			}
-			if (Math.abs(cooledLoss - 0.75f * base) > 1e-3f) {
-				throw failure(helper, "the tier 2 radiator pod lost %s, expected 0.75 x %s", cooledLoss, base);
+			if (Math.abs(cooledLoss - UpgradeTuning.DEFAULT.ratio(ComponentTrack.RADIATOR, 2) * base) > 1e-3f) {
+				throw failure(helper, "the tier 2 radiator pod lost %s, expected the tier 2 ratio x %s", cooledLoss, base);
 			}
 			helper.succeed();
 		});

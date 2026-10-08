@@ -5,8 +5,6 @@ import net.minecraft.tags.FluidTags;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
-import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
-import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 
 /**
  * Lava as a pod hazard (SPEC section 10): a pod in or touching lava loses hull each tick, and at 0 it is a wreck (#67).
@@ -29,7 +27,7 @@ public final class LavaHazard {
 		if (!touchesLava(pod)) {
 			return;
 		}
-		float radiator = UpgradeTuning.DEFAULT.ratio(ComponentTrack.RADIATOR, PodComponents.effectiveTier(pod, ComponentTrack.RADIATOR));
+		float radiator = PodComponents.radiatorRatio(pod);
 		pod.damageHull(LayerTuning.DEFAULT.lavaHullPerSecond() / TICKS_PER_SECOND * radiator);
 	}
 
