@@ -191,7 +191,7 @@ public final class PodTowing {
 	}
 
 	/** The tower of a towed pod, when it is in the same level and still there. */
-	private static Optional<PodEntity> tower(PodEntity towed) {
+	public static Optional<PodEntity> tower(PodEntity towed) {
 		Optional<UUID> id = towerId(towed);
 		if (id.isEmpty() || !(towed.level() instanceof ServerLevel level) || !(level.getEntity(id.get()) instanceof PodEntity tower) || tower.isRemoved()) {
 			return Optional.empty();

@@ -127,6 +127,10 @@ public final class HandbookTriggers {
 		creditRepair(repairs, player, done, TerminalTypes.UPGRADE_TERMINAL, REPAIR_UPGRADE_TERMINAL);
 	}
 
+	/** Skeleton for #84. */
+	public static void pollPlayer(MinecraftServer server, ServerPlayer player) {
+	}
+
 	private static void creditRepair(RepairState repairs, ServerPlayer player, Set<Identifier> done, TerminalType type, Identifier directive) {
 		if (!done.contains(directive) && repairs.repaired(type)) {
 			Directives.fire(player, directive);

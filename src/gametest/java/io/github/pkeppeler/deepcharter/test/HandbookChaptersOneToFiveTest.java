@@ -13,10 +13,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import net.fabricmc.fabric.api.event.Event;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.advancements.triggers.CriteriaTriggers;
@@ -85,7 +88,7 @@ public class HandbookChaptersOneToFiveTest {
 	private static final BlockPos TERMINAL = new BlockPos(0, 1, 0);
 
 	/** The permanent ids: a world's saved progress names these directives. */
-	private static final Map<String, List<String>> PINNED = Map.of(
+	static final Map<String, List<String>> PINNED = Map.of(
 			"deepcharter:welcome", List.of("deepcharter:handbook/welcome/gather_wood", "deepcharter:handbook/welcome/craft_crafting_table",
 					"deepcharter:handbook/welcome/craft_stone_tools", "deepcharter:handbook/welcome/mine_iron_ore",
 					"deepcharter:handbook/welcome/smelt_iron"),
@@ -96,11 +99,11 @@ public class HandbookChaptersOneToFiveTest {
 					"deepcharter:handbook/fuel_is_life/drill_down", "deepcharter:handbook/fuel_is_life/return_to_colony"),
 			"deepcharter:every_sale_counts", List.of("deepcharter:handbook/every_sale_counts/sell_ore",
 					"deepcharter:handbook/every_sale_counts/buy_component", "deepcharter:handbook/every_sale_counts/install_component"));
-	private static final List<String> ORDER = List.of("deepcharter:welcome", "deepcharter:back_online", "deepcharter:meet_the_mole",
+	static final List<String> ORDER = List.of("deepcharter:welcome", "deepcharter:back_online", "deepcharter:meet_the_mole",
 			"deepcharter:fuel_is_life", "deepcharter:every_sale_counts");
 
 	/** The chapters of this issue by id in handbook order, leaving out the sample chapter that the test mod adds in front. */
-	private static Map<String, HandbookChapter> shipped(MinecraftServer server) {
+	static Map<String, HandbookChapter> shipped(MinecraftServer server) {
 		Map<String, HandbookChapter> chapters = new LinkedHashMap<>();
 		for (Holder.Reference<HandbookChapter> chapter : HandbookChapters.all(server)) {
 			if (!chapter.key().identifier().getPath().equals(SAMPLE)) {
@@ -110,15 +113,17 @@ public class HandbookChaptersOneToFiveTest {
 		return chapters;
 	}
 
-	private static List<String> directivesOf(HandbookChapter chapter) {
+	static List<String> directivesOf(HandbookChapter chapter) {
 		return chapter.directives().stream().map(entry -> entry.id().toString()).toList();
 	}
 
 	@GameTest
 	public void chaptersOneToFiveAndTheirDirectivesArePinnedInOrder(GameTestHelper helper) {
 		Map<String, HandbookChapter> chapters = shipped(helper.getLevel().getServer());
-		if (!new ArrayList<>(chapters.keySet()).equals(ORDER)) {
-			throw helper.assertionException("the chapters should be %s in order, got %s", ORDER, chapters.keySet());
+		// Chapters 6 to 9 follow these five (#84).
+		List<String> firstFive = new ArrayList<>(chapters.keySet()).subList(0, ORDER.size());
+		if (!firstFive.equals(ORDER)) {
+			throw helper.assertionException("the first chapters should be %s in order, got %s", ORDER, chapters.keySet());
 		}
 		int order = 1;
 		for (String id : ORDER) {
@@ -131,7 +136,7 @@ public class HandbookChaptersOneToFiveTest {
 		helper.succeed();
 	}
 
-	private static final Pattern PROSE_KEY = Pattern.compile(
+	static final Pattern PROSE_KEY = Pattern.compile(
 			"deepcharter\\.handbook\\.(chapter\\..*\\.(text\\.\\d+(\\.margin)?|margin)|appendix\\..*)");
 
 	/**
@@ -172,7 +177,7 @@ public class HandbookChaptersOneToFiveTest {
 	}
 
 	/** {@code prefix + 1}, {@code prefix + 2}, ... while the language file has them, each with its margin note key when it has one. */
-	private static List<String> pagesFrom(JsonObject lang, String prefix) {
+	static List<String> pagesFrom(JsonObject lang, String prefix) {
 		List<String> keys = new ArrayList<>();
 		for (int page = 1; lang.has(prefix + page); page++) {
 			keys.add(prefix + page);
@@ -183,7 +188,7 @@ public class HandbookChaptersOneToFiveTest {
 		return keys;
 	}
 
-	private static JsonObject lang() {
+	static JsonObject lang() {
 		try (InputStream stream = HandbookChaptersOneToFiveTest.class.getResourceAsStream("/assets/deepcharter/lang/en_us.json")) {
 			if (stream == null) {
 				throw new IllegalStateException("no generated language file");
@@ -198,14 +203,14 @@ public class HandbookChaptersOneToFiveTest {
 		return Identifier.parse(id);
 	}
 
-	private static void give(ServerPlayer player, Item item) {
+	static void give(ServerPlayer player, Item item) {
 		ItemStack stack = new ItemStack(item);
 		player.getInventory().add(stack.copy());
 		CriteriaTriggers.INVENTORY_CHANGED.trigger(player, player.getInventory(), stack);
 		HandbookProgress.sweep(player);
 	}
 
-	private static void expectCompleted(GameTestHelper helper, MinecraftServer server, String step, List<ServerPlayer> crew, Set<String> expected) {
+	static void expectCompleted(GameTestHelper helper, MinecraftServer server, String step, List<ServerPlayer> crew, Set<String> expected) {
 		for (ServerPlayer member : crew) {
 			Set<String> actual = new LinkedHashSet<>();
 			HandbookProgress.completedFor(server, member.getUUID()).stream().filter(id -> !id.getPath().startsWith("handbook/sample"))
@@ -217,7 +222,7 @@ public class HandbookChaptersOneToFiveTest {
 	}
 
 	/** The chapter the crew is on, the first with a directive left: every chapter before it shows in full and the one after it only as a preview. */
-	private static void expectRoadAt(GameTestHelper helper, MinecraftServer server, ServerPlayer player, int current) {
+	static void expectRoadAt(GameTestHelper helper, MinecraftServer server, ServerPlayer player, int current) {
 		Set<Identifier> done = HandbookProgress.completedFor(server, player.getUUID());
 		List<List<Identifier>> directives = new ArrayList<>();
 		shipped(server).values().forEach(chapter -> directives.add(chapter.directives().stream().map(HandbookChapter.Entry::id).toList()));
@@ -245,16 +250,16 @@ public class HandbookChaptersOneToFiveTest {
 		return directives;
 	}
 
-	private static String directive(String chapter, String name) {
+	static String directive(String chapter, String name) {
 		return "deepcharter:handbook/" + chapter + "/" + name;
 	}
 
-	private static void stand(GameTestHelper helper, MockPlayer mock, BlockPos terminal) {
+	static void stand(GameTestHelper helper, MockPlayer mock, BlockPos terminal) {
 		Vec3 centre = Vec3.atCenterOf(terminal);
 		mock.teleportTo(helper.getLevel(), new Vec3(centre.x + 2, centre.y - mock.player().getEyeHeight(), centre.z), 0, 0);
 	}
 
-	private static void expectDone(GameTestHelper helper, Optional<TerminalRefusal> refusal, String what) {
+	static void expectDone(GameTestHelper helper, Optional<TerminalRefusal> refusal, String what) {
 		if (refusal.isPresent()) {
 			throw helper.assertionException("%s should succeed, was refused: %s", what, refusal.get());
 		}
@@ -269,7 +274,7 @@ public class HandbookChaptersOneToFiveTest {
 		}
 	}
 
-	private static String uniqueName() {
+	static String uniqueName() {
 		return "Chapters " + UUID.randomUUID().toString().substring(0, 8);
 	}
 
@@ -393,7 +398,7 @@ public class HandbookChaptersOneToFiveTest {
 			args.putInt(UpgradeTerminal.TIER_KEY, 1);
 			expectDone(helper, Terminals.act(first, terminal, UpgradeTerminal.BUY, args), "buying a hull");
 			expectCompleted(helper, server, "chapter 5", both, through(5));
-			expectRoadAt(helper, server, second, 4);
+			expectRoadAt(helper, server, second, 5);
 			helper.succeed();
 		} finally {
 			if (pod != null) {
@@ -424,10 +429,10 @@ public class HandbookChaptersOneToFiveTest {
 		}
 	}
 
-	private static final Set<String> THREE_REPAIRS = Set.of(directive("back_online", "repair_fuel_pump"),
+	static final Set<String> THREE_REPAIRS = Set.of(directive("back_online", "repair_fuel_pump"),
 			directive("back_online", "repair_ore_processor"), directive("back_online", "repair_upgrade_terminal"));
 
-	private static Set<Identifier> completed(MinecraftServer server, ServerPlayer player) {
+	static Set<Identifier> completed(MinecraftServer server, ServerPlayer player) {
 		return HandbookProgress.completedFor(server, player.getUUID());
 	}
 
@@ -451,7 +456,7 @@ public class HandbookChaptersOneToFiveTest {
 		}
 	}
 
-	private static void foundCharter(GameTestHelper helper, MinecraftServer server, MockPlayer mock) {
+	static void foundCharter(GameTestHelper helper, MinecraftServer server, MockPlayer mock) {
 		mock.player().setGameMode(GameType.SURVIVAL);
 		if (Charters.found(server, mock.player().getUUID(), uniqueName()).isPresent()) {
 			throw helper.assertionException("founding should succeed");
@@ -622,6 +627,56 @@ public class HandbookChaptersOneToFiveTest {
 			}
 			pilot.leave();
 		}
+	}
+
+	private static final Identifier BEFORE_THE_POLL = Identifier.fromNamespaceAndPath("deepcharter-test", "before_the_handbook_poll");
+	private static final Identifier AFTER_THE_POLL = Identifier.fromNamespaceAndPath("deepcharter-test", "after_the_handbook_poll");
+	private static final AtomicBoolean REPAIRS_ARMED = new AtomicBoolean();
+	private static RepairState worldsRepairs;
+
+	// The handbook's own END_SERVER_TICK listener is in the default phase: the swap goes in just before it and comes out just after it,
+	// on the one tick, so no other test sees the repaired state.
+	static {
+		Event<ServerTickEvents.EndTick> endTick = ServerTickEvents.END_SERVER_TICK;
+		endTick.addPhaseOrdering(BEFORE_THE_POLL, Event.DEFAULT_PHASE);
+		endTick.addPhaseOrdering(Event.DEFAULT_PHASE, AFTER_THE_POLL);
+		endTick.register(BEFORE_THE_POLL, server -> {
+			if (REPAIRS_ARMED.get() && server.getTickCount() % HandbookTuning.DEFAULT.triggerPollTicks() == 0) {
+				worldsRepairs = RepairState.get(server);
+				RepairState fresh = new RepairState();
+				for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL)) {
+					type.parts().forEach(part -> fresh.insert(type, part));
+				}
+				server.getDataStorage().set(RepairState.TYPE, fresh);
+			}
+		});
+		endTick.register(AFTER_THE_POLL, server -> {
+			if (worldsRepairs != null) {
+				server.getDataStorage().set(RepairState.TYPE, worldsRepairs);
+				worldsRepairs = null;
+				REPAIRS_ARMED.set(false);
+			}
+		});
+	}
+
+	/**
+	 * The server tick listener that {@code HandbookTriggers.init()} registers credits a charter founded after the repairs, on a tick
+	 * that is a multiple of {@code triggerPollTicks}: the repaired state is in place for that tick only, and nobody is credited before.
+	 */
+	@GameTest(maxTicks = 100)
+	public void theServerTickListenerCreditsTheRepairsOnAPollTick(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		RepairState world = RepairState.get(server);
+		MockPlayer late = MockPlayers.join(helper, "Latecomer");
+		foundCharter(helper, server, late);
+		expectCompleted(helper, server, "founding before the poll", List.of(late.player()), Set.of());
+		REPAIRS_ARMED.set(true);
+		helper.succeedWhen(() -> {
+			expectCompleted(helper, server, "a poll tick", List.of(late.player()), THREE_REPAIRS);
+			if (RepairState.get(server) != world || worldsRepairs != null) {
+				throw helper.assertionException("the world's own repair state should be back in place after the poll tick");
+			}
+		});
 	}
 
 	private static HangarData foundedHangar() {
