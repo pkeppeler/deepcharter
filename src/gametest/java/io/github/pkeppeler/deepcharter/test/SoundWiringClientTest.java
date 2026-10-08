@@ -20,6 +20,7 @@ import net.minecraft.client.sounds.WeighedSoundEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -28,6 +29,7 @@ import net.minecraft.sounds.Music;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
@@ -144,6 +146,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 			two.server().runOnServer(server -> two.mock().releaseInput());
 			await(context, heard, client -> heard.count("pod.engine_idle") > idleLoops);
 			movingHold(context, heard, two, podId);
+			levelRoundTrip(context, heard, two, podId);
 
 			two.server().runOnServer(server -> two.mock().setInput(SPRINT));
 			await(context, heard, client -> heard.count("pod.engine_drill_down") > 0);
@@ -166,20 +169,40 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 		}
 	}
 
-	/**
-	 * A pod that moves in bursts with rests between them is one driving engine, not an engine that swaps with the idle loop in
-	 * every rest. A burst is far over {@code movingSpeed} a tick and a rest is a few ticks.
-	 */
+	/** Bursts of movement with rests between them keep one drive loop: every burst is a real move, a rest is a few ticks. */
 	private static void movingHold(ClientGameTestContext context, Heard heard, TwoPlayerServer two, int podId) {
 		long driveBefore = heard.count("pod.engine_drive");
 		long idleBefore = heard.count("pod.engine_idle");
 		for (int burst = 0; burst < BURSTS; burst++) {
-			double x = X + (burst % 2) * BURST_BLOCKS;
+			double x = X + ((burst + 1) % 2) * BURST_BLOCKS;
 			two.server().runOnServer(server -> server.overworld().getEntity(podId).teleportTo(x, FLOOR_Y, Z - 1));
 			context.waitTicks(BURST_TICKS);
 		}
 		check(heard.count("pod.engine_drive") - driveBefore == 1, "a pod moving in bursts keeps one drive loop, heard " + heard.played);
 		check(heard.count("pod.engine_idle") == idleBefore, "a pod moving in bursts does not fall back to idle between them, heard " + heard.played);
+	}
+
+	/**
+	 * The vanilla sound engine drops its loops on a level change without stopping them, so only the pod loops' own reset clears
+	 * them: a pod that stayed behind must be heard again when the player comes back to its level.
+	 */
+	private static void levelRoundTrip(ClientGameTestContext context, Heard heard, TwoPlayerServer two, int podId) {
+		await(context, heard, client -> heard.isPlaying(client.getSoundManager(), "pod.engine_idle"));
+		long idleBefore = heard.count("pod.engine_idle");
+		teleportReal(two, LayerChain.dimension(1), 0.5, 100, 0.5);
+		await(context, heard, client -> client.level.dimension().equals(LayerChain.dimension(1)));
+		teleportReal(two, Level.OVERWORLD, X + 3.5, FLOOR_Y, Z - 3.5);
+		await(context, heard, client -> client.level.dimension().equals(Level.OVERWORLD)
+				&& client.level.getEntity(podId) != null && client.level.getEntity(podId).tickCount > 0
+				&& heard.count("pod.engine_idle") > idleBefore);
+	}
+
+	private static void teleportReal(TwoPlayerServer two, ResourceKey<Level> dimension, double x, double y, double z) {
+		two.server().runOnServer(server -> {
+			ServerPlayer real = server.getPlayerList().getPlayers().stream()
+					.filter(player -> player != two.mock().player()).findFirst().orElseThrow();
+			real.teleportTo(server.getLevel(dimension), x, y, z, Set.of(), 0, 0, true);
+		});
 	}
 
 	private static void terminalsAndUi(ClientGameTestContext context, Heard heard) {
