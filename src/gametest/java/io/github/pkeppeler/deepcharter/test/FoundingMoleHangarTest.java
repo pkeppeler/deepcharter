@@ -18,14 +18,12 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -282,22 +280,6 @@ public class FoundingMoleHangarTest {
 		}
 	}
 
-	/**
-	 * Runs {@code body} with a hangar console standing at {@code console}, and puts back what stood there. The colony builder
-	 * flattens the pad when ColonyTest rebuilds an interrupted colony, which removes the console, and the hangar places a
-	 * console only together with a new derelict Mole, so a world that has been through that test has none.
-	 */
-	private static void withTheWorldsConsole(GameTestHelper helper, BlockPos console, Runnable body) {
-		ServerLevel level = server(helper).overworld();
-		BlockState before = level.getBlockState(console);
-		level.setBlock(console, HangarTerminal.TYPE.block().defaultBlockState(), 3);
-		try {
-			body.run();
-		} finally {
-			level.setBlock(console, before, 3);
-		}
-	}
-
 	private static Optional<TerminalRefusal> act(ServerPlayer player, BlockPos pos, Identifier action) {
 		return Terminals.act(player, pos, action, new CompoundTag());
 	}
@@ -532,21 +514,19 @@ public class FoundingMoleHangarTest {
 			insertTheParts(helper);
 			MinecraftServer server = server(helper);
 			BlockPos console = Hangar.consolePos(server).orElseThrow(() -> failure(helper, "the hangar should have a console"));
-			withTheWorldsConsole(helper, console, () -> {
-				PodEntity derelict = Hangar.derelict(server).orElseThrow();
-				MockPlayer owner = member(helper, "Bay Salvager");
-				stand(helper, owner, console);
-				BlockPos anchor = hangarAnchor(helper);
-				PodEntity own = wreckAt(helper, Vec3.atBottomCenterOf(anchor.offset(-4, 0, 6)), charterOf(helper, owner).id());
-				expect(helper, derelict.position().distanceTo(Vec3.atCenterOf(console)) < own.position().distanceTo(Vec3.atCenterOf(console)),
-						"the derelict is nearer the console than the charter's wreck");
-				deposit(helper, owner, RICH);
-				give(owner.player(), CATALYST, HangarTuning.DEFAULT.restoreCatalysts());
+			PodEntity derelict = Hangar.derelict(server).orElseThrow();
+			MockPlayer owner = member(helper, "Bay Salvager");
+			stand(helper, owner, console);
+			BlockPos anchor = hangarAnchor(helper);
+			PodEntity own = wreckAt(helper, Vec3.atBottomCenterOf(anchor.offset(-4, 0, 6)), charterOf(helper, owner).id());
+			expect(helper, derelict.position().distanceTo(Vec3.atCenterOf(console)) < own.position().distanceTo(Vec3.atCenterOf(console)),
+					"the derelict is nearer the console than the charter's wreck");
+			deposit(helper, owner, RICH);
+			give(owner.player(), CATALYST, HangarTuning.DEFAULT.restoreCatalysts());
 
-				expectDone(helper, act(owner.player(), console, HangarTerminal.RESTORE_WRECK), "restoring your own wreck farther than the derelict");
-				expect(helper, !Wrecks.isWreck(own) && Wrecks.isWreck(derelict) && PodComponents.registration(derelict).isEmpty(),
+			expectDone(helper, act(owner.player(), console, HangarTerminal.RESTORE_WRECK), "restoring your own wreck farther than the derelict");
+			expect(helper, !Wrecks.isWreck(own) && Wrecks.isWreck(derelict) && PodComponents.registration(derelict).isEmpty(),
 					"the charter's wreck is restored and the derelict is left alone");
-			});
 			helper.succeed();
 		}));
 	}

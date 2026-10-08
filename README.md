@@ -54,5 +54,4 @@ Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest
 - `test/support/MockPlayers` joins a real server-side player with no client behind it.
 - `test/support/TwoPlayerServer` starts a dedicated server in a client GameTest, joins the real client, then joins one mock player.
 - `test/evidence/` holds the PR evidence scenarios (see `tools/record-evidence.sh`).
-- The world is shared by every GameTest. A test that reads a block of the real colony (the hangar console) places it first and puts back what stood there: `ColonyTest` rebuilds the colony over itself and removes such blocks, and nothing places them again.
 - Wait on entity ticks, not server ticks: chunks far from the players do not tick at first in a fresh world.
