@@ -55,7 +55,7 @@ import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
  * of its parts are void.
  *
  * <p>Only the owner charter's members can pilot a pod ({@link PodEvents#CAN_MOUNT}). Anyone can refuel it ({@link PodFuel}
- * asks nobody) and, from #76, tow it. A pod with no owner, such as one spawned by a command, is anyone's.
+ * asks nobody). Towing asks {@link #mayAccess} ({@link PodTowing}). A pod with no owner, such as one spawned by a command, is anyone's.
  *
  * <p>The listeners run on every tick and on the client, so they never throw on an unreadable state: they log once, read it
  * as a pod with no parts, and refuse every pilot, because the owner is unknown. {@link #register} and {@link #install} are explicit changes and do throw.

@@ -7,6 +7,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.item.Item;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 
@@ -25,7 +26,15 @@ public final class PodRegistry {
 					.updateInterval(1)
 					.build(POD_KEY));
 
+	/** Used on a pod, it fits a tow cable from the pod the player rides, or takes one off (see {@link PodTowing}). */
+	public static final Item TOW_CABLE = item("tow_cable");
+
 	private PodRegistry() {
+	}
+
+	private static Item item(String path) {
+		ResourceKey<Item> key = ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
+		return Registry.register(BuiltInRegistries.ITEM, key, new Item(new Item.Properties().setId(key).stacksTo(1)));
 	}
 
 	public static void register() {
