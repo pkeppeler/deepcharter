@@ -15,6 +15,7 @@ public final class PodData {
 	public static final EntityDataAccessor<Float> CARGO_MASS = define(EntityDataSerializers.FLOAT);
 	public static final EntityDataAccessor<Boolean> FLYING = define(EntityDataSerializers.BOOLEAN);
 	public static final EntityDataAccessor<Boolean> DRILLING = define(EntityDataSerializers.BOOLEAN);
+	public static final EntityDataAccessor<Boolean> HULL_BURNING = define(EntityDataSerializers.BOOLEAN);
 	public static final EntityDataAccessor<Direction> DRILL_DIRECTION = define(EntityDataSerializers.DIRECTION);
 
 	private PodData() {
@@ -33,6 +34,7 @@ public final class PodData {
 		builder.define(CARGO_MASS, 0f);
 		builder.define(FLYING, false);
 		builder.define(DRILLING, false);
+		builder.define(HULL_BURNING, false);
 		builder.define(DRILL_DIRECTION, Direction.DOWN);
 	}
 

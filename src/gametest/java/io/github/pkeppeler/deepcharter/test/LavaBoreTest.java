@@ -61,8 +61,8 @@ import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
  * <p>The default run is a smoke case of {@link #SMOKE_BORES} bores: a control through the crust, and a bore that meets a lava block
  * placed in its path. It proves the harness in seconds. The measurement is the same test with {@value #BORES_ENV}{@code =<n>} in
  * the environment, for example {@code DEEPCHARTER_LAVA_BORES=100 tools/gametest.sh 'lava_bore_test*'}: n full bores side by side,
- * in chunks of one world seed, printing the lines that start with {@code [lava-bore]}. {@value #RIDER_ENV}{@code =shielded} runs
- * the what-if in which lava cannot hurt the pilot (the harness restores its health; the game does not shield a rider).
+ * in chunks of one world seed, printing the lines that start with {@code [lava-bore]}. The pod shields its seated pilot from lava (#288),
+ * so lava ends a bore through hull loss, not pilot death.
  *
  * <p>The pilot is a bot with no reaction: it holds sprint, and so bores straight down until the pod is dead, the pilot is dead or
  * the pod is through. Layer 1's rock is full of company rock, which the drill refuses (a clean 2 x 2 column over the whole layer is
@@ -75,9 +75,6 @@ public class LavaBoreTest {
 
 	static final String BORES_ENV = "DEEPCHARTER_LAVA_BORES";
 	private static final String REQUESTED_BORES = System.getenv(BORES_ENV);
-	/** {@value #SHIELDED} runs the what-if in which lava cannot hurt the pilot; unset is the game as it is. */
-	static final String RIDER_ENV = "DEEPCHARTER_LAVA_BORES_RIDER";
-	private static final String SHIELDED = "shielded";
 	/** The smoke case: a control that bores only the crust, and a bore through the last stretch of Deep Claim. */
 	static final int SMOKE_BORES = 2;
 	/**
@@ -87,7 +84,8 @@ public class LavaBoreTest {
 	private static final int SMOKE_CROSSING_Y = 3;
 	private static final int SMOKE_LAVA_Y = 24;
 	/**
-	 * The lava block the smoke bore must meet first, 3 slabs below its start: above any lava the seed put in the shaft's way, and in the scanner's view from the first scan.
+	 * The lava block the smoke bore must meet first, 3 slabs below its start: above any lava the world seed put in the shaft's way, and in the scanner's view from the first scan.
+	 * The height was picked for the game test world's seed 0, so a different seed may need a different value.
 	 * It is in the scan plane (the pod faces south, so the plane is the pod's x) and in the pod's footprint.
 	 */
 	private static final int SMOKE_LAVA_BLOCK_Y = 21;
@@ -325,11 +323,6 @@ public class LavaBoreTest {
 		FarChunks.awaitEntityTicking(helper, level, probes, index -> launch(helper, server, bores.get(index)));
 	}
 
-	/** The what-if: a pod that shields its rider, so that the hull is the only thing lava takes. The game does not do this; the harness heals the pilot. */
-	private static boolean ridersShielded() {
-		return SHIELDED.equalsIgnoreCase(System.getenv(RIDER_ENV));
-	}
-
 	private static int boreCount(GameTestHelper helper) {
 		String value = REQUESTED_BORES;
 		if (value == null || value.isBlank()) {
@@ -446,10 +439,6 @@ public class LavaBoreTest {
 			Encounter current = bore.encounters.getLast();
 			current.ticks++;
 			current.hullLost += Math.max(0f, hullLost);
-		}
-		if (ridersShielded() && player.isAlive()) {
-			player.setHealth(player.getMaxHealth());
-			player.clearFire();
 		}
 		bore.lastHealth = player.getHealth();
 		boolean pilotDead = !player.isAlive();
@@ -645,9 +634,9 @@ public class LavaBoreTest {
 		long diedInLava = bores.stream().filter(b -> b.outcome == Outcome.DIED && b.cause.endsWith("in lava")).count();
 		long pilotsKilled = bores.stream().filter(b -> b.outcome == Outcome.DIED && b.cause.startsWith("pilot")).count();
 		long touched = bores.stream().filter(b -> !b.encounters.isEmpty()).count();
-		LOGGER.info("[lava-bore] {} bores, {} columns of layer 1, stock Mole, tier {} scanner (reach {} ahead, {} up, {} down), in time = {} slabs, rider {}; {} server ticks, {} s wall clock",
+		LOGGER.info("[lava-bore] {} bores, {} columns of layer 1, stock Mole, tier {} scanner (reach {} ahead, {} up, {} down), in time = {} slabs; {} server ticks, {} s wall clock",
 				n, n, SCANNER_TIER, ScannerTuning.DEFAULT.area(SCANNER_TIER).halfWidth(), ScannerTuning.DEFAULT.area(SCANNER_TIER).up(),
-				ScannerTuning.DEFAULT.area(SCANNER_TIER).down(), IN_TIME_SLABS, ridersShielded() ? "SHIELDED (what-if)" : "burns (the game)", ticks, String.format("%.1f", wallSeconds));
+				ScannerTuning.DEFAULT.area(SCANNER_TIER).down(), IN_TIME_SLABS, ticks, String.format("%.1f", wallSeconds));
 		LOGGER.info("[lava-bore] outcome: survived {} of {} ({}), died {} (in lava {}, pilot first {}), stalled {}; bores that touched lava {} ({})",
 				survived, n, percent(survived, n), died, diedInLava, pilotsKilled, stalled, touched, percent(touched, n));
 		LOGGER.info("[lava-bore] hull lost to lava, per bore:   {}", distribution(bores, b -> b.lavaHull));
@@ -729,8 +718,9 @@ public class LavaBoreTest {
 	 * What the test asserts: the harness measured something. A measurement run asserts no rate. The smoke case asserts that no bore got
 	 * stuck (a bore the bot cannot finish says nothing about lava), that the bore with a placed lava block records it as an encounter the
 	 * scanner had in view, and that the control crossed. The game test world has a fixed seed (vanilla's GameTestServer uses 0, and the
-	 * same columns gave the same start heights and first lava on every run), but the smoke case does not lean on it: the lava is placed,
-	 * and the control bores only the crust under a shaft cut through whatever the seed made.
+	 * same columns gave the same start heights and first lava on every run). The smoke case leans on it in one place: {@link #SMOKE_LAVA_BLOCK_Y}
+	 * was picked for seed 0 (above any lava that seed puts in the shaft). Otherwise the lava is placed, and the control bores only the
+	 * crust under a shaft cut through whatever the seed made.
 	 */
 	private static void check(GameTestHelper helper, List<Bore> bores, boolean smoke) {
 		int reach = ScannerTuning.DEFAULT.tierOneArea().down() + ScannerTuning.DEFAULT.tierOneArea().up();

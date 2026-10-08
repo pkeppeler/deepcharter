@@ -2,6 +2,7 @@
   "podStatusMargin": 4,
   "podStatusLineGap": 2,
   "podStatusColor": "#FFFFFF",
+  "podBurningColor": "#FF5522",
   "altimeterMargin": 4,
   "altimeterColor": "#FFFFFF",
   "accountMargin": 4,

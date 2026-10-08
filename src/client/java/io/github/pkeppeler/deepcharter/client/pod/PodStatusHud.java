@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.client.pod;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 
@@ -44,6 +45,11 @@ public final class PodStatusHud {
 		return lines;
 	}
 
+	/** The warning line shown, in its own colour, while lava burns the hull. */
+	public static Optional<Component> burningLine(PodEntity pod) {
+		return pod.hullBurning() ? Optional.of(Component.translatable("hud.deepcharter.pod.burning")) : Optional.empty();
+	}
+
 	private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
 		Minecraft client = Minecraft.getInstance();
 		if (client.player == null || !(client.player.getVehicle() instanceof PodEntity pod) || !PodSeat.showsPodStatus(pod, client.player)) {
@@ -56,5 +62,7 @@ public final class PodStatusHud {
 			graphics.text(font, line, look.podStatusMargin(), y, look.podStatusColor());
 			y += font.lineHeight + look.podStatusLineGap();
 		}
+		int burningY = y;
+		burningLine(pod).ifPresent(line -> graphics.text(font, line, look.podStatusMargin(), burningY, look.podBurningColor()));
 	}
 }

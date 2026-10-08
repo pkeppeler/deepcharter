@@ -43,6 +43,7 @@ public final class PodRegistry {
 				EntityType.Builder.<PodEntity>of(PodEntity::new, MobCategory.MISC)
 						.sized(chassis.width(), chassis.height())
 						.passengerAttachments(seats)
+						.fireImmune()
 						.clientTrackingRange(10)
 						.updateInterval(1)
 						.build(key));

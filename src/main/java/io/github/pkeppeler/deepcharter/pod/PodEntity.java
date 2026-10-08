@@ -85,6 +85,15 @@ public class PodEntity extends Entity {
 		setHull(hull() - damage);
 	}
 
+	/** True while lava is burning the hull (set each tick by LavaHazard); the HUD shows it. Not saved: a loaded pod starts cool. */
+	public boolean hullBurning() {
+		return entityData.get(PodData.HULL_BURNING);
+	}
+
+	public void setHullBurning(boolean hullBurning) {
+		entityData.set(PodData.HULL_BURNING, hullBurning);
+	}
+
 	public float fuel() {
 		return entityData.get(PodData.FUEL);
 	}
