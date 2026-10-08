@@ -15,7 +15,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.repository.PackRepository;
+import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.block.Blocks;
 
@@ -67,13 +69,14 @@ public class SkinSwapScenario extends EvidenceScenario {
 					}
 					client.options.updateResourcePacks(repository);
 				});
-				context.waitFor(client -> client.getResourcePackRepository().getSelectedIds().contains(PACK_ID));
-				context.waitTicks(80);
+				context.waitFor(client -> moleModelPack(client).equals(PACK_ID));
+				// The loading overlay is still fading out for a moment after the reload.
+				context.waitTicks(100);
 				screenshot(context, "skin-swapped");
 
 				context.runOnClient(client -> {
 					PodEntity mole = (PodEntity) client.level.getEntity(moleId[0]);
-					mole.setDrillDirection(Direction.SOUTH);
+					mole.setDrillDirection(Direction.NORTH);
 					mole.setDrilling(true);
 				});
 				for (int i = 0; i < SPIN_FRAMES; i++) {
@@ -84,11 +87,17 @@ public class SkinSwapScenario extends EvidenceScenario {
 			} finally {
 				context.runOnClient(client -> removePack(client));
 				// Let the reload finish before the world closes; a reload still running at shutdown crashes the client.
-				context.waitFor(client -> !client.getResourcePackRepository().getSelectedIds().contains(PACK_ID));
-				context.waitTicks(80);
+				context.waitFor(client -> !moleModelPack(client).equals(PACK_ID));
+				context.waitTicks(100);
 				deleteTree(pack);
 			}
 		}
+	}
+
+	/** The id of the pack that the Mole's model currently comes from: it changes when a reload has finished. */
+	private static String moleModelPack(Minecraft client) {
+		return client.getResourceManager().getResource(Identifier.fromNamespaceAndPath("deepcharter", "models/pod/mole.json"))
+				.map(Resource::sourcePackId).orElse("");
 	}
 
 	private static void removePack(Minecraft client) {
