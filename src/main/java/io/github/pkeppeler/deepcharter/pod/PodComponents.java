@@ -55,7 +55,7 @@ import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
  * of its parts are void.
  *
  * <p>Only the owner charter's members can pilot a pod ({@link PodEvents#CAN_MOUNT}). Anyone can refuel it ({@link PodFuel}
- * asks nobody) and, from #76, tow it. A pod with no owner, such as one spawned by a command, is anyone's.
+ * asks nobody). Towing asks {@link #mayAccess} ({@link PodTowing}). A pod with no owner, such as one spawned by a command, is anyone's.
  *
  * <p>The listeners run on every tick and on the client, so they never throw on an unreadable state: they log once, read it
  * as a pod with no parts, and refuse every pilot, because the owner is unknown. {@link #register} and {@link #install} are explicit changes and do throw.
@@ -174,6 +174,14 @@ public final class PodComponents {
 			return 0;
 		}
 		return cappedTier(pod, label);
+	}
+
+	/**
+	 * What the pod's radiator multiplies heat damage by: 1.0 (stock) for no radiator or a void or unreadable part, lower for
+	 * a better one. Lava and gas both read it.
+	 */
+	public static float radiatorRatio(PodEntity pod) {
+		return UpgradeTuning.DEFAULT.ratio(ComponentTrack.RADIATOR, effectiveTier(pod, ComponentTrack.RADIATOR));
 	}
 
 	/** The one place a chassis' tier cap applies: the tier a counted part works at. */

@@ -21,7 +21,7 @@ Ore and hazards (SPEC sections 4 and 10) are placed by one worldgen feature per 
 
 ## Consequences
 
-- `GasHazard.vent` is the one call site that touches a pod, through `PodEntity.damageHull`. A `PodStats` radiator stat, when one exists, replaces `OreTuning.stockRadiator` there.
+- `GasHazard.vent` is the one call site that touches a pod, through `PodEntity.damageHull`. Gas reads the pod's radiator tier through `PodComponents.radiatorRatio` (over `effectiveTier`), the same lookup lava uses.
 - Chunk generation costs more: the feature reads every stone block of a third of the layer.
 - Chunks that exist keep the ore they have. A change to a table shows only in chunks not yet generated, like a change to the noise (ADR 0009).
 - The natural-rock tag knows types, not who placed a block: stone, deepslate and tuff that a player placed are cleared by a blast like the natural ones.
