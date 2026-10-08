@@ -304,6 +304,7 @@ public class LayerStructuresTest {
 			if (level.getBlockState(floor).isAir()) {
 				throw failure(helper, "the floor of the wreck bay at %s was not drawn", floor.toShortString());
 			}
+			// room-carver: tests the draw on a floor block of the wreck bay: one block, not a room
 			level.setBlock(floor, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
 			ServerChunkEvents.CHUNK_LOAD.invoker().onChunkLoad(level, chunk, false);
 			if (!level.getBlockState(floor).isAir()) {
@@ -327,6 +328,7 @@ public class LayerStructuresTest {
 			chunk.setBlockState(site.origin(), ColonyBlocks.CONDUIT.defaultBlockState(), 0);
 			ServerChunkEvents.CHUNK_LOAD.invoker().onChunkLoad(level, chunk, true);
 			BlockState after = level.getBlockState(site.origin());
+			// room-carver: puts back the one air block the draw carved; not a room
 			chunk.setBlockState(site.origin(), Blocks.AIR.defaultBlockState(), 0);
 			if (!after.is(ColonyBlocks.CONDUIT)) {
 				throw failure(helper, "the casing block at %s became %s", site.origin().toShortString(), after);

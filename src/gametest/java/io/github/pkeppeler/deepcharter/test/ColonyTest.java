@@ -59,7 +59,6 @@ import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
-import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
@@ -71,6 +70,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 
@@ -104,6 +104,7 @@ public class ColonyTest {
 		// A ruin that was changed after the build must stay as it is: a rebuild would put the statue back.
 		BlockPos statue = before.anchors().get(ColonyAnchor.STATUE);
 		BlockState original = overworld.getBlockState(statue);
+		// room-carver: removes the overworld statue to test a rebuild
 		overworld.setBlock(statue, Blocks.AIR.defaultBlockState(), 2);
 		try {
 			if (ColonyBuilder.buildIfNeeded(server)) {
@@ -391,6 +392,7 @@ public class ColonyTest {
 		ServerLevel surface = server.overworld();
 		ServerLevel one = level(helper, 1);
 		for (int y = surface.getMinY(); y <= surface.getMinY() + 10; y++) {
+			// room-carver: the overworld surface, which opens onto layer 1 but is not layer rock
 			surface.setBlock(BlockPos.containing(x, y, z), Blocks.AIR.defaultBlockState(), 3);
 		}
 		MockPlayer mock = MockPlayers.join(helper, "conduit-breach");
@@ -525,16 +527,13 @@ public class ColonyTest {
 		int floor = 60;
 		int roomFrom = centre.getX() - radius - 8;
 		int roomTo = centre.getX() - radius - 1;
-		RoomSeal.seal(level, new BlockPos(roomFrom, floor, centre.getZ() - 4), new BlockPos(roomTo, floor + 10, centre.getZ() + 4));
 		// Stone under the room, air over it, and the casing east of it, which the chunk load has set.
 		for (int x = roomFrom; x <= roomTo; x++) {
 			for (int z = centre.getZ() - 4; z <= centre.getZ() + 4; z++) {
 				level.setBlock(new BlockPos(x, floor - 1, z), Blocks.STONE.defaultBlockState(), 2);
-				for (int y = floor; y <= floor + 10; y++) {
-					level.setBlock(new BlockPos(x, y, z), Blocks.AIR.defaultBlockState(), 2);
-				}
 			}
 		}
+		RoomCarver.carve(level, roomFrom, roomTo, floor, floor + 10, centre.getZ() - 4, centre.getZ() + 4, Blocks.AIR);
 		Vec3 start = new Vec3(roomFrom + 1.3, floor, centre.getZ() + 0.3);
 		MockPlayer pilot = MockPlayers.join(helper, "conduit-drill-" + layer);
 		pilot.teleportTo(level, start, EAST, 0f);

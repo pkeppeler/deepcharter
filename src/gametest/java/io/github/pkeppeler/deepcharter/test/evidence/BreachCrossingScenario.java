@@ -8,11 +8,13 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 
 /**
  * Evidence scenario "breach-crossing": a recording of a player falling through a breach, with the
@@ -57,9 +59,7 @@ public class BreachCrossingScenario extends EvidenceScenario {
 			singleplayer.getServer().runOnServer(server -> {
 				ServerLevel one = server.getLevel(LayerChain.dimension(1));
 				BlockPos column = BlockPos.containing(X, 0, Z);
-				for (int y = one.getMinY(); y <= SHAFT_TOP; y++) {
-					one.setBlock(column.atY(y), Blocks.AIR.defaultBlockState(), 3);
-				}
+				RoomCarver.carve(one, column.atY(one.getMinY()), column.atY(SHAFT_TOP), Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
 				// Generate the arrival area in layer 2 now so the client has less to wait for after the crossing.
 				ServerLevel two = server.getLevel(LayerChain.dimension(2));
 				for (int dx = -2; dx <= 2; dx++) {
@@ -104,14 +104,10 @@ public class BreachCrossingScenario extends EvidenceScenario {
 			int standing = STANDING_Y;
 			int column = (int) X;
 			int row = (int) Z;
-			for (int x = column - 3; x <= column + ROOM_LENGTH; x++) {
-				for (int z = row - 5; z <= row + 5; z++) {
-					level.setBlock(new BlockPos(x, standing - 1, z), Blocks.STONE.defaultBlockState(), 3);
-					for (int dy = 0; dy < ROOM_HEIGHT; dy++) {
-						level.setBlock(new BlockPos(x, standing + dy, z), Blocks.AIR.defaultBlockState(), 3);
-					}
-				}
-			}
+			BlockPos west = new BlockPos(column - 3, standing, row - 5);
+			BlockPos east = new BlockPos(column + ROOM_LENGTH, standing + ROOM_HEIGHT - 1, row + 5);
+			RoomCarver.carve(level, west.below(), new BlockPos(east.getX(), standing - 1, east.getZ()), Blocks.STONE.defaultBlockState(), Block.UPDATE_ALL);
+			RoomCarver.carve(level, west, east, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
 			int[] distances = {4, 8, 14, 20, 28, 38, 50};
 			for (int i = 0; i < distances.length; i++) {
 				BlockPos base = BlockPos.containing(X + distances[i], standing, Z + (i % 2 == 0 ? -2 : 2));

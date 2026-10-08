@@ -173,6 +173,7 @@ public class ProspectorChassisScenario extends EvidenceScenario {
 	/** Builds the slab and puts both players on it. */
 	private static void buildSlab(ServerLevel level, TwoPlayerServer two) {
 		fill(level, FLOOR_Y - SLAB_DEPTH, FLOOR_Y - 1, Blocks.STONE);
+		// room-carver: a slab built in the overworld, not layer rock
 		fill(level, FLOOR_Y, FLOOR_Y + 10, Blocks.AIR);
 		real(level, two).teleportTo(level, X + 0.5, FLOOR_Y, Z - 7.5, Set.of(), SIDE_ON, LOOK_DOWN, true);
 		two.mock().teleportTo(level, new Vec3(X + 0.5, FLOOR_Y, Z - 6.5), 0f, 0f);

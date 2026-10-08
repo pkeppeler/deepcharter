@@ -81,7 +81,6 @@ import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
-import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.market.WorkOrders;
@@ -96,6 +95,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.M2SliceEndState;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
@@ -311,6 +311,7 @@ public class M2SliceScenario extends EvidenceScenario {
 			int lowZ = (int) Math.floor(pod.getZ() - 1.0 + 0.5);
 			for (int dx = 0; dx < 2; dx++) {
 				for (int dz = 0; dz < 2; dz++) {
+					// room-carver: clears the overworld's bedrock under the bore, which is the surface and not layer rock
 					overworld.setBlock(new BlockPos(lowX + dx, -64, lowZ + dz), Blocks.AIR.defaultBlockState(), 3);
 				}
 			}
@@ -571,19 +572,16 @@ public class M2SliceScenario extends EvidenceScenario {
 
 	/** A 3 x 4 drift with a rail down it, from the bay's west wall out {@link #DRIFT_LENGTH} blocks. Its shell is sealed first. */
 	private static void cutDrift(ServerLevel level, StructureSite site) {
-		// The box that is cut: RoomSeal seals the shell round it, which is the floor, the ceiling, both walls and the far end.
+		// The box that is cut: RoomCarver seals the shell round it, which is the floor, the ceiling, both walls and the far end.
 		BlockPos a = BlockPos.containing(at(site, -DRIFT_LENGTH, 0, -1));
 		BlockPos b = BlockPos.containing(at(site, -7, 3, 1));
-		RoomSeal.seal(level, new BlockPos(Math.min(a.getX(), b.getX()), a.getY(), Math.min(a.getZ(), b.getZ())),
-				new BlockPos(Math.max(a.getX(), b.getX()), b.getY(), Math.max(a.getZ(), b.getZ())));
+		RoomCarver.carve(level, a, b, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
 		BlockState rail = Blocks.RAIL.defaultBlockState().setValue(BlockStateProperties.RAIL_SHAPE, site.alongZ() ? RailShape.NORTH_SOUTH : RailShape.EAST_WEST);
 		for (int u = -DRIFT_LENGTH; u <= -7; u++) {
 			for (int v = -1; v <= 1; v++) {
 				level.setBlock(BlockPos.containing(at(site, u, -1, v)), Blocks.COBBLESTONE.defaultBlockState(), 2);
-				for (int y = 0; y <= 3; y++) {
-					level.setBlock(BlockPos.containing(at(site, u, y, v)), v == 0 && y == 0 ? rail : Blocks.AIR.defaultBlockState(), 2);
-				}
 			}
+			level.setBlock(BlockPos.containing(at(site, u, 0, 0)), rail, 2);
 		}
 	}
 
@@ -1210,19 +1208,14 @@ public class M2SliceScenario extends EvidenceScenario {
 
 	/** The room in the Deep Claim: crust, a row of stone with ore in it, an airy room, lamps and ore in the walls. */
 	private static void buildRoom(ServerLevel level) {
-		BlockPos low = new BlockPos(X - ROOM_WEST - 1, 0, Z - ROOM_RADIUS_Z - 1);
-		BlockPos high = new BlockPos(X + ROOM_EAST + 1, FLOOR_Y + 10, Z + ROOM_RADIUS_Z + 1);
-		RoomSeal.seal(level, low, high);
-		box(level, level.getMinY(), level.getMinY() + LayerTuning.DEFAULT.crustThickness() - 1, LayerBlocks.BREACH_CRUST);
-		for (int x = X - ROOM_WEST - 1; x <= X + ROOM_EAST + 1; x++) {
-			for (int y = FLOOR_Y - 1; y <= FLOOR_Y + 10; y++) {
-				for (int z = Z - ROOM_RADIUS_Z - 1; z <= Z + ROOM_RADIUS_Z + 1; z++) {
-					level.setBlock(new BlockPos(x, y, z), Blocks.STONE.defaultBlockState(), 2);
-				}
-			}
-		}
+		RoomCarver.carve(level, X - ROOM_WEST, X + ROOM_EAST, level.getMinY(), level.getMinY() + LayerTuning.DEFAULT.crustThickness() - 1,
+				Z - ROOM_RADIUS_Z, Z + ROOM_RADIUS_Z, LayerBlocks.BREACH_CRUST);
+		// The wall ores sit in this stone shell, so it is carved sealed as well: lava must not be one block behind them.
+		RoomCarver.carve(level, X - ROOM_WEST - 1, X + ROOM_EAST + 1, FLOOR_Y - 1, FLOOR_Y + 10, Z - ROOM_RADIUS_Z - 1, Z + ROOM_RADIUS_Z + 1,
+				Blocks.STONE);
 		box(level, FLOOR_Y - 1, FLOOR_Y - 1, Blocks.STONE);
-		box(level, FLOOR_Y, FLOOR_Y + 9, Blocks.AIR);
+		RoomCarver.carve(level, new BlockPos(X - ROOM_WEST, FLOOR_Y, Z - ROOM_RADIUS_Z), new BlockPos(X + ROOM_EAST, FLOOR_Y + 9, Z + ROOM_RADIUS_Z),
+				Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
 		for (int x = X - 3; x <= X + 11; x += 4) {
 			level.setBlock(new BlockPos(x, FLOOR_Y + 3, Z + 4), Blocks.GLOWSTONE.defaultBlockState(), 3);
 			level.setBlock(new BlockPos(x, FLOOR_Y + 3, Z - 4), Blocks.GLOWSTONE.defaultBlockState(), 3);

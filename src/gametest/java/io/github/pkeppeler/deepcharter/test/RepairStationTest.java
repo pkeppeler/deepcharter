@@ -519,6 +519,7 @@ public class RepairStationTest {
 				throw helper.assertionException("dynamite from a player on foot cleared a block");
 			}
 			expectSpent(helper, station.pilot().player(), Consumable.DYNAMITE, 1, "an unpiloted use keeps the item");
+			// room-carver: removes a block this test placed itself in the overworld test structure, not layer rock
 			level.setBlock(neighbour, Blocks.AIR.defaultBlockState(), 3);
 			helper.succeed();
 		});

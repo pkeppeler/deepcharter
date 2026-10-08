@@ -221,6 +221,7 @@ public class SurfaceBreachTest {
 		for (int dx = 0; dx < 4; dx++) {
 			for (int dy = 0; dy < 5; dy++) {
 				boolean edge = dx == 0 || dx == 3 || dy == 0 || dy == 4;
+				// room-carver: a portal frame on the surface, not layer rock
 				surface.setBlock(origin.offset(dx, dy, 0), edge ? Blocks.OBSIDIAN.defaultBlockState() : Blocks.AIR.defaultBlockState(), 3);
 			}
 		}
@@ -256,6 +257,7 @@ public class SurfaceBreachTest {
 	private static void openShaft(ServerLevel level, double x, double z) {
 		BlockPos column = BlockPos.containing(x, 0, z);
 		for (int y = level.getMinY(); y <= level.getMinY() + 10; y++) {
+			// room-carver: opens the overworld floor, which is the surface and not layer rock; it is only called with the surface
 			level.setBlock(column.atY(y), Blocks.AIR.defaultBlockState(), 3);
 		}
 	}

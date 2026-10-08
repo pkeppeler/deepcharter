@@ -25,6 +25,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
@@ -201,7 +202,8 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 		box(one, 0, 2, LayerBlocks.BREACH_CRUST);
 		box(one, STONE_ROW_Y, STONE_ROW_Y, Blocks.STONE);
 		shell(one);
-		box(one, FLOOR_Y, FLOOR_Y + 9, Blocks.AIR);
+		RoomCarver.carve(one, new BlockPos(X - ROOM_WEST, FLOOR_Y, Z - ROOM_RADIUS_Z), new BlockPos(X + ROOM_EAST, FLOOR_Y + 9, Z + ROOM_RADIUS_Z),
+				Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
 		lamps(one);
 		ServerPlayer real = realPlayer(server, two.mock().player());
 		real.teleportTo(one, X, FLOOR_Y, Z, Set.of(), EAST, LOOK_DOWN, true);

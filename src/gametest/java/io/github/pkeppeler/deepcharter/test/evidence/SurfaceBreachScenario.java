@@ -81,6 +81,7 @@ public class SurfaceBreachScenario extends EvidenceScenario {
 				ServerLevel surface = server.overworld();
 				BlockPos column = BlockPos.containing(X, 0, Z);
 				for (int y = surface.getMinY(); y <= surface.getMinY() + SHAFT_HEIGHT; y++) {
+					// room-carver: opens the overworld floor, which is the surface and not layer rock
 					surface.setBlock(column.atY(y), Blocks.AIR.defaultBlockState(), 3);
 				}
 				// Generate the arrival area in layer 1 now so the client has less to wait for after the crossing.
