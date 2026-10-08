@@ -274,6 +274,20 @@ public class HandbookChaptersOneToFiveTest {
 		}
 	}
 
+	/**
+	 * Fires REPAIRED for {@code type} with a fresh hangar record for the call and the world's back after. The hangar listens for its
+	 * own console, and with the world's record it would give the world's derelict Mole to this charter.
+	 */
+	private static void fireRepaired(MinecraftServer server, TerminalType type, Charter charter, ServerPlayer player) {
+		HangarData world = HangarData.get(server);
+		server.getDataStorage().set(HangarData.TYPE, new HangarData());
+		try {
+			TerminalEvents.REPAIRED.invoker().onRepaired(server, type, charter, player);
+		} finally {
+			server.getDataStorage().set(HangarData.TYPE, world);
+		}
+	}
+
 	static String uniqueName() {
 		return "Chapters " + UUID.randomUUID().toString().substring(0, 8);
 	}
@@ -510,7 +524,7 @@ public class HandbookChaptersOneToFiveTest {
 			Set<Identifier> memberBefore = Set.copyOf(completed(server, member.player()));
 			Charter charter = Charters.charterOfOrThrow(server, member.player().getUUID()).orElseThrow();
 			for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL, HangarTerminal.TYPE)) {
-				TerminalEvents.REPAIRED.invoker().onRepaired(server, type, charter, drifter.player());
+				fireRepaired(server, type, charter, drifter.player());
 				for (Identifier action : List.of(FuelPump.BUY, FuelPump.FILL, OreProcessor.SELL_CARGO, OreProcessor.SELL_INVENTORY, UpgradeTerminal.BUY,
 						HangarTerminal.BUY_MOLE)) {
 					TerminalEvents.ACTED.invoker().onActed(server, type, drifter.player(), action);
@@ -599,7 +613,7 @@ public class HandbookChaptersOneToFiveTest {
 			PodEntity riddenPod = pod;
 			Runnable callbacks = () -> {
 				for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL, HangarTerminal.TYPE)) {
-					TerminalEvents.REPAIRED.invoker().onRepaired(server, type, charter, pilot.player());
+					fireRepaired(server, type, charter, pilot.player());
 					for (Identifier action : List.of(FuelPump.BUY, FuelPump.FILL, OreProcessor.SELL_CARGO, OreProcessor.SELL_INVENTORY, UpgradeTerminal.BUY,
 							HangarTerminal.BUY_MOLE)) {
 						TerminalEvents.ACTED.invoker().onActed(server, type, pilot.player(), action);
