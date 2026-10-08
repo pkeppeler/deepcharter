@@ -2,6 +2,21 @@
 
 The orchestrator writes this log during unattended runs. It never stops for a blocker: it records the blocker here and moves on to the next ready work. Newest entries come first. When an entry is resolved, its status changes to **resolved**, with the date and the reason.
 
+## 2026-10-08: GitHub Actions stopped running (billing), so nothing can merge
+
+**Status:** open. Needs the user (money).
+
+From about 10:51 UTC every CI job fails with zero steps: "The job was not started because recent account payments have failed or your spending limit needs to be increased" (first seen on run 37766192132). The 10:46 run had succeeded, so the Free plan's monthly Actions minutes have most likely run out. The orchestrator can't see billing (`gh` lacks the `user` scope).
+
+`tools/merge-pr.sh` requires green CI, so no PR merges until Actions runs again. The orchestrator keeps working: PRs go through implementation, review cycle 1, the simplifier and cycle 2, and wait marked `review-passed`. When CI is back, each needs a close and reopen to re-run CI on a fresh merge ref, then the gate.
+
+The options are the user's call:
+- set a small Actions spending limit;
+- wait for the monthly reset;
+- register a self-hosted runner on this Mac. That uses no minutes, but runs CI code on the Mac and is a standing configuration change, so it needs the user's approval.
+
+The user's design session (deepcharter-93) is raising it with the user.
+
 ## 2026-10-08: Client GameTests hang on this Mac while its display sleeps
 
 **Status:** open, worked around. Nothing waits on it.
