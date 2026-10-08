@@ -32,6 +32,5 @@
   "screen.deepcharter.upgrade.no_pod": "NO POD OF YOURS IS PARKED AT THE TERMINAL.",
   "screen.deepcharter.upgrade.pod": "POD %s   TIER CAP %s",
   "screen.deepcharter.upgrade.track": "%s  T%s",
-  "screen.deepcharter.upgrade.pod_unregistered": "POD (UNREGISTERED)   TIER CAP %s",
-  "screen.deepcharter.upgrade.waiting": "READING THE PARKED POD..."
+  "screen.deepcharter.upgrade.pod_unregistered": "POD (UNREGISTERED)   TIER CAP %s"
 }
