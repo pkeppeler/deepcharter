@@ -4,6 +4,8 @@ status: accepted
 
 # The colony is built once in code, and the Conduit is set when its chunk loads
 
+Amended by [ADR 0030](0030-art-direction-decisions.md): the buildings come from structure files, and the pad flattening stays.
+
 Builds on [ADR 0011](0011-the-surface-is-layer-0-with-an-open-floor.md) (the overworld is layer 0) and [ADR 0014](0014-terminal-repair-is-one-world-wide-chain.md) (the colony terminals). The lore canon names the colony's buildings and the Conduit (`docs/LORE.md` section 11, in PR #34).
 
 ## Decision
