@@ -1,0 +1,14 @@
+// Fixture for checkColourGate: nothing here may be flagged. Not compiled.
+class Allowed {
+	// int a = 0xFF7CFC9A; a commented line
+	/*
+	 * int b = 0xFF7CFC9A; inside a block comment
+	 */
+	int c = 0xFF; // two digits is a flag, not a colour
+	int d = 0x7F; // colour literal 0xFF7CFC9A in a trailing comment
+	int e = 0x00FFFFFF; // colour-ok: strips alpha from a colour the theme gave
+	int f = ARGB.white(0.5f);
+	int g = theme.color("phosphor");
+	String h = "0xFF7CFC9A in a string is not a colour";
+	long i = 0xFFFFL;
+}

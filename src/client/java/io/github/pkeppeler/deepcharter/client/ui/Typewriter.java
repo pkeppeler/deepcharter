@@ -35,7 +35,7 @@ public final class Typewriter {
 
 	/** A typewriter at the tuned rate, {@link CrtTuning#lettersPerSecond()}. */
 	public Typewriter(String text, LetterHook hook) {
-		this(text, CrtTuning.DEFAULT.lettersPerSecond(), hook);
+		this(text, CrtTuning.current().lettersPerSecond(), hook);
 	}
 
 	/** Moves time forward and reveals the letters it uncovers, firing the hook for each, in order. */

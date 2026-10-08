@@ -1,0 +1,8 @@
+{
+  "fadeTicks": 20,
+  "fadeInTicks": 8,
+  "blackTicks": 4,
+  "jitterTicks": 10,
+  "jitterPixels": 3,
+  "fadeColor": "#000000"
+}

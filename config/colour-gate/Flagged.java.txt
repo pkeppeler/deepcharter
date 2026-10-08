@@ -1,0 +1,16 @@
+// Fixture for checkColourGate: every indented code line below must be flagged. Not compiled.
+class Flagged {
+	int a = 0xFF7CFC9A;
+	int b = 0x00FFFFFF;
+	int c = 0x123456;
+	int d = 0xFF_00_00_FF;
+	int e = 0Xffaa00;
+	int f = ARGB.color(255, 0, 0, 0);
+	int g = argb(1, 2, 3, 4);
+	int h = CommonColors.WHITE;
+	int i = ARGB . color(1, 2, 3, 4);
+	int j = 0xFFFFFFFF; // colour-ok without a colon is no marker
+	int k = 0xFFFFFFFF; // colour-ok:
+	/* block comment */ int l = 0xFF000000;
+	String m = "//"; int n = 0xFF000000;
+}

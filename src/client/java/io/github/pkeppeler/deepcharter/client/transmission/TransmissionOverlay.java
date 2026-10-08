@@ -13,6 +13,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.client.theme.TransmissionLook;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
@@ -21,24 +22,13 @@ import io.github.pkeppeler.deepcharter.transmission.TransmissionPayload;
 
 /**
  * The transmission on screen, and those waiting behind it. The header (who sends it and how the signal is framed) types out first,
- * in a colour that depends on the framing, then the text, in phosphor green. The finished transmission stays up for
- * {@link #HOLD_TICKS}, then the next one starts. Time is counted in client ticks, and only while no screen is open, so a
+ * in a colour that depends on the framing, then the text, in the look's text colour. The finished transmission stays up for
+ * {@link TransmissionLook#holdTicks()}, then the next one starts. Time is counted in client ticks, and only while no screen is open, so a
  * transmission that arrives behind the "Loading terrain" screen of a crossing is not typed out unseen.
  *
  * <p>Read and written on the client thread. {@link TransmissionHud} draws it.
  */
 public final class TransmissionOverlay {
-	/** Ticks the finished transmission stays up. */
-	public static final int HOLD_TICKS = 100;
-	/** Phosphor green for the text. */
-	public static final int TEXT_COLOR = 0xFF7CFC9A;
-	/** The header colour of a live transmission: the same green. */
-	public static final int LIVE_COLOR = TEXT_COLOR;
-	/** The header colour of a relayed one: amber. */
-	public static final int RELAY_COLOR = 0xFFFFC857;
-	/** The header colour of one from an unknown sender: red. */
-	public static final int UNKNOWN_COLOR = 0xFFFF5A4F;
-
 	private static final double SECONDS_PER_TICK = 1.0 / 20.0;
 	private static final String CHARTER_FIELD = "[CHARTER]";
 	private static final String DIRECTOR_FIELD = "[DIRECTOR]";
@@ -62,10 +52,11 @@ public final class TransmissionOverlay {
 
 	/** The header colour of a framing. */
 	public static int headerColor(Transmission.Framing framing) {
+		TransmissionLook look = TransmissionLook.current();
 		return switch (framing) {
-			case LIVE -> LIVE_COLOR;
-			case RELAY -> RELAY_COLOR;
-			case UNKNOWN -> UNKNOWN_COLOR;
+			case LIVE -> look.liveColor();
+			case RELAY -> look.relayColor();
+			case UNKNOWN -> look.unknownColor();
 		};
 	}
 
@@ -119,7 +110,7 @@ public final class TransmissionOverlay {
 			current.header().advance(SECONDS_PER_TICK);
 		} else if (!current.body().done()) {
 			current.body().advance(SECONDS_PER_TICK);
-		} else if (++heldTicks >= HOLD_TICKS) {
+		} else if (++heldTicks >= TransmissionLook.current().holdTicks()) {
 			current = null;
 		}
 		if (letterTyped) {

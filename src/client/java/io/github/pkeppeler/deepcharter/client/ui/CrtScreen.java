@@ -65,7 +65,7 @@ public abstract class CrtScreen extends Screen {
 
 	/** Starts typing {@code text} in the phosphor colour. The hook is where a feature plays its letter sound. */
 	protected Typewriter typewriter(Component text, Typewriter.LetterHook hook) {
-		return typewriter(text, CrtTuning.DEFAULT.phosphorColor(), hook);
+		return typewriter(text, CrtTuning.current().phosphorColor(), hook);
 	}
 
 	/** Starts typing {@code text} in {@code color} (ARGB). Call from the constructor, never from {@link #layout()}. */
@@ -122,7 +122,7 @@ public abstract class CrtScreen extends Screen {
 		if (entry == null) {
 			throw new IllegalArgumentException("Not a typewriter of this screen: " + writer.text());
 		}
-		CrtTuning tuning = CrtTuning.DEFAULT;
+		CrtTuning tuning = CrtTuning.current();
 		Font font = this.font;
 		if (entry.cachedRevealed != writer.revealed() || entry.cachedWidth != wrapWidth) {
 			entry.lines = font.getSplitter().splitLines(FormattedText.of(writer.visible()), wrapWidth, Style.EMPTY)

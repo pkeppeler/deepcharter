@@ -21,6 +21,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
 import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
+import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -292,7 +293,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 	private static void expectScannerShowsPod(ClientGameTestContext context, String screenshotName) {
 		ScannerHudTest.HudShot shot = ScannerHudTest.HudShot.take(context, screenshotName, ScannerHudTest.TIER_ONE);
 		int actual = shot.pixel(0, 0);
-		int expected = ScannerTuning.DEFAULT.podColor() & RGB;
+		int expected = ScannerLook.current().podColor() & RGB;
 		if (actual != expected) {
 			throw new AssertionError("%s: the scanner HUD should show the pod's marker %06X, the pixel is %06X"
 					.formatted(screenshotName, expected, actual));

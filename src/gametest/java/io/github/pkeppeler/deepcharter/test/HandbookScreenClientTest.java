@@ -380,7 +380,7 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 					continue;
 				}
 				screen.goTo(index);
-				for (int tick = 0; tick < HandbookScreenTuning.DEFAULT.flipTicks(); tick++) {
+				for (int tick = 0; tick < HandbookScreenTuning.current().flipTicks(); tick++) {
 					screen.tick();
 				}
 				List<HandbookScreen.ContentsEntry> entries = screen.contentsEntries(contents);
@@ -395,11 +395,11 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 					MouseButtonEvent click = new MouseButtonEvent(x, y, new MouseButtonInfo(LEFT_MOUSE, 0));
 					check(screen.mouseClicked(click, false), "the entry for page " + entry.page() + " is a click target");
 					check(screen.page() == entry.page(), "clicking the entry goes to page " + entry.page() + ", was " + screen.page());
-					for (int tick = 0; tick < HandbookScreenTuning.DEFAULT.flipTicks(); tick++) {
+					for (int tick = 0; tick < HandbookScreenTuning.current().flipTicks(); tick++) {
 						screen.tick();
 					}
 					screen.goTo(index);
-					for (int tick = 0; tick < HandbookScreenTuning.DEFAULT.flipTicks(); tick++) {
+					for (int tick = 0; tick < HandbookScreenTuning.current().flipTicks(); tick++) {
 						screen.tick();
 					}
 				}
@@ -447,7 +447,7 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 			check(!context.computeOnClient(client -> ClientReadMarks.isRead(SAMPLE_CHAPTER)), "the chapter is unread before it is viewed");
 
 			context.runOnClient(client -> screen.goTo(chapterPage));
-			context.waitTicks(HandbookScreenTuning.DEFAULT.flipTicks() + 2);
+			context.waitTicks(HandbookScreenTuning.current().flipTicks() + 2);
 			context.takeScreenshot("handbook-chapter");
 			context.waitFor(client -> ClientReadMarks.isRead(SAMPLE_CHAPTER));
 			check(singleplayer.getServer().computeOnServer(server -> ReadMarks.isRead(server.getPlayerList().getPlayers().getFirst(), SAMPLE_CHAPTER)),

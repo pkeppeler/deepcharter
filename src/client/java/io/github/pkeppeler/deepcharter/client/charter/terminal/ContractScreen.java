@@ -45,7 +45,6 @@ public final class ContractScreen extends CrtScreen implements TerminalViewScree
 	private static final int ROWS_TOP = 100;
 	private static final int FIELD_HEIGHT = 14;
 	private static final int MAX_LABEL_NAME = 18;
-	private static final int REFUSAL_COLOR = 0xFFFFB000;
 
 	private final TerminalView view;
 	private final Typewriter typewriter;
@@ -167,12 +166,11 @@ public final class ContractScreen extends CrtScreen implements TerminalViewScree
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-		CrtTuning tuning = CrtTuning.DEFAULT;
-		CrtDraw.glowText(graphics, font, title.getString().toUpperCase(Locale.ROOT), MARGIN, MARGIN, tuning.phosphorColor());
-		CrtDraw.border(graphics, MARGIN - 6, MARGIN + font.lineHeight + 4, width - MARGIN + 6, MARGIN + font.lineHeight + 5, tuning.dimColor());
+		CrtTuning tuning = CrtTuning.current();
+		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), MARGIN, width);
 		drawTypewriter(graphics, typewriter, MARGIN, MARGIN + font.lineHeight + 14, width - 2 * MARGIN);
 		CrtDraw.glowText(graphics, font, statusLine().getString(), MARGIN, STATUS_Y, tuning.phosphorColor());
-		refusal().ifPresent(message -> CrtDraw.glowText(graphics, font, message.getString().toUpperCase(Locale.ROOT), MARGIN, STATUS_Y + font.lineHeight + 4, REFUSAL_COLOR));
+		refusal().ifPresent(message -> CrtDraw.glowText(graphics, font, message.getString().toUpperCase(Locale.ROOT), MARGIN, STATUS_Y + font.lineHeight + 4, tuning.refusalColor()));
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 	}
 }

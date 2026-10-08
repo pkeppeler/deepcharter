@@ -13,12 +13,11 @@ import net.minecraft.resources.Identifier;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
-import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
+import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 
 /** The charter's name and balance, at the left edge halfway down so it clears the pod readout and the altimeter. Shown while on a charter. */
 public final class AccountHud {
 	private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "account");
-	private static final int MARGIN = 4;
 
 	private AccountHud() {
 	}
@@ -38,6 +37,7 @@ public final class AccountHud {
 			return;
 		}
 		Font font = Minecraft.getInstance().font;
-		graphics.text(font, text.get(), MARGIN, graphics.guiHeight() / 2, CrtTuning.DEFAULT.phosphorColor());
+		HudLook look = HudLook.current();
+		graphics.text(font, text.get(), look.accountMargin(), (int) (graphics.guiHeight() * look.accountY()), look.accountColor());
 	}
 }

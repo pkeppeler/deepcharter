@@ -1,0 +1,10 @@
+{
+  "podStatusMargin": 4,
+  "podStatusLineGap": 2,
+  "podStatusColor": "#FFFFFF",
+  "altimeterMargin": 4,
+  "altimeterColor": "#FFFFFF",
+  "accountMargin": 4,
+  "accountY": 0.5,
+  "accountColor": "#7CFC9A"
+}

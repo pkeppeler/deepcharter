@@ -1,0 +1,12 @@
+{
+  "panelFillColor": "#EA050A06",
+  "textColor": "#7CFC9A",
+  "liveColor": "#7CFC9A",
+  "relayColor": "#FFC857",
+  "unknownColor": "#FF5A4F",
+  "maxWidth": 320,
+  "screenMargin": 16,
+  "centerY": 0.4,
+  "headerGap": 6,
+  "holdTicks": 100
+}
