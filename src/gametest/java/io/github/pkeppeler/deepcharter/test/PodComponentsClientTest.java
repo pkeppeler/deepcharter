@@ -65,7 +65,10 @@ public class PodComponentsClientTest implements FabricClientGameTest {
 			ClientWait.until(context, "the pod with its registration, parts and hull of " + HULL_NOW + "/" + HULL_MAX,
 					client -> client.player != null && client.player.getVehicle() instanceof PodEntity pod
 							&& PodComponents.registration(pod).isPresent()
-							&& Math.round(pod.maxHull()) == HULL_MAX && pod.hull() == HULL_NOW);
+							&& Math.round(pod.maxHull()) == HULL_MAX && pod.hull() == HULL_NOW,
+					client -> client.player != null && client.player.getVehicle() instanceof PodEntity pod
+							? "registration=" + PodComponents.registration(pod).isPresent() + ", maxHull=" + pod.maxHull() + ", hull=" + pod.hull()
+							: "no pod under the player");
 
 			int maxHull = context.computeOnClient(client -> Math.round(((PodEntity) client.player.getVehicle()).maxHull()));
 			if (maxHull != HULL_MAX) {
@@ -84,7 +87,8 @@ public class PodComponentsClientTest implements FabricClientGameTest {
 			});
 			context.waitForScreen(OreCargoScreen.class);
 			ClientWait.until(context, "the cargo menu with its " + LOAD.length + " ore",
-					client -> client.player.containerMenu instanceof OreCargoMenu menu && menu.shownOre().size() == LOAD.length);
+					client -> client.player.containerMenu instanceof OreCargoMenu menu && menu.shownOre().size() == LOAD.length,
+					client -> client.player.containerMenu instanceof OreCargoMenu menu ? menu.shownOre().size() + " ore" : "no cargo menu");
 			int slots = context.computeOnClient(client -> ((OreCargoMenu) client.player.containerMenu).cargoSlots());
 			int menuSlots = context.computeOnClient(client -> client.player.containerMenu.slots.size());
 			int shown = context.computeOnClient(client -> ((OreCargoMenu) client.player.containerMenu).shownOre().size());

@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -19,13 +20,21 @@ public final class ClientWait {
 	 * Waits until {@code synced} holds on the client, for up to {@link FarChunks#WAIT_SECONDS}.
 	 *
 	 * @param what names the awaited state in the failure message
+	 * @param actual describes what the client has, read on the client; it goes in the failure message
 	 * @throws AssertionError if the deadline passes first
 	 */
-	public static void until(ClientGameTestContext context, String what, Predicate<Minecraft> synced) {
+	public static void until(ClientGameTestContext context, String what, Predicate<Minecraft> synced, Function<Minecraft, String> actual) {
 		FarChunks.Deadline deadline = FarChunks.deadline();
 		while (!context.computeOnClient(synced::test)) {
 			if (deadline.expired()) {
-				throw new AssertionError("The client did not receive " + what + " within " + FarChunks.WAIT_SECONDS + " s");
+				throw new AssertionError("The client did not receive " + what + " within " + FarChunks.WAIT_SECONDS + " s, it had "
+						+ context.computeOnClient(actual::apply));
+			}
+			try {
+				Thread.sleep(FarChunks.POLL_MILLIS);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				throw new AssertionError("Interrupted while waiting for " + what, e);
 			}
 			context.waitTicks(1);
 		}

@@ -15,7 +15,7 @@ public final class FarChunks {
 	/** Wall-clock seconds that a wait for a chunk may take. The GameTest server ticks unthrottled, so a tick budget alone is only seconds of real time. */
 	public static final int WAIT_SECONDS = 120;
 	/** Milliseconds slept per waiting tick, so the chunk generation threads get CPU. */
-	private static final int POLL_MILLIS = 2;
+	static final int POLL_MILLIS = 2;
 	/**
 	 * A test's {@code maxTicks} for one wait. Each waiting tick takes at least {@link #POLL_MILLIS}, so no more than
 	 * this many ticks pass in {@link #WAIT_SECONDS}, and the wall-clock failure always fires before the GameTest limit.
