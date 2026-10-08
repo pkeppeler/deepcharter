@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Supplier;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.saveddata.SavedData;
@@ -33,11 +32,6 @@ public final class WorldData {
 	/** Runs {@code body} with {@code fresh} swapped in for the world's {@code type}. */
 	public static <T extends SavedData> void with(MinecraftServer server, SavedDataType<T> type, T fresh, Runnable body) {
 		swap(server).with(type, fresh).run(body);
-	}
-
-	/** Runs {@code body} with {@code fresh} swapped in for the world's {@code type}, and returns what it returns. */
-	public static <T extends SavedData, R> R call(MinecraftServer server, SavedDataType<T> type, T fresh, Supplier<R> body) {
-		return swap(server).with(type, fresh).call(body);
 	}
 
 	/**
@@ -89,27 +83,18 @@ public final class WorldData {
 		}
 
 		public void run(Runnable body) {
-			call(() -> {
-				body.run();
-				return null;
-			});
-		}
-
-		public <R> R call(Supplier<R> body) {
 			String swapper = caller();
 			List<Runnable> restores = new ArrayList<>();
-			R result;
 			try {
 				for (Entry<?> entry : entries) {
 					restores.add(entry.apply(server, swapper));
 				}
-				result = body.get();
+				body.run();
 			} catch (Throwable thrown) {
 				restoreAll(restores, thrown);
 				throw thrown;
 			}
 			restoreAll(restores, null);
-			return result;
 		}
 
 		/** Puts every record back, in reverse order, even if one restore throws. A restore failure is suppressed on {@code primary}, or thrown when there is none. */
