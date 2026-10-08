@@ -22,6 +22,7 @@ import net.minecraft.world.level.block.CandleBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.chunk.ProtoChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
@@ -52,8 +53,12 @@ public class LayerStructuresTest {
 	/** How near a colony Note is to the anchor of its building, in blocks on the map. */
 	private static final double NEAR_ANCHOR = 6;
 	private static final int PROSPECTOR_CELLS = 6;
-	/** Spacing cells that only one test each loads, so that a chunk is generated for the first time inside that test. */
-	private static final int SEAL_CELL = 5;
+	/**
+	 * Spacing cells that only one test each loads, so that a chunk is generated for the first time inside that test. The seal
+	 * test needs a chunk that is not yet full: asked for a proto chunk of one that is, the world returns a read-only view, and
+	 * the plants are dropped. Towing and the pod tests load layer 2 round 2000 to 2300, so this cell lies far from them.
+	 */
+	private static final int SEAL_CELL = 30;
 	private static final int DISK_CELL = 6;
 	private static final int CASING_CELL = 7;
 	private static final int SEAM_CELL = 8;
@@ -254,6 +259,10 @@ public class LayerStructuresTest {
 		// The chunk of the site's centre, stopped before it is full: the zone fill has run, and the structure is not drawn yet.
 		ChunkPos chunkPos = ChunkPos.containing(site.origin());
 		ChunkAccess proto = level.getChunk(chunkPos.x(), chunkPos.z(), ChunkStatus.FEATURES);
+		if (!(proto instanceof ProtoChunk)) {
+			throw failure(helper, "%s was already %s before the test planted in it, so a plant would be dropped: another test loaded this chunk",
+					chunkPos, proto.getClass().getSimpleName());
+		}
 		BlockState lava = Blocks.LAVA.defaultBlockState();
 		BlockState gas = HazardBlocks.GAS_POCKET.defaultBlockState();
 		// Lava in the wall beside the hollow (the shell, outside the bounds) and gas in its roof, within this chunk.
