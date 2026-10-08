@@ -51,6 +51,7 @@ import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
+import io.github.pkeppeler.deepcharter.terminal.TerminalTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
@@ -231,7 +232,7 @@ public class FuelPumpTest {
 			s.pod().setFuel(0f);
 			// Out of range: the pod is not at the pump.
 			Vec3 parked = s.pod().position();
-			s.pod().setPos(parked.add(TUNING.pumpRadius() + 3, 0, 0));
+			s.pod().setPos(parked.add(TerminalTuning.DEFAULT.parkedRadius() + 3, 0, 0));
 			expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(s, 1), "buying with the pod out of range");
 			s.pod().setPos(parked);
 
@@ -241,7 +242,7 @@ public class FuelPumpTest {
 			try {
 				PodComponents.register(foreign, other);
 				foreign.setFuel(0f);
-				s.pod().setPos(parked.add(TUNING.pumpRadius() + 3, 0, 0));
+				s.pod().setPos(parked.add(TerminalTuning.DEFAULT.parkedRadius() + 3, 0, 0));
 				expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(s, 1), "buying with only another charter's pod in range");
 				expectEqual(helper, "litres in the other charter's pod", 0f, litres(foreign));
 				s.pod().setPos(parked);
@@ -261,7 +262,7 @@ public class FuelPumpTest {
 			// A pod nobody owns is anyone's.
 			PodEntity unowned = helper.spawn(PodRegistry.POD, new Vec3(3.5, 2, 1.5));
 			try {
-				s.pod().setPos(parked.add(TUNING.pumpRadius() + 3, 0, 0));
+				s.pod().setPos(parked.add(TerminalTuning.DEFAULT.parkedRadius() + 3, 0, 0));
 				unowned.setFuel(0f);
 				expectDone(helper, buy(s, 2), "buying into an unowned pod");
 				expectEqual(helper, "litres in the unowned pod", 2f, litres(unowned));
@@ -310,7 +311,7 @@ public class FuelPumpTest {
 			}
 			PodEntity orphan = helper.spawn(PodRegistry.POD, new Vec3(3.5, 2, 1.5));
 			PodComponents.register(orphan, dormant);
-			s.pod().setPos(s.pod().position().add(TUNING.pumpRadius() + 3, 0, 0));
+			s.pod().setPos(s.pod().position().add(TerminalTuning.DEFAULT.parkedRadius() + 3, 0, 0));
 			try {
 				orphan.setFuel(0f);
 				expectDone(helper, buy(s, 2), "buying into a pod whose owner charter is dormant");

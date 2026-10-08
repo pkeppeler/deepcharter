@@ -5,6 +5,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.WeakHashMap;
@@ -220,13 +221,25 @@ public final class PodComponents {
 		PodStats before = PodStats.of(pod);
 		Versioned.modify(pod, STATE, change);
 		PodStats after = PodStats.of(pod);
-		if (after.tankLitres() != before.tankLitres()) {
-			float full = PodTuning.DEFAULT.shell().fullFuel();
-			pod.setFuel(Math.min(full, pod.fuel() * before.tankLitres() / after.tankLitres()));
-		}
+		rescaleFuel(pod, before, after);
 		if (pod.hull() > 0f) {
 			// A pod with no hull left is a wreck (#67), and a part must not repair it. setHull holds the result to the new maximum.
 			pod.setHull(pod.hull() + Math.max(0f, after.maxHull() - before.maxHull()));
+		}
+	}
+
+	/**
+	 * Keeps the litres in the tank when the tank size moves from {@code before} to {@code after}: the stored percent is of the new
+	 * size (ADR 0010). Does nothing when the size is the same. Server only, like every change to a pod.
+	 *
+	 * <p>{@code before} and {@code after} must both be this pod's {@code PodStats.of(pod)}, taken before and after the change.
+	 */
+	public static void rescaleFuel(PodEntity pod, PodStats before, PodStats after) {
+		Objects.requireNonNull(before, "before");
+		Objects.requireNonNull(after, "after");
+		if (after.tankLitres() != before.tankLitres()) {
+			float full = PodTuning.DEFAULT.shell().fullFuel();
+			pod.setFuel(Math.min(full, pod.fuel() * before.tankLitres() / after.tankLitres()));
 		}
 	}
 
@@ -284,19 +297,20 @@ public final class PodComponents {
 		if (unreadable(pod)) {
 			return false;
 		}
+		return ownerCharter(pod).map(owner -> charter.map(acting -> acting.id().equals(owner.id())).orElse(false)).orElse(true);
+	}
+
+	/** The charter that owns the pod. Empty when the pod is unowned or the owner is gone or dormant (anyone's); never throws. */
+	public static Optional<Charter> ownerCharter(PodEntity pod) {
 		Optional<Registration> registration = read(pod).registration();
 		if (registration.isEmpty()) {
-			return true;
+			return Optional.empty();
 		}
 		try {
-			Optional<Charter> owner = Charters.find(pod.level().getServer(), registration.get().owner());
-			if (owner.isEmpty() || owner.get().dormant()) {
-				return true;
-			}
-			return charter.isPresent() && charter.get().id().equals(registration.get().owner());
+			return Charters.find(pod.level().getServer(), registration.get().owner()).filter(owner -> !owner.dormant());
 		} catch (IllegalStateException unreadable) {
 			logChartersUnreadable(unreadable);
-			return true;
+			return Optional.empty();
 		}
 	}
 

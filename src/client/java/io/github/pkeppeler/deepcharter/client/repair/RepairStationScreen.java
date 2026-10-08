@@ -1,6 +1,5 @@
 package io.github.pkeppeler.deepcharter.client.repair;
 
-import java.util.Comparator;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -12,8 +11,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
@@ -30,6 +27,7 @@ import io.github.pkeppeler.deepcharter.repair.RepairTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
+import io.github.pkeppeler.deepcharter.terminal.Terminals;
 
 /**
  * The online repair station: hull repair buttons on the left, the shop on the right. The screen never decides anything: it
@@ -92,16 +90,13 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 				pressed -> ClientPlayNetworking.send(new TerminalActionPayload(view.pos(), action, args))));
 	}
 
-	/** The pod the server would repair, as far as the client can tell: the nearest in reach. The server decides. */
+	/** The pod the server would repair, as far as the client can tell: the nearest parked at the station. The server decides. */
 	private Optional<PodEntity> nearbyPod() {
 		Minecraft client = Minecraft.getInstance();
 		if (client.level == null) {
 			return Optional.empty();
 		}
-		double radius = RepairTuning.DEFAULT.parkRadius();
-		var centre = Vec3.atCenterOf(view.pos());
-		return client.level.getEntitiesOfClass(PodEntity.class, new AABB(view.pos()).inflate(radius)).stream()
-				.min(Comparator.comparingDouble(pod -> pod.position().distanceToSqr(centre)));
+		return Terminals.parkedPods(client.level, view.pos()).stream().findFirst();
 	}
 
 	@Override

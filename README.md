@@ -23,11 +23,11 @@ Code is grouped by feature under `io.github.pkeppeler.deepcharter`. The features
 
 - `XInit.init()`, called once from `DeepCharter` (`XClientInit.init()` from `DeepCharterClient`). It calls the `init()` of each part, so adding a part edits the feature, never the entrypoints.
 - `XRegistry.register()`: its entities, blocks, items and other registrations.
-- `XTuning`: one record of tunables, read as `XTuning.DEFAULT.thing()`.
+- `XTuning`, when the feature has tunables: one record of them, read as `XTuning.DEFAULT.thing()`.
 - Lang keys: one fragment per feature, `src/lang/en_us/<feature>.json` (outside the resources source set, so it stays out of the jar), merged and sorted into `assets/deepcharter/lang/en_us.json` at build time. That file is generated: never edit it. A key lives in exactly one fragment; a duplicate fails the build. An empty fragment is `{}`.
 - Commands, always added with `FeatureCommands.register("<feature>", ...)`, which puts them under `/deepcharter <feature>`. `charter` and `handbook` have a `XCommands` stub; add one to any other feature that needs it.
 
-A new part that needs its own `init()` and has no feature of its own gets a stub in its feature, wired into that feature's `XInit` already: `pod/PodComponents` (#65), `pod/PodLights` (#75), `pod/PodTowing` (#76) and `layer/LayerStructures` (#79).
+A new part that needs its own `init()` and has no feature of its own gets a stub in its feature, wired into that feature's `XInit` already: `pod/PodComponents` (#65), `pod/PodTowing` (#76) and `layer/LayerStructures` (#79).
 
 ### Rules for M2 work
 
@@ -42,6 +42,7 @@ A new part that needs its own `init()` and has no feature of its own gets a stub
 - **Call the stubs without waiting.** `Directives.fire(ServerPlayer, Identifier)` (`handbook/`, filled by #61) completes a handbook directive for the player's charter. `Transmissions.fire(CharterId, Identifier)` (`transmission/`, filled by #62) fires a transmission once for a charter. Both do nothing until their issue lands, and their signatures are frozen. `charter/CharterId` is a record around a random UUID made when a charter is founded, never reused and never a player's UUID, with a `CODEC` and a `STREAM_CODEC`. #52 builds the charter around it.
 - **A mapping the code calls permanent (ids, numbers, block-state encodings) is pinned by a test with literal expected values, not only by a test that the keys exist.**
 - **A terminal action that spends does everything that can throw or refuse before the spend.**
+- **State held in memory to undo a change to player-owned persistent data (a respawn point, an inventory) is itself persisted, or the change is not made.**
 - **Mixins** live in `<feature>/mixin/`, are registered in `deepcharter.mixins.json`, and are used only where no Fabric event reaches; an ADR names the target method.
 - Every M2 issue's test classes and evidence scenario already exist as stubs (below), so no issue edits the gametest `fabric.mod.json`, except that a PR may add one line there for each new evidence scenario it registers. #53 creates `client/ui/` for the UI kit; it needs no init line.
 
@@ -50,6 +51,8 @@ A new part that needs its own `init()` and has no feature of its own gets a stub
 Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest/.../test/`:
 
 - Add test classes and evidence scenarios to the stubs that already exist, which are registered in `src/gametest/resources/fabric.mod.json`. A server stub is `<Thing>Test`, a client stub `<Thing>ClientTest`, a scenario `evidence/<Thing>Scenario` named `m2-<thing>`. A scenario stub throws "stub: #N fills it" when it is selected, and does nothing in a plain run.
+- A GameTest that cuts air into generated layer rock calls `RoomSeal.seal` first (generated lava and gas flood the cut otherwise).
+- Run one GameTest with `JAVA_TOOL_OPTIONS="-Dfabric-api.gametest.filter=deepcharter-test:<test_id>" ./gradlew runGameTest` (full id or a trailing `*`; a bare `-D` on the Gradle command line is ignored).
 - Before you drive an entity in a far chunk, await entity ticking: `test/support/FarChunks.awaitEntityTicking`. It forces the chunk, so nothing else needs to keep it loaded.
 - `test/support/MockPlayers` joins a real server-side player with no client behind it.
 - `test/support/TwoPlayerServer` starts a dedicated server in a client GameTest, joins the real client, then joins one mock player.

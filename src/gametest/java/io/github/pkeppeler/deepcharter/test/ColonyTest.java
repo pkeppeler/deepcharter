@@ -8,6 +8,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
@@ -30,6 +31,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.level.gamerules.GameRules;
@@ -38,8 +40,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.SavedDataStorage;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
+import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
@@ -47,12 +51,18 @@ import io.github.pkeppeler.deepcharter.colony.ColonyBuilder;
 import io.github.pkeppeler.deepcharter.colony.ColonyEvents;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.colony.ColonyTuning;
+import io.github.pkeppeler.deepcharter.hangar.Hangar;
+import io.github.pkeppeler.deepcharter.hangar.HangarData;
+import io.github.pkeppeler.deepcharter.hangar.HangarParts;
+import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalBlockEntity;
+import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
+import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
@@ -291,15 +301,19 @@ public class ColonyTest {
 		helper.succeed();
 	}
 
+	/** The colony record as it stands now, with its build marked unfinished, as after a build that stopped half way. */
+	private static ColonySite unfinishedCopy(MinecraftServer server) {
+		CompoundTag unfinished = ((CompoundTag) ColonySite.CODEC.encodeStart(NbtOps.INSTANCE, ColonySite.get(server)).getOrThrow()).copy();
+		unfinished.getCompound("colony").orElseThrow().putBoolean("finished", false);
+		return ColonySite.CODEC.parse(NbtOps.INSTANCE, unfinished).getOrThrow();
+	}
+
 	@GameTest
 	public void aBuildThatStoppedHalfWayIsBuiltAgainAtTheSameGround(GameTestHelper helper) {
 		MinecraftServer server = server(helper);
 		ServerLevel overworld = server.overworld();
 		ColonySite.Placed before = placed(helper);
-		Tag current = ColonySite.CODEC.encodeStart(NbtOps.INSTANCE, ColonySite.get(server)).getOrThrow();
-		CompoundTag unfinished = ((CompoundTag) current).copy();
-		unfinished.getCompound("colony").orElseThrow().putBoolean("finished", false);
-		ColonySite interrupted = ColonySite.CODEC.parse(NbtOps.INSTANCE, unfinished).getOrThrow();
+		ColonySite interrupted = unfinishedCopy(server);
 		if (interrupted.isBuilt() || interrupted.started().isEmpty()) {
 			throw failure(helper, "the interrupted record should be begun and not finished");
 		}
@@ -325,6 +339,56 @@ public class ColonyTest {
 			}
 		} finally {
 			server.getDataStorage().set(ColonySite.TYPE, world);
+			server.setRespawnData(LevelData.RespawnData.of(spawn.dimension(), spawn.pos(), spawn.yaw(), spawn.pitch()));
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aBuildThatStoppedHalfWayKeepsTheHangarConsoleItsRepairAndItsDerelict(GameTestHelper helper) {
+		MinecraftServer server = server(helper);
+		ServerLevel overworld = server.overworld();
+		BlockPos console = Hangar.consolePos(server).orElseThrow(() -> failure(helper, "the colony has no hangar"));
+		AABB bay = new AABB(console).inflate(40);
+		Optional<UUID> derelict = HangarData.get(server).state().derelict();
+		int pods = overworld.getEntitiesOfClass(PodEntity.class, bay).size();
+		Item part = HangarParts.ALL.getFirst();
+		ColonySite world = ColonySite.get(server);
+		RepairState repairs = RepairState.get(server);
+		RepairState partlyRepaired = new RepairState();
+		if (partlyRepaired.insert(HangarTerminal.TYPE, part).isPresent()) {
+			throw failure(helper, "a fresh repair state should take the first hangar part");
+		}
+		var spawn = server.getRespawnData();
+		server.getDataStorage().set(ColonySite.TYPE, unfinishedCopy(server));
+		server.getDataStorage().set(RepairState.TYPE, partlyRepaired);
+		try {
+			if (!ColonyBuilder.buildIfNeeded(server)) {
+				throw failure(helper, "an unfinished colony should be built again");
+			}
+			if (!overworld.getBlockState(console).is(HangarTerminal.TYPE.block()) || !(overworld.getBlockEntity(console) instanceof TerminalBlockEntity)) {
+				throw failure(helper, "the rebuilt colony has no hangar console at %s: %s", console.toShortString(), overworld.getBlockState(console));
+			}
+			if (!partlyRepaired.inserted(HangarTerminal.TYPE).equals(List.of(part))) {
+				throw failure(helper, "the rebuild changed the hangar's repair: %s", partlyRepaired.inserted(HangarTerminal.TYPE));
+			}
+			if (!HangarData.get(server).state().derelict().equals(derelict) || overworld.getEntitiesOfClass(PodEntity.class, bay).size() != pods) {
+				throw failure(helper, "the rebuild placed a second derelict Mole in the hangar");
+			}
+			MockPlayer mock = MockPlayers.join(helper, "rebuilt-console");
+			// The founded charter stays in the shared world: its name is unique, and the other founding tests leave theirs too.
+			if (Charters.found(server, mock.player().getUUID(), "Rebuilt Console " + UUID.randomUUID().toString().substring(0, 8)).isPresent()) {
+				throw failure(helper, "founding a charter should succeed");
+			}
+			Vec3 beside = Vec3.atCenterOf(console).add(2, -mock.player().getEyeHeight(), 0);
+			mock.teleportTo(overworld, beside, 0, 0);
+			Optional<TerminalRefusal> opened = Terminals.open(mock.player(), console);
+			if (opened.isPresent()) {
+				throw failure(helper, "a charter member should open the rebuilt console, it was refused: %s", opened);
+			}
+		} finally {
+			server.getDataStorage().set(ColonySite.TYPE, world);
+			server.getDataStorage().set(RepairState.TYPE, repairs);
 			server.setRespawnData(LevelData.RespawnData.of(spawn.dimension(), spawn.pos(), spawn.yaw(), spawn.pitch()));
 		}
 		helper.succeed();
@@ -420,7 +484,6 @@ public class ColonyTest {
 		BlockPos centre = placed(helper).anchors().get(ColonyAnchor.CONDUIT);
 		int layers = LayerChain.count(server.registryAccess());
 		MockPlayer mock = MockPlayers.join(helper, "conduit-hands");
-		mock.player().setGameMode(GameType.SURVIVAL);
 		int[] loaded = {0};
 		for (int layer = 0; layer <= layers; layer++) {
 			ServerLevel level = level(helper, layer);
@@ -431,6 +494,8 @@ public class ColonyTest {
 				throw failure(helper, "waiting for the Conduit's chunks to tick");
 			}
 			ServerPlayer player = mock.player();
+			// Creative while it waited at the join point inside the colony's foundation, where survival could suffocate.
+			player.setGameMode(GameType.SURVIVAL);
 			for (int layer = 0; layer <= layers; layer++) {
 				ServerLevel level = level(helper, layer);
 				player.teleportTo(level, centre.getX() + 0.5, level.getMinY() + 20, centre.getZ() + 4.5, Set.of(), 0, 0, true);

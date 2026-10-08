@@ -12,10 +12,17 @@ import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.GlobalPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer.RespawnConfig;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -28,26 +35,37 @@ import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BedPart;
+import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charter;
+import io.github.pkeppeler.deepcharter.charter.CharterData;
+import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.colony.Colony;
+import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.handbook.HandbookRegistry;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.wreck.WreckEvents;
@@ -270,6 +288,232 @@ public class WreckTest {
 			pod.discard();
 			clearFloor(helper);
 		}
+	}
+
+	private static Charter found(GameTestHelper helper, MockPlayer mock) {
+		MinecraftServer server = helper.getLevel().getServer();
+		Charters.found(server, mock.player().getUUID(), uniqueName()).ifPresent(refusal -> {
+			throw failure(helper, "could not found a charter: %s", refusal);
+		});
+		return Charters.charterOf(server, mock.player().getUUID()).orElseThrow();
+	}
+
+	/** How many wreck reports this player has been sent in chat. */
+	private static long reportsTo(MockPlayer mock) {
+		return mock.chatMessages().stream()
+				.filter(message -> message.getContents() instanceof TranslatableContents contents && contents.getKey().startsWith("deepcharter.wreck.report."))
+				.count();
+	}
+
+	/** Runs {@code check} after the mocks have read the chat the wreck sent, then cleans up. */
+	private static void afterReports(GameTestHelper helper, PodEntity pod, List<MockPlayer> mocks, Runnable check) {
+		helper.runAfterDelay(3, () -> {
+			try {
+				check.run();
+				helper.succeed();
+			} finally {
+				mocks.forEach(MockPlayer::leave);
+				pod.discard();
+				clearFloor(helper);
+			}
+		});
+	}
+
+	@GameTest
+	public void anUnmannedOwnedWreckTellsItsOwnerCharter(GameTestHelper helper) {
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer owner = MockPlayers.join(helper, "wreck-owner");
+		Charter charter = found(helper, owner);
+		PodComponents.register(pod, charter.id());
+		wreck(pod);
+		afterReports(helper, pod, List.of(owner), () -> {
+			if (reportsTo(owner) != 1) {
+				throw failure(helper, "the owner should be told once, was told %d times", reportsTo(owner));
+			}
+			Report report = REPORTS.get(pod.getUUID());
+			if (report == null || !report.charter().id().equals(charter.id())) {
+				throw failure(helper, "the report should name the owner charter, was %s", report);
+			}
+		});
+	}
+
+	@GameTest
+	public void everyOnlineMemberOfTheOwnerCharterIsToldAndAnOfflineOneIsNot(GameTestHelper helper) {
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer director = MockPlayers.join(helper, "wreck-director");
+		MockPlayer online = MockPlayers.join(helper, "wreck-online");
+		MockPlayer offline = MockPlayers.join(helper, "wreck-offline");
+		MinecraftServer server = helper.getLevel().getServer();
+		Charter charter = found(helper, director);
+		for (MockPlayer member : List.of(online, offline)) {
+			if (Charters.apply(server, member.player().getUUID(), charter.id()).isPresent()
+					|| Charters.approve(server, director.player().getUUID(), member.player().getUUID()).isPresent()) {
+				throw failure(helper, "could not add %s to the charter", member.player().getName().getString());
+			}
+		}
+		offline.leave();
+		PodComponents.register(pod, charter.id());
+		wreck(pod);
+		afterReports(helper, pod, List.of(director, online), () -> {
+			if (reportsTo(director) != 1 || reportsTo(online) != 1 || reportsTo(offline) != 0) {
+				throw failure(helper, "expected 1, 1, 0 reports (director, online, offline), got %d, %d, %d",
+						reportsTo(director), reportsTo(online), reportsTo(offline));
+			}
+		});
+	}
+
+	@GameTest
+	public void aRiderOffTheOwnerCharterIsNotToldOfAnOwnedWreck(GameTestHelper helper) {
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer owner = MockPlayers.join(helper, "wreck-own");
+		MockPlayer rider = MockPlayers.join(helper, "wreck-rider");
+		Charter ownerCharter = found(helper, owner);
+		found(helper, rider);
+		PodComponents.register(pod, ownerCharter.id());
+		if (!rider.player().startRiding(pod, true, false)) {
+			throw failure(helper, "the rider could not board the pod");
+		}
+		wreck(pod);
+		afterReports(helper, pod, List.of(owner, rider), () -> {
+			if (reportsTo(owner) != 1 || reportsTo(rider) != 0) {
+				throw failure(helper, "only the owner should be told, got owner %d, rider %d", reportsTo(owner), reportsTo(rider));
+			}
+		});
+	}
+
+	@GameTest
+	public void aRiderWhoIsOnTheOwnerCharterIsToldOnce(GameTestHelper helper) {
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer owner = MockPlayers.join(helper, "wreck-pilot");
+		Charter charter = found(helper, owner);
+		PodComponents.register(pod, charter.id());
+		if (!owner.player().startRiding(pod, true, false)) {
+			throw failure(helper, "the pilot could not board the pod");
+		}
+		wreck(pod);
+		afterReports(helper, pod, List.of(owner), () -> {
+			if (reportsTo(owner) != 1) {
+				throw failure(helper, "the pilot should be told once, was told %d times", reportsTo(owner));
+			}
+		});
+	}
+
+	@GameTest
+	public void anUnownedWreckStillTellsTheRidersCharters(GameTestHelper helper) {
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer rider = MockPlayers.join(helper, "wreck-unowned");
+		Charter charter = found(helper, rider);
+		if (!rider.player().startRiding(pod, true, false)) {
+			throw failure(helper, "the rider could not board the pod");
+		}
+		wreck(pod);
+		afterReports(helper, pod, List.of(rider), () -> {
+			Report report = REPORTS.get(pod.getUUID());
+			if (reportsTo(rider) != 1 || report == null || !report.charter().id().equals(charter.id())) {
+				throw failure(helper, "the rider's charter should be told once, got %d reports and %s", reportsTo(rider), report);
+			}
+		});
+	}
+
+	@GameTest
+	public void anOwnerCharterThatIsGoneFallsBackToTheRiders(GameTestHelper helper) {
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer rider = MockPlayers.join(helper, "wreck-gone");
+		found(helper, rider);
+		PodComponents.register(pod, CharterId.random());
+		if (!rider.player().startRiding(pod, true, false)) {
+			throw failure(helper, "the rider could not board the pod");
+		}
+		wreck(pod);
+		afterReports(helper, pod, List.of(rider), () -> {
+			if (reportsTo(rider) != 1) {
+				throw failure(helper, "the rider's charter should be told once, was told %d times", reportsTo(rider));
+			}
+		});
+	}
+
+	@GameTest
+	public void aDormantOwnerCharterFallsBackToTheRiders(GameTestHelper helper) {
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer founder = MockPlayers.join(helper, "wreck-dormant");
+		MockPlayer rider = MockPlayers.join(helper, "wreck-dormant-rider");
+		MinecraftServer server = helper.getLevel().getServer();
+		Charter dormant = found(helper, founder);
+		found(helper, rider);
+		Charters.leave(server, founder.player().getUUID()).ifPresent(refusal -> {
+			throw failure(helper, "the founder could not leave: %s", refusal);
+		});
+		if (!Charters.find(server, dormant.id()).orElseThrow().dormant()) {
+			throw failure(helper, "the charter should be dormant");
+		}
+		PodComponents.register(pod, dormant.id());
+		if (!rider.player().startRiding(pod, true, false)) {
+			throw failure(helper, "the rider could not board the pod");
+		}
+		wreck(pod);
+		afterReports(helper, pod, List.of(founder, rider), () -> {
+			if (reportsTo(rider) != 1) {
+				throw failure(helper, "the rider's charter should be told once, was told %d times", reportsTo(rider));
+			}
+		});
+	}
+
+	/** The saved charters cannot be read: the hull-0 path does not throw, nobody is told, and the pod is still a wreck. */
+	@GameTest
+	public void unreadableCharterDataTellsNobodyAndStillWrecksTheOwnedPod(GameTestHelper helper) {
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer owner = MockPlayers.join(helper, "wreck-unread-charters");
+		MinecraftServer server = helper.getLevel().getServer();
+		Charter charter = found(helper, owner);
+		PodComponents.register(pod, charter.id());
+		CompoundTag future = new CompoundTag();
+		future.putInt("version", 99);
+		CharterData unreadable = CharterData.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow();
+		CharterData original = CharterData.get(server);
+		server.getDataStorage().set(CharterData.TYPE, unreadable);
+		try {
+			wreck(pod);
+		} finally {
+			server.getDataStorage().set(CharterData.TYPE, original);
+		}
+		afterReports(helper, pod, List.of(owner), () -> {
+			if (!Wrecks.isWreck(pod)) {
+				throw failure(helper, "the pod should still be a wreck");
+			}
+			if (reportsTo(owner) != 0 || REPORTS.containsKey(pod.getUUID())) {
+				throw failure(helper, "nobody is told while the charters cannot be read, owner was told %d times", reportsTo(owner));
+			}
+		});
+	}
+
+	/** The pod's components cannot be read: its owner is unknown, so it is treated as unowned and the riders' charters are told. */
+	@GameTest
+	public void aPodWithUnreadableComponentsIsTreatedAsUnownedForTheNotice(GameTestHelper helper) {
+		PodEntity original = spawnOnFloor(helper);
+		MockPlayer rider = MockPlayers.join(helper, "wreck-unread-components");
+		Charter charter = found(helper, rider);
+		PodComponents.register(original, charter.id());
+		CompoundTag future = new CompoundTag();
+		future.putInt("version", 99);
+		CompoundTag attachments = new CompoundTag();
+		attachments.put(PodComponents.STATE.identifier().toString(), future);
+		Vec3 spot = original.position();
+		PodEntity pod = reload(helper, original, attachments);
+		pod.setPos(spot);
+		helper.getLevel().addFreshEntity(pod);
+		if (!(pod.getAttached(PodComponents.STATE) instanceof Versioned.Unreadable<?>)) {
+			throw failure(helper, "setup: the components should be unreadable");
+		}
+		if (!rider.player().startRiding(pod, true, false)) {
+			throw failure(helper, "the rider could not board the pod");
+		}
+		wreck(pod);
+		afterReports(helper, pod, List.of(rider), () -> {
+			Report report = REPORTS.get(pod.getUUID());
+			if (reportsTo(rider) != 1 || report == null || !report.charter().id().equals(charter.id())) {
+				throw failure(helper, "the rider's charter should be told once, got %d reports and %s", reportsTo(rider), report);
+			}
+		});
 	}
 
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 40)
@@ -678,6 +922,264 @@ public class WreckTest {
 			}
 			pod[0].discard();
 		});
+	}
+
+	private static MinecraftServer server(GameTestHelper helper) {
+		return helper.getLevel().getServer();
+	}
+
+	/** Builds a bed in the floor corner and returns a respawn config that names it. */
+	private static RespawnConfig bedConfig(GameTestHelper helper) {
+		BlockPos foot = new BlockPos(0, FLOOR_Y + 1, 0);
+		BlockState bed = Blocks.BED.red().defaultBlockState().setValue(BedBlock.FACING, Direction.EAST);
+		helper.setBlock(foot, bed.setValue(BedBlock.PART, BedPart.FOOT));
+		helper.setBlock(foot.east(), bed.setValue(BedBlock.PART, BedPart.HEAD));
+		return new RespawnConfig(LevelData.RespawnData.of(Level.OVERWORLD, helper.absolutePos(foot), 0f, 0f), false);
+	}
+
+	private static void clearBed(GameTestHelper helper) {
+		helper.setBlock(new BlockPos(0, FLOOR_Y + 1, 0), Blocks.AIR);
+		helper.setBlock(new BlockPos(1, FLOOR_Y + 1, 0), Blocks.AIR);
+	}
+
+	private static boolean near(Vec3 at, BlockPos block) {
+		return at.distanceToSqr(Vec3.atBottomCenterOf(block)) < 4;
+	}
+
+	/** The player clicks Respawn: the server handles the packet as it would from a client. Returns the new player. */
+	private static ServerPlayer respawn(ServerPlayer dead) {
+		dead.connection.handleClientCommand(new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
+		return dead.connection.getPlayer();
+	}
+
+	/** Runs {@code check} after the tick that moves a respawned crew to the office, then {@code cleanup}. */
+	private static void afterRespawnTick(GameTestHelper helper, Runnable cleanup, Runnable check) {
+		helper.runAfterDelay(2, () -> {
+			try {
+				check.run();
+				helper.succeed();
+			} finally {
+				cleanup.run();
+			}
+		});
+	}
+
+	@GameTest
+	public void aWreckKillRespawnsTheCrewAtTheOfficeEvenWithABedSet(GameTestHelper helper) {
+		MinecraftServer server = server(helper);
+		GlobalPos office = Colony.respawnPoint(server).orElseThrow(() -> failure(helper, "the colony was not built when the server started"));
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer mock = joinLoaded(helper, "wreck-respawn", pod.position());
+		RespawnConfig bed = bedConfig(helper);
+		ServerPlayer[] respawned = {null};
+		Runnable cleanup = () -> {
+			server.getPlayerList().remove(respawned[0] == null ? mock.player() : respawned[0]);
+			mock.leave();
+			pod.discard();
+			clearBed(helper);
+			clearFloor(helper);
+		};
+		try {
+			ServerPlayer player = mock.player();
+			player.setGameMode(GameType.SURVIVAL);
+			player.setRespawnPosition(bed, false);
+			player.startRiding(pod, true, false);
+			wreck(pod);
+			if (!player.isDeadOrDying()) {
+				throw failure(helper, "the pilot should be dead");
+			}
+			respawned[0] = respawn(player);
+			afterRespawnTick(helper, cleanup, () -> {
+				if (!near(respawned[0].position(), office.pos())) {
+					throw failure(helper, "the crew should respawn at the office %s, respawned at %s", office.pos().toShortString(), respawned[0].position());
+				}
+				if (!bed.equals(respawned[0].getRespawnConfig())) {
+					throw failure(helper, "the redirect changes no player data: the bed should still be set, but the respawn point is %s", respawned[0].getRespawnConfig());
+				}
+			});
+		} catch (RuntimeException e) {
+			cleanup.run();
+			throw e;
+		}
+	}
+
+	@GameTest
+	public void aCrewMemberWithNoBedRespawnsAtTheOfficeAndStillHasNoRespawnPoint(GameTestHelper helper) {
+		MinecraftServer server = server(helper);
+		GlobalPos office = Colony.respawnPoint(server).orElseThrow(() -> failure(helper, "the colony was not built when the server started"));
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer mock = joinLoaded(helper, "wreck-nobed", pod.position());
+		ServerPlayer[] respawned = {null};
+		Runnable cleanup = () -> {
+			server.getPlayerList().remove(respawned[0] == null ? mock.player() : respawned[0]);
+			mock.leave();
+			pod.discard();
+			clearFloor(helper);
+		};
+		try {
+			mock.player().setGameMode(GameType.SURVIVAL);
+			mock.player().startRiding(pod, true, false);
+			wreck(pod);
+			respawned[0] = respawn(mock.player());
+			afterRespawnTick(helper, cleanup, () -> {
+				if (!near(respawned[0].position(), office.pos())) {
+					throw failure(helper, "the crew should respawn at the office %s, respawned at %s", office.pos().toShortString(), respawned[0].position());
+				}
+				if (respawned[0].getRespawnConfig() != null) {
+					throw failure(helper, "the redirect changes no player data, but the respawn point is %s", respawned[0].getRespawnConfig());
+				}
+			});
+		} catch (RuntimeException e) {
+			cleanup.run();
+			throw e;
+		}
+	}
+
+	/**
+	 * Runs {@code action} with the colony's saved data replaced by {@code replacement}, and puts the real one back.
+	 * Nothing in {@code action} may await: GameTests run concurrently and would see the swap.
+	 */
+	private static void withColonySite(MinecraftServer server, ColonySite replacement, Runnable action) {
+		ColonySite world = ColonySite.get(server);
+		server.getDataStorage().set(ColonySite.TYPE, replacement);
+		try {
+			action.run();
+		} finally {
+			server.getDataStorage().set(ColonySite.TYPE, world);
+		}
+	}
+
+	private static ColonySite unreadableColonySite(MinecraftServer server) {
+		CompoundTag future = ((CompoundTag) ColonySite.CODEC.encodeStart(NbtOps.INSTANCE, ColonySite.get(server)).getOrThrow()).copy();
+		future.putInt("version", 7742);
+		return ColonySite.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow();
+	}
+
+	/** The colony's data is unreadable: the kill must not throw, the bed stays, and the owner is logged once however often they die. */
+	@GameTest
+	public void withoutAReadableColonyAWreckKillFallsBackToTheNormalRespawnAndLogsOncePerPlayer(GameTestHelper helper) {
+		MinecraftServer server = server(helper);
+		PodEntity pod = spawnOnFloor(helper);
+		String name = uniqueName();
+		MockPlayer mock = joinLoaded(helper, name, pod.position());
+		ServerPlayer[] respawned = {null};
+		LogCapture log = LogCapture.start(name);
+		try {
+			RespawnConfig bed = bedConfig(helper);
+			mock.player().setGameMode(GameType.SURVIVAL);
+			mock.player().setRespawnPosition(bed, false);
+			mock.player().startRiding(pod, true, false);
+			withColonySite(server, unreadableColonySite(server), () -> {
+				if (Colony.respawnPoint(server).isPresent()) {
+					throw failure(helper, "setup: the colony should have no respawn point");
+				}
+				wreck(pod);
+			});
+			if (!mock.player().isDeadOrDying()) {
+				throw failure(helper, "the pilot should still die");
+			}
+			if (!bed.equals(mock.player().getRespawnConfig())) {
+				throw failure(helper, "with no office the respawn point must be left alone, it is %s", mock.player().getRespawnConfig());
+			}
+			respawned[0] = respawn(mock.player());
+			if (!near(respawned[0].position(), bed.respawnData().pos())) {
+				throw failure(helper, "with no office the crew should respawn at the bed, respawned at %s", respawned[0].position());
+			}
+			if (log.errors().size() != 1 || !log.warnings().isEmpty()) {
+				throw failure(helper, "unreadable colony data should be logged as one error, was %s and %s", log.errors(), log.warnings());
+			}
+			PodEntity second = helper.spawn(PodRegistry.POD, new Vec3(FLOOR_RADIUS + 0.5, FLOOR_Y + 1, FLOOR_RADIUS + 0.5));
+			pod.discard();
+			respawned[0].teleportTo(helper.getLevel(), second.getX(), second.getY(), second.getZ(), Set.of(), 0f, 0f, true);
+			respawned[0].startRiding(second, true, false);
+			withColonySite(server, unreadableColonySite(server), () -> wreck(second));
+			second.discard();
+			if (log.errors().size() != 1) {
+				throw failure(helper, "a second kill of the same player should not log again, the errors are %s", log.errors());
+			}
+			helper.succeed();
+		} finally {
+			if (respawned[0] != null) {
+				server.getPlayerList().remove(respawned[0]);
+			}
+			mock.leave();
+			pod.discard();
+			clearBed(helper);
+			clearFloor(helper);
+		}
+	}
+
+	@GameTest
+	public void beforeTheColonyIsBuiltAWreckKillLogsAWarningNotAnError(GameTestHelper helper) {
+		MinecraftServer server = server(helper);
+		PodEntity pod = spawnOnFloor(helper);
+		String name = uniqueName();
+		MockPlayer mock = joinLoaded(helper, name, pod.position());
+		LogCapture log = LogCapture.start(name);
+		try {
+			mock.player().setGameMode(GameType.SURVIVAL);
+			mock.player().startRiding(pod, true, false);
+			withColonySite(server, new ColonySite(), () -> wreck(pod));
+			if (!mock.player().isDeadOrDying()) {
+				throw failure(helper, "the pilot should still die");
+			}
+			if (!log.errors().isEmpty() || log.warnings().size() != 1) {
+				throw failure(helper, "a colony that is not built should be logged as one warning, was %s and %s", log.errors(), log.warnings());
+			}
+			helper.succeed();
+		} finally {
+			mock.leave();
+			pod.discard();
+			clearFloor(helper);
+		}
+	}
+
+	/** A player marked to wake at the office who leaves and comes back dies an ordinary death: they wake at their bed. */
+	@GameTest
+	public void aCrewMemberWhoLeavesAndReturnsBeforeRespawningWakesAtTheirBed(GameTestHelper helper) {
+		MinecraftServer server = server(helper);
+		PodEntity pod = spawnOnFloor(helper);
+		MockPlayer mock = MockPlayers.joinUnloaded(helper, "wreck-leaver");
+		UUID id = mock.player().getUUID();
+		RespawnConfig bed = bedConfig(helper);
+		MockPlayer[] returned = {null};
+		ServerPlayer[] respawned = {null};
+		Runnable cleanup = () -> {
+			if (respawned[0] != null) {
+				server.getPlayerList().remove(respawned[0]);
+			}
+			if (returned[0] != null) {
+				returned[0].leave();
+			}
+			mock.leave();
+			pod.discard();
+			clearBed(helper);
+			clearFloor(helper);
+		};
+		try {
+			ServerPlayer player = mock.player();
+			player.setRespawnPosition(bed, false);
+			mock.teleportTo(helper.getLevel(), pod.position(), 0, 0);
+			player.startRiding(pod, true, false);
+			wreck(pod);
+			if (player.isDeadOrDying()) {
+				throw failure(helper, "setup: the player is immune, and the kill is retried");
+			}
+			mock.leave();
+			returned[0] = MockPlayers.join(helper, "wreck-leaver", id);
+			returned[0].player().setGameMode(GameType.SURVIVAL);
+			returned[0].player().setRespawnPosition(bed, false);
+			returned[0].player().kill(helper.getLevel());
+			respawned[0] = respawn(returned[0].player());
+			afterRespawnTick(helper, cleanup, () -> {
+				if (!near(respawned[0].position(), bed.respawnData().pos())) {
+					throw failure(helper, "a player who left and came back should wake at their bed, woke at %s", respawned[0].position());
+				}
+			});
+		} catch (RuntimeException e) {
+			cleanup.run();
+			throw e;
+		}
 	}
 
 	private static PodEntity reload(GameTestHelper helper, PodEntity pod, CompoundTag attachments) {

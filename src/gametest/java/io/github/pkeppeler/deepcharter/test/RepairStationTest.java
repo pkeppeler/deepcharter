@@ -60,6 +60,7 @@ import io.github.pkeppeler.deepcharter.repair.RepairStation;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
+import io.github.pkeppeler.deepcharter.terminal.TerminalTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
@@ -280,7 +281,7 @@ public class RepairStationTest {
 			PodEntity pod = station.pod();
 			pod.setHull(pod.maxHull() - 20f);
 			fund(helper, station, 1_000);
-			float tooFar = (float) RepairTuning.DEFAULT.parkRadius() + 2f;
+			float tooFar = (float) TerminalTuning.DEFAULT.parkedRadius() + 2f;
 			pod.setPos(Vec3.atCenterOf(station.pos()).add(tooFar, 0, 0));
 			expectRefused(helper, Terminals.act(station.pilot().player(), station.pos(), RepairStation.REPAIR, hp(5)), "repairing a pod parked out of reach");
 			pod.setPos(Vec3.atCenterOf(station.pos()).add(2, 0, 0));
@@ -549,8 +550,9 @@ public class RepairStationTest {
 			throw helper.assertionException("layer 1 did not load");
 		}
 		MinecraftServer server = helper.getLevel().getServer();
+		// Riders wait at the join point, inside the colony's foundation, while the far chunk loads. Creative takes no
+		// damage; an unloaded mock would be immune only for vanilla's first 60 ticks.
 		MockPlayer pilot = MockPlayers.join(helper, "Teleportee");
-		pilot.player().setGameMode(GameType.SURVIVAL);
 		Charters.found(server, pilot.player().getUUID(), "Tele " + UUID.randomUUID().toString().substring(0, 8)).ifPresent(refusal -> {
 			throw helper.assertionException("founding the charter: %s", refusal);
 		});
@@ -562,6 +564,7 @@ public class RepairStationTest {
 			// Only now: layer 1 is solid rock, and a rider put there while the chunk loads suffocates on a slow runner.
 			pilot.teleportTo(one, new Vec3(x, 40, z), 0, 0);
 			passenger.teleportTo(one, new Vec3(x, 40, z), 0, 0);
+			pilot.player().setGameMode(GameType.SURVIVAL);
 			PodEntity pod = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
 			pod.setPos(x, 40, z);
 			one.addFreshEntity(pod);
