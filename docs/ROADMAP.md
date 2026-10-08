@@ -30,6 +30,7 @@ Last updated: 2026-10-08 01:05 UTC
   - [Notes are found by the charter and read by the player](adr/0020-notes-are-found-by-the-charter-and-read-by-the-player.md)
   - [The hangar is a terminal, and its repair founds the Mole](adr/0021-the-hangar-is-a-terminal-and-its-repair-founds-the-mole.md)
   - [A terminal view carries its type's feature, and "a pod parked here" is one rule](adr/0023-a-terminal-view-carries-its-types-feature-and-a-parked-pod-is-one-rule.md)
+  - [Pod light blocks are recorded in a ledger before they are placed](adr/0024-pod-light-blocks-are-recorded-in-a-ledger-before-they-are-placed.md)
 
 ## In flight
 
@@ -42,9 +43,6 @@ Last updated: 2026-10-08 01:05 UTC
 - [PR #146 CI: install ffmpeg in seconds, not minutes](https://github.com/pkeppeler/deepcharter/pull/146)
   - Stage: Review passed, ready to merge
   - Closes: [#145](https://github.com/pkeppeler/deepcharter/issues/145)
-- [PR #150 M2: pod lights](https://github.com/pkeppeler/deepcharter/pull/150)
-  - Stage: Review passed, ready to merge
-  - Closes: [#75](https://github.com/pkeppeler/deepcharter/issues/75)
 - [PR #154 M2: sounds and music wiring](https://github.com/pkeppeler/deepcharter/pull/154)
   - Stage: Review passed, ready to merge
   - Closes: [#71](https://github.com/pkeppeler/deepcharter/issues/71)
@@ -102,7 +100,7 @@ Prove the riskiest pieces: layer chain and breach crossing, the Mole pod in mult
 
 ### M2 Vertical slice
 
-Status: In progress (46 of 69 closed)
+Status: In progress (47 of 69 closed)
 
 Surface, colony repair, Mole, onboarding handbook, layers 1-2, terminals, scanner, fuel and wreck rules, charters. Ends with a playable build for the user and friends.
 
@@ -135,7 +133,7 @@ Surface, colony repair, Mole, onboarding handbook, layers 1-2, terminals, scanne
 - [x] Completed by [PR #129](https://github.com/pkeppeler/deepcharter/pull/129): [#72 M2: contract terminal (charter UI)](https://github.com/pkeppeler/deepcharter/issues/72)
 - [x] Completed by [PR #131](https://github.com/pkeppeler/deepcharter/pull/131): [#73 M2: upgrade terminal](https://github.com/pkeppeler/deepcharter/issues/73)
 - [ ] Open: [#74 M2: scanner tiers](https://github.com/pkeppeler/deepcharter/issues/74)
-- [ ] Open: [#75 M2: pod lights](https://github.com/pkeppeler/deepcharter/issues/75)
+- [x] Completed by [PR #150](https://github.com/pkeppeler/deepcharter/pull/150): [#75 M2: pod lights](https://github.com/pkeppeler/deepcharter/issues/75)
 - [ ] Open: [#76 M2: towing](https://github.com/pkeppeler/deepcharter/issues/76)
 - [x] Completed by [PR #137](https://github.com/pkeppeler/deepcharter/pull/137): [#77 M2: founding Mole and hangar](https://github.com/pkeppeler/deepcharter/issues/77)
 - [x] Completed by [PR #135](https://github.com/pkeppeler/deepcharter/pull/135): [#78 M2: Notes (shared finds, handbook back section)](https://github.com/pkeppeler/deepcharter/issues/78)
