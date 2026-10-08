@@ -47,22 +47,33 @@ public final class HangarData extends SavedData {
 		}
 	}
 
+	/** The catalysts of the Company's advance that one charter has used. */
+	public record Advanced(CharterId charter, int spent) {
+		private static final Codec<Advanced> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+				CharterId.CODEC.fieldOf("charter").forGetter(Advanced::charter),
+				Codec.INT.fieldOf("spent").forGetter(Advanced::spent)).apply(instance, Advanced::new));
+	}
+
 	/**
 	 * @param derelict the founding Mole's pod, once placed: the hangar places it once, so a world that has one never gets a second
 	 * @param founder  the charter whose last part repaired the founding Mole
 	 * @param founded  the founding Mole belongs to {@code founder}: it is registered and restored
 	 * @param held     the pods the hangar gave each charter. A pod a charter owns by another road counts when it is loaded.
+	 * @param advanced the catalysts of the Company's advance that each charter has used. Absent from data saved before the advance
+	 *                 (it reads as nothing used), so the version stays 1.
 	 */
-	public record State(Optional<UUID> derelict, Optional<CharterId> founder, boolean founded, List<Held> held) {
+	public record State(Optional<UUID> derelict, Optional<CharterId> founder, boolean founded, List<Held> held, List<Advanced> advanced) {
 		private static final MapCodec<State> BODY = RecordCodecBuilder.mapCodec(instance -> instance.group(
 				UUIDUtil.CODEC.optionalFieldOf("derelict").forGetter(State::derelict),
 				CharterId.CODEC.optionalFieldOf("founder").forGetter(State::founder),
 				Codec.BOOL.fieldOf("founded").forGetter(State::founded),
-				Held.CODEC.listOf().fieldOf("held").forGetter(State::held)).apply(instance, State::new));
-		static final State EMPTY = new State(Optional.empty(), Optional.empty(), false, List.of());
+				Held.CODEC.listOf().fieldOf("held").forGetter(State::held),
+				Advanced.CODEC.listOf().optionalFieldOf("advanced", List.of()).forGetter(State::advanced)).apply(instance, State::new));
+		static final State EMPTY = new State(Optional.empty(), Optional.empty(), false, List.of(), List.of());
 
 		public State {
 			held = List.copyOf(held);
+			advanced = List.copyOf(advanced);
 		}
 	}
 
@@ -115,7 +126,7 @@ public final class HangarData extends SavedData {
 		if (state().derelict().isPresent()) {
 			throw new IllegalStateException("the founding Mole is placed already");
 		}
-		change(old -> new State(Optional.of(pod), old.founder(), old.founded(), old.held()));
+		change(old -> new State(Optional.of(pod), old.founder(), old.founded(), old.held(), old.advanced()));
 	}
 
 	/** Records the charter that repaired the founding Mole. It is the first one: a second call throws. */
@@ -123,12 +134,12 @@ public final class HangarData extends SavedData {
 		if (state().founder().isPresent()) {
 			throw new IllegalStateException("the founding Mole has a founder already");
 		}
-		change(old -> new State(old.derelict(), Optional.of(charter), old.founded(), old.held()));
+		change(old -> new State(old.derelict(), Optional.of(charter), old.founded(), old.held(), old.advanced()));
 	}
 
 	/** Records that the founding Mole is registered to its founder and works. */
 	void markFounded() {
-		change(old -> new State(old.derelict(), old.founder(), true, old.held()));
+		change(old -> new State(old.derelict(), old.founder(), true, old.held(), old.advanced()));
 	}
 
 	/** Records a pod as the charter's. Recording it twice changes nothing. */
@@ -139,7 +150,26 @@ public final class HangarData extends SavedData {
 			pods.add(pod);
 			held.removeIf(entry -> entry.charter().equals(charter));
 			held.add(new Held(charter, List.copyOf(pods)));
-			return new State(old.derelict(), old.founder(), old.founded(), held);
+			return new State(old.derelict(), old.founder(), old.founded(), held, old.advanced());
+		});
+	}
+
+	/** The catalysts of the Company's advance that the charter has used so far. */
+	public int advanceSpent(CharterId charter) {
+		return state().advanced().stream().filter(entry -> entry.charter().equals(charter)).mapToInt(Advanced::spent).sum();
+	}
+
+	/** Records that the charter used {@code catalysts} more of the Company's advance. */
+	public void spendAdvance(CharterId charter, int catalysts) {
+		if (catalysts < 0) {
+			throw new IllegalArgumentException("cannot spend " + catalysts + " catalysts of an advance");
+		}
+		change(old -> {
+			List<Advanced> advanced = new ArrayList<>(old.advanced());
+			int spent = advanceSpent(charter) + catalysts;
+			advanced.removeIf(entry -> entry.charter().equals(charter));
+			advanced.add(new Advanced(charter, spent));
+			return new State(old.derelict(), old.founder(), old.founded(), old.held(), advanced);
 		});
 	}
 
