@@ -43,13 +43,13 @@ public record StructureSite(StructureKind kind, BlockPos origin, boolean alongZ,
 				^ cellX * 341873128712L ^ cellZ * 132897987541L);
 		int spacing = tuning.structureSpacing();
 		int margin = kind.reach() + 1;
+		int casing = ColonyTuning.DEFAULT.conduitRadius();
 		for (int attempt = 0; attempt < PLACEMENT_TRIES; attempt++) {
 			int x = cellX * spacing + margin + random.nextInt(spacing - 2 * margin);
 			int z = cellZ * spacing + margin + random.nextInt(spacing - 2 * margin);
 			int y = usable.low() + 1 + random.nextInt(floors);
 			StructureSite site = new StructureSite(kind, new BlockPos(x, y, z), random.nextBoolean(), height, random.nextLong());
-			if (!site.bounds().intersects(conduit.getX() - ColonyTuning.DEFAULT.conduitRadius(), conduit.getZ() - ColonyTuning.DEFAULT.conduitRadius(),
-					conduit.getX() + ColonyTuning.DEFAULT.conduitRadius(), conduit.getZ() + ColonyTuning.DEFAULT.conduitRadius())) {
+			if (!site.bounds().intersects(conduit.getX() - casing, conduit.getZ() - casing, conduit.getX() + casing, conduit.getZ() + casing)) {
 				return site;
 			}
 		}
