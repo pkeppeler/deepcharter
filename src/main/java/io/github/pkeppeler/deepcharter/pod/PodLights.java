@@ -162,7 +162,7 @@ public final class PodLights {
 		LIT.clear();
 	}
 
-	/** Takes away the recorded light blocks of this dimension that no pod holds and whose chunk is loaded. */
+	/** Takes away the recorded light blocks of this dimension that no pod holds and that can change without loading a chunk. */
 	private static void sweep(ServerLevel level) {
 		if (level.getGameTime() % PodLightsTuning.DEFAULT.sweepIntervalTicks() != 0) {
 			return;
