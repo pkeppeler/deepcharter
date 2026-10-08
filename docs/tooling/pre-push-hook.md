@@ -4,6 +4,8 @@
 
 It skips pushes that only delete a branch and pushes to `pr-media`. On failure it prints which step failed.
 
+The Gradle step waits if another Gradle build holds the lock, and the push sits there. The hook prints a note about it. Press Ctrl-C and push with `git push --no-verify` to skip.
+
 Enable it once:
 
 ```

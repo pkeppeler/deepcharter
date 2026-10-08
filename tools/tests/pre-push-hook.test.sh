@@ -49,5 +49,30 @@ check "delete plus normal push still runs checks" "0:2" "$(run_hook "(delete) $z
 check "gradle failure blocks, python not reached" "1:1" "$(STUB_FAIL=gradle run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "failure message names the reason" "yes" "$(grep -q 'compile or checkstyle failed' "$work/out" && echo yes || echo no)"
 check "python failure blocks" "1:2" "$(STUB_FAIL=python run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
+check "python failure message names the reason" "yes" "$(grep -q 'tool unit tests failed' "$work/out" && echo yes || echo no)"
+check "last line without a newline still counts" "0:2" "$(run_hook "refs/heads/b $sha refs/heads/b $zero")"
+
+# Git ignores a hook that is not executable, and the copy above is chmod'ed, so check the real file.
+check "hook is executable in the index" "100755" "$(git -C "$repo" ls-files -s .githooks/pre-push | cut -c1-6)"
+
+# A relative core.hooksPath runs the hook from each worktree's own root.
+tr_repo=$work/tr
+mkdir -p "$tr_repo/.githooks"
+cp "$repo/.githooks/pre-push" "$tr_repo/.githooks/pre-push"
+cat >"$tr_repo/gradlew" <<'S'
+#!/usr/bin/env bash
+echo "gradlew in $PWD" >>"$STUB_LOG"
+S
+chmod +x "$tr_repo/.githooks/pre-push" "$tr_repo/gradlew"
+git init -q -b main "$tr_repo"
+git init -q --bare "$work/remote.git"
+git -C "$tr_repo" config core.hooksPath .githooks
+git -C "$tr_repo" remote add origin "$work/remote.git"
+git -C "$tr_repo" add -A
+git -C "$tr_repo" -c user.name=t -c user.email=t@example.com commit -q -m init
+git -C "$tr_repo" worktree add -q -b wt "$work/wt"
+: >"$work/calls"
+STUB_LOG="$work/calls" PATH="$work/bin:$PATH" git -C "$work/wt" push -q origin wt >"$work/out" 2>&1 || true
+check "hook runs from a second worktree, in that worktree" "gradlew in $(cd "$work/wt" && pwd -P)" "$(sed -n 1p "$work/calls")"
 
 exit "$((failures > 0))"

@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
-# Fast pre-push check: compile all source sets, checkstyle, tool unit tests (about a minute on a
-# warm daemon). Early feedback only; CI's build and tool-tests jobs are the gate. It does not run
-# the GameTest suites or the bash tool tests.
-# Enable once per clone (shared by all its worktrees): git config core.hooksPath .githooks
-# Skip one push: git push --no-verify
+# Fast pre-push check, early feedback only. What it runs and how to enable it: docs/tooling/pre-push-hook.md
 set -euo pipefail
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -11,7 +7,7 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 # git feeds one line per ref: <local ref> <local sha> <remote ref> <remote sha>.
 # Run the checks unless every ref is a branch delete or targets pr-media.
 need_checks=0
-while read -r _ local_sha remote_ref _; do
+while read -r _ local_sha remote_ref _ || [[ -n ${local_sha:-} ]]; do
   [[ $local_sha =~ ^0+$ ]] && continue
   [[ $remote_ref == refs/heads/pr-media ]] && continue
   need_checks=1
@@ -25,7 +21,7 @@ fail() {
   echo "pre-push: $1 failed. Fix it, or skip the hook once with: git push --no-verify" >&2
   exit 1
 }
-echo "pre-push: compile and checkstyle" >&2
+echo "pre-push: compile and checkstyle (waits if another Gradle build holds the lock; Ctrl-C and push with --no-verify to skip)" >&2
 ./gradlew -q compileJava compileClientJava compileGametestJava checkstyleMain checkstyleClient checkstyleGametest \
   || fail "compile or checkstyle"
 echo "pre-push: tool unit tests" >&2
