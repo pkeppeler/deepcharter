@@ -536,6 +536,51 @@ public class PodComponentsTest {
 		}
 	}
 
+	/** Pod ownership is the charter id, so a revived charter takes its pods back; a wreck stays a wreck and nothing done meanwhile is undone. */
+	@GameTest
+	public void aRevivedCharterTakesItsPodsBackAndTheirWreckStateStays(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		MockPlayer director = MockPlayers.join(helper, "components-revive-director");
+		MockPlayer reviver = MockPlayers.join(helper, "components-revive-new");
+		MockPlayer stranger = MockPlayers.join(helper, "components-revive-stranger");
+		PodEntity pod = null;
+		try {
+			expectNoRefusal(helper, Charters.found(server, director.player().getUUID(), "Revived " + CHARTERS.incrementAndGet()));
+			CharterId owner = Charters.charterOf(server, director.player().getUUID()).orElseThrow().id();
+			pod = ownedPod(helper, owner);
+			pod.damageHull(pod.maxHull());
+			expectNoRefusal(helper, Charters.leave(server, director.player().getUUID()));
+			if (!PodComponents.mayAccess(pod, Charters.charterOf(server, stranger.player().getUUID()))) {
+				throw failure(helper, "while the charter is dormant its pod is anyone's");
+			}
+			if (PodComponents.ownerCharter(pod).isPresent()) {
+				throw failure(helper, "a dormant charter owns no pod for the others");
+			}
+
+			expectNoRefusal(helper, Charters.revive(server, reviver.player().getUUID(), owner));
+			if (PodComponents.ownerCharter(pod).map(Charter::id).filter(owner::equals).isEmpty()) {
+				throw failure(helper, "the revived charter owns its pod again");
+			}
+			if (stranger.player().startRiding(pod)) {
+				throw failure(helper, "a stranger must not board the pod of a revived charter");
+			}
+			if (!Wrecks.isWreck(pod)) {
+				throw failure(helper, "reviving a charter does not repair its wrecked pod");
+			}
+			if (!PodComponents.mayAccess(pod, Charters.charterOf(server, reviver.player().getUUID()))) {
+				throw failure(helper, "the new Director may act on the pod");
+			}
+			helper.succeed();
+		} finally {
+			director.leave();
+			reviver.leave();
+			stranger.leave();
+			if (pod != null) {
+				pod.discard();
+			}
+		}
+	}
+
 	@GameTest
 	public void registeringAPodWithPartsAlreadyInstalledKeepsLitresAndDamage(GameTestHelper helper) {
 		CharterId charter = charter(helper);
