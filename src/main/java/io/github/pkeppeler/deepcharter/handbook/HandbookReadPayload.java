@@ -1,0 +1,79 @@
+package io.github.pkeppeler.deepcharter.handbook;
+
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+
+import net.minecraft.core.Holder;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
+
+import io.github.pkeppeler.deepcharter.DeepCharter;
+
+/**
+ * Serverbound: the sender has opened an entry in the handbook screen: a chapter, or a Note. The server marks it read for the
+ * sender, and only the sender. Nothing the client says is trusted: a chapter must exist, and the sender's charter must be allowed
+ * to read all of it ({@link HandbookVisibility#FULL}), so a modified client cannot mark a classified chapter; a Note must be one the
+ * sender's charter has found ({@link Notes#foundFor}). A request that fails a check
+ * is dropped without a reply. A player whose saved read marks cannot be read is logged once and skipped.
+ */
+public record HandbookReadPayload(Identifier entry) implements CustomPacketPayload {
+	public static final Type<HandbookReadPayload> TYPE = new Type<>(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook_read"));
+	public static final StreamCodec<RegistryFriendlyByteBuf, HandbookReadPayload> CODEC = StreamCodec.composite(
+			Identifier.STREAM_CODEC, HandbookReadPayload::entry,
+			HandbookReadPayload::new);
+
+	/** Registers the payload type and its receiver. */
+	static void register() {
+		PayloadTypeRegistry.serverboundPlay().register(TYPE, CODEC);
+		ServerPlayNetworking.registerGlobalReceiver(TYPE, (payload, context) -> handle(context.server(), context.player(), payload.entry()));
+	}
+
+	/** Marks {@code entry} read for {@code player} if the request passes every check. Returns whether the entry is now marked. */
+	public static boolean handle(MinecraftServer server, ServerPlayer player, Identifier entry) {
+		if (!ReadMarks.isReadable(player)) {
+			return false;
+		}
+		if (ReadMarks.isRead(player, entry)) {
+			return true;
+		}
+		boolean allowed = Notes.exists(entry) ? Notes.foundFor(server, player.getUUID()).contains(entry) : viewableFor(server, player.getUUID(), entry);
+		if (!allowed) {
+			return false;
+		}
+		ReadMarks.mark(player, entry);
+		return true;
+	}
+
+	/** Whether {@code chapter} exists and the charter of {@code player} may read all of it. */
+	public static boolean viewableFor(MinecraftServer server, UUID player, Identifier chapter) {
+		List<Holder.Reference<HandbookChapter>> chapters = HandbookChapters.all(server.registryAccess());
+		return viewable(chapters.stream().map(entry -> entry.key().identifier()).toList(),
+				chapters.stream().map(entry -> entry.value().directives().stream().map(HandbookChapter.Entry::id).toList()).toList(),
+				HandbookProgress.completedFor(server, player), chapter);
+	}
+
+	/**
+	 * Whether {@code chapter} is one of {@code chapterIds} and is {@link HandbookVisibility#FULL} for a charter that completed
+	 * {@code completed}. Pure.
+	 *
+	 * @param chapterIds the chapter ids in handbook order
+	 * @param directives the directive ids of each chapter, in the same order as {@code chapterIds}
+	 */
+	public static boolean viewable(List<Identifier> chapterIds, List<List<Identifier>> directives, Set<Identifier> completed, Identifier chapter) {
+		int index = chapterIds.indexOf(chapter);
+		return index >= 0 && HandbookVisibility.of(directives, completed).get(index) == HandbookVisibility.FULL;
+	}
+
+	@Override
+	public Type<HandbookReadPayload> type() {
+		return TYPE;
+	}
+}

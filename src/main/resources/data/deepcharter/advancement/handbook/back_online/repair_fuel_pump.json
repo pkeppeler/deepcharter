@@ -1,0 +1,10 @@
+{
+  "criteria": {
+    "fired": {
+      "trigger": "deepcharter:directive",
+      "conditions": {
+        "directive": "deepcharter:handbook/back_online/repair_fuel_pump"
+      }
+    }
+  }
+}

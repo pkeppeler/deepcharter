@@ -1,0 +1,10 @@
+{
+  "criteria": {
+    "fired": {
+      "trigger": "deepcharter:directive",
+      "conditions": {
+        "directive": "deepcharter:handbook/staying_safe/repair_hull"
+      }
+    }
+  }
+}

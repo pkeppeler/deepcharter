@@ -1,0 +1,14 @@
+{
+  "commands.deepcharter.pod.spawn.failed": "Could not spawn a pod here",
+  "commands.deepcharter.pod.spawn.success": "Spawned a pod",
+  "commands.deepcharter.pod.spawn.success_scanner": "Spawned a pod for your charter, with a tier 1 scanner",
+  "deepcharter.pod.dump.no_pod": "You are not riding a pod",
+  "deepcharter.pod.dump.success": "Dumped %s ore",
+  "entity.deepcharter.pod": "Pod",
+  "entity.deepcharter.prospector": "Prospector",
+  "hud.deepcharter.pod.cargo": "Cargo %s",
+  "hud.deepcharter.pod.depth": "Y %s",
+  "hud.deepcharter.pod.fuel": "Fuel %s%%",
+  "hud.deepcharter.pod.hull": "Hull %s/%s",
+  "hud.deepcharter.pod.stranded": "STRANDED"
+}

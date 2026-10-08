@@ -1,0 +1,10 @@
+{
+  "criteria": {
+    "fired": {
+      "trigger": "deepcharter:directive",
+      "conditions": {
+        "directive": "deepcharter:handbook/fuel_is_life/fly_mole"
+      }
+    }
+  }
+}

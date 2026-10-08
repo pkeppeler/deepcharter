@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "CIC",
+    " R "
+  ],
+  "key": {
+    "C": "minecraft:copper_ingot",
+    "I": "minecraft:iron_ingot",
+    "R": "minecraft:redstone"
+  },
+  "result": {
+    "id": "deepcharter:fuel_valve",
+    "count": 1
+  }
+}

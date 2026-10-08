@@ -1,0 +1,26 @@
+{
+  "order": 5,
+  "title": {
+    "translate": "deepcharter.handbook.chapter.deepcharter.every_sale_counts.title"
+  },
+  "directives": [
+    {
+      "id": "deepcharter:handbook/every_sale_counts/sell_ore",
+      "text": {
+        "translate": "deepcharter.handbook.directive.every_sale_counts.sell_ore"
+      }
+    },
+    {
+      "id": "deepcharter:handbook/every_sale_counts/buy_component",
+      "text": {
+        "translate": "deepcharter.handbook.directive.every_sale_counts.buy_component"
+      }
+    },
+    {
+      "id": "deepcharter:handbook/every_sale_counts/install_component",
+      "text": {
+        "translate": "deepcharter.handbook.directive.every_sale_counts.install_component"
+      }
+    }
+  ]
+}

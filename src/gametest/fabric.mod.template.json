@@ -6,11 +6,16 @@
 	"license": "All-Rights-Reserved",
 	"environment": "*",
 	"entrypoints": {
+		"main": [
+			"io.github.pkeppeler.deepcharter.test.support.TestAttachments",
+			"io.github.pkeppeler.deepcharter.test.support.TerminalTestTypes",
+			"io.github.pkeppeler.deepcharter.test.support.WorldDataGuard"
+		],
 		"fabric-gametest": [
-			"io.github.pkeppeler.deepcharter.test.DeepCharterGameTest"
+			"@SERVER_TESTS@"
 		],
 		"fabric-client-gametest": [
-			"io.github.pkeppeler.deepcharter.test.DeepCharterClientGameTest"
+			"@CLIENT_TESTS@"
 		]
 	},
 	"depends": {

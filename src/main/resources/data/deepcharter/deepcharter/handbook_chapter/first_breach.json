@@ -1,0 +1,14 @@
+{
+  "order": 8,
+  "title": {
+    "translate": "deepcharter.handbook.chapter.deepcharter.first_breach.title"
+  },
+  "directives": [
+    {
+      "id": "deepcharter:handbook/first_breach/breach_workings",
+      "text": {
+        "translate": "deepcharter.handbook.directive.first_breach.breach_workings"
+      }
+    }
+  ]
+}

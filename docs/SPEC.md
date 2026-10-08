@@ -28,28 +28,34 @@ Pillars, ranked. The higher one wins a conflict.
 
 ### Surface and colony
 
-- **Surface:** vanilla-style frontier (terrain, trees, animals, vanilla ores near the surface for the bootstrap, vanilla night monsters). No villages or settlements. No Nether or End; the depths replace them.
+- **Surface:** vanilla-style frontier (our own dry terrain with no sea, trees, animals, vanilla ores near the surface for the bootstrap, vanilla night monsters). No villages or settlements. No Nether or End; the depths replace them.
 - **Colony:** one derelict mining colony per world, at spawn, named Prosperity. Its terminals are repaired once per world: when any charter fixes one, every charter can use it. The contract terminal works from the start.
 - **Conduit:** an undiggable Company pipe runs from the colony's ore processor straight down through every layer, at the same coordinates in each, ending in the Furnace. It is a landmark and the story's first clue ([LORE.md](LORE.md#8-prosperity)).
 - **Width:** unlimited, no border.
-- **Performance:** layer height drives cost, because Minecraft generates whole columns. Keep layers moderately tall. If world files grow large, add a tool to trim unvisited chunks.
+- **Performance:** world height drives cost, because Minecraft generates whole columns. Keep layers about 256 blocks or less, and uncharted worlds 2048 tall. If world files grow large, add a tool to trim unvisited chunks.
 
 ### Layers
 
 - The underground is a chain of layers. Each layer's floor leads into the top of the next.
-- Each layer is its own dimension (own ambient light, fog, sky). The depth readout is computed: layer offset plus local Y. See [ADR 0003](adr/0003-depth-as-chained-layer-dimensions.md).
+- The surface and story layers 1–8 share one tall dimension, the **campaign world**. A layer is a Y band with its own ambient light, fog and sky, set by biome. The depth readout is computed: layer offset plus local Y. See [ADR 0029](adr/0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md).
 - Layers vary in thickness.
 - **Zones:** each layer has 2–4 zones. Ore value, hazards, creatures and atmosphere step up between zones.
 
 ### Breaches
 
 - A breach is a crust at each layer boundary. It is a soft gate: any drill can get through, slowly and painfully (heat, hull damage).
-- Crossing is an event: rumble, short fade, a transmission, new music.
+- Crossing is an event: rumble, a transmission, new music. There is no teleport and no fade.
 - You can go too deep too early, and you will regret it.
+
+### Seams and grained crust
+
+- Below the campaign world, the worlds are 2048 tall. Each joins the next at a **seam**: a fast background swap. The pod carries all its riders.
+- The swap happens inside a **grained crust** (working name; the lore session names it). It has a vertical grain and flexes on a slow pulse. Rules: no sideways digging, placed blocks crumble, fluids are absorbed, and anything that stops in it is squeezed.
+- Seed-chosen **decoys** (set so that about a third of restricted crusts are seams) follow the same rules, so a seam cannot be told from a decoy.
 
 ### Story layers
 
-About 8 story layers, roughly 6–8 hours each: a 60+ hour campaign, finale at the bottom of the last. Themes are settled; each layer's lore, zones and beats are in [LORE.md](LORE.md#11-layers).
+About 8 story layers, roughly 6–8 hours each: a 60+ hour campaign, finale at the bottom of the last. The campaign world ends at the finale's floor, where a seam leads to the Ramp. Themes are settled; each layer's lore, zones and beats are in [LORE.md](LORE.md#11-layers).
 
 | # | Name | Theme |
 |---|------|-------|
@@ -64,11 +70,11 @@ About 8 story layers, roughly 6–8 hours each: a 60+ hour campaign, finale at t
 
 ### Ramp
 
-A few hundred blocks at the bottom of the last story layer where drilling gets exponentially harder. You can continue, but it is not worth it. It makes the end of the campaign obvious.
+A few hundred blocks at the top of the first uncharted world, below the seam at the finale's floor, where drilling gets exponentially harder. You can continue, but it is not worth it. It makes the end of the campaign obvious.
 
 ### Uncharted layers
 
-- Below the ramp, without limit. Remixes of story-layer themes, each much harder than the one above; rewards grow far more slowly than difficulty.
+- Below the ramp, without limit: a chain of 2048-tall worlds. Remixes of story-layer themes, each much harder than the one above; rewards grow far more slowly than difficulty.
 - A bragging-rights grind for the records board.
 - The altimeter reads "UNCHARTED".
 - No rated materials exist for them, so no outpost there can be made habitable.
@@ -76,7 +82,7 @@ A few hundred blocks at the bottom of the last story layer where drilling gets e
 ### Splice rule
 
 - A layer's content is fixed the first time any charter breaks into it.
-- An update adding story layer N+1 splices it into the chain below the last story layer and above the ramp. Breaking through N's floor leads into the new layer; its floor leads into whatever already existed.
+- An update adding story layer N+1 splices it in as a new world at the seam between the finale and the Ramp. The seam moves to the new world's floor; it is not a seam inside the campaign world. Breaking through N's floor leads into the new layer; its floor leads into whatever already existed.
 - Nothing built is lost. Existing layers keep their terrain; their depth readings shift.
 - Players already down there get a "the depths moved" story event.
 - No shaft can reach a spliced layer early, so pre-mining is impossible.
@@ -335,7 +341,7 @@ Original lore with the original game's shape (a cheerful employer, vanishing min
 
 - **Employer:** H. Colom & Co. H. COLOM reversed is MOLOCH: the hidden-name trick, with clues in layers 1, 5 and 7 and the reveal on screen in layer 8.
 - **The reveal:** the Company is the lure of a parasite in the heart of a vast sleeping creature whose body is the deep. Everything sold goes down the Conduit to the parasite's Furnace ([LORE.md](LORE.md#3-the-spine)).
-- **The finale is a choice** ([ADR 0006](adr/0006-the-finale-is-won-by-renunciation.md), [LORE.md](LORE.md#12-the-finale)). The fight breaks the boss but cannot kill him, and he offers the charter a **Controlling Interest**.
+- **The finale is a choice** ([ADR 0031](adr/0031-the-finale-is-won-by-renunciation.md), [LORE.md](LORE.md#12-the-finale)). The fight breaks the boss but cannot kill him, and he offers the charter a **Controlling Interest**.
   - **Renunciation**, the true ending: anyone in the charter throws it into the Furnace, which kills the boss. The charter loses its whole account, and every crew member receives an **Unnumbered Lamp**, a suit lamp that never runs out.
   - **Signing**, by the Director only, is final and permanent. The Director becomes the Chairman, with a payout and a recurring dividend. He carries the Controlling Interest for good, and his suit lamp never works again. The epilogue is grim.
 - **Post-game hook:** the Ramp is the wall around the creature's heart, the Motherload. Both endings lead to the uncharted layers below it ([LORE.md](LORE.md#13-post-game)). A splice is the creature stirring ("the depths moved").
@@ -380,7 +386,8 @@ Surface, repairing the colony, the Mole, the onboarding handbook (implied by the
 - Finale numbers and rules: the dividend's size and cadence, and how the Chairman's dead suit lamp and the Unnumbered Lamp sit with the suit lamp's battery track.
 - Records board extras proposed by the lore: a Continuity Events column, and a lamp or mask mark for each charter after the finale.
 - Creatures and combat session.
-- Numbers tuning: layer thicknesses, prices, drill speeds.
+- What happens to dropped items and mobs that fall to a seam.
+- Numbers tuning: layer thicknesses, drill speeds, and the prices past layer 2. The early prices (parts, scanner, lights, the Mole and Prospector, repairs) were scaled to a run's income in [PR 206](https://github.com/pkeppeler/deepcharter/pull/206).
 - Duration and size of earthquake and cave-in blockages, per layer.
 - Public release: name and branding, licence, original soundtrack sourcing.
 - Competition between charters (a later update).

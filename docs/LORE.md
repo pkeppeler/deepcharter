@@ -8,7 +8,7 @@ Canon, settled 2026-10-07 in the lore session ([#12](https://github.com/pkeppele
 - [lore/handbook.md](lore/handbook.md): the Employee Handbook's voice, margin notes and revisions
 - [lore/notes.md](lore/notes.md): the starter set of Notes
 
-Glossary terms are defined in [CONTEXT.md](../CONTEXT.md); the game's systems are in [SPEC.md](SPEC.md). The finale's design rationale is in [ADR 0006](adr/0006-the-finale-is-won-by-renunciation.md).
+Glossary terms are defined in [CONTEXT.md](../CONTEXT.md); the game's systems are in [SPEC.md](SPEC.md). The finale's design rationale is in [ADR 0031](adr/0031-the-finale-is-won-by-renunciation.md).
 
 ## 1. One-line pitch (internal)
 

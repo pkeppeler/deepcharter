@@ -1,0 +1,14 @@
+{
+  "criteria": {
+    "logs": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "#minecraft:logs"
+          }
+        ]
+      }
+    }
+  }
+}

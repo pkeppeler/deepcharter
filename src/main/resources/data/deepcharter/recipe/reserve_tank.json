@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ICI",
+    "IBI",
+    "III"
+  ],
+  "key": {
+    "B": "minecraft:bucket",
+    "C": "minecraft:copper_ingot",
+    "I": "minecraft:iron_ingot"
+  },
+  "result": {
+    "id": "deepcharter:reserve_tank",
+    "count": 1
+  }
+}

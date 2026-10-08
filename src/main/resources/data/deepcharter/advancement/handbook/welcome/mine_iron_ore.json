@@ -1,0 +1,30 @@
+{
+  "criteria": {
+    "raw": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:raw_iron"
+          }
+        ]
+      }
+    },
+    "ore": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "#minecraft:iron_ores"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "raw",
+      "ore"
+    ]
+  ]
+}

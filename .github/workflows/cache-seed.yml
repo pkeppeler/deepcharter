@@ -1,0 +1,47 @@
+# Seeds the Gradle cache on main, which PR runs can read (a PR's own caches are
+# invisible to other PRs). Main never runs the real CI, so this fires only when a
+# Gradle input changes, or by hand. `classes` resolves dependencies and sets up
+# Minecraft (Loom's download, merge and remap) for every source set, without
+# running any tests.
+name: Cache seed
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - build.gradle
+      - settings.gradle
+      - gradle.properties
+      - gradle/**
+  workflow_dispatch:
+
+concurrency:
+  group: cache-seed
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # The job id must stay `build`: setup-gradle's Gradle User Home cache key includes
+  # the job id, and ci.yml's job is `build`. Its restore keys then match this entry
+  # as "most recent entry saved for the same OS and job id" (and, failing that, the
+  # same OS), falling back from the PR branch to main. See
+  # docs/setup-gradle.md, "Cache keys" and "Finding a matching cache entry", at
+  # gradle/actions 3f5f9ada. The workflow name differs, so the closer tier misses.
+  build:
+    name: seed
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: 25
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-read-only: false
+      - run: ./gradlew classes

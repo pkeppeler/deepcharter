@@ -1,0 +1,32 @@
+{
+  "order": 9,
+  "title": {
+    "translate": "deepcharter.handbook.chapter.deepcharter.company_property.title"
+  },
+  "directives": [
+    {
+      "id": "deepcharter:handbook/company_property/find_prospector",
+      "text": {
+        "translate": "deepcharter.handbook.directive.company_property.find_prospector"
+      }
+    },
+    {
+      "id": "deepcharter:handbook/company_property/tow_prospector",
+      "text": {
+        "translate": "deepcharter.handbook.directive.company_property.tow_prospector"
+      }
+    },
+    {
+      "id": "deepcharter:handbook/company_property/restore_prospector",
+      "text": {
+        "translate": "deepcharter.handbook.directive.company_property.restore_prospector"
+      }
+    },
+    {
+      "id": "deepcharter:handbook/company_property/reach_workings_floor",
+      "text": {
+        "translate": "deepcharter.handbook.directive.company_property.reach_workings_floor"
+      }
+    }
+  ]
+}
