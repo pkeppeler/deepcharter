@@ -1,0 +1,108 @@
+// One game client at a time on this Mac (#255). Every Loom client run (runClient, runPlay,
+// runClientGameTest), however it is started (./gradlew direct, tools/play.sh, tools/record-evidence.sh),
+// takes an fcntl lock on ~/.cache/deepcharter/client.lock in a doFirst and holds it until the build ends.
+// The OS drops an fcntl lock when its process dies, so Ctrl-C, kill -9 and crashes free it; no PID
+// liveness check is needed. client.lock.holder says who holds it, for the waiter's progress line.
+// The PID is the Gradle daemon's (a human finds the client JVM with `pgrep -P <pid>`).
+// Only on macOS; DEEPCHARTER_CLIENT_LOCK=1 forces it on and =0 off (tools/tests/client-lock.test.sh).
+// DEEPCHARTER_LOCK_DIR moves the lock directory; DEEPCHARTER_LOCK_POLL_MS sets the retry interval.
+import java.nio.channels.FileChannel
+import java.nio.channels.FileLock
+import java.nio.channels.OverlappingFileLockException
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardOpenOption
+import org.gradle.api.Action
+import org.gradle.api.Task
+import org.gradle.api.provider.Provider
+import org.gradle.api.services.BuildService
+import org.gradle.api.services.BuildServiceParameters
+
+abstract class ClientLock implements BuildService<BuildServiceParameters.None>, AutoCloseable {
+	private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger("deepcharter.clientlock")
+	private FileChannel channel
+	private FileLock held
+	private Path holderFile
+
+	// Blocks until this build holds the lock. A second call in the same build returns at once.
+	synchronized void acquire(String worktree, String task) {
+		if (held != null) {
+			return
+		}
+		def env = System.getenv()
+		Path dir = env["DEEPCHARTER_LOCK_DIR"] ? Path.of(env["DEEPCHARTER_LOCK_DIR"]) : Path.of(System.getProperty("user.home"), ".cache", "deepcharter")
+		long pollMs = (env["DEEPCHARTER_LOCK_POLL_MS"] ?: "2000") as long
+		Files.createDirectories(dir)
+		holderFile = dir.resolve("client.lock.holder")
+		channel = FileChannel.open(dir.resolve("client.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE)
+		long lastNote = 0
+		while (true) {
+			try {
+				held = channel.tryLock()
+			} catch (OverlappingFileLockException other) {
+				held = null // another build in this daemon JVM holds it
+			}
+			if (held != null) {
+				break
+			}
+			long now = System.currentTimeMillis()
+			if (lastNote == 0 || now - lastNote >= 10_000) {
+				LOG.lifecycle("Waiting for the game client lock, held by ${readHolder()}")
+				lastNote = now
+			}
+			Thread.sleep(pollMs)
+		}
+		Files.writeString(holderFile, "worktree ${worktree}, task ${task}, Gradle daemon PID ${ProcessHandle.current().pid()}\n", StandardCharsets.UTF_8)
+		LOG.lifecycle("Took the game client lock (${dir.resolve('client.lock')})")
+	}
+
+	private String readHolder() {
+		try {
+			return Files.readString(holderFile, StandardCharsets.UTF_8).trim()
+		} catch (IOException unknown) {
+			return "an unknown process"
+		}
+	}
+
+	@Override
+	synchronized void close() {
+		if (held == null) {
+			return
+		}
+		try {
+			Files.deleteIfExists(holderFile)
+		} finally {
+			held.release()
+			channel.close()
+			held = null
+		}
+	}
+}
+
+class AcquireClientLock implements Action<Task> {
+	final Provider<ClientLock> lock
+	final String worktree
+
+	AcquireClientLock(Provider<ClientLock> lock, String worktree) {
+		this.lock = lock
+		this.worktree = worktree
+	}
+
+	@Override
+	void execute(Task task) {
+		lock.get().acquire(worktree, task.name)
+	}
+}
+
+def lockSetting = System.getenv("DEEPCHARTER_CLIENT_LOCK")
+def lockOn = lockSetting != null ? lockSetting == "1" : System.getProperty("os.name").toLowerCase().contains("mac")
+if (lockOn) {
+	def lock = gradle.sharedServices.registerIfAbsent("clientLock", ClientLock) {}
+	def worktree = rootProject.projectDir.absolutePath
+	def clientTasks = (System.getenv("DEEPCHARTER_LOCK_TASKS") ?: "runClient,runPlay,runClientGameTest").split(",") as List
+	tasks.matching { it.name in clientTasks }.configureEach {
+		usesService(lock)
+		doFirst(new AcquireClientLock(lock, worktree))
+	}
+}
