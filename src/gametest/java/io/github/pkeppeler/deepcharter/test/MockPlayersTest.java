@@ -109,6 +109,21 @@ public class MockPlayersTest {
 		helper.succeed();
 	}
 
+	/** Vanilla only grants a joining player 60 ticks of load immunity, so an unloaded mock is not a safe place to wait. */
+	@GameTest(maxTicks = 200)
+	public void unloadedMockBecomesDamageableAfterVanillasLoadTimeout(GameTestHelper helper) {
+		ServerPlayer unloaded = MockPlayers.joinUnloaded(helper, "timing-out").player();
+		unloaded.setGameMode(GameType.SURVIVAL);
+		helper.runAfterDelay(100, () -> {
+			float before = unloaded.getHealth();
+			unloaded.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), 2.0F);
+			if (unloaded.getHealth() >= before) {
+				throw helper.assertionException("an unloaded mock was still immune after 100 ticks: %s of %s", unloaded.getHealth(), before);
+			}
+			helper.succeed();
+		});
+	}
+
 	/** A crossing the mock never confirms leaves a player immune, so a loaded mock confirms it itself. */
 	@GameTest
 	public void loadedMockStaysDamageableAfterChangingDimension(GameTestHelper helper) {
