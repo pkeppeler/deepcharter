@@ -22,7 +22,7 @@ echo "python3 $*" >>"$STUB_LOG"
 S
 cat >"$work/bin/shellcheck" <<'S'
 #!/usr/bin/env bash
-if [[ ${1:-} == --version ]]; then echo "version: ${STUB_SC_VERSION:-0.11.0}"; exit 0; fi
+if [[ ${1:-} == --version ]]; then echo "version: ${STUB_SC_VERSION-0.11.0}"; exit 0; fi
 echo "shellcheck $*" >>"$STUB_LOG"
 [[ ${STUB_FAIL:-} != shellcheck ]]
 S
@@ -55,6 +55,8 @@ check "gradle failure blocks, python not reached" "1:1" "$(STUB_FAIL=gradle run_
 check "failure message names the reason" "yes" "$(grep -q 'compile or checkstyle failed' "$work/out" && echo yes || echo no)"
 check "python failure blocks" "1:2" "$(STUB_FAIL=python run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "python failure message names the reason" "yes" "$(grep -q 'tool unit tests failed' "$work/out" && echo yes || echo no)"
+STUB_SC_VERSION='' run_hook "refs/heads/b $sha refs/heads/b $zero$nl" >/dev/null
+check "unreadable local version warns clearly" "yes" "$(grep -q 'could not read the local shellcheck version; CI pins 0.11.0' "$work/out" && echo yes || echo no)"
 check "shellcheck failure blocks, room-carver check not reached" "1:3" "$(STUB_FAIL=shellcheck run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "shellcheck failure message names the reason" "yes" "$(grep -q 'shellcheck failed' "$work/out" && echo yes || echo no)"
 run_hook "refs/heads/b $sha refs/heads/b $zero$nl" >/dev/null

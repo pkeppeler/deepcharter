@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Single source of truth for the shellcheck pin and the files it checks. CI and .githooks/pre-push both call this.
 # Usage: tools/shellcheck.sh            lint the repo's shell scripts; warns if the local version is not the pin
-#        tools/shellcheck.sh install DIR  download the pinned release into DIR/shellcheck-vX (CI only)
+#        tools/shellcheck.sh install DIR  download the pinned release and put the binary at DIR/shellcheck (CI only)
 set -euo pipefail
 
 SHELLCHECK_VERSION=0.11.0
@@ -21,8 +21,15 @@ if [[ ${1:-} == install ]]; then
   exit 0
 fi
 
+if ! command -v shellcheck >/dev/null 2>&1; then
+  echo "shellcheck: not installed; CI installs the pinned version with 'tools/shellcheck.sh install DIR'" >&2
+  exit 1
+fi
+
 local_version=$(shellcheck --version | sed -n 's/^version: //p')
-if [[ $local_version != "$SHELLCHECK_VERSION" ]]; then
+if [[ -z $local_version ]]; then
+  echo "shellcheck: could not read the local shellcheck version; CI pins $SHELLCHECK_VERSION" >&2
+elif [[ $local_version != "$SHELLCHECK_VERSION" ]]; then
   echo "shellcheck: local version is $local_version but CI pins $SHELLCHECK_VERSION; results may differ from CI" >&2
 fi
 
