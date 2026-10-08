@@ -12,9 +12,7 @@ while read -r _ local_sha remote_ref _ || [[ -n ${local_sha:-} ]]; do
   [[ $remote_ref == refs/heads/pr-media ]] && continue
   need_checks=1
 done
-if [[ $need_checks -eq 0 ]]; then
-  exit 0
-fi
+[[ $need_checks -eq 1 ]] || exit 0
 
 cd "$root"
 fail() {

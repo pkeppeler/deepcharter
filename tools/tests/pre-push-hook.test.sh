@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# Tests the skip logic of .githooks/pre-push with a stub gradlew and python3: the checks run for a
-# normal push, and are skipped for a branch delete, a push to pr-media, and an empty push. A failing
-# check blocks the push with a reason.
+# Tests .githooks/pre-push with a stub gradlew and python3: skip rules, failure blocking, worktree cwd.
 # Usage: tools/tests/pre-push-hook.test.sh
 set -euo pipefail
 
