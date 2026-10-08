@@ -23,6 +23,9 @@ public final class FarChunks {
 	 */
 	public static final int AWAIT_BUDGET_TICKS = WAIT_SECONDS * 1000 / POLL_MILLIS + 600;
 
+	/** The server tick on which a waiter last slept. Server thread only. */
+	private static int lastSleptTick = -1;
+
 	private FarChunks() {
 	}
 
@@ -63,6 +66,13 @@ public final class FarChunks {
 				throw helper.assertionException(Component.literal(String.format("chunk %s in %s was not %s after %d s",
 						chunk, level.dimension(), awaited.text, WAIT_SECONDS)));
 			}
+			// Once per server tick, shared by every waiter, so N waiters do not make a tick N times as long. Every waiting
+			// tick still sleeps once, so the AWAIT_BUDGET_TICKS bound holds. GameTests run on the server thread only.
+			int tick = level.getServer().getTickCount();
+			if (tick == lastSleptTick) {
+				return;
+			}
+			lastSleptTick = tick;
 			try {
 				Thread.sleep(POLL_MILLIS);
 			} catch (InterruptedException e) {
