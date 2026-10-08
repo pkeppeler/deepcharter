@@ -11,7 +11,7 @@ import java.util.Map;
  * @param tierCaps   the best part tier each chassis takes, by chassis id (SPEC section 7)
  */
 public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks, Map<String, Integer> tierCaps) {
-	public static final UpgradeTuning DEFAULT = new UpgradeTuning(defaultTracks(), Map.of("mole", 2));
+	public static final UpgradeTuning DEFAULT = new UpgradeTuning(defaultTracks(), Map.of("mole", 2, "prospector", 3));
 
 	/**
 	 * One track's table, with one entry for each tier from 0 (stock) up. {@code values} are the original's reference

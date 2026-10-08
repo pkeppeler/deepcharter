@@ -36,6 +36,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalActions;
 import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.transmission.Transmissions;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 
 /**
@@ -147,12 +148,19 @@ public final class HangarTerminal {
 					.orElseGet(() -> refuse("wreck_unreadable"));
 		}
 		PodEntity wreck = usable.get();
-		if (charter.account() < tuning.restoreMoney()) {
-			return refuse("insufficient_funds", tuning.restoreMoney());
+		HangarTuning.RestoreCost cost = tuning.restoreCost(wreck.chassis());
+		// A wreck nobody owns is registered to the charter that restores it, and that takes a serial.
+		boolean unowned = PodComponents.registration(wreck).isEmpty();
+		if (unowned && !Serials.get(server).isReadable()) {
+			logSerialsUnreadable(server, "restores no unowned wreck");
+			return refuse("serials_unreadable");
+		}
+		if (charter.account() < cost.money()) {
+			return refuse("insufficient_funds", cost.money());
 		}
 		Item catalyst = OreRegistry.item(tuning.catalyst());
-		if (count(player.getInventory(), catalyst) < tuning.restoreCatalysts()) {
-			return refuse("missing_catalyst", tuning.restoreCatalysts(), new ItemStack(catalyst).getHoverName().getString());
+		if (count(player.getInventory(), catalyst) < cost.catalysts()) {
+			return refuse("missing_catalyst", cost.catalysts(), new ItemStack(catalyst).getHoverName().getString());
 		}
 		try {
 			Wrecks.restore(wreck, wreck.maxHull());
@@ -160,13 +168,26 @@ public final class HangarTerminal {
 			DeepCharter.LOGGER.error("Could not restore pod {}: {}", wreck.getUUID(), unreadable.getMessage());
 			return refuse("restore_failed");
 		}
-		take(player.getInventory(), catalyst, tuning.restoreCatalysts());
-		Optional<CharterRefusal> refusal = Charters.spend(server, charter.id(), tuning.restoreMoney());
+		if (unowned) {
+			PodComponents.register(wreck, charter.id());
+			// The name a wreck site gave it (PROSPECTOR-0002) is the wreck's: the registration names the pod now.
+			wreck.setCustomName(null);
+		}
+		take(player.getInventory(), catalyst, cost.catalysts());
+		Optional<CharterRefusal> refusal = Charters.spend(server, charter.id(), cost.money());
 		if (refusal.isPresent()) {
 			throw new IllegalStateException("a restore that passed the funds check was refused: " + refusal.get());
 		}
-		player.sendOverlayMessage(Component.translatable("deepcharter.hangar.restored", tuning.restoreMoney()));
+		player.sendOverlayMessage(Component.translatable("deepcharter.hangar.restored", cost.money()));
+		cost.transmission().ifPresent(transmission -> Transmissions.fire(server, charter.id(), transmission));
 		return Optional.empty();
+	}
+
+	private static void logSerialsUnreadable(MinecraftServer server, String consequence) {
+		Serials serials = Serials.get(server);
+		if (UNREADABLE_SERIALS_LOGGED.add(serials)) {
+			DeepCharter.LOGGER.error("The hangar {}, because the saved serials cannot be read", consequence);
+		}
 	}
 
 	private static int count(Inventory inventory, Item item) {

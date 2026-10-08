@@ -19,7 +19,6 @@ import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 /** Placeholder model, following vanilla's TntRenderer: extract copies the entity to a render state, submit draws it. */
 public class PodRenderer extends EntityRenderer<PodEntity, PodRenderState> {
 	private static final BlockDisplayContext DISPLAY_CONTEXT = BlockDisplayContext.create();
-	private static final BlockState HULL_BLOCK = Blocks.RAW_COPPER_BLOCK.defaultBlockState();
 	// A wreck is dark: it is powered off (#67).
 	private static final BlockState WRECK_BLOCK = Blocks.COAL_BLOCK.defaultBlockState();
 	// As tall as the seat is high, so the rider sits on it.
@@ -27,9 +26,14 @@ public class PodRenderer extends EntityRenderer<PodEntity, PodRenderState> {
 
 	private final BlockModelResolver blockModelResolver;
 
-	public PodRenderer(EntityRendererProvider.Context context) {
+	private final Chassis chassis;
+	private final BlockState hullBlock;
+
+	public PodRenderer(EntityRendererProvider.Context context, Chassis chassis, BlockState hullBlock) {
 		super(context);
-		shadowRadius = Chassis.MOLE.width() / 2;
+		this.chassis = chassis;
+		this.hullBlock = hullBlock;
+		shadowRadius = chassis.width() / 2;
 		blockModelResolver = context.getBlockModelResolver();
 	}
 
@@ -41,13 +45,13 @@ public class PodRenderer extends EntityRenderer<PodEntity, PodRenderState> {
 	@Override
 	public void extractRenderState(PodEntity pod, PodRenderState state, float partialTick) {
 		super.extractRenderState(pod, state, partialTick);
-		blockModelResolver.update(state.hull, Wrecks.isWreck(pod) ? WRECK_BLOCK : HULL_BLOCK, DISPLAY_CONTEXT);
+		blockModelResolver.update(state.hull, Wrecks.isWreck(pod) ? WRECK_BLOCK : hullBlock, DISPLAY_CONTEXT);
 	}
 
 	@Override
 	public void submit(PodRenderState state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
 		poseStack.pushPose();
-		float width = Chassis.MOLE.width();
+		float width = chassis.width();
 		poseStack.translate(-width / 2, 0, -width / 2);
 		poseStack.scale(width, SLAB_HEIGHT, width);
 		if (!state.hull.isEmpty()) {

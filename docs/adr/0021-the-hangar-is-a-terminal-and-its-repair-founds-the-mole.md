@@ -29,3 +29,4 @@ Builds on [ADR 0014](0014-terminal-repair-is-one-world-wide-chain.md) (terminal 
 - A world whose colony was built before this change has no derelict and no console. The colony ADR already says to start a new world for a new version.
 - `colony/`, `pod/` and `wreck/` take no change.
 - A later issue that registers a Mole before the console is repaired breaks the `MOLE-0001` claim; the warning says so.
+- A Prospector restores at a different price and registers a wreck nobody owned, see ADR 0027.
