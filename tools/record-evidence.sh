@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Usage: tools/record-evidence.sh <scenario> [--no-run]
+# Usage: tools/record-evidence.sh <scenario> [--no-run] [--full-suite]
+#        tools/record-evidence.sh <scenario> --print-class
 #
 # Runs one evidence scenario as a Fabric client GameTest, then turns its frames into
 # an MP4 and a palette-optimized GIF. Everything is rendered inside the game, so no
@@ -9,6 +10,13 @@
 #   <scenario>.mp4          linked from the PR
 #   <scenario>.gif          inlined in the PR (about 800px wide, kept under 5 MB)
 # Publish with: tools/pr-media.sh <pr-number> build/evidence/<scenario>/*.gif ...
+#
+# Only the scenario's own class runs (-PclientTests=<class>, see gradle/gametest.gradle), so a recording
+# takes the scenario's time plus client start-up. The class is found by scanning src/gametest/java for the
+# EvidenceScenario subclass whose name() returns the scenario id; there is no table to keep in step.
+# --full-suite runs the whole client suite instead (the scenario still records along the way).
+# An id that no scenario declares fails before any client starts.
+# --print-class prints the scenario's class and exits (the CI record job filters its client run with it).
 #
 # --no-run only re-assembles existing frames (skips the game).
 #
@@ -27,11 +35,24 @@ FPS=15
 GIF_MAX_BYTES=${GIF_MAX_BYTES:-$((5 * 1024 * 1024))}
 GIF_FRAMES=${GIF_FRAMES:-}
 
-if [[ $# -lt 1 || $# -gt 2 || ! $1 =~ ^[a-z0-9][a-z0-9-]*$ || ( $# -eq 2 && $2 != --no-run ) ]]; then
-  echo "usage: tools/record-evidence.sh <scenario> [--no-run]" >&2
+usage() {
+  echo "usage: tools/record-evidence.sh <scenario> [--no-run] [--full-suite]  |  --print-class" >&2
   exit 2
-fi
+}
+[[ $# -ge 1 && $1 =~ ^[a-z0-9][a-z0-9-]*$ ]] || usage
 scenario=$1
+shift
+no_run=0
+full_suite=0
+print_class=0
+for flag in "$@"; do
+  case $flag in
+    --no-run) no_run=1 ;;
+    --full-suite) full_suite=1 ;;
+    --print-class) print_class=1 ;;
+    *) usage ;;
+  esac
+done
 if [[ ! $GIF_MAX_BYTES =~ ^[1-9][0-9]*$ || ( -n $GIF_FRAMES && ! $GIF_FRAMES =~ ^[1-9][0-9]*-[1-9][0-9]*$ ) ]]; then
   echo "GIF_MAX_BYTES must be a number of bytes, and GIF_FRAMES a range such as 560-720" >&2
   exit 2
@@ -41,9 +62,38 @@ cd "$(dirname "$0")/.."
 root=$PWD/build/evidence
 out=$root/$scenario
 
-if [[ ${2:-} != --no-run ]]; then
+# Prints "<scenario id> <class>" for every EvidenceScenario subclass: the id is the string its name() returns.
+scenario_classes() {
+  local file
+  while IFS= read -r file; do
+    awk -v cls="$(basename "$file" .java)" '
+      /String name\(\)/ { armed = 1 }
+      armed && match($0, /return "[^"]*";/) { print substr($0, RSTART + 8, RLENGTH - 10), cls; armed = 0 }
+    ' "$file"
+  done < <(grep -rlE '\bextends[[:space:]]+EvidenceScenario\b' src/gametest/java)
+}
+
+if (( ! no_run || print_class )); then
+  classes=$(scenario_classes | awk -v id="$scenario" '$1 == id { print $2 }' | sort)
+  if [[ -z $classes ]]; then
+    echo "no evidence scenario is named '$scenario' (no EvidenceScenario under src/gametest/java returns it from name())" >&2
+    exit 1
+  fi
+  if [[ $classes == *$'\n'* ]]; then
+    echo "scenario '$scenario' is declared by more than one class (${classes//$'\n'/ }); ids must be unique" >&2
+    exit 1
+  fi
+  if (( print_class )); then
+    echo "$classes"
+    exit 0
+  fi
+  filter=()
+  if (( ! full_suite )); then
+    filter=("-PclientTests=$classes")
+  fi
   # --no-daemon: Ctrl-C of a build that waits for a client slot must end it (gradle/clientlock.gradle).
-  DEEPCHARTER_EVIDENCE=$scenario DEEPCHARTER_EVIDENCE_DIR=$root ./gradlew --no-daemon runClientGameTest
+  # ${filter[@]+...}: an empty array is an unbound variable to bash 3.2 under set -u.
+  DEEPCHARTER_EVIDENCE=$scenario DEEPCHARTER_EVIDENCE_DIR=$root ./gradlew --no-daemon runClientGameTest ${filter[@]+"${filter[@]}"}
 fi
 
 [[ -f $out/frames/frame-0001.png ]] \

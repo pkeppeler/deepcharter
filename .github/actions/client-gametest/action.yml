@@ -10,6 +10,10 @@ inputs:
     description: Evidence scenario to record (DEEPCHARTER_EVIDENCE). Empty runs the normal tests, which skip every scenario.
     required: false
     default: ""
+  client-tests:
+    description: Client test class filter (-PclientTests). Empty runs every client test. For an evidence scenario, its class (tools/record-evidence.sh --print-class).
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -47,9 +51,14 @@ runs:
         # Where EvidenceScenario writes frames and screenshots (build/evidence/<scenario>/).
         DEEPCHARTER_EVIDENCE: ${{ inputs.evidence-scenario }}
         DEEPCHARTER_EVIDENCE_DIR: ${{ github.workspace }}/build/evidence
+        CLIENT_TESTS: ${{ inputs.client-tests }}
       run: |
         log="$RUNNER_TEMP/client-gametest.log"
-        ./gradlew runClientGameTest -x deleteGameTestRunDir > "$log" 2>&1 &
+        filter=()
+        if [ -n "$CLIENT_TESTS" ]; then
+          filter=("-PclientTests=$CLIENT_TESTS")
+        fi
+        ./gradlew runClientGameTest -x deleteGameTestRunDir "${filter[@]}" > "$log" 2>&1 &
         gradle_pid=$!
         tail -n +1 -f "$log" --pid="$gradle_pid" &
         tail_pid=$!

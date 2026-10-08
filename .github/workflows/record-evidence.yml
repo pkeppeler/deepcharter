@@ -83,19 +83,22 @@ jobs:
             echo "::error::'$scenario' is not a scenario name"
             exit 1
           fi
-          # Fail in seconds, not after a 10 minute client run, on a name no scenario declares.
-          if ! grep -rqF "return \"$scenario\";" src/gametest/java/io/github/pkeppeler/deepcharter/test/evidence; then
+          # Fail in seconds, not after a client run, on a name no scenario declares. The class
+          # limits the client run to that scenario (the script's mapping, so CI and the Mac agree).
+          if ! class=$(tools/record-evidence.sh "$scenario" --print-class); then
             echo "::error::No evidence scenario is named '$scenario'"
             exit 1
           fi
           echo "pr=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           echo "scenario=$scenario" >> "$GITHUB_OUTPUT"
+          echo "class=$class" >> "$GITHUB_OUTPUT"
           if [[ $EVENT == pull_request ]]; then
             gh pr edit "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --remove-label record
           fi
       - uses: ./.github/actions/client-gametest
         with:
           evidence-scenario: ${{ steps.resolve.outputs.scenario }}
+          client-tests: ${{ steps.resolve.outputs.class }}
       - name: Install ffmpeg
         run: sudo apt-get install -y -q --no-install-recommends ffmpeg
       # Reuses the Mac script's assembly (--no-run): MP4, GIF, GIF_MAX_BYTES. A GIF over budget
