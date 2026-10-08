@@ -10,11 +10,13 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
 /** Client GameTest: the real client and the mock player both cross a breach. */
@@ -78,8 +80,6 @@ public class BreachCrossingClientTest implements FabricClientGameTest {
 
 	private static void openShaft(ServerLevel level, double x) {
 		BlockPos column = BlockPos.containing(x, 0, Z);
-		for (int y = level.getMinY(); y <= level.getMinY() + 10; y++) {
-			level.setBlock(column.atY(y), Blocks.AIR.defaultBlockState(), 3);
-		}
+		RoomCarver.carve(level, column.atY(level.getMinY()), column.atY(level.getMinY() + 10), Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
 	}
 }

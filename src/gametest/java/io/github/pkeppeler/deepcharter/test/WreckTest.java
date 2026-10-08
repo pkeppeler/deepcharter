@@ -68,6 +68,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.wreck.WreckEvents;
 import io.github.pkeppeler.deepcharter.wreck.WreckRegistry;
@@ -109,6 +110,7 @@ public class WreckTest {
 	private static void clearFloor(GameTestHelper helper) {
 		for (int x = 0; x <= 2 * FLOOR_RADIUS; x++) {
 			for (int z = 0; z <= 2 * FLOOR_RADIUS; z++) {
+				// room-carver: clears the floor of the overworld test structure, not layer rock
 				helper.setBlock(new BlockPos(x, FLOOR_Y, z), Blocks.AIR);
 			}
 		}
@@ -877,9 +879,7 @@ public class WreckTest {
 		for (BlockPos pos : BlockPos.betweenClosed(x - 2, 0, z - 2, x + 2, 2, z + 2)) {
 			one.setBlock(pos, LayerBlocks.BREACH_CRUST.defaultBlockState(), Block.UPDATE_CLIENTS);
 		}
-		for (BlockPos pos : BlockPos.betweenClosed(x - 2, 1, z - 2, x + 2, 8, z + 2)) {
-			one.setBlock(pos, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
-		}
+		RoomCarver.carve(one, x - 2, x + 2, 1, 8, z - 2, z + 2, Blocks.AIR);
 		MockPlayer pilot = MockPlayers.join(helper, "wreck-crust");
 		pilot.teleportTo(one, new Vec3(x, 1, z), 0f, 0f);
 		PodEntity[] pod = {null};
@@ -933,7 +933,9 @@ public class WreckTest {
 	}
 
 	private static void clearBed(GameTestHelper helper) {
+		// room-carver: removes a bed this test placed in the overworld test structure, not layer rock
 		helper.setBlock(new BlockPos(0, FLOOR_Y + 1, 0), Blocks.AIR);
+		// room-carver: removes a bed this test placed in the overworld test structure, not layer rock
 		helper.setBlock(new BlockPos(1, FLOOR_Y + 1, 0), Blocks.AIR);
 	}
 

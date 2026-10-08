@@ -116,6 +116,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 				for (int x = X - 4; x <= X + 5; x++) {
 					for (int z = Z - 4; z <= Z + 4; z++) {
 						for (int y = FLOOR_Y - 8; y <= FLOOR_Y + 10; y++) {
+							// room-carver: a room in the overworld, not layer rock
 							level.setBlock(new BlockPos(x, y, z), (y < FLOOR_Y ? Blocks.STONE : Blocks.AIR).defaultBlockState(), 3);
 						}
 					}

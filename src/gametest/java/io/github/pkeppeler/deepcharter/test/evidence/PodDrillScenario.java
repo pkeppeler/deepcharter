@@ -15,9 +15,9 @@ import net.minecraft.world.level.block.Blocks;
 
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 
 /**
  * Evidence scenario "pod-drill": the real player drills a pod down through a row of stone and the three rows of
@@ -90,11 +90,11 @@ public class PodDrillScenario extends EvidenceScenario {
 
 	/** Crust rows, a row of stone under the pod, an open room above, and glowstone to light the shaft. */
 	private static void buildShaftRoom(ServerLevel level) {
-		// Seal first: worldgen scatters lava through layer 1's rock, and lava beside the room would flow in and into the shaft.
-		RoomSeal.seal(level, new BlockPos(X - 5, 0, Z - 5), new BlockPos(X + 5, FLOOR_Y + 9, Z + 5));
 		box(level, 0, 2, LayerBlocks.BREACH_CRUST);
 		box(level, 3, FLOOR_Y - 1, Blocks.STONE);
-		box(level, FLOOR_Y, FLOOR_Y + 9, Blocks.AIR);
+		// Worldgen scatters lava through layer 1's rock, and lava beside the room would flow in and into the shaft, so carve it sealed.
+		RoomCarver.carve(level, new BlockPos(X - 5, FLOOR_Y, Z - 5), new BlockPos(X + 5, FLOOR_Y + 9, Z + 5), Blocks.AIR.defaultBlockState(),
+				Block.UPDATE_ALL);
 		for (BlockPos lamp : new BlockPos[] {
 				new BlockPos(X + 1, 3, Z - 1), new BlockPos(X - 2, 3, Z),
 				new BlockPos(X + 1, 1, Z), new BlockPos(X - 2, 1, Z - 1), new BlockPos(X + 1, 0, Z - 1),

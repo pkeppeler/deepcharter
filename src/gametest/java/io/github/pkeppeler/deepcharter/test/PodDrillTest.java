@@ -19,7 +19,6 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodDrill;
@@ -30,6 +29,7 @@ import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 
 /**
  * Server GameTests for pod drilling, driven by a mock pilot's input in layer_1 (and layer_2, for the
@@ -352,7 +352,7 @@ public class PodDrillTest {
 		ServerLevel level = layer(helper, 1);
 		room(level, x, floor, 4);
 		// Only column x+1 reaches the pod; under columns x-1 and x the ground is three blocks lower.
-		box(level, x - 1, x, floor - 3, floor - 1, Z - 4, Z + 4, Blocks.AIR);
+		RoomCarver.carve(level, x - 1, x, floor - 3, floor - 1, Z - 4, Z + 4, Blocks.AIR);
 		Rig rig = Rig.await(helper, level, new Vec3(x + 0.3, floor, Z), 0f, "drill-ledge", SPRINT);
 		helper.succeedWhen(() -> {
 			if (!rig.ready()) {
@@ -399,10 +399,8 @@ public class PodDrillTest {
 	public void theLastCrustRowCrossesThePodAndItsPilotIntoTheNextLayer(GameTestHelper helper) {
 		int x = 3512;
 		ServerLevel one = layer(helper, 1);
-		// Seal first: generated rock around the room holds lava that floods the cleared air before the pod ticks.
-		RoomSeal.seal(one, new BlockPos(x - 2, 0, Z - 2), new BlockPos(x + 2, 8, Z + 2));
 		box(one, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
-		box(one, x - 2, x + 2, 1, 8, Z - 2, Z + 2, Blocks.AIR);
+		RoomCarver.carve(one, x - 2, x + 2, 1, 8, Z - 2, Z + 2, Blocks.AIR);
 		float[] hullBefore = {Float.NaN};
 		Rig rig = Rig.await(helper, one, new Vec3(x, 1, Z), 0f, "drill-crust", SPRINT, pod -> hullBefore[0] = pod.hull());
 		helper.onEachTick(() -> {
@@ -439,9 +437,8 @@ public class PodDrillTest {
 	public void theLastLayersCrustIsNotDrilled(GameTestHelper helper) {
 		int x = 3576;
 		ServerLevel two = layer(helper, 2);
-		RoomSeal.seal(two, new BlockPos(x - 2, 0, Z - 2), new BlockPos(x + 2, 10, Z + 2));
 		box(two, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
-		box(two, x - 2, x + 2, 3, 10, Z - 2, Z + 2, Blocks.AIR);
+		RoomCarver.carve(two, x - 2, x + 2, 3, 10, Z - 2, Z + 2, Blocks.AIR);
 		Rig rig = Rig.await(helper, two, new Vec3(x, 3, Z), 0f, "drill-last-crust", SPRINT);
 		helper.onEachTick(() -> {
 			if (!rig.ready()) {
@@ -479,16 +476,14 @@ public class PodDrillTest {
 
 	/** Stone up to and including y=floor-1 under a 9 x 9 around (x, Z), and air for 10 blocks above it. */
 	private static void room(ServerLevel level, int x, int floor, int radius) {
-		RoomSeal.seal(level, new BlockPos(x - radius, floor - 8, Z - radius), new BlockPos(x + radius + 1, floor + 10, Z + radius));
 		box(level, x - radius, x + radius + 1, floor - 8, floor - 1, Z - radius, Z + radius, Blocks.STONE);
-		box(level, x - radius, x + radius + 1, floor, floor + 10, Z - radius, Z + radius, Blocks.AIR);
+		RoomCarver.carve(level, x - radius, x + radius + 1, floor, floor + 10, Z - radius, Z + radius, Blocks.AIR);
 	}
 
 	/** Only the stone bed, for pods that drill straight down in open air. */
 	private static void stoneBed(ServerLevel level, int x, int floor) {
-		RoomSeal.seal(level, new BlockPos(x - 4, floor - 8, Z - 4), new BlockPos(x + 3, floor + 10, Z + 3));
 		box(level, x - 4, x + 3, floor - 8, floor - 1, Z - 4, Z + 3, Blocks.STONE);
-		box(level, x - 4, x + 3, floor, floor + 10, Z - 4, Z + 3, Blocks.AIR);
+		RoomCarver.carve(level, x - 4, x + 3, floor, floor + 10, Z - 4, Z + 3, Blocks.AIR);
 	}
 
 	/** A stone wall across the room, from xFrom to xTo, floor to top, z within three of {@code z}. */
