@@ -23,6 +23,7 @@ public final class TransmissionRegistry {
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> Transmissions.stopped());
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> Transmissions.deliverOnLogin(server, handler.getPlayer()));
 		CharterEvents.FOUNDED.register((server, charter) -> Transmissions.replayTo(server, TransmissionData.get(server), charter.id()));
+		CharterEvents.REVIVED.register((server, charter, director) -> Transmissions.deliver(server, TransmissionData.get(server), charter.id()));
 		CharterEvents.JOINED.register((server, charter, player) -> Transmissions.deliver(server, TransmissionData.get(server), charter.id()));
 		CharterEvents.LEFT.register((server, charter, player) -> Transmissions.forget(server, TransmissionData.get(server), charter.id(), player));
 		BreachEvents.CROSSED.register(TransmissionTriggers::onCrossed);
