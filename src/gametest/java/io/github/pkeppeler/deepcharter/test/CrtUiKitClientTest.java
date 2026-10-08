@@ -30,6 +30,7 @@ public class CrtUiKitClientTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		ClientTestLog.start(this);
 		revealsAtConfiguredRate();
 		hookFiresOncePerLetterInOrder();
 		hookFiresInOrderWhenOneStepRevealsMany();

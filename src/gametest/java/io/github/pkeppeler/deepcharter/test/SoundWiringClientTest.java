@@ -20,6 +20,7 @@ import net.minecraft.client.sounds.WeighedSoundEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -28,6 +29,7 @@ import net.minecraft.sounds.Music;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
@@ -64,6 +66,9 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 	private static final int X = 500;
 	private static final int Z = 500;
 	private static final int FLOOR_Y = 200;
+	private static final int BURSTS = 12;
+	private static final int BURST_TICKS = 5;
+	private static final double BURST_BLOCKS = 0.5;
 
 	/** Every sound the client starts, in order. */
 	private static final class Heard implements SoundEventListener {
@@ -92,6 +97,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		ClientTestLog.start(this);
 		Heard heard = new Heard();
 		context.runOnClient(client -> client.getSoundManager().addListener(heard));
 		try {
@@ -137,12 +143,14 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 			check(heard.count("pod.rotor") == 0 && heard.count("pod.engine_drive") == 0, "a pod at rest has no rotor or drive sound");
 
 			two.server().runOnServer(server -> two.mock().setInput(JUMP));
-			await(context, heard, client -> heard.count("pod.rotor") > 0 && heard.count("pod.engine_drive") > 0);
+			await(context, heard, "pod.rotor and pod.engine_drive after the pilot jumps", client -> heard.count("pod.rotor") > 0 && heard.count("pod.engine_drive") > 0);
 			two.server().runOnServer(server -> two.mock().releaseInput());
-			await(context, heard, client -> heard.count("pod.engine_idle") > idleLoops);
+			await(context, heard, "a new pod.engine_idle after the pilot lets go", client -> heard.count("pod.engine_idle") > idleLoops);
+			movingHold(context, heard, two, podId);
+			levelRoundTrip(context, heard, two, podId);
 
 			two.server().runOnServer(server -> two.mock().setInput(SPRINT));
-			await(context, heard, client -> heard.count("pod.engine_drill_down") > 0);
+			await(context, heard, "pod.engine_drill_down", client -> heard.count("pod.engine_drill_down") > 0);
 			two.server().runOnServer(server -> two.mock().releaseInput());
 
 			// Back on the floor, wall in front: pushing into it drills sideways.
@@ -157,9 +165,45 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 				}
 				two.mock().setInput(FORWARD);
 			});
-			await(context, heard, client -> heard.count("pod.engine_drill_side") > 0);
+			await(context, heard, "pod.engine_drill_side", client -> heard.count("pod.engine_drill_side") > 0);
 			two.server().runOnServer(server -> two.mock().releaseInput());
 		}
+	}
+
+	/** Bursts of movement with rests between them keep one drive loop: every burst is a real move, a rest is a few ticks. */
+	private static void movingHold(ClientGameTestContext context, Heard heard, TwoPlayerServer two, int podId) {
+		long driveBefore = heard.count("pod.engine_drive");
+		long idleBefore = heard.count("pod.engine_idle");
+		for (int burst = 0; burst < BURSTS; burst++) {
+			double x = X + ((burst + 1) % 2) * BURST_BLOCKS;
+			two.server().runOnServer(server -> server.overworld().getEntity(podId).teleportTo(x, FLOOR_Y, Z - 1));
+			context.waitTicks(BURST_TICKS);
+		}
+		check(heard.count("pod.engine_drive") - driveBefore == 1, "a pod moving in bursts keeps one drive loop, heard " + heard.played);
+		check(heard.count("pod.engine_idle") == idleBefore, "a pod moving in bursts does not fall back to idle between them, heard " + heard.played);
+	}
+
+	/**
+	 * The vanilla sound engine drops its loops on a level change without stopping them, so only the pod loops' own reset clears
+	 * them: a pod that stayed behind must be heard again when the player comes back to its level.
+	 */
+	private static void levelRoundTrip(ClientGameTestContext context, Heard heard, TwoPlayerServer two, int podId) {
+		await(context, heard, "pod.engine_idle playing before leaving the overworld", client -> heard.isPlaying(client.getSoundManager(), "pod.engine_idle"));
+		long idleBefore = heard.count("pod.engine_idle");
+		teleportReal(two, LayerChain.dimension(1), 0.5, 100, 0.5);
+		await(context, heard, "the client in layer 1", client -> client.level.dimension().equals(LayerChain.dimension(1)));
+		teleportReal(two, Level.OVERWORLD, X + 3.5, FLOOR_Y, Z - 3.5);
+		await(context, heard, "a new pod.engine_idle after returning to the overworld", client -> client.level.dimension().equals(Level.OVERWORLD)
+				&& client.level.getEntity(podId) != null && client.level.getEntity(podId).tickCount > 0
+				&& heard.count("pod.engine_idle") > idleBefore);
+	}
+
+	private static void teleportReal(TwoPlayerServer two, ResourceKey<Level> dimension, double x, double y, double z) {
+		two.server().runOnServer(server -> {
+			ServerPlayer real = server.getPlayerList().getPlayers().stream()
+					.filter(player -> player != two.mock().player()).findFirst().orElseThrow();
+			real.teleportTo(server.getLevel(dimension), x, y, z, Set.of(), 0, 0, true);
+		});
 	}
 
 	private static void terminalsAndUi(ClientGameTestContext context, Heard heard) {
@@ -173,27 +217,27 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 					throw new AssertionError("the player could not mount the pod");
 				}
 			});
-			await(context, heard, client -> heard.count("fuel.low") > 0);
+			await(context, heard, "fuel.low", client -> heard.count("fuel.low") > 0);
 			singleplayer.getServer().runOnServer(server -> server.getPlayerList().getPlayers().getFirst().stopRiding());
 
 			// A terminal: music while it is open, letters while it types, and a sound for a sale, an error and a purchase.
 			open(context, scene.processor());
-			await(context, heard, client -> heard.count("music.terminal") == 1 && heard.count("ui.typewriter") > 0);
+			await(context, heard, "music.terminal and ui.typewriter on opening the terminal", client -> heard.count("music.terminal") == 1 && heard.count("ui.typewriter") > 0);
 			context.clickScreenButton("SELL ALL CARRIED ORE");
-			await(context, heard, client -> heard.count("ui.sale") > 0);
+			await(context, heard, "ui.sale", client -> heard.count("ui.sale") > 0);
 			check(heard.count("ui.error") == 0, "a sale that works is not an error");
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalActionPayload(scene.processor(), OreProcessor.SELL_INVENTORY, new CompoundTag())));
-			await(context, heard, client -> heard.count("ui.error") > 0);
+			await(context, heard, "ui.error", client -> heard.count("ui.error") > 0);
 			check(heard.count("ui.sale") == 1, "a refused sale makes no sale sound");
 
 			// Closing the terminal ends its music: opening another starts it again.
 			context.setScreen(() -> null);
 			context.waitTicks(SETTLE_TICKS);
 			open(context, scene.pump());
-			await(context, heard, client -> heard.count("music.terminal") == 2);
+			await(context, heard, "music.terminal again on a second terminal", client -> heard.count("music.terminal") == 2);
 			context.waitFor(client -> buy(client), WAIT_TICKS);
 			context.clickScreenButton("BUY 1 L");
-			await(context, heard, client -> heard.count("ui.purchase") > 0);
+			await(context, heard, "ui.purchase", client -> heard.count("ui.purchase") > 0);
 			context.setScreen(() -> null);
 
 			// A pod loop ends with the level: its pilot rides on a level change in no case, but the old level's pod stays in the world.
@@ -203,10 +247,10 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 					throw new AssertionError("the player could not mount the pod");
 				}
 			});
-			await(context, heard, client -> heard.isPlaying(client.getSoundManager(), "pod.engine_idle"));
+			await(context, heard, "pod.engine_idle playing before the level change", client -> heard.isPlaying(client.getSoundManager(), "pod.engine_idle"));
 			singleplayer.getServer().runOnServer(server -> server.getPlayerList().getPlayers().getFirst()
 					.teleportTo(server.getLevel(LayerChain.dimension(1)), 0.5, 100, 0.5, Set.of(), 0, 0, true));
-			await(context, heard, client -> client.level.dimension().equals(LayerChain.dimension(1))
+			await(context, heard, "pod.engine_idle stopped in layer 1", client -> client.level.dimension().equals(LayerChain.dimension(1))
 					&& !heard.isPlaying(client.getSoundManager(), "pod.engine_idle"));
 
 			// Each layer's dimension carries its music, and the client plays what the dimension says.
@@ -225,7 +269,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 					return playing.sound().value().location();
 				});
 				check(music.equals(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, expected)), "layer " + layer + " plays " + expected + ", got " + music);
-				await(context, heard, client -> heard.count(expected) > 0);
+				await(context, heard, "the music of layer " + layer, client -> heard.count(expected) > 0);
 				context.runOnClient(client -> client.getMusicManager().stopPlaying());
 			}
 		}
@@ -272,12 +316,12 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 				.anyMatch(child -> child instanceof CrtButton button && button.getMessage().getString().equals("BUY 1 L") && button.active);
 	}
 
-	/** waitFor, with what was heard in the failure. */
-	private static void await(ClientGameTestContext context, Heard heard, Predicate<Minecraft> condition) {
+	/** waitFor, with what was awaited and what was heard in the failure. */
+	private static void await(ClientGameTestContext context, Heard heard, String what, Predicate<Minecraft> condition) {
 		try {
 			context.waitFor(condition, WAIT_TICKS);
 		} catch (AssertionError timeout) {
-			throw new AssertionError("timed out; the client heard " + heard.played, timeout);
+			throw new AssertionError("timed out waiting for " + what + "; the client heard " + heard.played, timeout);
 		}
 	}
 

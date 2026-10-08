@@ -42,6 +42,7 @@ public class RepairStationClientTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		ClientTestLog.start(this);
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			Scene scene = singleplayer.getServer().computeOnServer(RepairStationClientTest::setUp);
 

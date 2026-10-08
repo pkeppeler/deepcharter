@@ -9,6 +9,7 @@ public class ProspectorChassisClientTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		ClientTestLog.start(this);
 		// Empty so that the stub passes: #82 writes the test.
 	}
 }
