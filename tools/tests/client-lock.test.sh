@@ -15,11 +15,14 @@ set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 work=$(cd "$(mktemp -d)" && pwd -P)
 pids=()
-cleanup() {
+kill_pids() {
   local p
+  for p in "${pids[@]:-}"; do if [[ -n $p ]]; then kill "$p" 2>/dev/null || true; fi; done
+}
+cleanup() {
   # Stop the daemons of the scratch Gradle home (only those: it is not the user's home).
   if [[ -d ${GRADLE_USER_HOME:-} ]]; then "$root/gradlew" --stop >/dev/null 2>&1 || true; fi
-  for p in "${pids[@]:-}"; do if [[ -n $p ]]; then kill "$p" 2>/dev/null || true; fi; done
+  kill_pids
   if [[ -n ${KEEP_WORK:-} ]]; then
     echo "kept $work"
   else
@@ -158,11 +161,7 @@ lane_setup() { # lane_setup <lane>
   holder0=$locks/client.lock.holder
   holder1=$locks/client.lock.1.holder
   order=$work/order-$1
-  trap 'lane_cleanup' EXIT
-}
-lane_cleanup() {
-  local p
-  for p in "${pids[@]:-}"; do if [[ -n $p ]]; then kill "$p" 2>/dev/null || true; fi; done
+  trap kill_pids EXIT
 }
 
 # 1 and 2. two concurrent holders and a third waiting, then arrival order
