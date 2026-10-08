@@ -29,6 +29,9 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 	inputs.file(template).withPropertyName("template")
 	// WorldDataGuard must list every saved-data record of the mod, or it misses a swap of a new one.
 	def mainSources = fileTree("src/main/java") { include "**/*.java" }
+	// A direct getDataStorage().set( leaks a world-global record if the code between it and its restore throws. Tests swap through
+	// WorldData; only the helper and the files that deliberately span listener phases within one tick call it directly.
+	def directSwapAllowed = ["WorldData.java", "HandbookChaptersOneToFiveTest.java"]
 	def guardSource = file("src/gametest/java/io/github/pkeppeler/deepcharter/test/support/WorldDataGuard.java")
 	inputs.files(mainSources).withPropertyName("mainSources")
 	outputs.file(outputFile)
@@ -44,6 +47,9 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 			// Code only: comments and string literals (text blocks included) must not match.
 			def text = source.text.replaceAll(/(?s)"""(?:\\.|.)*?"""|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\/\*.*?\*\/|\/\/[^\n]*/) { match ->
 				match.startsWith("/") ? " " : "\"\""
+			}
+			if (!(source.name in directSwapAllowed) && (text =~ /getDataStorage\(\)\s*\.\s*set\s*\(/).find()) {
+				problems << "${className} calls getDataStorage().set( directly; swap a world-global record with WorldData.with, WorldData.swap or WorldData.replace, which restore it in a finally"
 			}
 			if (text =~ /\babstract\s+class\s/) {
 				return

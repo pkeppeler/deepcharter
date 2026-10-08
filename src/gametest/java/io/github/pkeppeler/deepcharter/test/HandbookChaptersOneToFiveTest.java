@@ -75,6 +75,7 @@ import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTerminal;
 
@@ -279,13 +280,7 @@ public class HandbookChaptersOneToFiveTest {
 	 * own console, and with the world's record it would give the world's derelict Mole to this charter.
 	 */
 	private static void fireRepaired(MinecraftServer server, TerminalType type, Charter charter, ServerPlayer player) {
-		HangarData world = HangarData.get(server);
-		server.getDataStorage().set(HangarData.TYPE, new HangarData());
-		try {
-			TerminalEvents.REPAIRED.invoker().onRepaired(server, type, charter, player);
-		} finally {
-			server.getDataStorage().set(HangarData.TYPE, world);
-		}
+		WorldData.with(server, HangarData.TYPE, new HangarData(), () -> TerminalEvents.REPAIRED.invoker().onRepaired(server, type, charter, player));
 	}
 
 	static String uniqueName() {
@@ -299,130 +294,126 @@ public class HandbookChaptersOneToFiveTest {
 	@GameTest(maxTicks = 200)
 	public void aTwoPlayerCharterCompletesChaptersOneToFiveInOrder(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
-		RepairState repairs = RepairState.get(server);
-		HangarData hangar = HangarData.get(server);
-		server.getDataStorage().set(RepairState.TYPE, new RepairState());
-		server.getDataStorage().set(HangarData.TYPE, new HangarData());
-		PodEntity pod = null;
-		MockPlayer director = MockPlayers.join(helper, "Director");
-		MockPlayer crew = MockPlayers.join(helper, "Crew");
-		try {
-			ServerPlayer first = director.player();
-			ServerPlayer second = crew.player();
-			first.setGameMode(GameType.SURVIVAL);
-			second.setGameMode(GameType.SURVIVAL);
-			if (Charters.found(server, first.getUUID(), uniqueName()).isPresent()) {
-				throw helper.assertionException("founding should succeed");
+		WorldData.swap(server).with(RepairState.TYPE, new RepairState()).with(HangarData.TYPE, new HangarData()).run(() -> {
+			PodEntity pod = null;
+			MockPlayer director = MockPlayers.join(helper, "Director");
+			MockPlayer crew = MockPlayers.join(helper, "Crew");
+			try {
+				ServerPlayer first = director.player();
+				ServerPlayer second = crew.player();
+				first.setGameMode(GameType.SURVIVAL);
+				second.setGameMode(GameType.SURVIVAL);
+				if (Charters.found(server, first.getUUID(), uniqueName()).isPresent()) {
+					throw helper.assertionException("founding should succeed");
+				}
+				CharterId charter = Charters.charterOfOrThrow(server, first.getUUID()).orElseThrow().id();
+				if (Charters.apply(server, second.getUUID(), charter).isPresent() || Charters.approve(server, first.getUUID(), second.getUUID()).isPresent()
+						|| Charters.deposit(server, charter, 10_000).isPresent()) {
+					throw helper.assertionException("the second player should join the charter, which is then funded");
+				}
+				List<ServerPlayer> both = List.of(first, second);
+				BlockPos terminal = helper.absolutePos(TERMINAL);
+				stand(helper, director, terminal);
+				stand(helper, crew, terminal);
+				expectCompleted(helper, server, "joining", both, Set.of());
+				expectRoadAt(helper, server, first, 0);
+
+				// Chapter 1: bootstrap crafting, shared between the two.
+				give(first, Items.OAK_LOG);
+				expectCompleted(helper, server, "gathering wood", both, Set.of(directive("welcome", "gather_wood")));
+				give(second, Items.CRAFTING_TABLE);
+				give(second, Items.STONE_AXE);
+				give(first, Items.RAW_IRON);
+				expectCompleted(helper, server, "mining iron", both, Set.of(directive("welcome", "gather_wood"), directive("welcome", "craft_crafting_table"),
+						directive("welcome", "craft_stone_tools"), directive("welcome", "mine_iron_ore")));
+				expectRoadAt(helper, server, second, 0);
+				give(second, Items.IRON_INGOT);
+				expectCompleted(helper, server, "chapter 1", both, through(1));
+				expectRoadAt(helper, server, first, 1);
+
+				// Chapter 2: the three terminals, in the order the world is repaired.
+				repair(helper, first, terminal, TerminalTypes.FUEL_PUMP);
+				expectCompleted(helper, server, "the fuel pump", both, with(through(1), directive("back_online", "repair_fuel_pump")));
+				repair(helper, second, terminal, TerminalTypes.ORE_PROCESSOR);
+				expectCompleted(helper, server, "the ore processor", both, with(through(1), directive("back_online", "repair_fuel_pump"),
+						directive("back_online", "repair_ore_processor")));
+				expectRoadAt(helper, server, first, 1);
+				repair(helper, first, terminal, TerminalTypes.UPGRADE_TERMINAL);
+				expectCompleted(helper, server, "chapter 2", both, through(2));
+				expectRoadAt(helper, server, second, 2);
+
+				// Chapter 3: the Mole is repaired at the hangar console, then boarded.
+				repair(helper, second, terminal, HangarTerminal.TYPE);
+				expectCompleted(helper, server, "the Mole", both, with(through(2), directive("meet_the_mole", "repair_mole")));
+				pod = helper.spawn(PodRegistry.POD, 2, 1, 2);
+				PodComponents.register(pod, charter);
+				if (!first.startRiding(pod, true, false)) {
+					throw helper.assertionException("the player should board the pod");
+				}
+				pod.tickCount = 0;
+				PodEvents.AFTER_TICK.invoker().afterTick(pod);
+				expectCompleted(helper, server, "chapter 3", both, through(3));
+				expectRoadAt(helper, server, first, 3);
+
+				// Chapter 4: fuel, flight, a ten block bore, and home again. Returning counts only after the bore.
+				first.stopRiding();
+				stand(helper, director, terminal);
+				helper.getLevel().setBlock(terminal, TerminalTypes.FUEL_PUMP.block().defaultBlockState(), 3);
+				pod.setPos(Vec3.atBottomCenterOf(terminal).add(2, 0, 2));
+				pod.setFuel(0f);
+				expectDone(helper, Terminals.act(first, terminal, FuelPump.FILL, new CompoundTag()), "filling the tank");
+				expectCompleted(helper, server, "refuelling", both, with(through(3), directive("fuel_is_life", "refuel_mole")));
+				first.startRiding(pod, true, false);
+				pod.setFlying(true);
+				pod.tickCount = 0;
+				PodEvents.AFTER_TICK.invoker().afterTick(pod);
+				expectCompleted(helper, server, "flying", both, with(through(3), directive("fuel_is_life", "refuel_mole"), directive("fuel_is_life", "fly_mole")));
+				ColonySite.Placed colony = Colony.placed(server).orElseThrow();
+				pod.setFlying(false);
+				pod.setPos(Vec3.atBottomCenterOf(colony.center()));
+				pod.tickCount = 0;
+				PodEvents.AFTER_TICK.invoker().afterTick(pod);
+				expectCompleted(helper, server, "being home before the bore", both, with(through(3), directive("fuel_is_life", "refuel_mole"), directive("fuel_is_life", "fly_mole")));
+				pod.setDrilling(true);
+				pod.setDrillDirection(Direction.DOWN);
+				pod.setPos(pod.getX(), colony.groundY() - HandbookTuning.DEFAULT.drillDownBlocks() + 1, pod.getZ());
+				pod.tickCount = 0;
+				PodEvents.AFTER_TICK.invoker().afterTick(pod);
+				expectCompleted(helper, server, "nine blocks down", both, with(through(3), directive("fuel_is_life", "refuel_mole"), directive("fuel_is_life", "fly_mole")));
+				pod.setPos(pod.getX(), colony.groundY() - HandbookTuning.DEFAULT.drillDownBlocks(), pod.getZ());
+				PodEvents.AFTER_TICK.invoker().afterTick(pod);
+				expectCompleted(helper, server, "ten blocks down", both, with(through(3), directive("fuel_is_life", "refuel_mole"), directive("fuel_is_life", "fly_mole"),
+						directive("fuel_is_life", "drill_down")));
+				pod.setDrilling(false);
+				pod.setPos(Vec3.atBottomCenterOf(colony.center()));
+				PodEvents.AFTER_TICK.invoker().afterTick(pod);
+				expectCompleted(helper, server, "chapter 4", both, through(4));
+				expectRoadAt(helper, server, second, 4);
+
+				// Chapter 5: sell ore, then buy a part, which installs at once.
+				first.stopRiding();
+				pod.setPos(Vec3.atBottomCenterOf(terminal).add(2, 0, 2));
+				stand(helper, director, terminal);
+				helper.getLevel().setBlock(terminal, TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(), 3);
+				first.getInventory().add(OreRegistry.stack(OreType.IRONIUM));
+				expectDone(helper, Terminals.act(first, terminal, OreProcessor.SELL_INVENTORY, new CompoundTag()), "selling the ore");
+				expectCompleted(helper, server, "selling", both, with(through(4), directive("every_sale_counts", "sell_ore")));
+				helper.getLevel().setBlock(terminal, TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(), 3);
+				CompoundTag args = new CompoundTag();
+				args.putString(UpgradeTerminal.TRACK_KEY, ComponentTrack.HULL.id());
+				args.putInt(UpgradeTerminal.TIER_KEY, 1);
+				expectDone(helper, Terminals.act(first, terminal, UpgradeTerminal.BUY, args), "buying a hull");
+				expectCompleted(helper, server, "chapter 5", both, through(5));
+				expectRoadAt(helper, server, second, 5);
+				helper.succeed();
+			} finally {
+				if (pod != null) {
+					pod.discard();
+				}
+				director.leave();
+				crew.leave();
 			}
-			CharterId charter = Charters.charterOfOrThrow(server, first.getUUID()).orElseThrow().id();
-			if (Charters.apply(server, second.getUUID(), charter).isPresent() || Charters.approve(server, first.getUUID(), second.getUUID()).isPresent()
-					|| Charters.deposit(server, charter, 10_000).isPresent()) {
-				throw helper.assertionException("the second player should join the charter, which is then funded");
-			}
-			List<ServerPlayer> both = List.of(first, second);
-			BlockPos terminal = helper.absolutePos(TERMINAL);
-			stand(helper, director, terminal);
-			stand(helper, crew, terminal);
-			expectCompleted(helper, server, "joining", both, Set.of());
-			expectRoadAt(helper, server, first, 0);
-
-			// Chapter 1: bootstrap crafting, shared between the two.
-			give(first, Items.OAK_LOG);
-			expectCompleted(helper, server, "gathering wood", both, Set.of(directive("welcome", "gather_wood")));
-			give(second, Items.CRAFTING_TABLE);
-			give(second, Items.STONE_AXE);
-			give(first, Items.RAW_IRON);
-			expectCompleted(helper, server, "mining iron", both, Set.of(directive("welcome", "gather_wood"), directive("welcome", "craft_crafting_table"),
-					directive("welcome", "craft_stone_tools"), directive("welcome", "mine_iron_ore")));
-			expectRoadAt(helper, server, second, 0);
-			give(second, Items.IRON_INGOT);
-			expectCompleted(helper, server, "chapter 1", both, through(1));
-			expectRoadAt(helper, server, first, 1);
-
-			// Chapter 2: the three terminals, in the order the world is repaired.
-			repair(helper, first, terminal, TerminalTypes.FUEL_PUMP);
-			expectCompleted(helper, server, "the fuel pump", both, with(through(1), directive("back_online", "repair_fuel_pump")));
-			repair(helper, second, terminal, TerminalTypes.ORE_PROCESSOR);
-			expectCompleted(helper, server, "the ore processor", both, with(through(1), directive("back_online", "repair_fuel_pump"),
-					directive("back_online", "repair_ore_processor")));
-			expectRoadAt(helper, server, first, 1);
-			repair(helper, first, terminal, TerminalTypes.UPGRADE_TERMINAL);
-			expectCompleted(helper, server, "chapter 2", both, through(2));
-			expectRoadAt(helper, server, second, 2);
-
-			// Chapter 3: the Mole is repaired at the hangar console, then boarded.
-			repair(helper, second, terminal, HangarTerminal.TYPE);
-			expectCompleted(helper, server, "the Mole", both, with(through(2), directive("meet_the_mole", "repair_mole")));
-			pod = helper.spawn(PodRegistry.POD, 2, 1, 2);
-			PodComponents.register(pod, charter);
-			if (!first.startRiding(pod, true, false)) {
-				throw helper.assertionException("the player should board the pod");
-			}
-			pod.tickCount = 0;
-			PodEvents.AFTER_TICK.invoker().afterTick(pod);
-			expectCompleted(helper, server, "chapter 3", both, through(3));
-			expectRoadAt(helper, server, first, 3);
-
-			// Chapter 4: fuel, flight, a ten block bore, and home again. Returning counts only after the bore.
-			first.stopRiding();
-			stand(helper, director, terminal);
-			helper.getLevel().setBlock(terminal, TerminalTypes.FUEL_PUMP.block().defaultBlockState(), 3);
-			pod.setPos(Vec3.atBottomCenterOf(terminal).add(2, 0, 2));
-			pod.setFuel(0f);
-			expectDone(helper, Terminals.act(first, terminal, FuelPump.FILL, new CompoundTag()), "filling the tank");
-			expectCompleted(helper, server, "refuelling", both, with(through(3), directive("fuel_is_life", "refuel_mole")));
-			first.startRiding(pod, true, false);
-			pod.setFlying(true);
-			pod.tickCount = 0;
-			PodEvents.AFTER_TICK.invoker().afterTick(pod);
-			expectCompleted(helper, server, "flying", both, with(through(3), directive("fuel_is_life", "refuel_mole"), directive("fuel_is_life", "fly_mole")));
-			ColonySite.Placed colony = Colony.placed(server).orElseThrow();
-			pod.setFlying(false);
-			pod.setPos(Vec3.atBottomCenterOf(colony.center()));
-			pod.tickCount = 0;
-			PodEvents.AFTER_TICK.invoker().afterTick(pod);
-			expectCompleted(helper, server, "being home before the bore", both, with(through(3), directive("fuel_is_life", "refuel_mole"), directive("fuel_is_life", "fly_mole")));
-			pod.setDrilling(true);
-			pod.setDrillDirection(Direction.DOWN);
-			pod.setPos(pod.getX(), colony.groundY() - HandbookTuning.DEFAULT.drillDownBlocks() + 1, pod.getZ());
-			pod.tickCount = 0;
-			PodEvents.AFTER_TICK.invoker().afterTick(pod);
-			expectCompleted(helper, server, "nine blocks down", both, with(through(3), directive("fuel_is_life", "refuel_mole"), directive("fuel_is_life", "fly_mole")));
-			pod.setPos(pod.getX(), colony.groundY() - HandbookTuning.DEFAULT.drillDownBlocks(), pod.getZ());
-			PodEvents.AFTER_TICK.invoker().afterTick(pod);
-			expectCompleted(helper, server, "ten blocks down", both, with(through(3), directive("fuel_is_life", "refuel_mole"), directive("fuel_is_life", "fly_mole"),
-					directive("fuel_is_life", "drill_down")));
-			pod.setDrilling(false);
-			pod.setPos(Vec3.atBottomCenterOf(colony.center()));
-			PodEvents.AFTER_TICK.invoker().afterTick(pod);
-			expectCompleted(helper, server, "chapter 4", both, through(4));
-			expectRoadAt(helper, server, second, 4);
-
-			// Chapter 5: sell ore, then buy a part, which installs at once.
-			first.stopRiding();
-			pod.setPos(Vec3.atBottomCenterOf(terminal).add(2, 0, 2));
-			stand(helper, director, terminal);
-			helper.getLevel().setBlock(terminal, TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(), 3);
-			first.getInventory().add(OreRegistry.stack(OreType.IRONIUM));
-			expectDone(helper, Terminals.act(first, terminal, OreProcessor.SELL_INVENTORY, new CompoundTag()), "selling the ore");
-			expectCompleted(helper, server, "selling", both, with(through(4), directive("every_sale_counts", "sell_ore")));
-			helper.getLevel().setBlock(terminal, TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(), 3);
-			CompoundTag args = new CompoundTag();
-			args.putString(UpgradeTerminal.TRACK_KEY, ComponentTrack.HULL.id());
-			args.putInt(UpgradeTerminal.TIER_KEY, 1);
-			expectDone(helper, Terminals.act(first, terminal, UpgradeTerminal.BUY, args), "buying a hull");
-			expectCompleted(helper, server, "chapter 5", both, through(5));
-			expectRoadAt(helper, server, second, 5);
-			helper.succeed();
-		} finally {
-			if (pod != null) {
-				pod.discard();
-			}
-			director.leave();
-			crew.leave();
-			server.getDataStorage().set(RepairState.TYPE, repairs);
-			server.getDataStorage().set(HangarData.TYPE, hangar);
-		}
+		});
 	}
 
 	/** A fresh repair state with {@code types} repaired, in the order given: a terminal's prerequisite comes first. The caller puts the world's back. */
@@ -439,13 +430,7 @@ public class HandbookChaptersOneToFiveTest {
 	 * returns. Everything runs in the one tick, so no test running beside this one ever sees the swapped state.
 	 */
 	private static void withTheTerminalsRepaired(MinecraftServer server, Runnable body) {
-		RepairState original = RepairState.get(server);
-		server.getDataStorage().set(RepairState.TYPE, repairedFor(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL));
-		try {
-			body.run();
-		} finally {
-			server.getDataStorage().set(RepairState.TYPE, original);
-		}
+		WorldData.with(server, RepairState.TYPE, repairedFor(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL), body);
 	}
 
 	static final Set<String> THREE_REPAIRS = Set.of(directive("back_online", "repair_fuel_pump"),
@@ -623,18 +608,8 @@ public class HandbookChaptersOneToFiveTest {
 				PodEvents.AFTER_TICK.invoker().afterTick(riddenPod);
 				withTheTerminalsRepaired(server, () -> HandbookTriggers.creditRepairs(server, pilot.player()));
 			};
-			server.getDataStorage().set(CharterData.TYPE, CharterData.CODEC.parse(NbtOps.INSTANCE, FUTURE).getOrThrow());
-			try {
-				callbacks.run();
-			} finally {
-				server.getDataStorage().set(CharterData.TYPE, charters);
-			}
-			server.getDataStorage().set(HandbookProgressData.TYPE, HandbookProgressData.CODEC.parse(NbtOps.INSTANCE, FUTURE).getOrThrow());
-			try {
-				callbacks.run();
-			} finally {
-				server.getDataStorage().set(HandbookProgressData.TYPE, progress);
-			}
+			WorldData.with(server, CharterData.TYPE, CharterData.CODEC.parse(NbtOps.INSTANCE, FUTURE).getOrThrow(), callbacks);
+			WorldData.with(server, HandbookProgressData.TYPE, HandbookProgressData.CODEC.parse(NbtOps.INSTANCE, FUTURE).getOrThrow(), callbacks);
 			if (CharterData.get(server) != charters || HandbookProgressData.get(server) != progress) {
 				throw helper.assertionException("the saved data should be back in place");
 			}
@@ -715,39 +690,32 @@ public class HandbookChaptersOneToFiveTest {
 		MinecraftServer server = helper.getLevel().getServer();
 		BlockPos anchor = Colony.anchor(server, ColonyAnchor.HANGAR).orElseThrow(() -> helper.assertionException("the colony was not built when the server started"));
 		FarChunks.awaitEntityTicking(helper, server.overworld(), anchor, () -> {
-			HangarData hangar = HangarData.get(server);
-			RepairState repairs = RepairState.get(server);
-			Serials serials = Serials.get(server);
 			MockPlayer buyer = MockPlayers.join(helper, "Buyer");
 			AABB bay = new AABB(anchor).inflate(HangarTuning.DEFAULT.bayRadius() + 4);
 			Set<UUID> before = new HashSet<>();
 			server.overworld().getEntitiesOfClass(PodEntity.class, bay).forEach(pod -> before.add(pod.getUUID()));
 			// Everything runs inside this one tick, so no other test sees the swapped records.
-			server.getDataStorage().set(HangarData.TYPE, foundedHangar());
-			server.getDataStorage().set(RepairState.TYPE, new RepairState());
-			server.getDataStorage().set(Serials.TYPE, new Serials());
-			try {
-				foundCharter(helper, server, buyer);
-				if (Charters.deposit(server, Charters.charterOfOrThrow(server, buyer.player().getUUID()).orElseThrow().id(), 100_000).isPresent()) {
-					throw helper.assertionException("depositing should succeed");
+			WorldData.swap(server).with(HangarData.TYPE, foundedHangar()).with(RepairState.TYPE, new RepairState()).with(Serials.TYPE, new Serials()).run(() -> {
+				try {
+					foundCharter(helper, server, buyer);
+					if (Charters.deposit(server, Charters.charterOfOrThrow(server, buyer.player().getUUID()).orElseThrow().id(), 100_000).isPresent()) {
+						throw helper.assertionException("depositing should succeed");
+					}
+					for (Item part : HangarTerminal.TYPE.parts()) {
+						RepairState.get(server).insert(HangarTerminal.TYPE, part);
+					}
+					BlockPos console = helper.absolutePos(TERMINAL);
+					helper.getLevel().setBlock(console, HangarTerminal.TYPE.block().defaultBlockState(), 3);
+					stand(helper, buyer, console);
+					expectCompleted(helper, server, "joining late", List.of(buyer.player()), Set.of());
+					expectDone(helper, Terminals.act(buyer.player(), console, HangarTerminal.BUY_MOLE, new CompoundTag()), "buying a Mole");
+					expectCompleted(helper, server, "buying a Mole", List.of(buyer.player()), Set.of(directive("meet_the_mole", "repair_mole")));
+					helper.succeed();
+				} finally {
+					server.overworld().getEntitiesOfClass(PodEntity.class, bay).stream().filter(pod -> !before.contains(pod.getUUID())).forEach(PodEntity::discard);
+					buyer.leave();
 				}
-				for (Item part : HangarTerminal.TYPE.parts()) {
-					RepairState.get(server).insert(HangarTerminal.TYPE, part);
-				}
-				BlockPos console = helper.absolutePos(TERMINAL);
-				helper.getLevel().setBlock(console, HangarTerminal.TYPE.block().defaultBlockState(), 3);
-				stand(helper, buyer, console);
-				expectCompleted(helper, server, "joining late", List.of(buyer.player()), Set.of());
-				expectDone(helper, Terminals.act(buyer.player(), console, HangarTerminal.BUY_MOLE, new CompoundTag()), "buying a Mole");
-				expectCompleted(helper, server, "buying a Mole", List.of(buyer.player()), Set.of(directive("meet_the_mole", "repair_mole")));
-				helper.succeed();
-			} finally {
-				server.overworld().getEntitiesOfClass(PodEntity.class, bay).stream().filter(pod -> !before.contains(pod.getUUID())).forEach(PodEntity::discard);
-				buyer.leave();
-				server.getDataStorage().set(HangarData.TYPE, hangar);
-				server.getDataStorage().set(RepairState.TYPE, repairs);
-				server.getDataStorage().set(Serials.TYPE, serials);
-			}
+			});
 		});
 	}
 }

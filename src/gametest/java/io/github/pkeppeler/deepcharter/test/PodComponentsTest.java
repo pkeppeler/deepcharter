@@ -44,6 +44,7 @@ import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.Serials;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.PartLabel;
@@ -608,17 +609,16 @@ public class PodComponentsTest {
 		MinecraftServer server = helper.getLevel().getServer();
 		MockPlayer player = MockPlayers.join(helper, "components-bad-charters");
 		PodEntity pod = ownedPod(helper, charter(helper));
-		CharterData good = CharterData.get(server);
 		try {
 			CompoundTag future = new CompoundTag();
 			future.putInt("version", 99);
-			server.getDataStorage().set(CharterData.TYPE, CharterData.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow());
-			if (!PodEvents.canMount(pod, player.player())) {
-				throw failure(helper, "with unreadable charters the owner cannot be checked, so the pod must not lock");
-			}
+			WorldData.with(server, CharterData.TYPE, CharterData.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow(), () -> {
+				if (!PodEvents.canMount(pod, player.player())) {
+					throw failure(helper, "with unreadable charters the owner cannot be checked, so the pod must not lock");
+				}
+			});
 			helper.succeed();
 		} finally {
-			server.getDataStorage().set(CharterData.TYPE, good);
 			player.leave();
 			pod.discard();
 		}

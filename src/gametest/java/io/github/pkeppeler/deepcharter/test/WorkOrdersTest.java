@@ -42,6 +42,7 @@ import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
+import io.github.pkeppeler.deepcharter.test.support.WorldData;
 
 /**
  * Server GameTests for #80: a charter hands ore in for a work order at the ore processor. Progress is the charter's own and
@@ -59,19 +60,15 @@ public class WorkOrdersTest {
 	private static final String NO_STATUE = "deepcharter.market.refusal.no_statue";
 
 	private static void withProcessorOnline(MinecraftServer server, Runnable body) {
-		RepairState originalRepairs = RepairState.get(server);
-		WorkOrderData originalOrders = WorkOrderData.get(server);
 		RepairState fresh = new RepairState();
-		server.getDataStorage().set(RepairState.TYPE, fresh);
-		server.getDataStorage().set(WorkOrderData.TYPE, new WorkOrderData());
 		try {
-			for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR)) {
-				type.parts().forEach(part -> fresh.insert(type, part));
-			}
-			body.run();
+			WorldData.swap(server).with(RepairState.TYPE, fresh).with(WorkOrderData.TYPE, new WorkOrderData()).run(() -> {
+				for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR)) {
+					type.parts().forEach(part -> fresh.insert(type, part));
+				}
+				body.run();
+			});
 		} finally {
-			server.getDataStorage().set(RepairState.TYPE, originalRepairs);
-			server.getDataStorage().set(WorkOrderData.TYPE, originalOrders);
 			clearHands(server);
 		}
 	}
@@ -314,9 +311,8 @@ public class WorkOrdersTest {
 			MockPlayer member = player(helper, "Member", true);
 			member.teleportTo(helper.getLevel(), drifter.player().position(), 0, 0);
 			carry(member.player(), OreType.BRONZIUM, 10);
-			server.getDataStorage().set(RepairState.TYPE, new RepairState());
-			expectRefused(helper, TerminalRefusal.UNREPAIRED, Terminals.act(member.player(), processor, WorkOrders.DELIVER, orderArgs(WorkOrder.FOUNDERS_HANDS)),
-					"a delivery at an unrepaired processor");
+			WorldData.with(server, RepairState.TYPE, new RepairState(), () -> expectRefused(helper, TerminalRefusal.UNREPAIRED,
+					Terminals.act(member.player(), processor, WorkOrders.DELIVER, orderArgs(WorkOrder.FOUNDERS_HANDS)), "a delivery at an unrepaired processor"));
 			if (carried(drifter.player(), OreType.BRONZIUM) != 10 || carried(member.player(), OreType.BRONZIUM) != 10) {
 				throw helper.assertionException("a refused delivery must take no ore");
 			}
@@ -327,18 +323,13 @@ public class WorkOrdersTest {
 	@GameTest
 	public void aColonyThatCannotBeFoundRefusesTheCompletionBeforeTakingOre(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
-		ColonySite original = ColonySite.get(server);
 		withProcessorOnline(server, () -> {
 			MockPlayer mock = player(helper, "Surveyor", true);
 			ServerPlayer player = mock.player();
 			BlockPos processor = processorFor(helper, mock);
 			carry(player, OreType.BRONZIUM, 10);
-			server.getDataStorage().set(ColonySite.TYPE, new ColonySite());
-			try {
-				expectKey(helper, NO_STATUE, WorkOrders.deliver(context(server, player, processor), WorkOrder.FOUNDERS_HANDS), "a completion with no statue to restore");
-			} finally {
-				server.getDataStorage().set(ColonySite.TYPE, original);
-			}
+			WorldData.with(server, ColonySite.TYPE, new ColonySite(), () -> expectKey(helper, NO_STATUE,
+					WorkOrders.deliver(context(server, player, processor), WorkOrder.FOUNDERS_HANDS), "a completion with no statue to restore"));
 			if (carried(player, OreType.BRONZIUM) != 10 || WorkOrderData.get(server).delivered(charter(server, player).id(), WorkOrder.FOUNDERS_HANDS) != 0) {
 				throw helper.assertionException("a refused completion must keep the ore and the progress");
 			}

@@ -67,6 +67,7 @@ import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 
 /**
@@ -93,10 +94,8 @@ public class RepairStationTest {
 
 	private static void withStation(GameTestHelper helper, Consumer<Station> body) {
 		MinecraftServer server = helper.getLevel().getServer();
-		RepairState original = RepairState.get(server);
 		RepairState fresh = new RepairState();
-		server.getDataStorage().set(RepairState.TYPE, fresh);
-		try {
+		WorldData.with(server, RepairState.TYPE, fresh, () -> {
 			for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL, TerminalTypes.REPAIR_STATION)) {
 				for (var part : type.parts()) {
 					fresh.insert(type, part).ifPresent(refusal -> {
@@ -119,9 +118,7 @@ public class RepairStationTest {
 			PodComponents.register(pod, charter.id());
 			body.accept(new Station(pos, pilot, charter, pod));
 			pod.discard();
-		} finally {
-			server.getDataStorage().set(RepairState.TYPE, original);
-		}
+		});
 	}
 
 	private static long account(MinecraftServer server, Station station) {
@@ -736,26 +733,25 @@ public class RepairStationTest {
 	 */
 	private static void withSpawnColumn(GameTestHelper helper, int x, boolean load, Consumer<BlockPos> body, BlockPos... touched) {
 		ServerLevel overworld = helper.getLevel().getServer().overworld();
-		LevelData.RespawnData original = overworld.getRespawnData();
-		ColonySite colony = ColonySite.get(overworld.getServer());
-		overworld.getServer().getDataStorage().set(ColonySite.TYPE, new ColonySite());
-		overworld.setRespawnData(LevelData.RespawnData.of(Level.OVERWORLD, new BlockPos(x, 64, 0), 0f, 0f));
-		if (load) {
-			overworld.getChunk(x >> 4, 0);
-		}
-		BlockPos ground = overworld.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, new BlockPos(x, 64, 0));
-		Map<BlockPos, BlockState> saved = new HashMap<>();
-		for (BlockPos offset : touched) {
-			BlockPos at = ground.offset(offset);
-			saved.put(at, overworld.getBlockState(at));
-		}
-		try {
-			body.accept(ground);
-		} finally {
-			saved.forEach((at, state) -> overworld.setBlock(at, state, 3));
-			overworld.setRespawnData(original);
-			overworld.getServer().getDataStorage().set(ColonySite.TYPE, colony);
-		}
+		WorldData.with(overworld.getServer(), ColonySite.TYPE, new ColonySite(), () -> {
+			LevelData.RespawnData original = overworld.getRespawnData();
+			Map<BlockPos, BlockState> saved = new HashMap<>();
+			try {
+				overworld.setRespawnData(LevelData.RespawnData.of(Level.OVERWORLD, new BlockPos(x, 64, 0), 0f, 0f));
+				if (load) {
+					overworld.getChunk(x >> 4, 0);
+				}
+				BlockPos ground = overworld.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, new BlockPos(x, 64, 0));
+				for (BlockPos offset : touched) {
+					BlockPos at = ground.offset(offset);
+					saved.put(at, overworld.getBlockState(at));
+				}
+				body.accept(ground);
+			} finally {
+				saved.forEach((at, state) -> overworld.setBlock(at, state, 3));
+				overworld.setRespawnData(original);
+			}
+		});
 	}
 
 	private static void expectTeleportRefused(GameTestHelper helper, Station station, Consumable teleporter, String why) {
