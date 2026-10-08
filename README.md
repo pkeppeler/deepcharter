@@ -53,7 +53,7 @@ Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest
 
 - Add test classes and evidence scenarios to the stubs that already exist, which are registered in `src/gametest/resources/fabric.mod.json`. A server stub is `<Thing>Test`, a client stub `<Thing>ClientTest`, a scenario `evidence/<Thing>Scenario` named `m2-<thing>`. A scenario stub throws "stub: #N fills it" when it is selected, and does nothing in a plain run.
 - A GameTest that cuts air into generated layer rock calls `RoomSeal.seal` first (generated lava and gas flood the cut otherwise).
-- Run one GameTest with `JAVA_TOOL_OPTIONS="-Dfabric-api.gametest.filter=deepcharter-test:<test_id>" ./gradlew runGameTest` (full id or a trailing `*`; a bare `-D` on the Gradle command line is ignored).
+- Run one GameTest, or a prefix of them, with `tools/gametest.sh '<test_id or prefix*>'` (quote the `*`). It runs `./gradlew runGameTest` from the repo root it lives in, sets the filter through `JAVA_TOOL_OPTIONS` (a bare `-D` on the Gradle command line is ignored), and fails when no test matches.
 - Before you drive an entity in a far chunk, await entity ticking: `test/support/FarChunks.awaitEntityTicking`. It forces the chunk, so nothing else needs to keep it loaded.
 - `test/support/MockPlayers` joins a real server-side player with no client behind it.
 - `test/support/TwoPlayerServer` starts a dedicated server in a client GameTest, joins the real client, then joins one mock player.
