@@ -32,7 +32,8 @@ public class SkinAssetsTest {
 	@GameTest
 	public void everyPodModelHasItsFiles(GameTestHelper helper) throws IOException {
 		for (Chassis chassis : Chassis.all()) {
-			for (Identifier id : PodSkins.of(chassis).all()) {
+			PodSkins skins = PodSkins.of(chassis);
+			for (Identifier id : List.of(skins.hull(), skins.wreck(), skins.drill())) {
 				checkModelFiles(helper, id);
 			}
 		}

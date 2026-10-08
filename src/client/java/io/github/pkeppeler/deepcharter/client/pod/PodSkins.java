@@ -1,7 +1,5 @@
 package io.github.pkeppeler.deepcharter.client.pod;
 
-import java.util.List;
-
 import net.minecraft.resources.Identifier;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
@@ -16,10 +14,5 @@ public record PodSkins(Identifier hull, Identifier wreck, Identifier drill) {
 
 	private static Identifier id(String name) {
 		return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "pod/" + name);
-	}
-
-	/** Every id of the look, in the order hull, wreck, drill. */
-	public List<Identifier> all() {
-		return List.of(hull, wreck, drill);
 	}
 }
