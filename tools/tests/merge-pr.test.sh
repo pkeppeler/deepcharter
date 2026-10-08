@@ -53,8 +53,8 @@ review-passed}" ;;
       exit 0
     fi
     if [[ $2 == */actions/runs/* ]]; then
-      [[ ${STUB_CI_BASE_FAIL-0} == 1 ]] && exit 1
-      printf '%s' "${STUB_CI_BASE-ba5e111
+      [[ ${STUB_CI_CREATED_FAIL-0} == 1 ]] && exit 1
+      printf '%s' "${STUB_CI_CREATED-2026-10-08T03:40:43Z
 }"
       exit 0
     fi
@@ -69,9 +69,19 @@ cat >"$work/bin/git" <<'STUB'
 echo "git $*" >>"$LOG"
 case "$1" in
   fetch) [[ ${STUB_FETCH_FAIL-0} == 1 ]] && exit 1 ;;
-  diff)
-    [[ ${STUB_DIFF_FAIL-0} == 1 ]] && exit 1
-    printf '%s' "${STUB_MOVED-}" ;;
+  log)
+    # STUB_MAIN_LOG: "<hash> <iso time>" lines. Prints the hashes at or after --since.
+    [[ ${STUB_LOG_FAIL-0} == 1 ]] && exit 1
+    since=
+    for a in "$@"; do [[ $a == --since=* ]] && since=${a#--since=}; done
+    while read -r h t; do
+      [[ -z $h || $t < $since ]] || echo "$h"
+    done <<<"${STUB_MAIN_LOG-}" ;;
+  show)
+    # Files of a commit come from STUB_SHOW_<hash>.
+    [[ ${STUB_SHOW_FAIL-0} == 1 ]] && exit 1
+    var=STUB_SHOW_${!#}
+    printf '%s' "${!var-}" ;;
   ls-tree)
     [[ ${STUB_MAIN_ADRS_FAIL-0} == 1 ]] && exit 1
     printf '%s' "${STUB_MAIN_ADRS-docs/adr/0007-seven.md
@@ -364,38 +374,50 @@ for name in $required; do
     "STUB_RUNS=$(runs "${others[@]}" "$name:3:skipped")"
 done
 
-# Stale CI base: the PR's latest CI workflow run tested the merge ref against some
-# main. If main has since changed anything outside docs, refuse.
-# Default stubs: the latest CI run's base is ba5e111 and main has not moved.
+# Stale CI base: the PR's latest CI workflow run tested the merge ref against whatever
+# main was then. Every main commit since the run started (minus a 2-minute margin)
+# that changed anything outside docs refuses the merge. Default stubs: the latest CI
+# run was created 03:40:43Z (so the window opens 03:38:43Z) and main has no commits.
 stale_hint="gh pr close 7 && gh pr reopen 7"
+after="2026-10-08T03:47:00Z"
 run_script
-exited "main not moved merges" 0
+exited "no main commits since the CI run merges" 0
 logged "CI runs read for the pinned head sha" "gh api repos/pkeppeler/deepcharter/actions/runs?head_sha=abc123&event=pull_request&per_page=100 --paginate --jq .workflow_runs[] | select(.name == \"CI\" and .status == \"completed\") | .id"
-logged "latest CI run read" "gh api repos/pkeppeler/deepcharter/actions/runs/9001 --jq .pull_requests[] | select(.number == 7) | .base.sha"
-logged "main compared with the CI base" "git diff --name-only --no-renames ba5e111 origin/main"
+logged "latest CI run start read" "gh api repos/pkeppeler/deepcharter/actions/runs/9001 --jq .created_at"
+logged "main read from two minutes before the run" "git log --format=%H --since=2026-10-08T03:38:43Z origin/main"
 run_script "STUB_CI_RUNS=9001${nl}9005${nl}9003"
 exited "newest CI run is the one read" 0
-logged "newest CI run id used" "gh api repos/pkeppeler/deepcharter/actions/runs/9005 --jq .pull_requests[] | select(.number == 7) | .base.sha"
-run_script "STUB_MOVED=docs/ROADMAP.md${nl}docs/adr/0020-x.md${nl}README.md${nl}src/main/java/NOTES.md${nl}.papercuts.jsonl"
-exited "main moved only in docs, markdown and papercuts merges" 0
-logged "docs-only move still merges" "$merge_line"
-refusal "main moved in src" "main changed since its CI run" "STUB_MOVED=src/main/java/Charters.java"
-refusal "refusal names the moved path" "src/main/java/Charters.java" "STUB_MOVED=src/main/java/Charters.java"
-refusal "refusal gives the close/reopen fix" "$stale_hint" "STUB_MOVED=src/main/java/Charters.java"
-refusal "main moved in a build file" "$stale_hint" "STUB_MOVED=build.gradle"
-refusal "build file beside another path" "build.gradle" "STUB_MOVED=gradle.properties${nl}build.gradle"
-refusal "code beside docs still refuses" "tools/merge-pr.sh" "STUB_MOVED=docs/ROADMAP.md${nl}tools/merge-pr.sh"
-refusal "docs-looking directory outside docs/ refuses" "$stale_hint" "STUB_MOVED=docsx/a.txt"
-refusal "markdown lookalike refuses" "$stale_hint" "STUB_MOVED=src/main/md"
-refusal "nested papercuts lookalike refuses" "$stale_hint" "STUB_MOVED=sub/.papercuts.jsonl"
-refusal "refusal lists only the first paths" "(+2 more)" \
-  "STUB_MOVED=a.java${nl}b.java${nl}c.java${nl}d.java${nl}e.java${nl}f.java${nl}g.java"
+logged "newest CI run id used" "gh api repos/pkeppeler/deepcharter/actions/runs/9005 --jq .created_at"
+run_script "STUB_MAIN_LOG=c1 $after${nl}c2 $after${nl}c3 $after" "STUB_SHOW_c1=docs/ROADMAP.md${nl}docs/adr/0020-x.md" \
+  "STUB_SHOW_c2=README.md${nl}src/main/java/NOTES.md" STUB_SHOW_c3=.papercuts.jsonl
+exited "main commits only in docs, markdown and papercuts merge" 0
+logged "docs-only commits still merge" "$merge_line"
+logged "each commit's files read" "git show --name-only --format= --no-renames c3"
+code_log="STUB_MAIN_LOG=c1 $after"
+refusal "main commit in src" "main changed since its CI run" "$code_log" STUB_SHOW_c1=src/main/java/Charters.java
+refusal "refusal names the moved path" "src/main/java/Charters.java" "$code_log" STUB_SHOW_c1=src/main/java/Charters.java
+refusal "refusal names the CI run start" "CI run 9001 started 2026-10-08T03:40:43Z" "$code_log" STUB_SHOW_c1=src/A.java
+refusal "refusal gives the close/reopen fix" "$stale_hint" "$code_log" STUB_SHOW_c1=src/main/java/Charters.java
+refusal "main commit in a build file" "$stale_hint" "$code_log" STUB_SHOW_c1=build.gradle
+refusal "build file beside another path" "build.gradle" "$code_log" "STUB_SHOW_c1=gradle.properties${nl}build.gradle"
+refusal "code beside docs still refuses" "tools/merge-pr.sh" "$code_log" "STUB_SHOW_c1=docs/ROADMAP.md${nl}tools/merge-pr.sh"
+refusal "code in a later commit refuses" "src/B.java" "STUB_MAIN_LOG=c1 $after${nl}c2 $after" STUB_SHOW_c1=docs/x.md STUB_SHOW_c2=src/B.java
+refusal "docs-looking directory outside docs/ refuses" "$stale_hint" "$code_log" STUB_SHOW_c1=docsx/a.txt
+refusal "markdown lookalike refuses" "$stale_hint" "$code_log" STUB_SHOW_c1=src/main/md
+refusal "nested papercuts lookalike refuses" "$stale_hint" "$code_log" STUB_SHOW_c1=sub/.papercuts.jsonl
+refusal "refusal lists only the first paths" "(+2 more)" "$code_log" \
+  "STUB_SHOW_c1=a.java${nl}b.java${nl}c.java${nl}d.java${nl}e.java${nl}f.java${nl}g.java"
+# The margin: a commit 03:39:30Z is before the run (03:40:43Z) but inside the 2 minutes.
+refusal "commit inside the margin window counts" "src/M.java" "STUB_MAIN_LOG=c1 2026-10-08T03:39:30Z" STUB_SHOW_c1=src/M.java
+run_script "STUB_MAIN_LOG=c1 2026-10-08T03:30:00Z" STUB_SHOW_c1=src/Old.java
+exited "commit before the margin window is ignored" 0
 refusal "no CI run for the head" "no completed CI run for abc123" STUB_CI_RUNS=
 refusal "CI runs unreadable" "no completed CI run for abc123" STUB_CI_RUNS_FAIL=1
-refusal "CI run has no base for this PR" "has no base sha" STUB_CI_BASE=
-refusal "CI run base unreadable" "has no base sha" STUB_CI_BASE_FAIL=1
-refusal "CI run base is not a sha" "has no base sha" "STUB_CI_BASE=not-a-sha"
-refusal "base cannot be compared with main" "could not compare" STUB_DIFF_FAIL=1
+refusal "CI run has no start time" "no readable start time on its CI run" STUB_CI_CREATED=
+refusal "CI run start unreadable" "no readable start time on its CI run" STUB_CI_CREATED_FAIL=1
+refusal "CI run start is not a timestamp" "no readable start time on its CI run" "STUB_CI_CREATED=yesterday"
+refusal "main log unreadable" "could not list the commits on origin/main" STUB_LOG_FAIL=1
+refusal "commit files unreadable" "could not read the files changed by origin/main commit c1" "$code_log" STUB_SHOW_FAIL=1
 run_script
 logged "origin/main fetched before comparing" "git fetch origin main"
 
