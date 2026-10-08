@@ -50,9 +50,7 @@ public final class CrtDemoScreen extends CrtScreen {
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-		CrtDraw.glowText(graphics, font, title.getString(), MARGIN, MARGIN, CrtTuning.DEFAULT.phosphorColor());
-		CrtDraw.border(graphics, MARGIN - 6, MARGIN + font.lineHeight + 4, width - MARGIN + 6, MARGIN + font.lineHeight + 5,
-				CrtTuning.DEFAULT.dimColor());
+		CrtDraw.header(graphics, font, title.getString(), MARGIN, width);
 		drawTypewriter(graphics, typewriter, MARGIN, MARGIN + font.lineHeight + 14, width - 2 * MARGIN);
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 	}

@@ -15,6 +15,7 @@ import io.github.pkeppeler.deepcharter.client.repair.RepairClientInit;
 import io.github.pkeppeler.deepcharter.client.scanner.ScannerClientInit;
 import io.github.pkeppeler.deepcharter.client.sound.SoundClientInit;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalClientInit;
+import io.github.pkeppeler.deepcharter.client.theme.ThemeClientInit;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionClientInit;
 import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeClientInit;
 import io.github.pkeppeler.deepcharter.client.wreck.WreckClientInit;
@@ -37,6 +38,7 @@ public class DeepCharterClient implements ClientModInitializer {
 		ScannerClientInit.init();
 		SoundClientInit.init();
 		TerminalClientInit.init();
+		ThemeClientInit.init();
 		TransmissionClientInit.init();
 		UpgradeClientInit.init();
 		WreckClientInit.init();

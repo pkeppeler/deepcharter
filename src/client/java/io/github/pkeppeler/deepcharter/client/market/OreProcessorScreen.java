@@ -146,7 +146,7 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 	/** The y of the account line, which is below the intro in full. Fixed, so that the rows do not move while the intro types. */
 	private int accountTop() {
 		int introLines = font.getSplitter().splitLines(FormattedText.of(typewriter.text()), width - 2 * MARGIN, Style.EMPTY).size();
-		return MARGIN + font.lineHeight + 14 + introLines * (font.lineHeight + CrtTuning.DEFAULT.lineSpacing()) + GAP * 2;
+		return MARGIN + font.lineHeight + 14 + introLines * (font.lineHeight + CrtTuning.current().lineSpacing()) + GAP * 2;
 	}
 
 	/** The y below the account line: the order rows start under it. */
@@ -222,9 +222,8 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-		CrtTuning tuning = CrtTuning.DEFAULT;
-		CrtDraw.glowText(graphics, font, title.getString().toUpperCase(Locale.ROOT), MARGIN, MARGIN, tuning.phosphorColor());
-		CrtDraw.border(graphics, MARGIN - 6, MARGIN + font.lineHeight + 4, width - MARGIN + 6, MARGIN + font.lineHeight + 5, tuning.dimColor());
+		CrtTuning tuning = CrtTuning.current();
+		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), MARGIN, width);
 		drawTypewriter(graphics, typewriter, MARGIN, MARGIN + font.lineHeight + 14, width - 2 * MARGIN);
 		int top = accountTop();
 		CrtDraw.glowText(graphics, font, accountLine(), MARGIN, top, tuning.phosphorColor());

@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 
 import net.minecraft.world.level.block.Blocks;
 
+import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest.HudShot;
@@ -53,20 +54,20 @@ public class ScannerTiersClientTest implements FabricClientGameTest {
 			// No scanner: no HUD, whatever is around the pod.
 			ScannerHudTest.rideWithGoldAhead(context, server, 0);
 			HudShot none = HudShot.take(context, "scanner-tiers-none", ScannerHudTest.TIER_ONE);
-			expectNot("no scanner: the pod marker", none.pixel(0, 0), TUNING.podColor());
-			expectNot("no scanner: the gold", none.pixel(ScannerHudTest.GOLD_AHEAD, ScannerHudTest.GOLD_UP), TUNING.goldOreColor());
+			expectNot("no scanner: the pod marker", none.pixel(0, 0), ScannerLook.current().podColor());
+			expectNot("no scanner: the gold", none.pixel(ScannerHudTest.GOLD_AHEAD, ScannerHudTest.GOLD_UP), ScannerLook.current().goldOreColor());
 			ScannerHudTest.leavePod(context, server);
 
 			// Tier 1 draws M1's panel: the near gold is there, the far cells are outside it.
 			ScannerHudTest.rideWithGoldAhead(context, server, 1);
 			placeFarCells(context, server);
 			HudShot one = HudShot.take(context, "scanner-tiers-1", ScannerHudTest.TIER_ONE);
-			expect("tier 1: the pod marker", one.pixel(0, 0), TUNING.podColor());
-			expect("tier 1: the near gold", one.pixel(ScannerHudTest.GOLD_AHEAD, ScannerHudTest.GOLD_UP), TUNING.goldOreColor());
+			expect("tier 1: the pod marker", one.pixel(0, 0), ScannerLook.current().podColor());
+			expect("tier 1: the near gold", one.pixel(ScannerHudTest.GOLD_AHEAD, ScannerHudTest.GOLD_UP), ScannerLook.current().goldOreColor());
 			// The far gold is beyond the panel's columns, so the near gold is the only gold cell on the row.
 			int goldCells = 0;
 			for (int ahead = -ScannerHudTest.TIER_ONE.halfWidth(); ahead <= ScannerHudTest.TIER_ONE.halfWidth(); ahead++) {
-				if (one.pixel(ahead, ScannerHudTest.GOLD_UP) == (TUNING.goldOreColor() & RGB)) {
+				if (one.pixel(ahead, ScannerHudTest.GOLD_UP) == (ScannerLook.current().goldOreColor() & RGB)) {
 					goldCells++;
 				}
 			}
@@ -79,10 +80,10 @@ public class ScannerTiersClientTest implements FabricClientGameTest {
 			ScannerHudTest.rideWithGoldAhead(context, server, 2);
 			placeFarCells(context, server);
 			HudShot two = HudShot.take(context, "scanner-tiers-2", TIER_TWO);
-			expect("tier 2: the pod marker", two.pixel(0, 0), TUNING.podColor());
-			expect("tier 2: the near gold", two.pixel(ScannerHudTest.GOLD_AHEAD, ScannerHudTest.GOLD_UP), TUNING.goldOreColor());
-			expect("tier 2: the far gold", two.pixel(FAR_AHEAD, ScannerHudTest.GOLD_UP), TUNING.goldOreColor());
-			expect("tier 2: the far stone", two.pixel(FAR_BEHIND, ScannerHudTest.GOLD_UP), TUNING.rockColor());
+			expect("tier 2: the pod marker", two.pixel(0, 0), ScannerLook.current().podColor());
+			expect("tier 2: the near gold", two.pixel(ScannerHudTest.GOLD_AHEAD, ScannerHudTest.GOLD_UP), ScannerLook.current().goldOreColor());
+			expect("tier 2: the far gold", two.pixel(FAR_AHEAD, ScannerHudTest.GOLD_UP), ScannerLook.current().goldOreColor());
+			expect("tier 2: the far stone", two.pixel(FAR_BEHIND, ScannerHudTest.GOLD_UP), ScannerLook.current().rockColor());
 		}
 	}
 }

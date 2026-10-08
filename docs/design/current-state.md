@@ -639,6 +639,8 @@ Already marked placeholder in code or issues:
 
 Every look that is fixed in Java and cannot be replaced by swapping a resource-pack file or a data value. These block a drop-in reskin.
 
+**Since #226** the UI rows (CRT look and drawing, handbook paper, pod status HUD, scanner HUD, altimeter, account HUD, transmission overlay, breach fade, pod cargo screen) are resource-pack data, no longer fixed in Java: see [skins.md](skins.md). Their `file:line` entries below are as of #227. What stays in Java from those rows: the position and size of each terminal screen's widgets, and the scanner's reach.
+
 | Visual | What is fixed | Where |
 |---|---|---|
 | Pod models | A vanilla block scaled to a slab: Mole `minecraft:raw_copper_block`, Prospector `minecraft:iron_block`, wreck `minecraft:coal_block`; slab height 0.9 | `client/pod/PodRenderer.java:23`, `:25`, `:55-56`; `client/pod/PodClientRegistry.java:15-18` |

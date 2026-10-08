@@ -6,26 +6,25 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
 
+import io.github.pkeppeler.deepcharter.client.theme.Colors;
+
 /** Drawing helpers of the paper look. Every colour comes from {@link HandbookScreenTuning}. */
 final class PaperDraw {
-	private static final HandbookScreenTuning T = HandbookScreenTuning.DEFAULT;
-	private static final int OPAQUE = 0xFF000000;
-	private static final int RULE_SPACING = 10;
-	private static final int RULE_ALPHA = 0x40000000;
-	private static final int SHADOW_OFFSET = 3;
-
 	private PaperDraw() {
 	}
 
 	/** A sheet of paper with a drop shadow, faint ruled lines and a binding band down its left edge. */
 	static void sheet(GuiGraphicsExtractor graphics, int left, int top, int width, int height) {
-		graphics.fill(left + SHADOW_OFFSET, top + SHADOW_OFFSET, left + width + SHADOW_OFFSET, top + height + SHADOW_OFFSET, T.shadowColor());
-		graphics.fill(left, top, left + width, top + height, T.paperColor());
-		for (int y = top + RULE_SPACING * 2; y < top + height - RULE_SPACING; y += RULE_SPACING) {
-			graphics.fill(left + T.bindingWidth(), y, left + width - 1, y + 1, (T.paperEdgeColor() & 0x00FFFFFF) | RULE_ALPHA);
+		HandbookScreenTuning t = HandbookScreenTuning.current();
+		int shadow = t.shadowOffset();
+		graphics.fill(left + shadow, top + shadow, left + width + shadow, top + height + shadow, t.shadowColor());
+		graphics.fill(left, top, left + width, top + height, t.paperColor());
+		int rule = Colors.withAlpha(t.paperEdgeColor(), t.ruleAlpha());
+		for (int y = top + t.ruleSpacing() * 2; y < top + height - t.ruleSpacing(); y += t.ruleSpacing()) {
+			graphics.fill(left + t.bindingWidth(), y, left + width - 1, y + 1, rule);
 		}
-		graphics.fill(left, top, left + T.bindingWidth(), top + height, T.bindingColor());
-		border(graphics, left, top, left + width, top + height, T.paperEdgeColor());
+		graphics.fill(left, top, left + t.bindingWidth(), top + height, t.bindingColor());
+		border(graphics, left, top, left + width, top + height, t.paperEdgeColor());
 	}
 
 	/** A one-pixel rectangle outline. */
@@ -38,14 +37,14 @@ final class PaperDraw {
 
 	/** {@code text} in italic ink of {@code color} (RGB; alpha is ignored): the vanilla italic font, coloured. */
 	static Component ink(Component text, int color) {
-		return text.copy().withStyle(style -> style.withItalic(true).withColor(color & 0x00FFFFFF));
+		return text.copy().withStyle(style -> style.withItalic(true).withColor(Colors.rgb(color)));
 	}
 
 	/** Draws {@code text} wrapped to {@code width}. Returns the y below the last line. */
 	static int wrapped(GuiGraphicsExtractor graphics, Font font, Component text, int x, int y, int width, int color) {
 		int lineY = y;
 		for (FormattedCharSequence line : font.split(ink(text, color), width)) {
-			graphics.text(font, line, x, lineY, OPAQUE | color, false);
+			graphics.text(font, line, x, lineY, Colors.opaque(color), false);
 			lineY += font.lineHeight + 1;
 		}
 		return lineY;
@@ -57,28 +56,28 @@ final class PaperDraw {
 		graphics.pose().pushMatrix();
 		graphics.pose().translate(centerX, y);
 		graphics.pose().scale(scale, scale);
-		graphics.text(font, styled, -font.width(styled) / 2, 0, OPAQUE | color, false);
+		graphics.text(font, styled, -font.width(styled) / 2, 0, Colors.opaque(color), false);
 		graphics.pose().popMatrix();
 		return y + Math.round(font.lineHeight * scale) + 2;
 	}
 
 	/** A rubber stamp: bold capitals in a double frame, turned by {@code degrees}. */
 	static void stamp(GuiGraphicsExtractor graphics, Font font, Component text, int centerX, int centerY, float degrees, int color) {
-		Component styled = text.copy().withStyle(Style.EMPTY.withBold(true).withColor(color & 0x00FFFFFF));
+		Component styled = text.copy().withStyle(Style.EMPTY.withBold(true).withColor(Colors.rgb(color)));
 		int halfWidth = font.width(styled) / 2 + 5;
 		int halfHeight = font.lineHeight / 2 + 3;
 		graphics.pose().pushMatrix();
 		graphics.pose().translate(centerX, centerY);
 		graphics.pose().rotate((float) Math.toRadians(degrees));
-		border(graphics, -halfWidth, -halfHeight, halfWidth, halfHeight, OPAQUE | color);
-		border(graphics, -halfWidth + 2, -halfHeight + 2, halfWidth - 2, halfHeight - 2, OPAQUE | color);
-		graphics.text(font, styled, -font.width(styled) / 2, -font.lineHeight / 2 + 1, OPAQUE | color, false);
+		border(graphics, -halfWidth, -halfHeight, halfWidth, halfHeight, Colors.opaque(color));
+		border(graphics, -halfWidth + 2, -halfHeight + 2, halfWidth - 2, halfHeight - 2, Colors.opaque(color));
+		graphics.text(font, styled, -font.width(styled) / 2, -font.lineHeight / 2 + 1, Colors.opaque(color), false);
 		graphics.pose().popMatrix();
 	}
 
 	/** A solid black bar, like a word crossed out of a document before it is released. */
 	static void redaction(GuiGraphicsExtractor graphics, int x, int y, int width, int height) {
-		graphics.fill(x, y, x + width, y + height, T.redactionColor());
+		graphics.fill(x, y, x + width, y + height, HandbookScreenTuning.current().redactionColor());
 	}
 
 	/**
@@ -104,7 +103,7 @@ final class PaperDraw {
 				int barStart = previousRedacted ? cursor : cursor + gap;
 				redaction(graphics, barStart, lineY - 1, cursor + gap + wordWidth - barStart, font.lineHeight + 1);
 			} else {
-				graphics.text(font, word, cursor + gap, lineY, OPAQUE | color, false);
+				graphics.text(font, word, cursor + gap, lineY, Colors.opaque(color), false);
 			}
 			cursor += gap + wordWidth;
 			previousRedacted = token.redacted();

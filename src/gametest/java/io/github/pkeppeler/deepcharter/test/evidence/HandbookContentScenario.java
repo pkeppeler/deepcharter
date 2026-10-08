@@ -59,7 +59,7 @@ public class HandbookContentScenario extends EvidenceScenario {
 					context.waitTicks(FLIP_FRAME_TICKS);
 					frame(context);
 				}
-				context.waitTicks(HandbookScreenTuning.DEFAULT.flipTicks());
+				context.waitTicks(HandbookScreenTuning.current().flipTicks());
 				for (int frame = 0; frame < HOLD_FRAMES; frame++) {
 					frame(context);
 				}

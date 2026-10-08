@@ -41,7 +41,7 @@ public class HandbookScreenScenario extends EvidenceScenario {
 			context.runOnClient(client -> client.player.getInventory().setSelectedSlot(handbookSlot(client.player.getInventory())));
 			context.getInput().pressKey(options -> options.keyUse);
 			context.waitForScreen(HandbookScreen.class);
-			context.waitTicks(HandbookScreenTuning.DEFAULT.flipTicks());
+			context.waitTicks(HandbookScreenTuning.current().flipTicks());
 			hold(context);
 
 			context.setScreen(() -> new HandbookScreen(HandbookPages.of(chapters(), done(1)), id -> id.getPath().equals("test2"), id -> { }, List.of()));
@@ -54,7 +54,7 @@ public class HandbookScreenScenario extends EvidenceScenario {
 				context.runOnClient(client -> screen.goTo(target));
 				context.waitTicks(FLIP_FRAME_TICKS);
 				frame(context);
-				context.waitTicks(HandbookScreenTuning.DEFAULT.flipTicks());
+				context.waitTicks(HandbookScreenTuning.current().flipTicks());
 				hold(context);
 				if (page == 3) {
 					screenshot(context, "contents");
