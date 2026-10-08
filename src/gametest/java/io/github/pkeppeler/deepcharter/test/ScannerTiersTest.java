@@ -1,16 +1,25 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.permissions.LevelBasedPermissionSet;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
@@ -24,6 +33,8 @@ import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice.Cell;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
+import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
+import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
@@ -197,6 +208,49 @@ public class ScannerTiersTest {
 			place(level, at, Blocks.AIR);
 			pod.discard();
 		}
+	}
+
+	@GameTest
+	public void spawnCommandFitsATierOneScannerForAPlayerOnACharter(GameTestHelper helper) {
+		MockPlayer member = MockPlayers.join(helper, "scanner-member");
+		MockPlayer loner = MockPlayers.join(helper, "scanner-loner");
+		List<PodEntity> spawned = new ArrayList<>();
+		try {
+			MinecraftServer server = helper.getLevel().getServer();
+			if (Charters.found(server, member.player().getUUID(), "Spawn scanner " + CHARTERS.incrementAndGet()).isPresent()) {
+				throw failure(helper, "could not found a charter");
+			}
+			CharterId charter = Charters.charterOf(server, member.player().getUUID()).orElseThrow().id();
+			PodEntity fitted = spawnBy(helper, member, spawned);
+			PodEntity bare = spawnBy(helper, loner, spawned);
+			if (!PodComponents.registration(fitted).map(PodComponents.Registration::owner).equals(Optional.of(charter))
+					|| PodComponents.effectiveTier(fitted, ComponentTrack.SCANNER) != 1) {
+				throw failure(helper, "a spawned pod should belong to the member's charter and scan at tier 1, owner %s tier %d",
+						PodComponents.registration(fitted), PodComponents.effectiveTier(fitted, ComponentTrack.SCANNER));
+			}
+			if (PodComponents.registration(bare).isPresent() || PodComponents.effectiveTier(bare, ComponentTrack.SCANNER) != 0) {
+				throw failure(helper, "a pod spawned by a player with no charter stays bare, owner %s", PodComponents.registration(bare));
+			}
+			helper.succeed();
+		} finally {
+			spawned.forEach(Entity::discard);
+			member.leave();
+			loner.leave();
+		}
+	}
+
+	private static PodEntity spawnBy(GameTestHelper helper, MockPlayer player, List<PodEntity> spawned) {
+		Vec3 at = helper.absoluteVec(new Vec3(2, 2, 2));
+		player.player().setPos(at);
+		try {
+			helper.getLevel().getServer().getCommands().getDispatcher().execute("deepcharter pod spawn",
+					player.player().createCommandSourceStack().withPermission(LevelBasedPermissionSet.GAMEMASTER));
+		} catch (CommandSyntaxException e) {
+			throw failure(helper, "spawn should run for an op: %s", e.getMessage());
+		}
+		PodEntity pod = helper.getLevel().getEntities(PodRegistry.POD, new AABB(at, at).inflate(1), found -> !spawned.contains(found)).getFirst();
+		spawned.add(pod);
+		return pod;
 	}
 
 	private static void expectTier(GameTestHelper helper, Optional<ScanSlice> slice, int tier) {

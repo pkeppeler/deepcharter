@@ -29,6 +29,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
 /** Client GameTest: ore pixels in the scanner HUD. */
 public class ScannerHudTest implements FabricClientGameTest {
@@ -206,9 +207,26 @@ public class ScannerHudTest implements FabricClientGameTest {
 		}
 	}
 
+	/**
+	 * At the default GUI the panel's left edge stays right of the altimeter. It is centred at 213 and "-12,345 ft." is 66 pixels
+	 * wide, so it ends at 246.
+	 */
+	private static void expectPanelClearsAltimeter() {
+		int altimeterRight = 246;
+		for (int tier = 1; tier <= ComponentTrack.SCANNER.maxTier(); tier++) {
+			ScanArea area = TUNING.area(tier);
+			int panelLeft = ScannerHud.cellLeft(427, 240, area, -area.halfWidth()) - 1;
+			if (panelLeft <= altimeterRight) {
+				throw new AssertionError("tier %d at GUI 427x240: the panel starts at x=%d, on the altimeter that ends at %d"
+						.formatted(tier, panelLeft, altimeterRight));
+			}
+		}
+	}
+
 	@Override
 	public void runTest(ClientGameTestContext context) {
 		expectPanelFitsSmallScreens();
+		expectPanelClearsAltimeter();
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			TestServerContext server = singleplayer.getServer();
 			server.runCommand("time set midnight");

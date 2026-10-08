@@ -34,6 +34,10 @@ public final class ScannerHud {
 	private static final int TITLE_HEIGHT = 10;
 	private static final int FRAME = 1;
 	private static final int WHITE = 0xFFFFFFFF;
+	/** Half the width the altimeter ({@code BreachHud}, top centre) can take: "-12,345 ft." is 66 pixels at GUI scale 1. */
+	private static final int ALTIMETER_HALF_WIDTH = 36;
+	/** GUI pixels kept clear between the altimeter and the panel. */
+	private static final int ALTIMETER_GAP = 4;
 	/** A Mole is two blocks tall: the pod fills the feet cell and the one above. */
 	private static final int POD_CELLS_UP = 1;
 
@@ -49,11 +53,13 @@ public final class ScannerHud {
 	}
 
 	/**
-	 * GUI pixels per cell: the tuned size when the panel fits the GUI, otherwise the largest that does,
-	 * down to 1. Below that the panel clips; a tier 1 panel's 41 rows need a GUI about 60 pixels tall.
+	 * GUI pixels per cell: the tuned size when the panel fits the GUI and keeps right of the altimeter, otherwise the largest
+	 * that does, down to 1. Below that the panel clips or touches the altimeter; a tier 1 panel's 41 rows need a GUI about
+	 * 60 pixels tall.
 	 */
 	public static int cellSize(int guiWidth, int guiHeight, ScanArea area) {
-		int fitWidth = (guiWidth - 2 * (TUNING.margin() + FRAME)) / area.columns();
+		int clearOfAltimeter = guiWidth / 2 + ALTIMETER_HALF_WIDTH + ALTIMETER_GAP;
+		int fitWidth = (guiWidth - TUNING.margin() - 2 * FRAME - clearOfAltimeter) / area.columns();
 		int fitHeight = (guiHeight - 2 * (TUNING.margin() + FRAME) - TITLE_HEIGHT) / area.rows();
 		return Math.max(1, Math.min(TUNING.cellPixels(), Math.min(fitWidth, fitHeight)));
 	}
