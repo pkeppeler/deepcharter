@@ -40,7 +40,7 @@ The orchestrator did not move the subagents to a different model to get past the
 
 ## 2026-10-07: The lore branch's ADR number is taken (a note for the lore session)
 
-**Status:** open, for the lore session. Nothing waits on it.
+**Status:** resolved 2026-10-08. Renumbered to 0031 in PR #34.
 
 The lore branch `12-lore-bible` (PR #34) adds `docs/adr/0006-the-finale-is-won-by-renunciation.md`. On main, 0006 is now `0006-pod-seams-attachments-and-events.md`. Numbers 0007 to 0010 and 0013 are also in use or claimed by open PRs. Before PR #34 merges, give the finale ADR the next free number, and update any links to it. I did not change the lore branch.
 
