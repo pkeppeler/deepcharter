@@ -42,12 +42,12 @@ public class UpgradeTerminalScenario extends EvidenceScenario {
 			hold(context);
 			screenshot(context, "hull-prices");
 
-			context.clickScreenButton("BUY TIER 1  $750");
+			context.clickScreenButton("BUY TIER 1  $200");
 			context.waitFor(client -> screen.upgrade().orElseThrow().pod().orElseThrow().slots().stream()
 					.anyMatch(slot -> slot.installed() == 1), WAIT_TICKS);
 			hold(context);
 
-			context.clickScreenButton("BUY TIER 4  $20000  (WORKS AS TIER 2)");
+			context.clickScreenButton("BUY TIER 4  $5000  (WORKS AS TIER 2)");
 			context.waitFor(client -> screen.upgrade().orElseThrow().pod().orElseThrow().slots().stream()
 					.anyMatch(slot -> slot.installed() == 4), WAIT_TICKS);
 			hold(context);

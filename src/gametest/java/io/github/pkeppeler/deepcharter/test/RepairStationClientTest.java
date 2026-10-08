@@ -49,17 +49,17 @@ public class RepairStationClientTest implements FabricClientGameTest {
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.station())));
 			context.waitForScreen(RepairStationScreen.class);
 
-			context.clickScreenButton("REPAIR 10 HP ($150)");
+			context.clickScreenButton("REPAIR 10 HP ($10)");
 			awaitServer(context, () -> hull(singleplayer, scene) == scene.pod().maxHull() - DAMAGE + 10f);
-			check(account(singleplayer, scene) == START_BALANCE - 150, "10 HP cost $150, the account is $" + account(singleplayer, scene));
+			check(account(singleplayer, scene) == START_BALANCE - 10, "10 HP cost $10, the account is $" + account(singleplayer, scene));
 
 			context.clickScreenButton("BUY DYNAMITE $2000");
 			awaitServer(context, () -> carried(singleplayer, Consumable.DYNAMITE) == 1);
-			check(account(singleplayer, scene) == START_BALANCE - 150 - 2_000, "the dynamite cost $2000, the account is $" + account(singleplayer, scene));
+			check(account(singleplayer, scene) == START_BALANCE - 10 - 2_000, "the dynamite cost $2000, the account is $" + account(singleplayer, scene));
 
 			context.clickScreenButton("REPAIR ALL");
 			awaitServer(context, () -> hull(singleplayer, scene) == scene.pod().maxHull());
-			check(account(singleplayer, scene) == START_BALANCE - 150 - 2_000 - 30 * 15, "the rest of the hull cost $450, the account is $" + account(singleplayer, scene));
+			check(account(singleplayer, scene) == START_BALANCE - 10 - 2_000 - 30 * 1, "the rest of the hull cost $30, the account is $" + account(singleplayer, scene));
 			context.setScreen(() -> null);
 		}
 	}

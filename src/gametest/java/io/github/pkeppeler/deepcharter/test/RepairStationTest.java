@@ -67,6 +67,7 @@ import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 
 /**
@@ -84,7 +85,7 @@ public class RepairStationTest {
 			Consumable.PLASTIC_EXPLOSIVES, 5_000L,
 			Consumable.QUANTUM_TELEPORTER, 2_000L,
 			Consumable.MATTER_TRANSMITTER, 10_000L);
-	private static final long PER_HP = 15L;
+	private static final long PER_HP = 1L;
 	private static final int ARENA = 4;
 
 	/** A working repair station at {@code pos}, a pilot on a charter that owns {@code pod}, and the charter's id. */
@@ -93,10 +94,8 @@ public class RepairStationTest {
 
 	private static void withStation(GameTestHelper helper, Consumer<Station> body) {
 		MinecraftServer server = helper.getLevel().getServer();
-		RepairState original = RepairState.get(server);
 		RepairState fresh = new RepairState();
-		server.getDataStorage().set(RepairState.TYPE, fresh);
-		try {
+		WorldData.with(server, RepairState.TYPE, fresh, () -> {
 			for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL, TerminalTypes.REPAIR_STATION)) {
 				for (var part : type.parts()) {
 					fresh.insert(type, part).ifPresent(refusal -> {
@@ -119,9 +118,7 @@ public class RepairStationTest {
 			PodComponents.register(pod, charter.id());
 			body.accept(new Station(pos, pilot, charter, pod));
 			pod.discard();
-		} finally {
-			server.getDataStorage().set(RepairState.TYPE, original);
-		}
+		});
 	}
 
 	private static long account(MinecraftServer server, Station station) {
@@ -197,7 +194,7 @@ public class RepairStationTest {
 	}
 
 	@GameTest
-	public void repairDebitsFifteenDollarsPerHpAndCapsAtMaxHull(GameTestHelper helper) {
+	public void repairDebitsTheTunedDollarsPerHpAndCapsAtMaxHull(GameTestHelper helper) {
 		withStation(helper, station -> {
 			PodEntity pod = station.pod();
 			float max = pod.maxHull();
@@ -736,26 +733,25 @@ public class RepairStationTest {
 	 */
 	private static void withSpawnColumn(GameTestHelper helper, int x, boolean load, Consumer<BlockPos> body, BlockPos... touched) {
 		ServerLevel overworld = helper.getLevel().getServer().overworld();
-		LevelData.RespawnData original = overworld.getRespawnData();
-		ColonySite colony = ColonySite.get(overworld.getServer());
-		overworld.getServer().getDataStorage().set(ColonySite.TYPE, new ColonySite());
-		overworld.setRespawnData(LevelData.RespawnData.of(Level.OVERWORLD, new BlockPos(x, 64, 0), 0f, 0f));
-		if (load) {
-			overworld.getChunk(x >> 4, 0);
-		}
-		BlockPos ground = overworld.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, new BlockPos(x, 64, 0));
-		Map<BlockPos, BlockState> saved = new HashMap<>();
-		for (BlockPos offset : touched) {
-			BlockPos at = ground.offset(offset);
-			saved.put(at, overworld.getBlockState(at));
-		}
-		try {
-			body.accept(ground);
-		} finally {
-			saved.forEach((at, state) -> overworld.setBlock(at, state, 3));
-			overworld.setRespawnData(original);
-			overworld.getServer().getDataStorage().set(ColonySite.TYPE, colony);
-		}
+		WorldData.with(overworld.getServer(), ColonySite.TYPE, new ColonySite(), () -> {
+			LevelData.RespawnData original = overworld.getRespawnData();
+			Map<BlockPos, BlockState> saved = new HashMap<>();
+			try {
+				overworld.setRespawnData(LevelData.RespawnData.of(Level.OVERWORLD, new BlockPos(x, 64, 0), 0f, 0f));
+				if (load) {
+					overworld.getChunk(x >> 4, 0);
+				}
+				BlockPos ground = overworld.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, new BlockPos(x, 64, 0));
+				for (BlockPos offset : touched) {
+					BlockPos at = ground.offset(offset);
+					saved.put(at, overworld.getBlockState(at));
+				}
+				body.accept(ground);
+			} finally {
+				saved.forEach((at, state) -> overworld.setBlock(at, state, 3));
+				overworld.setRespawnData(original);
+			}
+		});
 	}
 
 	private static void expectTeleportRefused(GameTestHelper helper, Station station, Consumable teleporter, String why) {
@@ -949,10 +945,10 @@ public class RepairStationTest {
 		withStation(helper, station -> {
 			PodEntity pod = station.pod();
 			fund(helper, station, 1_000);
-			pod.setHull(pod.maxHull() - 0.5f);
-			expectDone(helper, Terminals.act(station.pilot().player(), station.pos(), RepairStation.REPAIR_TOTAL, new CompoundTag()), "repairing half a point");
-			expectHull(helper, pod, pod.maxHull(), "after half a point");
-			expectAccount(helper, station, 1_000 - 8, "7.5 dollars are charged as 8");
+			pod.setHull(pod.maxHull() - 2.5f);
+			expectDone(helper, Terminals.act(station.pilot().player(), station.pos(), RepairStation.REPAIR_TOTAL, new CompoundTag()), "repairing two and a half points");
+			expectHull(helper, pod, pod.maxHull(), "after two and a half points");
+			expectAccount(helper, station, 1_000 - 3, "2.5 dollars are charged as 3");
 			helper.succeed();
 		});
 	}
@@ -964,7 +960,7 @@ public class RepairStationTest {
 			fund(helper, station, 1_000);
 			pod.setHull(pod.maxHull() - 3.00001f);
 			expectDone(helper, Terminals.act(station.pilot().player(), station.pos(), RepairStation.REPAIR_TOTAL, new CompoundTag()), "repairing 3 points");
-			expectAccount(helper, station, 1_000 - 3 * PER_HP, "3 points cost $45 whatever the float noise");
+			expectAccount(helper, station, 1_000 - 3 * PER_HP, "3 points cost $3 whatever the float noise");
 			helper.succeed();
 		});
 	}

@@ -56,6 +56,7 @@ import io.github.pkeppeler.deepcharter.pod.Serials;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -64,7 +65,7 @@ import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 /**
  * Server GameTests for #82: the Prospector is a two-seat chassis with its own hitbox, a 3 x 3 bore and a tier 3 cap; wrecks of it
  * lie at the wreck sites, PROSPECTOR-0002 at the one nearest the Conduit with a lamp and N10; and the hangar restores one for
- * $5,000 and 3 Cicatrium, then fires T17.
+ * $1,500 and 3 Cicatrium, then fires T17.
  */
 public class ProspectorChassisTest {
 	private static final AtomicInteger CHARTERS = new AtomicInteger();
@@ -83,7 +84,7 @@ public class ProspectorChassisTest {
 	private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
 	private static final Input FORWARD_AND_SPRINT = new Input(true, false, false, false, false, false, true);
 	private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
-	private static final long PRICE = 5_000;
+	private static final long PRICE = 1_500;
 	private static final int CATALYSTS = 3;
 
 	@GameTest
@@ -283,7 +284,7 @@ public class ProspectorChassisTest {
 	}
 
 	@GameTest(maxTicks = FoundingMoleHangarTest.MAX_TICKS)
-	public void restoringAProspectorCostsFiveThousandAndThreeCicatriumRegistersItAndFiresT17(GameTestHelper helper) {
+	public void restoringAProspectorCostsFifteenHundredAndThreeCicatriumRegistersItAndFiresT17(GameTestHelper helper) {
 		FoundingMoleHangarTest.inTheHangar(helper, before -> FoundingMoleHangarTest.withFreshWorld(helper, () -> {
 			FoundingMoleHangarTest.repairTheConsole(helper);
 			MockPlayer owner = FoundingMoleHangarTest.member(helper, "Restorer");
@@ -297,7 +298,7 @@ public class ProspectorChassisTest {
 
 			FoundingMoleHangarTest.expectDone(helper, FoundingMoleHangarTest.act(owner.player(), console, HangarTerminal.RESTORE_WRECK), "restoring the Prospector");
 			expect(helper, FoundingMoleHangarTest.balance(helper, owner) == FoundingMoleHangarTest.RICH - PRICE,
-					"restoring a Prospector costs $5,000, the account holds %s", FoundingMoleHangarTest.balance(helper, owner));
+					"restoring a Prospector costs $1,500, the account holds %s", FoundingMoleHangarTest.balance(helper, owner));
 			expect(helper, FoundingMoleHangarTest.count(owner.player(), FoundingMoleHangarTest.CATALYST) == 1,
 					"restoring a Prospector uses up 3 Cicatrium, the player holds %s", FoundingMoleHangarTest.count(owner.player(), FoundingMoleHangarTest.CATALYST));
 			expect(helper, !Wrecks.isWreck(wreck) && wreck.hull() == wreck.maxHull(), "the restored Prospector is whole: hull %s of %s", wreck.hull(), wreck.maxHull());
@@ -321,7 +322,7 @@ public class ProspectorChassisTest {
 			CharterId charter = FoundingMoleHangarTest.charterOf(helper, owner).id();
 			PodEntity wreck = prospectorWreck(helper);
 
-			// A Mole is $400 and 1 Cicatrium: a Prospector's price is its own.
+			// A Mole is $100 and 1 Cicatrium: a Prospector's price is its own.
 			FoundingMoleHangarTest.deposit(helper, owner, PRICE - 1);
 			FoundingMoleHangarTest.give(owner.player(), FoundingMoleHangarTest.CATALYST, CATALYSTS);
 			FoundingMoleHangarTest.expectRefused(helper, FoundingMoleHangarTest.act(owner.player(), console, HangarTerminal.RESTORE_WRECK), "restoring a dollar short");
@@ -337,22 +338,21 @@ public class ProspectorChassisTest {
 			Tag serials = Serials.CODEC.encodeStart(NbtOps.INSTANCE, new Serials()).getOrThrow();
 			CompoundTag future = ((CompoundTag) serials).copy();
 			future.putInt("version", 7743);
-			Serials world = Serials.get(server);
-			server.getDataStorage().set(Serials.TYPE, Serials.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow());
-			try {
-				FoundingMoleHangarTest.expectRefused(helper, FoundingMoleHangarTest.act(owner.player(), console, HangarTerminal.RESTORE_WRECK),
-						"restoring with unreadable serials");
-				nothingChanged(helper, owner, wreck, charter, PRICE, CATALYSTS, "unreadable serials");
-			} finally {
-				server.getDataStorage().set(Serials.TYPE, world);
-			}
+			WorldData.with(server, Serials.TYPE, Serials.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow(), () -> {
+				try {
+					FoundingMoleHangarTest.expectRefused(helper, FoundingMoleHangarTest.act(owner.player(), console, HangarTerminal.RESTORE_WRECK),
+							"restoring with unreadable serials");
+					nothingChanged(helper, owner, wreck, charter, PRICE, CATALYSTS, "unreadable serials");
+				} finally {
+				}
+			});
 			FoundingMoleHangarTest.clearFloor(helper);
 			helper.succeed();
 		}));
 	}
 
 	@GameTest(maxTicks = FoundingMoleHangarTest.MAX_TICKS)
-	public void aMoleStillRestoresForFourHundredAndOneCicatriumWithoutT17(GameTestHelper helper) {
+	public void aMoleStillRestoresForOneHundredAndOneCicatriumWithoutT17(GameTestHelper helper) {
 		FoundingMoleHangarTest.inTheHangar(helper, before -> FoundingMoleHangarTest.withFreshWorld(helper, () -> {
 			FoundingMoleHangarTest.repairTheConsole(helper);
 			MockPlayer owner = FoundingMoleHangarTest.member(helper, "Mole Restorer");
@@ -365,9 +365,9 @@ public class ProspectorChassisTest {
 			FoundingMoleHangarTest.give(owner.player(), FoundingMoleHangarTest.CATALYST, 2);
 
 			FoundingMoleHangarTest.expectDone(helper, FoundingMoleHangarTest.act(owner.player(), console, HangarTerminal.RESTORE_WRECK), "restoring the Mole");
-			expect(helper, FoundingMoleHangarTest.balance(helper, owner) == FoundingMoleHangarTest.RICH - 400
+			expect(helper, FoundingMoleHangarTest.balance(helper, owner) == FoundingMoleHangarTest.RICH - 100
 					&& FoundingMoleHangarTest.count(owner.player(), FoundingMoleHangarTest.CATALYST) == 1 && !Wrecks.isWreck(mole),
-					"a Mole restores for $400 and 1 Cicatrium: the account holds %s", FoundingMoleHangarTest.balance(helper, owner));
+					"a Mole restores for $100 and 1 Cicatrium: the account holds %s", FoundingMoleHangarTest.balance(helper, owner));
 			expect(helper, !fired(helper, charter), "restoring a Mole does not fire T17");
 			FoundingMoleHangarTest.clearFloor(helper);
 			helper.succeed();

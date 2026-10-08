@@ -56,6 +56,7 @@ import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
@@ -81,15 +82,9 @@ public class FuelPumpTest {
 
 	/** Runs {@code body} with the pump repaired and puts the world's own repair state back after. */
 	private static void withRepairedPump(MinecraftServer server, Runnable body) {
-		RepairState original = RepairState.get(server);
 		RepairState fresh = new RepairState();
 		TerminalTypes.FUEL_PUMP.parts().forEach(part -> fresh.insert(TerminalTypes.FUEL_PUMP, part));
-		server.getDataStorage().set(RepairState.TYPE, fresh);
-		try {
-			body.run();
-		} finally {
-			server.getDataStorage().set(RepairState.TYPE, original);
-		}
+		WorldData.with(server, RepairState.TYPE, fresh, body);
 	}
 
 	private static Scene scene(GameTestHelper helper, long balance) {
@@ -353,13 +348,8 @@ public class FuelPumpTest {
 		Scene scene = scene(helper, 50);
 		try {
 			scene.pod().setFuel(0f);
-			RepairState original = RepairState.get(helper.getLevel().getServer());
-			helper.getLevel().getServer().getDataStorage().set(RepairState.TYPE, new RepairState());
-			try {
-				expectRefused(helper, TerminalRefusal.UNREPAIRED, buy(scene, 1), "buying from an unrepaired pump");
-			} finally {
-				helper.getLevel().getServer().getDataStorage().set(RepairState.TYPE, original);
-			}
+			WorldData.with(helper.getLevel().getServer(), RepairState.TYPE, new RepairState(),
+					() -> expectRefused(helper, TerminalRefusal.UNREPAIRED, buy(scene, 1), "buying from an unrepaired pump"));
 			expectEqual(helper, "dollars", 50, balance(helper, scene.charter()));
 			helper.succeed();
 		} finally {

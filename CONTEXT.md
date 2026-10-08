@@ -23,8 +23,12 @@ The agreement a player signs to join a charter as crew, approved by the Director
 _Avoid_: membership, contract (alone, it is ambiguous)
 
 **Employer**:
-The in-fiction company that issues charters, sets work orders and sends transmissions.
+The in-fiction company, H. Colom & Co., that issues charters, sets work orders and sends transmissions. It is the lure of the parasite in the Furnace.
 _Avoid_: boss (reserved for fights), Natas (the original's character)
+
+**Chairman**:
+The Employer's head, "H. Colom": a title worn by whoever last signed a Controlling Interest. The current one is the final boss's first phase.
+_Avoid_: CEO, Mr. Colom, Director (a charter's founder)
 
 ### World
 
@@ -33,7 +37,7 @@ The vanilla-style frontier world above the layers, with no settlements besides t
 _Avoid_: overworld
 
 **Colony**:
-The one derelict mining colony per world, at spawn. Its terminals are repaired once for every charter.
+Prosperity, the one derelict mining colony per world, at spawn. Its terminals are repaired once for every charter.
 _Avoid_: town, base, hub
 
 **Terminal**:
@@ -44,12 +48,26 @@ _Avoid_: shop, store, vendor
 One link in the underground chain, with its own light, fog and sky. Its floor leads into the top of the next.
 _Avoid_: level, biome, dimension (that is the implementation)
 
+**Campaign world**:
+The one tall world that holds the surface as its top band and the story layers, ending at the finale's floor. Crossing a breach in it has no teleport.
+**Seam**:
+The join between two tall worlds, including the campaign world and the first uncharted world, crossed by a fast background swap inside a grained crust.
+_Avoid_: portal, loading screen
+
+**Grained crust**:
+A crust with a vertical grain that flexes on a slow pulse. Its rules are in the SPEC. Working name.
+_Avoid_: seam crust, no-build zone
+
+**Decoy**:
+A grained crust that is not a seam, chosen from the world seed.
+_Avoid_: fake seam
+
 **Story layer**:
 One of the roughly 8 hand-authored layers that make up the campaign.
 _Avoid_: authored layer, main layer
 
 **Uncharted layer**:
-A layer below the ramp: a harder remix of a story-layer theme, with no limit on depth. The altimeter reads "UNCHARTED".
+A layer in the uncharted worlds, below the ramp: a harder remix of a story-layer theme, with no limit on depth. The altimeter reads "UNCHARTED".
 _Avoid_: endless layer, post-game layer
 
 **Zone**:
@@ -61,12 +79,28 @@ The soft crust at a layer boundary. Any drill can pass, at a heavy cost. Crossin
 _Avoid_: barrier, wall, gate
 
 **Ramp**:
-The stretch at the bottom of the last story layer where drilling gets exponentially harder.
+The stretch at the top of the first uncharted world, below the finale's seam, where drilling gets exponentially harder.
 _Avoid_: floor, bedrock
 
 **Splice**:
-Adding a new story layer into the chain of existing worlds without losing anything built. A layer's content is fixed once any charter breaks into it.
+Adding a new story layer, as a new world at the seam above the Ramp, into the chain of existing worlds without losing anything built. A layer's content is fixed once any charter breaks into it.
 _Avoid_: insert, migration
+
+**Conduit**:
+The undiggable Employer pipe that runs from the colony's ore processor straight down through every layer to the Furnace.
+_Avoid_: pipe, pipeline, shaft
+
+**Head Office**:
+The Employer's factory complex in the Furnace. Its central bronze figure stands up as the final boss's second phase.
+_Avoid_: factory, Refinery, Great Work
+
+**Sleeper**:
+The vast creature whose body is the deep. Player-facing text only hints at it: never a name, a gender or an explanation.
+_Avoid_: Mother, god, Leviathan
+
+**Motherload**:
+The Sleeper's heart, below the Ramp. The miners' word for the strike of a lifetime.
+_Avoid_: mother lode, core
 
 ### Pods
 
@@ -129,7 +163,7 @@ An employer request to deliver goods for a bonus, which can carry story beats.
 _Avoid_: quest, bounty
 
 **Transmission**:
-A story message sent to the whole charter when its deepest point reaches a trigger.
+A story message sent to the whole charter when its deepest point reaches a trigger, or on a story event.
 _Avoid_: message, radio call
 
 **Records board**:
@@ -181,3 +215,41 @@ _Avoid_: tooltip, wiki
 **Note**:
 A found piece of lore added to the handbook's back section, shared with every member of the charter.
 _Avoid_: lore page, collectible
+
+**Margin note**:
+A previous miner's handwritten line printed beside the Employee Handbook's text, the same in every copy.
+_Avoid_: annotation, comment
+
+**Revision**:
+A story-driven change to the Employee Handbook's tone or clauses. It never changes a rule.
+_Avoid_: update, patch, version
+
+### Story
+
+**Night Shift**:
+The night in Colony Year 23 when the Employer called every worker down and Prosperity emptied.
+_Avoid_: the incident, the evacuation
+
+**Retained**:
+A miner rebuilt after death so many times that they went hollow and lampless, and still work in the deep. The word comes from the Employer's own records.
+_Avoid_: zombie, undead, Long-Term Staff (the Employer's older euphemism)
+
+**Continuity Event**:
+The Employer's name for a death and the rebuild that follows it.
+_Avoid_: respawn (in player-facing text)
+
+**Relay**:
+A transmission repeated once a day by a wreck's beacon, carrying a dead crew's last words.
+_Avoid_: echo, recording
+
+**Controlling Interest**:
+The deed the final boss offers the charter. Signing it or burning it ends the charter's story.
+_Avoid_: contract (means the Employment Contract)
+
+**Renunciation**:
+Throwing the Controlling Interest into the Furnace. The true ending: it kills the final boss and costs the charter its whole account.
+_Avoid_: good ending, sacrifice
+
+**Unnumbered Lamp**:
+The suit lamp every crew member receives at Renunciation. It never runs out.
+_Avoid_: Hal's lamp, infinite lamp

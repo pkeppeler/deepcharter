@@ -19,7 +19,7 @@ The user's design session (deepcharter-93) is raising it with the user.
 
 ## 2026-10-08: Client GameTests hang on this Mac while its display sleeps
 
-**Status:** open, worked around. Nothing waits on it.
+**Status:** resolved 2026-10-08. On macOS, client GameTests and `tools/record-evidence.sh` now launch with `--graphicsBackend vulkan` (#251), which renders with the screen locked. `DEEPCHARTER_GL=1` opts back into OpenGL, which still hangs while locked. The text below is the original report.
 
 Client GameTests and evidence recordings render a real window. When the Mac's display sleeps, the render thread blocks and the run hangs at resource load with no error. Overnight, the display sleeps: the running `caffeinate -imsu` keeps the system awake but not the display, since it has no `-d`. One agent started its own `caffeinate -d`, which the rules forbid; the orchestrator stopped it.
 
@@ -40,7 +40,7 @@ The orchestrator did not move the subagents to a different model to get past the
 
 ## 2026-10-07: The lore branch's ADR number is taken (a note for the lore session)
 
-**Status:** open, for the lore session. Nothing waits on it.
+**Status:** resolved 2026-10-08. Renumbered to 0031 in PR #34.
 
 The lore branch `12-lore-bible` (PR #34) adds `docs/adr/0006-the-finale-is-won-by-renunciation.md`. On main, 0006 is now `0006-pod-seams-attachments-and-events.md`. Numbers 0007 to 0010 and 0013 are also in use or claimed by open PRs. Before PR #34 merges, give the finale ADR the next free number, and update any links to it. I did not change the lore branch.
 
