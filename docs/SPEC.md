@@ -98,7 +98,7 @@ A few hundred blocks at the top of the first uncharted world, below the seam at 
 
 ### Bootstrap
 
-- Start from the colony's salvage and fungal "wood" (PR #234): salvage crates and wrecked prefabs supply wood, cloth and scrap. The crates are littered around the colony within a set block radius, not only at it. Hardy alien fungus stalks in craters and caves are gatherable stand-ins for trees. There are no trees. Hand-gathering and crafting follow from that.
+- Start from the colony's salvage and fungal "wood" (PR #234): salvage crates and wrecked prefabs supply wood, cloth and scrap. The crates are littered around the colony within a set block radius, not only at it. Hardy alien fungus stalks in craters and caves are gatherable stand-ins for trees. Hand-gathering and crafting follow from that.
 - Repair the colony's terminals one by one (fuel pump, then ore processor, then upgrade terminal, and so on). Each is a crafting goal; the employer gets in touch as they come back online.
 - The first charter also repairs the founding pod (the Mole) in the colony hangar.
 

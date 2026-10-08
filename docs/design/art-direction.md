@@ -25,7 +25,7 @@ Rules for all areas:
 - **Silhouettes** are big, simple and readable. Detail goes into texture and light, not into tiny geometry.
 - **Materials** are worn industrial: riveted plate, brass, cast iron, rubber, caged lamps, enamel signs, rust at the rivets, dust against every wall.
 - **Scale** is small people and pods in very large spaces, with a few huge landmarks.
-- **Dread** comes from darkness first, then a lamp. Absence, not gore.
+- **Dread** comes from darkness first, then a lamp.
 
 ## 1. Sky
 
@@ -39,7 +39,7 @@ Rules for all areas:
 ## 2. Surface
 
 - **Decision:** regolith plains, craters and terraced mesas, from our own generator. No living flora or fauna, no water.
-- **Living things:** none, except the bootstrap's gatherable fungal stalks (section 11). They are the same prop as the "dry white stalks" below: pale, hardy and dead-looking, and they can be gathered.
+- **Living things:** none, except the bootstrap's gatherable fungal stalks (section 11), the same prop as the "dry white stalks" below.
 - **Limits (ADR 0029):** about one material-rule condition per block, no sea and no aquifers, and every feature is measured against the 1.15x per-column bar.
 - **Material, palette, silhouette:** iron-oxide reds and ochres, dust beige, black basalt outcrops. Low contrast, so the land stays behind everything else. Long flat horizons broken by mesas and crater rims. Dead props only (survey stakes, dry white stalks, a fallen mast), each one measured.
 - **Tools:** vanilla worldgen JSON with density functions (`distance_to_point` for craters, `floor` and `round` for terraces) and weighted block-model variants (tooling-options "Surface").
@@ -48,7 +48,7 @@ Rules for all areas:
 
 ## 3. Pods
 
-- **Decision:** a hybrid ladder. The Mole is a Motherload-style capsule built from Atlantis-digger materials: riveted plate, big drill, porthole, lamps. Each larger chassis grows toward the full Atlantis digger, up to the Behemoth.
+- **Decision:** a hybrid ladder. The Mole is a Motherload-style capsule built from Atlantis-digger materials. Each larger chassis grows toward the full Atlantis digger, up to the Behemoth.
 - **Material, palette, silhouette:** a rounded capsule hull, a dark window band, a toothed spiral drill, twin caged headlamps. The Prospector is longer with two seats in tandem and a winch. Later chassis get heavier and more locomotive-like. One shared detail kit (rivets, lamp cages, drill rings, tread links) makes the ladder read as one product line. Paint per charter is a palette swap. Unlit pods have dark lenses and no beam.
 - **Tools:** Blockbench for the models and GeckoLib 5.5.7 at runtime, jar-in-jar, with glowmasks. Agents edit through the vendored Blockbench MCP's headless mode. Fallback: vanilla `ModelPart` loaded from the same JSON.
 - **Skin and data:** `assets/deepcharter/geckolib/{models,animations}/pod/<chassis>.*.json`, `textures/entity/pod/<chassis>/<skin>.png` plus `_glowmask.png`, Blockbench sources under `art/blockbench/`. Part tiers are bones.
@@ -57,7 +57,7 @@ Rules for all areas:
 ## 4. Colony
 
 - **Decision:** a Company town plus a monument. The town is roofed, signed, sodium-lit prefabs in one material language. The monument is a 40 to 60 block headframe and a giant Founder statue. The statue must not read as a cross: open empty hands, a slot in the chest. Everything is built from editable structure files. [ADR 0030](../adr/0030-art-direction-decisions.md) amends ADR 0016 and keeps the pad flattening in `ColonyBuilder`.
-- **Material, palette, silhouette:** corrugated steel, riveted plate, grating, pipes, caged sodium lamps, cream enamel signs with red lettering and the bull's-head logo, black-and-yellow hazard bands, bronze and brass on the monument. Two or three storeys. Abandoned: collapsed roofs and missing panels, never castle notches. The chapel's one candle is the only white light in town.
+- **Material, palette, silhouette:** corrugated steel, riveted plate, grating, pipes, caged sodium lamps, cream enamel signs with red lettering and the bull's-head logo, black-and-yellow hazard bands, bronze and brass on the monument. Two or three storeys. Abandoned: collapsed roofs and missing panels, never castle notches.
 - **Tools:** structure `.nbt` pieces written by a Python script, JSON block models with free rotation, mcpfabric screenshots for preview.
 - **Skin and data:** `data/deepcharter/structure/colony/*.nbt`, `colony/layout.json`, `colony/palette/*.json`; reload with `/reload` and a dev rebuild command.
 - **Not chosen:** Motherload-style clay domes (too close to the original), the town without a monument (no skyline), the monument without a town (no human scale).
@@ -68,7 +68,7 @@ Rules for all areas:
 - **Material, palette, silhouette:** detail in layers, not resolution. Most detail where the eye rests (pods, terminals, landmarks); terrain stays quiet. A reference sheet of palette and style is kept in the repo.
 - **Tools:** Python generators (Pillow, numpy, locked with `uv`), `light_emission` on model elements, an `active` blockstate property, animated `.mcmeta`, and a Fabric Renderer API block-state model for connected casings. Aseprite only if the user buys it.
 - **Skin and data:** `assets/deepcharter/{textures,models,blockstates}/`, palettes as data, generators and recipes in `tools/`.
-- **AI-assisted assets (SPEC section 15):** AI image models are allowed, curated by the user. Style consistency is managed with the reference sheet and curation. Two consequences: any public release needs the Modrinth "Contains AI-generated content" disclosure, and Modrinth bans projects whose content is primarily or entirely AI output, so hand-directed and scripted work must stay a substantial part. A local image model on the user's Mac is a separate install the user approves when needed. Never use AI to reproduce XGen's assets.
+- **AI-assisted assets (SPEC section 15):** AI image models are allowed, curated by the user, with style held by the reference sheet. The disclosure and Modrinth rules, the local-model install and the ban on reproducing XGen's assets are in SPEC section 15. Hand-directed and scripted work must stay a substantial part.
 - **Not chosen:** 32x for our blocks only, 64x or HD everywhere, labPBR as a base (an optional later layer for Iris users).
 
 ## 6. Layers 1 and 2

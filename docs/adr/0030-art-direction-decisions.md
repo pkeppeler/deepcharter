@@ -28,4 +28,4 @@ Amends [ADR 0016](0016-the-colony-is-built-once-in-code-and-the-conduit-is-set-w
 - GeckoLib is a runtime dependency that every player needs; it ships inside the mod jar.
 - Sky and biome data are server data, so they need a world reopen, not F3+T, unless the client atmosphere layer from the tooling research is added.
 - Follow-up issues: #239 to #250 (milestone "Art direction overhaul (before M3)").
-- AI-assisted assets (SPEC section 15) carry a Modrinth disclosure for any public release. It is a policy note, not an architecture call, and is recorded in the SPEC.
+- AI-assisted assets (SPEC section 15) carry a Modrinth disclosure for any public release. This is policy, recorded in the SPEC only.
