@@ -56,12 +56,14 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 	private record Row(Component label, Identifier action, CompoundTag args) {
 	}
 
-	/** One line of text beside the list, where it is drawn. */
-	public record TextLine(String text, int x, int y) {
+	/** One line of text beside the list, where it is drawn: in the theme's phosphor colour, or its dim colour when {@code dim}. */
+	public record TextLine(String text, int x, int y, boolean dim) {
 	}
 
 	private TerminalView view;
 	private int firstRow;
+	/** The buttons of the rows shown, top to bottom, made by the last layout. */
+	private final List<CrtButton> rowButtons = new ArrayList<>();
 	private final Typewriter typewriter;
 
 	public RepairStationScreen(TerminalView view) {
@@ -99,20 +101,45 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 		return rows;
 	}
 
+	/** The y where the intro starts, below the header. */
+	private int introTop() {
+		return MARGIN + font.lineHeight + 14;
+	}
+
+	private int lineStep() {
+		return font.lineHeight + CrtTuning.current().lineSpacing();
+	}
+
+	/** The intro as wrapped once it has typed out in full, one entry per line, where each is drawn. */
+	public List<TextLine> introLines() {
+		List<String> wrapped = font.getSplitter().splitLines(FormattedText.of(typewriter.text()), width - 2 * MARGIN, Style.EMPTY)
+				.stream().map(FormattedText::getString).toList();
+		List<TextLine> lines = new ArrayList<>();
+		for (int i = 0; i < wrapped.size(); i++) {
+			lines.add(new TextLine(wrapped.get(i), MARGIN, introTop() + i * lineStep(), false));
+		}
+		return lines;
+	}
+
 	/** The y below the hull line once the intro has typed out in full, so the list does not move while it types. */
 	private int headerBottom() {
-		int introLines = font.getSplitter().splitLines(FormattedText.of(typewriter.text()), width - 2 * MARGIN, Style.EMPTY).size();
-		int introBottom = MARGIN + font.lineHeight + 14 + Math.max(introLines, 1) * (font.lineHeight + CrtTuning.current().lineSpacing());
+		int introBottom = introTop() + Math.max(introLines().size(), 1) * lineStep();
 		return introBottom + 2 * (GAP + font.lineHeight);
 	}
 
+	/** The y where the first row starts. */
+	public int listTop() {
+		return headerBottom() + GAP;
+	}
+
+	/** CLOSE sits near the bottom edge, so that the list gets the space above it. */
 	private int closeY() {
-		return height - MARGIN - BUTTON_HEIGHT;
+		return height - GAP - BUTTON_HEIGHT;
 	}
 
 	/** How many rows fit between the header and CLOSE, at least one. */
 	public int visibleRows() {
-		int space = closeY() - GAP - (headerBottom() + GAP);
+		int space = closeY() - GAP - listTop();
 		return Math.max(1, (space + GAP) / (BUTTON_HEIGHT + GAP));
 	}
 
@@ -140,11 +167,13 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 		List<Row> rows = rows();
 		int visible = visibleRows();
 		firstRow = Mth.clamp(firstRow, 0, Math.max(0, rows.size() - visible));
-		int top = headerBottom() + GAP;
+		rowButtons.clear();
 		for (int i = firstRow; i < Math.min(rows.size(), firstRow + visible); i++) {
 			Row row = rows.get(i);
-			addRenderableWidget(new CrtButton(MARGIN, top + (i - firstRow) * (BUTTON_HEIGHT + GAP), COLUMN_WIDTH, BUTTON_HEIGHT, row.label(),
-					pressed -> ClientPlayNetworking.send(new TerminalActionPayload(view.pos(), row.action(), row.args()))));
+			CrtButton button = new CrtButton(MARGIN, listTop() + (i - firstRow) * (BUTTON_HEIGHT + GAP), COLUMN_WIDTH, BUTTON_HEIGHT, row.label(),
+					pressed -> ClientPlayNetworking.send(new TerminalActionPayload(view.pos(), row.action(), row.args())));
+			rowButtons.add(button);
+			addRenderableWidget(button);
 		}
 		addRenderableWidget(new CrtButton(MARGIN, closeY(), CLOSE_WIDTH, BUTTON_HEIGHT,
 				Component.translatable("screen.deepcharter.terminal.close"), button -> onClose()));
@@ -159,14 +188,26 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 				.orElse(Component.translatable("screen.deepcharter.repair.no_pod"));
 		int hullY = headerBottom() - font.lineHeight;
 		List<TextLine> lines = new ArrayList<>();
-		lines.add(new TextLine(account, MARGIN, hullY - GAP - font.lineHeight));
-		lines.add(new TextLine(hull.getString().toUpperCase(Locale.ROOT), MARGIN, hullY));
-		int visible = visibleRows();
-		if (visible < rowCount()) {
-			String hint = Component.translatable("screen.deepcharter.repair.scroll", firstRow + 1, firstRow + visible, rowCount()).getString();
-			lines.add(new TextLine(hint, MARGIN + CLOSE_WIDTH + GAP, closeY() + (BUTTON_HEIGHT - font.lineHeight) / 2));
-		}
+		lines.add(new TextLine(account, MARGIN, hullY - GAP - font.lineHeight, false));
+		lines.add(new TextLine(hull.getString().toUpperCase(Locale.ROOT), MARGIN, hullY, false));
+		scrollHint().ifPresent(hint -> lines.add(new TextLine(hint, MARGIN + CLOSE_WIDTH + GAP, closeY() + (BUTTON_HEIGHT - font.lineHeight) / 2, true)));
 		return lines;
+	}
+
+	/** Which rows are shown, when the list is longer than the screen. */
+	private Optional<String> scrollHint() {
+		int visible = visibleRows();
+		if (visible >= rowCount()) {
+			return Optional.empty();
+		}
+		return Optional.of(Component.translatable("screen.deepcharter.repair.scroll", firstRow + 1, firstRow + visible, rowCount()).getString());
+	}
+
+	/** The narrator also tells which rows are shown, so that a player who cannot see the screen knows that there are more. */
+	@Override
+	public Component getNarrationMessage() {
+		Component narration = super.getNarrationMessage();
+		return scrollHint().<Component>map(hint -> Component.literal(narration.getString() + ". " + hint)).orElse(narration);
 	}
 
 	@Override
@@ -178,9 +219,25 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 		return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
 	}
 
-	/** Page Up and Page Down move the list a page: a button off the screen cannot take focus, so keys need their own way. */
+	/**
+	 * A button off the screen cannot take focus, so keys scroll the list: Page Up and Page Down move it a page, and Down or Tab
+	 * from the last row (Up or Shift+Tab from the first) moves it one row and focuses the row that came into view.
+	 */
 	@Override
 	public boolean keyPressed(KeyEvent event) {
+		int focused = rowButtons.indexOf(getFocused());
+		boolean forward = event.isDown() || (event.isCycleFocus() && !event.hasShiftDown());
+		boolean backward = event.isUp() || (event.isCycleFocus() && event.hasShiftDown());
+		if (focused >= 0 && forward && focused == rowButtons.size() - 1 && firstRow + rowButtons.size() < rowCount()) {
+			scrollTo(firstRow + 1);
+			setFocused(rowButtons.getLast());
+			return true;
+		}
+		if (focused == 0 && backward && firstRow > 0) {
+			scrollTo(firstRow - 1);
+			setFocused(rowButtons.getFirst());
+			return true;
+		}
 		if (event.key() == InputConstants.KEY_PAGEDOWN) {
 			scrollTo(firstRow + visibleRows());
 			return true;
@@ -205,12 +262,9 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		CrtTuning tuning = CrtTuning.current();
 		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), MARGIN, width);
-		drawTypewriter(graphics, typewriter, MARGIN, MARGIN + font.lineHeight + 14, width - 2 * MARGIN);
-		List<TextLine> lines = textLines();
-		for (int i = 0; i < lines.size(); i++) {
-			// The account and the hull are phosphor, the scroll hint is dim.
-			int color = i < 2 ? tuning.phosphorColor() : tuning.dimColor();
-			CrtDraw.glowText(graphics, font, lines.get(i).text(), lines.get(i).x(), lines.get(i).y(), color);
+		drawTypewriter(graphics, typewriter, MARGIN, introTop(), width - 2 * MARGIN);
+		for (TextLine line : textLines()) {
+			CrtDraw.glowText(graphics, font, line.text(), line.x(), line.y(), line.dim() ? tuning.dimColor() : tuning.phosphorColor());
 		}
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 	}

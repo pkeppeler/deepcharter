@@ -1,6 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -65,19 +67,29 @@ public class RepairStationClientTest implements FabricClientGameTest {
 		}
 	}
 
-	/** Scrolls the open repair station until the button labelled {@code label} is shown, then clicks it: a small screen shows only some rows. */
+	/**
+	 * Scrolls the open repair station until the button labelled {@code label} is shown, then clicks it: a small screen shows only
+	 * some rows. Fails when no row has the label, or when two do (the click would take the first).
+	 */
 	public static void clickRow(ClientGameTestContext context, String label) {
 		RepairStationScreen screen = context.computeOnClient(client -> (RepairStationScreen) client.gui.screen());
-		boolean shown = context.computeOnClient(client -> {
+		int matches = context.computeOnClient(client -> {
+			Set<Integer> rows = new HashSet<>();
+			int shownAt = 0;
 			for (int first = 0; first < screen.rowCount(); first++) {
 				screen.scrollTo(first);
-				if (screen.children().stream().anyMatch(child -> child instanceof Button button && button.getMessage().getString().equals(label))) {
-					return true;
+				List<Button> buttons = screen.children().stream().filter(Button.class::isInstance).map(Button.class::cast).toList();
+				for (int i = 0; i < buttons.size(); i++) {
+					if (buttons.get(i).getMessage().getString().equals(label) && rows.add(screen.firstRow() + i)) {
+						shownAt = screen.firstRow();
+					}
 				}
 			}
-			return false;
+			// Leave the list where the row is shown, so that the click finds it.
+			screen.scrollTo(shownAt);
+			return rows.size();
 		});
-		check(shown, "no row '" + label + "' in the repair station");
+		check(matches == 1, matches + " buttons in the repair station are labelled '" + label + "', not 1");
 		context.clickScreenButton(label);
 	}
 
