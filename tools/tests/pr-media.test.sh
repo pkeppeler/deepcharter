@@ -288,7 +288,7 @@ if raced RIVALS=99 -- 5 "$work/files/a.gif"; then check "publish that keeps losi
 check "giving up names the rejection and the likely race" "$(grep -q 'push rejected 5 times in a row (likely another publisher)' "$work/err"; echo $?)"
 check "giving up stops after five pushes" "$(if [[ $(pushes) -eq 5 ]]; then echo 0; else echo 1; fi)"
 check "giving up leaves the rival's commit as the tip" "$(if [[ $("$real_git" -C "$bare" rev-parse pr-media) == "$(cat "$work/rival")" ]]; then echo 0; else echo 1; fi)"
-check "giving up publishes none of the loser's files" "$(if tree | grep -q '^5/'; then echo 1; else echo 0; fi)"
+check "giving up publishes none of the loser's files" "$(if [[ -z $(tree | grep '^5/' || true) ]]; then echo 0; else echo 1; fi)"
 
 # A nested folder: the rival adds looks/other while this run adds looks/dusk-company.
 make_remote
@@ -301,7 +301,8 @@ check "nested race: the earlier leaf survives" "$(tree | grep -q '^looks/seed/b.
 # A transient fetch failure retries in the same budget; one that never ends fails loudly.
 make_remote
 if raced FETCH_FAILS=2 -- 5 "$work/files/a.gif"; then check "publish survives two failed fetches" 0; else check "publish survives two failed fetches" 1; fi
-check "failed fetches are retried, then one push lands" "$(if [[ $(pushes) -eq 1 && $(tree | grep -c '^5/a.gif:') -eq 1 ]]; then echo 0; else echo 1; fi)"
+landed=$(tree | grep -c '^5/a.gif:' || true)
+check "failed fetches are retried, then one push lands" "$(if [[ $(pushes) -eq 1 && $landed -eq 1 ]]; then echo 0; else echo 1; fi)"
 make_remote
 if raced FETCH_FAILS=99 -- 5 "$work/files/a.gif"; then check "publish with a dead remote fails" 1; else check "publish with a dead remote fails" 0; fi
 check "dead remote gives up loudly after five fetches" "$(if grep -q 'fetch failed 5 times in a row (network or remote problem)' "$work/err" && [[ $(wc -l <"$work/fetches" | tr -d ' ') -eq 5 ]]; then echo 0; else echo 1; fi)"
