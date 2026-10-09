@@ -7,6 +7,9 @@ import java.util.Optional;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 
 import net.minecraft.client.DeltaTracker;
+import net.minecraft.core.Direction;
+import net.minecraft.network.chat.CommonComponents;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -20,6 +23,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLiner;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodSeat;
+import io.github.pkeppeler.deepcharter.pod.PodSounder;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 
 /** Plain text readout of the ridden pod; its margin, spacing and colour are the HUD theme's. */
@@ -71,6 +75,30 @@ public final class PodStatusHud {
 		return PodLiner.slabsToNextRing(pod).map(slabs -> Component.translatable("hud.deepcharter.pod.liner", slabs));
 	}
 
+	/**
+	 * The lines shown, in their own colour, for a pod whose sounder hears a pocket: the slabs down to the nearest pocket of the footprint (or that the
+	 * drill is bleeding it), and the sides a sidestep would meet one on.
+	 */
+	public static List<Component> sounderLines(PodEntity pod) {
+		PodSounder.State state = PodSounder.reading(pod).orElse(PodSounder.State.EMPTY);
+		List<Component> lines = new ArrayList<>();
+		if (state.down() > 0) {
+			boolean bleeding = state.down() == 1 && pod.drilling() && pod.drillDirection() == Direction.DOWN && PodSounder.bleedPauseTicks(pod) > 0;
+			lines.add(bleeding ? Component.translatable("hud.deepcharter.pod.seepage_bleeding") : Component.translatable("hud.deepcharter.pod.seepage", state.down()));
+		}
+		if (state.beside() != 0) {
+			MutableComponent sides = Component.empty();
+			for (Direction side : Direction.Plane.HORIZONTAL) {
+				if (state.marks(side)) {
+					sides.append(sides.getSiblings().isEmpty() ? CommonComponents.EMPTY : CommonComponents.SPACE);
+					sides.append(Component.translatable("hud.deepcharter.pod.seepage_side." + side.getName()));
+				}
+			}
+			lines.add(Component.translatable("hud.deepcharter.pod.seepage_beside", sides));
+		}
+		return lines;
+	}
+
 	/** The warning line shown, in its own colour, after a lining stopped for want of slag brick. */
 	public static Optional<Component> outOfBrickLine(PodEntity pod) {
 		return PodLining.of(pod).dry() ? Optional.of(Component.translatable("hud.deepcharter.pod.lining_dry")) : Optional.empty();
@@ -97,6 +125,9 @@ public final class PodStatusHud {
 		}
 		y = warning(graphics, font, look, burningLine(pod), look.podBurningColor(), y);
 		y = warning(graphics, font, look, linerLine(pod), look.podLinerColor(), y);
+		for (Component line : sounderLines(pod)) {
+			y = warning(graphics, font, look, Optional.of(line), look.podSounderColor(), y);
+		}
 		y = warning(graphics, font, look, liningLine(pod), look.podLiningColor(), y);
 		y = warning(graphics, font, look, outOfBrickLine(pod), look.podLiningDryColor(), y);
 		warning(graphics, font, look, hardLandingLine(pod), look.podHardLandingColor(), y);

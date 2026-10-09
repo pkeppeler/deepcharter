@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param podLiningColor the line that shows while the pilot is lining the slab with slag brick
  * @param podLiningDryColor the warning line that shows when lining stopped for want of slag brick
  * @param podLinerColor the line that shows a pod with a liner the slabs to its next ring
+ * @param podSounderColor the lines that show a pod with a seep sounder the gas pockets it hears, and the pocket its drill is bleeding
  * @param podHardLandingColor the warning line that shows while the pod sinks faster than it can land without damage
  * @param altimeterMargin space between the altimeter and the top edge
  * @param altimeterColor its text
@@ -28,6 +29,7 @@ public record HudLook(
 		int podLiningColor,
 		int podLiningDryColor,
 		int podLinerColor,
+		int podSounderColor,
 		int podHardLandingColor,
 		int altimeterMargin,
 		int altimeterColor,
@@ -40,7 +42,7 @@ public record HudLook(
 
 	public static HudLook of(ThemeData d) {
 		return new HudLook(d.integer("podStatusMargin", 0), d.integer("podStatusLineGap", 0), d.color("podStatusColor"),
-				d.color("podBurningColor"), d.color("podLiningColor"), d.color("podLiningDryColor"), d.color("podLinerColor"), d.color("podHardLandingColor"),
+				d.color("podBurningColor"), d.color("podLiningColor"), d.color("podLiningDryColor"), d.color("podLinerColor"), d.color("podSounderColor"), d.color("podHardLandingColor"),
 				d.integer("altimeterMargin", 0), d.color("altimeterColor"), d.integer("accountMargin", 0), d.decimal("accountY", 0, 1),
 				d.color("accountColor"));
 	}

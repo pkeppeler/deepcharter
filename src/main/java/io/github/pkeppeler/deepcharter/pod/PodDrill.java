@@ -75,7 +75,8 @@ public final class PodDrill {
 		}
 		Progress progress = pod.drillProgress();
 		int ticks = progress != null && progress.continues(wanted, slab.origin()) ? progress.ticks() + 1 : 1;
-		if (ticks < slab.drillTicks(stats)) {
+		// A sounder that bleeds makes the drill wait before it bores a pocket; the blast then costs the pod at most a share of its hull (PodSounder).
+		if (ticks < slab.drillTicks(stats) + (slab.hasGasPocket() ? PodSounder.bleedPauseTicks(pod) : 0)) {
 			pod.setDrillProgress(new Progress(wanted, slab.origin(), ticks));
 			return;
 		}
@@ -148,6 +149,10 @@ public final class PodDrill {
 			return cells.stream().anyMatch(pos -> state(pos).is(HazardBlocks.UNDIGGABLE));
 		}
 
+		boolean hasGasPocket() {
+			return cells.stream().anyMatch(pos -> state(pos).is(HazardBlocks.GAS_POCKET));
+		}
+
 		boolean hasWork() {
 			return cells.stream().anyMatch(pos -> breakable(state(pos)));
 		}
@@ -208,7 +213,7 @@ public final class PodDrill {
 					}
 					level.destroyBlock(pos, false);
 					if (state.is(HazardBlocks.GAS_POCKET)) {
-						GasHazard.vent(level, pos);
+						GasHazard.vent(level, pos, pod);
 					}
 				}
 			}

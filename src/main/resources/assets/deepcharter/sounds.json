@@ -10,6 +10,7 @@
 	"pod.explosion": { "sounds": [{ "name": "minecraft:entity.generic.explode", "type": "event" }] },
 	"pod.hull_burning": { "sounds": [{ "name": "minecraft:entity.generic.burn", "type": "event" }] },
 	"pod.lining_place": { "sounds": [{ "name": "minecraft:block.deepslate_bricks.place", "type": "event" }] },
+	"pod.seep_hiss": { "sounds": [{ "name": "minecraft:block.fire.extinguish", "type": "event", "pitch": 1.6, "volume": 0.5 }] },
 
 	"drill.dig": { "sounds": [{ "name": "minecraft:block.stone.break", "type": "event" }] },
 	"drill.blocked": { "sounds": [{ "name": "minecraft:block.chain.hit", "type": "event" }] },
