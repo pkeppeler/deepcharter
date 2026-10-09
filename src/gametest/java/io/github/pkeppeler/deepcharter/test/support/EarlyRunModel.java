@@ -22,6 +22,7 @@ import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodDrill;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
+import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 
@@ -35,6 +36,10 @@ import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 public final class EarlyRunModel {
 	/** (A) The share of the expected ore that a player really gets: bore steps that miss a vein, a company rock to go round, a dead end. */
 	public static final double YIELD = 0.7;
+
+	/** (A) Blocks per tick that a pilot braking down a shaft holds the pod at: under the 0.7 landing speed, with room for the pilot's overshoot. */
+	public static final double DRIVE_DOWN_SINK = 0.6;
+	private static final int TICKS_PER_SECOND = 20;
 
 	private EarlyRunModel() {
 	}
@@ -86,7 +91,7 @@ public final class EarlyRunModel {
 
 	/**
 	 * The litres to bore {@code blocks} slabs straight down from the surface in one go, with no climb back: the cost of a first
-	 * descent that cannot refuel at the pump. The pod cannot drive back down its own shaft (see {@link #safeDropBlocks}).
+	 * descent that cannot refuel at the pump. The way back down an open shaft is a braked drive instead (see {@link #driveDownLitres}).
 	 */
 	public static double boreLitres(Zone zone, PodStats stats, int blocks) {
 		double litres = 0;
@@ -97,12 +102,14 @@ public final class EarlyRunModel {
 	}
 
 	/**
-	 * The blocks a pod can fall, or drive down an open shaft, before the hull is gone. The hull loses {@code hullDamagePerBlock} for each
-	 * block past {@code hardLandingDistance}, whatever the speed: the damage reads the distance fallen (a rotor-braked fall costs the same
-	 * hull as a free one, in PodCargoFuelTest).
+	 * The litres to drive down {@code blocks} of open shaft with the rotor braking (#319). (A) The pilot holds the sink at
+	 * {@link #DRIVE_DOWN_SINK}, under the hard landing speed. Holding a speed takes the rotor for the share of ticks in which gravity
+	 * is paid back ({@code gravity / thrustAcceleration}); those ticks burn the moving rate and the others the idle rate.
 	 */
-	public static int safeDropBlocks(PodStats stats) {
-		return (int) (stats.hardLandingDistance() + Math.ceil(stats.maxHull() / stats.hullDamagePerBlock()) - 1);
+	public static double driveDownLitres(PodStats stats, int blocks) {
+		double seconds = blocks / (DRIVE_DOWN_SINK * TICKS_PER_SECOND);
+		double thrustShare = PodTuning.DEFAULT.movement().gravity() / stats.thrustAcceleration();
+		return seconds * (thrustShare * stats.movingLitresPerSecond() + (1 - thrustShare) * stats.idleLitresPerSecond());
 	}
 
 	/** Blocks of layer 1, which a run in layer 2 climbs through twice (the shaft is already bored). */
@@ -122,7 +129,8 @@ public final class EarlyRunModel {
 	}
 
 	/**
-	 * A run in {@code zone} that starts {@code shaftBlocks} below the surface with a full tank. (A) The bore goes straight down; it
+	 * A run in {@code zone} below {@code shaftBlocks} of open shaft, from the surface with a full tank. (A) The pod drives down the shaft
+	 * braked ({@link #driveDownLitres}), the bore goes straight down from its bottom; it
 	 * climbs back at the rotor's top climb speed; fuel is bought at the surface at {@link FuelTuning}'s price.
 	 */
 	public static Run run(Zone zone, PodStats stats, int shaftBlocks) {
@@ -134,7 +142,7 @@ public final class EarlyRunModel {
 		for (int next = 1;; next++) {
 			double drillSeconds = slabSeconds(zone, stats, shaftBlocks + next / 2.0);
 			double climbSeconds = (shaftBlocks + next) * climbSecondsPerBlock;
-			double used = drillSeconds * next * stats.drillingLitresPerSecond() + climbSeconds * stats.movingLitresPerSecond()
+			double used = driveDownLitres(stats, shaftBlocks) + drillSeconds * next * stats.drillingLitresPerSecond() + climbSeconds * stats.movingLitresPerSecond()
 					+ (drillSeconds * next + climbSeconds) * stats.idleLitresPerSecond();
 			if (used > stats.tankLitres()) {
 				break;
