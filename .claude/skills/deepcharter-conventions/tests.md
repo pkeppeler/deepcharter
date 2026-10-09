@@ -17,6 +17,7 @@ Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest
 - A client test that wants its own pod never uses `getEntities(POD).getFirst()`; the colony's wreck pod shares the level. Select by tag, UUID or position.
 - `test/support/TwoPlayerServer` starts a dedicated server in a client GameTest, joins the real client, then joins one mock player.
 - Wait on entity ticks, not server ticks: chunks far from the players do not tick at first in a fresh world.
+- A server GameTest that waits for generated blocks polls under `FarChunks.Deadline`, snapshots chunk state (without loading) before reading blocks, and logs when the wait was needed.
 
 ## Client slots
 

@@ -1,16 +1,23 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -46,6 +53,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
  * the world seed alone, and the colony holds Notes N01 to N04. The generation test draws real chunks of both layers.
  */
 public class LayerStructuresTest {
+	private static final Logger LOGGER = LoggerFactory.getLogger(LayerStructuresTest.class);
 	private static final int SPACING = 384;
 	/** A spacing cell that is far from the colony's Conduit, so no structure shares its blocks. */
 	private static final int CELL = 3;
@@ -159,13 +167,9 @@ public class LayerStructuresTest {
 	}
 
 	/**
-	 * The chunks of every site are made full on the first tick, and the check then waits on a wall-clock deadline for each
-	 * structure to hold its blocks ({@link FarChunks.Deadline}): a tick budget is a different wall time under load. The
-	 * failure names what was awaited and what the site held.
-	 *
-	 * <p>#365: this failed twice with blocks of a site missing, and has not been reproduced. BreachCrossingTest, the only other
-	 * test in this cell, writes in layer 1 only near y 0 to 10 and within 20 blocks of its columns, so it is ruled out. If it
-	 * fails again, the census in the failure says what stands in the site's place.
+	 * The chunks of every site are made full on the first tick, then every condition on every site is polled under a
+	 * wall-clock {@link FarChunks.Deadline}, because a tick budget is a different wall time under load. A wait that was
+	 * needed is logged. See #365; the failure's census says what stands in the site's place.
 	 */
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
 	public void eachStructureGeneratesInItsZone(GameTestHelper helper) {
@@ -182,19 +186,30 @@ public class LayerStructuresTest {
 			}
 		}
 		FarChunks.Deadline deadline = FarChunks.deadline();
+		long startNanos = System.nanoTime();
+		Map<StructureKind, String> firstUnmet = new EnumMap<>(StructureKind.class);
 		helper.onEachTick(() -> {
+			List<String> failing = new ArrayList<>();
 			for (StructureSite site : sites) {
 				ServerLevel level = level(helper, site.kind().layer());
+				// The chunk states are read first and without loading: reading a block loads an unloaded chunk.
+				String chunks = chunkStates(level, site);
 				Map<Block, Integer> found = census(level, site);
-				List<String> missing = missing(site, found);
-				if (!missing.isEmpty()) {
-					deadline.await(helper, level, false, () -> String.format("%s at %s still lacks %s after %d s; its chunks: %s; it holds: %s",
-							site.kind(), site.origin().toShortString(), missing, FarChunks.WAIT_SECONDS, chunkStates(level, site), found));
-					return;
+				List<String> unmet = unmet(level, site, found);
+				if (!unmet.isEmpty()) {
+					String now = String.format("unmet %s; chunks before the read: %s; it holds: %s", unmet, chunks, describe(found));
+					firstUnmet.putIfAbsent(site.kind(), String.format("tick %d: %s", helper.getTick(), now));
+					failing.add(String.format("%s at %s: first poll, %s. Last poll, tick %d: %s", site.kind(), site.origin().toShortString(),
+							firstUnmet.get(site.kind()), helper.getTick(), now));
 				}
 			}
-			for (StructureSite site : sites) {
-				requireOnlyItsNote(helper, level(helper, site.kind().layer()), site);
+			if (!failing.isEmpty()) {
+				deadline.await(helper, level(helper, 1), false, () -> String.format("structures did not settle in %d s: %s", FarChunks.WAIT_SECONDS, failing));
+				return;
+			}
+			if (!firstUnmet.isEmpty()) {
+				LOGGER.warn("[structures] layer structures were not all in place on the first poll; they were on tick {} after {} ms (#365). First polls: {}",
+						helper.getTick(), (System.nanoTime() - startNanos) / 1_000_000, firstUnmet);
 			}
 			helper.succeed();
 		});
@@ -222,30 +237,33 @@ public class LayerStructuresTest {
 		return found;
 	}
 
-	/** What the site still lacks of {@link #minimum}: each entry reads {@code block held/needed}. Empty when it is all there. */
-	private static List<String> missing(StructureSite site, Map<Block, Integer> found) {
-		List<String> missing = new ArrayList<>();
+	/** The census by registry id, without air. */
+	private static String describe(Map<Block, Integer> found) {
+		Map<String, Integer> byId = new TreeMap<>();
+		found.forEach((block, count) -> {
+			if (!block.defaultBlockState().isAir()) {
+				byId.put(BuiltInRegistries.BLOCK.getKey(block).toString(), count);
+			}
+		});
+		return byId.toString();
+	}
+
+	/**
+	 * Every condition of a standing structure that does not hold yet, as text; empty when it stands. The blocks of {@link #minimum}
+	 * come first, then no fluid or gas, only its own Note in its own zone, and a lit candle beside it.
+	 */
+	private static List<String> unmet(ServerLevel level, StructureSite site, Map<Block, Integer> found) {
+		List<String> unmet = new ArrayList<>();
 		for (Map.Entry<Block, Integer> expected : minimum(site.kind(), site.height()).entrySet()) {
 			int count = found.getOrDefault(expected.getKey(), 0);
 			if (count < expected.getValue()) {
-				missing.add(expected.getKey() + " " + count + "/" + expected.getValue());
+				unmet.add(BuiltInRegistries.BLOCK.getKey(expected.getKey()) + " " + count + "/" + expected.getValue());
 			}
 		}
-		return missing;
-	}
-
-	/** Whether each chunk of the site is loaded, and as what: a chunk that is not a {@code LevelChunk} is a wrapper of a full one. */
-	private static String chunkStates(ServerLevel level, StructureSite site) {
-		Map<ChunkPos, String> states = new HashMap<>();
-		for (ChunkPos chunk : chunksOf(site)) {
-			ChunkAccess loaded = level.getChunkSource().getChunkNow(chunk.x(), chunk.z());
-			states.put(chunk, loaded == null ? "not loaded" : loaded.getClass().getSimpleName());
+		String fluid = fluidOrGasAt(level, site, null);
+		if (fluid != null) {
+			unmet.add(fluid);
 		}
-		return states.toString();
-	}
-
-	/** The checks on a structure that stands: no fluid or gas, only its own Note in its own zone, and a lit candle beside it. */
-	private static void requireOnlyItsNote(GameTestHelper helper, ServerLevel level, StructureSite site) {
 		Map<Integer, BlockPos> notes = new HashMap<>();
 		BoundingBox box = site.bounds();
 		for (BlockPos pos : BlockPos.betweenClosed(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ())) {
@@ -254,27 +272,38 @@ public class LayerStructuresTest {
 				notes.put(state.getValue(NoteBlock.NOTE), pos.immutable());
 			}
 		}
-		requireNoFluidOrGas(helper, level, site);
 		if (NOTES.containsKey(site.kind())) {
 			int number = NOTES.get(site.kind());
 			if (!notes.keySet().equals(Set.of(number))) {
-				throw failure(helper, "%s at %s holds Notes %s, expected only N%02d", site.kind(), site.origin().toShortString(), notes.keySet(), number);
-			}
-			int zone = Zones.index(level.getMinY(), level.getHeight(), notes.get(number).getY());
-			if (zone != site.kind().zone()) {
-				throw failure(helper, "N%02d of %s is in zone %d, not %d", number, site.kind(), zone, site.kind().zone());
+				unmet.add(String.format("Notes %s, expected only N%02d", notes.keySet(), number));
+			} else {
+				int zone = Zones.index(level.getMinY(), level.getHeight(), notes.get(number).getY());
+				if (zone != site.kind().zone()) {
+					unmet.add(String.format("N%02d is in zone %d, not %d", number, zone, site.kind().zone()));
+				}
+				if (site.kind().layer() == 1) {
+					// The candle is one block across the structure from the Note, which is south when the structure runs east to west.
+					BlockPos note = notes.get(number);
+					BlockState candle = level.getBlockState(site.alongZ() ? note.east() : note.south());
+					if (!candle.is(Blocks.CANDLE) || !candle.getValue(CandleBlock.LIT)) {
+						unmet.add("no lit candle beside the Note: " + candle);
+					}
+				}
 			}
 		} else if (!notes.isEmpty()) {
-			throw failure(helper, "%s at %s holds Notes %s but should hold none", site.kind(), site.origin().toShortString(), notes.keySet());
+			unmet.add(String.format("Notes %s but should hold none", notes.keySet()));
 		}
-		if (NOTES.containsKey(site.kind()) && site.kind().layer() == 1) {
-			BlockPos note = notes.values().iterator().next();
-			// The candle is one block across the structure from the Note, which is south when the structure runs east to west.
-			BlockState candle = level.getBlockState(site.alongZ() ? note.east() : note.south());
-			if (!candle.is(Blocks.CANDLE) || !candle.getValue(CandleBlock.LIT)) {
-				throw failure(helper, "the niche of %s has no lit candle beside its Note: %s", site.kind(), candle);
-			}
+		return unmet;
+	}
+
+	/** Whether each chunk of the site is loaded, and as what, read without loading any: a chunk that is not a {@code LevelChunk} is a wrapper of a full one. */
+	private static String chunkStates(ServerLevel level, StructureSite site) {
+		Map<ChunkPos, String> states = new LinkedHashMap<>();
+		for (ChunkPos chunk : chunksOf(site)) {
+			ChunkAccess loaded = level.getChunkSource().getChunkNow(chunk.x(), chunk.z());
+			states.put(chunk, loaded == null ? "not loaded" : loaded.getClass().getSimpleName());
 		}
+		return states.toString();
 	}
 
 	@GameTest
@@ -531,6 +560,14 @@ public class LayerStructuresTest {
 
 	/** As above, limited to the blocks of {@code only} when it is given. */
 	private static void requireNoFluidOrGas(GameTestHelper helper, ServerLevel level, StructureSite site, ChunkPos only) {
+		String found = fluidOrGasAt(level, site, only);
+		if (found != null) {
+			throw failure(helper, "%s", found);
+		}
+	}
+
+	/** The first fluid or gas pocket in the site's bounds and the shell round them (limited to the blocks of {@code only} when it is given) as text, or null. */
+	private static String fluidOrGasAt(ServerLevel level, StructureSite site, ChunkPos only) {
 		BoundingBox box = site.bounds();
 		for (BlockPos pos : BlockPos.betweenClosed(box.minX() - 1, box.minY() - 1, box.minZ() - 1, box.maxX() + 1, box.maxY() + 1, box.maxZ() + 1)) {
 			if (only != null && !only.equals(ChunkPos.containing(pos))) {
@@ -538,9 +575,10 @@ public class LayerStructuresTest {
 			}
 			BlockState state = level.getBlockState(pos);
 			if (!state.getFluidState().isEmpty() || state.is(HazardBlocks.GAS_POCKET)) {
-				throw failure(helper, "%s holds %s at %s", site.kind(), state, pos.toShortString());
+				return String.format("%s holds %s at %s", site.kind(), state, pos.toShortString());
 			}
 		}
+		return null;
 	}
 
 	private static MinecraftServer server(GameTestHelper helper) {
