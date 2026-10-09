@@ -221,6 +221,22 @@
       "..ssssssssssst",
       "..sttttttttttt"]}},
     "item/part_spoil_hopper": {"template": "sprite", "args": {"legend": {"C": "brass.5", "c": "brass.3", "b": "brass.4", "r": "regolith.4", "s": "regolith.5", "q": "regolith.2", "d": "regolith.3", "l": "steel.5", "m": "steel.4", "k": "steel.2", "v": "steel.3", "y": "hazard.2", "z": "iron.0", "x": "rubber.3"}, "rows": ["", "..CCCCCCCCCCCC", "..cbbbbbbbbbbc", "..lsrqrsrrqrsk", "..lrqrrqrsrrqk", "...lmmmmmmmmk", "...yzyzyzyzyz", "....lmmvmmmk", "....lmmmmmmk", ".....lmmmmk", ".....lmvmmk", "......lmmk", "......xxxx", "......dqdd", ".......dd"]}},
+    "item/part_liner": {"template": "sprite", "args": {"legend": {
+      "C": "brass.5", "b": "brass.4", "B": "brass.3", "s": "basalt.3", "t": "basalt.2", "u": "basalt.4", "k": "basalt.0", "d": "steel.2"}, "rows": [
+      "",
+      "..CCCCCCCCCCCC",
+      "..bsutsutsutsb",
+      "..butsutsutsub",
+      "..bsukkkkkktsb",
+      "..bstkkkkkkusb",
+      "..butkkkkkksub",
+      "..bsukkkkkktsb",
+      "..btskkkkkkusb",
+      "..buskkkkkktsb",
+      "..butsutsutsub",
+      "..bsutsutsutsb",
+      "..BBBBBBBBBBBB",
+      "..dddddddddddd"]}},
     "item/part_scanner": {"template": "sprite", "args": {"legend": {
       "h": "steel.5", "l": "steel.4", "m": "steel.3", "d": "steel.2", "k": "steel.1", "e": "cold.1", "E": "cold.3", "F": "cold.5", "b": "brass.4"}, "rows": [
       "",

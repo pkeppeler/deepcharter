@@ -39,6 +39,9 @@ public class EconomyAffordabilityTest {
 	private static final int EARLY_BUY_RUNS = 2;
 	/** The spoil hopper is the entry to the lava ladder: a stock Mole buys it with one layer 1 run. */
 	private static final int HOPPER_RUNS = 1;
+	/** The liner's tiers, in runs of a Mole with tier 2 parts in layer 2, at most. */
+	private static final int LINER_TIER_ONE_RUNS = 2;
+	private static final int LINER_TIER_TWO_RUNS = 4;
 	/** The radiator matters from layer 3 on, and its tier 1 costs what the others' tier 2 does in the original. */
 	private static final int RADIATOR_RUNS = 5;
 	/** The Prospector restore takes this many runs of a Mole with tier 2 parts in layer 2, at least and at most. */
@@ -90,6 +93,9 @@ public class EconomyAffordabilityTest {
 		Run run = stockRunInLayerOne();
 		LOGGER.info("[economy] stock Mole, layer 1 topsoil: {}", run);
 		for (ComponentTrack track : ComponentTrack.values()) {
+			if (track == ComponentTrack.LINER) {
+				continue; // A layer 2 buy with its own band: theLinerTiersAreAffordableAfterTheirLayerTwoRuns.
+			}
 			long price = UpgradeTuning.DEFAULT.price(track, 1);
 			int runs = run.toAfford(price);
 			LOGGER.info("[economy] tier 1 {} ${}: {} runs", track.id(), price, runs);
@@ -122,6 +128,28 @@ public class EconomyAffordabilityTest {
 		int restoreRuns = upgradedRunInLayerTwo(mass).toAfford(HangarTuning.DEFAULT.restoreCost(Chassis.PROSPECTOR).money());
 		if (restoreRuns != PROSPECTOR_RUNS) {
 			throw failure(helper, "with a full bay and rack the Prospector restore takes %d layer 2 runs, expected %d", restoreRuns, PROSPECTOR_RUNS);
+		}
+		helper.succeed();
+	}
+
+	/**
+	 * The liner (#339) is the lava ladder's second rung and is bought in layer 2: a run there pays for tier 1 in at most
+	 * {@value #LINER_TIER_ONE_RUNS} runs and for tier 2 in at most {@value #LINER_TIER_TWO_RUNS}. The run is a hopper pod's (the liner lines from
+	 * its rack, which the hopper fills) with the liner's drill penalty, so a dearer liner is a slower income.
+	 */
+	@GameTest
+	public void theLinerTiersAreAffordableAfterTheirLayerTwoRuns(GameTestHelper helper) {
+		int[] allowed = {LINER_TIER_ONE_RUNS, LINER_TIER_TWO_RUNS};
+		for (int tier = 1; tier <= ComponentTrack.LINER.maxTier(); tier++) {
+			Run run = EarlyRunModel.run(Zone.load("upper_levels"), EarlyRunModel.withLiner(EarlyRunModel.mole(2, 2, 2), tier), EarlyRunModel.layerOneBlocks(), EarlyRunModel.hopperMass());
+			long price = UpgradeTuning.DEFAULT.price(ComponentTrack.LINER, tier);
+			LOGGER.info("[economy] liner tier {} ${}: {} layer 2 runs of {}", tier, price, run.toAfford(price), run);
+			if (run.toAfford(price) > allowed[tier - 1]) {
+				throw failure(helper, "liner tier %d costs $%d, which is %d layer 2 runs of $%.0f; at most %d are allowed", tier, price, run.toAfford(price), run.net(), allowed[tier - 1]);
+			}
+		}
+		if (allowed.length != ComponentTrack.LINER.maxTier()) {
+			throw failure(helper, "the test has bands for %d liner tiers, the track has %d", allowed.length, ComponentTrack.LINER.maxTier());
 		}
 		helper.succeed();
 	}
