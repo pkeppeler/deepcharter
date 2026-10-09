@@ -50,7 +50,7 @@ or `...-as-played` show what a player sees; the other layer stills use night vis
 |---|---|
 | What | Our own surface (#240, [ADR 0036](../adr/0036-the-surface-is-generated-from-data-by-a-replaced-overworld-dimension.md)): flat regolith plains, impact craters, terraced mesas and black basalt outcrops, one great pit south of the colony. No grass, trees, animals or water. The colony stands on a flat plateau at the origin. The sky is ours: a dusk-to-night timeline with a round sun, no clouds and dust in the air (#239). |
 | Vanilla | **no** for the terrain, the blocks and the biomes. **partly** for light and the day and night cycle for gameplay; the sky and fog are ours. The mod removes villages, outposts and strongholds. |
-| Source | `data/minecraft/dimension/overworld.json`, `data/deepcharter/worldgen/{density_function/surface,noise,noise_settings/surface,material_rule/surface,biome}`, blocks `regolith`, `regolith_packed`, `ochre_regolith`, `regolith_rock` and `basalt_outcrop` (2 to 4 weighted variants each, placeholder textures until #242), `data/minecraft/worldgen/structure_set/{villages,pillager_outposts,strongholds}.json` (emptied: no structures) |
+| Source | `data/minecraft/dimension/overworld.json`, `data/deepcharter/worldgen/{density_function/surface,noise,noise_settings/surface,material_rule/surface,biome}`, blocks `regolith`, `regolith_packed`, `ochre_regolith`, `regolith_rock` and `basalt_outcrop` (2 to 4 weighted variants each, drawn from recipes by `tools/textures/texgen.py` since #242: low-contrast rust-red and ochre ground with dust grains and small pebbles, packed and rock beds in wavy layers, near-black basalt), `data/minecraft/worldgen/structure_set/{villages,pillager_outposts,strongholds}.json` (emptied: no structures) |
 | Cost | Per new column of the tall campaign world, against the layers alone: see [ADR 0036](../adr/0036-the-surface-is-generated-from-data-by-a-replaced-overworld-dimension.md). |
 | Time of day | The gameplay clock is vanilla's 24000 ticks (beds, spawning). The sky follows its own clock, `deepcharter:sky`, and swings between dusk and night over 4 real hours, never full day. |
 | Swap | **(b)** the worldgen JSON above, the blockstates, and a datapack `minecraft:dimension_type/overworld` (light, fog attributes); **(a)** the block textures and models, the sun texture and the dust particle. The sky is the timeline in `data/deepcharter/timeline/sky.json` ([skins.md](skins.md)); which number shapes the land is in [skins.md](skins.md) too. Nothing in Java draws the surface or its sky. |
@@ -60,7 +60,7 @@ or `...-as-played` show what a player sees; the other layer stills use night vis
 ![surface-south-dusk](https://github.com/pkeppeler/deepcharter/blob/pr-media/327/surface-south-dusk.png?raw=true) ![surface-north-night](https://github.com/pkeppeler/deepcharter/blob/pr-media/327/surface-north-night.png?raw=true)
 
 From the pad: rust-red plains with a low roll, ochre terraced mesas on the horizon, black basalt knobs, craters with raised rims, and a huge pit to the south.
-The surface blocks are placeholder textures: the colour is right and the grain is not. The sky stills (`sky-up-*`) are #239's.
+The stills show the surface blocks' placeholder textures from before #242, which draws them from recipes. The sky stills (`sky-up-*`) are #239's.
 
 ### Layer 1 (`deepcharter:layer_1`)
 
