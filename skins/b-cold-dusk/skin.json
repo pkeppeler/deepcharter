@@ -1,0 +1,64 @@
+{
+  "id": "b-cold-dusk",
+  "letter": "B",
+  "name": "Cold dusk",
+  "idea": "ADR 0030's bones at the blue hour. A violet-blue sky with a pale cold halo over pale ochre regolith, cold white Company light, and steel terminals with cyan readouts. Colder and quieter: the planet does not care who lands on it.",
+  "palette": ["#1C2A44", "#6A7A8E", "#E8F0FF", "#7FE8FF", "#B8A07A", "#42505C", "#0C1220", "#D8C8A4"],
+  "areas": {
+    "sky": "Blue-hour violet-blue with a cold white halo; navy night, bright stars",
+    "surface": "Pale ochre regolith, bleached grass",
+    "colony": "Cold grey stone and blued steel, weathered statue",
+    "layers": "Slate layer 1, blue-black layer 2; cold grey shale",
+    "light": "Cold white everywhere",
+    "pods": "Steel-blue Mole, grey Prospector",
+    "ui": "Cyan readouts on steel; cold white paper",
+    "hud": "Pale steel status, cyan altimeter and scanner",
+    "grade": "Blue shadows, low saturation"
+  },
+  "sky": {
+    "dusk": {"sky": "#1C2A44", "fog": "#6A7A8E", "glow": "#70C8E0FF", "light": "#B8C8E8", "light_factor": 0.55, "stars": 0.35,
+             "fog_start": 24, "fog_end": 170, "tint": "#E8F0FF"},
+    "night": {"sky": "#060A14", "fog": "#141C28", "glow": "#00000000", "light": "#5A6A98", "light_factor": 0.18, "stars": 0.95,
+              "fog_start": 12, "fog_end": 110, "tint": "#D8E4FF"},
+    "sun_angle": 80,
+    "moon_angle": 250,
+    "sun": {"core": "#FFFFFF", "rim": "#B8DCFF", "radius": 3}
+  },
+  "layers": {
+    "layer_1": {"ambient_light": 0.05, "ambient_color": "#10141A", "fog_start": 6, "fog_end": 48, "tint": "#E0EAFF",
+                "fog": {"topsoil_claims": "#1E2024", "stone_benches": "#181A1E", "deep_claim": "#121418"}},
+    "layer_2": {"ambient_light": 0.02, "ambient_color": "#06080C", "fog_start": 2, "fog_end": 30, "tint": "#D0DCFF",
+                "fog": {"upper_levels": "#0C1220", "shift_change": "#0A0E1A", "prospectors_run": "#060A14"}}
+  },
+  "grade": {
+    "surface": {"shadows": [0.08, 0.12, 0.22, 0.45], "highlights": [0.85, 0.92, 1.0, 0.2], "saturation": 0.72, "vignette": 0.3,
+                "contrast": 1.05, "olive": 0.6},
+    "layer_1": {"shadows": [0.08, 0.10, 0.18, 0.3], "saturation": 0.8, "vignette": 0.25},
+    "layer_2": {"shadows": [0.06, 0.10, 0.20, 0.35], "saturation": 0.75, "vignette": 0.3}
+  },
+  "ramps": {
+    "rock": ["#1C2024", "#343A40", "#505860", "#707A82"],
+    "soil": ["#4A4030", "#8A7656", "#B8A07A", "#D8C8A4"],
+    "flora": ["#6A6448", "#9A9070", "#C0B894"],
+    "masonry": ["#2A3036", "#48525A", "#6A767E", "#909CA2"],
+    "wood": ["#2A2620", "#4A4436", "#6E6650", "#908868"],
+    "metal": ["#101418", "#26303A", "#42505C", "#6C7C88"],
+    "bronze": ["#2A3438", "#4A6064", "#70908C", "#A0C0B8"],
+    "paper": ["#7A8088", "#B8C0C4", "#E8EEF0"],
+    "hull": ["#1A2632", "#2E4458", "#4A6A84", "#7A9AB0"],
+    "hull_prospector": ["#202428", "#3C444A", "#5C666C", "#868E92"],
+    "wreck": ["#06080A", "#121618", "#22282C", "#343C40"]
+  },
+  "accent": {"hue_pull": {"toward": 200, "amount": 0.08}, "saturation": 0.8, "value": 0.9},
+  "phosphor": "#7FE8FF",
+  "theme": {
+    "crt": {"backgroundColor": "#04080C", "phosphorColor": "#7FE8FF", "dimColor": "#2A6A7A", "hoverFillColor": "#0E2E38",
+            "glowColor": "#307FE8FF", "bloomColor": "#2870D8FF", "refusalColor": "#FF8A5A"},
+    "handbook": {"paperColor": "#E8EEF0", "paperEdgeColor": "#B8C0C4", "bindingColor": "#2E3E50", "hoverFillColor": "#F4F8FA",
+                 "faintInkColor": "#707A84", "disabledInkColor": "#98A0A8"},
+    "hud": {"podStatusColor": "#DCEBF5", "altimeterColor": "#7FE8FF", "accountColor": "#7FE8FF"},
+    "scanner": {"titleColor": "#DCEBF5", "airColor": "#0A1018", "rockColor": "#3E4A56", "oreColor": "#E8F4FF", "podColor": "#7FE8FF"},
+    "transmission": {"panelFillColor": "#EA04080C", "textColor": "#7FE8FF", "liveColor": "#7FE8FF"},
+    "cargo": {"textColor": "#2A3640"}
+  }
+}

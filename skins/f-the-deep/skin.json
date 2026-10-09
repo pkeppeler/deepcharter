@@ -1,0 +1,65 @@
+{
+  "id": "f-the-deep",
+  "letter": "F",
+  "name": "The deep",
+  "idea": "Wildcard: as if the planet were an abyssal trench. Teal-black murk and fog that eats the land at fifty blocks, cold bioluminescent ore, and the harsh sodium of the Company's lamps cutting through it. Verdigris metal and sea-worn paper.",
+  "palette": ["#062022", "#0E3A3C", "#FFA040", "#4AF0D0", "#183A3C", "#9AFFF0", "#021014", "#C8DCD4"],
+  "areas": {
+    "sky": "Teal-black murk, a tiny pale-green sun, no stars",
+    "surface": "Teal silt and kelp-coloured grass in heavy fog",
+    "colony": "Verdigris metal, sea-worn stone",
+    "layers": "Teal-black fogs, slate-teal rock, ore glowing cyan",
+    "light": "Harsh sodium orange against the teal",
+    "pods": "Rust-orange Mole, verdigris Prospector",
+    "ui": "Aqua phosphor on black; sea-worn paper",
+    "hud": "Aqua status, sodium altimeter; deep blue scanner, glowing ore",
+    "grade": "Teal shadows, heavy vignette"
+  },
+  "sky": {
+    "dusk": {"sky": "#062022", "fog": "#0E3A3C", "glow": "#3040E0C0", "light": "#6AB0A8", "light_factor": 0.4, "stars": 0.0,
+             "fog_start": 6, "fog_end": 56, "tint": "#FFA040"},
+    "night": {"sky": "#010608", "fog": "#031416", "glow": "#00000000", "light": "#2A5A60", "light_factor": 0.15, "stars": 0.15,
+              "fog_start": 4, "fog_end": 40, "tint": "#FF9A30"},
+    "sun_angle": 80,
+    "moon_angle": 250,
+    "sun": {"core": "#D8FFF0", "rim": "#40C0A0", "radius": 2}
+  },
+  "layers": {
+    "layer_1": {"ambient_light": 0.04, "ambient_color": "#041416", "fog_start": 3, "fog_end": 36, "tint": "#FFA848",
+                "fog": {"topsoil_claims": "#062A2A", "stone_benches": "#052222", "deep_claim": "#041A1A"}},
+    "layer_2": {"ambient_light": 0.02, "ambient_color": "#020A0E", "fog_start": 2, "fog_end": 24, "tint": "#FF9A38",
+                "fog": {"upper_levels": "#041820", "shift_change": "#03141A", "prospectors_run": "#021014"}}
+  },
+  "grade": {
+    "surface": {"shadows": [0.04, 0.18, 0.20, 0.6], "highlights": [1.0, 0.85, 0.6, 0.25], "saturation": 0.7, "vignette": 0.65,
+                "contrast": 1.08},
+    "layer_1": {"shadows": [0.03, 0.16, 0.18, 0.55], "saturation": 0.75, "vignette": 0.6},
+    "layer_2": {"shadows": [0.03, 0.12, 0.18, 0.6], "saturation": 0.7, "vignette": 0.65}
+  },
+  "ramps": {
+    "rock": ["#020A0C", "#0C2226", "#183A3C", "#2A5452"],
+    "soil": ["#081816", "#14302C", "#224A42", "#346658"],
+    "flora": ["#0A3A34", "#1A6A5A", "#3AA08A"],
+    "masonry": ["#0A1416", "#1A2C30", "#2C4448", "#466064"],
+    "wood": ["#0C1412", "#1C2A26", "#2E403A", "#44584E"],
+    "metal": ["#081010", "#16282A", "#2A4A48", "#4A7A70"],
+    "bronze": ["#0A2A24", "#1A5A4A", "#3A907A", "#7AD0B0"],
+    "paper": ["#4A6A64", "#8AA8A0", "#C8E0D8"],
+    "hull": ["#2A1408", "#5A2A10", "#9A4A1A", "#D07A30"],
+    "hull_prospector": ["#0E1A1C", "#22383A", "#3A5A5A", "#5A8480"],
+    "wreck": ["#010303", "#060C0C", "#0E1818", "#182424"]
+  },
+  "accent": {"hue_pull": {"toward": 175, "amount": 0.35}, "saturation": 1.2, "value": 1.2},
+  "phosphor": "#4AF0D0",
+  "theme": {
+    "crt": {"backgroundColor": "#010A0C", "phosphorColor": "#4AF0D0", "dimColor": "#1A6A60", "hoverFillColor": "#06302C",
+            "glowColor": "#384AF0D0", "bloomColor": "#3040E0C0", "refusalColor": "#FFA040"},
+    "handbook": {"paperColor": "#C8DCD4", "paperEdgeColor": "#7A9A90", "bindingColor": "#0E3A3C", "inkColor": "#06201E",
+                 "stampColor": "#C05A20", "marginInkColor": "#2A5A50", "hoverFillColor": "#DCECE6", "faintInkColor": "#4A6A64"},
+    "hud": {"podStatusColor": "#BFF5EA", "altimeterColor": "#FFA040", "accountColor": "#4AF0D0"},
+    "scanner": {"titleColor": "#BFF5EA", "airColor": "#010A0E", "rockColor": "#12343A", "oreColor": "#9AFFF0", "goldOreColor": "#FFC040",
+                "lavaColor": "#FF5A1A", "podColor": "#FFA040", "frameColor": "#021416"},
+    "transmission": {"panelFillColor": "#EA010A0C", "textColor": "#4AF0D0", "liveColor": "#4AF0D0", "relayColor": "#FFA040"},
+    "cargo": {"textColor": "#0E3A3C"}
+  }
+}

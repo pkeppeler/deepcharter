@@ -201,7 +201,7 @@ public class PlainClientTest implements FabricClientGameTest {
 JAVA
 cat >"$work/gradlew" <<'STUB'
 #!/usr/bin/env bash
-echo "$* | ${DEEPCHARTER_EVIDENCE:-}" >>"$STUB_GRADLE_LOG"
+echo "$* | ${DEEPCHARTER_EVIDENCE:-} | skin=${DEEPCHARTER_SKIN-unset}" >>"$STUB_GRADLE_LOG"
 STUB
 chmod +x "$work/gradlew"
 export STUB_GRADLE_LOG=$work/gradle.log
@@ -264,6 +264,28 @@ check "--print-class on an unknown scenario exits 1" exit_is 1
 record demo --no-run
 check "--no-run starts no game" gradle_not_run
 check "--no-run still assembles the media" log_has "-framerate 15"
+
+# --skin names a folder of skins/ with a pack.mcmeta; anything else fails before a game starts.
+mkdir -p "$work/skins/dusk" "$work/skins/half"
+echo '{}' >"$work/skins/dusk/pack.mcmeta"
+record demo --skin=dusk
+check "a known skin records" exit_is 0
+check "a known skin reaches the build as DEEPCHARTER_SKIN" gradle_has "runClientGameTest -PclientTests=DemoScenario | demo | skin=dusk"
+record demo --skin=nope
+check "an unknown skin exits 1" exit_is 1
+check "an unknown skin is named" err_has "no look-book skin is named 'nope'"
+check "an unknown skin lists the skins with a pack" err_has "known: dusk"
+check "an unknown skin starts no game" gradle_not_run
+record demo --skin=half
+check "a folder with no pack.mcmeta is no skin" exit_is 1
+record demo --skin=../dusk
+check "a path is no skin" exit_is 1
+check "a path starts no game" gradle_not_run
+record demo --skin=
+check "an empty skin is a usage error" exit_is 2
+check "an empty skin starts no game" gradle_not_run
+DEEPCHARTER_SKIN=dusk record demo
+check "without --skin a set DEEPCHARTER_SKIN does not reach the build" gradle_has "| demo | skin=unset"
 
 # The real tree: every scenario id is unique and maps to a class that exists as a scenario file.
 real=$(cd "$tools/.." && pwd)

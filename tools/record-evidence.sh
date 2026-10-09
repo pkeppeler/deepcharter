@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Usage: tools/record-evidence.sh <scenario> [--no-run] [--full-suite]
+# Usage: tools/record-evidence.sh <scenario> [--no-run] [--full-suite] [--skin=<id>]
 #        tools/record-evidence.sh <scenario> --print-class
 #
 # Runs one evidence scenario as a Fabric client GameTest, then turns its frames into
@@ -20,6 +20,10 @@
 #
 # --no-run only re-assembles existing frames (skips the game).
 #
+# --skin=<id> runs with the look-book skin skins/<id>/ (docs/tooling/look-book.md): its data in the scenario's new world,
+# its resource pack on in the client (design-tour and look-motion turn it on). An id with no skins/<id>/pack.mcmeta fails
+# before any client starts, listing the skins. Without the flag the run has no skin, whatever DEEPCHARTER_SKIN says.
+#
 # A long scenario (m2-slice is over a thousand frames) is too big for one GIF. GIF_FRAMES=<first>-<last>
 # builds the GIF from that range of frames only, as a highlight; the MP4 still holds every frame.
 # GIF_MAX_BYTES raises the size limit (default 5 MB). Over it, the GIF is rebuilt at a lower frame rate and
@@ -39,7 +43,7 @@ GIF_FRAMES=${GIF_FRAMES:-}
 GIF_LADDER=${GIF_LADDER-"15:854 10:854 10:640 8:560 6:480 5:400 4:320"}
 
 usage() {
-  echo "usage: tools/record-evidence.sh <scenario> [--no-run] [--full-suite]  |  --print-class" >&2
+  echo "usage: tools/record-evidence.sh <scenario> [--no-run] [--full-suite] [--skin=<id>]  |  --print-class" >&2
   exit 2
 }
 [[ $# -ge 1 && $1 =~ ^[a-z0-9][a-z0-9-]*$ ]] || usage
@@ -48,11 +52,13 @@ shift
 no_run=0
 full_suite=0
 print_class=0
+skin=
 for flag in "$@"; do
   case $flag in
     --no-run) no_run=1 ;;
     --full-suite) full_suite=1 ;;
     --print-class) print_class=1 ;;
+    --skin=?*) skin=${flag#--skin=} ;;
     *) usage ;;
   esac
 done
@@ -73,6 +79,17 @@ fi
 cd "$(dirname "$0")/.."
 root=$PWD/build/evidence
 out=$root/$scenario
+
+if [[ -n $skin && ! ( $skin =~ ^[a-z0-9][a-z0-9-]*$ && -f skins/$skin/pack.mcmeta ) ]]; then
+  known=$(for pack in skins/*/pack.mcmeta; do [[ -e $pack ]] && basename "$(dirname "$pack")"; done | sort | paste -sd' ' -)
+  echo "no look-book skin is named '$skin'; known: ${known:-none (tools/lookbook/skins.py builds them)}" >&2
+  exit 1
+fi
+if [[ -n $skin ]]; then
+  export DEEPCHARTER_SKIN=$skin
+else
+  unset DEEPCHARTER_SKIN
+fi
 
 # Prints "<scenario id> <class>" for every EvidenceScenario subclass: the id is the string its name() returns.
 scenario_classes() {

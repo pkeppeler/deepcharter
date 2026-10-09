@@ -1,0 +1,10 @@
+{
+  "backgroundColor": "#000000",
+  "phosphorColor": "#FFE14A",
+  "dimColor": "#8A7A20",
+  "hoverFillColor": "#3A3000",
+  "glowColor": "#40FFE14A",
+  "bloomColor": "#30FFC020",
+  "scanlineColor": "#40000000",
+  "refusalColor": "#FF3A3A"
+}

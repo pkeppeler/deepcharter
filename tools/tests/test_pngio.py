@@ -1,4 +1,4 @@
-"""Tests tools/pngio.py with tiny PNGs built chunk by chunk."""
+"""Tests tools/lookbook/pngio.py with tiny PNGs built chunk by chunk."""
 import struct
 import sys
 import tempfile
@@ -6,7 +6,7 @@ import unittest
 import zlib
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lookbook"))
 import pngio  # noqa: E402
 
 

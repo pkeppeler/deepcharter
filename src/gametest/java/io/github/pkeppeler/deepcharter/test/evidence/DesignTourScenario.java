@@ -106,6 +106,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest;
+import io.github.pkeppeler.deepcharter.test.support.LookSkin;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
 import io.github.pkeppeler.deepcharter.transmission.Transmissions;
@@ -176,6 +177,7 @@ public class DesignTourScenario extends EvidenceScenario {
 	@Override
 	protected void run(ClientGameTestContext context) {
 		ctx = context;
+		LookSkin.enable(context);
 		// A real world, as a new player gets one: the vanilla terrain of the seed, not the flat world of the other scenarios.
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().setUseConsistentSettings(false)
 				.adjustSettings(state -> state.setSeed("deepcharter-design-tour")).create()) {
@@ -275,7 +277,7 @@ public class DesignTourScenario extends EvidenceScenario {
 				}
 				return true;
 			});
-			boolean ready = lit && ctx.computeOnClient(client -> {
+			boolean ready = lit && LookSkin.holdGrade(ctx, sp.getServer()) && ctx.computeOnClient(client -> {
 				for (Entity entity : client.level.entitiesForRendering()) {
 					if (isStray(entity)) {
 						return false;
@@ -290,7 +292,7 @@ public class DesignTourScenario extends EvidenceScenario {
 				return;
 			}
 			if (System.nanoTime() > deadline) {
-				throw new AssertionError("still " + stillName + ": the world did not settle (mobs gone, chunks rendered) in "
+				throw new AssertionError("still " + stillName + ": the world did not settle (mobs gone, chunks rendered, the skin's grade shown) in "
 						+ SETTLE_LIMIT_NANOS / 1_000_000_000L + " s");
 			}
 		}
@@ -1137,8 +1139,11 @@ public class DesignTourScenario extends EvidenceScenario {
 		still("structure-wreck-empty-bay");
 	}
 
-	/** A cell of air with room round it, close to the layer's start column, as the middle of a cave. */
-	private static Vec3 openCell(ServerLevel level) {
+	/**
+	 * A cell of air with room round it, close to the layer's start column, as the middle of a cave: the eye position there.
+	 * {@link LookMotionScenario} shoots its lamp-lit caverns from the same cells.
+	 */
+	static Vec3 openCell(ServerLevel level) {
 		BlockPos best = null;
 		int bestClearance = 0;
 		for (int x = LAYER_X - 40; x <= LAYER_X + 40; x += 2) {

@@ -1,0 +1,77 @@
+{
+  "textures": {
+    "all": "deepcharter:block/pod/prospector",
+    "particle": "deepcharter:block/pod/prospector"
+  },
+  "elements": [
+    {
+      "name": "hull",
+      "from": [
+        -15.2,
+        0,
+        -15.2
+      ],
+      "to": [
+        31.2,
+        14.4,
+        31.2
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#all"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#all"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#all"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#all"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#all"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#all"
+        }
+      }
+    }
+  ]
+}

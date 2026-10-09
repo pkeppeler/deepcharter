@@ -1,0 +1,11 @@
+{
+  "titleColor": "#FFE14A",
+  "airColor": "#000000",
+  "rockColor": "#6A4020",
+  "oreColor": "#FFFFFF",
+  "goldOreColor": "#FFE000",
+  "lavaColor": "#FF2000",
+  "gasColor": "#FF40FF",
+  "podColor": "#40FF40",
+  "frameColor": "#FFFFFF"
+}

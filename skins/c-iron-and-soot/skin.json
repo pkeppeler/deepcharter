@@ -1,0 +1,67 @@
+{
+  "id": "c-iron-and-soot",
+  "letter": "C",
+  "name": "Iron and soot",
+  "idea": "Industry first. A soot-dark land under a smog sky with a furnace-orange sun, black iron and brass everywhere, and a strong grade that crushes colour. Lamps burn orange like open furnaces, and the terminals glow brass.",
+  "palette": ["#2E2622", "#5A4434", "#FF8A3A", "#E8B860", "#1E1C1E", "#B08A3A", "#0E0A06", "#D8C8A4"],
+  "areas": {
+    "sky": "Smog brown with a red furnace sun; starless soot night",
+    "surface": "Ash and soot ground, dead grass",
+    "colony": "Soot-black stone and iron, brass statue",
+    "layers": "Soot fogs in both layers; black basalt rock",
+    "light": "Furnace orange, deep and warm",
+    "pods": "Brass Mole, black-iron Prospector",
+    "ui": "Brass phosphor on black-brown; sooty parchment",
+    "hud": "Brass status, orange altimeter, brass scanner",
+    "grade": "Strong: crushed colour, hard contrast, heavy vignette"
+  },
+  "sky": {
+    "dusk": {"sky": "#2E2622", "fog": "#5A4434", "glow": "#90FF7A30", "light": "#C08A60", "light_factor": 0.45, "stars": 0.0,
+             "fog_start": 12, "fog_end": 110, "tint": "#FF8A3A"},
+    "night": {"sky": "#0C0A0A", "fog": "#1C1410", "glow": "#00000000", "light": "#50403A", "light_factor": 0.15, "stars": 0.1,
+              "fog_start": 8, "fog_end": 70, "tint": "#FF7A2A"},
+    "sun_angle": 80,
+    "moon_angle": 250,
+    "sun": {"core": "#FFD8A0", "rim": "#C05A20", "radius": 6}
+  },
+  "layers": {
+    "layer_1": {"ambient_light": 0.04, "ambient_color": "#140E0A", "fog_start": 4, "fog_end": 40, "tint": "#FF9A4A",
+                "fog": {"topsoil_claims": "#1A1410", "stone_benches": "#141008", "deep_claim": "#0E0A06"}},
+    "layer_2": {"ambient_light": 0.015, "ambient_color": "#0A0806", "fog_start": 2, "fog_end": 28, "tint": "#FF8A3A",
+                "fog": {"upper_levels": "#121010", "shift_change": "#0E0C0C", "prospectors_run": "#0A0808"}}
+  },
+  "grade": {
+    "surface": {"shadows": [0.16, 0.10, 0.07, 0.6], "highlights": [1.0, 0.72, 0.42, 0.45], "saturation": 0.5, "vignette": 0.6,
+                "contrast": 1.22, "olive": 0.9},
+    "layer_1": {"shadows": [0.14, 0.09, 0.06, 0.5], "highlights": [1.0, 0.70, 0.40, 0.4], "saturation": 0.55, "vignette": 0.5,
+                "contrast": 1.15},
+    "layer_2": {"shadows": [0.14, 0.09, 0.06, 0.5], "highlights": [1.0, 0.70, 0.40, 0.4], "saturation": 0.5, "vignette": 0.55,
+                "contrast": 1.18}
+  },
+  "ramps": {
+    "rock": ["#0C0C0E", "#1E1C1E", "#34302E", "#4E4844"],
+    "soil": ["#141210", "#2A2622", "#423A34", "#5E544A"],
+    "flora": ["#2A2620", "#4A4234", "#6A5E48"],
+    "masonry": ["#141414", "#2A2826", "#423E3A", "#5E5852"],
+    "wood": ["#140E0A", "#2A1E14", "#42301E", "#5E4630"],
+    "metal": ["#0E0E10", "#24221E", "#4A3E2A", "#9A7A40"],
+    "bronze": ["#2A1C08", "#6A4A18", "#B08A3A", "#E8C870"],
+    "paper": ["#6A5E48", "#A8987A", "#D4C4A0"],
+    "hull": ["#1A1208", "#4A3414", "#8A6A2E", "#C8A050"],
+    "hull_prospector": ["#121212", "#2C2A28", "#4A4640", "#787068"],
+    "wreck": ["#040404", "#0E0C0C", "#1C1816", "#2A2420"]
+  },
+  "accent": {"hue_pull": {"toward": 30, "amount": 0.2}, "saturation": 0.75, "value": 0.8},
+  "phosphor": "#FFB45A",
+  "theme": {
+    "crt": {"backgroundColor": "#0C0804", "phosphorColor": "#E8B860", "dimColor": "#7A5A28", "hoverFillColor": "#2A1C08",
+            "glowColor": "#30E8B860", "bloomColor": "#28FF9A40", "scanlineColor": "#70000000", "refusalColor": "#FF5A2A"},
+    "handbook": {"paperColor": "#D8C8A4", "paperEdgeColor": "#8A7A5A", "bindingColor": "#2A2420", "inkColor": "#1A1410",
+                 "stampColor": "#A02A10", "marginInkColor": "#5A4A2A", "hoverFillColor": "#E8DAB8", "faintInkColor": "#6A5A40"},
+    "hud": {"podStatusColor": "#E8C870", "altimeterColor": "#FF9A4A", "accountColor": "#E8B860", "podBurningColor": "#FF5A2A"},
+    "scanner": {"titleColor": "#E8C870", "airColor": "#0C0A08", "rockColor": "#4A4038", "oreColor": "#F0E0C0", "podColor": "#FFB45A",
+                "frameColor": "#2A1C08"},
+    "transmission": {"panelFillColor": "#EA0C0804", "textColor": "#E8B860", "liveColor": "#E8B860", "relayColor": "#FF9A4A"},
+    "cargo": {"textColor": "#2A2014"}
+  }
+}

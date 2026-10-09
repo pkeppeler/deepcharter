@@ -1,0 +1,18 @@
+// Look-book skins (docs/tooling/look-book.md). DEEPCHARTER_SKIN=<id> copies skins/<id>/ into the test mod as resourcepacks/skin/,
+// which TestPacks registers as a built-in pack, its data on by default in new worlds; a scenario turns its assets on (LookSkin).
+// Unset, the folder is empty and every run is as before. An id with no skins/<id>/pack.mcmeta fails the build and lists the skins.
+def skinId = providers.environmentVariable("DEEPCHARTER_SKIN").orNull
+def skinsDir = file("skins")
+if (skinId != null) {
+	def known = (skinsDir.listFiles() ?: [] as File[]).findAll { new File(it, "pack.mcmeta").isFile() }*.name.sort()
+	if (!known.contains(skinId)) {
+		throw new GradleException("DEEPCHARTER_SKIN is '${skinId}', which names no skin (a folder of skins/ with a pack.mcmeta; tools/lookbook/skins.py builds them); known: ${known.join(' ')}")
+	}
+}
+def syncSkinPack = tasks.register("syncSkinPack", Sync) {
+	into layout.buildDirectory.dir("generated/skin-pack")
+	if (skinId != null) {
+		from(new File(skinsDir, skinId)) { into "resourcepacks/skin" }
+	}
+}
+sourceSets.gametest.resources.srcDir(syncSkinPack)

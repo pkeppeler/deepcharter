@@ -199,12 +199,20 @@
     "minecraft:visual/sun_angle": {
       "keyframes": [
         {
-          "ticks": 0,
+          "ticks": 133,
           "value": 80.0
         },
         {
-          "ticks": 12000,
+          "ticks": 11867,
           "value": 80.0
+        },
+        {
+          "ticks": 13670,
+          "value": 180.0
+        },
+        {
+          "ticks": 22330,
+          "value": 180.0
         }
       ],
       "modifier": "override"

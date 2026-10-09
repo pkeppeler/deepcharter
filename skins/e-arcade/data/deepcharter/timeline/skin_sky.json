@@ -1,0 +1,242 @@
+{
+  "clock": "minecraft:overworld",
+  "period_ticks": 24000,
+  "tracks": {
+    "minecraft:visual/block_light_tint": {
+      "keyframes": [
+        {
+          "ticks": 133,
+          "value": "#FFF4D0"
+        },
+        {
+          "ticks": 11867,
+          "value": "#FFF4D0"
+        },
+        {
+          "ticks": 13670,
+          "value": "#FFF0C0"
+        },
+        {
+          "ticks": 22330,
+          "value": "#FFF0C0"
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/cloud_color": {
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": "#00000000"
+        },
+        {
+          "ticks": 12000,
+          "value": "#00000000"
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/fog_color": {
+      "keyframes": [
+        {
+          "ticks": 133,
+          "value": "#E8602A"
+        },
+        {
+          "ticks": 11867,
+          "value": "#E8602A"
+        },
+        {
+          "ticks": 13670,
+          "value": "#3A1040"
+        },
+        {
+          "ticks": 22330,
+          "value": "#3A1040"
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/fog_end_distance": {
+      "keyframes": [
+        {
+          "ticks": 133,
+          "value": 200.0
+        },
+        {
+          "ticks": 11867,
+          "value": 200.0
+        },
+        {
+          "ticks": 13670,
+          "value": 160.0
+        },
+        {
+          "ticks": 22330,
+          "value": 160.0
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/fog_start_distance": {
+      "keyframes": [
+        {
+          "ticks": 133,
+          "value": 30.0
+        },
+        {
+          "ticks": 11867,
+          "value": 30.0
+        },
+        {
+          "ticks": 13670,
+          "value": 20.0
+        },
+        {
+          "ticks": 22330,
+          "value": 20.0
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/moon_angle": {
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": 250.0
+        },
+        {
+          "ticks": 12000,
+          "value": 250.0
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/sky_color": {
+      "keyframes": [
+        {
+          "ticks": 133,
+          "value": "#2A1060"
+        },
+        {
+          "ticks": 11867,
+          "value": "#2A1060"
+        },
+        {
+          "ticks": 13670,
+          "value": "#0A0420"
+        },
+        {
+          "ticks": 22330,
+          "value": "#0A0420"
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/sky_light_color": {
+      "keyframes": [
+        {
+          "ticks": 133,
+          "value": "#FFD0A0"
+        },
+        {
+          "ticks": 11867,
+          "value": "#FFD0A0"
+        },
+        {
+          "ticks": 13670,
+          "value": "#6A5AD0"
+        },
+        {
+          "ticks": 22330,
+          "value": "#6A5AD0"
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/sky_light_factor": {
+      "keyframes": [
+        {
+          "ticks": 133,
+          "value": 0.85
+        },
+        {
+          "ticks": 11867,
+          "value": 0.85
+        },
+        {
+          "ticks": 13670,
+          "value": 0.35
+        },
+        {
+          "ticks": 22330,
+          "value": 0.35
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/star_brightness": {
+      "keyframes": [
+        {
+          "ticks": 133,
+          "value": 0.4
+        },
+        {
+          "ticks": 11867,
+          "value": 0.4
+        },
+        {
+          "ticks": 13670,
+          "value": 1.0
+        },
+        {
+          "ticks": 22330,
+          "value": 1.0
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/sun_angle": {
+      "keyframes": [
+        {
+          "ticks": 133,
+          "value": 80.0
+        },
+        {
+          "ticks": 11867,
+          "value": 80.0
+        },
+        {
+          "ticks": 13670,
+          "value": 180.0
+        },
+        {
+          "ticks": 22330,
+          "value": 180.0
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/sunrise_sunset_color": {
+      "keyframes": [
+        {
+          "ticks": 133,
+          "value": "#C0FFD040"
+        },
+        {
+          "ticks": 11867,
+          "value": "#C0FFD040"
+        },
+        {
+          "ticks": 13670,
+          "value": "#00000000"
+        },
+        {
+          "ticks": 22330,
+          "value": "#00000000"
+        }
+      ],
+      "modifier": "override"
+    }
+  }
+}

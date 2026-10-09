@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Builds the look-book skin packs under skins/<id>/ from each skin's skin.json (docs/tooling/look-book.md).
 
-Usage: tools/skins.py [id ...] [--minecraft-jar PATH]
+Usage: tools/lookbook/skins.py [id ...] [--minecraft-jar PATH]
 
 Every file of skins/<id>/ except skin.json is generated, so this script deletes them and writes them again:
   pack.mcmeta                                   a resource pack and a data pack in one folder
@@ -34,7 +34,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pngio  # noqa: E402
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 SKINS = ROOT / "skins"
 MOD_ASSETS = ROOT / "src/main/resources/assets/deepcharter"
 MOD_DATA = ROOT / "src/main/resources/data/deepcharter"
@@ -46,14 +46,21 @@ IN_OVERWORLD = ["#minecraft:universal", "minecraft:day", "deepcharter:skin_sky",
 # Where the sky timeline holds each look (ticks of the 24000-tick gameplay day): dusk through the day, night through the night.
 DUSK_TICKS = (133, 11867)
 NIGHT_TICKS = (13670, 22330)
+# The sun's angle at night (degrees, 0 overhead, 90 the western horizon): straight below, so it sets as the sky darkens and the
+# night has only the moon and the stars. The skin's sun_angle is its place through the dusk.
+NIGHT_SUN_ANGLE = 180.0
 GRADE_PLACES = ("surface", "layer_1", "layer_2")
 LAYER_BIOMES = {
     "layer_1": ("topsoil_claims", "stone_benches", "deep_claim"),
     "layer_2": ("upper_levels", "shift_change", "prospectors_run"),
 }
 RAMPS = ("rock", "soil", "flora", "masonry", "wood", "metal", "bronze", "paper", "hull", "hull_prospector", "wreck")
-# A pixel at or below this HSV saturation counts as grey in a split texture.
-GREY_SATURATION = 0.22
+# A pixel whose channels differ by at most this much (0 to 1) counts as grey in a split texture. Chroma, not HSV saturation:
+# a dark navy plate is grey here, though its saturation is high.
+GREY_CHROMA = 0.12
+# The grey range of a texture (5th to 95th percentile of luminance) spreads over the whole ramp, but never over less than this
+# much luminance: a nearly flat plate stays nearly flat, in the middle of the ramp, instead of turning to noise.
+MIN_SPAN = 0.3
 # Hue band (degrees) of the green phosphor pixels on the terminal faces.
 PHOSPHOR_HUES = (80.0, 170.0)
 
@@ -168,6 +175,10 @@ def luminance(r, g, b):
     return 0.299 * r + 0.587 * g + 0.114 * b
 
 
+def is_grey(r, g, b):
+    return max(r, g, b) - min(r, g, b) <= GREY_CHROMA
+
+
 def remap(image, ramp, mode, accent, phosphor):
     """A copy of the RgbaImage with its colours remapped (see the module doc)."""
     pixels = image.rgba
@@ -177,18 +188,21 @@ def remap(image, ramp, mode, accent, phosphor):
     for i in range(count):
         r, g, b, a = (pixels[4 * i + c] / 255 for c in range(4))
         colours.append((r, g, b, a))
-        if a > 0 and (mode == "ramp" or colorsys.rgb_to_hsv(r, g, b)[1] <= GREY_SATURATION):
+        if a > 0 and (mode == "ramp" or is_grey(r, g, b)):
             greys.append(luminance(r, g, b))
     greys.sort()
     lo = greys[len(greys) // 20] if greys else 0.0
     hi = greys[len(greys) * 19 // 20] if greys else 1.0
-    span = hi - lo if hi - lo > 0.04 else 1.0
+    span = hi - lo
+    if span < MIN_SPAN:
+        lo -= (MIN_SPAN - span) / 2
+        span = MIN_SPAN
     out = bytearray(count * 4)
     for i, (r, g, b, a) in enumerate(colours):
         if a == 0:
             continue
-        h, s, v = colorsys.rgb_to_hsv(r, g, b)
-        if mode == "ramp" or s <= GREY_SATURATION:
+        h, _, v = colorsys.rgb_to_hsv(r, g, b)
+        if mode == "ramp" or is_grey(r, g, b):
             nr, ng, nb = ramp.at((luminance(r, g, b) - lo) / span)
         elif mode == "phosphor" and PHOSPHOR_HUES[0] <= h * 360.0 <= PHOSPHOR_HUES[1]:
             ph, ps, pv = colorsys.rgb_to_hsv(*phosphor)
@@ -261,7 +275,7 @@ def sky_timeline(sky, where):
                 value = float(value)
             values.append(value)
         tracks[track] = keyframes(*values)
-    tracks["minecraft:visual/sun_angle"] = constant(float(require(sky, "sun_angle", where)))
+    tracks["minecraft:visual/sun_angle"] = keyframes(float(require(sky, "sun_angle", where)), NIGHT_SUN_ANGLE)
     tracks["minecraft:visual/moon_angle"] = constant(float(require(sky, "moon_angle", where)))
     tracks["minecraft:visual/cloud_color"] = constant("#00000000")
     return {"clock": "minecraft:overworld", "period_ticks": 24000, "tracks": dict(sorted(tracks.items()))}

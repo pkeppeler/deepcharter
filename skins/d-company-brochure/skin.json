@@ -1,0 +1,65 @@
+{
+  "id": "d-company-brochure",
+  "letter": "D",
+  "name": "Company brochure",
+  "idea": "The brochure the Company printed: a sun-bleached 1950s company town in cream enamel and Company red, under a bright peach sky, with terminals that read like enamel signs. Below, the light goes cold, grey and drained of colour, so going down reads as a betrayal.",
+  "palette": ["#E8B890", "#F2DCC0", "#B3261E", "#FAF2E2", "#E0B840", "#383432", "#080808", "#A8B4C4"],
+  "areas": {
+    "sky": "Bright peach and cream, a big warm sun; plum night",
+    "surface": "Bleached straw and pale tan soil",
+    "colony": "Cream enamel walls, gilt statue",
+    "layers": "Black-grey fog, dark umber rock, colour drained away",
+    "light": "Cheery gold in town, dim cold grey below",
+    "pods": "Company red Mole, cream Prospector",
+    "ui": "Red lettering on cream enamel terminals; white paper, red binding",
+    "hud": "Cream text; a cream map scanner in ink and red",
+    "grade": "Bleached and soft above; drained and dark below"
+  },
+  "sky": {
+    "dusk": {"sky": "#E8B890", "fog": "#F2DCC0", "glow": "#60FFF4D8", "light": "#FFF0D8", "light_factor": 1.0, "stars": 0.0,
+             "fog_start": 40, "fog_end": 220, "tint": "#FFD890"},
+    "night": {"sky": "#2A1A2A", "fog": "#3A2A30", "glow": "#00000000", "light": "#8A7AA0", "light_factor": 0.35, "stars": 0.6,
+              "fog_start": 20, "fog_end": 140, "tint": "#FFC880"},
+    "sun_angle": 80,
+    "moon_angle": 250,
+    "sun": {"core": "#FFFEF0", "rim": "#FFE8B0", "radius": 6}
+  },
+  "layers": {
+    "layer_1": {"ambient_light": 0.02, "ambient_color": "#08080A", "fog_start": 3, "fog_end": 36, "tint": "#B8C0CC",
+                "fog": {"topsoil_claims": "#0C0C0E", "stone_benches": "#0A0A0C", "deep_claim": "#080808"}},
+    "layer_2": {"ambient_light": 0.008, "ambient_color": "#040406", "fog_start": 2, "fog_end": 22, "tint": "#A8B4C4",
+                "fog": {"upper_levels": "#060708", "shift_change": "#050506", "prospectors_run": "#040404"}}
+  },
+  "grade": {
+    "surface": {"lift": [0.06, 0.05, 0.03, 0.0], "shadows": [0.30, 0.22, 0.16, 0.3], "highlights": [1.0, 0.95, 0.82, 0.3],
+                "saturation": 0.92, "vignette": 0.0, "contrast": 0.88, "olive": 0.85},
+    "layer_1": {"shadows": [0.12, 0.13, 0.16, 0.4], "saturation": 0.35, "vignette": 0.45, "contrast": 1.1},
+    "layer_2": {"shadows": [0.10, 0.11, 0.14, 0.45], "saturation": 0.3, "vignette": 0.5, "contrast": 1.12}
+  },
+  "ramps": {
+    "rock": ["#0E0E10", "#22201E", "#383432", "#504A46"],
+    "soil": ["#8A7458", "#B89C78", "#D8C09A", "#F0DCBC"],
+    "flora": ["#A88C58", "#C8AC74", "#E4CC98"],
+    "masonry": ["#8A8070", "#C8BCA4", "#E8DCC4", "#FAF2E2"],
+    "wood": ["#7A5A3A", "#A8805A", "#C8A07A", "#E0C09A"],
+    "metal": ["#5A4E44", "#A89A86", "#D8CCB4", "#F4EAD6"],
+    "bronze": ["#6A4A10", "#B08020", "#E0B840", "#FFF0A0"],
+    "paper": ["#C8B898", "#ECE0C4", "#FFFAF0"],
+    "hull": ["#4A0C08", "#8A1A12", "#B8261E", "#E05A48"],
+    "hull_prospector": ["#6A5E50", "#B0A48E", "#DCD0B8", "#F6EEDC"],
+    "wreck": ["#0A0808", "#1A1414", "#2C2424", "#3E3434"]
+  },
+  "accent": {"hue_pull": {"toward": 0, "amount": 0.15}, "saturation": 1.05, "value": 1.05},
+  "phosphor": "#B3261E",
+  "theme": {
+    "crt": {"backgroundColor": "#F2E6CF", "phosphorColor": "#A8201A", "dimColor": "#C8A890", "hoverFillColor": "#E8D4B4",
+            "glowColor": "#18A8201A", "bloomColor": "#10FFFFFF", "scanlineColor": "#14000000", "refusalColor": "#2A4A9A"},
+    "handbook": {"paperColor": "#FAF2E2", "bindingColor": "#B3261E", "inkColor": "#2A1A14", "stampColor": "#B3261E"},
+    "hud": {"podStatusColor": "#FFF4E0", "altimeterColor": "#FFF4E0", "accountColor": "#FFE08A"},
+    "scanner": {"titleColor": "#FFF4E0", "airColor": "#F2E6CF", "rockColor": "#A88C68", "oreColor": "#2A1A14", "goldOreColor": "#E0A020",
+                "podColor": "#B3261E", "frameColor": "#8A1A12"},
+    "transmission": {"panelFillColor": "#F0F2E6CF", "textColor": "#2A1A14", "liveColor": "#B3261E", "relayColor": "#C87A10",
+                     "unknownColor": "#4A1A6A"},
+    "cargo": {"textColor": "#8A1A12"}
+  }
+}

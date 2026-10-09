@@ -4,6 +4,17 @@
   "name": "Dusk Company",
   "idea": "ADR 0030 as written: prosperity at dusk. A rust and butterscotch sky over dry ochre ground, sodium-amber Company light in town and warm white lamps below, where layer 1 goes brown to black and layer 2 a near-black green. The original's depth colours, darker, and green phosphor terminals in dark iron.",
   "palette": ["#4A2620", "#9A5A38", "#FFB860", "#7CFC9A", "#6E4630", "#101A12", "#B07A36", "#F1E4C3"],
+  "areas": {
+    "sky": "Rust and butterscotch dusk, a small pale sun in a thin blue halo; maroon night with stars",
+    "surface": "Dry ochre grass, rust soil",
+    "colony": "Warm dark-steel stone, tarnished bronze statue",
+    "layers": "Layer 1 fog brown going black, layer 2 near-black green; rust-brown shale",
+    "light": "Sodium amber in town, warm white lamps below",
+    "pods": "Copper-rust Mole, iron Prospector",
+    "ui": "Green phosphor CRT on dark iron; cream paper handbook",
+    "hud": "Cream status, amber altimeter; rust scanner",
+    "grade": "Warm shadows, dried greens, soft vignette; light below"
+  },
   "sky": {
     "dusk": {"sky": "#4A2620", "fog": "#9A5A38", "glow": "#608FB8E0", "light": "#F0A878", "light_factor": 0.6, "stars": 0.2,
              "fog_start": 24, "fog_end": 160, "tint": "#FFB860"},
@@ -11,7 +22,7 @@
               "fog_start": 12, "fog_end": 96, "tint": "#FFA850"},
     "sun_angle": 80,
     "moon_angle": 250,
-    "sun": {"core": "#F4F6FF", "rim": "#9FC4EE", "radius": 5}
+    "sun": {"core": "#F4F6FF", "rim": "#9FC4EE", "radius": 4}
   },
   "layers": {
     "layer_1": {"ambient_light": 0.05, "ambient_color": "#1A120C", "fog_start": 6, "fog_end": 48, "tint": "#FFF0D8",

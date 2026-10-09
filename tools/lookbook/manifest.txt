@@ -1,0 +1,200 @@
+# The look book's layout (tools/lookbook/lookbook.py, docs/tooling/look-book.md): every look book has these sections, in this
+# order, which follow the visual sections of docs/design/current-state.md. Each still the design tour and look-motion shoot is
+# listed exactly once; the tool fails on a recorded still the manifest leaves out, and on a listed still that was not recorded.
+#
+#   == <title>                 a section (## in the markdown)
+#   -- <title>                 a subsection (###)
+#   still <name> | <caption>   a still of the tour or of look-motion
+#   clip <name> | <caption>    a GIF of look-motion's clip-<name>-NNN stills
+#   compare <name> | <title>   a key view of the comparison page (docs/design/looks/README.md), in order: a still listed above
+
+== 1. Dimensions and terrain
+-- Surface
+still surface-south-noon | Looking south from the pad's edge, the sky held at its dusk.
+still surface-east-noon | Looking east.
+still surface-west-noon | Looking west, toward the low sun.
+still surface-north-noon | Looking north, over the colony.
+still sky-up-noon | The sky overhead.
+still surface-south-dusk | South, as the sky turns toward night.
+still sky-up-dusk | The sky, turning.
+still surface-north-night | North at night.
+still sky-up-night | The night sky.
+clip sky-cycle | The sky cycle: dusk to night and back, over the colony.
+-- Layer 1
+still look-layer-1-cavern-by-lamp | A layer 1 cavern as played, lit by one lamp at the camera (light level 14, as a pod's lights).
+still layer-1-cave-as-played-no-light | The same cavern with no light at all.
+still layer-1-cave-south | South, with night vision (so the shapes show).
+still layer-1-cave-west | West, night vision.
+still layer-1-cave-north | North, night vision.
+still layer-1-cave-east | East, night vision.
+still layer-1-cave-up | Up, night vision.
+still layer-1-cave-down | Down, night vision.
+still layer-1-breach-crust-floor | The breach crust at the floor of layer 1.
+still layer-1-breach-crust-floor-low | The crust from low down.
+still layer-1-breach-crust-broken | The crust broken through.
+-- Layer 2
+still look-layer-2-cavern-by-lamp | A layer 2 cavern as played, lit by one lamp at the camera.
+still layer-2-cave-as-played-no-light | The same cavern with no light.
+still layer-2-cave-south | South, night vision.
+still layer-2-cave-west | West, night vision.
+still layer-2-cave-north | North, night vision.
+still layer-2-cave-east | East, night vision.
+still layer-2-cave-up | Up, night vision.
+still layer-2-cave-down | Down, night vision.
+clip lava | Lava falling into a pool in a sealed hall of layer 2.
+
+== 2. Custom blocks
+still block-gallery-1 | Every block of the mod on the pad, fronts to the camera (1 of 3).
+still block-gallery-2 | Blocks, 2 of 3.
+still block-gallery-3 | Blocks, 3 of 3.
+
+== 3. Items
+still items-gallery-1 | Every item of the mod in the inventory (1 of 2).
+still items-gallery-2 | Items, 2 of 2.
+
+== 4. Entities and models
+-- Mole
+still mole-unlit-day-front | The Mole by day, front.
+still mole-unlit-day-side | Side.
+still mole-unlit-day-back | Back.
+still mole-unlit-day-top | Top.
+still mole-unlit-dark-front | In a dark room, no lights part.
+still mole-lit-dark-front | In the dark room with its lights on, front.
+still mole-lit-dark-side | Lit, side.
+still mole-lit-dark-back | Lit, back.
+clip drilling | A lit Mole drilling down through every ore, in layer 1, by its own lamps only.
+-- Prospector
+still prospector-unlit-day-front | The Prospector by day, front.
+still prospector-unlit-day-side | Side.
+still prospector-unlit-day-back | Back.
+still prospector-unlit-day-top | Top.
+still prospector-unlit-dark-front | In the dark room, no lights part.
+still prospector-lit-dark-front | Lit, front.
+still prospector-lit-dark-side | Lit, side.
+still prospector-lit-dark-back | Lit, back.
+-- Wrecks and the founding Mole
+still wrecks-mole-and-prospector-day | A wrecked Mole and Prospector by day.
+still wreck-mole-front-day | The wrecked Mole.
+still wreck-prospector-front-day | The wrecked Prospector.
+still hangar-derelict-mole | The derelict Mole in the hangar.
+still hangar-derelict-mole-from-the-door | From the door.
+still hangar-derelict-mole-from-the-back | From the back.
+still hangar-founding-mole-repaired | Repaired at the console: MOLE-0001.
+-- Lampless figure
+still lampless-figure-dark-no-night-vision | In the dark room, as played.
+still lampless-figure-front | Front, night vision.
+still lampless-figure-side | Side.
+still lampless-figure-back | Back.
+still lampless-figure-close | Close.
+still lampless-figure-fading-by-a-lit-pod | Fading as it nears a lit pod.
+
+== 5. Structures
+-- The colony
+still colony-aerial-south | The colony from the air, from the south.
+still colony-aerial-northwest | From the north-west.
+still colony-aerial-northeast | From the north-east.
+still colony-from-straight-above | From straight above.
+still colony-from-the-south-edge | From the pad's south edge.
+still terminal-row | The terminal row.
+still statue-from-the-square | The Founder statue from the square.
+still statue-close | The statue, close.
+still statue-hands-from-above | Its hands, from above.
+still continuity-office-from-the-square | The Continuity Office.
+still continuity-office-inside | Inside the Continuity Office.
+still hangar-from-the-square | The hangar.
+still chapel-from-the-square | The chapel.
+still chapel-altar-and-candle | The chapel's altar and its one candle.
+still bunkhouse-from-the-square | The bunkhouse.
+still pay-office-from-the-square | The pay office.
+still personnel-office-from-the-square | The personnel office.
+still lamp-and-pick-from-the-square | The Lamp and Pick.
+still conduit-from-the-square | The Conduit from the square.
+still conduit-from-the-west | The Conduit from the west.
+still conduit-from-the-north | The Conduit from the north.
+-- The terminals
+still terminal-fuel-pump | The Fuel Pump.
+still terminal-ore-processor | The Ore Processor.
+still terminal-upgrade-terminal | The Upgrade Terminal.
+still terminal-repair-station | The Repair Station.
+still terminal-contract-terminal | The Contract Terminal.
+-- Layer 1 shafts
+still structure-topsoil-shaft-looking-down | The Topsoil Claims shaft, looking down (night vision).
+still structure-topsoil-shaft-note-niche | Its Note niche.
+still structure-topsoil-shaft-looking-up | Looking up.
+still structure-benches-shaft-looking-down | The Stone Benches shaft, looking down.
+still structure-benches-shaft-note-niche | Its Note niche.
+still structure-benches-shaft-looking-up | Looking up.
+still structure-deep-shaft-looking-down | The Deep Claim shaft, looking down.
+still structure-deep-shaft-note-niche | Its Note niche.
+still structure-deep-shaft-looking-up | Looking up.
+-- Layer 2 structures
+still structure-gallery-toward-the-rubble | The collapsed gallery, toward the rubble (night vision).
+still structure-gallery-quota-board | The quota board.
+still structure-gallery-note-n08 | Note N08.
+still structure-punch-clock-overview | The punch-clock hall.
+still structure-punch-clock-shelves | Its shelves.
+still structure-punch-clock-lit-clock | The lit clock.
+still structure-rails-long-drift | The long rail drift.
+still structure-rails-timbering | Its timbering.
+still structure-wreck-prospector-0002 | PROSPECTOR-0002's wreck site (night vision).
+still structure-wreck-prospector-0002-side | Side.
+still structure-wreck-prospector-0002-back | Back.
+still structure-wreck-the-lamp | The lamp still burning.
+still structure-wreck-note-n10-on-the-table | Note N10 on the table.
+still structure-wreck-from-above | From above.
+still structure-wreck-prospector-0002-no-night-vision | The wreck as played, by its one lamp.
+still structure-wreck-empty-bay | An empty wreck bay.
+
+== 6. Screens and HUDs
+-- Handbook
+still handbook-opened-from-the-item | The Employee Handbook, opened from the item.
+still handbook-page-cover | The cover.
+still handbook-page-slip | The issue slip.
+still handbook-page-letter | The Founder's letter.
+still handbook-page-contents | Contents.
+still handbook-page-chaptertext | A chapter's text.
+still handbook-page-chapter | A chapter's directives.
+still handbook-page-chapter-classified | A chapter not yet unlocked.
+still handbook-page-appendix | The end page.
+still handbook-page-contract | The employment contract.
+still handbook-notes-tab | The Notes tab.
+-- Terminals
+clip terminal | The Contract Terminal opening and typing out.
+still screen-fuel-pump-offline | The Fuel Pump, offline: the parts it needs.
+still screen-ore-processor-offline | The Ore Processor, offline.
+still screen-upgrade-terminal-offline | The Upgrade Terminal, offline.
+still screen-repair-station-offline | The Repair Station, offline.
+still screen-hangar-console-offline | The hangar console, offline.
+still screen-fuel-pump-online | The Fuel Pump, online.
+still screen-ore-processor-online | The Ore Processor: prices and the work order.
+still screen-upgrade-terminal-online | The Upgrade Terminal.
+still screen-repair-station-online | The Repair Station.
+still screen-contract-terminal | The Contract Terminal.
+still screen-hangar-console-online | The hangar console, online.
+still screen-pod-cargo | The pod's cargo screen.
+-- HUDs
+still hud-pod-status-and-altimeter-surface | Riding a pod: the status lines, the altimeter and the account line.
+still hud-pod-in-third-person-surface | The same, in third person.
+still hud-scanner-tier-1-surface | The scanner, tier 1, on the surface.
+still hud-scanner-tier-4-layer-2 | The scanner, tier 4, in layer 2.
+still hud-altimeter-layer-1-floor | The altimeter at the floor of layer 1.
+still hud-breach-fade | The breach fade.
+still hud-transmission-t05 | A transmission (T05).
+still hud-transmission-t06 | Another (T06).
+still hud-transmission-t02 | A relayed one (T02).
+still hud-transmission-surface_arrival | The surface arrival.
+
+== 7. Lighting
+still look-colony-at-night | The colony at night, by its own light only.
+
+compare surface-south-noon | The surface
+compare surface-north-night | The surface at night
+compare colony-aerial-south | The colony from the air
+compare mole-unlit-day-front | The pod
+compare look-layer-1-cavern-by-lamp | A layer 1 cavern by lamp light
+compare look-layer-2-cavern-by-lamp | Layer 2 by lamp light
+compare structure-wreck-prospector-0002-no-night-vision | The wreck, as played
+compare screen-ore-processor-online | A terminal screen
+compare hud-pod-status-and-altimeter-surface | The pod HUD
+compare hud-scanner-tier-4-layer-2 | The scanner
+compare handbook-page-letter | The handbook
