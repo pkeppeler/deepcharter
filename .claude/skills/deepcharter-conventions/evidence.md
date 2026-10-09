@@ -1,6 +1,7 @@
 # Evidence and before/after stills
 
 - `test/evidence/` holds the PR evidence scenarios (see `tools/record-evidence.sh`). `tools/record-evidence.sh <scenario>` runs only that scenario's class (`-PclientTests`), found by scanning for the `EvidenceScenario` whose `name()` returns the id, so a recording takes the scenario's own time plus client start-up; an unknown id fails before a client starts. `--full-suite` runs the whole client suite instead, `--print-class` prints the class. When the Mac cannot render, add the `record` label to a PR whose body has a `Record: <scenario>` line (or run the `Record evidence` workflow with `pr` and `scenario`): CI runs the scenario headless, publishes its stills, GIF and MP4 to `pr-media/<pr>/`, and comments the markdown. Costs CI minutes, so only on request.
+- The README tour is refreshed with `tools/readme-tour.sh [item...]` (manifest `docs/readme-tour.tsv`). Run it after a PR that changes something the tour shows, and after an art PR. See [docs/tooling/readme-tour.md](../../../docs/tooling/readme-tour.md).
 - Before and after stills for an art PR (`design-tour`, the same views of the whole game):
   1. Record before on `main`, from a checkout or worktree of `main` (never switch the main checkout): `tools/record-evidence.sh design-tour`. It takes about 30 minutes and ends in `build/evidence/design-tour/screenshots`. Copy that directory away, because the next run replaces it.
   2. Record after on the PR branch the same way, and copy its `screenshots` directory away too.

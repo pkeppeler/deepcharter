@@ -1,0 +1,23 @@
+{
+  "default_block": "minecraft:stone",
+  "default_fluid": "minecraft:air",
+  "disable_mob_generation": true,
+  "legacy_random_source": false,
+  "material_rule": "deepcharter:surface",
+  "noise": {
+    "height": 384,
+    "min_y": -64
+  },
+  "noise_router": {
+    "chunk_surface_level": 0.0,
+    "continents": "deepcharter:surface/mesa_noise",
+    "depth": 0.0,
+    "erosion": "deepcharter:surface/basalt_noise",
+    "final_density": "deepcharter:surface/density",
+    "ridges": 0.0,
+    "temperature": 0.0,
+    "vegetation": 0.0
+  },
+  "sea_level": -64,
+  "spawn_target": []
+}

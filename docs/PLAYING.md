@@ -4,7 +4,7 @@ Deep Charter is a co-op Minecraft mod in the spirit of Motherload: drive a pod d
 
 You get two files from the host: `deepcharter-friends-{{VERSION}}.mrpack` (the client) and an address to join. The host also runs `deepcharter-server-{{VERSION}}.zip`.
 
-**Start a new world for this version.** The colony replaces what stands at the world spawn, so a world with a build there loses it.
+**Start a new world for this version.** The colony replaces what stands at the world spawn, so a world with a build there loses it. The surface terrain changed too: in an old world, new chunks have red regolith land and the old chunks keep their grass and trees, so the two meet in a hard seam. The old colony stays where it was, with no flat ground. A new world has none of this.
 
 ## Install (Prism Launcher)
 

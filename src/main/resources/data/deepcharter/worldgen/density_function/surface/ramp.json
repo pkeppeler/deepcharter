@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:clamp",
+  "input": {
+    "type": "minecraft:div",
+    "left": {
+      "type": "minecraft:sub",
+      "left": "deepcharter:surface/origin_distance",
+      "right": 56.0
+    },
+    "right": 80.0
+  },
+  "min": 0.0,
+  "max": 1.0
+}
