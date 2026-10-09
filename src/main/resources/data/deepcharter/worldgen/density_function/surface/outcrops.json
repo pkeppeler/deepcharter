@@ -18,13 +18,9 @@
     "type": "minecraft:add",
     "left": 4.0,
     "right": {
-      "type": "minecraft:mul",
-      "left": {
-        "type": "minecraft:add",
-        "left": "deepcharter:surface/rolling",
-        "right": 1.5
-      },
-      "right": 1.0
+      "type": "minecraft:add",
+      "left": "deepcharter:surface/rolling",
+      "right": 1.5
     }
   }
 }
