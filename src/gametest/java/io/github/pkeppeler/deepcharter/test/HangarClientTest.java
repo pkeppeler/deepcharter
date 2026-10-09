@@ -18,7 +18,10 @@ import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.hangar.HangarView;
 import io.github.pkeppeler.deepcharter.terminal.TerminalFeature;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.check;
 
 /**
  * Client GameTest for #222: the hangar console shows the price of every action inside the screen, at the GUI size of an
@@ -51,18 +54,17 @@ public class HangarClientTest implements FabricClientGameTest {
 	/** Every button and price or advance line lies inside the screen, a button holds its whole label, and no price line is under a button. */
 	private static String problem(HangarScreen screen, int advanceLeft) {
 		Font font = Minecraft.getInstance().font;
-		List<Button> buttons = screen.children().stream().filter(Button.class::isInstance).map(Button.class::cast).toList();
+		List<Button> buttons = ClientChecks.buttons(screen);
 		for (Button button : buttons) {
-			String label = button.getMessage().getString();
-			if (button.getX() < 0 || button.getY() < 0 || button.getRight() > screen.width || button.getBottom() > screen.height) {
-				return "'" + label + "' leaves the " + screen.width + " by " + screen.height + " screen";
+			String problem = ClientChecks.buttonLeavesScreen(screen, button);
+			if (problem.isEmpty() && button.getY() < screen.headerBottom()) {
+				problem = "'" + button.getMessage().getString() + "' starts at " + button.getY() + ", above the header text that ends at " + screen.headerBottom();
 			}
-			if (button.getY() < screen.headerBottom()) {
-				return "'" + label + "' starts at " + button.getY() + ", above the header text that ends at " + screen.headerBottom();
+			if (problem.isEmpty()) {
+				problem = ClientChecks.labelClipped(button);
 			}
-			int textWidth = font.width(label);
-			if (textWidth > button.getWidth()) {
-				return "'" + label + "' is " + textWidth + " wide in a button " + button.getWidth() + " wide";
+			if (!problem.isEmpty()) {
+				return problem;
 			}
 		}
 		if (screen.priceLines().isEmpty()) {
@@ -84,23 +86,14 @@ public class HangarClientTest implements FabricClientGameTest {
 		List<HangarScreen.PriceLine> drawn = new ArrayList<>(screen.priceLines());
 		drawn.addAll(screen.advanceLines());
 		for (HangarScreen.PriceLine line : drawn) {
-			int right = line.x() + font.width(line.text());
-			if (line.x() < 0 || line.y() < 0 || right > screen.width || line.y() + font.lineHeight > screen.height) {
-				return "the price line '" + line.text() + "' leaves the " + screen.width + " by " + screen.height + " screen";
+			String problem = ClientChecks.textLeavesScreen(screen, "the price line", line.x(), line.y(), line.text());
+			if (problem.isEmpty()) {
+				problem = ClientChecks.textUnderButton("the price line", line.x(), line.y(), line.text(), buttons);
 			}
-			for (Button button : buttons) {
-				if (line.x() < button.getRight() && button.getX() < right
-						&& line.y() < button.getBottom() && button.getY() < line.y() + font.lineHeight) {
-					return "the price line '" + line.text() + "' is under '" + button.getMessage().getString() + "'";
-				}
+			if (!problem.isEmpty()) {
+				return problem;
 			}
 		}
 		return "";
-	}
-
-	private static void check(boolean condition, String message) {
-		if (!condition) {
-			throw new AssertionError(message);
-		}
 	}
 }

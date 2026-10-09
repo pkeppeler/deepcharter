@@ -37,6 +37,8 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.check;
+
 /**
  * Client GameTest for #66. The visibility model and the page order are pure logic and are checked first, with no game running.
  * Then a screen driven by hand, then the real game: the key and the item open the screen, viewing a chapter marks it read on the
@@ -478,11 +480,5 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 			}
 		}
 		return -1;
-	}
-
-	private static void check(boolean condition, String message) {
-		if (!condition) {
-			throw new AssertionError(message);
-		}
 	}
 }

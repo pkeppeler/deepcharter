@@ -33,6 +33,8 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TerminalTestTypes;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.check;
+
 /**
  * Client GameTest for #59: the offline screen opens and renders, a part button puts a part in through the server, the screen
  * flips to online when the last part is in, a locked terminal's buttons are dead, and the server refuses an open request from
@@ -222,11 +224,5 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
 	private static List<CrtButton> buttons(ClientGameTestContext context, TerminalScreen screen) {
 		return context.computeOnClient(client -> screen.children().stream()
 				.filter(CrtButton.class::isInstance).map(CrtButton.class::cast).toList());
-	}
-
-	private static void check(boolean condition, String message) {
-		if (!condition) {
-			throw new AssertionError(message);
-		}
 	}
 }

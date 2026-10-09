@@ -34,7 +34,10 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.check;
 
 /**
  * Client GameTest for #68: the account HUD shows the charter's balance, the processor screen opens, and each sell button sells
@@ -153,7 +156,7 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 	}
 
 	private static Button button(OreProcessorScreen screen, String label) {
-		return screen.children().stream().filter(Button.class::isInstance).map(Button.class::cast)
+		return ClientChecks.buttons(screen).stream()
 				.filter(button -> button.getMessage().getString().equals(label)).findFirst()
 				.orElseThrow(() -> new AssertionError("no button '" + label + "' on the screen"));
 	}
@@ -161,16 +164,14 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 	/** Every button lies inside the screen, none overlaps another, and the order rows start under the account line. */
 	private static void checkLayout(ClientGameTestContext context, OreProcessorScreen screen, String when) {
 		String problem = context.computeOnClient(client -> {
-			List<Button> buttons = screen.children().stream().filter(Button.class::isInstance).map(Button.class::cast).toList();
+			List<Button> buttons = ClientChecks.buttons(screen);
 			for (Button button : buttons) {
-				if (button.getX() < 0 || button.getY() < 0 || button.getRight() > screen.width || button.getBottom() > screen.height) {
-					return button.getMessage().getString() + " leaves the " + screen.width + " by " + screen.height + " screen";
+				String buttonProblem = ClientChecks.buttonLeavesScreen(screen, button);
+				if (buttonProblem.isEmpty()) {
+					buttonProblem = ClientChecks.buttonOverlaps(button, buttons);
 				}
-				for (Button other : buttons) {
-					if (button != other && button.getX() < other.getRight() && other.getX() < button.getRight()
-							&& button.getY() < other.getBottom() && other.getY() < button.getBottom()) {
-						return button.getMessage().getString() + " overlaps " + other.getMessage().getString();
-					}
+				if (!buttonProblem.isEmpty()) {
+					return buttonProblem;
 				}
 			}
 			for (OrderRowButton row : screen.orderRows()) {
@@ -211,11 +212,5 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 
 	private static String hud(Minecraft client) {
 		return AccountHud.text().map(text -> text.getString()).orElse("");
-	}
-
-	private static void check(boolean condition, String message) {
-		if (!condition) {
-			throw new AssertionError(message);
-		}
 	}
 }

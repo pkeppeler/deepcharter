@@ -32,6 +32,8 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.check;
+
 /**
  * Client GameTest for #69: the pump screen shows the account and the parked pod's tank, its buttons are live only when a press
  * could work, a press buys through the server, and an account that cannot pay changes nothing.
@@ -140,11 +142,5 @@ public class FuelPumpClientTest implements FabricClientGameTest {
 				.filter(CrtButton.class::isInstance).map(CrtButton.class::cast)
 				.filter(button -> button.getMessage().getString().equals(label))
 				.findFirst().orElseThrow(() -> new AssertionError("no button " + label)).active);
-	}
-
-	private static void check(boolean condition, String message) {
-		if (!condition) {
-			throw new AssertionError(message);
-		}
 	}
 }

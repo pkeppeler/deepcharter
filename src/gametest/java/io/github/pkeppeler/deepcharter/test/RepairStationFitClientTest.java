@@ -23,7 +23,10 @@ import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.repair.RepairStationScreen;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.check;
 
 /**
  * Client GameTest for #268: the repair station fits the screen at the GUI size of an 854 by 480 window (about 427 by 240) and
@@ -94,14 +97,14 @@ public class RepairStationFitClientTest implements FabricClientGameTest {
 	/** Down from the last shown row scrolls one row and focuses the row that came into view; Up from the first row goes back. */
 	private static String keyProblem(RepairStationScreen screen) {
 		screen.scrollTo(0);
-		List<Button> buttons = buttons(screen);
+		List<Button> buttons = ClientChecks.buttons(screen);
 		Button last = buttons.get(screen.visibleRows() - 1);
 		screen.setFocused(last);
 		screen.keyPressed(new KeyEvent(InputConstants.KEY_DOWN, 0, 0));
 		if (screen.firstRow() != 1 || !(screen.getFocused() instanceof Button now) || now.getY() != last.getY()) {
 			return "Down from the last row did not scroll one row and focus the row that came into view";
 		}
-		Button first = buttons(screen).getFirst();
+		Button first = ClientChecks.buttons(screen).getFirst();
 		screen.setFocused(first);
 		screen.keyPressed(new KeyEvent(InputConstants.KEY_TAB, 0, InputConstants.MOD_SHIFT));
 		if (screen.firstRow() != 0 || !(screen.getFocused() instanceof Button back) || back.getY() != first.getY()) {
@@ -110,63 +113,47 @@ public class RepairStationFitClientTest implements FabricClientGameTest {
 		return "";
 	}
 
-	private static List<Button> buttons(RepairStationScreen screen) {
-		return screen.children().stream().filter(Button.class::isInstance).map(Button.class::cast).toList();
-	}
-
 	/** Every button and text line lies inside the screen, a button holds its whole label, and nothing overlaps. */
 	private static String stepProblem(RepairStationScreen screen, Set<String> seen) {
 		Font font = Minecraft.getInstance().font;
-		List<Button> buttons = buttons(screen);
+		List<Button> buttons = ClientChecks.buttons(screen);
 		List<RepairStationScreen.TextLine> lines = new ArrayList<>(screen.introLines());
 		lines.addAll(screen.textLines());
 		for (Button button : buttons) {
 			String label = button.getMessage().getString();
 			seen.add(label);
-			if (button.getX() < 0 || button.getY() < 0 || button.getRight() > screen.width || button.getBottom() > screen.height) {
-				return "'" + label + "' leaves the " + screen.width + " by " + screen.height + " screen";
+			String problem = ClientChecks.buttonLeavesScreen(screen, button);
+			if (problem.isEmpty()) {
+				problem = ClientChecks.labelClipped(button);
 			}
-			if (font.width(label) > button.getWidth()) {
-				return "'" + label + "' is " + font.width(label) + " wide in a button " + button.getWidth() + " wide";
+			if (problem.isEmpty()) {
+				problem = ClientChecks.buttonOverlaps(button, buttons);
 			}
-			for (Button other : buttons) {
-				if (other != button && overlap(button.getX(), button.getY(), button.getRight(), button.getBottom(),
-						other.getX(), other.getY(), other.getRight(), other.getBottom())) {
-					return "'" + label + "' overlaps '" + other.getMessage().getString() + "'";
-				}
+			if (!problem.isEmpty()) {
+				return problem;
 			}
 		}
 		for (RepairStationScreen.TextLine line : lines) {
 			int right = line.x() + font.width(line.text());
 			int bottom = line.y() + font.lineHeight;
-			if (line.x() < 0 || line.y() < 0 || right > screen.width || bottom > screen.height) {
-				return "the line '" + line.text() + "' leaves the " + screen.width + " by " + screen.height + " screen";
+			String leaves = ClientChecks.textLeavesScreen(screen, "the line", line.x(), line.y(), line.text());
+			if (!leaves.isEmpty()) {
+				return leaves;
 			}
 			if (!line.dim() && bottom > screen.listTop()) {
 				return "the line '" + line.text() + "' ends at " + bottom + ", past where the list starts at " + screen.listTop();
 			}
-			for (Button button : buttons) {
-				if (overlap(line.x(), line.y(), right, bottom, button.getX(), button.getY(), button.getRight(), button.getBottom())) {
-					return "the line '" + line.text() + "' is under '" + button.getMessage().getString() + "'";
-				}
+			String under = ClientChecks.textUnderButton("the line", line.x(), line.y(), line.text(), buttons);
+			if (!under.isEmpty()) {
+				return under;
 			}
 			for (RepairStationScreen.TextLine other : lines) {
-				if (other != line && overlap(line.x(), line.y(), right, bottom,
+				if (other != line && ClientChecks.overlap(line.x(), line.y(), right, bottom,
 						other.x(), other.y(), other.x() + font.width(other.text()), other.y() + font.lineHeight)) {
 					return "the line '" + line.text() + "' overlaps '" + other.text() + "'";
 				}
 			}
 		}
 		return "";
-	}
-
-	private static boolean overlap(int left, int top, int right, int bottom, int otherLeft, int otherTop, int otherRight, int otherBottom) {
-		return left < otherRight && otherLeft < right && top < otherBottom && otherTop < bottom;
-	}
-
-	private static void check(boolean condition, String message) {
-		if (!condition) {
-			throw new AssertionError(message);
-		}
 	}
 }

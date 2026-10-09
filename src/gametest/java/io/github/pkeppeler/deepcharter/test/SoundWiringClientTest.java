@@ -51,6 +51,8 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.check;
+
 /**
  * Client GameTest for #71: a listener on the sound manager confirms that each wired event plays. The pod loops, the
  * low-fuel beep, the terminal music, the typewriter, the sale, the purchase, the error and the music of every layer.
@@ -320,11 +322,5 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 	/** Waits on the wall clock, with what was awaited and what was heard in the failure. */
 	private static void await(ClientGameTestContext context, Heard heard, String what, Predicate<Minecraft> condition) {
 		ClientWait.until(context, what, condition, client -> "the client heard " + heard.played);
-	}
-
-	private static void check(boolean condition, String message) {
-		if (!condition) {
-			throw new AssertionError(message);
-		}
 	}
 }

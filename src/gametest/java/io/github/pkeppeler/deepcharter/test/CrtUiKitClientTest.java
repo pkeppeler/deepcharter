@@ -19,6 +19,8 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.check;
+
 /**
  * Client GameTest for #53: the typewriter timing and hook, then a real screen with a button and a text field.
  * The timing is pure logic, so it is checked first with explicit time steps and no game running.
@@ -170,11 +172,5 @@ public class CrtUiKitClientTest implements FabricClientGameTest {
 		check(screen.getNarrationMessage().getString().contains(screen.typewriter().text()),
 				"the narration reads the full typewriter text");
 		context.setScreen(() -> null);
-	}
-
-	private static void check(boolean condition, String message) {
-		if (!condition) {
-			throw new AssertionError(message);
-		}
 	}
 }

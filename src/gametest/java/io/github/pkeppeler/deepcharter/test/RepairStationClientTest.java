@@ -29,6 +29,8 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.check;
+
 /**
  * Client GameTest for #70: the repair station screen opens, and its repair and buy buttons send the actions the server
  * acts on (the server's answer is checked, not the screen's own state).
@@ -132,11 +134,5 @@ public class RepairStationClientTest implements FabricClientGameTest {
 	private static int carried(TestSingleplayerContext singleplayer, Consumable consumable) {
 		return singleplayer.getServer().computeOnServer(server ->
 				server.getPlayerList().getPlayers().getFirst().getInventory().countItem(RepairRegistry.item(consumable)));
-	}
-
-	private static void check(boolean condition, String message) {
-		if (!condition) {
-			throw new AssertionError(message);
-		}
 	}
 }

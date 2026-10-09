@@ -29,6 +29,8 @@ import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.check;
+
 /**
  * Client GameTest for #78. A screen driven by hand first: the Notes tab lists the notes, marks the unread ones, and opening one
  * reports it once. Then the real game: a charter finds two Notes through the block, the Notes tab lists them, opening one marks it
@@ -165,11 +167,5 @@ public class NotesClientTest implements FabricClientGameTest {
 		BlockPos pos = player.blockPosition().relative(Direction.NORTH, 2);
 		player.level().setBlock(pos, NoteBlock.stateOf(number), 3);
 		player.level().getBlockState(pos).useWithoutItem(player.level(), player, new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false));
-	}
-
-	private static void check(boolean condition, String message) {
-		if (!condition) {
-			throw new AssertionError(message);
-		}
 	}
 }

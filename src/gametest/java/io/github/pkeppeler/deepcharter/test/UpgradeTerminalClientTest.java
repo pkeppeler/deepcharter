@@ -33,6 +33,8 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.check;
+
 /**
  * Client GameTest for #73: the upgrade screen lists the parts of a track with their prices, marks the tiers above the Mole's cap
  * and shows the cap, buys through the server, shows the installed part (and the cap on it), and leaves a part the charter cannot
@@ -129,11 +131,5 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
 	private static List<String> labels(Minecraft client,UpgradeScreen screen) {
 		return screen.children().stream().filter(CrtButton.class::isInstance).map(button -> ((CrtButton) button).getMessage().getString())
 				.map(label -> label.startsWith("> ") ? label.substring(2) : label).toList();
-	}
-
-	private static void check(boolean condition, String message) {
-		if (!condition) {
-			throw new AssertionError(message);
-		}
 	}
 }

@@ -24,6 +24,8 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.check;
+
 /**
  * Client GameTest for #72: the real client uses the contract terminal on a dedicated server with a mock player as the other
  * person. The client founds a charter by typing a name, the mock applies and is turned down, applies again and is approved,
@@ -153,11 +155,5 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
 		boolean left = two.server().computeOnServer(server -> Charters.charterOfOrThrow(server, real).isEmpty());
 		check(left, "the member left the charter on the server");
 		context.setScreen(() -> null);
-	}
-
-	private static void check(boolean condition, String message) {
-		if (!condition) {
-			throw new AssertionError(message);
-		}
 	}
 }
