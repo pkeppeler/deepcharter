@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -21,9 +23,13 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.level.EmptyBlockGetter;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeResolver;
 import net.minecraft.world.level.block.state.BlockState;
@@ -34,6 +40,7 @@ import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
 
+import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.colony.ColonyBuilder;
 
 /**
@@ -105,6 +112,51 @@ public class SurfaceTerrainTest {
 		missing.removeAll(found);
 		if (!missing.isEmpty()) {
 			throw fail(helper, "the surface lacks %s; it holds %s", missing, found);
+		}
+		helper.succeed();
+	}
+
+	// The motion-blocking heightmaps read the vanilla block tag minecraft:blocks_motion_no_leaves, not a block's collision (#350).
+	@GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+	public void theMotionBlockingHeightmapsAgreeWithTheWorldSurface(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		ChunkGenerator generator = level.getChunkSource().getGenerator();
+		RandomState random = level.getChunkSource().randomState();
+		Map<String, BlockPos> columns = new LinkedHashMap<>();
+		columns.put("plains", surveyColumn(helper, level, "deepcharter:regolith_plains", 0));
+		columns.put("mesa top", surveyColumn(helper, level, "deepcharter:mesa_country", 0));
+		columns.put("basalt", surveyColumn(helper, level, "deepcharter:basalt_field", BASALT_MIN_RISE));
+		columns.put("crater floor", craterColumn(helper, generator, level, random));
+		columns.put("colony plateau", new BlockPos(0, PAD_GROUND, 0));
+		columns.put("colony plateau edge", new BlockPos(PAD_CHECK_RADIUS, PAD_GROUND, -PAD_CHECK_RADIUS));
+		columns.put("west of the plateau", new BlockPos(-60, PAD_GROUND, 0));
+		for (Map.Entry<String, BlockPos> column : columns.entrySet()) {
+			BlockPos at = column.getValue();
+			level.getChunk(at.getX() >> 4, at.getZ() >> 4);
+			int surface = level.getHeight(Heightmap.Types.WORLD_SURFACE, at.getX(), at.getZ());
+			int blocking = level.getHeight(Heightmap.Types.MOTION_BLOCKING, at.getX(), at.getZ());
+			int blockingNoLeaves = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, at.getX(), at.getZ());
+			if (blocking != surface || blockingNoLeaves != surface) {
+				throw fail(helper, "%s at %d %d: WORLD_SURFACE %d, MOTION_BLOCKING %d, MOTION_BLOCKING_NO_LEAVES %d, expected all equal",
+						column.getKey(), at.getX(), at.getZ(), surface, blocking, blockingNoLeaves);
+			}
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void everyDeepCharterBlockWithCollisionBlocksMotionInTheHeightmaps(GameTestHelper helper) {
+		Set<String> missing = new TreeSet<>();
+		for (Block block : BuiltInRegistries.BLOCK) {
+			Identifier id = BuiltInRegistries.BLOCK.getKey(block);
+			BlockState state = block.defaultBlockState();
+			boolean collides = !state.getCollisionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).isEmpty();
+			if (id.getNamespace().equals(DeepCharter.MOD_ID) && collides && !state.is(BlockTags.BLOCKS_MOTION_NO_LEAVES)) {
+				missing.add(id.toString());
+			}
+		}
+		if (!missing.isEmpty()) {
+			throw fail(helper, "these blocks have collision but are not in minecraft:blocks_motion_no_leaves, so the heightmaps skip them: %s", missing);
 		}
 		helper.succeed();
 	}
@@ -292,6 +344,18 @@ public class SurfaceTerrainTest {
 			}
 		}
 		throw fail(helper, "no stretch of %s in the %d blocks around the origin", biome, SURVEY_SPAN);
+	}
+
+	/** A column in a crater: its ground is at least 2 blocks below the pad. */
+	private static BlockPos craterColumn(GameTestHelper helper, ChunkGenerator generator, ServerLevel level, RandomState random) {
+		for (int x = -SURVEY_SPAN / 2; x < SURVEY_SPAN / 2; x += SURVEY_STEP) {
+			for (int z = -SURVEY_SPAN / 2; z < SURVEY_SPAN / 2; z += SURVEY_STEP) {
+				if (height(generator, level, random, x, z) <= PAD_GROUND - 2) {
+					return new BlockPos(x, PAD_GROUND, z);
+				}
+			}
+		}
+		throw fail(helper, "no crater in the %d blocks around the origin", SURVEY_SPAN);
 	}
 
 	private static String biomeAt(BiomeResolver resolver, int x, int z) {

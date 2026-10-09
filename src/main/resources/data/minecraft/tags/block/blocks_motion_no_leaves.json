@@ -1,0 +1,29 @@
+{
+  "replace": false,
+  "values": [
+    "deepcharter:basalt_outcrop",
+    "deepcharter:breach_crust",
+    "deepcharter:bronzium_ore",
+    "deepcharter:cicatrium_ore",
+    "deepcharter:company_lamp",
+    "deepcharter:company_rock",
+    "deepcharter:conduit",
+    "deepcharter:contract_terminal",
+    "deepcharter:einsteinium_ore",
+    "deepcharter:fuel_pump",
+    "deepcharter:gas_pocket",
+    "deepcharter:goldium_ore",
+    "deepcharter:hangar_console",
+    "deepcharter:ironium_ore",
+    "deepcharter:ochre_regolith",
+    "deepcharter:ore_processor",
+    "deepcharter:platinium_ore",
+    "deepcharter:regolith",
+    "deepcharter:regolith_packed",
+    "deepcharter:regolith_rock",
+    "deepcharter:repair_station",
+    "deepcharter:silverium_ore",
+    "deepcharter:slag_brick",
+    "deepcharter:upgrade_terminal"
+  ]
+}
