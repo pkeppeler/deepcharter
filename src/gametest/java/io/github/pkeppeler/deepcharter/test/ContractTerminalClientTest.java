@@ -24,7 +24,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
-import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.check;
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 /**
  * Client GameTest for #72: the real client uses the contract terminal on a dedicated server with a mock player as the other
@@ -52,12 +52,12 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
 
 			ContractScreen screen = open(context, terminal);
 			awaitState(context, state -> state.role() == Role.NONE);
-			check(context.computeOnClient(client -> screen.statusLine().getString()).contains("NO CHARTER"), "a player with no charter is told so");
+			require(context.computeOnClient(client -> screen.statusLine().getString()).contains("NO CHARTER"), "a player with no charter is told so");
 
 			refusalsShowTheirMessage(context, screen);
 			foundByTypingAName(context);
 			Charter charter = two.server().computeOnServer(server -> Charters.charterOfOrThrow(server, real).orElseThrow());
-			check(charter.name().equals(CHARTER) && charter.isDirector(real), "the server has the typed charter, directed by the client, got " + charter);
+			require(charter.name().equals(CHARTER) && charter.isDirector(real), "the server has the typed charter, directed by the client, got " + charter);
 
 			anotherPlayerAppliesAndIsDenied(context, two, mock, charter);
 			anotherPlayerAppliesAndIsApproved(context, two, mock, real, charter);
@@ -93,8 +93,8 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
 		context.clickScreenButton("FOUND CHARTER");
 		awaitState(context, state -> state.notice().isPresent());
 		String expected = context.computeOnClient(client -> Component.translatable(CharterRefusal.INVALID_NAME.translationKey()).getString());
-		check(refusalShown(context).contains(expected), "the blank name's refusal reads '" + expected + "', the screen shows '" + refusalShown(context) + "'");
-		check(screen(context).state().orElseThrow().role() == Role.NONE, "a refused founding leaves the player on no charter");
+		require(refusalShown(context).contains(expected), "the blank name's refusal reads '" + expected + "', the screen shows '" + refusalShown(context) + "'");
+		require(screen(context).state().orElseThrow().role() == Role.NONE, "a refused founding leaves the player on no charter");
 	}
 
 	private static void foundByTypingAName(ClientGameTestContext context) {
@@ -102,22 +102,20 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
 		context.clickScreenButton("FOUND CHARTER");
 		awaitState(context, state -> state.role() == Role.DIRECTOR);
 		ContractState state = screen(context).state().orElseThrow();
-		check(state.charter().equals(CHARTER) && state.notice().isEmpty(), "the Director screen names the charter and shows no refusal, got " + state);
-		check(context.computeOnClient(client -> screen(context).statusLine().getString()).contains("DIRECTOR OF " + CHARTER), "the status says who directs what");
+		require(state.charter().equals(CHARTER) && state.notice().isEmpty(), "the Director screen names the charter and shows no refusal, got " + state);
+		require(context.computeOnClient(client -> screen(context).statusLine().getString()).contains("DIRECTOR OF " + CHARTER), "the status says who directs what");
 	}
 
 	private static void anotherPlayerAppliesAndIsDenied(ClientGameTestContext context, TwoPlayerServer two, UUID mock, Charter charter) {
 		two.server().runOnServer(server -> {
-			if (Charters.apply(server, mock, charter.id()).isPresent()) {
-				throw new AssertionError("the mock's application should succeed");
-			}
+			require(Charters.apply(server, mock, charter.id()).isEmpty(), "the mock's application should succeed");
 		});
 		awaitState(context, state -> state.applicants().equals(List.of(MOCK_NAME)));
 		context.clickScreenButton("DENY " + MOCK_NAME.toUpperCase());
 		awaitState(context, state -> state.applicants().isEmpty());
 		boolean turnedDown = two.server().computeOnServer(server -> Charters.charterOfOrThrow(server, mock).isEmpty()
 				&& Charters.findOrThrow(server, charter.id()).orElseThrow().applications().isEmpty());
-		check(turnedDown, "a denied applicant is on no charter and has no application");
+		require(turnedDown, "a denied applicant is on no charter and has no application");
 	}
 
 	private static void anotherPlayerAppliesAndIsApproved(ClientGameTestContext context, TwoPlayerServer two, UUID mock, UUID real, Charter charter) {
@@ -126,7 +124,7 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
 		context.clickScreenButton("APPROVE " + MOCK_NAME.toUpperCase());
 		awaitState(context, state -> state.applicants().isEmpty());
 		Charter after = two.server().computeOnServer(server -> Charters.charterOfOrThrow(server, mock).orElseThrow());
-		check(after.id().equals(charter.id()) && !after.isDirector(mock) && after.isDirector(real), "the mock is crew of the client's charter");
+		require(after.id().equals(charter.id()) && !after.isDirector(mock) && after.isDirector(real), "the mock is crew of the client's charter");
 	}
 
 	/** The Director leaves, so the mock takes over; the client applies to the mock's charter, is approved, and leaves as crew. */
@@ -139,21 +137,19 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
 		context.clickScreenButton("FOUND CHARTER");
 		awaitState(context, state -> state.notice().isPresent());
 		String taken = context.computeOnClient(client -> Component.translatable(CharterRefusal.NAME_TAKEN.translationKey()).getString());
-		check(refusalShown(context).contains(taken), "a taken name's refusal reads '" + taken + "', the screen shows '" + refusalShown(context) + "'");
+		require(refusalShown(context).contains(taken), "a taken name's refusal reads '" + taken + "', the screen shows '" + refusalShown(context) + "'");
 
 		context.clickScreenButton("APPLY: " + CHARTER.toUpperCase());
 		awaitState(context, state -> state.role() == Role.APPLICANT && state.charter().equals(CHARTER));
 		two.server().runOnServer(server -> {
-			if (Charters.approve(server, mock, real).isPresent()) {
-				throw new AssertionError("the mock Director's approval should succeed");
-			}
+			require(Charters.approve(server, mock, real).isEmpty(), "the mock Director's approval should succeed");
 		});
 		awaitState(context, state -> state.role() == Role.CREW);
 
 		context.clickScreenButton("LEAVE CHARTER");
 		awaitState(context, state -> state.role() == Role.NONE);
 		boolean left = two.server().computeOnServer(server -> Charters.charterOfOrThrow(server, real).isEmpty());
-		check(left, "the member left the charter on the server");
+		require(left, "the member left the charter on the server");
 		context.setScreen(() -> null);
 	}
 }

@@ -24,6 +24,8 @@ import io.github.pkeppeler.deepcharter.pod.TowTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+
 /**
  * Client GameTest: a remote client sees a tow. The mock pilot drives a tower, and the real client, which rides nothing, sees the
  * synced cable on the pod behind it, sees that pod follow, and sees the cable come off.
@@ -59,18 +61,12 @@ public class TowingClientTest implements FabricClientGameTest {
 			Vec3 towedEnd = context.computeOnClient(client -> pod(client, rig.towed()).position());
 			Vec3 towerEnd = context.computeOnClient(client -> pod(client, rig.tower()).position());
 			double followed = towedEnd.subtract(towedStart).horizontalDistance();
-			if (followed < MIN_FOLLOWED_BLOCKS) {
-				throw new AssertionError("The client should see the towed pod follow its tower, it moved " + followed + " blocks");
-			}
+			require(!(followed < MIN_FOLLOWED_BLOCKS), "The client should see the towed pod follow its tower, it moved " + followed + " blocks");
 			double gap = towedEnd.distanceTo(towerEnd);
-			if (gap > TowTuning.DEFAULT.trailDistance() + CLIENT_LAG_BLOCKS) {
-				throw new AssertionError("The client should see the towed pod within the cable's trail of its tower, it is " + gap + " blocks away");
-			}
+			require(!(gap > TowTuning.DEFAULT.trailDistance() + CLIENT_LAG_BLOCKS), "The client should see the towed pod within the cable's trail of its tower, it is " + gap + " blocks away");
 
 			two.server().runOnServer(server -> {
-				if (!PodTowing.detach((PodEntity) server.overworld().getEntity(rig.towed()))) {
-					throw new AssertionError("the towed pod should have a cable to take off");
-				}
+				require(PodTowing.detach((PodEntity) server.overworld().getEntity(rig.towed())), "the towed pod should have a cable to take off");
 			});
 			ClientWait.until(context, "the client sees the cable come off the towed pod", client -> pod(client, rig.towed()) != null
 					&& !PodTowing.isTowed(pod(client, rig.towed())));
@@ -93,9 +89,7 @@ public class TowingClientTest implements FabricClientGameTest {
 		two.mock().teleportTo(level, at, 0, 0);
 		PodEntity tower = spawn(level, at);
 		PodEntity towed = spawn(level, at.add(0, 0, -2));
-		if (!two.mock().player().startRiding(tower)) {
-			throw new AssertionError("the mock pilot could not mount the tower");
-		}
+		require(two.mock().player().startRiding(tower), "the mock pilot could not mount the tower");
 		PodTowing.attach(tower, towed);
 		return new Rig(tower.getUUID(), towed.getUUID());
 	}

@@ -14,6 +14,8 @@ import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+
 /**
  * Client GameTest for #52: the real client is told its charter's name and balance, is told again when they change, is told
  * when it joins as crew and when its Director changes, and is told its charter again when it reconnects.
@@ -39,9 +41,7 @@ public class CharterCoreClientTest implements FabricClientGameTest {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			singleplayer.getServer().runOnServer(server -> {
 				UUID player = server.getPlayerList().getPlayers().getFirst().getUUID();
-				if (Charters.found(server, player, NAME).isPresent()) {
-					throw new AssertionError("founding should succeed");
-				}
+				require(Charters.found(server, player, NAME).isEmpty(), "founding should succeed");
 				Charters.deposit(server, Charters.charterOfOrThrow(server, player).orElseThrow().id(), FIRST_BALANCE);
 			});
 			ClientWait.until(context, "the founded charter at its first balance", client -> ClientCharter.view().filter(view -> view.name().equals(NAME) && view.balance() == FIRST_BALANCE).isPresent(), client -> "charter " + ClientCharter.view());
@@ -68,31 +68,23 @@ public class CharterCoreClientTest implements FabricClientGameTest {
 					.map(player -> player.getUUID()).filter(uuid -> !uuid.equals(mock)).findFirst().orElseThrow());
 
 			CharterId id = two.server().computeOnServer(server -> {
-				if (Charters.found(server, mock, TWO_PLAYER_NAME).isPresent()) {
-					throw new AssertionError("founding should succeed");
-				}
+				require(Charters.found(server, mock, TWO_PLAYER_NAME).isEmpty(), "founding should succeed");
 				return Charters.charterOfOrThrow(server, mock).orElseThrow().id();
 			});
 			two.server().runOnServer(server -> {
-				if (Charters.apply(server, real, id).isPresent() || Charters.approve(server, mock, real).isPresent()) {
-					throw new AssertionError("applying and approving should succeed");
-				}
+				require(Charters.apply(server, real, id).isEmpty() && Charters.approve(server, mock, real).isEmpty(), "applying and approving should succeed");
 			});
 			ClientWait.until(context, "the two-person charter", client -> ClientCharter.view().filter(view -> view.name().equals(TWO_PLAYER_NAME) && view.people() == 2 && !view.director()).isPresent(), client -> "charter " + ClientCharter.view());
 
 			two.server().runOnServer(server -> {
-				if (Charters.leave(server, mock).isPresent()) {
-					throw new AssertionError("the Director leaving should succeed");
-				}
+				require(Charters.leave(server, mock).isEmpty(), "the Director leaving should succeed");
 			});
 			ClientWait.until(context, "the charter down to one person with the director", client -> ClientCharter.view().filter(view -> view.people() == 1 && view.director()).isPresent(), client -> "charter " + ClientCharter.view());
 
 			two.connection().close();
 			ClientWait.until(context, "the client out of the world", client -> client.level == null);
 			for (int tick = 0; two.server().computeOnServer(server -> server.getPlayerCount()) > MOCK_ONLY; tick++) {
-				if (tick > CLIENT_TICK_FUSE) {
-					throw new AssertionError("the server never dropped the disconnected client");
-				}
+				require(tick <= CLIENT_TICK_FUSE, "the server never dropped the disconnected client");
 				context.waitTick();
 			}
 			try (var connection = two.server().connect()) {

@@ -12,8 +12,6 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.core.BlockPos;
@@ -26,7 +24,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
-import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.check;
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 /**
  * Client GameTest for #268: the repair station fits the screen at the GUI size of an 854 by 480 window (about 427 by 240) and
@@ -45,9 +43,7 @@ public class RepairStationFitClientTest implements FabricClientGameTest {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			RepairStationClientTest.Scene scene = singleplayer.getServer().computeOnServer(RepairStationClientTest::setUp);
 			singleplayer.getServer().runOnServer(server -> {
-				if (Charters.deposit(server, scene.charter().id(), LONGEST_DEPOSIT).isPresent()) {
-					throw new AssertionError("funding should succeed");
-				}
+				require(Charters.deposit(server, scene.charter().id(), LONGEST_DEPOSIT).isEmpty(), "funding should succeed");
 			});
 			ClientWait.until(context, "the account above the longest deposit", client -> ClientCharter.view().map(charter -> charter.balance() > LONGEST_DEPOSIT).orElse(false),
 					client -> "charter " + ClientCharter.view());
@@ -60,100 +56,90 @@ public class RepairStationFitClientTest implements FabricClientGameTest {
 					context.setScreen(() -> new RepairStationScreen(view));
 					RepairStationScreen screen = context.computeOnClient(client -> (RepairStationScreen) client.gui.screen());
 					context.runOnClient(client -> screen.resize(size[0], size[1]));
-					String problem = context.computeOnClient(client -> problem(screen, size[2]));
-					check(problem.isEmpty(), "at " + size[0] + " by " + size[1] + (at == farAway ? " without a pod" : " with a pod") + ": " + problem);
+					ClientChecks.requireNone("at " + size[0] + " by " + size[1] + (at == farAway ? " without a pod" : " with a pod"),
+							context.computeOnClient(client -> problem(screen, size[2])));
 				}
 			}
 			context.setScreen(() -> null);
 		}
 	}
 
-	private static String problem(RepairStationScreen screen, int fewestRows) {
+	private static Optional<String> problem(RepairStationScreen screen, int fewestRows) {
 		if (screen.visibleRows() < fewestRows) {
-			return "the list shows " + screen.visibleRows() + " rows, fewer than " + fewestRows;
+			return Optional.of("the list shows " + screen.visibleRows() + " rows, fewer than " + fewestRows);
 		}
 		if (!screen.getNarrationMessage().getString().contains("OF " + screen.rowCount())) {
-			return "the narration does not say which rows are shown: " + screen.getNarrationMessage().getString();
+			return Optional.of("the narration does not say which rows are shown: " + screen.getNarrationMessage().getString());
 		}
 		Set<String> seen = new HashSet<>();
 		screen.scrollTo(0);
 		for (int first = 0; first < screen.rowCount(); first++) {
 			screen.scrollTo(first);
-			String problem = stepProblem(screen, seen);
-			if (!problem.isEmpty()) {
-				return "scrolled to row " + screen.firstRow() + ": " + problem;
+			Optional<String> problem = stepProblem(screen, seen);
+			if (problem.isPresent()) {
+				return Optional.of("scrolled to row " + screen.firstRow() + ": " + problem.get());
 			}
 		}
 		if (!seen.contains(LAST_ROW)) {
-			return "the list never shows '" + LAST_ROW + "'";
+			return Optional.of("the list never shows '" + LAST_ROW + "'");
 		}
 		// The rows, and CLOSE.
 		if (seen.size() != screen.rowCount() + 1) {
-			return "the list shows " + (seen.size() - 1) + " rows of " + screen.rowCount();
+			return Optional.of("the list shows " + (seen.size() - 1) + " rows of " + screen.rowCount());
 		}
 		return keyProblem(screen);
 	}
 
 	/** Down from the last shown row scrolls one row and focuses the row that came into view; Up from the first row goes back. */
-	private static String keyProblem(RepairStationScreen screen) {
+	private static Optional<String> keyProblem(RepairStationScreen screen) {
 		screen.scrollTo(0);
 		List<Button> buttons = ClientChecks.buttons(screen);
 		Button last = buttons.get(screen.visibleRows() - 1);
 		screen.setFocused(last);
 		screen.keyPressed(new KeyEvent(InputConstants.KEY_DOWN, 0, 0));
 		if (screen.firstRow() != 1 || !(screen.getFocused() instanceof Button now) || now.getY() != last.getY()) {
-			return "Down from the last row did not scroll one row and focus the row that came into view";
+			return Optional.of("Down from the last row did not scroll one row and focus the row that came into view");
 		}
 		Button first = ClientChecks.buttons(screen).getFirst();
 		screen.setFocused(first);
 		screen.keyPressed(new KeyEvent(InputConstants.KEY_TAB, 0, InputConstants.MOD_SHIFT));
 		if (screen.firstRow() != 0 || !(screen.getFocused() instanceof Button back) || back.getY() != first.getY()) {
-			return "Shift+Tab from the first row did not scroll back one row and focus it";
+			return Optional.of("Shift+Tab from the first row did not scroll back one row and focus it");
 		}
-		return "";
+		return Optional.empty();
 	}
 
 	/** Every button and text line lies inside the screen, a button holds its whole label, and nothing overlaps. */
-	private static String stepProblem(RepairStationScreen screen, Set<String> seen) {
-		Font font = Minecraft.getInstance().font;
+	private static Optional<String> stepProblem(RepairStationScreen screen, Set<String> seen) {
 		List<Button> buttons = ClientChecks.buttons(screen);
 		List<RepairStationScreen.TextLine> lines = new ArrayList<>(screen.introLines());
 		lines.addAll(screen.textLines());
 		for (Button button : buttons) {
 			String label = button.getMessage().getString();
 			seen.add(label);
-			String problem = ClientChecks.buttonLeavesScreen(screen, button);
-			if (problem.isEmpty()) {
-				problem = ClientChecks.labelClipped(button);
-			}
-			if (problem.isEmpty()) {
-				problem = ClientChecks.buttonOverlaps(button, buttons);
-			}
-			if (!problem.isEmpty()) {
+			Optional<String> problem = ClientChecks.buttonLeavesScreen(screen, button)
+					.or(() -> ClientChecks.labelClipped(button))
+					.or(() -> ClientChecks.buttonOverlaps(button, buttons));
+			if (problem.isPresent()) {
 				return problem;
 			}
 		}
 		for (RepairStationScreen.TextLine line : lines) {
-			int right = line.x() + font.width(line.text());
-			int bottom = line.y() + font.lineHeight;
-			String leaves = ClientChecks.textLeavesScreen(screen, "the line", line.x(), line.y(), line.text());
-			if (!leaves.isEmpty()) {
-				return leaves;
-			}
-			if (!line.dim() && bottom > screen.listTop()) {
-				return "the line '" + line.text() + "' ends at " + bottom + ", past where the list starts at " + screen.listTop();
-			}
-			String under = ClientChecks.textUnderButton("the line", line.x(), line.y(), line.text(), buttons);
-			if (!under.isEmpty()) {
-				return under;
+			ClientChecks.Box box = ClientChecks.Box.ofText(line.x(), line.y(), line.text());
+			Optional<String> problem = ClientChecks.textLeavesScreen(screen, "the line", line.x(), line.y(), line.text())
+					.or(() -> !line.dim() && box.bottom() > screen.listTop()
+							? Optional.of("the line '" + line.text() + "' ends at " + box.bottom() + ", past where the list starts at " + screen.listTop())
+							: Optional.empty())
+					.or(() -> ClientChecks.textUnderButton("the line", line.x(), line.y(), line.text(), buttons));
+			if (problem.isPresent()) {
+				return problem;
 			}
 			for (RepairStationScreen.TextLine other : lines) {
-				if (other != line && ClientChecks.overlap(line.x(), line.y(), right, bottom,
-						other.x(), other.y(), other.x() + font.width(other.text()), other.y() + font.lineHeight)) {
-					return "the line '" + line.text() + "' overlaps '" + other.text() + "'";
+				if (other != line && ClientChecks.overlaps(box, ClientChecks.Box.ofText(other.x(), other.y(), other.text()))) {
+					return Optional.of("the line '" + line.text() + "' overlaps '" + other.text() + "'");
 				}
 			}
 		}
-		return "";
+		return Optional.empty();
 	}
 }

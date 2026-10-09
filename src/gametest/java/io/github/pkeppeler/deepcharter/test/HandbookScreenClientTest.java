@@ -37,7 +37,7 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
-import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.check;
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 /**
  * Client GameTest for #66. The visibility model and the page order are pure logic and are checked first, with no game running.
@@ -103,7 +103,7 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 
 	private static void expectVisibility(Set<Identifier> completed, HandbookVisibility... expected) {
 		List<HandbookVisibility> actual = HandbookVisibility.of(directives(), completed);
-		check(actual.equals(List.of(expected)), "with " + completed.size() + " directives done expected " + List.of(expected) + ", got " + actual);
+		require(actual.equals(List.of(expected)), "with " + completed.size() + " directives done expected " + List.of(expected) + ", got " + actual);
 	}
 
 	private static void nothingDoneShowsOneChapterAndPreviewsTheNext() {
@@ -123,7 +123,7 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 	private static void aLaterDirectiveDoneOutOfOrderSpoilsNothing() {
 		expectVisibility(done(1, 3), HandbookVisibility.FULL, HandbookVisibility.FULL, HandbookVisibility.PREVIEW, HandbookVisibility.CLASSIFIED);
 		expectVisibility(done(4), HandbookVisibility.FULL, HandbookVisibility.PREVIEW, HandbookVisibility.CLASSIFIED, HandbookVisibility.CLASSIFIED);
-		check(HandbookVisibility.of(List.of(), Set.of()).isEmpty(), "no chapters gives no visibility");
+		require(HandbookVisibility.of(List.of(), Set.of()).isEmpty(), "no chapters gives no visibility");
 	}
 
 	private static void everythingDoneLeavesNothingClassified() {
@@ -148,20 +148,20 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 	private static void pagesAreBoundInOrderWithVisibilityOnTheChapters() {
 		List<HandbookPage> pages = HandbookPages.of(chapters(), done(1));
 		long contract = pages.stream().filter(HandbookPage.Contract.class::isInstance).count();
-		check(contract >= 1 && contract == keysFrom("deepcharter.handbook.appendix.page."),
+		require(contract >= 1 && contract == keysFrom("deepcharter.handbook.appendix.page."),
 				"Appendix A has a page for each appendix.page.N key, and at least one: " + contract + " pages, " + keysFrom("deepcharter.handbook.appendix.page.") + " keys");
-		check(pages.size() == FRONT_PAGES + CHAPTERS + 1 + contract, "the pages are the front pages, the chapters, the end page and Appendix A, got " + pages.size());
-		check(pages.get(0) instanceof HandbookPage.Cover, "the cover comes first");
-		check(pages.get(1) instanceof HandbookPage.Slip, "the issue slip comes second");
-		check(pages.get(2) instanceof HandbookPage.Letter, "the Founder's letter comes third");
-		check(pages.get(3) instanceof HandbookPage.Contents && pages.get(4) instanceof HandbookPage.Contents, "the contents come next, over two pages");
-		check(pages.get(FRONT_PAGES + CHAPTERS) instanceof HandbookPage.Appendix, "the end page comes after the chapters");
-		check(pages.subList(FRONT_PAGES + CHAPTERS + 1, pages.size()).stream().allMatch(HandbookPage.Contract.class::isInstance), "Appendix A comes last");
+		require(pages.size() == FRONT_PAGES + CHAPTERS + 1 + contract, "the pages are the front pages, the chapters, the end page and Appendix A, got " + pages.size());
+		require(pages.get(0) instanceof HandbookPage.Cover, "the cover comes first");
+		require(pages.get(1) instanceof HandbookPage.Slip, "the issue slip comes second");
+		require(pages.get(2) instanceof HandbookPage.Letter, "the Founder's letter comes third");
+		require(pages.get(3) instanceof HandbookPage.Contents && pages.get(4) instanceof HandbookPage.Contents, "the contents come next, over two pages");
+		require(pages.get(FRONT_PAGES + CHAPTERS) instanceof HandbookPage.Appendix, "the end page comes after the chapters");
+		require(pages.subList(FRONT_PAGES + CHAPTERS + 1, pages.size()).stream().allMatch(HandbookPage.Contract.class::isInstance), "Appendix A comes last");
 		HandbookVisibility[] expected = {HandbookVisibility.FULL, HandbookVisibility.FULL, HandbookVisibility.PREVIEW, HandbookVisibility.CLASSIFIED};
 		for (int chapter = 1; chapter <= CHAPTERS; chapter++) {
 			HandbookPage.Chapter page = (HandbookPage.Chapter) pages.get(FRONT_PAGES + chapter - 1);
-			check(page.number() == chapter && page.id().equals(chapterId(chapter)), "chapter " + chapter + " is in handbook order");
-			check(page.visibility() == expected[chapter - 1], "chapter " + chapter + " should be " + expected[chapter - 1] + ", was " + page.visibility());
+			require(page.number() == chapter && page.id().equals(chapterId(chapter)), "chapter " + chapter + " is in handbook order");
+			require(page.visibility() == expected[chapter - 1], "chapter " + chapter + " should be " + expected[chapter - 1] + ", was " + page.visibility());
 		}
 	}
 
@@ -205,16 +205,16 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 	 */
 	private static void textPagesComeBeforeTheirChapterAndOnlyForFullChapters() {
 		List<HandbookPage> pages = HandbookPages.of(realChapters(), done(1));
-		check(keysFrom("deepcharter.handbook.chapter.deepcharter.back_online.text.") == 2, "back_online has two text keys in the language file");
-		check(keysFrom("deepcharter.handbook.chapter.deepcharter.welcome.text.") == 1, "welcome has one text key in the language file");
+		require(keysFrom("deepcharter.handbook.chapter.deepcharter.back_online.text.") == 2, "back_online has two text keys in the language file");
+		require(keysFrom("deepcharter.handbook.chapter.deepcharter.welcome.text.") == 1, "welcome has one text key in the language file");
 		List<String> chapterPages = pages.stream().filter(page -> page instanceof HandbookPage.ChapterText || page instanceof HandbookPage.Chapter)
 				.map(HandbookScreenClientTest::describe).toList();
 		List<String> expected = List.of("text:welcome:1/1", "chapter:welcome:FULL", "text:back_online:1/2", "text:back_online:2/2", "chapter:back_online:FULL",
 				"chapter:meet_the_mole:PREVIEW", "chapter:fuel_is_life:CLASSIFIED", "chapter:every_sale_counts:CLASSIFIED");
-		check(chapterPages.equals(expected), "the chapter pages should be " + expected + ", got " + chapterPages);
-		check(pages.stream().filter(HandbookPage.Contents.class::isInstance).count() == 2, "five chapters take two contents pages");
+		require(chapterPages.equals(expected), "the chapter pages should be " + expected + ", got " + chapterPages);
+		require(pages.stream().filter(HandbookPage.Contents.class::isInstance).count() == 2, "five chapters take two contents pages");
 		List<HandbookPage> none = HandbookPages.of(realChapters(), Set.of());
-		check(none.stream().filter(HandbookPage.ChapterText.class::isInstance).map(page -> ((HandbookPage.ChapterText) page).id())
+		require(none.stream().filter(HandbookPage.ChapterText.class::isInstance).map(page -> ((HandbookPage.ChapterText) page).id())
 				.allMatch(real("welcome")::equals), "with nothing done only the first chapter has text pages");
 	}
 
@@ -244,10 +244,10 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 					}
 				}
 			}
-			check(opened.equals(expected), "the contents should open the pages " + expected + ", opened " + opened);
-			check(pages.get(opened.get(1)) instanceof HandbookPage.ChapterText text && text.id().equals(real("back_online")) && text.part() == 1,
+			require(opened.equals(expected), "the contents should open the pages " + expected + ", opened " + opened);
+			require(pages.get(opened.get(1)) instanceof HandbookPage.ChapterText text && text.id().equals(real("back_online")) && text.part() == 1,
 					"back_online opens on its first text page");
-			check(pages.get(opened.get(2)) instanceof HandbookPage.Chapter, "a previewed chapter opens on its page of directives");
+			require(pages.get(opened.get(2)) instanceof HandbookPage.Chapter, "a previewed chapter opens on its page of directives");
 		});
 	}
 
@@ -266,17 +266,17 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 					}
 				}
 			}
-			check(firstText >= 0 && secondText == firstText + 1, "back_online has two text pages in a row");
+			require(firstText >= 0 && secondText == firstText + 1, "back_online has two text pages in a row");
 			List<Identifier> viewed = new ArrayList<>();
 			HandbookScreen screen = new HandbookScreen(pages, id -> false, viewed::add, List.of());
 			screen.goTo(firstText);
-			check(viewed.equals(List.of(real("back_online"))), "its first text page reports the chapter, got " + viewed);
+			require(viewed.equals(List.of(real("back_online"))), "its first text page reports the chapter, got " + viewed);
 			screen.goTo(secondText);
 			screen.goTo(firstText + 2);
-			check(viewed.equals(List.of(real("back_online"))), "the chapter is reported once for its text pages and its own page, got " + viewed);
+			require(viewed.equals(List.of(real("back_online"))), "the chapter is reported once for its text pages and its own page, got " + viewed);
 			List<Identifier> again = new ArrayList<>();
 			new HandbookScreen(pages, id -> true, again::add, List.of()).goTo(firstText);
-			check(again.isEmpty(), "a text page of a chapter already read reports nothing");
+			require(again.isEmpty(), "a text page of a chapter already read reports nothing");
 		});
 	}
 
@@ -286,35 +286,35 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 			List<Identifier> viewed = new ArrayList<>();
 			List<HandbookPage> pages = HandbookPages.of(chapters(), done(1));
 			HandbookScreen screen = new HandbookScreen(pages, id -> false, viewed::add, List.of());
-			check(screen.page() == 0 && viewed.isEmpty(), "the screen opens on the cover and reports nothing");
+			require(screen.page() == 0 && viewed.isEmpty(), "the screen opens on the cover and reports nothing");
 			screen.goTo(FRONT_PAGES);
 			screen.goTo(FRONT_PAGES + 1);
 			screen.goTo(FRONT_PAGES);
-			check(viewed.equals(List.of(chapterId(1), chapterId(2))), "each full chapter is reported once, got " + viewed);
+			require(viewed.equals(List.of(chapterId(1), chapterId(2))), "each full chapter is reported once, got " + viewed);
 			screen.goTo(FRONT_PAGES + 2);
 			screen.goTo(FRONT_PAGES + 3);
-			check(viewed.size() == 2, "a previewed or classified chapter is never reported, got " + viewed);
+			require(viewed.size() == 2, "a previewed or classified chapter is never reported, got " + viewed);
 			screen.goTo(pages.size() + 10);
-			check(screen.page() == pages.size() - 1, "flipping past the end stops at the end page, was " + screen.page());
+			require(screen.page() == pages.size() - 1, "flipping past the end stops at the end page, was " + screen.page());
 			screen.goTo(-5);
-			check(screen.page() == 0, "flipping before the start stops at the cover, was " + screen.page());
+			require(screen.page() == 0, "flipping before the start stops at the cover, was " + screen.page());
 
 			List<Identifier> again = new ArrayList<>();
 			HandbookScreen readAlready = new HandbookScreen(pages, id -> true, again::add, List.of());
 			readAlready.goTo(FRONT_PAGES);
-			check(again.isEmpty(), "a chapter already marked read is not reported again");
+			require(again.isEmpty(), "a chapter already marked read is not reported again");
 		});
 	}
 
 	private static void notesTabShowsAnEmptyState(ClientGameTestContext context) {
 		context.runOnClient(client -> {
 			HandbookScreen screen = new HandbookScreen(HandbookPages.of(chapters(), Set.of()), id -> false, id -> { }, List.of());
-			check(!screen.onNotesTab(), "the screen opens on the handbook tab");
+			require(!screen.onNotesTab(), "the screen opens on the handbook tab");
 			screen.showNotes();
-			check(screen.onNotesTab(), "the Notes tab opens");
-			check(screen.notesEmpty(), "with no notes the Notes tab shows its empty state");
+			require(screen.onNotesTab(), "the Notes tab opens");
+			require(screen.notesEmpty(), "with no notes the Notes tab shows its empty state");
 			screen.showHandbook();
-			check(!screen.onNotesTab(), "the handbook tab opens again");
+			require(!screen.onNotesTab(), "the handbook tab opens again");
 		});
 	}
 
@@ -322,21 +322,21 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 	private static void theServerRefusesWhatTheCharterMayNotRead() {
 		List<Identifier> ids = List.of(chapterId(1), chapterId(2), chapterId(3), chapterId(4));
 		Identifier unknown = chapterId(9);
-		check(HandbookReadPayload.viewable(ids, directives(), done(1), chapterId(1)), "a completed chapter is viewable");
-		check(HandbookReadPayload.viewable(ids, directives(), done(1), chapterId(2)), "the current chapter is viewable");
-		check(!HandbookReadPayload.viewable(ids, directives(), done(1), chapterId(3)), "the next chapter is refused: only its title shows");
-		check(!HandbookReadPayload.viewable(ids, directives(), done(1), chapterId(4)), "a classified chapter is refused");
-		check(!HandbookReadPayload.viewable(ids, directives(), done(1), unknown), "an unknown chapter is refused");
-		check(HandbookReadPayload.viewable(ids, directives(), Set.of(), chapterId(1)), "with nothing done the first chapter is viewable");
-		check(!HandbookReadPayload.viewable(ids, directives(), Set.of(), chapterId(2)), "with nothing done the second chapter is refused");
-		check(!HandbookReadPayload.viewable(ids, directives(), done(1, 2, 3), chapterId(9)), "an unknown chapter is refused when all are done");
-		check(HandbookReadPayload.viewable(ids, directives(), done(1, 2, 3, 4), chapterId(4)), "every chapter is viewable when all are done");
-		check(!HandbookReadPayload.viewable(List.of(), List.of(), Set.of(), chapterId(1)), "nothing is viewable with no chapters");
+		require(HandbookReadPayload.viewable(ids, directives(), done(1), chapterId(1)), "a completed chapter is viewable");
+		require(HandbookReadPayload.viewable(ids, directives(), done(1), chapterId(2)), "the current chapter is viewable");
+		require(!HandbookReadPayload.viewable(ids, directives(), done(1), chapterId(3)), "the next chapter is refused: only its title shows");
+		require(!HandbookReadPayload.viewable(ids, directives(), done(1), chapterId(4)), "a classified chapter is refused");
+		require(!HandbookReadPayload.viewable(ids, directives(), done(1), unknown), "an unknown chapter is refused");
+		require(HandbookReadPayload.viewable(ids, directives(), Set.of(), chapterId(1)), "with nothing done the first chapter is viewable");
+		require(!HandbookReadPayload.viewable(ids, directives(), Set.of(), chapterId(2)), "with nothing done the second chapter is refused");
+		require(!HandbookReadPayload.viewable(ids, directives(), done(1, 2, 3), chapterId(9)), "an unknown chapter is refused when all are done");
+		require(HandbookReadPayload.viewable(ids, directives(), done(1, 2, 3, 4), chapterId(4)), "every chapter is viewable when all are done");
+		require(!HandbookReadPayload.viewable(List.of(), List.of(), Set.of(), chapterId(1)), "nothing is viewable with no chapters");
 	}
 
 	private static void redactionMarksSplitIntoWordsAndAnOddCountRedactsTheTail() {
 		List<RedactionText.Token> tokens = RedactionText.parse("report ||unusual findings|| to ||Mgmt||.");
-		check(tokens.equals(List.of(
+		require(tokens.equals(List.of(
 				new RedactionText.Token("report", false, false),
 				new RedactionText.Token("unusual", true, true),
 				new RedactionText.Token("findings", true, true),
@@ -344,20 +344,20 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 				new RedactionText.Token("Mgmt", true, true),
 				new RedactionText.Token(".", false, false))), "a pair of marks redacts the words between them, got " + tokens);
 		List<RedactionText.Token> odd = RedactionText.parse("open ||secret tail");
-		check(odd.equals(List.of(
+		require(odd.equals(List.of(
 				new RedactionText.Token("open", false, false),
 				new RedactionText.Token("secret", true, true),
 				new RedactionText.Token("tail", true, true))), "an odd count of marks redacts the tail, got " + odd);
-		check(RedactionText.parse("").isEmpty() && RedactionText.parse("||||").isEmpty(), "no words give no tokens");
-		check(RedactionText.parse("  lead").equals(List.of(new RedactionText.Token("lead", false, false))), "a leading space is dropped");
+		require(RedactionText.parse("").isEmpty() && RedactionText.parse("||||").isEmpty(), "no words give no tokens");
+		require(RedactionText.parse("  lead").equals(List.of(new RedactionText.Token("lead", false, false))), "a leading space is dropped");
 	}
 
 	private static void marginKeysCarryTheNamespaceAndThePath() {
-		check(HandbookScreen.marginKey(SAMPLE_CHAPTER).equals("deepcharter.handbook.chapter.deepcharter.sample.margin"),
+		require(HandbookScreen.marginKey(SAMPLE_CHAPTER).equals("deepcharter.handbook.chapter.deepcharter.sample.margin"),
 				"the margin key is " + HandbookScreen.marginKey(SAMPLE_CHAPTER));
-		check(HandbookScreen.marginKey(Identifier.fromNamespaceAndPath("other", "a/b")).equals("deepcharter.handbook.chapter.other.a.b.margin"),
+		require(HandbookScreen.marginKey(Identifier.fromNamespaceAndPath("other", "a/b")).equals("deepcharter.handbook.chapter.other.a.b.margin"),
 				"a slash in the path becomes a dot");
-		check(!HandbookScreen.marginKey(Identifier.fromNamespaceAndPath("other", "sample")).equals(HandbookScreen.marginKey(SAMPLE_CHAPTER)),
+		require(!HandbookScreen.marginKey(Identifier.fromNamespaceAndPath("other", "sample")).equals(HandbookScreen.marginKey(SAMPLE_CHAPTER)),
 				"two namespaces do not share a note");
 	}
 
@@ -387,17 +387,17 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 					screen.tick();
 				}
 				List<HandbookScreen.ContentsEntry> entries = screen.contentsEntries(contents);
-				check(entries.size() == contents.count(), "a contents page lists its " + contents.count() + " chapters, got " + entries.size());
+				require(entries.size() == contents.count(), "a contents page lists its " + contents.count() + " chapters, got " + entries.size());
 				for (HandbookScreen.ContentsEntry entry : entries) {
-					check(entry.bottom() <= screen.contentsBottom(), "entry for page " + entry.page() + " ends at " + entry.bottom()
+					require(entry.bottom() <= screen.contentsBottom(), "entry for page " + entry.page() + " ends at " + entry.bottom()
 							+ ", below the sheet's text area at " + screen.contentsBottom());
 					seen.add(((HandbookPage.Chapter) pages.get(entry.page())).number());
 					screen.goTo(index);
 					double x = entry.left() + 2;
 					double y = (entry.top() + entry.bottom()) / 2.0;
 					MouseButtonEvent click = new MouseButtonEvent(x, y, new MouseButtonInfo(LEFT_MOUSE, 0));
-					check(screen.mouseClicked(click, false), "the entry for page " + entry.page() + " is a click target");
-					check(screen.page() == entry.page(), "clicking the entry goes to page " + entry.page() + ", was " + screen.page());
+					require(screen.mouseClicked(click, false), "the entry for page " + entry.page() + " is a click target");
+					require(screen.page() == entry.page(), "clicking the entry goes to page " + entry.page() + ", was " + screen.page());
 					for (int tick = 0; tick < HandbookScreenTuning.current().flipTicks(); tick++) {
 						screen.tick();
 					}
@@ -407,7 +407,7 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 					}
 				}
 			}
-			check(seen.equals(List.of(1, 2, 3, 4, 5, 6, 7, 8, 9)), "every chapter has exactly one entry, in order, got " + seen);
+			require(seen.equals(List.of(1, 2, 3, 4, 5, 6, 7, 8, 9)), "every chapter has exactly one entry, in order, got " + seen);
 		});
 	}
 
@@ -415,12 +415,12 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 		ReadMarks marks = new ReadMarks(Set.of(SAMPLE_CHAPTER, chapterId(2)));
 		Tag saved = ReadMarks.CODEC.encodeStart(NbtOps.INSTANCE, Versioned.of(marks)).getOrThrow();
 		Versioned<ReadMarks> value = ReadMarks.CODEC.parse(NbtOps.INSTANCE, saved).getOrThrow();
-		check(value instanceof Versioned.Readable<ReadMarks> readable && readable.value().equals(marks),
+		require(value instanceof Versioned.Readable<ReadMarks> readable && readable.value().equals(marks),
 				"read marks load back from the saved format");
 	}
 
 	private static void inTheRealGame(ClientGameTestContext context) {
-		check(HandbookKeys.OPEN.getDefaultKey().getValue() == InputConstants.KEY_H, "the handbook key is H by default");
+		require(HandbookKeys.OPEN.getDefaultKey().getValue() == InputConstants.KEY_H, "the handbook key is H by default");
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			ClientWait.until(context, "the handbook in the inventory", client -> handbookSlot(client.player.getInventory()) >= 0);
 			context.runOnClient(client -> client.player.getInventory().setSelectedSlot(handbookSlot(client.player.getInventory())));
@@ -444,31 +444,31 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 				}
 				return -1;
 			});
-			check(chapterPage >= 0, "the sample chapter has a page");
-			check(context.computeOnClient(client -> screen.pages().get(chapterPage) instanceof HandbookPage.Chapter chapter
+			require(chapterPage >= 0, "the sample chapter has a page");
+			require(context.computeOnClient(client -> screen.pages().get(chapterPage) instanceof HandbookPage.Chapter chapter
 					&& chapter.visibility() == HandbookVisibility.FULL), "the first chapter is full for a new player");
-			check(!context.computeOnClient(client -> ClientReadMarks.isRead(SAMPLE_CHAPTER)), "the chapter is unread before it is viewed");
+			require(!context.computeOnClient(client -> ClientReadMarks.isRead(SAMPLE_CHAPTER)), "the chapter is unread before it is viewed");
 
 			context.runOnClient(client -> screen.goTo(chapterPage));
 			context.waitTicks(HandbookScreenTuning.current().flipTicks() + 2);
 			context.takeScreenshot("handbook-chapter");
 			ClientWait.until(context, "the sample chapter marked read", client -> ClientReadMarks.isRead(SAMPLE_CHAPTER));
-			check(singleplayer.getServer().computeOnServer(server -> ReadMarks.isRead(server.getPlayerList().getPlayers().getFirst(), SAMPLE_CHAPTER)),
+			require(singleplayer.getServer().computeOnServer(server -> ReadMarks.isRead(server.getPlayerList().getPlayers().getFirst(), SAMPLE_CHAPTER)),
 					"the server holds the read mark");
-			check(singleplayer.getServer().computeOnServer(server -> !ReadMarks.isRead(server.getPlayerList().getPlayers().getFirst(), NO_SUCH_CHAPTER)),
+			require(singleplayer.getServer().computeOnServer(server -> !ReadMarks.isRead(server.getPlayerList().getPlayers().getFirst(), NO_SUCH_CHAPTER)),
 					"only the viewed chapter is marked");
 
 			singleplayer.getServer().runOnServer(server -> {
 				var player = server.getPlayerList().getPlayers().getFirst();
-				check(!HandbookReadPayload.handle(server, player, NO_SUCH_CHAPTER), "the server refuses a chapter that does not exist");
-				check(!ReadMarks.isRead(player, NO_SUCH_CHAPTER), "a chapter that does not exist is not marked");
-				check(HandbookReadPayload.viewableFor(server, player.getUUID(), SAMPLE_CHAPTER), "the first chapter is viewable");
-				check(!HandbookReadPayload.viewableFor(server, player.getUUID(), SAMPLE_SLEEP), "a directive id is not a chapter");
-				check(HandbookReadPayload.handle(server, player, SAMPLE_CHAPTER), "viewing a chapter again is accepted and changes nothing");
+				require(!HandbookReadPayload.handle(server, player, NO_SUCH_CHAPTER), "the server refuses a chapter that does not exist");
+				require(!ReadMarks.isRead(player, NO_SUCH_CHAPTER), "a chapter that does not exist is not marked");
+				require(HandbookReadPayload.viewableFor(server, player.getUUID(), SAMPLE_CHAPTER), "the first chapter is viewable");
+				require(!HandbookReadPayload.viewableFor(server, player.getUUID(), SAMPLE_SLEEP), "a directive id is not a chapter");
+				require(HandbookReadPayload.handle(server, player, SAMPLE_CHAPTER), "viewing a chapter again is accepted and changes nothing");
 			});
 
 			// The viewed chapter stays marked for the owner.
-			check(context.computeOnClient(client -> ClientReadMarks.read().equals(Set.of(SAMPLE_CHAPTER))), "the client sees exactly one chapter read");
+			require(context.computeOnClient(client -> ClientReadMarks.read().equals(Set.of(SAMPLE_CHAPTER))), "the client sees exactly one chapter read");
 			context.setScreen(() -> null);
 		}
 	}

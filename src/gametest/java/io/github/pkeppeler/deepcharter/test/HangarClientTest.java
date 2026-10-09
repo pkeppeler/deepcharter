@@ -21,8 +21,6 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
-import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.check;
-
 /**
  * Client GameTest for #222: the hangar console shows the price of every action inside the screen, at the GUI size of an
  * 854 by 480 window (about 427 by 240) and at 320 by 240, the smallest GUI.
@@ -43,8 +41,8 @@ public class HangarClientTest implements FabricClientGameTest {
 					context.runOnClient(client -> screen.resize(size[0], size[1]));
 					ClientWait.until(context, "the hangar screen finished typing", client -> screen.typewriter().done(),
 							client -> "typewriter text '" + screen.typewriter().text() + "'");
-					String problem = context.computeOnClient(client -> problem(screen, advanceLeft));
-					check(problem.isEmpty(), "with " + advanceLeft + " advance left, at " + size[0] + " by " + size[1] + ": " + problem);
+					ClientChecks.requireNone("with " + advanceLeft + " advance left, at " + size[0] + " by " + size[1],
+							context.computeOnClient(client -> problem(screen, advanceLeft)));
 				}
 			}
 			context.setScreen(() -> null);
@@ -52,48 +50,44 @@ public class HangarClientTest implements FabricClientGameTest {
 	}
 
 	/** Every button and price or advance line lies inside the screen, a button holds its whole label, and no price line is under a button. */
-	private static String problem(HangarScreen screen, int advanceLeft) {
+	private static Optional<String> problem(HangarScreen screen, int advanceLeft) {
 		Font font = Minecraft.getInstance().font;
 		List<Button> buttons = ClientChecks.buttons(screen);
 		for (Button button : buttons) {
-			String problem = ClientChecks.buttonLeavesScreen(screen, button);
-			if (problem.isEmpty() && button.getY() < screen.headerBottom()) {
-				problem = "'" + button.getMessage().getString() + "' starts at " + button.getY() + ", above the header text that ends at " + screen.headerBottom();
-			}
-			if (problem.isEmpty()) {
-				problem = ClientChecks.labelClipped(button);
-			}
-			if (!problem.isEmpty()) {
+			Optional<String> problem = ClientChecks.buttonLeavesScreen(screen, button)
+					.or(() -> button.getY() < screen.headerBottom()
+							? Optional.of(ClientChecks.labelOf(button) + " starts at " + button.getY() + ", above the header text that ends at " + screen.headerBottom())
+							: Optional.empty())
+					.or(() -> ClientChecks.labelClipped(button));
+			if (problem.isPresent()) {
 				return problem;
 			}
 		}
 		if (screen.priceLines().isEmpty()) {
-			return "the screen shows no restore prices";
+			return Optional.of("the screen shows no restore prices");
 		}
 		if (advanceLeft > 0 == screen.advanceLines().isEmpty()) {
-			return "with " + advanceLeft + " advance left the screen shows " + screen.advanceLines().size() + " advance lines";
+			return Optional.of("with " + advanceLeft + " advance left the screen shows " + screen.advanceLines().size() + " advance lines");
 		}
 		if (screen.priceLines().stream().anyMatch(line -> line.text().contains("ADVANCES"))) {
-			return "the advance runs on in the price lines " + screen.priceLines();
+			return Optional.of("the advance runs on in the price lines " + screen.priceLines());
 		}
 		if (!screen.advanceLines().isEmpty()) {
 			int lastPrice = screen.priceLines().stream().mapToInt(HangarScreen.PriceLine::y).max().orElseThrow();
 			int firstAdvance = screen.advanceLines().stream().mapToInt(HangarScreen.PriceLine::y).min().orElseThrow();
 			if (firstAdvance < lastPrice + font.lineHeight) {
-				return "the advance starts at " + firstAdvance + ", not on a line of its own below the prices that end at " + (lastPrice + font.lineHeight);
+				return Optional.of("the advance starts at " + firstAdvance + ", not on a line of its own below the prices that end at " + (lastPrice + font.lineHeight));
 			}
 		}
 		List<HangarScreen.PriceLine> drawn = new ArrayList<>(screen.priceLines());
 		drawn.addAll(screen.advanceLines());
 		for (HangarScreen.PriceLine line : drawn) {
-			String problem = ClientChecks.textLeavesScreen(screen, "the price line", line.x(), line.y(), line.text());
-			if (problem.isEmpty()) {
-				problem = ClientChecks.textUnderButton("the price line", line.x(), line.y(), line.text(), buttons);
-			}
-			if (!problem.isEmpty()) {
+			Optional<String> problem = ClientChecks.textLeavesScreen(screen, "the price line", line.x(), line.y(), line.text())
+					.or(() -> ClientChecks.textUnderButton("the price line", line.x(), line.y(), line.text(), buttons));
+			if (problem.isPresent()) {
 				return problem;
 			}
 		}
-		return "";
+		return Optional.empty();
 	}
 }

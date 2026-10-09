@@ -32,6 +32,8 @@ import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+
 /**
  * Client GameTest on a real dedicated server: the harness works (the real client sees itself and the mock player), and
  * the M1 integration scenario (#33), where the real client and the mock player each pilot a Mole down through layer 1 and
@@ -84,14 +86,10 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 		ClientTestLog.start(this);
 		try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
 			int seen = context.computeOnClient(client -> client.level.players().size());
-			if (seen != 2) {
-				throw new AssertionError("Expected the real client to see 2 players, saw " + seen);
-			}
+			require(seen == 2, "Expected the real client to see 2 players, saw " + seen);
 			boolean mockVisible = context.computeOnClient(
 					client -> client.level.getPlayerByUUID(two.mock().player().getUUID()) != null);
-			if (!mockVisible) {
-				throw new AssertionError("The real client does not see the mock player");
-			}
+			require(mockVisible, "The real client does not see the mock player");
 			crossTogether(context, two, () -> {
 			});
 		}
@@ -132,9 +130,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 		// A cell in a chunk the client has not loaded reads as air, so wait for the stone before expecting it gone.
 		ClientWait.until(context, "the mock stone block", client -> client.level.getBlockState(mockStone).is(Blocks.STONE));
 		float idleFade = context.computeOnClient(client -> BreachEffects.fadeAlpha(0f));
-		if (idleFade != 0f) {
-			throw new AssertionError("A breach fade is already running before the drive, so it could not be this crossing's: " + idleFade);
-		}
+		require(idleFade == 0f, "A breach fade is already running before the drive, so it could not be this crossing's: " + idleFade);
 		two.server().runOnServer(server -> {
 			rig.realPod().setFuel(100f);
 			rig.mockPod().setFuel(100f);
@@ -172,16 +168,12 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 			if (realReleased && mockReleased) {
 				break;
 			}
-			if (crossing.podTicks() > POD_TICK_BUDGET) {
-				throw new AssertionError("After " + crossing.podTicks() + " pod ticks, real crossed: " + crossing.realInLayer2()
+			require(!(crossing.podTicks() > POD_TICK_BUDGET), "After " + crossing.podTicks() + " pod ticks, real crossed: " + crossing.realInLayer2()
 						+ ", mock crossed: " + crossing.mockInLayer2());
-			}
 		}
 		context.getInput().releaseKey(options -> options.keySprint);
 		two.server().runOnServer(server -> two.mock().releaseInput());
-		if (!realReleased || !mockReleased) {
-			throw new AssertionError("Not both pods crossed into layer_2 (real: " + realReleased + ", mock: " + mockReleased + ")");
-		}
+		require(realReleased && mockReleased, "Not both pods crossed into layer_2 (real: " + realReleased + ", mock: " + mockReleased + ")");
 
 		for (int i = 0; i < ARRIVAL_FRAMES; i++) {
 			context.waitTicks(ARRIVAL_TICKS_PER_FRAME);
@@ -189,12 +181,8 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 			frame.run();
 		}
 
-		if (!fadeStarted) {
-			throw new AssertionError("The client never received the breach effect: the fade did not start");
-		}
-		if (!clientSawMockBore) {
-			throw new AssertionError("While in layer_1 the client never saw the mock pod's bore at " + mockStone);
-		}
+		require(fadeStarted, "The client never received the breach effect: the fade did not start");
+		require(clientSawMockBore, "While in layer_1 the client never saw the mock pod's bore at " + mockStone);
 		expectEndState(context, two, rig, mockId);
 		expectScannerShowsPod(context, "m1-two-pods-layer-2");
 	}
@@ -214,9 +202,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 		PodEntity realPod = (PodEntity) real.getVehicle();
 		PodEntity mockPod = (PodEntity) two.mock().player().getVehicle();
 		ScannerPods.fit(server, real, realPod, 1);
-		if (mockPod.getId() != mockPodId || realPod == mockPod || realPod.level() != one || mockPod.level() != one) {
-			throw new AssertionError("Each player should ride their own pod in layer_1");
-		}
+		require(mockPod.getId() == mockPodId && realPod != mockPod && realPod.level() == one && mockPod.level() == one, "Each player should ride their own pod in layer_1");
 		return new Rig(realPod, mockPod, columns(realPod), columns(mockPod));
 	}
 
@@ -225,9 +211,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 		int width = Mth.ceil(pod.chassis().width());
 		int lowX = Mth.floor(pod.getX() - width / 2.0 + 0.5);
 		int lowZ = Mth.floor(pod.getZ() - width / 2.0 + 0.5);
-		if (lowX < X - ROOM_WEST + 1 || lowX + width > X + ROOM_EAST - 1) {
-			throw new AssertionError("The pod at " + pod.position() + " stands outside the room");
-		}
+		require(!(lowX < X - ROOM_WEST + 1 || lowX + width > X + ROOM_EAST - 1), "The pod at " + pod.position() + " stands outside the room");
 		return IntStream.range(0, width * width)
 				.mapToObj(i -> new BlockPos(lowX + i / width, 0, lowZ + i % width))
 				.toList();
@@ -262,16 +246,12 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 	/** Server and client agree: both pilots ride a pod in layer_2, the crust under both pods is gone, and the client has the mock's pod. */
 	private static void expectEndState(ClientGameTestContext context, TwoPlayerServer two, Rig rig, UUID mockId) {
 		Crossing end = two.server().computeOnServer(server -> crossing(server, two, rig));
-		if (!end.realInLayer2() || !end.mockInLayer2() || !end.bothRiding()) {
-			throw new AssertionError("Each pod should end in layer_2 with its pilot riding: " + end);
-		}
+		require(end.realInLayer2() && end.mockInLayer2() && end.bothRiding(), "Each pod should end in layer_2 with its pilot riding: " + end);
 		two.server().runOnServer(server -> {
 			ServerLevel one = server.getLevel(LayerChain.dimension(1));
 			for (BlockPos column : Stream.concat(rig.realColumns().stream(), rig.mockColumns().stream()).toList()) {
 				for (int y = 0; y <= 2; y++) {
-					if (one.getBlockState(column.atY(y)).is(LayerBlocks.BREACH_CRUST)) {
-						throw new AssertionError("The crust at " + column.atY(y) + " was not bored");
-					}
+					require(!one.getBlockState(column.atY(y)).is(LayerBlocks.BREACH_CRUST), "The crust at " + column.atY(y) + " was not bored");
 				}
 			}
 		});
@@ -283,9 +263,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 			Entity pod = client.level.getPlayerByUUID(mockId).getVehicle();
 			return client.level.getEntity(pod.getId()) == pod;
 		});
-		if (!containsMockPod) {
-			throw new AssertionError("The real client's level does not contain the mock's pod");
-		}
+		require(containsMockPod, "The real client's level does not contain the mock's pod");
 	}
 
 	/** The scanner is drawn while riding: its pod marker is in the middle of the pod's cells, whatever else is on screen. */
@@ -293,10 +271,8 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 		ScannerHudTest.HudShot shot = ScannerHudTest.HudShot.take(context, screenshotName, ScannerHudTest.TIER_ONE);
 		int actual = shot.pixel(0, 0);
 		int expected = ScannerLook.current().podColor() & RGB;
-		if (actual != expected) {
-			throw new AssertionError("%s: the scanner HUD should show the pod's marker %06X, the pixel is %06X"
+		require(actual == expected, "%s: the scanner HUD should show the pod's marker %06X, the pixel is %06X"
 					.formatted(screenshotName, expected, actual));
-		}
 	}
 
 	private static void box(ServerLevel level, int yFrom, int yTo, Block block) {

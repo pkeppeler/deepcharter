@@ -28,6 +28,8 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+
 /**
  * Client GameTest for #226: the UI theme loads with the client's resources, today's look is the default, and a resource pack that names
  * one colour changes that colour on the next reload (which is what F3+T does) and nothing else, on screen as well as in the record.
@@ -93,17 +95,13 @@ public class UiThemeClientTest implements FabricClientGameTest {
 		context.waitTicks(15);
 		int greenBefore = pixelsOf(context, "ui-theme-open-before", GREEN);
 		int amberBefore = pixelsOf(context, "ui-theme-open-before-2", AMBER);
-		if (greenBefore == 0 || amberBefore != 0) {
-			throw new AssertionError("Before the pack the open screen should draw green text, not amber: green %d, amber %d".formatted(greenBefore, amberBefore));
-		}
+		require(greenBefore != 0 && amberBefore == 0, "Before the pack the open screen should draw green text, not amber: green %d, amber %d".formatted(greenBefore, amberBefore));
 		ClientPacks.enable(context, TestPacks.AMBER_CRT);
 		try {
 			context.waitTicks(15);
 			int green = pixelsOf(context, "ui-theme-open-after", GREEN);
 			int amber = pixelsOf(context, "ui-theme-open-after-2", AMBER);
-			if (green != 0 || amber == 0) {
-				throw new AssertionError("After the reload the screen that stayed open should draw amber text only: green %d, amber %d".formatted(green, amber));
-			}
+			require(green == 0 && amber != 0, "After the reload the screen that stayed open should draw amber text only: green %d, amber %d".formatted(green, amber));
 		} finally {
 			ClientPacks.disable(context, TestPacks.AMBER_CRT);
 			context.setScreen(() -> null);
@@ -117,17 +115,13 @@ public class UiThemeClientTest implements FabricClientGameTest {
 		context.waitTicks(10);
 		int inkBefore = pixelsOf(context, "ui-theme-handbook-before", 0x1B2A4E);
 		int redBefore = pixelsOf(context, "ui-theme-handbook-before-2", 0xB00020);
-		if (inkBefore == 0 || redBefore != 0) {
-			throw new AssertionError("Before the pack the handbook should draw blue ink: blue %d, red %d".formatted(inkBefore, redBefore));
-		}
+		require(inkBefore != 0 && redBefore == 0, "Before the pack the handbook should draw blue ink: blue %d, red %d".formatted(inkBefore, redBefore));
 		ClientPacks.enable(context, TestPacks.RED_INK);
 		try {
 			context.waitTicks(10);
 			int ink = pixelsOf(context, "ui-theme-handbook-after", 0x1B2A4E);
 			int red = pixelsOf(context, "ui-theme-handbook-after-2", 0xB00020);
-			if (ink != 0 || red == 0) {
-				throw new AssertionError("After the reload the open handbook should draw red ink only: blue %d, red %d".formatted(ink, red));
-			}
+			require(ink == 0 && red != 0, "After the reload the open handbook should draw red ink only: blue %d, red %d".formatted(ink, red));
 		} finally {
 			ClientPacks.disable(context, TestPacks.RED_INK);
 			context.setScreen(() -> null);
@@ -141,12 +135,8 @@ public class UiThemeClientTest implements FabricClientGameTest {
 		ClientPacks.enableExpectingFailure(context, TestPacks.BAD_CRT);
 		try {
 			List<String> errors = log.errors();
-			if (errors.isEmpty()) {
-				throw new AssertionError("A pack with a bad colour should fail the reload with a log line that names the pack");
-			}
-			if (!errors.getFirst().contains("phosphorColor")) {
-				throw new AssertionError("The log line should name the key, was: " + errors.getFirst());
-			}
+			require(!errors.isEmpty(), "A pack with a bad colour should fail the reload with a log line that names the pack");
+			require(errors.getFirst().contains("phosphorColor"), "The log line should name the key, was: " + errors.getFirst());
 			expect("the theme after the failed reload", before, context.computeOnClient(client -> CrtTuning.current()));
 		} finally {
 			ClientPacks.disable(context, TestPacks.BAD_CRT);
@@ -194,9 +184,7 @@ public class UiThemeClientTest implements FabricClientGameTest {
 	}
 
 	private static void expect(String what, Object expected, Object actual) {
-		if (!expected.equals(actual)) {
-			throw new AssertionError("%s: expected %s, got %s".formatted(what, hex(expected), hex(actual)));
-		}
+		require(expected.equals(actual), "%s: expected %s, got %s".formatted(what, hex(expected), hex(actual)));
 	}
 
 	private static String hex(Object value) {

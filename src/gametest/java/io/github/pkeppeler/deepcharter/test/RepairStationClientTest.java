@@ -29,7 +29,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
-import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.check;
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 /**
  * Client GameTest for #70: the repair station screen opens, and its repair and buy buttons send the actions the server
@@ -55,17 +55,17 @@ public class RepairStationClientTest implements FabricClientGameTest {
 			clickRow(context, "REPAIR 10 HP ($10)");
 			ClientWait.until(context, "the pod repaired by 10 HP", () -> hull(singleplayer, scene) == scene.pod().maxHull() - DAMAGE + 10f,
 					() -> "hull " + hull(singleplayer, scene) + ", account $" + account(singleplayer, scene));
-			check(account(singleplayer, scene) == START_BALANCE - 10, "10 HP cost $10, the account is $" + account(singleplayer, scene));
+			require(account(singleplayer, scene) == START_BALANCE - 10, "10 HP cost $10, the account is $" + account(singleplayer, scene));
 
 			clickRow(context, "BUY DYNAMITE $100");
 			ClientWait.until(context, "one dynamite carried", () -> carried(singleplayer, Consumable.DYNAMITE) == 1,
 					() -> carried(singleplayer, Consumable.DYNAMITE) + " dynamite, account $" + account(singleplayer, scene));
-			check(account(singleplayer, scene) == START_BALANCE - 10 - 100, "the dynamite cost $100, the account is $" + account(singleplayer, scene));
+			require(account(singleplayer, scene) == START_BALANCE - 10 - 100, "the dynamite cost $100, the account is $" + account(singleplayer, scene));
 
 			clickRow(context, "REPAIR ALL");
 			ClientWait.until(context, "the pod fully repaired", () -> hull(singleplayer, scene) == scene.pod().maxHull(),
 					() -> "hull " + hull(singleplayer, scene) + " of " + scene.pod().maxHull() + ", account $" + account(singleplayer, scene));
-			check(account(singleplayer, scene) == START_BALANCE - 10 - 100 - 30 * 1, "the rest of the hull cost $30, the account is $" + account(singleplayer, scene));
+			require(account(singleplayer, scene) == START_BALANCE - 10 - 100 - 30 * 1, "the rest of the hull cost $30, the account is $" + account(singleplayer, scene));
 			context.setScreen(() -> null);
 		}
 	}
@@ -92,16 +92,14 @@ public class RepairStationClientTest implements FabricClientGameTest {
 			screen.scrollTo(shownAt);
 			return rows.size();
 		});
-		check(matches == 1, matches + " buttons in the repair station are labelled '" + label + "', not 1");
+		require(matches == 1, matches + " buttons in the repair station are labelled '" + label + "', not 1");
 		context.clickScreenButton(label);
 	}
 
 	/** The player founds a charter, a repaired station stands beside them, and the charter's damaged pod is parked at it. */
 	public static Scene setUp(MinecraftServer server) {
 		ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-		if (Charters.found(server, player.getUUID(), "Emendation Test Charter").isPresent()) {
-			throw new AssertionError("founding should succeed");
-		}
+		require(Charters.found(server, player.getUUID(), "Emendation Test Charter").isEmpty(), "founding should succeed");
 		Charter charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow();
 		RepairState state = RepairState.get(server);
 		for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL, TerminalTypes.REPAIR_STATION)) {
@@ -117,9 +115,7 @@ public class RepairStationClientTest implements FabricClientGameTest {
 		server.overworld().addFreshEntity(pod);
 		PodComponents.register(pod, charter.id());
 		pod.setHull(pod.maxHull() - DAMAGE);
-		if (Charters.deposit(server, charter.id(), START_BALANCE).isPresent()) {
-			throw new AssertionError("funding should succeed");
-		}
+		require(Charters.deposit(server, charter.id(), START_BALANCE).isEmpty(), "funding should succeed");
 		return new Scene(station, pod, charter);
 	}
 
