@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "deepcharter:block/colony/steel_ladder"
+    },
+    "facing=east": {
+      "model": "deepcharter:block/colony/steel_ladder",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "deepcharter:block/colony/steel_ladder",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "deepcharter:block/colony/steel_ladder",
+      "y": 270
+    }
+  }
+}

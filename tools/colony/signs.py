@@ -173,7 +173,6 @@ SIGN_TEXTS = {
     "ore_house": ("ORE HOUSE", "enamel"),
     "shaft": ("SHAFT NO 1", "enamel"),
     "slogan": ("DEEPER TOGETHER!", "lit"),
-    "pay": ("PAY OFFICE", "enamel"),
     "founder": ("OUR FOUNDER", "brass"),
 }
 

@@ -1,6 +1,5 @@
 {
-  "title": "A. Boomtown Mill",
-  "statue": "founder_a",
+  "title": "A. Pithead Works",
   "pieces": [
     {
       "structure": "deepcharter:colony_concept/a/square",
@@ -9,37 +8,37 @@
         0,
         -10
       ],
-      "blocks": 1406,
+      "blocks": 797,
       "displays": 2
     },
     {
-      "structure": "deepcharter:colony_concept/a/pithead",
+      "structure": "deepcharter:colony_concept/a/headframe",
       "offset": [
-        -12,
+        -8,
         0,
-        -44
+        -29
       ],
-      "blocks": 1260,
-      "displays": 169
+      "blocks": 628,
+      "displays": 86
     },
     {
-      "structure": "deepcharter:colony_concept/a/mill",
+      "structure": "deepcharter:colony_concept/a/works",
       "offset": [
-        -44,
+        3,
         0,
-        -44
+        -28
       ],
-      "blocks": 3833,
-      "displays": 8
+      "blocks": 1080,
+      "displays": 2
     },
     {
       "structure": "deepcharter:colony_concept/a/hoist_house",
       "offset": [
-        -14,
+        -10,
         1,
-        -53
+        -36
       ],
-      "blocks": 1321,
+      "blocks": 436,
       "displays": 0
     }
   ],
@@ -47,14 +46,29 @@
     {
       "name": "from-the-square",
       "eye": [
-        -13.0,
-        2.6,
-        2.0
+        -7.0,
+        2.62,
+        6.0
       ],
       "target": [
-        -24.0,
-        14.0,
-        -26.0
+        6.0,
+        9.0,
+        -16.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "works-front",
+      "eye": [
+        11.0,
+        2.62,
+        0.0
+      ],
+      "target": [
+        10.0,
+        5.0,
+        -12.0
       ],
       "night": false,
       "above_ground": false
@@ -62,29 +76,14 @@
     {
       "name": "headframe",
       "eye": [
-        30.0,
-        14.0,
-        6.0
+        -22.0,
+        6.0,
+        4.0
       ],
       "target": [
         -4.0,
-        30.0,
+        16.0,
         -15.0
-      ],
-      "night": false,
-      "above_ground": false
-    },
-    {
-      "name": "mill-gables",
-      "eye": [
-        -18.0,
-        4.0,
-        6.0
-      ],
-      "target": [
-        -23.0,
-        13.0,
-        -24.0
       ],
       "night": false,
       "above_ground": false
@@ -92,14 +91,14 @@
     {
       "name": "from-the-air",
       "eye": [
-        -40.0,
-        40.0,
-        20.0
+        26.0,
+        30.0,
+        16.0
       ],
       "target": [
-        -12.0,
-        10.0,
-        -22.0
+        2.0,
+        8.0,
+        -14.0
       ],
       "night": false,
       "above_ground": false
@@ -107,14 +106,14 @@
     {
       "name": "from-the-air-behind",
       "eye": [
-        -46.0,
-        34.0,
-        -54.0
+        24.0,
+        26.0,
+        -44.0
       ],
       "target": [
-        -14.0,
-        12.0,
-        -26.0
+        0.0,
+        10.0,
+        -18.0
       ],
       "night": false,
       "above_ground": false
@@ -122,14 +121,14 @@
     {
       "name": "from-far-across-the-plain",
       "eye": [
-        12.0,
-        8.0,
-        56.0
+        14.0,
+        6.0,
+        62.0
       ],
       "target": [
-        -4.0,
-        30.0,
-        -15.0
+        0.0,
+        12.0,
+        -12.0
       ],
       "night": false,
       "above_ground": true
@@ -137,14 +136,14 @@
     {
       "name": "night-from-the-square",
       "eye": [
-        -13.0,
-        2.6,
-        2.0
+        -4.0,
+        2.62,
+        6.0
       ],
       "target": [
-        -24.0,
-        14.0,
-        -26.0
+        6.0,
+        9.0,
+        -16.0
       ],
       "night": true,
       "above_ground": false
@@ -152,14 +151,14 @@
     {
       "name": "night-from-the-air",
       "eye": [
-        -34.0,
-        30.0,
-        4.0
+        26.0,
+        24.0,
+        12.0
       ],
       "target": [
-        -14.0,
-        12.0,
-        -24.0
+        2.0,
+        8.0,
+        -14.0
       ],
       "night": true,
       "above_ground": false
@@ -167,13 +166,13 @@
     {
       "name": "statue-from-the-square",
       "eye": [
-        6.0,
-        2.6,
-        24.0
+        5.0,
+        2.62,
+        17.0
       ],
       "target": [
         0.5,
-        18.6,
+        9.0,
         0.5
       ],
       "night": false,
@@ -183,12 +182,12 @@
       "name": "statue-front",
       "eye": [
         0.5,
-        21.0,
-        34.0
+        6.0,
+        26.0
       ],
       "target": [
         0.5,
-        21.0,
+        9.0,
         0.5
       ],
       "night": false,
@@ -197,71 +196,55 @@
     {
       "name": "statue-side",
       "eye": [
-        34.0,
-        21.0,
-        0.5
-      ],
-      "target": [
-        0.5,
-        21.0,
-        0.5
-      ],
-      "night": false,
-      "above_ground": false
-    },
-    {
-      "name": "statue-from-the-air",
-      "eye": [
-        14.0,
-        52.0,
-        24.0
-      ],
-      "target": [
-        0.5,
-        18.6,
-        0.5
-      ],
-      "night": false,
-      "above_ground": false
-    },
-    {
-      "name": "statue-from-far",
-      "eye": [
-        10.0,
+        24.0,
         6.0,
-        60.0
+        2.5
       ],
       "target": [
         0.5,
-        18.6,
+        9.0,
         0.5
       ],
       "night": false,
-      "above_ground": true
+      "above_ground": false
+    }
+  ],
+  "figures": [
+    {
+      "kind": "pod",
+      "at": [
+        11.9,
+        1.0,
+        -8.0
+      ],
+      "yaw": 170.0
     },
     {
-      "name": "statue-at-night",
-      "eye": [
-        6.0,
-        2.6,
-        24.0
+      "kind": "player",
+      "at": [
+        9.5,
+        1.0,
+        -9.5
       ],
-      "target": [
-        0.5,
-        18.6,
-        0.5
+      "yaw": 200.0
+    },
+    {
+      "kind": "player",
+      "at": [
+        3.5,
+        1.0,
+        6.5
       ],
-      "night": true,
-      "above_ground": false
+      "yaw": 150.0
     }
   ],
   "orbit": {
     "centre": [
-      -8.0,
-      12.0,
-      -24.0
+      2.0,
+      8.0,
+      -14.0
     ],
-    "radius": 46.0,
-    "height": 24.0
+    "radius": 34.0,
+    "height": 18.0
   }
 }

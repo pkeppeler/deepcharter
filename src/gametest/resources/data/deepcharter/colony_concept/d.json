@@ -1,0 +1,250 @@
+{
+  "title": "D. Gantry Works",
+  "pieces": [
+    {
+      "structure": "deepcharter:colony_concept/d/square",
+      "offset": [
+        -10,
+        0,
+        -10
+      ],
+      "blocks": 797,
+      "displays": 2
+    },
+    {
+      "structure": "deepcharter:colony_concept/d/headframe",
+      "offset": [
+        -8,
+        0,
+        -29
+      ],
+      "blocks": 628,
+      "displays": 86
+    },
+    {
+      "structure": "deepcharter:colony_concept/d/works",
+      "offset": [
+        -1,
+        0,
+        -15
+      ],
+      "blocks": 1381,
+      "displays": 10
+    },
+    {
+      "structure": "deepcharter:colony_concept/d/hoist_house",
+      "offset": [
+        -10,
+        1,
+        -36
+      ],
+      "blocks": 436,
+      "displays": 0
+    }
+  ],
+  "views": [
+    {
+      "name": "from-the-square",
+      "eye": [
+        -7.0,
+        2.62,
+        -4.0
+      ],
+      "target": [
+        8.0,
+        8.0,
+        14.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "works-front",
+      "eye": [
+        6.0,
+        2.62,
+        1.0
+      ],
+      "target": [
+        7.0,
+        5.0,
+        12.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "headframe",
+      "eye": [
+        -22.0,
+        6.0,
+        4.0
+      ],
+      "target": [
+        -4.0,
+        16.0,
+        -15.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "from-the-air",
+      "eye": [
+        -26.0,
+        30.0,
+        10.0
+      ],
+      "target": [
+        4.0,
+        8.0,
+        0.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "from-the-air-behind",
+      "eye": [
+        30.0,
+        26.0,
+        36.0
+      ],
+      "target": [
+        4.0,
+        10.0,
+        -2.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "from-far-across-the-plain",
+      "eye": [
+        40.0,
+        6.0,
+        46.0
+      ],
+      "target": [
+        4.0,
+        12.0,
+        -2.0
+      ],
+      "night": false,
+      "above_ground": true
+    },
+    {
+      "name": "night-from-the-square",
+      "eye": [
+        -7.0,
+        2.62,
+        -4.0
+      ],
+      "target": [
+        8.0,
+        8.0,
+        14.0
+      ],
+      "night": true,
+      "above_ground": false
+    },
+    {
+      "name": "night-from-the-air",
+      "eye": [
+        -26.0,
+        24.0,
+        8.0
+      ],
+      "target": [
+        4.0,
+        8.0,
+        0.0
+      ],
+      "night": true,
+      "above_ground": false
+    },
+    {
+      "name": "statue-from-the-square",
+      "eye": [
+        5.0,
+        2.62,
+        17.0
+      ],
+      "target": [
+        0.5,
+        9.0,
+        0.5
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "statue-front",
+      "eye": [
+        0.5,
+        6.0,
+        26.0
+      ],
+      "target": [
+        0.5,
+        9.0,
+        0.5
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "statue-side",
+      "eye": [
+        24.0,
+        6.0,
+        2.5
+      ],
+      "target": [
+        0.5,
+        9.0,
+        0.5
+      ],
+      "night": false,
+      "above_ground": false
+    }
+  ],
+  "figures": [
+    {
+      "kind": "pod",
+      "at": [
+        7.5,
+        1.0,
+        8.5
+      ],
+      "yaw": 10.0
+    },
+    {
+      "kind": "player",
+      "at": [
+        10.5,
+        1.0,
+        9.5
+      ],
+      "yaw": -20.0
+    },
+    {
+      "kind": "player",
+      "at": [
+        -3.5,
+        1.0,
+        5.5
+      ],
+      "yaw": 210.0
+    }
+  ],
+  "orbit": {
+    "centre": [
+      4.0,
+      8.0,
+      0.0
+    ],
+    "radius": 36.0,
+    "height": 18.0
+  }
+}

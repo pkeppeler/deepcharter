@@ -206,16 +206,20 @@ def perspective(quads, eye, target, width: int, height: int, fov: float = 70.0, 
 
 
 def square_crossbar_scores(roots, plinth_top: int, scale: float, size: int = 200) -> list[tuple[float, float, float]]:
-    """(yaw, distance, score) of the figure on its plinth seen in perspective from the square at eye height: from below, the way
-    a player sees it, where a hand held out in front can rise to the height of the head."""
+    """(yaw, distance, score) of the figure on its plinth seen in perspective from the square at eye height, looking at a point
+    0.45 of the way up the figure: from below, the way a player sees it, where a hand held out in front can rise to the height of
+    the head."""
     s = scale / 16
     quads = []
     from sculpt import world_points
+    points = []
     for root in roots:
         for corners in world_points(root):
-            quads += box_quads([(0.5 + p[0] * s, plinth_top + 1 + p[1] * s, 0.5 + p[2] * s) for p in corners], BRONZE_RGB)
+            placed = [(0.5 + p[0] * s, plinth_top + 1 + p[1] * s, 0.5 + p[2] * s) for p in corners]
+            points += placed
+            quads += box_quads(placed, BRONZE_RGB)
     ground = (235, 228, 214)
-    mid = (0.5, plinth_top + 1 + 9.0, 0.5)
+    mid = (0.5, plinth_top + 1 + 0.45 * (max(p[1] for p in points) - plinth_top - 1), 0.5)
     scores = []
     for yaw in (i * 22.5 for i in range(16)):
         for distance in SQUARE_DISTANCES:
@@ -243,18 +247,19 @@ VIEWS = [(i * 22.5, 0.0) for i in range(16)] + [(0.0, 35.0), (180.0, 35.0), (0.0
 
 # Rough colours of the kit for previews: the look of each texture at a glance, not the texture.
 COLOURS = {
-    "corrugated_cream": (214, 205, 180), "corrugated_red": (142, 29, 22),
-    "riveted_plate": (40, 46, 54), "riveted_plate_red": (100, 19, 15), "enamel_panel": (221, 211, 186),
-    "steel_frame": (130, 26, 20), "hazard_band": (180, 140, 30), "concrete_footing": (120, 116, 113), "grating": (70, 78, 88),
-    "brass_trim": (173, 125, 52), "window_small_lit": (245, 168, 50),
-    "window_small_dark": (20, 30, 28), "window_ribbon_lit": (245, 168, 50), "window_ribbon_dark": (20, 30, 28),
-    "furnace_hatch": (210, 110, 30), "gauge_panel": (60, 66, 74), "winder_door": (54, 62, 72), "wall_lamp": (255, 200, 90),
-    "floodlight": (255, 220, 120), "railing": (200, 160, 40), "roof_slope": (150, 32, 24),
-    "roof_peak": (150, 32, 24), "brace": (72, 82, 94), "brace_red": (130, 26, 20),
-    "conveyor": (40, 40, 44), "steel_beam": (72, 82, 94), "steel_beam_red": (130, 26, 20), "lattice_girder": (72, 82, 94),
-    "lattice_girder_red": (130, 26, 20), "pipe": (90, 100, 110), "pipe_brass": (190, 140, 60), "cable": (30, 26, 24),
+    "riveted_plate": (40, 46, 54), "riveted_plate_red": (100, 19, 15),
+    "hazard_band": (180, 140, 30), "concrete_footing": (120, 116, 113), "grating": (70, 78, 88),
+    "brass_trim": (173, 125, 52), "window_ribbon_lit": (245, 168, 50), "window_ribbon_dark": (20, 30, 28),
+    "furnace_hatch": (210, 110, 30), "gauge_panel": (60, 66, 74), "winder_door": (54, 62, 72), "shutter": (66, 72, 80),
+    "wall_lamp": (255, 200, 90), "floodlight": (255, 220, 120), "railing": (200, 160, 40), "steel_ladder": (200, 160, 40),
+    "brace": (72, 82, 94), "conveyor": (40, 40, 44), "mine_track": (90, 90, 96), "ore_car": (70, 60, 56),
+    "steel_beam": (72, 82, 94), "steel_beam_red": (130, 26, 20), "lattice_girder": (72, 82, 94),
+    "pipe": (90, 100, 110), "pipe_brass": (190, 140, 60), "cable": (30, 26, 24),
     "enamel_sign": (230, 220, 200), "colony_sculpture": (190, 140, 70), "minecraft:barrier": None,
+    "regolith": (150, 70, 46), "regolith_rock": (110, 60, 44), "ochre_regolith": (190, 140, 82), "regolith_packed": (120, 54, 36),
 }
+# The stand-ins for the scale figures: a Mole's hitbox and a player's.
+FIGURE_BOXES = {"pod": ((1.9, 1.9, 1.9), (230, 225, 210)), "player": ((0.6, 1.8, 0.6), (60, 160, 220))}
 
 
 def _display_boxes(display: dict):
@@ -323,14 +328,44 @@ def concept_quads(pieces) -> list:
     return quads
 
 
-def render_concept(name: str, out: Path, size: int) -> Path:
+def figure_quads(figures) -> list:
+    """Boxes standing in for each layout figure (the pod's and the player's hitboxes), so a preview shows the scale."""
+    quads = []
+    for figure in figures:
+        (w, h, d), colour = FIGURE_BOXES[figure.kind]
+        x, y, z = figure.at
+        corners = [(x + sx * w / 2, y + sy * h, z + sz * d / 2) for sx in (-1, 1) for sy in (0, 1) for sz in (-1, 1)]
+        quads += box_quads(corners, colour)
+    return quads
+
+
+def render_concept(name: str, out: Path, size: int) -> list[Path]:
+    """Four orthographic views of a layout's massing, and each of its views in perspective as the game frames it."""
     import concepts
-    concept = next(c for c in concepts.ALL if c.name == name)
-    quads = concept_quads(concept.pieces())
+    layout = next(c for c in concepts.ALL if c.name == name)
+    quads = concept_quads([piece for _, piece in layout.pieces()]) + figure_quads(layout.figures)
     shots = [render(quads, yaw, pitch, size) for yaw, pitch in ((0.0, 4.0), (225.0, 30.0), (135.0, 30.0), (0.0, 89.0))]
-    path = out / f"concept-{name}.png"
-    write_png(path, sheet(shots, 2))
-    return path
+    massing = out / f"concept-{name}.png"
+    write_png(massing, sheet(shots, 2))
+    width, height = size * 854 // 480, size
+    views = [perspective(quads, v.eye, v.target, width, height, background=(150, 90, 60)) for v in layout.views if not v.above_ground]
+    framed = out / f"concept-{name}-views.png"
+    write_png(framed, _sheet_wide(views, 3))
+    return [massing, framed]
+
+
+def _sheet_wide(images: list, columns: int) -> list:
+    """Tiles equal-size images of any aspect left to right, top to bottom, with a 4-pixel gutter."""
+    h, w = len(images[0]), len(images[0][0])
+    gutter = 4
+    rows = (len(images) + columns - 1) // columns
+    out = [[(12, 10, 12)] * (columns * w + (columns + 1) * gutter) for _ in range(rows * h + (rows + 1) * gutter)]
+    for i, img in enumerate(images):
+        ox = gutter + (i % columns) * (w + gutter)
+        oy = gutter + (i // columns) * (h + gutter)
+        for y, row in enumerate(img):
+            out[oy + y][ox:ox + w] = row
+    return out
 
 
 def main(argv=None) -> int:
@@ -341,7 +376,8 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     import sculptures
     if args.piece.startswith("concept:"):
-        print(f"preview: {render_concept(args.piece.split(':', 1)[1], args.out, args.size)}")
+        for path in render_concept(args.piece.split(':', 1)[1], args.out, args.size):
+            print(f"preview: {path}")
         return 0
     if args.piece == "statues":
         names = [name for name in sculptures.FIGURES]

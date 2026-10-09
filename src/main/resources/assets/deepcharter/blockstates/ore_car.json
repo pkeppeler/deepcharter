@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "deepcharter:block/colony/ore_car"
+    },
+    "facing=east": {
+      "model": "deepcharter:block/colony/ore_car",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "deepcharter:block/colony/ore_car",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "deepcharter:block/colony/ore_car",
+      "y": 270
+    }
+  }
+}

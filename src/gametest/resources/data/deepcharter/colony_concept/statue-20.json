@@ -1,0 +1,143 @@
+{
+  "title": "The Host, 20 blocks",
+  "pieces": [
+    {
+      "structure": "deepcharter:colony_concept/statue-20/square",
+      "offset": [
+        -10,
+        0,
+        -10
+      ],
+      "blocks": 1544,
+      "displays": 2
+    },
+    {
+      "structure": "deepcharter:colony_concept/a/headframe",
+      "offset": [
+        -8,
+        0,
+        -29
+      ],
+      "blocks": 628,
+      "displays": 86
+    },
+    {
+      "structure": "deepcharter:colony_concept/a/works",
+      "offset": [
+        3,
+        0,
+        -28
+      ],
+      "blocks": 1080,
+      "displays": 2
+    },
+    {
+      "structure": "deepcharter:colony_concept/a/hoist_house",
+      "offset": [
+        -10,
+        1,
+        -36
+      ],
+      "blocks": 436,
+      "displays": 0
+    }
+  ],
+  "views": [
+    {
+      "name": "from-the-square",
+      "eye": [
+        5.0,
+        2.62,
+        17.0
+      ],
+      "target": [
+        0.5,
+        9.0,
+        0.5
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "front",
+      "eye": [
+        0.5,
+        6.0,
+        30.0
+      ],
+      "target": [
+        0.5,
+        10.0,
+        0.5
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "side",
+      "eye": [
+        26.0,
+        6.0,
+        4.0
+      ],
+      "target": [
+        0.5,
+        10.0,
+        0.5
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "from-the-air",
+      "eye": [
+        12.0,
+        40.0,
+        26.0
+      ],
+      "target": [
+        0.5,
+        8.0,
+        0.5
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "at-night",
+      "eye": [
+        5.0,
+        2.62,
+        17.0
+      ],
+      "target": [
+        0.5,
+        9.0,
+        0.5
+      ],
+      "night": true,
+      "above_ground": false
+    }
+  ],
+  "figures": [
+    {
+      "kind": "pod",
+      "at": [
+        -2.0,
+        1.0,
+        7.0
+      ],
+      "yaw": 200.0
+    },
+    {
+      "kind": "player",
+      "at": [
+        1.5,
+        1.0,
+        6.0
+      ],
+      "yaw": 180.0
+    }
+  ],
+  "orbit": null
+}

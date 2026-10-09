@@ -41,7 +41,7 @@ import net.minecraft.world.phys.AABB;
 
 
 /**
- * Server GameTests for #335: the colony concepts' structure files are of the game's data version, load, name only blocks and
+ * Server GameTests for #335 and #353: the colony concepts' structure files are of the game's data version, load, name only blocks and
  * properties that exist, place every block and every display they hold, and fit the pad the evidence scenario clears.
  * (AssetCompletenessTest covers the kit blocks' blockstates and models.)
  *
@@ -51,7 +51,8 @@ import net.minecraft.world.phys.AABB;
 public class ColonyConceptsTest {
 	/** The evidence scenario clears this far round the colony's centre; every piece must fit inside. */
 	private static final int CLEARED_RADIUS = 56;
-	private static final int CONCEPTS = 3;
+	/** The four concepts of #353 and the four sizes of the statue. */
+	private static final int LAYOUTS = 8;
 	/** Where a piece is placed to be counted: far from the test structures and from the colony. */
 	private static final int PLACE_AT = 40_000;
 
@@ -59,8 +60,8 @@ public class ColonyConceptsTest {
 	public void everyConceptPiecePlacesWhole(GameTestHelper helper) throws IOException {
 		MinecraftServer server = helper.getLevel().getServer();
 		Map<Identifier, Resource> layouts = server.getResourceManager().listResources("colony_concept", id -> id.getPath().endsWith(".json"));
-		if (layouts.size() != CONCEPTS) {
-			throw fail(helper, List.of("found " + layouts.size() + " concept layouts, not " + CONCEPTS + ": " + layouts.keySet()));
+		if (layouts.size() != LAYOUTS) {
+			throw fail(helper, List.of("found " + layouts.size() + " concept layouts, not " + LAYOUTS + ": " + layouts.keySet()));
 		}
 		List<String> problems = new ArrayList<>();
 		for (Map.Entry<Identifier, Resource> entry : layouts.entrySet()) {
