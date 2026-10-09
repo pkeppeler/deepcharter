@@ -91,7 +91,7 @@ Fly-around ([MP4](https://github.com/pkeppeler/deepcharter/blob/pr-media/357/col
 
 ## The Host at four sizes
 
-The same statue (statue C of round 1: mid-stride, one open hand raised beside his head in welcome, the other lowered and turned out, empty, with the slot in his chest), in layout A's square, from the same five views at every size, with a pod and a player at the foot of the plinth. The plinth grows with him.
+The same statue (statue C of round 1: mid-stride, one open hand raised beside his head in welcome, the other lowered and turned out, empty, with the slot in his chest), in layout A's square, from the same five views at every size, with a pod and a player at the foot of the plinth in the close views (from the air they are too small to make out). The plinth grows with him.
 
 | Size | Plinth | Plinth and statue | Times a player |
 |---|---|---|---|
