@@ -21,6 +21,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.level.biome.Biome;
@@ -29,8 +30,11 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
+
+import io.github.pkeppeler.deepcharter.colony.ColonyBuilder;
 
 /**
  * Server GameTests for the surface (#240): the generator makes regolith plains, craters, terraced mesas and basalt outcrops, with
@@ -62,6 +66,12 @@ public class SurfaceTerrainTest {
 	private static final int PIT_RIM_RADIUS = 59;
 	/** Basalt shows on the knobs, so the column to look at stands this high; the rule paints basalt from 2 blocks above the pad up. */
 	private static final int BASALT_MIN_RISE = 4;
+	/**
+	 * What the survey found with the GameTest world's seed, which is fixed at 0 (every run reads the same columns): the share of columns
+	 * 2 or more blocks below the pad (craters, the pit's floor) and 4 or more above it (mesas, rims and knobs). A test allows 50% either way.
+	 */
+	private static final double CRATER_SHARE = 0.0235;
+	private static final double MESA_SHARE = 0.307;
 	private static final int SURVEY_SPAN = 2048;
 	private static final int SURVEY_STEP = 8;
 
@@ -126,6 +136,29 @@ public class SurfaceTerrainTest {
 		helper.succeed();
 	}
 
+	@GameTest
+	public void aFreshWorldHasNoWanderingTraders(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		if (server.getGameRules().get(GameRules.SPAWN_WANDERING_TRADERS)) {
+			throw fail(helper, "the wandering trader spawns in a fresh world: its spawner ignores the biomes, so the rule must be off");
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aPlayerWhoTurnsWanderingTradersBackOnKeepsThem(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		server.getGameRules().set(GameRules.SPAWN_WANDERING_TRADERS, true, server);
+		try {
+			if (ColonyBuilder.buildIfNeeded(server) || !server.getGameRules().get(GameRules.SPAWN_WANDERING_TRADERS)) {
+				throw fail(helper, "a start of a world that has its colony changed the wandering trader rule the player set");
+			}
+		} finally {
+			server.getGameRules().set(GameRules.SPAWN_WANDERING_TRADERS, false, server);
+		}
+		helper.succeed();
+	}
+
 	@GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
 	public void cratersMesasAndTheGreatPitAreOnTheLand(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
@@ -143,11 +176,11 @@ public class SurfaceTerrainTest {
 		}
 		double craterShare = (double) craters / heights.length;
 		double mesaShare = (double) mesas / heights.length;
-		if (craterShare < 0.01 || craterShare > 0.10) {
-			throw fail(helper, "craters are %.1f%% of the columns, expected 1%% to 10%%", craterShare * 100);
+		if (craterShare < CRATER_SHARE * 0.5 || craterShare > CRATER_SHARE * 1.5) {
+			throw fail(helper, "craters are %.1f%% of the columns, expected %.1f%% to %.1f%%", craterShare * 100, CRATER_SHARE * 50, CRATER_SHARE * 150);
 		}
-		if (mesaShare < 0.05 || mesaShare > 0.35) {
-			throw fail(helper, "mesas are %.1f%% of the columns, expected 5%% to 35%%", mesaShare * 100);
+		if (mesaShare < MESA_SHARE * 0.5 || mesaShare > MESA_SHARE * 1.5) {
+			throw fail(helper, "mesas are %.1f%% of the columns, expected %.1f%% to %.1f%%", mesaShare * 100, MESA_SHARE * 50, MESA_SHARE * 150);
 		}
 		if (lowest > -5 || highest < 9) {
 			throw fail(helper, "the land runs from %d to %d blocks about the pad: expected a crater at least 5 deep and a mesa at least 9 high", lowest, highest);

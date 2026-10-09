@@ -1,6 +1,9 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.management.ManagementFactory;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8,6 +11,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -106,6 +113,42 @@ public class SurfaceCostTest {
 				helper.succeed();
 			}
 		});
+	}
+
+	/** The fixtures are the shipped surface with the band cut off: their rule and biome sources are the shipped ones, not copies that can drift. */
+	@GameTest
+	public void theTallFixturesAreTheShippedSurfaceWithTheBandCutOff(GameTestHelper helper) throws IOException {
+		JsonObject shippedRule = read(helper, "/data/deepcharter/worldgen/material_rule/surface.json").getAsJsonObject();
+		JsonObject tallRule = read(helper, "/data/deepcharter/worldgen/material_rule/tall_surface.json").getAsJsonObject();
+		JsonArray sequence = tallRule.getAsJsonArray("sequence");
+		JsonObject gated = sequence.get(0).getAsJsonObject();
+		if (!gated.get("if_true").equals(shippedRule.get("if_true"))
+				|| !gated.getAsJsonObject("then_run").get("then_run").equals(shippedRule.get("then_run"))
+				|| !sequence.get(1).getAsString().equals("deepcharter:layer") || sequence.size() != 2) {
+			throw helper.assertionException(Component.literal("tall_surface's material rule is not the shipped surface rule under a band gate, then the layers' rule"));
+		}
+		String tallDensity = read(helper, "/data/deepcharter/worldgen/noise_settings/tall_surface.json").toString();
+		String baselineDensity = read(helper, "/data/deepcharter/worldgen/noise_settings/tall_baseline.json").toString();
+		if (!tallDensity.contains("\"deepcharter:surface/density\"") || baselineDensity.contains("deepcharter:surface")) {
+			throw helper.assertionException(Component.literal("tall_surface must use the shipped surface density and tall_baseline must not"));
+		}
+		JsonObject dimensions = read(helper, "/data/minecraft/worldgen/world_preset/flat_all_dimensions.json").getAsJsonObject().getAsJsonObject("dimensions");
+		JsonElement shippedBiomes = read(helper, "/data/minecraft/dimension/overworld.json").getAsJsonObject().getAsJsonObject("generator").get("biome_source");
+		for (String world : List.of("tall_surface_biomes", "tall_baseline_biomes")) {
+			if (!dimensions.getAsJsonObject("deepcharter:" + world).getAsJsonObject("generator").get("biome_source").equals(shippedBiomes)) {
+				throw helper.assertionException(Component.literal(world + " does not use the shipped overworld's biome source"));
+			}
+		}
+		helper.succeed();
+	}
+
+	private static JsonElement read(GameTestHelper helper, String resource) throws IOException {
+		try (var stream = SurfaceCostTest.class.getResourceAsStream(resource)) {
+			if (stream == null) {
+				throw helper.assertionException(Component.literal("missing resource " + resource));
+			}
+			return JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
+		}
 	}
 
 	private static void report(Map<String, List<Measurement>> results) {

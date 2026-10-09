@@ -43,7 +43,7 @@ The surface is generated from data ([ADR 0036](../adr/0036-the-surface-is-genera
 | Mesas: how many, how tall, how wide a terrace | `mesas.json` (a terrace is 4 blocks, up to 5; the threshold is 0.077), `noise/surface_mesa.json` |
 | Craters: spacing, size, depth, how many cells hold one | `cell_x.json` and `cell_z.json` (spacing, 96), `crater_radius.json`, `crater_present.json`, `craters.json` (depth 0.34 and rim 0.2 of the radius) |
 | Basalt outcrops | `outcrops.json`, `noise/surface_basalt.json`, and `material_rule/surface.json` (the same noise picks the block) |
-| The colony plateau | `origin_distance.json` and `ramp.json` (flat out to 56 blocks, full relief at 136) |
+| The colony plateau and the great pit | `origin_distance.json`, `ramp.json`, `pit*.json`; the coordinates are in [ADR 0036](../adr/0036-the-surface-is-generated-from-data-by-a-replaced-overworld-dimension.md) |
 | Which block goes where | `material_rule/surface.json` |
 | A biome's life and attributes | `worldgen/biome/{regolith_plains,mesa_country,basalt_field}.json` |
 | The look of a block | the blockstate lists weighted `model` entries; add a texture, a model and a line to the blockstate |

@@ -4,6 +4,8 @@ status: accepted
 
 # The surface is layer 0, and its floor is open
 
+The vanilla material rule copy below is superseded by [ADR 0036](0036-the-surface-is-generated-from-data-by-a-replaced-overworld-dimension.md): the overworld has its own noise settings and rule, with no bedrock step, and the copy and its drift test are deleted. The open floor stands.
+
 Amended by [ADR 0029](0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md): the surface and layers 1 to 8 share one dimension, so the cross-dimension crossing below (arrival at the same X/Z in another dimension, and the carved pocket) no longer applies there. The open floor, the structure sets and the portal rule stand.
 
 The overworld is the first link of the layer chain. Its floor leads into layer 1, and the top of layer 1 leads back up. The vanilla overworld is changed only where the chain needs it. SPEC section 3 removes the End, so the stronghold, which holds its portal, has no purpose. Pillager outposts go as settlement-adjacent.
