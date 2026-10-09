@@ -94,6 +94,9 @@ public class ColonyTest {
 	static {
 		// Only the first build: tests that fire BUILT again later see the spawn the game test server moved.
 		ColonyEvents.BUILT.register((server, colony) -> SPAWN_AT_START.compareAndSet(null, server.getRespawnData().globalPos()));
+		// The Host's displays are entities, found only in chunks that tick. A work order that a test completes puts his hands there, and
+		// the test takes them away again only where they are found: so the pad's chunks tick from the start, for every test.
+		ColonyEvents.BUILT.register((server, colony) -> ColonyChunks.force(server.overworld(), colony));
 	}
 
 	@GameTest

@@ -45,6 +45,13 @@ public final class ColonyChunks {
 		return chunks;
 	}
 
+	/** Keeps the pad's chunks loaded and ticking for as long as the world lives. */
+	public static void force(ServerLevel level, ColonySite.Placed colony) {
+		for (BlockPos pos : of(colony)) {
+			level.setChunkForced(pos.getX() >> 4, pos.getZ() >> 4, true);
+		}
+	}
+
 	/**
 	 * Runs {@code body} once, on the first tick when every chunk of {@code positions} ticks and {@code ready} holds (the entities of a
 	 * chunk load a little after it ticks), and succeeds the test when it returns. Call from the test method, which must give itself
