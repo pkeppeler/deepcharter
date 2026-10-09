@@ -117,7 +117,9 @@ Noise:
 
 ## Principles for the Mole concepts
 
-Each concept must pass every rule. The Mole's hitbox is 1.9 blocks wide, deep and tall (about 30 model units). The bore is the size of the pod (SPEC section 7), so nothing except the drill sticks out of that box at the sides or top while the pod drives or drills.
+These rules guide the concepts and bind #243's build. The Mole's hitbox is 1.9 blocks wide, deep and tall (about 30 model units). The bore is the size of the pod (SPEC section 7), so nothing except the drill sticks out of that box at the sides or top while the pod drives or drills.
+
+The concepts of [pod-concepts.md](pod-concepts.md) depart from four rules on purpose, because they draw through vanilla `ModelPart`: tread links slide as cubes, one link pitch at a time (rule 8: `ModelPart` has no UV scroll); the canopy is opaque dark glass (rule 10); the drill has up to 36 cubes (rule 4); and the beam bone, the damage stages and the fuel gauge (rules 6 and 11) wait for #243.
 
 1. **Three masses and a gap.** A solid black side view and front view each show at least three distinct masses (hull, drill, track pods) and at least one see-through gap (between a track and the hull, or under the drill). Neither view is a plain rectangle.
 2. **No large flat face.** No flat hull area is larger than 12x12 pixels without a step, a seam line or a recess.

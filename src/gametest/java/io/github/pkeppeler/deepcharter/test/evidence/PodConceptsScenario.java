@@ -166,6 +166,8 @@ public class PodConceptsScenario extends EvidenceScenario {
 				client.gui.hud.toggle();
 			}
 		});
+		ClientWait.until(ctx, "both Moles and the pilot aboard on the client", client -> client.level.getEntity(parked.getId()) instanceof PodEntity
+				&& client.level.getEntity(piloted.getId()) instanceof PodEntity pod && pod.getControllingPassenger() != null);
 	}
 
 	/** Sets the dev switch to {@code concept} and reloads the resources, which rebuilds the renderers. */
@@ -179,8 +181,10 @@ public class PodConceptsScenario extends EvidenceScenario {
 		ClientWait.until(ctx, what, client -> drawn.test(client) && client.gui.overlay() == null);
 	}
 
+	/** The renderer the client draws the parked Mole with, or null before the client has the Mole. */
 	private Object moleRenderer(Minecraft client) {
-		return client.getEntityRenderDispatcher().getRenderer(client.level.getEntity(parked.getId()));
+		var mole = client.level == null ? null : client.level.getEntity(parked.getId());
+		return mole == null ? null : client.getEntityRenderDispatcher().getRenderer(mole);
 	}
 
 	// ------------------------------------------------------------------------------------------------ the studio
