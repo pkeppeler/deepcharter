@@ -1,9 +1,8 @@
 {
-  "parent": "deepcharter:block/ore_crystals_0",
+  "parent": "deepcharter:block/ore_crystal_0",
   "textures": {
     "all": "deepcharter:block/einsteinium_ore_0",
     "crystal": "deepcharter:block/einsteinium_crystal",
-    "crystal_side": "deepcharter:block/einsteinium_crystal",
     "glint": "deepcharter:block/einsteinium_glint"
   }
 }

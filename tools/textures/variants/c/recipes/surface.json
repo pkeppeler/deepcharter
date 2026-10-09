@@ -123,8 +123,8 @@
           "dust.3"
         ],
         "seed": 701,
-        "count": 8,
-        "shadow": "regolith.1"
+        "count": 5,
+        "shadow": "regolith.3"
       }
     },
     "block/regolith_1": {
@@ -150,8 +150,8 @@
           "dust.3"
         ],
         "seed": 702,
-        "count": 6,
-        "shadow": "regolith.1"
+        "count": 4,
+        "shadow": "regolith.3"
       }
     },
     "block/regolith_2": {
@@ -177,8 +177,8 @@
           "dust.3"
         ],
         "seed": 703,
-        "count": 10,
-        "shadow": "regolith.1"
+        "count": 6,
+        "shadow": "regolith.3"
       }
     },
     "block/regolith_3": {
@@ -204,8 +204,8 @@
           "dust.3"
         ],
         "seed": 704,
-        "count": 4,
-        "shadow": "regolith.1"
+        "count": 3,
+        "shadow": "regolith.3"
       }
     },
     "block/ochre_regolith_0": {
@@ -230,8 +230,8 @@
           "ochre.6"
         ],
         "seed": 721,
-        "count": 8,
-        "shadow": "ochre.0"
+        "count": 5,
+        "shadow": "ochre.2"
       }
     },
     "block/ochre_regolith_1": {
@@ -256,8 +256,8 @@
           "ochre.6"
         ],
         "seed": 722,
-        "count": 6,
-        "shadow": "ochre.0"
+        "count": 4,
+        "shadow": "ochre.2"
       }
     },
     "block/ochre_regolith_2": {
@@ -282,8 +282,8 @@
           "ochre.6"
         ],
         "seed": 723,
-        "count": 10,
-        "shadow": "ochre.0"
+        "count": 6,
+        "shadow": "ochre.2"
       }
     },
     "block/basalt_outcrop_0": {
@@ -308,7 +308,7 @@
           "basalt.5"
         ],
         "seed": 741,
-        "count": 6,
+        "count": 4,
         "shadow": "basalt.0"
       }
     },
@@ -334,7 +334,7 @@
           "basalt.5"
         ],
         "seed": 742,
-        "count": 8,
+        "count": 5,
         "shadow": "basalt.0"
       }
     },
@@ -360,7 +360,7 @@
           "basalt.5"
         ],
         "seed": 743,
-        "count": 4,
+        "count": 3,
         "shadow": "basalt.0"
       }
     },
@@ -498,7 +498,7 @@
         "lip": "regolith.3",
         "seed": 781,
         "cracks": 4,
-        "shadow": "regolith.1",
+        "shadow": "regolith.0",
         "pebbles": [
           "regolith.1",
           "regolith.2",
@@ -546,7 +546,7 @@
         "lip": "regolith.3",
         "seed": 782,
         "cracks": 4,
-        "shadow": "regolith.1",
+        "shadow": "regolith.0",
         "pebbles": [
           "regolith.1",
           "regolith.2",

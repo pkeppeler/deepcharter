@@ -13,6 +13,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
@@ -27,21 +28,29 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
+import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
+import io.github.pkeppeler.deepcharter.terminal.RepairState;
+import io.github.pkeppeler.deepcharter.terminal.TerminalActivity;
+import io.github.pkeppeler.deepcharter.terminal.TerminalType;
+import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -52,9 +61,10 @@ import io.github.pkeppeler.deepcharter.test.support.TestPacks;
  * A is the mod as it ships; B, C and D are test packs, each turned on in turn as a player does in the pack screen, and off again.
  *
  * <p>The views, each named {@code <variant>-<view>}: a cavern wall in layer 1 with every ore set in it, lit only by a pod's lamp (a
- * level 12 light, a tier 3 lights part, three blocks out from the wall, no night vision); the same wall close up; the wall of a bored
- * shaft at mid distance, lit every four blocks down; and the regolith south of the colony at noon. The player is a creative, flying
- * camera with the HUD hidden.
+ * level 12 light, a tier 3 lights part, three blocks out from the wall, no night vision); the same wall close up; the wall with the
+ * lamp out, where only what glows of itself shows; the wall of a bored
+ * shaft at mid distance, lit every four blocks down; the regolith of an open plain near the colony at noon; and three terminals and
+ * two Company rocks in a lamp-lit room (C redraws the terminals). The player is a creative, flying camera with the HUD hidden.
  */
 public class TextureDensityScenario extends EvidenceScenario {
 	private static final double EYE = 1.62;
@@ -67,6 +77,8 @@ public class TextureDensityScenario extends EvidenceScenario {
 	/** The bored shaft: 3 x 3 blocks, from its mouth at {@link #SHAFT} down {@link #SHAFT_DEPTH} blocks. */
 	private static final BlockPos SHAFT = new BlockPos(2640, 150, 2600);
 	private static final int SHAFT_DEPTH = 28;
+	/** The terminal room: three terminals against its south wall, for the 32x terminals of C. */
+	private static final BlockPos TERMINAL_ROOM = new BlockPos(2600, 100, 2570);
 	/** The ores in the cavern wall, by their place in it: blocks east of the room's middle, and up from its floor. */
 	private static final Map<BlockPos, Block> WALL_BLOCKS = Map.ofEntries(
 			Map.entry(new BlockPos(-4, 3, 0), OreRegistry.block(OreType.IRONIUM)),
@@ -125,6 +137,7 @@ public class TextureDensityScenario extends EvidenceScenario {
 				ServerLevel one = server.getLevel(LayerChain.dimension(1));
 				buildCavern(one);
 				buildShaft(one);
+				buildTerminalRoom(one);
 			});
 			ctx.runOnClient(client -> {
 				client.options.setCameraType(CameraType.FIRST_PERSON);
@@ -155,12 +168,20 @@ public class TextureDensityScenario extends EvidenceScenario {
 		still(variant + "-cavern-wall-lamp-lit");
 		view(1, wall.add(0.5, 0, -2), wall.add(0.5, 0, 0), 20);
 		still(variant + "-cavern-wall-close");
+		// The lamp out: only what glows of itself shows (D's glints).
+		serverDo(server -> server.getLevel(LayerChain.dimension(1)).setBlock(ROOM.offset(0, 2, 0), lamp(0), Block.UPDATE_ALL));
+		view(1, wall.add(0, 0.1, -6), wall, 20);
+		still(variant + "-cavern-wall-no-lamp");
+		serverDo(server -> server.getLevel(LayerChain.dimension(1)).setBlock(ROOM.offset(0, 2, 0), lamp(LAMP), Block.UPDATE_ALL));
 		// From just under the shaft's mouth, by its north wall, down at its south wall.
 		Vec3 mouth = Vec3.atBottomCenterOf(SHAFT);
 		view(1, mouth.add(0, -1.5, -1.2), mouth.add(0, -12, 1.5), 20);
 		still(variant + "-shaft-wall-mid");
 		view(0, plain.add(0, 5, -9), plain, 40);
 		still(variant + "-surface-regolith-day");
+		Vec3 terminals = Vec3.atBottomCenterOf(TERMINAL_ROOM);
+		view(1, terminals.add(0, 1.3, 0.3), terminals.add(0, 0.8, 3.5), 40);
+		still(variant + "-terminals-lamp-lit");
 	}
 
 	/**
@@ -204,20 +225,44 @@ public class TextureDensityScenario extends EvidenceScenario {
 			}
 		}
 		WALL_BLOCKS.forEach((at, block) -> level.setBlock(ROOM.offset(at.getX(), at.getY(), WALL), block.defaultBlockState(), Block.UPDATE_ALL));
-		level.setBlock(ROOM.offset(0, 2, 0), lamp(), Block.UPDATE_ALL);
+		level.setBlock(ROOM.offset(0, 2, 0), lamp(LAMP), Block.UPDATE_ALL);
 	}
 
 	/** A 3 x 3 shaft bored straight down through the layer's own rock, with a lamp at its middle every four blocks. */
+	/**
+	 * A small sealed room with three terminals against its south wall, facing north: the fuel pump repaired (online, its screen
+	 * lit), the ore processor broken (its red standby lamp) and the contract terminal; a Company rock each side; a pod lamp.
+	 */
+	private static void buildTerminalRoom(ServerLevel level) {
+		loadChunks(level, TERMINAL_ROOM, 1);
+		RoomCarver.carve(level, TERMINAL_ROOM.offset(-4, 0, -4), TERMINAL_ROOM.offset(4, 4, 3), Blocks.AIR.defaultBlockState());
+		RepairState repairs = RepairState.get(level.getServer());
+		for (Item part : TerminalTypes.FUEL_PUMP.parts()) {
+			repairs.insert(TerminalTypes.FUEL_PUMP, part);
+		}
+		List<TerminalType> row = List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, ContractTerminal.TYPE);
+		for (int i = 0; i < row.size(); i++) {
+			BlockPos pos = TERMINAL_ROOM.offset(-1 + i, 0, 3);
+			level.setBlock(pos, row.get(i).block().defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.NORTH), Block.UPDATE_ALL);
+			TerminalActivity.sync(level, pos);
+		}
+		for (int dx : new int[] {-2, 2}) {
+			level.setBlock(TERMINAL_ROOM.offset(dx, 0, 4), HazardBlocks.COMPANY_ROCK.defaultBlockState(), Block.UPDATE_ALL);
+			level.setBlock(TERMINAL_ROOM.offset(dx, 1, 4), HazardBlocks.COMPANY_ROCK.defaultBlockState(), Block.UPDATE_ALL);
+		}
+		level.setBlock(TERMINAL_ROOM.offset(0, 3, 0), lamp(LAMP), Block.UPDATE_ALL);
+	}
+
 	private static void buildShaft(ServerLevel level) {
 		loadChunks(level, SHAFT, 2);
 		RoomCarver.carve(level, SHAFT.offset(-1, -SHAFT_DEPTH, -1), SHAFT.offset(1, 0, 1), Blocks.AIR.defaultBlockState());
 		for (int depth = 2; depth < SHAFT_DEPTH; depth += 4) {
-			level.setBlock(SHAFT.below(depth), lamp(), Block.UPDATE_ALL);
+			level.setBlock(SHAFT.below(depth), lamp(LAMP), Block.UPDATE_ALL);
 		}
 	}
 
-	private static BlockState lamp() {
-		return Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, LAMP);
+	private static BlockState lamp(int level) {
+		return Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, level);
 	}
 
 	/**
@@ -320,6 +365,16 @@ public class TextureDensityScenario extends EvidenceScenario {
 		for (Entity entity : client.level.entitiesForRendering()) {
 			if (stray(entity)) {
 				return false;
+			}
+		}
+		int radius = client.options.getEffectiveRenderDistance();
+		int centreX = client.player.chunkPosition().x();
+		int centreZ = client.player.chunkPosition().z();
+		for (int x = centreX - radius; x <= centreX + radius; x++) {
+			for (int z = centreZ - radius; z <= centreZ + radius; z++) {
+				if (client.level.getChunkSource().getChunk(x, z, ChunkStatus.FULL, false) == null) {
+					return false;
+				}
 			}
 		}
 		return client.levelRenderer.hasRenderedAllSections();

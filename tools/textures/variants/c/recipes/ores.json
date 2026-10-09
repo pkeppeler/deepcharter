@@ -29,13 +29,13 @@
             "shadow": "rock.1",
             "count": 3,
             "radius": [
-              3.8,
-              4.8
+              4.4,
+              5.4
             ],
             "lumps": 4,
             "veins": 2,
             "vein": 6,
-            "glints": 2,
+            "glints": 3,
             "margin": 2,
             "depth": 3.0
           }
@@ -65,13 +65,13 @@
             "shadow": "rock.1",
             "count": 3,
             "radius": [
-              3.8,
-              4.8
+              4.4,
+              5.4
             ],
             "lumps": 3,
             "veins": 0,
             "vein": 0,
-            "glints": 2,
+            "glints": 3,
             "margin": 2,
             "depth": 3.0
           }
@@ -101,8 +101,8 @@
             "shadow": "rock.1",
             "count": 3,
             "radius": [
-              3.2,
-              4.0
+              3.8,
+              4.6
             ],
             "lumps": 3,
             "crystal": true,
@@ -138,13 +138,13 @@
             "shadow": "rock.1",
             "count": 2,
             "radius": [
-              4.4,
-              5.6
+              5.2,
+              6.2
             ],
             "lumps": 4,
             "veins": 0,
             "vein": 0,
-            "glints": 3,
+            "glints": 4,
             "margin": 2,
             "depth": 3.0
           }
@@ -174,8 +174,8 @@
             "shadow": "rock.1",
             "count": 3,
             "radius": [
-              3.0,
-              3.8
+              3.6,
+              4.4
             ],
             "lumps": 3,
             "veins": 0,
@@ -210,14 +210,14 @@
             "shadow": "rock.1",
             "count": 3,
             "radius": [
-              3.2,
-              4.2
+              3.8,
+              4.6
             ],
             "lumps": 4,
             "crystal": true,
             "veins": 0,
             "vein": 0,
-            "glints": 2,
+            "glints": 3,
             "margin": 2,
             "depth": 3.0
           }
@@ -247,13 +247,13 @@
             "shadow": "rock.1",
             "count": 2,
             "radius": [
-              3.4,
-              4.2
+              4.0,
+              4.8
             ],
             "lumps": 3,
             "veins": 4,
             "vein": 12,
-            "glints": 2,
+            "glints": 3,
             "margin": 2,
             "depth": 3.0
           }
@@ -287,7 +287,7 @@
       "template": "ironium_ore_c",
       "args": {
         "rock": 814,
-        "seed": 1010
+        "seed": 1024
       }
     },
     "block/bronzium_ore_0": {
@@ -301,14 +301,14 @@
       "template": "bronzium_ore_c",
       "args": {
         "rock": 812,
-        "seed": 1011
+        "seed": 1018
       }
     },
     "block/bronzium_ore_2": {
       "template": "bronzium_ore_c",
       "args": {
         "rock": 813,
-        "seed": 1019
+        "seed": 1026
       }
     },
     "block/bronzium_ore_3": {
@@ -350,21 +350,21 @@
       "template": "goldium_ore_c",
       "args": {
         "rock": 811,
-        "seed": 1030
+        "seed": 1037
       }
     },
     "block/goldium_ore_1": {
       "template": "goldium_ore_c",
       "args": {
         "rock": 812,
-        "seed": 1031
+        "seed": 1052
       }
     },
     "block/goldium_ore_2": {
       "template": "goldium_ore_c",
       "args": {
         "rock": 813,
-        "seed": 1032
+        "seed": 1039
       }
     },
     "block/goldium_ore_3": {
@@ -406,7 +406,7 @@
       "template": "einsteinium_ore_c",
       "args": {
         "rock": 811,
-        "seed": 1050
+        "seed": 1057
       }
     },
     "block/einsteinium_ore_1": {
@@ -420,7 +420,7 @@
       "template": "einsteinium_ore_c",
       "args": {
         "rock": 813,
-        "seed": 1052
+        "seed": 1066
       }
     },
     "block/einsteinium_ore_3": {

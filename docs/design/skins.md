@@ -65,6 +65,12 @@ The `rock` ramp is the stone the ores sit in. It matches the layer rock (vanilla
 
 `--check` then compares the committed texture with the source, as for any recipe. An animated recipe takes a source with one frame or with as many frames as the recipe. The kind still applies, so a half-transparent pixel in a source fails the build.
 
+**32x.** A recipe with `"size": 32` draws a 32 x 32 texture (and a source 32 pixels wide). Its ops work in its own pixels; `pixels` with `"scale": 2` draws 16x art at twice the size into it. Models need no change: their UVs are in 16ths of a block at any texture size. The reference sheet draws every texture in a cell of the same size, so a 32x texture shows its own pixels beside a 16x one.
+
+**Ore clumps.** The `cluster` op draws mineral clumps lit from the top left, each in a shadow on the rock below and right of it, with veins that run out into the rock. Draw an ore's background with the same recipe as the rock it sits in, so the block edge does not show.
+
+**Variant packs.** `tools/textures/variants.json` names test packs, each a list of recipe directories over the default ones. `texgen.py --variant <name>` writes only the textures those directories define into the pack, and `--check` checks it; `tools/tests/test_texture_packs.py` checks that each pack's blockstates, models and textures are complete. The texture density test ([texture-density.md](texture-density.md)) is the first use.
+
 **Layers.** Each is data in the model and blockstate files, so a pack can restyle or replace it:
 
 | Layer | How | Example |
