@@ -138,7 +138,7 @@ The bot is unrealistic in two opposite ways. It never reacts, which is harsh. It
 | Hull lost to lava per bore: mean / p50 / p90 | 78 / 100 / 100 | 28 / 11 / 100 | 24 / 5 / 100 |
 | Hull lost per encounter: mean / p50 | 80 / 100 | 38 / 23 | 39 / 28 |
 | Lining presses per bore: mean (p90) | none | 6.5 (11) | 7.1 (14) |
-| Bricks placed per bore: mean (p50 / p90) | none | 20 (19 / 32) | 21 (19 / 41) |
+| Bricks (not cells) placed per bore: mean (p50 / p90) | none | 20 (19 / 32) | 21 (19 / 41) |
 | Ticks standing still lining per bore: mean (p90) | none | 181 (292) | 196 (370) |
 | Bores that pressed with no brick left | none | 16 | 0 |
 
@@ -203,7 +203,7 @@ The no-lining column is a new run of the #300 bot: a pod with no hopper keeps no
 | Bores that touch lava | 99 | 69 | 55 | 39 | 18 | 23 | 30 |
 | Lava encounters per bore | 1.00 | 0.78 | 0.56 | 0.40 | 0.18 | 0.23 | 0.30 |
 | Died of something else | 1 | 27 | 40 | 56 | 70 | 64 | 59 |
-| Bricks placed per bore: mean | none | 20 | 24 | 21 | 28 | 78 | 82 |
+| Bricks (not cells) placed per bore: mean | none | 20 | 24 | 21 | 28 | 78 | 82 |
 | Ticks standing still lining per bore: mean | none | 186 | 0 | 0 | 0 | 0 | 0 |
 | Pod ticks per bore | 6,170 | 8,160 | 8,943 | 9,663 | 10,073 | 10,113 | 9,557 |
 | Bores whose rack ran out (hand: pressed with none) | none | 20 | 40 | 27 | 0 | 3 | 2 |
@@ -219,7 +219,7 @@ The no-lining column is a new run of the #300 bot: a pod with no hopper keeps no
 | Pod ticks per bore | 6,150 | 8,091 | 8,896 | 9,624 | 10,074 |
 
 - **The lava-only headline.** With braking, lava ends 99 of 100 unlined bores, 62 hand lined, 54 with a tier 1 liner and 39 with a tier 2 liner, on the rack of 32. The mean hull lost to lava falls from 84 to 30, 29 and 24. The pilot never stands still with a liner (0 ticks against 186). The liner is better than the hand by 8 to 23 bores of 100 in lava, and by 1 to 6 hull a bore, on 32 bricks.
-- **Braking is not what limits reach; gas is (measured).** The bot tags each loss of hull by what dealt it: lava (the pod touches it), gas (a gas pocket within a blast of the pod was mined that tick), a landing (the pod sank faster than 0.7 blocks a tick the tick before), or other. The only four callers of `damageHull` are lava, gas, the landing and the breach crust, so "other" is the crust (8 hull a slab). The braked runs:
+- **Braking is not what limits reach; gas is (measured).** The bot tags each loss of hull by what dealt it: lava (the pod touches it), gas (a gas pocket within a blast of the pod was mined that tick), a landing (the pod sank faster than 0.7 blocks a tick the tick before), or other. The only four callers of `damageHull` are lava, gas, the landing and the breach crust, so "other" is the crust (8 hull a slab). The causes are priority-ordered: a tick takes one cause, in the order lava, gas, landing, crust, so a tick with lava contact and a gas blast books all its hull to lava, which undercounts gas (#368 did not split a shared tick, and did not re-run these columns). A brick is one block; tier 2 lays two cells a brick, so the bricks rows are bricks and not cells. The braked runs:
 
 | Braked, 100 bores | No lining | Hand 32 | Liner 1, 32 | Liner 2, 32 | Liner 2, 999 | Liner 2, 32 + pack | Liner 1, 32 + pack |
 |---|---|---|---|---|---|---|---|
@@ -247,7 +247,104 @@ The no-lining column is a new run of the #300 bot: a pod with no hopper keeps no
 - Does a ring as tall as the interval waste bricks? A tier 2 ring lines every open cell of three slabs plus the pod's box, and the bore later removes (and loses) the bricks in its own path only when a ring cell was in the footprint. The measured bricks a bore are 21 to 24 on the rack, 78 to 82 with the pack: that is more than hand lining's 20, for 23 to 40 bores more held back.
 - Should a rack upgrade (more than 32 bricks, more mass) be a part of its own, or a bigger stack of bricks the pilot carries? The lava ladder's rung 3 may make either unnecessary.
 - Should the pod place bricks only beside lava when the rack is low, so a short rack is spent where lava is? Today it lines the open cells in order, lava first, and leaves the rest.
-- The gas: measured, gas ends 23 to 52 of the 100 bores of each lining column (the crust 4 to 17), more than any lining stops. Should the liner, or a later part, seal a gas pocket the drill is about to open, or is that the radiator's rung? Until it is answered, layer 2 reach after lava is a gas number.
+- The gas: measured, gas ends 23 to 52 of the 100 bores of each lining column (the crust 4 to 17), more than any lining stops. Answered by [Gas and the bore (#368)](#gas-and-the-bore-368-a): gas caps reach even for a pilot who steers, and the rung is a sounder part (#373), not the liner or the radiator.
+
+## Gas and the bore (#368, A)
+
+**Problem.** Once lava is lined against, gas ends 23 to 52 of every 100 bores of layer 1 ([Liner](#liner-vs-hand-lining-vs-a-straight-bore-measured)). The bot of that table bores straight through pockets, so the figure is an upper bound. Is gas a cap on reach to layer 2 for a careful pilot, and if so what is the rung?
+
+### The counterplay a player has today
+
+Read from the code, not invented. The pilot's whole counterplay to seeing a pocket is to steer round it; the rest is soaking the blast.
+
+| What | Where | What it does for gas |
+|---|---|---|
+| The blast | `GasHazard.java:41` (`damage`), `OreTuning.java:17` | Hull cost is depth in feet times the radiator factor times 0.05 (about 20 at the top of Deep Claim). Pods within a block of the pocket take it; a pocket mined by the drill or by hand vents (`GasHazard.java:29`, `PodDrill.java:210`). |
+| Scanner, tier 3 and up | `ScannerTuning.java:23` (`gasTier` 3), `ScanSlice.java:85,120`, `ScannerHud.java:140` | Shows a pocket as a magenta cell in the slice (one block thick, in the pod's facing plane). Below tier 3 a pocket reads as rock. Price $1,250. **A Mole cannot fit it:** the Mole takes parts to tier 2 (`UpgradeTuning.java:14`), so the Mole sees no gas in layers 1 and 2. A Prospector (cap 3) can. |
+| Radiator | `PodComponents.java:177`, `UpgradeTuning.java:91` | Gas and lava both read it. A Mole's best is tier 2: gas costs 0.75 of the hull ($500 for 0.9, $1,250 for 0.75). |
+| Hull part | `PodComponents.java:133`, `UpgradeTuning.java:88` | More hull to spend; a soak, not an answer. |
+| Hull nanobots | `Consumable.java:22`, `RepairTuning.java:18` | +30 hull for $345, from the seat, once per use. A soak. |
+| Dynamite, plastic explosives | `Consumables.java:38,71` | Clear natural rock, gas pockets included, within 1 (dynamite, $100) or 2 (plastic, $300) of the pod's middle, with no blast, because they remove the block instead of mining it. A Mole reaches the slab under its feet. It works blind: a Mole sees no pocket to aim at. |
+| Handbook | `handbook.json:133,138` | "Hazards that can't be seen with the eye will show on higher-tier scanners"; "gas pockets you can't [see]". It names the danger and points at the scanner; it names no other counterplay. |
+
+There is no gas line on the status HUD, no sound, no vent block and no consumable that finds a pocket. So for a Mole the bot's counterplay is none, and for a Prospector it is to see a pocket in the slice and step aside.
+
+### The avoid bot
+
+`DEEPCHARTER_LAVA_BORES_GAS=avoid` (default `ignore`, which reproduces every earlier number: the no-lining and liner 2 columns came out identical). It gives the bot a tier 3 reading from the same spot, as the thermal reading does (the pod keeps its tier 1 scanner): when the pod rests and the slice shows a pocket in one of the four cells the drill bores next, the bot steps 2 blocks to a side instead of drilling. The slice is one block thick, so a pocket in the footprint's other column is out of sight, as it is for a player, and the bot sees nothing of the cells a sidestep bores. This is a Prospector's counterplay, not a Mole's. **The avoid numbers are neither an upper nor a lower bound for a careful Prospector pilot.** The bot is over-equipped in one way (it reads a tier 3 slice from a pod that holds tier 1, with a cap-3 scanner a Mole cannot own) and under-equipped in others (its sidestep is blind: it does not check the cells it bores or the landing, so it can step into another pocket; and it sees one column of two). The decision below rests on the trend, not on the value: steering helps, gas stays a cap, and a Mole cannot see gas at all. The runs are deterministic (the liner 2 column ran twice with the same numbers).
+
+Avoiding moves the bot's path (the liner 2 column makes 11.0 sidesteps a bore against 8.8), so a column meets different lava: the hand lining column touched lava in 82 bores against 69. Compare the columns for the trend, not to the bore.
+
+### Measured: avoid against ignore
+
+100 bores of layer 1 each, braked. Each pair is `ignore` over `avoid`. Hull is per bore; hits are over 20 hull in one tick; deaths are by the cause of the last loss. Causes are priority-ordered (lava, then gas, then landing, then crust); a shared tick books to lava and undercounts gas.
+
+| 100 bores | No lining | Hand 32 | Liner 1, 32 | Liner 2, 32 | Liner 2, 999 | Liner 2, 32 + pack | Liner 1, 32 + pack |
+|---|---|---|---|---|---|---|---|
+| **Reach layer 2**: ignore | 0 | 11 | 6 | 5 | 12 | 13 | 12 |
+| **Reach layer 2**: avoid | 0 | 12 | 17 | 21 | 31 | 33 | 29 |
+| Hull lost: lava, ignore / avoid | 84 / 90 | 30 / 46 | 29 / 29 | 24 / 24 | 8 / 6 | 11 / 9 | 12 / 10 |
+| Hull lost: gas, ignore / avoid | 16 / 10 | 63 / 46 | 66 / 57 | 72 / 60 | 77 / 64 | 79 / 65 | 78 / 68 |
+| Hull lost: landing, ignore / avoid | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 | 7 / 7 | 0 / 0 | 0 / 0 |
+| Hull lost: crust, ignore / avoid | 0 / 0 | 3 / 3 | 2 / 5 | 2 / 6 | 4 / 9 | 4 / 10 | 4 / 9 |
+| Hits over 20 hull: gas, ignore / avoid | 38 / 24 | 136 / 100 | 141 / 121 | 150 / 128 | 160 / 136 | 163 / 138 | 163 / 142 |
+| Hits over 20 hull: landing, ignore / avoid | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 | 14 / 15 | 0 / 0 | 0 / 0 |
+| Hits over 20 hull: lava, ignore / avoid | 9 / 6 | 5 / 5 | 1 / 0 | 1 / 0 | 0 / 0 | 0 / 0 | 0 / 0 |
+| Deaths, last cause lava: ignore / avoid | 99 / 99 | 62 / 69 | 54 / 48 | 39 / 38 | 18 / 13 | 23 / 18 | 29 / 18 |
+| Deaths, last cause gas: ignore / avoid | 1 / 1 | 23 / 19 | 29 / 23 | 41 / 22 | 52 / 31 | 47 / 26 | 43 / 31 |
+| Deaths, last cause landing: ignore / avoid | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 | 1 / 2 | 0 / 0 | 0 / 0 |
+| Deaths, last cause crust: ignore / avoid | 0 / 0 | 4 / 0 | 11 / 12 | 15 / 19 | 17 / 23 | 17 / 23 | 16 / 22 |
+| Gas steps aside per bore (avoid) | 0.2 | 0.8 | 1.0 | 1.2 | 1.2 | 1.3 | 1.2 |
+
+- **Seeing helps a lot, and is not enough.** Avoid raises reach to layer 2 from 5 to 13 up to 17 to 33 in the liner columns, and cuts gas deaths from 29 to 52 down to 22 to 31. It also cuts the gas hits of 20 hull by 13% to 26%.
+- **Gas still caps reach.** In the liner columns, gas and the crust together still end 35 to 54 of 100 bores. The crust deaths are pods that arrive at the breach with the hull gas has taken (the crust is 8 hull a slab, `PodDrill.java:216`). Gas still takes 57 to 68 hull a bore in the liner columns, because the pod meets 1.4 to 1.7 blasts a bore that it did not see: the other column, and the cells it bores sideways (0.5 of the 1.5 blasts in the liner 2 column came during a sidestep).
+- **A Mole cannot do even this.** The avoid column is a Prospector's. For a Mole the counterplay is the `ignore` row: 5 to 13 reach layer 2 in the liner columns.
+
+### The bounds: a pilot who hears every pocket in the footprint
+
+Two modes are design bounds, not counterplay the game has. Both read the real world blocks, not a scanner. Each is what a tier of the part below tells a pilot, and each was run for three columns only.
+- `DEEPCHARTER_LAVA_BORES_GAS=sounder1` (tier 1): the bot knows every pocket in its 2 x 2 footprint, both columns, in the 2 slabs below. When one shows it steps aside to the side it would have taken anyway, with no look at the side's cells or landing.
+- `DEEPCHARTER_LAVA_BORES_GAS=sounder` (tier 2): the same, and it also knows the cells the step bores and the landing, and tries all four sides for a clear one.
+
+| 100 bores | No lining | Liner 2, 32 | Liner 2, 32 + pack |
+|---|---|---|---|
+| Reach layer 2: ignore / avoid / sounder1 / sounder | 0 / 0 / 0 / 0 | 5 / 21 / 36 / 46 | 13 / 33 / 50 / 60 |
+| Hull lost to gas: ignore / avoid / sounder1 / sounder | 16 / 10 / 6 / 4 | 72 / 60 / 45 / 34 | 79 / 65 / 50 / 37 |
+| Deaths by gas: ignore / avoid / sounder1 / sounder | 1 / 1 / 0 / 0 | 41 / 22 / 6 / 9 | 47 / 26 / 9 / 12 |
+| Deaths by crust: ignore / avoid / sounder1 / sounder | 0 / 0 / 0 / 0 | 15 / 19 / 16 / 8 | 17 / 23 / 21 / 11 |
+| Deaths by lava: ignore / avoid / sounder1 / sounder | 99 / 99 / 100 / 100 | 39 / 38 / 42 / 37 | 23 / 18 / 20 / 17 |
+
+With the bounds, gas stops being the main killer (6 to 12 deaths), and 36 to 60 bores reach layer 2. Tier 1's bound is 10 bores short of tier 2's at the same rack: the side lookahead is worth about that. The 0.8 to 0.9 blasts a bore that remain with `sounder` are almost all during sidesteps (0.7 of 0.8 and 0.8 of 0.9), most likely the sidesteps the bot makes for company rock, which a sounder could also warn about. That attribution is not traced.
+
+### Decision: gas is a cap, and gets a rung (A)
+
+Even a pilot who steers round every pocket the scanner shows reaches layer 2 in 17 to 33 of 100 bores in the liner columns, and a Mole sees none of them (5 to 13). Gas is the largest single cause of death in four of the five `ignore` liner columns (hand lining and liner 1 with a rack of 32 die more of lava). So gas gets a rung, filed as **#373**.
+
+**The crust is the next cap.** With `avoid` and the bounds, crust deaths roughly equal gas deaths in the lined columns (liner 2, 32: crust 19, gas 22 with `avoid`; crust 16, gas 6 with `sounder1`). Some of them are gas hull loss carried to the breach, and some are the crust itself (8 hull a slab). Once the sounder lands the crust may lead, so its re-measure reports crust deaths, and a crust issue is filed with the numbers if it does.
+
+**The seep sounder.** A new Mole-fittable part (a new component track, tiers 1 and 2), the gas ladder's rung 2. The ladder:
+1. **By hand (exists).** Steer round a pocket the Prospector's scanner shows, or throw dynamite blind. It teaches the danger and costs a lot.
+2. **The part.** The sounder tells the pilot where a pocket is. Tier 1, $400: every pocket in the 2 x 2 footprint, in the 2 slabs below, shows as a HUD line "SEEPAGE <slabs>" (a gas-coloured line like "HULL BURNING") and a hiss that quickens as the drill nears. The pilot steps aside by hand, or spends dynamite on it, which finally has an aim. It costs 5% of the drill's speed. Tier 2, $1,000: reaches 4 slabs below and 2 blocks to each side, so a sidestep is checked too, and the drill bleeds a marked pocket before it bores it (a 3 second pause; the blast then costs a quarter of the hull). It costs 10% of the drill's speed. Dread comes from the hiss, not the number.
+3. **Mastery.** A Prospector's tier 3 scanner draws pockets on the map and makes the sounder unneeded; the sounder stays the cheap Mole part.
+
+**Trade-offs.** Drill speed (5% and 10%, like the liner's 10% and 15%), one part slot, and a pause at tier 2.
+
+**Price band.** A Mole with tier 2 parts nets about $348 a layer 2 run (`EarlyRunModel`). Tier 1 at $400 is 2 runs, inside the liner's tier 1 band of at most 2; tier 2 at $1,000 is 3 runs, inside the liner's tier 2 band of at most 4. The build adds the sounder to `EconomyAffordabilityTest` with its own drill penalty in `EarlyRunModel`.
+
+**Target numbers** (100 braked bores of layer 1, the harness reading the real part instead of the bound). Each target is its bound minus 5 bores of reach, and plus 5 of gas deaths and of gas hull; the acceptance is "at least" (or "at most") the target.
+- Tier 1, liner 2, rack of 32 (bound `sounder1`: 36 reach, 6 gas deaths, 45 gas hull): at least 31 reach layer 2; at most 11 deaths by gas; mean hull lost to gas at most 50.
+- Tier 1, liner 2, rack of 32 plus a pack of 64 (bound 50, 9, 50): at least 45 reach; at most 14 gas deaths; gas hull at most 55.
+- Tier 2, liner 2, rack of 32 (bound `sounder`: 46 reach, 9 gas deaths, 34 gas hull): at least 41 reach; at most 14 gas deaths; gas hull at most 39.
+- Tier 2, liner 2, rack of 32 plus a pack of 64 (bound 60, 12, 37): at least 55 reach; at most 17 gas deaths; gas hull at most 42.
+- The `ignore` columns do not move, so gas stays a hazard for a pod without the part.
+
+**Knobs.** Per tier: footprint slabs, side reach, drill penalty, bleed pause and bleed damage share, price. The hiss interval in `DeepSound`. The part is a new `ComponentTrack`, as the liner was.
+
+**Open questions.**
+- Should a vented pocket leave a mark (a scar block, or a beacon on the charter's map) so the next pod of the charter steers round the shaft's pockets? It would make a bored shaft a safe highway for gas as the liner does for lava.
+- Should the bleed be a hand action first, like hand lining (a key that bleeds the next pocket), before the tier 2 automates it?
+- The sounder does not see lava. Should it? The thermal scanner at $500 already does, so no.
+- The cause tally books a shared tick to lava. If the next measurement matters to gas at the margin, split a shared tick by source.
 
 ## Fuel per descent (#289, A)
 
