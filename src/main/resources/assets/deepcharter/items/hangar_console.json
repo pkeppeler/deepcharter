@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "deepcharter:block/hangar_console"
+    "model": "deepcharter:block/hangar_console_active"
   }
 }

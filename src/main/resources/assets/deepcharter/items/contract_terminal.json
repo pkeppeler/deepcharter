@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "deepcharter:block/contract_terminal"
+    "model": "deepcharter:block/contract_terminal_active"
   }
 }

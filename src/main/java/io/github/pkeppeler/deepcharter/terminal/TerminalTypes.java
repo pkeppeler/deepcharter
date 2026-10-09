@@ -89,7 +89,7 @@ public final class TerminalTypes {
 		ResourceKey<Block> blockKey = ResourceKey.create(Registries.BLOCK, id);
 		// Unbreakable like bedrock in survival (hardness -1), and it takes a blast no vanilla block survives.
 		Block block = Registry.register(BuiltInRegistries.BLOCK, blockKey, new TerminalBlock(BlockBehaviour.Properties.of()
-				.setId(blockKey).strength(-1.0F, 3_600_000.0F).sound(SoundType.METAL).noLootTable()));
+				.setId(blockKey).strength(-1.0F, 3_600_000.0F).sound(SoundType.METAL).noLootTable(), repair.isEmpty()));
 		ResourceKey<Item> itemKey = ResourceKey.create(Registries.ITEM, id);
 		Registry.register(BuiltInRegistries.ITEM, itemKey, new BlockItem(block, new Item.Properties().setId(itemKey).useBlockDescriptionPrefix()));
 		TerminalBlockEntity.TYPE.addValidBlock(block);

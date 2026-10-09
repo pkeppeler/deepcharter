@@ -1,9 +1,10 @@
 {
-  "parent": "minecraft:block/orientable_with_bottom",
+  "parent": "deepcharter:block/terminal",
   "textures": {
     "top": "deepcharter:block/terminal_top",
     "bottom": "deepcharter:block/terminal_side",
     "side": "deepcharter:block/terminal_side",
-    "front": "deepcharter:block/repair_station_front"
+    "front": "deepcharter:block/repair_station_front",
+    "front_glow": "deepcharter:block/terminal_standby_glow"
   }
 }

@@ -73,6 +73,9 @@ public final class Terminals {
 				if (refusal.isPresent()) {
 					yield refuse(player, refusal.get());
 				}
+				if (action.equals(INSERT_PART)) {
+					TerminalActivity.sync(player.level(), pos);
+				}
 				sendView(player, pos, granted);
 				TerminalEvents.ACTED.invoker().onActed(player.level().getServer(), granted.type(), player, action);
 				yield Optional.empty();
@@ -176,7 +179,7 @@ public final class Terminals {
 
 	private static Optional<TerminalRefusal> run(ServerPlayer player, Access.Granted access, BlockPos pos, Identifier action, CompoundTag args) {
 		MinecraftServer server = player.level().getServer();
-		if (access.type().needsRepair() && !RepairState.get(server).repaired(access.type())) {
+		if (!RepairState.get(server).online(access.type())) {
 			return Optional.of(TerminalRefusal.UNREPAIRED);
 		}
 		Optional<TerminalAction> handler = TerminalActions.find(access.type(), action);
