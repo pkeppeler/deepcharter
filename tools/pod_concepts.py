@@ -733,7 +733,6 @@ def capsule_hull(m, dz=0, brow_lamps=True):
     rotor.box(2, 27.5, 1 + dz, 14, 28.5, 3 + dz, "paint")
     rotor.box(-16, 27.5, 1 + dz, -14, 28.5, 3 + dz, "trim")
     rotor.box(14, 27.5, 1 + dz, 16, 28.5, 3 + dz, "trim")
-    return body
 
 
 def capsule_running_gear(m, dz=0):
@@ -745,7 +744,6 @@ def capsule_running_gear(m, dz=0):
     fender.box(-15, 7, -9 + dz, -9, 8, 13 + dz, "paint")
     fender.box(14, 8, -9 + dz, 15, 9, 13 + dz, "trim")
     fender.box(-15, 8, -9 + dz, -14, 9, 13 + dz, "trim")
-    return fender
 
 
 def capsule():
