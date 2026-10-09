@@ -12,5 +12,6 @@ public final class ColonyInit {
 		ColonyRegistry.register();
 		ColonyBuilder.init();
 		Conduit.init();
+		FounderStatue.init();
 	}
 }

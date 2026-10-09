@@ -1,4 +1,4 @@
-"""The Company's signs: cream enamel plates with red lettering, lit sodium letters, a brass plaque and the bull's-head badge,
+"""The Company's signs: cream enamel plates with red lettering, lit sodium letters and a brass plaque,
 cut into the 16 x 16 tiles of the enamel_sign block. Each tile is a texgen recipe (tools/textures/recipes/colony_signs.json,
 written by tools/colony/build.py); a sign is a strip (or a grid) of tiles, placed by the structure builder.
 
@@ -8,7 +8,7 @@ import math
 from dataclasses import dataclass
 
 TILE = 16
-TILES = 48
+TILES = 55
 
 FONT = {
     "A": ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
@@ -112,68 +112,19 @@ def text_sign(text: str, style: str) -> tuple[list[list[str]], list[list[str]]]:
     return plate, glow
 
 
-# The bull's head, left half (the right is its mirror): s steel pick head (the horns are two picks), S its dark edge, w a brass
-# handle, k the red head, K its shadow, m the muzzle, n a nostril, e an eye. "." leaves the disc.
-_BULL_LEFT = [
-    "................",
-    "................",
-    "................",
-    "................",
-    "....Ss..........",
-    "....Sss.........",
-    ".....Sss........",
-    ".....Ssss.......",
-    "......Ssss......",
-    "......SSsss.....",
-    ".......SSssw....",
-    "........kkkkkkkk",
-    ".......Kkkkkkkkk",
-    "....KKKkkkkkkkkk",
-    ".....KKkkekkkkkk",
-    "........kkkkkkkk",
-    "........kkkkkkkk",
-    ".........kkkkkkk",
-    ".........kkkkkkk",
-    "..........kkkkkk",
-    "..........kmmmmm",
-    "..........kmnmmm",
-    "...........kmmmm",
-    "......w....kkkkk",
-    ".....w..........",
-    "....w...........",
-    "................",
-    "................",
-    "................",
-    "................",
-    "................",
-    "................",
-]
-
-
-def bull_badge() -> tuple[list[list[str]], list[list[str]]]:
-    """The Company's badge, 2 x 2 tiles: a cream disc in a red ring, the bull's head in red, its horns two crossed picks."""
-    size = 2 * TILE
-    c = (size - 1) / 2
-    grid = [["." for _ in range(size)] for _ in range(size)]
-    for y in range(size):
-        for x in range(size):
-            d = math.hypot(x - c, y - c)
-            grid[y][x] = "b" if d > 15.2 else "i" if d > 13.6 else "p"
-    for y, half in enumerate(_BULL_LEFT):
-        row = half + half[::-1]
-        for x, key in enumerate(row):
-            if key != "." and grid[y][x] == "p":
-                grid[y][x] = key
-    glow = [["." for _ in range(size)] for _ in range(size)]
-    return grid, glow
-
-
 SIGN_TEXTS = {
     "company": ("H. COLOM & CO.", "enamel"),
     "ore_house": ("ORE HOUSE", "enamel"),
     "shaft": ("SHAFT NO 1", "enamel"),
     "slogan": ("DEEPER TOGETHER!", "lit"),
     "founder": ("OUR FOUNDER", "brass"),
+    "bar": ("LAMP & PICK", "lit"),
+    "hangar": ("HANGAR", "enamel"),
+    "bunkhouse": ("BUNKHOUSE", "enamel"),
+    "pay_office": ("PAY OFFICE", "brass"),
+    "personnel": ("PERSONNEL", "brass"),
+    "chapel": ("CHAPEL", "brass"),
+    "continuity": ("CONTINUITY", "brass"),
 }
 
 
@@ -199,8 +150,6 @@ def _layout():
     for name, (text, style) in SIGN_TEXTS.items():
         plate, glow = text_sign(text, style)
         cut(name, plate, glow, style)
-    plate, glow = bull_badge()
-    cut("bull", plate, glow, "enamel")
     if len(tiles) > TILES:
         raise ValueError(f"the signs need {len(tiles)} tiles, but enamel_sign has {TILES}: raise SIGN_TILES here and in ColonyKit")
     blank = _plate(TILE, TILE, STYLES["enamel"])
@@ -221,10 +170,7 @@ def recipes() -> dict:
     out = {}
     for i, (plate, glow, style) in enumerate(TILE_ART):
         s = STYLES[style]
-        legend = {"p": s["plate"][0], "b": s["border"], "i": s["inner"], "k": s["ink"], "s": s["shadow"], "w": "brass.4",
-                  "S": "steel.2", "K": "company.1", "m": "company.3", "n": "company.0", "e": "enamel.3"}
-        if any(ch in "SKmne" for row in plate for ch in row):
-            legend["s"] = "steel.4"
+        legend = {"p": s["plate"][0], "b": s["border"], "i": s["inner"], "k": s["ink"], "s": s["shadow"]}
         key = f"block/colony/sign/tile_{i}"
         out[key] = {"kind": "opaque", "layers": [
             {"op": "fill", "colour": s["plate"][0]},

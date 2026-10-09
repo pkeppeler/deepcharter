@@ -37,6 +37,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 
@@ -175,10 +176,10 @@ public class WorkOrdersRepeatTest {
 		helper.succeed();
 	}
 
-	@GameTest
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
 	public void theFoundersHandsStaysOneShot(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
-		WorkOrdersTest.withProcessorOnline(server, () -> {
+		WorkOrdersTest.whenTheHostTicks(helper, server, () -> WorkOrdersTest.withProcessorOnline(server, () -> {
 			MockPlayer mock = WorkOrdersTest.player(helper, "Mason", true);
 			ServerPlayer player = mock.player();
 			BlockPos processor = WorkOrdersTest.processorFor(helper, mock);
@@ -197,8 +198,7 @@ public class WorkOrdersRepeatTest {
 			if (!view(server, player, processor).orders().getFirst().done()) {
 				throw helper.assertionException("the view should show the Founder's hands done");
 			}
-		});
-		helper.succeed();
+		}));
 	}
 
 	/** The act 2 order is offered once the charter has reached layer 3, and refuses (taking nothing) before. */

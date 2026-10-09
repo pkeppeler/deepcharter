@@ -25,7 +25,9 @@ Paths are under `src/main/resources/` in the repo and under `assets/deepcharter/
 | Dimension look (sky, fog, ambient light of a layer), biomes | `data/deepcharter/dimension_type/`, `data/deepcharter/worldgen/biome/` | world reopen, not F3+T |
 | Surface terrain: shape, craters, mesas, outcrops, biomes | `data/minecraft/dimension/overworld.json`, `data/deepcharter/worldgen/{density_function/surface,noise,noise_settings/surface,material_rule/surface,biome}` | new chunks (a world reopen); old chunks keep their blocks |
 | Surface blocks (regolith, packed regolith, ochre regolith, regolith rock, basalt outcrop) | `blockstates/<id>.json` (2 to 4 weighted variants), `models/block/<id>_<n>.json`, `textures/block/<id>_<n>.png` | F3+T |
-| Layer terrain and structures, colony | `data/deepcharter/worldgen/` today; the colony and structures are Java until #244 | world reopen |
+| Layer terrain and structures | `data/deepcharter/worldgen/` today; the layer structures are Java | world reopen |
+| The colony: which building stands where, and where each anchor is | `data/deepcharter/colony/layout.json` (written by `tools/colony/build.py` from `tools/colony/town.py`) | a new world: the colony is built once |
+| The colony's buildings, the square with the Host, the paving and the signs on them | `data/deepcharter/structure/colony/*.nbt` (same generator) | a new world; the kit blocks they use are `blockstates/`, `models/block/colony/` and `textures/block/colony/` and reload with F3+T |
 | Handbook text and chapters | `data/deepcharter/deepcharter/handbook_chapter/` and `lang` | world reopen |
 
 `ThemeTest` and `AssetCompletenessTest` guard the first rows: the theme parses, and every registered block, item and entity has the asset files above, with a blockstate variant for each block state and a `.png.mcmeta` for each animated texture. `tools/tests/test_texgen.py` fails when a committed texture differs from what its recipe makes.
@@ -147,6 +149,6 @@ The test pack at `src/gametest/resources/resourcepacks/amber_crt/` is exactly th
 Not part of the UI theme; each lands its look as data from the start.
 
 - **#239:** the layer-structure palette. The sky, fog and sun landed in the table above.
-- **#244:** the colony layout and palette.
+- **#244** landed the colony layout and its structure files (the table above). The palette is not data yet: a building's blocks are in its structure file.
 - **#249:** sound.
 - **#248:** pod lights stay as they are until the lighting work.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Writes every file of the colony kit and the colony concepts from the Python sources in this directory.
+"""Writes every file of the colony kit and the colony town from the Python sources in this directory.
 
 Usage: tools/colony/build.py [--check]
 
@@ -9,8 +9,8 @@ Usage: tools/colony/build.py [--check]
     tools/textures/texgen.py from those and colony_kit.json
   - the kit's English names in src/lang/en_us/colony.json. Other keys there are kept, but the name of a block with no
     blockstate (a kit block deleted since) is dropped and listed; one that ColonyBlocks or the kit still registers fails the build
-  - each layout's structure pieces (.nbt) and layout file under src/gametest/resources/data/deepcharter/, which only test and
-    evidence worlds load (concepts.py); a piece two layouts share is written once
+  - the town's structure pieces (.nbt) and its layout file, data/deepcharter/colony/layout.json, under src/main/resources/ (town.py):
+    ColonyBuilder places the pieces and reads the anchors from the layout when it builds the colony
 
 A file whose content already matches is not rewritten; a structure file matches when the NBT inside it does, whatever bytes
 the local zlib would deflate it to. --check writes nothing: it exits 1 and lists every file that differs from what the sources
@@ -25,18 +25,18 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-import concepts  # noqa: E402
 import kit  # noqa: E402
 import nbt  # noqa: E402
 import signs  # noqa: E402
+import town  # noqa: E402
 
 ROOT = HERE.parent.parent
 ASSETS = ROOT / "src/main/resources/assets/deepcharter"
-DATA = ROOT / "src/gametest/resources/data/deepcharter"
+DATA = ROOT / "src/main/resources/data/deepcharter"
 SIGN_RECIPES = ROOT / "tools/textures/recipes/colony_signs.json"
 LANG = ROOT / "src/lang/en_us/colony.json"
 # Directories every file of which comes from here.
-OWNED = (ASSETS / "models/block/colony", DATA / "structure/colony_concept", DATA / "colony_concept")
+OWNED = (ASSETS / "models/block/colony", DATA / "structure/colony", DATA / "colony")
 
 
 COLONY_BLOCKS = ROOT / "src/main/java/io/github/pkeppeler/deepcharter/colony/ColonyBlocks.java"
@@ -80,17 +80,19 @@ def outputs() -> dict[Path, bytes]:
     lang = {key: name for key, name in lang.items() if key not in dropped}
     lang.update({f"{BLOCK_KEY}{b.name}": b.english for b in kit.CATALOGUE.values()})
     files[LANG] = _json(dict(sorted(lang.items())))
-    for layout in concepts.ALL:
-        layout_pieces = []
-        for path, piece in layout.pieces():
-            root, origin = piece.to_nbt()
-            data = nbt.encode(root)
-            file = DATA / f"structure/colony_concept/{path}.nbt"
-            if files.setdefault(file, data) != data:
-                raise ValueError(f"layout {layout.name}: {path} is built two ways")
-            layout_pieces.append({"structure": f"deepcharter:colony_concept/{path}", "offset": list(origin), "blocks": len(piece.blocks),
-                                  "displays": len(piece.displays)})
-        files[DATA / f"colony_concept/{layout.name}.json"] = _json(layout.json(layout_pieces))
+    built = town.build()
+    pieces, later = [], []
+    for path, piece in built.pieces + built.later:
+        root, origin = piece.to_nbt()
+        data = nbt.encode(root)
+        file = DATA / f"structure/colony/{path}.nbt"
+        if files.setdefault(file, data) != data:
+            raise ValueError(f"{path} is built two ways")
+        placed = {"structure": f"deepcharter:colony/{path}", "offset": list(origin), "blocks": len(piece.blocks), "displays": len(piece.displays)}
+        (later if (path, piece) in built.later else pieces).append(placed)
+    files[DATA / "colony/layout.json"] = _json({"pieces": pieces, "later": later,
+                                                "anchors": {name: list(at) for name, at in sorted(built.anchors.items())},
+                                                "doors": [door.json() for door in built.doors]})
     return files
 
 

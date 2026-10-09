@@ -1,6 +1,6 @@
 # Colony concepts
 
-> **Round 1, picked and closed.** You picked B's style with A's signs and headframe, at half the scale, and statue C. Round 2 is [colony-concepts-2.md](colony-concepts-2.md). The code now builds round 2 only; these stills stay as the record.
+> **Round 1, picked and closed.** You picked B's style with A's signs and headframe, at half the scale, and statue C. Round 2 is [colony-concepts-2.md](colony-concepts-2.md). The game builds round 2's layout A as the colony ([#244](https://github.com/pkeppeler/deepcharter/issues/244)); these stills stay as the record.
 
 Issue [#335](https://github.com/pkeppeler/deepcharter/issues/335), PR [#343](https://github.com/pkeppeler/deepcharter/pull/343). Three ways to build the colony, for you to pick from before the rebuild ([#244](https://github.com/pkeppeler/deepcharter/issues/244)). Each concept is one architectural language, shown on its key building (the ore house, where the ore processor stands), the headframe over the Conduit, and a Founder statue. Everything here is built in the game from the new colony kit (our own blocks, models and textures) and shot in a test world. Nothing in a player's world changes until you pick.
 
