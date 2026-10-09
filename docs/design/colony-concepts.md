@@ -26,7 +26,7 @@ The three headframes, from the west side of the square and at night from the air
 
 ## A. Boomtown Mill
 
-A mill town of cream corrugated steel with red roofs and red trim, like the copper mill at Kennecott. The ore house is three gabled sheds that step up away from the square, with small lit windows, lean-tos, a fire stair and a water tank. Behind it stands a Butte-style headframe of black steel lattice: X-braced, a railed sheave deck at 47 with two wheels, back legs and ropes down to a hoist house, amber lamps up its legs, a beacon on its mast at 61.
+A mill town of cream corrugated steel with red roofs and red trim, like the copper mill at Kennecott. The ore house is three gabled sheds that step up away from the square, with small lit windows, lean-tos, a fire stair and a water tank. Behind it stands a Butte-style headframe of black steel lattice: X-braced, a railed sheave deck at 47 with two wheels, back legs and ropes down to a hoist house, amber lamps up its legs, and a beacon on the gantry over its wheels at 60.
 
 ![A from the square](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/a-from-the-square.png?raw=true) ![A from the air](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/a-from-the-air.png?raw=true)
 ![A at night](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/a-night-from-the-square.png?raw=true) ![A at night from the air](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/a-night-from-the-air.png?raw=true)

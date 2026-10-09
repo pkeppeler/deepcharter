@@ -74,7 +74,7 @@ def _common_views(statue_top: float) -> list[View]:
         View("statue-front", (0.5, level, 34.0), (0.5, level, 0.5)),
         View("statue-side", (34.0, level, 0.5), (0.5, level, 0.5)),
         View("statue-from-the-air", (14.0, statue_top + 22.0, 24.0), (0.5, mid, 0.5)),
-        View("statue-from-far", (20.0, 3.0, 100.0), (0.5, mid, 0.5), above_ground=True),
+        View("statue-from-far", (16.0, 12.0, 90.0), (0.5, mid, 0.5), above_ground=True),
         View("statue-at-night", (6.0, 2.6, 24.0), (0.5, mid, 0.5), night=True),
     ]
 
@@ -133,8 +133,7 @@ def _a_pithead() -> Piece:
     for x in (-7, 0):
         p.fill(x, 54, -18, x, 58, -18, state("steel_beam", axis="y"))
     p.fill(-7, 59, -18, 0, 59, -18, state("steel_beam", axis="x"))
-    p.fill(-4, 60, -18, -4, 61, -18, state("steel_beam", axis="y"))
-    p.set(-4, 61, -17, state("wall_lamp", facing="south"))
+    p.set(-4, 59, -17, state("wall_lamp", facing="south"))
     # The company's name on the deck, toward the square.
     p.fill(-8, 48, -9, -1, 50, -9, state("riveted_plate_red"))
     parts.sign(p, "company", -7, 49, -8, "south")
@@ -278,13 +277,13 @@ CONCEPT_A = Concept(
     statue="founder_a",
     build=lambda: [_a_square(), _a_pithead(), _a_mill(), _a_hoist_house()],
     views=(
-        View("from-the-square", (-6.0, 2.6, 26.0), (-14.0, 18.0, -22.0)),
-        View("headframe", (-20.0, 4.0, -4.0), (-4.0, 34.0, -14.0)),
+        View("from-the-square", (-8.0, 2.6, 8.0), (-20.0, 14.0, -26.0)),
+        View("headframe", (30.0, 14.0, 6.0), (-4.0, 30.0, -15.0)),
         View("mill-gables", (-18.0, 4.0, 6.0), (-23.0, 13.0, -24.0)),
-        View("from-the-air", (12.0, 36.0, 12.0), (-14.0, 12.0, -24.0)),
+        View("from-the-air", (-40.0, 40.0, 20.0), (-12.0, 10.0, -22.0)),
         View("from-the-air-behind", (-46.0, 34.0, -54.0), (-14.0, 12.0, -26.0)),
-        View("from-far-across-the-plain", (40.0, 3.0, 110.0), (-4.0, 30.0, -15.0), above_ground=True),
-        View("night-from-the-square", (-6.0, 2.6, 26.0), (-14.0, 18.0, -22.0), night=True),
+        View("from-far-across-the-plain", (24.0, 14.0, 96.0), (-4.0, 30.0, -15.0), above_ground=True),
+        View("night-from-the-square", (-8.0, 2.6, 8.0), (-20.0, 14.0, -26.0), night=True),
         View("night-from-the-air", (-34.0, 30.0, 4.0), (-14.0, 12.0, -24.0), night=True),
         *_common_views(30.0),
     ),
@@ -479,13 +478,13 @@ CONCEPT_B = Concept(
     statue="founder_b",
     build=lambda: [_b_square(), _b_tower(), _b_works()],
     views=(
-        View("from-the-square", (6.0, 2.6, 26.0), (14.0, 18.0, -22.0)),
-        View("headframe", (-20.0, 4.0, -2.0), (-4.0, 30.0, -15.0)),
+        View("from-the-square", (8.0, 2.6, 8.0), (20.0, 14.0, -26.0)),
+        View("headframe", (-30.0, 14.0, 6.0), (-4.0, 28.0, -15.0)),
         View("works-front", (18.0, 4.0, 3.0), (18.0, 9.0, -16.0)),
-        View("from-the-air", (-12.0, 36.0, 10.0), (12.0, 12.0, -24.0)),
+        View("from-the-air", (40.0, 40.0, 20.0), (12.0, 10.0, -22.0)),
         View("from-the-air-behind", (48.0, 34.0, -58.0), (12.0, 12.0, -26.0)),
-        View("from-far-across-the-plain", (40.0, 3.0, 110.0), (-4.0, 30.0, -15.0), above_ground=True),
-        View("night-from-the-square", (6.0, 2.6, 26.0), (14.0, 18.0, -22.0), night=True),
+        View("from-far-across-the-plain", (24.0, 14.0, 96.0), (-4.0, 30.0, -15.0), above_ground=True),
+        View("night-from-the-square", (8.0, 2.6, 8.0), (20.0, 14.0, -26.0), night=True),
         View("night-from-the-air", (34.0, 30.0, 4.0), (12.0, 12.0, -24.0), night=True),
         *_common_views(24.0),
     ),
@@ -647,13 +646,13 @@ CONCEPT_C = Concept(
     statue="founder_c",
     build=lambda: [_c_square(), _c_headframe(), _c_ore_house(), _c_hoist_house()],
     views=(
-        View("from-the-square", (-6.0, 2.6, 26.0), (-14.0, 18.0, -22.0)),
-        View("headframe", (-20.0, 4.0, -4.0), (-4.0, 34.0, -14.0)),
+        View("from-the-square", (-8.0, 2.6, 8.0), (-20.0, 14.0, -26.0)),
+        View("headframe", (30.0, 14.0, 6.0), (-4.0, 30.0, -15.0)),
         View("ore-house-front", (-20.0, 4.0, 6.0), (-24.0, 14.0, -24.0)),
-        View("from-the-air", (12.0, 36.0, 12.0), (-14.0, 12.0, -24.0)),
+        View("from-the-air", (-40.0, 40.0, 20.0), (-12.0, 10.0, -22.0)),
         View("from-the-air-behind", (-46.0, 34.0, -54.0), (-14.0, 12.0, -26.0)),
-        View("from-far-across-the-plain", (40.0, 3.0, 110.0), (-4.0, 30.0, -15.0), above_ground=True),
-        View("night-from-the-square", (-6.0, 2.6, 26.0), (-14.0, 18.0, -22.0), night=True),
+        View("from-far-across-the-plain", (24.0, 14.0, 96.0), (-4.0, 30.0, -15.0), above_ground=True),
+        View("night-from-the-square", (-8.0, 2.6, 8.0), (-20.0, 14.0, -26.0), night=True),
         View("night-from-the-air", (-34.0, 30.0, 4.0), (-14.0, 12.0, -24.0), night=True),
         *_common_views(30.0),
     ),

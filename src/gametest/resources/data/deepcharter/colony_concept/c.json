@@ -47,14 +47,14 @@
     {
       "name": "from-the-square",
       "eye": [
-        -6.0,
+        -8.0,
         2.6,
-        26.0
+        8.0
       ],
       "target": [
-        -14.0,
-        18.0,
-        -22.0
+        -20.0,
+        14.0,
+        -26.0
       ],
       "night": false,
       "above_ground": false
@@ -62,14 +62,14 @@
     {
       "name": "headframe",
       "eye": [
-        -20.0,
-        4.0,
-        -4.0
+        30.0,
+        14.0,
+        6.0
       ],
       "target": [
         -4.0,
-        34.0,
-        -14.0
+        30.0,
+        -15.0
       ],
       "night": false,
       "above_ground": false
@@ -92,14 +92,14 @@
     {
       "name": "from-the-air",
       "eye": [
-        12.0,
-        36.0,
-        12.0
+        -40.0,
+        40.0,
+        20.0
       ],
       "target": [
-        -14.0,
-        12.0,
-        -24.0
+        -12.0,
+        10.0,
+        -22.0
       ],
       "night": false,
       "above_ground": false
@@ -122,9 +122,9 @@
     {
       "name": "from-far-across-the-plain",
       "eye": [
-        40.0,
-        3.0,
-        110.0
+        24.0,
+        14.0,
+        96.0
       ],
       "target": [
         -4.0,
@@ -137,14 +137,14 @@
     {
       "name": "night-from-the-square",
       "eye": [
-        -6.0,
+        -8.0,
         2.6,
-        26.0
+        8.0
       ],
       "target": [
-        -14.0,
-        18.0,
-        -22.0
+        -20.0,
+        14.0,
+        -26.0
       ],
       "night": true,
       "above_ground": false
@@ -227,9 +227,9 @@
     {
       "name": "statue-from-far",
       "eye": [
-        20.0,
-        3.0,
-        100.0
+        16.0,
+        12.0,
+        90.0
       ],
       "target": [
         0.5,
