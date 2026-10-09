@@ -215,7 +215,7 @@ public class PodEntity extends Entity {
 
 	@Override
 	public boolean causeFallDamage(double fallDistance, float damageMultiplier, DamageSource source) {
-		PodMovement.onLanding(this, fallDistance, damageMultiplier, source);
+		HardLanding.onLanding(this, damageMultiplier);
 		return false;
 	}
 

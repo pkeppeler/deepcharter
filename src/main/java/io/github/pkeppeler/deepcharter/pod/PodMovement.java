@@ -2,7 +2,6 @@ package io.github.pkeppeler.deepcharter.pod;
 
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.player.Input;
 
@@ -48,18 +47,6 @@ public final class PodMovement {
 		double after = pod.getDeltaMovement().y;
 		if (pod.verticalCollision && (pod.verticalCollisionBelow ? after < 0 : after > 0)) {
 			pod.setDeltaMovement(pod.getDeltaMovement().multiply(1, 0, 1));
-		}
-	}
-
-	/** Called when the pod lands: a fall past the threshold damages the hull in proportion to the excess. */
-	public static void onLanding(PodEntity pod, double fallDistance, float damageMultiplier, DamageSource source) {
-		if (pod.level().isClientSide()) {
-			return;
-		}
-		PodStats stats = PodStats.of(pod);
-		double excess = fallDistance - stats.hardLandingDistance();
-		if (excess > 0) {
-			pod.damageHull((float) (excess * stats.hullDamagePerBlock() * damageMultiplier));
 		}
 	}
 

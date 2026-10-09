@@ -24,8 +24,10 @@ import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ParticleStatus;
 import net.minecraft.server.level.ServerLevel;
@@ -34,6 +36,8 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.clock.ClockInstance;
+import net.minecraft.world.clock.WorldClock;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -106,6 +110,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
 import io.github.pkeppeler.deepcharter.transmission.Transmissions;
@@ -148,6 +153,13 @@ public class DesignTourScenario extends EvidenceScenario {
 	private static final int LAYER_Z = 2000;
 	private static final int ITEMS_PER_PAGE = 36;
 	private static final long FUNDS = 5_000;
+	/**
+	 * Where the visual sky stands on its own clock, {@code deepcharter:sky} (its timeline swings over 288000 ticks, which is hours of
+	 * real time, so the tour pins it): at its brightest dusk, half way to night, and at its darkest.
+	 */
+	private static final long SKY_BRIGHTEST = 0;
+	private static final long SKY_HALFWAY = 72_000;
+	private static final long SKY_DARKEST = 144_000;
 	private static final int TERMINAL_TYPING_TICKS = 140;
 	/** The wall-clock limit of one settle. A world that has not settled by then fails the run, naming the still. */
 	private static final long SETTLE_LIMIT_NANOS = 90_000_000_000L;
@@ -207,9 +219,9 @@ public class DesignTourScenario extends EvidenceScenario {
 	// ------------------------------------------------------------------------------------------------ determinism
 
 	/**
-	 * Pins everything that would make two runs of one commit differ, before the first still: the clock stops at noon, the weather is
-	 * clear and stays so, nothing grows or burns by random tick, no mob spawns, and particles are at their minimum. The seed is the
-	 * world's own (see {@link #run}). Mobs that the world generated, and particles already flying, are cleared by {@link #settle}.
+	 * Pins everything that would make two runs of one commit differ, before the first still: the gameplay clock stops at noon, the
+	 * sky clock at its brightest dusk, the weather is clear and stays so, nothing grows or burns by random tick, no mob spawns, and
+	 * particles are at their minimum. The seed is the world's own (see {@link #run}). Mobs that the world generated, and particles already flying, are cleared by {@link #settle}.
 	 */
 	private void pinWorld() {
 		serverDo(server -> {
@@ -226,10 +238,31 @@ public class DesignTourScenario extends EvidenceScenario {
 			command(server, "weather clear");
 			command(server, "time set noon");
 		});
+		setSkyPhase(SKY_BRIGHTEST);
 		ctx.runOnClient(client -> {
 			client.options.particles().set(ParticleStatus.MINIMAL);
 			client.options.bobView().set(false);
 		});
+	}
+
+	/**
+	 * Pins the visual sky: the sky clock stops at {@code ticks} of its timeline, and the call returns once the client reads that
+	 * phase back, so no still is taken with the sky of the phase before (the overworld's fog colour is the dusk brown). The sky
+	 * follows this clock, not the gameplay clock that {@code time set} moves, so a still that wants another sky sets both.
+	 */
+	private void setSkyPhase(long ticks) {
+		ResourceKey<WorldClock> key = ResourceKey.create(Registries.WORLD_CLOCK, Identifier.fromNamespaceAndPath("deepcharter", "sky"));
+		serverDo(server -> {
+			var sky = server.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(key);
+			server.clockManager().setPaused(sky, true);
+			server.clockManager().setTotalTicks(sky, ticks);
+		});
+		ClientWait.until(ctx, "the client to read the sky clock at " + ticks, client -> skyClockOnClient(client, key).totalTicks() == ticks && skyClockOnClient(client, key).isPaused(),
+				client -> "the sky clock at " + skyClockOnClient(client, key).totalTicks());
+	}
+
+	private static ClockInstance skyClockOnClient(Minecraft client, ResourceKey<WorldClock> key) {
+		return client.level.clockManager().getInstance(client.level.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(key));
 	}
 
 	/**
@@ -499,16 +532,19 @@ public class DesignTourScenario extends EvidenceScenario {
 		view(0, stand, p(0, EYE + 90, 70), 20);
 		still("sky-up-noon");
 		serverDo(server -> command(server, "time set 12500"));
+		setSkyPhase(SKY_HALFWAY);
 		view(0, stand, targets[0], 40);
 		still("surface-south-dusk");
 		view(0, stand, p(0, EYE + 70, 120), 20);
 		still("sky-up-dusk");
 		serverDo(server -> command(server, "time set 18000"));
+		setSkyPhase(SKY_DARKEST);
 		view(0, stand, targets[3], 40);
 		still("surface-north-night");
 		view(0, stand, p(0, EYE + 90, 70), 20);
 		still("sky-up-night");
 		serverDo(server -> command(server, "time set noon"));
+		setSkyPhase(SKY_BRIGHTEST);
 	}
 
 	private void colonyTour() {

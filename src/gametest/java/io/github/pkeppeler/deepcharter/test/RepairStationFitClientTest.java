@@ -33,7 +33,7 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
  * the screen and clear of the others, and between them the positions show every row of the list.
  */
 public class RepairStationFitClientTest implements FabricClientGameTest {
-	private static final String LAST_ROW = "BUY MATTER TRANSMITTER $1500";
+	private static final String LAST_ROW = "BUY MATTER TRANSMITTER $1390";
 	private static final long LONGEST_DEPOSIT = 9_999_999_999_999L;
 	private static final int FAR = 1000;
 

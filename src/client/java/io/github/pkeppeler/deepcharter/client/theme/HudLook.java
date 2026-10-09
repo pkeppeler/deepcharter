@@ -10,6 +10,7 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param podStatusLineGap space between its lines, on top of the font height
  * @param podStatusColor its text
  * @param podBurningColor the warning line that shows while lava burns the hull
+ * @param podHardLandingColor the warning line that shows while the pod sinks faster than it can land without damage
  * @param altimeterMargin space between the altimeter and the top edge
  * @param altimeterColor its text
  * @param accountMargin space between the account line and the left edge
@@ -21,6 +22,7 @@ public record HudLook(
 		int podStatusLineGap,
 		int podStatusColor,
 		int podBurningColor,
+		int podHardLandingColor,
 		int altimeterMargin,
 		int altimeterColor,
 		int accountMargin,
@@ -32,7 +34,7 @@ public record HudLook(
 
 	public static HudLook of(ThemeData d) {
 		return new HudLook(d.integer("podStatusMargin", 0), d.integer("podStatusLineGap", 0), d.color("podStatusColor"),
-				d.color("podBurningColor"),
+				d.color("podBurningColor"), d.color("podHardLandingColor"),
 				d.integer("altimeterMargin", 0), d.color("altimeterColor"), d.integer("accountMargin", 0), d.decimal("accountY", 0, 1),
 				d.color("accountColor"));
 	}
