@@ -39,6 +39,7 @@ import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 
 /**
  * Server GameTests for #79: layer structures stand in their zones, one site of each kind in every 384-block square, from
@@ -157,7 +158,12 @@ public class LayerStructuresTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 600)
+	/**
+	 * The chunks of every site are made full on the first tick, and the check then waits on a wall-clock deadline for each
+	 * structure to hold its blocks ({@link FarChunks.Deadline}): a tick budget is a different wall time under load. The
+	 * failure names what was awaited and what the site held.
+	 */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
 	public void eachStructureGeneratesInItsZone(GameTestHelper helper) {
 		BlockPos conduit = conduit(helper);
 		List<StructureSite> sites = new ArrayList<>();
@@ -166,57 +172,105 @@ public class LayerStructuresTest {
 			for (StructureKind kind : StructureKind.inLayer(layer)) {
 				StructureSite site = StructureSite.in(level.getSeed(), kind, level.getMinY(), level.getHeight(), CELL, CELL, conduit);
 				sites.add(site);
-				BoundingBox box = site.bounds();
-				for (int chunkX = box.minX() >> 4; chunkX <= box.maxX() >> 4; chunkX++) {
-					for (int chunkZ = box.minZ() >> 4; chunkZ <= box.maxZ() >> 4; chunkZ++) {
-						level.getChunk(chunkX, chunkZ, ChunkStatus.FULL);
-					}
+				for (ChunkPos chunk : chunksOf(site)) {
+					level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
 				}
 			}
 		}
-		helper.succeedWhen(() -> {
+		FarChunks.Deadline deadline = FarChunks.deadline();
+		helper.onEachTick(() -> {
 			for (StructureSite site : sites) {
 				ServerLevel level = level(helper, site.kind().layer());
-				Map<Block, Integer> found = new HashMap<>();
-				Map<Integer, BlockPos> notes = new HashMap<>();
-				BoundingBox box = site.bounds();
-				for (BlockPos pos : BlockPos.betweenClosed(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ())) {
-					BlockState state = level.getBlockState(pos);
-					found.merge(state.getBlock(), 1, Integer::sum);
-					if (state.is(HandbookRegistry.NOTE)) {
-						notes.put(state.getValue(NoteBlock.NOTE), pos.immutable());
-					}
-				}
-				for (Map.Entry<Block, Integer> expected : minimum(site.kind(), site.height()).entrySet()) {
-					int count = found.getOrDefault(expected.getKey(), 0);
-					if (count < expected.getValue()) {
-						throw failure(helper, "%s at %s holds %d of %s, expected at least %d", site.kind(), site.origin().toShortString(),
-								count, expected.getKey(), expected.getValue());
-					}
-				}
-				requireNoFluidOrGas(helper, level, site);
-				if (NOTES.containsKey(site.kind())) {
-					int number = NOTES.get(site.kind());
-					if (!notes.keySet().equals(Set.of(number))) {
-						throw failure(helper, "%s at %s holds Notes %s, expected only N%02d", site.kind(), site.origin().toShortString(), notes.keySet(), number);
-					}
-					int zone = Zones.index(level.getMinY(), level.getHeight(), notes.get(number).getY());
-					if (zone != site.kind().zone()) {
-						throw failure(helper, "N%02d of %s is in zone %d, not %d", number, site.kind(), zone, site.kind().zone());
-					}
-				} else if (!notes.isEmpty()) {
-					throw failure(helper, "%s at %s holds Notes %s but should hold none", site.kind(), site.origin().toShortString(), notes.keySet());
-				}
-				if (NOTES.containsKey(site.kind()) && site.kind().layer() == 1) {
-					BlockPos note = notes.values().iterator().next();
-					// The candle is one block across the structure from the Note, which is south when the structure runs east to west.
-					BlockState candle = level.getBlockState(site.alongZ() ? note.east() : note.south());
-					if (!candle.is(Blocks.CANDLE) || !candle.getValue(CandleBlock.LIT)) {
-						throw failure(helper, "the niche of %s has no lit candle beside its Note: %s", site.kind(), candle);
-					}
+				Map<Block, Integer> found = census(level, site);
+				List<String> missing = missing(site, found);
+				if (!missing.isEmpty()) {
+					deadline.await(helper, level, false, () -> String.format("%s at %s still lacks %s after %d s; its chunks: %s; it holds: %s",
+							site.kind(), site.origin().toShortString(), missing, FarChunks.WAIT_SECONDS, chunkStates(level, site), found));
+					return;
 				}
 			}
+			for (StructureSite site : sites) {
+				requireOnlyItsNote(helper, level(helper, site.kind().layer()), site);
+			}
+			helper.succeed();
 		});
+	}
+
+	/** Every chunk that the site's bounds touch. */
+	private static List<ChunkPos> chunksOf(StructureSite site) {
+		BoundingBox box = site.bounds();
+		List<ChunkPos> chunks = new ArrayList<>();
+		for (int chunkX = box.minX() >> 4; chunkX <= box.maxX() >> 4; chunkX++) {
+			for (int chunkZ = box.minZ() >> 4; chunkZ <= box.maxZ() >> 4; chunkZ++) {
+				chunks.add(new ChunkPos(chunkX, chunkZ));
+			}
+		}
+		return chunks;
+	}
+
+	/** How many of each block the site's bounds hold now. */
+	private static Map<Block, Integer> census(ServerLevel level, StructureSite site) {
+		Map<Block, Integer> found = new HashMap<>();
+		BoundingBox box = site.bounds();
+		for (BlockPos pos : BlockPos.betweenClosed(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ())) {
+			found.merge(level.getBlockState(pos).getBlock(), 1, Integer::sum);
+		}
+		return found;
+	}
+
+	/** What the site still lacks of {@link #minimum}: each entry reads {@code block held/needed}. Empty when it is all there. */
+	private static List<String> missing(StructureSite site, Map<Block, Integer> found) {
+		List<String> missing = new ArrayList<>();
+		for (Map.Entry<Block, Integer> expected : minimum(site.kind(), site.height()).entrySet()) {
+			int count = found.getOrDefault(expected.getKey(), 0);
+			if (count < expected.getValue()) {
+				missing.add(expected.getKey() + " " + count + "/" + expected.getValue());
+			}
+		}
+		return missing;
+	}
+
+	/** Whether each chunk of the site is loaded, and as what: a chunk that is not a {@code LevelChunk} is a wrapper of a full one. */
+	private static String chunkStates(ServerLevel level, StructureSite site) {
+		Map<ChunkPos, String> states = new HashMap<>();
+		for (ChunkPos chunk : chunksOf(site)) {
+			ChunkAccess loaded = level.getChunkSource().getChunkNow(chunk.x(), chunk.z());
+			states.put(chunk, loaded == null ? "not loaded" : loaded.getClass().getSimpleName());
+		}
+		return states.toString();
+	}
+
+	/** The checks on a structure that stands: no fluid or gas, only its own Note in its own zone, and a lit candle beside it. */
+	private static void requireOnlyItsNote(GameTestHelper helper, ServerLevel level, StructureSite site) {
+		Map<Integer, BlockPos> notes = new HashMap<>();
+		BoundingBox box = site.bounds();
+		for (BlockPos pos : BlockPos.betweenClosed(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ())) {
+			BlockState state = level.getBlockState(pos);
+			if (state.is(HandbookRegistry.NOTE)) {
+				notes.put(state.getValue(NoteBlock.NOTE), pos.immutable());
+			}
+		}
+		requireNoFluidOrGas(helper, level, site);
+		if (NOTES.containsKey(site.kind())) {
+			int number = NOTES.get(site.kind());
+			if (!notes.keySet().equals(Set.of(number))) {
+				throw failure(helper, "%s at %s holds Notes %s, expected only N%02d", site.kind(), site.origin().toShortString(), notes.keySet(), number);
+			}
+			int zone = Zones.index(level.getMinY(), level.getHeight(), notes.get(number).getY());
+			if (zone != site.kind().zone()) {
+				throw failure(helper, "N%02d of %s is in zone %d, not %d", number, site.kind(), zone, site.kind().zone());
+			}
+		} else if (!notes.isEmpty()) {
+			throw failure(helper, "%s at %s holds Notes %s but should hold none", site.kind(), site.origin().toShortString(), notes.keySet());
+		}
+		if (NOTES.containsKey(site.kind()) && site.kind().layer() == 1) {
+			BlockPos note = notes.values().iterator().next();
+			// The candle is one block across the structure from the Note, which is south when the structure runs east to west.
+			BlockState candle = level.getBlockState(site.alongZ() ? note.east() : note.south());
+			if (!candle.is(Blocks.CANDLE) || !candle.getValue(CandleBlock.LIT)) {
+				throw failure(helper, "the niche of %s has no lit candle beside its Note: %s", site.kind(), candle);
+			}
+		}
 	}
 
 	@GameTest
