@@ -302,10 +302,10 @@ public class WorkOrdersTest {
 		}));
 	}
 
-	@GameTest
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
 	public void progressBelongsToTheCharter(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
-		withProcessorOnline(server, () -> {
+		whenTheHostTicks(helper, server, () -> withProcessorOnline(server, () -> {
 			MockPlayer first = player(helper, "Alpha", true);
 			MockPlayer second = player(helper, "Beta", true);
 			BlockPos processor = processorFor(helper, first);
@@ -320,8 +320,7 @@ public class WorkOrdersTest {
 					|| data.delivered(charter(server, first.player()).id(), WorkOrder.FOUNDERS_HANDS) < WorkOrder.FOUNDERS_HANDS.quantity()) {
 				throw helper.assertionException("each charter keeps its own progress");
 			}
-		});
-		helper.succeed();
+		}));
 	}
 
 	/** Both names are saved in the world: renaming either one orphans every charter's progress. */
