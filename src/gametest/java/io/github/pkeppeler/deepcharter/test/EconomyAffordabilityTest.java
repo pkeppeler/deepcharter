@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
+import io.github.pkeppeler.deepcharter.pod.HardLanding;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
@@ -120,7 +121,10 @@ public class EconomyAffordabilityTest {
 	 */
 	private static final int[] BORE_TANKS_BY_TANK_TIER = {14, 10, 6, 4, 3, 2, 1};
 	private static final int BORE_LITRES = 139;
-	private static final int STOCK_SAFE_DROP_BLOCKS = 23;
+	/** Litres (in tenths) of a braked drive down layer 1's 192 blocks at 0.6 blocks per tick: 16 s, the rotor on half of it. */
+	private static final int DRIVE_DOWN_DECILITRES = 20;
+	/** The terminal sink speed of a pod in blocks per tick: gravity 0.08 times drag 0.98 over the 0.02 the drag removes. */
+	private static final double FREE_FALL_TERMINAL_SINK = 3.92;
 	private static final int PROSPECTOR_RUNS = 4;
 
 	@GameTest
@@ -145,11 +149,17 @@ public class EconomyAffordabilityTest {
 	}
 
 	@GameTest
-	public void aStockMoleCannotDriveBackDownItsOwnShaft(GameTestHelper helper) {
-		int safe = EarlyRunModel.safeDropBlocks(PodStats.base());
-		LOGGER.info("[fuel] a stock hull survives a drop of {} blocks; layer 1 is {}", safe, EarlyRunModel.layerOneBlocks());
-		if (safe != STOCK_SAFE_DROP_BLOCKS) {
-			throw failure(helper, "a stock hull survives a drop of %d blocks, expected %d", safe, STOCK_SAFE_DROP_BLOCKS);
+	public void aStockMoleDrivesDownItsOwnShaftBrakedButCannotFallDownIt(GameTestHelper helper) {
+		PodStats stock = PodStats.base();
+		double litres = EarlyRunModel.driveDownLitres(stock, EarlyRunModel.layerOneBlocks());
+		LOGGER.info("[fuel] a braked drive down layer 1's shaft burns {} L of a {} L tank", litres, stock.tankLitres());
+		if (Math.round(litres * 10) != DRIVE_DOWN_DECILITRES) {
+			throw failure(helper, "a braked drive down the shaft burns %.2f L, expected %.1f", litres, DRIVE_DOWN_DECILITRES / 10.0);
+		}
+		if (EarlyRunModel.DRIVE_DOWN_SINK > stock.hardLandingSpeed()
+				|| HardLanding.hullDamage(stock, FREE_FALL_TERMINAL_SINK, 1f) < stock.maxHull()) {
+			throw failure(helper, "a braked drive at %s should land softly and a free fall at %s should wreck a stock hull",
+					EarlyRunModel.DRIVE_DOWN_SINK, FREE_FALL_TERMINAL_SINK);
 		}
 		helper.succeed();
 	}

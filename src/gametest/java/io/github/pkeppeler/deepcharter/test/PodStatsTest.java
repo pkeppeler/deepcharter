@@ -329,7 +329,7 @@ public class PodStatsTest {
 
 	@GameTest(maxTicks = 100)
 	public void landingDamageFollowsTheStats(GameTestHelper helper) {
-		PodEntity padded = spawnOnFloor(helper, 12, stats -> stats.withHullDamagePerBlock(0f));
+		PodEntity padded = spawnOnFloor(helper, 12, stats -> stats.withHullDamagePerSpeed(0f));
 		PodEntity control = helper.spawn(PodRegistry.POD, new Vec3(1.5, FLOOR_Y + 1 + 12, 1.5));
 		float before = padded.hull();
 		helper.runAfterDelay(50, () -> {

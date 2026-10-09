@@ -691,9 +691,9 @@ public class M2SliceScenario extends EvidenceScenario {
 		readHandbook("staying_safe", "44-handbook-chapter-7-staying-safe");
 		readHandbook("first_breach", "45-handbook-chapter-8-first-breach");
 
-		say("16. The wreck is in reach of the hangar console. SHORTCUT: $1,500 and 3 Cicatrium are granted. The console restores PROSPECTOR-0002.");
+		say("16. The wreck is in reach of the hangar console. SHORTCUT: $1,390 and 3 Cicatrium are granted. The console restores PROSPECTOR-0002.");
 		onServer(server -> {
-			Charters.deposit(server, charter, 1_500);
+			Charters.deposit(server, charter, 1_390);
 			for (int i = 0; i < 3; i++) {
 				stash(real(server), OreRegistry.stack(OreType.CICATRIUM));
 			}

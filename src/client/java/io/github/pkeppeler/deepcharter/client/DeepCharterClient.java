@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.client.pod.PodClientInit;
 import io.github.pkeppeler.deepcharter.client.repair.RepairClientInit;
 import io.github.pkeppeler.deepcharter.client.scanner.ScannerClientInit;
 import io.github.pkeppeler.deepcharter.client.sound.SoundClientInit;
+import io.github.pkeppeler.deepcharter.client.surface.SurfaceClientInit;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalClientInit;
 import io.github.pkeppeler.deepcharter.client.texture.TextureClientInit;
 import io.github.pkeppeler.deepcharter.client.theme.ThemeClientInit;
@@ -38,6 +39,7 @@ public class DeepCharterClient implements ClientModInitializer {
 		RepairClientInit.init();
 		ScannerClientInit.init();
 		SoundClientInit.init();
+		SurfaceClientInit.init();
 		TerminalClientInit.init();
 		TextureClientInit.init();
 		ThemeClientInit.init();
