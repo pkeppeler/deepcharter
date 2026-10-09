@@ -114,7 +114,7 @@ public class LavaBoreTest {
 	/** {@code avoid} makes the bot steer round a gas pocket that a scanner of the gas tier shows in its way; {@code ignore} (the default) bores straight through. */
 	static final String GAS_ENV = "DEEPCHARTER_LAVA_BORES_GAS";
 	private static final String REQUESTED_GAS = System.getenv(GAS_ENV);
-	/** What the bot does about gas: {@code ignore}; {@code avoid}, the scanner's plane; {@code sounder1}, a design bound for a tier 1 sounder: it knows every pocket in its footprint in the 2 slabs below and takes the side it would have taken anyway; {@code sounder}, a bound for tier 2: it also knows the cells of the side it picks and tries all four (#368). */
+	/** What the bot does about gas (the class comment says what each mode knows, #368). */
 	private enum GasMode { IGNORE, AVOID, SOUNDER1, SOUNDER }
 	private static final GasMode GAS = parseGas(REQUESTED_GAS);
 	/** The tier whose slice the avoiding bot reads: the lowest scanner that shows gas pockets. */
