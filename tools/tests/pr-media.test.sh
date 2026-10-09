@@ -148,6 +148,21 @@ guarded '^$' 1 "$work/files/a.gif"
 check "guard allows a replace-and-add publish" $?
 check "guard-clean publish keeps the old file" "$(tree | grep -q '^1/old.png:'; echo $?)" # pipe-grep-q: fail-closed — a missed match yields nonzero, which fails the check
 
+# The guard compares types too: a name that survives as the other type is a lost entry.
+echo plain-file >"$work/files/dusk-company"
+make_remote
+run looks/dusk-company "$work/files/a.gif"
+before=$(tree)
+if run looks "$work/files/dusk-company"; then check "file named like an existing subfolder is refused" 1; else check "file named like an existing subfolder is refused" 0; fi
+check "file-over-folder guard names the lost folder" "$(grep -q 'looks/ would lose files that were not replaced: tree dusk-company' "$work/err"; echo $?)"
+check "file-over-folder guard leaves pr-media alone" "$(if [[ $(tree) == "$before" ]]; then echo 0; else echo 1; fi)"
+make_remote
+run looks "$work/files/dusk-company"
+before=$(tree)
+if run looks/dusk-company "$work/files/a.gif"; then check "folder named like an existing file is refused" 1; else check "folder named like an existing file is refused" 0; fi
+check "folder-over-file guard names the lost file" "$(grep -q 'looks/ would lose entries: blob dusk-company' "$work/err"; echo $?)"
+check "folder-over-file guard leaves pr-media alone" "$(if [[ $(tree) == "$before" ]]; then echo 0; else echo 1; fi)"
+
 # The guard for a nested folder: the top folder must keep its other entries.
 make_remote
 run looks/dusk-company "$work/files/a.gif"
