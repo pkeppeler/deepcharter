@@ -1,0 +1,18 @@
+{
+  "variants": {
+    "": [
+      {
+        "model": "deepcharter:block/ochre_regolith_0",
+        "weight": 3
+      },
+      {
+        "model": "deepcharter:block/ochre_regolith_1",
+        "weight": 2
+      },
+      {
+        "model": "deepcharter:block/ochre_regolith_2",
+        "weight": 1
+      }
+    ]
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "type": "minecraft:add",
+  "left": {
+    "type": "minecraft:mul",
+    "left": {
+      "type": "minecraft:clamp",
+      "input": {
+        "type": "minecraft:sub",
+        "left": 1.0,
+        "right": {
+          "type": "minecraft:square",
+          "input": "deepcharter:surface/pit_rr"
+        }
+      },
+      "min": 0.0,
+      "max": 1.0
+    },
+    "right": -22.0
+  },
+  "right": {
+    "type": "minecraft:mul",
+    "left": {
+      "type": "minecraft:clamp",
+      "input": {
+        "type": "minecraft:sub",
+        "left": 1.0,
+        "right": {
+          "type": "minecraft:square",
+          "input": {
+            "type": "minecraft:div",
+            "left": {
+              "type": "minecraft:sub",
+              "left": "deepcharter:surface/pit_rr",
+              "right": 1.05
+            },
+            "right": 0.35
+          }
+        }
+      },
+      "min": 0.0,
+      "max": 1.0
+    },
+    "right": 8.0
+  }
+}

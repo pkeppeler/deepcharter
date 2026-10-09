@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:add",
+  "left": {
+    "type": "minecraft:gradient",
+    "axis": "y",
+    "from_coordinate": -64,
+    "from_value": 8.0,
+    "to_coordinate": 320,
+    "to_value": -16.0
+  },
+  "right": {
+    "type": "minecraft:mul",
+    "left": "deepcharter:surface/relief",
+    "right": 0.0625
+  }
+}

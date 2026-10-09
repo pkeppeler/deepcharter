@@ -1,0 +1,18 @@
+{
+  "variants": {
+    "": [
+      {
+        "model": "deepcharter:block/basalt_outcrop_0",
+        "weight": 3
+      },
+      {
+        "model": "deepcharter:block/basalt_outcrop_1",
+        "weight": 2
+      },
+      {
+        "model": "deepcharter:block/basalt_outcrop_2",
+        "weight": 1
+      }
+    ]
+  }
+}

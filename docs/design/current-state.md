@@ -7,7 +7,7 @@ so the same views can be shot again after the overhaul. To reshoot: `tools/recor
 `pr-media` branch and are not committed here.
 
 Shot on Minecraft 26.3 with the dev client, GUI scale 2, 854 x 480 (the whole window; stills before #285 were 800 x 450 and cut off the right and bottom edges). The world is a normal world with a fixed seed (not the flat test world), so the
-surface is vanilla terrain. The camera has no night vision unless the still's name says otherwise. Stills named `...-no-night-vision`
+surface is our own regolith terrain (#240; the other stills below it were shot before that change, at #317). The camera has no night vision unless the still's name says otherwise. Stills named `...-no-night-vision`
 or `...-as-played` show what a player sees; the other layer stills use night vision so the shapes can be seen.
 
 ## How to read an entry
@@ -26,10 +26,10 @@ or `...-as-played` show what a player sees; the other layer stills use night vis
 
 | Category | Count |
 |---|---|
-| Dimensions | 3 (surface, layer 1, layer 2); 6 zones in 6 biomes |
-| Custom blocks | 18 (7 ores, 2 hazards, breach crust, conduit, note, 6 terminals) |
-| Block textures | 19, all 16 x 16; 36 block-state variants |
-| Items | 57 (39 with a 16 x 16 sprite, 18 block items) |
+| Dimensions | 3 (surface, layer 1, layer 2); 6 zones in 6 layer biomes and 3 surface biomes |
+| Custom blocks | 23 (7 ores, 2 hazards, breach crust, conduit, note, 6 terminals, 5 surface blocks) |
+| Block textures | 34, all 16 x 16; 51 block-state variants |
+| Items | 62 (39 with a 16 x 16 sprite, 23 block items) |
 | Entities | 3 types (Mole, Prospector, lampless figure); looks: 2 pods, 1 wreck look, 1 derelict, 1 figure |
 | Structures | 11 colony pieces (pad, square, plinth row, statue, 6 buildings, hangar, Conduit) and 7 layer structure kinds |
 | Screens | 10 shot (handbook, offline terminal, fuel pump, ore processor, upgrade, repair station, hangar console, contract, pod cargo, vanilla inventory), 1 not reachable (CRT demo) |
@@ -48,20 +48,22 @@ or `...-as-played` show what a player sees; the other layer stills use night vis
 
 | | |
 |---|---|
-| What | The vanilla overworld, with the colony built on its spawn. Terrain, biomes, sky, sun, moon, stars, weather, trees and animals are vanilla. |
-| Vanilla | **yes** (terrain, sky, light, fog, day and night cycle). The mod adds only the colony ([section 5](#5-structures)) and removes villages, outposts and strongholds. |
-| Source | `data/minecraft/worldgen/material_rule/overworld.json` (a copy of vanilla's rule), `data/minecraft/worldgen/structure_set/{villages,pillager_outposts,strongholds}.json` (emptied: no structures) |
-| Time of day | Vanilla cycle, 24000 ticks. No fixed time, no eternal dusk: nothing in the mod sets the surface sky or time. |
-| Swap | **(b)** a datapack `minecraft:dimension_type/overworld` (time, light, fog attributes) and biome files; **(a)** a resource pack for vanilla textures, sky and clouds. Nothing in Java draws the surface sky or fog. |
+| What | Our own surface (#240, [ADR 0036](../adr/0036-the-surface-is-generated-from-data-by-a-replaced-overworld-dimension.md)): flat regolith plains, impact craters, terraced mesas and black basalt outcrops, one great pit south of the colony. No grass, trees, animals or water. The colony stands on a flat plateau at the origin. Sky, sun, moon, stars, weather and the day cycle are still vanilla. |
+| Vanilla | **no** for the terrain, the blocks and the biomes. **yes** for the sky, light, fog and day and night cycle. The mod removes villages, outposts and strongholds. |
+| Source | `data/minecraft/dimension/overworld.json`, `data/deepcharter/worldgen/{density_function/surface,noise,noise_settings/surface,material_rule/surface,biome}`, blocks `regolith`, `regolith_packed`, `ochre_regolith`, `regolith_rock` and `basalt_outcrop` (2 to 4 weighted variants each, placeholder textures until #242), `data/minecraft/worldgen/structure_set/{villages,pillager_outposts,strongholds}.json` (emptied: no structures) |
+| Cost | Per new column of the tall campaign world, against the layers alone: see [ADR 0036](../adr/0036-the-surface-is-generated-from-data-by-a-replaced-overworld-dimension.md). |
+| Time of day | Vanilla cycle, 24000 ticks. No fixed time, no eternal dusk: the surface sky is #239's. |
+| Swap | **(b)** the worldgen JSON above, the blockstates, and a datapack `minecraft:dimension_type/overworld` (time, light, fog attributes); **(a)** the block textures and models, and a resource pack for vanilla sky and clouds. Nothing in Java draws the surface or its sky: [skins.md](skins.md) says which number does what. |
 
-![surface-south-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/surface-south-noon.png?raw=true) ![surface-east-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/surface-east-noon.png?raw=true)
-![surface-west-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/surface-west-noon.png?raw=true) ![surface-north-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/surface-north-noon.png?raw=true)
-![sky-up-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/sky-up-noon.png?raw=true) ![surface-south-dusk](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/surface-south-dusk.png?raw=true)
-![sky-up-dusk](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/sky-up-dusk.png?raw=true) ![surface-north-night](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/surface-north-night.png?raw=true)
-![sky-up-night](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/sky-up-night.png?raw=true)
+![surface-south-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/surface-south-noon.png?raw=true) ![surface-east-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/surface-east-noon.png?raw=true)
+![surface-west-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/surface-west-noon.png?raw=true) ![surface-north-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/surface-north-noon.png?raw=true)
+![surface-south-dusk](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/surface-south-dusk.png?raw=true) ![surface-north-night](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/surface-north-night.png?raw=true)
 
-The tour world's biome at spawn is savanna: flat-topped acacias, dry grass, blue sky with white clouds at noon; at dusk and night the
-standard vanilla orange gradient and black sky with stars. The surface has no Mars-like colour, fog or lighting.
+![sky-up-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/sky-up-noon.png?raw=true) ![sky-up-dusk](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/sky-up-dusk.png?raw=true) ![sky-up-night](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/sky-up-night.png?raw=true)
+
+From the pad: rust-red plains with a low roll, ochre terraced mesas on the horizon, black basalt knobs, craters with raised rims, and a huge pit to the south. The
+sky is still vanilla blue with clouds at noon and the vanilla orange gradient at dusk (the sky stills above were shot at #317). The surface blocks are placeholder
+textures: the colour is right and the grain is not.
 
 ### Layer 1 (`deepcharter:layer_1`)
 
@@ -666,7 +668,7 @@ Every look that is fixed in Java and cannot be replaced by swapping a resource-p
 
 ## Vanilla Minecraft, unchanged or reused
 
-- **Unchanged:** the whole surface (terrain, biomes, sky, sun, moon, clouds, weather, mobs, trees), the font, the hotbar and inventory screens, health and hunger bars,
+- **Unchanged:** the surface's sky, sun, moon, clouds, weather and night monsters (its terrain, biomes and blocks are ours since #240), the font, the hotbar and inventory screens, health and hunger bars,
   the crosshair, chat, toasts, the particle used for the tow cable, the light block, every block in the colony and the structures except the terminals, the Conduit and the Notes.
 - **Reused as the look of a mod thing:** Mole (raw copper block), Prospector (iron block), wrecks (coal block), the lampless figure's model (zombie), the Gas Pocket's
   texture (stone), every sound (vanilla sounds as placeholders), the layer rock (stone).
