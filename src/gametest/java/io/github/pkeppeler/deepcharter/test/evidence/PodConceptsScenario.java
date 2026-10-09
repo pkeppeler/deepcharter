@@ -63,6 +63,8 @@ public class PodConceptsScenario extends EvidenceScenario {
 	private static final int ROOM_HALF = 6;
 	private static final int ROOM_HEIGHT = 5;
 	private static final double EYE = 1.62;
+	/** Where the cave's Mole stands for its lit still, and waits between concepts, so a new renderer never sees it move there. */
+	private static final Vec3 CAVE_START = new Vec3(X + CAVE_OFFSET - 2.5, FLOOR, Z + 0.5);
 	private static final int SETTLE_POLLS = 5;
 
 	private static final int TURN_FRAMES = 36;
@@ -158,7 +160,7 @@ public class PodConceptsScenario extends EvidenceScenario {
 			}
 			CharterId charter = Charters.charterOfOrThrow(server, pilot.player().getUUID()).orElseThrow().id();
 			piloted = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
-			piloted.setPos(X + CAVE_OFFSET + 0.5, FLOOR, Z + 0.5);
+			piloted.setPos(CAVE_START);
 			piloted.setFuel(100f);
 			one.addFreshEntity(piloted);
 			PodComponents.register(piloted, charter);
@@ -244,7 +246,7 @@ public class PodConceptsScenario extends EvidenceScenario {
 
 	private void cave(PodConcept concept) {
 		// The pod stands facing +z (south), where it was set down; the camera is in front of it, a little to its left.
-		Vec3 start = new Vec3(X + CAVE_OFFSET - 2.5, FLOOR, Z + 0.5);
+		Vec3 start = CAVE_START;
 		placePiloted(start, -90f);
 		look(start.add(1.3, EYE - 0.1, 3.1), start);
 		settle();
@@ -273,6 +275,8 @@ public class PodConceptsScenario extends EvidenceScenario {
 			}
 		}
 		releasePilot();
+		// Park it where the next concept's lit still wants it, before that concept's renderer starts watching it.
+		placePiloted(CAVE_START, -90f);
 	}
 
 	/** One frame of a clip: the camera keeps {@code offset} from the pod, so it rides along, but stays between the cave's floor and roof. */
