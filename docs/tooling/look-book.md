@@ -60,6 +60,7 @@ The remapped vanilla textures (layer rock, terrain, colony materials) come from 
 After each art PR that changes a slot the skins only approximate today:
 
 - [#240](https://github.com/pkeppeler/deepcharter/issues/240), the surface generator: the surface views change shape.
+- [#241](https://github.com/pkeppeler/deepcharter/issues/241), layer palettes and grades: the skins' grades move onto its post effects, and `LookSkin.holdGrade` goes.
 - [#242](https://github.com/pkeppeler/deepcharter/issues/242), the texture system: express each option's ramps as its palette files, in place of `tools/lookbook/skins.py`'s remap.
 - [#243](https://github.com/pkeppeler/deepcharter/issues/243), the pod models: the pod paint moves to the new textures.
 
