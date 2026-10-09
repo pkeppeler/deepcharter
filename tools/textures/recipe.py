@@ -621,6 +621,22 @@ def op_grime(canvas: Canvas, layer: dict, ctx: Context) -> None:
             canvas.over(x, y, colours[pick])
 
 
+def op_tint(canvas: Canvas, layer: dict, ctx: Context) -> None:
+    """Blends a colour over the opaque pixels of rect at alpha (0 to 255); the result stays opaque."""
+    ctx.need(layer, "colour", "alpha")
+    r, g, b, _ = ctx.colour(layer["colour"])
+    for x, y in _cells(layer, ctx):
+        if canvas.get(x, y)[3]:
+            canvas.over(x, y, (r, g, b, layer["alpha"]))
+
+
+def op_include(canvas: Canvas, layer: dict, ctx: Context) -> None:
+    """Composites another recipe's texture (its frame of the same number, or its last) at this point of the stack."""
+    ctx.need(layer, "recipe")
+    frames = ctx.book.render(layer["recipe"])
+    canvas.paste(frames[min(ctx.frame, len(frames) - 1)], 0, 0)
+
+
 def op_replace(canvas: Canvas, layer: dict, ctx: Context) -> None:
     """Every pixel of one colour becomes another (within rect)."""
     ctx.need(layer, "from", "to")
@@ -719,6 +735,8 @@ OPS: dict[str, Callable[[Canvas, dict, Context], None]] = {
     "strata": op_strata,
     "cracks": op_cracks,
     "grime": op_grime,
+    "tint": op_tint,
+    "include": op_include,
     "replace": op_replace,
     "outline": op_outline,
     "masked": op_masked,

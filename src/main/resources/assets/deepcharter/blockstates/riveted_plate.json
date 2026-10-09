@@ -1,0 +1,18 @@
+{
+  "variants": {
+    "": [
+      {
+        "model": "deepcharter:block/colony/riveted_plate",
+        "weight": 8
+      },
+      {
+        "model": "deepcharter:block/colony/riveted_plate_streaked",
+        "weight": 3
+      },
+      {
+        "model": "deepcharter:block/colony/riveted_plate_patched",
+        "weight": 2
+      }
+    ]
+  }
+}

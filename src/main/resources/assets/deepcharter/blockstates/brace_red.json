@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "deepcharter:block/colony/brace_red"
+    },
+    "facing=east": {
+      "model": "deepcharter:block/colony/brace_red",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "deepcharter:block/colony/brace_red",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "deepcharter:block/colony/brace_red",
+      "y": 270
+    }
+  }
+}

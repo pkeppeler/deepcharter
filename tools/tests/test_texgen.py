@@ -93,6 +93,29 @@ class RecipeRulesTest(unittest.TestCase):
         self.assertEqual((0x10, 0x20, 0x30, 255), canvas.get(0, 0))
         self.assertEqual((0x80, 0x80, 0x80, 255), canvas.get(5, 5))
 
+    def test_a_tint_shades_the_opaque_pixels_of_its_rect_and_no_others(self):
+        canvas = self.book({"block/x": {"kind": "cutout", "layers": [
+            {"op": "fill", "colour": "ramp.0", "rect": [0, 0, 12, 16]},
+            {"op": "tint", "colour": "ramp.2", "alpha": 51, "rect": [0, 0, 8, 16]},
+        ]}}).render("block/x")[0]
+        self.assertEqual((51, 51, 51, 255), canvas.get(0, 0))
+        self.assertEqual((0, 0, 0, 255), canvas.get(8, 0))
+        self.assertEqual(0, canvas.get(14, 0)[3])
+
+    def test_an_include_draws_another_recipe_under_the_layers_after_it(self):
+        canvas = self.book({
+            "block/base": {"kind": "opaque", "layers": [{"op": "fill", "colour": "ink"}]},
+            "block/x": {"kind": "opaque", "layers": [{"op": "include", "recipe": "block/base"},
+                                                     {"op": "fill", "colour": "ramp.2", "rect": [0, 0, 1, 1]}]},
+        }).render("block/x")[0]
+        self.assertEqual((255, 255, 255, 255), canvas.get(0, 0))
+        self.assertEqual((0x10, 0x20, 0x30, 255), canvas.get(5, 5))
+
+    def test_an_include_of_a_missing_recipe_fails_naming_it(self):
+        book = self.book({"block/x": {"kind": "opaque", "layers": [{"op": "include", "recipe": "block/nope"}]}})
+        with self.assertRaisesRegex(RecipeError, "block/nope"):
+            book.render("block/x")
+
     def test_an_unknown_op_fails(self):
         book = self.book({"block/x": {"kind": "opaque", "layers": [{"op": "blur"}]}})
         with self.assertRaisesRegex(RecipeError, "unknown op 'blur'"):

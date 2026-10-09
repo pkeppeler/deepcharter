@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "deepcharter:block/colony/furnace_hatch"
+    },
+    "facing=east": {
+      "model": "deepcharter:block/colony/furnace_hatch",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "deepcharter:block/colony/furnace_hatch",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "deepcharter:block/colony/furnace_hatch",
+      "y": 270
+    }
+  }
+}
