@@ -17,6 +17,9 @@ Paths are under `src/main/resources/` in the repo and under `assets/deepcharter/
 | Entity texture (the lampless figure) | `textures/entity/<id>.png` | F3+T |
 | Text | `lang/en_us.json` (generated from `src/lang/en_us/<feature>.json`; never edit it) | F3+T |
 | Sounds | `sounds.json` and `sounds/*.ogg` | F3+T |
+| Overworld sky (sky, fog and horizon colours, stars, sun and moon angle, clouds off, dust in the air): a timeline on its own clock that swings between dusk and night over 288000 ticks (4 hours) | `data/deepcharter/timeline/sky.json` (tracks of `minecraft:visual/*` attributes, one keyframe at dusk and one at night), `data/deepcharter/world_clock/sky.json`, `data/minecraft/tags/timeline/in_overworld.json` | world reopen, not F3+T |
+| Sun: a round disc with a narrow glow baked in (the horizon glow, `sunrise_sunset_color`, is off) | `assets/minecraft/textures/environment/celestial/sun.png` | F3+T |
+| Dust in the air: the particle the sky names in its `ambient_particles` track | `particles/dust_mote.json` and `textures/particle/dust_mote.png` | F3+T |
 | Dimension look (sky, fog, ambient light of a layer), biomes | `data/deepcharter/dimension_type/`, `data/deepcharter/worldgen/biome/` | world reopen, not F3+T |
 | Layer terrain and structures, colony | `data/deepcharter/worldgen/` today; the colony and structures are Java until #244 | world reopen |
 | Handbook text and chapters | `data/deepcharter/deepcharter/handbook_chapter/` and `lang` | world reopen |
@@ -67,7 +70,7 @@ The test pack at `src/gametest/resources/resourcepacks/amber_crt/` is exactly th
 
 Not part of the UI theme; each lands its look as data from the start.
 
-- **#239:** the sky, fog, sun and the layer-structure palette.
+- **#239:** the layer-structure palette. The sky, fog and sun landed in the table above.
 - **#244:** the colony layout and palette.
 - **#249:** sound.
 - **#248:** pod lights stay as they are until the lighting work.
