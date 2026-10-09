@@ -139,11 +139,13 @@ while :; do
     echo "$push_err" >&2
     lost_race "$push_err" || exit 1
     failure="push rejected"
+    cause="likely another publisher"
   else
     failure="fetch failed"
+    cause="network or remote problem"
   fi
   if [[ $attempt -ge $max_attempts ]]; then
-    echo "${failure} ${max_attempts} times in a row (likely another publisher); nothing was published, run it again" >&2
+    echo "${failure} ${max_attempts} times in a row (${cause}); nothing was published, run it again" >&2
     exit 1
   fi
   # Jittered backoff that grows with each attempt, so concurrent publishers fall out of step.

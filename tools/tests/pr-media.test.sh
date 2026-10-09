@@ -304,7 +304,7 @@ if raced FETCH_FAILS=2 -- 5 "$work/files/a.gif"; then check "publish survives tw
 check "failed fetches are retried, then one push lands" "$(if [[ $(pushes) -eq 1 && $(tree | grep -c '^5/a.gif:') -eq 1 ]]; then echo 0; else echo 1; fi)"
 make_remote
 if raced FETCH_FAILS=99 -- 5 "$work/files/a.gif"; then check "publish with a dead remote fails" 1; else check "publish with a dead remote fails" 0; fi
-check "dead remote gives up loudly after five fetches" "$(if grep -q 'fetch failed 5 times in a row' "$work/err" && [[ $(wc -l <"$work/fetches" | tr -d ' ') -eq 5 ]]; then echo 0; else echo 1; fi)"
+check "dead remote gives up loudly after five fetches" "$(if grep -q 'fetch failed 5 times in a row (network or remote problem)' "$work/err" && [[ $(wc -l <"$work/fetches" | tr -d ' ') -eq 5 ]]; then echo 0; else echo 1; fi)"
 check "dead remote pushes nothing" "$(if [[ $(pushes) -eq 0 ]]; then echo 0; else echo 1; fi)"
 
 # A guard that fails against the new tip refuses; there is no retry around a guard.
