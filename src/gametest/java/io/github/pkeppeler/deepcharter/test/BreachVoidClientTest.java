@@ -78,7 +78,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
 			ClientWait.until(context, "the client in the world", client -> client.player != null && client.level != null);
 			// F1: no crosshair over the middle of the picture, where the hole is. The client is shared with the next test, so the HUD is put back.
 			boolean hudWasHidden = context.computeOnClient(client -> client.gui.hud.isHidden());
-			// Particles are off, so no dust mote (#239) lights the patch: the sky's ambient motes are not forced past the limit, and MINIMAL drops them.
+			// MINIMAL drops the sky's ambient dust motes, so none lights the patch. Put back with the HUD.
 			ParticleStatus particlesWere = context.computeOnClient(client -> client.options.particles().get());
 			context.runOnClient(client -> {
 				client.options.particles().set(ParticleStatus.MINIMAL);
