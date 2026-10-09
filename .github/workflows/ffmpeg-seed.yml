@@ -1,0 +1,44 @@
+# The only job that saves the ffmpeg .deb cache; the reason is in .github/actions/install-ffmpeg.
+# It runs trusted triggers only (main, schedule, manual dispatch) and no PR code. The key holds the
+# runner image, so the weekly run saves a fresh entry when the image rolls and saves nothing on a hit.
+name: ffmpeg seed
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/actions/install-ffmpeg/**
+      - .github/workflows/ffmpeg-seed.yml
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ffmpeg-seed
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    name: seed ffmpeg
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/install-ffmpeg
+        id: ffmpeg
+      - name: make the .deb files readable by the cache
+        if: steps.ffmpeg.outputs.cache-hit != 'true'
+        env:
+          DEBS: ${{ steps.ffmpeg.outputs.debs-dir }}
+        run: sudo chown -R "$USER" "$DEBS"
+      - name: save ffmpeg .deb files
+        if: steps.ffmpeg.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.ffmpeg.outputs.debs-dir }}/*.deb
+          key: ${{ steps.ffmpeg.outputs.cache-key }}
