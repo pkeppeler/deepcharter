@@ -137,10 +137,7 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 		for (Bone spinning : bones.stream().filter(bone -> bone.role() == BoneRole.DRILL_HEAD || bone.role() == BoneRole.DRILL_RING).toList()) {
 			for (Cube cube : spinning.cubes()) {
 				for (int corner = 0; corner < CUBE_CORNERS; corner++) {
-					Vec3 point = cube.origin().add((corner & 1) * cube.size().x, (corner >> 1 & 1) * cube.size().y, (corner >> 2 & 1) * cube.size().z);
-					if (cube.turn().isPresent()) {
-						point = turn(point, cube.turn().get().pivot(), cube.turn().get().rotation());
-					}
+					Vec3 point = turnedCorner(cube, corner);
 					Vec3 across = point.subtract(spinning.pivot());
 					reach = Math.max(reach, Math.max(Math.abs(across.x), Math.abs(across.y)));
 				}
@@ -162,10 +159,7 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 		for (Bone bone : bones.stream().filter(only).toList()) {
 			for (Cube cube : bone.cubes()) {
 				for (int corner = 0; corner < CUBE_CORNERS; corner++) {
-					Vec3 p = cube.origin().add((corner & 1) * cube.size().x, (corner >> 1 & 1) * cube.size().y, (corner >> 2 & 1) * cube.size().z);
-					if (cube.turn().isPresent()) {
-						p = turn(p, cube.turn().get().pivot(), cube.turn().get().rotation());
-					}
+					Vec3 p = turnedCorner(cube, corner);
 					for (Bone at = bone; at != null; at = at.parent().map(byName::get).orElse(null)) {
 						p = turn(p, at.pivot(), at.rotation());
 					}
@@ -189,6 +183,12 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 		double reach = Math.max(Math.max(Math.hypot(b[0], b[2]), Math.hypot(b[0], b[5])), Math.max(Math.hypot(b[3], b[2]), Math.hypot(b[3], b[5])));
 		return new AABB(-reach / PIXELS_PER_BLOCK, b[1] / PIXELS_PER_BLOCK, -reach / PIXELS_PER_BLOCK, reach / PIXELS_PER_BLOCK, b[4] / PIXELS_PER_BLOCK,
 				reach / PIXELS_PER_BLOCK);
+	}
+
+	/** Corner {@code corner} (0 to 7) of {@code cube}, turned by the cube's own rotation if it has one. */
+	private static Vec3 turnedCorner(Cube cube, int corner) {
+		Vec3 point = cube.origin().add((corner & 1) * cube.size().x, (corner >> 1 & 1) * cube.size().y, (corner >> 2 & 1) * cube.size().z);
+		return cube.turn().map(turn -> turn(point, turn.pivot(), turn.rotation())).orElse(point);
 	}
 
 	/** Bedrock's rotation in y-up space: x, then y, then z, with the x and z angles turning the other way from ModelPart's y-down space. */

@@ -59,7 +59,6 @@ public class PodGeoRenderer extends EntityRenderer<PodEntity, PodGeoRenderState>
 		return super.getBoundingBoxForCulling(pod, partialTick).minmax(modelExtent.move(pod.position()));
 	}
 
-
 	public PodConcept concept() {
 		return concept;
 	}
