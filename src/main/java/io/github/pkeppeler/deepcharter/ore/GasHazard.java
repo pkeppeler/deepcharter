@@ -9,6 +9,7 @@ import net.minecraft.world.phys.AABB;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodSounder;
 import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 
 /**
@@ -47,6 +48,14 @@ public final class GasHazard {
 
 	/** A gas pocket at {@code pos} has just been mined. */
 	public static void vent(ServerLevel level, BlockPos pos) {
+		vent(level, pos, null);
+	}
+
+	/**
+	 * A gas pocket at {@code pos} has just been bored by {@code drilling}'s drill. That pod takes the blast as {@link PodSounder#drilledBlast} says
+	 * (less, when its sounder bled the pocket first); every other pod in reach takes the whole of it.
+	 */
+	public static void vent(ServerLevel level, BlockPos pos, PodEntity drilling) {
 		if (venting) {
 			return;
 		}
@@ -56,7 +65,8 @@ public final class GasHazard {
 			int depthFeet = Depth.feet(Depth.of(level, pos.getY()));
 			for (PodEntity pod : level.getEntitiesOfClass(PodEntity.class, new AABB(pos).inflate(radius))) {
 				float radiator = PodComponents.radiatorRatio(pod);
-				pod.damageHull(damage(depthFeet, radiator));
+				float blast = damage(depthFeet, radiator);
+				pod.damageHull(pod == drilling ? PodSounder.drilledBlast(pod, blast) : blast);
 			}
 			// A blast at the edge of the loaded chunks clears the rock it can reach without loading one; the rest stays.
 			LoadedBlocks blocks = new LoadedBlocks(level);

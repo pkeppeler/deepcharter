@@ -23,6 +23,7 @@ import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodDrill;
 import io.github.pkeppeler.deepcharter.pod.PodLinerTuning;
 import io.github.pkeppeler.deepcharter.pod.PodLiningTuning;
+import io.github.pkeppeler.deepcharter.pod.PodSounderTuning;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -163,6 +164,11 @@ public final class EarlyRunModel {
 	/** The stats of a pod with a liner of {@code tier} (1 or more) fitted: its drill is slower by the tier's share (#339). */
 	public static PodStats withLiner(PodStats stats, int tier) {
 		return stats.withTicksPerHardness(PodLinerTuning.DEFAULT.tier(tier).slowedDrill(stats.ticksPerHardness()));
+	}
+
+	/** The stats of a pod with a seep sounder of {@code tier} (1 or more) fitted: its drill is slower by the tier's share (#373). */
+	public static PodStats withSounder(PodStats stats, int tier) {
+		return stats.withTicksPerHardness(PodSounderTuning.DEFAULT.tier(tier).slowedDrill(stats.ticksPerHardness()));
 	}
 
 	/**

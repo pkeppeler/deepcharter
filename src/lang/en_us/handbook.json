@@ -136,6 +136,7 @@
   "deepcharter.handbook.directive.seeing_below.find_ore": "Find ore with the scanner.",
   "deepcharter.handbook.chapter.deepcharter.staying_safe.title": "Staying Safe on the Claim",
   "deepcharter.handbook.chapter.deepcharter.staying_safe.text.1": "The Claim is the friendliest ground we have, but it isn't harmless. Watch for undiggable rock, lava you can see, gas pockets you can't, and hard landings. Your hull takes the damage, so repair it at the colony. Accidents happen! The Continuity Plan returns you to work at no cost to you.",
+  "deepcharter.handbook.chapter.deepcharter.staying_safe.text.2": "Gas gives itself away to those who listen. A seep sounder, sold at the upgrade terminal, makes your pod hiss when a pocket lies below the drill, quicker the nearer it comes, and your display counts the slabs down. Step aside, or fit the better sounder and let the drill bleed the pocket off first.",
   "deepcharter.handbook.chapter.deepcharter.staying_safe.margin": "Not listed: what's in the Workings. —R.",
   "deepcharter.handbook.directive.staying_safe.repair_hull": "Repair your hull at the colony.",
   "deepcharter.handbook.directive.staying_safe.reach_deep_claim": "Reach the Deep Claim.",

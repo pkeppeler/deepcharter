@@ -346,6 +346,71 @@ Even a pilot who steers round every pocket the scanner shows reaches layer 2 in 
 - The sounder does not see lava. Should it? The thermal scanner at $500 already does, so no.
 - The cause tally books a shared tick to lava. If the next measurement matters to gas at the margin, split a shared tick by source.
 
+## Seep sounder (#373, A)
+
+**Problem.** Gas caps the dive to layer 2 even for a pilot who steers round every pocket the game shows, and a Mole cannot be shown any ([Gas and the bore](#gas-and-the-bore-368-a)). The sounder is the gas ladder's rung 2: a Mole part that tells the pilot where a pocket is before the drill opens it.
+
+**The part.** A new component track, `sounder`, tiers 1 and 2 (a Mole takes both). No stock part: tier 0 is none. The numbers are `PodSounderTuning`; the prices are `UpgradeTuning`.
+- **Tier 1, $400.** Marks the nearest gas pocket in the pod's 2 x 2 footprint in the 2 slabs under its feet. The HUD shows "SEEPAGE <slabs>" (the slabs down to it), and the pod hisses, every 12 ticks for each slab away, so the hiss quickens as the drill nears. No reach to the side. The pilot steps aside by hand, or spends dynamite on the slab, which now has an aim. Costs 5% of drill speed.
+- **Tier 2, $1,000.** Marks the footprint 4 slabs down, and the 2 blocks beyond each edge of the footprint (north, south, east, west) from the top of the pod's box to the slab under its feet, which is what a sidestep of 2 blocks bores and lands on. The HUD adds "SEEPAGE BESIDE E S" for the sides that have a pocket in them. It also bleeds: when the drill is about to bore a slab with a pocket in it, it waits 3 seconds (60 ticks, the HUD shows "BLEEDING SEEPAGE"), then bores it, and the blast costs the pod the larger of 45% of its most hull and half the blast, and never more than the blast (a stock Mole: 45 of 100 hull, or half of a blast of more than 90). Costs 10% of drill speed.
+- **Mastery.** A Prospector's tier 3 scanner draws the pockets in its slice, so the sounder stays the cheap Mole part.
+- **A pocket the sounder shows looks like stone.** The part is the only tell: a pocket has no texture of its own. The marks are read by the server each tick (`PodSounder`, from the loaded blocks only) and synced to the pilot as a versioned attachment (`pod_sounder`). A pod with no power marks nothing.
+
+**The bot.** `DEEPCHARTER_LAVA_BORES_SOUNDER=1|2` gives the bot's pod the real part and nothing else about gas. It reads the part's HUD state: tier 1 steps aside (to the side it would have taken anyway) when the part marks a pocket; tier 2 steps aside when the pocket is in the next slab, to the first of the four sides the part does not mark, and drills on (bleeding it) when every side is marked or out of reach. It is an error together with `DEEPCHARTER_LAVA_BORES_GAS` other than `ignore`. The omniscient `sounder1` and `sounder` modes stay as the design bounds.
+
+### Measured: the part against its target
+
+100 bores of layer 1 each, braked, liner 2 with a rack of 32 bricks (and a pack of 64 where marked); the same bot, world and bore columns as the [liner](#liner-339-a) and [gas](#gas-and-the-bore-368-a) tables. Reach is bores that reached layer 2; gas hull is the mean hull a bore lost to gas. The targets are the bounds minus 5 bores of reach, and plus 5 of gas deaths and gas hull. All four rows meet their targets.
+
+| Column | Reach: bound / target / measured | Gas deaths: bound / target / measured | Gas hull: bound / target / measured |
+|---|---|---|---|
+| Tier 1, rack 32 | 36 / 31 / **36** | 6 / 11 / **6** | 45 / 50 / **45.0** |
+| Tier 1, rack 32 + pack 64 | 50 / 45 / **50** | 9 / 14 / **9** | 50 / 55 / **49.5** |
+| Tier 2, rack 32 | 46 / 41 / **46** | 9 / 14 / **7** | 34 / 39 / **32.7** |
+| Tier 2, rack 32 + pack 64 | 60 / 55 / **60** | 12 / 17 / **10** | 37 / 42 / **36.2** |
+
+The no-part columns reproduce (the `ignore` rows of the gas table): liner 2, rack 32: 5 reach, 41 gas deaths, 72 gas hull; with the pack: 13, 47, 79 (78.6). The part does not change a pod without it.
+
+What else the part did to the bores:
+
+| 100 bores | No part, 32 | Tier 1, 32 | Tier 2, 32 | No part, 32 + pack | Tier 1, 32 + pack | Tier 2, 32 + pack |
+|---|---|---|---|---|---|---|
+| Reach layer 2 | 5 | 36 | 46 | 13 | 50 | 60 |
+| Deaths by last cause: lava / gas / landing / crust | 39 / 41 / 0 / 15 | 42 / 6 / 0 / 16 | 37 / 7 / 0 / 10 | 23 / 47 / 0 / 17 | 20 / 9 / 0 / 21 | 18 / 10 / 0 / 12 |
+| Hull lost per bore: lava / gas / landing / crust | 24 / 72 / 0 / 2 | 30 / 45 / 0 / 10 | 31 / 33 / 0 / 12 | 11 / 79 / 0 / 4 | 12 / 50 / 0 / 14 | 14 / 36 / 0 / 16 |
+| Hits over 20 hull: gas | 150 | 97 | 72 | 163 | 106 | 79 |
+| Gas blasts a bore (ticks that lost hull to gas) | 1.9 | 1.0 | 0.8 | 2.1 | 1.2 | 0.9 |
+| Steps aside from a pocket a bore | 0 | 3.1 | 2.4 | 0 | 3.4 | 2.7 |
+
+- **Tier 1 equals its bound.** It reads the same cells with the same rule, so it reproduces the bound's numbers (36 / 6 / 45 and 50 / 9 / 50, to the bore).
+- **Tier 2 equals its bound, and gas is still a cost.** 46 and 60 reach layer 2, the bound's own numbers, with 7 and 10 gas deaths and 33 and 36 gas hull a bore (bound: 9 and 12, 34 and 37). The part still leaves 0.8 to 0.9 blasts a bore: the pod steps aside where a side is clear (2.4 to 2.7 times a bore) and bleeds where none is. How the cost was set is under Decisions.
+- **The crust is the next cap, and leads in one column.** With the part the crust ends 16 and 21 of the tier 1 bores (it is the largest cause in the tier 1 column with the pack: 21 against 20 in lava and 9 in gas), and 10 and 12 of the tier 2 bores. Crust hull is 10 to 16 a bore. Filed as [#378](https://github.com/pkeppeler/deepcharter/issues/378).
+- **Cost of the part.** 5% and 10% of the drill; and the pause, 3 seconds for each pocket the pod could not step round (about 0.8 to 0.9 blasts a bore at tier 2).
+
+**Decisions (A).**
+- Two tiers, $400 and $1,000: 2 and 4 layer 2 runs of a Mole with tier 2 parts and the part's own drill penalty (`EconomyAffordabilityTest`: $336 and $313 net a run). #373's prose says 3 runs for tier 2; the band is at most 4, the liner's tier 2 band at the same price, and tier 2 stays at $1,000 beside it (3 runs would need $937 or less).
+- **The bleed cost is the larger of 45% of the hull and half the blast, never more than the blast (`bleedHullShare` 0.45, `bleedBlastShare` 0.5).** It was set by measurement, three times, on the tier 2 columns (reach / gas deaths / gas hull, rack 32, then with the pack; bound 46 / 9 / 34 and 60 / 12 / 37):
+  - A quarter of the blast: 59 / 2 / 9.5 and 80 / 0 / 10.7. A bleed that cost 5 to 10 hull never needed the pilot to read SEEPAGE: drilling on always beat stepping aside.
+  - At most a quarter of the hull (a flat 25): 59 / 2 / 20.3 and 79 / 2 / 22.8. Still a flat price at any depth.
+  - Larger of 35% of the hull and half the blast: 56 / 7 / 27.3 and 72 / 10 / 30.7, 10 and 12 reach over the bound.
+  - Larger of 45% of the hull and half the blast (kept): 46 / 7 / 32.7 and 60 / 10 / 36.2, which is the bound within 3 hull and no reach over it. With a side clear, stepping aside (no pause, no hull) is the better play again; the bleed is the floor when every side is marked.
+  - A blast of layer 1 costs 36 to 51 hull on a stock Mole, so the cost is about the blast down to the bottom of the layer, and the bleed is mostly the pause and a cap at 45. Below layer 1 (the radiator and hull parts change both sides of this) the cap and the half-blast term are what scale it. The knobs are in `PodSounderTuning`.
+- The marks are server state, synced as an attachment, not read by the client from its blocks: the client reads the same state as the bot.
+- The marked region at tier 2 is the footprint 4 slabs down, and the 2 columns beyond each edge from the top of the pod's box to its landing slab. A pocket deeper than the landing slab at the side is not marked: it is not on a sidestep's way.
+- The bleed is a pause before the pod bores the slab (any slab, down or sideways, that holds a pocket, so a pocket in a sidestep is bled too), not a key the pilot presses.
+- A pod whose own drill opens the pocket is the only one that takes the bled cost: another pod in reach takes the whole blast, even with a tier 2 sounder (tested).
+- The marks clear when the part is gone; the hiss plays only with a pilot seated; the HUD shows BLEEDING SEEPAGE while the drill waits on a pocket in any direction it bores.
+- A pod that stops drilling in the pause starts the pause again (tested). A pocket mined by hand during the pause removes it: the slab bores at its own drill time (tested).
+- The hiss is one sound (`pod.seep_hiss`, vanilla `block.fire.extinguish` as the placeholder), repeating faster as the pocket nears.
+- The handbook's "Staying Safe" chapter gets a second page about the sounder (`staying_safe.text.2`). The first page is the canon text, untouched.
+
+**Knobs.** `PodSounderTuning` per tier: `slabsBelow` (2, 4), `sideReach` (0, 2), `drillSpeedPenalty` (0.05, 0.10), `bleedPauseTicks` (0, 60), `bleedHullShare` (1, 0.45), `bleedBlastShare` (1, 0.5); `hissTicksPerSlab` (12). `UpgradeTuning` prices (400, 1000). `theme/hud.json` `podSounderColor`. The `pod.seep_hiss` sound.
+
+**Open questions.**
+- The crust ends 16 to 21 of 100 tier 1 bores and 10 to 12 tier 2 bores, and leads in the tier 1 pack column. [#378](https://github.com/pkeppeler/deepcharter/issues/378) holds these numbers (what a repair, or a pause before the crust, would answer).
+- Should a vented pocket leave a mark (a scar block, or a beacon on the charter's map) so the next pod steers round the shaft's pockets? (From #368.)
+- Should the bleed be a hand action first, like hand lining, before tier 2 automates it? (From #368.)
+
 ## Fuel per descent (#289, A)
 
 **Problem.** #231 measured about 20 slabs a tank and about 10 tanks for a bore from the top of layer 1's rock to the breach, but its bot refuelled underground. Can a charter reach layer 2 at the pace the economy assumes (4 layer 2 runs for the Prospector, PR 206)?

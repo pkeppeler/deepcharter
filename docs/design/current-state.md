@@ -29,13 +29,13 @@ or `...-as-played` show what a player sees; the other layer stills use night vis
 | Dimensions | 3 (surface, layer 1, layer 2); 6 zones in 6 layer biomes and 3 surface biomes |
 | Custom blocks | 24 (7 ores, 2 hazards, breach crust, conduit, Company lamp, note, 6 terminals, 5 surface blocks) |
 | Block textures | 55, all 16 x 16 frames, generated from recipes (`tools/textures/`); 7 animated; 77 block-state variants |
-| Items | 63 (39 with a 16 x 16 sprite, 24 block items) |
+| Items | 66 (42 with a 16 x 16 sprite, 24 block items) |
 | Entities | 3 types (Mole, Prospector, lampless figure); looks: 2 pods, 1 wreck look, 1 derelict, 1 figure |
 | Structures | 14 colony structure files (the square with the Host, the terminal plinths, the streets, the Works, the headframe, the hoist house, the hangar, the Continuity Office, the chapel, the bunkhouse, the two offices, the Lamp and Pick, and the Host's hands) placed from one layout file, the Conduit, and 7 layer structure kinds; the colony kit of 24 blocks and 12 signs they are built from |
 | Screens | 10 shot (handbook, offline terminal, fuel pump, ore processor, upgrade, repair station, hangar console, contract, pod cargo, vanilla inventory), 1 not reachable (CRT demo) |
 | HUDs | 6 (pod status, scanner, altimeter, account, transmission overlay, breach fade) |
 | Particles | 1 (`deepcharter:tow_cable`, a mod particle type since #258) |
-| Sound events | 44, all vanilla placeholders; 3 music events |
+| Sound events | 47, all vanilla placeholders; 3 music events |
 | Fonts | 0 (vanilla font) |
 | Tour stills | 144 |
 
@@ -195,6 +195,7 @@ All item textures in one sheet (nearest-neighbour, 5 times scale; alphabetical o
 | Lights part | `part_lights` | Pod part (one item per component track; tier is data on the stack) | `main/upgrade/ComponentItems.java` | `textures/item/part_lights.png` (16x16) | **(a)** `assets/deepcharter/textures/item/part_lights.png` |
 | Radiator part | `part_radiator` | Pod part (one item per component track; tier is data on the stack) | `main/upgrade/ComponentItems.java` | `textures/item/part_radiator.png` (16x16) | **(a)** `assets/deepcharter/textures/item/part_radiator.png` |
 | Scanner part | `part_scanner` | Pod part (one item per component track; tier is data on the stack) | `main/upgrade/ComponentItems.java` | `textures/item/part_scanner.png` (16x16) | **(a)** `assets/deepcharter/textures/item/part_scanner.png` |
+| Seep sounder part | `part_sounder` | Pod part (one item per component track; tier is data on the stack) | `main/upgrade/ComponentItems.java` | `textures/item/part_sounder.png` (16x16, a brass listening horn over three yellow arcs) | **(a)** `assets/deepcharter/textures/item/part_sounder.png` |
 | Plastic Explosives | `plastic_explosives` | Consumable | `main/repair/Consumable.java` | `textures/item/plastic_explosives.png` (16x16) | **(a)** `assets/deepcharter/textures/item/plastic_explosives.png` |
 | Platinium | `platinium` | Ore (what drilling gives; sold at the processor) | `main/ore/OreType.java` | `textures/item/platinium.png` (16x16) | **(a)** `assets/deepcharter/textures/item/platinium.png` |
 | Pump Motor | `pump_motor` | Terminal repair part | `main/terminal/TerminalParts.java` | `textures/item/pump_motor.png` (16x16) | **(a)** `assets/deepcharter/textures/item/pump_motor.png` |
@@ -470,7 +471,7 @@ Swap **(c)**. Prices are data-like tuning in `main/ore/OreType.java:12-18`.
 
 ### Upgrade Terminal screen
 
-Source `client/upgrade/UpgradeScreen.java`. The eight part tracks of the parked pod.
+Source `client/upgrade/UpgradeScreen.java`. The eleven part tracks of the parked pod (the seep sounder, #373, is the last).
 
 ![screen-upgrade-terminal-online](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/screen-upgrade-terminal-online.png?raw=true)
 
@@ -520,7 +521,7 @@ The inventory screen is vanilla, unchanged (the item gallery stills show it). Sw
 ### Pod status HUD
 
 Top left, while riding a pod: four white lines of plain text in the vanilla font ("Hull 70/100", "Fuel 61%", "Cargo 2", "Y 77"), and
-"STRANDED" when stranded, and a red "HULL BURNING" line while lava burns the hull (`podBurningColor` in `theme/hud.json`). No frame, no icons. Source `client/pod/PodStatusHud.java` (the source calls it "Plain text readout... the real HUD design comes later").
+"STRANDED" when stranded, and a red "HULL BURNING" line while lava burns the hull (`podBurningColor` in `theme/hud.json`). A pod with a seep sounder (#373) adds magenta lines (`podSounderColor`): "SEEPAGE 3" (slabs down to a gas pocket under the pod), "BLEEDING SEEPAGE" while the drill waits on a pocket, and "SEEPAGE BESIDE E S" for the sides a sidestep would meet one on (tier 2). No frame, no icons. Source `client/pod/PodStatusHud.java` (the source calls it "Plain text readout... the real HUD design comes later").
 Vanilla: **no**. Swap **(c)** `PodStatusHud.java:23` (colour), `:54-56` (layout).
 
 ![hud-pod-status-and-altimeter-surface](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hud-pod-status-and-altimeter-surface.png?raw=true) ![hud-pod-in-third-person-surface](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hud-pod-in-third-person-surface.png?raw=true)
@@ -595,10 +596,10 @@ Not shot: it needs two pods and a tow cable in motion (the `m2-towing` scenario 
 
 Only names and uses are given here. No audio is copied, played into a recording, or published.
 
-- 44 sound events in `main/sound/DeepSound.java`, registered in `main/sound/SoundRegistry.java`. Each is mapped in `assets/deepcharter/sounds.json` to a **vanilla Minecraft
+- 47 sound events in `main/sound/DeepSound.java`, registered in `main/sound/SoundRegistry.java`. Each is mapped in `assets/deepcharter/sounds.json` to a **vanilla Minecraft
   sound** as a placeholder, with pitch or volume tweaks. A private audio pack (built by `tools/build-audio-pack.sh` from files that stay out of the repo) replaces them
   at play time through `tools/audio-pack-map.txt`. Vanilla: **partly** (vanilla sounds as placeholders).
-- Groups and where they play: pod (engine idle, drive, drill side and down, rotor, transform land and launch, crash, explosion), drill (dig, blocked, lava, dynamite,
+- Groups and where they play: pod (engine idle, drive, drill side and down, rotor, transform land and launch, crash, explosion, the seep sounder's hiss `pod.seep_hiss`, repeating faster as a gas pocket nears), drill (dig, blocked, lava, dynamite,
   plastic), cargo (collect, jettison, full), fuel (low, refuel), repair (nanobots), breach (rumble, cross), scanner (ping, sweep), UI (typewriter, hover, select, confirm,
   purchase, sale, error, refused), terminal (power on, teleport), transmission (incoming, menace), mothership (arrive, idle, leave), alarms (fuel critical, hull critical).
 - Music: `deepcharter:music.layer_1` plays in layer 1 (mapped to vanilla `music.overworld.deep_dark`) and `music.layer_2` in layer 2 (vanilla `music.end`), each every

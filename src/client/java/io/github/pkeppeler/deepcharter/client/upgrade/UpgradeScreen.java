@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.client.upgrade;
 
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -8,6 +9,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.Mth;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.sound.TypewriterSound;
@@ -25,7 +27,7 @@ import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeView;
 
 /**
- * The online screen of the upgrade terminal. The left column lists the eight tracks with the tier now installed; the right column
+ * The online screen of the upgrade terminal. The left column lists the tracks, closing their rows up to fit the screen, with the tier now installed; the right column
  * lists the parts of the chosen track with their prices. A tier above the pod's cap is marked as working at the cap, so the
  * player pays knowing it. The screen decides nothing: the server checks every purchase, and answers with a new
  * {@link UpgradeView}.
@@ -34,7 +36,9 @@ import io.github.pkeppeler.deepcharter.upgrade.UpgradeView;
  */
 public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen {
 	private static final int MARGIN = 16;
-	private static final int ROW_HEIGHT = 14;
+	/** The rows are this far apart at most; with many tracks they close up to fit the screen, down to {@link #MIN_PITCH}. */
+	private static final int MAX_PITCH = 16;
+	private static final int MIN_PITCH = 11;
 	private static final int ROW_GAP = 2;
 	private static final int LIST_TOP = 62;
 	private static final int TRACK_WIDTH = 104;
@@ -78,21 +82,24 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 
 	@Override
 	protected void layout() {
-		int closeY = LIST_TOP + ComponentTrack.values().length * (ROW_HEIGHT + ROW_GAP) + ROW_GAP;
-		addRenderableWidget(new CrtButton(MARGIN, closeY, CLOSE_WIDTH, ROW_HEIGHT,
+		int pitch = Mth.clamp((height - MARGIN - LIST_TOP + ROW_GAP) / ComponentTrack.values().length, MIN_PITCH, MAX_PITCH);
+		int rowHeight = pitch - ROW_GAP;
+		int tierX = MARGIN + TRACK_WIDTH + COLUMN_GAP;
+		// Close sits under the longest list of tiers, so it stays on the screen however many tracks the left column holds.
+		int closeY = LIST_TOP + Arrays.stream(ComponentTrack.values()).mapToInt(ComponentTrack::maxTier).max().orElse(0) * pitch + ROW_GAP;
+		addRenderableWidget(new CrtButton(tierX, closeY, CLOSE_WIDTH, rowHeight,
 				Component.translatable("screen.deepcharter.terminal.close"), button -> onClose()));
 		Optional<UpgradeView.Pod> shownPod = upgrade().flatMap(UpgradeView::pod);
 		if (shownPod.isEmpty()) {
 			return;
 		}
 		UpgradeView.Pod pod = shownPod.get();
-		int tierX = MARGIN + TRACK_WIDTH + COLUMN_GAP;
 		int tierWidth = Math.min(width - MARGIN - tierX, TIER_MAX_WIDTH);
 		for (UpgradeView.Slot slot : pod.slots()) {
 			ComponentTrack track = slot.track();
 			Component label = Component.translatable("screen.deepcharter.upgrade.track", trackName(track), slot.installed());
-			addRenderableWidget(new CrtButton(MARGIN, LIST_TOP + track.ordinal() * (ROW_HEIGHT + ROW_GAP),
-					TRACK_WIDTH, ROW_HEIGHT, track == selected ? Component.literal("> ").append(label) : label, pressed -> select(track)));
+			addRenderableWidget(new CrtButton(MARGIN, LIST_TOP + track.ordinal() * pitch,
+					TRACK_WIDTH, rowHeight, track == selected ? Component.literal("> ").append(label) : label, pressed -> select(track)));
 		}
 		UpgradeView.Slot held = slotOf(pod, selected);
 		long balance = ClientCharter.view().map(charter -> charter.balance()).orElse(0L);
@@ -106,8 +113,8 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 			Component label = here && held.installed() == tier
 					? Component.translatable("screen.deepcharter.upgrade.installed", tier).append(capped)
 					: Component.translatable("screen.deepcharter.upgrade.buy", tier, price, capped);
-			CrtButton button = addRenderableWidget(new CrtButton(tierX, LIST_TOP + (tier - 1) * (ROW_HEIGHT + ROW_GAP),
-					tierWidth, ROW_HEIGHT, label, pressed -> buy(selected, offered)));
+			CrtButton button = addRenderableWidget(new CrtButton(tierX, LIST_TOP + (tier - 1) * pitch,
+					tierWidth, rowHeight, label, pressed -> buy(selected, offered)));
 			// An unregistered pod (no serial) takes no parts: they would be void.
 			button.active = !here && balance >= price && !pod.serial().isEmpty();
 		}

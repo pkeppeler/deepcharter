@@ -237,6 +237,21 @@
       "..bsutsutsutsb",
       "..BBBBBBBBBBBB",
       "..dddddddddddd"]}},
+    "item/part_sounder": {"template": "sprite", "args": {"legend": {
+      "m": "steel.4", "l": "steel.5", "k": "steel.2", "C": "brass.5", "b": "brass.4", "B": "brass.3", "h": "hazard.3"}, "rows": [
+      "",
+      "......mmmm",
+      "......mllm",
+      "......mllm",
+      ".....CCbbCC",
+      "....CbbbbbbC",
+      "...CbbbBBbbbC",
+      "..CbbbBBBBbbbC",
+      "..kCCCCCCCCCCk",
+      "",
+      "....hhhhhh",
+      "..hh......hh",
+      ".h..........h"]}},
     "item/part_scanner": {"template": "sprite", "args": {"legend": {
       "h": "steel.5", "l": "steel.4", "m": "steel.3", "d": "steel.2", "k": "steel.1", "e": "cold.1", "E": "cold.3", "F": "cold.5", "b": "brass.4"}, "rows": [
       "",

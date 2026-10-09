@@ -42,6 +42,9 @@ public class EconomyAffordabilityTest {
 	/** The liner's tiers, in runs of a Mole with tier 2 parts in layer 2, at most. */
 	private static final int LINER_TIER_ONE_RUNS = 2;
 	private static final int LINER_TIER_TWO_RUNS = 4;
+	/** The seep sounder's tiers, in runs of a Mole with tier 2 parts in layer 2, at most. */
+	private static final int SOUNDER_TIER_ONE_RUNS = 2;
+	private static final int SOUNDER_TIER_TWO_RUNS = 4;
 	/** The radiator matters from layer 3 on, and its tier 1 costs what the others' tier 2 does in the original. */
 	private static final int RADIATOR_RUNS = 5;
 	/** The Prospector restore takes this many runs of a Mole with tier 2 parts in layer 2, at least and at most. */
@@ -95,6 +98,9 @@ public class EconomyAffordabilityTest {
 		for (ComponentTrack track : ComponentTrack.values()) {
 			if (track == ComponentTrack.LINER) {
 				continue; // A layer 2 buy with its own band: theLinerTiersAreAffordableAfterTheirLayerTwoRuns.
+			}
+			if (track == ComponentTrack.SOUNDER) {
+				continue; // A layer 2 buy with its own band: theSounderTiersAreAffordableAfterTheirLayerTwoRuns.
 			}
 			long price = UpgradeTuning.DEFAULT.price(track, 1);
 			int runs = run.toAfford(price);
@@ -150,6 +156,28 @@ public class EconomyAffordabilityTest {
 		}
 		if (allowed.length != ComponentTrack.LINER.maxTier()) {
 			throw failure(helper, "the test has bands for %d liner tiers, the track has %d", allowed.length, ComponentTrack.LINER.maxTier());
+		}
+		helper.succeed();
+	}
+
+	/**
+	 * The seep sounder (#373) is the gas ladder's second rung and is bought in layer 2: a run there pays for tier 1 in at most
+	 * {@value #SOUNDER_TIER_ONE_RUNS} runs and for tier 2 in at most {@value #SOUNDER_TIER_TWO_RUNS}. The run is a Mole's with tier 2 parts and the sounder's
+	 * drill penalty, so a dearer sounder is a slower income.
+	 */
+	@GameTest
+	public void theSounderTiersAreAffordableAfterTheirLayerTwoRuns(GameTestHelper helper) {
+		int[] allowed = {SOUNDER_TIER_ONE_RUNS, SOUNDER_TIER_TWO_RUNS};
+		for (int tier = 1; tier <= ComponentTrack.SOUNDER.maxTier(); tier++) {
+			Run run = EarlyRunModel.run(Zone.load("upper_levels"), EarlyRunModel.withSounder(EarlyRunModel.mole(2, 2, 2), tier), EarlyRunModel.layerOneBlocks());
+			long price = UpgradeTuning.DEFAULT.price(ComponentTrack.SOUNDER, tier);
+			LOGGER.info("[economy] sounder tier {} ${}: {} layer 2 runs of {}", tier, price, run.toAfford(price), run);
+			if (run.toAfford(price) > allowed[tier - 1]) {
+				throw failure(helper, "sounder tier %d costs $%d, which is %d layer 2 runs of $%.0f; at most %d are allowed", tier, price, run.toAfford(price), run.net(), allowed[tier - 1]);
+			}
+		}
+		if (allowed.length != ComponentTrack.SOUNDER.maxTier()) {
+			throw failure(helper, "the test has bands for %d sounder tiers, the track has %d", allowed.length, ComponentTrack.SOUNDER.maxTier());
 		}
 		helper.succeed();
 	}

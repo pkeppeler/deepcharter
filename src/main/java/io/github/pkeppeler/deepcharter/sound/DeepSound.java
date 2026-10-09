@@ -22,6 +22,7 @@ public enum DeepSound {
 	POD_EXPLOSION("pod.explosion"),
 	POD_HULL_BURNING("pod.hull_burning"),
 	POD_LINING_PLACE("pod.lining_place"),
+	POD_SEEP_HISS("pod.seep_hiss"),
 	DRILL_DIG("drill.dig"),
 	DRILL_BLOCKED("drill.blocked"),
 	DRILL_LAVA("drill.lava"),

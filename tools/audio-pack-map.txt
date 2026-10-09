@@ -15,6 +15,7 @@ pod.crash              1975_crash2.wav.mp3
 pod.explosion          1423_explosion.wav.mp3
 pod.hull_burning       2006_lava.wav.mp3
 pod.lining_place       1971_clink.wav.mp3
+pod.seep_hiss          2006_lava.wav.mp3
 
 # Drill
 drill.dig              1978_drill_100.wav.mp3 1979_drill_101.wav.mp3 1980_drill_102.wav.mp3 1981_drill_103.wav.mp3 1982_drill_104.wav.mp3
