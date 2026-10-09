@@ -4,6 +4,12 @@
   "commands.deepcharter.pod.spawn.success_scanner": "Spawned a pod for your charter, with a tier 1 scanner",
   "deepcharter.pod.dump.no_pod": "You are not riding a pod",
   "deepcharter.pod.dump.success": "Dumped %s ore",
+  "deepcharter.pod.lining.done": "Slab lined: %s slag brick placed, %s left",
+  "deepcharter.pod.lining.no_power": "No power to line",
+  "deepcharter.pod.lining.nothing": "Nothing here to line",
+  "deepcharter.pod.lining.out": "Out of slag brick",
+  "deepcharter.pod.lining.progress": "Lining: %s placed, %s left",
+  "deepcharter.pod.lining.stopped": "Lining stopped: %s slag brick placed, %s left",
   "entity.deepcharter.pod": "Pod",
   "entity.deepcharter.prospector": "Prospector",
   "hud.deepcharter.pod.burning": "HULL BURNING",
@@ -11,5 +17,9 @@
   "hud.deepcharter.pod.depth": "Y %s",
   "hud.deepcharter.pod.fuel": "Fuel %s%%",
   "hud.deepcharter.pod.hull": "Hull %s/%s",
-  "hud.deepcharter.pod.stranded": "STRANDED"
+  "hud.deepcharter.pod.lining": "LINING %s",
+  "hud.deepcharter.pod.lining_dry": "OUT OF SLAG BRICK",
+  "hud.deepcharter.pod.slag": "Slag %s  Spoil %s",
+  "hud.deepcharter.pod.stranded": "STRANDED",
+  "key.deepcharter.line_slab": "Line the slab with slag brick"
 }

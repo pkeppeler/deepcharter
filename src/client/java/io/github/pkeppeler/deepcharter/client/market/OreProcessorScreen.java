@@ -28,12 +28,13 @@ import io.github.pkeppeler.deepcharter.market.WorkOrders;
 import io.github.pkeppeler.deepcharter.market.WorkOrdersView;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.pod.PodLiningTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 
 /**
- * The online screen of the ore processor: the price of each ore, the charter's account, and the two "sell all" buttons. A button
+ * The online screen of the ore processor: the price of each ore, the charter's account, the two "sell all" buttons and the one that makes slag brick. A button
  * only asks the server; the server decides, and the account shown is the one it last synced, so it changes when a sale goes through.
  */
 public final class OreProcessorScreen extends CrtScreen implements TerminalViewScreen {
@@ -98,20 +99,23 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 		int cargoY = inventoryY - GAP - BUTTON_HEIGHT;
 		addRenderableWidget(new CrtButton(MARGIN, cargoY, BUTTON_WIDTH, BUTTON_HEIGHT,
 				Component.translatable("screen.deepcharter.processor.sell_cargo"), button -> sell(OreProcessor.SELL_CARGO)));
-		layoutOrders(cargoY);
+		int fuseY = cargoY - GAP - BUTTON_HEIGHT;
+		addRenderableWidget(new CrtButton(MARGIN, fuseY, BUTTON_WIDTH, BUTTON_HEIGHT,
+				Component.translatable("screen.deepcharter.processor.fuse", PodLiningTuning.DEFAULT.fusePrice()), button -> sell(OreProcessor.FUSE_SPOIL)));
+		layoutOrders(fuseY);
 	}
 
 	/**
-	 * The order rows sit above the cargo button, in the room between it and the account line, so their number is bounded by the
+	 * The order rows sit above the topmost button, in the room between it and the account line, so their number is bounded by the
 	 * screen: as many rows as fit, at least one. The orders beyond a page are reached with the pager, under the prices.
 	 */
-	private void layoutOrders(int cargoY) {
+	private void layoutOrders(int buttonsTop) {
 		List<WorkOrdersView.Entry> listed = listedOrders();
-		int perPage = ordersPerPage(cargoY);
+		int perPage = ordersPerPage(buttonsTop);
 		pages = Math.max(1, (listed.size() + perPage - 1) / perPage);
 		page = Math.clamp(page, 0, pages - 1);
 		int first = page * perPage;
-		int rowY = cargoY - ORDER_GAP - perPage * ORDER_ROW_PITCH + ORDER_ROW_GAP;
+		int rowY = buttonsTop - ORDER_GAP - perPage * ORDER_ROW_PITCH + ORDER_ROW_GAP;
 		for (WorkOrdersView.Entry entry : listed.subList(first, Math.min(listed.size(), first + perPage))) {
 			Component deliver = Component.translatable("screen.deepcharter.processor.deliver", entry.order().oreName().getString().toUpperCase(Locale.ROOT));
 			OrderRowButton row = new OrderRowButton(MARGIN, rowY, BUTTON_WIDTH, deliver,
@@ -137,9 +141,9 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 		rebuildWidgets();
 	}
 
-	/** How many order rows fit between the account line and the cargo button. */
-	private int ordersPerPage(int cargoY) {
-		int room = cargoY - ORDER_GAP - (accountTop() + font.lineHeight + ORDER_GAP);
+	/** How many order rows fit between the account line and the topmost button. */
+	private int ordersPerPage(int buttonsTop) {
+		int room = buttonsTop - ORDER_GAP - (accountTop() + font.lineHeight + ORDER_GAP);
 		return Math.max(1, (room + ORDER_ROW_GAP) / ORDER_ROW_PITCH);
 	}
 

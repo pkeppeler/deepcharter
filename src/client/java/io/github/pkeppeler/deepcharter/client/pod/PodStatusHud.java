@@ -16,6 +16,7 @@ import net.minecraft.resources.Identifier;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodSeat;
 
 /** Plain text readout of the ridden pod; its margin, spacing and colour are the HUD theme's. */
@@ -39,6 +40,10 @@ public final class PodStatusHud {
 		lines.add(Component.translatable("hud.deepcharter.pod.fuel", Math.round(pod.fuel())));
 		lines.add(Component.translatable("hud.deepcharter.pod.cargo", pod.cargoUsed()));
 		lines.add(Component.translatable("hud.deepcharter.pod.depth", Math.round(pod.getY())));
+		PodLining.State lining = PodLining.of(pod);
+		if (lining.spoil() > 0 || lining.bricks() > 0) {
+			lines.add(Component.translatable("hud.deepcharter.pod.slag", lining.bricks(), lining.spoil()));
+		}
 		if (pod.stranded()) {
 			lines.add(Component.translatable("hud.deepcharter.pod.stranded"));
 		}
@@ -48,6 +53,17 @@ public final class PodStatusHud {
 	/** The warning line shown, in its own colour, while lava burns the hull. */
 	public static Optional<Component> burningLine(PodEntity pod) {
 		return pod.hullBurning() ? Optional.of(Component.translatable("hud.deepcharter.pod.burning")) : Optional.empty();
+	}
+
+	/** The line shown, in its own colour, while the pilot lines the slab: the bricks placed so far. */
+	public static Optional<Component> liningLine(PodEntity pod) {
+		PodLining.State lining = PodLining.of(pod);
+		return lining.working() ? Optional.of(Component.translatable("hud.deepcharter.pod.lining", lining.used())) : Optional.empty();
+	}
+
+	/** The warning line shown, in its own colour, after a lining stopped for want of slag brick. */
+	public static Optional<Component> outOfBrickLine(PodEntity pod) {
+		return PodLining.of(pod).dry() ? Optional.of(Component.translatable("hud.deepcharter.pod.lining_dry")) : Optional.empty();
 	}
 
 	private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
@@ -62,7 +78,17 @@ public final class PodStatusHud {
 			graphics.text(font, line, look.podStatusMargin(), y, look.podStatusColor());
 			y += font.lineHeight + look.podStatusLineGap();
 		}
-		int burningY = y;
-		burningLine(pod).ifPresent(line -> graphics.text(font, line, look.podStatusMargin(), burningY, look.podBurningColor()));
+		y = warning(graphics, font, look, burningLine(pod), look.podBurningColor(), y);
+		y = warning(graphics, font, look, liningLine(pod), look.podLiningColor(), y);
+		warning(graphics, font, look, outOfBrickLine(pod), look.podLiningDryColor(), y);
+	}
+
+	/** Draws {@code line} at {@code y} in {@code color} if there is one, and returns the y of the next line. */
+	private static int warning(GuiGraphicsExtractor graphics, Font font, HudLook look, Optional<Component> line, int color, int y) {
+		if (line.isEmpty()) {
+			return y;
+		}
+		graphics.text(font, line.get(), look.podStatusMargin(), y, color);
+		return y + font.lineHeight + look.podStatusLineGap();
 	}
 }

@@ -3,6 +3,8 @@
   "podStatusLineGap": 2,
   "podStatusColor": "#FFFFFF",
   "podBurningColor": "#FF5522",
+  "podLiningColor": "#E8C170",
+  "podLiningDryColor": "#FF9A2E",
   "altimeterMargin": 4,
   "altimeterColor": "#FFFFFF",
   "accountMargin": 4,
