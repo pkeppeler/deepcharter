@@ -45,12 +45,9 @@ def hasMarker = { String rawLine, String marker ->
 	(rawLine =~ "//\\s*${java.util.regex.Pattern.quote(marker.substring(2).trim())}\\s*\\S").find()
 }
 def tickWaitCall = ~/\bwaitFor(?:Screen)?\s*\(/
-// A server GameTest shares its world with every test running beside it, so a write to a world clock (pause, set, advance, rate) moves
-// the sky or the gameplay time under them, like a world-global saved record swapped without a restore. A server test writes a clock
-// only through TestClocks.paused, which restores it in a finally on the same tick. A write that must stay carries the comment below,
-// with a reason, on its line or the one above. Client tests and evidence scenarios (FabricClientGameTest, EvidenceScenario) run in
-// their own world and are exempt: a marker on each write would be noise there, and the design tour's sky pin is the point of its scenario.
-// TestClocks.java is the one file that writes a clock directly.
+// A server GameTest shares its world with every test beside it, so a clock write moves the sky or gameplay time under them. It goes through
+// TestClocks.paused (restores in a finally on the same tick) or carries the marker below, with a reason, on its line or the one above.
+// Client tests and evidence scenarios run in their own world and are exempt. TestClocks.java is the one file that writes a clock directly.
 def worldClockMarker = "// world-clock:"
 def worldClockWrite = ~/\.\s*(?:setTotalTicks|setPaused|addTicks|setRate)\s*\(/
 def guardSource = file("src/gametest/java/io/github/pkeppeler/deepcharter/test/support/WorldDataGuard.java")

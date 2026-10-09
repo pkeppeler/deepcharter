@@ -83,27 +83,26 @@ public class MentionsTest {
 }
 """,
 }
+# label: (statement, line the gate reports)
 WRITES = {
-    "setTotalTicks": "server.clockManager().setTotalTicks(sky, 5);",
-    "setPaused": "server.clockManager().setPaused(sky, true);",
-    "addTicks": "server.clockManager().addTicks(sky, 5);",
-    "setRate": "server.clockManager().setRate(sky, 2f);",
-    "spaced": "clock\n            .setRate (sky, 2f);",
+    "setTotalTicks": ("server.clockManager().setTotalTicks(sky, 5);", 5),
+    "setPaused": ("server.clockManager().setPaused(sky, true);", 5),
+    "addTicks": ("server.clockManager().addTicks(sky, 5);", 5),
+    "setRate": ("server.clockManager().setRate(sky, 2f);", 5),
+    "spaced": ("clock\n            .setRate (sky, 2f);", 6),
 }
 TWO_ABOVE = "// world-clock: too far above\n        int gap = 0;\n        server.clockManager().setPaused(sky, true);"
 BARE = "// world-clock:\n        server.clockManager().setPaused(sky, true);"
 IN_STRING = 'String note = "// world-clock: not a comment"; server.clockManager().setPaused(sky, true);'
 IN_TEXT_BLOCK = 'String note = """\n            // world-clock: in a text block\n            """; server.clockManager().setPaused(sky, true);'
 
-# label: (statement, line the gate reports)
-BAD = {
-    **{f"write/{label}": (statement, 5) for label, statement in WRITES.items() if label != "spaced"},
-    "write/spaced": (WRITES["spaced"], 6),
-    "marker/a bare marker": (BARE, 6),
-    "marker/two lines above": (TWO_ABOVE, 7),
-    "marker/a marker in a string": (IN_STRING, 5),
-    "marker/a marker in a text block": (IN_TEXT_BLOCK, 7),
+MARKERS = {
+    "a bare marker": (BARE, 6),
+    "two lines above": (TWO_ABOVE, 7),
+    "a marker in a string": (IN_STRING, 5),
+    "a marker in a text block": (IN_TEXT_BLOCK, 7),
 }
+BAD = {**{f"write/{label}": case for label, case in WRITES.items()}, **{f"marker/{label}": case for label, case in MARKERS.items()}}
 
 
 def writing(statement: str) -> str:
@@ -153,6 +152,6 @@ class WorldClockGateTest(unittest.TestCase):
                 self.check_fails(f"write/{label}")
 
     def test_marker_without_a_reason_or_in_a_string_does_not_count(self):
-        for label in ("a bare marker", "two lines above", "a marker in a string", "a marker in a text block"):
+        for label in MARKERS:
             with self.subTest(label):
                 self.check_fails(f"marker/{label}")
