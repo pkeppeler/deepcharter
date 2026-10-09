@@ -1,0 +1,70 @@
+{
+  "variants": {
+    "": [
+      {
+        "model": "deepcharter:block/layer_rock_0"
+      },
+      {
+        "model": "deepcharter:block/layer_rock_0",
+        "x": 180
+      },
+      {
+        "model": "deepcharter:block/layer_rock_0",
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/layer_rock_0",
+        "x": 180,
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/layer_rock_1"
+      },
+      {
+        "model": "deepcharter:block/layer_rock_1",
+        "x": 180
+      },
+      {
+        "model": "deepcharter:block/layer_rock_1",
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/layer_rock_1",
+        "x": 180,
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/layer_rock_2"
+      },
+      {
+        "model": "deepcharter:block/layer_rock_2",
+        "x": 180
+      },
+      {
+        "model": "deepcharter:block/layer_rock_2",
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/layer_rock_2",
+        "x": 180,
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/layer_rock_3"
+      },
+      {
+        "model": "deepcharter:block/layer_rock_3",
+        "x": 180
+      },
+      {
+        "model": "deepcharter:block/layer_rock_3",
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/layer_rock_3",
+        "x": 180,
+        "y": 270
+      }
+    ]
+  }
+}

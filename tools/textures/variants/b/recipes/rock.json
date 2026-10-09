@@ -1,0 +1,70 @@
+{
+  "templates": {
+    "layer_rock_b": {
+      "params": [
+        "seed"
+      ],
+      "recipe": {
+        "kind": "opaque",
+        "layers": [
+          {
+            "op": "noise",
+            "ramp": [
+              "rock.3",
+              "rock.4",
+              "rock.4",
+              "rock.5"
+            ],
+            "seed": "$seed",
+            "cell": 8,
+            "octaves": 3,
+            "dither": 0.8
+          },
+          {
+            "op": "cracks",
+            "colour": "rock.3",
+            "seed": "$seed",
+            "count": 2,
+            "length": 3
+          },
+          {
+            "op": "speckle",
+            "colours": [
+              "rock.2",
+              "rock.2",
+              "rock.5"
+            ],
+            "density": 0.05,
+            "seed": "$seed"
+          }
+        ]
+      }
+    }
+  },
+  "recipes": {
+    "block/layer_rock_0": {
+      "template": "layer_rock_b",
+      "args": {
+        "seed": 811
+      }
+    },
+    "block/layer_rock_1": {
+      "template": "layer_rock_b",
+      "args": {
+        "seed": 812
+      }
+    },
+    "block/layer_rock_2": {
+      "template": "layer_rock_b",
+      "args": {
+        "seed": 813
+      }
+    },
+    "block/layer_rock_3": {
+      "template": "layer_rock_b",
+      "args": {
+        "seed": 814
+      }
+    }
+  }
+}

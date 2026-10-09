@@ -25,6 +25,7 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
+import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 
@@ -179,6 +180,29 @@ public class LayerDimensionsTest {
 				if (!outOfRange.getMessage().contains("No layer 3")) {
 					throw helper.assertionException("expected the no-such-layer failure, got %s", outOfRange.getMessage());
 				}
+			}
+		} finally {
+			mock.leave();
+		}
+		helper.succeed();
+	}
+
+	/** The motion-blocking heightmap counts the mod's blocks as ground (#350): goto stands the player on one, not inside it. */
+	@GameTest
+	public void gotoStandsOnAModBlock(GameTestHelper helper) throws CommandSyntaxException {
+		MinecraftServer server = helper.getLevel().getServer();
+		MockPlayer mock = MockPlayers.join(server, "layer-goto-block");
+		try {
+			ServerLevel layer = level(helper, 2);
+			mock.player().setPos(300_000.5, 80, 300_000.5);
+			layer.getChunk(300_000 >> 4, 300_000 >> 4);
+			BlockPos block = new BlockPos(300_000, layer.getMaxY() - 2, 300_000);
+			layer.setBlockAndUpdate(block, SurfaceBlocks.REGOLITH.defaultBlockState());
+			var source = mock.player().createCommandSourceStack().withPermission(LevelBasedPermissionSet.GAMEMASTER);
+			server.getCommands().getDispatcher().execute("deepcharter layer goto 2", source);
+			if (mock.player().blockPosition().getY() != block.getY() + 1) {
+				throw helper.assertionException("player placed at %s, expected on top of the block at %s", mock.player().blockPosition().toShortString(),
+						block.toShortString());
 			}
 		} finally {
 			mock.leave();

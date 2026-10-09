@@ -1,0 +1,1098 @@
+{
+  "templates": {
+    "company_plate_c": {
+      "params": [
+        "seed"
+      ],
+      "recipe": {
+        "kind": "opaque",
+        "size": 32,
+        "layers": [
+          {
+            "op": "noise",
+            "ramp": [
+              "steel.2",
+              "steel.2",
+              "steel.3",
+              "steel.3"
+            ],
+            "seed": "$seed",
+            "cell": 8,
+            "octaves": 3,
+            "dither": 0.8
+          },
+          {
+            "op": "speckle",
+            "colours": [
+              "steel.1",
+              "steel.4"
+            ],
+            "density": 0.04,
+            "seed": "$seed"
+          },
+          {
+            "op": "bevel",
+            "rect": [
+              0,
+              0,
+              32,
+              32
+            ],
+            "light": "steel.5",
+            "dark": "steel.0"
+          },
+          {
+            "op": "bevel",
+            "rect": [
+              1,
+              1,
+              30,
+              30
+            ],
+            "light": "steel.4",
+            "dark": "steel.1"
+          },
+          {
+            "op": "grime",
+            "colours": [
+              "dust.0",
+              "rust.1",
+              "steel.1"
+            ],
+            "density": 0.3,
+            "seed": "$seed",
+            "rect": [
+              2,
+              22,
+              28,
+              8
+            ]
+          }
+        ]
+      }
+    },
+    "terminal_front_c": {
+      "params": [
+        "seed",
+        "glyph"
+      ],
+      "recipe": {
+        "kind": "opaque",
+        "size": 32,
+        "layers": [
+          {
+            "op": "noise",
+            "ramp": [
+              "steel.2",
+              "steel.2",
+              "steel.3",
+              "steel.3"
+            ],
+            "seed": "$seed",
+            "cell": 8,
+            "octaves": 3,
+            "dither": 0.8
+          },
+          {
+            "op": "speckle",
+            "colours": [
+              "steel.1",
+              "steel.4"
+            ],
+            "density": 0.04,
+            "seed": "$seed"
+          },
+          {
+            "op": "bevel",
+            "rect": [
+              0,
+              0,
+              32,
+              32
+            ],
+            "light": "steel.5",
+            "dark": "steel.0"
+          },
+          {
+            "op": "bevel",
+            "rect": [
+              1,
+              1,
+              30,
+              30
+            ],
+            "light": "steel.4",
+            "dark": "steel.1"
+          },
+          {
+            "op": "grime",
+            "colours": [
+              "dust.0",
+              "rust.1",
+              "steel.1"
+            ],
+            "density": 0.3,
+            "seed": "$seed",
+            "rect": [
+              2,
+              22,
+              28,
+              8
+            ]
+          },
+          {
+            "op": "rect",
+            "rect": [
+              3,
+              2,
+              26,
+              20
+            ],
+            "colour": "steel.3"
+          },
+          {
+            "op": "bevel",
+            "rect": [
+              3,
+              2,
+              26,
+              20
+            ],
+            "light": "steel.5",
+            "dark": "steel.1"
+          },
+          {
+            "op": "bevel",
+            "rect": [
+              5,
+              3,
+              22,
+              18
+            ],
+            "light": "steel.5",
+            "dark": "steel.1",
+            "inset": true
+          },
+          {
+            "op": "rect",
+            "rect": [
+              6,
+              4,
+              20,
+              16
+            ],
+            "colour": "glass.1"
+          },
+          {
+            "op": "rect",
+            "rect": [
+              7,
+              6,
+              18,
+              1
+            ],
+            "colour": "glass.2"
+          },
+          {
+            "op": "rect",
+            "rect": [
+              7,
+              8,
+              18,
+              1
+            ],
+            "colour": "glass.2"
+          },
+          {
+            "op": "rect",
+            "rect": [
+              7,
+              10,
+              18,
+              1
+            ],
+            "colour": "glass.2"
+          },
+          {
+            "op": "rect",
+            "rect": [
+              7,
+              12,
+              18,
+              1
+            ],
+            "colour": "glass.2"
+          },
+          {
+            "op": "rect",
+            "rect": [
+              7,
+              14,
+              18,
+              1
+            ],
+            "colour": "glass.2"
+          },
+          {
+            "op": "rect",
+            "rect": [
+              7,
+              16,
+              18,
+              1
+            ],
+            "colour": "glass.2"
+          },
+          {
+            "op": "rect",
+            "rect": [
+              7,
+              18,
+              18,
+              1
+            ],
+            "colour": "glass.2"
+          },
+          {
+            "op": "pixels",
+            "at": [
+              6,
+              4
+            ],
+            "legend": {
+              "c": "steel.2",
+              "e": "glass.0"
+            },
+            "rows": [
+              "cc..................cc",
+              "c....................c"
+            ]
+          },
+          {
+            "op": "pixels",
+            "at": [
+              6,
+              18
+            ],
+            "legend": {
+              "c": "steel.2"
+            },
+            "rows": [
+              "c....................c",
+              "cc..................cc"
+            ]
+          },
+          {
+            "op": "pixels",
+            "at": [
+              8,
+              6
+            ],
+            "scale": 2,
+            "legend": {
+              "#": "glass.3",
+              "o": "glass.3",
+              "d": "glass.2"
+            },
+            "rows": "$glyph"
+          },
+          {
+            "op": "pixels",
+            "at": [
+              8,
+              22
+            ],
+            "scale": 2,
+            "legend": {
+              "r": "signal.1",
+              "a": "sodium.1",
+              "g": "phosphor.1",
+              "s": "steel.1"
+            },
+            "rows": [
+              "rrsaasgg"
+            ]
+          },
+          {
+            "op": "rect",
+            "rect": [
+              8,
+              26,
+              16,
+              4
+            ],
+            "colour": "brass.3"
+          },
+          {
+            "op": "rect",
+            "rect": [
+              8,
+              26,
+              16,
+              1
+            ],
+            "colour": "brass.5"
+          },
+          {
+            "op": "rect",
+            "rect": [
+              8,
+              29,
+              16,
+              1
+            ],
+            "colour": "brass.1"
+          },
+          {
+            "op": "pixels",
+            "at": [
+              10,
+              27
+            ],
+            "legend": {
+              "e": "brass.1"
+            },
+            "rows": [
+              "ee.eee.e.eee",
+              "e.ee.ee.e.ee"
+            ]
+          },
+          {
+            "op": "pixels",
+            "legend": {
+              "l": "steel.6",
+              "m": "steel.4",
+              "d": "steel.1",
+              "r": "rust.1"
+            },
+            "rows": [
+              "lm.",
+              "mmd",
+              ".dd",
+              "..r"
+            ],
+            "at": [
+              3,
+              25
+            ]
+          },
+          {
+            "op": "pixels",
+            "legend": {
+              "l": "steel.6",
+              "m": "steel.4",
+              "d": "steel.1",
+              "r": "rust.1"
+            },
+            "rows": [
+              "lm.",
+              "mmd",
+              ".dd",
+              "..r"
+            ],
+            "at": [
+              26,
+              25
+            ]
+          }
+        ]
+      }
+    },
+    "terminal_glow_c": {
+      "params": [
+        "over",
+        "glyph"
+      ],
+      "recipe": {
+        "kind": "cutout",
+        "size": 32,
+        "glow": {
+          "over": "$over"
+        },
+        "animation": {
+          "frames": 8,
+          "frametime": 3
+        },
+        "layers": [
+          {
+            "op": "rect",
+            "rect": [
+              6,
+              4,
+              20,
+              16
+            ],
+            "colour": "phosphor.0"
+          },
+          {
+            "op": "pixels",
+            "at": [
+              7,
+              6
+            ],
+            "scale": 2,
+            "legend": {
+              "#": "phosphor.1",
+              "o": "phosphor.1",
+              "d": "phosphor.1"
+            },
+            "rows": "$glyph"
+          },
+          {
+            "op": "pixels",
+            "at": [
+              9,
+              6
+            ],
+            "scale": 2,
+            "legend": {
+              "#": "phosphor.1",
+              "o": "phosphor.1",
+              "d": "phosphor.1"
+            },
+            "rows": "$glyph"
+          },
+          {
+            "op": "pixels",
+            "at": [
+              8,
+              5
+            ],
+            "scale": 2,
+            "legend": {
+              "#": "phosphor.1",
+              "o": "phosphor.1",
+              "d": "phosphor.1"
+            },
+            "rows": "$glyph"
+          },
+          {
+            "op": "pixels",
+            "at": [
+              8,
+              7
+            ],
+            "scale": 2,
+            "legend": {
+              "#": "phosphor.1",
+              "o": "phosphor.1",
+              "d": "phosphor.1"
+            },
+            "rows": "$glyph"
+          },
+          {
+            "op": "pixels",
+            "at": [
+              8,
+              6
+            ],
+            "scale": 2,
+            "legend": {
+              "#": "phosphor.4",
+              "o": "phosphor.6",
+              "d": "phosphor.2"
+            },
+            "rows": "$glyph"
+          },
+          {
+            "op": "pixels",
+            "at": [
+              8,
+              6
+            ],
+            "legend": {
+              "h": "phosphor.6"
+            },
+            "rows": [
+              "h"
+            ]
+          },
+          {
+            "op": "scan",
+            "rect": [
+              6,
+              4,
+              20,
+              16
+            ],
+            "rows": 2,
+            "step": 2,
+            "colour": "phosphor.2",
+            "over": [
+              "phosphor.0",
+              "phosphor.1"
+            ]
+          },
+          {
+            "op": "scan",
+            "rect": [
+              6,
+              4,
+              20,
+              16
+            ],
+            "rows": 2,
+            "step": 2,
+            "colour": "phosphor.5",
+            "over": [
+              "phosphor.4"
+            ]
+          },
+          {
+            "op": "pixels",
+            "at": [
+              20,
+              22
+            ],
+            "scale": 2,
+            "legend": {
+              "g": "phosphor.5"
+            },
+            "rows": [
+              "gg"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "recipes": {
+    "block/fuel_pump_front": {
+      "template": "terminal_front_c",
+      "args": {
+        "seed": 11,
+        "glyph": [
+          "...##...",
+          "..#o##..",
+          ".#o####.",
+          ".######.",
+          ".######.",
+          "..####.."
+        ]
+      }
+    },
+    "block/fuel_pump_front_glow": {
+      "template": "terminal_glow_c",
+      "args": {
+        "over": "block/fuel_pump_front",
+        "glyph": [
+          "...##...",
+          "..#o##..",
+          ".#o####.",
+          ".######.",
+          ".######.",
+          "..####.."
+        ]
+      }
+    },
+    "block/ore_processor_front": {
+      "template": "terminal_front_c",
+      "args": {
+        "seed": 12,
+        "glyph": [
+          "..#..#..",
+          ".#o####.",
+          "###..###",
+          "###..###",
+          ".######.",
+          "..#..#.."
+        ]
+      }
+    },
+    "block/ore_processor_front_glow": {
+      "template": "terminal_glow_c",
+      "args": {
+        "over": "block/ore_processor_front",
+        "glyph": [
+          "..#..#..",
+          ".#o####.",
+          "###..###",
+          "###..###",
+          ".######.",
+          "..#..#.."
+        ]
+      }
+    },
+    "block/upgrade_terminal_front": {
+      "template": "terminal_front_c",
+      "args": {
+        "seed": 13,
+        "glyph": [
+          "...oo...",
+          "..####..",
+          ".######.",
+          "##.##.##",
+          "...##...",
+          "...##..."
+        ]
+      }
+    },
+    "block/upgrade_terminal_front_glow": {
+      "template": "terminal_glow_c",
+      "args": {
+        "over": "block/upgrade_terminal_front",
+        "glyph": [
+          "...oo...",
+          "..####..",
+          ".######.",
+          "##.##.##",
+          "...##...",
+          "...##..."
+        ]
+      }
+    },
+    "block/repair_station_front": {
+      "template": "terminal_front_c",
+      "args": {
+        "seed": 14,
+        "glyph": [
+          "...##...",
+          "...o#...",
+          ".######.",
+          ".######.",
+          "...##...",
+          "...##..."
+        ]
+      }
+    },
+    "block/repair_station_front_glow": {
+      "template": "terminal_glow_c",
+      "args": {
+        "over": "block/repair_station_front",
+        "glyph": [
+          "...##...",
+          "...o#...",
+          ".######.",
+          ".######.",
+          "...##...",
+          "...##..."
+        ]
+      }
+    },
+    "block/contract_terminal_front": {
+      "template": "terminal_front_c",
+      "args": {
+        "seed": 15,
+        "glyph": [
+          "........",
+          "..#..#..",
+          "..o..o..",
+          "........",
+          ".#....#.",
+          "..####.."
+        ]
+      }
+    },
+    "block/contract_terminal_front_glow": {
+      "template": "terminal_glow_c",
+      "args": {
+        "over": "block/contract_terminal_front",
+        "glyph": [
+          "........",
+          "..#..#..",
+          "..o..o..",
+          "........",
+          ".#....#.",
+          "..####.."
+        ]
+      }
+    },
+    "block/hangar_console_front": {
+      "template": "terminal_front_c",
+      "args": {
+        "seed": 16,
+        "glyph": [
+          ".####...",
+          "#.oo.#..",
+          "#.oo.###",
+          "#....##o",
+          ".#####..",
+          "..#..#.."
+        ]
+      }
+    },
+    "block/hangar_console_front_glow": {
+      "template": "terminal_glow_c",
+      "args": {
+        "over": "block/hangar_console_front",
+        "glyph": [
+          ".####...",
+          "#.oo.#..",
+          "#.oo.###",
+          "#....##o",
+          ".#####..",
+          "..#..#.."
+        ]
+      }
+    },
+    "block/terminal_side": {
+      "kind": "opaque",
+      "size": 32,
+      "layers": [
+        {
+          "op": "template",
+          "name": "company_plate_c",
+          "args": {
+            "seed": 3
+          }
+        },
+        {
+          "op": "bevel",
+          "rect": [
+            6,
+            6,
+            20,
+            20
+          ],
+          "light": "steel.5",
+          "dark": "steel.1",
+          "inset": true
+        },
+        {
+          "op": "rect",
+          "rect": [
+            7,
+            7,
+            18,
+            18
+          ],
+          "colour": "steel.2"
+        },
+        {
+          "op": "speckle",
+          "colours": [
+            "steel.1",
+            "steel.3"
+          ],
+          "density": 0.08,
+          "seed": 5,
+          "rect": [
+            7,
+            7,
+            18,
+            18
+          ]
+        },
+        {
+          "op": "pixels",
+          "at": [
+            10,
+            9
+          ],
+          "scale": 2,
+          "legend": {
+            "e": "enamel.2",
+            "E": "enamel.3",
+            "r": "company.2",
+            "s": "enamel.0"
+          },
+          "rows": [
+            "EEEEee",
+            "errrre",
+            "eeeees",
+            ".sssss"
+          ]
+        },
+        {
+          "op": "pixels",
+          "at": [
+            10,
+            9
+          ],
+          "legend": {
+            "h": "enamel.3"
+          },
+          "rows": [
+            "h"
+          ]
+        },
+        {
+          "op": "pixels",
+          "at": [
+            12,
+            20
+          ],
+          "scale": 2,
+          "legend": {
+            "v": "steel.0",
+            "l": "steel.3"
+          },
+          "rows": [
+            "vvvv",
+            "llll"
+          ]
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "l": "steel.6",
+            "m": "steel.4",
+            "d": "steel.1",
+            "r": "rust.1"
+          },
+          "rows": [
+            "lm.",
+            "mmd",
+            ".dd",
+            "..r"
+          ],
+          "at": [
+            2,
+            2
+          ]
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "l": "steel.6",
+            "m": "steel.4",
+            "d": "steel.1",
+            "r": "rust.1"
+          },
+          "rows": [
+            "lm.",
+            "mmd",
+            ".dd",
+            "..r"
+          ],
+          "at": [
+            14,
+            2
+          ]
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "l": "steel.6",
+            "m": "steel.4",
+            "d": "steel.1",
+            "r": "rust.1"
+          },
+          "rows": [
+            "lm.",
+            "mmd",
+            ".dd",
+            "..r"
+          ],
+          "at": [
+            27,
+            2
+          ]
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "l": "steel.6",
+            "m": "steel.4",
+            "d": "steel.1",
+            "r": "rust.1"
+          },
+          "rows": [
+            "lm.",
+            "mmd",
+            ".dd",
+            "..r"
+          ],
+          "at": [
+            2,
+            14
+          ]
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "l": "steel.6",
+            "m": "steel.4",
+            "d": "steel.1",
+            "r": "rust.1"
+          },
+          "rows": [
+            "lm.",
+            "mmd",
+            ".dd",
+            "..r"
+          ],
+          "at": [
+            27,
+            14
+          ]
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "l": "steel.6",
+            "m": "steel.4",
+            "d": "steel.1",
+            "r": "rust.1"
+          },
+          "rows": [
+            "lm.",
+            "mmd",
+            ".dd",
+            "..r"
+          ],
+          "at": [
+            2,
+            27
+          ]
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "l": "steel.6",
+            "m": "steel.4",
+            "d": "steel.1",
+            "r": "rust.1"
+          },
+          "rows": [
+            "lm.",
+            "mmd",
+            ".dd",
+            "..r"
+          ],
+          "at": [
+            27,
+            27
+          ]
+        }
+      ]
+    },
+    "block/terminal_top": {
+      "kind": "opaque",
+      "size": 32,
+      "layers": [
+        {
+          "op": "template",
+          "name": "company_plate_c",
+          "args": {
+            "seed": 4
+          }
+        },
+        {
+          "op": "pixels",
+          "at": [
+            6,
+            6
+          ],
+          "scale": 2,
+          "legend": {
+            "v": "steel.0",
+            "l": "steel.4"
+          },
+          "rows": [
+            "vvvvvvvvvv",
+            "llllllllll",
+            "",
+            "vvvvvvvvvv",
+            "llllllllll",
+            "",
+            "vvvvvvvvvv",
+            "llllllllll",
+            "",
+            "vvvvvvvvvv"
+          ]
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "l": "steel.6",
+            "m": "steel.4",
+            "d": "steel.1",
+            "r": "rust.1"
+          },
+          "rows": [
+            "lm.",
+            "mmd",
+            ".dd",
+            "..r"
+          ],
+          "at": [
+            2,
+            2
+          ]
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "l": "steel.6",
+            "m": "steel.4",
+            "d": "steel.1",
+            "r": "rust.1"
+          },
+          "rows": [
+            "lm.",
+            "mmd",
+            ".dd",
+            "..r"
+          ],
+          "at": [
+            27,
+            2
+          ]
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "l": "steel.6",
+            "m": "steel.4",
+            "d": "steel.1",
+            "r": "rust.1"
+          },
+          "rows": [
+            "lm.",
+            "mmd",
+            ".dd",
+            "..r"
+          ],
+          "at": [
+            2,
+            27
+          ]
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "l": "steel.6",
+            "m": "steel.4",
+            "d": "steel.1",
+            "r": "rust.1"
+          },
+          "rows": [
+            "lm.",
+            "mmd",
+            ".dd",
+            "..r"
+          ],
+          "at": [
+            27,
+            27
+          ]
+        }
+      ]
+    },
+    "block/terminal_standby_glow": {
+      "kind": "cutout",
+      "size": 32,
+      "glow": {
+        "over": null
+      },
+      "layers": [
+        {
+          "op": "pixels",
+          "at": [
+            8,
+            22
+          ],
+          "scale": 2,
+          "legend": {
+            "r": "signal.3",
+            "o": "signal.4"
+          },
+          "rows": [
+            "or"
+          ]
+        }
+      ]
+    }
+  }
+}

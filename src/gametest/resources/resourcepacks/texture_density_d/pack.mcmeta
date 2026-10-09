@@ -1,0 +1,7 @@
+{
+  "pack": {
+    "description": "Deep Charter test pack: texture density D, ores with crystals standing out of the face (issue 336)",
+    "min_format": 97,
+    "max_format": 97
+  }
+}
