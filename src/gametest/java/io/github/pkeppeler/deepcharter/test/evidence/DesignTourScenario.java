@@ -36,6 +36,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.clock.WorldClock;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -108,6 +109,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
 import io.github.pkeppeler.deepcharter.transmission.Transmissions;
@@ -216,9 +218,9 @@ public class DesignTourScenario extends EvidenceScenario {
 	// ------------------------------------------------------------------------------------------------ determinism
 
 	/**
-	 * Pins everything that would make two runs of one commit differ, before the first still: the gameplay clock stops at noon, the sky clock at its brightest dusk, the weather is
-	 * clear and stays so, nothing grows or burns by random tick, no mob spawns, and particles are at their minimum. The seed is the
-	 * world's own (see {@link #run}). Mobs that the world generated, and particles already flying, are cleared by {@link #settle}.
+	 * Pins everything that would make two runs of one commit differ, before the first still: the gameplay clock stops at noon, the
+	 * sky clock at its brightest dusk, the weather is clear and stays so, nothing grows or burns by random tick, no mob spawns, and
+	 * particles are at their minimum. The seed is the world's own (see {@link #run}). Mobs that the world generated, and particles already flying, are cleared by {@link #settle}.
 	 */
 	private void pinWorld() {
 		serverDo(server -> {
@@ -243,16 +245,21 @@ public class DesignTourScenario extends EvidenceScenario {
 	}
 
 	/**
-	 * Pins the visual sky: the sky clock stops at {@code ticks} of its timeline. The sky follows this clock, not the gameplay clock
-	 * that {@code time set} moves, so a still that wants another sky sets both.
+	 * Pins the visual sky: the sky clock stops at {@code ticks} of its timeline, and the call returns once the client reads that
+	 * phase back, so no still is taken with the sky of the phase before (the overworld's fog colour is the dusk brown). The sky
+	 * follows this clock, not the gameplay clock that {@code time set} moves, so a still that wants another sky sets both.
 	 */
 	private void setSkyPhase(long ticks) {
+		ResourceKey<WorldClock> key = ResourceKey.create(Registries.WORLD_CLOCK, Identifier.fromNamespaceAndPath("deepcharter", "sky"));
 		serverDo(server -> {
-			var sky = server.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK)
-					.getOrThrow(ResourceKey.create(Registries.WORLD_CLOCK, Identifier.fromNamespaceAndPath("deepcharter", "sky")));
+			var sky = server.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(key);
 			server.clockManager().setPaused(sky, true);
 			server.clockManager().setTotalTicks(sky, ticks);
 		});
+		ClientWait.until(ctx, "the client to read the sky clock at " + ticks, client -> {
+			var instance = client.level.clockManager().getInstance(client.level.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(key));
+			return instance.totalTicks() == ticks && instance.isPaused();
+		}, client -> "the sky clock at " + client.level.clockManager().getInstance(client.level.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(key)).totalTicks());
 	}
 
 	/**
