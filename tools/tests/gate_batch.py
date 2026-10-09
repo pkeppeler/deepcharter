@@ -1,7 +1,7 @@
 """Runs every gate-check fixture tree through one Gradle invocation (checkGametestFixtures in gradle/gametest.gradle).
 
 Each *_gate_check.py module declares its fixtures as CASES; gate_checks.py gathers them, calls run once and publishes the outcome in
-OUTCOME, which the modules' tests assert on. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25.
+RESULTS, which the modules' tests assert on.
 """
 import json
 import subprocess
