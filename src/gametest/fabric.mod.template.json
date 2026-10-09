@@ -5,6 +5,9 @@
 	"name": "Deep Charter tests",
 	"license": "All-Rights-Reserved",
 	"environment": "*",
+	"mixins": [
+		"deepcharter-test.mixins.json"
+	],
 	"entrypoints": {
 		"main": [
 			"io.github.pkeppeler.deepcharter.test.support.TestAttachments",
