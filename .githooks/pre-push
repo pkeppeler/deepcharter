@@ -2,7 +2,17 @@
 # Fast pre-push check, early feedback only. What it runs and how to enable it: docs/tooling/pre-push-hook.md
 set -euo pipefail
 
-root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
+
+# core.hooksPath may be one absolute path shared by every worktree. Run the copy of the hook that belongs to the tree being pushed,
+# so a branch is checked by its own hook, against its own sources.
+if top=$(git rev-parse --show-toplevel 2>/dev/null); then
+  top=$(cd "$top" && pwd -P)
+  if [[ $top != "$root" && -x $top/.githooks/pre-push ]]; then
+    exec "$top/.githooks/pre-push" "$@"
+  fi
+  root=$top
+fi
 
 # git feeds one line per ref: <local ref> <local sha> <remote ref> <remote sha>.
 # Run the checks unless every ref is a branch delete or targets pr-media.
@@ -31,15 +41,6 @@ if command -v shellcheck >/dev/null 2>&1; then
 else
   echo "pre-push: shellcheck not found, skipping it (CI runs it)" >&2
 fi
-echo "pre-push: room-carver gate check (runs Gradle)" >&2
-python3 -I tools/tests/room_carver_gate_check.py \
-  || fail "room-carver gate check"
-echo "pre-push: client-test filter check (runs Gradle)" >&2
-python3 -I tools/tests/client_filter_gate_check.py \
-  || fail "client-test filter check"
-echo "pre-push: tick-wait gate check (runs Gradle)" >&2
-python3 -I tools/tests/tick_wait_gate_check.py \
-  || fail "tick-wait gate check"
-echo "pre-push: world-data gate check (runs Gradle)" >&2
-python3 -I tools/tests/world_data_gate_check.py \
-  || fail "world-data gate check"
+echo "pre-push: gate checks on fixtures: room-carver, client-test filter, tick-wait, world-data (one Gradle run)" >&2
+python3 -I tools/tests/gate_checks.py \
+  || fail "gate checks (room-carver, client-test filter, tick-wait, world-data)"
