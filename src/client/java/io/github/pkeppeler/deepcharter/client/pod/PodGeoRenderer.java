@@ -82,7 +82,7 @@ public class PodGeoRenderer extends EntityRenderer<PodEntity, PodGeoRenderState>
 	@Override
 	public void extractRenderState(PodEntity pod, PodGeoRenderState state, float partialTick) {
 		super.extractRenderState(pod, state, partialTick);
-		motions.computeIfAbsent(pod, ignored -> new PodMotion()).advance(pod, state, model.mountRestPitch());
+		motions.computeIfAbsent(pod, ignored -> new PodMotion()).advance(pod, state, model.mountRestPitch(), model.drillSpinScale());
 	}
 
 	@Override

@@ -15,6 +15,8 @@ public enum BoneRole {
 	DRILL_MOUNT,
 	/** Spins about its own z axis while the pod drills. */
 	DRILL_HEAD,
+	/** Spins about its own z axis the other way from the drill head while the pod drills, so a cutter of two parts churns. */
+	DRILL_RING,
 	/** Spins about y: slowly while the pod has power, fast while it flies. */
 	ROTOR,
 	/** Spins about z while the pod has power. */
@@ -37,7 +39,7 @@ public enum BoneRole {
 			Map.entry("lamps", FIXED), Map.entry("cutter", FIXED), Map.entry("tank", FIXED), Map.entry("exhaust", FIXED),
 			Map.entry("fender", FIXED), Map.entry("tread", FIXED), Map.entry("mast", FIXED), Map.entry("duct", FIXED),
 			Map.entry("frame", FIXED), Map.entry("strut", FIXED), Map.entry("shin", FIXED), Map.entry("foot", FIXED),
-			Map.entry("drill_mount", DRILL_MOUNT), Map.entry("drill_head", DRILL_HEAD), Map.entry("rotor", ROTOR),
+			Map.entry("drill_mount", DRILL_MOUNT), Map.entry("drill_head", DRILL_HEAD), Map.entry("drill_ring", DRILL_RING), Map.entry("rotor", ROTOR),
 			Map.entry("fan", FAN), Map.entry("thruster", THRUSTER), Map.entry("flame", FLAME), Map.entry("wheel", WHEEL),
 			Map.entry("links", LINKS), Map.entry("leg", LEG), Map.entry("thigh", THIGH));
 
