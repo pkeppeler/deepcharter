@@ -28,7 +28,7 @@
         0,
         -28
       ],
-      "blocks": 1080,
+      "blocks": 1076,
       "displays": 2
     },
     {
@@ -46,14 +46,14 @@
     {
       "name": "from-the-square",
       "eye": [
-        -7.0,
+        9.0,
         2.62,
-        6.0
+        9.0
       ],
       "target": [
-        6.0,
-        9.0,
-        -16.0
+        5.0,
+        8.0,
+        -14.0
       ],
       "night": false,
       "above_ground": false
@@ -61,13 +61,13 @@
     {
       "name": "works-front",
       "eye": [
-        11.0,
+        13.0,
         2.62,
-        0.0
+        -2.0
       ],
       "target": [
-        10.0,
-        5.0,
+        10.5,
+        4.5,
         -12.0
       ],
       "night": false,
@@ -76,13 +76,13 @@
     {
       "name": "headframe",
       "eye": [
-        -22.0,
-        6.0,
-        4.0
+        -20.0,
+        5.0,
+        2.0
       ],
       "target": [
         -4.0,
-        16.0,
+        15.0,
         -15.0
       ],
       "night": false,
@@ -136,14 +136,14 @@
     {
       "name": "night-from-the-square",
       "eye": [
-        -4.0,
+        9.0,
         2.62,
-        6.0
+        9.0
       ],
       "target": [
-        6.0,
-        9.0,
-        -16.0
+        5.0,
+        8.0,
+        -14.0
       ],
       "night": true,
       "above_ground": false
@@ -162,80 +162,35 @@
       ],
       "night": true,
       "above_ground": false
-    },
-    {
-      "name": "statue-from-the-square",
-      "eye": [
-        5.0,
-        2.62,
-        17.0
-      ],
-      "target": [
-        0.5,
-        9.0,
-        0.5
-      ],
-      "night": false,
-      "above_ground": false
-    },
-    {
-      "name": "statue-front",
-      "eye": [
-        0.5,
-        6.0,
-        26.0
-      ],
-      "target": [
-        0.5,
-        9.0,
-        0.5
-      ],
-      "night": false,
-      "above_ground": false
-    },
-    {
-      "name": "statue-side",
-      "eye": [
-        24.0,
-        6.0,
-        2.5
-      ],
-      "target": [
-        0.5,
-        9.0,
-        0.5
-      ],
-      "night": false,
-      "above_ground": false
     }
   ],
   "figures": [
     {
       "kind": "pod",
       "at": [
-        11.9,
+        11.5,
         1.0,
-        -8.0
+        -10.6
       ],
-      "yaw": 170.0
+      "yaw": 180.0
     },
     {
       "kind": "player",
       "at": [
         9.5,
         1.0,
-        -9.5
+        -9.6
       ],
       "yaw": 200.0
     },
     {
       "kind": "player",
       "at": [
-        3.5,
+        6.5,
         1.0,
-        6.5
+        1.5
       ],
-      "yaw": 150.0
+      "yaw": 170.0
     }
   ],
   "orbit": {

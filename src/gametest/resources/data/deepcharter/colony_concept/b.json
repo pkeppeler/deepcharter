@@ -28,7 +28,7 @@
         0,
         -34
       ],
-      "blocks": 1252,
+      "blocks": 1250,
       "displays": 7
     },
     {
@@ -46,12 +46,12 @@
     {
       "name": "from-the-square",
       "eye": [
-        8.0,
+        6.0,
         2.62,
-        3.0
+        8.0
       ],
       "target": [
-        14.0,
+        15.0,
         9.0,
         -24.0
       ],
@@ -61,13 +61,13 @@
     {
       "name": "works-front",
       "eye": [
-        16.0,
+        17.0,
         2.62,
         -14.0
       ],
       "target": [
-        17.0,
-        5.0,
+        16.0,
+        4.5,
         -26.0
       ],
       "night": false,
@@ -136,12 +136,12 @@
     {
       "name": "night-from-the-square",
       "eye": [
-        8.0,
+        6.0,
         2.62,
-        3.0
+        8.0
       ],
       "target": [
-        14.0,
+        15.0,
         9.0,
         -24.0
       ],
@@ -162,80 +162,35 @@
       ],
       "night": true,
       "above_ground": false
-    },
-    {
-      "name": "statue-from-the-square",
-      "eye": [
-        5.0,
-        2.62,
-        17.0
-      ],
-      "target": [
-        0.5,
-        9.0,
-        0.5
-      ],
-      "night": false,
-      "above_ground": false
-    },
-    {
-      "name": "statue-front",
-      "eye": [
-        0.5,
-        6.0,
-        26.0
-      ],
-      "target": [
-        0.5,
-        9.0,
-        0.5
-      ],
-      "night": false,
-      "above_ground": false
-    },
-    {
-      "name": "statue-side",
-      "eye": [
-        24.0,
-        6.0,
-        2.5
-      ],
-      "target": [
-        0.5,
-        9.0,
-        0.5
-      ],
-      "night": false,
-      "above_ground": false
     }
   ],
   "figures": [
     {
       "kind": "pod",
       "at": [
-        16.0,
+        15.95,
         1.0,
-        -21.0
+        -24.6
       ],
-      "yaw": 170.0
+      "yaw": 180.0
     },
     {
       "kind": "player",
       "at": [
-        18.5,
+        12.5,
         1.0,
-        -22.5
+        -23.4
       ],
-      "yaw": 210.0
+      "yaw": 200.0
     },
     {
       "kind": "player",
       "at": [
-        3.5,
+        9.5,
         1.0,
-        6.5
+        -12.5
       ],
-      "yaw": 150.0
+      "yaw": 160.0
     }
   ],
   "orbit": {

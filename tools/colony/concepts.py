@@ -13,7 +13,6 @@ from dataclasses import dataclass
 from typing import Callable, Literal
 
 import parts
-from parts import Wall
 from piece import Piece, state
 
 CONDUIT = (-5, -15, -3, -13)
@@ -244,16 +243,6 @@ def hoist_house() -> Piece:
     return p
 
 
-def _common_views(statue_top: float) -> list[View]:
-    """The statue views every layout shares, so the sizes and the concepts compare like for like."""
-    mid = statue_top * 0.6
-    return [
-        View("statue-from-the-square", (5.0, 2.62, 17.0), (0.5, mid, 0.5)),
-        View("statue-front", (0.5, 6.0, 26.0), (0.5, mid, 0.5)),
-        View("statue-side", (24.0, 6.0, 2.5), (0.5, mid, 0.5)),
-    ]
-
-
 # ------------------------------------------------------------------------------------------------------------- A. Pithead Works
 
 def _a_works() -> Piece:
@@ -264,7 +253,6 @@ def _a_works() -> Piece:
     walls = parts.works_hall(p, x0, z0, x1, z1, 8, {"south": (7, 9, 14), "north": (7, 12), "west": (-16,), "east": (-16,)})
     front = walls["south"]
     parts.bay(p, front, 10, 13)
-    parts.belt(p, front, 10, 4)
     parts.door(p, front, 8)
     for x in (4, 5, 6):
         p.set(x, 2, z1, state("gauge_panel", facing="south"))
@@ -296,18 +284,17 @@ CONCEPT_A = Layout(
     build=lambda: [("a/square", square(CONCEPT_STATUE)), ("a/headframe", headframe("east", 13)), ("a/works", _a_works()),
                    ("a/hoist_house", hoist_house())],
     views=(
-        View("from-the-square", (-7.0, 2.62, 6.0), (6.0, 9.0, -16.0)),
-        View("works-front", (11.0, 2.62, 0.0), (10.0, 5.0, -12.0)),
-        View("headframe", (-22.0, 6.0, 4.0), (-4.0, 16.0, -15.0)),
+        View("from-the-square", (9.0, 2.62, 9.0), (5.0, 8.0, -14.0)),
+        View("works-front", (13.0, 2.62, -2.0), (10.5, 4.5, -12.0)),
+        View("headframe", (-20.0, 5.0, 2.0), (-4.0, 15.0, -15.0)),
         View("from-the-air", (26.0, 30.0, 16.0), (2.0, 8.0, -14.0)),
         View("from-the-air-behind", (24.0, 26.0, -44.0), (0.0, 10.0, -18.0)),
         View("from-far-across-the-plain", (14.0, 6.0, 62.0), (0.0, 12.0, -12.0), above_ground=True),
-        View("night-from-the-square", (-4.0, 2.62, 6.0), (6.0, 9.0, -16.0), night=True),
+        View("night-from-the-square", (9.0, 2.62, 9.0), (5.0, 8.0, -14.0), night=True),
         View("night-from-the-air", (26.0, 24.0, 12.0), (2.0, 8.0, -14.0), night=True),
-        *_common_views(CONCEPT_STATUE + STATUE_SIZES[CONCEPT_STATUE]),
     ),
-    figures=(Figure("pod", (11.9, 1.0, -8.0), 170.0), Figure("player", (9.5, 1.0, -9.5), 200.0),
-             Figure("player", (3.5, 1.0, 6.5), 150.0)),
+    figures=(Figure("pod", (11.5, 1.0, -10.6), 180.0), Figure("player", (9.5, 1.0, -9.6), 200.0),
+             Figure("player", (6.5, 1.0, 1.5), 170.0)),
     orbit=Orbit((2.0, 8.0, -14.0), 34.0, 18.0),
 )
 
@@ -338,7 +325,6 @@ def _b_works() -> Piece:
     front = walls["south"]
     parts.bay(p, front, 14, 17)
     parts.canopy(p, front, 14, 17)
-    parts.belt(p, front, 17, 3)
     parts.shutter(p, front, 20, 22)
     parts.door(p, front, 11)
     parts.wall_sign(p, front, "ore_house", 15.5, 7)
@@ -370,50 +356,53 @@ CONCEPT_B = Layout(
     build=lambda: [("b/square", square(CONCEPT_STATUE)), ("b/headframe", headframe("east", 12)), ("b/works", _b_works()),
                    ("b/hoist_house", hoist_house())],
     views=(
-        View("from-the-square", (8.0, 2.62, 3.0), (14.0, 9.0, -24.0)),
-        View("works-front", (16.0, 2.62, -14.0), (17.0, 5.0, -26.0)),
+        View("from-the-square", (6.0, 2.62, 8.0), (15.0, 9.0, -24.0)),
+        View("works-front", (17.0, 2.62, -14.0), (16.0, 4.5, -26.0)),
         View("headframe", (-22.0, 6.0, 4.0), (-4.0, 16.0, -15.0)),
         View("from-the-air", (30.0, 30.0, 14.0), (8.0, 8.0, -20.0)),
         View("from-the-air-behind", (30.0, 26.0, -50.0), (6.0, 10.0, -22.0)),
         View("from-far-across-the-plain", (14.0, 6.0, 62.0), (4.0, 12.0, -16.0), above_ground=True),
-        View("night-from-the-square", (8.0, 2.62, 3.0), (14.0, 9.0, -24.0), night=True),
+        View("night-from-the-square", (6.0, 2.62, 8.0), (15.0, 9.0, -24.0), night=True),
         View("night-from-the-air", (30.0, 24.0, 10.0), (8.0, 8.0, -20.0), night=True),
-        *_common_views(CONCEPT_STATUE + STATUE_SIZES[CONCEPT_STATUE]),
     ),
-    figures=(Figure("pod", (16.0, 1.0, -21.0), 170.0), Figure("player", (18.5, 1.0, -22.5), 210.0),
-             Figure("player", (3.5, 1.0, 6.5), 150.0)),
+    figures=(Figure("pod", (15.95, 1.0, -24.6), 180.0), Figure("player", (12.5, 1.0, -23.4), 200.0),
+             Figure("player", (9.5, 1.0, -12.5), 160.0)),
     orbit=Orbit((8.0, 8.0, -20.0), 36.0, 18.0),
 )
 
 
 # ------------------------------------------------------------------------------------------------------------- C. Terrace Works
 
-MESA_TOP = 8
+MESA_TOP = 10
 BENCH = 4
 
 
+def _c_height(x: int, z: int) -> int:
+    """The mesa's height at a column: its top along the west and the north of the works, the bench the crusher house stands on,
+    stepping down at its south end, its edge ragged."""
+    if x <= -25 or z <= -27:
+        height = MESA_TOP
+    elif x <= -20 and z <= -10:
+        height = BENCH
+    else:
+        return 0
+    for edge, drop in ((-7, 3), (-4, 3), (-1, 4)):
+        if z > edge:
+            height -= drop
+    return max(0, height - (1 if parts.noise(x, 0, z) % 7 == 0 else 0))
+
+
 def _c_bank() -> Piece:
-    """The mesa edge the works are cut into: a bench at 4 and the mesa top at 8, of regolith rock with an ochre bed, regolith on
-    top, and Company retaining walls of concrete where the buildings meet it."""
+    """The mesa edge the works are cut into: its top at 10 along the west and behind the works, a bench at 4 for the crusher
+    house, regolith rock in beds of ochre and packed regolith, regolith on top."""
     p = Piece("bank")
-    rock, ochre, soil = state("deepcharter:regolith_rock"), state("deepcharter:ochre_regolith"), state("deepcharter:regolith")
-    for x in range(-32, -11):
-        for z in range(-32, -3):
-            if x <= -26:
-                height = MESA_TOP
-            elif x <= -20:
-                height = BENCH
-            else:
-                height = 0
-            # The bank falls away to the south and north in a step, so its ends read as a cliff, not a wall.
-            if z > -9 or z < -30:
-                height = max(0, height - 4)
-            if z > -6:
-                height = max(0, height - 4)
-            if parts.noise(x, 0, z) % 9 == 0 and height:
-                height -= 1
+    beds = {3: state("deepcharter:ochre_regolith"), 6: state("deepcharter:regolith_packed"), 8: state("deepcharter:ochre_regolith")}
+    for x in range(-32, -10):
+        for z in range(-32, 1):
+            height = _c_height(x, z)
             for y in range(1, height + 1):
-                p.set(x, y, z, soil if y == height else ochre if y == 6 else rock)
+                s = state("deepcharter:regolith") if y == height else beds.get(y, state("deepcharter:regolith_rock"))
+                p.set(x, y, z, s)
     return p
 
 
@@ -426,22 +415,20 @@ def _c_works() -> Piece:
     walls = parts.works_hall(p, x0, z0, x1, z1, 8, {"west": (-18,), "east": (-18,)})
     front = walls["south"]
     parts.bay(p, front, -17, -14)
-    parts.belt(p, front, -14, 4)
     parts.door(p, walls["east"], -15)
     parts.wall_sign(p, walls["east"], "ore_house", -20.5, 7)
     parts.ladder(p, walls["east"], -22, 1, 9)
-    # The crusher house on the bench, its retaining wall below it.
-    c = parts.works_hall(p, -25, -24, -20, -12, 12, {"south": (), "north": ()})
+    # The crusher house on the bench (its ground storey is the bench), the bench faced in concrete where it meets the yard.
+    c = parts.works_hall(p, -25, -24, -20, -12, 12, {})
     for x in range(-25, -19):
-        for z in range(-24, -11):
-            for y in range(1, BENCH + 1):
-                if x in (-25, -20) or z in (-24, -12):
+        for z in range(-24, -9):
+            if x in (-25, -20) or z in (-24, -12, -10):
+                for y in range(1, BENCH):
                     p.set(x, y, z, state("concrete_footing"))
-    for x in range(-25, -19):
-        p.set(x, BENCH, -11, state("hazard_band"))
+                p.set(x, BENCH, z, state("hazard_band") if z in (-12, -10) or x == -20 else state("concrete_footing"))
     parts.wall_sign(p, c["south"], "company", -22.5, 11)
     # The ore bins on the mesa, a catwalk across their tops, the conveyor from the tipple bin.
-    for cz in (-21.5, -17.5, -13.5):
+    for cz in (-22.5, -17.5, -12.5):
         cx = -28.5
         for dx, dz in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
             p.fill(int(cx - 0.5) + dx, MESA_TOP + 1, int(cz - 0.5) + dz, int(cx - 0.5) + dx, MESA_TOP + 3, int(cz - 0.5) + dz,
@@ -449,12 +436,12 @@ def _c_works() -> Piece:
         parts.cone(p, cx, cz, 0.9, 1.9, MESA_TOP + 2, MESA_TOP + 4, state("riveted_plate"))
         parts.cylinder(p, cx, cz, 1.9, MESA_TOP + 5, MESA_TOP + 10, state("riveted_plate"))
         parts.cylinder(p, cx, cz, 2.0, MESA_TOP + 8, MESA_TOP + 8, state("brass_trim"))
-    p.fill(-30, MESA_TOP + 11, -24, -27, MESA_TOP + 11, -11, state("grating"))
-    for z in range(-24, -10):
+    p.fill(-30, MESA_TOP + 11, -25, -27, MESA_TOP + 11, -10, state("grating"))
+    for z in range(-25, -9):
         p.set(-26, MESA_TOP + 12, z, state("railing", facing="east"))
-    parts.conveyor_truss(p, bin_mouth("west", 12), (-27.0, MESA_TOP + 11.0, -15.0))
-    parts.wall_sign(p, Wall("east", -27, -24, -11), "bull", -22, MESA_TOP + 10)
-    parts.stack(p, -29.5, -27.5, 1.3, 24)
+    parts.conveyor_truss(p, bin_mouth("west", 12), (-26.0, MESA_TOP + 11.0, -15.5))
+    parts.wall_sign(p, c["east"], "bull", -18.5, 12)
+    parts.stack(p, -29.5, -29.5, 1.3, 26)
     # Ore cars out of the bay.
     parts.track(p, -17, -15, -4)
     parts.ore_cars(p, -17, -8, 2)
@@ -467,18 +454,17 @@ CONCEPT_C = Layout(
     build=lambda: [("c/square", square(CONCEPT_STATUE)), ("c/headframe", headframe("west", 12)), ("c/bank", _c_bank()),
                    ("c/works", _c_works()), ("c/hoist_house", hoist_house())],
     views=(
-        View("from-the-square", (-6.0, 2.62, 4.0), (-18.0, 9.0, -18.0)),
-        View("works-front", (-12.0, 2.62, -2.0), (-16.0, 5.0, -14.0)),
+        View("from-the-square", (-8.0, 2.62, 8.0), (-18.0, 9.0, -16.0)),
+        View("works-front", (-11.0, 2.62, -2.0), (-16.0, 4.5, -13.0)),
         View("headframe", (16.0, 6.0, 4.0), (-4.0, 16.0, -15.0)),
-        View("from-the-air", (-30.0, 30.0, 14.0), (-12.0, 8.0, -18.0)),
-        View("from-the-air-behind", (-30.0, 28.0, -50.0), (-10.0, 10.0, -20.0)),
+        View("from-the-air", (-6.0, 28.0, 22.0), (-18.0, 8.0, -16.0)),
+        View("from-the-air-behind", (-30.0, 30.0, -50.0), (-12.0, 10.0, -20.0)),
         View("from-far-across-the-plain", (-10.0, 6.0, 62.0), (-8.0, 12.0, -16.0), above_ground=True),
-        View("night-from-the-square", (-6.0, 2.62, 4.0), (-18.0, 9.0, -18.0), night=True),
-        View("night-from-the-air", (-30.0, 24.0, 10.0), (-12.0, 8.0, -18.0), night=True),
-        *_common_views(CONCEPT_STATUE + STATUE_SIZES[CONCEPT_STATUE]),
+        View("night-from-the-square", (-8.0, 2.62, 8.0), (-18.0, 9.0, -16.0), night=True),
+        View("night-from-the-air", (-6.0, 24.0, 20.0), (-18.0, 8.0, -16.0), night=True),
     ),
-    figures=(Figure("pod", (-15.5, 1.0, -9.0), 180.0), Figure("player", (-13.0, 1.0, -10.5), 160.0),
-             Figure("player", (-3.5, 1.0, 6.5), 210.0)),
+    figures=(Figure("pod", (-15.0, 1.0, -12.4), 180.0), Figure("player", (-11.2, 1.0, -15.5), 270.0),
+             Figure("player", (-13.0, 1.0, -8.0), 200.0)),
     orbit=Orbit((-10.0, 8.0, -18.0), 36.0, 18.0),
 )
 
@@ -544,18 +530,17 @@ CONCEPT_D = Layout(
     build=lambda: [("d/square", square(CONCEPT_STATUE)), ("d/headframe", headframe("east", 13)), ("d/works", _d_works()),
                    ("d/hoist_house", hoist_house())],
     views=(
-        View("from-the-square", (-7.0, 2.62, -4.0), (8.0, 8.0, 14.0)),
-        View("works-front", (6.0, 2.62, 1.0), (7.0, 5.0, 12.0)),
+        View("from-the-square", (-6.0, 2.62, -6.0), (8.0, 8.0, 15.0)),
+        View("works-front", (7.5, 2.62, 3.0), (7.5, 4.5, 12.0)),
         View("headframe", (-22.0, 6.0, 4.0), (-4.0, 16.0, -15.0)),
         View("from-the-air", (-26.0, 30.0, 10.0), (4.0, 8.0, 0.0)),
         View("from-the-air-behind", (30.0, 26.0, 36.0), (4.0, 10.0, -2.0)),
         View("from-far-across-the-plain", (40.0, 6.0, 46.0), (4.0, 12.0, -2.0), above_ground=True),
-        View("night-from-the-square", (-7.0, 2.62, -4.0), (8.0, 8.0, 14.0), night=True),
+        View("night-from-the-square", (-6.0, 2.62, -6.0), (8.0, 8.0, 15.0), night=True),
         View("night-from-the-air", (-26.0, 24.0, 8.0), (4.0, 8.0, 0.0), night=True),
-        *_common_views(CONCEPT_STATUE + STATUE_SIZES[CONCEPT_STATUE]),
     ),
-    figures=(Figure("pod", (7.5, 1.0, 8.5), 10.0), Figure("player", (10.5, 1.0, 9.5), -20.0),
-             Figure("player", (-3.5, 1.0, 5.5), 210.0)),
+    figures=(Figure("pod", (7.45, 1.0, 12.4), 0.0), Figure("player", (11.5, 1.0, 10.5), -20.0),
+             Figure("player", (5.5, 1.0, 5.5), 30.0)),
     orbit=Orbit((4.0, 8.0, 0.0), 36.0, 18.0),
 )
 
@@ -576,13 +561,13 @@ def _statue_size(height: int) -> Layout:
         title=f"The Host, {height} blocks",
         build=build,
         views=(
-            View("from-the-square", (5.0, 2.62, 17.0), (0.5, 9.0, 0.5)),
-            View("front", (0.5, 6.0, 30.0), (0.5, 10.0, 0.5)),
-            View("side", (26.0, 6.0, 4.0), (0.5, 10.0, 0.5)),
-            View("from-the-air", (12.0, top + 10.0, 26.0), (0.5, 8.0, 0.5)),
-            View("at-night", (5.0, 2.62, 17.0), (0.5, 9.0, 0.5), night=True),
+            View("from-the-square", (4.0, 2.62, 15.0), (0.5, 10.0, 0.5)),
+            View("front", (0.5, 4.0, 24.0), (0.5, 11.0, 0.5)),
+            View("side", (-22.0, 4.0, 5.0), (0.5, 11.0, 0.5)),
+            View("from-the-air", (12.0, 34.0, 22.0), (0.5, 9.0, 0.5)),
+            View("at-night", (4.0, 2.62, 15.0), (0.5, 10.0, 0.5), night=True),
         ),
-        figures=(Figure("pod", (-2.0, 1.0, 7.0), 200.0), Figure("player", (1.5, 1.0, 6.0), 180.0)),
+        figures=(Figure("pod", (-2.5, 1.0, 6.5), 200.0), Figure("player", (1.5, 1.0, 5.7), 180.0)),
         orbit=None,
     )
 

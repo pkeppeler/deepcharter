@@ -28,7 +28,7 @@
         1,
         -32
       ],
-      "blocks": 1871,
+      "blocks": 3456,
       "displays": 0
     },
     {
@@ -36,9 +36,9 @@
       "offset": [
         -32,
         0,
-        -30
+        -32
       ],
-      "blocks": 1405,
+      "blocks": 1447,
       "displays": 6
     },
     {
@@ -56,14 +56,14 @@
     {
       "name": "from-the-square",
       "eye": [
-        -6.0,
+        -8.0,
         2.62,
-        4.0
+        8.0
       ],
       "target": [
         -18.0,
         9.0,
-        -18.0
+        -16.0
       ],
       "night": false,
       "above_ground": false
@@ -71,14 +71,14 @@
     {
       "name": "works-front",
       "eye": [
-        -12.0,
+        -11.0,
         2.62,
         -2.0
       ],
       "target": [
         -16.0,
-        5.0,
-        -14.0
+        4.5,
+        -13.0
       ],
       "night": false,
       "above_ground": false
@@ -101,14 +101,14 @@
     {
       "name": "from-the-air",
       "eye": [
-        -30.0,
-        30.0,
-        14.0
+        -6.0,
+        28.0,
+        22.0
       ],
       "target": [
-        -12.0,
+        -18.0,
         8.0,
-        -18.0
+        -16.0
       ],
       "night": false,
       "above_ground": false
@@ -117,11 +117,11 @@
       "name": "from-the-air-behind",
       "eye": [
         -30.0,
-        28.0,
+        30.0,
         -50.0
       ],
       "target": [
-        -10.0,
+        -12.0,
         10.0,
         -20.0
       ],
@@ -146,14 +146,14 @@
     {
       "name": "night-from-the-square",
       "eye": [
-        -6.0,
+        -8.0,
         2.62,
-        4.0
+        8.0
       ],
       "target": [
         -18.0,
         9.0,
-        -18.0
+        -16.0
       ],
       "night": true,
       "above_ground": false
@@ -161,61 +161,16 @@
     {
       "name": "night-from-the-air",
       "eye": [
-        -30.0,
+        -6.0,
         24.0,
-        10.0
+        20.0
       ],
       "target": [
-        -12.0,
+        -18.0,
         8.0,
-        -18.0
+        -16.0
       ],
       "night": true,
-      "above_ground": false
-    },
-    {
-      "name": "statue-from-the-square",
-      "eye": [
-        5.0,
-        2.62,
-        17.0
-      ],
-      "target": [
-        0.5,
-        9.0,
-        0.5
-      ],
-      "night": false,
-      "above_ground": false
-    },
-    {
-      "name": "statue-front",
-      "eye": [
-        0.5,
-        6.0,
-        26.0
-      ],
-      "target": [
-        0.5,
-        9.0,
-        0.5
-      ],
-      "night": false,
-      "above_ground": false
-    },
-    {
-      "name": "statue-side",
-      "eye": [
-        24.0,
-        6.0,
-        2.5
-      ],
-      "target": [
-        0.5,
-        9.0,
-        0.5
-      ],
-      "night": false,
       "above_ground": false
     }
   ],
@@ -223,29 +178,29 @@
     {
       "kind": "pod",
       "at": [
-        -15.5,
+        -15.0,
         1.0,
-        -9.0
+        -12.4
       ],
       "yaw": 180.0
     },
     {
       "kind": "player",
       "at": [
-        -13.0,
+        -11.2,
         1.0,
-        -10.5
+        -15.5
       ],
-      "yaw": 160.0
+      "yaw": 270.0
     },
     {
       "kind": "player",
       "at": [
-        -3.5,
+        -13.0,
         1.0,
-        6.5
+        -8.0
       ],
-      "yaw": 210.0
+      "yaw": 200.0
     }
   ],
   "orbit": {
