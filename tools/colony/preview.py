@@ -191,6 +191,97 @@ def sculpture_quads(piece_roots) -> list:
 
 VIEWS = [(yaw, 0.0) for yaw in range(0, 360, 45)] + [(0.0, 35.0), (180.0, 35.0), (0.0, 89.0)]
 
+# Rough colours of the kit for previews: the look of each texture at a glance, not the texture.
+COLOURS = {
+    "corrugated_cream": (214, 205, 180), "corrugated_red": (142, 29, 22), "corrugated_dark": (54, 62, 72),
+    "riveted_plate": (40, 46, 54), "riveted_plate_red": (100, 19, 15), "enamel_panel": (221, 211, 186),
+    "steel_frame": (130, 26, 20), "hazard_band": (180, 140, 30), "concrete_footing": (120, 116, 113), "grating": (70, 78, 88),
+    "brass_trim": (173, 125, 52), "company_brick": (120, 60, 30), "bronze": (190, 140, 70), "window_small_lit": (245, 168, 50),
+    "window_small_dark": (20, 30, 28), "window_ribbon_lit": (245, 168, 50), "window_ribbon_dark": (20, 30, 28),
+    "furnace_hatch": (210, 110, 30), "gauge_panel": (60, 66, 74), "winder_door": (54, 62, 72), "wall_lamp": (255, 200, 90),
+    "floodlight": (255, 220, 120), "railing": (200, 160, 40), "roof_slope": (150, 32, 24), "roof_slope_dark": (60, 66, 74),
+    "roof_peak": (150, 32, 24), "roof_peak_dark": (60, 66, 74), "brace": (72, 82, 94), "brace_red": (130, 26, 20),
+    "conveyor": (40, 40, 44), "steel_beam": (72, 82, 94), "steel_beam_red": (130, 26, 20), "lattice_girder": (72, 82, 94),
+    "lattice_girder_red": (130, 26, 20), "pipe": (90, 100, 110), "pipe_brass": (190, 140, 60), "cable": (30, 26, 24),
+    "enamel_sign": (230, 220, 200), "colony_sculpture": (190, 140, 70), "minecraft:barrier": None,
+}
+
+
+def _display_boxes(display: dict):
+    """The world boxes a block display draws: its model's elements, turned and scaled as the game does."""
+    import kit
+    from models import apply, rotation_matrix
+    from piece import rotate
+    tag = display["nbt"]
+    state = tag["block_state"]
+    name = state["id"].split(":", 1)[1]
+    props = dict(state.get("properties", {}))
+    t = tag["transformation"]
+    q = tuple(v.value for v in t["left_rotation"].items)
+    scale = tuple(v.value for v in t["scale"].items)
+    move = tuple(v.value for v in t["translation"].items)
+    block = kit.block(name)
+    models = block.models()
+    if name == "colony_sculpture":
+        model = models[f"sculpture/{props['piece']}"]
+    else:
+        model = next(iter(models.values()))
+    boxes = []
+    for box in model.boxes or []:
+        rot = rotation_matrix(*box.rotation) if box.rotation else [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+        corners = []
+        for x in (box.lo[0], box.hi[0]):
+            for y in (box.lo[1], box.hi[1]):
+                for z in (box.lo[2], box.hi[2]):
+                    local = apply(rot, (x - box.pivot[0], y - box.pivot[1], z - box.pivot[2]))
+                    m = tuple((local[i] + box.pivot[i]) / 16 for i in range(3))
+                    w = rotate(q, tuple(m[i] * scale[i] for i in range(3)))
+                    corners.append(tuple(display["at"][i] + move[i] + w[i] for i in range(3)))
+        boxes.append(corners)
+    if not model.boxes:
+        corners = []
+        for x in (0, 1):
+            for y in (0, 1):
+                for z in (0, 1):
+                    w = rotate(q, (x * scale[0], y * scale[1], z * scale[2]))
+                    corners.append(tuple(display["at"][i] + move[i] + w[i] for i in range(3)))
+        boxes.append(corners)
+    return COLOURS.get(name, (200, 0, 200)), boxes
+
+
+def concept_quads(pieces) -> list:
+    """The faces of every block (only those open to the air) and every display of the pieces."""
+    solid = {}
+    for piece in pieces:
+        for pos, (name, _) in piece.blocks.items():
+            colour = COLOURS.get(name.split(":", 1)[-1] if name.startswith("deepcharter:") else name, (200, 0, 200))
+            if colour is not None:
+                solid[pos] = colour
+    quads = []
+    faces = (((-1, 0, 0), (0, 1, 3, 2)), ((1, 0, 0), (4, 6, 7, 5)), ((0, -1, 0), (0, 1, 5, 4)), ((0, 1, 0), (2, 6, 7, 3)),
+             ((0, 0, -1), (0, 2, 6, 4)), ((0, 0, 1), (1, 5, 7, 3)))
+    for (x, y, z), colour in solid.items():
+        corners = [(x + ix, y + iy, z + iz) for ix in (0, 1) for iy in (0, 1) for iz in (0, 1)]
+        for (dx, dy, dz), face in faces:
+            if (x + dx, y + dy, z + dz) not in solid:
+                quads.append(([corners[i] for i in face], (float(dx), float(dy), float(dz)), colour))
+    for piece in pieces:
+        for display in piece.displays:
+            colour, boxes = _display_boxes(display)
+            for corners in boxes:
+                quads += box_quads(corners, colour)
+    return quads
+
+
+def render_concept(name: str, out: Path, size: int) -> Path:
+    import concepts
+    concept = next(c for c in concepts.ALL if c.name == name)
+    quads = concept_quads(concept.pieces())
+    shots = [render(quads, yaw, pitch, size) for yaw, pitch in ((0.0, 4.0), (225.0, 30.0), (135.0, 30.0), (0.0, 89.0))]
+    path = out / f"concept-{name}.png"
+    write_png(path, sheet(shots, 2))
+    return path
+
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
@@ -199,6 +290,9 @@ def main(argv=None) -> int:
     parser.add_argument("--size", type=int, default=200)
     args = parser.parse_args(argv)
     import sculptures
+    if args.piece.startswith("concept:"):
+        print(f"preview: {render_concept(args.piece.split(':', 1)[1], args.out, args.size)}")
+        return 0
     if args.piece == "statues":
         names = [name for name in sculptures.FIGURES]
     else:

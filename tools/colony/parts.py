@@ -32,7 +32,7 @@ def gabled_shed(p: Piece, x0: int, z0: int, x1: int, z1: int, eave: int, wall, r
         raise ValueError(f"a gabled shed needs an odd span across its ridge, got {span}")
     n = span // 2
 
-    def at(a, b, y, s):
+    def at(a, y, b, s):
         if ridge_axis == "x":
             p.set(b, y, a, s)
         else:

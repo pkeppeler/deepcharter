@@ -19,27 +19,27 @@
         0,
         -44
       ],
-      "blocks": 1241,
+      "blocks": 1262,
       "displays": 169
     },
     {
       "structure": "deepcharter:colony_concept/a/mill",
       "offset": [
-        -33,
-        -40,
+        -44,
+        0,
         -44
       ],
-      "blocks": 3592,
+      "blocks": 3833,
       "displays": 8
     },
     {
       "structure": "deepcharter:colony_concept/a/hoist_house",
       "offset": [
         -14,
-        -14,
+        1,
         -53
       ],
-      "blocks": 1327,
+      "blocks": 1321,
       "displays": 0
     }
   ],

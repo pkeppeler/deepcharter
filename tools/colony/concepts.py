@@ -128,6 +128,12 @@ def _a_pithead() -> Piece:
     wheels = (-4.75, -2.25)
     for wx in wheels:
         parts.sheave(p, (wx, 53.5, -17.5), "x")
+    # The maintenance gantry over the wheels and the mast with its beacon.
+    for x in (-7, 0):
+        p.fill(x, 54, -18, x, 58, -18, state("steel_beam", axis="y"))
+    p.fill(-7, 59, -18, 0, 59, -18, state("steel_beam", axis="x"))
+    p.fill(-4, 60, -18, -4, 61, -18, state("steel_beam", axis="y"))
+    p.set(-4, 61, -17, state("wall_lamp", facing="south"))
     # The company's name on the deck, toward the square.
     p.fill(-8, 48, -9, -1, 50, -9, state("riveted_plate_red"))
     parts.sign(p, "company", -7, 49, -8, "south")
@@ -214,6 +220,26 @@ def _a_mill() -> Piece:
     parts.cylinder(p, -12.5, -42.5, 1.6, 34, 35, state("hazard_band"))
     parts.cylinder(p, -12.5, -42.5, 1.7, 38, 38, state("brass_trim"))
     parts.gallery(p, (-18.0, 24.5, -33.0), (-10.5, 37.0, -15.0))
+    # A fire stair up the west wall of the top shed: 45-degree flights on red stringers, grating landings, a railing.
+    for flight in range(3):
+        y0 = 1 + flight * 4
+        rising = "north" if flight % 2 == 0 else "south"
+        z_start = -31 if rising == "north" else -34
+        step = -1 if rising == "north" else 1
+        for i in range(4):
+            p.set(x0 - 1, y0 + i, z_start + step * i, state("brace_red", facing=rising))
+        landing_z = z_start + step * 4
+        p.set(x0 - 1, y0 + 3, landing_z, state("grating"))
+        p.set(x0 - 2, y0 + 4, landing_z, state("railing", facing="west"))
+    # A water tank on legs west of the mill: the town's water, riveted, with a red cap and a ladder.
+    tx, tz = -40.5, -22.5
+    for dx, dz in ((-2, -2), (2, -2), (-2, 2), (2, 2)):
+        p.fill(int(tx - 0.5) + dx, 1, int(tz - 0.5) + dz, int(tx - 0.5) + dx, 12, int(tz - 0.5) + dz, state("steel_beam_red", axis="y"))
+    p.fill(-43, 12, -25, -38, 12, -20, state("grating"))
+    parts.cylinder(p, tx, tz, 2.9, 13, 19, state("riveted_plate"))
+    parts.cylinder(p, tx, tz, 3.0, 16, 16, state("hazard_band"))
+    parts.cone(p, tx, tz, 2.9, 0.6, 20, 22, state("riveted_plate_red"))
+    p.fill(int(tx - 0.5), 1, int(tz - 0.5) + 3, int(tx - 0.5), 12, int(tz - 0.5) + 3, state("cable", axis="y"))
     # Wear: a few panels gone from the west wall of the top shed, the frame behind them showing.
     for y in range(14, 18):
         for z in range(-37, -35):
@@ -343,7 +369,23 @@ def _b_tower() -> Piece:
         p.set(x, roof + 1, z, state("floodlight", facing=facing))
     for y in (12, 22, 32):
         p.set(x0 - 1, y, z1, state("wall_lamp", facing="west"))
-        p.set(x1 + 1, y, z1, state("wall_lamp", facing="east"))
+    # A lift tower up the east side, taller than the machine room, its windows lit floor by floor.
+    l0, l1, k0, k1 = x1 + 1, x1 + 4, -20, -15
+    p.walls(l0, k0, l1, k1, 1, roof + 4, red)
+    for y in range(4, roof + 2, 5):
+        p.set(l1, y, -18, state("window_ribbon_lit", facing="east"))
+        p.set(l1, y, -17, state("window_ribbon_lit", facing="east"))
+        p.set(l0 + 2, y, k1, state("window_ribbon_lit", facing="south"))
+    p.walls(l0, k0, l1, k1, roof + 4, roof + 4, state("brass_trim"))
+    p.fill(l0, roof + 5, k0, l1, roof + 5, k1, plate)
+    p.set(l1 + 1, roof + 2, -17, state("wall_lamp", facing="east"))
+    # The landing stage at the bank, 8 up: a railed grating balcony round three sides.
+    for x in range(x0 - 1, x1 + 1):
+        p.set(x, 8, z0 - 1, state("grating"))
+        p.set(x, 9, z0 - 1, state("railing", facing="north"))
+    for z in range(z0 - 1, z1):
+        p.set(x0 - 1, 8, z, state("grating"))
+        p.set(x0 - 1, 9, z, state("railing", facing="west"))
     return p
 
 
