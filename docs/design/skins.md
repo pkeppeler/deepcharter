@@ -63,6 +63,8 @@ What stays in Java, on purpose: the position and size of the widgets on each ter
 
 The test pack at `src/gametest/resources/resourcepacks/amber_crt/` is exactly this, and `UiThemeClientTest` turns it on and checks the screen.
 
+The six look-book options under `skins/` are whole skins of this kind, data included, built from one `skin.json` each: [look-book.md](../tooling/look-book.md).
+
 ## Skinned later
 
 Not part of the UI theme; each lands its look as data from the start.

@@ -28,6 +28,7 @@ import json
 import math
 import shutil
 import sys
+import tempfile
 import zipfile
 from pathlib import Path
 
@@ -171,81 +172,6 @@ class Accent:
         return colorsys.hsv_to_rgb(degrees / 360.0, min(1.0, s * self.saturation), min(1.0, v * self.value))
 
 
-def luminance(r, g, b):
-    return 0.299 * r + 0.587 * g + 0.114 * b
-
-
-def is_grey(r, g, b):
-    return max(r, g, b) - min(r, g, b) <= GREY_CHROMA
-
-
-def remap(image, ramp, mode, accent, phosphor):
-    """A copy of the RgbaImage with its colours remapped (see the module doc)."""
-    pixels = image.rgba
-    count = image.width * image.height
-    colours = []
-    greys = []
-    for i in range(count):
-        r, g, b, a = (pixels[4 * i + c] / 255 for c in range(4))
-        colours.append((r, g, b, a))
-        if a > 0 and (mode == "ramp" or is_grey(r, g, b)):
-            greys.append(luminance(r, g, b))
-    greys.sort()
-    lo = greys[len(greys) // 20] if greys else 0.0
-    hi = greys[len(greys) * 19 // 20] if greys else 1.0
-    span = hi - lo
-    if span < MIN_SPAN:
-        lo -= (MIN_SPAN - span) / 2
-        span = MIN_SPAN
-    out = bytearray(count * 4)
-    for i, (r, g, b, a) in enumerate(colours):
-        if a == 0:
-            continue
-        h, _, v = colorsys.rgb_to_hsv(r, g, b)
-        if mode == "ramp" or is_grey(r, g, b):
-            nr, ng, nb = ramp.at((luminance(r, g, b) - lo) / span)
-        elif mode == "phosphor" and PHOSPHOR_HUES[0] <= h * 360.0 <= PHOSPHOR_HUES[1]:
-            ph, ps, pv = colorsys.rgb_to_hsv(*phosphor)
-            nr, ng, nb = colorsys.hsv_to_rgb(ph, ps, min(1.0, pv * v / 0.85))
-        else:
-            nr, ng, nb = accent.apply(r, g, b)
-        out[4 * i:4 * i + 4] = bytes((round(nr * 255), round(ng * 255), round(nb * 255), round(a * 255)))
-    return pngio.RgbaImage(image.width, image.height, bytes(out))
-
-
-def sun_image(spec, where):
-    """A round sun on a transparent square: a core colour, fading to the rim colour at the edge."""
-    core = parse_colour(require(spec, "core", where), f"{where}.core")
-    rim = parse_colour(require(spec, "rim", where), f"{where}.rim")
-    radius = float(require(spec, "radius", where))
-    if not 2 <= radius <= SUN_SIZE / 2:
-        raise SkinError(f"{where}.radius: {radius} is outside 2 to {SUN_SIZE // 2} pixels")
-    out = bytearray(SUN_SIZE * SUN_SIZE * 4)
-    middle = (SUN_SIZE - 1) / 2
-    for y in range(SUN_SIZE):
-        for x in range(SUN_SIZE):
-            d = math.hypot(x - middle, y - middle) / radius
-            if d > 1.0:
-                continue
-            f = d * d
-            colour = [core[c] + (rim[c] - core[c]) * f for c in range(3)]
-            alpha = 1.0 if d < 0.8 else (1.0 - d) / 0.2
-            out[4 * (y * SUN_SIZE + x):4 * (y * SUN_SIZE + x) + 4] = bytes(
-                (round(colour[0] * 255), round(colour[1] * 255), round(colour[2] * 255), round(alpha * 255)))
-    return pngio.RgbaImage(SUN_SIZE, SUN_SIZE, bytes(out))
-
-
-def keyframes(dusk, night):
-    """A track that holds dusk through the day and night through the night, as the tryout timelines do."""
-    return {"keyframes": [{"ticks": DUSK_TICKS[0], "value": dusk}, {"ticks": DUSK_TICKS[1], "value": dusk},
-                          {"ticks": NIGHT_TICKS[0], "value": night}, {"ticks": NIGHT_TICKS[1], "value": night}],
-            "modifier": "override"}
-
-
-def constant(value):
-    return {"keyframes": [{"ticks": 0, "value": value}, {"ticks": 12000, "value": value}], "modifier": "override"}
-
-
 SKY_TRACKS = {
     # track -> key in the dusk and night tables
     "minecraft:visual/sky_color": "sky",
@@ -259,81 +185,6 @@ SKY_TRACKS = {
     "minecraft:visual/block_light_tint": "tint",
 }
 COLOUR_KEYS = {"sky", "fog", "glow", "light", "tint"}
-
-
-def sky_timeline(sky, where):
-    dusk = require(sky, "dusk", where)
-    night = require(sky, "night", where)
-    tracks = {}
-    for track, key in SKY_TRACKS.items():
-        values = []
-        for phase, table in (("dusk", dusk), ("night", night)):
-            value = require(table, key, f"{where}.{phase}")
-            if key in COLOUR_KEYS:
-                parse_colour(value, f"{where}.{phase}.{key}")
-            else:
-                value = float(value)
-            values.append(value)
-        tracks[track] = keyframes(*values)
-    tracks["minecraft:visual/sun_angle"] = keyframes(float(require(sky, "sun_angle", where)), NIGHT_SUN_ANGLE)
-    tracks["minecraft:visual/moon_angle"] = constant(float(require(sky, "moon_angle", where)))
-    tracks["minecraft:visual/cloud_color"] = constant("#00000000")
-    return {"clock": "minecraft:overworld", "period_ticks": 24000, "tracks": dict(sorted(tracks.items()))}
-
-
-def dimension_type(layer, spec, where):
-    path = MOD_DATA / f"dimension_type/{layer}.json"
-    data = json.loads(path.read_text())
-    attributes = data["attributes"]
-    for key in ("minecraft:visual/ambient_light_color", "minecraft:visual/fog_start_distance", "minecraft:visual/fog_end_distance"):
-        if key not in attributes:
-            raise SkinError(f"{path}: has no '{key}' to change; the skin generator expects it")
-    data["ambient_light"] = float(require(spec, "ambient_light", where))
-    attributes["minecraft:visual/ambient_light_color"] = require(spec, "ambient_color", where)
-    attributes["minecraft:visual/fog_start_distance"] = float(require(spec, "fog_start", where))
-    attributes["minecraft:visual/fog_end_distance"] = float(require(spec, "fog_end", where))
-    attributes["minecraft:visual/block_light_tint"] = require(spec, "tint", where)
-    for key in ("ambient_color", "tint"):
-        parse_colour(spec[key], f"{where}.{key}")
-    data["attributes"] = dict(sorted(attributes.items()))
-    return data
-
-
-def biome(name, fog, where):
-    path = MOD_DATA / f"worldgen/biome/{name}.json"
-    data = json.loads(path.read_text())
-    if "minecraft:visual/fog_color" not in data.get("attributes", {}):
-        raise SkinError(f"{path}: has no 'minecraft:visual/fog_color' to change; the skin generator expects it")
-    parse_colour(fog, f"{where}.{name}")
-    data["attributes"]["minecraft:visual/fog_color"] = fog
-    return data
-
-
-def grade_effect(place, spec, where):
-    def vec4(key, default):
-        value = spec.get(key, default)
-        if not (isinstance(value, list) and len(value) == 4 and all(isinstance(n, (int, float)) for n in value)):
-            raise SkinError(f"{where}.{key}: expected four numbers")
-        return [float(n) for n in value]
-
-    params = [float(spec.get("saturation", 1.0)), float(spec.get("vignette", 0.0)), float(spec.get("contrast", 1.0)),
-              float(spec.get("olive", 0.0))]
-    uniforms = [{"name": "Shadows", "type": "vec4", "value": vec4("shadows", [1 / 3, 1 / 3, 1 / 3, 0.0])},
-                {"name": "Highlights", "type": "vec4", "value": vec4("highlights", [1 / 1.2, 1 / 1.2, 1 / 1.2, 0.0])},
-                {"name": "Params", "type": "vec4", "value": params},
-                {"name": "Lift", "type": "vec4", "value": vec4("lift", [0.0, 0.0, 0.0, 0.0])}]
-    return {
-        "targets": {"swap": {}},
-        "passes": [
-            {"vertex_shader": "minecraft:core/screenquad", "fragment_shader": "deepcharter:post/grade",
-             "inputs": [{"sampler_name": "In", "target": "minecraft:main"}], "output": "swap",
-             "uniforms": {"GradeConfig": uniforms}},
-            {"vertex_shader": "minecraft:core/screenquad", "fragment_shader": "minecraft:post/blit",
-             "inputs": [{"sampler_name": "In", "target": "swap"}],
-             "uniforms": {"BlitConfig": [{"name": "ColorModulate", "type": "vec4", "value": [1.0, 1.0, 1.0, 1.0]}]},
-             "output": "minecraft:main"},
-        ],
-    }
 
 
 GRADE_SHADER = """#version 330
@@ -378,35 +229,6 @@ void main() {
 """
 
 
-def theme_files(theme, where):
-    """The skin's theme keys per area, each checked against the mod's own theme file (a typo is an error here)."""
-    files = {}
-    for area, keys in theme.items():
-        default = MOD_ASSETS / f"theme/{area}.json"
-        if not default.is_file():
-            raise SkinError(f"{where}.{area}: the mod has no theme area '{area}'")
-        known = json.loads(default.read_text())
-        for key, value in keys.items():
-            if key not in known:
-                raise SkinError(f"{where}.{area}.{key}: the mod's theme/{area}.json has no such key")
-            if isinstance(known[key], str):
-                parse_colour(value, f"{where}.{area}.{key}")
-            elif not isinstance(value, (int, float)):
-                raise SkinError(f"{where}.{area}.{key}: expected a number like the mod's {known[key]}")
-        files[area] = keys
-    return files
-
-
-def write_json(path, data):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2) + "\n")
-
-
-def write_png(path, image):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(image.to_png())
-
-
 class Skin:
     """One skin.json, checked, with what its pack is built from."""
 
@@ -432,45 +254,52 @@ class Skin:
         self.phosphor = parse_colour(require(self.spec, "phosphor", where), f"{where}.phosphor")[:3]
 
     def build(self, jar):
-        for entry in self.directory.iterdir():
-            if entry.name == SKIN_FILE:
-                continue
-            if entry.is_dir():
-                shutil.rmtree(entry)
-            else:
-                entry.unlink()
-        out = self.directory
+        """Writes the pack into a fresh folder beside skins/<id>/, then swaps it in: a skin that fails leaves the old pack whole."""
+        out = Path(tempfile.mkdtemp(prefix=f".{self.id}-", dir=self.directory.parent))
+        try:
+            self.write_pack(out, jar)
+            for entry in self.directory.iterdir():
+                if entry.is_dir():
+                    shutil.rmtree(entry)
+                elif entry.name != SKIN_FILE:
+                    entry.unlink()
+            for entry in out.iterdir():
+                entry.rename(self.directory / entry.name)
+        finally:
+            shutil.rmtree(out, ignore_errors=True)
+
+    def write_pack(self, out, jar):
         spec = self.spec
         where = self.id
-        write_json(out / "pack.mcmeta", {"pack": {"description": f"Deep Charter look book: {require(spec, 'letter', where)}. "
-                                                                   f"{require(spec, 'name', where)}",
-                                                   "min_format": PACK_FORMATS[0], "max_format": PACK_FORMATS[1]}})
+        description = f"Deep Charter look book: {require(spec, 'letter', where)}. {require(spec, 'name', where)}"
+        Skin.write_json(out / "pack.mcmeta",
+                        {"pack": {"description": description, "min_format": PACK_FORMATS[0], "max_format": PACK_FORMATS[1]}})
         sky = require(spec, "sky", where)
-        write_json(out / "data/deepcharter/timeline/skin_sky.json", sky_timeline(sky, f"{where}.sky"))
-        write_json(out / "data/minecraft/tags/timeline/in_overworld.json", {"replace": True, "values": IN_OVERWORLD})
-        write_png(out / "assets/minecraft/textures/environment/celestial/sun.png",
-                  sun_image(require(sky, "sun", f"{where}.sky"), f"{where}.sky.sun"))
+        Skin.write_json(out / "data/deepcharter/timeline/skin_sky.json", Skin.sky_timeline(sky, f"{where}.sky"))
+        Skin.write_json(out / "data/minecraft/tags/timeline/in_overworld.json", {"replace": True, "values": IN_OVERWORLD})
+        Skin.write_png(out / "assets/minecraft/textures/environment/celestial/sun.png",
+                       Skin.sun_image(require(sky, "sun", f"{where}.sky"), f"{where}.sky.sun"))
         layers = require(spec, "layers", where)
         for layer, zones in LAYER_BIOMES.items():
             layer_spec = require(layers, layer, f"{where}.layers")
-            write_json(out / f"data/deepcharter/dimension_type/{layer}.json",
-                       dimension_type(layer, layer_spec, f"{where}.layers.{layer}"))
+            Skin.write_json(out / f"data/deepcharter/dimension_type/{layer}.json",
+                            Skin.dimension_type(layer, layer_spec, f"{where}.layers.{layer}"))
             fog = require(layer_spec, "fog", f"{where}.layers.{layer}")
             for zone in zones:
-                write_json(out / f"data/deepcharter/worldgen/biome/{zone}.json",
-                           biome(zone, require(fog, zone, f"{where}.layers.{layer}.fog"), f"{where}.layers.{layer}.fog"))
+                Skin.write_json(out / f"data/deepcharter/worldgen/biome/{zone}.json",
+                                Skin.biome(zone, require(fog, zone, f"{where}.layers.{layer}.fog"), f"{where}.layers.{layer}.fog"))
         grade = spec.get("grade", {})
         unknown = sorted(set(grade) - set(GRADE_PLACES))
         if unknown:
             raise SkinError(f"{where}.grade: unknown place(s) {', '.join(unknown)}; places are {', '.join(GRADE_PLACES)}")
         for place, place_spec in grade.items():
-            write_json(out / f"assets/deepcharter/post_effect/grade/{place}.json",
-                       grade_effect(place, place_spec, f"{where}.grade.{place}"))
+            Skin.write_json(out / f"assets/deepcharter/post_effect/grade/{place}.json",
+                            Skin.grade_effect(place_spec, f"{where}.grade.{place}"))
         if grade:
             (out / "assets/deepcharter/shaders/post").mkdir(parents=True, exist_ok=True)
             (out / "assets/deepcharter/shaders/post/grade.fsh").write_text(GRADE_SHADER)
-        for area, keys in theme_files(spec.get("theme", {}), f"{where}.theme").items():
-            write_json(out / f"assets/deepcharter/theme/{area}.json", keys)
+        for area, keys in Skin.theme_files(spec.get("theme", {}), f"{where}.theme").items():
+            Skin.write_json(out / f"assets/deepcharter/theme/{area}.json", keys)
         textures = MOD_ASSETS / "textures"
         for path, ramp, mode in MOD_TEXTURES:
             self.remap_file(textures / path, out / "assets/deepcharter/textures" / path, ramp, mode)
@@ -484,19 +313,198 @@ class Skin:
         for model, paint in POD_MODELS.items():
             data = json.loads((MOD_ASSETS / f"models/pod/{model}.json").read_text())
             data["textures"] = {key: f"deepcharter:block/pod/{paint}" for key in data["textures"]}
-            write_json(out / f"assets/deepcharter/models/pod/{model}.json", data)
+            Skin.write_json(out / f"assets/deepcharter/models/pod/{model}.json", data)
         for path, ramp in VANILLA_TEXTURES:
             name = f"assets/minecraft/textures/{path}"
             try:
                 data = jar.read(name)
             except KeyError:
                 raise SkinError(f"{jar.filename}: has no {name}; the vanilla remap list names a texture this Minecraft lacks") from None
-            image = remap(pngio.decode_rgba(name, data), self.ramps[ramp], "ramp", self.accent, self.phosphor)
-            write_png(out / name, image)
+            image = self.remap(pngio.decode_rgba(name, data), ramp, "ramp")
+            Skin.write_png(out / name, image)
+
+    @staticmethod
+    def luminance(r, g, b):
+        return 0.299 * r + 0.587 * g + 0.114 * b
+
+    @staticmethod
+    def is_grey(r, g, b):
+        return max(r, g, b) - min(r, g, b) <= GREY_CHROMA
+
+    @staticmethod
+    def sun_image(spec, where):
+        """A round sun on a transparent square: a core colour, fading to the rim colour at the edge."""
+        core = parse_colour(require(spec, "core", where), f"{where}.core")
+        rim = parse_colour(require(spec, "rim", where), f"{where}.rim")
+        radius = float(require(spec, "radius", where))
+        if not 2 <= radius <= SUN_SIZE / 2:
+            raise SkinError(f"{where}.radius: {radius} is outside 2 to {SUN_SIZE // 2} pixels")
+        out = bytearray(SUN_SIZE * SUN_SIZE * 4)
+        middle = (SUN_SIZE - 1) / 2
+        for y in range(SUN_SIZE):
+            for x in range(SUN_SIZE):
+                d = math.hypot(x - middle, y - middle) / radius
+                if d > 1.0:
+                    continue
+                f = d * d
+                colour = [core[c] + (rim[c] - core[c]) * f for c in range(3)]
+                alpha = 1.0 if d < 0.8 else (1.0 - d) / 0.2
+                out[4 * (y * SUN_SIZE + x):4 * (y * SUN_SIZE + x) + 4] = bytes(
+                    (round(colour[0] * 255), round(colour[1] * 255), round(colour[2] * 255), round(alpha * 255)))
+        return pngio.RgbaImage(SUN_SIZE, SUN_SIZE, bytes(out))
+
+    @staticmethod
+    def keyframes(dusk, night):
+        """A track that holds dusk through the day and night through the night, as the tryout timelines do."""
+        return {"keyframes": [{"ticks": DUSK_TICKS[0], "value": dusk}, {"ticks": DUSK_TICKS[1], "value": dusk},
+                              {"ticks": NIGHT_TICKS[0], "value": night}, {"ticks": NIGHT_TICKS[1], "value": night}],
+                "modifier": "override"}
+
+    @staticmethod
+    def constant(value):
+        return {"keyframes": [{"ticks": 0, "value": value}, {"ticks": 12000, "value": value}], "modifier": "override"}
+
+    @staticmethod
+    def sky_timeline(sky, where):
+        dusk = require(sky, "dusk", where)
+        night = require(sky, "night", where)
+        tracks = {}
+        for track, key in SKY_TRACKS.items():
+            values = []
+            for phase, table in (("dusk", dusk), ("night", night)):
+                value = require(table, key, f"{where}.{phase}")
+                if key in COLOUR_KEYS:
+                    parse_colour(value, f"{where}.{phase}.{key}")
+                else:
+                    value = float(value)
+                values.append(value)
+            tracks[track] = Skin.keyframes(*values)
+        tracks["minecraft:visual/sun_angle"] = Skin.keyframes(float(require(sky, "sun_angle", where)), NIGHT_SUN_ANGLE)
+        tracks["minecraft:visual/moon_angle"] = Skin.constant(float(require(sky, "moon_angle", where)))
+        tracks["minecraft:visual/cloud_color"] = Skin.constant("#00000000")
+        return {"clock": "minecraft:overworld", "period_ticks": 24000, "tracks": dict(sorted(tracks.items()))}
+
+    @staticmethod
+    def dimension_type(layer, spec, where):
+        path = MOD_DATA / f"dimension_type/{layer}.json"
+        data = json.loads(path.read_text())
+        attributes = data["attributes"]
+        for key in ("minecraft:visual/ambient_light_color", "minecraft:visual/fog_start_distance", "minecraft:visual/fog_end_distance"):
+            if key not in attributes:
+                raise SkinError(f"{path}: has no '{key}' to change; the skin generator expects it")
+        data["ambient_light"] = float(require(spec, "ambient_light", where))
+        attributes["minecraft:visual/ambient_light_color"] = require(spec, "ambient_color", where)
+        attributes["minecraft:visual/fog_start_distance"] = float(require(spec, "fog_start", where))
+        attributes["minecraft:visual/fog_end_distance"] = float(require(spec, "fog_end", where))
+        attributes["minecraft:visual/block_light_tint"] = require(spec, "tint", where)
+        for key in ("ambient_color", "tint"):
+            parse_colour(spec[key], f"{where}.{key}")
+        data["attributes"] = dict(sorted(attributes.items()))
+        return data
+
+    @staticmethod
+    def biome(name, fog, where):
+        path = MOD_DATA / f"worldgen/biome/{name}.json"
+        data = json.loads(path.read_text())
+        if "minecraft:visual/fog_color" not in data.get("attributes", {}):
+            raise SkinError(f"{path}: has no 'minecraft:visual/fog_color' to change; the skin generator expects it")
+        parse_colour(fog, f"{where}.{name}")
+        data["attributes"]["minecraft:visual/fog_color"] = fog
+        return data
+
+    @staticmethod
+    def grade_effect(spec, where):
+        def vec4(key, default):
+            value = spec.get(key, default)
+            if not (isinstance(value, list) and len(value) == 4 and all(isinstance(n, (int, float)) for n in value)):
+                raise SkinError(f"{where}.{key}: expected four numbers")
+            return [float(n) for n in value]
+
+        params = [float(spec.get("saturation", 1.0)), float(spec.get("vignette", 0.0)), float(spec.get("contrast", 1.0)),
+                  float(spec.get("olive", 0.0))]
+        uniforms = [{"name": "Shadows", "type": "vec4", "value": vec4("shadows", [1 / 3, 1 / 3, 1 / 3, 0.0])},
+                    {"name": "Highlights", "type": "vec4", "value": vec4("highlights", [1 / 1.2, 1 / 1.2, 1 / 1.2, 0.0])},
+                    {"name": "Params", "type": "vec4", "value": params},
+                    {"name": "Lift", "type": "vec4", "value": vec4("lift", [0.0, 0.0, 0.0, 0.0])}]
+        return {
+            "targets": {"swap": {}},
+            "passes": [
+                {"vertex_shader": "minecraft:core/screenquad", "fragment_shader": "deepcharter:post/grade",
+                 "inputs": [{"sampler_name": "In", "target": "minecraft:main"}], "output": "swap",
+                 "uniforms": {"GradeConfig": uniforms}},
+                {"vertex_shader": "minecraft:core/screenquad", "fragment_shader": "minecraft:post/blit",
+                 "inputs": [{"sampler_name": "In", "target": "swap"}],
+                 "uniforms": {"BlitConfig": [{"name": "ColorModulate", "type": "vec4", "value": [1.0, 1.0, 1.0, 1.0]}]},
+                 "output": "minecraft:main"},
+            ],
+        }
+
+    @staticmethod
+    def theme_files(theme, where):
+        """The skin's theme keys per area, each checked against the mod's own theme file (a typo is an error here)."""
+        files = {}
+        for area, keys in theme.items():
+            default = MOD_ASSETS / f"theme/{area}.json"
+            if not default.is_file():
+                raise SkinError(f"{where}.{area}: the mod has no theme area '{area}'")
+            known = json.loads(default.read_text())
+            for key, value in keys.items():
+                if key not in known:
+                    raise SkinError(f"{where}.{area}.{key}: the mod's theme/{area}.json has no such key")
+                if isinstance(known[key], str):
+                    parse_colour(value, f"{where}.{area}.{key}")
+                elif not isinstance(value, (int, float)):
+                    raise SkinError(f"{where}.{area}.{key}: expected a number like the mod's {known[key]}")
+            files[area] = keys
+        return files
+
+    @staticmethod
+    def write_json(path, data):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(data, indent=2) + "\n")
+
+    @staticmethod
+    def write_png(path, image):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(image.to_png())
+
+    def remap(self, image, ramp, mode):
+        """A copy of the RgbaImage with its colours remapped through the named ramp (see the module doc)."""
+        ramp = self.ramps[ramp]
+        pixels = image.rgba
+        count = image.width * image.height
+        colours = []
+        greys = []
+        for i in range(count):
+            r, g, b, a = (pixels[4 * i + c] / 255 for c in range(4))
+            colours.append((r, g, b, a))
+            if a > 0 and (mode == "ramp" or Skin.is_grey(r, g, b)):
+                greys.append(Skin.luminance(r, g, b))
+        greys.sort()
+        lo = greys[len(greys) // 20] if greys else 0.0
+        hi = greys[len(greys) * 19 // 20] if greys else 1.0
+        span = hi - lo
+        if span < MIN_SPAN:
+            lo -= (MIN_SPAN - span) / 2
+            span = MIN_SPAN
+        out = bytearray(count * 4)
+        for i, (r, g, b, a) in enumerate(colours):
+            if a == 0:
+                continue
+            h, _, v = colorsys.rgb_to_hsv(r, g, b)
+            if mode == "ramp" or Skin.is_grey(r, g, b):
+                nr, ng, nb = ramp.at((Skin.luminance(r, g, b) - lo) / span)
+            elif mode == "phosphor" and PHOSPHOR_HUES[0] <= h * 360.0 <= PHOSPHOR_HUES[1]:
+                ph, ps, pv = colorsys.rgb_to_hsv(*self.phosphor)
+                nr, ng, nb = colorsys.hsv_to_rgb(ph, ps, min(1.0, pv * v / 0.85))
+            else:
+                nr, ng, nb = self.accent.apply(r, g, b)
+            out[4 * i:4 * i + 4] = bytes((round(nr * 255), round(ng * 255), round(nb * 255), round(a * 255)))
+        return pngio.RgbaImage(image.width, image.height, bytes(out))
 
     def remap_file(self, source, target, ramp, mode):
-        image = remap(pngio.decode_rgba(source), self.ramps[ramp], mode, self.accent, self.phosphor)
-        write_png(target, image)
+        image = self.remap(pngio.decode_rgba(source), ramp, mode)
+        Skin.write_png(target, image)
 
 
 def minecraft_jar():

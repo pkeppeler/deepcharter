@@ -307,7 +307,7 @@ public class DesignTourScenario extends EvidenceScenario {
 	}
 
 	/** True when the client holds every chunk of the square of its render distance round the player: the far trees are in the picture. */
-	private static boolean chunksLoaded(Minecraft client) {
+	static boolean chunksLoaded(Minecraft client) {
 		int radius = client.options.getEffectiveRenderDistance();
 		int centreX = client.player.chunkPosition().x();
 		int centreZ = client.player.chunkPosition().z();

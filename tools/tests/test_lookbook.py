@@ -26,12 +26,12 @@ def parse(text):
 class ManifestTest(unittest.TestCase):
     def test_sections_entries_and_key_views(self):
         manifest = parse(SAMPLE)
-        surface = Section(3, "Surface")
-        surface.entries = [Entry("still", "surface-south", "Looking south."), Entry("clip", "sky-cycle", "The sky cycle.")]
-        blocks = Section(2, "2. Blocks")
-        blocks.entries = [Entry("still", "block-gallery-1", "Every block.")]
-        self.assertEqual([Section(2, "1. Terrain"), surface, blocks], manifest.sections)
-        self.assertEqual([("surface-south", "The surface")], manifest.compare)
+        self.assertEqual((
+            Section(2, "1. Terrain", ()),
+            Section(3, "Surface", (Entry("still", "surface-south", "Looking south."), Entry("clip", "sky-cycle", "The sky cycle."))),
+            Section(2, "2. Blocks", (Entry("still", "block-gallery-1", "Every block."),)),
+        ), manifest.sections)
+        self.assertEqual((("surface-south", "The surface"),), manifest.compare)
 
     def assert_refused(self, text, message):
         with self.assertRaises(LookBookError) as caught:
@@ -73,8 +73,8 @@ class RecordedTest(unittest.TestCase):
 
 class MarkdownTest(unittest.TestCase):
     def test_a_look_book_follows_the_manifest(self):
-        a = lookbook.Option("a-one", "A", "One", "The idea.", [(0, 0, 0)], {})
-        b = lookbook.Option("b-two", "B", "Two", "Another.", [(0, 0, 0)], {})
+        a = lookbook.Option("a-one", "A", "One", "The idea.", ((0, 0, 0),), {})
+        b = lookbook.Option("b-two", "B", "Two", "Another.", ((0, 0, 0),), {})
         text = lookbook.look_book(a, [a, b], parse(SAMPLE))
         url = "https://raw.githubusercontent.com/pkeppeler/deepcharter/pr-media/looks/a-one"
         body = text[text.index("## 1. Terrain"):]

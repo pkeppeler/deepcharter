@@ -68,8 +68,8 @@ public class LookMotionScenario extends EvidenceScenario {
 	/** Gameplay ticks the sky clip steps through: dusk, the fall to night, night, and the rise back (the skin timelines' keyframes). */
 	private static final long[] SKY_TICKS = skyTicks();
 	private static final int SKY_TICKS_PER_FRAME = 3;
-	private static final int DRILL_FRAMES = 36;
-	private static final int DRILL_TICKS_PER_FRAME = 6;
+	private static final int DRILL_FRAMES = 40;
+	private static final int DRILL_TICKS_PER_FRAME = 12;
 	private static final int LAVA_FRAMES = 24;
 	private static final int LAVA_TICKS_PER_FRAME = 4;
 	private static final int TERMINAL_FRAMES = 30;
@@ -350,7 +350,7 @@ public class LookMotionScenario extends EvidenceScenario {
 		ctx.waitTicks(20);
 		ClientWait.until(ctx, "the " + view + " view lit, rendered and graded", () -> LookSkin.holdGrade(ctx, sp.getServer())
 				&& !serverGet(server -> player(server).level().getLightEngine().hasLightWork())
-				&& ctx.computeOnClient(client -> client.levelRenderer.hasRenderedAllSections()),
+				&& ctx.computeOnClient(client -> DesignTourScenario.chunksLoaded(client) && client.levelRenderer.hasRenderedAllSections()),
 				() -> ctx.computeOnClient(client -> "sections rendered " + client.levelRenderer.hasRenderedAllSections() + ", "
 						+ LookSkin.describeGrade(client)));
 		ctx.runOnClient(client -> client.particleEngine.clearParticles());

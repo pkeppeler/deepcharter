@@ -21,7 +21,10 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+from collections.abc import Mapping
+from dataclasses import dataclass, replace
 from pathlib import Path
+from typing import Literal
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pngio  # noqa: E402
@@ -59,19 +62,13 @@ class LookBookError(Exception):
 
 # ------------------------------------------------------------------------------------------------ the manifest
 
+@dataclass(frozen=True)
 class Entry:
     """A still or a clip of a section, with its one-line caption."""
 
-    def __init__(self, kind, name, caption):
-        self.kind = kind
-        self.name = name
-        self.caption = caption
-
-    def __eq__(self, other):
-        return isinstance(other, Entry) and (self.kind, self.name, self.caption) == (other.kind, other.name, other.caption)
-
-    def __repr__(self):
-        return f"Entry({self.kind!r}, {self.name!r}, {self.caption!r})"
+    kind: Literal["still", "clip"]
+    name: str
+    caption: str
 
     @property
     def file(self):
@@ -79,27 +76,24 @@ class Entry:
         return f"{self.name}.jpg" if self.kind == "still" else f"{self.name}.gif"
 
 
+@dataclass(frozen=True)
 class Section:
     """A heading (level 2 for ==, 3 for --) and the entries under it."""
 
-    def __init__(self, level, title):
-        self.level = level
-        self.title = title
-        self.entries = []
+    level: int
+    title: str
+    entries: tuple[Entry, ...]
 
-    def __eq__(self, other):
-        return isinstance(other, Section) and (self.level, self.title, self.entries) == (other.level, other.title, other.entries)
-
-    def __repr__(self):
-        return f"Section({self.level}, {self.title!r}, {self.entries!r})"
+    def with_entry(self, entry):
+        return replace(self, entries=(*self.entries, entry))
 
 
+@dataclass(frozen=True)
 class Manifest:
     """The look book's sections and the comparison page's key views (tools/lookbook/manifest.txt explains the format)."""
 
-    def __init__(self, sections, compare):
-        self.sections = sections
-        self.compare = compare
+    sections: tuple[Section, ...]
+    compare: tuple[tuple[str, str], ...]
 
     @classmethod
     def parse(cls, text, source):
@@ -118,7 +112,7 @@ class Manifest:
                     raise LookBookError(f"{where}: a heading needs a title")
                 if directive == "--" and not sections:
                     raise LookBookError(f"{where}: a subsection before any section")
-                sections.append(Section(2 if directive == "==" else 3, rest))
+                sections.append(Section(2 if directive == "==" else 3, rest, ()))
             elif directive in ("still", "clip", "compare"):
                 name, bar, caption = rest.partition("|")
                 name, caption = name.strip(), caption.strip()
@@ -135,7 +129,7 @@ class Manifest:
                 if key in seen:
                     raise LookBookError(f"{where}: {directive} '{name}' is listed twice (first at {seen[key]})")
                 seen[key] = where
-                sections[-1].entries.append(Entry(directive, name, caption))
+                sections[-1] = sections[-1].with_entry(Entry(directive, name, caption))
             else:
                 raise LookBookError(f"{where}: unknown line '{directive}'; lines start with ==, --, still, clip or compare")
         if not sections:
@@ -144,7 +138,7 @@ class Manifest:
         for name, _, where in compare:
             if name not in stills:
                 raise LookBookError(f"{where}: compare '{name}' is not a still of the manifest")
-        return cls(sections, [(name, title) for name, title, _ in compare])
+        return cls(tuple(sections), tuple((name, title) for name, title, _ in compare))
 
     @classmethod
     def load(cls, path=MANIFEST):
@@ -182,16 +176,16 @@ def clip_of(frame):
 
 # ------------------------------------------------------------------------------------------------ the options
 
+@dataclass(frozen=True)
 class Option:
-    """One skin's look-book text: its letter, name, idea, palette and a phrase per area."""
+    """One skin's look-book text: its letter, name, idea, palette (RGB triples) and a phrase per area."""
 
-    def __init__(self, skin_id, letter, name, idea, palette, areas):
-        self.id = skin_id
-        self.letter = letter
-        self.name = name
-        self.idea = idea
-        self.palette = palette
-        self.areas = areas
+    id: str
+    letter: str
+    name: str
+    idea: str
+    palette: tuple[tuple[int, int, int], ...]
+    areas: Mapping[str, str]
 
     @classmethod
     def load(cls, directory):
@@ -211,7 +205,7 @@ class Option:
             if not (isinstance(colour, str) and len(colour) == 7 and colour.startswith("#")):
                 raise LookBookError(f"{source}: palette colour '{colour}' is not #RRGGBB")
             palette.append(tuple(int(colour[i:i + 2], 16) for i in (1, 3, 5)))
-        return cls(spec["id"], spec["letter"], spec["name"], spec["idea"], palette, areas)
+        return cls(spec["id"], spec["letter"], spec["name"], spec["idea"], tuple(palette), dict(areas))
 
     @property
     def page(self):
@@ -219,6 +213,17 @@ class Option:
 
     def url(self, file):
         return f"{MEDIA_URL}/{self.id}/{file}"
+
+    def palette_png(self):
+        """The palette as a row of swatches."""
+        width = len(self.palette) * (SWATCH + SWATCH_GAP) - SWATCH_GAP
+        pixels = bytearray(width * SWATCH * 4)
+        for i, (r, g, b) in enumerate(self.palette):
+            left = i * (SWATCH + SWATCH_GAP)
+            for y in range(SWATCH):
+                for x in range(left, left + SWATCH):
+                    pixels[4 * (y * width + x):4 * (y * width + x) + 4] = bytes((r, g, b, 255))
+        return pngio.RgbaImage(width, SWATCH, bytes(pixels)).to_png()
 
 
 def options():
@@ -236,18 +241,6 @@ def ffmpeg(*args):
     result = subprocess.run(["ffmpeg", "-v", "error", "-y", *args], capture_output=True, text=True)
     if result.returncode != 0:
         raise LookBookError(f"ffmpeg {' '.join(args)}: {result.stderr.strip()}")
-
-
-def palette_png(option):
-    count = len(option.palette)
-    width = count * (SWATCH + SWATCH_GAP) - SWATCH_GAP
-    pixels = bytearray(width * SWATCH * 4)
-    for i, (r, g, b) in enumerate(option.palette):
-        left = i * (SWATCH + SWATCH_GAP)
-        for y in range(SWATCH):
-            for x in range(left, left + SWATCH):
-                pixels[4 * (y * width + x):4 * (y * width + x) + 4] = bytes((r, g, b, 255))
-    return pngio.RgbaImage(width, SWATCH, bytes(pixels)).to_png()
 
 
 def build_gif(frames, out):
@@ -275,7 +268,7 @@ def media(skin_id, stills_dir, out_dir):
         ffmpeg("-i", str(stills_dir / f"{entry.name}.png"), "-q:v", JPEG_QUALITY, str(out_dir / entry.file))
     for entry in manifest.entries("clip"):
         build_gif(stills_dir / f"clip-{entry.name}-*.png", out_dir / entry.file)
-    (out_dir / "palette.png").write_bytes(palette_png(option))
+    (out_dir / "palette.png").write_bytes(option.palette_png())
 
 
 # 5 x 7 capitals and digits for the grid labels: each glyph is seven rows of five bits.
@@ -368,8 +361,8 @@ def grids(out_dir, media_dirs):
 
 # ------------------------------------------------------------------------------------------------ markdown
 
-def option_links(every, current=None):
-    links = [f"**{o.letter}**" if o is current else f"[{o.letter}. {o.name}]({o.page})" for o in every]
+def option_links(every, current):
+    links = [f"**{o.letter}**" if o == current else f"[{o.letter}. {o.name}]({o.page})" for o in every]
     return " · ".join(["[Compare all](README.md)", *links])
 
 
