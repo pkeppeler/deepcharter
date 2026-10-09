@@ -8,7 +8,7 @@ loud and names the recipe.
 import json
 import re
 from dataclasses import dataclass
-from math import sqrt
+from math import ceil, sqrt
 from pathlib import Path
 from typing import Callable
 
@@ -440,7 +440,8 @@ def op_cluster(canvas: Canvas, layer: dict, ctx: Context) -> None:
     edge, and a pixel apart from the next. Each clump sends veins threads of dark and mid, up to vein pixels long, out into the rock;
     a thread may run off the tile edge, and stops there. A socket, a list of [colour, share] rings out from the clump, sinks it in the
     rock: ring k is the rock k pixels out, and a share (0 to 1) of its pixels, in an ordered dither, take its colour, so a ring
-    fades as its share falls. A socket stays inside the tile; two clumps' sockets may meet, but neither covers a clump."""
+    fades as its share falls. A socket keeps the margin too, so its shadow and rings never reach the tile's edge; two clumps' sockets
+    may meet, but neither covers a clump."""
     ctx.need(layer, "seed", "count", "radius", "lumps", "ramp", "shadow")
     shades = ctx.ramp(layer["ramp"])
     if len(shades) != 5:
@@ -457,11 +458,13 @@ def op_cluster(canvas: Canvas, layer: dict, ctx: Context) -> None:
         if len(clumps) == layer["count"]:
             break
         height = _clump(layer, rng, size, margin + len(socket))
-        if not height or not all(margin <= x < size - margin and margin <= y < size - margin for x, y in height):
+        if not height:
+            continue
+        rings = _rings(height, len(socket))
+        if not all(margin <= x < size - margin and margin <= y < size - margin for x, y in set(height).union(*rings)):
             continue
         cast = {(x + dx, y + dy) for x, y in height for dx, dy in ((1, 0), (0, 1), (1, 1))} - set(height)
-        rings = _rings(height, len(socket))
-        if any(not (0 <= x < size and 0 <= y < size) for x, y in cast.union(*rings)):
+        if any(not (0 <= x < size and 0 <= y < size) for x, y in cast):
             continue
         reach = set(height) | cast
         if {(x + dx, y + dy) for x, y in reach for dx in (-1, 0, 1) for dy in (-1, 0, 1)} & taken:
@@ -543,15 +546,15 @@ def _clump(layer: dict, rng: Rng, size: int, inset: int) -> dict[tuple[int, int]
 
 
 def _rings(height: dict[tuple[int, int], float], count: int) -> list[set[tuple[int, int]]]:
-    """The pixels round a clump, ring by ring: ring k (from 1) is every pixel whose nearest clump pixel is k away, rounded, so the
-    rings are round, not square. (A distance between pixels is the root of a whole number, so it is never half way.)"""
+    """The pixels round a clump, ring by ring: ring k (from 1) is every pixel whose nearest clump pixel is more than k - 1 and at
+    most k away, so ring 1 is the clump's side neighbours, its corners fall in ring 2, and the rings are round, not square."""
     rings: list[set[tuple[int, int]]] = [set() for _ in range(count)]
     xs, ys = [x for x, _ in height], [y for _, y in height]
     for y in range(min(ys) - count, max(ys) + count + 1):
         for x in range(min(xs) - count, max(xs) + count + 1):
             if (x, y) in height:
                 continue
-            k = round(min(sqrt((x - hx) ** 2 + (y - hy) ** 2) for hx, hy in height))
+            k = ceil(min(sqrt((x - hx) ** 2 + (y - hy) ** 2) for hx, hy in height))
             if k <= count:
                 rings[k - 1].add((x, y))
     return rings
@@ -585,7 +588,8 @@ def op_seams(canvas: Canvas, layer: dict, ctx: Context) -> None:
     they run off both edges. thickness is [thread, swell]: a thread is that many pixels thick, tapering to one pixel in the TAPER
     columns at each edge, and swells times it swells to the swell thickness over 2 * swell - 1 columns, away from the edges. Lit from
     the top, a 1-pixel thread is dark, 2 pixels are mid over dark, 3 are light, mid and dark; anything thicker than one pixel casts
-    shadow on the rock under it, and its glints top pixels nearest a swell's middle take glint. Threads keep apart rows apart."""
+    shadow on the rock under it, and its glints top pixels nearest a swell's middle take glint. Threads keep apart rows apart, and
+    off the top and bottom edges with their shadows, so only their thin ends reach the tile's edge."""
     ctx.need(layer, "seed", "count", "ramp", "shadow", "thickness", "swells", "wander")
     shades = ctx.ramp(layer["ramp"])
     if len(shades) != 5:
@@ -605,13 +609,13 @@ def op_seams(canvas: Canvas, layer: dict, ctx: Context) -> None:
     for _ in range(layer["count"] * 60):
         if len(lines) == layer["count"]:
             break
-        y = 2 + rng.below(size - 4)
+        y = 2 + rng.below(size - 5)
         line = []
         stepped = False
         for x in range(size):
             if x and not stepped and rng.unit() < layer["wander"]:
                 step = 1 if rng.below(2) else -1
-                y += step if 2 <= y + step < size - 2 else -step
+                y += step if 2 <= y + step < size - 3 else -step
                 stepped = True
             else:
                 stepped = False

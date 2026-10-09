@@ -15,6 +15,7 @@ from pathlib import Path
 TOOLS = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(TOOLS / "textures"))
 
+import pngio  # noqa: E402
 import texgen  # noqa: E402
 
 MOD_ASSETS = texgen.ROOT / "src/main/resources/assets"
@@ -72,6 +73,23 @@ class TexturePacksTest(unittest.TestCase):
                 for model in models:
                     host = json.loads(model.read_text())["textures"]["host"]
                     self.assertIsNone(resolve(assets, host, "textures", ".png"), f"{model.name}: the host {host} is not vanilla's")
+
+    def test_no_shadow_or_socket_of_an_overlay_lies_on_the_edge_of_its_block(self):
+        """Over the host's texture, a grey pixel on a block's outer ring draws the block's edge; only a vein or a seam of ore runs
+        out to the edge."""
+        overlaid = sorted(name for name, entry in texgen.variants().items() if "overlays" in entry)
+        self.assertTrue(overlaid)
+        for name in overlaid:
+            target = texgen.variant(name)
+            palette = target.book.palette
+            greys = {palette.colours[key] for ramp in ("host", "rock") for key in palette.ramps[ramp]}
+            for key in target.keys:
+                with self.subTest(variant=name, texture=key):
+                    image = pngio.decode((target.out / f"{key}.png").read_bytes())
+                    size = image.width
+                    edge = {tuple(image.pixels[4 * (y * size + x):][:4]) for y in range(size) for x in range(size)
+                            if x in (0, size - 1) or y in (0, size - 1)}
+                    self.assertEqual(set(), edge & greys)
 
     def test_a_missing_texture_an_unused_model_and_a_block_the_mod_lacks_are_each_named(self):
         with tempfile.TemporaryDirectory() as tmp:

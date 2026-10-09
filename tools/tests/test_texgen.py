@@ -239,12 +239,13 @@ class RecipeRulesTest(unittest.TestCase):
         ore = {(x, y) for y in range(16) for x in range(16) if canvas.get(x, y)[1] == 0 and canvas.get(x, y)[3]}
         pit, rim, shade = having((0x40, 0x40, 0x40, 255)), having((0x50, 0x50, 0x50, 255)), having((0x20, 0x20, 0x20, 255))
         self.assertTrue(ore and pit and rim and shade)
-        ring_one = {(x + dx, y + dy) for x, y in ore for dx in (-1, 0, 1) for dy in (-1, 0, 1)} - ore
-        self.assertEqual(ring_one, pit | (shade & ring_one), "ring 1, at share 1, is every pixel round a clump that its shadow leaves")
-        self.assertTrue(rim.isdisjoint(ring_one) and all(min(abs(x - a) + abs(y - b) for a, b in ore) <= 3 for x, y in rim))
+        ring_one = {(x + dx, y + dy) for x, y in ore for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))} - ore
+        self.assertEqual(ring_one, pit | (shade & ring_one), "ring 1, at share 1, is every side neighbour of a clump its shadow leaves")
+        ring_two = {(x + dx, y + dy) for x, y in ore for dx in (-2, -1, 0, 1, 2) for dy in (-2, -1, 0, 1, 2)
+                    if dx * dx + dy * dy <= 4} - ore - ring_one
+        self.assertTrue(rim and rim <= ring_two, "the outer ring lies outside ring 1 and within 2 pixels of a clump")
+        self.assertLess(len(rim), len(ring_two - shade - pit), "the outer ring, at share 0.5, is not thinned")
         self.assertTrue(all(0 < x < 15 and 0 < y < 15 for x, y in pit | rim | shade), "a socket pixel lies on the tile edge")
-        ring_two = {(x + dx, y + dy) for x, y in ring_one for dx in (-1, 0, 1) for dy in (-1, 0, 1)} - ring_one - ore
-        self.assertLess(len(rim), len(ring_two), "the outer ring, at share 0.5, is not thinned")
 
     def seams_book(self, **seams):
         write_json(self.root / "palette.json", {"description": "test", "colours": {
@@ -264,6 +265,7 @@ class RecipeRulesTest(unittest.TestCase):
         self.assertTrue(all(len(column(x)) >= 4 for x in range(2, 14)), "a seam is thinner than its thread inside the tile")
         self.assertGreaterEqual(max(len(column(x)) for x in range(2, 14)), 5, "no seam swells to 3 pixels")
         self.assertTrue(shade and all((x, y - 1) in seam for x, y in shade), "a shadow pixel has no seam just above it")
+        self.assertFalse({y for _, y in seam | shade} & {0, 15}, "a seam or its shadow reaches the top or bottom edge")
         self.assertIn((255, 0, 0, 255), {canvas.get(x, y) for x, y in seam}, "no glint")
 
     def test_seams_that_cannot_keep_apart_fail_naming_the_recipe(self):

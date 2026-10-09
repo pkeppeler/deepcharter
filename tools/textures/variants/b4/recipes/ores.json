@@ -27,7 +27,6 @@
             "veins": 0,
             "vein": 0,
             "glints": 1,
-            "margin": 0,
             "socket": [
               [
                 "host.0",
@@ -63,7 +62,6 @@
             "veins": 0,
             "vein": 0,
             "glints": 1,
-            "margin": 0,
             "socket": [
               [
                 "host.0",
@@ -99,7 +97,6 @@
             "veins": 0,
             "vein": 0,
             "glints": 1,
-            "margin": 0,
             "socket": [
               [
                 "host.0",
@@ -136,7 +133,6 @@
             "veins": 0,
             "vein": 0,
             "glints": 1,
-            "margin": 0,
             "socket": [
               [
                 "host.0",
@@ -172,7 +168,6 @@
             "veins": 0,
             "vein": 0,
             "glints": 1,
-            "margin": 0,
             "socket": [
               [
                 "host.0",
@@ -208,7 +203,6 @@
             "veins": 0,
             "vein": 0,
             "glints": 1,
-            "margin": 0,
             "socket": [
               [
                 "host.0",
@@ -245,7 +239,6 @@
             "veins": 0,
             "vein": 0,
             "glints": 1,
-            "margin": 0,
             "socket": [
               [
                 "host.0",
@@ -265,7 +258,7 @@
     "block/ironium_ore_overlay_0": {
       "template": "ironium_overlay_b4",
       "args": {
-        "seed": 1900
+        "seed": 1901
       }
     },
     "block/ironium_ore_overlay_1": {
@@ -277,7 +270,7 @@
     "block/ironium_ore_overlay_2": {
       "template": "ironium_overlay_b4",
       "args": {
-        "seed": 1902
+        "seed": 1906
       }
     },
     "block/ironium_ore_overlay_3": {
@@ -301,7 +294,7 @@
     "block/bronzium_ore_overlay_2": {
       "template": "bronzium_overlay_b4",
       "args": {
-        "seed": 1912
+        "seed": 1913
       }
     },
     "block/bronzium_ore_overlay_3": {
@@ -325,7 +318,7 @@
     "block/silverium_ore_overlay_2": {
       "template": "silverium_overlay_b4",
       "args": {
-        "seed": 1922
+        "seed": 1923
       }
     },
     "block/silverium_ore_overlay_3": {
@@ -337,7 +330,7 @@
     "block/goldium_ore_overlay_0": {
       "template": "goldium_overlay_b4",
       "args": {
-        "seed": 1930
+        "seed": 1932
       }
     },
     "block/goldium_ore_overlay_1": {
@@ -355,7 +348,7 @@
     "block/goldium_ore_overlay_3": {
       "template": "goldium_overlay_b4",
       "args": {
-        "seed": 1934
+        "seed": 1935
       }
     },
     "block/platinium_ore_overlay_0": {
@@ -379,13 +372,13 @@
     "block/platinium_ore_overlay_3": {
       "template": "platinium_overlay_b4",
       "args": {
-        "seed": 1943
+        "seed": 1944
       }
     },
     "block/einsteinium_ore_overlay_0": {
       "template": "einsteinium_overlay_b4",
       "args": {
-        "seed": 1957
+        "seed": 1960
       }
     },
     "block/einsteinium_ore_overlay_1": {
@@ -409,7 +402,7 @@
     "block/cicatrium_ore_overlay_0": {
       "template": "cicatrium_overlay_b4",
       "args": {
-        "seed": 1960
+        "seed": 1961
       }
     },
     "block/cicatrium_ore_overlay_1": {
@@ -421,7 +414,7 @@
     "block/cicatrium_ore_overlay_2": {
       "template": "cicatrium_overlay_b4",
       "args": {
-        "seed": 1962
+        "seed": 1963
       }
     },
     "block/cicatrium_ore_overlay_3": {

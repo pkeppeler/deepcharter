@@ -26,7 +26,8 @@
             "lumps": 3,
             "veins": 1,
             "vein": 3,
-            "glints": 2
+            "glints": 2,
+            "margin": 2
           }
         ]
       }
@@ -51,7 +52,8 @@
             "lumps": 2,
             "veins": 0,
             "vein": 0,
-            "glints": 2
+            "glints": 2,
+            "margin": 2
           }
         ]
       }
@@ -77,7 +79,8 @@
             "crystal": true,
             "veins": 1,
             "vein": 4,
-            "glints": 2
+            "glints": 2,
+            "margin": 2
           }
         ]
       }
@@ -102,7 +105,8 @@
             "lumps": 3,
             "veins": 0,
             "vein": 0,
-            "glints": 3
+            "glints": 3,
+            "margin": 2
           }
         ]
       }
@@ -127,7 +131,8 @@
             "lumps": 2,
             "veins": 0,
             "vein": 0,
-            "glints": 2
+            "glints": 2,
+            "margin": 2
           }
         ]
       }
@@ -153,7 +158,8 @@
             "crystal": true,
             "veins": 0,
             "vein": 0,
-            "glints": 2
+            "glints": 2,
+            "margin": 2
           }
         ]
       }
@@ -178,7 +184,8 @@
             "lumps": 2,
             "veins": 3,
             "vein": 6,
-            "glints": 2
+            "glints": 2,
+            "margin": 2
           }
         ]
       }
@@ -188,25 +195,25 @@
     "block/ironium_ore_overlay_0": {
       "template": "ironium_overlay_b1",
       "args": {
-        "seed": 1000
+        "seed": 1006
       }
     },
     "block/ironium_ore_overlay_1": {
       "template": "ironium_overlay_b1",
       "args": {
-        "seed": 1001
+        "seed": 1006
       }
     },
     "block/ironium_ore_overlay_2": {
       "template": "ironium_overlay_b1",
       "args": {
-        "seed": 1002
+        "seed": 1006
       }
     },
     "block/ironium_ore_overlay_3": {
       "template": "ironium_overlay_b1",
       "args": {
-        "seed": 1024
+        "seed": 1064
       }
     },
     "block/bronzium_ore_overlay_0": {
@@ -218,19 +225,19 @@
     "block/bronzium_ore_overlay_1": {
       "template": "bronzium_overlay_b1",
       "args": {
-        "seed": 1011
+        "seed": 1018
       }
     },
     "block/bronzium_ore_overlay_2": {
       "template": "bronzium_overlay_b1",
       "args": {
-        "seed": 1012
+        "seed": 1018
       }
     },
     "block/bronzium_ore_overlay_3": {
       "template": "bronzium_overlay_b1",
       "args": {
-        "seed": 1013
+        "seed": 1018
       }
     },
     "block/silverium_ore_overlay_0": {
@@ -242,13 +249,13 @@
     "block/silverium_ore_overlay_1": {
       "template": "silverium_overlay_b1",
       "args": {
-        "seed": 1021
+        "seed": 1023
       }
     },
     "block/silverium_ore_overlay_2": {
       "template": "silverium_overlay_b1",
       "args": {
-        "seed": 1022
+        "seed": 1023
       }
     },
     "block/silverium_ore_overlay_3": {
@@ -260,25 +267,25 @@
     "block/goldium_ore_overlay_0": {
       "template": "goldium_overlay_b1",
       "args": {
-        "seed": 1030
+        "seed": 1046
       }
     },
     "block/goldium_ore_overlay_1": {
       "template": "goldium_overlay_b1",
       "args": {
-        "seed": 1031
+        "seed": 1046
       }
     },
     "block/goldium_ore_overlay_2": {
       "template": "goldium_overlay_b1",
       "args": {
-        "seed": 1039
+        "seed": 1046
       }
     },
     "block/goldium_ore_overlay_3": {
       "template": "goldium_overlay_b1",
       "args": {
-        "seed": 1033
+        "seed": 1046
       }
     },
     "block/platinium_ore_overlay_0": {
@@ -308,19 +315,19 @@
     "block/einsteinium_ore_overlay_0": {
       "template": "einsteinium_overlay_b1",
       "args": {
-        "seed": 1057
+        "seed": 1060
       }
     },
     "block/einsteinium_ore_overlay_1": {
       "template": "einsteinium_overlay_b1",
       "args": {
-        "seed": 1051
+        "seed": 1060
       }
     },
     "block/einsteinium_ore_overlay_2": {
       "template": "einsteinium_overlay_b1",
       "args": {
-        "seed": 1052
+        "seed": 1060
       }
     },
     "block/einsteinium_ore_overlay_3": {

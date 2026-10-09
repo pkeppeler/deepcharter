@@ -8,10 +8,16 @@ from dataclasses import dataclass
 from recipe import Book, RecipeError
 
 NAMESPACE = "deepcharter"
+FACES = ("down", "up", "north", "south", "west", "east")
 # The model every ore of the pack inherits: two full cubes, the host's texture and the overlay over it, so the overlay's
 # transparent pixels show the host and its opaque ones (rendered as cutout) cover it.
 PARENT = "block/ore_overlay"
-FACES = ("down", "up", "north", "south", "west", "east")
+PARENT_MODEL = {
+    "parent": "minecraft:block/block",
+    "textures": {"particle": "#host"},
+    "elements": [{"from": [0, 0, 0], "to": [16, 16, 16], "faces": {face: {"texture": texture, "cullface": face} for face in FACES}}
+                 for texture in ("#host", "#overlay")],
+}
 
 
 @dataclass(frozen=True)
@@ -36,17 +42,14 @@ class Overlays:
             raise RecipeError(f"{where}: the overlay blocks are a non-empty list of distinct block names, got {blocks!r}")
         return Overlays(host, textures, tuple(blocks))
 
-    def texture(self, block: str, index: int) -> str:
-        return f"block/{block}_overlay_{index}"
-
     def files(self, book: Book, keys: tuple[str, ...]) -> Mapping[str, bytes]:
         """Every blockstate and model, as JSON text, by its path under the pack's assets/. Each overlay texture must be one of keys
         (the textures the pack makes) and a cutout."""
-        bodies: dict[str, object] = {f"{NAMESPACE}/models/{PARENT}.json": self.parent()}
+        bodies: dict[str, object] = {f"{NAMESPACE}/models/{PARENT}.json": PARENT_MODEL}
         for block in self.blocks:
             models = []
             for index in range(self.textures):
-                texture = self.texture(block, index)
+                texture = f"block/{block}_overlay_{index}"
                 if texture not in keys:
                     raise RecipeError(f"overlay block {block} needs the recipe {texture}, which the pack does not make")
                 if book.recipes[texture].kind != "cutout":
@@ -56,10 +59,3 @@ class Overlays:
                 models.append({"model": f"{NAMESPACE}:{texture}"})
             bodies[f"{NAMESPACE}/blockstates/{block}.json"] = {"variants": {"": models}}
         return {path: (json.dumps(body, indent=2) + "\n").encode() for path, body in bodies.items()}
-
-    @staticmethod
-    def parent() -> dict:
-        def cube(texture: str) -> dict:
-            return {"from": [0, 0, 0], "to": [16, 16, 16], "faces": {face: {"texture": texture, "cullface": face} for face in FACES}}
-
-        return {"parent": "minecraft:block/block", "textures": {"particle": "#host"}, "elements": [cube("#host"), cube("#overlay")]}
