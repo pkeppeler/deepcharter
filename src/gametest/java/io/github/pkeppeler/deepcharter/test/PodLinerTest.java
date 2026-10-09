@@ -335,12 +335,20 @@ public class PodLinerTest {
 		});
 	}
 
-	/** The rack holds 1 brick and the pilot carries 2 more: a tier 1 ring of 4 cells takes the rack's first, then the pack's, and the 4th cell stays open. */
-	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + RING_TICKS)
-	public void aLinerDrawsOnThePilotsPackAfterTheRack(GameTestHelper helper) {
-		int x = 5876;
+	/** What a ring leaves behind: the cells lined, the bricks left in the rack and in the pack, and whether the rack shows dry. */
+	private record Left(long lined, int rack, int pack, boolean dry) {
+	}
+
+	/**
+	 * A seated pilot with {@code pack} bricks in the pack, a liner of {@code tier} with {@code rack} bricks, a due ring, and an ore block in
+	 * {@code blocked} of the ring's 4 open cells (so the ring has {@code 4 - blocked} cells). Runs the ring and compares what is left.
+	 */
+	private void packSplit(GameTestHelper helper, int x, int tier, int rack, int pack, int blocked, Left expected) {
 		ServerLevel level = layer(helper);
 		shaft(level, x, 8, false);
+		for (BlockPos cell : ringCells(x).subList(0, blocked)) {
+			level.setBlock(cell, OreRegistry.block(OreType.IRONIUM).defaultBlockState(), 3);
+		}
 		MockPlayer pilot = owner(helper);
 		pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
 		Armed armed = new Armed();
@@ -351,10 +359,10 @@ public class PodLinerTest {
 			if (!pilot.player().startRiding(pod)) {
 				throw failure(helper, "the pilot could not mount the pod");
 			}
-			ScannerPods.fit(helper.getLevel().getServer(), pilot.player(), pod, ComponentTrack.LINER, 1);
-			PodLining.modify(pod, state -> new PodLining.State(0, 1, 0, false, false));
-			pilot.player().getInventory().add(new ItemStack(SlagBrick.item(), 2));
-			pod.setAttached(PodLiner.STATE, Versioned.of(new PodLiner.State(Optional.of(new PodLiner.Anchor(FLOOR + 4, x - 1, Z - 1)))));
+			ScannerPods.fit(helper.getLevel().getServer(), pilot.player(), pod, ComponentTrack.LINER, tier);
+			PodLining.modify(pod, state -> new PodLining.State(0, rack, 0, false, false));
+			pilot.player().getInventory().add(new ItemStack(SlagBrick.item(), pack));
+			pod.setAttached(PodLiner.STATE, Versioned.of(new PodLiner.State(Optional.of(new PodLiner.Anchor(FLOOR + dueAfter(tier), x - 1, Z - 1)))));
 			armed.pod = pod;
 		});
 		boolean[] done = {false};
@@ -363,15 +371,36 @@ public class PodLinerTest {
 				return;
 			}
 			done[0] = true;
-			int pack = pilot.player().getInventory().countItem(SlagBrick.item());
-			if (bricksIn(level, ringCells(x)) != 3 || PodLining.of(armed.pod).bricks() != 0 || pack != 0 || !PodLining.of(armed.pod).dry()) {
-				throw failure(helper, "the rack's brick and the pack's two line 3 of 4 cells and leave the rack dry: lined %s, rack %s, pack %s, dry %s",
-						bricksIn(level, ringCells(x)), PodLining.of(armed.pod).bricks(), pack, PodLining.of(armed.pod).dry());
+			PodLining.State state = PodLining.of(armed.pod);
+			Left left = new Left(bricksIn(level, ringCells(x)), state.bricks(), pilot.player().getInventory().countItem(SlagBrick.item()), state.dry());
+			if (!left.equals(expected)) {
+				throw failure(helper, "tier %s, rack %s, pack %s, %s of 4 cells blocked: expected %s, got %s", tier, rack, pack, blocked, expected, left);
 			}
 			pilot.leave();
 			armed.pod.discard();
 			helper.succeed();
 		});
+	}
+
+	/** The rack holds 1 brick and the pilot carries 2 more: a tier 1 ring of 4 cells takes the rack's first, then the pack's, and the 4th cell stays open. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + RING_TICKS)
+	public void aLinerDrawsOnThePilotsPackAfterTheRack(GameTestHelper helper) {
+		packSplit(helper, 5876, 1, 1, 2, 0, new Left(3, 0, 0, true));
+	}
+
+	/**
+	 * A tier 2 brick lines two cells. The ring has 3 open cells, so it costs 2 bricks: the rack's one brick pays the first two cells and the pack's
+	 * first brick pays the third. The ring is whole, the pack keeps its other 2 bricks, and the rack is not dry.
+	 */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + RING_TICKS)
+	public void aTierTwoRingSplitsItsBricksBetweenTheRackAndThePack(GameTestHelper helper) {
+		packSplit(helper, 5924, 2, 1, 3, 1, new Left(3, 0, 2, false));
+	}
+
+	/** Tier 2, a ring of 4 cells, an odd rack of 1 and a pack of 1: the rack's brick lines two cells and the pack's the other two, so the ring is whole and both stores are empty. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + RING_TICKS)
+	public void aTierTwoRingOfFourCellsTakesOneBrickFromEachStore(GameTestHelper helper) {
+		packSplit(helper, 5972, 2, 1, 1, 0, new Left(4, 0, 0, false));
 	}
 
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + RING_TICKS)

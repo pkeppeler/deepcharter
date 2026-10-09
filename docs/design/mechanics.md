@@ -215,11 +215,25 @@ The no-lining column is a new run of the #300 bot: a pod with no hopper keeps no
 | Died in lava | 97 | 57 | 51 | 37 | 18 |
 | Hull lost to lava per bore: mean / p50 / p90 | 78 / 100 / 100 | 28 / 11 / 100 | 24 / 3 / 65 | 18 / 0 / 58 | 8 / 0 / 48 |
 | Reach layer 2 | 0 | 10 | 6 | 5 | 12 |
-| Hits over 20 hull that lava did not cause: landings / others | 12 / 37 | 15 / 128 | 13 / 139 | 14 / 149 | 14 / 160 |
+| Hits over 20 hull that lava did not cause: landings / not landings (the first tally, before the damage sources were tagged) | 12 / 37 | 15 / 128 | 13 / 139 | 14 / 149 | 14 / 160 |
 | Pod ticks per bore | 6,150 | 8,091 | 8,896 | 9,624 | 10,074 |
 
 - **The lava-only headline.** With braking, lava ends 99 of 100 unlined bores, 62 hand lined, 54 with a tier 1 liner and 39 with a tier 2 liner, on the rack of 32. The mean hull lost to lava falls from 84 to 30, 29 and 24. The pilot never stands still with a liner (0 ticks against 186). The liner is better than the hand by 8 to 23 bores of 100 in lava, and by 1 to 6 hull a bore, on 32 bricks.
-- **Braking is not what limits reach.** Landings were 12 to 15 big hits per 100 bores unbraked, and 0 braked (14 for the 999-brick pod; each is a hit over 20 hull from a sink over 0.7). The non-lava deaths are gas pockets: the columns that bore to the bottom have 128 to 163 hits over 20 hull that are not landings, sized by depth as `GasHazard.damage` is. That is a hazard of its own (its counterplay is the radiator, not the liner). So "reach layer 2" is a gas number as much as a lava one, and it is the secondary figure here: with the rack of 32 the liner reaches layer 2 less often than the hand (5 and 6 against 11) because a bore that survives lava lives long enough to meet the gas.
+- **Braking is not what limits reach; gas is (measured).** The bot tags each loss of hull by what dealt it: lava (the pod touches it), gas (a gas pocket within a blast of the pod was mined that tick), a landing (the pod sank faster than 0.7 blocks a tick the tick before), or other. The only four callers of `damageHull` are lava, gas, the landing and the breach crust, so "other" is the crust (8 hull a slab). The braked runs:
+
+| Braked, 100 bores | No lining | Hand 32 | Liner 1, 32 | Liner 2, 32 | Liner 2, 999 | Liner 2, 32 + pack | Liner 1, 32 + pack |
+|---|---|---|---|---|---|---|---|
+| Hull lost per bore: lava | 84 | 30 | 29 | 24 | 8 | 11 | 12 |
+| Hull lost per bore: gas | 16 | 63 | 66 | 72 | 77 | 79 | 78 |
+| Hull lost per bore: landing | 0 | 0 | 0 | 0 | 7 | 0 | 0 |
+| Hull lost per bore: other (crust) | 0 | 3 | 2 | 2 | 4 | 4 | 4 |
+| Hits over 20 hull: gas / landing / lava | 38 / 0 / 9 | 136 / 0 / 5 | 141 / 0 / 1 | 150 / 0 / 1 | 160 / 14 / 0 | 163 / 0 / 0 | 163 / 0 / 0 |
+| Deaths by last cause: lava | 99 | 62 | 54 | 39 | 18 | 23 | 29 |
+| Deaths by last cause: gas | 1 | 23 | 29 | 41 | 52 | 47 | 43 |
+| Deaths by last cause: landing | 0 | 0 | 0 | 0 | 1 | 0 | 0 |
+| Deaths by last cause: other (crust) | 0 | 4 | 11 | 15 | 17 | 17 | 16 |
+
+  Gas deals every big non-lava hit but 14 landings (all in the 999-brick column, braked and still over 0.7), and it ends 23 to 52 bores of each lining column. The crust ends 4 to 17: those are pods that reached the breach with little hull. Gas is a hazard of its own (its counterplay is the radiator, not the liner). So "reach layer 2" is a gas figure as much as a lava one, and it is the secondary number here: a bore that survives lava lives long enough to meet more gas. With the rack of 32 the liner reaches layer 2 less often than the hand (5 and 6 against 11) for that reason, since it holds lava better and then dies of gas. Unbraked, the first #313 bot had 12 to 15 landings of this size per column and about the same count of other big hits (37 to 160), so braking changes the landings and not the reach.
 - **The rack is the limit.** With 32 bricks, 40 and 27 bores ran out, and the dry bores are where lava gets through: tier 2 with 999 bricks has lava ending 18 bores, against 39. The first measurement here (unbraked) said the same.
 - **The pack closes most of the gap (the better design, kept).** The liner draws on the pilot's pack after the rack, as hand lining does. With one stack (64) in the pack, tier 2 has lava ending 23 bores and loses 11 hull per bore, and 13 reach layer 2, better than the hand on every lava figure and close to the 999-brick pod. The cost is bricks: 78 to 82 bricks a bore, about $160 at $2, against 20 to 24 on the rack alone. The bricks the liner places per bore (rack alone) are 21 to 24 of 32 and the dry bores are the cost of leaving the rest of the stretch unlined.
 - **Tier 2 against tier 1.** Rack alone: 39 against 54 in lava, 24 against 29 hull. With the pack: 23 against 29 and 11 against 12. Tier 2 costs twice the price and 5% more drill speed. With a full supply the second tier is a small gain on lava, and its fall lining and half-price bricks are what it buys.
@@ -233,7 +247,7 @@ The no-lining column is a new run of the #300 bot: a pod with no hopper keeps no
 - Does a ring as tall as the interval waste bricks? A tier 2 ring lines every open cell of three slabs plus the pod's box, and the bore later removes (and loses) the bricks in its own path only when a ring cell was in the footprint. The measured bricks a bore are 21 to 24 on the rack, 78 to 82 with the pack: that is more than hand lining's 20, for 23 to 40 bores more held back.
 - Should a rack upgrade (more than 32 bricks, more mass) be a part of its own, or a bigger stack of bricks the pilot carries? The lava ladder's rung 3 may make either unnecessary.
 - Should the pod place bricks only beside lava when the rack is low, so a short rack is spent where lava is? Today it lines the open cells in order, lava first, and leaves the rest.
-- The gas: the deaths with no lava are mostly gas pockets. Should the liner, or a later part, seal a gas pocket the drill is about to open?
+- The gas: measured, gas ends 23 to 52 of the 100 bores of each lining column (the crust 4 to 17), more than any lining stops. Should the liner, or a later part, seal a gas pocket the drill is about to open, or is that the radiator's rung? Until it is answered, layer 2 reach after lava is a gas number.
 
 ## Fuel per descent (#289, A)
 

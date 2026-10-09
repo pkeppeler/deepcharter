@@ -49,6 +49,8 @@ import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodLiningTuning;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
+import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
+import io.github.pkeppeler.deepcharter.ore.OreTuning;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
@@ -101,7 +103,11 @@ public class LavaBoreTest {
 	/** The bot brakes unless this is {@code off}: a real pilot feathers the rotor in a fall, so the hard landings of an unbraked bot are not what is measured. */
 	private static final boolean BRAKING = !"off".equalsIgnoreCase(System.getenv(BRAKING_ENV));
 	private static final float BIG_HIT_HULL = 20f;
-	private static final double BIG_HIT_LANDING_SINK = 0.7;
+	/** A loss with the pod sinking faster than this the tick before is a landing (the hard landing speed, {@code PodTuning} movement). */
+	private static final double LANDING_SINK = PodTuning.DEFAULT.movement().hardLandingSpeed();
+
+	/** What took hull: lava (the pod touched it), a gas blast (a gas pocket in range was mined this tick), a hard landing, or the rest (the crust). */
+	private enum Cause { LAVA, GAS, LANDING, OTHER }
 	/** Blocks per tick of sink above which the braking bot holds the rotor on: the sink that {@code EarlyRunModel.driveDownLitres} models. */
 	private static final double BRAKE_ABOVE_SINK = EarlyRunModel.DRIVE_DOWN_SINK;
 	static final String LINER_ENV = "DEEPCHARTER_LAVA_BORES_LINER";
@@ -320,9 +326,12 @@ public class LavaBoreTest {
 		boolean wantLining;
 		boolean braking;
 		double prevVy;
-		/** Hits over {@link #BIG_HIT_HULL} that lava did not cause: a landing at a sink over {@link #BIG_HIT_LANDING_SINK}, and any other (gas). */
-		int bigLandings;
-		int bigOtherHits;
+		/** Hull lost, and hits over {@link #BIG_HIT_HULL}, by what dealt them; the cause of the latest loss is the cause of a death. */
+		final float[] hullBy = new float[Cause.values().length];
+		final int[] bigHitsBy = new int[Cause.values().length];
+		Cause lastCause = Cause.OTHER;
+		/** The gas pockets within a blast of the pod at the end of the last tick: one that is gone now blew up this tick. */
+		final Set<BlockPos> gasPockets = new HashSet<>();
 		boolean wasLining;
 		int liningSessions;
 		int liningTicks;
@@ -545,14 +554,16 @@ public class LavaBoreTest {
 			bore.biggestOtherHit = hullLost;
 			bore.biggestOtherHitY = pod.blockPosition().getY();
 		}
-		if (hullLost > BIG_HIT_HULL && !touching) {
-			if (-bore.prevVy > BIG_HIT_LANDING_SINK) {
-				bore.bigLandings++;
-			} else {
-				bore.bigOtherHits++;
+		Cause cause = touching ? Cause.LAVA : gasPocketVanished(level, pod, bore) ? Cause.GAS : -bore.prevVy > LANDING_SINK ? Cause.LANDING : Cause.OTHER;
+		if (hullLost > 0) {
+			bore.hullBy[cause.ordinal()] += hullLost;
+			bore.lastCause = cause;
+			if (hullLost > BIG_HIT_HULL) {
+				bore.bigHitsBy[cause.ordinal()]++;
 			}
 		}
 		bore.prevVy = pod.getDeltaMovement().y;
+		noteGasPockets(level, pod, bore);
 		if (healthLost > 0 && (touching || burning)) {
 			bore.lavaPilot += healthLost;
 		}
@@ -776,6 +787,23 @@ public class LavaBoreTest {
 		return cells;
 	}
 
+	/** The gas pockets within a blast of the pod now, for {@link #gasPocketVanished} next tick. */
+	private static void noteGasPockets(ServerLevel level, PodEntity pod, Bore bore) {
+		bore.gasPockets.clear();
+		int reach = OreTuning.DEFAULT.blastRadius() + 1;
+		BlockPos at = pod.blockPosition();
+		for (BlockPos pos : BlockPos.betweenClosed(at.offset(-reach, -reach, -reach), at.offset(reach, reach, reach))) {
+			if (level.getBlockState(pos).is(HazardBlocks.GAS_POCKET)) {
+				bore.gasPockets.add(pos.immutable());
+			}
+		}
+	}
+
+	/** True when a gas pocket that stood within a blast of the pod last tick is not there now: the drill mined it, and it vented. */
+	private static boolean gasPocketVanished(ServerLevel level, PodEntity pod, Bore bore) {
+		return bore.gasPockets.stream().anyMatch(pos -> !level.getBlockState(pos).is(HazardBlocks.GAS_POCKET));
+	}
+
 	private static int packBricks(ServerPlayer player) {
 		int count = 0;
 		for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
@@ -940,7 +968,12 @@ public class LavaBoreTest {
 		Map<String, Long> byZone = new TreeMap<>();
 		encounters.forEach(e -> byZone.merge(e.zone(), 1L, Long::sum));
 		LOGGER.info("[lava-bore] encounters by zone (the first of each bore is the bulk): {}", byZone);
-		LOGGER.info("[lava-bore] hits over {} hull that lava did not cause: {} landings (sink over {}), {} others (gas); braking {}", BIG_HIT_HULL, bores.stream().mapToInt(b -> b.bigLandings).sum(), BIG_HIT_LANDING_SINK, bores.stream().mapToInt(b -> b.bigOtherHits).sum(), BRAKING ? "on" : "off");
+		for (Cause cause : Cause.values()) {
+			LOGGER.info("[lava-bore] cause {}: hull lost {} per bore; {} hits over {} hull; {} deaths whose last loss it was; braking {}", cause,
+					String.format("%.1f", bores.stream().mapToDouble(b -> b.hullBy[cause.ordinal()]).average().orElse(0)),
+					bores.stream().mapToInt(b -> b.bigHitsBy[cause.ordinal()]).sum(), BIG_HIT_HULL,
+					bores.stream().filter(b -> b.outcome == Outcome.DIED && b.lastCause == cause).count(), BRAKING ? "on" : "off");
+		}
 		LOGGER.info("[lava-bore] the bot: {} sidesteps per bore, {} tanks per bore, {} pod ticks per bore",
 				String.format("%.1f", bores.stream().mapToInt(b -> b.sidesteps).average().orElse(0)),
 				String.format("%.1f", bores.stream().mapToInt(b -> b.tanks).average().orElse(0)),
