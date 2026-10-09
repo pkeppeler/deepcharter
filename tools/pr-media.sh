@@ -10,8 +10,8 @@
 # Uses git plumbing only (hash-object, mktree, commit-tree, push). It never checks
 # out pr-media and never touches your working tree or index. The push is a plain
 # fast-forward, never forced; if another publisher moved the tip first, it rebuilds on
-# the new tip, re-runs every guard and retries a few times with a jittered backoff. Files already under <pr-number>/ are kept unless a
-# new file has the same name; other PRs' folders are kept as they are. It runs
+# the new tip, re-runs every guard and retries a few times with a jittered backoff.
+# Files already under <pr-number>/ are kept unless a new file has the same name; other PRs' folders are kept as they are. It runs
 # from any directory, and refuses before pushing if the new root would lose a
 # top-level entry or <pr>/ would lose a file that was not replaced by name.
 #
@@ -69,9 +69,8 @@ typed_entries() {
   git ls-tree "$@" | awk -F'\t' '{ split($1, meta, " "); print meta[2] " " $2 }' | LC_ALL=C sort
 }
 
-# Fetches the current tip, rebuilds the new tree on it and re-runs every guard: sets $commit, or exits on a refusal.
+# Rebuilds the new tree on the fetched tip and re-runs every guard: sets $commit, or exits on a refusal.
 build_commit() {
-  git fetch -q "$remote" "refs/heads/${branch}"
   tip=$(git rev-parse "FETCH_HEAD^{commit}")
 
   # New <pr>/ tree: the existing entries minus same-named files, plus the new blobs.
@@ -125,25 +124,31 @@ build_commit() {
 
 # A push that lost the race to another publisher: the remote tip moved. Anything else (auth, network) is not retried.
 lost_race() {
-  grep -qE 'cannot lock ref|fetch first|non-fast-forward|\[rejected\]|failed to update ref' <<<"$1"
+  grep -qE 'cannot lock ref|fetch first|non-fast-forward|\[rejected\]' <<<"$1"
 }
 
+# A failed fetch and a lost race share one attempt budget; both end loudly.
 max_attempts=5
 attempt=1
 while :; do
-  build_commit
-  if push_err=$(git push -q "$remote" "${commit}:refs/heads/${branch}" 2>&1); then
-    break
+  if git fetch -q "$remote" "refs/heads/${branch}"; then
+    build_commit
+    if push_err=$(git push -q "$remote" "${commit}:refs/heads/${branch}" 2>&1); then
+      break
+    fi
+    echo "$push_err" >&2
+    lost_race "$push_err" || exit 1
+    failure="push rejected"
+  else
+    failure="fetch failed"
   fi
-  echo "$push_err" >&2
-  lost_race "$push_err" || exit 1
   if [[ $attempt -ge $max_attempts ]]; then
-    echo "LOST THE RACE: ${branch} moved under ${max_attempts} pushes in a row; nothing was published, run the command again" >&2
+    echo "${failure} ${max_attempts} times in a row (likely another publisher); nothing was published, run it again" >&2
     exit 1
   fi
   # Jittered backoff that grows with each attempt, so concurrent publishers fall out of step.
   sleep "$(awk -v a="$attempt" -v r="$RANDOM" 'BEGIN { printf "%.2f", a * (0.2 + (r % 50) / 100) }')"
-  echo "${branch} moved while pushing; rebuilding on the new tip (attempt $((attempt + 1)) of ${max_attempts})" >&2
+  echo "${failure}; retrying on the new tip (attempt $((attempt + 1)) of ${max_attempts})" >&2
   attempt=$((attempt + 1))
 done
 

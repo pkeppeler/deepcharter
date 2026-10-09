@@ -230,6 +230,13 @@ if [[ \$1 == mktree && -n \${DROP:-} && -s "$work/pushes" ]]; then
   grep -vE "\$DROP" | "$real_git" "\$@"
   exit \${PIPESTATUS[1]}
 fi
+if [[ \$1 == fetch ]]; then
+  echo x >>"$work/fetches"
+  if [[ \$(wc -l <"$work/fetches" | tr -d ' ') -le \${FETCH_FAILS:-0} ]]; then
+    echo "fatal: unable to access remote" >&2
+    exit 128
+  fi
+fi
 if [[ \$1 == push ]]; then
   echo x >>"$work/pushes"
   n=\$(wc -l <"$work/pushes" | tr -d ' ')
@@ -241,7 +248,12 @@ if [[ \$1 == push ]]; then
     tip=\$("$real_git" -C "$bare" rev-parse pr-media)
     blob=\$(echo rival | "$real_git" -C "$bare" hash-object -w --stdin)
     sub=\$(printf '100644 blob %s\trival.png\n' "\$blob" | "$real_git" -C "$bare" mktree)
-    tree=\$({ "$real_git" -C "$bare" ls-tree "\$tip"; printf '040000 tree %s\trival%s\n' "\$sub" "\$n"; } | "$real_git" -C "$bare" mktree)
+    if [[ \${RIVAL_NESTED:-} == 1 ]]; then
+      looks=\$({ "$real_git" -C "$bare" ls-tree "\$tip:looks"; printf '040000 tree %s\tother\n' "\$sub"; } | "$real_git" -C "$bare" mktree)
+      tree=\$({ "$real_git" -C "$bare" ls-tree "\$tip" | awk -F'\t' '\$2 != "looks"'; printf '040000 tree %s\tlooks\n' "\$looks"; } | "$real_git" -C "$bare" mktree)
+    else
+      tree=\$({ "$real_git" -C "$bare" ls-tree "\$tip"; printf '040000 tree %s\trival%s\n' "\$sub" "\$n"; } | "$real_git" -C "$bare" mktree)
+    fi
     rival=\$("$real_git" -C "$bare" commit-tree "\$tree" -p "\$tip" -m "rival push")
     "$real_git" -C "$bare" update-ref refs/heads/pr-media "\$rival"
     echo "\$rival" >"$work/rival"
@@ -257,7 +269,7 @@ raced() { # raced <env assignments...> -- <pr> <file>...; counts the pushes in $
     shift
   done
   shift
-  rm -f "$work/pushes"
+  rm -f "$work/pushes" "$work/fetches"
   (cd "$work/clone" && env ${envs[@]+"${envs[@]}"} PATH="$work/racebin:$PATH" "$script" "$@") >"$work/out" 2>"$work/err"
 }
 pushes() { if [[ -f $work/pushes ]]; then wc -l <"$work/pushes" | tr -d ' '; else echo 0; fi; }
@@ -268,15 +280,32 @@ check "race winner's folder is kept" "$(tree | grep -q '^rival1/rival.png:'; ech
 check "race loser's file lands too" "$(tree | grep -q '^5/a.gif:'; echo $?)" # pipe-grep-q: fail-closed — a missed match yields nonzero, which fails the check
 check "pre-existing folder survives a retry" "$(tree | grep -q '^1/old.png:'; echo $?)" # pipe-grep-q: fail-closed — a missed match yields nonzero, which fails the check
 check "one lost race costs two pushes" "$(if [[ $(pushes) -eq 2 ]]; then echo 0; else echo 1; fi)"
-check "retry says the tip moved" "$(grep -q 'rebuilding on the new tip' "$work/err"; echo $?)"
+check "retry says the tip moved" "$(grep -q 'retrying on the new tip' "$work/err"; echo $?)"
 check "retry keeps history linear: old, rival, mine" "$(if [[ $("$real_git" -C "$bare" rev-list --count pr-media) -eq 3 ]]; then echo 0; else echo 1; fi)"
 
 make_remote
 if raced RIVALS=99 -- 5 "$work/files/a.gif"; then check "publish that keeps losing the race fails" 1; else check "publish that keeps losing the race fails" 0; fi
-check "giving up names the race" "$(grep -q 'LOST THE RACE' "$work/err"; echo $?)"
+check "giving up names the rejection and the likely race" "$(grep -q 'push rejected 5 times in a row (likely another publisher)' "$work/err"; echo $?)"
 check "giving up stops after five pushes" "$(if [[ $(pushes) -eq 5 ]]; then echo 0; else echo 1; fi)"
 check "giving up leaves the rival's commit as the tip" "$(if [[ $("$real_git" -C "$bare" rev-parse pr-media) == "$(cat "$work/rival")" ]]; then echo 0; else echo 1; fi)"
 check "giving up publishes none of the loser's files" "$(if tree | grep -q '^5/'; then echo 1; else echo 0; fi)"
+
+# A nested folder: the rival adds looks/other while this run adds looks/dusk-company.
+make_remote
+run looks/seed "$work/files/b.mp4"
+if raced RIVALS=1 RIVAL_NESTED=1 -- looks/dusk-company "$work/files/a.gif"; then check "nested publish that loses a race succeeds on retry" 0; else check "nested publish that loses a race succeeds on retry" 1; fi
+check "nested race: rival's leaf survives" "$(tree | grep -q '^looks/other/rival.png:'; echo $?)" # pipe-grep-q: fail-closed — a missed match yields nonzero, which fails the check
+check "nested race: this run's leaf lands" "$(tree | grep -q '^looks/dusk-company/a.gif:'; echo $?)" # pipe-grep-q: fail-closed — a missed match yields nonzero, which fails the check
+check "nested race: the earlier leaf survives" "$(tree | grep -q '^looks/seed/b.mp4:'; echo $?)" # pipe-grep-q: fail-closed — a missed match yields nonzero, which fails the check
+
+# A transient fetch failure retries in the same budget; one that never ends fails loudly.
+make_remote
+if raced FETCH_FAILS=2 -- 5 "$work/files/a.gif"; then check "publish survives two failed fetches" 0; else check "publish survives two failed fetches" 1; fi
+check "failed fetches are retried, then one push lands" "$(if [[ $(pushes) -eq 1 && $(tree | grep -c '^5/a.gif:') -eq 1 ]]; then echo 0; else echo 1; fi)"
+make_remote
+if raced FETCH_FAILS=99 -- 5 "$work/files/a.gif"; then check "publish with a dead remote fails" 1; else check "publish with a dead remote fails" 0; fi
+check "dead remote gives up loudly after five fetches" "$(if grep -q 'fetch failed 5 times in a row' "$work/err" && [[ $(wc -l <"$work/fetches" | tr -d ' ') -eq 5 ]]; then echo 0; else echo 1; fi)"
+check "dead remote pushes nothing" "$(if [[ $(pushes) -eq 0 ]]; then echo 0; else echo 1; fi)"
 
 # A guard that fails against the new tip refuses; there is no retry around a guard.
 make_remote
@@ -289,7 +318,7 @@ check "guard failure on the new tip leaves the rival's commit as the tip" "$(if 
 make_remote
 if raced AUTH=1 -- 5 "$work/files/a.gif"; then check "push that fails to authenticate fails" 1; else check "push that fails to authenticate fails" 0; fi
 check "failed authentication is not retried" "$(if [[ $(pushes) -eq 1 ]]; then echo 0; else echo 1; fi)"
-check "failed authentication is not called a lost race" "$(if grep -q 'LOST THE RACE' "$work/err"; then echo 1; else echo 0; fi)"
+check "failed authentication is not called a lost race" "$(if grep -q 'likely another publisher' "$work/err"; then echo 1; else echo 0; fi)"
 
 # --- the caller's working tree and index are untouched ---
 make_remote
