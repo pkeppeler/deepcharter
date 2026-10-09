@@ -273,7 +273,7 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 		return cube.turn().map(turn -> turn(point, turn.pivot(), turn.rotation())).orElse(point);
 	}
 
-	/** Bedrock's rotation in y-up space: x, then y, then z, with the x and z angles turning the other way from ModelPart's y-down space. */
+	/** Bedrock's rotation in y-up space: x, then y, then z, as the file means it (a positive x angle tips a cutter at -z downward). */
 	private static Vec3 turn(Vec3 point, Vec3 pivot, Vec3 degrees) {
 		return point.subtract(pivot).xRot((float) Math.toRadians(degrees.x)).yRot((float) Math.toRadians(degrees.y))
 				.zRot((float) Math.toRadians(degrees.z)).add(pivot);

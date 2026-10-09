@@ -10,7 +10,7 @@ import com.geckolib.util.GeckoLibUtil;
  * as a stand-in, so {@code PodEntity} stays free of GeckoLib and a server never loads it). It has no animation controllers: a
  * pod's bones move by their role from the pod's own state, in {@link PodGeoRenderer}.
  */
-final class PodGeoAnimatable implements GeoAnimatable {
+public final class PodGeoAnimatable implements GeoAnimatable {
 	private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
 	@Override

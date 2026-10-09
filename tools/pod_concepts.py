@@ -175,14 +175,14 @@ def cutter_of(model, bone):
 
 # ---------------------------------------------------------------------------------------------
 # Rest-pose bounds, with the Bedrock rotation convention (degrees, applied z then y then x about the
-# pivot; GeckoLib and our ModelPart loader both read it this way).
+# pivot; GeckoLib bakes a bone's angles as (-x, -y, z), and client/pod/PodPose poses by the file's angles).
 # ---------------------------------------------------------------------------------------------
 
 
 def rotate(point, rotation):
     x, y, z = point
     rx, ry, rz = (math.radians(a) for a in rotation)
-    # In y-up Bedrock space the x and z angles turn the other way from the y-down ModelPart space.
+    # In y-up Bedrock space the angles are the file's: a positive x angle tips a point at -z downward.
     rx, rz = -rx, -rz
     y, z = y * math.cos(rx) - z * math.sin(rx), y * math.sin(rx) + z * math.cos(rx)
     x, z = x * math.cos(ry) + z * math.sin(ry), -x * math.sin(ry) + z * math.cos(ry)

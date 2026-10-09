@@ -5,6 +5,7 @@ import java.util.Set;
 
 import com.geckolib.cache.GeckoLibResources;
 import com.geckolib.cache.model.BakedGeoModel;
+import com.geckolib.renderer.layer.builtin.AutoGlowingGeoLayer;
 
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -27,6 +28,7 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.pod.GeoModel;
+import io.github.pkeppeler.deepcharter.client.pod.PodGeoRenderState;
 import io.github.pkeppeler.deepcharter.client.pod.PodGeoRenderer;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -76,6 +78,23 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
 			// The stock drill shows the tricone, and a wreck is not what it shows.
 			cutterIs(context, scene.mole(), "tricone");
 			cutterIs(context, scene.prospector(), "tricone");
+
+			// The lamps glow: both renderers draw GeckoLib's glowmask layer over the model.
+			context.runOnClient(client -> {
+				for (int id : List.of(scene.mole(), scene.prospector())) {
+					require(renderer(client, id).getRenderLayers().stream().anyMatch(AutoGlowingGeoLayer.class::isInstance),
+							"pod " + id + " draws no glowmask layer, has " + renderer(client, id).getRenderLayers());
+				}
+			});
+
+			// The cutter turns by GeoModel.drillSpinScale: a wider cone turns slower. Both stock cutters are tricones, the Prospector's the wider.
+			double moleRate = spinRate(context, scene.mole());
+			double prospectorRate = spinRate(context, scene.prospector());
+			double expected = context.computeOnClient(client -> renderer(client, scene.prospector()).geometry().drillSpinScale("tricone")
+					/ renderer(client, scene.mole()).geometry().drillSpinScale("tricone"));
+			require(moleRate > 0 && prospectorRate < moleRate, "the Prospector's wider cutter should turn slower: " + prospectorRate + " against the Mole's " + moleRate);
+			require(Math.abs(prospectorRate / moleRate - expected) < 0.02, "the spin rates should be in the ratio of the drill spin scales, " + expected + ": "
+					+ prospectorRate / moleRate);
 
 			// Installing a drill swaps the cutter at once: tier 2 is stacked rings. Only the stacked bones are drawn.
 			singleplayer.getServer().runOnServer(server -> install(server, scene, scene.mole(), 2));
@@ -164,6 +183,30 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
 					+ ", so this test could not tell a missing override");
 		}
 		require(!geo.cutters().isEmpty(), renderer.chassis().id() + " holds no cutters to check");
+	}
+
+	/**
+	 * How far the pod's drill turns in a degree-per-tick, read from two render states a few ticks apart while the pod drills. The
+	 * client's copy of the pod is set drilling and set back, as the server does not know.
+	 */
+	private static double spinRate(ClientGameTestContext context, int id) {
+		float[] first = new float[2];
+		context.runOnClient(client -> {
+			PodEntity pod = pod(client, id);
+			pod.setDrilling(true);
+			PodGeoRenderState state = renderer(client, id).createRenderState(pod, 0f);
+			first[0] = state.drillSpin;
+			first[1] = state.ageInTicks;
+		});
+		context.waitTicks(3); // tick-wait: three ticks of drilling between the two states
+		double[] rate = new double[1];
+		context.runOnClient(client -> {
+			PodEntity pod = pod(client, id);
+			PodGeoRenderState state = renderer(client, id).createRenderState(pod, 0f);
+			rate[0] = (state.drillSpin - first[0]) / (state.ageInTicks - first[1]);
+			pod.setDrilling(false);
+		});
+		return rate[0];
 	}
 
 	private static void cutterIs(ClientGameTestContext context, int id, String cutter) {
