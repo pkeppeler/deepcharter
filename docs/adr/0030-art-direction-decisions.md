@@ -4,7 +4,7 @@ status: accepted
 
 # The art direction: a visual timeline sky, our own surface, GeckoLib pods and a template-built colony
 
-Amends [ADR 0016](0016-the-colony-is-built-once-in-code-and-the-conduit-is-set-when-its-chunk-loads.md). Builds on [ADR 0029](0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md) (our own dry surface). The direction itself is [art-direction.md](../design/art-direction.md), decided with the user on 2026-10-08 (issue #225, PR #234). This record keeps only the calls that are hard to reverse. Amended on 2026-10-09 (issue #367, PR #356 and the ore PR) with the ore textures.
+Amends [ADR 0016](0016-the-colony-is-built-once-in-code-and-the-conduit-is-set-when-its-chunk-loads.md). Builds on [ADR 0029](0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md) (our own dry surface). The direction itself is [art-direction.md](../design/art-direction.md), decided with the user on 2026-10-08 (issue #225, PR #234). This record keeps only the calls that are hard to reverse. Amended on 2026-10-09 (issue #367, PR #369, from the round 2 test in PR #356) with the ore textures.
 
 ## Decision
 
