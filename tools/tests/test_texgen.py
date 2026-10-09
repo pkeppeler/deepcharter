@@ -111,6 +111,30 @@ class RecipeRulesTest(unittest.TestCase):
         self.assertEqual((255, 255, 255, 255), canvas.get(0, 0))
         self.assertEqual((0x10, 0x20, 0x30, 255), canvas.get(5, 5))
 
+    def test_a_tint_with_no_rect_shades_the_whole_of_a_32x_texture(self):
+        canvas = self.book({"block/x": {"kind": "opaque", "size": 32, "layers": [
+            {"op": "fill", "colour": "ramp.0"}, {"op": "tint", "colour": "ramp.2", "alpha": 51}]}}).render("block/x")[0]
+        self.assertEqual({(51, 51, 51, 255)}, {tuple(p) for p in canvas.data})
+
+    def test_a_32x_include_draws_a_32x_recipe_whole(self):
+        canvas = self.book({
+            "block/base": {"kind": "opaque", "size": 32, "layers": [{"op": "fill", "colour": "ink"}, {"op": "fill", "colour": "ramp.2", "rect": [31, 31, 1, 1]}]},
+            "block/x": {"kind": "opaque", "size": 32, "layers": [{"op": "include", "recipe": "block/base"}]},
+        }).render("block/x")[0]
+        self.assertEqual([(0x10, 0x20, 0x30, 255), (255, 255, 255, 255)], [canvas.get(16, 16), canvas.get(31, 31)])
+
+    def test_an_include_of_another_size_fails_naming_both_sizes(self):
+        book = self.book({
+            "block/small": {"kind": "opaque", "layers": [{"op": "fill", "colour": "ink"}]},
+            "block/big": {"kind": "opaque", "size": 32, "layers": [{"op": "fill", "colour": "ink"}]},
+            "block/up": {"kind": "opaque", "size": 32, "layers": [{"op": "include", "recipe": "block/small"}]},
+            "block/down": {"kind": "opaque", "layers": [{"op": "include", "recipe": "block/big"}]},
+        })
+        with self.assertRaisesRegex(RecipeError, "block/up layer 0: block/small is 16 x 16 and this texture 32 x 32"):
+            book.render("block/up")
+        with self.assertRaisesRegex(RecipeError, "block/down layer 0: block/big is 32 x 32 and this texture 16 x 16"):
+            book.render("block/down")
+
     def test_an_include_of_a_missing_recipe_fails_naming_it(self):
         book = self.book({"block/x": {"kind": "opaque", "layers": [{"op": "include", "recipe": "block/nope"}]}})
         with self.assertRaisesRegex(RecipeError, "block/nope"):

@@ -631,9 +631,14 @@ def op_tint(canvas: Canvas, layer: dict, ctx: Context) -> None:
 
 
 def op_include(canvas: Canvas, layer: dict, ctx: Context) -> None:
-    """Composites another recipe's texture (its frame of the same number, or its last) at this point of the stack."""
+    """Composites another recipe's texture (its frame of the same number, or its last) at this point of the stack. Both are the same
+    size: an include does not scale, so a 16x recipe in a 32x one fails rather than filling a quarter of it."""
     ctx.need(layer, "recipe")
     frames = ctx.book.render(layer["recipe"])
+    size = frames[0].width
+    if size != ctx.size:
+        raise RecipeError(f"{ctx.where}: {layer['recipe']} is {size} x {size} and this texture {ctx.size} x {ctx.size}; an include does not "
+                          "scale, so give both recipes the same size")
     canvas.paste(frames[min(ctx.frame, len(frames) - 1)], 0, 0)
 
 
