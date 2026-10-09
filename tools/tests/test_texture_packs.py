@@ -3,9 +3,11 @@
 A pack's blockstates name models, its models name parents and textures, and each must be in the pack or in the mod's own assets
 (a minecraft: model is vanilla's, not ours to check). A texture taller than wide needs its .png.mcmeta. A pack replaces only
 blockstates the mod has, or the vanilla ones it lists in VANILLA_BLOCKSTATES, and every model and texture it holds is used. An
-overlay pack (round 2, docs/design/texture-density-2.md) holds no vanilla file, and its ores draw the host's texture from vanilla.
+overlay pack (docs/design/texture-density-2.md) holds no vanilla file, and its ores draw the host's texture from vanilla. The mod's own
+ores (docs/design/ores.md) are overlays too: the tests below hold them to the same rules, and to the table of looks in that page.
 """
 import json
+import re
 import struct
 import sys
 import tempfile
@@ -19,6 +21,10 @@ import pngio  # noqa: E402
 import texgen  # noqa: E402
 
 MOD_ASSETS = texgen.ROOT / "src/main/resources/assets"
+ORES_DOC = texgen.ROOT / "docs/design/ores.md"
+# The one vanilla file the mod ships: the sky's sun (ADR 0030). Anything else under assets/minecraft/ overrides vanilla art the mod
+# promised not to touch, an ore's host stone first.
+VANILLA_FILES = {"textures/environment/celestial/sun.png"}
 # The vanilla blocks a pack may redraw: layer rock is vanilla stone until it has blocks of its own (#241).
 VANILLA_BLOCKSTATES = {"minecraft/blockstates/stone.json"}
 
@@ -61,13 +67,19 @@ class TexturePacksTest(unittest.TestCase):
             with self.subTest(variant=name):
                 self.assertEqual([], self.problems(texgen.ROOT / entry["pack"]))
 
-    def test_an_overlay_pack_replaces_nothing_of_vanilla_and_draws_each_ore_over_the_host_by_reference(self):
-        overlaid = {name: entry for name, entry in texgen.variants().items() if "overlays" in entry}
-        self.assertTrue(overlaid)
-        for name, entry in sorted(overlaid.items()):
-            with self.subTest(variant=name):
-                assets = texgen.ROOT / entry["pack"] / "assets"
-                self.assertFalse((assets / "minecraft").exists(), "an overlay pack holds a vanilla file")
+    def test_the_mod_ships_no_vanilla_file_but_the_sun(self):
+        root = MOD_ASSETS / "minecraft"
+        shipped = {path.relative_to(root).as_posix() for path in root.rglob("*") if path.is_file()}
+        self.assertEqual(VANILLA_FILES, shipped, "a file under assets/minecraft/ overrides a vanilla one; draw over it by reference")
+
+    def test_an_overlay_replaces_nothing_of_vanilla_and_draws_each_ore_over_the_host_by_reference(self):
+        """The mod's own ores and every overlay pack: each ore model names the host's texture, vanilla's, and not a copy of it."""
+        places = [("the mod", MOD_ASSETS)] + [(name, texgen.ROOT / entry["pack"] / "assets")
+                                              for name, entry in sorted(texgen.variants().items()) if "overlays" in entry]
+        for name, assets in places:
+            with self.subTest(overlay=name):
+                if assets != MOD_ASSETS:
+                    self.assertFalse((assets / "minecraft").exists(), "an overlay pack holds a vanilla file")
                 models = sorted((assets / "deepcharter/models/block").glob("*_overlay_*.json"))
                 self.assertTrue(models)
                 for model in models:
@@ -78,11 +90,13 @@ class TexturePacksTest(unittest.TestCase):
         """Over the host's texture, any pixel on a block's outer ring that is not the ore itself (a shadow, a socket, a tint) draws
         the block's edge. So an edge pixel is clear, or one of the shades of the ore ramps its recipe draws with: a vein or a seam
         running out to the edge."""
-        overlaid = sorted(name for name, entry in texgen.variants().items() if "overlays" in entry)
-        self.assertTrue(overlaid)
-        for name in overlaid:
-            target = texgen.variant(name)
-            for key in target.keys:
+        shipped = texgen.shipped()
+        targets = [("the mod", shipped, [key for key in shipped.keys if "_ore_overlay_" in key])]
+        for name, entry in sorted(texgen.variants().items()):
+            if "overlays" in entry:
+                targets.append((name, texgen.variant(name), None))
+        for name, target, keys in targets:
+            for key in keys or target.keys:
                 with self.subTest(variant=name, texture=key):
                     ore = {colour for layer in target.book.recipes[key].layers if layer["op"] in ("cluster", "seams")
                            for colour in target.book.palette.ramp(layer["ramp"], key)}
@@ -92,6 +106,55 @@ class TexturePacksTest(unittest.TestCase):
                     edge = {tuple(image.pixels[4 * (y * size + x):][:4]) for y in range(size) for x in range(size)
                             if x in (0, size - 1) or y in (0, size - 1)}
                     self.assertEqual(set(), edge - ore - {(0, 0, 0, 0)})
+
+    def test_an_ore_overlay_never_glows_and_is_cutout(self):
+        """No glow recipe, no emissive or light property in an ore's models or blockstates, and only clear or opaque pixels: 26.3 puts
+        a face in the cutout layer from its sprite's transparency, so a half-clear pixel would make the overlay translucent."""
+        shipped = texgen.shipped()
+        keys = [key for key in shipped.keys if "_ore_overlay_" in key]
+        self.assertTrue(keys)
+        for key in keys:
+            with self.subTest(texture=key):
+                self.assertIsNone(shipped.book.recipes[key].glow)
+                image = pngio.decode((shipped.out / f"{key}.png").read_bytes())
+                self.assertTrue(set(image.pixels[3::4]) <= {0, 255}, "an overlay pixel is half clear")
+        glow_keys = {"light_emission", "emissive", "block_light", "sky_light", "light", "emission"}
+
+        def lit(body) -> list[str]:
+            if isinstance(body, dict):
+                return [k for k in body if k in glow_keys] + [f for v in body.values() for f in lit(v)]
+            if isinstance(body, list):
+                return [f for v in body for f in lit(v)]
+            return []
+
+        assets = MOD_ASSETS / "deepcharter"
+        files = sorted(assets.glob("models/block/*ore_overlay*.json")) + sorted(assets.glob("blockstates/*ium_ore.json"))
+        self.assertEqual(29 + 7, len(files))
+        for path in files:
+            with self.subTest(file=path.name):
+                self.assertEqual([], lit(json.loads(path.read_text())))
+
+    def test_every_ore_has_a_look_from_b1_b3_and_b4_or_a_blend_and_the_page_says_which(self):
+        """B1 is a cluster, B3 a seams thread, B4 a cluster in a socket. Each ore's four textures are one look, the ores use all
+        three families and at least two blend, and docs/design/ores.md has a row for each, with the same families."""
+        shipped = texgen.shipped()
+        looks: dict[str, frozenset[str]] = {}
+        for key in shipped.keys:
+            match = re.fullmatch(r"block/(\w+)_ore_overlay_\d", key)
+            if not match:
+                continue
+            layers = shipped.book.recipes[key].layers
+            self.assertLessEqual({layer["op"] for layer in layers}, {"cluster", "seams"}, f"{key}: a layer that is no look")
+            families = frozenset("B3" if layer["op"] == "seams" else "B4" if "socket" in layer else "B1" for layer in layers)
+            self.assertEqual(looks.setdefault(match.group(1), families), families, f"{key}: the ore's textures are not one look")
+        self.assertEqual(7, len(looks))
+        self.assertEqual({"B1", "B3", "B4"}, set().union(*looks.values()))
+        for family in ("B1", "B3", "B4"):
+            self.assertTrue(any(have == {family} for have in looks.values()), f"no ore is plain {family}")
+        self.assertGreaterEqual(sum(len(have) > 1 for have in looks.values()), 2, "fewer than two blends")
+        table = re.finditer(r"^\| (\w+ium) \| ([B\d +]+?) \|", ORES_DOC.read_text(), re.M)
+        rows = {match.group(1): frozenset(re.findall(r"B\d", match.group(2))) for match in table}
+        self.assertEqual(looks, rows, f"the table in {ORES_DOC} differs from the recipes")
 
     def test_a_missing_texture_an_unused_model_and_a_block_the_mod_lacks_are_each_named(self):
         with tempfile.TemporaryDirectory() as tmp:

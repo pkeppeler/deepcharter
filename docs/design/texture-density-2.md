@@ -1,5 +1,7 @@
 # Ore overlays: round 2 of the texture test
 
+**Resolved.** You picked a mix of B1, B3 and B4 (issue [#367](https://github.com/pkeppeler/deepcharter/issues/367)). What shipped, ore by ore, is [ores.md](ores.md). B2 and the four test packs are gone. This page is the record of the pick, and its stills stay in the media folder of PR #356.
+
 Issue [#354](https://github.com/pkeppeler/deepcharter/issues/354). Round 1 is [texture-density.md](texture-density.md). You said:
 
 > I kind of like b, but I don't want to replace the look of the vanilla blocks. So the 'ores' in the stone mode shouldn't be jarringly different from normal stone at the edge.
@@ -101,43 +103,16 @@ Each single still, A to B4, is in [the media folder of PR #356](https://github.c
 
 The second quad is the same as on a vanilla grass block's side, which draws its grass over the dirt in the same way.
 
-## Reference sheets
-
-The generator writes a sheet for each pack. It shows each overlay at light levels 15, 7, 3 and 0, over the sheet's dark panel, because the stone under it is vanilla's and we do not copy it:
-
-- [b1-reference.png](texture-density-2/b1-reference.png)
-- [b2-reference.png](texture-density-2/b2-reference.png)
-- [b3-reference.png](texture-density-2/b3-reference.png)
-- [b4-reference.png](texture-density-2/b4-reference.png)
-
 ## How it is built
 
 Everything in the packs comes from the generator ([skins.md](skins.md#textures)), and `--check` checks all of it:
 
-- **The recipes** are in `tools/textures/variants/b1/recipes/` to `b4`, with the stone's greys in `tools/textures/variants/overlay/palette.json`.
-- **The packs** are listed in `tools/textures/variants.json`. Each names its host, `minecraft:block/stone`, and its ore blocks.
+- **The recipes** were in `tools/textures/variants/b1/recipes/` to `b4`, with the stone's greys in the `host` ramp of the palette (now `tools/textures/palette.json`).
+- **The packs** were listed in `tools/textures/variants.json`. Each named its host, `minecraft:block/stone`, and its ore blocks (now `tools/textures/overlays.json`).
 - **The models and blockstates** are generated too. Each ore model draws `minecraft:block/stone` by name, and the overlay on top of it. No Mojang texture is in the repo. `--check` fails on a changed model, and on any file in the pack's `assets/minecraft/`.
 - **The overlay renders as cutout** with no setting in the model. The 26.3 game looks at the pixels of each face's texture: a face with clear pixels goes in the cutout layer, and a face with none goes in the solid layer (`FaceBakery.computeMaterialTransparency`, then `ChunkSectionLayer.byTransparency`). The overlay's pixels are clear or opaque, never half clear, so it is cutout and never translucent.
-- **The test packs** are in `src/gametest/resources/resourcepacks/texture_overlay_b1/` to `b4`.
 
-To rebuild and check the packs:
-
-```sh
-python3 tools/textures/texgen.py --variant b1    # and b2, b3, b4
-python3 tools/textures/texgen.py --variant b1 --check
-python3 -I -m unittest discover -s tools/tests -p 'test_tex*.py'
-```
-
-To shoot the views again, run `tools/record-evidence.sh texture-overlays`.
-
-To walk round in a look, copy its pack folder into the dev client's `resourcepacks/` folder (for `tools/play.sh`, that is `run/play/resourcepacks/`). Then turn it on in Options, Resource Packs. Only the ores change.
-
-## After the pick
-
-- ADR 0030 and section 5 of the art direction get the choice.
-- The chosen recipes move into `tools/textures/recipes/`. The mod's ore blockstates and models then come from the same generator, over the real host.
-- When layer rock gets blocks of its own (#241), an ore names that block's texture as its host, and its edge follows it.
-- The test packs, the variants and this page's scaffolding go.
+The test packs and `--variant b1` to `b4` were removed with the pick. The mod's ores are built the same way ([ores.md](ores.md)).
 
 ## References
 

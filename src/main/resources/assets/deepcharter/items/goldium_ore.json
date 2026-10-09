@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "deepcharter:block/goldium_ore"
+    "model": "deepcharter:block/goldium_ore_overlay_0"
   }
 }

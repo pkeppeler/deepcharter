@@ -48,18 +48,6 @@
         ]
       }
     },
-    "ore_block": {
-      "params": ["mineral", "seed", "count", "shapes"],
-      "recipe": {
-        "kind": "opaque",
-        "layers": [
-          {"op": "noise", "ramp": ["rock.3", "rock.4", "rock.4", "rock.5"], "seed": "$seed", "cell": 8, "octaves": 3, "dither": 0.9},
-          {"op": "cracks", "colour": "rock.2", "lip": "rock.6", "seed": "$seed", "count": 2, "length": 6},
-          {"op": "speckle", "colours": ["rock.2", "rock.6"], "density": 0.06, "seed": "$seed"},
-          {"op": "ore", "seed": "$seed", "count": "$count", "shapes": "$shapes", "ramp": "$mineral"}
-        ]
-      }
-    },
     "conduit_tile": {
       "params": ["edges", "corners"],
       "recipe": {

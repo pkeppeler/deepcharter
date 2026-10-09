@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "deepcharter:block/cicatrium_ore"
+    "model": "deepcharter:block/cicatrium_ore_overlay_0"
   }
 }
