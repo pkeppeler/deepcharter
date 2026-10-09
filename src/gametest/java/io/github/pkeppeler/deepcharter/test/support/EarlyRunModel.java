@@ -21,6 +21,7 @@ import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodDrill;
+import io.github.pkeppeler.deepcharter.pod.PodLinerTuning;
 import io.github.pkeppeler.deepcharter.pod.PodLiningTuning;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
@@ -157,6 +158,11 @@ public final class EarlyRunModel {
 				.withTicksPerHardness(stock.ticksPerHardness() / parts.ratio(ComponentTrack.DRILL, drillTier))
 				.withTankLitres(stock.tankLitres() * parts.ratio(ComponentTrack.FUEL_TANK, tankTier))
 				.withCargoSlots(Math.round(stock.cargoSlots() * parts.ratio(ComponentTrack.CARGO_BAY, bayTier)));
+	}
+
+	/** The stats of a pod with a liner of {@code tier} (1 or more) fitted: its drill is slower by the tier's share (#339). */
+	public static PodStats withLiner(PodStats stats, int tier) {
+		return stats.withTicksPerHardness(PodLinerTuning.DEFAULT.tier(tier).slowedDrill(stats.ticksPerHardness()));
 	}
 
 	/**

@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.pod.HardLanding;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodLiner;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodSeat;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
@@ -45,7 +46,7 @@ public final class PodStatusHud {
 		PodLining.State lining = PodLining.of(pod);
 		if (PodLining.hasHopper(pod)) {
 			lines.add(Component.translatable("hud.deepcharter.pod.slag", lining.bricks(), lining.spoil()));
-		} else if (lining.bricks() > 0) {
+		} else if (lining.bricks() > 0 || PodLiner.tier(pod) > 0) {
 			lines.add(Component.translatable("hud.deepcharter.pod.slag_only", lining.bricks()));
 		}
 		if (pod.stranded()) {
@@ -63,6 +64,11 @@ public final class PodStatusHud {
 	public static Optional<Component> liningLine(PodEntity pod) {
 		PodLining.State lining = PodLining.of(pod);
 		return lining.working() ? Optional.of(Component.translatable("hud.deepcharter.pod.lining", lining.used())) : Optional.empty();
+	}
+
+	/** The line shown, in its own colour, for a pod with a liner: the slabs it can sink before the next ring. The rack count is in the stock line. */
+	public static Optional<Component> linerLine(PodEntity pod) {
+		return PodLiner.slabsToNextRing(pod).map(slabs -> Component.translatable("hud.deepcharter.pod.liner", slabs));
 	}
 
 	/** The warning line shown, in its own colour, after a lining stopped for want of slag brick. */
@@ -90,6 +96,7 @@ public final class PodStatusHud {
 			y += font.lineHeight + look.podStatusLineGap();
 		}
 		y = warning(graphics, font, look, burningLine(pod), look.podBurningColor(), y);
+		y = warning(graphics, font, look, linerLine(pod), look.podLinerColor(), y);
 		y = warning(graphics, font, look, liningLine(pod), look.podLiningColor(), y);
 		y = warning(graphics, font, look, outOfBrickLine(pod), look.podLiningDryColor(), y);
 		warning(graphics, font, look, hardLandingLine(pod), look.podHardLandingColor(), y);
