@@ -80,7 +80,7 @@ public class RepairStationTest {
 	/** The prices after issue 210 (see EconomyAffordabilityTest for why), written out so that the code cannot move them. */
 	private static final Map<Consumable, Long> SHOP_PRICES = Map.of(
 			Consumable.RESERVE_FUEL_TANK, 100L,
-			Consumable.HULL_NANOBOTS, 340L,
+			Consumable.HULL_NANOBOTS, 345L,
 			Consumable.DYNAMITE, 100L,
 			Consumable.PLASTIC_EXPLOSIVES, 300L,
 			Consumable.QUANTUM_TELEPORTER, 690L,

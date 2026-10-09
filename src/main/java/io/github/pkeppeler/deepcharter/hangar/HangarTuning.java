@@ -16,7 +16,7 @@ import io.github.pkeppeler.deepcharter.pod.Chassis;
  * <li>The refurbished Mole, $150 plus $75 for each pod: one or two early runs of a stock Mole for a charter's first extra pod,
  * and the fee still grows with every pod.
  * <li>A Mole wreck's restore, $100: cheaper than a refurbished Mole, as before, for the tow it takes.
- * <li>The Prospector's restore, $1,500: about five layer 2 runs of a Mole with tier 2 parts (the braked drive down the shaft takes its fuel first, #319), which is what is left to earn after
+ * <li>The Prospector's restore, $1,390: about four layer 2 runs of a Mole with tier 2 parts (a run pays for the braked drive down the shaft first, #319), which is what is left to earn after
  * the onboarding's other buys, so it ends the onboarding as the SPEC intends. The three Cicatrium are the longer wait
  * in the ore (about 50 runs in the deepest zone), so the Company advances them, once per charter, against its contract.
  * </ul>
@@ -33,7 +33,7 @@ public record HangarTuning(long refurbishedMole, long registrationFee, Map<Strin
 		double wreckRadius, int bayRadius, int slotSpacing) {
 	public static final HangarTuning DEFAULT = new HangarTuning(150, 75,
 			Map.of("mole", new RestoreCost(100, 1, 0, Optional.empty()),
-					"prospector", new RestoreCost(1_500, 3, 3, Optional.of(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "t17")))),
+					"prospector", new RestoreCost(1_390, 3, 3, Optional.of(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "t17")))),
 			OreType.CICATRIUM, 24, 6, 3);
 
 	/**

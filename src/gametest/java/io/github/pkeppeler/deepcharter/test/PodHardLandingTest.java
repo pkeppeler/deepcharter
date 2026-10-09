@@ -39,7 +39,8 @@ public class PodHardLandingTest {
 	/** Layer 1 spans y 0 to 191. The shaft is open from y 2 to the ceiling, over a floor of stone up to y 1. */
 	private static final int SHAFT_FLOOR_TOP_Y = 1;
 	private static final int SHAFT_TOP_Y = 191;
-	private static final double SHAFT_SPAWN_Y = 189;
+	private static final int SHAFT_DROP_BLOCKS = 187;
+	private static final double SHAFT_SPAWN_Y = SHAFT_FLOOR_TOP_Y + 1 + SHAFT_DROP_BLOCKS;
 	/** Ticks of the pod's own fall or braked descent, on top of the wait for the chunk. */
 	private static final int SHAFT_TICKS = 700;
 
@@ -64,21 +65,19 @@ public class PodHardLandingTest {
 	/** The distance rule cost 30 hull for a 10-block fall (4 free, 5 per block beyond); the speed rule costs about the same. */
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
 	public void aFreeFallOfTenBlocksCostsAboutWhatTheDistanceRuleDid(GameTestHelper helper) {
-		int x = SHAFT_X + 200;
-		ServerLevel one = shaft(helper, x, SHAFT_Z);
-		Vec3 start = new Vec3(x + 0.5, SHAFT_FLOOR_TOP_Y + 1 + 10, SHAFT_Z + 0.5);
-		PodEntity[] pod = {null};
-		FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(start), () -> pod[0] = spawn(one, start));
-		helper.succeedWhen(() -> {
-			if (pod[0] == null || !pod[0].onGround() || pod[0].tickCount < 5) {
-				throw failure(helper, "the pod has not landed");
-			}
-			float lost = PodTuning.DEFAULT.shell().fullHull() - pod[0].hull();
-			if (lost < 26f || lost > 36f) {
-				throw failure(helper, "a free fall of 10 blocks should cost about 30 hull, cost %s", lost);
-			}
-			pod[0].discard();
-		});
+		freeFall(helper, SHAFT_X + 200, 10, false, 28f, 34f);
+	}
+
+	/** The distance rule cost 80 hull for 20 blocks, where speed has nearly levelled off: the speed rule costs about 56. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+	public void aFreeFallOfTwentyBlocksCostsLessThanTheDistanceRuleDid(GameTestHelper helper) {
+		freeFall(helper, SHAFT_X + 250, 20, false, 50f, 62f);
+	}
+
+	/** A pilot seated through a hard but survivable landing keeps full health: the hull took it. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+	public void aCrewedHardLandingCostsTheHullAndNotThePilot(GameTestHelper helper) {
+		freeFall(helper, SHAFT_X + 300, 12, true, 30f, 40f);
 	}
 
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + SHAFT_TICKS)
@@ -124,20 +123,13 @@ public class PodHardLandingTest {
 
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + SHAFT_TICKS)
 	public void aFreeFallDownTheLayerOneShaftWrecksThePod(GameTestHelper helper) {
-		int x = SHAFT_X + 100;
-		ServerLevel one = shaft(helper, x, SHAFT_Z);
-		Vec3 start = new Vec3(x + 0.5, SHAFT_SPAWN_Y, SHAFT_Z + 0.5);
-		PodEntity[] pod = {null};
-		FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(start), () -> pod[0] = spawn(one, start));
-		helper.succeedWhen(() -> {
-			if (pod[0] == null || !pod[0].onGround() || pod[0].tickCount < 5) {
-				throw failure(helper, "the pod has not landed");
-			}
-			if (!Wrecks.isWreck(pod[0]) || pod[0].hull() != 0f) {
-				throw failure(helper, "a free fall of 190 blocks should wreck the pod, hull %s", pod[0].hull());
-			}
-			pod[0].discard();
-		});
+		freeFall(helper, SHAFT_X + 100, SHAFT_DROP_BLOCKS, false, 100f, 100f);
+	}
+
+	/** The crew of a pod wrecked by a fall die by the wreck rule (#67), after a landing that took the hull to 0. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + SHAFT_TICKS)
+	public void aCrewedFreeFallDownTheLayerOneShaftWrecksThePodAndTheWreckRuleTakesTheCrew(GameTestHelper helper) {
+		freeFall(helper, SHAFT_X + 150, SHAFT_DROP_BLOCKS, true, 100f, 100f);
 	}
 
 	@GameTest(maxTicks = 20)
@@ -178,6 +170,51 @@ public class PodHardLandingTest {
 			crew.leave();
 			pod.discard();
 			helper.succeed();
+		});
+	}
+
+	/**
+	 * Drops a pod {@code blocks} down a fresh shaft with the rotor off and checks the hull it lost, between {@code min} and {@code max}.
+	 * A pilot, when seated, takes no damage from the landing; at 100 hull lost the pod is a wreck and the crew are dead by its rule.
+	 */
+	private static void freeFall(GameTestHelper helper, int x, int blocks, boolean crewed, float min, float max) {
+		ServerLevel one = shaft(helper, x, SHAFT_Z);
+		Vec3 start = new Vec3(x + 0.5, SHAFT_FLOOR_TOP_Y + 1 + blocks, SHAFT_Z + 0.5);
+		MockPlayer pilot = crewed ? MockPlayers.join(helper, "free-faller-" + x) : null;
+		PodEntity[] pod = {null};
+		FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(start), () -> {
+			pod[0] = spawn(one, start);
+			if (pilot != null) {
+				// The pilot joins once the chunk ticks: a player put in an unloaded column falls out of the layer.
+				pilot.player().setGameMode(GameType.SURVIVAL);
+				pilot.teleportTo(one, start, 0f, 0f);
+				if (!pilot.player().startRiding(pod[0], true, false)) {
+					throw failure(helper, "the pilot could not board the pod");
+				}
+			}
+		});
+		helper.succeedWhen(() -> {
+			if (pod[0] == null || !pod[0].onGround() || pod[0].tickCount < 5) {
+				throw failure(helper, "the pod has not landed");
+			}
+			float lost = PodTuning.DEFAULT.shell().fullHull() - pod[0].hull();
+			if (lost < min || lost > max) {
+				throw failure(helper, "a free fall of %s blocks should cost %s to %s hull, cost %s", blocks, min, max, lost);
+			}
+			boolean wrecked = lost >= PodTuning.DEFAULT.shell().fullHull();
+			if (wrecked != Wrecks.isWreck(pod[0])) {
+				throw failure(helper, "the pod should be a wreck exactly when its hull is gone, hull lost %s, wreck %s", lost, Wrecks.isWreck(pod[0]));
+			}
+			if (pilot != null && !wrecked && (pilot.player().getVehicle() != pod[0] || pilot.player().getHealth() < pilot.player().getMaxHealth())) {
+				throw failure(helper, "the seated pilot should be unhurt and still aboard, health %s", pilot.player().getHealth());
+			}
+			if (pilot != null && wrecked && pilot.player().isAlive()) {
+				throw failure(helper, "the crew of a wrecked pod should be dead by the wreck rule");
+			}
+			if (pilot != null) {
+				pilot.leave();
+			}
+			pod[0].discard();
 		});
 	}
 

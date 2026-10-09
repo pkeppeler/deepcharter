@@ -125,7 +125,7 @@ public class EconomyAffordabilityTest {
 	private static final int DRIVE_DOWN_DECILITRES = 20;
 	/** The terminal sink speed of a pod in blocks per tick: gravity 0.08 times drag 0.98 over the 0.02 the drag removes. */
 	private static final double FREE_FALL_TERMINAL_SINK = 3.92;
-	private static final int PROSPECTOR_RUNS = 5;
+	private static final int PROSPECTOR_RUNS = 4;
 
 	@GameTest
 	public void aOneWayBoreOfLayerOneTakesTheTanksThatTheLadderGives(GameTestHelper helper) {

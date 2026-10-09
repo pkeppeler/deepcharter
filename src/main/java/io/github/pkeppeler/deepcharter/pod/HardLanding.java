@@ -8,12 +8,7 @@ import net.minecraft.world.entity.LivingEntity;
 
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 
-/**
- * Hard landings (#319): a pod's landing costs hull by the speed it sinks at when it lands, not by the distance it fell, so a pod
- * that brakes with its rotor survives a deep open shaft and a free fall does not. Past {@link PodStats#hardLandingSpeed} the hull
- * loses {@link PodStats#hullDamagePerSpeed} for each block per tick of speed. The pod shields the pilot and crew seated in it from
- * fall damage, as it does from lava (#288): the hull takes the landing. Players outside a pod, and the crew of a wreck, take vanilla's.
- */
+/** Landing damage reads sink speed, not distance fallen (#319), so a rotor-braked descent is safe; a seated rider is shielded and the hull takes the hit. */
 public final class HardLanding {
 	private HardLanding() {
 	}
