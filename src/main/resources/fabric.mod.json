@@ -10,7 +10,7 @@
 	"contact": {
 		"sources": "https://github.com/pkeppeler/deepcharter"
 	},
-	"license": "All-Rights-Reserved",
+	"license": "MIT",
 	"environment": "*",
 	"entrypoints": {
 		"main": [
