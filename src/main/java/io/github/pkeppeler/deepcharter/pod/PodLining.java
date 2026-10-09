@@ -146,7 +146,7 @@ public final class PodLining {
 	 * read is left as it is (logged once) and the answer is no.
 	 */
 	public static boolean modify(PodEntity pod, UnaryOperator<State> change) {
-		Optional<State> state = Versioned.readable(pod, STATE);
+		Optional<State> state = readable(pod);
 		if (state.isEmpty()) {
 			return false;
 		}
@@ -161,7 +161,7 @@ public final class PodLining {
 
 	/** The drill has bored one block of waste rock: a pod with a hopper keeps it as spoil if the bay has room, and loses it if not. */
 	static void keepSpoil(PodEntity pod) {
-		Optional<State> state = Versioned.readable(pod, STATE);
+		Optional<State> state = readable(pod);
 		if (hasHopper(pod) && state.isPresent() && state.get().spoil() < PodLiningTuning.DEFAULT.spoilCapacity()) {
 			pod.setAttached(STATE, Versioned.of(state.get().withSpoil(state.get().spoil() + 1)));
 		}
@@ -202,7 +202,7 @@ public final class PodLining {
 	}
 
 	/** Bricks the pilot can line with now: the rack, if the pilot may use the pod's stores, and the inventory. */
-	public static int available(PodEntity pod, ServerPlayer pilot, State state) {
+	private static int available(PodEntity pod, ServerPlayer pilot, State state) {
 		return (mayUseStores(pod, pilot) ? state.bricks() : 0) + carried(pilot.getInventory());
 	}
 
