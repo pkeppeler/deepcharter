@@ -16,6 +16,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ParticleStatus;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
@@ -77,6 +78,12 @@ public class BreachVoidClientTest implements FabricClientGameTest {
 			ClientWait.until(context, "the client in the world", client -> client.player != null && client.level != null);
 			// F1: no crosshair over the middle of the picture, where the hole is. The client is shared with the next test, so the HUD is put back.
 			boolean hudWasHidden = context.computeOnClient(client -> client.gui.hud.isHidden());
+			// Particles are off, so no dust mote (#239) lights the patch: the sky's ambient motes are not forced past the limit, and MINIMAL drops them.
+			ParticleStatus particlesWere = context.computeOnClient(client -> client.options.particles().get());
+			context.runOnClient(client -> {
+				client.options.particles().set(ParticleStatus.MINIMAL);
+				client.particleEngine.clearParticles();
+			});
 			if (!hudWasHidden) {
 				context.runOnClient(client -> client.gui.hud.toggle());
 			}
@@ -119,6 +126,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
 				}
 			} finally {
 				context.runOnClient(client -> {
+					client.options.particles().set(particlesWere);
 					if (client.gui.hud.isHidden() != hudWasHidden) {
 						client.gui.hud.toggle();
 					}
@@ -204,8 +212,6 @@ public class BreachVoidClientTest implements FabricClientGameTest {
 				() -> "chunks still rendering or light still settling");
 		// tick-wait: the fog colour is computed per frame, and a few frames must pass after the last chunk section is built
 		context.waitTicks(10);
-		// The surface sky drifts dust motes (#239) through the patch; none is alive when the shot is taken.
-		context.runOnClient(client -> client.particleEngine.clearParticles());
 		return context.takeScreenshot(name);
 	}
 
@@ -273,8 +279,8 @@ public class BreachVoidClientTest implements FabricClientGameTest {
 	}
 
 	/**
-	 * The camera looks at the middle of the hole, so the patch of pixels at the middle of the screen holds only darkness: at most
-	 * no pixel brighter than {@link #DARK} in any channel. The shot is taken with no particles, so no speck of dust lights the patch.
+	 * The camera looks at the middle of the hole, so the patch of pixels at the middle of the screen holds only darkness:
+	 * no pixel brighter than {@link #DARK} in any channel.
 	 */
 	private static Optional<String> holeProblem(BufferedImage image, String name) {
 		List<Integer> patch = centrePatch(image);
