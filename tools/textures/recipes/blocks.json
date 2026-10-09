@@ -66,10 +66,10 @@
       "kind": "opaque",
       "layers": [
         {"op": "strata", "seed": 201, "wobble": 2, "beds": [
-          ["crust.3", 2], ["crust.1", 1], ["crust.4", 3], ["crust.2", 2], ["crust.0", 1], ["crust.3", 3], ["crust.5", 1], ["crust.2", 3]]},
-        {"op": "speckle", "colours": ["crust.1", "crust.4", "regolith.3"], "density": 0.12, "seed": 202},
-        {"op": "cracks", "colour": "void", "lip": "crust.5", "seed": 203, "count": 3, "length": 8},
-        {"op": "speckle", "colours": ["regolith.4", "regolith.5"], "density": 0.03, "seed": 204}
+          ["crust.3", 3], ["crust.2", 2], ["crust.4", 2], ["crust.3", 3], ["crust.2", 2], ["crust.3", 2], ["crust.4", 2]]},
+        {"op": "speckle", "colours": ["crust.2", "crust.3", "crust.4"], "density": 0.3, "seed": 202},
+        {"op": "cracks", "colour": "crust.1", "lip": "crust.4", "seed": 203, "count": 2, "length": 6},
+        {"op": "speckle", "colours": ["regolith.3", "crust.1"], "density": 0.03, "seed": 204}
       ]
     },
     "block/company_rock": {
