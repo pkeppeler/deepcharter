@@ -174,7 +174,7 @@ def statue(p: Piece, figure: str, plinth_top: int, x: float = 0.5, z: float = 0.
     for bx in range(math.floor(x + lo[0] * s * 0.6), math.ceil(x + hi[0] * s * 0.6)):
         for bz in range(math.floor(z + lo[2] * s * 0.5), math.ceil(z + hi[2] * s * 0.5)):
             for by in range(plinth_top + 1, plinth_top + 1 + int(hi[1] * s * 0.85)):
-                p.set(bx, by, bz, state("minecraft:barrier"))
+                p.set(bx, by, bz, state("minecraft:barrier", waterlogged="false"))
 
 
 def sheave(p: Piece, centre, axle: str, diameter: float = 9.0) -> None:

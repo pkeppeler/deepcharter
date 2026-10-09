@@ -14,12 +14,18 @@ State = tuple[str, dict]
 
 
 def state(name: str, **props) -> State:
-    """A kit block's state by its short name, or a vanilla block ("minecraft:...") with no properties."""
+    """A kit block's state by its short name, checked here, or a vanilla block ("minecraft:...") with every one of its
+    properties, which ColonyConceptsTest checks against the game."""
     if name.startswith("minecraft:"):
-        if props:
-            raise ValueError(f"vanilla block {name}: only property-less vanilla blocks are used")
-        return name, {}
+        return name, {k: str(v) for k, v in props.items()}
     return kit.block(name).state(**props)
+
+
+def _state_tag(s: State) -> dict:
+    """A block state as Minecraft 26.3 writes one: id and properties. (Before 26.3 the keys were Name and Properties; a file of
+    this DataVersion is not fixed up, so the old keys would load every block as air without a word.)"""
+    name, props = s
+    return {"id": name, "properties": dict(props)} if props else {"id": name}
 
 
 def quaternion_axis_angle(axis, degrees: float) -> tuple[float, float, float, float]:
@@ -111,7 +117,7 @@ class Piece:
         tx, ty, tz = rotate(rotation, (-px, -py, -pz))
         compound = {
             "id": "minecraft:block_display",
-            "block_state": {"Name": name, "Properties": dict(props)} if props else {"Name": name},
+            "block_state": _state_tag(block),
             "transformation": {
                 "left_rotation": nbt.floats(*rotation),
                 "right_rotation": nbt.floats(0.0, 0.0, 0.0, 1.0),
@@ -172,7 +178,7 @@ class Piece:
         root = {
             "DataVersion": nbt.Int(DATA_VERSION),
             "size": nbt.ints(*size),
-            "palette": nbt.compounds({"Name": n, "Properties": dict(p)} if p else {"Name": n} for n, p in palette),
+            "palette": nbt.compounds(_state_tag(s) for s in palette),
             "blocks": nbt.compounds(blocks),
             "entities": nbt.compounds(entities),
         }

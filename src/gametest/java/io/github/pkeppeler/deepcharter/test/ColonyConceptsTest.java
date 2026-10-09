@@ -17,6 +17,8 @@ import com.google.gson.JsonParser;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Vec3i;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
@@ -27,18 +29,26 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.packs.resources.Resource;
+import net.minecraft.world.entity.Display;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
+import net.minecraft.world.phys.AABB;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.colony.ColonyKit;
 
 /**
- * Server GameTests for #335: the colony concepts' structure files load, name only blocks, properties and entities that exist,
- * and fit the pad the evidence scenario clears; and every state of every kit block has a model in its blockstate file.
+ * Server GameTests for #335: the colony concepts' structure files load, name only blocks and properties that exist, place every
+ * block and every display they hold, and fit the pad the evidence scenario clears; and every state of every kit block has a model
+ * in its blockstate file.
  *
  * <p>Minecraft reads an unknown block in a structure as air and drops an unknown property without a word, so a renamed kit block
  * would only show as a hole in a still. These tests read the files themselves and fail instead.
@@ -47,9 +57,11 @@ public class ColonyConceptsTest {
 	/** The evidence scenario clears this far round the colony's centre; every piece must fit inside. */
 	private static final int CLEARED_RADIUS = 56;
 	private static final int CONCEPTS = 3;
+	/** Where a piece is placed to be counted: far from the test structures and from the colony. */
+	private static final int PLACE_AT = 40_000;
 
 	@GameTest
-	public void everyConceptLoadsAndNamesOnlyRealBlocksAndEntities(GameTestHelper helper) throws IOException {
+	public void everyConceptPiecePlacesWhole(GameTestHelper helper) throws IOException {
 		MinecraftServer server = helper.getLevel().getServer();
 		Map<Identifier, Resource> layouts = server.getResourceManager().listResources("colony_concept", id -> id.getPath().endsWith(".json"));
 		if (layouts.size() != CONCEPTS) {
@@ -132,26 +144,46 @@ public class ColonyConceptsTest {
 		for (Tag tag : palette) {
 			checkState(concept + ": " + id + " palette", (CompoundTag) tag, problems);
 		}
-		for (Tag tag : entities) {
-			CompoundTag entity = ((CompoundTag) tag).getCompoundOrEmpty("nbt");
-			String type = entity.getStringOr("id", "");
-			if (!BuiltInRegistries.ENTITY_TYPE.containsKey(Identifier.parse(type))) {
-				problems.add(concept + ": " + id + " has an entity of unknown type '" + type + "'");
-			} else if (entity.contains("block_state")) {
-				checkState(concept + ": " + id + " display", entity.getCompoundOrEmpty("block_state"), problems);
+		placeWhole(server, concept + ": " + id, template.get(), blocks.size(), entities.size(), problems);
+	}
+
+	/**
+	 * Places the template far from the test area and counts what landed: every block of the file, and every display with a block
+	 * to draw. A display whose block state does not parse loads as a display of air, and a block that does not, as air; either
+	 * shows as a hole. Then takes it all away again.
+	 */
+	private static void placeWhole(MinecraftServer server, String where, StructureTemplate template, int blocks, int displays, List<String> problems) {
+		ServerLevel level = server.overworld();
+		BlockPos at = new BlockPos(PLACE_AT, level.getMinY() + 100, PLACE_AT);
+		Vec3i size = template.getSize();
+		BoundingBox box = BoundingBox.fromCorners(at, at.offset(size).offset(-1, -1, -1));
+		for (int cx = box.minX() >> 4; cx <= box.maxX() >> 4; cx++) {
+			for (int cz = box.minZ() >> 4; cz <= box.maxZ() >> 4; cz++) {
+				level.getChunk(cx, cz);
 			}
 		}
+		AABB space = AABB.of(box).inflate(1);
+		template.placeInWorld(level, at, at, new StructurePlaceSettings(), level.getRandom(), Block.UPDATE_CLIENTS);
+		int placed = (int) BlockPos.betweenClosedStream(box).filter(pos -> !level.getBlockState(pos).isAir()).count();
+		List<Display.BlockDisplay> shown = level.getEntitiesOfClass(Display.BlockDisplay.class, space);
+		long drawn = shown.stream().filter(display -> !display.getBlockState().isAir()).count();
+		if (placed != blocks || shown.size() != displays || drawn != displays) {
+			problems.add(where + " placed " + placed + " of " + blocks + " blocks and " + drawn + " drawn displays (" + shown.size()
+					+ " in all) of " + displays);
+		}
+		shown.forEach(Entity::discard);
+		BlockPos.betweenClosedStream(box).forEach(pos -> level.setBlock(pos, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS));
 	}
 
 	/** The named block exists, and each property it names is the block's own and holds a value the block has. */
 	private static void checkState(String where, CompoundTag state, List<String> problems) {
-		Identifier name = Identifier.parse(state.getStringOr("Name", ""));
+		Identifier name = Identifier.parse(state.getStringOr("id", ""));
 		Optional<Block> block = BuiltInRegistries.BLOCK.getOptional(name);
 		if (block.isEmpty()) {
 			problems.add(where + " names the unknown block " + name);
 			return;
 		}
-		CompoundTag properties = state.getCompoundOrEmpty("Properties");
+		CompoundTag properties = state.getCompoundOrEmpty("properties");
 		for (String key : properties.keySet()) {
 			Property<?> property = block.get().getStateDefinition().getProperty(key);
 			String value = properties.getStringOr(key, "");
