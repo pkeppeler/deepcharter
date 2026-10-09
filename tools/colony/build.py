@@ -7,7 +7,8 @@ Usage: tools/colony/build.py [--check]
     src/main/resources/assets/deepcharter/
   - the sign tiles' texture recipes, tools/textures/recipes/colony_signs.json; the textures themselves are drawn by
     tools/textures/texgen.py from those and colony_kit.json
-  - the kit's English names in src/lang/en_us/colony.json (other keys there are kept, but for blocks that have no blockstate)
+  - the kit's English names in src/lang/en_us/colony.json. Other keys there are kept, but the name of a block with no
+    blockstate (a kit block deleted since) is dropped and listed; one that ColonyBlocks or the kit still registers fails the build
   - each layout's structure pieces (.nbt) and layout file under src/gametest/resources/data/deepcharter/, which only test and
     evidence worlds load (concepts.py); a piece two layouts share is written once
 
@@ -17,6 +18,7 @@ make, and every file in a generated directory that no source makes. Standard lib
 """
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -37,12 +39,26 @@ LANG = ROOT / "src/lang/en_us/colony.json"
 OWNED = (ASSETS / "models/block/colony", DATA / "structure/colony_concept", DATA / "colony_concept")
 
 
+COLONY_BLOCKS = ROOT / "src/main/java/io/github/pkeppeler/deepcharter/colony/ColonyBlocks.java"
 BLOCK_KEY = "block.deepcharter."
 
 
 def _has_blockstate(block: str, files: dict[Path, bytes]) -> bool:
     path = ASSETS / f"blockstates/{block}.json"
     return path in files or path.is_file()
+
+
+def dropped_names(files: dict[Path, bytes]) -> list[str]:
+    """The keys of the lang file that name a block with no blockstate, which the build drops: the names of kit blocks deleted
+    since. Fails for a block that ColonyBlocks or the kit still registers, so a missing blockstate cannot erase its name."""
+    lang = json.loads(LANG.read_text()) if LANG.is_file() else {}
+    dropped = sorted(key for key in lang if key.startswith(BLOCK_KEY) and not _has_blockstate(key[len(BLOCK_KEY):], files))
+    registered = set(re.findall(r'register(?:Block)?\("([a-z_]+)"', COLONY_BLOCKS.read_text())) | set(kit.CATALOGUE)
+    kept = [key for key in dropped if key[len(BLOCK_KEY):] in registered]
+    if kept:
+        raise ValueError(f"{LANG} names {kept}, which ColonyBlocks or the kit registers, but no blockstate file "
+                         "exists for them: restore the blockstate, or fix the block's name")
+    return dropped
 
 
 def _json(body) -> bytes:
@@ -60,7 +76,8 @@ def outputs() -> dict[Path, bytes]:
     files[SIGN_RECIPES] = (json.dumps({"recipes": signs.recipes()}, indent=1) + "\n").encode()
     lang = json.loads(LANG.read_text()) if LANG.is_file() else {}
     # A block's name goes with its blockstate: the names of kit blocks deleted since are dropped.
-    lang = {key: name for key, name in lang.items() if not key.startswith(BLOCK_KEY) or _has_blockstate(key[len(BLOCK_KEY):], files)}
+    dropped = set(dropped_names(files))
+    lang = {key: name for key, name in lang.items() if key not in dropped}
     lang.update({f"{BLOCK_KEY}{b.name}": b.english for b in kit.CATALOGUE.values()})
     files[LANG] = _json(dict(sorted(lang.items())))
     for layout in concepts.ALL:
@@ -106,9 +123,11 @@ def main(argv=None) -> int:
     files = outputs()
     changed = [p for p, data in files.items() if not holds(p, data)]
     stray = strays(files)
+    dropped = dropped_names(files)
     if args.check:
         problems = [f"differs from its source: {p.relative_to(ROOT)}" for p in changed]
         problems += [f"no source makes it: {p.relative_to(ROOT)}" for p in stray]
+        problems += [f"names a block with no blockstate, which the build drops: {key} in {LANG.relative_to(ROOT)}" for key in dropped]
         if problems:
             print(f"colony build --check: {len(problems)} problem(s); run tools/colony/build.py\n  " + "\n  ".join(problems), file=sys.stderr)
             return 1
@@ -119,7 +138,8 @@ def main(argv=None) -> int:
     for path in changed:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(files[path])
-    print(f"colony build: {len(files)} files, {len(changed)} written, {len(stray)} stray removed")
+    print(f"colony build: {len(files)} files, {len(changed)} written, {len(stray)} stray removed"
+          + (f", the names of blocks with no blockstate dropped: {', '.join(dropped)}" if dropped else ""))
     return 0
 
 

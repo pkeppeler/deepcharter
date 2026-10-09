@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -51,19 +53,23 @@ import net.minecraft.world.phys.AABB;
 public class ColonyConceptsTest {
 	/** The evidence scenario clears this far round the colony's centre; every piece must fit inside. */
 	private static final int CLEARED_RADIUS = 56;
-	/** The four concepts of #353 and the four sizes of the statue. */
-	private static final int LAYOUTS = 8;
 	/** Where a piece is placed to be counted: far from the test structures and from the colony. */
 	private static final int PLACE_AT = 40_000;
 
+	/**
+	 * Every layout's pieces place whole, and the layouts and the structure files agree both ways: each piece a layout names is a
+	 * file, and each file is a piece of some layout. Every layout has a piece of its own (its square), so a layout file that went
+	 * missing leaves a file no layout names.
+	 */
 	@GameTest
 	public void everyConceptPiecePlacesWhole(GameTestHelper helper) throws IOException {
 		MinecraftServer server = helper.getLevel().getServer();
 		Map<Identifier, Resource> layouts = server.getResourceManager().listResources("colony_concept", id -> id.getPath().endsWith(".json"));
-		if (layouts.size() != LAYOUTS) {
-			throw fail(helper, List.of("found " + layouts.size() + " concept layouts, not " + LAYOUTS + ": " + layouts.keySet()));
+		if (layouts.isEmpty()) {
+			throw fail(helper, List.of("found no concept layouts under data/deepcharter/colony_concept/: run tools/colony/build.py"));
 		}
 		List<String> problems = new ArrayList<>();
+		Set<Identifier> named = new TreeSet<>();
 		for (Map.Entry<Identifier, Resource> entry : layouts.entrySet()) {
 			JsonObject layout = json(entry.getValue());
 			String concept = entry.getKey().getPath();
@@ -71,8 +77,19 @@ public class ColonyConceptsTest {
 				problems.add(concept + ": no views or no pieces");
 			}
 			for (JsonElement element : layout.getAsJsonArray("pieces")) {
+				named.add(Identifier.parse(element.getAsJsonObject().get("structure").getAsString()));
 				checkPiece(server, concept, element.getAsJsonObject(), problems);
 			}
+		}
+		Set<Identifier> files = new TreeSet<>();
+		for (Identifier file : server.getResourceManager().listResources("structure/colony_concept", id -> id.getPath().endsWith(".nbt")).keySet()) {
+			String path = file.getPath();
+			files.add(Identifier.fromNamespaceAndPath(file.getNamespace(), path.substring("structure/".length(), path.length() - ".nbt".length())));
+		}
+		Set<Identifier> unnamed = new TreeSet<>(files);
+		unnamed.removeAll(named);
+		if (!unnamed.isEmpty()) {
+			problems.add("no layout names the structure file(s) " + unnamed + ": a layout file is missing; run tools/colony/build.py");
 		}
 		finish(helper, problems);
 	}

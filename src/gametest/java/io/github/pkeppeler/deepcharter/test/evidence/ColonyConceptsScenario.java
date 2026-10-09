@@ -136,6 +136,7 @@ public class ColonyConceptsScenario extends EvidenceScenario {
 					layout.orbit().ifPresent(orbit -> orbit(layout.name(), orbit));
 				}
 			} finally {
+				serverDo(server -> figures(server.overworld()).forEach(Entity::discard));
 				ctx.runOnClient(client -> {
 					if (client.gui.hud.isHidden()) {
 						client.gui.hud.toggle();
@@ -220,10 +221,9 @@ public class ColonyConceptsScenario extends EvidenceScenario {
 					level.getChunk(cx, cz);
 				}
 			}
-			AABB box = new AABB(centre.getX() - RADIUS, centre.getY() - 2, centre.getZ() - RADIUS, centre.getX() + RADIUS + 1,
-					centre.getY() + HEIGHT + 32, centre.getZ() + RADIUS + 1);
+			AABB box = area();
 			level.getEntitiesOfClass(Display.BlockDisplay.class, box).forEach(Entity::discard);
-			level.getEntitiesOfClass(Entity.class, box, entity -> entity.entityTags().contains(FIGURE_TAG)).forEach(Entity::discard);
+			figures(level).forEach(Entity::discard);
 			Set<Block> kit = Set.copyOf(ColonyKit.all());
 			// The plain the plateau is made of, from beyond the pad: the pad gets it too, so no floor of the shipping colony shows.
 			BlockState plain = level.getBlockState(centre.offset(0, 0, PAD + 12));
@@ -260,11 +260,22 @@ public class ColonyConceptsScenario extends EvidenceScenario {
 			for (Figure figure : layout.figures()) {
 				stand(server, figure);
 			}
-			int figures = level.getEntitiesOfClass(Entity.class, box, entity -> entity.entityTags().contains(FIGURE_TAG)).size();
+			int figures = figures(level).size();
 			if (figures != layout.figures().size()) {
 				throw new AssertionError("concept " + layout.name() + ": " + figures + " figures stand on the pad, its layout stands " + layout.figures().size());
 			}
 		});
+	}
+
+	/** Where a layout may build: {@link #RADIUS} round the colony's centre, from just under its ground to over the tallest piece. */
+	private AABB area() {
+		return new AABB(centre.getX() - RADIUS, centre.getY() - 2, centre.getZ() - RADIUS, centre.getX() + RADIUS + 1,
+				centre.getY() + HEIGHT + 32, centre.getZ() + RADIUS + 1);
+	}
+
+	/** The pods and players the last layout stood for scale. */
+	private List<Entity> figures(ServerLevel level) {
+		return level.getEntitiesOfClass(Entity.class, area(), entity -> entity.entityTags().contains(FIGURE_TAG));
 	}
 
 	/** Stands a Mole pod, or a mannequin in a player's shape and skin, where the layout says, for scale. */
