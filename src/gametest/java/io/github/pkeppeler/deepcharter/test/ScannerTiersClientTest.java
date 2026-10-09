@@ -15,6 +15,8 @@ import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest.HudShot;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+
 /**
  * Client GameTest for #74: the scanner HUD is hidden with no scanner and shown with one, and a tier 2 panel
  * reaches ore and rock that a tier 1 panel does not. For #300 a tier 2 panel also marks lava in its own colour, where tier 1 draws lava
@@ -61,15 +63,11 @@ public class ScannerTiersClientTest implements FabricClientGameTest {
 	}
 
 	private static void expect(String label, int actual, int colour) {
-		if (actual != (colour & RGB)) {
-			throw new AssertionError("%s: the pixel should be %06X, was %06X".formatted(label, colour & RGB, actual));
-		}
+		require(actual == (colour & RGB), "%s: the pixel should be %06X, was %06X".formatted(label, colour & RGB, actual));
 	}
 
 	private static void expectNot(String label, int actual, int colour) {
-		if (actual == (colour & RGB)) {
-			throw new AssertionError("%s: the pixel must not be %06X".formatted(label, colour & RGB));
-		}
+		require(actual != (colour & RGB), "%s: the pixel must not be %06X".formatted(label, colour & RGB));
 	}
 
 	@Override
@@ -100,9 +98,7 @@ public class ScannerTiersClientTest implements FabricClientGameTest {
 					goldCells++;
 				}
 			}
-			if (goldCells != 1) {
-				throw new AssertionError("tier 1: the gold row should show the near gold only, it shows %d gold cells".formatted(goldCells));
-			}
+			require(goldCells == 1, "tier 1: the gold row should show the near gold only, it shows %d gold cells".formatted(goldCells));
 			// Tier 1 draws lava and water as open space, the colour of air.
 			placeFluids(context, server);
 			HudShot oneFluids = HudShot.take(context, "scanner-tiers-1-fluids", ScannerHudTest.TIER_ONE);

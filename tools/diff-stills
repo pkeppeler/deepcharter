@@ -37,7 +37,7 @@ PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 # Colour type -> channels per pixel. Only 8-bit, non-interlaced PNGs are read: that is what the game writes.
 CHANNELS = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}
 DEFAULT_TOLERANCE = 2
-# Measured over pairs of design-tour runs of one commit (README, "Before and after stills"): the most that noise changed in each
+# Measured over pairs of design-tour runs of one commit (.claude/skills/deepcharter-conventions/evidence.md, "Before and after stills"): the most that noise changed in each
 # family of stills, rounded up. PREFIX, channel tolerance, percent of pixels.
 NOISE_FAMILIES = [
     ("hud-breach-fade", 70, 0.0),      # runs on client ticks; the tick of the shot varies with load

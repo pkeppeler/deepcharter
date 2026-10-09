@@ -29,6 +29,8 @@ import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+
 /**
  * Client GameTest for #78. A screen driven by hand first: the Notes tab lists the notes, marks the unread ones, and opening one
  * reports it once. Then the real game: a charter finds two Notes through the block, the Notes tab lists them, opening one marks it
@@ -76,29 +78,29 @@ public class NotesClientTest implements FabricClientGameTest {
 			HandbookScreen screen = new HandbookScreen(noPages(), read::contains, viewed::add, notes(3));
 			screen.init(WINDOW_WIDTH, WINDOW_HEIGHT);
 			screen.showNotes();
-			check(!screen.notesEmpty(), "with notes the Notes tab is not empty");
-			check(screen.openNote() == null, "the Notes tab opens on the list");
-			check(!screen.noteUnread(FIRST) && screen.noteUnread(Notes.id(2)), "a read note and an unread note are told apart");
+			require(!screen.notesEmpty(), "with notes the Notes tab is not empty");
+			require(screen.openNote() == null, "the Notes tab opens on the list");
+			require(!screen.noteUnread(FIRST) && screen.noteUnread(Notes.id(2)), "a read note and an unread note are told apart");
 			List<HandbookScreen.NoteRow> rows = screen.noteRows();
-			check(rows.size() == 3, "the list has a row for each note, got " + rows.size());
+			require(rows.size() == 3, "the list has a row for each note, got " + rows.size());
 
-			check(screen.mouseClicked(clickOn(rows.get(1)), false), "a row is a click target");
-			check(Notes.id(2).equals(screen.openNote()), "clicking a row opens that note, opened " + screen.openNote());
-			check(viewed.equals(List.of(Notes.id(2))), "opening an unread note reports it, got " + viewed);
+			require(screen.mouseClicked(clickOn(rows.get(1)), false), "a row is a click target");
+			require(Notes.id(2).equals(screen.openNote()), "clicking a row opens that note, opened " + screen.openNote());
+			require(viewed.equals(List.of(Notes.id(2))), "opening an unread note reports it, got " + viewed);
 			screen.closeNote();
-			check(screen.openNote() == null, "back returns to the list");
+			require(screen.openNote() == null, "back returns to the list");
 			screen.openNote(Notes.id(2));
-			check(viewed.size() == 1, "opening a note again reports nothing more, got " + viewed);
+			require(viewed.size() == 1, "opening a note again reports nothing more, got " + viewed);
 			screen.openNote(FIRST);
-			check(viewed.size() == 1, "opening a note that is read reports nothing, got " + viewed);
+			require(viewed.size() == 1, "opening a note that is read reports nothing, got " + viewed);
 			screen.openNote(Notes.id(9));
-			check(FIRST.equals(screen.openNote()), "a note the tab does not list cannot be opened");
-			check(viewed.size() == 1, "an unlisted note is never reported, got " + viewed);
+			require(FIRST.equals(screen.openNote()), "a note the tab does not list cannot be opened");
+			require(viewed.size() == 1, "an unlisted note is never reported, got " + viewed);
 
 			HandbookScreen empty = new HandbookScreen(noPages(), id -> false, id -> { }, List.of());
 			empty.init(WINDOW_WIDTH, WINDOW_HEIGHT);
 			empty.showNotes();
-			check(empty.notesEmpty() && empty.noteRows().isEmpty(), "with no notes the tab shows its empty state");
+			require(empty.notesEmpty() && empty.noteRows().isEmpty(), "with no notes the tab shows its empty state");
 		});
 	}
 
@@ -110,51 +112,51 @@ public class NotesClientTest implements FabricClientGameTest {
 			screen.init(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT);
 			screen.showNotes();
 			List<HandbookScreen.NoteRow> rows = screen.noteRows();
-			check(!rows.isEmpty() && rows.size() < shipped.size(), "at the smallest size part of the list shows, got " + rows.size() + " of " + shipped.size());
+			require(!rows.isEmpty() && rows.size() < shipped.size(), "at the smallest size part of the list shows, got " + rows.size() + " of " + shipped.size());
 			int firstTop = rows.getFirst().top();
-			check(screen.mouseScrolled(0, 0, 0, -1), "the list scrolls");
-			check(screen.noteRows().getFirst().top() == firstTop && !screen.noteRows().getFirst().note().equals(rows.getFirst().note()),
+			require(screen.mouseScrolled(0, 0, 0, -1), "the list scrolls");
+			require(screen.noteRows().getFirst().top() == firstTop && !screen.noteRows().getFirst().note().equals(rows.getFirst().note()),
 					"scrolling moves the next note into the first row");
 			for (HandbookNote note : shipped) {
 				screen.openNote(note.id());
-				check(note.id().equals(screen.openNote()), "note " + note.number() + " opens");
+				require(note.id().equals(screen.openNote()), "note " + note.number() + " opens");
 			}
 		});
 	}
 
 	private static void inTheRealGame(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			context.runOnClient(client -> check(ClientNotes.entries().isEmpty(), "a new world has no notes"));
+			context.runOnClient(client -> require(ClientNotes.entries().isEmpty(), "a new world has no notes"));
 			singleplayer.getServer().runOnServer(server -> {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-				check(Charters.found(server, player.getUUID(), "Notes Test Co").isEmpty(), "the player founds a charter");
+				require(Charters.found(server, player.getUUID(), "Notes Test Co").isEmpty(), "the player founds a charter");
 				useNoteBlock(player, 1);
 				useNoteBlock(player, 10);
 			});
 			ClientWait.until(context, "the notes the server sent", client -> ClientNotes.entries().stream().map(HandbookNote::id).toList().equals(List.of(FIRST, TENTH)), client -> "notes " + ClientNotes.entries().stream().map(HandbookNote::id).toList());
-			check(context.computeOnClient(client -> !ClientReadMarks.isRead(FIRST) && !ClientReadMarks.isRead(TENTH)), "the found notes are unread");
+			require(context.computeOnClient(client -> !ClientReadMarks.isRead(FIRST) && !ClientReadMarks.isRead(TENTH)), "the found notes are unread");
 
 			context.runOnClient(client -> HandbookScreen.open(client));
 			ClientWait.screen(context, HandbookScreen.class);
 			HandbookScreen screen = context.computeOnClient(client -> (HandbookScreen) client.gui.screen());
 			context.runOnClient(client -> screen.showNotes());
 			context.waitTicks(2);
-			check(context.computeOnClient(client -> screen.noteRows().size() == 2 && screen.noteUnread(FIRST) && screen.noteUnread(TENTH)),
+			require(context.computeOnClient(client -> screen.noteRows().size() == 2 && screen.noteUnread(FIRST) && screen.noteUnread(TENTH)),
 					"the Notes tab lists the two found notes, both unread");
 
 			context.runOnClient(client -> screen.mouseClicked(clickOn(screen.noteRows().getFirst()), false));
 			context.waitTicks(2);
 			context.takeScreenshot("notes-open");
-			check(context.computeOnClient(client -> FIRST.equals(screen.openNote())), "clicking the first row opens the first note");
+			require(context.computeOnClient(client -> FIRST.equals(screen.openNote())), "clicking the first row opens the first note");
 			ClientWait.until(context, "the first note marked read", client -> ClientReadMarks.isRead(FIRST), client -> "read mark " + ClientReadMarks.isRead(FIRST));
-			check(singleplayer.getServer().computeOnServer(server -> ReadMarks.isRead(server.getPlayerList().getPlayers().getFirst(), FIRST)),
+			require(singleplayer.getServer().computeOnServer(server -> ReadMarks.isRead(server.getPlayerList().getPlayers().getFirst(), FIRST)),
 					"the server holds the read mark");
-			check(singleplayer.getServer().computeOnServer(server -> !ReadMarks.isRead(server.getPlayerList().getPlayers().getFirst(), TENTH)),
+			require(singleplayer.getServer().computeOnServer(server -> !ReadMarks.isRead(server.getPlayerList().getPlayers().getFirst(), TENTH)),
 					"the other note stays unread");
 
 			context.runOnClient(client -> screen.closeNote());
 			context.waitTicks(2);
-			check(context.computeOnClient(client -> !screen.noteUnread(FIRST) && screen.noteUnread(TENTH)), "the list tells the read note from the unread one");
+			require(context.computeOnClient(client -> !screen.noteUnread(FIRST) && screen.noteUnread(TENTH)), "the list tells the read note from the unread one");
 			context.takeScreenshot("notes-tab");
 			context.setScreen(() -> null);
 		}
@@ -165,11 +167,5 @@ public class NotesClientTest implements FabricClientGameTest {
 		BlockPos pos = player.blockPosition().relative(Direction.NORTH, 2);
 		player.level().setBlock(pos, NoteBlock.stateOf(number), 3);
 		player.level().getBlockState(pos).useWithoutItem(player.level(), player, new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false));
-	}
-
-	private static void check(boolean condition, String message) {
-		if (!condition) {
-			throw new AssertionError(message);
-		}
 	}
 }

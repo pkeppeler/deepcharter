@@ -19,6 +19,8 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+
 /** Client GameTest: the client sees the mock pilot's blocks disappear, and only the pod's 2 x 2 of them. */
 public class PodDrillClientTest implements FabricClientGameTest {
 	private static final int X = 500;
@@ -43,9 +45,7 @@ public class PodDrillClientTest implements FabricClientGameTest {
 				PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
 				pod.setPos(at);
 				level.addFreshEntity(pod);
-				if (!two.mock().player().startRiding(pod)) {
-					throw new AssertionError("the mock pilot could not mount the pod");
-				}
+				require(two.mock().player().startRiding(pod), "the mock pilot could not mount the pod");
 				return pod.getId();
 			});
 			// The mock pod stands on a 2 x 2 of stone the client has loaded.
@@ -57,13 +57,9 @@ public class PodDrillClientTest implements FabricClientGameTest {
 
 			for (BlockPos bored : new BlockPos[] {cell(X - 1, FLOOR_Y - 1, Z - 1), cell(X, FLOOR_Y - 1, Z - 1),
 					cell(X - 1, FLOOR_Y - 1, Z), cell(X, FLOOR_Y - 1, Z)}) {
-				if (!context.computeOnClient(client -> client.level.getBlockState(bored).isAir())) {
-					throw new AssertionError("The client still sees stone at the bore's cell " + bored);
-				}
+				require(context.computeOnClient(client -> client.level.getBlockState(bored).isAir()), "The client still sees stone at the bore's cell " + bored);
 			}
-			if (context.computeOnClient(client -> client.level.getBlockState(cell(X + 1, FLOOR_Y - 1, Z)).isAir())) {
-				throw new AssertionError("The client sees the bore wider than the pod's 2 x 2");
-			}
+			require(!context.computeOnClient(client -> client.level.getBlockState(cell(X + 1, FLOOR_Y - 1, Z)).isAir()), "The client sees the bore wider than the pod's 2 x 2");
 			ClientWait.until(context, "the pod below the floor", client -> client.level.getEntity(podId).getY() < FLOOR_Y - 0.5);
 		}
 	}
