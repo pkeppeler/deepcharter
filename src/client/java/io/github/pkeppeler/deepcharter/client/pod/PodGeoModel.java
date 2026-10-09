@@ -63,12 +63,10 @@ public class PodGeoModel extends Model<PodGeoRenderState> {
 		for (GeoModel.Bone top : geo.bones().stream().filter(bone -> bone.parent().isEmpty()).toList()) {
 			collect(geo, top, root().getChild(top.name()), parts);
 		}
-		ModelPart mount = null;
 		for (GeoModel.Bone bone : geo.bones()) {
 			ModelPart part = parts.get(bone.name());
 			switch (bone.role()) {
-				case FIXED -> { }
-				case DRILL_MOUNT -> mount = part;
+				case FIXED, DRILL_MOUNT -> { }
 				case DRILL_HEAD -> drillHeads.add(part);
 				case ROTOR -> rotors.add(part);
 				case FAN -> fans.add(part);
@@ -81,8 +79,9 @@ public class PodGeoModel extends Model<PodGeoRenderState> {
 			}
 		}
 		// GeoModel.parse guarantees exactly one drill mount.
-		drillMount = mount;
-		mountRestPitch = (float) geo.bones().stream().filter(bone -> bone.role() == BoneRole.DRILL_MOUNT).findFirst().orElseThrow().rotation().x;
+		GeoModel.Bone mount = geo.bones().stream().filter(bone -> bone.role() == BoneRole.DRILL_MOUNT).findFirst().orElseThrow();
+		drillMount = parts.get(mount.name());
+		mountRestPitch = (float) mount.rotation().x;
 	}
 
 	/** The drill mount's x rotation in the file: where the drill rests while the pod is not drilling. */
