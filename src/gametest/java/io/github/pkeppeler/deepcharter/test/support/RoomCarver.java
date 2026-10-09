@@ -1,8 +1,12 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 
 import io.github.pkeppeler.deepcharter.layer.RoomSeal;
@@ -14,6 +18,9 @@ import io.github.pkeppeler.deepcharter.layer.RoomSeal;
  * touches a layer dimension. A solid fill (a stone bed) goes through here too, so that its shell is sealed to the same depth.
  */
 public final class RoomCarver {
+	private static final int ARRIVAL_RADIUS = 4;
+	private static final int ARRIVAL_HEIGHT = 5;
+
 	private RoomCarver() {
 	}
 
@@ -35,5 +42,15 @@ public final class RoomCarver {
 		for (BlockPos pos : BlockPos.betweenClosed(min, max)) {
 			level.setBlock(pos, fill, flags);
 		}
+	}
+
+	/** The layer 2 arrival point is in lava, which burns a pod seated there; a sealed room of air around the first player keeps it out. */
+	public static void carveAroundFirstPlayer(TestServerContext server) {
+		server.runOnServer(minecraftServer -> {
+			ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
+			BlockPos feet = player.blockPosition();
+			carve((ServerLevel) player.level(), feet.offset(-ARRIVAL_RADIUS, 0, -ARRIVAL_RADIUS), feet.offset(ARRIVAL_RADIUS, ARRIVAL_HEIGHT, ARRIVAL_RADIUS),
+					Blocks.AIR.defaultBlockState());
+		});
 	}
 }

@@ -4,9 +4,6 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
-import net.minecraft.core.BlockPos;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
@@ -23,8 +20,6 @@ public class ScannerTiersScenario extends EvidenceScenario {
 	private static final int TICKS_PER_FRAME = 3;
 	private static final int SETTLE_TICKS = 30;
 	private static final int TRANSMISSION_TICKS = 600;
-	private static final int ROOM_RADIUS = 4;
-	private static final int ROOM_HEIGHT = 5;
 
 	/** Ore at (ahead, up), near the pod and so inside every tier. */
 	private static final int[][] NEAR_ORE = {{6, -6}, {-10, -12}, {14, -20}};
@@ -45,7 +40,7 @@ public class ScannerTiersScenario extends EvidenceScenario {
 			ScannerHudTest.goToLayer(server, 2);
 			context.waitFor(client -> client.level.dimension().identifier().getPath().equals("layer_2"));
 			context.waitTicks(40);
-			clearRoomAroundPlayer(server);
+			RoomCarver.carveAroundFirstPlayer(server);
 
 			for (int tier = 0; tier <= 2; tier++) {
 				ScannerHudTest.mountFirstPlayer(server, tier);
@@ -65,16 +60,6 @@ public class ScannerTiersScenario extends EvidenceScenario {
 				ScannerHudTest.leavePod(context, server);
 			}
 		}
-	}
-
-	/** The layer 2 arrival point is in lava, and lava burns the hull through the transmission wait. A sealed room of air around the player keeps the pod out of it. */
-	private static void clearRoomAroundPlayer(TestServerContext server) {
-		server.runOnServer(minecraftServer -> {
-			ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
-			BlockPos feet = player.blockPosition();
-			RoomCarver.carve((ServerLevel) player.level(), feet.offset(-ROOM_RADIUS, 0, -ROOM_RADIUS), feet.offset(ROOM_RADIUS, ROOM_HEIGHT, ROOM_RADIUS),
-					Blocks.AIR.defaultBlockState());
-		});
 	}
 
 	private static void placeOre(TestServerContext server, int[][] cells, Block ore) {
