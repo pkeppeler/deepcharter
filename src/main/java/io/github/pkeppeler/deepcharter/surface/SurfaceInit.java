@@ -10,5 +10,6 @@ public final class SurfaceInit {
 
 	public static void init() {
 		SurfaceRegistry.register();
+		SurfaceWorldRules.init();
 	}
 }

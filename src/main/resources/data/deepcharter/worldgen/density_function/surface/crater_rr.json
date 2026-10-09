@@ -1,0 +1,34 @@
+{
+  "type": "minecraft:div",
+  "left": {
+    "type": "minecraft:sqrt",
+    "input": {
+      "type": "minecraft:add",
+      "left": {
+        "type": "minecraft:square",
+        "input": {
+          "type": "minecraft:sub",
+          "left": {
+            "type": "minecraft:sub",
+            "left": "deepcharter:surface/cell_x",
+            "right": 48
+          },
+          "right": "deepcharter:surface/crater_jitter_x"
+        }
+      },
+      "right": {
+        "type": "minecraft:square",
+        "input": {
+          "type": "minecraft:sub",
+          "left": {
+            "type": "minecraft:sub",
+            "left": "deepcharter:surface/cell_z",
+            "right": 48
+          },
+          "right": "deepcharter:surface/crater_jitter_z"
+        }
+      }
+    }
+  },
+  "right": "deepcharter:surface/crater_radius"
+}

@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:range_choice",
+  "input": {
+    "type": "minecraft:noise",
+    "noise": "deepcharter:surface_crater_cell",
+    "xz_scale": 1.0,
+    "y_scale": 0.0,
+    "shift_x": {
+      "type": "minecraft:sub",
+      "left": 48,
+      "right": "deepcharter:surface/cell_x"
+    },
+    "shift_y": 127.0,
+    "shift_z": {
+      "type": "minecraft:sub",
+      "left": 48,
+      "right": "deepcharter:surface/cell_z"
+    }
+  },
+  "min_inclusive": 0.2,
+  "max_exclusive": 100.0,
+  "when_in_range": 1.0,
+  "when_out_of_range": 0.0
+}

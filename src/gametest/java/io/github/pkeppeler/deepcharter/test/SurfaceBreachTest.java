@@ -1,20 +1,11 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.net.URL;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.google.gson.JsonPrimitive;
 import com.mojang.serialization.JsonOps;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -158,44 +149,16 @@ public class SurfaceBreachTest {
 		});
 	}
 
+	/** The overworld's rule is ours (ADR 0036): rock to the bottom of the world, so the floor is open to the breach (ADR 0011). */
 	@GameTest
 	public void theOverworldFloorHasNoBedrock(GameTestHelper helper) {
 		var registries = helper.getLevel().registryAccess();
-		NoiseGeneratorSettings settings = registries.lookupOrThrow(Registries.NOISE_SETTINGS).getValueOrThrow(NoiseGeneratorSettings.OVERWORLD);
+		ResourceKey<NoiseGeneratorSettings> surface = ResourceKey.create(Registries.NOISE_SETTINGS, Identifier.fromNamespaceAndPath("deepcharter", "surface"));
+		NoiseGeneratorSettings settings = registries.lookupOrThrow(Registries.NOISE_SETTINGS).getValueOrThrow(surface);
 		JsonElement rule = MaterialRule.DIRECT_CODEC.encodeStart(RegistryOps.create(JsonOps.INSTANCE, registries), settings.materialRule().value())
-				.getOrThrow(message -> failure(helper, "could not encode the overworld material rule: %s", message));
-		if (rule.toString().contains("bedrock_floor")) {
-			throw failure(helper, "the overworld material rule still places the bedrock floor: %s", rule);
-		}
-		helper.succeed();
-	}
-
-	/** Our copy of the overworld rule must be vanilla's, with exactly the bedrock floor step removed. */
-	@GameTest
-	public void theOverworldRuleIsVanillasMinusTheBedrockFloor(GameTestHelper helper) throws IOException {
-		String path = "data/minecraft/worldgen/material_rule/overworld.json";
-		List<URL> copies = Collections.list(SurfaceBreachTest.class.getClassLoader().getResources(path));
-		URL vanilla = copies.stream().filter(url -> url.toString().contains("minecraft-") && url.toString().contains(".jar"))
-				.findFirst().orElseThrow(() -> failure(helper, "no copy of %s in the Minecraft jar among %s", path, copies));
-		URL ours = copies.stream().filter(url -> !url.equals(vanilla)).findFirst()
-				.orElseThrow(() -> failure(helper, "no deepcharter copy of %s among %s", path, copies));
-		JsonObject original = readJson(vanilla).getAsJsonObject();
-		JsonArray steps = original.getAsJsonArray("sequence");
-		JsonArray kept = new JsonArray();
-		int removed = 0;
-		for (JsonElement step : steps) {
-			if (step.equals(new JsonPrimitive("minecraft:bedrock_floor"))) {
-				removed++;
-			} else {
-				kept.add(step);
-			}
-		}
-		if (removed != 1) {
-			throw failure(helper, "vanilla's overworld rule has %d bedrock_floor steps, expected 1", removed);
-		}
-		original.add("sequence", kept);
-		if (!original.equals(readJson(ours))) {
-			throw failure(helper, "our overworld rule differs from vanilla's minus bedrock_floor (vanilla: %s, ours: %s)", vanilla, ours);
+				.getOrThrow(message -> failure(helper, "could not encode the surface material rule: %s", message));
+		if (rule.toString().contains("bedrock")) {
+			throw failure(helper, "the surface material rule places bedrock: %s", rule);
 		}
 		helper.succeed();
 	}
@@ -262,13 +225,6 @@ public class SurfaceBreachTest {
 		}
 	}
 
-	private static JsonElement readJson(URL url) throws IOException {
-		try (Reader reader = new InputStreamReader(url.openStream())) {
-			return JsonParser.parseReader(reader);
-		}
-	}
-
-	// assertionException(String, Object...) leaves the placeholders unfilled in the report.
 	private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
 		return helper.assertionException(Component.literal(String.format(format, args)));
 	}

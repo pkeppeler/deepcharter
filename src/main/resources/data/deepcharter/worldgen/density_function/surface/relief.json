@@ -1,0 +1,5 @@
+{
+  "type": "minecraft:mul",
+  "left": "deepcharter:surface/natural_relief",
+  "right": "deepcharter:surface/relief_weight"
+}

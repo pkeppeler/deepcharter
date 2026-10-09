@@ -1,1 +1,7 @@
-{}
+{
+  "block.deepcharter.basalt_outcrop": "Basalt Outcrop",
+  "block.deepcharter.ochre_regolith": "Ochre Regolith",
+  "block.deepcharter.regolith": "Regolith",
+  "block.deepcharter.regolith_packed": "Packed Regolith",
+  "block.deepcharter.regolith_rock": "Regolith Rock"
+}

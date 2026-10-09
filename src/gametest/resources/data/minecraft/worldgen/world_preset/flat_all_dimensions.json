@@ -34,6 +34,346 @@
         "settings": "deepcharter:layer_2"
       }
     },
+    "deepcharter:surface_sample": {
+      "type": "minecraft:overworld",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "minecraft:multi_noise",
+          "biomes": [
+            {
+              "biome": "deepcharter:regolith_plains",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  1.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  -2.0,
+                  0.22
+                ],
+                "erosion": [
+                  -2.0,
+                  0.5
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            },
+            {
+              "biome": "deepcharter:mesa_country",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  1.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  0.22,
+                  2.0
+                ],
+                "erosion": [
+                  -1.0,
+                  1.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            },
+            {
+              "biome": "deepcharter:basalt_field",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  1.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  -2.0,
+                  0.22
+                ],
+                "erosion": [
+                  0.5,
+                  2.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            }
+          ]
+        },
+        "settings": "deepcharter:surface"
+      }
+    },
+    "deepcharter:tall_baseline": {
+      "type": "deepcharter:tall_baseline",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "deepcharter:zones",
+          "min_y": -2032,
+          "height": 2048,
+          "biomes": [
+            "deepcharter:topsoil_claims",
+            "deepcharter:stone_benches",
+            "deepcharter:deep_claim"
+          ]
+        },
+        "settings": "deepcharter:tall_baseline"
+      }
+    },
+    "deepcharter:tall_baseline_biomes": {
+      "type": "deepcharter:tall_baseline",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "minecraft:multi_noise",
+          "biomes": [
+            {
+              "biome": "deepcharter:regolith_plains",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  1.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  -2.0,
+                  0.22
+                ],
+                "erosion": [
+                  -2.0,
+                  0.5
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            },
+            {
+              "biome": "deepcharter:mesa_country",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  1.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  0.22,
+                  2.0
+                ],
+                "erosion": [
+                  -1.0,
+                  1.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            },
+            {
+              "biome": "deepcharter:basalt_field",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  1.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  -2.0,
+                  0.22
+                ],
+                "erosion": [
+                  0.5,
+                  2.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            }
+          ]
+        },
+        "settings": "deepcharter:tall_baseline"
+      }
+    },
+    "deepcharter:tall_surface": {
+      "type": "deepcharter:tall_surface",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "deepcharter:zones",
+          "min_y": -2032,
+          "height": 2352,
+          "biomes": [
+            "deepcharter:topsoil_claims",
+            "deepcharter:stone_benches",
+            "deepcharter:deep_claim"
+          ]
+        },
+        "settings": "deepcharter:tall_surface"
+      }
+    },
+    "deepcharter:tall_surface_biomes": {
+      "type": "deepcharter:tall_surface",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "minecraft:multi_noise",
+          "biomes": [
+            {
+              "biome": "deepcharter:regolith_plains",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  1.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  -2.0,
+                  0.22
+                ],
+                "erosion": [
+                  -2.0,
+                  0.5
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            },
+            {
+              "biome": "deepcharter:mesa_country",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  1.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  0.22,
+                  2.0
+                ],
+                "erosion": [
+                  -1.0,
+                  1.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            },
+            {
+              "biome": "deepcharter:basalt_field",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  1.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  -2.0,
+                  0.22
+                ],
+                "erosion": [
+                  0.5,
+                  2.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            }
+          ]
+        },
+        "settings": "deepcharter:tall_surface"
+      }
+    },
     "minecraft:overworld": {
       "type": "minecraft:overworld",
       "generator": {

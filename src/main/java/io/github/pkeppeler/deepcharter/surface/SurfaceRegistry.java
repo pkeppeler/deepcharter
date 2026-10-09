@@ -20,7 +20,8 @@ public final class SurfaceRegistry {
 	private SurfaceRegistry() {
 	}
 
-	/** Loads this class, which registers the particle. The surface rules and structure removal come with #55. */
+	/** Loads this class, which registers the particle, and the surface blocks. The surface rules and structure removal are data. */
 	public static void register() {
+		SurfaceBlocks.register();
 	}
 }
