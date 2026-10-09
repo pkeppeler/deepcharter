@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -56,8 +57,8 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 
 /**
- * The world and the views that the texture test scenarios shoot (#336 in {@link TextureDensityScenario}, #354 in
- * {@link TextureOverlayScenario}): one real world (the design tour's seed, so the surface is the generator's regolith), the rooms
+ * The world and the views that the texture test scenarios shoot (#336 in {@link TextureDensityScenario}, #367 in
+ * {@link OreLookScenario}): one real world (the design tour's seed, so the surface is the generator's regolith), the rooms
  * built in layer 1, and a creative, flying camera with the HUD hidden, under the design tour's pins. Each view is shot once per
  * variant, named {@code <variant>-<view>}; a variant's test pack is turned on, as a player does in the pack screen, and off again.
  *
@@ -84,6 +85,9 @@ final class TextureTestWorld {
 	private static final BlockPos TERMINAL_ROOM = new BlockPos(2600, 100, 2570);
 	/** The seam room: its south wall, at {@code z + WALL}, is plain stone with the ores in a checkerboard. */
 	private static final BlockPos SEAM_ROOM = new BlockPos(2600, 100, 2630);
+	/** The reference room: its south wall, at {@code z + WALL}, is plain stone with every ore in a column of its own. */
+	private static final BlockPos REFERENCE_ROOM = new BlockPos(2600, 100, 2660);
+	private static final int REFERENCE_HALF_WIDTH = 7;
 	/** The ores in the cavern wall, by their place in it: blocks east of the room's middle, and up from its floor. */
 	private static final Map<BlockPos, Block> WALL_BLOCKS = Map.ofEntries(
 			Map.entry(new BlockPos(-4, 3, 0), OreRegistry.block(OreType.IRONIUM)),
@@ -185,6 +189,25 @@ final class TextureTestWorld {
 		});
 	}
 
+	/**
+	 * A sealed room like the cavern, whose south wall holds each ore in a column of its own, three high, with plain stone between
+	 * every two ores, in the order of {@link OreType}, lit two blocks out: every ore on its host stone, at the size it shows.
+	 */
+	void buildReferenceWall() {
+		serverDo(server -> {
+			ServerLevel level = server.getLevel(LayerChain.dimension(1));
+			Map<BlockPos, Block> blocks = new HashMap<>();
+			OreType[] ores = OreType.values();
+			for (int column = 0; column < ores.length; column++) {
+				for (int row = 0; row < 3; row++) {
+					blocks.put(new BlockPos(-6 + 2 * column, 2 * row, 0), OreRegistry.block(ores[column]));
+				}
+			}
+			buildWall(level, REFERENCE_ROOM, REFERENCE_HALF_WIDTH, blocks);
+			level.setBlock(REFERENCE_ROOM.offset(0, 2, WALL - 3), lamp(LAMP), Block.UPDATE_ALL);
+		});
+	}
+
 	private static void buildWall(ServerLevel level, BlockPos room, int halfWidth, Map<BlockPos, Block> blocks) {
 		loadChunks(level, room, 2);
 		RoomCarver.carve(level, room.offset(-halfWidth, 0, -WALL - 5), room.offset(halfWidth, HEIGHT - 1, WALL - 1), Blocks.AIR.defaultBlockState());
@@ -264,6 +287,13 @@ final class TextureTestWorld {
 		Vec3 goldium = wall.add(1, 0, 0);
 		view(1, goldium.add(0, 0, -1.7), goldium, 20);
 		still(variant + "-seam-close");
+	}
+
+	/** The reference wall square on, with the lamp out for the second still. */
+	void referenceWall(String variant) {
+		Vec3 wall = Vec3.atBottomCenterOf(REFERENCE_ROOM).add(0, 2, WALL);
+		view(1, wall.add(0, 0, -5.2), wall, 40);
+		still(variant + "-reference-wall");
 	}
 
 	/** The regolith of an open plain near the colony, at noon. */

@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "deepcharter:block/silverium_ore"
+    "model": "deepcharter:block/silverium_ore_overlay_0"
   }
 }

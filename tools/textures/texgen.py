@@ -17,6 +17,11 @@ pack with overlays (docs/design/texture-density-2.md) also gets the blockstates 
 texture with an overlay over it. It owns every blockstate and model in it, and its assets/minecraft/: --check lists any file there
 that it does not make, since an overlay pack replaces nothing of vanilla.
 
+The default run (no --palette, --recipes, --out or --sheet) also writes the blockstates and models of the mod's ore blocks
+(overlays.json, docs/design/ores.md), each the host's own texture, by reference, with the ore art over it, and its --check fails
+on any file under the mod's assets/minecraft/ block or item textures, models, blockstates or items, since the mod overrides
+no vanilla block or item.
+
 A file whose pixels already match is not rewritten, so a build on another zlib does not churn the repo. --check writes nothing:
 it exits 1 and lists every texture, .mcmeta or sheet that differs from what the recipes make, and every PNG under the managed
 directories (block/, item/) that no recipe makes. Art drawn or curated by hand is a PNG under sources/ beside the recipes
@@ -43,6 +48,13 @@ DEFAULT_RECIPES = HERE / "recipes"
 DEFAULT_OUT = ROOT / "src/main/resources/assets/deepcharter/textures"
 DEFAULT_SHEET = ROOT / "docs/design/texture-reference.png"
 VARIANTS = HERE / "variants.json"
+# The mod's ore blocks: each draws the host block's texture, by reference, with a cutout overlay of our ore art over it
+# (docs/design/ores.md). The blockstates and models are generated into the mod's assets, beside DEFAULT_OUT.
+OVERLAYS = HERE / "overlays.json"
+MOD_ASSETS = ROOT / "src/main/resources/assets"
+# The parts of the vanilla namespace in the mod's assets where no file may be: the mod draws vanilla stone by name and overrides no
+# block or item texture or model. (The sky's sun texture, ADR 0030, is the one vanilla file it ships, and test_texture_packs pins it.)
+MOD_OWNED = tuple(MOD_ASSETS / "minecraft" / part for part in ("textures/block", "textures/item", "models", "blockstates", "items"))
 # Where a variant pack keeps its textures, under its pack directory.
 PACK_TEXTURES = Path("assets/deepcharter/textures")
 # Directories of --out whose every PNG must come from a recipe.
@@ -67,6 +79,15 @@ class Target:
 
 def load(palettes: list[Path], recipes: list[Path]) -> Book:
     return Book(Palette.load([DEFAULT_PALETTE, *palettes]), [DEFAULT_RECIPES, *recipes])
+
+
+def shipped() -> Target:
+    """The mod's own textures, and the blockstates and models of its ore blocks (overlays.json) over the host's own texture."""
+    book = load([], [])
+    body = json.loads(OVERLAYS.read_text())
+    files = Overlays.parse(body, str(OVERLAYS)).files(book, tuple(book.recipes))
+    return Target(book, tuple(book.recipes), DEFAULT_OUT, DEFAULT_SHEET, {MOD_ASSETS / path: text for path, text in files.items()},
+                  MOD_OWNED)
 
 
 def variants() -> dict[str, dict]:
@@ -171,7 +192,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.variant:
             target = variant(args.variant)
+        elif args.out == DEFAULT_OUT and args.sheet == DEFAULT_SHEET and not args.palette and not args.recipes:
+            target = shipped()
         else:
+            # A skin build writes textures only: the models and blockstates are the mod's, and a skin inherits them by name.
             book = load(args.palette, args.recipes)
             target = Target(book, tuple(book.recipes), args.out, args.sheet, {}, ())
         files = outputs(target)

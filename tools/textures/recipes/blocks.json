@@ -95,13 +95,6 @@
     "block/hangar_console_front_glow": {"template": "terminal_glow", "args": {"over": "block/hangar_console_front", "glyph": [
       ".####...", "#.oo.#..", "#.oo.###", "#....##o", ".#####..", "..#..#.."]}},
 
-    "block/ironium_ore": {"template": "ore_block", "args": {"mineral": "ironium", "seed": 101, "count": 7, "shapes": ["chunk", "pebble", "pebble", "chip"]}},
-    "block/bronzium_ore": {"template": "ore_block", "args": {"mineral": "bronzium", "seed": 102, "count": 5, "shapes": ["knot", "nugget", "pebble"]}},
-    "block/silverium_ore": {"template": "ore_block", "args": {"mineral": "silverium", "seed": 103, "count": 6, "shapes": ["vein", "vein", "seam", "fleck"]}},
-    "block/goldium_ore": {"template": "ore_block", "args": {"mineral": "goldium", "seed": 104, "count": 3, "shapes": ["nugget", "nugget", "knot"]}},
-    "block/platinium_ore": {"template": "ore_block", "args": {"mineral": "platinium", "seed": 105, "count": 5, "shapes": ["chunk", "pebble", "chip"]}},
-    "block/einsteinium_ore": {"template": "ore_block", "args": {"mineral": "einsteinium", "seed": 106, "count": 4, "shapes": ["shard", "shard", "chip"]}},
-    "block/cicatrium_ore": {"template": "ore_block", "args": {"mineral": "cicatrium", "seed": 107, "count": 3, "shapes": ["vein", "vein", "seam"]}},
 
     "block/breach_crust": {
       "kind": "opaque",

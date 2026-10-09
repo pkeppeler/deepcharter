@@ -1,0 +1,5 @@
+{
+  "host": "minecraft:block/stone",
+  "textures": 4,
+  "blocks": ["ironium_ore", "bronzium_ore", "silverium_ore", "goldium_ore", "platinium_ore", "einsteinium_ore", "cicatrium_ore"]
+}
