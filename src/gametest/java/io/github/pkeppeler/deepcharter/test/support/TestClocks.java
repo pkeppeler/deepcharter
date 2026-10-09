@@ -11,7 +11,10 @@ public final class TestClocks {
 	private TestClocks() {
 	}
 
-	/** Runs {@code body} with {@code clock} paused at {@code ticks}, then puts its ticks and pause back. */
+	/**
+	 * Runs {@code body} with {@code clock} paused at {@code ticks}, then puts its ticks and pause back. Call it on the
+	 * server thread: the pin and the restore happen on the caller's tick, so no other test sees the pinned clock.
+	 */
 	public static void paused(MinecraftServer server, Holder<WorldClock> clock, long ticks, Runnable body) {
 		ServerClockManager clocks = server.clockManager();
 		ClockInstance before = clocks.getInstance(clock);
