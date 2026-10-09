@@ -453,7 +453,7 @@ def op_cluster(canvas: Canvas, layer: dict, ctx: Context) -> None:
     for _ in range(layer["count"] * 60):
         if len(clumps) == layer["count"]:
             break
-        height = _clump(layer, rng, size)
+        height = _clump(layer, rng, size, margin)
         cast = {(x + dx, y + dy) for x, y in height for dx, dy in ((1, 0), (0, 1), (1, 1))} - set(height)
         inside = all(margin <= x < size - margin and margin <= y < size - margin for x, y in height)
         if not height or not inside or any(not (0 <= x < size and 0 <= y < size) for x, y in cast):
@@ -496,11 +496,11 @@ def op_cluster(canvas: Canvas, layer: dict, ctx: Context) -> None:
             canvas.put(x, y, glint)
 
 
-def _clump(layer: dict, rng: Rng, size: int) -> dict[tuple[int, int], float]:
+def _clump(layer: dict, rng: Rng, size: int, margin: int) -> dict[tuple[int, int], float]:
     """The height (0 to 1) of every pixel a clump covers, from its lumps; a pixel is covered where a lump's height is above 0."""
     lo, hi = layer["radius"]
     radius = lo + (hi - lo) * rng.unit()
-    span = size - 2 * (layer.get("margin", 1) + radius)
+    span = size - 2 * (margin + radius)
     cx, cy = size / 2 + (rng.unit() - 0.5) * span, size / 2 + (rng.unit() - 0.5) * span
     crystal = layer.get("crystal", False)
     axis = rng.below(len(AXES))
@@ -533,12 +533,13 @@ def _clump(layer: dict, rng: Rng, size: int) -> dict[tuple[int, int], float]:
 def _veins(canvas: Canvas, layer: dict, rng: Rng, size: int, height: dict[tuple[int, int], float], colours: tuple[Colour, Colour]) -> None:
     """Threads that wander out of a clump, a step at a time, turning now and then; one stops at the tile edge."""
     start = sorted(height)
+    length = layer.get("vein", 4)
     for _ in range(layer.get("veins", 0)):
         x, y = start[rng.below(len(start))]
         heading = rng.below(8)
         drawn = 0
-        for _ in range(layer.get("vein", 4) * 3):
-            if drawn == layer.get("vein", 4):
+        for _ in range(length * 3):
+            if drawn == length:
                 break
             turn = rng.below(4)
             heading = (heading + (1 if turn == 0 else -1 if turn == 1 else 0)) % 8
