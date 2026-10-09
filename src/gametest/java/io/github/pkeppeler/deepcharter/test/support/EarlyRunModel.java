@@ -84,6 +84,27 @@ public final class EarlyRunModel {
 		}
 	}
 
+	/**
+	 * The litres to bore {@code blocks} slabs straight down from the surface in one go, with no climb back: the cost of a first
+	 * descent that cannot refuel at the pump. The pod cannot drive back down its own shaft (see {@link #safeDropBlocks}).
+	 */
+	public static double boreLitres(Zone zone, PodStats stats, int blocks) {
+		double litres = 0;
+		for (int slab = 1; slab <= blocks; slab++) {
+			litres += slabSeconds(zone, stats, slab - 0.5) * (stats.drillingLitresPerSecond() + stats.idleLitresPerSecond());
+		}
+		return litres;
+	}
+
+	/**
+	 * The blocks a pod can fall, or drive down an open shaft, before the hull is gone. The hull loses {@code hullDamagePerBlock} for each
+	 * block past {@code hardLandingDistance}, whatever the speed: the damage reads the distance fallen (a rotor-braked fall costs the same
+	 * hull as a free one, in PodCargoFuelTest).
+	 */
+	public static int safeDropBlocks(PodStats stats) {
+		return (int) (stats.hardLandingDistance() + Math.ceil(stats.maxHull() / stats.hullDamagePerBlock()) - 1);
+	}
+
 	/** Blocks of layer 1, which a run in layer 2 climbs through twice (the shaft is already bored). */
 	public static int layerOneBlocks() {
 		return json("/data/deepcharter/dimension/layer_1.json").getAsJsonObject("generator").getAsJsonObject("biome_source")
@@ -105,21 +126,13 @@ public final class EarlyRunModel {
 	 * climbs back at the rotor's top climb speed; fuel is bought at the surface at {@link FuelTuning}'s price.
 	 */
 	public static Run run(Zone zone, PodStats stats, int shaftBlocks) {
-		int width = (int) Math.ceil(Chassis.MOLE.width());
-		int cells = width * width;
+		int cells = cellsPerSlab();
 		double oreChance = zone.oreChance();
-		// A slab with ore in it takes as long as its hardest block; the zone fill replaces vanilla stone.
-		float stoneHardness = Blocks.STONE.defaultDestroyTime();
-		float oreHardness = zone.chances().keySet().stream().map(type -> OreRegistry.block(type).defaultDestroyTime()).max(Float::compare).orElseThrow();
-		double slabHasOre = 1 - Math.pow(1 - oreChance, cells);
 		double climbSecondsPerBlock = 1 / (stats.maxClimbSpeed() * 20);
 		int slabs = 0;
 		double litres = 0;
 		for (int next = 1;; next++) {
-			int depthFeet = (int) ((shaftBlocks + next / 2.0) * LayerTuning.DEFAULT.feetPerBlock());
-			double stoneTicks = PodDrill.drillTicks(stats, stoneHardness, depthFeet);
-			double oreTicks = PodDrill.drillTicks(stats, oreHardness, depthFeet);
-			double drillSeconds = (stoneTicks * (1 - slabHasOre) + oreTicks * slabHasOre) / 20;
+			double drillSeconds = slabSeconds(zone, stats, shaftBlocks + next / 2.0);
 			double climbSeconds = (shaftBlocks + next) * climbSecondsPerBlock;
 			double used = drillSeconds * next * stats.drillingLitresPerSecond() + climbSeconds * stats.movingLitresPerSecond()
 					+ (drillSeconds * next + climbSeconds) * stats.idleLitresPerSecond();
@@ -134,6 +147,22 @@ public final class EarlyRunModel {
 		double gross = averageOre * Math.min(ores, stats.cargoSlots());
 		double catalysts = slabs * cells * zone.catalystChance() * YIELD;
 		return new Run(slabs, litres, ores, gross, gross - litres * FuelTuning.DEFAULT.pricePerLitre(), catalysts);
+	}
+
+	private static int cellsPerSlab() {
+		int width = (int) Math.ceil(Chassis.MOLE.width());
+		return width * width;
+	}
+
+	/** Seconds to drill one slab at {@code depthBlocks} below the surface. A slab with ore in it takes as long as its hardest block; the zone fill replaces vanilla stone. */
+	private static double slabSeconds(Zone zone, PodStats stats, double depthBlocks) {
+		float stoneHardness = Blocks.STONE.defaultDestroyTime();
+		float oreHardness = zone.chances().keySet().stream().map(type -> OreRegistry.block(type).defaultDestroyTime()).max(Float::compare).orElseThrow();
+		double slabHasOre = 1 - Math.pow(1 - zone.oreChance(), cellsPerSlab());
+		int depthFeet = (int) (depthBlocks * LayerTuning.DEFAULT.feetPerBlock());
+		double stoneTicks = PodDrill.drillTicks(stats, stoneHardness, depthFeet);
+		double oreTicks = PodDrill.drillTicks(stats, oreHardness, depthFeet);
+		return (stoneTicks * (1 - slabHasOre) + oreTicks * slabHasOre) / 20;
 	}
 
 	private static JsonObject json(String resource) {

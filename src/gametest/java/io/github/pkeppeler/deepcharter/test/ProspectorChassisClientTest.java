@@ -24,6 +24,8 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+
 /**
  * Client GameTest on a real dedicated server: a mock player pilots a Prospector and the real client rides it as the navigator. Both
  * show on the client, the navigator's screen holds the scanner (its marker fills all three cells of the Prospector) and not the pod
@@ -61,9 +63,7 @@ public class ProspectorChassisClientTest implements FabricClientGameTest {
 				return pod.chassis() == Chassis.PROSPECTOR && pod.getPassengers().size() == 2
 						&& pod.getControllingPassenger() == client.level.getPlayerByUUID(mockId) && pod.getPassengers().get(1) == client.player;
 			});
-			if (!ridingTogether) {
-				throw new AssertionError("The client should see itself as the navigator of a two-seat Prospector piloted by the mock player");
-			}
+			require(ridingTogether, "The client should see itself as the navigator of a two-seat Prospector piloted by the mock player");
 
 			ScannerHudTest.HudShot navigator = ScannerHudTest.HudShot.take(context, "prospector-navigator", ScannerHudTest.TIER_ONE);
 			for (int up = 0; up < POD_CELLS; up++) {
@@ -71,17 +71,13 @@ public class ProspectorChassisClientTest implements FabricClientGameTest {
 			}
 			expectPixel(navigator, "the cell above the Prospector is air", POD_CELLS, ScannerLook.current().airColor());
 			int navigatorText = whitePixels(navigator);
-			if (navigatorText != 0) {
-				throw new AssertionError("The navigator should see the scanner only, but " + navigatorText + " pixels of status text are on screen");
-			}
+			require(navigatorText == 0, "The navigator should see the scanner only, but " + navigatorText + " pixels of status text are on screen");
 
 			two.server().runOnServer(server -> two.mock().player().stopRiding());
 			ClientWait.until(context, "the pod with one passenger", client -> client.player.getVehicle() instanceof PodEntity pod && pod.getPassengers().size() == 1);
 			context.waitTicks(2);
 			ScannerHudTest.HudShot pilot = ScannerHudTest.HudShot.take(context, "prospector-pilot", ScannerHudTest.TIER_ONE);
-			if (whitePixels(pilot) == 0) {
-				throw new AssertionError("With the pilot gone the client takes the controls and should see the pod status lines");
-			}
+			require(whitePixels(pilot) != 0, "With the pilot gone the client takes the controls and should see the pod status lines");
 		}
 	}
 
@@ -104,9 +100,7 @@ public class ProspectorChassisClientTest implements FabricClientGameTest {
 		pod.setPos(X + 0.5, FLOOR_Y, Z + 0.5);
 		pod.setFuel(100f);
 		level.addFreshEntity(pod);
-		if (!two.mock().player().startRiding(pod) || !real.startRiding(pod)) {
-			throw new AssertionError("Both players should board the Prospector");
-		}
+		require(two.mock().player().startRiding(pod) && real.startRiding(pod), "Both players should board the Prospector");
 		// Since scanner tiers, only a fitted scanner draws the panel. It is fitted after boarding: a registered pod admits its crew only.
 		ScannerPods.fit(level.getServer(), real, pod, 1);
 		return pod.getId();
@@ -128,9 +122,7 @@ public class ProspectorChassisClientTest implements FabricClientGameTest {
 
 	private static void expectPixel(ScannerHudTest.HudShot shot, String what, int up, int colour) {
 		int actual = shot.pixel(0, up);
-		if (actual != (colour & RGB)) {
-			throw new AssertionError("%s: the pixel should be %06X, it is %06X".formatted(what, colour & RGB, actual));
-		}
+		require(actual == (colour & RGB), "%s: the pixel should be %06X, it is %06X".formatted(what, colour & RGB, actual));
 	}
 
 	/** The pure white pixels in the top left corner, where the pod status text is drawn. */

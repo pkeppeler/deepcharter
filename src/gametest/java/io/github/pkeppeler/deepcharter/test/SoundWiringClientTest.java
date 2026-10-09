@@ -51,6 +51,8 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+
 /**
  * Client GameTest for #71: a listener on the sound manager confirms that each wired event plays. The pod loops, the
  * low-fuel beep, the terminal music, the typewriter, the sale, the purchase, the error and the music of every layer.
@@ -129,9 +131,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 				PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
 				pod.setPos(at);
 				level.addFreshEntity(pod);
-				if (!two.mock().player().startRiding(pod)) {
-					throw new AssertionError("the mock pilot could not mount the pod");
-				}
+				require(two.mock().player().startRiding(pod), "the mock pilot could not mount the pod");
 				return pod.getId();
 			});
 			ClientWait.until(context, "the pod in the client's level", client -> client.level.getEntity(podId) != null);
@@ -140,8 +140,8 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 			ClientWait.until(context, "the pod idling with its engine sound heard", client -> client.level.getEntity(podId) != null && client.level.getEntity(podId).tickCount > SETTLE_TICKS && heard.count("pod.engine_idle") > 0, client -> "pod " + client.level.getEntity(podId) + ", engine_idle heard " + heard.count("pod.engine_idle"));
 			long idleLoops = heard.count("pod.engine_idle");
 			context.waitTicks(SETTLE_TICKS);
-			check(heard.count("pod.engine_idle") == idleLoops, "a steady idle engine keeps one loop, not a new one every tick, heard " + heard.played);
-			check(heard.count("pod.rotor") == 0 && heard.count("pod.engine_drive") == 0, "a pod at rest has no rotor or drive sound");
+			require(heard.count("pod.engine_idle") == idleLoops, "a steady idle engine keeps one loop, not a new one every tick, heard " + heard.played);
+			require(heard.count("pod.rotor") == 0 && heard.count("pod.engine_drive") == 0, "a pod at rest has no rotor or drive sound");
 
 			two.server().runOnServer(server -> two.mock().setInput(JUMP));
 			await(context, heard, "pod.rotor and pod.engine_drive after the pilot jumps", client -> heard.count("pod.rotor") > 0 && heard.count("pod.engine_drive") > 0);
@@ -180,8 +180,8 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 			two.server().runOnServer(server -> server.overworld().getEntity(podId).teleportTo(x, FLOOR_Y, Z - 1));
 			context.waitTicks(BURST_TICKS);
 		}
-		check(heard.count("pod.engine_drive") - driveBefore == 1, "a pod moving in bursts keeps one drive loop, heard " + heard.played);
-		check(heard.count("pod.engine_idle") == idleBefore, "a pod moving in bursts does not fall back to idle between them, heard " + heard.played);
+		require(heard.count("pod.engine_drive") - driveBefore == 1, "a pod moving in bursts keeps one drive loop, heard " + heard.played);
+		require(heard.count("pod.engine_idle") == idleBefore, "a pod moving in bursts does not fall back to idle between them, heard " + heard.played);
 	}
 
 	/**
@@ -214,9 +214,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 			// Riding a nearly empty pod beeps.
 			singleplayer.getServer().runOnServer(server -> {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-				if (!player.startRiding(server.overworld().getEntity(scene.podId()))) {
-					throw new AssertionError("the player could not mount the pod");
-				}
+				require(player.startRiding(server.overworld().getEntity(scene.podId())), "the player could not mount the pod");
 			});
 			await(context, heard, "fuel.low", client -> heard.count("fuel.low") > 0);
 			singleplayer.getServer().runOnServer(server -> server.getPlayerList().getPlayers().getFirst().stopRiding());
@@ -226,10 +224,10 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 			await(context, heard, "music.terminal and ui.typewriter on opening the terminal", client -> heard.count("music.terminal") == 1 && heard.count("ui.typewriter") > 0);
 			context.clickScreenButton("SELL ALL CARRIED ORE");
 			await(context, heard, "ui.sale", client -> heard.count("ui.sale") > 0);
-			check(heard.count("ui.error") == 0, "a sale that works is not an error");
+			require(heard.count("ui.error") == 0, "a sale that works is not an error");
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalActionPayload(scene.processor(), OreProcessor.SELL_INVENTORY, new CompoundTag())));
 			await(context, heard, "ui.error", client -> heard.count("ui.error") > 0);
-			check(heard.count("ui.sale") == 1, "a refused sale makes no sale sound");
+			require(heard.count("ui.sale") == 1, "a refused sale makes no sale sound");
 
 			// Closing the terminal ends its music: opening another starts it again.
 			context.setScreen(() -> null);
@@ -244,9 +242,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 			// A pod loop ends with the level: its pilot rides on a level change in no case, but the old level's pod stays in the world.
 			singleplayer.getServer().runOnServer(server -> {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-				if (!player.startRiding(server.overworld().getEntity(scene.podId()))) {
-					throw new AssertionError("the player could not mount the pod");
-				}
+				require(player.startRiding(server.overworld().getEntity(scene.podId())), "the player could not mount the pod");
 			});
 			await(context, heard, "pod.engine_idle playing before the level change", client -> heard.isPlaying(client.getSoundManager(), "pod.engine_idle"));
 			singleplayer.getServer().runOnServer(server -> server.getPlayerList().getPlayers().getFirst()
@@ -256,7 +252,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 
 			// Each layer's dimension carries its music, and the client plays what the dimension says.
 			int layers = singleplayer.getServer().computeOnServer(server -> LayerChain.count(server.registryAccess()));
-			check(layers == LAYER_MUSIC.size(), "LAYER_MUSIC lists " + LAYER_MUSIC.size() + " layers, the world has " + layers);
+			require(layers == LAYER_MUSIC.size(), "LAYER_MUSIC lists " + LAYER_MUSIC.size() + " layers, the world has " + layers);
 			for (int layer = 1; layer <= layers; layer++) {
 				int target = layer;
 				singleplayer.getServer().runOnServer(server -> server.getPlayerList().getPlayers().getFirst()
@@ -269,7 +265,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 					client.getMusicManager().startPlaying(playing);
 					return playing.sound().value().location();
 				});
-				check(music.equals(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, expected)), "layer " + layer + " plays " + expected + ", got " + music);
+				require(music.equals(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, expected)), "layer " + layer + " plays " + expected + ", got " + music);
 				await(context, heard, "the music of layer " + layer, client -> heard.count(expected) > 0);
 				context.runOnClient(client -> client.getMusicManager().stopPlaying());
 			}
@@ -282,13 +278,9 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 	/** The player founds a charter with $20, carries ore, and has a repaired processor and pump and a nearly empty pod. */
 	private static Scene setUp(MinecraftServer server) {
 		ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-		if (Charters.found(server, player.getUUID(), "Sound Test Charter").isPresent()) {
-			throw new AssertionError("founding should succeed");
-		}
+		require(Charters.found(server, player.getUUID(), "Sound Test Charter").isEmpty(), "founding should succeed");
 		var charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id();
-		if (Charters.deposit(server, charter, 20).isPresent()) {
-			throw new AssertionError("the deposit should succeed");
-		}
+		require(Charters.deposit(server, charter, 20).isEmpty(), "the deposit should succeed");
 		RepairState repairs = RepairState.get(server);
 		for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR)) {
 			type.parts().forEach(part -> repairs.insert(type, part));
@@ -320,11 +312,5 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 	/** Waits on the wall clock, with what was awaited and what was heard in the failure. */
 	private static void await(ClientGameTestContext context, Heard heard, String what, Predicate<Minecraft> condition) {
 		ClientWait.until(context, what, condition, client -> "the client heard " + heard.played);
-	}
-
-	private static void check(boolean condition, String message) {
-		if (!condition) {
-			throw new AssertionError(message);
-		}
 	}
 }

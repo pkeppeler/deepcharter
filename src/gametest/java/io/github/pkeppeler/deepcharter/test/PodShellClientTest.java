@@ -16,6 +16,8 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+
 /** Client GameTest: the client sees itself riding a pod. */
 public class PodShellClientTest implements FabricClientGameTest {
 	/** Hull value that differs from a new pod's, to prove that synced data reaches the client. */
@@ -29,9 +31,7 @@ public class PodShellClientTest implements FabricClientGameTest {
 			pod.setPos(player.position());
 			pod.setHull(DAMAGED_HULL);
 			player.level().addFreshEntity(pod);
-			if (!player.startRiding(pod)) {
-				throw new AssertionError("the player could not mount the new pod");
-			}
+			require(player.startRiding(pod), "the player could not mount the new pod");
 		});
 	}
 
@@ -43,19 +43,13 @@ public class PodShellClientTest implements FabricClientGameTest {
 			ClientWait.until(context, "the client riding a pod", client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
 
 			float hull = context.computeOnClient(client -> ((PodEntity) client.player.getVehicle()).hull());
-			if (hull != DAMAGED_HULL) {
-				throw new AssertionError("The client should see the pod's synced hull " + DAMAGED_HULL + ", saw " + hull);
-			}
+			require(hull == DAMAGED_HULL, "The client should see the pod's synced hull " + DAMAGED_HULL + ", saw " + hull);
 			List<Component> lines = context.computeOnClient(
 					client -> PodStatusHud.lines((PodEntity) client.player.getVehicle()));
-			if (!lines.getFirst().getString().contains("42")) {
-				throw new AssertionError("The HUD should show hull 42 first, showed " + lines);
-			}
+			require(lines.getFirst().getString().contains("42"), "The HUD should show hull 42 first, showed " + lines);
 			boolean sameEntity = context.computeOnClient(client -> client.player.getVehicle() == client.level.getEntity(
 					client.player.getVehicle().getId()));
-			if (!sameEntity) {
-				throw new AssertionError("The client's vehicle is not the entity in its level");
-			}
+			require(sameEntity, "The client's vehicle is not the entity in its level");
 
 			singleplayer.getServer().runOnServer(minecraftServer ->
 					minecraftServer.getPlayerList().getPlayers().getFirst().stopRiding());
