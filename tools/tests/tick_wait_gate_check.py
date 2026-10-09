@@ -1,17 +1,13 @@
 """Tests the tick-wait gate in gradle/gametest.gradle: a waitFor or waitForScreen in a client GameTest or client test support file fails the build.
 
-Runs generateGametestModJson against a fixture tree (-PgametestJavaRoot), so it needs the repo's Gradle wrapper on JDK 25 and takes a
-few seconds per run. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
-A passing run leaves the fixture's mod json in build/generated/gametest-resources; the next real build regenerates it.
-Usage: python3 -I tools/tests/tick_wait_gate_check.py
+Its fixture trees go through the scan of generateGametestModJson in one Gradle run (gate_checks.py, gate_batch.py), so it needs the
+repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
+Usage: python3 -I tools/tests/gate_checks.py tick_wait
 """
-import subprocess
-import tempfile
 import unittest
-from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[2]
-PACKAGE = "io/github/pkeppeler/deepcharter/test"
+import gate_batch
+from gate_batch import Case
 
 SERVER_TEST = """
 public class FixtureTest {
@@ -74,68 +70,69 @@ VIOLATIONS = {
 }
 
 
-def write(root: Path, name: str, body: str) -> None:
-    path = root / PACKAGE / name
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(body)
+CLIENT_CLASS = "public class TicksClientTest implements FabricClientGameTest"
+BARE = "// tick-wait:\n        context.waitFor(client -> true, 5);"
+IN_STRING = 'String note = "// tick-wait: not a comment"; context.waitFor(client -> true, 5);'
+IN_TEXT_BLOCK = 'String note = """\n            // tick-wait: in a text block\n            """; context.waitFor(client -> true, 5);'
+
+# label: (file under the test package, class declaration, statement, line the gate reports)
+BAD = {
+    **{f"violation/{label}": ("TicksClientTest.java", CLIENT_CLASS, statement, 4) for label, statement in VIOLATIONS.items()},
+    "marker/a bare marker": ("TicksClientTest.java", CLIENT_CLASS, BARE, 5),
+    "marker/a marker in a string": ("TicksClientTest.java", CLIENT_CLASS, IN_STRING, 4),
+    "marker/a marker in a text block": ("TicksClientTest.java", CLIENT_CLASS, IN_TEXT_BLOCK, 6),
+    "support": ("support/TicksSupport.java", "public class TicksSupport", VIOLATIONS["tick budget"], 4),
+}
 
 
-def generate(root: Path) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        ["./gradlew", "-q", "generateGametestModJson", f"-PgametestJavaRoot={root}"],
-        cwd=REPO, capture_output=True, text=True, check=False)
-
-
-class TickWaitGateTest(unittest.TestCase):
-    def fixture(self, directory: str) -> Path:
-        root = Path(directory)
-        write(root, "FixtureTest.java", SERVER_TEST)
-        write(root, "FixtureScenario.java", CLIENT_SCENARIO)
-        for name, body in CLEAN.items():
-            write(root, name, body)
-        return root
-
-    def test_clean_files_pass(self):
-        with tempfile.TemporaryDirectory() as directory:
-            result = generate(self.fixture(directory))
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-    def check_fails(self, name: str, class_line: str, statement: str, label: str, line: int = 4):
-        with tempfile.TemporaryDirectory() as directory:
-            root = self.fixture(directory)
-            write(root, name, f"""
+def violating(class_line: str, statement: str) -> str:
+    return f"""
 {class_line} {{
     void wait(ClientGameTestContext context) {{
         {statement}
     }}
 }}
-""")
-            result = generate(root)
-            self.assertNotEqual(result.returncode, 0, f"the gate should fail the build for {label}")
-            output = result.stdout + result.stderr
-            module = name.removesuffix(".java").replace("/", ".")
-            self.assertIn(f"{module}:{line} waits with waitFor or waitForScreen", output)
-            self.assertIn("ClientWait.until", output)
-            self.assertNotIn("MarkedClientTest", output)
-            self.assertNotIn("FixtureScenario", output)
+"""
+
+
+def fixture(extra: dict[str, str]) -> dict[str, str]:
+    return {"FixtureTest.java": SERVER_TEST, "FixtureScenario.java": CLIENT_SCENARIO, **CLEAN, **extra}
+
+
+CASES = {
+    "clean": Case(fixture({}), None),
+    **{label: Case(fixture({name: violating(class_line, statement)}), None) for label, (name, class_line, statement, _) in BAD.items()},
+}
+
+
+def outcome(label: str) -> gate_batch.Result:
+    return gate_batch.result(f"{__name__}/{label}")
+
+
+class TickWaitGateTest(unittest.TestCase):
+    def check_fails(self, label: str):
+        name, _, _, line = BAD[label]
+        result = outcome(label)
+        self.assertFalse(result.ok, f"the gate should fail the build for {label}")
+        module = name.removesuffix(".java").replace("/", ".")
+        self.assertIn(f"{module}:{line} waits with waitFor or waitForScreen", result.message)
+        self.assertIn("ClientWait.until", result.message)
+        self.assertNotIn("MarkedClientTest", result.message)
+        self.assertNotIn("FixtureScenario", result.message)
+
+    def test_clean_files_pass(self):
+        result = outcome("clean")
+        self.assertTrue(result.ok, result.message)
 
     def test_tick_wait_in_a_client_test_fails(self):
-        for label, statement in VIOLATIONS.items():
+        for label in VIOLATIONS:
             with self.subTest(label):
-                self.check_fails("TicksClientTest.java", "public class TicksClientTest implements FabricClientGameTest", statement, label)
+                self.check_fails(f"violation/{label}")
 
     def test_marker_without_a_reason_or_in_a_string_does_not_count(self):
-        client = "public class TicksClientTest implements FabricClientGameTest"
-        bare = "// tick-wait:\n        context.waitFor(client -> true, 5);"
-        self.check_fails("TicksClientTest.java", client, bare, "a bare marker", line=5)
-        in_string = 'String note = "// tick-wait: not a comment"; context.waitFor(client -> true, 5);'
-        self.check_fails("TicksClientTest.java", client, in_string, "a marker in a string")
-        text_block = 'String note = """\n            // tick-wait: in a text block\n            """; context.waitFor(client -> true, 5);'
-        self.check_fails("TicksClientTest.java", client, text_block, "a marker in a text block", line=6)
+        for label in ("a bare marker", "a marker in a string", "a marker in a text block"):
+            with self.subTest(label):
+                self.check_fails(f"marker/{label}")
 
     def test_tick_wait_in_client_test_support_fails(self):
-        self.check_fails("support/TicksSupport.java", "public class TicksSupport", VIOLATIONS["tick budget"], "support")
-
-
-if __name__ == "__main__":
-    unittest.main()
+        self.check_fails("support")

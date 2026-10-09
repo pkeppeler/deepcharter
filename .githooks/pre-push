@@ -31,15 +31,6 @@ if command -v shellcheck >/dev/null 2>&1; then
 else
   echo "pre-push: shellcheck not found, skipping it (CI runs it)" >&2
 fi
-echo "pre-push: room-carver gate check (runs Gradle)" >&2
-python3 -I tools/tests/room_carver_gate_check.py \
-  || fail "room-carver gate check"
-echo "pre-push: client-test filter check (runs Gradle)" >&2
-python3 -I tools/tests/client_filter_gate_check.py \
-  || fail "client-test filter check"
-echo "pre-push: tick-wait gate check (runs Gradle)" >&2
-python3 -I tools/tests/tick_wait_gate_check.py \
-  || fail "tick-wait gate check"
-echo "pre-push: world-data gate check (runs Gradle)" >&2
-python3 -I tools/tests/world_data_gate_check.py \
-  || fail "world-data gate check"
+echo "pre-push: gate checks on fixtures: room-carver, client-test filter, tick-wait, world-data (one Gradle run)" >&2
+python3 -I tools/tests/gate_checks.py \
+  || fail "gate checks (room-carver, client-test filter, tick-wait, world-data)"

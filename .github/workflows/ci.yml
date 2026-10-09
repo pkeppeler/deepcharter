@@ -36,14 +36,8 @@ jobs:
         with:
           cache-read-only: false
       - run: ./gradlew build
-      - name: room-carver gate check
-        run: python3 -I tools/tests/room_carver_gate_check.py
-      - name: client-test filter check
-        run: python3 -I tools/tests/client_filter_gate_check.py
-      - name: tick-wait gate check
-        run: python3 -I tools/tests/tick_wait_gate_check.py
-      - name: world-data gate check
-        run: python3 -I tools/tests/world_data_gate_check.py
+      - name: gate checks on fixtures (room-carver, client-test filter, tick-wait, world-data)
+        run: python3 -I tools/tests/gate_checks.py
       # The client run tasks never run on Linux. A dry run with the lock forced on still checks that
       # they serialize into the configuration cache (gradle/clientlock.gradle).
       - run: ./gradlew runClient runClientGameTest runPlay --dry-run --configuration-cache
