@@ -41,19 +41,27 @@ def _open_hand(parent: Bone, pivot, rotation, side: int, scale: float) -> Bone:
     return hand
 
 
+# Heads are drawn larger than life, as monuments are, so the face and the whiskers read from the square.
+HEAD = 1.15
+
+
 def _head(neck: Bone, nod: float, turn: float = 0.0) -> Bone:
     """A Victorian head: broad face, side whiskers, swept-back hair, a heavy brow; the face is toward +Z."""
     head = neck.child((0.0, 2.4, 0.2), (nod, turn, 0.0))
-    head.box((-2.9, 0.0, -3.0), (2.9, 6.4, 2.8))
-    head.box((-2.4, 0.4, 2.7), (2.4, 3.2, 3.3))                 # jaw and chin
-    head.box((-0.5, 2.7, 2.7), (0.5, 4.2, 3.8))                 # nose
-    head.box((-2.6, 4.1, 2.5), (2.6, 4.9, 3.2), D)              # brow
-    head.box((-3.3, 0.2, -2.0), (-2.7, 4.2, 1.9))               # whiskers
-    head.box((2.7, 0.2, -2.0), (3.3, 4.2, 1.9))
-    head.box((-3.1, 5.6, -3.3), (3.1, 7.2, 2.4))                # hair, swept back
-    head.box((-3.0, 4.0, -3.5), (3.0, 5.8, -2.8))
-    head.box((-1.2, 3.5, 2.75), (-0.45, 3.85, 2.95), D)         # eyes, in shadow
-    head.box((0.45, 3.5, 2.75), (1.2, 3.85, 2.95), D)
+
+    def part(lo, hi, texture=B):
+        head.box(tuple(v * HEAD for v in lo), tuple(v * HEAD for v in hi), texture)
+
+    part((-2.9, 0.0, -3.0), (2.9, 6.4, 2.8))
+    part((-2.4, 0.4, 2.7), (2.4, 3.2, 3.3))                 # jaw and chin
+    part((-0.5, 2.7, 2.7), (0.5, 4.2, 3.8))                 # nose
+    part((-2.6, 4.1, 2.5), (2.6, 4.9, 3.2), D)              # brow
+    part((-3.3, 0.2, -2.0), (-2.7, 4.2, 1.9))               # whiskers
+    part((2.7, 0.2, -2.0), (3.3, 4.2, 1.9))
+    part((-3.1, 5.6, -3.3), (3.1, 7.2, 2.4))                # hair, swept back
+    part((-3.0, 4.0, -3.5), (3.0, 5.8, -2.8))
+    part((-1.2, 3.5, 2.75), (-0.45, 3.85, 2.95), D)         # eyes, in shadow
+    part((0.45, 3.5, 2.75), (1.2, 3.85, 2.95), D)
     return head
 
 
@@ -77,8 +85,8 @@ def _standing_coat(root: Bone, hem: float, waist: float, flare: float, stride: f
     """Trouser legs and boots, and a frock-coat skirt widening from the waist to the hem."""
     for side, forward in ((-1, -stride), (1, stride)):
         leg = root.child((side * 2.5, hem + 1.0, forward * 0.2), (-forward * 6.0, 0.0, 0.0))
-        leg.box((-2.0, -(hem + 1.0), -2.1), (2.0, 0.0, 2.1))
-        leg.box((-1.9, -(hem + 1.0), -1.3 + forward * 0.3), (1.9, -(hem - 0.8), 4.8 + forward * 0.3), D)  # boot
+        leg.box((-2.3, -(hem + 1.0), -2.3), (2.3, 0.0, 2.3))
+        leg.box((-2.1, -(hem + 1.0), -1.4 + forward * 0.3), (2.1, -(hem - 1.6), 5.0 + forward * 0.3), D)  # boot
     steps = 4
     for i in range(steps):
         y0 = hem + (waist - hem) * i / steps
@@ -110,7 +118,7 @@ def provider() -> Bone:
     """Concept A, the Provider: standing in a frock coat, both forearms held forward at the waist, palms up, open and empty, under
     the slot in his chest. From the front the arms come toward you, so the outline stays a column; from the side it is an L."""
     body = Bone((0.0, 0.0, 0.0))
-    _standing_coat(body, hem=10.0, waist=22.0, flare=16.5)
+    _standing_coat(body, hem=6.5, waist=22.0, flare=17.5)
     torso = _torso(body, 22.0, 12.4)
     _waistcoat(torso, 9.0, 3.9)
     _chest_slot(torso, 6.9, 4.1)
@@ -168,7 +176,7 @@ def host() -> Bone:
     """Concept C, the Host: mid-stride, the right hand raised beside his head in welcome, palm out, the left held low and forward,
     palm up. One hand greets, the other asks; the outline is lopsided from every side."""
     body = Bone((0.0, 0.0, 0.0))
-    _standing_coat(body, hem=11.0, waist=22.5, flare=15.0, stride=1.0)
+    _standing_coat(body, hem=8.0, waist=22.5, flare=16.0, stride=1.0)
     torso = _torso(body, 22.5, 12.4)
     torso.rotation = (-4.0, 8.0, 0.0)
     _waistcoat(torso, 9.0, 3.9)
