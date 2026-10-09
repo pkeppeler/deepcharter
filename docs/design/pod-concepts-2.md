@@ -62,12 +62,6 @@ Reply on [#360](https://github.com/pkeppeler/deepcharter/pull/360) or [#352](htt
 
 Then [#243](https://github.com/pkeppeler/deepcharter/issues/243) builds the one you pick, in GeckoLib, with its animations and part tiers, for the Mole and the Prospector.
 
-## Try one in the game
+## Superseded
 
-The concepts are in the dev build only, behind a switch, so nothing a player sees has changed. To drive one yourself:
-
-```
-JAVA_TOOL_OPTIONS=-Ddeepcharter.podConcept=full_face tools/play.sh
-```
-
-Use `full_face`, `small_cab`, `stepped` or `boom` (round 1's `capsule`, `borer`, `strider` and `gyro` still work). Without the switch the Mole keeps its look of today.
+The user's verdict on round 2 was "the cutters all miss the mark. It needs to be more conical. These are all too flat." [Round 3](pod-concepts-3.md) ([#366](https://github.com/pkeppeler/deepcharter/issues/366)) replaces it. Round 2's four models (`full_face`, `small_cab`, `stepped` and `boom`) were removed from the game in that change, with their generator code, so they no longer load with the dev switch. The pictures above stay on `pr-media/360`.
