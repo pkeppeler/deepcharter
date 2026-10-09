@@ -70,7 +70,7 @@ public class HandbookChaptersSixToNineScenario extends EvidenceScenario {
 					frame(context);
 				}
 				first = false;
-				context.waitTicks(HandbookScreenTuning.DEFAULT.flipTicks());
+				context.waitTicks(HandbookScreenTuning.current().flipTicks());
 				for (int frame = 0; frame < HOLD_FRAMES; frame++) {
 					frame(context);
 				}

@@ -27,6 +27,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
 import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
 import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Client GameTest for #78. A screen driven by hand first: the Notes tab lists the notes, marks the unread ones, and opening one
@@ -130,11 +131,11 @@ public class NotesClientTest implements FabricClientGameTest {
 				useNoteBlock(player, 1);
 				useNoteBlock(player, 10);
 			});
-			context.waitFor(client -> ClientNotes.entries().stream().map(HandbookNote::id).toList().equals(List.of(FIRST, TENTH)));
+			ClientWait.until(context, "the notes the server sent", client -> ClientNotes.entries().stream().map(HandbookNote::id).toList().equals(List.of(FIRST, TENTH)), client -> "notes " + ClientNotes.entries().stream().map(HandbookNote::id).toList());
 			check(context.computeOnClient(client -> !ClientReadMarks.isRead(FIRST) && !ClientReadMarks.isRead(TENTH)), "the found notes are unread");
 
 			context.runOnClient(client -> HandbookScreen.open(client));
-			context.waitForScreen(HandbookScreen.class);
+			ClientWait.screen(context, HandbookScreen.class);
 			HandbookScreen screen = context.computeOnClient(client -> (HandbookScreen) client.gui.screen());
 			context.runOnClient(client -> screen.showNotes());
 			context.waitTicks(2);
@@ -145,7 +146,7 @@ public class NotesClientTest implements FabricClientGameTest {
 			context.waitTicks(2);
 			context.takeScreenshot("notes-open");
 			check(context.computeOnClient(client -> FIRST.equals(screen.openNote())), "clicking the first row opens the first note");
-			context.waitFor(client -> ClientReadMarks.isRead(FIRST));
+			ClientWait.until(context, "the first note marked read", client -> ClientReadMarks.isRead(FIRST), client -> "read mark " + ClientReadMarks.isRead(FIRST));
 			check(singleplayer.getServer().computeOnServer(server -> ReadMarks.isRead(server.getPlayerList().getPlayers().getFirst(), FIRST)),
 					"the server holds the read mark");
 			check(singleplayer.getServer().computeOnServer(server -> !ReadMarks.isRead(server.getPlayerList().getPlayers().getFirst(), TENTH)),

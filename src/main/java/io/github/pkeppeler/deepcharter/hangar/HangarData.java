@@ -159,6 +159,11 @@ public final class HangarData extends SavedData {
 		return state().advanced().stream().filter(entry -> entry.charter().equals(charter)).mapToInt(Advanced::spent).sum();
 	}
 
+	/** The catalysts of an advance of {@code advance} that the charter has not used: never below 0. */
+	public int advanceLeft(CharterId charter, int advance) {
+		return Math.max(0, advance - advanceSpent(charter));
+	}
+
 	/** Records that the charter used {@code catalysts} more of the Company's advance. */
 	public void spendAdvance(CharterId charter, int catalysts) {
 		if (catalysts < 0) {

@@ -30,6 +30,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TerminalTestTypes;
 
 /**
@@ -39,7 +40,6 @@ import io.github.pkeppeler.deepcharter.test.support.TerminalTestTypes;
  */
 public class TerminalFrameworkClientTest implements FabricClientGameTest {
 	private static final int FAR_BLOCKS = 20;
-	private static final int WAIT_TICKS = 200;
 	private static final int REFUSAL_TICKS = 20;
 
 	/** The three terminals the test places, as absolute positions. */
@@ -83,7 +83,7 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
 	}
 
 	private static TerminalScreen awaitScreen(ClientGameTestContext context) {
-		context.waitForScreen(TerminalScreen.class);
+		ClientWait.screen(context, TerminalScreen.class);
 		return context.computeOnClient(client -> (TerminalScreen) client.gui.screen());
 	}
 
@@ -98,7 +98,7 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
 		TerminalScreen screen = awaitScreen(context);
 		check(!screen.online(), "an unrepaired terminal opens offline");
 		check(screen.view().unlocked(), "the pump has no prerequisite, so its parts can go in");
-		context.waitFor(client -> screen.typewriter().done(), WAIT_TICKS);
+		ClientWait.until(context, "the terminal screen finished typing", client -> screen.typewriter().done(), client -> "typewriter text '" + screen.typewriter().text() + "'");
 		check(screen.typewriter().text().contains("OFFLINE"), "the offline text says so, got '" + screen.typewriter().text() + "'");
 		check(buttons(context, screen).stream().filter(button -> button.active).count() == TerminalTypes.FUEL_PUMP.parts().size() + 1,
 				"every part button and CLOSE are live");
@@ -110,7 +110,7 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
 		request(context, scene.processor());
 		TerminalScreen screen = awaitScreen(context);
 		check(!screen.online() && !screen.view().unlocked(), "the processor is offline and locked while the pump is not repaired");
-		context.waitFor(client -> screen.typewriter().done(), WAIT_TICKS);
+		ClientWait.until(context, "the terminal screen finished typing", client -> screen.typewriter().done(), client -> "typewriter text '" + screen.typewriter().text() + "'");
 		check(screen.typewriter().text().contains("FIRST"), "the locked text names what to repair first, got '" + screen.typewriter().text() + "'");
 		check(buttons(context, screen).stream().filter(button -> button.active).count() == 1, "only CLOSE is live on a locked terminal");
 		context.setScreen(() -> null);
@@ -121,14 +121,14 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
 		TerminalScreen screen = awaitScreen(context);
 		String firstLabel = "INSERT " + partLabel(TerminalTypes.FUEL_PUMP, 0);
 		context.clickScreenButton(firstLabel);
-		context.waitFor(client -> screen.view().parts().getFirst().inserted(), WAIT_TICKS);
+		ClientWait.until(context, "the first part inserted", client -> screen.view().parts().getFirst().inserted());
 		check(!screen.online(), "one part of two does not repair the pump");
 		check(buttons(context, screen).stream().noneMatch(button -> button.getMessage().getString().equals(firstLabel)),
 				"the inserted part's button now reads inserted");
 
 		context.clickScreenButton("INSERT " + partLabel(TerminalTypes.FUEL_PUMP, 1));
 		// The repaired pump opens its own screen (#69), not the generic online one.
-		context.waitFor(client -> client.gui.screen() instanceof FuelPumpScreen, WAIT_TICKS);
+		ClientWait.until(context, "the fuel pump screen open", client -> client.gui.screen() instanceof FuelPumpScreen);
 		boolean repaired = singleplayer.getServer().computeOnServer(server -> RepairState.get(server).repaired(TerminalTypes.FUEL_PUMP));
 		check(repaired, "the server has the pump repaired");
 		int carried = singleplayer.getServer().computeOnServer(server -> server.getPlayerList().getPlayers().getFirst().getInventory()
@@ -143,10 +143,10 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
 		check(context.computeOnClient(client -> client.gui.screen() == null), "the repair does not widen the range");
 
 		request(context, scene.pump());
-		context.waitForScreen(FuelPumpScreen.class);
+		ClientWait.screen(context, FuelPumpScreen.class);
 		FuelPumpScreen screen = context.computeOnClient(client -> (FuelPumpScreen) client.gui.screen());
 		check(screen.view().repaired(), "a repaired terminal opens online");
-		context.waitFor(client -> screen.typewriter().done(), WAIT_TICKS);
+		ClientWait.until(context, "the fuel pump screen finished typing", client -> screen.typewriter().done(), client -> "typewriter text '" + screen.typewriter().text() + "'");
 		check(screen.typewriter().text().contains("ONLINE"), "the online text says so, got '" + screen.typewriter().text() + "'");
 		context.waitTicks(5);
 		context.setScreen(() -> null);
@@ -161,12 +161,12 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
 	private static void customScreenUpdatesInPlace(ClientGameTestContext context, Scene scene) {
 		TerminalScreens.register(TerminalTestTypes.OPEN, InPlaceScreen::new);
 		request(context, scene.open());
-		context.waitForScreen(InPlaceScreen.class);
+		ClientWait.screen(context, InPlaceScreen.class);
 		InPlaceScreen screen = context.computeOnClient(client -> (InPlaceScreen) client.gui.screen());
 		check(screen.view().repaired() && screen.view().parts().isEmpty(), "a terminal with no repair opens online, with no parts");
 		context.runOnClient(client -> screen.field().setValue("RIGGS"));
 		context.runOnClient(client -> ClientPlayNetworking.send(new TerminalActionPayload(scene.open(), TerminalTestTypes.PING, new CompoundTag())));
-		context.waitFor(client -> screen.updates() == 1, WAIT_TICKS);
+		ClientWait.until(context, "one in-place update", client -> screen.updates() == 1, client -> "updates " + screen.updates());
 		check(context.computeOnClient(client -> client.gui.screen() == screen), "the action's answer must not replace the screen");
 		check(screen.field().getValue().equals("RIGGS"), "the text field keeps its text, got '" + screen.field().getValue() + "'");
 		context.setScreen(() -> null);

@@ -1,0 +1,19 @@
+{
+  "lettersPerSecond": 40,
+  "cursorBlinkTicks": 10,
+  "scanlineSpacing": 2,
+  "scanlineColor": "#58000000",
+  "glowColor": "#307CFC9A",
+  "bloomHeight": 24,
+  "bloomColor": "#2878FF9A",
+  "backgroundColor": "#050A06",
+  "phosphorColor": "#7CFC9A",
+  "dimColor": "#2E7A45",
+  "hoverFillColor": "#123D20",
+  "refusalColor": "#FFB000",
+  "padding": 6,
+  "lineSpacing": 2,
+  "buttonLabelOffset": 1,
+  "headerRuleInset": 6,
+  "headerRuleGap": 4
+}

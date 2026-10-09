@@ -23,11 +23,13 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
 import io.github.pkeppeler.deepcharter.client.scanner.ScannerHud;
+import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
@@ -79,7 +81,7 @@ public class ScannerHudTest implements FabricClientGameTest {
 	 */
 	public static void rideWithGoldAhead(ClientGameTestContext context, TestServerContext server, int scannerTier) {
 		mountFirstPlayer(server, scannerTier);
-		context.waitFor(client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
+		ClientWait.until(context, "the client riding a pod", client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
 		BlockPos gold = server.computeOnServer(minecraftServer -> {
 			ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
 			PodEntity pod = (PodEntity) player.getVehicle();
@@ -92,7 +94,7 @@ public class ScannerHudTest implements FabricClientGameTest {
 			place(player.level(), row.relative(facing, GOLD_AHEAD + 2), Blocks.STONE);
 			return row.relative(facing, GOLD_AHEAD);
 		});
-		context.waitFor(client -> client.level.getBlockState(gold).is(Blocks.GOLD_ORE));
+		ClientWait.until(context, "the gold ore block", client -> client.level.getBlockState(gold).is(Blocks.GOLD_ORE));
 		context.waitTicks(2 * TUNING.rescanTicks() + 2);
 	}
 
@@ -135,10 +137,10 @@ public class ScannerHudTest implements FabricClientGameTest {
 
 	private static void expectGoldRow(ClientGameTestContext context, String label) {
 		HudShot shot = HudShot.take(context, label, TIER_ONE);
-		expectPixel(shot, label + " gold", GOLD_AHEAD, GOLD_UP, TUNING.goldOreColor());
-		expectPixel(shot, label + " air before", GOLD_AHEAD - 1, GOLD_UP, TUNING.airColor());
-		expectPixel(shot, label + " air after", GOLD_AHEAD + 1, GOLD_UP, TUNING.airColor());
-		expectPixel(shot, label + " rock", GOLD_AHEAD + 2, GOLD_UP, TUNING.rockColor());
+		expectPixel(shot, label + " gold", GOLD_AHEAD, GOLD_UP, ScannerLook.current().goldOreColor());
+		expectPixel(shot, label + " air before", GOLD_AHEAD - 1, GOLD_UP, ScannerLook.current().airColor());
+		expectPixel(shot, label + " air after", GOLD_AHEAD + 1, GOLD_UP, ScannerLook.current().airColor());
+		expectPixel(shot, label + " rock", GOLD_AHEAD + 2, GOLD_UP, ScannerLook.current().rockColor());
 	}
 
 	/** Puts the first player out of the pod and removes the pod. */
@@ -149,14 +151,14 @@ public class ScannerHudTest implements FabricClientGameTest {
 			player.stopRiding();
 			pod.discard();
 		});
-		context.waitFor(client -> client.player.getVehicle() == null);
+		ClientWait.until(context, "the player out of the pod", client -> client.player.getVehicle() == null);
 	}
 
 	private static void dismountAndExpectNoHud(ClientGameTestContext context, TestServerContext server, String label) {
 		leavePod(context, server);
 		context.waitTicks(2 * TUNING.rescanTicks() + 2);
 		int actual = HudShot.take(context, label + "-dismounted", TIER_ONE).pixel(GOLD_AHEAD, GOLD_UP);
-		if (actual == (TUNING.goldOreColor() & RGB)) {
+		if (actual == (ScannerLook.current().goldOreColor() & RGB)) {
 			throw new AssertionError(label + ": the scanner HUD must not draw when the player is not riding a pod");
 		}
 	}
@@ -197,8 +199,8 @@ public class ScannerHudTest implements FabricClientGameTest {
 				}
 			}
 		}
-		if (ScannerHud.cellSize(427, 240, TIER_ONE) != TUNING.cellPixels()) {
-			throw new AssertionError("a roomy GUI should keep the tuned cell size " + TUNING.cellPixels());
+		if (ScannerHud.cellSize(427, 240, TIER_ONE) != ScannerLook.current().cellPixels()) {
+			throw new AssertionError("a roomy GUI should keep the tuned cell size " + ScannerLook.current().cellPixels());
 		}
 	}
 
@@ -236,7 +238,7 @@ public class ScannerHudTest implements FabricClientGameTest {
 			dismountAndExpectNoHud(context, server, "scanner-surface-midnight");
 
 			goToLayer(server, 2);
-			context.waitFor(client -> client.level.dimension().identifier().getPath().equals("layer_2"));
+			ClientWait.until(context, "the client in layer_2", client -> client.level.dimension().identifier().getPath().equals("layer_2"));
 			context.waitTicks(40);
 			rideWithGoldAhead(context, server, 1);
 			expectGoldRow(context, "scanner-layer-2");

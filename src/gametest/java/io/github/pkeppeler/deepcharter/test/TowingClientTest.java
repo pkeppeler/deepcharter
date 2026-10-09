@@ -3,7 +3,6 @@ package io.github.pkeppeler.deepcharter.test;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Predicate;
 
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -22,6 +21,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
 import io.github.pkeppeler.deepcharter.pod.TowTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
 /**
@@ -33,8 +33,6 @@ public class TowingClientTest implements FabricClientGameTest {
 	private static final int Z = 700;
 	private static final int FLOOR_Y = 200;
 	private static final int DRIVE_TICKS = 60;
-	/** Slow CI runners run the server well behind the client, so a step may need far more than a local run's few ticks. */
-	private static final int WAIT_TICKS = 600;
 	private static final double MIN_FOLLOWED_BLOCKS = 5;
 	/** What the client's pods may disagree by: each one is interpolated from what the server last sent. */
 	private static final double CLIENT_LAG_BLOCKS = 1.5;
@@ -49,7 +47,7 @@ public class TowingClientTest implements FabricClientGameTest {
 		ClientTestLog.start(this);
 		try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
 			Rig rig = two.server().computeOnServer(server -> setUp(server.overworld(), two));
-			awaitClient(context, "the client sees both pods with the cable between them", client -> pod(client, rig.tower()) != null
+			ClientWait.until(context, "the client sees both pods with the cable between them", client -> pod(client, rig.tower()) != null
 					&& pod(client, rig.towed()) != null && Optional.of(rig.tower()).equals(PodTowing.towerId(pod(client, rig.towed()))));
 			Vec3 towedStart = context.computeOnClient(client -> pod(client, rig.towed()).position());
 
@@ -74,17 +72,8 @@ public class TowingClientTest implements FabricClientGameTest {
 					throw new AssertionError("the towed pod should have a cable to take off");
 				}
 			});
-			awaitClient(context, "the client sees the cable come off the towed pod", client -> pod(client, rig.towed()) != null
+			ClientWait.until(context, "the client sees the cable come off the towed pod", client -> pod(client, rig.towed()) != null
 					&& !PodTowing.isTowed(pod(client, rig.towed())));
-		}
-	}
-
-	/** Waits for {@code condition} on the client, and on a timeout fails naming {@code step}: Fabric's own message does not. */
-	private static void awaitClient(ClientGameTestContext context, String step, Predicate<Minecraft> condition) {
-		try {
-			context.waitFor(condition, WAIT_TICKS);
-		} catch (AssertionError e) {
-			throw new AssertionError("Timed out after " + WAIT_TICKS + " ticks waiting for: " + step, e);
 		}
 	}
 

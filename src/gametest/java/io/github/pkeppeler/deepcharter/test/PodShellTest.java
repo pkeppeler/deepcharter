@@ -39,7 +39,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 
 /** Server GameTests for pod spawn, mount, dismount, seats and save/load. */
 public class PodShellTest {
-	private static final int EXPECTED_DATA_FIELDS = 8;
+	private static final int EXPECTED_DATA_FIELDS = 9;
 	private static final Input SNEAK = new Input(false, false, false, false, false, true, false);
 
 	@GameTest
@@ -173,8 +173,8 @@ public class PodShellTest {
 				throw helper.assertionException("pod data did not survive save and load: hull %s fuel %s stranded %s cargo %s/%s",
 						copy.hull(), copy.fuel(), copy.stranded(), copy.cargoUsed(), copy.cargoMass());
 			}
-			if (copy.flying() || copy.drilling() || copy.drillDirection() != Direction.DOWN) {
-				throw helper.assertionException("flying, drilling and drill direction are transient and must reset on load");
+			if (copy.flying() || copy.drilling() || copy.hullBurning() || copy.drillDirection() != Direction.DOWN) {
+				throw helper.assertionException("flying, drilling, hull burning and drill direction are transient and must reset on load");
 			}
 			helper.succeed();
 		} finally {

@@ -1,0 +1,95 @@
+// Colour gate (#226, ADR 0032): the client draws with colours from the UI theme, which a resource pack can replace, so a colour
+// literal in client code is a look a pack cannot reach. This fails the build on one.
+//
+// What it flags, in code under src/client/java outside client/theme/ (the loader, where a colour is parsed):
+//   - a hex literal of six or more digits, 0xFF7CFC9A, 0x00FFFFFF, 0xFF_00_00
+//   - ARGB.color(, ARGB.colorFromFloat(, ARGB.opaque( and argb( calls, CommonColors.NAME, a ChatFormatting colour such as
+//     ChatFormatting.GOLD, TextColor.fromRgb( and Integer.parseInt(text, 16)
+// A line that must keep one (a mask, say) ends with `// colour-ok: <reason>`; the reason is required. Comment-only lines and the
+// text of a trailing comment are not scanned. Decimal colours and `ARGB.white(alpha)` are not flagged.
+//
+// config/colour-gate/Flagged.java.txt must be flagged on every indented code line and Allowed.java.txt on none: `checkColourGate` runs the
+// scan over both before the real one, so a change that makes the pattern miss fails here, not silently.
+abstract class ColourGate {
+	static final List<String> PATTERNS = [
+		/0[xX][0-9A-Fa-f_]{6,}/,
+		/\bargb\s*\(/,
+		/\bARGB\s*\.\s*color\s*\(/,
+		/\bCommonColors\s*\./,
+		/\bARGB\s*\.\s*(colorFromFloat|opaque)\s*\(/,
+		/\bChatFormatting\s*\.\s*(BLACK|DARK_BLUE|DARK_GREEN|DARK_AQUA|DARK_RED|DARK_PURPLE|GOLD|GRAY|DARK_GRAY|BLUE|GREEN|AQUA|RED|LIGHT_PURPLE|YELLOW|WHITE)\b/,
+		/\bTextColor\s*\.\s*fromRgb\s*\(/,
+		/\bInteger\s*\.\s*parseInt\s*\([^;]*,\s*16\s*\)/,
+	]
+	static final String MARKER = /\/\/\s*colour-ok:\s*\S/
+
+	/** Lines (1-based) of {@code text} that hold a colour literal and no marker. */
+	static List<Integer> violations(String text) {
+		def found = []
+		def inBlockComment = false
+		text.readLines().eachWithIndex { String line, int index ->
+			def code = line
+			if (inBlockComment) {
+				if (!code.contains("*/")) return
+				code = code.substring(code.indexOf("*/") + 2)
+				inBlockComment = false
+			}
+			def trimmed = code.trim()
+			if (trimmed.startsWith("//")) return
+			if (trimmed.startsWith("/*") && !trimmed.contains("*/")) {
+				inBlockComment = true
+				return
+			}
+			if (code =~ MARKER) return
+			code = code.replaceAll(/"(?:\\.|[^"\\])*"/, '""')
+			def commentAt = code.indexOf("//")
+			if (commentAt >= 0) code = code.substring(0, commentAt)
+			code = code.replaceAll(/\/\*.*?\*\//, " ")
+			if (PATTERNS.any { code =~ it }) found << (index + 1)
+		}
+		return found
+	}
+}
+
+def clientRoot = file("src/client/java")
+def themeDir = new File(clientRoot, "io/github/pkeppeler/deepcharter/client/theme")
+def clientSources = fileTree(clientRoot) { include "**/*.java" }
+def fixtureDir = file("config/colour-gate")
+def projectPath = projectDir.toPath()
+
+tasks.register("checkColourGate") {
+	group = "verification"
+	description = "Fails on a colour literal in client code outside client/theme."
+	inputs.files(clientSources).withPropertyName("clientSources")
+	inputs.dir(fixtureDir).withPropertyName("fixtures")
+	doLast {
+		def flagged = new File(fixtureDir, "Flagged.java.txt").text
+		def allowed = new File(fixtureDir, "Allowed.java.txt").text
+		def expected = flagged.readLines().withIndex().findAll { line, i -> line =~ /^\t(?!\/\/)\S/ }.collect { line, i -> i + 1 }
+		if (expected.size() < 6) throw new GradleException("config/colour-gate/Flagged.java.txt has ${expected.size()} code lines, expected at least 6")
+		def actual = ColourGate.violations(flagged)
+		if (actual != expected) {
+			throw new GradleException("The colour gate is broken: Flagged.java.txt should be flagged on lines ${expected}, was ${actual}")
+		}
+		def wrongly = ColourGate.violations(allowed)
+		if (!wrongly.isEmpty()) {
+			throw new GradleException("The colour gate is broken: Allowed.java.txt should not be flagged, was on lines ${wrongly}")
+		}
+
+		def problems = []
+		clientSources.files.sort().each { source ->
+			if (source.toPath().startsWith(themeDir.toPath())) return
+			def lines = source.readLines()
+			ColourGate.violations(source.text).each { n ->
+				problems << "${projectPath.relativize(source.toPath())}:${n}: ${lines[n - 1].trim()}"
+			}
+		}
+		if (!problems.isEmpty()) {
+			throw new GradleException("Colour literals in client code. Colours come from the UI theme (assets/deepcharter/theme/*.json, read " +
+				"through client/theme); a line that must keep one ends with '// colour-ok: <reason>'. See docs/design/skins.md.\n  " +
+				problems.join("\n  "))
+		}
+	}
+}
+
+tasks.named("check") { dependsOn "checkColourGate" }

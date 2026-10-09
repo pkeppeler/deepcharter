@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDemoScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Client GameTest for #53: the typewriter timing and hook, then a real screen with a button and a text field.
@@ -99,7 +100,7 @@ public class CrtUiKitClientTest implements FabricClientGameTest {
 	private static void defaultRateIsTheTuningRate() {
 		Typewriter writer = new Typewriter(TEXT, (index, letter) -> { });
 		writer.advance(0.1);
-		int expected = (int) Math.min(TEXT.length(), 0.1 * CrtTuning.DEFAULT.lettersPerSecond());
+		int expected = (int) Math.min(TEXT.length(), 0.1 * CrtTuning.current().lettersPerSecond());
 		check(writer.revealed() == expected, "0.1 s reveals the tuned rate, got " + writer.revealed() + " expected " + expected);
 	}
 
@@ -119,7 +120,7 @@ public class CrtUiKitClientTest implements FabricClientGameTest {
 
 	private static void screenButtonAndField(ClientGameTestContext context) {
 		context.setScreen(CrtDemoScreen::new);
-		context.waitForScreen(CrtDemoScreen.class);
+		ClientWait.screen(context, CrtDemoScreen.class);
 		context.waitTicks(5);
 		CrtDemoScreen screen = context.computeOnClient(client -> (CrtDemoScreen) client.gui.screen());
 		check(screen.presses() == 0, "no presses before the click");
@@ -148,7 +149,7 @@ public class CrtUiKitClientTest implements FabricClientGameTest {
 	/** A resize runs init() again. The reveal must go on from where it was, and no letter may fire its hook twice. */
 	private static void resizeKeepsTheReveal(ClientGameTestContext context) {
 		context.setScreen(CrtDemoScreen::new);
-		context.waitForScreen(CrtDemoScreen.class);
+		ClientWait.screen(context, CrtDemoScreen.class);
 		CrtDemoScreen screen = context.computeOnClient(client -> (CrtDemoScreen) client.gui.screen());
 		context.waitTicks(10);
 		context.runOnClient(client -> {
@@ -159,7 +160,7 @@ public class CrtUiKitClientTest implements FabricClientGameTest {
 			check(screen.typewriter() == writer, "the resize keeps the same typewriter");
 			check(writer.revealed() >= before, "the resize does not restart the reveal");
 		});
-		context.waitFor(client -> screen.typewriter().done(), 400);
+		ClientWait.until(context, "the demo screen finished typing", client -> screen.typewriter().done(), client -> "typewriter text '" + screen.typewriter().text() + "'");
 		List<Integer> calls = screen.hookCalls();
 		int length = screen.typewriter().text().length();
 		check(calls.size() == length, "each letter fired its hook once, got " + calls.size() + " calls for " + length + " letters");

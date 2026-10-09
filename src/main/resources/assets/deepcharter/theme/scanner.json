@@ -1,0 +1,12 @@
+{
+  "cellPixels": 3,
+  "margin": 4,
+  "titleColor": "#FFFFFF",
+  "airColor": "#101820",
+  "rockColor": "#5C5248",
+  "oreColor": "#E8E8F0",
+  "goldOreColor": "#FFD21E",
+  "gasColor": "#E040E0",
+  "podColor": "#38F06E",
+  "frameColor": "#000000"
+}

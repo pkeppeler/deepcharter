@@ -32,12 +32,13 @@ public abstract class CrtScreen extends Screen {
 
 	/** A typewriter, its colour, and its wrapped lines, kept until the revealed text or the width changes. */
 	private static final class Entry {
-		private final int color;
+		/** The caller's colour, or null for the theme's phosphor, read at each draw. */
+		private final Integer color;
 		private int cachedRevealed = -1;
 		private int cachedWidth = -1;
 		private List<String> lines = List.of();
 
-		private Entry(int color) {
+		private Entry(Integer color) {
 			this.color = color;
 		}
 	}
@@ -63,13 +64,13 @@ public abstract class CrtScreen extends Screen {
 		}
 	}
 
-	/** Starts typing {@code text} in the phosphor colour. The hook is where a feature plays its letter sound. */
+	/** Starts typing {@code text} in the theme's phosphor colour, which a reload changes while the screen is open. The hook is where a feature plays its letter sound. */
 	protected Typewriter typewriter(Component text, Typewriter.LetterHook hook) {
-		return typewriter(text, CrtTuning.DEFAULT.phosphorColor(), hook);
+		return typewriter(text, null, hook);
 	}
 
-	/** Starts typing {@code text} in {@code color} (ARGB). Call from the constructor, never from {@link #layout()}. */
-	protected Typewriter typewriter(Component text, int color, Typewriter.LetterHook hook) {
+	/** Starts typing {@code text} in {@code color} (ARGB), or in the phosphor colour when it is null. Call from the constructor, never from {@link #layout()}. */
+	protected Typewriter typewriter(Component text, Integer color, Typewriter.LetterHook hook) {
 		if (inLayout) {
 			throw new IllegalStateException("Typewriters made in layout() restart on every resize: make them in the constructor");
 		}
@@ -122,7 +123,7 @@ public abstract class CrtScreen extends Screen {
 		if (entry == null) {
 			throw new IllegalArgumentException("Not a typewriter of this screen: " + writer.text());
 		}
-		CrtTuning tuning = CrtTuning.DEFAULT;
+		CrtTuning tuning = CrtTuning.current();
 		Font font = this.font;
 		if (entry.cachedRevealed != writer.revealed() || entry.cachedWidth != wrapWidth) {
 			entry.lines = font.getSplitter().splitLines(FormattedText.of(writer.visible()), wrapWidth, Style.EMPTY)
@@ -130,18 +131,19 @@ public abstract class CrtScreen extends Screen {
 			entry.cachedRevealed = writer.revealed();
 			entry.cachedWidth = wrapWidth;
 		}
+		int color = entry.color != null ? entry.color : tuning.phosphorColor();
 		int lineY = y;
 		int lastX = x;
 		int lastY = y;
 		for (String line : entry.lines) {
-			CrtDraw.glowText(graphics, font, line, x, lineY, entry.color);
+			CrtDraw.glowText(graphics, font, line, x, lineY, color);
 			lastX = x + font.width(line);
 			lastY = lineY;
 			lineY += font.lineHeight + tuning.lineSpacing();
 		}
 		boolean cursorOn = !writer.done() || (ticks / tuning.cursorBlinkTicks()) % 2 == 0;
 		if (cursorOn) {
-			graphics.fill(lastX + 1, lastY, lastX + font.width("W"), lastY + font.lineHeight - 1, entry.color);
+			graphics.fill(lastX + 1, lastY, lastX + font.width("W"), lastY + font.lineHeight - 1, color);
 		}
 		return Math.max(lineY, y + font.lineHeight + tuning.lineSpacing());
 	}

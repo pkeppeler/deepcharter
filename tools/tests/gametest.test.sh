@@ -83,4 +83,19 @@ check "no-match fails even when gradle exits 0" "$((status == 1 ? 0 : 1))"
 STUB_OUT='test failed' STUB_STATUS=3 run 'pod*'
 same "propagates gradle's failure status" "$status" 3
 
+run --client 'HangarClientTest,Pod*ClientTest'
+check "--client succeeds" "$status"
+same "--client runs runClientGameTest with the list" "$(cat "$work/args")" "runClientGameTest -PclientTests=HangarClientTest,Pod*ClientTest"
+same "--client runs from the repo root" "$(cat "$work/cwd")" "$(cd "$repo" && pwd -P)"
+
+run --client
+check "--client without a list is a usage error" "$((status == 2 ? 0 : 1))"
+run --client 'a b'
+check "--client list with a space is rejected" "$((status == 2 ? 0 : 1))"
+run --client a b
+check "--client with two lists is a usage error" "$((status == 2 ? 0 : 1))"
+
+STUB_STATUS=3 run --client 'X'
+same "--client propagates gradle's failure status" "$status" 3
+
 if [[ $failures -ne 0 ]]; then echo "$failures failed"; exit 1; fi

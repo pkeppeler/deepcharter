@@ -15,10 +15,12 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
+import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
@@ -46,10 +48,10 @@ public class ProspectorChassisClientTest implements FabricClientGameTest {
 			UUID mockId = two.mock().player().getUUID();
 			two.server().runOnServer(server -> buildRoom(server.overworld(), two));
 			// The client must have the room before the players board, or the boarding reaches it before the pod does.
-			context.waitFor(client -> client.level.getBlockState(new BlockPos(X, FLOOR_Y - 1, Z)).is(Blocks.STONE)
+			ClientWait.until(context, "the room's stone floor and air above it", client -> client.level.getBlockState(new BlockPos(X, FLOOR_Y - 1, Z)).is(Blocks.STONE)
 					&& client.level.getBlockState(new BlockPos(X + 1, FLOOR_Y, Z)).isAir());
 			int podId = two.server().computeOnServer(server -> board(server.overworld(), two));
-			context.waitFor(client -> client.player != null && client.player.getVehicle() instanceof PodEntity pod
+			ClientWait.until(context, "the client riding the pod with two passengers", client -> client.player != null && client.player.getVehicle() instanceof PodEntity pod
 					&& pod.getId() == podId && pod.getPassengers().size() == 2);
 			context.runOnClient(client -> client.gui.toastManager().clear());
 			context.waitTicks(2 * ScannerTuning.DEFAULT.rescanTicks() + 2);
@@ -65,16 +67,16 @@ public class ProspectorChassisClientTest implements FabricClientGameTest {
 
 			ScannerHudTest.HudShot navigator = ScannerHudTest.HudShot.take(context, "prospector-navigator", ScannerHudTest.TIER_ONE);
 			for (int up = 0; up < POD_CELLS; up++) {
-				expectPixel(navigator, "the navigator's scanner marks cell " + up + " of the Prospector", up, ScannerTuning.DEFAULT.podColor());
+				expectPixel(navigator, "the navigator's scanner marks cell " + up + " of the Prospector", up, ScannerLook.current().podColor());
 			}
-			expectPixel(navigator, "the cell above the Prospector is air", POD_CELLS, ScannerTuning.DEFAULT.airColor());
+			expectPixel(navigator, "the cell above the Prospector is air", POD_CELLS, ScannerLook.current().airColor());
 			int navigatorText = whitePixels(navigator);
 			if (navigatorText != 0) {
 				throw new AssertionError("The navigator should see the scanner only, but " + navigatorText + " pixels of status text are on screen");
 			}
 
 			two.server().runOnServer(server -> two.mock().player().stopRiding());
-			context.waitFor(client -> client.player.getVehicle() instanceof PodEntity pod && pod.getPassengers().size() == 1);
+			ClientWait.until(context, "the pod with one passenger", client -> client.player.getVehicle() instanceof PodEntity pod && pod.getPassengers().size() == 1);
 			context.waitTicks(2);
 			ScannerHudTest.HudShot pilot = ScannerHudTest.HudShot.take(context, "prospector-pilot", ScannerHudTest.TIER_ONE);
 			if (whitePixels(pilot) == 0) {

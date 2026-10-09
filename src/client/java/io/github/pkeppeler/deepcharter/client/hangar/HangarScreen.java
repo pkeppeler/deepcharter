@@ -23,6 +23,7 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
+import io.github.pkeppeler.deepcharter.hangar.HangarView;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
@@ -46,6 +47,7 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 
 	private TerminalView view;
 	private List<PriceLine> priceLines = List.of();
+	private List<PriceLine> advanceLines = List.of();
 	private final Typewriter typewriter;
 
 	public HangarScreen(TerminalView view) {
@@ -80,17 +82,17 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 		HangarTuning.RestoreCost mole = tuning.restoreCost(Chassis.MOLE);
 		HangarTuning.RestoreCost prospector = tuning.restoreCost(Chassis.PROSPECTOR);
 		String prices = Component.translatable("screen.deepcharter.hangar.restore_prices", mole.money(), mole.catalysts(),
-				prospector.money(), prospector.catalysts(), catalyst).getString()
-				+ " " + Component.translatable("screen.deepcharter.hangar.advance", prospector.advance(), catalyst).getString();
-		List<String> wrapped = font.getSplitter().splitLines(FormattedText.of(prices), width - 2 * MARGIN, Style.EMPTY)
-				.stream().map(FormattedText::getString).toList();
-		int lineHeight = font.lineHeight + CrtTuning.DEFAULT.lineSpacing();
-		int pricesY = closeY - GAP - wrapped.size() * lineHeight;
-		List<PriceLine> lines = new ArrayList<>();
-		for (int i = 0; i < wrapped.size(); i++) {
-			lines.add(new PriceLine(wrapped.get(i), MARGIN, pricesY + i * lineHeight));
-		}
-		priceLines = List.copyOf(lines);
+				prospector.money(), prospector.catalysts(), catalyst).getString();
+		// The advance is a sentence of its own under the prices, and shows only while the charter has some of it left.
+		int advanceLeft = view.feature(HangarView.class).map(HangarView::advanceLeft).orElse(0);
+		List<String> advance = advanceLeft > 0
+				? wrap(Component.translatable("screen.deepcharter.hangar.advance", advanceLeft, catalyst).getString())
+				: List.of();
+		List<String> wrapped = wrap(prices);
+		int lineHeight = font.lineHeight + CrtTuning.current().lineSpacing();
+		int pricesY = closeY - GAP - (wrapped.size() + advance.size()) * lineHeight;
+		priceLines = placed(wrapped, pricesY, lineHeight);
+		advanceLines = placed(advance, pricesY + wrapped.size() * lineHeight, lineHeight);
 		int restoreY = pricesY - GAP - BUTTON_HEIGHT;
 		int buyY = restoreY - GAP - BUTTON_HEIGHT;
 		addRenderableWidget(new CrtButton(MARGIN, buyY, BUTTON_WIDTH, BUTTON_HEIGHT,
@@ -101,10 +103,22 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 				Component.translatable("screen.deepcharter.hangar.restore"), button -> send(HangarTerminal.RESTORE_WRECK)));
 	}
 
+	private List<String> wrap(String text) {
+		return font.getSplitter().splitLines(FormattedText.of(text), width - 2 * MARGIN, Style.EMPTY).stream().map(FormattedText::getString).toList();
+	}
+
+	private static List<PriceLine> placed(List<String> lines, int y, int lineHeight) {
+		List<PriceLine> placed = new ArrayList<>();
+		for (int i = 0; i < lines.size(); i++) {
+			placed.add(new PriceLine(lines.get(i), MARGIN, y + i * lineHeight));
+		}
+		return List.copyOf(placed);
+	}
+
 	/** The y below the header text once the welcome has typed out in full: the welcome lines, then the account line. */
 	public int headerBottom() {
 		int welcomeLines = font.getSplitter().splitLines(FormattedText.of(typewriter.text()), width - 2 * MARGIN, Style.EMPTY).size();
-		int welcomeBottom = MARGIN + font.lineHeight + 14 + Math.max(welcomeLines, 1) * (font.lineHeight + CrtTuning.DEFAULT.lineSpacing());
+		int welcomeBottom = MARGIN + font.lineHeight + 14 + Math.max(welcomeLines, 1) * (font.lineHeight + CrtTuning.current().lineSpacing());
 		return welcomeBottom + GAP + font.lineHeight;
 	}
 
@@ -113,21 +127,28 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 		return priceLines;
 	}
 
+	/** The line of the Company's advance as drawn, one entry per wrapped line; empty once the charter's advance is used. */
+	public List<PriceLine> advanceLines() {
+		return advanceLines;
+	}
+
 	private void send(Identifier action) {
 		ClientPlayNetworking.send(new TerminalActionPayload(view.pos(), action, new CompoundTag()));
 	}
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-		CrtTuning tuning = CrtTuning.DEFAULT;
-		CrtDraw.glowText(graphics, font, title.getString().toUpperCase(Locale.ROOT), MARGIN, MARGIN, tuning.phosphorColor());
-		CrtDraw.border(graphics, MARGIN - 6, MARGIN + font.lineHeight + 4, width - MARGIN + 6, MARGIN + font.lineHeight + 5, tuning.dimColor());
+		CrtTuning tuning = CrtTuning.current();
+		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), MARGIN, width);
 		int below = drawTypewriter(graphics, typewriter, MARGIN, MARGIN + font.lineHeight + 14, width - 2 * MARGIN);
 		String account = ClientCharter.view()
 				.map(charter -> Component.translatable("screen.deepcharter.terminal.account", charter.balance()).getString())
 				.orElse("");
 		CrtDraw.glowText(graphics, font, account, MARGIN, below + GAP, tuning.phosphorColor());
 		for (PriceLine line : priceLines) {
+			CrtDraw.glowText(graphics, font, line.text(), line.x(), line.y(), tuning.phosphorColor());
+		}
+		for (PriceLine line : advanceLines) {
 			CrtDraw.glowText(graphics, font, line.text(), line.x(), line.y(), tuning.phosphorColor());
 		}
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);

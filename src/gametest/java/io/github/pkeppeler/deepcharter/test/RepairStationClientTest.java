@@ -1,13 +1,15 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.util.HashSet;
 import java.util.List;
-import java.util.function.BooleanSupplier;
+import java.util.Set;
 
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -25,14 +27,13 @@ import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Client GameTest for #70: the repair station screen opens, and its repair and buy buttons send the actions the server
  * acts on (the server's answer is checked, not the screen's own state).
  */
 public class RepairStationClientTest implements FabricClientGameTest {
-	private static final int WAIT_TICKS = 200;
-	private static final int POLL_TICKS = 2;
 	private static final long START_BALANCE = 100_000;
 	private static final float DAMAGE = 40f;
 
@@ -47,32 +48,50 @@ public class RepairStationClientTest implements FabricClientGameTest {
 			Scene scene = singleplayer.getServer().computeOnServer(RepairStationClientTest::setUp);
 
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.station())));
-			context.waitForScreen(RepairStationScreen.class);
+			ClientWait.screen(context, RepairStationScreen.class);
 
-			context.clickScreenButton("REPAIR 10 HP ($10)");
-			awaitServer(context, () -> hull(singleplayer, scene) == scene.pod().maxHull() - DAMAGE + 10f);
+			clickRow(context, "REPAIR 10 HP ($10)");
+			ClientWait.until(context, "the pod repaired by 10 HP", () -> hull(singleplayer, scene) == scene.pod().maxHull() - DAMAGE + 10f,
+					() -> "hull " + hull(singleplayer, scene) + ", account $" + account(singleplayer, scene));
 			check(account(singleplayer, scene) == START_BALANCE - 10, "10 HP cost $10, the account is $" + account(singleplayer, scene));
 
-			context.clickScreenButton("BUY DYNAMITE $100");
-			awaitServer(context, () -> carried(singleplayer, Consumable.DYNAMITE) == 1);
+			clickRow(context, "BUY DYNAMITE $100");
+			ClientWait.until(context, "one dynamite carried", () -> carried(singleplayer, Consumable.DYNAMITE) == 1,
+					() -> carried(singleplayer, Consumable.DYNAMITE) + " dynamite, account $" + account(singleplayer, scene));
 			check(account(singleplayer, scene) == START_BALANCE - 10 - 100, "the dynamite cost $100, the account is $" + account(singleplayer, scene));
 
-			context.clickScreenButton("REPAIR ALL");
-			awaitServer(context, () -> hull(singleplayer, scene) == scene.pod().maxHull());
+			clickRow(context, "REPAIR ALL");
+			ClientWait.until(context, "the pod fully repaired", () -> hull(singleplayer, scene) == scene.pod().maxHull(),
+					() -> "hull " + hull(singleplayer, scene) + " of " + scene.pod().maxHull() + ", account $" + account(singleplayer, scene));
 			check(account(singleplayer, scene) == START_BALANCE - 10 - 100 - 30 * 1, "the rest of the hull cost $30, the account is $" + account(singleplayer, scene));
 			context.setScreen(() -> null);
 		}
 	}
 
-	/** Waits for server state that {@code condition} reads through {@code computeOnServer}, which {@code waitFor} may not call (it runs on the client thread). */
-	public static void awaitServer(ClientGameTestContext context, BooleanSupplier condition) {
-		for (int waited = 0; waited < WAIT_TICKS; waited += POLL_TICKS) {
-			if (condition.getAsBoolean()) {
-				return;
+	/**
+	 * Scrolls the open repair station until the button labelled {@code label} is shown, then clicks it: a small screen shows only
+	 * some rows. Fails when no row has the label, or when two do (the click would take the first).
+	 */
+	public static void clickRow(ClientGameTestContext context, String label) {
+		RepairStationScreen screen = context.computeOnClient(client -> (RepairStationScreen) client.gui.screen());
+		int matches = context.computeOnClient(client -> {
+			Set<Integer> rows = new HashSet<>();
+			int shownAt = 0;
+			for (int first = 0; first < screen.rowCount(); first++) {
+				screen.scrollTo(first);
+				List<Button> buttons = screen.children().stream().filter(Button.class::isInstance).map(Button.class::cast).toList();
+				for (int i = 0; i < buttons.size(); i++) {
+					if (buttons.get(i).getMessage().getString().equals(label) && rows.add(screen.firstRow() + i)) {
+						shownAt = screen.firstRow();
+					}
+				}
 			}
-			context.waitTicks(POLL_TICKS);
-		}
-		throw new AssertionError("the server state did not change within " + WAIT_TICKS + " ticks");
+			// Leave the list where the row is shown, so that the click finds it.
+			screen.scrollTo(shownAt);
+			return rows.size();
+		});
+		check(matches == 1, matches + " buttons in the repair station are labelled '" + label + "', not 1");
+		context.clickScreenButton(label);
 	}
 
 	/** The player founds a charter, a repaired station stands beside them, and the charter's damaged pod is parked at it. */

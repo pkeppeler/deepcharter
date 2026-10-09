@@ -893,7 +893,7 @@ public class M2SliceScenario extends EvidenceScenario {
 			throw new AssertionError("the handbook has no page for chapter " + chapter);
 		});
 		ctx.runOnClient(client -> screen.goTo(page));
-		ctx.waitTicks(HandbookScreenTuning.DEFAULT.flipTicks());
+		ctx.waitTicks(HandbookScreenTuning.current().flipTicks());
 		snap(HOLD_FRAMES);
 		still(still);
 		ctx.setScreen(() -> null);

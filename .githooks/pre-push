@@ -34,3 +34,9 @@ fi
 echo "pre-push: room-carver gate check (runs Gradle)" >&2
 python3 -I tools/tests/room_carver_gate_check.py \
   || fail "room-carver gate check"
+echo "pre-push: client-test filter check (runs Gradle)" >&2
+python3 -I tools/tests/client_filter_gate_check.py \
+  || fail "client-test filter check"
+echo "pre-push: tick-wait gate check (runs Gradle)" >&2
+python3 -I tools/tests/tick_wait_gate_check.py \
+  || fail "tick-wait gate check"

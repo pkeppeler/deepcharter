@@ -17,6 +17,7 @@ import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
 /**
@@ -73,7 +74,7 @@ public class PodMovementClientTest implements FabricClientGameTest {
 		ClientTestLog.start(this);
 		try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
 			int mockPodId = mountBoth(two);
-			context.waitFor(client -> client.player.getVehicle() instanceof PodEntity && client.level.getEntity(mockPodId) != null);
+			ClientWait.until(context, "the client riding the mock pod", client -> client.player.getVehicle() instanceof PodEntity && client.level.getEntity(mockPodId) != null);
 			context.waitTicks(10);
 
 			int ownPodId = context.computeOnClient(client -> client.player.getVehicle().getId());

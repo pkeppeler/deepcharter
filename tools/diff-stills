@@ -18,7 +18,10 @@ With --out DIR, each of those stills also gets two PNGs in DIR:
 Noise floors: some stills never come out the same twice (animated lava, the breach fade, a pod HUD's vignette). A floor
 PREFIX=TOL:PERCENT gives the stills whose name starts with PREFIX their own tolerance TOL (channel delta) and hides them
 while at most PERCENT of their pixels changed beyond it. The longest matching prefix wins. --noise may repeat; --design-tour
-adds the floors measured on the design-tour (DESIGN_TOUR_NOISE below). A real art change should stand well above a floor.
+adds the floors measured on the design-tour (NOISE_FAMILIES below). A real art change should stand well above a floor.
+A floor can hide a real change too small or too faint to stand above it. So the tool prints every still a floor hid, with its
+numbers at the plain tolerance ("N stills hidden by floors"), and with floors the summary says "floors applied" in place of a
+tolerance. --design-tour with an explicit --tolerance is an error, because the families set the tolerances.
 
 A still that is in only one directory, or whose size differs, is listed too and gets no images.
 Exit status: 0 when no still differs, 1 when some do, 2 on a usage error or an unreadable PNG.
@@ -36,7 +39,7 @@ CHANNELS = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}
 DEFAULT_TOLERANCE = 2
 # Measured over pairs of design-tour runs of one commit (README, "Before and after stills"): the most that noise changed in each
 # family of stills, rounded up. PREFIX, channel tolerance, percent of pixels.
-DESIGN_TOUR_NOISE = [
+NOISE_FAMILIES = [
     ("hud-breach-fade", 70, 0.0),      # runs on client ticks; the tick of the shot varies with load
     ("hud-pod-", 12, 4.0),             # the screen-edge vignette (delta 10), and the rider's arm
     ("hud-scanner-", 12, 4.0),
@@ -171,12 +174,25 @@ def encode_png(image):
 
 def compare(a, b, tolerance):
     """Returns (changed pixel count, max channel delta, mask of changed pixels as a bytearray of 0/1)."""
-    pixels = a.width * a.height
-    mask = bytearray(pixels)
+    mask = bytearray(a.width * a.height)
     changed = 0
     biggest = 0
     ra, rb = a.rgb, b.rgb
-    for p in range(pixels):
+    stride = 3 * a.width
+    for y in range(a.height):
+        # A row that is byte for byte the same needs no pixel loop: most rows of two runs of one scene are.
+        if ra[y * stride:(y + 1) * stride] == rb[y * stride:(y + 1) * stride]:
+            continue
+        changed_in_row, biggest_in_row = compare_row(ra, rb, y, a.width, tolerance, mask)
+        changed += changed_in_row
+        biggest = max(biggest, biggest_in_row)
+    return changed, biggest, mask
+
+
+def compare_row(ra, rb, y, width, tolerance, mask):
+    changed = 0
+    biggest = 0
+    for p in range(y * width, (y + 1) * width):
         i = 3 * p
         if ra[i:i + 3] == rb[i:i + 3]:
             continue
@@ -185,7 +201,7 @@ def compare(a, b, tolerance):
         if delta > tolerance:
             mask[p] = 1
             changed += 1
-    return changed, biggest, mask
+    return changed, biggest
 
 
 def side_by_side(a, b):
@@ -218,20 +234,24 @@ def stills_of(directory):
 
 
 def floor_for(name, tolerance, noise):
-    """Returns (tolerance, percent floor) for a still: the longest matching noise prefix, else the plain tolerance and no floor."""
+    """Returns (tolerance, percent floor, prefix) of the longest matching noise prefix; the plain tolerance, no floor and None if none."""
     best = None
     for prefix, tol, percent in noise:
         if name.startswith(prefix) and (best is None or len(prefix) > len(best[0])):
             best = (prefix, tol, percent)
-    return (tolerance, 0.0) if best is None else (best[1], best[2])
+    return (tolerance, 0.0, None) if best is None else (best[1], best[2], best[0])
 
 
 def diff_directories(dir_a, dir_b, tolerance, out_dir=None, noise=()):
-    """Returns table rows (name, percent changed, max delta, note), worst first. Writes the images when out_dir is given."""
+    """Returns (table rows (name, percent changed, max delta, note) worst first, number of stills, hidden).
+
+    hidden lists each still that differs at the plain tolerance and that a noise floor hid: (name, percent, max delta, floor text),
+    both numbers at the plain tolerance. Writes the images of the rows when out_dir is given."""
     stills_a, stills_b = stills_of(dir_a), stills_of(dir_b)
     if not stills_a and not stills_b:
         raise ValueError(f"no PNGs in {dir_a} or {dir_b}")
     rows = []
+    hidden = []
     for name in sorted(stills_a.keys() | stills_b.keys()):
         if name not in stills_b:
             rows.append((name, 100.0, None, "only in A"))
@@ -245,10 +265,15 @@ def diff_directories(dir_a, dir_b, tolerance, out_dir=None, noise=()):
         if (a.width, a.height) != (b.width, b.height):
             rows.append((name, 100.0, None, f"size {a.width}x{a.height} vs {b.width}x{b.height}"))
             continue
-        still_tolerance, floor = floor_for(Path(name).stem, tolerance, noise)
+        still_tolerance, floor, prefix = floor_for(Path(name).stem, tolerance, noise)
         changed, biggest, mask = compare(a, b, still_tolerance)
         percent = 100.0 * changed / (a.width * a.height)
         if changed == 0 or percent <= floor:
+            if prefix is not None:
+                plain_changed, plain_biggest, _ = compare(a, b, tolerance)
+                if plain_changed:
+                    hidden.append((Path(name).stem, 100.0 * plain_changed / (a.width * a.height), plain_biggest,
+                                   f"floor {prefix or '*'}: tolerance {still_tolerance}, up to {floor:g}%"))
             continue
         rows.append((name, percent, biggest, ""))
         if out_dir is not None:
@@ -257,7 +282,8 @@ def diff_directories(dir_a, dir_b, tolerance, out_dir=None, noise=()):
             (Path(out_dir) / f"{stem}-side-by-side.png").write_bytes(encode_png(side_by_side(a, b)))
             (Path(out_dir) / f"{stem}-diff.png").write_bytes(encode_png(highlight(b, mask)))
     rows.sort(key=lambda row: (-row[1], row[0]))
-    return rows, len(stills_a.keys() | stills_b.keys())
+    hidden.sort(key=lambda row: (-row[1], row[0]))
+    return rows, len(stills_a.keys() | stills_b.keys()), hidden
 
 
 def format_table(rows):
@@ -269,20 +295,32 @@ def format_table(rows):
     return "\n".join(lines)
 
 
+def format_hidden(hidden):
+    width = max(len(row[0]) for row in hidden)
+    lines = [f"{len(hidden)} stills hidden by floors (numbers at the plain tolerance):"]
+    for name, percent, biggest, floor in hidden:
+        lines.append(f"  {name:<{width}}  {percent:>7.2f}%  {biggest:>9}  {floor}")
+    return "\n".join(lines)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="diff-stills", description="Lists the stills that differ between two directories.")
     parser.add_argument("dir_a")
     parser.add_argument("dir_b")
-    parser.add_argument("--tolerance", type=int, default=DEFAULT_TOLERANCE, metavar="N",
+    parser.add_argument("--tolerance", type=int, default=None, metavar="N",
                         help=f"a channel that differs by at most N (0-255) is the same (default {DEFAULT_TOLERANCE})")
     parser.add_argument("--noise", action="append", default=[], metavar="PREFIX=TOL:PERCENT",
                         help="stills named PREFIX* use channel tolerance TOL and are hidden while at most PERCENT of pixels changed")
     parser.add_argument("--design-tour", action="store_true", help="apply the noise floors measured on the design-tour stills")
     parser.add_argument("--out", metavar="DIR", help="write NAME-side-by-side.png and NAME-diff.png of each differing still here")
     args = parser.parse_args(argv)
+    if args.design_tour and args.tolerance is not None:
+        parser.error("--design-tour sets the tolerance of each family of stills (NOISE_FAMILIES): drop --tolerance, or drop --design-tour")
+    if args.tolerance is None:
+        args.tolerance = DEFAULT_TOLERANCE
     if not 0 <= args.tolerance <= 255:
         parser.error("--tolerance must be between 0 and 255")
-    noise = list(DESIGN_TOUR_NOISE) if args.design_tour else []
+    noise = list(NOISE_FAMILIES) if args.design_tour else []
     try:
         for spec in args.noise:
             prefix, _, rest = spec.partition("=")
@@ -291,13 +329,16 @@ def main(argv=None):
     except ValueError:
         parser.error("--noise takes PREFIX=TOL:PERCENT, for example hud-pod-=12:4")
     try:
-        rows, total = diff_directories(args.dir_a, args.dir_b, args.tolerance, args.out, noise)
+        rows, total, hidden = diff_directories(args.dir_a, args.dir_b, args.tolerance, args.out, noise)
     except (ValueError, OSError, zlib.error) as error:
         print(f"diff-stills: {error}", file=sys.stderr)
         return 2
     if rows:
         print(format_table(rows))
-    print(f"{len(rows)} of {total} stills differ (tolerance {args.tolerance})")
+    if hidden:
+        print(format_hidden(hidden))
+    basis = "floors applied" if noise else f"tolerance {args.tolerance}"
+    print(f"{len(rows)} of {total} stills differ ({basis})")
     return 1 if rows else 0
 
 

@@ -326,7 +326,7 @@ public class DesignTourScenario extends EvidenceScenario {
 		ctx.runOnClient(client -> client.player.getInventory().setSelectedSlot(handbookSlot(client)));
 		ctx.getInput().pressKey(options -> options.keyUse);
 		ctx.waitForScreen(HandbookScreen.class);
-		ctx.waitTicks(HandbookScreenTuning.DEFAULT.flipTicks() + 10);
+		ctx.waitTicks(HandbookScreenTuning.current().flipTicks() + 10);
 		still("handbook-opened-from-the-item");
 		ctx.setScreen(() -> null);
 
@@ -352,7 +352,7 @@ public class DesignTourScenario extends EvidenceScenario {
 			}
 			int target = index;
 			ctx.runOnClient(client -> screen.goTo(target));
-			ctx.waitTicks(HandbookScreenTuning.DEFAULT.flipTicks() + 6);
+			ctx.waitTicks(HandbookScreenTuning.current().flipTicks() + 6);
 			still("handbook-page-" + key);
 		}
 		ctx.runOnClient(client -> screen.showNotes());

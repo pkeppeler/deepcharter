@@ -6,30 +6,17 @@ import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 /**
  * Tunables for the scanner feature, read as {@code ScannerTuning.DEFAULT.thing()}.
  *
- * <p>Colours are opaque ARGB. The HUD draws them with fill(), which ignores world light.
+ * <p>How the minimap looks (its colours, cell size and margin) is the client UI theme's, {@code theme/scanner.json}.
  *
  * @param tierOneArea the area a tier 1 scanner covers (M1's range); higher tiers scale it by their scanner value over tier 1's
  * @param gasTier the lowest scanner tier that shows gas pockets; below it they read as the rock they look like
  * @param rescanTicks client ticks between rescans
- * @param cellPixels GUI pixels per cell
- * @param margin GUI pixels between the panel and the screen edge
  */
 public record ScannerTuning(
 		ScanArea tierOneArea,
 		int gasTier,
-		int rescanTicks,
-		int cellPixels,
-		int margin,
-		int airColor,
-		int rockColor,
-		int oreColor,
-		int goldOreColor,
-		int gasColor,
-		int podColor,
-		int frameColor) {
-	public static final ScannerTuning DEFAULT = new ScannerTuning(
-			new ScanArea(24, 8, 32), 3, 5, 3, 4,
-			0xFF101820, 0xFF5C5248, 0xFFE8E8F0, 0xFFFFD21E, 0xFFE040E0, 0xFF38F06E, 0xFF000000);
+		int rescanTicks) {
+	public static final ScannerTuning DEFAULT = new ScannerTuning(new ScanArea(24, 8, 32), 3, 5);
 
 	/** The area a scanner of {@code tier} covers; tier 0 is no scanner and has none, so it throws. */
 	public ScanArea area(int tier) {
