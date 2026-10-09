@@ -11,11 +11,10 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
- * The colony kit: the Company's building materials, from riveted plate to sodium lamps and ore cars, that the colony concepts of
- * #353 are built from (docs/design/colony-concepts-2.md). Nothing in a player's world places them yet; the colony rebuild (#244)
- * will use the chosen ones. Their models, blockstates and sign tiles are written by tools/colony/build.py and their textures by
- * tools/textures/texgen.py. Like the Conduit they are Company property:
- * unbreakable in survival ({@link ColonyBlocks#register}).
+ * The colony kit: the Company's building materials, from riveted plate to sodium lamps and ore cars, that the colony's structure
+ * pieces are built from (tools/colony/town.py, placed by {@link ColonyBuilder}). It holds only what the colony uses. Their models,
+ * blockstates and sign tiles are written by tools/colony/build.py and their textures by tools/textures/texgen.py. Like the Conduit
+ * they are Company property: unbreakable in survival ({@link ColonyBlocks#register}).
  */
 public final class ColonyKit {
 	private static final List<Block> ALL = new ArrayList<>();
@@ -32,8 +31,6 @@ public final class ColonyKit {
 	public static final Block WINDOW_RIBBON_DARK = window("window_ribbon_dark", 0);
 	public static final Block FURNACE_HATCH = window("furnace_hatch", 9);
 	public static final Block GAUGE_PANEL = window("gauge_panel", 3);
-	public static final Block WINDER_DOOR = window("winder_door", 0);
-	public static final Block SHUTTER = window("shutter", 0);
 
 	public static final Block WALL_LAMP = facing("wall_lamp", SoundType.LANTERN, 14, Block.box(5, 2, 4, 11, 12, 16));
 	public static final Block FLOODLIGHT = facing("floodlight", SoundType.LANTERN, 15, Block.box(3, 0, 3, 13, 13, 13));
@@ -41,12 +38,13 @@ public final class ColonyKit {
 	/** Climbable, by the {@code minecraft:climbable} tag. */
 	public static final Block STEEL_LADDER = facing("steel_ladder", SoundType.METAL, 0, Block.box(1, 0, 13, 15, 16, 16));
 	public static final Block BRACE = facing("brace", SoundType.METAL, 0, Block.box(4, 4, 4, 12, 12, 12));
-	public static final Block CONVEYOR = facing("conveyor", SoundType.METAL, 0, Block.box(0, 0, 0, 16, 8, 16));
-	public static final Block MINE_TRACK = facing("mine_track", SoundType.METAL, 0, Block.box(0, 0, 0, 16, 3, 16));
-	public static final Block ORE_CAR = facing("ore_car", SoundType.METAL, 0, Block.box(1, 0, 0, 15, 14, 16));
+	/** Lies flat and has no collision: a pod or a player crosses it, and the ore cars stand on it. */
+	public static final Block MINE_TRACK = register("mine_track", SoundType.METAL,
+			properties -> new KitFacingBlock(properties.noOcclusion().noCollision(), Block.box(0, 0, 0, 16, 3, 16)));
+	/** A car on its own length of track, so it takes a track block's place. */
+	public static final Block ORE_CAR = facing("ore_car", SoundType.METAL, 0, Block.box(1, 0, 0, 15, 16, 16));
 
 	public static final Block STEEL_BEAM = pillar("steel_beam", 12);
-	public static final Block STEEL_BEAM_RED = pillar("steel_beam_red", 12);
 	public static final Block LATTICE_GIRDER = pillar("lattice_girder", 16);
 	public static final Block PIPE = pillar("pipe", 8);
 	public static final Block PIPE_BRASS = pillar("pipe_brass", 8);

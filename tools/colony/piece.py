@@ -1,6 +1,6 @@
 """A structure piece being built: blocks and block-display entities in colony coordinates (X east, Z south, from the colony's
 centre; Y 0 is the pad's ground block, so a building stands from Y 1). to_nbt() writes the structure file Minecraft loads, with
-its own origin at the piece's lowest corner, and the offset of that corner, which the concept's layout file records.
+its own origin at the piece's lowest corner, and the offset of that corner, which the colony's layout file records.
 """
 import math
 
@@ -15,7 +15,7 @@ State = tuple[str, dict]
 
 def state(name: str, **props) -> State:
     """A kit block's state by its short name, checked here, or another block by its full id ("minecraft:barrier",
-    "deepcharter:regolith") with every one of its properties, which ColonyConceptsTest checks against the game."""
+    "deepcharter:regolith") with every one of its properties, which ColonyPlacementTest checks against the game."""
     if ":" in name:
         return name, {k: str(v) for k, v in props.items()}
     return kit.block(name).state(**props)
@@ -145,9 +145,9 @@ class Piece:
     # ------------------------------------------------------------------------------------------------ the file
 
     def bounds(self):
-        points = list(self.blocks)
+        points = list(self.blocks) or [tuple(math.floor(v) for v in d["at"]) for d in self.displays]
         if not points:
-            raise ValueError(f"piece {self.name} has no blocks")
+            raise ValueError(f"piece {self.name} has no blocks or displays")
         lo = tuple(min(p[i] for p in points) for i in range(3))
         hi = tuple(max(p[i] for p in points) for i in range(3))
         for d in self.displays:

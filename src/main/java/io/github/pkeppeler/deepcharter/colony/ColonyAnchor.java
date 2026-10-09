@@ -12,7 +12,8 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 
 /**
  * The places of the colony that other features look up in {@link ColonySite}. Each one is a block position in the overworld:
- * the block a player stands in, or for a terminal plinth, the block the terminal stands in. Names are saved, so never rename one.
+ * the block a player stands in, or for a terminal plinth, the block the terminal stands in. The layout file
+ * ({@link ColonyLayout}) gives each one's offset from the pad's centre. Names are saved, so never rename one.
  */
 public enum ColonyAnchor implements StringRepresentable {
 	FUEL_PUMP,
@@ -24,6 +25,7 @@ public enum ColonyAnchor implements StringRepresentable {
 	HANGAR,
 	/** The world spawn and the respawn point of the colony. */
 	CONTINUITY_OFFICE,
+	/** The block the Host stands in, over the top of his plinth; his feet are at its bottom. */
 	STATUE,
 	CHAPEL_CANDLE,
 	BUNKHOUSE,

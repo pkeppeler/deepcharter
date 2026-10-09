@@ -60,6 +60,7 @@ Rules for all areas:
 - **Material, palette, silhouette:** corrugated steel, riveted plate, grating, pipes, caged sodium lamps, cream enamel signs with red lettering and the bull's-head logo, black-and-yellow hazard bands, bronze and brass on the monument. Two or three storeys. Abandoned: collapsed roofs and missing panels, never castle notches.
 - **Tools:** structure `.nbt` pieces written by a Python script, JSON block models with free rotation, mcpfabric screenshots for preview.
 - **Skin and data:** `data/deepcharter/structure/colony/*.nbt`, `colony/layout.json`, `colony/palette/*.json`; reload with `/reload` and a dev rebuild command.
+- **Built (#244):** the user's round-2 pick overrides the sizes above: layout A of [colony-concepts-2.md](colony-concepts-2.md), a 30-block headframe, and the Host at 10 blocks with his plinth at 5, at the scale of a player and a pod (a bay 4 wide and 4 high, a door 2 high, a storey 4 blocks). The layout file and the structure files are as named above; a palette file and the dev rebuild command are not built. [ADR 0039](../adr/0039-the-colony-is-placed-from-a-layout-file-and-the-host-has-his-hands-as-a-later-piece.md).
 - **Not chosen:** Motherload-style clay domes (too close to the original), the town without a monument (no skyline), the monument without a town (no human scale).
 
 ## 5. Textures

@@ -80,6 +80,7 @@ def works_hall(p: Piece, x0: int, z0: int, x1: int, z1: int, top: int, pilasters
     railing_round(p, x0, z0, x1, z1, top + 2)
     for x, z, facing in ((x0, z0, "north"), (x1, z0, "north"), (x0, z1, "south"), (x1, z1, "south")):
         p.set(x, top + 2, z, state("floodlight", facing=facing))
+    floor(p, x0, z0, x1, z1)
     return walls
 
 
@@ -101,6 +102,39 @@ def machine_house(p: Piece, x0: int, z0: int, x1: int, z1: int, y0: int, y1: int
                 p.set(*wall.cell(a, y), s)
     p.fill(x0, y1 + 1, z0, x1, y1 + 1, z1, state("grating"))
     return walls
+
+
+def cabin(p: Piece, x0: int, z0: int, x1: int, z1: int, top: int, pilasters: dict[str, tuple[int, ...]],
+          dark: bool = False) -> dict[str, Wall]:
+    """A one-storey house in the Works' language, smaller than a hall: riveted plate with red pilasters at its corners and at the
+    given places (each with a sodium lamp), a row of lit ribbon windows on the two floors under a brass band at top - 1, a hazard
+    parapet round a flat roof. dark leaves the windows unlit (a burnt-out bar). Returns the four walls, for doors and signs."""
+    walls = box_walls(x0, z0, x1, z1)
+    for side, wall in walls.items():
+        columns = {wall.a0, wall.a1, *pilasters.get(side, ())}
+        for a in pilasters.get(side, ()):
+            p.set(*wall.outside(a, 4), state("wall_lamp", facing=wall.facing))
+        for a in wall.cells():
+            for y in range(1, top + 1):
+                if a in columns:
+                    s = state("riveted_plate_red")
+                elif y == top - 1:
+                    s = state("brass_trim")
+                elif y in (2, 3):
+                    unlit = dark or noise(*wall.cell(a, y)) % 7 == 0
+                    s = state("window_ribbon_dark" if unlit else "window_ribbon_lit", facing=wall.facing)
+                else:
+                    s = state("riveted_plate")
+                p.set(*wall.cell(a, y), s)
+    p.fill(x0 + 1, top + 1, z0 + 1, x1 - 1, top + 1, z1 - 1, state("riveted_plate"))
+    p.walls(x0, z0, x1, z1, top + 1, top + 1, state("hazard_band"))
+    floor(p, x0, z0, x1, z1)
+    return walls
+
+
+def floor(p: Piece, x0: int, z0: int, x1: int, z1: int, block: str = "concrete_footing") -> None:
+    """The floor of a building whose outer walls are x0..x1, z0..z1: concrete over its inside, at the pad's ground."""
+    p.fill(x0 + 1, 0, z0 + 1, x1 - 1, 0, z1 - 1, state(block))
 
 
 def railing_round(p: Piece, x0: int, z0: int, x1: int, z1: int, y: int) -> None:
@@ -127,38 +161,16 @@ def bay(p: Piece, wall: Wall, a0: int, a1: int, height: int = GROUND_TOP) -> Non
     p.set(*wall.outside((a0 + a1) // 2, height + 1), state("wall_lamp", facing=wall.facing))
 
 
-def canopy(p: Piece, wall: Wall, a0: int, a1: int, height: int = GROUND_TOP + 2) -> None:
-    """A railed grating canopy over a bay a0 to a1, two blocks deep, on red steel legs at its outer corners."""
-    for a in range(a0 - 1, a1 + 2):
-        for out in (1, 2):
-            p.set(*wall.outside(a, height, out), state("grating"))
-        p.set(*wall.outside(a, height + 1, 2), state("railing", facing=wall.facing))
-    for a in (a0 - 1, a1 + 1):
-        for y in range(1, height):
-            p.set(*wall.outside(a, y, 2), state("steel_beam_red", axis="y"))
-
-
-def belt(p: Piece, wall: Wall, a: int, depth: int) -> None:
-    """A belt conveyor on the floor of a bay, from its mouth depth blocks into the hall."""
-    inward = {"north": "south", "south": "north", "east": "west", "west": "east"}[wall.facing]
-    for d in range(depth):
-        p.set(*wall.outside(a, 1, -d), state("conveyor", facing=inward))
-
-
-def door(p: Piece, wall: Wall, a: int) -> None:
-    """A riveted door a player walks through, two blocks high, a lamp over it."""
-    p.set(*wall.cell(a, 1), state("winder_door", facing=wall.facing))
-    p.set(*wall.cell(a, 2), state("winder_door", facing=wall.facing))
-    p.set(*wall.cell(a, 3), state("riveted_plate"))
+def door(p: Piece, wall: Wall, a: int) -> tuple[int, int, int]:
+    """A doorway a player walks through, one wide and two high, in red jambs under a hazard lintel, a lamp over it. Returns the
+    outside cell in front of it, where the doorway's sight line starts."""
+    for y in (1, 2):
+        p.clear(*wall.cell(a, y))
+        for side in (a - 1, a + 1):
+            p.set(*wall.cell(side, y), state("riveted_plate_red"))
+    p.set(*wall.cell(a, 3), state("hazard_band"))
     p.set(*wall.outside(a, 3), state("wall_lamp", facing=wall.facing))
-
-
-def shutter(p: Piece, wall: Wall, a0: int, a1: int, height: int = GROUND_TOP) -> None:
-    """A closed bay: a roller shutter a0 to a1 along the wall, under a hazard lintel."""
-    for a in range(a0, a1 + 1):
-        for y in range(1, height + 1):
-            p.set(*wall.cell(a, y), state("shutter", facing=wall.facing))
-        p.set(*wall.cell(a, height + 1), state("hazard_band"))
+    return wall.outside(a, 1)
 
 
 def ladder(p: Piece, wall: Wall, a: int, y0: int, y1: int) -> None:
@@ -182,17 +194,10 @@ def track(p: Piece, x: int, z0: int, z1: int, facing: str = "south") -> None:
         p.set(x, 1, z, state("mine_track", facing=facing))
 
 
-def track_x(p: Piece, z: int, x0: int, x1: int) -> None:
-    """A line of mine track along X on the ground, from x0 to x1."""
-    for x in range(min(x0, x1), max(x0, x1) + 1):
-        p.set(x, 1, z, state("mine_track", facing="east"))
-
-
-def ore_cars(p: Piece, x: int, z: int, count: int, along: str = "z") -> None:
-    """A train of ore cars on track, coupled end to end from x, z."""
+def ore_cars(p: Piece, x: int, z: int, count: int) -> None:
+    """A train of ore cars on the track along Z, coupled end to end from x, z."""
     for i in range(count):
-        cx, cz = (x, z + i) if along == "z" else (x + i, z)
-        p.set(cx, 2, cz, state("ore_car", facing="south" if along == "z" else "east"))
+        p.set(x, 1, z + i, state("ore_car", facing="south"))
 
 
 def lattice_post(p: Piece, x: int, z: int, y0: int, y1: int, girder: str) -> None:
@@ -284,14 +289,20 @@ def lamp_post(p: Piece, x: int, z: int, height: int, facings, post: str = "pipe"
         p.set(x + dx, height, z + dz, state("wall_lamp", facing=facing))
 
 
-def statue(p: Piece, figure: str, plinth_top: int, height: float, x: float = 0.5, z: float = 0.5) -> None:
-    """The Founder on top of a plinth, height blocks tall: the body and the hands, two displays of the same scale, standing on
-    the block above plinth_top with their feet at the centre of block (x, z)."""
+def _statue_display(p: Piece, model: str, figure: str, plinth_top: int, height: float, x: float, z: float) -> float:
+    """One display of a figure's piece, height blocks tall, its feet at the centre of block (x, z) over plinth_top. Returns the
+    display's scale."""
     scale = sculptures.scale_for(figure, height)
     at = (x, plinth_top + 1.0, z)
     pivot = (sculptures.FIGURE_OFFSET[0] / 16, sculptures.FIGURE_OFFSET[1] / 16, sculptures.FIGURE_OFFSET[2] / 16)
-    for piece in (figure, figure + "_hands"):
-        p.display(state("colony_sculpture", piece=piece), at, (scale, scale, scale), pivot=pivot, view_range=8.0)
+    p.display(state("colony_sculpture", piece=model), at, (scale, scale, scale), pivot=pivot, view_range=8.0)
+    return scale
+
+
+def statue(p: Piece, figure: str, plinth_top: int, height: float, x: float = 0.5, z: float = 0.5) -> None:
+    """The Founder on top of a plinth, height blocks tall: the body, standing on the block above plinth_top with his feet at the
+    centre of block (x, z). His hands are a piece of their own (statue_hands): the colony stands him without them."""
+    scale = _statue_display(p, figure, figure, plinth_top, height, x, z)
     lo, hi = sculptures.figure_bounds(figure)
     # Invisible collision inside the figure, so a pod cannot fly through the Founder. It never replaces a block of the plinth
     # (the floodlights that light the statue at night stand on it).
@@ -301,6 +312,11 @@ def statue(p: Piece, figure: str, plinth_top: int, height: float, x: float = 0.5
             for by in range(plinth_top + 1, plinth_top + 1 + int(hi[1] * s * 0.85)):
                 if p.get(bx, by, bz) is None:
                     p.set(bx, by, bz, state("minecraft:barrier", waterlogged="false"))
+
+
+def statue_hands(p: Piece, figure: str, plinth_top: int, height: float, x: float = 0.5, z: float = 0.5) -> None:
+    """The Founder's hands, the same scale and place as his body: one display, which a work order places."""
+    _statue_display(p, figure + "_hands", figure, plinth_top, height, x, z)
 
 
 def sheave(p: Piece, centre, axle: str, diameter: float) -> None:

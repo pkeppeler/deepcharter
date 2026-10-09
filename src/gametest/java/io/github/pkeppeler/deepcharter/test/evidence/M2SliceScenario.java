@@ -179,7 +179,7 @@ public class M2SliceScenario extends EvidenceScenario {
 			return null;
 		});
 		ctx.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
-		stand(new Vec3(14, FEET_Y, 2), Vec3.atCenterOf(colony.anchors().get(ColonyAnchor.STATUE)).add(0, 2, 0));
+		stand(new Vec3(12, FEET_Y, 8), Vec3.atCenterOf(colony.anchors().get(ColonyAnchor.STATUE)).add(0, 2, 0));
 		say("M2 slice, from the start. Real player and a mock crewmate on a dedicated server.");
 		// The join messages: waited out, with the colony in view.
 		snap(CHAT_FADE_TICKS / TICKS_PER_FRAME);
@@ -197,7 +197,7 @@ public class M2SliceScenario extends EvidenceScenario {
 			ServerPlayer mock = two.mock().player();
 			expectNoRefusal(Charters.apply(server, mock.getUUID(), charter), "applying");
 			expectNoRefusal(Charters.approve(server, real.getUUID(), mock.getUUID()), "approving");
-			two.mock().teleportTo(server.overworld(), new Vec3(10, FEET_Y, 4), 90f, 0f);
+			two.mock().teleportTo(server.overworld(), new Vec3(11, FEET_Y, 6), 90f, 0f);
 			return null;
 		});
 		snap(HOLD_FRAMES);
@@ -768,7 +768,7 @@ public class M2SliceScenario extends EvidenceScenario {
 			Terminals.act(mock, processor, WorkOrders.DELIVER, args).ifPresent(refusal -> {
 				throw new AssertionError("the crewmate's delivery was refused: " + refusal);
 			});
-			two.mock().teleportTo(server.overworld(), new Vec3(10, FEET_Y, 4), 90f, 0f);
+			two.mock().teleportTo(server.overworld(), new Vec3(11, FEET_Y, 6), 90f, 0f);
 			return null;
 		});
 		snap(HOLD_FRAMES);
@@ -784,7 +784,8 @@ public class M2SliceScenario extends EvidenceScenario {
 		still("52-work-order-done");
 		ctx.setScreen(() -> null);
 		BlockPos statue = colony.anchors().get(ColonyAnchor.STATUE);
-		stand(Vec3.atBottomCenterOf(statue).add(0, 1, 11), Vec3.atCenterOf(statue).add(0, 5, 0));
+		// The anchor is the block the Host stands in, over his 5-block plinth: his feet are 5 blocks above the square.
+		stand(Vec3.atBottomCenterOf(statue.below(5)).add(0, 1, 12), Vec3.atCenterOf(statue).add(0, 5, 0));
 		ctx.waitTicks(60);
 		snap(HOLD_FRAMES);
 		still("53-the-founders-hands-restored");

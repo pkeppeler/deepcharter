@@ -3,8 +3,8 @@ library only. A preview is for checking a shape before a game client is free (a 
 massing); the game's own stills are the evidence.
 
 Usage: tools/colony/preview.py <piece> [--out DIR] [--size N]
-  piece: a sculpture piece (founder_c), "statues" for every Founder silhouette, or "concept:<layout>" (concept:a) for a layout's
-  massing from four sides and each of its views in perspective, with boxes for its pod and players.
+  piece: a sculpture piece (founder_c), "statues" for every Founder silhouette, or "town" for the whole colony's massing from four
+  sides and from above, with boxes for a pod and a player at each bay and door.
 """
 import argparse
 import math
@@ -251,13 +251,16 @@ COLOURS = {
     "riveted_plate": (40, 46, 54), "riveted_plate_red": (100, 19, 15),
     "hazard_band": (180, 140, 30), "concrete_footing": (120, 116, 113), "grating": (70, 78, 88),
     "brass_trim": (173, 125, 52), "window_ribbon_lit": (245, 168, 50), "window_ribbon_dark": (20, 30, 28),
-    "furnace_hatch": (210, 110, 30), "gauge_panel": (60, 66, 74), "winder_door": (54, 62, 72), "shutter": (66, 72, 80),
+    "furnace_hatch": (210, 110, 30), "gauge_panel": (60, 66, 74),
     "wall_lamp": (255, 200, 90), "floodlight": (255, 220, 120), "railing": (200, 160, 40), "steel_ladder": (200, 160, 40),
-    "brace": (72, 82, 94), "conveyor": (40, 40, 44), "mine_track": (90, 90, 96), "ore_car": (70, 60, 56),
-    "steel_beam": (72, 82, 94), "steel_beam_red": (130, 26, 20), "lattice_girder": (72, 82, 94),
+    "brace": (72, 82, 94), "mine_track": (90, 90, 96), "ore_car": (70, 60, 56),
+    "steel_beam": (72, 82, 94), "lattice_girder": (72, 82, 94),
     "pipe": (90, 100, 110), "pipe_brass": (190, 140, 60), "cable": (30, 26, 24),
     "enamel_sign": (230, 220, 200), "colony_sculpture": (190, 140, 70), "minecraft:barrier": None,
-    "regolith": (150, 70, 46), "regolith_rock": (110, 60, 44), "ochre_regolith": (190, 140, 82), "regolith_packed": (120, 54, 36),
+    "company_lamp": (255, 200, 90), "note": (240, 236, 220),
+    "minecraft:light_blue_concrete": (60, 150, 210), "minecraft:lectern": (120, 90, 60), "minecraft:bookshelf": (120, 90, 60),
+    "minecraft:candle": (240, 232, 200), "minecraft:spruce_slab": (110, 84, 50), "minecraft:white_bed": (225, 225, 225),
+    "minecraft:barrel": (110, 80, 50), "minecraft:spruce_planks": (120, 90, 55), "minecraft:coal_block": (22, 22, 24),
 }
 # The stand-ins for the scale figures: a Mole's hitbox and a player's.
 FIGURE_BOXES = {"pod": ((1.9, 1.9, 1.9), (230, 225, 210)), "player": ((0.6, 1.8, 0.6), (60, 160, 220))}
@@ -330,43 +333,28 @@ def concept_quads(pieces) -> list:
 
 
 def figure_quads(figures) -> list:
-    """Boxes standing in for each layout figure (the pod's and the player's hitboxes), so a preview shows the scale."""
+    """Boxes standing in for each scale figure (the pod's and the player's hitboxes), so a preview shows the scale."""
     quads = []
-    for figure in figures:
-        (w, h, d), colour = FIGURE_BOXES[figure.kind]
-        x, y, z = figure.at
+    for kind, (x, y, z) in figures:
+        (w, h, d), colour = FIGURE_BOXES[kind]
         corners = [(x + sx * w / 2, y + sy * h, z + sz * d / 2) for sx in (-1, 1) for sy in (0, 1) for sz in (-1, 1)]
         quads += box_quads(corners, colour)
     return quads
 
 
-def render_concept(name: str, out: Path, size: int) -> list[Path]:
-    """Four orthographic views of a layout's massing, and each of its views in perspective as the game frames it."""
-    import concepts
-    layout = next(c for c in concepts.ALL if c.name == name)
-    quads = concept_quads([piece for _, piece in layout.pieces()]) + figure_quads(layout.figures)
-    shots = [render(quads, yaw, pitch, size) for yaw, pitch in ((0.0, 4.0), (225.0, 30.0), (135.0, 30.0), (0.0, 89.0))]
-    massing = out / f"concept-{name}.png"
-    write_png(massing, sheet(shots, 2))
-    width, height = size * 854 // 480, size
-    views = [perspective(quads, v.eye, v.target, width, height, background=(150, 90, 60)) for v in layout.views if not v.above_ground]
-    framed = out / f"concept-{name}-views.png"
-    write_png(framed, _sheet_wide(views, 3))
-    return [massing, framed]
-
-
-def _sheet_wide(images: list, columns: int) -> list:
-    """Tiles equal-size images of any aspect left to right, top to bottom, with a 4-pixel gutter."""
-    h, w = len(images[0]), len(images[0][0])
-    gutter = 4
-    rows = (len(images) + columns - 1) // columns
-    out = [[(12, 10, 12)] * (columns * w + (columns + 1) * gutter) for _ in range(rows * h + (rows + 1) * gutter)]
-    for i, img in enumerate(images):
-        ox = gutter + (i % columns) * (w + gutter)
-        oy = gutter + (i // columns) * (h + gutter)
-        for y, row in enumerate(img):
-            out[oy + y][ox:ox + w] = row
-    return out
+def render_town(out: Path, size: int) -> list[Path]:
+    """The town's massing from four sides and from above, with a pod in the hangar and the works' bay and a player at each door."""
+    import town
+    built = town.build()
+    figures = [("pod", (-23.0, 1.0, 7.0)), ("pod", (11.5, 1.0, -14.0))]
+    for door in built.doors:
+        x, y, z = door.outside
+        figures.append(("player", (x + 0.5, float(y), z + 0.5)))
+    quads = concept_quads([piece for _, piece in built.pieces]) + figure_quads(figures)
+    shots = [render(quads, yaw, pitch, size) for yaw, pitch in ((0.0, 25.0), (225.0, 30.0), (135.0, 30.0), (0.0, 89.0))]
+    path = out / "town.png"
+    write_png(path, sheet(shots, 2))
+    return [path]
 
 
 def main(argv=None) -> int:
@@ -376,8 +364,8 @@ def main(argv=None) -> int:
     parser.add_argument("--size", type=int, default=200)
     args = parser.parse_args(argv)
     import sculptures
-    if args.piece.startswith("concept:"):
-        for path in render_concept(args.piece.split(':', 1)[1], args.out, args.size):
+    if args.piece == "town":
+        for path in render_town(args.out, args.size):
             print(f"preview: {path}")
         return 0
     if args.piece == "statues":

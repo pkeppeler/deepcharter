@@ -2,6 +2,8 @@
 
 Issue [#353](https://github.com/pkeppeler/deepcharter/issues/353), PR [#357](https://github.com/pkeppeler/deepcharter/pull/357). Round 1 is [colony-concepts.md](colony-concepts.md).
 
+**Picked and built.** The user picked layout A and the Host at 10 blocks, and [#244](https://github.com/pkeppeler/deepcharter/issues/244) built them as the colony every new world has ([ADR 0039](../adr/0039-the-colony-is-placed-from-a-layout-file-and-the-host-has-his-hands-as-a-later-piece.md), [current-state.md](current-state.md#the-colony)). Layouts B, C and D, the other three sizes of the Host and everything only they used are deleted; the sections below stay as the record of the choice. The concept test world, its generator entries and its structure files went with them.
+
 You asked for The Works' style with Boomtown Mill's mining detail (its signs, and the black iron headframe with its trussed conveyor), nothing western, at about half the size, at the scale of a player and a pod, not a city. And for statue C, the Host, at four sizes. Here are four ways to lay out the ore house in that style, and the Host at 20, 15, 10 and 6 blocks.
 
 Everything is built in the game from the colony kit and shot in a test world. The close stills have a pod and a player in them for scale. From far away and from the air they are too small to make out. The pod is the Mole: about 2 blocks wide, high and long. It is still the placeholder cube until you pick a Mole design. Nothing in a player's world changes until you pick.
