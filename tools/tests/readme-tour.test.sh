@@ -14,12 +14,19 @@ cp "$tools/readme-tour.sh" "$work/tools/"
 # The stub recorder logs the scenario and writes a GIF and two stills that hold the scenario id.
 cat >"$work/tools/record-evidence.sh" <<'STUB'
 #!/usr/bin/env bash
-echo "$1" >>"$(dirname "$0")/../record.log"
 out=$(dirname "$0")/../build/evidence/$1
-mkdir -p "$out/screenshots"
+mkdir -p "$out/screenshots" "$out/frames"
+# --no-run re-encodes the recorded frames: the GIF then holds the GIF_FRAMES range.
+if [[ ${2:-} == --no-run ]]; then
+  echo "trim-${GIF_FRAMES:-none}-of-$1" >"$out/$1.gif"
+  echo "$1 ${GIF_FRAMES:-}" >>"$(dirname "$0")/../trim.log"
+  exit 0
+fi
+echo "$1" >>"$(dirname "$0")/../record.log"
 echo "gif-of-$1" >"$out/$1.gif"
 echo "a-of-$1" >"$out/screenshots/a.png"
 echo "b-of-$1" >"$out/screenshots/b.png"
+touch "$out/frames/frame-0001.png" "$out/frames/frame-0002.png" "$out/frames/frame-0003.png"
 STUB
 # The stub publisher logs the folder and each file's name and content.
 cat >"$work/tools/pr-media.sh" <<'STUB'
@@ -50,7 +57,7 @@ nothing_published() { [[ ! -e $work/publish.log ]]; }
 published_is() { [[ $(sort "$work/publish.log" | paste -sd'|' -) == "$1" ]]; }
 
 run() { # run <args...>: fresh logs and build tree, sets $code, fills $work/out and $work/err
-  rm -rf "$work/record.log" "$work/publish.log" "$work/build"
+  rm -rf "$work/record.log" "$work/publish.log" "$work/trim.log" "$work/build"
   code=0
   bash "$work/tools/readme-tour.sh" "$@" >"$work/out" 2>"$work/err" || code=$?
 }
@@ -97,6 +104,16 @@ check "--list: prints the items" \
   test "$(paste -sd'|' "$work/out")" = "$(printf 'hero.gif\tscene-one\tgif|shot-a.png\tscene-one\ta|shot-b.png\tscene-two\tb')"
 check "--list: records nothing" nothing_recorded
 
+write_manifest 'trimmed.gif\tscene-one\tgif\tframes=2-\nfull.gif\tscene-one\tgif\nmid.gif\tscene-two\tgif\tframes=1-2\n'
+run
+check "trims: exit 0" exit_is 0
+check "trims: a trim without an end runs to the last recorded frame" \
+  published_is "readme full.gif gif-of-scene-one|readme mid.gif trim-1-2-of-scene-two|readme trimmed.gif trim-2-3-of-scene-one"
+check "trims: each trimmed item re-encodes once with its range" \
+  test "$(sort "$work/trim.log" | paste -sd'|' -)" = "scene-one 2-3|scene-two 1-2"
+run full.gif
+check "no trim on the item: no re-encode" test ! -e "$work/trim.log"
+
 bad_manifest() { # bad_manifest <description> <manifest text> <expected message>
   write_manifest "$2"
   run
@@ -105,8 +122,10 @@ bad_manifest() { # bad_manifest <description> <manifest text> <expected message>
   check "$1: nothing recorded" nothing_recorded
   check "$1: nothing published" nothing_published
 }
-bad_manifest "two columns" 'hero.gif\tscene-one\n' "expected 3 tab-separated columns"
-bad_manifest "four columns" 'hero.gif\tscene-one\tgif\textra\n' "expected 3 tab-separated columns"
+bad_manifest "two columns" 'hero.gif\tscene-one\n' "expected 3 or 4 tab-separated columns"
+bad_manifest "five columns" 'hero.gif\tscene-one\tgif\tframes=1-2\textra\n' "expected 3 or 4 tab-separated columns"
+bad_manifest "fourth column that is not a trim" 'hero.gif\tscene-one\tgif\tskip\n' "must be frames=<first>-<last>"
+bad_manifest "trim on a still" 'shot.png\tscene-one\ta\tframes=1-2\n' "frames= trims a GIF"
 bad_manifest "gif output with a png name" 'hero.png\tscene-one\tgif\n' "needs a .gif media name"
 bad_manifest "still output with a gif name" 'hero.gif\tscene-one\ta\n' "needs a .png media name"
 bad_manifest "media name with a space" 'has space.gif\tscene-one\tgif\n' "must be letters"

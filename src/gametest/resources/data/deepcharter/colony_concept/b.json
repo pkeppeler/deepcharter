@@ -1,0 +1,257 @@
+{
+  "title": "B. The Works",
+  "statue": "founder_b",
+  "pieces": [
+    {
+      "structure": "deepcharter:colony_concept/b/square",
+      "offset": [
+        -10,
+        0,
+        -10
+      ],
+      "blocks": 2101,
+      "displays": 2
+    },
+    {
+      "structure": "deepcharter:colony_concept/b/tower",
+      "offset": [
+        -11,
+        1,
+        -22
+      ],
+      "blocks": 3312,
+      "displays": 7
+    },
+    {
+      "structure": "deepcharter:colony_concept/b/works",
+      "offset": [
+        6,
+        1,
+        -43
+      ],
+      "blocks": 3687,
+      "displays": 0
+    }
+  ],
+  "views": [
+    {
+      "name": "from-the-square",
+      "eye": [
+        13.0,
+        2.6,
+        2.0
+      ],
+      "target": [
+        24.0,
+        14.0,
+        -26.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "headframe",
+      "eye": [
+        -30.0,
+        14.0,
+        6.0
+      ],
+      "target": [
+        -4.0,
+        28.0,
+        -15.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "works-front",
+      "eye": [
+        18.0,
+        4.0,
+        3.0
+      ],
+      "target": [
+        18.0,
+        9.0,
+        -16.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "from-the-air",
+      "eye": [
+        40.0,
+        40.0,
+        20.0
+      ],
+      "target": [
+        12.0,
+        10.0,
+        -22.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "from-the-air-behind",
+      "eye": [
+        48.0,
+        34.0,
+        -58.0
+      ],
+      "target": [
+        12.0,
+        12.0,
+        -26.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "from-far-across-the-plain",
+      "eye": [
+        12.0,
+        8.0,
+        56.0
+      ],
+      "target": [
+        -4.0,
+        30.0,
+        -15.0
+      ],
+      "night": false,
+      "above_ground": true
+    },
+    {
+      "name": "night-from-the-square",
+      "eye": [
+        13.0,
+        2.6,
+        2.0
+      ],
+      "target": [
+        24.0,
+        14.0,
+        -26.0
+      ],
+      "night": true,
+      "above_ground": false
+    },
+    {
+      "name": "night-from-the-air",
+      "eye": [
+        34.0,
+        30.0,
+        4.0
+      ],
+      "target": [
+        12.0,
+        12.0,
+        -24.0
+      ],
+      "night": true,
+      "above_ground": false
+    },
+    {
+      "name": "statue-from-the-square",
+      "eye": [
+        6.0,
+        2.6,
+        24.0
+      ],
+      "target": [
+        0.5,
+        14.879999999999999,
+        0.5
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "statue-front",
+      "eye": [
+        0.5,
+        16.799999999999997,
+        34.0
+      ],
+      "target": [
+        0.5,
+        16.799999999999997,
+        0.5
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "statue-side",
+      "eye": [
+        34.0,
+        16.799999999999997,
+        0.5
+      ],
+      "target": [
+        0.5,
+        16.799999999999997,
+        0.5
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "statue-from-the-air",
+      "eye": [
+        14.0,
+        46.0,
+        24.0
+      ],
+      "target": [
+        0.5,
+        14.879999999999999,
+        0.5
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "statue-from-far",
+      "eye": [
+        10.0,
+        6.0,
+        60.0
+      ],
+      "target": [
+        0.5,
+        14.879999999999999,
+        0.5
+      ],
+      "night": false,
+      "above_ground": true
+    },
+    {
+      "name": "statue-at-night",
+      "eye": [
+        6.0,
+        2.6,
+        24.0
+      ],
+      "target": [
+        0.5,
+        14.879999999999999,
+        0.5
+      ],
+      "night": true,
+      "above_ground": false
+    }
+  ],
+  "orbit": {
+    "centre": [
+      8.0,
+      12.0,
+      -24.0
+    ],
+    "radius": 48.0,
+    "height": 24.0
+  }
+}

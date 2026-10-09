@@ -510,12 +510,12 @@ def op_cluster(canvas: Canvas, layer: dict, ctx: Context) -> None:
             canvas.put(x, y, glint)
 
 
-def _clump(layer: dict, rng: Rng, size: int, inset: int) -> dict[tuple[int, int], float]:
+def _clump(layer: dict, rng: Rng, size: int, margin: int) -> dict[tuple[int, int], float]:
     """The height (0 to 1) of every pixel a clump covers, from its lumps; a pixel is covered where a lump's height is above 0. Its
-    centre is at least inset plus its radius in from each edge."""
+    centre is at least margin plus its radius in from each edge."""
     lo, hi = layer["radius"]
     radius = lo + (hi - lo) * rng.unit()
-    span = size - 2 * (inset + radius)
+    span = size - 2 * (margin + radius)
     cx, cy = size / 2 + (rng.unit() - 0.5) * span, size / 2 + (rng.unit() - 0.5) * span
     crystal = layer.get("crystal", False)
     axis = rng.below(len(AXES))
@@ -563,12 +563,13 @@ def _rings(height: dict[tuple[int, int], float], count: int) -> list[set[tuple[i
 def _veins(canvas: Canvas, layer: dict, rng: Rng, size: int, height: dict[tuple[int, int], float], colours: tuple[Colour, Colour]) -> None:
     """Threads that wander out of a clump, a step at a time, turning now and then; one stops at the tile edge."""
     start = sorted(height)
+    length = layer.get("vein", 4)
     for _ in range(layer.get("veins", 0)):
         x, y = start[rng.below(len(start))]
         heading = rng.below(8)
         drawn = 0
-        for _ in range(layer.get("vein", 4) * 3):
-            if drawn == layer.get("vein", 4):
+        for _ in range(length * 3):
+            if drawn == length:
                 break
             turn = rng.below(4)
             heading = (heading + (1 if turn == 0 else -1 if turn == 1 else 0)) % 8
@@ -722,6 +723,18 @@ def op_tint(canvas: Canvas, layer: dict, ctx: Context) -> None:
             canvas.over(x, y, (r, g, b, layer["alpha"]))
 
 
+def op_include(canvas: Canvas, layer: dict, ctx: Context) -> None:
+    """Composites another recipe's texture (its frame of the same number, or its last) at this point of the stack. Both are the same
+    size: an include does not scale, so a 16x recipe in a 32x one fails rather than filling a quarter of it."""
+    ctx.need(layer, "recipe")
+    frames = ctx.book.render(layer["recipe"])
+    size = frames[0].width
+    if size != ctx.size:
+        raise RecipeError(f"{ctx.where}: {layer['recipe']} is {size} x {size} and this texture {ctx.size} x {ctx.size}; an include does not "
+                          "scale, so give both recipes the same size")
+    canvas.paste(frames[min(ctx.frame, len(frames) - 1)], 0, 0)
+
+
 def op_replace(canvas: Canvas, layer: dict, ctx: Context) -> None:
     """Every pixel of one colour becomes another (within rect)."""
     ctx.need(layer, "from", "to")
@@ -822,6 +835,7 @@ OPS: dict[str, Callable[[Canvas, dict, Context], None]] = {
     "cracks": op_cracks,
     "grime": op_grime,
     "tint": op_tint,
+    "include": op_include,
     "replace": op_replace,
     "outline": op_outline,
     "masked": op_masked,

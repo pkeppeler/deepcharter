@@ -122,7 +122,7 @@ def _drawn_size(book: Book, key: str) -> int:
     """The finest texture a cell of key draws: the texture, or the base under a glow layer if that is larger."""
     recipe = book.recipes[key]
     over = recipe.glow.over if recipe.glow else None
-    return max(recipe.size, book.recipes[over].size if over else recipe.size)
+    return max(recipe.size, book.recipes[over].size) if over else recipe.size
 
 
 def _cell(out: Canvas, book: Book, key: str, x0: int, y0: int, cell: int, light: float) -> None:

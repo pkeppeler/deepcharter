@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "axis=y": {
+      "model": "deepcharter:block/colony/lattice_girder_red"
+    },
+    "axis=z": {
+      "model": "deepcharter:block/colony/lattice_girder_red",
+      "x": 90
+    },
+    "axis=x": {
+      "model": "deepcharter:block/colony/lattice_girder_red",
+      "x": 90,
+      "y": 90
+    }
+  }
+}
