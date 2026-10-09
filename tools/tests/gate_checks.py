@@ -23,7 +23,7 @@ def main(selected: list[str]) -> int:
     modules = [importlib.import_module(f"{name}_gate_check") for name in (selected or CHECKS)]
     cases = {f"{module.__name__}/{label}": case for module in modules for label, case in module.CASES.items()}
     print(f"gate_checks: {len(cases)} fixture trees from {len(modules)} checks, one Gradle run", file=sys.stderr)
-    gate_batch.OUTCOME = gate_batch.run(cases)
+    gate_batch.RESULTS = gate_batch.run(cases)
     loader = unittest.TestLoader()
     suite = unittest.TestSuite(loader.loadTestsFromModule(module) for module in modules)
     return 0 if unittest.TextTestRunner(verbosity=1).run(suite).wasSuccessful() else 1

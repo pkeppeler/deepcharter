@@ -2,7 +2,17 @@
 # Fast pre-push check, early feedback only. What it runs and how to enable it: docs/tooling/pre-push-hook.md
 set -euo pipefail
 
-root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
+
+# core.hooksPath may be one absolute path shared by every worktree. Run the copy of the hook that belongs to the tree being pushed,
+# so a branch is checked by its own hook, against its own sources.
+if top=$(git rev-parse --show-toplevel 2>/dev/null); then
+  top=$(cd "$top" && pwd -P)
+  if [[ $top != "$root" && -x $top/.githooks/pre-push ]]; then
+    exec "$top/.githooks/pre-push" "$@"
+  fi
+  root=$top
+fi
 
 # git feeds one line per ref: <local ref> <local sha> <remote ref> <remote sha>.
 # Run the checks unless every ref is a branch delete or targets pr-media.

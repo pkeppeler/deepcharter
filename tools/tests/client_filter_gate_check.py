@@ -4,8 +4,11 @@ Its fixture trees go through the scan of generateGametestModJson in one Gradle r
 repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
 Usage: python3 -I tools/tests/gate_checks.py client_filter
 """
+import json
 import subprocess
+import tempfile
 import unittest
+from pathlib import Path
 
 import gate_batch
 from gate_batch import REPO, Case
@@ -74,9 +77,6 @@ class ClientFilterTest(unittest.TestCase):
     def test_a_glob_and_a_list_keep_the_union(self):
         self.assertEqual(self.clients("glob and list"), names("AlphaClientTest", "PodDrillClientTest"))
 
-    def test_the_filter_is_an_input_of_the_generation_task(self):
-        self.assertIn("clientTests", gate_batch.outcome().declared_inputs)
-
     def test_a_name_is_not_a_substring_match(self):
         self.assertFalse(outcome("substring").ok)
 
@@ -102,3 +102,37 @@ class ClientFilterTest(unittest.TestCase):
         self.assertGreater(len(REAL_CLASSES), 1)
         listed = [name.rsplit(".", 1)[1] for name in self.clients("real tree")]
         self.assertEqual(listed, REAL_CLASSES)
+
+
+class GenerationTest(unittest.TestCase):
+    """The real task, which the batched scan does not run: it writes the mod json from the scan and regenerates when the filter changes."""
+    GENERATED = REPO / "build/generated/gametest-resources/fabric.mod.json"
+
+    def generate(self, tree: Path, *flags: str) -> dict:
+        done = subprocess.run(
+            ["./gradlew", "-q", "generateGametestModJson", f"-PgametestJavaRoot={tree}", *flags],
+            cwd=REPO, capture_output=True, text=True, check=False)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        return json.loads(self.GENERATED.read_text())["entrypoints"]
+
+    def restore_the_real_mod_json(self):
+        done = subprocess.run(["./gradlew", "-q", "generateGametestModJson"], cwd=REPO, capture_output=True, text=True, check=False)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+
+    def test_the_mod_json_follows_the_filter_and_the_order(self):
+        self.addCleanup(self.restore_the_real_mod_json)
+        with tempfile.TemporaryDirectory() as directory:
+            tree = Path(directory)
+            for name, body in FILES.items():
+                path = tree / gate_batch.PACKAGE / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(body)
+            alpha = self.generate(tree, "-PclientTests=AlphaClientTest")
+            self.assertEqual(alpha["fabric-client-gametest"], list(names("AlphaClientTest")))
+            self.assertEqual(alpha["fabric-gametest"], list(names("FixtureTest")))
+            beta = self.generate(tree, "-PclientTests=BetaClientTest")
+            self.assertEqual(beta["fabric-client-gametest"], list(names("BetaClientTest")))
+            reverse = self.generate(tree, "-PgametestOrder=reverse")
+            self.assertEqual(
+                reverse["fabric-client-gametest"],
+                list(reversed(names("AlphaClientTest", "BetaClientTest", "FixtureScenario", "PodDrillClientTest"))))

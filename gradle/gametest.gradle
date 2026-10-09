@@ -184,11 +184,9 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 
 // -PfixtureCases=<json file>: [{"name", "root", "clientTests" (string or null)}, ...]. Runs the scan over each tree and writes
 // -PfixtureResults=<json file>: {name: {"ok", "message", "server", "client"}}. A tree the scan rejects is a result, not a build failure.
-// "inputs" lists what generateGametestModJson declares as inputs: an unchanged declaration is what makes it regenerate on a new filter.
 tasks.register("checkGametestFixtures") {
 	def cases = file(providers.gradleProperty("fixtureCases").getOrElse("missing -PfixtureCases"))
 	def results = file(providers.gradleProperty("fixtureResults").getOrElse("missing -PfixtureResults"))
-	def declaredInputs = generateGametestModJson.get().inputs.properties.keySet().sort()
 	outputs.upToDateWhen { false }
 	doLast {
 		if (!cases.isFile()) {
@@ -203,7 +201,7 @@ tasks.register("checkGametestFixtures") {
 				report[c.name] = [ok: false, message: e.message, server: [], client: []]
 			}
 		}
-		results.text = groovy.json.JsonOutput.toJson([cases: report, inputs: declaredInputs])
+		results.text = groovy.json.JsonOutput.toJson(report)
 	}
 }
 

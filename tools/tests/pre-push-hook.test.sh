@@ -40,7 +40,7 @@ sha=1111111111111111111111111111111111111111
 run_hook() {
   : >"$work/calls"
   local status=0
-  printf '%s' "$1" | STUB_LOG="$work/calls" PATH="$work/bin:$PATH" bash "$work/.githooks/pre-push" origin url \
+  (cd "$work" && printf '%s' "$1" | STUB_LOG="$work/calls" PATH="$work/bin:$PATH" bash "$work/.githooks/pre-push" origin url) \
     >"$work/out" 2>&1 || status=$?
   echo "$status:$(wc -l <"$work/calls" | tr -d ' ')"
 }
@@ -71,7 +71,7 @@ for tool in bash env dirname sed; do ln -s "$(command -v "$tool")" "$work/nosc/$
 ln -s "$work/bin/python3" "$work/nosc/python3"
 : >"$work/calls"
 missing_status=0
-printf '%s' "refs/heads/b $sha refs/heads/b $zero$nl" | STUB_LOG="$work/calls" PATH="$work/nosc" "$(command -v bash)" "$work/.githooks/pre-push" origin url \
+(cd "$work" && printf '%s' "refs/heads/b $sha refs/heads/b $zero$nl" | STUB_LOG="$work/calls" PATH="$work/nosc" "$(command -v bash)" "$work/.githooks/pre-push" origin url) \
   >"$work/out" 2>&1 || missing_status=$?
 check "missing shellcheck does not block the push" "0" "$missing_status"
 check "missing shellcheck is skipped with a warning" "yes" "$(grep -q 'shellcheck not found, skipping' "$work/out" && echo yes || echo no)"
@@ -98,5 +98,16 @@ git -C "$tr_repo" worktree add -q -b wt "$work/wt"
 : >"$work/calls"
 STUB_LOG="$work/calls" PATH="$work/bin:$PATH" git -C "$work/wt" push -q origin wt >"$work/out" 2>&1 || true
 check "hook runs from a second worktree, in that worktree" "gradlew in $(cd "$work/wt" && pwd -P)" "$(sed -n 1p "$work/calls")"
+
+# An absolute core.hooksPath shared by every worktree: the hook of the pushing worktree runs, and git's stdin reaches it.
+cat >"$work/wt/.githooks/pre-push" <<'S'
+#!/usr/bin/env bash
+echo "wt hook, $(wc -l | tr -d ' ') ref line(s) on stdin" >>"$STUB_LOG"
+S
+git -C "$tr_repo" config core.hooksPath "$tr_repo/.githooks"
+: >"$work/calls"
+STUB_LOG="$work/calls" PATH="$work/bin:$PATH" git -C "$work/wt" push -q origin wt >"$work/out" 2>&1 || true
+check "shared hooks path: the pushing worktree's own hook runs" "wt hook, 1 ref line(s) on stdin" "$(sed -n 1p "$work/calls")"
+check "shared hooks path: the main copy does not also run" "1" "$(wc -l <"$work/calls" | tr -d ' ')"
 
 exit "$((failures > 0))"

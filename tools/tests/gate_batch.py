@@ -12,6 +12,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 PACKAGE = "io/github/pkeppeler/deepcharter/test"
+EXCHANGE = REPO / "build/gate-checks"
 
 
 @dataclass(frozen=True)
@@ -29,26 +30,16 @@ class Result:
     client: tuple[str, ...]
 
 
-@dataclass(frozen=True)
-class Outcome:
-    results: Mapping[str, Result]
-    declared_inputs: tuple[str, ...]
-
-
-OUTCOME: Outcome | None = None
-
-
-def outcome() -> Outcome:
-    if OUTCOME is None:
-        raise RuntimeError("no gate-check outcome yet; run through tools/tests/gate_checks.py")
-    return OUTCOME
+RESULTS: Mapping[str, Result] | None = None
 
 
 def result(name: str) -> Result:
-    return outcome().results[name]
+    if RESULTS is None:
+        raise RuntimeError("no gate-check results yet; run through tools/tests/gate_checks.py")
+    return RESULTS[name]
 
 
-def run(cases: Mapping[str, Case]) -> Outcome:
+def run(cases: Mapping[str, Case]) -> Mapping[str, Result]:
     with tempfile.TemporaryDirectory() as directory:
         work = Path(directory)
         manifest = []
@@ -62,19 +53,21 @@ def run(cases: Mapping[str, Case]) -> Outcome:
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_text(body)
             manifest.append({"name": name, "root": str(root), "clientTests": case.client_tests})
-        cases_file = work / "cases.json"
-        results_file = work / "results.json"
+        # Fixed paths: the properties are inputs of Gradle's configuration cache, so a new path each run would add a cache entry each run.
+        cases_file = EXCHANGE / "cases.json"
+        results_file = EXCHANGE / "results.json"
+        EXCHANGE.mkdir(parents=True, exist_ok=True)
+        results_file.unlink(missing_ok=True)
         cases_file.write_text(json.dumps(manifest))
         done = subprocess.run(
             ["./gradlew", "-q", "checkGametestFixtures", f"-PfixtureCases={cases_file}", f"-PfixtureResults={results_file}"],
             cwd=REPO, capture_output=True, text=True, check=False)
         if done.returncode != 0:
             raise RuntimeError(f"checkGametestFixtures failed:\n{done.stdout}{done.stderr}")
-        report = json.loads(results_file.read_text())
-    results = {
-        name: Result(entry["ok"], entry["message"], tuple(entry["server"]), tuple(entry["client"]))
-        for name, entry in report["cases"].items()}
+        results = {
+            name: Result(entry["ok"], entry["message"], tuple(entry["server"]), tuple(entry["client"]))
+            for name, entry in json.loads(results_file.read_text()).items()}
     missing = set(cases) - set(results)
     if missing:
         raise RuntimeError(f"checkGametestFixtures returned no result for {sorted(missing)}")
-    return Outcome(results, tuple(report["inputs"]))
+    return results
