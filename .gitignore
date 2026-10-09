@@ -28,3 +28,6 @@ __pycache__/
 # Third-party cheat-client jars used only by minecraft-dev-mcp's own tests: keep local, never commit
 /tooling/minecraft-dev-mcp/ai_reference/meteor-client-*.jar
 /tooling/minecraft-dev-mcp/__tests__/fixtures/meteor-client-*.jar
+# Look-book skins: vanilla textures remapped from the local Minecraft jar (tools/skins.py), Mojang's art: never commit
+/skins/*/assets/minecraft/textures/block/
+/skins/*/assets/minecraft/textures/colormap/

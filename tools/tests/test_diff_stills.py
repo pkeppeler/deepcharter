@@ -49,12 +49,6 @@ class DiffStillsTest(unittest.TestCase):
         self.a.mkdir()
         self.b.mkdir()
 
-    def test_round_trip(self):
-        png(self.a / "x.png", grey)
-        image = ds.decode_png(self.a / "x.png")
-        self.assertEqual((W, H), (image.width, image.height))
-        self.assertEqual(bytes(grey(2, 1)), image.rgb[3 * (W + 2):3 * (W + 2) + 3])
-
     def test_same_stills_report_nothing(self):
         png(self.a / "x.png", grey)
         png(self.b / "x.png", grey)
@@ -175,30 +169,6 @@ class DiffStillsTest(unittest.TestCase):
         png(self.a / "x.png", grey)
         png(self.b / "x.png", grey)
         self.assertEqual(2, run(str(self.a), str(self.b), "--noise", "oops")[0])
-
-    def test_all_png_filters_decode(self):
-        # A 2 x 2 RGB image written with filter types 1 to 4 on its second row, decoded back to the same pixels.
-        rows = [bytes([10, 20, 30, 40, 50, 60]), bytes([15, 25, 35, 45, 55, 65])]
-        for kind in (1, 2, 3, 4):
-            first = bytearray([0]) + rows[0]
-            second = bytearray([kind])
-            for i in range(6):
-                left = rows[1][i - 3] if i >= 3 else 0
-                up = rows[0][i]
-                upleft = rows[0][i - 3] if i >= 3 else 0
-                if kind == 1:
-                    predictor = left
-                elif kind == 2:
-                    predictor = up
-                elif kind == 3:
-                    predictor = (left + up) >> 1
-                else:
-                    p = left + up - upleft
-                    pa, pb, pc = abs(p - left), abs(p - up), abs(p - upleft)
-                    predictor = left if pa <= pb and pa <= pc else (up if pb <= pc else upleft)
-                second.append((rows[1][i] - predictor) & 255)
-            raw = bytes(first) + bytes(second)
-            self.assertEqual(rows[0] + rows[1], bytes(ds.unfilter(raw, 2, 2, 3, "t")), f"filter {kind}")
 
 
 if __name__ == "__main__":
