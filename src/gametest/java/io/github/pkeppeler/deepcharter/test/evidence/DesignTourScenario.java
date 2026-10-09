@@ -36,6 +36,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.clock.ClockInstance;
 import net.minecraft.world.clock.WorldClock;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.Entity;
@@ -256,10 +257,12 @@ public class DesignTourScenario extends EvidenceScenario {
 			server.clockManager().setPaused(sky, true);
 			server.clockManager().setTotalTicks(sky, ticks);
 		});
-		ClientWait.until(ctx, "the client to read the sky clock at " + ticks, client -> {
-			var instance = client.level.clockManager().getInstance(client.level.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(key));
-			return instance.totalTicks() == ticks && instance.isPaused();
-		}, client -> "the sky clock at " + client.level.clockManager().getInstance(client.level.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(key)).totalTicks());
+		ClientWait.until(ctx, "the client to read the sky clock at " + ticks, client -> skyClockOnClient(client, key).totalTicks() == ticks && skyClockOnClient(client, key).isPaused(),
+				client -> "the sky clock at " + skyClockOnClient(client, key).totalTicks());
+	}
+
+	private static ClockInstance skyClockOnClient(Minecraft client, ResourceKey<WorldClock> key) {
+		return client.level.clockManager().getInstance(client.level.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(key));
 	}
 
 	/**
