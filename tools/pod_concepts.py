@@ -67,6 +67,7 @@ RAMPS = {
     "brass": ((70, 49, 21), (110, 80, 35), (150, 114, 52), (188, 150, 74), (226, 192, 114)),
     "rubber": ((16, 15, 14), (26, 24, 22), (38, 35, 32), (52, 48, 44), (68, 63, 58)),
     "glass": ((8, 13, 17), (17, 28, 34), (30, 47, 55), (58, 84, 94), (118, 148, 154)),
+    "blue": ((10, 18, 34), (28, 50, 86), (58, 94, 142), (104, 146, 196), (170, 206, 240)),
     "amber": ((86, 56, 14), (140, 94, 22), (196, 140, 40), (222, 172, 70), (240, 204, 120)),
 }
 RUST = (122, 62, 34)
@@ -310,6 +311,25 @@ def check_cone(model):
         if radius > narrowest + CONE_BUMP_PX:
             raise ValueError(f"{model.name}'s cutter widens toward its tip at z {z}: {narrowest:.1f} behind it, {radius:.1f} there")
         narrowest = min(narrowest, radius)
+
+
+def cone_figures(model):
+    """(lead, depth, width, length) of a cone in pixels: how far its tip leads the bore face with the mount level, how far under the
+    floor its lowest point is with the mount turned 90 degrees down, and its widest and longest extent at rest. The docs quote
+    these, and main() prints them."""
+    mount = next(bone for bone in model.bones if bone.name == "drill_mount")
+    rest = mount.rotation
+    try:
+        mount.rotation = (0.0, 0.0, 0.0)
+        lo, hi = rest_bounds(model, cutter=True)
+        lead = -lo[2] - BORE_HALF_WIDTH
+        width = hi[0] - lo[0]
+        length = hi[2] - lo[2]
+        mount.rotation = (90.0, 0.0, 0.0)
+        depth = -rest_bounds(model, cutter=True)[0][1]
+    finally:
+        mount.rotation = rest
+    return lead, depth, width, length
 
 
 # ---------------------------------------------------------------------------------------------
@@ -599,6 +619,37 @@ def teeth(canvas, glow, face, rng):
             canvas.set(face.x + i, face.y + j, shade("steel", 4 if face.kind == "front" else 3))
 
 
+def cone_metal(base, groove=None):
+    """Machined cone steel in the blue ramp: face value base, a lit top (one step up), a shadowed underside and a lit leading edge on
+    every side face, and, if groove is given, a darker line down each face's first column and row, which makes the flutes of a dark
+    core. No noise: the cones are smooth machined metal, and noise reads as a pile of rock. The cones are the one part of the pod
+    painted in blue steel, so they stand out from the red rock, the dusk sky and the hull's paint."""
+
+    def paint(canvas, glow, face, rng):
+        w, h = face.w, face.h
+        for j in range(h):
+            for i in range(w):
+                level = base
+                if face.kind == "top":
+                    level += 1
+                elif face.kind == "bottom":
+                    level -= 1
+                elif face.side and j == 0:
+                    level += 1
+                if groove is not None and (i == 0 or j == h - 1):
+                    level = groove
+                canvas.set(face.x + i, face.y + j, shade("blue", level))
+
+    return paint
+
+
+def tip(canvas, glow, face, rng):
+    """A bright brass point: the lightest brass on every face but the underside."""
+    for j in range(face.h):
+        for i in range(face.w):
+            canvas.set(face.x + i, face.y + j, shade("brass", 3 if face.kind == "bottom" else 4))
+
+
 def wheel(canvas, glow, face, rng):
     """A road wheel: a ring with two spokes and a brass hub, so its turn shows from the side."""
     w, h = face.w, face.h
@@ -662,6 +713,10 @@ MATERIALS = {
     "hazard": hazard,
     "drill": drill,
     "teeth": teeth,
+    "cone_dark": cone_metal(1, groove=0),
+    "cone_steel": cone_metal(3, groove=2),
+    "cone_tooth": cone_metal(4),
+    "tip": tip,
     "wheel": wheel,
     "flame": flame,
     "exhaust": exhaust,
@@ -1026,13 +1081,13 @@ CONE_BACK_Z = -5
 CONE_DOWN_TIP_Y = -13
 
 
-def teeth_ring(bone, cx, cy, z_face, radius, count, size=(2, 3, 2), phase=0.0):
+def teeth_ring(bone, cx, cy, z_face, radius, count, size=(2, 3, 2), phase=0.0, material="teeth"):
     """count teeth standing proud of a face at z_face, round the axis at radius, each turned to point out from it."""
     w, h, d = size
     for n in range(count):
         a = phase + 360.0 * n / count
         r = math.radians(a)
-        bone.centred(round(cx + radius * math.sin(r), 4), round(cy + radius * math.cos(r), 4), z_face - d / 2, w, h, d, "teeth", (0, 0, a))
+        bone.centred(round(cx + radius * math.sin(r), 4), round(cy + radius * math.cos(r), 4), z_face - d / 2, w, h, d, material, (0, 0, a))
 
 
 def mount_pivot(axis_y, tip_z, down_tip_y):
@@ -1086,14 +1141,20 @@ def spinner(m, name, parent="drill_mount"):
     return m.bone(name, parent, (0, CONE_AXIS_Y, CONE_BACK_Z))
 
 
+def collar(bone):
+    """A hazard-striped band round the back of the cone, 1.5 pixels wider than its first ring, so it shows from the front."""
+    slab(bone, CONE_BACK_Z, 2, 14, "hazard", "iron")
+
+
 def fluted():
     """A. Fluted: an auger cone, from the twist drill's helical flutes and the ribbed conical nose of Trebelev's subterrene. Nine
-    slabs shrink from the bore's width to a point, and each carries a cross of two blades turned a little more than the one behind
-    it, so the four flutes spiral up the cone like a screw. Bright blades over a dark core, which sits a pixel deep, so the flutes
-    have a floor."""
+    slabs shrink from the bore's width to a point, and each carries a cross of two bright blades turned a little more than the one
+    behind it, so the four flutes spiral up the cone like a screw. The core is dark and sits a pixel deep, so the flutes have a
+    floor. A hazard band at the back, a bright brass point at the front."""
     m = Model("fluted")
     cone_base(m, -32)
     head = spinner(m, "drill_head")
+    collar(head)
     radii = (12.5, 11, 9.5, 8, 6.5, 5, 3.5, 2.5)
     z = CONE_BACK_Z
     for k, radius in enumerate(radii):
@@ -1102,76 +1163,85 @@ def fluted():
         length = round(2 * radius)
         blade = max(2, round(radius * 0.4))
         zc = z + 1.5
-        head.centred(0, CONE_AXIS_Y, zc, length, blade, 3, "steel", turned(twist))
-        head.centred(0, CONE_AXIS_Y, zc + 0.5, blade, length, 3, "steel", turned(twist))
+        head.centred(0, CONE_AXIS_Y, zc, length, blade, 3, "cone_steel", turned(twist))
+        head.centred(0, CONE_AXIS_Y, zc + 0.5, blade, length, 3, "cone_steel", turned(twist))
         core = max(2, round(radius * 1.1))
-        head.centred(0, CONE_AXIS_Y, zc + 1, core, core, 3, "iron", turned(twist + 22.5))
+        head.centred(0, CONE_AXIS_Y, zc + 1, core, core, 3, "cone_dark", turned(twist + 22.5))
     z -= 3
-    head.centred(0, CONE_AXIS_Y, z + 1.5, 3, 3, 3, "brass")
+    head.centred(0, CONE_AXIS_Y, z + 1.5, 3, 3, 3, "tip")
     return m
 
 
 def stacked():
-    """B. Stacked: rings of teeth, the Atlantis digger's cutter drawn as a cone. Six toothed rings shrink toward a brass nose, every
-    ring stands a step proud of the one in front, and alternate rings turn against each other so the cone churns."""
+    """B. Stacked: rings of teeth, the Atlantis digger's cutter drawn as a cone. Six toothed rings shrink toward a bright brass nose.
+    A dark shaft shows in a one-pixel gap between the rings, and alternate rings are dark and bright steel and turn against each
+    other, so the cone churns."""
     m = Model("stacked")
     cone_base(m, -31)
     head = spinner(m, "drill_head")
     ring = spinner(m, "drill_ring")
-    steps = ((12.5, 4), (10, 4), (7.5, 4), (5.5, 4), (3.5, 4), (2, 3))
+    collar(head)
+    steps = (12.5, 10, 7.5, 5.5, 3.5, 2)
     z = CONE_BACK_Z
-    for k, (radius, depth) in enumerate(steps):
-        z -= depth
+    for k, radius in enumerate(steps):
+        z -= 3
         bone = head if k % 2 == 0 else ring
-        slab(bone, z, depth, radius, "iron" if k % 2 == 0 else "brass", "steel" if k % 2 == 0 else "iron")
+        dark = k % 2 == 0
+        slab(bone, z, 3, radius, "cone_dark" if dark else "cone_steel", "cone_dark" if dark else "cone_steel")
         if radius >= 4:
-            teeth_ring(bone, 0, CONE_AXIS_Y, z, radius - 1.5, 8, (2, 3, 2), 22.5 * (k % 2))
+            teeth_ring(bone, 0, CONE_AXIS_Y, z, radius - 1.5, 8, (2, 3, 2), 22.5 * (k % 2), "cone_tooth")
+        if k + 1 < len(steps):
+            # The shaft in the gap is a pixel narrower than the next ring, so the cone still narrows to its tip.
+            shaft = max(2, round((steps[k + 1] - 1.5) * 1.414))
+            head.centred(0, CONE_AXIS_Y, z - 0.5, shaft, shaft, 3, "cone_dark")
+            z -= 1
     z -= 3
-    head.centred(0, CONE_AXIS_Y, z + 1.5, 3, 3, 3, "brass")
-    head.centred(0, CONE_AXIS_Y, z + 0.5, 1, 1, 1, "teeth")
+    head.centred(0, CONE_AXIS_Y, z + 1.5, 3, 3, 3, "tip")
     return m
 
 
 def tricone():
     """C. Tricone: an oil-well roller bit, three toothed cones on one hub, leaning in so their tips meet at a point. Each cone is a
-    stack of squares turned to lie along its own axis, with a tooth on every flank of every other step. A collar of teeth on the
-    hub turns against the cones."""
+    stack of bright squares turned to lie along its own axis, with a bright tooth on every flank of every other step, over a dark
+    hub. A hazard-striped collar of teeth turns against the cones, and every cone ends in a brass point."""
     m = Model("tricone")
     cone_base(m, -31)
     head = spinner(m, "drill_head")
     ring = spinner(m, "drill_ring")
-    slab(ring, CONE_BACK_Z - 3, 3, 12.5, "frame", "iron")
-    teeth_ring(ring, 0, CONE_AXIS_Y, CONE_BACK_Z - 3, 11, 8, (2, 3, 3), 22.5)
+    slab(ring, CONE_BACK_Z - 3, 3, 12.5, "hazard", "iron")
+    teeth_ring(ring, 0, CONE_AXIS_Y, CONE_BACK_Z - 3, 11, 8, (2, 3, 3), 22.5, "cone_tooth")
     hub_z = CONE_BACK_Z - 3 - 3
-    slab(head, hub_z, 3, 9.5, "steel", "iron")
+    slab(head, hub_z, 3, 9.5, "cone_dark", "cone_dark")
     steps = (9, 8, 6, 4, 3, 2)
     for angle in (0, 120, 240):
         a = math.radians(angle)
         base = (6 * math.sin(a), CONE_AXIS_Y + 6 * math.cos(a), hub_z)
-        tip = (0.8 * math.sin(a), CONE_AXIS_Y + 0.8 * math.cos(a), hub_z - 19)
-        length = math.dist(base, tip)
-        unit = tuple((t - b) / length for b, t in zip(base, tip))
+        end = (0.8 * math.sin(a), CONE_AXIS_Y + 0.8 * math.cos(a), hub_z - 19)
+        length = math.dist(base, end)
+        unit = tuple((t - b) / length for b, t in zip(base, end))
         pitch = math.degrees(math.atan2(unit[1], math.hypot(unit[0], unit[2])))
         yaw = math.degrees(math.atan2(unit[0], unit[2]))
         pace = length / len(steps)
         for n, side in enumerate(steps):
             centre = tuple(b + u * (pace * (n + 0.5)) for b, u in zip(base, unit))
-            head.centred(*centre, side, side, math.ceil(pace) + 1, "drill", (pitch, yaw, 0))
+            last = n == len(steps) - 1
+            head.centred(*centre, side, side, math.ceil(pace) + 1, "tip" if last else "cone_steel", (pitch, yaw, 0))
             if n % 2 == 0 and side >= 5:
                 for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                    head.centred(centre[0] + dx * side / 2, centre[1] + dy * side / 2, centre[2] - pace / 2, 2, 2, 2, "teeth")
-    head.centred(0, CONE_AXIS_Y, hub_z - 18.5, 3, 3, 3, "brass")
+                    head.centred(centre[0] + dx * side / 2, centre[1] + dy * side / 2, centre[2] - pace / 2, 2, 2, 2, "cone_tooth")
+    head.centred(0, CONE_AXIS_Y, hub_z - 18.5, 3, 3, 3, "tip")
     return m
 
 
 def cluster():
     """D. Cluster: one long cone ringed by five short ones, as in a cluster of shaped charges or a bundle of drill steels. The long
-    cone is the head and ends in a point; the five short cones ride a carrier that turns the other way, so they circle it."""
+    cone is the head, bright steel with dark steps, and ends in a brass point; the five short cones ride a hazard-striped carrier
+    that turns the other way, so they circle it, each with a bright tooth at its tip."""
     m = Model("cluster")
     cone_base(m, -32)
     head = spinner(m, "drill_head")
     ring = spinner(m, "drill_ring")
-    slab(ring, CONE_BACK_Z - 3, 3, 12.5, "frame", "iron")
+    slab(ring, CONE_BACK_Z - 3, 3, 12.5, "hazard", "iron")
     z = CONE_BACK_Z - 3
     for index in range(5):
         a = math.radians(18 + 72 * index)
@@ -1179,15 +1249,15 @@ def cluster():
         zs = z
         for side, depth in ((6, 4), (4, 4), (3, 3)):
             zs -= depth
-            ring.centred(cx, cy, zs + depth / 2, side, side, depth, "drill")
-        ring.centred(cx, cy, zs - 1, 2, 2, 2, "teeth")
+            ring.centred(cx, cy, zs + depth / 2, side, side, depth, "cone_dark")
+        ring.centred(cx, cy, zs - 1, 2, 2, 2, "cone_tooth")
     zc = z
     for k, (radius, depth) in enumerate(((6.5, 4), (5.5, 4), (4.5, 4), (3.5, 4), (2.5, 4), (1.5, 3))):
         zc -= depth
-        slab(head, zc, depth, radius, "steel", "iron")
+        slab(head, zc, depth, radius, "cone_steel", "cone_dark")
         if k < 4:
-            teeth_ring(head, 0, CONE_AXIS_Y, zc, radius - 1, 6, (2, 2, 2), 30 * (k % 2))
-    head.centred(0, CONE_AXIS_Y, zc, 2, 2, 2, "brass")
+            teeth_ring(head, 0, CONE_AXIS_Y, zc, radius - 1, 6, (2, 2, 2), 30 * (k % 2), "cone_tooth")
+    head.centred(0, CONE_AXIS_Y, zc, 2, 2, 2, "tip")
     return m
 
 
@@ -1284,7 +1354,11 @@ def main(argv=None):
     stale = []
     for name in CONCEPTS:
         model, files = build(name)
-        print(f"{name}: {len(model.bones)} bones, {len(model.cubes())} cubes")
+        line = f"{name}: {len(model.bones)} bones, {len(model.cubes())} cubes"
+        if name in CONES:
+            lead, depth, width, length = cone_figures(model)
+            line += f", {width:.1f} px wide and {length:.1f} long, tip leads the bore face by {lead:.2f} px, {depth:.2f} px under the floor pointing down"
+        print(line)
         for path, data in files.items():
             if args.check:
                 if not path.exists() or path.read_bytes() != data:

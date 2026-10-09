@@ -129,6 +129,23 @@ class Limits(unittest.TestCase):
                 self.assertAlmostEqual(lo[1], pc.CONE_DOWN_TIP_Y, delta=1.0)
                 self.assertLessEqual(hi[2], pc.BORE_HALF_WIDTH)
 
+    def test_cone_figures_are_the_lead_and_the_depth_the_docs_quote(self):
+        for name in pc.CONES:
+            with self.subTest(concept=name):
+                lead, depth, width, length = pc.cone_figures(pc.CONCEPTS[name]())
+                self.assertTrue(24 <= width <= 32 and 26 <= length <= 32, (width, length))
+                self.assertTrue(14 <= lead <= pc.CUTTER_REACH_PX, lead)
+                self.assertTrue(12 <= depth <= pc.FLOOR_SLAB_PX, depth)
+        model = pc.Model("probe")
+        model.bone("body")
+        model.bone("drill_mount", "body", (0, 10, -14))
+        model.bone("drill_head", "drill_mount", (0, 10, -14)).box(-1, 9, -30, 1, 11, -14, "drill")
+        lead, depth, width, length = pc.cone_figures(model)
+        self.assertAlmostEqual(width, 2.0)
+        self.assertAlmostEqual(length, 16.0)
+        self.assertAlmostEqual(lead, 14.0)
+        self.assertAlmostEqual(depth, 6.0)
+
     def test_every_cone_reads_as_a_cone(self):
         for name in pc.CONES:
             with self.subTest(concept=name):

@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -19,6 +20,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -48,6 +50,7 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 	 */
 	private static final double FULL_SPIN_REACH = 8;
 	private static final int CUBE_CORNERS = 8;
+	private static final double PIXELS_PER_BLOCK = 16;
 
 	/** A bone: its pivot and rest rotation (degrees, applied z, then y, then x) are in model space, as in the file. */
 	public record Bone(String name, BoneRole role, Optional<String> parent, Vec3 pivot, Vec3 rotation, List<Cube> cubes) {
@@ -124,7 +127,10 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 	 * How far the cubes of the spinning drill bones ({@code drill_head} and {@code drill_ring}, not their children) reach from the
 	 * bone's axis across x or y, in pixels: half the width of the cutter at its widest. A turned cube counts at its turned corners,
 	 * so the flutes of an auger cone or the tilted rollers of a tricone bit count for the width they really have. The bone's own
-	 * rest rotation is not applied: a spinning bone is drawn upright, and turns about its own z axis.
+	 * rest rotation is not applied: a spinning bone is drawn upright, and turns about its own z axis. Only the cubes of the spinning
+	 * bones themselves count, not those of bones under them. Every cube of the round-3 cones, including the side cones of the tricone
+	 * and the cluster, sits directly in {@code drill_head} or {@code drill_ring}, so all of them count; a round-1 {@code cutter} child
+	 * bone (a turned copy of the drill) does not, and its reach is that of its parent's.
 	 */
 	public double drillReach() {
 		double reach = 0;
@@ -141,6 +147,48 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 			}
 		}
 		return reach;
+	}
+
+	/** The extent of every cube corner at rest, turned by its own rotation and its bones', in pixels: {minX, minY, minZ, maxX, maxY, maxZ}. */
+	public double[] restBounds() {
+		return restBounds(bone -> true);
+	}
+
+	/** {@link #restBounds()} over the cubes of the bones {@code only} accepts. */
+	public double[] restBounds(Predicate<Bone> only) {
+		Map<String, Bone> byName = new HashMap<>();
+		bones.forEach(bone -> byName.put(bone.name(), bone));
+		double[] bounds = {Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE};
+		for (Bone bone : bones.stream().filter(only).toList()) {
+			for (Cube cube : bone.cubes()) {
+				for (int corner = 0; corner < CUBE_CORNERS; corner++) {
+					Vec3 p = cube.origin().add((corner & 1) * cube.size().x, (corner >> 1 & 1) * cube.size().y, (corner >> 2 & 1) * cube.size().z);
+					if (cube.turn().isPresent()) {
+						p = turn(p, cube.turn().get().pivot(), cube.turn().get().rotation());
+					}
+					for (Bone at = bone; at != null; at = at.parent().map(byName::get).orElse(null)) {
+						p = turn(p, at.pivot(), at.rotation());
+					}
+					double[] xyz = {p.x, p.y, p.z};
+					for (int i = 0; i < 3; i++) {
+						bounds[i] = Math.min(bounds[i], xyz[i]);
+						bounds[i + 3] = Math.max(bounds[i + 3], xyz[i]);
+					}
+				}
+			}
+		}
+		return bounds;
+	}
+
+	/**
+	 * The box the renderer culls this model by, in blocks, round the pod's feet: the model's rest bounds in y, and in x and z a square
+	 * as wide as the furthest any corner of its bounds is from the pod's middle, so it holds the model at any heading, the cutter's tip included.
+	 */
+	public AABB cullingBox() {
+		double[] b = restBounds();
+		double reach = Math.max(Math.max(Math.hypot(b[0], b[2]), Math.hypot(b[0], b[5])), Math.max(Math.hypot(b[3], b[2]), Math.hypot(b[3], b[5])));
+		return new AABB(-reach / PIXELS_PER_BLOCK, b[1] / PIXELS_PER_BLOCK, -reach / PIXELS_PER_BLOCK, reach / PIXELS_PER_BLOCK, b[4] / PIXELS_PER_BLOCK,
+				reach / PIXELS_PER_BLOCK);
 	}
 
 	/** Bedrock's rotation in y-up space: x, then y, then z, with the x and z angles turning the other way from ModelPart's y-down space. */

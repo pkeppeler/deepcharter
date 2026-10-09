@@ -20,6 +20,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.Mth;
+import net.minecraft.world.phys.AABB;
 
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -36,6 +37,8 @@ public class PodGeoRenderer extends EntityRenderer<PodEntity, PodGeoRenderState>
 
 	private final PodConcept concept;
 	private final PodGeoModel model;
+	/** The model's own extent round the pod's feet, cutter included: a cone leads the hitbox by a block, which the default culling box misses. */
+	private final AABB modelExtent;
 	// Weak, so a pod that leaves the level takes its animation with it.
 	private final Map<PodEntity, PodMotion> motions = new WeakHashMap<>();
 
@@ -48,7 +51,14 @@ public class PodGeoRenderer extends EntityRenderer<PodEntity, PodGeoRenderState>
 		checkTexture(resources, geo, concept.texture());
 		checkTexture(resources, geo, concept.glowmask());
 		model = new PodGeoModel(geo);
+		modelExtent = geo.cullingBox();
 	}
+
+	@Override
+	protected AABB getBoundingBoxForCulling(PodEntity pod, float partialTick) {
+		return super.getBoundingBoxForCulling(pod, partialTick).minmax(modelExtent.move(pod.position()));
+	}
+
 
 	public PodConcept concept() {
 		return concept;

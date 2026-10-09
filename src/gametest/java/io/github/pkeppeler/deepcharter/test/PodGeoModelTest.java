@@ -12,7 +12,6 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -21,7 +20,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.AABB;
 
 import io.github.pkeppeler.deepcharter.client.pod.BoneRole;
 import io.github.pkeppeler.deepcharter.client.pod.GeoModel;
@@ -77,8 +76,8 @@ public class PodGeoModelTest {
 		double slack = 1e-4;
 		for (PodConcept concept : PodConcept.values()) {
 			GeoModel model = read(helper, concept.model());
-			double[] bounds = restBounds(model);
-			double[] rest = restBounds(model, bone -> !isCutter(model, bone));
+			double[] bounds = model.restBounds();
+			double[] rest = model.restBounds(bone -> !isCutter(model, bone));
 			require(helper, bounds[0] >= -half - slack && bounds[3] <= half + slack && bounds[5] <= half + slack,
 					concept + " at rest spans x %.2f..%.2f and back z %.2f, wider than its %.0f-pixel bore".formatted(bounds[0], bounds[3], bounds[5], 2 * half));
 			require(helper, rest[2] >= -half - slack, concept + "'s hull, lamps or yoke reach z %.2f, past the bore face at %.0f".formatted(rest[2], -half));
@@ -183,11 +182,40 @@ public class PodGeoModelTest {
 	public void roundThreeConesLeadTheBoreFaceByUpToABlock(GameTestHelper helper) throws IOException {
 		for (PodConcept concept : PodConcept.values()) {
 			GeoModel model = read(helper, concept.model());
-			double lead = -restBounds(model, bone -> isCutter(model, bone))[2] - 16;
+			double lead = -model.restBounds(bone -> isCutter(model, bone))[2] - 16;
 			if (concept.round() == 3) {
 				require(helper, lead >= 12 && lead <= 16 + 1e-4, concept + "'s cone leads the bore face by %.2f pixels, not 12 to 16".formatted(lead));
 			} else {
 				require(helper, lead <= 1e-4, concept + "'s drill leads the bore face by %.2f pixels, which round 1 never did".formatted(lead));
+			}
+		}
+		helper.succeed();
+	}
+
+	/**
+	 * The renderer culls a pod by this box, so it must hold the whole model at every heading, cutter included: a cone leads the
+	 * hitbox by a block. The box is round the pod's feet, in blocks.
+	 */
+	@GameTest
+	public void theCullingBoxHoldsTheWholeModelAtAnyHeading(GameTestHelper helper) throws IOException {
+		for (PodConcept concept : PodConcept.values()) {
+			GeoModel model = read(helper, concept.model());
+			double[] b = model.restBounds();
+			AABB box = model.cullingBox();
+			for (double x : new double[] {b[0], b[3]}) {
+				for (double z : new double[] {b[2], b[5]}) {
+					for (int degrees = 0; degrees < 360; degrees += 15) {
+						double yaw = Math.toRadians(degrees);
+						double px = (x * Math.cos(yaw) - z * Math.sin(yaw)) / 16;
+						double pz = (x * Math.sin(yaw) + z * Math.cos(yaw)) / 16;
+						require(helper, box.inflate(1e-6).contains(px, (b[1] + b[4]) / 32, pz), concept + "'s corner (" + x + ", " + z + ") at " + degrees
+								+ " degrees is outside its culling box " + box);
+					}
+				}
+			}
+			require(helper, box.minY <= b[1] / 16 + 1e-9 && box.maxY >= b[4] / 16 - 1e-9, concept + "'s culling box " + box + " does not hold its height");
+			if (concept.round() == 3) {
+				require(helper, box.maxX >= 2.0 - 1e-9, concept + "'s culling box " + box + " does not reach the cone's tip, two blocks from the pod's middle");
 			}
 		}
 		helper.succeed();
@@ -256,36 +284,6 @@ public class PodGeoModelTest {
 				.putInt(height).array();
 	}
 
-	/** The extent of every cube corner at rest, turned by its own rotation and its bones', as GeckoLib and our loader read the file. */
-	private static double[] restBounds(GeoModel model) {
-		return restBounds(model, bone -> true);
-	}
-
-	/** {@link #restBounds(GeoModel)} over the cubes of the bones {@code only} accepts. */
-	private static double[] restBounds(GeoModel model, Predicate<GeoModel.Bone> only) {
-		Map<String, GeoModel.Bone> byName = model.bones().stream().collect(Collectors.toMap(GeoModel.Bone::name, bone -> bone));
-		double[] bounds = {Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE};
-		for (GeoModel.Bone bone : model.bones().stream().filter(only).toList()) {
-			for (GeoModel.Cube cube : bone.cubes()) {
-				for (int corner = 0; corner < 8; corner++) {
-					Vec3 p = cube.origin().add((corner & 1) * cube.size().x, (corner >> 1 & 1) * cube.size().y, (corner >> 2 & 1) * cube.size().z);
-					if (cube.turn().isPresent()) {
-						p = turn(p, cube.turn().get().pivot(), cube.turn().get().rotation());
-					}
-					for (GeoModel.Bone at = bone; at != null; at = at.parent().map(byName::get).orElse(null)) {
-						p = turn(p, at.pivot(), at.rotation());
-					}
-					double[] xyz = {p.x, p.y, p.z};
-					for (int i = 0; i < 3; i++) {
-						bounds[i] = Math.min(bounds[i], xyz[i]);
-						bounds[i + 3] = Math.max(bounds[i + 3], xyz[i]);
-					}
-				}
-			}
-		}
-		return bounds;
-	}
-
 	/** True for a {@code drill_head} or {@code drill_ring} bone and every bone under one: the part that turns and may lead the bore face. */
 	private static boolean isCutter(GeoModel model, GeoModel.Bone bone) {
 		Map<String, GeoModel.Bone> byName = model.bones().stream().collect(Collectors.toMap(GeoModel.Bone::name, b -> b));
@@ -295,12 +293,6 @@ public class PodGeoModelTest {
 			}
 		}
 		return false;
-	}
-
-	/** Bedrock's rotation in y-up space: x, then y, then z, with the x and z angles turning the other way from ModelPart's y-down space. */
-	private static Vec3 turn(Vec3 point, Vec3 pivot, Vec3 degrees) {
-		return point.subtract(pivot).xRot((float) Math.toRadians(degrees.x)).yRot((float) Math.toRadians(degrees.y))
-				.zRot((float) Math.toRadians(degrees.z)).add(pivot);
 	}
 
 	private static GeoModel read(GameTestHelper helper, Identifier id) throws IOException {
