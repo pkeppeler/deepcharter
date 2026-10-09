@@ -23,13 +23,14 @@ After a run, open each new image before you trust it. GitHub caches `raw.githubu
 
 ## The manifest
 
-[readme-tour.tsv](../readme-tour.tsv) has one row per image, with three tab-separated columns:
+[readme-tour.tsv](../readme-tour.tsv) has one row per image, with three or four tab-separated columns:
 
 | Column | Meaning |
 |---|---|
 | media name | The file name under `pr-media/readme/`, ending in `.gif` or `.png`. The README links this name. |
 | scenario | The `name()` of an `EvidenceScenario` in `src/gametest`. |
 | output | `gif` for the scenario's GIF, or the name of one of its stills, without `.png`. |
+| frames (optional) | `frames=<first>-<last>` trims a GIF item to those recorded frames (1-based, 15 per second). `frames=6-` runs to the last frame. Leave the column out for no trim. The script rebuilds the GIF from the recorded frames with `tools/record-evidence.sh --no-run`, which also fits the 5 MB budget. Use it to cut a dark or empty lead-in. |
 
 To add a tour item, add a row and put the image in the README with this link form:
 
