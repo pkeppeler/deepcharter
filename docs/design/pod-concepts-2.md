@@ -8,20 +8,20 @@ The bore stays the size of the pod (2 x 2 blocks) and the hitbox does not change
 
 ## The four, from the front
 
-![The four concepts from the front: A, B, C and D](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/pod-concepts-2-front-grid.png?raw=true)
+![The four concepts from the front: A, B, C and D](https://github.com/pkeppeler/deepcharter/blob/pr-media/360/pod-concepts-2-front-grid.png?raw=true)
 
 ## The four, from three-quarters
 
-![The four concepts from the front left: A, B, C and D](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/pod-concepts-2-threequarter-grid.png?raw=true)
+![The four concepts from the front left: A, B, C and D](https://github.com/pkeppeler/deepcharter/blob/pr-media/360/pod-concepts-2-threequarter-grid.png?raw=true)
 
 ## One by one
 
 | | Turning round | Driving and drilling | The idea |
 |---|---|---|---|
-| **A. Full Face** | ![Full Face turntable](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/pod-full_face-turntable.gif?raw=true) | ![Full Face clip](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/pod-full_face-drive.gif?raw=true) | The Capsule at its own size, set back a little, behind the Borer's cutter made giant: a toothed disc nearly as wide as the bore, a thin ring and a pilot boss. The lamps stand up on stalks either side of the cutter, like ears, so they still show over it. The closest to "the Capsule, with the Borer's drill, bigger". |
-| **B. Small Cab** | ![Small Cab turntable](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/pod-small_cab-turntable.gif?raw=true) | ![Small Cab clip](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/pod-small_cab-drive.gif?raw=true) | The drill is the machine and a shrunk Capsule rides behind it. The cutter is a deep drum as wide as the bore, painted like the hull, with a dark toothed face. The drum and the face turn opposite ways. From the front you see almost nothing but cutter. |
-| **C. Stepped** | ![Stepped turntable](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/pod-stepped-turntable.gif?raw=true) | ![Stepped clip](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/pod-stepped-drive.gif?raw=true) | A stepped cutter: three toothed rings and a pilot cone, every tooth standing proud. The middle ring turns against the others, so the face churns. It sits on a big brass hub in a heavy frame that is open at the top, with a lamp on top of each post. The most like a mining machine. |
-| **D. Boom** | ![Boom turntable](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/pod-boom-turntable.gif?raw=true) | ![Boom clip](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/pod-boom-drive.gif?raw=true) | The cutter is held out ahead on a heavy boom, with four bracing struts back to the hull, so there is daylight between drill and cab. The cutter sits a little lower and the brow lamps stand on short stalks, so they show over it and the pilot can see over its rim. |
+| **A. Full Face** | ![Full Face turntable](https://github.com/pkeppeler/deepcharter/blob/pr-media/360/pod-full_face-turntable.gif?raw=true) | ![Full Face clip](https://github.com/pkeppeler/deepcharter/blob/pr-media/360/pod-full_face-drive.gif?raw=true) | The Capsule at its own size, set back a little, behind the Borer's cutter made giant: a toothed disc nearly as wide as the bore, a thin ring and a pilot boss. The lamps stand up on stalks either side of the cutter, like ears, so they still show over it. The closest to "the Capsule, with the Borer's drill, bigger". |
+| **B. Small Cab** | ![Small Cab turntable](https://github.com/pkeppeler/deepcharter/blob/pr-media/360/pod-small_cab-turntable.gif?raw=true) | ![Small Cab clip](https://github.com/pkeppeler/deepcharter/blob/pr-media/360/pod-small_cab-drive.gif?raw=true) | The drill is the machine and a shrunk Capsule rides behind it. The cutter is a deep drum as wide as the bore, painted like the hull, with a dark toothed face. The drum and the face turn opposite ways. From the front you see almost nothing but cutter. |
+| **C. Stepped** | ![Stepped turntable](https://github.com/pkeppeler/deepcharter/blob/pr-media/360/pod-stepped-turntable.gif?raw=true) | ![Stepped clip](https://github.com/pkeppeler/deepcharter/blob/pr-media/360/pod-stepped-drive.gif?raw=true) | A stepped cutter: three toothed rings and a pilot cone, every tooth standing proud. The middle ring turns against the others, so the face churns. It sits on a big brass hub in a heavy frame that is open at the top, with a lamp on top of each post. The most like a mining machine. |
+| **D. Boom** | ![Boom turntable](https://github.com/pkeppeler/deepcharter/blob/pr-media/360/pod-boom-turntable.gif?raw=true) | ![Boom clip](https://github.com/pkeppeler/deepcharter/blob/pr-media/360/pod-boom-drive.gif?raw=true) | The cutter is held out ahead on a heavy boom, with four bracing struts back to the hull, so there is daylight between drill and cab. The cutter sits a little lower and the brow lamps stand on short stalks, so they show over it and the pilot can see over its rim. |
 
 Each clip drives the pod into a ledge of rock and chews into it (the cutter turns only while it bites), then bores the floor and flies up out of the hole. The pilot is hidden.
 
@@ -29,7 +29,7 @@ Each clip drives the pod into a ledge of rock and chews into it (the cutter turn
 
 From the pilot's seat, looking ahead and a little down:
 
-![What the pilot of each concept sees: A, B, C and D](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/pod-concepts-2-first-person-grid.png?raw=true)
+![What the pilot of each concept sees: A, B, C and D](https://github.com/pkeppeler/deepcharter/blob/pr-media/360/pod-concepts-2-first-person-grid.png?raw=true)
 
 The pilot still sits on top of the hull, as today ([#243](https://github.com/pkeppeler/deepcharter/issues/243) moves the pilot inside), so the eye is just above the cutter's top edge:
 
@@ -41,17 +41,17 @@ The pilot still sits on top of the hull, as today ([#243](https://github.com/pke
 
 ## At night, lamps on
 
-![The four concepts at night with their lamps on: A, B, C and D](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/pod-concepts-2-lit-grid.png?raw=true)
+![The four concepts at night with their lamps on: A, B, C and D](https://github.com/pkeppeler/deepcharter/blob/pr-media/360/pod-concepts-2-lit-grid.png?raw=true)
 
 ## Boring the floor
 
 A cutter that fills the front of the pod cannot also point down inside the bore without moving. So on all four, the cutter swings down under the belly on its yoke when the pod bores the floor, and swings back up when it stops. Half a second into the swing it is under the pod, chewing the floor, and the pod sinks into its own lamp-lit shaft.
 
-More stills of each concept (side, back, above, lamps off, chewing the ledge, boring the floor, flying) are on [pull request #PRNUM](https://github.com/pkeppeler/deepcharter/pull/PRNUM).
+More stills of each concept (side, back, above, lamps off, chewing the ledge, boring the floor, flying) are on [pull request #360](https://github.com/pkeppeler/deepcharter/pull/360).
 
 ## How to pick
 
-Reply on [#PRNUM](https://github.com/pkeppeler/deepcharter/pull/PRNUM) or [#352](https://github.com/pkeppeler/deepcharter/issues/352) in a few words. For example:
+Reply on [#360](https://github.com/pkeppeler/deepcharter/pull/360) or [#352](https://github.com/pkeppeler/deepcharter/issues/352) in a few words. For example:
 
 - "B."
 - "C, but with A's lamps."
