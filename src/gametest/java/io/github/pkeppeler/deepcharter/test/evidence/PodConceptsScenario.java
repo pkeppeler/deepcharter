@@ -16,7 +16,10 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -150,8 +153,6 @@ public class PodConceptsScenario extends EvidenceScenario {
 			pilot.teleportTo(one, new Vec3(X + CAVE_OFFSET, FLOOR, Z), -90f, 0f);
 			pilot.player().setInvisible(true);
 			pilot.player().setPermanentlyInvulnerable(true);
-			// An invisible player still shows what it holds, and the handbook it always carries sits in the first slot: hold the last.
-			pilot.player().getInventory().setSelectedSlot(8);
 			if (Charters.found(server, pilot.player().getUUID(), "Concept Works").isPresent()) {
 				throw new AssertionError("founding the pilot's charter should succeed");
 			}
@@ -298,6 +299,14 @@ public class PodConceptsScenario extends EvidenceScenario {
 		});
 		ClientWait.until(ctx, "the pilot aboard the cave's Mole on the client",
 				client -> client.level.getEntity(piloted.getId()) instanceof PodEntity pod && pod.getControllingPassenger() != null);
+		// An invisible player still draws what it holds, and the handbook it must carry would float over the pod. Empty the hands of the
+		// client's copy only: the server's pilot keeps its handbook.
+		ctx.runOnClient(client -> {
+			if (client.level.getEntity(pilot.player().getId()) instanceof Player shown) {
+				shown.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+				shown.setItemSlot(EquipmentSlot.OFFHAND, ItemStack.EMPTY);
+			}
+		});
 	}
 
 	private void releasePilot() {
