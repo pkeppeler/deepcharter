@@ -12,3 +12,7 @@ Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest
 - `test/support/MockPlayers` joins a real server-side player with no client behind it.
 - `test/support/TwoPlayerServer` starts a dedicated server in a client GameTest, joins the real client, then joins one mock player.
 - Wait on entity ticks, not server ticks: chunks far from the players do not tick at first in a fresh world.
+
+## Client slots
+
+on macOS at most two game clients run at a time (`DEEPCHARTER_CLIENT_SLOTS`, default 2; `1` allows one). `runClient`, `runPlay` and `runClientGameTest` (so also `tools/play.sh` and `tools/record-evidence.sh`) take a machine-wide slot, a lock file in `~/.cache/deepcharter/` (`client.lock` is slot 0). A run that finds both slots taken prints `Waiting for a game client slot (queue position <n> of <m>). Slot 0: <worktree> ... PID <n>; Slot 1: ...` and is served in arrival order. Do not check `pgrep` first. The OS frees a slot when its holder exits or dies, and a waiter that dies leaves a ticket that the others skip, so Ctrl-C and crashes need no cleanup. `tools/play.sh` and `tools/record-evidence.sh` run Gradle with `--no-daemon`, so Ctrl-C of a waiting run ends it. For a direct `./gradlew runClientGameTest`, a Ctrl-C while the run waits leaves the Gradle daemon polling, and it would take a slot with no one watching. After such a Ctrl-C, run `./gradlew --stop` in that worktree. [gradle/clientlock.gradle](../../../gradle/clientlock.gradle) holds the details.
