@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "deepcharter:block/einsteinium_ore_0"
+  }
+}

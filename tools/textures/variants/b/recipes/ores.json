@@ -1,0 +1,441 @@
+{
+  "templates": {
+    "ironium_ore_b": {
+      "params": [
+        "rock",
+        "seed"
+      ],
+      "recipe": {
+        "kind": "opaque",
+        "layers": [
+          {
+            "op": "template",
+            "name": "layer_rock_b",
+            "args": {
+              "seed": "$rock"
+            }
+          },
+          {
+            "op": "cluster",
+            "seed": "$seed",
+            "ramp": [
+              "ironium.0",
+              "rust.1",
+              "rust.3",
+              "ironium.3",
+              "ironium.4"
+            ],
+            "shadow": "rock.1",
+            "count": 3,
+            "radius": [
+              1.9,
+              2.4
+            ],
+            "lumps": 3,
+            "veins": 1,
+            "vein": 3,
+            "glints": 1
+          }
+        ]
+      }
+    },
+    "bronzium_ore_b": {
+      "params": [
+        "rock",
+        "seed"
+      ],
+      "recipe": {
+        "kind": "opaque",
+        "layers": [
+          {
+            "op": "template",
+            "name": "layer_rock_b",
+            "args": {
+              "seed": "$rock"
+            }
+          },
+          {
+            "op": "cluster",
+            "seed": "$seed",
+            "ramp": "bronzium",
+            "shadow": "rock.1",
+            "count": 3,
+            "radius": [
+              1.9,
+              2.4
+            ],
+            "lumps": 2,
+            "veins": 0,
+            "vein": 0,
+            "glints": 1
+          }
+        ]
+      }
+    },
+    "silverium_ore_b": {
+      "params": [
+        "rock",
+        "seed"
+      ],
+      "recipe": {
+        "kind": "opaque",
+        "layers": [
+          {
+            "op": "template",
+            "name": "layer_rock_b",
+            "args": {
+              "seed": "$rock"
+            }
+          },
+          {
+            "op": "cluster",
+            "seed": "$seed",
+            "ramp": "silverium",
+            "shadow": "rock.1",
+            "count": 3,
+            "radius": [
+              1.6,
+              2.0
+            ],
+            "lumps": 2,
+            "crystal": true,
+            "veins": 1,
+            "vein": 4,
+            "glints": 2
+          }
+        ]
+      }
+    },
+    "goldium_ore_b": {
+      "params": [
+        "rock",
+        "seed"
+      ],
+      "recipe": {
+        "kind": "opaque",
+        "layers": [
+          {
+            "op": "template",
+            "name": "layer_rock_b",
+            "args": {
+              "seed": "$rock"
+            }
+          },
+          {
+            "op": "cluster",
+            "seed": "$seed",
+            "ramp": "goldium",
+            "shadow": "rock.1",
+            "count": 2,
+            "radius": [
+              2.2,
+              2.8
+            ],
+            "lumps": 3,
+            "veins": 0,
+            "vein": 0,
+            "glints": 2
+          }
+        ]
+      }
+    },
+    "platinium_ore_b": {
+      "params": [
+        "rock",
+        "seed"
+      ],
+      "recipe": {
+        "kind": "opaque",
+        "layers": [
+          {
+            "op": "template",
+            "name": "layer_rock_b",
+            "args": {
+              "seed": "$rock"
+            }
+          },
+          {
+            "op": "cluster",
+            "seed": "$seed",
+            "ramp": "platinium",
+            "shadow": "rock.1",
+            "count": 3,
+            "radius": [
+              1.5,
+              1.9
+            ],
+            "lumps": 2,
+            "veins": 0,
+            "vein": 0,
+            "glints": 2
+          }
+        ]
+      }
+    },
+    "einsteinium_ore_b": {
+      "params": [
+        "rock",
+        "seed"
+      ],
+      "recipe": {
+        "kind": "opaque",
+        "layers": [
+          {
+            "op": "template",
+            "name": "layer_rock_b",
+            "args": {
+              "seed": "$rock"
+            }
+          },
+          {
+            "op": "cluster",
+            "seed": "$seed",
+            "ramp": "einsteinium",
+            "shadow": "rock.1",
+            "count": 3,
+            "radius": [
+              1.6,
+              2.1
+            ],
+            "lumps": 3,
+            "crystal": true,
+            "veins": 0,
+            "vein": 0,
+            "glints": 1
+          }
+        ]
+      }
+    },
+    "cicatrium_ore_b": {
+      "params": [
+        "rock",
+        "seed"
+      ],
+      "recipe": {
+        "kind": "opaque",
+        "layers": [
+          {
+            "op": "template",
+            "name": "layer_rock_b",
+            "args": {
+              "seed": "$rock"
+            }
+          },
+          {
+            "op": "cluster",
+            "seed": "$seed",
+            "ramp": "cicatrium",
+            "shadow": "rock.1",
+            "count": 2,
+            "radius": [
+              1.7,
+              2.1
+            ],
+            "lumps": 2,
+            "veins": 3,
+            "vein": 6,
+            "glints": 1
+          }
+        ]
+      }
+    }
+  },
+  "recipes": {
+    "block/ironium_ore_0": {
+      "template": "ironium_ore_b",
+      "args": {
+        "rock": 811,
+        "seed": 1000
+      }
+    },
+    "block/ironium_ore_1": {
+      "template": "ironium_ore_b",
+      "args": {
+        "rock": 812,
+        "seed": 1001
+      }
+    },
+    "block/ironium_ore_2": {
+      "template": "ironium_ore_b",
+      "args": {
+        "rock": 813,
+        "seed": 1002
+      }
+    },
+    "block/ironium_ore_3": {
+      "template": "ironium_ore_b",
+      "args": {
+        "rock": 814,
+        "seed": 1010
+      }
+    },
+    "block/bronzium_ore_0": {
+      "template": "bronzium_ore_b",
+      "args": {
+        "rock": 811,
+        "seed": 1010
+      }
+    },
+    "block/bronzium_ore_1": {
+      "template": "bronzium_ore_b",
+      "args": {
+        "rock": 812,
+        "seed": 1011
+      }
+    },
+    "block/bronzium_ore_2": {
+      "template": "bronzium_ore_b",
+      "args": {
+        "rock": 813,
+        "seed": 1012
+      }
+    },
+    "block/bronzium_ore_3": {
+      "template": "bronzium_ore_b",
+      "args": {
+        "rock": 814,
+        "seed": 1013
+      }
+    },
+    "block/silverium_ore_0": {
+      "template": "silverium_ore_b",
+      "args": {
+        "rock": 811,
+        "seed": 1020
+      }
+    },
+    "block/silverium_ore_1": {
+      "template": "silverium_ore_b",
+      "args": {
+        "rock": 812,
+        "seed": 1021
+      }
+    },
+    "block/silverium_ore_2": {
+      "template": "silverium_ore_b",
+      "args": {
+        "rock": 813,
+        "seed": 1022
+      }
+    },
+    "block/silverium_ore_3": {
+      "template": "silverium_ore_b",
+      "args": {
+        "rock": 814,
+        "seed": 1030
+      }
+    },
+    "block/goldium_ore_0": {
+      "template": "goldium_ore_b",
+      "args": {
+        "rock": 811,
+        "seed": 1030
+      }
+    },
+    "block/goldium_ore_1": {
+      "template": "goldium_ore_b",
+      "args": {
+        "rock": 812,
+        "seed": 1031
+      }
+    },
+    "block/goldium_ore_2": {
+      "template": "goldium_ore_b",
+      "args": {
+        "rock": 813,
+        "seed": 1032
+      }
+    },
+    "block/goldium_ore_3": {
+      "template": "goldium_ore_b",
+      "args": {
+        "rock": 814,
+        "seed": 1033
+      }
+    },
+    "block/platinium_ore_0": {
+      "template": "platinium_ore_b",
+      "args": {
+        "rock": 811,
+        "seed": 1040
+      }
+    },
+    "block/platinium_ore_1": {
+      "template": "platinium_ore_b",
+      "args": {
+        "rock": 812,
+        "seed": 1041
+      }
+    },
+    "block/platinium_ore_2": {
+      "template": "platinium_ore_b",
+      "args": {
+        "rock": 813,
+        "seed": 1042
+      }
+    },
+    "block/platinium_ore_3": {
+      "template": "platinium_ore_b",
+      "args": {
+        "rock": 814,
+        "seed": 1043
+      }
+    },
+    "block/einsteinium_ore_0": {
+      "template": "einsteinium_ore_b",
+      "args": {
+        "rock": 811,
+        "seed": 1050
+      }
+    },
+    "block/einsteinium_ore_1": {
+      "template": "einsteinium_ore_b",
+      "args": {
+        "rock": 812,
+        "seed": 1051
+      }
+    },
+    "block/einsteinium_ore_2": {
+      "template": "einsteinium_ore_b",
+      "args": {
+        "rock": 813,
+        "seed": 1052
+      }
+    },
+    "block/einsteinium_ore_3": {
+      "template": "einsteinium_ore_b",
+      "args": {
+        "rock": 814,
+        "seed": 1053
+      }
+    },
+    "block/cicatrium_ore_0": {
+      "template": "cicatrium_ore_b",
+      "args": {
+        "rock": 811,
+        "seed": 1060
+      }
+    },
+    "block/cicatrium_ore_1": {
+      "template": "cicatrium_ore_b",
+      "args": {
+        "rock": 812,
+        "seed": 1061
+      }
+    },
+    "block/cicatrium_ore_2": {
+      "template": "cicatrium_ore_b",
+      "args": {
+        "rock": 813,
+        "seed": 1062
+      }
+    },
+    "block/cicatrium_ore_3": {
+      "template": "cicatrium_ore_b",
+      "args": {
+        "rock": 814,
+        "seed": 1063
+      }
+    }
+  }
+}

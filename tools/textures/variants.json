@@ -1,0 +1,20 @@
+{
+  "description": "The texture density test packs of issue 336 (docs/design/texture-density.md). Each is a test pack that only the texture-density evidence scenario turns on; the mod's own textures are variant A. Paths are from the repo root; a variant's recipe directories load over the default ones, in order.",
+  "variants": {
+    "b": {
+      "recipes": ["tools/textures/variants/b/recipes"],
+      "pack": "src/gametest/resources/resourcepacks/texture_density_b",
+      "sheet": "docs/design/texture-density/b-reference.png"
+    },
+    "c": {
+      "recipes": ["tools/textures/variants/c/recipes"],
+      "pack": "src/gametest/resources/resourcepacks/texture_density_c",
+      "sheet": "docs/design/texture-density/c-reference.png"
+    },
+    "d": {
+      "recipes": ["tools/textures/variants/b/recipes", "tools/textures/variants/d/recipes"],
+      "pack": "src/gametest/resources/resourcepacks/texture_density_d",
+      "sheet": "docs/design/texture-density/d-reference.png"
+    }
+  }
+}

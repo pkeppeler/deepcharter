@@ -1,0 +1,9 @@
+{
+  "parent": "deepcharter:block/ore_crystals_0",
+  "textures": {
+    "all": "deepcharter:block/cicatrium_ore_0",
+    "crystal": "deepcharter:block/cicatrium_crystal",
+    "crystal_side": "deepcharter:block/cicatrium_crystal",
+    "glint": "deepcharter:block/cicatrium_glint"
+  }
+}

@@ -20,10 +20,16 @@ public final class TestPacks implements ModInitializer {
 	public static final String BAD_CRT = "bad_crt";
 	/** Turns the handbook's ink red. */
 	public static final String RED_INK = "red_ink";
+	/** Texture density B (#336, docs/design/texture-density.md): a richer 16x for the rock, the ores, Company rock and the surface. */
+	public static final String TEXTURE_DENSITY_B = "texture_density_b";
+	/** Texture density C: 32x for the same blocks and the terminals. */
+	public static final String TEXTURE_DENSITY_C = "texture_density_c";
+	/** Texture density D: B, with crystals and a glint standing out of every ore. */
+	public static final String TEXTURE_DENSITY_D = "texture_density_d";
 
 	@Override
 	public void onInitialize() {
-		for (String pack : new String[] {AMBER_CRT, BAD_CRT, RED_INK}) {
+		for (String pack : new String[] {AMBER_CRT, BAD_CRT, RED_INK, TEXTURE_DENSITY_B, TEXTURE_DENSITY_C, TEXTURE_DENSITY_D}) {
 			ResourceLoader.registerBuiltinPack(Identifier.fromNamespaceAndPath("deepcharter-test", pack),
 					FabricLoader.getInstance().getModContainer("deepcharter-test").orElseThrow(),
 					Component.literal(pack + " (test pack)"), PackActivationType.NORMAL);

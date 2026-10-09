@@ -1,0 +1,560 @@
+{
+  "templates": {
+    "surface_ground_c": {
+      "params": [
+        "ground",
+        "grains",
+        "pebbles",
+        "shadow",
+        "seed",
+        "count"
+      ],
+      "recipe": {
+        "kind": "opaque",
+        "size": 32,
+        "layers": [
+          {
+            "op": "noise",
+            "ramp": "$ground",
+            "seed": "$seed",
+            "cell": 8,
+            "octaves": 3,
+            "dither": 0.9
+          },
+          {
+            "op": "speckle",
+            "colours": "$grains",
+            "density": 0.08,
+            "seed": "$seed"
+          },
+          {
+            "op": "cluster",
+            "seed": "$seed",
+            "count": "$count",
+            "radius": [
+              1.6,
+              2.8
+            ],
+            "lumps": 2,
+            "ramp": "$pebbles",
+            "shadow": "$shadow",
+            "margin": 0,
+            "glints": 1,
+            "depth": 3.0
+          }
+        ]
+      }
+    },
+    "surface_beds_c": {
+      "params": [
+        "beds",
+        "grains",
+        "crack",
+        "lip",
+        "shadow",
+        "pebbles",
+        "seed",
+        "cracks"
+      ],
+      "recipe": {
+        "kind": "opaque",
+        "size": 32,
+        "layers": [
+          {
+            "op": "strata",
+            "seed": "$seed",
+            "wobble": 2,
+            "beds": "$beds"
+          },
+          {
+            "op": "speckle",
+            "colours": "$grains",
+            "density": 0.25,
+            "seed": "$seed"
+          },
+          {
+            "op": "cracks",
+            "colour": "$crack",
+            "lip": "$lip",
+            "seed": "$seed",
+            "count": "$cracks",
+            "length": 6
+          },
+          {
+            "op": "cluster",
+            "seed": "$seed",
+            "count": 2,
+            "radius": [
+              1.6,
+              2.4
+            ],
+            "lumps": 1,
+            "ramp": "$pebbles",
+            "shadow": "$shadow",
+            "margin": 0,
+            "glints": 1,
+            "depth": 3.0
+          }
+        ]
+      }
+    }
+  },
+  "recipes": {
+    "block/regolith_0": {
+      "template": "surface_ground_c",
+      "args": {
+        "ground": [
+          "regolith.3",
+          "regolith.4",
+          "regolith.4",
+          "regolith.4",
+          "regolith.5"
+        ],
+        "grains": [
+          "dust.2",
+          "regolith.3",
+          "regolith.5"
+        ],
+        "pebbles": [
+          "regolith.2",
+          "regolith.3",
+          "regolith.4",
+          "regolith.5",
+          "dust.3"
+        ],
+        "seed": 701,
+        "count": 8,
+        "shadow": "regolith.1"
+      }
+    },
+    "block/regolith_1": {
+      "template": "surface_ground_c",
+      "args": {
+        "ground": [
+          "regolith.3",
+          "regolith.4",
+          "regolith.4",
+          "regolith.4",
+          "regolith.5"
+        ],
+        "grains": [
+          "dust.2",
+          "regolith.3",
+          "regolith.5"
+        ],
+        "pebbles": [
+          "regolith.2",
+          "regolith.3",
+          "regolith.4",
+          "regolith.5",
+          "dust.3"
+        ],
+        "seed": 702,
+        "count": 6,
+        "shadow": "regolith.1"
+      }
+    },
+    "block/regolith_2": {
+      "template": "surface_ground_c",
+      "args": {
+        "ground": [
+          "regolith.3",
+          "regolith.4",
+          "regolith.4",
+          "regolith.4",
+          "regolith.5"
+        ],
+        "grains": [
+          "dust.2",
+          "regolith.3",
+          "regolith.5"
+        ],
+        "pebbles": [
+          "regolith.2",
+          "regolith.3",
+          "regolith.4",
+          "regolith.5",
+          "dust.3"
+        ],
+        "seed": 703,
+        "count": 10,
+        "shadow": "regolith.1"
+      }
+    },
+    "block/regolith_3": {
+      "template": "surface_ground_c",
+      "args": {
+        "ground": [
+          "regolith.3",
+          "regolith.4",
+          "regolith.4",
+          "regolith.4",
+          "regolith.5"
+        ],
+        "grains": [
+          "dust.2",
+          "regolith.3",
+          "regolith.5"
+        ],
+        "pebbles": [
+          "regolith.2",
+          "regolith.3",
+          "regolith.4",
+          "regolith.5",
+          "dust.3"
+        ],
+        "seed": 704,
+        "count": 4,
+        "shadow": "regolith.1"
+      }
+    },
+    "block/ochre_regolith_0": {
+      "template": "surface_ground_c",
+      "args": {
+        "ground": [
+          "ochre.2",
+          "ochre.3",
+          "ochre.3",
+          "ochre.4"
+        ],
+        "grains": [
+          "ochre.5",
+          "ochre.1",
+          "dust.3"
+        ],
+        "pebbles": [
+          "ochre.1",
+          "ochre.2",
+          "ochre.3",
+          "ochre.4",
+          "ochre.6"
+        ],
+        "seed": 721,
+        "count": 8,
+        "shadow": "ochre.0"
+      }
+    },
+    "block/ochre_regolith_1": {
+      "template": "surface_ground_c",
+      "args": {
+        "ground": [
+          "ochre.2",
+          "ochre.3",
+          "ochre.3",
+          "ochre.4"
+        ],
+        "grains": [
+          "ochre.5",
+          "ochre.1",
+          "dust.3"
+        ],
+        "pebbles": [
+          "ochre.1",
+          "ochre.2",
+          "ochre.3",
+          "ochre.4",
+          "ochre.6"
+        ],
+        "seed": 722,
+        "count": 6,
+        "shadow": "ochre.0"
+      }
+    },
+    "block/ochre_regolith_2": {
+      "template": "surface_ground_c",
+      "args": {
+        "ground": [
+          "ochre.2",
+          "ochre.3",
+          "ochre.3",
+          "ochre.4"
+        ],
+        "grains": [
+          "ochre.5",
+          "ochre.1",
+          "dust.3"
+        ],
+        "pebbles": [
+          "ochre.1",
+          "ochre.2",
+          "ochre.3",
+          "ochre.4",
+          "ochre.6"
+        ],
+        "seed": 723,
+        "count": 10,
+        "shadow": "ochre.0"
+      }
+    },
+    "block/basalt_outcrop_0": {
+      "template": "surface_ground_c",
+      "args": {
+        "ground": [
+          "basalt.1",
+          "basalt.2",
+          "basalt.2",
+          "basalt.3"
+        ],
+        "grains": [
+          "basalt.0",
+          "basalt.4",
+          "basalt.0"
+        ],
+        "pebbles": [
+          "basalt.0",
+          "basalt.1",
+          "basalt.3",
+          "basalt.4",
+          "basalt.5"
+        ],
+        "seed": 741,
+        "count": 6,
+        "shadow": "basalt.0"
+      }
+    },
+    "block/basalt_outcrop_1": {
+      "template": "surface_ground_c",
+      "args": {
+        "ground": [
+          "basalt.1",
+          "basalt.2",
+          "basalt.2",
+          "basalt.3"
+        ],
+        "grains": [
+          "basalt.0",
+          "basalt.4",
+          "basalt.0"
+        ],
+        "pebbles": [
+          "basalt.0",
+          "basalt.1",
+          "basalt.3",
+          "basalt.4",
+          "basalt.5"
+        ],
+        "seed": 742,
+        "count": 8,
+        "shadow": "basalt.0"
+      }
+    },
+    "block/basalt_outcrop_2": {
+      "template": "surface_ground_c",
+      "args": {
+        "ground": [
+          "basalt.1",
+          "basalt.2",
+          "basalt.2",
+          "basalt.3"
+        ],
+        "grains": [
+          "basalt.0",
+          "basalt.4",
+          "basalt.0"
+        ],
+        "pebbles": [
+          "basalt.0",
+          "basalt.1",
+          "basalt.3",
+          "basalt.4",
+          "basalt.5"
+        ],
+        "seed": 743,
+        "count": 4,
+        "shadow": "basalt.0"
+      }
+    },
+    "block/regolith_packed_0": {
+      "template": "surface_beds_c",
+      "args": {
+        "beds": [
+          [
+            "regolith.3",
+            6
+          ],
+          [
+            "regolith.2",
+            4
+          ],
+          [
+            "regolith.3",
+            6
+          ],
+          [
+            "regolith.4",
+            4
+          ],
+          [
+            "regolith.3",
+            8
+          ],
+          [
+            "regolith.2",
+            4
+          ]
+        ],
+        "grains": [
+          "regolith.2",
+          "regolith.3",
+          "regolith.4"
+        ],
+        "crack": "regolith.1",
+        "lip": "regolith.4",
+        "seed": 761,
+        "cracks": 2,
+        "shadow": "regolith.1",
+        "pebbles": [
+          "regolith.1",
+          "regolith.2",
+          "regolith.3",
+          "regolith.4",
+          "dust.2"
+        ]
+      }
+    },
+    "block/regolith_packed_1": {
+      "template": "surface_beds_c",
+      "args": {
+        "beds": [
+          [
+            "regolith.2",
+            4
+          ],
+          [
+            "regolith.3",
+            6
+          ],
+          [
+            "regolith.4",
+            4
+          ],
+          [
+            "regolith.3",
+            8
+          ],
+          [
+            "regolith.2",
+            4
+          ],
+          [
+            "regolith.3",
+            6
+          ]
+        ],
+        "grains": [
+          "regolith.2",
+          "regolith.3",
+          "regolith.4"
+        ],
+        "crack": "regolith.1",
+        "lip": "regolith.4",
+        "seed": 762,
+        "cracks": 2,
+        "shadow": "regolith.1",
+        "pebbles": [
+          "regolith.1",
+          "regolith.2",
+          "regolith.3",
+          "regolith.4",
+          "dust.2"
+        ]
+      }
+    },
+    "block/regolith_rock_0": {
+      "template": "surface_beds_c",
+      "args": {
+        "beds": [
+          [
+            "regolith.2",
+            6
+          ],
+          [
+            "regolith.1",
+            4
+          ],
+          [
+            "regolith.2",
+            8
+          ],
+          [
+            "regolith.3",
+            4
+          ],
+          [
+            "regolith.2",
+            6
+          ],
+          [
+            "regolith.1",
+            4
+          ]
+        ],
+        "grains": [
+          "regolith.1",
+          "regolith.2",
+          "regolith.3"
+        ],
+        "crack": "regolith.0",
+        "lip": "regolith.3",
+        "seed": 781,
+        "cracks": 4,
+        "shadow": "regolith.1",
+        "pebbles": [
+          "regolith.1",
+          "regolith.2",
+          "regolith.3",
+          "regolith.4",
+          "dust.2"
+        ]
+      }
+    },
+    "block/regolith_rock_1": {
+      "template": "surface_beds_c",
+      "args": {
+        "beds": [
+          [
+            "regolith.2",
+            8
+          ],
+          [
+            "regolith.3",
+            4
+          ],
+          [
+            "regolith.2",
+            6
+          ],
+          [
+            "regolith.1",
+            4
+          ],
+          [
+            "regolith.2",
+            6
+          ],
+          [
+            "regolith.1",
+            4
+          ]
+        ],
+        "grains": [
+          "regolith.1",
+          "regolith.2",
+          "regolith.3"
+        ],
+        "crack": "regolith.0",
+        "lip": "regolith.3",
+        "seed": 782,
+        "cracks": 4,
+        "shadow": "regolith.1",
+        "pebbles": [
+          "regolith.1",
+          "regolith.2",
+          "regolith.3",
+          "regolith.4",
+          "dust.2"
+        ]
+      }
+    }
+  }
+}

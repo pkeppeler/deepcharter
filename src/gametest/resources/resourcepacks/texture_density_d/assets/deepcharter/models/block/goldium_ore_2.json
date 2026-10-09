@@ -1,0 +1,9 @@
+{
+  "parent": "deepcharter:block/ore_crystals_0",
+  "textures": {
+    "all": "deepcharter:block/goldium_ore_2",
+    "crystal": "deepcharter:block/goldium_crystal",
+    "crystal_side": "deepcharter:block/goldium_crystal",
+    "glint": "deepcharter:block/goldium_glint"
+  }
+}

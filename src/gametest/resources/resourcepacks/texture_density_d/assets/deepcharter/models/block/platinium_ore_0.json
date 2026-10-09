@@ -1,0 +1,9 @@
+{
+  "parent": "deepcharter:block/ore_crystals_0",
+  "textures": {
+    "all": "deepcharter:block/platinium_ore_0",
+    "crystal": "deepcharter:block/platinium_crystal",
+    "crystal_side": "deepcharter:block/platinium_crystal",
+    "glint": "deepcharter:block/platinium_glint"
+  }
+}

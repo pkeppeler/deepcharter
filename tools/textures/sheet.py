@@ -4,13 +4,14 @@ Light follows vanilla 26.3's lightmap (assets/minecraft/shaders/core/lightmap.fs
 colour, no tint and the default brightness setting (0.5): a texture's colour is multiplied by that grey. A glow layer is drawn
 over its base at full light, as a model element with light_emission 15 renders. Blocks get all four levels; items only full light,
 as the inventory shows them. The sheet's own frame and lettering are fixed colours, so a skin's sheet differs only in its art.
+Every texture fills a cell of the same size, SCALE times the largest texture on the sheet, so a 32x texture shows its own pixels
+beside a 16x one.
 """
 from canvas import Canvas, Colour
-from recipe import SIZE, Book
+from recipe import Book
 
 LEVELS = (15, 7, 3, 0)
 SCALE = 3
-CELL = SIZE * SCALE
 GAP = 4
 MARGIN = 8
 LABEL = 116
@@ -52,16 +53,18 @@ def brightness(level: int) -> float:
     return 0.5 * grey + 0.5 * (1 - dark * dark * dark * dark)
 
 
-def render(book: Book) -> Canvas:
-    blocks = [key for key in book.recipes if key.startswith("block/")]
-    items = [key for key in book.recipes if key.startswith("item/")]
-    block_width = LABEL + len(LEVELS) * (CELL + GAP)
+def render(book: Book, keys: list[str]) -> Canvas:
+    """The sheet of the palette and of the textures keys names (a pack's sheet shows only the pack's own)."""
+    blocks = [key for key in keys if key.startswith("block/")]
+    items = [key for key in keys if key.startswith("item/")]
+    cell = SCALE * max(book.recipes[key].size for key in keys)
+    block_width = LABEL + len(LEVELS) * (cell + GAP)
     block_rows = -(-len(blocks) // BLOCK_COLUMNS)
     item_rows = -(-len(items) // ITEM_COLUMNS)
     palette_rows = -(-len(_swatch_rows(book)) // PALETTE_COLUMNS)
     width = 2 * MARGIN + BLOCK_COLUMNS * block_width + (BLOCK_COLUMNS - 1) * GAP * 4
-    height = (MARGIN + 14 + 10 + palette_rows * (SWATCH + 3) + 12 + 10 + block_rows * (CELL + GAP)
-              + 12 + 10 + item_rows * (CELL + GAP) + MARGIN)
+    height = (MARGIN + 14 + 10 + palette_rows * (SWATCH + 3) + 12 + 10 + block_rows * (cell + GAP)
+              + 12 + 10 + item_rows * (cell + GAP) + MARGIN)
     out = Canvas(width, height, [list(BACKGROUND) for _ in range(width * height)])
     y = MARGIN
     _text(out, MARGIN, y, "DEEP CHARTER: PALETTE AND STYLE", INK, 2)
@@ -76,20 +79,20 @@ def render(book: Book) -> Canvas:
     for i, key in enumerate(blocks):
         column, row = divmod(i, block_rows)
         x0 = MARGIN + column * (block_width + GAP * 4)
-        y0 = y + row * (CELL + GAP)
-        _text(out, x0, y0 + CELL // 2 - 2, key.removeprefix("block/").upper(), INK, 1)
+        y0 = y + row * (cell + GAP)
+        _text(out, x0, y0 + cell // 2 - 2, key.removeprefix("block/").upper(), INK, 1)
         for j, level in enumerate(LEVELS):
-            _cell(out, book, key, x0 + LABEL + j * (CELL + GAP), y0, brightness(level))
-    y += block_rows * (CELL + GAP) + 12
+            _cell(out, book, key, x0 + LABEL + j * (cell + GAP), y0, cell, brightness(level))
+    y += block_rows * (cell + GAP) + 12
     _text(out, MARGIN, y, "ITEMS AT FULL LIGHT", DIM, 1)
     y += 10
     item_width = (width - 2 * MARGIN) // ITEM_COLUMNS
     for i, key in enumerate(items):
         column, row = divmod(i, item_rows)
         x0 = MARGIN + column * item_width
-        y0 = y + row * (CELL + GAP)
-        _cell(out, book, key, x0, y0, 1.0)
-        _text(out, x0 + CELL + GAP, y0 + CELL // 2 - 2, key.removeprefix("item/").upper(), INK, 1)
+        y0 = y + row * (cell + GAP)
+        _cell(out, book, key, x0, y0, cell, 1.0)
+        _text(out, x0 + cell + GAP, y0 + cell // 2 - 2, key.removeprefix("item/").upper(), INK, 1)
     return out
 
 
@@ -115,28 +118,31 @@ def _palette(out: Canvas, book: Book, y: int) -> int:
     return y + per_column * (SWATCH + 3)
 
 
-def _cell(out: Canvas, book: Book, key: str, x0: int, y0: int, light: float) -> None:
-    """Frame 0 of the texture, scaled up, lit; a glow layer over its base (or over black when it has none) at full light."""
-    _box(out, x0 - 1, y0 - 1, CELL + 2, CELL + 2, PANEL)
+def _cell(out: Canvas, book: Book, key: str, x0: int, y0: int, cell: int, light: float) -> None:
+    """Frame 0 of the texture, scaled up to fill the cell, lit; a glow layer over its base (or over black when it has none) at full
+    light. A glow layer and its base may differ in size: each is sampled at its own."""
+    _box(out, x0 - 1, y0 - 1, cell + 2, cell + 2, PANEL)
     recipe = book.recipes[key]
     texture = book.render(key)[0]
     if recipe.glow is None:
         base, glow = texture, None
     else:
         base, glow = (book.render(recipe.glow.over)[0] if recipe.glow.over else None), texture
-    for sy in range(SIZE):
-        for sx in range(SIZE):
+    res = max(layer.width for layer in (base, glow) if layer is not None)
+    scale = cell // res
+    for sy in range(res):
+        for sx in range(res):
             colour = (0, 0, 0, 255) if glow is not None and base is None else None
             if base is not None:
-                r, g, b, a = base.get(sx, sy)
+                r, g, b, a = base.get(sx * base.width // res, sy * base.width // res)
                 if a:
                     colour = (round(r * light), round(g * light), round(b * light), 255)
             if glow is not None:
-                r, g, b, a = glow.get(sx, sy)
+                r, g, b, a = glow.get(sx * glow.width // res, sy * glow.width // res)
                 if a:
                     colour = (r, g, b, 255)
             if colour is not None:
-                _box(out, x0 + sx * SCALE, y0 + sy * SCALE, SCALE, SCALE, colour)
+                _box(out, x0 + sx * scale, y0 + sy * scale, scale, scale, colour)
 
 
 def _box(out: Canvas, x0: int, y0: int, w: int, h: int, colour: Colour) -> None:

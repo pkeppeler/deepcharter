@@ -1,0 +1,181 @@
+{
+  "templates": {
+    "crystal_d": {
+      "params": [
+        "rim",
+        "dark",
+        "mid",
+        "light",
+        "glint"
+      ],
+      "recipe": {
+        "kind": "opaque",
+        "layers": [
+          {
+            "op": "fill",
+            "colour": "$light"
+          },
+          {
+            "op": "rect",
+            "rect": [
+              8,
+              0,
+              8,
+              16
+            ],
+            "colour": "$dark"
+          },
+          {
+            "op": "pixels",
+            "legend": {
+              "g": "$glint",
+              "l": "$light",
+              "m": "$mid",
+              "r": "$rim",
+              "d": "$dark"
+            },
+            "rows": [
+              "gl......dm......",
+              "lm......rd......"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "recipes": {
+    "block/ironium_crystal": {
+      "template": "crystal_d",
+      "args": {
+        "rim": "ironium.0",
+        "dark": "rust.1",
+        "mid": "rust.3",
+        "light": "ironium.3",
+        "glint": "ironium.4"
+      }
+    },
+    "block/ironium_glint": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "fill",
+          "colour": "ironium.4"
+        }
+      ]
+    },
+    "block/bronzium_crystal": {
+      "template": "crystal_d",
+      "args": {
+        "rim": "bronzium.0",
+        "dark": "bronzium.1",
+        "mid": "bronzium.2",
+        "light": "bronzium.3",
+        "glint": "bronzium.4"
+      }
+    },
+    "block/bronzium_glint": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "fill",
+          "colour": "bronzium.4"
+        }
+      ]
+    },
+    "block/silverium_crystal": {
+      "template": "crystal_d",
+      "args": {
+        "rim": "silverium.0",
+        "dark": "silverium.1",
+        "mid": "silverium.2",
+        "light": "silverium.3",
+        "glint": "silverium.4"
+      }
+    },
+    "block/silverium_glint": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "fill",
+          "colour": "silverium.4"
+        }
+      ]
+    },
+    "block/goldium_crystal": {
+      "template": "crystal_d",
+      "args": {
+        "rim": "goldium.0",
+        "dark": "goldium.1",
+        "mid": "goldium.2",
+        "light": "goldium.3",
+        "glint": "goldium.4"
+      }
+    },
+    "block/goldium_glint": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "fill",
+          "colour": "goldium.4"
+        }
+      ]
+    },
+    "block/platinium_crystal": {
+      "template": "crystal_d",
+      "args": {
+        "rim": "platinium.0",
+        "dark": "platinium.1",
+        "mid": "platinium.2",
+        "light": "platinium.3",
+        "glint": "platinium.4"
+      }
+    },
+    "block/platinium_glint": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "fill",
+          "colour": "platinium.4"
+        }
+      ]
+    },
+    "block/einsteinium_crystal": {
+      "template": "crystal_d",
+      "args": {
+        "rim": "einsteinium.0",
+        "dark": "einsteinium.1",
+        "mid": "einsteinium.2",
+        "light": "einsteinium.3",
+        "glint": "einsteinium.4"
+      }
+    },
+    "block/einsteinium_glint": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "fill",
+          "colour": "einsteinium.4"
+        }
+      ]
+    },
+    "block/cicatrium_crystal": {
+      "template": "crystal_d",
+      "args": {
+        "rim": "cicatrium.0",
+        "dark": "cicatrium.1",
+        "mid": "cicatrium.2",
+        "light": "cicatrium.3",
+        "glint": "cicatrium.4"
+      }
+    },
+    "block/cicatrium_glint": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "fill",
+          "colour": "cicatrium.4"
+        }
+      ]
+    }
+  }
+}

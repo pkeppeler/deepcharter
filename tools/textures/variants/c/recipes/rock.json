@@ -1,0 +1,74 @@
+{
+  "templates": {
+    "layer_rock_c": {
+      "params": [
+        "seed"
+      ],
+      "recipe": {
+        "kind": "opaque",
+        "size": 32,
+        "layers": [
+          {
+            "op": "noise",
+            "ramp": [
+              "rock.2",
+              "rock.3",
+              "rock.4",
+              "rock.4",
+              "rock.5",
+              "rock.5"
+            ],
+            "seed": "$seed",
+            "cell": 8,
+            "octaves": 3,
+            "dither": 0.8
+          },
+          {
+            "op": "cracks",
+            "colour": "rock.2",
+            "lip": "rock.5",
+            "seed": "$seed",
+            "count": 7,
+            "length": 3
+          },
+          {
+            "op": "speckle",
+            "colours": [
+              "rock.2",
+              "rock.3",
+              "rock.6"
+            ],
+            "density": 0.05,
+            "seed": "$seed"
+          }
+        ]
+      }
+    }
+  },
+  "recipes": {
+    "block/layer_rock_0": {
+      "template": "layer_rock_c",
+      "args": {
+        "seed": 811
+      }
+    },
+    "block/layer_rock_1": {
+      "template": "layer_rock_c",
+      "args": {
+        "seed": 812
+      }
+    },
+    "block/layer_rock_2": {
+      "template": "layer_rock_c",
+      "args": {
+        "seed": 813
+      }
+    },
+    "block/layer_rock_3": {
+      "template": "layer_rock_c",
+      "args": {
+        "seed": 814
+      }
+    }
+  }
+}
