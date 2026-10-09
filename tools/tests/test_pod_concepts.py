@@ -45,6 +45,41 @@ class Limits(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "whole positive pixels"):
             pc.Model("half").bone("body").box(0, 0, 0, 1.5, 1, 1, "paint")
 
+    def test_a_mount_hinged_by_mount_pivot_turns_its_tip_under_the_middle(self):
+        py, pz = pc.mount_pivot(15, -16, -10)
+        model = pc.Model("hinge")
+        model.bone("body")
+        mount = model.bone("drill_mount", "body", (0, py, pz), (90, 0, 0))
+        tip = pc.world_point(model, mount, (0, 15, -16))
+        self.assertAlmostEqual(tip[1], -10)
+        self.assertAlmostEqual(tip[2], 0)
+
+    def test_every_drill_keeps_the_swing_limits_from_level_to_down(self):
+        for name, make in pc.CONCEPTS.items():
+            with self.subTest(concept=name):
+                pc.check_swing(make())
+
+    def test_a_drill_that_swings_too_far_past_the_bore_face_fails(self):
+        # A plate rising 20 pixels over its hinge swings its top forward: 5.9 pixels past the face at 20 degrees, 6.9 at 25.
+        model = pc.Model("lunge")
+        model.bone("body")
+        model.bone("drill_mount", "body", (0, 10, 0)).box(-4, 10, -16, 4, 30, -14, "drill")
+        with self.assertRaisesRegex(ValueError, r"lunge with its drill turned 25 degrees down stands 6\.9\d pixels past the bore face, more than 6"):
+            pc.check_swing(model)
+
+    def test_a_drill_that_swings_deeper_than_the_slab_it_bores_fails(self):
+        model = pc.Model("deep")
+        model.bone("body")
+        model.bone("drill_mount", "body", (0, 4, 0)).box(-1, 3, -21, 1, 5, -4, "drill")
+        with self.assertRaisesRegex(ValueError, r"deep with its drill turned \d+ degrees down leaves -16\.\.30\.4 in y: -16\.\d\d"):
+            pc.check_swing(model)
+
+    def test_the_swing_check_puts_the_mount_back_at_rest(self):
+        model = pc.full_face()
+        mount = next(bone for bone in model.bones if bone.name == "drill_mount")
+        pc.check_swing(model)
+        self.assertEqual((0.0, 0.0, 0.0), mount.rotation)
+
     def test_box_uv_never_overlaps(self):
         for name in pc.CONCEPTS:
             model, _ = pc.build(name)

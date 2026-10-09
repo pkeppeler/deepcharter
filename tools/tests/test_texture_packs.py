@@ -1,0 +1,165 @@
+"""Tests the texture density test packs (tools/textures/variants.json): each is a complete resource pack over the mod's assets.
+
+A pack's blockstates name models, its models name parents and textures, and each must be in the pack or in the mod's own assets
+(a minecraft: model is vanilla's, not ours to check). A texture taller than wide needs its .png.mcmeta. A pack replaces only
+blockstates the mod has, or the vanilla ones it lists in VANILLA_BLOCKSTATES, and every model and texture it holds is used. An
+overlay pack (round 2, docs/design/texture-density-2.md) holds no vanilla file, and its ores draw the host's texture from vanilla.
+"""
+import json
+import struct
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+TOOLS = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(TOOLS / "textures"))
+
+import pngio  # noqa: E402
+import texgen  # noqa: E402
+
+MOD_ASSETS = texgen.ROOT / "src/main/resources/assets"
+# The vanilla blocks a pack may redraw: layer rock is vanilla stone until it has blocks of its own (#241).
+VANILLA_BLOCKSTATES = {"minecraft/blockstates/stone.json"}
+
+
+def resolve(pack_assets: Path, ref: str, kind: str, suffix: str) -> Path | None:
+    """The file a namespaced reference names, in the pack first and then in the mod; None for a vanilla one."""
+    namespace, _, path = ref.partition(":") if ":" in ref else ("minecraft", "", ref)
+    if namespace == "minecraft":
+        return None
+    for root in (pack_assets, MOD_ASSETS):
+        candidate = root / namespace / kind / f"{path}{suffix}"
+        if candidate.is_file():
+            return candidate
+    return pack_assets / namespace / kind / f"{path}{suffix}"
+
+
+def model_refs(body) -> list[str]:
+    """Every string under a key called model, at any depth of a blockstate."""
+    if isinstance(body, dict):
+        return [v for k, v in body.items() if k == "model" and isinstance(v, str)] + [r for v in body.values() for r in model_refs(v)]
+    if isinstance(body, list):
+        return [r for v in body for r in model_refs(v)]
+    return []
+
+
+def png_size(path: Path) -> tuple[int, int]:
+    return struct.unpack(">II", path.read_bytes()[16:24])
+
+
+def write(path: Path, body) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(body))
+
+
+class TexturePacksTest(unittest.TestCase):
+    def test_every_variant_pack_is_complete_and_holds_nothing_unused(self):
+        variants = texgen.variants()
+        self.assertTrue(variants)
+        for name, entry in sorted(variants.items()):
+            with self.subTest(variant=name):
+                self.assertEqual([], self.problems(texgen.ROOT / entry["pack"]))
+
+    def test_an_overlay_pack_replaces_nothing_of_vanilla_and_draws_each_ore_over_the_host_by_reference(self):
+        overlaid = {name: entry for name, entry in texgen.variants().items() if "overlays" in entry}
+        self.assertTrue(overlaid)
+        for name, entry in sorted(overlaid.items()):
+            with self.subTest(variant=name):
+                assets = texgen.ROOT / entry["pack"] / "assets"
+                self.assertFalse((assets / "minecraft").exists(), "an overlay pack holds a vanilla file")
+                models = sorted((assets / "deepcharter/models/block").glob("*_overlay_*.json"))
+                self.assertTrue(models)
+                for model in models:
+                    host = json.loads(model.read_text())["textures"]["host"]
+                    self.assertIsNone(resolve(assets, host, "textures", ".png"), f"{model.name}: the host {host} is not vanilla's")
+
+    def test_only_ore_reaches_the_edge_of_an_overlay(self):
+        """Over the host's texture, any pixel on a block's outer ring that is not the ore itself (a shadow, a socket, a tint) draws
+        the block's edge. So an edge pixel is clear, or one of the shades of the ore ramps its recipe draws with: a vein or a seam
+        running out to the edge."""
+        overlaid = sorted(name for name, entry in texgen.variants().items() if "overlays" in entry)
+        self.assertTrue(overlaid)
+        for name in overlaid:
+            target = texgen.variant(name)
+            for key in target.keys:
+                with self.subTest(variant=name, texture=key):
+                    ore = {colour for layer in target.book.recipes[key].layers if layer["op"] in ("cluster", "seams")
+                           for colour in target.book.palette.ramp(layer["ramp"], key)}
+                    self.assertTrue(ore, "the overlay draws no ore")
+                    image = pngio.decode((target.out / f"{key}.png").read_bytes())
+                    size = image.width
+                    edge = {tuple(image.pixels[4 * (y * size + x):][:4]) for y in range(size) for x in range(size)
+                            if x in (0, size - 1) or y in (0, size - 1)}
+                    self.assertEqual(set(), edge - ore - {(0, 0, 0, 0)})
+
+    def test_a_missing_texture_an_unused_model_and_a_block_the_mod_lacks_are_each_named(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            pack = Path(tmp)
+            (pack / "pack.mcmeta").write_text(json.dumps({"pack": {"description": "test"}}))
+            write(pack / "assets/deepcharter/blockstates/ironium_ore.json", {"variants": {"": {"model": "deepcharter:block/x"}}})
+            write(pack / "assets/deepcharter/blockstates/no_such_block.json", {"variants": {"": {"model": "minecraft:block/stone"}}})
+            write(pack / "assets/deepcharter/models/block/x.json", {"parent": "minecraft:block/cube_all", "textures": {"all": "deepcharter:block/gone"}})
+            write(pack / "assets/deepcharter/models/block/spare.json", {"parent": "minecraft:block/cube_all"})
+            self.assertEqual({"deepcharter/blockstates/no_such_block.json: the mod has no such blockstate to replace",
+                              "deepcharter/blockstates/ironium_ore.json > deepcharter:block/x: texture deepcharter:block/gone is in neither the pack nor the mod",
+                              "deepcharter/models/block/spare.json: no blockstate of the pack uses it"}, set(self.problems(pack)))
+
+    def problems(self, pack: Path) -> list[str]:
+        assets = pack / "assets"
+        problems = []
+        meta = pack / "pack.mcmeta"
+        if not meta.is_file() or "description" not in json.loads(meta.read_text()).get("pack", {}):
+            problems.append(f"{meta}: missing, or no pack description")
+        used_models: set[Path] = set()
+        used_textures: set[Path] = set()
+        blockstates = sorted(assets.glob("*/blockstates/*.json"))
+        if not blockstates:
+            problems.append(f"{pack}: no blockstates")
+        for blockstate in blockstates:
+            relative = blockstate.relative_to(assets).as_posix()
+            if not (MOD_ASSETS / relative).is_file() and relative not in VANILLA_BLOCKSTATES:
+                problems.append(f"{relative}: the mod has no such blockstate to replace")
+            refs = model_refs(json.loads(blockstate.read_text()))
+            if not refs:
+                problems.append(f"{relative}: names no model")
+            for ref in refs:
+                problems += self.model(assets, ref, relative, used_models, used_textures)
+        for model in sorted(assets.glob("*/models/**/*.json")):
+            if model not in used_models:
+                problems.append(f"{model.relative_to(assets)}: no blockstate of the pack uses it")
+        for texture in sorted(assets.glob("*/textures/**/*.png")):
+            relative = texture.relative_to(assets).as_posix()
+            if texture not in used_textures and not (MOD_ASSETS / relative).is_file():
+                problems.append(f"{relative}: no model of the pack uses it, and it replaces no texture of the mod")
+        return problems
+
+    def model(self, assets: Path, ref: str, owner: str, used_models: set[Path], used_textures: set[Path]) -> list[str]:
+        path = resolve(assets, ref, "models", ".json")
+        if path is None or path in used_models:
+            return []
+        if not path.is_file():
+            return [f"{owner}: model {ref} is in neither the pack nor the mod"]
+        used_models.add(path)
+        body = json.loads(path.read_text())
+        problems = []
+        if "parent" in body:
+            problems += self.model(assets, body["parent"], f"{owner} > {ref}", used_models, used_textures)
+        for texture_ref in body.get("textures", {}).values():
+            if texture_ref.startswith("#"):
+                continue
+            texture = resolve(assets, texture_ref, "textures", ".png")
+            if texture is None:
+                continue
+            if not texture.is_file():
+                problems.append(f"{owner} > {ref}: texture {texture_ref} is in neither the pack nor the mod")
+                continue
+            used_textures.add(texture)
+            width, height = png_size(texture)
+            if height != width and not texture.with_suffix(".png.mcmeta").is_file():
+                problems.append(f"{owner} > {ref}: {texture_ref} is {width} x {height}, an animation with no .png.mcmeta")
+        return problems
+
+
+if __name__ == "__main__":
+    unittest.main()

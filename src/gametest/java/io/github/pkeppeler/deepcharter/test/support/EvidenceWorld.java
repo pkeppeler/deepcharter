@@ -4,6 +4,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -61,12 +62,17 @@ public final class EvidenceWorld {
 	 */
 	public static void skyPhase(ClientGameTestContext context, TestSingleplayerContext singleplayer, long ticks) {
 		singleplayer.getServer().runOnServer(server -> {
-			var sky = server.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(SKY);
+			Holder<WorldClock> sky = skyClock(server);
 			server.clockManager().setPaused(sky, true); // world-clock: only evidence scenarios call this, each in its own client world
 			server.clockManager().setTotalTicks(sky, ticks); // world-clock: only evidence scenarios call this, each in its own client world
 		});
 		ClientWait.until(context, "the client to read the sky clock at " + ticks, client -> skyOnClient(client).totalTicks() == ticks && skyOnClient(client).isPaused(),
 				client -> "the sky clock at " + skyOnClient(client).totalTicks());
+	}
+
+	/** The visual sky's clock, {@code deepcharter:sky}: for a scenario that notes its state to put it back. */
+	public static Holder<WorldClock> skyClock(MinecraftServer server) {
+		return server.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(SKY);
 	}
 
 	private static ClockInstance skyOnClient(Minecraft client) {

@@ -1,6 +1,5 @@
 {
-  "title": "C. Company Moderne",
-  "statue": "founder_c",
+  "title": "C. Terrace Works",
   "pieces": [
     {
       "structure": "deepcharter:colony_concept/c/square",
@@ -9,37 +8,47 @@
         0,
         -10
       ],
-      "blocks": 1572,
+      "blocks": 797,
       "displays": 2
     },
     {
       "structure": "deepcharter:colony_concept/c/headframe",
       "offset": [
-        -11,
+        -10,
         0,
-        -45
+        -29
       ],
-      "blocks": 882,
-      "displays": 174
+      "blocks": 628,
+      "displays": 86
     },
     {
-      "structure": "deepcharter:colony_concept/c/ore_house",
+      "structure": "deepcharter:colony_concept/c/bank",
       "offset": [
         -32,
         1,
-        -40
+        -32
       ],
-      "blocks": 3114,
+      "blocks": 3456,
       "displays": 0
+    },
+    {
+      "structure": "deepcharter:colony_concept/c/works",
+      "offset": [
+        -32,
+        0,
+        -32
+      ],
+      "blocks": 1448,
+      "displays": 6
     },
     {
       "structure": "deepcharter:colony_concept/c/hoist_house",
       "offset": [
-        -14,
+        -10,
         1,
-        -54
+        -37
       ],
-      "blocks": 1184,
+      "blocks": 438,
       "displays": 0
     }
   ],
@@ -47,14 +56,29 @@
     {
       "name": "from-the-square",
       "eye": [
-        -13.0,
-        2.6,
-        2.0
+        -12.0,
+        2.62,
+        6.0
       ],
       "target": [
-        -24.0,
-        14.0,
-        -26.0
+        -20.0,
+        8.0,
+        -16.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "works-front",
+      "eye": [
+        -11.0,
+        2.62,
+        -2.0
+      ],
+      "target": [
+        -16.0,
+        4.5,
+        -13.0
       ],
       "night": false,
       "above_ground": false
@@ -62,29 +86,14 @@
     {
       "name": "headframe",
       "eye": [
-        30.0,
-        14.0,
-        6.0
-      ],
-      "target": [
-        -4.0,
-        30.0,
-        -15.0
-      ],
-      "night": false,
-      "above_ground": false
-    },
-    {
-      "name": "ore-house-front",
-      "eye": [
-        -20.0,
+        -14.0,
         4.0,
         6.0
       ],
       "target": [
-        -24.0,
-        14.0,
-        -24.0
+        -5.0,
+        15.0,
+        -15.0
       ],
       "night": false,
       "above_ground": false
@@ -92,14 +101,14 @@
     {
       "name": "from-the-air",
       "eye": [
-        -40.0,
-        40.0,
-        20.0
+        -6.0,
+        28.0,
+        22.0
       ],
       "target": [
-        -12.0,
-        10.0,
-        -22.0
+        -18.0,
+        8.0,
+        -16.0
       ],
       "night": false,
       "above_ground": false
@@ -107,14 +116,14 @@
     {
       "name": "from-the-air-behind",
       "eye": [
-        -46.0,
-        34.0,
-        -54.0
+        -30.0,
+        30.0,
+        -50.0
       ],
       "target": [
-        -14.0,
-        12.0,
-        -26.0
+        -12.0,
+        10.0,
+        -20.0
       ],
       "night": false,
       "above_ground": false
@@ -122,14 +131,14 @@
     {
       "name": "from-far-across-the-plain",
       "eye": [
-        12.0,
-        8.0,
-        56.0
+        -10.0,
+        6.0,
+        62.0
       ],
       "target": [
-        -4.0,
-        30.0,
-        -15.0
+        -8.0,
+        12.0,
+        -16.0
       ],
       "night": false,
       "above_ground": true
@@ -137,14 +146,14 @@
     {
       "name": "night-from-the-square",
       "eye": [
-        -13.0,
-        2.6,
-        2.0
+        -12.0,
+        2.62,
+        6.0
       ],
       "target": [
-        -24.0,
-        14.0,
-        -26.0
+        -20.0,
+        8.0,
+        -16.0
       ],
       "night": true,
       "above_ground": false
@@ -152,116 +161,55 @@
     {
       "name": "night-from-the-air",
       "eye": [
-        -34.0,
-        30.0,
-        4.0
+        -6.0,
+        24.0,
+        20.0
       ],
       "target": [
-        -14.0,
-        12.0,
-        -24.0
-      ],
-      "night": true,
-      "above_ground": false
-    },
-    {
-      "name": "statue-from-the-square",
-      "eye": [
-        6.0,
-        2.6,
-        24.0
-      ],
-      "target": [
-        0.5,
-        18.6,
-        0.5
-      ],
-      "night": false,
-      "above_ground": false
-    },
-    {
-      "name": "statue-front",
-      "eye": [
-        0.5,
-        21.0,
-        34.0
-      ],
-      "target": [
-        0.5,
-        21.0,
-        0.5
-      ],
-      "night": false,
-      "above_ground": false
-    },
-    {
-      "name": "statue-side",
-      "eye": [
-        34.0,
-        21.0,
-        0.5
-      ],
-      "target": [
-        0.5,
-        21.0,
-        0.5
-      ],
-      "night": false,
-      "above_ground": false
-    },
-    {
-      "name": "statue-from-the-air",
-      "eye": [
-        14.0,
-        52.0,
-        24.0
-      ],
-      "target": [
-        0.5,
-        18.6,
-        0.5
-      ],
-      "night": false,
-      "above_ground": false
-    },
-    {
-      "name": "statue-from-far",
-      "eye": [
-        10.0,
-        6.0,
-        60.0
-      ],
-      "target": [
-        0.5,
-        18.6,
-        0.5
-      ],
-      "night": false,
-      "above_ground": true
-    },
-    {
-      "name": "statue-at-night",
-      "eye": [
-        6.0,
-        2.6,
-        24.0
-      ],
-      "target": [
-        0.5,
-        18.6,
-        0.5
+        -18.0,
+        8.0,
+        -16.0
       ],
       "night": true,
       "above_ground": false
     }
   ],
+  "figures": [
+    {
+      "kind": "pod",
+      "at": [
+        -15.0,
+        1.0,
+        -12.4
+      ],
+      "yaw": 180.0
+    },
+    {
+      "kind": "player",
+      "at": [
+        -11.2,
+        1.0,
+        -15.5
+      ],
+      "yaw": 270.0
+    },
+    {
+      "kind": "player",
+      "at": [
+        -13.0,
+        1.0,
+        -8.0
+      ],
+      "yaw": 200.0
+    }
+  ],
   "orbit": {
     "centre": [
-      -8.0,
-      12.0,
-      -24.0
+      -10.0,
+      8.0,
+      -18.0
     ],
-    "radius": 46.0,
-    "height": 24.0
+    "radius": 36.0,
+    "height": 18.0
   }
 }

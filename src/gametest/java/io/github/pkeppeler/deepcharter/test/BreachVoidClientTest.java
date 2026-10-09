@@ -16,6 +16,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ParticleStatus;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
@@ -60,8 +61,6 @@ public class BreachVoidClientTest implements FabricClientGameTest {
 	private static final int LIT = 0x40;
 	/** The patch of pixels read at the hole, either side of its middle. */
 	private static final int PATCH = 6;
-	/** Pixels of the patch that a speck of dust may light, on the surface only: the layers have none. */
-	private static final int SURFACE_SPECKS = 6;
 	/** A lamp (glowstone) stands on the room floor this far out from the middle, at the four compass points. */
 	private static final int LAMP_OFFSET = 6;
 	private static final int EDGE_MARGIN = 20;
@@ -79,6 +78,12 @@ public class BreachVoidClientTest implements FabricClientGameTest {
 			ClientWait.until(context, "the client in the world", client -> client.player != null && client.level != null);
 			// F1: no crosshair over the middle of the picture, where the hole is. The client is shared with the next test, so the HUD is put back.
 			boolean hudWasHidden = context.computeOnClient(client -> client.gui.hud.isHidden());
+			// MINIMAL drops the sky's ambient dust motes, so none lights the patch. Put back with the HUD.
+			ParticleStatus particlesWere = context.computeOnClient(client -> client.options.particles().get());
+			context.runOnClient(client -> {
+				client.options.particles().set(ParticleStatus.MINIMAL);
+				client.particleEngine.clearParticles();
+			});
 			if (!hudWasHidden) {
 				context.runOnClient(client -> client.gui.hud.toggle());
 			}
@@ -93,7 +98,6 @@ public class BreachVoidClientTest implements FabricClientGameTest {
 				for (int layer : new int[] {LayerChain.SURFACE, 1, 2}) {
 					int minY = singleplayer.getServer().computeOnServer(server -> openHole(server.getLevel(LayerChain.dimension(layer))));
 					Vec3 hole = new Vec3(X + 0.5, minY + 0.5, Z + 0.5);
-					int specks = layer == LayerChain.SURFACE ? SURFACE_SPECKS : 0;
 					View[] views = {
 							new View("far-above", new Vec3(X + 0.5, minY + SHAFT_DEPTH + COLUMN_HEIGHT - 4, Z + 0.5), false),
 							new View("down", new Vec3(X + 0.5, minY + SHAFT_DEPTH + 8, Z + 0.5), true),
@@ -113,7 +117,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
 							}
 							String name = "breach-void-layer-" + layer + "-" + view.name() + (nightVision ? "-night-vision" : "");
 							Path shot = lookUntilLit(context, singleplayer, layer, view.eye(), hole, minY, name);
-							holeProblem(read(shot), specks, name).ifPresent(failures::add);
+							holeProblem(read(shot), name).ifPresent(failures::add);
 						}
 					}
 					if (layer == 1) {
@@ -122,6 +126,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
 				}
 			} finally {
 				context.runOnClient(client -> {
+					client.options.particles().set(particlesWere);
 					if (client.gui.hud.isHidden() != hudWasHidden) {
 						client.gui.hud.toggle();
 					}
@@ -274,14 +279,14 @@ public class BreachVoidClientTest implements FabricClientGameTest {
 	}
 
 	/**
-	 * The camera looks at the middle of the hole, so the patch of pixels at the middle of the screen holds only darkness: at most
-	 * {@code specks} pixels brighter than {@link #DARK} in any channel.
+	 * The camera looks at the middle of the hole, so the patch of pixels at the middle of the screen holds only darkness:
+	 * no pixel brighter than {@link #DARK} in any channel.
 	 */
-	private static Optional<String> holeProblem(BufferedImage image, int specks, String name) {
+	private static Optional<String> holeProblem(BufferedImage image, String name) {
 		List<Integer> patch = centrePatch(image);
 		int bright = (int) patch.stream().filter(channel -> channel > DARK).count();
 		int brightest = patch.stream().max(Integer::compare).orElseThrow();
-		if (bright > specks) {
+		if (bright > 0) {
 			return Optional.of("%s: the hole shows the void, not darkness: %d pixels of its middle are brighter than %d in a channel, up to %d"
 					.formatted(name, bright, DARK, brightest));
 		}

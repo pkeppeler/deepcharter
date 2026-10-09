@@ -14,9 +14,9 @@ State = tuple[str, dict]
 
 
 def state(name: str, **props) -> State:
-    """A kit block's state by its short name, checked here, or a vanilla block ("minecraft:...") with every one of its
-    properties, which ColonyConceptsTest checks against the game."""
-    if name.startswith("minecraft:"):
+    """A kit block's state by its short name, checked here, or another block by its full id ("minecraft:barrier",
+    "deepcharter:regolith") with every one of its properties, which ColonyConceptsTest checks against the game."""
+    if ":" in name:
         return name, {k: str(v) for k, v in props.items()}
     return kit.block(name).state(**props)
 

@@ -47,7 +47,9 @@ public class PodGeoModel extends Model<PodGeoRenderState> {
 
 	private final ModelPart drillMount;
 	private final float mountRestPitch;
+	private final float drillSpinScale;
 	private final List<ModelPart> drillHeads = new ArrayList<>();
+	private final List<ModelPart> drillRings = new ArrayList<>();
 	private final List<ModelPart> rotors = new ArrayList<>();
 	private final List<ModelPart> fans = new ArrayList<>();
 	private final List<ModelPart> thrusters = new ArrayList<>();
@@ -68,6 +70,7 @@ public class PodGeoModel extends Model<PodGeoRenderState> {
 			switch (bone.role()) {
 				case FIXED, DRILL_MOUNT -> { }
 				case DRILL_HEAD -> drillHeads.add(part);
+				case DRILL_RING -> drillRings.add(part);
 				case ROTOR -> rotors.add(part);
 				case FAN -> fans.add(part);
 				case THRUSTER -> thrusters.add(part);
@@ -82,11 +85,17 @@ public class PodGeoModel extends Model<PodGeoRenderState> {
 		GeoModel.Bone mount = geo.bones().stream().filter(bone -> bone.role() == BoneRole.DRILL_MOUNT).findFirst().orElseThrow();
 		drillMount = parts.get(mount.name());
 		mountRestPitch = (float) mount.rotation().x;
+		drillSpinScale = (float) geo.drillSpinScale();
 	}
 
 	/** The drill mount's x rotation in the file: where the drill rests while the pod is not drilling. */
 	public float mountRestPitch() {
 		return mountRestPitch;
+	}
+
+	/** How fast this model's drill spins, as a share of the full rate ({@link GeoModel#drillSpinScale}). */
+	public float drillSpinScale() {
+		return drillSpinScale;
 	}
 
 	@Override
@@ -95,6 +104,9 @@ public class PodGeoModel extends Model<PodGeoRenderState> {
 		drillMount.xRot = state.mountPitch * Mth.DEG_TO_RAD;
 		for (ModelPart head : drillHeads) {
 			head.zRot += state.drillSpin * Mth.DEG_TO_RAD;
+		}
+		for (ModelPart ring : drillRings) {
+			ring.zRot -= state.drillSpin * Mth.DEG_TO_RAD;
 		}
 		for (ModelPart rotor : rotors) {
 			rotor.yRot += state.rotorSpin * Mth.DEG_TO_RAD;

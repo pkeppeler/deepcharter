@@ -44,8 +44,11 @@ final class PodMotion {
 	private float travel;
 	private float walk;
 
-	/** Advances to the state's frame and writes the pose into it. {@code mountRestPitch} is the drill mount's idle angle in the model. */
-	void advance(PodEntity pod, PodGeoRenderState state, float mountRestPitch) {
+	/**
+	 * Advances to the state's frame and writes the pose into it. {@code mountRestPitch} is the drill mount's idle angle in the model,
+	 * and {@code drillSpinScale} its share of the full drill spin ({@link PodGeoModel#drillSpinScale}).
+	 */
+	void advance(PodEntity pod, PodGeoRenderState state, float mountRestPitch, float drillSpinScale) {
 		if (!started) {
 			started = true;
 			lastAge = state.ageInTicks;
@@ -87,7 +90,7 @@ final class PodMotion {
 		float mountTarget = !drilling ? mountRestPitch : drill == Direction.DOWN ? 90f : 0f;
 		mountPitch = Mth.approach(mountPitch, mountTarget, MOUNT_DEGREES * step);
 		if (drilling) {
-			drillSpin = (drillSpin + DRILL_SPIN_DEGREES * step) % 360f;
+			drillSpin = (drillSpin + DRILL_SPIN_DEGREES * drillSpinScale * step) % 360f;
 		}
 		float rotorTarget = pod.flying() ? ROTOR_FLYING_DEGREES : powered ? ROTOR_IDLE_DEGREES : 0f;
 		rotorSpeed = Mth.approach(rotorSpeed, rotorTarget, ROTOR_SPIN_UP * step);

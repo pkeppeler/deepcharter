@@ -1,0 +1,8 @@
+{
+  "parent": "deepcharter:block/ore_nugget_1",
+  "textures": {
+    "all": "deepcharter:block/bronzium_ore_1",
+    "crystal": "deepcharter:block/bronzium_crystal",
+    "glint": "deepcharter:block/bronzium_glint"
+  }
+}

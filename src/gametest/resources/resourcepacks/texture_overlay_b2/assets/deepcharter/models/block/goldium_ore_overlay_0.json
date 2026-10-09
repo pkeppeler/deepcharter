@@ -1,0 +1,7 @@
+{
+  "parent": "deepcharter:block/ore_overlay",
+  "textures": {
+    "host": "minecraft:block/stone",
+    "overlay": "deepcharter:block/goldium_ore_overlay_0"
+  }
+}

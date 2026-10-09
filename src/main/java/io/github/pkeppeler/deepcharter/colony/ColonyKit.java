@@ -11,48 +11,43 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
- * The colony kit: the Company's building materials, from corrugated steel to sodium lamps, that the colony concepts of #335 are
- * built from (docs/design/colony-concepts.md). Nothing in a player's world places them yet; the colony rebuild (#244) will use the
- * chosen ones. Their models, blockstates and sign tiles are written by tools/colony/build.py and their textures by
+ * The colony kit: the Company's building materials, from riveted plate to sodium lamps and ore cars, that the colony concepts of
+ * #353 are built from (docs/design/colony-concepts-2.md). Nothing in a player's world places them yet; the colony rebuild (#244)
+ * will use the chosen ones. Their models, blockstates and sign tiles are written by tools/colony/build.py and their textures by
  * tools/textures/texgen.py. Like the Conduit they are Company property:
  * unbreakable in survival ({@link ColonyBlocks#register}).
  */
 public final class ColonyKit {
 	private static final List<Block> ALL = new ArrayList<>();
 
-	public static final Block CORRUGATED_CREAM = cube("corrugated_cream", SoundType.METAL);
-	public static final Block CORRUGATED_RED = cube("corrugated_red", SoundType.METAL);
 	public static final Block RIVETED_PLATE = cube("riveted_plate", SoundType.METAL);
 	public static final Block RIVETED_PLATE_RED = cube("riveted_plate_red", SoundType.METAL);
-	public static final Block ENAMEL_PANEL = cube("enamel_panel", SoundType.METAL);
-	public static final Block STEEL_FRAME = cube("steel_frame", SoundType.METAL);
 	public static final Block HAZARD_BAND = cube("hazard_band", SoundType.METAL);
 	public static final Block CONCRETE_FOOTING = cube("concrete_footing", SoundType.STONE);
 	public static final Block BRASS_TRIM = cube("brass_trim", SoundType.METAL);
 	/** Open steel grating: a full block that lets the light and the view through. */
 	public static final Block GRATING = register("grating", SoundType.METAL, properties -> new Block(properties.noOcclusion()));
 
-	public static final Block WINDOW_SMALL_LIT = window("window_small_lit", 10);
-	public static final Block WINDOW_SMALL_DARK = window("window_small_dark", 0);
 	public static final Block WINDOW_RIBBON_LIT = window("window_ribbon_lit", 10);
 	public static final Block WINDOW_RIBBON_DARK = window("window_ribbon_dark", 0);
 	public static final Block FURNACE_HATCH = window("furnace_hatch", 9);
 	public static final Block GAUGE_PANEL = window("gauge_panel", 3);
 	public static final Block WINDER_DOOR = window("winder_door", 0);
+	public static final Block SHUTTER = window("shutter", 0);
 
 	public static final Block WALL_LAMP = facing("wall_lamp", SoundType.LANTERN, 14, Block.box(5, 2, 4, 11, 12, 16));
 	public static final Block FLOODLIGHT = facing("floodlight", SoundType.LANTERN, 15, Block.box(3, 0, 3, 13, 13, 13));
 	public static final Block RAILING = facing("railing", SoundType.METAL, 0, Block.box(0, 0, 0, 16, 16, 2));
-	public static final Block ROOF_SLOPE = facing("roof_slope", SoundType.METAL, 0, Block.box(0, 0, 0, 16, 8, 16));
+	/** Climbable, by the {@code minecraft:climbable} tag. */
+	public static final Block STEEL_LADDER = facing("steel_ladder", SoundType.METAL, 0, Block.box(1, 0, 13, 15, 16, 16));
 	public static final Block BRACE = facing("brace", SoundType.METAL, 0, Block.box(4, 4, 4, 12, 12, 12));
-	public static final Block BRACE_RED = facing("brace_red", SoundType.METAL, 0, Block.box(4, 4, 4, 12, 12, 12));
 	public static final Block CONVEYOR = facing("conveyor", SoundType.METAL, 0, Block.box(0, 0, 0, 16, 8, 16));
-	public static final Block ROOF_PEAK = register("roof_peak", SoundType.METAL, properties -> new KitRidgeBlock(properties.noOcclusion()));
+	public static final Block MINE_TRACK = facing("mine_track", SoundType.METAL, 0, Block.box(0, 0, 0, 16, 3, 16));
+	public static final Block ORE_CAR = facing("ore_car", SoundType.METAL, 0, Block.box(1, 0, 0, 15, 14, 16));
 
 	public static final Block STEEL_BEAM = pillar("steel_beam", 12);
 	public static final Block STEEL_BEAM_RED = pillar("steel_beam_red", 12);
 	public static final Block LATTICE_GIRDER = pillar("lattice_girder", 16);
-	public static final Block LATTICE_GIRDER_RED = pillar("lattice_girder_red", 16);
 	public static final Block PIPE = pillar("pipe", 8);
 	public static final Block PIPE_BRASS = pillar("pipe_brass", 8);
 	public static final Block CABLE = pillar("cable", 2);

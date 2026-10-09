@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "deepcharter:block/colony/shutter"
+    },
+    "facing=east": {
+      "model": "deepcharter:block/colony/shutter",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "deepcharter:block/colony/shutter",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "deepcharter:block/colony/shutter",
+      "y": 270
+    }
+  }
+}

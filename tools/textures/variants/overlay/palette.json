@@ -1,0 +1,6 @@
+{
+  "description": "The overlay packs of issue 354 (docs/design/texture-density-2.md). host is a neutral grey ramp in the tones of the rock an ore sits in (vanilla stone today): host.2 to host.5 are the stone's own four greys, host.0 and host.1 darker for a socket or a shadow, host.6 lighter for a lip. A tint toward it pulls an ore's colours into the stone round it.",
+  "colours": {
+    "host": ["#4c4c4c", "#5c5c5c", "#686868", "#747474", "#7f7f7f", "#8f8f8f", "#a2a2a2"]
+  }
+}

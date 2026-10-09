@@ -99,6 +99,8 @@ Sources: [*Atlantis: The Lost Empire* on Wikipedia](https://en.wikipedia.org/wik
 
 **We take:** flat graphic planes and heavy black shadow in the texture. Rivet rows along every seam. Cutter rings with teeth. Caged lamps. The Mole gets these materials at small scale; the full locomotive waits for the Behemoth.
 
+Round 2 ([#352](https://github.com/pkeppeler/deepcharter/issues/352)) sources: text descriptions only. A fan build of the digger on [Eurobricks](https://www.eurobricks.com/forum/forums/topic/139312-moc-series-disney%E2%80%99s-atlantis-the-lost-empire) describes "a huge spinning, churning drill at the front with many teeth", whose front and rear sections turn opposite ways. The Fandom wiki answered HTTP 402 and LEGO Ideas HTTP 403. No images were viewed.
+
 ## What reads at a distance, and what is noise
 
 Reads, from the sources above:

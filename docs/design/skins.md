@@ -14,7 +14,7 @@ Paths are under `src/main/resources/` in the repo and under `assets/deepcharter/
 | Item look | `items/<id>.json` (item definition), `models/item/<id>.json`, `textures/item/*.png` | F3+T |
 | Block and item texture art: palette and recipes | `tools/textures/palette.json` and `tools/textures/recipes/*.json` in the repo; a skin's own palette file (see [Textures](#textures)) | rebuild, then F3+T |
 | Pod look: hull, wreck and drill, per chassis (`mole`, `prospector`) | `items/pod/<chassis>.json`, `<chassis>_wreck.json`, `<chassis>_drill.json`, and `models/pod/` with the same names; textures wherever the model names them | F3+T |
-| Mole concepts ([#334](https://github.com/pkeppeler/deepcharter/issues/334), dev only: drawn only when `-Ddeepcharter.podConcept=<id>` names one, see [pod-concepts.md](pod-concepts.md)) | `geckolib/models/pod/concepts/<id>.geo.json` (Bedrock geometry, box UV, bones named as in `BoneRole`), `textures/entity/pod/mole/<id>.png` and `<id>_glowmask.png`; all written by `tools/pod_concepts.py` | F3+T |
+| Mole concepts ([#334](https://github.com/pkeppeler/deepcharter/issues/334) and [#352](https://github.com/pkeppeler/deepcharter/issues/352), dev only: drawn only when `-Ddeepcharter.podConcept=<id>` names one, see [pod-concepts.md](pod-concepts.md) and [pod-concepts-2.md](pod-concepts-2.md)) | `geckolib/models/pod/concepts/<id>.geo.json` (Bedrock geometry, box UV, bones named as in `BoneRole`), `textures/entity/pod/mole/<id>.png` and `<id>_glowmask.png`; all written by `tools/pod_concepts.py` | F3+T |
 | Tow cable particle | `particles/tow_cable.json` and `textures/particle/tow_cable.png` | F3+T |
 | Entity texture (the lampless figure) | `textures/entity/<id>.png` | F3+T |
 | Text | `lang/en_us.json` (generated from `src/lang/en_us/<feature>.json`; never edit it) | F3+T |
@@ -65,6 +65,14 @@ The `rock` ramp is the stone the ores sit in. It matches the layer rock (vanilla
 ```
 
 `--check` then compares the committed texture with the source, as for any recipe. An animated recipe takes a source with one frame or with as many frames as the recipe. The kind still applies, so a half-transparent pixel in a source fails the build.
+
+**32x.** A recipe with `"size": 32` draws a 32 x 32 texture (and a source 32 pixels wide). Its ops work in its own pixels; `pixels` with `"scale": 2` draws 16x art at twice the size into it. Models need no change: their UVs are in 16ths of a block at any texture size. An `include` does not scale: the recipe it draws must have the same size, or the build fails and names both sizes. The reference sheet draws every texture in a cell of the same size, so a 32x texture shows its own pixels beside a 16x one.
+
+**Ore clumps.** The `cluster` op draws mineral clumps lit from the top left, each in a shadow on the rock below and right of it, with veins that run out into the rock. Its `radius`, `vein` and `margin` are in the recipe's own pixels, and nothing scales them (or the `lumps` count) for 32x: a 32x recipe gives about twice the 16x radius (see `tools/textures/variants/c/recipes/ores.json`). Draw an ore's background with the same recipe as the rock it sits in, so the block edge does not show. A `socket` (rings of `[colour, share]` out from each clump) sinks a clump in a soft dark hollow. The `seams` op draws threads that run level across the tile, as a rock's grain does, swell into nuggets, and run off both edges one pixel thick. The `tint` op pulls every opaque pixel toward a colour.
+
+**Variant packs.** `tools/textures/variants.json` names test packs, each a list of palette files and of recipe directories over the default ones. `texgen.py --variant <name>` writes only the textures those directories define into the pack, and `--check` checks it; `tools/tests/test_texture_packs.py` checks that each pack's blockstates, models and textures are complete. The texture density test ([texture-density.md](texture-density.md)) is the first use.
+
+**Overlay packs.** A variant with `overlays` draws its ores over a host block's own texture, named by reference (`minecraft:block/stone`), so the ore's edge is the host's and no vanilla texture is copied or replaced. Its recipes `block/<ore>_overlay_<n>` are cutout textures, and texgen writes each ore's blockstate and models from them. `--check` fails on a changed model and on any blockstate, model or `assets/minecraft/` file that the overlays do not make. Round 2 of the texture test ([texture-density-2.md](texture-density-2.md)) is the first use.
 
 **Layers.** Each is data in the model and blockstate files, so a pack can restyle or replace it:
 

@@ -1,0 +1,18 @@
+{
+  "variants": {
+    "": [
+      {
+        "model": "deepcharter:block/ironium_ore_0"
+      },
+      {
+        "model": "deepcharter:block/ironium_ore_1"
+      },
+      {
+        "model": "deepcharter:block/ironium_ore_2"
+      },
+      {
+        "model": "deepcharter:block/ironium_ore_3"
+      }
+    ]
+  }
+}

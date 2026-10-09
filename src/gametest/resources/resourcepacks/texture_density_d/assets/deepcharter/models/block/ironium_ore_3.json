@@ -1,0 +1,8 @@
+{
+  "parent": "deepcharter:block/ore_nugget_1",
+  "textures": {
+    "all": "deepcharter:block/ironium_ore_3",
+    "crystal": "deepcharter:block/ironium_crystal",
+    "glint": "deepcharter:block/ironium_glint"
+  }
+}

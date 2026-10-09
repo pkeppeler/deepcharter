@@ -1,0 +1,399 @@
+{
+  "templates": {
+    "ironium_overlay_b2": {
+      "params": [
+        "seed"
+      ],
+      "recipe": {
+        "kind": "cutout",
+        "layers": [
+          {
+            "op": "cluster",
+            "seed": "$seed",
+            "ramp": [
+              "ironium.0",
+              "rust.1",
+              "rust.3",
+              "ironium.3",
+              "ironium.4"
+            ],
+            "shadow": "host.1",
+            "count": 2,
+            "radius": [
+              1.9,
+              2.2
+            ],
+            "lumps": 2,
+            "veins": 0,
+            "vein": 0,
+            "glints": 1,
+            "margin": 2
+          },
+          {
+            "op": "tint",
+            "colour": "host.4",
+            "alpha": 48
+          }
+        ]
+      }
+    },
+    "bronzium_overlay_b2": {
+      "params": [
+        "seed"
+      ],
+      "recipe": {
+        "kind": "cutout",
+        "layers": [
+          {
+            "op": "cluster",
+            "seed": "$seed",
+            "ramp": "bronzium",
+            "shadow": "host.1",
+            "count": 2,
+            "radius": [
+              1.9,
+              2.2
+            ],
+            "lumps": 2,
+            "veins": 0,
+            "vein": 0,
+            "glints": 1,
+            "margin": 2
+          },
+          {
+            "op": "tint",
+            "colour": "host.4",
+            "alpha": 48
+          }
+        ]
+      }
+    },
+    "silverium_overlay_b2": {
+      "params": [
+        "seed"
+      ],
+      "recipe": {
+        "kind": "cutout",
+        "layers": [
+          {
+            "op": "cluster",
+            "seed": "$seed",
+            "ramp": "silverium",
+            "shadow": "host.1",
+            "count": 2,
+            "radius": [
+              2.0,
+              2.3
+            ],
+            "lumps": 3,
+            "veins": 0,
+            "vein": 0,
+            "glints": 1,
+            "margin": 2,
+            "crystal": true
+          },
+          {
+            "op": "tint",
+            "colour": "host.4",
+            "alpha": 48
+          }
+        ]
+      }
+    },
+    "goldium_overlay_b2": {
+      "params": [
+        "seed"
+      ],
+      "recipe": {
+        "kind": "cutout",
+        "layers": [
+          {
+            "op": "cluster",
+            "seed": "$seed",
+            "ramp": "goldium",
+            "shadow": "host.1",
+            "count": 2,
+            "radius": [
+              2.0,
+              2.3
+            ],
+            "lumps": 2,
+            "veins": 0,
+            "vein": 0,
+            "glints": 1,
+            "margin": 2
+          },
+          {
+            "op": "tint",
+            "colour": "host.4",
+            "alpha": 48
+          }
+        ]
+      }
+    },
+    "platinium_overlay_b2": {
+      "params": [
+        "seed"
+      ],
+      "recipe": {
+        "kind": "cutout",
+        "layers": [
+          {
+            "op": "cluster",
+            "seed": "$seed",
+            "ramp": "platinium",
+            "shadow": "host.1",
+            "count": 2,
+            "radius": [
+              1.7,
+              2.0
+            ],
+            "lumps": 2,
+            "veins": 0,
+            "vein": 0,
+            "glints": 1,
+            "margin": 2
+          },
+          {
+            "op": "tint",
+            "colour": "host.4",
+            "alpha": 48
+          }
+        ]
+      }
+    },
+    "einsteinium_overlay_b2": {
+      "params": [
+        "seed"
+      ],
+      "recipe": {
+        "kind": "cutout",
+        "layers": [
+          {
+            "op": "cluster",
+            "seed": "$seed",
+            "ramp": "einsteinium",
+            "shadow": "host.1",
+            "count": 2,
+            "radius": [
+              1.9,
+              2.2
+            ],
+            "lumps": 3,
+            "veins": 0,
+            "vein": 0,
+            "glints": 1,
+            "margin": 2,
+            "crystal": true
+          },
+          {
+            "op": "tint",
+            "colour": "host.4",
+            "alpha": 48
+          }
+        ]
+      }
+    },
+    "cicatrium_overlay_b2": {
+      "params": [
+        "seed"
+      ],
+      "recipe": {
+        "kind": "cutout",
+        "layers": [
+          {
+            "op": "cluster",
+            "seed": "$seed",
+            "ramp": "cicatrium",
+            "shadow": "host.1",
+            "count": 2,
+            "radius": [
+              1.8,
+              2.1
+            ],
+            "lumps": 2,
+            "veins": 0,
+            "vein": 0,
+            "glints": 1,
+            "margin": 2
+          },
+          {
+            "op": "tint",
+            "colour": "host.4",
+            "alpha": 48
+          }
+        ]
+      }
+    }
+  },
+  "recipes": {
+    "block/ironium_ore_overlay_0": {
+      "template": "ironium_overlay_b2",
+      "args": {
+        "seed": 1300
+      }
+    },
+    "block/ironium_ore_overlay_1": {
+      "template": "ironium_overlay_b2",
+      "args": {
+        "seed": 1301
+      }
+    },
+    "block/ironium_ore_overlay_2": {
+      "template": "ironium_overlay_b2",
+      "args": {
+        "seed": 1302
+      }
+    },
+    "block/ironium_ore_overlay_3": {
+      "template": "ironium_overlay_b2",
+      "args": {
+        "seed": 1324
+      }
+    },
+    "block/bronzium_ore_overlay_0": {
+      "template": "bronzium_overlay_b2",
+      "args": {
+        "seed": 1324
+      }
+    },
+    "block/bronzium_ore_overlay_1": {
+      "template": "bronzium_overlay_b2",
+      "args": {
+        "seed": 1311
+      }
+    },
+    "block/bronzium_ore_overlay_2": {
+      "template": "bronzium_overlay_b2",
+      "args": {
+        "seed": 1312
+      }
+    },
+    "block/bronzium_ore_overlay_3": {
+      "template": "bronzium_overlay_b2",
+      "args": {
+        "seed": 1313
+      }
+    },
+    "block/silverium_ore_overlay_0": {
+      "template": "silverium_overlay_b2",
+      "args": {
+        "seed": 1320
+      }
+    },
+    "block/silverium_ore_overlay_1": {
+      "template": "silverium_overlay_b2",
+      "args": {
+        "seed": 1321
+      }
+    },
+    "block/silverium_ore_overlay_2": {
+      "template": "silverium_overlay_b2",
+      "args": {
+        "seed": 1323
+      }
+    },
+    "block/silverium_ore_overlay_3": {
+      "template": "silverium_overlay_b2",
+      "args": {
+        "seed": 1330
+      }
+    },
+    "block/goldium_ore_overlay_0": {
+      "template": "goldium_overlay_b2",
+      "args": {
+        "seed": 1330
+      }
+    },
+    "block/goldium_ore_overlay_1": {
+      "template": "goldium_overlay_b2",
+      "args": {
+        "seed": 1331
+      }
+    },
+    "block/goldium_ore_overlay_2": {
+      "template": "goldium_overlay_b2",
+      "args": {
+        "seed": 1339
+      }
+    },
+    "block/goldium_ore_overlay_3": {
+      "template": "goldium_overlay_b2",
+      "args": {
+        "seed": 1333
+      }
+    },
+    "block/platinium_ore_overlay_0": {
+      "template": "platinium_overlay_b2",
+      "args": {
+        "seed": 1340
+      }
+    },
+    "block/platinium_ore_overlay_1": {
+      "template": "platinium_overlay_b2",
+      "args": {
+        "seed": 1341
+      }
+    },
+    "block/platinium_ore_overlay_2": {
+      "template": "platinium_overlay_b2",
+      "args": {
+        "seed": 1342
+      }
+    },
+    "block/platinium_ore_overlay_3": {
+      "template": "platinium_overlay_b2",
+      "args": {
+        "seed": 1343
+      }
+    },
+    "block/einsteinium_ore_overlay_0": {
+      "template": "einsteinium_overlay_b2",
+      "args": {
+        "seed": 1358
+      }
+    },
+    "block/einsteinium_ore_overlay_1": {
+      "template": "einsteinium_overlay_b2",
+      "args": {
+        "seed": 1352
+      }
+    },
+    "block/einsteinium_ore_overlay_2": {
+      "template": "einsteinium_overlay_b2",
+      "args": {
+        "seed": 1352
+      }
+    },
+    "block/einsteinium_ore_overlay_3": {
+      "template": "einsteinium_overlay_b2",
+      "args": {
+        "seed": 1360
+      }
+    },
+    "block/cicatrium_ore_overlay_0": {
+      "template": "cicatrium_overlay_b2",
+      "args": {
+        "seed": 1360
+      }
+    },
+    "block/cicatrium_ore_overlay_1": {
+      "template": "cicatrium_overlay_b2",
+      "args": {
+        "seed": 1361
+      }
+    },
+    "block/cicatrium_ore_overlay_2": {
+      "template": "cicatrium_overlay_b2",
+      "args": {
+        "seed": 1362
+      }
+    },
+    "block/cicatrium_ore_overlay_3": {
+      "template": "cicatrium_overlay_b2",
+      "args": {
+        "seed": 1363
+      }
+    }
+  }
+}

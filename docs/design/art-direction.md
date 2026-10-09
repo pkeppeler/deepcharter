@@ -70,6 +70,7 @@ Rules for all areas:
 - **Skin and data:** `assets/deepcharter/{textures,models,blockstates}/`, the palette and recipes in `tools/textures/`. The reference sheet is [texture-reference.png](texture-reference.png). How a skin brings its own palette: [skins.md](skins.md#textures).
 - **AI-assisted assets (SPEC section 15):** AI image models are allowed, curated by the user, with style held by the reference sheet. The disclosure and Modrinth rules, the local-model install and the ban on reproducing XGen's assets are in SPEC section 15. Hand-directed and scripted work must stay a substantial part.
 - **Not chosen:** 32x for our blocks only, 64x or HD everywhere, labPBR as a base (an optional later layer for Iris users).
+- **Under test:** a richer 16x, 32x for our blocks and 3D ores, side by side in the game, for the user to pick ([texture-density.md](texture-density.md), #336). Round 2: four ore looks in the B family, drawn over vanilla stone's own texture ([texture-density-2.md](texture-density-2.md), #354).
 
 ## 6. Layers 1 and 2
 
