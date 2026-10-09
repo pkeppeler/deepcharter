@@ -55,9 +55,9 @@ or `...-as-played` show what a player sees; the other layer stills use night vis
 | Time of day | The gameplay clock is vanilla's 24000 ticks (beds, spawning). The sky follows its own clock, `deepcharter:sky`, and swings between dusk and night over 4 real hours, never full day. |
 | Swap | **(b)** the worldgen JSON above, the blockstates, and a datapack `minecraft:dimension_type/overworld` (light, fog attributes); **(a)** the block textures and models, the sun texture and the dust particle. The sky is the timeline in `data/deepcharter/timeline/sky.json` ([skins.md](skins.md)); which number shapes the land is in [skins.md](skins.md) too. Nothing in Java draws the surface or its sky. |
 
-![surface-south-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/surface-south-noon.png?raw=true) ![surface-east-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/surface-east-noon.png?raw=true)
-![surface-west-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/surface-west-noon.png?raw=true) ![surface-north-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/surface-north-noon.png?raw=true)
-![surface-south-dusk](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/surface-south-dusk.png?raw=true) ![surface-north-night](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/surface-north-night.png?raw=true)
+![surface-south-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/327/surface-south-noon.png?raw=true) ![surface-east-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/327/surface-east-noon.png?raw=true)
+![surface-west-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/327/surface-west-noon.png?raw=true) ![surface-north-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/327/surface-north-noon.png?raw=true)
+![surface-south-dusk](https://github.com/pkeppeler/deepcharter/blob/pr-media/327/surface-south-dusk.png?raw=true) ![surface-north-night](https://github.com/pkeppeler/deepcharter/blob/pr-media/327/surface-north-night.png?raw=true)
 
 From the pad: rust-red plains with a low roll, ochre terraced mesas on the horizon, black basalt knobs, craters with raised rims, and a huge pit to the south.
 The surface blocks are placeholder textures: the colour is right and the grain is not. The sky stills (`sky-up-*`) are #239's.
