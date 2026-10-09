@@ -10,6 +10,7 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 
+import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
 import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -109,6 +110,44 @@ public class EconomyAffordabilityTest {
 		if (runs > EARLY_BUY_RUNS) {
 			throw failure(helper, "the thermal scanner (tier %d) costs $%d, which is %d layer 2 runs of $%.0f; at most %d are allowed",
 					tier, price, runs, run.net(), EARLY_BUY_RUNS);
+		}
+		helper.succeed();
+	}
+
+	/**
+	 * Trips to bore layer 1 from the top to the breach, for a Mole whose tank is of tier 0 to 6, in the deepest zone (the fuel burn does
+	 * not differ between the zones today). Literals: a change to the tank ladder, the burn rates or layer 1's height moves them.
+	 */
+	private static final int[] DESCENT_TRIPS_BY_TANK_TIER = {28, 14, 7, 4, 3, 2, 1};
+	/** With the best tank a Mole takes (SPEC section 7), the way to layer 2 is this many round trips from the pump, at most. */
+	private static final int DESCENT_TRIPS_MAX = 8;
+
+	@GameTest
+	public void theWayDownLayerOneTakesTheTripsThatTheTankLadderGives(GameTestHelper helper) {
+		Zone zone = Zone.load("deep_claim");
+		for (int tier = 0; tier <= ComponentTrack.FUEL_TANK.maxTier(); tier++) {
+			EarlyRunModel.Descent descent = EarlyRunModel.descent(zone, EarlyRunModel.mole(0, tier, 0));
+			LOGGER.info("[fuel] tank tier {}: {}", tier, descent);
+			if (descent.trips() != DESCENT_TRIPS_BY_TANK_TIER[tier]) {
+				throw failure(helper, "a tier %d tank bores layer 1 in %d trips, expected %d", tier, descent.trips(), DESCENT_TRIPS_BY_TANK_TIER[tier]);
+			}
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aMoleWithItsBestTankReachesLayerTwoInFewTrips(GameTestHelper helper) {
+		int tier = UpgradeTuning.DEFAULT.tierCap(Chassis.MOLE.id());
+		EarlyRunModel.Descent descent = EarlyRunModel.descent(Zone.load("deep_claim"), EarlyRunModel.mole(0, tier, 0));
+		double bill = descent.litres() * FuelTuning.DEFAULT.pricePerLitre();
+		double layerTwoRun = upgradedRunInLayerTwo().net();
+		LOGGER.info("[fuel] Mole with a tier {} tank, down layer 1: {} trips, ${} of fuel, against a layer 2 run of ${}", tier, descent.trips(),
+				Math.round(bill), Math.round(layerTwoRun));
+		if (descent.trips() > DESCENT_TRIPS_MAX) {
+			throw failure(helper, "a tier %d tank needs %d trips to bore layer 1; at most %d are allowed", tier, descent.trips(), DESCENT_TRIPS_MAX);
+		}
+		if (bill > layerTwoRun) {
+			throw failure(helper, "the fuel for the way down layer 1 costs $%.0f, more than the $%.0f of a layer 2 run", bill, layerTwoRun);
 		}
 		helper.succeed();
 	}

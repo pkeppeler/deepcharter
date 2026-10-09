@@ -91,5 +91,42 @@ The bot is unrealistic in two opposite ways. It never reacts, which is harsh. It
 **Open questions.**
 - ~~Should the tier 1 scanner mark lava, or is that a later tier's job (BLOCKERS: fluids)?~~ Answered by #300: a later tier's job. See the thermal tier above.
 - Falls (35 to 100 hull) and gas (about 40 to 50 hull, from the same 1.25% density) kill as surely as lava. Do they need counterplay on the same ladder?
-- Fuel: a layer 1 descent takes about 10 tanks. Is that intended? See #289 (fuel per descent).
+- ~~Fuel: a layer 1 descent takes about 10 tanks. Is that intended?~~ Answered by #289: a player climbs back to the pump between trips. See "Fuel per descent" below.
 - Does the pilot need a reason to get out of the lava other than the hull? Today the cue is the HUD line and the hiss.
+
+## Fuel per descent (#289, A)
+
+**Problem.** #231 measured about 20 slabs a tank and about 10 tanks for a bore from the top of layer 1's rock to the breach, but its bot refuelled underground. A player cannot. Is layer 2 reachable at the pace the economy assumes (4 layer 2 runs for the Prospector, PR 206)?
+
+**Measured.** `EarlyRunModel.descent` bores layer 1 (192 blocks) in trips. Each trip starts at the bottom of the shaft the last one left, drills until the tank pays for the slabs and the climb back to the pump, then refuels. It uses the real drill, depth, burn and climb numbers, in the deepest zone.
+
+| Tank tier | Litres | Trips down layer 1 | Fuel burned |
+|---|---|---|---|
+| 0 (stock) | 10 | 28 | 268 L |
+| 1 | 15 | 14 | 203 L |
+| 2 (the Mole's best) | 25 | 7 | 172 L |
+| 3 | 40 | 4 | 159 L |
+| 4 | 60 | 3 | 178 L |
+| 5 | 100 | 2 | 198 L |
+| 6 | 150 | 1 | 149 L |
+
+- **The path is not broken.** With the tier 2 tank ($500) that the intended path buys, the way down is 7 round trips and $172 of fuel, under half of one layer 2 run ($397). Tier 2 is the Mole's cap, so a Mole is never worse than 7.
+- **Why more than 10 tanks of 10 L.** The one-way bore of #231 burned about 100 L. Round trips burn more (172 L at tier 2) because each one climbs the whole shaft back, and the climb grows with the shaft. A smaller tank pays for more climbs.
+- **Where it hurts.** Before the tier 2 tank the descent is a slog (28 trips stock, 14 at tier 1). It is not meant to be done then: a stock Mole earns in layer 1's top runs, which the economy tests already cover, and buys the tank first.
+- **Model limits (A).** The model takes the shaft from the top of the layer, though the rock starts at y 150 to 170, so it overstates the slabs. It charges no fuel for driving down the shaft and counts no ore from the descent. The errors push in opposite ways.
+
+**Decision (A).** No tuning change and no new mechanic. `EconomyAffordabilityTest` pins the trips for each tank tier as literals and requires at most 8 trips and a fuel bill under one layer 2 run for a tier 2 tank, so a change to fuel, tank sizes, the climb or layer 1's height cannot make layer 2 unreachable unseen.
+
+**Ladder, if the wait must shrink later.**
+1. By hand: trips to the pump (today).
+2. A bigger tank at an earlier tier: tier 2 at 25 L is 7 trips; 40 L would be 4.
+3. A cache: charter fuel cans placed in a lined shaft (#232) refuel mid-descent, so a descent is one trip and the shaft stays a highway for the charter.
+4. Mastery: a high tank tier or the Prospector's tank ends the trips (1 trip at 150 L).
+
+**Trade-offs.** A bigger early tank shortens the descent and weakens the tank track as the thing to save for. A cache adds a build step and cargo, and gives the charter something to share and to lose to a lava flood.
+
+**Knobs.** `PodTuning.Fuel` (`tankLitres` 10, the burn rates), `UpgradeTuning` tank values and prices, `PodTuning.Movement.maxClimbSpeed`, `FuelTuning.pricePerLitre`, the layer height (192), `DESCENT_TRIPS_MAX` (8).
+
+**Open questions.**
+- Is 7 round trips fun, or only bearable? The M3 play-test decides; the cache above is the answer if not.
+- Should the descent's ore count towards the first layer 2 run's income?

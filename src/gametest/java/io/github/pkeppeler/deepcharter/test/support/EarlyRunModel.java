@@ -84,6 +84,35 @@ public final class EarlyRunModel {
 		}
 	}
 
+	/**
+	 * Boring a shaft through layer 1: the {@code trips} (each a full tank at most, the climb back to the pump and a refill) it takes
+	 * to get from the top to the breach, and the {@code litres} that all of them burn.
+	 */
+	public record Descent(int trips, double litres) {
+	}
+
+	/**
+	 * The trips a pod with {@code stats} needs to bore its way down the whole of layer 1 in {@code zone}. (A) Each trip starts at the
+	 * bottom of the shaft the last one left, which is what {@link #run} models, and goes on until the tank is spent. A tank that cannot
+	 * pay for one more slab on the way down stops the descent, so it throws: that layer 2 is out of reach is the finding.
+	 */
+	public static Descent descent(Zone zone, PodStats stats) {
+		int floor = layerOneBlocks();
+		int shaft = 0;
+		int trips = 0;
+		double litres = 0;
+		while (shaft < floor) {
+			Run trip = run(zone, stats, shaft);
+			if (trip.slabs() == 0) {
+				throw new IllegalStateException("a " + stats.tankLitres() + " L tank cannot bore a slab below " + shaft + " of layer 1's " + floor + " blocks");
+			}
+			shaft += trip.slabs();
+			trips++;
+			litres += trip.litres();
+		}
+		return new Descent(trips, litres);
+	}
+
 	/** Blocks of layer 1, which a run in layer 2 climbs through twice (the shaft is already bored). */
 	public static int layerOneBlocks() {
 		return json("/data/deepcharter/dimension/layer_1.json").getAsJsonObject("generator").getAsJsonObject("biome_source")
