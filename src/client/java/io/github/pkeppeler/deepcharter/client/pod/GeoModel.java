@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -19,6 +20,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -44,9 +46,11 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 	/**
 	 * A drill that reaches this far from its axis, in pixels, spins at the full rate. A wider one spins slower, by the square of its
 	 * reach: one that reaches twice as far turns at a quarter of the rate, so a giant cutter turns with weight and not like a toy.
-	 * Every round-1 drill reaches 7.5 or less.
+	 * Every round-1 drill reaches 7.5 or less; the round-3 cones reach about 12.7, so they turn at 0.4.
 	 */
 	private static final double FULL_SPIN_REACH = 8;
+	private static final int CUBE_CORNERS = 8;
+	private static final double PIXELS_PER_BLOCK = 16;
 
 	/** A bone: its pivot and rest rotation (degrees, applied z, then y, then x) are in model space, as in the file. */
 	public record Bone(String name, BoneRole role, Optional<String> parent, Vec3 pivot, Vec3 rotation, List<Cube> cubes) {
@@ -121,19 +125,76 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 
 	/**
 	 * How far the cubes of the spinning drill bones ({@code drill_head} and {@code drill_ring}, not their children) reach from the
-	 * bone's axis across x or y, in pixels: half the width of the cutter. A turned cube counts as its unturned box, which for the
-	 * small turned teeth on a cutter's face is within a pixel.
+	 * bone's axis across x or y, in pixels: half the width of the cutter at its widest. A turned cube counts at its turned corners,
+	 * so the flutes of an auger cone or the tilted rollers of a tricone bit count for the width they really have. The bone's own
+	 * rest rotation is not applied: a spinning bone is drawn upright, and turns about its own z axis. Only the cubes of the spinning
+	 * bones themselves count, not those of bones under them. Every cube of the round-3 cones, including the side cones of the tricone
+	 * and the cluster, sits directly in {@code drill_head} or {@code drill_ring}, so all of them count; a round-1 {@code cutter} child
+	 * bone (a turned copy of the drill) does not, and its reach is that of its parent's.
 	 */
 	public double drillReach() {
 		double reach = 0;
 		for (Bone spinning : bones.stream().filter(bone -> bone.role() == BoneRole.DRILL_HEAD || bone.role() == BoneRole.DRILL_RING).toList()) {
 			for (Cube cube : spinning.cubes()) {
-				Vec3 low = cube.origin().subtract(spinning.pivot());
-				Vec3 high = low.add(cube.size());
-				reach = Math.max(reach, Math.max(Math.max(Math.abs(low.x), Math.abs(high.x)), Math.max(Math.abs(low.y), Math.abs(high.y))));
+				for (int corner = 0; corner < CUBE_CORNERS; corner++) {
+					Vec3 point = turnedCorner(cube, corner);
+					Vec3 across = point.subtract(spinning.pivot());
+					reach = Math.max(reach, Math.max(Math.abs(across.x), Math.abs(across.y)));
+				}
 			}
 		}
 		return reach;
+	}
+
+	/** The extent of every cube corner at rest, turned by its own rotation and its bones', in pixels: {minX, minY, minZ, maxX, maxY, maxZ}. */
+	public double[] restBounds() {
+		return restBounds(bone -> true);
+	}
+
+	/** {@link #restBounds()} over the cubes of the bones {@code only} accepts. */
+	public double[] restBounds(Predicate<Bone> only) {
+		Map<String, Bone> byName = new HashMap<>();
+		bones.forEach(bone -> byName.put(bone.name(), bone));
+		double[] bounds = {Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE};
+		for (Bone bone : bones.stream().filter(only).toList()) {
+			for (Cube cube : bone.cubes()) {
+				for (int corner = 0; corner < CUBE_CORNERS; corner++) {
+					Vec3 p = turnedCorner(cube, corner);
+					for (Bone at = bone; at != null; at = at.parent().map(byName::get).orElse(null)) {
+						p = turn(p, at.pivot(), at.rotation());
+					}
+					double[] xyz = {p.x, p.y, p.z};
+					for (int i = 0; i < 3; i++) {
+						bounds[i] = Math.min(bounds[i], xyz[i]);
+						bounds[i + 3] = Math.max(bounds[i + 3], xyz[i]);
+					}
+				}
+			}
+		}
+		return bounds;
+	}
+
+	/**
+	 * The box the renderer culls this model by, in blocks, round the pod's feet: the model's rest bounds in y, and in x and z a square
+	 * as wide as the furthest any corner of its bounds is from the pod's middle, so it holds the model at any heading, the cutter's tip included.
+	 */
+	public AABB cullingBox() {
+		double[] b = restBounds();
+		double reach = Math.max(Math.max(Math.hypot(b[0], b[2]), Math.hypot(b[0], b[5])), Math.max(Math.hypot(b[3], b[2]), Math.hypot(b[3], b[5])));
+		return new AABB(-reach / PIXELS_PER_BLOCK, b[1] / PIXELS_PER_BLOCK, -reach / PIXELS_PER_BLOCK, reach / PIXELS_PER_BLOCK, b[4] / PIXELS_PER_BLOCK,
+				reach / PIXELS_PER_BLOCK);
+	}
+
+	/** Corner {@code corner} (0 to 7) of {@code cube}, turned by the cube's own rotation if it has one. */
+	private static Vec3 turnedCorner(Cube cube, int corner) {
+		Vec3 point = cube.origin().add((corner & 1) * cube.size().x, (corner >> 1 & 1) * cube.size().y, (corner >> 2 & 1) * cube.size().z);
+		return cube.turn().map(turn -> turn(point, turn.pivot(), turn.rotation())).orElse(point);
+	}
+
+	/** Bedrock's rotation in y-up space: x, then y, then z, with the x and z angles turning the other way from ModelPart's y-down space. */
+	private static Vec3 turn(Vec3 point, Vec3 pivot, Vec3 degrees) {
+		return point.subtract(pivot).xRot((float) Math.toRadians(degrees.x)).yRot((float) Math.toRadians(degrees.y))
+				.zRot((float) Math.toRadians(degrees.z)).add(pivot);
 	}
 
 	/** The bones that name {@code parent} as their parent, in file order. */
