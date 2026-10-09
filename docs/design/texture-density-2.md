@@ -77,7 +77,7 @@ Two views also flip from A to B4, one look a second:
 - [cavern wall, flip](https://github.com/pkeppeler/deepcharter/blob/pr-media/356/texture-overlays-cavern-wall-lamp-lit.gif?raw=true)
 - [every view as a slideshow (MP4)](https://github.com/pkeppeler/deepcharter/blob/pr-media/356/texture-overlays.mp4?raw=true)
 
-Each single still is in [PR #356](https://github.com/pkeppeler/deepcharter/pull/356).
+Each single still, A to B4, is in [the media folder of PR #356](https://github.com/pkeppeler/deepcharter/tree/pr-media/356).
 
 ## What we saw
 
