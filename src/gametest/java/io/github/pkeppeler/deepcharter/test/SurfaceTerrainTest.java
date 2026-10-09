@@ -149,9 +149,12 @@ public class SurfaceTerrainTest {
 		Set<String> missing = new TreeSet<>();
 		for (Block block : BuiltInRegistries.BLOCK) {
 			Identifier id = BuiltInRegistries.BLOCK.getKey(block);
+			if (!id.getNamespace().equals(DeepCharter.MOD_ID)) {
+				continue;
+			}
 			boolean collides = block.getStateDefinition().getPossibleStates().stream()
 					.anyMatch(state -> !state.getCollisionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).isEmpty());
-			if (id.getNamespace().equals(DeepCharter.MOD_ID) && collides && !block.defaultBlockState().is(BlockTags.BLOCKS_MOTION_NO_LEAVES)) {
+			if (collides && !block.defaultBlockState().is(BlockTags.BLOCKS_MOTION_NO_LEAVES)) {
 				missing.add(id.toString());
 			}
 		}
