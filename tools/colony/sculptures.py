@@ -115,8 +115,9 @@ def _neck_and_head(torso: Bone, height: float, nod: float, turn: float = 0.0) ->
 
 
 def provider() -> Bone:
-    """Concept A, the Provider: standing in a frock coat, both forearms held forward at the waist, palms up, open and empty, under
-    the slot in his chest. From the front the arms come toward you, so the outline stays a column; from the side it is an L."""
+    """Concept A, the Provider: standing in a frock coat, his arms lowered and held a little away from his sides, the open empty
+    palms turned out to the town, under the slot in his chest. The hands stay beside the body, not in front of it, so from below
+    in the square they stay at his hips; the outline is a narrow A from every side."""
     body = Bone((0.0, 0.0, 0.0))
     _standing_coat(body, hem=6.5, waist=22.0, flare=17.5)
     torso = _torso(body, 22.0, 12.4)
@@ -124,17 +125,17 @@ def provider() -> Bone:
     _chest_slot(torso, 6.9, 4.1)
     _neck_and_head(torso, 12.4, nod=12.0)
     for side in (-1, 1):
-        upper = _limb(torso, (side * 7.0, 10.6, -0.2), (-16.0, 0.0, side * 5.0), 10.0, 3.8, 4.0)
+        upper = _limb(torso, (side * 7.0, 10.6, -0.2), (-4.0, 0.0, side * 4.0), 10.0, 3.8, 4.0)
         upper.box((-2.1, -10.6, -2.1), (2.1, -8.4, 2.1))                                      # elbow
-        fore = _limb(upper, (0.0, -10.0, 0.0), (-74.0, -side * 14.0, 0.0), 8.6, 3.3, 3.4)
+        fore = _limb(upper, (0.0, -10.0, 0.0), (-24.0, 0.0, side * 3.0), 8.6, 3.3, 3.4)
         fore.box((-1.95, -8.6, -1.95), (1.95, -6.8, 1.95), D)                               # cuff
-        _open_hand(fore, (0.0, -8.6, 0.0), (-18.0, 0.0, side * 8.0), side, 1.45)
+        _open_hand(fore, (0.0, -8.6, 0.0), (-4.0, side * 22.0, 0.0), -side, 1.45)
     return body
 
 
 def patron() -> Bone:
-    """Concept B, the Patron: seated on a heavy Company chair, forearms held out over the knees, palms up and open. A seated
-    figure is a pyramid from every side."""
+    """Concept B, the Patron: seated on a heavy Company chair like Lincoln in his memorial, his forearms along the chair arms and
+    the open hands resting palm up over their scrolled ends. A seated figure is a pyramid from every side."""
     body = Bone((0.0, 0.0, 0.0))
     # The chair: a plinth, a seat, arms with scrolled fronts and a tall back with a plain rolled top. Nothing rises above the
     # back: from the square, anything there reads as raised hands.
@@ -144,9 +145,9 @@ def patron() -> Bone:
         body.box((side * 8.4 - 1.6, 11.0, -10.0), (side * 8.4 + 1.6, 18.0, 3.0))
         body.box((side * 8.4 - 1.9, 18.0, -10.5), (side * 8.4 + 1.9, 19.4, 4.2))
         body.box((side * 8.4 - 1.9, 14.0, 2.6), (side * 8.4 + 1.9, 18.0, 4.2), D)
-    body.box((-9.5, 11.0, -11.5), (9.5, 36.0, -8.2))
-    body.box((-10.2, 34.5, -12.0), (10.2, 37.0, -7.8), D)
-    body.box((-8.8, 37.0, -11.6), (8.8, 38.6, -8.4))
+    body.box((-7.6, 11.0, -11.5), (7.6, 29.0, -8.2))
+    body.box((-8.2, 27.5, -12.0), (8.2, 30.0, -7.8), D)
+    body.box((-7.0, 30.0, -11.6), (7.0, 31.2, -8.4))
     # The figure: thighs along the seat, shins down to the ground, the coat over his lap.
     for side in (-1, 1):
         body.box((side * 3.0 - 2.4, 11.0, -6.0), (side * 3.0 + 2.4, 15.6, 9.0))
@@ -162,17 +163,17 @@ def patron() -> Bone:
     _chest_slot(torso, 8.6, 4.2)
     _neck_and_head(torso, 15.0, nod=10.0)
     for side in (-1, 1):
-        upper = _limb(torso, (side * 7.0, 13.2, -0.4), (-8.0, 0.0, side * 4.0), 9.4, 3.8, 4.0)
+        upper = _limb(torso, (side * 7.0, 13.2, -0.4), (-20.0, 0.0, side * 6.0), 9.4, 3.8, 4.0)
         upper.box((-2.1, -10.0, -2.1), (2.1, -7.8, 2.1))
-        fore = _limb(upper, (0.0, -9.4, 0.0), (-82.0, -side * 6.0, 0.0), 9.6, 3.3, 3.4)
-        fore.box((-1.95, -9.6, -1.95), (1.95, -7.8, 1.95), D)
-        _open_hand(fore, (0.0, -9.6, 0.0), (-10.0, 0.0, side * 6.0), side, 1.5)
+        fore = _limb(upper, (0.0, -9.4, 0.0), (-70.0, 0.0, -side * 6.0), 5.6, 3.3, 3.4)
+        fore.box((-1.95, -5.6, -1.95), (1.95, -3.8, 1.95), D)
+        _open_hand(fore, (0.0, -5.6, 0.0), (12.0, 0.0, side * 6.0), side, 1.5)
     return body
 
 
 def host() -> Bone:
-    """Concept C, the Host: mid-stride, the right hand raised beside his head in welcome, palm out, the left held low and forward,
-    palm up. One hand greets, the other asks; the outline is lopsided from every side."""
+    """Concept C, the Host: mid-stride, the right hand raised beside his head in welcome, palm out, the left lowered at his side
+    and turned out, open. One hand greets, the other shows it holds nothing; the outline is lopsided from every side."""
     body = Bone((0.0, 0.0, 0.0))
     _standing_coat(body, hem=8.0, waist=22.5, flare=16.0, stride=1.0)
     torso = _torso(body, 22.5, 12.4)
@@ -186,12 +187,12 @@ def host() -> Bone:
     fore = _limb(upper, (0.0, -10.0, 0.0), (-128.0, 0.0, 26.0), 8.6, 3.3, 3.4)
     fore.box((-1.95, -8.6, -1.95), (1.95, -6.8, 1.95), D)
     _open_hand(fore, (0.0, -8.6, 0.0), (8.0, 180.0, 0.0), -1, 1.45)
-    # The left arm: forward and down, the palm up.
-    upper = _limb(torso, (7.0, 10.6, -0.2), (-52.0, 0.0, 10.0), 10.0, 3.8, 4.0)
+    # The left arm: lowered at his side, a little out and forward, the open palm turned out.
+    upper = _limb(torso, (7.0, 10.6, -0.2), (-6.0, 0.0, 8.0), 10.0, 3.8, 4.0)
     upper.box((-2.1, -10.6, -2.1), (2.1, -8.4, 2.1))
-    fore = _limb(upper, (0.0, -10.0, 0.0), (-14.0, -10.0, 0.0), 8.6, 3.3, 3.4)
+    fore = _limb(upper, (0.0, -10.0, 0.0), (-24.0, 0.0, 3.0), 8.6, 3.3, 3.4)
     fore.box((-1.95, -8.6, -1.95), (1.95, -6.8, 1.95), D)
-    _open_hand(fore, (0.0, -8.6, 0.0), (-24.0, 0.0, 8.0), 1, 1.45)
+    _open_hand(fore, (0.0, -8.6, 0.0), (-6.0, 34.0, 4.0), -1, 1.45)
     return body
 
 

@@ -20,7 +20,7 @@ The three concepts from the same views: from the square, from the air, at night 
 
 ![Concepts side by side](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/concepts-side-by-side.png?raw=true)
 
-The three headframes, from the terminal row and at night from the air:
+The three headframes, from the west side of the square and at night from the air:
 
 ![Headframes side by side](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/headframes-side-by-side.png?raw=true)
 
@@ -30,8 +30,8 @@ A mill town of cream corrugated steel with red roofs and red trim, like the copp
 
 ![A from the square](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/a-from-the-square.png?raw=true) ![A from the air](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/a-from-the-air.png?raw=true)
 ![A at night](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/a-night-from-the-square.png?raw=true) ![A at night from the air](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/a-night-from-the-air.png?raw=true)
-![A the mill's gables](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/a-mill-gables.png?raw=true) ![A the headframe](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/a-headframe-from-the-plinths.png?raw=true)
-![A from the west](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/a-from-the-air-west.png?raw=true) ![A from far away](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/a-from-far-across-the-plain.png?raw=true)
+![A the mill's gables](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/a-mill-gables.png?raw=true) ![A the headframe](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/a-headframe.png?raw=true)
+![A from behind](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/a-from-the-air-behind.png?raw=true) ![A from far away](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/a-from-far-across-the-plain.png?raw=true)
 
 Fly-around ([MP4](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/colony-concept-a.mp4?raw=true)):
 
@@ -43,8 +43,8 @@ The town as one great machine, the way GregTech builds a multiblock. Dark rivete
 
 ![B from the square](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/b-from-the-square.png?raw=true) ![B from the air](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/b-from-the-air.png?raw=true)
 ![B at night](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/b-night-from-the-square.png?raw=true) ![B at night from the air](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/b-night-from-the-air.png?raw=true)
-![B the works front](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/b-works-front.png?raw=true) ![B the tower](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/b-headframe-from-the-plinths.png?raw=true)
-![B from the west](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/b-from-the-air-west.png?raw=true) ![B from far away](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/b-from-far-across-the-plain.png?raw=true)
+![B the works front](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/b-works-front.png?raw=true) ![B the tower](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/b-headframe.png?raw=true)
+![B from behind](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/b-from-the-air-behind.png?raw=true) ![B from far away](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/b-from-far-across-the-plain.png?raw=true)
 
 Fly-around ([MP4](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/colony-concept-b.mp4?raw=true)):
 
@@ -56,8 +56,8 @@ The town as a 1930s Company showpiece, like the Zollverein mine in Essen. A stri
 
 ![C from the square](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/c-from-the-square.png?raw=true) ![C from the air](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/c-from-the-air.png?raw=true)
 ![C at night](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/c-night-from-the-square.png?raw=true) ![C at night from the air](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/c-night-from-the-air.png?raw=true)
-![C the ore house](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/c-ore-house-front.png?raw=true) ![C the headframe](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/c-headframe-from-the-plinths.png?raw=true)
-![C from the west](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/c-from-the-air-west.png?raw=true) ![C from far away](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/c-from-far-across-the-plain.png?raw=true)
+![C the ore house](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/c-ore-house-front.png?raw=true) ![C the headframe](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/c-headframe.png?raw=true)
+![C from behind](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/c-from-the-air-behind.png?raw=true) ![C from far away](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/c-from-far-across-the-plain.png?raw=true)
 
 Fly-around ([MP4](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/colony-concept-c.mp4?raw=true)):
 
@@ -67,9 +67,11 @@ Fly-around ([MP4](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/col
 
 All three are bronze, polished a little too well, about 20 blocks tall on their plinths, with open empty hands and the slot in the chest. The hands are a separate piece, so the rebuild can keep the work order that restores the Founder's hands.
 
-- **A. The Provider:** standing in a long frock coat, both forearms held forward at the waist, palms up, under the slot. From the front the arms come toward you, so the outline stays a column.
-- **B. The Patron:** seated on a heavy Company chair crested with crossed picks, forearms held out over his knees, palms up. A seated figure is a pyramid from every side.
-- **C. The Host:** mid-stride, one hand raised beside his head in welcome, the other held low and forward, palm up. One hand greets, one asks.
+- **A. The Provider:** standing in a long frock coat, his arms lowered at his sides, the open palms turned out to the town. The outline is a narrow column from every side.
+- **B. The Patron:** seated on a heavy Company chair like Lincoln in his memorial, forearms along the chair arms, the open hands palm up over their ends. A seated figure is a pyramid from every side.
+- **C. The Host:** mid-stride, one hand raised beside his head in welcome, the other lowered at his side and turned out, open. The outline is lopsided from every side.
+
+Why the hands are low or at the sides: from the square you look up at a statue 20 blocks tall. A hand held out in front of the body is closer to you than the head, so from below it rises to the height of the head and reads as a hand held up. The first versions had forearms held forward, and from the square they read as "hands up". The check now also looks from where players stand.
 
 ![Statues side by side](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/statues-side-by-side.png?raw=true)
 

@@ -272,25 +272,15 @@
     {
      "op": "noise",
      "ramp": [
-      "brass.3",
       "brass.4",
       "brass.4",
       "brass.4",
       "brass.5"
      ],
      "seed": 3291,
-     "cell": 8,
-     "octaves": 2,
-     "dither": 0.6
-    },
-    {
-     "op": "speckle",
-     "colours": [
-      "copper.3",
-      "brass.5"
-     ],
-     "density": 0.05,
-     "seed": 3292
+     "cell": 16,
+     "octaves": 1,
+     "dither": 0.25
     }
    ]
   },

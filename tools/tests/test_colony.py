@@ -71,6 +71,33 @@ class FounderSilhouetteTest(unittest.TestCase):
         front = [score for yaw, pitch, score in preview.crossbar_scores([arms_out()]) if yaw == 0 and pitch == 0]
         self.assertGreater(front[0], CROSS + 1)
 
+    def test_no_founder_reads_as_a_cross_from_where_players_stand(self):
+        for name, plinth_top in plinth_tops().items():
+            figure = sculptures.FIGURES[name]()
+            for yaw, distance, score in preview.square_crossbar_scores([figure], plinth_top, sculptures.FIGURE_SCALE):
+                with self.subTest(figure=name, yaw=yaw, distance=distance):
+                    self.assertLess(score, CROSS)
+
+    def test_arms_straight_out_read_as_a_cross_from_the_square_too(self):
+        scores = preview.square_crossbar_scores([arms_out()], 10, sculptures.FIGURE_SCALE)
+        self.assertGreater(max(score for _, _, score in scores), CROSS + 1)
+
+
+def plinth_tops() -> dict[str, int]:
+    """The top of each Founder's plinth, read from where its concept stands it: the block under its body's display."""
+    import concepts
+    tops = {}
+    for concept in concepts.ALL:
+        for piece in concept.pieces():
+            for display in piece.displays:
+                state = display["nbt"]["block_state"]
+                figure = state.get("properties", {}).get("piece")
+                if figure in sculptures.FIGURES:
+                    tops[figure] = int(display["at"][1]) - 1
+    if set(tops) != set(sculptures.FIGURES):
+        raise AssertionError(f"found plinths for {sorted(tops)}, not every figure of {sorted(sculptures.FIGURES)}")
+    return tops
+
 
 if __name__ == "__main__":
     unittest.main()
