@@ -48,24 +48,14 @@ jobs:
     name: tool-tests
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15 # tests take ~2.5 min; leave headroom over the capped 4-min ffmpeg install
+    timeout-minutes: 15 # tests take ~2.5 min; leave headroom for test growth
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       # build-audio-pack.test.sh needs ffmpeg. It makes its own synthetic tones; CI never
       # has, reads or needs the original game audio.
-      - name: install ffmpeg
-        # A slow apt mirror once ate 471 s of the job budget (#290): bound each attempt, retry once, cap the step.
-        timeout-minutes: 4
-        run: |
-          # Skip the recommended packages (GUI, audio, GPU) the tones test never uses.
-          # First try has no index update; the retry refreshes the index.
-          if ! timeout -k 5 100 sudo apt-get install -o DPkg::Lock::Timeout=20 -y -q --no-install-recommends ffmpeg; then
-            echo "::warning::ffmpeg install failed or timed out; retrying after an index update"
-            timeout -k 5 40 sudo apt-get update -q || true
-            timeout -k 5 90 sudo apt-get install -o DPkg::Lock::Timeout=20 -y -q --no-install-recommends ffmpeg
-          fi
+      - uses: ./.github/actions/install-ffmpeg
       - run: python3 -I -m unittest discover -s tools/tests -p 'test_*.py'
       - name: bash tool tests
         run: |

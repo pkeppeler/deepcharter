@@ -21,6 +21,7 @@ import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodDrill;
+import io.github.pkeppeler.deepcharter.pod.PodLiningTuning;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -107,9 +108,39 @@ public final class EarlyRunModel {
 	 * is paid back ({@code gravity / thrustAcceleration}); those ticks burn the moving rate and the others the idle rate.
 	 */
 	public static double driveDownLitres(PodStats stats, int blocks) {
+		return driveDownLitres(stats, blocks, 0f);
+	}
+
+	/**
+	 * As {@link #driveDownLitres(PodStats, int)} for a pod that carries {@code extraMass} (a spoil hopper's bay and a brick rack, see
+	 * {@link #hopperMass}). Mass cuts lift, and lift scales the rotor's thrust, so holding the sink takes the rotor for a larger share of the ticks.
+	 */
+	public static double driveDownLitres(PodStats stats, int blocks, float extraMass) {
 		double seconds = blocks / (DRIVE_DOWN_SINK * TICKS_PER_SECOND);
-		double thrustShare = PodTuning.DEFAULT.movement().gravity() / stats.thrustAcceleration();
+		double thrustShare = PodTuning.DEFAULT.movement().gravity() / (stats.thrustAcceleration() * liftShare(stats, extraMass));
 		return seconds * (thrustShare * stats.movingLitresPerSecond() + (1 - thrustShare) * stats.idleLitresPerSecond());
+	}
+
+	/** (A) The mass of a full spoil bay and a full brick rack: what a pod with a hopper adds to the cargo mass at worst. */
+	public static float hopperMass() {
+		PodLiningTuning tuning = PodLiningTuning.DEFAULT;
+		return tuning.spoilCapacity() * tuning.spoilMass() + tuning.brickCapacity() * tuning.brickMass();
+	}
+
+	/** The share of the engine's power that is lift once {@code extraMass} is aboard (ore is not counted: a run that climbs home climbs light). */
+	public static double liftShare(PodStats stats, float extraMass) {
+		return Math.max(0, stats.enginePower() - extraMass) / stats.enginePower();
+	}
+
+	/**
+	 * Blocks per tick the rotor climbs at, as {@code PodMovement} works it out: each tick adds the thrust and takes gravity, and drag keeps a
+	 * share, so the speed settles where the two balance, and the rotor's own cap ({@code maxClimbSpeed}) limits it.
+	 */
+	public static double climbSpeed(PodStats stats, float extraMass) {
+		PodTuning.Movement movement = PodTuning.DEFAULT.movement();
+		double thrust = stats.thrustAcceleration() * liftShare(stats, extraMass);
+		double settled = (thrust - movement.gravity()) * movement.verticalDrag() / (1 - movement.verticalDrag());
+		return Math.max(0, Math.min(stats.maxClimbSpeed(), settled));
 	}
 
 	/** Blocks of layer 1, which a run in layer 2 climbs through twice (the shaft is already bored). */
@@ -134,15 +165,20 @@ public final class EarlyRunModel {
 	 * climbs back at the rotor's top climb speed; fuel is bought at the surface at {@link FuelTuning}'s price.
 	 */
 	public static Run run(Zone zone, PodStats stats, int shaftBlocks) {
+		return run(zone, stats, shaftBlocks, 0f);
+	}
+
+	/** As {@link #run(Zone, PodStats, int)} for a pod that carries {@code extraMass}: it slows the climb if the lift falls far enough, and costs rotor fuel on the way down. */
+	public static Run run(Zone zone, PodStats stats, int shaftBlocks, float extraMass) {
 		int cells = cellsPerSlab();
 		double oreChance = zone.oreChance();
-		double climbSecondsPerBlock = 1 / (stats.maxClimbSpeed() * 20);
+		double climbSecondsPerBlock = 1 / (climbSpeed(stats, extraMass) * 20);
 		int slabs = 0;
 		double litres = 0;
 		for (int next = 1;; next++) {
 			double drillSeconds = slabSeconds(zone, stats, shaftBlocks + next / 2.0);
 			double climbSeconds = (shaftBlocks + next) * climbSecondsPerBlock;
-			double used = driveDownLitres(stats, shaftBlocks) + drillSeconds * next * stats.drillingLitresPerSecond() + climbSeconds * stats.movingLitresPerSecond()
+			double used = driveDownLitres(stats, shaftBlocks, extraMass) + drillSeconds * next * stats.drillingLitresPerSecond() + climbSeconds * stats.movingLitresPerSecond()
 					+ (drillSeconds * next + climbSeconds) * stats.idleLitresPerSecond();
 			if (used > stats.tankLitres()) {
 				break;

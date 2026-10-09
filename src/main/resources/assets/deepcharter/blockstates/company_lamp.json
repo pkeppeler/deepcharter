@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "active=false": {
+      "model": "deepcharter:block/company_lamp"
+    },
+    "active=true": {
+      "model": "deepcharter:block/company_lamp_active"
+    }
+  }
+}

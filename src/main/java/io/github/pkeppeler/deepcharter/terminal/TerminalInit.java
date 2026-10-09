@@ -10,5 +10,6 @@ public final class TerminalInit {
 
 	public static void init() {
 		TerminalRegistry.register();
+		TerminalActivity.init();
 	}
 }

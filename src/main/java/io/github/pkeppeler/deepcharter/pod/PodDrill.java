@@ -21,6 +21,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.GasHazard;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
+import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 
 /**
@@ -28,7 +29,6 @@ import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
  * pod's footprint, one slab at a time.
  */
 public final class PodDrill {
-	private static final double EPSILON = 1e-3;
 	private static final double ALIGNED = 1e-6;
 
 	/** Ticks spent on one slab; a different slab or direction starts over. */
@@ -52,7 +52,7 @@ public final class PodDrill {
 
 	/** Called every pod tick, on the server only. */
 	static void tick(PodEntity pod, PodStats stats) {
-		Direction wanted = PodEvents.isPowered(pod) ? wantedDirection(pod) : null;
+		Direction wanted = PodEvents.isPowered(pod) && !PodLining.working(pod) ? wantedDirection(pod) : null;
 		if (wanted == null) {
 			stop(pod);
 			return;
@@ -113,16 +113,15 @@ public final class PodDrill {
 	/** The cells one bore step removes, and what is in them. */
 	private record Slab(ServerLevel level, List<BlockPos> cells, double centreX, double centreZ) {
 		static Slab of(PodEntity pod, Direction direction) {
-			Chassis chassis = pod.chassis();
-			int width = Mth.ceil(chassis.width());
-			int height = Mth.ceil(chassis.height());
-			// The nearest block-aligned footprint: its low corner, and the centre the pod slides to.
-			int lowX = Mth.floor(pod.getX() - width / 2.0 + 0.5);
-			int lowZ = Mth.floor(pod.getZ() - width / 2.0 + 0.5);
-			int feetY = Mth.floor(pod.getY() + EPSILON);
+			PodFootprint foot = PodFootprint.of(pod);
+			int width = foot.width();
+			int height = foot.height();
+			int lowX = foot.lowX();
+			int lowZ = foot.lowZ();
+			int feetY = foot.feetY();
 			List<BlockPos> cells = new ArrayList<>();
 			if (direction == Direction.DOWN) {
-				int y = Mth.ceil(pod.getY() - EPSILON) - 1;
+				int y = Mth.ceil(pod.getY() - PodFootprint.EPSILON) - 1;
 				for (int x = lowX; x < lowX + width; x++) {
 					for (int z = lowZ; z < lowZ + width; z++) {
 						cells.add(new BlockPos(x, y, z));
@@ -204,6 +203,9 @@ public final class PodDrill {
 							pod.cargo().logDiscardedOre(pod);
 						}
 					});
+					if (state.is(SlagBrick.WASTE_ROCK)) {
+						PodLining.keepSpoil(pod);
+					}
 					level.destroyBlock(pos, false);
 					if (state.is(HazardBlocks.GAS_POCKET)) {
 						GasHazard.vent(level, pos);

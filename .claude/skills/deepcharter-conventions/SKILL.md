@@ -22,8 +22,8 @@ Code lives under `io.github.pkeppeler.deepcharter`. Detail beyond this file:
 - Whole client suite (opens a window; the Mac runs at most two clients): `./gradlew runClientGameTest`
 - Record PR evidence: `tools/record-evidence.sh <scenario>`
 - Compare stills: `tools/diff-stills <before> <after> --out <dir>` (`--design-tour` for the tour)
-- Gates: `tools/shellcheck.sh`, `python3 -I -m unittest discover -s tools/tests -p 'test_*.py'`, and `python3 -I tools/tests/gate_checks.py` (the four gate fixture checks; its name does not match `test_*.py`, so discover skips it). `.githooks/pre-push` runs them on push, and CI's `build` job runs them too.
-- Suppressions: `// colour-ok: <reason>` (colour gate), `// tick-wait: <reason>` (tick-wait gate), and a `NOISE_FAMILIES` entry in `tools/diff-stills` (blind spots in [evidence.md](evidence.md)). The gates do not judge the reason. Reject an empty or generic reason, and any new `NOISE_FAMILIES` prefix without measured noise behind it.
+- Gates: `tools/shellcheck.sh`, `python3 -I -m unittest discover -s tools/tests -p 'test_*.py'`, and `python3 -I tools/tests/gate_checks.py` (the five gate fixture checks; its name does not match `test_*.py`, so discover skips it). `.githooks/pre-push` runs them on push, and CI's `build` job runs them too.
+- Suppressions: `// colour-ok: <reason>` (colour gate), `// tick-wait: <reason>` (tick-wait gate), `// world-clock: <reason>` (world-clock gate), and a `NOISE_FAMILIES` entry in `tools/diff-stills` (blind spots in [evidence.md](evidence.md)). The gates do not judge the reason. Reject an empty or generic reason, and any new `NOISE_FAMILIES` prefix without measured noise behind it.
 - Merge: `tools/merge-pr.sh <n>`; several PRs: `tools/merge-queue.sh <n>...`. Never `gh pr merge`. Detail in [merging.md](merging.md).
 - Integration branch: `main`. Squash merge; branches `<issue>-<slug>`.
 - Client slots: on macOS at most two game clients run at a time (`DEEPCHARTER_CLIENT_SLOTS`, default 2); a run that finds both taken waits. Details, and what to do after a Ctrl-C, in [tests.md](tests.md#client-slots).

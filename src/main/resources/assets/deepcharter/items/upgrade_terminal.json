@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "deepcharter:block/upgrade_terminal"
+    "model": "deepcharter:block/upgrade_terminal_active"
   }
 }

@@ -176,7 +176,7 @@ public final class Terminals {
 
 	private static Optional<TerminalRefusal> run(ServerPlayer player, Access.Granted access, BlockPos pos, Identifier action, CompoundTag args) {
 		MinecraftServer server = player.level().getServer();
-		if (access.type().needsRepair() && !RepairState.get(server).repaired(access.type())) {
+		if (!RepairState.get(server).online(access.type())) {
 			return Optional.of(TerminalRefusal.UNREPAIRED);
 		}
 		Optional<TerminalAction> handler = TerminalActions.find(access.type(), action);

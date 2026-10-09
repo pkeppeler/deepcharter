@@ -10,9 +10,11 @@ Paths are under `src/main/resources/` in the repo and under `assets/deepcharter/
 |---|---|---|
 | UI theme: colours, sizes, spacing and visual timings of the CRT terminals, handbook paper, scanner, pod readout, altimeter, account line, transmissions, breach fade and cargo screen | `assets/deepcharter/theme/<area>.json`, areas `crt`, `handbook`, `scanner`, `hud`, `transmission`, `breach`, `cargo` | F3+T |
 | UI frames drawn as a panel (today: the pod cargo panel and slot) | `assets/deepcharter/textures/gui/sprites/cargo/panel.png` and `slot.png`, each with a nine-slice `.png.mcmeta` | F3+T |
-| Block look | `blockstates/<id>.json`, `models/block/<id>.json`, `textures/block/*.png` | F3+T |
+| Block look, with its layers (glow, animation, active state, connected casing; see [Textures](#textures)) | `blockstates/<id>.json`, `models/block/<id>.json`, `textures/block/*.png` and `*.png.mcmeta` | F3+T |
 | Item look | `items/<id>.json` (item definition), `models/item/<id>.json`, `textures/item/*.png` | F3+T |
+| Block and item texture art: palette and recipes | `tools/textures/palette.json` and `tools/textures/recipes/*.json` in the repo; a skin's own palette file (see [Textures](#textures)) | rebuild, then F3+T |
 | Pod look: hull, wreck and drill, per chassis (`mole`, `prospector`) | `items/pod/<chassis>.json`, `<chassis>_wreck.json`, `<chassis>_drill.json`, and `models/pod/` with the same names; textures wherever the model names them | F3+T |
+| Mole concepts ([#334](https://github.com/pkeppeler/deepcharter/issues/334), dev only: drawn only when `-Ddeepcharter.podConcept=<id>` names one, see [pod-concepts.md](pod-concepts.md)) | `geckolib/models/pod/concepts/<id>.geo.json` (Bedrock geometry, box UV, bones named as in `BoneRole`), `textures/entity/pod/mole/<id>.png` and `<id>_glowmask.png`; all written by `tools/pod_concepts.py` | F3+T |
 | Tow cable particle | `particles/tow_cable.json` and `textures/particle/tow_cable.png` | F3+T |
 | Entity texture (the lampless figure) | `textures/entity/<id>.png` | F3+T |
 | Text | `lang/en_us.json` (generated from `src/lang/en_us/<feature>.json`; never edit it) | F3+T |
@@ -26,7 +28,53 @@ Paths are under `src/main/resources/` in the repo and under `assets/deepcharter/
 | Layer terrain and structures, colony | `data/deepcharter/worldgen/` today; the colony and structures are Java until #244 | world reopen |
 | Handbook text and chapters | `data/deepcharter/deepcharter/handbook_chapter/` and `lang` | world reopen |
 
-`ThemeTest` and `AssetCompletenessTest` guard the first rows: the theme parses, and every registered block, item and entity has the asset files above.
+`ThemeTest` and `AssetCompletenessTest` guard the first rows: the theme parses, and every registered block, item and entity has the asset files above, with a blockstate variant for each block state and a `.png.mcmeta` for each animated texture. `tools/tests/test_texgen.py` fails when a committed texture differs from what its recipe makes.
+
+### Textures
+
+Every PNG under `textures/block/` and `textures/item/` is generated ([ADR 0037](../adr/0037-texture-layers-are-generated-data-and-casings-connect-through-one-model-type.md)). `tools/textures/texgen.py` draws each one from a palette and a recipe, using the Python standard library only. Do not edit the PNGs: edit a recipe or the palette, then rebuild.
+
+```sh
+python3 tools/textures/texgen.py          # rebuild the mod's textures and the reference sheet
+python3 tools/textures/texgen.py --check  # what the tool test runs; writes nothing
+```
+
+The reference sheet, [texture-reference.png](texture-reference.png), shows the palette and every texture at light levels 15, 7, 3 and 0, with glow layers at full light. It is the style guide for new art, generated or curated.
+
+**A skin's own palette.** A palette file has the default's form, and names only the colours and ramps it changes. A ramp is a list from dark to light, and a recipe names its shades `steel.0` to `steel.6`:
+
+```json
+{ "description": "Cold dusk: blue-grey Company steel", "colours": { "steel": ["#101418", "#1a2128", "#26303a", "#34404c", "#465462", "#5e6e7e", "#8a9aaa"] } }
+```
+
+Build the skin's whole texture set into its pack. A `--recipes` directory is optional, for a skin that redraws a texture and does not only recolour it. Its recipes and templates replace the default ones by name:
+
+```sh
+python3 tools/textures/texgen.py --palette skins/<option>/palette.json [--recipes skins/<option>/recipes] \
+    --out skins/<option>/pack/assets/deepcharter/textures --sheet skins/<option>/texture-reference.png
+```
+
+The `rock` ramp is the stone the ores sit in. It matches the layer rock (vanilla stone until #241), so a skin that changes the rock changes `rock` with it.
+
+**A new block or item texture.** Give it a recipe in `tools/textures/recipes/blocks.json` (for `block/<name>`) or `items.json` (for `item/<name>`), then rebuild. A PNG under `textures/block/` or `textures/item/` with no recipe fails the build and `--check`, and the message names it. A recipe is a list of layer operations, or a template with arguments: copy one that is close.
+
+**Art drawn or curated by hand** (the art direction allows curated AI-assisted art, section 5) goes through the generator too. Commit the PNG under `tools/textures/sources/` (for a skin, `sources/` beside its `--recipes` directory), 16 pixels wide and one or more 16 x 16 frames tall. Its recipe draws it with the `source` op, and can add layers over it:
+
+```json
+"block/regolith_mesa": {"kind": "opaque", "layers": [{"op": "source", "file": "block/regolith_mesa.png"}]}
+```
+
+`--check` then compares the committed texture with the source, as for any recipe. An animated recipe takes a source with one frame or with as many frames as the recipe. The kind still applies, so a half-transparent pixel in a source fails the build.
+
+**Layers.** Each is data in the model and blockstate files, so a pack can restyle or replace it:
+
+| Layer | How | Example |
+|---|---|---|
+| Base | the model's face texture | `block/fuel_pump_front` |
+| Glow | a second element over the face with `"light_emission": 15` and `"shade": false`, textured with a cutout PNG that holds only the lit pixels | `block/fuel_pump_front_glow` on `models/block/terminal.json` |
+| Animation | a vertical strip of 16 x 16 frames, and `<texture>.png.mcmeta` with `{"animation": {"frametime": 4}}` | the CRT scan line of `block/fuel_pump_front_glow` |
+| Active state | the block's `active` property; the blockstate file maps each value to a model | `blockstates/fuel_pump.json`: `active=true,facing=north` uses `block/fuel_pump_active`. A terminal is active when online, the Company lamp when lit |
+| Connected casing | a blockstate variant `{"fabric:type": "deepcharter:connected", "tiles": {"alone": ..., "horizontal": ..., "vertical": ..., "corner": ..., "centre": ...}}`. Each face is drawn in quarters, from the tiles that match its neighbours, so a wall shows one border round the outside | `blockstates/conduit.json` |
 
 ### Pod models
 

@@ -1,0 +1,84 @@
+{
+  "templates": {
+    "company_plate": {
+      "params": ["seed"],
+      "recipe": {
+        "kind": "opaque",
+        "layers": [
+          {"op": "noise", "ramp": ["steel.2", "steel.2", "steel.3"], "seed": "$seed", "cell": 8, "octaves": 2, "dither": 0.8},
+          {"op": "speckle", "colours": ["steel.1", "steel.4"], "density": 0.05, "seed": "$seed"},
+          {"op": "bevel", "rect": [0, 0, 16, 16], "light": "steel.4", "dark": "steel.0"},
+          {"op": "grime", "colours": ["dust.0", "rust.1", "steel.1"], "density": 0.35, "seed": "$seed", "rect": [1, 11, 14, 4]}
+        ]
+      }
+    },
+    "terminal_front": {
+      "params": ["seed", "glyph"],
+      "recipe": {
+        "kind": "opaque",
+        "layers": [
+          {"op": "template", "name": "company_plate", "args": {"seed": "$seed"}},
+          {"op": "rect", "rect": [1, 1, 14, 11], "colour": "steel.3"},
+          {"op": "bevel", "rect": [1, 1, 14, 11], "light": "steel.5", "dark": "steel.1"},
+          {"op": "rect", "rect": [3, 2, 10, 8], "colour": "glass.1"},
+          {"op": "bevel", "rect": [3, 2, 10, 8], "light": "glass.0", "dark": "steel.4"},
+          {"op": "pixels", "at": [3, 2], "legend": {"c": "steel.3"}, "rows": ["c........c", "", "", "", "", "", "", "c........c"]},
+          {"op": "pixels", "at": [4, 3], "legend": {"#": "glass.3", "o": "glass.3", "d": "glass.2"}, "rows": "$glyph"},
+          {"op": "pixels", "at": [4, 10], "legend": {"r": "signal.1", "a": "sodium.1", "g": "phosphor.1", "s": "steel.1"},
+            "rows": ["rrsaasgg"]},
+          {"op": "rect", "rect": [4, 12, 8, 2], "colour": "brass.3"},
+          {"op": "rect", "rect": [4, 12, 8, 1], "colour": "brass.4"},
+          {"op": "pixels", "at": [4, 12], "legend": {"h": "brass.6", "d": "brass.1"}, "rows": ["h......h", "d......d"]},
+          {"op": "rivets", "at": [[1, 12], [13, 12]], "ramp": ["steel.1", "steel.4", "steel.6"]}
+        ]
+      }
+    },
+    "terminal_glow": {
+      "params": ["over", "glyph"],
+      "recipe": {
+        "kind": "cutout",
+        "glow": {"over": "$over"},
+        "animation": {"frames": 6, "frametime": 4},
+        "layers": [
+          {"op": "rect", "rect": [4, 3, 8, 6], "colour": "phosphor.0"},
+          {"op": "pixels", "at": [4, 3], "legend": {"#": "phosphor.4", "o": "phosphor.6", "d": "phosphor.2"}, "rows": "$glyph"},
+          {"op": "scan", "rect": [4, 3, 8, 6], "rows": 1, "step": 1, "colour": "phosphor.1", "over": ["phosphor.0"]},
+          {"op": "scan", "rect": [4, 3, 8, 6], "rows": 1, "step": 1, "colour": "phosphor.5", "over": ["phosphor.4"]},
+          {"op": "pixels", "at": [10, 10], "legend": {"g": "phosphor.5"}, "rows": ["gg"]}
+        ]
+      }
+    },
+    "ore_block": {
+      "params": ["mineral", "seed", "count", "shapes"],
+      "recipe": {
+        "kind": "opaque",
+        "layers": [
+          {"op": "noise", "ramp": ["rock.3", "rock.4", "rock.4", "rock.5"], "seed": "$seed", "cell": 8, "octaves": 3, "dither": 0.9},
+          {"op": "cracks", "colour": "rock.2", "lip": "rock.6", "seed": "$seed", "count": 2, "length": 6},
+          {"op": "speckle", "colours": ["rock.2", "rock.6"], "density": 0.06, "seed": "$seed"},
+          {"op": "ore", "seed": "$seed", "count": "$count", "shapes": "$shapes", "ramp": "$mineral"}
+        ]
+      }
+    },
+    "conduit_tile": {
+      "params": ["edges", "corners"],
+      "recipe": {
+        "kind": "opaque",
+        "layers": [
+          {"op": "noise", "ramp": ["steel.1", "steel.2", "steel.2", "steel.3"], "seed": 41, "cell": 8, "octaves": 2, "dither": 0.8},
+          {"op": "speckle", "colours": ["steel.0", "steel.4"], "density": 0.04, "seed": 41},
+          {"op": "rect", "rect": [0, 15, 16, 1], "colour": "steel.0"},
+          {"op": "rect", "rect": [0, 0, 16, 1], "colour": "steel.4"},
+          {"op": "rivets", "at": [[2, 2], [7, 2], [12, 2]], "ramp": ["steel.0", "steel.4", "steel.6"], "rust": "rust.1"},
+          {"op": "masked", "mask": {"any": [{"edges": "$edges", "width": 3}, {"corners": "$corners", "size": 3}]}, "layers": [
+            {"op": "stripes", "colours": ["hazard.2", "iron.0"], "period": 8, "direction": "/"},
+            {"op": "speckle", "colours": ["hazard.1", "iron.2", "rust.2"], "density": 0.12, "seed": 43}
+          ]},
+          {"op": "masked", "mask": {"any": [{"edges": "$edges", "width": 1}, {"corners": "$corners", "size": 1}]}, "layers": [
+            {"op": "fill", "colour": "iron.1"}
+          ]}
+        ]
+      }
+    }
+  }
+}

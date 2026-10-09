@@ -1,7 +1,14 @@
 {
   "variants": {
     "": {
-      "model": "deepcharter:block/conduit"
+      "fabric:type": "deepcharter:connected",
+      "tiles": {
+        "alone": "deepcharter:block/conduit",
+        "horizontal": "deepcharter:block/conduit_horizontal",
+        "vertical": "deepcharter:block/conduit_vertical",
+        "corner": "deepcharter:block/conduit_corner",
+        "centre": "deepcharter:block/conduit_centre"
+      }
     }
   }
 }

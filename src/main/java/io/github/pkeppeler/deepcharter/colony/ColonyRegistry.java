@@ -1,6 +1,6 @@
 package io.github.pkeppeler.deepcharter.colony;
 
-/** Registers the Conduit block and the colony kit. {@link ColonySite} is a SavedData and needs no registration. */
+/** Registers the colony blocks and the colony kit. {@link ColonySite} is a SavedData and needs no registration. */
 public final class ColonyRegistry {
 	private ColonyRegistry() {
 	}
