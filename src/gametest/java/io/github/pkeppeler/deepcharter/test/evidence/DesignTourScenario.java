@@ -499,9 +499,9 @@ public class DesignTourScenario extends EvidenceScenario {
 	private void colonyTour() {
 		Subject town = new Subject("the town", DesignTourScenario::isColony, 40);
 		Vec3 middle = p(0, 6, -6);
-		shoot("colony-aerial-south", 0, p(0, 44, 84), middle, 80, town);
-		shoot("colony-aerial-northwest", 0, p(-62, 40, -62), middle, 30, town);
-		shoot("colony-aerial-northeast", 0, p(62, 40, -62), middle, 30, town);
+		shoot("colony-aerial-south", 0, p(0, 38, 62), middle, 80, town);
+		shoot("colony-aerial-northwest", 0, p(-52, 38, -52), middle, 30, town);
+		shoot("colony-aerial-northeast", 0, p(52, 38, -52), middle, 30, town);
 		shoot("colony-from-straight-above", 0, p(0, 80, 6), p(0, 0, -2), 30, town);
 		shoot("colony-from-the-south-edge", 0, p(0, EYE, 11.5), p(0, 9, 0), 30, new Subject("the plinth", state -> state.is(ColonyKit.BRASS_TRIM), 8));
 
@@ -532,7 +532,7 @@ public class DesignTourScenario extends EvidenceScenario {
 		shoot("terminal-row", 0, upgrade.add(12, 4, 14), upgrade.add(0, 0.5, 0), 20,
 				new Subject("a terminal", state -> TerminalTypes.all().stream().anyMatch(type -> state.is(type.block())), 1.5));
 		Subject plinth = new Subject("the Host's plinth", state -> state.is(ColonyKit.BRASS_TRIM), 9);
-		shoot("statue-from-the-square", 0, p(13, 3, 19), p(0, 9, 0), 20, plinth);
+		shoot("statue-from-the-square", 0, p(6, 2.5, 12), p(0, 9, 0), 20, plinth);
 		shoot("statue-close", 0, p(6, 3, 9), p(0, 11, 0), 20, plinth);
 		shoot("statue-hands-from-above", 0, p(-6, 22, 16), p(0, 13, 0), 20, plinth);
 
@@ -544,13 +544,13 @@ public class DesignTourScenario extends EvidenceScenario {
 
 		// The hangar's bay faces the west street: shot from the square through it, at the pad the pods stand on.
 		Vec3 hangar = rel(ColonyAnchor.HANGAR, 0, 0, 0);
-		shoot("hangar-from-the-square", 0, hangar.add(14, EYE, 0), hangar.add(0, 1.3, 0), 40,
+		shoot("hangar-from-the-square", 0, hangar.add(19, EYE, 0), hangar.add(0, 2.3, 0), 40,
 				new Subject("the hangar's pad", state -> state.is(ColonyKit.RIVETED_PLATE), 3));
 
 		// The chapel's door is on the west street: shot through it, along the aisle to the altar.
 		Vec3 candle = rel(ColonyAnchor.CHAPEL_CANDLE, 0, 0, 0);
 		Subject lit = new Subject("the lit chapel candle", state -> state.is(Blocks.CANDLE) && state.getValue(CandleBlock.LIT), 1.5);
-		shoot("chapel-from-the-square", 0, candle.add(10, 0.62, 0), candle.add(0, 0.3, 0), 40, lit);
+		shoot("chapel-from-the-square", 0, candle.add(11, 0.62, 0), candle.add(0, 0.3, 0), 40, lit);
 		shoot("chapel-altar-and-candle", 0, candle.add(4.5, 0.62, 0), candle.add(-0.5, 0.3, 0), 20, lit);
 
 		// The doors of the south row open on the south street, across which the square is in sight.
