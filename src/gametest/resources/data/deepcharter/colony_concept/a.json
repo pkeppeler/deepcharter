@@ -9,7 +9,7 @@
         0,
         -10
       ],
-      "blocks": 1516,
+      "blocks": 1502,
       "displays": 2
     },
     {
@@ -47,29 +47,29 @@
     {
       "name": "from-the-square",
       "eye": [
-        2.0,
+        15.0,
         2.6,
-        17.0
+        9.0
       ],
       "target": [
-        -8.0,
-        18.0,
-        -18.0
+        -12.0,
+        16.0,
+        -20.0
       ],
       "night": false,
       "above_ground": false
     },
     {
-      "name": "headframe-from-the-plinths",
+      "name": "headframe",
       "eye": [
-        10.0,
-        3.6,
+        -20.0,
+        4.0,
         -4.0
       ],
       "target": [
         -4.0,
-        38.0,
-        -16.0
+        34.0,
+        -14.0
       ],
       "night": false,
       "above_ground": false
@@ -77,13 +77,13 @@
     {
       "name": "mill-gables",
       "eye": [
-        -6.0,
+        -18.0,
         4.0,
-        4.0
+        6.0
       ],
       "target": [
         -23.0,
-        14.0,
+        13.0,
         -24.0
       ],
       "night": false,
@@ -92,29 +92,29 @@
     {
       "name": "from-the-air",
       "eye": [
-        36.0,
-        48.0,
-        46.0
+        26.0,
+        40.0,
+        34.0
       ],
       "target": [
         -10.0,
         12.0,
-        -22.0
+        -20.0
       ],
       "night": false,
       "above_ground": false
     },
     {
-      "name": "from-the-air-west",
+      "name": "from-the-air-behind",
       "eye": [
-        -60.0,
-        42.0,
-        24.0
+        -48.0,
+        38.0,
+        -60.0
       ],
       "target": [
-        -10.0,
-        14.0,
-        -22.0
+        -12.0,
+        12.0,
+        -24.0
       ],
       "night": false,
       "above_ground": false
@@ -122,14 +122,14 @@
     {
       "name": "from-far-across-the-plain",
       "eye": [
-        70.0,
-        4.0,
-        170.0
+        40.0,
+        3.0,
+        110.0
       ],
       "target": [
-        -6.0,
-        26.0,
-        -20.0
+        -4.0,
+        30.0,
+        -15.0
       ],
       "night": false,
       "above_ground": true
@@ -137,14 +137,14 @@
     {
       "name": "night-from-the-square",
       "eye": [
-        2.0,
+        15.0,
         2.6,
-        17.0
+        9.0
       ],
       "target": [
-        -8.0,
-        18.0,
-        -18.0
+        -12.0,
+        16.0,
+        -20.0
       ],
       "night": true,
       "above_ground": false
@@ -152,14 +152,14 @@
     {
       "name": "night-from-the-air",
       "eye": [
-        36.0,
-        48.0,
-        46.0
+        20.0,
+        30.0,
+        26.0
       ],
       "target": [
         -10.0,
         12.0,
-        -22.0
+        -20.0
       ],
       "night": true,
       "above_ground": false
@@ -244,9 +244,9 @@
     "centre": [
       -8.0,
       14.0,
-      -18.0
+      -20.0
     ],
-    "radius": 78.0,
-    "height": 44.0
+    "radius": 56.0,
+    "height": 30.0
   }
 }

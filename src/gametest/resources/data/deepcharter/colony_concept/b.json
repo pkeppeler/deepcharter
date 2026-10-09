@@ -9,7 +9,7 @@
         0,
         -10
       ],
-      "blocks": 2262,
+      "blocks": 2206,
       "displays": 2
     },
     {
@@ -29,7 +29,7 @@
         1,
         -43
       ],
-      "blocks": 3581,
+      "blocks": 3687,
       "displays": 0
     }
   ],
@@ -37,28 +37,28 @@
     {
       "name": "from-the-square",
       "eye": [
-        -2.0,
+        -14.0,
         2.6,
-        17.0
+        10.0
       ],
       "target": [
-        6.0,
-        18.0,
+        8.0,
+        16.0,
         -20.0
       ],
       "night": false,
       "above_ground": false
     },
     {
-      "name": "headframe-from-the-plinths",
+      "name": "headframe",
       "eye": [
-        12.0,
-        3.6,
-        -3.0
+        -20.0,
+        4.0,
+        -2.0
       ],
       "target": [
         -4.0,
-        36.0,
+        30.0,
         -15.0
       ],
       "night": false,
@@ -82,29 +82,29 @@
     {
       "name": "from-the-air",
       "eye": [
+        34.0,
         40.0,
-        50.0,
-        46.0
+        30.0
       ],
       "target": [
         8.0,
-        14.0,
+        12.0,
         -22.0
       ],
       "night": false,
       "above_ground": false
     },
     {
-      "name": "from-the-air-west",
+      "name": "from-the-air-behind",
       "eye": [
-        -60.0,
-        42.0,
-        24.0
+        52.0,
+        38.0,
+        -60.0
       ],
       "target": [
-        8.0,
-        16.0,
-        -22.0
+        10.0,
+        14.0,
+        -26.0
       ],
       "night": false,
       "above_ground": false
@@ -112,14 +112,14 @@
     {
       "name": "from-far-across-the-plain",
       "eye": [
-        70.0,
-        4.0,
-        170.0
+        40.0,
+        3.0,
+        110.0
       ],
       "target": [
-        4.0,
-        26.0,
-        -18.0
+        -4.0,
+        30.0,
+        -15.0
       ],
       "night": false,
       "above_ground": true
@@ -127,13 +127,13 @@
     {
       "name": "night-from-the-square",
       "eye": [
-        -2.0,
+        -14.0,
         2.6,
-        17.0
+        10.0
       ],
       "target": [
-        6.0,
-        18.0,
+        8.0,
+        16.0,
         -20.0
       ],
       "night": true,
@@ -142,13 +142,13 @@
     {
       "name": "night-from-the-air",
       "eye": [
-        40.0,
-        50.0,
-        46.0
+        28.0,
+        30.0,
+        22.0
       ],
       "target": [
         8.0,
-        14.0,
+        12.0,
         -22.0
       ],
       "night": true,
@@ -236,7 +236,7 @@
       14.0,
       -20.0
     ],
-    "radius": 80.0,
-    "height": 46.0
+    "radius": 58.0,
+    "height": 30.0
   }
 }

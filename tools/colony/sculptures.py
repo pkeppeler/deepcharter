@@ -66,10 +66,10 @@ def _head(neck: Bone, nod: float, turn: float = 0.0) -> Bone:
 
 
 def _chest_slot(torso: Bone, y: float, z: float) -> None:
-    """The slot in the chest: a dark mouth in a brass frame, a brass plate under it."""
-    torso.box((-1.9, y - 0.1, z - 0.1), (1.9, y + 1.5, z + 0.3), P)
-    torso.box((-1.5, y + 0.3, z + 0.25), (1.5, y + 1.1, z + 0.4), S)
-    torso.box((-1.1, y - 1.2, z - 0.1), (1.1, y - 0.5, z + 0.25), P)
+    """The slot in the chest: a dark mouth in a thin brass lip, flush with the waistcoat, a small brass plate under it."""
+    torso.box((-1.7, y + 0.1, z - 0.1), (1.7, y + 1.3, z + 0.12), P)
+    torso.box((-1.4, y + 0.35, z + 0.05), (1.4, y + 1.05, z + 0.16), S)
+    torso.box((-0.9, y - 0.9, z - 0.1), (0.9, y - 0.4, z + 0.1), P)
 
 
 def _waistcoat(torso: Bone, top: float, front: float) -> None:
@@ -136,7 +136,8 @@ def patron() -> Bone:
     """Concept B, the Patron: seated on a heavy Company chair, forearms held out over the knees, palms up and open. A seated
     figure is a pyramid from every side."""
     body = Bone((0.0, 0.0, 0.0))
-    # The chair: a plinth, a seat, arms with scrolled fronts and a tall back with a crest of crossed picks.
+    # The chair: a plinth, a seat, arms with scrolled fronts and a tall back with a plain rolled top. Nothing rises above the
+    # back: from the square, anything there reads as raised hands.
     body.box((-10.5, 0.0, -11.0), (10.5, 9.0, 3.5), D)
     body.box((-11.0, 9.0, -11.0), (11.0, 11.0, 4.0))
     for side in (-1, 1):
@@ -145,10 +146,7 @@ def patron() -> Bone:
         body.box((side * 8.4 - 1.9, 14.0, 2.6), (side * 8.4 + 1.9, 18.0, 4.2), D)
     body.box((-9.5, 11.0, -11.5), (9.5, 36.0, -8.2))
     body.box((-10.2, 34.5, -12.0), (10.2, 37.0, -7.8), D)
-    for side in (-1, 1):
-        pick = body.child((side * 2.8, 37.0, -10.0), (0.0, 0.0, side * 35.0))
-        pick.box((-0.6, 0.0, -0.8), (0.6, 7.0, 0.8))
-        pick.box((-2.2, 6.0, -0.9), (2.2, 7.4, 0.9))
+    body.box((-8.8, 37.0, -11.6), (8.8, 38.6, -8.4))
     # The figure: thighs along the seat, shins down to the ground, the coat over his lap.
     for side in (-1, 1):
         body.box((side * 3.0 - 2.4, 11.0, -6.0), (side * 3.0 + 2.4, 15.6, 9.0))

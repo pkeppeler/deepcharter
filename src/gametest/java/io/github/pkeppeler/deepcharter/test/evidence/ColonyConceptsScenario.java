@@ -188,12 +188,17 @@ public class ColonyConceptsScenario extends EvidenceScenario {
 					centre.getY() + HEIGHT + 32, centre.getZ() + RADIUS + 1);
 			level.getEntitiesOfClass(Display.BlockDisplay.class, box).forEach(Entity::discard);
 			Set<Block> kit = Set.copyOf(ColonyKit.all());
+			// The plain the plateau is made of, from beyond the pad: the pad gets it too, so no floor of the shipping colony shows.
+			BlockState plain = level.getBlockState(centre.offset(0, 0, PAD + 12));
 			BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
 			for (int dx = -RADIUS; dx <= RADIUS; dx++) {
 				for (int dz = -RADIUS; dz <= RADIUS; dz++) {
 					BlockPos row = centre.offset(dx, 0, dz);
 					ground.computeIfAbsent(row.immutable(), level::getBlockState);
-					level.setBlock(row, ground.get(row), Block.UPDATE_CLIENTS);
+					boolean pad = Math.max(Math.abs(dx), Math.abs(dz)) <= PAD;
+					if (!level.getBlockState(row).is(ColonyBlocks.CONDUIT)) {
+						level.setBlock(row, pad ? plain : ground.get(row), Block.UPDATE_CLIENTS);
+					}
 					for (int dy = 1; dy <= HEIGHT; dy++) {
 						pos.setWithOffset(centre, dx, dy, dz);
 						BlockState state = level.getBlockState(pos);

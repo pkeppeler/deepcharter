@@ -93,9 +93,8 @@ def _a_square() -> Piece:
     for x, z, facing in ((-3, -3, "north"), (3, -3, "north"), (-3, 3, "south"), (3, 3, "south")):
         p.set(x, 10, z, state("floodlight", facing=facing))
     parts.statue(p, "founder_a", 10)
-    for x, z, faces in ((-10, -4, ("east",)), (10, -4, ("west",)), (-10, 10, ("east", "north")), (10, 10, ("west", "north")),
-                        (-4, 13, ("north",)), (4, 13, ("north",))):
-        parts.lamp_post(p, x, z, 5, faces)
+    for x, z, faces in ((-10, -4, ("east",)), (10, -4, ("west",)), (-10, 10, ("east", "north")), (10, 10, ("west", "north"))):
+        parts.lamp_post(p, x, z, 5, faces, post="pipe")
     return p
 
 
@@ -277,19 +276,19 @@ CONCEPT_A = Concept(
     statue="founder_a",
     build=lambda: [_a_square(), _a_pithead(), _a_mill(), _a_hoist_house()],
     views=(
-        View("from-the-square", (2.0, 2.6, 17.0), (-8.0, 18.0, -18.0)),
-        View("headframe-from-the-plinths", (10.0, 3.6, -4.0), (-4.0, 38.0, -16.0)),
-        View("mill-gables", (-6.0, 4.0, 4.0), (-23.0, 14.0, -24.0)),
-        View("from-the-air", (36.0, 48.0, 46.0), (-10.0, 12.0, -22.0)),
-        View("from-the-air-west", (-60.0, 42.0, 24.0), (-10.0, 14.0, -22.0)),
-        View("from-far-across-the-plain", (70.0, 4.0, 170.0), (-6.0, 26.0, -20.0), above_ground=True),
-        View("night-from-the-square", (2.0, 2.6, 17.0), (-8.0, 18.0, -18.0), night=True),
-        View("night-from-the-air", (36.0, 48.0, 46.0), (-10.0, 12.0, -22.0), night=True),
+        View("from-the-square", (15.0, 2.6, 9.0), (-12.0, 16.0, -20.0)),
+        View("headframe", (-20.0, 4.0, -4.0), (-4.0, 34.0, -14.0)),
+        View("mill-gables", (-18.0, 4.0, 6.0), (-23.0, 13.0, -24.0)),
+        View("from-the-air", (26.0, 40.0, 34.0), (-10.0, 12.0, -20.0)),
+        View("from-the-air-behind", (-48.0, 38.0, -60.0), (-12.0, 12.0, -24.0)),
+        View("from-far-across-the-plain", (40.0, 3.0, 110.0), (-4.0, 30.0, -15.0), above_ground=True),
+        View("night-from-the-square", (15.0, 2.6, 9.0), (-12.0, 16.0, -20.0), night=True),
+        View("night-from-the-air", (20.0, 30.0, 26.0), (-10.0, 12.0, -20.0), night=True),
         *_common_views(30.0),
     ),
-    orbit_centre=(-8.0, 14.0, -18.0),
-    orbit_radius=78.0,
-    orbit_height=44.0,
+    orbit_centre=(-8.0, 14.0, -20.0),
+    orbit_radius=56.0,
+    orbit_height=30.0,
 )
 
 # ------------------------------------------------------------------------------------------------------------- concept B
@@ -307,7 +306,7 @@ def _b_square() -> Piece:
         p.set(x, 6, z, state("floodlight", facing=facing))
     parts.statue(p, "founder_b", 5)
     for x, z, faces in ((-10, -4, ("east",)), (10, -4, ("west",)), (-10, 10, ("east", "north")), (10, 10, ("west", "north"))):
-        parts.lamp_post(p, x, z, 6, faces, post="steel_beam")
+        parts.lamp_post(p, x, z, 6, faces, post="pipe")
     return p
 
 
@@ -423,6 +422,16 @@ def _b_works() -> Piece:
     for z in range(z1 + 1, z1 + 4):
         p.set(19, 1, z, state("conveyor", facing="south"))
     parts.sign(p, "ore_house", 17, 12, z1 + 1, "south")
+    # Relief: I-beam columns stand proud of the pilasters, and a railed grating canopy on red legs shelters the bay.
+    for x in range(x0, x1 + 1, 4):
+        if not 17 <= x <= 21:
+            p.fill(x, 1, z1 + 1, x, 11, z1 + 1, state("steel_beam", axis="y"))
+    p.fill(16, 7, z1 + 1, 22, 7, z1 + 3, state("grating"))
+    for x in (16, 22):
+        p.fill(x, 1, z1 + 3, x, 6, z1 + 3, state("steel_beam_red", axis="y"))
+    for x in range(16, 23):
+        p.set(x, 8, z1 + 3, state("railing", facing="south"))
+    p.set(19, 6, z1 + 1, state("wall_lamp", facing="south"))
     # The crusher house on the roof, its own hatches glowing, two vent pipes over it.
     c0, c1, d0, d1 = 10, 20, -29, -21
     p.walls(c0, d0, c1, d1, top + 2, top + 10, plate)
@@ -468,19 +477,19 @@ CONCEPT_B = Concept(
     statue="founder_b",
     build=lambda: [_b_square(), _b_tower(), _b_works()],
     views=(
-        View("from-the-square", (-2.0, 2.6, 17.0), (6.0, 18.0, -20.0)),
-        View("headframe-from-the-plinths", (12.0, 3.6, -3.0), (-4.0, 36.0, -15.0)),
+        View("from-the-square", (-14.0, 2.6, 10.0), (8.0, 16.0, -20.0)),
+        View("headframe", (-20.0, 4.0, -2.0), (-4.0, 30.0, -15.0)),
         View("works-front", (18.0, 4.0, 3.0), (18.0, 9.0, -16.0)),
-        View("from-the-air", (40.0, 50.0, 46.0), (8.0, 14.0, -22.0)),
-        View("from-the-air-west", (-60.0, 42.0, 24.0), (8.0, 16.0, -22.0)),
-        View("from-far-across-the-plain", (70.0, 4.0, 170.0), (4.0, 26.0, -18.0), above_ground=True),
-        View("night-from-the-square", (-2.0, 2.6, 17.0), (6.0, 18.0, -20.0), night=True),
-        View("night-from-the-air", (40.0, 50.0, 46.0), (8.0, 14.0, -22.0), night=True),
+        View("from-the-air", (34.0, 40.0, 30.0), (8.0, 12.0, -22.0)),
+        View("from-the-air-behind", (52.0, 38.0, -60.0), (10.0, 14.0, -26.0)),
+        View("from-far-across-the-plain", (40.0, 3.0, 110.0), (-4.0, 30.0, -15.0), above_ground=True),
+        View("night-from-the-square", (-14.0, 2.6, 10.0), (8.0, 16.0, -20.0), night=True),
+        View("night-from-the-air", (28.0, 30.0, 22.0), (8.0, 12.0, -22.0), night=True),
         *_common_views(24.0),
     ),
     orbit_centre=(8.0, 14.0, -20.0),
-    orbit_radius=80.0,
-    orbit_height=46.0,
+    orbit_radius=58.0,
+    orbit_height=30.0,
 )
 
 
@@ -543,9 +552,8 @@ def _c_square() -> Piece:
     for x, z, facing in ((-3, -3, "north"), (3, -3, "north"), (-3, 3, "south"), (3, 3, "south")):
         p.set(x, 11, z, state("floodlight", facing=facing))
     parts.statue(p, "founder_c", 10)
-    for x, z, faces in ((-10, -4, ("east",)), (10, -4, ("west",)), (-10, 10, ("east", "north")), (10, 10, ("west", "north")),
-                        (-4, 13, ("north",)), (4, 13, ("north",))):
-        parts.lamp_post(p, x, z, 5, faces, post="steel_beam_red")
+    for x, z, faces in ((-10, -4, ("east",)), (10, -4, ("west",)), (-10, 10, ("east", "north")), (10, 10, ("west", "north"))):
+        parts.lamp_post(p, x, z, 5, faces, post="pipe_brass")
     return p
 
 
@@ -637,19 +645,19 @@ CONCEPT_C = Concept(
     statue="founder_c",
     build=lambda: [_c_square(), _c_headframe(), _c_ore_house(), _c_hoist_house()],
     views=(
-        View("from-the-square", (2.0, 2.6, 17.0), (-10.0, 18.0, -18.0)),
-        View("headframe-from-the-plinths", (10.0, 3.6, -4.0), (-4.0, 38.0, -16.0)),
-        View("ore-house-front", (-8.0, 4.0, 4.0), (-24.0, 14.0, -24.0)),
-        View("from-the-air", (36.0, 48.0, 46.0), (-10.0, 12.0, -22.0)),
-        View("from-the-air-west", (-60.0, 42.0, 24.0), (-10.0, 14.0, -22.0)),
-        View("from-far-across-the-plain", (70.0, 4.0, 170.0), (-6.0, 26.0, -20.0), above_ground=True),
-        View("night-from-the-square", (2.0, 2.6, 17.0), (-10.0, 18.0, -18.0), night=True),
-        View("night-from-the-air", (36.0, 48.0, 46.0), (-10.0, 12.0, -22.0), night=True),
+        View("from-the-square", (15.0, 2.6, 9.0), (-12.0, 16.0, -20.0)),
+        View("headframe", (-20.0, 4.0, -4.0), (-4.0, 34.0, -14.0)),
+        View("ore-house-front", (-20.0, 4.0, 6.0), (-24.0, 14.0, -24.0)),
+        View("from-the-air", (26.0, 40.0, 34.0), (-10.0, 12.0, -20.0)),
+        View("from-the-air-behind", (-48.0, 38.0, -60.0), (-12.0, 12.0, -24.0)),
+        View("from-far-across-the-plain", (40.0, 3.0, 110.0), (-4.0, 30.0, -15.0), above_ground=True),
+        View("night-from-the-square", (15.0, 2.6, 9.0), (-12.0, 16.0, -20.0), night=True),
+        View("night-from-the-air", (20.0, 30.0, 26.0), (-10.0, 12.0, -20.0), night=True),
         *_common_views(30.0),
     ),
     orbit_centre=(-8.0, 14.0, -20.0),
-    orbit_radius=78.0,
-    orbit_height=44.0,
+    orbit_radius=56.0,
+    orbit_height=30.0,
 )
 
 ALL = (CONCEPT_A, CONCEPT_B, CONCEPT_C)

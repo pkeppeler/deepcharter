@@ -169,12 +169,14 @@ def statue(p: Piece, figure: str, plinth_top: int, x: float = 0.5, z: float = 0.
     for piece in (figure, figure + "_hands"):
         p.display(state("colony_sculpture", piece=piece), at, (scale, scale, scale), pivot=pivot, view_range=8.0)
     lo, hi = sculptures.figure_bounds(figure)
-    # Invisible collision inside the figure, so a pod cannot fly through the Founder.
+    # Invisible collision inside the figure, so a pod cannot fly through the Founder. It never replaces a block of the plinth
+    # (the floodlights that light the statue at night stand on it).
     s = scale / 16
     for bx in range(math.floor(x + lo[0] * s * 0.6), math.ceil(x + hi[0] * s * 0.6)):
         for bz in range(math.floor(z + lo[2] * s * 0.5), math.ceil(z + hi[2] * s * 0.5)):
             for by in range(plinth_top + 1, plinth_top + 1 + int(hi[1] * s * 0.85)):
-                p.set(bx, by, bz, state("minecraft:barrier", waterlogged="false"))
+                if p.get(bx, by, bz) is None:
+                    p.set(bx, by, bz, state("minecraft:barrier", waterlogged="false"))
 
 
 def sheave(p: Piece, centre, axle: str, diameter: float = 9.0) -> None:
