@@ -23,6 +23,8 @@ import net.minecraft.world.phys.AABB;
 public final class FounderStatue {
 	/** How far from the statue's anchor a hands display may stand and still be his: the figure is 10 blocks tall. */
 	private static final double REACH = 12;
+	/** The marker is this many blocks under a hands display, which stands in the block the Host's feet are in. */
+	private static final int MARKER_DEPTH = 3;
 
 	private FounderStatue() {
 	}
@@ -30,31 +32,22 @@ public final class FounderStatue {
 	/**
 	 * A hands display lasts only while the world says the Host has his hands. The state is a block in the colony's own chunk data: a
 	 * {@code structure_void} where the plinth's shaft has a plate ({@link #markerPos}), set when the hands are placed. A display that is
-	 * found without it discards itself the moment it is tracked, whatever chunk it is in, so a pair that outlives its state (a rebuild
+	 * found without it (3 blocks under the display, in its own chunk) discards itself the moment it is tracked, so a pair that outlives its state (a rebuild
 	 * puts the plate back, a restored backup, a test that took the hands away while the chunk did not tick) never shows. The marker is
 	 * in the colony's chunk data and loads with it, so a pair that the world owes survives a save and a reload.
 	 */
 	public static void init() {
 		ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
-			if (entity instanceof Display.BlockDisplay display && display.getBlockState().equals(handsState()) && !handsAreOwed(level.getServer())) {
+			if (entity instanceof Display.BlockDisplay display && display.getBlockState().equals(handsState())
+					&& !level.getBlockState(display.blockPosition().below(MARKER_DEPTH)).is(Blocks.STRUCTURE_VOID)) {
 				display.discard();
 			}
 		});
 	}
 
-	/** Where the state of the hands is kept: inside the plinth, 3 blocks under the Host's feet. Empty before the colony is built. */
+	/** Where the state of the hands is kept: inside the plinth, {@link #MARKER_DEPTH} blocks under the Host's feet, which is under any hands display. Empty before the colony is built. */
 	public static Optional<BlockPos> markerPos(MinecraftServer server) {
-		return Colony.anchor(server, ColonyAnchor.STATUE).map(anchor -> anchor.below(3));
-	}
-
-	/** True when the Host should have his hands. True too when the marker's chunk is not loaded: nothing is discarded on a guess. */
-	private static boolean handsAreOwed(MinecraftServer server) {
-		Optional<BlockPos> marker = markerPos(server);
-		if (marker.isEmpty()) {
-			return false;
-		}
-		ServerLevel overworld = server.overworld();
-		return !overworld.hasChunkAt(marker.get()) || overworld.getBlockState(marker.get()).is(Blocks.STRUCTURE_VOID);
+		return Colony.anchor(server, ColonyAnchor.STATUE).map(anchor -> anchor.below(MARKER_DEPTH));
 	}
 
 	/** Takes the hands away: the displays that are found and the marker, which gives the plinth its plate back. For tests and for a dev who wants them gone. */

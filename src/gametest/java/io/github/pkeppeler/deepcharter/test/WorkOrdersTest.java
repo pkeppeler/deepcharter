@@ -172,7 +172,6 @@ public class WorkOrdersTest {
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
 	public void aHandsDisplayWithoutItsStateDiscardsItselfOnLoad(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
-		FounderStatue.removeHands(server);
 		ServerLevel level = server.overworld();
 		BlockPos far = new BlockPos(14_000, 120, 14_000);
 		level.getChunk(far.getX() >> 4, far.getZ() >> 4);
@@ -210,16 +209,16 @@ public class WorkOrdersTest {
 	public void handsThatTheWorldOwesSurviveTheirChunkBeingUnloadedAndLoadedAgain(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		ServerLevel level = server.overworld();
-		BlockPos marker = FounderStatue.markerPos(server).orElseThrow();
-		level.getChunk(marker);
 		BlockPos far = new BlockPos(15_000, 120, 15_000);
+		// The state of these hands is the marker 3 blocks under them, in their own chunk: other tests, which share the colony's, cannot touch it.
+		BlockPos marker = far.below(3);
 		int chunkX = far.getX() >> 4;
 		int chunkZ = far.getZ() >> 4;
 		AABB around = new AABB(far).inflate(3);
 		int[] phase = {0};
 		int[] missing = {0};
 		FarChunks.Deadline[] by = {null};
-		Runnable putBack = () -> FounderStatue.removeHands(server);
+		Runnable putBack = () -> level.setBlock(marker, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS); // room-carver: a block of the overworld, not layer rock
 		helper.onEachTick(() -> {
 			try {
 				switch (phase[0]) {
