@@ -44,7 +44,7 @@ public record PodSounderTuning(List<Tier> tiers, int hissTicksPerSlab) {
 
 	/**
 	 * (A) Tier 1 hears the footprint's pockets 2 slabs down and takes 5% of the drill. Tier 2 hears 4 slabs down and 2 blocks to each side, bleeds a
-	 * pocket in 3 seconds, and takes 10%. A bled blast costs the larger of 35% of the pod's hull and half the blast, and never more than the blast. A better sounder is the slower drill.
+	 * pocket in 3 seconds, and takes 10%. A bled blast costs the larger of 45% of the pod's hull and half the blast, and never more than the blast. A better sounder is the slower drill.
 	 */
 	public static final PodSounderTuning DEFAULT = new PodSounderTuning(List.of(
 			new Tier(2, 0, 0.05f, 0, 1f, 1f),
