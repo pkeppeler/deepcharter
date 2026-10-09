@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -56,8 +57,13 @@ public class PodLightsTest {
 	private static final int FLOOR_Y = 1;
 	private static final int FLOOR_RADIUS = 3;
 	private static final Vec3 SPAWN = new Vec3(FLOOR_RADIUS + 0.5, FLOOR_Y + 1, FLOOR_RADIUS + 0.5);
-	/** How far from a pod a test looks for light blocks. */
+	/** How far from a pod a test looks for light blocks where nothing else stands: the far columns of the chunk and layer tests. */
 	private static final int LOOK = 6;
+	/**
+	 * How far from its own pod, or from a light it placed itself, a test looks on the shared floor grid. The tests of a run start
+	 * together in a row of structures that their pod grids overlap, so a pod of another test can stand a few blocks away.
+	 */
+	private static final int OWN = 1;
 	private static final int SLOT_SPACING = 10;
 	private static final int CROSSING_TICKS = 200;
 	/** Ticks that cover two sweeps of every dimension, with a margin. */
@@ -97,8 +103,7 @@ public class PodLightsTest {
 	}
 
 	/**
-	 * Looks only along the pod's path, not {@link #LOOK} around it: the tests of a run share a row of structures whose pod grids
-	 * overlap, so a light of a pod in another test can stand within {@link #LOOK} blocks. Waits for the settled state, because a
+	 * Looks only along the pod's path, see {@link #OWN}. Waits for the settled state, because a
 	 * release that cannot change its block yet (an unloaded neighbour chunk) leaves the old light for the next sweep.
 	 */
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS)
@@ -177,9 +182,9 @@ public class PodLightsTest {
 		level.setBlock(foreign, light(15), 3);
 		try {
 			afterTick(pod);
-			expectLights(helper, "a lit pod and a builder's light", pod, 9, 15);
+			expectLights(helper, "a lit pod and a builder's light", pod, List.of(foreign), 9, 15);
 			pod.discard();
-			List<Integer> left = lightLevels(level, pod.blockPosition());
+			List<Integer> left = lightLevels(level, pod.blockPosition(), foreign);
 			if (!left.equals(List.of(15))) {
 				throw failure(helper, "only the builder's level 15 light should be left, found levels %s", left);
 			}
@@ -219,8 +224,8 @@ public class PodLightsTest {
 			if (!level.getBlockState(builders).is(Blocks.LIGHT) || level.getBlockState(builders).getValue(LightBlock.LEVEL) != 15) {
 				throw failure(helper, "the builder's light at %s was changed to %s", builders, level.getBlockState(builders));
 			}
-			if (!ledgerEntriesIn(level, at, LOOK).isEmpty()) {
-				throw failure(helper, "the pod put nothing down, yet the ledger holds %s", ledgerEntriesIn(level, at, LOOK));
+			if (!ledgerEntriesIn(level, at, OWN).isEmpty()) {
+				throw failure(helper, "the pod put nothing down, yet the ledger holds %s", ledgerEntriesIn(level, at, OWN));
 			}
 			helper.succeed();
 		} finally {
@@ -247,8 +252,8 @@ public class PodLightsTest {
 			}
 			afterTick(pod);
 			expectLights(helper, "a pod in water", pod);
-			if (!ledgerEntriesIn(level, at, LOOK).isEmpty()) {
-				throw failure(helper, "the pod put nothing down, yet the ledger holds %s", ledgerEntriesIn(level, at, LOOK));
+			if (!ledgerEntriesIn(level, at, OWN).isEmpty()) {
+				throw failure(helper, "the pod put nothing down, yet the ledger holds %s", ledgerEntriesIn(level, at, OWN));
 			}
 			for (BlockPos cell : column) {
 				if (!level.getBlockState(cell).is(Blocks.WATER)) {
@@ -283,7 +288,7 @@ public class PodLightsTest {
 			if (PodLightLedger.get(level.getServer()).entries().contains(GlobalPos.of(level.dimension(), stale))) {
 				throw failure(helper, "the swept light is still in the ledger");
 			}
-			expectLights(helper, "after the sweep", pod, 9, 15);
+			expectLights(helper, "after the sweep", pod, List.of(foreign), 9, 15);
 			// room-carver: removes a light this test placed itself
 			level.setBlock(foreign, Blocks.AIR.defaultBlockState(), 3);
 			pod.discard();
@@ -510,14 +515,25 @@ public class PodLightsTest {
 		return Charters.charterOfOrThrow(server, founder).orElseThrow().id();
 	}
 
-	/** The light blocks within {@link #LOOK} of {@code pod}, as their levels, sorted. */
-	private static List<Integer> lightLevels(ServerLevel level, BlockPos around) {
-		return lightsNear(level, around, LOOK).stream()
-				.map(pos -> level.getBlockState(pos).getValue(LightBlock.LEVEL)).sorted().toList();
+	/** The light blocks within {@link #OWN} of any of {@code centers}, as their levels, sorted. */
+	private static List<Integer> lightLevels(ServerLevel level, BlockPos... centers) {
+		Set<BlockPos> found = new HashSet<>();
+		for (BlockPos center : centers) {
+			found.addAll(lightsNear(level, center, OWN));
+		}
+		return found.stream().map(pos -> level.getBlockState(pos).getValue(LightBlock.LEVEL)).sorted().toList();
 	}
 
+	/** The levels of the lights next to the pod, as {@link #lightLevels} reads them; a pod of another test is out of reach. */
 	private static void expectLights(GameTestHelper helper, String what, PodEntity pod, Integer... levels) {
-		List<Integer> found = lightLevels((ServerLevel) pod.level(), pod.blockPosition());
+		expectLights(helper, what, pod, List.of(), levels);
+	}
+
+	/** As above, and also the lights next to {@code alsoAt}: the ones the test placed itself. */
+	private static void expectLights(GameTestHelper helper, String what, PodEntity pod, List<BlockPos> alsoAt, Integer... levels) {
+		List<BlockPos> centers = new ArrayList<>(alsoAt);
+		centers.add(pod.blockPosition());
+		List<Integer> found = lightLevels((ServerLevel) pod.level(), centers.toArray(BlockPos[]::new));
 		if (!found.equals(List.of(levels))) {
 			throw failure(helper, "%s: expected light levels %s, found %s", what, List.of(levels), found);
 		}
@@ -567,7 +583,7 @@ public class PodLightsTest {
 	}
 
 	private static Set<GlobalPos> ledgerEntries(PodEntity pod) {
-		return ledgerEntriesIn((ServerLevel) pod.level(), pod.blockPosition(), LOOK);
+		return ledgerEntriesIn((ServerLevel) pod.level(), pod.blockPosition(), OWN);
 	}
 
 	private static Set<GlobalPos> ledgerEntriesIn(ServerLevel level, BlockPos around, int radius) {
