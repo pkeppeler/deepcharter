@@ -54,11 +54,14 @@ def box_walls(x0: int, z0: int, x1: int, z1: int) -> dict[str, Wall]:
 
 def works_hall(p: Piece, x0: int, z0: int, x1: int, z1: int, top: int, pilasters: dict[str, tuple[int, ...]]) -> dict[str, Wall]:
     """A hall in the Works' language: riveted plate walls from Y 1 to top, red pilasters at the corners and at the given places
-    along each wall, a brass band on the upper floor's line, lit ribbon windows on the upper floor, a row of glowing crusher hatches
-    on the ground floor, a hazard parapet and a railed flat roof at top + 1. Returns the four walls, for doors and signs."""
+    along each wall, each of those with a sodium lamp at the top of the ground floor, a brass band on the upper floor's line, lit
+    ribbon windows on the upper floor, a row of glowing crusher hatches on the ground floor, a hazard parapet and a railed flat roof
+    at top + 1 with floodlights at its corners. Returns the four walls, for doors and signs."""
     walls = box_walls(x0, z0, x1, z1)
     for side, wall in walls.items():
         columns = {wall.a0, wall.a1, *pilasters.get(side, ())}
+        for a in pilasters.get(side, ()):
+            p.set(*wall.outside(a, GROUND_TOP), state("wall_lamp", facing=wall.facing))
         for a in wall.cells():
             for y in range(1, top + 1):
                 if a in columns:
@@ -75,6 +78,8 @@ def works_hall(p: Piece, x0: int, z0: int, x1: int, z1: int, top: int, pilasters
     p.fill(x0 + 1, top + 1, z0 + 1, x1 - 1, top + 1, z1 - 1, state("riveted_plate"))
     p.walls(x0, z0, x1, z1, top + 1, top + 1, state("hazard_band"))
     railing_round(p, x0, z0, x1, z1, top + 2)
+    for x, z, facing in ((x0, z0, "north"), (x1, z0, "north"), (x0, z1, "south"), (x1, z1, "south")):
+        p.set(x, top + 2, z, state("floodlight", facing=facing))
     return walls
 
 

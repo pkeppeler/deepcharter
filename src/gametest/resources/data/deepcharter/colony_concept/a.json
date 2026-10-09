@@ -24,11 +24,11 @@
     {
       "structure": "deepcharter:colony_concept/a/works",
       "offset": [
-        3,
+        2,
         0,
         -28
       ],
-      "blocks": 1076,
+      "blocks": 1083,
       "displays": 2
     },
     {
@@ -36,9 +36,9 @@
       "offset": [
         -10,
         1,
-        -36
+        -37
       ],
-      "blocks": 436,
+      "blocks": 438,
       "displays": 0
     }
   ],
@@ -46,14 +46,14 @@
     {
       "name": "from-the-square",
       "eye": [
-        9.0,
+        14.0,
         2.62,
         9.0
       ],
       "target": [
-        5.0,
         8.0,
-        -14.0
+        7.0,
+        -15.0
       ],
       "night": false,
       "above_ground": false
@@ -136,14 +136,14 @@
     {
       "name": "night-from-the-square",
       "eye": [
-        9.0,
+        14.0,
         2.62,
         9.0
       ],
       "target": [
-        5.0,
         8.0,
-        -14.0
+        7.0,
+        -15.0
       ],
       "night": true,
       "above_ground": false

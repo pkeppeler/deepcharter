@@ -3,7 +3,8 @@ library only. A preview is for checking a shape before a game client is free (a 
 massing); the game's own stills are the evidence.
 
 Usage: tools/colony/preview.py <piece> [--out DIR] [--size N]
-  piece: a sculpture piece (founder_a), a structure piece of a concept (a/pithead), or "statues" for every Founder silhouette.
+  piece: a sculpture piece (founder_c), "statues" for every Founder silhouette, or "concept:<layout>" (concept:a) for a layout's
+  massing from four sides and each of its views in perspective, with boxes for its pod and players.
 """
 import argparse
 import math

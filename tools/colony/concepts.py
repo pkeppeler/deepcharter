@@ -284,13 +284,13 @@ CONCEPT_A = Layout(
     build=lambda: [("a/square", square(CONCEPT_STATUE)), ("a/headframe", headframe("east", 13)), ("a/works", _a_works()),
                    ("a/hoist_house", hoist_house())],
     views=(
-        View("from-the-square", (9.0, 2.62, 9.0), (5.0, 8.0, -14.0)),
+        View("from-the-square", (14.0, 2.62, 9.0), (8.0, 7.0, -15.0)),
         View("works-front", (13.0, 2.62, -2.0), (10.5, 4.5, -12.0)),
         View("headframe", (-20.0, 5.0, 2.0), (-4.0, 15.0, -15.0)),
         View("from-the-air", (26.0, 30.0, 16.0), (2.0, 8.0, -14.0)),
         View("from-the-air-behind", (24.0, 26.0, -44.0), (0.0, 10.0, -18.0)),
         View("from-far-across-the-plain", (14.0, 6.0, 62.0), (0.0, 12.0, -12.0), above_ground=True),
-        View("night-from-the-square", (9.0, 2.62, 9.0), (5.0, 8.0, -14.0), night=True),
+        View("night-from-the-square", (14.0, 2.62, 9.0), (8.0, 7.0, -15.0), night=True),
         View("night-from-the-air", (26.0, 24.0, 12.0), (2.0, 8.0, -14.0), night=True),
     ),
     figures=(Figure("pod", (11.5, 1.0, -10.6), 180.0), Figure("player", (9.5, 1.0, -9.6), 200.0),
@@ -312,7 +312,7 @@ def _trestle(p: Piece, x: int, z: int, top: int) -> None:
 
 def _b_works() -> Piece:
     """The ore house set back from the square, long and low: a crusher house at the foot of the headframe, under the tipple bin,
-    and a long trussed conveyor climbing on lattice bents to a bin house at the far end of a one-storey hall."""
+    and a long trussed conveyor climbing on lattice bents to a bin house over the west end of a one-storey hall."""
     p = Piece("works")
     # The crusher house under the tipple bin, its hatches glowing.
     crusher = parts.machine_house(p, 1, -19, 6, -12, 1, 6, 3)
@@ -320,33 +320,33 @@ def _b_works() -> Piece:
     p.fill(1, 7, -19, 6, 7, -12, state("riveted_plate"))
     parts.railing_round(p, 1, -19, 6, -12, 8)
     # The hall: long, one tall storey, its bays on the yard.
-    x0, z0, x1, z1 = 9, -34, 27, -25
-    walls = parts.works_hall(p, x0, z0, x1, z1, 6, {"south": (13, 19, 23), "north": (13, 18, 23)})
+    x0, z0, x1, z1 = 12, -34, 30, -25
+    walls = parts.works_hall(p, x0, z0, x1, z1, 6, {"south": (16, 19, 22, 27), "north": (16, 21, 26)})
     front = walls["south"]
-    parts.bay(p, front, 14, 17)
-    parts.canopy(p, front, 14, 17)
-    parts.shutter(p, front, 20, 22)
-    parts.door(p, front, 11)
-    parts.wall_sign(p, front, "ore_house", 15.5, 7)
-    # The bin house at the hall's east end, two storeys over it, where the conveyor tips.
-    b = parts.machine_house(p, 21, -34, 27, -27, 8, 14, 11)
-    parts.wall_sign(p, b["south"], "company", 24, 13)
-    parts.railing_round(p, 21, -34, 27, -27, 16)
-    parts.ladder(p, walls["east"], -30, 1, 15)
-    for x in (23, 25):
+    parts.bay(p, front, 23, 26)
+    parts.canopy(p, front, 23, 26)
+    parts.shutter(p, front, 28, 29)
+    parts.door(p, front, 20)
+    parts.wall_sign(p, front, "ore_house", 24.5, 7)
+    # The bin house at the hall's west end, two storeys over it, where the conveyor tips.
+    b = parts.machine_house(p, 12, -34, 18, -27, 8, 14, 11)
+    parts.wall_sign(p, b["east"], "company", -30.5, 13)
+    parts.railing_round(p, 12, -34, 18, -27, 16)
+    parts.ladder(p, walls["east"], -30, 1, 7)
+    for x in (14, 16):
         p.fill(x, 16, -31, x, 18, -31, state("pipe", axis="y"))
-    # The conveyor from the crusher's roof to the bin house, on three bents.
-    foot, head = (6.0, 8.0, -15.5), (21.0, 14.5, -30.0)
+    # The conveyor from the crusher's roof to the bin house, on two bents.
+    foot, head = (6.0, 8.0, -15.5), (14.5, 14.0, -27.0)
     parts.conveyor_truss(p, foot, head)
-    for t in (0.3, 0.55, 0.8):
+    for t in (0.35, 0.7):
         x = foot[0] + (head[0] - foot[0]) * t
         z = foot[2] + (head[2] - foot[2]) * t
         y = foot[1] + (head[1] - foot[1]) * t
         _trestle(p, round(x) - 1, round(z), int(y) - 1)
-    parts.stack(p, 7.5, -30.5, 1.3, 20)
+    parts.stack(p, 9.5, -31.5, 1.3, 20)
     # Ore cars out of the bay to the square.
-    parts.track(p, 14, -27, -14)
-    parts.ore_cars(p, 14, -20, 3)
+    parts.track(p, 23, -27, -14)
+    parts.ore_cars(p, 23, -20, 3)
     return p
 
 
@@ -356,16 +356,16 @@ CONCEPT_B = Layout(
     build=lambda: [("b/square", square(CONCEPT_STATUE)), ("b/headframe", headframe("east", 12)), ("b/works", _b_works()),
                    ("b/hoist_house", hoist_house())],
     views=(
-        View("from-the-square", (6.0, 2.62, 8.0), (15.0, 9.0, -24.0)),
-        View("works-front", (17.0, 2.62, -14.0), (16.0, 4.5, -26.0)),
+        View("from-the-square", (14.0, 2.62, 6.0), (20.0, 8.0, -24.0)),
+        View("works-front", (26.0, 2.62, -14.0), (24.5, 4.5, -26.0)),
         View("headframe", (-22.0, 6.0, 4.0), (-4.0, 16.0, -15.0)),
         View("from-the-air", (30.0, 30.0, 14.0), (8.0, 8.0, -20.0)),
         View("from-the-air-behind", (30.0, 26.0, -50.0), (6.0, 10.0, -22.0)),
         View("from-far-across-the-plain", (14.0, 6.0, 62.0), (4.0, 12.0, -16.0), above_ground=True),
-        View("night-from-the-square", (6.0, 2.62, 8.0), (15.0, 9.0, -24.0), night=True),
+        View("night-from-the-square", (14.0, 2.62, 6.0), (20.0, 8.0, -24.0), night=True),
         View("night-from-the-air", (30.0, 24.0, 10.0), (8.0, 8.0, -20.0), night=True),
     ),
-    figures=(Figure("pod", (15.95, 1.0, -24.6), 180.0), Figure("player", (12.5, 1.0, -23.4), 200.0),
+    figures=(Figure("pod", (24.95, 1.0, -24.6), 180.0), Figure("player", (26.6, 1.0, -23.2), 200.0),
              Figure("player", (9.5, 1.0, -12.5), 160.0)),
     orbit=Orbit((8.0, 8.0, -20.0), 36.0, 18.0),
 )
@@ -454,13 +454,13 @@ CONCEPT_C = Layout(
     build=lambda: [("c/square", square(CONCEPT_STATUE)), ("c/headframe", headframe("west", 12)), ("c/bank", _c_bank()),
                    ("c/works", _c_works()), ("c/hoist_house", hoist_house())],
     views=(
-        View("from-the-square", (-8.0, 2.62, 8.0), (-18.0, 9.0, -16.0)),
+        View("from-the-square", (-12.0, 2.62, 6.0), (-20.0, 8.0, -16.0)),
         View("works-front", (-11.0, 2.62, -2.0), (-16.0, 4.5, -13.0)),
-        View("headframe", (16.0, 6.0, 4.0), (-4.0, 16.0, -15.0)),
+        View("headframe", (-14.0, 4.0, 6.0), (-5.0, 15.0, -15.0)),
         View("from-the-air", (-6.0, 28.0, 22.0), (-18.0, 8.0, -16.0)),
         View("from-the-air-behind", (-30.0, 30.0, -50.0), (-12.0, 10.0, -20.0)),
         View("from-far-across-the-plain", (-10.0, 6.0, 62.0), (-8.0, 12.0, -16.0), above_ground=True),
-        View("night-from-the-square", (-8.0, 2.62, 8.0), (-18.0, 9.0, -16.0), night=True),
+        View("night-from-the-square", (-12.0, 2.62, 6.0), (-20.0, 8.0, -16.0), night=True),
         View("night-from-the-air", (-6.0, 24.0, 20.0), (-18.0, 8.0, -16.0), night=True),
     ),
     figures=(Figure("pod", (-15.0, 1.0, -12.4), 180.0), Figure("player", (-11.2, 1.0, -15.5), 270.0),
@@ -530,17 +530,17 @@ CONCEPT_D = Layout(
     build=lambda: [("d/square", square(CONCEPT_STATUE)), ("d/headframe", headframe("east", 13)), ("d/works", _d_works()),
                    ("d/hoist_house", hoist_house())],
     views=(
-        View("from-the-square", (-6.0, 2.62, -6.0), (8.0, 8.0, 15.0)),
+        View("from-the-square", (16.0, 2.62, -6.0), (6.0, 8.0, 15.0)),
         View("works-front", (7.5, 2.62, 3.0), (7.5, 4.5, 12.0)),
         View("headframe", (-22.0, 6.0, 4.0), (-4.0, 16.0, -15.0)),
         View("from-the-air", (-26.0, 30.0, 10.0), (4.0, 8.0, 0.0)),
         View("from-the-air-behind", (30.0, 26.0, 36.0), (4.0, 10.0, -2.0)),
-        View("from-far-across-the-plain", (40.0, 6.0, 46.0), (4.0, 12.0, -2.0), above_ground=True),
-        View("night-from-the-square", (-6.0, 2.62, -6.0), (8.0, 8.0, 15.0), night=True),
+        View("from-far-across-the-plain", (-30.0, 6.0, 52.0), (2.0, 12.0, 0.0), above_ground=True),
+        View("night-from-the-square", (16.0, 2.62, -6.0), (6.0, 8.0, 15.0), night=True),
         View("night-from-the-air", (-26.0, 24.0, 8.0), (4.0, 8.0, 0.0), night=True),
     ),
     figures=(Figure("pod", (7.45, 1.0, 12.4), 0.0), Figure("player", (11.5, 1.0, 10.5), -20.0),
-             Figure("player", (5.5, 1.0, 5.5), 30.0)),
+             Figure("player", (2.5, 1.0, 9.0), 10.0)),
     orbit=Orbit((4.0, 8.0, 0.0), 36.0, 18.0),
 )
 

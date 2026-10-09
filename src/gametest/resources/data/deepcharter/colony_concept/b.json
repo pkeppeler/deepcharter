@@ -26,19 +26,19 @@
       "offset": [
         1,
         0,
-        -34
+        -35
       ],
-      "blocks": 1250,
-      "displays": 7
+      "blocks": 1238,
+      "displays": 5
     },
     {
       "structure": "deepcharter:colony_concept/b/hoist_house",
       "offset": [
         -10,
         1,
-        -36
+        -37
       ],
-      "blocks": 436,
+      "blocks": 438,
       "displays": 0
     }
   ],
@@ -46,13 +46,13 @@
     {
       "name": "from-the-square",
       "eye": [
-        6.0,
+        14.0,
         2.62,
-        8.0
+        6.0
       ],
       "target": [
-        15.0,
-        9.0,
+        20.0,
+        8.0,
         -24.0
       ],
       "night": false,
@@ -61,12 +61,12 @@
     {
       "name": "works-front",
       "eye": [
-        17.0,
+        26.0,
         2.62,
         -14.0
       ],
       "target": [
-        16.0,
+        24.5,
         4.5,
         -26.0
       ],
@@ -136,13 +136,13 @@
     {
       "name": "night-from-the-square",
       "eye": [
-        6.0,
+        14.0,
         2.62,
-        8.0
+        6.0
       ],
       "target": [
-        15.0,
-        9.0,
+        20.0,
+        8.0,
         -24.0
       ],
       "night": true,
@@ -168,7 +168,7 @@
     {
       "kind": "pod",
       "at": [
-        15.95,
+        24.95,
         1.0,
         -24.6
       ],
@@ -177,9 +177,9 @@
     {
       "kind": "player",
       "at": [
-        12.5,
+        26.6,
         1.0,
-        -23.4
+        -23.2
       ],
       "yaw": 200.0
     },
