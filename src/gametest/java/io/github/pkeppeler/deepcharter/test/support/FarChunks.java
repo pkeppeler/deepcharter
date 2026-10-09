@@ -58,16 +58,8 @@ public final class FarChunks {
 		 */
 		public boolean awaitUnloaded(GameTestHelper helper, ServerLevel level, int chunkX, int chunkZ) {
 			boolean reached = level.getChunkSource().getChunkNow(chunkX, chunkZ) == null;
-			pause(helper, level, () -> timeout(new ChunkPos(chunkX, chunkZ), level, Awaited.UNLOADED), reached);
+			await(helper, level, reached, () -> timeout(new ChunkPos(chunkX, chunkZ), level, Awaited.UNLOADED));
 			return reached;
-		}
-
-		/**
-		 * Call once per tick while waiting for any state that is not a chunk: pass whether it has settled. When it has not, sleeps
-		 * briefly, and fails the test with {@code failure} once {@link #WAIT_SECONDS} have passed. The message is built only then.
-		 */
-		public void await(GameTestHelper helper, ServerLevel level, boolean settled, Supplier<String> failure) {
-			pause(helper, level, failure, settled);
 		}
 
 		/** Whether the {@link #WAIT_SECONDS} have passed. For a waiter with no {@code GameTestHelper}, such as a client scenario. */
@@ -79,8 +71,12 @@ public final class FarChunks {
 			return String.format("chunk %s in %s was not %s after %d s", chunk, level.dimension(), awaited.text, WAIT_SECONDS);
 		}
 
-		private void pause(GameTestHelper helper, ServerLevel level, Supplier<String> failure, boolean reached) {
-			if (reached) {
+		/**
+		 * Call once per tick while waiting for any state: pass whether it has settled. When it has not, sleeps briefly, and fails
+		 * the test with {@code failure} once {@link #WAIT_SECONDS} have passed. The message is built only then.
+		 */
+		public void await(GameTestHelper helper, ServerLevel level, boolean settled, Supplier<String> failure) {
+			if (settled) {
 				return;
 			}
 			if (expired()) {
@@ -152,7 +148,7 @@ public final class FarChunks {
 			}
 			if (firstWaiting >= 0) {
 				BlockPos pos = positions.get(firstWaiting);
-				deadline.pause(helper, level, () -> Deadline.timeout(new ChunkPos(pos.getX() >> 4, pos.getZ() >> 4), level, Awaited.ENTITY_TICKING), false);
+				deadline.await(helper, level, false, () -> Deadline.timeout(new ChunkPos(pos.getX() >> 4, pos.getZ() >> 4), level, Awaited.ENTITY_TICKING));
 			}
 		});
 	}

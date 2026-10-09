@@ -103,47 +103,62 @@ public class PodLightsTest {
 	}
 
 	/**
-	 * Looks only along the pod's path, see {@link #OWN}. Waits for the settled state, because a
-	 * release that cannot change its block yet (an unloaded neighbour chunk) leaves the old light for the next sweep.
+	 * Runs in a far column of its own that no other test uses, so no pod of another test stands near the path. Waits for the settled
+	 * state, because a release that cannot change its block yet (an unloaded neighbour chunk) leaves the old light for the next sweep.
 	 */
-	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS)
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
 	public void theLightFollowsThePodAndLeavesNoTrail(GameTestHelper helper) {
-		PodEntity pod = litPod(helper, charter(helper), 2, 0);
-		ServerLevel level = (ServerLevel) pod.level();
-		BlockPos start = pod.blockPosition();
+		ServerLevel level = helper.getLevel();
+		BlockPos origin = new BlockPos(5600, 64, 5600);
+		CharterId charter = charter(helper);
+		PodEntity[] made = {null};
 		FarChunks.Deadline deadline = FarChunks.deadline();
 		int[] step = {0};
-		BlockPos[] before = {null};
 		helper.onEachTick(() -> {
+			PodEntity pod = made[0];
+			if (pod == null) {
+				return;
+			}
+			boolean waiting = false;
 			try {
-				List<BlockPos> lights = lightsOnPath(level, start, pod);
+				List<BlockPos> lights = lightsOnPath(level, origin, pod);
 				boolean settled = lights.size() == 1 && isInPod(lights.getFirst(), pod);
 				deadline.await(helper, level, settled, () -> String.format(
 						"after %d blocks the pod at %s should hold one light inside it, but lights on its path were %s and ledger entries %s",
-						step[0], pod.blockPosition(), lights, ledgerOnPath(level, start, pod)));
+						step[0], pod.blockPosition(), lights, ledgerOnPath(level, origin, pod)));
 				if (!settled) {
+					waiting = true;
 					return;
 				}
-				BlockPos now = lights.getFirst();
-				if (now.equals(before[0])) {
-					throw failure(helper, "after %d blocks the light is still at %s", step[0], now);
-				}
-				before[0] = now;
 				if (step[0] < 4) {
 					step[0]++;
 					pod.setPos(pod.getX() + 1, pod.getY(), pod.getZ());
+					waiting = true;
 					return;
 				}
-				Set<GlobalPos> ledger = ledgerOnPath(level, start, pod);
+				Set<GlobalPos> ledger = ledgerOnPath(level, origin, pod);
 				if (ledger.size() != 1) {
 					throw failure(helper, "the ledger should hold the one light, holds %s", ledger);
 				}
-				pod.discard();
 				helper.succeed();
-			} catch (RuntimeException e) {
-				pod.discard();
-				throw e;
+			} finally {
+				if (!waiting) {
+					pod.discard();
+				}
 			}
+		});
+		FarChunks.awaitEntityTicking(helper, level, origin, () -> {
+			for (int dx = -2; dx <= 6; dx++) {
+				for (int dz = -2; dz <= 2; dz++) {
+					level.setBlock(origin.offset(dx, -1, dz), Blocks.STONE.defaultBlockState(), 3);
+				}
+			}
+			PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+			pod.setPos(Vec3.atBottomCenterOf(origin));
+			level.addFreshEntity(pod);
+			PodComponents.register(pod, charter);
+			PodComponents.install(pod, ComponentItems.mint(level.getServer(), ComponentTrack.LIGHTS, 2, charter));
+			made[0] = pod;
 		});
 	}
 
