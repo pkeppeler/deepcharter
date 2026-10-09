@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,6 +32,7 @@ import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
@@ -61,6 +63,7 @@ import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
+import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
@@ -309,8 +312,14 @@ public class ColonyTest {
 
 	/** The colony record as it stands now, with its build marked unfinished, as after a build that stopped half way. */
 	private static ColonySite unfinishedCopy(MinecraftServer server) {
+		return unfinishedCopy(server, true);
+	}
+
+	/** As {@link #unfinishedCopy(MinecraftServer)}, with the edge counted as graded or not. */
+	private static ColonySite unfinishedCopy(MinecraftServer server, boolean edgeGraded) {
 		CompoundTag unfinished = ((CompoundTag) ColonySite.CODEC.encodeStart(NbtOps.INSTANCE, ColonySite.get(server)).getOrThrow()).copy();
 		unfinished.getCompound("colony").orElseThrow().putBoolean("finished", false);
+		unfinished.getCompound("colony").orElseThrow().putBoolean("edgeGraded", edgeGraded);
 		return ColonySite.CODEC.parse(NbtOps.INSTANCE, unfinished).getOrThrow();
 	}
 
@@ -619,6 +628,170 @@ public class ColonyTest {
 		int radius = ColonyTuning.DEFAULT.conduitRadius();
 		return List.of(centre.offset(-radius, 0, -radius), centre.offset(radius, 0, -radius),
 				centre.offset(-radius, 0, radius), centre.offset(radius, 0, radius));
+	}
+
+	/** A colony saved as version 1, before the edge was graded, loads as it was and counts its edge as graded: an older world's land is left alone. */
+	@GameTest
+	public void aColonyOfVersionOneLoadsWithItsEdgeCountedAsGraded(GameTestHelper helper) {
+		MinecraftServer server = server(helper);
+		ColonySite.Placed colony = placed(helper);
+		for (boolean finished : new boolean[] {true, false}) {
+			CompoundTag old = ((CompoundTag) ColonySite.CODEC.encodeStart(NbtOps.INSTANCE, ColonySite.get(server)).getOrThrow()).copy();
+			old.putInt("version", 1);
+			old.getCompound("colony").orElseThrow().remove("edgeGraded");
+			old.getCompound("colony").orElseThrow().putBoolean("finished", finished);
+			ColonySite loaded = ColonySite.CODEC.parse(NbtOps.INSTANCE, old).getOrThrow();
+			Optional<ColonySite.Placed> read = loaded.started();
+			if (read.isEmpty() || !read.get().edgeGraded() || read.get().finished() != finished || !read.get().center().equals(colony.center())
+					|| !read.get().anchors().equals(colony.anchors())) {
+				throw failure(helper, "a version 1 colony (finished %s) should load as it was with its edge graded, got %s", finished, read);
+			}
+			CompoundTag saved = (CompoundTag) ColonySite.CODEC.encodeStart(NbtOps.INSTANCE, loaded).getOrThrow();
+			if (saved.getIntOr("version", 0) != ColonySite.VERSION || !saved.getCompound("colony").orElseThrow().getBooleanOr("edgeGraded", false)) {
+				throw failure(helper, "a version 1 colony should be saved as version %s with its edge graded, got %s", ColonySite.VERSION, saved);
+			}
+		}
+		helper.succeed();
+	}
+
+	/** The land beside the east edge of the pad that the tests below change: its blocks from the pad's ground down 3 to up 8, to put back. */
+	private static Map<BlockPos, BlockState> eastLand(ServerLevel level, ColonySite.Placed colony) {
+		int half = ColonyTuning.DEFAULT.padSize() / 2;
+		BlockPos centre = colony.center();
+		Map<BlockPos, BlockState> land = new LinkedHashMap<>();
+		for (BlockPos at : BlockPos.betweenClosed(centre.offset(half + 1, -3, -20), centre.offset(half + 32, 8, 20))) {
+			level.getChunk(at.getX() >> 4, at.getZ() >> 4);
+			land.put(at.immutable(), level.getBlockState(at));
+		}
+		return land;
+	}
+
+	private static void putBack(ServerLevel level, Map<BlockPos, BlockState> land) {
+		land.forEach((at, state) -> level.setBlock(at, state, 2));
+	}
+
+	private static boolean sameLand(ServerLevel level, Map<BlockPos, BlockState> land) {
+		return land.entrySet().stream().allMatch(entry -> level.getBlockState(entry.getKey()).equals(entry.getValue()));
+	}
+
+	/**
+	 * The edge is graded once. A build that runs again (a restart after a build that stopped half way) leaves the land as it finds it:
+	 * a hill and a surface block planted on the margin are still there. A colony whose record does not say the edge is graded cuts the
+	 * hill, which shows the test would notice.
+	 */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
+	public void aBuildRunAgainDoesNotGradeTheEdgeAgain(GameTestHelper helper) {
+		MinecraftServer server = server(helper);
+		ServerLevel level = server.overworld();
+		ColonySite.Placed colony = placed(helper);
+		whenThePadTicks(helper, colony, () -> {
+			int half = ColonyTuning.DEFAULT.padSize() / 2;
+			BlockPos centre = colony.center();
+			Map<BlockPos, BlockState> original = eastLand(level, colony);
+			var spawn = server.getRespawnData();
+			try {
+				for (int up = 1; up <= 6; up++) {
+					level.setBlock(centre.offset(half + 10, up, 5), Blocks.STONE.defaultBlockState(), 2);
+				}
+				level.setBlock(centre.offset(half + 14, 0, -5), SurfaceBlocks.OCHRE_REGOLITH.defaultBlockState(), 2);
+				level.setBlock(centre.offset(half + 15, 0, -5), SurfaceBlocks.BASALT_OUTCROP.defaultBlockState(), 2);
+				Map<BlockPos, BlockState> planted = eastLand(level, colony);
+				WorldData.with(server, ColonySite.TYPE, unfinishedCopy(server, true), () -> {
+					if (!ColonyBuilder.buildIfNeeded(server)) {
+						throw failure(helper, "an unfinished colony should be built again");
+					}
+				});
+				if (!sameLand(level, planted)) {
+					throw failure(helper, "a build run again changed the land of the margin");
+				}
+				WorldData.with(server, ColonySite.TYPE, unfinishedCopy(server, false), () -> {
+					if (!ColonyBuilder.buildIfNeeded(server)) {
+						throw failure(helper, "an unfinished colony should be built again");
+					}
+				});
+				if (!level.getBlockState(centre.offset(half + 10, 6, 5)).isAir()) {
+					throw failure(helper, "a colony with an ungraded edge should cut the hill, there is %s", level.getBlockState(centre.offset(half + 10, 6, 5)));
+				}
+			} finally {
+				putBack(level, original);
+				server.setRespawnData(LevelData.RespawnData.of(spawn.dimension(), spawn.pos(), spawn.yaw(), spawn.pitch()));
+			}
+		});
+	}
+
+	/**
+	 * A pond and a lava pool in a rise of stone on the margin, grading the rise cuts air beside them. No fluid is left bordering
+	 * the air the build made, so nothing flows into the cut: the fluid is sealed with rock where it would, and the columns that hold it
+	 * are left as they are.
+	 */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
+	public void aPondAndALavaPoolOnTheMarginAreSealedWhereTheGradeCutsBesideThem(GameTestHelper helper) {
+		MinecraftServer server = server(helper);
+		ServerLevel level = server.overworld();
+		ColonySite.Placed colony = placed(helper);
+		whenThePadTicks(helper, colony, () -> {
+			int half = ColonyTuning.DEFAULT.padSize() / 2;
+			BlockPos centre = colony.center();
+			Map<BlockPos, BlockState> original = eastLand(level, colony);
+			var spawn = server.getRespawnData();
+			try {
+				BlockPos corner = centre.offset(half + 8, 0, -6);
+				for (BlockPos at : BlockPos.betweenClosed(corner.offset(0, 1, 0), corner.offset(12, 5, 12))) {
+					level.setBlock(at, Blocks.STONE.defaultBlockState(), 2);
+				}
+				for (BlockPos at : BlockPos.betweenClosed(corner.offset(4, 1, 1), corner.offset(8, 3, 5))) {
+					level.setBlock(at, Blocks.WATER.defaultBlockState(), 2);
+				}
+				for (BlockPos at : BlockPos.betweenClosed(corner.offset(4, 4, 1), corner.offset(8, 5, 5))) {
+					level.setBlock(at, Blocks.AIR.defaultBlockState(), 2); // room-carver: surface stone the test placed itself, not layer rock
+				}
+				for (BlockPos at : BlockPos.betweenClosed(corner.offset(4, 3, 7), corner.offset(8, 5, 11))) {
+					level.setBlock(at, Blocks.AIR.defaultBlockState(), 2); // room-carver: surface stone the test placed itself, not layer rock
+				}
+				for (BlockPos at : BlockPos.betweenClosed(corner.offset(4, 1, 7), corner.offset(8, 2, 11))) {
+					level.setBlock(at, Blocks.LAVA.defaultBlockState(), 2);
+				}
+				Map<BlockPos, BlockState> planted = eastLand(level, colony);
+				WorldData.with(server, ColonySite.TYPE, unfinishedCopy(server, false), () -> {
+					if (!ColonyBuilder.buildIfNeeded(server)) {
+						throw failure(helper, "an unfinished colony should be built again");
+					}
+				});
+				List<String> problems = new ArrayList<>();
+				int water = 0;
+				int lava = 0;
+				for (BlockPos at : planted.keySet()) {
+					BlockState now = level.getBlockState(at);
+					if (now.getFluidState().isEmpty()) {
+						continue;
+					}
+					if (now.getFluidState().is(FluidTags.WATER)) {
+						water++;
+					} else {
+						lava++;
+					}
+					for (Direction side : Direction.values()) {
+						BlockPos next = at.relative(side);
+						// Air the build made: a block of the land as it was that is air now.
+						if (planted.containsKey(next) && !planted.get(next).isAir() && planted.get(next).getFluidState().isEmpty() && level.getBlockState(next).isAir()) {
+							problems.add(now.getBlock() + " at " + at.toShortString() + " borders air that the build made at " + next.toShortString());
+						}
+					}
+				}
+				if (water == 0 || lava == 0) {
+					problems.add("the pond and the lava pool should stay: " + water + " water, " + lava + " lava");
+				}
+				if (!planted.keySet().stream().anyMatch(at -> planted.get(at).isAir() == false && level.getBlockState(at).isAir())) {
+					problems.add("the grade should cut some of the rise, so the test has air to border");
+				}
+				if (!problems.isEmpty()) {
+					throw failure(helper, "%s problem(s):\n  %s", problems.size(), String.join("\n  ", problems.subList(0, Math.min(5, problems.size()))));
+				}
+			} finally {
+				putBack(level, original);
+				server.setRespawnData(LevelData.RespawnData.of(spawn.dimension(), spawn.pos(), spawn.yaw(), spawn.pitch()));
+			}
+		});
 	}
 
 	private static MinecraftServer server(GameTestHelper helper) {

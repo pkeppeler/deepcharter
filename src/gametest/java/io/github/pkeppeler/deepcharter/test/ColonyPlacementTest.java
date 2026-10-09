@@ -6,12 +6,14 @@ import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.IntBinaryOperator;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -457,11 +459,12 @@ public class ColonyPlacementTest {
 	private static final int STEP = 1;
 
 	/**
-	 * The land around the pad is graded to it, with no step between neighbouring columns taller than a player climbs, so the town
-	 * can be left on any side. Read from the built world: the margin's surface, and the pad's ground at its edge.
+	 * In the built world the surface of the pad's edge and of the margins around it has no step between neighbouring columns taller
+	 * than a player climbs. Reads the pad's ground at its outermost columns (a solid block at the pad's ground) and the margins'
+	 * surface by the heightmap. The test world is flat: {@link #theMarginReachesTheNaturalGroundOfAHillAPitAndAMesa} has the relief.
 	 */
 	@GameTest(maxTicks = 100)
-	public void aPlayerWalksOutOfTheTownOnEverySideOverTheGradedMargin(GameTestHelper helper) {
+	public void theBuiltMarginHasNoStepOverOneBlockAroundThePad(GameTestHelper helper) {
 		ServerLevel level = server(helper).overworld();
 		ColonySite.Placed colony = placed(helper);
 		BlockPos centre = colony.center();
@@ -473,67 +476,144 @@ public class ColonyPlacementTest {
 				level.getChunk(x >> 4, z >> 4);
 			}
 		}
-		level.getChunk((centre.getX() + reach - 1) >> 4, (centre.getZ() + reach - 1) >> 4);
+		List<String> problems = new ArrayList<>();
 		int[][] surface = new int[size][size];
 		for (int i = 0; i < size; i++) {
 			for (int j = 0; j < size; j++) {
 				int x = centre.getX() - reach + i;
 				int z = centre.getZ() - reach + j;
 				boolean onPad = x >= centre.getX() - half && x < centre.getX() + half && z >= centre.getZ() - half && z < centre.getZ() + half;
+				boolean edge = onPad && (x == centre.getX() - half || x == centre.getX() + half - 1 || z == centre.getZ() - half || z == centre.getZ() + half - 1);
+				if (edge && level.getBlockState(new BlockPos(x, centre.getY(), z)).isAir()) {
+					problems.add("no pad ground at " + x + " " + z);
+				}
 				surface[i][j] = onPad ? centre.getY() : level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - 1;
 			}
 		}
-		List<String> problems = new ArrayList<>();
+		int checked = 0;
 		for (int i = 0; i < size; i++) {
 			for (int j = 0; j < size; j++) {
+				int x = centre.getX() - reach + i;
+				int z = centre.getZ() - reach + j;
+				checked++;
 				if (i + 1 < size && Math.abs(surface[i][j] - surface[i + 1][j]) > STEP) {
-					problems.add("step of " + (surface[i + 1][j] - surface[i][j]) + " at " + (centre.getX() - reach + i) + " " + (centre.getZ() - reach + j) + " going east");
+					problems.add("step of " + (surface[i + 1][j] - surface[i][j]) + " at " + x + " " + z + " going east");
 				}
 				if (j + 1 < size && Math.abs(surface[i][j] - surface[i][j + 1]) > STEP) {
-					problems.add("step of " + (surface[i][j + 1] - surface[i][j]) + " at " + (centre.getX() - reach + i) + " " + (centre.getZ() - reach + j) + " going south");
+					problems.add("step of " + (surface[i][j + 1] - surface[i][j]) + " at " + x + " " + z + " going south");
 				}
 			}
+		}
+		if (checked == 0) {
+			problems.add("no column of the margin was checked");
 		}
 		finish(helper, problems.size() > 5 ? problems.subList(0, 5) : problems);
 	}
 
 	/**
-	 * The grade holds on land the test world does not have: a hill 40 blocks above the pad on the east, a pit 40 below it on the
-	 * west, and mesa terraces of four blocks on the south. Every step between neighbours is one block at most, the pad keeps its
-	 * ground, and the same land gives the same grade.
+	 * Land the test world does not have, round a pad at 64: a hill 40 above it, a pit 40 below it, and a mesa 60 above it, each all
+	 * round the pad and starting at its edge. In each the margin's outer rim meets the natural ground just outside it with no step over
+	 * a block, the pad keeps its ground, no step in the grid is over a block, and the same land gives the same grade. A mesa 100 above
+	 * the pad is past the cap: its rim is a step, as the cap says, and the grade still has no step over a block inside it.
 	 */
 	@GameTest(maxTicks = 100)
-	public void theMarginGradesAHillAPitAndTerracesWithoutAStepOverOneBlock(GameTestHelper helper) {
-		int pad = ColonyTuning.DEFAULT.padSize();
-		int margin = ColonyTuning.DEFAULT.edgeMargin();
-		int size = pad + 2 * margin;
-		int ground = 64;
-		int[][] natural = new int[size][size];
-		for (int i = 0; i < size; i++) {
-			for (int j = 0; j < size; j++) {
-				natural[i][j] = ground + (i > size * 3 / 4 ? 40 : 0) - (i < size / 4 ? 40 : 0) + (j > size * 3 / 4 ? 4 * ((i / 5) % 2) : 0);
-			}
-		}
-		int[][] first = ColonyEdge.heights(natural, 1000, -2000, ground);
+	public void theMarginReachesTheNaturalGroundOfAHillAPitAndAMesa(GameTestHelper helper) {
 		List<String> problems = new ArrayList<>();
-		if (!java.util.Arrays.deepEquals(first, ColonyEdge.heights(natural, 1000, -2000, ground))) {
-			problems.add("the same land gave two different grades");
+		for (int[] relief : new int[][] {{40}, {-40}, {60}}) {
+			checkRelief(relief[0], problems, true);
 		}
-		for (int i = 0; i < size; i++) {
-			for (int j = 0; j < size; j++) {
-				boolean onPad = i >= margin && i < margin + pad && j >= margin && j < margin + pad;
+		checkRelief(100, problems, false);
+		finish(helper, problems.size() > 5 ? problems.subList(0, 5) : problems);
+	}
+
+	/** Grades land {@code height} above a pad at 64 (below it when negative) and notes what is wrong. */
+	private static void checkRelief(int height, List<String> problems, boolean fits) {
+		int pad = ColonyTuning.DEFAULT.padSize();
+		int ground = 64;
+		int minX = 1000;
+		int minZ = -2000;
+		IntBinaryOperator land = (x, z) -> x >= minX && x < minX + pad && z >= minZ && z < minZ + pad ? ground : ground + height;
+		ColonyEdge.Margins margins = ColonyEdge.margins(ground, minX, minZ, minX + pad - 1, minZ + pad - 1, land);
+		int originX = minX - margins.west().width();
+		int originZ = minZ - margins.north().width();
+		int[][] natural = new int[margins.sizeX()][margins.sizeZ()];
+		for (int i = 0; i < natural.length; i++) {
+			for (int j = 0; j < natural[0].length; j++) {
+				natural[i][j] = land.applyAsInt(originX + i, originZ + j);
+			}
+		}
+		int[][] first = ColonyEdge.heights(natural, margins, originX, originZ, ground);
+		String what = "land " + height + " from the pad: ";
+		if (!Arrays.deepEquals(first, ColonyEdge.heights(natural, margins, originX, originZ, ground))) {
+			problems.add(what + "the same land gave two different grades");
+		}
+		for (ColonyEdge.Side side : List.of(margins.west(), margins.east(), margins.north(), margins.south())) {
+			if (fits && (side.width() < Math.abs(height) || side.width() > ColonyTuning.DEFAULT.edgeMarginCap())) {
+				problems.add(what + "a margin of " + side.width() + " does not fit a gap of " + Math.abs(height));
+			}
+			if (!fits && side.width() != ColonyTuning.DEFAULT.edgeMarginCap()) {
+				problems.add(what + "a gap past the cap should give the cap, got " + side.width());
+			}
+		}
+		for (int i = 0; i < first.length; i++) {
+			for (int j = 0; j < first[0].length; j++) {
+				boolean onPad = originX + i >= minX && originX + i < minX + pad && originZ + j >= minZ && originZ + j < minZ + pad;
 				if (onPad && first[i][j] != ground) {
-					problems.add("the pad's column " + i + " " + j + " is at " + first[i][j]);
+					problems.add(what + "the pad's column " + i + " " + j + " is at " + first[i][j]);
 				}
-				if (i + 1 < size && Math.abs(first[i][j] - first[i + 1][j]) > STEP || j + 1 < size && Math.abs(first[i][j] - first[i][j + 1]) > STEP) {
-					problems.add("a step over one block at " + i + " " + j);
+				if (i + 1 < first.length && Math.abs(first[i][j] - first[i + 1][j]) > STEP || j + 1 < first[0].length && Math.abs(first[i][j] - first[i][j + 1]) > STEP) {
+					problems.add(what + "a step over one block at " + i + " " + j);
+				}
+				boolean rim = i == 0 || j == 0 || i == first.length - 1 || j == first[0].length - 1;
+				// The natural ground just outside a rim column is the same height as the column's own natural ground.
+				if (rim && fits && Math.abs(first[i][j] - (ground + height)) > STEP) {
+					problems.add(what + "the rim column " + i + " " + j + " is at " + first[i][j] + ", the natural ground outside is " + (ground + height));
+				}
+				// Past the cap the middle of a side, where the pad is nearest, stops short of the natural ground: a corner is further and can reach it.
+				if (rim && !fits && i == 0 && j == first[0].length / 2 && Math.abs(first[i][j] - (ground + height)) <= STEP) {
+					problems.add(what + "a gap past the cap should leave a step at the rim, " + i + " " + j + " is at " + first[i][j]);
 				}
 			}
 		}
-		// A hill reaches as high as a slope of one block a column allows over the margin.
-		int rim = size - 1;
-		if (first[rim][size / 2] < ground + 24) {
-			problems.add("the hill's grade is " + first[rim][size / 2] + " at the rim, not near its natural " + natural[rim][size / 2]);
+	}
+
+	/**
+	 * What shows on the pad's rim and on the margin: the plain's own surface blocks and nothing else, the packed regolith and rock of
+	 * its layers scattered by the pad's edge and thinning outward.
+	 */
+	@GameTest(maxTicks = 100)
+	public void theMarginIsTheSurfacesBlocksWithRockAndPackedRegolithScatteredByThePad(GameTestHelper helper) {
+		ServerLevel level = server(helper).overworld();
+		ColonySite.Placed colony = placed(helper);
+		BlockPos centre = colony.center();
+		int half = ColonyTuning.DEFAULT.padSize() / 2;
+		int margin = ColonyTuning.DEFAULT.edgeMargin();
+		int[] shown = new int[3];
+		int[] total = new int[3];
+		List<String> problems = new ArrayList<>();
+		// The north margin, beyond the pad's north edge, in three bands by the pad: next to it, in the middle, out by the rim.
+		for (int dz = 1; dz <= margin; dz++) {
+			for (int dx = -half; dx < half; dx++) {
+				int x = centre.getX() + dx;
+				int z = centre.getZ() - half - dz;
+				level.getChunk(x >> 4, z >> 4);
+				BlockState top = level.getBlockState(new BlockPos(x, level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - 1, z));
+				if (!top.is(SurfaceBlocks.REGOLITH) && !top.is(SurfaceBlocks.REGOLITH_PACKED) && !top.is(SurfaceBlocks.REGOLITH_ROCK)
+						&& !top.is(SurfaceBlocks.OCHRE_REGOLITH) && !top.is(SurfaceBlocks.BASALT_OUTCROP)) {
+					problems.add("the margin at " + x + " " + z + " is topped with " + top);
+				}
+				int band = dz <= margin / 3 ? 0 : dz <= 2 * margin / 3 ? 1 : 2;
+				total[band]++;
+				if (top.is(SurfaceBlocks.REGOLITH_PACKED) || top.is(SurfaceBlocks.REGOLITH_ROCK)) {
+					shown[band]++;
+				}
+			}
+		}
+		if (shown[0] == 0 || shown[0] * 100 / total[0] > ColonyTuning.DEFAULT.scatterPercent() * ColonyTuning.DEFAULT.scatterPackedFactor() + 5) {
+			problems.add("the band by the pad shows " + shown[0] + " of " + total[0] + " scattered");
+		}
+		if (shown[2] >= shown[0]) {
+			problems.add("the scatter should thin outward: " + shown[0] + ", " + shown[1] + ", " + shown[2]);
 		}
 		finish(helper, problems.size() > 5 ? problems.subList(0, 5) : problems);
 	}
@@ -545,10 +625,11 @@ public class ColonyPlacementTest {
 		ColonySite.Placed colony = placed(helper);
 		loadPad(level, colony);
 		int half = ColonyTuning.DEFAULT.padSize() / 2;
+		int rim = ColonyTuning.DEFAULT.rimWidth();
 		BlockPos centre = colony.center();
 		List<String> problems = new ArrayList<>();
-		for (int dx = 4; dx < 12; dx++) {
-			for (int dz = 4; dz < 12; dz++) {
+		for (int dx = rim; dx < rim + 8; dx++) {
+			for (int dz = rim; dz < rim + 8; dz++) {
 				BlockPos at = new BlockPos(centre.getX() - half + dx, centre.getY(), centre.getZ() - half + dz);
 				if (!level.getBlockState(at).is(SurfaceBlocks.REGOLITH)) {
 					problems.add(at.toShortString() + " is " + level.getBlockState(at));
