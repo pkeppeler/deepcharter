@@ -8,7 +8,7 @@ loud and names the recipe.
 import json
 import re
 from dataclasses import dataclass
-from math import sqrt
+from math import ceil, sqrt
 from pathlib import Path
 from typing import Callable
 
@@ -438,42 +438,56 @@ def op_cluster(canvas: Canvas, layer: dict, ctx: Context) -> None:
     rim, dark, mid and light (depth steepens it); its glints brightest pixels take glint. The rock just below and right of a clump
     takes shadow, so it stands proud of the face. A clump keeps margin pixels inside the tile, so an ore beside rock shows no cut
     edge, and a pixel apart from the next. Each clump sends veins threads of dark and mid, up to vein pixels long, out into the rock;
-    a thread may run off the tile edge, and stops there."""
+    a thread may run off the tile edge, and stops there. A socket, a list of [colour, share] rings out from the clump, sinks it in the
+    rock: ring k is the rock k pixels out, and a share (0 to 1) of its pixels, in an ordered dither, take its colour, so a ring
+    fades as its share falls. A socket keeps the margin too, so its shadow and rings never reach the tile's edge; two clumps' sockets
+    may meet, but neither covers a clump."""
     ctx.need(layer, "seed", "count", "radius", "lumps", "ramp", "shadow")
     shades = ctx.ramp(layer["ramp"])
     if len(shades) != 5:
         raise RecipeError(f"{ctx.where}: a cluster ramp has 5 shades (rim, dark, mid, light, glint), got {len(shades)}")
     rim, dark, mid, light, glint = shades
     shadow = ctx.colour(layer["shadow"])
+    socket = [(ctx.colour(name), share) for name, share in layer.get("socket", [])]
     rng = Rng(layer["seed"])
     size = ctx.size
     margin = layer.get("margin", 1)
     taken: set[tuple[int, int]] = set()
-    clumps: list[dict[tuple[int, int], float]] = []
+    clumps: list[tuple[dict[tuple[int, int], float], list[set[tuple[int, int]]]]] = []
     for _ in range(layer["count"] * 60):
         if len(clumps) == layer["count"]:
             break
-        height = _clump(layer, rng, size, margin)
+        height = _clump(layer, rng, size, margin + len(socket))
+        if not height:
+            continue
+        rings = _rings(height, len(socket))
+        if not all(margin <= x < size - margin and margin <= y < size - margin for x, y in set(height).union(*rings)):
+            continue
         cast = {(x + dx, y + dy) for x, y in height for dx, dy in ((1, 0), (0, 1), (1, 1))} - set(height)
-        inside = all(margin <= x < size - margin and margin <= y < size - margin for x, y in height)
-        if not height or not inside or any(not (0 <= x < size and 0 <= y < size) for x, y in cast):
+        if any(not (0 <= x < size and 0 <= y < size) for x, y in cast):
             continue
         reach = set(height) | cast
         if {(x + dx, y + dy) for x, y in reach for dx in (-1, 0, 1) for dy in (-1, 0, 1)} & taken:
             continue
         taken |= reach
-        clumps.append(height)
+        clumps.append((height, rings))
     if len(clumps) < layer["count"]:
         raise RecipeError(f"{ctx.where}: only {len(clumps)} of {layer['count']} clumps fit; lower the count or radius, or change the seed")
-    for height in clumps:
+    for k in reversed(range(len(socket))):
+        colour, share = socket[k]
+        for _, rings in clumps:
+            for x, y in rings[k]:
+                if BAYER[y % 4][x % 4] / 16 < share:
+                    canvas.put(x, y, colour)
+    for height, _ in clumps:
         for x, y in height:
             for dx, dy in ((1, 0), (0, 1), (1, 1)):
                 if (x + dx, y + dy) not in height:
                     canvas.put(x + dx, y + dy, shadow)
-    for height in clumps:
+    for height, _ in clumps:
         _veins(canvas, layer, rng, size, height, (dark, mid))
     depth = layer.get("depth", 1.5)
-    for height in clumps:
+    for height, _ in clumps:
         lit: dict[tuple[int, int], float] = {}
         for (x, y), h in height.items():
             gx = height.get((x + 1, y), 0.0) - height.get((x - 1, y), 0.0)
@@ -497,7 +511,8 @@ def op_cluster(canvas: Canvas, layer: dict, ctx: Context) -> None:
 
 
 def _clump(layer: dict, rng: Rng, size: int, margin: int) -> dict[tuple[int, int], float]:
-    """The height (0 to 1) of every pixel a clump covers, from its lumps; a pixel is covered where a lump's height is above 0."""
+    """The height (0 to 1) of every pixel a clump covers, from its lumps; a pixel is covered where a lump's height is above 0. Its
+    centre is at least margin plus its radius in from each edge."""
     lo, hi = layer["radius"]
     radius = lo + (hi - lo) * rng.unit()
     span = size - 2 * (margin + radius)
@@ -530,6 +545,21 @@ def _clump(layer: dict, rng: Rng, size: int, margin: int) -> dict[tuple[int, int
     return height
 
 
+def _rings(height: dict[tuple[int, int], float], count: int) -> list[set[tuple[int, int]]]:
+    """The pixels round a clump, ring by ring: ring k (from 1) is every pixel whose nearest clump pixel is more than k - 1 and at
+    most k away, so ring 1 is the clump's side neighbours, its corners fall in ring 2, and the rings are round, not square."""
+    rings: list[set[tuple[int, int]]] = [set() for _ in range(count)]
+    xs, ys = [x for x, _ in height], [y for _, y in height]
+    for y in range(min(ys) - count, max(ys) + count + 1):
+        for x in range(min(xs) - count, max(xs) + count + 1):
+            if (x, y) in height:
+                continue
+            k = ceil(min(sqrt((x - hx) ** 2 + (y - hy) ** 2) for hx, hy in height))
+            if k <= count:
+                rings[k - 1].add((x, y))
+    return rings
+
+
 def _veins(canvas: Canvas, layer: dict, rng: Rng, size: int, height: dict[tuple[int, int], float], colours: tuple[Colour, Colour]) -> None:
     """Threads that wander out of a clump, a step at a time, turning now and then; one stops at the tile edge."""
     start = sorted(height)
@@ -553,6 +583,68 @@ def _veins(canvas: Canvas, layer: dict, rng: Rng, size: int, height: dict[tuple[
             drawn += 1
 
 
+def op_seams(canvas: Canvas, layer: dict, ctx: Context) -> None:
+    """Mineral seams that follow the grain of a rock: count threads that cross the tile from its left edge to its right, each
+    column a step up or down at the chance wander (never two columns running, so a thread runs level and steps, as a grain does), so
+    they run off both edges. thickness is [thread, swell]: a thread is that many pixels thick, tapering to one pixel in the TAPER
+    columns at each edge, and swells times it swells to the swell thickness over 2 * swell - 1 columns, away from the edges. Lit from
+    the top, a 1-pixel thread is dark, 2 pixels are mid over dark, 3 are light, mid and dark; anything thicker than one pixel casts
+    shadow on the rock under it, and its glints top pixels nearest a swell's middle take glint. Threads keep apart rows apart, and
+    off the top and bottom edges with their shadows, so only their thin ends reach the tile's edge."""
+    ctx.need(layer, "seed", "count", "ramp", "shadow", "thickness", "swells", "wander")
+    shades = ctx.ramp(layer["ramp"])
+    if len(shades) != 5:
+        raise RecipeError(f"{ctx.where}: a seams ramp has 5 shades (rim, dark, mid, light, glint), got {len(shades)}")
+    _, dark, mid, light, glint = shades
+    lit = {1: (dark,), 2: (mid, dark), 3: (light, mid, dark)}
+    shadow = ctx.colour(layer["shadow"])
+    rng = Rng(layer["seed"])
+    size = ctx.size
+    (thread, swell), reach = layer["thickness"], layer.get("swell", 3)
+    apart = layer.get("apart", 4)
+    edge = max(reach, TAPER) + 1
+    if not 1 <= thread <= swell <= 3 or size - 2 * edge < 1:
+        raise RecipeError(f"{ctx.where}: thickness is [thread, swell], 1 <= thread <= swell <= 3, with room for a swell of {reach} "
+                          f"away from the edges; got {layer['thickness']}")
+    lines: list[list[int]] = []
+    for _ in range(layer["count"] * 60):
+        if len(lines) == layer["count"]:
+            break
+        y = 2 + rng.below(size - 5)
+        line = []
+        stepped = False
+        for x in range(size):
+            if x and not stepped and rng.unit() < layer["wander"]:
+                step = 1 if rng.below(2) else -1
+                y += step if 2 <= y + step < size - 3 else -step
+                stepped = True
+            else:
+                stepped = False
+            line.append(y)
+        if all(abs(a - b) >= apart for other in lines for a, b in zip(line, other)):
+            lines.append(line)
+    if len(lines) < layer["count"]:
+        raise RecipeError(f"{ctx.where}: only {len(lines)} of {layer['count']} seams fit; lower the count or apart, or change the seed")
+    for line in lines:
+        middles = [edge + rng.below(size - 2 * edge) for _ in range(layer["swells"])]
+        swollen: list[tuple[int, int]] = []
+        for x, y in enumerate(line):
+            bulge = max(0.0, max(1 - abs(x - m) / reach for m in middles)) if middles else 0.0
+            thick = 1 if min(x, size - 1 - x) < TAPER else thread + round((swell - thread) * bulge)
+            top = y - (thick - 1) // 2
+            for row, colour in zip(range(top, top + thick), lit[thick]):
+                canvas.put(x, row, colour)
+            if thick > 1:
+                canvas.put(x, top + thick, shadow)
+            if thick == swell > thread:
+                swollen.append((x, top))
+        nearest = sorted(swollen, key=lambda p: (min(abs(p[0] - m) for m in middles), p[0]))
+        for x, y in nearest[:layer.get("glints", 1)]:
+            canvas.put(x, y, glint)
+
+
+# The columns at each edge of the tile where a seam is one pixel thick, so where it runs off the face it is a thin line.
+TAPER = 2
 # The unit directions a crystal's long axis lies near: 30 to 150 degrees, as literals so that every Python draws the same pixels.
 AXES = ((0.866025, 0.5), (0.707107, 0.707107), (0.5, 0.866025), (-0.5, 0.866025), (-0.707107, 0.707107), (-0.866025, 0.5))
 # Where the light comes from: the top left and in front of the face, (x, y down, z out), normalised.
@@ -738,6 +830,7 @@ OPS: dict[str, Callable[[Canvas, dict, Context], None]] = {
     "stripes": op_stripes,
     "ore": op_ore,
     "cluster": op_cluster,
+    "seams": op_seams,
     "strata": op_strata,
     "cracks": op_cracks,
     "grime": op_grime,

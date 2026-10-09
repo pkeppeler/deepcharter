@@ -26,10 +26,22 @@ public final class TestPacks implements ModInitializer {
 	public static final String TEXTURE_DENSITY_C = "texture_density_c";
 	/** Texture density D: B, with crystals and a glint standing out of every ore. */
 	public static final String TEXTURE_DENSITY_D = "texture_density_d";
+	/**
+	 * Ore overlay B1 (#354, docs/design/texture-density-2.md): B's clumps as a cutout layer over the real stone. Each overlay pack
+	 * redraws only the ores, over vanilla stone's own texture, and replaces nothing of vanilla.
+	 */
+	public static final String TEXTURE_OVERLAY_B1 = "texture_overlay_b1";
+	/** Ore overlay B2: smaller, sparser clumps, tinted toward the stone's greys. */
+	public static final String TEXTURE_OVERLAY_B2 = "texture_overlay_b2";
+	/** Ore overlay B3: seams that follow the stone's grain and run off the face. */
+	public static final String TEXTURE_OVERLAY_B3 = "texture_overlay_b3";
+	/** Ore overlay B4: clumps sunk in a soft dark socket, with a glint. */
+	public static final String TEXTURE_OVERLAY_B4 = "texture_overlay_b4";
 
 	@Override
 	public void onInitialize() {
-		for (String pack : new String[] {AMBER_CRT, BAD_CRT, RED_INK, TEXTURE_DENSITY_B, TEXTURE_DENSITY_C, TEXTURE_DENSITY_D}) {
+		for (String pack : new String[] {AMBER_CRT, BAD_CRT, RED_INK, TEXTURE_DENSITY_B, TEXTURE_DENSITY_C, TEXTURE_DENSITY_D,
+				TEXTURE_OVERLAY_B1, TEXTURE_OVERLAY_B2, TEXTURE_OVERLAY_B3, TEXTURE_OVERLAY_B4}) {
 			ResourceLoader.registerBuiltinPack(Identifier.fromNamespaceAndPath("deepcharter-test", pack),
 					FabricLoader.getInstance().getModContainer("deepcharter-test").orElseThrow(),
 					Component.literal(pack + " (test pack)"), PackActivationType.NORMAL);

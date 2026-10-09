@@ -1,20 +1,67 @@
 {
-  "description": "The texture density test packs of issue 336 (docs/design/texture-density.md). Each is a test pack that only the texture-density evidence scenario turns on; the mod's own textures are variant A. Paths are from the repo root; a variant's recipe directories load over the default ones, in order. D loads B's recipes before its own, so B's rock and ores feed D: a change to B changes D's pack too.",
+  "description": "The texture test packs: round 1, b to d, of issue 336 (docs/design/texture-density.md), and round 2, b1 to b4, of issue 354 (docs/design/texture-density-2.md). Each is a test pack that only its evidence scenario turns on; the mod's own textures are variant A. Paths are from the repo root; a variant's palettes merge over the default palette, and its recipe directories load over the default ones, in order. D loads B's recipes before its own, so B's rock and ores feed D: a change to B changes D's pack too. Round 2's packs have overlays: each ore block draws the host block's own texture, by reference, with the pack's cutout overlay over it, so no vanilla texture is copied or replaced.",
   "variants": {
     "b": {
+      "palettes": [],
       "recipes": ["tools/textures/variants/b/recipes"],
       "pack": "src/gametest/resources/resourcepacks/texture_density_b",
       "sheet": "docs/design/texture-density/b-reference.png"
     },
     "c": {
+      "palettes": [],
       "recipes": ["tools/textures/variants/c/recipes"],
       "pack": "src/gametest/resources/resourcepacks/texture_density_c",
       "sheet": "docs/design/texture-density/c-reference.png"
     },
     "d": {
+      "palettes": [],
       "recipes": ["tools/textures/variants/b/recipes", "tools/textures/variants/d/recipes"],
       "pack": "src/gametest/resources/resourcepacks/texture_density_d",
       "sheet": "docs/design/texture-density/d-reference.png"
+    },
+    "b1": {
+      "palettes": ["tools/textures/variants/overlay/palette.json"],
+      "recipes": ["tools/textures/variants/b1/recipes"],
+      "pack": "src/gametest/resources/resourcepacks/texture_overlay_b1",
+      "sheet": "docs/design/texture-density-2/b1-reference.png",
+      "overlays": {
+        "host": "minecraft:block/stone",
+        "textures": 4,
+        "blocks": ["ironium_ore", "bronzium_ore", "silverium_ore", "goldium_ore", "platinium_ore", "einsteinium_ore", "cicatrium_ore"]
+      }
+    },
+    "b2": {
+      "palettes": ["tools/textures/variants/overlay/palette.json"],
+      "recipes": ["tools/textures/variants/b2/recipes"],
+      "pack": "src/gametest/resources/resourcepacks/texture_overlay_b2",
+      "sheet": "docs/design/texture-density-2/b2-reference.png",
+      "overlays": {
+        "host": "minecraft:block/stone",
+        "textures": 4,
+        "blocks": ["ironium_ore", "bronzium_ore", "silverium_ore", "goldium_ore", "platinium_ore", "einsteinium_ore", "cicatrium_ore"]
+      }
+    },
+    "b3": {
+      "palettes": ["tools/textures/variants/overlay/palette.json"],
+      "recipes": ["tools/textures/variants/b3/recipes"],
+      "pack": "src/gametest/resources/resourcepacks/texture_overlay_b3",
+      "sheet": "docs/design/texture-density-2/b3-reference.png",
+      "overlays": {
+        "host": "minecraft:block/stone",
+        "textures": 4,
+        "blocks": ["ironium_ore", "bronzium_ore", "silverium_ore", "goldium_ore", "platinium_ore", "einsteinium_ore", "cicatrium_ore"]
+      }
+    },
+    "b4": {
+      "palettes": ["tools/textures/variants/overlay/palette.json"],
+      "recipes": ["tools/textures/variants/b4/recipes"],
+      "pack": "src/gametest/resources/resourcepacks/texture_overlay_b4",
+      "sheet": "docs/design/texture-density-2/b4-reference.png",
+      "overlays": {
+        "host": "minecraft:block/stone",
+        "textures": 4,
+        "blocks": ["ironium_ore", "bronzium_ore", "silverium_ore", "goldium_ore", "platinium_ore", "einsteinium_ore", "cicatrium_ore"]
+      }
     }
   }
 }
