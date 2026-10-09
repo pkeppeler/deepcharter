@@ -220,31 +220,76 @@ if run 9 "$work/files/a.gif"; then check "missing pr-media branch is rejected" 1
 check "missing branch gives a clear message" "$(grep -q 'create the orphan branch pr-media first' "$work/err"; echo $?)"
 
 # --- the race: pr-media advances between the fetch and the push ---
-make_remote
+# A git wrapper, for the first RIVALS pushes, lands a rival commit adding the folder rival<N>/ on the
+# remote just before the real push, so that push is rejected. After the first push it can also drop
+# tree entries (DROP, as above) or fail the push like a bad login (AUTH=1).
 mkdir "$work/racebin"
 cat >"$work/racebin/git" <<STUB
 #!/usr/bin/env bash
+if [[ \$1 == mktree && -n \${DROP:-} && -s "$work/pushes" ]]; then
+  grep -vE "\$DROP" | "$real_git" "\$@"
+  exit \${PIPESTATUS[1]}
+fi
 if [[ \$1 == push ]]; then
-  tip=\$("$real_git" -C "$bare" rev-parse pr-media)
-  tree=\$("$real_git" -C "$bare" rev-parse "pr-media^{tree}")
-  rival=\$("$real_git" -C "$bare" commit-tree "\$tree" -p "\$tip" -m "rival push")
-  "$real_git" -C "$bare" update-ref refs/heads/pr-media "\$rival"
-  echo "\$rival" >"$work/rival"
+  echo x >>"$work/pushes"
+  n=\$(wc -l <"$work/pushes" | tr -d ' ')
+  if [[ \${AUTH:-} == 1 ]]; then
+    echo "fatal: Authentication failed" >&2
+    exit 128
+  fi
+  if [[ \$n -le \${RIVALS:-0} ]]; then
+    tip=\$("$real_git" -C "$bare" rev-parse pr-media)
+    blob=\$(echo rival | "$real_git" -C "$bare" hash-object -w --stdin)
+    sub=\$(printf '100644 blob %s\trival.png\n' "\$blob" | "$real_git" -C "$bare" mktree)
+    tree=\$({ "$real_git" -C "$bare" ls-tree "\$tip"; printf '040000 tree %s\trival%s\n' "\$sub" "\$n"; } | "$real_git" -C "$bare" mktree)
+    rival=\$("$real_git" -C "$bare" commit-tree "\$tree" -p "\$tip" -m "rival push")
+    "$real_git" -C "$bare" update-ref refs/heads/pr-media "\$rival"
+    echo "\$rival" >"$work/rival"
+  fi
 fi
 exec "$real_git" "\$@"
 STUB
 chmod +x "$work/racebin/git"
-if (cd "$work/clone" && PATH="$work/racebin:$PATH" "$script" 5 "$work/files/a.gif") >"$work/out" 2>"$work/err"; then
-  check "push that loses the race fails" 1
-else
-  check "push that loses the race fails" 0
-fi
-check "race loser is a non-fast-forward rejection" "$(grep -qiE 'rejected|non-fast-forward|fetch first' "$work/err"; echo $?)"
-tip=$("$real_git" -C "$bare" rev-parse pr-media)
-check "rival's commit is still the tip" "$(if [[ $tip == "$(cat "$work/rival")" ]]; then echo 0; else echo 1; fi)"
-listing=$(tree)
-loser_files=$(grep '^5/' <<<"$listing" || true)
-check "loser's files were not published" "$(if [[ -n $loser_files ]]; then echo 1; else echo 0; fi)"
+raced() { # raced <env assignments...> -- <pr> <file>...; counts the pushes in $work/pushes
+  local envs=()
+  while [[ $1 != -- ]]; do
+    envs+=("$1")
+    shift
+  done
+  shift
+  rm -f "$work/pushes"
+  (cd "$work/clone" && env ${envs[@]+"${envs[@]}"} PATH="$work/racebin:$PATH" "$script" "$@") >"$work/out" 2>"$work/err"
+}
+pushes() { if [[ -f $work/pushes ]]; then wc -l <"$work/pushes" | tr -d ' '; else echo 0; fi; }
+
+make_remote
+if raced RIVALS=1 -- 5 "$work/files/a.gif"; then check "publish that loses one race succeeds on retry" 0; else check "publish that loses one race succeeds on retry" 1; fi
+check "race winner's folder is kept" "$(tree | grep -q '^rival1/rival.png:'; echo $?)" # pipe-grep-q: fail-closed — a missed match yields nonzero, which fails the check
+check "race loser's file lands too" "$(tree | grep -q '^5/a.gif:'; echo $?)" # pipe-grep-q: fail-closed — a missed match yields nonzero, which fails the check
+check "pre-existing folder survives a retry" "$(tree | grep -q '^1/old.png:'; echo $?)" # pipe-grep-q: fail-closed — a missed match yields nonzero, which fails the check
+check "one lost race costs two pushes" "$(if [[ $(pushes) -eq 2 ]]; then echo 0; else echo 1; fi)"
+check "retry says the tip moved" "$(grep -q 'rebuilding on the new tip' "$work/err"; echo $?)"
+check "retry keeps history linear: old, rival, mine" "$(if [[ $("$real_git" -C "$bare" rev-list --count pr-media) -eq 3 ]]; then echo 0; else echo 1; fi)"
+
+make_remote
+if raced RIVALS=99 -- 5 "$work/files/a.gif"; then check "publish that keeps losing the race fails" 1; else check "publish that keeps losing the race fails" 0; fi
+check "giving up names the race" "$(grep -q 'LOST THE RACE' "$work/err"; echo $?)"
+check "giving up stops after five pushes" "$(if [[ $(pushes) -eq 5 ]]; then echo 0; else echo 1; fi)"
+check "giving up leaves the rival's commit as the tip" "$(if [[ $("$real_git" -C "$bare" rev-parse pr-media) == "$(cat "$work/rival")" ]]; then echo 0; else echo 1; fi)"
+check "giving up publishes none of the loser's files" "$(if tree | grep -q '^5/'; then echo 1; else echo 0; fi)"
+
+# A guard that fails against the new tip refuses; there is no retry around a guard.
+make_remote
+if raced RIVALS=1 $'DROP=\trival1$' -- 5 "$work/files/a.gif"; then check "guard failure on the new tip is refused" 1; else check "guard failure on the new tip is refused" 0; fi
+check "guard failure on the new tip names the problem" "$(grep -q 'would drop top-level entries' "$work/err"; echo $?)"
+check "guard failure on the new tip is not retried" "$(if [[ $(pushes) -eq 1 ]]; then echo 0; else echo 1; fi)"
+check "guard failure on the new tip leaves the rival's commit as the tip" "$(if [[ $("$real_git" -C "$bare" rev-parse pr-media) == "$(cat "$work/rival")" ]]; then echo 0; else echo 1; fi)"
+
+# Only a race retries: a failure like a bad login is reported once.
+make_remote
+if raced AUTH=1 -- 5 "$work/files/a.gif"; then check "push that fails to authenticate fails" 1; else check "push that fails to authenticate fails" 0; fi
+check "failed authentication is not retried" "$(if [[ $(pushes) -eq 1 ]]; then echo 0; else echo 1; fi)"
+check "failed authentication is not called a lost race" "$(if grep -q 'LOST THE RACE' "$work/err"; then echo 1; else echo 0; fi)"
 
 # --- the caller's working tree and index are untouched ---
 make_remote
