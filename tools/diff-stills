@@ -37,7 +37,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from pngio import Image, decode_png, encode_png  # noqa: E402
 
 DEFAULT_TOLERANCE = 2
-# Measured over pairs of design-tour runs of one commit (README, "Before and after stills"): the most that noise changed in each
+# Measured over pairs of design-tour runs of one commit (.claude/skills/deepcharter-conventions/evidence.md, "Before and after stills"): the most that noise changed in each
 # family of stills, rounded up. PREFIX, channel tolerance, percent of pixels.
 NOISE_FAMILIES = [
     ("hud-breach-fade", 70, 0.0),      # runs on client ticks; the tick of the shot varies with load

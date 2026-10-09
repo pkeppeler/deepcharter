@@ -12,7 +12,7 @@ tasks.named("runGameTest") { dependsOn deleteGameTestWorld }
 //   server GameTest    a class with an @GameTest method       -> fabric-gametest
 //   client GameTest    implements FabricClientGameTest        -> fabric-client-gametest
 //   evidence scenario  extends EvidenceScenario               -> fabric-client-gametest
-// Filter: -PclientTests=<name or glob>[,...] keeps only matching client classes, so one client test can run alone (see README).
+// Filter: -PclientTests=<name or glob>[,...] keeps only matching client classes, so one client test can run alone (see .claude/skills/deepcharter-conventions/tests.md).
 // Order: classes are listed sorted by name. The suite must not depend on that order: -PgametestOrder=reverse
 // lists them in reverse name order, to catch a test that leaks world state into a later one.
 def blankLiterals = project.ext.blankLiterals
