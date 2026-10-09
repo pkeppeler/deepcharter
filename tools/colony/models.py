@@ -73,7 +73,9 @@ class Box:
             "down": (x0, x1, 16 - z1, 16 - z0),
         }[face]
         u0, u1, v0, v1 = spans
-        return (*_span(u0, u1, self.uv_scale), *_span(v0, v1, self.uv_scale))
+        (us, ue), (vs, ve) = _span(u0, u1, self.uv_scale), _span(v0, v1, self.uv_scale)
+        # Minecraft's order: the corner (u, v) where the face starts, then the corner where it ends.
+        return us, vs, ue, ve
 
 
 def _span(a: float, b: float, scale: float) -> tuple[float, float]:

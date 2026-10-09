@@ -36,6 +36,17 @@ class GeneratedFilesTest(unittest.TestCase):
         self.assertEqual(code, 0, out.getvalue())
 
 
+class ModelUvTest(unittest.TestCase):
+    def test_a_face_shows_the_texels_under_it_in_minecraft_order(self):
+        from models import Box
+        block = Box((0, 0, 0), (16, 16, 16), {"*": "#t"}).element("block")["faces"]
+        self.assertEqual(block["north"]["uv"], [0, 0, 16, 16])
+        pipe = Box((5, 0, 5), (11, 16, 11), {"*": "#t"}).element("pipe")["faces"]
+        self.assertEqual(pipe["south"]["uv"], [5, 0, 11, 16])
+        self.assertEqual(pipe["up"]["uv"], [5, 5, 11, 11])
+        self.assertEqual(pipe["north"]["uv"], [5, 0, 11, 16])
+
+
 class KitAgreesWithJavaTest(unittest.TestCase):
     def test_the_kit_registers_exactly_the_blocks_the_catalogue_draws(self):
         source = (JAVA / "ColonyKit.java").read_text()

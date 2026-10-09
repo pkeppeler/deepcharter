@@ -68,12 +68,14 @@ def _keep_clear(piece: Piece) -> None:
 def _common_views(statue_top: float) -> list[View]:
     """The statue views every concept shares, so the three statues compare like for like."""
     mid = statue_top * 0.62
+    level = statue_top * 0.7
     return [
-        View("statue-from-the-square", (6.0, 2.6, 15.0), (0.0, mid, 0.0)),
-        View("statue-side", (26.0, 9.0, 1.0), (0.0, mid, 0.0)),
-        View("statue-from-the-air", (14.0, statue_top + 22.0, 24.0), (0.0, mid, 0.0)),
-        View("statue-from-far", (0.0, 3.0, 110.0), (0.0, mid, 0.0), above_ground=True),
-        View("statue-at-night", (6.0, 2.6, 15.0), (0.0, mid, 0.0), night=True),
+        View("statue-from-the-square", (6.0, 2.6, 24.0), (0.5, mid, 0.5)),
+        View("statue-front", (0.5, level, 34.0), (0.5, level, 0.5)),
+        View("statue-side", (34.0, level, 0.5), (0.5, level, 0.5)),
+        View("statue-from-the-air", (14.0, statue_top + 22.0, 24.0), (0.5, mid, 0.5)),
+        View("statue-from-far", (20.0, 3.0, 100.0), (0.5, mid, 0.5), above_ground=True),
+        View("statue-at-night", (6.0, 2.6, 24.0), (0.5, mid, 0.5), night=True),
     ]
 
 
@@ -276,19 +278,19 @@ CONCEPT_A = Concept(
     statue="founder_a",
     build=lambda: [_a_square(), _a_pithead(), _a_mill(), _a_hoist_house()],
     views=(
-        View("from-the-square", (15.0, 2.6, 9.0), (-12.0, 16.0, -20.0)),
+        View("from-the-square", (-6.0, 2.6, 26.0), (-14.0, 18.0, -22.0)),
         View("headframe", (-20.0, 4.0, -4.0), (-4.0, 34.0, -14.0)),
         View("mill-gables", (-18.0, 4.0, 6.0), (-23.0, 13.0, -24.0)),
-        View("from-the-air", (26.0, 40.0, 34.0), (-10.0, 12.0, -20.0)),
-        View("from-the-air-behind", (-48.0, 38.0, -60.0), (-12.0, 12.0, -24.0)),
+        View("from-the-air", (12.0, 36.0, 12.0), (-14.0, 12.0, -24.0)),
+        View("from-the-air-behind", (-46.0, 34.0, -54.0), (-14.0, 12.0, -26.0)),
         View("from-far-across-the-plain", (40.0, 3.0, 110.0), (-4.0, 30.0, -15.0), above_ground=True),
-        View("night-from-the-square", (15.0, 2.6, 9.0), (-12.0, 16.0, -20.0), night=True),
-        View("night-from-the-air", (20.0, 30.0, 26.0), (-10.0, 12.0, -20.0), night=True),
+        View("night-from-the-square", (-6.0, 2.6, 26.0), (-14.0, 18.0, -22.0), night=True),
+        View("night-from-the-air", (8.0, 28.0, 6.0), (-14.0, 12.0, -24.0), night=True),
         *_common_views(30.0),
     ),
-    orbit_centre=(-8.0, 14.0, -20.0),
-    orbit_radius=56.0,
-    orbit_height=30.0,
+    orbit_centre=(-8.0, 12.0, -24.0),
+    orbit_radius=46.0,
+    orbit_height=24.0,
 )
 
 # ------------------------------------------------------------------------------------------------------------- concept B
@@ -477,19 +479,19 @@ CONCEPT_B = Concept(
     statue="founder_b",
     build=lambda: [_b_square(), _b_tower(), _b_works()],
     views=(
-        View("from-the-square", (-14.0, 2.6, 10.0), (8.0, 16.0, -20.0)),
+        View("from-the-square", (6.0, 2.6, 26.0), (14.0, 18.0, -22.0)),
         View("headframe", (-20.0, 4.0, -2.0), (-4.0, 30.0, -15.0)),
         View("works-front", (18.0, 4.0, 3.0), (18.0, 9.0, -16.0)),
-        View("from-the-air", (34.0, 40.0, 30.0), (8.0, 12.0, -22.0)),
-        View("from-the-air-behind", (52.0, 38.0, -60.0), (10.0, 14.0, -26.0)),
+        View("from-the-air", (-12.0, 36.0, 10.0), (12.0, 12.0, -24.0)),
+        View("from-the-air-behind", (48.0, 34.0, -58.0), (12.0, 12.0, -26.0)),
         View("from-far-across-the-plain", (40.0, 3.0, 110.0), (-4.0, 30.0, -15.0), above_ground=True),
-        View("night-from-the-square", (-14.0, 2.6, 10.0), (8.0, 16.0, -20.0), night=True),
-        View("night-from-the-air", (28.0, 30.0, 22.0), (8.0, 12.0, -22.0), night=True),
+        View("night-from-the-square", (6.0, 2.6, 26.0), (14.0, 18.0, -22.0), night=True),
+        View("night-from-the-air", (-8.0, 28.0, 6.0), (12.0, 12.0, -24.0), night=True),
         *_common_views(24.0),
     ),
-    orbit_centre=(8.0, 14.0, -20.0),
-    orbit_radius=58.0,
-    orbit_height=30.0,
+    orbit_centre=(8.0, 12.0, -24.0),
+    orbit_radius=48.0,
+    orbit_height=24.0,
 )
 
 
@@ -645,19 +647,19 @@ CONCEPT_C = Concept(
     statue="founder_c",
     build=lambda: [_c_square(), _c_headframe(), _c_ore_house(), _c_hoist_house()],
     views=(
-        View("from-the-square", (15.0, 2.6, 9.0), (-12.0, 16.0, -20.0)),
+        View("from-the-square", (-6.0, 2.6, 26.0), (-14.0, 18.0, -22.0)),
         View("headframe", (-20.0, 4.0, -4.0), (-4.0, 34.0, -14.0)),
         View("ore-house-front", (-20.0, 4.0, 6.0), (-24.0, 14.0, -24.0)),
-        View("from-the-air", (26.0, 40.0, 34.0), (-10.0, 12.0, -20.0)),
-        View("from-the-air-behind", (-48.0, 38.0, -60.0), (-12.0, 12.0, -24.0)),
+        View("from-the-air", (12.0, 36.0, 12.0), (-14.0, 12.0, -24.0)),
+        View("from-the-air-behind", (-46.0, 34.0, -54.0), (-14.0, 12.0, -26.0)),
         View("from-far-across-the-plain", (40.0, 3.0, 110.0), (-4.0, 30.0, -15.0), above_ground=True),
-        View("night-from-the-square", (15.0, 2.6, 9.0), (-12.0, 16.0, -20.0), night=True),
-        View("night-from-the-air", (20.0, 30.0, 26.0), (-10.0, 12.0, -20.0), night=True),
+        View("night-from-the-square", (-6.0, 2.6, 26.0), (-14.0, 18.0, -22.0), night=True),
+        View("night-from-the-air", (8.0, 28.0, 6.0), (-14.0, 12.0, -24.0), night=True),
         *_common_views(30.0),
     ),
-    orbit_centre=(-8.0, 14.0, -20.0),
-    orbit_radius=56.0,
-    orbit_height=30.0,
+    orbit_centre=(-8.0, 12.0, -24.0),
+    orbit_radius=46.0,
+    orbit_height=24.0,
 )
 
 ALL = (CONCEPT_A, CONCEPT_B, CONCEPT_C)
