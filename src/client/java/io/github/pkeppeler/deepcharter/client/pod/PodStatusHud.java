@@ -15,8 +15,10 @@ import net.minecraft.resources.Identifier;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
+import io.github.pkeppeler.deepcharter.pod.HardLanding;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodSeat;
+import io.github.pkeppeler.deepcharter.pod.PodStats;
 
 /** Plain text readout of the ridden pod; its margin, spacing and colour are the HUD theme's. */
 public final class PodStatusHud {
@@ -50,6 +52,13 @@ public final class PodStatusHud {
 		return pod.hullBurning() ? Optional.of(Component.translatable("hud.deepcharter.pod.burning")) : Optional.empty();
 	}
 
+	/** The warning line shown, in its own colour, while the pod sinks faster than it can land without damage. */
+	public static Optional<Component> hardLandingLine(PodEntity pod) {
+		// The pod is moved by the server: the client reads its speed from where it was last tick.
+		double sinkSpeed = HardLanding.sinkSpeed(pod.getY() - pod.yo);
+		return HardLanding.isHard(PodStats.of(pod), sinkSpeed) ? Optional.of(Component.translatable("hud.deepcharter.pod.hard_landing")) : Optional.empty();
+	}
+
 	private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
 		Minecraft client = Minecraft.getInstance();
 		if (client.player == null || !(client.player.getVehicle() instanceof PodEntity pod) || !PodSeat.showsPodStatus(pod, client.player)) {
@@ -62,7 +71,12 @@ public final class PodStatusHud {
 			graphics.text(font, line, look.podStatusMargin(), y, look.podStatusColor());
 			y += font.lineHeight + look.podStatusLineGap();
 		}
-		int burningY = y;
-		burningLine(pod).ifPresent(line -> graphics.text(font, line, look.podStatusMargin(), burningY, look.podBurningColor()));
+		for (Component line : burningLine(pod).stream().toList()) {
+			graphics.text(font, line, look.podStatusMargin(), y, look.podBurningColor());
+			y += font.lineHeight + look.podStatusLineGap();
+		}
+		for (Component line : hardLandingLine(pod).stream().toList()) {
+			graphics.text(font, line, look.podStatusMargin(), y, look.podHardLandingColor());
+		}
 	}
 }
