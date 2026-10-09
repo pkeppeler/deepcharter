@@ -62,6 +62,19 @@ public class TextureLayersScenario extends EvidenceScenario {
 	@Override
 	protected void run(ClientGameTestContext context) {
 		ctx = context;
+		try {
+			shoot(context);
+		} finally {
+			// The HUD is hidden for the stills; a full-suite run goes on to tests that draw on it.
+			context.runOnClient(client -> {
+				if (client.gui.hud.isHidden()) {
+					client.gui.hud.toggle();
+				}
+			});
+		}
+	}
+
+	private void shoot(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			sp = singleplayer;
 			context.waitTicks(40);

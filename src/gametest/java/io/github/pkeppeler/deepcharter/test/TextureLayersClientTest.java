@@ -59,6 +59,19 @@ public class TextureLayersClientTest implements FabricClientGameTest {
 	@Override
 	public void runTest(ClientGameTestContext context) {
 		ClientTestLog.start(this);
+		try {
+			measureGlow(context);
+		} finally {
+			// The HUD is hidden for the screenshots. Every client test shares one client, and a later one draws on the HUD.
+			context.runOnClient(client -> {
+				if (client.gui.hud.isHidden()) {
+					client.gui.hud.toggle();
+				}
+			});
+		}
+	}
+
+	private static void measureGlow(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			ClientWait.until(context, "the player in the world", client -> client.player != null && client.level != null);
 			BlockPos floor = singleplayer.getServer().computeOnServer(server -> player(server).blockPosition().above(30));
