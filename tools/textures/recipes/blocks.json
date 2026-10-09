@@ -1,0 +1,200 @@
+{
+  "templates": {
+    "surface_ground": {
+      "params": ["ground", "grains", "pebbles", "seed", "count"],
+      "recipe": {
+        "kind": "opaque",
+        "layers": [
+          {"op": "noise", "ramp": "$ground", "seed": "$seed", "cell": 8, "octaves": 3, "dither": 0.9},
+          {"op": "speckle", "colours": "$grains", "density": 0.08, "seed": "$seed"},
+          {"op": "ore", "seed": "$seed", "count": "$count", "shapes": ["chip", "fleck", "pebble"], "ramp": "$pebbles"}
+        ]
+      }
+    },
+    "surface_beds": {
+      "params": ["beds", "grains", "crack", "lip", "seed", "cracks"],
+      "recipe": {
+        "kind": "opaque",
+        "layers": [
+          {"op": "strata", "seed": "$seed", "wobble": 1, "beds": "$beds"},
+          {"op": "speckle", "colours": "$grains", "density": 0.3, "seed": "$seed"},
+          {"op": "cracks", "colour": "$crack", "lip": "$lip", "seed": "$seed", "count": "$cracks", "length": 5}
+        ]
+      }
+    }
+  },
+  "recipes": {
+    "block/regolith_0": {"template": "surface_ground", "args": {"ground": ["regolith.3", "regolith.4", "regolith.4", "regolith.4", "regolith.5"], "grains": ["dust.2", "regolith.3", "regolith.5"], "pebbles": ["regolith.2", "regolith.3", "regolith.4", "regolith.5", "dust.3"], "seed": 601, "count": 3}},
+    "block/regolith_1": {"template": "surface_ground", "args": {"ground": ["regolith.3", "regolith.4", "regolith.4", "regolith.4", "regolith.5"], "grains": ["dust.2", "regolith.3", "regolith.5"], "pebbles": ["regolith.2", "regolith.3", "regolith.4", "regolith.5", "dust.3"], "seed": 602, "count": 2}},
+    "block/regolith_2": {"template": "surface_ground", "args": {"ground": ["regolith.3", "regolith.4", "regolith.4", "regolith.4", "regolith.5"], "grains": ["dust.2", "regolith.3", "regolith.5"], "pebbles": ["regolith.2", "regolith.3", "regolith.4", "regolith.5", "dust.3"], "seed": 603, "count": 4}},
+    "block/regolith_3": {"template": "surface_ground", "args": {"ground": ["regolith.3", "regolith.4", "regolith.4", "regolith.4", "regolith.5"], "grains": ["dust.2", "regolith.3", "regolith.5"], "pebbles": ["regolith.2", "regolith.3", "regolith.4", "regolith.5", "dust.3"], "seed": 604, "count": 1}},
+    "block/ochre_regolith_0": {"template": "surface_ground", "args": {"ground": ["ochre.2", "ochre.3", "ochre.3", "ochre.4"], "grains": ["ochre.5", "ochre.1", "dust.3"], "pebbles": ["ochre.1", "ochre.2", "ochre.3", "ochre.4", "ochre.6"], "seed": 621, "count": 3}},
+    "block/ochre_regolith_1": {"template": "surface_ground", "args": {"ground": ["ochre.2", "ochre.3", "ochre.3", "ochre.4"], "grains": ["ochre.5", "ochre.1", "dust.3"], "pebbles": ["ochre.1", "ochre.2", "ochre.3", "ochre.4", "ochre.6"], "seed": 622, "count": 2}},
+    "block/ochre_regolith_2": {"template": "surface_ground", "args": {"ground": ["ochre.2", "ochre.3", "ochre.3", "ochre.4"], "grains": ["ochre.5", "ochre.1", "dust.3"], "pebbles": ["ochre.1", "ochre.2", "ochre.3", "ochre.4", "ochre.6"], "seed": 623, "count": 4}},
+    "block/basalt_outcrop_0": {"template": "surface_ground", "args": {"ground": ["basalt.1", "basalt.2", "basalt.2", "basalt.3"], "grains": ["basalt.0", "basalt.4", "basalt.0"], "pebbles": ["basalt.0", "basalt.1", "basalt.3", "basalt.4", "basalt.5"], "seed": 641, "count": 2}},
+    "block/basalt_outcrop_1": {"template": "surface_ground", "args": {"ground": ["basalt.1", "basalt.2", "basalt.2", "basalt.3"], "grains": ["basalt.0", "basalt.4", "basalt.0"], "pebbles": ["basalt.0", "basalt.1", "basalt.3", "basalt.4", "basalt.5"], "seed": 642, "count": 3}},
+    "block/basalt_outcrop_2": {"template": "surface_ground", "args": {"ground": ["basalt.1", "basalt.2", "basalt.2", "basalt.3"], "grains": ["basalt.0", "basalt.4", "basalt.0"], "pebbles": ["basalt.0", "basalt.1", "basalt.3", "basalt.4", "basalt.5"], "seed": 643, "count": 1}},
+    "block/regolith_packed_0": {"template": "surface_beds", "args": {"beds": [["regolith.3", 3], ["regolith.2", 2], ["regolith.3", 3], ["regolith.4", 2], ["regolith.3", 4], ["regolith.2", 2]], "grains": ["regolith.2", "regolith.3", "regolith.4"], "crack": "regolith.1", "lip": "regolith.4", "seed": 661, "cracks": 1}},
+    "block/regolith_packed_1": {"template": "surface_beds", "args": {"beds": [["regolith.2", 2], ["regolith.3", 3], ["regolith.4", 2], ["regolith.3", 4], ["regolith.2", 2], ["regolith.3", 3]], "grains": ["regolith.2", "regolith.3", "regolith.4"], "crack": "regolith.1", "lip": "regolith.4", "seed": 662, "cracks": 1}},
+    "block/regolith_rock_0": {"template": "surface_beds", "args": {"beds": [["regolith.2", 3], ["regolith.1", 2], ["regolith.2", 4], ["regolith.3", 2], ["regolith.2", 3], ["regolith.1", 2]], "grains": ["regolith.1", "regolith.2", "regolith.3"], "crack": "regolith.0", "lip": "regolith.3", "seed": 681, "cracks": 2}},
+    "block/regolith_rock_1": {"template": "surface_beds", "args": {"beds": [["regolith.2", 4], ["regolith.3", 2], ["regolith.2", 3], ["regolith.1", 2], ["regolith.2", 3], ["regolith.1", 2]], "grains": ["regolith.1", "regolith.2", "regolith.3"], "crack": "regolith.0", "lip": "regolith.3", "seed": 682, "cracks": 2}},
+
+    "block/slag_brick": {"kind": "opaque", "layers": [{"op": "noise", "ramp": ["basalt.1", "basalt.2", "basalt.3", "iron.2", "basalt.3", "basalt.4"], "seed": 701, "cell": 4, "octaves": 2, "dither": 0.8}, {"op": "speckle", "colours": ["basalt.0"], "density": 0.07, "seed": 702}, {"op": "speckle", "colours": ["rust.3", "rust.2", "steel.4"], "density": 0.04, "seed": 703}, {"op": "pixels", "legend": {"m": "crust.3", "h": "basalt.5", "s": "basalt.0"}, "rows": ["hhhhhhhmhhhhhhhm", ".......m.......m", "s.s....m...s...m", "mmmmmmmmmmmmmmmm", "hhhmhhhhhhhmhhhh", "...m.......m....", "..sm...s...m.s..", "mmmmmmmmmmmmmmmm", "hhhhhhhmhhhhhhhm", ".......m.......m", "...s...m.s.....m", "mmmmmmmmmmmmmmmm", "hhhmhhhhhhhmhhhh", "...m.......m....", ".s.m....s..m...s", "mmmmmmmmmmmmmmmm"]}]},
+
+    "block/terminal_side": {
+      "kind": "opaque",
+      "layers": [
+        {"op": "template", "name": "company_plate", "args": {"seed": 3}},
+        {"op": "bevel", "rect": [3, 3, 10, 10], "light": "steel.4", "dark": "steel.1", "inset": true},
+        {"op": "rect", "rect": [4, 4, 8, 8], "colour": "steel.2"},
+        {"op": "speckle", "colours": ["steel.1", "steel.3"], "density": 0.08, "seed": 5, "rect": [4, 4, 8, 8]},
+        {"op": "pixels", "at": [5, 5], "legend": {"e": "enamel.2", "E": "enamel.3", "r": "company.2", "s": "enamel.0"}, "rows": [
+          "EEEEee", "errrre", "eeeees", ".sssss"]},
+        {"op": "pixels", "at": [6, 10], "legend": {"v": "steel.0", "l": "steel.3"}, "rows": ["vvvv", "llll"]},
+        {"op": "rivets", "at": [[1, 1], [7, 1], [13, 1], [1, 7], [13, 7], [1, 13], [13, 13]], "ramp": ["steel.1", "steel.4", "steel.6"]}
+      ]
+    },
+    "block/terminal_top": {
+      "kind": "opaque",
+      "layers": [
+        {"op": "template", "name": "company_plate", "args": {"seed": 4}},
+        {"op": "pixels", "at": [3, 3], "legend": {"v": "steel.0", "l": "steel.4"},
+          "rows": ["vvvvvvvvvv", "llllllllll", "", "vvvvvvvvvv", "llllllllll", "", "vvvvvvvvvv", "llllllllll", "", "vvvvvvvvvv"]},
+        {"op": "rivets", "at": [[1, 1], [13, 1], [1, 13], [13, 13]], "ramp": ["steel.1", "steel.4", "steel.6"], "rust": "rust.2"}
+      ]
+    },
+    "block/terminal_standby_glow": {
+      "kind": "cutout",
+      "glow": {"over": null},
+      "layers": [
+        {"op": "pixels", "at": [4, 10], "legend": {"r": "signal.3", "o": "signal.4"}, "rows": ["or"]}
+      ]
+    },
+    "block/fuel_pump_front": {"template": "terminal_front", "args": {"seed": 11, "glyph": [
+      "...##...", "..#o##..", ".#o####.", ".######.", ".######.", "..####.."]}},
+    "block/fuel_pump_front_glow": {"template": "terminal_glow", "args": {"over": "block/fuel_pump_front", "glyph": [
+      "...##...", "..#o##..", ".#o####.", ".######.", ".######.", "..####.."]}},
+    "block/ore_processor_front": {"template": "terminal_front", "args": {"seed": 12, "glyph": [
+      "..#..#..", ".#o####.", "###..###", "###..###", ".######.", "..#..#.."]}},
+    "block/ore_processor_front_glow": {"template": "terminal_glow", "args": {"over": "block/ore_processor_front", "glyph": [
+      "..#..#..", ".#o####.", "###..###", "###..###", ".######.", "..#..#.."]}},
+    "block/upgrade_terminal_front": {"template": "terminal_front", "args": {"seed": 13, "glyph": [
+      "...oo...", "..####..", ".######.", "##.##.##", "...##...", "...##..."]}},
+    "block/upgrade_terminal_front_glow": {"template": "terminal_glow", "args": {"over": "block/upgrade_terminal_front", "glyph": [
+      "...oo...", "..####..", ".######.", "##.##.##", "...##...", "...##..."]}},
+    "block/repair_station_front": {"template": "terminal_front", "args": {"seed": 14, "glyph": [
+      "...##...", "...o#...", ".######.", ".######.", "...##...", "...##..."]}},
+    "block/repair_station_front_glow": {"template": "terminal_glow", "args": {"over": "block/repair_station_front", "glyph": [
+      "...##...", "...o#...", ".######.", ".######.", "...##...", "...##..."]}},
+    "block/contract_terminal_front": {"template": "terminal_front", "args": {"seed": 15, "glyph": [
+      "........", "..#..#..", "..o..o..", "........", ".#....#.", "..####.."]}},
+    "block/contract_terminal_front_glow": {"template": "terminal_glow", "args": {"over": "block/contract_terminal_front", "glyph": [
+      "........", "..#..#..", "..o..o..", "........", ".#....#.", "..####.."]}},
+    "block/hangar_console_front": {"template": "terminal_front", "args": {"seed": 16, "glyph": [
+      ".####...", "#.oo.#..", "#.oo.###", "#....##o", ".#####..", "..#..#.."]}},
+    "block/hangar_console_front_glow": {"template": "terminal_glow", "args": {"over": "block/hangar_console_front", "glyph": [
+      ".####...", "#.oo.#..", "#.oo.###", "#....##o", ".#####..", "..#..#.."]}},
+
+    "block/ironium_ore": {"template": "ore_block", "args": {"mineral": "ironium", "seed": 101, "count": 7, "shapes": ["chunk", "pebble", "pebble", "chip"]}},
+    "block/bronzium_ore": {"template": "ore_block", "args": {"mineral": "bronzium", "seed": 102, "count": 5, "shapes": ["knot", "nugget", "pebble"]}},
+    "block/silverium_ore": {"template": "ore_block", "args": {"mineral": "silverium", "seed": 103, "count": 6, "shapes": ["vein", "vein", "seam", "fleck"]}},
+    "block/goldium_ore": {"template": "ore_block", "args": {"mineral": "goldium", "seed": 104, "count": 3, "shapes": ["nugget", "nugget", "knot"]}},
+    "block/platinium_ore": {"template": "ore_block", "args": {"mineral": "platinium", "seed": 105, "count": 5, "shapes": ["chunk", "pebble", "chip"]}},
+    "block/einsteinium_ore": {"template": "ore_block", "args": {"mineral": "einsteinium", "seed": 106, "count": 4, "shapes": ["shard", "shard", "chip"]}},
+    "block/cicatrium_ore": {"template": "ore_block", "args": {"mineral": "cicatrium", "seed": 107, "count": 3, "shapes": ["vein", "vein", "seam"]}},
+
+    "block/breach_crust": {
+      "kind": "opaque",
+      "layers": [
+        {"op": "strata", "seed": 201, "wobble": 2, "beds": [
+          ["crust.3", 3], ["crust.2", 2], ["crust.4", 2], ["crust.3", 3], ["crust.2", 2], ["crust.3", 2], ["crust.4", 2]]},
+        {"op": "speckle", "colours": ["crust.2", "crust.3", "crust.4"], "density": 0.3, "seed": 202},
+        {"op": "cracks", "colour": "crust.1", "lip": "crust.4", "seed": 203, "count": 2, "length": 6},
+        {"op": "speckle", "colours": ["regolith.3", "crust.1"], "density": 0.03, "seed": 204}
+      ]
+    },
+    "block/company_rock": {
+      "kind": "opaque",
+      "layers": [
+        {"op": "noise", "ramp": ["steel.1", "steel.1", "steel.2"], "seed": 301, "cell": 8, "octaves": 2, "dither": 0.8},
+        {"op": "speckle", "colours": ["steel.0", "steel.3"], "density": 0.06, "seed": 302},
+        {"op": "bevel", "rect": [0, 0, 16, 16], "light": "steel.3", "dark": "void"},
+        {"op": "rect", "rect": [0, 6, 16, 4], "colour": "brass.2"},
+        {"op": "rect", "rect": [0, 6, 16, 1], "colour": "brass.4"},
+        {"op": "rect", "rect": [0, 9, 16, 1], "colour": "brass.1"},
+        {"op": "speckle", "colours": ["brass.3", "brass.1", "rust.2"], "density": 0.2, "seed": 303, "rect": [0, 7, 16, 2]},
+        {"op": "rivets", "at": [[2, 2], [12, 2], [2, 12], [12, 12]], "ramp": ["steel.0", "steel.3", "steel.5"], "rust": "rust.1"},
+        {"op": "grime", "colours": ["rust.1", "dust.0"], "density": 0.3, "seed": 304, "rect": [1, 11, 14, 4]}
+      ]
+    },
+    "block/conduit": {"template": "conduit_tile", "args": {"edges": "tblr", "corners": ""}},
+    "block/conduit_horizontal": {"template": "conduit_tile", "args": {"edges": "tb", "corners": ""}},
+    "block/conduit_vertical": {"template": "conduit_tile", "args": {"edges": "lr", "corners": ""}},
+    "block/conduit_corner": {"template": "conduit_tile", "args": {"edges": "", "corners": "tl tr bl br"}},
+    "block/conduit_centre": {"template": "conduit_tile", "args": {"edges": "", "corners": ""}},
+    "block/note": {
+      "kind": "opaque",
+      "layers": [
+        {"op": "fill", "colour": "paper.2"},
+        {"op": "noise", "ramp": ["paper.3", "paper.3", "paper.4"], "seed": 401, "cell": 4, "octaves": 2, "dither": 0.6, "rect": [2, 2, 12, 12]},
+        {"op": "rect", "rect": [2, 2, 12, 12], "colour": "paper.1", "outline": true},
+        {"op": "pixels", "at": [3, 3], "legend": {"r": "company.2", "R": "company.3", "i": "ink.1", "f": "ink.2"}, "rows": [
+          "Rr.fff....",
+          "rr........",
+          "",
+          "iii.iiii.ii",
+          "",
+          "ii.iiiii.ii",
+          "",
+          "iiiii.ii.i",
+          "",
+          "iii......."]},
+        {"op": "speckle", "colours": ["paper.1", "dust.2"], "density": 0.06, "seed": 402, "rect": [2, 2, 12, 12]},
+        {"op": "fill", "colour": "paper.1", "rect": [0, 15, 16, 1]}
+      ]
+    },
+    "block/company_lamp_iron": {
+      "kind": "opaque",
+      "layers": [
+        {"op": "noise", "ramp": ["iron.1", "iron.2", "iron.3"], "seed": 501, "cell": 4, "octaves": 2, "dither": 0.8},
+        {"op": "speckle", "colours": ["iron.4", "rust.2"], "density": 0.08, "seed": 502}
+      ]
+    },
+    "block/company_lamp_cage": {
+      "kind": "cutout",
+      "layers": [
+        {"op": "pixels", "at": [4, 6], "legend": {"i": "iron.3", "h": "iron.5", "d": "iron.1"}, "rows": [
+          "hhhhhhhh",
+          "i......d",
+          "i......d",
+          "ihhhhhhd",
+          "i......d",
+          "i......d",
+          "i......d",
+          "dddddddd"]}
+      ]
+    },
+    "block/company_lamp_glass": {
+      "kind": "opaque",
+      "layers": [
+        {"op": "fill", "colour": "sodium.0"},
+        {"op": "pixels", "at": [5, 6], "legend": {"h": "sodium.1", "f": "iron.2", "d": "void"}, "rows": [
+          "dhhhhd", "h..f.d", "h.ff.d", "h.f..d", "h.ff.d", "h..f.d", "h....d", "dddddd"]}
+      ]
+    },
+    "block/company_lamp_lit": {
+      "kind": "opaque",
+      "glow": {"over": null},
+      "animation": {"frames": 16, "frametime": 2},
+      "layers": [
+        {"op": "fill", "colour": "sodium.3"},
+        {"op": "pixels", "at": [5, 6], "legend": {"a": "sodium.4", "b": "sodium.5", "w": "sodium.6", "d": "sodium.2"}, "rows": [
+          "daaaad", "abbwba", "abwwba", "abwbba", "abwwba", "abbwba", "aabbaa", "dddddd"]},
+        {"op": "frames", "on": [11], "layers": [
+          {"op": "replace", "from": "sodium.6", "to": "sodium.4"},
+          {"op": "replace", "from": "sodium.5", "to": "sodium.4"}
+        ]}
+      ]
+    }
+  }
+}

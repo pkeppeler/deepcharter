@@ -25,6 +25,7 @@ public final class TerminalSounds {
 	private static final Map<Identifier, DeepSound> ACTIONS = Map.ofEntries(
 			Map.entry(OreProcessor.SELL_CARGO, DeepSound.UI_SALE),
 			Map.entry(OreProcessor.SELL_INVENTORY, DeepSound.UI_SALE),
+			Map.entry(OreProcessor.FUSE_SPOIL, DeepSound.UI_PURCHASE),
 			Map.entry(FuelPump.BUY, DeepSound.UI_PURCHASE),
 			Map.entry(FuelPump.FILL, DeepSound.UI_PURCHASE),
 			Map.entry(UpgradeTerminal.BUY, DeepSound.UI_PURCHASE),

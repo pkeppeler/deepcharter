@@ -1,18 +1,33 @@
 {
   "variants": {
-    "facing=north": {
+    "active=false,facing=north": {
       "model": "deepcharter:block/fuel_pump"
     },
-    "facing=east": {
+    "active=true,facing=north": {
+      "model": "deepcharter:block/fuel_pump_active"
+    },
+    "active=false,facing=east": {
       "model": "deepcharter:block/fuel_pump",
       "y": 90
     },
-    "facing=south": {
+    "active=true,facing=east": {
+      "model": "deepcharter:block/fuel_pump_active",
+      "y": 90
+    },
+    "active=false,facing=south": {
       "model": "deepcharter:block/fuel_pump",
       "y": 180
     },
-    "facing=west": {
+    "active=true,facing=south": {
+      "model": "deepcharter:block/fuel_pump_active",
+      "y": 180
+    },
+    "active=false,facing=west": {
       "model": "deepcharter:block/fuel_pump",
+      "y": 270
+    },
+    "active=true,facing=west": {
+      "model": "deepcharter:block/fuel_pump_active",
       "y": 270
     }
   }

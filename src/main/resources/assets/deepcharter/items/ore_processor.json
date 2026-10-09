@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "deepcharter:block/ore_processor"
+    "model": "deepcharter:block/ore_processor_active"
   }
 }

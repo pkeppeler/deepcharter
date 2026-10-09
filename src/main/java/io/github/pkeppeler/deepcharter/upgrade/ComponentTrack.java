@@ -12,8 +12,8 @@ import net.minecraft.util.StringRepresentable;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 
 /**
- * The eight tracks of pod parts (SPEC section 7). Tier 0 of a track is the stock part every pod has, so a part item is
- * tier 1 or more. The scanner and lights have no stock part: their tier 0 is "none".
+ * The nine tracks of pod parts (SPEC section 7). Tier 0 of a track is the stock part every pod has, so a part item is
+ * tier 1 or more. The scanner, lights and spoil hopper have no stock part: their tier 0 is "none".
  */
 public enum ComponentTrack implements StringRepresentable {
 	DRILL("drill", 6),
@@ -23,7 +23,8 @@ public enum ComponentTrack implements StringRepresentable {
 	RADIATOR("radiator", 5),
 	CARGO_BAY("cargo_bay", 5),
 	SCANNER("scanner", 4),
-	LIGHTS("lights", 4);
+	LIGHTS("lights", 4),
+	SPOIL_HOPPER("spoil_hopper", 1);
 
 	public static final Codec<ComponentTrack> CODEC = StringRepresentable.fromEnum(ComponentTrack::values);
 	public static final StreamCodec<ByteBuf, ComponentTrack> STREAM_CODEC =

@@ -99,8 +99,7 @@ jobs:
         with:
           evidence-scenario: ${{ steps.resolve.outputs.scenario }}
           client-tests: ${{ steps.resolve.outputs.class }}
-      - name: Install ffmpeg
-        run: sudo apt-get install -y -q --no-install-recommends ffmpeg
+      - uses: ./.github/actions/install-ffmpeg
       # Reuses the Mac script's assembly (--no-run): MP4, GIF, GIF_MAX_BYTES. A GIF over
       # budget is retried smaller; if none fits, the script warns (::warning::) and exits 0 with the MP4. A
       # real failure (no frames, ffmpeg error) becomes a warning here: the stills are already on disk.
