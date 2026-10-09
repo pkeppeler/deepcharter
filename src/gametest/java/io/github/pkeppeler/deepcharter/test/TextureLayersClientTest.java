@@ -49,10 +49,10 @@ public class TextureLayersClientTest implements FabricClientGameTest {
 	private static final double FACE_HALF = 1 / 6.0;
 	/** A pixel of glow at full light is brighter than this in its own channel (green for the CRT, red for the standby light). */
 	private static final int GLOW = 120;
-	/** How many lit green pixels the CRT glyph makes at the default window size, at the least. */
-	private static final int LIT_PIXELS = 400;
-	/** How many lit red pixels the standby light makes, at the least. */
-	private static final int STANDBY_PIXELS = 12;
+	/** The share of the box the CRT glyph lights green, at the least: it lit 570 of 25,921 pixels (2.2%) at 854 x 480. */
+	private static final double LIT_SHARE = 0.01;
+	/** The share of the box the standby light lights red, at the least: it lit 120 pixels (0.46%) at 854 x 480. */
+	private static final double STANDBY_SHARE = 0.001;
 	/** The room's own darkness: no pixel outside the terminal is brighter than this. */
 	private static final int DARK = 60;
 
@@ -74,14 +74,14 @@ public class TextureLayersClientTest implements FabricClientGameTest {
 			place(context, singleplayer, terminal, ContractTerminal.TYPE.block().defaultBlockState());
 			Reading online = Reading.of(context.takeScreenshot("texture-layers-online-terminal"));
 			LOGGER.info("online terminal in the dark: {}", online);
-			require(online.green() >= LIT_PIXELS, "An online terminal's CRT glow should show bright green in the dark: " + online);
+			require(online.green() >= LIT_SHARE * online.box(), "An online terminal's CRT glow should show bright green in the dark: " + online);
 			require(online.brightestOutside() <= DARK, "The room should be dark round the terminal: " + online);
 
 			place(context, singleplayer, terminal, TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState());
 			Reading offline = Reading.of(context.takeScreenshot("texture-layers-offline-terminal"));
 			LOGGER.info("offline terminal in the dark: {}", offline);
-			require(offline.green() < LIT_PIXELS / 10, "An offline terminal should show no CRT glow: " + offline);
-			require(offline.red() >= STANDBY_PIXELS, "An offline terminal should show its red standby light: " + offline);
+			require(offline.green() < LIT_SHARE / 10 * offline.box(), "An offline terminal should show no CRT glow: " + offline);
+			require(offline.red() >= STANDBY_SHARE * offline.box(), "An offline terminal should show its red standby light: " + offline);
 		}
 	}
 
@@ -123,10 +123,10 @@ public class TextureLayersClientTest implements FabricClientGameTest {
 	}
 
 	/**
-	 * What a screenshot shows: in the box round the screen's middle (the terminal's face), how many pixels are lit green and how
-	 * many lit red, as only a glow layer can be in the dark; outside the box, the brightest channel of any pixel.
+	 * What a screenshot shows: in the box round the screen's middle (the terminal's face), of {@code box} pixels, how many are lit
+	 * green and how many lit red, as only a glow layer can be in the dark; outside the box, the brightest channel of any pixel.
 	 */
-	private record Reading(int green, int red, int brightestOutside) {
+	private record Reading(int box, int green, int red, int brightestOutside) {
 		static Reading of(Path screenshot) {
 			BufferedImage image;
 			try {
@@ -154,7 +154,7 @@ public class TextureLayersClientTest implements FabricClientGameTest {
 					}
 				}
 			}
-			return new Reading(green, red, brightestOutside);
+			return new Reading((2 * half + 1) * (2 * half + 1), green, red, brightestOutside);
 		}
 	}
 }

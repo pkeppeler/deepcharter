@@ -17,7 +17,7 @@ import io.github.pkeppeler.deepcharter.texture.TextureProperties;
 public final class CompanyLamp extends Block {
 	/** A lit lamp's block light. */
 	private static final int LIGHT = 15;
-	private static final VoxelShape SHAPE = Block.box(3, 0, 3, 13, 15, 13);
+	private static final VoxelShape SHAPE = Block.box(4, 0, 4, 12, 15, 12);
 
 	CompanyLamp(Properties properties) {
 		super(properties.lightLevel(state -> state.getValue(TextureProperties.ACTIVE) ? LIGHT : 0));
