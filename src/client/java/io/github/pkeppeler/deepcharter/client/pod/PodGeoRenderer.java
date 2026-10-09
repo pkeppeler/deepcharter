@@ -151,6 +151,28 @@ public class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimatable, 
 		return super.getBoundingBoxForCulling(pod, partialTick).minmax(modelExtent.move(pod.position()));
 	}
 
+	/** The share of the full drill spin that the cutter {@code appearance} shows turns at. */
+	private float spinScaleOf(Appearance appearance) {
+		return appearance.cutter() == null ? (float) geo.drillSpinScale() : spinScales.get(appearance.cutter());
+	}
+
+	/**
+	 * The degrees the drill of {@code pod} turns in one tick while it drills: two frames one tick apart, run through a new
+	 * {@link PodMotion} with the scale that {@link #addRenderData} gives it. It touches no frame of the pod's own animation, so it does
+	 * not depend on how often the game draws.
+	 */
+	public float drillSpinPerTick(PodEntity pod) {
+		PodMotion motion = new PodMotion();
+		float scale = spinScaleOf(appearanceOf(pod));
+		PodGeoRenderState before = new PodGeoRenderState();
+		PodGeoRenderState after = new PodGeoRenderState();
+		before.ageInTicks = 0f;
+		after.ageInTicks = 1f;
+		motion.advance(pod, before, pose.mountRestPitch(), scale);
+		motion.advance(pod, after, pose.mountRestPitch(), scale);
+		return after.drillSpin - before.drillSpin;
+	}
+
 	@Override
 	public PodGeoRenderState createRenderState(PodGeoAnimatable animatable, PodEntity pod) {
 		return new PodGeoRenderState();
@@ -160,8 +182,7 @@ public class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimatable, 
 	public void addRenderData(PodGeoAnimatable animatable, PodEntity pod, PodGeoRenderState state, float partialTick) {
 		Appearance appearance = appearanceOf(pod);
 		state.appearance = appearance;
-		float spin = appearance.cutter() == null ? (float) geo.drillSpinScale() : spinScales.get(appearance.cutter());
-		motions.computeIfAbsent(pod, ignored -> new PodMotion()).advance(pod, state, pose.mountRestPitch(), spin);
+		motions.computeIfAbsent(pod, ignored -> new PodMotion()).advance(pod, state, pose.mountRestPitch(), spinScaleOf(appearance));
 		// The pod turns as its motion says (towards where it drives or drills), not as its entity yaw does.
 		state.addGeckolibData(DataTickets.ENTITY_BODY_YAW, state.heading);
 	}

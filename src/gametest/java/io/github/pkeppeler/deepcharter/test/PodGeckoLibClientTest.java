@@ -28,7 +28,6 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.pod.GeoModel;
-import io.github.pkeppeler.deepcharter.client.pod.PodGeoRenderState;
 import io.github.pkeppeler.deepcharter.client.pod.PodGeoRenderer;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -207,27 +206,20 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
 	}
 
 	/**
-	 * How far the pod's drill turns in a degree-per-tick, read from two render states a few ticks apart while the pod drills. The
-	 * client's copy of the pod is set drilling and set back, as the server does not know.
+	 * The degrees the pod's drill turns in one tick, from the renderer's own motion fed two frames exactly one tick apart. The
+	 * client's copy of the pod is set drilling and set back, as the server does not know. No game frame is sampled, so the rate does
+	 * not depend on frame pacing.
 	 */
 	private static double spinRate(ClientGameTestContext context, int id) {
-		float[] first = new float[2];
-		context.runOnClient(client -> {
+		return context.computeOnClient(client -> {
 			PodEntity pod = pod(client, id);
 			pod.setDrilling(true);
-			PodGeoRenderState state = renderer(client, id).createRenderState(pod, 0f);
-			first[0] = state.drillSpin;
-			first[1] = state.ageInTicks;
+			try {
+				return (double) renderer(client, id).drillSpinPerTick(pod);
+			} finally {
+				pod.setDrilling(false);
+			}
 		});
-		context.waitTicks(3); // tick-wait: three ticks of drilling between the two states
-		double[] rate = new double[1];
-		context.runOnClient(client -> {
-			PodEntity pod = pod(client, id);
-			PodGeoRenderState state = renderer(client, id).createRenderState(pod, 0f);
-			rate[0] = (state.drillSpin - first[0]) / (state.ageInTicks - first[1]);
-			pod.setDrilling(false);
-		});
-		return rate[0];
 	}
 
 	private static void cutterIs(ClientGameTestContext context, int id, String cutter) {
