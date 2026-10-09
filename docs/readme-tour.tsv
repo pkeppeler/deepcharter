@@ -1,8 +1,4 @@
-# README tour media. Columns, separated by one tab:
-#   media name   file under pr-media/readme/ (.gif or .png), the name the README links
-#   scenario     an EvidenceScenario name(), recorded with tools/record-evidence.sh
-#   output       "gif" for the scenario's GIF, or the name of one of its stills (without .png)
-# Refresh with tools/readme-tour.sh. See docs/tooling/readme-tour.md.
+# README tour media: media name, scenario, output (tab-separated). Columns and refresh: docs/tooling/readme-tour.md.
 hero.gif	m2-towing	gif
 colony-hangar.png	design-tour	hangar-from-the-square
 pod-flying.png	pod-drive	pod-flying
