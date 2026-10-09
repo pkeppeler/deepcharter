@@ -71,6 +71,41 @@ check "first PR's files survive a second PR" "$(if [[ $survivors -eq 4 ]]; then 
 commits=$("$real_git" -C "$bare" rev-list --count pr-media)
 check "history is linear with one commit per publish" "$(if [[ $commits -eq 4 ]]; then echo 0; else echo 1; fi)"
 
+# --- the readme folder: stable names, replaced by name, other folders kept ---
+make_remote
+run readme "$work/files/a.gif" "$work/files/s.png"
+check "readme folder publishes" $?
+check "readme files land under readme/" "$(tree | grep -q '^readme/a.gif:'; echo $?)" # pipe-grep-q: fail-closed — a missed match yields nonzero, which fails the check
+check "readme snippet links the stable path" "$(grep -qF '![a](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/a.gif?raw=true)' "$work/out"; echo $?)"
+echo gif-three >"$work/files/a.gif"
+run readme "$work/files/a.gif"
+check "readme re-publish succeeds" $?
+replaced=$(tree | grep '^readme/a.gif:')
+check "readme file is replaced by name" "$(if [[ $replaced == "readme/a.gif:$(blob_of gif-three)" ]]; then echo 0; else echo 1; fi)"
+check "readme keeps the file it did not replace" "$(tree | grep -q '^readme/s.png:'; echo $?)" # pipe-grep-q: fail-closed — a missed match yields nonzero, which fails the check
+check "readme publish keeps PR 1's folder" "$(tree | grep -q '^1/old.png:'; echo $?)" # pipe-grep-q: fail-closed — a missed match yields nonzero, which fails the check
+subject=$("$real_git" -C "$bare" log -1 --format=%s pr-media)
+check "readme commit message names the tour" "$(if [[ $subject == "Update README tour media" ]]; then echo 0; else echo 1; fi)"
+for bad in README -readme a/b/c /x x/ 'x y' a/../b ./a; do
+  if run "$bad" "$work/files/a.gif"; then check "folder '$bad' is rejected" 1; else check "folder '$bad' is rejected" 0; fi
+done
+
+# --- a nested folder: its siblings, the top folder's other entries and the other folders survive ---
+make_remote
+run looks/dusk-company "$work/files/a.gif" "$work/files/s.png"
+check "nested folder publishes" $?
+run looks/other "$work/files/b.mp4"
+check "second nested folder publishes" $?
+echo gif-four >"$work/files/a.gif"
+run looks/dusk-company "$work/files/a.gif"
+check "nested re-publish succeeds" $?
+replaced=$(tree | grep '^looks/dusk-company/a.gif:')
+check "nested file is replaced by name" "$(if [[ $replaced == "looks/dusk-company/a.gif:$(blob_of gif-four)" ]]; then echo 0; else echo 1; fi)"
+check "nested folder keeps the file it did not replace" "$(tree | grep -q '^looks/dusk-company/s.png:'; echo $?)" # pipe-grep-q: fail-closed — a missed match yields nonzero, which fails the check
+check "sibling nested folder survives" "$(tree | grep -q '^looks/other/b.mp4:'; echo $?)" # pipe-grep-q: fail-closed — a missed match yields nonzero, which fails the check
+check "PR 1's folder survives a nested publish" "$(tree | grep -q '^1/old.png:'; echo $?)" # pipe-grep-q: fail-closed — a missed match yields nonzero, which fails the check
+check "nested snippet links the nested path" "$(grep -qF 'pr-media/looks/dusk-company/a.gif?raw=true' "$work/out"; echo $?)"
+
 # --- run from a subdirectory: other PRs' folders survive ---
 make_remote
 mkdir -p "$work/clone/build/evidence/demo"
@@ -113,6 +148,15 @@ guarded '^$' 1 "$work/files/a.gif"
 check "guard allows a replace-and-add publish" $?
 check "guard-clean publish keeps the old file" "$(tree | grep -q '^1/old.png:'; echo $?)" # pipe-grep-q: fail-closed — a missed match yields nonzero, which fails the check
 
+# The guard for a nested folder: the top folder must keep its other entries.
+make_remote
+run looks/dusk-company "$work/files/a.gif"
+run looks/other "$work/files/b.mp4"
+before=$(tree)
+if guarded $'\tother$' looks/dusk-company "$work/files/s.png"; then check "top folder that loses a sibling is refused" 1; else check "top folder that loses a sibling is refused" 0; fi
+check "top folder guard names the problem" "$(grep -q 'looks/ would lose entries' "$work/err"; echo $?)"
+check "top folder guard leaves pr-media alone" "$(if [[ $(tree) == "$before" ]]; then echo 0; else echo 1; fi)"
+
 # --- subdirectory run into an EXISTING PR folder, with relative input paths ---
 make_remote
 mkdir -p "$work/clone/build/evidence/demo"
@@ -141,7 +185,7 @@ rejects() { # rejects <description> <args...>
   if run "$@"; then check "$desc is rejected" 1; else check "$desc is rejected" 0; fi
   check "$desc leaves pr-media alone" "$(if [[ $(tree) == "$before" ]]; then echo 0; else echo 1; fi)"
 }
-rejects "non-numeric PR number" abc "$work/files/a.gif"
+rejects "uppercase folder" ABC "$work/files/a.gif"
 rejects "missing file" 9 "$work/files/none.gif"
 mkdir "$work/files/sub"
 echo other >"$work/files/sub/a.gif"
