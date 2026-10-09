@@ -65,9 +65,9 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
  */
 public class LookMotionScenario extends EvidenceScenario {
 	private static final double EYE = 1.62;
-	/** Gameplay ticks the sky clip steps through: dusk, the fall to night, night, and the rise back (the skin timelines' keyframes). */
-	private static final long[] SKY_TICKS = skyTicks();
-	private static final int SKY_TICKS_PER_FRAME = 3;
+	/** The sky clip steps the sky clock once round its 288000-tick period, from the brightest dusk through the night and back. */
+	private static final long SKY_PERIOD = 288_000;
+	private static final int SKY_FRAMES = 40;
 	private static final int DRILL_FRAMES = 40;
 	private static final int DRILL_TICKS_PER_FRAME = 12;
 	private static final int LAVA_FRAMES = 24;
@@ -153,24 +153,25 @@ public class LookMotionScenario extends EvidenceScenario {
 		BlockPos statue = serverGet(server -> Colony.anchor(server, ColonyAnchor.STATUE).orElseThrow(() -> new AssertionError("no colony")));
 		Vec3 foot = Vec3.atBottomCenterOf(statue);
 		look(0, foot.add(34, 9, 34), foot.add(-30, 22, -30));
+		DesignTourScenario.setSkyPhase(ctx, sp.getServer(), DesignTourScenario.SKY_BRIGHTEST);
 		awaitRendered("sky-cycle");
-		for (int i = 0; i < SKY_TICKS.length; i++) {
-			long ticks = SKY_TICKS[i];
-			serverDo(server -> command(server, "time set " + ticks));
-			ctx.waitTicks(SKY_TICKS_PER_FRAME);
+		for (int i = 0; i < SKY_FRAMES; i++) {
+			DesignTourScenario.setSkyPhase(ctx, sp.getServer(), SKY_PERIOD * i / SKY_FRAMES);
 			shot("sky-cycle", i);
 		}
-		serverDo(server -> command(server, "time set noon"));
+		DesignTourScenario.setSkyPhase(ctx, sp.getServer(), DesignTourScenario.SKY_BRIGHTEST);
 	}
 
-	/** The still {@code look-colony-at-night}: the square at gameplay night, from its south edge, by the colony's own light. */
+	/** The still {@code look-colony-at-night}: the square at night, from its south edge, by the colony's own light, as the tour's night. */
 	private void colonyAtNight() {
 		Vec3 foot = Vec3.atBottomCenterOf(serverGet(server -> Colony.anchor(server, ColonyAnchor.STATUE).orElseThrow()));
 		serverDo(server -> command(server, "time set 18000"));
+		DesignTourScenario.setSkyPhase(ctx, sp.getServer(), DesignTourScenario.SKY_DARKEST);
 		look(0, foot.add(0, 5, 24), foot.add(0, 3, 0));
 		awaitRendered("look-colony-at-night");
 		screenshot(ctx, "look-colony-at-night");
 		serverDo(server -> command(server, "time set noon"));
+		DesignTourScenario.setSkyPhase(ctx, sp.getServer(), DesignTourScenario.SKY_BRIGHTEST);
 	}
 
 	/**
@@ -308,17 +309,6 @@ public class LookMotionScenario extends EvidenceScenario {
 			throw new AssertionError("no rock within " + WALL_REACH + " blocks of the cave cell at " + eye + " in " + level.dimension().identifier());
 		}
 		return best;
-	}
-
-	private static long[] skyTicks() {
-		List<Long> ticks = new ArrayList<>();
-		for (long t = 9000; t <= 15000; t += 300) {
-			ticks.add(t);
-		}
-		for (long t = 21000; t <= 27000; t += 300) {
-			ticks.add(t % 24000);
-		}
-		return ticks.stream().mapToLong(Long::longValue).toArray();
 	}
 
 	/** One frame of a clip: the still {@code clip-<clip>-NNN} and a frame of the run's MP4. */

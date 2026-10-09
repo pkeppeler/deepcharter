@@ -21,7 +21,6 @@
     "night": {"sky": "#2A1A2A", "fog": "#3A2A30", "glow": "#00000000", "light": "#8A7AA0", "light_factor": 0.35, "stars": 0.6,
               "fog_start": 20, "fog_end": 140, "tint": "#FFC880"},
     "sun_angle": 80,
-    "moon_angle": 250,
     "sun": {"core": "#FFFEF0", "rim": "#FFE8B0", "radius": 6}
   },
   "layers": {

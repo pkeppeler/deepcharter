@@ -1,0 +1,188 @@
+{
+  "clock": "deepcharter:sky",
+  "period_ticks": 288000,
+  "tracks": {
+    "minecraft:visual/sky_color": {
+      "ease": "in_out_sine",
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": "#4a2820"
+        },
+        {
+          "ticks": 144000,
+          "value": "#07050a"
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/fog_color": {
+      "ease": "in_out_sine",
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": "#a0603c"
+        },
+        {
+          "ticks": 144000,
+          "value": "#160c0a"
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/sunrise_sunset_color": {
+      "ease": "in_out_sine",
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": "#00000000"
+        },
+        {
+          "ticks": 144000,
+          "value": "#00000000"
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/sun_angle": {
+      "ease": "in_out_sine",
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": 80.0
+        },
+        {
+          "ticks": 144000,
+          "value": 115.0
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/moon_angle": {
+      "ease": "in_out_sine",
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": 250.0
+        },
+        {
+          "ticks": 144000,
+          "value": 320.0
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/star_brightness": {
+      "ease": "in_out_sine",
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": 0.22
+        },
+        {
+          "ticks": 144000,
+          "value": 1.0
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/cloud_color": {
+      "ease": "in_out_sine",
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": "#00000000"
+        },
+        {
+          "ticks": 144000,
+          "value": "#00000000"
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/sky_light_color": {
+      "ease": "in_out_sine",
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": "#f0a878"
+        },
+        {
+          "ticks": 144000,
+          "value": "#6a70b0"
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/sky_light_factor": {
+      "ease": "in_out_sine",
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": 0.62
+        },
+        {
+          "ticks": 144000,
+          "value": 0.16
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/fog_start_distance": {
+      "ease": "in_out_sine",
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": 20.0
+        },
+        {
+          "ticks": 144000,
+          "value": 8.0
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/fog_end_distance": {
+      "ease": "in_out_sine",
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": 150.0
+        },
+        {
+          "ticks": 144000,
+          "value": 72.0
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/ambient_particles": {
+      "ease": "in_out_sine",
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": [
+            {
+              "particle": {
+                "type": "deepcharter:dust_mote"
+              },
+              "probability": 0.05
+            }
+          ]
+        },
+        {
+          "ticks": 144000,
+          "value": [
+            {
+              "particle": {
+                "type": "deepcharter:dust_mote"
+              },
+              "probability": 0.02
+            }
+          ]
+        }
+      ],
+      "modifier": "override"
+    }
+  }
+}

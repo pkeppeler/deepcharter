@@ -34,7 +34,7 @@ An unknown option fails before anything runs and lists the skins. So does `--ski
 
 | Key | What it sets |
 |---|---|
-| `sky` | The surface timeline: sky, fog, sun glow, sky light, stars, fog distance and lamp tint at dusk and at night; the sun's angle; a small round sun texture |
+| `sky` | The sky timeline of [#239](https://github.com/pkeppeler/deepcharter/issues/239) (`deepcharter:sky`, on its own clock) at its dusk and its night: sky, fog, sun glow, sky light, stars, fog distance and lamp tint; the sun's dusk angle; a round sun texture. The mod's other tracks, the dust and the moon, stay |
 | `layers` | Per layer: ambient light and colour, fog distance, lamp tint (`block_light_tint`), and the fog colour of each zone |
 | `grade` | A colour grade per place (`surface`, `layer_1`, `layer_2`): shadows and highlights tint, saturation, contrast, vignette, green-to-olive, lift |
 | `ramps` | Dark-to-light colour stops that the 16x textures are remapped through: `rock` (layer rock and ores), `soil`, `flora` (grass and leaf colour maps), `masonry`, `wood`, `metal` (terminals, items, the cargo panel), `bronze` (the statue), `paper`, `hull`, `hull_prospector`, `wreck` (pod paint) |
@@ -59,7 +59,6 @@ The remapped vanilla textures (layer rock, terrain, colony materials) come from 
 
 After each art PR that changes a slot the skins only approximate today:
 
-- [#239](https://github.com/pkeppeler/deepcharter/issues/239), the sky: move the skins' timelines onto its sky clock, and make `look-motion`'s sky clip step that clock.
 - [#240](https://github.com/pkeppeler/deepcharter/issues/240), the surface generator: the surface views change shape.
 - [#242](https://github.com/pkeppeler/deepcharter/issues/242), the texture system: express each option's ramps as its palette files, in place of `tools/lookbook/skins.py`'s remap.
 - [#243](https://github.com/pkeppeler/deepcharter/issues/243), the pod models: the pod paint moves to the new textures.

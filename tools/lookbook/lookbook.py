@@ -39,8 +39,7 @@ COMPARE_FOLDER = "compare"
 AREAS = [("sky", "Sky"), ("surface", "Surface"), ("colony", "Colony"), ("layers", "Layers 1 and 2"), ("light", "Lamps and light"),
          ("pods", "Pods"), ("ui", "Terminals and handbook"), ("hud", "HUD and scanner"), ("grade", "Grade")]
 KNOWN_LIMITS = ("Phase 1 changes only what is data today. The surface keeps vanilla terrain shapes until "
-                "[#240](https://github.com/pkeppeler/deepcharter/issues/240) lands, the sky is a tryout-style timeline until "
-                "[#239](https://github.com/pkeppeler/deepcharter/issues/239), block and item textures are palette remaps of today's "
+                "[#240](https://github.com/pkeppeler/deepcharter/issues/240) lands, block and item textures are palette remaps of today's "
                 "16x set until [#242](https://github.com/pkeppeler/deepcharter/issues/242), and the pods keep today's models until "
                 "[#243](https://github.com/pkeppeler/deepcharter/issues/243). The grade per place is applied by the tour, standing in "
                 "for [#241](https://github.com/pkeppeler/deepcharter/issues/241). `tools/look-book.sh` re-shoots every look book after "

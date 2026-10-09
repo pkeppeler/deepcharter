@@ -23,12 +23,12 @@ public record PodTuning(Shell shell, Movement movement, Drill drill, Cargo cargo
 	 * @param maxClimbSpeed       the rotor cannot push the pod up faster than this
 	 * @param gravity             downward acceleration; entities default to none, so the pod brings its own
 	 * @param verticalDrag        per-tick factor on vertical speed, so a fall has a terminal speed
-	 * @param hardLandingDistance a fall of this many blocks or fewer does no damage
-	 * @param hullDamagePerBlock  hull damage for each block fallen beyond the threshold
+	 * @param hardLandingSpeed    sink speed at landing, in blocks per tick, up to which the pod takes no damage (HardLanding)
+	 * @param hullDamagePerSpeed  hull damage for each block per tick of landing speed beyond the threshold
 	 */
 	public record Movement(float horizontalSpeed, float enginePower, float thrustAcceleration, float maxClimbSpeed,
-			float gravity, float verticalDrag, float hardLandingDistance, float hullDamagePerBlock) {
-		public static final Movement DEFAULT = new Movement(0.2f, 100f, 0.16f, 0.35f, 0.08f, 0.98f, 4f, 5f);
+			float gravity, float verticalDrag, float hardLandingSpeed, float hullDamagePerSpeed) {
+		public static final Movement DEFAULT = new Movement(0.2f, 100f, 0.16f, 0.35f, 0.08f, 0.98f, 0.7f, 70f);
 	}
 
 	/**

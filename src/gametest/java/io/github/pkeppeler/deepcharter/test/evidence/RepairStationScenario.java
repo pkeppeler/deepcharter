@@ -56,7 +56,7 @@ public class RepairStationScenario extends EvidenceScenario {
 			ClientWait.until(context, "one dynamite carried", () -> singleplayer.getServer().computeOnServer(server -> carried(server, Consumable.DYNAMITE)) == 1,
 					() -> singleplayer.getServer().computeOnServer(server -> carried(server, Consumable.DYNAMITE)) + " dynamite");
 			hold(context);
-			RepairStationClientTest.clickRow(context, "BUY MATTER TRANSMITTER $1500");
+			RepairStationClientTest.clickRow(context, "BUY MATTER TRANSMITTER $1390");
 			ClientWait.until(context, "one matter transmitter carried", () -> singleplayer.getServer().computeOnServer(server -> carried(server, Consumable.MATTER_TRANSMITTER)) == 1,
 					() -> singleplayer.getServer().computeOnServer(server -> carried(server, Consumable.MATTER_TRANSMITTER)) + " matter transmitters");
 			hold(context);

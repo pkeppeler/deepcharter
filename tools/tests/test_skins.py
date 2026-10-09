@@ -3,6 +3,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lookbook"))
@@ -87,12 +88,35 @@ class CheckTest(unittest.TestCase):
         with self.assertRaisesRegex(SkinError, r"^x\.crt\.padding: expected a number"):
             Skin.theme_files({"crt": {"padding": "#000000"}}, "x")
 
-    def test_the_sun_sets_at_night(self):
-        phase = {key: 1 for key in ("light_factor", "stars", "fog_start", "fog_end")}
-        phase.update({key: "#000000" for key in ("sky", "fog", "glow", "light", "tint")})
-        timeline = Skin.sky_timeline({"dusk": phase, "night": phase, "sun_angle": 80, "moon_angle": 250}, "s")
-        self.assertEqual([(133, 80.0), (11867, 80.0), (13670, 180.0), (22330, 180.0)],
-                         [(k["ticks"], k["value"]) for k in timeline["tracks"]["minecraft:visual/sun_angle"]["keyframes"]])
+    def sky_from(self, mod_tracks, sky):
+        with tempfile.TemporaryDirectory() as tmp:
+            timeline = Path(tmp) / "sky.json"
+            timeline.write_text(json.dumps({"clock": "deepcharter:sky", "period_ticks": 288000, "tracks": mod_tracks}))
+            with mock.patch.object(skins, "SKY_TIMELINE", timeline):
+                return Skin.sky_timeline(sky, "s")
+
+    def test_the_skin_fills_the_mod_sky_at_dusk_and_night_and_keeps_its_other_tracks(self):
+        def track(ease, dusk, night):
+            return {"ease": ease, "keyframes": [{"ticks": 0, "value": dusk}, {"ticks": 144000, "value": night}], "modifier": "override"}
+
+        dusk = {"sky": "#AAAAAA", "fog": "#000000", "glow": "#00000000", "light": "#000000", "tint": "#FFB060",
+                "light_factor": 0.5, "stars": 0, "fog_start": 1, "fog_end": 2}
+        night = {**dusk, "sky": "#BBBBBB", "tint": "#FFA050"}
+        out = self.sky_from({"minecraft:visual/sun_angle": track("in_out_sine", 80.0, 115.0),
+                             "minecraft:visual/sky_color": track("linear", "#111111", "#222222"),
+                             "minecraft:visual/ambient_particles": track("in_out_sine", ["dust"], ["less dust"])},
+                            {"dusk": dusk, "night": night, "sun_angle": 70})
+        tracks = out["tracks"]
+        self.assertEqual(("deepcharter:sky", 288000), (out["clock"], out["period_ticks"]))
+        self.assertEqual(track("in_out_sine", 70.0, 115.0), tracks["minecraft:visual/sun_angle"])
+        self.assertEqual(track("linear", "#AAAAAA", "#BBBBBB"), tracks["minecraft:visual/sky_color"])
+        self.assertEqual(track("in_out_sine", "#FFB060", "#FFA050"), tracks["minecraft:visual/block_light_tint"])
+        self.assertEqual(track("in_out_sine", ["dust"], ["less dust"]), tracks["minecraft:visual/ambient_particles"])
+
+    def test_a_mod_sky_of_another_shape_is_refused(self):
+        sun = {"keyframes": [{"ticks": 0, "value": 80.0}, {"ticks": 100000, "value": 115.0}]}
+        with self.assertRaisesRegex(SkinError, r"minecraft:visual/sun_angle has keyframes at \[0, 100000\], not at dusk 0 and night 144000"):
+            self.sky_from({"minecraft:visual/sun_angle": sun}, {"sun_angle": 70})
 
     def test_a_skin_whose_id_is_not_its_folder_is_refused(self):
         with tempfile.TemporaryDirectory() as tmp:

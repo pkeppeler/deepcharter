@@ -1,0 +1,202 @@
+{
+  "clock": "deepcharter:sky",
+  "period_ticks": 288000,
+  "tracks": {
+    "minecraft:visual/ambient_particles": {
+      "ease": "in_out_sine",
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": [
+            {
+              "particle": {
+                "type": "deepcharter:dust_mote"
+              },
+              "probability": 0.05
+            }
+          ]
+        },
+        {
+          "ticks": 144000,
+          "value": [
+            {
+              "particle": {
+                "type": "deepcharter:dust_mote"
+              },
+              "probability": 0.02
+            }
+          ]
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/block_light_tint": {
+      "ease": "in_out_sine",
+      "modifier": "override",
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": "#FFB860"
+        },
+        {
+          "ticks": 144000,
+          "value": "#FFA850"
+        }
+      ]
+    },
+    "minecraft:visual/cloud_color": {
+      "ease": "in_out_sine",
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": "#00000000"
+        },
+        {
+          "ticks": 144000,
+          "value": "#00000000"
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/fog_color": {
+      "ease": "in_out_sine",
+      "modifier": "override",
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": "#9A5A38"
+        },
+        {
+          "ticks": 144000,
+          "value": "#2A1610"
+        }
+      ]
+    },
+    "minecraft:visual/fog_end_distance": {
+      "ease": "in_out_sine",
+      "modifier": "override",
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": 160.0
+        },
+        {
+          "ticks": 144000,
+          "value": 96.0
+        }
+      ]
+    },
+    "minecraft:visual/fog_start_distance": {
+      "ease": "in_out_sine",
+      "modifier": "override",
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": 24.0
+        },
+        {
+          "ticks": 144000,
+          "value": 12.0
+        }
+      ]
+    },
+    "minecraft:visual/moon_angle": {
+      "ease": "in_out_sine",
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": 250.0
+        },
+        {
+          "ticks": 144000,
+          "value": 320.0
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/sky_color": {
+      "ease": "in_out_sine",
+      "modifier": "override",
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": "#4A2620"
+        },
+        {
+          "ticks": 144000,
+          "value": "#120A0C"
+        }
+      ]
+    },
+    "minecraft:visual/sky_light_color": {
+      "ease": "in_out_sine",
+      "modifier": "override",
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": "#F0A878"
+        },
+        {
+          "ticks": 144000,
+          "value": "#7068A0"
+        }
+      ]
+    },
+    "minecraft:visual/sky_light_factor": {
+      "ease": "in_out_sine",
+      "modifier": "override",
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": 0.6
+        },
+        {
+          "ticks": 144000,
+          "value": 0.2
+        }
+      ]
+    },
+    "minecraft:visual/star_brightness": {
+      "ease": "in_out_sine",
+      "modifier": "override",
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": 0.2
+        },
+        {
+          "ticks": 144000,
+          "value": 0.8
+        }
+      ]
+    },
+    "minecraft:visual/sun_angle": {
+      "ease": "in_out_sine",
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": 80.0
+        },
+        {
+          "ticks": 144000,
+          "value": 115.0
+        }
+      ],
+      "modifier": "override"
+    },
+    "minecraft:visual/sunrise_sunset_color": {
+      "ease": "in_out_sine",
+      "modifier": "override",
+      "keyframes": [
+        {
+          "ticks": 0,
+          "value": "#608FB8E0"
+        },
+        {
+          "ticks": 144000,
+          "value": "#00000000"
+        }
+      ]
+    }
+  }
+}

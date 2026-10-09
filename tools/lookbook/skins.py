@@ -5,8 +5,8 @@ Usage: tools/lookbook/skins.py [id ...] [--minecraft-jar PATH]
 
 Every file of skins/<id>/ except skin.json is generated, so this script deletes them and writes them again:
   pack.mcmeta                                   a resource pack and a data pack in one folder
-  data/deepcharter/timeline/skin_sky.json       the surface sky, fog and lamp tint, on the gameplay clock
-  data/minecraft/tags/timeline/in_overworld.json  puts that timeline after vanilla's day, so it wins
+  data/deepcharter/timeline/sky.json            the mod's sky timeline (#239) with the skin's dusk and night: sky, fog, sun glow,
+                                                sky light, stars, fog distance, the sun's dusk angle, and a lamp tint
   data/deepcharter/dimension_type/layer_*.json  the mod's own files with the layer's light, fog distance and lamp tint changed
   data/deepcharter/worldgen/biome/*.json        the mod's own files with the zone's fog colour changed
   assets/deepcharter/theme/*.json               UI theme keys (merged over the mod's key by key, ADR 0032)
@@ -42,14 +42,10 @@ MOD_DATA = ROOT / "src/main/resources/data/deepcharter"
 SKIN_FILE = "skin.json"
 # Resource pack format 97 and data pack format 121 are Minecraft 26.3's (version.json in the client jar).
 PACK_FORMATS = (97, 121)
-# The tag vanilla 26.3 ships, plus the skin's timeline after minecraft:day so it overrides the day (art-direction-options 4).
-IN_OVERWORLD = ["#minecraft:universal", "minecraft:day", "deepcharter:skin_sky", "minecraft:moon", "minecraft:early_game"]
-# Where the sky timeline holds each look (ticks of the 24000-tick gameplay day): dusk through the day, night through the night.
-DUSK_TICKS = (133, 11867)
-NIGHT_TICKS = (13670, 22330)
-# The sun's angle at night (degrees, 0 overhead, 90 the western horizon): straight below, so it sets as the sky darkens and the
-# night has only the moon and the stars. The skin's sun_angle is its place through the dusk.
-NIGHT_SUN_ANGLE = 180.0
+# The mod's sky timeline on its own clock, deepcharter:sky: its brightest dusk and darkest night are these keyframes.
+SKY_TIMELINE = MOD_DATA / "timeline/sky.json"
+DUSK_TICK = 0
+NIGHT_TICK = 144000
 GRADE_PLACES = ("surface", "layer_1", "layer_2")
 LAYER_BIOMES = {
     "layer_1": ("topsoil_claims", "stone_benches", "deep_claim"),
@@ -275,8 +271,7 @@ class Skin:
         Skin.write_json(out / "pack.mcmeta",
                         {"pack": {"description": description, "min_format": PACK_FORMATS[0], "max_format": PACK_FORMATS[1]}})
         sky = require(spec, "sky", where)
-        Skin.write_json(out / "data/deepcharter/timeline/skin_sky.json", Skin.sky_timeline(sky, f"{where}.sky"))
-        Skin.write_json(out / "data/minecraft/tags/timeline/in_overworld.json", {"replace": True, "values": IN_OVERWORLD})
+        Skin.write_json(out / "data/deepcharter/timeline/sky.json", Skin.sky_timeline(sky, f"{where}.sky"))
         Skin.write_png(out / "assets/minecraft/textures/environment/celestial/sun.png",
                        Skin.sun_image(require(sky, "sun", f"{where}.sky"), f"{where}.sky.sun"))
         layers = require(spec, "layers", where)
@@ -354,35 +349,38 @@ class Skin:
         return pngio.RgbaImage(SUN_SIZE, SUN_SIZE, bytes(out))
 
     @staticmethod
-    def keyframes(dusk, night):
-        """A track that holds dusk through the day and night through the night, as the tryout timelines do."""
-        return {"keyframes": [{"ticks": DUSK_TICKS[0], "value": dusk}, {"ticks": DUSK_TICKS[1], "value": dusk},
-                              {"ticks": NIGHT_TICKS[0], "value": night}, {"ticks": NIGHT_TICKS[1], "value": night}],
-                "modifier": "override"}
-
-    @staticmethod
-    def constant(value):
-        return {"keyframes": [{"ticks": 0, "value": value}, {"ticks": 12000, "value": value}], "modifier": "override"}
-
-    @staticmethod
     def sky_timeline(sky, where):
-        dusk = require(sky, "dusk", where)
-        night = require(sky, "night", where)
-        tracks = {}
+        """The mod's sky timeline with the skin's values at its dusk and night keyframes, and the skin's dusk sun angle. Its
+        other tracks (the dust, the moon) stay as the mod has them."""
+        timeline = json.loads(SKY_TIMELINE.read_text())
+        tracks = timeline["tracks"]
+        sun = tracks.get("minecraft:visual/sun_angle")
+        if sun is None:
+            raise SkinError(f"{SKY_TIMELINE}: has no minecraft:visual/sun_angle track; the skin generator expects one")
+        Skin.shape_of(sun, "minecraft:visual/sun_angle")
+        sun["keyframes"][0]["value"] = float(require(sky, "sun_angle", where))
+        phases = (("dusk", require(sky, "dusk", where)), ("night", require(sky, "night", where)))
         for track, key in SKY_TRACKS.items():
             values = []
-            for phase, table in (("dusk", dusk), ("night", night)):
+            for phase, table in phases:
                 value = require(table, key, f"{where}.{phase}")
                 if key in COLOUR_KEYS:
                     parse_colour(value, f"{where}.{phase}.{key}")
                 else:
                     value = float(value)
                 values.append(value)
-            tracks[track] = Skin.keyframes(*values)
-        tracks["minecraft:visual/sun_angle"] = Skin.keyframes(float(require(sky, "sun_angle", where)), NIGHT_SUN_ANGLE)
-        tracks["minecraft:visual/moon_angle"] = Skin.constant(float(require(sky, "moon_angle", where)))
-        tracks["minecraft:visual/cloud_color"] = Skin.constant("#00000000")
-        return {"clock": "minecraft:overworld", "period_ticks": 24000, "tracks": dict(sorted(tracks.items()))}
+            shape = Skin.shape_of(tracks.get(track, sun), track)
+            tracks[track] = {**shape, "keyframes": [{"ticks": DUSK_TICK, "value": values[0]}, {"ticks": NIGHT_TICK, "value": values[1]}]}
+        timeline["tracks"] = dict(sorted(tracks.items()))
+        return timeline
+
+    @staticmethod
+    def shape_of(track, name):
+        """A track of the mod's timeline without its keyframes (its ease and modifier), once its keyframes are dusk and night."""
+        ticks = [keyframe["ticks"] for keyframe in track["keyframes"]]
+        if ticks != [DUSK_TICK, NIGHT_TICK]:
+            raise SkinError(f"{SKY_TIMELINE}: {name} has keyframes at {ticks}, not at dusk {DUSK_TICK} and night {NIGHT_TICK}")
+        return {key: value for key, value in track.items() if key != "keyframes"}
 
     @staticmethod
     def dimension_type(layer, spec, where):

@@ -6,7 +6,7 @@ Wildcard: Motherload's readability, in our own art. A bold indigo-to-orange sky,
 
 ![The palette of E](https://raw.githubusercontent.com/pkeppeler/deepcharter/pr-media/looks/e-arcade/palette.png)
 
-**Known limits.** Phase 1 changes only what is data today. The surface keeps vanilla terrain shapes until [#240](https://github.com/pkeppeler/deepcharter/issues/240) lands, the sky is a tryout-style timeline until [#239](https://github.com/pkeppeler/deepcharter/issues/239), block and item textures are palette remaps of today's 16x set until [#242](https://github.com/pkeppeler/deepcharter/issues/242), and the pods keep today's models until [#243](https://github.com/pkeppeler/deepcharter/issues/243). The grade per place is applied by the tour, standing in for [#241](https://github.com/pkeppeler/deepcharter/issues/241). `tools/look-book.sh` re-shoots every look book after those land.
+**Known limits.** Phase 1 changes only what is data today. The surface keeps vanilla terrain shapes until [#240](https://github.com/pkeppeler/deepcharter/issues/240) lands, block and item textures are palette remaps of today's 16x set until [#242](https://github.com/pkeppeler/deepcharter/issues/242), and the pods keep today's models until [#243](https://github.com/pkeppeler/deepcharter/issues/243). The grade per place is applied by the tour, standing in for [#241](https://github.com/pkeppeler/deepcharter/issues/241). `tools/look-book.sh` re-shoots every look book after those land.
 
 The skin is [skins/e-arcade/](../../../skins/e-arcade/skin.json); rebuild this page with `tools/look-book.sh e-arcade`. Every clip in one video: [look-motion.mp4](https://raw.githubusercontent.com/pkeppeler/deepcharter/pr-media/looks/e-arcade/look-motion.mp4).
 

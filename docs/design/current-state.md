@@ -48,11 +48,11 @@ or `...-as-played` show what a player sees; the other layer stills use night vis
 
 | | |
 |---|---|
-| What | The vanilla overworld, with the colony built on its spawn. Terrain, biomes, sky, sun, moon, stars, weather, trees and animals are vanilla. |
-| Vanilla | **yes** (terrain, sky, light, fog, day and night cycle). The mod adds only the colony ([section 5](#5-structures)) and removes villages, outposts and strongholds. |
+| What | The vanilla overworld, with the colony built on its spawn. Terrain, biomes, weather, trees and animals are vanilla. The sky is ours: a dusk-to-night timeline with a round sun, no clouds and dust in the air (#239). |
+| Vanilla | **partly** (terrain, light, day and night cycle for gameplay; the sky and fog are ours). The mod adds only the colony ([section 5](#5-structures)) and removes villages, outposts and strongholds. |
 | Source | `data/minecraft/worldgen/material_rule/overworld.json` (a copy of vanilla's rule), `data/minecraft/worldgen/structure_set/{villages,pillager_outposts,strongholds}.json` (emptied: no structures) |
-| Time of day | Vanilla cycle, 24000 ticks. No fixed time, no eternal dusk: nothing in the mod sets the surface sky or time. |
-| Swap | **(b)** a datapack `minecraft:dimension_type/overworld` (time, light, fog attributes) and biome files; **(a)** a resource pack for vanilla textures, sky and clouds. Nothing in Java draws the surface sky or fog. |
+| Time of day | The gameplay clock is vanilla's 24000 ticks (beds, spawning). The sky follows its own clock, `deepcharter:sky`, and swings between dusk and night over 4 real hours, never full day. The stills below are from before #239. |
+| Swap | **(b)** a datapack `minecraft:dimension_type/overworld` (time, light, fog attributes) and biome files; **(a)** a resource pack for the sun texture and the dust particle. The sky is the timeline in `data/deepcharter/timeline/sky.json` ([skins.md](skins.md)). Nothing in Java draws the surface sky or fog. |
 
 ![surface-south-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/surface-south-noon.png?raw=true) ![surface-east-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/surface-east-noon.png?raw=true)
 ![surface-west-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/surface-west-noon.png?raw=true) ![surface-north-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/surface-north-noon.png?raw=true)
