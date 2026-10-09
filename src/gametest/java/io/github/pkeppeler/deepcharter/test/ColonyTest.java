@@ -311,35 +311,11 @@ public class ColonyTest {
 		return ColonySite.CODEC.parse(NbtOps.INSTANCE, unfinished).getOrThrow();
 	}
 
-	/**
-	 * Runs {@code body} once, on the first tick when every chunk of the pad ticks. A rebuild takes away the displays of the first try,
-	 * and finds them only in chunks that tick: a test that rebuilds waits for the pad first, or leaves doubled displays in the shared
-	 * world. Call from the test method, which must give itself {@link FarChunks#AWAIT_BUDGET_TICKS} ticks.
-	 */
+	/** Runs {@code body} once, when every chunk of the pad ticks: a rebuild takes the first try's displays away only in chunks that tick. */
 	private static void whenThePadTicks(GameTestHelper helper, ColonySite.Placed colony, Runnable body) {
-		List<BlockPos> chunks = ColonyChunks.of(colony);
-		int[] ticking = {0};
-		FarChunks.awaitEntityTicking(helper, helper.getLevel().getServer().overworld(), chunks, index -> ticking[0]++);
-		boolean[] ran = {false};
-		RuntimeException[] failed = {null};
-		helper.succeedWhen(() -> {
-			if (failed[0] != null) {
-				throw failed[0];
-			}
-			if (ticking[0] < chunks.size()) {
-				throw failure(helper, "waiting for the pad's chunks to tick: %s of %s", ticking[0], chunks.size());
-			}
-			if (ran[0]) {
-				return;
-			}
-			ran[0] = true;
-			try {
-				body.run();
-			} catch (RuntimeException e) {
-				failed[0] = e;
-				throw e;
-			}
-		});
+		MinecraftServer server = helper.getLevel().getServer();
+		ColonyChunks.whenTicking(helper, server.overworld(), ColonyChunks.of(colony),
+				() -> ColonyChunks.displaysOnThePad(server.overworld(), colony) == ColonyChunks.displaysOf(server), body);
 	}
 
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
@@ -513,8 +489,8 @@ public class ColonyTest {
 						}
 					}
 				}
-				// Same X and Z in every layer, and nothing but the casing above its end in the overworld.
-				if (layer == LayerChain.SURFACE && !level.getBlockState(new BlockPos(centre.getX(), top + 1, centre.getZ())).isAir()) {
+				// Same X and Z in every layer, and the casing ends at its top in the overworld (the headframe's collar stands on it).
+				if (layer == LayerChain.SURFACE && level.getBlockState(new BlockPos(centre.getX(), top + 1, centre.getZ())).is(ColonyBlocks.CONDUIT)) {
 					throw failure(helper, "the Conduit rises past its top in the overworld");
 				}
 			}

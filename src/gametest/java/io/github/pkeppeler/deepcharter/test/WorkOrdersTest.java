@@ -25,8 +25,10 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
-import io.github.pkeppeler.deepcharter.colony.FounderStatue;
+import io.github.pkeppeler.deepcharter.colony.Colony;
+import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
+import io.github.pkeppeler.deepcharter.colony.FounderStatue;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.market.WorkOrderData;
 import io.github.pkeppeler.deepcharter.market.WorkOrders;
@@ -39,6 +41,8 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
@@ -149,22 +153,32 @@ public class WorkOrdersTest {
 		}
 	}
 
-	@GameTest
-	public void theColonyIsBuiltWithoutTheFoundersHands(GameTestHelper helper) {
-		MinecraftServer server = helper.getLevel().getServer();
-		if (!FounderStatue.isBuilt(server)) {
-			throw helper.assertionException("the colony was not built, so the Host has no hands to lack");
-		}
-		if (!FounderStatue.hands(server).isEmpty()) {
-			throw helper.assertionException("the built colony should leave the Host without hands, found %s", FounderStatue.hands(server));
-		}
-		helper.succeed();
+	/** Runs {@code body} once, when the chunk the Host stands in ticks: his displays are entities, found only in a chunk that does. */
+	private static void whenTheHostTicks(GameTestHelper helper, MinecraftServer server, Runnable body) {
+		BlockPos statue = Colony.anchor(server, ColonyAnchor.STATUE).orElseThrow(() -> helper.assertionException("the colony was not built"));
+		ColonyChunks.whenTicking(helper, server.overworld(), List.of(statue), () -> !FounderStatue.body(server).isEmpty(), body);
 	}
 
-	@GameTest
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
+	public void theColonyIsBuiltWithoutTheFoundersHands(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		whenTheHostTicks(helper, server, () -> {
+			if (!FounderStatue.isBuilt(server)) {
+				throw helper.assertionException("the colony was not built, so the Host has no hands to lack");
+			}
+			if (FounderStatue.body(server).size() != 1) {
+				throw helper.assertionException("the Host's body should stand in the square, found %s", FounderStatue.body(server).size());
+			}
+			if (!FounderStatue.hands(server).isEmpty()) {
+				throw helper.assertionException("the built colony should leave the Host without hands, found %s", FounderStatue.hands(server));
+			}
+		});
+	}
+
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
 	public void aPartialDeliveryTakesOnlyThatOreAndRecordsTheProgress(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
-		withProcessorOnline(server, () -> {
+		whenTheHostTicks(helper, server, () -> withProcessorOnline(server, () -> {
 			MockPlayer mock = player(helper, "Courier", true);
 			ServerPlayer player = mock.player();
 			BlockPos processor = processorFor(helper, mock);
@@ -186,14 +200,13 @@ public class WorkOrdersTest {
 				throw helper.assertionException("a partial delivery pays nothing");
 			}
 			expectHands(helper, server, false, "after a partial delivery");
-		});
-		helper.succeed();
+		}));
 	}
 
-	@GameTest
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
 	public void deliveriesAddUpAndTheLastOneCompletesTheOrderOnce(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
-		withProcessorOnline(server, () -> {
+		whenTheHostTicks(helper, server, () -> withProcessorOnline(server, () -> {
 			MockPlayer mock = player(helper, "Foreman", true);
 			ServerPlayer player = mock.player();
 			BlockPos processor = processorFor(helper, mock);
@@ -223,8 +236,7 @@ public class WorkOrdersTest {
 			if (carried(player, OreType.BRONZIUM) != 3 || charter(server, player).account() != before + 600) {
 				throw helper.assertionException("a finished order takes no more ore and pays no more");
 			}
-		});
-		helper.succeed();
+		}));
 	}
 
 	@GameTest
@@ -261,10 +273,10 @@ public class WorkOrdersTest {
 		helper.succeed();
 	}
 
-	@GameTest
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
 	public void aRefusedDeliveryTakesNoOreAndChangesNothing(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
-		withProcessorOnline(server, () -> {
+		whenTheHostTicks(helper, server, () -> withProcessorOnline(server, () -> {
 			MockPlayer mock = player(helper, "Hoarder", true);
 			ServerPlayer player = mock.player();
 			BlockPos processor = processorFor(helper, mock);
@@ -291,8 +303,7 @@ public class WorkOrdersTest {
 			if (carried(player, OreType.SILVERIUM) != 5) {
 				throw helper.assertionException("another ore must not be touched");
 			}
-		});
-		helper.succeed();
+		}));
 	}
 
 	@GameTest
