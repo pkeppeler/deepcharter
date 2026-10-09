@@ -2,7 +2,8 @@
 # Usage: tools/readme-tour.sh [--no-record] [item...]
 #        tools/readme-tour.sh --list
 #
-# Refreshes the README tour. Reads docs/readme-tour.tsv (media name, scenario, output), records
+# Refreshes the README tour. Reads docs/readme-tour.tsv (media name, scenario, output, and for a
+# GIF an optional frames=<first>-<last> trim; <last> may be empty for "to the end"), records
 # each listed scenario once with tools/record-evidence.sh, and publishes the chosen GIF or still
 # of each item to pr-media/readme/<media name> with tools/pr-media.sh. The README links those
 # paths, so a refresh never changes the README. An item is a media name from the manifest; with
@@ -37,12 +38,15 @@ done
 media=()
 scenarios=()
 outputs=()
+trims=()
 line_no=0
-while IFS=$'\t' read -r name scenario output extra || [[ -n $name ]]; do
+while IFS=$'\t' read -r name scenario output trim extra || [[ -n $name ]]; do
   line_no=$((line_no + 1))
   [[ -z $name || $name == \#* ]] && continue
   fail() { echo "$manifest:$line_no: $1" >&2; exit 1; }
-  [[ -n $scenario && -n $output && -z $extra ]] || fail "expected 3 tab-separated columns: media name, scenario, output"
+  [[ -n $scenario && -n $output && -z $extra ]] || fail "expected 3 or 4 tab-separated columns: media name, scenario, output, optional frames=<first>-<last>"
+  [[ -z $trim || $trim =~ ^frames=[0-9]+-[0-9]*$ ]] || fail "column 4 '$trim' must be frames=<first>-<last>, <last> optional"
+  [[ -z $trim || $output == gif ]] || fail "frames= trims a GIF, but the output is '$output'"
   [[ $name =~ ^[A-Za-z0-9][A-Za-z0-9._-]*\.(gif|png)$ ]] || fail "media name '$name' must be letters, digits, '.', '_' or '-' and end in .gif or .png"
   [[ $scenario =~ ^[a-z0-9][a-z0-9-]*$ ]] || fail "scenario '$scenario' is not a scenario id"
   if [[ $output == gif ]]; then
@@ -57,12 +61,15 @@ while IFS=$'\t' read -r name scenario output extra || [[ -n $name ]]; do
   media+=("$name")
   scenarios+=("$scenario")
   outputs+=("$output")
+  trims+=("${trim#frames=}")
 done <"$manifest"
 [[ ${#media[@]} -gt 0 ]] || { echo "$manifest lists no items" >&2; exit 1; }
 
 if (( list )); then
   for i in "${!media[@]}"; do
-    printf '%s\t%s\t%s\n' "${media[$i]}" "${scenarios[$i]}" "${outputs[$i]}"
+    printf '%s\t%s\t%s' "${media[$i]}" "${scenarios[$i]}" "${outputs[$i]}"
+    [[ -z ${trims[$i]} ]] || printf '\tframes=%s' "${trims[$i]}"
+    printf '\n'
   done
   exit 0
 fi
@@ -95,8 +102,20 @@ fi
 stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
 files=()
-for i in "${selected[@]}"; do
+# stage_item <index>: copy the item's file to the stage. A trimmed GIF is first rebuilt from the
+# scenario's recorded frames (record-evidence.sh --no-run with GIF_FRAMES), which also fits the GIF budget.
+stage_item() {
+  local i=$1 scenario first last source_file
   scenario=${scenarios[$i]}
+  if [[ -n ${trims[$i]} ]]; then
+    first=${trims[$i]%-*}
+    last=${trims[$i]#*-}
+    if [[ -z $last ]]; then
+      last=$(find "$evidence/$scenario/frames" -name 'frame-*.png' | wc -l)
+      last=${last// /}
+    fi
+    GIF_FRAMES=$first-$last "$tools/record-evidence.sh" "$scenario" --no-run >/dev/null
+  fi
   if [[ ${outputs[$i]} == gif ]]; then
     source_file=$evidence/$scenario/$scenario.gif
   else
@@ -106,6 +125,13 @@ for i in "${selected[@]}"; do
     || { echo "${media[$i]}: $source_file is missing (a GIF over the size budget is skipped; see the record-evidence output)" >&2; exit 1; }
   cp "$source_file" "$stage/${media[$i]}"
   files+=("$stage/${media[$i]}")
+}
+# Untrimmed items first, because a trim rewrites the scenario's GIF.
+for i in "${selected[@]}"; do
+  [[ -n ${trims[$i]} ]] || stage_item "$i"
+done
+for i in "${selected[@]}"; do
+  [[ -z ${trims[$i]} ]] || stage_item "$i"
 done
 
 "$tools/pr-media.sh" readme "${files[@]}"

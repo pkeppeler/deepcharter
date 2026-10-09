@@ -10,7 +10,7 @@ The game wants you to feel two things. The first is the pull of the upgrade loop
 
 It is a Fabric mod for Minecraft 26.3, for 2 to 4 friends (up to about 8). The plan is in [docs/SPEC.md](docs/SPEC.md).
 
-**Status.** This is an early friends build. It has the colony, layers 1 and 2, and the main machines. There is no public release (not on Modrinth yet). The pictures below are today's pre-art-direction placeholders: mostly vanilla blocks, sounds and text. The planned look is "Prosperity at dusk": a rust-red world under a slow dusk sky, a small riveted company town, and a black shaft below that your lamp barely lights ([art direction](docs/design/art-direction.md)).
+**Status.** This is an early friends build. It has the colony, layers 1 and 2, and the main machines. There is no public release (not on Modrinth yet). The pictures below are today's placeholders. The world already has its rust-red regolith, a dusk sky that darkens into night, and generated block textures, but the pods, the colony buildings, the sounds and the text are still stand-ins. The planned look is "Prosperity at dusk": a rust-red world under a slow dusk sky, a small riveted company town, and a black shaft below that your lamp barely lights ([art direction](docs/design/art-direction.md)).
 
 ## What is in the pack
 
@@ -31,7 +31,7 @@ The tour follows one run, in the order of the game loop.
 
 ![The colony hangar, seen from the square, with a dark pod inside](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/colony-hangar.png?raw=true)
 
-You start in Prosperity, a run-down Company mining town built on the spawn. Its machines are offline. You repair them one by one, and each one that comes back is a new way to earn. The hangar in the picture holds the founding pod, dark until your charter repairs it.
+You start in Prosperity, a run-down Company mining town built on the spawn. Its machines are offline. You repair them one by one, and each one that comes back is a new way to earn. The hangar in the picture holds the founding pod, dark until your charter repairs it. Above it the sky is at dusk, and it darkens into night.
 
 ### 2. Your pod
 
@@ -43,7 +43,7 @@ A pod is a vehicle with seats. It drives on treads, lifts on a rotor and drills 
 
 ![A pod drills down through three slabs of stone](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/drilling.gif?raw=true)
 
-Sprint to drill down, or push into a wall to drill sideways. Ore goes into the cargo bay and the stone is gone. Fuel drains all the time, and faster when you drill. A pod with no fuel is stranded and dark. Buy fuel at the colony pump, or feed the pod coal. (This picture uses night vision, so you can see the bore.)
+Sprint to drill down, or push into a wall to drill sideways. Ore goes into the cargo bay and the stone is gone, unless you fit a spoil hopper (stop 10). Fuel drains all the time, and faster when you drill. A pod with no fuel is stranded and dark. Buy fuel at the colony pump, or feed the pod coal. (This picture uses night vision, so you can see the bore.)
 
 ### 4. The scanner
 
@@ -53,7 +53,7 @@ The scanner is a side-view map of the rock around your pod, with ore as bright d
 
 ### 5. Ore and selling
 
-![A pod's cargo screen, full of ore](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/ore-cargo.png?raw=true)
+![A pod's cargo screen, loaded with ore](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/ore-cargo.png?raw=true)
 
 Ore is heavy and lives in the pod's cargo bay. A heavy load cuts your lift. Park by the ore processor in the colony and sell it, and the money goes to your charter's account.
 
@@ -61,7 +61,7 @@ Ore is heavy and lives in the pod's cargo bay. A heavy load cuts your lift. Park
 
 ![The upgrade terminal showing hull prices](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/upgrade-terminal.png?raw=true)
 
-Money buys better parts: drill, hull, engine, tank, cargo, scanner and lights. The hangar holds your pods and sells a new one. Wrecks you find deeper down become better pods.
+Money buys better parts: drill, hull, engine, tank, radiator, cargo, scanner, lights and spoil hopper. The hangar holds your pods and sells a new one. Wrecks you find deeper down become better pods.
 
 ### 7. Repair
 
@@ -81,19 +81,25 @@ Below the surface there is no sky. An unlit cave is almost black. The pod's ligh
 
 Lava hurts the pod, not the pilot. The hull gauge drops until you leave or repair. At zero the pod is a wreck.
 
-### 10. Wrecks and towing
+### 10. Lining the shaft
+
+![Looking up a shaft whose walls are lined with slag brick where the lava pockets were](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-lining.png?raw=true)
+
+A thermal scanner shows lava pockets beside your shaft before you reach them. Stop a slab above, press R from the seat, and the pod lines the slab walls with slag brick while it stands still. Then drill on. Buy a spoil hopper at the upgrade terminal and the drill keeps the stone it bores. The ore processor fuses that stone into the brick.
+
+### 11. Wrecks and towing
 
 ![A working pod beside a dark wreck](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/wreck.png?raw=true)
 
 A pod with no hull goes dark and stays where it fell, and its owners are told. A crew can rescue each other: hold a tow cable and right-click the wreck to pull it home, as in the picture at the top.
 
-### 11. The breach
+### 12. The breach
 
 ![A transmission from an unknown signal, on a green screen](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/breach-transmission.png?raw=true)
 
 A crust of hard rock at the floor of each layer is a breach. Any drill can get through, slowly and hot. Crossing is an event: a rumble, then a transmission on a green screen. The words in this picture are stand-ins until the story is written.
 
-### 12. The handbook
+### 13. The handbook
 
 ![The Employee Handbook contents page](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/handbook.png?raw=true)
 
