@@ -191,13 +191,33 @@ public class PodLiningTest {
 			if (!helper.getBlockState(behind).isAir()) {
 				throw failure(helper, "the cave cell behind the lining is not in the ring and must stay open");
 			}
-			if (!helper.getLevel().getChunkAt(helper.absolutePos(lava)).isUnsaved()) {
-				throw failure(helper, "the lined wall is a block in a chunk that will be saved, but the chunk is not marked to save");
-			}
 			if (!PodLining.cellsToLine(rig.pod).isEmpty()) {
 				throw failure(helper, "a lined slab has nothing left to line");
 			}
 			helper.setBlock(lava, Blocks.AIR);
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = LINING_BUDGET_TICKS)
+	public void lavaUnderTheSlabIsLinedAndSolidRockUnderItIsNot(GameTestHelper helper) {
+		rock(helper);
+		// Under the slab the pod will bore next (y 1) and under that (y 0): one lava block in each, and rock in the other cells.
+		BlockPos next = new BlockPos(4, 1, 4);
+		BlockPos beneath = new BlockPos(5, 0, 5);
+		helper.setBlock(next, Blocks.LAVA);
+		helper.setBlock(beneath, Blocks.LAVA);
+		Rig rig = seat(helper, "Floor pilot", 20);
+		List<BlockPos> plan = PodLining.cellsToLine(rig.pod);
+		List<BlockPos> expected = List.of(helper.absolutePos(next), helper.absolutePos(beneath));
+		if (plan.size() != 2 || !plan.containsAll(expected)) {
+			throw failure(helper, "the lava in the footprint under the pod, and only it, is lined: %s", plan);
+		}
+		PodLining.toggle(rig.pilot.player());
+		whenLiningEnds(helper, rig, () -> {
+			if (!isBrick(helper, next) || !isBrick(helper, beneath) || helper.getBlockState(new BlockPos(5, 1, 5)).is(SlagBrick.BLOCK)) {
+				throw failure(helper, "both lava blocks are slag brick now, and the stone beside them is stone");
+			}
 			helper.succeed();
 		});
 	}

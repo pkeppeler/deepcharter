@@ -28,6 +28,7 @@ import io.github.pkeppeler.deepcharter.market.WorkOrdersView;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
@@ -73,6 +74,15 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 				return player.getInventory().countItem(OreRegistry.item(OreType.IRONIUM)) + player.getInventory().countItem(OreRegistry.item(OreType.SILVERIUM));
 			});
 			check(ore == 0, "the sold ore left the inventory, " + ore + " remain");
+
+			// #313: four spoil in the parked pod's bay become two slag brick in its rack for $4.
+			singleplayer.getServer().runOnServer(server -> PodLining.modify(parkedPod(server),
+					state -> state.withSpoil(4)));
+			context.clickScreenButton("MAKE SLAG BRICK  $2 EACH");
+			long afterFuse = cargo + carried - 4;
+			ClientWait.until(context, "the hud showing the price of two bricks taken", client -> hud(client).endsWith("$" + afterFuse), client -> "hud '" + hud(client) + "'");
+			PodLining.State fused = singleplayer.getServer().computeOnServer(server -> PodLining.of(parkedPod(server)));
+			check(fused.bricks() == 2 && fused.spoil() == 0, "four spoil make two bricks in the rack, got " + fused);
 
 			// #80: the work order is listed with no progress, and handing in ten Bronzium finishes it and restores the Founder's hands.
 			check(context.computeOnClient(client -> screen.orderLines()).equals(List.of("WORK ORDERS", "RESTORE THE FOUNDER'S HANDS", "0 / 10 BRONZIUM")),
@@ -203,6 +213,12 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 		pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.GOLDIUM));
 		pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.PLATINIUM));
 		return processor;
+	}
+
+	/** The pod {@link #setUp} parked beside the processor: the colony's wreck is another pod in the same level, so the first one found is not it. */
+	private static PodEntity parkedPod(MinecraftServer server) {
+		ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+		return server.overworld().getEntitiesOfClass(PodEntity.class, player.getBoundingBox().inflate(8)).getFirst();
 	}
 
 	private static String hud(ClientGameTestContext context) {

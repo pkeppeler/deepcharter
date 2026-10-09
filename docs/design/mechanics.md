@@ -93,3 +93,60 @@ The bot is unrealistic in two opposite ways. It never reacts, which is harsh. It
 - Falls (35 to 100 hull) and gas (about 40 to 50 hull, from the same 1.25% density) kill as surely as lava. Do they need counterplay on the same ladder?
 - Fuel: a layer 1 descent takes about 10 tanks. Is that intended? See #289 (fuel per descent).
 - Does the pilot need a reason to get out of the lava other than the hull? Today the cue is the HUD line and the hiss.
+
+## Hand lining (#313, A)
+
+**Problem.** The thermal scanner (#300) shows the lava, and nothing yet lets a pilot hold it back. A bore that meets lava loses its whole hull (0 of 100 reach layer 2). Rung 1 of the lava ladder (#232) is by hand: slow, cheap, and it teaches what the scanner shows.
+
+**The ladder.**
+1. By hand (this rung): the drill keeps spoil, the ore processor fuses it into slag brick, and a seated pilot places the brick round the slab.
+2. The liner upgrade lines a ring every few slabs as the pod drills (#232).
+3. The heat-shield hull cuts what lava costs (#232). The hand rung keeps a niche: it is the cheapest counterplay, and it makes a safe highway for the charter.
+
+**The mechanic.**
+- **Spoil.** The drill keeps one spoil for each block of waste rock it bores: the blocks in the tag `deepcharter:waste_rock` (stone and dirt). The bay holds 64, and a drill past that loses the rock, as it loses ore past a full cargo bay. Ore still goes to cargo, and spoil is not cargo, so it takes no ore slot. It is a pod attachment (`PodLining.State`), and it cuts lift like ore does (0.1 mass each).
+- **Slag brick.** The processor's new button, MAKE SLAG BRICK, turns 2 spoil into 1 brick for $2 a brick, from every pod the charter may use that is parked at the processor. The bricks go to each pod's rack (32, 0.2 mass each) and, when a rack is full, to the buyer's pack (a stack is 64). It makes only the bricks that have a place to go and that the account pays for, and charges for those. A brick is a plain full block, so lava neither flows into it nor replaces it. It drops itself when broken by hand. The drill bores it and gets nothing.
+- **Lining.** The key R, from the pilot's seat (`key.deepcharter.line_slab`). The pod places one brick every 8 ticks, and stops while it does: no drive, no climb, no drill (the pod keeps its power, its lights and its fuel burn). Another press stops it. The cells, in order: lava first, then open cells beside lava, then the rest, lowest first.
+  - The ring: the air and fluid cells beside the 2 x 2 footprint, from the slab below the pod to the top of its box.
+  - The floor: lava in the footprint's cells in the slab below and the one under it. The drill bores no liquid, and the pod touches lava the moment it sinks onto it.
+  - Never replaced: rock, ore, company rock, and a cell next to an unloaded chunk.
+- **Bricks used.** The rack first (if `PodComponents.mayAccess` lets the pilot use the pod's stores), then the pilot's pack. No brick is made by lining.
+- **Feedback.** A sound for each brick (`pod.lining_place`), the count in the action bar ("Lining: 3 placed, 14 left"), a HUD line while it works ("LINING 3"), the stock line ("Slag 14  Spoil 20"), and a warning line after a lining that ran out ("OUT OF SLAG BRICK").
+- **Persists.** Bricks are blocks in the world, saved with the chunk. Hazards do not delete them (SPEC section 10; the gas blast clears only `natural_rock`).
+
+**Trade-offs.**
+- Time: 8 ticks a brick. A lining of one slab with lava on both sides is 4 to 8 bricks, 32 to 64 ticks, about 1 to 2 slabs of drilling at 36 ticks a slab.
+- Mass, fuel and money: the stock cuts lift, the pod burns idle fuel while it works, and each brick costs $2.
+- Spoil: it fills the bay in about 16 slabs, so a dive has a standing stock of 32 bricks. A pilot must go back to the processor for more.
+- Honest limits: the pod lines only at rest. In a fall through a cave nothing can be done by hand.
+
+**Tuning knobs.** `PodLiningTuning`: `spoilCapacity` (64), `spoilPerBrick` (2), `brickCapacity` (32), `fusePrice` ($2), `ticksPerBrick` (8), `spoilMass` (0.1), `brickMass` (0.2). The tag `data/deepcharter/tags/block/waste_rock.json`. `PodLining.FLOOR_DEPTH` (2). The brick's stack size is the vanilla default of 64. Skins: the block texture, model and loot table, the sound `pod.lining_place`, the lang keys, and `theme/hud.json` `podLiningColor` and `podLiningDryColor`.
+
+### Lining vs. a straight bore: measured
+
+#313. The same 100 columns as above. The bot is the #300 bot, plus the lining bot of `LavaBoreTest` (`DEEPCHARTER_LAVA_BORES_LINING=3`, rack of `DEEPCHARTER_LAVA_BORES_BRICKS`): each time the pod reaches a new slab and a thermal scanner would mark lava within 3 slabs below it and 2 blocks across, it presses the key and waits for the pod to finish, only when the pod rests on its slab. It never flies. The rack starts full (32 bricks); it cannot fuse more mid-dive. The runs are deterministic: the lining runs gave the same numbers twice.
+
+| 100 bores of layer 1 | No lining (#300) | Lining, rack of 32 | Lining, 999 bricks |
+|---|---|---|---|
+| Bores that reach layer 2 | 0 | 10 | 12 |
+| Bores that touch lava | 96 | 65 | 57 |
+| Died in lava | 96 | 58 | 44 |
+| Lava encounters per bore | 0.96 | 0.74 | 0.61 |
+| Hull lost to lava per bore: mean / p50 / p90 | 77 / 100 / 100 | 28 / 11 / 100 | 24 / 5 / 100 |
+| Hull lost per encounter: mean / p50 | 81 / 100 | 38 / 15 | 40 / 30 |
+| Lining presses per bore: mean (p90) | none | 6.4 (11) | 7.0 (14) |
+| Bricks placed per bore: mean (p50 / p90) | none | 19 (19 / 32) | 21 (19 / 41) |
+| Ticks standing still lining per bore: mean (p90) | none | 176 (292) | 194 (373) |
+| Bores that pressed with no brick left | none | 16 | 0 |
+
+- **Lining halves the loss and does not make a bore safe.** 10 to 12 bores reach layer 2 against none, and the mean hull lost to lava falls from 77 to 24 to 28. Most encounters are short now: the median is 15 hull against 100.
+- **It costs about 20 bricks and 9 seconds of standing still a bore.** That is about $40 of brick, and 2% of the 8,000 ticks of a bore. The cost is small beside the gain, so the price and the time are not the limit.
+- **A bigger rack buys 2 more survivors.** 16 bores ran out with 32 bricks, and 999 bricks gave 12 against 10. Supply is not what limits the hand rung.
+- **What is left.** Of the 74 encounters of the 32-brick run, 11 began with a lining that was asked for and not done (the pod was falling through open cave, and the bot lines only at rest), 51 began within 2 slabs below a lining, and 12 had no lining asked for. The one bore traced in detail (a 12-bore diagnostic) was a fall: the pod dropped through open cave past the slab where the bot wanted to line, so it was never at rest there, and lava crept in through the cave from farther than the scanner marks. The other cases are not traced. By hand cannot cover that, which is the case for rung 2 (a liner that works as the pod drills) and for the heat-shield hull.
+- **The bores that line go deeper**, so they meet more lava than a bore that dies at the first. The no-lining bores last 6,121 pod ticks and the lining ones 8,046, so the table is a lower bound on what lining buys.
+
+**Open questions.**
+- The drill now keeps spoil, and SPEC section 7 says only ore is kept and that a "keep stone" upgrade is possible later. This is the bay for it, kept apart from cargo. Should it be an upgrade, with the stock pod keeping none?
+- Should a pilot be able to line from a hover (a pod in the air with its rotor)? It would cover the falls, at a cost of fuel.
+- Should the ring reach one more slab? It would make the lining cover creeping lava, and cost twice the bricks.
+- Do abandoned lined shafts from earlier charters belong in the world (the persistent highway)?

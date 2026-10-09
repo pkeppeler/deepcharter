@@ -118,6 +118,9 @@ public final class PodLining {
 					.initializer(() -> Versioned.of(State.EMPTY))
 					.syncWith(Versioned.streamCodec(VERSION, State.STREAM), AttachmentSyncPredicate.all()));
 
+	/** How many slabs below the pod's feet the lining looks for lava in the footprint: the slab it will bore next, and the one under that. */
+	private static final int FLOOR_DEPTH = 2;
+
 	private PodLining() {
 	}
 
@@ -276,22 +279,23 @@ public final class PodLining {
 
 	/**
 	 * The cells the next lining places a brick in, in the order it places them. The ring is the open cells (air or any fluid) beside the
-	 * pod's footprint from the slab below the pod to the top of its box; the floor is the lava in the footprint's cells of that slab, which
-	 * the drill will not bore. Lava goes first, then open cells beside lava, then the rest, lowest first. Rock, ore, company rock and
-	 * a cell in or beside an unloaded chunk are never in the list.
+	 * pod's footprint from the slab below the pod to the top of its box. The floor is the lava in the footprint's cells of the slab below
+	 * (which the drill will not bore) and of the one under that (which the pod touches the moment it sinks into the slab below). Lava goes
+	 * first, then open cells beside lava, then the rest, lowest first. Rock, ore, company rock and a cell in or beside an unloaded chunk
+	 * are never in the list.
 	 */
 	public static List<BlockPos> cellsToLine(PodEntity pod) {
 		ServerLevel level = (ServerLevel) pod.level();
 		LoadedBlocks blocks = new LoadedBlocks(level);
 		PodFootprint foot = PodFootprint.of(pod);
 		List<BlockPos> cells = new ArrayList<>();
-		for (int y = foot.feetY() - 1; y < foot.feetY() + foot.height(); y++) {
+		for (int y = foot.feetY() - FLOOR_DEPTH; y < foot.feetY() + foot.height(); y++) {
 			for (int x = foot.lowX() - 1; x <= foot.lowX() + foot.width(); x++) {
 				for (int z = foot.lowZ() - 1; z <= foot.lowZ() + foot.width(); z++) {
 					boolean insideX = x >= foot.lowX() && x < foot.lowX() + foot.width();
 					boolean insideZ = z >= foot.lowZ() && z < foot.lowZ() + foot.width();
-					boolean ring = insideX != insideZ;
-					boolean floor = insideX && insideZ && y == foot.feetY() - 1;
+					boolean ring = insideX != insideZ && y >= foot.feetY() - 1;
+					boolean floor = insideX && insideZ && y < foot.feetY();
 					BlockPos pos = new BlockPos(x, y, z);
 					if ((ring || floor) && !level.isOutsideBuildHeight(pos) && blocks.canChange(pos) && needsBrick(blocks.getBlockState(pos), floor)) {
 						cells.add(pos);
