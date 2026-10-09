@@ -5,6 +5,7 @@ Long, Float, Double, and List (whose items share one type). decode() returns the
 """
 import gzip
 import struct
+import zlib
 from dataclasses import dataclass
 
 END, BYTE, SHORT, INT, LONG, FLOAT, DOUBLE, BYTE_ARRAY, STRING, LIST, COMPOUND, INT_ARRAY, LONG_ARRAY = range(13)
@@ -103,11 +104,18 @@ def _payload(value) -> bytes:
     return struct.pack(_SCALARS[type(value)][1], value.value)
 
 
+# A gzip header with every field fixed: no time, maximum compression, an unknown OS. gzip.compress fills these in differently
+# from one Python version to the next (3.12 takes zlib's own header, whose OS byte is the build's).
+_GZIP_HEADER = b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x02\xff"
+
+
 def encode(root: dict) -> bytes:
-    """The gzipped file of a root compound with an empty name, as Minecraft writes a structure. The gzip header's time is 0, so
-    the same data makes the same bytes."""
+    """The gzipped file of a root compound with an empty name, as Minecraft writes a structure. The header is fixed, so one zlib
+    makes the same bytes on every Python; another zlib build may deflate differently, so compare files by decode(), not bytes."""
     raw = bytes([COMPOUND]) + _string("") + _payload(root)
-    return gzip.compress(raw, mtime=0)
+    deflate = zlib.compressobj(9, zlib.DEFLATED, -zlib.MAX_WBITS)
+    body = deflate.compress(raw) + deflate.flush()
+    return _GZIP_HEADER + body + struct.pack("<II", zlib.crc32(raw) & 0xFFFFFFFF, len(raw) & 0xFFFFFFFF)
 
 
 class _Reader:

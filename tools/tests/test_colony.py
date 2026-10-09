@@ -1,8 +1,11 @@
 import contextlib
+import gzip
 import io
 import re
 import sys
+import tempfile
 import unittest
+import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -10,6 +13,7 @@ sys.path.insert(0, str(ROOT / "tools/colony"))
 
 import build  # noqa: E402
 import kit  # noqa: E402
+import nbt  # noqa: E402
 import preview  # noqa: E402
 import sculptures  # noqa: E402
 from sculpt import Bone  # noqa: E402
@@ -35,6 +39,32 @@ class GeneratedFilesTest(unittest.TestCase):
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
             code = build.main(["--check"])
         self.assertEqual(code, 0, out.getvalue())
+
+    def structure(self) -> bytes:
+        """The bytes the sources make for one of the structure files."""
+        return next(d for p, d in build.outputs().items() if p.suffix == ".nbt")
+
+    def written(self, data: bytes) -> Path:
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        path = Path(folder.name) / "piece.nbt"
+        path.write_bytes(data)
+        return path
+
+    def test_a_structure_file_deflated_by_another_python_or_zlib_still_matches(self):
+        data = self.structure()
+        # Python 3.12's gzip.compress(mtime=0) hands the file to zlib, which writes its own header (the build's OS byte).
+        other = zlib.compress(gzip.decompress(data), 6, wbits=31)
+        self.assertNotEqual(other, data)
+        self.assertTrue(build.holds(self.written(other), data))
+
+    def test_a_structure_file_whose_nbt_changed_fails_the_check(self):
+        data = self.structure()
+        root = nbt.decode(data)
+        first = root["blocks"].items[0]
+        moved = dict(first, pos=nbt.ints(*(v.value + 1 for v in first["pos"].items)))
+        root["blocks"] = nbt.compounds((moved,) + root["blocks"].items[1:])
+        self.assertFalse(build.holds(self.written(nbt.encode(root)), data))
 
 
 class ModelUvTest(unittest.TestCase):

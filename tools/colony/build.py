@@ -11,8 +11,9 @@ Usage: tools/colony/build.py [--check]
   - each concept's structure pieces (.nbt) and layout under src/gametest/resources/data/deepcharter/, which only test and
     evidence worlds load (concepts.py)
 
-A file whose content already matches is not rewritten. --check writes nothing: it exits 1 and lists every file that differs from
-what the sources make, and every file in a generated directory that no source makes. Standard library only.
+A file whose content already matches is not rewritten; a structure file matches when the NBT inside it does, whatever bytes
+the local zlib would deflate it to. --check writes nothing: it exits 1 and lists every file that differs from what the sources
+make, and every file in a generated directory that no source makes. Standard library only.
 """
 import argparse
 import json
@@ -64,6 +65,20 @@ def outputs() -> dict[Path, bytes]:
     return files
 
 
+def holds(path: Path, data: bytes) -> bool:
+    """Whether the file at path already holds data. A structure file is compared by the NBT inside its gzip, because another
+    zlib build deflates the same NBT to other bytes; every other file byte for byte."""
+    if not path.is_file():
+        return False
+    held = path.read_bytes()
+    if path.suffix == ".nbt":
+        try:
+            return nbt.decode(held) == nbt.decode(data)
+        except (OSError, EOFError, ValueError):
+            return False
+    return held == data
+
+
 def strays(files: dict[Path, bytes]) -> list[Path]:
     found = []
     for directory in OWNED:
@@ -77,7 +92,7 @@ def main(argv=None) -> int:
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args(argv)
     files = outputs()
-    changed = [p for p, data in files.items() if not p.is_file() or p.read_bytes() != data]
+    changed = [p for p, data in files.items() if not holds(p, data)]
     stray = strays(files)
     if args.check:
         problems = [f"differs from its source: {p.relative_to(ROOT)}" for p in changed]
