@@ -25,6 +25,6 @@ public class WorldLoadWaitClientTest implements FabricClientGameTest {
 			require(inLevel.startsWith("an unexpected stage"), "with the level up and no loading screen, the stage should be the unexpected one, was: " + inLevel);
 		}
 		String noLevel = context.computeOnClient(WorldLoadWait::stage);
-		require(noLevel.startsWith("the connect and login stage"), "with no level, the stage should be connect and login, was: " + noLevel);
+		require(noLevel.startsWith("no level yet"), "with no level, the stage should be no level yet, was: " + noLevel);
 	}
 }

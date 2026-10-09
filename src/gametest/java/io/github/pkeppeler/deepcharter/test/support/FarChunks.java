@@ -102,7 +102,7 @@ public final class FarChunks {
 		return new Deadline(WAIT_SECONDS);
 	}
 
-	/** Starts a clock for a wait that needs longer than {@link #WAIT_SECONDS}, such as a world load. Such a wait uses only {@code expired()}. */
+	/** A clock for a wait longer than {@link #WAIT_SECONDS}, such as a world load. */
 	public static Deadline deadline(int seconds) {
 		return new Deadline(seconds);
 	}
