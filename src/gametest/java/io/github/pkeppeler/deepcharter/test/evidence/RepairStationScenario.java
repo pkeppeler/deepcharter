@@ -33,8 +33,6 @@ public class RepairStationScenario extends EvidenceScenario {
 	private static final int ROCK_RADIUS = 3;
 	private static final int AWAY_BLOCKS = 48;
 	private static final int HOTBAR = 9;
-	private static final int FRAME_GUI_WIDTH = 400;
-	private static final int FRAME_GUI_HEIGHT = 225;
 
 	@Override
 	protected String name() {
@@ -47,9 +45,6 @@ public class RepairStationScenario extends EvidenceScenario {
 			RepairStationClientTest.Scene scene = singleplayer.getServer().computeOnServer(RepairStationClientTest::setUp);
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.station())));
 			context.waitForScreen(RepairStationScreen.class);
-			// The frame cuts the 854 by 480 window to 800 by 450, so the screen is laid out for the GUI the frame shows, 400 by 225.
-			RepairStationScreen screen = context.computeOnClient(client -> (RepairStationScreen) client.gui.screen());
-			context.runOnClient(client -> screen.resize(FRAME_GUI_WIDTH, FRAME_GUI_HEIGHT));
 			hold(context);
 			screenshot(context, "station");
 
