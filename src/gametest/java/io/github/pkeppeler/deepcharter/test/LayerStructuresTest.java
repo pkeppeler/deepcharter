@@ -162,6 +162,10 @@ public class LayerStructuresTest {
 	 * The chunks of every site are made full on the first tick, and the check then waits on a wall-clock deadline for each
 	 * structure to hold its blocks ({@link FarChunks.Deadline}): a tick budget is a different wall time under load. The
 	 * failure names what was awaited and what the site held.
+	 *
+	 * <p>#365: this failed twice with blocks of a site missing, and has not been reproduced. BreachCrossingTest, the only other
+	 * test in this cell, writes in layer 1 only near y 0 to 10 and within 20 blocks of its columns, so it is ruled out. If it
+	 * fails again, the census in the failure says what stands in the site's place.
 	 */
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
 	public void eachStructureGeneratesInItsZone(GameTestHelper helper) {
