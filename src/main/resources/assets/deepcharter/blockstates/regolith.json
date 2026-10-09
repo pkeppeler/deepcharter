@@ -1,0 +1,22 @@
+{
+  "variants": {
+    "": [
+      {
+        "model": "deepcharter:block/regolith_0",
+        "weight": 4
+      },
+      {
+        "model": "deepcharter:block/regolith_1",
+        "weight": 3
+      },
+      {
+        "model": "deepcharter:block/regolith_2",
+        "weight": 2
+      },
+      {
+        "model": "deepcharter:block/regolith_3",
+        "weight": 1
+      }
+    ]
+  }
+}

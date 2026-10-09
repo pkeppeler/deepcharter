@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:mul",
+  "left": {
+    "type": "minecraft:floor",
+    "input": {
+      "type": "minecraft:clamp",
+      "input": {
+        "type": "minecraft:mul",
+        "left": {
+          "type": "minecraft:sub",
+          "left": "deepcharter:surface/mesa_noise",
+          "right": 0.077
+        },
+        "right": 7.0
+      },
+      "min": 0.0,
+      "max": 6.0
+    },
+    "multiple": 1.0
+  },
+  "right": 4.0
+}

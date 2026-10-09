@@ -1,0 +1,14 @@
+{
+  "variants": {
+    "": [
+      {
+        "model": "deepcharter:block/regolith_rock_0",
+        "weight": 3
+      },
+      {
+        "model": "deepcharter:block/regolith_rock_1",
+        "weight": 2
+      }
+    ]
+  }
+}

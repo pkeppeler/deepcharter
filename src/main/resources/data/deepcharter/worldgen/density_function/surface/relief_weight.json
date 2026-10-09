@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:mul",
+  "left": {
+    "type": "minecraft:square",
+    "input": "deepcharter:surface/ramp"
+  },
+  "right": {
+    "type": "minecraft:sub",
+    "left": 3.0,
+    "right": {
+      "type": "minecraft:mul",
+      "left": "deepcharter:surface/ramp",
+      "right": 2.0
+    }
+  }
+}

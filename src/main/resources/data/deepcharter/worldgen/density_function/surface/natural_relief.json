@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:add",
+  "left": {
+    "type": "minecraft:add",
+    "left": "deepcharter:surface/rolling",
+    "right": "deepcharter:surface/mesas"
+  },
+  "right": {
+    "type": "minecraft:add",
+    "left": {
+      "type": "minecraft:add",
+      "left": "deepcharter:surface/outcrops",
+      "right": "deepcharter:surface/craters"
+    },
+    "right": "deepcharter:surface/pit"
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "type": "minecraft:sequence",
+  "sequence": [
+    {
+      "type": "minecraft:condition",
+      "if_true": {
+        "type": "minecraft:stone_depth",
+        "offset": 11,
+        "add_surface_depth": true,
+        "secondary_depth_range": 0,
+        "surface_type": "floor"
+      },
+      "then_run": {
+        "type": "minecraft:condition",
+        "if_true": {
+          "type": "minecraft:y_above",
+          "add_stone_depth": false,
+          "anchor": {
+            "absolute": -96
+          },
+          "surface_depth_multiplier": 0
+        },
+        "then_run": {
+          "type": "minecraft:sequence",
+          "sequence": [
+            {
+              "type": "minecraft:condition",
+              "if_true": {
+                "type": "minecraft:noise_threshold",
+                "noise": "deepcharter:surface_basalt",
+                "min_threshold": 0.5,
+                "max_threshold": 10.0
+              },
+              "then_run": {
+                "type": "minecraft:condition",
+                "if_true": {
+                  "type": "minecraft:y_above",
+                  "add_stone_depth": false,
+                  "anchor": {
+                    "absolute": 66
+                  },
+                  "surface_depth_multiplier": 0
+                },
+                "then_run": {
+                  "type": "minecraft:block",
+                  "result_state": "deepcharter:basalt_outcrop"
+                }
+              }
+            },
+            {
+              "type": "minecraft:condition",
+              "if_true": {
+                "type": "minecraft:stone_depth",
+                "offset": 0,
+                "add_surface_depth": false,
+                "secondary_depth_range": 0,
+                "surface_type": "floor"
+              },
+              "then_run": {
+                "type": "minecraft:sequence",
+                "sequence": [
+                  {
+                    "type": "minecraft:condition",
+                    "if_true": {
+                      "type": "minecraft:noise_threshold",
+                      "noise": "deepcharter:surface_mesa",
+                      "min_threshold": 0.22,
+                      "max_threshold": 10.0
+                    },
+                    "then_run": {
+                      "type": "minecraft:block",
+                      "result_state": "deepcharter:ochre_regolith"
+                    }
+                  },
+                  {
+                    "type": "minecraft:block",
+                    "result_state": "deepcharter:regolith"
+                  }
+                ]
+              }
+            },
+            {
+              "type": "minecraft:condition",
+              "if_true": {
+                "type": "minecraft:stone_depth",
+                "offset": 2,
+                "add_surface_depth": true,
+                "secondary_depth_range": 0,
+                "surface_type": "floor"
+              },
+              "then_run": {
+                "type": "minecraft:block",
+                "result_state": "deepcharter:regolith_packed"
+              }
+            },
+            {
+              "type": "minecraft:block",
+              "result_state": "deepcharter:regolith_rock"
+            }
+          ]
+        }
+      }
+    },
+    "deepcharter:layer"
+  ]
+}
