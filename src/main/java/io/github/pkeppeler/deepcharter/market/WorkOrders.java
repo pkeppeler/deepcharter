@@ -124,7 +124,7 @@ public final class WorkOrders {
 
 	/** Why the round that the next delivery completes cannot be completed, before any ore is taken. */
 	private static Optional<Component> refuseCompletion(MinecraftServer server, Charter charter, WorkOrder order) {
-		if (order == WorkOrder.FOUNDERS_HANDS && FounderStatue.handPositions(server).isEmpty()) {
+		if (order == WorkOrder.FOUNDERS_HANDS && !FounderStatue.hasHost(server)) {
 			return Optional.of(Component.translatable("deepcharter.market.refusal.no_statue"));
 		}
 		if (charter.account() > Long.MAX_VALUE - order.reward()) {

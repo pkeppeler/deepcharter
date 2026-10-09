@@ -3,7 +3,8 @@
   "textures": {
     "face": "deepcharter:block/colony/sign/tile_27",
     "edge": "deepcharter:block/colony/sign_edge",
-    "particle": "deepcharter:block/colony/sign_edge"
+    "particle": "deepcharter:block/colony/sign_edge",
+    "glow": "deepcharter:block/colony/sign/tile_27_glow"
   },
   "elements": [
     {
@@ -73,6 +74,31 @@
           "texture": "#edge"
         }
       }
+    },
+    {
+      "from": [
+        0.0,
+        0.0,
+        13.98
+      ],
+      "to": [
+        16,
+        16,
+        14
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ],
+          "texture": "#glow"
+        }
+      },
+      "light_emission": 15,
+      "shade": false
     }
   ]
 }

@@ -51,10 +51,7 @@ public final class M2SliceEndState {
 		if (delivered != order.quantity()) {
 			throw new AssertionError("the Founder's hands order has " + delivered + " of " + order.quantity() + " delivered");
 		}
-		boolean hands = FounderStatue.handPositions(server)
-				.map(positions -> positions.stream().allMatch(pos -> server.overworld().getBlockState(pos).equals(FounderStatue.hand())))
-				.orElse(false);
-		if (!hands) {
+		if (FounderStatue.hands(server).size() != 1) {
 			throw new AssertionError("the Founder statue has no hands");
 		}
 	}

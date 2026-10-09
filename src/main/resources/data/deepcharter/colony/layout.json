@@ -1,0 +1,330 @@
+{
+  "pieces": [
+    {
+      "structure": "deepcharter:colony/square",
+      "offset": [
+        -10,
+        0,
+        -10
+      ],
+      "blocks": 797,
+      "displays": 1
+    },
+    {
+      "structure": "deepcharter:colony/streets",
+      "offset": [
+        -15,
+        0,
+        -36
+      ],
+      "blocks": 455,
+      "displays": 0
+    },
+    {
+      "structure": "deepcharter:colony/terminals",
+      "offset": [
+        -9,
+        1,
+        -12
+      ],
+      "blocks": 50,
+      "displays": 0
+    },
+    {
+      "structure": "deepcharter:colony/headframe",
+      "offset": [
+        -8,
+        0,
+        -29
+      ],
+      "blocks": 636,
+      "displays": 86
+    },
+    {
+      "structure": "deepcharter:colony/works",
+      "offset": [
+        2,
+        0,
+        -28
+      ],
+      "blocks": 1187,
+      "displays": 2
+    },
+    {
+      "structure": "deepcharter:colony/hoist_house",
+      "offset": [
+        -11,
+        0,
+        -37
+      ],
+      "blocks": 491,
+      "displays": 0
+    },
+    {
+      "structure": "deepcharter:colony/hangar",
+      "offset": [
+        -31,
+        0,
+        -1
+      ],
+      "blocks": 898,
+      "displays": 0
+    },
+    {
+      "structure": "deepcharter:colony/office",
+      "offset": [
+        13,
+        0,
+        -5
+      ],
+      "blocks": 302,
+      "displays": 0
+    },
+    {
+      "structure": "deepcharter:colony/chapel",
+      "offset": [
+        -25,
+        0,
+        -23
+      ],
+      "blocks": 370,
+      "displays": 0
+    },
+    {
+      "structure": "deepcharter:colony/bunkhouse",
+      "offset": [
+        22,
+        0,
+        13
+      ],
+      "blocks": 410,
+      "displays": 0
+    },
+    {
+      "structure": "deepcharter:colony/pay_office",
+      "offset": [
+        -15,
+        0,
+        13
+      ],
+      "blocks": 315,
+      "displays": 0
+    },
+    {
+      "structure": "deepcharter:colony/personnel_office",
+      "offset": [
+        11,
+        0,
+        13
+      ],
+      "blocks": 302,
+      "displays": 0
+    },
+    {
+      "structure": "deepcharter:colony/lamp_and_pick",
+      "offset": [
+        -4,
+        0,
+        13
+      ],
+      "blocks": 497,
+      "displays": 0
+    }
+  ],
+  "later": [
+    {
+      "structure": "deepcharter:colony/host_hands",
+      "offset": [
+        0,
+        6,
+        0
+      ],
+      "blocks": 0,
+      "displays": 1
+    }
+  ],
+  "anchors": {
+    "bunkhouse": [
+      29,
+      1,
+      17
+    ],
+    "chapel_candle": [
+      -22,
+      2,
+      -17
+    ],
+    "conduit": [
+      -4,
+      1,
+      -14
+    ],
+    "continuity_office": [
+      18,
+      1,
+      0
+    ],
+    "contract_terminal": [
+      8,
+      2,
+      -8
+    ],
+    "fuel_pump": [
+      -8,
+      2,
+      -8
+    ],
+    "hangar": [
+      -23,
+      1,
+      7
+    ],
+    "lamp_and_pick": [
+      3,
+      1,
+      16
+    ],
+    "ore_processor": [
+      -4,
+      2,
+      -8
+    ],
+    "pay_office": [
+      -12,
+      1,
+      15
+    ],
+    "personnel_office": [
+      16,
+      1,
+      16
+    ],
+    "repair_station": [
+      4,
+      2,
+      -8
+    ],
+    "statue": [
+      0,
+      6,
+      0
+    ],
+    "upgrade_terminal": [
+      0,
+      2,
+      -8
+    ]
+  },
+  "doors": [
+    {
+      "building": "works",
+      "outside": [
+        6,
+        1,
+        -10
+      ],
+      "facing": "south",
+      "width": 1,
+      "height": 2
+    },
+    {
+      "building": "works bay",
+      "outside": [
+        10,
+        1,
+        -10
+      ],
+      "facing": "south",
+      "width": 4,
+      "height": 4
+    },
+    {
+      "building": "hoist_house",
+      "outside": [
+        -11,
+        1,
+        -33
+      ],
+      "facing": "west",
+      "width": 1,
+      "height": 2
+    },
+    {
+      "building": "hangar bay",
+      "outside": [
+        -15,
+        1,
+        5
+      ],
+      "facing": "east",
+      "width": 4,
+      "height": 4
+    },
+    {
+      "building": "continuity office",
+      "outside": [
+        13,
+        1,
+        0
+      ],
+      "facing": "west",
+      "width": 1,
+      "height": 2
+    },
+    {
+      "building": "chapel",
+      "outside": [
+        -15,
+        1,
+        -17
+      ],
+      "facing": "east",
+      "width": 1,
+      "height": 2
+    },
+    {
+      "building": "bunkhouse",
+      "outside": [
+        29,
+        1,
+        13
+      ],
+      "facing": "north",
+      "width": 1,
+      "height": 2
+    },
+    {
+      "building": "pay office",
+      "outside": [
+        -12,
+        1,
+        13
+      ],
+      "facing": "north",
+      "width": 1,
+      "height": 2
+    },
+    {
+      "building": "personnel office",
+      "outside": [
+        16,
+        1,
+        13
+      ],
+      "facing": "north",
+      "width": 1,
+      "height": 2
+    },
+    {
+      "building": "the Lamp and Pick",
+      "outside": [
+        3,
+        1,
+        13
+      ],
+      "facing": "north",
+      "width": 1,
+      "height": 2
+    }
+  ]
+}

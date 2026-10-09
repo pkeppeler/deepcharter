@@ -62,8 +62,9 @@ public class WorkOrdersScenario extends EvidenceScenario {
 				return Colony.placed(server).orElseThrow(() -> new AssertionError("the colony was not built when the world started"));
 			});
 			BlockPos processor = colony.anchors().get(ColonyAnchor.ORE_PROCESSOR);
-			Vec3 hands = Vec3.atCenterOf(colony.center()).add(0, 6, 0);
-			Vec3 statueViewpoint = Vec3.atBottomCenterOf(colony.center()).add(0, 1, 11);
+			// The Host's raised hand is near the top of him: his plinth is 5 blocks high and he stands 10. Seen from the south street.
+			Vec3 hands = Vec3.atCenterOf(colony.center()).add(0, 12, 0);
+			Vec3 statueViewpoint = Vec3.atBottomCenterOf(colony.center()).add(0, 1, 12);
 			Vec3 terminalViewpoint = Vec3.atBottomCenterOf(colony.center()).add(-4, 1, -4);
 
 			stand(singleplayer, statueViewpoint, hands);

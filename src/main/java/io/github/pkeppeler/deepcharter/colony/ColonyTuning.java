@@ -14,5 +14,5 @@ package io.github.pkeppeler.deepcharter.colony;
  */
 public record ColonyTuning(int padSize, int clearHeight, int fillDepth, int conduitRadius, int conduitStack,
 		int searchStepChunks, int searchRings, int freshWorldTicks) {
-	public static final ColonyTuning DEFAULT = new ColonyTuning(64, 24, 48, 1, 10, 4, 8, 2400);
+	public static final ColonyTuning DEFAULT = new ColonyTuning(80, 36, 48, 1, 10, 4, 8, 2400);
 }

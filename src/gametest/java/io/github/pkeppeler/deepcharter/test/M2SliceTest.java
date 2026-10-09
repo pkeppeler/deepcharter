@@ -1,9 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -19,12 +17,12 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.Colony;
+import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.colony.FounderStatue;
 import io.github.pkeppeler.deepcharter.fuel.FuelPump;
@@ -84,7 +82,9 @@ public class M2SliceTest {
 		List<Awaited> awaited = List.of(
 				Awaited.of(one, BlockPos.containing(X, zoneY(one, 2), Z)),
 				Awaited.of(two, BlockPos.containing(X, zoneY(two, 2), Z)),
-				Awaited.of(server.overworld(), Colony.placed(server).orElseThrow().center()));
+				Awaited.of(server.overworld(), Colony.placed(server).orElseThrow().center()),
+				// The Host's chunk, whose displays the end state inspects: the colony's centre is in it, and this names it.
+				Awaited.of(server.overworld(), Colony.anchor(server, ColonyAnchor.STATUE).orElseThrow()));
 		Runnable allArrived = () -> runTheSlice(helper, server, one, two, awaited);
 		Runnable arrived = () -> {
 			if (ready.incrementAndGet() == awaited.size()) {
@@ -147,8 +147,7 @@ public class M2SliceTest {
 		// The statue's hands are shared with the world, so the test puts back what it found.
 		WorldData.swap(server).with(RepairState.TYPE, new RepairState()).with(HangarData.TYPE, new HangarData()).with(Serials.TYPE, new Serials())
 				.with(WorkOrderData.TYPE, new WorkOrderData()).run(() -> {
-			Map<BlockPos, BlockState> hands = new LinkedHashMap<>();
-			FounderStatue.handPositions(server).ifPresent(positions -> positions.forEach(pos -> hands.put(pos, server.overworld().getBlockState(pos))));
+			boolean hadHands = !FounderStatue.hands(server).isEmpty();
 			List<PodEntity> pods = new ArrayList<>();
 			MockPlayer director = MockPlayers.join(helper, "Director");
 			MockPlayer crew = MockPlayers.join(helper, "Crew");
@@ -308,7 +307,10 @@ public class M2SliceTest {
 				pods.forEach(PodEntity::discard);
 				director.leave();
 				crew.leave();
-				hands.forEach((pos, state) -> server.overworld().setBlock(pos, state, 3));
+				FounderStatue.removeHands(server);
+				if (hadHands) {
+					FounderStatue.restoreHands(server);
+				}
 				awaited.forEach(Awaited::release);
 			}
 		});

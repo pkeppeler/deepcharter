@@ -11,7 +11,7 @@ import net.minecraft.world.level.block.state.properties.IntegerProperty;
  */
 final class KitSignBlock extends KitFacingBlock {
 	/** How many tiles the signs may use; tools/colony/kit.py writes a model for each. */
-	static final int TILES = 48;
+	static final int TILES = 55;
 	static final IntegerProperty TILE = IntegerProperty.create("tile", 0, TILES - 1);
 
 	KitSignBlock(Properties properties) {

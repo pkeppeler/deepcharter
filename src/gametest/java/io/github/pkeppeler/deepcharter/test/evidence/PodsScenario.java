@@ -88,7 +88,7 @@ public class PodsScenario extends EvidenceScenario {
 	/** The design tour's world, so the plain and the mesa behind it are the ones the tour shows. */
 	private static final String SEED = "deepcharter-design-tour";
 	/** The stage is the flattest ground from this far to {@value #STAGE_SEARCH} blocks south of the colony's centre, in steps of {@value #STAGE_STEP}. */
-	private static final int STAGE_SOUTH = 48;
+	private static final int STAGE_SOUTH = 56;
 	private static final int STAGE_STEP = 6;
 	private static final int STAGE_SEARCH = 240;
 	/** The ground judged is both pads and this margin round them. */
