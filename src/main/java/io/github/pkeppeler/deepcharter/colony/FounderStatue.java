@@ -3,6 +3,8 @@ package io.github.pkeppeler.deepcharter.colony;
 import java.util.List;
 import java.util.Optional;
 
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -10,6 +12,9 @@ import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
+
+import io.github.pkeppeler.deepcharter.market.WorkOrder;
+import io.github.pkeppeler.deepcharter.market.WorkOrderData;
 
 /**
  * The hands of the Host, the Founder's statue in the colony square (his height and the layout are in tools/colony/town.py). The colony
@@ -21,6 +26,26 @@ public final class FounderStatue {
 	private static final double REACH = 12;
 
 	private FounderStatue() {
+	}
+
+	/**
+	 * A hands display lasts only while the world says the Host has his hands, that is while a charter has completed the work order. A
+	 * display that is found without that state discards itself the moment it is tracked, whatever chunk it is in: so a pair that
+	 * outlives its state (a rebuild, a restored backup, a test that cleared the state while the chunk did not tick) never shows. The
+	 * state is the work order's own saved data, so nothing new is saved.
+	 */
+	public static void init() {
+		ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
+			if (entity instanceof Display.BlockDisplay display && display.getBlockState().equals(handsState()) && !handsAreOwed(level.getServer())) {
+				display.discard();
+			}
+		});
+	}
+
+	/** True when the Host should have his hands: a charter has completed the order. False too when the data cannot be read: then nothing is discarded. */
+	private static boolean handsAreOwed(MinecraftServer server) {
+		WorkOrderData data = WorkOrderData.get(server);
+		return !data.isReadable() || data.anyCompleted(WorkOrder.FOUNDERS_HANDS);
 	}
 
 	/** The block state of the display of the body: the sculpture block's piece of him. */

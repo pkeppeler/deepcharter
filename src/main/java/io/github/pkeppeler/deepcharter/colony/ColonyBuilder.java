@@ -158,7 +158,8 @@ public final class ColonyBuilder {
 		ColonyLayout layout = ColonyLayout.read(level.getServer());
 		Map<ColonyAnchor, BlockPos> anchors = layout.anchorsAt(centre);
 		if (!anchors.equals(started.anchors())) {
-			throw new IllegalStateException("the colony's layout changed since its build began: " + started.anchors() + " became " + anchors);
+			throw new IllegalStateException("the colony's layout changed since its build began: " + started.anchors() + " became " + anchors
+					+ ". A world whose colony build stopped under an older layout cannot finish it: start a new world, or delete the world's data/deepcharter/colony.dat so the colony is placed again");
 		}
 		flatten(centre.getX() - half, centre.getZ() - half, centre.getX() + half - 1, centre.getZ() + half - 1, centre.getY());
 		layout.pieces().forEach(piece -> piece.place(level, centre));

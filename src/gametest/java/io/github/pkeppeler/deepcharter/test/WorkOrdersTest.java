@@ -17,9 +17,12 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.charter.Charter;
@@ -154,9 +157,69 @@ public class WorkOrdersTest {
 	}
 
 	/** Runs {@code body} once, when the chunk the Host stands in ticks: his displays are entities, found only in a chunk that does. */
-	private static void whenTheHostTicks(GameTestHelper helper, MinecraftServer server, Runnable body) {
+	static void whenTheHostTicks(GameTestHelper helper, MinecraftServer server, Runnable body) {
 		BlockPos statue = Colony.anchor(server, ColonyAnchor.STATUE).orElseThrow(() -> helper.assertionException("the colony was not built"));
 		ColonyChunks.whenTicking(helper, server.overworld(), List.of(statue), () -> !FounderStatue.body(server).isEmpty(), body);
+	}
+
+	/**
+	 * A hands display outlives its state when it is placed, and the state then goes (a test swapped the data, a backup came back), and
+	 * its chunk does not tick, so nothing finds it to clear it. It discards itself when its chunk ticks: here in a far chunk, beside a
+	 * body display that stays, which shows that the summon worked and that only the hands go.
+	 */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
+	public void aHandsDisplayWithoutItsStateDiscardsItselfWhenItsChunkTicks(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		if (WorkOrderData.get(server).anyCompleted(WorkOrder.FOUNDERS_HANDS)) {
+			throw helper.assertionException("the test needs a world in which no charter has completed the Founder's hands");
+		}
+		ServerLevel level = server.overworld();
+		BlockPos far = new BlockPos(14_000, 120, 14_000);
+		level.getChunk(far.getX() >> 4, far.getZ() >> 4);
+		for (String piece : List.of("founder_c", "founder_c_hands")) {
+			server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), String.format(
+					"summon minecraft:block_display %d %d %d {block_state:{id:\"deepcharter:colony_sculpture\",properties:{piece:\"%s\"}}}",
+					far.getX(), far.getY(), far.getZ(), piece));
+		}
+		AABB around = new AABB(far).inflate(3);
+		boolean[] ticking = {false};
+		FarChunks.awaitEntityTicking(helper, level, far, () -> ticking[0] = true);
+		helper.succeedWhen(() -> {
+			if (!ticking[0]) {
+				throw helper.assertionException("waiting for the far chunk to tick");
+			}
+			List<Display.BlockDisplay> found = level.getEntitiesOfClass(Display.BlockDisplay.class, around);
+			if (found.stream().noneMatch(display -> display.getBlockState().equals(FounderStatue.bodyState()))) {
+				throw helper.assertionException("waiting for the body display, which stays, to be found");
+			}
+			if (found.stream().anyMatch(display -> display.getBlockState().equals(FounderStatue.handsState()))) {
+				throw helper.assertionException("the hands display should have discarded itself: the world says the Host has no hands");
+			}
+			found.forEach(Entity::discard);
+		});
+	}
+
+	/** A world whose colony has no Host (one built before the rebuild) refuses the completing delivery before it takes any ore. */
+	@GameTest
+	public void theFoundersHandsRefuseWithNoHostInTheSquare(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		CompoundTag saved = ((CompoundTag) ColonySite.CODEC.encodeStart(NbtOps.INSTANCE, ColonySite.get(server)).getOrThrow()).copy();
+		CompoundTag anchors = saved.getCompound("colony").orElseThrow().getCompound("anchors").orElseThrow();
+		int[] statue = anchors.getIntArray("statue").orElseThrow();
+		anchors.putIntArray("statue", new int[] {statue[0] + 7_000, statue[1], statue[2] + 7_000});
+		ColonySite hostless = ColonySite.CODEC.parse(NbtOps.INSTANCE, saved).getOrThrow();
+		WorldData.with(server, ColonySite.TYPE, hostless, () -> withProcessorOnline(server, () -> {
+			MockPlayer mock = player(helper, "Latecomer", true);
+			ServerPlayer player = mock.player();
+			BlockPos processor = processorFor(helper, mock);
+			carry(player, OreType.BRONZIUM, 10);
+			expectKey(helper, NO_STATUE, WorkOrders.deliver(context(server, player, processor), WorkOrder.FOUNDERS_HANDS), "a completing delivery with no Host");
+			CharterId id = charter(server, player).id();
+			if (carried(player, OreType.BRONZIUM) != 10 || WorkOrderData.get(server).delivered(id, WorkOrder.FOUNDERS_HANDS) != 0) {
+				throw helper.assertionException("a refused completion must keep the ore and the progress");
+			}
+		}));
+		helper.succeed();
 	}
 
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)

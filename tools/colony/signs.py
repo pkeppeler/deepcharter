@@ -1,4 +1,4 @@
-"""The Company's signs: cream enamel plates with red lettering, lit sodium letters, a brass plaque and the bull's-head badge,
+"""The Company's signs: cream enamel plates with red lettering, lit sodium letters and a brass plaque,
 cut into the 16 x 16 tiles of the enamel_sign block. Each tile is a texgen recipe (tools/textures/recipes/colony_signs.json,
 written by tools/colony/build.py); a sign is a strip (or a grid) of tiles, placed by the structure builder.
 

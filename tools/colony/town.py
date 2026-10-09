@@ -302,15 +302,15 @@ def hangar(doors: list[Door]) -> Piece:
 
 def office(doors: list[Door]) -> Piece:
     """The Continuity Office in the east of the square: an open house whose floor has the blue pad the world spawn is on, the
-    lectern and the shelves, with the Continuity Plan leaflet (N04) on them."""
+    lectern and a low shelf, with the Continuity Plan leaflet (N04) on it, where a player's eyes look down on it."""
     p = Piece("office")
     walls = parts.cabin(p, 14, -4, 22, 4, 5, {"west": (-2, 2), "east": (-2, 2), "north": (18,), "south": (18,)})
     west = walls["west"]
     doors.append(Door("continuity office", parts.door(p, west, 0), "west"))
     p.fill(17, 0, -1, 19, 0, 1, state("minecraft:light_blue_concrete"))
     p.set(21, 1, -3, state("minecraft:lectern", facing="west", has_book="false", powered="false"))
-    p.fill(15, 1, -3, 15, 2, -3, state("minecraft:bookshelf"))
-    p.set(15, 3, -3, state("deepcharter:note", note="4"))
+    p.fill(15, 1, -3, 16, 1, -3, state("minecraft:bookshelf"))
+    p.set(15, 2, -3, state("deepcharter:note", note="4"))
     parts.wall_sign(p, west, "continuity", 0, 4)
     return p
 

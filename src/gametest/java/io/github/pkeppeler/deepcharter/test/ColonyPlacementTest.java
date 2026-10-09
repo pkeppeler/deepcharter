@@ -33,12 +33,16 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.CollisionContext;
 
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
@@ -76,7 +80,9 @@ public class ColonyPlacementTest {
 	private static final int DROP = 3;
 	/** The most blocks above the ground a walk looks at: steps, not ladders. */
 	private static final int WALK_HEIGHT = 3;
-	private static final double NEAR = 3;
+	/** How far a player's eyes are above the feet, and how far a player reaches to use a block. */
+	private static final double EYE = 1.62;
+	private static final double REACH = 4.5;
 
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
 	public void everyBlockOfEveryPieceOfTheLayoutStandsInTheWorld(GameTestHelper helper) {
@@ -225,14 +231,30 @@ public class ColonyPlacementTest {
 			}
 		}
 		for (Map.Entry<String, BlockPos> place : places.entrySet()) {
-			if (reach.stream().noneMatch(stand -> Vec3.atCenterOf(place.getValue()).distanceTo(Vec3.atBottomCenterOf(stand).add(0, 1, 0)) <= NEAR)) {
-				problems.add("a player cannot walk to within " + NEAR + " blocks of " + place.getKey() + " at " + place.getValue().toShortString());
+			if (reach.stream().noneMatch(stand -> canUse(level, stand, place.getValue()))) {
+				problems.add("no place a player can walk to reaches " + place.getKey() + " at " + place.getValue().toShortString() + " with a clear line to it");
 			}
 		}
 		if (places.keySet().stream().filter(name -> name.startsWith("note N0")).count() != 4) {
 			problems.add("the colony holds notes " + places.keySet() + ", expected N01 to N04");
 		}
 		finish(helper, problems);
+	}
+
+	/** True when a player standing at {@code stand} can use the block at {@code target}: it is within reach of the eyes and the first block the line to it meets is that block (or, for the casing, one of its kind). */
+	private static boolean canUse(ServerLevel level, BlockPos stand, BlockPos target) {
+		Vec3 eye = Vec3.atBottomCenterOf(stand).add(0, EYE, 0);
+		BlockState state = level.getBlockState(target);
+		Vec3 aim = Vec3.atLowerCornerOf(target).add(state.getShape(level, target).bounds().getCenter());
+		if (eye.distanceTo(aim) > REACH) {
+			return false;
+		}
+		BlockHitResult hit = level.clip(new ClipContext(eye, aim, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, CollisionContext.empty()));
+		if (hit.getType() != HitResult.Type.BLOCK) {
+			return false;
+		}
+		BlockState first = level.getBlockState(hit.getBlockPos());
+		return hit.getBlockPos().equals(target) || (state.is(ColonyBlocks.CONDUIT) && first.is(ColonyBlocks.CONDUIT));
 	}
 
 	/** The standing places a player reaches from {@code start} on the pad: walking, a jump up one block, a drop of up to three. */
