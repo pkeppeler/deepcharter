@@ -16,6 +16,8 @@ public final class PodClientRegistry {
 	}
 
 	public static void register() {
+		// A bad dev switch fails here, at startup, not later on a resource reload's crash screen.
+		PodConcept.selected();
 		EntityRendererRegistry.register(PodRegistry.POD, PodClientRegistry::mole);
 		EntityRendererRegistry.register(PodRegistry.PROSPECTOR, context -> new PodRenderer(context, Chassis.PROSPECTOR));
 		// The motion of the end rod it replaced; the sprite is the pack's.

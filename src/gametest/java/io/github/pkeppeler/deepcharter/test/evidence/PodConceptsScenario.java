@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -24,6 +26,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
+import net.minecraft.world.level.gamerules.GameRule;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.Vec3;
 
@@ -93,6 +96,8 @@ public class PodConceptsScenario extends EvidenceScenario {
 	private PodEntity piloted;
 	private MockPlayer pilot;
 	private int framesTaken;
+	private final List<Consumer<Minecraft>> clientUndo = new ArrayList<>();
+	private final List<Consumer<MinecraftServer>> serverUndo = new ArrayList<>();
 
 	@Override
 	protected String name() {
@@ -107,8 +112,8 @@ public class PodConceptsScenario extends EvidenceScenario {
 		}
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			world = singleplayer;
-			setUp();
 			try {
+				setUp();
 				for (PodConcept concept : PodConcept.values()) {
 					select(concept);
 					rebuildCave();
@@ -120,21 +125,53 @@ public class PodConceptsScenario extends EvidenceScenario {
 					}
 				}
 			} finally {
-				System.clearProperty(PodConcept.PROPERTY);
-				reloadAndWait("the Mole back on its shipping renderer", client -> !(moleRenderer(client) instanceof PodGeoRenderer));
+				try {
+					System.clearProperty(PodConcept.PROPERTY);
+					reloadAndWait("the Mole back on its shipping renderer", client -> !(moleRenderer(client) instanceof PodGeoRenderer));
+				} finally {
+					undo();
+				}
 			}
 		}
 	}
 
-	/** A creative camera in layer 1 with the HUD hidden, no mobs, a parked Mole in the studio and a piloted one in the cave. */
+	/** Puts back, newest first, everything {@link #setUp} changed: the client's HUD and camera, the game rules and the camera player. */
+	private void undo() {
+		ctx.runOnClient(client -> clientUndo.reversed().forEach(step -> step.accept(client)));
+		serverDo(server -> serverUndo.reversed().forEach(step -> step.accept(server)));
+	}
+
+	/**
+	 * A creative camera in layer 1 with the HUD hidden, no mobs, a parked Mole in the studio and a piloted one in the cave. Every
+	 * change to the client, the rules or the camera player is noted for {@link #undo} before it is made.
+	 */
 	private void setUp() {
 		serverDo(server -> {
 			GameRules rules = server.getGameRules();
-			rules.set(GameRules.SPAWN_MOBS, false, server);
-			rules.set(GameRules.SPAWN_MONSTERS, false, server);
+			for (GameRule<Boolean> rule : List.of(GameRules.SPAWN_MOBS, GameRules.SPAWN_MONSTERS)) {
+				boolean before = rules.get(rule);
+				serverUndo.add(undoServer -> undoServer.getGameRules().set(rule, before, undoServer));
+				rules.set(rule, false, server);
+			}
+			int randomTicks = rules.get(GameRules.RANDOM_TICK_SPEED);
+			serverUndo.add(undoServer -> undoServer.getGameRules().set(GameRules.RANDOM_TICK_SPEED, randomTicks, undoServer));
 			rules.set(GameRules.RANDOM_TICK_SPEED, 0, server);
 			ServerLevel one = layerOne(server);
 			ServerPlayer camera = server.getPlayerList().getPlayers().getFirst();
+			GameType mode = camera.gameMode();
+			boolean mayfly = camera.getAbilities().mayfly;
+			boolean flying = camera.getAbilities().flying;
+			boolean noGravity = camera.isNoGravity();
+			boolean invulnerable = camera.isPermanentlyInvulnerable();
+			serverUndo.add(undoServer -> {
+				ServerPlayer player = undoServer.getPlayerList().getPlayers().getFirst();
+				player.setGameMode(mode);
+				player.getAbilities().mayfly = mayfly;
+				player.getAbilities().flying = flying;
+				player.onUpdateAbilities();
+				player.setNoGravity(noGravity);
+				player.setPermanentlyInvulnerable(invulnerable);
+			});
 			camera.setGameMode(GameType.CREATIVE);
 			camera.getAbilities().mayfly = true;
 			camera.getAbilities().flying = true;
@@ -170,8 +207,16 @@ public class PodConceptsScenario extends EvidenceScenario {
 			}
 		});
 		ctx.runOnClient(client -> {
+			CameraType cameraType = client.options.getCameraType();
+			boolean hudHidden = client.gui.hud.isHidden();
+			clientUndo.add(undoClient -> {
+				undoClient.options.setCameraType(cameraType);
+				if (undoClient.gui.hud.isHidden() != hudHidden) {
+					undoClient.gui.hud.toggle();
+				}
+			});
 			client.options.setCameraType(CameraType.FIRST_PERSON);
-			if (!client.gui.hud.isHidden()) {
+			if (!hudHidden) {
 				client.gui.hud.toggle();
 			}
 		});
@@ -192,7 +237,7 @@ public class PodConceptsScenario extends EvidenceScenario {
 
 	/** The renderer the client draws the parked Mole with, or null before the client has the Mole. */
 	private Object moleRenderer(Minecraft client) {
-		var mole = client.level == null ? null : client.level.getEntity(parked.getId());
+		var mole = client.level == null || parked == null ? null : client.level.getEntity(parked.getId());
 		return mole == null ? null : client.getEntityRenderDispatcher().getRenderer(mole);
 	}
 

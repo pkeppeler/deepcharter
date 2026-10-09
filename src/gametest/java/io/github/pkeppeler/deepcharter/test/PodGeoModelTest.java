@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -114,6 +115,69 @@ public class PodGeoModelTest {
 			requireContains(helper, failure(helper, entry.getKey()), entry.getValue());
 		}
 		helper.succeed();
+	}
+
+	/** Each concept's texture and glowmask pass the check the renderer makes before it draws. */
+	@GameTest
+	public void everyConceptTexturePassesTheRenderersCheck(GameTestHelper helper) throws IOException {
+		for (PodConcept concept : PodConcept.values()) {
+			GeoModel model = read(helper, concept.model());
+			for (Identifier texture : List.of(concept.texture(), concept.glowmask())) {
+				try (InputStream png = stream(helper, texture)) {
+					model.checkTexture(texture.toString(), png);
+				}
+			}
+		}
+		helper.succeed();
+	}
+
+	/** A texture of another size than the model's UV, or a file that is no PNG, fails and names the texture and the model. */
+	@GameTest
+	public void aTextureThatDoesNotFitFailsAndNamesBothFiles(GameTestHelper helper) throws IOException {
+		GeoModel model = GeoModel.parse("valid.geo.json", new StringReader(VALID));
+		String wrongSize = textureFailure(helper, model, pngHeader(64, 32));
+		requireContains(helper, wrongSize, "broken.png is 64 x 32");
+		requireContains(helper, wrongSize, "valid.geo.json");
+		requireContains(helper, wrongSize, "64 x 64");
+		requireContains(helper, textureFailure(helper, model, "not a png at all, just text".getBytes(StandardCharsets.UTF_8)), "broken.png is not a PNG");
+		helper.succeed();
+	}
+
+	/** A dev switch that names no concept fails, and says which names it knows. */
+	@GameTest
+	public void anUnknownDevSwitchNamesTheConcepts(GameTestHelper helper) {
+		String before = System.getProperty(PodConcept.PROPERTY);
+		System.setProperty(PodConcept.PROPERTY, "dril");
+		try {
+			PodConcept.selected();
+			throw helper.assertionException(Component.literal("the unknown concept 'dril' should fail"));
+		} catch (IllegalArgumentException e) {
+			for (String part : List.of("dril", "capsule", "borer", "strider", "gyro")) {
+				requireContains(helper, e.getMessage(), part);
+			}
+		} finally {
+			if (before == null) {
+				System.clearProperty(PodConcept.PROPERTY);
+			} else {
+				System.setProperty(PodConcept.PROPERTY, before);
+			}
+		}
+		helper.succeed();
+	}
+
+	private static String textureFailure(GameTestHelper helper, GeoModel model, byte[] png) throws IOException {
+		try {
+			model.checkTexture("broken.png", new ByteArrayInputStream(png));
+			throw helper.assertionException(Component.literal("expected the texture check to fail"));
+		} catch (IllegalArgumentException e) {
+			return e.getMessage();
+		}
+	}
+
+	/** The first 24 bytes of a PNG of {@code width} x {@code height}: the signature and the start of its IHDR chunk. */
+	private static byte[] pngHeader(int width, int height) {
+		return ByteBuffer.allocate(24).putLong(0x89504E470D0A1A0AL).putInt(13).put("IHDR".getBytes(StandardCharsets.US_ASCII)).putInt(width)
+				.putInt(height).array();
 	}
 
 	/** The extent of every cube corner at rest, turned by its own rotation and its bones', as GeckoLib and our loader read the file. */

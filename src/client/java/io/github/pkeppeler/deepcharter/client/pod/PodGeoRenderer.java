@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.pod;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.util.Map;
@@ -42,7 +43,11 @@ public class PodGeoRenderer extends EntityRenderer<PodEntity, PodGeoRenderState>
 		super(context);
 		shadowRadius = Chassis.MOLE.width() / 2;
 		this.concept = concept;
-		model = new PodGeoModel(read(context.getResourceManager(), concept.model()));
+		ResourceManager resources = context.getResourceManager();
+		GeoModel geo = read(resources, concept.model());
+		checkTexture(resources, geo, concept.texture());
+		checkTexture(resources, geo, concept.glowmask());
+		model = new PodGeoModel(geo);
 	}
 
 	public PodConcept concept() {
@@ -55,6 +60,17 @@ public class PodGeoRenderer extends EntityRenderer<PodEntity, PodGeoRenderState>
 			return GeoModel.parse(id.toString(), reader);
 		} catch (IOException e) {
 			throw new UncheckedIOException("Could not read the pod model " + id, e);
+		}
+	}
+
+	/** The texture is there and fits the model's UV, or this throws naming both: a missing texture would draw magenta, silently. */
+	private static void checkTexture(ResourceManager resources, GeoModel geo, Identifier texture) {
+		Resource resource = resources.getResource(texture)
+				.orElseThrow(() -> new IllegalStateException("No texture " + texture + " for the pod model " + geo.source()));
+		try (InputStream png = resource.open()) {
+			geo.checkTexture(texture.toString(), png);
+		} catch (IOException e) {
+			throw new UncheckedIOException("Could not read the texture " + texture + " of the pod model " + geo.source(), e);
 		}
 	}
 

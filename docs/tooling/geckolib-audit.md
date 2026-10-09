@@ -4,6 +4,10 @@ Read-only audit of [GeckoLib](https://github.com/bernie-g/geckolib) 5.5.7 for Fa
 
 Source paths below are at `e771d86` under `common/src/main/java/com/geckolib/`, unless they start with `fabric/`.
 
+## For the owner
+
+- **Our own licence fields disagree.** [LICENSE](../../LICENSE) says MIT, but [fabric.mod.json:13](../../src/main/resources/fabric.mod.json) says `All-Rights-Reserved`. This is not GeckoLib's issue, but bundling a third-party jar makes it matter. Settle it before any public release.
+
 ## Verdict: adopt, pinned, jar-in-jar
 
 GeckoLib 5.5.7 is safe to bundle. The Modrinth jar and the Maven jar are byte-identical, and the published sources match commit `e771d86` ("Update to 5.5.7"). It has no network code, no file writes of its own, no reflection beyond Gson and one generic array, no `@Overwrite` and no dependency beyond Fabric Loader, Fabric API and what Minecraft ships.
@@ -53,7 +57,7 @@ What jar-in-jar requires:
 - MIT asks that "the above copyright notice and this permission notice shall be included in all copies or substantial portions" (`LICENSE.txt:12-13`). The nested jar keeps its own `LICENSE.txt`, so bundling it **unchanged** meets that.
 - There is no NOTICE file and no attribution clause beyond MIT.
 - Good practice, not required: name GeckoLib, its licence and a link in our README.
-- Aside, not GeckoLib's issue: our [LICENSE](../../LICENSE) says MIT, but [fabric.mod.json:13](../../src/main/resources/fabric.mod.json) says `All-Rights-Reserved`. Settle that before any public release.
+- Our own licence fields disagree: see [For the owner](#for-the-owner).
 
 ## What it does at runtime
 

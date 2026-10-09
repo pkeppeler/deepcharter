@@ -1,7 +1,11 @@
 package io.github.pkeppeler.deepcharter.client.pod;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.Reader;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -31,6 +35,11 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 	private static final Set<String> GEOMETRY_KEYS = Set.of("description", "bones");
 	private static final Set<String> BONE_KEYS = Set.of("name", "parent", "pivot", "rotation", "cubes", "mirror", "inflate", "locators");
 	private static final Set<String> CUBE_KEYS = Set.of("origin", "size", "uv", "inflate", "mirror", "pivot", "rotation");
+	/** A PNG starts with an 8-byte signature, then the IHDR chunk: length, type, width, height. */
+	private static final byte[] PNG_SIGNATURE = {(byte) 137, 'P', 'N', 'G', '\r', '\n', 26, '\n'};
+	private static final byte[] PNG_IHDR = {'I', 'H', 'D', 'R'};
+	private static final int PNG_IHDR_TYPE = 12;
+	private static final int PNG_HEADER_BYTES = 24;
 
 	/** A bone: its pivot and rest rotation (degrees, applied z, then y, then x) are in model space, as in the file. */
 	public record Bone(String name, BoneRole role, Optional<String> parent, Vec3 pivot, Vec3 rotation, List<Cube> cubes) {
@@ -76,6 +85,25 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 		GeoModel model = new GeoModel(source, width, height, bones);
 		model.checkRig();
 		return model;
+	}
+
+	/**
+	 * Throws unless {@code png} (named {@code texture} in the error) is a PNG of exactly this model's texture size. A missing texture,
+	 * or one of another size, would draw the model in vanilla's magenta or in the wrong places, with no error.
+	 */
+	public void checkTexture(String texture, InputStream png) throws IOException {
+		byte[] head = png.readNBytes(PNG_HEADER_BYTES);
+		if (head.length < PNG_HEADER_BYTES || !Arrays.equals(head, 0, PNG_SIGNATURE.length, PNG_SIGNATURE, 0, PNG_SIGNATURE.length)
+				|| !Arrays.equals(head, PNG_IHDR_TYPE, PNG_IHDR_TYPE + PNG_IHDR.length, PNG_IHDR, 0, PNG_IHDR.length)) {
+			throw new IllegalArgumentException(texture + " is not a PNG; the pod model " + source + " needs it");
+		}
+		ByteBuffer header = ByteBuffer.wrap(head);
+		int width = header.getInt(PNG_IHDR_TYPE + 4);
+		int height = header.getInt(PNG_IHDR_TYPE + 8);
+		if (width != textureWidth || height != textureHeight) {
+			throw new IllegalArgumentException(texture + " is " + width + " x " + height + ", but the pod model " + source + " lays its UV out for "
+					+ textureWidth + " x " + textureHeight);
+		}
 	}
 
 	/** The bones that name {@code parent} as their parent, in file order. */
