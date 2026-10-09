@@ -10,7 +10,6 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 
-import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
 import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -115,39 +114,52 @@ public class EconomyAffordabilityTest {
 	}
 
 	/**
-	 * Trips to bore layer 1 from the top to the breach, for a Mole whose tank is of tier 0 to 6, in the deepest zone (the fuel burn does
-	 * not differ between the zones today). Literals: a change to the tank ladder, the burn rates or layer 1's height moves them.
+	 * Tank refills that a one-way bore of all of layer 1 takes, for a Mole whose tank is of tier 0 to 6, in the deepest zone (it
+	 * changes drill time per slab through the ore's hardness, so it is the dearest). Literals: a change to the tank ladder, the burn
+	 * rates, the drill or layer 1's height moves them.
 	 */
-	private static final int[] DESCENT_TRIPS_BY_TANK_TIER = {28, 14, 7, 4, 3, 2, 1};
-	/** With the best tank a Mole takes (SPEC section 7), the way to layer 2 is this many round trips from the pump, at most. */
-	private static final int DESCENT_TRIPS_MAX = 8;
+	private static final int[] BORE_TANKS_BY_TANK_TIER = {14, 10, 6, 4, 3, 2, 1};
+	private static final int BORE_LITRES = 139;
+	private static final int STOCK_SAFE_DROP_BLOCKS = 23;
+	private static final int PROSPECTOR_RUNS = 4;
 
 	@GameTest
-	public void theWayDownLayerOneTakesTheTripsThatTheTankLadderGives(GameTestHelper helper) {
+	public void aOneWayBoreOfLayerOneTakesTheTanksThatTheLadderGives(GameTestHelper helper) {
 		Zone zone = Zone.load("deep_claim");
-		for (int tier = 0; tier <= ComponentTrack.FUEL_TANK.maxTier(); tier++) {
-			EarlyRunModel.Descent descent = EarlyRunModel.descent(zone, EarlyRunModel.mole(0, tier, 0));
-			LOGGER.info("[fuel] tank tier {}: {}", tier, descent);
-			if (descent.trips() != DESCENT_TRIPS_BY_TANK_TIER[tier]) {
-				throw failure(helper, "a tier %d tank bores layer 1 in %d trips, expected %d", tier, descent.trips(), DESCENT_TRIPS_BY_TANK_TIER[tier]);
+		double litres = EarlyRunModel.boreLitres(zone, PodStats.base(), EarlyRunModel.layerOneBlocks());
+		LOGGER.info("[fuel] one-way bore of layer 1: {} L", litres);
+		if (BORE_TANKS_BY_TANK_TIER.length != ComponentTrack.FUEL_TANK.maxTier() + 1) {
+			throw failure(helper, "the test pins %d tank tiers, the track has %d", BORE_TANKS_BY_TANK_TIER.length, ComponentTrack.FUEL_TANK.maxTier() + 1);
+		}
+		if (Math.round(litres) != BORE_LITRES) {
+			throw failure(helper, "a one-way bore of layer 1 burns %.1f L, expected %d", litres, BORE_LITRES);
+		}
+		for (int tier = 0; tier < BORE_TANKS_BY_TANK_TIER.length; tier++) {
+			int tanks = (int) Math.ceil(litres / EarlyRunModel.mole(0, tier, 0).tankLitres());
+			LOGGER.info("[fuel] tank tier {}: {} tanks", tier, tanks);
+			if (tanks != BORE_TANKS_BY_TANK_TIER[tier]) {
+				throw failure(helper, "a tier %d tank needs %d refills for the bore, expected %d", tier, tanks, BORE_TANKS_BY_TANK_TIER[tier]);
 			}
 		}
 		helper.succeed();
 	}
 
 	@GameTest
-	public void aMoleWithItsBestTankReachesLayerTwoInFewTrips(GameTestHelper helper) {
-		int tier = UpgradeTuning.DEFAULT.tierCap(Chassis.MOLE.id());
-		EarlyRunModel.Descent descent = EarlyRunModel.descent(Zone.load("deep_claim"), EarlyRunModel.mole(0, tier, 0));
-		double bill = descent.litres() * FuelTuning.DEFAULT.pricePerLitre();
-		double layerTwoRun = upgradedRunInLayerTwo().net();
-		LOGGER.info("[fuel] Mole with a tier {} tank, down layer 1: {} trips, ${} of fuel, against a layer 2 run of ${}", tier, descent.trips(),
-				Math.round(bill), Math.round(layerTwoRun));
-		if (descent.trips() > DESCENT_TRIPS_MAX) {
-			throw failure(helper, "a tier %d tank needs %d trips to bore layer 1; at most %d are allowed", tier, descent.trips(), DESCENT_TRIPS_MAX);
+	public void aStockMoleCannotDriveBackDownItsOwnShaft(GameTestHelper helper) {
+		int safe = EarlyRunModel.safeDropBlocks(PodStats.base());
+		LOGGER.info("[fuel] a stock hull survives a drop of {} blocks; layer 1 is {}", safe, EarlyRunModel.layerOneBlocks());
+		if (safe != STOCK_SAFE_DROP_BLOCKS) {
+			throw failure(helper, "a stock hull survives a drop of %d blocks, expected %d", safe, STOCK_SAFE_DROP_BLOCKS);
 		}
-		if (bill > layerTwoRun) {
-			throw failure(helper, "the fuel for the way down layer 1 costs $%.0f, more than the $%.0f of a layer 2 run", bill, layerTwoRun);
+		helper.succeed();
+	}
+
+	/** The layer 2 runs assume a pod that starts at the bottom of layer 1's shaft; the Prospector takes this many of them. */
+	@GameTest
+	public void theProspectorRestoreTakesTheLayerTwoRunsThePlanSays(GameTestHelper helper) {
+		int runs = upgradedRunInLayerTwo().toAfford(HangarTuning.DEFAULT.restoreCost(Chassis.PROSPECTOR).money());
+		if (runs != PROSPECTOR_RUNS) {
+			throw failure(helper, "the Prospector restore takes %d layer 2 runs, expected %d", runs, PROSPECTOR_RUNS);
 		}
 		helper.succeed();
 	}

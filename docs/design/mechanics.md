@@ -96,37 +96,41 @@ The bot is unrealistic in two opposite ways. It never reacts, which is harsh. It
 
 ## Fuel per descent (#289, A)
 
-**Problem.** #231 measured about 20 slabs a tank and about 10 tanks for a bore from the top of layer 1's rock to the breach, but its bot refuelled underground. A player cannot. Is layer 2 reachable at the pace the economy assumes (4 layer 2 runs for the Prospector, PR 206)?
+**Problem.** #231 measured about 20 slabs a tank and about 10 tanks for a bore from the top of layer 1's rock to the breach, but its bot refuelled underground. Can a charter reach layer 2 at the pace the economy assumes (4 layer 2 runs for the Prospector, PR 206)?
 
-**Measured.** `EarlyRunModel.descent` bores layer 1 (192 blocks) in trips. Each trip starts at the bottom of the shaft the last one left, drills until the tank pays for the slabs and the climb back to the pump, then refuels. It uses the real drill, depth, burn and climb numbers, in the deepest zone.
+**Verdict: reachable once, not repeatedly. The 4-run pace needs a way back down.** The layer 2 runs in `EarlyRunModel` start at the bottom of layer 1's shaft with a full tank. Two facts decide whether a pod can be there.
 
-| Tank tier | Litres | Trips down layer 1 | Fuel burned |
-|---|---|---|---|
-| 0 (stock) | 10 | 28 | 268 L |
-| 1 | 15 | 14 | 203 L |
-| 2 (the Mole's best) | 25 | 7 | 172 L |
-| 3 | 40 | 4 | 159 L |
-| 4 | 60 | 3 | 178 L |
-| 5 | 100 | 2 | 198 L |
-| 6 | 150 | 1 | 149 L |
+1. **A pod cannot drive back down its own shaft.** The hull pays 5 per block fallen beyond 4 (`hullDamagePerBlock`, `hardLandingDistance`), by distance and not by speed. `PodCargoFuelTest` shows a rotor-braked fall costs exactly the hull of a free one (10 for 6 blocks). A stock hull survives a drop of 23 blocks. Layer 1 is 192. So there is no fuel cost to model for the drive down: it is not survivable, however slowly the pilot brakes. (A tier 2 hull, 30 against 10, triples that to about 63 blocks, by the same formula.)
+2. **A bore down has to carry its fuel.** There is no pump underground. The only field refuel is a fuel item fed to the parked pod (coal, charcoal, biofuel: 2 L each, `pod_fuel/*.json`), by reading the code, not tried in play.
 
-- **The path is not broken.** With the tier 2 tank ($500) that the intended path buys, the way down is 7 round trips and $172 of fuel, under half of one layer 2 run ($397). Tier 2 is the Mole's cap, so a Mole is never worse than 7.
-- **Why more than 10 tanks of 10 L.** The one-way bore of #231 burned about 100 L. Round trips burn more (172 L at tier 2) because each one climbs the whole shaft back, and the climb grows with the shaft. A smaller tank pays for more climbs.
-- **Where it hurts.** Before the tier 2 tank the descent is a slog (28 trips stock, 14 at tier 1). It is not meant to be done then: a stock Mole earns in layer 1's top runs, which the economy tests already cover, and buys the tank first.
-- **Model limits (A).** The model takes the shaft from the top of the layer, though the rock starts at y 150 to 170, so it overstates the slabs. It charges no fuel for driving down the shaft and counts no ore from the descent. The errors push in opposite ways.
+Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`EarlyRunModel.boreLitres`): **139 L**. The tank tier sets how many tank-fulls that is:
 
-**Decision (A).** No tuning change and no new mechanic. `EconomyAffordabilityTest` pins the trips for each tank tier as literals and requires at most 8 trips and a fuel bill under one layer 2 run for a tier 2 tank, so a change to fuel, tank sizes, the climb or layer 1's height cannot make layer 2 unreachable unseen.
+| Tank tier | Litres | Tanks for the bore |
+|---|---|---|
+| 0 (stock) | 10 | 14 |
+| 1 | 15 | 10 |
+| 2 (the Mole's best) | 25 | 6 |
+| 3 | 40 | 4 |
+| 4 | 60 | 3 |
+| 5 | 100 | 2 |
+| 6 | 150 | 1 |
 
-**Ladder, if the wait must shrink later.**
-1. By hand: trips to the pump (today).
-2. A bigger tank at an earlier tier: tier 2 at 25 L is 7 trips; 40 L would be 4.
-3. A cache: charter fuel cans placed in a lined shaft (#232) refuel mid-descent, so a descent is one trip and the shaft stays a highway for the charter.
-4. Mastery: a high tank tier or the Prospector's tank ends the trips (1 trip at 150 L).
+- **Once is possible.** A Mole with the tier 2 tank bores layer 1 on its 25 L plus about 57 fuel items (114 L) fed at the bottom, or 45 with a reserve tank. That is one stack of coal. The pod arrives in layer 2 empty, with a 192-block climb behind it.
+- **Repeatedly is not.** A second layer 2 run starts at the surface again, and the shaft cannot be driven down. Each run would be a fresh 139 L bore. The 4 runs of $397 (the Prospector restore, `EconomyAffordabilityTest`) hold only if a pod can start a run at the shaft bottom, which today needs an outpost with a fuel pump and a sell terminal there (SPEC section 11, built at depth), or a safe way down.
+- **Model limits (A).** The bore is counted from the top of the layer. The rock starts at y 150 to 170, so the true bore is shorter, by a tenth or less. The bore also takes the dearest zone's drill time for all of it. Both overstate the litres.
 
-**Trade-offs.** A bigger early tank shortens the descent and weakens the tank track as the thing to save for. A cache adds a build step and cargo, and gives the charter something to share and to lose to a lava flood.
+**Decision (A).** No tuning change. A tuning fix cannot work: to bore 139 L on one tank the tier would have to be 6 ($125,000), and to make a 192-block drop survivable the fall damage would have to be near zero, which removes the hazard. Both fixes are new mechanics, so they are not built here (follow-up issues in the PR). `EconomyAffordabilityTest` now pins the numbers above and the 4-run figure, so a change to fuel, tanks, hull, fall damage or layer 1's height shows here.
 
-**Knobs.** `PodTuning.Fuel` (`tankLitres` 10, the burn rates), `UpgradeTuning` tank values and prices, `PodTuning.Movement.maxClimbSpeed`, `FuelTuning.pricePerLitre`, the layer height (192), `DESCENT_TRIPS_MAX` (8).
+**Ladder (candidates, in the order of effort).**
+1. By hand: a stack of coal and a one-way bore, then the Prospector wreck's salvage. Works once (today).
+2. Impact-speed fall damage: the hull pays for the speed at landing, as in Motherload, so a rotor-braked descent is safe. It costs the thrust burn on the way down (about 0.3 L per 20 blocks in the PodCargoFuelTest drops, so about 3 L for the shaft) and the pilot's attention, and it makes the rotor matter in the dive.
+3. Outposts (SPEC section 11) at the layer 1 floor, with a fuel terminal: the pod starts each layer 2 run there. The charter builds it once and every pod shares it.
+4. Mastery: a bigger tank or hull makes the one-way bore short (1 tank at tier 6, or a hull that takes the drop).
+
+**Trade-offs.** Impact-speed damage makes falls readable and gives the rotor a second job, but it softens the fall hazard in the layers below. Outposts give the charter something to build and defend, but need layer 2's terminals, so they cannot be the first fix.
+
+**Knobs.** `PodTuning.Movement` (`hardLandingDistance` 4, `hullDamagePerBlock` 5), `PodTuning.Fuel` (`tankLitres` 10, the burn rates), `UpgradeTuning` tank and hull values and prices, `pod_fuel/*.json`, the layer height (192).
 
 **Open questions.**
-- Is 7 round trips fun, or only bearable? The M3 play-test decides; the cache above is the answer if not.
-- Should the descent's ore count towards the first layer 2 run's income?
+- Is the first descent meant to be the one-way bore with a stack of coal? The handbook's chapter 8 ("Your first breach") should say so if it is.
+- Should the descent's own ore count towards the first layer 2 run's income? It is not counted.
