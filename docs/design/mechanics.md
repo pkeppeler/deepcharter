@@ -155,3 +155,15 @@ Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`Ea
 - Should a part cut the speed damage (a landing-gear track), or lift `hardLandingSpeed`? It would be the hand-to-mastery step of the ladder: brake by hand, then buy a hull that lands hard.
 - Should a free fall with a pilot hurt the pilot before the wreck? Today the wreck kills the crew.
 - Should the HUD show the sink speed as a number as well as the warning?
+
+## The void under a broken breach crust (#333, interim)
+
+**Interim.** Remove it with the tall world ([ADR 0029](../adr/0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md), #214 and #215), where a breach is physical crust between two Y bands and nothing is open below it.
+
+**Problem.** The crust is the bottom 3 blocks of a layer, and the surface's open floor is rock down to the bottom of the world. Under that there is nothing: a hole showed the clear colour, which is the fog colour (lifted to full brightness by a night-vision potion) or the sky's, a flat bright square.
+
+**What it does.** `client/layer/BreachVoidCover` draws one black square over the whole bottom of the world (the surface and every layer), seen only from above, flat and unfogged. A hole in the floor shows darkness from any angle, at any distance and under night vision. A camera under the bottom is not covered, so the fall into a crossing and the fade are as before. `BreachVoidClientTest` reads the pixels of the hole in the surface, layer 1 and layer 2, straight down and from the side, with and without night vision.
+
+**Trade-offs.**
+- It is client-only. A shader pack that does not draw custom geometry shows the void again.
+- Black fog or generated rock were rejected: fog is the colour of the whole layer and cannot change on the surface's dusk, and rock below the crust would move `min_y`, which the crossing line, the depth readout and every layer test read.
