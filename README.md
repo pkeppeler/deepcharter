@@ -80,14 +80,14 @@ Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest
 
   `DesignTourScenario` fixes the seed, stops the clock at noon and the weather clear, stops random ticks and mob spawning, clears mobs and particles before each still, parks the cursor off the window, and waits (on a wall-clock limit, not on tick counts) until the chunks have rendered, the light has settled and the camera and the pod it rides have stopped moving. Noise it did not remove, with the evidence: the animated lava texture (layer 2 caves), the lampless figures' own animation, the breach fade (it runs on client ticks), the pod HUD vignette and the rider's arm, pod light timing in the dark room (10 to 17% of pixels in two pairs), far trees at the edge of the loaded chunks, `lamp-and-pick-from-the-square` (delta 100 to 110 in four pairs, cause not found) and `structure-rails-long-drift` (up to 25.9% of pixels in one pair; the rails spawn lampless figures, cause not confirmed). The follow-up is [#309](https://github.com/pkeppeler/deepcharter/issues/309).
 
-  What a floor can hide (blind spots), at 800 x 450 = 360,000 pixels:
+  What a floor can hide (blind spots), at 854 x 480 = 409,920 pixels (the default window, which is also the size of every evidence frame; `EvidenceScenario` fails and names both sizes when the window differs):
   - `hud-breach-fade` (tolerance 70, no share): any tint change up to 70 levels, and every pixel change under 70. Only a change over 70 levels shows.
-  - `hud-pod-`, `hud-scanner-` (tolerance 12, 4%): a recolour of up to 14,400 pixels (a HUD text colour, one icon) of under 12 levels, or a change of under 12 levels anywhere.
-  - `layer-2-cave-` (tolerance 2, 6%): any change of up to 21,600 pixels, which is a lava recolour or a whole lava block.
-  - `mole-`, `prospector-` (tolerance 12, 2%): a pod texture change of up to 7,200 pixels, or under 12 levels anywhere.
-  - `lampless-` (tolerance 2, 0.3%): a change of up to 1,080 pixels, such as a new eye colour.
-  - `structure-` (tolerance 14, 1%): a change of up to 3,600 pixels, or under 14 levels anywhere.
-  - Every other still (tolerance 2, 1%): a change of up to 3,600 pixels, for example one recoloured 16 x 16 block seen from far away.
+  - `hud-pod-`, `hud-scanner-` (tolerance 12, 4%): a recolour of up to 16,396 pixels (a HUD text colour, one icon) of under 12 levels, or a change of under 12 levels anywhere.
+  - `layer-2-cave-` (tolerance 2, 6%): any change of up to 24,595 pixels, which is a lava recolour or a whole lava block.
+  - `mole-`, `prospector-` (tolerance 12, 2%): a pod texture change of up to 8,198 pixels, or under 12 levels anywhere.
+  - `lampless-` (tolerance 2, 0.3%): a change of up to 1,230 pixels, such as a new eye colour.
+  - `structure-` (tolerance 14, 1%): a change of up to 4,099 pixels, or under 14 levels anywhere.
+  - Every other still (tolerance 2, 1%): a change of up to 4,099 pixels, for example one recoloured 16 x 16 block seen from far away.
 
   A recolour of one texture colour, applied to 15 stills, changed 1.3% to 24% of their pixels by 20 to 45 levels, and all 15 stayed above these floors. A smaller change can hide, so run step 4. If a new still differs between two runs of one commit, fix it in `DesignTourScenario.settle` or `pinWorld` where you can, and add its prefix to `NOISE_FAMILIES` where you cannot.
 - Wait on entity ticks, not server ticks: chunks far from the players do not tick at first in a fresh world.

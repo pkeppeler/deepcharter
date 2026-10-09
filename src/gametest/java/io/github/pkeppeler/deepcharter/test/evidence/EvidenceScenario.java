@@ -22,8 +22,9 @@ import io.github.pkeppeler.deepcharter.test.ClientTestLog;
  *   build/evidence/NAME/screenshots/*.png            still screenshots
  */
 public abstract class EvidenceScenario implements FabricClientGameTest {
-	private static final int WIDTH = 800;
-	private static final int HEIGHT = 450;
+	/** The size of a player's default window, which is also the size of every frame and still. */
+	private static final int WIDTH = 854;
+	private static final int HEIGHT = 480;
 
 	private int frame;
 	private Path framesDir;
@@ -73,6 +74,11 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
 	}
 
 	private static void shoot(ClientGameTestContext context, String fileName, Path dir) {
+		int[] window = context.computeOnClient(client -> new int[] {client.getWindow().getWidth(), client.getWindow().getHeight()});
+		if (window[0] != WIDTH || window[1] != HEIGHT) {
+			throw new AssertionError("The client window is " + window[0] + "x" + window[1] + " but evidence frames are " + WIDTH + "x" + HEIGHT
+					+ ": a frame of another size resizes the window and lays the GUI out differently from a player's");
+		}
 		context.takeScreenshot(TestScreenshotOptions.of(fileName)
 				.disableCounterPrefix()
 				.withSize(WIDTH, HEIGHT)

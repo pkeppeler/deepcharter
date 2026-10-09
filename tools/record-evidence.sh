@@ -111,7 +111,7 @@ fi
 [[ -f $out/frames/frame-0001.png ]] \
   || { echo "no frames in $out/frames: is '$scenario' a scenario name?" >&2; exit 1; }
 
-# Frames are already 800x450 (EvidenceScenario), so both outputs keep that size.
+# Frames are already 854x480, the default window (EvidenceScenario), so both outputs keep that size.
 ffmpeg -v error -y -framerate "$FPS" -i "$out/frames/frame-%04d.png" \
   -c:v libx264 -pix_fmt yuv420p -movflags +faststart \
   "$out/$scenario.mp4"
