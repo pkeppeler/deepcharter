@@ -43,7 +43,7 @@ public final class TerminalBlock extends BaseEntityBlock {
 	protected void onPlace(BlockState state, Level level, BlockPos pos, BlockState oldState, boolean movedByPiston) {
 		super.onPlace(state, level, pos, oldState, movedByPiston);
 		if (level instanceof ServerLevel serverLevel) {
-			TerminalActivity.sync(serverLevel, pos);
+			TerminalActivity.placed(serverLevel, pos, state);
 		}
 	}
 

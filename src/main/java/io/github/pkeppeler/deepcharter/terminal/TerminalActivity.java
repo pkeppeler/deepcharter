@@ -33,13 +33,21 @@ public final class TerminalActivity {
 
 	/** Sets the terminal at {@code pos} to show whether its type is online. A block that is no terminal is left alone. */
 	public static void sync(ServerLevel level, BlockPos pos) {
-		BlockState state = level.getBlockState(pos);
+		placed(level, pos, level.getBlockState(pos));
+	}
+
+	/**
+	 * {@link #sync(ServerLevel, BlockPos)} for a block just placed in {@code state}. It reads the level only to change the block,
+	 * because a block set while its chunk loads (below) is placed too, and reading that chunk then would wait on its own load.
+	 */
+	static void placed(ServerLevel level, BlockPos pos, BlockState state) {
 		shown(level.getServer(), state).ifPresent(online -> level.setBlock(pos, state.setValue(TextureProperties.ACTIVE, online), Block.UPDATE_ALL));
 	}
 
 	/**
 	 * {@link #sync(ServerLevel, BlockPos)} for every terminal in a chunk that is loading. It sets the chunk's blocks directly, as
-	 * {@code colony/Conduit} does, because the chunk is not in the level's view yet.
+	 * {@code colony/Conduit} does, because the chunk is not in the level's view yet. The block it sets is already right, so its
+	 * {@link #placed} does nothing.
 	 */
 	public static void sync(ServerLevel level, LevelChunk chunk) {
 		for (BlockPos pos : List.copyOf(chunk.getBlockEntities().keySet())) {

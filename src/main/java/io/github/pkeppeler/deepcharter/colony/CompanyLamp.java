@@ -12,7 +12,7 @@ import io.github.pkeppeler.deepcharter.texture.TextureProperties;
 
 /**
  * A caged sodium lamp, the Company's light (art direction section 8). Lit ({@link TextureProperties#ACTIVE}) it gives full block
- * light and its glass glows; dark, it gives none. Whoever builds with it sets the state: the colony and the wrecks (#244, #248).
+ * light and its glass glows; dark, it gives none. It is placed lit; whoever builds with it sets the state.
  */
 public final class CompanyLamp extends Block {
 	/** A lit lamp's block light. */

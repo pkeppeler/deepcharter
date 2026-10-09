@@ -34,9 +34,9 @@
     "block/fuel_pump_front_glow": {"template": "terminal_glow", "args": {"over": "block/fuel_pump_front", "glyph": [
       "...##...", "..#o##..", ".#o####.", ".######.", ".######.", "..####.."]}},
     "block/ore_processor_front": {"template": "terminal_front", "args": {"seed": 12, "glyph": [
-      "..####..", ".#oo###.", "..####..", "########", ".######.", "...##..."]}},
+      "..#..#..", ".#o####.", "###..###", "###..###", ".######.", "..#..#.."]}},
     "block/ore_processor_front_glow": {"template": "terminal_glow", "args": {"over": "block/ore_processor_front", "glyph": [
-      "..####..", ".#oo###.", "..####..", "########", ".######.", "...##..."]}},
+      "..#..#..", ".#o####.", "###..###", "###..###", ".######.", "..#..#.."]}},
     "block/upgrade_terminal_front": {"template": "terminal_front", "args": {"seed": 13, "glyph": [
       "...oo...", "..####..", ".######.", "##.##.##", "...##...", "...##..."]}},
     "block/upgrade_terminal_front_glow": {"template": "terminal_glow", "args": {"over": "block/upgrade_terminal_front", "glyph": [
@@ -50,9 +50,9 @@
     "block/contract_terminal_front_glow": {"template": "terminal_glow", "args": {"over": "block/contract_terminal_front", "glyph": [
       "........", "..#..#..", "..o..o..", "........", ".#....#.", "..####.."]}},
     "block/hangar_console_front": {"template": "terminal_front", "args": {"seed": 16, "glyph": [
-      "..####..", ".#oo###.", "########", ".######.", "...##...", "....#..."]}},
+      ".####...", "#.oo.#..", "#.oo.###", "#....##o", ".#####..", "..#..#.."]}},
     "block/hangar_console_front_glow": {"template": "terminal_glow", "args": {"over": "block/hangar_console_front", "glyph": [
-      "..####..", ".#oo###.", "########", ".######.", "...##...", "....#..."]}},
+      ".####...", "#.oo.#..", "#.oo.###", "#....##o", ".#####..", "..#..#.."]}},
 
     "block/ironium_ore": {"template": "ore_block", "args": {"mineral": "ironium", "seed": 101, "count": 7, "shapes": ["chunk", "pebble", "pebble", "chip"]}},
     "block/bronzium_ore": {"template": "ore_block", "args": {"mineral": "bronzium", "seed": 102, "count": 5, "shapes": ["knot", "nugget", "pebble"]}},
@@ -144,10 +144,15 @@
     "block/company_lamp_lit": {
       "kind": "opaque",
       "glow": {"over": null},
+      "animation": {"frames": 16, "frametime": 2},
       "layers": [
         {"op": "fill", "colour": "sodium.3"},
         {"op": "pixels", "at": [5, 6], "legend": {"a": "sodium.4", "b": "sodium.5", "w": "sodium.6", "d": "sodium.2"}, "rows": [
-          "daaaad", "abbwba", "abwwba", "abwbba", "abwwba", "abbwba", "aabbaa", "dddddd"]}
+          "daaaad", "abbwba", "abwwba", "abwbba", "abwwba", "abbwba", "aabbaa", "dddddd"]},
+        {"op": "frames", "on": [11], "layers": [
+          {"op": "replace", "from": "sodium.6", "to": "sodium.4"},
+          {"op": "replace", "from": "sodium.5", "to": "sodium.4"}
+        ]}
       ]
     }
   }
