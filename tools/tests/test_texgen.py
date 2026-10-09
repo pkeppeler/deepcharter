@@ -96,6 +96,44 @@ class RecipeRulesTest(unittest.TestCase):
         with self.assertRaisesRegex(RecipeError, "unknown op 'blur'"):
             book.render("block/x")
 
+    def source(self, name, frames, colour=(1, 2, 3, 255)):
+        path = self.root / "sources" / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(pngio.encode(pngio.Rgba(16, 16 * frames, bytes(colour) * 256 * frames)))
+
+    def test_a_source_png_is_drawn_into_the_texture(self):
+        self.source("block/hand.png", 1)
+        book = self.book({"block/x": {"kind": "opaque", "layers": [{"op": "source", "file": "block/hand.png"}]}})
+        self.assertEqual({(1, 2, 3, 255)}, {tuple(p) for p in book.render("block/x")[0].data})
+
+    def test_an_animated_source_gives_each_frame_its_own(self):
+        path = self.root / "sources" / "block/anim.png"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(pngio.encode(pngio.Rgba(16, 32, bytes([10, 10, 10, 255]) * 256 + bytes([20, 20, 20, 255]) * 256)))
+        book = self.book({"block/x": {"kind": "opaque", "animation": {"frames": 2, "frametime": 5},
+                                      "layers": [{"op": "source", "file": "block/anim.png"}]}})
+        self.assertEqual([(10, 10, 10, 255), (20, 20, 20, 255)], [frame.get(7, 7) for frame in book.render("block/x")])
+
+    def test_a_missing_source_fails_naming_the_recipe(self):
+        book = self.book({"block/x": {"kind": "opaque", "layers": [{"op": "source", "file": "block/nowhere.png"}]}})
+        with self.assertRaisesRegex(RecipeError, "block/x layer 0: no source PNG .*nowhere.png"):
+            book.render("block/x")
+
+    def test_a_source_that_is_not_whole_16_by_16_frames_fails(self):
+        path = self.root / "sources" / "block/wide.png"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(pngio.encode(pngio.Rgba(32, 16, bytes(4) * 512)))
+        book = self.book({"block/x": {"kind": "opaque", "layers": [{"op": "source", "file": "block/wide.png"}]}})
+        with self.assertRaisesRegex(RecipeError, "is 32 x 16"):
+            book.render("block/x")
+
+    def test_a_source_with_another_frame_count_than_its_recipe_fails(self):
+        self.source("block/three.png", 3)
+        book = self.book({"block/x": {"kind": "opaque", "animation": {"frames": 2, "frametime": 5},
+                                      "layers": [{"op": "source", "file": "block/three.png"}]}})
+        with self.assertRaisesRegex(RecipeError, "has 3 frames, the recipe 2"):
+            book.render("block/x")
+
     def test_an_animated_recipe_stacks_its_frames_and_moves_its_scan(self):
         book = self.book({"block/x": {"kind": "opaque", "animation": {"frames": 4, "frametime": 3}, "layers": [
             {"op": "fill", "colour": "ramp.0"}, {"op": "scan", "rect": [0, 0, 16, 4], "rows": 1, "step": 1, "colour": "ramp.2", "over": ["ramp.0"]}]}})
@@ -133,18 +171,31 @@ class SkinTest(unittest.TestCase):
         self.assertTrue((out / "block" / "fuel_pump_front_glow.png.mcmeta").is_file())
         self.assertEqual(0, run("--out", str(out), "--sheet", str(reference), "--check")[0])
 
-    def test_check_names_a_changed_pixel_and_a_texture_no_recipe_makes(self):
+    def test_check_names_a_changed_pixel_and_says_to_rebuild(self):
         out = self.root / "textures"
         reference = self.root / "reference.png"
         self.assertEqual(0, run("--out", str(out), "--sheet", str(reference))[0])
         goldium = out / "item" / "goldium.png"
         image = pngio.decode(goldium.read_bytes())
         goldium.write_bytes(pngio.encode(pngio.Rgba(image.width, image.height, bytes([9, 9, 9, 255]) + image.pixels[4:])))
+        code, _, err = run("--out", str(out), "--sheet", str(reference), "--check")
+        self.assertEqual(1, code)
+        self.assertIn("run tools/textures/texgen.py to rebuild", err)
+        self.assertIn("\n  item/goldium.png", err)
+        self.assertNotIn("no recipe", err)
+
+    def test_check_says_how_to_give_a_png_with_no_recipe_one_and_not_to_rebuild(self):
+        out = self.root / "textures"
+        reference = self.root / "reference.png"
+        self.assertEqual(0, run("--out", str(out), "--sheet", str(reference))[0])
         (out / "block" / "hand_drawn.png").write_bytes(pngio.encode(pngio.Rgba(1, 1, bytes(4))))
         code, _, err = run("--out", str(out), "--sheet", str(reference), "--check")
         self.assertEqual(1, code)
-        self.assertIn("differs from its recipe: item/goldium.png", err)
-        self.assertIn("no recipe makes it: block/hand_drawn.png", err)
+        for hint in ("1 PNG(s) have no recipe", "tools/textures/recipes/blocks.json", "tools/textures/sources/", "source op",
+                     "docs/design/skins.md#textures", "\n  block/hand_drawn.png"):
+            self.assertIn(hint, err)
+        self.assertNotIn("rebuild", err)
+        self.assertEqual(1, run("--out", str(out), "--sheet", str(reference))[0], "a build refuses too, and says the same")
 
 
 class LightTest(unittest.TestCase):

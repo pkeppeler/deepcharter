@@ -12,7 +12,8 @@ docs/design/texture-reference.png).
 
 A file whose pixels already match is not rewritten, so a build on another zlib does not churn the repo. --check writes nothing:
 it exits 1 and lists every texture, .mcmeta or sheet that differs from what the recipes make, and every PNG under the managed
-directories (block/, item/) that no recipe makes. Standard library only.
+directories (block/, item/) that no recipe makes. Art drawn or curated by hand is a PNG under sources/ beside the recipes
+directory, which a recipe's source op draws, so it is checked like the rest. Standard library only.
 """
 import argparse
 import json
@@ -72,6 +73,13 @@ def strays(book: Book, out: Path) -> list[str]:
     return found
 
 
+def stray_help(stray: list[str]) -> str:
+    """What to do about PNGs that no recipe makes: a rebuild cannot reproduce them, so the build and --check refuse them."""
+    return (f"texgen: {len(stray)} PNG(s) have no recipe. Give each a recipe in tools/textures/recipes/blocks.json (a block/ texture) "
+            "or items.json (an item/ texture), named by its path without .png. For art drawn or curated by hand, put the PNG under "
+            "tools/textures/sources/ and use the source op. See docs/design/skins.md#textures.\n  " + "\n  ".join(stray))
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--palette", type=Path, action="append", default=[])
@@ -92,18 +100,18 @@ def main(argv: list[str] | None = None) -> int:
     sheet_changed = differs(args.sheet, reference)
     stray = strays(book, args.out)
     if args.check:
-        problems = [f"differs from its recipe: {name}" for name in changed]
-        problems += [f"reference sheet differs: {args.sheet}"] if sheet_changed else []
-        problems += [f"no recipe makes it: {name}" for name in stray]
-        if problems:
-            print("texgen --check: " + str(len(problems)) + " problem(s); run tools/textures/texgen.py to rebuild\n  " + "\n  ".join(problems),
-                  file=sys.stderr)
+        stale = changed + ([f"the reference sheet {args.sheet}"] if sheet_changed else [])
+        if stale:
+            print(f"texgen --check: {len(stale)} file(s) differ from what their recipes make; run tools/textures/texgen.py to rebuild them:\n  "
+                  + "\n  ".join(stale), file=sys.stderr)
+        if stray:
+            print(stray_help(stray), file=sys.stderr)
+        if stale or stray:
             return 1
         print(f"texgen --check: {len(files)} files and the reference sheet match {len(book.recipes)} recipes")
         return 0
     if stray:
-        print("texgen: no recipe makes these, so a rebuild would not reproduce them; add a recipe or delete them:\n  " + "\n  ".join(stray),
-              file=sys.stderr)
+        print(stray_help(stray), file=sys.stderr)
         return 1
     for name in changed:
         path = args.out / name

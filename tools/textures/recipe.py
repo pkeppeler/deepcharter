@@ -11,10 +11,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+import pngio
 from canvas import BAYER, CLEAR, Canvas, Colour, Rng, value_noise
 
 SIZE = 16
 KINDS = ("opaque", "cutout")
+# The directory beside each recipes directory that the source op reads hand-drawn PNGs from.
+SOURCES = "sources"
 _TOKEN = re.compile(r"\$([a-z_][a-z0-9_]*)")
 
 
@@ -88,13 +91,15 @@ class Glow:
 
 @dataclass(frozen=True)
 class Recipe:
-    """One texture: its kind, its layers, and optionally its animation and what it is the glow layer of."""
+    """One texture: its kind, its layers, and optionally its animation and what it is the glow layer of. sources is the
+    directory its source op reads PNGs from: sources/ beside the recipes directory the recipe came from."""
 
     key: str
     kind: str
     layers: tuple[dict, ...]
     animation: Animation | None
     glow: Glow | None
+    sources: Path
 
     @property
     def frames(self) -> int:
@@ -107,7 +112,7 @@ class Book:
     def __init__(self, palette: Palette, directories: list[Path]):
         self.palette = palette
         self.templates: dict[str, dict] = {}
-        raw: dict[str, dict] = {}
+        raw: dict[str, tuple[dict, Path]] = {}
         for directory in directories:
             seen_here: dict[str, Path] = {}
             for path in sorted(directory.glob("*.json")):
@@ -120,11 +125,12 @@ class Book:
                     if key in seen_here:
                         raise RecipeError(f"recipe {key} is in both {seen_here[key]} and {path}")
                     seen_here[key] = path
-                    raw[key] = recipe
-        self.recipes: dict[str, Recipe] = {key: self._build(key, body) for key, body in sorted(raw.items())}
+                    raw[key] = (recipe, directory.parent / SOURCES)
+        self.recipes: dict[str, Recipe] = {key: self._build(key, body, sources) for key, (body, sources) in sorted(raw.items())}
         self._cache: dict[str, list[Canvas]] = {}
+        self._sources: dict[Path, list[Canvas]] = {}
 
-    def _build(self, key: str, body: dict) -> Recipe:
+    def _build(self, key: str, body: dict, sources: Path) -> Recipe:
         if "template" in body:
             if set(body) - {"template", "args"}:
                 raise RecipeError(f"{key}: a templated recipe has only template and args, found {sorted(body)}")
@@ -145,7 +151,7 @@ class Book:
             if set(body["glow"]) != {"over"}:
                 raise RecipeError(f"{key}: glow is {{over: <texture> or null}}, got {body['glow']}")
             glow = Glow(body["glow"]["over"])
-        return Recipe(key, body["kind"], tuple(body["layers"]), animation, glow)
+        return Recipe(key, body["kind"], tuple(body["layers"]), animation, glow, sources)
 
     def expand(self, name: str, args: dict, where: str) -> dict:
         if name not in self.templates:
@@ -170,6 +176,29 @@ class Book:
             _check_kind(recipe, frames)
             self._cache[key] = frames
         return self._cache[key]
+
+    def source(self, path: Path, where: str) -> list[Canvas]:
+        """The 16 x 16 frames of a committed source PNG, stacked top to bottom in the file as an animation is."""
+        if path not in self._sources:
+            if not path.is_file():
+                raise RecipeError(f"{where}: no source PNG {path}")
+            try:
+                image = pngio.decode(path.read_bytes(), str(path))
+            except ValueError as error:
+                raise RecipeError(f"{where}: {error}") from error
+            if image.width != SIZE or image.height % SIZE:
+                raise RecipeError(f"{where}: {path} is {image.width} x {image.height}; a source is {SIZE} wide and a whole number of "
+                                  f"{SIZE} x {SIZE} frames")
+            whole = Canvas.from_rgba(image)
+            frames = []
+            for top in range(0, image.height, SIZE):
+                frame = Canvas.blank(SIZE, SIZE)
+                for y in range(SIZE):
+                    for x in range(SIZE):
+                        frame.put(x, y, whole.get(x, top + y))
+                frames.append(frame)
+            self._sources[path] = frames
+        return self._sources[path]
 
     def image(self, key: str) -> Canvas:
         """The frames stacked top to bottom, as Minecraft reads an animated texture."""
@@ -523,6 +552,18 @@ def op_scan(canvas: Canvas, layer: dict, ctx: Context) -> None:
                 canvas.put(x, y, colour)
 
 
+def op_source(canvas: Canvas, layer: dict, ctx: Context) -> None:
+    """A committed PNG, drawn or curated by hand, composited at this point of the stack. file is its path under the sources
+    directory beside the recipe's own recipes directory. A one-frame source serves every frame; an animated one has as many frames
+    as the recipe. The texture still follows its kind, so a half-transparent pixel in a cutout source fails the build."""
+    ctx.need(layer, "file")
+    recipe = ctx.book.recipes[ctx.key]
+    frames = ctx.book.source(recipe.sources / layer["file"], ctx.where)
+    if len(frames) not in (1, recipe.frames):
+        raise RecipeError(f"{ctx.where}: source {layer['file']} has {len(frames)} frames, the recipe {recipe.frames}")
+    canvas.paste(frames[ctx.frame if len(frames) > 1 else 0], 0, 0)
+
+
 def op_frames(canvas: Canvas, layer: dict, ctx: Context) -> None:
     """The sub-layers only on the listed frames (a blink, a flicker)."""
     ctx.need(layer, "on", "layers")
@@ -551,4 +592,5 @@ OPS: dict[str, Callable[[Canvas, dict, Context], None]] = {
     "template": op_template,
     "scan": op_scan,
     "frames": op_frames,
+    "source": op_source,
 }

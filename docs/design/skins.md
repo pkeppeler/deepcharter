@@ -53,6 +53,16 @@ python3 tools/textures/texgen.py --palette skins/<option>/palette.json [--recipe
 
 The `rock` ramp is the stone the ores sit in. It matches the layer rock (vanilla stone until #241), so a skin that changes the rock changes `rock` with it.
 
+**A new block or item texture.** Give it a recipe in `tools/textures/recipes/blocks.json` (for `block/<name>`) or `items.json` (for `item/<name>`), then rebuild. A PNG under `textures/block/` or `textures/item/` with no recipe fails the build and `--check`, and the message names it. A recipe is a list of layer operations, or a template with arguments: copy one that is close.
+
+**Art drawn or curated by hand** (the art direction allows curated AI-assisted art, section 5) goes through the generator too. Commit the PNG under `tools/textures/sources/` (for a skin, `sources/` beside its `--recipes` directory), 16 pixels wide and one or more 16 x 16 frames tall. Its recipe draws it with the `source` op, and can add layers over it:
+
+```json
+"block/regolith_mesa": {"kind": "opaque", "layers": [{"op": "source", "file": "block/regolith_mesa.png"}]}
+```
+
+`--check` then compares the committed texture with the source, as for any recipe. An animated recipe takes a source with one frame or with as many frames as the recipe. The kind still applies, so a half-transparent pixel in a source fails the build.
+
 **Layers.** Each is data in the model and blockstate files, so a pack can restyle or replace it:
 
 | Layer | How | Example |

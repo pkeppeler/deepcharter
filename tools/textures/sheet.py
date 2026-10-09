@@ -48,7 +48,8 @@ def brightness(level: int) -> float:
     """The lightmap's grey for a block light level, as lightmap.fsh computes it with brightness 0.5."""
     lit = level / 15
     grey = lit / (4 - 3 * lit)
-    return 0.5 * grey + 0.5 * (1 - (1 - grey) ** 4)
+    dark = 1 - grey
+    return 0.5 * grey + 0.5 * (1 - dark * dark * dark * dark)
 
 
 def render(book: Book) -> Canvas:

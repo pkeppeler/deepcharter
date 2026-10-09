@@ -73,9 +73,6 @@ public final class Terminals {
 				if (refusal.isPresent()) {
 					yield refuse(player, refusal.get());
 				}
-				if (action.equals(INSERT_PART)) {
-					TerminalActivity.sync(player.level(), pos);
-				}
 				sendView(player, pos, granted);
 				TerminalEvents.ACTED.invoker().onActed(player.level().getServer(), granted.type(), player, action);
 				yield Optional.empty();

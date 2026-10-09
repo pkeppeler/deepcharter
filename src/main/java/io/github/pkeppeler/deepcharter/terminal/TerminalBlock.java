@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -23,8 +24,8 @@ import io.github.pkeppeler.deepcharter.texture.TextureProperties;
  * A terminal, of whichever {@link TerminalType} owns this block. Using it, with or without an item in hand, asks the server to
  * open it ({@link Terminals#open}). It cannot be broken in survival: see {@link TerminalTypes}.
  *
- * <p>{@link TextureProperties#ACTIVE} says whether its type is online, which picks the lit screen or the dark one. It starts true
- * only for a type that needs no repair; {@link TerminalActivity} keeps it right from then on.
+ * <p>{@link TextureProperties#ACTIVE} says whether its type is online, which picks the lit screen or the dark one. The default
+ * state has it true only for a type that needs no repair; {@link TerminalActivity} keeps it right from then on.
  */
 public final class TerminalBlock extends BaseEntityBlock {
 	TerminalBlock(Properties properties, boolean alwaysOnline) {
@@ -38,18 +39,28 @@ public final class TerminalBlock extends BaseEntityBlock {
 		builder.add(BlockStateProperties.HORIZONTAL_FACING, TextureProperties.ACTIVE);
 	}
 
-	/** However the block got here (a player, the colony builder, a command), it shows whether its type is online. */
+	/**
+	 * A block set in the wrong state (by the colony builder, a command, a test) is corrected on its next tick. Correcting it here,
+	 * inside the placement, would leave its block entity holding the state the placement set.
+	 */
 	@Override
 	protected void onPlace(BlockState state, Level level, BlockPos pos, BlockState oldState, boolean movedByPiston) {
 		super.onPlace(state, level, pos, oldState, movedByPiston);
-		if (level instanceof ServerLevel serverLevel) {
-			TerminalActivity.placed(serverLevel, pos, state);
+		if (level instanceof ServerLevel serverLevel && TerminalActivity.corrected(serverLevel.getServer(), state) != state) {
+			level.scheduleTick(pos, this, 1);
 		}
 	}
 
 	@Override
+	protected void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
+		TerminalActivity.sync(level, pos);
+	}
+
+	/** A player places it already showing whether its type is online. */
+	@Override
 	public BlockState getStateForPlacement(BlockPlaceContext context) {
-		return defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, context.getHorizontalDirection().getOpposite());
+		BlockState state = defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, context.getHorizontalDirection().getOpposite());
+		return context.getLevel() instanceof ServerLevel level ? TerminalActivity.corrected(level.getServer(), state) : state;
 	}
 
 	@Override
