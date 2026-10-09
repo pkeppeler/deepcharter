@@ -24,12 +24,13 @@ import net.minecraft.world.phys.AABB;
 
 import io.github.pkeppeler.deepcharter.client.pod.BoneRole;
 import io.github.pkeppeler.deepcharter.client.pod.GeoModel;
-import io.github.pkeppeler.deepcharter.client.pod.PodConcept;
+import io.github.pkeppeler.deepcharter.client.pod.PodLook;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 
 /**
- * Server GameTests for #334: every Mole concept's Bedrock geometry parses with its rig, has the parts of a machine, fits the Mole's
- * bore at rest and has its two textures; an unknown bone or a malformed file fails loud and says where.
+ * Server GameTests for #334 and #243: every pod's Bedrock geometry parses with its rig, has the parts of a machine, holds the
+ * cutters of its drill tiers, and each cutter keeps the bore rules at rest, with a hull that fits the pod's bore, and has its
+ * textures; an unknown bone or a malformed file fails loud and says where.
  */
 public class PodGeoModelTest {
 	/** The smallest model that parses: a body, and a drill head on its mount. */
@@ -43,47 +44,65 @@ public class PodGeoModelTest {
 			  ]}]}""";
 
 	@GameTest
-	public void everyConceptParsesWithTheMachinesParts(GameTestHelper helper) throws IOException {
-		for (PodConcept concept : PodConcept.values()) {
-			GeoModel model = read(helper, concept.model());
+	public void everyPodParsesWithTheMachinesParts(GameTestHelper helper) throws IOException {
+		for (Chassis chassis : Chassis.all()) {
+			PodLook look = look(helper, chassis);
+			GeoModel model = read(helper, look.modelFile());
 			Set<BoneRole> roles = model.bones().stream().map(GeoModel.Bone::role).collect(Collectors.toCollection(() -> EnumSet.noneOf(BoneRole.class)));
 			Set<String> names = model.bones().stream().map(GeoModel.Bone::name).collect(Collectors.toSet());
-			require(helper, roles.contains(BoneRole.DRILL_HEAD), concept + " has no drill head");
-			require(helper, roles.contains(BoneRole.ROTOR) || roles.contains(BoneRole.THRUSTER), concept + " has neither a rotor nor thrusters");
+			require(helper, roles.contains(BoneRole.DRILL_HEAD), chassis.id() + " has no drill head");
+			require(helper, roles.contains(BoneRole.ROTOR) || roles.contains(BoneRole.THRUSTER), chassis.id() + " has neither a rotor nor thrusters");
 			require(helper, roles.contains(BoneRole.WHEEL) || roles.contains(BoneRole.LINKS) || roles.contains(BoneRole.LEG),
-					concept + " has neither treads, wheels nor legs");
-			require(helper, names.contains("lamps") && names.contains("canopy"), concept + " needs a lamps and a canopy bone, has " + names);
-			int cubes = model.bones().stream().mapToInt(bone -> bone.cubes().size()).sum();
-			// tooling-options.md: a Mole is 80 to 150 cubes; a concept may run over while the user picks: the round-3 cones are 144 to 178, and #243 trims the pick.
-			require(helper, cubes >= 80 && cubes <= 200, concept + " has " + cubes + " cubes, outside the 80 to 200 of a concept");
-			for (Identifier texture : List.of(concept.texture(), concept.glowmask())) {
-				int[] size = pngSize(helper, texture);
-				require(helper, size[0] == model.textureWidth() && size[1] == model.textureHeight(),
-						texture + " is " + size[0] + " x " + size[1] + ", the model's UV is laid out for " + model.textureWidth() + " x " + model.textureHeight());
-			}
+					chassis.id() + " has neither treads, wheels nor legs");
+			require(helper, names.contains("lamps") && names.contains("canopy"), chassis.id() + " needs a lamps and a canopy bone, has " + names);
+			require(helper, model.cutters().containsAll(List.of("tricone", "stacked", "fluted", "cluster")),
+					chassis.id() + " should hold the four cutters of the drill tiers, holds " + model.cutters());
+			look.check(model);
 		}
 		helper.succeed();
 	}
 
+	/** The Prospector is its own machine, not a Mole with a bigger number: a winch, a hatch for each of its two seats, a longer hull. */
+	@GameTest
+	public void theProspectorIsLongerWithTwoSeatsAndAWinch(GameTestHelper helper) throws IOException {
+		GeoModel prospector = read(helper, look(helper, Chassis.PROSPECTOR).modelFile());
+		Set<String> names = prospector.bones().stream().map(GeoModel.Bone::name).collect(Collectors.toSet());
+		require(helper, names.contains("winch"), "the Prospector has a winch, has " + names);
+		long hatches = prospector.bones().stream().filter(bone -> bone.name().equals("hatch")).flatMap(bone -> bone.cubes().stream()).count();
+		require(helper, hatches == 2, "the Prospector has one hatch for each of its two seats in tandem, has " + hatches);
+		GeoModel mole = read(helper, look(helper, Chassis.MOLE).modelFile());
+		double[] longHull = prospector.restBounds(bone -> !prospector.inCutter(bone, null));
+		double[] shortHull = mole.restBounds(bone -> !mole.inCutter(bone, null));
+		require(helper, longHull[5] - longHull[2] > 1.3 * (shortHull[5] - shortHull[2]),
+				"the Prospector's hull should be a third longer than the Mole's, %.1f and %.1f pixels".formatted(longHull[5] - longHull[2], shortHull[5] - shortHull[2]));
+		helper.succeed();
+	}
+
 	/**
-	 * The bore is the Mole's width rounded up to whole blocks; at rest nothing may stick out of it at the sides, the back or the top,
+	 * The bore is the pod's width rounded up to whole blocks; at rest nothing may stick out of it at the sides, the back or the top,
 	 * and nothing but the cutter (the drill head, the drill ring and what rides them) may pass its front face, by one block at most.
+	 * Every cutter of every pod is held to it: the hull alone, then the hull with that cutter.
 	 */
 	@GameTest
-	public void everyConceptFitsTheMolesBoreAtRest(GameTestHelper helper) throws IOException {
-		double half = Mth.ceil(Chassis.MOLE.width()) * 16 / 2.0;
-		double top = Chassis.MOLE.height() * 16;
+	public void everyCutterFitsItsPodsBoreAtRest(GameTestHelper helper) throws IOException {
 		double slack = 1e-4;
-		for (PodConcept concept : PodConcept.values()) {
-			GeoModel model = read(helper, concept.model());
-			double[] bounds = model.restBounds();
-			double[] rest = model.restBounds(bone -> !isCutter(model, bone));
-			require(helper, bounds[0] >= -half - slack && bounds[3] <= half + slack && bounds[5] <= half + slack,
-					concept + " at rest spans x %.2f..%.2f and back z %.2f, wider than its %.0f-pixel bore".formatted(bounds[0], bounds[3], bounds[5], 2 * half));
-			require(helper, rest[2] >= -half - slack, concept + "'s hull, lamps or yoke reach z %.2f, past the bore face at %.0f".formatted(rest[2], -half));
-			require(helper, bounds[2] >= -half - 16 - slack, concept + "'s cutter reaches z %.2f, more than a block past the bore face".formatted(bounds[2]));
-			require(helper, bounds[1] >= -slack && bounds[4] <= top + slack,
-					concept + " at rest spans y %.2f..%.2f, outside 0..%.1f".formatted(bounds[1], bounds[4], top));
+		for (Chassis chassis : Chassis.all()) {
+			double half = Mth.ceil(chassis.width()) * 16 / 2.0;
+			double top = chassis.height() * 16;
+			GeoModel model = read(helper, look(helper, chassis).modelFile());
+			double[] hull = model.restBounds(bone -> !model.inCutter(bone, null));
+			require(helper, hull[0] >= -half - slack && hull[3] <= half + slack && hull[5] <= half + slack && hull[2] >= -half - slack,
+					chassis.id() + "'s hull spans x %.2f..%.2f, z %.2f..%.2f, outside its %.0f-pixel bore".formatted(hull[0], hull[3], hull[2], hull[5], 2 * half));
+			for (String cutter : model.cutters()) {
+				double[] bounds = model.restBounds(bone -> !model.inCutter(bone, null) || model.inCutter(bone, cutter));
+				double[] cone = model.restBounds(bone -> model.inCutter(bone, cutter));
+				String what = chassis.id() + "'s " + cutter + " cutter";
+				require(helper, bounds[0] >= -half - slack && bounds[3] <= half + slack && bounds[5] <= half + slack,
+						what + " at rest spans x %.2f..%.2f and back z %.2f, wider than its %.0f-pixel bore".formatted(bounds[0], bounds[3], bounds[5], 2 * half));
+				require(helper, cone[2] >= -half - 16 - slack, what + " reaches z %.2f, more than a block past the bore face".formatted(cone[2]));
+				require(helper, -cone[2] - half >= 9, what + " leads the bore face by only %.2f pixels: it should reach into the block it chews".formatted(-cone[2] - half));
+				require(helper, bounds[1] >= -slack && bounds[4] <= top + slack, what + " at rest spans y %.2f..%.2f, outside 0..%.1f".formatted(bounds[1], bounds[4], top));
+			}
 		}
 		helper.succeed();
 	}
@@ -140,26 +159,28 @@ public class PodGeoModelTest {
 	}
 
 	/**
-	 * Round 3 (#366) asks for a giant cone: every round-3 cutter is 12.5 pixels or more from its axis (a base that nearly fills the
-	 * 32-pixel bore face), and turns at under half the full rate, so it looks heavy; even a tricone's tilted rollers and an auger's
-	 * turned blades count at their turned corners. Every round-1 drill reaches 7.5 pixels or less, and turns at the full rate, as before.
+	 * Round 3 (#366) asks for a giant cone: every cutter is 12.5 pixels or more from its axis (a base that nearly fills the bore
+	 * face), and turns at under half the full rate, so it looks heavy; even a tricone's tilted rollers and an auger's turned blades
+	 * count at their turned corners. A cutter on the Prospector is at least as wide as the Mole's of the same kind.
 	 */
 	@GameTest
-	public void roundThreeConesNearlyFillTheBoreFaceAndTurnSlower(GameTestHelper helper) throws IOException {
+	public void everyConeNearlyFillsTheBoreFaceAndTurnsSlower(GameTestHelper helper) throws IOException {
 		GeoModel valid = GeoModel.parse("valid", new StringReader(VALID));
 		require(helper, valid.drillReach() == 1.0, "the valid model's 2-pixel drill head should reach 1 pixel from its axis, not " + valid.drillReach());
 		require(helper, valid.drillSpinScale() == 1.0, "the valid model's 2-pixel drill head should turn at the full rate, not " + valid.drillSpinScale());
-		for (PodConcept concept : PodConcept.values()) {
-			GeoModel model = read(helper, concept.model());
-			double reach = model.drillReach();
-			double scale = model.drillSpinScale();
-			if (concept.round() == 3) {
-				require(helper, reach >= 12.5, concept + "'s cone reaches %.1f pixels from its axis, under the 12.5 that nearly fills the bore face".formatted(reach));
-				require(helper, scale > 0 && scale < 0.5, concept + "'s cone turns at %.3f of the full rate, not under half".formatted(scale));
-			} else {
-				require(helper, reach <= 7.5, concept + "'s drill reaches %.1f pixels from its axis, past round 1's 7.5".formatted(reach));
-				require(helper, scale == 1.0, concept + "'s drill turns at %.3f of the full rate, not the full rate of round 1".formatted(scale));
+		GeoModel mole = read(helper, look(helper, Chassis.MOLE).modelFile());
+		GeoModel prospector = read(helper, look(helper, Chassis.PROSPECTOR).modelFile());
+		for (GeoModel model : List.of(mole, prospector)) {
+			for (String cutter : model.cutters()) {
+				double reach = model.drillReach(cutter);
+				double scale = model.drillSpinScale(cutter);
+				require(helper, reach >= 12.5, model.source() + "'s " + cutter + " cone reaches %.1f pixels from its axis, under the 12.5 that nearly fills the bore face".formatted(reach));
+				require(helper, scale > 0 && scale < 0.5, model.source() + "'s " + cutter + " cone turns at %.3f of the full rate, not under half".formatted(scale));
 			}
+		}
+		for (String cutter : mole.cutters()) {
+			require(helper, prospector.drillReach(cutter) >= mole.drillReach(cutter),
+					"the Prospector's " + cutter + " cutter should be at least as wide as the Mole's");
 		}
 		helper.succeed();
 	}
@@ -175,60 +196,52 @@ public class PodGeoModelTest {
 	}
 
 	/**
-	 * The swing and bore rule on the shipped files ({@code tools/pod_concepts.py} keeps it at every swing angle): a round-3 cone leads the
-	 * bore face by 12 to 16 pixels at rest, and by no more, which is the block it chews.
-	 */
-	@GameTest
-	public void roundThreeConesLeadTheBoreFaceByUpToABlock(GameTestHelper helper) throws IOException {
-		for (PodConcept concept : PodConcept.values()) {
-			GeoModel model = read(helper, concept.model());
-			double lead = -model.restBounds(bone -> isCutter(model, bone))[2] - 16;
-			if (concept.round() == 3) {
-				require(helper, lead >= 12 && lead <= 16 + 1e-4, concept + "'s cone leads the bore face by %.2f pixels, not 12 to 16".formatted(lead));
-			} else {
-				require(helper, lead <= 1e-4, concept + "'s drill leads the bore face by %.2f pixels, which round 1 never did".formatted(lead));
-			}
-		}
-		helper.succeed();
-	}
-
-	/**
-	 * The renderer culls a pod by this box, so it must hold the whole model at every heading, cutter included: a cone leads the
-	 * hitbox by a block. The box is round the pod's feet, in blocks.
+	 * The renderer culls a pod by this box, so it must hold the whole model at every heading, every cutter included: a cone leads the
+	 * hitbox by a block, and sinks under the floor when the drill points down. The box is round the pod's feet, in blocks.
 	 */
 	@GameTest
 	public void theCullingBoxHoldsTheWholeModelAtAnyHeading(GameTestHelper helper) throws IOException {
-		for (PodConcept concept : PodConcept.values()) {
-			GeoModel model = read(helper, concept.model());
-			double[] b = model.restBounds();
+		for (Chassis chassis : Chassis.all()) {
+			GeoModel model = read(helper, look(helper, chassis).modelFile());
 			AABB box = model.cullingBox();
-			for (double x : new double[] {b[0], b[3]}) {
-				for (double z : new double[] {b[2], b[5]}) {
-					for (int degrees = 0; degrees < 360; degrees += 15) {
-						double yaw = Math.toRadians(degrees);
-						double px = (x * Math.cos(yaw) - z * Math.sin(yaw)) / 16;
-						double pz = (x * Math.sin(yaw) + z * Math.cos(yaw)) / 16;
-						require(helper, box.inflate(1e-6).contains(px, (b[1] + b[4]) / 32, pz), concept + "'s corner (" + x + ", " + z + ") at " + degrees
-								+ " degrees is outside its culling box " + box);
+			for (String cutter : model.cutters()) {
+				for (double pitch : new double[] {0, 45, 90}) {
+					double[] b = model.restBounds(bone -> model.inCutter(bone, cutter), pitch);
+					for (double x : new double[] {b[0], b[3]}) {
+						for (double z : new double[] {b[2], b[5]}) {
+							for (int degrees = 0; degrees < 360; degrees += 15) {
+								double yaw = Math.toRadians(degrees);
+								double px = (x * Math.cos(yaw) - z * Math.sin(yaw)) / 16;
+								double pz = (x * Math.sin(yaw) + z * Math.cos(yaw)) / 16;
+								require(helper, box.inflate(1e-6).contains(px, b[1] / 16, pz) && box.inflate(1e-6).contains(px, b[4] / 16, pz),
+										chassis.id() + "'s " + cutter + " cutter corner (" + x + ", " + z + ") at " + degrees + " degrees with the drill turned " + pitch
+												+ " is outside its culling box " + box);
+							}
+						}
 					}
 				}
 			}
-			require(helper, box.minY <= b[1] / 16 + 1e-9 && box.maxY >= b[4] / 16 - 1e-9, concept + "'s culling box " + box + " does not hold its height");
-			if (concept.round() == 3) {
-				require(helper, box.maxX >= 2.0 - 1e-9, concept + "'s culling box " + box + " does not reach the cone's tip, two blocks from the pod's middle");
-			}
+			double[] all = model.restBounds();
+			require(helper, box.minY <= all[1] / 16 + 1e-9 && box.maxY >= all[4] / 16 - 1e-9, chassis.id() + "'s culling box " + box + " does not hold its height");
+			require(helper, box.minY <= -12.0 / 16, chassis.id() + "'s culling box " + box + " does not reach the cutter's tip under the floor");
+			// The cone's tip is two blocks from the pod's middle: well past the hitbox's half width.
+			require(helper, box.maxX >= 2.0 - 1e-9, chassis.id() + "'s culling box " + box + " does not reach the cone's tip");
 		}
 		helper.succeed();
 	}
 
-	/** Each concept's texture and glowmask pass the check the renderer makes before it draws. */
+	/** Each pod's textures and glowmasks pass the check the renderer makes before it draws. */
 	@GameTest
-	public void everyConceptTexturePassesTheRenderersCheck(GameTestHelper helper) throws IOException {
-		for (PodConcept concept : PodConcept.values()) {
-			GeoModel model = read(helper, concept.model());
-			for (Identifier texture : List.of(concept.texture(), concept.glowmask())) {
-				try (InputStream png = stream(helper, texture)) {
-					model.checkTexture(texture.toString(), png);
+	public void everyPodTexturePassesTheRenderersCheck(GameTestHelper helper) throws IOException {
+		for (Chassis chassis : Chassis.all()) {
+			PodLook look = look(helper, chassis);
+			GeoModel model = read(helper, look.modelFile());
+			for (PodLook.Variant variant : List.of(look.intact(), look.wreck())) {
+				List<Identifier> textures = variant.glow() == PodLook.Glow.NEVER ? List.of(variant.texture()) : List.of(variant.texture(), variant.glowmask());
+				for (Identifier texture : textures) {
+					try (InputStream png = stream(helper, texture)) {
+						model.checkTexture(texture.toString(), png);
+					}
 				}
 			}
 		}
@@ -247,28 +260,6 @@ public class PodGeoModelTest {
 		helper.succeed();
 	}
 
-	/** A dev switch that names no concept fails, and says which names it knows. */
-	@GameTest
-	public void anUnknownDevSwitchNamesTheConcepts(GameTestHelper helper) {
-		String before = System.getProperty(PodConcept.PROPERTY);
-		System.setProperty(PodConcept.PROPERTY, "dril");
-		try {
-			PodConcept.selected();
-			throw helper.assertionException(Component.literal("the unknown concept 'dril' should fail"));
-		} catch (IllegalArgumentException e) {
-			for (String part : List.of("dril", "capsule", "borer", "strider", "gyro")) {
-				requireContains(helper, e.getMessage(), part);
-			}
-		} finally {
-			if (before == null) {
-				System.clearProperty(PodConcept.PROPERTY);
-			} else {
-				System.setProperty(PodConcept.PROPERTY, before);
-			}
-		}
-		helper.succeed();
-	}
-
 	private static String textureFailure(GameTestHelper helper, GeoModel model, byte[] png) throws IOException {
 		try {
 			model.checkTexture("broken.png", new ByteArrayInputStream(png));
@@ -284,18 +275,15 @@ public class PodGeoModelTest {
 				.putInt(height).array();
 	}
 
-	/** True for a {@code drill_head} or {@code drill_ring} bone and every bone under one: the part that turns and may lead the bore face. */
-	private static boolean isCutter(GeoModel model, GeoModel.Bone bone) {
-		Map<String, GeoModel.Bone> byName = model.bones().stream().collect(Collectors.toMap(GeoModel.Bone::name, b -> b));
-		for (GeoModel.Bone at = bone; at != null; at = at.parent().map(byName::get).orElse(null)) {
-			if (at.role() == BoneRole.DRILL_HEAD || at.role() == BoneRole.DRILL_RING) {
-				return true;
-			}
+	/** The look of {@code chassis} as the mod ships it, read from the classpath. */
+	static PodLook look(GameTestHelper helper, Chassis chassis) throws IOException {
+		Identifier file = PodLook.file(chassis);
+		try (Reader reader = new InputStreamReader(stream(helper, file), StandardCharsets.UTF_8)) {
+			return PodLook.parse(file.toString(), reader);
 		}
-		return false;
 	}
 
-	private static GeoModel read(GameTestHelper helper, Identifier id) throws IOException {
+	static GeoModel read(GameTestHelper helper, Identifier id) throws IOException {
 		try (Reader reader = new InputStreamReader(stream(helper, id), StandardCharsets.UTF_8)) {
 			return GeoModel.parse(id.toString(), reader);
 		}
@@ -310,7 +298,7 @@ public class PodGeoModelTest {
 		}
 	}
 
-	private static InputStream stream(GameTestHelper helper, Identifier id) {
+	static InputStream stream(GameTestHelper helper, Identifier id) {
 		String path = "/assets/%s/%s".formatted(id.getNamespace(), id.getPath());
 		InputStream in = PodGeoModelTest.class.getResourceAsStream(path);
 		require(helper, in != null, path + " is not on the classpath");

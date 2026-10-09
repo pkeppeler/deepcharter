@@ -13,8 +13,7 @@ Paths are under `src/main/resources/` in the repo and under `assets/deepcharter/
 | Block look, with its layers (glow, animation, active state, connected casing; see [Textures](#textures)) | `blockstates/<id>.json`, `models/block/<id>.json`, `textures/block/*.png` and `*.png.mcmeta` | F3+T |
 | Item look | `items/<id>.json` (item definition), `models/item/<id>.json`, `textures/item/*.png` | F3+T |
 | Block and item texture art: palette and recipes | `tools/textures/palette.json` and `tools/textures/recipes/*.json` in the repo; a skin's own palette file (see [Textures](#textures)) | rebuild, then F3+T |
-| Pod look: hull, wreck and drill, per chassis (`mole`, `prospector`) | `items/pod/<chassis>.json`, `<chassis>_wreck.json`, `<chassis>_drill.json`, and `models/pod/` with the same names; textures wherever the model names them | F3+T |
-| Mole concepts ([#334](https://github.com/pkeppeler/deepcharter/issues/334) and [#366](https://github.com/pkeppeler/deepcharter/issues/366), dev only: drawn only when `-Ddeepcharter.podConcept=<id>` names one, see [pod-concepts.md](pod-concepts.md) and [pod-concepts-3.md](pod-concepts-3.md)) | `geckolib/models/pod/concepts/<id>.geo.json` (Bedrock geometry, box UV, bones named as in `BoneRole`), `textures/entity/pod/mole/<id>.png` and `<id>_glowmask.png`; all written by `tools/pod_concepts.py` | F3+T |
+| Pod look, per chassis (`mole`, `prospector`): the GeckoLib model, its textures and glowmasks, the wreck variant, and the **drill tier map** that picks the cutter ([ADR 0040](../adr/0040-a-pod-look-is-a-file-per-chassis-and-the-drill-tier-picks-the-cutter.md)) | `pod/<chassis>.json` (the look file: a pack replaces it whole), `geckolib/models/pod/<chassis>.geo.json` (Bedrock geometry, box UV, bones named as in `BoneRole`, the cutters as bone sets `drill_head_<cutter>`), `textures/entity/pod/<chassis>.png` and `<chassis>_glowmask.png` and the same with `_wreck`; the model and textures are written by `tools/pod_concepts.py` | F3+T |
 | Tow cable particle | `particles/tow_cable.json` and `textures/particle/tow_cable.png` | F3+T |
 | Entity texture (the lampless figure) | `textures/entity/<id>.png` | F3+T |
 | Text | `lang/en_us.json` (generated from `src/lang/en_us/<feature>.json`; never edit it) | F3+T |
@@ -86,7 +85,23 @@ The `rock` ramp is the stone the ores sit in. It matches the layer rock (vanilla
 
 ### Pod models
 
-A pod model is a Java block/item model, which Blockbench exports, drawn at true size in block space: the entity stands at x and z 8, the floor is y 0. Set `uv` on a face wider than 16 pixels, or it samples outside the texture. The drill model is authored pointing down from the middle of the hull; the game aims it and turns it while the pod drills. The lampless figure keeps the vanilla zombie model and only its texture is a skin (ADR 0033). `SkinAssetsTest` checks that every pod model and particle has its files.
+A pod model is a Bedrock `.geo.json` that GeckoLib draws, box UV only, at true size in pixels (y up, the floor at 0, the front toward -z). Blockbench exports it, and `tools/pod_concepts.py` writes the shipped ones. Name a bone one of the words of `BoneRole` (`drill_mount`, `drill_head`, `drill_ring`, `rotor`, `fan`, `thruster`, `flame`, `wheel`, `links`, `leg`, `thigh` move; `body`, `canopy`, `lamps`, `winch` and the other still words ride along), alone or with a suffix: the game poses a bone by its word, so a re-export that keeps the names keeps the motion. There is no animation file.
+
+A **look file**, `pod/<chassis>.json`, picks the model and the textures (a glowmask is the texture's name with `_glowmask`, drawn at full bright while the pod has power) and holds the tier map. The drill tier picks the cutter: a model holds a bone set for each cutter (`drill_head_tricone`, `drill_ring_tricone`, `drill_head_stacked` and so on) and the map says from which tier each shows.
+
+```json
+{
+  "model": "deepcharter:pod/mole",
+  "texture": "deepcharter:textures/entity/pod/mole.png",
+  "glow": "lit",
+  "cutters": {"0": "tricone", "2": "stacked", "3": "fluted", "4": "cluster"},
+  "wreck": {"texture": "deepcharter:textures/entity/pod/mole_wreck.png", "glow": "never", "hide": ["rotor"]}
+}
+```
+
+Re-map the cutters by replacing that file in a pack, with the same keys and other cutter names the model holds: F3+T applies it, and no build is needed. A tier shows the cutter of the highest key at or below it, and the map needs a key `0`, the stock drill. The tiers are the game's: the terminal shows the stock drill as `DRILL T0`. A bad file fails the reload and names the pack, the file and the place. `PodLookTest` and `PodGeoModelTest` check the shipped files, and `PodGeckoLibClientTest` checks that an install swaps the cutter in the game.
+
+The lampless figure keeps the vanilla zombie model and only its texture is a skin (ADR 0033). `SkinAssetsTest` checks that every pod look has its files, and every particle has its own.
 
 ### The surface
 

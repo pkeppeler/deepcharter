@@ -86,12 +86,6 @@ Reply on [the pull request](https://github.com/pkeppeler/deepcharter/pulls?q=366
 
 Then [#243](https://github.com/pkeppeler/deepcharter/issues/243) builds the one you pick, in GeckoLib, with its animations and part tiers, for the Mole and the Prospector.
 
-## Try one in the game
+## Built in #243
 
-The concepts are in the dev build only, behind a switch, so nothing a player sees has changed. To drive one yourself:
-
-```
-JAVA_TOOL_OPTIONS=-Ddeepcharter.podConcept=fluted tools/play.sh
-```
-
-Use `fluted`, `stacked`, `tricone` or `cluster` (round 1's `capsule`, `borer`, `strider` and `gyro` still work). Without the switch the Mole keeps its look of today.
+The dev switch `-Ddeepcharter.podConcept` is gone. [#243](https://github.com/pkeppeler/deepcharter/issues/243) built the Capsule with these four cutters into the real Mole and Prospector, in GeckoLib ([ADR 0040](../adr/0040-a-pod-look-is-a-file-per-chassis-and-the-drill-tier-picks-the-cutter.md)). Your pick was the tricone for the stock drill, and the other three as the upgraded versions: the drill tier shows the cutter, as the tier map in `assets/deepcharter/pod/<chassis>.json` says (tricone for tiers 0 and 1, stacked rings for 2, the fluted auger for 3, the cluster from 4). The pictures above are still the round's; `python3 -I tools/pod_concepts.py --concepts DIR` writes the four concept models, as they were, into `DIR`, and the renderer of the round is in the history at commit `79422af7`.

@@ -4,18 +4,18 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.io.UncheckedIOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.math.Axis;
+import com.geckolib.constant.DataTickets;
+import com.geckolib.renderer.GeoReplacedEntityRenderer;
+import com.geckolib.renderer.base.BoneSnapshots;
+import com.geckolib.renderer.base.RenderPassInfo;
 
-import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
-import net.minecraft.client.renderer.state.level.CameraRenderState;
-import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
@@ -23,47 +23,152 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.phys.AABB;
 
 import io.github.pkeppeler.deepcharter.pod.Chassis;
+import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
+import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 
 /**
- * Draws the Mole as a {@link PodConcept}: a Bedrock geometry baked into vanilla ModelParts (ADR 0030's fallback path), its bones
- * posed by role, and its glowmask drawn full bright over it while the lamps are on. Used only when the dev switch picks a concept.
+ * Draws a pod of one chassis with GeckoLib (ADR 0030, #243): the model, textures and tier map of its {@link PodLook}, its bones
+ * posed by role ({@link PodPose}) from what the pod does ({@link PodMotion}), and its glowmask at full bright while the lamps are on.
+ * The cutter on show is the one the pod's drill tier picks, and it changes the moment the drill does.
+ *
+ * <p>It is a replaced-entity renderer: {@link PodEntity} knows nothing of GeckoLib, so a server never loads it.
  */
-public class PodGeoRenderer extends EntityRenderer<PodEntity, PodGeoRenderState> {
+public class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimatable, PodEntity, PodGeoRenderState> {
 	/** How far the hull shakes while the drill bites, in blocks. */
 	private static final float SHAKE = 0.02f;
-	/** Vanilla's lift for a ModelPart model, whose floor is at y 24. */
-	private static final float MODEL_FLOOR = 1.501f;
 
-	private final PodConcept concept;
-	private final PodGeoModel model;
-	/** The model's own extent round the pod's feet, cutter included: a cone leads the hitbox by a block, which the default culling box misses. */
+	/** What a pod shows: the cutter its drill tier picks (null for a model with one plain cutter), and its variant, intact or wreck. */
+	public record Appearance(String cutter, PodLook.Variant variant, boolean wrecked) {
+		/** Whether the glowmask is drawn, given whether the pod's lamps are on. */
+		public boolean glows(boolean lit) {
+			return switch (variant.glow()) {
+				case LIT -> lit;
+				case ALWAYS -> true;
+				case NEVER -> false;
+			};
+		}
+	}
+
+	private final Chassis chassis;
+	private final PodLook look;
+	private final GeoModel geo;
+	private final PodPose pose;
+	/** The model's own extent round the pod's feet, every cutter and the swing included: a cone leads the hitbox by a block, which the default culling box misses. */
 	private final AABB modelExtent;
+	/** How fast each cutter's drill spins, as a share of the full rate. */
+	private final Map<String, Float> spinScales = new HashMap<>();
+	/** The root bones of each cutter: {@code drill_head_<cutter>} and {@code drill_ring_<cutter>}. */
+	private final Map<String, List<String>> cutterRoots = new HashMap<>();
+	private final Map<Appearance, List<String>> hidden = new HashMap<>();
 	// Weak, so a pod that leaves the level takes its animation with it.
 	private final Map<PodEntity, PodMotion> motions = new WeakHashMap<>();
 
-	public PodGeoRenderer(EntityRendererProvider.Context context, PodConcept concept) {
-		super(context);
-		shadowRadius = Chassis.MOLE.width() / 2;
-		this.concept = concept;
-		ResourceManager resources = context.getResourceManager();
-		GeoModel geo = read(resources, concept.model());
-		checkTexture(resources, geo, concept.texture());
-		checkTexture(resources, geo, concept.glowmask());
-		model = new PodGeoModel(geo);
-		modelExtent = geo.cullingBox();
+	public PodGeoRenderer(EntityRendererProvider.Context context, Chassis chassis) {
+		this(context, chassis, PodLook.read(context.getResourceManager(), chassis));
 	}
 
+	private PodGeoRenderer(EntityRendererProvider.Context context, Chassis chassis, PodLook look) {
+		super(context, new PodGeckoModel(look), new PodGeoAnimatable());
+		this.chassis = chassis;
+		this.look = look;
+		shadowRadius = chassis.width() / 2;
+		ResourceManager resources = context.getResourceManager();
+		geo = readGeometry(resources, look.modelFile());
+		look.check(geo);
+		for (PodLook.Variant variant : List.of(look.intact(), look.wreck())) {
+			checkTexture(resources, geo, variant.texture());
+			if (variant.glow() != PodLook.Glow.NEVER) {
+				checkTexture(resources, geo, variant.glowmask());
+			}
+		}
+		pose = new PodPose(geo);
+		modelExtent = geo.cullingBox();
+		for (String cutter : geo.cutters()) {
+			spinScales.put(cutter, (float) geo.drillSpinScale(cutter));
+			cutterRoots.put(cutter, geo.bones().stream().filter(bone -> GeoModel.cutterOf(bone).map(cutter::equals).orElse(false))
+					.map(GeoModel.Bone::name).toList());
+		}
+		withRenderLayer(new PodGlowLayer(this));
+	}
+
+	public Chassis chassis() {
+		return chassis;
+	}
+
+	public PodLook look() {
+		return look;
+	}
+
+	/** The model as the game measures it, which GeckoLib draws from the same file. */
+	public GeoModel geometry() {
+		return geo;
+	}
+
+	/** What {@code pod} shows now: the cutter of its drill tier, and the wreck variant if it is a wreck. */
+	public Appearance appearanceOf(PodEntity pod) {
+		boolean wrecked = Wrecks.isWreck(pod);
+		String cutter = geo.cutters().isEmpty() ? null : look.cutterFor(PodComponents.effectiveTier(pod, ComponentTrack.DRILL));
+		return new Appearance(cutter, wrecked ? look.wreck() : look.intact(), wrecked);
+	}
+
+	/**
+	 * The box the game culls {@code pod} by. A cutter leads the hitbox by a block and sinks under the floor, so the box is widened to
+	 * the model's: the whole model at every heading, every cutter, at any angle of the drill mount.
+	 */
 	@Override
-	protected AABB getBoundingBoxForCulling(PodEntity pod, float partialTick) {
+	public AABB getBoundingBoxForCulling(PodEntity pod, float partialTick) {
 		return super.getBoundingBoxForCulling(pod, partialTick).minmax(modelExtent.move(pod.position()));
 	}
 
-	public PodConcept concept() {
-		return concept;
+	@Override
+	public PodGeoRenderState createRenderState(PodGeoAnimatable animatable, PodEntity pod) {
+		return new PodGeoRenderState();
 	}
 
-	private static GeoModel read(ResourceManager resources, Identifier id) {
+	@Override
+	public void addRenderData(PodGeoAnimatable animatable, PodEntity pod, PodGeoRenderState state, float partialTick) {
+		Appearance appearance = appearanceOf(pod);
+		state.appearance = appearance;
+		float spin = appearance.cutter() == null ? (float) geo.drillSpinScale() : spinScales.get(appearance.cutter());
+		motions.computeIfAbsent(pod, ignored -> new PodMotion()).advance(pod, state, pose.mountRestPitch(), spin);
+		// The pod turns as its motion says (towards where it drives or drills), not as its entity yaw does.
+		state.addGeckolibData(DataTickets.ENTITY_BODY_YAW, state.heading);
+	}
+
+	@Override
+	public void adjustRenderPose(RenderPassInfo<PodGeoRenderState> renderPassInfo) {
+		super.adjustRenderPose(renderPassInfo);
+		PodGeoRenderState state = renderPassInfo.renderState();
+		if (state.drilling) {
+			renderPassInfo.poseStack().translate(SHAKE * Mth.sin(state.ageInTicks * 7.3f), SHAKE * Mth.sin(state.ageInTicks * 9.1f), 0f);
+		}
+	}
+
+	@Override
+	public void adjustModelBonesForRender(RenderPassInfo<PodGeoRenderState> renderPassInfo, BoneSnapshots snapshots) {
+		PodGeoRenderState state = renderPassInfo.renderState();
+		pose.apply(state, snapshots);
+		for (String name : hiddenBones(state.appearance)) {
+			snapshots.ifPresent(name, snapshot -> snapshot.skipRender(true).skipChildrenRender(true));
+		}
+	}
+
+	/** The bones not drawn for {@code appearance}: the cutters it does not show, and what its variant hides. */
+	public List<String> hiddenBones(Appearance appearance) {
+		return hidden.computeIfAbsent(appearance, each -> {
+			List<String> names = new ArrayList<>(each.variant().hide());
+			cutterRoots.forEach((cutter, roots) -> {
+				if (!cutter.equals(each.cutter())) {
+					names.addAll(roots);
+				}
+			});
+			return List.copyOf(names);
+		});
+	}
+
+	private static GeoModel readGeometry(ResourceManager resources, Identifier id) {
 		Resource resource = resources.getResource(id).orElseThrow(() -> new IllegalStateException("No pod model at " + id));
 		try (Reader reader = resource.openAsReader()) {
 			return GeoModel.parse(id.toString(), reader);
@@ -81,35 +186,5 @@ public class PodGeoRenderer extends EntityRenderer<PodEntity, PodGeoRenderState>
 		} catch (IOException e) {
 			throw new UncheckedIOException("Could not read the texture " + texture + " of the pod model " + geo.source(), e);
 		}
-	}
-
-	@Override
-	public PodGeoRenderState createRenderState() {
-		return new PodGeoRenderState();
-	}
-
-	@Override
-	public void extractRenderState(PodEntity pod, PodGeoRenderState state, float partialTick) {
-		super.extractRenderState(pod, state, partialTick);
-		motions.computeIfAbsent(pod, ignored -> new PodMotion()).advance(pod, state, model.mountRestPitch(), model.drillSpinScale());
-	}
-
-	@Override
-	public void submit(PodGeoRenderState state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
-		poseStack.pushPose();
-		poseStack.rotateDegrees(Axis.YP, 180f - state.heading);
-		if (state.drilling) {
-			poseStack.translate(SHAKE * Mth.sin(state.ageInTicks * 7.3f), SHAKE * Mth.sin(state.ageInTicks * 9.1f), 0f);
-		}
-		poseStack.scale(-1f, -1f, 1f);
-		poseStack.translate(0f, -MODEL_FLOOR, 0f);
-		collector.submitModel(model, state, poseStack, RenderTypes.entityCutout(concept.texture()), state.lightCoords, OverlayTexture.NO_OVERLAY,
-				state.outlineColor);
-		if (state.lit) {
-			collector.order(1).submitModel(model, state, poseStack, RenderTypes.eyes(concept.glowmask()), state.lightCoords,
-					OverlayTexture.NO_OVERLAY, state.outlineColor);
-		}
-		poseStack.popPose();
-		super.submit(state, poseStack, collector, camera);
 	}
 }

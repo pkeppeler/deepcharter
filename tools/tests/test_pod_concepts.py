@@ -1,4 +1,4 @@
-"""Tests tools/pod_concepts.py: the committed concept files are what it writes, and a model that breaks the Mole's limits fails."""
+"""Tests tools/pod_concepts.py: the committed pod files are what it writes, the pods keep the bore rules with every cutter, and a model that breaks the Mole's limits fails."""
 import sys
 import unittest
 from pathlib import Path
@@ -10,12 +10,117 @@ import pod_concepts as pc  # noqa: E402
 
 class CommittedFiles(unittest.TestCase):
     def test_the_committed_files_are_what_the_script_writes(self):
-        for name in pc.CONCEPTS:
-            _, files = pc.build(name)
+        for name in pc.PODS:
+            _, files = pc.build(name, pc.MODEL_DIR, pc.TEXTURE_DIR)
             for path, data in files.items():
                 with self.subTest(path=path.name):
                     self.assertTrue(path.exists(), f"{path} is missing: run python3 -I tools/pod_concepts.py")
                     self.assertEqual(path.read_bytes(), data, f"{path} is stale: run python3 -I tools/pod_concepts.py")
+
+    def test_the_concepts_are_not_in_the_mod(self):
+        # The concepts are made on request (--concepts); the pack holds only the pods.
+        pack = pc.MODEL_DIR.parent.parent
+        self.assertEqual(sorted(path.name for path in pc.MODEL_DIR.glob("*.geo.json")), sorted(f"{name}.geo.json" for name in pc.PODS))
+        self.assertFalse((pack / "textures/entity/pod/mole").exists(), "the concept textures are in the mod")
+
+
+class Pods(unittest.TestCase):
+    def test_a_pod_holds_the_cutter_of_every_drill_tier(self):
+        for name, make in pc.PODS.items():
+            with self.subTest(pod=name):
+                self.assertEqual(list(pc.CUTTERS), make().cutters())
+
+    def test_every_cutter_of_every_pod_keeps_the_bore_swing_and_cone_rules(self):
+        for name, make in pc.PODS.items():
+            model = make()
+            for variant in model.cutters():
+                with self.subTest(pod=name, cutter=variant):
+                    pc.check_bounds(model, variant)
+                    pc.check_swing(model, variant)
+                    pc.check_cone(model, variant)
+
+    def test_a_cutter_is_held_to_the_bore_alone_without_the_others(self):
+        # Leaving the other cutters out matters: all four together would span more than any one does.
+        model = pc.mole()
+        everything = pc.rest_bounds(model, cutter=True)
+        for variant in model.cutters():
+            lo, hi = pc.rest_bounds(model, cutter=True, variant=variant)
+            self.assertTrue(lo[2] >= everything[0][2] and hi[2] <= everything[1][2])
+        lone = pc.rest_bounds(model, cutter=True, variant="stacked")
+        self.assertGreater(lone[0][2], everything[0][2], "the fluted cutter leads further than the stacked one")
+
+    def test_a_bad_cutter_is_named_in_the_error(self):
+        model = pc.mole()
+        # Pull the cluster's hub a block past the reach.
+        cluster = next(bone for bone in model.bones if bone.name == "drill_head_cluster")
+        cluster.centred(0, pc.CONE_AXIS_Y, -40, 4, 4, 4, "tip")
+        with self.assertRaisesRegex(ValueError, r"mole's cluster cutter with its drill turned 0 degrees down: its cutter stands \d+\.\d+ pixels past the bore face, more than 16"):
+            pc.check_swing(model, "cluster")
+        # The others are still fine.
+        pc.check_swing(model, "stacked")
+
+    def test_the_prospector_is_wider_and_longer_with_two_hatches_and_a_winch(self):
+        mole, prospector = pc.mole(), pc.prospector()
+        self.assertEqual((24, 46.4), (prospector.bore, prospector.height))
+        names = [bone.name for bone in prospector.bones]
+        self.assertIn("winch", names)
+        self.assertEqual(2, len(next(bone for bone in prospector.bones if bone.name == "hatch").cubes))
+        for variant in mole.cutters():
+            _, _, mole_width, _ = pc.cone_figures(mole, variant)
+            _, _, prospector_width, _ = pc.cone_figures(prospector, variant)
+            self.assertGreater(prospector_width, mole_width, f"the Prospector's {variant} should be wider than the Mole's")
+        hulls = [pc.rest_bounds(model, cutter=False) for model in (mole, prospector)]
+        self.assertGreater(hulls[1][1][2] - hulls[1][0][2], 1.3 * (hulls[0][1][2] - hulls[0][0][2]))
+
+    def test_the_cone_builders_at_scale_one_draw_the_picked_cones(self):
+        # A cutter built for a pod in place of a concept's is the same cubes, at the same places: the cone the user picked.
+        for name in pc.CONES:
+            concept = pc.CONCEPTS[name]()
+            mole = pc.mole()
+            head = [b for b in concept.bones if b.name == "drill_head"][0]
+            pod_head = [b for b in mole.bones if b.name == "drill_head_" + name][0]
+            self.assertEqual([(c.origin, c.size, c.rotation) for c in head.cubes], [(c.origin, c.size, c.rotation) for c in pod_head.cubes], name)
+
+    def test_the_cutter_names_come_from_the_bones(self):
+        model = pc.mole()
+        by_name = {bone.name: bone for bone in model.bones}
+        self.assertEqual("tricone", pc.cutter_of(model, by_name["drill_ring_tricone"]))
+        self.assertIsNone(pc.cutter_of(model, by_name["drill_mount"]))
+        self.assertIsNone(pc.cutter_of(model, by_name["body"]))
+        self.assertEqual([], pc.fluted().cutters(), "a concept holds one plain cutter")
+
+    def test_every_pod_fits_its_texture(self):
+        for name, make in pc.PODS.items():
+            model = make()
+            pc.pack(model)
+            self.assertTrue(all(cube.uv for _, cube in model.cubes()), name)
+            self.assertEqual(512, model.texture)
+
+
+class Wrecks(unittest.TestCase):
+    def test_a_wreck_is_the_same_model_weathered(self):
+        for name in pc.PODS:
+            with self.subTest(pod=name):
+                _, files = pc.build(name, pc.MODEL_DIR, pc.TEXTURE_DIR)
+                fresh = files[pc.TEXTURE_DIR / f"{name}.png"]
+                worn = files[pc.TEXTURE_DIR / f"{name}_wreck.png"]
+                self.assertNotEqual(fresh, worn)
+
+    def test_the_derelict_mole_is_dark_and_the_scorched_prospector_has_one_lamp_lit(self):
+        mole = pc.mole()
+        pc.pack(mole)
+        base, glow = pc.paint_model(mole)
+        self.assertEqual(0, sum(1 for i in range(3, len(pc.wreck_glow(mole, glow, "derelict").pixels), 4) if pc.wreck_glow(mole, glow, "derelict").pixels[i]))
+        prospector = pc.prospector()
+        pc.pack(prospector)
+        _, glow = pc.paint_model(prospector)
+        lit = pc.wreck_glow(prospector, glow, "scorched")
+        lit_pixels = sum(1 for i in range(3, len(lit.pixels), 4) if lit.pixels[i])
+        full_pixels = sum(1 for i in range(3, len(glow.pixels), 4) if glow.pixels[i])
+        self.assertGreater(lit_pixels, 0)
+        lenses = [cube for _, cube in prospector.cubes() if cube.material == "lens"]
+        self.assertGreaterEqual(len(lenses), 2, "the Prospector has two lamps")
+        self.assertLess(lit_pixels, full_pixels / 2, "one lamp lit, not the cab and the other lamp as well")
 
 
 class Limits(unittest.TestCase):
@@ -207,8 +312,8 @@ class Limits(unittest.TestCase):
             pc.check_cone(model)
 
     def test_box_uv_never_overlaps(self):
-        for name in pc.CONCEPTS:
-            model, _ = pc.build(name)
+        for name in [*pc.CONCEPTS, *pc.PODS]:
+            model, _ = pc.build(name, pc.MODEL_DIR, pc.TEXTURE_DIR)
             taken = set()
             for bone, cube in model.cubes():
                 u, v = cube.uv
@@ -216,7 +321,7 @@ class Limits(unittest.TestCase):
                 cells = {(x, y) for x in range(u, u + w) for y in range(v, v + h)}
                 with self.subTest(concept=name, bone=bone.name):
                     self.assertFalse(cells & taken, f"{name}: a cube of {bone.name} overlaps another on the texture")
-                    self.assertTrue(u + w <= pc.TEXTURE_SIZE and v + h <= pc.TEXTURE_SIZE)
+                    self.assertTrue(u + w <= model.texture and v + h <= model.texture)
                 taken |= cells
 
 

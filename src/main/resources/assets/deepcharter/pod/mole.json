@@ -1,0 +1,16 @@
+{
+	"model": "deepcharter:pod/mole",
+	"texture": "deepcharter:textures/entity/pod/mole.png",
+	"glow": "lit",
+	"cutters": {
+		"0": "tricone",
+		"2": "stacked",
+		"3": "fluted",
+		"4": "cluster"
+	},
+	"wreck": {
+		"texture": "deepcharter:textures/entity/pod/mole_wreck.png",
+		"glow": "never",
+		"hide": ["rotor"]
+	}
+}

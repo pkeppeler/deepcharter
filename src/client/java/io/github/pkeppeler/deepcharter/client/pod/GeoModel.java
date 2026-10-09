@@ -8,9 +8,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -24,10 +26,15 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * A pod model read from a Bedrock entity geometry, the {@code .geo.json} that Blockbench exports (ADR 0030's ModelPart path,
- * #334). Box UV only. Every bone name is a {@link BoneRole} word, and there is one {@code drill_mount} with a
- * {@code drill_head} under it; a {@code drill_ring} is under the mount and not under the head. Anything else, or anything
- * malformed, throws with the file and the place named.
+ * What the game knows of a pod model, read from the Bedrock entity geometry, the {@code .geo.json} that Blockbench exports and
+ * GeckoLib draws (ADR 0030, #243). The game reads the file a second time, here, to check it and to measure it: how wide its
+ * cutters are, how far they reach, how big a box holds the whole model. Box UV only. Every bone name is a {@link BoneRole} word,
+ * and there is one {@code drill_mount} with a {@code drill_head} under it; a {@code drill_ring} is under the mount and not under
+ * the head. Anything else, or anything malformed, throws with the file and the place named.
+ *
+ * <p>A model may hold several cutters (ADR 0040): bone sets named {@code drill_head_<cutter>} and {@code drill_ring_<cutter>},
+ * of which the pod shows the one its drill tier picks. A model with plain {@code drill_head} and {@code drill_ring} bones has
+ * one cutter, which is always shown.
  *
  * <p>Coordinates are the file's: pixels, y up, the floor at 0, the front toward -z.
  */
@@ -51,6 +58,8 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 	private static final double FULL_SPIN_REACH = 8;
 	private static final int CUBE_CORNERS = 8;
 	private static final double PIXELS_PER_BLOCK = 16;
+	/** The angles, in degrees, at which {@link #cullingBox} samples the drill mount's swing. */
+	private static final int SWING_STEP = 15;
 
 	/** A bone: its pivot and rest rotation (degrees, applied z, then y, then x) are in model space, as in the file. */
 	public record Bone(String name, BoneRole role, Optional<String> parent, Vec3 pivot, Vec3 rotation, List<Cube> cubes) {
@@ -119,8 +128,51 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 
 	/** How fast this model's drill spins, as a share of the full rate: 1 up to a reach of {@value #FULL_SPIN_REACH} pixels. */
 	public double drillSpinScale() {
-		double share = FULL_SPIN_REACH / drillReach();
+		return spinScale(drillReach());
+	}
+
+	/** {@link #drillSpinScale()} for the one cutter {@code cutter} names (see {@link #cutters}). */
+	public double drillSpinScale(String cutter) {
+		return spinScale(drillReach(cutter));
+	}
+
+	private static double spinScale(double reach) {
+		double share = FULL_SPIN_REACH / reach;
 		return Math.min(1, share * share);
+	}
+
+	/** The names of the cutters this model holds, in file order: the {@code <cutter>} of each {@code drill_head_<cutter>} and {@code drill_ring_<cutter>} bone. Empty for a model with one plain cutter. */
+	public List<String> cutters() {
+		Set<String> names = new LinkedHashSet<>();
+		for (Bone bone : bones) {
+			cutterOf(bone).ifPresent(names::add);
+		}
+		return List.copyOf(names);
+	}
+
+	/** The cutter that a {@code drill_head_<cutter>} or {@code drill_ring_<cutter>} bone belongs to; empty for any other bone, and for a plain {@code drill_head} or {@code drill_ring}. */
+	public static Optional<String> cutterOf(Bone bone) {
+		String prefix = switch (bone.role()) {
+			case DRILL_HEAD -> "drill_head_";
+			case DRILL_RING -> "drill_ring_";
+			default -> null;
+		};
+		if (prefix == null || !bone.name().startsWith(prefix)) {
+			return Optional.empty();
+		}
+		return Optional.of(bone.name().substring(prefix.length()));
+	}
+
+	/** True for a bone that is a cutter's own, or under one: {@code drill_head}, {@code drill_ring} and what rides them, of the cutter {@code cutter} (null: of any). */
+	public boolean inCutter(Bone bone, String cutter) {
+		Map<String, Bone> byName = new HashMap<>();
+		bones.forEach(each -> byName.put(each.name(), each));
+		for (Bone at = bone; at != null; at = at.parent().map(byName::get).orElse(null)) {
+			if (at.role() == BoneRole.DRILL_HEAD || at.role() == BoneRole.DRILL_RING) {
+				return cutter == null || cutterOf(at).map(cutter::equals).orElse(false);
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -130,11 +182,21 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 	 * rest rotation is not applied: a spinning bone is drawn upright, and turns about its own z axis. Only the cubes of the spinning
 	 * bones themselves count, not those of bones under them. Every cube of the round-3 cones, including the side cones of the tricone
 	 * and the cluster, sits directly in {@code drill_head} or {@code drill_ring}, so all of them count; a round-1 {@code cutter} child
-	 * bone (a turned copy of the drill) does not, and its reach is that of its parent's.
+	 * bone (a turned copy of the drill) does not, and its reach is that of its parent's. Of every cutter the model holds.
 	 */
 	public double drillReach() {
+		return reachOf(null);
+	}
+
+	/** {@link #drillReach()} of the one cutter {@code cutter} names. */
+	public double drillReach(String cutter) {
+		return reachOf(cutter);
+	}
+
+	private double reachOf(String cutter) {
 		double reach = 0;
-		for (Bone spinning : bones.stream().filter(bone -> bone.role() == BoneRole.DRILL_HEAD || bone.role() == BoneRole.DRILL_RING).toList()) {
+		for (Bone spinning : bones.stream().filter(bone -> bone.role() == BoneRole.DRILL_HEAD || bone.role() == BoneRole.DRILL_RING)
+				.filter(bone -> cutter == null || cutterOf(bone).map(cutter::equals).orElse(false)).toList()) {
 			for (Cube cube : spinning.cubes()) {
 				for (int corner = 0; corner < CUBE_CORNERS; corner++) {
 					Vec3 point = turnedCorner(cube, corner);
@@ -153,6 +215,15 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 
 	/** {@link #restBounds()} over the cubes of the bones {@code only} accepts. */
 	public double[] restBounds(Predicate<Bone> only) {
+		return bounds(only, OptionalDouble.empty());
+	}
+
+	/** {@link #restBounds(Predicate)} with the drill mount turned to {@code pitch} degrees instead of its rest angle (0 level, 90 straight down). */
+	public double[] restBounds(Predicate<Bone> only, double pitch) {
+		return bounds(only, OptionalDouble.of(pitch));
+	}
+
+	private double[] bounds(Predicate<Bone> only, OptionalDouble pitch) {
 		Map<String, Bone> byName = new HashMap<>();
 		bones.forEach(bone -> byName.put(bone.name(), bone));
 		double[] bounds = {Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE};
@@ -161,7 +232,9 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 				for (int corner = 0; corner < CUBE_CORNERS; corner++) {
 					Vec3 p = turnedCorner(cube, corner);
 					for (Bone at = bone; at != null; at = at.parent().map(byName::get).orElse(null)) {
-						p = turn(p, at.pivot(), at.rotation());
+						Vec3 rotation = pitch.isPresent() && at.role() == BoneRole.DRILL_MOUNT
+								? new Vec3(pitch.getAsDouble(), at.rotation().y, at.rotation().z) : at.rotation();
+						p = turn(p, at.pivot(), rotation);
 					}
 					double[] xyz = {p.x, p.y, p.z};
 					for (int i = 0; i < 3; i++) {
@@ -175,11 +248,20 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 	}
 
 	/**
-	 * The box the renderer culls this model by, in blocks, round the pod's feet: the model's rest bounds in y, and in x and z a square
-	 * as wide as the furthest any corner of its bounds is from the pod's middle, so it holds the model at any heading, the cutter's tip included.
+	 * The box the renderer culls this model by, in blocks, round the pod's feet: the model's bounds in y, and in x and z a square
+	 * as wide as the furthest any corner of its bounds is from the pod's middle, so it holds the model at any heading. The bounds
+	 * are of the whole model, every cutter it holds, and of the drill mount at its rest angle and at every {@value #SWING_STEP}
+	 * degrees down to straight down, so the cutter's tip is held where it leads the hitbox and where it sinks under the floor.
 	 */
 	public AABB cullingBox() {
 		double[] b = restBounds();
+		for (int pitch = 0; pitch <= 90; pitch += SWING_STEP) {
+			double[] swung = restBounds(bone -> true, pitch);
+			for (int i = 0; i < 3; i++) {
+				b[i] = Math.min(b[i], swung[i]);
+				b[i + 3] = Math.max(b[i + 3], swung[i + 3]);
+			}
+		}
 		double reach = Math.max(Math.max(Math.hypot(b[0], b[2]), Math.hypot(b[0], b[5])), Math.max(Math.hypot(b[3], b[2]), Math.hypot(b[3], b[5])));
 		return new AABB(-reach / PIXELS_PER_BLOCK, b[1] / PIXELS_PER_BLOCK, -reach / PIXELS_PER_BLOCK, reach / PIXELS_PER_BLOCK, b[4] / PIXELS_PER_BLOCK,
 				reach / PIXELS_PER_BLOCK);

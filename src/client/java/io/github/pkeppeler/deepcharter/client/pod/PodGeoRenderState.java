@@ -21,4 +21,6 @@ public class PodGeoRenderState extends EntityRenderState {
 	public boolean drilling;
 	/** The lamps are on: the pod has a pilot and power. */
 	public boolean lit;
+	/** What the pod shows this frame, from its drill tier and whether it is a wreck ({@link PodGeoRenderer#appearanceOf}). */
+	public PodGeoRenderer.Appearance appearance;
 }

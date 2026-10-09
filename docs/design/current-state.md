@@ -226,6 +226,8 @@ in the palette's ramps and have a one-pixel dark outline.
 
 None of the entities has a custom 3D model.
 
+**Since #243 the pods have.** The Mole and the Prospector, intact and wrecked, are GeckoLib models with a look file each ([ADR 0040](../adr/0040-a-pod-look-is-a-file-per-chassis-and-the-drill-tier-picks-the-cutter.md), [skins.md](skins.md#pod-models)); the drill tier shows the cutter. The pod sections below, down to the hangar, describe the slabs of #223 and are kept as the "before".
+
 ### Mole (`deepcharter:pod`)
 
 ![mole-unlit-day-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/mole-unlit-day-front.png?raw=true) ![mole-unlit-day-side](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/mole-unlit-day-side.png?raw=true)
@@ -628,7 +630,7 @@ Nothing of these exists yet, so there is nothing to restyle and each one is new 
 
 Already marked placeholder in code or issues:
 
-- **Pod model (Mole, Prospector, wrecks):** `client/pod/PodRenderer.java:19`: "Placeholder model", a scaled vanilla block
+- ~~**Pod model (Mole, Prospector, wrecks):** `client/pod/PodRenderer.java:19`: "Placeholder model", a scaled vanilla block~~ Done in #243: GeckoLib models, see [ADR 0040](../adr/0040-a-pod-look-is-a-file-per-chassis-and-the-drill-tier-picks-the-cutter.md)
 - **Lampless figure:** `main/creature/LamplessFigure.java:20` ("PLACEHOLDER until the creatures session (#13)"), `CreatureRegistry.java:19`, `client/creature/LamplessFigureRenderer.java:15`; issue #83 "M2 (placeholder): the lampless figure"
 - **Pod status HUD:** `client/pod/PodStatusHud.java:19`: "Plain text readout of the ridden pod; the real HUD design comes later"
 - **Transmission texts:** `src/lang/en_us/transmission.json:10-27`: every body of T01 to T18 starts "[PLACEHOLDER Txx: the lore session writes this text]"
@@ -646,7 +648,7 @@ Every look that is fixed in Java and cannot be replaced by swapping a resource-p
 
 | Visual | What is fixed | Where |
 |---|---|---|
-| ~~Pod models~~ | Done in #258 ([ADR 0033](../adr/0033-pod-models-are-item-models-and-the-figure-keeps-the-vanilla-model.md)): each chassis, wreck and drill is a resource-pack model under `assets/deepcharter/models/pod/` with an item definition under `items/pod/`. The default models are still slabs textured with vanilla raw copper, iron and coal. | `client/pod/PodRenderer.java`, `PodSkins.java` |
+| ~~Pod models~~ | Done in #258 (item models) and replaced in #243 ([ADR 0040](../adr/0040-a-pod-look-is-a-file-per-chassis-and-the-drill-tier-picks-the-cutter.md)): each chassis is a GeckoLib model, textures and a look file a pack replaces, and the drill tier map is data. | `client/pod/PodGeoRenderer.java`, `PodLook.java`, `assets/deepcharter/pod/` |
 | Lampless figure model | Vanilla zombie model; only the skin is a resource. A documented exception in ADR 0033: a bone rig comes with GeckoLib (#243) | `client/creature/LamplessFigureRenderer.java:20` |
 | CRT look (all terminal screens, account HUD, transmissions) | Colours (background `#050A06`, phosphor `#7CFC9A`, dim `#2E7A45`, hover `#123D20`), scanline spacing 2 and colour, glow, bloom, padding, typewriter speed | `client/ui/CrtTuning.java:36-38` |
 | CRT drawing | Background fill, scanlines, bloom bands, 4-way halo text, 1-pixel frames, button fill | `client/ui/CrtDraw.java:15-43`, `client/ui/CrtButton.java:23`; the typewriter cursor block is `client/ui/CrtScreen.java:144` |

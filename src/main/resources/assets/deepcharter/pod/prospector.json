@@ -1,0 +1,15 @@
+{
+	"model": "deepcharter:pod/prospector",
+	"texture": "deepcharter:textures/entity/pod/prospector.png",
+	"glow": "lit",
+	"cutters": {
+		"0": "tricone",
+		"2": "stacked",
+		"3": "fluted",
+		"4": "cluster"
+	},
+	"wreck": {
+		"texture": "deepcharter:textures/entity/pod/prospector_wreck.png",
+		"glow": "always"
+	}
+}

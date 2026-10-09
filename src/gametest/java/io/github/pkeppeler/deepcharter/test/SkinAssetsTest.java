@@ -6,7 +6,6 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -21,20 +20,27 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
-import io.github.pkeppeler.deepcharter.client.pod.PodSkins;
+import io.github.pkeppeler.deepcharter.client.pod.PodLook;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 
 /**
- * Server GameTests for #258 (ADR 0033): every pod, wreck and drill model and every mod particle has the resource files a skin
- * replaces. A texture in another namespace (the default models borrow vanilla's) is a pack's business, not this mod's.
+ * Server GameTests for #258 and #243 (ADR 0040): every pod look has the model and textures it names, and every mod particle has the
+ * resource files a skin replaces. A texture in another namespace is a pack's business, not this mod's.
  */
 public class SkinAssetsTest {
 	@GameTest
-	public void everyPodModelHasItsFiles(GameTestHelper helper) throws IOException {
+	public void everyPodLookHasItsFiles(GameTestHelper helper) throws IOException {
 		for (Chassis chassis : Chassis.all()) {
-			PodSkins skins = PodSkins.of(chassis);
-			for (Identifier id : List.of(skins.hull(), skins.wreck(), skins.drill())) {
-				checkModelFiles(helper, id);
+			PodLook look = PodGeoModelTest.look(helper, chassis);
+			String model = "/assets/%s/%s".formatted(look.model().getNamespace(), look.modelFile().getPath());
+			if (SkinAssetsTest.class.getResource(model) == null) {
+				throw failure(helper, "the look of %s names the model %s, which is not on the classpath at %s", chassis.id(), look.model(), model);
+			}
+			for (PodLook.Variant variant : List.of(look.intact(), look.wreck())) {
+				checkTexture(helper, variant.texture());
+				if (variant.glow() != PodLook.Glow.NEVER) {
+					checkTexture(helper, variant.glowmask());
+				}
 			}
 		}
 		helper.succeed();
@@ -72,24 +78,14 @@ public class SkinAssetsTest {
 		helper.succeed();
 	}
 
-	/** The item model definition the renderer asks for, the model it names, and the model's own textures. */
-	private static void checkModelFiles(GameTestHelper helper, Identifier id) throws IOException {
-		JsonObject definition = json(helper, "/assets/%s/items/%s.json".formatted(id.getNamespace(), id.getPath()));
-		String named = definition.getAsJsonObject("model").get("model").getAsString();
-		if (!Identifier.parse(named).equals(id)) {
-			throw failure(helper, "items/%s.json names the model %s, not %s", id.getPath(), named, id);
+	/** A pod texture named by its full path, as a look names it. */
+	private static void checkTexture(GameTestHelper helper, Identifier texture) {
+		if (!texture.getNamespace().equals(DeepCharter.MOD_ID)) {
+			return;
 		}
-		JsonObject model = json(helper, "/assets/%s/models/%s.json".formatted(id.getNamespace(), id.getPath()));
-		if (!model.has("elements") && !model.has("parent")) {
-			throw failure(helper, "models/%s.json has neither elements nor a parent", id.getPath());
-		}
-		if (model.has("textures")) {
-			for (Map.Entry<String, JsonElement> texture : model.getAsJsonObject("textures").entrySet()) {
-				String value = texture.getValue().getAsString();
-				if (!value.startsWith("#")) {
-					checkTexture(helper, Identifier.parse(value), "textures/");
-				}
-			}
+		String path = "/assets/%s/%s".formatted(texture.getNamespace(), texture.getPath());
+		if (SkinAssetsTest.class.getResource(path) == null) {
+			throw failure(helper, "the texture %s is missing: no %s on the classpath", texture, path);
 		}
 	}
 

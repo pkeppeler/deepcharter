@@ -44,10 +44,10 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
  */
 public class AssetCompletenessTest {
 	/**
-	 * Pods render item models; see SkinAssetsTest. They have no entity texture. Every other registered entity needs
-	 * {@code textures/entity/<id>.png}.
+	 * Pods render GeckoLib models from their look files, with their textures under textures/entity/pod/ (see SkinAssetsTest), so they
+	 * have no {@code textures/entity/<id>.png}. Every other registered entity needs one.
 	 */
-	private static final Set<String> ENTITIES_DRAWN_FROM_VANILLA_BLOCKS = Set.of("pod", "prospector");
+	private static final Set<String> ENTITIES_DRAWN_FROM_LOOK_FILES = Set.of("pod", "prospector");
 	private static final String CONNECTED = DeepCharter.MOD_ID + ":connected";
 	private static final List<String> CONNECTED_TILES = List.of("alone", "horizontal", "vertical", "corner", "centre");
 	private static final byte[] PNG_SIGNATURE = {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'};
@@ -88,17 +88,17 @@ public class AssetCompletenessTest {
 	public void everyEntityHasItsTexture(GameTestHelper helper) {
 		List<String> problems = new ArrayList<>();
 		for (Identifier id : ours(BuiltInRegistries.ENTITY_TYPE)) {
-			if (!ENTITIES_DRAWN_FROM_VANILLA_BLOCKS.contains(id.getPath())) {
+			if (!ENTITIES_DRAWN_FROM_LOOK_FILES.contains(id.getPath())) {
 				requireFile(problems, "entity " + id, "textures/entity/" + id.getPath() + ".png");
 			}
 		}
-		for (String path : ENTITIES_DRAWN_FROM_VANILLA_BLOCKS) {
+		for (String path : ENTITIES_DRAWN_FROM_LOOK_FILES) {
 			if (!BuiltInRegistries.ENTITY_TYPE.containsKey(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path))) {
-				problems.add("ENTITIES_DRAWN_FROM_VANILLA_BLOCKS lists " + path + ", which is not a registered entity: remove it");
+				problems.add("ENTITIES_DRAWN_FROM_LOOK_FILES lists " + path + ", which is not a registered entity: remove it");
 			}
 			if (AssetCompletenessTest.class.getResource(resource("textures/entity/" + path + ".png")) != null) {
 				problems.add("entity " + path + " now has " + resource("textures/entity/" + path + ".png")
-						+ ": it is drawn from its own assets, so remove it from ENTITIES_DRAWN_FROM_VANILLA_BLOCKS");
+						+ ": it is drawn from its own assets, so remove it from ENTITIES_DRAWN_FROM_LOOK_FILES");
 			}
 		}
 		finish(helper, problems);

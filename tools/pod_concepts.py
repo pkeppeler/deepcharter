@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Writes the Mole concept models of #334 and #366: per concept a Bedrock .geo.json, a texture and a glowmask.
+"""Writes the pod models: the Mole and the Prospector of #243, and (on request) the concepts of #334 and #366 they come from.
 
 Usage:
-  python3 -I tools/pod_concepts.py           write every concept into src/main/resources
-  python3 -I tools/pod_concepts.py --check   exit 1 if a written file differs from what this script makes
+  python3 -I tools/pod_concepts.py                     write the pods into src/main/resources
+  python3 -I tools/pod_concepts.py --check             exit 1 if a written file differs from what this script makes
+  python3 -I tools/pod_concepts.py --concepts DIR      also write every concept's files into DIR (they are not in the mod)
 
-This script is the source of the concepts. Its output is plain Blockbench-compatible data: a Bedrock
-geometry with named bones and box UV, a 16x-density texture (one texel per model pixel) and a glowmask
-for the lamps. The game draws it through the vanilla ModelPart loader (client/pod/GeoModel), and code
-animates only the bones it names (client/pod/BoneRole).
+This script is the source of the pods. Its output is plain Blockbench-compatible data: per pod a Bedrock
+geometry with named bones and box UV, a 1-texel-per-pixel texture and a glowmask for the lamps, and a wreck
+texture and glowmask. GeckoLib draws it, and code animates only the bones it names (client/pod/BoneRole).
+A pod holds the cutter of every drill tier as bone sets (drill_head_<cutter>, drill_ring_<cutter>); the game
+shows the one that the pod's drill tier picks from assets/deepcharter/pod/<chassis>.json.
 
 Model space is Bedrock's: pixels, y up, the floor at y 0, the front of the pod toward -z, the pod's
 left toward +x. A Mole must fit its 2 x 2 bore at rest: x and z within -16 to 16, y within 0 to 30.4.
@@ -27,8 +29,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "src/main/resources/assets/deepcharter"
-MODEL_DIR = ASSETS / "geckolib/models/pod/concepts"
-TEXTURE_DIR = ASSETS / "textures/entity/pod/mole"
+MODEL_DIR = ASSETS / "geckolib/models/pod"
+TEXTURE_DIR = ASSETS / "textures/entity/pod"
 TEXTURE_SIZE = 256
 
 # The bore a Mole digs, in model pixels: the model at rest must fit inside it.
@@ -129,9 +131,13 @@ class Bone:
 
 
 class Model:
-    def __init__(self, name):
+    def __init__(self, name, bore=BORE_HALF_WIDTH, height=HITBOX_HEIGHT, texture=TEXTURE_SIZE):
         self.name = name
         self.bones = []
+        # The bore this pod digs, as its half width in pixels, the pod's hitbox height, and the side of its square texture.
+        self.bore = bore
+        self.height = height
+        self.texture = texture
 
     def bone(self, name, parent=None, pivot=(0, 0, 0), rotation=(0, 0, 0)):
         if any(b.name == name for b in self.bones):
@@ -142,8 +148,29 @@ class Model:
         self.bones.append(bone)
         return bone
 
-    def cubes(self):
-        return [(bone, cube) for bone in self.bones for cube in bone.cubes]
+    def cubes(self, variant=None):
+        """Every (bone, cube). variant names one cutter: the cubes of the other cutters' bone sets are left out."""
+        return [(bone, cube) for bone in self.bones if variant is None or cutter_of(self, bone) in (None, variant) for cube in bone.cubes]
+
+    def cutters(self):
+        """The names of the cutter bone sets (drill_head_<name>, drill_ring_<name>), in order of first appearance. Empty for a model with one plain cutter."""
+        names = []
+        for bone in self.bones:
+            name = cutter_of(self, bone)
+            if name is not None and name not in names:
+                names.append(name)
+        return names
+
+
+def cutter_of(model, bone):
+    """The cutter a bone belongs to: the suffix of the drill_head_<name> or drill_ring_<name> bone that is it or above it, or None."""
+    by_name = {b.name: b for b in model.bones}
+    while bone is not None:
+        for word in CUTTER_BONES:
+            if bone.name.startswith(word + "_"):
+                return bone.name[len(word) + 1:]
+        bone = by_name.get(bone.parent)
+    return None
 
 
 # ---------------------------------------------------------------------------------------------
@@ -198,12 +225,12 @@ def corners(model, bone, cube):
         yield world_point(model, bone, corner)
 
 
-def rest_bounds(model, cutter=None):
+def rest_bounds(model, cutter=None, variant=None):
     """The lowest and highest x, y and z of the model at rest. cutter picks the part: None all of it, True only the cutter, False
-    everything but the cutter. An empty part gives infinities."""
+    everything but the cutter. variant names the one cutter of a model that holds several (None counts them all). An empty part gives infinities."""
     lo = [math.inf] * 3
     hi = [-math.inf] * 3
-    for bone, cube in model.cubes():
+    for bone, cube in model.cubes(variant):
         if cutter is not None and is_cutter(model, bone) != cutter:
             continue
         for p in corners(model, bone, cube):
@@ -213,65 +240,69 @@ def rest_bounds(model, cutter=None):
     return lo, hi
 
 
-def check_bounds(model):
+def check_bounds(model, variant=None):
     """Throws unless the model at rest fits its bore (the cutter may lead the face by CUTTER_REACH_PX) and its hitbox's height."""
     eps = 1e-6
-    lo, hi = rest_bounds(model, cutter=False)
-    if lo[0] < -BORE_HALF_WIDTH - eps or hi[0] > BORE_HALF_WIDTH + eps or lo[2] < -BORE_HALF_WIDTH - eps or hi[2] > BORE_HALF_WIDTH + eps:
+    bore, height = model.bore, model.height
+    lo, hi = rest_bounds(model, cutter=False, variant=variant)
+    if lo[0] < -bore - eps or hi[0] > bore + eps or lo[2] < -bore - eps or hi[2] > bore + eps:
         raise ValueError(f"{model.name} at rest is wider than its bore: x {lo[0]:.2f}..{hi[0]:.2f}, z {lo[2]:.2f}..{hi[2]:.2f}")
-    if lo[1] < -eps or hi[1] > HITBOX_HEIGHT + eps:
-        raise ValueError(f"{model.name} at rest leaves 0..{HITBOX_HEIGHT} in y: {lo[1]:.2f}..{hi[1]:.2f}")
-    lo, hi = rest_bounds(model, cutter=True)
+    if lo[1] < -eps or hi[1] > height + eps:
+        raise ValueError(f"{model.name} at rest leaves 0..{height} in y: {lo[1]:.2f}..{hi[1]:.2f}")
+    lo, hi = rest_bounds(model, cutter=True, variant=variant)
     if not math.isfinite(lo[0]):
         return
-    if lo[0] < -BORE_HALF_WIDTH - eps or hi[0] > BORE_HALF_WIDTH + eps or hi[2] > BORE_HALF_WIDTH + eps:
+    if lo[0] < -bore - eps or hi[0] > bore + eps or hi[2] > bore + eps:
         raise ValueError(f"{model.name}'s cutter at rest is wider than its bore: x {lo[0]:.2f}..{hi[0]:.2f}, back z {hi[2]:.2f}")
-    if lo[2] < -BORE_HALF_WIDTH - CUTTER_REACH_PX - eps:
-        raise ValueError(f"{model.name}'s cutter at rest leads the bore face by {-lo[2] - BORE_HALF_WIDTH:.2f} pixels, more than {CUTTER_REACH_PX}")
-    if lo[1] < -eps or hi[1] > HITBOX_HEIGHT + eps:
-        raise ValueError(f"{model.name}'s cutter at rest leaves 0..{HITBOX_HEIGHT} in y: {lo[1]:.2f}..{hi[1]:.2f}")
+    if lo[2] < -bore - CUTTER_REACH_PX - eps:
+        raise ValueError(f"{model.name}'s cutter at rest leads the bore face by {-lo[2] - bore:.2f} pixels, more than {CUTTER_REACH_PX}")
+    if lo[1] < -eps or hi[1] > height + eps:
+        raise ValueError(f"{model.name}'s cutter at rest leaves 0..{height} in y: {lo[1]:.2f}..{hi[1]:.2f}")
 
 
-def check_swing(model):
+def check_swing(model, variant=None):
     """Throws unless the model keeps the swing and bore rule (see CUTTER_REACH_PX) with its drill mount turned to each of
     SWING_ANGLES: the game swings the drill from level to straight down and back."""
     mount = next(bone for bone in model.bones if bone.name == "drill_mount")
     rest = mount.rotation
     eps = 1e-6
+    bore, height = model.bore, model.height
     level_lead = None
     try:
         for angle in SWING_ANGLES:
             mount.rotation = (float(angle), 0.0, 0.0)
             where = f"{model.name} with its drill turned {angle} degrees down"
+            if variant is not None:
+                where = f"{model.name}'s {variant} cutter with its drill turned {angle} degrees down"
             for cutter in (False, True):
-                lo, hi = rest_bounds(model, cutter=cutter)
+                lo, hi = rest_bounds(model, cutter=cutter, variant=variant)
                 if not math.isfinite(lo[0]):
                     continue
                 part = "its cutter" if cutter else "its hull, lamps or yoke"
-                if lo[0] < -BORE_HALF_WIDTH - eps or hi[0] > BORE_HALF_WIDTH + eps or hi[2] > BORE_HALF_WIDTH + eps:
+                if lo[0] < -bore - eps or hi[0] > bore + eps or hi[2] > bore + eps:
                     raise ValueError(f"{where}: {part} leaves the bore's sides or back: x {lo[0]:.2f}..{hi[0]:.2f}, back z {hi[2]:.2f}")
                 allowed = CUTTER_REACH_PX if cutter else 0
-                if lo[2] < -BORE_HALF_WIDTH - allowed - eps:
-                    raise ValueError(f"{where}: {part} stands {-lo[2] - BORE_HALF_WIDTH:.2f} pixels past the bore face, more than {allowed}")
-                if lo[1] < -FLOOR_SLAB_PX - eps or hi[1] > HITBOX_HEIGHT + eps:
-                    raise ValueError(f"{where}: {part} leaves {-FLOOR_SLAB_PX}..{HITBOX_HEIGHT} in y: {lo[1]:.2f}..{hi[1]:.2f}")
+                if lo[2] < -bore - allowed - eps:
+                    raise ValueError(f"{where}: {part} stands {-lo[2] - bore:.2f} pixels past the bore face, more than {allowed}")
+                if lo[1] < -FLOOR_SLAB_PX - eps or hi[1] > height + eps:
+                    raise ValueError(f"{where}: {part} leaves {-FLOOR_SLAB_PX}..{height} in y: {lo[1]:.2f}..{hi[1]:.2f}")
                 if cutter:
                     if level_lead is None:
                         level_lead = -lo[2]
                     if -lo[2] > level_lead + LUNGE_SLACK_PX:
-                        raise ValueError(f"{where}: its cutter lunges forward, leading the bore face by {-lo[2] - BORE_HALF_WIDTH:.2f} pixels "
-                                         f"where it led by {level_lead - BORE_HALF_WIDTH:.2f} level")
+                        raise ValueError(f"{where}: its cutter lunges forward, leading the bore face by {-lo[2] - bore:.2f} pixels "
+                                         f"where it led by {level_lead - bore:.2f} level")
     finally:
         mount.rotation = rest
 
 
-def cutter_profile(model):
+def cutter_profile(model, variant=None):
     """The cutter at rest, front to back: a list of (z, radius) for every whole pixel slice of z it covers, the radius being the
     furthest a cube corner reaches from the drill head's axis among the cubes that cover the slice. Also the axis (x, y)."""
-    head = next(bone for bone in model.bones if bone.name == "drill_head")
+    head = next(bone for bone in model.bones if bone.name == ("drill_head" if variant is None else f"drill_head_{variant}"))
     axis_x, axis_y = head.pivot[0], head.pivot[1]
     cubes = []
-    for bone, cube in model.cubes():
+    for bone, cube in model.cubes(variant):
         if is_cutter(model, bone):
             points = list(corners(model, bone, cube))
             zs = [p[2] for p in points]
@@ -290,9 +321,9 @@ def cutter_profile(model):
     return profile
 
 
-def check_cone(model):
+def check_cone(model, variant=None):
     """Throws unless the cutter is a cone: long, wide at the back, and narrowing to a point, never a disc or a drum."""
-    profile = cutter_profile(model)
+    profile = cutter_profile(model, variant)
     length = len(profile)
     base = max(radius for _, radius in profile)
     if length < CONE_MIN_LENGTH_PX:
@@ -313,7 +344,7 @@ def check_cone(model):
         narrowest = min(narrowest, radius)
 
 
-def cone_figures(model):
+def cone_figures(model, variant=None):
     """(lead, depth, width, length) of a cone in pixels: how far its tip leads the bore face with the mount level, how far under the
     floor its lowest point is with the mount turned 90 degrees down, and its widest and longest extent at rest. The docs quote
     these, and main() prints them."""
@@ -321,12 +352,12 @@ def cone_figures(model):
     rest = mount.rotation
     try:
         mount.rotation = (0.0, 0.0, 0.0)
-        lo, hi = rest_bounds(model, cutter=True)
-        lead = -lo[2] - BORE_HALF_WIDTH
+        lo, hi = rest_bounds(model, cutter=True, variant=variant)
+        lead = -lo[2] - model.bore
         width = hi[0] - lo[0]
         length = hi[2] - lo[2]
         mount.rotation = (90.0, 0.0, 0.0)
-        depth = -rest_bounds(model, cutter=True)[0][1]
+        depth = -rest_bounds(model, cutter=True, variant=variant)[0][1]
     finally:
         mount.rotation = rest
     return lead, depth, width, length
@@ -342,14 +373,14 @@ def pack(model):
     x = y = shelf = 0
     for _, cube in entries:
         w, h = cube.uv_size
-        if w > TEXTURE_SIZE:
+        if w > model.texture:
             raise ValueError(f"{model.name}: a cube needs {w} texels across, more than the texture")
-        if x + w > TEXTURE_SIZE:
+        if x + w > model.texture:
             x = 0
             y += shelf + 1
             shelf = 0
-        if y + h > TEXTURE_SIZE:
-            raise ValueError(f"{model.name}: the cubes do not fit a {TEXTURE_SIZE} texture")
+        if y + h > model.texture:
+            raise ValueError(f"{model.name}: the cubes do not fit a {model.texture} texture")
         cube.uv = (x, y)
         x += w + 1
         shelf = max(shelf, h)
@@ -368,6 +399,10 @@ class Canvas:
     def set(self, x, y, rgb, alpha=255):
         i = (y * self.size + x) * 4
         self.pixels[i:i + 4] = bytes((*rgb, alpha))
+
+    def get(self, x, y):
+        i = (y * self.size + x) * 4
+        return tuple(self.pixels[i:i + 4])
 
     def png(self):
         raw = bytearray()
@@ -723,14 +758,17 @@ MATERIALS = {
 }
 
 
-def paint_model(model):
-    base = Canvas(TEXTURE_SIZE)
-    glow = Canvas(TEXTURE_SIZE)
+def paint_model(model, wear=None):
+    """The texture and glowmask of the model. wear is None for new paint, or "derelict" or "scorched" for a wreck's texture."""
+    base = Canvas(model.texture)
+    glow = Canvas(model.texture)
     for bone, cube in model.cubes():
         rng = random.Random(f"{model.name}:{bone.name}:{bone.cubes.index(cube)}")
         for face in faces_of(cube):
             if face.w > 0 and face.h > 0:
                 MATERIALS[cube.material](base, glow, face, rng)
+                if wear is not None:
+                    wear_face(base, face, random.Random(f"{wear}:{model.name}:{bone.name}:{face.kind}:{face.x}:{face.y}"), wear)
     return base, glow
 
 
@@ -1070,7 +1108,7 @@ def gyro():
 
 
 # ---------------------------------------------------------------------------------------------
-# Round 3 (#366): the Capsule with a giant conical cutter
+# Round 3 (#366): the Capsule with a giant conical cutter. #243 builds these cones as the pods' cutter sets.
 # ---------------------------------------------------------------------------------------------
 
 # The cone points along -z from its back face at CONE_BACK_Z, on an axis CONE_AXIS_Y high. Its tip leads the bore face (z -16) by
@@ -1079,6 +1117,33 @@ CONE_AXIS_Y = 15
 CONE_BACK_Z = -5
 # Where the tip of the cutter goes when the mount points down: this deep in the floor slab being bored (FLOOR_SLAB_PX is 16).
 CONE_DOWN_TIP_Y = -13
+
+
+class Rig:
+    """Where a cone cutter hangs on a body and how big it is. A Mole's rig is the round-3 cone as picked. A Prospector's is wider and
+    longer in step with its wider bore, so one drawing of each cone serves both pods: kr scales a cone's widths (radial), kz its
+    depths (along z), and a cube's size is rounded to whole pixels."""
+
+    def __init__(self, tip_z, axis_y=CONE_AXIS_Y, back_z=CONE_BACK_Z, down_tip_y=CONE_DOWN_TIP_Y, kr=1.0, kz=1.0, yoke_x=11):
+        self.tip_z = tip_z
+        self.axis_y = axis_y
+        self.back_z = back_z
+        self.down_tip_y = down_tip_y
+        self.kr = kr
+        self.kz = kz
+        self.yoke_x = yoke_x
+
+    def scaled(self, kr, kz):
+        """The same hinge and axis, with this scale."""
+        return Rig(self.tip_z, self.axis_y, self.back_z, self.down_tip_y, kr, kz, self.yoke_x)
+
+    def side(self, pixels):
+        """A cube's width or height, scaled and whole."""
+        return max(2, round(pixels * self.kr))
+
+    def depth(self, pixels):
+        """A cube's depth, scaled and whole."""
+        return max(1, round(pixels * self.kz))
 
 
 def teeth_ring(bone, cx, cy, z_face, radius, count, size=(2, 3, 2), phase=0.0, material="teeth"):
@@ -1112,152 +1177,190 @@ def slab(bone, z_front, depth, radius, material, turned_material, twist=0.0, cx=
     bone.centred(cx, cy, z + 0.5, side, side, depth, turned_material, (0, 0, twist + 45))
 
 
-def cone_base(m, tip_z):
-    """What the four cones share: the Capsule set back 3 pixels, the brow lamps up on stalks beside the cone so they show over its
-    shoulders, and the yoke the cone hangs from. The hinge is placed so that the mount, turned 90 degrees, points the cone straight
-    down with its tip CONE_DOWN_TIP_Y under the middle of the pod. Returns the drill_mount bone."""
-    dz = 3
-    capsule_hull(m, dz, brow_lamps=False)
+def lamp_stalks(m):
+    """The Mole's brow lamps up on stalks beside the cone, so they still show over its shoulders."""
     lamps = m.bone("lamps", "body")
     for sx in (-1, 1):
         lamps.box(sx * 12 - 1, 21, -1, sx * 12 + 1, 24, 2, "frame")
         caged_lamp(lamps, sx * 12, 26.5, -1)
+
+
+def cone_base(m, rig):
+    """What the four cones share on a Mole: the Capsule set back 3 pixels, the lamps on stalks, the running gear and the yoke the
+    cone hangs from. The hinge is placed so that the mount, turned 90 degrees, points the cone straight down with its tip
+    CONE_DOWN_TIP_Y under the middle of the pod. Returns the drill_mount bone."""
+    dz = 3
+    capsule_hull(m, dz, brow_lamps=False)
+    lamp_stalks(m)
     capsule_running_gear(m, dz)
-    return cone_mount(m, tip_z)
+    return cone_mount(m, rig)
 
 
-def cone_mount(m, tip_z):
-    py, pz = mount_pivot(CONE_AXIS_Y, tip_z, CONE_DOWN_TIP_Y)
+def cone_mount(m, rig):
+    """The yoke: two arms from the cone's back face to the hinge, the hinge pins, a hazard bar under the cone and its brass hub."""
+    py, pz = mount_pivot(rig.axis_y, rig.tip_z, rig.down_tip_y)
     mount = m.bone("drill_mount", "body", (0, py, pz))
     for sx in (-1, 1):
-        mount.box(sx * 11 - 1, py - 1.5, CONE_BACK_Z, sx * 11 + 1, py + 1.5, math.ceil(pz + 1.5), "frame")
-        mount.centred(sx * 11.5, py, pz, 3, 4, 4, "brass")
-    mount.box(-11, 8, CONE_BACK_Z, 11, 11, CONE_BACK_Z + 2, "hazard")
-    mount.centred(0, CONE_AXIS_Y, CONE_BACK_Z + 1, 9, 9, 2, "brass")
+        mount.box(sx * rig.yoke_x - 1, py - 1.5, rig.back_z, sx * rig.yoke_x + 1, py + 1.5, math.ceil(pz + 1.5), "frame")
+        mount.centred(sx * (rig.yoke_x + 0.5), py, pz, 3, 4, 4, "brass")
+    mount.box(-rig.yoke_x, rig.axis_y - 7, rig.back_z, rig.yoke_x, rig.axis_y - 4, rig.back_z + 2, "hazard")
+    mount.centred(0, rig.axis_y, rig.back_z + 1, rig.side(9), rig.side(9), 2, "brass")
     return mount
 
 
-def spinner(m, name, parent="drill_mount"):
-    return m.bone(name, parent, (0, CONE_AXIS_Y, CONE_BACK_Z))
+def spinner(m, name, rig, parent="drill_mount"):
+    return m.bone(name, parent, (0, rig.axis_y, rig.back_z))
 
 
-def collar(bone):
+def collar(bone, rig):
     """A hazard-striped band round the back of the cone, 1.5 pixels wider than its first ring, so it shows from the front."""
-    slab(bone, CONE_BACK_Z, 2, 14, "hazard", "iron")
+    slab(bone, rig.back_z, 2, 14 * rig.kr, "hazard", "iron", cy=rig.axis_y)
 
 
-def fluted():
+def fluted_cutter(m, rig, sfx=""):
     """A. Fluted: an auger cone, from the twist drill's helical flutes and the ribbed conical nose of Trebelev's subterrene. Nine
     slabs shrink from the bore's width to a point, and each carries a cross of two bright blades turned a little more than the one
     behind it, so the four flutes spiral up the cone like a screw. The core is dark and sits a pixel deep, so the flutes have a
     floor. A hazard band at the back, a bright brass point at the front."""
-    m = Model("fluted")
-    cone_base(m, -32)
-    head = spinner(m, "drill_head")
-    collar(head)
+    ay = rig.axis_y
+    head = spinner(m, "drill_head" + sfx, rig)
+    collar(head, rig)
     radii = (12.5, 11, 9.5, 8, 6.5, 5, 3.5, 2.5)
-    z = CONE_BACK_Z
+    depth = rig.depth(3)
+    z = rig.back_z
     for k, radius in enumerate(radii):
-        z -= 3
+        radius *= rig.kr
+        z -= depth
         twist = 16 * k
         length = round(2 * radius)
         blade = max(2, round(radius * 0.4))
-        zc = z + 1.5
-        head.centred(0, CONE_AXIS_Y, zc, length, blade, 3, "cone_steel", turned(twist))
-        head.centred(0, CONE_AXIS_Y, zc + 0.5, blade, length, 3, "cone_steel", turned(twist))
+        zc = z + depth / 2
+        head.centred(0, ay, zc, length, blade, depth, "cone_steel", turned(twist))
+        head.centred(0, ay, zc + 0.5, blade, length, depth, "cone_steel", turned(twist))
         core = max(2, round(radius * 1.1))
-        head.centred(0, CONE_AXIS_Y, zc + 1, core, core, 3, "cone_dark", turned(twist + 22.5))
+        head.centred(0, ay, zc + 1, core, core, depth, "cone_dark", turned(twist + 22.5))
     z -= 3
-    head.centred(0, CONE_AXIS_Y, z + 1.5, 3, 3, 3, "tip")
-    return m
+    head.centred(0, ay, z + 1.5, 3, 3, 3, "tip")
 
 
-def stacked():
+def stacked_cutter(m, rig, sfx=""):
     """B. Stacked: rings of teeth, the Atlantis digger's cutter drawn as a cone. Six toothed rings shrink toward a bright brass nose.
     A dark shaft shows in a one-pixel gap between the rings, and alternate rings are dark and bright steel and turn against each
     other, so the cone churns."""
-    m = Model("stacked")
-    cone_base(m, -31)
-    head = spinner(m, "drill_head")
-    ring = spinner(m, "drill_ring")
-    collar(head)
+    ay = rig.axis_y
+    head = spinner(m, "drill_head" + sfx, rig)
+    ring = spinner(m, "drill_ring" + sfx, rig)
+    collar(head, rig)
     steps = (12.5, 10, 7.5, 5.5, 3.5, 2)
-    z = CONE_BACK_Z
+    depth = rig.depth(3)
+    z = rig.back_z
     for k, radius in enumerate(steps):
-        z -= 3
+        radius *= rig.kr
+        z -= depth
         bone = head if k % 2 == 0 else ring
         dark = k % 2 == 0
-        slab(bone, z, 3, radius, "cone_dark" if dark else "cone_steel", "cone_dark" if dark else "cone_steel")
+        slab(bone, z, depth, radius, "cone_dark" if dark else "cone_steel", "cone_dark" if dark else "cone_steel", cy=ay)
         if radius >= 4:
-            teeth_ring(bone, 0, CONE_AXIS_Y, z, radius - 1.5, 8, (2, 3, 2), 22.5 * (k % 2), "cone_tooth")
+            teeth_ring(bone, 0, ay, z, radius - 1.5, 8, (2, 3, 2), 22.5 * (k % 2), "cone_tooth")
         if k + 1 < len(steps):
             # The shaft in the gap is a pixel narrower than the next ring, so the cone still narrows to its tip.
-            shaft = max(2, round((steps[k + 1] - 1.5) * 1.414))
-            head.centred(0, CONE_AXIS_Y, z - 0.5, shaft, shaft, 3, "cone_dark")
+            shaft = max(2, round((steps[k + 1] * rig.kr - 1.5) * 1.414))
+            head.centred(0, ay, z - 0.5, shaft, shaft, 3, "cone_dark")
             z -= 1
     z -= 3
-    head.centred(0, CONE_AXIS_Y, z + 1.5, 3, 3, 3, "tip")
-    return m
+    head.centred(0, ay, z + 1.5, 3, 3, 3, "tip")
 
 
-def tricone():
+def tricone_cutter(m, rig, sfx=""):
     """C. Tricone: an oil-well roller bit, three toothed cones on one hub, leaning in so their tips meet at a point. Each cone is a
     stack of bright squares turned to lie along its own axis, with a bright tooth on every flank of every other step, over a dark
     hub. A hazard-striped collar of teeth turns against the cones, and every cone ends in a brass point."""
-    m = Model("tricone")
-    cone_base(m, -31)
-    head = spinner(m, "drill_head")
-    ring = spinner(m, "drill_ring")
-    slab(ring, CONE_BACK_Z - 3, 3, 12.5, "hazard", "iron")
-    teeth_ring(ring, 0, CONE_AXIS_Y, CONE_BACK_Z - 3, 11, 8, (2, 3, 3), 22.5, "cone_tooth")
-    hub_z = CONE_BACK_Z - 3 - 3
-    slab(head, hub_z, 3, 9.5, "cone_dark", "cone_dark")
+    ay = rig.axis_y
+    head = spinner(m, "drill_head" + sfx, rig)
+    ring = spinner(m, "drill_ring" + sfx, rig)
+    slab(ring, rig.back_z - 3, 3, 12.5 * rig.kr, "hazard", "iron", cy=ay)
+    teeth_ring(ring, 0, ay, rig.back_z - 3, 11 * rig.kr, 8, (2, 3, 3), 22.5, "cone_tooth")
+    hub_z = rig.back_z - 3 - 3
+    slab(head, hub_z, 3, 9.5 * rig.kr, "cone_dark", "cone_dark", cy=ay)
     steps = (9, 8, 6, 4, 3, 2)
+    reach = 19 * rig.kz
     for angle in (0, 120, 240):
         a = math.radians(angle)
-        base = (6 * math.sin(a), CONE_AXIS_Y + 6 * math.cos(a), hub_z)
-        end = (0.8 * math.sin(a), CONE_AXIS_Y + 0.8 * math.cos(a), hub_z - 19)
+        base = (6 * rig.kr * math.sin(a), ay + 6 * rig.kr * math.cos(a), hub_z)
+        end = (0.8 * rig.kr * math.sin(a), ay + 0.8 * rig.kr * math.cos(a), hub_z - reach)
         length = math.dist(base, end)
         unit = tuple((t - b) / length for b, t in zip(base, end))
         pitch = math.degrees(math.atan2(unit[1], math.hypot(unit[0], unit[2])))
         yaw = math.degrees(math.atan2(unit[0], unit[2]))
         pace = length / len(steps)
-        for n, side in enumerate(steps):
+        for n, step in enumerate(steps):
+            side = max(2, round(step * rig.kr))
             centre = tuple(b + u * (pace * (n + 0.5)) for b, u in zip(base, unit))
             last = n == len(steps) - 1
             head.centred(*centre, side, side, math.ceil(pace) + 1, "tip" if last else "cone_steel", (pitch, yaw, 0))
             if n % 2 == 0 and side >= 5:
                 for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                     head.centred(centre[0] + dx * side / 2, centre[1] + dy * side / 2, centre[2] - pace / 2, 2, 2, 2, "cone_tooth")
-    head.centred(0, CONE_AXIS_Y, hub_z - 18.5, 3, 3, 3, "tip")
-    return m
+    head.centred(0, ay, hub_z - reach + 0.5, 3, 3, 3, "tip")
 
 
-def cluster():
+def cluster_cutter(m, rig, sfx=""):
     """D. Cluster: one long cone ringed by five short ones, as in a cluster of shaped charges or a bundle of drill steels. The long
     cone is the head, bright steel with dark steps, and ends in a brass point; the five short cones ride a hazard-striped carrier
     that turns the other way, so they circle it, each with a bright tooth at its tip."""
-    m = Model("cluster")
-    cone_base(m, -32)
-    head = spinner(m, "drill_head")
-    ring = spinner(m, "drill_ring")
-    slab(ring, CONE_BACK_Z - 3, 3, 12.5, "hazard", "iron")
-    z = CONE_BACK_Z - 3
+    ay = rig.axis_y
+    head = spinner(m, "drill_head" + sfx, rig)
+    ring = spinner(m, "drill_ring" + sfx, rig)
+    slab(ring, rig.back_z - 3, 3, 12.5 * rig.kr, "hazard", "iron", cy=ay)
+    z = rig.back_z - 3
     for index in range(5):
         a = math.radians(18 + 72 * index)
-        cx, cy = 9.5 * math.sin(a), CONE_AXIS_Y + 9.5 * math.cos(a)
+        cx, cy = 9.5 * rig.kr * math.sin(a), ay + 9.5 * rig.kr * math.cos(a)
         zs = z
         for side, depth in ((6, 4), (4, 4), (3, 3)):
+            side, depth = rig.side(side), rig.depth(depth)
             zs -= depth
             ring.centred(cx, cy, zs + depth / 2, side, side, depth, "cone_dark")
         ring.centred(cx, cy, zs - 1, 2, 2, 2, "cone_tooth")
     zc = z
     for k, (radius, depth) in enumerate(((6.5, 4), (5.5, 4), (4.5, 4), (3.5, 4), (2.5, 4), (1.5, 3))):
+        radius, depth = radius * rig.kr, rig.depth(depth)
         zc -= depth
-        slab(head, zc, depth, radius, "cone_steel", "cone_dark")
+        slab(head, zc, depth, radius, "cone_steel", "cone_dark", cy=ay)
         if k < 4:
-            teeth_ring(head, 0, CONE_AXIS_Y, zc, radius - 1, 6, (2, 2, 2), 30 * (k % 2), "cone_tooth")
-    head.centred(0, CONE_AXIS_Y, zc, 2, 2, 2, "tip")
+            teeth_ring(head, 0, ay, zc, radius - 1, 6, (2, 2, 2), 30 * (k % 2), "cone_tooth")
+    head.centred(0, ay, zc, 2, 2, 2, "tip")
+
+
+def fluted():
+    m = Model("fluted")
+    rig = Rig(-32)
+    cone_base(m, rig)
+    fluted_cutter(m, rig)
+    return m
+
+
+def stacked():
+    m = Model("stacked")
+    rig = Rig(-31)
+    cone_base(m, rig)
+    stacked_cutter(m, rig)
+    return m
+
+
+def tricone():
+    m = Model("tricone")
+    rig = Rig(-31)
+    cone_base(m, rig)
+    tricone_cutter(m, rig)
+    return m
+
+
+def cluster():
+    m = Model("cluster")
+    rig = Rig(-32)
+    cone_base(m, rig)
+    cluster_cutter(m, rig)
     return m
 
 
@@ -1273,6 +1376,160 @@ CONCEPTS = {
 }
 # The round-3 concepts, which must read as cones (check_cone).
 CONES = ("fluted", "stacked", "tricone", "cluster")
+# The cutters a pod holds, as bone sets named drill_head_<cutter> and drill_ring_<cutter>. Which one a drill tier shows is data:
+# assets/deepcharter/pod/<chassis>.json.
+CUTTERS = {"tricone": tricone_cutter, "stacked": stacked_cutter, "fluted": fluted_cutter, "cluster": cluster_cutter}
+
+
+# ---------------------------------------------------------------------------------------------
+# The pods (#243)
+# ---------------------------------------------------------------------------------------------
+
+# A Mole's yoke hinges for the longest cutter (tip at z -32), so the tricone and the stacked cutter lead the face a pixel less.
+MOLE_RIG = Rig(-32)
+# A Prospector's bore is 3 x 3 blocks, so its cones are wider (kr) and longer (kz) than the Mole's, each as far as it can go and still
+# be a cone that leads the bore face by at most a block: a cube's size is whole pixels, so the scale that fits differs by cutter.
+PROSPECTOR_RIG = Rig(-40, axis_y=20, back_z=-7, yoke_x=14)
+PROSPECTOR_SCALES = {"tricone": (1.2, 1.2), "stacked": (1.2, 1.2), "fluted": (1.1, 1.1), "cluster": (1.2, 1.2)}
+PROSPECTOR_BORE = 24
+PROSPECTOR_HEIGHT = 46.4
+
+
+def mole():
+    """The Mole: the round-3 Capsule, and the four cutters of the drill tiers as bone sets on one yoke."""
+    m = Model("mole", texture=512)
+    cone_base(m, MOLE_RIG)
+    for name, build_cutter in CUTTERS.items():
+        build_cutter(m, MOLE_RIG, "_" + name)
+    return m
+
+
+def prospector_body(m):
+    """The Capsule's family, longer and wider: a bevelled hull with two window bands, one for each seat of the tandem, a roof with a
+    hatch over each seat, side tanks, two stacks, a propeller on a mast, the brow lamps on posts that stand on arms beside the cone, treads with
+    four wheels, and a winch at the back with its cable and hook."""
+    body = m.bone("body")
+    bevelled_box(body, -17, 9, -4, 17, 30, 21, 3, "paint")
+    body.box(-17.5, 17, -4.5, 17.5, 18, 21.5, "trim")
+    bevelled_box(body, -13, 30, -1, 13, 35, 18, 2, "paint")
+    body.box(-14, 8, -2, 14, 9, 19, "iron")
+    body.box(-10, 23, 21, 10, 29, 22, "grille")
+    canopy = m.bone("canopy", "body")
+    # The pilot's pane faces front; each seat has a side window, and a pillar stands between the two.
+    canopy.box(-13, 21, -5, 13, 28, -4, "glass")
+    canopy.box(-14, 28, -5.5, 14, 29, -3.5, "brass")
+    canopy.box(-14, 20, -5.5, 14, 21, -3.5, "brass")
+    for x in (-5, 4):
+        canopy.box(x, 21, -5.5, x + 1, 28, -4.5, "brass")
+    for sx in (-1, 1):
+        x0, x1 = (17, 18) if sx > 0 else (-18, -17)
+        for z0, z1 in ((0, 7), (11, 18)):
+            canopy.box(x0, 21, z0, x1, 28, z1, "glass")
+        canopy.box(x0 - 0.5, 28, -0.5, x1 + 0.5, 29, 18.5, "brass")
+        canopy.box(x0 - 0.5, 20, -0.5, x1 + 0.5, 21, 18.5, "brass")
+        canopy.box(x0 - 0.5, 21, 7, x1 + 0.5, 28, 11, "brass")
+    hatch = m.bone("hatch", "body")
+    hatch.box(-3, 35, 2, 3, 36, 7, "brass")
+    hatch.box(-3, 35, 11, 3, 36, 16, "brass")
+    lamps = m.bone("lamps", "body")
+    for sx in (-1, 1):
+        # An arm bolted to the hull's side, and a post on its end that carries the lamp.
+        lamps.box(min(sx * 16, sx * 21), 27, -2, max(sx * 16, sx * 21), 29, 1, "frame")
+        lamps.box(sx * 20 - 1, 29, -2, sx * 20 + 1, 36, 1, "frame")
+        caged_lamp(lamps, sx * 20, 39.5, -2)
+    for side, x0, x1 in (("l", 17, 21), ("r", -21, -17)):
+        tank = m.bone(f"tank_{side}", "body")
+        tank.box(x0, 12, 4, x1, 19, 18, "tank")
+        tank.box(x0 + 0.5, 13, 3, x1 - 0.5, 18, 4, "brass")
+    exhaust = m.bone("exhaust", "body")
+    exhaust.box(-12, 28, 17, -8, 41, 21, "exhaust")
+    exhaust.box(-12.5, 41, 16.5, -7.5, 42, 21.5, "frame")
+    exhaust.box(8, 28, 17, 12, 38, 21, "exhaust")
+    exhaust.box(7.5, 38, 16.5, 12.5, 39, 21.5, "frame")
+    for x in (-3, 2):
+        exhaust.box(x, 34, 19, x + 1, 42, 20, "frame")
+        exhaust.box(x - 0.5, 42, 18.5, x + 1.5, 43, 20.5, "trim")
+    mast = m.bone("mast", "body")
+    mast.box(-1, 35, 8, 1, 38, 10, "frame")
+    rotor = m.bone("rotor", "mast", (0, 39, 9))
+    rotor.box(-1.5, 38, 7.5, 1.5, 40, 10.5, "brass")
+    rotor.box(-16, 38.5, 8, -2, 39.5, 10, "paint")
+    rotor.box(2, 38.5, 8, 16, 39.5, 10, "paint")
+    rotor.box(-18, 38.5, 8, -16, 39.5, 10, "trim")
+    rotor.box(16, 38.5, 8, 18, 39.5, 10, "trim")
+    # The winch: cheek plates, a spool (a square and a copy turned 45 degrees, so it reads round), the cable and a hook.
+    winch = m.bone("winch", "body")
+    winch.box(-12, 12, 21, -10, 22, 23, "frame")
+    winch.box(10, 12, 21, 12, 22, 23, "frame")
+    winch.box(-10, 16.5, 20, 10, 19.5, 23, "tank")
+    winch.centred(0, 18, 21.5, 20, 3, 3, "tank", (45, 0, 0))
+    winch.box(-0.5, 6, 22, 0.5, 17, 23, "steel")
+    winch.box(-3, 3, 21, 3, 6, 24, "brass")
+    track(m, "l", "body", 17, 23, -7, 22, 9, ((-2, 6), (6, 5), (13, 5), (19, 6)))
+    track(m, "r", "body", -23, -17, -7, 22, 9, ((-2, 6), (6, 5), (13, 5), (19, 6)))
+    fender = m.bone("fender", "body")
+    fender.box(16, 9, -8, 23, 10, 23, "paint")
+    fender.box(-23, 9, -8, -16, 10, 23, "paint")
+    fender.box(22, 10, -8, 23, 11, 23, "trim")
+    fender.box(-23, 10, -8, -22, 11, 23, "trim")
+
+
+def prospector():
+    """The Prospector: longer than the Mole with two seats in tandem, a wider cutter head and a winch on the back."""
+    m = Model("prospector", bore=PROSPECTOR_BORE, height=PROSPECTOR_HEIGHT, texture=512)
+    prospector_body(m)
+    cone_mount(m, PROSPECTOR_RIG)
+    for name, build_cutter in CUTTERS.items():
+        build_cutter(m, PROSPECTOR_RIG.scaled(*PROSPECTOR_SCALES[name]), "_" + name)
+    return m
+
+
+PODS = {"mole": mole, "prospector": prospector}
+
+
+# ---------------------------------------------------------------------------------------------
+# Wrecks: the same model, weathered
+# ---------------------------------------------------------------------------------------------
+
+SOOT = (22, 20, 19)
+EMBER = (104, 60, 28)
+
+
+def wear_face(canvas, face, rng, kind):
+    """Weathers one painted face. A derelict pod is dusty, darker and streaked with rust; a scorched one is black with soot, worst
+    near the ground, with a few brown specks where it burned."""
+    for j in range(face.h):
+        for i in range(face.w):
+            x, y = face.x + i, face.y + j
+            r, g, b, a = canvas.get(x, y)
+            rgb = (r, g, b)
+            low = (j / max(1, face.h - 1)) if face.side else 0.5
+            if kind == "derelict":
+                rgb = mix(rgb, DUST, 0.38)
+                rgb = tuple(round(c * 0.72) for c in rgb)
+                if rng.random() < 0.1 or (face.side and (face.x + i) % 7 == 0 and low > 0.4):
+                    rgb = mix(rgb, RUST, 0.5)
+            else:
+                rgb = mix(rgb, SOOT, 0.5 + 0.3 * low)
+                if rng.random() < 0.05:
+                    rgb = mix(rgb, EMBER, 0.6)
+            canvas.set(x, y, rgb, a)
+
+
+def wreck_glow(model, glow, kind):
+    """A derelict pod is dark. A scorched one has one lamp still lit: the first lens, and nothing else."""
+    wreck = Canvas(model.texture)
+    if kind == "derelict":
+        return wreck
+    lens_cubes = [cube for bone, cube in model.cubes() if cube.material == "lens"]
+    if not lens_cubes:
+        raise ValueError(f"{model.name} has no lamp to leave lit")
+    for face in faces_of(lens_cubes[0]):
+        for j in range(face.h):
+            for i in range(face.w):
+                r, g, b, a = glow.get(face.x + i, face.y + j)
+                wreck.set(face.x + i, face.y + j, (r, g, b), a)
+    return wreck
 
 
 # ---------------------------------------------------------------------------------------------
@@ -1300,15 +1557,16 @@ def cube_fields(cube):
 
 def geo_json(model):
     """The Bedrock geometry, one cube per line so a diff shows which part changed."""
+    identifier = f"geometry.deepcharter.mole_{model.name}" if model.name in CONCEPTS else f"geometry.deepcharter.{model.name}"
     lines = [
         "{",
         '\t"format_version": "1.12.0",',
         '\t"minecraft:geometry": [',
         "\t\t{",
         '\t\t\t"description": {',
-        f'\t\t\t\t"identifier": "geometry.deepcharter.mole_{model.name}",',
-        f'\t\t\t\t"texture_width": {TEXTURE_SIZE},',
-        f'\t\t\t\t"texture_height": {TEXTURE_SIZE},',
+        f'\t\t\t\t"identifier": "{identifier}",',
+        f'\t\t\t\t"texture_width": {model.texture},',
+        f'\t\t\t\t"texture_height": {model.texture},',
         '\t\t\t\t"visible_bounds_width": 3,',
         '\t\t\t\t"visible_bounds_height": 3,',
         '\t\t\t\t"visible_bounds_offset": [0, 1, 0]',
@@ -1332,39 +1590,66 @@ def geo_json(model):
     return "\n".join(lines)
 
 
-def build(name):
-    model = CONCEPTS[name]()
-    check_bounds(model)
-    check_swing(model)
-    if name in CONES:
-        check_cone(model)
+def check_model(model):
+    """Runs every rule on the model, once for each cutter it holds."""
+    for variant in model.cutters() or [None]:
+        check_bounds(model, variant)
+        check_swing(model, variant)
+        if model.name in CONES or variant is not None:
+            check_cone(model, variant)
+
+
+def build(name, model_dir, texture_dir):
+    """Makes a concept or a pod: its model and rules, and the files to write, keyed by path."""
+    model = (CONCEPTS.get(name) or PODS[name])()
+    check_model(model)
     pack(model)
     base, glow = paint_model(model)
-    return model, {
-        MODEL_DIR / f"{name}.geo.json": geo_json(model).encode(),
-        TEXTURE_DIR / f"{name}.png": base.png(),
-        TEXTURE_DIR / f"{name}_glowmask.png": glow.png(),
+    files = {
+        model_dir / f"{name}.geo.json": geo_json(model).encode(),
+        texture_dir / f"{name}.png": base.png(),
+        texture_dir / f"{name}_glowmask.png": glow.png(),
     }
+    if name in PODS:
+        kind = "derelict" if name == "mole" else "scorched"
+        worn, _ = paint_model(model, kind)
+        files[texture_dir / f"{name}_wreck.png"] = worn.png()
+        files[texture_dir / f"{name}_wreck_glowmask.png"] = wreck_glow(model, glow, kind).png()
+    return model, files
+
+
+def describe(model):
+    line = f"{model.name}: {len(model.bones)} bones, {len(model.cubes())} cubes"
+    for variant in model.cutters() or ([None] if model.name in CONES else []):
+        lead, depth, width, length = cone_figures(model, variant)
+        line += (f"\n  {variant or 'cone'}: {width:.1f} px wide and {length:.1f} long, tip leads the bore face by {lead:.2f} px, "
+                 f"{depth:.2f} px under the floor pointing down")
+    return line
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true", help="fail if a written file differs from what this script makes")
+    parser.add_argument("--concepts", metavar="DIR", help="also write every concept's files into DIR; they are not part of the mod")
     args = parser.parse_args(argv)
     stale = []
-    for name in CONCEPTS:
-        model, files = build(name)
-        line = f"{name}: {len(model.bones)} bones, {len(model.cubes())} cubes"
-        if name in CONES:
-            lead, depth, width, length = cone_figures(model)
-            line += f", {width:.1f} px wide and {length:.1f} long, tip leads the bore face by {lead:.2f} px, {depth:.2f} px under the floor pointing down"
-        print(line)
+    for name in PODS:
+        model, files = build(name, MODEL_DIR, TEXTURE_DIR)
+        print(describe(model))
         for path, data in files.items():
             if args.check:
                 if not path.exists() or path.read_bytes() != data:
                     stale.append(path.relative_to(ROOT))
             else:
                 path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(data)
+    for name in CONCEPTS:
+        directory = Path(args.concepts) if args.concepts else None
+        model, files = build(name, directory or Path("."), directory or Path("."))
+        print(describe(model))
+        if directory is not None:
+            for path, data in files.items():
+                directory.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(data)
     if stale:
         print("stale, run python3 -I tools/pod_concepts.py: " + ", ".join(str(p) for p in stale), file=sys.stderr)
