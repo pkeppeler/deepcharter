@@ -36,10 +36,6 @@ public record PodSounderTuning(List<Tier> tiers, int hissTicksPerSlab) {
 			}
 		}
 
-		public boolean bleeds() {
-			return bleedPauseTicks > 0;
-		}
-
 		/** The ticks a hardness takes with this sounder fitted, from the ticks without it. */
 		public float slowedDrill(float ticksPerHardness) {
 			return ticksPerHardness / (1 - drillSpeedPenalty);

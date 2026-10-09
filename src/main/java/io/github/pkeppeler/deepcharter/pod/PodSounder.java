@@ -109,7 +109,7 @@ public final class PodSounder {
 	 */
 	public static float drilledBlast(PodEntity pod, float blast) {
 		int tier = tier(pod);
-		if (tier == 0 || !PodSounderTuning.DEFAULT.tier(tier).bleeds()) {
+		if (tier == 0) {
 			return blast;
 		}
 		PodSounderTuning.Tier spec = PodSounderTuning.DEFAULT.tier(tier);
@@ -154,11 +154,11 @@ public final class PodSounder {
 		int beside = 0;
 		int rise = foot.feetY() + foot.height() - 1;
 		int landing = foot.feetY() - 1;
+		int reach = spec.sideReach();
 		for (Direction side : Direction.Plane.HORIZONTAL) {
-			if (spec.sideReach() == 0) {
+			if (reach == 0) {
 				break;
 			}
-			int reach = spec.sideReach();
 			int lowX = side.getStepX() > 0 ? foot.lowX() + foot.width() : side.getStepX() < 0 ? foot.lowX() - reach : foot.lowX();
 			int lowZ = side.getStepZ() > 0 ? foot.lowZ() + foot.width() : side.getStepZ() < 0 ? foot.lowZ() - reach : foot.lowZ();
 			int sizeX = side.getStepX() != 0 ? reach : foot.width();

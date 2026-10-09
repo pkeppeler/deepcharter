@@ -85,10 +85,10 @@ public final class PodStatusHud {
 		// The drill waits on a pocket in the slab it bores next: the one below, or the one beside in the direction it bores.
 		Direction bore = pod.drillDirection();
 		boolean bleeding = pod.drilling() && PodSounder.bleedPauseTicks(pod) > 0 && (bore == Direction.DOWN ? state.down() == 1 : state.marks(bore));
-		if (state.down() > 0) {
-			lines.add(bleeding ? Component.translatable("hud.deepcharter.pod.seepage_bleeding") : Component.translatable("hud.deepcharter.pod.seepage", state.down()));
-		} else if (bleeding) {
+		if (bleeding) {
 			lines.add(Component.translatable("hud.deepcharter.pod.seepage_bleeding"));
+		} else if (state.down() > 0) {
+			lines.add(Component.translatable("hud.deepcharter.pod.seepage", state.down()));
 		}
 		if (state.beside() != 0) {
 			MutableComponent sides = Component.empty();
