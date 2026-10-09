@@ -19,6 +19,8 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+
 /** Client GameTest: the real client and the mock player both cross a breach. */
 public class BreachCrossingClientTest implements FabricClientGameTest {
 	private static final double X = 2000.5;
@@ -53,9 +55,7 @@ public class BreachCrossingClientTest implements FabricClientGameTest {
 				context.waitTick();
 			}
 
-			if (!crossed(context, two, mockId, clientId)) {
-				throw new AssertionError("Not both players crossed into layer_2 within " + CROSSING_TICKS + " ticks");
-			}
+			require(crossed(context, two, mockId, clientId), "Not both players crossed into layer_2 within " + CROSSING_TICKS + " ticks");
 			context.takeScreenshot("breach-crossing-layer-2");
 		}
 	}

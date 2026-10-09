@@ -20,6 +20,8 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+
 /**
  * Client GameTest: with server-authoritative movement the client's pod must keep up with the
  * server's, and the client must see the mock pilot's pod move.
@@ -64,9 +66,7 @@ public class PodMovementClientTest implements FabricClientGameTest {
 	}
 
 	private static void mount(ServerPlayer rider, PodEntity pod) {
-		if (!rider.startRiding(pod)) {
-			throw new AssertionError("the player could not mount the new pod");
-		}
+		require(rider.startRiding(pod), "the player could not mount the new pod");
 	}
 
 	@Override
@@ -96,16 +96,10 @@ public class PodMovementClientTest implements FabricClientGameTest {
 
 			Vec3 ownEnd = context.computeOnClient(client -> client.player.getVehicle().position());
 			Vec3 mockEnd = context.computeOnClient(client -> client.level.getEntity(mockPodId).position());
-			if (ownEnd.subtract(ownStart).horizontalDistance() < 2) {
-				throw new AssertionError("Holding W should drive the client's own pod, it moved " + ownStart.distanceTo(ownEnd));
-			}
-			if (mockEnd.subtract(mockStart).horizontalDistance() < 2) {
-				throw new AssertionError("The client should see the mock pilot's pod move, it moved " + mockStart.distanceTo(mockEnd));
-			}
-			if (lag > MAX_LAG_BLOCKS) {
-				throw new AssertionError("After " + DRIVE_TICKS + " ticks the client's pod trailed the server's by " + lag
+			require(!(ownEnd.subtract(ownStart).horizontalDistance() < 2), "Holding W should drive the client's own pod, it moved " + ownStart.distanceTo(ownEnd));
+			require(!(mockEnd.subtract(mockStart).horizontalDistance() < 2), "The client should see the mock pilot's pod move, it moved " + mockStart.distanceTo(mockEnd));
+			require(!(lag > MAX_LAG_BLOCKS), "After " + DRIVE_TICKS + " ticks the client's pod trailed the server's by " + lag
 						+ " blocks, over the " + MAX_LAG_BLOCKS + " bound (worst during the drive: " + worstLag + ")");
-			}
 		}
 	}
 
@@ -114,9 +108,7 @@ public class PodMovementClientTest implements FabricClientGameTest {
 		Vec3 onClient = context.computeOnClient(client -> client.level.getEntity(podId).position());
 		Vec3 onServer = two.server().computeOnServer(server -> {
 			Entity pod = server.overworld().getEntity(podId);
-			if (pod == null) {
-				throw new AssertionError("the server has no pod with id " + podId);
-			}
+			require(pod != null, "the server has no pod with id " + podId);
 			return pod.position();
 		});
 		return onClient.distanceTo(onServer);

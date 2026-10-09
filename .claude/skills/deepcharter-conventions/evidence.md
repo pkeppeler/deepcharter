@@ -1,0 +1,28 @@
+# Evidence and before/after stills
+
+- `test/evidence/` holds the PR evidence scenarios (see `tools/record-evidence.sh`). `tools/record-evidence.sh <scenario>` runs only that scenario's class (`-PclientTests`), found by scanning for the `EvidenceScenario` whose `name()` returns the id, so a recording takes the scenario's own time plus client start-up; an unknown id fails before a client starts. `--full-suite` runs the whole client suite instead, `--print-class` prints the class. When the Mac cannot render, add the `record` label to a PR whose body has a `Record: <scenario>` line (or run the `Record evidence` workflow with `pr` and `scenario`): CI runs the scenario headless, publishes its stills, GIF and MP4 to `pr-media/<pr>/`, and comments the markdown. Costs CI minutes, so only on request.
+- Before and after stills for an art PR (`design-tour`, the same views of the whole game):
+  1. Record before on `main`, from a checkout or worktree of `main` (never switch the main checkout): `tools/record-evidence.sh design-tour`. It takes about 30 minutes and ends in `build/evidence/design-tour/screenshots`. Copy that directory away, because the next run replaces it.
+  2. Record after on the PR branch the same way, and copy its `screenshots` directory away too.
+  3. Compare: `tools/diff-stills <before> <after> --design-tour --out <dir>`.
+  4. Also run it without `--design-tour` (`tools/diff-stills <before> <after> --out <dir2>`) and look at every still the PR touches.
+  5. Attach the table and the side-by-side image of each still the PR meant to change. Expect a few false positives (see below): open the `--out` images of each still the PR did not mean to change before you call it a finding.
+
+  `tools/diff-stills` reports every still as a size mismatch against a tour recorded before #285 (800 x 450), so before and after must both come from after #285.
+
+  `tools/diff-stills <dirA> <dirB> [--tolerance N] [--noise PREFIX=TOL:PERCENT] [--design-tour] [--out DIR]` needs only `python3`. It prints a table of the stills that changed (name, percent of pixels changed, largest channel delta; channels within `--tolerance` of each other, default 2, count as equal), and writes `NAME-side-by-side.png` and `NAME-diff.png` for each of them into `DIR`. It exits 1 when any still shows in the table. `--design-tour` applies `NOISE_FAMILIES` (in the tool): a family of stills that never comes out the same twice gets its own tolerance and a share of pixels under which it is hidden. Every hidden still is listed after the table ("N stills hidden by floors") with its numbers at the plain tolerance, and the summary says "floors applied". `--design-tour` with an explicit `--tolerance` is an error.
+
+  The tour is not deterministic. Seven pairs of runs of one commit left 40, 55, 48, 51, 45, 43 and 39 stills different at the plain tolerance. The floors were tuned on the last pair, which they bring to 0. Against the other pairs the floors leave stills in the table: 1 of 142 for the 11/12 pair, 2 each for 3/4, 5/6 and 1/2, 9 for 7/8, and 11 for 9/10. So a table made with `--design-tour` can still hold a few false positives, which is why step 5 asks you to look at them.
+
+  `DesignTourScenario` fixes the seed, stops the clock at noon and the weather clear, stops random ticks and mob spawning, clears mobs and particles before each still, parks the cursor off the window, and waits (on a wall-clock limit, not on tick counts) until the chunks have rendered, the light has settled and the camera and the pod it rides have stopped moving. Noise it did not remove, with the evidence: the animated lava texture (layer 2 caves), the lampless figures' own animation, the breach fade (it runs on client ticks), the pod HUD vignette and the rider's arm, pod light timing in the dark room (10 to 17% of pixels in two pairs), far trees at the edge of the loaded chunks, `lamp-and-pick-from-the-square` (delta 100 to 110 in four pairs, cause not found) and `structure-rails-long-drift` (up to 25.9% of pixels in one pair; the rails spawn lampless figures, cause not confirmed). The follow-up is [#309](https://github.com/pkeppeler/deepcharter/issues/309).
+
+  What a floor can hide (blind spots), at 854 x 480 = 409,920 pixels (the default window at GUI scale 2, a 427 x 240 GUI, which is also the size of every evidence frame):
+  - `hud-breach-fade` (tolerance 70, no share): any tint change up to 70 levels, and every pixel change under 70. Only a change over 70 levels shows.
+  - `hud-pod-`, `hud-scanner-` (tolerance 12, 4%): a recolour of up to 16,396 pixels (a HUD text colour, one icon) of under 12 levels, or a change of under 12 levels anywhere.
+  - `layer-2-cave-` (tolerance 2, 6%): any change of up to 24,595 pixels, which is a lava recolour or a whole lava block.
+  - `mole-`, `prospector-` (tolerance 12, 2%): a pod texture change of up to 8,198 pixels, or under 12 levels anywhere.
+  - `lampless-` (tolerance 2, 0.3%): a change of up to 1,229 pixels, such as a new eye colour.
+  - `structure-` (tolerance 14, 1%): a change of up to 4,099 pixels, or under 14 levels anywhere.
+  - Every other still (tolerance 2, 1%): a change of up to 4,099 pixels, for example one recoloured 16 x 16 block seen from far away.
+
+  A recolour of one texture colour, applied to 15 stills, changed 1.3% to 24% of their pixels by 20 to 45 levels, and all 15 stayed above these floors. A smaller change can hide, so run step 4. If a new still differs between two runs of one commit, fix it in `DesignTourScenario.settle` or `pinWorld` where you can, and add its prefix to `NOISE_FAMILIES` where you cannot.
