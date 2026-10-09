@@ -93,7 +93,7 @@ public class TransmissionsClientTest implements FabricClientGameTest {
 			require(context.computeOnClient(client -> TransmissionOverlay.headerFull()).equals("> LIVE FROM THE EMPLOYER"), "t05 is live from the employer, the header is: " + context.computeOnClient(client -> TransmissionOverlay.headerFull()));
 			ClientWait.until(context, "the transmission typed out", client -> TransmissionOverlay.typed(), client -> seen());
 			require(context.computeOnClient(client -> TransmissionOverlay.bodyShown().equals(TransmissionOverlay.bodyFull())), "A typed transmission shows its whole text");
-			require(!(greenPixels(context.takeScreenshot("transmission-overlay")) < 50), "The overlay should draw its text on screen");
+			require(greenPixels(context.takeScreenshot("transmission-overlay")) >= 50, "The overlay should draw its text on screen");
 
 			// The breach fade keeps running under the text: at its black plateau the text is the only bright thing on screen.
 			context.runOnClient(client -> {
@@ -102,7 +102,7 @@ public class TransmissionsClientTest implements FabricClientGameTest {
 				TransmissionOverlay.enqueue(new TransmissionPayload(id("t01"), CREW_NAME, player));
 			});
 			ClientWait.until(context, "the breach fade done with the transmission header shown", client -> BreachEffects.fadeAlpha(0f) >= 1f && TransmissionOverlay.active() && !TransmissionOverlay.headerShown().isEmpty(), client -> seen());
-			require(!(greenPixels(context.takeScreenshot("transmission-over-fade")) < 20), "The transmission should be drawn over the black of the fade, not under it");
+			require(greenPixels(context.takeScreenshot("transmission-over-fade")) >= 20, "The transmission should be drawn over the black of the fade, not under it");
 			context.runOnClient(client -> {
 				BreachEffects.reset();
 				TransmissionOverlay.reset();
@@ -142,7 +142,7 @@ public class TransmissionsClientTest implements FabricClientGameTest {
 			String body = context.computeOnClient(client -> TransmissionOverlay.bodyFull());
 			require(body.contains(TWO_PLAYER_NAME) && body.contains(MOCK_NAME) && !body.contains("[CHARTER]") && !body.contains("[DIRECTOR]"), "The Director is " + MOCK_NAME + " and the charter " + TWO_PLAYER_NAME + ", the text is: " + body);
 			ClientWait.until(context, "the transmission typed out", client -> TransmissionOverlay.typed(), client -> seen());
-			require(!(greenPixels(context.takeScreenshot("transmission-live")) < 50), "A live transmission is typed in phosphor green");
+			require(greenPixels(context.takeScreenshot("transmission-live")) >= 50, "A live transmission is typed in phosphor green");
 			ClientWait.until(context, "transmission t06 on the overlay", client -> TransmissionOverlay.transmission().map(Transmission::id).equals(Optional.of(id("t06"))), client -> seen());
 			ClientWait.until(context, "the transmission typed out", client -> TransmissionOverlay.typed(), client -> seen());
 			require(!(redPixels(context.takeScreenshot("transmission-unknown")) < 20), "A transmission from an unknown sender has a red header");

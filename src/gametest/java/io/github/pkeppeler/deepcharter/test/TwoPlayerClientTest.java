@@ -168,7 +168,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 			if (realReleased && mockReleased) {
 				break;
 			}
-			require(!(crossing.podTicks() > POD_TICK_BUDGET), "After " + crossing.podTicks() + " pod ticks, real crossed: " + crossing.realInLayer2()
+			require(crossing.podTicks() <= POD_TICK_BUDGET, "After " + crossing.podTicks() + " pod ticks, real crossed: " + crossing.realInLayer2()
 						+ ", mock crossed: " + crossing.mockInLayer2());
 		}
 		context.getInput().releaseKey(options -> options.keySprint);
@@ -211,7 +211,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 		int width = Mth.ceil(pod.chassis().width());
 		int lowX = Mth.floor(pod.getX() - width / 2.0 + 0.5);
 		int lowZ = Mth.floor(pod.getZ() - width / 2.0 + 0.5);
-		require(!(lowX < X - ROOM_WEST + 1 || lowX + width > X + ROOM_EAST - 1), "The pod at " + pod.position() + " stands outside the room");
+		require(lowX >= X - ROOM_WEST + 1 && lowX + width <= X + ROOM_EAST - 1, "The pod at " + pod.position() + " stands outside the room");
 		return IntStream.range(0, width * width)
 				.mapToObj(i -> new BlockPos(lowX + i / width, 0, lowZ + i % width))
 				.toList();
