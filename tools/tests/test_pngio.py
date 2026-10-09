@@ -1,7 +1,6 @@
 """Tests tools/lookbook/pngio.py with tiny PNGs built chunk by chunk."""
 import struct
 import sys
-import tempfile
 import unittest
 import zlib
 from pathlib import Path
@@ -26,14 +25,6 @@ def png(width, height, depth, colour, rows, plte=b"", trns=b""):
 
 
 class PngioTest(unittest.TestCase):
-    def test_rgb_round_trip(self):
-        rgb = bytes(range(36))
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "x.png"
-            path.write_bytes(pngio.encode_png(pngio.Image(4, 3, rgb)))
-            image = pngio.decode_png(path)
-        self.assertEqual((4, 3, rgb), (image.width, image.height, image.rgb))
-
     def test_rgba_round_trip_keeps_alpha(self):
         rgba = bytes([10, 20, 30, 0, 40, 50, 60, 128, 70, 80, 90, 255, 1, 2, 3, 4])
         image = pngio.decode_rgba("t", pngio.RgbaImage(2, 2, rgba).to_png())

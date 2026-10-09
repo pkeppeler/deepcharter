@@ -14,15 +14,6 @@ CHANNELS = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}
 DEPTHS = {0: (1, 2, 4, 8), 2: (8,), 3: (1, 2, 4, 8), 4: (8,), 6: (8,)}
 
 
-class Image:
-    """Width, height and RGB bytes (3 per pixel, row by row)."""
-
-    def __init__(self, width, height, rgb):
-        self.width = width
-        self.height = height
-        self.rgb = rgb
-
-
 class RgbaImage:
     """Width, height and RGBA bytes (4 per pixel, row by row)."""
 
@@ -34,7 +25,7 @@ class RgbaImage:
         self.rgba = rgba
 
     def to_png(self):
-        return _encode(self.width, self.height, 6, self.rgba)
+        return _encode_rgba(self.width, self.height, self.rgba)
 
 
 def read_chunks(data, path):
@@ -177,18 +168,8 @@ def decode_rgba(path, data=None):
     return RgbaImage(width, height, rgba)
 
 
-def decode_png(path):
-    """Reads a PNG file into an Image. Alpha is dropped: the stills are opaque screenshots."""
-    width, height, rgba = _decode(path, Path(path).read_bytes())
-    rgb = bytearray(width * height * 3)
-    for channel in range(3):
-        rgb[channel::3] = rgba[channel::4]
-    return Image(width, height, bytes(rgb))
-
-
-def _encode(width, height, colour, pixels):
-    channels = CHANNELS[colour]
-    stride = width * channels
+def _encode_rgba(width, height, pixels):
+    stride = width * 4
     raw = bytearray()
     for y in range(height):
         raw.append(0)
@@ -198,10 +179,5 @@ def _encode(width, height, colour, pixels):
         crc = zlib.crc32(kind + body) & 0xFFFFFFFF
         return struct.pack(">I", len(body)) + kind + body + struct.pack(">I", crc)
 
-    header = struct.pack(">IIBBBBB", width, height, 8, colour, 0, 0, 0)
+    header = struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0)
     return PNG_SIGNATURE + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(bytes(raw), 6)) + chunk(b"IEND", b"")
-
-
-def encode_png(image):
-    """Writes an Image as an 8-bit RGB PNG."""
-    return _encode(image.width, image.height, 2, image.rgb)
