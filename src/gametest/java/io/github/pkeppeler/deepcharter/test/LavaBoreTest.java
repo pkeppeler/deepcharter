@@ -41,6 +41,8 @@ import io.github.pkeppeler.deepcharter.layer.LavaHazard;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodLining;
+import io.github.pkeppeler.deepcharter.pod.PodLiningTuning;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
@@ -52,31 +54,51 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
 /**
  * Measures how often lava ends a bore (issue 231): a stock Mole with a tier 1 scanner drills from the top of layer 1's rock to the
  * breach into layer 2, over the real worldgen, with the real drill, fuel, hull, lava and breach code. It reports how many bores
  * survive, the hull and pilot health that lava costs, and how far ahead the scanner had the lava in its view.
  *
- * <p>The default run is a smoke case of {@link #SMOKE_BORES} bores: a control through the crust, and a bore that meets a lava block
- * placed in its path. It proves the harness in seconds. The measurement is the same test with {@value #BORES_ENV}{@code =<n>} in
- * the environment, for example {@code DEEPCHARTER_LAVA_BORES=100 tools/gametest.sh 'lava_bore_test*'}: n full bores side by side,
+ * <p>The default run is a smoke case of {@link #SMOKE_BORES} bores: a control through the crust, a bore that meets a lava block
+ * placed in its path, and the same bore with the lining bot (#313), which must pass the block dry. It proves the harness in seconds.
+ * The measurement is the same test with {@value #BORES_ENV}{@code =<n>} in the environment, for example {@code DEEPCHARTER_LAVA_BORES=100 tools/gametest.sh 'lava_bore_test*'}: n full bores side by side,
  * in chunks of one world seed, printing the lines that start with {@code [lava-bore]}. The pod shields its seated pilot from lava (#288),
  * so lava ends a bore through hull loss, not pilot death.
  *
  * <p>The pilot is a bot with no reaction: it holds sprint, and so bores straight down until the pod is dead, the pilot is dead or
  * the pod is through. Layer 1's rock is full of company rock, which the drill refuses (a clean 2 x 2 column over the whole layer is
  * about one in ten thousand), so when a slab is refused the bot sidesteps two blocks, alternating east and west, and carries on
- * down. It never flies, never turns back and never reads the scanner: the scanner figures say what a pilot could have seen, not what
+ * down. Unless it lines (below) it never flies, never turns back and never reads the scanner: the scanner figures say what a pilot could have seen, not what
  * this bot did. The tank is topped up whenever it runs low and the tanks used are counted, because one tank does not last a layer.
+ *
+ * <p>With {@value #LINING_ENV}{@code =<n>} the bot lines (#313): each time the pod reaches a new slab and a thermal tier scanner would
+ * mark lava within {@code n} slabs below it (and within the thermal tier's spread across), it presses the lining key, as a pilot
+ * does, and waits for the pod to finish before it bores on. Its pod has the spoil hopper; a pod without one keeps no spoil. The bot
+ * lines only on the way down and only while the pod rests on its slab: it never flies, so it cannot stop in a fall. The rack starts with {@value #BRICKS_ENV} bricks (the rack's size by
+ * default); the bot never fuses more, because a pilot cannot reach the processor mid-dive. The run prints a {@code [lava-bore] lining}
+ * block with the bricks and the time it cost, to read against the same run without lining.
  */
 public class LavaBoreTest {
 	private static final Logger LOGGER = LoggerFactory.getLogger(LavaBoreTest.class);
 
 	static final String BORES_ENV = "DEEPCHARTER_LAVA_BORES";
 	private static final String REQUESTED_BORES = System.getenv(BORES_ENV);
+	static final String LINING_ENV = "DEEPCHARTER_LAVA_BORES_LINING";
+	static final String BRICKS_ENV = "DEEPCHARTER_LAVA_BORES_BRICKS";
+	private static final String REQUESTED_LINING = System.getenv(LINING_ENV);
+	private static final String REQUESTED_BRICKS = System.getenv(BRICKS_ENV);
+	/** How far either side of the shaft's column the lining bot looks for lava: the thermal tier's own spread. */
+	private static final int LINING_REACH = ScannerTuning.DEFAULT.lavaSpread();
 	/** The smoke case: a control that bores only the crust, and a bore through the last stretch of Deep Claim. */
-	static final int SMOKE_BORES = 2;
+	static final int SMOKE_BORES = 3;
+	/** A lava encounter this many slabs or fewer below a lining press counts as one the lining did not hold. */
+	private static final int RECENT_PRESS_SLABS = 2;
+	/** The lining bot's look-ahead in the smoke case: the lava block is 3 slabs below the shaft's bottom. */
+	private static final int SMOKE_LOOKAHEAD = 3;
+	/** The smoke bore that lines. */
+	private static final int SMOKE_LINING_BORE = 2;
 	/**
 	 * The smoke case starts its pods low, in a shaft cut with RoomCarver from the top of the rock, so that a bore is a thousand ticks
 	 * and not the six thousand of the whole layer. The control starts on the crust and must get through; the other starts in Deep Claim.
@@ -241,6 +263,8 @@ public class LavaBoreTest {
 		final int centreZ;
 		/** Where the shaft cut for the smoke case ends, or {@link #NO_SHAFT} for the whole layer. */
 		final int shaftBottomY;
+		/** Slabs below the pod in which thermal-marked lava makes the bot line; 0 for a bot that never lines. */
+		final int lookahead;
 		PodEntity pod;
 		int startY;
 
@@ -269,6 +293,19 @@ public class LavaBoreTest {
 		double lastAlong;
 		final Set<Side> refused = EnumSet.noneOf(Side.class);
 
+		boolean wantLining;
+		boolean wasLining;
+		int liningSessions;
+		int liningTicks;
+		int bricksPlaced;
+		int dryPresses;
+		int startBricks;
+		/** Lava encounters that began with a lining asked for and not done (the pod was falling), just under a lining, and with none asked for. */
+		int unservedTouches;
+		int linedTouches;
+		int unseenTouches;
+		int lastPressY = Integer.MIN_VALUE;
+
 		float lastHull;
 		float lastHealth;
 		long lastTouchTick = Long.MIN_VALUE / 2;
@@ -278,13 +315,14 @@ public class LavaBoreTest {
 		final Map<BlockPos, Integer> thermalShownAt = new HashMap<>();
 		final List<Encounter> encounters = new ArrayList<>();
 
-		Bore(int index, MockPlayer pilot, ServerLevel level, int centreX, int centreZ, int shaftBottomY) {
+		Bore(int index, MockPlayer pilot, ServerLevel level, int centreX, int centreZ, int shaftBottomY, int lookahead) {
 			this.index = index;
 			this.pilot = pilot;
 			this.level = level;
 			this.centreX = centreX;
 			this.centreZ = centreZ;
 			this.shaftBottomY = shaftBottomY;
+			this.lookahead = lookahead;
 		}
 
 		boolean ready() {
@@ -306,6 +344,7 @@ public class LavaBoreTest {
 		ServerLevel level = layer(helper, 1);
 		int count = boreCount(helper);
 		boolean smoke = REQUESTED_BORES == null || REQUESTED_BORES.isBlank();
+		int measuredLookahead = positiveEnv(helper, LINING_ENV, REQUESTED_LINING, 0);
 		List<Bore> bores = new ArrayList<>();
 		CharterId charter = null;
 		for (int i = 0; i < count; i++) {
@@ -317,7 +356,8 @@ public class LavaBoreTest {
 			// The pilot is in the chunk from the start, which keeps it loaded until the pod is ready.
 			pilot.teleportTo(level, new Vec3(centreX, PILOT_WAIT_Y, centreZ), 0f, 0f);
 			int shaftBottomY = !smoke ? NO_SHAFT : i == 0 ? SMOKE_CROSSING_Y : SMOKE_LAVA_Y;
-			bores.add(new Bore(i, pilot, level, centreX, centreZ, shaftBottomY));
+			int lookahead = smoke ? (i == SMOKE_LINING_BORE ? SMOKE_LOOKAHEAD : 0) : measuredLookahead;
+			bores.add(new Bore(i, pilot, level, centreX, centreZ, shaftBottomY, lookahead));
 		}
 		long wallStart = System.nanoTime();
 		boolean[] reported = {false};
@@ -342,18 +382,22 @@ public class LavaBoreTest {
 	}
 
 	private static int boreCount(GameTestHelper helper) {
-		String value = REQUESTED_BORES;
+		return positiveEnv(helper, BORES_ENV, REQUESTED_BORES, SMOKE_BORES);
+	}
+
+	/** The whole number the environment variable {@code name} holds, 1 or more, or {@code unset} when it is absent. */
+	private static int positiveEnv(GameTestHelper helper, String name, String value, int unset) {
 		if (value == null || value.isBlank()) {
-			return SMOKE_BORES;
+			return unset;
 		}
 		try {
-			int count = Integer.parseInt(value.trim());
-			if (count < 1) {
+			int number = Integer.parseInt(value.trim());
+			if (number < 1) {
 				throw new NumberFormatException();
 			}
-			return count;
+			return number;
 		} catch (NumberFormatException e) {
-			throw helper.assertionException(Component.literal(BORES_ENV + " must be a whole number of bores, 1 or more, not '" + value + "'"));
+			throw helper.assertionException(Component.literal(name + " must be a whole number, 1 or more, not '" + value + "'"));
 		}
 	}
 
@@ -392,8 +436,16 @@ public class LavaBoreTest {
 		pod.setPos(bore.centreX, feetY, bore.centreZ);
 		level.addFreshEntity(pod);
 		ScannerPods.fit(server, bore.pilot.player(), pod, SCANNER_TIER);
+		if (bore.lookahead > 0) {
+			ScannerPods.fit(server, bore.pilot.player(), pod, ComponentTrack.SPOIL_HOPPER, 1);
+		}
 		if (!bore.pilot.player().startRiding(pod)) {
 			throw helper.assertionException(Component.literal("pilot " + bore.index + " could not mount the pod"));
+		}
+		if (bore.lookahead > 0) {
+			int bricks = positiveEnv(helper, BRICKS_ENV, REQUESTED_BRICKS, PodLiningTuning.DEFAULT.brickCapacity());
+			PodLining.modify(pod, state -> new PodLining.State(0, bricks, 0, false, false));
+			bore.startBricks = bricks;
 		}
 		bore.startY = feetY;
 		bore.startHull = pod.hull();
@@ -452,6 +504,13 @@ public class LavaBoreTest {
 		if (touching) {
 			if (helper.getTick() - bore.lastTouchTick > ENCOUNTER_GAP_TICKS) {
 				bore.encounters.add(encounter(level, pod, bore));
+				if (bore.wantLining) {
+					bore.unservedTouches++;
+				} else if (bore.lastPressY - pod.blockPosition().getY() >= 0 && bore.lastPressY - pod.blockPosition().getY() <= RECENT_PRESS_SLABS) {
+					bore.linedTouches++;
+				} else {
+					bore.unseenTouches++;
+				}
 			}
 			bore.lastTouchTick = helper.getTick();
 			Encounter current = bore.encounters.getLast();
@@ -473,9 +532,17 @@ public class LavaBoreTest {
 			bore.lowestFeetY = feetY;
 			bore.lastProgressTick = bore.pilotTicks;
 		}
+		boolean lining = PodLining.working(pod);
+		if (lining) {
+			bore.liningTicks++;
+		} else if (bore.wasLining) {
+			bore.bricksPlaced += PodLining.of(pod).used();
+		}
+		bore.wasLining = lining;
 		if (bore.phase == Phase.DOWN && !pod.blockPosition().equals(bore.lastScanned)) {
 			bore.lastScanned = pod.blockPosition();
-			noteLavaInView(level, pod, bore, feetY);
+			ScanSlice thermal = noteLavaInView(level, pod, bore, feetY);
+			bore.wantLining = bore.lookahead > 0 && lavaWithin(thermal, bore.lookahead);
 		}
 		if (pod.fuel() < REFUEL_BELOW_PERCENT) {
 			pod.setFuel(PodTuning.DEFAULT.shell().fullFuel());
@@ -495,6 +562,9 @@ public class LavaBoreTest {
 
 	/** The bot: sprint down; on a refused slab, move two blocks to a side and sprint down again. */
 	private static void drive(Bore bore, PodEntity pod) {
+		if (bore.lookahead > 0 && lineIfAsked(bore, pod)) {
+			return;
+		}
 		switch (bore.phase) {
 			case DOWN -> {
 				bore.idleTicks = pod.onGround() && !pod.drilling() ? bore.idleTicks + 1 : 0;
@@ -531,6 +601,41 @@ public class LavaBoreTest {
 				}
 			}
 		}
+	}
+
+	/**
+	 * The lining bot: when the last scan asked for lining and the pod rests on its slab, presses the lining key once. Returns whether the
+	 * pod is lining, in which case the bot waits and does not count the stillness as a refused slab.
+	 */
+	private static boolean lineIfAsked(Bore bore, PodEntity pod) {
+		if (!PodLining.working(pod) && bore.wantLining && pod.onGround()) {
+			bore.wantLining = false;
+			bore.lastPressY = pod.blockPosition().getY();
+			PodLining.toggle(bore.pilot.player());
+			if (PodLining.working(pod)) {
+				bore.liningSessions++;
+			} else if (PodLining.of(pod).dry()) {
+				bore.dryPresses++;
+			}
+		}
+		if (PodLining.working(pod)) {
+			bore.idleTicks = 0;
+			return true;
+		}
+		return false;
+	}
+
+	/** True when the thermal slice marks lava, bright or near, within {@code slabs} below the pod's feet and {@link #LINING_REACH} blocks along the plane. */
+	private static boolean lavaWithin(ScanSlice thermal, int slabs) {
+		for (int up = 0; up >= -slabs; up--) {
+			for (int ahead = -LINING_REACH; ahead <= LINING_REACH; ahead++) {
+				ScanSlice.Cell cell = thermal.cell(ahead, up);
+				if (cell == ScanSlice.Cell.LAVA || cell == ScanSlice.Cell.LAVA_NEAR) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	private static void startSidestep(Bore bore, PodEntity pod, Side side) {
@@ -588,9 +693,9 @@ public class LavaBoreTest {
 
 	/**
 	 * Reads the scanner as the game does and notes each lava block it shows as open space, with how high the pod was when it first did.
-	 * Then reads a scanner of the thermal tier from the same spot and notes each lava block it marks as lava.
+	 * Then reads a scanner of the thermal tier from the same spot, notes each lava block it marks as lava, and returns that reading.
 	 */
-	private static void noteLavaInView(ServerLevel level, PodEntity pod, Bore bore, int feetY) {
+	private static ScanSlice noteLavaInView(ServerLevel level, PodEntity pod, Bore bore, int feetY) {
 		ScanSlice thermal = ScanSlice.scan(new LoadedBlocks(level), pod.blockPosition(), pod.getDirection(), THERMAL_TIER);
 		ScanArea thermalArea = thermal.area();
 		for (int up = thermalArea.up(); up >= -thermalArea.down(); up--) {
@@ -627,6 +732,7 @@ public class LavaBoreTest {
 				}
 			}
 		}
+		return thermal;
 	}
 
 	/** The pod has just touched lava: the whole body of lava it touches, and the earliest slab at which the scanner had any of it in view. */
@@ -680,6 +786,7 @@ public class LavaBoreTest {
 				ScannerTuning.DEFAULT.area(SCANNER_TIER).down(), IN_TIME_SLABS, ticks, String.format("%.1f", wallSeconds));
 		LOGGER.info("[lava-bore] outcome: survived {} of {} ({}), died {} (in lava {}, pilot first {}), stalled {}; bores that touched lava {} ({})",
 				survived, n, percent(survived, n), died, diedInLava, pilotsKilled, stalled, touched, percent(touched, n));
+		reportLining(bores);
 		LOGGER.info("[lava-bore] hull lost to lava, per bore:   {}", distribution(bores, b -> b.lavaHull));
 		LOGGER.info("[lava-bore] pilot health lost to lava:     {}", distribution(bores, b -> b.lavaPilot));
 		List<Bore> through = bores.stream().filter(b -> b.outcome == Outcome.SURVIVED).toList();
@@ -741,6 +848,27 @@ public class LavaBoreTest {
 			LOGGER.info("[lava-bore] verdict: survival {} of a stock Mole is {} the near-hopeless line of {}", percent(survived, n),
 					rate < NEAR_HOPELESS_SURVIVAL ? "UNDER" : "at or over", String.format("%.0f%%", NEAR_HOPELESS_SURVIVAL * 100));
 		}
+	}
+
+	/** What the lining bot did and what it cost, when there was one: the bricks, the sessions and the time the pod stood still. */
+	private static void reportLining(List<Bore> bores) {
+		List<Bore> lining = bores.stream().filter(b -> b.lookahead > 0).toList();
+		if (lining.isEmpty()) {
+			LOGGER.info("[lava-bore] lining: off, the bot never lines");
+			return;
+		}
+		Bore first = lining.getFirst();
+		LOGGER.info("[lava-bore] lining: on for {} bores, the bot lines when the thermal tier marks lava within {} slabs below and {} blocks across; the rack starts with {} bricks",
+				lining.size(), first.lookahead, LINING_REACH, first.startBricks);
+		LOGGER.info("[lava-bore] lining, sessions per bore:     {}", distribution(lining, b -> b.liningSessions));
+		LOGGER.info("[lava-bore] lining, bricks placed per bore: {}", distribution(lining, b -> b.bricksPlaced));
+		LOGGER.info("[lava-bore] lining, ticks standing still while lining per bore: {} (of {} pod ticks per bore)",
+				distribution(lining, b -> b.liningTicks), String.format("%.0f", lining.stream().mapToInt(b -> b.pilotTicks).average().orElse(0)));
+		LOGGER.info("[lava-bore] lining, lava encounters: {} began with a lining asked for and not done (the pod was falling, and the bot lines only at rest), {} within {} slabs below a lining, {} with none asked for",
+				lining.stream().mapToInt(b -> b.unservedTouches).sum(), lining.stream().mapToInt(b -> b.linedTouches).sum(), RECENT_PRESS_SLABS,
+				lining.stream().mapToInt(b -> b.unseenTouches).sum());
+		long outOfBrick = lining.stream().filter(b -> b.dryPresses > 0).count();
+		LOGGER.info("[lava-bore] lining, bores that pressed the key with no brick left: {} of {} ({})", outOfBrick, lining.size(), percent(outOfBrick, lining.size()));
 	}
 
 	private static String distribution(List<Bore> bores, ToDoubleFunction<Bore> value) {
@@ -808,6 +936,13 @@ public class LavaBoreTest {
 		if (control.outcome != Outcome.SURVIVED || control.endHull >= control.startHull) {
 			throw helper.assertionException(Component.literal("the control bore through the crust should reach layer 2 alive and lose hull to the crust: " + control.outcome + " " + control.cause
 					+ ", hull " + control.startHull + " to " + control.endHull));
+		}
+		// The lining bot sees the placed lava block on the thermal tier from the start, lines the floor over it, and bores through the brick.
+		Bore liner = bores.get(SMOKE_LINING_BORE);
+		if (liner.liningSessions < 1 || liner.bricksPlaced < 1 || liner.encounters.stream().anyMatch(e -> Math.abs(e.contactY() - SMOKE_LAVA_BLOCK_Y) <= 2)) {
+			throw helper.assertionException(Component.literal("the lining bore meets the same lava block as the bore before it, and must line over it and pass it dry: "
+					+ liner.liningSessions + " sessions, " + liner.bricksPlaced + " bricks, encounters "
+					+ liner.encounters.stream().map(e -> e.zone() + "@" + e.contactY()).toList()));
 		}
 	}
 

@@ -18,6 +18,7 @@ public final class PodInit {
 		PodFuel.init();
 		PodComponents.init();
 		PodLights.init();
+		PodLining.init();
 		PodTowing.init();
 	}
 }
