@@ -1,0 +1,12 @@
+# Puts the pinned static ffmpeg on PATH. The pin and checksum live in tools/ffmpeg.sh; the caller checks out the repo first.
+name: Install ffmpeg
+description: Download the pinned static ffmpeg build, verify its SHA-256 and add it to PATH.
+
+runs:
+  using: composite
+  steps:
+    - name: install ffmpeg
+      shell: bash
+      run: |
+        tools/ffmpeg.sh install "$RUNNER_TEMP/ffmpeg"
+        echo "$RUNNER_TEMP/ffmpeg" >> "$GITHUB_PATH"
