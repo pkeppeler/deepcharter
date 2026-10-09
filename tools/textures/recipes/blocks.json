@@ -39,6 +39,8 @@
     "block/regolith_rock_0": {"template": "surface_beds", "args": {"beds": [["regolith.2", 3], ["regolith.1", 2], ["regolith.2", 4], ["regolith.3", 2], ["regolith.2", 3], ["regolith.1", 2]], "grains": ["regolith.1", "regolith.2", "regolith.3"], "crack": "regolith.0", "lip": "regolith.3", "seed": 681, "cracks": 2}},
     "block/regolith_rock_1": {"template": "surface_beds", "args": {"beds": [["regolith.2", 4], ["regolith.3", 2], ["regolith.2", 3], ["regolith.1", 2], ["regolith.2", 3], ["regolith.1", 2]], "grains": ["regolith.1", "regolith.2", "regolith.3"], "crack": "regolith.0", "lip": "regolith.3", "seed": 682, "cracks": 2}},
 
+    "block/slag_brick": {"kind": "opaque", "layers": [{"op": "noise", "ramp": ["basalt.1", "basalt.2", "basalt.3", "iron.2", "basalt.3", "basalt.4"], "seed": 701, "cell": 4, "octaves": 2, "dither": 0.8}, {"op": "speckle", "colours": ["basalt.0"], "density": 0.07, "seed": 702}, {"op": "speckle", "colours": ["rust.3", "rust.2", "steel.4"], "density": 0.04, "seed": 703}, {"op": "pixels", "legend": {"m": "crust.3", "h": "basalt.5", "s": "basalt.0"}, "rows": ["hhhhhhhmhhhhhhhm", ".......m.......m", "s.s....m...s...m", "mmmmmmmmmmmmmmmm", "hhhmhhhhhhhmhhhh", "...m.......m....", "..sm...s...m.s..", "mmmmmmmmmmmmmmmm", "hhhhhhhmhhhhhhhm", ".......m.......m", "...s...m.s.....m", "mmmmmmmmmmmmmmmm", "hhhmhhhhhhhmhhhh", "...m.......m....", ".s.m....s..m...s", "mmmmmmmmmmmmmmmm"]}]},
+
     "block/terminal_side": {
       "kind": "opaque",
       "layers": [
