@@ -100,6 +100,11 @@ public final class PodLining {
 			return new State(spoil, bricks, used, false, dry);
 		}
 
+		/** The liner used {@code bricksUsed} bricks of the rack; {@code ranOut} when the rack paid for fewer cells than the ring needed. */
+		State linedByLiner(int bricksUsed, boolean ranOut) {
+			return new State(spoil, bricks - bricksUsed, used, working, ranOut);
+		}
+
 		State ranDry() {
 			return new State(spoil, bricks, used, false, true);
 		}
@@ -114,6 +119,8 @@ public final class PodLining {
 
 	/** How many slabs below the pod's feet the lining looks for lava in the footprint: the slab it will bore next, and the one under that. */
 	private static final int FLOOR_DEPTH = 2;
+	/** The slab below the pod's feet is the first one a hand lining's ring covers: the one the drill bores next. */
+	private static final int HAND_REACH = 1;
 
 	private PodLining() {
 	}
@@ -206,11 +213,11 @@ public final class PodLining {
 		return (mayUseStores(pod, pilot) ? state.bricks() : 0) + carried(pilot.getInventory());
 	}
 
-	private static boolean mayUseStores(PodEntity pod, ServerPlayer pilot) {
+	static boolean mayUseStores(PodEntity pod, ServerPlayer pilot) {
 		return PodComponents.mayAccess(pod, Charters.readableCharterOf(pilot.level().getServer(), pilot.getUUID()));
 	}
 
-	private static int carried(Inventory inventory) {
+	static int carried(Inventory inventory) {
 		int count = 0;
 		for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
 			ItemStack stack = inventory.getItem(slot);
@@ -221,7 +228,7 @@ public final class PodLining {
 		return count;
 	}
 
-	private static void takeCarried(Inventory inventory) {
+	static void takeCarried(Inventory inventory) {
 		for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
 			ItemStack stack = inventory.getItem(slot);
 			if (stack.is(SlagBrick.item())) {
@@ -264,11 +271,16 @@ public final class PodLining {
 		}
 		BlockPos cell = cells.getFirst();
 		ServerLevel level = (ServerLevel) pod.level();
-		level.setBlock(cell, SlagBrick.BLOCK.defaultBlockState(), Block.UPDATE_ALL);
+		setBrick(level, cell);
 		level.playSound(null, cell, DeepSound.POD_LINING_PLACE.event(), SoundSource.BLOCKS);
 		State after = state.placed(fromRack);
 		pod.setAttached(STATE, Versioned.of(after));
 		pilot.sendOverlayMessage(Component.translatable("deepcharter.pod.lining.progress", after.used(), available(pod, pilot, after)));
+	}
+
+	/** Puts a slag brick in a cell of the plan; the caller has taken the brick from its store. */
+	static void setBrick(ServerLevel level, BlockPos cell) {
+		level.setBlock(cell, SlagBrick.BLOCK.defaultBlockState(), Block.UPDATE_ALL);
 	}
 
 	private static void stop(PodEntity pod, ServerPlayer pilot, State state, String messageKey) {
@@ -289,16 +301,24 @@ public final class PodLining {
 	 * are never in the list.
 	 */
 	public static List<BlockPos> cellsToLine(PodEntity pod) {
+		return cellsToLine(pod, HAND_REACH);
+	}
+
+	/**
+	 * As {@link #cellsToLine(PodEntity)} for a lining that reaches {@code reach} slabs below the pod's feet: the ring starts that far down
+	 * (the liner lines the stretch it is about to bore), and the floor reaches that far if it is more than {@link #FLOOR_DEPTH}.
+	 */
+	static List<BlockPos> cellsToLine(PodEntity pod, int reach) {
 		ServerLevel level = (ServerLevel) pod.level();
 		LoadedBlocks blocks = new LoadedBlocks(level);
 		PodFootprint foot = PodFootprint.of(pod);
 		List<BlockPos> cells = new ArrayList<>();
-		for (int y = foot.feetY() - FLOOR_DEPTH; y < foot.feetY() + foot.height(); y++) {
+		for (int y = foot.feetY() - Math.max(FLOOR_DEPTH, reach); y < foot.feetY() + foot.height(); y++) {
 			for (int x = foot.lowX() - 1; x <= foot.lowX() + foot.width(); x++) {
 				for (int z = foot.lowZ() - 1; z <= foot.lowZ() + foot.width(); z++) {
 					boolean insideX = x >= foot.lowX() && x < foot.lowX() + foot.width();
 					boolean insideZ = z >= foot.lowZ() && z < foot.lowZ() + foot.width();
-					boolean ring = insideX != insideZ && y >= foot.feetY() - 1;
+					boolean ring = insideX != insideZ && y >= foot.feetY() - reach;
 					boolean floor = insideX && insideZ && y < foot.feetY();
 					BlockPos pos = new BlockPos(x, y, z);
 					if ((ring || floor) && !level.isOutsideBuildHeight(pos) && blocks.canChange(pos) && needsBrick(blocks.getBlockState(pos), floor)
