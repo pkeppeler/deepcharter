@@ -213,11 +213,11 @@ public final class PodLining {
 		return (mayUseStores(pod, pilot) ? state.bricks() : 0) + carried(pilot.getInventory());
 	}
 
-	private static boolean mayUseStores(PodEntity pod, ServerPlayer pilot) {
+	static boolean mayUseStores(PodEntity pod, ServerPlayer pilot) {
 		return PodComponents.mayAccess(pod, Charters.readableCharterOf(pilot.level().getServer(), pilot.getUUID()));
 	}
 
-	private static int carried(Inventory inventory) {
+	static int carried(Inventory inventory) {
 		int count = 0;
 		for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
 			ItemStack stack = inventory.getItem(slot);
@@ -228,7 +228,7 @@ public final class PodLining {
 		return count;
 	}
 
-	private static void takeCarried(Inventory inventory) {
+	static void takeCarried(Inventory inventory) {
 		for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
 			ItemStack stack = inventory.getItem(slot);
 			if (stack.is(SlagBrick.item())) {

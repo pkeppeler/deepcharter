@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
@@ -16,6 +19,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.TagValueInput;
@@ -274,6 +278,109 @@ public class PodLinerTest {
 			}
 			armed.pod.discard();
 			helper.succeed();
+		});
+	}
+
+	/** Pods this class marks as dead: a listener cannot be unregistered, so it acts only on these. */
+	private static final Set<UUID> UNPOWERED = ConcurrentHashMap.newKeySet();
+	private static boolean unpoweredListener;
+
+	/** Pods the ring tests arm and then keep from lining: it holds a due ring, a rack and a column of open cells, and nothing may line for 12 ticks. */
+	private void ringHeld(GameTestHelper helper, int x, Consumer<PodEntity> hold, Consumer<MockPlayer> afterMount) {
+		ServerLevel level = layer(helper);
+		shaft(level, x, 8, false);
+		MockPlayer pilot = owner(helper);
+		pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
+		Armed armed = new Armed();
+		FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+			PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+			pod.setPos(x, FLOOR, Z);
+			level.addFreshEntity(pod);
+			if (!pilot.player().startRiding(pod)) {
+				throw failure(helper, "the pilot could not mount the pod");
+			}
+			ScannerPods.fit(helper.getLevel().getServer(), pilot.player(), pod, ComponentTrack.LINER, 1);
+			PodLining.modify(pod, state -> new PodLining.State(0, 10, 0, false, false));
+			PodLiner.Anchor due = new PodLiner.Anchor(FLOOR + 4, x - 1, Z - 1);
+			pod.setAttached(PodLiner.STATE, Versioned.of(new PodLiner.State(Optional.of(due))));
+			hold.accept(pod);
+			afterMount.accept(pilot);
+			armed.pod = pod;
+		});
+		int[] ticks = {0};
+		helper.onEachTick(() -> {
+			if (armed.pod == null) {
+				return;
+			}
+			PodLiner.Anchor anchor = Versioned.readable(armed.pod, PodLiner.STATE).orElseThrow().anchor().orElseThrow();
+			if (anchor.feetY() != FLOOR + 4 || bricksIn(level, ringCells(x)) > 2 || PodLining.of(armed.pod).bricks() < 8) {
+				throw failure(helper, "the liner must hold its ring: anchor %s, %s bricks laid, rack %s", anchor, bricksIn(level, ringCells(x)), PodLining.of(armed.pod).bricks());
+			}
+			if (++ticks[0] >= 12) {
+				pilot.leave();
+				armed.pod.discard();
+				helper.succeed();
+			}
+		});
+	}
+
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + RING_TICKS)
+	public void theLinerWaitsWhileThePilotLinesByHandAndTheRingStaysDue(GameTestHelper helper) {
+		ringHeld(helper, 5780, pod -> {
+		}, pilot -> {
+			PodLining.toggle(pilot.player());
+			if (!PodLining.working((PodEntity) pilot.player().getVehicle())) {
+				throw failure(helper, "the press should have started the hand lining");
+			}
+		});
+	}
+
+	/** The rack holds 1 brick and the pilot carries 2 more: a tier 1 ring of 4 cells takes the rack's first, then the pack's, and the 4th cell stays open. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + RING_TICKS)
+	public void aLinerDrawsOnThePilotsPackAfterTheRack(GameTestHelper helper) {
+		int x = 5876;
+		ServerLevel level = layer(helper);
+		shaft(level, x, 8, false);
+		MockPlayer pilot = owner(helper);
+		pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
+		Armed armed = new Armed();
+		FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+			PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+			pod.setPos(x, FLOOR, Z);
+			level.addFreshEntity(pod);
+			if (!pilot.player().startRiding(pod)) {
+				throw failure(helper, "the pilot could not mount the pod");
+			}
+			ScannerPods.fit(helper.getLevel().getServer(), pilot.player(), pod, ComponentTrack.LINER, 1);
+			PodLining.modify(pod, state -> new PodLining.State(0, 1, 0, false, false));
+			pilot.player().getInventory().add(new ItemStack(SlagBrick.item(), 2));
+			pod.setAttached(PodLiner.STATE, Versioned.of(new PodLiner.State(Optional.of(new PodLiner.Anchor(FLOOR + 4, x - 1, Z - 1)))));
+			armed.pod = pod;
+		});
+		boolean[] done = {false};
+		helper.onEachTick(() -> {
+			if (armed.pod == null || done[0] || Versioned.readable(armed.pod, PodLiner.STATE).orElseThrow().anchor().orElseThrow().feetY() != FLOOR) {
+				return;
+			}
+			done[0] = true;
+			int pack = pilot.player().getInventory().countItem(SlagBrick.item());
+			if (bricksIn(level, ringCells(x)) != 3 || PodLining.of(armed.pod).bricks() != 0 || pack != 0 || !PodLining.of(armed.pod).dry()) {
+				throw failure(helper, "the rack's brick and the pack's two line 3 of 4 cells and leave the rack dry: lined %s, rack %s, pack %s, dry %s",
+						bricksIn(level, ringCells(x)), PodLining.of(armed.pod).bricks(), pack, PodLining.of(armed.pod).dry());
+			}
+			pilot.leave();
+			armed.pod.discard();
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + RING_TICKS)
+	public void anUnpoweredPodsLinerLaysNothingAndTheRingStaysDue(GameTestHelper helper) {
+		if (!unpoweredListener) {
+			unpoweredListener = true;
+			PodEvents.IS_POWERED.register(pod -> !UNPOWERED.contains(pod.getUUID()));
+		}
+		ringHeld(helper, 5828, pod -> UNPOWERED.add(pod.getUUID()), pilot -> {
 		});
 	}
 

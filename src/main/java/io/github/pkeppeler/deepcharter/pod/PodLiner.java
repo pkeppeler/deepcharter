@@ -18,6 +18,7 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
@@ -27,7 +28,7 @@ import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
 /**
- * The liner (#339): a part that lines the stretch of bore it is about to drill with the rack's slag brick. The ring is as many slabs
+ * The liner (#339): a part that lines the stretch of bore it is about to drill with slag brick from the rack, then the seated pilot's pack. The ring is as many slabs
  * tall as its tier's interval, so the next ring starts where this one ends. A ring is due each time the pod has sunk that many slabs,
  * and when the bore turns into another column (a sidestep). The cells and the brick accounting are hand lining's
  * ({@link PodLining#cellsToLine}, the rack in {@link PodLining.State}). A tier that does not line in a fall waits until the pod rests,
@@ -157,14 +158,20 @@ public final class PodLiner {
 		return LayerChain.layerOf(pod.level().dimensionTypeRegistration().unwrapKey().orElseThrow().identifier()).isPresent();
 	}
 
-	/** Lines as many of the cells hand lining would line as the rack pays for, and marks the rack dry when it paid for fewer than all. */
+	/**
+	 * Lines as many of the cells hand lining would line as the bricks pay for, and marks the rack dry when they paid for fewer than all. The
+	 * bricks are the rack's first, then the seated pilot's pack, as by hand ({@link PodLining.State}).
+	 */
 	private static void ring(PodEntity pod, PodLinerTuning.Tier spec) {
 		List<BlockPos> cells = PodLining.cellsToLine(pod, spec.ringEverySlabs());
 		if (cells.isEmpty()) {
 			return;
 		}
-		int affordable = PodLining.of(pod).bricks() * spec.cellsPerBrick();
-		int placed = Math.min(cells.size(), affordable);
+		int rack = PodLining.of(pod).bricks();
+		Optional<ServerPlayer> pilot = pod.getControllingPassenger() instanceof ServerPlayer player && PodLining.mayUseStores(pod, player)
+				? Optional.of(player) : Optional.empty();
+		int pack = pilot.map(player -> PodLining.carried(player.getInventory())).orElse(0);
+		int placed = Math.min(cells.size(), (rack + pack) * spec.cellsPerBrick());
 		ServerLevel level = (ServerLevel) pod.level();
 		for (BlockPos cell : cells.subList(0, placed)) {
 			PodLining.setBrick(level, cell);
@@ -173,6 +180,10 @@ public final class PodLiner {
 			level.playSound(null, pod.getX(), pod.getY(), pod.getZ(), DeepSound.POD_LINING_PLACE.event(), SoundSource.BLOCKS);
 		}
 		int bricks = Math.ceilDiv(placed, spec.cellsPerBrick());
-		PodLining.modify(pod, state -> state.linedByLiner(bricks, placed < cells.size()));
+		int fromRack = Math.min(bricks, rack);
+		for (int fromPack = bricks - fromRack; fromPack > 0; fromPack--) {
+			PodLining.takeCarried(pilot.orElseThrow().getInventory());
+		}
+		PodLining.modify(pod, state -> state.linedByLiner(fromRack, placed < cells.size()));
 	}
 }

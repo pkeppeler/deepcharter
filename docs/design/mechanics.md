@@ -147,7 +147,7 @@ The no-lining column is a new run of the #300 bot: a pod with no hopper keeps no
 - **Lining halves the loss and does not make a bore safe.** 10 to 12 bores reach layer 2 against none, and the mean hull lost to lava falls from 78 to 24 to 28. Most encounters are shorter now: the median is 23 hull against 100.
 - **It costs about 20 bricks and 9 seconds of standing still a bore.** That is about $40 of brick, and 2% of the 8,000 ticks of a bore. The cost is small beside the gain, so the price and the time are not the limit.
 - **A bigger rack buys 2 more survivors.** 16 bores ran out with 32 bricks, and 999 bricks gave 12 against 10. Supply is not what limits the hand rung.
-- **What is left.** Of the 73 encounters of the 32-brick run, 11 began with a lining that was asked for and not done (the pod was falling through open cave, and the bot lines only at rest), 50 began within 2 slabs below a lining, and 12 had no lining asked for. The one bore traced in detail (a 12-bore diagnostic) was a fall: the pod dropped through open cave past the slab where the bot wanted to line, so it was never at rest there, and lava crept in through the cave from farther than the scanner marks. The other cases are not traced. By hand cannot cover that, which is the case for rung 2 (a liner that works as the pod drills) and for the heat-shield hull.
+- **What is left.** Of the 73 encounters of the 32-brick run, 11 began with a lining that was asked for and not done (the pod was falling through open cave, and the bot lines only at rest), 50 began within 2 slabs below a lining, and 12 had no lining asked for. The one bore traced in detail (a 12-bore diagnostic) was a fall: the pod dropped through open cave past the slab where the bot wanted to line, so it was never at rest there, and lava crept in through the cave from farther than the scanner marks. The other cases are not traced. By hand cannot cover that, which is the case for rung 2 (a liner that works as the pod drills, measured in [Liner (#339, A)](#liner-339-a)) and for the heat-shield hull.
 - **The bores that line go deeper**, so they meet more lava than a bore that dies at the first. The no-lining bores last 6,149 pod ticks and the lining ones 8,092, so the table is a lower bound on what lining buys.
 
 **Open questions.**
@@ -157,7 +157,7 @@ The no-lining column is a new run of the #300 bot: a pod with no hopper keeps no
 
 ## Liner (#339, A)
 
-**Problem.** Hand lining lifts the share of bores that reach layer 2 from 0 to 10 in 100, and most deaths remain. A pilot can line only at rest, so a pod that drops through open cave, or falls past slabs, cannot line (11 of the 73 encounters of the hand run began that way), and each bore stops for about 180 ticks to line. Rung 2 of the lava ladder (#232) lines as the pod drills.
+**Problem.** Hand lining lifts the share of bores that reach layer 2 from 0 to 10 in 100, and most deaths in lava remain (57 of 100). A pilot can line only at rest, so a pod that drops through open cave, or falls past slabs, cannot line (11 of the 73 encounters of the hand run began that way), and each bore stops for about 180 ticks to line. Rung 2 of the lava ladder (#232) lines as the pod drills.
 
 **The ladder.**
 1. By hand ([Hand lining](#hand-lining-313-a)): cheap, slow, and it teaches the danger.
@@ -168,7 +168,7 @@ The no-lining column is a new run of the #300 bot: a pod with no hopper keeps no
 - **The part.** A track of its own, `liner`, with two tiers that the upgrade terminal sells. A tier 2 fits a Mole (the tier cap of a Mole is 2), so both are Mole parts. It has no stock part. The liner takes bricks from the rack that the spoil hopper and the ore processor fill ([Hand lining](#hand-lining-313-a)); it needs the rack, not the hopper itself.
 - **When.** The liner keeps an anchor: the pod's column and the highest feet Y it has had in it since the last ring. A ring is due when the pod has sunk the tier's slabs below the anchor, or when it is in another column (a sidestep starts a stretch of bore of its own). A climb moves the anchor up. The HUD counts the slabs to the next ring.
 - **What.** The cells of `PodLining.cellsToLine`, the same rule as by hand (air, fluid or replaceable only; never a cell with an entity; never rock, ore or company rock; lava first, then open cells beside lava), but the ring reaches as many slabs below the pod's feet as the tier's interval, so it covers the stretch the pod is about to bore, and the next ring starts where it ends. Hand lining's ring reaches one slab below. The floor is the lava in the footprint down to the same depth.
-- **Bricks.** The rack only: the liner never takes bricks from the pilot's pack, and it needs no pilot. One brick lines `cellsPerBrick` cells (1 at tier 1, as by hand; 2 at tier 2, the cheaper fused lining). If the rack pays for fewer cells than the ring needs, the liner lines the first ones in the order above (lava first), and the HUD shows OUT OF SLAG BRICK until the processor fills the rack.
+- **Bricks.** The rack first, then the seated pilot's pack if `PodComponents.mayAccess` lets the pilot use the pod's stores, as hand lining does. A pod with no pilot uses its rack only. One brick lines `cellsPerBrick` cells (1 at tier 1, as by hand; 2 at tier 2, the cheaper fused lining). If the bricks pay for fewer cells than the ring needs, the liner lines the first ones in the order above (lava first), the rest stay open and are not caught up later, and the HUD shows OUT OF SLAG BRICK until the processor fills the rack.
 - **Rest and fall.** Tier 1 lines only when the pod is on the ground: a ring that falls due in a fall waits, and is laid where the pod lands. Tier 2 also lines in the air, which is the gap by-hand lining cannot reach.
 - **Where.** Only in a layer dimension. Above ground a ring would wall the sky and spend the rack. It never lines while the pilot lines by hand, or when the pod has no power.
 - **Drill speed.** Each tier slows the drill: ticks for each hardness are divided by 1 minus the penalty.
@@ -180,43 +180,60 @@ The no-lining column is a new run of the #300 bot: a pod with no hopper keeps no
 | 1 | $500 | 4 slabs | 1 | -10% | no | 2 |
 | 2 | $1,000 | 3 slabs | 2 | -15% | yes | 4 |
 
-- Money: the part, and $2 a brick (a brick is two spoil, and a ring of an open cave is dear). A run in layer 2 with tier 2 parts and a hopper pod nets about $300 (`EconomyAffordabilityTest`, which bands both tiers).
-- Time: the drill is 10% to 15% slower, which `EarlyRunModel` carries (`withLiner`), but the pod never stops. The lining pods spend about 9,000 ticks a bore against 8,100 for hand lining (the liner bores run longer because they live longer, and slower).
+- Money: the part, and $2 a brick (a brick is two spoil, and a ring of an open cave is dear; the liner draws on the pilot's pack too). A run in layer 2 with tier 2 parts and a hopper pod nets about $300 (`EconomyAffordabilityTest`, which bands both tiers).
+- Time: the drill is 10% to 15% slower, which `EarlyRunModel` carries (`withLiner`), but the pod never stops. The liner pods spend 9,000 to 10,000 ticks a bore against 8,160 for hand lining and 6,170 unlined (the bores run longer because they live longer, and the drill is slower).
 - Cargo and mass: the rack is the one the hopper has; the liner adds none.
-- Honest limits: the liner cannot save a pod from a hard landing, and in a bore of the measured layer most of the dead are the pods that fell (below).
+- Honest limits: the liner holds lava and nothing else. Most of the bores it saves from lava die of gas (below).
 
 **Tuning knobs.** `PodLinerTuning`: for each tier `ringEverySlabs` (4, 3), `cellsPerBrick` (1, 2), `drillSpeedPenalty` (0.10, 0.15), `linesWhileFalling` (false, true). The prices: `UpgradeTuning` `LINER`, $500 and $1,000. The rack: `PodLiningTuning.brickCapacity` (32). `PodLining.cellsToLine(pod, reach)`. Skins: the part's item icon, model and lang keys, the HUD line `hud.deepcharter.pod.liner` and its colour, `theme/hud.json` `podLinerColor`.
 
 ### Liner vs. hand lining vs. a straight bore: measured
 
-#339. The same 100 columns as [Lining vs. a straight bore](#lining-vs-a-straight-bore-measured). The liner pods carry the tier of liner and a full rack (32 bricks) and no spoil hopper, and the bot only drills (`DEEPCHARTER_LAVA_BORES_LINER=<tier>`; the rack is `DEEPCHARTER_LAVA_BORES_BRICKS`). It never lines and never flies. The hand lining column is the #313 bot (`DEEPCHARTER_LAVA_BORES_LINING=3`), run again on this build. The runs are deterministic. `DEEPCHARTER_LAVA_BORES=100 tools/gametest.sh 'lava_bore_test*'`, with one of those variables for each column.
+#339. The same 100 columns as [Lining vs. a straight bore](#lining-vs-a-straight-bore-measured), on this build. The liner pods carry the liner of the tier named, a rack of 32 bricks unless the column says more, and no spoil hopper. The bot only drills: it never lines for a liner pod and never turns back. The hand lining column is the #313 bot (`DEEPCHARTER_LAVA_BORES_LINING=3`). The runs are deterministic. `DEEPCHARTER_LAVA_BORES=100 tools/gametest.sh 'lava_bore_test*'`, with `DEEPCHARTER_LAVA_BORES_LINER=<tier>` for a liner column, `_BRICKS=<n>` for the rack and `_PACK=<n>` for bricks in the pilot's pack.
 
-| 100 bores of layer 1 | No lining | Hand lining, rack of 32 | Liner tier 1, rack of 32 | Liner tier 2, rack of 32 | Liner tier 2, 999 bricks |
+**The bot brakes in a fall.** An impact-speed landing rule (#322) merged before hand lining (#318), so a pod that holds its sink under the landing speed takes no hull damage, and the pilot of `EarlyRunModel.driveDownLitres` does that. The first #313 bot never braked: it sprinted and fell, and some of its deaths were landings. The bot now holds the rotor on while the pod sinks faster than `EarlyRunModel.DRIVE_DOWN_SINK` (0.6 blocks a tick), in a dive and in a sidestep, so the comparison is about lava and not about the bot's piloting. `DEEPCHARTER_LAVA_BORES_BRAKING=off` gives the old bot, in the second table.
+
+**With braking (the default).**
+
+| 100 bores of layer 1 | No lining | Hand lining, rack 32 | Liner 1, rack 32 | Liner 2, rack 32 | Liner 2, 999 bricks | Liner 2, rack 32 + pack 64 | Liner 1, rack 32 + pack 64 |
+|---|---|---|---|---|---|---|---|
+| **Died in lava** | 99 | 62 | 54 | 39 | 18 | 23 | 29 |
+| **Hull lost to lava per bore: mean / p50 / p90** | 84 / 100 / 100 | 30 / 12 / 100 | 29 / 8 / 100 | 24 / 0 / 100 | 8 / 0 / 48 | 11 / 0 / 56 | 12 / 0 / 56 |
+| **Reach layer 2** | 0 | 11 | 6 | 5 | 12 | 13 | 12 |
+| Bores that touch lava | 99 | 69 | 55 | 39 | 18 | 23 | 30 |
+| Lava encounters per bore | 1.00 | 0.78 | 0.56 | 0.40 | 0.18 | 0.23 | 0.30 |
+| Died of something else | 1 | 27 | 40 | 56 | 70 | 64 | 59 |
+| Bricks placed per bore: mean | none | 20 | 24 | 21 | 28 | 78 | 82 |
+| Ticks standing still lining per bore: mean | none | 186 | 0 | 0 | 0 | 0 | 0 |
+| Pod ticks per bore | 6,170 | 8,160 | 8,943 | 9,663 | 10,073 | 10,113 | 9,557 |
+| Bores whose rack ran out (hand: pressed with none) | none | 20 | 40 | 27 | 0 | 3 | 2 |
+
+**No braking** (`DEEPCHARTER_LAVA_BORES_BRAKING=off`, the first #313 bot):
+
+| 100 bores of layer 1 | No lining | Hand lining, rack 32 | Liner 1, rack 32 | Liner 2, rack 32 | Liner 2, 999 bricks |
 |---|---|---|---|---|---|
-| Bores that reach layer 2 | 0 | 10 | 6 | 5 | 12 |
-| Bores that touch lava | 97 | 65 | 52 | 37 | 18 |
 | Died in lava | 97 | 57 | 51 | 37 | 18 |
-| Died of something else | 3 | 33 | 43 | 58 | 70 |
-| Lava encounters per bore | 0.97 | 0.73 | 0.52 | 0.37 | 0.18 |
 | Hull lost to lava per bore: mean / p50 / p90 | 78 / 100 / 100 | 28 / 11 / 100 | 24 / 3 / 65 | 18 / 0 / 58 | 8 / 0 / 48 |
-| Hull lost per encounter: mean / p50 | 80 / 100 | 38 / 23 | 46 / 55 | 48 / 56 | 42 / 56 |
-| Bricks placed per bore: mean (p90) | none | 20 (32) | 24 (32) | 21 (32) | 28 (56) |
-| Ticks standing still lining per bore: mean | none | 181 | 0 | 0 | 0 |
-| Pod ticks per bore | 6,150 | 8,091 | 8,896 | 9,623 | 10,074 |
-| Bores whose rack ran out | none | 16 (pressed with none) | 38 | 26 | 0 |
+| Reach layer 2 | 0 | 10 | 6 | 5 | 12 |
+| Hits over 20 hull that lava did not cause: landings / others | 12 / 37 | 15 / 128 | 13 / 139 | 14 / 149 | 14 / 160 |
+| Pod ticks per bore | 6,150 | 8,091 | 8,896 | 9,624 | 10,074 |
 
-- **The liner holds lava back better than the hand does, and without a stop.** Tier 2 meets lava in 37 bores against 65 and loses 18 hull to it per bore against 28. Half of its bores lose none (p50 0). A pilot never stands still: 0 ticks against 181.
-- **It does not raise the share that reaches layer 2.** 5 and 6 bores, against 10 by hand. Those that do not die in lava die of something else, and the table says what: of the 94 and 95 dead, 43 and 58 died with no lava near. The bot sprints without braking, so a drop through open cave ends in a hard landing (the worst non-lava hit of the dead is 42 to 51 hull at the bottom of a fall). The liner can line in a fall, and it cannot land the pod. A bore that does not meet lava is alive to meet the fall.
-- **The rack is the limit.** With 32 bricks, 38 and 26 bores ran out. With 999 bricks, tier 2 meets lava in 18 bores, loses 8 hull per bore, and 12 reach layer 2 against 10 by hand, with no stop. A ring in open cave is dear: its ring is as tall as the interval, and every open cell of it takes a brick (a brick lines two cells at tier 2).
-- **Tier 2 over tier 1.** A ring every 3 slabs, a brick for 2 cells and the fall give 37 bores in lava against 52, and 18 hull against 24, at 5% more drill speed lost.
-- **How the ring got its shape.** The first build laid a ring one slab tall, as by hand: it met lava in 93 to 97 bores and lost 59 to 69 hull per bore, no better than no lining. The pod bores 3 or 4 slabs before the next ring, so a ring that covers one of them leaves the rest open. A ring as tall as the interval met lava in 75 to 80 bores (hull 43 to 48), and a ring that is also due when the bore turns into a new column (the bot sidesteps 8 times a bore, and each sidestep starts a stretch no ring covers) gave the table above.
-- **The bores that live longer meet more.** The lining bores last 8,100 to 10,100 pod ticks and the unlined 6,150, so the table is a lower bound on what lining buys (as in #313).
+- **The lava-only headline.** With braking, lava ends 99 of 100 unlined bores, 62 hand lined, 54 with a tier 1 liner and 39 with a tier 2 liner, on the rack of 32. The mean hull lost to lava falls from 84 to 30, 29 and 24. The pilot never stands still with a liner (0 ticks against 186). The liner is better than the hand by 8 to 23 bores of 100 in lava, and by 1 to 6 hull a bore, on 32 bricks.
+- **Braking is not what limits reach.** Landings were 12 to 15 big hits per 100 bores unbraked, and 0 braked (14 for the 999-brick pod; each is a hit over 20 hull from a sink over 0.7). The non-lava deaths are gas pockets: the columns that bore to the bottom have 128 to 163 hits over 20 hull that are not landings, sized by depth as `GasHazard.damage` is. That is a hazard of its own (its counterplay is the radiator, not the liner). So "reach layer 2" is a gas number as much as a lava one, and it is the secondary figure here: with the rack of 32 the liner reaches layer 2 less often than the hand (5 and 6 against 11) because a bore that survives lava lives long enough to meet the gas.
+- **The rack is the limit.** With 32 bricks, 40 and 27 bores ran out, and the dry bores are where lava gets through: tier 2 with 999 bricks has lava ending 18 bores, against 39. The first measurement here (unbraked) said the same.
+- **The pack closes most of the gap (the better design, kept).** The liner draws on the pilot's pack after the rack, as hand lining does. With one stack (64) in the pack, tier 2 has lava ending 23 bores and loses 11 hull per bore, and 13 reach layer 2, better than the hand on every lava figure and close to the 999-brick pod. The cost is bricks: 78 to 82 bricks a bore, about $160 at $2, against 20 to 24 on the rack alone. The bricks the liner places per bore (rack alone) are 21 to 24 of 32 and the dry bores are the cost of leaving the rest of the stretch unlined.
+- **Tier 2 against tier 1.** Rack alone: 39 against 54 in lava, 24 against 29 hull. With the pack: 23 against 29 and 11 against 12. Tier 2 costs twice the price and 5% more drill speed. With a full supply the second tier is a small gain on lava, and its fall lining and half-price bricks are what it buys.
+- **How the ring got its shape.** The first build laid a ring one slab tall, as by hand: it met lava in 93 to 97 bores and lost 59 to 69 hull a bore (unbraked), no better than no lining. The pod bores 3 or 4 slabs before the next ring, so a ring that covers one slab leaves the rest open. A ring as tall as the interval met lava in 75 to 80 bores (hull 43 to 48). A ring that is also due when the bore turns into a new column (the bot sidesteps 8 times a bore, and each sidestep starts a stretch no ring covers) gave the table.
+- **A ring the rack cannot pay for stays unlined.** The liner lines the first cells (lava first) and the rest stay open. It does not catch up later, even when the pilot refills: the next ring covers the next stretch. That is a cost of a rack that runs dry, and one reason the dry bores die.
+- **The bores that live longer meet more.** The lining bores last 8,100 to 10,100 pod ticks and the unlined 6,170, so the table is a lower bound on what lining buys (as in #313).
+- **Economy.** The prices and the affordability bands were chosen before the measurements (the bands in `EconomyAffordabilityTest` came from the income model, and only tier 2's price was changed, from $1,250 to $1,000, to fit its 4-run band). The 100-bore runs did not tune them.
 
 **Open questions.**
-- Should the liner take bricks from the pilot's pack when the rack is empty, as the hand does? The pack is the natural overflow (the processor puts the bricks that do not fit the rack in the buyer's pack), and the 999-brick column says the supply is the limit.
-- Should a rack upgrade (more than 32 bricks, more mass) be a part of its own? It is the next gap, and the lava ladder's rung 3 may make it unnecessary.
-- Should the pod slow to a stop for a ring in an open cave, or place bricks only beside lava when the ring is dear? Today it lines every open cell of the stretch.
-- The fall: should tier 2 brake the pod as it lines, so a falling bore is not the end of it? The measured deaths of the lined bores are mostly landings.
+- Does a rack-limited liner earn its price when the hopper already refills the rack? On the rack of 32 the liner beats the hand by 8 to 23 bores in lava for $500 to $1,000, and the pack brings it close to an unlimited rack, but a pod with a hopper and a stack of bricks that stops to line by hand reaches layer 2 as often (11 against 5 to 6). The liner's case is the pilot's time and the fall, not reach.
+- Does a ring as tall as the interval waste bricks? A tier 2 ring lines every open cell of three slabs plus the pod's box, and the bore later removes (and loses) the bricks in its own path only when a ring cell was in the footprint. The measured bricks a bore are 21 to 24 on the rack, 78 to 82 with the pack: that is more than hand lining's 20, for 23 to 40 bores more held back.
+- Should a rack upgrade (more than 32 bricks, more mass) be a part of its own, or a bigger stack of bricks the pilot carries? The lava ladder's rung 3 may make either unnecessary.
+- Should the pod place bricks only beside lava when the rack is low, so a short rack is spent where lava is? Today it lines the open cells in order, lava first, and leaves the rest.
+- The gas: the deaths with no lava are mostly gas pockets. Should the liner, or a later part, seal a gas pocket the drill is about to open?
 
 ## Fuel per descent (#289, A)
 

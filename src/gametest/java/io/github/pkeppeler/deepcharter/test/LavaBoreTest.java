@@ -30,6 +30,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
@@ -48,10 +49,12 @@ import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodLiningTuning;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
+import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
+import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -73,7 +76,7 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
  * <p>The pilot is a bot with no reaction: it holds sprint, and so bores straight down until the pod is dead, the pilot is dead or
  * the pod is through. Layer 1's rock is full of company rock, which the drill refuses (a clean 2 x 2 column over the whole layer is
  * about one in ten thousand), so when a slab is refused the bot sidesteps two blocks, alternating east and west, and carries on
- * down. Unless it lines (below) it never flies, never turns back and never reads the scanner: the scanner figures say what a pilot could have seen, not what
+ * down. It brakes in a fall, as a pilot does: it holds the rotor on while the pod sinks faster than {@code EarlyRunModel.DRIVE_DOWN_SINK}, so a drop through open cave is not a hard landing (set {@value #BRAKING_ENV}{@code =off} for the bot that does not). Gas pockets hurt the pod either way. It never turns back and never reads the scanner: the scanner figures say what a pilot could have seen, not what
  * this bot did. The tank is topped up whenever it runs low and the tanks used are counted, because one tank does not last a layer.
  *
  * <p>With {@value #LINING_ENV}{@code =<n>} the bot lines (#313): each time the pod reaches a new slab and a thermal tier scanner would
@@ -94,10 +97,20 @@ public class LavaBoreTest {
 	private static final String REQUESTED_BORES = System.getenv(BORES_ENV);
 	static final String LINING_ENV = "DEEPCHARTER_LAVA_BORES_LINING";
 	static final String BRICKS_ENV = "DEEPCHARTER_LAVA_BORES_BRICKS";
+	static final String BRAKING_ENV = "DEEPCHARTER_LAVA_BORES_BRAKING";
+	/** The bot brakes unless this is {@code off}: a real pilot feathers the rotor in a fall, so the hard landings of an unbraked bot are not what is measured. */
+	private static final boolean BRAKING = !"off".equalsIgnoreCase(System.getenv(BRAKING_ENV));
+	private static final float BIG_HIT_HULL = 20f;
+	private static final double BIG_HIT_LANDING_SINK = 0.7;
+	/** Blocks per tick of sink above which the braking bot holds the rotor on: the sink that {@code EarlyRunModel.driveDownLitres} models. */
+	private static final double BRAKE_ABOVE_SINK = EarlyRunModel.DRIVE_DOWN_SINK;
 	static final String LINER_ENV = "DEEPCHARTER_LAVA_BORES_LINER";
 	private static final String REQUESTED_LINER = System.getenv(LINER_ENV);
 	private static final String REQUESTED_LINING = System.getenv(LINING_ENV);
 	private static final String REQUESTED_BRICKS = System.getenv(BRICKS_ENV);
+	/** Bricks in the pilot's pack at the start (liner bores only): the liner draws on the pack when the rack is dry. */
+	static final String PACK_ENV = "DEEPCHARTER_LAVA_BORES_PACK";
+	private static final String REQUESTED_PACK = System.getenv(PACK_ENV);
 	/** How far either side of the shaft's column the lining bot looks for lava: the thermal tier's own spread. */
 	private static final int LINING_REACH = ScannerTuning.DEFAULT.lavaSpread();
 	/** The smoke case: a control that bores only the crust, and a bore through the last stretch of Deep Claim. */
@@ -305,12 +318,19 @@ public class LavaBoreTest {
 		final Set<Side> refused = EnumSet.noneOf(Side.class);
 
 		boolean wantLining;
+		boolean braking;
+		double prevVy;
+		/** Hits over {@link #BIG_HIT_HULL} that lava did not cause: a landing at a sink over {@link #BIG_HIT_LANDING_SINK}, and any other (gas). */
+		int bigLandings;
+		int bigOtherHits;
 		boolean wasLining;
 		int liningSessions;
 		int liningTicks;
 		int bricksPlaced;
 		int dryPresses;
 		int startBricks;
+		int startPack;
+		int endPack;
 		/** Lava encounters that began with a lining asked for and not done (the pod was falling), just under a lining, and with none asked for. */
 		int unservedTouches;
 		int linedTouches;
@@ -470,6 +490,10 @@ public class LavaBoreTest {
 			int bricks = positiveEnv(helper, BRICKS_ENV, REQUESTED_BRICKS, PodLiningTuning.DEFAULT.brickCapacity());
 			PodLining.modify(pod, state -> new PodLining.State(0, bricks, 0, false, false));
 			bore.startBricks = bricks;
+			if (bore.linerTier > 0 && REQUESTED_PACK != null && !REQUESTED_PACK.isBlank()) {
+				bore.startPack = positiveEnv(helper, PACK_ENV, REQUESTED_PACK, 0);
+				bore.pilot.player().getInventory().add(new ItemStack(SlagBrick.item(), bore.startPack));
+			}
 		}
 		bore.startY = feetY;
 		bore.startHull = pod.hull();
@@ -521,6 +545,14 @@ public class LavaBoreTest {
 			bore.biggestOtherHit = hullLost;
 			bore.biggestOtherHitY = pod.blockPosition().getY();
 		}
+		if (hullLost > BIG_HIT_HULL && !touching) {
+			if (-bore.prevVy > BIG_HIT_LANDING_SINK) {
+				bore.bigLandings++;
+			} else {
+				bore.bigOtherHits++;
+			}
+		}
+		bore.prevVy = pod.getDeltaMovement().y;
 		if (healthLost > 0 && (touching || burning)) {
 			bore.lavaPilot += healthLost;
 		}
@@ -587,6 +619,24 @@ public class LavaBoreTest {
 		drive(bore, pod);
 	}
 
+	/** The input the bot holds with the rotor off: sprint down, or the push of the sidestep it is in. */
+	private static Input base(Bore bore) {
+		return bore.phase == Phase.DOWN ? SPRINT : bore.side.input;
+	}
+
+	private static Input withRotor(Input input) {
+		return new Input(input.forward(), input.backward(), input.left(), input.right(), true, input.shift(), input.sprint());
+	}
+
+	/** Holds the rotor on while the pod sinks faster than {@link #BRAKE_ABOVE_SINK}, and lets go once it is slower. */
+	private static void brake(Bore bore, PodEntity pod) {
+		boolean needed = !pod.onGround() && -pod.getDeltaMovement().y > BRAKE_ABOVE_SINK;
+		if (needed || bore.braking) {
+			bore.pilot.setInput(needed ? withRotor(base(bore)) : base(bore));
+		}
+		bore.braking = needed;
+	}
+
 	/** The liner works by itself, so the bot does nothing for it: it only counts the rings (the anchor the liner counts from moves, other than up with a climb) and notes a rack that ran out. */
 	private static void noteLiner(Bore bore, PodEntity pod) {
 		Optional<PodLiner.Anchor> anchor = Versioned.readable(pod, PodLiner.STATE).orElseThrow().anchor();
@@ -603,6 +653,9 @@ public class LavaBoreTest {
 
 	/** The bot: sprint down; on a refused slab, move two blocks to a side and sprint down again. */
 	private static void drive(Bore bore, PodEntity pod) {
+		if (BRAKING) {
+			brake(bore, pod);
+		}
 		if (bore.lookahead > 0 && lineIfAsked(bore, pod)) {
 			return;
 		}
@@ -723,12 +776,24 @@ public class LavaBoreTest {
 		return cells;
 	}
 
+	private static int packBricks(ServerPlayer player) {
+		int count = 0;
+		for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+			ItemStack stack = player.getInventory().getItem(slot);
+			if (stack.is(SlagBrick.item())) {
+				count += stack.getCount();
+			}
+		}
+		return count;
+	}
+
 	private static void finish(Bore bore, Outcome outcome, String cause, PodEntity pod) {
 		bore.outcome = outcome;
 		bore.cause = cause;
 		bore.endHull = pod.hull();
 		bore.endPilotHealth = bore.pilot.player().getHealth();
 		bore.endBricks = PodLining.of(pod).bricks();
+		bore.endPack = packBricks(bore.pilot.player());
 	}
 
 	// ---- lava ----
@@ -875,6 +940,7 @@ public class LavaBoreTest {
 		Map<String, Long> byZone = new TreeMap<>();
 		encounters.forEach(e -> byZone.merge(e.zone(), 1L, Long::sum));
 		LOGGER.info("[lava-bore] encounters by zone (the first of each bore is the bulk): {}", byZone);
+		LOGGER.info("[lava-bore] hits over {} hull that lava did not cause: {} landings (sink over {}), {} others (gas); braking {}", BIG_HIT_HULL, bores.stream().mapToInt(b -> b.bigLandings).sum(), BIG_HIT_LANDING_SINK, bores.stream().mapToInt(b -> b.bigOtherHits).sum(), BRAKING ? "on" : "off");
 		LOGGER.info("[lava-bore] the bot: {} sidesteps per bore, {} tanks per bore, {} pod ticks per bore",
 				String.format("%.1f", bores.stream().mapToInt(b -> b.sidesteps).average().orElse(0)),
 				String.format("%.1f", bores.stream().mapToInt(b -> b.tanks).average().orElse(0)),
@@ -921,12 +987,12 @@ public class LavaBoreTest {
 			return;
 		}
 		Bore first = liner.getFirst();
-		LOGGER.info("[lava-bore] liner: tier {} on {} bores, rings every {} slabs, {} cells a brick, {}% of the drill's speed, {}; the rack starts with {} bricks",
+		LOGGER.info("[lava-bore] liner: tier {} on {} bores, rings every {} slabs, {} cells a brick, {}% of the drill's speed, {}; the rack starts with {} bricks and the pack with {}",
 				first.linerTier, liner.size(), PodLinerTuning.DEFAULT.tier(first.linerTier).ringEverySlabs(), PodLinerTuning.DEFAULT.tier(first.linerTier).cellsPerBrick(),
 				Math.round(PodLinerTuning.DEFAULT.tier(first.linerTier).drillSpeedPenalty() * 100),
-				PodLinerTuning.DEFAULT.tier(first.linerTier).linesWhileFalling() ? "lines in a fall" : "lines at rest only", first.startBricks);
+				PodLinerTuning.DEFAULT.tier(first.linerTier).linesWhileFalling() ? "lines in a fall" : "lines at rest only", first.startBricks, first.startPack);
 		LOGGER.info("[lava-bore] liner, rings per bore:         {}", distribution(liner, b -> b.linerRings));
-		LOGGER.info("[lava-bore] liner, bricks placed per bore: {}", distribution(liner, b -> b.startBricks - b.endBricks));
+		LOGGER.info("[lava-bore] liner, bricks placed per bore: {}", distribution(liner, b -> b.startBricks - b.endBricks + b.startPack - b.endPack));
 		long outOfBrick = liner.stream().filter(b -> b.linerRanDry).count();
 		LOGGER.info("[lava-bore] liner, bores whose rack ran out: {} of {} ({})", outOfBrick, liner.size(), percent(outOfBrick, liner.size()));
 	}
