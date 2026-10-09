@@ -33,6 +33,8 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+
 /**
  * Client GameTest for #73: the upgrade screen lists the parts of a track with their prices, marks the tiers above the Mole's cap
  * and shows the cap, buys through the server, shows the installed part (and the cap on it), and leaves a part the charter cannot
@@ -55,21 +57,21 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.terminal())));
 			ClientWait.screen(context, UpgradeScreen.class);
 			UpgradeScreen screen = context.computeOnClient(client -> (UpgradeScreen) client.gui.screen());
-			check(screen.upgrade().orElseThrow().pod().orElseThrow().cap() == 2, "the screen shows the Mole's cap of 2");
+			require(screen.upgrade().orElseThrow().pod().orElseThrow().cap() == 2, "the screen shows the Mole's cap of 2");
 			ClientWait.until(context, "the upgrade screen finished typing", client -> screen.typewriter().done(), client -> "typewriter text '" + screen.typewriter().text() + "'");
-			check(labels(context, screen).contains("DRILL  T0") && labels(context, screen).contains("FUEL TANK  T0"),
+			require(labels(context, screen).contains("DRILL  T0") && labels(context, screen).contains("FUEL TANK  T0"),
 					"every track is listed with its installed tier, got " + labels(context, screen));
 
 			context.clickScreenButton("HULL  T0");
 			ClientWait.until(context, "the hull track selected", client -> screen.selected() == ComponentTrack.HULL);
 			List<String> hull = labels(context, screen);
-			check(hull.contains("BUY TIER 1  $200") && hull.contains("BUY TIER 2  $500"), "the hull parts show their prices, got " + hull);
-			check(hull.contains("BUY TIER 3  $1250  (WORKS AS TIER 2)") && hull.contains("BUY TIER 4  $5000  (WORKS AS TIER 2)"),
+			require(hull.contains("BUY TIER 1  $200") && hull.contains("BUY TIER 2  $500"), "the hull parts show their prices, got " + hull);
+			require(hull.contains("BUY TIER 3  $1250  (WORKS AS TIER 2)") && hull.contains("BUY TIER 4  $5000  (WORKS AS TIER 2)"),
 					"tiers above the cap say so, got " + hull);
 
 			context.clickScreenButton("BUY TIER 1  $200");
 			ClientWait.until(context, "the tier 1 install label", client -> labels(client, screen).contains("TIER 1  INSTALLED"));
-			check(singleplayer.getServer().computeOnServer(server2 -> PodComponents.partOf(pod(server2, scene), ComponentTrack.HULL)
+			require(singleplayer.getServer().computeOnServer(server2 -> PodComponents.partOf(pod(server2, scene), ComponentTrack.HULL)
 					.map(label -> label.tier() == 1).orElse(false)), "the server installed the tier 1 hull");
 
 			context.clickScreenButton("BUY TIER 4  $5000  (WORKS AS TIER 2)");
@@ -82,11 +84,11 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
 				long account = Charters.charterOfOrThrow(server2, server2.getPlayerList().getPlayers().getFirst().getUUID()).orElseThrow().account();
 				return capped && dropped && account == ACCOUNT - 200 - 5_000;
 			});
-			check(cappedAndDropped, "the tier 4 hull works as tier 2, the tier 1 hull dropped, and the account paid 5200 in all");
+			require(cappedAndDropped, "the tier 4 hull works as tier 2, the tier 1 hull dropped, and the account paid 5200 in all");
 
 			CrtButton unaffordable = context.computeOnClient(client -> screen.children().stream().filter(CrtButton.class::isInstance)
 					.map(CrtButton.class::cast).filter(button -> button.getMessage().getString().startsWith("BUY TIER 6")).findFirst().orElseThrow());
-			check(!unaffordable.active, "a part the account cannot pay for is dead");
+			require(!unaffordable.active, "a part the account cannot pay for is dead");
 			context.setScreen(() -> null);
 		}
 	}
@@ -94,13 +96,9 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
 	/** The player founds a charter with money, and has a repaired upgrade terminal and a pod of the charter beside them. */
 	public static Scene setUp(MinecraftServer server) {
 		ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-		if (Charters.found(server, player.getUUID(), "Upgrade Test Charter").isPresent()) {
-			throw new AssertionError("founding should succeed");
-		}
+		require(Charters.found(server, player.getUUID(), "Upgrade Test Charter").isEmpty(), "founding should succeed");
 		CharterId charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id();
-		if (Charters.deposit(server, charter, ACCOUNT).isPresent()) {
-			throw new AssertionError("funding should succeed");
-		}
+		require(Charters.deposit(server, charter, ACCOUNT).isEmpty(), "funding should succeed");
 		RepairState state = RepairState.get(server);
 		for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL)) {
 			type.parts().forEach(part -> state.insert(type, part).ifPresent(refusal -> {
@@ -129,11 +127,5 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
 	private static List<String> labels(Minecraft client,UpgradeScreen screen) {
 		return screen.children().stream().filter(CrtButton.class::isInstance).map(button -> ((CrtButton) button).getMessage().getString())
 				.map(label -> label.startsWith("> ") ? label.substring(2) : label).toList();
-	}
-
-	private static void check(boolean condition, String message) {
-		if (!condition) {
-			throw new AssertionError(message);
-		}
 	}
 }

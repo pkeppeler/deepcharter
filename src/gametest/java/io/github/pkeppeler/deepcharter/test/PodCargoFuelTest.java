@@ -502,6 +502,43 @@ public class PodCargoFuelTest {
 		});
 	}
 
+	private static final int DROP_BLOCKS = 6;
+	/** The distance rule charged 10 hull for a 6-block drop; the speed rule (#319) charges about 14, and a braked drop nothing. */
+	private static final float FREE_DROP_HULL_MIN = 10f;
+	private static final float FREE_DROP_HULL_MAX = 18f;
+	/** A braked fall holds the rotor on while the pod sinks faster than this, in blocks per tick. */
+	private static final double BRAKED_SINK = -0.3;
+
+	private static void dropAndCheckHull(GameTestHelper helper, boolean braked) {
+		PodEntity pod = spawnPod(helper, DROP_BLOCKS);
+		MockPlayer pilot = seatPilot(helper, pod);
+		if (braked) {
+			helper.onEachTick(() -> pilot.setInput(pod.getDeltaMovement().y < BRAKED_SINK ? JUMP : Input.EMPTY));
+		}
+		helper.succeedWhen(() -> {
+			if (!pod.onGround() || pod.tickCount < 5) {
+				throw helper.assertionException("the pod has not landed");
+			}
+			float lost = PodTuning.DEFAULT.shell().fullHull() - pod.hull();
+			float min = braked ? 0f : FREE_DROP_HULL_MIN;
+			float max = braked ? 0f : FREE_DROP_HULL_MAX;
+			if (lost < min || lost > max) {
+				throw helper.assertionException("a %s fall of %s blocks should cost %s to %s hull, it cost %s", braked ? "braked" : "free", DROP_BLOCKS, min, max, lost);
+			}
+		});
+	}
+
+	@GameTest(maxTicks = 200)
+	public void aFreeFallCostsHullByTheSpeedItLandsAt(GameTestHelper helper) {
+		dropAndCheckHull(helper, false);
+	}
+
+	/** The hull pays for the landing speed, so a pod that brakes with the rotor can drive down a deep shaft (PodHardLandingTest). */
+	@GameTest(maxTicks = 200)
+	public void aFallBrakedWithTheRotorCostsNoHull(GameTestHelper helper) {
+		dropAndCheckHull(helper, true);
+	}
+
 	@GameTest
 	public void beepThresholdIsTwentyOnePercent(GameTestHelper helper) {
 		if (FUEL.lowFuelPercent() != 21f || !PodFuel.isLow(21f) || !PodFuel.isLow(5f) || PodFuel.isLow(21.5f)) {

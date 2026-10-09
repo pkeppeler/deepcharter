@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
+import io.github.pkeppeler.deepcharter.pod.HardLanding;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
@@ -36,6 +37,8 @@ public class EconomyAffordabilityTest {
 
 	/** A tier 1 part, the scanner and the lights are an early buy: this many runs of a stock Mole in layer 1, at most. */
 	private static final int EARLY_BUY_RUNS = 2;
+	/** The spoil hopper is the entry to the lava ladder: a stock Mole buys it with one layer 1 run. */
+	private static final int HOPPER_RUNS = 1;
 	/** The radiator matters from layer 3 on, and its tier 1 costs what the others' tier 2 does in the original. */
 	private static final int RADIATOR_RUNS = 5;
 	/** The Prospector restore takes this many runs of a Mole with tier 2 parts in layer 2, at least and at most. */
@@ -70,7 +73,11 @@ public class EconomyAffordabilityTest {
 	}
 
 	private static Run upgradedRunInLayerTwo() {
-		return EarlyRunModel.run(Zone.load("upper_levels"), EarlyRunModel.mole(2, 2, 2), EarlyRunModel.layerOneBlocks());
+		return upgradedRunInLayerTwo(0f);
+	}
+
+	private static Run upgradedRunInLayerTwo(float extraMass) {
+		return EarlyRunModel.run(Zone.load("upper_levels"), EarlyRunModel.mole(2, 2, 2), EarlyRunModel.layerOneBlocks(), extraMass);
 	}
 
 	// assertionException(String, Object...) leaves the placeholders unfilled in the report.
@@ -96,6 +103,30 @@ public class EconomyAffordabilityTest {
 	}
 
 	/**
+	 * The spoil hopper (#313) is the first lava counterplay and is bought before Deep Claim, so a stock Mole pays for it with one early layer 1
+	 * run. It carries a full bay and rack, which cut lift (W2): the climb and the Prospector's layer 2 runs must come out as they do without it.
+	 */
+	@GameTest
+	public void theSpoilHopperIsAffordableAfterOneLayerOneRunAndAFullBayDoesNotSlowTheClimb(GameTestHelper helper) {
+		float mass = EarlyRunModel.hopperMass();
+		PodStats stock = PodStats.base();
+		Run run = EarlyRunModel.run(Zone.load("topsoil_claims"), stock, 0, mass);
+		long price = UpgradeTuning.DEFAULT.price(ComponentTrack.SPOIL_HOPPER, 1);
+		LOGGER.info("[economy] spoil hopper ${}: {} layer 1 runs of {}; a full bay and rack weigh {} of {} engine power", price, run.toAfford(price), run, mass, stock.enginePower());
+		if (run.toAfford(price) != HOPPER_RUNS) {
+			throw failure(helper, "the spoil hopper costs $%d, which is %d layer 1 runs of $%.0f with a full bay; %d expected", price, run.toAfford(price), run.net(), HOPPER_RUNS);
+		}
+		if (EarlyRunModel.climbSpeed(stock, mass) != stock.maxClimbSpeed()) {
+			throw failure(helper, "a full bay and rack of mass %.1f slow the climb to %.3f from the rotor's %.3f", mass, EarlyRunModel.climbSpeed(stock, mass), stock.maxClimbSpeed());
+		}
+		int restoreRuns = upgradedRunInLayerTwo(mass).toAfford(HangarTuning.DEFAULT.restoreCost(Chassis.PROSPECTOR).money());
+		if (restoreRuns != PROSPECTOR_RUNS) {
+			throw failure(helper, "with a full bay and rack the Prospector restore takes %d layer 2 runs, expected %d", restoreRuns, PROSPECTOR_RUNS);
+		}
+		helper.succeed();
+	}
+
+	/**
 	 * The thermal tier (#300) is the scanner's tier 2, which the standard ladder prices with the other tier 2 parts. A tier 2 part is a
 	 * layer 2 buy: a run there, with tier 2 parts, pays for it in two runs at most.
 	 */
@@ -109,6 +140,66 @@ public class EconomyAffordabilityTest {
 		if (runs > EARLY_BUY_RUNS) {
 			throw failure(helper, "the thermal scanner (tier %d) costs $%d, which is %d layer 2 runs of $%.0f; at most %d are allowed",
 					tier, price, runs, run.net(), EARLY_BUY_RUNS);
+		}
+		helper.succeed();
+	}
+
+	/**
+	 * Tank refills that a one-way bore of all of layer 1 takes, for a Mole whose tank is of tier 0 to 6, in the deepest zone (it
+	 * changes drill time per slab through the ore's hardness, so it is the dearest). Literals: a change to the tank ladder, the burn
+	 * rates, the drill or layer 1's height moves them.
+	 */
+	private static final int[] BORE_TANKS_BY_TANK_TIER = {14, 10, 6, 4, 3, 2, 1};
+	private static final int BORE_LITRES = 139;
+	/** Litres (in tenths) of a braked drive down layer 1's 192 blocks at 0.6 blocks per tick: 16 s, the rotor on half of it. */
+	private static final int DRIVE_DOWN_DECILITRES = 20;
+	/** The terminal sink speed of a pod in blocks per tick: gravity 0.08 times drag 0.98 over the 0.02 the drag removes. */
+	private static final double FREE_FALL_TERMINAL_SINK = 3.92;
+	private static final int PROSPECTOR_RUNS = 4;
+
+	@GameTest
+	public void aOneWayBoreOfLayerOneTakesTheTanksThatTheLadderGives(GameTestHelper helper) {
+		Zone zone = Zone.load("deep_claim");
+		double litres = EarlyRunModel.boreLitres(zone, PodStats.base(), EarlyRunModel.layerOneBlocks());
+		LOGGER.info("[fuel] one-way bore of layer 1: {} L", litres);
+		if (BORE_TANKS_BY_TANK_TIER.length != ComponentTrack.FUEL_TANK.maxTier() + 1) {
+			throw failure(helper, "the test pins %d tank tiers, the track has %d", BORE_TANKS_BY_TANK_TIER.length, ComponentTrack.FUEL_TANK.maxTier() + 1);
+		}
+		if (Math.round(litres) != BORE_LITRES) {
+			throw failure(helper, "a one-way bore of layer 1 burns %.1f L, expected %d", litres, BORE_LITRES);
+		}
+		for (int tier = 0; tier < BORE_TANKS_BY_TANK_TIER.length; tier++) {
+			int tanks = (int) Math.ceil(litres / EarlyRunModel.mole(0, tier, 0).tankLitres());
+			LOGGER.info("[fuel] tank tier {}: {} tanks", tier, tanks);
+			if (tanks != BORE_TANKS_BY_TANK_TIER[tier]) {
+				throw failure(helper, "a tier %d tank needs %d refills for the bore, expected %d", tier, tanks, BORE_TANKS_BY_TANK_TIER[tier]);
+			}
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aStockMoleDrivesDownItsOwnShaftBrakedButCannotFallDownIt(GameTestHelper helper) {
+		PodStats stock = PodStats.base();
+		double litres = EarlyRunModel.driveDownLitres(stock, EarlyRunModel.layerOneBlocks());
+		LOGGER.info("[fuel] a braked drive down layer 1's shaft burns {} L of a {} L tank", litres, stock.tankLitres());
+		if (Math.round(litres * 10) != DRIVE_DOWN_DECILITRES) {
+			throw failure(helper, "a braked drive down the shaft burns %.2f L, expected %.1f", litres, DRIVE_DOWN_DECILITRES / 10.0);
+		}
+		if (EarlyRunModel.DRIVE_DOWN_SINK > stock.hardLandingSpeed()
+				|| HardLanding.hullDamage(stock, FREE_FALL_TERMINAL_SINK, 1f) < stock.maxHull()) {
+			throw failure(helper, "a braked drive at %s should land softly and a free fall at %s should wreck a stock hull",
+					EarlyRunModel.DRIVE_DOWN_SINK, FREE_FALL_TERMINAL_SINK);
+		}
+		helper.succeed();
+	}
+
+	/** The layer 2 runs assume a pod that starts at the bottom of layer 1's shaft; the Prospector takes this many of them. */
+	@GameTest
+	public void theProspectorRestoreTakesTheLayerTwoRunsThePlanSays(GameTestHelper helper) {
+		int runs = upgradedRunInLayerTwo().toAfford(HangarTuning.DEFAULT.restoreCost(Chassis.PROSPECTOR).money());
+		if (runs != PROSPECTOR_RUNS) {
+			throw failure(helper, "the Prospector restore takes %d layer 2 runs, expected %d", runs, PROSPECTOR_RUNS);
 		}
 		helper.succeed();
 	}

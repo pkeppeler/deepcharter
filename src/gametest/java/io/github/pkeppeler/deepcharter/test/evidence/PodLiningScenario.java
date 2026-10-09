@@ -25,12 +25,14 @@ import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
 /**
  * Evidence scenario "pod-lining" (#313): a pilot in a pod with the thermal scanner bores down a shaft with a lava pocket on either
  * side of it. The scanner shows the lava ahead, so the pilot lets go of the drill, presses the lining key, and the pod stands still
  * while it places slag brick over the lava beside the next slab. Then it bores on, lines the second slab of the pocket the same way,
- * and drills past the pocket with the hull as it was and no lava ever touching the pod.
+ * and drills past the pocket with the hull as it was and no lava ever touching the pod. The pod has the spoil hopper, so the stone it bores
+ * becomes the spoil that the HUD counts.
  */
 public class PodLiningScenario extends EvidenceScenario {
 	private static final int X = 4500;
@@ -69,6 +71,7 @@ public class PodLiningScenario extends EvidenceScenario {
 				pod.setYRot(FACING_EAST);
 				one.addFreshEntity(pod);
 				ScannerPods.fit(server, player, pod, THERMAL_TIER);
+				ScannerPods.fit(server, player, pod, ComponentTrack.SPOIL_HOPPER, 1);
 				pod.setFuel(100f);
 				PodLining.modify(pod, state -> new PodLining.State(0, BRICKS, 0, false, false));
 				if (!player.startRiding(pod)) {

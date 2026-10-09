@@ -28,8 +28,8 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
  * @param enginePower             rotor power; lift is this minus the cargo mass
  * @param thrustAcceleration      upward acceleration at full lift
  * @param maxClimbSpeed           the rotor cannot push the pod up faster than this
- * @param hardLandingDistance     a fall of this many blocks or fewer does no damage
- * @param hullDamagePerBlock      hull damage for each block fallen beyond that
+ * @param hardLandingSpeed     a landing at this sink speed (blocks per tick) or slower does no damage
+ * @param hullDamagePerSpeed      hull damage for each block per tick of landing speed beyond that
  * @param ticksPerHardness        ticks the drill needs at the surface for each point of block hardness
  * @param crustHullDamage         hull lost for each crust slab bored
  * @param alignSpeed              blocks per tick the pod slides to centre itself in its bore
@@ -40,7 +40,7 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
  * @param drillingLitresPerSecond fuel burned drilling
  */
 public record PodStats(float maxHull, float horizontalSpeed, float enginePower, float thrustAcceleration,
-		float maxClimbSpeed, float hardLandingDistance, float hullDamagePerBlock, float ticksPerHardness,
+		float maxClimbSpeed, float hardLandingSpeed, float hullDamagePerSpeed, float ticksPerHardness,
 		float crustHullDamage, float alignSpeed, int cargoSlots, float tankLitres, float idleLitresPerSecond,
 		float movingLitresPerSecond, float drillingLitresPerSecond) {
 
@@ -72,8 +72,8 @@ public record PodStats(float maxHull, float horizontalSpeed, float enginePower, 
 		requirePositive("enginePower", enginePower);
 		requireNotNegative("thrustAcceleration", thrustAcceleration);
 		requireNotNegative("maxClimbSpeed", maxClimbSpeed);
-		requireNotNegative("hardLandingDistance", hardLandingDistance);
-		requireNotNegative("hullDamagePerBlock", hullDamagePerBlock);
+		requireNotNegative("hardLandingSpeed", hardLandingSpeed);
+		requireNotNegative("hullDamagePerSpeed", hullDamagePerSpeed);
 		requirePositive("ticksPerHardness", ticksPerHardness);
 		requireNotNegative("crustHullDamage", crustHullDamage);
 		requireNotNegative("alignSpeed", alignSpeed);
@@ -98,99 +98,99 @@ public record PodStats(float maxHull, float horizontalSpeed, float enginePower, 
 		PodTuning.Drill drill = tuning.drill();
 		PodTuning.Fuel fuel = tuning.fuel();
 		return new PodStats(tuning.shell().fullHull(), movement.horizontalSpeed(), movement.enginePower(),
-				movement.thrustAcceleration(), movement.maxClimbSpeed(), movement.hardLandingDistance(),
-				movement.hullDamagePerBlock(), drill.ticksPerHardness(), drill.crustHullDamage(), (float) drill.alignSpeed(),
+				movement.thrustAcceleration(), movement.maxClimbSpeed(), movement.hardLandingSpeed(),
+				movement.hullDamagePerSpeed(), drill.ticksPerHardness(), drill.crustHullDamage(), (float) drill.alignSpeed(),
 				tuning.cargo().slots(), fuel.tankLitres(), fuel.idleLitresPerSecond(), fuel.movingLitresPerSecond(),
 				fuel.drillingLitresPerSecond());
 	}
 
 	public PodStats withMaxHull(float maxHull) {
-		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingDistance,
-				hullDamagePerBlock, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
+		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingSpeed,
+				hullDamagePerSpeed, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
 				idleLitresPerSecond, movingLitresPerSecond, drillingLitresPerSecond);
 	}
 
 	public PodStats withHorizontalSpeed(float horizontalSpeed) {
-		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingDistance,
-				hullDamagePerBlock, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
+		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingSpeed,
+				hullDamagePerSpeed, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
 				idleLitresPerSecond, movingLitresPerSecond, drillingLitresPerSecond);
 	}
 
 	public PodStats withEnginePower(float enginePower) {
-		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingDistance,
-				hullDamagePerBlock, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
+		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingSpeed,
+				hullDamagePerSpeed, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
 				idleLitresPerSecond, movingLitresPerSecond, drillingLitresPerSecond);
 	}
 
 	public PodStats withThrustAcceleration(float thrustAcceleration) {
-		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingDistance,
-				hullDamagePerBlock, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
+		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingSpeed,
+				hullDamagePerSpeed, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
 				idleLitresPerSecond, movingLitresPerSecond, drillingLitresPerSecond);
 	}
 
 	public PodStats withMaxClimbSpeed(float maxClimbSpeed) {
-		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingDistance,
-				hullDamagePerBlock, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
+		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingSpeed,
+				hullDamagePerSpeed, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
 				idleLitresPerSecond, movingLitresPerSecond, drillingLitresPerSecond);
 	}
 
-	public PodStats withHardLandingDistance(float hardLandingDistance) {
-		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingDistance,
-				hullDamagePerBlock, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
+	public PodStats withHardLandingSpeed(float hardLandingSpeed) {
+		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingSpeed,
+				hullDamagePerSpeed, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
 				idleLitresPerSecond, movingLitresPerSecond, drillingLitresPerSecond);
 	}
 
-	public PodStats withHullDamagePerBlock(float hullDamagePerBlock) {
-		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingDistance,
-				hullDamagePerBlock, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
+	public PodStats withHullDamagePerSpeed(float hullDamagePerSpeed) {
+		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingSpeed,
+				hullDamagePerSpeed, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
 				idleLitresPerSecond, movingLitresPerSecond, drillingLitresPerSecond);
 	}
 
 	public PodStats withTicksPerHardness(float ticksPerHardness) {
-		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingDistance,
-				hullDamagePerBlock, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
+		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingSpeed,
+				hullDamagePerSpeed, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
 				idleLitresPerSecond, movingLitresPerSecond, drillingLitresPerSecond);
 	}
 
 	public PodStats withCrustHullDamage(float crustHullDamage) {
-		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingDistance,
-				hullDamagePerBlock, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
+		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingSpeed,
+				hullDamagePerSpeed, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
 				idleLitresPerSecond, movingLitresPerSecond, drillingLitresPerSecond);
 	}
 
 	public PodStats withAlignSpeed(float alignSpeed) {
-		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingDistance,
-				hullDamagePerBlock, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
+		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingSpeed,
+				hullDamagePerSpeed, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
 				idleLitresPerSecond, movingLitresPerSecond, drillingLitresPerSecond);
 	}
 
 	public PodStats withCargoSlots(int cargoSlots) {
-		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingDistance,
-				hullDamagePerBlock, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
+		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingSpeed,
+				hullDamagePerSpeed, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
 				idleLitresPerSecond, movingLitresPerSecond, drillingLitresPerSecond);
 	}
 
 	public PodStats withTankLitres(float tankLitres) {
-		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingDistance,
-				hullDamagePerBlock, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
+		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingSpeed,
+				hullDamagePerSpeed, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
 				idleLitresPerSecond, movingLitresPerSecond, drillingLitresPerSecond);
 	}
 
 	public PodStats withIdleLitresPerSecond(float idleLitresPerSecond) {
-		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingDistance,
-				hullDamagePerBlock, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
+		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingSpeed,
+				hullDamagePerSpeed, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
 				idleLitresPerSecond, movingLitresPerSecond, drillingLitresPerSecond);
 	}
 
 	public PodStats withMovingLitresPerSecond(float movingLitresPerSecond) {
-		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingDistance,
-				hullDamagePerBlock, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
+		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingSpeed,
+				hullDamagePerSpeed, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
 				idleLitresPerSecond, movingLitresPerSecond, drillingLitresPerSecond);
 	}
 
 	public PodStats withDrillingLitresPerSecond(float drillingLitresPerSecond) {
-		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingDistance,
-				hullDamagePerBlock, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
+		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingSpeed,
+				hullDamagePerSpeed, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
 				idleLitresPerSecond, movingLitresPerSecond, drillingLitresPerSecond);
 	}
 

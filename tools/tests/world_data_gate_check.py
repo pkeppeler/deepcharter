@@ -1,18 +1,14 @@
 """Tests the world-data gate in gradle/gametest.gradle: a direct getDataStorage() swap in a gametest file fails the build unless a
 `// world-data: <reason>` marker with a reason sits on its line or the one above.
 
-Runs generateGametestModJson against a fixture tree (-PgametestJavaRoot), so it needs the repo's Gradle wrapper on JDK 25 and takes a
-few seconds per run. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
-A passing run leaves the fixture's mod json in build/generated/gametest-resources; the next real build regenerates it.
-Usage: python3 -I tools/tests/world_data_gate_check.py
+Its fixture trees go through the scan of generateGametestModJson in one Gradle run (gate_checks.py, gate_batch.py), so it needs the
+repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
+Usage: python3 -I tools/tests/gate_checks.py world_data
 """
-import subprocess
-import tempfile
 import unittest
-from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[2]
-PACKAGE = "io/github/pkeppeler/deepcharter/test"
+import gate_batch
+from gate_batch import Case
 
 SERVER_TEST = """
 public class FixtureTest {
@@ -54,58 +50,51 @@ public class MentionsFixture {
 SWAP = "level.getDataStorage().set(TYPE, record);"
 
 
-def write(root: Path, name: str, body: str) -> None:
-    path = root / PACKAGE / name
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(body)
 
-
-def generate(root: Path) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        ["./gradlew", "-q", "generateGametestModJson", f"-PgametestJavaRoot={root}"],
-        cwd=REPO, capture_output=True, text=True, check=False)
-
-
-class WorldDataGateTest(unittest.TestCase):
-    def fixture(self, directory: str) -> Path:
-        root = Path(directory)
-        write(root, "FixtureTest.java", SERVER_TEST)
-        write(root, "FixtureScenario.java", CLIENT_SCENARIO)
-        for name, body in CLEAN.items():
-            write(root, name, body)
-        return root
-
-    def test_clean_files_pass(self):
-        with tempfile.TemporaryDirectory() as directory:
-            result = generate(self.fixture(directory))
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-    def check_fails(self, body: str, label: str, line: int):
-        with tempfile.TemporaryDirectory() as directory:
-            root = self.fixture(directory)
-            write(root, "SwapsFixture.java", f"""
+def swaps(body: str) -> str:
+    return f"""
 public class SwapsFixture {{
     void swap(ServerLevel level) {{
 {body}
     }}
 }}
-""")
-            result = generate(root)
-            self.assertNotEqual(result.returncode, 0, f"the gate should fail the build for {label}")
-            output = result.stdout + result.stderr
-            self.assertIn(f"SwapsFixture:{line} swaps or keeps getDataStorage() directly", output)
-            self.assertIn("WorldData.with", output)
-            self.assertNotIn("MarkedAboveFixture", output)
-
-    def test_unmarked_swap_fails(self):
-        self.check_fails(f"        {SWAP}", "an unmarked swap", 4)
-
-    def test_marker_without_a_reason_or_in_a_string_does_not_count(self):
-        self.check_fails(f"        // world-data:\n        {SWAP}", "a bare marker", 5)
-        self.check_fails(f"        {SWAP} // world-data:   ", "a same-line bare marker", 4)
-        self.check_fails(f'        String note = "// world-data: not a comment"; {SWAP}', "a marker in a string", 4)
-        self.check_fails(f'        String note = """\n            // world-data: in a text block\n            """; {SWAP}', "a marker in a text block", 6)
+"""
 
 
-if __name__ == "__main__":
-    unittest.main()
+# label: (body of the swapping method, line the gate reports)
+BAD = {
+    "an unmarked swap": (f"        {SWAP}", 4),
+    "a bare marker": (f"        // world-data:\n        {SWAP}", 5),
+    "a same-line bare marker": (f"        {SWAP} // world-data:   ", 4),
+    "a marker in a string": (f'        String note = "// world-data: not a comment"; {SWAP}', 4),
+    "a marker in a text block": (f'        String note = """\n            // world-data: in a text block\n            """; {SWAP}', 6),
+}
+
+
+def fixture(extra: dict[str, str]) -> dict[str, str]:
+    return {"FixtureTest.java": SERVER_TEST, "FixtureScenario.java": CLIENT_SCENARIO, **CLEAN, **extra}
+
+
+CASES = {
+    "clean": Case(fixture({}), None),
+    **{f"bad/{label}": Case(fixture({"SwapsFixture.java": swaps(body)}), None) for label, (body, _) in BAD.items()},
+}
+
+
+def outcome(label: str) -> gate_batch.Result:
+    return gate_batch.result(f"{__name__}/{label}")
+
+
+class WorldDataGateTest(unittest.TestCase):
+    def test_clean_files_pass(self):
+        result = outcome("clean")
+        self.assertTrue(result.ok, result.message)
+
+    def test_unmarked_swap_or_unusable_marker_fails(self):
+        for label, (_, line) in BAD.items():
+            with self.subTest(label):
+                result = outcome(f"bad/{label}")
+                self.assertFalse(result.ok, f"the gate should fail the build for {label}")
+                self.assertIn(f"SwapsFixture:{line} swaps or keeps getDataStorage() directly", result.message)
+                self.assertIn("WorldData.with", result.message)
+                self.assertNotIn("MarkedAboveFixture", result.message)

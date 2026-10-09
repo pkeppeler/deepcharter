@@ -16,10 +16,12 @@
   "hud.deepcharter.pod.cargo": "Cargo %s",
   "hud.deepcharter.pod.depth": "Y %s",
   "hud.deepcharter.pod.fuel": "Fuel %s%%",
+  "hud.deepcharter.pod.hard_landing": "HARD LANDING",
   "hud.deepcharter.pod.hull": "Hull %s/%s",
   "hud.deepcharter.pod.lining": "LINING %s",
   "hud.deepcharter.pod.lining_dry": "OUT OF SLAG BRICK",
   "hud.deepcharter.pod.slag": "Slag %s  Spoil %s",
+  "hud.deepcharter.pod.slag_only": "Slag %s",
   "hud.deepcharter.pod.stranded": "STRANDED",
   "key.deepcharter.line_slab": "Line the slab with slag brick"
 }

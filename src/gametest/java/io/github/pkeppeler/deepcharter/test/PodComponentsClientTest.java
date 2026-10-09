@@ -24,6 +24,8 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+
 /**
  * Client GameTest for #65: the parts of a pod reach the client, so the HUD shows the hull as points out of the pod's real
  * maximum, and the cargo screen has one slot for each slot of the bay.
@@ -43,9 +45,7 @@ public class PodComponentsClientTest implements FabricClientGameTest {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			singleplayer.getServer().runOnServer(server -> {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-				if (Charters.found(server, player.getUUID(), "Client components").isPresent()) {
-					throw new AssertionError("the player could not found a charter");
-				}
+				require(Charters.found(server, player.getUUID(), "Client components").isEmpty(), "the player could not found a charter");
 				CharterId charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id();
 				PodEntity pod = PodRegistry.POD.create(player.level(), EntitySpawnReason.COMMAND);
 				pod.setPos(player.position());
@@ -57,9 +57,7 @@ public class PodComponentsClientTest implements FabricClientGameTest {
 				for (OreType type : LOAD) {
 					pod.cargo().tryAdd(pod, OreRegistry.stack(type));
 				}
-				if (!player.startRiding(pod)) {
-					throw new AssertionError("the charter's founder could not mount the pod");
-				}
+				require(player.startRiding(pod), "the charter's founder could not mount the pod");
 			});
 			// The registration, the parts and the hull reach the client in separate packets: wait for each value read below.
 			ClientWait.until(context, "the pod with its registration, parts and hull of " + HULL_NOW + "/" + HULL_MAX,
@@ -71,13 +69,9 @@ public class PodComponentsClientTest implements FabricClientGameTest {
 							: "no pod under the player");
 
 			int maxHull = context.computeOnClient(client -> Math.round(((PodEntity) client.player.getVehicle()).maxHull()));
-			if (maxHull != HULL_MAX) {
-				throw new AssertionError("The client should work out the pod's maximum hull " + HULL_MAX + " from the synced parts, got " + maxHull);
-			}
+			require(maxHull == HULL_MAX, "The client should work out the pod's maximum hull " + HULL_MAX + " from the synced parts, got " + maxHull);
 			List<Component> lines = context.computeOnClient(client -> PodStatusHud.lines((PodEntity) client.player.getVehicle()));
-			if (!lines.getFirst().getString().equals("Hull 150/300")) {
-				throw new AssertionError("The HUD should show the hull as 150/300, showed " + lines.getFirst().getString());
-			}
+			require(lines.getFirst().getString().equals("Hull 150/300"), "The HUD should show the hull as 150/300, showed " + lines.getFirst().getString());
 			context.waitTicks(10);
 			context.takeScreenshot("m2-pod-components-hud");
 
@@ -92,10 +86,8 @@ public class PodComponentsClientTest implements FabricClientGameTest {
 			int slots = context.computeOnClient(client -> ((OreCargoMenu) client.player.containerMenu).cargoSlots());
 			int menuSlots = context.computeOnClient(client -> client.player.containerMenu.slots.size());
 			int shown = context.computeOnClient(client -> ((OreCargoMenu) client.player.containerMenu).shownOre().size());
-			if (slots != BAY_SLOTS || menuSlots != BAY_SLOTS || shown != LOAD.length) {
-				throw new AssertionError("The cargo screen should have " + BAY_SLOTS + " slots and show " + LOAD.length + " ore, has "
+			require(slots == BAY_SLOTS && menuSlots == BAY_SLOTS && shown == LOAD.length, "The cargo screen should have " + BAY_SLOTS + " slots and show " + LOAD.length + " ore, has "
 						+ slots + " slots (" + menuSlots + " in the menu) and shows " + shown);
-			}
 			context.waitTicks(10);
 			context.takeScreenshot("m2-pod-components-cargo");
 		}

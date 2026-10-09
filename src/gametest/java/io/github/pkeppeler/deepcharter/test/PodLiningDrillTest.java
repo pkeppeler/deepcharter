@@ -25,9 +25,11 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
 /**
- * Server GameTests for what the drill does with hand lining (#313), in layer 1: it keeps the waste rock it bores as spoil, up to the
+ * Server GameTests for what the drill does with hand lining (#313), in layer 1: it keeps the waste rock it bores as spoil when the pod has a hopper (and none without), up to the
  * bay's size and never the ore or the air, and it stops while the pilot lines. Each test has its own X, so the blocks it changes
  * never touch another test's.
  */
@@ -94,8 +96,7 @@ public class PodLiningDrillTest {
 		ServerLevel level = layer(helper);
 		room(level, x);
 		level.setBlock(new BlockPos(x - 1, FLOOR - 1, Z - 1), OreRegistry.block(OreType.IRONIUM).defaultBlockState(), 3);
-		Rig rig = Rig.await(helper, level, x, "spoil-ore", (pod, pilot) -> {
-		});
+		Rig rig = Rig.await(helper, level, x, "spoil-ore", (pod, pilot) -> fitHopper(helper, pod, pilot));
 		helper.onEachTick(() -> {
 			if (!rig.ready() || !slabBored(level, x)) {
 				return;
@@ -112,11 +113,36 @@ public class PodLiningDrillTest {
 	}
 
 	@GameTest(maxTicks = MAX_TICKS)
+	public void aPodWithoutTheHopperKeepsNoSpoilAndStillKeepsOre(GameTestHelper helper) {
+		int x = 3892;
+		ServerLevel level = layer(helper);
+		room(level, x);
+		level.setBlock(new BlockPos(x - 1, FLOOR - 1, Z - 1), OreRegistry.block(OreType.IRONIUM).defaultBlockState(), 3);
+		Rig rig = Rig.await(helper, level, x, "spoil-none", (pod, pilot) -> {
+		});
+		helper.onEachTick(() -> {
+			if (!rig.ready() || !slabBored(level, x)) {
+				return;
+			}
+			rig.pilot.releaseInput();
+			if (PodLining.of(rig.pod).spoil() != 0 || rig.pod.cargo().entries().size() != 1) {
+				throw failure(helper, "a pod with no hopper destroys the stone as before and keeps the ore, it holds %s spoil and %s cargo",
+						PodLining.of(rig.pod).spoil(), rig.pod.cargo().entries().size());
+			}
+			rig.pod.discard();
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
 	public void aFullBayLosesTheRockAndDrillingGoesOn(GameTestHelper helper) {
 		int x = 3764;
 		ServerLevel level = layer(helper);
 		room(level, x);
-		Rig rig = Rig.await(helper, level, x, "spoil-full", (pod, pilot) -> PodLining.modify(pod, state -> state.withSpoil(62)));
+		Rig rig = Rig.await(helper, level, x, "spoil-full", (pod, pilot) -> {
+			fitHopper(helper, pod, pilot);
+			PodLining.modify(pod, state -> state.withSpoil(62));
+		});
 		helper.onEachTick(() -> {
 			if (!rig.ready() || !slabBored(level, x)) {
 				return;
@@ -162,6 +188,11 @@ public class PodLiningDrillTest {
 				helper.succeed();
 			}
 		});
+	}
+
+	/** A spoil hopper on the pod, which the pilot's charter owns. */
+	private static void fitHopper(GameTestHelper helper, PodEntity pod, MockPlayer pilot) {
+		ScannerPods.fit(helper.getLevel().getServer(), pilot.player(), pod, ComponentTrack.SPOIL_HOPPER, 1);
 	}
 
 	private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {

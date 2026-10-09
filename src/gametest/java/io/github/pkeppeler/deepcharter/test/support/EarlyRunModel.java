@@ -21,7 +21,9 @@ import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodDrill;
+import io.github.pkeppeler.deepcharter.pod.PodLiningTuning;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
+import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 
@@ -35,6 +37,10 @@ import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 public final class EarlyRunModel {
 	/** (A) The share of the expected ore that a player really gets: bore steps that miss a vein, a company rock to go round, a dead end. */
 	public static final double YIELD = 0.7;
+
+	/** (A) Blocks per tick that a pilot braking down a shaft holds the pod at: under the 0.7 landing speed, with room for the pilot's overshoot. */
+	public static final double DRIVE_DOWN_SINK = 0.6;
+	private static final int TICKS_PER_SECOND = 20;
 
 	private EarlyRunModel() {
 	}
@@ -84,6 +90,59 @@ public final class EarlyRunModel {
 		}
 	}
 
+	/**
+	 * The litres to bore {@code blocks} slabs straight down from the surface in one go, with no climb back: the cost of a first
+	 * descent that cannot refuel at the pump. The way back down an open shaft is a braked drive instead (see {@link #driveDownLitres}).
+	 */
+	public static double boreLitres(Zone zone, PodStats stats, int blocks) {
+		double litres = 0;
+		for (int slab = 1; slab <= blocks; slab++) {
+			litres += slabSeconds(zone, stats, slab - 0.5) * (stats.drillingLitresPerSecond() + stats.idleLitresPerSecond());
+		}
+		return litres;
+	}
+
+	/**
+	 * The litres to drive down {@code blocks} of open shaft with the rotor braking (#319). (A) The pilot holds the sink at
+	 * {@link #DRIVE_DOWN_SINK}, under the hard landing speed. Holding a speed takes the rotor for the share of ticks in which gravity
+	 * is paid back ({@code gravity / thrustAcceleration}); those ticks burn the moving rate and the others the idle rate.
+	 */
+	public static double driveDownLitres(PodStats stats, int blocks) {
+		return driveDownLitres(stats, blocks, 0f);
+	}
+
+	/**
+	 * As {@link #driveDownLitres(PodStats, int)} for a pod that carries {@code extraMass} (a spoil hopper's bay and a brick rack, see
+	 * {@link #hopperMass}). Mass cuts lift, and lift scales the rotor's thrust, so holding the sink takes the rotor for a larger share of the ticks.
+	 */
+	public static double driveDownLitres(PodStats stats, int blocks, float extraMass) {
+		double seconds = blocks / (DRIVE_DOWN_SINK * TICKS_PER_SECOND);
+		double thrustShare = PodTuning.DEFAULT.movement().gravity() / (stats.thrustAcceleration() * liftShare(stats, extraMass));
+		return seconds * (thrustShare * stats.movingLitresPerSecond() + (1 - thrustShare) * stats.idleLitresPerSecond());
+	}
+
+	/** (A) The mass of a full spoil bay and a full brick rack: what a pod with a hopper adds to the cargo mass at worst. */
+	public static float hopperMass() {
+		PodLiningTuning tuning = PodLiningTuning.DEFAULT;
+		return tuning.spoilCapacity() * tuning.spoilMass() + tuning.brickCapacity() * tuning.brickMass();
+	}
+
+	/** The share of the engine's power that is lift once {@code extraMass} is aboard (ore is not counted: a run that climbs home climbs light). */
+	public static double liftShare(PodStats stats, float extraMass) {
+		return Math.max(0, stats.enginePower() - extraMass) / stats.enginePower();
+	}
+
+	/**
+	 * Blocks per tick the rotor climbs at, as {@code PodMovement} works it out: each tick adds the thrust and takes gravity, and drag keeps a
+	 * share, so the speed settles where the two balance, and the rotor's own cap ({@code maxClimbSpeed}) limits it.
+	 */
+	public static double climbSpeed(PodStats stats, float extraMass) {
+		PodTuning.Movement movement = PodTuning.DEFAULT.movement();
+		double thrust = stats.thrustAcceleration() * liftShare(stats, extraMass);
+		double settled = (thrust - movement.gravity()) * movement.verticalDrag() / (1 - movement.verticalDrag());
+		return Math.max(0, Math.min(stats.maxClimbSpeed(), settled));
+	}
+
 	/** Blocks of layer 1, which a run in layer 2 climbs through twice (the shaft is already bored). */
 	public static int layerOneBlocks() {
 		return json("/data/deepcharter/dimension/layer_1.json").getAsJsonObject("generator").getAsJsonObject("biome_source")
@@ -101,27 +160,25 @@ public final class EarlyRunModel {
 	}
 
 	/**
-	 * A run in {@code zone} that starts {@code shaftBlocks} below the surface with a full tank. (A) The bore goes straight down; it
+	 * A run in {@code zone} below {@code shaftBlocks} of open shaft, from the surface with a full tank. (A) The pod drives down the shaft
+	 * braked ({@link #driveDownLitres}), the bore goes straight down from its bottom; it
 	 * climbs back at the rotor's top climb speed; fuel is bought at the surface at {@link FuelTuning}'s price.
 	 */
 	public static Run run(Zone zone, PodStats stats, int shaftBlocks) {
-		int width = (int) Math.ceil(Chassis.MOLE.width());
-		int cells = width * width;
+		return run(zone, stats, shaftBlocks, 0f);
+	}
+
+	/** As {@link #run(Zone, PodStats, int)} for a pod that carries {@code extraMass}: it slows the climb if the lift falls far enough, and costs rotor fuel on the way down. */
+	public static Run run(Zone zone, PodStats stats, int shaftBlocks, float extraMass) {
+		int cells = cellsPerSlab();
 		double oreChance = zone.oreChance();
-		// A slab with ore in it takes as long as its hardest block; the zone fill replaces vanilla stone.
-		float stoneHardness = Blocks.STONE.defaultDestroyTime();
-		float oreHardness = zone.chances().keySet().stream().map(type -> OreRegistry.block(type).defaultDestroyTime()).max(Float::compare).orElseThrow();
-		double slabHasOre = 1 - Math.pow(1 - oreChance, cells);
-		double climbSecondsPerBlock = 1 / (stats.maxClimbSpeed() * 20);
+		double climbSecondsPerBlock = 1 / (climbSpeed(stats, extraMass) * 20);
 		int slabs = 0;
 		double litres = 0;
 		for (int next = 1;; next++) {
-			int depthFeet = (int) ((shaftBlocks + next / 2.0) * LayerTuning.DEFAULT.feetPerBlock());
-			double stoneTicks = PodDrill.drillTicks(stats, stoneHardness, depthFeet);
-			double oreTicks = PodDrill.drillTicks(stats, oreHardness, depthFeet);
-			double drillSeconds = (stoneTicks * (1 - slabHasOre) + oreTicks * slabHasOre) / 20;
+			double drillSeconds = slabSeconds(zone, stats, shaftBlocks + next / 2.0);
 			double climbSeconds = (shaftBlocks + next) * climbSecondsPerBlock;
-			double used = drillSeconds * next * stats.drillingLitresPerSecond() + climbSeconds * stats.movingLitresPerSecond()
+			double used = driveDownLitres(stats, shaftBlocks, extraMass) + drillSeconds * next * stats.drillingLitresPerSecond() + climbSeconds * stats.movingLitresPerSecond()
 					+ (drillSeconds * next + climbSeconds) * stats.idleLitresPerSecond();
 			if (used > stats.tankLitres()) {
 				break;
@@ -134,6 +191,22 @@ public final class EarlyRunModel {
 		double gross = averageOre * Math.min(ores, stats.cargoSlots());
 		double catalysts = slabs * cells * zone.catalystChance() * YIELD;
 		return new Run(slabs, litres, ores, gross, gross - litres * FuelTuning.DEFAULT.pricePerLitre(), catalysts);
+	}
+
+	private static int cellsPerSlab() {
+		int width = (int) Math.ceil(Chassis.MOLE.width());
+		return width * width;
+	}
+
+	/** Seconds to drill one slab at {@code depthBlocks} below the surface. A slab with ore in it takes as long as its hardest block; the zone fill replaces vanilla stone. */
+	private static double slabSeconds(Zone zone, PodStats stats, double depthBlocks) {
+		float stoneHardness = Blocks.STONE.defaultDestroyTime();
+		float oreHardness = zone.chances().keySet().stream().map(type -> OreRegistry.block(type).defaultDestroyTime()).max(Float::compare).orElseThrow();
+		double slabHasOre = 1 - Math.pow(1 - zone.oreChance(), cellsPerSlab());
+		int depthFeet = (int) (depthBlocks * LayerTuning.DEFAULT.feetPerBlock());
+		double stoneTicks = PodDrill.drillTicks(stats, stoneHardness, depthFeet);
+		double oreTicks = PodDrill.drillTicks(stats, oreHardness, depthFeet);
+		return (stoneTicks * (1 - slabHasOre) + oreTicks * slabHasOre) / 20;
 	}
 
 	private static JsonObject json(String resource) {

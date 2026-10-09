@@ -15,9 +15,11 @@ import net.minecraft.resources.Identifier;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
+import io.github.pkeppeler.deepcharter.pod.HardLanding;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodSeat;
+import io.github.pkeppeler.deepcharter.pod.PodStats;
 
 /** Plain text readout of the ridden pod; its margin, spacing and colour are the HUD theme's. */
 public final class PodStatusHud {
@@ -41,8 +43,10 @@ public final class PodStatusHud {
 		lines.add(Component.translatable("hud.deepcharter.pod.cargo", pod.cargoUsed()));
 		lines.add(Component.translatable("hud.deepcharter.pod.depth", Math.round(pod.getY())));
 		PodLining.State lining = PodLining.of(pod);
-		if (lining.spoil() > 0 || lining.bricks() > 0) {
+		if (PodLining.hasHopper(pod)) {
 			lines.add(Component.translatable("hud.deepcharter.pod.slag", lining.bricks(), lining.spoil()));
+		} else if (lining.bricks() > 0) {
+			lines.add(Component.translatable("hud.deepcharter.pod.slag_only", lining.bricks()));
 		}
 		if (pod.stranded()) {
 			lines.add(Component.translatable("hud.deepcharter.pod.stranded"));
@@ -66,6 +70,13 @@ public final class PodStatusHud {
 		return PodLining.of(pod).dry() ? Optional.of(Component.translatable("hud.deepcharter.pod.lining_dry")) : Optional.empty();
 	}
 
+	/** The warning line shown, in its own colour, while the pod sinks faster than it can land without damage. */
+	public static Optional<Component> hardLandingLine(PodEntity pod) {
+		// The pod is moved by the server: the client reads its speed from where it was last tick.
+		double sinkSpeed = HardLanding.sinkSpeed(pod.getY() - pod.yo);
+		return HardLanding.isHard(PodStats.of(pod), sinkSpeed) ? Optional.of(Component.translatable("hud.deepcharter.pod.hard_landing")) : Optional.empty();
+	}
+
 	private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
 		Minecraft client = Minecraft.getInstance();
 		if (client.player == null || !(client.player.getVehicle() instanceof PodEntity pod) || !PodSeat.showsPodStatus(pod, client.player)) {
@@ -80,7 +91,8 @@ public final class PodStatusHud {
 		}
 		y = warning(graphics, font, look, burningLine(pod), look.podBurningColor(), y);
 		y = warning(graphics, font, look, liningLine(pod), look.podLiningColor(), y);
-		warning(graphics, font, look, outOfBrickLine(pod), look.podLiningDryColor(), y);
+		y = warning(graphics, font, look, outOfBrickLine(pod), look.podLiningDryColor(), y);
+		warning(graphics, font, look, hardLandingLine(pod), look.podHardLandingColor(), y);
 	}
 
 	/** Draws {@code line} at {@code y} in {@code color} if there is one, and returns the y of the next line. */

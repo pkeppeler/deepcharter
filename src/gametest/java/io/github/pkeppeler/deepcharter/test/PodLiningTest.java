@@ -18,6 +18,7 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
@@ -220,6 +221,55 @@ public class PodLiningTest {
 			}
 			helper.succeed();
 		});
+	}
+
+	@GameTest(maxTicks = LINING_BUDGET_TICKS)
+	public void aBlockThatOnlyHoldsWaterIsNotOpenAndStays(GameTestHelper helper) {
+		rock(helper);
+		caveEast(helper);
+		// A waterlogged chest in the ring holds water, and so reads as a fluid cell, but it is a block with an inventory: lining must not delete it.
+		BlockPos chest = new BlockPos(RING_EAST, 2, 4);
+		helper.setBlock(chest, Blocks.CHEST.defaultBlockState().setValue(BlockStateProperties.WATERLOGGED, true));
+		Rig rig = seat(helper, "Chest pilot", 20);
+		if (PodLining.cellsToLine(rig.pod).contains(helper.absolutePos(chest))) {
+			throw failure(helper, "a waterlogged chest is not an open cell");
+		}
+		PodLining.toggle(rig.pilot.player());
+		whenLiningEnds(helper, rig, () -> {
+			if (!helper.getBlockState(chest).is(Blocks.CHEST) || bricksIn(helper, ringEast()) != 3) {
+				throw failure(helper, "the chest stays and the other three cave cells are lined, placed %s", bricksIn(helper, ringEast()));
+			}
+			helper.succeed();
+		});
+	}
+
+	@GameTest
+	public void aCellHoldingAnotherPodIsNotBrickedIn(GameTestHelper helper) {
+		rock(helper);
+		caveEast(helper);
+		// A second pod stands in the cave, its box over the ring column.
+		helper.spawn(PodRegistry.POD, new Vec3(BEHIND, 2, 5));
+		Rig rig = seat(helper, "Neighbour pilot", 20);
+		if (!PodLining.cellsToLine(rig.pod).isEmpty()) {
+			throw failure(helper, "the cells the other pod fills are not lined: %s", PodLining.cellsToLine(rig.pod));
+		}
+		PodLining.toggle(rig.pilot.player());
+		if (PodLining.working(rig.pod) || bricksIn(helper, ringEast()) != 0) {
+			throw failure(helper, "nothing is lined round a slab whose open cells hold a pod");
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void fusedClearsTheOutOfBrickLineAndPlacedDoesNot(GameTestHelper helper) {
+		PodLining.State dry = new PodLining.State(10, 2, 3, false, true);
+		if (dry.fused(2, 1).dry()) {
+			throw failure(helper, "a fuse puts stock in the rack, which clears the out-of-brick line");
+		}
+		if (!dry.placed(true).dry() || !dry.placed(false).dry()) {
+			throw failure(helper, "placing a brick is not new stock, so it leaves the out-of-brick line as it was");
+		}
+		helper.succeed();
 	}
 
 	@GameTest(maxTicks = LINING_BUDGET_TICKS)

@@ -54,6 +54,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
 /**
  * Measures how often lava ends a bore (issue 231): a stock Mole with a tier 1 scanner drills from the top of layer 1's rock to the
@@ -74,8 +75,8 @@ import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
  *
  * <p>With {@value #LINING_ENV}{@code =<n>} the bot lines (#313): each time the pod reaches a new slab and a thermal tier scanner would
  * mark lava within {@code n} slabs below it (and within the thermal tier's spread across), it presses the lining key, as a pilot
- * does, and waits for the pod to finish before it bores on. The bot lines only on the way down and only while the pod rests on
- * its slab: it never flies, so it cannot stop in a fall. The rack starts with {@value #BRICKS_ENV} bricks (the rack's size by
+ * does, and waits for the pod to finish before it bores on. Its pod has the spoil hopper; a pod without one keeps no spoil. The bot
+ * lines only on the way down and only while the pod rests on its slab: it never flies, so it cannot stop in a fall. The rack starts with {@value #BRICKS_ENV} bricks (the rack's size by
  * default); the bot never fuses more, because a pilot cannot reach the processor mid-dive. The run prints a {@code [lava-bore] lining}
  * block with the bricks and the time it cost, to read against the same run without lining.
  */
@@ -435,6 +436,9 @@ public class LavaBoreTest {
 		pod.setPos(bore.centreX, feetY, bore.centreZ);
 		level.addFreshEntity(pod);
 		ScannerPods.fit(server, bore.pilot.player(), pod, SCANNER_TIER);
+		if (bore.lookahead > 0) {
+			ScannerPods.fit(server, bore.pilot.player(), pod, ComponentTrack.SPOIL_HOPPER, 1);
+		}
 		if (!bore.pilot.player().startRiding(pod)) {
 			throw helper.assertionException(Component.literal("pilot " + bore.index + " could not mount the pod"));
 		}

@@ -32,6 +32,8 @@ import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionPayload;
 import io.github.pkeppeler.deepcharter.transmission.Transmissions;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+
 /**
  * Client GameTest for #62. The overlay shows the transmission of a breach crossing over the fade, with {@code [CHARTER]} and
  * {@code [DIRECTOR]} filled in and the header in the colour of its framing. Transmissions fired for a charter reach the real client in
@@ -72,9 +74,7 @@ public class TransmissionsClientTest implements FabricClientGameTest {
 			String player = singleplayer.getServer().computeOnServer(server -> {
 				ServerPlayer first = server.getPlayerList().getPlayers().getFirst();
 				first.setPermanentlyInvulnerable(true);
-				if (Charters.found(server, first.getUUID(), CREW_NAME).isPresent()) {
-					throw new AssertionError("founding should succeed");
-				}
+				require(Charters.found(server, first.getUUID(), CREW_NAME).isEmpty(), "founding should succeed");
 				// Generate the arrival area in layer 2 now so the crossing does not wait on it.
 				ServerLevel two = server.getLevel(LayerChain.dimension(2));
 				for (int dx = -2; dx <= 2; dx++) {
@@ -89,19 +89,11 @@ public class TransmissionsClientTest implements FabricClientGameTest {
 
 			ClientWait.until(context, "transmission t05 on the overlay", client -> TransmissionOverlay.transmission().map(Transmission::id).equals(Optional.of(id("t05"))), client -> seen());
 			String body = context.computeOnClient(client -> TransmissionOverlay.bodyFull());
-			if (body.contains("[CHARTER]") || body.contains("[DIRECTOR]") || !body.contains(CREW_NAME) || !body.contains(player)) {
-				throw new AssertionError("The charter and Director fields should be filled with '" + CREW_NAME + "' and '" + player + "', the text is: " + body);
-			}
-			if (!context.computeOnClient(client -> TransmissionOverlay.headerFull()).equals("> LIVE FROM THE EMPLOYER")) {
-				throw new AssertionError("t05 is live from the employer, the header is: " + context.computeOnClient(client -> TransmissionOverlay.headerFull()));
-			}
+			require(!body.contains("[CHARTER]") && !body.contains("[DIRECTOR]") && body.contains(CREW_NAME) && body.contains(player), "The charter and Director fields should be filled with '" + CREW_NAME + "' and '" + player + "', the text is: " + body);
+			require(context.computeOnClient(client -> TransmissionOverlay.headerFull()).equals("> LIVE FROM THE EMPLOYER"), "t05 is live from the employer, the header is: " + context.computeOnClient(client -> TransmissionOverlay.headerFull()));
 			ClientWait.until(context, "the transmission typed out", client -> TransmissionOverlay.typed(), client -> seen());
-			if (!context.computeOnClient(client -> TransmissionOverlay.bodyShown().equals(TransmissionOverlay.bodyFull()))) {
-				throw new AssertionError("A typed transmission shows its whole text");
-			}
-			if (greenPixels(context.takeScreenshot("transmission-overlay")) < 50) {
-				throw new AssertionError("The overlay should draw its text on screen");
-			}
+			require(context.computeOnClient(client -> TransmissionOverlay.bodyShown().equals(TransmissionOverlay.bodyFull())), "A typed transmission shows its whole text");
+			require(greenPixels(context.takeScreenshot("transmission-overlay")) >= 50, "The overlay should draw its text on screen");
 
 			// The breach fade keeps running under the text: at its black plateau the text is the only bright thing on screen.
 			context.runOnClient(client -> {
@@ -110,9 +102,7 @@ public class TransmissionsClientTest implements FabricClientGameTest {
 				TransmissionOverlay.enqueue(new TransmissionPayload(id("t01"), CREW_NAME, player));
 			});
 			ClientWait.until(context, "the breach fade done with the transmission header shown", client -> BreachEffects.fadeAlpha(0f) >= 1f && TransmissionOverlay.active() && !TransmissionOverlay.headerShown().isEmpty(), client -> seen());
-			if (greenPixels(context.takeScreenshot("transmission-over-fade")) < 20) {
-				throw new AssertionError("The transmission should be drawn over the black of the fade, not under it");
-			}
+			require(greenPixels(context.takeScreenshot("transmission-over-fade")) >= 20, "The transmission should be drawn over the black of the fade, not under it");
 			context.runOnClient(client -> {
 				BreachEffects.reset();
 				TransmissionOverlay.reset();
@@ -120,9 +110,7 @@ public class TransmissionsClientTest implements FabricClientGameTest {
 
 			// A transmission the data file does not list must be dropped, not thrown from the packet handler, which would disconnect the player.
 			context.runOnClient(client -> TransmissionOverlay.enqueue(new TransmissionPayload(id("t99"), CREW_NAME, player)));
-			if (context.computeOnClient(client -> TransmissionOverlay.waiting() != 0 || TransmissionOverlay.active())) {
-				throw new AssertionError("An unknown transmission should be dropped");
-			}
+			require(!context.computeOnClient(client -> TransmissionOverlay.waiting() != 0 || TransmissionOverlay.active()), "An unknown transmission should be dropped");
 		}
 	}
 
@@ -135,17 +123,13 @@ public class TransmissionsClientTest implements FabricClientGameTest {
 		try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
 			UUID mock = two.mock().player().getUUID();
 			CharterId charter = two.server().computeOnServer(server -> {
-				if (Charters.found(server, mock, TWO_PLAYER_NAME).isPresent()) {
-					throw new AssertionError("founding should succeed");
-				}
+				require(Charters.found(server, mock, TWO_PLAYER_NAME).isEmpty(), "founding should succeed");
 				return Charters.charterOfOrThrow(server, mock).orElseThrow().id();
 			});
 			UUID real = two.server().computeOnServer(server -> server.getPlayerList().getPlayers().stream()
 					.map(player -> player.getUUID()).filter(uuid -> !uuid.equals(mock)).findFirst().orElseThrow());
 			two.server().runOnServer(server -> {
-				if (Charters.apply(server, real, charter).isPresent() || Charters.approve(server, mock, real).isPresent()) {
-					throw new AssertionError("applying and approving should succeed");
-				}
+				require(Charters.apply(server, real, charter).isEmpty() && Charters.approve(server, mock, real).isEmpty(), "applying and approving should succeed");
 			});
 
 			// Two at once: the first types out, the second waits for it.
@@ -154,30 +138,20 @@ public class TransmissionsClientTest implements FabricClientGameTest {
 				Transmissions.fire(server, charter, id("t06"));
 			});
 			ClientWait.until(context, "transmission t01 on the overlay", client -> TransmissionOverlay.transmission().map(Transmission::id).equals(Optional.of(id("t01"))), client -> seen());
-			if (context.computeOnClient(client -> TransmissionOverlay.waiting()) != 1) {
-				throw new AssertionError("The second transmission should wait behind the first");
-			}
+			require(context.computeOnClient(client -> TransmissionOverlay.waiting()) == 1, "The second transmission should wait behind the first");
 			String body = context.computeOnClient(client -> TransmissionOverlay.bodyFull());
-			if (!body.contains(TWO_PLAYER_NAME) || !body.contains(MOCK_NAME) || body.contains("[CHARTER]") || body.contains("[DIRECTOR]")) {
-				throw new AssertionError("The Director is " + MOCK_NAME + " and the charter " + TWO_PLAYER_NAME + ", the text is: " + body);
-			}
+			require(body.contains(TWO_PLAYER_NAME) && body.contains(MOCK_NAME) && !body.contains("[CHARTER]") && !body.contains("[DIRECTOR]"), "The Director is " + MOCK_NAME + " and the charter " + TWO_PLAYER_NAME + ", the text is: " + body);
 			ClientWait.until(context, "the transmission typed out", client -> TransmissionOverlay.typed(), client -> seen());
-			if (greenPixels(context.takeScreenshot("transmission-live")) < 50) {
-				throw new AssertionError("A live transmission is typed in phosphor green");
-			}
+			require(greenPixels(context.takeScreenshot("transmission-live")) >= 50, "A live transmission is typed in phosphor green");
 			ClientWait.until(context, "transmission t06 on the overlay", client -> TransmissionOverlay.transmission().map(Transmission::id).equals(Optional.of(id("t06"))), client -> seen());
 			ClientWait.until(context, "the transmission typed out", client -> TransmissionOverlay.typed(), client -> seen());
-			if (redPixels(context.takeScreenshot("transmission-unknown")) < 20) {
-				throw new AssertionError("A transmission from an unknown sender has a red header");
-			}
+			require(!(redPixels(context.takeScreenshot("transmission-unknown")) < 20), "A transmission from an unknown sender has a red header");
 
 			// Offline: the client leaves, the mock stays. The mock is sent these at once, the client when it logs in again.
 			two.connection().close();
 			ClientWait.until(context, "the client out of the world", client -> client.level == null);
 			for (int tick = 0; two.server().computeOnServer(server -> server.getPlayerCount()) > MOCK_ONLY; tick++) {
-				if (tick > CLIENT_TICK_FUSE) {
-					throw new AssertionError("the server never dropped the disconnected client");
-				}
+				require(tick <= CLIENT_TICK_FUSE, "the server never dropped the disconnected client");
 				context.waitTick();
 			}
 			List<Identifier> missed = two.server().computeOnServer(server -> {
@@ -185,16 +159,12 @@ public class TransmissionsClientTest implements FabricClientGameTest {
 				Transmissions.fire(server, charter, id("t09"));
 				return TransmissionData.get(server).progress(charter).unsent(real);
 			});
-			if (!missed.equals(List.of(id("t07"), id("t09")))) {
-				throw new AssertionError("The offline client has not been sent t07 and t09, in order: " + missed);
-			}
+			require(missed.equals(List.of(id("t07"), id("t09"))), "The offline client has not been sent t07 and t09, in order: " + missed);
 
 			try (var connection = two.server().connect()) {
 				ClientWait.until(context, "transmission t07 on the overlay", client -> TransmissionOverlay.transmission().map(Transmission::id).equals(Optional.of(id("t07"))), client -> seen());
 				ClientWait.until(context, "transmission t09 on the overlay", client -> TransmissionOverlay.transmission().map(Transmission::id).equals(Optional.of(id("t09"))), client -> seen());
-				if (!two.server().computeOnServer(server -> TransmissionData.get(server).progress(charter).unsent(real).isEmpty())) {
-					throw new AssertionError("Nothing should be left to send the client once the login has delivered it");
-				}
+				require(two.server().computeOnServer(server -> TransmissionData.get(server).progress(charter).unsent(real).isEmpty()), "Nothing should be left to send the client once the login has delivered it");
 			}
 		}
 	}

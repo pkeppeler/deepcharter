@@ -5,6 +5,7 @@
   "podBurningColor": "#FF5522",
   "podLiningColor": "#E8C170",
   "podLiningDryColor": "#FF9A2E",
+  "podHardLandingColor": "#FFB020",
   "altimeterMargin": 4,
   "altimeterColor": "#FFFFFF",
   "accountMargin": 4,

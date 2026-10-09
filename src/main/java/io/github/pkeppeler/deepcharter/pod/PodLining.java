@@ -27,11 +27,14 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.util.ExtraCodecs;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
@@ -39,18 +42,9 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
+import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
-/**
- * Hand lining (#313, rung 1 of the lava ladder). The drill keeps the waste rock it bores as spoil; the ore processor fuses spoil
- * into slag brick; and a seated pilot who presses the lining key places brick round the pod's slab, one brick every
- * {@link PodLiningTuning#ticksPerBrick} ticks, while the pod holds still. The pod's spoil and brick rack are one versioned
- * attachment, saved with the pod, carried across a breach with it, and synced to the clients that track it for the HUD.
- *
- * <p>What is lined ({@link #cellsToLine}): the open cells (air or fluid, lava first) beside the pod's footprint, from the slab below
- * it up to the top of its box, and the lava under the footprint. Rock is never replaced, so company rock and ore stay as they are,
- * and a brick is never placed for free: each one comes out of the rack (when {@link PodComponents#mayAccess} lets the pilot use the pod's
- * stores) or the pilot's inventory, and a press with none left shows the out-of-brick line instead.
- */
+/** Hand lining (#313): a pilot places slag brick round the slab so lava cannot flood the bore; a pod's spoil and brick rack are one versioned attachment. */
 public final class PodLining {
 	public static final int VERSION = 1;
 
@@ -98,7 +92,7 @@ public final class PodLining {
 			return new State(spoil, bricks, 0, true, false);
 		}
 
-		State placed(boolean fromRack) {
+		public State placed(boolean fromRack) {
 			return new State(spoil, fromRack ? bricks - 1 : bricks, used + 1, working, dry);
 		}
 
@@ -132,9 +126,14 @@ public final class PodLining {
 		PodStats.MODIFY.register(PodStats.CAP, (pod, stats) -> working(pod) ? stats.withHorizontalSpeed(0f).withThrustAcceleration(0f) : stats);
 	}
 
+	/** The pod's lining state, or empty when it is unreadable (logged once). Never throws. */
+	public static Optional<State> readable(PodEntity pod) {
+		return Versioned.readable(pod, STATE);
+	}
+
 	/** The pod's lining state, or the empty one when it is unreadable (logged once). Never throws. */
 	public static State of(PodEntity pod) {
-		return Versioned.readable(pod, STATE).orElse(State.EMPTY);
+		return readable(pod).orElse(State.EMPTY);
 	}
 
 	/** True while the pilot is lining: the pod neither drives nor drills. */
@@ -155,10 +154,15 @@ public final class PodLining {
 		return true;
 	}
 
-	/** The drill has bored one block of waste rock: the pod keeps it as spoil if the bay has room, and loses it if not. */
+	/** True when the pod has a spoil hopper that counts: only then does the drill keep stone. */
+	public static boolean hasHopper(PodEntity pod) {
+		return PodComponents.effectiveTier(pod, ComponentTrack.SPOIL_HOPPER) > 0;
+	}
+
+	/** The drill has bored one block of waste rock: a pod with a hopper keeps it as spoil if the bay has room, and loses it if not. */
 	static void keepSpoil(PodEntity pod) {
 		Optional<State> state = Versioned.readable(pod, STATE);
-		if (state.isPresent() && state.get().spoil() < PodLiningTuning.DEFAULT.spoilCapacity()) {
+		if (hasHopper(pod) && state.isPresent() && state.get().spoil() < PodLiningTuning.DEFAULT.spoilCapacity()) {
 			pod.setAttached(STATE, Versioned.of(state.get().withSpoil(state.get().spoil() + 1)));
 		}
 	}
@@ -297,7 +301,8 @@ public final class PodLining {
 					boolean ring = insideX != insideZ && y >= foot.feetY() - 1;
 					boolean floor = insideX && insideZ && y < foot.feetY();
 					BlockPos pos = new BlockPos(x, y, z);
-					if ((ring || floor) && !level.isOutsideBuildHeight(pos) && blocks.canChange(pos) && needsBrick(blocks.getBlockState(pos), floor)) {
+					if ((ring || floor) && !level.isOutsideBuildHeight(pos) && blocks.canChange(pos) && needsBrick(blocks.getBlockState(pos), floor)
+							&& level.getEntities((Entity) null, new AABB(pos), entity -> !entity.isSpectator()).isEmpty()) {
 						cells.add(pos);
 					}
 				}
@@ -307,12 +312,15 @@ public final class PodLining {
 		return cells;
 	}
 
-	/** An open cell takes a brick; a floor cell only when it is lava, because the drill bores the rest. */
+	/**
+	 * An open cell takes a brick: air, a pure fluid, or a block that gives way (a plant). A block that only holds a fluid, such as a
+	 * waterlogged slab or chest, is not open. A floor cell takes one only when it is lava, because the drill bores the rest.
+	 */
 	private static boolean needsBrick(BlockState state, boolean floor) {
 		if (floor) {
-			return state.getFluidState().is(FluidTags.LAVA);
+			return state.getBlock() instanceof LiquidBlock && state.getFluidState().is(FluidTags.LAVA);
 		}
-		return !state.is(Blocks.LIGHT) && (state.isAir() || !state.getFluidState().isEmpty());
+		return !state.is(Blocks.LIGHT) && (state.isAir() || state.getBlock() instanceof LiquidBlock || state.canBeReplaced());
 	}
 
 	/** 0 for lava, 1 for an open cell beside lava, 2 for any other. */

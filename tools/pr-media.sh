@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# Usage: tools/pr-media.sh <pr-number> <file>...
+# Usage: tools/pr-media.sh <pr-number|folder> <file>...
 #
 # Publishes PR evidence (GIF, MP4, PNG made by tools/record-evidence.sh) to the
 # orphan branch `pr-media` under <pr-number>/, then prints a markdown snippet for
-# the PR body: GIFs and screenshots inline, MP4s linked.
+# the PR body: GIFs and screenshots inline, MP4s linked. The folder `readme` holds
+# the README tour media at stable paths (tools/readme-tour.sh publishes there). Any
+# other lowercase folder name works too, one level of nesting at most (`looks/dusk-company`).
 #
 # Uses git plumbing only (hash-object, mktree, commit-tree, push). It never checks
 # out pr-media and never touches your working tree or index. The push is a plain
@@ -22,12 +24,22 @@ repo=pkeppeler/deepcharter
 branch="pr-media"
 remote=origin
 
-if [[ $# -lt 2 || ! $1 =~ ^[0-9]+$ ]]; then
-  echo "usage: tools/pr-media.sh <pr-number> <file>..." >&2
+if [[ $# -lt 2 || ! $1 =~ ^[a-z0-9][a-z0-9-]*(/[a-z0-9][a-z0-9-]*)?$ ]]; then
+  echo "usage: tools/pr-media.sh <pr-number|folder> <file>..." >&2
   exit 2
 fi
 pr=$1
 shift
+if [[ $pr =~ ^[0-9]+$ ]]; then
+  subject="Add media for PR #${pr}"
+  label="PR #${pr}"
+elif [[ $pr == readme ]]; then
+  subject="Update README tour media"
+  label="the README tour"
+else
+  subject="Update media in ${pr}/"
+  label="${pr}/"
+fi
 
 names=()
 files=()
@@ -53,12 +65,18 @@ git ls-remote --exit-code --heads "$remote" "$branch" >/dev/null 2>&1 \
 git fetch -q "$remote" "refs/heads/${branch}"
 tip=$(git rev-parse "FETCH_HEAD^{commit}")
 
+# The entries of a tree as sorted "<type> <name>" lines. The guards below compare these, so a name that
+# survives as another type (a file replacing a folder, or the reverse) counts as lost.
+typed_entries() {
+  git ls-tree "$@" | awk -F'\t' '{ split($1, meta, " "); print meta[2] " " $2 }' | LC_ALL=C sort
+}
+
 # New <pr>/ tree: the existing entries minus same-named files, plus the new blobs.
 entries=""
-old_pr_names=""
-if git cat-file -e "${tip}:${pr}" 2>/dev/null; then
+old_pr_entries=""
+if [[ $(git cat-file -t "${tip}:${pr}" 2>/dev/null) == tree ]]; then
   entries=$(git ls-tree "${tip}:${pr}")
-  old_pr_names=$(git ls-tree --name-only "${tip}:${pr}")
+  old_pr_entries=$(typed_entries "${tip}:${pr}")
 fi
 for i in "${!files[@]}"; do
   name=${names[$i]}
@@ -68,30 +86,46 @@ for i in "${!files[@]}"; do
 done
 pr_tree=$(printf '%s\n' "$entries" | git mktree)
 
-# New root tree: the existing root minus <pr>/, plus the new subtree.
-root=$(git ls-tree --full-tree "$tip" | awk -F'\t' -v n="$pr" '$2 != n && NF')
-root_tree=$(printf '%s\n040000 tree %s\t%s\n' "$root" "$pr_tree" "$pr" | awk 'NF' | git mktree)
+# A nested folder (<top>/<leaf>) sits in a <top>/ tree: its existing entries minus <leaf>/, plus the new subtree.
+top=$pr
+top_tree=$pr_tree
+old_top_entries=""
+if [[ $pr == */* ]]; then
+  top=${pr%%/*}
+  leaf=${pr#*/}
+  top_entries=""
+  if [[ $(git cat-file -t "${tip}:${top}" 2>/dev/null) == tree ]]; then
+    top_entries=$(git ls-tree "${tip}:${top}" | awk -F'\t' -v n="$leaf" '$2 != n && NF')
+    old_top_entries=$(typed_entries "${tip}:${top}")
+  fi
+  top_tree=$(printf '%s\n040000 tree %s\t%s\n' "$top_entries" "$pr_tree" "$leaf" | awk 'NF' | git mktree)
+fi
+
+# New root tree: the existing root minus <top>/, plus the new subtree.
+root=$(git ls-tree --full-tree "$tip" | awk -F'\t' -v n="$top" '$2 != n && NF')
+root_tree=$(printf '%s\n040000 tree %s\t%s\n' "$root" "$top_tree" "$top" | awk 'NF' | git mktree)
 
 # Guard: the new root must hold every top-level entry the old one did, and <pr>/
 # must keep every old file (a replaced file keeps its name, so it is still there).
-lost_root=$(comm -23 <(git ls-tree --full-tree --name-only "$tip" | LC_ALL=C sort) \
-  <(git ls-tree --full-tree --name-only "$root_tree" | LC_ALL=C sort))
+lost_root=$(comm -23 <(typed_entries --full-tree "$tip") <(typed_entries --full-tree "$root_tree"))
 [[ -z $lost_root ]] \
   || { echo "REFUSED: new root would drop top-level entries of ${branch}: $(tr '\n' ' ' <<<"$lost_root")" >&2; exit 1; }
-lost_pr=$(comm -23 <(printf '%s\n' "$old_pr_names" | awk 'NF' | LC_ALL=C sort) \
-  <(git ls-tree --name-only "$pr_tree" | LC_ALL=C sort))
+lost_pr=$(comm -23 <(printf '%s\n' "$old_pr_entries" | awk 'NF') <(typed_entries "$pr_tree"))
 [[ -z $lost_pr ]] \
   || { echo "REFUSED: ${pr}/ would lose files that were not replaced: $(tr '\n' ' ' <<<"$lost_pr")" >&2; exit 1; }
+lost_top=$(comm -23 <(printf '%s\n' "$old_top_entries" | awk 'NF') <(typed_entries "$top_tree"))
+[[ -z $lost_top ]] \
+  || { echo "REFUSED: ${top}/ would lose entries: $(tr '\n' ' ' <<<"$lost_top")" >&2; exit 1; }
 
-commit=$(git commit-tree "$root_tree" -p "$tip" -m "Add media for PR #${pr}")
+commit=$(git commit-tree "$root_tree" -p "$tip" -m "$subject")
 git push -q "$remote" "${commit}:refs/heads/${branch}"
 
 url() { echo "https://github.com/${repo}/blob/${branch}/${pr}/$1?raw=true"; }
 
-echo "Pushed ${commit} to ${branch}; PR #${pr} now holds:" >&2
+echo "Pushed ${commit} to ${branch}; ${label} now holds:" >&2
 git ls-tree --name-only "${commit}:${pr}" | sed 's/^/  /' >&2
 echo >&2
-echo "Markdown snippet for the PR body:" >&2
+echo "Markdown snippet:" >&2
 for name in "${names[@]}"; do
   case $name in
     *.gif) printf '![%s](%s)\n\n' "${name%.*}" "$(url "$name")" ;;

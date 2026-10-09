@@ -18,6 +18,8 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
 /**
  * Client GameTest for hand lining (#313): the pilot presses the lining key from the seat and the HUD shows the stock, then the
@@ -41,7 +43,11 @@ public class PodLiningClientTest implements FabricClientGameTest {
 				PodLining.modify(pod, state -> new PodLining.State(0, RACK, 0, false, false));
 			});
 			ClientWait.until(context, "the stock line on the pod HUD", client -> client.player != null && client.player.getVehicle() instanceof PodEntity pod
-					&& keys(PodStatusHud.lines(pod)).contains("hud.deepcharter.pod.slag"));
+					&& keys(PodStatusHud.lines(pod)).contains("hud.deepcharter.pod.slag_only"));
+			List<String> before = context.computeOnClient(client -> keys(PodStatusHud.lines((PodEntity) client.player.getVehicle())));
+			if (before.contains("hud.deepcharter.pod.slag")) {
+				throw new AssertionError("A pod with no spoil hopper shows no spoil, but its lines are " + before);
+			}
 
 			context.getInput().pressKey(LiningKeys.LINE);
 			ClientWait.until(context, "the lining line on the pod HUD", client -> client.player.getVehicle() instanceof PodEntity pod
@@ -51,7 +57,7 @@ public class PodLiningClientTest implements FabricClientGameTest {
 
 			boolean lineGone = context.computeOnClient(client -> PodStatusHud.liningLine((PodEntity) client.player.getVehicle()).isEmpty());
 			List<String> lines = context.computeOnClient(client -> keys(PodStatusHud.lines((PodEntity) client.player.getVehicle())));
-			if (!lineGone || lines.contains("hud.deepcharter.pod.slag")) {
+			if (!lineGone || lines.contains("hud.deepcharter.pod.slag_only")) {
 				throw new AssertionError("Once the rack is empty the lining line ends and the stock line goes, but lining gone " + lineGone + ", lines " + lines);
 			}
 			long placed = singleplayer.getServer().computeOnServer(server -> {
@@ -62,6 +68,12 @@ public class PodLiningClientTest implements FabricClientGameTest {
 			if (placed != RACK) {
 				throw new AssertionError("The three bricks of the rack should stand round the pod, found " + placed);
 			}
+
+			// With a hopper fitted the stock line shows the spoil too.
+			singleplayer.getServer().runOnServer(server -> ScannerPods.fit(server, server.getPlayerList().getPlayers().getFirst(),
+					(PodEntity) server.getPlayerList().getPlayers().getFirst().getVehicle(), ComponentTrack.SPOIL_HOPPER, 1));
+			ClientWait.until(context, "the spoil on the pod HUD", client -> client.player.getVehicle() instanceof PodEntity pod
+					&& keys(PodStatusHud.lines(pod)).contains("hud.deepcharter.pod.slag"));
 		}
 	}
 
