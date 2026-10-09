@@ -278,17 +278,9 @@ public class BreachVoidClientTest implements FabricClientGameTest {
 	 * {@code specks} pixels brighter than {@link #DARK} in any channel.
 	 */
 	private static Optional<String> holeProblem(BufferedImage image, int specks, String name) {
-		int bright = 0;
-		int brightest = 0;
-		for (int y = image.getHeight() / 2 - PATCH; y <= image.getHeight() / 2 + PATCH; y++) {
-			for (int x = image.getWidth() / 2 - PATCH; x <= image.getWidth() / 2 + PATCH; x++) {
-				int channel = brightest(image.getRGB(x, y));
-				if (channel > DARK) {
-					bright++;
-				}
-				brightest = Math.max(brightest, channel);
-			}
-		}
+		List<Integer> patch = centrePatch(image);
+		int bright = (int) patch.stream().filter(channel -> channel > DARK).count();
+		int brightest = patch.stream().max(Integer::compare).orElseThrow();
 		if (bright > specks) {
 			return Optional.of("%s: the hole shows the void, not darkness: %d pixels of its middle are brighter than %d in a channel, up to %d"
 					.formatted(name, bright, DARK, brightest));
@@ -341,19 +333,24 @@ public class BreachVoidClientTest implements FabricClientGameTest {
 			ClientWait.until(context, "the pod under the bottom on the client", client -> client.level.getEntity(podId[0]) != null);
 			Path shot = look(context, singleplayer, layer, eye, podTop, name);
 			BufferedImage image = read(shot);
-			int lit = 0;
-			for (int y = image.getHeight() / 2 - PATCH; y <= image.getHeight() / 2 + PATCH; y++) {
-				for (int x = image.getWidth() / 2 - PATCH; x <= image.getWidth() / 2 + PATCH; x++) {
-					if (brightest(image.getRGB(x, y)) > DARK) {
-						lit++;
-					}
-				}
-			}
-			int pixels = (2 * PATCH + 1) * (2 * PATCH + 1);
+			List<Integer> patch = centrePatch(image);
+			int lit = (int) patch.stream().filter(channel -> channel > DARK).count();
+			int pixels = patch.size();
 			return lit * 2 < pixels ? Optional.of(name + ": the pod under the bottom is hidden: only " + lit + " of " + pixels + " pixels where it is are brighter than " + DARK) : Optional.empty();
 		} finally {
 			singleplayer.getServer().runOnServer(server -> server.getLevel(LayerChain.dimension(layer)).getEntity(podId[0]).discard());
 		}
+	}
+
+	/** The brightest channel of each pixel of the {@link #PATCH} square at the middle of the picture. */
+	private static List<Integer> centrePatch(BufferedImage image) {
+		List<Integer> channels = new ArrayList<>();
+		for (int y = image.getHeight() / 2 - PATCH; y <= image.getHeight() / 2 + PATCH; y++) {
+			for (int x = image.getWidth() / 2 - PATCH; x <= image.getWidth() / 2 + PATCH; x++) {
+				channels.add(brightest(image.getRGB(x, y)));
+			}
+		}
+		return channels;
 	}
 
 	private static int brightest(int rgb) {

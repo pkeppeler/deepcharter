@@ -14,7 +14,6 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
  * Interim cover for the void under a broken breach crust (#333). The bottom of a layer, and of the surface, has nothing below it, so
  * a hole through the crust showed the fog or sky colour (lifted to full brightness by night vision). This draws one black square
  * under the whole bottom of the world, so every hole shows darkness from any angle and under any effect.
- * It is drawn flat and unfogged, so distance does not fade it into the fog colour.
  *
  * <p>It draws nothing in a world outside the layer chain, and nothing for a camera under the square. Remove it with the tall world ({@code docs/design/mechanics.md}, #214 and #215), where the breach is physical crust.
  */
