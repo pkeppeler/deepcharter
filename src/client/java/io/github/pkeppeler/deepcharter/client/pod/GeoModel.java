@@ -59,7 +59,7 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 	private static final int CUBE_CORNERS = 8;
 	private static final double PIXELS_PER_BLOCK = 16;
 	/** The angles, in degrees, at which {@link #cullingBox} samples the drill mount's swing. */
-	private static final int SWING_STEP = 15;
+	public static final int SWING_STEP = 15;
 
 	/** A bone: its pivot and rest rotation (degrees, applied z, then y, then x) are in model space, as in the file. */
 	public record Bone(String name, BoneRole role, Optional<String> parent, Vec3 pivot, Vec3 rotation, List<Cube> cubes) {
@@ -252,6 +252,10 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 	 * as wide as the furthest any corner of its bounds is from the pod's middle, so it holds the model at any heading. The bounds
 	 * are of the whole model, every cutter it holds, and of the drill mount at its rest angle and at every {@value #SWING_STEP}
 	 * degrees down to straight down, so the cutter's tip is held where it leads the hitbox and where it sinks under the floor.
+	 * The rotor is held at any angle of its spin ({@link #rotorReach}).
+	 *
+	 * <p>The swing is sampled, so the box is widened on every side by {@link #samplingMargin}: how far a corner of the mount's
+	 * parts can stand past the sampled extremes between two samples. The renderer adds the hull's shake on top.
 	 */
 	public AABB cullingBox() {
 		double[] b = restBounds();
@@ -263,8 +267,58 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 			}
 		}
 		double reach = Math.max(Math.max(Math.hypot(b[0], b[2]), Math.hypot(b[0], b[5])), Math.max(Math.hypot(b[3], b[2]), Math.hypot(b[3], b[5])));
-		return new AABB(-reach / PIXELS_PER_BLOCK, b[1] / PIXELS_PER_BLOCK, -reach / PIXELS_PER_BLOCK, reach / PIXELS_PER_BLOCK, b[4] / PIXELS_PER_BLOCK,
-				reach / PIXELS_PER_BLOCK);
+		reach = Math.max(reach, rotorReach()) + samplingMargin();
+		double margin = samplingMargin();
+		return new AABB(-reach / PIXELS_PER_BLOCK, (b[1] - margin) / PIXELS_PER_BLOCK, -reach / PIXELS_PER_BLOCK, reach / PIXELS_PER_BLOCK,
+				(b[4] + margin) / PIXELS_PER_BLOCK, reach / PIXELS_PER_BLOCK);
+	}
+
+	/**
+	 * How far, in pixels, a corner of the drill mount's parts can lie outside the bounds of the samples {@link #cullingBox} takes. A
+	 * corner at distance r from the mount's hinge travels an arc of radius r, and between two samples {@value #SWING_STEP} degrees
+	 * apart it is at most half a step from the nearer one, so it stands at most r (1 - cos(half a step)) past the chord the extremes
+	 * of the two samples span. r is the furthest any corner of any part on the mount is from the hinge, the cutters and the yoke.
+	 */
+	public double samplingMargin() {
+		Map<String, Bone> byName = new HashMap<>();
+		bones.forEach(bone -> byName.put(bone.name(), bone));
+		Bone mount = bones.stream().filter(bone -> bone.role() == BoneRole.DRILL_MOUNT).findFirst().orElseThrow();
+		double radius = 0;
+		for (Bone bone : bones) {
+			boolean onTheMount = false;
+			for (Bone at = bone; at != null; at = at.parent().map(byName::get).orElse(null)) {
+				onTheMount |= at == mount;
+			}
+			if (onTheMount) {
+				for (Cube cube : bone.cubes()) {
+					for (int corner = 0; corner < CUBE_CORNERS; corner++) {
+						radius = Math.max(radius, turnedCorner(cube, corner).subtract(mount.pivot()).length());
+					}
+				}
+			}
+		}
+		return radius * (1 - Math.cos(Math.toRadians(SWING_STEP / 2.0)));
+	}
+
+	/**
+	 * How far from the pod's middle, across x and z in pixels, a rotor reaches as it spins: the horizontal distance of its pivot from
+	 * the middle plus the furthest any corner of its cubes is from the pivot. A rotor spins about its own pivot, which is off the
+	 * pod's middle on a pod whose mast is behind it, so its tips sweep a circle that the model at rest does not show. 0 for a model
+	 * with no rotor.
+	 */
+	public double rotorReach() {
+		double reach = 0;
+		for (Bone rotor : bones.stream().filter(bone -> bone.role() == BoneRole.ROTOR).toList()) {
+			double sweep = 0;
+			for (Cube cube : rotor.cubes()) {
+				for (int corner = 0; corner < CUBE_CORNERS; corner++) {
+					Vec3 point = turnedCorner(cube, corner);
+					sweep = Math.max(sweep, Math.hypot(point.x - rotor.pivot().x, point.z - rotor.pivot().z));
+				}
+			}
+			reach = Math.max(reach, Math.hypot(rotor.pivot().x, rotor.pivot().z) + sweep);
+		}
+		return reach;
 	}
 
 	/** Corner {@code corner} (0 to 7) of {@code cube}, turned by the cube's own rotation if it has one. */

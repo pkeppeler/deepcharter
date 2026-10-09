@@ -96,8 +96,8 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
 			require(Math.abs(prospectorRate / moleRate - expected) < 0.02, "the spin rates should be in the ratio of the drill spin scales, " + expected + ": "
 					+ prospectorRate / moleRate);
 
-			// Installing a drill swaps the cutter at once: tier 2 is stacked rings. Only the stacked bones are drawn.
-			singleplayer.getServer().runOnServer(server -> install(server, scene, scene.mole(), 2));
+			// Installing a drill swaps the cutter at once: tier 1 is the stacked rings. Only the stacked bones are drawn.
+			singleplayer.getServer().runOnServer(server -> install(server, scene, scene.mole(), 1));
 			cutterIs(context, scene.mole(), "stacked");
 			context.runOnClient(client -> {
 				List<String> hidden = renderer(client, scene.mole()).hiddenBones(renderer(client, scene.mole()).appearanceOf(pod(client, scene.mole())));
@@ -105,23 +105,25 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
 						"the stacked Mole should hide the other cutters, hides " + hidden);
 				require(!hidden.contains("drill_head_stacked") && !hidden.contains("drill_ring_stacked"), "the stacked Mole should draw its stacked bones, hides " + hidden);
 			});
-
-			// The Mole's cap is 2, so a tier 4 drill works as tier 2 and the cutter stays; the Prospector's cap is 3: tier 3 shows the auger.
+			// Tier 2 is the Mole's cap, the auger. A tier 4 part works as tier 2, so the cutter stays.
+			singleplayer.getServer().runOnServer(server -> install(server, scene, scene.mole(), 2));
+			cutterIs(context, scene.mole(), "fluted");
 			singleplayer.getServer().runOnServer(server -> install(server, scene, scene.mole(), 4));
 			context.waitTicks(5); // tick-wait: the sync of a part reaches the client; the cutter must not change
-			cutterIs(context, scene.mole(), "stacked");
+			cutterIs(context, scene.mole(), "fluted");
+			// The Prospector's cap is 3, the cluster; a tier 4 part works as tier 3.
 			singleplayer.getServer().runOnServer(server -> install(server, scene, scene.prospector(), 3));
-			cutterIs(context, scene.prospector(), "fluted");
+			cutterIs(context, scene.prospector(), "cluster");
 			singleplayer.getServer().runOnServer(server -> install(server, scene, scene.prospector(), 4));
 			context.waitTicks(5); // tick-wait: as above, for the Prospector's cap of 3
-			cutterIs(context, scene.prospector(), "fluted");
+			cutterIs(context, scene.prospector(), "cluster");
 			context.waitTick(); // tick-wait: a frame draws the new cutter
 
 			// A pod loaded from its save draws the same: the cutter is derived from the parts it already saves, so no pod state is new.
 			int[] reloaded = {0};
 			singleplayer.getServer().runOnServer(server -> reloaded[0] = reload(server, scene));
 			ClientWait.until(context, "the reloaded Mole on the client", client -> pod(client, reloaded[0]) != null);
-			cutterIs(context, reloaded[0], "stacked");
+			cutterIs(context, reloaded[0], "fluted");
 			context.waitTick(); // tick-wait: a frame draws the reloaded pod
 
 			int mole = reloaded[0];
@@ -133,7 +135,7 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
 				PodGeoRenderer renderer = renderer(client, mole);
 				PodGeoRenderer.Appearance wreck = renderer.appearanceOf(pod(client, mole));
 				require(wreck.variant().equals(renderer.look().wreck()), "a wreck should draw the look's wreck variant, draws " + wreck);
-				require("stacked".equals(wreck.cutter()), "a wreck keeps its drill, shows " + wreck.cutter());
+				require("fluted".equals(wreck.cutter()), "a wreck keeps its drill, shows " + wreck.cutter());
 				require(!wreck.glows(true), "the derelict Mole has no light, even when lit");
 				require(renderer.hiddenBones(wreck).contains("rotor"), "the derelict Mole has lost its rotor, hides " + renderer.hiddenBones(wreck));
 			});
@@ -155,7 +157,11 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
 		}
 	}
 
-	/** Every corner of every cutter's extent, with the drill mount level and straight down, turned to every heading, lies in the renderer's culling box. */
+	/**
+	 * Every corner of every cutter's extent, with the drill mount at each sampled step of the swing and at the half steps between
+	 * (where the margin matters), turned to every heading, lies in the renderer's culling box; so does the whole sweep of the rotor,
+	 * and the model shaken by {@link PodGeoRenderer#SHAKE}.
+	 */
 	private static void checkCulling(PodGeoRenderer renderer, PodEntity pod) {
 		GeoModel geo = renderer.geometry();
 		AABB box = renderer.getBoundingBoxForCulling(pod, 0f).inflate(TOLERANCE);
@@ -163,14 +169,13 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
 		Vec3 feet = pod.position();
 		for (String cutter : geo.cutters()) {
 			boolean cutterOutsideThePlainBox = false;
-			for (double pitch : new double[] {0, 45, 90}) {
+			for (double pitch = 0; pitch <= 90; pitch += GeoModel.SWING_STEP / 2.0) {
 				double[] b = geo.restBounds(bone -> geo.inCutter(bone, cutter), pitch);
 				for (double x : new double[] {b[0], b[3]}) {
 					for (double z : new double[] {b[2], b[5]}) {
 						for (double y : new double[] {b[1], b[4]}) {
 							for (int degrees = 0; degrees < 360; degrees += HEADING_STEP) {
-								double yaw = Math.toRadians(degrees);
-								Vec3 corner = feet.add((x * Math.cos(yaw) - z * Math.sin(yaw)) / 16, y / 16, (x * Math.sin(yaw) + z * Math.cos(yaw)) / 16);
+								Vec3 corner = turnedAbout(feet, x, y, z, degrees);
 								require(box.contains(corner), renderer.chassis().id() + "'s " + cutter + " cutter, with its drill turned " + pitch + " degrees, at the heading "
 										+ degrees + ", has a corner at " + corner + " outside the renderer's culling box " + box);
 								cutterOutsideThePlainBox |= !plain.contains(corner);
@@ -183,6 +188,22 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
 					+ ", so this test could not tell a missing override");
 		}
 		require(!geo.cutters().isEmpty(), renderer.chassis().id() + " holds no cutters to check");
+		// The rotor's tips sweep a circle about its own pivot, which is off the pod's middle.
+		double sweep = geo.rotorReach();
+		for (int degrees = 0; degrees < 360; degrees += HEADING_STEP) {
+			Vec3 tip = turnedAbout(feet, sweep, geo.restBounds()[4], 0, degrees);
+			require(box.contains(tip), renderer.chassis().id() + "'s rotor, reaching " + sweep + " pixels, at the heading " + degrees + " is outside the culling box " + box);
+		}
+		// The hull shakes by up to SHAKE while the pod drills, on top of the model's own extent.
+		AABB shaken = geo.cullingBox().move(feet).inflate(PodGeoRenderer.SHAKE - TOLERANCE);
+		require(box.contains(shaken.minX, shaken.minY, shaken.minZ) && box.contains(shaken.maxX, shaken.maxY, shaken.maxZ),
+				renderer.chassis().id() + "'s culling box " + box + " does not hold the model's box " + shaken + " shaken");
+	}
+
+	/** The point (x, y, z) of the model in pixels, with the pod at {@code feet} turned {@code degrees}. */
+	private static Vec3 turnedAbout(Vec3 feet, double x, double y, double z, int degrees) {
+		double yaw = Math.toRadians(degrees);
+		return feet.add((x * Math.cos(yaw) - z * Math.sin(yaw)) / 16, y / 16, (x * Math.sin(yaw) + z * Math.cos(yaw)) / 16);
 	}
 
 	/**

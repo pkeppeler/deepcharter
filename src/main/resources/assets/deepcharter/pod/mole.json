@@ -4,9 +4,9 @@
 	"glow": "lit",
 	"cutters": {
 		"0": "tricone",
-		"2": "stacked",
-		"3": "fluted",
-		"4": "cluster"
+		"1": "stacked",
+		"2": "fluted",
+		"3": "cluster"
 	},
 	"wreck": {
 		"texture": "deepcharter:textures/entity/pod/mole_wreck.png",

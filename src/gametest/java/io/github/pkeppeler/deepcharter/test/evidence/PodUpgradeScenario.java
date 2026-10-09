@@ -22,9 +22,10 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Evidence scenario "pod-upgrade" (#243): a Mole with its stock drill stands beside the upgrade terminal and turns slowly; the pilot
- * opens the terminal, buys a tier 2 drill, and shuts it. The Mole's cutter is the tricone before and the stacked rings after: the
- * cutter is picked by the drill tier, and the swap is at once. Frames before, with the terminal open and after; stills
- * {@code before-tricone}, {@code terminal-buy-drill} and {@code after-stacked}.
+ * opens the terminal, buys a tier 1 drill and shuts it, then buys a tier 2 drill. The Mole's cutter is the tricone before, the stacked
+ * rings after the first and the fluted auger after the second: the cutter is picked by the drill tier, and the swap is at once. Frames
+ * before, with the terminal open and after each; stills {@code before-tricone}, {@code terminal-buy-drill}, {@code after-stacked} and
+ * {@code after-fluted}.
  */
 public class PodUpgradeScenario extends EvidenceScenario {
 	private static final int TICKS_PER_FRAME = 2;
@@ -73,38 +74,53 @@ public class PodUpgradeScenario extends EvidenceScenario {
 					}
 				}
 
-				context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.terminal())));
-				ClientWait.screen(context, UpgradeScreen.class);
-				UpgradeScreen screen = context.computeOnClient(client -> (UpgradeScreen) client.gui.screen());
-				for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
-					turn(context, singleplayer, scene);
-					context.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
-					frame(context);
-				}
-				hold(context, singleplayer, scene);
-				String buy = context.computeOnClient(client -> label(screen, "BUY TIER 2"));
-				screenshot(context, "terminal-buy-drill");
-				context.clickScreenButton(buy);
-				// The server installs the part and the client's pod is told: the cutter changes with the next frame.
-				ClientWait.until(context, "the Mole drawn with the stacked rings", client -> cutter(client, scene).equals("stacked"), client -> cutter(client, scene));
-				hold(context, singleplayer, scene);
-				context.setScreen(() -> null);
-				yaw = START_YAW;
-
-				for (int i = 0; i < AFTER_FRAMES; i++) {
-					turn(context, singleplayer, scene);
-					context.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
-					frame(context);
-					if (i == AFTER_FRAMES / 2) {
-						screenshot(context, "after-stacked");
-					}
-				}
+				// T0 to T1: the tricone becomes the stacked rings. T1 to T2: the stacked rings become the fluted auger (the Mole's cap).
+				buyAtTheTerminal(context, singleplayer, scene, 1, "stacked");
+				afterFrames(context, singleplayer, scene, "after-stacked");
+				buyAtTheTerminal(context, singleplayer, scene, 2, "fluted");
+				afterFrames(context, singleplayer, scene, "after-fluted");
 			} finally {
 				context.runOnClient(client -> {
 					if (client.gui.hud.isHidden() != hudWasHidden[0]) {
 						client.gui.hud.toggle();
 					}
 				});
+			}
+		}
+	}
+
+	/** Opens the terminal, buys the drill of {@code tier}, waits until the Mole draws {@code cutter}, and shuts the terminal. */
+	private void buyAtTheTerminal(ClientGameTestContext context, TestSingleplayerContext singleplayer, UpgradeTerminalClientTest.Scene scene, int tier,
+			String cutter) {
+		context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.terminal())));
+		ClientWait.screen(context, UpgradeScreen.class);
+		UpgradeScreen screen = context.computeOnClient(client -> (UpgradeScreen) client.gui.screen());
+		for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
+			turn(context, singleplayer, scene);
+			context.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
+			frame(context);
+		}
+		hold(context, singleplayer, scene);
+		String buy = context.computeOnClient(client -> label(screen, "BUY TIER " + tier));
+		if (tier == 1) {
+			screenshot(context, "terminal-buy-drill");
+		}
+		context.clickScreenButton(buy);
+		// The server installs the part and the client's pod is told: the cutter changes with the next frame.
+		ClientWait.until(context, "the Mole drawn with the " + cutter, client -> cutter(client, scene).equals(cutter), client -> cutter(client, scene));
+		hold(context, singleplayer, scene);
+		context.setScreen(() -> null);
+	}
+
+	/** The pod turns again from the heading it started with, so the views match the ones before the swap. */
+	private void afterFrames(ClientGameTestContext context, TestSingleplayerContext singleplayer, UpgradeTerminalClientTest.Scene scene, String still) {
+		yaw = START_YAW;
+		for (int i = 0; i < AFTER_FRAMES; i++) {
+			turn(context, singleplayer, scene);
+			context.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
+			frame(context);
+			if (i == AFTER_FRAMES / 2) {
+				screenshot(context, still);
 			}
 		}
 	}

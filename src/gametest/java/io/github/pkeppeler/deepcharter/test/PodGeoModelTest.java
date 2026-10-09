@@ -205,7 +205,7 @@ public class PodGeoModelTest {
 			GeoModel model = read(helper, look(helper, chassis).modelFile());
 			AABB box = model.cullingBox();
 			for (String cutter : model.cutters()) {
-				for (double pitch : new double[] {0, 45, 90}) {
+				for (double pitch = 0; pitch <= 90; pitch += GeoModel.SWING_STEP / 2.0) {
 					double[] b = model.restBounds(bone -> model.inCutter(bone, cutter), pitch);
 					for (double x : new double[] {b[0], b[3]}) {
 						for (double z : new double[] {b[2], b[5]}) {

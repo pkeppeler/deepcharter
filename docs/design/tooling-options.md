@@ -172,7 +172,7 @@ With **extra mods**: Continuity `_e`, ETF 7.2.5 `_e` for entities, Iris labPBR (
 
 ## 2. Models and animation
 
-**Today** the pod is one stretched vanilla block ([PodRenderer.java](../../src/client/java/io/github/pkeppeler/deepcharter/client/pod/PodRenderer.java)). The Mole is 1.9 blocks wide, about 30 model units ([Chassis.java](../../src/main/java/io/github/pkeppeler/deepcharter/pod/Chassis.java)).
+**Since #243** the pods are GeckoLib models ([PodGeoRenderer.java](../../src/client/java/io/github/pkeppeler/deepcharter/client/pod/PodGeoRenderer.java), [ADR 0040](../adr/0040-a-pod-look-is-a-file-per-chassis-and-the-drill-tier-picks-the-cutter.md)); before, each was one stretched vanilla block. The Mole is 1.9 blocks wide, about 30 model units ([Chassis.java](../../src/main/java/io/github/pkeppeler/deepcharter/pod/Chassis.java)).
 
 ### Runtime options (ranked by fit)
 

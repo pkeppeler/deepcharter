@@ -32,12 +32,12 @@ public class PodLookTest {
 			 "cutters": {"0": "tricone", "2": "stacked", "3": "fluted"},
 			 "wreck": {"texture": "deepcharter:textures/entity/pod/mole_wreck.png", "glow": "always", "hide": ["rotor"]}}""";
 
-	/** The user's pick (issue 243): the tricone is the stock drill, the stacked rings are the Mole's cap, the auger the Prospector's, the cluster the rest. */
+	/** The user's pick (issue 243), remapped so that every early upgrade shows: the tricone is the stock drill (T0), then the stacked rings (T1), the auger (T2, the Mole's cap) and the cluster (T3, the Prospector's cap, to T6). */
 	@GameTest
 	public void theTierMapIsTheUsersPick(GameTestHelper helper) throws IOException {
 		for (Chassis chassis : Chassis.all()) {
 			PodLook look = PodGeoModelTest.look(helper, chassis);
-			Map<Integer, String> expected = Map.of(0, "tricone", 1, "tricone", 2, "stacked", 3, "fluted", 4, "cluster", 5, "cluster", 6, "cluster");
+			Map<Integer, String> expected = Map.of(0, "tricone", 1, "stacked", 2, "fluted", 3, "cluster", 4, "cluster", 5, "cluster", 6, "cluster");
 			for (Map.Entry<Integer, String> entry : expected.entrySet()) {
 				String shown = look.cutterFor(entry.getKey());
 				if (!shown.equals(entry.getValue())) {
@@ -52,7 +52,8 @@ public class PodLookTest {
 	@GameTest
 	public void aTierShowsTheCutterOfTheHighestEntryAtOrBelowIt(GameTestHelper helper) {
 		PodLook look = PodLook.parse("test", new StringReader(WITH_CUTTERS));
-		require(helper, look.cutterFor(0).equals("tricone") && look.cutterFor(1).equals("tricone"), "tiers 0 and 1 show the stock cutter");
+		require(helper, look.cutterFor(0).equals("tricone"), "tier 0 shows the stock cutter");
+		require(helper, look.cutterFor(1).equals("tricone"), "tier 1 shows the cutter of tier 0, the highest entry at or below it");
 		require(helper, look.cutterFor(2).equals("stacked"), "tier 2 shows the stacked cutter");
 		require(helper, look.cutterFor(6).equals("fluted"), "tier 6 shows the cutter of tier 3, the highest entry below it");
 		helper.succeed();

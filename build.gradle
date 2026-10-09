@@ -98,7 +98,38 @@ def checkGeckoLib = tasks.register("checkGeckoLib", CheckGeckoLib) {
 	sha512 = project.geckolib_sha512
 }
 tasks.named("jar") { dependsOn checkGeckoLib }
-tasks.named("check") { dependsOn checkGeckoLib }
+
+// The same check on the copy that ships: the jar nested in our mod jar must be the one jar there, with the pinned sha512 (audit
+// condition 4: Loom's include must not add a second jar or a different one).
+abstract class CheckNestedGeckoLib extends DefaultTask {
+	@InputFile
+	abstract RegularFileProperty getModJar()
+
+	@Input
+	abstract Property<String> getSha512()
+
+	@TaskAction
+	void check() {
+		try (def zip = new java.util.zip.ZipFile(modJar.get().asFile)) {
+			def nested = zip.entries().toList().findAll { it.name.startsWith("META-INF/jars/") && !it.directory }
+			if (nested.size() != 1 || !nested[0].name.startsWith("META-INF/jars/geckolib-fabric-")) {
+				throw new GradleException("${modJar.get().asFile.name} must nest exactly one jar, GeckoLib's; it nests ${nested.collect { it.name }}")
+			}
+			def digest = java.security.MessageDigest.getInstance("SHA-512").digest(zip.getInputStream(nested[0]).bytes).encodeHex().toString()
+			if (digest != sha512.get()) {
+				throw new GradleException("${nested[0].name} inside ${modJar.get().asFile.name} has sha512 ${digest}, but gradle.properties pins ${sha512.get()}")
+			}
+		}
+	}
+}
+
+def checkNestedGeckoLib = tasks.register("checkNestedGeckoLib", CheckNestedGeckoLib) {
+	group = "verification"
+	description = "Fails unless the jar nested in our mod jar is the audited GeckoLib."
+	modJar = tasks.named("jar").flatMap { it.archiveFile }
+	sha512 = project.geckolib_sha512
+}
+tasks.named("check") { dependsOn checkGeckoLib, checkNestedGeckoLib }
 
 apply from: "gradle/lang.gradle"
 apply from: "gradle/literals.gradle"

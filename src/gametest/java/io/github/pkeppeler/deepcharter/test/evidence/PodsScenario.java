@@ -1,11 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -19,11 +14,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.SectionPos;
-import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.packs.repository.PackRepository;
 import net.minecraft.world.clock.ClockInstance;
 import net.minecraft.world.clock.WorldClock;
 import net.minecraft.world.entity.Entity;
@@ -65,9 +58,8 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
  * Evidence scenario "pods" (#243): the real Mole and Prospector, drawn with GeckoLib, each cutter in turn, and the wrecks.
  *
  * <p>The scene is the regolith plain south of the colony, in the design tour's world, under the brightest dusk of the sky. Per
- * subject (the Mole with the tricone and with the stacked rings, the Prospector with the tricone, the stacked rings and the
- * fluted auger, then the Prospector with the cluster, which no chassis reaches by its drill tier yet, so a throwaway resource
- * pack maps tier 0 to it, as a pack can): a turntable of the parked pod (front, three-quarter, side, back, then the camera
+ * subject (the Mole with the tricone, the stacked rings and the fluted auger, the Prospector with those and the cluster, each
+ * on the drill tier that shows it): a turntable of the parked pod (front, three-quarter, side, back, then the camera
  * rising to look down) and the stills {@code <id>-front}, {@code -threequarter}, {@code -side}, {@code -back}, {@code -above},
  * {@code -unlit} (parked, no pilot) and {@code -lit} (a pilot aboard, at night, lamps on). The derelict Mole and the scorched
  * Prospector get the same turntable, by day and by night, with no lit stills (a wreck has no pilot). Last, the Mole and the Prospector each
@@ -83,14 +75,15 @@ public class PodsScenario extends EvidenceScenario {
 
 	private static final List<Subject> SUBJECTS = List.of(
 			new Subject("mole-tricone", Chassis.MOLE, 0, false, "tricone"),
-			new Subject("mole-stacked", Chassis.MOLE, 2, false, "stacked"),
+			new Subject("mole-stacked", Chassis.MOLE, 1, false, "stacked"),
+			new Subject("mole-fluted", Chassis.MOLE, 2, false, "fluted"),
 			new Subject("prospector-tricone", Chassis.PROSPECTOR, 0, false, "tricone"),
-			new Subject("prospector-stacked", Chassis.PROSPECTOR, 2, false, "stacked"),
-			new Subject("prospector-fluted", Chassis.PROSPECTOR, 3, false, "fluted"));
+			new Subject("prospector-stacked", Chassis.PROSPECTOR, 1, false, "stacked"),
+			new Subject("prospector-fluted", Chassis.PROSPECTOR, 2, false, "fluted"),
+			new Subject("prospector-cluster", Chassis.PROSPECTOR, 3, false, "cluster"));
 	private static final List<Subject> WRECKS = List.of(
-			new Subject("mole-wreck", Chassis.MOLE, 2, true, "stacked"),
-			new Subject("prospector-wreck", Chassis.PROSPECTOR, 3, true, "fluted"));
-	private static final Subject CLUSTER = new Subject("prospector-cluster", Chassis.PROSPECTOR, 0, false, "cluster");
+			new Subject("mole-wreck", Chassis.MOLE, 2, true, "fluted"),
+			new Subject("prospector-wreck", Chassis.PROSPECTOR, 3, true, "cluster"));
 
 	/** The design tour's world, so the plain and the mesa behind it are the ones the tour shows. */
 	private static final String SEED = "deepcharter-design-tour";
@@ -140,9 +133,6 @@ public class PodsScenario extends EvidenceScenario {
 	private static final Input BORE_DOWN = new Input(false, false, false, false, false, false, true);
 	private static final Input LIFT = new Input(false, false, false, false, true, false, false);
 
-	private static final String CLUSTER_PACK = "pods-cluster";
-	private static final String CLUSTER_PACK_ID = "file/" + CLUSTER_PACK;
-
 	private ClientGameTestContext ctx;
 	private TestSingleplayerContext world;
 	private BlockPos stage;
@@ -174,19 +164,12 @@ public class PodsScenario extends EvidenceScenario {
 				for (Subject wreck : WRECKS) {
 					showcase(wreck);
 				}
-				clusterOnTheProspector();
-				for (Subject subject : List.of(SUBJECTS.getFirst(), SUBJECTS.get(4))) {
+				for (Subject subject : List.of(SUBJECTS.getFirst(), SUBJECTS.get(6))) {
 					rebuildGround();
 					clip(subject);
 				}
 			} finally {
-				try {
-					Path pack = ctx.computeOnClient(client -> client.getResourcePackDirectory().resolve(CLUSTER_PACK));
-					ctx.runOnClient(client -> removePack(client));
-					deleteTree(pack);
-				} finally {
-					undo();
-				}
+				undo();
 			}
 		}
 	}
@@ -449,47 +432,6 @@ public class PodsScenario extends EvidenceScenario {
 		});
 	}
 
-	/** The cluster, which no chassis' drill tier reaches yet: a pack maps tier 0 of the Prospector to it, and the reload applies it with no build. */
-	private void clusterOnTheProspector() {
-		Path pack = ctx.computeOnClient(client -> client.getResourcePackDirectory().resolve(CLUSTER_PACK));
-		try {
-			deleteTree(pack);
-			write(pack.resolve("pack.mcmeta"), """
-					{"pack": {"description": "Deep Charter cluster demo (throwaway)", "min_format": 97, "max_format": 97}}
-					""");
-			write(pack.resolve("assets/deepcharter/pod/prospector.json"), """
-					{"model": "deepcharter:pod/prospector", "texture": "deepcharter:textures/entity/pod/prospector.png", "glow": "lit",
-					 "cutters": {"0": "cluster"},
-					 "wreck": {"texture": "deepcharter:textures/entity/pod/prospector_wreck.png", "glow": "always"}}
-					""");
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
-		}
-		ctx.runOnClient(client -> {
-			PackRepository repository = client.getResourcePackRepository();
-			repository.reload();
-			if (!repository.addPack(CLUSTER_PACK_ID)) {
-				throw new AssertionError("the pack " + CLUSTER_PACK_ID + " could not be selected; available: " + repository.getAvailableIds());
-			}
-			client.options.updateResourcePacks(repository);
-		});
-		ClientWait.until(ctx, "the cluster pack applied", client -> prospectorLookFromThePack(client) && client.gui.overlay() == null);
-		showcase(CLUSTER);
-		ctx.runOnClient(PodsScenario::removePack);
-		ClientWait.until(ctx, "the cluster pack gone", client -> !prospectorLookFromThePack(client) && client.gui.overlay() == null);
-	}
-
-	private static boolean prospectorLookFromThePack(Minecraft client) {
-		return client.getResourceManager().getResource(Identifier.fromNamespaceAndPath("deepcharter", "pod/prospector.json"))
-				.map(resource -> resource.sourcePackId().equals(CLUSTER_PACK_ID)).orElse(false);
-	}
-
-	private static void removePack(Minecraft client) {
-		PackRepository repository = client.getResourcePackRepository();
-		repository.removePack(CLUSTER_PACK_ID);
-		client.options.updateResourcePacks(repository);
-	}
-
 	// ------------------------------------------------------------------------------------------------ the clip
 
 	/** Where the clip's pod starts: a block short of the ledge, its footprint on whole blocks so it bores a clean bore. */
@@ -728,23 +670,5 @@ public class PodsScenario extends EvidenceScenario {
 
 	private <T> T serverGet(Function<MinecraftServer, T> query) {
 		return world.getServer().computeOnServer(query::apply);
-	}
-
-	private static void write(Path file, String text) throws IOException {
-		Files.createDirectories(file.getParent());
-		Files.writeString(file, text);
-	}
-
-	private static void deleteTree(Path dir) {
-		if (!Files.exists(dir)) {
-			return;
-		}
-		try (var paths = Files.walk(dir)) {
-			for (Path p : paths.sorted(Comparator.reverseOrder()).toList()) {
-				Files.delete(p);
-			}
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
-		}
 	}
 }

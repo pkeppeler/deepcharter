@@ -226,23 +226,23 @@ in the palette's ramps and have a one-pixel dark outline.
 
 None of the entities has a custom 3D model.
 
-**Since #243 the pods have.** The Mole and the Prospector, intact and wrecked, are GeckoLib models with a look file each ([ADR 0040](../adr/0040-a-pod-look-is-a-file-per-chassis-and-the-drill-tier-picks-the-cutter.md), [skins.md](skins.md#pod-models)); the drill tier shows the cutter. The pod sections below, down to the hangar, describe the slabs of #223 and are kept as the "before".
+**Since #243 the pods have.** The Mole and the Prospector, intact and wrecked, are GeckoLib models with a look file each ([ADR 0040](../adr/0040-a-pod-look-is-a-file-per-chassis-and-the-drill-tier-picks-the-cutter.md), [skins.md](skins.md#pod-models)); the drill tier shows the cutter. The tables below describe the pods as they are now; the pictures are #223's slabs, kept as the "before".
 
 ### Mole (`deepcharter:pod`)
 
 ![mole-unlit-day-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/mole-unlit-day-front.png?raw=true) ![mole-unlit-day-side](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/mole-unlit-day-side.png?raw=true)
 ![mole-unlit-day-back](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/mole-unlit-day-back.png?raw=true) ![mole-unlit-day-top](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/mole-unlit-day-top.png?raw=true)
 
-Front, side and back look the same: the model is a symmetric slab with no front.
+The pictures: the old slab, which looked the same from the front, side and back. The Mole now has a front, the cone, and a back.
 
 | | |
 |---|---|
-| Source | `main/pod/PodRegistry.java:23`, `main/pod/Chassis.java:8` (width 1.9, height 1.9, 1 seat), `client/pod/PodRenderer.java`, `client/pod/PodClientRegistry.java:15` |
-| Model | None. The renderer draws one vanilla block, `minecraft:raw_copper_block`, scaled to 1.9 x 0.9 x 1.9 blocks (`PodRenderer.java:55-56`, `SLAB_HEIGHT` at `:25`). It is a copper-coloured slab with the vanilla raw-copper texture. |
-| Texture | None of its own (vanilla `block/raw_copper_block`, 16 x 16) |
-| Variants | 1 look. A wreck is drawn as a `minecraft:coal_block` slab instead (`PodRenderer.java:23`). Lights and parts change nothing visible. |
-| Vanilla | **partly**: a vanilla block used as the model |
-| Swap | **(c)** the model is code. Replacing it needs a real entity model and a texture. |
+| Source | `main/pod/PodRegistry.java`, `main/pod/Chassis.java` (width 1.9, height 1.9, 1 seat), `client/pod/PodGeoRenderer.java`, `client/pod/PodClientRegistry.java` |
+| Model | `geckolib/models/pod/mole.geo.json`: the Capsule, a GeckoLib model with the cutter of every drill tier as bone sets ([ADR 0040](../adr/0040-a-pod-look-is-a-file-per-chassis-and-the-drill-tier-picks-the-cutter.md)). |
+| Texture | `textures/entity/pod/mole.png` and `mole_glowmask.png` (512 x 512, written by `tools/pod_concepts.py`) |
+| Variants | The drill tier shows the cutter (T0 tricone, T1 stacked rings, T2 fluted auger, T3 and up cluster, from `pod/mole.json`). A wreck is the derelict texture, with no rotor. |
+| Vanilla | no |
+| Swap | **(a)** a pack replaces `pod/mole.json`, the model or the textures |
 
 Lit and unlit in a dark room (the lights part is a light source round the pod; it adds no glow or lamp to the model):
 
@@ -256,31 +256,31 @@ Lit and unlit in a dark room (the lights part is a light source round the pod; i
 
 | | |
 |---|---|
-| Source | `main/pod/PodRegistry.java:25`, `main/pod/Chassis.java:10` (width 2.9, height 2.9, 2 seats), `client/pod/PodClientRegistry.java:17` |
-| Model | As the Mole: one vanilla block, `minecraft:iron_block`, scaled to 2.9 x 0.9 x 2.9 blocks. |
-| Texture | None of its own (vanilla `block/iron_block`, 16 x 16) |
-| Variants | 1 look, plus the coal-block wreck |
-| Vanilla | **partly** |
-| Swap | **(c)**, as the Mole |
+| Source | `main/pod/PodRegistry.java`, `main/pod/Chassis.java` (width 2.9, height 2.9, 2 seats), `client/pod/PodGeoRenderer.java` |
+| Model | `geckolib/models/pod/prospector.geo.json`: longer, two seats in tandem, a winch, wider cutters. |
+| Texture | `textures/entity/pod/prospector.png` and `prospector_glowmask.png` |
+| Variants | As the Mole's, with the cluster from T3 (the Prospector's cap). The wreck is scorched, with one lamp lit. |
+| Vanilla | no |
+| Swap | **(a)**, as the Mole |
 
 ![prospector-unlit-dark-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/prospector-unlit-dark-front.png?raw=true) ![prospector-lit-dark-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/prospector-lit-dark-front.png?raw=true)
 ![prospector-lit-dark-side](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/prospector-lit-dark-side.png?raw=true) ![prospector-lit-dark-back](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/prospector-lit-dark-back.png?raw=true)
 
 ### Wrecks
 
-A pod whose hull reaches 0 is a wreck: powered off, drawn as a coal-block slab (`PodRenderer.java:23`, `main/wreck/Wrecks.java`).
+A pod whose hull reaches 0 is a wreck: powered off, drawn with the wreck variant of its look file (`client/pod/PodGeoRenderer.java`, `main/wreck/Wrecks.java`): a weathered texture, the derelict Mole without its rotor, the scorched Prospector with one lamp lit.
 
 ![wrecks-mole-and-prospector-day](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/wrecks-mole-and-prospector-day.png?raw=true) ![wreck-mole-front-day](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/wreck-mole-front-day.png?raw=true)
 ![wreck-prospector-front-day](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/wreck-prospector-front-day.png?raw=true)
 
 | | |
 |---|---|
-| Vanilla | **partly** (a vanilla coal block) |
-| Swap | **(c)** `PodRenderer.java:23` |
+| Vanilla | no |
+| Swap | **(a)** `wreck` in `pod/<chassis>.json`, and the `_wreck` textures |
 
 ### The founding Mole in the hangar
 
-The derelict Mole is a `deepcharter:pod` made with hull 0 (`main/hangar/Hangar.java`), so it is drawn as a wreck, a black coal-block slab; repairing it at the hangar console makes it MOLE-0001 and a raw-copper Mole.
+The derelict Mole is a `deepcharter:pod` made with hull 0 (`main/hangar/Hangar.java`), so it is drawn as the derelict Mole; repairing it at the hangar console makes it MOLE-0001 and a working Mole.
 
 ![hangar-derelict-mole](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hangar-derelict-mole.png?raw=true) ![hangar-founding-mole-repaired](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hangar-founding-mole-repaired.png?raw=true)
 

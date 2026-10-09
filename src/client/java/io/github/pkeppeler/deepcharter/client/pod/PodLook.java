@@ -34,16 +34,19 @@ import io.github.pkeppeler.deepcharter.pod.Chassis;
  *   "texture": "deepcharter:textures/entity/pod/mole.png", its glowmask is the same name with _glowmask: mole_glowmask.png
  *   "glow": "lit",                                         "lit" while the pod has power, "always" or "never"
  *   "hide": [],                                            bones not drawn (optional)
- *   "cutters": {"0": "tricone", "2": "stacked"},           the drill tier from which each cutter shows (the tier map)
+ *   "cutters": {"0": "tricone", "1": "stacked"},           the drill tier from which each cutter shows (the tier map)
  *   "wreck": {"texture": "...", "glow": "never", "hide": ["rotor"]}
  * }
  * }</pre>
+ *
+ * <p>{@code source} names the file and the pack it came from, for errors. A pack's look that does not load, or does not fit its model and
+ * textures, never stops the game: the renderer logs it and draws the mod's own look for that chassis ({@link #readBuiltIn}).
  *
  * <p>The tier map has an entry for tier 0, the stock drill, so every tier has a cutter: a tier shows the cutter of the highest
  * entry at or below it. A model with several cutters (bones {@code drill_head_<cutter>}) needs the map and names only cutters it
  * holds; a model with one plain cutter has no map.
  */
-public record PodLook(Identifier model, Variant intact, Variant wreck, NavigableMap<Integer, String> cutters) {
+public record PodLook(Identifier model, Variant intact, Variant wreck, NavigableMap<Integer, String> cutters, String source) {
 	/** When the glowmask is drawn over the texture. */
 	public enum Glow {
 		/** While the pod has a pilot and power, as its lamps are. */
@@ -79,17 +82,29 @@ public record PodLook(Identifier model, Variant intact, Variant wreck, Navigable
 		return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "pod/" + chassis.id() + ".json");
 	}
 
-	/** Reads the look of {@code chassis} and checks it against the model it names. A missing file, or a look that does not fit its model, throws. */
+	/** Reads the look of {@code chassis} that wins: a pack's if a pack has one, else the mod's. A missing file, or one that does not parse, throws. */
 	public static PodLook read(ResourceManager resources, Chassis chassis) {
 		Identifier file = file(chassis);
 		Resource resource = resources.getResource(file).orElseThrow(() -> new IllegalStateException("No pod look at " + file + " for the chassis " + chassis.id()));
-		PodLook look;
+		return read(file, resource);
+	}
+
+	/** The mod's own look of {@code chassis}, below every pack's: the one the game falls back to when a pack's look is broken. */
+	public static PodLook readBuiltIn(ResourceManager resources, Chassis chassis) {
+		Identifier file = file(chassis);
+		List<Resource> stack = resources.getResourceStack(file);
+		if (stack.isEmpty()) {
+			throw new IllegalStateException("No pod look at " + file + " for the chassis " + chassis.id());
+		}
+		return read(file, stack.getFirst());
+	}
+
+	private static PodLook read(Identifier file, Resource resource) {
 		try (Reader reader = resource.openAsReader()) {
-			look = parse(file + " (from " + resource.sourcePackId() + ")", reader);
+			return parse(file + " (from " + resource.sourcePackId() + ")", reader);
 		} catch (IOException e) {
 			throw new UncheckedIOException("Could not read the pod look " + file, e);
 		}
-		return look;
 	}
 
 	/** Reads a look from {@code json}; {@code source} names the file in every error. */
@@ -129,7 +144,7 @@ public record PodLook(Identifier model, Variant intact, Variant wreck, Navigable
 				throw new IllegalArgumentException(source + ": the cutters need an entry for tier 0, the stock drill, so that every tier has a cutter; has " + cutters.keySet());
 			}
 		}
-		return new PodLook(model, intact, wreck, cutters);
+		return new PodLook(model, intact, wreck, cutters, source);
 	}
 
 	/** The cutter that a drill of {@code tier} shows: that of the highest entry at or below it. A pod without cutters has none to ask. */
@@ -152,14 +167,14 @@ public record PodLook(Identifier model, Variant intact, Variant wreck, Navigable
 	public void check(GeoModel geo) {
 		List<String> held = geo.cutters();
 		if (!held.isEmpty() && cutters.isEmpty()) {
-			throw new IllegalArgumentException("the look of " + model + " has no cutters map, but " + geo.source() + " holds the cutters " + held);
+			throw new IllegalArgumentException(source + ": the look of " + model + " has no cutters map, but " + geo.source() + " holds the cutters " + held);
 		}
 		if (held.isEmpty() && !cutters.isEmpty()) {
-			throw new IllegalArgumentException("the look of " + model + " maps cutters " + cutters.values() + ", but " + geo.source() + " holds one plain cutter");
+			throw new IllegalArgumentException(source + ": the look of " + model + " maps cutters " + cutters.values() + ", but " + geo.source() + " holds one plain cutter");
 		}
 		for (Map.Entry<Integer, String> entry : cutters.entrySet()) {
 			if (!held.contains(entry.getValue())) {
-				throw new IllegalArgumentException("the look of " + model + " maps drill tier " + entry.getKey() + " to the cutter '" + entry.getValue()
+				throw new IllegalArgumentException(source + ": the look of " + model + " maps drill tier " + entry.getKey() + " to the cutter '" + entry.getValue()
 						+ "', which " + geo.source() + " does not hold; it holds " + held);
 			}
 		}
@@ -168,7 +183,7 @@ public record PodLook(Identifier model, Variant intact, Variant wreck, Navigable
 		for (Variant variant : List.of(intact, wreck)) {
 			for (String hidden : variant.hide()) {
 				if (!names.contains(hidden)) {
-					throw new IllegalArgumentException("the look of " + model + " hides '" + hidden + "', which is no bone of " + geo.source());
+					throw new IllegalArgumentException(source + ": the look of " + model + " hides '" + hidden + "', which is no bone of " + geo.source());
 				}
 			}
 		}

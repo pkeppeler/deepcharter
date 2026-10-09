@@ -94,12 +94,12 @@ A **look file**, `pod/<chassis>.json`, picks the model and the textures (a glowm
   "model": "deepcharter:pod/mole",
   "texture": "deepcharter:textures/entity/pod/mole.png",
   "glow": "lit",
-  "cutters": {"0": "tricone", "2": "stacked", "3": "fluted", "4": "cluster"},
+  "cutters": {"0": "tricone", "1": "stacked", "2": "fluted", "3": "cluster"},
   "wreck": {"texture": "deepcharter:textures/entity/pod/mole_wreck.png", "glow": "never", "hide": ["rotor"]}
 }
 ```
 
-Re-map the cutters by replacing that file in a pack, with the same keys and other cutter names the model holds: F3+T applies it, and no build is needed. A tier shows the cutter of the highest key at or below it, and the map needs a key `0`, the stock drill. The tiers are the game's: the terminal shows the stock drill as `DRILL T0`. A bad file fails the reload and names the pack, the file and the place. `PodLookTest` and `PodGeoModelTest` check the shipped files, and `PodGeckoLibClientTest` checks that an install swaps the cutter in the game.
+Re-map the cutters by replacing that file in a pack, with the same keys and other cutter names the model holds: F3+T applies it, and no build is needed. A tier shows the cutter of the highest key at or below it, and the map needs a key `0`, the stock drill. The tiers are the game's: the terminal shows the stock drill as `DRILL T0`. A look file that is broken (not JSON, an unknown key, a cutter or bone its model does not hold, a missing texture) does not stop the game: the game logs one error that names the pack, the file and the place, and draws the mod's own look for that chassis until the pack is fixed. `PodLookTest` and `PodGeoModelTest` check the shipped files, and `PodGeckoLibClientTest` checks that an install swaps the cutter in the game.
 
 The lampless figure keeps the vanilla zombie model and only its texture is a skin (ADR 0033). `SkinAssetsTest` checks that every pod look has its files, and every particle has its own.
 

@@ -22,6 +22,7 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.AABB;
 
+import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -37,7 +38,7 @@ import io.github.pkeppeler.deepcharter.wreck.Wrecks;
  */
 public class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimatable, PodEntity, PodGeoRenderState> {
 	/** How far the hull shakes while the drill bites, in blocks. */
-	private static final float SHAKE = 0.02f;
+	public static final float SHAKE = 0.02f;
 
 	/** What a pod shows: the cutter its drill tier picks (null for a model with one plain cutter), and its variant, intact or wreck. */
 	public record Appearance(String cutter, PodLook.Variant variant, boolean wrecked) {
@@ -65,32 +66,60 @@ public class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimatable, 
 	// Weak, so a pod that leaves the level takes its animation with it.
 	private final Map<PodEntity, PodMotion> motions = new WeakHashMap<>();
 
-	public PodGeoRenderer(EntityRendererProvider.Context context, Chassis chassis) {
-		this(context, chassis, PodLook.read(context.getResourceManager(), chassis));
+	/** A pod look and the geometry it names, which fit each other and their textures. */
+	private record Loaded(PodLook look, GeoModel geo) {
 	}
 
-	private PodGeoRenderer(EntityRendererProvider.Context context, Chassis chassis, PodLook look) {
-		super(context, new PodGeckoModel(look), new PodGeoAnimatable());
+	public PodGeoRenderer(EntityRendererProvider.Context context, Chassis chassis) {
+		this(context, chassis, load(context.getResourceManager(), chassis));
+	}
+
+	private PodGeoRenderer(EntityRendererProvider.Context context, Chassis chassis, Loaded loaded) {
+		super(context, new PodGeckoModel(loaded.look()), new PodGeoAnimatable());
 		this.chassis = chassis;
-		this.look = look;
+		look = loaded.look();
+		geo = loaded.geo();
 		shadowRadius = chassis.width() / 2;
-		ResourceManager resources = context.getResourceManager();
-		geo = readGeometry(resources, look.modelFile());
-		look.check(geo);
-		for (PodLook.Variant variant : List.of(look.intact(), look.wreck())) {
-			checkTexture(resources, geo, variant.texture());
-			if (variant.glow() != PodLook.Glow.NEVER) {
-				checkTexture(resources, geo, variant.glowmask());
-			}
-		}
 		pose = new PodPose(geo);
-		modelExtent = geo.cullingBox();
+		// The shake moves the whole model by up to SHAKE on each horizontal axis and on y while the pod drills.
+		modelExtent = geo.cullingBox().inflate(SHAKE);
 		for (String cutter : geo.cutters()) {
 			spinScales.put(cutter, (float) geo.drillSpinScale(cutter));
 			cutterRoots.put(cutter, geo.bones().stream().filter(bone -> GeoModel.cutterOf(bone).map(cutter::equals).orElse(false))
 					.map(GeoModel.Bone::name).toList());
 		}
 		withRenderLayer(new PodGlowLayer(this));
+	}
+
+	/**
+	 * The look of {@code chassis} that the game draws: the winning pack's if it loads and fits its model and textures, else the mod's
+	 * own, after one error in the log that names the pack, the file and the place. A broken skin must not stop the client, which a
+	 * renderer that fails to build on a resource reload would.
+	 */
+	static Loaded load(ResourceManager resources, Chassis chassis) {
+		try {
+			return validate(resources, PodLook.read(resources, chassis));
+		} catch (RuntimeException e) {
+			DeepCharter.LOGGER.error("The pod look of the {} does not load, so the mod's own look is drawn instead: {}", chassis.id(), e.getMessage());
+			return validate(resources, PodLook.readBuiltIn(resources, chassis));
+		}
+	}
+
+	/** Reads the geometry that {@code look} names and checks the look and its textures against it. */
+	private static Loaded validate(ResourceManager resources, PodLook look) {
+		try {
+			GeoModel geo = readGeometry(resources, look.modelFile());
+			look.check(geo);
+			for (PodLook.Variant variant : List.of(look.intact(), look.wreck())) {
+				checkTexture(resources, geo, variant.texture());
+				if (variant.glow() != PodLook.Glow.NEVER) {
+					checkTexture(resources, geo, variant.glowmask());
+				}
+			}
+			return new Loaded(look, geo);
+		} catch (RuntimeException e) {
+			throw e.getMessage() != null && e.getMessage().contains(look.source()) ? e : new IllegalArgumentException(look.source() + ": " + e.getMessage(), e);
+		}
 	}
 
 	public Chassis chassis() {
