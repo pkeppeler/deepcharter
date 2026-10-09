@@ -74,22 +74,24 @@ class TexturePacksTest(unittest.TestCase):
                     host = json.loads(model.read_text())["textures"]["host"]
                     self.assertIsNone(resolve(assets, host, "textures", ".png"), f"{model.name}: the host {host} is not vanilla's")
 
-    def test_no_shadow_or_socket_of_an_overlay_lies_on_the_edge_of_its_block(self):
-        """Over the host's texture, a grey pixel on a block's outer ring draws the block's edge; only a vein or a seam of ore runs
-        out to the edge."""
+    def test_only_ore_reaches_the_edge_of_an_overlay(self):
+        """Over the host's texture, any pixel on a block's outer ring that is not the ore itself (a shadow, a socket, a tint) draws
+        the block's edge. So an edge pixel is clear, or one of the shades of the ore ramps its recipe draws with: a vein or a seam
+        running out to the edge."""
         overlaid = sorted(name for name, entry in texgen.variants().items() if "overlays" in entry)
         self.assertTrue(overlaid)
         for name in overlaid:
             target = texgen.variant(name)
-            palette = target.book.palette
-            greys = {palette.colours[key] for ramp in ("host", "rock") for key in palette.ramps[ramp]}
             for key in target.keys:
                 with self.subTest(variant=name, texture=key):
+                    ore = {colour for layer in target.book.recipes[key].layers if layer["op"] in ("cluster", "seams")
+                           for colour in target.book.palette.ramp(layer["ramp"], key)}
+                    self.assertTrue(ore, "the overlay draws no ore")
                     image = pngio.decode((target.out / f"{key}.png").read_bytes())
                     size = image.width
                     edge = {tuple(image.pixels[4 * (y * size + x):][:4]) for y in range(size) for x in range(size)
                             if x in (0, size - 1) or y in (0, size - 1)}
-                    self.assertEqual(set(), edge & greys)
+                    self.assertEqual(set(), edge - ore - {(0, 0, 0, 0)})
 
     def test_a_missing_texture_an_unused_model_and_a_block_the_mod_lacks_are_each_named(self):
         with tempfile.TemporaryDirectory() as tmp:

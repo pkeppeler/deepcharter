@@ -488,8 +488,9 @@ class VariantTest(unittest.TestCase):
         self.assertEqual(2, code)
         self.assertIn("block/goldium_ore_overlay_0: an overlay is a cutout texture", err)
 
-    def test_overlays_with_a_missing_key_or_a_bare_host_are_refused(self):
-        for overlays in ({"host": "minecraft:block/stone", "textures": 2}, {**self.overlays, "host": "stone"}):
+    def test_overlays_with_a_missing_key_a_bare_host_or_a_true_count_are_refused(self):
+        for overlays in ({"host": "minecraft:block/stone", "textures": 2}, {**self.overlays, "host": "stone"},
+                         {**self.overlays, "textures": True}):
             with self.subTest(overlays=overlays):
                 self.variants({"palettes": [], "recipes": ["o/recipes"], "pack": "opack", "sheet": "osheet.png", "overlays": overlays})
                 code, _, err = run("--variant", "o", "--check")

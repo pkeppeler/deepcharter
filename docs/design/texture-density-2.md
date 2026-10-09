@@ -117,6 +117,7 @@ Everything in the packs comes from the generator ([skins.md](skins.md#textures))
 - **The recipes** are in `tools/textures/variants/b1/recipes/` to `b4`, with the stone's greys in `tools/textures/variants/overlay/palette.json`.
 - **The packs** are listed in `tools/textures/variants.json`. Each names its host, `minecraft:block/stone`, and its ore blocks.
 - **The models and blockstates** are generated too. Each ore model draws `minecraft:block/stone` by name, and the overlay on top of it. No Mojang texture is in the repo. `--check` fails on a changed model, and on any file in the pack's `assets/minecraft/`.
+- **The overlay renders as cutout** with no setting in the model. The 26.3 game looks at the pixels of each face's texture: a face with clear pixels goes in the cutout layer, and a face with none goes in the solid layer (`FaceBakery.computeMaterialTransparency`, then `ChunkSectionLayer.byTransparency`). The overlay's pixels are clear or opaque, never half clear, so it is cutout and never translucent.
 - **The test packs** are in `src/gametest/resources/resourcepacks/texture_overlay_b1/` to `b4`.
 
 To rebuild and check the packs:

@@ -9,8 +9,10 @@ from recipe import Book, RecipeError
 
 NAMESPACE = "deepcharter"
 FACES = ("down", "up", "north", "south", "west", "east")
-# The model every ore of the pack inherits: two full cubes, the host's texture and the overlay over it, so the overlay's
-# transparent pixels show the host and its opaque ones (rendered as cutout) cover it.
+# The model every ore of the pack inherits: two full cubes, the host's texture and the overlay over it, so the overlay's clear
+# pixels show the host and its opaque ones cover it. 26.3 puts each quad in a chunk layer by its sprite's pixels under the face's
+# UVs (FaceBakery.computeMaterialTransparency, then ChunkSectionLayer.byTransparency): clear pixels make the overlay CUTOUT and
+# the opaque host SOLID, with no render_type in the model.
 PARENT = "block/ore_overlay"
 PARENT_MODEL = {
     "parent": "minecraft:block/block",
@@ -36,7 +38,7 @@ class Overlays:
         host, textures, blocks = body["host"], body["textures"], body["blocks"]
         if not isinstance(host, str) or ":" not in host:
             raise RecipeError(f"{where}: the overlay host is a namespaced texture such as minecraft:block/stone, got {host!r}")
-        if not isinstance(textures, int) or textures < 1:
+        if not isinstance(textures, int) or isinstance(textures, bool) or textures < 1:
             raise RecipeError(f"{where}: an overlay block takes 1 or more textures, got {textures!r}")
         if not blocks or not all(isinstance(b, str) for b in blocks) or len(set(blocks)) != len(blocks):
             raise RecipeError(f"{where}: the overlay blocks are a non-empty list of distinct block names, got {blocks!r}")
