@@ -50,7 +50,7 @@
       "right": {
         "type": "minecraft:mul",
         "left": "deepcharter:surface/crater_radius",
-        "right": 0.2
+        "right": 0.3
       }
     }
   }

@@ -56,8 +56,10 @@ public class SurfaceTerrainTest {
 	private static final int SAMPLE_CHUNK_RADIUS = 6;
 	/** The great pit, south of the pad, in sight of the square. */
 	private static final int PIT_X = 24;
-	private static final int PIT_Z = 176;
-	private static final int PIT_DEPTH = 18;
+	private static final int PIT_Z = 150;
+	/** The rim stands this much higher than the floor, and this far from the middle. */
+	private static final int PIT_DEPTH = 20;
+	private static final int PIT_RIM_RADIUS = 59;
 	private static final int SURVEY_SPAN = 2048;
 	private static final int SURVEY_STEP = 8;
 
@@ -149,9 +151,16 @@ public class SurfaceTerrainTest {
 			throw fail(helper, "the land runs from %d to %d blocks about the pad: expected a crater at least 5 deep and a mesa at least 9 high", lowest, highest);
 		}
 		ChunkGenerator generator = level.getChunkSource().getGenerator();
-		int pit = height(generator, level, level.getChunkSource().randomState(), PIT_X, PIT_Z);
-		if (pit > PAD_GROUND - PIT_DEPTH) {
-			throw fail(helper, "the great pit at %d %d has its floor at %d, expected %d or lower", PIT_X, PIT_Z, pit, PAD_GROUND - PIT_DEPTH);
+		RandomState random = level.getChunkSource().randomState();
+		int floor = height(generator, level, random, PIT_X, PIT_Z);
+		int rim = Integer.MIN_VALUE;
+		for (int step = 0; step < 8; step++) {
+			double angle = step * Math.PI / 4;
+			rim = Math.max(rim, height(generator, level, random, PIT_X + (int) Math.round(PIT_RIM_RADIUS * Math.cos(angle)),
+					PIT_Z + (int) Math.round(PIT_RIM_RADIUS * Math.sin(angle))));
+		}
+		if (rim - floor < PIT_DEPTH) {
+			throw fail(helper, "the great pit at %d %d has its floor at %d and its rim at %d, expected the rim %d higher", PIT_X, PIT_Z, floor, rim, PIT_DEPTH);
 		}
 		helper.succeed();
 	}
