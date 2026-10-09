@@ -43,7 +43,7 @@ A pod is a vehicle with seats. It drives on treads, lifts on a rotor and drills 
 
 ![A pod drills down through three slabs of stone](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/drilling.gif?raw=true)
 
-Sprint to drill down, or push into a wall to drill sideways. Ore goes into the cargo bay and the stone is gone. Fuel drains all the time, and faster when you drill. A pod with no fuel is stranded and dark. Buy fuel at the colony pump, or feed the pod coal. (This picture uses night vision, so you can see the bore.)
+Sprint to drill down, or push into a wall to drill sideways. Ore goes into the cargo bay and the stone is gone, unless you fit a spoil hopper (stop 10). Fuel drains all the time, and faster when you drill. A pod with no fuel is stranded and dark. Buy fuel at the colony pump, or feed the pod coal. (This picture uses night vision, so you can see the bore.)
 
 ### 4. The scanner
 
@@ -53,7 +53,7 @@ The scanner is a side-view map of the rock around your pod, with ore as bright d
 
 ### 5. Ore and selling
 
-![A pod's cargo screen, full of ore](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/ore-cargo.png?raw=true)
+![A pod's cargo screen, loaded with ore](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/ore-cargo.png?raw=true)
 
 Ore is heavy and lives in the pod's cargo bay. A heavy load cuts your lift. Park by the ore processor in the colony and sell it, and the money goes to your charter's account.
 
@@ -61,7 +61,7 @@ Ore is heavy and lives in the pod's cargo bay. A heavy load cuts your lift. Park
 
 ![The upgrade terminal showing hull prices](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/upgrade-terminal.png?raw=true)
 
-Money buys better parts: drill, hull, engine, tank, cargo, scanner and lights. The hangar holds your pods and sells a new one. Wrecks you find deeper down become better pods.
+Money buys better parts: drill, hull, engine, tank, radiator, cargo, scanner, lights and spoil hopper. The hangar holds your pods and sells a new one. Wrecks you find deeper down become better pods.
 
 ### 7. Repair
 
@@ -85,7 +85,7 @@ Lava hurts the pod, not the pilot. The hull gauge drops until you leave or repai
 
 ![Looking up a shaft whose walls are lined with slag brick where the lava pockets were](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-lining.png?raw=true)
 
-A thermal scanner shows lava pockets beside your shaft before you reach them. Stop a slab above and line the walls by hand with slag brick, then drill on. The spoil hopper keeps the stone you drill, and the ore processor fuses it into the brick.
+A thermal scanner shows lava pockets beside your shaft before you reach them. Stop a slab above, press R from the seat, and the pod lines the slab walls with slag brick while it stands still. Then drill on. Buy a spoil hopper at the upgrade terminal and the drill keeps the stone it bores. The ore processor fuses that stone into the brick.
 
 ### 11. Wrecks and towing
 
