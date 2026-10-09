@@ -24,19 +24,19 @@
     "sun": {"core": "#FFFEF0", "rim": "#FFE8B0", "radius": 6}
   },
   "layers": {
-    "layer_1": {"ambient_light": 0.02, "ambient_color": "#08080A", "fog_start": 3, "fog_end": 36, "tint": "#B8C0CC",
+    "layer_1": {"ambient_light": 0.04, "ambient_color": "#08080A", "fog_start": 3, "fog_end": 36, "tint": "#B8C0CC",
                 "fog": {"topsoil_claims": "#0C0C0E", "stone_benches": "#0A0A0C", "deep_claim": "#080808"}},
-    "layer_2": {"ambient_light": 0.008, "ambient_color": "#040406", "fog_start": 2, "fog_end": 22, "tint": "#A8B4C4",
+    "layer_2": {"ambient_light": 0.02, "ambient_color": "#040406", "fog_start": 2, "fog_end": 22, "tint": "#A8B4C4",
                 "fog": {"upper_levels": "#060708", "shift_change": "#050506", "prospectors_run": "#040404"}}
   },
   "grade": {
     "surface": {"lift": [0.06, 0.05, 0.03, 0.0], "shadows": [0.30, 0.22, 0.16, 0.3], "highlights": [1.0, 0.95, 0.82, 0.3],
                 "saturation": 0.92, "vignette": 0.0, "contrast": 0.88, "olive": 0.85},
-    "layer_1": {"shadows": [0.12, 0.13, 0.16, 0.4], "saturation": 0.35, "vignette": 0.45, "contrast": 1.1},
-    "layer_2": {"shadows": [0.10, 0.11, 0.14, 0.45], "saturation": 0.3, "vignette": 0.5, "contrast": 1.12}
+    "layer_1": {"shadows": [0.12, 0.13, 0.16, 0.3], "saturation": 0.35, "vignette": 0.4, "contrast": 1.0},
+    "layer_2": {"shadows": [0.10, 0.11, 0.14, 0.35], "saturation": 0.3, "vignette": 0.45, "contrast": 1.0}
   },
   "ramps": {
-    "rock": ["#0E0E10", "#22201E", "#383432", "#504A46"],
+    "rock": ["#1A1A1C", "#36332F", "#56504A", "#7A736C"],
     "soil": ["#8A7458", "#B89C78", "#D8C09A", "#F0DCBC"],
     "flora": ["#A88C58", "#C8AC74", "#E4CC98"],
     "masonry": ["#8A8070", "#C8BCA4", "#E8DCC4", "#FAF2E2"],

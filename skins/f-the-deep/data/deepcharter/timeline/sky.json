@@ -78,11 +78,11 @@
       "keyframes": [
         {
           "ticks": 0,
-          "value": 56.0
+          "value": 96.0
         },
         {
           "ticks": 144000,
-          "value": 40.0
+          "value": 64.0
         }
       ]
     },
@@ -92,11 +92,11 @@
       "keyframes": [
         {
           "ticks": 0,
-          "value": 6.0
+          "value": 12.0
         },
         {
           "ticks": 144000,
-          "value": 4.0
+          "value": 8.0
         }
       ]
     },
@@ -148,7 +148,7 @@
       "keyframes": [
         {
           "ticks": 0,
-          "value": 0.4
+          "value": 0.5
         },
         {
           "ticks": 144000,

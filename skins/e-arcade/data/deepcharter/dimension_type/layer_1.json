@@ -1,5 +1,5 @@
 {
-  "ambient_light": 0.12,
+  "ambient_light": 0.25,
   "attributes": {
     "minecraft:audio/background_music": {
       "default": {
