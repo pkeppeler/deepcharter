@@ -357,20 +357,6 @@ def render_town(out: Path, size: int) -> list[Path]:
     return [path]
 
 
-def _sheet_wide(images: list, columns: int) -> list:
-    """Tiles equal-size images of any aspect left to right, top to bottom, with a 4-pixel gutter."""
-    h, w = len(images[0]), len(images[0][0])
-    gutter = 4
-    rows = (len(images) + columns - 1) // columns
-    out = [[(12, 10, 12)] * (columns * w + (columns + 1) * gutter) for _ in range(rows * h + (rows + 1) * gutter)]
-    for i, img in enumerate(images):
-        ox = gutter + (i % columns) * (w + gutter)
-        oy = gutter + (i // columns) * (h + gutter)
-        for y, row in enumerate(img):
-            out[oy + y][ox:ox + w] = row
-    return out
-
-
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("piece")

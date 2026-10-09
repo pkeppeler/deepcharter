@@ -226,7 +226,7 @@ public class WorkOrdersTest {
 	public void theColonyIsBuiltWithoutTheFoundersHands(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		whenTheHostTicks(helper, server, () -> {
-			if (!FounderStatue.isBuilt(server)) {
+			if (Colony.placed(server).isEmpty()) {
 				throw helper.assertionException("the colony was not built, so the Host has no hands to lack");
 			}
 			if (FounderStatue.body(server).size() != 1) {

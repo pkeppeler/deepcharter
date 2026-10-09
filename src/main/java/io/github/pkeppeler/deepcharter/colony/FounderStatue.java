@@ -58,11 +58,6 @@ public final class FounderStatue {
 		return ColonyKit.SCULPTURE.defaultBlockState().setValue(KitSculptureBlock.PIECE, KitSculptureBlock.Piece.FOUNDER_C_HANDS);
 	}
 
-	/** True once the colony is built, so there is a statue to give hands to; false before, or when its data is unreadable. */
-	public static boolean isBuilt(MinecraftServer server) {
-		return Colony.placed(server).isPresent();
-	}
-
 	/** The displays of the statue's hands, loading the chunk they stand in; empty before the colony is built or while he has none. */
 	public static List<Display.BlockDisplay> hands(MinecraftServer server) {
 		return displays(server, handsState());
@@ -86,7 +81,7 @@ public final class FounderStatue {
 
 	/**
 	 * Gives the Host his hands: places the layout's hands piece where the body stands. A hand already there is replaced, so
-	 * the call can be repeated. Throws before the colony is built: check {@link #isBuilt} first.
+	 * the call can be repeated. Throws before the colony is built.
 	 */
 	public static void restoreHands(MinecraftServer server) {
 		ColonySite.Placed colony = Colony.placed(server).orElseThrow(() -> new IllegalStateException("the colony is not built: the Founder has no hands to restore"));

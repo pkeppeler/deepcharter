@@ -4,7 +4,7 @@ same scale: the hangar, the Continuity Office, the chapel, the bunkhouse, the pa
 
 The town is a set of structure pieces in colony coordinates (X east, Z south, from the centre of the pad, Y 0 the pad's ground), the
 anchors other features look up (ColonyAnchor), and the pieces a work order places later. build.py writes the structure files and
-the layout file (data/deepcharter/colony/layout.json) that ColonyBuilder reads; ColonyPiecesTest and tools/tests/test_colony.py
+the layout file (data/deepcharter/colony/layout.json) that ColonyBuilder reads; ColonyPlacementTest and tools/tests/test_colony.py
 check them.
 
 Player scale: a pod's bay is 4 wide and 4 high (a Prospector is 2.9 across), a storey is 4 blocks (a player is 1.8), a door is 2
