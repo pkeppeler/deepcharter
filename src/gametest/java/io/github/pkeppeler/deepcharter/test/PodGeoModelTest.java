@@ -117,6 +117,41 @@ public class PodGeoModelTest {
 		helper.succeed();
 	}
 
+	/** A drill ring turns against the drill head, so it rides the mount (it aims with the drill) and not the head (it would stand still). */
+	@GameTest
+	public void aDrillRingRidesTheMountAndNotTheHead(GameTestHelper helper) {
+		String withoutEnd = VALID.substring(0, VALID.lastIndexOf("\n  ]}]}"));
+		String ring = """
+				,
+				    {"name": "drill_ring", "parent": "%s", "pivot": [0, 4, -4], "cubes": [{"origin": [-3, 1, -6], "size": [6, 6, 1], "uv": [0, 24]}]}
+				  ]}]}""";
+		GeoModel onMount = GeoModel.parse("ring", new StringReader(withoutEnd + ring.formatted("drill_mount")));
+		require(helper, onMount.bones().stream().anyMatch(bone -> bone.role() == BoneRole.DRILL_RING), "a drill ring on the mount should parse, got " + onMount);
+		String misplaced = "drill_ring bone 'drill_ring' must be under drill_mount and not under drill_head";
+		requireContains(helper, failure(helper, withoutEnd + ring.formatted("drill_head")), misplaced);
+		requireContains(helper, failure(helper, withoutEnd + ring.formatted("body")), misplaced);
+		helper.succeed();
+	}
+
+	/**
+	 * Round 2 (#352) asks for the Borer's cutter made giant, filling or nearly filling the 32-pixel bore face: every round-2 cutter is
+	 * 25 pixels across or more. Every round-1 drill reaches 7.5 pixels or less, so the renderer spins it at the full rate, as before.
+	 */
+	@GameTest
+	public void roundTwoCuttersNearlyFillTheBoreFace(GameTestHelper helper) throws IOException {
+		double validReach = GeoModel.parse("valid", new StringReader(VALID)).drillReach();
+		require(helper, validReach == 1.0, "the valid model's 2-pixel drill head should reach 1 pixel from its axis, not " + validReach);
+		for (PodConcept concept : PodConcept.values()) {
+			double reach = read(helper, concept.model()).drillReach();
+			if (concept.round() == 2) {
+				require(helper, reach >= 12.5, concept + "'s cutter reaches %.1f pixels from its axis, under the 12.5 that nearly fills the bore face".formatted(reach));
+			} else {
+				require(helper, reach <= 7.5, concept + "'s drill reaches %.1f pixels from its axis, past round 1's 7.5".formatted(reach));
+			}
+		}
+		helper.succeed();
+	}
+
 	/** Each concept's texture and glowmask pass the check the renderer makes before it draws. */
 	@GameTest
 	public void everyConceptTexturePassesTheRenderersCheck(GameTestHelper helper) throws IOException {

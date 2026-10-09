@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Writes the Mole concept models of #334: per concept a Bedrock .geo.json, a texture and a glowmask.
+"""Writes the Mole concept models of #334 and #352: per concept a Bedrock .geo.json, a texture and a glowmask.
 
 Usage:
   python3 -I tools/pod_concepts.py           write every concept into src/main/resources
@@ -664,61 +664,75 @@ def track(model, side, parent, x0, x1, z0, z1, height, wheels):
 # ---------------------------------------------------------------------------------------------
 
 
+def capsule_hull(m, dz=0, brow_lamps=True):
+    """The Capsule above its running gear, dz pixels back from where concept 1 has it: the bevelled hull and roof, the
+    wrap-around window band, the brow lamps (unless brow_lamps is false), side tanks, exhaust, two whip antennae and the mast propeller."""
+    body = m.bone("body")
+    bevelled_box(body, -10, 7, -5 + dz, 10, 21, 12 + dz, 2, "paint")
+    body.box(-10.5, 12, -5.5 + dz, 10.5, 13, 12.5 + dz, "trim")
+    bevelled_box(body, -7, 21, -2 + dz, 7, 24, 9 + dz, 1, "paint")
+    body.box(-6, 9, 12 + dz, 6, 18, 13 + dz, "grille")
+    body.box(-8, 6, -3 + dz, 8, 7, 10 + dz, "iron")
+    canopy = m.bone("canopy", "body")
+    canopy.box(-8, 14, -6 + dz, 8, 20, -5 + dz, "glass")
+    canopy.box(-11, 14, -2 + dz, -10, 20, 4 + dz, "glass")
+    canopy.box(10, 14, -2 + dz, 11, 20, 4 + dz, "glass")
+    canopy.box(-9, 20, -6.5 + dz, 9, 21, -4.5 + dz, "brass")
+    canopy.box(-9, 13, -6.5 + dz, 9, 14, -4.5 + dz, "brass")
+    canopy.box(-3, 14, -6.5 + dz, -2, 20, -5.5 + dz, "brass")
+    canopy.box(2, 14, -6.5 + dz, 3, 20, -5.5 + dz, "brass")
+    if brow_lamps:
+        lamps = m.bone("lamps", "body")
+        caged_lamp(lamps, -6, 23.5, -6 + dz)
+        caged_lamp(lamps, 6, 23.5, -6 + dz)
+    for side, x0, x1 in (("l", 10, 13), ("r", -13, -10)):
+        tank = m.bone(f"tank_{side}", "body")
+        tank.box(x0, 14, 0 + dz, x1, 19, 10 + dz, "tank")
+        tank.box(x0 + 0.5, 15, -1 + dz, x1 - 0.5, 18, 0 + dz, "brass")
+    exhaust = m.bone("exhaust", "body")
+    exhaust.box(-9, 17, 9 + dz, -6, 27, 12 + dz, "exhaust")
+    exhaust.box(-9.5, 27, 8.5 + dz, -5.5, 28, 12.5 + dz, "frame")
+    hatch = m.bone("hatch", "body")
+    hatch.box(1, 24, 3 + dz, 5, 25, 7 + dz, "brass")
+    # Two whip antennae at the back corners.
+    for x in (5, -6):
+        exhaust.box(x, 24, 8 + dz, x + 1, 29, 9 + dz, "frame")
+        exhaust.box(x - 0.5, 29, 7.5 + dz, x + 1.5, 30, 9.5 + dz, "trim")
+    mast = m.bone("mast", "body")
+    mast.box(-1, 24, 1 + dz, 1, 27, 3 + dz, "frame")
+    rotor = m.bone("rotor", "mast", (0, 28, 2 + dz))
+    rotor.box(-1.5, 27, 0.5 + dz, 1.5, 29, 3.5 + dz, "brass")
+    rotor.box(-14, 27.5, 1 + dz, -2, 28.5, 3 + dz, "paint")
+    rotor.box(2, 27.5, 1 + dz, 14, 28.5, 3 + dz, "paint")
+    rotor.box(-16, 27.5, 1 + dz, -14, 28.5, 3 + dz, "trim")
+    rotor.box(14, 27.5, 1 + dz, 16, 28.5, 3 + dz, "trim")
+    return body
+
+
+def capsule_running_gear(m, dz=0):
+    """The Capsule's two short treads and their fenders, dz pixels back from where concept 1 has them."""
+    track(m, "l", "body", 10, 15, -8 + dz, 12 + dz, 7, ((-4 + dz, 5), (2 + dz, 4), (8 + dz, 5)))
+    track(m, "r", "body", -15, -10, -8 + dz, 12 + dz, 7, ((-4 + dz, 5), (2 + dz, 4), (8 + dz, 5)))
+    fender = m.bone("fender", "body")
+    fender.box(9, 7, -9 + dz, 15, 8, 13 + dz, "paint")
+    fender.box(-15, 7, -9 + dz, -9, 8, 13 + dz, "paint")
+    fender.box(14, 8, -9 + dz, 15, 9, 13 + dz, "trim")
+    fender.box(-15, 8, -9 + dz, -14, 9, 13 + dz, "trim")
+    return fender
+
+
 def capsule():
     """1. Capsule: the art direction's Motherload pod in Company plate. A bevelled hull with a wrap-around window,
     twin caged headlamps on the brow, a propeller on a mast, two whip antennae, short treads and a big spiral drill hung under the nose."""
     m = Model("capsule")
-    body = m.bone("body")
-    bevelled_box(body, -10, 7, -5, 10, 21, 12, 2, "paint")
-    body.box(-10.5, 12, -5.5, 10.5, 13, 12.5, "trim")
-    bevelled_box(body, -7, 21, -2, 7, 24, 9, 1, "paint")
-    body.box(-6, 9, 12, 6, 18, 13, "grille")
-    body.box(-8, 6, -3, 8, 7, 10, "iron")
-    canopy = m.bone("canopy", "body")
-    canopy.box(-8, 14, -6, 8, 20, -5, "glass")
-    canopy.box(-11, 14, -2, -10, 20, 4, "glass")
-    canopy.box(10, 14, -2, 11, 20, 4, "glass")
-    canopy.box(-9, 20, -6.5, 9, 21, -4.5, "brass")
-    canopy.box(-9, 13, -6.5, 9, 14, -4.5, "brass")
-    canopy.box(-3, 14, -6.5, -2, 20, -5.5, "brass")
-    canopy.box(2, 14, -6.5, 3, 20, -5.5, "brass")
-    lamps = m.bone("lamps", "body")
-    caged_lamp(lamps, -6, 23.5, -6)
-    caged_lamp(lamps, 6, 23.5, -6)
-    for side, x0, x1 in (("l", 10, 13), ("r", -13, -10)):
-        tank = m.bone(f"tank_{side}", "body")
-        tank.box(x0, 14, 0, x1, 19, 10, "tank")
-        tank.box(x0 + 0.5, 15, -1, x1 - 0.5, 18, 0, "brass")
-    exhaust = m.bone("exhaust", "body")
-    exhaust.box(-9, 17, 9, -6, 27, 12, "exhaust")
-    exhaust.box(-9.5, 27, 8.5, -5.5, 28, 12.5, "frame")
-    hatch = m.bone("hatch", "body")
-    hatch.box(1, 24, 3, 5, 25, 7, "brass")
-    # Two whip antennae at the back corners.
-    for x in (5, -6):
-        exhaust.box(x, 24, 8, x + 1, 29, 9, "frame")
-        exhaust.box(x - 0.5, 29, 7.5, x + 1.5, 30, 9.5, "trim")
-    mast = m.bone("mast", "body")
-    mast.box(-1, 24, 1, 1, 27, 3, "frame")
-    rotor = m.bone("rotor", "mast", (0, 28, 2))
-    rotor.box(-1.5, 27, 0.5, 1.5, 29, 3.5, "brass")
-    rotor.box(-14, 27.5, 1, -2, 28.5, 3, "paint")
-    rotor.box(2, 27.5, 1, 14, 28.5, 3, "paint")
-    rotor.box(-16, 27.5, 1, -14, 28.5, 3, "trim")
-    rotor.box(14, 27.5, 1, 16, 28.5, 3, "trim")
+    capsule_hull(m)
     # The drill hangs 45 degrees down from a knuckle under the window; the game swings it level or straight down.
     mount = m.bone("drill_mount", "body", (0, 11, -5), (45, 0, 0))
     mount.box(-5, 8, -8, -4, 13, -3, "frame")
     mount.box(4, 8, -8, 5, 13, -3, "frame")
     mount.box(-4, 9, -7, 4, 13, -5, "hazard")
     spiral_drill(m, "drill_mount", (0, 11, -8), ((9, 2), (7, 3), (5, 3), (3, 2), (1, 1)), teeth_tiers=(0, 1))
-    track(m, "l", "body", 10, 15, -8, 12, 7, ((-4, 5), (2, 4), (8, 5)))
-    track(m, "r", "body", -15, -10, -8, 12, 7, ((-4, 5), (2, 4), (8, 5)))
-    fender = m.bone("fender", "body")
-    fender.box(9, 7, -9, 15, 8, 13, "paint")
-    fender.box(-15, 7, -9, -9, 8, 13, "paint")
-    fender.box(14, 8, -9, 15, 9, 13, "trim")
-    fender.box(-15, 8, -9, -14, 9, 13, "trim")
+    capsule_running_gear(m)
     return m
 
 
@@ -873,11 +887,213 @@ def gyro():
     return m
 
 
+# ---------------------------------------------------------------------------------------------
+# Round 2 (#352): the Capsule with the Borer's toothed cutter made giant
+# ---------------------------------------------------------------------------------------------
+
+
+def cross_disc(bone, turned, cx, cy, z0, width, depth, material, turned_material):
+    """A round-reading disc facing forward from its back face at z0: a cross of three cubes of material in bone, and the same
+    cross of turned_material in the turned bone (45 degrees about z), half a pixel back so no two faces share a plane. Two
+    materials make spokes, which show the disc turn."""
+    bar = round(width * 0.42)
+    if (width - bar) % 2:
+        bar += 1
+    stub = (width - bar) / 2
+    for b, back, paint in ((bone, 0, material), (turned, 0.5, turned_material)):
+        cz = z0 - depth / 2 + back
+        b.centred(cx, cy, cz, width, bar, depth, paint)
+        b.centred(cx, cy + (bar + stub) / 2, cz, bar, stub, depth, paint)
+        b.centred(cx, cy - (bar + stub) / 2, cz, bar, stub, depth, paint)
+
+
+def teeth_ring(bone, cx, cy, z_face, radius, count, size=(2, 3, 2), phase=0.0):
+    """count teeth standing proud of a face at z_face, round the axis at radius, each turned to point out from it."""
+    w, h, d = size
+    for n in range(count):
+        a = phase + 360.0 * n / count
+        r = math.radians(a)
+        bone.centred(round(cx + radius * math.sin(r), 4), round(cy + radius * math.cos(r), 4), z_face - d / 2, w, h, d, "teeth", (0, 0, a))
+
+
+def mount_pivot(axis_y, tip_z, down_tip_y):
+    """Where a drill mount must hinge so that a cutter whose axis is level at axis_y, with its tip at tip_z, ends pointing
+    straight down under the middle of the pod (z 0) with its tip at down_tip_y when the game turns the mount 90 degrees."""
+    py = (down_tip_y - tip_z + axis_y) / 2
+    return py, axis_y - py
+
+
+def full_face():
+    """A. Full Face: the Capsule at its own size, set back, behind the Borer's cutter made giant: a toothed disc nearly as wide
+    as the bore, a thin ring and a pilot boss, as on the Borer. It swings down under the belly on a yoke to bore the floor. The
+    brow lamps stand up on stalks either side of the cutter, so they show over its shoulders."""
+    m = Model("full_face")
+    dz = 3
+    capsule_hull(m, dz, brow_lamps=False)
+    lamps = m.bone("lamps", "body")
+    for sx in (-1, 1):
+        lamps.box(sx * 12 - 1, 21, -1, sx * 12 + 1, 24, 2, "frame")
+        caged_lamp(lamps, sx * 12, 26.5, -1)
+    axis_y, back_z, tip_z = 15, -7, -16
+    py, pz = mount_pivot(axis_y, tip_z, -10)
+    mount = m.bone("drill_mount", "body", (0, py, pz))
+    for sx in (-1, 1):
+        mount.box(sx * 11 - 1, py - 1.5, back_z, sx * 11 + 1, py + 1.5, pz + 1.5, "frame")
+        mount.centred(sx * 11.5, py, pz, 3, 4, 4, "brass")
+    mount.box(-12, py - 1.5, back_z + 2, 12, py + 1.5, back_z + 4, "hazard")
+    mount.centred(0, axis_y, back_z + 1, 9, 9, 2, "brass")
+    head = m.bone("drill_head", "drill_mount", (0, axis_y, back_z))
+    turned = m.bone("cutter", "drill_head", (0, axis_y, back_z), (0, 0, 45))
+    cross_disc(head, turned, 0, axis_y, back_z, 27, 3, "iron", "steel")
+    cross_disc(head, turned, 0, axis_y, back_z - 3, 17, 1, "steel", "iron")
+    cross_disc(head, turned, 0, axis_y, back_z - 4, 9, 2, "iron", "steel")
+    head.centred(0, axis_y, back_z - 7.5, 5, 5, 3, "brass")
+    teeth_ring(head, 0, axis_y, back_z - 3, 12, 12, (2, 2, 3))
+    teeth_ring(head, 0, axis_y, back_z - 4, 7, 8, (2, 2, 2), 22.5)
+    capsule_running_gear(m, dz)
+    return m
+
+
+def small_cab():
+    """B. Small Cab: the cutter is the machine and a shrunk Capsule rides behind it. The cutter is a drum as wide as the bore,
+    painted like the hull and turning one way, with a dark toothed face turning the other. The cab's lamps stand on a roof bar
+    that is wider than the cab, so they show over the drum's shoulders."""
+    m = Model("small_cab")
+    body = m.bone("body")
+    bevelled_box(body, -7, 9, 2, 7, 20, 14, 2, "paint")
+    body.box(-7.5, 13, 1.5, 7.5, 14, 14.5, "trim")
+    body.box(-5, 20, 4, 5, 22, 11, "paint")
+    body.box(-5, 11, 14, 5, 18, 15, "grille")
+    body.box(-6, 7, 3, 6, 9, 13, "iron")
+    canopy = m.bone("canopy", "body")
+    canopy.box(-5, 15, 1, 5, 19, 2, "glass")
+    canopy.box(-8, 15, 4, -7, 19, 8, "glass")
+    canopy.box(7, 15, 4, 8, 19, 8, "glass")
+    canopy.box(-6, 19, 0.5, 6, 20, 2.5, "brass")
+    canopy.box(-6, 14, 0.5, 6, 15, 2.5, "brass")
+    lamps = m.bone("lamps", "body")
+    lamps.box(-10, 22, 4, 10, 23, 6, "frame")
+    for sx in (-1, 1):
+        caged_lamp(lamps, sx * 9.5, 25.5, 3)
+    exhaust = m.bone("exhaust", "body")
+    exhaust.box(-6, 18, 11, -4, 25, 13, "exhaust")
+    exhaust.box(-6.5, 25, 10.5, -3.5, 26, 13.5, "frame")
+    exhaust.box(4, 22, 10, 5, 28, 11, "frame")
+    exhaust.box(3.5, 28, 9.5, 5.5, 29, 11.5, "trim")
+    mast = m.bone("mast", "body")
+    mast.box(-1, 22, 7, 1, 25, 9, "frame")
+    rotor = m.bone("rotor", "mast", (0, 26, 8))
+    rotor.box(-1.5, 25, 6.5, 1.5, 27, 9.5, "brass")
+    rotor.box(-12, 25.5, 7, -2, 26.5, 9, "paint")
+    rotor.box(2, 25.5, 7, 12, 26.5, 9, "paint")
+    rotor.box(-14, 25.5, 7, -12, 26.5, 9, "trim")
+    rotor.box(12, 25.5, 7, 14, 26.5, 9, "trim")
+    axis_y, back_z, tip_z = 15, -3, -16
+    py, pz = mount_pivot(axis_y, tip_z, -10)
+    mount = m.bone("drill_mount", "body", (0, py, pz))
+    for sx in (-1, 1):
+        mount.box(sx * 9 - 1, py - 1.5, back_z, sx * 9 + 1, py + 1.5, pz + 1.5, "frame")
+        mount.centred(sx * 8.5, py, pz, 2, 4, 4, "brass")
+    mount.centred(0, axis_y, back_z + 1, 11, 11, 2, "brass")
+    drum = m.bone("drill_ring", "drill_mount", (0, axis_y, back_z))
+    drum_turned = m.bone("cutter_drum", "drill_ring", (0, axis_y, back_z), (0, 0, 45))
+    cross_disc(drum, drum_turned, 0, axis_y, back_z, 27, 6, "paint", "paint")
+    cross_disc(drum, drum_turned, 0, axis_y, back_z - 6, 27, 1, "trim", "trim")
+    teeth_ring(drum, 0, axis_y, back_z - 7, 12, 10, (2, 2, 2))
+    head = m.bone("drill_head", "drill_mount", (0, axis_y, back_z - 7))
+    turned = m.bone("cutter", "drill_head", (0, axis_y, back_z - 7), (0, 0, 45))
+    cross_disc(head, turned, 0, axis_y, back_z - 7, 19, 2, "iron", "steel")
+    cross_disc(head, turned, 0, axis_y, back_z - 9, 9, 2, "steel", "iron")
+    head.centred(0, axis_y, back_z - 12, 4, 4, 2, "brass")
+    teeth_ring(head, 0, axis_y, back_z - 9, 7.5, 8, (2, 2, 2), 22.5)
+    track(m, "l", "body", 8, 13, 0, 15, 7, ((3, 5), (8, 4), (13, 4)))
+    track(m, "r", "body", -13, -8, 0, 15, 7, ((3, 5), (8, 4), (13, 4)))
+    fender = m.bone("fender", "body")
+    fender.box(7, 7, -1, 13, 8, 16, "paint")
+    fender.box(-13, 7, -1, -7, 8, 16, "paint")
+    return m
+
+
+def stepped():
+    """C. Stepped: the Capsule at its own size behind a stepped cutter of three toothed rings and a pilot cone. The middle ring
+    turns the other way from the rest, so the face churns, and every tooth stands proud. The cutter sits in a heavy frame on the
+    hull, open at the top so the pilot sees over it, on a big brass hub, and the lamps ride the tops of the frame's posts."""
+    m = Model("stepped")
+    dz = 3
+    capsule_hull(m, dz, brow_lamps=False)
+    frame = m.bone("frame", "body")
+    for sx in (-1, 1):
+        frame.box(sx * 14.5 - 1.5, 1, -6, sx * 14.5 + 1.5, 26, -3, "frame")
+        frame.box(sx * 13 - 1, 26, -3, sx * 13 + 1, 28, 2, "frame")
+    frame.box(-13, 1, -6, 13, 3, -3, "hazard")
+    lamps = m.bone("lamps", "body")
+    for sx in (-1, 1):
+        caged_lamp(lamps, sx * 12.5, 26, -6)
+    axis_y, back_z, tip_z = 14.5, -4, -16
+    py, pz = mount_pivot(axis_y, tip_z, -10)
+    mount = m.bone("drill_mount", "body", (0, py, pz))
+    mount.centred(0, axis_y, back_z + 1.5, 13, 13, 3, "tank")
+    mount.box(-3, axis_y - 3, back_z + 3, 3, axis_y + 3, back_z + 10, "frame")
+    head = m.bone("drill_head", "drill_mount", (0, axis_y, back_z))
+    turned = m.bone("cutter", "drill_head", (0, axis_y, back_z), (0, 0, 45))
+    ring = m.bone("drill_ring", "drill_mount", (0, axis_y, back_z))
+    ring_turned = m.bone("cutter_ring", "drill_ring", (0, axis_y, back_z), (0, 0, 45))
+    cross_disc(head, turned, 0, axis_y, back_z, 25, 3, "iron", "steel")
+    teeth_ring(head, 0, axis_y, back_z - 3, 11, 10, (2, 2, 3))
+    cross_disc(ring, ring_turned, 0, axis_y, back_z - 3, 18, 3, "steel", "iron")
+    teeth_ring(ring, 0, axis_y, back_z - 6, 7.5, 8, (2, 2, 3), 22.5)
+    cross_disc(head, turned, 0, axis_y, back_z - 6, 10, 3, "iron", "steel")
+    head.centred(0, axis_y, back_z - 10, 6, 6, 2, "brass")
+    head.centred(0, axis_y, back_z - 11.5, 3, 3, 1, "teeth")
+    capsule_running_gear(m, dz)
+    return m
+
+
+def boom():
+    """D. Boom: the Capsule at its own size, set back, with the cutter held out ahead on a heavy boom and four bracing struts
+    back to the hull, so there is daylight between drill and cab. The cutter sits a little low and the brow lamps stand on short
+    stalks, so they show over it, and the pilot looks over its rim."""
+    m = Model("boom")
+    dz = 3
+    capsule_hull(m, dz, brow_lamps=False)
+    lamps = m.bone("lamps", "body")
+    for sx in (-1, 1):
+        lamps.box(sx * 6 - 1, 24, -2, sx * 6 + 1, 25, 0, "frame")
+        caged_lamp(lamps, sx * 6, 27, -3)
+    axis_y, back_z, tip_z = 13.5, -11, -16
+    py, pz = mount_pivot(axis_y, tip_z, -10)
+    mount = m.bone("drill_mount", "body", (0, py, pz))
+    mount.box(-2.5, axis_y - 2.5, back_z, 2.5, axis_y + 2.5, -1, "frame")
+    mount.box(-3, axis_y - 3, -6, 3, axis_y + 3, -5, "hazard")
+    mount.centred(0, axis_y, back_z + 1, 9, 9, 2, "brass")
+    for sx in (-1, 1):
+        for sy, y_hull in ((1, 20), (-1, 7)):
+            x0, y0, z0 = sx * 6, axis_y + sy * 6, back_z + 1
+            x1, y1, z1 = sx * 9, y_hull, -2
+            length = math.dist((x0, y0, z0), (x1, y1, z1))
+            yaw = math.degrees(math.atan2(x1 - x0, z1 - z0))
+            pitch = math.degrees(math.atan2(y1 - y0, math.hypot(x1 - x0, z1 - z0)))
+            mount.centred((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, 2, 2, round(length), "frame", (pitch, yaw, 0))
+    head = m.bone("drill_head", "drill_mount", (0, axis_y, back_z))
+    turned = m.bone("cutter", "drill_head", (0, axis_y, back_z), (0, 0, 45))
+    cross_disc(head, turned, 0, axis_y, back_z, 25, 2, "iron", "steel")
+    cross_disc(head, turned, 0, axis_y, back_z - 2, 13, 2, "steel", "iron")
+    head.centred(0, axis_y, back_z - 4.5, 5, 5, 1, "brass")
+    teeth_ring(head, 0, axis_y, back_z - 2, 11, 12, (2, 2, 3))
+    teeth_ring(head, 0, axis_y, back_z - 4, 5, 6, (2, 2, 1), 30)
+    capsule_running_gear(m, dz)
+    return m
+
+
 CONCEPTS = {
     "capsule": capsule,
     "borer": borer,
     "strider": strider,
     "gyro": gyro,
+    "full_face": full_face,
+    "small_cab": small_cab,
+    "stepped": stepped,
+    "boom": boom,
 }
 
 

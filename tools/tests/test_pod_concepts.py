@@ -45,6 +45,25 @@ class Limits(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "whole positive pixels"):
             pc.Model("half").bone("body").box(0, 0, 0, 1.5, 1, 1, "paint")
 
+    def test_a_mount_hinged_by_mount_pivot_turns_its_tip_under_the_middle(self):
+        py, pz = pc.mount_pivot(15, -16, -10)
+        model = pc.Model("hinge")
+        model.bone("body")
+        mount = model.bone("drill_mount", "body", (0, py, pz), (90, 0, 0))
+        tip = pc.world_point(model, mount, (0, 15, -16))
+        self.assertAlmostEqual(tip[1], -10)
+        self.assertAlmostEqual(tip[2], 0)
+
+    def test_every_drill_turned_down_to_bore_the_floor_stays_inside_the_bore(self):
+        for name, make in pc.CONCEPTS.items():
+            model = make()
+            mount = next(bone for bone in model.bones if bone.name == "drill_mount")
+            mount.rotation = (90.0, 0.0, 0.0)
+            lo, hi = pc.rest_bounds(model)
+            with self.subTest(concept=name):
+                self.assertTrue(-16 - 1e-6 <= lo[0] and hi[0] <= 16 + 1e-6 and -16 - 1e-6 <= lo[2] and hi[2] <= 16 + 1e-6,
+                                f"{name} boring the floor spans x {lo[0]:.2f}..{hi[0]:.2f}, z {lo[2]:.2f}..{hi[2]:.2f}")
+
     def test_box_uv_never_overlaps(self):
         for name in pc.CONCEPTS:
             model, _ = pc.build(name)

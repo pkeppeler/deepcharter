@@ -24,7 +24,8 @@ import net.minecraft.world.phys.Vec3;
 /**
  * A pod model read from a Bedrock entity geometry, the {@code .geo.json} that Blockbench exports (ADR 0030's ModelPart path,
  * #334). Box UV only. Every bone name is a {@link BoneRole} word, and there is one {@code drill_mount} with a
- * {@code drill_head} under it. Anything else, or anything malformed, throws with the file and the place named.
+ * {@code drill_head} under it; a {@code drill_ring} is under the mount and not under the head. Anything else, or anything
+ * malformed, throws with the file and the place named.
  *
  * <p>Coordinates are the file's: pixels, y up, the floor at 0, the front toward -z.
  */
@@ -106,12 +107,28 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 		}
 	}
 
+	/**
+	 * How far the cubes of the spinning drill bones ({@code drill_head} and {@code drill_ring}, not their children) reach from the
+	 * bone's axis across x or y, in pixels: half the width of the cutter.
+	 */
+	public double drillReach() {
+		double reach = 0;
+		for (Bone spinning : bones.stream().filter(bone -> bone.role() == BoneRole.DRILL_HEAD || bone.role() == BoneRole.DRILL_RING).toList()) {
+			for (Cube cube : spinning.cubes()) {
+				Vec3 low = cube.origin().subtract(spinning.pivot());
+				Vec3 high = low.add(cube.size());
+				reach = Math.max(reach, Math.max(Math.max(Math.abs(low.x), Math.abs(high.x)), Math.max(Math.abs(low.y), Math.abs(high.y))));
+			}
+		}
+		return reach;
+	}
+
 	/** The bones that name {@code parent} as their parent, in file order. */
 	public List<Bone> children(String parent) {
 		return bones.stream().filter(bone -> bone.parent().map(parent::equals).orElse(false)).toList();
 	}
 
-	/** Unique names, parents that exist, no loop, and one drill mount with a drill head under it. */
+	/** Unique names, parents that exist, no loop, one drill mount with a drill head under it, and drill rings under the mount but not the head. */
 	private void checkRig() {
 		if (bones.isEmpty()) {
 			throw new IllegalArgumentException(source + ": has no bones");
@@ -143,6 +160,22 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 		if (!hasDescendant(mounts.getFirst().name(), BoneRole.DRILL_HEAD)) {
 			throw new IllegalArgumentException(source + ": no drill_head bone under drill_mount");
 		}
+		for (Bone ring : bones.stream().filter(bone -> bone.role() == BoneRole.DRILL_RING).toList()) {
+			// A ring that does not ride the mount would not aim with the drill; one under the head would spin with it and stand still.
+			if (!hasAncestor(byName, ring, BoneRole.DRILL_MOUNT) || hasAncestor(byName, ring, BoneRole.DRILL_HEAD)) {
+				throw new IllegalArgumentException(source + ": drill_ring bone '" + ring.name() + "' must be under drill_mount and not under drill_head");
+			}
+		}
+	}
+
+	private static boolean hasAncestor(Map<String, Bone> byName, Bone bone, BoneRole role) {
+		for (Bone current = bone; current.parent().isPresent(); ) {
+			current = byName.get(current.parent().get());
+			if (current.role() == role) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private boolean hasDescendant(String name, BoneRole role) {
