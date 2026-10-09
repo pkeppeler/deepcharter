@@ -40,30 +40,30 @@ sha=1111111111111111111111111111111111111111
 run_hook() {
   : >"$work/calls"
   local status=0
-  printf '%s' "$1" | STUB_LOG="$work/calls" PATH="$work/bin:$PATH" bash "$work/.githooks/pre-push" origin url \
+  (cd "$work" && printf '%s' "$1" | STUB_LOG="$work/calls" PATH="$work/bin:$PATH" bash "$work/.githooks/pre-push" origin url) \
     >"$work/out" 2>&1 || status=$?
   echo "$status:$(wc -l <"$work/calls" | tr -d ' ')"
 }
 
 nl=$'\n'
-check "normal push runs gradle and python" "0:7" "$(run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
+check "normal push runs gradle and python" "0:4" "$(run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "branch delete is skipped" "0:0" "$(run_hook "(delete) $zero refs/heads/b $sha$nl")"
 check "push to pr-media is skipped" "0:0" "$(run_hook "refs/heads/pr-media $sha refs/heads/pr-media $zero$nl")"
 check "empty push is skipped" "0:0" "$(run_hook "")"
-check "delete plus normal push still runs checks" "0:7" "$(run_hook "(delete) $zero refs/heads/a $sha${nl}refs/heads/b $sha refs/heads/b $zero$nl")"
+check "delete plus normal push still runs checks" "0:4" "$(run_hook "(delete) $zero refs/heads/a $sha${nl}refs/heads/b $sha refs/heads/b $zero$nl")"
 check "gradle failure blocks, python not reached" "1:1" "$(STUB_FAIL=gradle run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "failure message names the reason" "yes" "$(grep -q 'compile or checkstyle failed' "$work/out" && echo yes || echo no)"
 check "python failure blocks" "1:2" "$(STUB_FAIL=python run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "python failure message names the reason" "yes" "$(grep -q 'tool unit tests failed' "$work/out" && echo yes || echo no)"
 STUB_SC_VERSION='' run_hook "refs/heads/b $sha refs/heads/b $zero$nl" >/dev/null
 check "unreadable local version warns clearly" "yes" "$(grep -q 'could not read the local shellcheck version; CI pins 0.11.0' "$work/out" && echo yes || echo no)"
-check "shellcheck failure blocks, room-carver check not reached" "1:3" "$(STUB_FAIL=shellcheck run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
+check "shellcheck failure blocks, gate checks not reached" "1:3" "$(STUB_FAIL=shellcheck run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "shellcheck failure message names the reason" "yes" "$(grep -q 'shellcheck failed' "$work/out" && echo yes || echo no)"
 run_hook "refs/heads/b $sha refs/heads/b $zero$nl" >/dev/null
 check "pinned local version prints no warning" "no" "$(grep -q 'CI pins' "$work/out" && echo yes || echo no)"
 STUB_SC_VERSION=0.9.0 run_hook "refs/heads/b $sha refs/heads/b $zero$nl" >/dev/null
 check "other local version warns with both versions" "yes" "$(grep -q 'local version is 0.9.0 but CI pins 0.11.0' "$work/out" && echo yes || echo no)"
-check "last line without a newline still counts" "0:7" "$(run_hook "refs/heads/b $sha refs/heads/b $zero")"
+check "last line without a newline still counts" "0:4" "$(run_hook "refs/heads/b $sha refs/heads/b $zero")"
 
 # Missing shellcheck: warn, skip it, and let the push through. The PATH holds only the tools the hook needs.
 mkdir -p "$work/nosc"
@@ -71,7 +71,7 @@ for tool in bash env dirname sed; do ln -s "$(command -v "$tool")" "$work/nosc/$
 ln -s "$work/bin/python3" "$work/nosc/python3"
 : >"$work/calls"
 missing_status=0
-printf '%s' "refs/heads/b $sha refs/heads/b $zero$nl" | STUB_LOG="$work/calls" PATH="$work/nosc" "$(command -v bash)" "$work/.githooks/pre-push" origin url \
+(cd "$work" && printf '%s' "refs/heads/b $sha refs/heads/b $zero$nl" | STUB_LOG="$work/calls" PATH="$work/nosc" "$(command -v bash)" "$work/.githooks/pre-push" origin url) \
   >"$work/out" 2>&1 || missing_status=$?
 check "missing shellcheck does not block the push" "0" "$missing_status"
 check "missing shellcheck is skipped with a warning" "yes" "$(grep -q 'shellcheck not found, skipping' "$work/out" && echo yes || echo no)"
@@ -98,5 +98,16 @@ git -C "$tr_repo" worktree add -q -b wt "$work/wt"
 : >"$work/calls"
 STUB_LOG="$work/calls" PATH="$work/bin:$PATH" git -C "$work/wt" push -q origin wt >"$work/out" 2>&1 || true
 check "hook runs from a second worktree, in that worktree" "gradlew in $(cd "$work/wt" && pwd -P)" "$(sed -n 1p "$work/calls")"
+
+# An absolute core.hooksPath shared by every worktree: the hook of the pushing worktree runs, and git's stdin reaches it.
+cat >"$work/wt/.githooks/pre-push" <<'S'
+#!/usr/bin/env bash
+echo "wt hook, $(wc -l | tr -d ' ') ref line(s) on stdin" >>"$STUB_LOG"
+S
+git -C "$tr_repo" config core.hooksPath "$tr_repo/.githooks"
+: >"$work/calls"
+STUB_LOG="$work/calls" PATH="$work/bin:$PATH" git -C "$work/wt" push -q origin wt >"$work/out" 2>&1 || true
+check "shared hooks path: the pushing worktree's own hook runs" "wt hook, 1 ref line(s) on stdin" "$(sed -n 1p "$work/calls")"
+check "shared hooks path: the main copy does not also run" "1" "$(wc -l <"$work/calls" | tr -d ' ')"
 
 exit "$((failures > 0))"

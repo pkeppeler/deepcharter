@@ -6,7 +6,7 @@ Every screenshot was shot in the game by the committed `design-tour` evidence sc
 so the same views can be shot again after the overhaul. To reshoot: `tools/record-evidence.sh design-tour`. The images are hosted on the
 `pr-media` branch and are not committed here.
 
-Shot on Minecraft 26.3 with the dev client, GUI scale 2, 800 x 450. The world is a normal world with a fixed seed (not the flat test world), so the
+Shot on Minecraft 26.3 with the dev client, GUI scale 2, 854 x 480 (the whole window; stills before #285 were 800 x 450 and cut off the right and bottom edges). The world is a normal world with a fixed seed (not the flat test world), so the
 surface is vanilla terrain. The camera has no night vision unless the still's name says otherwise. Stills named `...-no-night-vision`
 or `...-as-played` show what a player sees; the other layer stills use night vision so the shapes can be seen.
 
@@ -54,11 +54,11 @@ or `...-as-played` show what a player sees; the other layer stills use night vis
 | Time of day | The gameplay clock is vanilla's 24000 ticks (beds, spawning). The sky follows its own clock, `deepcharter:sky`, and swings between dusk and night over 4 real hours, never full day. The stills below are from before #239. |
 | Swap | **(b)** a datapack `minecraft:dimension_type/overworld` (time, light, fog attributes) and biome files; **(a)** a resource pack for the sun texture and the dust particle. The sky is the timeline in `data/deepcharter/timeline/sky.json` ([skins.md](skins.md)). Nothing in Java draws the surface sky or fog. |
 
-![surface-south-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/surface-south-noon.png?raw=true) ![surface-east-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/surface-east-noon.png?raw=true)
-![surface-west-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/surface-west-noon.png?raw=true) ![surface-north-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/surface-north-noon.png?raw=true)
-![sky-up-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/sky-up-noon.png?raw=true) ![surface-south-dusk](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/surface-south-dusk.png?raw=true)
-![sky-up-dusk](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/sky-up-dusk.png?raw=true) ![surface-north-night](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/surface-north-night.png?raw=true)
-![sky-up-night](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/sky-up-night.png?raw=true)
+![surface-south-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/surface-south-noon.png?raw=true) ![surface-east-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/surface-east-noon.png?raw=true)
+![surface-west-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/surface-west-noon.png?raw=true) ![surface-north-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/surface-north-noon.png?raw=true)
+![sky-up-noon](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/sky-up-noon.png?raw=true) ![surface-south-dusk](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/surface-south-dusk.png?raw=true)
+![sky-up-dusk](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/sky-up-dusk.png?raw=true) ![surface-north-night](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/surface-north-night.png?raw=true)
+![sky-up-night](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/sky-up-night.png?raw=true)
 
 The tour world's biome at spawn is savanna: flat-topped acacias, dry grass, blue sky with white clouds at noon; at dusk and night the
 standard vanilla orange gradient and black sky with stars. The surface has no Mars-like colour, fog or lighting.
@@ -76,18 +76,18 @@ standard vanilla orange gradient and black sky with stars. The surface has no Ma
 | Light | Block light only. Ambient light is 0.06, so an unlit cave is nearly black. |
 | Swap | **(b)** the dimension type (light, fog distance, ambient colour, music), the biome `fog_color`, the noise settings (shape), `zone_fill` features (ore and hazard chances). **(a)** the textures of the mod blocks. Nothing in Java sets layer fog, sky or light. |
 
-![layer-1-cave-as-played-no-light](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/layer-1-cave-as-played-no-light.png?raw=true) ![layer-1-cave-south](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/layer-1-cave-south.png?raw=true)
-![layer-1-cave-west](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/layer-1-cave-west.png?raw=true) ![layer-1-cave-north](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/layer-1-cave-north.png?raw=true)
-![layer-1-cave-east](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/layer-1-cave-east.png?raw=true) ![layer-1-cave-up](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/layer-1-cave-up.png?raw=true)
-![layer-1-cave-down](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/layer-1-cave-down.png?raw=true)
+![layer-1-cave-as-played-no-light](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/layer-1-cave-as-played-no-light.png?raw=true) ![layer-1-cave-south](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/layer-1-cave-south.png?raw=true)
+![layer-1-cave-west](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/layer-1-cave-west.png?raw=true) ![layer-1-cave-north](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/layer-1-cave-north.png?raw=true)
+![layer-1-cave-east](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/layer-1-cave-east.png?raw=true) ![layer-1-cave-up](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/layer-1-cave-up.png?raw=true)
+![layer-1-cave-down](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/layer-1-cave-down.png?raw=true)
 
 The cave is stone-grey with irregular walls. As played, with no light, the view is almost black with a short fog. The other stills use night vision, which lights the
 cave evenly with no shadows and also brightens the fog colour: the tan haze (layer 1) and the lavender haze (layer 2) in them is the fog colour as night vision shows it, not the fog a player sees.
 
 The breach at the floor of layer 1 (the way down):
 
-![layer-1-breach-crust-floor](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/layer-1-breach-crust-floor.png?raw=true) ![layer-1-breach-crust-floor-low](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/layer-1-breach-crust-floor-low.png?raw=true)
-![layer-1-breach-crust-broken](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/layer-1-breach-crust-broken.png?raw=true)
+![layer-1-breach-crust-floor](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/layer-1-breach-crust-floor.png?raw=true) ![layer-1-breach-crust-floor-low](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/layer-1-breach-crust-floor-low.png?raw=true)
+![layer-1-breach-crust-broken](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/layer-1-breach-crust-broken.png?raw=true)
 
 ### Layer 2 (`deepcharter:layer_2`)
 
@@ -101,10 +101,10 @@ The breach at the floor of layer 1 (the way down):
 | Blocks | As layer 1, plus Cicatrium Ore (Shift Change and Prospector's Run) and Einsteinium Ore (Prospector's Run only); see [Custom blocks](#2-custom-blocks). |
 | Swap | As layer 1. |
 
-![layer-2-cave-as-played-no-light](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/layer-2-cave-as-played-no-light.png?raw=true) ![layer-2-cave-south](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/layer-2-cave-south.png?raw=true)
-![layer-2-cave-west](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/layer-2-cave-west.png?raw=true) ![layer-2-cave-north](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/layer-2-cave-north.png?raw=true)
-![layer-2-cave-east](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/layer-2-cave-east.png?raw=true) ![layer-2-cave-up](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/layer-2-cave-up.png?raw=true)
-![layer-2-cave-down](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/layer-2-cave-down.png?raw=true)
+![layer-2-cave-as-played-no-light](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/layer-2-cave-as-played-no-light.png?raw=true) ![layer-2-cave-south](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/layer-2-cave-south.png?raw=true)
+![layer-2-cave-west](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/layer-2-cave-west.png?raw=true) ![layer-2-cave-north](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/layer-2-cave-north.png?raw=true)
+![layer-2-cave-east](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/layer-2-cave-east.png?raw=true) ![layer-2-cave-up](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/layer-2-cave-up.png?raw=true)
+![layer-2-cave-down](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/layer-2-cave-down.png?raw=true)
 
 Darker and with a shorter fog than layer 1. Fog colours are blue-grey rather than brown.
 
@@ -121,8 +121,8 @@ only) down. **Swap: (b)** the feature JSON.
 
 18 blocks, each with a block item. All textures are 16 x 16. The tour shows them in a row on the colony pad, fronts to the camera.
 
-![block-gallery-1](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/block-gallery-1.png?raw=true) ![block-gallery-2](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/block-gallery-2.png?raw=true)
-![block-gallery-3](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/block-gallery-3.png?raw=true)
+![block-gallery-1](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/block-gallery-1.png?raw=true) ![block-gallery-2](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/block-gallery-2.png?raw=true)
+![block-gallery-3](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/block-gallery-3.png?raw=true)
 
 All block textures in one sheet (nearest-neighbour, 6 times scale; alphabetical: breach crust, bronzium ore, cicatrium ore, company rock, conduit,
 contract terminal front, einsteinium ore, fuel pump front, goldium ore, hangar console front, ironium ore, note, ore processor front, platinium
@@ -162,7 +162,7 @@ All terminals share two textures (`terminal_side.png`, `terminal_top.png`, also 
 57 items (including the block items above). All textures are 16 x 16 flat sprites on vanilla's `item/generated` model; there are no 3D item
 models. Block items use their block model. The tour shows them in the inventory screen (36 to a page).
 
-![items-gallery-1](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/items-gallery-1.png?raw=true) ![items-gallery-2](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/items-gallery-2.png?raw=true)
+![items-gallery-1](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/items-gallery-1.png?raw=true) ![items-gallery-2](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/items-gallery-2.png?raw=true)
 
 All item textures in one sheet (nearest-neighbour, 5 times scale; alphabetical order of the file names in the table below):
 
@@ -225,8 +225,8 @@ None of the entities has a custom 3D model.
 
 ### Mole (`deepcharter:pod`)
 
-![mole-unlit-day-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/mole-unlit-day-front.png?raw=true) ![mole-unlit-day-side](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/mole-unlit-day-side.png?raw=true)
-![mole-unlit-day-back](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/mole-unlit-day-back.png?raw=true) ![mole-unlit-day-top](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/mole-unlit-day-top.png?raw=true)
+![mole-unlit-day-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/mole-unlit-day-front.png?raw=true) ![mole-unlit-day-side](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/mole-unlit-day-side.png?raw=true)
+![mole-unlit-day-back](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/mole-unlit-day-back.png?raw=true) ![mole-unlit-day-top](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/mole-unlit-day-top.png?raw=true)
 
 Front, side and back look the same: the model is a symmetric slab with no front.
 
@@ -241,13 +241,13 @@ Front, side and back look the same: the model is a symmetric slab with no front.
 
 Lit and unlit in a dark room (the lights part is a light source round the pod; it adds no glow or lamp to the model):
 
-![mole-unlit-dark-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/mole-unlit-dark-front.png?raw=true) ![mole-lit-dark-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/mole-lit-dark-front.png?raw=true)
-![mole-lit-dark-side](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/mole-lit-dark-side.png?raw=true) ![mole-lit-dark-back](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/mole-lit-dark-back.png?raw=true)
+![mole-unlit-dark-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/mole-unlit-dark-front.png?raw=true) ![mole-lit-dark-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/mole-lit-dark-front.png?raw=true)
+![mole-lit-dark-side](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/mole-lit-dark-side.png?raw=true) ![mole-lit-dark-back](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/mole-lit-dark-back.png?raw=true)
 
 ### Prospector (`deepcharter:prospector`)
 
-![prospector-unlit-day-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/prospector-unlit-day-front.png?raw=true) ![prospector-unlit-day-side](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/prospector-unlit-day-side.png?raw=true)
-![prospector-unlit-day-back](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/prospector-unlit-day-back.png?raw=true) ![prospector-unlit-day-top](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/prospector-unlit-day-top.png?raw=true)
+![prospector-unlit-day-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/prospector-unlit-day-front.png?raw=true) ![prospector-unlit-day-side](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/prospector-unlit-day-side.png?raw=true)
+![prospector-unlit-day-back](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/prospector-unlit-day-back.png?raw=true) ![prospector-unlit-day-top](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/prospector-unlit-day-top.png?raw=true)
 
 | | |
 |---|---|
@@ -258,15 +258,15 @@ Lit and unlit in a dark room (the lights part is a light source round the pod; i
 | Vanilla | **partly** |
 | Swap | **(c)**, as the Mole |
 
-![prospector-unlit-dark-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/prospector-unlit-dark-front.png?raw=true) ![prospector-lit-dark-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/prospector-lit-dark-front.png?raw=true)
-![prospector-lit-dark-side](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/prospector-lit-dark-side.png?raw=true) ![prospector-lit-dark-back](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/prospector-lit-dark-back.png?raw=true)
+![prospector-unlit-dark-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/prospector-unlit-dark-front.png?raw=true) ![prospector-lit-dark-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/prospector-lit-dark-front.png?raw=true)
+![prospector-lit-dark-side](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/prospector-lit-dark-side.png?raw=true) ![prospector-lit-dark-back](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/prospector-lit-dark-back.png?raw=true)
 
 ### Wrecks
 
 A pod whose hull reaches 0 is a wreck: powered off, drawn as a coal-block slab (`PodRenderer.java:23`, `main/wreck/Wrecks.java`).
 
-![wrecks-mole-and-prospector-day](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/wrecks-mole-and-prospector-day.png?raw=true) ![wreck-mole-front-day](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/wreck-mole-front-day.png?raw=true)
-![wreck-prospector-front-day](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/wreck-prospector-front-day.png?raw=true)
+![wrecks-mole-and-prospector-day](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/wrecks-mole-and-prospector-day.png?raw=true) ![wreck-mole-front-day](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/wreck-mole-front-day.png?raw=true)
+![wreck-prospector-front-day](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/wreck-prospector-front-day.png?raw=true)
 
 | | |
 |---|---|
@@ -277,15 +277,15 @@ A pod whose hull reaches 0 is a wreck: powered off, drawn as a coal-block slab (
 
 The derelict Mole is a `deepcharter:pod` made with hull 0 (`main/hangar/Hangar.java`), so it is drawn as a wreck, a black coal-block slab; repairing it at the hangar console makes it MOLE-0001 and a raw-copper Mole.
 
-![hangar-derelict-mole](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/hangar-derelict-mole.png?raw=true) ![hangar-founding-mole-repaired](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/hangar-founding-mole-repaired.png?raw=true)
+![hangar-derelict-mole](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hangar-derelict-mole.png?raw=true) ![hangar-founding-mole-repaired](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hangar-founding-mole-repaired.png?raw=true)
 
 Swap: as the Mole.
 
 ### Lampless figure (`deepcharter:lampless_figure`)
 
-![lampless-figure-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/lampless-figure-front.png?raw=true) ![lampless-figure-side](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/lampless-figure-side.png?raw=true)
-![lampless-figure-back](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/lampless-figure-back.png?raw=true) ![lampless-figure-close](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/lampless-figure-close.png?raw=true)
-![lampless-figure-dark-no-night-vision](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/lampless-figure-dark-no-night-vision.png?raw=true) ![lampless-figure-fading-by-a-lit-pod](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/lampless-figure-fading-by-a-lit-pod.png?raw=true)
+![lampless-figure-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/lampless-figure-front.png?raw=true) ![lampless-figure-side](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/lampless-figure-side.png?raw=true)
+![lampless-figure-back](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/lampless-figure-back.png?raw=true) ![lampless-figure-close](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/lampless-figure-close.png?raw=true)
+![lampless-figure-dark-no-night-vision](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/lampless-figure-dark-no-night-vision.png?raw=true) ![lampless-figure-fading-by-a-lit-pod](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/lampless-figure-fading-by-a-lit-pod.png?raw=true)
 
 | | |
 |---|---|
@@ -316,13 +316,13 @@ are the mod's), but every block in them is vanilla except the terminals, the Con
 
 Overview:
 
-![colony-aerial-south](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/colony-aerial-south.png?raw=true) ![colony-aerial-northwest](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/colony-aerial-northwest.png?raw=true)
-![colony-aerial-northeast](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/colony-aerial-northeast.png?raw=true) ![colony-from-straight-above](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/colony-from-straight-above.png?raw=true)
-![colony-from-the-south-edge](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/colony-from-the-south-edge.png?raw=true)
+![colony-aerial-south](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/colony-aerial-south.png?raw=true) ![colony-aerial-northwest](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/colony-aerial-northwest.png?raw=true)
+![colony-aerial-northeast](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/colony-aerial-northeast.png?raw=true) ![colony-from-straight-above](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/colony-from-straight-above.png?raw=true)
+![colony-from-the-south-edge](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/colony-from-the-south-edge.png?raw=true)
 
-Orbit of the colony (GIF; [MP4](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/design-tour.mp4?raw=true)):
+Orbit of the colony (GIF; [MP4](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/design-tour.mp4?raw=true)):
 
-![design-tour](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/design-tour.gif?raw=true)
+![design-tour](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/design-tour.gif?raw=true)
 
 | Building | Source | What it is made of | Look now |
 |---|---|---|---|
@@ -341,29 +341,29 @@ Orbit of the colony (GIF; [MP4](https://github.com/pkeppeler/deepcharter/blob/pr
 
 Close-ups, in the order of the table:
 
-![terminal-row](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/terminal-row.png?raw=true) ![statue-from-the-square](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/statue-from-the-square.png?raw=true)
-![statue-close](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/statue-close.png?raw=true) ![statue-hands-from-above](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/statue-hands-from-above.png?raw=true)
-![continuity-office-from-the-square](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/continuity-office-from-the-square.png?raw=true) ![continuity-office-inside](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/continuity-office-inside.png?raw=true)
-![hangar-from-the-square](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/hangar-from-the-square.png?raw=true) ![chapel-from-the-square](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/chapel-from-the-square.png?raw=true)
-![chapel-altar-and-candle](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/chapel-altar-and-candle.png?raw=true) ![bunkhouse-from-the-square](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/bunkhouse-from-the-square.png?raw=true)
-![pay-office-from-the-square](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/pay-office-from-the-square.png?raw=true) ![personnel-office-from-the-square](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/personnel-office-from-the-square.png?raw=true)
-![lamp-and-pick-from-the-square](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/lamp-and-pick-from-the-square.png?raw=true) ![conduit-from-the-square](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/conduit-from-the-square.png?raw=true)
-![conduit-from-the-west](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/conduit-from-the-west.png?raw=true) ![conduit-from-the-north](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/conduit-from-the-north.png?raw=true)
+![terminal-row](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/terminal-row.png?raw=true) ![statue-from-the-square](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/statue-from-the-square.png?raw=true)
+![statue-close](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/statue-close.png?raw=true) ![statue-hands-from-above](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/statue-hands-from-above.png?raw=true)
+![continuity-office-from-the-square](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/continuity-office-from-the-square.png?raw=true) ![continuity-office-inside](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/continuity-office-inside.png?raw=true)
+![hangar-from-the-square](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hangar-from-the-square.png?raw=true) ![chapel-from-the-square](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/chapel-from-the-square.png?raw=true)
+![chapel-altar-and-candle](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/chapel-altar-and-candle.png?raw=true) ![bunkhouse-from-the-square](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/bunkhouse-from-the-square.png?raw=true)
+![pay-office-from-the-square](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/pay-office-from-the-square.png?raw=true) ![personnel-office-from-the-square](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/personnel-office-from-the-square.png?raw=true)
+![lamp-and-pick-from-the-square](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/lamp-and-pick-from-the-square.png?raw=true) ![conduit-from-the-square](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/conduit-from-the-square.png?raw=true)
+![conduit-from-the-west](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/conduit-from-the-west.png?raw=true) ![conduit-from-the-north](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/conduit-from-the-north.png?raw=true)
 
 ### The terminals in the colony
 
 The five terminals stand on the plinths; each is a mod block ([section 2](#2-custom-blocks)). Their screens are in [section 6](#6-screens-and-huds).
 
-![terminal-fuel-pump](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/terminal-fuel-pump.png?raw=true) ![terminal-ore-processor](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/terminal-ore-processor.png?raw=true)
-![terminal-upgrade-terminal](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/terminal-upgrade-terminal.png?raw=true) ![terminal-repair-station](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/terminal-repair-station.png?raw=true)
-![terminal-contract-terminal](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/terminal-contract-terminal.png?raw=true)
+![terminal-fuel-pump](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/terminal-fuel-pump.png?raw=true) ![terminal-ore-processor](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/terminal-ore-processor.png?raw=true)
+![terminal-upgrade-terminal](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/terminal-upgrade-terminal.png?raw=true) ![terminal-repair-station](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/terminal-repair-station.png?raw=true)
+![terminal-contract-terminal](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/terminal-contract-terminal.png?raw=true)
 
 The hangar console stands in the hangar ([section 2](#2-custom-blocks)). Vanilla: **no**. Swap: **(a)** the block textures; position **(c)** `ColonyBuilder.java:259`.
 
 ### The hangar with the derelict Mole
 
-![hangar-derelict-mole](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/hangar-derelict-mole.png?raw=true) ![hangar-derelict-mole-from-the-door](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/hangar-derelict-mole-from-the-door.png?raw=true)
-![hangar-derelict-mole-from-the-back](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/hangar-derelict-mole-from-the-back.png?raw=true)
+![hangar-derelict-mole](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hangar-derelict-mole.png?raw=true) ![hangar-derelict-mole-from-the-door](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hangar-derelict-mole-from-the-door.png?raw=true)
+![hangar-derelict-mole-from-the-back](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hangar-derelict-mole-from-the-back.png?raw=true)
 
 ### Structures in layers 1 and 2
 
@@ -382,25 +382,25 @@ These stills use night vision.
 | Rails | 2, Prospector's Run | `:106` | 65 x 5 x 4 | Coarse-dirt floor, one rail with gaps, oak-log and plank timbering every 8 | A long timbered drift |
 | Wreck | 2, Prospector's Run | `:128` | 13 x 13 x 5 | Deepslate-tile floor, blackstone scorch, a rail ending in the bay, iron and cobblestone debris; two sites: PROSPECTOR-0002's (a wrecked Prospector, a lit lantern, three dark redstone lamps, Note N10 on a table) and an empty bay (no pod, no lamps, no Note) | A bay, with or without a wrecked pod |
 
-![structure-topsoil-shaft-looking-down](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-topsoil-shaft-looking-down.png?raw=true) ![structure-topsoil-shaft-note-niche](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-topsoil-shaft-note-niche.png?raw=true)
-![structure-topsoil-shaft-looking-up](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-topsoil-shaft-looking-up.png?raw=true) ![structure-benches-shaft-looking-down](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-benches-shaft-looking-down.png?raw=true)
-![structure-benches-shaft-note-niche](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-benches-shaft-note-niche.png?raw=true) ![structure-benches-shaft-looking-up](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-benches-shaft-looking-up.png?raw=true)
-![structure-deep-shaft-looking-down](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-deep-shaft-looking-down.png?raw=true) ![structure-deep-shaft-note-niche](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-deep-shaft-note-niche.png?raw=true)
-![structure-deep-shaft-looking-up](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-deep-shaft-looking-up.png?raw=true)
+![structure-topsoil-shaft-looking-down](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/structure-topsoil-shaft-looking-down.png?raw=true) ![structure-topsoil-shaft-note-niche](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/structure-topsoil-shaft-note-niche.png?raw=true)
+![structure-topsoil-shaft-looking-up](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/structure-topsoil-shaft-looking-up.png?raw=true) ![structure-benches-shaft-looking-down](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/structure-benches-shaft-looking-down.png?raw=true)
+![structure-benches-shaft-note-niche](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/structure-benches-shaft-note-niche.png?raw=true) ![structure-benches-shaft-looking-up](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/structure-benches-shaft-looking-up.png?raw=true)
+![structure-deep-shaft-looking-down](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/structure-deep-shaft-looking-down.png?raw=true) ![structure-deep-shaft-note-niche](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/structure-deep-shaft-note-niche.png?raw=true)
+![structure-deep-shaft-looking-up](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/structure-deep-shaft-looking-up.png?raw=true)
 
 Gallery, punch clock and rails:
 
-![structure-gallery-toward-the-rubble](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-gallery-toward-the-rubble.png?raw=true) ![structure-gallery-quota-board](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-gallery-quota-board.png?raw=true)
-![structure-gallery-note-n08](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-gallery-note-n08.png?raw=true) ![structure-punch-clock-overview](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-punch-clock-overview.png?raw=true)
-![structure-punch-clock-shelves](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-punch-clock-shelves.png?raw=true) ![structure-punch-clock-lit-clock](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-punch-clock-lit-clock.png?raw=true)
-![structure-rails-long-drift](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-rails-long-drift.png?raw=true) ![structure-rails-timbering](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-rails-timbering.png?raw=true)
+![structure-gallery-toward-the-rubble](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/structure-gallery-toward-the-rubble.png?raw=true) ![structure-gallery-quota-board](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/structure-gallery-quota-board.png?raw=true)
+![structure-gallery-note-n08](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/structure-gallery-note-n08.png?raw=true) ![structure-punch-clock-overview](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/structure-punch-clock-overview.png?raw=true)
+![structure-punch-clock-shelves](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/structure-punch-clock-shelves.png?raw=true) ![structure-punch-clock-lit-clock](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/structure-punch-clock-lit-clock.png?raw=true)
+![structure-rails-long-drift](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/structure-rails-long-drift.png?raw=true) ![structure-rails-timbering](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/structure-rails-timbering.png?raw=true)
 
 Wreck sites (PROSPECTOR-0002's, with the lamp and Note N10, and an empty bay):
 
-![structure-wreck-prospector-0002](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-wreck-prospector-0002.png?raw=true) ![structure-wreck-prospector-0002-side](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-wreck-prospector-0002-side.png?raw=true)
-![structure-wreck-prospector-0002-back](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-wreck-prospector-0002-back.png?raw=true) ![structure-wreck-the-lamp](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-wreck-the-lamp.png?raw=true)
-![structure-wreck-note-n10-on-the-table](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-wreck-note-n10-on-the-table.png?raw=true) ![structure-wreck-from-above](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-wreck-from-above.png?raw=true)
-![structure-wreck-prospector-0002-no-night-vision](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-wreck-prospector-0002-no-night-vision.png?raw=true) ![structure-wreck-empty-bay](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/structure-wreck-empty-bay.png?raw=true)
+![structure-wreck-prospector-0002](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/structure-wreck-prospector-0002.png?raw=true) ![structure-wreck-prospector-0002-side](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/structure-wreck-prospector-0002-side.png?raw=true)
+![structure-wreck-prospector-0002-back](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/structure-wreck-prospector-0002-back.png?raw=true) ![structure-wreck-the-lamp](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/structure-wreck-the-lamp.png?raw=true)
+![structure-wreck-note-n10-on-the-table](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/structure-wreck-note-n10-on-the-table.png?raw=true) ![structure-wreck-from-above](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/structure-wreck-from-above.png?raw=true)
+![structure-wreck-prospector-0002-no-night-vision](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/structure-wreck-prospector-0002-no-night-vision.png?raw=true) ![structure-wreck-empty-bay](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/structure-wreck-empty-bay.png?raw=true)
 
 ### The Conduit in the layers
 
@@ -422,12 +422,12 @@ The "Employee Handbook" item opens a paper book drawn flat: cream paper with rul
 contents, chapter text pages, a directives page for each chapter (a chapter not yet unlocked is classified: no title, black redaction bars),
 an end page, the employment contract (Appendix A), and a Notes tab.
 
-![handbook-opened-from-the-item](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/handbook-opened-from-the-item.png?raw=true) ![handbook-page-cover](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/handbook-page-cover.png?raw=true)
-![handbook-page-slip](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/handbook-page-slip.png?raw=true) ![handbook-page-letter](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/handbook-page-letter.png?raw=true)
-![handbook-page-contents](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/handbook-page-contents.png?raw=true) ![handbook-page-chaptertext](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/handbook-page-chaptertext.png?raw=true)
-![handbook-page-chapter](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/handbook-page-chapter.png?raw=true) ![handbook-page-chapter-classified](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/handbook-page-chapter-classified.png?raw=true)
-![handbook-page-appendix](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/handbook-page-appendix.png?raw=true) ![handbook-page-contract](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/handbook-page-contract.png?raw=true)
-![handbook-notes-tab](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/handbook-notes-tab.png?raw=true)
+![handbook-opened-from-the-item](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/handbook-opened-from-the-item.png?raw=true) ![handbook-page-cover](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/handbook-page-cover.png?raw=true)
+![handbook-page-slip](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/handbook-page-slip.png?raw=true) ![handbook-page-letter](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/handbook-page-letter.png?raw=true)
+![handbook-page-contents](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/handbook-page-contents.png?raw=true) ![handbook-page-chaptertext](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/handbook-page-chaptertext.png?raw=true)
+![handbook-page-chapter](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/handbook-page-chapter.png?raw=true) ![handbook-page-chapter-classified](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/handbook-page-chapter-classified.png?raw=true)
+![handbook-page-appendix](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/handbook-page-appendix.png?raw=true) ![handbook-page-contract](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/handbook-page-contract.png?raw=true)
+![handbook-notes-tab](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/handbook-notes-tab.png?raw=true)
 
 | | |
 |---|---|
@@ -440,9 +440,9 @@ an end page, the employment contract (Appendix A), and a Notes tab.
 
 An unrepaired terminal opens the offline screen, where its parts go in. Source `client/terminal/TerminalScreen.java`, `TerminalScreens.java`.
 
-![screen-fuel-pump-offline](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/screen-fuel-pump-offline.png?raw=true) ![screen-ore-processor-offline](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/screen-ore-processor-offline.png?raw=true)
-![screen-upgrade-terminal-offline](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/screen-upgrade-terminal-offline.png?raw=true) ![screen-repair-station-offline](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/screen-repair-station-offline.png?raw=true)
-![screen-hangar-console-offline](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/screen-hangar-console-offline.png?raw=true)
+![screen-fuel-pump-offline](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/screen-fuel-pump-offline.png?raw=true) ![screen-ore-processor-offline](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/screen-ore-processor-offline.png?raw=true)
+![screen-upgrade-terminal-offline](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/screen-upgrade-terminal-offline.png?raw=true) ![screen-repair-station-offline](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/screen-repair-station-offline.png?raw=true)
+![screen-hangar-console-offline](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/screen-hangar-console-offline.png?raw=true)
 
 Swap **(c)**, as above.
 
@@ -450,7 +450,7 @@ Swap **(c)**, as above.
 
 Source `client/fuel/FuelPumpScreen.java`. Shows the parked pod's fuel and a FILL UP button.
 
-![screen-fuel-pump-online](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/screen-fuel-pump-online.png?raw=true)
+![screen-fuel-pump-online](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/screen-fuel-pump-online.png?raw=true)
 
 Swap **(c)**.
 
@@ -458,7 +458,7 @@ Swap **(c)**.
 
 Source `client/market/OreProcessorScreen.java`. The ore price list, the account, sell buttons, the work order.
 
-![screen-ore-processor-online](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/screen-ore-processor-online.png?raw=true)
+![screen-ore-processor-online](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/screen-ore-processor-online.png?raw=true)
 
 Swap **(c)**. Prices are data-like tuning in `main/ore/OreType.java:12-18`.
 
@@ -466,15 +466,15 @@ Swap **(c)**. Prices are data-like tuning in `main/ore/OreType.java:12-18`.
 
 Source `client/upgrade/UpgradeScreen.java`. The eight part tracks of the parked pod.
 
-![screen-upgrade-terminal-online](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/screen-upgrade-terminal-online.png?raw=true)
+![screen-upgrade-terminal-online](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/screen-upgrade-terminal-online.png?raw=true)
 
 Swap **(c)**.
 
 ### Repair Station screen
 
-Source `client/repair/RepairStationScreen.java`. Hull repair and consumables for the parked pod. At 800 x 450 (GUI scale 2) its intro text and the second button column run past the right edge of the screen.
+Source `client/repair/RepairStationScreen.java`. Hull repair and consumables for the parked pod. At 854 x 480 (GUI scale 2) the intro text wraps to two lines and the screen shows four of ten rows, with CLOSE and a SCROLL hint below them.
 
-![screen-repair-station-online](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/screen-repair-station-online.png?raw=true)
+![screen-repair-station-online](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/screen-repair-station-online.png?raw=true)
 
 Swap **(c)**.
 
@@ -482,7 +482,7 @@ Swap **(c)**.
 
 Source `client/hangar/HangarScreen.java`. Sells a refurbished Mole.
 
-![screen-hangar-console-online](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/screen-hangar-console-online.png?raw=true)
+![screen-hangar-console-online](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/screen-hangar-console-online.png?raw=true)
 
 Swap **(c)**.
 
@@ -490,7 +490,7 @@ Swap **(c)**.
 
 Source `client/charter/terminal/ContractScreen.java`; the one terminal that is online from the start. Refusal text colour at `ContractScreen.java:48`.
 
-![screen-contract-terminal](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/screen-contract-terminal.png?raw=true)
+![screen-contract-terminal](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/screen-contract-terminal.png?raw=true)
 
 Swap **(c)**.
 
@@ -499,7 +499,7 @@ Swap **(c)**.
 Opened by sneaking and using a pod. Source `client/ore/OreCargoScreen.java`. It is not a CRT screen: it draws a grey panel with a dark edge and grey
 slots by `fill()` calls in the colours of vanilla's container background, with no texture. Vanilla: **partly** (the same grey, not the vanilla texture).
 
-![screen-pod-cargo](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/screen-pod-cargo.png?raw=true)
+![screen-pod-cargo](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/screen-pod-cargo.png?raw=true)
 
 Swap **(c)** `OreCargoScreen.java:17-44`.
 
@@ -517,7 +517,7 @@ Top left, while riding a pod: four white lines of plain text in the vanilla font
 "STRANDED" when stranded, and a red "HULL BURNING" line while lava burns the hull (`podBurningColor` in `theme/hud.json`). No frame, no icons. Source `client/pod/PodStatusHud.java` (the source calls it "Plain text readout... the real HUD design comes later").
 Vanilla: **no**. Swap **(c)** `PodStatusHud.java:23` (colour), `:54-56` (layout).
 
-![hud-pod-status-and-altimeter-surface](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/hud-pod-status-and-altimeter-surface.png?raw=true) ![hud-pod-in-third-person-surface](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/hud-pod-in-third-person-surface.png?raw=true)
+![hud-pod-status-and-altimeter-surface](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hud-pod-status-and-altimeter-surface.png?raw=true) ![hud-pod-in-third-person-surface](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hud-pod-in-third-person-surface.png?raw=true)
 
 ### Scanner HUD
 
@@ -526,7 +526,7 @@ gold ore `#FFD21E` yellow, gas `#E040E0` magenta from tier 3, the pod `#38F06E` 
 a cell; the area grows with the tier up to tier 4. Source `client/scanner/ScannerHud.java`,
 `main/scanner/ScannerTuning.java:30-32`. Vanilla: **no**. Swap **(c)** `ScannerTuning.java:30-32` (colours, cell size), `ScannerHud.java:106-128` (draw).
 
-![hud-scanner-tier-1-surface](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/hud-scanner-tier-1-surface.png?raw=true) ![hud-scanner-tier-4-layer-2](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/hud-scanner-tier-4-layer-2.png?raw=true)
+![hud-scanner-tier-1-surface](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hud-scanner-tier-1-surface.png?raw=true) ![hud-scanner-tier-4-layer-2](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hud-scanner-tier-4-layer-2.png?raw=true)
 
 ### Altimeter
 
@@ -534,7 +534,7 @@ Top centre, always on while in a world: white vanilla text "46 ft." (depth in fe
 Source `client/layer/Altimeter.java`, `BreachHud.java`. Visible in every HUD still. Vanilla: **no**.
 Swap **(c)** `BreachHud.java:27` (colour), `:36-43` (position).
 
-![hud-altimeter-layer-1-floor](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/hud-altimeter-layer-1-floor.png?raw=true)
+![hud-altimeter-layer-1-floor](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hud-altimeter-layer-1-floor.png?raw=true)
 
 ### Account HUD
 
@@ -549,8 +549,8 @@ and the body text. Source `client/transmission/TransmissionHud.java`, `Transmiss
 Swap **(b)** `transmissions.json` and `src/lang/en_us/transmission.json`; **(c)** `TransmissionOverlay.java:34-40` (colours), `TransmissionHud.java:36`
 (panel fill), `:52-88` (layout).
 
-![hud-transmission-t05](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/hud-transmission-t05.png?raw=true) ![hud-transmission-t06](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/hud-transmission-t06.png?raw=true)
-![hud-transmission-t02](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/hud-transmission-t02.png?raw=true) ![hud-transmission-surface_arrival](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/hud-transmission-surface_arrival.png?raw=true)
+![hud-transmission-t05](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hud-transmission-t05.png?raw=true) ![hud-transmission-t06](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hud-transmission-t06.png?raw=true)
+![hud-transmission-t02](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hud-transmission-t02.png?raw=true) ![hud-transmission-surface_arrival](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hud-transmission-surface_arrival.png?raw=true)
 
 ### Breach HUD
 
@@ -558,7 +558,7 @@ When a player crosses a layer, the whole screen fades to black (about 20 ticks: 
 transmission types. Source `client/layer/BreachEffects.java`, `BreachHud.java`. Vanilla: **no**. Swap **(c)** `BreachEffects.java:15-20` (timings and
 jitter), `BreachHud.java:46-52` (a black `fill()`).
 
-![hud-breach-fade](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/hud-breach-fade.png?raw=true)
+![hud-breach-fade](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hud-breach-fade.png?raw=true)
 
 ### Other vanilla UI that shows
 
@@ -583,7 +583,7 @@ Not shot: it needs two pods and a tow cable in motion (the `m2-towing` scenario 
 - **Dimension light.** Layer ambient light and colour: [layers](#layer-1-deepcharterlayer_1), set in the dimension type JSON. Swap **(b)**.
 - **Candles, lanterns, lava.** Vanilla light sources used in structures: the chapel candle, the shaft candles, the punch-clock sea lantern, the wreck lamp, lava.
 
-![mole-lit-dark-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/mole-lit-dark-front.png?raw=true) ![prospector-lit-dark-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/prospector-lit-dark-front.png?raw=true)
+![mole-lit-dark-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/mole-lit-dark-front.png?raw=true) ![prospector-lit-dark-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/prospector-lit-dark-front.png?raw=true)
 
 ### Sounds and music
 
