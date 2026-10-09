@@ -54,15 +54,31 @@ class Limits(unittest.TestCase):
         self.assertAlmostEqual(tip[1], -10)
         self.assertAlmostEqual(tip[2], 0)
 
-    def test_every_drill_turned_down_to_bore_the_floor_stays_inside_the_bore(self):
+    def test_every_drill_keeps_the_swing_limits_from_level_to_down(self):
         for name, make in pc.CONCEPTS.items():
-            model = make()
-            mount = next(bone for bone in model.bones if bone.name == "drill_mount")
-            mount.rotation = (90.0, 0.0, 0.0)
-            lo, hi = pc.rest_bounds(model)
             with self.subTest(concept=name):
-                self.assertTrue(-16 - 1e-6 <= lo[0] and hi[0] <= 16 + 1e-6 and -16 - 1e-6 <= lo[2] and hi[2] <= 16 + 1e-6,
-                                f"{name} boring the floor spans x {lo[0]:.2f}..{hi[0]:.2f}, z {lo[2]:.2f}..{hi[2]:.2f}")
+                pc.check_swing(make())
+
+    def test_a_drill_that_swings_too_far_past_the_bore_face_fails(self):
+        # A plate rising 20 pixels over its hinge swings its top forward: 5.9 pixels past the face at 20 degrees, 6.9 at 25.
+        model = pc.Model("lunge")
+        model.bone("body")
+        model.bone("drill_mount", "body", (0, 10, 0)).box(-4, 10, -16, 4, 30, -14, "drill")
+        with self.assertRaisesRegex(ValueError, r"lunge with its drill turned 25 degrees down stands 6\.9\d pixels past the bore face, more than 6"):
+            pc.check_swing(model)
+
+    def test_a_drill_that_swings_deeper_than_the_slab_it_bores_fails(self):
+        model = pc.Model("deep")
+        model.bone("body")
+        model.bone("drill_mount", "body", (0, 4, 0)).box(-1, 3, -21, 1, 5, -4, "drill")
+        with self.assertRaisesRegex(ValueError, r"deep with its drill turned \d+ degrees down leaves -16\.\.30\.4 in y: -16\.\d\d"):
+            pc.check_swing(model)
+
+    def test_the_swing_check_puts_the_mount_back_at_rest(self):
+        model = pc.full_face()
+        mount = next(bone for bone in model.bones if bone.name == "drill_mount")
+        pc.check_swing(model)
+        self.assertEqual((0.0, 0.0, 0.0), mount.rotation)
 
     def test_box_uv_never_overlaps(self):
         for name in pc.CONCEPTS:

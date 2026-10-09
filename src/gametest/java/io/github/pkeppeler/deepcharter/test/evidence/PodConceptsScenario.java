@@ -15,9 +15,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.SectionPos;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.Identifier;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -51,6 +48,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
@@ -58,7 +56,8 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
 /**
  * Evidence scenario "pod-concepts": the Mole concepts the user is picking from now, round 2 (#352), each picked in turn with the
- * dev switch and a resource reload. Round 1's media (#334) is on pr-media/342.
+ * dev switch and a resource reload. Round 1 (#334) is recorded by this scenario at commit 20a09d42, and its media is on
+ * pr-media/342.
  *
  * <p>The scene is the regolith plain south of the colony, in the design tour's world, under the brightest dusk of the sky (the
  * surface's own look, which the tour calls noon). Per concept: a turntable of the parked pod (front, three-quarter, side, back),
@@ -93,13 +92,7 @@ public class PodConceptsScenario extends EvidenceScenario {
 	private static final double EYE = 1.62;
 	private static final int SETTLE_POLLS = 5;
 
-	/**
-	 * The sky clock at its brightest dusk and at its darkest ({@code DesignTourScenario}): its timeline is hours of real time, so the
-	 * scenario pins it. The gameplay clock, which sets the light, is pinned at noon and at night with it.
-	 */
-	private static final ResourceKey<WorldClock> SKY = ResourceKey.create(Registries.WORLD_CLOCK, Identifier.fromNamespaceAndPath("deepcharter", "sky"));
-	private static final long SKY_BRIGHTEST = 0;
-	private static final long SKY_NIGHT = 144_000;
+	/** The gameplay clock, which sets the light, at noon and at night: the sky clock is pinned with it ({@link EvidenceWorld#skyPhase}). */
 	private static final int NOON = 6_000;
 	private static final int NIGHT = 18_000;
 
@@ -213,7 +206,7 @@ public class PodConceptsScenario extends EvidenceScenario {
 			String weather = server.overworld().isThundering() ? "thunder" : server.overworld().isRaining() ? "rain" : "clear";
 			serverUndo.add(undoServer -> command(undoServer, "weather " + weather));
 			command(server, "weather clear");
-			Holder<WorldClock> sky = server.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(SKY);
+			Holder<WorldClock> sky = EvidenceWorld.skyClock(server);
 			ClockInstance skyBefore = server.clockManager().getInstance(sky);
 			long skyTicks = skyBefore.totalTicks();
 			boolean skyPaused = skyBefore.isPaused();
@@ -221,7 +214,6 @@ public class PodConceptsScenario extends EvidenceScenario {
 				undoServer.clockManager().setTotalTicks(sky, skyTicks);
 				undoServer.clockManager().setPaused(sky, skyPaused);
 			});
-			server.clockManager().setPaused(sky, true);
 			ServerLevel overworld = server.overworld();
 			stage = flatGroundSouthOf(overworld, colony);
 			clipGround = stage.offset(CLIP_EAST, 0, 0);
@@ -248,7 +240,7 @@ public class PodConceptsScenario extends EvidenceScenario {
 			camera.setPermanentlyInvulnerable(true);
 			camera.teleportTo(overworld, stage.getX() + 0.5, stage.getY() + 2, stage.getZ() - 4, Set.of(), 0f, 0f, true);
 		});
-		setTime(NOON, SKY_BRIGHTEST);
+		setTime(NOON, EvidenceWorld.SKY_BRIGHTEST);
 		serverDo(server -> {
 			ServerLevel overworld = server.overworld();
 			levelPad(overworld, stage);
@@ -296,25 +288,18 @@ public class PodConceptsScenario extends EvidenceScenario {
 	}
 
 	/**
-	 * Sets the gameplay clock, which the game rules hold still, to {@code time}, and the paused sky clock to {@code sky}, and waits
+	 * Sets the gameplay clock, which the game rules hold still, to {@code time}, and pins the sky clock at {@code sky}, and waits
 	 * until the client reads both back.
 	 */
 	private void setTime(int time, long sky) {
-		serverDo(server -> {
-			command(server, "time set " + time);
-			server.clockManager().setTotalTicks(server.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(SKY), sky);
-		});
-		ClientWait.until(ctx, "the client to read the time " + time + " and the sky clock at " + sky,
-				client -> client.level.getOverworldClockTime() % 24_000 == time && skyOnClient(client).totalTicks() == sky,
-				client -> "the time " + client.level.getOverworldClockTime() + ", the sky clock at " + skyOnClient(client).totalTicks());
+		serverDo(server -> command(server, "time set " + time));
+		EvidenceWorld.skyPhase(ctx, world, sky);
+		ClientWait.until(ctx, "the client to read the time " + time, client -> client.level.getOverworldClockTime() % 24_000 == time,
+				client -> "the time " + client.level.getOverworldClockTime());
 	}
 
 	private static void command(MinecraftServer server, String command) {
 		server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(), command);
-	}
-
-	private static ClockInstance skyOnClient(Minecraft client) {
-		return client.level.clockManager().getInstance(client.level.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(SKY));
 	}
 
 	/** Sets the dev switch to {@code concept} and reloads the resources, which rebuilds the renderers. */
@@ -447,11 +432,11 @@ public class PodConceptsScenario extends EvidenceScenario {
 	private void lit(PodConcept concept) {
 		Vec3 at = new Vec3(clipGround.getX(), clipGround.getY(), clipGround.getZ() + 4);
 		placePiloted(at, CLIP_YAW);
-		setTime(NIGHT, SKY_NIGHT);
+		setTime(NIGHT, EvidenceWorld.SKY_DARKEST);
 		look(at.add(3.0, 1.3, -1.6), at);
 		settle();
 		shot(concept, "lit");
-		setTime(NOON, SKY_BRIGHTEST);
+		setTime(NOON, EvidenceWorld.SKY_BRIGHTEST);
 		placePiloted(clipStart(), CLIP_YAW);
 	}
 

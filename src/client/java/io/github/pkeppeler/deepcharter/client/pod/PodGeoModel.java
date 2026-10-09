@@ -34,12 +34,6 @@ public class PodGeoModel extends Model<PodGeoRenderState> {
 	/** A thruster swings from pointing back to pointing down. */
 	private static final float THRUST_DEGREES = -90f;
 	private static final float FLOOR = 24f;
-	/**
-	 * A drill head that reaches this far from its axis, in pixels, spins at the full rate. A wider one spins slower, by the square of
-	 * its reach: one that reaches twice as far turns at a quarter of the rate, so a giant cutter turns with weight and not like a toy.
-	 * Every round-1 drill reaches 7.5 or less.
-	 */
-	private static final float FULL_SPIN_REACH = 8f;
 
 	private record Wheel(ModelPart part, float radius) {
 	}
@@ -91,8 +85,7 @@ public class PodGeoModel extends Model<PodGeoRenderState> {
 		GeoModel.Bone mount = geo.bones().stream().filter(bone -> bone.role() == BoneRole.DRILL_MOUNT).findFirst().orElseThrow();
 		drillMount = parts.get(mount.name());
 		mountRestPitch = (float) mount.rotation().x;
-		float share = (float) (FULL_SPIN_REACH / geo.drillReach());
-		drillSpinScale = Math.min(1f, share * share);
+		drillSpinScale = (float) geo.drillSpinScale();
 	}
 
 	/** The drill mount's x rotation in the file: where the drill rests while the pod is not drilling. */
@@ -100,7 +93,7 @@ public class PodGeoModel extends Model<PodGeoRenderState> {
 		return mountRestPitch;
 	}
 
-	/** How fast this model's drill spins, as a share of the full rate: 1 for a drill that reaches {@value #FULL_SPIN_REACH} pixels or less. */
+	/** How fast this model's drill spins, as a share of the full rate ({@link GeoModel#drillSpinScale}). */
 	public float drillSpinScale() {
 		return drillSpinScale;
 	}

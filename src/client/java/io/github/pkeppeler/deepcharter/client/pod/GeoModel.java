@@ -41,6 +41,12 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 	private static final byte[] PNG_IHDR = {'I', 'H', 'D', 'R'};
 	private static final int PNG_IHDR_TYPE = 12;
 	private static final int PNG_HEADER_BYTES = 24;
+	/**
+	 * A drill that reaches this far from its axis, in pixels, spins at the full rate. A wider one spins slower, by the square of its
+	 * reach: one that reaches twice as far turns at a quarter of the rate, so a giant cutter turns with weight and not like a toy.
+	 * Every round-1 drill reaches 7.5 or less.
+	 */
+	private static final double FULL_SPIN_REACH = 8;
 
 	/** A bone: its pivot and rest rotation (degrees, applied z, then y, then x) are in model space, as in the file. */
 	public record Bone(String name, BoneRole role, Optional<String> parent, Vec3 pivot, Vec3 rotation, List<Cube> cubes) {
@@ -107,9 +113,16 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 		}
 	}
 
+	/** How fast this model's drill spins, as a share of the full rate: 1 up to a reach of {@value #FULL_SPIN_REACH} pixels. */
+	public double drillSpinScale() {
+		double share = FULL_SPIN_REACH / drillReach();
+		return Math.min(1, share * share);
+	}
+
 	/**
 	 * How far the cubes of the spinning drill bones ({@code drill_head} and {@code drill_ring}, not their children) reach from the
-	 * bone's axis across x or y, in pixels: half the width of the cutter.
+	 * bone's axis across x or y, in pixels: half the width of the cutter. A turned cube counts as its unturned box, which for the
+	 * small turned teeth on a cutter's face is within a pixel.
 	 */
 	public double drillReach() {
 		double reach = 0;

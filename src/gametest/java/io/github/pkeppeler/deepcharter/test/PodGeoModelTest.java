@@ -135,18 +135,24 @@ public class PodGeoModelTest {
 
 	/**
 	 * Round 2 (#352) asks for the Borer's cutter made giant, filling or nearly filling the 32-pixel bore face: every round-2 cutter is
-	 * 25 pixels across or more. Every round-1 drill reaches 7.5 pixels or less, so the renderer spins it at the full rate, as before.
+	 * 25 pixels across or more, and turns at under half the full rate, so it looks heavy. Every round-1 drill reaches 7.5 pixels or
+	 * less, and turns at the full rate, as before.
 	 */
 	@GameTest
-	public void roundTwoCuttersNearlyFillTheBoreFace(GameTestHelper helper) throws IOException {
-		double validReach = GeoModel.parse("valid", new StringReader(VALID)).drillReach();
-		require(helper, validReach == 1.0, "the valid model's 2-pixel drill head should reach 1 pixel from its axis, not " + validReach);
+	public void roundTwoCuttersNearlyFillTheBoreFaceAndTurnSlower(GameTestHelper helper) throws IOException {
+		GeoModel valid = GeoModel.parse("valid", new StringReader(VALID));
+		require(helper, valid.drillReach() == 1.0, "the valid model's 2-pixel drill head should reach 1 pixel from its axis, not " + valid.drillReach());
+		require(helper, valid.drillSpinScale() == 1.0, "the valid model's 2-pixel drill head should turn at the full rate, not " + valid.drillSpinScale());
 		for (PodConcept concept : PodConcept.values()) {
-			double reach = read(helper, concept.model()).drillReach();
+			GeoModel model = read(helper, concept.model());
+			double reach = model.drillReach();
+			double scale = model.drillSpinScale();
 			if (concept.round() == 2) {
 				require(helper, reach >= 12.5, concept + "'s cutter reaches %.1f pixels from its axis, under the 12.5 that nearly fills the bore face".formatted(reach));
+				require(helper, scale > 0 && scale < 0.5, concept + "'s cutter turns at %.3f of the full rate, not under half".formatted(scale));
 			} else {
 				require(helper, reach <= 7.5, concept + "'s drill reaches %.1f pixels from its axis, past round 1's 7.5".formatted(reach));
+				require(helper, scale == 1.0, concept + "'s drill turns at %.3f of the full rate, not the full rate of round 1".formatted(scale));
 			}
 		}
 		helper.succeed();

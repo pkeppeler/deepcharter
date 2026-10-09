@@ -47,6 +47,8 @@ The pilot still sits on top of the hull, as today ([#243](https://github.com/pke
 
 A cutter that fills the front of the pod cannot also point down inside the bore without moving. So on all four, the cutter swings down under the belly on its yoke when the pod bores the floor, and swings back up when it stops. Half a second into the swing it is under the pod, chewing the floor, and the pod sinks into its own lamp-lit shaft.
 
+Part way through the swing, for a moment, the cutter stands past the front of the bore: by up to 5.5 pixels on D, 4.2 on A, 3.5 on B and 1.4 on C (a block is 16). In a bore that part is inside the rock, so you see it only on open ground. The generator fails any concept that goes past 6 pixels. [#243](https://github.com/pkeppeler/deepcharter/issues/243) has this as a known item for the build.
+
 More stills of each concept (side, back, above, lamps off, chewing the ledge, boring the floor, flying) are on [pull request #360](https://github.com/pkeppeler/deepcharter/pull/360).
 
 ## How to pick

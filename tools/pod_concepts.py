@@ -34,6 +34,12 @@ TEXTURE_SIZE = 256
 # The bore a Mole digs, in model pixels: the model at rest must fit inside it.
 BORE_HALF_WIDTH = 16
 HITBOX_HEIGHT = 30.4
+# While the drill mount swings between level (boring a wall) and straight down (boring the floor), at every SWING_ANGLES step the
+# model stays inside the bore's sides, back and top, reaches no deeper than the slab it bores, and stands no more than
+# SWING_OVERSHOOT_PX past the bore face. That overshoot lasts a moment, and in a bore it is inside the rock.
+SWING_ANGLES = range(0, 91, 5)
+SWING_OVERSHOOT_PX = 6
+FLOOR_SLAB_PX = 16
 
 # ---------------------------------------------------------------------------------------------
 # Palette: one shared kit for every concept, so the user judges shapes, not paint.
@@ -181,6 +187,27 @@ def check_bounds(model):
         raise ValueError(f"{model.name} at rest is wider than its bore: x {lo[0]:.2f}..{hi[0]:.2f}, z {lo[2]:.2f}..{hi[2]:.2f}")
     if lo[1] < -eps or hi[1] > HITBOX_HEIGHT + eps:
         raise ValueError(f"{model.name} at rest leaves 0..{HITBOX_HEIGHT} in y: {lo[1]:.2f}..{hi[1]:.2f}")
+
+
+def check_swing(model):
+    """Throws unless the model keeps the swing limits (see SWING_ANGLES) with its drill mount turned to each of SWING_ANGLES:
+    the game swings the drill from level to straight down and back."""
+    mount = next(bone for bone in model.bones if bone.name == "drill_mount")
+    rest = mount.rotation
+    eps = 1e-6
+    try:
+        for angle in SWING_ANGLES:
+            mount.rotation = (float(angle), 0.0, 0.0)
+            lo, hi = rest_bounds(model)
+            where = f"{model.name} with its drill turned {angle} degrees down"
+            if lo[0] < -BORE_HALF_WIDTH - eps or hi[0] > BORE_HALF_WIDTH + eps or hi[2] > BORE_HALF_WIDTH + eps:
+                raise ValueError(f"{where} leaves the bore's sides or back: x {lo[0]:.2f}..{hi[0]:.2f}, back z {hi[2]:.2f}")
+            if lo[2] < -BORE_HALF_WIDTH - SWING_OVERSHOOT_PX - eps:
+                raise ValueError(f"{where} stands {-lo[2] - BORE_HALF_WIDTH:.2f} pixels past the bore face, more than {SWING_OVERSHOOT_PX}")
+            if lo[1] < -FLOOR_SLAB_PX - eps or hi[1] > HITBOX_HEIGHT + eps:
+                raise ValueError(f"{where} leaves {-FLOOR_SLAB_PX}..{HITBOX_HEIGHT} in y: {lo[1]:.2f}..{hi[1]:.2f}")
+    finally:
+        mount.rotation = rest
 
 
 # ---------------------------------------------------------------------------------------------
@@ -1157,6 +1184,7 @@ def geo_json(model):
 def build(name):
     model = CONCEPTS[name]()
     check_bounds(model)
+    check_swing(model)
     pack(model)
     base, glow = paint_model(model)
     return model, {
