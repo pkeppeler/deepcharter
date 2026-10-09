@@ -55,6 +55,7 @@ public final class OreRegistry {
 	/** Loads the class, which registers everything. */
 	public static void register() {
 		HazardBlocks.register();
+		SlagBrick.register();
 		Registry.register(BuiltInRegistries.FEATURE_TYPE, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "zone_fill"), ZoneFillFeature.CODEC);
 	}
 

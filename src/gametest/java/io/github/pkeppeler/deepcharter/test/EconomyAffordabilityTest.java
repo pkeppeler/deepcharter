@@ -37,6 +37,8 @@ public class EconomyAffordabilityTest {
 
 	/** A tier 1 part, the scanner and the lights are an early buy: this many runs of a stock Mole in layer 1, at most. */
 	private static final int EARLY_BUY_RUNS = 2;
+	/** The spoil hopper is the entry to the lava ladder: a stock Mole buys it with one layer 1 run. */
+	private static final int HOPPER_RUNS = 1;
 	/** The radiator matters from layer 3 on, and its tier 1 costs what the others' tier 2 does in the original. */
 	private static final int RADIATOR_RUNS = 5;
 	/** The Prospector restore takes this many runs of a Mole with tier 2 parts in layer 2, at least and at most. */
@@ -71,7 +73,11 @@ public class EconomyAffordabilityTest {
 	}
 
 	private static Run upgradedRunInLayerTwo() {
-		return EarlyRunModel.run(Zone.load("upper_levels"), EarlyRunModel.mole(2, 2, 2), EarlyRunModel.layerOneBlocks());
+		return upgradedRunInLayerTwo(0f);
+	}
+
+	private static Run upgradedRunInLayerTwo(float extraMass) {
+		return EarlyRunModel.run(Zone.load("upper_levels"), EarlyRunModel.mole(2, 2, 2), EarlyRunModel.layerOneBlocks(), extraMass);
 	}
 
 	// assertionException(String, Object...) leaves the placeholders unfilled in the report.
@@ -92,6 +98,30 @@ public class EconomyAffordabilityTest {
 				throw failure(helper, "tier 1 %s costs $%d, which is %d runs of $%.0f; at most %d are allowed",
 						track.id(), price, runs, run.net(), allowed);
 			}
+		}
+		helper.succeed();
+	}
+
+	/**
+	 * The spoil hopper (#313) is the first lava counterplay and is bought before Deep Claim, so a stock Mole pays for it with one early layer 1
+	 * run. It carries a full bay and rack, which cut lift (W2): the climb and the Prospector's layer 2 runs must come out as they do without it.
+	 */
+	@GameTest
+	public void theSpoilHopperIsAffordableAfterOneLayerOneRunAndAFullBayDoesNotSlowTheClimb(GameTestHelper helper) {
+		float mass = EarlyRunModel.hopperMass();
+		PodStats stock = PodStats.base();
+		Run run = EarlyRunModel.run(Zone.load("topsoil_claims"), stock, 0, mass);
+		long price = UpgradeTuning.DEFAULT.price(ComponentTrack.SPOIL_HOPPER, 1);
+		LOGGER.info("[economy] spoil hopper ${}: {} layer 1 runs of {}; a full bay and rack weigh {} of {} engine power", price, run.toAfford(price), run, mass, stock.enginePower());
+		if (run.toAfford(price) != HOPPER_RUNS) {
+			throw failure(helper, "the spoil hopper costs $%d, which is %d layer 1 runs of $%.0f with a full bay; %d expected", price, run.toAfford(price), run.net(), HOPPER_RUNS);
+		}
+		if (EarlyRunModel.climbSpeed(stock, mass) != stock.maxClimbSpeed()) {
+			throw failure(helper, "a full bay and rack of mass %.1f slow the climb to %.3f from the rotor's %.3f", mass, EarlyRunModel.climbSpeed(stock, mass), stock.maxClimbSpeed());
+		}
+		int restoreRuns = upgradedRunInLayerTwo(mass).toAfford(HangarTuning.DEFAULT.restoreCost(Chassis.PROSPECTOR).money());
+		if (restoreRuns != PROSPECTOR_RUNS) {
+			throw failure(helper, "with a full bay and rack the Prospector restore takes %d layer 2 runs, expected %d", restoreRuns, PROSPECTOR_RUNS);
 		}
 		helper.succeed();
 	}

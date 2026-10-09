@@ -16,6 +16,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
@@ -27,8 +28,10 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.market.OreProcessor;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
@@ -40,6 +43,7 @@ import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 
 /**
@@ -431,6 +435,174 @@ public class OreProcessorTest {
 				}
 			} finally {
 				good.discard();
+				bad.discard();
+			}
+		});
+		helper.succeed();
+	}
+
+	// ---- slag brick (#313) ----
+
+	private static final String NO_SPOIL = "deepcharter.market.refusal.no_spoil";
+	private static final String NO_ROOM = "deepcharter.market.refusal.no_room";
+	private static final String CANNOT_PAY_FUSE = "deepcharter.market.refusal.cannot_pay_fuse";
+
+	private static void withSpoil(PodEntity pod, int spoil, int bricks) {
+		PodLining.modify(pod, state -> new PodLining.State(spoil, bricks, 0, false, false));
+	}
+
+	private static int bricksCarried(ServerPlayer player) {
+		int count = 0;
+		for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+			if (player.getInventory().getItem(slot).is(SlagBrick.item())) {
+				count += player.getInventory().getItem(slot).getCount();
+			}
+		}
+		return count;
+	}
+
+	private static void fund(MinecraftServer server, ServerPlayer player, long dollars) {
+		Charters.deposit(server, Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id(), dollars);
+	}
+
+	@GameTest
+	public void fusingTurnsTwoSpoilIntoABrickForTwoDollarsAndKeepsTheRemainder(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		withProcessorOnline(server, () -> {
+			MockPlayer mock = player(helper, "Smelter", true);
+			ServerPlayer player = mock.player();
+			BlockPos processor = processorFor(helper, mock);
+			PodEntity pod = podAt(helper, beside(processor, 4));
+			withSpoil(pod, 7, 0);
+			try {
+				fund(server, player, 1000);
+				long before = balance(server, player);
+				expectDone(helper, Terminals.act(player, processor, OreProcessor.FUSE_SPOIL, new CompoundTag()), "fusing 7 spoil");
+				PodLining.State after = PodLining.of(pod);
+				if (after.bricks() != 3 || after.spoil() != 1 || balance(server, player) != before - 6 || bricksCarried(player) != 0) {
+					throw helper.assertionException("7 spoil make 3 bricks for $6 and leave 1 spoil: rack %s, spoil %s, balance %s -> %s, carried %s",
+							after.bricks(), after.spoil(), before, balance(server, player), bricksCarried(player));
+				}
+				expectKey(helper, NO_SPOIL, OreProcessor.fuseSpoil(context(server, player, processor)), "fusing the single spoil left");
+			} finally {
+				pod.discard();
+			}
+		});
+		helper.succeed();
+	}
+
+	@GameTest
+	public void fusingFillsTheRackThenThePackAndNeverLosesSpoil(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		withProcessorOnline(server, () -> {
+			MockPlayer mock = player(helper, "Overflow", true);
+			ServerPlayer player = mock.player();
+			BlockPos processor = processorFor(helper, mock);
+			PodEntity pod = podAt(helper, beside(processor, 4));
+			// The rack holds 32: 30 in it leaves room for 2 of the 10 bricks, and the other 8 go to the pack.
+			withSpoil(pod, 20, 30);
+			try {
+				fund(server, player, 1000);
+				expectDone(helper, Terminals.act(player, processor, OreProcessor.FUSE_SPOIL, new CompoundTag()), "fusing into a nearly full rack");
+				PodLining.State after = PodLining.of(pod);
+				if (after.bricks() != 32 || after.spoil() != 0 || bricksCarried(player) != 8) {
+					throw helper.assertionException("2 bricks fill the rack and 8 go to the pack: rack %s, spoil %s, carried %s", after.bricks(), after.spoil(), bricksCarried(player));
+				}
+				// A full rack and a pack with no room: nothing is made, nothing is charged.
+				withSpoil(pod, 10, 32);
+				for (int slot = 0; slot < player.getInventory().getNonEquipmentItems().size(); slot++) {
+					player.getInventory().setItem(slot, new ItemStack(SlagBrick.item(), 64));
+				}
+				long before = balance(server, player);
+				expectKey(helper, NO_ROOM, OreProcessor.fuseSpoil(context(server, player, processor)), "fusing with nowhere to put the brick");
+				if (PodLining.of(pod).spoil() != 10 || balance(server, player) != before) {
+					throw helper.assertionException("a refused fuse takes no spoil and no money: spoil %s, balance %s -> %s", PodLining.of(pod).spoil(), before, balance(server, player));
+				}
+			} finally {
+				pod.discard();
+			}
+		});
+		helper.succeed();
+	}
+
+	@GameTest
+	public void fusingNeedsSpoilAndMoneyAndChargesOnlyForTheBrickMade(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		withProcessorOnline(server, () -> {
+			MockPlayer mock = player(helper, "Pauper", true);
+			ServerPlayer player = mock.player();
+			BlockPos processor = processorFor(helper, mock);
+			PodEntity pod = podAt(helper, beside(processor, 4));
+			try {
+				expectKey(helper, NO_SPOIL, OreProcessor.fuseSpoil(context(server, player, processor)), "fusing a pod with no spoil");
+				withSpoil(pod, 1, 0);
+				expectKey(helper, NO_SPOIL, OreProcessor.fuseSpoil(context(server, player, processor)), "fusing one spoil, which is under the 2 a brick takes");
+				// Leave $3: enough for one brick at $2 and not for the two that 4 spoil would make.
+				fund(server, player, 1000);
+				long balance = balance(server, player);
+				Charters.spend(server, Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id(), balance - 3);
+				withSpoil(pod, 4, 0);
+				expectDone(helper, Terminals.act(player, processor, OreProcessor.FUSE_SPOIL, new CompoundTag()), "fusing with $3");
+				if (PodLining.of(pod).bricks() != 1 || PodLining.of(pod).spoil() != 2 || balance(server, player) != 1) {
+					throw helper.assertionException("$3 pays for one brick: rack %s, spoil %s, balance %s", PodLining.of(pod).bricks(), PodLining.of(pod).spoil(), balance(server, player));
+				}
+				expectKey(helper, CANNOT_PAY_FUSE, OreProcessor.fuseSpoil(context(server, player, processor)), "fusing with $1");
+			} finally {
+				pod.discard();
+			}
+		});
+		helper.succeed();
+	}
+
+	@GameTest
+	public void fusingTouchesOnlyThePodsTheCharterMayAccess(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		withProcessorOnline(server, () -> {
+			MockPlayer mock = player(helper, "Honest", true);
+			MockPlayer rival = player(helper, "Dishonest", true);
+			ServerPlayer player = mock.player();
+			BlockPos processor = processorFor(helper, mock);
+			PodEntity theirs = podAt(helper, beside(processor, 4));
+			register(server, theirs, rival.player());
+			withSpoil(theirs, 10, 0);
+			try {
+				fund(server, player, 1000);
+				expectKey(helper, NO_POD, OreProcessor.fuseSpoil(context(server, player, processor)), "fusing the spoil of another charter's pod");
+				PodEntity mine = podAt(helper, beside(processor, -4));
+				register(server, mine, player);
+				withSpoil(mine, 4, 0);
+				try {
+					expectDone(helper, Terminals.act(player, processor, OreProcessor.FUSE_SPOIL, new CompoundTag()), "fusing beside a rival's pod");
+					if (PodLining.of(mine).bricks() != 2 || PodLining.of(theirs).spoil() != 10 || PodLining.of(theirs).bricks() != 0) {
+						throw helper.assertionException("only the own pod is fused: own rack %s, rival spoil %s and rack %s",
+								PodLining.of(mine).bricks(), PodLining.of(theirs).spoil(), PodLining.of(theirs).bricks());
+					}
+				} finally {
+					mine.discard();
+				}
+			} finally {
+				theirs.discard();
+			}
+		});
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aPodWithUnreadableLiningIsLeftAloneWhenFusing(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		withProcessorOnline(server, () -> {
+			MockPlayer mock = player(helper, "Careful", true);
+			ServerPlayer player = mock.player();
+			BlockPos processor = processorFor(helper, mock);
+			PodEntity bad = podAt(helper, beside(processor, 4));
+			UnreadableChecks.makeUnreadable(bad, PodLining.STATE);
+			try {
+				fund(server, player, 1000);
+				expectKey(helper, NO_SPOIL, OreProcessor.fuseSpoil(context(server, player, processor)), "fusing a pod whose lining cannot be read");
+				if (!(bad.getAttached(PodLining.STATE) instanceof Versioned.Unreadable<PodLining.State>)) {
+					throw helper.assertionException("the unreadable lining state must be left as it was read");
+				}
+			} finally {
 				bad.discard();
 			}
 		});

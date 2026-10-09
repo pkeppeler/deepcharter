@@ -97,6 +97,9 @@ public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks, Map<String, Integ
 		// takes two runs in layer 2 at most (EconomyAffordabilityTest), and a Mole can fit it. Lights are the cheaper part, a quarter of the first guess.
 		tracks.put(ComponentTrack.SCANNER, new Tiers(List.of(0f, 0.5f, 0.75f, 1f, 1.5f), List.of(0L, 200L, 500L, 1250L, 5000L)));
 		tracks.put(ComponentTrack.LIGHTS, new Tiers(List.of(0f, 6f, 9f, 12f, 15f), List.of(0L, 125L, 375L, 1250L, 3750L)));
+		// Invented (#313): the original keeps no stone. The hopper is SPEC section 7's "keep stone" upgrade, as a bay for spoil. One tier, 1 for
+		// "fitted"; $100 is one early run of a stock Mole in layer 1 (EconomyAffordabilityTest), so it is bought before Deep Claim, where lava starts.
+		tracks.put(ComponentTrack.SPOIL_HOPPER, new Tiers(List.of(0f, 1f), List.of(0L, 100L)));
 		return tracks;
 	}
 }
