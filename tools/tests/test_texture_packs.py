@@ -2,7 +2,8 @@
 
 A pack's blockstates name models, its models name parents and textures, and each must be in the pack or in the mod's own assets
 (a minecraft: model is vanilla's, not ours to check). A texture taller than wide needs its .png.mcmeta. A pack replaces only
-blockstates the mod has, or the vanilla ones it lists in VANILLA_BLOCKSTATES, and every model and texture it holds is used.
+blockstates the mod has, or the vanilla ones it lists in VANILLA_BLOCKSTATES, and every model and texture it holds is used. An
+overlay pack (round 2, docs/design/texture-density-2.md) holds no vanilla file, and its ores draw the host's texture from vanilla.
 """
 import json
 import struct
@@ -14,6 +15,7 @@ from pathlib import Path
 TOOLS = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(TOOLS / "textures"))
 
+import pngio  # noqa: E402
 import texgen  # noqa: E402
 
 MOD_ASSETS = texgen.ROOT / "src/main/resources/assets"
@@ -58,6 +60,38 @@ class TexturePacksTest(unittest.TestCase):
         for name, entry in sorted(variants.items()):
             with self.subTest(variant=name):
                 self.assertEqual([], self.problems(texgen.ROOT / entry["pack"]))
+
+    def test_an_overlay_pack_replaces_nothing_of_vanilla_and_draws_each_ore_over_the_host_by_reference(self):
+        overlaid = {name: entry for name, entry in texgen.variants().items() if "overlays" in entry}
+        self.assertTrue(overlaid)
+        for name, entry in sorted(overlaid.items()):
+            with self.subTest(variant=name):
+                assets = texgen.ROOT / entry["pack"] / "assets"
+                self.assertFalse((assets / "minecraft").exists(), "an overlay pack holds a vanilla file")
+                models = sorted((assets / "deepcharter/models/block").glob("*_overlay_*.json"))
+                self.assertTrue(models)
+                for model in models:
+                    host = json.loads(model.read_text())["textures"]["host"]
+                    self.assertIsNone(resolve(assets, host, "textures", ".png"), f"{model.name}: the host {host} is not vanilla's")
+
+    def test_only_ore_reaches_the_edge_of_an_overlay(self):
+        """Over the host's texture, any pixel on a block's outer ring that is not the ore itself (a shadow, a socket, a tint) draws
+        the block's edge. So an edge pixel is clear, or one of the shades of the ore ramps its recipe draws with: a vein or a seam
+        running out to the edge."""
+        overlaid = sorted(name for name, entry in texgen.variants().items() if "overlays" in entry)
+        self.assertTrue(overlaid)
+        for name in overlaid:
+            target = texgen.variant(name)
+            for key in target.keys:
+                with self.subTest(variant=name, texture=key):
+                    ore = {colour for layer in target.book.recipes[key].layers if layer["op"] in ("cluster", "seams")
+                           for colour in target.book.palette.ramp(layer["ramp"], key)}
+                    self.assertTrue(ore, "the overlay draws no ore")
+                    image = pngio.decode((target.out / f"{key}.png").read_bytes())
+                    size = image.width
+                    edge = {tuple(image.pixels[4 * (y * size + x):][:4]) for y in range(size) for x in range(size)
+                            if x in (0, size - 1) or y in (0, size - 1)}
+                    self.assertEqual(set(), edge - ore - {(0, 0, 0, 0)})
 
     def test_a_missing_texture_an_unused_model_and_a_block_the_mod_lacks_are_each_named(self):
         with tempfile.TemporaryDirectory() as tmp:

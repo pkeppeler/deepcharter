@@ -266,6 +266,50 @@ class RecipeRulesTest(unittest.TestCase):
         veined = {(x, y) for y in range(16) for x in range(16) if canvas.get(x, y) in {(0x60, 0, 0, 255), (0x90, 0, 0, 255)}}
         self.assertTrue(any(x in (0, 15) or y in (0, 15) for x, y in veined), "no vein ran to the edge")
 
+    def test_a_socket_rings_each_clump_inside_the_tile_and_its_share_thins_the_outer_ring(self):
+        write_json(self.root / "palette.json", {"description": "test", "colours": {
+            "shade": "#202020", "pit": "#404040", "rim": "#505050", "ore": ["#300000", "#600000", "#900000", "#c00000", "#ff0000"]}})
+        layer = {"op": "cluster", "seed": 5, "count": 2, "radius": [1.6, 1.9], "lumps": 2, "ramp": "ore", "shadow": "shade", "margin": 0,
+                 "socket": [["pit", 1.0], ["rim", 0.5]]}
+        canvas = self.book({"block/x": {"kind": "cutout", "layers": [layer]}}).render("block/x")[0]
+        def having(colour):
+            return {(x, y) for y in range(16) for x in range(16) if canvas.get(x, y) == colour}
+        ore = {(x, y) for y in range(16) for x in range(16) if canvas.get(x, y)[1] == 0 and canvas.get(x, y)[3]}
+        pit, rim, shade = having((0x40, 0x40, 0x40, 255)), having((0x50, 0x50, 0x50, 255)), having((0x20, 0x20, 0x20, 255))
+        self.assertTrue(ore and pit and rim and shade)
+        ring_one = {(x + dx, y + dy) for x, y in ore for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))} - ore
+        self.assertEqual(ring_one, pit | (shade & ring_one), "ring 1, at share 1, is every side neighbour of a clump its shadow leaves")
+        ring_two = {(x + dx, y + dy) for x, y in ore for dx in (-2, -1, 0, 1, 2) for dy in (-2, -1, 0, 1, 2)
+                    if dx * dx + dy * dy <= 4} - ore - ring_one
+        self.assertTrue(rim and rim <= ring_two, "the outer ring lies outside ring 1 and within 2 pixels of a clump")
+        self.assertLess(len(rim), len(ring_two - shade - pit), "the outer ring, at share 0.5, is not thinned")
+        self.assertTrue(all(0 < x < 15 and 0 < y < 15 for x, y in pit | rim | shade), "a socket pixel lies on the tile edge")
+
+    def seams_book(self, **seams):
+        write_json(self.root / "palette.json", {"description": "test", "colours": {
+            "shade": "#202020", "ore": ["#300000", "#600000", "#900000", "#c00000", "#ff0000"]}})
+        layer = {"op": "seams", "seed": 3, "count": 2, "ramp": "ore", "shadow": "shade", "thickness": [2, 3], "swells": 1, "wander": 0.3,
+                 **seams}
+        return self.book({"block/x": {"kind": "cutout", "layers": [layer]}})
+
+    def test_seams_cross_the_tile_one_pixel_thick_at_its_edges_and_swell_with_a_shadow_under_them(self):
+        canvas = self.seams_book().render("block/x")[0]
+        seam = {(x, y) for y in range(16) for x in range(16) if canvas.get(x, y)[3] and canvas.get(x, y)[1] == 0}
+        shade = {(x, y) for y in range(16) for x in range(16) if canvas.get(x, y) == (0x20, 0x20, 0x20, 255)}
+        def column(x):
+            return [canvas.get(x, y) for y in range(16) if (x, y) in seam]
+        for x in (0, 1, 14, 15):
+            self.assertEqual([(0x60, 0, 0, 255)] * 2, column(x), f"column {x}, by the edge, is not one dark pixel of each seam")
+        self.assertTrue(all(len(column(x)) >= 4 for x in range(2, 14)), "a seam is thinner than its thread inside the tile")
+        self.assertGreaterEqual(max(len(column(x)) for x in range(2, 14)), 5, "no seam swells to 3 pixels")
+        self.assertTrue(shade and all((x, y - 1) in seam for x, y in shade), "a shadow pixel has no seam just above it")
+        self.assertFalse({y for _, y in seam | shade} & {0, 15}, "a seam or its shadow reaches the top or bottom edge")
+        self.assertIn((255, 0, 0, 255), {canvas.get(x, y) for x, y in seam}, "no glint")
+
+    def test_seams_that_cannot_keep_apart_fail_naming_the_recipe(self):
+        with self.assertRaisesRegex(RecipeError, "block/x layer 0: only [0-9] of 5 seams fit"):
+            self.seams_book(count=5, apart=4).render("block/x")
+
     def test_an_animated_recipe_stacks_its_frames_and_moves_its_scan(self):
         book = self.book({"block/x": {"kind": "opaque", "animation": {"frames": 4, "frametime": 3}, "layers": [
             {"op": "fill", "colour": "ramp.0"}, {"op": "scan", "rect": [0, 0, 16, 4], "rows": 1, "step": 1, "colour": "ramp.2", "over": ["ramp.0"]}]}})
@@ -351,12 +395,20 @@ class VariantTest(unittest.TestCase):
         write_json(self.root / "v" / "recipes" / "r.json", {"recipes": {
             "block/new_rock": {"kind": "opaque", "size": 32, "layers": [{"op": "fill", "colour": "rock.3"}]},
             "item/goldium": {"kind": "cutout", "layers": [{"op": "fill", "colour": "goldium.4"}]}}})
-        write_json(self.root / "variants.json", {"description": "test", "variants": {
-            "t": {"recipes": ["v/recipes"], "pack": "pack", "sheet": "sheet.png"}}})
+        write_json(self.root / "o" / "palette.json", {"description": "test", "colours": {"host": ["#101010", "#202020"]}})
+        write_json(self.root / "o" / "recipes" / "r.json", {"recipes": {
+            f"block/goldium_ore_overlay_{i}": {"kind": "cutout", "layers": [{"op": "fill", "colour": "host.1", "rect": [4, 4, 2, 2]}]}
+            for i in range(2)}})
+        self.overlays = {"host": "minecraft:block/stone", "textures": 2, "blocks": ["goldium_ore"]}
+        self.variants({"palettes": ["o/palette.json"], "recipes": ["o/recipes"], "pack": "opack", "sheet": "osheet.png", "overlays": self.overlays})
         patches = [mock.patch.object(texgen, "VARIANTS", self.root / "variants.json"), mock.patch.object(texgen, "ROOT", self.root)]
         for patch in patches:
             patch.start()
             self.addCleanup(patch.stop)
+
+    def variants(self, overlaid):
+        write_json(self.root / "variants.json", {"description": "test", "variants": {
+            "t": {"palettes": [], "recipes": ["v/recipes"], "pack": "pack", "sheet": "sheet.png"}, "o": overlaid}})
 
     def test_a_variant_writes_only_the_textures_its_own_recipes_define_and_its_check_passes(self):
         code, _, err = run("--variant", "t")
@@ -379,7 +431,71 @@ class VariantTest(unittest.TestCase):
         code, _, err = run("--variant", "z", "--check")
         self.assertEqual(2, code)
         self.assertIn("no variant 'z'", err)
-        self.assertIn("['t']", err)
+        self.assertIn("['o', 't']", err)
+
+    def test_an_overlay_variant_draws_with_its_palette_and_gives_each_ore_the_host_texture_under_its_overlays(self):
+        code, _, err = run("--variant", "o")
+        self.assertEqual(0, code, err)
+        assets = self.root / "opack" / "assets"
+        self.assertEqual((0x20, 0x20, 0x20, 255), Canvas.from_rgba(pngio.decode(
+            (assets / "deepcharter/textures/block/goldium_ore_overlay_1.png").read_bytes())).get(4, 4))
+        self.assertEqual({"variants": {"": [{"model": "deepcharter:block/goldium_ore_overlay_0"},
+                                            {"model": "deepcharter:block/goldium_ore_overlay_1"}]}},
+                         json.loads((assets / "deepcharter/blockstates/goldium_ore.json").read_text()))
+        self.assertEqual({"parent": "deepcharter:block/ore_overlay", "textures": {
+            "host": "minecraft:block/stone", "overlay": "deepcharter:block/goldium_ore_overlay_1"}},
+            json.loads((assets / "deepcharter/models/block/goldium_ore_overlay_1.json").read_text()))
+        parent = json.loads((assets / "deepcharter/models/block/ore_overlay.json").read_text())
+        self.assertEqual(("minecraft:block/block", {"particle": "#host"}), (parent["parent"], parent["textures"]))
+        self.assertEqual([{face: {"texture": layer, "cullface": face} for face in ("down", "up", "north", "south", "west", "east")}
+                          for layer in ("#host", "#overlay")], [element["faces"] for element in parent["elements"]])
+        self.assertEqual([([0, 0, 0], [16, 16, 16])] * 2, [(element["from"], element["to"]) for element in parent["elements"]])
+        self.assertEqual(0, run("--variant", "o", "--check")[0])
+
+    def test_a_model_or_a_vanilla_file_in_an_overlay_pack_that_its_overlays_do_not_make_fails_the_check(self):
+        self.assertEqual(0, run("--variant", "o")[0])
+        assets = self.root / "opack" / "assets"
+        write_json(assets / "deepcharter/models/block/spare.json", {})
+        write_json(assets / "minecraft/blockstates/stone.json", {})
+        (assets / "minecraft/textures/block").mkdir(parents=True)
+        (assets / "minecraft/textures/block/stone.png").write_bytes(pngio.encode(pngio.Rgba(1, 1, bytes(4))))
+        code, _, err = run("--variant", "o", "--check")
+        self.assertEqual(1, code)
+        for name in ("deepcharter/models/block/spare.json", "minecraft/blockstates/stone.json", "minecraft/textures/block/stone.png"):
+            self.assertIn(f"\n  opack/assets/{name}", err)
+        self.assertIn("3 file(s) in an overlay pack are not made by its overlays", err)
+        self.assertEqual(1, run("--variant", "o")[0], "a build refuses too")
+
+    def test_a_changed_overlay_model_fails_the_check_and_a_build_restores_it(self):
+        self.assertEqual(0, run("--variant", "o")[0])
+        model = self.root / "opack/assets/deepcharter/models/block/goldium_ore_overlay_0.json"
+        model.write_text("{}")
+        code, _, err = run("--variant", "o", "--check")
+        self.assertEqual(1, code)
+        self.assertIn("\n  opack/assets/deepcharter/models/block/goldium_ore_overlay_0.json", err)
+        self.assertEqual(0, run("--variant", "o")[0])
+        self.assertIn("minecraft:block/stone", model.read_text())
+
+    def test_an_overlay_block_whose_texture_has_no_recipe_or_is_opaque_fails_naming_it(self):
+        self.variants({"palettes": ["o/palette.json"], "recipes": ["o/recipes"], "pack": "opack", "sheet": "osheet.png",
+                       "overlays": {**self.overlays, "textures": 3}})
+        code, _, err = run("--variant", "o", "--check")
+        self.assertEqual(2, code)
+        self.assertIn("overlay block goldium_ore needs the recipe block/goldium_ore_overlay_2", err)
+        write_json(self.root / "o" / "recipes" / "r.json", {"recipes": {
+            f"block/goldium_ore_overlay_{i}": {"kind": "opaque", "layers": [{"op": "fill", "colour": "host.1"}]} for i in range(3)}})
+        code, _, err = run("--variant", "o", "--check")
+        self.assertEqual(2, code)
+        self.assertIn("block/goldium_ore_overlay_0: an overlay is a cutout texture", err)
+
+    def test_overlays_with_a_missing_key_a_bare_host_or_a_true_count_are_refused(self):
+        for overlays in ({"host": "minecraft:block/stone", "textures": 2}, {**self.overlays, "host": "stone"},
+                         {**self.overlays, "textures": True}):
+            with self.subTest(overlays=overlays):
+                self.variants({"palettes": [], "recipes": ["o/recipes"], "pack": "opack", "sheet": "osheet.png", "overlays": overlays})
+                code, _, err = run("--variant", "o", "--check")
+                self.assertEqual(2, code)
+                self.assertIn("variant o", err)
 
     def test_a_variant_with_its_own_paths_is_refused(self):
         with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
