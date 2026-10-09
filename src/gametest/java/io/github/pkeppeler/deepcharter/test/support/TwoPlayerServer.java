@@ -56,7 +56,8 @@ public final class TwoPlayerServer implements AutoCloseable {
 		LOGGER.info("TwoPlayerServer: dedicated server on port {}", port);
 		TestDedicatedServerContext server = context.worldBuilder().createServer(properties);
 		TestDedicatedServerConnection connection = null;
-		String stage = "the real client joining the dedicated server, which Fabric waits on for 1200 ticks";
+		String stage = "the real client joining the dedicated server (connect, login and world load, waited on by WorldLoadWait for "
+				+ WorldLoadWait.WORLD_LOAD_SECONDS + " s)";
 		try {
 			connection = server.connect();
 			stage = "the mock player joining the server";
@@ -64,7 +65,7 @@ public final class TwoPlayerServer implements AutoCloseable {
 			stage = "the real client seeing both players";
 			ClientWait.until(context, "the real client and the mock both in the level",
 					client -> client.level != null && client.level.players().size() == 2,
-					client -> "players " + (client.level == null ? "no level" : client.level.players().size()));
+					client -> "players " + (client.level == null ? "no level (disconnected?)" : client.level.players().size()) + ", " + ClientWait.describe(client));
 			return new TwoPlayerServer(context, server, connection, mock);
 		} catch (RuntimeException | Error e) {
 			if (connection != null) {
