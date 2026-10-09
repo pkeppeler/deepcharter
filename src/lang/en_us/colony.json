@@ -6,7 +6,6 @@
   "block.deepcharter.company_lamp": "Company Lamp",
   "block.deepcharter.concrete_footing": "Concrete Footing",
   "block.deepcharter.conduit": "Company Conduit",
-  "block.deepcharter.conveyor": "Belt Conveyor",
   "block.deepcharter.enamel_sign": "Enamel Sign",
   "block.deepcharter.floodlight": "Company Floodlight",
   "block.deepcharter.furnace_hatch": "Crusher Hatch",
@@ -21,12 +20,9 @@
   "block.deepcharter.railing": "Catwalk Railing",
   "block.deepcharter.riveted_plate": "Riveted Plate",
   "block.deepcharter.riveted_plate_red": "Red Riveted Plate",
-  "block.deepcharter.shutter": "Roller Shutter",
   "block.deepcharter.steel_beam": "Steel Beam",
-  "block.deepcharter.steel_beam_red": "Red Steel Beam",
   "block.deepcharter.steel_ladder": "Steel Ladder",
   "block.deepcharter.wall_lamp": "Company Wall Lamp",
-  "block.deepcharter.winder_door": "Riveted Door",
   "block.deepcharter.window_ribbon_dark": "Dark Ribbon Window",
   "block.deepcharter.window_ribbon_lit": "Lit Ribbon Window"
 }

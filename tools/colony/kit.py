@@ -1,5 +1,5 @@
-"""The colony kit: every block the colony concepts are built from, with its block-state properties, blockstate file, models and
-item definition. ColonyKit.java registers the same blocks; ColonyConceptsTest fails when a state has no variant.
+"""The colony kit: every block the colony is built from, with its block-state properties, blockstate file, models and
+item definition. ColonyKit.java registers the same blocks; AssetCompletenessTest fails when a state has no variant.
 
 A kit block is one of a few kinds (cube, facing, pillar). Its textures are recipes in tools/textures/recipes/colony_kit.json,
 drawn by tools/textures/texgen.py into textures/block/colony/. The display-only pieces (the statue, sheave wheels, the trussed
@@ -15,7 +15,7 @@ TEX = f"{NS}:block/colony/"
 FACINGS = {"north": 0, "east": 90, "south": 180, "west": 270}
 AXES = ("x", "y", "z")
 # The number of tile states of the enamel sign; KitSignBlock.TILES in Java. signs.py says what each tile shows.
-SIGN_TILES = 48
+SIGN_TILES = 55
 
 
 @dataclass(frozen=True)
@@ -203,16 +203,6 @@ def sign_tile(index: int) -> Model:
     return Model(t, boxes)
 
 
-def conveyor() -> Model:
-    """A belt conveyor running north: a steel frame on two rollers, the animated belt on top."""
-    t = {"belt": tex("conveyor_belt"), "frame": tex("conveyor_frame"), "particle": tex("conveyor_frame")}
-    return Model(t, [
-        Box((0, 0, 0), (2, 8, 16), {"*": "#frame"}),
-        Box((14, 0, 0), (16, 8, 16), {"*": "#frame"}),
-        Box((2, 5, 0), (14, 7, 16), {"up": "#belt", "north": "#frame", "south": "#frame", "down": "#frame"}),
-    ])
-
-
 def steel_ladder() -> Model:
     """A safety-yellow steel ladder on the wall behind it (south): two stiles and four rungs."""
     t = {"rail": tex("railing"), "particle": tex("railing")}
@@ -232,22 +222,30 @@ def mine_track() -> Model:
 
 
 def ore_car() -> Model:
-    """A riveted ore car on four iron wheels, its tub heaped with ore, coupled front and back. It runs north and south, on mine
-    track."""
-    t = {"tub": tex("ore_car"), "ore": tex("ore_car_load"), "iron": tex("lamp_iron"), "rim": tex("beam"), "particle": tex("ore_car")}
-    boxes = []
+    """A riveted ore car on four iron wheels, its tub heaped with ore, coupled front and back. It runs north and south, and stands on
+    its own length of mine track (the sleepers and rails of mine_track under it), so it replaces a track block and never floats."""
+    t = {"tub": tex("ore_car"), "ore": tex("ore_car_load"), "iron": tex("lamp_iron"), "rim": tex("beam"), "rail": tex("track_rail"),
+         "sleeper": tex("track_sleeper"), "particle": tex("ore_car")}
+    boxes = [Box((0, 0, z), (16, 1.5, z + 3), {"*": "#sleeper", "down": None}) for z in (1.5, 6.5, 11.5)]
+    for x in (3, 11.5):
+        boxes.append(Box((x, 1.5, 0), (x + 1.5, 3, 16), {"*": "#rail", "down": None}))
+    lift = 3
+
+    def car(lo, hi, faces):
+        return Box((lo[0], lo[1] + lift, lo[2]), (hi[0], hi[1] + lift, hi[2]), faces)
+
     for x0, x1 in ((2.5, 4), (12, 13.5)):
         for z0 in (2, 11):
-            boxes.append(Box((x0, 0, z0), (x1, 4, z0 + 3), {"*": "#iron"}))
-    boxes.append(Box((3, 2.5, 1.5), (13, 5, 14.5), {"*": "#iron"}))
-    boxes.append(Box((1.5, 5, 1), (14.5, 12, 15), {"*": "#tub", "up": "#ore", "down": "#iron"}))
-    boxes.append(Box((1, 12, 0.5), (15, 13.5, 2), {"*": "#rim"}))
-    boxes.append(Box((1, 12, 14), (15, 13.5, 15.5), {"*": "#rim"}))
-    boxes.append(Box((1, 12, 2), (2.5, 13.5, 14), {"*": "#rim"}))
-    boxes.append(Box((13.5, 12, 2), (15, 13.5, 14), {"*": "#rim"}))
-    boxes.append(Box((3, 12, 3), (13, 14, 13), {"*": "#ore", "down": None}))
+            boxes.append(car((x0, 0, z0), (x1, 4, z0 + 3), {"*": "#iron"}))
+    boxes.append(car((3, 2.5, 1.5), (13, 5, 14.5), {"*": "#iron"}))
+    boxes.append(car((1.5, 5, 1), (14.5, 12, 15), {"*": "#tub", "up": "#ore", "down": "#iron"}))
+    boxes.append(car((1, 12, 0.5), (15, 13.5, 2), {"*": "#rim"}))
+    boxes.append(car((1, 12, 14), (15, 13.5, 15.5), {"*": "#rim"}))
+    boxes.append(car((1, 12, 2), (2.5, 13.5, 14), {"*": "#rim"}))
+    boxes.append(car((13.5, 12, 2), (15, 13.5, 14), {"*": "#rim"}))
+    boxes.append(car((3, 12, 3), (13, 13.5, 13), {"*": "#ore", "down": None}))
     for z0, z1 in ((0, 1), (15, 16)):
-        boxes.append(Box((7, 6, z0), (9, 8, z1), {"*": "#iron"}))
+        boxes.append(car((7, 6, z0), (9, 8, z1), {"*": "#iron"}))
     return Model(t, boxes)
 
 
@@ -287,18 +285,14 @@ CATALOGUE: dict[str, KitBlock] = {block.name: block for block in [
     facing("window_ribbon_dark", "Dark Ribbon Window", lambda: window("window_ribbon_dark", "riveted_plate", None)),
     facing("furnace_hatch", "Crusher Hatch", lambda: framed_cube("furnace_hatch", "riveted_plate", "furnace_hatch_glow")),
     facing("gauge_panel", "Gauge Panel", lambda: framed_cube("gauge_panel", "riveted_plate", "gauge_panel_glow")),
-    facing("winder_door", "Riveted Door", lambda: framed_cube("winder_door", "riveted_plate")),
-    facing("shutter", "Roller Shutter", lambda: framed_cube("shutter", "riveted_plate")),
     facing("wall_lamp", "Company Wall Lamp", wall_lamp),
     facing("floodlight", "Company Floodlight", floodlight),
     facing("railing", "Catwalk Railing", railing),
     facing("steel_ladder", "Steel Ladder", steel_ladder),
     facing("brace", "Lattice Brace", lambda: brace("lattice")),
-    facing("conveyor", "Belt Conveyor", conveyor),
     facing("mine_track", "Mine Track", mine_track),
     facing("ore_car", "Ore Car", ore_car),
     pillar("steel_beam", "Steel Beam", lambda: i_beam("beam")),
-    pillar("steel_beam_red", "Red Steel Beam", lambda: i_beam("beam_red")),
     pillar("lattice_girder", "Lattice Girder", lambda: lattice("lattice")),
     pillar("pipe", "Steel Pipe", lambda: pipe("pipe")),
     pillar("pipe_brass", "Brass Pipe", lambda: pipe("pipe_brass")),

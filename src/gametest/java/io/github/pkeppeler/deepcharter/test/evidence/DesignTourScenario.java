@@ -78,6 +78,7 @@ import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
+import io.github.pkeppeler.deepcharter.colony.ColonyKit;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
@@ -134,10 +135,12 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
  */
 public class DesignTourScenario extends EvidenceScenario {
 	private static final double EYE = 1.62;
+	/** The Host's plinth is this many blocks high (tools/colony/town.py PLINTH_TOP): his anchor is the block over it. */
+	private static final int PLINTH_TOP = 5;
 	private static final int WAIT = 400;
 	private static final int ORBIT_FRAMES = 26;
-	private static final int ORBIT_RADIUS = 52;
-	private static final int ORBIT_HEIGHT = 30;
+	private static final int ORBIT_RADIUS = 58;
+	private static final int ORBIT_HEIGHT = 34;
 	/** The sealed dark room is built this far from the colony, at this height: no sky reaches it. */
 	private static final int ROOM_OFFSET = 300;
 	private static final int ROOM_Y = 200;
@@ -391,9 +394,10 @@ public class DesignTourScenario extends EvidenceScenario {
 		});
 	}
 
-	/** A point {@code dx} east and {@code dz} south of the middle of the square (the foot of the statue), {@code h} above it. */
+	/** A point {@code dx} east and {@code dz} south of the middle of the square (the foot of its plinth), {@code h} above the square's paving. */
 	private Vec3 p(double dx, double h, double dz) {
-		return rel(ColonyAnchor.STATUE, dx, h, dz);
+		// The statue's anchor is the block he stands in, over his plinth: the paving's block is the plinth's height below it.
+		return rel(ColonyAnchor.STATUE, dx, h - PLINTH_TOP, dz);
 	}
 
 	/** A point {@code dx} east, {@code dy} up and {@code dz} south of the bottom centre of the block of {@code anchor}. */
@@ -454,14 +458,14 @@ public class DesignTourScenario extends EvidenceScenario {
 		}
 	}
 
-	/** The stage for the pods, on the open ground north-east of the square. */
+	/** The stage for the pods, on the open ground east of the town's Continuity Office and north of the bunkhouse. */
 	private Vec3 stage() {
-		return p(22, 0, -18);
+		return p(30, 0, -8);
 	}
 
 	private void surface() {
-		// From the pad's south edge, where nothing of the colony is in the way to the south, east and west.
-		Vec3 stand = p(0, EYE, 28);
+		// From south of the town's south row, where nothing of the colony is in the way to the south, east and west.
+		Vec3 stand = p(0, EYE, 30);
 		String[] names = {"south", "east", "west", "north"};
 		Vec3[] targets = {p(0, EYE, 128), p(100, EYE, 28), p(-100, EYE, 28), p(0, EYE, -72)};
 		view(0, stand, targets[0], 100);
@@ -487,26 +491,32 @@ public class DesignTourScenario extends EvidenceScenario {
 		EvidenceWorld.skyPhase(ctx, sp, EvidenceWorld.SKY_BRIGHTEST);
 	}
 
+	/** A block of the colony's kit: what the colony is made of, so a view of the town or of a wall of it has a subject. */
+	private static boolean isColony(BlockState state) {
+		return ColonyKit.all().contains(state.getBlock()) || state.is(ColonyBlocks.CONDUIT) || state.is(ColonyBlocks.COMPANY_LAMP);
+	}
+
 	private void colonyTour() {
-		Subject statue = new Subject("the bronze statue", state -> state.is(Blocks.COPPER_BLOCK.waxed().unaffected()), 3);
-		shoot("colony-aerial-south", 0, p(0, 32, 62), p(0, 3, 0), 80, statue);
-		shoot("colony-aerial-northwest", 0, p(-48, 30, -48), p(0, 3, 0), 30, statue);
-		shoot("colony-aerial-northeast", 0, p(48, 30, -48), p(0, 3, 0), 30, statue);
-		shoot("colony-from-straight-above", 0, p(0, 80, 25), p(0, 0, 0), 30, statue);
-		shoot("colony-from-the-south-edge", 0, p(0, EYE, 30), p(0, 4, 0), 30, statue);
+		Subject town = new Subject("the town", DesignTourScenario::isColony, 40);
+		Vec3 middle = p(0, 6, -6);
+		shoot("colony-aerial-south", 0, p(0, 44, 84), middle, 80, town);
+		shoot("colony-aerial-northwest", 0, p(-62, 40, -62), middle, 30, town);
+		shoot("colony-aerial-northeast", 0, p(62, 40, -62), middle, 30, town);
+		shoot("colony-from-straight-above", 0, p(0, 80, 6), p(0, 0, -2), 30, town);
+		shoot("colony-from-the-south-edge", 0, p(0, EYE, 11.5), p(0, 9, 0), 30, new Subject("the plinth", state -> state.is(ColonyKit.BRASS_TRIM), 8));
 
 		// The orbit for the GIF.
 		for (int i = 0; i < ORBIT_FRAMES; i++) {
 			double angle = 2 * Math.PI * i / ORBIT_FRAMES + Math.PI / 2;
 			Vec3 eye = p(Math.cos(angle) * ORBIT_RADIUS, ORBIT_HEIGHT, Math.sin(angle) * ORBIT_RADIUS);
-			view(0, eye, p(0, 3, 0), i == 0 ? 40 : 2);
+			view(0, eye, middle, i == 0 ? 40 : 2);
 			if (i == 0) {
-				verify("colony-orbit", 0, eye, p(0, 3, 0), statue);
+				verify("colony-orbit", 0, eye, middle, town);
 			}
 			frame(ctx);
 		}
 
-		// Close-ups, each from the open side of the building (the doorway of a ruin, the south face of a plinth). Every view is
+		// Close-ups, each from the open side of the building (the square for the plinths, the street for the doors). Every view is
 		// measured from the building's own anchor, so it follows the building when the colony is redrawn.
 		for (TerminalType type : TerminalTypes.all()) {
 			Optional<ColonyAnchor> anchor = ColonyAnchor.forTerminal(type);
@@ -517,12 +527,14 @@ public class DesignTourScenario extends EvidenceScenario {
 			}
 		}
 		Vec3 upgrade = rel(ColonyAnchor.UPGRADE_TERMINAL, 0, 0, 0);
-		// From the south-east, so that the statue, which stands in line with the upgrade terminal, is not in the line of sight.
-		shoot("terminal-row", 0, upgrade.add(7, 4, 14), upgrade.add(0, 0.5, 0), 20,
+		// From the south-east, past the square's corner, so that the Host's plinth, which stands in line with the upgrade terminal, is
+		// not in the line of sight.
+		shoot("terminal-row", 0, upgrade.add(12, 4, 14), upgrade.add(0, 0.5, 0), 20,
 				new Subject("a terminal", state -> TerminalTypes.all().stream().anyMatch(type -> state.is(type.block())), 1.5));
-		shoot("statue-from-the-square", 0, p(7, 4, 8), p(0, 4, 0), 20, statue);
-		shoot("statue-close", 0, p(3, 5.5, 3.5), p(0, 6, 0), 20, statue);
-		shoot("statue-hands-from-above", 0, p(-3, 8, 12), p(0, 5, 0), 20, statue);
+		Subject plinth = new Subject("the Host's plinth", state -> state.is(ColonyKit.BRASS_TRIM), 9);
+		shoot("statue-from-the-square", 0, p(13, 3, 19), p(0, 9, 0), 20, plinth);
+		shoot("statue-close", 0, p(6, 3, 9), p(0, 11, 0), 20, plinth);
+		shoot("statue-hands-from-above", 0, p(-6, 22, 16), p(0, 13, 0), 20, plinth);
 
 		Subject lectern = new Subject("the lectern", state -> state.is(Blocks.LECTERN), 2.5);
 		Vec3 office = rel(ColonyAnchor.CONTINUITY_OFFICE, 0, 0, 0);
@@ -530,34 +542,40 @@ public class DesignTourScenario extends EvidenceScenario {
 				new Subject("the lectern", state -> state.is(Blocks.LECTERN), 6));
 		shoot("continuity-office-inside", 0, office.add(-2, 2.5, 0), office.add(3, 1.5, -3), 20, lectern);
 
+		// The hangar's bay faces the west street: shot from the square through it, at the pad the pods stand on.
 		Vec3 hangar = rel(ColonyAnchor.HANGAR, 0, 0, 0);
 		shoot("hangar-from-the-square", 0, hangar.add(14, EYE, 0), hangar.add(0, 1.3, 0), 40,
-				new Subject("the hangar's iron floor", state -> state.is(Blocks.IRON_BLOCK), 3));
+				new Subject("the hangar's pad", state -> state.is(ColonyKit.RIVETED_PLATE), 3));
 
+		// The chapel's door is on the west street: shot through it, along the aisle to the altar.
 		Vec3 candle = rel(ColonyAnchor.CHAPEL_CANDLE, 0, 0, 0);
 		Subject lit = new Subject("the lit chapel candle", state -> state.is(Blocks.CANDLE) && state.getValue(CandleBlock.LIT), 1.5);
-		shoot("chapel-from-the-square", 0, candle.add(0, 0.62, 10), candle.add(0, 0.3, 0), 40, lit);
-		shoot("chapel-altar-and-candle", 0, candle.add(0, 0.62, 6), candle.add(-0.5, 0.3, 0), 20, lit);
+		shoot("chapel-from-the-square", 0, candle.add(10, 0.62, 0), candle.add(0, 0.3, 0), 40, lit);
+		shoot("chapel-altar-and-candle", 0, candle.add(4.5, 0.62, 0), candle.add(-0.5, 0.3, 0), 20, lit);
 
+		// The doors of the south row open on the south street, across which the square is in sight.
 		Vec3 bunkhouse = rel(ColonyAnchor.BUNKHOUSE, 0, 0, 0);
-		shoot("bunkhouse-from-the-square", 0, bunkhouse.add(0, EYE, -9), bunkhouse.add(0, 1.3, 0), 40,
+		shoot("bunkhouse-from-the-square", 0, bunkhouse.add(0.0, EYE, -9), bunkhouse.add(0, 1.3, 0), 40,
 				new Subject("a bed", state -> state.getBlock() instanceof BedBlock, 4));
 		Vec3 pay = rel(ColonyAnchor.PAY_OFFICE, 0, 0, 0);
 		shoot("pay-office-from-the-square", 0, pay.add(0, EYE, -7), pay.add(0, 1.3, 2.5), 40,
-				new Subject("the grille", state -> state.is(Blocks.IRON_BARS), 3));
+				new Subject("the grille", state -> state.is(ColonyKit.GRATING), 3));
 		Vec3 personnel = rel(ColonyAnchor.PERSONNEL_OFFICE, 0, 0, 0);
 		shoot("personnel-office-from-the-square", 0, personnel.add(0, EYE, -8), personnel.add(0, 1.5, 2), 40,
 				new Subject("Joy's calendar (a Note)", state -> state.getBlock() instanceof NoteBlock, 3));
+		// The bar's door faces the square across the street, so it is shot from the square itself.
 		Vec3 bar = rel(ColonyAnchor.LAMP_AND_PICK, 0, 0, 0);
-		// Its doorway faces the hangar's south wall, 2 blocks away, so it is shot from the square side, from above its east wall.
-		shoot("lamp-and-pick-from-the-square", 0, bar.add(16, 12, 0), bar.add(0, 0.3, 2), 40,
+		shoot("lamp-and-pick-from-the-square", 0, bar.add(0, EYE, -9), bar.add(0, 0.3, 2), 40,
 				new Subject("the coal blocks of the bar", state -> state.is(Blocks.COAL_BLOCK), 3));
 
+		// The Conduit stands in the headframe: its casing shows through the open front of the tower, and the tower is the subject
+		// from the sides.
 		Vec3 conduit = rel(ColonyAnchor.CONDUIT, 0, 0, 0);
 		Subject casing = new Subject("the conduit casing", state -> state.is(ColonyBlocks.CONDUIT), 3);
-		shoot("conduit-from-the-square", 0, conduit.add(0, 8, 18), conduit.add(0, 8, 0), 30, casing);
-		shoot("conduit-from-the-west", 0, conduit.add(-16, 10, 10), conduit.add(0, 8, 0), 20, casing);
-		shoot("conduit-from-the-north", 0, conduit.add(0, 22, -12), conduit.add(0, 6, 0), 20, casing);
+		Subject tower = new Subject("the headframe", state -> state.is(ColonyKit.LATTICE_GIRDER) || state.is(ColonyBlocks.CONDUIT), 9);
+		shoot("conduit-from-the-square", 0, conduit.add(0, 5, 16), conduit.add(0, 5, 0), 30, casing);
+		shoot("conduit-from-the-west", 0, conduit.add(-20, 12, 8), conduit.add(0, 9, 0), 20, tower);
+		shoot("conduit-from-the-north", 0, conduit.add(6, 26, -22), conduit.add(0, 10, 0), 20, tower);
 	}
 
 	// ------------------------------------------------------------------------------------------------ terminals

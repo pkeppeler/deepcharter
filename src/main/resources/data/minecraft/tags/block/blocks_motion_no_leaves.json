@@ -13,7 +13,6 @@
     "deepcharter:concrete_footing",
     "deepcharter:conduit",
     "deepcharter:contract_terminal",
-    "deepcharter:conveyor",
     "deepcharter:einsteinium_ore",
     "deepcharter:enamel_sign",
     "deepcharter:floodlight",
@@ -41,15 +40,12 @@
     "deepcharter:repair_station",
     "deepcharter:riveted_plate",
     "deepcharter:riveted_plate_red",
-    "deepcharter:shutter",
     "deepcharter:silverium_ore",
     "deepcharter:slag_brick",
     "deepcharter:steel_beam",
-    "deepcharter:steel_beam_red",
     "deepcharter:steel_ladder",
     "deepcharter:upgrade_terminal",
     "deepcharter:wall_lamp",
-    "deepcharter:winder_door",
     "deepcharter:window_ribbon_dark",
     "deepcharter:window_ribbon_lit"
   ]

@@ -20,8 +20,8 @@ import io.github.pkeppeler.deepcharter.colony.ColonySite;
 public class ColonyScenario extends EvidenceScenario {
 	/** Frames of the high lap, one per step round the pad. */
 	private static final int LAP_FRAMES = 26;
-	private static final double LAP_RADIUS = 52;
-	private static final double LAP_HEIGHT = 30;
+	private static final double LAP_RADIUS = 62;
+	private static final double LAP_HEIGHT = 34;
 	/** Frames of the low pass over the square, and its height. */
 	private static final int PASS_FRAMES = 16;
 	private static final double PASS_HEIGHT = 7;

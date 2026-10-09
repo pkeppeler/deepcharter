@@ -18,8 +18,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.GameType;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.charter.Charter;
@@ -74,7 +74,7 @@ public class WorkOrdersTest {
 	}
 
 	private static void clearHands(MinecraftServer server) {
-		FounderStatue.handPositions(server).orElseThrow().forEach(pos -> server.overworld().setBlock(pos, Blocks.AIR.defaultBlockState(), 3));
+		FounderStatue.hands(server).forEach(Entity::discard);
 	}
 
 	static MockPlayer player(GameTestHelper helper, String name, boolean onCharter) {
@@ -140,7 +140,7 @@ public class WorkOrdersTest {
 	}
 
 	static boolean handsRestored(MinecraftServer server) {
-		return FounderStatue.handPositions(server).map(positions -> positions.stream().allMatch(pos -> server.overworld().getBlockState(pos).equals(FounderStatue.hand()))).orElse(false);
+		return FounderStatue.hands(server).size() == 1;
 	}
 
 	private static void expectHands(GameTestHelper helper, MinecraftServer server, boolean restored, String when) {
@@ -152,14 +152,11 @@ public class WorkOrdersTest {
 	@GameTest
 	public void theColonyIsBuiltWithoutTheFoundersHands(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
-		List<BlockPos> hands = FounderStatue.handPositions(server).orElseThrow();
-		if (hands.size() != 2) {
-			throw helper.assertionException("the Founder has two hands, got %s", hands);
+		if (!FounderStatue.isBuilt(server)) {
+			throw helper.assertionException("the colony was not built, so the Host has no hands to lack");
 		}
-		for (BlockPos hand : hands) {
-			if (!server.overworld().getBlockState(hand).isAir()) {
-				throw helper.assertionException("the built colony should leave %s empty, found %s", hand.toShortString(), server.overworld().getBlockState(hand));
-			}
+		if (!FounderStatue.hands(server).isEmpty()) {
+			throw helper.assertionException("the built colony should leave the Host without hands, found %s", FounderStatue.hands(server));
 		}
 		helper.succeed();
 	}

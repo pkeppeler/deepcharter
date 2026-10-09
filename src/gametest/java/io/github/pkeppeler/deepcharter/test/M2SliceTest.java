@@ -1,9 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -15,11 +13,11 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
@@ -147,8 +145,7 @@ public class M2SliceTest {
 		// The statue's hands are shared with the world, so the test puts back what it found.
 		WorldData.swap(server).with(RepairState.TYPE, new RepairState()).with(HangarData.TYPE, new HangarData()).with(Serials.TYPE, new Serials())
 				.with(WorkOrderData.TYPE, new WorkOrderData()).run(() -> {
-			Map<BlockPos, BlockState> hands = new LinkedHashMap<>();
-			FounderStatue.handPositions(server).ifPresent(positions -> positions.forEach(pos -> hands.put(pos, server.overworld().getBlockState(pos))));
+			boolean hadHands = !FounderStatue.hands(server).isEmpty();
 			List<PodEntity> pods = new ArrayList<>();
 			MockPlayer director = MockPlayers.join(helper, "Director");
 			MockPlayer crew = MockPlayers.join(helper, "Crew");
@@ -308,7 +305,10 @@ public class M2SliceTest {
 				pods.forEach(PodEntity::discard);
 				director.leave();
 				crew.leave();
-				hands.forEach((pos, state) -> server.overworld().setBlock(pos, state, 3));
+				FounderStatue.hands(server).forEach(Entity::discard);
+				if (hadHands) {
+					FounderStatue.restoreHands(server);
+				}
 				awaited.forEach(Awaited::release);
 			}
 		});

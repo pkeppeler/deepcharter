@@ -31,6 +31,7 @@ import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.Item;
@@ -51,6 +52,7 @@ import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
 import io.github.pkeppeler.deepcharter.colony.ColonyBuilder;
 import io.github.pkeppeler.deepcharter.colony.ColonyEvents;
+import io.github.pkeppeler.deepcharter.colony.ColonyKit;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.colony.ColonyTuning;
 import io.github.pkeppeler.deepcharter.hangar.Hangar;
@@ -67,6 +69,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -101,23 +104,23 @@ public class ColonyTest {
 		if (!before.anchors().keySet().containsAll(List.of(ColonyAnchor.values()))) {
 			throw failure(helper, "the colony is missing anchors: %s", before.anchors());
 		}
-		// A ruin that was changed after the build must stay as it is: a rebuild would put the statue back.
-		BlockPos statue = before.anchors().get(ColonyAnchor.STATUE);
-		BlockState original = overworld.getBlockState(statue);
-		// room-carver: removes the overworld statue to test a rebuild
-		overworld.setBlock(statue, Blocks.AIR.defaultBlockState(), 2);
+		// A colony that was changed after the build must stay as it is: a rebuild would put the Host's plinth back.
+		BlockPos plinth = before.anchors().get(ColonyAnchor.STATUE).below();
+		BlockState original = overworld.getBlockState(plinth);
+		// room-carver: removes the top of the overworld statue's plinth to test a rebuild
+		overworld.setBlock(plinth, Blocks.AIR.defaultBlockState(), 2);
 		try {
 			if (ColonyBuilder.buildIfNeeded(server)) {
 				throw failure(helper, "a second start built the colony again");
 			}
-			if (!overworld.getBlockState(statue).isAir()) {
-				throw failure(helper, "a second start rebuilt the colony: the statue block is back");
+			if (!overworld.getBlockState(plinth).isAir()) {
+				throw failure(helper, "a second start rebuilt the colony: the plinth block is back");
 			}
 			if (!placed(helper).equals(before)) {
 				throw failure(helper, "a second start changed the colony's record");
 			}
 		} finally {
-			overworld.setBlock(statue, original, 2);
+			overworld.setBlock(plinth, original, 2);
 		}
 		helper.succeed();
 	}
@@ -293,6 +296,14 @@ public class ColonyTest {
 		helper.succeed();
 	}
 
+	/** The pad's volume, from its ground up to the height the build clears. */
+	private static AABB padBox(ColonySite.Placed colony) {
+		int half = ColonyTuning.DEFAULT.padSize() / 2;
+		BlockPos centre = colony.center();
+		return new AABB(centre.getX() - half, centre.getY(), centre.getZ() - half, centre.getX() + half, centre.getY() + ColonyTuning.DEFAULT.clearHeight(),
+				centre.getZ() + half);
+	}
+
 	/** The colony record as it stands now, with its build marked unfinished, as after a build that stopped half way. */
 	private static ColonySite unfinishedCopy(MinecraftServer server) {
 		CompoundTag unfinished = ((CompoundTag) ColonySite.CODEC.encodeStart(NbtOps.INSTANCE, ColonySite.get(server)).getOrThrow()).copy();
@@ -300,46 +311,91 @@ public class ColonyTest {
 		return ColonySite.CODEC.parse(NbtOps.INSTANCE, unfinished).getOrThrow();
 	}
 
-	@GameTest
+	/**
+	 * Runs {@code body} once, on the first tick when every chunk of the pad ticks. A rebuild takes away the displays of the first try,
+	 * and finds them only in chunks that tick: a test that rebuilds waits for the pad first, or leaves doubled displays in the shared
+	 * world. Call from the test method, which must give itself {@link FarChunks#AWAIT_BUDGET_TICKS} ticks.
+	 */
+	private static void whenThePadTicks(GameTestHelper helper, ColonySite.Placed colony, Runnable body) {
+		List<BlockPos> chunks = ColonyChunks.of(colony);
+		int[] ticking = {0};
+		FarChunks.awaitEntityTicking(helper, helper.getLevel().getServer().overworld(), chunks, index -> ticking[0]++);
+		boolean[] ran = {false};
+		RuntimeException[] failed = {null};
+		helper.succeedWhen(() -> {
+			if (failed[0] != null) {
+				throw failed[0];
+			}
+			if (ticking[0] < chunks.size()) {
+				throw failure(helper, "waiting for the pad's chunks to tick: %s of %s", ticking[0], chunks.size());
+			}
+			if (ran[0]) {
+				return;
+			}
+			ran[0] = true;
+			try {
+				body.run();
+			} catch (RuntimeException e) {
+				failed[0] = e;
+				throw e;
+			}
+		});
+	}
+
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
 	public void aBuildThatStoppedHalfWayIsBuiltAgainAtTheSameGround(GameTestHelper helper) {
 		MinecraftServer server = server(helper);
 		ServerLevel overworld = server.overworld();
 		ColonySite.Placed before = placed(helper);
-		ColonySite interrupted = unfinishedCopy(server);
-		if (interrupted.isBuilt() || interrupted.started().isEmpty()) {
-			throw failure(helper, "the interrupted record should be begun and not finished");
-		}
-		var spawn = server.getRespawnData();
-		WorldData.with(server, ColonySite.TYPE, interrupted, () -> {
-			try {
-				if (!ColonyBuilder.buildIfNeeded(server)) {
-					throw failure(helper, "an unfinished colony should be built again");
-				}
-				if (!ColonySite.get(server).placed().equals(Optional.of(before))) {
-					throw failure(helper, "the rebuilt colony differs: %s, expected %s", ColonySite.get(server).placed(), before);
-				}
-				// Built over itself at the recorded ground: the statue stands where it did, and no second pad sits above the first.
-				BlockPos statue = before.anchors().get(ColonyAnchor.STATUE);
-				if (!overworld.getBlockState(statue).is(Blocks.STONE_BRICKS)) {
-					throw failure(helper, "the statue's pedestal is not at %s after the rebuild", statue.toShortString());
-				}
-				for (BlockPos corner : List.of(before.center().offset(9, 1, 9), before.center().offset(-30, 1, -30), before.center().offset(28, 1, 28))) {
-					if (!overworld.getBlockState(corner).isAir()) {
-						throw failure(helper, "a second pad sits above the first at %s: %s", corner.toShortString(), overworld.getBlockState(corner));
-					}
-				}
-			} finally {
-				server.setRespawnData(LevelData.RespawnData.of(spawn.dimension(), spawn.pos(), spawn.yaw(), spawn.pitch()));
+		whenThePadTicks(helper, before, () -> {
+			ColonySite interrupted = unfinishedCopy(server);
+			int displaysBefore = overworld.getEntitiesOfClass(Display.BlockDisplay.class, padBox(before)).size();
+			if (displaysBefore == 0) {
+				throw failure(helper, "the colony should stand with block displays on its pad: the Host, the sheave wheels, the conveyor");
 			}
+			if (interrupted.isBuilt() || interrupted.started().isEmpty()) {
+				throw failure(helper, "the interrupted record should be begun and not finished");
+			}
+			var spawn = server.getRespawnData();
+			WorldData.with(server, ColonySite.TYPE, interrupted, () -> {
+				try {
+					if (!ColonyBuilder.buildIfNeeded(server)) {
+						throw failure(helper, "an unfinished colony should be built again");
+					}
+					if (!ColonySite.get(server).placed().equals(Optional.of(before))) {
+						throw failure(helper, "the rebuilt colony differs: %s, expected %s", ColonySite.get(server).placed(), before);
+					}
+					// Built over itself at the recorded ground: the statue's plinth is where it was, no display is doubled, and no
+					// second pad sits above the first.
+					BlockPos plinth = before.anchors().get(ColonyAnchor.STATUE).below();
+					if (!overworld.getBlockState(plinth).is(ColonyKit.BRASS_TRIM)) {
+						throw failure(helper, "the statue's plinth is not at %s after the rebuild", plinth.toShortString());
+					}
+					int displaysAfter = overworld.getEntitiesOfClass(Display.BlockDisplay.class, padBox(before)).size();
+					if (displaysAfter != displaysBefore) {
+						throw failure(helper, "the rebuild left %s block displays on the pad, there were %s", displaysAfter, displaysBefore);
+					}
+					for (BlockPos corner : List.of(before.center().offset(9, 1, 9), before.center().offset(-38, 1, -38), before.center().offset(38, 1, 38))) {
+						if (!overworld.getBlockState(corner).isAir()) {
+							throw failure(helper, "a second pad sits above the first at %s: %s", corner.toShortString(), overworld.getBlockState(corner));
+						}
+					}
+				} finally {
+					server.setRespawnData(LevelData.RespawnData.of(spawn.dimension(), spawn.pos(), spawn.yaw(), spawn.pitch()));
+				}
+			});
 		});
-		helper.succeed();
 	}
 
-	@GameTest
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
 	public void aBuildThatStoppedHalfWayKeepsTheHangarConsoleItsRepairAndItsDerelict(GameTestHelper helper) {
 		MinecraftServer server = server(helper);
 		ServerLevel overworld = server.overworld();
 		BlockPos console = Hangar.consolePos(server).orElseThrow(() -> failure(helper, "the colony has no hangar"));
+		whenThePadTicks(helper, placed(helper), () -> rebuildKeepingTheHangar(helper, server, overworld, console));
+	}
+
+	private static void rebuildKeepingTheHangar(GameTestHelper helper, MinecraftServer server, ServerLevel overworld, BlockPos console) {
 		AABB bay = new AABB(console).inflate(40);
 		Optional<UUID> derelict = HangarData.get(server).state().derelict();
 		int pods = overworld.getEntitiesOfClass(PodEntity.class, bay).size();
@@ -378,7 +434,6 @@ public class ColonyTest {
 				server.setRespawnData(LevelData.RespawnData.of(spawn.dimension(), spawn.pos(), spawn.yaw(), spawn.pitch()));
 			}
 		});
-		helper.succeed();
 	}
 
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
