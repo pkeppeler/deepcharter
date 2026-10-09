@@ -95,7 +95,6 @@
     "block/hangar_console_front_glow": {"template": "terminal_glow", "args": {"over": "block/hangar_console_front", "glyph": [
       ".####...", "#.oo.#..", "#.oo.###", "#....##o", ".#####..", "..#..#.."]}},
 
-
     "block/breach_crust": {
       "kind": "opaque",
       "layers": [
