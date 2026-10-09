@@ -1,0 +1,242 @@
+{
+  "title": "B. The Works",
+  "statue": "founder_b",
+  "pieces": [
+    {
+      "structure": "deepcharter:colony_concept/b/square",
+      "offset": [
+        -10,
+        0,
+        -10
+      ],
+      "blocks": 2262,
+      "displays": 2
+    },
+    {
+      "structure": "deepcharter:colony_concept/b/tower",
+      "offset": [
+        -11,
+        1,
+        -22
+      ],
+      "blocks": 2484,
+      "displays": 7
+    },
+    {
+      "structure": "deepcharter:colony_concept/b/works",
+      "offset": [
+        6,
+        1,
+        -43
+      ],
+      "blocks": 3581,
+      "displays": 0
+    }
+  ],
+  "views": [
+    {
+      "name": "from-the-square",
+      "eye": [
+        -2.0,
+        2.6,
+        17.0
+      ],
+      "target": [
+        6.0,
+        18.0,
+        -20.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "headframe-from-the-plinths",
+      "eye": [
+        12.0,
+        3.6,
+        -3.0
+      ],
+      "target": [
+        -4.0,
+        36.0,
+        -15.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "works-front",
+      "eye": [
+        18.0,
+        4.0,
+        3.0
+      ],
+      "target": [
+        18.0,
+        9.0,
+        -16.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "from-the-air",
+      "eye": [
+        40.0,
+        50.0,
+        46.0
+      ],
+      "target": [
+        8.0,
+        14.0,
+        -22.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "from-the-air-west",
+      "eye": [
+        -60.0,
+        42.0,
+        24.0
+      ],
+      "target": [
+        8.0,
+        16.0,
+        -22.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "from-far-across-the-plain",
+      "eye": [
+        70.0,
+        4.0,
+        170.0
+      ],
+      "target": [
+        4.0,
+        26.0,
+        -18.0
+      ],
+      "night": false,
+      "above_ground": true
+    },
+    {
+      "name": "night-from-the-square",
+      "eye": [
+        -2.0,
+        2.6,
+        17.0
+      ],
+      "target": [
+        6.0,
+        18.0,
+        -20.0
+      ],
+      "night": true,
+      "above_ground": false
+    },
+    {
+      "name": "night-from-the-air",
+      "eye": [
+        40.0,
+        50.0,
+        46.0
+      ],
+      "target": [
+        8.0,
+        14.0,
+        -22.0
+      ],
+      "night": true,
+      "above_ground": false
+    },
+    {
+      "name": "statue-from-the-square",
+      "eye": [
+        6.0,
+        2.6,
+        15.0
+      ],
+      "target": [
+        0.0,
+        14.879999999999999,
+        0.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "statue-side",
+      "eye": [
+        26.0,
+        9.0,
+        1.0
+      ],
+      "target": [
+        0.0,
+        14.879999999999999,
+        0.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "statue-from-the-air",
+      "eye": [
+        14.0,
+        46.0,
+        24.0
+      ],
+      "target": [
+        0.0,
+        14.879999999999999,
+        0.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "statue-from-far",
+      "eye": [
+        0.0,
+        3.0,
+        110.0
+      ],
+      "target": [
+        0.0,
+        14.879999999999999,
+        0.0
+      ],
+      "night": false,
+      "above_ground": true
+    },
+    {
+      "name": "statue-at-night",
+      "eye": [
+        6.0,
+        2.6,
+        15.0
+      ],
+      "target": [
+        0.0,
+        14.879999999999999,
+        0.0
+      ],
+      "night": true,
+      "above_ground": false
+    }
+  ],
+  "orbit": {
+    "centre": [
+      8.0,
+      14.0,
+      -20.0
+    ],
+    "radius": 80.0,
+    "height": 46.0
+  }
+}

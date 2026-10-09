@@ -1,0 +1,252 @@
+{
+  "title": "C. Company Moderne",
+  "statue": "founder_c",
+  "pieces": [
+    {
+      "structure": "deepcharter:colony_concept/c/square",
+      "offset": [
+        -10,
+        0,
+        -10
+      ],
+      "blocks": 1874,
+      "displays": 2
+    },
+    {
+      "structure": "deepcharter:colony_concept/c/headframe",
+      "offset": [
+        -11,
+        0,
+        -45
+      ],
+      "blocks": 882,
+      "displays": 174
+    },
+    {
+      "structure": "deepcharter:colony_concept/c/ore_house",
+      "offset": [
+        -32,
+        1,
+        -40
+      ],
+      "blocks": 3114,
+      "displays": 0
+    },
+    {
+      "structure": "deepcharter:colony_concept/c/hoist_house",
+      "offset": [
+        -14,
+        1,
+        -54
+      ],
+      "blocks": 1184,
+      "displays": 0
+    }
+  ],
+  "views": [
+    {
+      "name": "from-the-square",
+      "eye": [
+        2.0,
+        2.6,
+        17.0
+      ],
+      "target": [
+        -10.0,
+        18.0,
+        -18.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "headframe-from-the-plinths",
+      "eye": [
+        10.0,
+        3.6,
+        -4.0
+      ],
+      "target": [
+        -4.0,
+        38.0,
+        -16.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "ore-house-front",
+      "eye": [
+        -8.0,
+        4.0,
+        4.0
+      ],
+      "target": [
+        -24.0,
+        14.0,
+        -24.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "from-the-air",
+      "eye": [
+        36.0,
+        48.0,
+        46.0
+      ],
+      "target": [
+        -10.0,
+        12.0,
+        -22.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "from-the-air-west",
+      "eye": [
+        -60.0,
+        42.0,
+        24.0
+      ],
+      "target": [
+        -10.0,
+        14.0,
+        -22.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "from-far-across-the-plain",
+      "eye": [
+        70.0,
+        4.0,
+        170.0
+      ],
+      "target": [
+        -6.0,
+        26.0,
+        -20.0
+      ],
+      "night": false,
+      "above_ground": true
+    },
+    {
+      "name": "night-from-the-square",
+      "eye": [
+        2.0,
+        2.6,
+        17.0
+      ],
+      "target": [
+        -10.0,
+        18.0,
+        -18.0
+      ],
+      "night": true,
+      "above_ground": false
+    },
+    {
+      "name": "night-from-the-air",
+      "eye": [
+        36.0,
+        48.0,
+        46.0
+      ],
+      "target": [
+        -10.0,
+        12.0,
+        -22.0
+      ],
+      "night": true,
+      "above_ground": false
+    },
+    {
+      "name": "statue-from-the-square",
+      "eye": [
+        6.0,
+        2.6,
+        15.0
+      ],
+      "target": [
+        0.0,
+        18.6,
+        0.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "statue-side",
+      "eye": [
+        26.0,
+        9.0,
+        1.0
+      ],
+      "target": [
+        0.0,
+        18.6,
+        0.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "statue-from-the-air",
+      "eye": [
+        14.0,
+        52.0,
+        24.0
+      ],
+      "target": [
+        0.0,
+        18.6,
+        0.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "statue-from-far",
+      "eye": [
+        0.0,
+        3.0,
+        110.0
+      ],
+      "target": [
+        0.0,
+        18.6,
+        0.0
+      ],
+      "night": false,
+      "above_ground": true
+    },
+    {
+      "name": "statue-at-night",
+      "eye": [
+        6.0,
+        2.6,
+        15.0
+      ],
+      "target": [
+        0.0,
+        18.6,
+        0.0
+      ],
+      "night": true,
+      "above_ground": false
+    }
+  ],
+  "orbit": {
+    "centre": [
+      -8.0,
+      14.0,
+      -20.0
+    ],
+    "radius": 78.0,
+    "height": 44.0
+  }
+}

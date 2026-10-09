@@ -81,7 +81,7 @@ def _common_views(statue_top: float) -> list[View]:
 
 def _a_square() -> Piece:
     p = Piece("square")
-    parts.square_paving(p, 10, "concrete_footing", "company_brick")
+    parts.square_paving(p, 10, "concrete_footing", "brass_trim")
     # The plinth: two steps of concrete, a red riveted shaft with the brass plaque, a brass cornice, floodlights on its corners.
     p.fill(-4, 1, -4, 4, 1, 4, state("concrete_footing"))
     p.fill(-3, 2, -3, 3, 2, 3, state("concrete_footing"))
@@ -207,10 +207,10 @@ def _a_mill() -> Piece:
     parts.sign(p, "company", -26, 10, -11, "south")
     parts.sign(p, "ore_house", -25, 19, -20, "south")
     parts.sign(p, "bull", -24, 28, -29, "south")
-    # A ventilator on the second ridge, a brick stack beside the top shed, the gallery up to the tipple bin.
+    # A ventilator on the second ridge, a riveted stack beside the top shed, the gallery up to the tipple bin.
     p.fill(-24, 23, -26, -22, 24, -24, state("corrugated_red"))
     p.fill(-24, 25, -26, -22, 25, -24, state("roof_peak", axis="z"))
-    parts.cylinder(p, -12.5, -42.5, 1.6, 1, 38, state("company_brick"))
+    parts.cylinder(p, -12.5, -42.5, 1.6, 1, 38, state("riveted_plate_red"))
     parts.cylinder(p, -12.5, -42.5, 1.6, 34, 35, state("hazard_band"))
     parts.cylinder(p, -12.5, -42.5, 1.7, 38, 38, state("brass_trim"))
     parts.gallery(p, (-18.0, 24.5, -33.0), (-10.5, 37.0, -15.0))
@@ -223,13 +223,13 @@ def _a_mill() -> Piece:
 
 
 def _a_hoist_house() -> Piece:
-    """The winding engine house the ropes run to: brick below, corrugated above, tall lit windows on the side toward the
-    headframe, a red roof, a tall brick stack with amber beacons."""
+    """The winding engine house the ropes run to: riveted plate below, corrugated above, tall lit windows on the side toward the
+    headframe, a red roof, a tall riveted stack with amber beacons."""
     p = Piece("hoist_house")
-    brick, cream = state("company_brick"), state("corrugated_cream")
+    plate, cream = state("riveted_plate"), state("corrugated_cream")
     x0, x1, z0, z1 = -14, 6, -52, -44
     ridge = parts.gabled_shed(p, x0, z0, x1, z1, 12, cream, "roof_slope", "roof_peak", "x")
-    p.walls(x0, z0, x1, z1, 1, 7, brick)
+    p.walls(x0, z0, x1, z1, 1, 7, plate)
     for x in range(x0 + 2, x1 - 1, 3):
         for y in range(3, 12):
             p.set(x, y, z1, state("window_small_lit" if y > 3 else "window_small_dark", facing="south"))
@@ -237,7 +237,7 @@ def _a_hoist_house() -> Piece:
     p.fill(-6, ridge - 3, -45, -1, ridge - 1, -44, state("corrugated_red"))
     p.set(-4, 1, z1, state("winder_door", facing="south"))
     p.set(-4, 2, z1, state("winder_door", facing="south"))
-    parts.cylinder(p, 10.5, -48.5, 1.6, 1, 44, brick)
+    parts.cylinder(p, 10.5, -48.5, 1.6, 1, 44, plate)
     parts.cylinder(p, 10.5, -48.5, 1.6, 39, 40, state("hazard_band"))
     parts.cylinder(p, 10.5, -48.5, 1.7, 44, 44, state("brass_trim"))
     for x, z, facing in ((10, -51, "north"), (10, -47, "south"), (12, -49, "east"), (8, -49, "west")):
@@ -266,4 +266,348 @@ CONCEPT_A = Concept(
     orbit_height=44.0,
 )
 
-ALL = (CONCEPT_A,)
+# ------------------------------------------------------------------------------------------------------------- concept B
+
+def _b_square() -> Piece:
+    p = Piece("square")
+    parts.square_paving(p, 10, "riveted_plate", "hazard_band")
+    # A low, broad plinth for a seated figure: a hazard-edged step, a riveted block with a brass band, floodlights on its corners.
+    p.fill(-7, 1, -6, 7, 1, 7, state("hazard_band"))
+    p.fill(-6, 1, -5, 6, 1, 6, state("riveted_plate"))
+    p.fill(-6, 2, -6, 6, 5, 6, state("riveted_plate"))
+    p.fill(-6, 4, -6, 6, 4, 6, state("brass_trim"))
+    parts.sign(p, "founder", -2, 3, 7, "south")
+    for x, z, facing in ((-6, -6, "north"), (6, -6, "north"), (-6, 6, "south"), (6, 6, "south")):
+        p.set(x, 6, z, state("floodlight", facing=facing))
+    parts.statue(p, "founder_b", 5)
+    for x, z, faces in ((-10, -4, ("east",)), (10, -4, ("west",)), (-10, 10, ("east", "north")), (10, 10, ("west", "north"))):
+        parts.lamp_post(p, x, z, 6, faces, post="steel_beam")
+    return p
+
+
+def _b_tower() -> Piece:
+    """A Koepe winding tower over the Conduit: a riveted box 38 blocks high, red pilasters and hazard bands at each floor, slit
+    windows, the winding-machine room on top with a lit band of windows, and one 9-block sheave on an A-frame gantry on the roof,
+    face-on to the square, its ropes dropping into the roof."""
+    p = Piece("tower")
+    x0, x1, z0, z1, top = -10, 2, -21, -10, 38
+    plate, red = state("riveted_plate"), state("riveted_plate_red")
+    p.walls(x0, z0, x1, z1, 1, top, plate)
+    for y in range(1, top + 1):
+        for x in range(x0, x1 + 1, 4):
+            p.set(x, y, z0, red)
+            p.set(x, y, z1, red)
+        for z in (z0, -17, -13, z1):
+            p.set(x0, y, z, red)
+            p.set(x1, y, z, red)
+    for y in (10, 20, 30):
+        p.walls(x0, z0, x1, z1, y, y, state("hazard_band"))
+    p.walls(x0, z0, x1, z1, top, top, state("brass_trim"))
+    for x in (-8, -4, 0):
+        for y in list(range(3, 10)) + list(range(12, 20)) + list(range(22, 30)) + list(range(32, 37)):
+            lit = parts.noise(x, y, 0) % 9 != 0
+            p.set(x, y, z1, state("window_ribbon_lit" if lit else "window_ribbon_dark", facing="south"))
+            p.set(x, y, z0, state("window_ribbon_lit" if lit else "window_ribbon_dark", facing="north"))
+    for z in (-19, -15, -12):
+        for y in list(range(12, 20)) + list(range(22, 30)):
+            p.set(x0, y, z, state("window_ribbon_lit", facing="west"))
+            p.set(x1, y, z, state("window_ribbon_lit", facing="east"))
+    # The machine room, a block wider all round, its windows lit; a flat railed roof.
+    m0, m1, n0, n1 = x0 - 1, x1 + 1, z0 - 1, z1 + 1
+    p.walls(m0, n0, m1, n1, top + 1, top + 8, red)
+    p.walls(m0, n0, m1, n1, top + 1, top + 1, state("hazard_band"))
+    parts.window_rows(p, m0, n0, m1, n1, [top + 4, top + 5], 1, "window_ribbon_lit", "window_ribbon_dark", dark_share=11)
+    roof = top + 9
+    p.fill(m0, roof, n0, m1, roof, n1, plate)
+    for x in range(m0, m1 + 1):
+        p.set(x, roof + 1, n0, state("railing", facing="north"))
+        p.set(x, roof + 1, n1, state("railing", facing="south"))
+    for z in range(n0 + 1, n1):
+        p.set(m0, roof + 1, z, state("railing", facing="west"))
+        p.set(m1, roof + 1, z, state("railing", facing="east"))
+    parts.sign(p, "company", -7, top + 6, n1 + 1, "south")
+    parts.sign(p, "bull", -5, 31, z1 + 1, "south")
+    parts.sign(p, "shaft", -6, 7, z1 + 1, "south")
+    # The gantry: two A-frames of 45-degree braces either side of the wheel, meeting under its axle.
+    hub_y = roof + 5
+    for z in (-17, -14):
+        for i in range(4):
+            p.set(-8 + i, roof + 1 + i, z, state("brace", facing="east"))
+            p.set(1 - i, roof + 1 + i, z, state("brace", facing="west"))
+        p.fill(-4, roof + 5, z, -3, roof + 5, z, state("steel_beam", axis="x"))
+    p.beam(state("pipe_brass", axis="y"), (-3.0, hub_y + 0.5, -17.0), (-3.0, hub_y + 0.5, -13.0), thickness=0.9, segment=1.0)
+    parts.sheave(p, (-3.0, hub_y + 0.5, -15.5), "z", diameter=9.0)
+    for x in (-7.5, 1.5):
+        p.beam(state("cable", axis="y"), (x, hub_y + 0.5, -15.5), (x, roof + 1.0, -15.5), thickness=0.22, segment=4.0)
+    for x, z, facing in ((m0, n1, "south"), (m1, n1, "south"), (m0, n0, "north"), (m1, n0, "north")):
+        p.set(x, roof + 1, z, state("floodlight", facing=facing))
+    for y in (12, 22, 32):
+        p.set(x0 - 1, y, z1, state("wall_lamp", facing="west"))
+        p.set(x1 + 1, y, z1, state("wall_lamp", facing="east"))
+    return p
+
+
+def _b_works() -> Piece:
+    """The ore house as one machine, in the GTNH manner: a riveted casing hall in a grid of red pilasters, its front a row of
+    gauge panels under a row of glowing crusher hatches, a crusher house on the roof, three riveted silos on legs behind it, pipe
+    runs, and a tall stack."""
+    p = Piece("works")
+    x0, x1, z0, z1, top = 6, 30, -31, -15, 13
+    plate, red = state("riveted_plate"), state("riveted_plate_red")
+    p.walls(x0, z0, x1, z1, 1, top, plate)
+    for y in range(1, top + 1):
+        for x in range(x0, x1 + 1, 4):
+            p.set(x, y, z0, red)
+            p.set(x, y, z1, red)
+        for z in range(z0, z1 + 1, 4):
+            p.set(x0, y, z, red)
+            p.set(x1, y, z, red)
+    p.walls(x0, z0, x1, z1, 7, 7, state("brass_trim"))
+    p.fill(x0, top + 1, z0, x1, top + 1, z1, plate)
+    p.walls(x0, z0, x1, z1, top + 1, top + 1, state("hazard_band"))
+    for x in range(x0 + 1, x1):
+        if (x - x0) % 4 == 0:
+            continue
+        p.set(x, 3, z1, state("gauge_panel", facing="south"))
+        p.set(x, 10, z1, state("furnace_hatch", facing="south"))
+        p.set(x, 10, z0, state("furnace_hatch", facing="north"))
+    for z in range(z0 + 1, z1):
+        if (z - z0) % 4:
+            p.set(x0, 10, z, state("furnace_hatch", facing="west"))
+            p.set(x1, 10, z, state("furnace_hatch", facing="east"))
+    # The bay, under a hazard lintel, and a conveyor out to the square.
+    parts.clear(p, 17, 1, z1, 21, 5, z1)
+    p.fill(17, 6, z1, 21, 6, z1, state("hazard_band"))
+    for z in range(z1 + 1, z1 + 4):
+        p.set(19, 1, z, state("conveyor", facing="south"))
+    parts.sign(p, "ore_house", 17, 12, z1 + 1, "south")
+    # The crusher house on the roof, its own hatches glowing, two vent pipes over it.
+    c0, c1, d0, d1 = 10, 20, -29, -21
+    p.walls(c0, d0, c1, d1, top + 2, top + 10, plate)
+    for x in range(c0 + 1, c1):
+        p.set(x, top + 6, d1, state("furnace_hatch", facing="south"))
+    p.fill(c0, top + 11, d0, c1, top + 11, d1, state("grating"))
+    p.walls(c0, d0, c1, d1, top + 11, top + 11, state("hazard_band"))
+    for x in (12, 18):
+        p.fill(x, top + 12, -25, x, top + 18, -25, state("pipe", axis="y"))
+    # Three silos on legs behind the hall, hoppers under them, a catwalk across their tops.
+    for cx in (12.5, 20.5, 28.5):
+        cz = -39.5
+        for dx, dz in ((-2, -2), (2, -2), (-2, 2), (2, 2)):
+            p.fill(int(cx - 0.5) + dx, 1, int(cz - 0.5) + dz, int(cx - 0.5) + dx, 9, int(cz - 0.5) + dz, state("steel_beam", axis="y"))
+        parts.cone(p, cx, cz, 1.2, 3.4, 6, 11, plate)
+        parts.cylinder(p, cx, cz, 3.4, 12, 28, plate)
+        parts.cylinder(p, cx, cz, 3.5, 17, 17, state("brass_trim"))
+        parts.cylinder(p, cx, cz, 3.5, 23, 23, state("brass_trim"))
+        parts.cone(p, cx, cz, 3.4, 1.0, 29, 31, red)
+        p.fill(int(cx - 0.5), 1, int(cz - 0.5) + 4, int(cx - 0.5), 5, int(cz - 0.5) + 4, state("pipe_brass", axis="y"))
+    p.fill(9, 28, -36, 32, 28, -35, state("grating"))
+    for x in range(9, 33):
+        p.set(x, 29, -34, state("railing", facing="south"))
+    # Pipe runs: brass along the front under the cornice, steel down the stack side.
+    for x in range(x0, x1 + 1):
+        if (x - x0) % 4:
+            p.set(x, 12, z1 + 1, state("pipe_brass", axis="x"))
+    p.fill(x1 + 1, 2, -28, x1 + 1, 16, -28, state("pipe", axis="y"))
+    # The stack: riveted, banded, capped in brass, amber beacons near the top.
+    sx, sz = 34.5, -23.5
+    parts.cylinder(p, sx, sz, 2.2, 1, 46, plate)
+    for y in (20, 30, 40):
+        parts.cylinder(p, sx, sz, 2.2, y, y + 1, state("hazard_band"))
+    parts.cylinder(p, sx, sz, 2.4, 46, 46, state("brass_trim"))
+    for x, z, facing in ((34, -27, "north"), (34, -20, "south"), (37, -24, "east"), (31, -24, "west")):
+        p.set(x, 44, z, state("wall_lamp", facing=facing))
+    return p
+
+
+CONCEPT_B = Concept(
+    name="b",
+    title="B. The Works",
+    statue="founder_b",
+    build=lambda: [_b_square(), _b_tower(), _b_works()],
+    views=(
+        View("from-the-square", (-2.0, 2.6, 17.0), (6.0, 18.0, -20.0)),
+        View("headframe-from-the-plinths", (12.0, 3.6, -3.0), (-4.0, 36.0, -15.0)),
+        View("works-front", (18.0, 4.0, 3.0), (18.0, 9.0, -16.0)),
+        View("from-the-air", (40.0, 50.0, 46.0), (8.0, 14.0, -22.0)),
+        View("from-the-air-west", (-60.0, 42.0, 24.0), (8.0, 16.0, -22.0)),
+        View("from-far-across-the-plain", (70.0, 4.0, 170.0), (4.0, 26.0, -18.0), above_ground=True),
+        View("night-from-the-square", (-2.0, 2.6, 17.0), (6.0, 18.0, -20.0), night=True),
+        View("night-from-the-air", (40.0, 50.0, 46.0), (8.0, 14.0, -22.0), night=True),
+        *_common_views(24.0),
+    ),
+    orbit_centre=(8.0, 14.0, -20.0),
+    orbit_radius=80.0,
+    orbit_height=46.0,
+)
+
+
+# ------------------------------------------------------------------------------------------------------------- concept C
+
+def _frame_wall_x(p: Piece, x0: int, x1: int, z: int, y0: int, y1: int, floors, facing: str, bay: int = 4) -> None:
+    """A wall along X in the Company Moderne grid: red steel columns every bay blocks and at each floor, cream enamel between,
+    a ribbon of lit windows in the upper part of each storey."""
+    _frame_wall(p, [(x, z) for x in range(x0, x1 + 1)], x0, y0, y1, floors, facing, bay, lambda c: c[0])
+
+
+def _frame_wall_z(p: Piece, z0: int, z1: int, x: int, y0: int, y1: int, floors, facing: str, bay: int = 4) -> None:
+    _frame_wall(p, [(x, z) for z in range(z0, z1 + 1)], z0, y0, y1, floors, facing, bay, lambda c: c[1])
+
+
+def _frame_wall(p, cells, start, y0, y1, floors, facing, bay, along) -> None:
+    levels = sorted(set(floors) | {y0, y1})
+    for cell in cells:
+        column = (along(cell) - start) % bay == 0 or cell == cells[-1]
+        for y in range(y0, y1 + 1):
+            if column or y in levels:
+                s = state("steel_frame")
+            else:
+                below = max(l for l in levels if l <= y)
+                above = min(l for l in levels if l >= y)
+                window = above - y in (1, 2, 3) and above - below > 4
+                if window:
+                    lit = parts.noise(cell[0], y, cell[1]) % 8 != 0
+                    s = state("window_ribbon_lit" if lit else "window_ribbon_dark", facing=facing)
+                else:
+                    s = state("enamel_panel")
+            p.set(cell[0], y, cell[1], s)
+
+
+def _frame_box(p: Piece, x0, z0, x1, z1, y0, y1, floors, bay: int = 4) -> None:
+    _frame_wall_x(p, x0, x1, z1, y0, y1, floors, "south", bay)
+    _frame_wall_x(p, x0, x1, z0, y0, y1, floors, "north", bay)
+    _frame_wall_z(p, z0, z1, x0, y0, y1, floors, "west", bay)
+    _frame_wall_z(p, z0, z1, x1, y0, y1, floors, "east", bay)
+    p.fill(x0, y1 + 1, z0, x1, y1 + 1, z1, state("enamel_panel"))
+    p.walls(x0, z0, x1, z1, y1 + 1, y1 + 1, state("steel_frame"))
+    p.walls(x0, z0, x1, z1, y1 + 2, y1 + 2, state("brass_trim"))
+
+
+def _c_square() -> Piece:
+    p = Piece("square")
+    for x in range(-10, 11):
+        for z in range(-10, 11):
+            edge = abs(x) == 10 or abs(z) == 10
+            line = x % 5 == 0 or z % 5 == 0
+            p.set(x, 0, z, state("brass_trim" if edge else "steel_frame" if line else "enamel_panel"))
+    # A stepped Moderne plinth: red steel, cream enamel setbacks, a brass cornice, floodlights.
+    p.fill(-4, 1, -4, 4, 1, 4, state("steel_frame"))
+    p.fill(-3, 2, -3, 3, 3, 3, state("enamel_panel"))
+    p.fill(-2, 4, -2, 2, 9, 2, state("enamel_panel"))
+    for x, z in ((-2, -2), (2, -2), (-2, 2), (2, 2)):
+        p.fill(x, 4, z, x, 9, z, state("steel_frame"))
+    p.fill(-3, 10, -3, 3, 10, 3, state("brass_trim"))
+    parts.sign(p, "founder", -2, 7, 3, "south")
+    for x, z, facing in ((-3, -3, "north"), (3, -3, "north"), (-3, 3, "south"), (3, 3, "south")):
+        p.set(x, 11, z, state("floodlight", facing=facing))
+    parts.statue(p, "founder_c", 10)
+    for x, z, faces in ((-10, -4, ("east",)), (10, -4, ("west",)), (-10, 10, ("east", "north")), (10, 10, ("west", "north")),
+                        (-4, 13, ("north",)), (4, 13, ("north",))):
+        parts.lamp_post(p, x, z, 5, faces, post="steel_beam_red")
+    return p
+
+
+def _c_headframe() -> Piece:
+    """A Zollverein-style double trestle in Company red: two closed red legs and a portal over the Conduit, X-braced, a sheave
+    deck at 49 with two wheels, and two great struts raking back to footings by the engine house, the ropes running beside them."""
+    p = Piece("headframe")
+    red = state("riveted_plate_red")
+    for x in (-9, 1):
+        p.fill(x - 1, 0, -13, x + 2, 0, -10, state("concrete_footing"))
+        p.fill(x, 1, -12, x + 1, 48, -11, red)
+    p.fill(-9, 46, -12, 2, 48, -11, red)
+    p.fill(-9, 24, -12, 2, 25, -11, red)
+    parts.xbraced_face(p, -8, 1, -11, 26, 45, "x", "lattice_girder_red", "brace_red", 19)
+    parts.xbraced_face(p, -8, 1, -11, 1, 23, "x", "lattice_girder_red", "brace_red", 22)
+    p.fill(-11, 49, -18, 4, 49, -9, state("grating"))
+    for x in range(-11, 5):
+        p.set(x, 50, -9, state("railing", facing="south"))
+        p.set(x, 50, -18, state("railing", facing="north"))
+    for x in (-8, 1):
+        p.fill(x, 50, -18, x, 53, -16, red)
+    wheels = (-4.75, -2.25)
+    for wx in wheels:
+        parts.sheave(p, (wx, 54.5, -17.5), "x")
+    for wx in wheels:
+        p.beam(state("cable", axis="y"), (wx, 54.5, -13.0), (wx, 13.0, -13.0), thickness=0.22, segment=4.0)
+        p.beam(state("cable", axis="y"), (wx, 58.9, -18.4), (wx, 18.0, -45.0), thickness=0.22, segment=4.0)
+    p.fill(-5, CONDUIT_TOP + 1, -15, -3, CONDUIT_TOP + 1, -13, state("steel_frame"))
+    p.fill(-5, CONDUIT_TOP + 2, -15, -3, CONDUIT_TOP + 2, -13, state("hazard_band"))
+    # The struts: closed red box girders from the top of the legs back to the footings.
+    for x in (-8.0, 2.0):
+        p.fill(int(x) - 2, 0, -45, int(x) + 1, 1, -42, state("concrete_footing"))
+        p.beam(red, (x, 47.5, -12.0), (x, 1.5, -43.5), thickness=2.0, segment=1.0)
+    for y in (16.0, 32.0):
+        z = -12.0 + (-43.5 + 12.0) * (47.5 - y) / 46.0
+        p.beam(state("lattice_girder_red", axis="y"), (-7.0, y, z), (1.0, y, z), thickness=0.9, segment=1.0)
+    p.fill(-7, 22, -10, 0, 22, -10, state("steel_frame"))
+    parts.sign(p, "shaft", -6, 22, -9, "south")
+    for x, z, facing in ((-11, -9, "south"), (4, -9, "south"), (-11, -18, "north"), (4, -18, "north")):
+        p.set(x, 51, z, state("floodlight", facing=facing))
+    for y in range(8, 46, 8):
+        p.set(-10, y, -11, state("wall_lamp", facing="west"))
+        p.set(3, y, -11, state("wall_lamp", facing="east"))
+    return p
+
+
+def _c_ore_house() -> Piece:
+    """The ore house in the Company Moderne grid: a thirty-block tower of red steel frame and cream enamel with ribbon windows,
+    the lit slogan on its roof, a long glazed hall in front of it toward the square, and a bridge to the headframe."""
+    p = Piece("ore_house")
+    _frame_box(p, -32, -40, -20, -28, 1, 33, [8, 15, 22, 29])
+    _frame_box(p, -32, -27, -14, -12, 1, 11, [6])
+    # The roof billboard: the slogan, lit, on a red frame.
+    p.fill(-30, 36, -33, -22, 40, -33, state("steel_frame"))
+    parts.sign(p, "slogan", -29, 38, -32, "south")
+    parts.sign(p, "bull", -27, 31, -27, "south")
+    parts.sign(p, "company", -27, 9, -11, "south")
+    parts.sign(p, "ore_house", -21, 4, -11, "south")
+    # The bridge from the tower to the headframe's west leg, a cream box on a red frame.
+    for x in range(-19, -10):
+        p.fill(x, 22, -31, x, 22, -29, state("steel_frame"))
+        p.set(x, 23, -31, state("enamel_panel"))
+        p.set(x, 23, -29, state("enamel_panel"))
+        p.set(x, 24, -31, state("window_ribbon_lit", facing="north"))
+        p.set(x, 24, -29, state("window_ribbon_lit", facing="south"))
+        p.fill(x, 25, -31, x, 25, -29, state("steel_frame"))
+    for x in (-18, -14):
+        p.fill(x, 1, -30, x, 21, -30, state("steel_beam_red", axis="y"))
+    # A clock-tower fin on the hall's corner, and lamps along the front.
+    p.fill(-15, 12, -12, -14, 20, -12, state("steel_frame"))
+    for x in range(-31, -13, 4):
+        p.set(x, 12, -11, state("wall_lamp", facing="south"))
+    return p
+
+
+def _c_hoist_house() -> Piece:
+    """The engine house in the same grid, a roof box toward the headframe where the ropes come in, a band of lit windows."""
+    p = Piece("hoist_house")
+    _frame_box(p, -14, -54, 6, -44, 1, 13, [7])
+    p.fill(-7, 16, -47, -1, 19, -44, state("enamel_panel"))
+    p.walls(-7, -47, -1, -44, 19, 19, state("steel_frame"))
+    p.set(-4, 1, -43, state("winder_door", facing="south"))
+    return p
+
+
+CONCEPT_C = Concept(
+    name="c",
+    title="C. Company Moderne",
+    statue="founder_c",
+    build=lambda: [_c_square(), _c_headframe(), _c_ore_house(), _c_hoist_house()],
+    views=(
+        View("from-the-square", (2.0, 2.6, 17.0), (-10.0, 18.0, -18.0)),
+        View("headframe-from-the-plinths", (10.0, 3.6, -4.0), (-4.0, 38.0, -16.0)),
+        View("ore-house-front", (-8.0, 4.0, 4.0), (-24.0, 14.0, -24.0)),
+        View("from-the-air", (36.0, 48.0, 46.0), (-10.0, 12.0, -22.0)),
+        View("from-the-air-west", (-60.0, 42.0, 24.0), (-10.0, 14.0, -22.0)),
+        View("from-far-across-the-plain", (70.0, 4.0, 170.0), (-6.0, 26.0, -20.0), above_ground=True),
+        View("night-from-the-square", (2.0, 2.6, 17.0), (-10.0, 18.0, -18.0), night=True),
+        View("night-from-the-air", (36.0, 48.0, 46.0), (-10.0, 12.0, -22.0), night=True),
+        *_common_views(30.0),
+    ),
+    orbit_centre=(-8.0, 14.0, -20.0),
+    orbit_radius=78.0,
+    orbit_height=44.0,
+)
+
+ALL = (CONCEPT_A, CONCEPT_B, CONCEPT_C)
