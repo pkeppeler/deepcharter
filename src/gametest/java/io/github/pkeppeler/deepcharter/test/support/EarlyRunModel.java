@@ -86,8 +86,7 @@ public final class EarlyRunModel {
 
 	/**
 	 * The litres to bore {@code blocks} slabs straight down from the surface in one go, with no climb back: the cost of a first
-	 * descent that cannot refuel at the pump. (A) The pod cannot drive back down its own shaft (see {@link #safeDropBlocks}), so the
-	 * way down is a bore.
+	 * descent that cannot refuel at the pump. The pod cannot drive back down its own shaft (see {@link #safeDropBlocks}).
 	 */
 	public static double boreLitres(Zone zone, PodStats stats, int blocks) {
 		double litres = 0;
