@@ -1,0 +1,8 @@
+{
+  "parent": "deepcharter:block/ore_crystal_1",
+  "textures": {
+    "all": "deepcharter:block/silverium_ore_3",
+    "crystal": "deepcharter:block/silverium_crystal",
+    "glint": "deepcharter:block/silverium_glint"
+  }
+}

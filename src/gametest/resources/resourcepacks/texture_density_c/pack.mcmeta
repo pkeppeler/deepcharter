@@ -1,0 +1,7 @@
+{
+  "pack": {
+    "description": "Deep Charter test pack: texture density C, 32x for our own blocks (issue 336)",
+    "min_format": 97,
+    "max_format": 97
+  }
+}

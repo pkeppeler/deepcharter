@@ -8,13 +8,16 @@ loud and names the recipe.
 import json
 import re
 from dataclasses import dataclass
+from math import sqrt
 from pathlib import Path
 from typing import Callable
 
 import pngio
 from canvas import BAYER, CLEAR, Canvas, Colour, Rng, value_noise
 
+# A texture is SIZE x SIZE pixels unless its recipe names another of SIZES ("size": 32, a 32x texture in a 16-unit model).
 SIZE = 16
+SIZES = (16, 32)
 KINDS = ("opaque", "cutout")
 # The directory beside each recipes directory that the source op reads hand-drawn PNGs from.
 SOURCES = "sources"
@@ -91,15 +94,21 @@ class Glow:
 
 @dataclass(frozen=True)
 class Recipe:
-    """One texture: its kind, its layers, and optionally its animation and what it is the glow layer of. sources is the
-    directory its source op reads PNGs from: sources/ beside the recipes directory the recipe came from."""
+    """One texture: its kind, its size, its layers, and optionally its animation and what it is the glow layer of. origin is the
+    recipes directory it came from."""
 
     key: str
     kind: str
+    size: int
     layers: tuple[dict, ...]
     animation: Animation | None
     glow: Glow | None
-    sources: Path
+    origin: Path
+
+    @property
+    def sources(self) -> Path:
+        """The directory its source op reads PNGs from: sources/ beside its recipes directory."""
+        return self.origin.parent / SOURCES
 
     @property
     def frames(self) -> int:
@@ -125,21 +134,24 @@ class Book:
                     if key in seen_here:
                         raise RecipeError(f"recipe {key} is in both {seen_here[key]} and {path}")
                     seen_here[key] = path
-                    raw[key] = (recipe, directory.parent / SOURCES)
-        self.recipes: dict[str, Recipe] = {key: self._build(key, body, sources) for key, (body, sources) in sorted(raw.items())}
+                    raw[key] = (recipe, directory)
+        self.recipes: dict[str, Recipe] = {key: self._build(key, body, origin) for key, (body, origin) in sorted(raw.items())}
         self._cache: dict[str, list[Canvas]] = {}
         self._sources: dict[Path, list[Canvas]] = {}
 
-    def _build(self, key: str, body: dict, sources: Path) -> Recipe:
+    def _build(self, key: str, body: dict, origin: Path) -> Recipe:
         if "template" in body:
             if set(body) - {"template", "args"}:
                 raise RecipeError(f"{key}: a templated recipe has only template and args, found {sorted(body)}")
             body = self.expand(body["template"], body.get("args", {}), key)
-        allowed = {"kind", "layers", "animation", "glow"}
+        allowed = {"kind", "size", "layers", "animation", "glow"}
         if set(body) - allowed or not {"kind", "layers"} <= set(body):
-            raise RecipeError(f"{key}: a recipe has kind and layers, and may have animation and glow; found {sorted(body)}")
+            raise RecipeError(f"{key}: a recipe has kind and layers, and may have size, animation and glow; found {sorted(body)}")
         if body["kind"] not in KINDS:
             raise RecipeError(f"{key}: kind {body['kind']!r} is not one of {KINDS}")
+        size = body.get("size", SIZE)
+        if size not in SIZES:
+            raise RecipeError(f"{key}: size {size!r} is not one of {SIZES}")
         animation = None
         if "animation" in body:
             spec = body["animation"]
@@ -151,7 +163,7 @@ class Book:
             if set(body["glow"]) != {"over"}:
                 raise RecipeError(f"{key}: glow is {{over: <texture> or null}}, got {body['glow']}")
             glow = Glow(body["glow"]["over"])
-        return Recipe(key, body["kind"], tuple(body["layers"]), animation, glow, sources)
+        return Recipe(key, body["kind"], size, tuple(body["layers"]), animation, glow, origin)
 
     def expand(self, name: str, args: dict, where: str) -> dict:
         if name not in self.templates:
@@ -163,22 +175,22 @@ class Book:
         return _substitute(template["recipe"], args, f"{where} (template {name})")
 
     def render(self, key: str) -> list[Canvas]:
-        """The frames of the texture, each SIZE x SIZE."""
+        """The frames of the texture, each its recipe's size square."""
         if key not in self._cache:
             if key not in self.recipes:
                 raise RecipeError(f"no recipe {key!r}")
             recipe = self.recipes[key]
             frames = []
             for frame in range(recipe.frames):
-                canvas = Canvas.blank(SIZE, SIZE)
+                canvas = Canvas.blank(recipe.size, recipe.size)
                 self.draw(canvas, recipe.layers, Context(self, key, frame))
                 frames.append(canvas)
             _check_kind(recipe, frames)
             self._cache[key] = frames
         return self._cache[key]
 
-    def source(self, path: Path, where: str) -> list[Canvas]:
-        """The 16 x 16 frames of a committed source PNG, stacked top to bottom in the file as an animation is."""
+    def source(self, path: Path, size: int, where: str) -> list[Canvas]:
+        """The size x size frames of a committed source PNG, stacked top to bottom in the file as an animation is."""
         if path not in self._sources:
             if not path.is_file():
                 raise RecipeError(f"{where}: no source PNG {path}")
@@ -186,15 +198,15 @@ class Book:
                 image = pngio.decode(path.read_bytes(), str(path))
             except ValueError as error:
                 raise RecipeError(f"{where}: {error}") from error
-            if image.width != SIZE or image.height % SIZE:
-                raise RecipeError(f"{where}: {path} is {image.width} x {image.height}; a source is {SIZE} wide and a whole number of "
-                                  f"{SIZE} x {SIZE} frames")
+            if image.width != size or image.height % size:
+                raise RecipeError(f"{where}: {path} is {image.width} x {image.height}; a source is {size} wide and a whole number of "
+                                  f"{size} x {size} frames")
             whole = Canvas.from_rgba(image)
             frames = []
-            for top in range(0, image.height, SIZE):
-                frame = Canvas.blank(SIZE, SIZE)
-                for y in range(SIZE):
-                    for x in range(SIZE):
+            for top in range(0, image.height, size):
+                frame = Canvas.blank(size, size)
+                for y in range(size):
+                    for x in range(size):
                         frame.put(x, y, whole.get(x, top + y))
                 frames.append(frame)
             self._sources[path] = frames
@@ -203,9 +215,10 @@ class Book:
     def image(self, key: str) -> Canvas:
         """The frames stacked top to bottom, as Minecraft reads an animated texture."""
         frames = self.render(key)
-        out = Canvas.blank(SIZE, SIZE * len(frames))
+        size = self.recipes[key].size
+        out = Canvas.blank(size, size * len(frames))
         for i, frame in enumerate(frames):
-            out.paste(frame, 0, i * SIZE)
+            out.paste(frame, 0, i * size)
         return out
 
     def draw(self, canvas: Canvas, layers, ctx: "Context") -> None:
@@ -257,6 +270,11 @@ class Context:
     def at(self, where: str) -> "Context":
         return Context(self.book, self.key, self.frame, where)
 
+    @property
+    def size(self) -> int:
+        """The width and height of the texture being drawn."""
+        return self.book.recipes[self.key].size
+
     def colour(self, name: str) -> Colour:
         return self.book.palette.colour(name, self.where)
 
@@ -270,7 +288,7 @@ class Context:
 
 
 def _rect(layer: dict, ctx: Context) -> tuple[int, int, int, int]:
-    x, y, w, h = layer.get("rect", [0, 0, SIZE, SIZE])
+    x, y, w, h = layer.get("rect", [0, 0, ctx.size, ctx.size])
     if w <= 0 or h <= 0:
         raise RecipeError(f"{ctx.where}: rect {layer['rect']} is empty")
     return x, y, w, h
@@ -294,11 +312,12 @@ def op_noise(canvas: Canvas, layer: dict, ctx: Context) -> None:
     """Tiling value noise mapped onto a ramp, with optional ordered dither (0 to 1) between neighbouring shades."""
     ctx.need(layer, "ramp", "seed", "cell")
     ramp = ctx.ramp(layer["ramp"])
-    field = value_noise(SIZE, layer["seed"], layer["cell"], layer.get("octaves", 2))
+    size = ctx.size
+    field = value_noise(size, layer["seed"], layer["cell"], layer.get("octaves", 2))
     dither = layer.get("dither", 0.0)
     lo, hi = layer.get("range", [0.0, 1.0])
     for x, y in _cells(layer, ctx):
-        v = (field[y % SIZE][x % SIZE] - lo) / (hi - lo)
+        v = (field[y % size][x % size] - lo) / (hi - lo)
         v += (BAYER[y % 4][x % 4] / 16 - 0.5) * dither / len(ramp)
         canvas.put(x, y, ramp[max(0, min(len(ramp) - 1, int(v * len(ramp))))])
 
@@ -355,19 +374,23 @@ def op_rivets(canvas: Canvas, layer: dict, ctx: Context) -> None:
 
 
 def op_pixels(canvas: Canvas, layer: dict, ctx: Context) -> None:
-    """Hand-drawn pixels: rows of characters, each a key of the legend ("." and " " leave the pixel as it is)."""
+    """Hand-drawn pixels: rows of characters, each a key of the legend ("." and " " leave the pixel as it is). With scale n, each
+    character is an n x n block, so 16x art can be drawn into a 32x texture."""
     ctx.need(layer, "rows", "legend")
     ox, oy = layer.get("at", [0, 0])
+    scale = layer.get("scale", 1)
     legend = {ch: ctx.colour(name) for ch, name in layer["legend"].items()}
     for dy, row in enumerate(layer["rows"]):
-        if len(row) > SIZE:
-            raise RecipeError(f"{ctx.where}: pixel row {dy} is {len(row)} wide, more than {SIZE}")
+        if len(row) * scale > ctx.size:
+            raise RecipeError(f"{ctx.where}: pixel row {dy} is {len(row) * scale} wide, more than {ctx.size}")
         for dx, ch in enumerate(row):
             if ch in ". ":
                 continue
             if ch not in legend:
                 raise RecipeError(f"{ctx.where}: pixel row {dy} uses {ch!r}, which the legend does not name")
-            canvas.put(ox + dx, oy + dy, legend[ch])
+            for sy in range(scale):
+                for sx in range(scale):
+                    canvas.put(ox + dx * scale + sx, oy + dy * scale + sy, legend[ch])
 
 
 def op_stripes(canvas: Canvas, layer: dict, ctx: Context) -> None:
@@ -386,6 +409,7 @@ def op_ore(canvas: Canvas, layer: dict, ctx: Context) -> None:
     ctx.need(layer, "seed", "count", "ramp")
     rim, dark, mid, light, glint = ctx.ramp(layer["ramp"])
     rng = Rng(layer["seed"])
+    size = ctx.size
     shapes = [NODULES[name] for name in layer.get("shapes", sorted(NODULES))]
     taken: set[tuple[int, int]] = set()
     placed = 0
@@ -393,9 +417,9 @@ def op_ore(canvas: Canvas, layer: dict, ctx: Context) -> None:
         if placed == layer["count"]:
             break
         shape = shapes[rng.below(len(shapes))]
-        ox, oy = rng.below(SIZE), rng.below(SIZE)
-        cells = {((ox + dx) % SIZE, (oy + dy) % SIZE) for dy, row in enumerate(shape) for dx, ch in enumerate(row) if ch != "."}
-        halo = {((x + ex) % SIZE, (y + ey) % SIZE) for x, y in cells for ex in (-1, 0, 1) for ey in (-1, 0, 1)}
+        ox, oy = rng.below(size), rng.below(size)
+        cells = {((ox + dx) % size, (oy + dy) % size) for dy, row in enumerate(shape) for dx, ch in enumerate(row) if ch != "."}
+        halo = {((x + ex) % size, (y + ey) % size) for x, y in cells for ex in (-1, 0, 1) for ey in (-1, 0, 1)}
         if halo & taken:
             continue
         taken |= halo
@@ -403,9 +427,138 @@ def op_ore(canvas: Canvas, layer: dict, ctx: Context) -> None:
         for dy, row in enumerate(shape):
             for dx, ch in enumerate(row):
                 if ch != ".":
-                    canvas.put((ox + dx) % SIZE, (oy + dy) % SIZE, {"r": rim, "d": dark, "m": mid, "l": light, "g": glint}[ch])
+                    canvas.put((ox + dx) % size, (oy + dy) % size, {"r": rim, "d": dark, "m": mid, "l": light, "g": glint}[ch])
     if placed < layer["count"]:
         raise RecipeError(f"{ctx.where}: only {placed} of {layer['count']} nodules fit; lower the count or change the seed")
+
+
+def op_cluster(canvas: Canvas, layer: dict, ctx: Context) -> None:
+    """Mineral clumps that read at a glance. A clump is lumps lumps of radius pixels round a centre: domed nuggets, or with
+    "crystal": true, faceted prisms on axes near one of AXES. Its height field, lit from the top left, picks a shade of the ramp's
+    rim, dark, mid and light (depth steepens it); its glints brightest pixels take glint. The rock just below and right of a clump
+    takes shadow, so it stands proud of the face. A clump keeps margin pixels inside the tile, so an ore beside rock shows no cut
+    edge, and a pixel apart from the next. Each clump sends veins threads of dark and mid, up to vein pixels long, out into the rock;
+    a thread may run off the tile edge, and stops there."""
+    ctx.need(layer, "seed", "count", "radius", "lumps", "ramp", "shadow")
+    shades = ctx.ramp(layer["ramp"])
+    if len(shades) != 5:
+        raise RecipeError(f"{ctx.where}: a cluster ramp has 5 shades (rim, dark, mid, light, glint), got {len(shades)}")
+    rim, dark, mid, light, glint = shades
+    shadow = ctx.colour(layer["shadow"])
+    rng = Rng(layer["seed"])
+    size = ctx.size
+    margin = layer.get("margin", 1)
+    taken: set[tuple[int, int]] = set()
+    clumps: list[dict[tuple[int, int], float]] = []
+    for _ in range(layer["count"] * 60):
+        if len(clumps) == layer["count"]:
+            break
+        height = _clump(layer, rng, size, margin)
+        cast = {(x + dx, y + dy) for x, y in height for dx, dy in ((1, 0), (0, 1), (1, 1))} - set(height)
+        inside = all(margin <= x < size - margin and margin <= y < size - margin for x, y in height)
+        if not height or not inside or any(not (0 <= x < size and 0 <= y < size) for x, y in cast):
+            continue
+        reach = set(height) | cast
+        if {(x + dx, y + dy) for x, y in reach for dx in (-1, 0, 1) for dy in (-1, 0, 1)} & taken:
+            continue
+        taken |= reach
+        clumps.append(height)
+    if len(clumps) < layer["count"]:
+        raise RecipeError(f"{ctx.where}: only {len(clumps)} of {layer['count']} clumps fit; lower the count or radius, or change the seed")
+    for height in clumps:
+        for x, y in height:
+            for dx, dy in ((1, 0), (0, 1), (1, 1)):
+                if (x + dx, y + dy) not in height:
+                    canvas.put(x + dx, y + dy, shadow)
+    for height in clumps:
+        _veins(canvas, layer, rng, size, height, (dark, mid))
+    depth = layer.get("depth", 1.5)
+    for height in clumps:
+        lit: dict[tuple[int, int], float] = {}
+        for (x, y), h in height.items():
+            gx = height.get((x + 1, y), 0.0) - height.get((x - 1, y), 0.0)
+            gy = height.get((x, y + 1), 0.0) - height.get((x, y - 1), 0.0)
+            nx, ny = -gx * depth, -gy * depth
+            lit[(x, y)] = (nx * LIGHT[0] + ny * LIGHT[1] + LIGHT[2]) / sqrt(nx * nx + ny * ny + 1) + 0.25 * h
+        for (x, y), value in lit.items():
+            below_right = (x + 1, y) not in height or (x, y + 1) not in height
+            above_left = (x - 1, y) not in height or (x, y - 1) not in height
+            if below_right and not above_left:
+                colour = rim
+            elif value < 0.45:
+                colour = dark
+            elif value < 0.8 or below_right:
+                colour = mid
+            else:
+                colour = light
+            canvas.put(x, y, colour)
+        for x, y in sorted(lit, key=lambda p: (-lit[p], p[1], p[0]))[:layer.get("glints", 1)]:
+            canvas.put(x, y, glint)
+
+
+def _clump(layer: dict, rng: Rng, size: int, margin: int) -> dict[tuple[int, int], float]:
+    """The height (0 to 1) of every pixel a clump covers, from its lumps; a pixel is covered where a lump's height is above 0."""
+    lo, hi = layer["radius"]
+    radius = lo + (hi - lo) * rng.unit()
+    span = size - 2 * (margin + radius)
+    cx, cy = size / 2 + (rng.unit() - 0.5) * span, size / 2 + (rng.unit() - 0.5) * span
+    crystal = layer.get("crystal", False)
+    axis = rng.below(len(AXES))
+    lumps = []
+    for i in range(layer["lumps"]):
+        ox = cx if i == 0 else cx + (1.4 * rng.unit() - 0.7) * radius
+        oy = cy if i == 0 else cy + (1.4 * rng.unit() - 0.7) * radius
+        lumps.append((ox, oy, radius * (0.55 + 0.45 * rng.unit()), AXES[(axis + rng.below(3) - 1) % len(AXES)]))
+    reach = int(hi * 3) + 2
+    height: dict[tuple[int, int], float] = {}
+    for y in range(int(cy) - reach, int(cy) + reach + 1):
+        for x in range(int(cx) - reach, int(cx) + reach + 1):
+            px, py = x + 0.5, y + 0.5
+            best = 0.0
+            for ox, oy, r, (ax, ay) in lumps:
+                dx, dy = px - ox, py - oy
+                if crystal:
+                    along, across = abs(dx * ax + dy * ay), abs(dy * ax - dx * ay)
+                    width, length = 0.5 * r, 1.6 * r
+                    h = min(1 - across / width, (length - along) / width) if across < width and along < length else 0.0
+                else:
+                    d2 = (dx * dx + dy * dy) / (r * r)
+                    h = sqrt(1 - d2) if d2 < 1 else 0.0
+                best = max(best, h)
+            if best > 0:
+                height[(x, y)] = min(best, 1.0)
+    return height
+
+
+def _veins(canvas: Canvas, layer: dict, rng: Rng, size: int, height: dict[tuple[int, int], float], colours: tuple[Colour, Colour]) -> None:
+    """Threads that wander out of a clump, a step at a time, turning now and then; one stops at the tile edge."""
+    start = sorted(height)
+    length = layer.get("vein", 4)
+    for _ in range(layer.get("veins", 0)):
+        x, y = start[rng.below(len(start))]
+        heading = rng.below(8)
+        drawn = 0
+        for _ in range(length * 3):
+            if drawn == length:
+                break
+            turn = rng.below(4)
+            heading = (heading + (1 if turn == 0 else -1 if turn == 1 else 0)) % 8
+            dx, dy = HEADINGS[heading]
+            x, y = x + dx, y + dy
+            if not (0 <= x < size and 0 <= y < size):
+                break
+            if (x, y) in height:
+                continue
+            canvas.put(x, y, colours[drawn % 2])
+            drawn += 1
+
+
+# The unit directions a crystal's long axis lies near: 30 to 150 degrees, as literals so that every Python draws the same pixels.
+AXES = ((0.866025, 0.5), (0.707107, 0.707107), (0.5, 0.866025), (-0.5, 0.866025), (-0.707107, 0.707107), (-0.866025, 0.5))
+# Where the light comes from: the top left and in front of the face, (x, y down, z out), normalised.
+LIGHT = (-0.57735, -0.57735, 0.57735)
+# The eight steps of a vein, round the compass.
+HEADINGS = ((1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1))
 
 
 # Nodule shapes: r rim (the shadow side), d dark, m mid, l light, g glint. Drawn lit from the top left.
@@ -423,17 +576,18 @@ NODULES = {
 
 
 def op_strata(canvas: Canvas, layer: dict, ctx: Context) -> None:
-    """Horizontal rock beds: bands of the given ramp shades and thicknesses (summing to SIZE, so they tile), whose edges wobble up
-    and down by up to wobble pixels along a tiling seeded curve."""
+    """Horizontal rock beds: bands of the given ramp shades and thicknesses (summing to the texture size, so they tile), whose edges
+    wobble up and down by up to wobble pixels along a tiling seeded curve."""
     ctx.need(layer, "beds", "seed", "wobble")
+    size = ctx.size
     beds = [(ctx.colour(name), thickness) for name, thickness in layer["beds"]]
-    if sum(t for _, t in beds) != SIZE:
-        raise RecipeError(f"{ctx.where}: strata beds are {sum(t for _, t in beds)} thick, not {SIZE}")
+    if sum(t for _, t in beds) != size:
+        raise RecipeError(f"{ctx.where}: strata beds are {sum(t for _, t in beds)} thick, not {size}")
     rows = [colour for colour, thickness in beds for _ in range(thickness)]
-    curve = value_noise(SIZE, layer["seed"], 4, 1)[0]
+    curve = value_noise(size, layer["seed"], 4 * size // SIZE, 1)[0]
     for x, y in _cells(layer, ctx):
         shift = round((curve[x] - 0.5) * 2 * layer["wobble"])
-        canvas.put(x, y, rows[(y + shift) % SIZE])
+        canvas.put(x, y, rows[(y + shift) % size])
 
 
 def op_cracks(canvas: Canvas, layer: dict, ctx: Context) -> None:
@@ -442,13 +596,14 @@ def op_cracks(canvas: Canvas, layer: dict, ctx: Context) -> None:
     colour = ctx.colour(layer["colour"])
     lip = ctx.colour(layer["lip"]) if "lip" in layer else None
     rng = Rng(layer["seed"])
+    size = ctx.size
     for _ in range(layer["count"]):
-        x, y = rng.below(SIZE), rng.below(SIZE)
+        x, y = rng.below(size), rng.below(size)
         dx = 1 if rng.below(2) else -1
         for _ in range(layer["length"]):
-            canvas.put(x % SIZE, y % SIZE, colour)
+            canvas.put(x % size, y % size, colour)
             if lip:
-                canvas.put(x % SIZE, (y - 1) % SIZE, lip)
+                canvas.put(x % size, (y - 1) % size, lip)
             if rng.below(3) == 0:
                 y += 1 if rng.below(2) else -1
             else:
@@ -477,9 +632,14 @@ def op_tint(canvas: Canvas, layer: dict, ctx: Context) -> None:
 
 
 def op_include(canvas: Canvas, layer: dict, ctx: Context) -> None:
-    """Composites another recipe's texture (its frame of the same number, or its last) at this point of the stack."""
+    """Composites another recipe's texture (its frame of the same number, or its last) at this point of the stack. Both are the same
+    size: an include does not scale, so a 16x recipe in a 32x one fails rather than filling a quarter of it."""
     ctx.need(layer, "recipe")
     frames = ctx.book.render(layer["recipe"])
+    size = frames[0].width
+    if size != ctx.size:
+        raise RecipeError(f"{ctx.where}: {layer['recipe']} is {size} x {size} and this texture {ctx.size} x {ctx.size}; an include does not "
+                          "scale, so give both recipes the same size")
     canvas.paste(frames[min(ctx.frame, len(frames) - 1)], 0, 0)
 
 
@@ -496,7 +656,7 @@ def op_outline(canvas: Canvas, layer: dict, ctx: Context) -> None:
     """Gives a sprite a one-pixel edge: every clear pixel next to an opaque one (4-neighbour) takes the colour."""
     ctx.need(layer, "colour")
     colour = ctx.colour(layer["colour"])
-    edge = [(x, y) for y in range(SIZE) for x in range(SIZE) if canvas.get(x, y)[3] == 0
+    edge = [(x, y) for y in range(ctx.size) for x in range(ctx.size) if canvas.get(x, y)[3] == 0
             and any(canvas.inside(x + dx, y + dy) and canvas.get(x + dx, y + dy)[3] for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))]
     for x, y in edge:
         canvas.put(x, y, colour)
@@ -505,7 +665,7 @@ def op_outline(canvas: Canvas, layer: dict, ctx: Context) -> None:
 def op_masked(canvas: Canvas, layer: dict, ctx: Context) -> None:
     """Draws the sub-layers on a clear canvas and keeps only the pixels the mask selects."""
     ctx.need(layer, "mask", "layers")
-    inner = Canvas.blank(SIZE, SIZE)
+    inner = Canvas.blank(ctx.size, ctx.size)
     ctx.book.draw(inner, layer["layers"], ctx)
     test = _mask(layer["mask"], ctx)
     canvas.paste(inner, 0, 0, test)
@@ -516,13 +676,14 @@ def _mask(spec: dict, ctx: Context) -> Callable[[int, int], bool]:
     if "any" in spec:
         parts = [_mask(s, ctx) for s in spec["any"]]
         return lambda x, y: any(p(x, y) for p in parts)
+    n = ctx.size
     if "edges" in spec:
         sides, w = spec["edges"], spec["width"]
-        return lambda x, y: ("t" in sides and y < w) or ("b" in sides and y >= SIZE - w) or ("l" in sides and x < w) or ("r" in sides and x >= SIZE - w)
+        return lambda x, y: ("t" in sides and y < w) or ("b" in sides and y >= n - w) or ("l" in sides and x < w) or ("r" in sides and x >= n - w)
     if "corners" in spec:
         corners, s = spec["corners"].split(), spec["size"]
-        return lambda x, y: (("tl" in corners and x < s and y < s) or ("tr" in corners and x >= SIZE - s and y < s)
-                             or ("bl" in corners and x < s and y >= SIZE - s) or ("br" in corners and x >= SIZE - s and y >= SIZE - s))
+        return lambda x, y: (("tl" in corners and x < s and y < s) or ("tr" in corners and x >= n - s and y < s)
+                             or ("bl" in corners and x < s and y >= n - s) or ("br" in corners and x >= n - s and y >= n - s))
     raise RecipeError(f"{ctx.where}: unknown mask {spec}")
 
 
@@ -553,7 +714,7 @@ def op_source(canvas: Canvas, layer: dict, ctx: Context) -> None:
     as the recipe. The texture still follows its kind, so a half-transparent pixel in a cutout source fails the build."""
     ctx.need(layer, "file")
     recipe = ctx.book.recipes[ctx.key]
-    frames = ctx.book.source(recipe.sources / layer["file"], ctx.where)
+    frames = ctx.book.source(recipe.sources / layer["file"], recipe.size, ctx.where)
     if len(frames) not in (1, recipe.frames):
         raise RecipeError(f"{ctx.where}: source {layer['file']} has {len(frames)} frames, the recipe {recipe.frames}")
     canvas.paste(frames[ctx.frame if len(frames) > 1 else 0], 0, 0)
@@ -576,6 +737,7 @@ OPS: dict[str, Callable[[Canvas, dict, Context], None]] = {
     "pixels": op_pixels,
     "stripes": op_stripes,
     "ore": op_ore,
+    "cluster": op_cluster,
     "strata": op_strata,
     "cracks": op_cracks,
     "grime": op_grime,

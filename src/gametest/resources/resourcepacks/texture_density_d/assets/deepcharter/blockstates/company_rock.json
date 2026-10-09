@@ -1,0 +1,18 @@
+{
+  "variants": {
+    "": [
+      {
+        "model": "deepcharter:block/company_rock_0",
+        "weight": 3
+      },
+      {
+        "model": "deepcharter:block/company_rock_1",
+        "weight": 2
+      },
+      {
+        "model": "deepcharter:block/company_rock_2",
+        "weight": 1
+      }
+    ]
+  }
+}

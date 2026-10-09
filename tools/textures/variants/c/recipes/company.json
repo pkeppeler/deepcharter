@@ -1,0 +1,429 @@
+{
+  "templates": {
+    "company_rock_c": {
+      "params": [
+        "seed",
+        "grime"
+      ],
+      "recipe": {
+        "kind": "opaque",
+        "size": 32,
+        "layers": [
+          {
+            "op": "noise",
+            "ramp": [
+              "steel.1",
+              "steel.1",
+              "steel.2",
+              "steel.2"
+            ],
+            "seed": "$seed",
+            "cell": 8,
+            "octaves": 3,
+            "dither": 0.8
+          },
+          {
+            "op": "speckle",
+            "colours": [
+              "steel.0",
+              "steel.3"
+            ],
+            "density": 0.05,
+            "seed": "$seed"
+          },
+          {
+            "op": "bevel",
+            "rect": [
+              0,
+              0,
+              32,
+              32
+            ],
+            "light": "steel.3",
+            "dark": "void"
+          },
+          {
+            "op": "bevel",
+            "rect": [
+              1,
+              1,
+              30,
+              30
+            ],
+            "light": "steel.2",
+            "dark": "steel.0"
+          },
+          {
+            "op": "rect",
+            "rect": [
+              0,
+              12,
+              32,
+              8
+            ],
+            "colour": "brass.2"
+          },
+          {
+            "op": "rect",
+            "rect": [
+              0,
+              12,
+              32,
+              1
+            ],
+            "colour": "brass.5"
+          },
+          {
+            "op": "rect",
+            "rect": [
+              0,
+              13,
+              32,
+              1
+            ],
+            "colour": "brass.4"
+          },
+          {
+            "op": "rect",
+            "rect": [
+              0,
+              18,
+              32,
+              1
+            ],
+            "colour": "brass.1"
+          },
+          {
+            "op": "rect",
+            "rect": [
+              0,
+              19,
+              32,
+              1
+            ],
+            "colour": "void"
+          },
+          {
+            "op": "speckle",
+            "colours": [
+              "brass.3",
+              "brass.1",
+              "rust.2",
+              "brass.4"
+            ],
+            "density": 0.16,
+            "seed": "$seed",
+            "rect": [
+              0,
+              14,
+              32,
+              4
+            ]
+          },
+          {
+            "op": "pixels",
+            "at": [
+              6,
+              15
+            ],
+            "legend": {
+              "s": "brass.0"
+            },
+            "rows": [
+              "sss.s.s.sss.sss.sss.s",
+              "s...sss.s.s.s.s.s...s"
+            ]
+          },
+          {
+            "op": "grime",
+            "colours": [
+              "rust.1",
+              "dust.0",
+              "rust.2"
+            ],
+            "density": "$grime",
+            "seed": "$seed",
+            "rect": [
+              2,
+              20,
+              28,
+              10
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "recipes": {
+    "block/company_rock_0": {
+      "kind": "opaque",
+      "size": 32,
+      "layers": [
+        {
+          "op": "template",
+          "name": "company_rock_c",
+          "args": {
+            "seed": 311,
+            "grime": 0.25
+          }
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "l": "steel.6",
+            "m": "steel.4",
+            "d": "steel.1",
+            "r": "rust.1"
+          },
+          "rows": [
+            "lm.",
+            "mmd",
+            ".dd",
+            "..r"
+          ],
+          "at": [
+            3,
+            3
+          ]
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "l": "steel.6",
+            "m": "steel.4",
+            "d": "steel.1",
+            "r": "rust.1"
+          },
+          "rows": [
+            "lm.",
+            "mmd",
+            ".dd",
+            "..r"
+          ],
+          "at": [
+            26,
+            3
+          ]
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "l": "steel.6",
+            "m": "steel.4",
+            "d": "steel.1",
+            "r": "rust.1"
+          },
+          "rows": [
+            "lm.",
+            "mmd",
+            ".dd",
+            "..r"
+          ],
+          "at": [
+            3,
+            24
+          ]
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "l": "steel.6",
+            "m": "steel.4",
+            "d": "steel.1",
+            "r": "rust.1"
+          },
+          "rows": [
+            "lm.",
+            "mmd",
+            ".dd",
+            "..r"
+          ],
+          "at": [
+            26,
+            24
+          ]
+        }
+      ]
+    },
+    "block/company_rock_1": {
+      "kind": "opaque",
+      "size": 32,
+      "layers": [
+        {
+          "op": "template",
+          "name": "company_rock_c",
+          "args": {
+            "seed": 312,
+            "grime": 0.4
+          }
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "l": "steel.6",
+            "m": "steel.4",
+            "d": "steel.1",
+            "r": "rust.1"
+          },
+          "rows": [
+            "lm.",
+            "mmd",
+            ".dd",
+            "..r"
+          ],
+          "at": [
+            3,
+            3
+          ]
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "l": "steel.6",
+            "m": "steel.4",
+            "d": "steel.1",
+            "r": "rust.1"
+          },
+          "rows": [
+            "lm.",
+            "mmd",
+            ".dd",
+            "..r"
+          ],
+          "at": [
+            14,
+            3
+          ]
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "l": "steel.6",
+            "m": "steel.4",
+            "d": "steel.1",
+            "r": "rust.1"
+          },
+          "rows": [
+            "lm.",
+            "mmd",
+            ".dd",
+            "..r"
+          ],
+          "at": [
+            26,
+            3
+          ]
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "l": "steel.6",
+            "m": "steel.4",
+            "d": "steel.1",
+            "r": "rust.1"
+          },
+          "rows": [
+            "lm.",
+            "mmd",
+            ".dd",
+            "..r"
+          ],
+          "at": [
+            3,
+            24
+          ]
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "l": "steel.6",
+            "m": "steel.4",
+            "d": "steel.1",
+            "r": "rust.1"
+          },
+          "rows": [
+            "lm.",
+            "mmd",
+            ".dd",
+            "..r"
+          ],
+          "at": [
+            26,
+            24
+          ]
+        }
+      ]
+    },
+    "block/company_rock_2": {
+      "kind": "opaque",
+      "size": 32,
+      "layers": [
+        {
+          "op": "template",
+          "name": "company_rock_c",
+          "args": {
+            "seed": 313,
+            "grime": 0.55
+          }
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "l": "steel.6",
+            "m": "steel.4",
+            "d": "steel.1",
+            "r": "rust.1"
+          },
+          "rows": [
+            "lm.",
+            "mmd",
+            ".dd",
+            "..r"
+          ],
+          "at": [
+            3,
+            3
+          ]
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "l": "steel.6",
+            "m": "steel.4",
+            "d": "steel.1",
+            "r": "rust.1"
+          },
+          "rows": [
+            "lm.",
+            "mmd",
+            ".dd",
+            "..r"
+          ],
+          "at": [
+            26,
+            3
+          ]
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "l": "steel.6",
+            "m": "steel.4",
+            "d": "steel.1",
+            "r": "rust.1"
+          },
+          "rows": [
+            "lm.",
+            "mmd",
+            ".dd",
+            "..r"
+          ],
+          "at": [
+            14,
+            24
+          ]
+        }
+      ]
+    }
+  }
+}
