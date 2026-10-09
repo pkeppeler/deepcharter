@@ -149,14 +149,14 @@ public class SurfaceTerrainTest {
 		Set<String> missing = new TreeSet<>();
 		for (Block block : BuiltInRegistries.BLOCK) {
 			Identifier id = BuiltInRegistries.BLOCK.getKey(block);
-			BlockState state = block.defaultBlockState();
-			boolean collides = !state.getCollisionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).isEmpty();
-			if (id.getNamespace().equals(DeepCharter.MOD_ID) && collides && !state.is(BlockTags.BLOCKS_MOTION_NO_LEAVES)) {
+			boolean collides = block.getStateDefinition().getPossibleStates().stream()
+					.anyMatch(state -> !state.getCollisionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).isEmpty());
+			if (id.getNamespace().equals(DeepCharter.MOD_ID) && collides && !block.defaultBlockState().is(BlockTags.BLOCKS_MOTION_NO_LEAVES)) {
 				missing.add(id.toString());
 			}
 		}
 		if (!missing.isEmpty()) {
-			throw fail(helper, "these blocks have collision but are not in minecraft:blocks_motion_no_leaves, so the heightmaps skip them: %s", missing);
+			throw fail(helper, "these blocks have collision but the heightmaps skip them; add them to src/main/resources/data/minecraft/tags/block/blocks_motion_no_leaves.json: %s", missing);
 		}
 		helper.succeed();
 	}
