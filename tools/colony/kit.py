@@ -1,9 +1,9 @@
 """The colony kit: every block the colony concepts are built from, with its block-state properties, blockstate file, models and
 item definition. ColonyKit.java registers the same blocks; ColonyConceptsTest fails when a state has no variant.
 
-A kit block is one of a few shapes (KINDS). Its textures are recipes in tools/textures/recipes/colony_kit.json, drawn by
-tools/textures/texgen.py into textures/block/colony/. The display-only pieces (statues, sheave wheels, the gallery) are states of
-one block, colony_sculpture, which is never placed: block-display entities draw it, scaled and turned.
+A kit block is one of a few kinds (cube, facing, pillar). Its textures are recipes in tools/textures/recipes/colony_kit.json,
+drawn by tools/textures/texgen.py into textures/block/colony/. The display-only pieces (the statue, sheave wheels, the trussed
+conveyor) are states of one block, colony_sculpture, which is never placed: block-display entities draw it, scaled and turned.
 """
 from dataclasses import dataclass
 from typing import Callable
@@ -86,14 +86,6 @@ def pillar(name: str, english: str, build: Callable[[], Model]) -> KitBlock:
     return KitBlock(name, english, {"axis": AXES}, states, lambda: {name: build()}, model_id(name))
 
 
-def horizontal_axis(name: str, english: str, build: Callable[[], Model]) -> KitBlock:
-    """Runs along X or Z; the model is drawn along X."""
-    def states():
-        m = model_id(name)
-        return {"variants": {"axis=x": {"model": m}, "axis=z": {"model": m, "y": 90}}}
-    return KitBlock(name, english, {"axis": ("x", "z")}, states, lambda: {name: build()}, model_id(name))
-
-
 # ---------------------------------------------------------------------------------------------------------------- shapes
 
 def framed_cube(front: str, side: str, glow: str | None = None) -> Model:
@@ -165,33 +157,6 @@ def brace(texture: str) -> Model:
     ], ambient_occlusion=False)
 
 
-def roof_slope(roof: str, gable: str) -> Model:
-    """A 45-degree roof falling toward the north: the sheeting runs from the top of the south edge to the foot of the north edge,
-    and a wedge of 1-unit steps under it fills the gable, so the end of a roof shows a triangle of cladding, not stairs. The steps
-    stay under the diagonal, and the sheeting's underside covers the notches between them."""
-    t = {"roof": tex(roof), "gable": tex(gable), "particle": tex(roof)}
-    half = 8 * 2 ** 0.5
-    boxes = [Box((-0.5, 7.0, 8 - half - 0.3), (16.5, 8.2, 8 + half + 0.3), {"*": "#roof"}, rotation=(-45, 0, 0))]
-    for k in range(1, 16):
-        boxes.append(Box((0, 0, k), (16, k, k + 1), {"east": "#gable", "west": "#gable"}))
-    return Model(t, boxes)
-
-
-def roof_peak(roof: str, gable: str) -> Model:
-    """The ridge of a 45-degree roof running along X: two half slopes meet half a block up under a ridge cap, over a triangle of
-    gable built like the slope's wedge."""
-    t = {"roof": tex(roof), "gable": tex(gable), "ridge": tex(roof + "_ridge"), "particle": tex(roof)}
-    q = 4 * 2 ** 0.5
-    boxes = [
-        Box((-0.5, 3.0, 4 - q - 0.3), (16.5, 4.2, 4 + q + 0.3), {"*": "#roof"}, rotation=(-45, 0, 0), pivot=(8, 4, 4)),
-        Box((-0.5, 3.0, 12 - q - 0.3), (16.5, 4.2, 12 + q + 0.3), {"*": "#roof"}, rotation=(45, 0, 0), pivot=(8, 4, 12)),
-        Box((-0.6, 7.0, 6.5), (16.6, 8.8, 9.5), {"*": "#ridge"}),
-    ]
-    for k in range(1, 8):
-        boxes.append(Box((0, k - 1, k), (16, k, 16 - k), {"east": "#gable", "west": "#gable"}))
-    return Model(t, boxes)
-
-
 def railing() -> Model:
     """A catwalk railing on the north edge of its block: two posts, a top rail, a knee rail and a kick plate."""
     t = {"rail": tex("railing"), "kick": tex("hazard_band"), "particle": tex("railing")}
@@ -248,6 +213,44 @@ def conveyor() -> Model:
     ])
 
 
+def steel_ladder() -> Model:
+    """A safety-yellow steel ladder on the wall behind it (south): two stiles and four rungs."""
+    t = {"rail": tex("railing"), "particle": tex("railing")}
+    boxes = [Box((2, 0, 14), (3.5, 16, 15.5), {"*": "#rail"}), Box((12.5, 0, 14), (14, 16, 15.5), {"*": "#rail"})]
+    for y in (2, 6, 10, 14):
+        boxes.append(Box((3.5, y, 14.4), (12.5, y + 1, 15.2), {"*": "#rail"}))
+    return Model(t, boxes, ambient_occlusion=False)
+
+
+def mine_track() -> Model:
+    """Mine track running north: two steel rails on three sleepers, flat on the ground."""
+    t = {"rail": tex("track_rail"), "sleeper": tex("track_sleeper"), "particle": tex("track_sleeper")}
+    boxes = [Box((0, 0, z), (16, 1.5, z + 3), {"*": "#sleeper", "down": None}) for z in (1.5, 6.5, 11.5)]
+    for x in (3, 11.5):
+        boxes.append(Box((x, 1.5, 0), (x + 1.5, 3, 16), {"*": "#rail", "down": None}))
+    return Model(t, boxes, ambient_occlusion=False)
+
+
+def ore_car() -> Model:
+    """A riveted ore car on four iron wheels, its tub heaped with ore, coupled front and back. It runs north and south, on mine
+    track."""
+    t = {"tub": tex("ore_car"), "ore": tex("ore_car_load"), "iron": tex("lamp_iron"), "rim": tex("beam"), "particle": tex("ore_car")}
+    boxes = []
+    for x0, x1 in ((2.5, 4), (12, 13.5)):
+        for z0 in (2, 11):
+            boxes.append(Box((x0, 0, z0), (x1, 4, z0 + 3), {"*": "#iron"}))
+    boxes.append(Box((3, 2.5, 1.5), (13, 5, 14.5), {"*": "#iron"}))
+    boxes.append(Box((1.5, 5, 1), (14.5, 12, 15), {"*": "#tub", "up": "#ore", "down": "#iron"}))
+    boxes.append(Box((1, 12, 0.5), (15, 13.5, 2), {"*": "#rim"}))
+    boxes.append(Box((1, 12, 14), (15, 13.5, 15.5), {"*": "#rim"}))
+    boxes.append(Box((1, 12, 2), (2.5, 13.5, 14), {"*": "#rim"}))
+    boxes.append(Box((13.5, 12, 2), (15, 13.5, 14), {"*": "#rim"}))
+    boxes.append(Box((3, 12, 3), (13, 14, 13), {"*": "#ore", "down": None}))
+    for z0, z1 in ((0, 1), (15, 16)):
+        boxes.append(Box((7, 6, z0), (9, 8, z1), {"*": "#iron"}))
+    return Model(t, boxes)
+
+
 # ---------------------------------------------------------------------------------------------------------------- the catalogue
 
 def _signs() -> KitBlock:
@@ -274,35 +277,29 @@ def _sculpture() -> KitBlock:
 
 
 CATALOGUE: dict[str, KitBlock] = {block.name: block for block in [
-    cube("corrugated_cream", "Cream Corrugated Steel", WEAR),
-    cube("corrugated_red", "Company Red Corrugated Steel", WEAR),
     cube("riveted_plate", "Riveted Plate", WEAR),
     cube("riveted_plate_red", "Red Riveted Plate"),
-    cube("enamel_panel", "Cream Enamel Panel"),
-    cube("steel_frame", "Red Steel Frame"),
     cube("hazard_band", "Hazard Band"),
     cube("concrete_footing", "Concrete Footing", (("", 6), ("_cracked", 2))),
     cube("grating", "Steel Grating"),
     cube("brass_trim", "Brass Trim"),
-    facing("window_small_lit", "Lit Mill Window", lambda: window("window_small", "corrugated_cream", "window_small_glow")),
-    facing("window_small_dark", "Dark Mill Window", lambda: window("window_small_dark", "corrugated_cream", None)),
-    facing("window_ribbon_lit", "Lit Ribbon Window", lambda: window("window_ribbon", "steel_frame", "window_ribbon_glow")),
-    facing("window_ribbon_dark", "Dark Ribbon Window", lambda: window("window_ribbon_dark", "steel_frame", None)),
+    facing("window_ribbon_lit", "Lit Ribbon Window", lambda: window("window_ribbon", "riveted_plate", "window_ribbon_glow")),
+    facing("window_ribbon_dark", "Dark Ribbon Window", lambda: window("window_ribbon_dark", "riveted_plate", None)),
     facing("furnace_hatch", "Crusher Hatch", lambda: framed_cube("furnace_hatch", "riveted_plate", "furnace_hatch_glow")),
     facing("gauge_panel", "Gauge Panel", lambda: framed_cube("gauge_panel", "riveted_plate", "gauge_panel_glow")),
     facing("winder_door", "Riveted Door", lambda: framed_cube("winder_door", "riveted_plate")),
+    facing("shutter", "Roller Shutter", lambda: framed_cube("shutter", "riveted_plate")),
     facing("wall_lamp", "Company Wall Lamp", wall_lamp),
     facing("floodlight", "Company Floodlight", floodlight),
     facing("railing", "Catwalk Railing", railing),
-    facing("roof_slope", "Corrugated Roof Slope", lambda: roof_slope("roof_red", "corrugated_cream")),
+    facing("steel_ladder", "Steel Ladder", steel_ladder),
     facing("brace", "Lattice Brace", lambda: brace("lattice")),
-    facing("brace_red", "Red Lattice Brace", lambda: brace("lattice_red")),
     facing("conveyor", "Belt Conveyor", conveyor),
-    horizontal_axis("roof_peak", "Corrugated Roof Ridge", lambda: roof_peak("roof_red", "corrugated_cream")),
+    facing("mine_track", "Mine Track", mine_track),
+    facing("ore_car", "Ore Car", ore_car),
     pillar("steel_beam", "Steel Beam", lambda: i_beam("beam")),
     pillar("steel_beam_red", "Red Steel Beam", lambda: i_beam("beam_red")),
     pillar("lattice_girder", "Lattice Girder", lambda: lattice("lattice")),
-    pillar("lattice_girder_red", "Red Lattice Girder", lambda: lattice("lattice_red")),
     pillar("pipe", "Steel Pipe", lambda: pipe("pipe")),
     pillar("pipe_brass", "Brass Pipe", lambda: pipe("pipe_brass")),
     pillar("cable", "Winding Cable", cable),

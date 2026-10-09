@@ -1,17 +1,5 @@
 {
   "variants": {
-    "piece=founder_a": {
-      "model": "deepcharter:block/colony/sculpture/founder_a"
-    },
-    "piece=founder_a_hands": {
-      "model": "deepcharter:block/colony/sculpture/founder_a_hands"
-    },
-    "piece=founder_b": {
-      "model": "deepcharter:block/colony/sculpture/founder_b"
-    },
-    "piece=founder_b_hands": {
-      "model": "deepcharter:block/colony/sculpture/founder_b_hands"
-    },
     "piece=founder_c": {
       "model": "deepcharter:block/colony/sculpture/founder_c"
     },
@@ -21,8 +9,8 @@
     "piece=sheave": {
       "model": "deepcharter:block/colony/sculpture/sheave"
     },
-    "piece=gallery": {
-      "model": "deepcharter:block/colony/sculpture/gallery"
+    "piece=truss": {
+      "model": "deepcharter:block/colony/sculpture/truss"
     }
   }
 }

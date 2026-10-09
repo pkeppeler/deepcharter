@@ -2,8 +2,8 @@
   "parent": "minecraft:block/block",
   "textures": {
     "glass": "deepcharter:block/colony/window_ribbon",
-    "side": "deepcharter:block/colony/steel_frame",
-    "particle": "deepcharter:block/colony/steel_frame",
+    "side": "deepcharter:block/colony/riveted_plate",
+    "particle": "deepcharter:block/colony/riveted_plate",
     "glow": "deepcharter:block/colony/window_ribbon_glow"
   },
   "elements": [

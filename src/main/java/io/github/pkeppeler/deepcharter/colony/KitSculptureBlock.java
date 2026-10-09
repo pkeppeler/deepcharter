@@ -14,13 +14,14 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
- * The display-only pieces of the colony: statues, sheave wheels, gallery segments. Each is a state of this block, never placed
- * in the world: a block-display entity draws its model, scaled and turned (tools/colony/sculptures.py). It has no item.
+ * The display-only pieces of the colony: the statue, sheave wheels, segments of a trussed conveyor. Each is a state of this
+ * block, never placed in the world: a block-display entity draws its model, scaled and turned (tools/colony/sculptures.py). It
+ * has no item.
  */
 final class KitSculptureBlock extends Block {
 	/** The pieces; tools/colony/sculptures.py writes a model for each. */
 	enum Piece implements StringRepresentable {
-		FOUNDER_A, FOUNDER_A_HANDS, FOUNDER_B, FOUNDER_B_HANDS, FOUNDER_C, FOUNDER_C_HANDS, SHEAVE, GALLERY;
+		FOUNDER_C, FOUNDER_C_HANDS, SHEAVE, TRUSS;
 
 		@Override
 		public String getSerializedName() {
@@ -32,7 +33,7 @@ final class KitSculptureBlock extends Block {
 
 	KitSculptureBlock(Properties properties) {
 		super(properties);
-		registerDefaultState(stateDefinition.any().setValue(PIECE, Piece.FOUNDER_A));
+		registerDefaultState(stateDefinition.any().setValue(PIECE, Piece.FOUNDER_C));
 	}
 
 	@Override

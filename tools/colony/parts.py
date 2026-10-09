@@ -1,13 +1,19 @@
 """Architectural parts the concepts share, each drawn into a Piece in colony coordinates (X east, Z south, Y 0 the ground)."""
 import math
+from dataclasses import dataclass
 
 import signs
 import sculptures
-from piece import AIR, Piece, quaternion_axis_angle, quaternion_mul, state
+from piece import Piece, quaternion_axis_angle, quaternion_mul, state
 
 FACING_DIR = {"north": (0, -1), "south": (0, 1), "east": (1, 0), "west": (-1, 0)}
 # The viewer's right as they read a sign facing this way.
 READING = {"north": (-1, 0), "south": (1, 0), "east": (0, -1), "west": (0, 1)}
+# The Works' storeys: a ground floor a pod drives into (Y 1 to 4), the upper floor's line (Y 5), an upper floor of player height
+# (Y 6 to 8) with its windows at Y 6 and 7.
+GROUND_TOP = 4
+FLOOR_LINE = 5
+UPPER_WINDOWS = (6, 7)
 
 
 def noise(x: int, y: int, z: int) -> int:
@@ -15,80 +21,178 @@ def noise(x: int, y: int, z: int) -> int:
     return ((x * 73856093) ^ (y * 83492791) ^ (z * 19349663)) >> 4 & 0xFFFF
 
 
-def gabled_shed(p: Piece, x0: int, z0: int, x1: int, z1: int, eave: int, wall, roof: str, peak: str, ridge_axis: str,
-                gable_wall=None, overhang: bool = True) -> int:
-    """A shed with walls from Y 1 to eave and a 45-degree roof over it, its ridge along ridge_axis ("x" or "z"). The span across the
-    ridge must be odd, so the ridge sits on one row. Returns the Y of the ridge."""
-    gable_wall = gable_wall or wall
-    p.walls(x0, z0, x1, z1, 1, eave, wall)
-    if ridge_axis == "x":
-        a0, a1, b0, b1 = z0, z1, x0, x1
-        down_lo, down_hi = "north", "south"
-    else:
-        a0, a1, b0, b1 = x0, x1, z0, z1
-        down_lo, down_hi = "west", "east"
-    span = a1 - a0 + 1
-    if span % 2 == 0:
-        raise ValueError(f"a gabled shed needs an odd span across its ridge, got {span}")
-    n = span // 2
+@dataclass(frozen=True)
+class Wall:
+    """One face of a box: the cells from a0 to a1 along X (a north or south face) or Z (an east or west face), at fixed, facing
+    out."""
 
-    def at(a, y, b, s):
-        if ridge_axis == "x":
-            p.set(b, y, a, s)
-        else:
-            p.set(a, y, b, s)
+    facing: str
+    fixed: int
+    a0: int
+    a1: int
 
-    for b in range(b0, b1 + 1):
-        for k in range(n):
-            at(a0 + k, eave + 1 + k, b, state(roof, facing=down_lo))
-            at(a1 - k, eave + 1 + k, b, state(roof, facing=down_hi))
-        at(a0 + n, eave + 1 + n, b, state(peak, axis=ridge_axis))
-        if overhang:
-            at(a0 - 1, eave, b, state(roof, facing=down_lo))
-            at(a1 + 1, eave, b, state(roof, facing=down_hi))
-    # The gable ends: the wall rises under the roof to meet its wedges.
-    for b in (b0, b1):
-        for k in range(n + 1):
-            for y in range(eave + 1, eave + 1 + k):
-                at(a0 + k, y, b, gable_wall)
-                if k < n:
-                    at(a1 - k, y, b, gable_wall)
-    return eave + 1 + n
+    @property
+    def along_x(self) -> bool:
+        return self.facing in ("north", "south")
+
+    def cell(self, a: int, y: int) -> tuple[int, int, int]:
+        return (a, y, self.fixed) if self.along_x else (self.fixed, y, a)
+
+    def outside(self, a: int, y: int, out: int = 1) -> tuple[int, int, int]:
+        x, y, z = self.cell(a, y)
+        dx, dz = FACING_DIR[self.facing]
+        return x + dx * out, y, z + dz * out
+
+    def cells(self) -> range:
+        return range(self.a0, self.a1 + 1)
 
 
-def lean_to(p: Piece, x0: int, z0: int, x1: int, z1: int, eave: int, wall, roof: str, falls: str) -> None:
-    """A single-slope shed against a taller wall: its roof falls toward falls, lowest over the wall on that side."""
-    p.walls(x0, z0, x1, z1, 1, eave, wall)
-    dx, dz = FACING_DIR[falls]
-    if dx:
-        lines = [((x, z) for z in range(z0, z1 + 1)) for x in (range(x1, x0 - 1, -1) if dx > 0 else range(x0, x1 + 1))]
-        ends = [((x, z0), (x, z1)) for x in (range(x1, x0 - 1, -1) if dx > 0 else range(x0, x1 + 1))]
-    else:
-        lines = [((x, z) for x in range(x0, x1 + 1)) for z in (range(z1, z0 - 1, -1) if dz > 0 else range(z0, z1 + 1))]
-        ends = [((x0, z), (x1, z)) for z in (range(z1, z0 - 1, -1) if dz > 0 else range(z0, z1 + 1))]
-    for k, (line, end) in enumerate(zip(lines, ends)):
-        for x, z in line:
-            p.set(x, eave + 1 + k, z, state(roof, facing=falls))
-        for x, z in end:
-            for y in range(eave + 1, eave + 1 + k):
-                p.set(x, y, z, wall)
+def box_walls(x0: int, z0: int, x1: int, z1: int) -> dict[str, Wall]:
+    return {"north": Wall("north", z0, x0, x1), "south": Wall("south", z1, x0, x1), "west": Wall("west", x0, z0, z1),
+            "east": Wall("east", x1, z0, z1)}
 
 
-def window_rows(p: Piece, x0: int, z0: int, x1: int, z1: int, rows, every: int, lit: str, dark: str, dark_share: int = 7,
-                skip_corners: int = 1) -> None:
-    """Windows in the walls of a box at each Y of rows, one every few blocks along each wall, facing out. About one in dark_share
-    is dark (the Company never lights them all)."""
-    sides = (("north", [(x, z0) for x in range(x0 + skip_corners, x1 - skip_corners + 1)]),
-             ("south", [(x, z1) for x in range(x0 + skip_corners, x1 - skip_corners + 1)]),
-             ("west", [(x0, z) for z in range(z0 + skip_corners, z1 - skip_corners + 1)]),
-             ("east", [(x1, z) for z in range(z0 + skip_corners, z1 - skip_corners + 1)]))
-    for facing, cells in sides:
-        for i, (x, z) in enumerate(cells):
-            if i % every:
-                continue
-            for y in rows:
-                name = dark if noise(x, y, z) % dark_share == 0 else lit
-                p.set(x, y, z, state(name, facing=facing))
+def works_hall(p: Piece, x0: int, z0: int, x1: int, z1: int, top: int, pilasters: dict[str, tuple[int, ...]]) -> dict[str, Wall]:
+    """A hall in the Works' language: riveted plate walls from Y 1 to top, red pilasters at the corners and at the given places
+    along each wall, each of those with a sodium lamp at the top of the ground floor, a brass band on the upper floor's line, lit
+    ribbon windows on the upper floor, a row of glowing crusher hatches on the ground floor, a hazard parapet and a railed flat roof
+    at top + 1 with floodlights at its corners. Returns the four walls, for doors and signs."""
+    walls = box_walls(x0, z0, x1, z1)
+    for side, wall in walls.items():
+        columns = {wall.a0, wall.a1, *pilasters.get(side, ())}
+        for a in pilasters.get(side, ()):
+            p.set(*wall.outside(a, GROUND_TOP), state("wall_lamp", facing=wall.facing))
+        for a in wall.cells():
+            for y in range(1, top + 1):
+                if a in columns:
+                    s = state("riveted_plate_red")
+                elif y == FLOOR_LINE:
+                    s = state("brass_trim")
+                elif y in UPPER_WINDOWS and top >= UPPER_WINDOWS[-1] + 1:
+                    s = state("window_ribbon_dark" if noise(*wall.cell(a, y)) % 7 == 0 else "window_ribbon_lit", facing=wall.facing)
+                elif y == 3 and (a - wall.a0) % 2 == 1:
+                    s = state("furnace_hatch", facing=wall.facing)
+                else:
+                    s = state("riveted_plate")
+                p.set(*wall.cell(a, y), s)
+    p.fill(x0 + 1, top + 1, z0 + 1, x1 - 1, top + 1, z1 - 1, state("riveted_plate"))
+    p.walls(x0, z0, x1, z1, top + 1, top + 1, state("hazard_band"))
+    railing_round(p, x0, z0, x1, z1, top + 2)
+    for x, z, facing in ((x0, z0, "north"), (x1, z0, "north"), (x0, z1, "south"), (x1, z1, "south")):
+        p.set(x, top + 2, z, state("floodlight", facing=facing))
+    return walls
+
+
+def machine_house(p: Piece, x0: int, z0: int, x1: int, z1: int, y0: int, y1: int, hatch_y: int) -> dict[str, Wall]:
+    """A plain riveted box from y0 to y1 (a crusher house on a roof, a bin house): red corners, a row of glowing crusher
+    hatches at hatch_y, a hazard band at its top and a grating roof over it."""
+    walls = box_walls(x0, z0, x1, z1)
+    for wall in walls.values():
+        for a in wall.cells():
+            for y in range(y0, y1 + 1):
+                if a in (wall.a0, wall.a1):
+                    s = state("riveted_plate_red")
+                elif y == y1:
+                    s = state("hazard_band")
+                elif y == hatch_y:
+                    s = state("furnace_hatch", facing=wall.facing)
+                else:
+                    s = state("riveted_plate")
+                p.set(*wall.cell(a, y), s)
+    p.fill(x0, y1 + 1, z0, x1, y1 + 1, z1, state("grating"))
+    return walls
+
+
+def railing_round(p: Piece, x0: int, z0: int, x1: int, z1: int, y: int) -> None:
+    """A railing round the edge of a roof or deck whose outer blocks are x0..x1, z0..z1, standing on them at y."""
+    for x in range(x0, x1 + 1):
+        p.set(x, y, z0, state("railing", facing="north"))
+        p.set(x, y, z1, state("railing", facing="south"))
+    for z in range(z0 + 1, z1):
+        p.set(x0, y, z, state("railing", facing="west"))
+        p.set(x1, y, z, state("railing", facing="east"))
+
+
+def bay(p: Piece, wall: Wall, a0: int, a1: int, height: int = GROUND_TOP) -> None:
+    """An opening a pod drives through, a0 to a1 along the wall and height blocks high: red jambs, a hazard lintel, a lamp over it
+    and a grating floor across its mouth."""
+    for a in range(a0, a1 + 1):
+        for y in range(1, height + 1):
+            p.clear(*wall.cell(a, y))
+        p.set(*wall.cell(a, height + 1), state("hazard_band"))
+        p.set(*wall.cell(a, 0), state("grating"))
+    for a in (a0 - 1, a1 + 1):
+        for y in range(1, height + 1):
+            p.set(*wall.cell(a, y), state("riveted_plate_red"))
+    p.set(*wall.outside((a0 + a1) // 2, height + 1), state("wall_lamp", facing=wall.facing))
+
+
+def canopy(p: Piece, wall: Wall, a0: int, a1: int, height: int = GROUND_TOP + 2) -> None:
+    """A railed grating canopy over a bay a0 to a1, two blocks deep, on red steel legs at its outer corners."""
+    for a in range(a0 - 1, a1 + 2):
+        for out in (1, 2):
+            p.set(*wall.outside(a, height, out), state("grating"))
+        p.set(*wall.outside(a, height + 1, 2), state("railing", facing=wall.facing))
+    for a in (a0 - 1, a1 + 1):
+        for y in range(1, height):
+            p.set(*wall.outside(a, y, 2), state("steel_beam_red", axis="y"))
+
+
+def belt(p: Piece, wall: Wall, a: int, depth: int) -> None:
+    """A belt conveyor on the floor of a bay, from its mouth depth blocks into the hall."""
+    inward = {"north": "south", "south": "north", "east": "west", "west": "east"}[wall.facing]
+    for d in range(depth):
+        p.set(*wall.outside(a, 1, -d), state("conveyor", facing=inward))
+
+
+def door(p: Piece, wall: Wall, a: int) -> None:
+    """A riveted door a player walks through, two blocks high, a lamp over it."""
+    p.set(*wall.cell(a, 1), state("winder_door", facing=wall.facing))
+    p.set(*wall.cell(a, 2), state("winder_door", facing=wall.facing))
+    p.set(*wall.cell(a, 3), state("riveted_plate"))
+    p.set(*wall.outside(a, 3), state("wall_lamp", facing=wall.facing))
+
+
+def shutter(p: Piece, wall: Wall, a0: int, a1: int, height: int = GROUND_TOP) -> None:
+    """A closed bay: a roller shutter a0 to a1 along the wall, under a hazard lintel."""
+    for a in range(a0, a1 + 1):
+        for y in range(1, height + 1):
+            p.set(*wall.cell(a, y), state("shutter", facing=wall.facing))
+        p.set(*wall.cell(a, height + 1), state("hazard_band"))
+
+
+def ladder(p: Piece, wall: Wall, a: int, y0: int, y1: int) -> None:
+    """A steel ladder up the outside of a wall."""
+    for y in range(y0, y1 + 1):
+        p.set(*wall.outside(a, y), state("steel_ladder", facing=wall.facing))
+
+
+def wall_sign(p: Piece, wall: Wall, name: str, centre: float, y: int) -> None:
+    """A Company sign on the outside of a wall, its top row at y, centred on centre along the wall."""
+    width = signs.SIGNS[name].width
+    start = round(centre - (width - 1) / 2)
+    rx, rz = READING[wall.facing]
+    first = start if (rx + rz) > 0 else start + width - 1
+    sign(p, name, *wall.outside(first, y), wall.facing)
+
+
+def track(p: Piece, x: int, z0: int, z1: int, facing: str = "south") -> None:
+    """A line of mine track along Z on the ground, from z0 to z1."""
+    for z in range(min(z0, z1), max(z0, z1) + 1):
+        p.set(x, 1, z, state("mine_track", facing=facing))
+
+
+def track_x(p: Piece, z: int, x0: int, x1: int) -> None:
+    """A line of mine track along X on the ground, from x0 to x1."""
+    for x in range(min(x0, x1), max(x0, x1) + 1):
+        p.set(x, 1, z, state("mine_track", facing="east"))
+
+
+def ore_cars(p: Piece, x: int, z: int, count: int, along: str = "z") -> None:
+    """A train of ore cars on track, coupled end to end from x, z."""
+    for i in range(count):
+        cx, cz = (x, z + i) if along == "z" else (x + i, z)
+        p.set(cx, 2, cz, state("ore_car", facing="south" if along == "z" else "east"))
 
 
 def lattice_post(p: Piece, x: int, z: int, y0: int, y1: int, girder: str) -> None:
@@ -139,6 +243,30 @@ def cone(p: Piece, cx: float, cz: float, r0: float, r1: float, y0: int, y1: int,
         cylinder(p, cx, cz, r0 + (r1 - r0) * t, y, y, wall)
 
 
+def stack(p: Piece, cx: float, cz: float, r: float, top: int) -> None:
+    """A riveted stack with hazard bands every six blocks from its top down, a brass cap and amber beacons under it."""
+    cylinder(p, cx, cz, r, 1, top, state("riveted_plate"))
+    for y in range(top - 3, 4, -6):
+        cylinder(p, cx, cz, r, y, y, state("hazard_band"))
+    cylinder(p, cx, cz, r + 0.2, top, top, state("brass_trim"))
+    ix, iz = math.floor(cx), math.floor(cz)
+    reach = math.floor(r) + 1
+    for (dx, dz), facing in (((0, -reach), "north"), ((0, reach), "south"), ((reach, 0), "east"), ((-reach, 0), "west")):
+        p.set(ix + dx, top - 1, iz + dz, state("wall_lamp", facing=facing))
+
+
+def silo(p: Piece, cx: float, cz: float, r: float, legs: int, top: int) -> None:
+    """A riveted ore bin on four steel legs: a hopper narrowing to its gate, a banded body and a red cap."""
+    ix, iz = math.floor(cx), math.floor(cz)
+    leg = math.floor(r)
+    for dx, dz in ((-leg, -leg), (leg, -leg), (-leg, leg), (leg, leg)):
+        p.fill(ix + dx, 1, iz + dz, ix + dx, legs, iz + dz, state("steel_beam", axis="y"))
+    cone(p, cx, cz, 0.9, r, legs - 2, legs, state("riveted_plate"))
+    cylinder(p, cx, cz, r, legs + 1, top - 1, state("riveted_plate"))
+    cylinder(p, cx, cz, r + 0.1, (legs + top) // 2, (legs + top) // 2, state("brass_trim"))
+    cone(p, cx, cz, r, 0.6, top, top + 1, state("riveted_plate_red"))
+
+
 def sign(p: Piece, name: str, x: int, y: int, z: int, facing: str) -> None:
     """A Company sign: its top-left tile (as the viewer sees it) at x, y, z, in the block in front of a wall, facing out."""
     rx, rz = READING[facing]
@@ -147,7 +275,7 @@ def sign(p: Piece, name: str, x: int, y: int, z: int, facing: str) -> None:
             p.set(x + rx * col, y - row, z + rz * col, state("enamel_sign", facing=facing, tile=str(tile)))
 
 
-def lamp_post(p: Piece, x: int, z: int, height: int, facings, post: str = "steel_beam") -> None:
+def lamp_post(p: Piece, x: int, z: int, height: int, facings, post: str = "pipe") -> None:
     """A steel post with a caged sodium lamp on each named side at its top."""
     p.fill(x, 1, z, x, height, z, state(post, axis="y"))
     p.set(x, 0, z, state("concrete_footing"))
@@ -156,10 +284,10 @@ def lamp_post(p: Piece, x: int, z: int, height: int, facings, post: str = "steel
         p.set(x + dx, height, z + dz, state("wall_lamp", facing=facing))
 
 
-def statue(p: Piece, figure: str, plinth_top: int, x: float = 0.5, z: float = 0.5) -> None:
-    """The Founder on top of a plinth: the body and the hands, two displays of the same scale, standing on the block above
-    plinth_top with their feet at the centre of block (x, z)."""
-    scale = sculptures.FIGURE_SCALE
+def statue(p: Piece, figure: str, plinth_top: int, height: float, x: float = 0.5, z: float = 0.5) -> None:
+    """The Founder on top of a plinth, height blocks tall: the body and the hands, two displays of the same scale, standing on
+    the block above plinth_top with their feet at the centre of block (x, z)."""
+    scale = sculptures.scale_for(figure, height)
     at = (x, plinth_top + 1.0, z)
     pivot = (sculptures.FIGURE_OFFSET[0] / 16, sculptures.FIGURE_OFFSET[1] / 16, sculptures.FIGURE_OFFSET[2] / 16)
     for piece in (figure, figure + "_hands"):
@@ -175,7 +303,7 @@ def statue(p: Piece, figure: str, plinth_top: int, x: float = 0.5, z: float = 0.
                     p.set(bx, by, bz, state("minecraft:barrier", waterlogged="false"))
 
 
-def sheave(p: Piece, centre, axle: str, diameter: float = 9.0) -> None:
+def sheave(p: Piece, centre, axle: str, diameter: float) -> None:
     """A sheave wheel, its axle along X or Z, as one display of the sheave model scaled to diameter."""
     scale = diameter * 16 / 46
     rotation = (0.0, 0.0, 0.0, 1.0) if axle == "z" else quaternion_axis_angle((0, 1, 0), 90)
@@ -190,9 +318,9 @@ def look_rotation(d) -> tuple:
     return quaternion_mul(quaternion_axis_angle((0, 1, 0), yaw), quaternion_axis_angle((1, 0, 0), -pitch))
 
 
-def gallery(p: Piece, a, b) -> None:
-    """An inclined conveyor gallery from point a (its foot) to point b: segments of the gallery model, three blocks long, end to
-    end."""
+def conveyor_truss(p: Piece, a, b) -> None:
+    """A trussed conveyor from point a to point b (the middle of its floor at each end): segments of the truss model, about three
+    blocks long, end to end."""
     d = tuple(b[i] - a[i] for i in range(3))
     length = math.sqrt(sum(c * c for c in d))
     count = max(1, round(length / 3.0))
@@ -201,7 +329,8 @@ def gallery(p: Piece, a, b) -> None:
     for i in range(count):
         t = (i + 0.5) / count
         centre = tuple(a[k] + d[k] * t for k in range(3))
-        p.display(state("colony_sculpture", piece="gallery"), centre, (1.0, 1.0, piece_length / 3.0), q, pivot=(0.5, 0.25, 0.5),
+        # The model's floor is at y -7/16 and its middle at x 8/16, z 8/16 of its first block; the segment runs z -1 to 2.
+        p.display(state("colony_sculpture", piece="truss"), centre, (1.0, 1.0, piece_length / 3.0), q, pivot=(0.5, -0.4375, 0.5),
                   view_range=8.0)
 
 
@@ -212,13 +341,8 @@ def clear(p: Piece, x0, y0, z0, x1, y1, z1) -> None:
                 p.clear(x, y, z)
 
 
-def square_paving(p: Piece, half: int, flag: str, trim: str, skip=lambda x, z: False) -> None:
+def square_paving(p: Piece, half: int, flag: str, trim: str) -> None:
     for x in range(-half, half + 1):
         for z in range(-half, half + 1):
-            if skip(x, z):
-                continue
             edge = abs(x) == half or abs(z) == half
             p.set(x, 0, z, state(trim) if edge else state(flag))
-
-
-__all__ = ["AIR"]

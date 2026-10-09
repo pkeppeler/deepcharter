@@ -6,7 +6,9 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import com.google.gson.JsonArray;
@@ -28,6 +30,7 @@ import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -42,18 +45,22 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
 import io.github.pkeppeler.deepcharter.colony.ColonyKit;
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 
 /**
- * Evidence scenario "colony-concepts" for #335: each colony concept (tools/colony/concepts.py, docs/design/colony-concepts.md) is
- * built in turn over the colony's pad in a test world, then shot from the views its layout names, by day and by night, and flown
- * round once for its GIF. Nothing a player's world builds changes: the layouts and structure files are test resources.
+ * Evidence scenario "colony-concepts" for #335 and #353: each colony layout (tools/colony/concepts.py,
+ * docs/design/colony-concepts-2.md), the four concepts and the four sizes of the statue, is built in turn over the colony's pad in a
+ * test world, with the Mole pods and players its layout stands in it for scale, then shot from the views its layout names, by day
+ * and by night; a concept is also flown round once for its GIF. Nothing a player's world builds changes: the layouts and structure
+ * files are test resources.
  *
- * <p>Before each concept the pad above the ground is cleared, but for the Conduit and the row of terminal plinths; beyond the pad
- * only the last concept's blocks go, so the plain round it keeps its shape. The ground row is put back as it was before the first
- * concept, so each concept stands on the same ground. Stills are named {@code <concept>-<view>}; the frames of concept
- * a come first, then b, then c, {@link #ORBIT_FRAMES} each.
+ * <p>Before each layout the pad above the ground is cleared, but for the Conduit and the row of terminal plinths; beyond the pad
+ * only the last layout's blocks go, so the plain round it keeps its shape. The ground row is put back as it was before the first
+ * layout, so each stands on the same ground. Stills are named {@code <layout>-<view>}; the frames are the orbits of the layouts
+ * that have one, in name order, {@link #ORBIT_FRAMES} each.
  */
 public class ColonyConceptsScenario extends EvidenceScenario {
 	private static final double EYE = 1.62;
@@ -70,6 +77,8 @@ public class ColonyConceptsScenario extends EvidenceScenario {
 	private static final long SETTLE_LIMIT_NANOS = 120_000_000_000L;
 	private static final int SETTLE_POLL_TICKS = 2;
 	private static final int SETTLE_STABLE_POLLS = 5;
+	/** The tag of the pods and players a layout stands in for scale, so the next layout takes away only those. */
+	private static final String FIGURE_TAG = "colony_concepts_figure";
 
 	private ClientGameTestContext ctx;
 	private TestSingleplayerContext sp;
@@ -79,13 +88,24 @@ public class ColonyConceptsScenario extends EvidenceScenario {
 	private record View(String name, Vec3 eye, Vec3 target, boolean night, boolean aboveGround) {
 	}
 
-	private record Layout(String name, List<Placed> pieces, List<View> views, Vec3 orbitCentre, double orbitRadius, double orbitHeight) {
+	private record Layout(String name, List<Placed> pieces, List<View> views, List<Figure> figures, Optional<Orbit> orbit) {
 		int displays() {
 			return pieces.stream().mapToInt(Placed::displays).sum();
 		}
 	}
 
 	private record Placed(Identifier structure, BlockPos offset, int displays) {
+	}
+
+	/** Something stood in a layout for scale; {@code at} is from the colony's centre, {@code yaw} Minecraft's. */
+	private record Figure(Kind kind, Vec3 at, float yaw) {
+	}
+
+	private enum Kind {
+		POD, PLAYER
+	}
+
+	private record Orbit(Vec3 centre, double radius, double height) {
 	}
 
 	@Override
@@ -103,16 +123,25 @@ public class ColonyConceptsScenario extends EvidenceScenario {
 			centre = serverGet(server -> Colony.placed(server).orElseThrow(() -> new AssertionError("the colony was not built")).center());
 			EvidenceWorld.pin(ctx, sp);
 			setUpCamera();
-			List<Layout> layouts = serverGet(ColonyConceptsScenario::layouts);
-			if (layouts.isEmpty()) {
-				throw new AssertionError("no concept layouts under data/deepcharter/colony_concept/: run tools/colony/build.py");
-			}
-			for (Layout layout : layouts) {
-				build(layout);
-				for (View view : layout.views()) {
-					shoot(layout.name() + "-" + view.name(), view);
+			try {
+				List<Layout> layouts = serverGet(ColonyConceptsScenario::layouts);
+				if (layouts.isEmpty()) {
+					throw new AssertionError("no concept layouts under data/deepcharter/colony_concept/: run tools/colony/build.py");
 				}
-				orbit(layout);
+				for (Layout layout : layouts) {
+					build(layout);
+					for (View view : layout.views()) {
+						shoot(layout.name() + "-" + view.name(), view);
+					}
+					layout.orbit().ifPresent(orbit -> orbit(layout.name(), orbit));
+				}
+			} finally {
+				serverDo(server -> figures(server.overworld()).forEach(Entity::discard));
+				ctx.runOnClient(client -> {
+					if (client.gui.hud.isHidden()) {
+						client.gui.hud.toggle();
+					}
+				});
 			}
 		}
 	}
@@ -146,8 +175,16 @@ public class ColonyConceptsScenario extends EvidenceScenario {
 			views.add(new View(view.get("name").getAsString(), vec(view.getAsJsonArray("eye")), vec(view.getAsJsonArray("target")),
 					view.get("night").getAsBoolean(), view.get("above_ground").getAsBoolean()));
 		}
-		JsonObject orbit = json.getAsJsonObject("orbit");
-		return new Layout(name, pieces, views, vec(orbit.getAsJsonArray("centre")), orbit.get("radius").getAsDouble(), orbit.get("height").getAsDouble());
+		List<Figure> figures = new ArrayList<>();
+		for (JsonElement element : json.getAsJsonArray("figures")) {
+			JsonObject figure = element.getAsJsonObject();
+			figures.add(new Figure(Kind.valueOf(figure.get("kind").getAsString().toUpperCase(Locale.ROOT)), vec(figure.getAsJsonArray("at")),
+					figure.get("yaw").getAsFloat()));
+		}
+		JsonElement orbit = json.get("orbit");
+		Optional<Orbit> lap = orbit.isJsonNull() ? Optional.empty() : Optional.of(new Orbit(vec(orbit.getAsJsonObject().getAsJsonArray("centre")),
+				orbit.getAsJsonObject().get("radius").getAsDouble(), orbit.getAsJsonObject().get("height").getAsDouble()));
+		return new Layout(name, pieces, views, figures, lap);
 	}
 
 	private static Vec3 vec(JsonArray array) {
@@ -184,9 +221,9 @@ public class ColonyConceptsScenario extends EvidenceScenario {
 					level.getChunk(cx, cz);
 				}
 			}
-			AABB box = new AABB(centre.getX() - RADIUS, centre.getY() - 2, centre.getZ() - RADIUS, centre.getX() + RADIUS + 1,
-					centre.getY() + HEIGHT + 32, centre.getZ() + RADIUS + 1);
+			AABB box = area();
 			level.getEntitiesOfClass(Display.BlockDisplay.class, box).forEach(Entity::discard);
+			figures(level).forEach(Entity::discard);
 			Set<Block> kit = Set.copyOf(ColonyKit.all());
 			// The plain the plateau is made of, from beyond the pad: the pad gets it too, so no floor of the shipping colony shows.
 			BlockState plain = level.getBlockState(centre.offset(0, 0, PAD + 12));
@@ -220,7 +257,43 @@ public class ColonyConceptsScenario extends EvidenceScenario {
 			if (displays != layout.displays()) {
 				throw new AssertionError("concept " + layout.name() + ": " + displays + " block displays stand on the pad, its layout places " + layout.displays());
 			}
+			for (Figure figure : layout.figures()) {
+				stand(server, figure);
+			}
+			int figures = figures(level).size();
+			if (figures != layout.figures().size()) {
+				throw new AssertionError("concept " + layout.name() + ": " + figures + " figures stand on the pad, its layout stands " + layout.figures().size());
+			}
 		});
+	}
+
+	/** Where a layout may build: {@link #RADIUS} round the colony's centre, from just under its ground to over the tallest piece. */
+	private AABB area() {
+		return new AABB(centre.getX() - RADIUS, centre.getY() - 2, centre.getZ() - RADIUS, centre.getX() + RADIUS + 1,
+				centre.getY() + HEIGHT + 32, centre.getZ() + RADIUS + 1);
+	}
+
+	/** The pods and players the last layout stood for scale. */
+	private List<Entity> figures(ServerLevel level) {
+		return level.getEntitiesOfClass(Entity.class, area(), entity -> entity.entityTags().contains(FIGURE_TAG));
+	}
+
+	/** Stands a Mole pod, or a mannequin in a player's shape and skin, where the layout says, for scale. */
+	private void stand(MinecraftServer server, Figure figure) {
+		ServerLevel level = server.overworld();
+		Vec3 at = Vec3.atLowerCornerOf(centre).add(figure.at());
+		switch (figure.kind()) {
+			case POD -> {
+				PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+				pod.setPos(at);
+				pod.setYRot(figure.yaw());
+				pod.addTag(FIGURE_TAG);
+				level.addFreshEntity(pod);
+			}
+			case PLAYER -> command(server, String.format(Locale.ROOT,
+					"summon minecraft:mannequin %.2f %.2f %.2f {Rotation:[%.1ff,0f],immovable:1b,hide_description:1b,Tags:[\"%s\"]}",
+					at.x, at.y, at.z, figure.yaw(), FIGURE_TAG));
+		}
 	}
 
 	// ------------------------------------------------------------------------------------------------ stills and frames
@@ -248,15 +321,15 @@ public class ColonyConceptsScenario extends EvidenceScenario {
 		}
 	}
 
-	/** One lap round the concept, looking in at its centre, from the south and on round to the east. */
-	private void orbit(Layout layout) {
-		Vec3 middle = Vec3.atLowerCornerOf(centre).add(layout.orbitCentre());
+	/** One lap round the layout, looking in at its centre, from the south and on round to the east. */
+	private void orbit(String name, Orbit orbit) {
+		Vec3 middle = Vec3.atLowerCornerOf(centre).add(orbit.centre());
 		for (int i = 0; i < ORBIT_FRAMES; i++) {
 			double angle = 2 * Math.PI * i / ORBIT_FRAMES + Math.PI / 2;
-			Vec3 eye = middle.add(Math.cos(angle) * layout.orbitRadius(), layout.orbitHeight(), Math.sin(angle) * layout.orbitRadius());
+			Vec3 eye = middle.add(Math.cos(angle) * orbit.radius(), orbit.height(), Math.sin(angle) * orbit.radius());
 			view(eye, middle);
 			if (i == 0) {
-				settle(layout.name() + " orbit");
+				settle(name + " orbit");
 			} else {
 				ctx.waitTicks(ORBIT_TICKS);
 			}
