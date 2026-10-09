@@ -141,6 +141,41 @@ def sheet(images: list, columns: int) -> list:
     return out
 
 
+def crossbar(img, background) -> float:
+    """How much a silhouette reads as a cross: the most that both sides stick out past the trunk in one row of the upper body, as
+    a multiple of the trunk's half width. The trunk is the median row of the middle of the figure (30 to 60 % down from its top);
+    the upper body is 5 to 45 % down. Arms straight out at the shoulders score 3 or more; a figure whose hands are low, forward or on
+    one side scores near 1, because at most one side sticks out in any row."""
+    rows = []
+    for y, row in enumerate(img):
+        xs = [x for x, px in enumerate(row) if px != background]
+        if xs:
+            rows.append((y, xs[0], xs[-1]))
+    if not rows:
+        raise ValueError("the silhouette is empty")
+    top, bottom = rows[0][0], rows[-1][0]
+    height = bottom - top + 1
+    by_y = {y: (lo, hi) for y, lo, hi in rows}
+    middle = [by_y[y] for y in range(top + int(0.30 * height), top + int(0.60 * height) + 1) if y in by_y]
+    centres = sorted((lo + hi) / 2 for lo, hi in middle)
+    halves = sorted((hi - lo + 1) / 2 for lo, hi in middle)
+    centre, half = centres[len(centres) // 2], halves[len(halves) // 2]
+    worst = 0.0
+    for y in range(top + int(0.05 * height), top + int(0.45 * height) + 1):
+        if y in by_y:
+            lo, hi = by_y[y]
+            worst = max(worst, min(centre - lo, hi - centre) / half)
+    return worst
+
+
+def crossbar_scores(roots, size: int = 160) -> list[tuple[float, float, float]]:
+    """(yaw, pitch, score) of every horizontal and raised view of VIEWS, black on a plain ground."""
+    quads = sculpture_quads(roots)
+    ground = (235, 228, 214)
+    return [(yaw, pitch, crossbar(render(quads, yaw, pitch, size, silhouette=True, background=ground), ground))
+            for yaw, pitch in VIEWS if pitch < 80]
+
+
 BRONZE_RGB = (176, 120, 58)
 DARK_RGB = (90, 58, 26)
 
