@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Writes the Mole concept models of #334 and #352: per concept a Bedrock .geo.json, a texture and a glowmask.
+"""Writes the Mole concept models of #334 and #366: per concept a Bedrock .geo.json, a texture and a glowmask.
 
 Usage:
   python3 -I tools/pod_concepts.py           write every concept into src/main/resources
@@ -34,12 +34,25 @@ TEXTURE_SIZE = 256
 # The bore a Mole digs, in model pixels: the model at rest must fit inside it.
 BORE_HALF_WIDTH = 16
 HITBOX_HEIGHT = 30.4
-# While the drill mount swings between level (boring a wall) and straight down (boring the floor), at every SWING_ANGLES step the
-# model stays inside the bore's sides, back and top, reaches no deeper than the slab it bores, and stands no more than
-# SWING_OVERSHOOT_PX past the bore face. That overshoot lasts a moment, and in a bore it is inside the rock.
+# The swing and bore rule (#366). The bore is 2 x 2 blocks: x and z within -16 to 16 and the model within the hitbox's height. The
+# one part allowed past the bore face is the cutter (the bones under drill_head and drill_ring), by at most CUTTER_REACH_PX, one
+# block: the block the pod is chewing. Everything else, the hull, the lamps, the yoke, stays inside the bore at rest and through
+# the whole swing from level (boring a wall) to straight down (boring the floor), checked at every SWING_ANGLES step. The cutter
+# never leads further than it does level (LUNGE_SLACK_PX of rounding apart) as the mount tips down: the cone moves back into the bore as it swings, and nothing reaches deeper than
+# FLOOR_SLAB_PX, the block being bored below.
 SWING_ANGLES = range(0, 91, 5)
-SWING_OVERSHOOT_PX = 6
+CUTTER_REACH_PX = 16
 FLOOR_SLAB_PX = 16
+# Rounding of a turned cube: the cutter may lead this much further than it does level.
+LUNGE_SLACK_PX = 0.5
+CUTTER_BONES = ("drill_head", "drill_ring")
+# A cone, not a disc (check_cone): it reaches at least CONE_MIN_LENGTH_PX forward, at least CONE_MIN_LENGTH_SHARE of its base's width
+# (a disc is a share of 0.4 or less), and narrows to CONE_TIP_SHARE of its base radius or less over its last quarter.
+CONE_MIN_LENGTH_PX = 22
+CONE_MIN_LENGTH_SHARE = 0.9
+CONE_TIP_SHARE = 0.55
+# The profile may widen by this much toward the tip (a tooth stands out from its ring).
+CONE_BUMP_PX = 1.5
 
 # ---------------------------------------------------------------------------------------------
 # Palette: one shared kit for every concept, so the user judges shapes, not paint.
@@ -162,18 +175,37 @@ def world_point(model, bone, point):
     return p
 
 
-def rest_bounds(model):
+def is_cutter(model, bone):
+    """True for a drill_head or drill_ring bone and every bone under one: the part that turns and may lead the bore face."""
+    by_name = {b.name: b for b in model.bones}
+    while bone is not None:
+        if any(bone.name == word or bone.name.startswith(word + "_") for word in CUTTER_BONES):
+            return True
+        bone = by_name.get(bone.parent)
+    return False
+
+
+def corners(model, bone, cube):
+    """The eight corners of a cube at rest, turned by its own rotation and its bones'."""
+    ox, oy, oz = cube.origin
+    sx, sy, sz = cube.size
+    for corner in ((ox + dx * sx, oy + dy * sy, oz + dz * sz) for dx in (0, 1) for dy in (0, 1) for dz in (0, 1)):
+        if cube.rotation:
+            cx, cy, cz = cube.pivot
+            local = rotate((corner[0] - cx, corner[1] - cy, corner[2] - cz), cube.rotation)
+            corner = (local[0] + cx, local[1] + cy, local[2] + cz)
+        yield world_point(model, bone, corner)
+
+
+def rest_bounds(model, cutter=None):
+    """The lowest and highest x, y and z of the model at rest. cutter picks the part: None all of it, True only the cutter, False
+    everything but the cutter. An empty part gives infinities."""
     lo = [math.inf] * 3
     hi = [-math.inf] * 3
     for bone, cube in model.cubes():
-        ox, oy, oz = cube.origin
-        sx, sy, sz = cube.size
-        for corner in ((ox + dx * sx, oy + dy * sy, oz + dz * sz) for dx in (0, 1) for dy in (0, 1) for dz in (0, 1)):
-            if cube.rotation:
-                cx, cy, cz = cube.pivot
-                local = rotate((corner[0] - cx, corner[1] - cy, corner[2] - cz), cube.rotation)
-                corner = (local[0] + cx, local[1] + cy, local[2] + cz)
-            p = world_point(model, bone, corner)
+        if cutter is not None and is_cutter(model, bone) != cutter:
+            continue
+        for p in corners(model, bone, cube):
             for i in range(3):
                 lo[i] = min(lo[i], p[i])
                 hi[i] = max(hi[i], p[i])
@@ -181,33 +213,103 @@ def rest_bounds(model):
 
 
 def check_bounds(model):
-    lo, hi = rest_bounds(model)
+    """Throws unless the model at rest fits its bore (the cutter may lead the face by CUTTER_REACH_PX) and its hitbox's height."""
     eps = 1e-6
+    lo, hi = rest_bounds(model, cutter=False)
     if lo[0] < -BORE_HALF_WIDTH - eps or hi[0] > BORE_HALF_WIDTH + eps or lo[2] < -BORE_HALF_WIDTH - eps or hi[2] > BORE_HALF_WIDTH + eps:
         raise ValueError(f"{model.name} at rest is wider than its bore: x {lo[0]:.2f}..{hi[0]:.2f}, z {lo[2]:.2f}..{hi[2]:.2f}")
     if lo[1] < -eps or hi[1] > HITBOX_HEIGHT + eps:
         raise ValueError(f"{model.name} at rest leaves 0..{HITBOX_HEIGHT} in y: {lo[1]:.2f}..{hi[1]:.2f}")
+    lo, hi = rest_bounds(model, cutter=True)
+    if not math.isfinite(lo[0]):
+        return
+    if lo[0] < -BORE_HALF_WIDTH - eps or hi[0] > BORE_HALF_WIDTH + eps or hi[2] > BORE_HALF_WIDTH + eps:
+        raise ValueError(f"{model.name}'s cutter at rest is wider than its bore: x {lo[0]:.2f}..{hi[0]:.2f}, back z {hi[2]:.2f}")
+    if lo[2] < -BORE_HALF_WIDTH - CUTTER_REACH_PX - eps:
+        raise ValueError(f"{model.name}'s cutter at rest leads the bore face by {-lo[2] - BORE_HALF_WIDTH:.2f} pixels, more than {CUTTER_REACH_PX}")
+    if lo[1] < -eps or hi[1] > HITBOX_HEIGHT + eps:
+        raise ValueError(f"{model.name}'s cutter at rest leaves 0..{HITBOX_HEIGHT} in y: {lo[1]:.2f}..{hi[1]:.2f}")
 
 
 def check_swing(model):
-    """Throws unless the model keeps the swing limits (see SWING_ANGLES) with its drill mount turned to each of SWING_ANGLES:
-    the game swings the drill from level to straight down and back."""
+    """Throws unless the model keeps the swing and bore rule (see CUTTER_REACH_PX) with its drill mount turned to each of
+    SWING_ANGLES: the game swings the drill from level to straight down and back."""
     mount = next(bone for bone in model.bones if bone.name == "drill_mount")
     rest = mount.rotation
     eps = 1e-6
+    level_lead = None
     try:
         for angle in SWING_ANGLES:
             mount.rotation = (float(angle), 0.0, 0.0)
-            lo, hi = rest_bounds(model)
             where = f"{model.name} with its drill turned {angle} degrees down"
-            if lo[0] < -BORE_HALF_WIDTH - eps or hi[0] > BORE_HALF_WIDTH + eps or hi[2] > BORE_HALF_WIDTH + eps:
-                raise ValueError(f"{where} leaves the bore's sides or back: x {lo[0]:.2f}..{hi[0]:.2f}, back z {hi[2]:.2f}")
-            if lo[2] < -BORE_HALF_WIDTH - SWING_OVERSHOOT_PX - eps:
-                raise ValueError(f"{where} stands {-lo[2] - BORE_HALF_WIDTH:.2f} pixels past the bore face, more than {SWING_OVERSHOOT_PX}")
-            if lo[1] < -FLOOR_SLAB_PX - eps or hi[1] > HITBOX_HEIGHT + eps:
-                raise ValueError(f"{where} leaves {-FLOOR_SLAB_PX}..{HITBOX_HEIGHT} in y: {lo[1]:.2f}..{hi[1]:.2f}")
+            for cutter in (False, True):
+                lo, hi = rest_bounds(model, cutter=cutter)
+                if not math.isfinite(lo[0]):
+                    continue
+                part = "its cutter" if cutter else "its hull, lamps or yoke"
+                if lo[0] < -BORE_HALF_WIDTH - eps or hi[0] > BORE_HALF_WIDTH + eps or hi[2] > BORE_HALF_WIDTH + eps:
+                    raise ValueError(f"{where}: {part} leaves the bore's sides or back: x {lo[0]:.2f}..{hi[0]:.2f}, back z {hi[2]:.2f}")
+                allowed = CUTTER_REACH_PX if cutter else 0
+                if lo[2] < -BORE_HALF_WIDTH - allowed - eps:
+                    raise ValueError(f"{where}: {part} stands {-lo[2] - BORE_HALF_WIDTH:.2f} pixels past the bore face, more than {allowed}")
+                if lo[1] < -FLOOR_SLAB_PX - eps or hi[1] > HITBOX_HEIGHT + eps:
+                    raise ValueError(f"{where}: {part} leaves {-FLOOR_SLAB_PX}..{HITBOX_HEIGHT} in y: {lo[1]:.2f}..{hi[1]:.2f}")
+                if cutter:
+                    if level_lead is None:
+                        level_lead = -lo[2]
+                    if -lo[2] > level_lead + LUNGE_SLACK_PX:
+                        raise ValueError(f"{where}: its cutter lunges forward, leading the bore face by {-lo[2] - BORE_HALF_WIDTH:.2f} pixels "
+                                         f"where it led by {level_lead - BORE_HALF_WIDTH:.2f} level")
     finally:
         mount.rotation = rest
+
+
+def cutter_profile(model):
+    """The cutter at rest, front to back: a list of (z, radius) for every whole pixel slice of z it covers, the radius being the
+    furthest a cube corner reaches from the drill head's axis among the cubes that cover the slice. Also the axis (x, y)."""
+    head = next(bone for bone in model.bones if bone.name == "drill_head")
+    axis_x, axis_y = head.pivot[0], head.pivot[1]
+    cubes = []
+    for bone, cube in model.cubes():
+        if is_cutter(model, bone):
+            points = list(corners(model, bone, cube))
+            zs = [p[2] for p in points]
+            radius = max(math.hypot(p[0] - axis_x, p[1] - axis_y) for p in points)
+            cubes.append((min(zs), max(zs), radius))
+    if not cubes:
+        raise ValueError(f"{model.name} has no cutter")
+    front = min(c[0] for c in cubes)
+    back = max(c[1] for c in cubes)
+    profile = []
+    z = math.floor(front)
+    while z < back:
+        covering = [r for lo, hi, r in cubes if lo < z + 1 - 1e-6 and hi > z + 1e-6]
+        profile.append((z, max(covering) if covering else 0.0))
+        z += 1
+    return profile
+
+
+def check_cone(model):
+    """Throws unless the cutter is a cone: long, wide at the back, and narrowing to a point, never a disc or a drum."""
+    profile = cutter_profile(model)
+    length = len(profile)
+    base = max(radius for _, radius in profile)
+    if length < CONE_MIN_LENGTH_PX:
+        raise ValueError(f"{model.name}'s cutter is {length} pixels long, under the {CONE_MIN_LENGTH_PX} of a cone")
+    if length < CONE_MIN_LENGTH_SHARE * 2 * base:
+        raise ValueError(f"{model.name}'s cutter is {length} pixels long and {2 * base:.1f} wide: a disc, not a cone "
+                         f"(it needs a length of {CONE_MIN_LENGTH_SHARE} of its width)")
+    tip = max(radius for _, radius in profile[:length // 4])
+    if tip > CONE_TIP_SHARE * base:
+        raise ValueError(f"{model.name}'s cutter is still {tip:.1f} pixels wide in its last quarter, over {CONE_TIP_SHARE} of its base's {base:.1f}")
+    # From the back to the tip the radius may only shrink, bar a tooth's height: no slice is wider than the narrowest one behind it.
+    narrowest = math.inf
+    for z, radius in reversed(profile):
+        if radius <= 0:
+            continue
+        if radius > narrowest + CONE_BUMP_PX:
+            raise ValueError(f"{model.name}'s cutter widens toward its tip at z {z}: {narrowest:.1f} behind it, {radius:.1f} there")
+        narrowest = min(narrowest, radius)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -913,23 +1015,15 @@ def gyro():
 
 
 # ---------------------------------------------------------------------------------------------
-# Round 2 (#352): the Capsule with the Borer's toothed cutter made giant
+# Round 3 (#366): the Capsule with a giant conical cutter
 # ---------------------------------------------------------------------------------------------
 
-
-def cross_disc(bone, turned, cx, cy, z0, width, depth, material, turned_material):
-    """A round-reading disc facing forward from its back face at z0: a cross of three cubes of material in bone, and the same
-    cross of turned_material in the turned bone (45 degrees about z), half a pixel back so no two faces share a plane. Two
-    materials make spokes, which show the disc turn."""
-    bar = round(width * 0.42)
-    if (width - bar) % 2:
-        bar += 1
-    stub = (width - bar) / 2
-    for b, back, paint in ((bone, 0, material), (turned, 0.5, turned_material)):
-        cz = z0 - depth / 2 + back
-        b.centred(cx, cy, cz, width, bar, depth, paint)
-        b.centred(cx, cy + (bar + stub) / 2, cz, bar, stub, depth, paint)
-        b.centred(cx, cy - (bar + stub) / 2, cz, bar, stub, depth, paint)
+# The cone points along -z from its back face at CONE_BACK_Z, on an axis CONE_AXIS_Y high. Its tip leads the bore face (z -16) by
+# less than CUTTER_REACH_PX, so it reaches only into the block the pod is chewing.
+CONE_AXIS_Y = 15
+CONE_BACK_Z = -5
+# Where the tip of the cutter goes when the mount points down: this deep in the floor slab being bored (FLOOR_SLAB_PX is 16).
+CONE_DOWN_TIP_Y = -13
 
 
 def teeth_ring(bone, cx, cy, z_face, radius, count, size=(2, 3, 2), phase=0.0):
@@ -948,165 +1042,152 @@ def mount_pivot(axis_y, tip_z, down_tip_y):
     return py, axis_y - py
 
 
-def full_face():
-    """A. Full Face: the Capsule at its own size, set back, behind the Borer's cutter made giant: a toothed disc nearly as wide
-    as the bore, a thin ring and a pilot boss, as on the Borer. It swings down under the belly on a yoke to bore the floor. The
-    brow lamps stand up on stalks either side of the cutter, so they show over its shoulders."""
-    m = Model("full_face")
+def turned(angle):
+    """A rotation of angle degrees about z for a cube, or None for none, so a cube that is not turned writes no rotation."""
+    return (0, 0, angle) if angle % 360 else None
+
+
+def slab(bone, z_front, depth, radius, material, turned_material, twist=0.0, cx=0.0, cy=CONE_AXIS_Y):
+    """A round-reading slab facing forward: two squares, the second turned 45 degrees and half a pixel back so no two faces share a
+    plane, whose corners reach radius from the axis (cx, cy). twist (degrees) turns the pair about z, so a stack of slabs with a
+    growing twist spirals. Two materials make the points of the star show the turn."""
+    side = max(2, round(radius * math.sqrt(2)))
+    z = z_front + depth / 2
+    bone.centred(cx, cy, z, side, side, depth, material, turned(twist))
+    bone.centred(cx, cy, z + 0.5, side, side, depth, turned_material, (0, 0, twist + 45))
+
+
+def cone_base(m, tip_z):
+    """What the four cones share: the Capsule set back 3 pixels, the brow lamps up on stalks beside the cone so they show over its
+    shoulders, and the yoke the cone hangs from. The hinge is placed so that the mount, turned 90 degrees, points the cone straight
+    down with its tip CONE_DOWN_TIP_Y under the middle of the pod. Returns the drill_mount bone."""
     dz = 3
     capsule_hull(m, dz, brow_lamps=False)
     lamps = m.bone("lamps", "body")
     for sx in (-1, 1):
         lamps.box(sx * 12 - 1, 21, -1, sx * 12 + 1, 24, 2, "frame")
         caged_lamp(lamps, sx * 12, 26.5, -1)
-    axis_y, back_z, tip_z = 15, -7, -16
-    py, pz = mount_pivot(axis_y, tip_z, -10)
+    capsule_running_gear(m, dz)
+    return cone_mount(m, tip_z)
+
+
+def cone_mount(m, tip_z):
+    py, pz = mount_pivot(CONE_AXIS_Y, tip_z, CONE_DOWN_TIP_Y)
     mount = m.bone("drill_mount", "body", (0, py, pz))
     for sx in (-1, 1):
-        mount.box(sx * 11 - 1, py - 1.5, back_z, sx * 11 + 1, py + 1.5, pz + 1.5, "frame")
+        mount.box(sx * 11 - 1, py - 1.5, CONE_BACK_Z, sx * 11 + 1, py + 1.5, math.ceil(pz + 1.5), "frame")
         mount.centred(sx * 11.5, py, pz, 3, 4, 4, "brass")
-    mount.box(-12, py - 1.5, back_z + 2, 12, py + 1.5, back_z + 4, "hazard")
-    mount.centred(0, axis_y, back_z + 1, 9, 9, 2, "brass")
-    head = m.bone("drill_head", "drill_mount", (0, axis_y, back_z))
-    turned = m.bone("cutter", "drill_head", (0, axis_y, back_z), (0, 0, 45))
-    cross_disc(head, turned, 0, axis_y, back_z, 27, 3, "iron", "steel")
-    cross_disc(head, turned, 0, axis_y, back_z - 3, 17, 1, "steel", "iron")
-    cross_disc(head, turned, 0, axis_y, back_z - 4, 9, 2, "iron", "steel")
-    head.centred(0, axis_y, back_z - 7.5, 5, 5, 3, "brass")
-    teeth_ring(head, 0, axis_y, back_z - 3, 12, 12, (2, 2, 3))
-    teeth_ring(head, 0, axis_y, back_z - 4, 7, 8, (2, 2, 2), 22.5)
-    capsule_running_gear(m, dz)
+    mount.box(-11, 8, CONE_BACK_Z, 11, 11, CONE_BACK_Z + 2, "hazard")
+    mount.centred(0, CONE_AXIS_Y, CONE_BACK_Z + 1, 9, 9, 2, "brass")
+    return mount
+
+
+def spinner(m, name, parent="drill_mount"):
+    return m.bone(name, parent, (0, CONE_AXIS_Y, CONE_BACK_Z))
+
+
+def fluted():
+    """A. Fluted: an auger cone, from the twist drill's helical flutes and the ribbed conical nose of Trebelev's subterrene. Nine
+    slabs shrink from the bore's width to a point, and each carries a cross of two blades turned a little more than the one behind
+    it, so the four flutes spiral up the cone like a screw. Bright blades over a dark core, which sits a pixel deep, so the flutes
+    have a floor."""
+    m = Model("fluted")
+    cone_base(m, -32)
+    head = spinner(m, "drill_head")
+    radii = (12.5, 11, 9.5, 8, 6.5, 5, 3.5, 2.5)
+    z = CONE_BACK_Z
+    for k, radius in enumerate(radii):
+        z -= 3
+        twist = 16 * k
+        length = round(2 * radius)
+        blade = max(2, round(radius * 0.4))
+        zc = z + 1.5
+        head.centred(0, CONE_AXIS_Y, zc, length, blade, 3, "steel", turned(twist))
+        head.centred(0, CONE_AXIS_Y, zc + 0.5, blade, length, 3, "steel", turned(twist))
+        core = max(2, round(radius * 1.1))
+        head.centred(0, CONE_AXIS_Y, zc + 1, core, core, 3, "iron", turned(twist + 22.5))
+    z -= 3
+    head.centred(0, CONE_AXIS_Y, z + 1.5, 3, 3, 3, "brass")
     return m
 
 
-def small_cab():
-    """B. Small Cab: the cutter is the machine and a shrunk Capsule rides behind it. The cutter is a drum as wide as the bore,
-    painted like the hull and turning one way, with a dark toothed face turning the other. The cab's lamps stand on a roof bar
-    that is wider than the cab, so they show over the drum's shoulders."""
-    m = Model("small_cab")
-    body = m.bone("body")
-    bevelled_box(body, -7, 9, 2, 7, 20, 14, 2, "paint")
-    body.box(-7.5, 13, 1.5, 7.5, 14, 14.5, "trim")
-    body.box(-5, 20, 4, 5, 22, 11, "paint")
-    body.box(-5, 11, 14, 5, 18, 15, "grille")
-    body.box(-6, 7, 3, 6, 9, 13, "iron")
-    canopy = m.bone("canopy", "body")
-    canopy.box(-5, 15, 1, 5, 19, 2, "glass")
-    canopy.box(-8, 15, 4, -7, 19, 8, "glass")
-    canopy.box(7, 15, 4, 8, 19, 8, "glass")
-    canopy.box(-6, 19, 0.5, 6, 20, 2.5, "brass")
-    canopy.box(-6, 14, 0.5, 6, 15, 2.5, "brass")
-    lamps = m.bone("lamps", "body")
-    lamps.box(-10, 22, 4, 10, 23, 6, "frame")
-    for sx in (-1, 1):
-        caged_lamp(lamps, sx * 9.5, 25.5, 3)
-    exhaust = m.bone("exhaust", "body")
-    exhaust.box(-6, 18, 11, -4, 25, 13, "exhaust")
-    exhaust.box(-6.5, 25, 10.5, -3.5, 26, 13.5, "frame")
-    exhaust.box(4, 22, 10, 5, 28, 11, "frame")
-    exhaust.box(3.5, 28, 9.5, 5.5, 29, 11.5, "trim")
-    mast = m.bone("mast", "body")
-    mast.box(-1, 22, 7, 1, 25, 9, "frame")
-    rotor = m.bone("rotor", "mast", (0, 26, 8))
-    rotor.box(-1.5, 25, 6.5, 1.5, 27, 9.5, "brass")
-    rotor.box(-12, 25.5, 7, -2, 26.5, 9, "paint")
-    rotor.box(2, 25.5, 7, 12, 26.5, 9, "paint")
-    rotor.box(-14, 25.5, 7, -12, 26.5, 9, "trim")
-    rotor.box(12, 25.5, 7, 14, 26.5, 9, "trim")
-    axis_y, back_z, tip_z = 15, -3, -16
-    py, pz = mount_pivot(axis_y, tip_z, -10)
-    mount = m.bone("drill_mount", "body", (0, py, pz))
-    for sx in (-1, 1):
-        mount.box(sx * 9 - 1, py - 1.5, back_z, sx * 9 + 1, py + 1.5, pz + 1.5, "frame")
-        mount.centred(sx * 8.5, py, pz, 2, 4, 4, "brass")
-    mount.centred(0, axis_y, back_z + 1, 11, 11, 2, "brass")
-    drum = m.bone("drill_ring", "drill_mount", (0, axis_y, back_z))
-    drum_turned = m.bone("cutter_drum", "drill_ring", (0, axis_y, back_z), (0, 0, 45))
-    cross_disc(drum, drum_turned, 0, axis_y, back_z, 27, 6, "paint", "paint")
-    cross_disc(drum, drum_turned, 0, axis_y, back_z - 6, 27, 1, "trim", "trim")
-    teeth_ring(drum, 0, axis_y, back_z - 7, 12, 10, (2, 2, 2))
-    head = m.bone("drill_head", "drill_mount", (0, axis_y, back_z - 7))
-    turned = m.bone("cutter", "drill_head", (0, axis_y, back_z - 7), (0, 0, 45))
-    cross_disc(head, turned, 0, axis_y, back_z - 7, 19, 2, "iron", "steel")
-    cross_disc(head, turned, 0, axis_y, back_z - 9, 9, 2, "steel", "iron")
-    head.centred(0, axis_y, back_z - 12, 4, 4, 2, "brass")
-    teeth_ring(head, 0, axis_y, back_z - 9, 7.5, 8, (2, 2, 2), 22.5)
-    track(m, "l", "body", 8, 13, 0, 15, 7, ((3, 5), (8, 4), (13, 4)))
-    track(m, "r", "body", -13, -8, 0, 15, 7, ((3, 5), (8, 4), (13, 4)))
-    fender = m.bone("fender", "body")
-    fender.box(7, 7, -1, 13, 8, 16, "paint")
-    fender.box(-13, 7, -1, -7, 8, 16, "paint")
+def stacked():
+    """B. Stacked: rings of teeth, the Atlantis digger's cutter drawn as a cone. Six toothed rings shrink toward a brass nose, every
+    ring stands a step proud of the one in front, and alternate rings turn against each other so the cone churns."""
+    m = Model("stacked")
+    cone_base(m, -31)
+    head = spinner(m, "drill_head")
+    ring = spinner(m, "drill_ring")
+    steps = ((12.5, 4), (10, 4), (7.5, 4), (5.5, 4), (3.5, 4), (2, 3))
+    z = CONE_BACK_Z
+    for k, (radius, depth) in enumerate(steps):
+        z -= depth
+        bone = head if k % 2 == 0 else ring
+        slab(bone, z, depth, radius, "iron" if k % 2 == 0 else "brass", "steel" if k % 2 == 0 else "iron")
+        if radius >= 4:
+            teeth_ring(bone, 0, CONE_AXIS_Y, z, radius - 1.5, 8, (2, 3, 2), 22.5 * (k % 2))
+    z -= 3
+    head.centred(0, CONE_AXIS_Y, z + 1.5, 3, 3, 3, "brass")
+    head.centred(0, CONE_AXIS_Y, z + 0.5, 1, 1, 1, "teeth")
     return m
 
 
-def stepped():
-    """C. Stepped: the Capsule at its own size behind a stepped cutter of three toothed rings and a pilot cone. The middle ring
-    turns the other way from the rest, so the face churns, and every tooth stands proud. The cutter sits in a heavy frame on the
-    hull, open at the top so the pilot sees over it, on a big brass hub, and the lamps ride the tops of the frame's posts."""
-    m = Model("stepped")
-    dz = 3
-    capsule_hull(m, dz, brow_lamps=False)
-    frame = m.bone("frame", "body")
-    for sx in (-1, 1):
-        frame.box(sx * 14.5 - 1.5, 1, -6, sx * 14.5 + 1.5, 26, -3, "frame")
-        frame.box(sx * 13 - 1, 26, -3, sx * 13 + 1, 28, 2, "frame")
-    frame.box(-13, 1, -6, 13, 3, -3, "hazard")
-    lamps = m.bone("lamps", "body")
-    for sx in (-1, 1):
-        caged_lamp(lamps, sx * 12.5, 26, -6)
-    axis_y, back_z, tip_z = 14.5, -4, -16
-    py, pz = mount_pivot(axis_y, tip_z, -10)
-    mount = m.bone("drill_mount", "body", (0, py, pz))
-    mount.centred(0, axis_y, back_z + 1.5, 13, 13, 3, "tank")
-    mount.box(-3, axis_y - 3, back_z + 3, 3, axis_y + 3, back_z + 10, "frame")
-    head = m.bone("drill_head", "drill_mount", (0, axis_y, back_z))
-    turned = m.bone("cutter", "drill_head", (0, axis_y, back_z), (0, 0, 45))
-    ring = m.bone("drill_ring", "drill_mount", (0, axis_y, back_z))
-    ring_turned = m.bone("cutter_ring", "drill_ring", (0, axis_y, back_z), (0, 0, 45))
-    cross_disc(head, turned, 0, axis_y, back_z, 25, 3, "iron", "steel")
-    teeth_ring(head, 0, axis_y, back_z - 3, 11, 10, (2, 2, 3))
-    cross_disc(ring, ring_turned, 0, axis_y, back_z - 3, 18, 3, "steel", "iron")
-    teeth_ring(ring, 0, axis_y, back_z - 6, 7.5, 8, (2, 2, 3), 22.5)
-    cross_disc(head, turned, 0, axis_y, back_z - 6, 10, 3, "iron", "steel")
-    head.centred(0, axis_y, back_z - 10, 6, 6, 2, "brass")
-    head.centred(0, axis_y, back_z - 11.5, 3, 3, 1, "teeth")
-    capsule_running_gear(m, dz)
+def tricone():
+    """C. Tricone: an oil-well roller bit, three toothed cones on one hub, leaning in so their tips meet at a point. Each cone is a
+    stack of squares turned to lie along its own axis, with a tooth on every flank of every other step. A collar of teeth on the
+    hub turns against the cones."""
+    m = Model("tricone")
+    cone_base(m, -31)
+    head = spinner(m, "drill_head")
+    ring = spinner(m, "drill_ring")
+    slab(ring, CONE_BACK_Z - 3, 3, 12.5, "frame", "iron")
+    teeth_ring(ring, 0, CONE_AXIS_Y, CONE_BACK_Z - 3, 11, 8, (2, 3, 3), 22.5)
+    hub_z = CONE_BACK_Z - 3 - 3
+    slab(head, hub_z, 3, 9.5, "steel", "iron")
+    steps = (9, 8, 6, 4, 3, 2)
+    for angle in (0, 120, 240):
+        a = math.radians(angle)
+        base = (6 * math.sin(a), CONE_AXIS_Y + 6 * math.cos(a), hub_z)
+        tip = (0.8 * math.sin(a), CONE_AXIS_Y + 0.8 * math.cos(a), hub_z - 19)
+        length = math.dist(base, tip)
+        unit = tuple((t - b) / length for b, t in zip(base, tip))
+        pitch = math.degrees(math.atan2(unit[1], math.hypot(unit[0], unit[2])))
+        yaw = math.degrees(math.atan2(unit[0], unit[2]))
+        pace = length / len(steps)
+        for n, side in enumerate(steps):
+            centre = tuple(b + u * (pace * (n + 0.5)) for b, u in zip(base, unit))
+            head.centred(*centre, side, side, math.ceil(pace) + 1, "drill", (pitch, yaw, 0))
+            if n % 2 == 0 and side >= 5:
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    head.centred(centre[0] + dx * side / 2, centre[1] + dy * side / 2, centre[2] - pace / 2, 2, 2, 2, "teeth")
+    head.centred(0, CONE_AXIS_Y, hub_z - 18.5, 3, 3, 3, "brass")
     return m
 
 
-def boom():
-    """D. Boom: the Capsule at its own size, set back, with the cutter held out ahead on a heavy boom and four bracing struts
-    back to the hull, so there is daylight between drill and cab. The cutter sits a little low and the brow lamps stand on short
-    stalks, so they show over it, and the pilot looks over its rim."""
-    m = Model("boom")
-    dz = 3
-    capsule_hull(m, dz, brow_lamps=False)
-    lamps = m.bone("lamps", "body")
-    for sx in (-1, 1):
-        lamps.box(sx * 6 - 1, 24, -2, sx * 6 + 1, 25, 0, "frame")
-        caged_lamp(lamps, sx * 6, 27, -3)
-    axis_y, back_z, tip_z = 13.5, -11, -16
-    py, pz = mount_pivot(axis_y, tip_z, -10)
-    mount = m.bone("drill_mount", "body", (0, py, pz))
-    mount.box(-2.5, axis_y - 2.5, back_z, 2.5, axis_y + 2.5, -1, "frame")
-    mount.box(-3, axis_y - 3, -6, 3, axis_y + 3, -5, "hazard")
-    mount.centred(0, axis_y, back_z + 1, 9, 9, 2, "brass")
-    for sx in (-1, 1):
-        for sy, y_hull in ((1, 20), (-1, 7)):
-            x0, y0, z0 = sx * 6, axis_y + sy * 6, back_z + 1
-            x1, y1, z1 = sx * 9, y_hull, -2
-            length = math.dist((x0, y0, z0), (x1, y1, z1))
-            yaw = math.degrees(math.atan2(x1 - x0, z1 - z0))
-            pitch = math.degrees(math.atan2(y1 - y0, math.hypot(x1 - x0, z1 - z0)))
-            mount.centred((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, 2, 2, round(length), "frame", (pitch, yaw, 0))
-    head = m.bone("drill_head", "drill_mount", (0, axis_y, back_z))
-    turned = m.bone("cutter", "drill_head", (0, axis_y, back_z), (0, 0, 45))
-    cross_disc(head, turned, 0, axis_y, back_z, 25, 2, "iron", "steel")
-    cross_disc(head, turned, 0, axis_y, back_z - 2, 13, 2, "steel", "iron")
-    head.centred(0, axis_y, back_z - 4.5, 5, 5, 1, "brass")
-    teeth_ring(head, 0, axis_y, back_z - 2, 11, 12, (2, 2, 3))
-    teeth_ring(head, 0, axis_y, back_z - 4, 5, 6, (2, 2, 1), 30)
-    capsule_running_gear(m, dz)
+def cluster():
+    """D. Cluster: one long cone ringed by five short ones, as in a cluster of shaped charges or a bundle of drill steels. The long
+    cone is the head and ends in a point; the five short cones ride a carrier that turns the other way, so they circle it."""
+    m = Model("cluster")
+    cone_base(m, -32)
+    head = spinner(m, "drill_head")
+    ring = spinner(m, "drill_ring")
+    slab(ring, CONE_BACK_Z - 3, 3, 12.5, "frame", "iron")
+    z = CONE_BACK_Z - 3
+    for index in range(5):
+        a = math.radians(18 + 72 * index)
+        cx, cy = 9.5 * math.sin(a), CONE_AXIS_Y + 9.5 * math.cos(a)
+        zs = z
+        for side, depth in ((6, 4), (4, 4), (3, 3)):
+            zs -= depth
+            ring.centred(cx, cy, zs + depth / 2, side, side, depth, "drill")
+        ring.centred(cx, cy, zs - 1, 2, 2, 2, "teeth")
+    zc = z
+    for k, (radius, depth) in enumerate(((6.5, 4), (5.5, 4), (4.5, 4), (3.5, 4), (2.5, 4), (1.5, 3))):
+        zc -= depth
+        slab(head, zc, depth, radius, "steel", "iron")
+        if k < 4:
+            teeth_ring(head, 0, CONE_AXIS_Y, zc, radius - 1, 6, (2, 2, 2), 30 * (k % 2))
+    head.centred(0, CONE_AXIS_Y, zc, 2, 2, 2, "brass")
     return m
 
 
@@ -1115,11 +1196,13 @@ CONCEPTS = {
     "borer": borer,
     "strider": strider,
     "gyro": gyro,
-    "full_face": full_face,
-    "small_cab": small_cab,
-    "stepped": stepped,
-    "boom": boom,
+    "fluted": fluted,
+    "stacked": stacked,
+    "tricone": tricone,
+    "cluster": cluster,
 }
+# The round-3 concepts, which must read as cones (check_cone).
+CONES = ("fluted", "stacked", "tricone", "cluster")
 
 
 # ---------------------------------------------------------------------------------------------
@@ -1183,6 +1266,8 @@ def build(name):
     model = CONCEPTS[name]()
     check_bounds(model)
     check_swing(model)
+    if name in CONES:
+        check_cone(model)
     pack(model)
     base, glow = paint_model(model)
     return model, {

@@ -44,9 +44,10 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 	/**
 	 * A drill that reaches this far from its axis, in pixels, spins at the full rate. A wider one spins slower, by the square of its
 	 * reach: one that reaches twice as far turns at a quarter of the rate, so a giant cutter turns with weight and not like a toy.
-	 * Every round-1 drill reaches 7.5 or less.
+	 * Every round-1 drill reaches 7.5 or less; the round-3 cones reach about 12.7, so they turn at 0.4.
 	 */
 	private static final double FULL_SPIN_REACH = 8;
+	private static final int CUBE_CORNERS = 8;
 
 	/** A bone: its pivot and rest rotation (degrees, applied z, then y, then x) are in model space, as in the file. */
 	public record Bone(String name, BoneRole role, Optional<String> parent, Vec3 pivot, Vec3 rotation, List<Cube> cubes) {
@@ -121,19 +122,31 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 
 	/**
 	 * How far the cubes of the spinning drill bones ({@code drill_head} and {@code drill_ring}, not their children) reach from the
-	 * bone's axis across x or y, in pixels: half the width of the cutter. A turned cube counts as its unturned box, which for the
-	 * small turned teeth on a cutter's face is within a pixel.
+	 * bone's axis across x or y, in pixels: half the width of the cutter at its widest. A turned cube counts at its turned corners,
+	 * so the flutes of an auger cone or the tilted rollers of a tricone bit count for the width they really have. The bone's own
+	 * rest rotation is not applied: a spinning bone is drawn upright, and turns about its own z axis.
 	 */
 	public double drillReach() {
 		double reach = 0;
 		for (Bone spinning : bones.stream().filter(bone -> bone.role() == BoneRole.DRILL_HEAD || bone.role() == BoneRole.DRILL_RING).toList()) {
 			for (Cube cube : spinning.cubes()) {
-				Vec3 low = cube.origin().subtract(spinning.pivot());
-				Vec3 high = low.add(cube.size());
-				reach = Math.max(reach, Math.max(Math.max(Math.abs(low.x), Math.abs(high.x)), Math.max(Math.abs(low.y), Math.abs(high.y))));
+				for (int corner = 0; corner < CUBE_CORNERS; corner++) {
+					Vec3 point = cube.origin().add((corner & 1) * cube.size().x, (corner >> 1 & 1) * cube.size().y, (corner >> 2 & 1) * cube.size().z);
+					if (cube.turn().isPresent()) {
+						point = turn(point, cube.turn().get().pivot(), cube.turn().get().rotation());
+					}
+					Vec3 across = point.subtract(spinning.pivot());
+					reach = Math.max(reach, Math.max(Math.abs(across.x), Math.abs(across.y)));
+				}
 			}
 		}
 		return reach;
+	}
+
+	/** Bedrock's rotation in y-up space: x, then y, then z, with the x and z angles turning the other way from ModelPart's y-down space. */
+	private static Vec3 turn(Vec3 point, Vec3 pivot, Vec3 degrees) {
+		return point.subtract(pivot).xRot((float) Math.toRadians(degrees.x)).yRot((float) Math.toRadians(degrees.y))
+				.zRot((float) Math.toRadians(degrees.z)).add(pivot);
 	}
 
 	/** The bones that name {@code parent} as their parent, in file order. */

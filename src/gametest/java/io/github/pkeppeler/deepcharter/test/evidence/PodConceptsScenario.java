@@ -55,9 +55,9 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
 /**
- * Evidence scenario "pod-concepts": the Mole concepts the user is picking from now, round 2 (#352), each picked in turn with the
+ * Evidence scenario "pod-concepts": the Mole concepts the user is picking from now, round 3 (#366), each picked in turn with the
  * dev switch and a resource reload. Round 1 (#334) is recorded by this scenario at commit 20a09d42, and its media is on
- * pr-media/342.
+ * pr-media/342; round 2 (#352), at commit 57886d39, on pr-media/360.
  *
  * <p>The scene is the regolith plain south of the colony, in the design tour's world, under the brightest dusk of the sky (the
  * surface's own look, which the tour calls noon). Per concept: a turntable of the parked pod (front, three-quarter, side, back),
@@ -72,8 +72,8 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
  * {@code n * 157 + 45} (turntable) and {@code n * 157 + 46} to {@code n * 157 + 157} (clip), which is how the per-concept GIFs are cut.
  */
 public class PodConceptsScenario extends EvidenceScenario {
-	/** Round 2: the Capsule with the Borer's cutter made giant. */
-	private static final List<PodConcept> CONCEPTS = PodConcept.ofRound(2);
+	/** Round 3: the Capsule with a giant conical cutter. */
+	private static final List<PodConcept> CONCEPTS = PodConcept.ofRound(3);
 	/** The design tour's world, so the plain and the mesa behind it are the ones the tour shows. */
 	private static final String SEED = "deepcharter-design-tour";
 	/** The stage is the flattest ground from this far to {@value #STAGE_SEARCH} blocks south of the colony's centre, in steps of {@value #STAGE_STEP}. */
@@ -101,15 +101,18 @@ public class PodConceptsScenario extends EvidenceScenario {
 	private static final int TURNTABLE_FRAMES = TURN_FRAMES + RISE_FRAMES;
 	private static final int APPROACH_FRAMES = 8;
 	private static final int TICKS_PER_APPROACH_FRAME = 2;
-	/** The ledge is chewed one tick a frame: at the giant cutters' turn, under half a tooth's spacing a frame, so the turn reads forward. */
+	/** The ledge is chewed one tick a frame: at the cones' turn (16 degrees a tick), under half the 45 degrees between their points, so the turn reads forward. */
 	private static final int CHEW_FRAMES = 58;
 	private static final int FLOOR_FRAMES = 30;
 	private static final int FLY_FRAMES = 16;
+	/** The floor-boring still comes this many frames in: the mount has swung most of the way, and the cone points almost straight down. */
+	private static final int BORE_STILL_FRAME = 3;
 	private static final int TICKS_PER_FLY_FRAME = 3;
 	private static final int CLIP_FRAMES = APPROACH_FRAMES + CHEW_FRAMES + FLOOR_FRAMES + FLY_FRAMES;
 	private static final int FRAMES_PER_CONCEPT = TURNTABLE_FRAMES + CLIP_FRAMES;
 
-	private static final double TURNTABLE_DISTANCE = 3.4;
+	/** The cone leads the hull by two blocks, so the camera stands back far enough to keep its tip in view when it points at the camera. */
+	private static final double TURNTABLE_DISTANCE = 3.6;
 	private static final double TURNTABLE_PITCH = 16;
 	private static final double ABOVE_PITCH = 86;
 	/** The turntable frame of the three-quarter still: the pod turned 40 degrees from facing the camera, showing its front and its left side. */
@@ -120,7 +123,7 @@ public class PodConceptsScenario extends EvidenceScenario {
 	private static final float FACING_CAMERA = 180f;
 	/** The pilot looks east, along the clip. */
 	private static final float CLIP_YAW = -90f;
-	private static final float FIRST_PERSON_PITCH = 12f;
+	private static final float FIRST_PERSON_PITCH = 20f;
 
 	private static final Input DRIVE = new Input(true, false, false, false, false, false, false);
 	private static final Input BORE_DOWN = new Input(false, false, false, false, false, false, true);
@@ -378,10 +381,10 @@ public class PodConceptsScenario extends EvidenceScenario {
 		lookFrom(eye, CLIP_YAW, FIRST_PERSON_PITCH);
 		settle();
 		shot(concept, "first-person");
-		// Drive east at the ledge and chew into it, seen from beyond the ledge and to the pod's left, riding along with it: the
-		// cutter's top half stands over the rock and turns toward the camera.
-		Vec3 chewOffset = new Vec3(3.0, 1.5, -2.1);
-		Vec3 cutter = new Vec3(1.0, 0.2, 0);
+		// Drive east at the ledge and chew into it, seen from above and to the pod's left, riding along with it: the cone's tip
+		// leads the pod by two blocks and goes into the rock first, and its turn shows against the cut.
+		Vec3 chewOffset = new Vec3(0.6, 3.6, -3.4);
+		Vec3 cutter = new Vec3(1.6, 0.1, 0);
 		look(start.add(chewOffset), start.add(cutter));
 		settle();
 		serverDo(server -> pilot.setInput(DRIVE));
@@ -402,13 +405,13 @@ public class PodConceptsScenario extends EvidenceScenario {
 		releasePilot();
 		Vec3 floor = start.add(0, 0, -5);
 		placePiloted(floor, CLIP_YAW);
-		look(floor.add(2.0, 2.4, -1.8), floor.add(0, 0.1, 0));
+		look(floor.add(2.9, 1.5, -2.6), floor.add(0.2, 0.2, 0));
 		settle();
 		serverDo(server -> pilot.setInput(BORE_DOWN));
 		for (int i = 0; i < FLOOR_FRAMES; i++) {
 			ctx.waitTick();
 			frame();
-			if (i == FLOOR_FRAMES * 2 / 3) {
+			if (i == BORE_STILL_FRAME) {
 				shot(concept, "boring-the-floor");
 			}
 		}
@@ -416,7 +419,7 @@ public class PodConceptsScenario extends EvidenceScenario {
 		serverDo(server -> pilot.setInput(LIFT));
 		for (int i = 0; i < FLY_FRAMES; i++) {
 			Vec3 pod = serverGet(server -> piloted.position());
-			Vec3 at = pod.add(2.8, 0.9, -2.8);
+			Vec3 at = pod.add(3.6, 1.0, -3.4);
 			look(new Vec3(at.x, Math.max(at.y, floor.y + 1.2), at.z), pod);
 			ctx.waitTicks(TICKS_PER_FLY_FRAME); // tick-wait: the clip is cut at fixed frames
 			frame();
@@ -433,7 +436,7 @@ public class PodConceptsScenario extends EvidenceScenario {
 		Vec3 at = new Vec3(clipGround.getX(), clipGround.getY(), clipGround.getZ() + 4);
 		placePiloted(at, CLIP_YAW);
 		setTime(NIGHT, EvidenceWorld.SKY_DARKEST);
-		look(at.add(3.0, 1.3, -1.6), at);
+		look(at.add(3.8, 2.3, -3.2), at.add(0.6, 0, 0));
 		settle();
 		shot(concept, "lit");
 		setTime(NOON, EvidenceWorld.SKY_BRIGHTEST);
