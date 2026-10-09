@@ -77,7 +77,8 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
 		int[] window = context.computeOnClient(client -> new int[] {client.getWindow().getWidth(), client.getWindow().getHeight()});
 		if (window[0] != WIDTH || window[1] != HEIGHT) {
 			throw new AssertionError("The client window is " + window[0] + "x" + window[1] + " but evidence frames are " + WIDTH + "x" + HEIGHT
-					+ ": a frame of another size resizes the window and lays the GUI out differently from a player's");
+					+ ": a frame of another size resizes the window and lays the GUI out differently from a player's."
+					+ " Launch the client at the default " + WIDTH + "x" + HEIGHT + " window; HiDPI scaling or a resized window breaks evidence frames");
 		}
 		context.takeScreenshot(TestScreenshotOptions.of(fileName)
 				.disableCounterPrefix()

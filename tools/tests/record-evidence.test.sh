@@ -83,7 +83,7 @@ over=$((5 * 1024 * 1024 + 1))
 # A GIF that fits on the first try is built once, at full rate and size.
 run GIF_FRAMES=
 check "a GIF that fits is built once" gif_tries 1
-check "the first try is 15 fps at 800px" log_has "fps=15,scale=800:-1"
+check "the first try is 15 fps at 854px" log_has "fps=15,scale=854:-1"
 
 try_gone() { [[ ! -e $work/build/evidence/demo/demo.gif.try ]]; }
 
@@ -95,7 +95,7 @@ check "an empty ladder runs no ffmpeg" no_ffmpeg
 run GIF_LADDER=10
 check "a rung with no colon exits 2" exit_is 2
 check "a rung with no colon names the setting" err_has GIF_LADDER
-run "GIF_LADDER=10:800 fast:big"
+run "GIF_LADDER=10:854 fast:big"
 check "a non-numeric rung exits 2" exit_is 2
 check "a non-numeric rung runs no ffmpeg" no_ffmpeg
 

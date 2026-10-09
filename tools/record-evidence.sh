@@ -8,7 +8,7 @@
 #   frames/frame-NNNN.png   frame sequence
 #   screenshots/*.png       stills
 #   <scenario>.mp4          linked from the PR
-#   <scenario>.gif          inlined in the PR (about 800px wide, kept under 5 MB)
+#   <scenario>.gif          inlined in the PR (about 854px wide, kept under 5 MB)
 # Publish with: tools/pr-media.sh <pr-number> build/evidence/<scenario>/*.gif ...
 #
 # Only the scenario's own class runs (-PclientTests=<class>, see gradle/gametest.gradle), so a recording
@@ -36,7 +36,7 @@ set -euo pipefail
 FPS=15
 GIF_MAX_BYTES=${GIF_MAX_BYTES:-$((5 * 1024 * 1024))}
 GIF_FRAMES=${GIF_FRAMES:-}
-GIF_LADDER=${GIF_LADDER-"15:800 10:800 10:640 8:560 6:480 5:400 4:320"}
+GIF_LADDER=${GIF_LADDER-"15:854 10:854 10:640 8:560 6:480 5:400 4:320"}
 
 usage() {
   echo "usage: tools/record-evidence.sh <scenario> [--no-run] [--full-suite]  |  --print-class" >&2
@@ -66,7 +66,7 @@ for rung in $GIF_LADDER; do
   [[ $rung =~ ^[0-9]+:[0-9]+$ ]] || ladder_ok=0
 done
 if [[ -z ${GIF_LADDER//[[:space:]]/} || $ladder_ok -eq 0 ]]; then
-  echo "GIF_LADDER must be a list of fps:width rungs such as \"10:800 6:480\"" >&2
+  echo "GIF_LADDER must be a list of fps:width rungs such as \"10:854 6:480\"" >&2
   exit 2
 fi
 
