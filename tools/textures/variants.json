@@ -3,26 +3,19 @@
   "variants": {
     "b": {
       "palettes": [],
-      "recipes": [
-        "tools/textures/variants/b/recipes"
-      ],
+      "recipes": ["tools/textures/variants/b/recipes"],
       "pack": "src/gametest/resources/resourcepacks/texture_density_b",
       "sheet": "docs/design/texture-density/b-reference.png"
     },
     "c": {
       "palettes": [],
-      "recipes": [
-        "tools/textures/variants/c/recipes"
-      ],
+      "recipes": ["tools/textures/variants/c/recipes"],
       "pack": "src/gametest/resources/resourcepacks/texture_density_c",
       "sheet": "docs/design/texture-density/c-reference.png"
     },
     "d": {
       "palettes": [],
-      "recipes": [
-        "tools/textures/variants/b/recipes",
-        "tools/textures/variants/d/recipes"
-      ],
+      "recipes": ["tools/textures/variants/b/recipes", "tools/textures/variants/d/recipes"],
       "pack": "src/gametest/resources/resourcepacks/texture_density_d",
       "sheet": "docs/design/texture-density/d-reference.png"
     }

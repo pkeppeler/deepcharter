@@ -107,13 +107,32 @@ class TexturePacksTest(unittest.TestCase):
                             if x in (0, size - 1) or y in (0, size - 1)}
                     self.assertEqual(set(), edge - ore - {(0, 0, 0, 0)})
 
-    def test_an_ore_overlay_never_glows(self):
+    def test_an_ore_overlay_never_glows_and_is_cutout(self):
+        """No glow recipe, no emissive or light property in an ore's models or blockstates, and only clear or opaque pixels: 26.3 puts
+        a face in the cutout layer from its sprite's transparency, so a half-clear pixel would make the overlay translucent."""
         shipped = texgen.shipped()
         keys = [key for key in shipped.keys if "_ore_overlay_" in key]
         self.assertTrue(keys)
         for key in keys:
             with self.subTest(texture=key):
                 self.assertIsNone(shipped.book.recipes[key].glow)
+                image = pngio.decode((shipped.out / f"{key}.png").read_bytes())
+                self.assertTrue(set(image.pixels[3::4]) <= {0, 255}, "an overlay pixel is half clear")
+        glow_keys = {"light_emission", "emissive", "block_light", "sky_light", "light", "emission"}
+
+        def lit(body) -> list[str]:
+            if isinstance(body, dict):
+                return [k for k in body if k in glow_keys] + [f for v in body.values() for f in lit(v)]
+            if isinstance(body, list):
+                return [f for v in body for f in lit(v)]
+            return []
+
+        assets = MOD_ASSETS / "deepcharter"
+        files = sorted(assets.glob("models/block/*ore_overlay*.json")) + sorted(assets.glob("blockstates/*ium_ore.json"))
+        self.assertEqual(29 + 7, len(files))
+        for path in files:
+            with self.subTest(file=path.name):
+                self.assertEqual([], lit(json.loads(path.read_text())))
 
     def test_every_ore_has_a_look_from_b1_b3_and_b4_or_a_blend_and_the_page_says_which(self):
         """B1 is a cluster, B3 a seams thread, B4 a cluster in a socket. Each ore's four textures are one look, the ores use all
