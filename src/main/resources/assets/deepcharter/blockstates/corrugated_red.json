@@ -1,0 +1,18 @@
+{
+  "variants": {
+    "": [
+      {
+        "model": "deepcharter:block/colony/corrugated_red",
+        "weight": 8
+      },
+      {
+        "model": "deepcharter:block/colony/corrugated_red_streaked",
+        "weight": 3
+      },
+      {
+        "model": "deepcharter:block/colony/corrugated_red_patched",
+        "weight": 2
+      }
+    ]
+  }
+}

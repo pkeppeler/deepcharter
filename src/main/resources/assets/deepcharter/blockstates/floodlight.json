@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "deepcharter:block/colony/floodlight"
+    },
+    "facing=east": {
+      "model": "deepcharter:block/colony/floodlight",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "deepcharter:block/colony/floodlight",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "deepcharter:block/colony/floodlight",
+      "y": 270
+    }
+  }
+}

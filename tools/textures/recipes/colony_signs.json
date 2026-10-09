@@ -1,0 +1,3396 @@
+{
+ "recipes": {
+  "block/colony/sign/tile_0": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "biiiiiiiiiiiiiii",
+      "bipppppppppppppp",
+      "bipppppppppppppp",
+      "bipppppppkpppkpp",
+      "bipppppppksppksp",
+      "bipppppppksppksp",
+      "bipppppppkkkkksp",
+      "bipppppppksssksp",
+      "bipppppppksppksp",
+      "bipppppppksppksp",
+      "bippppppppspppsp",
+      "bipppppppppppppp",
+      "bipppppppppppppp",
+      "biiiiiiiiiiiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3600
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3500,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_1": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiiiiiiiiiiiii",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "ppppppppppkkkppp",
+      "pppppppppkpsskpk",
+      "pppppppppkspppsk",
+      "pppppppppksppppk",
+      "pppppppppksppppk",
+      "kkpppppppksppkpk",
+      "kkspppppppkkkpsp",
+      "pssppppppppssspp",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "iiiiiiiiiiiiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3601
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3501,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_2": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiiiiiiiiiiiii",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "kkkppkppppppkkkp",
+      "psskpksppppkpssk",
+      "sppksksppppksppk",
+      "sppksksppppksppk",
+      "sppksksppppksppk",
+      "sppksksppppksppk",
+      "kkkpskkkkkppkkkp",
+      "psssppsssssppsss",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "iiiiiiiiiiiiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3602
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3502,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_3": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiiiiiiiiiiiii",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "pkpppkppppppkkpp",
+      "pkkpkksppppkpskp",
+      "skskpksppppkskps",
+      "skskskspppppkpsp",
+      "skspsksppppkpkpk",
+      "sksppksppppkspkp",
+      "sksppkspppppkkpk",
+      "ppspppsppppppssp",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "iiiiiiiiiiiiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3603
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3503,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_4": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiiiiiiiiiiiii",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "ppppppkkkpppkkkp",
+      "pppppkpsskpkpssk",
+      "pppppkspppsksppk",
+      "pppppksppppksppk",
+      "pppppksppppksppk",
+      "sppppksppkpksppk",
+      "ppppppkkkpspkkkp",
+      "sppppppssspppsss",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "iiiiiiiiiiiiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3604
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3504,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_5": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiiiiiiiiiiiib",
+      "ppppppppppppppib",
+      "ppppppppppppppib",
+      "ppppppppppppppib",
+      "ppppppppppppppib",
+      "spppppppppppppib",
+      "spppppppppppppib",
+      "spppppppppppppib",
+      "spkkppppppppppib",
+      "spkkspppppppppib",
+      "pppsspppppppppib",
+      "ppppppppppppppib",
+      "ppppppppppppppib",
+      "iiiiiiiiiiiiiiib",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3605
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3505,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_6": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "biiiiiiiiiiiiiii",
+      "bipppppppppppppp",
+      "bipppppppppppppp",
+      "bipppppkkkppkkkk",
+      "bippppkpsskpksss",
+      "bippppksppkskspp",
+      "bippppksppkskkkk",
+      "bippppksppksksks",
+      "bippppksppkskspk",
+      "bipppppkkkpskspp",
+      "bippppppsssppspp",
+      "bipppppppppppppp",
+      "bipppppppppppppp",
+      "biiiiiiiiiiiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3606
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3506,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_7": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiiiiiiiiiiiii",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "ppkkkkkpppppkppp",
+      "kpksssssppppkspp",
+      "ksksppppppppkspp",
+      "pskkkkppppppkkkk",
+      "spksssspppppksss",
+      "ppksppppppppkspp",
+      "kpkkkkkpppppkspp",
+      "pspssssspppppspp",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "iiiiiiiiiiiiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3607
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3507,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_8": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiiiiiiiiiiiii",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "kppkkkppkpppkppk",
+      "kskpsskpksppkskp",
+      "ksksppksksppksks",
+      "ksksppksksppkspk",
+      "ksksppksksppkspp",
+      "ksksppksksppkspp",
+      "kspkkkpspkkkpskk",
+      "psppssspppssspps",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "iiiiiiiiiiiiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3608
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3508,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_9": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiiiiiiiiiiiib",
+      "ppppppppppppppib",
+      "ppppppppppppppib",
+      "kkkpkkkkkpppppib",
+      "ssssksssssppppib",
+      "ppppksppppppppib",
+      "kkppkkkkppppppib",
+      "sskpksssspppppib",
+      "ppksksppppppppib",
+      "kkpskkkkkpppppib",
+      "sssppsssssppppib",
+      "ppppppppppppppib",
+      "ppppppppppppppib",
+      "iiiiiiiiiiiiiiib",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3609
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3509,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_10": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "biiiiiiiiiiiiiii",
+      "bipppppppppppppp",
+      "bipppppppppppppp",
+      "bipppkkkkpkpppkp",
+      "bippkpssssksppks",
+      "bippksppppksppks",
+      "bipppkkkppkkkkks",
+      "bippppsskpksssks",
+      "bippppppksksppks",
+      "bippkkkkpsksppks",
+      "bipppssssppsppps",
+      "bipppppppppppppp",
+      "bipppppppppppppp",
+      "biiiiiiiiiiiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3610
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3510,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_11": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiiiiiiiiiiiii",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "pkkkppkkkkkpkkkk",
+      "kpsskpkssssspsks",
+      "ksppksksppppppks",
+      "kkkkkskkkkppppks",
+      "ksssksksssspppks",
+      "ksppksksppppppks",
+      "ksppksksppppppks",
+      "pspppspsppppppps",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "iiiiiiiiiiiiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3611
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3511,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_12": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiiiiiiiiiiiii",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "kpppppkpppkppkkk",
+      "ssppppkkppkskpss",
+      "ppppppkskpkskspp",
+      "ppppppkspkkskspp",
+      "ppppppksppkskspp",
+      "ppppppksppkskspp",
+      "ppppppksppkspkkk",
+      "pppppppspppsppss",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "iiiiiiiiiiiiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3612
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3512,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_13": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiiiiiiiiiiiib",
+      "ppppppppppppppib",
+      "ppppppppppppppib",
+      "ppppppppkpppppib",
+      "kppppppkksppppib",
+      "ksppppppksppppib",
+      "ksppppppksppppib",
+      "ksppppppksppppib",
+      "ksppppppksppppib",
+      "pspppppkkkppppib",
+      "spppppppssspppib",
+      "ppppppppppppppib",
+      "ppppppppppppppib",
+      "iiiiiiiiiiiiiiib",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3613
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3513,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_14": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "steel.1"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "steel.1",
+      "b": "brass.3",
+      "i": "steel.0",
+      "k": "sodium.2",
+      "s": "steel.0",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "biiiiiiiiiiiiiii",
+      "bipppppppppppppp",
+      "bipppppppppppppp",
+      "bipppppppkkkkppk",
+      "bipppppppkssskpk",
+      "bipppppppksppksk",
+      "bipppppppksppksk",
+      "bipppppppksppksk",
+      "bipppppppksppksk",
+      "bipppppppkkkkpsk",
+      "bippppppppsssspp",
+      "bipppppppppppppp",
+      "bipppppppppppppp",
+      "biiiiiiiiiiiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "steel.0"
+     ],
+     "density": 0.012,
+     "seed": 3614
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3514,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_14_glow": {
+   "kind": "cutout",
+   "glow": {
+    "over": "block/colony/sign/tile_14"
+   },
+   "layers": [
+    {
+     "op": "pixels",
+     "legend": {
+      "g": "sodium.5"
+     },
+     "rows": [
+      "................",
+      "................",
+      "................",
+      "................",
+      ".........gggg..g",
+      ".........g...g.g",
+      ".........g...g.g",
+      ".........g...g.g",
+      ".........g...g.g",
+      ".........g...g.g",
+      ".........gggg..g",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................"
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_15": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "steel.1"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "steel.1",
+      "b": "brass.3",
+      "i": "steel.0",
+      "k": "sodium.2",
+      "s": "steel.0",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiiiiiiiiiiiii",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "kkkkpkkkkkpkkkkp",
+      "sssssksssssksssk",
+      "sppppksppppksppk",
+      "kkkppkkkkppkkkkp",
+      "sssspksssspkssss",
+      "sppppksppppksppp",
+      "kkkkpkkkkkpksppp",
+      "ssssspssssspsppp",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "iiiiiiiiiiiiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "steel.0"
+     ],
+     "density": 0.012,
+     "seed": 3615
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3515,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_15_glow": {
+   "kind": "cutout",
+   "glow": {
+    "over": "block/colony/sign/tile_15"
+   },
+   "layers": [
+    {
+     "op": "pixels",
+     "legend": {
+      "g": "sodium.5"
+     },
+     "rows": [
+      "................",
+      "................",
+      "................",
+      "................",
+      "gggg.ggggg.gggg.",
+      ".....g.....g...g",
+      ".....g.....g...g",
+      "ggg..gggg..gggg.",
+      ".....g.....g....",
+      ".....g.....g....",
+      "gggg.ggggg.g....",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................"
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_16": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "steel.1"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "steel.1",
+      "b": "brass.3",
+      "i": "steel.0",
+      "k": "sodium.2",
+      "s": "steel.0",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiiiiiiiiiiiii",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "pkkkkkpkkkkppppp",
+      "pkssssskssskpppp",
+      "sksppppksppksppp",
+      "skkkkppkkkkpsppp",
+      "pksssspksksspppp",
+      "pksppppkspkppppp",
+      "pkkkkkpksppkpppp",
+      "ppssssspspppsppp",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "iiiiiiiiiiiiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "steel.0"
+     ],
+     "density": 0.012,
+     "seed": 3616
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3516,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_16_glow": {
+   "kind": "cutout",
+   "glow": {
+    "over": "block/colony/sign/tile_16"
+   },
+   "layers": [
+    {
+     "op": "pixels",
+     "legend": {
+      "g": "sodium.5"
+     },
+     "rows": [
+      "................",
+      "................",
+      "................",
+      "................",
+      ".ggggg.gggg.....",
+      ".g.....g...g....",
+      ".g.....g...g....",
+      ".gggg..gggg.....",
+      ".g.....g.g......",
+      ".g.....g..g.....",
+      ".ggggg.g...g....",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................"
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_17": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "steel.1"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "steel.1",
+      "b": "brass.3",
+      "i": "steel.0",
+      "k": "sodium.2",
+      "s": "steel.0",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiiiiiiiiiiiii",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "pkkkkkppkkkpppkk",
+      "ppskssskpsskpkps",
+      "pppksppksppksksp",
+      "pppksppksppksksk",
+      "pppksppksppksksp",
+      "pppksppksppksksp",
+      "pppkspppkkkpspkk",
+      "ppppsppppsssppps",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "iiiiiiiiiiiiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "steel.0"
+     ],
+     "density": 0.012,
+     "seed": 3617
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3517,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_17_glow": {
+   "kind": "cutout",
+   "glow": {
+    "over": "block/colony/sign/tile_17"
+   },
+   "layers": [
+    {
+     "op": "pixels",
+     "legend": {
+      "g": "sodium.5"
+     },
+     "rows": [
+      "................",
+      "................",
+      "................",
+      "................",
+      ".ggggg..ggg...gg",
+      "...g...g...g.g..",
+      "...g...g...g.g..",
+      "...g...g...g.g.g",
+      "...g...g...g.g..",
+      "...g...g...g.g..",
+      "...g....ggg...gg",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................"
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_18": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "steel.1"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "steel.1",
+      "b": "brass.3",
+      "i": "steel.0",
+      "k": "sodium.2",
+      "s": "steel.0",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiiiiiiiiiiiii",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "kppkkkkkpkkkkkpk",
+      "skpkssssspsksssk",
+      "ppsksppppppksppk",
+      "kkpkkkkppppksppk",
+      "sksksssspppksppk",
+      "pksksppppppksppk",
+      "kkskkkkkpppksppk",
+      "ssspssssspppsppp",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "iiiiiiiiiiiiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "steel.0"
+     ],
+     "density": 0.012,
+     "seed": 3618
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3518,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_18_glow": {
+   "kind": "cutout",
+   "glow": {
+    "over": "block/colony/sign/tile_18"
+   },
+   "layers": [
+    {
+     "op": "pixels",
+     "legend": {
+      "g": "sodium.5"
+     },
+     "rows": [
+      "................",
+      "................",
+      "................",
+      "................",
+      "g..ggggg.ggggg.g",
+      ".g.g.......g...g",
+      "...g.......g...g",
+      "gg.gggg....g...g",
+      ".g.g.......g...g",
+      ".g.g.......g...g",
+      "gg.ggggg...g...g",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................"
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_19": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "steel.1"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "steel.1",
+      "b": "brass.3",
+      "i": "steel.0",
+      "k": "sodium.2",
+      "s": "steel.0",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiiiiiiiiiiiii",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "pppkpkkkkkpkkkkp",
+      "sppksksssssksssk",
+      "sppksksppppksppk",
+      "kkkkskkkkppkkkkp",
+      "sssksksssspkskss",
+      "sppksksppppkspkp",
+      "sppkskkkkkpksppk",
+      "spppspssssspsppp",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "iiiiiiiiiiiiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "steel.0"
+     ],
+     "density": 0.012,
+     "seed": 3619
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3519,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_19_glow": {
+   "kind": "cutout",
+   "glow": {
+    "over": "block/colony/sign/tile_19"
+   },
+   "layers": [
+    {
+     "op": "pixels",
+     "legend": {
+      "g": "sodium.5"
+     },
+     "rows": [
+      "................",
+      "................",
+      "................",
+      "................",
+      "...g.ggggg.gggg.",
+      "...g.g.....g...g",
+      "...g.g.....g...g",
+      "gggg.gggg..gggg.",
+      "...g.g.....g.g..",
+      "...g.g.....g..g.",
+      "...g.ggggg.g...g",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................"
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_20": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "steel.1"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "steel.1",
+      "b": "brass.3",
+      "i": "steel.0",
+      "k": "sodium.2",
+      "s": "steel.0",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiiiiiiiiiiiib",
+      "ppppppppppppppib",
+      "ppppppppppppppib",
+      "pppkppppppppppib",
+      "pppkspppppppppib",
+      "sppkspppppppppib",
+      "sppkspppppppppib",
+      "pppkspppppppppib",
+      "ppppspppppppppib",
+      "pppkppppppppppib",
+      "spppspppppppppib",
+      "ppppppppppppppib",
+      "ppppppppppppppib",
+      "iiiiiiiiiiiiiiib",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "steel.0"
+     ],
+     "density": 0.012,
+     "seed": 3620
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3520,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_20_glow": {
+   "kind": "cutout",
+   "glow": {
+    "over": "block/colony/sign/tile_20"
+   },
+   "layers": [
+    {
+     "op": "pixels",
+     "legend": {
+      "g": "sodium.5"
+     },
+     "rows": [
+      "................",
+      "................",
+      "................",
+      "................",
+      "...g............",
+      "...g............",
+      "...g............",
+      "...g............",
+      "...g............",
+      "................",
+      "...g............",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................"
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_21": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "biiiiiiiiiiiiiii",
+      "bipppppppppppppp",
+      "bipppppppppppppp",
+      "bipppppppppkkkkp",
+      "bipppppppppksssk",
+      "bipppppppppksppk",
+      "bipppppppppkkkkp",
+      "bipppppppppkssss",
+      "bipppppppppksppp",
+      "bipppppppppksppp",
+      "bippppppppppsppp",
+      "bipppppppppppppp",
+      "bipppppppppppppp",
+      "biiiiiiiiiiiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3621
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3521,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_22": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiiiiiiiiiiiii",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "ppkkkppkpppkpppp",
+      "pkpsskpksppksppp",
+      "sksppkspkpkpsppp",
+      "skkkkksppkpspppp",
+      "pksssksppksppppp",
+      "pksppksppksppppp",
+      "pksppksppksppppp",
+      "ppspppspppsppppp",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "iiiiiiiiiiiiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3622
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3522,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_23": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiiiiiiiiiiiii",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "ppkkkppkkkkkpkkk",
+      "pkpsskpkssssskss",
+      "pksppksksppppksp",
+      "pksppkskkkkppkkk",
+      "pksppksksssspkss",
+      "pksppksksppppksp",
+      "ppkkkpsksppppksp",
+      "pppsssppspppppsp",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "iiiiiiiiiiiiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3623
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3523,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_24": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiiiiiiiiiiiii",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "kkppkkkpppkkkppk",
+      "sssppksspkpsskpk",
+      "pppppksppkspppsk",
+      "kppppksppksppppk",
+      "sspppksppksppppk",
+      "pppppksppksppkpk",
+      "ppppkkkpppkkkpsk",
+      "pppppssspppssspp",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "iiiiiiiiiiiiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3624
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3524,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_25": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiiiiiiiiiiiib",
+      "ppppppppppppppib",
+      "ppppppppppppppib",
+      "kkkkppppppppppib",
+      "ssssspppppppppib",
+      "spppppppppppppib",
+      "kkkpppppppppppib",
+      "ssssppppppppppib",
+      "spppppppppppppib",
+      "kkkkppppppppppib",
+      "ssssspppppppppib",
+      "ppppppppppppppib",
+      "ppppppppppppppib",
+      "iiiiiiiiiiiiiiib",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3625
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3525,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_26": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "brass.4"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "brass.4",
+      "b": "brass.2",
+      "i": "brass.6",
+      "k": "brass.1",
+      "s": "brass.3",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "biiiiiiiiiiiiiii",
+      "bipppppppppppppp",
+      "bipppppppppppppp",
+      "bipppppppkkkppkp",
+      "bippppppkpsskpks",
+      "bippppppksppksks",
+      "bippppppksppksks",
+      "bippppppksppksks",
+      "bippppppksppksks",
+      "bipppppppkkkpspk",
+      "bippppppppsssppp",
+      "bipppppppppppppp",
+      "bipppppppppppppp",
+      "biiiiiiiiiiiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "brass.3"
+     ],
+     "density": 0.012,
+     "seed": 3626
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3526,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_27": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "brass.4"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "brass.4",
+      "b": "brass.2",
+      "i": "brass.6",
+      "k": "brass.1",
+      "s": "brass.3",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiiiiiiiiiiiii",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "ppkpkkkkppppppkk",
+      "ppkskssskpppppks",
+      "ppksksppksppppks",
+      "ppkskkkkpsppppkk",
+      "ppksksksspppppks",
+      "ppkskspkppppppks",
+      "kkpsksppkpppppks",
+      "sssppspppsppppps",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "iiiiiiiiiiiiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "brass.3"
+     ],
+     "density": 0.012,
+     "seed": 3627
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3527,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_28": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "brass.4"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "brass.4",
+      "b": "brass.2",
+      "i": "brass.6",
+      "k": "brass.1",
+      "s": "brass.3",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiiiiiiiiiiiii",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "kkkppkkkppkpppkp",
+      "sssskpsskpksppks",
+      "ppppksppksksppks",
+      "kkppksppksksppks",
+      "ssspksppksksppks",
+      "ppppksppksksppks",
+      "pppppkkkpspkkkps",
+      "ppppppssspppsssp",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "iiiiiiiiiiiiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "brass.3"
+     ],
+     "density": 0.012,
+     "seed": 3628
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3528,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_29": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "brass.4"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "brass.4",
+      "b": "brass.2",
+      "i": "brass.6",
+      "k": "brass.1",
+      "s": "brass.3",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiiiiiiiiiiiii",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "kpppkpkkkkppkkkk",
+      "kkppkskssskpksss",
+      "kskpksksppkskspp",
+      "kspkksksppkskkkk",
+      "ksppksksppksksss",
+      "ksppksksppkskspp",
+      "ksppkskkkkpskkkk",
+      "pspppspssssppsss",
+      "pppppppppppppppp",
+      "pppppppppppppppp",
+      "iiiiiiiiiiiiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "brass.3"
+     ],
+     "density": 0.012,
+     "seed": 3629
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3529,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_30": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "brass.4"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "brass.4",
+      "b": "brass.2",
+      "i": "brass.6",
+      "k": "brass.1",
+      "s": "brass.3",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiiiiiiiiiiiib",
+      "ppppppppppppppib",
+      "ppppppppppppppib",
+      "kpkkkkppppppppib",
+      "sskssskpppppppib",
+      "ppksppksppppppib",
+      "ppkkkkpsppppppib",
+      "spksksspppppppib",
+      "ppkspkppppppppib",
+      "kpksppkpppppppib",
+      "sspspppsppppppib",
+      "ppppppppppppppib",
+      "ppppppppppppppib",
+      "iiiiiiiiiiiiiiib",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "brass.3"
+     ],
+     "density": 0.012,
+     "seed": 3630
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3530,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_31": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "steel.4",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "bbbbbbbbbbbiiiii",
+      "bbbbbbbbbiiiiipp",
+      "bbbbbbbiiiippppp",
+      "bbbbbbiiippppppp",
+      "bbbbbiippppppppp",
+      "bbbbiisspppppppp",
+      "bbbiiSsssppppppp",
+      "bbbiipSssspppppp",
+      "bbiippSSsssppppp",
+      "bbiipppSSsswpppp",
+      "biipppppkkkkkkkk",
+      "biippppKkkkkkkkk",
+      "biipKKKkkkkkkkkk",
+      "bipppKKkkekkkkkk",
+      "bippppppkkkkkkkk"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3631
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3531,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_32": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "steel.4",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "iiiiibbbbbbbbbbb",
+      "ppiiiiibbbbbbbbb",
+      "pppppiiiibbbbbbb",
+      "pppppppiiibbbbbb",
+      "pppppppppiibbbbb",
+      "ppppppppssiibbbb",
+      "pppppppsssSiibbb",
+      "ppppppsssSpiibbb",
+      "pppppsssSSppiibb",
+      "ppppwssSSpppiibb",
+      "kkkkkkkkpppppiib",
+      "kkkkkkkkKppppiib",
+      "kkkkkkkkkKKKpiib",
+      "kkkkkkekkKKpppib",
+      "kkkkkkkkppppppib"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3632
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3532,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_33": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "steel.4",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bippppppkkkkkkkk",
+      "bipppppppkkkkkkk",
+      "biippppppkkkkkkk",
+      "biipppppppkkkkkk",
+      "biipppppppkmmmmm",
+      "bbiippppppkmnmmm",
+      "bbiipppppppkmmmm",
+      "bbbiipwppppkkkkk",
+      "bbbiiwpppppppppp",
+      "bbbbiipppppppppp",
+      "bbbbbiippppppppp",
+      "bbbbbbiiippppppp",
+      "bbbbbbbiiiippppp",
+      "bbbbbbbbbiiiiipp",
+      "bbbbbbbbbbbiiiii",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3633
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3533,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_34": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "steel.4",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "kkkkkkkkppppppib",
+      "kkkkkkkpppppppib",
+      "kkkkkkkppppppiib",
+      "kkkkkkpppppppiib",
+      "mmmmmkpppppppiib",
+      "mmmnmkppppppiibb",
+      "mmmmkpppppppiibb",
+      "kkkkkppppwpiibbb",
+      "ppppppppppwiibbb",
+      "ppppppppppiibbbb",
+      "pppppppppiibbbbb",
+      "pppppppiiibbbbbb",
+      "pppppiiiibbbbbbb",
+      "ppiiiiibbbbbbbbb",
+      "iiiiibbbbbbbbbbb",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3634
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3534,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_35": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "biiiiiiiiiiiiiib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "biiiiiiiiiiiiiib",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3635
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3535,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_36": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "biiiiiiiiiiiiiib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "biiiiiiiiiiiiiib",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3636
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3536,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_37": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "biiiiiiiiiiiiiib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "biiiiiiiiiiiiiib",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3637
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3537,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_38": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "biiiiiiiiiiiiiib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "biiiiiiiiiiiiiib",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3638
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3538,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_39": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "biiiiiiiiiiiiiib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "biiiiiiiiiiiiiib",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3639
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3539,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_40": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "biiiiiiiiiiiiiib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "biiiiiiiiiiiiiib",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3640
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3540,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_41": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "biiiiiiiiiiiiiib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "biiiiiiiiiiiiiib",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3641
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3541,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_42": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "biiiiiiiiiiiiiib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "biiiiiiiiiiiiiib",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3642
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3542,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_43": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "biiiiiiiiiiiiiib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "biiiiiiiiiiiiiib",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3643
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3543,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_44": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "biiiiiiiiiiiiiib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "biiiiiiiiiiiiiib",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3644
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3544,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_45": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "biiiiiiiiiiiiiib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "biiiiiiiiiiiiiib",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3645
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3545,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_46": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "biiiiiiiiiiiiiib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "biiiiiiiiiiiiiib",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3646
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3546,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/sign/tile_47": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "enamel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "p": "enamel.2",
+      "b": "company.1",
+      "i": "company.2",
+      "k": "company.2",
+      "s": "enamel.1",
+      "w": "brass.4",
+      "S": "steel.2",
+      "K": "company.1",
+      "m": "company.3",
+      "n": "company.0",
+      "e": "enamel.3"
+     },
+     "rows": [
+      "bbbbbbbbbbbbbbbb",
+      "biiiiiiiiiiiiiib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "bippppppppppppib",
+      "biiiiiiiiiiiiiib",
+      "bbbbbbbbbbbbbbbb"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.1"
+     ],
+     "density": 0.012,
+     "seed": 3647
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3547,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  }
+ }
+}
