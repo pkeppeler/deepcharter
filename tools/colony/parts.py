@@ -147,10 +147,6 @@ def sign(p: Piece, name: str, x: int, y: int, z: int, facing: str) -> None:
             p.set(x + rx * col, y - row, z + rz * col, state("enamel_sign", facing=facing, tile=str(tile)))
 
 
-def sign_width(name: str) -> int:
-    return signs.SIGNS[name].width
-
-
 def lamp_post(p: Piece, x: int, z: int, height: int, facings, post: str = "steel_beam") -> None:
     """A steel post with a caged sodium lamp on each named side at its top."""
     p.fill(x, 1, z, x, height, z, state(post, axis="y"))

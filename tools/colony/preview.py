@@ -227,7 +227,6 @@ def square_crossbar_scores(roots, plinth_top: int, scale: float, size: int = 200
 
 
 BRONZE_RGB = (176, 120, 58)
-DARK_RGB = (90, 58, 26)
 
 
 def sculpture_quads(piece_roots) -> list:
