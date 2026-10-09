@@ -33,13 +33,18 @@ public final class ColonyBlocks {
 	public static void register() {
 	}
 
-	private static Block register(String path, SoundType sound, Function<BlockBehaviour.Properties, Block> factory) {
-		Identifier id = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path);
-		ResourceKey<Block> blockKey = ResourceKey.create(Registries.BLOCK, id);
-		Block block = Registry.register(BuiltInRegistries.BLOCK, blockKey, factory.apply(BlockBehaviour.Properties.of()
-				.setId(blockKey).strength(-1.0F, 3_600_000.0F).sound(sound).noLootTable()));
-		ResourceKey<Item> itemKey = ResourceKey.create(Registries.ITEM, id);
+	/** Registers a colony block, Company property as above, and its item. The colony kit ({@link ColonyKit}) registers through it too. */
+	static Block register(String path, SoundType sound, Function<BlockBehaviour.Properties, Block> factory) {
+		Block block = registerBlock(path, sound, factory);
+		ResourceKey<Item> itemKey = ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
 		Registry.register(BuiltInRegistries.ITEM, itemKey, new BlockItem(block, new Item.Properties().setId(itemKey).useBlockDescriptionPrefix()));
 		return block;
+	}
+
+	/** Registers a colony block with no item, for a block that is never placed by hand. */
+	static Block registerBlock(String path, SoundType sound, Function<BlockBehaviour.Properties, Block> factory) {
+		ResourceKey<Block> blockKey = ResourceKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
+		return Registry.register(BuiltInRegistries.BLOCK, blockKey, factory.apply(BlockBehaviour.Properties.of()
+				.setId(blockKey).strength(-1.0F, 3_600_000.0F).sound(sound).noLootTable()));
 	}
 }

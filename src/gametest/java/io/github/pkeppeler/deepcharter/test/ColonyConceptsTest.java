@@ -2,11 +2,8 @@ package io.github.pkeppeler.deepcharter.test;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.Reader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -17,6 +14,7 @@ import com.google.gson.JsonParser;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
+import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -35,20 +33,17 @@ import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.phys.AABB;
 
-import io.github.pkeppeler.deepcharter.DeepCharter;
-import io.github.pkeppeler.deepcharter.colony.ColonyKit;
 
 /**
- * Server GameTests for #335: the colony concepts' structure files load, name only blocks and properties that exist, place every
- * block and every display they hold, and fit the pad the evidence scenario clears; and every state of every kit block has a model
- * in its blockstate file.
+ * Server GameTests for #335: the colony concepts' structure files are of the game's data version, load, name only blocks and
+ * properties that exist, place every block and every display they hold, and fit the pad the evidence scenario clears.
+ * (AssetCompletenessTest covers the kit blocks' blockstates and models.)
  *
  * <p>Minecraft reads an unknown block in a structure as air and drops an unknown property without a word, so a renamed kit block
  * would only show as a hole in a still. These tests read the files themselves and fail instead.
@@ -81,39 +76,6 @@ public class ColonyConceptsTest {
 		finish(helper, problems);
 	}
 
-	@GameTest
-	public void everyKitBlockStateHasAVariant(GameTestHelper helper) throws IOException {
-		List<String> problems = new ArrayList<>();
-		for (Block block : ColonyKit.all()) {
-			Identifier id = BuiltInRegistries.BLOCK.getKey(block);
-			String path = "/assets/" + DeepCharter.MOD_ID + "/blockstates/" + id.getPath() + ".json";
-			try (InputStream stream = ColonyConceptsTest.class.getResourceAsStream(path)) {
-				if (stream == null) {
-					problems.add(id + ": no " + path);
-					continue;
-				}
-				JsonObject variants = JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8)).getAsJsonObject().getAsJsonObject("variants");
-				List<Map<String, String>> keys = new ArrayList<>();
-				for (String key : variants.keySet()) {
-					keys.add(parseVariant(key));
-				}
-				for (BlockState state : block.getStateDefinition().getPossibleStates()) {
-					Map<String, String> wanted = new HashMap<>();
-					for (Property<?> property : state.getProperties()) {
-						wanted.put(property.getName(), valueName(state, property));
-					}
-					if (!keys.contains(wanted)) {
-						problems.add(id + ": no variant for " + wanted);
-					}
-				}
-			}
-		}
-		if (ColonyKit.all().size() < 30) {
-			problems.add("the kit has " + ColonyKit.all().size() + " blocks: the walk is not looking at ColonyKit");
-		}
-		finish(helper, problems);
-	}
-
 	private static void checkPiece(MinecraftServer server, String concept, JsonObject piece, List<String> problems) throws IOException {
 		Identifier id = Identifier.parse(piece.get("structure").getAsString());
 		Optional<StructureTemplate> template = server.getStructureTemplateManager().get(id);
@@ -133,6 +95,11 @@ public class ColonyConceptsTest {
 		CompoundTag root;
 		try (InputStream stream = server.getResourceManager().getResourceOrThrow(file).open()) {
 			root = NbtIo.readCompressed(stream, NbtAccounter.unlimitedHeap());
+		}
+		int version = root.getIntOr("DataVersion", -1);
+		if (version != SharedConstants.getCurrentVersion().dataVersion().version()) {
+			problems.add(concept + ": " + id + " is of data version " + version + ", the game " + SharedConstants.getCurrentVersion().dataVersion().version()
+					+ ": set piece.DATA_VERSION in tools/colony/piece.py and check the structure format (26.3 changed the block-state keys)");
 		}
 		ListTag palette = root.getListOrEmpty("palette");
 		ListTag blocks = root.getListOrEmpty("blocks");
@@ -194,22 +161,6 @@ public class ColonyConceptsTest {
 		if (properties.size() != block.get().getStateDefinition().getProperties().size()) {
 			problems.add(where + ": " + name + " gives " + properties.keySet() + ", not every property of the block");
 		}
-	}
-
-	private static <T extends Comparable<T>> String valueName(BlockState state, Property<T> property) {
-		return property.getName(state.getValue(property));
-	}
-
-	private static Map<String, String> parseVariant(String key) {
-		Map<String, String> out = new HashMap<>();
-		if (key.isEmpty()) {
-			return out;
-		}
-		for (String pair : key.split(",")) {
-			String[] kv = pair.split("=", 2);
-			out.put(kv[0], kv[1]);
-		}
-		return out;
 	}
 
 	private static JsonObject json(Resource resource) throws IOException {

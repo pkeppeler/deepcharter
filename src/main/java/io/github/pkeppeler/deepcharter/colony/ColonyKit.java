@@ -5,32 +5,23 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
-import net.minecraft.core.Registry;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.Identifier;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-import io.github.pkeppeler.deepcharter.DeepCharter;
-
 /**
  * The colony kit: the Company's building materials, from corrugated steel to sodium lamps, that the colony concepts of #335 are
  * built from (docs/design/colony-concepts.md). Nothing in a player's world places them yet; the colony rebuild (#244) will use the
  * chosen ones. Their models, blockstates and sign tiles are written by tools/colony/build.py and their textures by
- * tools/textures/texgen.py. Like the Conduit they are Company property: unbreakable in survival.
+ * tools/textures/texgen.py. Like the Conduit they are Company property:
+ * unbreakable in survival ({@link ColonyBlocks#register}).
  */
 public final class ColonyKit {
 	private static final List<Block> ALL = new ArrayList<>();
 
 	public static final Block CORRUGATED_CREAM = cube("corrugated_cream", SoundType.METAL);
 	public static final Block CORRUGATED_RED = cube("corrugated_red", SoundType.METAL);
-	public static final Block CORRUGATED_DARK = cube("corrugated_dark", SoundType.METAL);
 	public static final Block RIVETED_PLATE = cube("riveted_plate", SoundType.METAL);
 	public static final Block RIVETED_PLATE_RED = cube("riveted_plate_red", SoundType.METAL);
 	public static final Block ENAMEL_PANEL = cube("enamel_panel", SoundType.METAL);
@@ -38,8 +29,6 @@ public final class ColonyKit {
 	public static final Block HAZARD_BAND = cube("hazard_band", SoundType.METAL);
 	public static final Block CONCRETE_FOOTING = cube("concrete_footing", SoundType.STONE);
 	public static final Block BRASS_TRIM = cube("brass_trim", SoundType.METAL);
-	public static final Block COMPANY_BRICK = cube("company_brick", SoundType.STONE);
-	public static final Block BRONZE = cube("bronze", SoundType.METAL);
 	/** Open steel grating: a full block that lets the light and the view through. */
 	public static final Block GRATING = register("grating", SoundType.METAL, properties -> new Block(properties.noOcclusion()));
 
@@ -55,12 +44,10 @@ public final class ColonyKit {
 	public static final Block FLOODLIGHT = facing("floodlight", SoundType.LANTERN, 15, Block.box(3, 0, 3, 13, 13, 13));
 	public static final Block RAILING = facing("railing", SoundType.METAL, 0, Block.box(0, 0, 0, 16, 16, 2));
 	public static final Block ROOF_SLOPE = facing("roof_slope", SoundType.METAL, 0, Block.box(0, 0, 0, 16, 8, 16));
-	public static final Block ROOF_SLOPE_DARK = facing("roof_slope_dark", SoundType.METAL, 0, Block.box(0, 0, 0, 16, 8, 16));
 	public static final Block BRACE = facing("brace", SoundType.METAL, 0, Block.box(4, 4, 4, 12, 12, 12));
 	public static final Block BRACE_RED = facing("brace_red", SoundType.METAL, 0, Block.box(4, 4, 4, 12, 12, 12));
 	public static final Block CONVEYOR = facing("conveyor", SoundType.METAL, 0, Block.box(0, 0, 0, 16, 8, 16));
 	public static final Block ROOF_PEAK = register("roof_peak", SoundType.METAL, properties -> new KitRidgeBlock(properties.noOcclusion()));
-	public static final Block ROOF_PEAK_DARK = register("roof_peak_dark", SoundType.METAL, properties -> new KitRidgeBlock(properties.noOcclusion()));
 
 	public static final Block STEEL_BEAM = pillar("steel_beam", 12);
 	public static final Block STEEL_BEAM_RED = pillar("steel_beam_red", 12);
@@ -105,16 +92,14 @@ public final class ColonyKit {
 	}
 
 	private static Block register(String path, SoundType sound, Function<BlockBehaviour.Properties, Block> factory) {
-		Block block = registerBlock(path, sound, factory);
-		ResourceKey<Item> itemKey = ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
-		Registry.register(BuiltInRegistries.ITEM, itemKey, new BlockItem(block, new Item.Properties().setId(itemKey).useBlockDescriptionPrefix()));
-		return block;
+		return kept(ColonyBlocks.register(path, sound, factory));
 	}
 
 	private static Block registerBlock(String path, SoundType sound, Function<BlockBehaviour.Properties, Block> factory) {
-		ResourceKey<Block> blockKey = ResourceKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
-		Block block = Registry.register(BuiltInRegistries.BLOCK, blockKey, factory.apply(BlockBehaviour.Properties.of()
-				.setId(blockKey).strength(-1.0F, 3_600_000.0F).sound(sound).noLootTable()));
+		return kept(ColonyBlocks.registerBlock(path, sound, factory));
+	}
+
+	private static Block kept(Block block) {
 		ALL.add(block);
 		return block;
 	}

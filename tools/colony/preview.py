@@ -217,7 +217,7 @@ def square_crossbar_scores(roots, plinth_top: int, scale: float, size: int = 200
     ground = (235, 228, 214)
     mid = (0.5, plinth_top + 1 + 9.0, 0.5)
     scores = []
-    for yaw in range(0, 360, 45):
+    for yaw in (i * 22.5 for i in range(16)):
         for distance in SQUARE_DISTANCES:
             a = math.radians(yaw)
             eye = (0.5 + math.sin(a) * distance, EYE_HEIGHT, 0.5 + math.cos(a) * distance)
@@ -239,18 +239,19 @@ def sculpture_quads(piece_roots) -> list:
     return quads
 
 
-VIEWS = [(yaw, 0.0) for yaw in range(0, 360, 45)] + [(0.0, 35.0), (180.0, 35.0), (0.0, 89.0)]
+# Every 22.5 degrees round the figure, two raised views and one from straight above. A silhouette check, not a guarantee.
+VIEWS = [(i * 22.5, 0.0) for i in range(16)] + [(0.0, 35.0), (180.0, 35.0), (0.0, 89.0)]
 
 # Rough colours of the kit for previews: the look of each texture at a glance, not the texture.
 COLOURS = {
-    "corrugated_cream": (214, 205, 180), "corrugated_red": (142, 29, 22), "corrugated_dark": (54, 62, 72),
+    "corrugated_cream": (214, 205, 180), "corrugated_red": (142, 29, 22),
     "riveted_plate": (40, 46, 54), "riveted_plate_red": (100, 19, 15), "enamel_panel": (221, 211, 186),
     "steel_frame": (130, 26, 20), "hazard_band": (180, 140, 30), "concrete_footing": (120, 116, 113), "grating": (70, 78, 88),
-    "brass_trim": (173, 125, 52), "company_brick": (120, 60, 30), "bronze": (190, 140, 70), "window_small_lit": (245, 168, 50),
+    "brass_trim": (173, 125, 52), "window_small_lit": (245, 168, 50),
     "window_small_dark": (20, 30, 28), "window_ribbon_lit": (245, 168, 50), "window_ribbon_dark": (20, 30, 28),
     "furnace_hatch": (210, 110, 30), "gauge_panel": (60, 66, 74), "winder_door": (54, 62, 72), "wall_lamp": (255, 200, 90),
-    "floodlight": (255, 220, 120), "railing": (200, 160, 40), "roof_slope": (150, 32, 24), "roof_slope_dark": (60, 66, 74),
-    "roof_peak": (150, 32, 24), "roof_peak_dark": (60, 66, 74), "brace": (72, 82, 94), "brace_red": (130, 26, 20),
+    "floodlight": (255, 220, 120), "railing": (200, 160, 40), "roof_slope": (150, 32, 24),
+    "roof_peak": (150, 32, 24), "brace": (72, 82, 94), "brace_red": (130, 26, 20),
     "conveyor": (40, 40, 44), "steel_beam": (72, 82, 94), "steel_beam_red": (130, 26, 20), "lattice_girder": (72, 82, 94),
     "lattice_girder_red": (130, 26, 20), "pipe": (90, 100, 110), "pipe_brass": (190, 140, 60), "cable": (30, 26, 24),
     "enamel_sign": (230, 220, 200), "colony_sculpture": (190, 140, 70), "minecraft:barrier": None,

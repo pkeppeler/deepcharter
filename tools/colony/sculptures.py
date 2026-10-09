@@ -3,8 +3,9 @@ of hands, so a work order can take the hands away), the sheave wheel of a headfr
 
 A figure is built in figure space: the origin is the ground under its feet, Y is up, it faces +Z (south), its right hand is at -X.
 One unit is 1/16 of a block of the model, and a display scales the model up (FIGURE_SCALE). FIGURE_OFFSET moves figure space into
-the model's -16..32 box. Every figure keeps the arms off the line of the shoulders, so no outline is a cross: the forearms run
-toward the viewer, rest on a lap, or one hand is up and the other low.
+the model's -16..32 box. No figure holds its arms out from the shoulders, and no hand is held out in front of the body (from
+below in the square it would rise to the height of the head): the hands hang at the sides, rest on the chair arms, or one is
+raised beside the head.
 """
 import math
 
@@ -115,9 +116,9 @@ def _neck_and_head(torso: Bone, height: float, nod: float, turn: float = 0.0) ->
 
 
 def provider() -> Bone:
-    """Concept A, the Provider: standing in a frock coat, his arms lowered and held a little away from his sides, the open empty
-    palms turned out to the town, under the slot in his chest. The hands stay beside the body, not in front of it, so from below
-    in the square they stay at his hips; the outline is a narrow A from every side."""
+    """Concept A, the Provider: standing in a frock coat, his arms lowered at his sides, the open empty palms turned out to the
+    town, under the slot in his chest. The hands stay beside the body, not in front of it, so from below in the square they stay
+    at his hips."""
     body = Bone((0.0, 0.0, 0.0))
     _standing_coat(body, hem=6.5, waist=22.0, flare=17.5)
     torso = _torso(body, 22.0, 12.4)
@@ -135,7 +136,7 @@ def provider() -> Bone:
 
 def patron() -> Bone:
     """Concept B, the Patron: seated on a heavy Company chair like Lincoln in his memorial, his forearms along the chair arms and
-    the open hands resting palm up over their scrolled ends. A seated figure is a pyramid from every side."""
+    the open hands resting palm up over their scrolled ends. No arm rises above the chair arms."""
     body = Bone((0.0, 0.0, 0.0))
     # The chair: a plinth, a seat, arms with scrolled fronts and a tall back with a plain rolled top. Nothing rises above the
     # back: from the square, anything there reads as raised hands.
@@ -173,7 +174,7 @@ def patron() -> Bone:
 
 def host() -> Bone:
     """Concept C, the Host: mid-stride, the right hand raised beside his head in welcome, palm out, the left lowered at his side
-    and turned out, open. One hand greets, the other shows it holds nothing; the outline is lopsided from every side."""
+    and turned out, open. One hand greets, the other shows it holds nothing."""
     body = Bone((0.0, 0.0, 0.0))
     _standing_coat(body, hem=8.0, waist=22.5, flare=16.0, stride=1.0)
     torso = _torso(body, 22.5, 12.4)

@@ -62,8 +62,8 @@ public final class EvidenceWorld {
 	public static void skyPhase(ClientGameTestContext context, TestSingleplayerContext singleplayer, long ticks) {
 		singleplayer.getServer().runOnServer(server -> {
 			var sky = server.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(SKY);
-			server.clockManager().setPaused(sky, true);
-			server.clockManager().setTotalTicks(sky, ticks);
+			server.clockManager().setPaused(sky, true); // world-clock: only evidence scenarios call this, each in its own client world
+			server.clockManager().setTotalTicks(sky, ticks); // world-clock: only evidence scenarios call this, each in its own client world
 		});
 		ClientWait.until(context, "the client to read the sky clock at " + ticks, client -> skyOnClient(client).totalTicks() == ticks && skyOnClient(client).isPaused(),
 				client -> "the sky clock at " + skyOnClient(client).totalTicks());

@@ -19,13 +19,14 @@ JAVA = ROOT / "src/main/java/io/github/pkeppeler/deepcharter/colony"
 CROSS = 2.0
 
 
-def arms_out() -> Bone:
-    """A standing figure with its arms straight out at the shoulders: the cross the user rejected."""
+def arms_out(reach: float = 1.0) -> Bone:
+    """A standing figure with its arms straight out at the shoulders, reach times a full span: the cross the user rejected."""
     figure = Bone((0.0, 0.0, 0.0))
     figure.box((-6, 0, -3), (6, 36, 3))
     figure.box((-3, 36, -3), (3, 44, 3))
-    figure.box((-22, 31, -2), (22, 35, 2))
+    figure.box((-22 * reach, 31, -2), (22 * reach, 35, 2))
     return figure
+
 
 
 class GeneratedFilesTest(unittest.TestCase):
@@ -70,6 +71,11 @@ class FounderSilhouetteTest(unittest.TestCase):
     def test_arms_straight_out_do_read_as_a_cross(self):
         front = [score for yaw, pitch, score in preview.crossbar_scores([arms_out()]) if yaw == 0 and pitch == 0]
         self.assertGreater(front[0], CROSS + 1)
+
+    def test_arms_out_at_seven_tenths_of_a_span_still_read_as_a_cross(self):
+        front = [score for yaw, pitch, score in preview.crossbar_scores([arms_out(0.7)]) if yaw == 0 and pitch == 0]
+        self.assertGreater(front[0], CROSS)
+
 
     def test_no_founder_reads_as_a_cross_from_where_players_stand(self):
         for name, plinth_top in plinth_tops().items():

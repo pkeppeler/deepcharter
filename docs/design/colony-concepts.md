@@ -10,7 +10,7 @@ Pick three things. They mix: any statue goes with any building language.
 
 1. **A building language: A, B or C.** It becomes the language of the whole town in #244: the pay office, the bunkhouse, the chapel and the rest are built the same way.
 2. **A headframe.** Each concept has its own; you can take one from another concept.
-3. **A Founder statue: A, B or C.** None of them reads as a cross: a test checks the outline from 10 views round and above it, and from 24 places in the square.
+3. **A Founder statue: A, B or C.** None of them reads as a cross. A test checks the outline from 18 views round and above it, and from 48 places in the square. It is a silhouette check (both arms out past the body in one row of the upper body), so it catches a cross but cannot promise how a pose reads; the stills are the proof.
 
 Reply on the PR, for example: "B buildings, A's headframe, statue B". "Mix A and C" is fine too; say which parts.
 
@@ -67,9 +67,9 @@ Fly-around ([MP4](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/col
 
 All three are bronze, polished a little too well, about 20 blocks tall on their plinths, with open empty hands and the slot in the chest. The hands are a separate piece, so the rebuild can keep the work order that restores the Founder's hands.
 
-- **A. The Provider:** standing in a long frock coat, his arms lowered at his sides, the open palms turned out to the town. The outline is a narrow column from every side.
-- **B. The Patron:** seated on a heavy Company chair like Lincoln in his memorial, forearms along the chair arms, the open hands palm up over their ends. A seated figure is a pyramid from every side.
-- **C. The Host:** mid-stride, one hand raised beside his head in welcome, the other lowered at his side and turned out, open. The outline is lopsided from every side.
+- **A. The Provider:** standing in a long frock coat, his arms lowered at his sides, the open palms turned out to the town.
+- **B. The Patron:** seated on a heavy Company chair like Lincoln in his memorial, forearms along the chair arms, the open hands palm up over their ends. No arm rises above the chair arms.
+- **C. The Host:** mid-stride, one hand raised beside his head in welcome, the other lowered at his side and turned out, open. One raised hand is a greeting, not a cross.
 
 Why the hands are low or at the sides: from the square you look up at a statue 20 blocks tall. A hand held out in front of the body is closer to you than the head, so from below it rises to the height of the head and reads as "hands up". Arms held out to the sides read as a cross. So the hands stay low, beside the body. The lore says "arms out, palms up"; the art direction already changed that to open empty hands, and the pick sets the pose.
 
@@ -81,7 +81,9 @@ At night, under the plinth's floodlights:
 
 ## What is shared, and what comes later
 
-- **The kit:** 38 new blocks (corrugated steel in three paints, riveted plate, enamel panels, red steel frame, lattice girders and braces, I-beams, pipes, grating, railings, 45-degree roof slopes with smooth gables, mill and ribbon windows that glow, crusher hatches, gauge panels, sodium wall lamps and floodlights, enamel signs, belt conveyors). Every concept uses the same kit, so a pick can mix them.
-- **Lettering:** the signs say H. COLOM & CO., ORE HOUSE, SHAFT NO 1, OUR FOUNDER and DEEPER TOGETHER!, with the bull's-head badge. A PAY OFFICE sign is in the kit for the rebuild.
+- **The kit:** 33 new blocks (corrugated steel in two paints, riveted plate, enamel panels, red steel frame, lattice girders and braces, I-beams, pipes, grating, railings, 45-degree roof slopes with smooth gables, mill and ribbon windows that glow, crusher hatches, gauge panels, sodium wall lamps and floodlights, enamel signs, belt conveyors). Every concept uses the same kit, so a pick can mix them.
+- **Lettering:** the signs say H. COLOM & CO. and DEEPER TOGETHER!, the Company's name and slogan from the lore, with the bull's-head badge. ORE HOUSE, SHAFT NO 1, OUR FOUNDER and PAY OFFICE are placeholders; the lore pass replaces their words.
 - **Shapes that blocks cannot make** (the statues, the wheels, the ropes, the raking legs and A's gallery) are models drawn by display entities, so they are smooth and at any angle.
 - **Not in the concepts:** the other buildings, motion (the wheels do not turn yet) and smoke. The rebuild (#244) builds the whole town in the language you pick.
+- **What the rebuild deletes:** the kit blocks of the concepts you do not pick, before any real world can hold one. No player's world has a kit block today, so deleting them costs nothing then.
+- **Lamps:** the rebuild keeps the kit's wall lamp and floodlight, which hang on walls and frames, and main's caged Company lamp, which stands on the ground. They are three shapes of one sodium light.
