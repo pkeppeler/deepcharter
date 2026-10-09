@@ -27,7 +27,9 @@ import net.minecraft.world.level.Level;
  * generates a few columns of each world and checks they exist. With the number of rounds in the environment, for example
  * {@code DEEPCHARTER_SURFACE_COST=3 tools/gametest.sh 'surface_cost_test*'}, it generates {@value #MEASURED_RADIUS} chunks to each side of
  * a fresh centre per world and round (after a warm-up), and prints the lines that start with {@code [surface-cost]}: per world the
- * median over the rounds, and the ratio of each surface world to the layers-only world with the same biome source.
+ * median over the rounds, and the ratio of each surface world to the layers-only world with the same biome source. The heap of a round
+ * is only clean for the first world a JVM measures (chunks of the worlds before it linger in caches), so {@value #ONLY_ENV}=<world>
+ * measures that one world alone: run once per world and compare the first round of each.
  *
  * <p>The worlds are test dimensions in the test mod's preset. With the layers' zone biomes: {@code tall_baseline} (layers only) and
  * {@code tall_surface} (our surface over the layers). With the surface's own biome source over the whole height, which costs a noise
@@ -37,13 +39,19 @@ public class SurfaceCostTest {
 	private static final Logger LOGGER = LoggerFactory.getLogger(SurfaceCostTest.class);
 	static final String ROUNDS_ENV = "DEEPCHARTER_SURFACE_COST";
 	private static final String REQUESTED_ROUNDS = System.getenv(ROUNDS_ENV);
+	/** One world name: measure only that world, so that its heap is read in a JVM that held no other measured world. */
+	static final String ONLY_ENV = "DEEPCHARTER_SURFACE_COST_ONLY";
+	private static final String REQUESTED_WORLD = System.getenv(ONLY_ENV);
 	private static final int SMOKE_RADIUS = 1;
 	private static final int MEASURED_RADIUS = 8;
 	private static final int WARM_UP_RADIUS = 4;
 	/** Chunk rows between two regions, so that no two measurements share a column. */
 	private static final int REGION_SPACING_CHUNKS = 64;
 	private static final int COOL_DOWN_TICKS = 100;
-	private static final List<String> WORLDS = List.of("tall_baseline", "tall_surface", "tall_baseline_biomes", "tall_surface_biomes");
+	/** The smoke case only checks that the worlds generate: no heap readings (each is a few collections) and no wait between worlds. */
+	private static final boolean SMOKE = REQUESTED_ROUNDS == null;
+	private static final List<String> ALL_WORLDS = List.of("tall_baseline", "tall_surface", "tall_baseline_biomes", "tall_surface_biomes");
+	private static final List<String> WORLDS = REQUESTED_WORLD == null ? ALL_WORLDS : List.of(REQUESTED_WORLD);
 	/** Each surface world, and the layers-only world it is compared with. */
 	private static final Map<String, String> BASELINES = Map.of("tall_surface", "tall_baseline", "tall_surface_biomes", "tall_baseline_biomes");
 	/** A region counts as unloaded when this few chunks of a world are left, such as those around a spawn. */
@@ -72,7 +80,7 @@ public class SurfaceCostTest {
 				cooldown[0]--;
 				return;
 			}
-			if (current[0] == null && !everyWorldIsUnloaded(helper)) {
+			if (current[0] == null && !SMOKE && !everyWorldIsUnloaded(helper)) {
 				return;
 			}
 			if (current[0] == null) {
@@ -90,7 +98,7 @@ public class SurfaceCostTest {
 				results.computeIfAbsent(current[0].world, world -> new ArrayList<>()).add(measurement);
 			}
 			current[0] = null;
-			cooldown[0] = COOL_DOWN_TICKS;
+			cooldown[0] = SMOKE ? 0 : COOL_DOWN_TICKS;
 			if (queue.isEmpty()) {
 				if (rounds > 0) {
 					report(results);
@@ -105,7 +113,7 @@ public class SurfaceCostTest {
 				columnsOf(MEASURED_RADIUS), results.get(WORLDS.getFirst()).size());
 		results.forEach((world, all) -> {
 			Measurement m = median(all);
-			String against = BASELINES.containsKey(world) ? "; vs " + BASELINES.get(world) + ": CPU "
+			String against = results.containsKey(BASELINES.get(world)) ? "; vs " + BASELINES.get(world) + ": CPU "
 					+ format(m.cpuMsPerColumn / median(results.get(BASELINES.get(world))).cpuMsPerColumn) + "x, heap "
 					+ format(m.heapMb / median(results.get(BASELINES.get(world))).heapMb) + "x" : "";
 			LOGGER.info("[surface-cost] {}: {} CPU ms per column (rounds {}), {} MB heap (rounds {}), {} wall ms per column{}",
@@ -122,7 +130,7 @@ public class SurfaceCostTest {
 
 	/** The heap of a region is measured with the one before it gone, so a run waits until the worlds hold nothing of it. */
 	private static boolean everyWorldIsUnloaded(GameTestHelper helper) {
-		for (String world : WORLDS) {
+		for (String world : ALL_WORLDS) {
 			ServerLevel level = helper.getLevel().getServer().getLevel(ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", world)));
 			if (level != null && level.getChunkSource().getLoadedChunksCount() > UNLOADED_CHUNKS) {
 				return false;
@@ -193,7 +201,7 @@ public class SurfaceCostTest {
 				throw helper.assertionException(Component.literal("no dimension " + key.identifier()));
 			}
 			centreChunk = (round + 1) * REGION_SPACING_CHUNKS;
-			heapBefore = usedHeap();
+			heapBefore = SMOKE ? 0 : usedHeap();
 			cpuBefore = processCpuNanos();
 			wallBefore = System.nanoTime();
 			forEachChunk(chunk -> level.setChunkForced(chunk[0], chunk[1], true));
@@ -209,7 +217,7 @@ public class SurfaceCostTest {
 			double columns = columnsOf(radius);
 			double cpuMs = (processCpuNanos() - cpuBefore) / 1e6;
 			double wallMs = (System.nanoTime() - wallBefore) / 1e6;
-			double heapMb = (usedHeap() - heapBefore) / (1024.0 * 1024.0);
+			double heapMb = SMOKE ? 0 : (usedHeap() - heapBefore) / (1024.0 * 1024.0);
 			forEachChunk(chunk -> level.setChunkForced(chunk[0], chunk[1], false));
 			return new Measurement(cpuMs / columns, heapMb, wallMs / columns);
 		}

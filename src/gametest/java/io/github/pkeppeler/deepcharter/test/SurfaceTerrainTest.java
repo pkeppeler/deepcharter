@@ -60,6 +60,8 @@ public class SurfaceTerrainTest {
 	/** The rim stands this much higher than the floor, and this far from the middle. */
 	private static final int PIT_DEPTH = 20;
 	private static final int PIT_RIM_RADIUS = 59;
+	/** Basalt shows on the knobs, so the column to look at stands this high; the rule paints basalt from 2 blocks above the pad up. */
+	private static final int BASALT_MIN_RISE = 4;
 	private static final int SURVEY_SPAN = 2048;
 	private static final int SURVEY_STEP = 8;
 
@@ -100,9 +102,9 @@ public class SurfaceTerrainTest {
 	@GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
 	public void everyBiomeHasItsOwnTopBlock(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
-		expectTopBlock(helper, level, "deepcharter:regolith_plains", "deepcharter:regolith");
-		expectTopBlock(helper, level, "deepcharter:mesa_country", "deepcharter:ochre_regolith");
-		expectTopBlock(helper, level, "deepcharter:basalt_field", "deepcharter:basalt_outcrop");
+		expectTopBlock(helper, level, "deepcharter:regolith_plains", 0, "deepcharter:regolith");
+		expectTopBlock(helper, level, "deepcharter:mesa_country", 0, "deepcharter:ochre_regolith");
+		expectTopBlock(helper, level, "deepcharter:basalt_field", BASALT_MIN_RISE, "deepcharter:basalt_outcrop");
 		helper.succeed();
 	}
 
@@ -111,7 +113,7 @@ public class SurfaceTerrainTest {
 		ServerLevel level = helper.getLevel();
 		ChunkGenerator generator = level.getChunkSource().getGenerator();
 		for (String biome : Arrays.asList("deepcharter:regolith_plains", "deepcharter:mesa_country", "deepcharter:basalt_field")) {
-			BlockPos column = surveyColumn(helper, level, biome);
+			BlockPos column = surveyColumn(helper, level, biome, 0);
 			level.getChunkAt(column);
 			for (MobCategory category : MobCategory.values()) {
 				boolean empty = generator.getMobsAt(level, level.structureManager(), category, column).isEmpty();
@@ -221,8 +223,8 @@ public class SurfaceTerrainTest {
 		helper.succeed();
 	}
 
-	private static void expectTopBlock(GameTestHelper helper, ServerLevel level, String biome, String expected) {
-		BlockPos column = surveyColumn(helper, level, biome);
+	private static void expectTopBlock(GameTestHelper helper, ServerLevel level, String biome, int minimumRise, String expected) {
+		BlockPos column = surveyColumn(helper, level, biome, minimumRise);
 		LevelChunk chunk = level.getChunkAt(column);
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(column.getX(), level.getMaxY(), column.getZ());
 		while (chunk.getBlockState(pos).isAir()) {
@@ -235,8 +237,11 @@ public class SurfaceTerrainTest {
 		}
 	}
 
-	/** A column whose biome, and the biome 8 blocks to each side of it, is {@code biome}: the middle of a stretch of it. */
-	private static BlockPos surveyColumn(GameTestHelper helper, ServerLevel level, String biome) {
+	/**
+	 * A column whose biome, and the biome 8 blocks to each side of it, is {@code biome}, and whose ground stands at least
+	 * {@code minimumRise} blocks above the pad: the middle of a stretch of it.
+	 */
+	private static BlockPos surveyColumn(GameTestHelper helper, ServerLevel level, String biome, int minimumRise) {
 		RandomState random = level.getChunkSource().randomState();
 		BiomeResolver resolver = level.getChunkSource().getGenerator().getBiomeSource().createCachingResolver(random);
 		int[] around = {-8, 0, 8};
@@ -248,7 +253,7 @@ public class SurfaceTerrainTest {
 						inside &= biomeAt(resolver, x + dx, z + dz).equals(biome);
 					}
 				}
-				if (inside) {
+				if (inside && height(level.getChunkSource().getGenerator(), level, random, x, z) >= PAD_GROUND + minimumRise) {
 					return new BlockPos(x, PAD_GROUND, z);
 				}
 			}
