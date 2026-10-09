@@ -1,10 +1,6 @@
-# The only job that saves the ffmpeg .deb cache (restore-only everywhere else: see
-# .github/actions/install-ffmpeg). It runs trusted triggers only (main, schedule, a manual
-# dispatch) and no PR code, so nothing can rewrite the .deb files between the install and the
-# save. dpkg does not check signatures on cached files, so a save from a job that runs PR code
-# could poison main's scope, which PR runs read (a PR's own caches are invisible to other PRs).
-# The key holds the runner image, so the weekly run saves a fresh entry when the image rolls and
-# finds a hit (and saves nothing) while it has not.
+# The only job that saves the ffmpeg .deb cache; the reason is in .github/actions/install-ffmpeg.
+# It runs trusted triggers only (main, schedule, manual dispatch) and no PR code. The key holds the
+# runner image, so the weekly run saves a fresh entry when the image rolls and saves nothing on a hit.
 name: ffmpeg seed
 
 on:
