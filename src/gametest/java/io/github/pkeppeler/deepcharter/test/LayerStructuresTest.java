@@ -169,7 +169,7 @@ public class LayerStructuresTest {
 	/**
 	 * The chunks of every site are made full on the first tick, then every condition on every site is polled under a
 	 * wall-clock {@link FarChunks.Deadline}, because a tick budget is a different wall time under load. A wait that was
-	 * needed is logged.
+	 * needed is logged. See #365; the failure's census says what stands in the site's place.
 	 */
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
 	public void eachStructureGeneratesInItsZone(GameTestHelper helper) {
