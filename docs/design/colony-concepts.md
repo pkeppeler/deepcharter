@@ -10,7 +10,7 @@ Pick three things. They mix: any statue goes with any building language.
 
 1. **A building language: A, B or C.** It becomes the language of the whole town in #244: the pay office, the bunkhouse, the chapel and the rest are built the same way.
 2. **A headframe.** Each concept has its own; you can take one from another concept.
-3. **A Founder statue: A, B or C.** None of them reads as a cross from any side (a test checks the outline from eight sides and from above).
+3. **A Founder statue: A, B or C.** None of them reads as a cross: a test checks the outline from 10 views round and above it, and from 24 places in the square.
 
 Reply on the PR, for example: "B buildings, A's headframe, statue B". "Mix A and C" is fine too; say which parts.
 
@@ -20,7 +20,7 @@ The three concepts from the same views: from the square, from the air, at night 
 
 ![Concepts side by side](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/concepts-side-by-side.png?raw=true)
 
-The three headframes, from the west side of the square and at night from the air:
+The three headframes from the side, from behind, and at night from the air:
 
 ![Headframes side by side](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/headframes-side-by-side.png?raw=true)
 
@@ -71,7 +71,7 @@ All three are bronze, polished a little too well, about 20 blocks tall on their 
 - **B. The Patron:** seated on a heavy Company chair like Lincoln in his memorial, forearms along the chair arms, the open hands palm up over their ends. A seated figure is a pyramid from every side.
 - **C. The Host:** mid-stride, one hand raised beside his head in welcome, the other lowered at his side and turned out, open. The outline is lopsided from every side.
 
-Why the hands are low or at the sides: from the square you look up at a statue 20 blocks tall. A hand held out in front of the body is closer to you than the head, so from below it rises to the height of the head and reads as a hand held up. The first versions had forearms held forward, and from the square they read as "hands up". The check now also looks from where players stand.
+Why the hands are low or at the sides: from the square you look up at a statue 20 blocks tall. A hand held out in front of the body is closer to you than the head, so from below it rises to the height of the head and reads as "hands up". Arms held out to the sides read as a cross. So the hands stay low, beside the body. The lore says "arms out, palms up"; the art direction already changed that to open empty hands, and the pick sets the pose.
 
 ![Statues side by side](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/statues-side-by-side.png?raw=true)
 
@@ -82,6 +82,6 @@ At night, under the plinth's floodlights:
 ## What is shared, and what comes later
 
 - **The kit:** 38 new blocks (corrugated steel in three paints, riveted plate, enamel panels, red steel frame, lattice girders and braces, I-beams, pipes, grating, railings, 45-degree roof slopes with smooth gables, mill and ribbon windows that glow, crusher hatches, gauge panels, sodium wall lamps and floodlights, enamel signs, belt conveyors). Every concept uses the same kit, so a pick can mix them.
-- **Lettering:** the signs say H. COLOM & CO., ORE HOUSE, SHAFT NO 1, PAY OFFICE, OUR FOUNDER and DEEPER TOGETHER!, with the bull's-head badge.
+- **Lettering:** the signs say H. COLOM & CO., ORE HOUSE, SHAFT NO 1, OUR FOUNDER and DEEPER TOGETHER!, with the bull's-head badge. A PAY OFFICE sign is in the kit for the rebuild.
 - **Shapes that blocks cannot make** (the statues, the wheels, the ropes, the raking legs and A's gallery) are models drawn by display entities, so they are smooth and at any angle.
 - **Not in the concepts:** the other buildings, motion (the wheels do not turn yet) and smoke. The rebuild (#244) builds the whole town in the language you pick.
