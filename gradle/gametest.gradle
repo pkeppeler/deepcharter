@@ -108,7 +108,7 @@ def scan = { File javaRoot, String clientFilter, String order ->
 				def line = text.substring(0, clockWrite.start()).count("\n")
 				def marked = [line, line - 1].any { it >= 0 && hasMarker(rawLines[it], worldClockMarker) }
 				if (!marked) {
-					problems << "${className}:${line + 1} writes a world clock in a server test, which every test in the world sees; write it through TestClocks.paused, which restores it in a finally on the same tick, or mark a deliberate write with '${worldClockMarker} <reason>'"
+					problems << "${className}:${line + 1} writes a world clock in a server test, which every test in the world sees; write it through TestClocks.paused, which restores it in a finally on the same tick, or mark a deliberate write with '${worldClockMarker} <reason>' (the scan matches the method name, not the receiver; if this is not a world clock, mark it '${worldClockMarker} not a clock')"
 				}
 			}
 		}

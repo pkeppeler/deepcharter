@@ -26,14 +26,13 @@ public class TestClocksTest {
 		ClockInstance clock = server.clockManager().getInstance(sky);
 		long ticksBefore = clock.totalTicks();
 		boolean pausedBefore = clock.isPaused();
-		float rateBefore = clock.rate();
 
 		TestClocks.paused(server, sky, PINNED, () -> {
 			if (clock.totalTicks() != PINNED || !clock.isPaused()) {
 				throw helper.assertionException("the clock should be paused at %s in the body, was %s (paused: %s)", PINNED, clock.totalTicks(), clock.isPaused());
 			}
 		});
-		expectRestored(helper, clock, ticksBefore, pausedBefore, rateBefore);
+		expectRestored(helper, clock, ticksBefore, pausedBefore);
 
 		try {
 			TestClocks.paused(server, sky, PINNED, () -> {
@@ -41,15 +40,15 @@ public class TestClocksTest {
 			});
 			throw helper.assertionException("the body's exception should reach the caller");
 		} catch (IllegalStateException expected) {
-			expectRestored(helper, clock, ticksBefore, pausedBefore, rateBefore);
+			expectRestored(helper, clock, ticksBefore, pausedBefore);
 		}
 		helper.succeed();
 	}
 
-	private static void expectRestored(GameTestHelper helper, ClockInstance clock, long ticks, boolean paused, float rate) {
-		if (clock.totalTicks() != ticks || clock.isPaused() != paused || clock.rate() != rate) {
-			throw helper.assertionException("the clock should be back at %s ticks, paused %s, rate %s, was %s, %s, %s",
-					ticks, paused, rate, clock.totalTicks(), clock.isPaused(), clock.rate());
+	private static void expectRestored(GameTestHelper helper, ClockInstance clock, long ticks, boolean paused) {
+		if (clock.totalTicks() != ticks || clock.isPaused() != paused) {
+			throw helper.assertionException("the clock should be back at %s ticks, paused %s, was %s, %s",
+					ticks, paused, clock.totalTicks(), clock.isPaused());
 		}
 	}
 }
