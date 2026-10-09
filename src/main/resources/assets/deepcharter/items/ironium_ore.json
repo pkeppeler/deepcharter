@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "deepcharter:block/ironium_ore"
+    "model": "deepcharter:block/ironium_ore_overlay_0"
   }
 }
