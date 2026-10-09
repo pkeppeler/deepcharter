@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "deepcharter:block/fuel_pump"
+    "model": "deepcharter:block/fuel_pump_active"
   }
 }

@@ -91,6 +91,11 @@ public final class RepairState extends SavedData {
 		return type.parts().stream().allMatch(part -> ids.contains(TerminalType.partId(part)));
 	}
 
+	/** True when {@code type} works: it needs no repair, or it is repaired. Reads no state for a type that needs no repair. */
+	public boolean online(TerminalType type) {
+		return !type.needsRepair() || repaired(type);
+	}
+
 	/** The parts of {@code type} that are in, in the order they went in. */
 	public List<Item> inserted(TerminalType type) {
 		return insertedIds(type).stream().flatMap(id -> BuiltInRegistries.ITEM.getOptional(id).stream()).toList();

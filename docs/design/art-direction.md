@@ -66,8 +66,8 @@ Rules for all areas:
 
 - **Decision:** 16x, with GTNH-style layers: overlays, emissive glow, animated active states, connected textures.
 - **Material, palette, silhouette:** detail in layers, not resolution. Most detail where the eye rests (pods, terminals, landmarks); terrain stays quiet. A reference sheet of palette and style is kept in the repo.
-- **Tools:** Python generators (Pillow, numpy, locked with `uv`), `light_emission` on model elements, an `active` blockstate property, animated `.mcmeta`, and a Fabric Renderer API block-state model for connected casings. Aseprite only if the user buys it.
-- **Skin and data:** `assets/deepcharter/{textures,models,blockstates}/`, palettes as data, generators and recipes in `tools/`.
+- **Tools:** a Python generator on the standard library only, `tools/textures/texgen.py` ([ADR 0037](../adr/0037-texture-layers-are-generated-data-and-casings-connect-through-one-model-type.md)); Pillow, numpy and `uv` would each need an audit first. Also `light_emission` on model elements, an `active` blockstate property, animated `.mcmeta`, and a Fabric Renderer API block-state model for connected casings. Aseprite only if the user buys it.
+- **Skin and data:** `assets/deepcharter/{textures,models,blockstates}/`, the palette and recipes in `tools/textures/`. The reference sheet is [texture-reference.png](texture-reference.png). How a skin brings its own palette: [skins.md](skins.md#textures).
 - **AI-assisted assets (SPEC section 15):** AI image models are allowed, curated by the user, with style held by the reference sheet. The disclosure and Modrinth rules, the local-model install and the ban on reproducing XGen's assets are in SPEC section 15. Hand-directed and scripted work must stay a substantial part.
 - **Not chosen:** 32x for our blocks only, 64x or HD everywhere, labPBR as a base (an optional later layer for Iris users).
 
