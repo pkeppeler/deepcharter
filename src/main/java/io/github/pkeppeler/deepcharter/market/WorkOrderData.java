@@ -118,11 +118,6 @@ public final class WorkOrderData extends SavedData {
 		return count(charter, order).delivered();
 	}
 
-	/** True when some charter has handed in all of a one-shot {@code order}: the world has done what the order does. */
-	public boolean anyCompleted(WorkOrder order) {
-		return state.orThrow().entrySet().stream().anyMatch(entry -> entry.getKey().order() == order && entry.getValue().delivered() >= order.quantity());
-	}
-
 	/** How many rounds of the repeatable {@code order} the charter has completed; always 0 for a one-shot order. */
 	public int rounds(CharterId charter, WorkOrder order) {
 		return count(charter, order).rounds();

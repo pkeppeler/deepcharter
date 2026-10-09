@@ -349,6 +349,11 @@ class TownTest(unittest.TestCase):
         self.assertEqual(hands[0]["at"], body[0]["at"])
         self.assertEqual(hands[0]["nbt"]["transformation"], body[0]["nbt"]["transformation"])
 
+    def test_the_plinth_has_a_plate_where_the_game_keeps_the_state_of_the_hands(self):
+        """FounderStatue keeps the state of the Host's hands in a block 3 under his feet: the plinth must have a plate there."""
+        ax, ay, az = town.ANCHORS["statue"]
+        self.assertEqual(self.cells[(ax, ay - 3, az)][0], "deepcharter:riveted_plate_red")
+
     def test_the_anchors_are_the_ones_the_game_names(self):
         names = re.findall(r"^\t([A-Z_]+)[,;]", (JAVA / "ColonyAnchor.java").read_text(), re.MULTILINE)
         self.assertEqual(sorted(n.lower() for n in names), sorted(town.ANCHORS))

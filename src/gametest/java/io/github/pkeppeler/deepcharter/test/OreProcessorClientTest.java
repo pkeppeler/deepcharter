@@ -14,7 +14,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -98,7 +97,7 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 			context.clickScreenButton("DELIVER BRONZIUM");
 			ClientWait.until(context, "the last work order DONE", client -> screen.orderLines().getLast().endsWith("DONE"), client -> "order lines " + screen.orderLines());
 			require(singleplayer.getServer().computeOnServer(WorkOrdersTest::handsRestored), "the Founder's hands are restored");
-			singleplayer.getServer().runOnServer(server -> FounderStatue.hands(server).forEach(Entity::discard));
+			singleplayer.getServer().runOnServer(FounderStatue::removeHands);
 			context.setScreen(() -> null);
 
 			// #188: a charter that reached layer 3 is offered the repeatable Morale Initiative beside the finished Founder's hands.

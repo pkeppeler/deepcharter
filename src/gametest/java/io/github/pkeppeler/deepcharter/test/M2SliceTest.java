@@ -13,7 +13,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.ChunkPos;
@@ -23,6 +22,7 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.Colony;
+import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.colony.FounderStatue;
 import io.github.pkeppeler.deepcharter.fuel.FuelPump;
@@ -82,7 +82,9 @@ public class M2SliceTest {
 		List<Awaited> awaited = List.of(
 				Awaited.of(one, BlockPos.containing(X, zoneY(one, 2), Z)),
 				Awaited.of(two, BlockPos.containing(X, zoneY(two, 2), Z)),
-				Awaited.of(server.overworld(), Colony.placed(server).orElseThrow().center()));
+				Awaited.of(server.overworld(), Colony.placed(server).orElseThrow().center()),
+				// The Host's chunk, whose displays the end state inspects: the colony's centre is in it, and this names it.
+				Awaited.of(server.overworld(), Colony.anchor(server, ColonyAnchor.STATUE).orElseThrow()));
 		Runnable allArrived = () -> runTheSlice(helper, server, one, two, awaited);
 		Runnable arrived = () -> {
 			if (ready.incrementAndGet() == awaited.size()) {
@@ -305,7 +307,7 @@ public class M2SliceTest {
 				pods.forEach(PodEntity::discard);
 				director.leave();
 				crew.leave();
-				FounderStatue.hands(server).forEach(Entity::discard);
+				FounderStatue.removeHands(server);
 				if (hadHands) {
 					FounderStatue.restoreHands(server);
 				}

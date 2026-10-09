@@ -22,6 +22,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -81,7 +83,7 @@ public class WorkOrdersTest {
 	}
 
 	private static void clearHands(MinecraftServer server) {
-		FounderStatue.hands(server).forEach(Entity::discard);
+		FounderStatue.removeHands(server);
 	}
 
 	static MockPlayer player(GameTestHelper helper, String name, boolean onCharter) {
@@ -164,15 +166,13 @@ public class WorkOrdersTest {
 
 	/**
 	 * A hands display outlives its state when it is placed, and the state then goes (a test swapped the data, a backup came back), and
-	 * its chunk does not tick, so nothing finds it to clear it. It discards itself when its chunk ticks: here in a far chunk, beside a
+	 * its chunk does not tick, so nothing finds it to clear it. It discards itself when it loads (when it is placed, or when its chunk ticks): here in a far chunk, beside a
 	 * body display that stays, which shows that the summon worked and that only the hands go.
 	 */
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
-	public void aHandsDisplayWithoutItsStateDiscardsItselfWhenItsChunkTicks(GameTestHelper helper) {
+	public void aHandsDisplayWithoutItsStateDiscardsItselfOnLoad(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
-		if (WorkOrderData.get(server).anyCompleted(WorkOrder.FOUNDERS_HANDS)) {
-			throw helper.assertionException("the test needs a world in which no charter has completed the Founder's hands");
-		}
+		FounderStatue.removeHands(server);
 		ServerLevel level = server.overworld();
 		BlockPos far = new BlockPos(14_000, 120, 14_000);
 		level.getChunk(far.getX() >> 4, far.getZ() >> 4);
@@ -197,6 +197,86 @@ public class WorkOrdersTest {
 			}
 			found.forEach(Entity::discard);
 		});
+	}
+
+	/**
+	 * Hands that the world owes survive their chunk being saved, unloaded and loaded again, and the load handler does not discard them.
+	 * A GameTest cannot reload the world, so this unloads the chunk (it stops being forced, and the test waits until it is not loaded,
+	 * which saves it with its entities) and loads it again through a ticket. The state is the marker block a real delivery sets, and
+	 * it is put back on every way out. The hands are in a far chunk beside a body display, which shows that the chunk's entities
+	 * loaded again.
+	 */
+	@GameTest(maxTicks = 2 * FarChunks.AWAIT_BUDGET_TICKS + 600)
+	public void handsThatTheWorldOwesSurviveTheirChunkBeingUnloadedAndLoadedAgain(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		ServerLevel level = server.overworld();
+		BlockPos marker = FounderStatue.markerPos(server).orElseThrow();
+		level.getChunk(marker);
+		BlockPos far = new BlockPos(15_000, 120, 15_000);
+		int chunkX = far.getX() >> 4;
+		int chunkZ = far.getZ() >> 4;
+		AABB around = new AABB(far).inflate(3);
+		int[] phase = {0};
+		int[] missing = {0};
+		FarChunks.Deadline[] by = {null};
+		Runnable putBack = () -> FounderStatue.removeHands(server);
+		helper.onEachTick(() -> {
+			try {
+				switch (phase[0]) {
+					case 1 -> {
+						level.setBlock(marker, Blocks.STRUCTURE_VOID.defaultBlockState(), Block.UPDATE_CLIENTS);
+						for (String piece : List.of("founder_c", "founder_c_hands")) {
+							server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), String.format(
+									"summon minecraft:block_display %d %d %d {block_state:{id:\"deepcharter:colony_sculpture\",properties:{piece:\"%s\"}}}",
+									far.getX(), far.getY(), far.getZ(), piece));
+						}
+						phase[0] = 2;
+					}
+					case 2 -> {
+						long hands = level.getEntitiesOfClass(Display.BlockDisplay.class, around, d -> d.getBlockState().equals(FounderStatue.handsState())).size();
+						if (hands != 1) {
+							throw helper.assertionException("the hands the world owes should stand, found %s", hands);
+						}
+						level.setChunkForced(chunkX, chunkZ, false);
+						by[0] = FarChunks.deadline();
+						phase[0] = 3;
+					}
+					case 3 -> {
+						if (by[0].awaitUnloaded(helper, level, chunkX, chunkZ)) {
+							level.setChunkForced(chunkX, chunkZ, true);
+							by[0] = FarChunks.deadline();
+							phase[0] = 4;
+						}
+					}
+					case 4 -> {
+						List<Display.BlockDisplay> found = level.getEntitiesOfClass(Display.BlockDisplay.class, around);
+						boolean body = found.stream().anyMatch(d -> d.getBlockState().equals(FounderStatue.bodyState()));
+						boolean hands = found.stream().anyMatch(d -> d.getBlockState().equals(FounderStatue.handsState()));
+						// The chunk's entities come in a few ticks: the hands are gone only when the body has stood without them for a while.
+						missing[0] = body && !hands ? missing[0] + 1 : 0;
+						if (missing[0] > 40) {
+							throw helper.assertionException("the chunk's body display loaded again, and the hands that the world owes did not (marker %s)", level.getBlockState(marker));
+						}
+						if (body && !hands) {
+							return;
+						}
+						by[0].await(helper, level, body, () -> "the chunk's entities did not load again");
+						if (body) {
+							found.forEach(Entity::discard);
+							putBack.run();
+							phase[0] = 5;
+							helper.succeed();
+						}
+					}
+					default -> {
+					}
+				}
+			} catch (RuntimeException e) {
+				putBack.run();
+				throw e;
+			}
+		});
+		FarChunks.awaitEntityTicking(helper, level, far, () -> phase[0] = 1);
 	}
 
 	/** A world whose colony has no Host (one built before the rebuild) refuses the completing delivery before it takes any ore. */
