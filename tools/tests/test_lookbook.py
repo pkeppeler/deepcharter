@@ -94,9 +94,20 @@ class MarkdownTest(unittest.TestCase):
 """, body)
         self.assertTrue(text.startswith("# Look A: One\n\n[Compare all](README.md) · **A** · [B. Two](b-two.md)\n\nThe idea.\n"))
 
+    def test_a_label_bar_ends_at_its_bottom_and_holds_the_glyphs(self):
+        image = lookbook.pngio.decode_rgba("labels", lookbook.label_overlay(30, 30, [(0, 30, "A")]))
+
+        def pixel(x, y):
+            return tuple(image.rgba[4 * (y * 30 + x):4 * (y * 30 + x) + 4])
+
+        # One glyph at scale 2: a bar 18 wide and 22 high, so from y 8 to the bottom; the A's top bar starts 4 in and 1 font pixel over.
+        self.assertEqual([(0, 0, 0, 0), (0, 0, 0, 170), (0, 0, 0, 170), (0, 0, 0, 0)],
+                         [pixel(0, 7), pixel(0, 8), pixel(17, 29), pixel(18, 29)])
+        self.assertEqual((255, 255, 255, 255), pixel(6, 12))
+
     def test_a_label_with_no_glyph_is_refused(self):
         with self.assertRaisesRegex(LookBookError, "no glyph for ;"):
-            lookbook.label_overlay(100, 40, [(0, 0, "A; B")])
+            lookbook.label_overlay(100, 40, [(0, 40, "A; B")])
 
 
 class RealFilesTest(unittest.TestCase):

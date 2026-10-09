@@ -287,22 +287,26 @@ GLYPHS = {
     "Y": "10001 10001 01010 00100 00100 00100 00100", "Z": "11111 00001 00010 00100 01000 10000 11111",
     ".": "00000 00000 00000 00000 00000 01100 01100", " ": "00000 00000 00000 00000 00000 00000 00000",
 }
-LABEL_SCALE = 3
+# Each font pixel is this many image pixels. A label sits at the bottom left of its tile, clear of the HUD's top-left status
+# lines and of the screens' titles.
+LABEL_SCALE = 2
+LABEL_MARGIN = 6
 
 
 def label_overlay(width, height, labels):
-    """A transparent width x height PNG with each (x, y, text) label in white on a dark bar."""
+    """A transparent width x height PNG with each (x, bottom, text) label in white on a dark bar that ends at bottom."""
     pixels = bytearray(width * height * 4)
     glyph_w, glyph_h = 6 * LABEL_SCALE, 7 * LABEL_SCALE
     pad = 2 * LABEL_SCALE
-    for x0, y0, text in labels:
+    for x0, bottom, text in labels:
         text = text.upper()
         unknown = sorted(set(text) - set(GLYPHS))
         if unknown:
             raise LookBookError(f"label '{text}': no glyph for {' '.join(unknown)}")
         bar_w, bar_h = len(text) * glyph_w + 2 * pad - LABEL_SCALE, glyph_h + 2 * pad
-        for y in range(y0, min(height, y0 + bar_h)):
-            for x in range(x0, min(width, x0 + bar_w)):
+        y0 = bottom - bar_h
+        for y in range(max(0, y0), min(height, y0 + bar_h)):
+            for x in range(max(0, x0), min(width, x0 + bar_w)):
                 pixels[4 * (y * width + x):4 * (y * width + x) + 4] = bytes((0, 0, 0, 170))
         for i, char in enumerate(text):
             rows = GLYPHS[char].split()
@@ -314,7 +318,7 @@ def label_overlay(width, height, labels):
                         for dx in range(LABEL_SCALE):
                             x = x0 + pad + i * glyph_w + gx * LABEL_SCALE + dx
                             y = y0 + pad + gy * LABEL_SCALE + dy
-                            if x < width and y < height:
+                            if 0 <= x < width and 0 <= y < height:
                                 pixels[4 * (y * width + x):4 * (y * width + x) + 4] = bytes((255, 255, 255, 255))
     return pngio.RgbaImage(width, height, bytes(pixels)).to_png()
 
@@ -340,7 +344,8 @@ def grids(out_dir, media_dirs):
     width, height = GRID_COLUMNS * TILE_W, rows * TILE_H
     out_dir.mkdir(parents=True, exist_ok=True)
     labels = out_dir / "labels.png"
-    labels.write_bytes(label_overlay(width, height, [((i % GRID_COLUMNS) * TILE_W + 8, (i // GRID_COLUMNS) * TILE_H + 8,
+    labels.write_bytes(label_overlay(width, height, [((i % GRID_COLUMNS) * TILE_W + LABEL_MARGIN,
+                                                      (i // GRID_COLUMNS + 1) * TILE_H - LABEL_MARGIN,
                                                       f"{option.letter}. {option.name}") for i, option in enumerate(every)]))
     layout = "|".join(f"{(i % GRID_COLUMNS) * TILE_W}_{(i // GRID_COLUMNS) * TILE_H}" for i in range(len(every)))
     for name, _ in manifest.compare:

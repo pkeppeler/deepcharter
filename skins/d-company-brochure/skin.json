@@ -12,7 +12,7 @@
     "light": "Cheery gold in town, dim cold grey below",
     "pods": "Company red Mole, cream Prospector",
     "ui": "Red lettering on cream enamel terminals; white paper, red binding",
-    "hud": "Cream text; a cream map scanner in ink and red",
+    "hud": "Company red text; a cream map scanner in ink and red",
     "grade": "Bleached and soft above; drained and dark below"
   },
   "sky": {
@@ -51,10 +51,10 @@
   "accent": {"hue_pull": {"toward": 0, "amount": 0.15}, "saturation": 1.05, "value": 1.05},
   "phosphor": "#B3261E",
   "theme": {
-    "crt": {"backgroundColor": "#F2E6CF", "phosphorColor": "#A8201A", "dimColor": "#C8A890", "hoverFillColor": "#E8D4B4",
+    "crt": {"backgroundColor": "#F2E6CF", "phosphorColor": "#A8201A", "dimColor": "#A88468", "hoverFillColor": "#E8D4B4",
             "glowColor": "#18A8201A", "bloomColor": "#10FFFFFF", "scanlineColor": "#14000000", "refusalColor": "#2A4A9A"},
     "handbook": {"paperColor": "#FAF2E2", "bindingColor": "#B3261E", "inkColor": "#2A1A14", "stampColor": "#B3261E"},
-    "hud": {"podStatusColor": "#FFF4E0", "altimeterColor": "#FFF4E0", "accountColor": "#FFE08A"},
+    "hud": {"podStatusColor": "#D83A2A", "altimeterColor": "#D83A2A", "accountColor": "#D83A2A"},
     "scanner": {"titleColor": "#FFF4E0", "airColor": "#F2E6CF", "rockColor": "#A88C68", "oreColor": "#2A1A14", "goldOreColor": "#E0A020",
                 "podColor": "#B3261E", "frameColor": "#8A1A12"},
     "transmission": {"panelFillColor": "#F0F2E6CF", "textColor": "#2A1A14", "liveColor": "#B3261E", "relayColor": "#C87A10",

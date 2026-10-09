@@ -2,7 +2,7 @@
 
 [Compare all](README.md) · [A. Dusk Company](a-dusk-company.md) · [B. Cold dusk](b-cold-dusk.md) · [C. Iron and soot](c-iron-and-soot.md) · [D. Company brochure](d-company-brochure.md) · [E. Arcade homage](e-arcade.md) · **F**
 
-Wildcard: as if the planet were an abyssal trench. Teal-black murk and fog that eats the land at fifty blocks, cold bioluminescent ore, and the harsh sodium of the Company's lamps cutting through it. Verdigris metal and sea-worn paper.
+Wildcard: as if the planet were an abyssal trench. Teal-black murk and fog that eats the land within a hundred blocks, cold bioluminescent ore, and the harsh sodium of the Company's lamps cutting through it. Verdigris metal and sea-worn paper.
 
 ![The palette of F](https://raw.githubusercontent.com/pkeppeler/deepcharter/pr-media/looks/f-the-deep/palette.png)
 

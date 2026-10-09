@@ -16,7 +16,7 @@
     "grade": "Strong: crushed colour, hard contrast, heavy vignette"
   },
   "sky": {
-    "dusk": {"sky": "#2E2622", "fog": "#5A4434", "glow": "#90FF7A30", "light": "#C08A60", "light_factor": 0.45, "stars": 0.0,
+    "dusk": {"sky": "#2E2622", "fog": "#5A4434", "glow": "#90FF7A30", "light": "#C08A60", "light_factor": 0.55, "stars": 0.0,
              "fog_start": 12, "fog_end": 110, "tint": "#FF8A3A"},
     "night": {"sky": "#0C0A0A", "fog": "#1C1410", "glow": "#00000000", "light": "#50403A", "light_factor": 0.15, "stars": 0.1,
               "fog_start": 8, "fog_end": 70, "tint": "#FF7A2A"},
@@ -30,7 +30,7 @@
                 "fog": {"upper_levels": "#121010", "shift_change": "#0E0C0C", "prospectors_run": "#0A0808"}}
   },
   "grade": {
-    "surface": {"shadows": [0.16, 0.10, 0.07, 0.6], "highlights": [1.0, 0.72, 0.42, 0.45], "saturation": 0.5, "vignette": 0.6,
+    "surface": {"shadows": [0.16, 0.10, 0.07, 0.45], "highlights": [1.0, 0.72, 0.42, 0.45], "saturation": 0.5, "vignette": 0.5,
                 "contrast": 1.22, "olive": 0.9},
     "layer_1": {"shadows": [0.14, 0.09, 0.06, 0.5], "highlights": [1.0, 0.70, 0.40, 0.4], "saturation": 0.55, "vignette": 0.5,
                 "contrast": 1.15},
@@ -46,7 +46,7 @@
     "metal": ["#0E0E10", "#24221E", "#4A3E2A", "#9A7A40"],
     "bronze": ["#2A1C08", "#6A4A18", "#B08A3A", "#E8C870"],
     "paper": ["#6A5E48", "#A8987A", "#D4C4A0"],
-    "hull": ["#1A1208", "#4A3414", "#8A6A2E", "#C8A050"],
+    "hull": ["#3A2810", "#7A5A24", "#B89040", "#F0C860"],
     "hull_prospector": ["#121212", "#2C2A28", "#4A4640", "#787068"],
     "wreck": ["#040404", "#0E0C0C", "#1C1816", "#2A2420"]
   },
