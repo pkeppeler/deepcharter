@@ -9,6 +9,7 @@ import net.minecraft.world.level.block.Blocks;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 
 /**
  * Evidence scenario "m2-scanner-tiers": in layer 2, the same pod with no scanner (no map), then a tier 1 scanner (M1's
@@ -39,6 +40,7 @@ public class ScannerTiersScenario extends EvidenceScenario {
 			ScannerHudTest.goToLayer(server, 2);
 			context.waitFor(client -> client.level.dimension().identifier().getPath().equals("layer_2"));
 			context.waitTicks(40);
+			RoomCarver.carveAroundFirstPlayer(server);
 
 			for (int tier = 0; tier <= 2; tier++) {
 				ScannerHudTest.mountFirstPlayer(server, tier);
