@@ -48,7 +48,7 @@ public final class HazardBlocks {
 		return TagKey.create(Registries.BLOCK, id(path));
 	}
 
-	private static Block registerBlock(Identifier id, Function<ResourceKey<Block>, Block> factory) {
+	static Block registerBlock(Identifier id, Function<ResourceKey<Block>, Block> factory) {
 		ResourceKey<Block> blockKey = ResourceKey.create(Registries.BLOCK, id);
 		Block block = Registry.register(BuiltInRegistries.BLOCK, blockKey, factory.apply(blockKey));
 		ResourceKey<Item> itemKey = ResourceKey.create(Registries.ITEM, id);
