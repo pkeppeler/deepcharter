@@ -6,7 +6,8 @@ import java.util.TreeSet;
 /**
  * What the pod renderer does with a bone of a pod model (#334). The role comes from the bone's name: one word of the
  * vocabulary below, alone or followed by {@code _} and a suffix ({@code tread_l}, {@code wheel_l2}). A name outside it is an
- * error, so a typo never turns a moving part into a still one.
+ * error, so a typo never turns a moving part into a still one. The suffix of a {@code drill_head} or {@code drill_ring} names
+ * its cutter (ADR 0040): the pod shows the cutter that its drill tier picks.
  */
 public enum BoneRole {
 	/** Rides along with its parent. */
@@ -38,7 +39,7 @@ public enum BoneRole {
 			Map.entry("body", FIXED), Map.entry("hull", FIXED), Map.entry("canopy", FIXED), Map.entry("hatch", FIXED),
 			Map.entry("lamps", FIXED), Map.entry("cutter", FIXED), Map.entry("tank", FIXED), Map.entry("exhaust", FIXED),
 			Map.entry("fender", FIXED), Map.entry("tread", FIXED), Map.entry("mast", FIXED), Map.entry("duct", FIXED),
-			Map.entry("frame", FIXED), Map.entry("strut", FIXED), Map.entry("shin", FIXED), Map.entry("foot", FIXED),
+			Map.entry("frame", FIXED), Map.entry("strut", FIXED), Map.entry("shin", FIXED), Map.entry("foot", FIXED), Map.entry("winch", FIXED),
 			Map.entry("drill_mount", DRILL_MOUNT), Map.entry("drill_head", DRILL_HEAD), Map.entry("drill_ring", DRILL_RING), Map.entry("rotor", ROTOR),
 			Map.entry("fan", FAN), Map.entry("thruster", THRUSTER), Map.entry("flame", FLAME), Map.entry("wheel", WHEEL),
 			Map.entry("links", LINKS), Map.entry("leg", LEG), Map.entry("thigh", THIGH));

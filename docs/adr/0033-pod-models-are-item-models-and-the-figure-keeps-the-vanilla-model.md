@@ -4,7 +4,7 @@ status: accepted
 
 # Pod models are item models a pack can replace, and the lampless figure keeps the vanilla model
 
-Builds on [ADR 0030](0030-art-direction-decisions.md) (the art direction) and [ADR 0027](0027-a-chassis-is-an-entity-type-and-an-unowned-wreck-is-registered-when-restored.md) (a chassis is an entity type). Issue #258, part of the drop-in skins work (#226).
+Builds on [ADR 0030](0030-art-direction-decisions.md) (the art direction) and [ADR 0027](0027-a-chassis-is-an-entity-type-and-an-unowned-wreck-is-registered-when-restored.md) (a chassis is an entity type). Issue #258, part of the drop-in skins work (#226). **The pod part of this record is superseded by [ADR 0040](0040-a-pod-look-is-a-file-per-chassis-and-the-drill-tier-picks-the-cutter.md)** (#243): the pods are GeckoLib models with a look file, and `PodSkins`, `PodRenderer` and the pod item models are gone. The lampless figure's part stands.
 
 ## Decision
 

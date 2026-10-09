@@ -227,21 +227,23 @@ in the palette's ramps and have a one-pixel dark outline.
 
 None of the entities has a custom 3D model.
 
+**Since #243 the pods have.** The Mole and the Prospector, intact and wrecked, are GeckoLib models with a look file each ([ADR 0040](../adr/0040-a-pod-look-is-a-file-per-chassis-and-the-drill-tier-picks-the-cutter.md), [skins.md](skins.md#pod-models)); the drill tier shows the cutter. The tables below describe the pods as they are now; the pictures are #223's slabs, kept as the "before".
+
 ### Mole (`deepcharter:pod`)
 
 ![mole-unlit-day-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/mole-unlit-day-front.png?raw=true) ![mole-unlit-day-side](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/mole-unlit-day-side.png?raw=true)
 ![mole-unlit-day-back](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/mole-unlit-day-back.png?raw=true) ![mole-unlit-day-top](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/mole-unlit-day-top.png?raw=true)
 
-Front, side and back look the same: the model is a symmetric slab with no front.
+The pictures: the old slab, which looked the same from the front, side and back. The Mole now has a front, the cone, and a back.
 
 | | |
 |---|---|
-| Source | `main/pod/PodRegistry.java:23`, `main/pod/Chassis.java:8` (width 1.9, height 1.9, 1 seat), `client/pod/PodRenderer.java`, `client/pod/PodClientRegistry.java:15` |
-| Model | None. The renderer draws one vanilla block, `minecraft:raw_copper_block`, scaled to 1.9 x 0.9 x 1.9 blocks (`PodRenderer.java:55-56`, `SLAB_HEIGHT` at `:25`). It is a copper-coloured slab with the vanilla raw-copper texture. |
-| Texture | None of its own (vanilla `block/raw_copper_block`, 16 x 16) |
-| Variants | 1 look. A wreck is drawn as a `minecraft:coal_block` slab instead (`PodRenderer.java:23`). Lights and parts change nothing visible. |
-| Vanilla | **partly**: a vanilla block used as the model |
-| Swap | **(c)** the model is code. Replacing it needs a real entity model and a texture. |
+| Source | `main/pod/PodRegistry.java`, `main/pod/Chassis.java` (width 1.9, height 1.9, 1 seat), `client/pod/PodGeoRenderer.java`, `client/pod/PodClientRegistry.java` |
+| Model | `geckolib/models/pod/mole.geo.json`: the Capsule, a GeckoLib model with the cutter of every drill tier as bone sets ([ADR 0040](../adr/0040-a-pod-look-is-a-file-per-chassis-and-the-drill-tier-picks-the-cutter.md)). |
+| Texture | `textures/entity/pod/mole.png` and `mole_glowmask.png` (512 x 512, written by `tools/pod_concepts.py`) |
+| Variants | The drill tier shows the cutter (T0 tricone, T1 stacked rings, T2 fluted auger, T3 and up cluster, from `pod/mole.json`). A wreck is the derelict texture, with no rotor. |
+| Vanilla | no |
+| Swap | **(a)** a pack replaces `pod/mole.json`, the model or the textures |
 
 Lit and unlit in a dark room (the lights part is a light source round the pod; it adds no glow or lamp to the model):
 
@@ -255,31 +257,31 @@ Lit and unlit in a dark room (the lights part is a light source round the pod; i
 
 | | |
 |---|---|
-| Source | `main/pod/PodRegistry.java:25`, `main/pod/Chassis.java:10` (width 2.9, height 2.9, 2 seats), `client/pod/PodClientRegistry.java:17` |
-| Model | As the Mole: one vanilla block, `minecraft:iron_block`, scaled to 2.9 x 0.9 x 2.9 blocks. |
-| Texture | None of its own (vanilla `block/iron_block`, 16 x 16) |
-| Variants | 1 look, plus the coal-block wreck |
-| Vanilla | **partly** |
-| Swap | **(c)**, as the Mole |
+| Source | `main/pod/PodRegistry.java`, `main/pod/Chassis.java` (width 2.9, height 2.9, 2 seats), `client/pod/PodGeoRenderer.java` |
+| Model | `geckolib/models/pod/prospector.geo.json`: longer, two seats in tandem, a winch, wider cutters. |
+| Texture | `textures/entity/pod/prospector.png` and `prospector_glowmask.png` |
+| Variants | As the Mole's, with the cluster from T3 (the Prospector's cap). The wreck is scorched, with one lamp lit. |
+| Vanilla | no |
+| Swap | **(a)**, as the Mole |
 
 ![prospector-unlit-dark-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/prospector-unlit-dark-front.png?raw=true) ![prospector-lit-dark-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/prospector-lit-dark-front.png?raw=true)
 ![prospector-lit-dark-side](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/prospector-lit-dark-side.png?raw=true) ![prospector-lit-dark-back](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/prospector-lit-dark-back.png?raw=true)
 
 ### Wrecks
 
-A pod whose hull reaches 0 is a wreck: powered off, drawn as a coal-block slab (`PodRenderer.java:23`, `main/wreck/Wrecks.java`).
+A pod whose hull reaches 0 is a wreck: powered off, drawn with the wreck variant of its look file (`client/pod/PodGeoRenderer.java`, `main/wreck/Wrecks.java`): a weathered texture, the derelict Mole without its rotor, the scorched Prospector with one lamp lit.
 
 ![wrecks-mole-and-prospector-day](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/wrecks-mole-and-prospector-day.png?raw=true) ![wreck-mole-front-day](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/wreck-mole-front-day.png?raw=true)
 ![wreck-prospector-front-day](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/wreck-prospector-front-day.png?raw=true)
 
 | | |
 |---|---|
-| Vanilla | **partly** (a vanilla coal block) |
-| Swap | **(c)** `PodRenderer.java:23` |
+| Vanilla | no |
+| Swap | **(a)** `wreck` in `pod/<chassis>.json`, and the `_wreck` textures |
 
 ### The founding Mole in the hangar
 
-The derelict Mole is a `deepcharter:pod` made with hull 0 (`main/hangar/Hangar.java`), so it is drawn as a wreck, a black coal-block slab; repairing it at the hangar console makes it MOLE-0001 and a raw-copper Mole.
+The derelict Mole is a `deepcharter:pod` made with hull 0 (`main/hangar/Hangar.java`), so it is drawn as the derelict Mole; repairing it at the hangar console makes it MOLE-0001 and a working Mole.
 
 ![hangar-derelict-mole](https://github.com/pkeppeler/deepcharter/blob/pr-media/371/hangar-derelict-mole.png?raw=true) ![hangar-founding-mole-repaired](https://github.com/pkeppeler/deepcharter/blob/pr-media/371/hangar-founding-mole-repaired.png?raw=true)
 
@@ -632,7 +634,7 @@ Nothing of these exists yet, so there is nothing to restyle and each one is new 
 
 Already marked placeholder in code or issues:
 
-- **Pod model (Mole, Prospector, wrecks):** `client/pod/PodRenderer.java:19`: "Placeholder model", a scaled vanilla block
+- ~~**Pod model (Mole, Prospector, wrecks):** `client/pod/PodRenderer.java:19`: "Placeholder model", a scaled vanilla block~~ Done in #243: GeckoLib models, see [ADR 0040](../adr/0040-a-pod-look-is-a-file-per-chassis-and-the-drill-tier-picks-the-cutter.md)
 - **Lampless figure:** `main/creature/LamplessFigure.java:20` ("PLACEHOLDER until the creatures session (#13)"), `CreatureRegistry.java:19`, `client/creature/LamplessFigureRenderer.java:15`; issue #83 "M2 (placeholder): the lampless figure"
 - **Pod status HUD:** `client/pod/PodStatusHud.java:19`: "Plain text readout of the ridden pod; the real HUD design comes later"
 - **Transmission texts:** `src/lang/en_us/transmission.json:10-27`: every body of T01 to T18 starts "[PLACEHOLDER Txx: the lore session writes this text]"
@@ -650,7 +652,7 @@ Every look that is fixed in Java and cannot be replaced by swapping a resource-p
 
 | Visual | What is fixed | Where |
 |---|---|---|
-| ~~Pod models~~ | Done in #258 ([ADR 0033](../adr/0033-pod-models-are-item-models-and-the-figure-keeps-the-vanilla-model.md)): each chassis, wreck and drill is a resource-pack model under `assets/deepcharter/models/pod/` with an item definition under `items/pod/`. The default models are still slabs textured with vanilla raw copper, iron and coal. | `client/pod/PodRenderer.java`, `PodSkins.java` |
+| ~~Pod models~~ | Done in #258 (item models) and replaced in #243 ([ADR 0040](../adr/0040-a-pod-look-is-a-file-per-chassis-and-the-drill-tier-picks-the-cutter.md)): each chassis is a GeckoLib model, textures and a look file a pack replaces, and the drill tier map is data. | `client/pod/PodGeoRenderer.java`, `PodLook.java`, `assets/deepcharter/pod/` |
 | Lampless figure model | Vanilla zombie model; only the skin is a resource. A documented exception in ADR 0033: a bone rig comes with GeckoLib (#243) | `client/creature/LamplessFigureRenderer.java:20` |
 | CRT look (all terminal screens, account HUD, transmissions) | Colours (background `#050A06`, phosphor `#7CFC9A`, dim `#2E7A45`, hover `#123D20`), scanline spacing 2 and colour, glow, bloom, padding, typewriter speed | `client/ui/CrtTuning.java:36-38` |
 | CRT drawing | Background fill, scanlines, bloom bands, 4-way halo text, 1-pixel frames, button fill | `client/ui/CrtDraw.java:15-43`, `client/ui/CrtButton.java:23`; the typewriter cursor block is `client/ui/CrtScreen.java:144` |

@@ -42,12 +42,94 @@ fabricApi {
 	}
 }
 
+repositories {
+	// Only GeckoLib comes from here, and only this repository may serve it (audit condition 3).
+	exclusiveContent {
+		forRepository {
+			maven {
+				name = "GeckoLib"
+				url = "https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/"
+			}
+		}
+		filter {
+			includeGroup "com.geckolib"
+		}
+	}
+}
+
 dependencies {
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
 	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	// Pod models (ADR 0030). The jar is nested in ours, so a player installs nothing extra (audit condition 4).
+	implementation "com.geckolib:geckolib-fabric-26.3:${project.geckolib_version}"
+	include "com.geckolib:geckolib-fabric-26.3:${project.geckolib_version}"
 }
+
+// Audit condition 2: the resolved GeckoLib jar must be the audited one. Gradle has no dependency verification here, so a
+// changed jar (a re-upload, a swapped repository) fails the build before it is packed into ours.
+abstract class CheckGeckoLib extends DefaultTask {
+	@InputFiles
+	abstract ConfigurableFileCollection getJars()
+
+	@Input
+	abstract Property<String> getSha512()
+
+	@TaskAction
+	void check() {
+		def found = jars.files.findAll { it.name.startsWith("geckolib-fabric-") }
+		if (found.size() != 1) {
+			throw new GradleException("expected exactly one GeckoLib jar on the runtime classpath, found ${found.collect { it.name }}")
+		}
+		def digest = java.security.MessageDigest.getInstance("SHA-512").digest(found[0].bytes).encodeHex().toString()
+		if (digest != sha512.get()) {
+			throw new GradleException("${found[0].name} has sha512 ${digest}, but gradle.properties pins ${sha512.get()}. "
+				+ "A new GeckoLib is a new audit (docs/tooling/geckolib-audit.md): repeat its hash and source checks, then update the pin.")
+		}
+	}
+}
+
+def checkGeckoLib = tasks.register("checkGeckoLib", CheckGeckoLib) {
+	group = "verification"
+	description = "Fails unless the resolved GeckoLib jar is the audited one."
+	jars.from(configurations.runtimeClasspath)
+	sha512 = project.geckolib_sha512
+}
+tasks.named("jar") { dependsOn checkGeckoLib }
+
+// The same check on the copy that ships: the jar nested in our mod jar must be the one jar there, with the pinned sha512 (audit
+// condition 4: Loom's include must not add a second jar or a different one).
+abstract class CheckNestedGeckoLib extends DefaultTask {
+	@InputFile
+	abstract RegularFileProperty getModJar()
+
+	@Input
+	abstract Property<String> getSha512()
+
+	@TaskAction
+	void check() {
+		try (def zip = new java.util.zip.ZipFile(modJar.get().asFile)) {
+			def nested = zip.entries().toList().findAll { it.name.startsWith("META-INF/jars/") && !it.directory }
+			if (nested.size() != 1 || !nested[0].name.startsWith("META-INF/jars/geckolib-fabric-")) {
+				throw new GradleException("${modJar.get().asFile.name} must nest exactly one jar, GeckoLib's; it nests ${nested.collect { it.name }}")
+			}
+			def digest = java.security.MessageDigest.getInstance("SHA-512").digest(zip.getInputStream(nested[0]).bytes).encodeHex().toString()
+			if (digest != sha512.get()) {
+				throw new GradleException("${nested[0].name} inside ${modJar.get().asFile.name} has sha512 ${digest}, but gradle.properties pins ${sha512.get()}")
+			}
+		}
+	}
+}
+
+def checkNestedGeckoLib = tasks.register("checkNestedGeckoLib", CheckNestedGeckoLib) {
+	group = "verification"
+	description = "Fails unless the jar nested in our mod jar is the audited GeckoLib."
+	modJar = tasks.named("jar").flatMap { it.archiveFile }
+	sha512 = project.geckolib_sha512
+}
+tasks.named("check") { dependsOn checkGeckoLib, checkNestedGeckoLib }
 
 apply from: "gradle/lang.gradle"
 apply from: "gradle/literals.gradle"

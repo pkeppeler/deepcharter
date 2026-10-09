@@ -25,9 +25,9 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 
 /**
- * Evidence scenario "skin-swap" (#258, ADR 0033): the Mole as shipped, then the same Mole after a throwaway resource pack is
- * switched on and the resources reload (what F3+T does). The pack is a different hull shape and texture, plus a drill that the
- * default skin does not show; the drill turns while the pod drills. No Java changes between the stills.
+ * Evidence scenario "skin-swap" (#258, #243, ADR 0040): the Mole as shipped, then the same Mole after a throwaway resource pack is
+ * switched on and the resources reload (what F3+T does). The pack replaces the Mole's look file: the derelict texture on a pod that
+ * works, and the cluster for the stock drill's cutter. The cutter turns while the pod drills. No Java changes between the stills.
  */
 public class SkinSwapScenario extends EvidenceScenario {
 	private static final String PACK = "skin-demo";
@@ -94,9 +94,9 @@ public class SkinSwapScenario extends EvidenceScenario {
 		}
 	}
 
-	/** The id of the pack that the Mole's model currently comes from: it changes when a reload has finished. */
+	/** The id of the pack that the Mole's look currently comes from: it changes when a reload has finished. */
 	private static String moleModelPack(Minecraft client) {
-		return client.getResourceManager().getResource(Identifier.fromNamespaceAndPath("deepcharter", "models/pod/mole.json"))
+		return client.getResourceManager().getResource(Identifier.fromNamespaceAndPath("deepcharter", "pod/mole.json"))
 				.map(Resource::sourcePackId).orElse("");
 	}
 
@@ -125,37 +125,15 @@ public class SkinSwapScenario extends EvidenceScenario {
 			write(pack.resolve("pack.mcmeta"), """
 					{"pack": {"description": "Deep Charter skin demo (throwaway)", "min_format": 97, "max_format": 97}}
 					""");
-			Path models = pack.resolve("assets/deepcharter/models/pod");
-			// A broader, lower hull in gold with a cabin on top. Block space, true size: 1.9 blocks is 30.4 pixels, centred on 8.
-			write(models.resolve("mole.json"), model("gold_block light_blue_concrete",
-					cube("body", "-7.2, 0, -7.2", "23.2, 8, 23.2", "gold_block"),
-					cube("cabin", "2, 8, 2", "14, 15, 14", "light_blue_concrete")));
-			// A drill with one red fin, so the turn shows. Authored pointing down from the middle of the hull.
-			write(models.resolve("mole_drill.json"), model("iron_block redstone_block",
-					cube("shaft", "5, -16, 5", "11, 7, 11", "iron_block"),
-					cube("fin", "11, -16, 7", "16, -4, 9", "redstone_block")));
+			// The mod's own wreck texture for a pod that works, and a cluster of cones at every drill tier.
+			write(pack.resolve("assets/deepcharter/pod/mole.json"), """
+					{"model": "deepcharter:pod/mole", "texture": "deepcharter:textures/entity/pod/mole_wreck.png", "glow": "lit",
+					 "cutters": {"0": "cluster"},
+					 "wreck": {"texture": "deepcharter:textures/entity/pod/mole_wreck.png", "glow": "never"}}
+					""");
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
-	}
-
-	/** A model of cubes. Faces carry an explicit uv: the default is the face's own coordinates, which leave the texture past 16 pixels. */
-	private static String model(String blocks, String... cubes) {
-		StringBuilder textures = new StringBuilder();
-		for (String block : blocks.split(" ")) {
-			textures.append("\"").append(block).append("\": \"minecraft:block/").append(block).append("\", ");
-		}
-		String particle = "\"particle\": \"minecraft:block/" + blocks.split(" ")[0] + "\"";
-		return "{\"textures\": {" + textures + particle + "}, \"elements\": [" + String.join(", ", cubes) + "]}";
-	}
-
-	private static String cube(String name, String from, String to, String texture) {
-		StringBuilder faces = new StringBuilder();
-		for (String face : new String[] {"north", "east", "south", "west", "up", "down"}) {
-			faces.append(faces.isEmpty() ? "" : ", ")
-					.append("\"").append(face).append("\": {\"uv\": [0, 0, 16, 16], \"texture\": \"").append("#").append(texture).append("\"}");
-		}
-		return "{\"name\": \"" + name + "\", \"from\": [" + from + "], \"to\": [" + to + "], \"faces\": {" + faces + "}}";
 	}
 
 	private static void write(Path file, String text) throws IOException {

@@ -15,7 +15,7 @@ GeckoLib 5.5.7 is safe to bundle. The Modrinth jar and the Maven jar are byte-id
 - **Latest 26.3 build.** 5.5.7 (2026-09-22) replaces 5.5.6, the first 26.3 port. No newer 26.3 build exists.
 - **Mixins:** 17 classes (6 common, 11 client), all `@Inject` or MixinExtras wrappers. They share 6 target classes with Sodium, Iris and Lithium, but only one method (Iris, `ModelFeatureRenderer.prepareModel`), and it should compose.
 - **Two surprises.** Glowmasks use vanilla `eyes` on macOS and Linux but GeckoLib's own pipeline on Windows. There is no CI and no git tag: releases are built and uploaded from the maintainer's machine.
-- **Iris shadow behaviour is not verified.** The old reports are GeckoLib 4 and closed. Check it in #243 (see [Not verified](#not-verified-check-in-243)).
+- **Iris shadow behaviour is not verified.** The old reports are GeckoLib 4 and closed. It was not checked in #243 (see [Checked in #243, and not](#checked-in-243-and-not)).
 
 ## Pinned version and hashes
 
@@ -233,19 +233,24 @@ dependencies {
 8. **Design glowmasks for vanilla `eyes`.** That is the macOS and Linux path. Do not rely on `shouldRespectWorldLighting` or `shouldAddZOffset`; they work only on Windows.
 9. **Gate run:** client GameTests with the pinned GeckoLib, Sodium, Lithium and Iris jars, as in the Sodium and Lithium gate.
 
-## Not verified: check in #243
+## Checked in #243, and not
 
-None of these was run.
+#243 added GeckoLib as pinned above and ran it on macOS with the Vulkan backend, in the dev environment (Fabric API 0.162.0+26.3, no Sodium, Lithium or Iris).
 
-- **Iris shadow pass.** Do pod animations hold in shadows? Earlier reports ([#512](https://github.com/bernie-g/geckolib/issues/512), [#541](https://github.com/bernie-g/geckolib/issues/541)) are GeckoLib 4 and closed, from 2023 and 2024. GeckoLib 5 captures animation state at extract time, which should keep a second pass consistent.
-- **Iris entity context** on GeckoLib geometry (the `CustomFeatureRenderer` path), and glowmasks under a shader pack.
-- **Iris and GeckoLib on `ModelFeatureRenderer.prepareModel`:** do they compose at runtime?
-- **Glowmasks under Vulkan on macOS.** Our client tests and play client use `--graphicsBackend vulkan` on macOS ([build.gradle](../../build.gradle)). GeckoLib's Windows-only pipeline is never used there, so check `eyes` on Vulkan.
-- **Frame cost** of `submitCustomGeometry` for a 150–250 cube pod under Sodium, against vanilla `ModelPart`.
-- **Dedicated server start** with GeckoLib nested. By inspection the common classes have no client imports.
-- **F3+T** reloading pod models and animations.
-- **Packaging:** Fabric Loader's choice among nested GeckoLib copies, and whether Loom's `include` stays non-transitive.
-- **Rebuild:** a reproducible rebuild from `e771d86`. The match here is the published sources jar, not a rebuild.
+**Checked:**
+
+- **Pin and packaging.** `checkGeckoLib` compares the resolved jar's sha512 with `gradle.properties` before `jar` (condition 2). After `./gradlew build`, our jar's `META-INF/jars/` holds one file, `geckolib-fabric-26.3-5.5.7.jar`, with the pinned sha512, so Loom's `include` is not transitive in 1.18.2 (condition 4). `fabric.mod.json` has `"geckolib": "~5.5.7"` (condition 5). The jar's `LICENSE.txt` is MIT, "Copyright (c) 2026 GeckoLib".
+- **Models.** GeckoLib baked both pod models, and every bone that `GeoModel` reads from the same file (`PodGeckoLibClientTest`). The log says "Loaded 2 models and 0 animations".
+- **Glowmasks under Vulkan on macOS.** The lamp lenses glow in the stills, with vanilla's `eyes` render type (condition 8).
+- **F3+T.** The `skin-swap` evidence scenario switches a resource pack on and reloads: the pod draws the pack's look file, texture and tier map.
+- **Entities only.** Pods use a `GeoReplacedEntityRenderer`: `PodEntity` implements nothing of GeckoLib (condition 7).
+
+**Not checked:**
+
+- **Iris:** the shadow pass, the entity context and glowmasks under a shader pack, and `ModelFeatureRenderer.prepareModel` composing with GeckoLib's injection.
+- **The Sodium, Lithium and Iris gate run** with the pinned jars (condition 9), and the frame cost under Sodium against `ModelPart`.
+- **A dedicated server started from our jar** with GeckoLib nested. The dev server runs it from the classpath, not nested.
+- **Fabric Loader's choice among nested GeckoLib copies**, and a **reproducible rebuild** from `e771d86`.
 
 ## Method
 

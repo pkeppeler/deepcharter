@@ -127,6 +127,10 @@ On macOS at most two game clients run at a time (`DEEPCHARTER_CLIENT_SLOTS`, def
 
 The engineering rules (code layout, tests, evidence, merging) are in the [deepcharter-conventions skill](.claude/skills/deepcharter-conventions/SKILL.md).
 
+## Third-party software
+
+The pods are drawn with [GeckoLib](https://github.com/bernie-g/geckolib) 5.5.7 by Tslat and Gecko, MIT licence, "Copyright (c) 2026 GeckoLib". Its jar is bundled unchanged inside the mod's jar, with its own `LICENSE.txt`. The audit is [docs/tooling/geckolib-audit.md](docs/tooling/geckolib-audit.md).
+
 ## License
 
 [MIT](LICENSE). Data files copied from Minecraft (for example the vanilla material rule, ADR 0011) belong to Mojang and are not relicensed by this license.

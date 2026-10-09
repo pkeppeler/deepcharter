@@ -60,6 +60,18 @@ public final class PodRegistry {
 		return chassis;
 	}
 
+	/** The entity type of the pods of {@code chassis}; a chassis with none is a bug, so it throws. */
+	public static EntityType<PodEntity> typeOf(Chassis chassis) {
+		for (Map.Entry<EntityType<?>, Chassis> entry : CHASSIS.entrySet()) {
+			if (entry.getValue().equals(chassis)) {
+				@SuppressWarnings("unchecked")
+				EntityType<PodEntity> type = (EntityType<PodEntity>) entry.getKey();
+				return type;
+			}
+		}
+		throw new IllegalArgumentException("no pod entity type for the chassis " + chassis.id());
+	}
+
 	private static Item item(String path) {
 		ResourceKey<Item> key = ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
 		return Registry.register(BuiltInRegistries.ITEM, key, new Item(new Item.Properties().setId(key).stacksTo(1)));
