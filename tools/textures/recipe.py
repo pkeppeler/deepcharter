@@ -467,15 +467,6 @@ def op_grime(canvas: Canvas, layer: dict, ctx: Context) -> None:
             canvas.over(x, y, colours[pick])
 
 
-def op_tint(canvas: Canvas, layer: dict, ctx: Context) -> None:
-    """Blends a colour over the opaque pixels of rect at alpha (0 to 255); the result stays opaque."""
-    ctx.need(layer, "colour", "alpha")
-    r, g, b, _ = ctx.colour(layer["colour"])
-    for x, y in _cells(layer, ctx):
-        if canvas.get(x, y)[3]:
-            canvas.over(x, y, (r, g, b, layer["alpha"]))
-
-
 def op_replace(canvas: Canvas, layer: dict, ctx: Context) -> None:
     """Every pixel of one colour becomes another (within rect)."""
     ctx.need(layer, "from", "to")
@@ -505,7 +496,7 @@ def op_masked(canvas: Canvas, layer: dict, ctx: Context) -> None:
 
 
 def _mask(spec: dict, ctx: Context) -> Callable[[int, int], bool]:
-    """edges ("tblr" letters, width), corners ("tl tr bl br", size), rect, any (a list of masks), or none (selects nothing)."""
+    """edges ("tblr" letters, width), corners ("tl tr bl br", size), or any (a list of masks)."""
     if "any" in spec:
         parts = [_mask(s, ctx) for s in spec["any"]]
         return lambda x, y: any(p(x, y) for p in parts)
@@ -516,19 +507,7 @@ def _mask(spec: dict, ctx: Context) -> Callable[[int, int], bool]:
         corners, s = spec["corners"].split(), spec["size"]
         return lambda x, y: (("tl" in corners and x < s and y < s) or ("tr" in corners and x >= SIZE - s and y < s)
                              or ("bl" in corners and x < s and y >= SIZE - s) or ("br" in corners and x >= SIZE - s and y >= SIZE - s))
-    if "rect" in spec:
-        x0, y0, w, h = spec["rect"]
-        return lambda x, y: x0 <= x < x0 + w and y0 <= y < y0 + h
-    if spec == {"none": True}:
-        return lambda x, y: False
     raise RecipeError(f"{ctx.where}: unknown mask {spec}")
-
-
-def op_include(canvas: Canvas, layer: dict, ctx: Context) -> None:
-    """Composites another recipe's texture (its frame of the same number, or its last) at this point of the stack."""
-    ctx.need(layer, "recipe")
-    frames = ctx.book.render(layer["recipe"])
-    canvas.paste(frames[min(ctx.frame, len(frames) - 1)], 0, 0)
 
 
 def op_template(canvas: Canvas, layer: dict, ctx: Context) -> None:
@@ -584,11 +563,9 @@ OPS: dict[str, Callable[[Canvas, dict, Context], None]] = {
     "strata": op_strata,
     "cracks": op_cracks,
     "grime": op_grime,
-    "tint": op_tint,
     "replace": op_replace,
     "outline": op_outline,
     "masked": op_masked,
-    "include": op_include,
     "template": op_template,
     "scan": op_scan,
     "frames": op_frames,
