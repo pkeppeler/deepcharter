@@ -19,4 +19,8 @@ class Flagged {
 	Object r = style.withColor(ChatFormatting.DARK_GRAY);
 	Object t = TextColor.fromRgb(color);
 	int u = Integer.parseInt(hex, 16);
+	String v = "// colour-ok: not a comment"; int w = 0xFF000000;
+	char x = '"'; String y = "// colour-ok: after a quote char"; int z = 0xFF000000;
+	int aa = 0xFF000000; String bb = """ // colour-ok: inside a text block
+		""";
 }

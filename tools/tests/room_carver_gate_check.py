@@ -127,6 +127,29 @@ public class FloodedRoomFixture {{
                 self.assertNotIn("MarkedWriteFixture", output)
                 self.assertNotIn("SurfaceOnlyFixture", output)
 
+    def check_marker_fails(self, body: str, label: str, line: int):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.fixture(directory)
+            write(root, "FloodedRoomFixture.java", f"""
+public class FloodedRoomFixture {{
+    void room(ServerLevel level) {{
+        level = server.getLevel(LayerChain.dimension(1));
+{body}
+    }}
+}}
+""")
+            result = generate(root)
+            self.assertNotEqual(result.returncode, 0, f"the gate should fail the build for {label}")
+            self.assertIn(f"FloodedRoomFixture:{line} writes air in a file that touches a layer dimension", result.stdout + result.stderr)
+
+    def test_marker_without_a_reason_or_in_a_string_does_not_count(self):
+        air = "level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);"
+        self.check_marker_fails(f"        // room-carver:\n        {air}", "a bare marker", 6)
+        self.check_marker_fails(f"        {air} // room-carver:   ", "a same-line bare marker", 5)
+        self.check_marker_fails(f'        String note = "// room-carver: not a comment"; {air}', "a marker in a string", 5)
+        self.check_marker_fails(f'        String note = """\n            // room-carver: in a text block\n            """; {air}', "a marker in a text block", 7)
+        self.check_marker_fails(f"        char q = '\"'; String note = \"// room-carver: after a quote char\"; {air}", "a marker after a quote char literal", 5)
+
 
 if __name__ == "__main__":
     unittest.main()

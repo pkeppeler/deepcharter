@@ -40,3 +40,6 @@ python3 -I tools/tests/client_filter_gate_check.py \
 echo "pre-push: tick-wait gate check (runs Gradle)" >&2
 python3 -I tools/tests/tick_wait_gate_check.py \
   || fail "tick-wait gate check"
+echo "pre-push: world-data gate check (runs Gradle)" >&2
+python3 -I tools/tests/world_data_gate_check.py \
+  || fail "world-data gate check"

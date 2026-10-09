@@ -23,7 +23,7 @@ abstract class ColourGate {
 	]
 	static final String MARKER = /\/\/\s*colour-ok:\s*\S/
 
-	/** Lines (1-based) of {@code text} that hold a colour literal and no marker. */
+	/** Lines (1-based) of {@code text}, already passed through blankLiterals, that hold a colour literal and no marker. */
 	static List<Integer> violations(String text) {
 		def found = []
 		def inBlockComment = false
@@ -41,7 +41,6 @@ abstract class ColourGate {
 				return
 			}
 			if (code =~ MARKER) return
-			code = code.replaceAll(/"(?:\\.|[^"\\])*"/, '""')
 			def commentAt = code.indexOf("//")
 			if (commentAt >= 0) code = code.substring(0, commentAt)
 			code = code.replaceAll(/\/\*.*?\*\//, " ")
@@ -51,6 +50,7 @@ abstract class ColourGate {
 	}
 }
 
+def blankLiterals = project.ext.blankLiterals
 def clientRoot = file("src/client/java")
 def themeDir = new File(clientRoot, "io/github/pkeppeler/deepcharter/client/theme")
 def clientSources = fileTree(clientRoot) { include "**/*.java" }
@@ -67,11 +67,11 @@ tasks.register("checkColourGate") {
 		def allowed = new File(fixtureDir, "Allowed.java.txt").text
 		def expected = flagged.readLines().withIndex().findAll { line, i -> line =~ /^\t(?!\/\/)\S/ }.collect { line, i -> i + 1 }
 		if (expected.size() < 6) throw new GradleException("config/colour-gate/Flagged.java.txt has ${expected.size()} code lines, expected at least 6")
-		def actual = ColourGate.violations(flagged)
+		def actual = ColourGate.violations(blankLiterals(flagged))
 		if (actual != expected) {
 			throw new GradleException("The colour gate is broken: Flagged.java.txt should be flagged on lines ${expected}, was ${actual}")
 		}
-		def wrongly = ColourGate.violations(allowed)
+		def wrongly = ColourGate.violations(blankLiterals(allowed))
 		if (!wrongly.isEmpty()) {
 			throw new GradleException("The colour gate is broken: Allowed.java.txt should not be flagged, was on lines ${wrongly}")
 		}
@@ -80,7 +80,7 @@ tasks.register("checkColourGate") {
 		clientSources.files.sort().each { source ->
 			if (source.toPath().startsWith(themeDir.toPath())) return
 			def lines = source.readLines()
-			ColourGate.violations(source.text).each { n ->
+			ColourGate.violations(blankLiterals(source.text)).each { n ->
 				problems << "${projectPath.relativize(source.toPath())}:${n}: ${lines[n - 1].trim()}"
 			}
 		}
