@@ -16,7 +16,7 @@ Reply on the PR, for example: "B buildings, A's headframe, statue B". "Mix A and
 
 ## Side by side
 
-The three concepts from the same views: from the square, from the air, at night and from far across the plain.
+The three concepts from the same views: from the square, from the air, at night and from 70 blocks out on the plain. The dust in the air hides the town past about 80 blocks.
 
 ![Concepts side by side](https://github.com/pkeppeler/deepcharter/blob/pr-media/343/concepts-side-by-side.png?raw=true)
 

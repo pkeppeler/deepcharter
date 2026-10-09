@@ -458,7 +458,7 @@ def _b_works() -> Piece:
         p.set(x, 29, -34, state("railing", facing="south"))
     # Pipe runs: brass along the front under the cornice, steel down the stack side.
     for x in range(x0, x1 + 1):
-        if (x - x0) % 4:
+        if (x - x0) % 4 and p.get(x, 12, z1 + 1) is None:
             p.set(x, 12, z1 + 1, state("pipe_brass", axis="x"))
     p.fill(x1 + 1, 2, -28, x1 + 1, 16, -28, state("pipe", axis="y"))
     # The stack: riveted, banded, capped in brass, amber beacons near the top.
