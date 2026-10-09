@@ -666,7 +666,7 @@ def track(model, side, parent, x0, x1, z0, z1, height, wheels):
 
 def capsule():
     """1. Capsule: the art direction's Motherload pod in Company plate. A bevelled hull with a wrap-around window,
-    twin caged headlamps on the brow, a propeller on a mast, short treads and a big spiral drill hung under the nose."""
+    twin caged headlamps on the brow, a propeller on a mast, two whip antennae, short treads and a big spiral drill hung under the nose."""
     m = Model("capsule")
     body = m.bone("body")
     bevelled_box(body, -10, 7, -5, 10, 21, 12, 2, "paint")
@@ -694,6 +694,10 @@ def capsule():
     exhaust.box(-9.5, 27, 8.5, -5.5, 28, 12.5, "frame")
     hatch = m.bone("hatch", "body")
     hatch.box(1, 24, 3, 5, 25, 7, "brass")
+    # Two whip antennae at the back corners.
+    for x in (5, -6):
+        exhaust.box(x, 24, 8, x + 1, 29, 9, "frame")
+        exhaust.box(x - 0.5, 29, 7.5, x + 1.5, 30, 9.5, "trim")
     mast = m.bone("mast", "body")
     mast.box(-1, 24, 1, 1, 27, 3, "frame")
     rotor = m.bone("rotor", "mast", (0, 28, 2))

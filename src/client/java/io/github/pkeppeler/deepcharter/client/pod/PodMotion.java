@@ -22,6 +22,10 @@ final class PodMotion {
 	private static final float WALK_PER_TICK = 0.2f;
 	/** Blocks per tick below which the pod counts as standing still. */
 	private static final double STILL = 0.01;
+	/** Blocks per tick past which a move is a teleport (a breach crossing, a command), not driving: five times a pod's speed. */
+	private static final double TELEPORT_SPEED = 1.0;
+	/** The least step a speed is measured over, so two frames in one tick never read as a jump. */
+	private static final float MIN_STEP = 0.25f;
 	/** A frame after a long pause advances at most this many ticks. */
 	private static final float MAX_STEP = 5f;
 	private static final float PIXELS_PER_BLOCK = 16f;
@@ -56,6 +60,11 @@ final class PodMotion {
 		lastAge = state.ageInTicks;
 		lastX = state.x;
 		lastZ = state.z;
+		if (Math.sqrt(dx * dx + dz * dz) > TELEPORT_SPEED * Math.max(step, MIN_STEP)) {
+			// A jump, not a drive: no turn, no stride.
+			dx = 0;
+			dz = 0;
+		}
 
 		boolean piloted = pod.getControllingPassenger() != null;
 		boolean powered = piloted && pod.fuel() > 0f && !pod.stranded();

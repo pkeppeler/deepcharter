@@ -8,20 +8,20 @@ All four share one paint kit: cream enamel, an oxblood stripe, dark iron, brass,
 
 | | Turning round | The idea |
 |---|---|---|
-| **1. Capsule** | ![capsule turntable](MEDIA/pod-capsule-turntable.gif) | The art direction's own pick: Motherload's pod, rebuilt in Company plate. A rounded hull with a wrap-around window, two caged headlamps on its brow, a propeller on a mast to fly, short treads, and a big toothed drill under its nose. Friendly, heroic and a little toy-like. 146 cubes. |
-| **2. Borer** | ![borer turntable](MEDIA/pod-borer-turntable.gif) | A squat tracked tunneller from the *Atlantis* digger line. Full-length treads, a low armoured deck, a cab with a narrow vision slit and portholes, a broad cutter disc with teeth, two exhaust stacks, and two jets that swing down to lift it. Heavy and industrial. 152 cubes. |
-| **3. Strider** | ![strider turntable](MEDIA/pod-strider-turntable.gif) | A round prospecting pod that walks on four jointed legs, with one great porthole for a face. Its drill hangs straight down between its legs, and two belly jets lift it. The strangest silhouette of the four, and the most unsettling in the dark. 91 cubes. |
-| **4. Gyro** | ![gyro turntable](MEDIA/pod-gyro-turntable.gif) | A tall pod under a big ducted rotor, with a bubble canopy, two side jets that swing down to lift, a slim drill on a gimbal under its belly, and four wheeled struts. A flying machine first, a digger second. 91 cubes. |
+| **1. Capsule** | ![capsule turntable](https://github.com/pkeppeler/deepcharter/blob/pr-media/342/pod-capsule-turntable.gif?raw=true) | The art direction's own pick: Motherload's pod, rebuilt in Company plate. A rounded hull with a wrap-around window, two caged headlamps on its brow, a propeller on a mast to fly, two whip antennae, short treads, and a big toothed drill under its nose. Friendly, heroic and a little toy-like. 150 cubes. |
+| **2. Borer** | ![borer turntable](https://github.com/pkeppeler/deepcharter/blob/pr-media/342/pod-borer-turntable.gif?raw=true) | A squat tracked tunneller from the *Atlantis* digger line. Full-length treads, a low armoured deck, a cab with a narrow vision slit and portholes, a broad cutter disc with teeth, two exhaust stacks, and two jets that swing down to lift it. Heavy and industrial. 152 cubes. |
+| **3. Strider** | ![strider turntable](https://github.com/pkeppeler/deepcharter/blob/pr-media/342/pod-strider-turntable.gif?raw=true) | A round prospecting pod that walks on four jointed legs, with one great porthole for a face. Its drill hangs straight down between its legs, and two belly jets lift it. The strangest silhouette of the four, and the most unsettling in the dark. 91 cubes. |
+| **4. Gyro** | ![gyro turntable](https://github.com/pkeppeler/deepcharter/blob/pr-media/342/pod-gyro-turntable.gif?raw=true) | A tall pod under a big ducted rotor, with a bubble canopy, two side jets that swing down to lift, a slim drill on a gimbal under its belly, and four wheeled struts. A flying machine first, a digger second. 102 cubes. |
 
 ## Side by side
 
 From the front, lit by the room:
 
-![The four concepts from the front](MEDIA/pod-concepts-front-grid.png)
+![The four concepts from the front](https://github.com/pkeppeler/deepcharter/blob/pr-media/342/pod-concepts-front-grid.png?raw=true)
 
 In the dark, with the pilot aboard and the lamps on:
 
-![The four concepts in the dark, lamps on](MEDIA/pod-concepts-lit-grid.png)
+![The four concepts in the dark, lamps on](https://github.com/pkeppeler/deepcharter/blob/pr-media/342/pod-concepts-lit-grid.png?raw=true)
 
 ## Moving and drilling
 
@@ -29,15 +29,15 @@ Each clip drives into a wall and bores it, bores the floor, then flies up out of
 
 | Capsule | Borer |
 |---|---|
-| ![capsule drives and drills](MEDIA/pod-capsule-drive.gif) | ![borer drives and drills](MEDIA/pod-borer-drive.gif) |
+| ![capsule drives and drills](https://github.com/pkeppeler/deepcharter/blob/pr-media/342/pod-capsule-drive.gif?raw=true) | ![borer drives and drills](https://github.com/pkeppeler/deepcharter/blob/pr-media/342/pod-borer-drive.gif?raw=true) |
 | **Strider** | **Gyro** |
-| ![strider drives and drills](MEDIA/pod-strider-drive.gif) | ![gyro drives and drills](MEDIA/pod-gyro-drive.gif) |
+| ![strider drives and drills](https://github.com/pkeppeler/deepcharter/blob/pr-media/342/pod-strider-drive.gif?raw=true) | ![gyro drives and drills](https://github.com/pkeppeler/deepcharter/blob/pr-media/342/pod-gyro-drive.gif?raw=true) |
 
-More stills of each concept (side, back, above, lamps off, lamps on, boring a wall, flying) are on the pull request.
+More stills of each concept (side, back, above, lamps off, lamps on, boring a wall, flying) are on [pull request #342](https://github.com/pkeppeler/deepcharter/pull/342).
 
 ## How to pick
 
-Reply on the pull request or the issue in a few words. For example:
+Reply on [#342](https://github.com/pkeppeler/deepcharter/pull/342) or [#334](https://github.com/pkeppeler/deepcharter/issues/334) in a few words. For example:
 
 - "Concept 2."
 - "Concept 2, with the drill from 1."

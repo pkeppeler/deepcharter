@@ -14,11 +14,13 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.Vec3;
 
@@ -58,6 +60,7 @@ public class PodConceptsScenario extends EvidenceScenario {
 	private static final int ROOM_HALF = 6;
 	private static final int ROOM_HEIGHT = 5;
 	private static final double EYE = 1.62;
+	private static final int SETTLE_POLLS = 5;
 
 	private static final int TURN_FRAMES = 36;
 	private static final int RISE_FRAMES = 9;
@@ -69,7 +72,7 @@ public class PodConceptsScenario extends EvidenceScenario {
 	private static final int FRAMES_PER_CONCEPT = TURNTABLE_FRAMES + CLIP_FRAMES;
 	private static final int TICKS_PER_CLIP_FRAME = 3;
 
-	private static final double TURNTABLE_DISTANCE = 4.4;
+	private static final double TURNTABLE_DISTANCE = 3.4;
 	private static final double TURNTABLE_PITCH = 18;
 	private static final double ABOVE_PITCH = 86;
 	/** The middle of the Mole's hull, which the camera looks at. */
@@ -103,7 +106,7 @@ public class PodConceptsScenario extends EvidenceScenario {
 			try {
 				for (PodConcept concept : PodConcept.values()) {
 					select(concept);
-					buildRooms();
+					rebuildCave();
 					turntable(concept);
 					cave(concept);
 					if (framesTaken != (concept.ordinal() + 1) * FRAMES_PER_CONCEPT) {
@@ -138,7 +141,8 @@ public class PodConceptsScenario extends EvidenceScenario {
 		ClientWait.until(ctx, "the camera in layer 1", client -> client.player != null && client.level.dimension().equals(LayerChain.dimension(1)));
 		serverDo(server -> {
 			ServerLevel one = layerOne(server);
-			buildRooms(one);
+			buildStudio(one);
+			buildCave(one);
 			parked = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
 			parked.setPos(X + 0.5, FLOOR, Z + 0.5);
 			one.addFreshEntity(parked);
@@ -146,6 +150,8 @@ public class PodConceptsScenario extends EvidenceScenario {
 			pilot.teleportTo(one, new Vec3(X + CAVE_OFFSET, FLOOR, Z), -90f, 0f);
 			pilot.player().setInvisible(true);
 			pilot.player().setPermanentlyInvulnerable(true);
+			// An invisible player still shows what it holds, and the handbook it always carries sits in the first slot: hold the last.
+			pilot.player().getInventory().setSelectedSlot(8);
 			if (Charters.found(server, pilot.player().getUUID(), "Concept Works").isPresent()) {
 				throw new AssertionError("founding the pilot's charter should succeed");
 			}
@@ -236,16 +242,16 @@ public class PodConceptsScenario extends EvidenceScenario {
 	// ------------------------------------------------------------------------------------------------ the cave
 
 	private void cave(PodConcept concept) {
+		// The pod stands facing +z (south), where it was set down; the camera is in front of it, a little to its left.
 		Vec3 start = new Vec3(X + CAVE_OFFSET - 2.5, FLOOR, Z + 0.5);
 		placePiloted(start, -90f);
-		Vec3 lamps = start.add(2.6, 0, 3.0);
-		look(lamps.add(0, EYE, 0), start);
+		look(start.add(1.3, EYE - 0.1, 3.1), start);
 		settle();
 		shot(concept, "lit");
-		// Drive east into the wall and bore it.
+		// Drive east into the wall and bore it, seen from the south-west so the camera stays in the cave.
 		serverDo(server -> pilot.setInput(DRIVE));
 		for (int i = 0; i < WALL_FRAMES; i++) {
-			clipFrame(new Vec3(2.4, 1.3, 3.6));
+			clipFrame(new Vec3(-1.4, 1.2, 3.3));
 			if (i == WALL_FRAMES - 6) {
 				shot(concept, "boring-the-wall");
 			}
@@ -254,18 +260,13 @@ public class PodConceptsScenario extends EvidenceScenario {
 		releasePilot();
 		placePiloted(new Vec3(X + CAVE_OFFSET - 1.5, FLOOR, Z + 0.5), -90f);
 		serverDo(server -> pilot.setInput(BORE_DOWN));
-		Vec3 hole = new Vec3(X + CAVE_OFFSET - 1.5, FLOOR, Z + 0.5);
 		for (int i = 0; i < FLOOR_FRAMES; i++) {
-			look(hole.add(2.2, 2.4, 3.4), hole);
-			ctx.waitTicks(TICKS_PER_CLIP_FRAME); // tick-wait: the clip is cut at fixed frames
-			frame();
+			clipFrame(new Vec3(1.9, 1.6, 3.0));
 		}
 		// And fly up out of the hole.
 		serverDo(server -> pilot.setInput(LIFT));
 		for (int i = 0; i < FLY_FRAMES; i++) {
-			look(hole.add(2.2, 2.4, 3.4), hole.add(0, 0.6, 0));
-			ctx.waitTicks(TICKS_PER_CLIP_FRAME); // tick-wait: the clip is cut at fixed frames
-			frame();
+			clipFrame(new Vec3(1.9, 0.6, 3.4));
 			if (i == FLY_FRAMES / 2) {
 				shot(concept, "flying");
 			}
@@ -273,20 +274,30 @@ public class PodConceptsScenario extends EvidenceScenario {
 		releasePilot();
 	}
 
-	/** One frame of the wall clip: the camera keeps {@code offset} from the pod, so it rides along. */
+	/** One frame of a clip: the camera keeps {@code offset} from the pod, so it rides along, but stays between the cave's floor and roof. */
 	private void clipFrame(Vec3 offset) {
 		Vec3 pod = serverGet(server -> piloted.position());
-		look(pod.add(offset), pod);
+		Vec3 eye = pod.add(offset);
+		look(new Vec3(eye.x, Mth.clamp(eye.y, FLOOR + 1.0, FLOOR + ROOM_HEIGHT - 0.4), eye.z), pod);
 		ctx.waitTicks(TICKS_PER_CLIP_FRAME); // tick-wait: the clip is cut at fixed frames
 		frame();
 	}
 
+	/** Sets the cave's Mole down at {@code at}, full of fuel and whole, with the pilot aboard looking {@code pilotYaw}. */
 	private void placePiloted(Vec3 at, float pilotYaw) {
 		serverDo(server -> {
 			piloted.setDeltaMovement(Vec3.ZERO);
 			piloted.setPos(at);
+			piloted.setFuel(100f);
+			piloted.setHull(piloted.maxHull());
+			piloted.setStranded(false);
+			if (pilot.player().getVehicle() != piloted && !pilot.player().startRiding(piloted)) {
+				throw new AssertionError("the pilot could not board the cave's Mole again");
+			}
 			pilot.player().setYRot(pilotYaw);
 		});
+		ClientWait.until(ctx, "the pilot aboard the cave's Mole on the client",
+				client -> client.level.getEntity(piloted.getId()) instanceof PodEntity pod && pod.getControllingPassenger() != null);
 	}
 
 	private void releasePilot() {
@@ -295,26 +306,41 @@ public class PodConceptsScenario extends EvidenceScenario {
 
 	// ------------------------------------------------------------------------------------------------ rooms
 
-	private void buildRooms() {
-		serverDo(server -> buildRooms(layerOne(server)));
+	/** The cave again, whole: the last concept bored its wall and floor. */
+	private void rebuildCave() {
+		serverDo(server -> buildCave(layerOne(server)));
+		settle();
 	}
 
-	/** The studio, lit by glowstone in its ceiling, and east of it the cave: dark, with a stone wall to bore and a stone floor. */
-	private static void buildRooms(ServerLevel level) {
-		for (int centre : new int[] {X, X + CAVE_OFFSET}) {
-			RoomCarver.carve(level, centre - ROOM_HALF - 1, centre + ROOM_HALF + 4, FLOOR - 6, FLOOR - 1, Z - ROOM_HALF - 1, Z + ROOM_HALF + 1, Blocks.STONE);
-			RoomCarver.carve(level, centre + ROOM_HALF - 1, centre + ROOM_HALF + 4, FLOOR, FLOOR + ROOM_HEIGHT, Z - ROOM_HALF, Z + ROOM_HALF, Blocks.STONE);
-			RoomCarver.carve(level, new BlockPos(centre - ROOM_HALF, FLOOR, Z - ROOM_HALF), new BlockPos(centre + ROOM_HALF - 2, FLOOR + ROOM_HEIGHT, Z + ROOM_HALF),
-					Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
-		}
-		for (int dx = -4; dx <= 2; dx += 3) {
-			for (int dz = -4; dz <= 4; dz += 4) {
+	/** A solid stone block carved hollow, so the walls are plain stone and not the layer's rock, with stone left under the floor and on the east side. */
+	private static void carveRoom(ServerLevel level, int centre) {
+		RoomCarver.carve(level, centre - ROOM_HALF - 1, centre + ROOM_HALF + 4, FLOOR - 6, FLOOR + ROOM_HEIGHT + 1, Z - ROOM_HALF - 1, Z + ROOM_HALF + 1,
+				Blocks.STONE);
+		RoomCarver.carve(level, new BlockPos(centre - ROOM_HALF, FLOOR, Z - ROOM_HALF), new BlockPos(centre + ROOM_HALF - 2, FLOOR + ROOM_HEIGHT, Z + ROOM_HALF),
+				Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+	}
+
+	/** The studio, lit by glowstone in its roof and round its walls. Built once: nothing bores it. */
+	private static void buildStudio(ServerLevel level) {
+		carveRoom(level, X);
+		for (int dx = -5; dx <= 3; dx += 2) {
+			for (int dz = -5; dz <= 5; dz += 2) {
 				level.setBlock(new BlockPos(X + dx, FLOOR + ROOM_HEIGHT + 1, Z + dz), Blocks.GLOWSTONE.defaultBlockState(), Block.UPDATE_ALL);
 			}
 		}
-		for (int dz = -3; dz <= 3; dz += 6) {
-			level.setBlock(new BlockPos(X - ROOM_HALF - 1, FLOOR + 2, Z + dz), Blocks.GLOWSTONE.defaultBlockState(), Block.UPDATE_ALL);
-			level.setBlock(new BlockPos(X + ROOM_HALF - 1, FLOOR + 2, Z + dz), Blocks.GLOWSTONE.defaultBlockState(), Block.UPDATE_ALL);
+		for (int d = -5; d <= 5; d += 2) {
+			level.setBlock(new BlockPos(X - ROOM_HALF - 1, FLOOR + 1, Z + d), Blocks.GLOWSTONE.defaultBlockState(), Block.UPDATE_ALL);
+			level.setBlock(new BlockPos(X + ROOM_HALF - 1, FLOOR + 1, Z + d), Blocks.GLOWSTONE.defaultBlockState(), Block.UPDATE_ALL);
+			level.setBlock(new BlockPos(X + d, FLOOR + 1, Z + ROOM_HALF + 1), Blocks.GLOWSTONE.defaultBlockState(), Block.UPDATE_ALL);
+			level.setBlock(new BlockPos(X + d, FLOOR + 1, Z - ROOM_HALF - 1), Blocks.GLOWSTONE.defaultBlockState(), Block.UPDATE_ALL);
+		}
+	}
+
+	/** The cave: dark but for a faint light of 5 in two corners of its roof, so a clip shows the pod's shape and not only its lamps. */
+	private static void buildCave(ServerLevel level) {
+		carveRoom(level, X + CAVE_OFFSET);
+		for (BlockPos corner : new BlockPos[] {new BlockPos(X + CAVE_OFFSET - 5, FLOOR + ROOM_HEIGHT, Z - 5), new BlockPos(X + CAVE_OFFSET + 3, FLOOR + ROOM_HEIGHT, Z + 5)}) {
+			level.setBlock(corner, Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 5), Block.UPDATE_ALL);
 		}
 	}
 
@@ -337,11 +363,18 @@ public class PodConceptsScenario extends EvidenceScenario {
 		serverDo(server -> server.getPlayerList().getPlayers().getFirst().teleportTo(layerOne(server), eye.x, eye.y - EYE, eye.z, Set.of(), yaw, pitch, true));
 	}
 
-	/** Waits until the camera has arrived, the light has settled and every section in view has rendered. */
+	/**
+	 * Waits until the light has settled and every section in view has rendered, and both have held for {@value #SETTLE_POLLS} polls in a
+	 * row: block changes reach the client a little after the server makes them, so one good poll can come before the sections go dirty.
+	 */
 	private void settle() {
-		ClientWait.until(ctx, "the view settled", () -> !serverGet(server -> layerOne(server).getLightEngine().hasLightWork())
-				&& ctx.computeOnClient(client -> client.levelRenderer.hasRenderedAllSections()), () -> ctx.computeOnClient(ClientWait::describe));
-		ctx.waitTicks(4); // tick-wait: the last teleport and the entity turn reach the screen
+		int[] stable = {0};
+		ClientWait.until(ctx, "the view settled", () -> {
+			boolean ready = !serverGet(server -> layerOne(server).getLightEngine().hasLightWork())
+					&& ctx.computeOnClient(client -> client.levelRenderer.hasRenderedAllSections());
+			stable[0] = ready ? stable[0] + 1 : 0;
+			return stable[0] >= SETTLE_POLLS;
+		}, () -> ctx.computeOnClient(ClientWait::describe));
 	}
 
 	private void frame() {
