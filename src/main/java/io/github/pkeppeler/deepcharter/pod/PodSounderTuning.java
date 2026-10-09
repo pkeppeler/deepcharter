@@ -17,9 +17,10 @@ public record PodSounderTuning(List<Tier> tiers, int hissTicksPerSlab) {
 	 * @param sideReach          blocks to each side of the footprint in which it marks a pocket a sidestep would bore or land on; 0 for none
 	 * @param drillSpeedPenalty  share of the drill's speed the sounder takes, 0 up to but not including 1
 	 * @param bleedPauseTicks    ticks the drill waits before it bores a slab with a pocket in it, while the pocket bleeds off; 0 for a sounder that does not bleed
-	 * @param bleedHullShare     the most the blast of a pocket the drill bled costs the pod, as a share of its most hull, above 0 up to and including 1 (1 for no bleed)
+	 * @param bleedHullShare     the least the blast of a pocket the drill bled can cost the pod, as a share of its most hull, above 0 up to and including 1 (1 for no bleed)
+	 * @param bleedBlastShare    the share of the blast a bled pocket costs when that is more than the hull share, above 0 up to and including 1 (1 for no bleed), so the cost grows with depth
 	 */
-	public record Tier(int slabsBelow, int sideReach, float drillSpeedPenalty, int bleedPauseTicks, float bleedHullShare) {
+	public record Tier(int slabsBelow, int sideReach, float drillSpeedPenalty, int bleedPauseTicks, float bleedHullShare, float bleedBlastShare) {
 		public Tier {
 			if (slabsBelow < 1 || sideReach < 0 || bleedPauseTicks < 0) {
 				throw new IllegalArgumentException("a sounder tier hears 1 slab or more below, 0 blocks or more aside, and bleeds after 0 ticks or more");
@@ -29,6 +30,9 @@ public record PodSounderTuning(List<Tier> tiers, int hissTicksPerSlab) {
 			}
 			if (!(bleedHullShare > 0f && bleedHullShare <= 1f)) {
 				throw new IllegalArgumentException("the bleed hull share is above 0 and at most 1, got " + bleedHullShare);
+			}
+			if (!(bleedBlastShare > 0f && bleedBlastShare <= 1f)) {
+				throw new IllegalArgumentException("the bleed blast share is above 0 and at most 1, got " + bleedBlastShare);
 			}
 		}
 
@@ -44,11 +48,11 @@ public record PodSounderTuning(List<Tier> tiers, int hissTicksPerSlab) {
 
 	/**
 	 * (A) Tier 1 hears the footprint's pockets 2 slabs down and takes 5% of the drill. Tier 2 hears 4 slabs down and 2 blocks to each side, bleeds a
-	 * pocket in 3 seconds for at most a quarter of the pod's hull, and takes 10%. A better sounder is the slower drill.
+	 * pocket in 3 seconds, and takes 10%. A bled blast costs the larger of 35% of the pod's hull and half the blast, and never more than the blast. A better sounder is the slower drill.
 	 */
 	public static final PodSounderTuning DEFAULT = new PodSounderTuning(List.of(
-			new Tier(2, 0, 0.05f, 0, 1f),
-			new Tier(4, 2, 0.10f, 60, 0.25f)), 12);
+			new Tier(2, 0, 0.05f, 0, 1f, 1f),
+			new Tier(4, 2, 0.10f, 60, 0.45f, 0.5f)), 12);
 
 	public PodSounderTuning {
 		tiers = List.copyOf(tiers);

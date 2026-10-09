@@ -30,7 +30,7 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
  * The seep sounder (#373): a part that hears the gas pockets the drill is about to open. Each tick it marks the nearest pocket of the pod's
  * footprint within its tier's slabs below, and (tier 2) the sides a sidestep would bore or land on, and the pod hisses faster as the pocket
  * nears. A sounder that bleeds (tier 2) makes the drill wait before it bores a slab with a pocket in it, and the blast then costs
- * at most a share of the pod's hull ({@link #bleedPauseTicks}, {@link #drilledBlast}; the drill and {@code GasHazard} read them).
+ * the larger of a share of the pod's hull and a share of the blast ({@link #bleedPauseTicks}, {@link #drilledBlast}; the drill and {@code GasHazard} read them).
  */
 public final class PodSounder {
 	public static final int VERSION = 1;
@@ -105,27 +105,35 @@ public final class PodSounder {
 
 	/**
 	 * The hull a gas blast of {@code blast} costs a pod whose own drill opened the pocket: the whole blast, unless the pod's sounder bleeds, in which
-	 * case it costs at most the tier's share of the pod's most hull.
+	 * case it costs the larger of the tier's share of the pod's most hull and its share of the blast, and never more than the blast.
 	 */
 	public static float drilledBlast(PodEntity pod, float blast) {
 		int tier = tier(pod);
 		if (tier == 0 || !PodSounderTuning.DEFAULT.tier(tier).bleeds()) {
 			return blast;
 		}
-		return Math.min(blast, PodSounderTuning.DEFAULT.tier(tier).bleedHullShare() * pod.maxHull());
+		PodSounderTuning.Tier spec = PodSounderTuning.DEFAULT.tier(tier);
+		return Math.min(blast, Math.max(spec.bleedHullShare() * pod.maxHull(), spec.bleedBlastShare() * blast));
 	}
 
 	private static void afterTick(PodEntity pod) {
 		int tier = tier(pod);
 		Optional<State> read = Versioned.readable(pod, STATE);
-		if (tier == 0 || read.isEmpty()) {
+		if (read.isEmpty()) {
+			return;
+		}
+		if (tier == 0) {
+			// The part is gone: its marks go with it.
+			if (!read.get().isClear()) {
+				pod.setAttached(STATE, Versioned.of(State.EMPTY));
+			}
 			return;
 		}
 		State now = PodEvents.isPowered(pod) ? scan(pod, PodSounderTuning.DEFAULT.tier(tier)) : State.EMPTY;
 		if (!now.equals(read.get())) {
 			pod.setAttached(STATE, Versioned.of(now));
 		}
-		if (now.down() > 0 && pod.tickCount % hissEveryTicks(now.down()) == 0) {
+		if (now.down() > 0 && pod.getControllingPassenger() != null && pod.tickCount % hissEveryTicks(now.down()) == 0) {
 			pod.level().playSound(null, pod.getX(), pod.getY(), pod.getZ(), DeepSound.POD_SEEP_HISS.event(), SoundSource.NEUTRAL);
 		}
 	}

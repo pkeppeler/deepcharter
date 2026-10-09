@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -29,6 +30,8 @@ import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.GasHazard;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
+import io.github.pkeppeler.deepcharter.ore.OreRegistry;
+import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodDrill;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -53,7 +56,7 @@ import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 public class PodSounderTest {
 	private static final AtomicInteger OWNERS = new AtomicInteger();
 	private static final int Z = 3600;
-	private static final int FLOOR = 60;
+	private static final int FLOOR = 14;
 	private static final int RADIUS = 6;
 	private static final int SETTLE_TICKS = 6;
 	private static final int DRILL_TICKS = 400;
@@ -228,6 +231,29 @@ public class PodSounderTest {
 		});
 	}
 
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
+	public void aPodWhosePartIsGoneLosesItsStaleMarks(GameTestHelper helper) {
+		int x = 6912;
+		ServerLevel level = layer(helper);
+		site(level, x);
+		PodEntity[] pod = {null};
+		int[] ticks = {0};
+		FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+			pod[0] = spawn(helper, level, x, 0);
+			pod[0].setAttached(PodSounder.STATE, Versioned.of(new PodSounder.State(2, 0b0100)));
+		});
+		helper.onEachTick(() -> {
+			if (pod[0] == null || ++ticks[0] != SETTLE_TICKS) {
+				return;
+			}
+			if (!Versioned.readable(pod[0], PodSounder.STATE).orElseThrow().isClear()) {
+				throw failure(helper, "a pod with no sounder keeps no marks, it holds %s", Versioned.readable(pod[0], PodSounder.STATE));
+			}
+			pod[0].discard();
+			helper.succeed();
+		});
+	}
+
 	private static final Set<UUID> UNPOWERED = ConcurrentHashMap.newKeySet();
 	private static boolean unpoweredListener;
 
@@ -323,7 +349,12 @@ public class PodSounderTest {
 	 * What a drilled pocket cost: the ticks from the first tick of the pilot's hold to the vent, the hull lost to the blast, the ticks the pod's own
 	 * stats say the slab takes to bore, and the blast the pod's radiator would let through whole.
 	 */
-	private record Bleed(int ticks, float hull, int slabTicks, float whole, float maxHull) {
+	private record Bleed(int ticks, float hull, int slabTicks, float whole, float maxHull, float bystanderHull) {
+	}
+
+	/** What a bled blast costs: the larger of 45% of the hull and half the blast, and never more than the blast (the numbers are pinned here on purpose). */
+	private static float bledCost(float whole, float maxHull) {
+		return Math.min(whole, Math.max(0.45f * maxHull, 0.5f * whole));
 	}
 
 	/**
@@ -331,6 +362,11 @@ public class PodSounderTest {
 	 * what the blast cost the hull. {@code tier} 0 is a pod with no sounder.
 	 */
 	private void drillOverAPocket(GameTestHelper helper, int x, int tier, Consumer<Bleed> check) {
+		drillOverAPocket(helper, x, tier, false, check);
+	}
+
+	/** As above; with {@code bystander}, a second pod with a tier 2 sounder of its own stands within the blast's reach and drills nothing, and its loss is noted too. */
+	private void drillOverAPocket(GameTestHelper helper, int x, int tier, boolean bystander, Consumer<Bleed> check) {
 		ServerLevel level = layer(helper);
 		site(level, x);
 		BlockPos pocket = new BlockPos(x, FLOOR - 1, Z);
@@ -340,30 +376,40 @@ public class PodSounderTest {
 		PodEntity[] pod = {null};
 		int[] ticks = {0};
 		int[] slabTicks = {0};
+		PodEntity[] other = {null};
 		FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
 			pod[0] = spawn(helper, level, x, tier, pilot);
+			if (bystander) {
+				other[0] = spawn(helper, level, x, 2);
+				other[0].setPos(x + 2.5, FLOOR, Z);
+			}
 			if (!pilot.player().startRiding(pod[0])) {
 				throw failure(helper, "the pilot could not mount the pod");
 			}
 			slabTicks[0] = slabTicks(level, PodStats.of(pod[0]), x);
 			pilot.setInput(SPRINT);
 		});
-		float[] startHull = {-1f};
+		float[] startHull = {-1f, -1f};
 		helper.onEachTick(() -> {
 			if (pod[0] == null) {
 				return;
 			}
 			if (startHull[0] < 0) {
 				startHull[0] = pod[0].hull();
+				startHull[1] = other[0] == null ? 0f : other[0].hull();
 			}
 			ticks[0]++;
 			if (!level.getBlockState(pocket).is(HazardBlocks.GAS_POCKET)) {
 				float lost = startHull[0] - pod[0].hull();
 				float whole = GasHazard.damage(Depth.feet(Depth.of(level, FLOOR - 1)), PodComponents.radiatorRatio(pod[0]));
+				float otherLost = other[0] == null ? Float.NaN : startHull[1] - other[0].hull();
 				pilot.releaseInput();
 				pilot.leave();
 				pod[0].discard();
-				check.accept(new Bleed(ticks[0], lost, slabTicks[0], whole, startHull[0]));
+				if (other[0] != null) {
+					other[0].discard();
+				}
+				check.accept(new Bleed(ticks[0], lost, slabTicks[0], whole, startHull[0], otherLost));
 				helper.succeed();
 			}
 		});
@@ -408,11 +454,11 @@ public class PodSounderTest {
 	}
 
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + DRILL_TICKS)
-	public void aTierTwoSounderWaitsThreeSecondsAndTakesAtMostAQuarterOfTheHull(GameTestHelper helper) {
+	public void aTierTwoSounderWaitsThreeSecondsAndTakesTheLargerOfAHullShareAndHalfTheBlast(GameTestHelper helper) {
 		drillOverAPocket(helper, 6720, 2, bleed -> {
-			float quarter = bleed.maxHull() / 4;
-			if (bleed.whole() <= quarter || Math.abs(bleed.hull() - quarter) > 1e-3) {
-				throw failure(helper, "this blast of %s is over a quarter of the %s hull, so a bled pocket costs that quarter, %s hull; it cost %s", bleed.whole(), bleed.maxHull(), quarter, bleed.hull());
+			float cost = bledCost(bleed.whole(), bleed.maxHull());
+			if (cost >= bleed.whole() - 1f || Math.abs(bleed.hull() - cost) > 1e-3) {
+				throw failure(helper, "the blast of %s on %s hull should cost the bled %s (less than the whole, or the test shows nothing); it cost %s", bleed.whole(), bleed.maxHull(), cost, bleed.hull());
 			}
 			if (!about(bleed.ticks(), bleed.slabTicks() + 60)) {
 				throw failure(helper, "the drill waits 60 ticks before it bores a marked pocket: %s ticks in all, it took %s", bleed.slabTicks() + 60, bleed.ticks());
@@ -420,22 +466,133 @@ public class PodSounderTest {
 		});
 	}
 
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + DRILL_TICKS)
+	public void aPodInTheBlastThatDoesNotDrillTakesTheWholeBlastEvenWithATierTwoSounder(GameTestHelper helper) {
+		drillOverAPocket(helper, 6768, 2, true, bleed -> {
+			if (Math.abs(bleed.bystanderHull() - bleed.whole()) > 1e-3 || Math.abs(bleed.hull() - bledCost(bleed.whole(), bleed.maxHull())) > 1e-3) {
+				throw failure(helper, "the driller takes the bled %s and the pod beside it the whole blast of %s; they lost %s and %s", bledCost(bleed.whole(), bleed.maxHull()), bleed.whole(),
+						bleed.hull(), bleed.bystanderHull());
+			}
+		});
+	}
+
 	@GameTest
-	public void aBledBlastCostsTheBlastWhenItIsUnderAQuarterOfTheHullAndAQuarterWhenItIsOver(GameTestHelper helper) {
+	public void aBledBlastCostsTheBlastWhenItIsUnderTheBledCostAndTheBledCostWhenItIsOver(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		PodEntity stock = spawn(helper, level, 0, 0);
 		PodEntity one = spawn(helper, level, 0, 1);
 		PodEntity two = spawn(helper, level, 0, 2);
-		float quarter = two.maxHull() / 4;
-		float[] got = {PodSounder.drilledBlast(stock, 40f), PodSounder.drilledBlast(one, 40f), PodSounder.drilledBlast(two, 5f), PodSounder.drilledBlast(two, 40f)};
-		if (got[0] != 40f || got[1] != 40f || got[2] != 5f || got[3] != quarter || quarter != 25f) {
-			throw failure(helper, "a stock pod and a tier 1 sounder take a blast of 40 whole, a tier 2 sounder takes 5 for 5 and 25 (a quarter of 100) for 40, got %s (quarter %s)",
-					Arrays.toString(got), quarter);
+		// A tier 2 pod of 100 hull: 45 is the hull share, and half of a blast of 100 is 50, which is the larger. A blast of 5 costs 5.
+		float[] got = {PodSounder.drilledBlast(stock, 40f), PodSounder.drilledBlast(one, 40f), PodSounder.drilledBlast(two, 5f), PodSounder.drilledBlast(two, 40f),
+				PodSounder.drilledBlast(two, 100f), PodSounder.drilledBlast(two, 60f)};
+		if (two.maxHull() != 100f || !Arrays.equals(got, new float[] {40f, 40f, 5f, 40f, 50f, 45f})) {
+			throw failure(helper, "a stock pod and a tier 1 sounder take 40 whole; a tier 2 sounder on 100 hull takes 5 for 5, 40 for 40, 50 for 100 and 45 for 60, got %s", Arrays.toString(got));
 		}
 		stock.discard();
 		one.discard();
 		two.discard();
 		helper.succeed();
+	}
+
+	/**
+	 * A tier 2 pilot holds the drill over a pocket whose slab also holds three ore blocks; {@code act} is called each tick with the ticks since the hold
+	 * began, and decides what happens in the pause. It returns true when the test is over.
+	 */
+	private interface PauseScript {
+		boolean tick(int ticks, int slabTicks, PodEntity pod, MockPlayer pilot, BlockPos pocket, List<BlockPos> ores);
+	}
+
+	private void inThePause(GameTestHelper helper, int x, PauseScript script) {
+		ServerLevel level = layer(helper);
+		site(level, x);
+		BlockPos pocket = new BlockPos(x, FLOOR - 1, Z);
+		pocket(level, x, FLOOR - 1, Z);
+		List<BlockPos> ores = List.of(new BlockPos(x - 1, FLOOR - 1, Z - 1), new BlockPos(x, FLOOR - 1, Z - 1), new BlockPos(x - 1, FLOOR - 1, Z));
+		ores.forEach(ore -> level.setBlock(ore, OreRegistry.block(OreType.IRONIUM).defaultBlockState(), 3));
+		MockPlayer pilot = owner(helper);
+		pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
+		PodEntity[] pod = {null};
+		int[] slabTicks = {0};
+		int[] ticks = {0};
+		FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+			pod[0] = spawn(helper, level, x, 2, pilot);
+			if (!pilot.player().startRiding(pod[0])) {
+				throw failure(helper, "the pilot could not mount the pod");
+			}
+			slabTicks[0] = slabTicks(level, PodStats.of(pod[0]), x);
+			pilot.setInput(SPRINT);
+		});
+		helper.onEachTick(() -> {
+			if (pod[0] == null) {
+				return;
+			}
+			ticks[0]++;
+			if (script.tick(ticks[0], slabTicks[0], pod[0], pilot, pocket, ores)) {
+				pilot.releaseInput();
+				pilot.leave();
+				pod[0].discard();
+				helper.succeed();
+			}
+		});
+	}
+
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + DRILL_TICKS)
+	public void aPodThatStopsDrillingInThePauseWaitsTheWholePauseAgain(GameTestHelper helper) {
+		int x = 6816;
+		int[] back = {0};
+		inThePause(helper, x, (ticks, slabTicks, pod, pilot, pocket, ores) -> {
+			if (ticks == slabTicks + 30) {
+				// The pilot lets go of the drill for a few ticks: the slab's progress, and the pause with it, is lost.
+				pilot.releaseInput();
+			} else if (ticks == slabTicks + 34) {
+				pilot.setInput(SPRINT);
+				back[0] = ticks;
+			}
+			boolean vented = !pod.level().getBlockState(pocket).is(HazardBlocks.GAS_POCKET);
+			if (vented && back[0] == 0) {
+				throw failure(helper, "the pocket vented at tick %s, before the pilot let go at %s", ticks, slabTicks + 30);
+			}
+			if (vented) {
+				int waited = ticks - back[0];
+				if (waited < slabTicks + 55) {
+					throw failure(helper, "a pod that lets go of the drill in the pause starts it again: it took up the hold at tick %s and vented %s ticks later, with the slab at %s ticks", back[0], waited, slabTicks);
+				}
+			}
+			return vented;
+		});
+	}
+
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + DRILL_TICKS)
+	public void aPocketVentedByHandInThePauseLeavesASlabThatBoresAtItsOwnDrillTicks(GameTestHelper helper) {
+		int x = 6864;
+		int[] ventedAt = {0};
+		int[] needed = {0};
+		inThePause(helper, x, (ticks, slabTicks, pod, pilot, pocket, ores) -> {
+			ServerLevel level = (ServerLevel) pod.level();
+			if (ticks == slabTicks + 30) {
+				// A player mines the pocket from outside the pod: it blasts, and clears the natural rock round it, but not the ore.
+				level.destroyBlock(pocket, false);
+				GasHazard.vent(level, pocket);
+				ventedAt[0] = ticks;
+				needed[0] = slabTicks(level, PodStats.of(pod), x);
+				return false;
+			}
+			if (ventedAt[0] == 0) {
+				return false;
+			}
+			boolean bored = ores.stream().noneMatch(ore -> level.getBlockState(ore).is(OreRegistry.block(OreType.IRONIUM)));
+			int allowed = Math.max(0, needed[0] - ventedAt[0]) + 4;
+			if (bored) {
+				if (allowed >= 56) {
+					throw failure(helper, "the slab needs %s ticks and the hold had run %s, so a bore within %s ticks of the vent is no pause", needed[0], ventedAt[0], allowed);
+				}
+				return true;
+			}
+			if (ticks - ventedAt[0] > allowed) {
+				throw failure(helper, "with the pocket gone the slab bores at its own %s ticks, within %s of the vent at %s; it had not bored at %s", needed[0], allowed, ventedAt[0], ticks);
+			}
+			return false;
+		});
 	}
 
 	// ---- saving ----

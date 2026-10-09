@@ -82,9 +82,13 @@ public final class PodStatusHud {
 	public static List<Component> sounderLines(PodEntity pod) {
 		PodSounder.State state = PodSounder.reading(pod).orElse(PodSounder.State.EMPTY);
 		List<Component> lines = new ArrayList<>();
+		// The drill waits on a pocket in the slab it bores next: the one below, or the one beside in the direction it bores.
+		Direction bore = pod.drillDirection();
+		boolean bleeding = pod.drilling() && PodSounder.bleedPauseTicks(pod) > 0 && (bore == Direction.DOWN ? state.down() == 1 : state.marks(bore));
 		if (state.down() > 0) {
-			boolean bleeding = state.down() == 1 && pod.drilling() && pod.drillDirection() == Direction.DOWN && PodSounder.bleedPauseTicks(pod) > 0;
 			lines.add(bleeding ? Component.translatable("hud.deepcharter.pod.seepage_bleeding") : Component.translatable("hud.deepcharter.pod.seepage", state.down()));
+		} else if (bleeding) {
+			lines.add(Component.translatable("hud.deepcharter.pod.seepage_bleeding"));
 		}
 		if (state.beside() != 0) {
 			MutableComponent sides = Component.empty();
