@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "deepcharter:block/colony/gauge_panel"
+    },
+    "facing=east": {
+      "model": "deepcharter:block/colony/gauge_panel",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "deepcharter:block/colony/gauge_panel",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "deepcharter:block/colony/gauge_panel",
+      "y": 270
+    }
+  }
+}

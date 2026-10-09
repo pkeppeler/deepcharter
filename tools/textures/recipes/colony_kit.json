@@ -1,0 +1,3441 @@
+{
+ "recipes": {
+  "block/colony/beam": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "noise",
+     "ramp": [
+      "steel.3",
+      "steel.3",
+      "steel.4"
+     ],
+     "seed": 3381,
+     "cell": 4,
+     "dither": 0.6
+    },
+    {
+     "op": "rect",
+     "rect": [
+      2,
+      0,
+      1,
+      16
+     ],
+     "colour": "steel.4"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      13,
+      0,
+      1,
+      16
+     ],
+     "colour": "steel.1"
+    },
+    {
+     "op": "pixels",
+     "at": [
+      5,
+      2
+     ],
+     "legend": {
+      "o": "steel.1",
+      "h": "steel.4"
+     },
+     "rows": [
+      "o....o",
+      "h....h",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "o....o",
+      "h....h"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "rust.2",
+      "steel.1"
+     ],
+     "density": 0.05,
+     "seed": 3382
+    }
+   ]
+  },
+  "block/colony/beam_end": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "steel.1"
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "steel.3"
+     ],
+     "density": 0.1,
+     "seed": 3384
+    }
+   ]
+  },
+  "block/colony/beam_red": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "noise",
+     "ramp": [
+      "company.2",
+      "company.2",
+      "company.3"
+     ],
+     "seed": 3381,
+     "cell": 4,
+     "dither": 0.6
+    },
+    {
+     "op": "rect",
+     "rect": [
+      2,
+      0,
+      1,
+      16
+     ],
+     "colour": "company.3"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      13,
+      0,
+      1,
+      16
+     ],
+     "colour": "company.0"
+    },
+    {
+     "op": "pixels",
+     "at": [
+      5,
+      2
+     ],
+     "legend": {
+      "o": "company.0",
+      "h": "company.3"
+     },
+     "rows": [
+      "o....o",
+      "h....h",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "o....o",
+      "h....h"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "rust.3",
+      "company.0"
+     ],
+     "density": 0.05,
+     "seed": 3382
+    }
+   ]
+  },
+  "block/colony/beam_red_end": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "company.0"
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "company.2"
+     ],
+     "density": 0.1,
+     "seed": 3386
+    }
+   ]
+  },
+  "block/colony/beam_red_web": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "noise",
+     "ramp": [
+      "company.0",
+      "company.1"
+     ],
+     "seed": 3385,
+     "cell": 4,
+     "dither": 0.6
+    }
+   ]
+  },
+  "block/colony/beam_web": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "noise",
+     "ramp": [
+      "steel.1",
+      "steel.2"
+     ],
+     "seed": 3383,
+     "cell": 4,
+     "dither": 0.6
+    }
+   ]
+  },
+  "block/colony/brass_trim": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "noise",
+     "ramp": [
+      "brass.3",
+      "brass.4",
+      "brass.4",
+      "brass.5"
+     ],
+     "seed": 3271,
+     "cell": 4,
+     "dither": 0.7
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      2,
+      16,
+      1
+     ],
+     "colour": "brass.6"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      3,
+      16,
+      1
+     ],
+     "colour": "brass.2"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      12,
+      16,
+      1
+     ],
+     "colour": "brass.6"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      13,
+      16,
+      1
+     ],
+     "colour": "brass.2"
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "brass.2",
+      "brass.6"
+     ],
+     "density": 0.05,
+     "seed": 3272
+    }
+   ]
+  },
+  "block/colony/bronze": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "noise",
+     "ramp": [
+      "brass.3",
+      "brass.4",
+      "brass.4",
+      "brass.4",
+      "brass.5"
+     ],
+     "seed": 3291,
+     "cell": 8,
+     "octaves": 2,
+     "dither": 0.6
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "copper.3",
+      "brass.5"
+     ],
+     "density": 0.05,
+     "seed": 3292
+    }
+   ]
+  },
+  "block/colony/bronze_dark": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "noise",
+     "ramp": [
+      "brass.1",
+      "brass.2",
+      "brass.2",
+      "copper.2"
+     ],
+     "seed": 3293,
+     "cell": 8,
+     "octaves": 2,
+     "dither": 0.6
+    }
+   ]
+  },
+  "block/colony/cable": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "iron.1"
+    },
+    {
+     "op": "stripes",
+     "colours": [
+      "iron.0",
+      "iron.2",
+      "iron.3",
+      "iron.1"
+     ],
+     "period": 4,
+     "direction": "/"
+    }
+   ]
+  },
+  "block/colony/company_brick": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "rust.0"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "a": "rust.2",
+      "b": "rust.3",
+      "c": "copper.2",
+      "m": "rust.0"
+     },
+     "rows": [
+      "aaabbbbmaaaacccm",
+      "abbbbbbmabbbbbbm",
+      "bbbbbcbmbbbcbbbm",
+      "mmmmmmmmmmmmmmmm",
+      "aacmaaabbbbmaaab",
+      "bbbmbbbbbcbmbbbb",
+      "bcbmbbbbbbbmbbcb",
+      "mmmmmmmmmmmmmmmm",
+      "aaabbbbmaaaabbbm",
+      "abbbcbbmabbbbbbm",
+      "bbbbbbbmbbcbbbbm",
+      "mmmmmmmmmmmmmmmm",
+      "aaamaaabbbbmaaab",
+      "bcbmbbbbbbbmbcbb",
+      "bbbmbbbbcbbmbbbb",
+      "mmmmmmmmmmmmmmmm"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "iron.1",
+      "rust.1"
+     ],
+     "density": 0.08,
+     "seed": 3281
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "iron.0",
+      "iron.1"
+     ],
+     "density": 0.3,
+     "seed": 3282,
+     "rect": [
+      0,
+      0,
+      16,
+      5
+     ]
+    }
+   ]
+  },
+  "block/colony/concrete_footing": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "noise",
+     "ramp": [
+      "rock.3",
+      "rock.4",
+      "rock.5",
+      "rock.5"
+     ],
+     "seed": 3251,
+     "cell": 8,
+     "octaves": 3,
+     "dither": 0.9
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "rock.2",
+      "rock.6",
+      "regolith.4"
+     ],
+     "density": 0.08,
+     "seed": 3252
+    }
+   ]
+  },
+  "block/colony/concrete_footing_cracked": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "noise",
+     "ramp": [
+      "rock.3",
+      "rock.4",
+      "rock.5",
+      "rock.5"
+     ],
+     "seed": 3251,
+     "cell": 8,
+     "octaves": 3,
+     "dither": 0.9
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "rock.2",
+      "rock.6",
+      "regolith.4"
+     ],
+     "density": 0.08,
+     "seed": 3252
+    },
+    {
+     "op": "cracks",
+     "colour": "rock.2",
+     "lip": "rock.6",
+     "seed": 3253,
+     "count": 2,
+     "length": 8
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "regolith.3",
+      "dust.1"
+     ],
+     "density": 0.06,
+     "seed": 3254
+    }
+   ]
+  },
+  "block/colony/conveyor_belt": {
+   "kind": "opaque",
+   "animation": {
+    "frames": 4,
+    "frametime": 3
+   },
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "rubber.1"
+    },
+    {
+     "op": "frames",
+     "on": [
+      0
+     ],
+     "layers": [
+      {
+       "op": "pixels",
+       "legend": {
+        "r": "rubber.3",
+        "d": "rubber.0"
+       },
+       "rows": [
+        "rrrrrrrrrrrrrrrr",
+        "dddddddddddddddd",
+        "",
+        "",
+        "rrrrrrrrrrrrrrrr",
+        "dddddddddddddddd",
+        "",
+        "",
+        "rrrrrrrrrrrrrrrr",
+        "dddddddddddddddd",
+        "",
+        "",
+        "rrrrrrrrrrrrrrrr",
+        "dddddddddddddddd",
+        "",
+        ""
+       ]
+      }
+     ]
+    },
+    {
+     "op": "frames",
+     "on": [
+      1
+     ],
+     "layers": [
+      {
+       "op": "pixels",
+       "legend": {
+        "r": "rubber.3",
+        "d": "rubber.0"
+       },
+       "rows": [
+        "",
+        "rrrrrrrrrrrrrrrr",
+        "dddddddddddddddd",
+        "",
+        "",
+        "rrrrrrrrrrrrrrrr",
+        "dddddddddddddddd",
+        "",
+        "",
+        "rrrrrrrrrrrrrrrr",
+        "dddddddddddddddd",
+        "",
+        "",
+        "rrrrrrrrrrrrrrrr",
+        "dddddddddddddddd",
+        ""
+       ]
+      }
+     ]
+    },
+    {
+     "op": "frames",
+     "on": [
+      2
+     ],
+     "layers": [
+      {
+       "op": "pixels",
+       "legend": {
+        "r": "rubber.3",
+        "d": "rubber.0"
+       },
+       "rows": [
+        "",
+        "",
+        "rrrrrrrrrrrrrrrr",
+        "dddddddddddddddd",
+        "",
+        "",
+        "rrrrrrrrrrrrrrrr",
+        "dddddddddddddddd",
+        "",
+        "",
+        "rrrrrrrrrrrrrrrr",
+        "dddddddddddddddd",
+        "",
+        "",
+        "rrrrrrrrrrrrrrrr",
+        "dddddddddddddddd"
+       ]
+      }
+     ]
+    },
+    {
+     "op": "frames",
+     "on": [
+      3
+     ],
+     "layers": [
+      {
+       "op": "pixels",
+       "legend": {
+        "r": "rubber.3",
+        "d": "rubber.0"
+       },
+       "rows": [
+        "dddddddddddddddd",
+        "",
+        "",
+        "rrrrrrrrrrrrrrrr",
+        "dddddddddddddddd",
+        "",
+        "",
+        "rrrrrrrrrrrrrrrr",
+        "dddddddddddddddd",
+        "",
+        "",
+        "rrrrrrrrrrrrrrrr",
+        "dddddddddddddddd",
+        "",
+        "",
+        "rrrrrrrrrrrrrrrr"
+       ]
+      }
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "dust.1",
+      "regolith.3"
+     ],
+     "density": 0.08,
+     "seed": 3402
+    }
+   ]
+  },
+  "block/colony/conveyor_frame": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "noise",
+     "ramp": [
+      "steel.2",
+      "steel.3"
+     ],
+     "seed": 3401,
+     "cell": 4,
+     "dither": 0.6
+    },
+    {
+     "op": "stripes",
+     "colours": [
+      "hazard.2",
+      "iron.0"
+     ],
+     "period": 4,
+     "direction": "/",
+     "rect": [
+      0,
+      8,
+      16,
+      2
+     ]
+    },
+    {
+     "op": "rivets",
+     "at": [
+      [
+       2,
+       11
+      ],
+      [
+       12,
+       11
+      ]
+     ],
+     "ramp": [
+      "steel.0",
+      "steel.3",
+      "steel.5"
+     ]
+    }
+   ]
+  },
+  "block/colony/corrugated_cream": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "pixels",
+     "legend": {
+      "l": "enamel.3",
+      "m": "enamel.2",
+      "d": "enamel.1",
+      "s": "enamel.0"
+     },
+     "rows": [
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.2",
+      "enamel.1"
+     ],
+     "density": 0.05,
+     "seed": 3101
+    }
+   ]
+  },
+  "block/colony/corrugated_cream_patched": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "pixels",
+     "legend": {
+      "l": "enamel.3",
+      "m": "enamel.2",
+      "d": "enamel.1",
+      "s": "enamel.0"
+     },
+     "rows": [
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.2",
+      "enamel.1"
+     ],
+     "density": 0.05,
+     "seed": 3101
+    },
+    {
+     "op": "tint",
+     "colour": "warm.3",
+     "alpha": 60,
+     "rect": [
+      2,
+      3,
+      9,
+      9
+     ]
+    },
+    {
+     "op": "rect",
+     "rect": [
+      2,
+      3,
+      9,
+      9
+     ],
+     "colour": "steel.1",
+     "outline": true
+    },
+    {
+     "op": "pixels",
+     "at": [
+      2,
+      3
+     ],
+     "legend": {
+      "r": "steel.4"
+     },
+     "rows": [
+      ".r.....r.",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ".r.....r."
+     ]
+    }
+   ]
+  },
+  "block/colony/corrugated_cream_streaked": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "pixels",
+     "legend": {
+      "l": "enamel.3",
+      "m": "enamel.2",
+      "d": "enamel.1",
+      "s": "enamel.0"
+     },
+     "rows": [
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "enamel.2",
+      "enamel.1"
+     ],
+     "density": 0.05,
+     "seed": 3101
+    },
+    {
+     "op": "pixels",
+     "at": [
+      0,
+      0
+     ],
+     "legend": {
+      "o": "rust.3",
+      "r": "rust.2",
+      "q": "rust.1"
+     },
+     "rows": [
+      "....o.......o...",
+      "....r.......r...",
+      "....r.......q...",
+      "....q.......r...",
+      "....r...........",
+      "................",
+      "....q...........",
+      "................",
+      "....q..........."
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "dust.2"
+     ],
+     "density": 0.05,
+     "seed": 3108
+    }
+   ]
+  },
+  "block/colony/corrugated_dark": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "pixels",
+     "legend": {
+      "l": "steel.4",
+      "m": "steel.3",
+      "d": "steel.2",
+      "s": "steel.1"
+     },
+     "rows": [
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "steel.3",
+      "steel.2"
+     ],
+     "density": 0.05,
+     "seed": 3121
+    }
+   ]
+  },
+  "block/colony/corrugated_dark_patched": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "pixels",
+     "legend": {
+      "l": "steel.4",
+      "m": "steel.3",
+      "d": "steel.2",
+      "s": "steel.1"
+     },
+     "rows": [
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "steel.3",
+      "steel.2"
+     ],
+     "density": 0.05,
+     "seed": 3121
+    },
+    {
+     "op": "tint",
+     "colour": "steel.5",
+     "alpha": 60,
+     "rect": [
+      2,
+      3,
+      9,
+      9
+     ]
+    },
+    {
+     "op": "rect",
+     "rect": [
+      2,
+      3,
+      9,
+      9
+     ],
+     "colour": "steel.1",
+     "outline": true
+    },
+    {
+     "op": "pixels",
+     "at": [
+      2,
+      3
+     ],
+     "legend": {
+      "r": "steel.4"
+     },
+     "rows": [
+      ".r.....r.",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ".r.....r."
+     ]
+    }
+   ]
+  },
+  "block/colony/corrugated_dark_streaked": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "pixels",
+     "legend": {
+      "l": "steel.4",
+      "m": "steel.3",
+      "d": "steel.2",
+      "s": "steel.1"
+     },
+     "rows": [
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "steel.3",
+      "steel.2"
+     ],
+     "density": 0.05,
+     "seed": 3121
+    },
+    {
+     "op": "pixels",
+     "at": [
+      0,
+      0
+     ],
+     "legend": {
+      "o": "rust.3",
+      "r": "rust.2",
+      "q": "rust.1"
+     },
+     "rows": [
+      "....o.......o...",
+      "....r.......r...",
+      "....r.......q...",
+      "....q.......r...",
+      "....r...........",
+      "................",
+      "....q...........",
+      "................",
+      "....q..........."
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "rust.2"
+     ],
+     "density": 0.05,
+     "seed": 3128
+    }
+   ]
+  },
+  "block/colony/corrugated_red": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "pixels",
+     "legend": {
+      "l": "company.3",
+      "m": "company.2",
+      "d": "company.1",
+      "s": "company.0"
+     },
+     "rows": [
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "company.2",
+      "company.1"
+     ],
+     "density": 0.05,
+     "seed": 3111
+    }
+   ]
+  },
+  "block/colony/corrugated_red_patched": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "pixels",
+     "legend": {
+      "l": "company.3",
+      "m": "company.2",
+      "d": "company.1",
+      "s": "company.0"
+     },
+     "rows": [
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "company.2",
+      "company.1"
+     ],
+     "density": 0.05,
+     "seed": 3111
+    },
+    {
+     "op": "tint",
+     "colour": "company.3",
+     "alpha": 60,
+     "rect": [
+      2,
+      3,
+      9,
+      9
+     ]
+    },
+    {
+     "op": "rect",
+     "rect": [
+      2,
+      3,
+      9,
+      9
+     ],
+     "colour": "steel.1",
+     "outline": true
+    },
+    {
+     "op": "pixels",
+     "at": [
+      2,
+      3
+     ],
+     "legend": {
+      "r": "steel.4"
+     },
+     "rows": [
+      ".r.....r.",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ".r.....r."
+     ]
+    }
+   ]
+  },
+  "block/colony/corrugated_red_streaked": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "pixels",
+     "legend": {
+      "l": "company.3",
+      "m": "company.2",
+      "d": "company.1",
+      "s": "company.0"
+     },
+     "rows": [
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "company.2",
+      "company.1"
+     ],
+     "density": 0.05,
+     "seed": 3111
+    },
+    {
+     "op": "pixels",
+     "at": [
+      0,
+      0
+     ],
+     "legend": {
+      "o": "rust.3",
+      "r": "rust.2",
+      "q": "rust.1"
+     },
+     "rows": [
+      "....o.......o...",
+      "....r.......r...",
+      "....r.......q...",
+      "....q.......r...",
+      "....r...........",
+      "................",
+      "....q...........",
+      "................",
+      "....q..........."
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "rust.3"
+     ],
+     "density": 0.05,
+     "seed": 3118
+    }
+   ]
+  },
+  "block/colony/enamel_panel": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "noise",
+     "ramp": [
+      "enamel.2",
+      "enamel.2",
+      "enamel.3"
+     ],
+     "seed": 3221,
+     "cell": 8,
+     "octaves": 1,
+     "dither": 0.5
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      0,
+      16,
+      16
+     ],
+     "colour": "enamel.1",
+     "outline": true
+    },
+    {
+     "op": "rect",
+     "rect": [
+      1,
+      1,
+      14,
+      1
+     ],
+     "colour": "enamel.3"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      1,
+      1,
+      1,
+      14
+     ],
+     "colour": "enamel.3"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      2,
+      12,
+      12,
+      1
+     ],
+     "colour": "company.2"
+    }
+   ]
+  },
+  "block/colony/flood_lens": {
+   "kind": "opaque",
+   "glow": {
+    "over": null
+   },
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "sodium.5"
+    },
+    {
+     "op": "pixels",
+     "at": [
+      3,
+      5
+     ],
+     "legend": {
+      "w": "sodium.6",
+      "g": "sodium.4"
+     },
+     "rows": [
+      "gggggggggg",
+      "gwwwgwwwgg",
+      "gwwwgwwwgg",
+      "gggggggggg",
+      "gwwwgwwwgg",
+      "gwwwgwwwgg",
+      "gggggggggg"
+     ]
+    }
+   ]
+  },
+  "block/colony/furnace_hatch": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "include",
+     "recipe": "block/colony/riveted_plate"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      2,
+      3,
+      12,
+      10
+     ],
+     "colour": "iron.2"
+    },
+    {
+     "op": "bevel",
+     "rect": [
+      2,
+      3,
+      12,
+      10
+     ],
+     "light": "iron.4",
+     "dark": "iron.0"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      4,
+      6,
+      8,
+      4
+     ],
+     "colour": "void"
+    },
+    {
+     "op": "pixels",
+     "at": [
+      4,
+      6
+     ],
+     "legend": {
+      "g": "iron.1"
+     },
+     "rows": [
+      "g.g.g.g.",
+      "",
+      "",
+      "g.g.g.g."
+     ]
+    },
+    {
+     "op": "rect",
+     "rect": [
+      12,
+      7,
+      3,
+      2
+     ],
+     "colour": "brass.4"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      14,
+      16,
+      2
+     ],
+     "colour": "hazard.2"
+    },
+    {
+     "op": "stripes",
+     "colours": [
+      "hazard.2",
+      "iron.0"
+     ],
+     "period": 4,
+     "direction": "/",
+     "rect": [
+      0,
+      14,
+      16,
+      2
+     ]
+    }
+   ]
+  },
+  "block/colony/furnace_hatch_glow": {
+   "kind": "cutout",
+   "glow": {
+    "over": "block/colony/furnace_hatch"
+   },
+   "animation": {
+    "frames": 4,
+    "frametime": 3
+   },
+   "layers": [
+    {
+     "op": "pixels",
+     "at": [
+      4,
+      7
+     ],
+     "legend": {
+      "a": "fuel.3",
+      "b": "sodium.4",
+      "c": "sodium.5",
+      "d": "fuel.2"
+     },
+     "rows": [
+      "abcbabca",
+      "dbabcbad"
+     ]
+    },
+    {
+     "op": "frames",
+     "on": [
+      1
+     ],
+     "layers": [
+      {
+       "op": "replace",
+       "from": "sodium.5",
+       "to": "sodium.4"
+      }
+     ]
+    },
+    {
+     "op": "frames",
+     "on": [
+      2
+     ],
+     "layers": [
+      {
+       "op": "replace",
+       "from": "fuel.3",
+       "to": "sodium.4"
+      },
+      {
+       "op": "replace",
+       "from": "sodium.4",
+       "to": "sodium.5"
+      }
+     ]
+    },
+    {
+     "op": "frames",
+     "on": [
+      3
+     ],
+     "layers": [
+      {
+       "op": "replace",
+       "from": "sodium.5",
+       "to": "fuel.3"
+      }
+     ]
+    }
+   ]
+  },
+  "block/colony/gauge_panel": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "noise",
+     "ramp": [
+      "steel.1",
+      "steel.2",
+      "steel.2"
+     ],
+     "seed": 3331,
+     "cell": 4,
+     "dither": 0.6
+    },
+    {
+     "op": "bevel",
+     "rect": [
+      0,
+      0,
+      16,
+      16
+     ],
+     "light": "steel.4",
+     "dark": "steel.0"
+    },
+    {
+     "op": "pixels",
+     "at": [
+      1,
+      2
+     ],
+     "legend": {
+      "b": "brass.4",
+      "B": "brass.2",
+      "w": "enamel.3",
+      "n": "iron.0"
+     },
+     "rows": [
+      ".bbbb...bbbb..",
+      "bwwwwB.bwwwwB.",
+      "bwwnwB.bwnwwB.",
+      "bwnwwB.bwwnwB.",
+      "bwwwwB.bwwwwB.",
+      ".BBBB...BBBB.."
+     ]
+    },
+    {
+     "op": "pixels",
+     "at": [
+      2,
+      10
+     ],
+     "legend": {
+      "r": "signal.1",
+      "a": "sodium.1",
+      "g": "phosphor.1",
+      "s": "steel.0",
+      "p": "paper.3"
+     },
+     "rows": [
+      "rs.as.gs.pppp",
+      "ss.ss.ss.pppp"
+     ]
+    },
+    {
+     "op": "rivets",
+     "at": [
+      [
+       1,
+       13
+      ],
+      [
+       13,
+       13
+      ]
+     ],
+     "ramp": [
+      "steel.0",
+      "steel.4",
+      "steel.6"
+     ]
+    }
+   ]
+  },
+  "block/colony/gauge_panel_glow": {
+   "kind": "cutout",
+   "glow": {
+    "over": "block/colony/gauge_panel"
+   },
+   "animation": {
+    "frames": 8,
+    "frametime": 5
+   },
+   "layers": [
+    {
+     "op": "pixels",
+     "at": [
+      2,
+      10
+     ],
+     "legend": {
+      "r": "signal.3",
+      "a": "sodium.5",
+      "g": "phosphor.4"
+     },
+     "rows": [
+      "r..a..g"
+     ]
+    },
+    {
+     "op": "frames",
+     "on": [
+      2,
+      3
+     ],
+     "layers": [
+      {
+       "op": "replace",
+       "from": "signal.3",
+       "to": "signal.1"
+      }
+     ]
+    },
+    {
+     "op": "frames",
+     "on": [
+      5
+     ],
+     "layers": [
+      {
+       "op": "replace",
+       "from": "phosphor.4",
+       "to": "phosphor.2"
+      }
+     ]
+    }
+   ]
+  },
+  "block/colony/grating": {
+   "kind": "cutout",
+   "layers": [
+    {
+     "op": "pixels",
+     "legend": {
+      "h": "steel.5",
+      "m": "steel.3",
+      "d": "steel.1"
+     },
+     "rows": [
+      "hhhhhhhhhhhhhhhh",
+      "m..m..m..m..m..d",
+      "m..m..m..m..m..d",
+      "hhhhhhhhhhhhhhhd",
+      "m..m..m..m..m..d",
+      "m..m..m..m..m..d",
+      "hhhhhhhhhhhhhhhd",
+      "m..m..m..m..m..d",
+      "m..m..m..m..m..d",
+      "hhhhhhhhhhhhhhhd",
+      "m..m..m..m..m..d",
+      "m..m..m..m..m..d",
+      "hhhhhhhhhhhhhhhd",
+      "m..m..m..m..m..d",
+      "m..m..m..m..m..d",
+      "dddddddddddddddd"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "rust.2"
+     ],
+     "density": 0.05,
+     "seed": 3261
+    }
+   ]
+  },
+  "block/colony/hazard_band": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "stripes",
+     "colours": [
+      "hazard.2",
+      "iron.0"
+     ],
+     "period": 8,
+     "direction": "/"
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "hazard.1",
+      "iron.2",
+      "rust.2"
+     ],
+     "density": 0.12,
+     "seed": 3241
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      0,
+      16,
+      1
+     ],
+     "colour": "iron.1"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      15,
+      16,
+      1
+     ],
+     "colour": "iron.1"
+    }
+   ]
+  },
+  "block/colony/lamp_iron": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "noise",
+     "ramp": [
+      "iron.1",
+      "iron.2",
+      "iron.3"
+     ],
+     "seed": 3341,
+     "cell": 4,
+     "octaves": 2,
+     "dither": 0.8
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "iron.4",
+      "rust.2"
+     ],
+     "density": 0.08,
+     "seed": 3342
+    }
+   ]
+  },
+  "block/colony/lamp_lit": {
+   "kind": "opaque",
+   "glow": {
+    "over": null
+   },
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "sodium.4"
+    },
+    {
+     "op": "pixels",
+     "at": [
+      5,
+      4
+     ],
+     "legend": {
+      "w": "sodium.6",
+      "b": "sodium.5",
+      "d": "sodium.3"
+     },
+     "rows": [
+      "dbbbbd",
+      "bwwwbb",
+      "bwwbbb",
+      "dbbbbd"
+     ]
+    }
+   ]
+  },
+  "block/colony/lattice": {
+   "kind": "cutout",
+   "layers": [
+    {
+     "op": "pixels",
+     "legend": {
+      "h": "steel.3",
+      "d": "steel.1"
+     },
+     "rows": [
+      "hh....hhhh....hh",
+      "hhh..hh..hh..hhd",
+      "h.hhhh....hhhh.d",
+      "h..hh......hh..d",
+      "h.hhhh....hhhh.d",
+      "hhh..hh..hh..hhd",
+      "hh....hhhh....hd",
+      "hhhhhhhhhhhhhhhd",
+      "hh....hhhh....hd",
+      "hhh..hh..hh..hhd",
+      "h.hhhh....hhhh.d",
+      "h..hh......hh..d",
+      "h.hhhh....hhhh.d",
+      "hhh..hh..hh..hhd",
+      "hh....hhhh....hd",
+      "hhhhhhhhhhhhhhhd"
+     ]
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "s": "steel.5"
+     },
+     "rows": [
+      "s...............",
+      "s...............",
+      "s...............",
+      "s...............",
+      "s...............",
+      "s...............",
+      "s...............",
+      "s...............",
+      "s...............",
+      "s...............",
+      "s...............",
+      "s...............",
+      "s...............",
+      "s...............",
+      "s...............",
+      "s..............."
+     ]
+    },
+    {
+     "op": "pixels",
+     "at": [
+      7,
+      7
+     ],
+     "legend": {
+      "r": "rust.2"
+     },
+     "rows": [
+      "r.",
+      ".r"
+     ]
+    }
+   ]
+  },
+  "block/colony/lattice_end": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "steel.2"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      0,
+      16,
+      16
+     ],
+     "colour": "steel.0",
+     "outline": true
+    },
+    {
+     "op": "rect",
+     "rect": [
+      1,
+      1,
+      14,
+      1
+     ],
+     "colour": "steel.4"
+    },
+    {
+     "op": "rivets",
+     "at": [
+      [
+       2,
+       2
+      ],
+      [
+       12,
+       2
+      ],
+      [
+       2,
+       12
+      ],
+      [
+       12,
+       12
+      ]
+     ],
+     "ramp": [
+      "steel.0",
+      "steel.2",
+      "steel.4"
+     ]
+    }
+   ]
+  },
+  "block/colony/lattice_red": {
+   "kind": "cutout",
+   "layers": [
+    {
+     "op": "pixels",
+     "legend": {
+      "h": "company.2",
+      "d": "company.0"
+     },
+     "rows": [
+      "hh....hhhh....hh",
+      "hhh..hh..hh..hhd",
+      "h.hhhh....hhhh.d",
+      "h..hh......hh..d",
+      "h.hhhh....hhhh.d",
+      "hhh..hh..hh..hhd",
+      "hh....hhhh....hd",
+      "hhhhhhhhhhhhhhhd",
+      "hh....hhhh....hd",
+      "hhh..hh..hh..hhd",
+      "h.hhhh....hhhh.d",
+      "h..hh......hh..d",
+      "h.hhhh....hhhh.d",
+      "hhh..hh..hh..hhd",
+      "hh....hhhh....hd",
+      "hhhhhhhhhhhhhhhd"
+     ]
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "s": "company.3"
+     },
+     "rows": [
+      "s...............",
+      "s...............",
+      "s...............",
+      "s...............",
+      "s...............",
+      "s...............",
+      "s...............",
+      "s...............",
+      "s...............",
+      "s...............",
+      "s...............",
+      "s...............",
+      "s...............",
+      "s...............",
+      "s...............",
+      "s..............."
+     ]
+    },
+    {
+     "op": "pixels",
+     "at": [
+      7,
+      7
+     ],
+     "legend": {
+      "r": "rust.2"
+     },
+     "rows": [
+      "r.",
+      ".r"
+     ]
+    }
+   ]
+  },
+  "block/colony/lattice_red_end": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "company.1"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      0,
+      16,
+      16
+     ],
+     "colour": "company.0",
+     "outline": true
+    },
+    {
+     "op": "rect",
+     "rect": [
+      1,
+      1,
+      14,
+      1
+     ],
+     "colour": "company.3"
+    },
+    {
+     "op": "rivets",
+     "at": [
+      [
+       2,
+       2
+      ],
+      [
+       12,
+       2
+      ],
+      [
+       2,
+       12
+      ],
+      [
+       12,
+       12
+      ]
+     ],
+     "ramp": [
+      "company.0",
+      "company.1",
+      "company.3"
+     ]
+    }
+   ]
+  },
+  "block/colony/pipe": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "steel.2"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "0": "steel.1",
+      "1": "steel.2",
+      "2": "steel.3",
+      "3": "steel.4",
+      "4": "steel.6"
+     },
+     "rows": [
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "steel.2",
+      "rust.2"
+     ],
+     "density": 0.04,
+     "seed": 3391
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      15,
+      16,
+      1
+     ],
+     "colour": "steel.1"
+    }
+   ]
+  },
+  "block/colony/pipe_brass": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "brass.3"
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "0": "brass.1",
+      "1": "brass.3",
+      "2": "brass.4",
+      "3": "brass.5",
+      "4": "brass.6"
+     },
+     "rows": [
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111",
+      "1111102432111111"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "brass.3",
+      "rust.2"
+     ],
+     "density": 0.04,
+     "seed": 3392
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      15,
+      16,
+      1
+     ],
+     "colour": "brass.1"
+    }
+   ]
+  },
+  "block/colony/pipe_brass_flange": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "brass.4"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      4,
+      4,
+      8,
+      8
+     ],
+     "colour": "brass.3",
+     "outline": true
+    },
+    {
+     "op": "rect",
+     "rect": [
+      5,
+      5,
+      6,
+      6
+     ],
+     "colour": "brass.1"
+    },
+    {
+     "op": "rivets",
+     "at": [
+      [
+       4,
+       4
+      ],
+      [
+       10,
+       4
+      ],
+      [
+       4,
+       10
+      ],
+      [
+       10,
+       10
+      ]
+     ],
+     "ramp": [
+      "brass.1",
+      "brass.4",
+      "brass.5"
+     ]
+    }
+   ]
+  },
+  "block/colony/pipe_flange": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "steel.3"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      4,
+      4,
+      8,
+      8
+     ],
+     "colour": "steel.2",
+     "outline": true
+    },
+    {
+     "op": "rect",
+     "rect": [
+      5,
+      5,
+      6,
+      6
+     ],
+     "colour": "steel.1"
+    },
+    {
+     "op": "rivets",
+     "at": [
+      [
+       4,
+       4
+      ],
+      [
+       10,
+       4
+      ],
+      [
+       4,
+       10
+      ],
+      [
+       10,
+       10
+      ]
+     ],
+     "ramp": [
+      "steel.1",
+      "steel.3",
+      "steel.4"
+     ]
+    }
+   ]
+  },
+  "block/colony/railing": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "noise",
+     "ramp": [
+      "hazard.2",
+      "hazard.2",
+      "hazard.3"
+     ],
+     "seed": 3351,
+     "cell": 4,
+     "dither": 0.6
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "iron.1",
+      "rust.2"
+     ],
+     "density": 0.1,
+     "seed": 3352
+    }
+   ]
+  },
+  "block/colony/riveted_plate": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "noise",
+     "ramp": [
+      "steel.2",
+      "steel.2",
+      "steel.3"
+     ],
+     "seed": 3201,
+     "cell": 8,
+     "octaves": 2,
+     "dither": 0.8
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "steel.1",
+      "steel.4"
+     ],
+     "density": 0.05,
+     "seed": 3202
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      0,
+      16,
+      1
+     ],
+     "colour": "steel.0"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      1,
+      16,
+      1
+     ],
+     "colour": "steel.4"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      0,
+      1,
+      16
+     ],
+     "colour": "steel.0"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      1,
+      0,
+      1,
+      16
+     ],
+     "colour": "steel.4"
+    },
+    {
+     "op": "rivets",
+     "at": [
+      [
+       3,
+       3
+      ],
+      [
+       8,
+       3
+      ],
+      [
+       13,
+       3
+      ],
+      [
+       3,
+       8
+      ],
+      [
+       3,
+       13
+      ]
+     ],
+     "ramp": [
+      "steel.0",
+      "steel.4",
+      "steel.6"
+     ]
+    }
+   ]
+  },
+  "block/colony/riveted_plate_patched": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "noise",
+     "ramp": [
+      "steel.2",
+      "steel.2",
+      "steel.3"
+     ],
+     "seed": 3201,
+     "cell": 8,
+     "octaves": 2,
+     "dither": 0.8
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "steel.1",
+      "steel.4"
+     ],
+     "density": 0.05,
+     "seed": 3202
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      0,
+      16,
+      1
+     ],
+     "colour": "steel.0"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      1,
+      16,
+      1
+     ],
+     "colour": "steel.4"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      0,
+      1,
+      16
+     ],
+     "colour": "steel.0"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      1,
+      0,
+      1,
+      16
+     ],
+     "colour": "steel.4"
+    },
+    {
+     "op": "rivets",
+     "at": [
+      [
+       3,
+       3
+      ],
+      [
+       8,
+       3
+      ],
+      [
+       13,
+       3
+      ],
+      [
+       3,
+       8
+      ],
+      [
+       3,
+       13
+      ]
+     ],
+     "ramp": [
+      "steel.0",
+      "steel.4",
+      "steel.6"
+     ]
+    },
+    {
+     "op": "tint",
+     "colour": "steel.5",
+     "alpha": 60,
+     "rect": [
+      2,
+      3,
+      9,
+      9
+     ]
+    },
+    {
+     "op": "rect",
+     "rect": [
+      2,
+      3,
+      9,
+      9
+     ],
+     "colour": "steel.1",
+     "outline": true
+    },
+    {
+     "op": "pixels",
+     "at": [
+      2,
+      3
+     ],
+     "legend": {
+      "r": "steel.4"
+     },
+     "rows": [
+      ".r.....r.",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ".r.....r."
+     ]
+    }
+   ]
+  },
+  "block/colony/riveted_plate_red": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "noise",
+     "ramp": [
+      "company.1",
+      "company.1",
+      "company.2"
+     ],
+     "seed": 3211,
+     "cell": 8,
+     "octaves": 2,
+     "dither": 0.8
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "company.0",
+      "rust.3"
+     ],
+     "density": 0.06,
+     "seed": 3212
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      0,
+      16,
+      1
+     ],
+     "colour": "company.0"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      1,
+      16,
+      1
+     ],
+     "colour": "company.3"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      0,
+      1,
+      16
+     ],
+     "colour": "company.0"
+    },
+    {
+     "op": "rivets",
+     "at": [
+      [
+       3,
+       3
+      ],
+      [
+       8,
+       3
+      ],
+      [
+       13,
+       3
+      ],
+      [
+       3,
+       8
+      ],
+      [
+       3,
+       13
+      ]
+     ],
+     "ramp": [
+      "company.0",
+      "company.2",
+      "rust.4"
+     ],
+     "rust": "rust.1"
+    }
+   ]
+  },
+  "block/colony/riveted_plate_streaked": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "noise",
+     "ramp": [
+      "steel.2",
+      "steel.2",
+      "steel.3"
+     ],
+     "seed": 3201,
+     "cell": 8,
+     "octaves": 2,
+     "dither": 0.8
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "steel.1",
+      "steel.4"
+     ],
+     "density": 0.05,
+     "seed": 3202
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      0,
+      16,
+      1
+     ],
+     "colour": "steel.0"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      1,
+      16,
+      1
+     ],
+     "colour": "steel.4"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      0,
+      1,
+      16
+     ],
+     "colour": "steel.0"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      1,
+      0,
+      1,
+      16
+     ],
+     "colour": "steel.4"
+    },
+    {
+     "op": "rivets",
+     "at": [
+      [
+       3,
+       3
+      ],
+      [
+       8,
+       3
+      ],
+      [
+       13,
+       3
+      ],
+      [
+       3,
+       8
+      ],
+      [
+       3,
+       13
+      ]
+     ],
+     "ramp": [
+      "steel.0",
+      "steel.4",
+      "steel.6"
+     ]
+    },
+    {
+     "op": "pixels",
+     "at": [
+      0,
+      0
+     ],
+     "legend": {
+      "o": "rust.3",
+      "r": "rust.2",
+      "q": "rust.1"
+     },
+     "rows": [
+      "....o.......o...",
+      "....r.......r...",
+      "....r.......q...",
+      "....q.......r...",
+      "....r...........",
+      "................",
+      "....q...........",
+      "................",
+      "....q..........."
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "rust.2"
+     ],
+     "density": 0.05,
+     "seed": 3208
+    }
+   ]
+  },
+  "block/colony/roof_dark": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "pixels",
+     "legend": {
+      "l": "steel.4",
+      "m": "steel.3",
+      "d": "steel.2",
+      "s": "steel.1"
+     },
+     "rows": [
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "rust.2",
+      "rust.3",
+      "dust.1"
+     ],
+     "density": 0.12,
+     "seed": 3151
+    }
+   ]
+  },
+  "block/colony/roof_dark_ridge": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "noise",
+     "ramp": [
+      "steel.2",
+      "steel.3",
+      "steel.3"
+     ],
+     "seed": 3161,
+     "cell": 4,
+     "dither": 0.7
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      0,
+      16,
+      1
+     ],
+     "colour": "steel.4"
+    }
+   ]
+  },
+  "block/colony/roof_red": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "pixels",
+     "legend": {
+      "l": "company.3",
+      "m": "company.2",
+      "d": "company.1",
+      "s": "company.0"
+     },
+     "rows": [
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd",
+      "lmsdlmsdlmsdlmsd"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "rust.3",
+      "company.1",
+      "dust.2"
+     ],
+     "density": 0.08,
+     "seed": 3131
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "r": "rust.2"
+     },
+     "at": [
+      0,
+      0
+     ],
+     "rows": [
+      "...r.......r....",
+      "...r............",
+      "...........r...."
+     ]
+    }
+   ]
+  },
+  "block/colony/roof_red_ridge": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "noise",
+     "ramp": [
+      "company.1",
+      "company.2",
+      "company.2"
+     ],
+     "seed": 3141,
+     "cell": 4,
+     "dither": 0.7
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      0,
+      16,
+      1
+     ],
+     "colour": "company.3"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      15,
+      16,
+      1
+     ],
+     "colour": "company.0"
+    }
+   ]
+  },
+  "block/colony/sign_edge": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "noise",
+     "ramp": [
+      "steel.1",
+      "steel.2"
+     ],
+     "seed": 3411,
+     "cell": 4,
+     "dither": 0.6
+    }
+   ]
+  },
+  "block/colony/statue_slot": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "void"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      0,
+      16,
+      2
+     ],
+     "colour": "iron.1"
+    }
+   ]
+  },
+  "block/colony/steel_frame": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "noise",
+     "ramp": [
+      "company.1",
+      "company.2",
+      "company.2"
+     ],
+     "seed": 3231,
+     "cell": 4,
+     "dither": 0.7
+    },
+    {
+     "op": "rect",
+     "rect": [
+      0,
+      0,
+      16,
+      16
+     ],
+     "colour": "company.0",
+     "outline": true
+    },
+    {
+     "op": "rect",
+     "rect": [
+      1,
+      1,
+      14,
+      1
+     ],
+     "colour": "company.3"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      3,
+      3,
+      10,
+      10
+     ],
+     "colour": "company.1",
+     "outline": true
+    },
+    {
+     "op": "rivets",
+     "at": [
+      [
+       4,
+       4
+      ],
+      [
+       10,
+       4
+      ],
+      [
+       4,
+       10
+      ],
+      [
+       10,
+       10
+      ]
+     ],
+     "ramp": [
+      "company.0",
+      "company.2",
+      "enamel.1"
+     ]
+    },
+    {
+     "op": "speckle",
+     "colours": [
+      "rust.2",
+      "company.0"
+     ],
+     "density": 0.05,
+     "seed": 3232
+    }
+   ]
+  },
+  "block/colony/winder_door": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "include",
+     "recipe": "block/colony/riveted_plate"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      3,
+      1,
+      10,
+      15
+     ],
+     "colour": "steel.2"
+    },
+    {
+     "op": "bevel",
+     "rect": [
+      3,
+      1,
+      10,
+      15
+     ],
+     "light": "steel.4",
+     "dark": "steel.0"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      5,
+      3,
+      6,
+      4
+     ],
+     "colour": "glass.1"
+    },
+    {
+     "op": "bevel",
+     "rect": [
+      5,
+      3,
+      6,
+      4
+     ],
+     "light": "steel.0",
+     "dark": "steel.4"
+    },
+    {
+     "op": "rect",
+     "rect": [
+      10,
+      8,
+      2,
+      1
+     ],
+     "colour": "brass.5"
+    },
+    {
+     "op": "stripes",
+     "colours": [
+      "hazard.2",
+      "iron.0"
+     ],
+     "period": 4,
+     "direction": "/",
+     "rect": [
+      3,
+      13,
+      10,
+      2
+     ]
+    }
+   ]
+  },
+  "block/colony/window_ribbon": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "glass.1"
+    },
+    {
+     "op": "pixels",
+     "at": [
+      2,
+      5
+     ],
+     "legend": {
+      "r": "glass.3"
+     },
+     "rows": [
+      "r..",
+      ".r.",
+      "..r"
+     ]
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "d": "steel.0",
+      "h": "steel.3",
+      "m": "steel.2",
+      "b": "brass.3"
+     },
+     "rows": [
+      "dddddddddddddddd",
+      "dhhhhhhhhhhhhhhd",
+      "dh..m...m...m.hd",
+      "dh..m...m...m.hd",
+      "dhmmmmmmmmmmmmhd",
+      "dh..m...m...m.hd",
+      "dh..m...m...m.hd",
+      "dh..m...m...m.hd",
+      "dh..m...m...m.hd",
+      "dh..m...m...m.hd",
+      "dh..m...m...m.hd",
+      "dh..m...m...m.hd",
+      "dh..m...m...m.hd",
+      "dhhhhhhhhhhhhhhd",
+      "dbbbbbbbbbbbbbbd",
+      "dddddddddddddddd"
+     ]
+    }
+   ]
+  },
+  "block/colony/window_ribbon_dark": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "glass.0"
+    },
+    {
+     "op": "pixels",
+     "at": [
+      2,
+      5
+     ],
+     "legend": {
+      "r": "glass.2"
+     },
+     "rows": [
+      "r..",
+      ".r."
+     ]
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "d": "steel.0",
+      "h": "steel.2",
+      "m": "steel.1",
+      "b": "brass.2"
+     },
+     "rows": [
+      "dddddddddddddddd",
+      "dhhhhhhhhhhhhhhd",
+      "dh..m...m...m.hd",
+      "dh..m...m...m.hd",
+      "dhmmmmmmmmmmmmhd",
+      "dh..m...m...m.hd",
+      "dh..m...m...m.hd",
+      "dh..m...m...m.hd",
+      "dh..m...m...m.hd",
+      "dh..m...m...m.hd",
+      "dh..m...m...m.hd",
+      "dh..m...m...m.hd",
+      "dh..m...m...m.hd",
+      "dhhhhhhhhhhhhhhd",
+      "dbbbbbbbbbbbbbbd",
+      "dddddddddddddddd"
+     ]
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.1"
+     ],
+     "density": 0.4,
+     "seed": 3321,
+     "rect": [
+      0,
+      10,
+      16,
+      6
+     ]
+    }
+   ]
+  },
+  "block/colony/window_ribbon_glow": {
+   "kind": "cutout",
+   "glow": {
+    "over": "block/colony/window_ribbon"
+   },
+   "layers": [
+    {
+     "op": "pixels",
+     "legend": {
+      "a": "sodium.4",
+      "b": "sodium.5",
+      "c": "sodium.3",
+      "w": "sodium.6"
+     },
+     "rows": [
+      "................",
+      "................",
+      "..bb.bbb.bbb.b..",
+      "..bw.bbb.bbb.b..",
+      "................",
+      "..aa.aab.aaa.a..",
+      "..aa.aaa.aaa.a..",
+      "..aa.aaa.aba.a..",
+      "..aa.aaa.aaa.a..",
+      "..aa.aaa.aaa.a..",
+      "..ab.aaa.aaa.a..",
+      "..aa.aaa.aaa.c..",
+      "..ca.caa.aac.c..",
+      "................",
+      "................",
+      "................"
+     ]
+    }
+   ]
+  },
+  "block/colony/window_small": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "glass.1"
+    },
+    {
+     "op": "pixels",
+     "at": [
+      2,
+      2
+     ],
+     "legend": {
+      "r": "glass.3",
+      "q": "glass.2"
+     },
+     "rows": [
+      "r....",
+      ".r...",
+      "..q.."
+     ]
+    },
+    {
+     "op": "pixels",
+     "at": [
+      8,
+      8
+     ],
+     "legend": {
+      "r": "glass.3"
+     },
+     "rows": [
+      "r....",
+      ".r..."
+     ]
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "f": "enamel.1",
+      "F": "enamel.3",
+      "m": "enamel.2",
+      "s": "company.2"
+     },
+     "rows": [
+      "ffffffffffffffff",
+      "fFFFFFFFFFFFFFFf",
+      "fF.....m.....mFf",
+      "fF.....m.....mFf",
+      "fF.....m.....mFf",
+      "fF.....m.....mFf",
+      "fF.....m.....mFf",
+      "fFmmmmmmmmmmmmFf",
+      "fF.....m.....mFf",
+      "fF.....m.....mFf",
+      "fF.....m.....mFf",
+      "fF.....m.....mFf",
+      "fF.....m.....mFf",
+      "fFFFFFFFFFFFFFFf",
+      "fssssssssssssssf",
+      "ffffffffffffffff"
+     ]
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.2"
+     ],
+     "density": 0.3,
+     "seed": 3301,
+     "rect": [
+      0,
+      12,
+      16,
+      4
+     ]
+    }
+   ]
+  },
+  "block/colony/window_small_dark": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "fill",
+     "colour": "glass.0"
+    },
+    {
+     "op": "pixels",
+     "at": [
+      2,
+      2
+     ],
+     "legend": {
+      "r": "glass.2"
+     },
+     "rows": [
+      "r....",
+      ".r..."
+     ]
+    },
+    {
+     "op": "pixels",
+     "at": [
+      8,
+      8
+     ],
+     "legend": {
+      "x": "void",
+      "k": "glass.3"
+     },
+     "rows": [
+      "xk...",
+      "kxxk.",
+      ".kxx.",
+      "..kx.",
+      "...x."
+     ]
+    },
+    {
+     "op": "pixels",
+     "legend": {
+      "f": "enamel.0",
+      "F": "enamel.2",
+      "m": "enamel.1",
+      "s": "company.1"
+     },
+     "rows": [
+      "ffffffffffffffff",
+      "fFFFFFFFFFFFFFFf",
+      "fF.....m.....mFf",
+      "fF.....m.....mFf",
+      "fF.....m.....mFf",
+      "fF.....m.....mFf",
+      "fF.....m.....mFf",
+      "fFmmmmmmmmmmmmFf",
+      "fF.....m.....mFf",
+      "fF.....m.....mFf",
+      "fF.....m.....mFf",
+      "fF.....m.....mFf",
+      "fF.....m.....mFf",
+      "fFFFFFFFFFFFFFFf",
+      "fssssssssssssssf",
+      "ffffffffffffffff"
+     ]
+    },
+    {
+     "op": "grime",
+     "colours": [
+      "dust.1",
+      "dust.2"
+     ],
+     "density": 0.5,
+     "seed": 3311,
+     "rect": [
+      0,
+      9,
+      16,
+      7
+     ]
+    }
+   ]
+  },
+  "block/colony/window_small_glow": {
+   "kind": "cutout",
+   "glow": {
+    "over": "block/colony/window_small"
+   },
+   "layers": [
+    {
+     "op": "pixels",
+     "legend": {
+      "a": "sodium.4",
+      "b": "sodium.5",
+      "c": "sodium.3",
+      "w": "sodium.6"
+     },
+     "rows": [
+      "................",
+      "................",
+      "..bbbbb.aaaaa...",
+      "..bwbbb.aaaba...",
+      "..bbbbb.aaaaa...",
+      "..abbbb.aaaaa...",
+      "..aaaab.caaaa...",
+      "................",
+      "..aaaaa.ccccc...",
+      "..aabaa.ccccc...",
+      "..aaaaa.ccccc...",
+      "..aaaaa.ccccc...",
+      "..caaaa.ccccc...",
+      "................",
+      "................",
+      "................"
+     ]
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,14 @@
+{
+  "variants": {
+    "": [
+      {
+        "model": "deepcharter:block/colony/concrete_footing",
+        "weight": 6
+      },
+      {
+        "model": "deepcharter:block/colony/concrete_footing_cracked",
+        "weight": 2
+      }
+    ]
+  }
+}

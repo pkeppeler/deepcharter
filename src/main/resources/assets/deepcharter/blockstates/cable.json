@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "axis=y": {
+      "model": "deepcharter:block/colony/cable"
+    },
+    "axis=z": {
+      "model": "deepcharter:block/colony/cable",
+      "x": 90
+    },
+    "axis=x": {
+      "model": "deepcharter:block/colony/cable",
+      "x": 90,
+      "y": 90
+    }
+  }
+}

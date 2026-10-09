@@ -1,0 +1,724 @@
+{
+  "variants": {
+    "facing=east,tile=0": {
+      "model": "deepcharter:block/colony/sign_0",
+      "y": 90
+    },
+    "facing=east,tile=1": {
+      "model": "deepcharter:block/colony/sign_1",
+      "y": 90
+    },
+    "facing=east,tile=10": {
+      "model": "deepcharter:block/colony/sign_10",
+      "y": 90
+    },
+    "facing=east,tile=11": {
+      "model": "deepcharter:block/colony/sign_11",
+      "y": 90
+    },
+    "facing=east,tile=12": {
+      "model": "deepcharter:block/colony/sign_12",
+      "y": 90
+    },
+    "facing=east,tile=13": {
+      "model": "deepcharter:block/colony/sign_13",
+      "y": 90
+    },
+    "facing=east,tile=14": {
+      "model": "deepcharter:block/colony/sign_14",
+      "y": 90
+    },
+    "facing=east,tile=15": {
+      "model": "deepcharter:block/colony/sign_15",
+      "y": 90
+    },
+    "facing=east,tile=16": {
+      "model": "deepcharter:block/colony/sign_16",
+      "y": 90
+    },
+    "facing=east,tile=17": {
+      "model": "deepcharter:block/colony/sign_17",
+      "y": 90
+    },
+    "facing=east,tile=18": {
+      "model": "deepcharter:block/colony/sign_18",
+      "y": 90
+    },
+    "facing=east,tile=19": {
+      "model": "deepcharter:block/colony/sign_19",
+      "y": 90
+    },
+    "facing=east,tile=2": {
+      "model": "deepcharter:block/colony/sign_2",
+      "y": 90
+    },
+    "facing=east,tile=20": {
+      "model": "deepcharter:block/colony/sign_20",
+      "y": 90
+    },
+    "facing=east,tile=21": {
+      "model": "deepcharter:block/colony/sign_21",
+      "y": 90
+    },
+    "facing=east,tile=22": {
+      "model": "deepcharter:block/colony/sign_22",
+      "y": 90
+    },
+    "facing=east,tile=23": {
+      "model": "deepcharter:block/colony/sign_23",
+      "y": 90
+    },
+    "facing=east,tile=24": {
+      "model": "deepcharter:block/colony/sign_24",
+      "y": 90
+    },
+    "facing=east,tile=25": {
+      "model": "deepcharter:block/colony/sign_25",
+      "y": 90
+    },
+    "facing=east,tile=26": {
+      "model": "deepcharter:block/colony/sign_26",
+      "y": 90
+    },
+    "facing=east,tile=27": {
+      "model": "deepcharter:block/colony/sign_27",
+      "y": 90
+    },
+    "facing=east,tile=28": {
+      "model": "deepcharter:block/colony/sign_28",
+      "y": 90
+    },
+    "facing=east,tile=29": {
+      "model": "deepcharter:block/colony/sign_29",
+      "y": 90
+    },
+    "facing=east,tile=3": {
+      "model": "deepcharter:block/colony/sign_3",
+      "y": 90
+    },
+    "facing=east,tile=30": {
+      "model": "deepcharter:block/colony/sign_30",
+      "y": 90
+    },
+    "facing=east,tile=31": {
+      "model": "deepcharter:block/colony/sign_31",
+      "y": 90
+    },
+    "facing=east,tile=32": {
+      "model": "deepcharter:block/colony/sign_32",
+      "y": 90
+    },
+    "facing=east,tile=33": {
+      "model": "deepcharter:block/colony/sign_33",
+      "y": 90
+    },
+    "facing=east,tile=34": {
+      "model": "deepcharter:block/colony/sign_34",
+      "y": 90
+    },
+    "facing=east,tile=35": {
+      "model": "deepcharter:block/colony/sign_35",
+      "y": 90
+    },
+    "facing=east,tile=36": {
+      "model": "deepcharter:block/colony/sign_36",
+      "y": 90
+    },
+    "facing=east,tile=37": {
+      "model": "deepcharter:block/colony/sign_37",
+      "y": 90
+    },
+    "facing=east,tile=38": {
+      "model": "deepcharter:block/colony/sign_38",
+      "y": 90
+    },
+    "facing=east,tile=39": {
+      "model": "deepcharter:block/colony/sign_39",
+      "y": 90
+    },
+    "facing=east,tile=4": {
+      "model": "deepcharter:block/colony/sign_4",
+      "y": 90
+    },
+    "facing=east,tile=40": {
+      "model": "deepcharter:block/colony/sign_40",
+      "y": 90
+    },
+    "facing=east,tile=41": {
+      "model": "deepcharter:block/colony/sign_41",
+      "y": 90
+    },
+    "facing=east,tile=42": {
+      "model": "deepcharter:block/colony/sign_42",
+      "y": 90
+    },
+    "facing=east,tile=43": {
+      "model": "deepcharter:block/colony/sign_43",
+      "y": 90
+    },
+    "facing=east,tile=44": {
+      "model": "deepcharter:block/colony/sign_44",
+      "y": 90
+    },
+    "facing=east,tile=45": {
+      "model": "deepcharter:block/colony/sign_45",
+      "y": 90
+    },
+    "facing=east,tile=46": {
+      "model": "deepcharter:block/colony/sign_46",
+      "y": 90
+    },
+    "facing=east,tile=47": {
+      "model": "deepcharter:block/colony/sign_47",
+      "y": 90
+    },
+    "facing=east,tile=5": {
+      "model": "deepcharter:block/colony/sign_5",
+      "y": 90
+    },
+    "facing=east,tile=6": {
+      "model": "deepcharter:block/colony/sign_6",
+      "y": 90
+    },
+    "facing=east,tile=7": {
+      "model": "deepcharter:block/colony/sign_7",
+      "y": 90
+    },
+    "facing=east,tile=8": {
+      "model": "deepcharter:block/colony/sign_8",
+      "y": 90
+    },
+    "facing=east,tile=9": {
+      "model": "deepcharter:block/colony/sign_9",
+      "y": 90
+    },
+    "facing=north,tile=0": {
+      "model": "deepcharter:block/colony/sign_0"
+    },
+    "facing=north,tile=1": {
+      "model": "deepcharter:block/colony/sign_1"
+    },
+    "facing=north,tile=10": {
+      "model": "deepcharter:block/colony/sign_10"
+    },
+    "facing=north,tile=11": {
+      "model": "deepcharter:block/colony/sign_11"
+    },
+    "facing=north,tile=12": {
+      "model": "deepcharter:block/colony/sign_12"
+    },
+    "facing=north,tile=13": {
+      "model": "deepcharter:block/colony/sign_13"
+    },
+    "facing=north,tile=14": {
+      "model": "deepcharter:block/colony/sign_14"
+    },
+    "facing=north,tile=15": {
+      "model": "deepcharter:block/colony/sign_15"
+    },
+    "facing=north,tile=16": {
+      "model": "deepcharter:block/colony/sign_16"
+    },
+    "facing=north,tile=17": {
+      "model": "deepcharter:block/colony/sign_17"
+    },
+    "facing=north,tile=18": {
+      "model": "deepcharter:block/colony/sign_18"
+    },
+    "facing=north,tile=19": {
+      "model": "deepcharter:block/colony/sign_19"
+    },
+    "facing=north,tile=2": {
+      "model": "deepcharter:block/colony/sign_2"
+    },
+    "facing=north,tile=20": {
+      "model": "deepcharter:block/colony/sign_20"
+    },
+    "facing=north,tile=21": {
+      "model": "deepcharter:block/colony/sign_21"
+    },
+    "facing=north,tile=22": {
+      "model": "deepcharter:block/colony/sign_22"
+    },
+    "facing=north,tile=23": {
+      "model": "deepcharter:block/colony/sign_23"
+    },
+    "facing=north,tile=24": {
+      "model": "deepcharter:block/colony/sign_24"
+    },
+    "facing=north,tile=25": {
+      "model": "deepcharter:block/colony/sign_25"
+    },
+    "facing=north,tile=26": {
+      "model": "deepcharter:block/colony/sign_26"
+    },
+    "facing=north,tile=27": {
+      "model": "deepcharter:block/colony/sign_27"
+    },
+    "facing=north,tile=28": {
+      "model": "deepcharter:block/colony/sign_28"
+    },
+    "facing=north,tile=29": {
+      "model": "deepcharter:block/colony/sign_29"
+    },
+    "facing=north,tile=3": {
+      "model": "deepcharter:block/colony/sign_3"
+    },
+    "facing=north,tile=30": {
+      "model": "deepcharter:block/colony/sign_30"
+    },
+    "facing=north,tile=31": {
+      "model": "deepcharter:block/colony/sign_31"
+    },
+    "facing=north,tile=32": {
+      "model": "deepcharter:block/colony/sign_32"
+    },
+    "facing=north,tile=33": {
+      "model": "deepcharter:block/colony/sign_33"
+    },
+    "facing=north,tile=34": {
+      "model": "deepcharter:block/colony/sign_34"
+    },
+    "facing=north,tile=35": {
+      "model": "deepcharter:block/colony/sign_35"
+    },
+    "facing=north,tile=36": {
+      "model": "deepcharter:block/colony/sign_36"
+    },
+    "facing=north,tile=37": {
+      "model": "deepcharter:block/colony/sign_37"
+    },
+    "facing=north,tile=38": {
+      "model": "deepcharter:block/colony/sign_38"
+    },
+    "facing=north,tile=39": {
+      "model": "deepcharter:block/colony/sign_39"
+    },
+    "facing=north,tile=4": {
+      "model": "deepcharter:block/colony/sign_4"
+    },
+    "facing=north,tile=40": {
+      "model": "deepcharter:block/colony/sign_40"
+    },
+    "facing=north,tile=41": {
+      "model": "deepcharter:block/colony/sign_41"
+    },
+    "facing=north,tile=42": {
+      "model": "deepcharter:block/colony/sign_42"
+    },
+    "facing=north,tile=43": {
+      "model": "deepcharter:block/colony/sign_43"
+    },
+    "facing=north,tile=44": {
+      "model": "deepcharter:block/colony/sign_44"
+    },
+    "facing=north,tile=45": {
+      "model": "deepcharter:block/colony/sign_45"
+    },
+    "facing=north,tile=46": {
+      "model": "deepcharter:block/colony/sign_46"
+    },
+    "facing=north,tile=47": {
+      "model": "deepcharter:block/colony/sign_47"
+    },
+    "facing=north,tile=5": {
+      "model": "deepcharter:block/colony/sign_5"
+    },
+    "facing=north,tile=6": {
+      "model": "deepcharter:block/colony/sign_6"
+    },
+    "facing=north,tile=7": {
+      "model": "deepcharter:block/colony/sign_7"
+    },
+    "facing=north,tile=8": {
+      "model": "deepcharter:block/colony/sign_8"
+    },
+    "facing=north,tile=9": {
+      "model": "deepcharter:block/colony/sign_9"
+    },
+    "facing=south,tile=0": {
+      "model": "deepcharter:block/colony/sign_0",
+      "y": 180
+    },
+    "facing=south,tile=1": {
+      "model": "deepcharter:block/colony/sign_1",
+      "y": 180
+    },
+    "facing=south,tile=10": {
+      "model": "deepcharter:block/colony/sign_10",
+      "y": 180
+    },
+    "facing=south,tile=11": {
+      "model": "deepcharter:block/colony/sign_11",
+      "y": 180
+    },
+    "facing=south,tile=12": {
+      "model": "deepcharter:block/colony/sign_12",
+      "y": 180
+    },
+    "facing=south,tile=13": {
+      "model": "deepcharter:block/colony/sign_13",
+      "y": 180
+    },
+    "facing=south,tile=14": {
+      "model": "deepcharter:block/colony/sign_14",
+      "y": 180
+    },
+    "facing=south,tile=15": {
+      "model": "deepcharter:block/colony/sign_15",
+      "y": 180
+    },
+    "facing=south,tile=16": {
+      "model": "deepcharter:block/colony/sign_16",
+      "y": 180
+    },
+    "facing=south,tile=17": {
+      "model": "deepcharter:block/colony/sign_17",
+      "y": 180
+    },
+    "facing=south,tile=18": {
+      "model": "deepcharter:block/colony/sign_18",
+      "y": 180
+    },
+    "facing=south,tile=19": {
+      "model": "deepcharter:block/colony/sign_19",
+      "y": 180
+    },
+    "facing=south,tile=2": {
+      "model": "deepcharter:block/colony/sign_2",
+      "y": 180
+    },
+    "facing=south,tile=20": {
+      "model": "deepcharter:block/colony/sign_20",
+      "y": 180
+    },
+    "facing=south,tile=21": {
+      "model": "deepcharter:block/colony/sign_21",
+      "y": 180
+    },
+    "facing=south,tile=22": {
+      "model": "deepcharter:block/colony/sign_22",
+      "y": 180
+    },
+    "facing=south,tile=23": {
+      "model": "deepcharter:block/colony/sign_23",
+      "y": 180
+    },
+    "facing=south,tile=24": {
+      "model": "deepcharter:block/colony/sign_24",
+      "y": 180
+    },
+    "facing=south,tile=25": {
+      "model": "deepcharter:block/colony/sign_25",
+      "y": 180
+    },
+    "facing=south,tile=26": {
+      "model": "deepcharter:block/colony/sign_26",
+      "y": 180
+    },
+    "facing=south,tile=27": {
+      "model": "deepcharter:block/colony/sign_27",
+      "y": 180
+    },
+    "facing=south,tile=28": {
+      "model": "deepcharter:block/colony/sign_28",
+      "y": 180
+    },
+    "facing=south,tile=29": {
+      "model": "deepcharter:block/colony/sign_29",
+      "y": 180
+    },
+    "facing=south,tile=3": {
+      "model": "deepcharter:block/colony/sign_3",
+      "y": 180
+    },
+    "facing=south,tile=30": {
+      "model": "deepcharter:block/colony/sign_30",
+      "y": 180
+    },
+    "facing=south,tile=31": {
+      "model": "deepcharter:block/colony/sign_31",
+      "y": 180
+    },
+    "facing=south,tile=32": {
+      "model": "deepcharter:block/colony/sign_32",
+      "y": 180
+    },
+    "facing=south,tile=33": {
+      "model": "deepcharter:block/colony/sign_33",
+      "y": 180
+    },
+    "facing=south,tile=34": {
+      "model": "deepcharter:block/colony/sign_34",
+      "y": 180
+    },
+    "facing=south,tile=35": {
+      "model": "deepcharter:block/colony/sign_35",
+      "y": 180
+    },
+    "facing=south,tile=36": {
+      "model": "deepcharter:block/colony/sign_36",
+      "y": 180
+    },
+    "facing=south,tile=37": {
+      "model": "deepcharter:block/colony/sign_37",
+      "y": 180
+    },
+    "facing=south,tile=38": {
+      "model": "deepcharter:block/colony/sign_38",
+      "y": 180
+    },
+    "facing=south,tile=39": {
+      "model": "deepcharter:block/colony/sign_39",
+      "y": 180
+    },
+    "facing=south,tile=4": {
+      "model": "deepcharter:block/colony/sign_4",
+      "y": 180
+    },
+    "facing=south,tile=40": {
+      "model": "deepcharter:block/colony/sign_40",
+      "y": 180
+    },
+    "facing=south,tile=41": {
+      "model": "deepcharter:block/colony/sign_41",
+      "y": 180
+    },
+    "facing=south,tile=42": {
+      "model": "deepcharter:block/colony/sign_42",
+      "y": 180
+    },
+    "facing=south,tile=43": {
+      "model": "deepcharter:block/colony/sign_43",
+      "y": 180
+    },
+    "facing=south,tile=44": {
+      "model": "deepcharter:block/colony/sign_44",
+      "y": 180
+    },
+    "facing=south,tile=45": {
+      "model": "deepcharter:block/colony/sign_45",
+      "y": 180
+    },
+    "facing=south,tile=46": {
+      "model": "deepcharter:block/colony/sign_46",
+      "y": 180
+    },
+    "facing=south,tile=47": {
+      "model": "deepcharter:block/colony/sign_47",
+      "y": 180
+    },
+    "facing=south,tile=5": {
+      "model": "deepcharter:block/colony/sign_5",
+      "y": 180
+    },
+    "facing=south,tile=6": {
+      "model": "deepcharter:block/colony/sign_6",
+      "y": 180
+    },
+    "facing=south,tile=7": {
+      "model": "deepcharter:block/colony/sign_7",
+      "y": 180
+    },
+    "facing=south,tile=8": {
+      "model": "deepcharter:block/colony/sign_8",
+      "y": 180
+    },
+    "facing=south,tile=9": {
+      "model": "deepcharter:block/colony/sign_9",
+      "y": 180
+    },
+    "facing=west,tile=0": {
+      "model": "deepcharter:block/colony/sign_0",
+      "y": 270
+    },
+    "facing=west,tile=1": {
+      "model": "deepcharter:block/colony/sign_1",
+      "y": 270
+    },
+    "facing=west,tile=10": {
+      "model": "deepcharter:block/colony/sign_10",
+      "y": 270
+    },
+    "facing=west,tile=11": {
+      "model": "deepcharter:block/colony/sign_11",
+      "y": 270
+    },
+    "facing=west,tile=12": {
+      "model": "deepcharter:block/colony/sign_12",
+      "y": 270
+    },
+    "facing=west,tile=13": {
+      "model": "deepcharter:block/colony/sign_13",
+      "y": 270
+    },
+    "facing=west,tile=14": {
+      "model": "deepcharter:block/colony/sign_14",
+      "y": 270
+    },
+    "facing=west,tile=15": {
+      "model": "deepcharter:block/colony/sign_15",
+      "y": 270
+    },
+    "facing=west,tile=16": {
+      "model": "deepcharter:block/colony/sign_16",
+      "y": 270
+    },
+    "facing=west,tile=17": {
+      "model": "deepcharter:block/colony/sign_17",
+      "y": 270
+    },
+    "facing=west,tile=18": {
+      "model": "deepcharter:block/colony/sign_18",
+      "y": 270
+    },
+    "facing=west,tile=19": {
+      "model": "deepcharter:block/colony/sign_19",
+      "y": 270
+    },
+    "facing=west,tile=2": {
+      "model": "deepcharter:block/colony/sign_2",
+      "y": 270
+    },
+    "facing=west,tile=20": {
+      "model": "deepcharter:block/colony/sign_20",
+      "y": 270
+    },
+    "facing=west,tile=21": {
+      "model": "deepcharter:block/colony/sign_21",
+      "y": 270
+    },
+    "facing=west,tile=22": {
+      "model": "deepcharter:block/colony/sign_22",
+      "y": 270
+    },
+    "facing=west,tile=23": {
+      "model": "deepcharter:block/colony/sign_23",
+      "y": 270
+    },
+    "facing=west,tile=24": {
+      "model": "deepcharter:block/colony/sign_24",
+      "y": 270
+    },
+    "facing=west,tile=25": {
+      "model": "deepcharter:block/colony/sign_25",
+      "y": 270
+    },
+    "facing=west,tile=26": {
+      "model": "deepcharter:block/colony/sign_26",
+      "y": 270
+    },
+    "facing=west,tile=27": {
+      "model": "deepcharter:block/colony/sign_27",
+      "y": 270
+    },
+    "facing=west,tile=28": {
+      "model": "deepcharter:block/colony/sign_28",
+      "y": 270
+    },
+    "facing=west,tile=29": {
+      "model": "deepcharter:block/colony/sign_29",
+      "y": 270
+    },
+    "facing=west,tile=3": {
+      "model": "deepcharter:block/colony/sign_3",
+      "y": 270
+    },
+    "facing=west,tile=30": {
+      "model": "deepcharter:block/colony/sign_30",
+      "y": 270
+    },
+    "facing=west,tile=31": {
+      "model": "deepcharter:block/colony/sign_31",
+      "y": 270
+    },
+    "facing=west,tile=32": {
+      "model": "deepcharter:block/colony/sign_32",
+      "y": 270
+    },
+    "facing=west,tile=33": {
+      "model": "deepcharter:block/colony/sign_33",
+      "y": 270
+    },
+    "facing=west,tile=34": {
+      "model": "deepcharter:block/colony/sign_34",
+      "y": 270
+    },
+    "facing=west,tile=35": {
+      "model": "deepcharter:block/colony/sign_35",
+      "y": 270
+    },
+    "facing=west,tile=36": {
+      "model": "deepcharter:block/colony/sign_36",
+      "y": 270
+    },
+    "facing=west,tile=37": {
+      "model": "deepcharter:block/colony/sign_37",
+      "y": 270
+    },
+    "facing=west,tile=38": {
+      "model": "deepcharter:block/colony/sign_38",
+      "y": 270
+    },
+    "facing=west,tile=39": {
+      "model": "deepcharter:block/colony/sign_39",
+      "y": 270
+    },
+    "facing=west,tile=4": {
+      "model": "deepcharter:block/colony/sign_4",
+      "y": 270
+    },
+    "facing=west,tile=40": {
+      "model": "deepcharter:block/colony/sign_40",
+      "y": 270
+    },
+    "facing=west,tile=41": {
+      "model": "deepcharter:block/colony/sign_41",
+      "y": 270
+    },
+    "facing=west,tile=42": {
+      "model": "deepcharter:block/colony/sign_42",
+      "y": 270
+    },
+    "facing=west,tile=43": {
+      "model": "deepcharter:block/colony/sign_43",
+      "y": 270
+    },
+    "facing=west,tile=44": {
+      "model": "deepcharter:block/colony/sign_44",
+      "y": 270
+    },
+    "facing=west,tile=45": {
+      "model": "deepcharter:block/colony/sign_45",
+      "y": 270
+    },
+    "facing=west,tile=46": {
+      "model": "deepcharter:block/colony/sign_46",
+      "y": 270
+    },
+    "facing=west,tile=47": {
+      "model": "deepcharter:block/colony/sign_47",
+      "y": 270
+    },
+    "facing=west,tile=5": {
+      "model": "deepcharter:block/colony/sign_5",
+      "y": 270
+    },
+    "facing=west,tile=6": {
+      "model": "deepcharter:block/colony/sign_6",
+      "y": 270
+    },
+    "facing=west,tile=7": {
+      "model": "deepcharter:block/colony/sign_7",
+      "y": 270
+    },
+    "facing=west,tile=8": {
+      "model": "deepcharter:block/colony/sign_8",
+      "y": 270
+    },
+    "facing=west,tile=9": {
+      "model": "deepcharter:block/colony/sign_9",
+      "y": 270
+    }
+  }
+}

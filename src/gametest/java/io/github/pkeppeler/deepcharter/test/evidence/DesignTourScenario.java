@@ -29,15 +29,12 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ParticleStatus;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.clock.ClockInstance;
-import net.minecraft.world.clock.WorldClock;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -56,7 +53,6 @@ import net.minecraft.world.level.block.CandleBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
-import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -111,6 +107,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
 import io.github.pkeppeler.deepcharter.transmission.Transmissions;
@@ -131,7 +128,7 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
  * {@link AssertionError} that names the still, so that a moved or redrawn building fails the run, and no wrong picture is filed
  * as the "after".
  *
- * <p>Two runs of one commit give the same stills (tools/diff-stills compares them): the world is pinned by {@link #pinWorld} (seed,
+ * <p>Two runs of one commit give the same stills (tools/diff-stills compares them): the world is pinned by {@link EvidenceWorld#pin} (seed,
  * clock, weather, random ticks, mob spawning, particles) and every still goes through {@link #settle} first, which clears the mobs
  * and the particles, parks the cursor off the window, and waits until the chunks have rendered. See docs/design/skins.md.
  *
@@ -153,13 +150,6 @@ public class DesignTourScenario extends EvidenceScenario {
 	private static final int LAYER_Z = 2000;
 	private static final int ITEMS_PER_PAGE = 36;
 	private static final long FUNDS = 5_000;
-	/**
-	 * Where the visual sky stands on its own clock, {@code deepcharter:sky} (its timeline swings over 288000 ticks, which is hours of
-	 * real time, so the tour pins it): at its brightest dusk, half way to night, and at its darkest.
-	 */
-	private static final long SKY_BRIGHTEST = 0;
-	private static final long SKY_HALFWAY = 72_000;
-	private static final long SKY_DARKEST = 144_000;
 	private static final int TERMINAL_TYPING_TICKS = 140;
 	/** The wall-clock limit of one settle. A world that has not settled by then fails the run, naming the still. */
 	private static final long SETTLE_LIMIT_NANOS = 90_000_000_000L;
@@ -198,7 +188,7 @@ public class DesignTourScenario extends EvidenceScenario {
 			ground = colony.center();
 			anchors = colony.anchors();
 
-			pinWorld();
+			EvidenceWorld.pin(ctx, sp);
 			handbook();
 			itemGallery();
 			setUpCamera();
@@ -217,53 +207,6 @@ public class DesignTourScenario extends EvidenceScenario {
 	}
 
 	// ------------------------------------------------------------------------------------------------ determinism
-
-	/**
-	 * Pins everything that would make two runs of one commit differ, before the first still: the gameplay clock stops at noon, the
-	 * sky clock at its brightest dusk, the weather is clear and stays so, nothing grows or burns by random tick, no mob spawns, and
-	 * particles are at their minimum. The seed is the world's own (see {@link #run}). Mobs that the world generated, and particles already flying, are cleared by {@link #settle}.
-	 */
-	private void pinWorld() {
-		serverDo(server -> {
-			GameRules rules = server.getGameRules();
-			rules.set(GameRules.ADVANCE_TIME, false, server);
-			rules.set(GameRules.ADVANCE_WEATHER, false, server);
-			rules.set(GameRules.SPAWN_MOBS, false, server);
-			rules.set(GameRules.SPAWN_MONSTERS, false, server);
-			rules.set(GameRules.SPAWN_PATROLS, false, server);
-			rules.set(GameRules.SPAWN_PHANTOMS, false, server);
-			rules.set(GameRules.SPAWN_WANDERING_TRADERS, false, server);
-			rules.set(GameRules.SPAWN_WARDENS, false, server);
-			rules.set(GameRules.RANDOM_TICK_SPEED, 0, server);
-			command(server, "weather clear");
-			command(server, "time set noon");
-		});
-		setSkyPhase(SKY_BRIGHTEST);
-		ctx.runOnClient(client -> {
-			client.options.particles().set(ParticleStatus.MINIMAL);
-			client.options.bobView().set(false);
-		});
-	}
-
-	/**
-	 * Pins the visual sky: the sky clock stops at {@code ticks} of its timeline, and the call returns once the client reads that
-	 * phase back, so no still is taken with the sky of the phase before (the overworld's fog colour is the dusk brown). The sky
-	 * follows this clock, not the gameplay clock that {@code time set} moves, so a still that wants another sky sets both.
-	 */
-	private void setSkyPhase(long ticks) {
-		ResourceKey<WorldClock> key = ResourceKey.create(Registries.WORLD_CLOCK, Identifier.fromNamespaceAndPath("deepcharter", "sky"));
-		serverDo(server -> {
-			var sky = server.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(key);
-			server.clockManager().setPaused(sky, true);
-			server.clockManager().setTotalTicks(sky, ticks);
-		});
-		ClientWait.until(ctx, "the client to read the sky clock at " + ticks, client -> skyClockOnClient(client, key).totalTicks() == ticks && skyClockOnClient(client, key).isPaused(),
-				client -> "the sky clock at " + skyClockOnClient(client, key).totalTicks());
-	}
-
-	private static ClockInstance skyClockOnClient(Minecraft client, ResourceKey<WorldClock> key) {
-		return client.level.clockManager().getInstance(client.level.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(key));
-	}
 
 	/**
 	 * A mob the tour did not make, or a loose item or orb: a cow of the world, a lampless figure that the rails spawned on their own.
@@ -532,19 +475,19 @@ public class DesignTourScenario extends EvidenceScenario {
 		view(0, stand, p(0, EYE + 90, 70), 20);
 		still("sky-up-noon");
 		serverDo(server -> command(server, "time set 12500"));
-		setSkyPhase(SKY_HALFWAY);
+		EvidenceWorld.skyPhase(ctx, sp, EvidenceWorld.SKY_HALFWAY);
 		view(0, stand, targets[0], 40);
 		still("surface-south-dusk");
 		view(0, stand, p(0, EYE + 70, 120), 20);
 		still("sky-up-dusk");
 		serverDo(server -> command(server, "time set 18000"));
-		setSkyPhase(SKY_DARKEST);
+		EvidenceWorld.skyPhase(ctx, sp, EvidenceWorld.SKY_DARKEST);
 		view(0, stand, targets[3], 40);
 		still("surface-north-night");
 		view(0, stand, p(0, EYE + 90, 70), 20);
 		still("sky-up-night");
 		serverDo(server -> command(server, "time set noon"));
-		setSkyPhase(SKY_BRIGHTEST);
+		EvidenceWorld.skyPhase(ctx, sp, EvidenceWorld.SKY_BRIGHTEST);
 	}
 
 	private void colonyTour() {

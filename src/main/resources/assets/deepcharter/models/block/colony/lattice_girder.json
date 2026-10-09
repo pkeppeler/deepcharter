@@ -1,0 +1,177 @@
+{
+  "parent": "minecraft:block/block",
+  "ambientocclusion": false,
+  "textures": {
+    "lattice": "deepcharter:block/colony/lattice",
+    "end": "deepcharter:block/colony/lattice_end",
+    "particle": "deepcharter:block/colony/lattice"
+  },
+  "elements": [
+    {
+      "from": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0.0,
+            16.0,
+            0.0,
+            16.0
+          ],
+          "texture": "#lattice",
+          "cullface": "north"
+        },
+        "south": {
+          "uv": [
+            0.0,
+            16.0,
+            0.0,
+            16.0
+          ],
+          "texture": "#lattice",
+          "cullface": "south"
+        },
+        "east": {
+          "uv": [
+            0.0,
+            16.0,
+            0.0,
+            16.0
+          ],
+          "texture": "#lattice",
+          "cullface": "east"
+        },
+        "west": {
+          "uv": [
+            0.0,
+            16.0,
+            0.0,
+            16.0
+          ],
+          "texture": "#lattice",
+          "cullface": "west"
+        },
+        "up": {
+          "uv": [
+            0.0,
+            16.0,
+            0.0,
+            16.0
+          ],
+          "texture": "#end",
+          "cullface": "up"
+        },
+        "down": {
+          "uv": [
+            0.0,
+            16.0,
+            0.0,
+            16.0
+          ],
+          "texture": "#end",
+          "cullface": "down"
+        }
+      }
+    },
+    {
+      "from": [
+        0.0,
+        0.0,
+        15.98
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0.0,
+            16.0,
+            0.0,
+            16.0
+          ],
+          "texture": "#lattice"
+        }
+      }
+    },
+    {
+      "from": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "to": [
+        16,
+        16,
+        0.02
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            0.0,
+            16.0,
+            0.0,
+            16.0
+          ],
+          "texture": "#lattice"
+        }
+      }
+    },
+    {
+      "from": [
+        15.98,
+        0.0,
+        0.0
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ],
+      "faces": {
+        "west": {
+          "uv": [
+            0.0,
+            16.0,
+            0.0,
+            16.0
+          ],
+          "texture": "#lattice"
+        }
+      }
+    },
+    {
+      "from": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "to": [
+        0.02,
+        16,
+        16
+      ],
+      "faces": {
+        "east": {
+          "uv": [
+            0.0,
+            16.0,
+            0.0,
+            16.0
+          ],
+          "texture": "#lattice"
+        }
+      }
+    }
+  ]
+}

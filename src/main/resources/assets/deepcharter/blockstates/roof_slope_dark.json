@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "deepcharter:block/colony/roof_slope_dark"
+    },
+    "facing=east": {
+      "model": "deepcharter:block/colony/roof_slope_dark",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "deepcharter:block/colony/roof_slope_dark",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "deepcharter:block/colony/roof_slope_dark",
+      "y": 270
+    }
+  }
+}

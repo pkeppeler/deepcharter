@@ -1,0 +1,11 @@
+{
+  "variants": {
+    "axis=x": {
+      "model": "deepcharter:block/colony/roof_peak"
+    },
+    "axis=z": {
+      "model": "deepcharter:block/colony/roof_peak",
+      "y": 90
+    }
+  }
+}

@@ -1,0 +1,252 @@
+{
+  "title": "A. Boomtown Mill",
+  "statue": "founder_a",
+  "pieces": [
+    {
+      "structure": "deepcharter:colony_concept/a/square",
+      "offset": [
+        -10,
+        0,
+        -10
+      ],
+      "blocks": 1516,
+      "displays": 2
+    },
+    {
+      "structure": "deepcharter:colony_concept/a/pithead",
+      "offset": [
+        -12,
+        0,
+        -44
+      ],
+      "blocks": 1241,
+      "displays": 169
+    },
+    {
+      "structure": "deepcharter:colony_concept/a/mill",
+      "offset": [
+        -33,
+        -40,
+        -44
+      ],
+      "blocks": 3592,
+      "displays": 8
+    },
+    {
+      "structure": "deepcharter:colony_concept/a/hoist_house",
+      "offset": [
+        -14,
+        -14,
+        -53
+      ],
+      "blocks": 1327,
+      "displays": 0
+    }
+  ],
+  "views": [
+    {
+      "name": "from-the-square",
+      "eye": [
+        2.0,
+        2.6,
+        17.0
+      ],
+      "target": [
+        -8.0,
+        18.0,
+        -18.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "headframe-from-the-plinths",
+      "eye": [
+        10.0,
+        3.6,
+        -4.0
+      ],
+      "target": [
+        -4.0,
+        38.0,
+        -16.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "mill-gables",
+      "eye": [
+        -6.0,
+        4.0,
+        4.0
+      ],
+      "target": [
+        -23.0,
+        14.0,
+        -24.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "from-the-air",
+      "eye": [
+        36.0,
+        48.0,
+        46.0
+      ],
+      "target": [
+        -10.0,
+        12.0,
+        -22.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "from-the-air-west",
+      "eye": [
+        -60.0,
+        42.0,
+        24.0
+      ],
+      "target": [
+        -10.0,
+        14.0,
+        -22.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "from-far-across-the-plain",
+      "eye": [
+        70.0,
+        4.0,
+        170.0
+      ],
+      "target": [
+        -6.0,
+        26.0,
+        -20.0
+      ],
+      "night": false,
+      "above_ground": true
+    },
+    {
+      "name": "night-from-the-square",
+      "eye": [
+        2.0,
+        2.6,
+        17.0
+      ],
+      "target": [
+        -8.0,
+        18.0,
+        -18.0
+      ],
+      "night": true,
+      "above_ground": false
+    },
+    {
+      "name": "night-from-the-air",
+      "eye": [
+        36.0,
+        48.0,
+        46.0
+      ],
+      "target": [
+        -10.0,
+        12.0,
+        -22.0
+      ],
+      "night": true,
+      "above_ground": false
+    },
+    {
+      "name": "statue-from-the-square",
+      "eye": [
+        6.0,
+        2.6,
+        15.0
+      ],
+      "target": [
+        0.0,
+        18.6,
+        0.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "statue-side",
+      "eye": [
+        26.0,
+        9.0,
+        1.0
+      ],
+      "target": [
+        0.0,
+        18.6,
+        0.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "statue-from-the-air",
+      "eye": [
+        14.0,
+        52.0,
+        24.0
+      ],
+      "target": [
+        0.0,
+        18.6,
+        0.0
+      ],
+      "night": false,
+      "above_ground": false
+    },
+    {
+      "name": "statue-from-far",
+      "eye": [
+        0.0,
+        3.0,
+        110.0
+      ],
+      "target": [
+        0.0,
+        18.6,
+        0.0
+      ],
+      "night": false,
+      "above_ground": true
+    },
+    {
+      "name": "statue-at-night",
+      "eye": [
+        6.0,
+        2.6,
+        15.0
+      ],
+      "target": [
+        0.0,
+        18.6,
+        0.0
+      ],
+      "night": true,
+      "above_ground": false
+    }
+  ],
+  "orbit": {
+    "centre": [
+      -8.0,
+      14.0,
+      -18.0
+    ],
+    "radius": 78.0,
+    "height": 44.0
+  }
+}
