@@ -12,6 +12,7 @@
 - **A mapping the code calls permanent (ids, numbers, block-state encodings) is pinned by a test with literal expected values, not only by a test that the keys exist.**
 - **Anything that carves a hollow in a layer, including a generated structure, seals its shell (fluids and gas pockets) before carving.** See `RoomSeal` and `StructurePlan.seal`.
 - **A terminal action that spends does everything that can throw or refuse before the spend.**
+- **Never gate gameplay or cleanup on an entity query.** `getEntitiesOfClass` and its kin see only entity-ticking chunks, so "no display found" can mean "not loaded". Decide from saved data (a SavedData flag, the build's recorded layout); an entity whose state can go stale discards itself on `ServerEntityEvents.ENTITY_LOAD` when the saved data says it should not exist. PR #371 hit this twice (leaked statue hands, a refused delivery).
 - **State held in memory to undo a change to player-owned persistent data (a respawn point, an inventory) is itself persisted, or the change is not made.**
 - **Mixins** live in `<feature>/mixin/`, are registered in `deepcharter.mixins.json`, and are used only where no Fabric event reaches; an ADR names the target method.
 - Every M2 issue's test classes and evidence scenario already exist as stubs ([tests.md](tests.md)). A new test class or scenario needs no registration. #53 creates `client/ui/` for the UI kit; it needs no init line.
