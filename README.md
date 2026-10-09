@@ -1,6 +1,6 @@
 # Deep Charter
 
-![A flight over Prosperity, the colony where every run starts](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/colony.gif?raw=true)
+![One pod tows another pod on a cable](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/hero.gif?raw=true)
 
 **Dig down. Sell what you find. Go deeper.**
 
@@ -29,9 +29,9 @@ The tour follows one run, in the order of the game loop.
 
 ### 1. The colony
 
-![Terminals on their plinths in the colony square](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/colony-terminals.png?raw=true)
+![A Company building at the edge of the colony square](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/colony-office.png?raw=true)
 
-You start in Prosperity, the run-down Company mining town in the picture at the top. Its machines are offline. You repair them one by one, and each one that comes back is a new way to earn.
+You start in Prosperity, a run-down Company mining town built on the spawn. Its machines are offline. You repair them one by one, and each one that comes back is a new way to earn.
 
 ### 2. Your pod
 
@@ -41,9 +41,9 @@ A pod is a vehicle with seats. It drives on treads, lifts on a rotor and drills 
 
 ### 3. Drilling and fuel
 
-![The fuel pump terminal](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/fuel-pump.png?raw=true)
+![A pod drills down through three slabs of stone](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/drilling.gif?raw=true)
 
-Fuel drains all the time, and faster when you drill. A pod with no fuel is stranded and dark. Buy fuel at the pump, or feed the pod coal.
+Sprint to drill down, or push into a wall to drill sideways. Ore goes into the cargo bay and the stone is gone. Fuel drains all the time, and faster when you drill. A pod with no fuel is stranded and dark. Buy fuel at the colony pump, or feed the pod coal. (This picture uses night vision, so you can see the bore.)
 
 ### 4. The scanner
 
@@ -81,11 +81,11 @@ Below the surface there is no sky. An unlit cave is almost black. The pod's ligh
 
 Lava hurts the pod, not the pilot. The hull gauge drops until you leave or repair. At zero the pod is a wreck.
 
-### 10. Towing and wrecks
+### 10. Wrecks and towing
 
-![One pod tows another on a cable](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/towing.gif?raw=true)
+![A working pod beside a dark wreck](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/wreck.png?raw=true)
 
-A crew can rescue each other. Hold a tow cable and right-click a second pod to pull it home, even down a shaft.
+A pod with no hull goes dark and stays where it fell, and its owners are told. A crew can rescue each other: hold a tow cable and right-click the wreck to pull it home, as in the picture at the top.
 
 ### 11. The breach
 
@@ -99,7 +99,7 @@ A crust of hard rock at the floor of each layer is a breach. Any drill can get t
 
 Press H for the Employee Handbook. Its chapters are directives that tick off as you do them. It teaches the rules. The world stays a mystery.
 
-To refresh these images, see [docs/tooling/readme-tour.md](docs/tooling/readme-tour.md). Developers: the sections below are for you.
+To refresh these images, see [docs/tooling/readme-tour.md](docs/tooling/readme-tour.md).
 
 ## Dev quickstart
 
