@@ -26,6 +26,7 @@ import net.minecraft.world.phys.AABB;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 
@@ -36,6 +37,8 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
  * Continuity Office, the chapel, the bunkhouse, the offices and the Lamp and Pick. North is -Z.
  *
  * <p>The pad is centred on the world spawn, or on the nearest dry ground if the spawn is in water ({@link #findDryGround}).
+ * The pad's ground is the plain's: the surface's regolith, with the packed regolith and rock of its layers scattered on the pad's
+ * rim. The land around it is graded to the pad over {@link ColonyTuning#edgeMargin()} blocks ({@link ColonyEdge}), in the same build.
  * Building clears a volume of the pad's size and {@link ColonyTuning#clearHeight()} blocks high: whatever stood there is lost,
  * block displays included, so a build that stopped half way and is built again does not double them.
  *
@@ -46,6 +49,14 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 public final class ColonyBuilder {
 	/** A block set without neighbour updates. */
 	private static final int FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
+
+	/** How many blocks under the surface the packed regolith goes before the rock. */
+	private static final int LAYER_PACKED = 2;
+	/** The share of columns by the pad's edge, in percent, that show rock; three times that show packed regolith. */
+	private static final int SCATTER_PERCENT = 12;
+
+	/** The pad's outer rim, in blocks, where the packed regolith and rock of the layers show through. */
+	private static final int RIM = 3;
 
 	private final ServerLevel level;
 	private final BlockPos centre;
@@ -155,6 +166,7 @@ public final class ColonyBuilder {
 	private void build(ColonySite.Placed started) {
 		int half = ColonyTuning.DEFAULT.padSize() / 2;
 		loadPadChunks(level, centre);
+		blendEdges();
 		ColonyLayout layout = ColonyLayout.read(level.getServer());
 		Map<ColonyAnchor, BlockPos> anchors = layout.anchorsAt(centre);
 		if (!anchors.equals(started.anchors())) {
@@ -190,7 +202,85 @@ public final class ColonyBuilder {
 				&& !state.is(BlockTags.LEAVES) && !state.is(BlockTags.LOGS);
 	}
 
-	/** Cuts the terrain above {@code ground} away, fills hollows below it, and lays the pad's surface. */
+	/**
+	 * Grades the land around the pad to the pad's ground: each column of the margin is cut or filled to the height {@link ColonyEdge}
+	 * gives it, topped with the surface block it had (the plain's regolith, the mesa's ochre, the basalt) and scattered with the
+	 * packed regolith and rock of the layers under it, thickest by the pad. Whatever stood above the new ground, trees included, goes.
+	 */
+	private void blendEdges() {
+		int half = ColonyTuning.DEFAULT.padSize() / 2;
+		int reach = half + ColonyTuning.DEFAULT.edgeMargin();
+		int originX = centre.getX() - reach;
+		int originZ = centre.getZ() - reach;
+		int size = 2 * reach;
+		for (int chunkX = originX >> 4; chunkX <= (originX + size - 1) >> 4; chunkX++) {
+			for (int chunkZ = originZ >> 4; chunkZ <= (originZ + size - 1) >> 4; chunkZ++) {
+				level.getChunk(chunkX, chunkZ);
+			}
+		}
+		int[][] natural = new int[size][size];
+		for (int i = 0; i < size; i++) {
+			for (int j = 0; j < size; j++) {
+				natural[i][j] = groundAt(originX + i, originZ + j);
+			}
+		}
+		int[][] ground = ColonyEdge.heights(natural, originX, originZ, centre.getY());
+		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+		for (int i = 0; i < size; i++) {
+			for (int j = 0; j < size; j++) {
+				int x = originX + i;
+				int z = originZ + j;
+				int outside = Math.max(Math.max(centre.getX() - half - x, x - (centre.getX() + half - 1)), Math.max(centre.getZ() - half - z, z - (centre.getZ() + half - 1)));
+				if (outside > 0) {
+					blendColumn(pos, x, z, natural[i][j], ground[i][j], outside);
+				}
+			}
+		}
+	}
+
+	private void blendColumn(BlockPos.MutableBlockPos pos, int x, int z, int natural, int ground, int outside) {
+		int surface = Math.min(level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z), level.getMaxY() + 1);
+		BlockState top = scatter(x, z, outside, naturalSurface(level.getBlockState(pos.set(x, natural, z))));
+		for (int y = ground + 1; y < surface; y++) {
+			set(pos.set(x, y, z), Blocks.AIR.defaultBlockState());
+		}
+		for (int y = natural + 1; y < ground; y++) {
+			set(pos.set(x, y, z), underSurface(ground - y));
+		}
+		if (ground != natural) {
+			for (int y = ground - 1; y >= ground - LAYER_PACKED; y--) {
+				set(pos.set(x, y, z), underSurface(ground - y));
+			}
+		}
+		set(pos.set(x, ground, z), top);
+	}
+
+	/** The block that tops a column the build grades: its own, when it is one of the surface's, and the plain's regolith when it is not. */
+	private static BlockState naturalSurface(BlockState natural) {
+		return natural.is(SurfaceBlocks.OCHRE_REGOLITH) || natural.is(SurfaceBlocks.BASALT_OUTCROP)
+				? natural : SurfaceBlocks.REGOLITH.defaultBlockState();
+	}
+
+	/** The packed regolith just under the surface and the rock under that, as the surface's material rule lays them. */
+	private static BlockState underSurface(int depth) {
+		return (depth <= LAYER_PACKED ? SurfaceBlocks.REGOLITH_PACKED : SurfaceBlocks.REGOLITH_ROCK).defaultBlockState();
+	}
+
+	/**
+	 * The surface block of a column {@code outside} blocks from the pad's edge (0 or less on the pad's own rim): the given one, or
+	 * on a share of columns, falling off with the distance, the packed regolith or the rock of the layers under it.
+	 */
+	private static BlockState scatter(int x, int z, int outside, BlockState surface) {
+		int margin = ColonyTuning.DEFAULT.edgeMargin();
+		int rock = SCATTER_PERCENT * (margin - Math.max(outside, 0)) / margin;
+		int roll = noise(x, z) % 100;
+		if (roll < rock) {
+			return SurfaceBlocks.REGOLITH_ROCK.defaultBlockState();
+		}
+		return roll < rock * 3 ? SurfaceBlocks.REGOLITH_PACKED.defaultBlockState() : surface;
+	}
+
+	/** Cuts the terrain above {@code ground} away, fills hollows below it, and lays the pad's surface, the plain's regolith. */
 	private void flatten(int minX, int minZ, int maxX, int maxZ, int ground) {
 		int top = Math.min(ground + ColonyTuning.DEFAULT.clearHeight(), level.getMaxY());
 		int bottom = Math.max(ground - ColonyTuning.DEFAULT.fillDepth(), level.getMinY());
@@ -201,20 +291,13 @@ public final class ColonyBuilder {
 				for (int y = ground + 1; y <= top; y++) {
 					set(pos.set(x, y, z), Blocks.AIR.defaultBlockState());
 				}
-				set(pos.set(x, ground, z), roughGround(x, z));
+				int rim = Math.min(Math.min(x - minX, maxX - x), Math.min(z - minZ, maxZ - z));
+				set(pos.set(x, ground, z), rim < RIM ? scatter(x, z, 0, SurfaceBlocks.REGOLITH.defaultBlockState()) : SurfaceBlocks.REGOLITH.defaultBlockState());
 				for (int y = ground - 1; y >= bottom && !isGround(level.getBlockState(pos.set(x, y, z))); y--) {
 					set(pos, Blocks.DIRT.defaultBlockState());
 				}
 			}
 		}
-	}
-
-	private static BlockState roughGround(int x, int z) {
-		return switch (noise(x, z) % 5) {
-			case 0 -> Blocks.GRAVEL.defaultBlockState();
-			case 1, 2 -> Blocks.COARSE_DIRT.defaultBlockState();
-			default -> Blocks.PACKED_MUD.defaultBlockState();
-		};
 	}
 
 	/** The same small number for the same X and Z in every world, so ruins look worn at random but build the same every time. */

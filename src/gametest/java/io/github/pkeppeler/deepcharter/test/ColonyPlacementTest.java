@@ -37,6 +37,7 @@ import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
@@ -47,6 +48,7 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
+import io.github.pkeppeler.deepcharter.colony.ColonyEdge;
 import io.github.pkeppeler.deepcharter.colony.ColonyKit;
 import io.github.pkeppeler.deepcharter.colony.ColonyLayout;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
@@ -55,6 +57,7 @@ import io.github.pkeppeler.deepcharter.colony.FounderStatue;
 import io.github.pkeppeler.deepcharter.handbook.HandbookRegistry;
 import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 
@@ -448,6 +451,111 @@ public class ColonyPlacementTest {
 			problems.add("only " + (blocks.size() + supported.size()) + " blocks stand on the pad: the colony was not built");
 		}
 		finish(helper, problems);
+	}
+
+	/** A player climbs one block. */
+	private static final int STEP = 1;
+
+	/**
+	 * The land around the pad is graded to it, with no step between neighbouring columns taller than a player climbs, so the town
+	 * can be left on any side. Read from the built world: the margin's surface, and the pad's ground at its edge.
+	 */
+	@GameTest(maxTicks = 100)
+	public void aPlayerWalksOutOfTheTownOnEverySideOverTheGradedMargin(GameTestHelper helper) {
+		ServerLevel level = server(helper).overworld();
+		ColonySite.Placed colony = placed(helper);
+		BlockPos centre = colony.center();
+		int half = ColonyTuning.DEFAULT.padSize() / 2;
+		int reach = half + ColonyTuning.DEFAULT.edgeMargin();
+		int size = 2 * reach;
+		for (int x = centre.getX() - reach; x < centre.getX() + reach; x += 16) {
+			for (int z = centre.getZ() - reach; z < centre.getZ() + reach; z += 16) {
+				level.getChunk(x >> 4, z >> 4);
+			}
+		}
+		level.getChunk((centre.getX() + reach - 1) >> 4, (centre.getZ() + reach - 1) >> 4);
+		int[][] surface = new int[size][size];
+		for (int i = 0; i < size; i++) {
+			for (int j = 0; j < size; j++) {
+				int x = centre.getX() - reach + i;
+				int z = centre.getZ() - reach + j;
+				boolean onPad = x >= centre.getX() - half && x < centre.getX() + half && z >= centre.getZ() - half && z < centre.getZ() + half;
+				surface[i][j] = onPad ? centre.getY() : level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - 1;
+			}
+		}
+		List<String> problems = new ArrayList<>();
+		for (int i = 0; i < size; i++) {
+			for (int j = 0; j < size; j++) {
+				if (i + 1 < size && Math.abs(surface[i][j] - surface[i + 1][j]) > STEP) {
+					problems.add("step of " + (surface[i + 1][j] - surface[i][j]) + " at " + (centre.getX() - reach + i) + " " + (centre.getZ() - reach + j) + " going east");
+				}
+				if (j + 1 < size && Math.abs(surface[i][j] - surface[i][j + 1]) > STEP) {
+					problems.add("step of " + (surface[i][j + 1] - surface[i][j]) + " at " + (centre.getX() - reach + i) + " " + (centre.getZ() - reach + j) + " going south");
+				}
+			}
+		}
+		finish(helper, problems.size() > 5 ? problems.subList(0, 5) : problems);
+	}
+
+	/**
+	 * The grade holds on land the test world does not have: a hill 40 blocks above the pad on the east, a pit 40 below it on the
+	 * west, and mesa terraces of four blocks on the south. Every step between neighbours is one block at most, the pad keeps its
+	 * ground, and the same land gives the same grade.
+	 */
+	@GameTest(maxTicks = 100)
+	public void theMarginGradesAHillAPitAndTerracesWithoutAStepOverOneBlock(GameTestHelper helper) {
+		int pad = ColonyTuning.DEFAULT.padSize();
+		int margin = ColonyTuning.DEFAULT.edgeMargin();
+		int size = pad + 2 * margin;
+		int ground = 64;
+		int[][] natural = new int[size][size];
+		for (int i = 0; i < size; i++) {
+			for (int j = 0; j < size; j++) {
+				natural[i][j] = ground + (i > size * 3 / 4 ? 40 : 0) - (i < size / 4 ? 40 : 0) + (j > size * 3 / 4 ? 4 * ((i / 5) % 2) : 0);
+			}
+		}
+		int[][] first = ColonyEdge.heights(natural, 1000, -2000, ground);
+		List<String> problems = new ArrayList<>();
+		if (!java.util.Arrays.deepEquals(first, ColonyEdge.heights(natural, 1000, -2000, ground))) {
+			problems.add("the same land gave two different grades");
+		}
+		for (int i = 0; i < size; i++) {
+			for (int j = 0; j < size; j++) {
+				boolean onPad = i >= margin && i < margin + pad && j >= margin && j < margin + pad;
+				if (onPad && first[i][j] != ground) {
+					problems.add("the pad's column " + i + " " + j + " is at " + first[i][j]);
+				}
+				if (i + 1 < size && Math.abs(first[i][j] - first[i + 1][j]) > STEP || j + 1 < size && Math.abs(first[i][j] - first[i][j + 1]) > STEP) {
+					problems.add("a step over one block at " + i + " " + j);
+				}
+			}
+		}
+		// A hill reaches as high as a slope of one block a column allows over the margin.
+		int rim = size - 1;
+		if (first[rim][size / 2] < ground + 24) {
+			problems.add("the hill's grade is " + first[rim][size / 2] + " at the rim, not near its natural " + natural[rim][size / 2]);
+		}
+		finish(helper, problems.size() > 5 ? problems.subList(0, 5) : problems);
+	}
+
+	/** The pad is the plain's own ground: regolith, with the rock of its layers scattered only on the rim. */
+	@GameTest(maxTicks = 100)
+	public void thePadCornersAreThePlainsRegolith(GameTestHelper helper) {
+		ServerLevel level = server(helper).overworld();
+		ColonySite.Placed colony = placed(helper);
+		loadPad(level, colony);
+		int half = ColonyTuning.DEFAULT.padSize() / 2;
+		BlockPos centre = colony.center();
+		List<String> problems = new ArrayList<>();
+		for (int dx = 4; dx < 12; dx++) {
+			for (int dz = 4; dz < 12; dz++) {
+				BlockPos at = new BlockPos(centre.getX() - half + dx, centre.getY(), centre.getZ() - half + dz);
+				if (!level.getBlockState(at).is(SurfaceBlocks.REGOLITH)) {
+					problems.add(at.toShortString() + " is " + level.getBlockState(at));
+				}
+			}
+		}
+		finish(helper, problems.size() > 5 ? problems.subList(0, 5) : problems);
 	}
 
 	private static AABB pad(ColonySite.Placed colony) {
