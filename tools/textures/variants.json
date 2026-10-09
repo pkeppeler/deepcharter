@@ -1,5 +1,5 @@
 {
-  "description": "The texture density test packs of issue 336 (docs/design/texture-density.md). Each is a test pack that only the texture-density evidence scenario turns on; the mod's own textures are variant A. Paths are from the repo root; a variant's recipe directories load over the default ones, in order.",
+  "description": "The texture density test packs of issue 336 (docs/design/texture-density.md). Each is a test pack that only the texture-density evidence scenario turns on; the mod's own textures are variant A. Paths are from the repo root; a variant's recipe directories load over the default ones, in order. D loads B's recipes before its own, so B's rock and ores feed D: a change to B changes D's pack too.",
   "variants": {
     "b": {
       "recipes": ["tools/textures/variants/b/recipes"],

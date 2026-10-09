@@ -57,7 +57,7 @@ def render(book: Book, keys: list[str]) -> Canvas:
     """The sheet of the palette and of the textures keys names (a pack's sheet shows only the pack's own)."""
     blocks = [key for key in keys if key.startswith("block/")]
     items = [key for key in keys if key.startswith("item/")]
-    cell = SCALE * max(book.recipes[key].size for key in keys)
+    cell = SCALE * max(_drawn_size(book, key) for key in keys)
     block_width = LABEL + len(LEVELS) * (cell + GAP)
     block_rows = -(-len(blocks) // BLOCK_COLUMNS)
     item_rows = -(-len(items) // ITEM_COLUMNS)
@@ -116,6 +116,13 @@ def _palette(out: Canvas, book: Book, y: int) -> int:
         for j, colour in enumerate(colours):
             _box(out, x0 + 60 + j * (SWATCH + 1), y0, SWATCH, SWATCH, colour)
     return y + per_column * (SWATCH + 3)
+
+
+def _drawn_size(book: Book, key: str) -> int:
+    """The finest texture a cell of key draws: the texture, or the base under a glow layer if that is larger."""
+    recipe = book.recipes[key]
+    over = recipe.glow.over if recipe.glow else None
+    return max(recipe.size, book.recipes[over].size if over else recipe.size)
 
 
 def _cell(out: Canvas, book: Book, key: str, x0: int, y0: int, cell: int, light: float) -> None:

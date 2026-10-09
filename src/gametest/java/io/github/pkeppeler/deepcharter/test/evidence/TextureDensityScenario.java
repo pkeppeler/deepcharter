@@ -228,7 +228,6 @@ public class TextureDensityScenario extends EvidenceScenario {
 		level.setBlock(ROOM.offset(0, 2, 0), lamp(LAMP), Block.UPDATE_ALL);
 	}
 
-	/** A 3 x 3 shaft bored straight down through the layer's own rock, with a lamp at its middle every four blocks. */
 	/**
 	 * A small sealed room with three terminals against its south wall, facing north: the fuel pump repaired (online, its screen
 	 * lit), the ore processor broken (its red standby lamp) and the contract terminal; a Company rock each side; a pod lamp.
@@ -253,6 +252,7 @@ public class TextureDensityScenario extends EvidenceScenario {
 		level.setBlock(TERMINAL_ROOM.offset(0, 3, 0), lamp(LAMP), Block.UPDATE_ALL);
 	}
 
+	/** A 3 x 3 shaft bored straight down through the layer's own rock, with a lamp at its middle every four blocks. */
 	private static void buildShaft(ServerLevel level) {
 		loadChunks(level, SHAFT, 2);
 		RoomCarver.carve(level, SHAFT.offset(-1, -SHAFT_DEPTH, -1), SHAFT.offset(1, 0, 1), Blocks.AIR.defaultBlockState());

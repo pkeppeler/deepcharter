@@ -16,6 +16,7 @@ sys.path.insert(0, str(TEXTURES))
 import pngio  # noqa: E402
 import sheet  # noqa: E402
 import texgen  # noqa: E402
+from canvas import Canvas  # noqa: E402
 from recipe import Book, Palette, RecipeError  # noqa: E402
 
 
@@ -170,6 +171,29 @@ class RecipeRulesTest(unittest.TestCase):
             {"op": "fill", "colour": "ramp.0"}, {"op": "pixels", "scale": 2, "legend": {"#": "ink"}, "rows": ["#########"]}]}})
         with self.assertRaisesRegex(RecipeError, "pixel row 0 is 18 wide, more than 16"):
             book.render("block/x")
+
+    def mixed_size_book(self):
+        """A 32x base, black with one ink texel at (2, 0), and a 16x glow over it with one lit texel at (0, 0)."""
+        return self.book({
+            "block/base": {"kind": "opaque", "size": 32, "layers": [{"op": "fill", "colour": "ramp.0"}, {"op": "fill", "colour": "ink", "rect": [2, 0, 1, 1]}]},
+            "block/glow": {"kind": "cutout", "glow": {"over": "block/base"}, "layers": [{"op": "fill", "colour": "ramp.2", "rect": [0, 0, 1, 1]}]}})
+
+    def test_a_sheet_cell_is_three_times_the_finest_texture_it_draws_a_glow_base_included(self):
+        book = self.mixed_size_book()
+        self.assertEqual(1064, sheet.render(book, ["block/glow"]).width)
+        self.assertEqual(1064, sheet.render(book, ["block/base", "block/glow"]).width)
+        write_json(self.root / "recipes" / "r.json", {"recipes": {"block/x": {"kind": "opaque", "layers": [{"op": "fill", "colour": "ink"}]}}})
+        small = Book(Palette.load([self.root / "palette.json"]), [self.root / "recipes"])
+        self.assertEqual(680, sheet.render(small, ["block/x"]).width)
+
+    def test_a_16x_glow_over_a_32x_base_covers_two_by_two_base_texels_and_wins_where_it_is_lit(self):
+        out = Canvas.blank(98, 98)
+        sheet._cell(out, self.mixed_size_book(), "block/glow", 1, 1, 96, 1.0)
+        lit = {(x, y) for y in range(98) for x in range(98) if out.get(x, y) == (255, 255, 255, 255)}
+        self.assertEqual({(x, y) for y in range(1, 7) for x in range(1, 7)}, lit)
+        inked = {(x, y) for y in range(98) for x in range(98) if out.get(x, y) == (0x10, 0x20, 0x30, 255)}
+        self.assertEqual({(x, y) for y in range(1, 4) for x in range(7, 10)}, inked)
+        self.assertEqual((0, 0, 0, 255), out.get(10, 1))
 
     def cluster_book(self, **cluster):
         write_json(self.root / "palette.json", {"description": "test", "colours": {

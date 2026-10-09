@@ -116,11 +116,11 @@ Today's sheet is [texture-reference.png](texture-reference.png).
 
 ## How it is built
 
-Each variant comes from our generator and nothing else: palettes and recipes as data ([skins.md](skins.md#textures)). The parts are:
+Every texture comes from our generator: palettes and recipes as data ([skins.md](skins.md#textures)). The blockstates and models are committed JSON, written once by a throwaway script. No generator rebuilds or checks their content; `test_texture_packs.py` checks only that what they name exists. The parts are:
 
 - **The recipes** are in `tools/textures/variants/<variant>/recipes/`.
 - **The packs** are listed in `tools/textures/variants.json`.
-- **The test packs** are in `src/gametest/resources/resourcepacks/texture_density_<variant>/`. Their blockstates and models are committed JSON.
+- **The test packs** are in `src/gametest/resources/resourcepacks/texture_density_<variant>/`. D's six 3D ore models are the largest files, at 2,000 to 2,700 lines of JSON each.
 - **The generator** gained three things: 32x recipes (`"size": 32`), the `cluster` op for ore clumps, and `--variant`, which writes only the textures of one pack.
 
 To rebuild and check the packs:
@@ -147,7 +147,7 @@ To walk round in a variant, copy its pack folder into the dev client's `resource
 - The chosen recipes move into `tools/textures/recipes/`.
 - The test packs, the variants and this page's scaffolding go.
 - If the choice is our own layer rock, it becomes the layer rock blocks of #241.
-- If the choice is D, the ore blockstates get its models. D also needs a gameplay call on the glints, because they show ore in the dark.
+- If the choice is D, the ore blockstates get its models. Before D ships, its models need a committed generator with a `--check`, as the textures have, so that no one edits thousands of lines of JSON by hand. D also needs a gameplay call on the glints, because they show ore in the dark.
 
 ## References
 
