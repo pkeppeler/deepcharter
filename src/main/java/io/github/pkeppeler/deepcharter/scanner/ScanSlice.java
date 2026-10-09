@@ -6,6 +6,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Block;
@@ -80,12 +81,13 @@ public final class ScanSlice {
 			throw new IllegalArgumentException("a slice runs along a horizontal facing, not " + facing);
 		}
 		ScanArea area = TUNING.area(tier);
+		boolean showsLava = TUNING.showsLava(tier);
 		boolean showsGas = TUNING.showsGas(tier);
 		Cell[] cells = new Cell[area.columns() * area.rows()];
 		for (int up = area.up(); up >= -area.down(); up--) {
 			for (int ahead = -area.halfWidth(); ahead <= area.halfWidth(); ahead++) {
 				BlockPos pos = origin.relative(facing, ahead).above(up);
-				cells[index(area, ahead, up)] = classify(level, pos, level.getBlockState(pos), showsGas);
+				cells[index(area, ahead, up)] = classify(level, pos, level.getBlockState(pos), facing, showsLava, showsGas);
 			}
 		}
 		return new ScanSlice(tier, area, cells);
@@ -111,12 +113,18 @@ public final class ScanSlice {
 		return (area.up() - up) * area.columns() + ahead + area.halfWidth();
 	}
 
-	private static Cell classify(BlockGetter level, BlockPos pos, BlockState state, boolean showsGas) {
+	private static Cell classify(BlockGetter level, BlockPos pos, BlockState state, Direction facing, boolean showsLava, boolean showsGas) {
 		if (state.is(ORES)) {
 			return new Cell.Ore(state.getBlock());
 		}
 		if (showsGas && state.is(HazardBlocks.GAS_POCKET)) {
 			return Cell.GAS;
+		}
+		if (showsLava) {
+			Cell lava = lavaReading(level, pos, facing);
+			if (lava != null) {
+				return lava;
+			}
 		}
 		// Fluids are named explicitly so the rule does not depend on their collision shapes.
 		if (state.getBlock() instanceof LiquidBlock) {
@@ -125,21 +133,50 @@ public final class ScanSlice {
 		return state.getCollisionShape(level, pos).isEmpty() ? Cell.AIR : Cell.ROCK;
 	}
 
+	/**
+	 * {@link Cell#LAVA} when the block at {@code pos} is lava, {@link Cell#LAVA_NEAR} when only a block within {@link ScannerTuning#lavaSpread()}
+	 * blocks either side of the plane at that spot is, and null for neither. The pod's bore is wider than the one-block plane, and lava beside
+	 * the plane is lava the pod can touch.
+	 */
+	private static Cell lavaReading(BlockGetter level, BlockPos pos, Direction facing) {
+		if (level.getFluidState(pos).is(FluidTags.LAVA)) {
+			return Cell.LAVA;
+		}
+		Direction side = facing.getClockWise();
+		for (int distance = 1; distance <= TUNING.lavaSpread(); distance++) {
+			if (level.getFluidState(pos.relative(side, distance)).is(FluidTags.LAVA)
+					|| level.getFluidState(pos.relative(side, -distance)).is(FluidTags.LAVA)) {
+				return Cell.LAVA_NEAR;
+			}
+		}
+		return null;
+	}
+
 	/** What a cell holds. */
 	public sealed interface Cell {
 		Cell AIR = new Air();
 		Cell ROCK = new Rock();
+		Cell LAVA = new Lava();
+		Cell LAVA_NEAR = new LavaNear();
 		Cell GAS = new Gas();
 
 		/**
-		 * Anything without a collision shape, and any fluid: air, water, lava, plants. Fluids read as open space at every
-		 * tier until the user decides otherwise (docs/BLOCKERS.md).
+		 * Anything without a collision shape, and any fluid: air, water, plants, and lava on a scanner below {@link ScannerTuning#lavaTier()}.
+		 * Water reads as open space at every tier: there is no water hazard (docs/BLOCKERS.md).
 		 */
 		record Air() implements Cell {
 		}
 
 		/** Solid, and not ore. Below {@link ScannerTuning#gasTier()} this includes gas pockets, which look like stone. */
 		record Rock() implements Cell {
+		}
+
+		/** A cell with lava in it, seen by a scanner of {@link ScannerTuning#lavaTier()} or better. */
+		record Lava() implements Cell {
+		}
+
+		/** A cell with no lava in it but lava within {@link ScannerTuning#lavaSpread()} blocks beside the plane, seen by a scanner of {@link ScannerTuning#lavaTier()} or better. */
+		record LavaNear() implements Cell {
 		}
 
 		/** A gas pocket, seen by a scanner of {@link ScannerTuning#gasTier()} or better. */

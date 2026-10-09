@@ -75,7 +75,7 @@ All M1 prototypes are merged. On a real dedicated server, two players each pilot
 
 ### Questions for you (none of them blocks work)
 1. The fuel cost of a breach (above).
-2. How the scanner shows water and lava: see the "fluids" entry below.
+2. How the scanner shows water and lava: see the "fluids" entry below (answered by #300).
 3. PR #24, the play-test bridge: see the entry below.
 
 M2 has started: #51-#85. Its foundation (#51) is in review.
@@ -96,16 +96,13 @@ M2 (#51-#85) ends with a playable build for you and your friends (#85: v0.2.0). 
 
 ## 2026-10-07: How should the scanner show fluids? (a question, not a blocker)
 
-**Status:** open, for a decision by the user. Work continues with a default.
+**Status:** answered by #300 (an (A) call; the user can veto it at the milestone demo). Work continued with the default until then.
 
-SPEC §7 says "later tiers reveal hazards". It does not say how scanner v1 shows water and lava. **The default in PR #46:** fluids show as open space, the same as air. A test pins this, so a later change is visible.
+SPEC §7 says "later tiers reveal hazards". It does not say how the scanner shows water and lava. **The default in PR #46:** fluids show as open space, the same as air. A test pinned this.
 
-**The risk with the default:** a pilot can fly into lava that the scanner shows as empty.
+**The risk with the default:** a pilot can fly into lava that the scanner shows as empty. PR #287 measured it: a tier 1 scanner showed the lava a pod touched, 8 or more slabs ahead, in 13% of cases.
 
-**The options are:**
-- (a) Keep the default until the hazard tier exists.
-- (b) Show lava in its own color now.
-- (c) Show all fluids in their own color now.
+**The answer (#300, option (b)):** the thermal tier, scanner tier 2, marks lava in its own colour (`lavaColor`, `lavaNearColor` in `theme/scanner.json`). **Tier 1 keeps fluids as open space**, so the tier is worth buying. Water stays open space at every tier, because no water hazard exists. If one does, it gets its own tier and colour the same way. Option (c), all fluids in their own colour, is not planned.
 
 ## 2026-10-07: M0 demo is ready (the milestone ends with a demo to the user)
 

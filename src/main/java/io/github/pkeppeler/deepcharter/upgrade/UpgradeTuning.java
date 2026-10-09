@@ -93,7 +93,8 @@ public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks, Map<String, Integ
 		tracks.put(ComponentTrack.CARGO_BAY, new Tiers(List.of(7f, 15f, 25f, 40f, 70f, 120f),
 				List.of(0L, 200L, 500L, 1250L, 5000L, 25000L)));
 		// Invented: the original has no scanner and no lights. The scanner is bought in the onboarding (handbook chapter 6), so
-		// it takes the standard ladder. Lights are the cheaper part, a quarter of the first guess.
+		// it takes the standard ladder. Tier 2, $500, is the thermal tier that marks lava (#300): priced with the other tier 2 parts, it
+		// takes two runs in layer 2 at most (EconomyAffordabilityTest), and a Mole can fit it. Lights are the cheaper part, a quarter of the first guess.
 		tracks.put(ComponentTrack.SCANNER, new Tiers(List.of(0f, 0.5f, 0.75f, 1f, 1.5f), List.of(0L, 200L, 500L, 1250L, 5000L)));
 		tracks.put(ComponentTrack.LIGHTS, new Tiers(List.of(0f, 6f, 9f, 12f, 15f), List.of(0L, 125L, 375L, 1250L, 3750L)));
 		return tracks;

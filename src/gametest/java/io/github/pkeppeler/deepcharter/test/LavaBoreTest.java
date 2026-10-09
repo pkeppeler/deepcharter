@@ -96,6 +96,8 @@ public class LavaBoreTest {
 	private static final double NEAR_HOPELESS_SURVIVAL = 0.5;
 
 	private static final int SCANNER_TIER = 1;
+	/** The tier that marks lava (#300). The pod keeps its tier 1 scanner; the harness also reads what a scanner of this tier would show, from the same spot. */
+	private static final int THERMAL_TIER = ScannerTuning.DEFAULT.lavaTier();
 	/**
 	 * Lava counts as shown in time when it was in the scanner's view at least this many slabs before the pod touched it:
 	 * a quarter of the tier 1 scanner's reach below the pod, which at the measured 36 pod ticks a slab (24 ticks of stone at the surface, slower with depth, plus the bot's sidesteps) is about 15 seconds of warning.
@@ -180,14 +182,18 @@ public class LavaBoreTest {
 		private final int contactY;
 		private final int slabsShownAhead;
 		private final int contactCellsShownAhead;
+		private final int thermalSlabsShownAhead;
+		private final int thermalContactCellsShownAhead;
 		float hullLost;
 		int ticks;
 
-		Encounter(String zone, int contactY, int slabsShownAhead, int contactCellsShownAhead) {
+		Encounter(String zone, int contactY, int slabsShownAhead, int contactCellsShownAhead, int thermalSlabsShownAhead, int thermalContactCellsShownAhead) {
 			this.zone = zone;
 			this.contactY = contactY;
 			this.slabsShownAhead = slabsShownAhead;
 			this.contactCellsShownAhead = contactCellsShownAhead;
+			this.thermalSlabsShownAhead = thermalSlabsShownAhead;
+			this.thermalContactCellsShownAhead = thermalContactCellsShownAhead;
 		}
 
 		String zone() {
@@ -209,6 +215,16 @@ public class LavaBoreTest {
 		/** As {@link #slabsShownAhead}, for the lava blocks the pod actually touched: the strict figure. */
 		int contactCellsShownAhead() {
 			return contactCellsShownAhead;
+		}
+
+		/** As {@link #slabsShownAhead}, for a scanner of the thermal tier, which marks lava as lava (#300). */
+		int thermalSlabsShownAhead() {
+			return thermalSlabsShownAhead;
+		}
+
+		/** As {@link #contactCellsShownAhead}, for a scanner of the thermal tier: the strict figure. */
+		int thermalContactCellsShownAhead() {
+			return thermalContactCellsShownAhead;
 		}
 
 		boolean shownAtAll() {
@@ -258,6 +274,8 @@ public class LavaBoreTest {
 		long lastTouchTick = Long.MIN_VALUE / 2;
 		BlockPos lastScanned;
 		final Map<BlockPos, Integer> shownAt = new HashMap<>();
+		/** As {@link #shownAt}, for the cells a thermal tier scanner marks as lava. */
+		final Map<BlockPos, Integer> thermalShownAt = new HashMap<>();
 		final List<Encounter> encounters = new ArrayList<>();
 
 		Bore(int index, MockPlayer pilot, ServerLevel level, int centreX, int centreZ, int shaftBottomY) {
@@ -568,8 +586,29 @@ public class LavaBoreTest {
 
 	// ---- lava ----
 
-	/** Reads the scanner as the game does and notes each lava block it shows as open space, with how high the pod was when it first did. */
+	/**
+	 * Reads the scanner as the game does and notes each lava block it shows as open space, with how high the pod was when it first did.
+	 * Then reads a scanner of the thermal tier from the same spot and notes each lava block it marks as lava.
+	 */
 	private static void noteLavaInView(ServerLevel level, PodEntity pod, Bore bore, int feetY) {
+		ScanSlice thermal = ScanSlice.scan(new LoadedBlocks(level), pod.blockPosition(), pod.getDirection(), THERMAL_TIER);
+		ScanArea thermalArea = thermal.area();
+		for (int up = thermalArea.up(); up >= -thermalArea.down(); up--) {
+			for (int ahead = -thermalArea.halfWidth(); ahead <= thermalArea.halfWidth(); ahead++) {
+				ScanSlice.Cell cell = thermal.cell(ahead, up);
+				if (cell != ScanSlice.Cell.LAVA && cell != ScanSlice.Cell.LAVA_NEAR) {
+					continue;
+				}
+				// A marked cell, bright or near, stands for the lava in the plane or beside it: every lava block of that band is shown.
+				BlockPos inPlane = pod.blockPosition().relative(pod.getDirection(), ahead).above(up);
+				for (int offset = -ScannerTuning.DEFAULT.lavaSpread(); offset <= ScannerTuning.DEFAULT.lavaSpread(); offset++) {
+					BlockPos pos = inPlane.relative(pod.getDirection().getClockWise(), offset);
+					if (level.getFluidState(pos).is(FluidTags.LAVA)) {
+						bore.thermalShownAt.merge(pos.immutable(), feetY, Math::max);
+					}
+				}
+			}
+		}
 		Optional<ScanSlice> slice = ScanSlice.scan(new LoadedBlocks(level), pod);
 		if (slice.isEmpty()) {
 			throw new IllegalStateException("the pod has no working scanner");
@@ -612,15 +651,17 @@ public class LavaBoreTest {
 			}
 		}
 		int contactY = pod.blockPosition().getY();
-		int ahead = slabsAhead(body, bore, contactY);
-		int contactAhead = slabsAhead(touched, bore, contactY);
+		int ahead = slabsAhead(body, bore.shownAt, contactY);
+		int contactAhead = slabsAhead(touched, bore.shownAt, contactY);
+		int thermalAhead = slabsAhead(body, bore.thermalShownAt, contactY);
+		int thermalContactAhead = slabsAhead(touched, bore.thermalShownAt, contactY);
 		String zone = Zones.of(level, contactY).map(found -> found.id().getPath()).orElse("outside");
-		return new Encounter(zone, contactY, ahead, contactAhead);
+		return new Encounter(zone, contactY, ahead, contactAhead, thermalAhead, thermalContactAhead);
 	}
 
 	/** How many slabs above {@code contactY} the pod was when the scanner first had any of {@code cells} in view; -1 for never. */
-	private static int slabsAhead(Set<BlockPos> cells, Bore bore, int contactY) {
-		int shown = cells.stream().map(bore.shownAt::get).filter(Objects::nonNull).mapToInt(Integer::intValue).max().orElse(Integer.MIN_VALUE);
+	private static int slabsAhead(Set<BlockPos> cells, Map<BlockPos, Integer> shownAt, int contactY) {
+		int shown = cells.stream().map(shownAt::get).filter(Objects::nonNull).mapToInt(Integer::intValue).max().orElse(Integer.MIN_VALUE);
 		return shown == Integer.MIN_VALUE ? -1 : shown - contactY;
 	}
 
@@ -657,6 +698,15 @@ public class LavaBoreTest {
 		long contactShown = encounters.stream().filter(e -> e.contactCellsShownAhead() >= 0).count();
 		LOGGER.info("[lava-bore] strict, the lava blocks actually touched: in view at all {} ({}), >= {} slabs ahead {} ({}). The figures above are for the whole connected body, an upper bound",
 				contactShown, percent(contactShown, encounters.size()), IN_TIME_SLABS, contactInTime, percent(contactInTime, encounters.size()));
+		long thermalContactInTime = encounters.stream().filter(e -> e.thermalContactCellsShownAhead() >= IN_TIME_SLABS).count();
+		long thermalContactShown = encounters.stream().filter(e -> e.thermalContactCellsShownAhead() >= 0).count();
+		long thermalInTime = encounters.stream().filter(e -> e.thermalSlabsShownAhead() >= IN_TIME_SLABS).count();
+		ScanArea thermalArea = ScannerTuning.DEFAULT.area(THERMAL_TIER);
+		LOGGER.info("[lava-bore] thermal tier {} scanner (reach {} ahead, {} up, {} down) marks lava; tier {} shows it as open space. Strict, the lava blocks actually touched: in view at all {} ({}), >= {} slabs ahead {} ({}) against tier {}'s {} ({}). Whole connected body: >= {} slabs ahead {} ({}) against {} ({})",
+				THERMAL_TIER, thermalArea.halfWidth(), thermalArea.up(), thermalArea.down(), SCANNER_TIER,
+				thermalContactShown, percent(thermalContactShown, encounters.size()), IN_TIME_SLABS, thermalContactInTime, percent(thermalContactInTime, encounters.size()),
+				SCANNER_TIER, contactInTime, percent(contactInTime, encounters.size()),
+				IN_TIME_SLABS, thermalInTime, percent(thermalInTime, encounters.size()), inTime, percent(inTime, encounters.size()));
 		LOGGER.info("[lava-bore] hull lost per encounter:       {}; ticks touching lava per encounter: {}",
 				distributionOf(encounters.stream().mapToDouble(e -> e.hullLost).toArray()), distributionOf(encounters.stream().mapToDouble(e -> e.ticks).toArray()));
 		List<Encounter> firsts = bores.stream().filter(b -> !b.encounters.isEmpty()).map(b -> b.encounters.getFirst()).toList();
@@ -665,6 +715,10 @@ public class LavaBoreTest {
 				firsts.size(), IN_TIME_SLABS, firstInTime, percent(firstInTime, firsts.size()),
 				distributionOf(firsts.stream().mapToDouble(Encounter::slabsShownAhead).toArray()));
 		int deepClaimTop = Zones.span(0, 192, 2).high();
+		long firstThermalContactInTime = firsts.stream().filter(e -> e.thermalContactCellsShownAhead() >= IN_TIME_SLABS).count();
+		LOGGER.info("[lava-bore] first lava of a bore, thermal tier, the touched blocks: >= {} slabs ahead {} of {} ({}); slabs ahead (-1 = never in view): {}",
+				IN_TIME_SLABS, firstThermalContactInTime, firsts.size(), percent(firstThermalContactInTime, firsts.size()),
+				distributionOf(firsts.stream().mapToDouble(Encounter::thermalContactCellsShownAhead).toArray()));
 		LOGGER.info("[lava-bore] slabs bored in Deep Claim before the first lava (mean {}; 1 / that is the lava chance per slab, censored by the bores that end first); hull left when a bore ended in lava: {}",
 				String.format("%.1f", firsts.stream().filter(e -> e.zone().equals("deep_claim") || e.zone().equals("stone_benches")).mapToInt(e -> Math.max(0, deepClaimTop - e.contactY() + 1)).average().orElse(0)),
 				distribution(bores.stream().filter(b -> b.outcome == Outcome.DIED && b.cause.endsWith("in lava")).toList(), b -> b.endHull));
@@ -724,9 +778,17 @@ public class LavaBoreTest {
 	 */
 	private static void check(GameTestHelper helper, List<Bore> bores, boolean smoke) {
 		int reach = ScannerTuning.DEFAULT.tierOneArea().down() + ScannerTuning.DEFAULT.tierOneArea().up();
+		int thermalReach = ScannerTuning.DEFAULT.area(THERMAL_TIER).down() + ScannerTuning.DEFAULT.area(THERMAL_TIER).up();
 		for (Bore bore : bores) {
 			if (bore.encounters.stream().anyMatch(e -> e.slabsShownAhead() > reach)) {
 				throw helper.assertionException(Component.literal("bore " + bore.index + ": the scanner showed lava from farther than its reach of " + reach + " slabs, so the lead is mismeasured"));
+			}
+			if (bore.encounters.stream().anyMatch(e -> e.thermalSlabsShownAhead() > thermalReach)) {
+				throw helper.assertionException(Component.literal("bore " + bore.index + ": the thermal scanner showed lava from farther than its reach of " + thermalReach + " slabs, so the lead is mismeasured"));
+			}
+			// The thermal tier's slice contains the tier 1 slice, so it marks every block that tier 1 shows as open space.
+			if (bore.encounters.stream().anyMatch(e -> e.thermalContactCellsShownAhead() < e.contactCellsShownAhead())) {
+				throw helper.assertionException(Component.literal("bore " + bore.index + ": the thermal scanner showed the touched lava later than tier 1 did, so the thermal reading is wrong"));
 			}
 		}
 		if (!smoke) {
@@ -737,7 +799,8 @@ public class LavaBoreTest {
 			throw helper.assertionException(Component.literal("the bot got stuck, so the harness measures nothing: " + stuck));
 		}
 		Bore lavaBore = bores.get(1);
-		if (lavaBore.encounters.isEmpty() || lavaBore.encounters.getFirst().contactCellsShownAhead() < 1) {
+		if (lavaBore.encounters.isEmpty() || lavaBore.encounters.getFirst().contactCellsShownAhead() < 1
+				|| lavaBore.encounters.getFirst().thermalContactCellsShownAhead() < 1) {
 			throw helper.assertionException(Component.literal("the smoke bore meets a lava block that was placed in its path and in the scan plane, so it must record an encounter that the scanner had in view ahead of contact: "
 					+ lavaBore.encounters.stream().map(e -> e.zone() + "@" + e.contactY() + " body +" + e.slabsShownAhead() + " contact +" + e.contactCellsShownAhead()).toList()));
 		}
