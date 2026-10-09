@@ -270,7 +270,8 @@ def diff_directories(dir_a, dir_b, tolerance, out_dir=None, noise=()):
         percent = 100.0 * changed / (a.width * a.height)
         if changed == 0 or percent <= floor:
             if prefix is not None:
-                plain_changed, plain_biggest, _ = compare(a, b, tolerance)
+                # A floor with the plain tolerance already measured the plain numbers.
+                plain_changed, plain_biggest = (changed, biggest) if still_tolerance == tolerance else compare(a, b, tolerance)[:2]
                 if plain_changed:
                     hidden.append((Path(name).stem, 100.0 * plain_changed / (a.width * a.height), plain_biggest,
                                    f"floor {prefix or '*'}: tolerance {still_tolerance}, up to {floor:g}%"))
