@@ -2,7 +2,8 @@
 
 A pack's blockstates name models, its models name parents and textures, and each must be in the pack or in the mod's own assets
 (a minecraft: model is vanilla's, not ours to check). A texture taller than wide needs its .png.mcmeta. A pack replaces only
-blockstates the mod has, or the vanilla ones it lists in VANILLA_BLOCKSTATES, and every model and texture it holds is used.
+blockstates the mod has, or the vanilla ones it lists in VANILLA_BLOCKSTATES, and every model and texture it holds is used. An
+overlay pack (round 2, docs/design/texture-density-2.md) holds no vanilla file, and its ores draw the host's texture from vanilla.
 """
 import json
 import struct
@@ -58,6 +59,19 @@ class TexturePacksTest(unittest.TestCase):
         for name, entry in sorted(variants.items()):
             with self.subTest(variant=name):
                 self.assertEqual([], self.problems(texgen.ROOT / entry["pack"]))
+
+    def test_an_overlay_pack_replaces_nothing_of_vanilla_and_draws_each_ore_over_the_host_by_reference(self):
+        overlaid = {name: entry for name, entry in texgen.variants().items() if "overlays" in entry}
+        self.assertTrue(overlaid)
+        for name, entry in sorted(overlaid.items()):
+            with self.subTest(variant=name):
+                assets = texgen.ROOT / entry["pack"] / "assets"
+                self.assertFalse((assets / "minecraft").exists(), "an overlay pack holds a vanilla file")
+                models = sorted((assets / "deepcharter/models/block").glob("*_overlay_*.json"))
+                self.assertTrue(models)
+                for model in models:
+                    host = json.loads(model.read_text())["textures"]["host"]
+                    self.assertIsNone(resolve(assets, host, "textures", ".png"), f"{model.name}: the host {host} is not vanilla's")
 
     def test_a_missing_texture_an_unused_model_and_a_block_the_mod_lacks_are_each_named(self):
         with tempfile.TemporaryDirectory() as tmp:

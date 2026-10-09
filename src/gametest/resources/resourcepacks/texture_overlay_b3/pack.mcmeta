@@ -1,0 +1,7 @@
+{
+  "pack": {
+    "description": "Deep Charter test pack: ore overlay B3, seams along the grain of the stone (issue 354)",
+    "min_format": 97,
+    "max_format": 97
+  }
+}
