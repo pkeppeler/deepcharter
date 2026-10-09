@@ -4,7 +4,7 @@
 #   output       "gif" for the scenario's GIF, or the name of one of its stills (without .png)
 # Refresh with tools/readme-tour.sh. See docs/tooling/readme-tour.md.
 hero.gif	m2-towing	gif
-colony-office.png	m2-colony	world-spawn-continuity-office
+colony-hangar.png	design-tour	hangar-from-the-square
 pod-flying.png	pod-drive	pod-flying
 drilling.gif	pod-drill-lit	gif
 scanner-map.png	m2-scanner-tiers	scanner-tier-2

@@ -29,9 +29,9 @@ The tour follows one run, in the order of the game loop.
 
 ### 1. The colony
 
-![A Company building at the edge of the colony square](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/colony-office.png?raw=true)
+![The colony hangar, seen from the square, with a dark pod inside](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/colony-hangar.png?raw=true)
 
-You start in Prosperity, a run-down Company mining town built on the spawn. Its machines are offline. You repair them one by one, and each one that comes back is a new way to earn.
+You start in Prosperity, a run-down Company mining town built on the spawn. Its machines are offline. You repair them one by one, and each one that comes back is a new way to earn. The hangar in the picture holds the founding pod, dark until your charter repairs it.
 
 ### 2. Your pod
 
@@ -67,7 +67,7 @@ Money buys better parts: drill, hull, engine, tank, cargo, scanner and lights. T
 
 ![The repair station screen](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/repair-station.png?raw=true)
 
-The repair station fixes the hull. It also sells dynamite to blast a blocked shaft, and a matter transmitter that takes you home.
+The repair station fixes the hull. It also sells dynamite to blast a blocked shaft, and a matter transmitter that takes you home, but you drop your cargo.
 
 ### 8. Lights in the dark
 
@@ -91,7 +91,7 @@ A pod with no hull goes dark and stays where it fell, and its owners are told. A
 
 ![A transmission from an unknown signal, on a green screen](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/breach-transmission.png?raw=true)
 
-A crust of hard rock at the floor of each layer is a breach. Any drill can get through, slowly and hot. Crossing is an event: a rumble, then a transmission on a green screen. Not every sender is one you know. The words in this picture are stand-ins until the story is written.
+A crust of hard rock at the floor of each layer is a breach. Any drill can get through, slowly and hot. Crossing is an event: a rumble, then a transmission on a green screen. The words in this picture are stand-ins until the story is written.
 
 ### 12. The handbook
 

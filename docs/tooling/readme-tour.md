@@ -6,12 +6,12 @@ The tour at the top of the [README](../../README.md) shows the game with GIFs an
 
 ```sh
 tools/readme-tour.sh                  # record and publish every item
-tools/readme-tour.sh scanner-tiers.gif pod-lava.gif   # only these items
+tools/readme-tour.sh scanner-map.png pod-lava.gif   # only these items
 tools/readme-tour.sh --list           # show the items
 tools/readme-tour.sh --no-record      # publish what build/evidence already holds
 ```
 
-For each item the script records its scenario with `tools/record-evidence.sh` (once per scenario, even when two items share it), copies the chosen file to the item's media name, and publishes all of them to `pr-media/readme/` with `tools/pr-media.sh readme`. A file with the same name is replaced. Other files and folders on `pr-media` stay. A full run records 13 scenarios and takes about an hour on a busy Mac. It needs the game client, so it takes the machine-wide client slot.
+For each item the script records its scenario with `tools/record-evidence.sh` (once per scenario, even when two items share it), copies the chosen file to the item's media name, and publishes all of them to `pr-media/readme/` with `tools/pr-media.sh readme`. A file with the same name is replaced. Other files and folders on `pr-media` stay: `tools/pr-media.sh` never deletes, so a file the README no longer links stays on the branch until someone removes it by hand. The `design-tour` item takes about 10 minutes alone. A full run records 13 scenarios and takes about an hour on a busy Mac. It needs the game client, so it takes the machine-wide client slot.
 
 After a run, open each new image before you trust it. GitHub caches `raw.githubusercontent.com` for a few minutes, so an old image can show for a while.
 

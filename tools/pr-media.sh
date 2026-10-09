@@ -65,12 +65,18 @@ git ls-remote --exit-code --heads "$remote" "$branch" >/dev/null 2>&1 \
 git fetch -q "$remote" "refs/heads/${branch}"
 tip=$(git rev-parse "FETCH_HEAD^{commit}")
 
+# The entries of a tree as sorted "<type> <name>" lines. The guards below compare these, so a name that
+# survives as another type (a file replacing a folder, or the reverse) counts as lost.
+typed_entries() {
+  git ls-tree "$@" | awk -F'\t' '{ split($1, meta, " "); print meta[2] " " $2 }' | LC_ALL=C sort
+}
+
 # New <pr>/ tree: the existing entries minus same-named files, plus the new blobs.
 entries=""
-old_pr_names=""
+old_pr_entries=""
 if [[ $(git cat-file -t "${tip}:${pr}" 2>/dev/null) == tree ]]; then
   entries=$(git ls-tree "${tip}:${pr}")
-  old_pr_names=$(git ls-tree --name-only "${tip}:${pr}")
+  old_pr_entries=$(typed_entries "${tip}:${pr}")
 fi
 for i in "${!files[@]}"; do
   name=${names[$i]}
@@ -83,14 +89,14 @@ pr_tree=$(printf '%s\n' "$entries" | git mktree)
 # A nested folder (<top>/<leaf>) sits in a <top>/ tree: its existing entries minus <leaf>/, plus the new subtree.
 top=$pr
 top_tree=$pr_tree
-old_top_names=""
+old_top_entries=""
 if [[ $pr == */* ]]; then
   top=${pr%%/*}
   leaf=${pr#*/}
   top_entries=""
   if [[ $(git cat-file -t "${tip}:${top}" 2>/dev/null) == tree ]]; then
     top_entries=$(git ls-tree "${tip}:${top}" | awk -F'\t' -v n="$leaf" '$2 != n && NF')
-    old_top_names=$(git ls-tree --name-only "${tip}:${top}")
+    old_top_entries=$(typed_entries "${tip}:${top}")
   fi
   top_tree=$(printf '%s\n040000 tree %s\t%s\n' "$top_entries" "$pr_tree" "$leaf" | awk 'NF' | git mktree)
 fi
@@ -101,16 +107,13 @@ root_tree=$(printf '%s\n040000 tree %s\t%s\n' "$root" "$top_tree" "$top" | awk '
 
 # Guard: the new root must hold every top-level entry the old one did, and <pr>/
 # must keep every old file (a replaced file keeps its name, so it is still there).
-lost_root=$(comm -23 <(git ls-tree --full-tree --name-only "$tip" | LC_ALL=C sort) \
-  <(git ls-tree --full-tree --name-only "$root_tree" | LC_ALL=C sort))
+lost_root=$(comm -23 <(typed_entries --full-tree "$tip") <(typed_entries --full-tree "$root_tree"))
 [[ -z $lost_root ]] \
   || { echo "REFUSED: new root would drop top-level entries of ${branch}: $(tr '\n' ' ' <<<"$lost_root")" >&2; exit 1; }
-lost_pr=$(comm -23 <(printf '%s\n' "$old_pr_names" | awk 'NF' | LC_ALL=C sort) \
-  <(git ls-tree --name-only "$pr_tree" | LC_ALL=C sort))
+lost_pr=$(comm -23 <(printf '%s\n' "$old_pr_entries" | awk 'NF') <(typed_entries "$pr_tree"))
 [[ -z $lost_pr ]] \
   || { echo "REFUSED: ${pr}/ would lose files that were not replaced: $(tr '\n' ' ' <<<"$lost_pr")" >&2; exit 1; }
-lost_top=$(comm -23 <(printf '%s\n' "$old_top_names" | awk 'NF' | LC_ALL=C sort) \
-  <(git ls-tree --name-only "$top_tree" | LC_ALL=C sort))
+lost_top=$(comm -23 <(printf '%s\n' "$old_top_entries" | awk 'NF') <(typed_entries "$top_tree"))
 [[ -z $lost_top ]] \
   || { echo "REFUSED: ${top}/ would lose entries: $(tr '\n' ' ' <<<"$lost_top")" >&2; exit 1; }
 
