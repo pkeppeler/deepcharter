@@ -425,7 +425,7 @@ public class LavaBoreTest {
 			throw helper.assertionException(Component.literal(LINER_ENV + " is a liner tier from 1 to " + ComponentTrack.LINER.maxTier() + ", measured on its own without " + LINING_ENV));
 		}
 		if (GAS == null) {
-			throw helper.assertionException(Component.literal(GAS_ENV + " is 'ignore', 'avoid' or 'sounder', not '" + REQUESTED_GAS + "'"));
+			throw helper.assertionException(Component.literal(GAS_ENV + " is 'ignore', 'avoid', 'sounder1' or 'sounder', not '" + REQUESTED_GAS + "'"));
 		}
 		List<Bore> bores = new ArrayList<>();
 		CharterId charter = null;
