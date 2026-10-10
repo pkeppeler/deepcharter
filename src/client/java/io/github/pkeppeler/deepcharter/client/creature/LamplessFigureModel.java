@@ -5,25 +5,19 @@ import com.geckolib.renderer.base.GeoRenderState;
 
 import net.minecraft.resources.Identifier;
 
-final class FigureConceptModel extends GeoModel<FigureConceptAnimatable> {
-	private final FigureConcept concept;
-
-	FigureConceptModel(FigureConcept concept) {
-		this.concept = concept;
-	}
-
+final class LamplessFigureModel extends GeoModel<LamplessFigureAnimatable> {
 	@Override
 	public Identifier getModelResource(GeoRenderState renderState) {
-		return concept.resource();
+		return LamplessFigureAssets.resource();
 	}
 
 	@Override
 	public Identifier getTextureResource(GeoRenderState renderState) {
-		return concept.texture();
+		return LamplessFigureAssets.texture();
 	}
 
 	@Override
-	public Identifier getAnimationResource(FigureConceptAnimatable animatable) {
-		return concept.resource();
+	public Identifier getAnimationResource(LamplessFigureAnimatable animatable) {
+		return LamplessFigureAssets.resource();
 	}
 }

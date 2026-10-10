@@ -8,8 +8,6 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
 import net.minecraft.client.CameraType;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
@@ -27,8 +25,6 @@ import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
-import io.github.pkeppeler.deepcharter.client.creature.FigureConcept;
-import io.github.pkeppeler.deepcharter.client.creature.FigureConceptRenderer;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
@@ -44,17 +40,18 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
 /**
- * Evidence scenario "figure-concepts" (#250): each lampless figure concept in turn, picked with the dev switch and a resource reload.
+ * Evidence scenario "reacher-figure" (#250): the lampless figure, the Reacher, in the place and light where it is met.
  *
- * <p>The scene is a sealed chamber of stone in layer 1, where the figure is met: layer 1's fog and ambient light, dark but for one pod with its
- * lights fitted. The stills are {@code <id>-rock} (the figure at the edge of the lamp's reach, from the pod, with nothing lit behind it),
- * {@code -rock-lit} (side-on, in the same rock, with the lamp lighting the wall behind the figure so that it reads as a silhouette),
- * {@code -front} (from the far end, with the pod's wall lit behind it), {@code -head} (a close-up of the hat and the empty bracket, with the pod's
- * light close by) and {@code -scale} (a miner beside it), and a short clip of the front view as it idles.
+ * <p>The scene is a sealed chamber of stone in layer 1: layer 1's fog and ambient light, dark but for one pod with its lights fitted. The
+ * stills are {@code reacher-rock} (the figure at the edge of the lamp's reach, from behind the pod, with nothing lit behind it),
+ * {@code reacher-rock-lit} (side-on, in the same rock, with the lamp lighting the wall behind the figure so that it reads as a silhouette),
+ * {@code reacher-front} (from the far end, with the pod's wall lit behind it), {@code reacher-head} (a close-up of the hat and the empty
+ * bracket) and {@code reacher-scale} (a miner beside it); a clip of the front view as it idles, a clip of it walking in the dark, and the
+ * fade: it walks into the pod's light from the dark end of the chamber and fades out, with stills at a fifth, a half and four fifths of the fade.
  *
- * <p>Every segment's frames are logged as {@code [figure-concepts-segment] <name> <first>-<last>}, which is how the GIFs are cut.
+ * <p>Every segment's frames are logged as {@code [reacher-figure-segment] <name> <first>-<last>}, which is how the GIFs are cut.
  */
-public class FigureConceptsScenario extends EvidenceScenario {
+public class ReacherFigureScenario extends EvidenceScenario {
 	/** The chamber, in blocks from its floor corner: x runs down the chamber, z across it. Interior only; the shell is one block more. */
 	private static final int LENGTH = 12;
 	private static final int HALF_WIDTH = 3;
@@ -85,6 +82,11 @@ public class FigureConceptsScenario extends EvidenceScenario {
 	private static final int IDLE_TICKS = 40;
 	private static final int CLIP_FRAMES = 36;
 	private static final int TICKS_PER_FRAME = 3;
+	/** The fade is recorded at one frame a tick: it lasts 40 ticks. */
+	private static final int FADE_FRAMES_LIMIT = 120;
+	private static final int FADE_LEAD_FRAMES = 10;
+	/** Where the figure starts its walk into the light, at the dark end of the chamber, heading toward the pod. */
+	private static final Vec3 FADE_START = new Vec3(11.5, 1, 0.5);
 
 	private ClientGameTestContext ctx;
 	private TestSingleplayerContext world;
@@ -95,31 +97,25 @@ public class FigureConceptsScenario extends EvidenceScenario {
 
 	@Override
 	protected String name() {
-		return "figure-concepts";
+		return "reacher-figure";
 	}
 
 	@Override
 	protected void run(ClientGameTestContext context) {
 		ctx = context;
-		if (System.getProperty(FigureConcept.PROPERTY) != null) {
-			throw new AssertionError("the dev switch " + FigureConcept.PROPERTY + " is already set; the scenario sets it itself");
-		}
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			world = singleplayer;
 			CameraType cameraType = context.computeOnClient(client -> client.options.getCameraType());
 			boolean hudHidden = context.computeOnClient(client -> client.gui.hud.isHidden());
 			try {
 				setUp();
-					logLight();
-				for (FigureConcept concept : FigureConcept.values()) {
-					showcase(concept);
-				}
-				darkenForWalks();
-				for (FigureConcept concept : FigureConcept.values()) {
-					walk(concept);
-				}
+				logLight();
+				showcase();
+				darkenForWalk();
+				walk();
+				lightForFade();
+				fade();
 			} finally {
-				System.clearProperty(FigureConcept.PROPERTY);
 				context.runOnClient(client -> {
 					client.options.setCameraType(cameraType);
 					if (client.gui.hud.isHidden() != hudHidden) {
@@ -202,51 +198,42 @@ public class FigureConceptsScenario extends EvidenceScenario {
 			ServerLevel level = layer(server);
 			Vec3[] spots = {POD, EDGE, LIT, new Vec3(0.5, 3, 0.5), new Vec3(LIT.x, 2, -HALF_WIDTH + 0.5), new Vec3(LENGTH - 0.5, 3, 0.5)};
 			for (Vec3 spot : spots) {
-				System.out.println("[figure-concepts-light] " + spot + " block light " + level.getBrightness(LightLayer.BLOCK, BlockPos.containing(at(spot))));
+				System.out.println("[reacher-figure-light] " + spot + " block light " + level.getBrightness(LightLayer.BLOCK, BlockPos.containing(at(spot))));
 			}
 		});
 	}
 
-	/** Draws the figure with the concept's files: the dev switch and a resource reload. */
-	private void draw(FigureConcept concept) {
-		System.setProperty(FigureConcept.PROPERTY, concept.id());
-		ctx.runOnClient(Minecraft::reloadResourcePacks);
-		ClientWait.until(ctx, "the figure drawn as " + concept.id(), client -> renderer(client) instanceof FigureConceptRenderer drawn && drawn.concept() == concept,
-				client -> String.valueOf(renderer(client)));
-	}
-
-	private void showcase(FigureConcept concept) {
-		draw(concept);
+	private void showcase() {
 		stand(EDGE, TOWARD_POD);
 
 		// In the rock: from behind the pod, down the chamber to the figure at the edge of the light. Nothing is lit behind it.
 		look(at(new Vec3(0.9, 3.7, 0.5)), at(EDGE).add(0, 1.4, 0));
 		settle();
-		screenshot(ctx, concept.id() + "-rock");
+		screenshot(ctx, "reacher-rock");
 
 		// In the rock, lit: the figure nearer the pod, seen side-on across the chamber, with the lamp lighting the wall behind it.
 		stand(LIT, TOWARD_POD);
 		look(at(new Vec3(LIT.x, 2.2, 3.4)), at(LIT).add(0, 1.4, 0));
 		settle();
-		screenshot(ctx, concept.id() + "-rock-lit");
+		screenshot(ctx, "reacher-rock-lit");
 
 		// Front, from the far end, with the lit wall behind it, and the idle running on a few frames.
 		stand(LIT, TOWARD_FAR_END);
 		int first = framesTaken + 1;
 		look(at(new Vec3(9.6, 2.3, 0.5)), at(LIT).add(0, 1.5, 0));
 		settle();
-		screenshot(ctx, concept.id() + "-front");
+		screenshot(ctx, "reacher-front");
 		for (int i = 0; i < CLIP_FRAMES; i++) {
 			ctx.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
 			frame(ctx);
 			framesTaken++;
 		}
-		System.out.println("[figure-concepts-segment] " + concept.id() + "-idle " + first + "-" + framesTaken);
+		System.out.println("[reacher-figure-segment] reacher-idle " + first + "-" + framesTaken);
 
 		// The head: the hat and the empty bracket, a block off and a little above, with the pod's light close by.
 		look(at(new Vec3(7.3, 3.8, 0.9)), at(LIT).add(0.3, 2.3, 0));
 		settle();
-		screenshot(ctx, concept.id() + "-head");
+		screenshot(ctx, "reacher-head");
 
 		// Beside a miner, for scale, side-on across the chamber.
 		stand(LIT, TOWARD_POD);
@@ -259,14 +246,14 @@ public class FigureConceptsScenario extends EvidenceScenario {
 		ctx.waitTicks(2); // tick-wait: the miner's skin and place reach the client
 		look(at(new Vec3((LIT.x + MINER.x) / 2, 2.3, 3.6)), at(new Vec3((LIT.x + MINER.x) / 2, 2.2, 0.5)));
 		settle();
-		screenshot(ctx, concept.id() + "-scale");
+		screenshot(ctx, "reacher-scale");
 		int minerId = miner.player().getId();
 		serverDo(server -> miner.leave());
 		ClientWait.until(ctx, "the miner gone from the client", client -> client.level.getEntity(minerId) == null);
 	}
 
 	/** The pod's lights go out and the camera sees by night vision: the figure may walk without a light on it, and still be seen. */
-	private void darkenForWalks() {
+	private void darkenForWalk() {
 		serverDo(server -> {
 			((PodEntity) layer(server).getEntity(podId)).setStranded(true);
 			server.getPlayerList().getPlayers().getFirst().addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false));
@@ -276,10 +263,9 @@ public class FigureConceptsScenario extends EvidenceScenario {
 
 	/**
 	 * The figure with its AI on walks across the chamber from one wall toward the other, seen from the far end: far enough off that it does
-	 * not fade for a player near it, and in the dark so it does not fade for a light. Its walk is the walk of the concept's animation file.
+	 * not fade for a player near it, and in the dark so it does not fade for a light. Its walk is the walk of the animation file.
 	 */
-	private void walk(FigureConcept concept) {
-		draw(concept);
+	private void walk() {
 		serverDo(server -> {
 			LamplessFigure figure = (LamplessFigure) layer(server).getEntity(figureId);
 			figure.setPos(at(WALK_START));
@@ -294,12 +280,61 @@ public class FigureConceptsScenario extends EvidenceScenario {
 			frame(ctx);
 			framesTaken++;
 		}
-		System.out.println("[figure-concepts-segment] " + concept.id() + "-walk " + first + "-" + framesTaken);
+		System.out.println("[reacher-figure-segment] reacher-walk " + first + "-" + framesTaken);
 		serverDo(server -> ((LamplessFigure) layer(server).getEntity(figureId)).setNoAi(true));
 	}
 
-	private EntityRenderer<?, ?> renderer(Minecraft client) {
-		return client.getEntityRenderDispatcher().getRenderer(client.level.getEntity(figureId));
+	/** The pod's lights come back on and the night vision goes: the camera sees as a player does. */
+	private void lightForFade() {
+		serverDo(server -> {
+			((PodEntity) layer(server).getEntity(podId)).setStranded(false);
+			server.getPlayerList().getPlayers().getFirst().removeEffect(MobEffects.NIGHT_VISION);
+		});
+		settle();
+	}
+
+	/**
+	 * The figure with its AI on walks out of the dark end of the chamber toward the pod, seen from behind the pod, 9 blocks off at the start
+	 * (past the 8 at which a player's nearness fades it). Where the lamp's light reaches it, it fades. The frames run from before the fade
+	 * to the figure's end, one frame a tick, with a still at a fifth, a half and four fifths of the fade.
+	 */
+	private void fade() {
+		serverDo(server -> {
+			LamplessFigure figure = (LamplessFigure) layer(server).getEntity(figureId);
+			figure.setPos(at(FADE_START));
+			figure.setHeading(Direction.WEST);
+			figure.setNoAi(false);
+		});
+		look(at(new Vec3(0.9, 3.7, 0.5)), at(EDGE).add(0, 1.4, 0));
+		settle();
+		int first = framesTaken + 1;
+		boolean[] shot = new boolean[3];
+		float[] at = {0.2f, 0.5f, 0.8f};
+		String[] names = {"reacher-fade-early", "reacher-fade-half", "reacher-fade-late"};
+		for (int i = 0; i < FADE_FRAMES_LIMIT; i++) {
+			ctx.waitTick(); // tick-wait: the fade is cut at one frame a tick
+			frame(ctx);
+			framesTaken++;
+			float fade = ctx.computeOnClient(client -> client.level.getEntity(figureId) instanceof LamplessFigure f ? f.fadeFraction() : 1f);
+			boolean gone = ctx.computeOnClient(client -> !(client.level.getEntity(figureId) instanceof LamplessFigure));
+			for (int k = 0; k < at.length; k++) {
+				if (!shot[k] && fade >= at[k]) {
+					screenshot(ctx, names[k]);
+					shot[k] = true;
+				}
+			}
+			if (gone) {
+				for (int tail = 0; tail < FADE_LEAD_FRAMES; tail++) {
+					ctx.waitTick(); // tick-wait: the empty chamber after the fade
+					frame(ctx);
+					framesTaken++;
+				}
+				System.out.println("[reacher-figure-segment] reacher-fade " + first + "-" + framesTaken);
+				screenshot(ctx, "reacher-fade-gone");
+				return;
+			}
+		}
+		throw new AssertionError("the figure had not faded out " + FADE_FRAMES_LIMIT + " frames after it set off");
 	}
 
 	/** A point in the chamber as a world position. */
