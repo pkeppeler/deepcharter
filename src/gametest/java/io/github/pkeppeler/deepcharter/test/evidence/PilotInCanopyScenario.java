@@ -60,7 +60,7 @@ public class PilotInCanopyScenario extends EvidenceScenario {
 					new Shot("front-three-quarter", new Vec3(2.6, 2.6, 1.6), new Vec3(0, 1.45, -0.4)),
 					new Shot("side-close", new Vec3(2.6, 2.0, -0.4), new Vec3(0, 1.6, -0.4)))),
 			new Subject("prospector", PodRegistry.PROSPECTOR, List.of(
-					new Shot("front-three-quarter", new Vec3(3.4, 3.2, 1.9), new Vec3(0, 1.9, -0.55)),
+					new Shot("front-three-quarter", new Vec3(3.4, 2.5, 1.9), new Vec3(0, 1.7, -0.55)),
 					new Shot("side-close", new Vec3(3.4, 2.5, -0.55), new Vec3(0, 2.0, -0.55)))));
 
 	@Override

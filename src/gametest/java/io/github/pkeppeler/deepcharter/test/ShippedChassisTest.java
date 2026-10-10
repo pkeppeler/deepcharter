@@ -22,7 +22,7 @@ public class ShippedChassisTest {
 	}
 
 	/**
-	 * The sizes are literals, so a change to one is a change to this test and to the table in mechanics.md. The ladder (ADR 0042): each
+	 * The sizes are literals, so a change to one is a change to this test and to the table in mechanics.md. The ladder (ADR 0043): each
 	 * chassis of {@link Chassis#all()} is wider than the one before it, and so has more cells in a slab and in the bore a sideways step cuts.
 	 */
 	@GameTest
