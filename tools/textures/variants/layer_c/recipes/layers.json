@@ -1,0 +1,688 @@
+{
+  "recipes": {
+    "block/lc_core": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "fill",
+          "colour": "void"
+        }
+      ]
+    },
+    "block/lc_stone_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4",
+            "f": "shale1.5"
+          },
+          "rows": [
+            "abccccdddddbddea",
+            "abccccbfdbddddea",
+            "adccccddddbbddba",
+            "abccccddbdddddba",
+            "abccccddddbddbba",
+            "adbbbbcdbdcdddea",
+            "aeddbebcbcbbeefa",
+            "abddddceeccfbefa",
+            "abdffbccecceeeba",
+            "aeddddccccceeeba",
+            "aeddbcccccedfefa",
+            "adaccccfddcdddea",
+            "adccccddddddddea",
+            "abccccddddddddca",
+            "abccccdddddbddea",
+            "abccccddddddddea"
+          ]
+        }
+      ]
+    },
+    "block/lc_stone_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4",
+            "f": "shale1.5"
+          },
+          "rows": [
+            "abedccccccadedda",
+            "abedcceaaccdedda",
+            "abedccccccabedba",
+            "adedcccccacdedba",
+            "adedcccccccbcdda",
+            "abefcccccacdedba",
+            "abedeacdddcdedda",
+            "adedccfddffdedda",
+            "adfbbbdddfddedba",
+            "abedccbbbbdbedba",
+            "afedcacdddcfbfda",
+            "adebcceccccdedda",
+            "abedcccccccdedda",
+            "adedcccccccdedda",
+            "adedccccccadedda",
+            "abedcccccccdedda"
+          ]
+        }
+      ]
+    },
+    "block/lc_stone_2": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4",
+            "f": "shale1.5"
+          },
+          "rows": [
+            "accdedccdbedccba",
+            "abcdcfccddebccba",
+            "abcdedccbbedccca",
+            "abcdedccddcdcaca",
+            "accdedccbdedccca",
+            "abcdedccddcdccca",
+            "abcdedaeddedccba",
+            "adddefccdffdccda",
+            "afbbebeaddfdccda",
+            "adddedcbbbedccda",
+            "abededacfdedcbba",
+            "accdefccddedccba",
+            "abcdedccddedccca",
+            "accdedccddedacca",
+            "accdedccdbedccca",
+            "abcbedccddedccca"
+          ]
+        }
+      ]
+    },
+    "block/lc_stone_end": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4"
+          },
+          "rows": [
+            "aaaaaaaaaaaaaaaa",
+            "abbbbbbbbbbbbbbb",
+            "abaaaeddddeaaaba",
+            "abaeaeeeeedaaaba",
+            "abeceaeeeedaaaba",
+            "abbbceaeeddeaaba",
+            "abbbbbeaedddaaba",
+            "abbbbbbaaeddaaba",
+            "abbbbbbeaaedaaba",
+            "abbbbbbbaaaeeaba",
+            "abbbbbbbeaaaaaba",
+            "abbbbbbbbeaaaaba",
+            "abaebbbbbaaaaaba",
+            "abaaeaaaaaaaaaba",
+            "abbbbbbbbbbbbbbb",
+            "abaaaaaaaaaaaaba"
+          ]
+        }
+      ]
+    },
+    "block/lc_cobble_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4"
+          },
+          "rows": [
+            "aaaaaaaaaaaaaaaa",
+            "abbbbbbbbbbbbbbb",
+            "abcccceaedddddba",
+            "abccccceaedddaba",
+            "abccccccaaaaaaba",
+            "abccccccaeeeeaba",
+            "abaecccaeccccaba",
+            "abeaaaaeddcccaba",
+            "abbeeaedddcccaba",
+            "abbbbaedddccceba",
+            "abbbbaeddcccccba",
+            "abbbbaecccccccba",
+            "abbbbaaaaaaaaaba",
+            "abbbaeeeeeeeeeba",
+            "abbbbbbbbbbbbbbb",
+            "abaaaaaaaaaaaaba"
+          ]
+        }
+      ]
+    },
+    "block/lc_cobble_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4"
+          },
+          "rows": [
+            "aaaaaaaaaaaaaaaa",
+            "abbbbbbbbbbbbbbb",
+            "abcccceaedddddba",
+            "abccccceaedddaba",
+            "abccccccaaaaaaba",
+            "abccccccaeeeeaba",
+            "abaecccaecccdaba",
+            "abeaaaaecccddaba",
+            "abbeeaeccccddaba",
+            "abbbbaeccccddeba",
+            "abbbbaecccccddba",
+            "abbbbaecccccccba",
+            "abbbbaaaaaaaaaba",
+            "abbbaeeeeeeeeeba",
+            "abbbbbbbbbbbbbbb",
+            "abaaaaaaaaaaaaba"
+          ]
+        }
+      ]
+    },
+    "block/lc_cobble_end": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4"
+          },
+          "rows": [
+            "aaaaaaaaaaaaaaaa",
+            "abbbbbbbbbbbbbbb",
+            "abcccceaedddddba",
+            "abccccceaedddaba",
+            "abccccccaaaaaaba",
+            "abccccccaeeeeaba",
+            "abaecccaeccccaba",
+            "abeaaaaecccccaba",
+            "abbeeaeccccccaba",
+            "abbbbaecccccceba",
+            "abbbbaecccccccba",
+            "abbbbaecccccccba",
+            "abbbbaaaaaaaaaba",
+            "abbbaeeeeeeeeeba",
+            "abbbbbbbbbbbbbbb",
+            "abaaaaaaaaaaaaba"
+          ]
+        }
+      ]
+    },
+    "block/lc_deepslate_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.1",
+            "c": "shale2.2",
+            "d": "shale2.3",
+            "e": "shale2.4",
+            "f": "shale2.5"
+          },
+          "rows": [
+            "adcdeeddcdeeedca",
+            "abcdeeddcdeeedba",
+            "abcdecddcdeeedba",
+            "adcdeeddcdeeedba",
+            "adbdebddcdeeedaa",
+            "abedfebdbdbbefca",
+            "abcdeeddcdeeedca",
+            "abcdeeddcdeeedba",
+            "adedeeddcdeeedba",
+            "abcdeeddcdecedca",
+            "adcdceddcdceedca",
+            "abcdeefdcdffedca",
+            "abcdeedfcdceedca",
+            "abcdeeddcbeeedca",
+            "abcdeeddcdeeedba",
+            "adcdeeddcdeecdba"
+          ]
+        }
+      ]
+    },
+    "block/lc_deepslate_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.1",
+            "c": "shale2.2",
+            "d": "shale2.3",
+            "e": "shale2.4",
+            "f": "shale2.5"
+          },
+          "rows": [
+            "adeddeeeedcccdba",
+            "adeddeeeedcccdea",
+            "adedbeeeedcccdba",
+            "abeddeeeedcccdba",
+            "abeddeeeedcccdea",
+            "adefdfeeebccedea",
+            "abeddeeeedcccdba",
+            "abeddeeeedcccdea",
+            "abefdeeeedcccdea",
+            "aeeddeeeedaccdba",
+            "abebbbeeedcacdea",
+            "adeddeefbdeecdfa",
+            "abeddefeedcacbea",
+            "abeddeeecdcccdea",
+            "adeddeeeedcccdba",
+            "abeddeeeedcccbba"
+          ]
+        }
+      ]
+    },
+    "block/lc_deepslate_2": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.1",
+            "c": "shale2.2",
+            "d": "shale2.3",
+            "e": "shale2.4",
+            "f": "shale2.5"
+          },
+          "rows": [
+            "abddedcdedcccdba",
+            "aedbedcdedcccdba",
+            "aeddedcbedcccdea",
+            "aeddedcdedcccdba",
+            "abddedcdaaccadea",
+            "abddededfdaccdba",
+            "aeddedcefecccdea",
+            "abdbbbcefecccdea",
+            "aeddedcebbbccdea",
+            "abddedceaacccbea",
+            "aeddedaedecccdba",
+            "abddfdcdffcccfea",
+            "abddefcdcdcccdba",
+            "aeddedcdedcacdba",
+            "abdbedcdaacccdea",
+            "abbdedcdedcccdca"
+          ]
+        }
+      ]
+    },
+    "block/lc_deepslate_end": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.1",
+            "c": "shale2.2",
+            "d": "shale2.3",
+            "e": "shale2.4"
+          },
+          "rows": [
+            "aaaaaaaaaaaaaaaa",
+            "abbbbbbbbbbbbbbb",
+            "abddddeaedddaaba",
+            "abdddddeaaaaeeba",
+            "abeeedddaeeeddba",
+            "abdddddaedddddba",
+            "abdddddaedddddba",
+            "abedddaaaaaaaaba",
+            "abaeddaaaaeeeeba",
+            "abeaeaaeeeccccba",
+            "abceaaecccccccba",
+            "abcaeaecccccccba",
+            "abaedeaaaeccccba",
+            "abedddaeedaaaaba",
+            "abbbbbbbbbbbbbbb",
+            "abaaaaaaaaaaaaba"
+          ]
+        }
+      ]
+    },
+    "block/lc_cobbled_deepslate_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.1",
+            "c": "shale2.3",
+            "d": "shale2.4"
+          },
+          "rows": [
+            "aaaaaaaaaaaaaaaa",
+            "abbbbbbbbbbbbbbb",
+            "abcccccadcaadbba",
+            "abdcccaadcadbbba",
+            "abdccaaadadbbbba",
+            "abdcaaaaadbbbbba",
+            "abaaaaaaadbbbbba",
+            "abadddddadbbbbba",
+            "abdcccccdadbbbba",
+            "abcccccccdaadbba",
+            "abccccccccddaaba",
+            "abcccccddddddaba",
+            "abccccddddddddba",
+            "abdccccdddddcaba",
+            "abbbbbbbbbbbbbbb",
+            "abaaaaaaaaaaaaba"
+          ]
+        }
+      ]
+    },
+    "block/lc_cobbled_deepslate_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.1",
+            "c": "shale2.3",
+            "d": "shale2.4"
+          },
+          "rows": [
+            "aaaaaaaaaaaaaaaa",
+            "abbbbbbbbbbbbbbb",
+            "abcccccadcaadbba",
+            "abdcccaadcadbbba",
+            "abdcdaaadadbbbba",
+            "abdcaaaaadbbbbba",
+            "abaaaaaaadbbbbba",
+            "abadddddadbbbbba",
+            "abdcccccdadbbbba",
+            "abcccccccdaadbba",
+            "abccccccdcddaaba",
+            "abccccccdddddaba",
+            "abccccccddddddba",
+            "abdccccccddddaba",
+            "abbbbbbbbbbbbbbb",
+            "abaaaaaaaaaaaaba"
+          ]
+        }
+      ]
+    },
+    "block/lc_cobbled_deepslate_end": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.1",
+            "c": "shale2.3",
+            "d": "shale2.4"
+          },
+          "rows": [
+            "aaaaaaaaaaaaaaaa",
+            "abbbbbbbbbbbbbbb",
+            "abcccccadcaadbba",
+            "abdcccaadcadbbba",
+            "abdccaaadadbbbba",
+            "abdcaaaaadbbbbba",
+            "abaaaaaaadbbbbba",
+            "abadddddadbbbbba",
+            "abdcccccdadbbbba",
+            "abcccccccdaadbba",
+            "abccdcccccddaaba",
+            "abdddcccccccdaba",
+            "abdddccccccccdba",
+            "abddcccccccccaba",
+            "abbbbbbbbbbbbbbb",
+            "abaaaaaaaaaaaaba"
+          ]
+        }
+      ]
+    },
+    "block/lc_company_rock_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "brass.1",
+            "b": "brass.2",
+            "c": "brass.4",
+            "d": "brass.5",
+            "e": "hazard.3",
+            "f": "plug.0",
+            "g": "plug.1",
+            "h": "plug.2",
+            "i": "plug.3",
+            "j": "plug.4",
+            "k": "plug.5"
+          },
+          "rows": [
+            "fjkjjkijjhjjijif",
+            "fgkjjjikejjjijkf",
+            "fjikjjijejjjikkf",
+            "fjkijjijejjjikgf",
+            "fgkkjhijjjjjikgf",
+            "fgkkjjijjhjjiigf",
+            "fjgigjijjjjjikkf",
+            "dddddddddddddddd",
+            "cccaccccccccaccc",
+            "bbbbbbbbbbbbbbbb",
+            "fgkkjjijjjjjikkf",
+            "fjikjjijjjjjikgf",
+            "fgkkjjijjjjjikgf",
+            "fjkkjjijjjjjikgf",
+            "fgkkjkijjjjjikkf",
+            "fgkjjjijjjjkijkf"
+          ]
+        }
+      ]
+    },
+    "block/lc_company_rock_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "brass.1",
+            "b": "brass.2",
+            "c": "brass.4",
+            "d": "brass.5",
+            "e": "hazard.3",
+            "f": "plug.0",
+            "g": "plug.1",
+            "h": "plug.2",
+            "i": "plug.3",
+            "j": "plug.4",
+            "k": "plug.5"
+          },
+          "rows": [
+            "fgkjjkkkjikjjigf",
+            "fjijjjkkekkjjiif",
+            "fgijjikkekkkjigf",
+            "fgijhkkkekkkjigf",
+            "fjgjjkkkjkkkjigf",
+            "fjijjkkkjkikjigf",
+            "fgijhkkkjkkkjiif",
+            "dddddddddddddddd",
+            "cccaccccccccaccc",
+            "bbbbbbbbbbbbbbbb",
+            "fjggggkkjkkkjigf",
+            "fgijjikgggkgjigf",
+            "fjijjkkkjkkkgggf",
+            "fgijjkkkjkkkjiif",
+            "fjkjjkkkjkkkjiif",
+            "fgijjjkkjkkjkiif"
+          ]
+        }
+      ]
+    },
+    "block/lc_company_rock_end": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "plug.0",
+            "b": "plug.1",
+            "c": "plug.2",
+            "d": "plug.3",
+            "e": "plug.4"
+          },
+          "rows": [
+            "aaaaaaaaaaaaaaaa",
+            "abbbbbbbbbbbbbbb",
+            "abdaeeeeeeeaaeba",
+            "abdaeeeeeeeaeeba",
+            "abdaeeeeeeeaedba",
+            "abdaeeeeeeeaedba",
+            "abdaeddeeeeeaeba",
+            "abaaeddeeeeaaaba",
+            "abaaedddeaaaeeba",
+            "abeaeddaaaaaecba",
+            "abbeaaaaaaaaebba",
+            "abbbaaeeaaaaaeba",
+            "abbaaaaeeeaaaeba",
+            "abaaaeaeeeeeaeba",
+            "abbbbbbbbbbbbbbb",
+            "abaaaaaaaaaaaaba"
+          ]
+        }
+      ]
+    },
+    "block/lc_crust_side": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "crust.0",
+            "b": "crust.2",
+            "c": "crust.3",
+            "d": "crust.4",
+            "e": "crust.5"
+          },
+          "rows": [
+            "eccccaaaebbaaaee",
+            "ccccceaaaaaeeecc",
+            "ccccccaeaaaecccc",
+            "cccccaaeeaaecccc",
+            "cccccaeddeaaeccc",
+            "cccccaedddeaeccc",
+            "ccccaedddddeaecc",
+            "ccccaeddddddaaec",
+            "ecccaedddddaaaaa",
+            "aaeaeddddddaaeea",
+            "aaaaeddddaaeebbe",
+            "eeaaeddaaaebbbbb",
+            "bbeaeaaaaaebbbbb",
+            "bbbaaaaaaebbbbbb",
+            "aaaaaaaaaebbbbbb",
+            "aeeeeaaaebbbbbaa"
+          ]
+        }
+      ]
+    },
+    "block/lc_crust_top": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "crust.0",
+            "b": "crust.2",
+            "c": "crust.3",
+            "d": "crust.4",
+            "e": "crust.5"
+          },
+          "rows": [
+            "eccccaaaebbaaaee",
+            "ccccceaaaaaeeecc",
+            "ccccccaeaaaecccc",
+            "cccccaaeeaaecccc",
+            "cccccaeddeaaeccc",
+            "cccccaedddeaeccc",
+            "ccccaedddddeaecc",
+            "ccccaeddddddaaec",
+            "ecccaedddddaaaaa",
+            "aaeaeddddddaaeea",
+            "aaaaeddddaaeebbe",
+            "eeaaeddaaaebbbbb",
+            "bbeaeaaaaaebbbbb",
+            "bbbaaaaaaebbbbbb",
+            "aaaaaaaaaebbbbbb",
+            "aeeeeaaaebbbbbaa"
+          ]
+        }
+      ]
+    },
+    "block/lc_crust_seam_glow": {
+      "kind": "cutout",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "lavaglow.3",
+            "b": "lavaglow.4"
+          },
+          "rows": [
+            ".......a...aba..",
+            "......bbaab.....",
+            "......a.ab......",
+            ".....bb..ab.....",
+            ".....a....ab....",
+            ".....a.....b....",
+            "....a...........",
+            "....b.......ba..",
+            "....a......a.bab",
+            "aa.........a...a",
+            "bbba.....bb.....",
+            "...a...ba.......",
+            "...b.abbb.......",
+            "...bbbb.........",
+            "abbaaabbb.......",
+            "a....abb......b."
+          ]
+        }
+      ],
+      "glow": {
+        "over": "block/lc_crust_top"
+      }
+    }
+  }
+}

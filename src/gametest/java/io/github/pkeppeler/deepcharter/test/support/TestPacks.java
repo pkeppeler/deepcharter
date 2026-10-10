@@ -26,10 +26,17 @@ public final class TestPacks implements ModInitializer {
 	public static final String TEXTURE_DENSITY_C = "texture_density_c";
 	/** Texture density D: B, with crystals and a glint standing out of every ore. */
 	public static final String TEXTURE_DENSITY_D = "texture_density_d";
+	/** The layer concepts (#241, docs/design/layer-concepts.md): the rock, Company Rock and breach crust of layers 1 and 2 as A, Strata. */
+	public static final String LAYER_CONCEPT_A = "layer_concept_a";
+	/** Layer concept B, Fractured. */
+	public static final String LAYER_CONCEPT_B = "layer_concept_b";
+	/** Layer concept C, Columnar. */
+	public static final String LAYER_CONCEPT_C = "layer_concept_c";
 
 	@Override
 	public void onInitialize() {
-		for (String pack : new String[] {AMBER_CRT, BAD_CRT, RED_INK, TEXTURE_DENSITY_B, TEXTURE_DENSITY_C, TEXTURE_DENSITY_D}) {
+		for (String pack : new String[] {AMBER_CRT, BAD_CRT, RED_INK, TEXTURE_DENSITY_B, TEXTURE_DENSITY_C, TEXTURE_DENSITY_D,
+				LAYER_CONCEPT_A, LAYER_CONCEPT_B, LAYER_CONCEPT_C}) {
 			ResourceLoader.registerBuiltinPack(Identifier.fromNamespaceAndPath("deepcharter-test", pack),
 					FabricLoader.getInstance().getModContainer("deepcharter-test").orElseThrow(),
 					Component.literal(pack + " (test pack)"), PackActivationType.NORMAL);

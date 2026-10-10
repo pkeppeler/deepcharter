@@ -25,8 +25,10 @@ ORES_DOC = texgen.ROOT / "docs/design/ores.md"
 # The one vanilla file the mod ships: the sky's sun (ADR 0030). Anything else under assets/minecraft/ overrides vanilla art the mod
 # promised not to touch, an ore's host stone first.
 VANILLA_FILES = {"textures/environment/celestial/sun.png"}
-# The vanilla blocks a pack may redraw: layer rock is vanilla stone until it has blocks of its own (#241).
-VANILLA_BLOCKSTATES = {"minecraft/blockstates/stone.json"}
+# The vanilla blocks a pack may redraw: layer rock is vanilla stone until it has blocks of its own (#241). The layer concept packs
+# (docs/design/layer-concepts.md) stand in vanilla cobblestone for layer 1's rubble, and deepslate and cobbled deepslate for layer 2's rock.
+VANILLA_BLOCKSTATES = {"minecraft/blockstates/stone.json", "minecraft/blockstates/cobblestone.json", "minecraft/blockstates/deepslate.json",
+                       "minecraft/blockstates/cobbled_deepslate.json"}
 
 
 def resolve(pack_assets: Path, ref: str, kind: str, suffix: str) -> Path | None:

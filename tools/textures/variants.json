@@ -1,5 +1,5 @@
 {
-  "description": "The texture test packs of round 1, b to d, of issue 336 (docs/design/texture-density.md). Each is a test pack that only its evidence scenario turns on; the mod's own textures are variant A. Paths are from the repo root; a variant's palettes merge over the default palette, and its recipe directories load over the default ones, in order. D loads B's recipes before its own, so B's rock and ores feed D: a change to B changes D's pack too. A variant may also have overlays (host, textures, blocks): each ore block then draws the host block's own texture, by reference, with the pack's cutout overlay over it, so no vanilla texture is copied or replaced. The mod's own ores are built that way from tools/textures/overlays.json (docs/design/ores.md), and no variant uses overlays now.",
+  "description": "The texture test packs of round 1, b to d, of issue 336 (docs/design/texture-density.md), and layer_a to layer_c of the layer concepts of issue 241 (docs/design/layer-concepts.md; their recipes, models and scenes are written by tools/layer_concepts/make.py). Each is a test pack that only its evidence scenario turns on; the mod's own textures are variant A. Paths are from the repo root; a variant's palettes merge over the default palette, and its recipe directories load over the default ones, in order. D loads B's recipes before its own, so B's rock and ores feed D: a change to B changes D's pack too. A variant may also have overlays (host, textures, blocks): each ore block then draws the host block's own texture, by reference, with the pack's cutout overlay over it, so no vanilla texture is copied or replaced. The mod's own ores are built that way from tools/textures/overlays.json (docs/design/ores.md), and no variant uses overlays now.",
   "variants": {
     "b": {
       "palettes": [],
@@ -15,6 +15,21 @@
       "palettes": [],
       "recipes": ["tools/textures/variants/b/recipes", "tools/textures/variants/d/recipes"],
       "pack": "src/gametest/resources/resourcepacks/texture_density_d"
+    },
+    "layer_a": {
+      "palettes": ["tools/textures/variants/layers/palette.json"],
+      "recipes": ["tools/textures/variants/layer_a/recipes"],
+      "pack": "src/gametest/resources/resourcepacks/layer_concept_a"
+    },
+    "layer_b": {
+      "palettes": ["tools/textures/variants/layers/palette.json"],
+      "recipes": ["tools/textures/variants/layer_b/recipes"],
+      "pack": "src/gametest/resources/resourcepacks/layer_concept_b"
+    },
+    "layer_c": {
+      "palettes": ["tools/textures/variants/layers/palette.json"],
+      "recipes": ["tools/textures/variants/layer_c/recipes"],
+      "pack": "src/gametest/resources/resourcepacks/layer_concept_c"
     }
   }
 }
