@@ -29,7 +29,7 @@ or `...-as-played` show what a player sees; the other layer stills use night vis
 | Dimensions | 3 (surface, layer 1, layer 2); 6 zones in 6 layer biomes and 3 surface biomes |
 | Custom blocks | 24 (7 ores, 2 hazards, breach crust, conduit, Company lamp, note, 6 terminals, 5 surface blocks) |
 | Block textures | 55, all 16 x 16 frames, generated from recipes (`tools/textures/`); 7 animated; 77 block-state variants |
-| Items | 66 (42 with a 16 x 16 sprite, 24 block items) |
+| Items | 67 (43 with a 16 x 16 sprite, 24 block items) |
 | Entities | 3 types (Mole, Prospector, lampless figure); looks: 2 pods, 1 wreck look, 1 derelict, 1 figure |
 | Structures | 14 colony structure files (the square with the Host, the terminal plinths, the streets, the Works, the headframe, the hoist house, the hangar, the Continuity Office, the chapel, the bunkhouse, the two offices, the Lamp and Pick, and the Host's hands) placed from one layout file, the Conduit, and 7 layer structure kinds; the colony kit of 24 blocks and 12 signs they are built from |
 | Screens | 10 shot (handbook, offline terminal, fuel pump, ore processor, upgrade, repair station, hangar console, contract, pod cargo, vanilla inventory), 1 not reachable (CRT demo) |
@@ -187,6 +187,7 @@ All item textures in one sheet (nearest-neighbour, 5 times scale; alphabetical o
 | Ironium | `ironium` | Ore (what drilling gives; sold at the processor) | `main/ore/OreType.java` | `textures/item/ironium.png` (16x16) | **(a)** `assets/deepcharter/textures/item/ironium.png` |
 | Matter Transmitter | `matter_transmitter` | Consumable | `main/repair/Consumable.java` | `textures/item/matter_transmitter.png` (16x16) | **(a)** `assets/deepcharter/textures/item/matter_transmitter.png` |
 | Ore Feeder | `ore_feeder` | Terminal repair part | `main/terminal/TerminalParts.java` | `textures/item/ore_feeder.png` (16x16) | **(a)** `assets/deepcharter/textures/item/ore_feeder.png` |
+| Breach brace part | `part_brace` | Pod part (one item per component track; tier is data on the stack) | `main/upgrade/ComponentItems.java` | `textures/item/part_brace.png` (16x16, a brass frame round a steel plate crossed by a brace, a hazard strip below) | **(a)** `assets/deepcharter/textures/item/part_brace.png` |
 | Cargo bay part | `part_cargo_bay` | Pod part (one item per component track; tier is data on the stack) | `main/upgrade/ComponentItems.java` | `textures/item/part_cargo_bay.png` (16x16) | **(a)** `assets/deepcharter/textures/item/part_cargo_bay.png` |
 | Drill part | `part_drill` | Pod part (one item per component track; tier is data on the stack) | `main/upgrade/ComponentItems.java` | `textures/item/part_drill.png` (16x16) | **(a)** `assets/deepcharter/textures/item/part_drill.png` |
 | Engine part | `part_engine` | Pod part (one item per component track; tier is data on the stack) | `main/upgrade/ComponentItems.java` | `textures/item/part_engine.png` (16x16) | **(a)** `assets/deepcharter/textures/item/part_engine.png` |
@@ -473,7 +474,7 @@ Swap **(c)**. Prices are data-like tuning in `main/ore/OreType.java:12-18`.
 
 ### Upgrade Terminal screen
 
-Source `client/upgrade/UpgradeScreen.java`. The eleven part tracks of the parked pod (the seep sounder, #373, is the last).
+Source `client/upgrade/UpgradeScreen.java`. The twelve part tracks of the parked pod (the breach brace, #378, is the last).
 
 ![screen-upgrade-terminal-online](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/screen-upgrade-terminal-online.png?raw=true)
 
@@ -523,7 +524,7 @@ The inventory screen is vanilla, unchanged (the item gallery stills show it). Sw
 ### Pod status HUD
 
 Top left, while riding a pod: four white lines of plain text in the vanilla font ("Hull 70/100", "Fuel 61%", "Cargo 2", "Y 77"), and
-"STRANDED" when stranded, and a red "HULL BURNING" line while lava burns the hull (`podBurningColor` in `theme/hud.json`). A pod with a seep sounder (#373) adds magenta lines (`podSounderColor`): "SEEPAGE 3" (slabs down to a gas pocket under the pod), "BLEEDING SEEPAGE" while the drill waits on a pocket, and "SEEPAGE BESIDE E S" for the sides a sidestep would meet one on (tier 2). No frame, no icons. Source `client/pod/PodStatusHud.java` (the source calls it "Plain text readout... the real HUD design comes later").
+"STRANDED" when stranded, and a red "HULL BURNING" line while lava burns the hull (`podBurningColor` in `theme/hud.json`). A pod with a seep sounder (#373) adds magenta lines (`podSounderColor`): "SEEPAGE 3" (slabs down to a gas pocket under the pod), "BLEEDING SEEPAGE" while the drill waits on a pocket, and "SEEPAGE BESIDE E S" for the sides a sidestep would meet one on (tier 2). Every pod gets an amber line (`podHardLandingColor`) when its hull would not outlast the breach crust (#378): "CRUST 7 DOWN  HULL 20, IT TAKES 24", or "IN THE CRUST ..." once in it. A pod with a breach brace adds "BRACE WAITS  STOP THE DRILL", "BRACING  BURNING ORE FOR HULL" or "BRACE HAS NO ORE TO BURN". No frame, no icons. Source `client/pod/PodStatusHud.java` (the source calls it "Plain text readout... the real HUD design comes later").
 Vanilla: **no**. Swap **(c)** `PodStatusHud.java:23` (colour), `:54-56` (layout).
 
 ![hud-pod-status-and-altimeter-surface](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hud-pod-status-and-altimeter-surface.png?raw=true) ![hud-pod-in-third-person-surface](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hud-pod-in-third-person-surface.png?raw=true)
