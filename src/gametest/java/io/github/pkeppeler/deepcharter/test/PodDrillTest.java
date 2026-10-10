@@ -1,6 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import java.util.List;
+import java.util.function.BiConsumer;
+import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -10,6 +12,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
@@ -25,7 +28,9 @@ import io.github.pkeppeler.deepcharter.pod.PodDrill;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
+import io.github.pkeppeler.deepcharter.pod.PodTowing;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
+import io.github.pkeppeler.deepcharter.pod.TowTuning;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -45,6 +50,7 @@ public class PodDrillTest {
 	private static final int DRILL_MARGIN_TICKS = 1000;
 	private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + DRILL_MARGIN_TICKS;
 	private static final int Z = 3000;
+	private static final int FLOOR = 60;
 	private static final float EAST = -90f;
 
 	private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
@@ -455,6 +461,154 @@ public class PodDrillTest {
 			}
 			rig.pod.discard();
 			helper.succeed();
+		});
+	}
+
+	/** Drill ticks a pod spends on its slab before it is moved. */
+	private static final int HALF_SLAB = 10;
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void progressIsLostWhenAPodIsTeleportedOneBlockOffItsSlabAndBack(GameTestHelper helper) {
+		boreInterruptedBy(helper, 3768, "drill-teleport-one",
+				(pod, x) -> pod.setPos(x + 1.3, FLOOR, Z), (pod, x) -> {
+					pod.setPos(x, FLOOR, Z);
+					return true;
+				});
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void progressIsLostWhenAPodIsTeleportedTwoBlocksOffItsSlabAndBack(GameTestHelper helper) {
+		boreInterruptedBy(helper, 3832, "drill-teleport-two",
+				(pod, x) -> pod.setPos(x + 2.3, FLOOR, Z), (pod, x) -> {
+					pod.setPos(x, FLOOR, Z);
+					return true;
+				});
+	}
+
+	/** A shove is a collision-checked move of the pod, as a push from another body would make. */
+	@GameTest(maxTicks = MAX_TICKS)
+	public void progressIsLostWhenAPodIsPushedOffItsSlabAndBack(GameTestHelper helper) {
+		boreInterruptedBy(helper, 3896, "drill-pushed",
+				(pod, x) -> pod.move(MoverType.SELF, new Vec3(1.3, 0, 0)),
+				(pod, x) -> {
+					pod.move(MoverType.SELF, new Vec3(-1.3, 0, 0));
+					return true;
+				});
+	}
+
+	/**
+	 * A cable is put on the drilling pod, its tower pulls it off its slab and back, and the cable comes off. A towed pod never counts
+	 * as on the ground (the cable holds it still), so the drill stops, and the pod starts its slab over.
+	 */
+	@GameTest(maxTicks = MAX_TICKS)
+	public void progressIsLostWhenATowedPodIsPulledOffItsSlabAndBack(GameTestHelper helper) {
+		double trail = TowTuning.DEFAULT.trailDistance();
+		ServerLevel level = layer(helper, 1);
+		int x = 3960;
+		room(level, x, FLOOR, 4);
+		PodEntity[] tower = {null};
+		int[] backTicks = {0};
+		boreInterruptedBy(helper, level, x, "drill-towed", pod -> {
+		}, (pod, at) -> {
+			tower[0] = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+			tower[0].setPos(at + 1.3 + trail, FLOOR, Z);
+			level.addFreshEntity(tower[0]);
+			PodTowing.attach(tower[0], pod);
+		}, (pod, at) -> {
+			// The cable pulls the pod at the end of its next tick; the tick after that it is let go.
+			if (backTicks[0]++ == 0) {
+				tower[0].setPos(at - trail, FLOOR, Z);
+				return false;
+			}
+			PodTowing.detach(pod);
+			return true;
+		}, () -> tower[0].discard());
+	}
+
+	/** The control: a nudge inside the block keeps the same slab, so the bore keeps what it had and takes one drill time in all. */
+	@GameTest(maxTicks = MAX_TICKS)
+	public void progressIsKeptWhenAPodIsNudgedWithinItsSlab(GameTestHelper helper) {
+		int x = 4024;
+		ServerLevel level = layer(helper, 1);
+		room(level, x, FLOOR, 4);
+		int needed = expectedTicks(level, FLOOR - 1);
+		Rig rig = Rig.await(helper, level, new Vec3(x, FLOOR, Z), 0f, "drill-nudged", SPRINT);
+		int[] started = {-1};
+		boolean[] nudged = {false};
+		helper.onEachTick(() -> {
+			if (!rig.ready()) {
+				return;
+			}
+			PodEntity pod = rig.pod;
+			if (started[0] < 0 && pod.drilling()) {
+				started[0] = pod.tickCount;
+			}
+			if (started[0] < 0) {
+				return;
+			}
+			if (!nudged[0] && pod.tickCount - started[0] >= HALF_SLAB) {
+				pod.setPos(x + 0.3, FLOOR, Z + 0.3);
+				nudged[0] = true;
+			}
+			if (nudged[0] && count(level, x - 1, x, FLOOR - 1, FLOOR - 1, Z - 1, Z, Blocks.AIR) == 4) {
+				int ticks = pod.tickCount - started[0];
+				// Centring again takes a few ticks of its own; starting over would add HALF_SLAB ticks to that.
+				if (ticks > needed + HALF_SLAB / 2) {
+					throw failure(helper, "a nudge inside the slab restarted the bore: it took %d ticks from the first drill tick, one drill time is %d", ticks, needed);
+				}
+				pod.discard();
+				helper.succeed();
+			}
+		});
+	}
+
+	private static void boreInterruptedBy(GameTestHelper helper, int x, String name,BiConsumer<PodEntity, Integer> away, BiPredicate<PodEntity, Integer> back) {
+		ServerLevel level = layer(helper, 1);
+		room(level, x, FLOOR, 4);
+		boreInterruptedBy(helper, level, x, name, pod -> {
+		}, away, back, () -> {
+		});
+	}
+
+	/**
+	 * A pod drills the slab under it for {@link #HALF_SLAB} ticks, is moved {@code away} to a slab it does not face (not centred on
+	 * it), and one tick later is moved {@code back}. Drill progress follows the slab being bored, whatever moved the pod, so the
+	 * slab it faced at first takes a whole drill time again from the tick the pod is back.
+	 */
+	private static void boreInterruptedBy(GameTestHelper helper, ServerLevel level, int x, String name, Consumer<PodEntity> prepare,
+			BiConsumer<PodEntity, Integer> away, BiPredicate<PodEntity, Integer> back, Runnable cleanup) {
+		int needed = expectedTicks(level, FLOOR - 1);
+		Rig rig = Rig.await(helper, level, new Vec3(x, FLOOR, Z), 0f, name, SPRINT, prepare);
+		int[] started = {-1};
+		int[] movedAt = {-1};
+		int[] backAt = {-1};
+		helper.onEachTick(() -> {
+			if (!rig.ready()) {
+				return;
+			}
+			PodEntity pod = rig.pod;
+			if (started[0] < 0 && pod.drilling()) {
+				started[0] = pod.tickCount;
+			}
+			if (started[0] < 0) {
+				return;
+			}
+			if (movedAt[0] < 0 && pod.tickCount - started[0] >= HALF_SLAB) {
+				away.accept(pod, x);
+				movedAt[0] = pod.tickCount;
+			} else if (movedAt[0] >= 0 && backAt[0] < 0 && pod.tickCount > movedAt[0] && back.test(pod, x)) {
+				backAt[0] = pod.tickCount;
+			}
+			if (count(level, x - 1, x, FLOOR - 1, FLOOR - 1, Z - 1, Z, Blocks.AIR) == 4 && backAt[0] >= 0) {
+				int ticks = pod.tickCount - backAt[0];
+				if (ticks < needed - 3) {
+					throw failure(helper, "the slab the pod faced was bored %d ticks after the pod was back on it, a whole slab needs %d: "
+							+ "progress from before it was moved carried over", ticks, needed);
+				}
+				pod.discard();
+				cleanup.run();
+				helper.succeed();
+			}
 		});
 	}
 

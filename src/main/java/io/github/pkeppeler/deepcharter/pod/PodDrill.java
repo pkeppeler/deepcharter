@@ -31,7 +31,7 @@ import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 public final class PodDrill {
 	private static final double ALIGNED = 1e-6;
 
-	/** Ticks spent on one slab; a different slab or direction starts over. */
+	/** Ticks spent on one slab; a different slab or direction starts over, as soon as the pod faces it. */
 	record Progress(Direction direction, BlockPos slabOrigin, int ticks) {
 		boolean continues(Direction direction, BlockPos slabOrigin) {
 			return this.direction == direction && this.slabOrigin.equals(slabOrigin);
@@ -58,6 +58,13 @@ public final class PodDrill {
 			return;
 		}
 		Slab slab = Slab.of(pod, wanted);
+		// Progress belongs to the slab it was made on. Judge that before the pod is centred: a pod that was moved off its slab (teleport,
+		// push, tow) and is still sliding onto the next one must not hold the old slab's ticks, or it could slide back and resume them.
+		Progress progress = pod.drillProgress();
+		if (progress != null && !progress.continues(wanted, slab.origin())) {
+			pod.setDrillProgress(null);
+			progress = null;
+		}
 		// Centre before judging the slab: a pod straddling a third column can see an all-air footprint, and
 		// sliding onto it (off a ledge, past a wall's edge) is how it reaches something to drill.
 		boolean centred = centre(pod, slab, stats);
@@ -73,8 +80,7 @@ public final class PodDrill {
 		if (!centred) {
 			return;
 		}
-		Progress progress = pod.drillProgress();
-		int ticks = progress != null && progress.continues(wanted, slab.origin()) ? progress.ticks() + 1 : 1;
+		int ticks = progress != null ? progress.ticks() + 1 : 1;
 		// A sounder that bleeds makes the drill wait before it bores a pocket; the blast then costs the pod at most a share of its hull (PodSounder).
 		if (ticks < slab.drillTicks(stats) + (slab.hasGasPocket() ? PodSounder.bleedPauseTicks(pod) : 0)) {
 			pod.setDrillProgress(new Progress(wanted, slab.origin(), ticks));
