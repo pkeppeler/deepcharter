@@ -16,6 +16,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.MenuScreens;
@@ -37,14 +38,20 @@ import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminalTuning;
 import io.github.pkeppeler.deepcharter.client.charter.terminal.ContractScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.ClientHandbook;
+import io.github.pkeppeler.deepcharter.client.handbook.ClientNotes;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookNote;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookPages;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreens;
+import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDemoScreen;
+import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
+import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
+import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
+import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.hangar.HangarView;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
@@ -60,6 +67,8 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.DrawnText;
+import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeView;
@@ -76,6 +85,11 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
  * each registered with {@code MenuScreens}. A terminal type that adds a feature, or a menu type, with no fixture below fails the test and
  * says so, so a new one cannot be skipped. Only the screens nothing registers are named by hand ({@link #standalone}), and
  * {@code tools/tests/test_screen_layout_gate.py} fails when a screen class is neither registered nor named in this file.
+ *
+ * <p>The text a screen draws itself ({@code graphics.text}, {@code CrtDraw.glowText}) is checked too (#411): {@link DrawnText} renders the screen
+ * once into a recorder, and each string must lie inside the screen (or inside a declared scroll region) and must not overlap an interactive widget. Text
+ * a widget draws on itself is the widget's, and is left out. A failure names the screen, the string and the overflow in pixels. The typewriters are
+ * finished first, so the full text is drawn.
  *
  * <p>No screen needs a scroll region declared: the repair station builds buttons for the rows that fit only, so its widgets are checked as they are.
  * The handbook is paged and the work order list pages, and each page is a variant here.
@@ -163,7 +177,11 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
 	private static void checkTheGateSeesAnOverflow(ClientGameTestContext context) {
 		List<String> problems = new ArrayList<>();
 		List<String> scrolled = new ArrayList<>();
+		List<String> drawn = new ArrayList<>();
 		context.runOnClient(client -> {
+			Screen text = new DrawnTextFixtureScreen();
+			text.init(WIDTH, HEIGHT);
+			drawn.addAll(problemsOf("text fixture", text, List.of()));
 			Screen screen = new OverflowFixtureScreen();
 			screen.init(WIDTH, HEIGHT);
 			problems.addAll(problemsOf("fixture", screen, List.of()));
@@ -171,12 +189,103 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
 			scrolling.init(WIDTH, HEIGHT);
 			scrolled.addAll(problemsOf("scroll fixture", scrolling, new Case("scroll fixture", ScrollFixtureScreen::new).scrolls(List.of(SCROLL_REGION)).scrollRegions()));
 		});
+		require(drawn.size() == 2, "the text fixture should give 2 problems (one string leaves the screen, one under a button; the button's own label and the string inside the screen are fine), got " + drawn);
+		require(drawn.get(0).contains("text fixture") && drawn.get(0).contains("text 'PAST THE EDGE'") && drawn.get(0).contains("px past the right edge"),
+				"a problem names the screen, the string and the overflow in pixels, got " + drawn.get(0));
+		require(drawn.get(1).contains("text 'UNDER'") && drawn.get(1).contains("overlaps 'ON ITS OWN'"),
+				"a problem names the string and the widget under it, got " + drawn.get(1));
+		List<String> overloads = new ArrayList<>();
+		List<String> scissored = new ArrayList<>();
+		context.runOnClient(client -> {
+			Screen all = new OverloadsFixtureScreen();
+			all.init(WIDTH, HEIGHT);
+			overloads.addAll(problemsOf("overloads fixture", all, List.of()));
+			Screen scissor = new ScissorFixtureScreen();
+			scissor.init(WIDTH, HEIGHT);
+			DrawnText.of(scissor).forEach(text -> scissored.add(text.text()));
+		});
+		require(overloads.size() == OVERLOAD_STRINGS.size(), "every overload of text and centeredText is recorded: expected " + OVERLOAD_STRINGS.size()
+				+ " problems, got " + overloads.size() + ": " + overloads);
+		for (String string : OVERLOAD_STRINGS) {
+			require(overloads.stream().anyMatch(problem -> problem.contains("text '" + string + "'") && problem.contains("past the right edge")),
+					"the string '" + string + "' past the edge is reported, got " + overloads);
+		}
+		require(scissored.equals(List.of("IN")), "a scissor under a translate is read in screen space: only 'IN' is inside it, got " + scissored);
 		require(problems.size() == 2, "the overflowing fixture should give 2 problems (one leaves the screen, one overlap), got " + problems);
 		require(problems.get(0).contains("fixture") && problems.get(0).contains("'WIDE'") && problems.get(0).contains("10 px past the right edge"),
 				"a problem names the screen, the widget and the overflow in pixels, got " + problems.get(0));
 		require(problems.get(1).contains("'WIDE' overlaps 'UNDER' by 20 x 10 px"), "an overlap names both widgets and the pixels, got " + problems.get(1));
 		require(scrolled.size() == 1 && scrolled.getFirst().contains("'OUT'") && scrolled.getFirst().contains("20 px past the right edge"),
 				"past the edge inside the scroll region passes, outside it fails: expected one problem, about 'OUT', got " + scrolled);
+	}
+
+	/** Text 20 pixels past the right edge, text on a button of its own, and a string inside the screen: only the first two are problems, and a button's own label is not. */
+	private static final class DrawnTextFixtureScreen extends Screen {
+		DrawnTextFixtureScreen() {
+			super(Component.literal("text fixture"));
+		}
+
+		@Override
+		protected void init() {
+			addRenderableWidget(new CrtButton(100, 100, 80, 20, Component.literal("ON ITS OWN"), button -> { }));
+		}
+
+		@Override
+		public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+			graphics.text(font, "FINE", 10, 10, 0xFFFFFFFF);
+			CrtDraw.glowText(graphics, font, "PAST THE EDGE", WIDTH - 20, 40, 0xFFFFFFFF);
+			graphics.text(font, "UNDER", 110, 105, 0xFFFFFFFF);
+			super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+		}
+	}
+
+	/** The strings {@link OverloadsFixtureScreen} draws, one for each overload of {@code text} and {@code centeredText} the recorder overrides. */
+	private static final List<String> OVERLOAD_STRINGS = List.of("S5", "S6", "F5", "F6", "C5", "C6", "K1", "K2", "K3");
+
+	/**
+	 * One string past the right edge through every overload the recorder overrides. If an update routes one of them around the recorder, the
+	 * gate goes blind to it, and the count of problems drops below {@link #OVERLOAD_STRINGS}.
+	 */
+	private static final class OverloadsFixtureScreen extends Screen {
+		OverloadsFixtureScreen() {
+			super(Component.literal("overloads fixture"));
+		}
+
+		@Override
+		public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+			int x = WIDTH - 5;
+			graphics.text(font, "S5", x, 10, 0xFFFFFFFF);
+			graphics.text(font, "S6", x, 30, 0xFFFFFFFF, false);
+			graphics.text(font, Component.literal("F5").getVisualOrderText(), x, 50, 0xFFFFFFFF);
+			graphics.text(font, Component.literal("F6").getVisualOrderText(), x, 70, 0xFFFFFFFF, false);
+			graphics.text(font, Component.literal("C5"), x, 90, 0xFFFFFFFF);
+			graphics.text(font, Component.literal("C6"), x, 110, 0xFFFFFFFF, false);
+			graphics.centeredText(font, "K1", WIDTH, 130, 0xFFFFFFFF);
+			graphics.centeredText(font, Component.literal("K2"), WIDTH, 150, 0xFFFFFFFF);
+			graphics.centeredText(font, Component.literal("K3").getVisualOrderText(), WIDTH, 170, 0xFFFFFFFF);
+		}
+	}
+
+	/**
+	 * A scissor drawn under a translation: vanilla pushes it transformed by the pose, so it covers x 100 to 140 on the screen. "IN" is drawn at
+	 * local x 0 (screen x 100, inside it) and stays; "OUT" at local x 100 (screen x 200, outside it) is clipped away. A scissor kept raw (0 to 40)
+	 * would drop "IN" and keep nothing.
+	 */
+	private static final class ScissorFixtureScreen extends Screen {
+		ScissorFixtureScreen() {
+			super(Component.literal("scissor fixture"));
+		}
+
+		@Override
+		public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+			graphics.pose().pushMatrix();
+			graphics.pose().translate(100f, 0f);
+			graphics.enableScissor(0, 50, 40, 90);
+			graphics.text(font, "IN", 0, 60, 0xFFFFFFFF);
+			graphics.text(font, "OUT", 100, 60, 0xFFFFFFFF);
+			graphics.disableScissor();
+			graphics.pose().popMatrix();
+		}
 	}
 
 	/** A button 10 pixels past the right edge, and two that overlap by 20 x 10 pixels. */
@@ -246,6 +355,13 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
 		for (int i = 0; i < interactive.size(); i++) {
 			ClientChecks.widgetOverlaps(interactive.get(i), interactive.subList(i + 1, interactive.size())).ifPresent(problem -> problems.add(name + ": " + problem));
 		}
+		finishTyping(screen);
+		for (Drawn drawn : DrawnText.of(screen)) {
+			if (scrollRegions.stream().noneMatch(region -> contains(region, drawn.box()))) {
+				DrawnText.leavesScreen(screen, drawn).ifPresent(problem -> problems.add(name + ": " + problem));
+			}
+			DrawnText.underWidget(drawn, interactive).ifPresent(problem -> problems.add(name + ": " + problem));
+		}
 		if (screen instanceof AbstractContainerScreen<?> container) {
 			int left = intField(container, "leftPos");
 			int top = intField(container, "topPos");
@@ -257,6 +373,20 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
 			}
 		}
 		return problems;
+	}
+
+	/** A typewriter draws the text it has revealed, so the layout is checked with all of it revealed. The screen keeps its typewriters in a private map. */
+	private static void finishTyping(Screen screen) {
+		if (!(screen instanceof CrtScreen)) {
+			return;
+		}
+		try {
+			Field field = CrtScreen.class.getDeclaredField("typewriters");
+			field.setAccessible(true);
+			((Map<?, ?>) field.get(screen)).keySet().forEach(writer -> ((Typewriter) writer).skip());
+		} catch (ReflectiveOperationException e) {
+			throw new AssertionError("CrtScreen has no field typewriters; the gate reads it by name", e);
+		}
 	}
 
 	private static boolean contains(Box region, Box box) {
@@ -393,22 +523,19 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
 	private static List<Case> standalone() {
 		List<Case> cases = new ArrayList<>();
 		cases.add(new Case("ui demo", CrtDemoScreen::new));
-		List<HandbookNote> notes = new ArrayList<>();
-		for (int number = 1; number <= 40; number++) {
-			notes.add(new HandbookNote(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "note_" + number), number,
-					Component.literal("A NOTE WITH A LONG TITLE " + number), Component.literal("A note of some length. ".repeat(40))));
-		}
+		// The notes the game ships, all found: the longest real one is what the page must hold.
+		List<HandbookNote> notes = Notes.all().stream().map(ClientNotes::entry).toList();
 		cases.add(new Case("handbook", () -> {
 			Minecraft client = Minecraft.getInstance();
 			Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();
 			HandbookChapters.all(client.getConnection().registryAccess()).forEach(chapter -> chapters.put(chapter.key().identifier(), chapter.value()));
 			return new HandbookScreen(HandbookPages.of(chapters, ClientHandbook.completed()), id -> true, id -> { }, notes);
-		}, handbookVariants(notes.size())));
+		}, handbookVariants(notes)));
 		return cases;
 	}
 
 	/** Every page of the handbook, then the Notes tab with its list and with a Note open. */
-	private static List<Variant> handbookVariants(int notes) {
+	private static List<Variant> handbookVariants(List<HandbookNote> notes) {
 		List<Variant> variants = new ArrayList<>();
 		variants.add(new Variant("every page", (context, screen) -> {
 			HandbookScreen handbook = (HandbookScreen) screen;
@@ -424,9 +551,18 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
 			context.runOnClient(client -> ((HandbookScreen) screen).showNotes());
 			return List.of();
 		}));
-		variants.add(new Variant("a note open", (context, screen) -> {
-			context.runOnClient(client -> ((HandbookScreen) screen).openNote(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "note_" + notes)));
-			return List.of();
+		variants.add(new Variant("every note open", (context, screen) -> {
+			HandbookScreen handbook = (HandbookScreen) screen;
+			List<String> problems = new ArrayList<>();
+			for (HandbookNote note : notes) {
+				context.runOnClient(client -> handbook.openNote(note.id()));
+				for (int sheet = 0; sheet < context.computeOnClient(client -> handbook.noteSheets()); sheet++) {
+					int turned = sheet;
+					context.runOnClient(client -> handbook.turnNote(turned));
+					problems.addAll(context.computeOnClient(client -> problemsOf("handbook / note " + note.number() + ", sheet " + (turned + 1), handbook, List.of())));
+				}
+			}
+			return problems;
 		}));
 		return variants;
 	}

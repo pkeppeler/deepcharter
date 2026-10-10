@@ -108,7 +108,7 @@ The bot is unrealistic in two opposite ways. It never reacts, which is harsh. It
 - **Spoil.** With a hopper the drill keeps one spoil for each block of waste rock it bores: the blocks in the tag `deepcharter:waste_rock` (stone and dirt). The bay holds 64, and a drill past that loses the rock, as it loses ore past a full cargo bay. Spoil is not cargo, so it takes no ore slot. It is a pod attachment (`PodLining.State`), and it cuts lift like ore does (0.1 mass each).
 - **Slag brick.** The processor's new button, MAKE SLAG BRICK, turns 2 spoil into 1 brick, for no money ([#363](#liner-bricks-363-a)), from every pod the charter may use that is parked at the processor. The bricks go to each pod's rack (32, 0.2 mass each) and, when a rack is full, to the buyer's pack (a stack is 64). It makes only the bricks that have a place to go. A brick is a plain full block, so lava neither flows into it nor replaces it. It drops itself when broken by hand. The drill bores it and gets nothing.
 - **Lining.** The key R, from the pilot's seat (`key.deepcharter.line_slab`). The pod places one brick every 8 ticks, and stops while it does: no drive, no climb, no drill (the pod keeps its power, its lights and its fuel burn). Another press stops it. The cells, in order: lava first, then open cells beside lava, then the rest, lowest first.
-  - The ring: the air and fluid cells beside the footprint (2 x 2 for a Mole), from the slab below the pod to the top of its box.
+  - The ring: the air and fluid cells beside the footprint (2 wide and 3 tall for a Mole since #400), from the slab below the pod to the top of its box.
   - The floor: lava in the footprint's cells in the slab below and the one under it. The drill bores no liquid, and the pod touches lava the moment it sinks onto it.
   - Never replaced: rock, ore, company rock, and a cell next to an unloaded chunk.
 - **Bricks used.** The rack first (if `PodComponents.mayAccess` lets the pilot use the pod's stores), then the pilot's pack. No brick is made by lining.
@@ -626,3 +626,74 @@ The no-brace columns were measured again on the merged code and give the sounder
 **What is per chassis, not derived.** The seat count and the best part tier (`Chassis`), the rider offsets (`PodRegistry`), the model, texture and cutter map (`assets/deepcharter/pod/<id>.json`), the restore price (`HangarTuning.restoreCosts`) and the handbook's story beats. A new chassis needs each of them, and each throws if it is missing.
 
 **Open questions.** Is a pod worth more than four times a Mole's ore per slab? The price, bay and tank of a bigger chassis are the knobs that decide it. And a 5-wide pod does not pass the hangar's bay door: the town's door is the largest chassis the game can have until the town grows.
+
+## Pod sizes for the cabs (#400)
+
+**Problem.** #382 put the pilot in a canopy inside the Mole's 1.9 x 1.9 box. The seat put the rider's feet below the pod's feet (a rider hangs 0.6 below its seat, the seat was 0.375 up), the rotor, mast and aerials lay low on the roof, one stack was cut and first person was mostly cutter and roof. The user's direction: the pod may be larger if that helps, and the hole may differ per pod ([Bore size and the economy](#bore-size-and-the-economy-399) made the size a number of the chassis). Which size?
+
+**Options.** From `EarlyRunModel` (stock stats, parts 2 / 2 / 2 for the layer 2 run, the hopper's mass aboard) and the formulas of #399. A "Mole" row is the Mole at that size; the Prospector row is for reference.
+
+| Size (bore) | Slab cells | Sideways step cells | Hand ring, bricks (`4 x W x (H+1)`) | Liner ring, bricks at tier 2 | Topsoil run: slabs / ores / net | Layer 2 run: slabs / ores / net | Prospector restores (runs) |
+|---|---|---|---|---|---|---|---|
+| 1.9 x 1.9 (2 x 2), the Mole before | 4 | 4 | 24 | 20 | 16 / 2.2 / $115 | 31 / 4.3 / $348 | 4 |
+| **1.9 x 2.9 (2 x 3), the pick** | 4 | 6 | 32 | 24 | 16 / 2.2 / $115 | 31 / 4.3 / $348 | 4 |
+| 1.9 x 3.9 (2 x 4) | 4 | 8 | 40 | 28 | 16 / 2.2 / $115 | 31 / 4.3 / $348 | 4 |
+| 2.9 x 2.9 (3 x 3) | 9 | 9 | 48 | 36 | 14 / 4.4 / $236 | 27 / 8.5 / $706 | 2 |
+| 2.9 x 2.9, the Prospector | 9 | 9 | 48 | 36 | 14 / 4.4 / $236 | 27 / 8.5 / $706 | 2 |
+
+- **Height is cheap in the economy; width is not.** Drill time, fuel and ore all read the slab (`W x W`), so a taller Mole earns exactly what the old one did and every `EarlyRunModel` pin holds. Height shows only in the sideways step, the lining ring and the sounder's side strips.
+- **3 x 3 is rejected.** A 3 x 3 Mole is a Prospector in the economy (2.25 times the ore per slab, twice the net of a run), the Prospector's restore would take 2 Mole runs and not 4, and the next chassis could only be 4 x 4, which is the colony's door size (4 x 4: [bays](#bore-size-and-the-economy-399)).
+- **2 x 4 is rejected.** A pilot's head is 30 pixels above the floor, so 2.9 holds the cab, the roof and the roof gear; the extra block is air that costs 8 more bricks a ring.
+- **The pick: 1.9 x 2.9.** The look is a capsule standing upright, pilot behind the canopy at eye level, feet on the floor. The ladder: Mole 2 x 3, Prospector 3 x 3: each is wider, with more cells in a slab, and no lower ([ADR 0043](../adr/0043-the-mole-is-tall-for-an-upright-pilot-and-the-ladder-is-the-bore-width.md)). The Prospector stays 2.9 x 2.9: raising its deck from 29 to 33 pixels fits under its 46.4, so a taller hitbox would only add lining cost.
+
+**The cabs.** Seat 0.6 up on every chassis: the rider's feet are on the pod's floor (`PodSeatsClientTest`). Mole: sill 17 pixels, glazing to 33, roof 33 to 35, two stacks (to 40 and 39) and two aerials (to 39), mast and rotor on the roof at 41 (blades above the stacks), model height 46.4. Prospector: sill 17, deck 33, roof to 39, stacks to 43 and 40, rotor at 44. `tools/pod_concepts.py` checks the models against the hitbox, the bore and the swing.
+
+**What the taller Mole costs: lava and gas columns.** `LavaBoreTest`, `DEEPCHARTER_LAVA_BORES=100`, seed 0, the same bot, world and columns as the [liner](#liner-339-a) and [seep sounder](#seep-sounder-373-a) tables. "Part" columns are liner 2 with a rack of 32 (and a pack of 64 where marked) and the sounder tier named. Deaths are by last cause: lava / gas / landing / crust. Hull is lost per bore, same order. Before: this build's parent, plain / liner columns re-run (they reproduced the earlier tables to the bore); the sounder columns are the figures of the [part against its target](#measured-the-part-against-its-target) table, which was not re-run on the parent. After: this build.
+
+| 100 bores | Reach layer 2 | Deaths | Hull lost per bore |
+|---|---|---|---|
+| No lining, before | 0 | 99 / 1 / 0 / 0 | 83.6 / 16.4 / 0 / 0 |
+| No lining, after | 0 | 98 / 2 / 0 / 0 | 84.8 / 15.2 / 0 / 0 |
+| Liner 2, 32, before | 5 | 39 / 41 / 0 / 15 | 24 / 72 / 0 / 2 |
+| Liner 2, 32, after | 6 (1 stalled) | 41 / 44 / 0 / 8 | 23.3 / 71.4 / 0 / 2.1 |
+| Liner 2, 32 + pack, before | 13 | 23 / 47 / 0 / 17 | 11 / 79 / 0 / 4 |
+| Liner 2, 32 + pack, after | 11 (1 stalled) | 16 / 57 / 0 / 15 | 7.1 / 83.4 / 0 / 4.0 |
+| Sounder 1, 32, before | 36 | 42 / 6 / 0 / 16 | 30 / 45 / 0 / 10 |
+| Sounder 1, 32, after | 16 (2 stalled) | 51 / 26 / 0 / 5 | 31.5 / 55.7 / 0 / 4.2 |
+| Sounder 2, 32, before | 46 | 37 / 7 / 0 / 10 | 31 / 33 / 0 / 12 |
+| Sounder 2, 32, after | 22 (1 stalled) | 50 / 18 / 0 / 9 | 36.8 / 45.8 / 0 / 6.3 |
+| Sounder 1, 32 + pack, before | 50 | 20 / 9 / 0 / 21 | 12 / 50 / 0 / 14 |
+| Sounder 1, 32 + pack, after | 30 (2 stalled) | 17 / 35 / 0 / 16 | 9.3 / 66.9 / 0 / 8.5 |
+| Sounder 2, 32 + pack, before | 60 | 18 / 10 / 0 / 12 | 14 / 36 / 0 / 16 |
+| Sounder 2, 32 + pack, after | 39 (1 stalled) | 21 / 24 / 0 / 15 | 13.1 / 55.1 / 0 / 11.0 |
+
+- **The columns without a sounder hardly move.** A pod without the part has no sidestep sight to lose: the plain and the liner rows move by a bore or two.
+- **The sounder rows lose 15 to 21 bores of reach. The cause is the exposure of a bigger sidestep, not the part.** Isolated on this build, with the Mole's height set back to 1.9 for the "before" runs (they reproduced the earlier tables to the bore), tier 1 and 2 with the pack:
+
+  | Per bore | Tier 1 + pack, before | Tier 1 + pack, after | Tier 2 + pack, before | Tier 2 + pack, after |
+  |---|---|---|---|---|
+  | Sidesteps | 13.8 | 12.8 | 13.3 | 12.6 |
+  | Steps aside from a pocket | 3.4 | 3.1 | 2.7 | 2.2 |
+  | Gas blasts, all / while sidestepping | 1.2 / 1.1 | 1.7 / 1.5 | 0.9 / 0.8 | 1.4 / 1.2 |
+  | Gas blasts while sidestepping, per sidestep | 0.080 | 0.117 (1.47 times) | 0.060 | 0.095 (1.58 times) |
+  | Hits over 20 hull from gas | 106 | 138 | 79 | 117 |
+
+  - **The bot does not sidestep more often** (13.8 to 12.8, 13.3 to 12.6), so a 6-cell slab refused whole is not the cause. Each sidestep meets a pocket about 1.5 times as often, which is the 6 cells over 4.
+  - **The part equals its bound in all four columns** (tier 1: 16 and 30, tier 2: 22 and 39 of 100). The bounds are the omniscient bots (`GAS=sounder1`, `GAS=sounder`). Before, they were 36 and 50, 46 and 60. So the part reads what it should. The omniscient bot also loses 20 points, because its sidestep meets more pockets and, at tier 2, more often finds all four sides marked and bores the pocket. No tuning of the sounder can pass its bound.
+  - Gas deaths go from 6 to 26 (tier 1) and 7 to 18 (tier 2) of 100 without the pack, and 9 to 35 and 10 to 24 with it. The parts still help: tier 2 with the pack reaches layer 2 in 39 bores of 100 against 11 with no part.
+- **The #373 bars are re-based, as an (A) decision.** A bar was the bound minus 5 reach (and plus 5 gas deaths and gas hull). The bounds moved, so the bars move with them:
+
+  | Column | Reach: old bar | Reach: new bar (bound minus 5) | Measured |
+  |---|---|---|---|
+  | Tier 1, rack 32 | 31 | 11 | 16 |
+  | Tier 1, rack 32 + pack | 45 | 25 | 30 |
+  | Tier 2, rack 32 | 41 | 17 | 22 |
+  | Tier 2, rack 32 + pack | 55 | 34 | 39 |
+
+  No cheap change brings the old bars back: a tier 1 `sideReach` of 1 would blur tier 1 into tier 2, and tier 2 is already at its omniscient bound. The exposure (lava touch, gas blast) is box physics and was not touched.
+- **The braced column** (`DEEPCHARTER_LAVA_BORES_BRACE=1`, tier 1 sounder, rack 32 + pack, on code with #403): 46 of 100 reach layer 2 (30 without the brace). Deaths lava / gas / landing / crust: 17 / 35 / 0 / 0; hull lost 11.0 / 68.9; 26 bores stopped to burn 2.6 ore each ($93) for hull. The brace takes away the crust deaths (16 without it) and leaves the gas ones.
+- **The harness's lead check** (`LavaBoreTest.check`) compared the whole lava body's lead with the scanner's reach. A taller pod meets bodies that stretch above it (bore 75 of the sounder 2 column read 62 slabs against a reach of 60), so it now reads the lava the pod touched. A touched block is at most the box's top row, `height - 1` above the feet, so that is what it adds to the reach (tier 1 and thermal both).
+
+**The economy pins.** `EarlyRunModel` and `EconomyAffordabilityTest` read the slab only, so none of their numbers move (Mole layer 2 run $348 net, Prospector restore 4 runs, tier prices). No pin was re-pinned.
+
+**Open questions.** What gives the Mole back some of the sidestep's exposure without the small cab (tier 1 `sideReach`, a 2-row sidestep, longer tier 2 strips, a cheaper bleed)? That is [#424](https://github.com/pkeppeler/deepcharter/issues/424).

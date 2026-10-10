@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
 
@@ -20,7 +21,10 @@ import io.github.pkeppeler.deepcharter.charter.terminal.ContractState;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractState.Role;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.client.charter.terminal.ContractScreen;
+import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreens;
+import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
+import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
@@ -35,10 +39,16 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 public class ContractTerminalClientTest implements FabricClientGameTest {
 	private static final String CHARTER = "Riggs and Sons";
 	private static final String MOCK_NAME = "MockPilot";
+	private static final int GUI_WIDTH = 427;
+	private static final int GUI_HEIGHT = 240;
+	/** The content margin of ContractScreen. */
+	private static final int MARGIN = 24;
+	private static final int LONG_NAME = 32;
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
 		ClientTestLog.start(this);
+		aLongCharterNameIsCutAndTheLineKeepsItsEnd(context);
 		try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
 			UUID mock = two.mock().player().getUUID();
 			BlockPos terminal = two.server().computeOnServer(server -> {
@@ -77,6 +87,27 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
 
 	private static ContractScreen screen(ClientGameTestContext context) {
 		return context.computeOnClient(client -> (ContractScreen) client.gui.screen());
+	}
+
+	/**
+	 * #411: a Director of a charter with a 32-character name of wide letters would have a status line wider than the screen. The name is cut
+	 * and ended in "...", the text after it survives, and a short name is left whole. ("..." and not one ellipsis character, which the terminal font may lack.)
+	 */
+	private static void aLongCharterNameIsCutAndTheLineKeepsItsEnd(ClientGameTestContext context) {
+		context.runOnClient(client -> {
+			TerminalView view = new TerminalView(BlockPos.ZERO, ContractTerminal.TYPE.id(), true, true, List.of(), Optional.empty());
+			ContractScreen screen = (ContractScreen) TerminalScreens.create(view);
+			screen.init(GUI_WIDTH, GUI_HEIGHT);
+			String name = "W".repeat(LONG_NAME);
+			screen.show(new ContractState(Role.DIRECTOR, name, List.of(), 0, List.of(), 7, Optional.empty()));
+			String line = screen.statusLine().getString();
+			require(line.startsWith("DIRECTOR OF W") && line.contains("...") && !line.contains(name), "a 32-letter name is cut and ended in '...', got '" + line + "'");
+			require(line.contains(". APPLICATIONS WAITING: 7."), "the text after the name survives the cut, got '" + line + "'");
+			require(CrtText.width(client.font, line) <= GUI_WIDTH - 2 * MARGIN, "the cut line fits the content width, '" + line + "' is " + CrtText.width(client.font, line));
+			require(screen.statusLine().getString().equals(line), "the second read of the line is the same");
+			screen.show(new ContractState(Role.DIRECTOR, "ACME", List.of(), 0, List.of(), 7, Optional.empty()));
+			require(screen.statusLine().getString().startsWith("DIRECTOR OF ACME. APPLICATIONS WAITING: 7."), "a short name is left whole, got '" + screen.statusLine().getString() + "'");
+		});
 	}
 
 	private static void type(ClientGameTestContext context, String name) {

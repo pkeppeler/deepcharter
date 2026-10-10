@@ -1,0 +1,36 @@
+{
+  "variants": {
+    "": [
+      {
+        "model": "deepcharter:block/lc_cobble_0"
+      },
+      {
+        "model": "deepcharter:block/lc_cobble_0",
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/lc_cobble_0",
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/lc_cobble_0",
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/lc_cobble_1"
+      },
+      {
+        "model": "deepcharter:block/lc_cobble_1",
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/lc_cobble_1",
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/lc_cobble_1",
+        "y": 270
+      }
+    ]
+  }
+}

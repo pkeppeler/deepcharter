@@ -21,6 +21,7 @@ import net.minecraft.client.resources.language.I18n;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
@@ -79,6 +80,8 @@ public class HandbookScreen extends Screen {
 	private boolean notesTab;
 	private Identifier openNote;
 	private int noteScroll;
+	/** The sheet of the open Note being read, from 0: a Note longer than one sheet runs on to the next. */
+	private int notePage;
 
 	private int paperLeft;
 	private int paperTop;
@@ -229,6 +232,7 @@ public class HandbookScreen extends Screen {
 		}
 		notesTab = true;
 		openNote = note;
+		notePage = 0;
 		if (noteUnread(note) && reported.add(note)) {
 			onViewed.accept(note);
 		}
@@ -292,7 +296,39 @@ public class HandbookScreen extends Screen {
 		back = addRenderableWidget(new PaperButton(textLeft, buttonY, tuning().buttonWidth(), tuning().buttonHeight(),
 				Component.translatable("deepcharter.handbook.screen.back"), button -> goTo(page - 1)));
 		next = addRenderableWidget(new PaperButton(paperLeft + paperWidth - tuning().padding() - tuning().buttonWidth(), buttonY, tuning().buttonWidth(), tuning().buttonHeight(),
-				Component.translatable("deepcharter.handbook.screen.next"), button -> goTo(page + 1)));
+				Component.translatable("deepcharter.handbook.screen.next"), button -> pressNext()));
+		// A resize can change how many sheets a Note takes, so the sheet that was on screen may be gone.
+		if (openNote != null) {
+			notePage = Mth.clamp(notePage, 0, noteSheets() - 1);
+		}
+		updateButtons();
+	}
+
+	/** The next button turns a page of the handbook, or a sheet of an open Note, and from the last sheet of a Note goes back to its first. */
+	private void pressNext() {
+		if (notesTab) {
+			turnNote((notePage + 1) % notePages(note(openNote)));
+		} else {
+			goTo(page + 1);
+		}
+	}
+
+	/** How many sheets the open Note takes, or 0 while no Note is open. */
+	public int noteSheets() {
+		return openNote == null ? 0 : notePages(note(openNote));
+	}
+
+	/** The sheet of the open Note on screen, from 0. */
+	public int noteSheet() {
+		return notePage;
+	}
+
+	/** Turns the open Note to sheet {@code sheet}, from 0, stopping at its first and last sheet. Does nothing while no Note is open. */
+	public void turnNote(int sheet) {
+		if (openNote == null) {
+			return;
+		}
+		notePage = Mth.clamp(sheet, 0, noteSheets() - 1);
 		updateButtons();
 	}
 
@@ -301,9 +337,9 @@ public class HandbookScreen extends Screen {
 			return;
 		}
 		back.visible = !notesTab;
-		next.visible = !notesTab;
+		next.visible = !notesTab || (openNote != null && notePages(note(openNote)) > 1);
 		back.active = !notesTab && page > 0;
-		next.active = !notesTab && page < pages.size() - 1;
+		next.active = notesTab || page < pages.size() - 1;
 		noteBack.visible = notesTab && openNote != null;
 		handbookTab.setSelected(!notesTab);
 		notesButton.setSelected(notesTab);
@@ -334,6 +370,14 @@ public class HandbookScreen extends Screen {
 		}
 		if (!notesTab && event.isRight()) {
 			goTo(page + 1);
+			return true;
+		}
+		if (notesTab && openNote != null && event.isLeft()) {
+			turnNote(Math.max(0, notePage - 1));
+			return true;
+		}
+		if (notesTab && openNote != null && event.isRight()) {
+			turnNote(Math.min(notePages(note(openNote)) - 1, notePage + 1));
 			return true;
 		}
 		return super.keyPressed(event);
@@ -597,10 +641,56 @@ public class HandbookScreen extends Screen {
 	}
 
 	private void drawNote(GuiGraphicsExtractor graphics, HandbookNote note) {
-		int y = PaperDraw.wrapped(graphics, font, tr("notes.label", label(note)), textLeft, paperTop + tuning().topMargin(), textWidth, tuning().faintInkColor());
-		y = PaperDraw.wrapped(graphics, font, note.title(), textLeft, y + 3, textWidth, tuning().inkColor());
-		graphics.fill(textLeft, y + 1, textLeft + textWidth, y + 2, Colors.opaque(tuning().inkColor()));
-		PaperDraw.wrapped(graphics, font, note.text(), textLeft, y + tuning().paragraphGap() + 2, textWidth, tuning().marginInkColor());
+		int pitch = font.lineHeight + 1;
+		List<FormattedCharSequence> body = noteBody(note);
+		int first = noteFirstSheetLines(note);
+		int start = notePage == 0 ? 0 : first + (notePage - 1) * noteLaterSheetLines();
+		int top = paperTop + tuning().topMargin();
+		int y = top;
+		if (notePage == 0) {
+			y = PaperDraw.wrapped(graphics, font, tr("notes.label", label(note)), textLeft, top, textWidth, tuning().faintInkColor());
+			y = PaperDraw.wrapped(graphics, font, note.title(), textLeft, y + 3, textWidth, tuning().inkColor());
+			graphics.fill(textLeft, y + 1, textLeft + textWidth, y + 2, Colors.opaque(tuning().inkColor()));
+			y += tuning().paragraphGap() + 2;
+		}
+		int count = notePage == 0 ? first : noteLaterSheetLines();
+		for (FormattedCharSequence line : body.subList(Math.min(start, body.size()), Math.min(body.size(), start + count))) {
+			graphics.text(font, line, textLeft, y, Colors.opaque(tuning().marginInkColor()), false);
+			y += pitch;
+		}
+		int sheets = notePages(note);
+		if (sheets > 1) {
+			graphics.centeredText(font, PaperDraw.ink(Component.translatable("deepcharter.handbook.screen.page", notePage + 1, sheets), tuning().faintInkColor()),
+					(next.getX() + noteBack.getRight()) / 2, noteBack.getY() + 3, Colors.opaque(tuning().faintInkColor()));
+		}
+	}
+
+	private List<FormattedCharSequence> noteBody(HandbookNote note) {
+		return font.split(PaperDraw.ink(note.text(), tuning().marginInkColor()), textWidth);
+	}
+
+	/** The y where the text of a Note starts on its first sheet: under the label, the title and the rule. */
+	private int noteBodyTop(HandbookNote note) {
+		int pitch = font.lineHeight + 1;
+		int labelEnd = paperTop + tuning().topMargin() + font.split(PaperDraw.ink(tr("notes.label", label(note)), tuning().faintInkColor()), textWidth).size() * pitch;
+		int titleEnd = labelEnd + 3 + font.split(PaperDraw.ink(note.title(), tuning().inkColor()), textWidth).size() * pitch;
+		return titleEnd + tuning().paragraphGap() + 2;
+	}
+
+	/** How many lines of a Note fit on its first sheet, which also holds the label and the title. At least one. */
+	private int noteFirstSheetLines(HandbookNote note) {
+		return Math.max(1, (bottom() - noteBodyTop(note)) / (font.lineHeight + 1));
+	}
+
+	/** How many lines fit on each later sheet of a Note, which has the whole sheet. At least one. */
+	private int noteLaterSheetLines() {
+		return Math.max(1, (bottom() - (paperTop + tuning().topMargin())) / (font.lineHeight + 1));
+	}
+
+	/** How many sheets a Note takes, so that none of its text runs past the buttons. */
+	private int notePages(HandbookNote note) {
+		int rest = Math.max(0, noteBody(note).size() - noteFirstSheetLines(note));
+		return 1 + (rest + noteLaterSheetLines() - 1) / noteLaterSheetLines();
 	}
 
 	/** Draws the rule under a page title that ends at {@code y}, and returns where the text below it starts. */

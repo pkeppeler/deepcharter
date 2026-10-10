@@ -1388,13 +1388,15 @@ public class LavaBoreTest {
 	 * crust under a shaft cut through whatever the seed made.
 	 */
 	private static void check(GameTestHelper helper, List<Bore> bores, boolean smoke) {
-		int reach = ScannerTuning.DEFAULT.tierOneArea().down() + ScannerTuning.DEFAULT.tierOneArea().up();
-		int thermalReach = ScannerTuning.DEFAULT.area(THERMAL_TIER).down() + ScannerTuning.DEFAULT.area(THERMAL_TIER).up();
+		// The lead is read for the lava the pod touched, not the whole body it belongs to, which can stretch any way above the pod. A touched
+		// block may be level with the top row of the pod's box, which is POD_HEIGHT - 1 above its feet, so the lead may exceed the scanner's reach by that.
+		int reach = ScannerTuning.DEFAULT.tierOneArea().down() + ScannerTuning.DEFAULT.tierOneArea().up() + POD_HEIGHT - 1;
+		int thermalReach = ScannerTuning.DEFAULT.area(THERMAL_TIER).down() + ScannerTuning.DEFAULT.area(THERMAL_TIER).up() + POD_HEIGHT - 1;
 		for (Bore bore : bores) {
-			if (bore.encounters.stream().anyMatch(e -> e.slabsShownAhead() > reach)) {
+			if (bore.encounters.stream().anyMatch(e -> e.contactCellsShownAhead() > reach)) {
 				throw helper.assertionException(Component.literal("bore " + bore.index + ": the scanner showed lava from farther than its reach of " + reach + " slabs, so the lead is mismeasured"));
 			}
-			if (bore.encounters.stream().anyMatch(e -> e.thermalSlabsShownAhead() > thermalReach)) {
+			if (bore.encounters.stream().anyMatch(e -> e.thermalContactCellsShownAhead() > thermalReach)) {
 				throw helper.assertionException(Component.literal("bore " + bore.index + ": the thermal scanner showed lava from farther than its reach of " + thermalReach + " slabs, so the lead is mismeasured"));
 			}
 			// The thermal tier's slice contains the tier 1 slice, so it marks every block that tier 1 shows as open space.
