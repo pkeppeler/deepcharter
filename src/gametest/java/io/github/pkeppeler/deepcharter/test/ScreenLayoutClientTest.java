@@ -11,8 +11,6 @@ import java.util.Optional;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -55,6 +53,7 @@ import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalFeature;
+import io.github.pkeppeler.deepcharter.terminal.TerminalFeatureProbe;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
@@ -237,7 +236,7 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
 		List<String> problems = new ArrayList<>();
 		for (AbstractWidget widget : ClientChecks.visibleWidgets(screen)) {
 			if (scrollRegions.stream().noneMatch(region -> contains(region, Box.of(widget)))) {
-				ClientChecks.widgetLeavesScreen(screen, widget).ifPresent(problem -> problems.add(name + ": " + problem));
+				ClientChecks.boxLeavesScreen(screen, ClientChecks.describe(widget), Box.of(widget)).ifPresent(problem -> problems.add(name + ": " + problem));
 			}
 			if (widget instanceof Button button) {
 				ClientChecks.labelClipped(button).ifPresent(problem -> problems.add(name + ": " + problem));
@@ -281,7 +280,7 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
 			if (!type.id().getNamespace().equals(DeepCharter.MOD_ID)) {
 				continue; // the gametest mod registers terminals of its own to test the framework
 			}
-			boolean registers = registersFeature(type);
+			boolean registers = TerminalFeatureProbe.registersFeature(type);
 			require(registers == features.containsKey(type), "terminal " + type.id()
 					+ (registers ? " adds a view feature but has no fixture in ScreenLayoutClientTest.features()" : " has a fixture there but registers no feature"));
 			List<TerminalView.PartStatus> missing = type.parts().stream().map(part -> new TerminalView.PartStatus(BuiltInRegistries.ITEM.getKey(part), false)).toList();
@@ -296,39 +295,19 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
 				cases.add(new Case(id + " offline, parts missing", () -> TerminalScreens.create(open)));
 			}
 			TerminalView online = new TerminalView(POS, type.id(), true, true, type.needsRepair() ? inserted : List.of(), Optional.ofNullable(features.get(type)));
+			List<Variant> variants = List.of();
 			if (type == ContractTerminal.TYPE) {
 				// The server's state arrives after the screen is open, so each role is a variant of the open screen.
-				List<Variant> roles = new ArrayList<>();
-				for (ContractState state : contractStates()) {
-					roles.add(new Variant("role " + state.role(), (context, screen) -> {
-						context.runOnClient(client -> ((ContractScreen) screen).show(state));
-						return List.of();
-					}));
-				}
-				cases.add(new Case(id + " online", () -> TerminalScreens.create(online), roles));
+				variants = contractStates().stream().<Variant>map(state -> new Variant("role " + state.role(), (context, screen) -> {
+					context.runOnClient(client -> ((ContractScreen) screen).show(state));
+					return List.of();
+				})).toList();
 			} else if (type == TerminalTypes.UPGRADE_TERMINAL) {
-				cases.add(new Case(id + " online", () -> TerminalScreens.create(online), upgradeTrackVariants()));
-			} else {
-				cases.add(new Case(id + " online", () -> TerminalScreens.create(online)));
+				variants = upgradeTrackVariants();
 			}
+			cases.add(new Case(id + " online", () -> TerminalScreens.create(online), variants));
 		}
 		return cases;
-	}
-
-	/**
-	 * True when the terminal type registered a view feature. {@code TerminalFeatures} offers no query, so this decodes a view that claims a feature:
-	 * a type with none refuses it with "registered none", and a type with one fails reading the feature that is not there.
-	 */
-	private static boolean registersFeature(TerminalType type) {
-		ByteBuf buffer = Unpooled.buffer();
-		TerminalView.STREAM_CODEC.encode(buffer, new TerminalView(POS, type.id(), true, true, List.of(), Optional.empty()));
-		buffer.setByte(buffer.writerIndex() - 1, 1);
-		try {
-			TerminalView.STREAM_CODEC.decode(buffer);
-		} catch (RuntimeException e) {
-			return e.getMessage() == null || !e.getMessage().contains("registered none");
-		}
-		throw new AssertionError("a view that claims a feature it does not carry decoded for " + type.id());
 	}
 
 	/** The contract terminal at each role, with the longest names and as many rows as it lists. */

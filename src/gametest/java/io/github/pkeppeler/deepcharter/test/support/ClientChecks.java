@@ -149,10 +149,6 @@ public final class ClientChecks {
 				+ " leaves the " + screen.width + " by " + screen.height + " screen: " + overflow);
 	}
 
-	public static Optional<String> widgetLeavesScreen(Screen screen, AbstractWidget widget) {
-		return boxLeavesScreen(screen, describe(widget), Box.of(widget));
-	}
-
 	/** The overlap is in pixels, width by height. */
 	public static Optional<String> widgetOverlaps(AbstractWidget widget, List<? extends AbstractWidget> widgets) {
 		Box box = Box.of(widget);
