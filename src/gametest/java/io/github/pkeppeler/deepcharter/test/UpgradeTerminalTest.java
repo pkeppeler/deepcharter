@@ -387,15 +387,41 @@ public class UpgradeTerminalTest {
 				double radius = TerminalTuning.DEFAULT.parkedRadius();
 				Vec3 centre = Vec3.atCenterOf(scene.terminal());
 				scene.pod().setPos(centre.x + radius + 0.1, centre.y, centre.z);
-				expectSame(helper, UpgradeTerminal.buy(helper.getLevel().getServer(), scene.player(), scene.terminal(), ComponentTrack.DRILL, 1),
-						Optional.of(UpgradeRefusal.NO_POD.message()), "a pod just outside the radius");
+				expectParked(helper, scene, false, "just outside");
 				scene.pod().setPos(centre.x + radius - 0.1, centre.y, centre.z);
-				expectDone(helper, buy(scene, ComponentTrack.DRILL, 1), "a pod just inside the radius");
+				expectParked(helper, scene, true, "just inside");
 				helper.succeed();
 			} finally {
 				clean(helper, scene);
 			}
 		});
+	}
+
+	/**
+	 * Checks that the scene's pod, where it is now, is or is not parked at the terminal. Another test's pod inside the radius
+	 * is not ours to move, and a terminal serves the nearest pod it may use, so the buy is checked only while no other pod is
+	 * there; the membership check holds either way. A failure names the measured distance, the radius and the other pods.
+	 */
+	private static void expectParked(GameTestHelper helper, Scene scene, boolean inside, String what) {
+		double radius = TerminalTuning.DEFAULT.parkedRadius();
+		Vec3 centre = Vec3.atCenterOf(scene.terminal());
+		double distance = scene.pod().position().distanceTo(centre);
+		List<PodEntity> parked = Terminals.parkedPods(helper.getLevel(), scene.terminal());
+		List<String> others = helper.getLevel().getEntitiesOfClass(PodEntity.class, new AABB(scene.terminal()).inflate(radius + 1),
+				pod -> pod != scene.pod()).stream().map(pod -> pod.position() + " " + pod.getUUID()).toList();
+		String context = "(distance " + distance + ", radius " + radius + ", other pods within " + (radius + 1) + ": " + others + ")";
+		if (parked.contains(scene.pod()) != inside) {
+			throw failure(helper, "a pod %s the radius should %sbe parked, parked: %s %s", what, inside ? "" : "not ", parked, context);
+		}
+		if (!others.isEmpty()) {
+			return;
+		}
+		if (inside) {
+			expectDone(helper, buy(scene, ComponentTrack.DRILL, 1), "a pod " + what + " the radius " + context);
+		} else {
+			expectSame(helper, UpgradeTerminal.buy(helper.getLevel().getServer(), scene.player(), scene.terminal(), ComponentTrack.DRILL, 1),
+					Optional.of(UpgradeRefusal.NO_POD.message()), "a pod " + what + " the radius " + context);
+		}
 	}
 
 	@GameTest
