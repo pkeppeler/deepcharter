@@ -390,6 +390,8 @@ public class LavaBoreTest {
 		int startBricks;
 		int startPack;
 		int endPack;
+		/** The bricks in the pilot's pack at the last tick the pilot was alive: a dead pilot's inventory is empty, which is not the same as bricks placed (#363). */
+		int lastPack;
 		/** Lava encounters that began with a lining asked for and not done (the pod was falling), just under a lining, and with none asked for. */
 		int unservedTouches;
 		int linedTouches;
@@ -563,6 +565,7 @@ public class LavaBoreTest {
 			if (bore.linerTier > 0 && REQUESTED_PACK != null && !REQUESTED_PACK.isBlank()) {
 				bore.startPack = positiveEnv(helper, PACK_ENV, REQUESTED_PACK, 0);
 				bore.pilot.player().getInventory().add(new ItemStack(SlagBrick.item(), bore.startPack));
+				bore.lastPack = bore.startPack;
 			}
 		}
 		bore.startY = feetY;
@@ -732,6 +735,9 @@ public class LavaBoreTest {
 			bore.linerAnchor = anchor.get();
 		}
 		bore.linerRanDry |= PodLining.of(pod).dry();
+		if (bore.pilot.player().isAlive()) {
+			bore.lastPack = packBricks(bore.pilot.player());
+		}
 	}
 
 	/** The bot: sprint down; on a refused slab, move two blocks to a side and sprint down again. */
@@ -987,7 +993,7 @@ public class LavaBoreTest {
 		bore.endHull = pod.hull();
 		bore.endPilotHealth = bore.pilot.player().getHealth();
 		bore.endBricks = PodLining.of(pod).bricks();
-		bore.endPack = packBricks(bore.pilot.player());
+		bore.endPack = bore.pilot.player().isAlive() ? packBricks(bore.pilot.player()) : bore.lastPack;
 	}
 
 	// ---- lava ----
@@ -1198,6 +1204,8 @@ public class LavaBoreTest {
 				PodLinerTuning.DEFAULT.tier(first.linerTier).linesWhileFalling() ? "lines in a fall" : "lines at rest only", first.startBricks, first.startPack);
 		LOGGER.info("[lava-bore] liner, rings per bore:         {}", distribution(liner, b -> b.linerRings));
 		LOGGER.info("[lava-bore] liner, bricks (not cells; tier 2 lays two cells a brick) placed per bore: {}", distribution(liner, b -> b.startBricks - b.endBricks + b.startPack - b.endPack));
+		LOGGER.info("[lava-bore] liner, bricks placed per bore by the bores that got through to layer 2: {}",
+				distribution(liner.stream().filter(b -> b.outcome == Outcome.SURVIVED).toList(), b -> b.startBricks - b.endBricks + b.startPack - b.endPack));
 		long outOfBrick = liner.stream().filter(b -> b.linerRanDry).count();
 		LOGGER.info("[lava-bore] liner, bores whose rack ran out: {} of {} ({})", outOfBrick, liner.size(), percent(outOfBrick, liner.size()));
 	}
