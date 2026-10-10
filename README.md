@@ -149,6 +149,8 @@ The engineering rules (code layout, tests, evidence, merging) are in the [deepch
 
 The pods are drawn with [GeckoLib](https://github.com/bernie-g/geckolib) 5.5.7 by Tslat and Gecko, MIT licence, "Copyright (c) 2026 GeckoLib". Its jar is bundled unchanged inside the mod's jar, with its own `LICENSE.txt`. The audit is [docs/tooling/geckolib-audit.md](docs/tooling/geckolib-audit.md).
 
+The terminal font is Unscii 2.1 (`unscii-8`) by Viznut, from [viznut.fi/unscii](https://viznut.fi/unscii/), in the public domain. The font file is in the mod's jar with its licence note, [`font/unscii-license.txt`](src/main/resources/assets/deepcharter/font/unscii-license.txt). The source, the licence and the sha256 are in [docs/design/terminal-concepts.md](docs/design/terminal-concepts.md#fonts).
+
 ## License
 
 [MIT](LICENSE). Data files copied from Minecraft (for example the vanilla material rule, ADR 0011) belong to Mojang and are not relicensed by this license.

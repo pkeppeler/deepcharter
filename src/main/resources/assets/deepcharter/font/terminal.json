@@ -1,8 +1,1 @@
-{
-  "providers": [
-    {
-      "type": "reference",
-      "id": "minecraft:default"
-    }
-  ]
-}
+{"providers": [{"type": "ttf", "file": "deepcharter:unscii-8.ttf", "size": 6.0, "oversample": 8.0, "shift": [0.0, 0.0]}]}

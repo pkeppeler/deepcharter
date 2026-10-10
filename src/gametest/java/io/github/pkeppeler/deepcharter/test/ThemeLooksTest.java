@@ -164,20 +164,29 @@ public class ThemeLooksTest {
 		helper.succeed();
 	}
 
-	/** The machine panel (#246 concept round): the mod ships it off and with every decal slot empty, so a terminal is the CRT it always was. */
+	/** The machine panel (#246): the mod ships Hatch, on, with the nameplate, the four decals and the pips in place. */
 	@GameTest
-	public void thePanelIsOffAndEmptyInTheDefaultTheme(GameTestHelper helper) {
+	public void thePanelIsOnInTheDefaultTheme(GameTestHelper helper) {
 		PanelLook look = PanelLook.of(area("panel", null));
-		if (look.enabled()) {
-			throw fail(helper, "the panel must be off in the mod's own theme");
+		if (!look.enabled()) {
+			throw fail(helper, "the panel must be on in the mod's own theme");
 		}
 		for (PanelLook.Decal decal : List.of(look.nameplate(), look.dressA(), look.dressB(), look.dressC(), look.dressD())) {
-			if (decal.on()) {
-				throw fail(helper, "a decal slot must be empty in the mod's own theme, got " + decal);
+			if (!decal.on()) {
+				throw fail(helper, "every decal slot is filled in the mod's own theme, got " + decal);
 			}
 		}
-		if (look.pipSize() != 0) {
-			throw fail(helper, "no pip in the mod's own theme, got " + look.pipSize());
+		if (look.pipSize() != 12) {
+			throw fail(helper, "Hatch's pip is 12 pixels, got " + look.pipSize());
+		}
+		helper.succeed();
+	}
+
+	/** A pack switches the panel off by naming one key, and the terminals are the plain CRT again. */
+	@GameTest
+	public void aPackSwitchesThePanelOff(GameTestHelper helper) {
+		if (PanelLook.of(area("panel", "{ \"enabled\": 0 }")).enabled()) {
+			throw fail(helper, "a pack that names enabled 0 turns the panel off");
 		}
 		helper.succeed();
 	}

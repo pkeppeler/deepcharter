@@ -9,32 +9,39 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
 
 import io.github.pkeppeler.deepcharter.client.charter.terminal.ContractScreen;
+import io.github.pkeppeler.deepcharter.client.fuel.FuelPumpScreen;
 import io.github.pkeppeler.deepcharter.client.hangar.HangarScreen;
 import io.github.pkeppeler.deepcharter.client.market.OreProcessorScreen;
 import io.github.pkeppeler.deepcharter.client.repair.RepairStationScreen;
+import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreen;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
-import io.github.pkeppeler.deepcharter.test.support.TerminalConceptScene.Scene;
+import io.github.pkeppeler.deepcharter.test.support.TerminalPanelScene.Contract;
+import io.github.pkeppeler.deepcharter.test.support.TerminalPanelScene.Scene;
 
-/** Opens the five screens of the terminal concept round on the real server, and waits until each has typed out its intro. */
-public final class TerminalConceptScreens {
+/** Opens the seven terminal screens on the real server, and waits until each has typed out its intro. */
+public final class TerminalPanelScreens {
 	/** The screens of the first world, by the id the stills use. */
-	public static final List<String> SCENE_SCREENS = List.of("hangar", "processor", "upgrade", "repair");
-	/** The screen of the second world. */
+	public static final List<String> SCENE_SCREENS = List.of("hangar", "processor", "upgrade", "repair", "pump");
+	/** The screens of the second world. */
 	public static final String CONTRACT = "contract";
+	public static final String GENERIC = "generic";
+	public static final List<String> CONTRACT_SCREENS = List.of(CONTRACT, GENERIC);
 
-	private TerminalConceptScreens() {
+	private TerminalPanelScreens() {
 	}
 
 	/** Opens the screen {@code id} at its terminal and waits until its intro has typed out and its content is there. Returns the screen. */
-	public static Screen open(ClientGameTestContext context, String id, Scene scene, BlockPos contract) {
+	public static Screen open(ClientGameTestContext context, String id, Scene scene, Contract contract) {
 		BlockPos at = switch (id) {
 			case "hangar" -> scene.hangar();
 			case "processor" -> scene.processor();
 			case "upgrade" -> scene.upgrade();
 			case "repair" -> scene.repair();
-			case CONTRACT -> contract;
+			case "pump" -> scene.pump();
+			case CONTRACT -> contract.contract();
+			case GENERIC -> contract.offline();
 			default -> throw new IllegalArgumentException("no terminal concept screen " + id);
 		};
 		Class<? extends Screen> type = switch (id) {
@@ -42,6 +49,8 @@ public final class TerminalConceptScreens {
 			case "processor" -> OreProcessorScreen.class;
 			case "upgrade" -> UpgradeScreen.class;
 			case "repair" -> RepairStationScreen.class;
+			case "pump" -> FuelPumpScreen.class;
+			case GENERIC -> TerminalScreen.class;
 			default -> ContractScreen.class;
 		};
 		context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(at)));
@@ -58,7 +67,9 @@ public final class TerminalConceptScreens {
 			case OreProcessorScreen processor -> done(processor.typewriter());
 			case UpgradeScreen upgrade -> done(upgrade.typewriter()) && upgrade.upgrade().flatMap(view -> view.pod()).isPresent();
 			case RepairStationScreen repair -> done(repair.typewriter());
+			case FuelPumpScreen pump -> done(pump.typewriter());
 			case ContractScreen contract -> done(contract.typewriter()) && contract.state().isPresent();
+			case TerminalScreen generic -> done(generic.typewriter());
 			default -> false;
 		};
 	}

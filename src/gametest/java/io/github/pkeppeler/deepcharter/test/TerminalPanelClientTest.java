@@ -10,10 +10,8 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Style;
 
-import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.hangar.HangarScreen;
 import io.github.pkeppeler.deepcharter.client.repair.RepairStationScreen;
@@ -22,88 +20,52 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
-import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
-import io.github.pkeppeler.deepcharter.test.support.TerminalConceptScene;
-import io.github.pkeppeler.deepcharter.test.support.TerminalConceptScene.Scene;
-import io.github.pkeppeler.deepcharter.test.support.TerminalConceptScreens;
-import io.github.pkeppeler.deepcharter.test.support.TestPacks;
+import io.github.pkeppeler.deepcharter.test.support.TerminalPanelScene;
+import io.github.pkeppeler.deepcharter.test.support.TerminalPanelScene.Contract;
+import io.github.pkeppeler.deepcharter.test.support.TerminalPanelScene.Scene;
+import io.github.pkeppeler.deepcharter.test.support.TerminalPanelScreens;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 /**
- * Client GameTest for the terminal concept round (#246). With no pack the panel is off: the screens draw as they always did and the terminal
- * font is the game's. With each panel pack, and each of the three fonts over it, every one of the five screens at the default window (427 x 240)
- * keeps each button and each line of text inside the panel's content rectangle, no button overlaps another, and no label is wider than its
- * button in the font that is drawn.
+ * Client GameTest for the terminal panel (#246). With no pack the panel is on and the terminal font is Unscii. Every one of the seven terminal
+ * screens at the default window (427 x 240) keeps each button and each line of text inside the panel's content rectangle, no button overlaps
+ * another, and no label is wider than its button in the font that is drawn.
  */
-public class TerminalConceptsClientTest implements FabricClientGameTest {
-	private static final List<String> PANELS = List.of(TestPacks.TERMINAL_SLAB, TestPacks.TERMINAL_CONSOLE, TestPacks.TERMINAL_RACK, TestPacks.TERMINAL_HATCH);
+public class TerminalPanelClientTest implements FabricClientGameTest {
 	/** The height the tallest screen (the upgrade terminal, the repair station) needs for its content. */
 	private static final int MIN_CONTENT_HEIGHT = 192;
 	private static final String SAMPLE = "ORE PROCESSOR ONLINE 0123456789";
-	private static final List<String> FONTS = List.of(TestPacks.TERMINAL_FONT_UNSCII, TestPacks.TERMINAL_FONT_VT323, TestPacks.TERMINAL_FONT_DEPARTURE);
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
 		ClientTestLog.start(this);
-		require(!context.computeOnClient(client -> PanelLook.current().enabled()), "the panel is off with no pack");
-		require(context.computeOnClient(client -> CrtText.style().equals(Style.EMPTY)), "the terminal text is the game's own font with no pack");
+		require(context.computeOnClient(client -> PanelLook.current().enabled()), "the panel is on with no pack");
+		require(context.computeOnClient(client -> !CrtText.style().equals(Style.EMPTY)), "the terminal font is in force with no pack");
+		// A font the game cannot load (a file name with a capital, a bad size) falls back to the missing-glyph font silently, so measure it.
+		require(context.computeOnClient(client -> CrtText.width(client.font, SAMPLE) != client.font.width(SAMPLE)),
+				"Unscii draws the sample text no wider or narrower than the game's own font: the font did not load");
 		List<String> problems = new ArrayList<>();
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			Scene scene = singleplayer.getServer().computeOnServer(TerminalConceptScene::setUp);
-			ClientWait.until(context, "the charter's account", client -> ClientCharter.view().map(charter -> charter.balance() == TerminalConceptScene.ACCOUNT).orElse(false),
+			Scene scene = singleplayer.getServer().computeOnServer(TerminalPanelScene::setUp);
+			ClientWait.until(context, "the charter's account", client -> ClientCharter.view().map(charter -> charter.balance() == TerminalPanelScene.ACCOUNT).orElse(false),
 					client -> "charter " + ClientCharter.view());
-			for (String screen : TerminalConceptScreens.SCENE_SCREENS) {
-				TerminalConceptScreens.open(context, screen, scene, null);
-				require(context.computeOnClient(client -> !PanelLook.current().enabled()), "still off while " + screen + " is open");
-				TerminalConceptScreens.close(context);
-			}
-			for (String panel : PANELS) {
-				ClientPacks.enable(context, panel);
-				try {
-					require(context.computeOnClient(client -> PanelLook.current().enabled()), panel + " switches the panel on");
-					for (String font : FONTS) {
-						ClientPacks.enable(context, font);
-						try {
-							require(context.computeOnClient(client -> !CrtText.style().equals(Style.EMPTY)), "the terminal font is in force with the panel on");
-							// A font the game cannot load (a file name with a capital, a bad size) falls back to the missing-glyph font silently, so measure it.
-							require(context.computeOnClient(client -> CrtText.width(client.font, SAMPLE) != client.font.width(SAMPLE)),
-									font + " draws the sample text no wider or narrower than the game's own font: the font did not load");
-								DeepCharter.LOGGER.info("[terminal-concepts] {}: '{}' is {} px, ten capital Ms {} px; the game's font: {} px and {} px", font, SAMPLE,
-										context.computeOnClient(client -> CrtText.width(client.font, SAMPLE)), context.computeOnClient(client -> CrtText.width(client.font, "MMMMMMMMMM")),
-										context.computeOnClient(client -> client.font.width(SAMPLE)), context.computeOnClient(client -> client.font.width("MMMMMMMMMM")));
-							for (String screen : TerminalConceptScreens.SCENE_SCREENS) {
-								Screen open = TerminalConceptScreens.open(context, screen, scene, null);
-								context.computeOnClient(client -> check(open, panel + " + " + font + ", " + screen, problems));
-								TerminalConceptScreens.close(context);
-							}
-						} finally {
-							ClientPacks.disable(context, font);
-						}
-					}
-				} finally {
-					ClientPacks.disable(context, panel);
-				}
+			for (String screen : TerminalPanelScreens.SCENE_SCREENS) {
+				Screen open = TerminalPanelScreens.open(context, screen, scene, null);
+				context.computeOnClient(client -> check(open, screen, problems));
+				TerminalPanelScreens.close(context);
 			}
 		}
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			BlockPos contract = singleplayer.getServer().computeOnServer(TerminalConceptScene::setUpContract);
-			for (String panel : PANELS) {
-				ClientPacks.enable(context, panel);
-				try {
-					ClientPacks.enable(context, TestPacks.TERMINAL_FONT_UNSCII);
-					Screen open = TerminalConceptScreens.open(context, TerminalConceptScreens.CONTRACT, null, contract);
-					context.computeOnClient(client -> check(open, panel + " + unscii, contract", problems));
-					TerminalConceptScreens.close(context);
-					ClientPacks.disable(context, TestPacks.TERMINAL_FONT_UNSCII);
-				} finally {
-					ClientPacks.disable(context, panel);
-				}
+			Contract contract = singleplayer.getServer().computeOnServer(TerminalPanelScene::setUpContract);
+			for (String screen : TerminalPanelScreens.CONTRACT_SCREENS) {
+				Screen open = TerminalPanelScreens.open(context, screen, null, contract);
+				context.computeOnClient(client -> check(open, screen, problems));
+				TerminalPanelScreens.close(context);
 			}
 		}
 		require(problems.isEmpty(), "screens that overflow their panel:\n" + String.join("\n", problems));
-		require(context.computeOnClient(client -> !PanelLook.current().enabled()), "the panel is off again once the packs are off");
 	}
 
 	/** Collects what leaves the content rectangle of the panel in force, or collides, on {@code screen}. Always returns null: it runs on the client thread. */
