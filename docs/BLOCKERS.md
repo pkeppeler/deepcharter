@@ -124,7 +124,7 @@ SPEC §7 says "later tiers reveal hazards". It does not say how the scanner show
 
 **For the user to know:**
 - The GameTests and CI accept the Minecraft EULA automatically (`eula = true`), because a dev or test server cannot start without it. PR #24 does the same for its template world.
-- The license is `All-Rights-Reserved` until you choose one, before the public release (M7).
+- The license is MIT. **Resolved 2026-10-09:** the user chose MIT ([#386](https://github.com/pkeppeler/deepcharter/issues/386)), and `fabric.mod.json` declares it.
 
 ## 2026-10-07: PR #24 (#4 play-test loop) failed review cycle 2
 
