@@ -32,7 +32,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 
 /**
- * The online screen of the ore processor: the price of each ore, the charter's account, the two "sell all" buttons and, beside the cargo one, the button that makes slag brick. A button
+ * The online screen of the ore processor: the price of each ore, the charter's account, the two "sell all" buttons and, at the foot of the price column, the button that makes slag brick. A button
  * only asks the server; the server decides, and the account shown is the one it last synced, so it changes when a sale goes through.
  */
 public final class OreProcessorScreen extends CrtScreen implements TerminalViewScreen {
@@ -98,14 +98,15 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 		int cargoY = inventoryY - GAP - BUTTON_HEIGHT;
 		addRenderableWidget(new CrtButton(left, cargoY, BUTTON_WIDTH, BUTTON_HEIGHT,
 				Component.translatable("screen.deepcharter.processor.sell_cargo"), button -> sell(OreProcessor.SELL_CARGO)));
-		addRenderableWidget(new CrtButton(rightColumn(), cargoY, Math.min(BUTTON_WIDTH, contentRight(MARGIN) - rightColumn()), BUTTON_HEIGHT,
+		// Not beside the cargo button: the prices run down the right column to there and past it, and a button on that row hides the last of them.
+		addRenderableWidget(new CrtButton(rightColumn(), closeY, Math.min(BUTTON_WIDTH, contentRight(MARGIN) - rightColumn()), BUTTON_HEIGHT,
 				Component.translatable("screen.deepcharter.processor.fuse"), button -> sell(OreProcessor.FUSE_SPOIL)));
 		layoutOrders(cargoY);
 	}
 
 	/**
 	 * The order rows sit above the cargo button, in the room between it and the account line, so their number is bounded by the
-	 * screen: as many rows as fit, at least one. The orders beyond a page are reached with the pager, under the prices.
+	 * screen: as many rows as fit, at least one. The orders beyond a page are reached with the pager, beside the heading, under the prices.
 	 */
 	private void layoutOrders(int cargoY) {
 		List<WorkOrdersView.Entry> listed = listedOrders();
@@ -124,11 +125,13 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 			rowY += ORDER_ROW_PITCH;
 		}
 		if (pages > 1) {
-			int pagerY = pricesBottom() + GAP * 2 + font.lineHeight + ORDER_GAP;
-			CrtButton previous = addRenderableWidget(new CrtButton(rightColumn(), pagerY, PAGER_WIDTH, BUTTON_HEIGHT,
+			// On the heading's row, after its text, so that the pager does not sit in the fuse button's row.
+			int pagerY = headingTop() + (font.lineHeight - BUTTON_HEIGHT) / 2;
+			int pagerX = Math.min(rightColumn() + CrtText.width(font, orderHeading()) + GAP * 2, contentRight(MARGIN) - 2 * PAGER_WIDTH - GAP);
+			CrtButton previous = addRenderableWidget(new CrtButton(pagerX, pagerY, PAGER_WIDTH, BUTTON_HEIGHT,
 					Component.literal("<"), button -> turnPage(-1)));
 			previous.active = page > 0;
-			CrtButton next = addRenderableWidget(new CrtButton(rightColumn() + PAGER_WIDTH + GAP, pagerY, PAGER_WIDTH, BUTTON_HEIGHT,
+			CrtButton next = addRenderableWidget(new CrtButton(pagerX + PAGER_WIDTH + GAP, pagerY, PAGER_WIDTH, BUTTON_HEIGHT,
 					Component.literal(">"), button -> turnPage(1)));
 			next.active = page < pages - 1;
 		}
@@ -162,6 +165,11 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 
 	private int pricesBottom() {
 		return accountTop() + OreType.values().length * (font.lineHeight + 2);
+	}
+
+	/** The y of the work order heading, under the prices. */
+	private int headingTop() {
+		return pricesBottom() + GAP * 2;
 	}
 
 	private Optional<WorkOrdersView> orders() {
@@ -241,7 +249,7 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 			// The rows are buttons; only the heading (or the reason there are none) is text.
 			List<String> lines = orderLines();
 			if (!lines.isEmpty()) {
-				CrtDraw.glowText(graphics, font, lines.getFirst(), x, y + GAP * 2, tuning.phosphorColor());
+				CrtDraw.glowText(graphics, font, lines.getFirst(), x, headingTop(), tuning.phosphorColor());
 			}
 		}
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
