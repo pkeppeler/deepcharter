@@ -46,7 +46,8 @@ public final class OrderRowButton extends Button {
 		PanelLook panel = PanelLook.current();
 		if (panel.enabled()) {
 			Font panelFont = Minecraft.getInstance().font;
-			int labelX = CrtDraw.panelButtonFace(graphics, panel, getX(), getY(), getWidth(), getHeight(), active, lit);
+			int labelX = CrtDraw.panelButtonFace(graphics, panel, getX(), getY(), getWidth(), getHeight(), active, lit,
+					Math.max(CrtText.width(panelFont, title), CrtText.width(panelFont, progress)));
 			int ink = !active ? panel.buttonLabelOffColor() : lit ? panel.buttonLabelHotColor() : panel.buttonLabelColor();
 			graphics.text(panelFont, CrtText.of(title), labelX, getY() + 1, ink, false);
 			graphics.text(panelFont, CrtText.of(progress), labelX, getY() + 2 + panelFont.lineHeight, panel.buttonLabelOffColor(), false);

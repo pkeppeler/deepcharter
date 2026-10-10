@@ -50,6 +50,8 @@ public record PanelLook(
 		int pipSize,
 		int pipX,
 		int pipY) {
+	/** The pixels a label keeps clear of the right edge of its button. */
+	public static final int LABEL_MARGIN = 2;
 	public static final Identifier FRAME = sprite("panel/frame");
 	public static final Identifier GLASS = sprite("panel/glass");
 	public static final Identifier NAMEPLATE = sprite("panel/nameplate");
@@ -105,6 +107,22 @@ public record PanelLook(
 				default -> screenHeight - height - y;
 			};
 		}
+	}
+
+	/**
+	 * Whether a button {@code buttonWidth} wide draws its pip beside a label {@code labelWidth} wide. Only a left-set label has one, and a
+	 * label that would run past the edge with the pip beside it has none: a long label is never cut off to keep the pip.
+	 */
+	public boolean showsPip(int buttonWidth, int labelWidth) {
+		return pipSize > 0 && buttonAlign == 1 && pipX + pipSize + buttonPad + labelWidth + LABEL_MARGIN <= buttonWidth;
+	}
+
+	/** The x, from a button's left edge, where its label starts. */
+	public int labelStart(int buttonWidth, int labelWidth) {
+		if (buttonAlign == 0) {
+			return (buttonWidth - labelWidth) / 2;
+		}
+		return showsPip(buttonWidth, labelWidth) ? pipX + pipSize + buttonPad : buttonPad;
 	}
 
 	private static Identifier sprite(String path) {

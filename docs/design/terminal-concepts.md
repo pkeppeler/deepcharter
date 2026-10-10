@@ -31,7 +31,7 @@ The content area is the room a screen has for text and buttons. The screens were
 
 ## A. Slab
 
-![A. Slab: the hangar console](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/slab-unscii-hangar.png?raw=true)
+![A. Slab: the hangar console](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/slab-unscii-hangar.png?raw=true)
 
 **Shape.** The heavy riveted frame of the brief: a 28-pixel rail on each side, a deep-set CRT with a six-pixel lip, steel plates seamed every 64 pixels along the top and bottom and every 48 pixels down the sides, mitred at the corners, with a hex bolt in each. It is the least surprising design and the one that most resembles a machine GUI from a tech mod.
 
@@ -52,14 +52,14 @@ The content area is the room a screen has for text and buttons. The screens were
 
 | Still | |
 |---|---|
-| Ore processor | ![A. Slab: the ore processor](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/slab-unscii-processor.png?raw=true) |
-| Upgrade terminal | ![A. Slab: the upgrade terminal](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/slab-unscii-upgrade.png?raw=true) |
-| Repair station | ![A. Slab: the repair station](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/slab-unscii-repair.png?raw=true) |
-| Contract terminal | ![A. Slab: the contract terminal](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/slab-unscii-contract.png?raw=true) |
+| Ore processor | ![A. Slab: the ore processor](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/slab-unscii-processor.png?raw=true) |
+| Upgrade terminal | ![A. Slab: the upgrade terminal](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/slab-unscii-upgrade.png?raw=true) |
+| Repair station | ![A. Slab: the repair station](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/slab-unscii-repair.png?raw=true) |
+| Contract terminal | ![A. Slab: the contract terminal](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/slab-unscii-contract.png?raw=true) |
 
 ## B. Console
 
-![B. Console: the hangar console](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/console-vt323-hangar.png?raw=true)
+![B. Console: the hangar console](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/console-vt323-hangar.png?raw=true)
 
 **Shape.** A computer console from the 1960s and 1970s: the CRT sits under a louvred hood that casts a shadow onto the glass, the shoulders are chamfered, the cheeks are vent stacks, and a row of cream keycaps runs along the bottom edge like the front of a keyboard. The content area is the widest of the four (371 pixels).
 
@@ -79,18 +79,18 @@ The content area is the room a screen has for text and buttons. The screens were
 
 | Still | |
 |---|---|
-| Ore processor | ![B. Console: the ore processor](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/console-vt323-processor.png?raw=true) |
-| Upgrade terminal | ![B. Console: the upgrade terminal](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/console-vt323-upgrade.png?raw=true) |
-| Repair station | ![B. Console: the repair station](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/console-vt323-repair.png?raw=true) |
-| Contract terminal | ![B. Console: the contract terminal](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/console-vt323-contract.png?raw=true) |
+| Ore processor | ![B. Console: the ore processor](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/console-vt323-processor.png?raw=true) |
+| Upgrade terminal | ![B. Console: the upgrade terminal](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/console-vt323-upgrade.png?raw=true) |
+| Repair station | ![B. Console: the repair station](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/console-vt323-repair.png?raw=true) |
+| Contract terminal | ![B. Console: the contract terminal](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/console-vt323-contract.png?raw=true) |
 
 ## C. Rack
 
-![C. Rack: the hangar console](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/rack-departure-hangar.png?raw=true)
+![C. Rack: the hangar console](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/rack-departure-hangar.png?raw=true)
 
 **Shape.** A rack-mount instrument panel. A brushed aluminium rack ear with slotted mounting holes runs down the left. A black column down the right holds three amber seven-segment readouts, FUND, FUEL and HULL. Under the glass is a patch bay with eight jacks and three cable glands. The CRT is the smallest of the four (347 x 192), because the instruments take the room.
 
-**Buttons.** Toggle switches. Each button is a black plate with a silver edge and a 12-pixel lever at the left. Idle, the lever is up and its lamp is dark red. Hovered, the lever is down, the lamp is green and the edge turns brass. The label is set to the left, in cream.
+**Buttons.** Toggle switches. Each button is a black plate with a silver edge and a 12-pixel lever at the left. Idle, the lever is up and its lamp is dark red. Hovered, the lever is down, the lamp is green and the edge turns brass. The label is set to the left, in cream. A button whose label would not fit beside the lever (the long rows of the upgrade terminal, one of the contract terminal's apply buttons) draws no lever, so no label is ever cut off to keep one.
 
 **Nameplate and dressing.** A chrome plate with the bull's head and "COLOM & CO." in the top left. The readouts show 0420, 0075 and 0100 in this concept. They are pictures; the build would feed them from the charter's account, the pod's fuel and its hull (see [the costs](#what-each-costs-to-build)).
 
@@ -107,18 +107,18 @@ The content area is the room a screen has for text and buttons. The screens were
 
 | Still | |
 |---|---|
-| Ore processor | ![C. Rack: the ore processor](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/rack-departure-processor.png?raw=true) |
-| Upgrade terminal | ![C. Rack: the upgrade terminal](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/rack-departure-upgrade.png?raw=true) |
-| Repair station | ![C. Rack: the repair station](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/rack-departure-repair.png?raw=true) |
-| Contract terminal | ![C. Rack: the contract terminal](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/rack-departure-contract.png?raw=true) |
+| Ore processor | ![C. Rack: the ore processor](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/rack-departure-processor.png?raw=true) |
+| Upgrade terminal | ![C. Rack: the upgrade terminal](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/rack-departure-upgrade.png?raw=true) |
+| Repair station | ![C. Rack: the repair station](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/rack-departure-repair.png?raw=true) |
+| Contract terminal | ![C. Rack: the contract terminal](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/rack-departure-contract.png?raw=true) |
 
 ## D. Hatch
 
-![D. Hatch: the hangar console](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/hatch-unscii-hangar.png?raw=true)
+![D. Hatch: the hangar console](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/hatch-unscii-hangar.png?raw=true)
 
 **Shape.** A bulkhead door with a porthole. The glass has rounded corners and a rolled steel ring with a black gasket round it. Down each side runs a column of four hatch dogs, the lugs that lock a pressure door. The plate round them is weld-seamed and bolted, with rust run from the bolts. It is the one design whose glass is not a rectangle.
 
-**Buttons.** Rotary selectors. Each button is an engraved grey plate with a 12-pixel knob at the left. The knob's pointer sits at about ten o'clock. Hovered, the pointer turns to two o'clock and the knob's rim and the plate's edge go yellow. The label is stencil white, set to the left.
+**Buttons.** Rotary selectors. Each button is an engraved grey plate with a 12-pixel knob at the left. The knob's pointer sits at about ten o'clock. Hovered, the pointer turns to two o'clock and the knob's rim and the plate's edge go yellow. The label is stencil white, set to the left. As in C, a long label drops the knob, and so does the hangar's buy button.
 
 **Nameplate and dressing.** A chrome plate with the bull's head and "COLOM & CO." at the bottom centre, a stencilled "H-04 DECK 3" at the bottom left, and a hazard-striped "PRESSURE DOOR" label at the bottom right.
 
@@ -134,10 +134,10 @@ The content area is the room a screen has for text and buttons. The screens were
 
 | Still | |
 |---|---|
-| Ore processor | ![D. Hatch: the ore processor](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/hatch-unscii-processor.png?raw=true) |
-| Upgrade terminal | ![D. Hatch: the upgrade terminal](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/hatch-unscii-upgrade.png?raw=true) |
-| Repair station | ![D. Hatch: the repair station](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/hatch-unscii-repair.png?raw=true) |
-| Contract terminal | ![D. Hatch: the contract terminal](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/hatch-unscii-contract.png?raw=true) |
+| Ore processor | ![D. Hatch: the ore processor](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/hatch-unscii-processor.png?raw=true) |
+| Upgrade terminal | ![D. Hatch: the upgrade terminal](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/hatch-unscii-upgrade.png?raw=true) |
+| Repair station | ![D. Hatch: the repair station](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/hatch-unscii-repair.png?raw=true) |
+| Contract terminal | ![D. Hatch: the contract terminal](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/hatch-unscii-contract.png?raw=true) |
 
 ## Fonts
 
@@ -151,13 +151,13 @@ Section 7 named three free fonts. Each pack holds one font file, its licence tex
 
 The licence text is `license.txt` in the same `font/` directory as each font. For Unscii the author gives no licence text, only a sentence on the official page, so `LICENSE.txt` quotes it and says where and when it was read. OFL 1.1 lets us ship the fonts with the mod, alone or bundled, if the copyright and licence travel with them and the font is not sold on its own; the build would put the licence text in the jar.
 
-How each looks in the game depends on its size. The text of every screen is wrapped and laid out for the game's own font, which is about 5.5 pixels per letter. These are the sizes the stills use:
+How each looks in the game depends on its size. The text of every screen is wrapped and laid out for the game's own font, which is not monospaced: it averages about 5.5 pixels a letter on these screens and gives a capital M 6. The three fonts here are monospaced and, as the game draws them, are 6 pixels a letter each. The client test measured it: "ORE PROCESSOR ONLINE 0123456789" is 186 px in each of the three and 178 px in the game's font, so the terminal text is about 5% wider than today's. These are the sizes the stills use:
 
-| Font | Size in `terminal.json` | Advance | Cap height | Against 5.5 pixels |
+| Font | Size in `terminal.json` | Advance as drawn | Cap height | Notes |
 |---|---|---|---|---|
-| Unscii 8 | 6 | 6.0 px | 5 px | Made 0.75 of its native size so that every screen fits. Its native size is 8 px a letter, 45% wider than the game's font: the 40-letter label "BUY REFURBISHED MOLE: $150 + $75 PER POD" would be 320 px in a 260 px button. At 0.75 the font's pixels fall between the screen's, so it is slightly uneven. |
-| VT323 | 14 | 5.6 px | 7.8 px | Fits as it is. A tall, thin face. |
-| Departure Mono | bitmap, cap height 7 | 6.0 px | 7 px | Fits. Its native size is 11, 7 px a letter, 27% wider. Drawn into a bitmap font, see below. |
+| Unscii 8 | 6 | 6 px | 5 px | Drawn at 0.75 of its native size so that every screen fits, with the game's oversampling at 8 so that the letters stay clear (without it an S reads as a 3). Its native size is 8 px a letter, 45% wider than today's text: the 40-letter label "BUY REFURBISHED MOLE: $150 + $75 PER POD" would be 320 px in a 260 px button. |
+| VT323 | 14 | 6 px (5.6 by the font, and the game rounds a glyph's advance) | 7.8 px | Fits as it is. A tall, thin face. |
+| Departure Mono | bitmap, cap height 7 | 6 px | 7 px | Fits. Its native size is 11, 7 px a letter, 27% wider than today's text. Drawn into a bitmap font, see below. |
 
 **Departure Mono does not load as released.** The game's `ttf` font provider refuses a file with CFF outlines (`Font is not in TTF format, was CFF`), and Departure Mono is released only as CFF (`.otf`, `.woff`, `.woff2`). So `tools/font_bitmap.py` reads the `.otf` as data (it parses the CFF charstrings itself, and never runs anything from the download), draws each glyph with its cap height at 7 pixels, the game's own, and writes a PNG atlas and a bitmap font: `departuremono.png` and `terminal.json`. The OFL allows that if the copyright and licence travel with it, and the font declares no Reserved Font Name; `notes.txt` says what was done. The result is a little soft, because it is the 11-pixel font drawn at 0.875 of its size. If Departure Mono is picked, the build must either keep this atlas or convert the font to TrueType outlines properly (a tool such as fontTools; it would need an audit first), and the pixel-perfect size is then a decision about layout, as it is for Unscii.
 
@@ -167,14 +167,14 @@ The same hangar console in every font, in each panel (the home font of a panel i
 
 | Panel | Unscii (6) | VT323 (14) | Departure Mono (10) |
 |---|---|---|---|
-| A. Slab | ![A in Unscii](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/slab-unscii-hangar.png?raw=true) | ![A in VT323](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/slab-vt323-hangar.png?raw=true) | ![A in Departure Mono](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/slab-departure-hangar.png?raw=true) |
-| B. Console | ![B in Unscii](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/console-unscii-hangar.png?raw=true) | ![B in VT323](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/console-vt323-hangar.png?raw=true) | ![B in Departure Mono](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/console-departure-hangar.png?raw=true) |
-| C. Rack | ![C in Unscii](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/rack-unscii-hangar.png?raw=true) | ![C in VT323](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/rack-vt323-hangar.png?raw=true) | ![C in Departure Mono](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/rack-departure-hangar.png?raw=true) |
-| D. Hatch | ![D in Unscii](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/hatch-unscii-hangar.png?raw=true) | ![D in VT323](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/hatch-vt323-hangar.png?raw=true) | ![D in Departure Mono](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/hatch-departure-hangar.png?raw=true) |
+| A. Slab | ![A in Unscii](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/slab-unscii-hangar.png?raw=true) | ![A in VT323](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/slab-vt323-hangar.png?raw=true) | ![A in Departure Mono](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/slab-departure-hangar.png?raw=true) |
+| B. Console | ![B in Unscii](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/console-unscii-hangar.png?raw=true) | ![B in VT323](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/console-vt323-hangar.png?raw=true) | ![B in Departure Mono](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/console-departure-hangar.png?raw=true) |
+| C. Rack | ![C in Unscii](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/rack-unscii-hangar.png?raw=true) | ![C in VT323](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/rack-vt323-hangar.png?raw=true) | ![C in Departure Mono](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/rack-departure-hangar.png?raw=true) |
+| D. Hatch | ![D in Unscii](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/hatch-unscii-hangar.png?raw=true) | ![D in VT323](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/hatch-vt323-hangar.png?raw=true) | ![D in Departure Mono](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/hatch-departure-hangar.png?raw=true) |
 
 And today's screens, with no pack, for comparison:
 
-![Today: the hangar console](https://github.com/pkeppeler/deepcharter/blob/pr-media/PRNUM/today-hangar.png?raw=true)
+![Today: the hangar console](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/today-hangar.png?raw=true)
 
 ## What each costs to build
 

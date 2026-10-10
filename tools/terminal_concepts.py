@@ -130,7 +130,7 @@ def nameplate(height, text, ink, with_bull=True):
     return img
 
 
-def glass_sprite(size, border, vignette, reflection=True, corner_radius=0, corner_colour=None):
+def glass_sprite(size, border, vignette, reflection=True, corner_radius=0, corner_colour=None, rim_colour=None):
     """The CRT glass over the content: a soft dark edge, a pale reflection in the top-left corner, optionally round corners."""
     img = Img(size, size)
     left, top, right, bottom = border
@@ -150,6 +150,11 @@ def glass_sprite(size, border, vignette, reflection=True, corner_radius=0, corne
     if corner_radius:
         for corner in ("tl", "tr", "bl", "br"):
             img.round_corner(corner, corner_radius, corner_colour)
+            if rim_colour:  # a one-pixel line along the arc
+                for j in range(corner_radius):
+                    for i in range(corner_radius):
+                        if (corner_radius - 1.5) ** 2 < (corner_radius - 0.5 - i) ** 2 + (corner_radius - 0.5 - j) ** 2 <= (corner_radius - 0.5) ** 2:
+                            img.set(i if corner[1] == "l" else img.w - 1 - i, j if corner[0] == "t" else img.h - 1 - j, rim_colour)
     return img
 
 
@@ -364,8 +369,6 @@ def console_frame():
         img.rect(kx, deck_top, 13, 8, CREAM_DARK)
         img.rect(kx + 1, deck_top, 11, 6, CREAM)
         img.hline(kx + 1, deck_top, 11, shade(CREAM, 0.35))
-    for cx, cy in ((7, 7), (w - 8, 7)):
-        hex_bolt(img, cx + 2, cy + 6, K[4], K[7], K[1], K[0])
     # Chamfers: the hood is narrower than the wall behind it, the deck wider at the front.
     for corner, size in (("tl", 22), ("tr", 22), ("bl", 16), ("br", 16)):
         img.cut_corner(corner, size)
@@ -720,7 +723,7 @@ def hatch() -> Option:
         "buttonAlign": 1, "buttonPad": 5, "pipSize": 12, "pipX": 3, "pipY": 0,
     }, {
         "frame": Sprite(hatch_frame(), (30, 18, 30, 18)),
-        "glass": Sprite(glass_sprite(40, (16, 16, 16, 16), 190, corner_radius=15, corner_colour=H[1]), (16, 16, 16, 16)),
+        "glass": Sprite(glass_sprite(40, (16, 16, 16, 16), 190, corner_radius=13, corner_colour=H[1], rim_colour=H[6]), (16, 16, 16, 16)),
         "nameplate": Sprite(plate), "dress_a": Sprite(hatch_dogs(False)), "dress_b": Sprite(hatch_dogs(True)),
         "dress_c": Sprite(hatch_stencil("H-04  DECK 3", 72)), "dress_d": Sprite(hatch_warning()),
         "button": Sprite(hatch_button(H[3], H[6], H[0]), (3, 3, 3, 3)),

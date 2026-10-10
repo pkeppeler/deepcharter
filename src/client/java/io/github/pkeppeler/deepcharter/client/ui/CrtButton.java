@@ -25,9 +25,8 @@ public final class CrtButton extends Button {
 		Font font = Minecraft.getInstance().font;
 		PanelLook panel = PanelLook.current();
 		if (panel.enabled()) {
-			int labelX = CrtDraw.panelButtonFace(graphics, panel, getX(), getY(), getWidth(), getHeight(), active, lit);
 			String text = getMessage().getString();
-			int x = panel.buttonAlign() == 0 ? getX() + (getWidth() - CrtText.width(font, text)) / 2 : labelX;
+			int x = CrtDraw.panelButtonFace(graphics, panel, getX(), getY(), getWidth(), getHeight(), active, lit, CrtText.width(font, text));
 			int y = getY() + (getHeight() - font.lineHeight) / 2 + tuning.buttonLabelOffset();
 			int ink = !active ? panel.buttonLabelOffColor() : lit ? panel.buttonLabelHotColor() : panel.buttonLabelColor();
 			graphics.text(font, CrtText.of(text), x, y, ink, false);

@@ -202,6 +202,24 @@ public class ThemeLooksTest {
 		helper.succeed();
 	}
 
+	/** A left-set label has a pip beside it unless it would then run past the edge: the pip is dropped, never the end of the label. */
+	@GameTest
+	public void aButtonDropsItsPipWhenTheLabelWouldNotFit(GameTestHelper helper) {
+		PanelLook left = PanelLook.of(area("panel", "{ \"enabled\": 1, \"buttonAlign\": 1, \"buttonPad\": 4, \"pipSize\": 12, \"pipX\": 2 }"));
+		if (!left.showsPip(104, 60) || left.labelStart(104, 60) != 18) {
+			throw fail(helper, "a short label sits after the pip at 18, got " + left.showsPip(104, 60) + " and " + left.labelStart(104, 60));
+		}
+		if (left.showsPip(104, 96) || left.labelStart(104, 96) != 4) {
+			throw fail(helper, "a 96 pixel label does not fit beside the pip in a 104 pixel button, so it starts at the pad, got " + left.showsPip(104, 96)
+					+ " and " + left.labelStart(104, 96));
+		}
+		PanelLook centred = PanelLook.of(area("panel", "{ \"enabled\": 1, \"buttonAlign\": 0, \"pipSize\": 12 }"));
+		if (centred.showsPip(104, 20) || centred.labelStart(104, 60) != 22) {
+			throw fail(helper, "a centred label has no pip and starts in the middle, got " + centred.showsPip(104, 20) + " and " + centred.labelStart(104, 60));
+		}
+		helper.succeed();
+	}
+
 	@GameTest
 	public void thePanelRejectsValuesOutOfRange(GameTestHelper helper) {
 		rejected(helper, () -> PanelLook.of(area("panel", "{ \"enabled\": 2 }")), "enabled");

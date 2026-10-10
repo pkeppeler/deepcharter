@@ -68,19 +68,18 @@ public final class CrtDraw {
 	}
 
 	/**
-	 * The face of a button of the machine panel: the under-fill, the button sprite for its state and the pip, if the panel has one. Returns
-	 * the x where a label set to the left begins.
+	 * The face of a button of the machine panel: the under-fill, the button sprite for its state and, when the label leaves room for it
+	 * ({@link PanelLook#showsPip}), the pip. Returns the x where the label starts.
 	 */
-	public static int panelButtonFace(GuiGraphicsExtractor graphics, PanelLook panel, int x, int y, int width, int height, boolean active, boolean lit) {
+	public static int panelButtonFace(GuiGraphicsExtractor graphics, PanelLook panel, int x, int y, int width, int height, boolean active, boolean lit,
+			int labelWidth) {
 		graphics.fill(x, y, x + width, y + height, panel.buttonUnderColor());
 		sprite(graphics, !active ? PanelLook.BUTTON_OFF : lit ? PanelLook.BUTTON_HOT : PanelLook.BUTTON, x, y, width, height);
-		int labelX = x + panel.buttonPad();
-		if (panel.pipSize() > 0) {
+		if (panel.showsPip(width, labelWidth)) {
 			sprite(graphics, !active ? PanelLook.PIP_OFF : lit ? PanelLook.PIP_HOT : PanelLook.PIP, x + panel.pipX(),
 					y + (height - panel.pipSize()) / 2 + panel.pipY(), panel.pipSize(), panel.pipSize());
-			labelX = x + panel.pipX() + panel.pipSize() + panel.buttonPad();
 		}
-		return labelX;
+		return x + panel.labelStart(width, labelWidth);
 	}
 
 	private static void decal(GuiGraphicsExtractor graphics, Identifier sprite, PanelLook.Decal decal, int width, int height) {

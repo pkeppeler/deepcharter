@@ -13,6 +13,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Style;
 
+import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.hangar.HangarScreen;
 import io.github.pkeppeler.deepcharter.client.repair.RepairStationScreen;
@@ -66,6 +67,9 @@ public class TerminalConceptsClientTest implements FabricClientGameTest {
 							// A font the game cannot load (a file name with a capital, a bad size) falls back to the missing-glyph font silently, so measure it.
 							require(context.computeOnClient(client -> CrtText.width(client.font, SAMPLE) != client.font.width(SAMPLE)),
 									font + " draws the sample text no wider or narrower than the game's own font: the font did not load");
+								DeepCharter.LOGGER.info("[terminal-concepts] {}: '{}' is {} px, ten capital Ms {} px; the game's font: {} px and {} px", font, SAMPLE,
+										context.computeOnClient(client -> CrtText.width(client.font, SAMPLE)), context.computeOnClient(client -> CrtText.width(client.font, "MMMMMMMMMM")),
+										context.computeOnClient(client -> client.font.width(SAMPLE)), context.computeOnClient(client -> client.font.width("MMMMMMMMMM")));
 							for (String screen : TerminalConceptScreens.SCENE_SCREENS) {
 								Screen open = TerminalConceptScreens.open(context, screen, scene, null);
 								context.computeOnClient(client -> check(open, panel + " + " + font + ", " + screen, problems));
@@ -109,13 +113,11 @@ public class TerminalConceptsClientTest implements FabricClientGameTest {
 			if (box.x() < rect.x() || box.y() < rect.y() || box.right() > rect.right() || box.bottom() > rect.bottom()) {
 				problems.add(when + ": " + ClientChecks.labelOf(button) + " at " + box + " leaves the content " + rect);
 			}
-			// The label has at least 2 pixels to spare on the right: from where a left-set label starts, or from the middle of a centred one.
-			PanelLook panel = PanelLook.current();
+			// The label stays 2 pixels clear of both edges of its button, where the panel starts it (a pip is dropped, not the end of the label, when the label is long).
 			int width = CrtText.width(Minecraft.getInstance().font, button.getMessage().getString());
-			int room = panel.buttonAlign() == 0 ? button.getWidth() - 4
-					: button.getWidth() - 2 - (panel.pipSize() > 0 ? panel.pipX() + panel.pipSize() : 0) - panel.buttonPad();
-			if (width > room) {
-				problems.add(when + ": " + ClientChecks.labelOf(button) + " is " + width + " wide with room for " + room + " in a button " + button.getWidth() + " wide");
+			int start = PanelLook.current().labelStart(button.getWidth(), width);
+			if (start < PanelLook.LABEL_MARGIN || start + width > button.getWidth() - PanelLook.LABEL_MARGIN) {
+				problems.add(when + ": " + ClientChecks.labelOf(button) + " is " + width + " wide, starting " + start + " in a button " + button.getWidth() + " wide");
 			}
 			ClientChecks.buttonOverlaps(button, buttons).ifPresent(message -> problems.add(when + ": " + message));
 		}
