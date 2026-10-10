@@ -25,3 +25,5 @@ Builds on [ADR 0030](0030-art-direction-decisions.md) (GeckoLib pods, with vanil
 - A model made in Blockbench must use box UV and the bone words, and rotate a bone or a cube rather than use per-face mapping.
 - A new moving part is a new vocabulary word and a line in `PodPose.apply`; a new chassis is files only.
 - The tread links slide as cubes, one link pitch at a time, so the model reads the same under any renderer.
+
+Amended by [ADR 0041](0041-pods-are-painted-per-charter-and-the-rotor-folds-out-to-fly.md): the rotor's blades are `blade` bones that fold, and the rotor has no idle spin.

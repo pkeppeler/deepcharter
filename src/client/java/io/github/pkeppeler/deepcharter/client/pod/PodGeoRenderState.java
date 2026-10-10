@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.pod;
 
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.resources.Identifier;
 
 /** Per-frame copy of what a pod model's bones need ({@link PodMotion} fills it). Angles are degrees, distances model pixels. */
 public class PodGeoRenderState extends EntityRenderState {
@@ -10,6 +11,8 @@ public class PodGeoRenderState extends EntityRenderState {
 	public float mountPitch;
 	public float drillSpin;
 	public float rotorSpin;
+	/** 0 with the rotor's blades folded away, 1 with them out to fly. */
+	public float rotorOut;
 	public float fanSpin;
 	/** 0 with the thrusters stowed, 1 with them swung down to lift. */
 	public float thrust;
@@ -23,4 +26,6 @@ public class PodGeoRenderState extends EntityRenderState {
 	public boolean lit;
 	/** What the pod shows this frame, from its drill tier and whether it is a wreck ({@link PodGeoRenderer#appearanceOf}). */
 	public PodGeoRenderer.Appearance appearance;
+	/** The texture the pod is drawn with this frame: its variant's, or that painted in its charter's colour. */
+	public Identifier texture;
 }

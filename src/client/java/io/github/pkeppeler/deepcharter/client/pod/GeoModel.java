@@ -15,6 +15,7 @@ import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -304,13 +305,14 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 	 * How far from the pod's middle, across x and z in pixels, a rotor reaches as it spins: the horizontal distance of its pivot from
 	 * the middle plus the furthest any corner of its cubes is from the pivot. A rotor spins about its own pivot, which is off the
 	 * pod's middle on a pod whose mast is behind it, so its tips sweep a circle that the model at rest does not show. 0 for a model
-	 * with no rotor.
+	 * with no rotor. The blades that fold from the rotor ({@link BoneRole#BLADE}) are part of it, out to fly.
 	 */
 	public double rotorReach() {
 		double reach = 0;
 		for (Bone rotor : bones.stream().filter(bone -> bone.role() == BoneRole.ROTOR).toList()) {
 			double sweep = 0;
-			for (Cube cube : rotor.cubes()) {
+			Stream<Bone> turning = Stream.concat(Stream.of(rotor), children(rotor.name()).stream().filter(bone -> bone.role() == BoneRole.BLADE));
+			for (Cube cube : turning.flatMap(bone -> bone.cubes().stream()).toList()) {
 				for (int corner = 0; corner < CUBE_CORNERS; corner++) {
 					Vec3 point = turnedCorner(cube, corner);
 					sweep = Math.max(sweep, Math.hypot(point.x - rotor.pivot().x, point.z - rotor.pivot().z));
@@ -374,6 +376,12 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 			// A ring that does not ride the mount would not aim with the drill; one under the head would spin with it and stand still.
 			if (!hasAncestor(byName, ring, BoneRole.DRILL_MOUNT) || hasAncestor(byName, ring, BoneRole.DRILL_HEAD)) {
 				throw new IllegalArgumentException(source + ": drill_ring bone '" + ring.name() + "' must be under drill_mount and not under drill_head");
+			}
+		}
+		for (Bone blade : bones.stream().filter(bone -> bone.role() == BoneRole.BLADE).toList()) {
+			// A blade folds from the rotor's hub, and turns with the rotor once it is out.
+			if (blade.parent().map(byName::get).map(parent -> parent.role() != BoneRole.ROTOR).orElse(true)) {
+				throw new IllegalArgumentException(source + ": blade bone '" + blade.name() + "' must be a child of a rotor bone");
 			}
 		}
 	}
