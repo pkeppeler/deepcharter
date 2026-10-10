@@ -18,11 +18,6 @@ public final class CrtDraw {
 	}
 
 	/** Near-black background with a faint phosphor bloom along the top and bottom edges. */
-	public static void backdrop(GuiGraphicsExtractor graphics, int width, int height) {
-		backdrop(graphics, 0, 0, width, height);
-	}
-
-	/** The backdrop in the rectangle from {@code left}, {@code top} to {@code right}, {@code bottom}: the CRT glass of a panel. */
 	public static void backdrop(GuiGraphicsExtractor graphics, int left, int top, int right, int bottom) {
 		CrtTuning tuning = CrtTuning.current();
 		graphics.fill(left, top, right, bottom, tuning.backgroundColor());

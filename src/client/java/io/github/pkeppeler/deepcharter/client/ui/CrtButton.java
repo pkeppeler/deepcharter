@@ -34,7 +34,7 @@ public final class CrtButton extends Button implements PanelButton {
 			int x = CrtDraw.panelButtonFace(graphics, panel, getX(), getY(), getWidth(), getHeight(), active, lit, CrtText.width(font, text),
 					CrtDraw.pipsFit(panel, font, Minecraft.getInstance().gui.screen()));
 			int y = getY() + (getHeight() - font.lineHeight) / 2 + tuning.buttonLabelOffset();
-			int ink = !active ? panel.buttonLabelOffColor() : lit ? panel.buttonLabelHotColor() : panel.buttonLabelColor();
+			int ink = panel.labelColor(active, lit);
 			graphics.text(font, CrtText.of(text), x, y, ink, false);
 			return;
 		}

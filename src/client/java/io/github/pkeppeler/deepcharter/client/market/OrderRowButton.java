@@ -57,7 +57,7 @@ public final class OrderRowButton extends Button implements PanelButton {
 			Font panelFont = Minecraft.getInstance().font;
 			int labelX = CrtDraw.panelButtonFace(graphics, panel, getX(), getY(), getWidth(), getHeight(), active, lit,
 					panelLabelWidth(panelFont), CrtDraw.pipsFit(panel, panelFont, Minecraft.getInstance().gui.screen()));
-			int ink = !active ? panel.buttonLabelOffColor() : lit ? panel.buttonLabelHotColor() : panel.buttonLabelColor();
+			int ink = panel.labelColor(active, lit);
 			graphics.text(panelFont, CrtText.of(title), labelX, getY() + 1, ink, false);
 			// The progress line is the label's colour, softened, so it reads on a dark button and on a pale one; a button that cannot be pressed has one colour.
 			int detail = active ? Colors.withAlpha(ink, PROGRESS_ALPHA) : ink;

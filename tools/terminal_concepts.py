@@ -134,13 +134,12 @@ def screw(img, cx, cy, face, dark):
     img.set(cx + 1, cy, shade(face, -0.15))
 
 
-def chrome(img, x, y, w, h, rng=None):
+def chrome(img, x, y, w, h, rng):
     """A bevelled chrome plate: bright at the top, darker toward the bottom, a mirror line, a white and a dark edge, brushed."""
     img.vgrad(x, y, w, h, rgb("#e9eff3"), rgb("#7a8691"))
     img.hline(x, y + h // 2, w, rgb("#a9b5bf"))
     img.hline(x, y + h // 2 + 1, w, rgb("#f6fafc"))
-    if rng:
-        img.streaks(x + 1, y + 1, w - 2, h - 2, rng, 0.05, 10)
+    img.streaks(x + 1, y + 1, w - 2, h - 2, rng, 0.05, 10)
     img.bevel(x, y, w, h, rgb("#ffffff"), rgb("#323b44"))
     img.set(x, y + h - 1, rgb("#232a31"))
     img.set(x + w - 1, y, rgb("#8a97a2"))
@@ -150,9 +149,9 @@ def bull(img, x, y, ink):
     img.mask(BULL, x, y, ink)
 
 
-def nameplate(height, text, ink, with_bull=True):
+def nameplate(height, text, ink):
     """The Company's chrome nameplate, as wide as its text needs: screws in the corners, the bull's head, then the name, engraved (a light edge below the ink)."""
-    width = 7 + (16 if with_bull else 0) + 6 * len(text) - 1 + 7
+    width = 7 + 16 + 6 * len(text) - 1 + 7
     img = Img(width, height)
     chrome(img, 0, 0, width, height, random.Random(246_77))
     for sx in (3, width - 4):
@@ -160,10 +159,9 @@ def nameplate(height, text, ink, with_bull=True):
         screw(img, sx, height - 4 if height > 14 else height - 3, rgb("#9aa6b0"), rgb("#3c454e"))
     x = 7
     ty = (height - 7) // 2
-    if with_bull:
-        bull(img, x + 1, (height - 11) // 2 + 1, rgb("#ffffff", 200))
-        bull(img, x, (height - 11) // 2, ink)
-        x += 16
+    bull(img, x + 1, (height - 11) // 2 + 1, rgb("#ffffff", 200))
+    bull(img, x, (height - 11) // 2, ink)
+    x += 16
     img.text(x + 1, ty + 1, text, rgb("#ffffff", 220))
     img.text(x, ty, text, ink)
     return img
@@ -199,7 +197,7 @@ def glass_sprite(size, border, vignette, shadow=(0, 0), depth=(0, 0)):
     return img
 
 
-def seg_digit(img, x, y, digit, lit, unlit, lit_all=None):
+def seg_digit(img, x, y, digit, lit, unlit):
     """A seven-segment digit 5 x 9 pixels, the unlit segments drawn too. `digit` is a digit or '-' (only the middle segment)."""
     segments = {"a": (1, 0, 3, 1), "b": (4, 1, 1, 3), "c": (4, 5, 1, 3), "d": (1, 8, 3, 1), "e": (0, 5, 1, 3), "f": (0, 1, 1, 3), "g": (1, 4, 3, 1)}
     on = {"0": "abcdef", "1": "bc", "2": "abdeg", "3": "abcdg", "4": "bcfg", "5": "acdfg", "6": "acdefg", "7": "abc", "8": "abcdefg", "9": "abcdfg", "-": "g"}[digit]
@@ -662,7 +660,7 @@ def rack_frame():
     # Right column: an inner frame for the readouts, bevelled, with a shadow inside it.
     img.bevel(w - right + 2, top + 2, right - 4, h - top - bottom - 4, R[1], R[5])
     img.bevel(w - right + 3, top + 3, right - 6, h - top - bottom - 6, R[0], R[3])
-    img.hline(left, h - bottom + 5, w - left - right + right, R[1])
+    img.hline(left, h - bottom + 5, w - left, R[1])
     # Grime: a dark blot where the ear meets the panel, runs below the screws, chipped corners.
     for sy in (top + 3, top + 51):
         smudge(img, 11, sy + 3, 9, 70)

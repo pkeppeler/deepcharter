@@ -138,7 +138,7 @@ public abstract class CrtScreen extends Screen {
 		if (panel.enabled()) {
 			CrtDraw.panelBackground(graphics, panel, width, height);
 		} else {
-			CrtDraw.backdrop(graphics, width, height);
+			CrtDraw.backdrop(graphics, 0, 0, width, height);
 		}
 	}
 

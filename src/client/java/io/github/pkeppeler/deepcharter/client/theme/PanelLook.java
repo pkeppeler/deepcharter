@@ -118,6 +118,11 @@ public record PanelLook(
 		return pipSize > 0 && buttonAlign == 1 && pipX + pipSize + buttonPad + labelWidth + LABEL_MARGIN <= buttonWidth;
 	}
 
+	/** The colour of a button's label for its state. */
+	public int labelColor(boolean active, boolean lit) {
+		return !active ? buttonLabelOffColor : lit ? buttonLabelHotColor : buttonLabelColor;
+	}
+
 	/** The x, from a button's left edge, where its label starts; {@code pips} says whether the screen draws pips. */
 	public int labelStart(int buttonWidth, int labelWidth, boolean pips) {
 		if (buttonAlign == 0) {
