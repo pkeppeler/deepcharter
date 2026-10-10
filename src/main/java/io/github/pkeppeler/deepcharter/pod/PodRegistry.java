@@ -23,9 +23,9 @@ public final class PodRegistry {
 	private static final Map<EntityType<?>, Chassis> CHASSIS = new HashMap<>();
 
 	// Seat 0.9 up: the rider sits on the hull. Updates every tick because pods move fast.
-	public static final EntityType<PodEntity> POD = register("pod", Chassis.MOLE, new Vec3(0, 0.9, 0));
+	public static final EntityType<PodEntity> POD = register(id("pod"), Chassis.MOLE, new Vec3(0, 0.9, 0));
 	// The pilot sits ahead of the navigator, on the same 0.9 hull.
-	public static final EntityType<PodEntity> PROSPECTOR = register("prospector", Chassis.PROSPECTOR, new Vec3(0, 0.9, 0.7), new Vec3(0, 0.9, -0.7));
+	public static final EntityType<PodEntity> PROSPECTOR = register(id("prospector"), Chassis.PROSPECTOR, new Vec3(0, 0.9, 0.7), new Vec3(0, 0.9, -0.7));
 
 	/** Used on a pod, it fits a tow cable from the pod the player rides, or takes one off (see {@link PodTowing}). */
 	public static final Item TOW_CABLE = item("tow_cable");
@@ -42,8 +42,8 @@ public final class PodRegistry {
 	 * the model, so they are per chassis and cannot be derived). The two chassis the game ships are registered below; this is public only so
 	 * that a test mod can register an odd-sized one (see {@code OddPods} in the gametest source set) before the registry freezes.
 	 */
-	public static EntityType<PodEntity> register(String path, Chassis chassis, Vec3... seats) {
-		ResourceKey<EntityType<?>> key = ResourceKey.create(Registries.ENTITY_TYPE, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
+	public static EntityType<PodEntity> register(Identifier id, Chassis chassis, Vec3... seats) {
+		ResourceKey<EntityType<?>> key = ResourceKey.create(Registries.ENTITY_TYPE, id);
 		EntityType<PodEntity> type = Registry.register(BuiltInRegistries.ENTITY_TYPE, key,
 				EntityType.Builder.<PodEntity>of(PodEntity::new, MobCategory.MISC)
 						.sized(chassis.width(), chassis.height())
@@ -85,6 +85,10 @@ public final class PodRegistry {
 			}
 		}
 		throw new IllegalArgumentException("no pod entity type for the chassis " + chassis.id());
+	}
+
+	private static Identifier id(String path) {
+		return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path);
 	}
 
 	private static Item item(String path) {

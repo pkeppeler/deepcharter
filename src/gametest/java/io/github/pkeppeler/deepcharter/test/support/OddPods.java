@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test.support;
 
 import net.fabricmc.api.ModInitializer;
 
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.phys.Vec3;
 
@@ -17,7 +18,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
  */
 public final class OddPods implements ModInitializer {
 	public static final Chassis CHASSIS = new Chassis("odd", 1, 2, 3.9f, 2.9f);
-	public static final EntityType<PodEntity> TYPE = PodRegistry.register("odd_pod", CHASSIS, new Vec3(0, 0.9, 0));
+	public static final EntityType<PodEntity> TYPE = PodRegistry.register(Identifier.fromNamespaceAndPath("deepcharter_test", "odd_pod"), CHASSIS, new Vec3(0, 0.9, 0));
 
 	@Override
 	public void onInitialize() {
