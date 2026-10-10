@@ -12,6 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -338,29 +339,18 @@ public class DesignTourScenario extends EvidenceScenario {
 
 	/** The highest sky light in the room: 15 in a sealed room is the stale light of issue 309. */
 	private static int maxSky(Level level, BlockPos floor) {
-		int max = 0;
-		for (int dx = -ROOM_RADIUS; dx <= ROOM_RADIUS; dx++) {
-			for (int dz = -ROOM_RADIUS; dz <= ROOM_RADIUS; dz++) {
-				for (int dy = 1; dy <= ROOM_HEIGHT; dy++) {
-					max = Math.max(max, level.getBrightness(LightLayer.SKY, floor.offset(dx, dy, dz)));
-				}
-			}
-		}
-		return max;
+		return roomCells(floor).mapToInt(pos -> level.getBrightness(LightLayer.SKY, pos)).max().orElse(0);
 	}
 
 	/** One number for the sky and block light of every cell of the room, so that two levels with the same light give the same number. */
 	private static int lightOf(Level level, BlockPos floor) {
-		int hash = 1;
-		for (int dx = -ROOM_RADIUS; dx <= ROOM_RADIUS; dx++) {
-			for (int dz = -ROOM_RADIUS; dz <= ROOM_RADIUS; dz++) {
-				for (int dy = 1; dy <= ROOM_HEIGHT; dy++) {
-					BlockPos pos = floor.offset(dx, dy, dz);
-					hash = 31 * hash + level.getBrightness(LightLayer.SKY, pos) * 16 + level.getBrightness(LightLayer.BLOCK, pos);
-				}
-			}
-		}
-		return hash;
+		return roomCells(floor)
+				.mapToInt(pos -> level.getBrightness(LightLayer.SKY, pos) * 16 + level.getBrightness(LightLayer.BLOCK, pos))
+				.reduce(1, (hash, light) -> 31 * hash + light);
+	}
+
+	private static Stream<BlockPos> roomCells(BlockPos floor) {
+		return BlockPos.betweenClosedStream(floor.offset(-ROOM_RADIUS, 1, -ROOM_RADIUS), floor.offset(ROOM_RADIUS, ROOM_HEIGHT, ROOM_RADIUS));
 	}
 
 	/** Where the camera is, and the pod it rides if it rides one: a pod still gliding to a halt is not settled. */
