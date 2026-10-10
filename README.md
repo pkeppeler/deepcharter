@@ -29,13 +29,11 @@ The tour follows one run, in the order of the game loop.
 
 ### 1. The colony
 
-![The colony hangar, seen from the square, with a dark pod inside](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/colony-hangar.png?raw=true)
-
 ![The statue of the Host on its plinth in the middle of the Pithead Works town, with the hangar and the ore house beside it](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/colony-square.png?raw=true)
 
-You start in Prosperity, a run-down Company mining town built on the spawn: the Pithead Works. The Host's statue stands in the square, ten blocks tall, and the hangar, ore house, pay office and the rest ring it on a graded pad of rust-red regolith. Its machines are offline. You repair them one by one, and each one that comes back is a new way to earn. The sky is at dusk, and it darkens into night.
+You start in Prosperity, a run-down Company mining town built on the spawn: the Pithead Works. The Host's statue stands in the square, ten blocks tall, and the hangar, ore house, pay office and the rest ring it on a pad of rust-red regolith. Its machines are offline. You repair them one by one, and each one that comes back is a new way to earn. The sky is at dusk, and it darkens into night.
 
-![The colony hangar, seen from the square](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/colony-hangar.png?raw=true)
+![The hangar, seen across the square](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/colony-hangar.png?raw=true)
 
 The hangar holds the founding pod, dark until your charter repairs it.
 
@@ -71,7 +69,7 @@ Money buys better parts: drill, hull, engine, tank, radiator, cargo, scanner, li
 
 ![The Mole's cutter changes from a tricone to stacked rings to a fluted auger as two drill upgrades are bought](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-cutter-swap.gif?raw=true)
 
-The drill part shows on the pod. Each drill tier changes the cutter on the front, and the swap is at once: a tricone at tier 0, stacked rings at tier 1, a fluted auger at tier 2, and a cluster from tier 3. A glance tells you how well a pod is fitted.
+The drill part shows on the pod. Each drill tier changes the cutter on the front, and the swap is at once: a tricone at tier 0, stacked rings at tier 1, a fluted auger at tier 2, and and the Mole tops out there. A cluster comes from tier 3, on pods that can fit it, such as the Prospector. A glance tells you how well a pod is fitted.
 
 ### 7. Repair
 
@@ -97,7 +95,7 @@ Lava hurts the pod, not the pilot. The hull gauge drops until you leave or repai
 
 A thermal scanner shows lava pockets beside your shaft before you reach them. Stop a slab above, press R from the seat, and the pod lines the slab walls with slag brick while it stands still. Then drill on. Buy a spoil hopper at the upgrade terminal and the drill keeps the stone it bores. The ore processor fuses that stone into the brick.
 
-The liner part does it for you. Fit one and the pod rings the shaft with slag brick as it drills, every few slabs, so the lava never reaches the hull. Tier 1 rings every 4 slabs, tier 2 every 3 and also in a fall, and it stretches your slag further. The cost is drill speed: a better liner is a slower drill. The readout shows your slag and how many slabs are left to the next ring.
+The liner part does it for you. Fit one and the pod rings the shaft with slag brick as it drills, every few slabs, which seals the walls against lava pockets the thermal scanner has shown you. Tier 1 rings every 4 slabs, tier 2 every 3 and also in a fall, and it stretches your slag further. The cost is drill speed: a better liner is a slower drill. The readout shows your slag and how many slabs are left to the next ring.
 
 ![Looking up a shaft the liner has ringed with slag brick, with the liner readout in the corner](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-liner.png?raw=true)
 

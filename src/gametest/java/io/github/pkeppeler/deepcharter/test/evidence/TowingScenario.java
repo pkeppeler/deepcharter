@@ -46,6 +46,7 @@ public class TowingScenario extends EvidenceScenario {
 	/** The watcher starts level with the tower and then follows it along the slab, so both pods stay in the frame while they drive. */
 	private static final double WATCH_START_Z = Z - 4.5;
 	private static final double WATCH_SHAFT_Z = Z + 3.5;
+	private static final String NO_NAME_TAGS = "no-name-tags";
 	private static final float WATCH_WEST = 90f;
 	private static final float WATCH_PITCH = 15f;
 	private static final float SHAFT_PITCH = 48f;
@@ -158,7 +159,10 @@ public class TowingScenario extends EvidenceScenario {
 
 	/** The mock pilot's name would hover over the tower; the pods' own TOWER and TOWED labels are the ones the picture is meant to show. */
 	private static void hideNameTags(ServerLevel level, TwoPlayerServer two) {
-		PlayerTeam team = level.getScoreboard().addPlayerTeam("no-name-tags");
+		PlayerTeam team = level.getScoreboard().getPlayerTeam(NO_NAME_TAGS);
+		if (team == null) {
+			team = level.getScoreboard().addPlayerTeam(NO_NAME_TAGS);
+		}
 		team.setNameTagVisibility(Team.Visibility.NEVER);
 		level.getScoreboard().addPlayerToTeam(two.mock().player().getScoreboardName(), team);
 	}

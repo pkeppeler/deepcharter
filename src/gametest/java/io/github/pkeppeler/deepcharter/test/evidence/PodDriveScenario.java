@@ -26,6 +26,11 @@ public class PodDriveScenario extends EvidenceScenario {
 			context.waitTicks(40);
 			PodShellClientTest.mountFirstPlayer(singleplayer.getServer());
 			context.waitFor(client -> client.player.getVehicle() instanceof PodEntity);
+			// The shared mount helper starts the pod damaged; the picture is of a sound pod.
+			singleplayer.getServer().runOnServer(server -> {
+				PodEntity pod = (PodEntity) server.getPlayerList().getPlayers().getFirst().getVehicle();
+				pod.setHull(pod.maxHull());
+			});
 			context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
 			context.waitTicks(20);
 			frame(context);
