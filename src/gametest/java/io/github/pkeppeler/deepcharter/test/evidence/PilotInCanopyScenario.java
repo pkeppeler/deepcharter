@@ -12,7 +12,11 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
@@ -25,31 +29,39 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 
 /**
- * Evidence scenario "pilot-in-canopy" for #382. The real player pilots a Mole and then a Prospector (a mock navigator takes the
- * Prospector's second seat) on a flat slab. For each pod: third person from the side and from behind and above, where the pilot shows through
- * the windows and not over the roof; and first person looking ahead, down and up, which frames the canopy and the cutter ahead and
- * never looks from inside the hull.
+ * Evidence scenario "pilot-in-canopy" for #382, in a stone hall that light blocks fill with full light. For each pod: two close stills
+ * from outside (a three-quarter view from the front and one from the side), where a mock pilot, and for the Prospector a mock navigator,
+ * show through the panes and not over the roof; then the real player pilots the pod, and first person looks ahead, down and up, which
+ * frames the canopy, the sill and the cutter, and never looks from inside the hull.
  */
 public class PilotInCanopyScenario extends EvidenceScenario {
 	private static final int X = 1500;
 	private static final int Z = 1500;
 	private static final int FLOOR_Y = 200;
-	private static final int SLAB_RADIUS = 12;
-	private static final int SLAB_DEPTH = 6;
+	private static final int HALL_RADIUS = 8;
+	private static final int HALL_HEIGHT = 7;
+	private static final int LIGHT_STEP = 3;
+	private static final double EYE = 1.62;
 	private static final int SETTLE_TICKS = 20;
 	private static final float POD_YAW = 0f;
-	private static final float SIDE_ON = 90f;
-	private static final float REAR_QUARTER = 60f;
 	private static final float LEVEL = 0f;
 	private static final float LOOK_DOWN = 55f;
 	private static final float LOOK_UP = -55f;
 
-	private record Subject(String id, EntityType<PodEntity> type, Chassis chassis) {
+	/** A camera outside the pod: where it stands from the pod's feet (x to the pod's left, z ahead), and the cab point it looks at. */
+	private record Shot(String name, Vec3 camera, Vec3 target) {
+	}
+
+	private record Subject(String id, EntityType<PodEntity> type, Chassis chassis, List<Shot> shots) {
 	}
 
 	private static final List<Subject> SUBJECTS = List.of(
-			new Subject("mole", PodRegistry.POD, Chassis.MOLE),
-			new Subject("prospector", PodRegistry.PROSPECTOR, Chassis.PROSPECTOR));
+			new Subject("mole", PodRegistry.POD, Chassis.MOLE, List.of(
+					new Shot("front-three-quarter", new Vec3(1.9, 1.9, 1.0), new Vec3(0, 1.2, -0.4)),
+					new Shot("side-close", new Vec3(1.9, 1.6, -0.4), new Vec3(0, 1.3, -0.4)))),
+			new Subject("prospector", PodRegistry.PROSPECTOR, Chassis.PROSPECTOR, List.of(
+					new Shot("front-three-quarter", new Vec3(3.0, 3.0, 1.6), new Vec3(0, 1.8, -0.55)),
+					new Shot("side-close", new Vec3(3.0, 2.3, -0.55), new Vec3(0, 1.85, -0.55)))));
 
 	@Override
 	protected String name() {
@@ -70,84 +82,123 @@ public class PilotInCanopyScenario extends EvidenceScenario {
 				player.setGameMode(GameType.CREATIVE);
 				player.setPermanentlyInvulnerable(true);
 				player.teleportTo(server.overworld(), X + 0.5, FLOOR_Y + 1, Z + 0.5, Set.of(), POD_YAW, 0f, true);
-				buildSlab(server.overworld());
+				buildHall(server.overworld());
 			});
-			ClientWait.until(context, "the slab on the client", client -> client.level.getBlockState(new BlockPos(X, FLOOR_Y - 1, Z)).is(Blocks.STONE));
+			ClientWait.until(context, "the hall on the client", client -> client.level.getBlockState(new BlockPos(X + HALL_RADIUS, FLOOR_Y + 1, Z)).is(Blocks.STONE_BRICKS)
+					&& client.level.getBlockState(new BlockPos(X, FLOOR_Y + HALL_HEIGHT, Z)).is(Blocks.STONE_BRICKS));
 			for (Subject subject : SUBJECTS) {
-				show(context, singleplayer, subject);
+				fromOutside(context, singleplayer, subject);
+				fromInside(context, singleplayer, subject);
 			}
 		}
 	}
 
-	private void show(ClientGameTestContext context, TestSingleplayerContext singleplayer, Subject subject) {
+	/** A mock pilot (and navigator) sit in the pod; the real player flies close to it and looks at the cab. */
+	private void fromOutside(ClientGameTestContext context, TestSingleplayerContext singleplayer, Subject subject) {
 		PodEntity[] made = {null};
-		MockPlayer[] navigator = {null};
+		MockPlayer[] riders = {null, null};
 		singleplayer.getServer().runOnServer(server -> {
 			ServerLevel level = server.overworld();
-			ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-			PodEntity pod = subject.type().create(level, EntitySpawnReason.COMMAND);
-			pod.setPos(X + 0.5, FLOOR_Y, Z + 0.5);
-			pod.setYRot(POD_YAW);
-			pod.setFuel(100f);
-			level.addFreshEntity(pod);
-			if (!player.startRiding(pod)) {
-				throw new AssertionError("the pilot could not board the " + subject.id());
-			}
+			ServerPlayer camera = server.getPlayerList().getPlayers().getFirst();
+			camera.getAbilities().mayfly = true;
+			camera.getAbilities().flying = true;
+			camera.onUpdateAbilities();
+			camera.setNoGravity(true);
+			PodEntity pod = pod(level, subject);
+			riders[0] = board(server, pod, "Pilot");
 			if (subject.chassis().seats() > 1) {
-				navigator[0] = MockPlayers.join(server, "Navigator");
-				navigator[0].teleportTo(level, new Vec3(X + 0.5, FLOOR_Y, Z + 0.5), POD_YAW, 0f);
-				if (!navigator[0].player().startRiding(pod)) {
-					throw new AssertionError("the navigator could not board the " + subject.id());
-				}
+				riders[1] = board(server, pod, "Navigator");
 			}
 			made[0] = pod;
 		});
 		PodEntity pod = made[0];
-		ClientWait.until(context, "the " + subject.id() + " ridden on the client", client -> client.level.getEntity(pod.getId()) instanceof PodEntity shown
-				&& shown.getPassengers().size() == subject.chassis().seats() && client.player.getVehicle() == shown);
-
-		look(context, CameraType.THIRD_PERSON_BACK, SIDE_ON, 10f);
-		settle(context);
-		screenshot(context, subject.id() + "-third-person-side");
-		frame(context);
-		look(context, CameraType.THIRD_PERSON_BACK, REAR_QUARTER, 28f);
-		settle(context);
-		screenshot(context, subject.id() + "-third-person-above");
-		frame(context);
-		look(context, CameraType.FIRST_PERSON, POD_YAW, LEVEL);
-		settle(context);
-		screenshot(context, subject.id() + "-first-person");
-		frame(context);
-		look(context, CameraType.FIRST_PERSON, POD_YAW, LOOK_DOWN);
-		settle(context);
-		screenshot(context, subject.id() + "-first-person-down");
-		frame(context);
-		look(context, CameraType.FIRST_PERSON, POD_YAW, LOOK_UP);
-		settle(context);
-		screenshot(context, subject.id() + "-first-person-up");
-		frame(context);
-
+		ClientWait.until(context, "the " + subject.id() + " with its riders on the client", client -> client.level.getEntity(pod.getId()) instanceof PodEntity shown
+				&& shown.getPassengers().size() == subject.chassis().seats());
+		context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+		for (Shot shot : subject.shots()) {
+			Vec3 camera = new Vec3(X + 0.5, FLOOR_Y, Z + 0.5).add(shot.camera());
+			Vec3 target = new Vec3(X + 0.5, FLOOR_Y, Z + 0.5).add(shot.target());
+			lookAt(singleplayer, camera, target);
+			settle(context);
+			screenshot(context, subject.id() + "-" + shot.name());
+			frame(context);
+		}
 		singleplayer.getServer().runOnServer(server -> {
-			server.getPlayerList().getPlayers().getFirst().stopRiding();
-			if (navigator[0] != null) {
-				navigator[0].player().stopRiding();
-				navigator[0].leave();
+			for (MockPlayer rider : riders) {
+				if (rider != null) {
+					rider.player().stopRiding();
+					rider.leave();
+				}
 			}
 			pod.discard();
 		});
-		ClientWait.until(context, "the pod gone from the client", client -> client.level.getEntity(pod.getId()) == null && client.player.getVehicle() == null);
+		ClientWait.until(context, "the pod gone from the client", client -> client.level.getEntity(pod.getId()) == null);
 	}
 
-	/** The camera of the riding player: which view, and where it looks. */
-	private static void look(ClientGameTestContext context, CameraType view, float yaw, float pitch) {
-		context.runOnClient(client -> {
-			client.options.setCameraType(view);
-			client.player.setYRot(yaw);
-			client.player.yRotO = yaw;
-			client.player.setXRot(pitch);
-			client.player.xRotO = pitch;
-			client.gui.toastManager().clear();
+	/** The real player pilots the pod, and the camera is the pilot's eye: level, down and up. */
+	private void fromInside(ClientGameTestContext context, TestSingleplayerContext singleplayer, Subject subject) {
+		PodEntity[] made = {null};
+		singleplayer.getServer().runOnServer(server -> {
+			ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+			player.teleportTo(server.overworld(), X + 0.5, FLOOR_Y, Z + 0.5, Set.of(), POD_YAW, 0f, true);
+			PodEntity pod = pod(server.overworld(), subject);
+			if (!player.startRiding(pod)) {
+				throw new AssertionError("the pilot could not board the " + subject.id());
+			}
+			made[0] = pod;
 		});
+		PodEntity pod = made[0];
+		ClientWait.until(context, "the pilot aboard the " + subject.id() + " on the client", client -> client.level.getEntity(pod.getId()) instanceof PodEntity shown
+				&& client.player.getVehicle() == shown);
+		for (float pitch : new float[] {LEVEL, LOOK_DOWN, LOOK_UP}) {
+			context.runOnClient(client -> {
+				client.options.setCameraType(CameraType.FIRST_PERSON);
+				client.player.setYRot(POD_YAW);
+				client.player.yRotO = POD_YAW;
+				client.player.setXRot(pitch);
+				client.player.xRotO = pitch;
+				client.gui.toastManager().clear();
+			});
+			settle(context);
+			screenshot(context, subject.id() + "-first-person" + (pitch == LEVEL ? "" : pitch > 0 ? "-down" : "-up"));
+			frame(context);
+		}
+		singleplayer.getServer().runOnServer(server -> {
+			server.getPlayerList().getPlayers().getFirst().stopRiding();
+			pod.discard();
+		});
+		ClientWait.until(context, "the pilot off the pod", client -> client.level.getEntity(pod.getId()) == null && client.player.getVehicle() == null);
+	}
+
+	private static PodEntity pod(ServerLevel level, Subject subject) {
+		PodEntity pod = subject.type().create(level, EntitySpawnReason.COMMAND);
+		pod.setPos(X + 0.5, FLOOR_Y, Z + 0.5);
+		pod.setYRot(POD_YAW);
+		pod.setFuel(100f);
+		level.addFreshEntity(pod);
+		return pod;
+	}
+
+	private static MockPlayer board(net.minecraft.server.MinecraftServer server, PodEntity pod, String name) {
+		MockPlayer rider = MockPlayers.join(server, name);
+		rider.teleportTo(server.overworld(), pod.position(), POD_YAW, 0f);
+		if (!rider.player().startRiding(pod)) {
+			throw new AssertionError(name + " could not board " + pod);
+		}
+		// Bright armour, for the stills only, so a reader finds the head and shoulders in the cab at a glance.
+		boolean pilot = name.equals("Pilot");
+		rider.player().setItemSlot(EquipmentSlot.HEAD, new ItemStack(pilot ? Items.GOLDEN_HELMET : Items.DIAMOND_HELMET));
+		rider.player().setItemSlot(EquipmentSlot.CHEST, new ItemStack(pilot ? Items.GOLDEN_CHESTPLATE : Items.DIAMOND_CHESTPLATE));
+		return rider;
+	}
+
+	/** Puts the flying camera player at {@code eye}, looking at {@code target}. */
+	private static void lookAt(TestSingleplayerContext singleplayer, Vec3 eye, Vec3 target) {
+		Vec3 d = target.subtract(eye);
+		float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z));
+		float pitch = (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z)));
+		singleplayer.getServer().runOnServer(server -> server.getPlayerList().getPlayers().getFirst()
+				.teleportTo(server.overworld(), eye.x, eye.y - EYE, eye.z, Set.of(), yaw, pitch, true));
 	}
 
 	private static void settle(ClientGameTestContext context) {
@@ -155,16 +206,21 @@ public class PilotInCanopyScenario extends EvidenceScenario {
 		context.waitTicks(SETTLE_TICKS); // tick-wait: the pod's pose and the sections settle for a few frames
 	}
 
-	private static void buildSlab(ServerLevel level) {
-		for (int x = X - SLAB_RADIUS; x <= X + SLAB_RADIUS; x++) {
-			for (int z = Z - SLAB_RADIUS; z <= Z + SLAB_RADIUS; z++) {
-				for (int y = FLOOR_Y - SLAB_DEPTH; y < FLOOR_Y; y++) {
-					level.setBlock(new BlockPos(x, y, z), Blocks.STONE.defaultBlockState(), 2);
+	/** A stone-brick hall with a floor, walls and a ceiling, and an invisible full-light block every few cells, so the pod and its riders are lit. */
+	private static void buildHall(ServerLevel level) {
+		for (int x = X - HALL_RADIUS; x <= X + HALL_RADIUS; x++) {
+			for (int z = Z - HALL_RADIUS; z <= Z + HALL_RADIUS; z++) {
+				boolean wall = Math.abs(x - X) == HALL_RADIUS || Math.abs(z - Z) == HALL_RADIUS;
+				for (int y = FLOOR_Y - 1; y <= FLOOR_Y + HALL_HEIGHT; y++) {
+					Block block = y == FLOOR_Y - 1 || y == FLOOR_Y + HALL_HEIGHT || wall ? Blocks.STONE_BRICKS : Blocks.AIR;
+					// room-carver: a hall built in the overworld, not layer rock
+					level.setBlock(new BlockPos(x, y, z), block.defaultBlockState(), 2);
 				}
-				for (int y = FLOOR_Y; y <= FLOOR_Y + 12; y++) {
-					// room-carver: a slab built in the overworld, not layer rock
-					level.setBlock(new BlockPos(x, y, z), Blocks.AIR.defaultBlockState(), 2);
-				}
+			}
+		}
+		for (int x = X - HALL_RADIUS + 2; x < X + HALL_RADIUS; x += LIGHT_STEP) {
+			for (int z = Z - HALL_RADIUS + 2; z < Z + HALL_RADIUS; z += LIGHT_STEP) {
+				level.setBlock(new BlockPos(x, FLOOR_Y + HALL_HEIGHT - 2, z), Blocks.LIGHT.defaultBlockState(), 2);
 			}
 		}
 	}

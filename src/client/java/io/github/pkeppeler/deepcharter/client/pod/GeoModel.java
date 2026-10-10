@@ -247,12 +247,12 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 		return bounds;
 	}
 
-	/** A cube at rest: its bone, the cube as the file has it, and its box in pixels as {minX, minY, minZ, maxX, maxY, maxZ}. */
+	/** Used by {@code PodSeatsClientTest} to hold a rider to the cab. A cube at rest: its bone, the cube as the file has it, and its box in pixels as {minX, minY, minZ, maxX, maxY, maxZ}. */
 	public record RestCube(Bone bone, Cube cube, double[] box) {
 	}
 
 	/**
-	 * The box of each cube of the bones {@code only} accepts at rest, in pixels, as {minX, minY, minZ, maxX, maxY, maxZ}: the box of the
+	 * Used by {@code PodSeatsClientTest} only. The box of each cube of the bones {@code only} accepts at rest, in pixels, as {minX, minY, minZ, maxX, maxY, maxZ}: the box of the
 	 * cube's corners turned by its own rotation and its bones'. A turned cube is held by the box of its turned corners, which holds it
 	 * and a little more, so a test that a point is clear of every cube errs towards "not clear".
 	 */

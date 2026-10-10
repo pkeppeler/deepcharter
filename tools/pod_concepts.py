@@ -1435,7 +1435,7 @@ def mole_hull(m):
     body.box(-8, 6, -3 + dz, 8, 7, 10 + dz, "iron")
     # The back wall, the seat back and the roof.
     body.box(-10, MOLE_SILL, 10 + dz, 10, MOLE_CEILING, 12 + dz, "paint")
-    body.box(-5, MOLE_SILL, 6 + dz, 5, 24, 8 + dz, "rubber")
+    body.box(-5, MOLE_SILL, 6 + dz, 5, 24, 8 + dz, "steel")
     body.box(-10, MOLE_CEILING, -6 + dz, 10, MOLE_ROOF - 1, 12 + dz, "paint")
     body.box(-10.5, MOLE_ROOF - 1, -6.5 + dz, 10.5, MOLE_ROOF, 12.5 + dz, "trim")
     canopy = m.bone("canopy", "body")
@@ -1508,7 +1508,7 @@ def prospector_body(m):
     # The back wall, a seat back for each seat, the deck and the roof.
     body.box(-17, sill, 19, 17, deck, 21, "paint")
     for z in PROSPECTOR_SEAT_Z:
-        body.box(-6, sill, z + 4, 6, 26, z + 6, "rubber")
+        body.box(-6, sill, z + 4, 6, 26, z + 6, "steel")
     body.box(-18, deck, -5, 18, deck + 1, 22, "trim")
     bevelled_box(body, -13, deck + 1, -1, 13, 35, 18, 2, "paint")
     body.box(-14, 8, -2, 14, 9, 19, "iron")

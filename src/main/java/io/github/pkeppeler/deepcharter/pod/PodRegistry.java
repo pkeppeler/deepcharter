@@ -23,12 +23,7 @@ public final class PodRegistry {
 	/** Declared first: each registration below adds its chassis. */
 	private static final Map<EntityType<?>, Chassis> CHASSIS = new HashMap<>();
 
-	/**
-	 * Where each chassis seats its riders, pilot first: the point the rider sits on (the bottom of the seat), in blocks from the pod's feet,
-	 * +z being the way the pod faces. They are not a look file, though the model fixes them: the server places passengers from the entity
-	 * type, and a dedicated server has no models. The Mole's seat is 6 pixels up and 5 back of its nose (the cab of mole.geo.json), and the
-	 * Prospector's two are 8 pixels up, 3.5 and 14.5 back (#382); {@code PodSeatsClientTest} holds each to its cab.
-	 */
+	/** Seats are Java, not look data, because the server places passengers and a dedicated server has no models. Offsets: {@code PodSeatsClientTest} and ADR 0040. */
 	private static final Map<Chassis, List<Vec3>> SEATS = Map.of(
 			Chassis.MOLE, List.of(new Vec3(0, 6 / 16.0, -5 / 16.0)),
 			Chassis.PROSPECTOR, List.of(new Vec3(0, 8 / 16.0, -3.5 / 16.0), new Vec3(0, 8 / 16.0, -14.5 / 16.0)));
