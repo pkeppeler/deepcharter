@@ -168,7 +168,7 @@ Dates are Colony Years (CY). Now is CY 61.
 - **Ines and Tomas Kell, the Prospector.** Ines's relay begs Tomas to turn his lamp on; her last Note is in the Hollows: *"It's quiet here. I'm going to stay a little."* The lampless figure on layer 2's rail line might be Tomas. The game never confirms it.
 - **The Badger's crew.** Abe Pell, Sonny Orrin and Kit Dace, three drillers who quit in CY 20 and walked down into the Hollows. Their wreck has grown into a shrine.
 - **Convoy Nine.** The drowned procession in layer 4, led by Captain Mags Okoro, Hal's wife, in HAULER-0009. Their beacons loop an original miners' hymn, their lamps are still lit under the water, and their faces through the glass are peaceful. *"Water's warm. Doesn't feel like drowning. Feels like being held."*
-- **Roz Achterberg, "—R."** Shift steward, organiser of the walkout, the one who refused the Night Shift. Her margin notes are in every handbook. Her Notes run from layer 3 to the Furnace; her Crawler is a wreck at layer 6's Checkpoint; she sends act-3 transmissions as "Source unknown." In the Furnace, hers is the one Retained lamp still lit. Her thesis, which is the game's: *"He can't take what you won't give him."*
+- **Roz Achterberg, "—R."** Shift steward, organiser of the walkout, the one who refused the Night Shift. Her margin notes are in every handbook. Her Notes run from layer 3 to the Furnace; her Crawler is a wreck at layer 6's Checkpoint; she sends act-3 transmissions as "Source unknown." In the Furnace, hers is the one lamp still lit among the Furnace's workers. Her thesis, which is the game's: *"He can't take what you won't give him."*
 - **Benny.** A miner who went ahead without his lamp on the Night Shift. Hal still thinks Benny is buying at his send-off. Mentioned, never met.
 - **Survey One.** The Behemoth wreck in layer 7. It proves the Company always knew, holds Fell's last log as a man, and carries the homage to the original's "motherload" moment.
 - **The Lattice.** It replays the dead and says your crew's names in Hal's voice. It is never explained.
@@ -290,7 +290,7 @@ Combat details belong to the creatures session ([#13](https://github.com/pkeppel
    - Silence. Then one heartbeat that knocks everyone flat.
    - The Boardroom floor cracks. Beneath it an eye the size of the arena opens and looks at you. It closes. No transmission covers this moment.
    - Light rises from the crack, and every crew member receives an **Unnumbered Lamp**: no serial number, nobody's property, and it never goes out. It belongs to the player, not the charter.
-   - Roz's lamp alone does not go out. It walks down toward the Ramp.
+   - Roz's lamp does not go out either. It walks down toward the Ramp.
 
 **Deed rules** (design intent): only members of the charter that broke Head Office can hold its deed. The deed cannot leave the Boardroom; if its holder dies or leaves, it returns to the table. Nothing ends until someone signs or burns it.
 
