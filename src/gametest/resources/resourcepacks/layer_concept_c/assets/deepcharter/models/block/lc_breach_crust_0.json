@@ -1,0 +1,205 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "side": "deepcharter:block/lc_crust_side",
+    "top": "deepcharter:block/lc_crust_top",
+    "core": "deepcharter:block/lc_core",
+    "particle": "deepcharter:block/lc_crust_side",
+    "glow": "deepcharter:block/lc_crust_seam_glow"
+  },
+  "elements": [
+    {
+      "from": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ],
+          "texture": "#side"
+        },
+        "south": {
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ],
+          "texture": "#side"
+        },
+        "east": {
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ],
+          "texture": "#side"
+        },
+        "west": {
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ],
+          "texture": "#side"
+        },
+        "up": {
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ],
+          "texture": "#top"
+        },
+        "down": {
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ],
+          "texture": "#top"
+        }
+      }
+    },
+    {
+      "from": [
+        0.0,
+        16,
+        0.0
+      ],
+      "to": [
+        16,
+        16.02,
+        16
+      ],
+      "faces": {
+        "up": {
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ],
+          "texture": "#glow"
+        }
+      },
+      "light_emission": 15,
+      "shade": false
+    },
+    {
+      "from": [
+        0.0,
+        0.0,
+        -0.02
+      ],
+      "to": [
+        16,
+        16,
+        0.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ],
+          "texture": "#glow"
+        }
+      },
+      "light_emission": 15,
+      "shade": false
+    },
+    {
+      "from": [
+        0.0,
+        0.0,
+        16
+      ],
+      "to": [
+        16,
+        16,
+        16.02
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ],
+          "texture": "#glow"
+        }
+      },
+      "light_emission": 15,
+      "shade": false
+    },
+    {
+      "from": [
+        -0.02,
+        0.0,
+        0.0
+      ],
+      "to": [
+        0.0,
+        16,
+        16
+      ],
+      "faces": {
+        "west": {
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ],
+          "texture": "#glow"
+        }
+      },
+      "light_emission": 15,
+      "shade": false
+    },
+    {
+      "from": [
+        16,
+        0.0,
+        0.0
+      ],
+      "to": [
+        16.02,
+        16,
+        16
+      ],
+      "faces": {
+        "east": {
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ],
+          "texture": "#glow"
+        }
+      },
+      "light_emission": 15,
+      "shade": false
+    }
+  ]
+}

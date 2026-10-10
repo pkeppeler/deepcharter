@@ -1,0 +1,10 @@
+{
+  "description": "Layer concept round 1 (docs/design/layer-concepts.md): the rock of layer 1 (rust-brown packed regolith going to dark shale) and of layer 2 (grey-green shale), basalt for the plugs, Company concrete, and lava light for the cracks of the crust. Ramps run dark to light.",
+  "colours": {
+    "shale1": ["#140b08", "#23140d", "#38211a", "#4f3022", "#6a4430", "#8a5e42"],
+    "shale2": ["#090d0b", "#111814", "#1a241f", "#26362d", "#344a3e", "#476152"],
+    "plug": ["#08090c", "#0f1116", "#171a21", "#20242d", "#2b303b", "#3a4150"],
+    "concrete": ["#1a1917", "#2d2b28", "#413e39", "#57534c", "#6f6a61", "#8a8478"],
+    "lavaglow": ["#3a0903", "#8a1c06", "#c9400c", "#f26a14", "#ffa83a", "#fff0a0"]
+  }
+}
