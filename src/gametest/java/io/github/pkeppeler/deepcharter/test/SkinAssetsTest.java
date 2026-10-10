@@ -36,6 +36,9 @@ public class SkinAssetsTest {
 			if (SkinAssetsTest.class.getResource(model) == null) {
 				throw failure(helper, "the look of %s names the model %s, which is not on the classpath at %s", chassis.id(), look.model(), model);
 			}
+			look.paintMask().ifPresentOrElse(mask -> checkTexture(helper, mask), () -> {
+				throw failure(helper, "the look of %s has no paint mask, so its pods cannot carry a charter's colour", chassis.id());
+			});
 			for (PodLook.Variant variant : List.of(look.intact(), look.wreck())) {
 				checkTexture(helper, variant.texture());
 				if (variant.glow() != PodLook.Glow.NEVER) {

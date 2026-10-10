@@ -241,7 +241,7 @@ The pictures: the old slab, which looked the same from the front, side and back.
 | Source | `main/pod/PodRegistry.java`, `main/pod/Chassis.java` (width 1.9, height 1.9, 1 seat), `client/pod/PodGeoRenderer.java`, `client/pod/PodClientRegistry.java` |
 | Model | `geckolib/models/pod/mole.geo.json`: the Capsule, a GeckoLib model with the cutter of every drill tier as bone sets ([ADR 0040](../adr/0040-a-pod-look-is-a-file-per-chassis-and-the-drill-tier-picks-the-cutter.md)). |
 | Texture | `textures/entity/pod/mole.png` and `mole_glowmask.png` (512 x 512, written by `tools/pod_concepts.py`) |
-| Variants | The drill tier shows the cutter (T0 tricone, T1 stacked rings, T2 fluted auger, T3 and up cluster, from `pod/mole.json`). A wreck is the derelict texture, with no rotor. |
+| Variants | The drill tier shows the cutter (T0 tricone, T1 stacked rings, T2 fluted auger, T3 and up cluster, from `pod/mole.json`). A wreck is the derelict texture, with no rotor. The rotor's blades fold out to lift off and in on landing (folded while it drills), and the hull carries the paint colour of the pod's charter from the palette `theme/pod.json`. |
 | Vanilla | no |
 | Swap | **(a)** a pack replaces `pod/mole.json`, the model or the textures |
 
