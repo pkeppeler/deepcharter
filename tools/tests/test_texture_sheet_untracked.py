@@ -4,6 +4,7 @@ Two checks: the real repo tracks no generated sheet and ignores the paths they a
 the real generator, two branches that each add a texture recipe merge into main with no conflict and `texgen.py --check` passes.
 """
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -15,16 +16,24 @@ SHEET = "docs/design/texture-reference.png"
 GENERATED_SHEETS = (SHEET, "docs/design/texture-density/b-reference.png")
 
 
+def clean_env(cwd: Path) -> dict[str, str]:
+    """The environment with every GIT_* variable removed (a pre-push hook sets GIT_DIR, and git would then act on the real repo),
+    and git barred from walking up out of the parent of cwd."""
+    env = {name: value for name, value in os.environ.items() if not name.startswith("GIT_")}
+    env["GIT_CEILING_DIRECTORIES"] = str(cwd.resolve().parent)
+    return env
+
+
 def git(cwd: Path, *args: str) -> str:
     done = subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid", "-c", "commit.gpgsign=false", *args],
-                          cwd=cwd, capture_output=True, text=True)
+                          cwd=cwd, env=clean_env(cwd), capture_output=True, text=True)
     if done.returncode:
         raise AssertionError(f"git {' '.join(args)} failed in {cwd}: {done.stdout}{done.stderr}")
     return done.stdout
 
 
 def texgen(cwd: Path, *args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["python3", "-I", str(cwd / "tools/textures/texgen.py"), *args], cwd=cwd, capture_output=True, text=True)
+    return subprocess.run(["python3", "-I", str(cwd / "tools/textures/texgen.py"), *args], cwd=cwd, env=clean_env(cwd), capture_output=True, text=True)
 
 
 class RealRepoTest(unittest.TestCase):

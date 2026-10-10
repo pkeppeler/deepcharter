@@ -18,6 +18,7 @@ S
 cat >"$work/bin/python3" <<'S'
 #!/usr/bin/env bash
 echo "python3 $*" >>"$STUB_LOG"
+[[ -z ${STUB_GIT_INIT:-} ]] || git init -q "$STUB_GIT_INIT"
 [[ ${STUB_FAIL:-} != python ]]
 S
 cat >"$work/bin/shellcheck" <<'S'
@@ -64,6 +65,18 @@ check "pinned local version prints no warning" "no" "$(grep -q 'CI pins' "$work/
 STUB_SC_VERSION=0.9.0 run_hook "refs/heads/b $sha refs/heads/b $zero$nl" >/dev/null
 check "other local version warns with both versions" "yes" "$(grep -q 'local version is 0.9.0 but CI pins 0.11.0' "$work/out" && echo yes || echo no)"
 check "last line without a newline still counts" "0:4" "$(run_hook "refs/heads/b $sha refs/heads/b $zero")"
+
+# Git hands a hook GIT_DIR. A test that runs `git init` must hit its own temp dir, never the repo GIT_DIR names: here a sacrificial
+# bare repo stands in for the real one, and the stub python3 plays the test.
+git init -q --bare "$work/sacrificial.git"
+fingerprint() { (cd "$work/sacrificial.git" && find . -type f -exec cksum {} + | sort | cksum); }
+before=$(fingerprint)
+: >"$work/calls"
+(cd "$work" && printf '%s' "refs/heads/b $sha refs/heads/b $zero$nl" | GIT_DIR="$work/sacrificial.git" STUB_GIT_INIT="$work/fixture" \
+  STUB_LOG="$work/calls" PATH="$work/bin:$PATH" bash "$work/.githooks/pre-push" origin url) >"$work/out" 2>&1 || true
+check "a test's git init under the hook's GIT_DIR leaves that repo untouched" "$before" "$(fingerprint)"
+check "the test's git init went to its own dir" "yes" "$([[ -d $work/fixture/.git ]] && echo yes || echo no)"
+check "the sacrificial repo is still bare" "true" "$(git --git-dir="$work/sacrificial.git" config --get core.bare)"
 
 # Missing shellcheck: warn, skip it, and let the push through. The PATH holds only the tools the hook needs.
 mkdir -p "$work/nosc"
