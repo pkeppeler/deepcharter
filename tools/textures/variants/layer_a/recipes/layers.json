@@ -1,11 +1,33 @@
 {
   "recipes": {
-    "block/lc_core": {
+    "block/lc_core_1": {
       "kind": "opaque",
       "layers": [
         {
-          "op": "fill",
-          "colour": "void"
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2"
+          },
+          "rows": [
+            "bbaaaaaaaaabbbbb",
+            "bbaaaaaaaaabbbbb",
+            "aaabbbaaaaabbbaa",
+            "aabbbbbaaaaaaaaa",
+            "aabbcbbaaaaaaaaa",
+            "aabbcbbaaaaaaaaa",
+            "aabbbbbaaaaaaaaa",
+            "bbbbbbaaaaaaaaab",
+            "bbbbbbaaaaaaaaab",
+            "bbbbbbaaaaaaaaab",
+            "bbaaaaaaaaaaaaaa",
+            "aaaaaaabbbbaaaaa",
+            "aaaaaaabbbbbbaaa",
+            "aaaaaaabbbbbbbaa",
+            "aaaaaaaaaabbbbbb",
+            "bbaaaaaaaaabbbbb"
+          ]
         }
       ]
     },
@@ -23,22 +45,22 @@
             "f": "shale1.5"
           },
           "rows": [
-            "eeeecfdeeeeeeece",
-            "bbbbcdddcbbccabb",
-            "bbcccdbdcbdcccbb",
-            "bbbccdddeeeeeebb",
-            "aaaaaaaaaaaaaaaa",
-            "efefefffffffffff",
-            "eeeececedccccdee",
-            "ceeeeeeedceccfee",
-            "eeceeeeececccdec",
-            "bbbbbbbbbbeeeebb",
-            "ddedcebceeaaaaed",
-            "ddddceeecddddddd",
-            "ddcccaaacccccddd",
-            "ddccbbbaccccccdd",
-            "ddcbbbbbceccccdb",
-            "aaaaaaaaaaaaaaaa"
+            "aaaabaaaebbbbbbb",
+            "aebbbbbadaaabaaa",
+            "aebbbbaababbbbdb",
+            "aebbaaabaabbbbbb",
+            "ebbbbbdcaeddbaba",
+            "eedddddddaddddda",
+            "eedfddddddddddca",
+            "eccaeddfdaeddcae",
+            "eeeccacafcacddae",
+            "eeeeecccecadeadd",
+            "feeedddfceeaeaee",
+            "eeeeffeffeeaeaee",
+            "eeeeaaaaaeefaeee",
+            "eeaaaabbbbaaafee",
+            "aabbbbbbbbbaaeaa",
+            "bbbbbbbbbbbaaebb"
           ]
         }
       ]
@@ -57,22 +79,22 @@
             "f": "shale1.5"
           },
           "rows": [
-            "feaceccfffefffdf",
-            "cccccccdeeeecddc",
-            "ddcccccbeeefeddd",
-            "ddccceeeeeeeeedd",
-            "ddcccaaaaaaeeeed",
-            "bbbbbbbbbbbbbbbb",
-            "bceddedbeeeeeeee",
-            "baddddddddaaaaaa",
-            "bcddddddfddbbbbb",
-            "dceeeebddddbbbbb",
-            "bcaaaadbddcdbbbb",
-            "aaaaaaaaaaaaaaaa",
-            "dfefefffffffffff",
-            "ddeeedbdccccccdd",
-            "cdceedddcccccccc",
-            "bbbbbbbbbbbbbbbb"
+            "caccdccaecccdddd",
+            "aedddddadddddddf",
+            "aedfdddadddcdaaa",
+            "aebaadddadaadbac",
+            "eccccacfaebcbcca",
+            "ecccceaaeaccecea",
+            "eeccccbcceeeeeca",
+            "cccccddffaeeeeac",
+            "eeeeffddaeafeeae",
+            "edeeaaaaadabeaed",
+            "aaaabbbbabbaeaae",
+            "bbabdbcbdbaaeaab",
+            "aabbaaaaaaaaabba",
+            "aaaabbbbbbbbabaa",
+            "bbbbbbbbbbabaebb",
+            "bbbbbbbbbbbaaebb"
           ]
         }
       ]
@@ -91,22 +113,90 @@
             "f": "shale1.5"
           },
           "rows": [
-            "daebcedfeeeeebef",
-            "eccbccddccceeeee",
-            "acccadddeccaaaaa",
-            "cccccdddcccccccc",
-            "ccccddfdcceccccc",
-            "ccadbddbcccccecb",
-            "eeeeeeaaaaaaaaaa",
-            "aaaaaaefffefffef",
-            "bbbbbbbbbbbbbbbb",
-            "eeeedeeeeeeeebbe",
-            "dcdddaaaddcbbbbb",
-            "bccdddddddcbbbbb",
-            "bbccddddccccbbbb",
-            "bbcccbddccccccbb",
-            "bbbccdddbbbbbcbb",
-            "aaaaaaaaaaaaaaaa"
+            "ccccebbbbbbbabbb",
+            "eeeccccceccaacce",
+            "eeeeeccccccaceee",
+            "ddddaaeeeeaeeedd",
+            "ffeebeeffdaeeeee",
+            "aaeeefeeaaaeeeee",
+            "beeefaabbaafeeee",
+            "eeaaabbbaeaeafee",
+            "aaaabbbaabaabada",
+            "adabbdbaaebbaaaa",
+            "aaabbaaaebbbbbcb",
+            "bbbaacabbbbbbbbb",
+            "bbbdbbaebbbbbbbd",
+            "ccaabaeddbbbabbb",
+            "ddbdaeabbbbbdddd",
+            "ddddaedddddddddd"
+          ]
+        }
+      ]
+    },
+    "block/lc_stone_3": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4",
+            "f": "shale1.5"
+          },
+          "rows": [
+            "ddddeeeeddddaddd",
+            "eeeeefeffddaaeee",
+            "aaeefaaeadeaeeed",
+            "baeaaabbbbaaeaaf",
+            "ccabdbbbbbaeafac",
+            "aabaaabbbaaabaab",
+            "bbbbbbabdaabaaaa",
+            "aaabbbbaaabbbbaa",
+            "aaadaaaaababaaad",
+            "bbabbaaaaeaaaabb",
+            "cbbccbaaeaaaabcd",
+            "dddddcabfaaaadfd",
+            "dfddcfaeabaacaaa",
+            "aaaaaaeabbbbcccc",
+            "ccccbaccbccccccc",
+            "ccccaecccccccccc"
+          ]
+        }
+      ]
+    },
+    "block/lc_stone_4": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4",
+            "f": "shale1.5"
+          },
+          "rows": [
+            "abaabbbbaaaabaaa",
+            "aabbbbbbbbdaabbb",
+            "aebbbdabbdabbbbb",
+            "aaaeaabacabbbbaa",
+            "baabbbabccbbaabb",
+            "bbaabbbbbddbbbbb",
+            "bbaaaaddbbbbbdbb",
+            "dbbabebabbbbbbdd",
+            "fdffaecccccccccd",
+            "caaaaaaccfcccccf",
+            "cbbaaaaaeefbfcca",
+            "eebbaacccceeeebe",
+            "bccbcaedeecccbcc",
+            "ddddeeeeeeeeeddd",
+            "eeeeeaaeeeeeeeee",
+            "eeeeeeaeeeeeeeee"
           ]
         }
       ]
@@ -151,29 +241,29 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.1",
-            "b": "shale1.2",
-            "c": "shale1.3",
-            "d": "shale1.4",
-            "e": "shale1.5"
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4"
           },
           "rows": [
-            "dddddddddddedede",
-            "bbbbbbbbbbcabbab",
-            "bbbbbbbbbbabbbba",
+            "eccaaaaaaaaaaaaa",
+            "aaaaaeeeeaaaaaaa",
             "aaaaaaaaaaaaaaaa",
-            "ddddeeeeeeeeeeed",
-            "bbbbcccdcccccccc",
-            "bbbbcccccbcdcccb",
-            "aaaabbbbbbcbbbca",
-            "eeeeeeededdeeeee",
-            "ccbccccccccccccc",
-            "bbbbbbcbbbbbbbbb",
-            "eeeeeeeeeeeeeeee",
-            "cbccccccdccccccc",
-            "ccccccccdccccccc",
-            "bbbbbbbbbbbbbbbb",
-            "eeeeeeeeeedccccc"
+            "aaaaaaaaaaaaaaaa",
+            "eeeeaaaeaaaaaaee",
+            "ccaaaaaaaaaaaacd",
+            "aaaaaeeeeeaaaaaa",
+            "eeaaaddddaaaeaaa",
+            "bbeaaadaaaeecaae",
+            "bbaaaaaaeecccaab",
+            "bbaaaaaeccccaaab",
+            "baaaaaaaadccaaaa",
+            "aaeeeeaaaaaaaaaa",
+            "aecccceeaaeeeeea",
+            "accccccaaeddddda",
+            "acccccaaedcdddaa"
           ]
         }
       ]
@@ -188,26 +278,25 @@
             "b": "shale1.1",
             "c": "shale1.2",
             "d": "shale1.3",
-            "e": "shale1.4",
-            "f": "shale1.5"
+            "e": "shale1.4"
           },
           "rows": [
-            "eeeeeeeeeefeffff",
-            "ccccccccccbddddc",
-            "bbbbbbbbbbbaccbc",
-            "eeeeeeeeeeeeeeee",
-            "cccccccccccccccc",
-            "ccccccdcccccccdc",
-            "bbbbbbbbabcbbbbb",
-            "dddddddddddfffff",
-            "bbbbbbababbcdddd",
-            "aaaaaaaaaaaccccc",
-            "fffffeefeeeeeeed",
-            "dddddcccdccccccb",
-            "cddddccccdcccccb",
-            "cccccbbbbcbbbbba",
-            "ffffffffffffffff",
-            "dddddddddddcdddd"
+            "eccaaaaaaaaaaaaa",
+            "aaaaaeeeeaaaaaaa",
+            "aaaaaaaaaaaaaaaa",
+            "aaaaaaaaaaaaaaaa",
+            "eeeeaaaeaaaaaaee",
+            "ccaaaaaaaaaaaadc",
+            "aaaaaeeeeeaaaaaa",
+            "eeaaaddddaaaeaaa",
+            "bbeaaacaaaeecaae",
+            "bbbaaaaaeecccaab",
+            "bbaaaaaeccccaaab",
+            "baaaaaaaacccaaaa",
+            "aaeeeeaaaaaaaaaa",
+            "aecccceeaaeeeeea",
+            "accccccaaeddddda",
+            "acccccaaeddcddaa"
           ]
         }
       ]
@@ -222,26 +311,56 @@
             "b": "shale1.1",
             "c": "shale1.2",
             "d": "shale1.3",
-            "e": "shale1.4",
-            "f": "shale1.5"
+            "e": "shale1.4"
           },
           "rows": [
-            "eeeeeddddedddede",
-            "cccccbbbcabbabbb",
-            "cccccbbbabbbbabb",
-            "bbbbbaaaaaaaaaaa",
-            "eeeeeeeeeeeeeedd",
-            "cccccdcccccccdbb",
-            "bbbbbbbbbcbabbaa",
-            "ddddddddedddffff",
-            "bbbbbabbabbadddd",
-            "abbbbbbbbbbbdddd",
-            "aaaabaaaaaaacccc",
-            "dddddddeeeefeeee",
-            "bbbabbbcccdccccc",
-            "aaaaaaabbbcbbbbb",
-            "eeeedddddddddddd",
-            "ccccbbbbabbbbbbb"
+            "eccaaaaaaaaaaaaa",
+            "aaaaaeeeeaaaaaaa",
+            "aaaaaaaaaaaaaaaa",
+            "aaaaaaaaaaaaaaaa",
+            "eeeeaaaeaaaaaaee",
+            "ccaaaaaaaaaaaacc",
+            "aaaaaeeeeeaaaaaa",
+            "eeaaadddeaaaeaaa",
+            "bbeaaadaaaeecaae",
+            "abbaaaaaeecccaab",
+            "bbaaaaaeccccaaab",
+            "baaaaaaaaccdaaaa",
+            "aaeeeeaaaaaaaaaa",
+            "aecccceeaaeeeeea",
+            "accccccaaeddddda",
+            "acccccaaedddddaa"
+          ]
+        }
+      ]
+    },
+    "block/lc_core_2": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.1",
+            "c": "shale2.2"
+          },
+          "rows": [
+            "aaaaaaaabbbbbbba",
+            "baaaaaaaabbbbbbb",
+            "bbaaaaaaaabbbbbb",
+            "bbaaaaaaaabbccbb",
+            "bbaaaaaaaabccccb",
+            "bbbaaaaaaabccccc",
+            "cbbaaaaaaabccccc",
+            "ccbaaaaaaabccccc",
+            "ccbaaaaaaabccccc",
+            "ccbaaaaaaabbcccc",
+            "cbbaaaaaaabbbbbc",
+            "bbbbbbbaabbbbbbb",
+            "bbbbbbbbbbbbbbbb",
+            "bbbbbbbbbbbbbbbb",
+            "bbbbaabbbbbbbbbb",
+            "aaaaaaaabbbbbbbb"
           ]
         }
       ]
@@ -260,22 +379,22 @@
             "f": "shale2.5"
           },
           "rows": [
-            "deeeceeecbceeedd",
-            "ddccccccbbcedddd",
-            "dfccacccbbbcdddd",
-            "dbbbeeeeeebcddbd",
-            "aaaaaaaaaaaaaaaa",
-            "ccddffdfeeeeeefc",
-            "ccddddddeaaaaacc",
-            "ccdddbddfeeeedcc",
-            "ccdccddceceeccec",
-            "bbbbbbbbbbbbbbbb",
-            "ceebbceececeeeee",
-            "caeeeebdccebbccc",
-            "ecaaaafdcccbbcec",
-            "ccbdbcdfcccbbccc",
-            "ccbbccbdcccbbcab",
-            "aaaaaaaaaaaaaaaa"
+            "bbbbbbbbaaaaaaaa",
+            "bbbbbbbddbabbdae",
+            "bdbfdbbbbaebdbae",
+            "fbbafdfdaeddcaef",
+            "aaacaaaaaeddfaed",
+            "cbdcdcbafdddaeac",
+            "ccccccabacacaebb",
+            "cccbbbaccccaeecc",
+            "cccccccccceaecce",
+            "ceccaecccecedddc",
+            "ecaaacceccaeaaee",
+            "eebaaaacfeafbfef",
+            "bbbabbbbaaeeeeaa",
+            "bbbbbbbbbaaadbaa",
+            "baebbbbbaebbbbbb",
+            "aaebbbaaabbbabbb"
           ]
         }
       ]
@@ -294,22 +413,22 @@
             "f": "shale2.5"
           },
           "rows": [
-            "dffffdffffdfcfff",
-            "ddeeddccddfdcddd",
-            "fdeedbccdddddddd",
-            "ddeedeecddeeeeee",
-            "dbecdccccdaaaaaa",
-            "bbbbbbbbbbbbbbbb",
-            "deeccceeaebeeeee",
-            "ddccacccbdbcdddd",
-            "ddccccccbbbcdddf",
-            "ddccccccbbbcdddb",
-            "ddcbeeeebbacdddb",
-            "aaaaaaaaaeeeeaaa",
-            "ceddffdfeaaaadfe",
-            "ccfdddfdeeeeeedc",
-            "ccdccddceceeccda",
-            "bbbbbbbbbbbbbbbb"
+            "aacaaafeddadddda",
+            "ccccccaafeadfdae",
+            "ccccccccaaecaaae",
+            "ccccccccaeaddaec",
+            "ccccaaceaeddcaec",
+            "cecdbdccccccaeec",
+            "bcccccacccccaecc",
+            "ddacccaddddaeddf",
+            "aaaaadccdddaefaa",
+            "aaaaaeadfdddddaa",
+            "baabadeeaeaeddbd",
+            "bbbaaaafeaadbaaa",
+            "aababbaabaeaaabb",
+            "bbbbbbbbbdabbbbb",
+            "baebbbbdaebbbbbb",
+            "baeaaaaaacbbbabb"
           ]
         }
       ]
@@ -328,22 +447,90 @@
             "f": "shale2.5"
           },
           "rows": [
-            "beedddeececeeeee",
-            "bcdddddccdcccccb",
-            "bcdfddbccccccccb",
-            "bcdddffccccccccb",
-            "bcbdfeddcccccecb",
-            "bccbaabdcccccacb",
-            "aaaaaaaaaaaaaaaa",
-            "dffffcffffffefff",
-            "bbbbbbbbbbefeeeb",
-            "deeeeeeebbaaaaad",
-            "ddcaaaacbbbaaddb",
-            "ddcaaccceeeedddd",
-            "ddececccaaaafddd",
-            "dfccceccbbbcdddd",
-            "dbbbbcbcbbbcbdbd",
-            "aaaaaaaaaaaaaaaa"
+            "cccbcbbaacccccdd",
+            "ddccccccaeceeece",
+            "cecccccaeeeccccc",
+            "ecccbccaeeceeeee",
+            "eeaafeaecaeeeeee",
+            "fbbbaaacfaeeeeef",
+            "bbbbaacddeaeefaa",
+            "aaaadaedaaaeddaa",
+            "aaaddaaaadafeaaa",
+            "adaabbdaaaaaadda",
+            "dbaaebbbdaaaaaad",
+            "bdaeedbbbbbbaebb",
+            "ddaddddbabbbdaad",
+            "daedddccdbbbbbdd",
+            "dadddddddddabadd",
+            "aecdddddddddddae"
+          ]
+        }
+      ]
+    },
+    "block/lc_deepslate_3": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.1",
+            "c": "shale2.2",
+            "d": "shale2.3",
+            "e": "shale2.4",
+            "f": "shale2.5"
+          },
+          "rows": [
+            "ddddeddaaeeeeeee",
+            "eeaaaeeeaeeeeeef",
+            "bbbbbaaaaeeeefaa",
+            "aaaabbbaaeeeeebb",
+            "bbbbbbabbaaadaab",
+            "bcbddbacbbedbbad",
+            "adbbbaddbaabbbba",
+            "dbaaaaebdbaebbbd",
+            "bdddaaadbcbabbbb",
+            "cddadddffdbaebbd",
+            "dccaeddbaddaeddd",
+            "ddaefaabdaadaedd",
+            "ddaaabcccbaadfdd",
+            "caecccccccbccafd",
+            "dacccccccccccaad",
+            "aecbccbbbbbbccab"
+          ]
+        }
+      ]
+    },
+    "block/lc_deepslate_4": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.1",
+            "c": "shale2.2",
+            "d": "shale2.3",
+            "e": "shale2.4",
+            "f": "shale2.5"
+          },
+          "rows": [
+            "aaaaabbbabaebddb",
+            "aaadadaabaebbaaa",
+            "bbbaabaaaaeaabbb",
+            "aaaaaabbaaaabbbb",
+            "bbbbbbbaebbbbbbb",
+            "dbddbbaabbdddbdd",
+            "bbbbbbaecbcbbbbb",
+            "fddcdddaebdddfff",
+            "adfaaaeadaaddaab",
+            "badbdccaebdcaccc",
+            "bccaaaafaeccccec",
+            "cedaabacaaceccec",
+            "ccacbbbbcaeeeede",
+            "eeaecccccaeeeeee",
+            "eaeceeddecaeeeee",
+            "adddccccdeaeddee"
           ]
         }
       ]
@@ -391,26 +578,25 @@
             "b": "shale2.1",
             "c": "shale2.2",
             "d": "shale2.3",
-            "e": "shale2.4",
-            "f": "shale2.5"
+            "e": "shale2.4"
           },
           "rows": [
-            "eeeeeeeeeddddddd",
-            "cccccccccabbabbb",
-            "bbbbbbbbbaaaabaa",
-            "dddddddeddeeeeee",
-            "bbbbbbbbbbcccccc",
-            "abaaaaaaaabbbccb",
-            "ffddddddddddccdd",
-            "ddbbbbbbbbbbbbbb",
-            "ccaaaaaaaaaaaaaa",
-            "dddeddedffffffff",
-            "bbbbabbbdddddddd",
-            "aaaaaaaadccccccc",
-            "eeeedddddddddddd",
-            "ccccccbbbbbbbbbb",
-            "cccccdbbbbbbbbaa",
-            "bcbcbbaaaaaabaaa"
+            "aaaaaaaaaaaaaaaa",
+            "aaaaaaaaaaaaaaaa",
+            "aaaaaaaaaaaaaaaa",
+            "aaaaaaaaaaaaaaaa",
+            "eaaaeeeeaaeaaaae",
+            "caaaaaaaaebeaaac",
+            "aaaaaaaaaaaaaaaa",
+            "aaeeeeeaaaaaaaaa",
+            "aaaaaaaaaaaaaaaa",
+            "aaaeeeaaaaeeaaaa",
+            "eeecaaaeeeddaaaa",
+            "ccaaaeecedddaaae",
+            "aaaaecddddddaaaa",
+            "aaaeddddddaaaaaa",
+            "aaedaaaaaaaaaaaa",
+            "aaaaaaaaaaaaaaaa"
           ]
         }
       ]
@@ -425,26 +611,25 @@
             "b": "shale2.1",
             "c": "shale2.2",
             "d": "shale2.3",
-            "e": "shale2.4",
-            "f": "shale2.5"
+            "e": "shale2.4"
           },
           "rows": [
-            "eeeeeeeeeeeeeeee",
-            "ccccccccbccccbcc",
-            "ccccccccbcccdbcc",
-            "bbbbbbcbbbbbbbbb",
-            "eeeeeeeeeeeeeeee",
-            "dccccccbccccdccd",
-            "ccccccccccccbbcc",
-            "bbbbbbbbbbbbbbbb",
-            "eedeeeeeeeeeeeee",
-            "ccdccccdcdccdccc",
-            "bbbbbabbbbbbbbbb",
-            "eeeeeedeefeeeeee",
-            "ccccbbcccccccccc",
-            "cccccccccccccccc",
-            "bbbbcbbbbbbbbbaa",
-            "ffffffffffffffff"
+            "aaaaaaaaaaaaaaaa",
+            "aaaaaaaaaaaaaaaa",
+            "aaaaaaaaaaaaaaaa",
+            "aaaaaaaaaaaaaaaa",
+            "eaaaeeeeaaeaaaae",
+            "daaaaaaaaebeaaad",
+            "aaaaaaaaaaaaaaaa",
+            "aaeeeeeaaaaaaaaa",
+            "aaaaaaaaaaaaaaaa",
+            "aaaeeeaaaaeeaaaa",
+            "eeecaaaeeeddaaaa",
+            "ccaaaeeddeddaaae",
+            "aaaaecddddddaaaa",
+            "aaaeddddddaaaaaa",
+            "aaedaaaaaaaaaaaa",
+            "aaaaaaaaaaaaaaaa"
           ]
         }
       ]
@@ -459,26 +644,25 @@
             "b": "shale2.1",
             "c": "shale2.2",
             "d": "shale2.3",
-            "e": "shale2.4",
-            "f": "shale2.5"
+            "e": "shale2.4"
           },
           "rows": [
-            "eeeeeeeeeeeeeeee",
-            "cccccccccccbccbc",
-            "cccccccccccbccbd",
-            "bbbbbcbbbbbbbbbb",
-            "ffffffffffffeeee",
-            "dddecddddddddccd",
-            "ccccccccccccbbaa",
-            "fffffffffffffeee",
-            "dcdddddddddddccc",
-            "deddedddddeddccd",
-            "ccccccbccccccbbb",
-            "eeeedcddddedddee",
-            "ccccbbaabbbbbbcc",
-            "bbbbaaaaaaaaaabb",
-            "dddddddeddffeeff",
-            "bcbcbbbbbbdddded"
+            "aaaaaaaaaaaaaaaa",
+            "aaaaaaaaaaaaaaaa",
+            "aaaaaaaaaaaaaaaa",
+            "aaaaaaaaaaaaaaaa",
+            "eaaaeeeeaaeaaaae",
+            "caaaaaaaaebeaaad",
+            "aaaaaaaaaaaaaaaa",
+            "aaeeeeeaaaaaaaaa",
+            "aaaaaaaaaaaaaaaa",
+            "aaaeeeaaaaeeaaaa",
+            "eeecaaaeeeddaaaa",
+            "ccaaaeedddedaaae",
+            "aaaaedccddddaaaa",
+            "aaaeddddddaaaaaa",
+            "aaedaaaaaaaaaaaa",
+            "aaaaaaaaaaaaaaaa"
           ]
         }
       ]

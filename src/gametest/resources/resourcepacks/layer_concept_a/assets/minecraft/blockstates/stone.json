@@ -45,6 +45,36 @@
       {
         "model": "deepcharter:block/lc_stone_2",
         "y": 270
+      },
+      {
+        "model": "deepcharter:block/lc_stone_3"
+      },
+      {
+        "model": "deepcharter:block/lc_stone_3",
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/lc_stone_3",
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/lc_stone_3",
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/lc_stone_4"
+      },
+      {
+        "model": "deepcharter:block/lc_stone_4",
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/lc_stone_4",
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/lc_stone_4",
+        "y": 270
       }
     ]
   }

@@ -30,7 +30,7 @@ X, Y, Z = 48, 20, 21
 BASE = 3
 CZ = 10
 TOP = BASE + 7
-LAMP_LEVEL = 12
+LAMP_LEVEL = 14
 OPTIONS = ("a", "b", "c")
 LAYERS = (1, 2)
 
@@ -49,6 +49,10 @@ class View:
     eye: tuple[float, float, float]
     target: tuple[float, float, float]
     wait: int = 30
+    # "company" (sodium amber lamp tint) or "deep" (cold): the kind of light the still is shot under.
+    light: str = "company"
+    # The level of a light block put at the camera while the still is shot, as a pod's lamp is, or 0 for none.
+    lamp: int = 0
 
 
 @dataclass
@@ -444,6 +448,20 @@ def build(option: str, layer: int) -> Scene:
     return scene
 
 
+# Where the close-up looks: (x along the gallery, y, the side of the gallery: -1 north, +1 south). Each is a stretch of plain rock, not of
+# the Company's dressing: B's north wall is shotcrete and its Company Rock, so its close-up is on the south wall, above the catwalk.
+CLOSE_UP = {"a": (LAMP_X + 3, BASE + 4, -1), "b": (LAMP_X + 4, BASE + 5, 1), "c": (LAMP_X + 3, BASE + 3, -1)}
+CLOSE_UP_DISTANCE = 2.0
+
+
+def close_up(c: Cave) -> View:
+    """The camera two blocks from the rock, looking straight at it, with a lamp at the camera: the texture is what the still is for."""
+    x, y, side = CLOSE_UP[c.option]
+    wall = side_z(c, x, y, side)
+    face = wall + 1.0 if side < 0 else float(wall)
+    return View("close-up", (x + 0.5, y + 0.5, face - side * CLOSE_UP_DISTANCE), (x + 0.5, y + 0.5, face), 40, "company", LAMP_LEVEL)
+
+
 def views(c: Cave, rock_face: tuple[int, int, int]) -> list[View]:
     rx, ry, rz = rock_face
     lava_eye, lava_target = {
@@ -452,11 +470,13 @@ def views(c: Cave, rock_face: tuple[int, int, int]) -> list[View]:
         "c": ((LAVA_X + 0.5, BASE + 3.6, CZ + 3.5), (LAVA_X + 0.5, BASE + 4.8, CZ - 5.5)),
     }[c.option]
     found = [
+        View("silhouette", (2.5, TOP - 1.6, CZ + 1.0), (X - 4.0, BASE + 1.5, CZ - 1.0), 40),
         View("lamp-lit", (LAMP_X - 6.5, BASE + 3.2, CZ + 2.5), (LAMP_X + 1, BASE + 4.0, CZ - 5)),
         View("fog-edge", (2.5, BASE + 2.6, CZ + 0.5), (X - 3, BASE + 2.0, CZ + 0.5), 40),
         View("company-rock", (rx + 0.5, ry + 1.0, min(CZ + 3.5, rz + 5.5)), (rx + 0.5, ry + 0.5, rz + 0.5)),
         View("lava-flow", lava_eye, lava_target, 140),
-        View("breach-crust", (CRUST_X - 3.5, BASE + 4.2, CZ + 0.5), (CRUST_X + 0.5, BASE - 1.2, CZ + 0.5), 40),
+        View("breach-crust", (CRUST_X - 3.5, BASE + 4.2, CZ + 0.5), (CRUST_X + 0.5, BASE - 1.2, CZ + 0.5), 40, "deep"),
+        close_up(c),
     ]
     for view in found:
         x, y, z = (int(v // 1) for v in view.eye)

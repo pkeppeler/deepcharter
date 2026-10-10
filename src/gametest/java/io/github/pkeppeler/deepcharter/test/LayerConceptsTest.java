@@ -4,10 +4,18 @@ import java.util.List;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
+import org.joml.Vector3f;
+
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.attribute.EnvironmentAttribute;
+import net.minecraft.world.attribute.EnvironmentAttributeMap;
+import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
@@ -56,6 +64,7 @@ public class LayerConceptsTest {
 					throw helper.assertionException("scene %s: the camera of %s at %s is in a block", scene.key(), view.name(), eye);
 				}
 			}
+			LayerConceptScenes.release(server, scene, size);
 		}
 		helper.succeed();
 	}
@@ -76,6 +85,49 @@ public class LayerConceptsTest {
 			for (BlockPos at : scene.lava()) {
 				if (!level.getBlockState(scene.origin().offset(at)).is(Blocks.LAVA)) {
 					throw helper.assertionException("scene %s: the lava source %s did not take", scene.key(), at);
+				}
+			}
+			LayerConceptScenes.release(server, scene, size);
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void everyViewsAtmosphereBiomeCarriesTheDecidedFogAmbientColourAndLampTint(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		Size size = LayerConceptScenes.size(server);
+		var biomes = server.registryAccess().lookupOrThrow(Registries.BIOME);
+		for (int layer : LayerConceptScenes.LAYERS) {
+			Object fog = null;
+			Object tintCompany = null;
+			for (String light : List.of("company", "deep")) {
+				Identifier id = LayerConceptScenes.atmosphere(layer, light);
+				EnvironmentAttributeMap attributes = biomes.get(ResourceKey.create(Registries.BIOME, id))
+						.orElseThrow(() -> helper.assertionException("the biome %s does not load", id)).value().getAttributes();
+				for (EnvironmentAttribute<?> attribute : List.of(EnvironmentAttributes.FOG_COLOR, EnvironmentAttributes.AMBIENT_LIGHT_COLOR, EnvironmentAttributes.BLOCK_LIGHT_TINT,
+						EnvironmentAttributes.FOG_START_DISTANCE, EnvironmentAttributes.FOG_END_DISTANCE)) {
+					if (!attributes.contains(attribute)) {
+						throw helper.assertionException("the biome %s sets no %s", id, attribute);
+					}
+				}
+				Object thisFog = attributes.applyModifier(EnvironmentAttributes.FOG_COLOR, new Vector3f());
+				Object tint = attributes.applyModifier(EnvironmentAttributes.BLOCK_LIGHT_TINT, new Vector3f());
+				if (fog != null && !fog.equals(thisFog)) {
+					throw helper.assertionException("layer %s: the two kinds of light have different fog colours", layer);
+				}
+				if (tintCompany != null && tintCompany.equals(tint)) {
+					throw helper.assertionException("layer %s: the company and deep lamp tints are the same", layer);
+				}
+				fog = thisFog;
+				tintCompany = tint;
+			}
+			for (Scene scene : LayerConceptScenes.read(server)) {
+				if (scene.layer() == layer) {
+					LayerConceptScenes.place(server, scene, size);
+					// It checks the biome in the corners and the middle of the box, and fails when /fillbiome did not take.
+					LayerConceptScenes.setAtmosphere(server, scene, size, "company");
+					LayerConceptScenes.setAtmosphere(server, scene, size, "deep");
+					LayerConceptScenes.release(server, scene, size);
 				}
 			}
 		}

@@ -3,7 +3,7 @@
   "textures": {
     "side": "deepcharter:block/lc_company_rock_0",
     "end": "deepcharter:block/lc_company_rock_end",
-    "core": "deepcharter:block/lc_core",
+    "core": "deepcharter:block/lc_core_1",
     "particle": "deepcharter:block/lc_company_rock_0"
   },
   "elements": [

@@ -1,11 +1,33 @@
 {
   "recipes": {
-    "block/lc_core": {
+    "block/lc_core_1": {
       "kind": "opaque",
       "layers": [
         {
-          "op": "fill",
-          "colour": "void"
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2"
+          },
+          "rows": [
+            "bbaaaaaaaaabbbbb",
+            "bbaaaaaaaaabbbbb",
+            "aaabbbaaaaabbbaa",
+            "aabbbbbaaaaaaaaa",
+            "aabbcbbaaaaaaaaa",
+            "aabbcbbaaaaaaaaa",
+            "aabbbbbaaaaaaaaa",
+            "bbbbbbaaaaaaaaab",
+            "bbbbbbaaaaaaaaab",
+            "bbbbbbaaaaaaaaab",
+            "bbaaaaaaaaaaaaaa",
+            "aaaaaaabbbbaaaaa",
+            "aaaaaaabbbbbbaaa",
+            "aaaaaaabbbbbbbaa",
+            "aaaaaaaaaabbbbbb",
+            "bbaaaaaaaaabbbbb"
+          ]
         }
       ]
     },
@@ -16,27 +38,28 @@
           "op": "pixels",
           "legend": {
             "a": "shale1.0",
-            "b": "shale1.2",
-            "c": "shale1.3",
-            "d": "shale1.4"
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.4",
+            "e": "shale1.5"
           },
           "rows": [
-            "caaaaaaaaaadbbbc",
-            "aaaaaaaadddaadba",
-            "ddaaadaadccddaaa",
-            "bcaadcaadcccdaad",
-            "bbaddddadccddadb",
-            "bbadddcadccddaad",
-            "dbadcccadccdaaaa",
-            "aaadcccadcccaddd",
-            "daadcccaddcaaadc",
-            "aaaaaaaaaaaaaaaa",
-            "aadddddaaaaddddd",
-            "adccccddaaaaadcc",
-            "adcccdddaaaaaaaa",
-            "aadcccccaaaddddd",
-            "dadcccccaddbbbbb",
-            "caadcccaaadbbbbc"
+            "caaaaabbbbbbbbcc",
+            "aaaadaaaabbaaaaa",
+            "daaddddaaaddeddd",
+            "daeeeddaaddeeeee",
+            "aadeeedaadeeeeed",
+            "aadeeeeadedeeeaa",
+            "aaddddaaeddeeadd",
+            "daadddaadddaaded",
+            "aaaaeaaadaaddddd",
+            "aaaaddddaaaaaaaa",
+            "daaddedeaaaadddd",
+            "adddddeeaadddddd",
+            "addddeeeaeeeaaaa",
+            "aaaddddaaaaaddbb",
+            "daaaadaaabddbbbb",
+            "caaaaaadbbbbcbbc"
           ]
         }
       ]
@@ -50,26 +73,26 @@
             "a": "shale1.0",
             "b": "shale1.1",
             "c": "shale1.2",
-            "d": "shale1.3",
-            "e": "shale1.4"
+            "d": "shale1.4",
+            "e": "shale1.5"
           },
           "rows": [
-            "aaaaaaaaaaaecccc",
-            "aaaaaaaaeeeaaaaa",
-            "eaaaaeaaeddeaaee",
-            "caaaeeaaedddaaeb",
-            "aaaeddeaeeddeaec",
-            "aeaeddeaeedddaaa",
-            "ecaedddaeeddaaaa",
-            "aaaedddaedddaeee",
-            "eaaedddaeddaaaed",
-            "aaaaaaaaaaaaaaaa",
-            "aaeeeeeaaaaeeeee",
-            "aedddddeaaaaaeed",
-            "aeddddddaaaaaaaa",
-            "aaedddddaaaeeeee",
-            "eaededddaeeccccc",
-            "caaeeedaaaeccccc"
+            "aaabddaadbbbbbbb",
+            "dddbbbaaabbaaaaa",
+            "aaabbaaaaaddaaad",
+            "bbbbaadaadddaaaa",
+            "bbaaddeaaddddadb",
+            "baddedeaeedeaaab",
+            "aaddddaadeddaaaa",
+            "daadddaadddaaddd",
+            "aaaadaaadaaeeddd",
+            "aaaaddddaaaaaaaa",
+            "daadedddaaaaeedd",
+            "addeddddaaddeeed",
+            "adedddddadeeaaaa",
+            "aaaddddaaaaaddbb",
+            "daaaadaaabddbbbb",
+            "baaaaaabbbbcbbbb"
           ]
         }
       ]
@@ -83,26 +106,26 @@
             "a": "shale1.0",
             "b": "shale1.1",
             "c": "shale1.2",
-            "d": "shale1.3",
-            "e": "shale1.4"
+            "d": "shale1.4",
+            "e": "shale1.5"
           },
           "rows": [
-            "aaeccccddaaecccc",
-            "aaeccccdaaeaaaaa",
-            "eaaecccdaedeaaee",
-            "baaaaaaaeeeeaaeb",
-            "aaaeeeaaedeeeaeb",
-            "aeaeeeeaedeeeaaa",
-            "ecaeeedaedddaaaa",
-            "aaaedddaedddaeee",
-            "eaaedddaeddaaaed",
-            "aaaaaaaaaaaaaaaa",
-            "aaeeeeeaaaaeeeee",
-            "aeeddddeaaaaaeee",
-            "aeeeddaaaaaaaaaa",
-            "aaedaaaaaaaeeeee",
-            "eaaaaeeeeaeccccc",
-            "caaeeccddaeccccc"
+            "aaadadaadcbbbbcb",
+            "dddaaaaaadbaaaaa",
+            "abaaaaaaaaddaaab",
+            "aaaaaaaaadeeaaaa",
+            "aaaaaedaadeeeada",
+            "ddaaeeeaddeeaaaa",
+            "caaeeeaaddedaaad",
+            "daadddaadddaaaad",
+            "aaaadaaadaaddddd",
+            "aaaadeddaaaaaaaa",
+            "daadedddaaaaddde",
+            "aededdddaadddeee",
+            "adeeddddaddeaaaa",
+            "aaaddddaaaaabbdd",
+            "daaaadaaadbbbbcb",
+            "baaaaaaddcbbbcbb"
           ]
         }
       ]
@@ -120,22 +143,22 @@
             "e": "shale1.4"
           },
           "rows": [
-            "aaeccccaaaaaaaaa",
-            "aaeccccaeeaaaaaa",
-            "aaaecaaeddaaaaaa",
-            "aaaaaaedddeaaaaa",
-            "aaeeeaeddddaaaaa",
-            "aebbbeaedddaaaaa",
-            "aebbbbaaeddeaaaa",
-            "ebbbbbeaaeddaaaa",
-            "bbbbbbbeaaedaaae",
-            "bbbbbbbbaaaaaaae",
-            "ebbbbbbbeaaaaaaa",
-            "aaaaaaaaaaaaaaaa",
-            "aaeeeeeeeaaaaaaa",
-            "aaeccccccaaaaaaa",
-            "aaeccccccaaaaaaa",
-            "aaecccccaaaaaaaa"
+            "aaaeccccdaaaaaaa",
+            "aaeccdcaaaaaaaaa",
+            "aacdcaaeddaaaaaa",
+            "aaaaaeededeaaaaa",
+            "aaaaaedddddaaaaa",
+            "ebaaaaaaaaeaaaaa",
+            "bbbeeebaaaaaaaab",
+            "cbbbbbbebaaaabeb",
+            "bbbbcbbbbbaaebbb",
+            "bcbbbbbbcbeebbbb",
+            "bbbbbbbbaaaaebbb",
+            "bbbbaaaeeceaabbb",
+            "aaaaacecccccaaaa",
+            "aaaaecccccccaaaa",
+            "aaaaeccdcccaaaaa",
+            "aaaecdccdcaaaaaa"
           ]
         }
       ]
@@ -149,25 +172,26 @@
             "a": "shale1.0",
             "b": "shale1.1",
             "c": "shale1.2",
-            "d": "shale1.3"
+            "d": "shale1.3",
+            "e": "shale1.4"
           },
           "rows": [
-            "aaadaadaaaaaaada",
-            "aaaaadcdaaaaadaa",
-            "aaadaadcadddaada",
-            "aadbaaaaadbbdada",
-            "adbbadddadbbbaaa",
-            "adbbaaaaadbbbaaa",
-            "daaaadddaaaaaadd",
-            "addadccdaddddaad",
-            "daaadcddadbbbaaa",
-            "aaddaddadcbbbaaa",
-            "daaaaaaadbbbbadd",
-            "addaadaaaadbbada",
-            "aaaadbaddaaaaada",
-            "daadbbadcaaaaaaa",
-            "aadbbbaaaaaddaad",
-            "ddadbbaaaaadcada"
+            "aaaaaaaaaaaaaada",
+            "aaaadddddaaaadaa",
+            "aaaaaddaaaddaada",
+            "abdbaaaaadbbbaaa",
+            "dbbcaadaadbbbaad",
+            "bbbaaaaaaaaaaadb",
+            "aaaaadddddaaaaaa",
+            "aadaaddeeaadcdaa",
+            "aaaaadeaadcccaaa",
+            "aaaaaaadddccdada",
+            "aaaaaacddccdcaaa",
+            "aaaaaaaadcccaada",
+            "aabbdddaaaaaaaaa",
+            "abcbbbbbaaaaaaaa",
+            "aadbbbbaaaaaaaaa",
+            "aaadbcaaaaaaaaad"
           ]
         }
       ]
@@ -181,25 +205,26 @@
             "a": "shale1.0",
             "b": "shale1.1",
             "c": "shale1.2",
-            "d": "shale1.3"
+            "d": "shale1.3",
+            "e": "shale1.4"
           },
           "rows": [
-            "aaadaadaaaaaaada",
-            "aaaaadcdaaaaadaa",
-            "aaadaadcadddaada",
-            "aadbaaaaadbbaada",
-            "adbbadddadbaaaaa",
-            "adbbaaaaaaadddda",
-            "daaaadddaadcdcca",
-            "addadcccaaadddad",
-            "daaadcccaddaaaaa",
-            "aaddadcadbbdaaaa",
-            "daaaaaaadbbbdadd",
-            "addaadaadbbbbada",
-            "aaaadbdaaaaaaada",
-            "daadbbbaaaaaaaaa",
-            "aadbbbbadaaddaad",
-            "ddadbbaadaadcada"
+            "bbbbaaaaaaaaaaaa",
+            "aaaaddeddaaaddda",
+            "aaaaaddaaaddbbba",
+            "bbbdaaaaadbbcbaa",
+            "bbcbaadaadbbbbab",
+            "bbbaaaaaaaaaaabb",
+            "aaaaadddddaaaaaa",
+            "aadaaddedaadddad",
+            "aaaaaddaaddddaad",
+            "aaaaaaacdcdddaad",
+            "ddadaaccdcccdaaa",
+            "aaaaaaaadccaadad",
+            "aaaaddcaaaaaaaaa",
+            "aabdbbbdaaaaaaaa",
+            "ddbbbbbaaaaaaaaa",
+            "bbbbcbaaaaaaaaaa"
           ]
         }
       ]
@@ -213,25 +238,57 @@
             "a": "shale1.0",
             "b": "shale1.1",
             "c": "shale1.2",
-            "d": "shale1.3"
+            "d": "shale1.3",
+            "e": "shale1.4"
           },
           "rows": [
-            "aaadaadaaaaaaada",
-            "aaaaadcdaaaaadaa",
-            "adaaaadcadddaaaa",
-            "dbadaaaaadbbdaaa",
-            "baadadddadbbbaad",
-            "aadbaaaaadbbbaad",
-            "aaaaadddaaaaaaaa",
-            "dddadcccaddddaad",
-            "dbaadcccadbbbaaa",
-            "aaddadcadbbbbaaa",
-            "daaaaaaadbbbbadd",
-            "addaadaadbbbbada",
+            "daaaaaaaaaaaaaaa",
+            "aaaadddddaaaddaa",
+            "aaaaaddaaaaadaaa",
+            "abbbaaaaaaaadaaa",
+            "dbbbaaddbaaaaaad",
+            "bbbaaaaaadddaabb",
+            "aaaaaddddeaaaaaa",
+            "ddaaaddedaaddcad",
+            "aaaaaddaaddccaad",
+            "aaaaaaaddccccaad",
+            "daddaaccccccdaaa",
+            "aaabaaaacccaaadd",
             "aaaadbdaaaaaaada",
-            "daadbbbaaaaaaaaa",
-            "aadbbbbadaaddaad",
-            "ddadbbaadaadcada"
+            "aadbbbbdaaaaaaaa",
+            "aadbbbbaaaaaaaaa",
+            "aaabbbaaaaaaaaad"
+          ]
+        }
+      ]
+    },
+    "block/lc_core_2": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.1",
+            "c": "shale2.2"
+          },
+          "rows": [
+            "aaaaaaaabbbbbbba",
+            "baaaaaaaabbbbbbb",
+            "bbaaaaaaaabbbbbb",
+            "bbaaaaaaaabbccbb",
+            "bbaaaaaaaabccccb",
+            "bbbaaaaaaabccccc",
+            "cbbaaaaaaabccccc",
+            "ccbaaaaaaabccccc",
+            "ccbaaaaaaabccccc",
+            "ccbaaaaaaabbcccc",
+            "cbbaaaaaaabbbbbc",
+            "bbbbbbbaabbbbbbb",
+            "bbbbbbbbbbbbbbbb",
+            "bbbbbbbbbbbbbbbb",
+            "bbbbaabbbbbbbbbb",
+            "aaaaaaaabbbbbbbb"
           ]
         }
       ]
@@ -244,25 +301,26 @@
           "legend": {
             "a": "shale2.0",
             "b": "shale2.3",
-            "c": "shale2.4"
+            "c": "shale2.4",
+            "d": "shale2.5"
           },
           "rows": [
-            "accbbccacbbccaaa",
-            "cbbbbbbacbbbbcaa",
-            "cbbbbbbacbbbaaaa",
-            "acbbbbbcaaaaaaaa",
-            "acbbbbbaaccccccc",
-            "acbbbaacacbbbbbb",
-            "aaaaaccccacbbbba",
-            "ccaacbbccaacbbaa",
-            "bbcacbccccaacaac",
-            "bbbaaaaaaaaaaacb",
-            "bbbcaaaaaaaccaac",
-            "bbbbaccccaacbcac",
-            "bbbaacbbbacbbbac",
-            "cbbaacbbbacbbbca",
-            "acbaaacbaaacbbba",
-            "aaaccaaacccaaaaa"
+            "bacccccaaccbbbcb",
+            "accccccaabbcbbbb",
+            "cccccccaabbbbbba",
+            "cdcccccaacbbcaac",
+            "ccccccaaaaaaaacc",
+            "ccccdaaccccccaac",
+            "ccaaaccdddccccaa",
+            "aaaacccddddccaaa",
+            "baaaccdddddaaaab",
+            "bbcaacddaaaaaaac",
+            "bcbcaaadcccaaaac",
+            "bbbaacccccaacaab",
+            "bbaacccccaccccaa",
+            "aaacccccacccccaa",
+            "aaacccaacccccaaa",
+            "baaaaaaaaaaacccc"
           ]
         }
       ]
@@ -275,25 +333,26 @@
           "legend": {
             "a": "shale2.0",
             "b": "shale2.3",
-            "c": "shale2.4"
+            "c": "shale2.4",
+            "d": "shale2.5"
           },
           "rows": [
-            "accbbccacbbccaaa",
-            "cbbbbbbacbbbbcaa",
-            "cbbbbbbacbbbaaaa",
-            "acbbbbbcaaaaaaaa",
-            "acbbbbbaaccccccc",
-            "acbbbaacacbccbbb",
-            "aaaaaccbcaccccaa",
-            "acaacbbbbaaaaaaa",
-            "cbcacbbbbcacccca",
-            "cbbaaaaaaacbbbba",
-            "bbbcaaaaaaacbbac",
-            "bbbbaccccaaaaaac",
-            "bbbaacbbbaccccac",
-            "cbbaacbbbacbbbca",
-            "acbaaacbaaacbbba",
-            "aaaccaaacccaaaaa"
+            "cacccccaabbcbbbb",
+            "accccccaabbbcbbb",
+            "cdcccccaacbbcbba",
+            "cccccccaabbbcaac",
+            "ccdcccaaaaaaaacc",
+            "cccccaaccccccaaa",
+            "aaaaaccccdcdaaca",
+            "caaaccccccdaaccb",
+            "aaaacccccdaccccb",
+            "accaacccaaacccca",
+            "cbbcaaaccaacccaa",
+            "bbbaaccccaaaaaac",
+            "cbaaccdccaccccaa",
+            "aaacccccacccccaa",
+            "aaacccaacccccaaa",
+            "baaaaaaaaaaacccc"
           ]
         }
       ]
@@ -305,27 +364,27 @@
           "op": "pixels",
           "legend": {
             "a": "shale2.0",
-            "b": "shale2.2",
-            "c": "shale2.3",
-            "d": "shale2.4"
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
           },
           "rows": [
-            "addccddadccddaaa",
-            "dccccccadccccdaa",
-            "dcccccaaadccaaaa",
-            "adcccaaaaaaaaaaa",
-            "aaaaadddaddddddd",
-            "aaaadccaadcccccc",
-            "aaadcaaaaadcccaa",
-            "adaaaadddaaaaaaa",
-            "dddaadcccdadddda",
-            "ddcaaaaaaadbbbca",
-            "dccdaaaaaaadbbad",
-            "ccccaddddaaaaaad",
-            "cccaadcccaddddad",
-            "dccaadcccadcccda",
-            "adcaaadcaaadccca",
-            "aaaddaaadddaaaaa"
+            "bacccccaabbcbbcb",
+            "acccccdaabbbbbba",
+            "accccccaabbbaaaa",
+            "acccdccaaaaaccba",
+            "accdccaaabccbcba",
+            "acdccaaaacbbbbba",
+            "aaaaacaaaacbbbaa",
+            "caaaccccccaaaacc",
+            "aaaaccccccabbbcc",
+            "accaacccaaacbbca",
+            "cbbcaaacdaabcbaa",
+            "bbbaaccccaaaaaab",
+            "bbaacccccaccccaa",
+            "aaacccccacccccaa",
+            "aaacccaacccccaaa",
+            "baaaaaaaaaaacccc"
           ]
         }
       ]
@@ -337,27 +396,27 @@
           "op": "pixels",
           "legend": {
             "a": "shale2.0",
-            "b": "shale2.2",
-            "c": "shale2.3",
-            "d": "shale2.4"
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
           },
           "rows": [
-            "adccccdadccddaaa",
-            "dccccccadccdddaa",
-            "dccccccadcccaaaa",
-            "adcccccdaaaaaaaa",
-            "addddccaaddddddd",
-            "adcddccadccccccc",
-            "aadccccadcccccaa",
-            "aadcccaaaaaaaaaa",
-            "ddadccaaaaaddddd",
-            "bbdadaaadddbbbbb",
-            "aaaaaaaaaaadbbbb",
-            "aaaaaaaaaaaaaaaa",
-            "aaaadaaaadddddaa",
-            "daadcdaaaadcccdd",
-            "cadcccaaaaaddccc",
-            "adccccaadddaaaaa"
+            "cacccccaaccccccb",
+            "accccccaabbccdca",
+            "accccccaacbbaaaa",
+            "accccccaaaaaccba",
+            "acdddcaaabccbbba",
+            "accddaabccbbbbba",
+            "aaaaaacbbbbbbbaa",
+            "bccaabbcbbbaaacc",
+            "bbbbaccaaaccccbb",
+            "baaaaaaabccbbbbb",
+            "aaaaaccccbbbbbba",
+            "ccccaccbbbaaaacc",
+            "ccccaaaaaacccccc",
+            "ccaaaaaccccccccc",
+            "aaaaaaacccccdaaa",
+            "baaccaaaaaaacccc"
           ]
         }
       ]
@@ -371,25 +430,26 @@
             "a": "shale2.0",
             "b": "shale2.1",
             "c": "shale2.2",
-            "d": "shale2.3"
+            "d": "shale2.3",
+            "e": "shale2.4"
           },
           "rows": [
-            "aaaaaddaaaaaaaaa",
-            "aaaadccaaaddaaaa",
-            "aaaaaadaadbaaaaa",
-            "aaaaaaaaaaaaaada",
-            "dadaaddaaaaddadd",
-            "baddaaddaadaaadb",
-            "aadcaaaaadaaaadb",
-            "aaaadddaadaaaadb",
-            "aaaaaadaaaadaaaa",
-            "dddddaadddaaaaaa",
-            "dbbbbadcccdaddda",
-            "adbbaaddddaddccd",
-            "aadbadddddaddccc",
-            "aaaaadcdddadcccc",
-            "aaaaaaaaaaadccca",
-            "aaaaadaaaaadccca"
+            "cbbbaadaaaaaaadd",
+            "bbbacdcaaaaaaadb",
+            "baadccaaaaaaaaad",
+            "ddaaaaaaaaaadaaa",
+            "dcaadddaaadaaadc",
+            "caaaaaaaaaaaaadc",
+            "caaaacdaaaaaaacc",
+            "adddcccaaaaaaaca",
+            "aaaaaaaaaaaaaaaa",
+            "aabdbbaacddcdaaa",
+            "bbbbbaadccccdaaa",
+            "adbaacdddddaadaa",
+            "aaaadcddddaedddd",
+            "ddaacccdeaeedddd",
+            "aadaaaaaaddddddd",
+            "ddbbbaaaaaadedaa"
           ]
         }
       ]
@@ -403,25 +463,26 @@
             "a": "shale2.0",
             "b": "shale2.1",
             "c": "shale2.2",
-            "d": "shale2.3"
+            "d": "shale2.3",
+            "e": "shale2.4"
           },
           "rows": [
-            "bbbbaddaaaadcdad",
-            "bbbadccaaadadcad",
-            "dbbaaadaadbaaaaa",
-            "aaaaaaaaaaaaaadd",
-            "dadaaddaaaaddadb",
-            "baddaaddaadaaadb",
-            "aadcaaaaadaaaadb",
-            "aaaadddaadaaaadb",
-            "aaaaaadaaaadaaaa",
-            "dddddaadddaaaaaa",
-            "dbbbbadcdcdaddda",
-            "adbbaadcddaaddcd",
-            "aadbadccddaadddc",
-            "aaaaadcccaaaddcc",
-            "adddaaaaaaaaadca",
-            "dbbbadaaaadddaaa"
+            "bbbbaacaaaaaaadb",
+            "bbbadcdaaaaaaabb",
+            "baacccaaaaaaaaad",
+            "ddaaaaaaaaaaaaaa",
+            "ccaaadadaaadaacd",
+            "caaaaaaaadaaaadc",
+            "adddaaaaadaaaaca",
+            "aaaaccdaaaaaaaaa",
+            "aaaaaaaaaaaaaaaa",
+            "aadbbcaadccddaaa",
+            "bbbbbaaddcccdaab",
+            "bbbaaddcdeddaadb",
+            "baaaccccddddaacb",
+            "aaaadccccdaaaaaa",
+            "cbbaaaaaaaaaaaad",
+            "bbbbdaaaaaaaaaad"
           ]
         }
       ]
@@ -435,25 +496,100 @@
             "a": "shale2.0",
             "b": "shale2.1",
             "c": "shale2.2",
-            "d": "shale2.3"
+            "d": "shale2.3",
+            "e": "shale2.4"
           },
           "rows": [
-            "dbbbaddaaaaaaada",
-            "dbbadccaaaddaaaa",
-            "dbbaaadaadbaaaaa",
-            "aaaaaaaaaaaaaadd",
-            "dadaaddaaaaddadb",
-            "baddaaddaadaaadb",
-            "aadcaaaaadaaaadb",
-            "aaaadddaadaaaadb",
-            "aaaaaadaaaadaaaa",
-            "dddddaadddaaaaaa",
-            "dbbbcadcccdaddaa",
-            "adccaadcccadccaa",
-            "aadcadccccadccaa",
-            "aaaaadccccadccaa",
-            "aaadaaaaaaadcaad",
-            "addbadaaaaaaaadc"
+            "aacddccaaaaaaaaa",
+            "aaadcccaaaaaaaaa",
+            "aaaccdaaaaaaaaaa",
+            "dcaaaaaaaaaadaaa",
+            "ccaaaaddaadaaacc",
+            "caaaaaaaadaaaadc",
+            "adddaaaaadbaaaca",
+            "aaaacdcaaaaaaaaa",
+            "aaaaaaaaaaaaaaaa",
+            "aadbddaadccddaaa",
+            "ddbbcaaddccccaaa",
+            "acdaaddccccaadaa",
+            "aaaadcccccaddddd",
+            "ddadcccccaddddde",
+            "daacccaaaddddded",
+            "daaaaddaaaaedddd"
+          ]
+        }
+      ]
+    },
+    "block/colony/concrete_footing": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "concrete.0",
+            "b": "concrete.1",
+            "c": "concrete.2",
+            "d": "concrete.3",
+            "e": "concrete.4",
+            "f": "concrete.5",
+            "g": "grime.1",
+            "h": "grime.2",
+            "i": "rust.1"
+          },
+          "rows": [
+            "ffdccbbbbbcgdcdf",
+            "fdcccbcbbbahcddc",
+            "dddddbbbbbahccdd",
+            "dddcdcbbbbbgcccc",
+            "ccgddcgbbbbhcccc",
+            "cdhdcchbbibhbccc",
+            "ddhdcchccccgbddd",
+            "edgdcdgcdddeidee",
+            "dehccchddeddddee",
+            "ddhccchdddddddee",
+            "ddgdccgccccccddg",
+            "cdceddcdcccbbcch",
+            "ccceedccccbbccch",
+            "cddcecccccbbdccg",
+            "edddccccdcbbbcdh",
+            "fdddcbbabbibcddd"
+          ]
+        }
+      ]
+    },
+    "block/colony/concrete_footing_cracked": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "concrete.0",
+            "b": "concrete.1",
+            "c": "concrete.2",
+            "d": "concrete.3",
+            "e": "concrete.4",
+            "f": "concrete.5",
+            "g": "grime.1",
+            "h": "grime.2",
+            "i": "rust.1"
+          },
+          "rows": [
+            "ffdccbbbbbcgdcdf",
+            "fdcacbcbbbahcddc",
+            "ddddacbbbbahccdd",
+            "dddcdacbbbbgcccc",
+            "ccgddacbbbbhcccc",
+            "cdhdcacbbibhbccc",
+            "ddhdcacccccgbddd",
+            "edgdcdacdddeidee",
+            "dehcccacdeddddee",
+            "ddhccchacdddddee",
+            "ddgdccgcaccccddg",
+            "cdceddcdcacbbcch",
+            "ccceedcccacbccch",
+            "cddcecccccacdccg",
+            "edddccccdcbaccdh",
+            "fdddcbbabbibcddd"
           ]
         }
       ]
@@ -464,32 +600,35 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "company.3",
+            "a": "company.2",
             "b": "concrete.0",
             "c": "concrete.1",
             "d": "concrete.2",
             "e": "concrete.3",
             "f": "concrete.4",
-            "g": "hazard.3",
-            "h": "steel.0"
+            "g": "grime.1",
+            "h": "grime.2",
+            "i": "hazard.1",
+            "j": "rust.1",
+            "k": "steel.0"
           },
           "rows": [
-            "dddddddeeeeffeed",
-            "ddddddeeeeefffee",
-            "eebceeeeeefffbce",
-            "ffffaaaeeeaaafff",
-            "fffafffafafffaff",
-            "cccacccccacccacc",
-            "ffffffeeddeeffff",
-            "fffaffeddadeeaff",
-            "ffbaffeadadeeacf",
-            "ffffaaadddaaaeff",
-            "ffffffffffffffff",
-            "cccccccccccccccc",
-            "fffffffffffeefff",
-            "ghhgghhgghhgghhg",
-            "hhgghhgghhgghhgg",
-            "hgghhgghhgghhggh"
+            "ccccdddeeeeeeddc",
+            "hhhchdeeeehhhdhh",
+            "gggcgeeeeegggbgg",
+            "hhhdaaaeeeaaaehh",
+            "eggaeeeaeeggejge",
+            "bhbabbbbbahhbahb",
+            "dddeeeeeddegdddd",
+            "dddaeeeddddeddcd",
+            "ddbaeeeadadedbcd",
+            "dddeeaedddaaadcd",
+            "eejeeeeeeeeeejee",
+            "bbhbbbbbbbbbbhbb",
+            "ddeeefffffeedded",
+            "ikggikhiikkgghhg",
+            "kkghgghhkhhihkii",
+            "hihhkiighhikkiik"
           ]
         }
       ]
@@ -500,32 +639,35 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "company.3",
+            "a": "company.2",
             "b": "concrete.0",
             "c": "concrete.1",
             "d": "concrete.2",
             "e": "concrete.3",
             "f": "concrete.4",
-            "g": "hazard.3",
-            "h": "steel.0"
+            "g": "grime.1",
+            "h": "grime.2",
+            "i": "hazard.1",
+            "j": "rust.1",
+            "k": "steel.0"
           },
           "rows": [
-            "ffeeeeddddddddee",
-            "ffeeeeeddddddeef",
-            "ffbceeeeeeeeebcf",
-            "fffeaaaeeaaaaaff",
-            "fffafffafffffaff",
-            "cccaccaaccccaccc",
-            "feeddeefffffffff",
-            "eedaadeaffaffffe",
-            "eebaddeaffaffbce",
-            "eeddaaafffaffffe",
-            "ffffffffffffffff",
-            "cccccccccccccccc",
-            "eeffffffffffffff",
-            "ghhgghhgghhgghhg",
-            "hhgghhgghhgghhgg",
-            "hgghhgghhgghhggh"
+            "eeeeedccccccddee",
+            "fhhheddhhhcchheh",
+            "fgggeddgggddggcg",
+            "fhhheaahhaaahafh",
+            "eggaeeeeggeeeaee",
+            "bbhbbbbahhbbahbb",
+            "eehdcdccgddeeffe",
+            "eedacccaddaeefee",
+            "eebacccaddaeebce",
+            "eeddaaadddaeefee",
+            "eejeeeeeeeeeejee",
+            "bbhbbbbbbbbbbhbb",
+            "eeefeeedddeeehfe",
+            "ggkiihkigkkighhg",
+            "hgiihhggkhhikkih",
+            "hhihgiikkihhkiik"
           ]
         }
       ]
@@ -540,25 +682,28 @@
             "b": "concrete.1",
             "c": "concrete.2",
             "d": "concrete.3",
-            "e": "concrete.4"
+            "e": "concrete.4",
+            "f": "grime.1",
+            "g": "grime.2",
+            "h": "rust.1"
           },
           "rows": [
-            "dddeeddccccccccd",
-            "dddeeeddccccccdd",
-            "ddabeeeddddddabd",
-            "ddeeeeeeeeeedddd",
-            "eeeeeeeeeeeeeeee",
-            "bbbbbbbbbbbbbbbb",
-            "ccddeeeeeeeeeedd",
-            "cccdddeeeeeeeedc",
-            "ccabddeeeeeeeabc",
-            "cccdddeeeeeeeedc",
-            "eeeeeeeeeeeeeeee",
-            "bbbbbbbbbbbbbbbb",
-            "eeeddeeeeeeeeeee",
-            "eeeedeeeeeeeeeee",
-            "eeeeeedddddddddd",
-            "dddeedddccccccdd"
+            "dddddddccccccccd",
+            "gdggedgdggccgggd",
+            "fdffeefdffddfffd",
+            "gdggeegeggddgggd",
+            "fdhfddddffddfhdd",
+            "aaggaaaaggaaggaa",
+            "aagcccdddfdddgbb",
+            "aaabbccdddddcbba",
+            "aaabbbcddddccaba",
+            "aaabbccdddddccba",
+            "ddhddddddddddhdd",
+            "aagaaaaaaaaaagaa",
+            "ddgcddeeeeeeegdd",
+            "eedddddeeeeeeeee",
+            "dddddddddddddddd",
+            "ddddddddccccccdd"
           ]
         }
       ]

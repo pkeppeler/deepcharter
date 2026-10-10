@@ -1,10 +1,14 @@
 {
-  "description": "Layer concept round 1 (docs/design/layer-concepts.md): the rock of layer 1 (rust-brown packed regolith going to dark shale) and of layer 2 (grey-green shale), basalt for the plugs, Company concrete, and lava light for the cracks of the crust. Ramps run dark to light.",
+  "description": "Layer concept round 1 (docs/design/layer-concepts.md): the rock of layer 1 (rust-brown packed regolith going to dark shale) and of layer 2 (grey-green shale), the basalt of option C's columns (a cool grey-black, bluer in layer 2: the amber lamp tint warms everything toward brown, so a warm basalt reads as wood), basalt for the plugs, weathered Company concrete and its grime, a lighter crust than the default (the breach crust, and the plates of the lava's skin), and lava light for the cracks of the crust. Ramps run dark to light.",
   "colours": {
     "shale1": ["#140b08", "#23140d", "#38211a", "#4f3022", "#6a4430", "#8a5e42"],
     "shale2": ["#090d0b", "#111814", "#1a241f", "#26362d", "#344a3e", "#476152"],
+    "basalt1": ["#111113", "#222326", "#35363b", "#4a4c52", "#62656d", "#7d818a"],
+    "basalt2": ["#0b0e0e", "#171c1d", "#252c2e", "#363f42", "#4a565a", "#62727a"],
     "plug": ["#08090c", "#0f1116", "#171a21", "#20242d", "#2b303b", "#3a4150"],
-    "concrete": ["#1a1917", "#2d2b28", "#413e39", "#57534c", "#6f6a61", "#8a8478"],
+    "concrete": ["#14130f", "#24221e", "#363330", "#4b4741", "#625d55", "#7a746a"],
+    "crust": ["#1a1210", "#2e211c", "#47342b", "#63493b", "#7d6050", "#987a68"],
+    "grime": ["#080706", "#120f0d", "#1c1612", "#2a2018"],
     "lavaglow": ["#3a0903", "#8a1c06", "#c9400c", "#f26a14", "#ffa83a", "#fff0a0"]
   }
 }

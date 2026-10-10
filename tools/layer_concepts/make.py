@@ -8,6 +8,9 @@ Usage: tools/layer_concepts/make.py [--check]
   - each option's test pack under src/gametest/resources/resourcepacks/layer_concept_<option>/: pack.mcmeta, the blockstates of the rock
     (vanilla stone, cobblestone, deepslate and cobbled deepslate stand in for the rock of layers 1 and 2), of the Company Rock and of the
     breach crust, and their models (shapes.py)
+  - the atmosphere of the scenes, shared by all three options: one biome per layer and kind of light, under
+    src/gametest/resources/data/deepcharter-test/worldgen/biome/, with the fog, ambient and lamp-tint values of section 6 of the art direction
+    (the scenario puts the scene's box in the biome with /fillbiome, so no file of src/main changes)
   - each option's scenes for layers 1 and 2, as structure files under src/gametest/resources/data/deepcharter-test/structure/layer_concepts/,
     and the cameras of the evidence scenario in layer_concepts/scenes.json beside them (scenes.py)
 
@@ -24,8 +27,11 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "colony"))
 
+sys.path.insert(0, str(HERE.parent / "textures"))
+
 import art  # noqa: E402
 import nbt  # noqa: E402
+import pngio  # noqa: E402
 import scenes  # noqa: E402
 import shapes  # noqa: E402
 
@@ -35,6 +41,18 @@ STRUCTURES = DATA / "structure/layer_concepts"
 SCENES = DATA / "layer_concepts/scenes.json"
 NAMES = {"a": "Strata", "b": "Fractured", "c": "Columnar"}
 PACK_FORMAT = 97
+BIOMES = DATA / "worldgen/biome"
+
+# Section 6 of docs/design/art-direction.md, as the tryouts (docs/design/tryouts, art-direction-options.md section 4) used it: the original
+# game's depth-band fog colours, darkened (layer 1 brown going black, layer 2 a near-black green), near-black ambient light (the layers' own dimension-type values), and fog that
+# starts at 2 blocks and ends at 40 (layer 1) or 28 (layer 2). One entry per layer; every option is shot under the same one.
+ATMOSPHERE = {
+    1: {"fog_color": "#24160e", "ambient_light_color": "#1c1814", "fog_start": 2.0, "fog_end": 40.0},
+    2: {"fog_color": "#0a150e", "ambient_light_color": "#0c0a09", "fog_start": 2.0, "fog_end": 28.0},
+}
+# block_light_tint is one value at the camera (the lightmap has one tint), so a view is shot under one kind of light: sodium amber for the
+# Company's lamps, cold for the deep's own light (the breach chamber, lit by the crust).
+TINTS = {"company": "#ffbf6a", "deep": "#b4d2ff"}
 
 
 def recipes_path(option: str) -> Path:
@@ -45,31 +63,42 @@ def pack_dir(option: str) -> Path:
     return ROOT / f"src/gametest/resources/resourcepacks/layer_concept_{option}"
 
 
-# What each option's rubble is: broken beds, shards of breccia, the cut ends of broken prisms.
-RUBBLE = {"a": art.slabs, "b": art.shards, "c": art.prism_cap}
+# How many models of the rock block an option has. A has the most: its beds are the likeliest to read as ruled courses, so no two
+# neighbours should match.
+ROCK_VARIANTS = {"a": 5, "b": 3, "c": 3}
+RUBBLE_VARIANTS = 2
+
+
+# What each option's rubble is: broken flags of bed, shards of breccia, shards of basalt.
+RUBBLE = {"a": art.slabs, "b": art.shards, "c": art.shards}
 L1 = art.ramp("shale1", 6)
 L2 = art.ramp("shale2", 6)
+# C's columns are basalt, grey-black (a warm cast in layer 1, a green one in layer 2), not the shale of A and B.
+BASALT = {1: art.ramp("basalt1", 6), 2: art.ramp("basalt2", 6)}
 
 
 # ---------------------------------------------------------------------------------------------------------------- textures
 
 def textures(option: str) -> dict[str, dict]:
     """Every texture recipe of an option, by key (block/<name>)."""
-    out: dict[str, dict] = {"block/lc_core": art.fill_recipe("void")}
+    out: dict[str, dict] = {}
 
     def put(name: str, grid, **kw) -> None:
         out[f"block/{name}"] = art.recipe(grid, **kw)
 
     for layer, shades, rock, rubble in ((1, L1, "stone", "cobble"), (2, L2, "deepslate", "cobbled_deepslate")):
         seed = 100 * layer
-        for i in range(3):
+        if option == "c":
+            shades = BASALT[layer]
+        put(f"lc_core_{layer}", art.core(shades, seed + 9))
+        for i in range(ROCK_VARIANTS[option]):
             if option == "a":
-                put(f"lc_{rock}_{i}", art.strata(shades, seed + i, list(shapes.BEDS[i]), scars=layer == 2 and i == 2))
+                put(f"lc_{rock}_{i}", art.strata(shades, seed + i, scars=layer == 2 and i == 2))
             elif option == "b":
-                put(f"lc_{rock}_{i}", art.fractured(shades, seed + i, 7 + i))
+                put(f"lc_{rock}_{i}", art.fractured(shades, seed + i, 6 + i, 0.9, angular=True))
             else:
                 put(f"lc_{rock}_{i}", art.columnar(shades, seed + i, scars=layer == 2 and i == 2))
-        end = {"a": art.ledge(shades, seed + 5), "b": art.fractured(shades, seed + 6, 5), "c": art.prism_cap(shades, seed + 7)}[option]
+        end = {"a": art.ledge(shades, seed + 5), "b": art.fractured(shades, seed + 6, 5, 0.9, angular=True), "c": art.hex_cap(shades, seed + 7)}[option]
         put(f"lc_{rock}_end", end)
         for i in range(2):
             grid = RUBBLE[option](shades, seed + 20 + i)
@@ -82,6 +111,9 @@ def textures(option: str) -> dict[str, dict]:
         put("lc_crust_side", art.laminae(31))
         put("lc_crust_top", art.crust_plates(32, 4, 0.9, 2)[0])
     elif option == "b":
+        # The Company's shotcrete in the mod's own colony wall blocks, over the colony kit's pale concrete, so the wall is not the palest thing in a frame.
+        put("colony/concrete_footing", art.shotcrete(81))
+        put("colony/concrete_footing_cracked", art.shotcrete(81, cracked=True))
         put("lc_company_rock_0", art.stencilled_concrete(21, "CO"))
         put("lc_company_rock_1", art.stencilled_concrete(22, "07"))
         put("lc_company_rock_end", art.stencilled_concrete(23, "", band=False))
@@ -91,7 +123,7 @@ def textures(option: str) -> dict[str, dict]:
     else:
         put("lc_company_rock_0", art.brass_collar_plug(51))
         put("lc_company_rock_1", art.brass_collar_plug(52))
-        put("lc_company_rock_end", art.prism_cap(art.ramp("plug", 6), 53))
+        put("lc_company_rock_end", art.hex_cap(art.ramp("plug", 6), 53))
         plates, crack = art.crust_plates(61, 3, 1.0, 1)
         put("lc_crust_side", plates)
         put("lc_crust_top", plates)
@@ -112,16 +144,17 @@ def rock_model(option: str, variant: int, rubble: bool):
 def pack_models(option: str) -> dict[str, dict]:
     """Every model of an option's pack, by name."""
     out = {}
-    for rock, rubble, count in (("stone", False, 3), ("cobble", True, 2), ("deepslate", False, 3), ("cobbled_deepslate", True, 2)):
+    rock_count = ROCK_VARIANTS[option]
+    for rock, rubble, count in (("stone", False, rock_count), ("cobble", True, 2), ("deepslate", False, rock_count), ("cobbled_deepslate", True, 2)):
         for i in range(count):
             m = rock_model(option, i, rubble)
-            m.textures = shapes.rock_textures(f"lc_{rock}_{i}", f"lc_{rock}_end")
+            m.textures = shapes.rock_textures(f"lc_{rock}_{i}", f"lc_{rock}_end", 1 if rock in ("stone", "cobble") else 2)
             out[f"lc_{rock}_{i}"] = m.json(f"{option} {rock} {i}")
     for i in range(2):
         m = {"a": shapes.plug_a, "b": shapes.concrete_b}.get(option, lambda: shapes.prism(0, collar=True))()
-        m.textures = shapes.rock_textures(f"lc_company_rock_{i}", "lc_company_rock_end")
+        m.textures = shapes.rock_textures(f"lc_company_rock_{i}", "lc_company_rock_end", 1)
         out[f"lc_company_rock_{i}"] = m.json(f"{option} company rock {i}")
-    crust_textures = {"side": shapes.tex("lc_crust_side"), "top": shapes.tex("lc_crust_top"), "core": shapes.tex("lc_core"),
+    crust_textures = {"side": shapes.tex("lc_crust_side"), "top": shapes.tex("lc_crust_top"), "core": shapes.tex("lc_core_1"),
                       "particle": shapes.tex("lc_crust_side")}
     if option == "a":
         crusts = [shapes.crust_a()]
@@ -142,9 +175,9 @@ def blockstates(option: str, crust_models: int) -> dict[str, dict]:
         return {"variants": {"": shapes.variants_y(models)}}
 
     return {
-        "minecraft/blockstates/stone.json": listed([f"lc_stone_{i}" for i in range(3)]),
+        "minecraft/blockstates/stone.json": listed([f"lc_stone_{i}" for i in range(ROCK_VARIANTS[option])]),
         "minecraft/blockstates/cobblestone.json": listed([f"lc_cobble_{i}" for i in range(2)]),
-        "minecraft/blockstates/deepslate.json": {"variants": shapes.pillar_variants([f"lc_deepslate_{i}" for i in range(3)])},
+        "minecraft/blockstates/deepslate.json": {"variants": shapes.pillar_variants([f"lc_deepslate_{i}" for i in range(ROCK_VARIANTS[option])])},
         "minecraft/blockstates/cobbled_deepslate.json": listed([f"lc_cobbled_deepslate_{i}" for i in range(2)]),
         "deepcharter/blockstates/company_rock.json": listed([f"lc_company_rock_{i}" for i in range(2)]),
         "deepcharter/blockstates/breach_crust.json": listed([f"lc_breach_crust_{i}" for i in range(crust_models)]),
@@ -166,9 +199,67 @@ def scene_body(all_scenes: dict[str, scenes.Scene]) -> dict:
         "scenes": {
             key: {"structure": f"deepcharter-test:layer_concepts/{key}",
                   "lava": [list(at) for at in scene.lava],
-                  "views": [{"name": v.name, "eye": list(v.eye), "target": list(v.target), "wait": v.wait} for v in scene.views]}
+                  "views": [{"name": v.name, "eye": list(v.eye), "target": list(v.target), "wait": v.wait, "light": v.light, "lamp": v.lamp} for v in scene.views]}
             for key, scene in all_scenes.items()
         },
+    }
+
+
+# ---------------------------------------------------------------------------------------------------------------- lava
+
+LAVA_TEXTURES = ("lava_still", "lava_flow")
+
+
+def palette() -> dict[str, str]:
+    """The colour of every ramp entry, `name.index`: texgen's default palette with the layer palette over it."""
+    colours: dict[str, str] = {}
+    for path in (ROOT / "tools/textures/palette.json", ROOT / "tools/textures/variants/layers/palette.json"):
+        for name, value in json.loads(path.read_text())["colours"].items():
+            if isinstance(value, list):
+                colours.update({f"{name}.{i}": hexa for i, hexa in enumerate(value)})
+            else:
+                colours[name] = value
+    return colours
+
+
+def lava_image(grid) -> pngio.Rgba:
+    colours = palette()
+    out = bytearray()
+    for row in grid:
+        for name in row:
+            hexa = colours[name].lstrip("#")
+            out += bytes(int(hexa[i:i + 2], 16) for i in (0, 2, 4)) + b"\xff"
+    return pngio.Rgba(len(grid[0]), len(grid), bytes(out))
+
+
+def lava() -> dict[str, bytes]:
+    """The lava of every option: a crusted, darker lava over vanilla's two lava sprites, one frame each (a pack's PNG without a .mcmeta
+    is not animated). One texture for all three options, because lava's shape is the axis and its texture is not."""
+    return {
+        "lava_still": pngio.encode(lava_image(art.lava_sheet(7, 1, 4))),
+        "lava_flow": pngio.encode(lava_image(art.lava_sheet(9, 2, 0, flow=True))),
+    }
+
+
+# ---------------------------------------------------------------------------------------------------------------- atmosphere
+
+def biome_body(layer: int, light: str) -> dict:
+    """A biome that carries only atmosphere: no features, no spawns. The scenario sets a scene's box to it."""
+    a = ATMOSPHERE[layer]
+    return {
+        "attributes": {
+            "minecraft:visual/fog_color": a["fog_color"],
+            "minecraft:visual/fog_start_distance": a["fog_start"],
+            "minecraft:visual/fog_end_distance": a["fog_end"],
+            "minecraft:visual/ambient_light_color": a["ambient_light_color"],
+            "minecraft:visual/block_light_tint": TINTS[light],
+        },
+        "carvers": [],
+        "downfall": 0.0,
+        "effects": {"water_color": "#3f76e4"},
+        "features": [[] for _ in range(11)],
+        "has_precipitation": False,
+        "temperature": 0.5,
     }
 
 
@@ -194,6 +285,12 @@ def outputs() -> tuple[dict[Path, bytes], dict[Path, bytes]]:
             files[pack / f"assets/deepcharter/models/block/{name}.json"] = _json(body)
         for path, body in blockstates(option, sum(1 for n in models if n.startswith("lc_breach_crust_"))).items():
             files[pack / "assets" / path] = _json(body)
+    for option in scenes.OPTIONS:
+        for name, body in lava().items():
+            files[pack_dir(option) / f"assets/minecraft/textures/block/{name}.png"] = body
+    for layer in scenes.LAYERS:
+        for light in TINTS:
+            files[BIOMES / f"lc_layer_{layer}_{light}.json"] = _json(biome_body(layer, light))
     for key, scene in built.items():
         structures[STRUCTURES / f"{key}.nbt"] = structure_bytes(scene)
     files[SCENES] = _json(scene_body(built))
@@ -203,10 +300,19 @@ def outputs() -> tuple[dict[Path, bytes], dict[Path, bytes]]:
 OWNED = (ROOT / "tools/textures/variants", STRUCTURES)
 
 
+def stale(path: Path, body: bytes) -> bool:
+    """Whether the file is missing or differs from body: a PNG by its pixels (another zlib makes other bytes of the same image), the rest by bytes."""
+    if not path.is_file():
+        return True
+    if path.suffix == ".png":
+        return pngio.decode(path.read_bytes(), path.name) != pngio.decode(body, path.name)
+    return path.read_bytes() != body
+
+
 def problems(files: dict[Path, bytes], structures: dict[Path, bytes]) -> list[str]:
     out = []
     for path, body in files.items():
-        if not path.is_file() or path.read_bytes() != body:
+        if stale(path, body):
             out.append(f"{path.relative_to(ROOT)}: differs from what make.py makes")
     for path, body in structures.items():
         if not path.is_file() or nbt.decode(path.read_bytes()) != nbt.decode(body):
@@ -217,6 +323,9 @@ def problems(files: dict[Path, bytes], structures: dict[Path, bytes]) -> list[st
         for path in sorted(list(pack.glob("*/models/block/*.json")) + list(pack.glob("*/blockstates/*.json"))):
             if path not in made:
                 out.append(f"{path.relative_to(ROOT)}: no source makes it")
+    for path in BIOMES.glob("lc_layer_*.json"):
+        if path not in files:
+            out.append(f"{path.relative_to(ROOT)}: no source makes it")
     for path in STRUCTURES.glob("*.nbt"):
         if path not in structures:
             out.append(f"{path.relative_to(ROOT)}: no source makes it")
@@ -234,7 +343,7 @@ def main() -> int:
             print(line)
         return 1 if found else 0
     for path, body in files.items():
-        if not path.is_file() or path.read_bytes() != body:
+        if stale(path, body):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(body)
     for path, body in structures.items():

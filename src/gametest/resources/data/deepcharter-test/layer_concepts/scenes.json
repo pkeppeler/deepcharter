@@ -36,6 +36,22 @@
       ],
       "views": [
         {
+          "name": "silhouette",
+          "eye": [
+            2.5,
+            8.4,
+            11.0
+          ],
+          "target": [
+            44.0,
+            4.5,
+            9.0
+          ],
+          "wait": 40,
+          "light": "company",
+          "lamp": 0
+        },
+        {
           "name": "lamp-lit",
           "eye": [
             2.5,
@@ -47,7 +63,9 @@
             7.0,
             5
           ],
-          "wait": 30
+          "wait": 30,
+          "light": "company",
+          "lamp": 0
         },
         {
           "name": "fog-edge",
@@ -61,7 +79,9 @@
             5.0,
             10.5
           ],
-          "wait": 40
+          "wait": 40,
+          "light": "company",
+          "lamp": 0
         },
         {
           "name": "company-rock",
@@ -75,7 +95,9 @@
             6.5,
             5.5
           ],
-          "wait": 30
+          "wait": 30,
+          "light": "company",
+          "lamp": 0
         },
         {
           "name": "lava-flow",
@@ -89,7 +111,9 @@
             9.5,
             4.5
           ],
-          "wait": 140
+          "wait": 140,
+          "light": "company",
+          "lamp": 0
         },
         {
           "name": "breach-crust",
@@ -103,7 +127,25 @@
             1.8,
             10.5
           ],
-          "wait": 40
+          "wait": 40,
+          "light": "deep",
+          "lamp": 0
+        },
+        {
+          "name": "close-up",
+          "eye": [
+            12.5,
+            7.5,
+            8.0
+          ],
+          "target": [
+            12.5,
+            7.5,
+            6.0
+          ],
+          "wait": 40,
+          "light": "company",
+          "lamp": 14
         }
       ]
     },
@@ -138,6 +180,22 @@
       ],
       "views": [
         {
+          "name": "silhouette",
+          "eye": [
+            2.5,
+            8.4,
+            11.0
+          ],
+          "target": [
+            44.0,
+            4.5,
+            9.0
+          ],
+          "wait": 40,
+          "light": "company",
+          "lamp": 0
+        },
+        {
           "name": "lamp-lit",
           "eye": [
             2.5,
@@ -149,7 +207,9 @@
             7.0,
             5
           ],
-          "wait": 30
+          "wait": 30,
+          "light": "company",
+          "lamp": 0
         },
         {
           "name": "fog-edge",
@@ -163,7 +223,9 @@
             5.0,
             10.5
           ],
-          "wait": 40
+          "wait": 40,
+          "light": "company",
+          "lamp": 0
         },
         {
           "name": "company-rock",
@@ -177,7 +239,9 @@
             6.5,
             5.5
           ],
-          "wait": 30
+          "wait": 30,
+          "light": "company",
+          "lamp": 0
         },
         {
           "name": "lava-flow",
@@ -191,7 +255,9 @@
             9.5,
             4.5
           ],
-          "wait": 140
+          "wait": 140,
+          "light": "company",
+          "lamp": 0
         },
         {
           "name": "breach-crust",
@@ -205,7 +271,25 @@
             1.8,
             10.5
           ],
-          "wait": 40
+          "wait": 40,
+          "light": "deep",
+          "lamp": 0
+        },
+        {
+          "name": "close-up",
+          "eye": [
+            12.5,
+            7.5,
+            8.0
+          ],
+          "target": [
+            12.5,
+            7.5,
+            6.0
+          ],
+          "wait": 40,
+          "light": "company",
+          "lamp": 14
         }
       ]
     },
@@ -230,6 +314,22 @@
       ],
       "views": [
         {
+          "name": "silhouette",
+          "eye": [
+            2.5,
+            8.4,
+            11.0
+          ],
+          "target": [
+            44.0,
+            4.5,
+            9.0
+          ],
+          "wait": 40,
+          "light": "company",
+          "lamp": 0
+        },
+        {
           "name": "lamp-lit",
           "eye": [
             2.5,
@@ -241,7 +341,9 @@
             7.0,
             5
           ],
-          "wait": 30
+          "wait": 30,
+          "light": "company",
+          "lamp": 0
         },
         {
           "name": "fog-edge",
@@ -255,7 +357,9 @@
             5.0,
             10.5
           ],
-          "wait": 40
+          "wait": 40,
+          "light": "company",
+          "lamp": 0
         },
         {
           "name": "company-rock",
@@ -269,7 +373,9 @@
             5.5,
             4.5
           ],
-          "wait": 30
+          "wait": 30,
+          "light": "company",
+          "lamp": 0
         },
         {
           "name": "lava-flow",
@@ -283,7 +389,9 @@
             5.5,
             10.5
           ],
-          "wait": 140
+          "wait": 140,
+          "light": "company",
+          "lamp": 0
         },
         {
           "name": "breach-crust",
@@ -297,7 +405,25 @@
             1.8,
             10.5
           ],
-          "wait": 40
+          "wait": 40,
+          "light": "deep",
+          "lamp": 0
+        },
+        {
+          "name": "close-up",
+          "eye": [
+            13.5,
+            8.5,
+            12.0
+          ],
+          "target": [
+            13.5,
+            8.5,
+            14.0
+          ],
+          "wait": 40,
+          "light": "company",
+          "lamp": 14
         }
       ]
     },
@@ -322,6 +448,22 @@
       ],
       "views": [
         {
+          "name": "silhouette",
+          "eye": [
+            2.5,
+            8.4,
+            11.0
+          ],
+          "target": [
+            44.0,
+            4.5,
+            9.0
+          ],
+          "wait": 40,
+          "light": "company",
+          "lamp": 0
+        },
+        {
           "name": "lamp-lit",
           "eye": [
             2.5,
@@ -333,7 +475,9 @@
             7.0,
             5
           ],
-          "wait": 30
+          "wait": 30,
+          "light": "company",
+          "lamp": 0
         },
         {
           "name": "fog-edge",
@@ -347,7 +491,9 @@
             5.0,
             10.5
           ],
-          "wait": 40
+          "wait": 40,
+          "light": "company",
+          "lamp": 0
         },
         {
           "name": "company-rock",
@@ -361,7 +507,9 @@
             5.5,
             6.5
           ],
-          "wait": 30
+          "wait": 30,
+          "light": "company",
+          "lamp": 0
         },
         {
           "name": "lava-flow",
@@ -375,7 +523,9 @@
             5.5,
             10.5
           ],
-          "wait": 140
+          "wait": 140,
+          "light": "company",
+          "lamp": 0
         },
         {
           "name": "breach-crust",
@@ -389,7 +539,25 @@
             1.8,
             10.5
           ],
-          "wait": 40
+          "wait": 40,
+          "light": "deep",
+          "lamp": 0
+        },
+        {
+          "name": "close-up",
+          "eye": [
+            13.5,
+            8.5,
+            12.0
+          ],
+          "target": [
+            13.5,
+            8.5,
+            14.0
+          ],
+          "wait": 40,
+          "light": "company",
+          "lamp": 14
         }
       ]
     },
@@ -414,6 +582,22 @@
       ],
       "views": [
         {
+          "name": "silhouette",
+          "eye": [
+            2.5,
+            8.4,
+            11.0
+          ],
+          "target": [
+            44.0,
+            4.5,
+            9.0
+          ],
+          "wait": 40,
+          "light": "company",
+          "lamp": 0
+        },
+        {
           "name": "lamp-lit",
           "eye": [
             2.5,
@@ -425,7 +609,9 @@
             7.0,
             5
           ],
-          "wait": 30
+          "wait": 30,
+          "light": "company",
+          "lamp": 0
         },
         {
           "name": "fog-edge",
@@ -439,7 +625,9 @@
             5.0,
             10.5
           ],
-          "wait": 40
+          "wait": 40,
+          "light": "company",
+          "lamp": 0
         },
         {
           "name": "company-rock",
@@ -453,7 +641,9 @@
             5.5,
             6.5
           ],
-          "wait": 30
+          "wait": 30,
+          "light": "company",
+          "lamp": 0
         },
         {
           "name": "lava-flow",
@@ -467,7 +657,9 @@
             7.8,
             4.5
           ],
-          "wait": 140
+          "wait": 140,
+          "light": "company",
+          "lamp": 0
         },
         {
           "name": "breach-crust",
@@ -481,7 +673,25 @@
             1.8,
             10.5
           ],
-          "wait": 40
+          "wait": 40,
+          "light": "deep",
+          "lamp": 0
+        },
+        {
+          "name": "close-up",
+          "eye": [
+            12.5,
+            6.5,
+            8.0
+          ],
+          "target": [
+            12.5,
+            6.5,
+            6.0
+          ],
+          "wait": 40,
+          "light": "company",
+          "lamp": 14
         }
       ]
     },
@@ -506,6 +716,22 @@
       ],
       "views": [
         {
+          "name": "silhouette",
+          "eye": [
+            2.5,
+            8.4,
+            11.0
+          ],
+          "target": [
+            44.0,
+            4.5,
+            9.0
+          ],
+          "wait": 40,
+          "light": "company",
+          "lamp": 0
+        },
+        {
           "name": "lamp-lit",
           "eye": [
             2.5,
@@ -517,7 +743,9 @@
             7.0,
             5
           ],
-          "wait": 30
+          "wait": 30,
+          "light": "company",
+          "lamp": 0
         },
         {
           "name": "fog-edge",
@@ -531,7 +759,9 @@
             5.0,
             10.5
           ],
-          "wait": 40
+          "wait": 40,
+          "light": "company",
+          "lamp": 0
         },
         {
           "name": "company-rock",
@@ -545,7 +775,9 @@
             5.5,
             6.5
           ],
-          "wait": 30
+          "wait": 30,
+          "light": "company",
+          "lamp": 0
         },
         {
           "name": "lava-flow",
@@ -559,7 +791,9 @@
             7.8,
             4.5
           ],
-          "wait": 140
+          "wait": 140,
+          "light": "company",
+          "lamp": 0
         },
         {
           "name": "breach-crust",
@@ -573,7 +807,25 @@
             1.8,
             10.5
           ],
-          "wait": 40
+          "wait": 40,
+          "light": "deep",
+          "lamp": 0
+        },
+        {
+          "name": "close-up",
+          "eye": [
+            12.5,
+            6.5,
+            9.0
+          ],
+          "target": [
+            12.5,
+            6.5,
+            7.0
+          ],
+          "wait": 40,
+          "light": "company",
+          "lamp": 14
         }
       ]
     }

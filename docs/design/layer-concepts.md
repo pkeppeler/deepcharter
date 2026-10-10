@@ -11,7 +11,15 @@ Issue [#241](https://github.com/pkeppeler/deepcharter/issues/241), [art-directio
 - Company infrastructure and miners' traces as dressing, and no wood (this is Mars).
 - Lava as flows and falls, not single cubes. The breach crust as a cracked, layered crust. Company Rock as a basalt plug or as stencilled Company concrete that belongs in rock.
 
-These stills show the fog and the light the game has today (the fog values and the per-layer grade are the build's work, not this round's). The lamps are level 12 light, which is what a pod lamp gives. So read the stills for **structure and texture**, and for the mood the darkness already gives.
+Every still is drawn with that look, the same in all three options, so only the shapes differ:
+
+- **Fog.** Layer 1 `#24160e`, brown going black, fog from 2 to 40 blocks. Layer 2 `#0a150e`, a near-black green, fog from 2 to 28 blocks. The distances are the tryouts' ([art-direction-options.md section 4](art-direction-options.md#4-tryouts-in-the-game)); the colours are the original's depth bands, darkened.
+- **Ambient light.** The layers' own near-black `ambient_light_color`: `#1c1814` in layer 1, `#0c0a09` in layer 2.
+- **Lamp tint.** Sodium amber (`#ffbf6a`) for the Company's lamps in every still but the breach chamber. The breach-crust stills are cold (`#b4d2ff`): the chamber is lit by the deep's own light, the crust. A still has one tint, because `block_light_tint` is one value at the camera, not one per lamp.
+- **Grade.** None in these stills. The only grade in [tryouts/](tryouts/) is the surface's, and the tryouts found that one grade everywhere crushes the layers to black ("a grade per place: a light one below"), so a layer grade is the build's, once the surface exists.
+- **Lamps.** The lamps on the walls and the pod lamp at the close-up camera are level 14, as in the tryouts.
+
+How it is applied: the look is one biome per layer and kind of light, in the test data (`data/deepcharter-test/worldgen/biome/lc_layer_<n>_company` and `_deep`, written by `make.py`). The scenario puts the scene's box in the biome with `/fillbiome` before each still. Nothing in `src/main` changes.
 
 ## What the options vary
 
@@ -19,15 +27,15 @@ You said that options must differ in shape and structure, never only in colour, 
 
 | | A. Strata | B. Fractured | C. Columnar |
 |---|---|---|---|
-| **Rock block** | three stacked beds, each stepped back a little further, so every wall is a stair of ledges | eight plates, each pushed back by its own depth, so every face is a mosaic | a prism with chamfered corners, a joint on every side and a cross-joint |
+| **Rock block** | three beds in two halves, split at different heights and stood back by different amounts, in five variants, so every wall is a stair of broken ledges | eight plates, each pushed back by its own depth, so every face is a mosaic | a hexagonal basalt column with a flat hexagonal end, in two of three variants cut by a cross-joint whose upper drum is shifted |
 | **Placed rock form** | benches up each wall, with a slot cut under each bench, a roof fall | rough walls, a fault that drops the floor by two, heaps of rubble, a roof that hangs in slabs | a field of columns of different heights, a roof of stumps, open joints between columns |
-| **Texture** | horizontal beds with a ragged shadow under each | polygons of breccia split by cracks | vertical streaks, ragged edges, one cross-joint |
+| **Texture** | folded beds that pinch out, crossed by steep joints that step them: no ruled courses | polygons of breccia split by cracks | grey-black basalt: fine grain, chipped pits, one cross-joint, no streaks; the ends are polygon plates inside a dark hexagonal outline |
 | **Dressing** | old workings in steel: portal frames, a track and an ore car, conduit, a SHAFT NO 1 sign | Company concrete: shotcrete under a hazard-band lintel, a grating catwalk, pipes | pipework: lattice girders, roof pipes, floodlights, a grating bridge, a steel ladder |
-| **Company Rock** | a basalt plug that fills a slot in the wall, studded with eight-sided bosses, a yellow survey cross | stencilled Company concrete, "CO" and "07", set in the wall under a hazard-band lintel | a basalt prism in the column field, with a stamped brass collar |
+| **Company Rock** | a basalt plug that fills a slot in the wall, studded with eight-sided bosses, a yellow survey cross | stencilled, weathered Company concrete, "CO" and "07", set in the wall under a hazard-band lintel | a blue-black basalt column in the grey column field, with a stamped brass collar |
 | **Lava** | five sources on a shelf, and a stair of five steps that the lava runs down and falls from | three sources in a crack in the roof: a fall of twelve blocks into a basin ringed with rubble | three open joints in the wall, each a fall, gathering in a channel at the foot |
 | **Breach crust** | three layers, each stepped back, down two terraces to the heart of the chamber | a floor of crust split into plates at different heights | a floor of crust with glowing seams in its cracks |
 
-Layer 1 is rust-brown going to dark shale, and layer 2 is grey-green shale scarred by old workings, in all three. The textures are drawn by the generator of [ADR 0037](../adr/0037-texture-layers-are-generated-data-and-casings-connect-through-one-model-type.md) (`tools/textures/texgen.py`, from recipes that `tools/layer_concepts/make.py` writes), and every shape is a block model in a resource pack.
+Layer 1 is rust-brown going to dark shale, and layer 2 is grey-green shale scarred by old workings, in A and B. C's columns are basalt in both layers: a cool grey-black, bluer in layer 2 (the amber lamp tint warms everything toward brown, so a warm basalt read as timber). The textures are drawn by the generator of [ADR 0037](../adr/0037-texture-layers-are-generated-data-and-casings-connect-through-one-model-type.md) (`tools/textures/texgen.py`, from recipes that `tools/layer_concepts/make.py` writes), and every shape is a block model in a resource pack.
 
 ## How they are drawn, and how to see them
 
@@ -35,9 +43,10 @@ Nothing a player sees has changed. Each option is a **test pack** (`src/gametest
 
 - **Stand-ins.** Layers 1 and 2 have no rock blocks of their own yet (that is the build). So the pack redraws vanilla `stone` and `cobblestone` for layer 1's rock and rubble, and `deepslate` and `cobbled_deepslate` for layer 2's. It also redraws our `company_rock` and `breach_crust`. The ores sit on `stone` by reference, so they follow.
 - **The scenes** are structure files written by `tools/layer_concepts/make.py`: for each option and each layer, one gallery 48 blocks long, sealed in rock. Along it, west to east: a lamp, a Company Rock, a lava flow and the breach chamber. The cameras are in `scenes.json` beside them.
-- **Lava** keeps vanilla's texture and motion in all three. A flow's shape is the stones round it, and that is what differs. A redrawn lava is the build's.
+- **Lava** has one crusted, darker texture in all three (dark plates of cooled crust over glowing cracks; the flow is long crust skins over glow), a still frame each for `lava_still` and `lava_flow`. A flow's shape is the stones round it, and that is what differs; its texture is shared.
+- **The Company's concrete wall in B.** The colony kit's `concrete_footing` is the palest block of the dressing, so B's pack redraws it as old, stained shotcrete: it is the wall of every B frame.
 - **No model culls a face.** A face is culled by its neighbour's shape and not by its model, so a stepped block would show straight through to the world behind it. A test pins this.
-- **To record again:** `tools/record-evidence.sh layer-concepts` (set `DEEPCHARTER_GL=1` if the Vulkan renderer times out).
+- **To record again:** `tools/record-evidence.sh layer-concepts` on the Vulkan renderer. A Vulkan timeout under load is not a reason to mix renderers: record the whole run again. `DEEPCHARTER_LAYER_OPTIONS=a,c` shoots only those options (it fails on any other value).
 
 ## References
 
@@ -78,7 +87,7 @@ Nothing is traced from any of these. They are for shape and feel.
 
 ## The three, one by one
 
-The stills are in the PR that carries this page ([#401](https://github.com/pkeppeler/deepcharter/pull/401)) and in [pr-media/401](https://github.com/pkeppeler/deepcharter/tree/pr-media/401). Each option has ten: five places in layer 1, and the same five in layer 2 (`<option>-layer<n>-<place>.png`, with the places `lamp-lit`, `fog-edge`, `company-rock`, `lava-flow` and `breach-crust`).
+The stills are in the PR that carries this page ([#401](https://github.com/pkeppeler/deepcharter/pull/401)) and in [pr-media/401](https://github.com/pkeppeler/deepcharter/tree/pr-media/401). Each option has fourteen: seven places in layer 1, and the same seven in layer 2 (`<option>-layer<n>-<place>.png`, with the places `lamp-lit`, `fog-edge`, `silhouette` (a wide shot from the fog edge, for the outline of the cave), `company-rock`, `lava-flow`, `breach-crust` and `close-up` (the camera two blocks from the rock, with a pod lamp, for the texture)). All of them came from one run of the scenario on one renderer (Vulkan).
 
 ### A. Strata
 

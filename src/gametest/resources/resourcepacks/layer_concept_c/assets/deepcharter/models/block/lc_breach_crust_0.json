@@ -3,7 +3,7 @@
   "textures": {
     "side": "deepcharter:block/lc_crust_side",
     "top": "deepcharter:block/lc_crust_top",
-    "core": "deepcharter:block/lc_core",
+    "core": "deepcharter:block/lc_core_1",
     "particle": "deepcharter:block/lc_crust_side",
     "glow": "deepcharter:block/lc_crust_seam_glow"
   },

@@ -45,6 +45,36 @@
       {
         "model": "deepcharter:block/lc_deepslate_2",
         "y": 270
+      },
+      {
+        "model": "deepcharter:block/lc_deepslate_3"
+      },
+      {
+        "model": "deepcharter:block/lc_deepslate_3",
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/lc_deepslate_3",
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/lc_deepslate_3",
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/lc_deepslate_4"
+      },
+      {
+        "model": "deepcharter:block/lc_deepslate_4",
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/lc_deepslate_4",
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/lc_deepslate_4",
+        "y": 270
       }
     ],
     "axis=z": [
@@ -58,6 +88,14 @@
       },
       {
         "model": "deepcharter:block/lc_deepslate_2",
+        "x": 90
+      },
+      {
+        "model": "deepcharter:block/lc_deepslate_3",
+        "x": 90
+      },
+      {
+        "model": "deepcharter:block/lc_deepslate_4",
         "x": 90
       }
     ],
@@ -74,6 +112,16 @@
       },
       {
         "model": "deepcharter:block/lc_deepslate_2",
+        "x": 90,
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/lc_deepslate_3",
+        "x": 90,
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/lc_deepslate_4",
         "x": 90,
         "y": 90
       }

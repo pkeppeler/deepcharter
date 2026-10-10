@@ -10,6 +10,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -18,6 +19,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.phys.Vec3;
 
@@ -41,6 +43,12 @@ final class LayerConceptsWorld {
 	/** The wall-clock limit of one settle. */
 	private static final long SETTLE_LIMIT_NANOS = 120_000_000_000L;
 	private static final int SETTLE_POLL_TICKS = 2;
+	/**
+	 * The render distance, in chunks, while the scenario runs: 4 chunks is 64 blocks, past the 40 blocks where the fog ends, so no still
+	 * differs, and a pack switch re-meshes a fraction of the chunks. On a loaded machine the full distance made the Vulkan renderer time out
+	 * ("5s timeout reached when waiting for VK semaphore") on the first frames after a switch.
+	 */
+	private static final int RENDER_DISTANCE = 4;
 	private static final int SETTLE_STABLE_POLLS = 5;
 
 	private final ClientGameTestContext ctx;
@@ -48,6 +56,9 @@ final class LayerConceptsWorld {
 	private final Consumer<String> shoot;
 	private final List<Scene> scenes;
 	private final Size size;
+	private int stills;
+	private ResourceKey<Level> parkDimension;
+	private Vec3 parkPosition;
 
 	private LayerConceptsWorld(ClientGameTestContext ctx, TestSingleplayerContext sp, Consumer<String> shoot, List<Scene> scenes, Size size) {
 		this.ctx = ctx;
@@ -62,6 +73,7 @@ final class LayerConceptsWorld {
 	 * because a full-suite run goes on to tests that draw on it.
 	 */
 	static void open(ClientGameTestContext ctx, Consumer<String> shoot, Consumer<LayerConceptsWorld> body) {
+		int renderDistance = ctx.computeOnClient(client -> client.options.renderDistance().get());
 		try (TestSingleplayerContext singleplayer = ctx.worldBuilder().setUseConsistentSettings(false)
 				.adjustSettings(state -> state.setSeed("deepcharter-design-tour")).create()) {
 			ClientWait.until(ctx, "the player in the world", client -> client.player != null && client.level != null);
@@ -71,6 +83,7 @@ final class LayerConceptsWorld {
 			LayerConceptsWorld world = new LayerConceptsWorld(ctx, singleplayer, shoot, scenes, size);
 			world.preparePlayer();
 			ctx.runOnClient(client -> {
+				client.options.renderDistance().set(RENDER_DISTANCE);
 				client.options.setCameraType(CameraType.FIRST_PERSON);
 				if (!client.gui.hud.isHidden()) {
 					client.gui.hud.toggle();
@@ -80,6 +93,7 @@ final class LayerConceptsWorld {
 			body.accept(world);
 		} finally {
 			ctx.runOnClient(client -> {
+				client.options.renderDistance().set(renderDistance);
 				if (client.gui.hud.isHidden()) {
 					client.gui.hud.toggle();
 				}
@@ -89,6 +103,7 @@ final class LayerConceptsWorld {
 
 	/** Shoots every view of both layers of {@code option} with its test pack on, and off again after, in a finally. */
 	void shootOption(String option, String pack) {
+		park();
 		ClientPacks.enable(ctx, pack);
 		try {
 			for (Scene scene : scenes) {
@@ -97,16 +112,35 @@ final class LayerConceptsWorld {
 				}
 			}
 		} finally {
+			park();
 			ClientPacks.disable(ctx, pack);
 		}
+	}
+
+	/**
+	 * Takes the player back to where the world put them, out of the scenes, before a pack is switched. A switch re-meshes every loaded
+	 * chunk on the same worker pool that compiles the render pipelines, and the heavy scenes (models of dozens of faces to a block) queued
+	 * so much work that the first pipeline the next screen asked for (a loading screen's blur) did not compile for a quarter of an hour on a
+	 * loaded machine, and the run hung. At the spawn there is almost nothing to re-mesh.
+	 */
+	private void park() {
+		serverDo(server -> player(server).teleportTo(server.getLevel(parkDimension), parkPosition.x, parkPosition.y, parkPosition.z, Set.of(), 0.0f, 0.0f, true));
+		ClientWait.until(ctx, "the player parked at " + parkPosition + " in " + parkDimension,
+				client -> client.level.dimension().equals(parkDimension) && client.player.distanceToSqr(parkPosition) < 1.0);
 	}
 
 	private void shootScene(Scene scene) {
 		serverDo(server -> LayerConceptScenes.startLava(server, scene));
 		for (View view : scene.views()) {
+			serverDo(server -> LayerConceptScenes.setAtmosphere(server, scene, size, view.light()));
+			serverDo(server -> LayerConceptScenes.setCameraLamp(server, scene, view, true));
 			look(scene, view);
 			still("%s-layer%d-%s".formatted(scene.option(), scene.layer(), view.name()));
+			serverDo(server -> LayerConceptScenes.setCameraLamp(server, scene, view, false));
 		}
+		// Build the scene again, which wipes its lava: a flow that nobody watches any more would go on costing ticks while the later scenes
+		// are shot, and a loaded machine ran out of time on them.
+		serverDo(server -> LayerConceptScenes.place(server, scene, size));
 	}
 
 	private void buildScenes() {
@@ -118,6 +152,8 @@ final class LayerConceptsWorld {
 	private void preparePlayer() {
 		serverDo(server -> {
 			ServerPlayer player = player(server);
+			parkDimension = player.level().dimension();
+			parkPosition = player.position();
 			player.setGameMode(GameType.CREATIVE);
 			player.getInventory().clearContent();
 			player.getAbilities().mayfly = true;
@@ -175,6 +211,12 @@ final class LayerConceptsWorld {
 			}
 		}
 		shoot.accept(stillName);
+		stills++;
+	}
+
+	/** How many stills this world has shot. */
+	int stills() {
+		return stills;
 	}
 
 	private static boolean rendered(Minecraft client) {
