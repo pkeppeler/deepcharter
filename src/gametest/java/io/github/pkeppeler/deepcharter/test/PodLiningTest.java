@@ -224,19 +224,22 @@ public class PodLiningTest {
 		});
 	}
 
-	/** #382: the pilot sits with its feet below the pod's, in the cell under the pod; that is not in the way of the lining, but a stranger there is. */
+	/**
+	 * #382, changed by #400: the pilot's feet stand on the pod's floor, so they are not in the cell under the pod (a seat once hung them below it), and that
+	 * cell is lined; a stranger standing there blocks it.
+	 */
 	@GameTest
-	public void aRiderOfThePodDoesNotBlockTheCellUnderItButAStrangerDoes(GameTestHelper helper) {
+	public void aStrangerInTheCellUnderThePodBlocksItButItsPilotDoesNot(GameTestHelper helper) {
 		rock(helper);
 		BlockPos next = new BlockPos(4, 1, 4);
 		helper.setBlock(next, Blocks.LAVA);
 		Rig rig = seat(helper, "Seated pilot", 20);
 		AABB cell = new AABB(helper.absolutePos(next));
-		if (!rig.pilot.player().getBoundingBox().intersects(cell)) {
-			throw failure(helper, "the pilot's feet should be in the cell under the pod, %s, or this test shows nothing", rig.pilot.player().getBoundingBox());
+		if (rig.pilot.player().getBoundingBox().intersects(cell)) {
+			throw failure(helper, "the pilot's feet should be on the pod's floor, not in the cell under the pod, %s", rig.pilot.player().getBoundingBox());
 		}
 		if (!PodLining.cellsToLine(rig.pod).contains(helper.absolutePos(next))) {
-			throw failure(helper, "the pod's own pilot is in the cell under it, and that cell is still lined: %s", PodLining.cellsToLine(rig.pod));
+			throw failure(helper, "the cell under the pod is lined: %s", PodLining.cellsToLine(rig.pod));
 		}
 		MockPlayer stranger = MockPlayers.join(helper, "Stranger");
 		stranger.teleportTo(helper.getLevel(), helper.absoluteVec(Vec3.atBottomCenterOf(next)), 0f, 0f);

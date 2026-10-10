@@ -73,13 +73,15 @@ public class PodLinerTest {
 		if (column) {
 			RoomCarver.carve(level, x + 1, x + 1, FLOOR - depth, FLOOR - 1, Z - 1, Z, Blocks.AIR);
 		}
+		// The Mole's box is 3 rows tall (#400), and the ring tests count the cells of its first two: the column is stone from the third row up.
+		RoomCarver.carve(level, x + 1, x + 1, FLOOR + 2, FLOOR + 10, Z - 1, Z, Blocks.STONE);
 		RoomCarver.carve(level, x + 2, x + RADIUS + 1, FLOOR, FLOOR + 10, Z - RADIUS, Z + RADIUS, Blocks.STONE);
 		RoomCarver.carve(level, x - RADIUS, x - 2, FLOOR, FLOOR + 10, Z - RADIUS, Z + RADIUS, Blocks.STONE);
 		RoomCarver.carve(level, x - 1, x + 1, FLOOR, FLOOR + 10, Z + 1, Z + RADIUS, Blocks.STONE);
 		RoomCarver.carve(level, x - 1, x + 1, FLOOR, FLOOR + 10, Z - RADIUS, Z - 2, Blocks.STONE);
 	}
 
-	/** The cells of the east column at the pod's two levels: the 4 open cells that the ring lines when it reaches no deeper than the bed's top. */
+	/** The cells of the east column at the pod's first two levels: the 4 open cells that the ring lines when it reaches no deeper than the bed's top. */
 	private static List<BlockPos> ringCells(int x) {
 		List<BlockPos> cells = new ArrayList<>();
 		for (int y = FLOOR; y <= FLOOR + 1; y++) {
@@ -556,16 +558,17 @@ public class PodLinerTest {
 
 	/**
 	 * A ring lines the stretch the pod is about to bore: the open east column from {@code interval} slabs below the pod's feet to the top of its
-	 * box. The first is 6 slabs of 2 cells (12 bricks, one for each cell), the next starts where the last one ended, so its first two slabs are lined already.
+	 * box. The first is 7 slabs of 2 cells (14 bricks, one for each cell: the box is 3 slabs tall since #400, so 4 below and 3 of the box), the next starts
+	 * where the last one ended, so its first two slabs are lined already.
 	 */
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + DRILL_TICKS)
 	public void aTierOneLinerLaysARingEveryFourSlabsOfDrilling(GameTestHelper helper) {
-		drillTenSlabs(helper, 1, 5588, List.of(new Ring(-4, 12, true), new Ring(-8, 8, true)));
+		drillTenSlabs(helper, 1, 5588, List.of(new Ring(-4, 14, true), new Ring(-8, 8, true)));
 	}
 
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + DRILL_TICKS)
 	public void aTierTwoLinerLaysARingEveryThreeSlabsAtHalfTheBricks(GameTestHelper helper) {
-		drillTenSlabs(helper, 2, 5636, List.of(new Ring(-3, 5, true), new Ring(-6, 3, true), new Ring(-9, 3, true)));
+		drillTenSlabs(helper, 2, 5636, List.of(new Ring(-3, 6, true), new Ring(-6, 3, true), new Ring(-9, 3, true)));
 	}
 
 	/** A room of open air with a stone bed 8 blocks under the pod, which the pod falls onto. */
@@ -595,8 +598,8 @@ public class PodLinerTest {
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
 	public void aTierOneLinerWaitsOutAFallAndLinesWhereThePodLands(GameTestHelper helper) {
 		fall(helper, 1, 5684, rings -> {
-			// The pod lands on the bed at FLOOR; the two levels of its box are open all round, 8 cells each.
-			if (rings.size() != 1 || !rings.getFirst().onGround() || rings.getFirst().feetY() != FLOOR || rings.getFirst().bricks() != 16) {
+			// The pod lands on the bed at FLOOR; the three levels of its box are open all round, 8 cells each.
+			if (rings.size() != 1 || !rings.getFirst().onGround() || rings.getFirst().feetY() != FLOOR || rings.getFirst().bricks() != 24) {
 				throw failure(helper, "a tier 1 liner lays one ring, on the ground, after an 8 slab fall: %s", rings);
 			}
 		});

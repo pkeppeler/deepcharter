@@ -34,6 +34,7 @@ import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodDrill;
+import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -203,7 +204,8 @@ public class PodSounderTest {
 		reads(helper, x, 2, level -> {
 			pocket(level, x + 3, FLOOR, Z);
 			pocket(level, x - 4, FLOOR, Z);
-			pocket(level, x + 1, FLOOR + 2, Z);
+			// Above the top row of the Mole's box (it is 3 rows tall since #400).
+			pocket(level, x + 1, FLOOR + Chassis.MOLE.boreHeight(), Z);
 			pocket(level, x - 3, FLOOR - 2, Z);
 			pocket(level, x, FLOOR, Z + 3);
 		}, pod -> expect(helper, pod, 0));

@@ -53,9 +53,9 @@ public class PodShellTest {
 				throw helper.assertionException("a new pod should be a Mole, got %s", pod.chassis());
 			}
 			AABB box = pod.getBoundingBox();
-			if (Math.abs(box.getXsize() - 1.9) > 1e-4 || Math.abs(box.getYsize() - 1.9) > 1e-4
+			if (Math.abs(box.getXsize() - 1.9) > 1e-4 || Math.abs(box.getYsize() - 2.9) > 1e-4
 					|| Math.abs(box.getZsize() - 1.9) > 1e-4) {
-				throw helper.assertionException("the Mole hitbox should be 1.9 x 1.9 x 1.9, got %s", box);
+				throw helper.assertionException("the Mole hitbox should be 1.9 x 2.9 x 1.9, got %s", box);
 			}
 			if (pod.hull() != PodTuning.DEFAULT.shell().fullHull() || pod.fuel() != PodTuning.DEFAULT.shell().fullFuel()) {
 				throw helper.assertionException("a new pod should have full hull and fuel, got %s and %s", pod.hull(), pod.fuel());
