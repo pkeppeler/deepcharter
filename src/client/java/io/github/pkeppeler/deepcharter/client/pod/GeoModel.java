@@ -15,6 +15,7 @@ import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -310,9 +311,8 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 		double reach = 0;
 		for (Bone rotor : bones.stream().filter(bone -> bone.role() == BoneRole.ROTOR).toList()) {
 			double sweep = 0;
-			List<Bone> turning = new ArrayList<>(children(rotor.name()).stream().filter(bone -> bone.role() == BoneRole.BLADE).toList());
-			turning.add(rotor);
-			for (Cube cube : turning.stream().flatMap(bone -> bone.cubes().stream()).toList()) {
+			Stream<Bone> turning = Stream.concat(Stream.of(rotor), children(rotor.name()).stream().filter(bone -> bone.role() == BoneRole.BLADE));
+			for (Cube cube : turning.flatMap(bone -> bone.cubes().stream()).toList()) {
 				for (int corner = 0; corner < CUBE_CORNERS; corner++) {
 					Vec3 point = turnedCorner(cube, corner);
 					sweep = Math.max(sweep, Math.hypot(point.x - rotor.pivot().x, point.z - rotor.pivot().z));

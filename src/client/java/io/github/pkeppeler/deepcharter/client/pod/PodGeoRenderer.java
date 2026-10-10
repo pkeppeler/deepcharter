@@ -148,10 +148,8 @@ public class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimatable, 
 	public Appearance appearanceOf(PodEntity pod) {
 		boolean wrecked = Wrecks.isWreck(pod);
 		String cutter = geo.cutters().isEmpty() ? null : look.cutterFor(PodComponents.effectiveTier(pod, ComponentTrack.DRILL));
-		OptionalInt paint = OptionalInt.empty();
-		if (!wrecked && look.paintMask().isPresent()) {
-			paint = PodComponents.registration(pod).map(registration -> OptionalInt.of(PodPaintLook.current().paintOf(registration.owner()))).orElse(OptionalInt.empty());
-		}
+		OptionalInt paint = wrecked || look.paintMask().isEmpty() ? OptionalInt.empty()
+				: PodComponents.registration(pod).map(registration -> OptionalInt.of(PodPaintLook.current().paintOf(registration.owner()))).orElse(OptionalInt.empty());
 		return new Appearance(cutter, wrecked ? look.wreck() : look.intact(), wrecked, paint);
 	}
 

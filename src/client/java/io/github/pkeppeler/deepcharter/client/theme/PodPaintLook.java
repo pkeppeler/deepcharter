@@ -15,7 +15,7 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  */
 public record PodPaintLook(List<Integer> paints) {
 	/** The most colours a palette holds. */
-	public static final int MAX_PAINTS = 64;
+	private static final int MAX_PAINTS = 64;
 
 	public PodPaintLook {
 		if (paints.isEmpty()) {
