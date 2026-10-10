@@ -106,25 +106,25 @@ public abstract class CrtScreen extends Screen {
 	/** The x where content starts: the panel's left inset, or {@code margin} without the panel. */
 	protected final int contentLeft(int margin) {
 		PanelLook panel = PanelLook.current();
-		return panel.enabled() ? panel.content().left() : margin;
+		return PanelLook.drawn() ? panel.content().left() : margin;
 	}
 
 	/** The y where content starts: the panel's top inset, or {@code margin} without the panel. */
 	protected final int contentTop(int margin) {
 		PanelLook panel = PanelLook.current();
-		return panel.enabled() ? panel.content().top() : margin;
+		return PanelLook.drawn() ? panel.content().top() : margin;
 	}
 
 	/** The x where content ends: the screen's width less the panel's right inset, or less {@code margin} without the panel. */
 	protected final int contentRight(int margin) {
 		PanelLook panel = PanelLook.current();
-		return width - (panel.enabled() ? panel.content().right() : margin);
+		return width - (PanelLook.drawn() ? panel.content().right() : margin);
 	}
 
 	/** The y where content ends: the screen's height less the panel's bottom inset, or less {@code margin} without the panel. */
 	protected final int contentBottom(int margin) {
 		PanelLook panel = PanelLook.current();
-		return height - (panel.enabled() ? panel.content().bottom() : margin);
+		return height - (PanelLook.drawn() ? panel.content().bottom() : margin);
 	}
 
 	/** The width of the content area, which is where text wraps. */
@@ -135,7 +135,7 @@ public abstract class CrtScreen extends Screen {
 	@Override
 	public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		PanelLook panel = PanelLook.current();
-		if (panel.enabled()) {
+		if (PanelLook.drawn()) {
 			CrtDraw.panelBackground(graphics, panel, width, height);
 		} else {
 			CrtDraw.backdrop(graphics, 0, 0, width, height);
@@ -145,7 +145,7 @@ public abstract class CrtScreen extends Screen {
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		PanelLook panel = PanelLook.current();
-		if (panel.enabled()) {
+		if (PanelLook.drawn()) {
 			// The glass and its scanlines go over the text and the phosphor only: the buttons are metal, and are drawn after them.
 			CrtDraw.panelGlass(graphics, panel, width, height);
 			super.extractRenderState(graphics, mouseX, mouseY, partialTick);

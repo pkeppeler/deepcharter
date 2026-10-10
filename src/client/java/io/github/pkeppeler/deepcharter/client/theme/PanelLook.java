@@ -1,18 +1,20 @@
 package io.github.pkeppeler.deepcharter.client.theme;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.resources.Identifier;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.theme.ThemeData;
 
 /**
- * The machine panel round the CRT terminals ({@code theme/panel.json}, #246 concept round). The mod ships it switched off, so a terminal
- * is the full-screen CRT it always was; a resource pack switches it on ({@code enabled} 1) and draws it with GUI sprites at fixed slots
+ * The machine panel round the CRT terminals ({@code theme/panel.json}, #246). The mod ships it on, as Hatch; a resource pack restyles it by
+ * key or switches it off ({@code enabled} 0), and then a terminal is the full-screen CRT it was. The panel is drawn with GUI sprites at fixed slots
  * under {@code textures/gui/sprites/panel/}: {@link #FRAME} (a nine-slice over the whole screen with a see-through middle), {@link #GLASS} (a
  * nine-slice over the CRT glass, drawn after the content), the button sprites, and a few decals placed by the numbers below. The terminal
  * font is a font file, {@code font/terminal.json}.
  *
- * @param enabled whether the panel is drawn at all
+ * @param enabled whether the panel is drawn at all (see {@link #drawn()}: not on a GUI too small to hold the screens)
  * @param wallColor what shows behind the frame where it is see-through
  * @param content where a screen puts its text and widgets: the screen's rectangle less these insets
  * @param glass the CRT glass: the screen's rectangle less these insets gets the phosphor backdrop, the glass sprite and the scanlines
@@ -50,8 +52,14 @@ public record PanelLook(
 		int pipSize,
 		int pipX,
 		int pipY) {
-	/** The pixels a label keeps clear of the right edge of its button. */
-	public static final int LABEL_MARGIN = 2;
+	/**
+	 * The pixels a label keeps clear of the right edge of its button: the button sprite's 3 pixel border and a row clear of it, which is the
+	 * 4 pixels {@code buttonPad} leaves on the left.
+	 */
+	public static final int LABEL_MARGIN = 4;
+	/** The content a screen needs at the least: the screens were drawn for a 320 x 240 GUI less a 16 pixel margin on each side. */
+	public static final int MIN_CONTENT_WIDTH = 288;
+	public static final int MIN_CONTENT_HEIGHT = 192;
 	public static final Identifier FRAME = sprite("panel/frame");
 	public static final Identifier GLASS = sprite("panel/glass");
 	public static final Identifier NAMEPLATE = sprite("panel/nameplate");
@@ -116,6 +124,25 @@ public record PanelLook(
 	 */
 	public boolean showsPip(int buttonWidth, int labelWidth) {
 		return pipSize > 0 && buttonAlign == 1 && pipX + pipSize + buttonPad + labelWidth + LABEL_MARGIN <= buttonWidth;
+	}
+
+	/**
+	 * Whether the panel can be drawn on a GUI {@code guiWidth} by {@code guiHeight}: it is on, and what is left inside its insets holds the screens
+	 * ({@link #MIN_CONTENT_WIDTH} by {@link #MIN_CONTENT_HEIGHT}). A smaller GUI (the game's own minimum is 320 by 240) draws the plain CRT, in the game's font.
+	 */
+	public boolean fits(int guiWidth, int guiHeight) {
+		return enabled && guiWidth - content.left() - content.right() >= MIN_CONTENT_WIDTH && guiHeight - content.top() - content.bottom() >= MIN_CONTENT_HEIGHT;
+	}
+
+	/**
+	 * Whether the panel is drawn now: it {@link #fits} the open screen's size, or the window's GUI when no screen is open. Every screen and button asks
+	 * this, never {@link #enabled()}.
+	 */
+	public static boolean drawn() {
+		Minecraft client = Minecraft.getInstance();
+		Screen screen = client.gui.screen();
+		return screen != null ? current().fits(screen.width, screen.height)
+				: current().fits(client.getWindow().getGuiScaledWidth(), client.getWindow().getGuiScaledHeight());
 	}
 
 	/** The colour of a button's label for its state. */

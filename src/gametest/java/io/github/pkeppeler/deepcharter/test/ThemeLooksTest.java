@@ -182,6 +182,22 @@ public class ThemeLooksTest {
 		helper.succeed();
 	}
 
+	/** The screens were drawn for 288 x 192 of content: a GUI that leaves less inside the insets (320 x 240 is the game's smallest) draws the plain CRT. */
+	@GameTest
+	public void thePanelIsDrawnOnlyWhereTheContentFits(GameTestHelper helper) {
+		PanelLook look = PanelLook.of(area("panel", null));
+		if (!look.fits(427, 240) || !look.fits(854, 480)) {
+			throw fail(helper, "the panel fits the default GUI and larger ones");
+		}
+		if (look.fits(320, 240) || look.fits(427, 200)) {
+			throw fail(helper, "the panel does not fit a 320 x 240 GUI, nor one 200 high");
+		}
+		if (PanelLook.of(area("panel", "{ \"enabled\": 0 }")).fits(854, 480)) {
+			throw fail(helper, "a panel that is off fits nowhere");
+		}
+		helper.succeed();
+	}
+
 	/** A pack switches the panel off by naming one key, and the terminals are the plain CRT again. */
 	@GameTest
 	public void aPackSwitchesThePanelOff(GameTestHelper helper) {
@@ -191,13 +207,13 @@ public class ThemeLooksTest {
 		helper.succeed();
 	}
 
-	/** A pack switches the panel on and places a decal from the right edge and the bottom edge by naming a few keys. */
+	/** A pack moves the nameplate and a decal (from the right edge and the bottom edge) by naming a few keys, and keeps the mod's other keys. */
 	@GameTest
-	public void aPackSwitchesThePanelOnAndAnchorsDecals(GameTestHelper helper) {
+	public void aPackRestylesThePanelKeyByKeyAndAnchorsDecals(GameTestHelper helper) {
 		PanelLook look = PanelLook.of(area("panel", """
-				{ "enabled": 1, "insetTop": 18, "nameplateW": 70, "nameplateH": 14, "nameplateAnchorX": 2, "nameplateX": 6,
+				{ "enabled": 1, "insetTop": 18, "nameplateW": 70, "nameplateH": 14, "nameplateAnchorX": 2, "nameplateAnchorY": 0, "nameplateX": 6, "nameplateY": 0,
 				  "dressAW": 30, "dressAH": 20, "dressAAnchorX": 1, "dressAAnchorY": 2, "dressAX": -10, "dressAY": 3 }"""));
-		if (!look.enabled() || look.content().top() != 18 || look.content().left() != 24) {
+		if (!look.enabled() || look.content().top() != 18 || look.content().left() != 52) {
 			throw fail(helper, "a pack names a key and keeps the rest, got " + look);
 		}
 		PanelLook.Decal plate = look.nameplate();

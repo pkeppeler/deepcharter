@@ -53,15 +53,17 @@ public final class OrderRowButton extends Button implements PanelButton {
 		CrtTuning tuning = CrtTuning.current();
 		boolean lit = isHoveredOrFocused() && active;
 		PanelLook panel = PanelLook.current();
-		if (panel.enabled()) {
+		if (PanelLook.drawn()) {
 			Font panelFont = Minecraft.getInstance().font;
 			int labelX = CrtDraw.panelButtonFace(graphics, panel, getX(), getY(), getWidth(), getHeight(), active, lit,
 					panelLabelWidth(panelFont), CrtDraw.pipsFit(panel, panelFont, Minecraft.getInstance().gui.screen()));
 			int ink = panel.labelColor(active, lit);
-			graphics.text(panelFont, CrtText.of(title), labelX, getY() + 1, ink, false);
+			// A button's face is 4 pixels shorter than the button (an edge and a rim on each side) and a line of capitals is 6 high, so the two lines sit
+			// 2 and 10 pixels down: one clear row above the first and one below the second.
+			graphics.text(panelFont, CrtText.of(title), labelX, getY() + 2, ink, false);
 			// The progress line is the label's colour, softened, so it reads on a dark button and on a pale one; a button that cannot be pressed has one colour.
 			int detail = active ? Colors.withAlpha(ink, PROGRESS_ALPHA) : ink;
-			graphics.text(panelFont, CrtText.of(progress), labelX, getY() + 2 + panelFont.lineHeight, detail, false);
+			graphics.text(panelFont, CrtText.of(progress), labelX, getY() + 1 + panelFont.lineHeight, detail, false);
 			return;
 		}
 		graphics.fill(getX(), getY(), getRight(), getBottom(), lit ? tuning.hoverFillColor() : tuning.backgroundColor());

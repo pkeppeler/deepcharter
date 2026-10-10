@@ -26,8 +26,8 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 /**
  * The worlds the terminal panel (#246) is checked and shot in. The first has a charter with money, one repaired terminal of each kind round the
- * player, and a damaged pod parked among them with ore in its cargo. The second has no charter, a contract terminal and an unrepaired ore
- * processor (the generic terminal screen). Used by the {@code terminal-panel} evidence scenario and by the client test that holds every
+ * player, and a damaged pod parked among them with ore in its cargo. The second has no charter and a contract terminal. The third has a charter
+ * and an unrepaired ore processor (the generic terminal screen). Used by the {@code terminal-panel} evidence scenario and by the client test that holds every
  * screen inside the screen.
  */
 public final class TerminalPanelScene {
@@ -77,23 +77,23 @@ public final class TerminalPanelScene {
 		return new Scene(hangar, processor, upgrade, repair, pump);
 	}
 
-	/** Where the second world's terminals stand. */
-	public record Contract(BlockPos contract, BlockPos offline) {
-	}
-
-	/**
-	 * In a world where the player has no charter: two charters of other people to apply to, a contract terminal, and an ore processor nobody has
-	 * repaired, which opens the generic terminal screen offline.
-	 */
-	public static Contract setUpContract(MinecraftServer server) {
+	/** In a world where the player has no charter: two charters of other people to apply to, and a contract terminal. Returns the terminal. */
+	public static BlockPos setUpContract(MinecraftServer server) {
 		ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 		for (String name : List.of("Riggs and Sons", "Deep Pocket Mining")) {
 			require(Charters.found(server, UUID.randomUUID(), name).isEmpty(), "founding " + name + " should succeed");
 		}
 		BlockPos terminal = player.blockPosition().relative(Direction.EAST, 2);
-		BlockPos offline = player.blockPosition().relative(Direction.WEST, 2);
 		server.overworld().setBlock(terminal, ContractTerminal.TYPE.block().defaultBlockState(), 3);
-		server.overworld().setBlock(offline, TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(), 3);
-		return new Contract(terminal, offline);
+		return terminal;
+	}
+
+	/** In a world where the player is on a charter and nobody has repaired anything: an ore processor, which opens the generic terminal screen offline. Returns it. */
+	public static BlockPos setUpOffline(MinecraftServer server) {
+		ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+		require(Charters.found(server, player.getUUID(), "Riggs and Sons").isEmpty(), "founding should succeed");
+		BlockPos terminal = player.blockPosition().relative(Direction.EAST, 2);
+		server.overworld().setBlock(terminal, TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(), 3);
+		return terminal;
 	}
 }

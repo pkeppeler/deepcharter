@@ -10,11 +10,8 @@
 - `font/terminal.json` points the font id `deepcharter:terminal` at Unscii (below).
 - `tools/terminal_concepts.py` writes the sprites and `panel.json`; `--check` (and a unit test) fails when a committed file differs from what it makes. `--preview DIR` writes a mock of the panel without starting the game.
 - The seven terminal screens: the hangar console, the ore processor, the upgrade terminal, the repair station, the contract terminal, the fuel pump and the generic terminal. The `terminal-panel` evidence scenario shoots them all; `TerminalPanelClientTest` holds each inside the panel's content rectangle.
+- **Small GUIs.** The screens need 288 x 192 of content, so on a GUI that leaves less inside the panel's insets (the game's smallest, 320 x 240, leaves 240 x 192) a screen is the plain CRT in the game's font. `PanelLook.fits` decides; every screen and button asks `PanelLook.drawn()`. A pack with thinner insets gets the panel on smaller GUIs.
 - The handbook keeps its paper, as section 7 decided. The panel does not touch it.
-
-### Row pitch and label fix
-
-The upgrade terminal's track list closes up to fit its eleven tracks: the pitch is 16 pixels at most and 11 at least, and a button is 2 pixels less than the pitch. The label fix is described under [Label room](#label-room).
 
 ## What section 7 already decided
 
@@ -49,7 +46,7 @@ The concept stills, from PR #408:
 
 ## Fonts
 
-The terminal font is Unscii. Its file is `font/unscii-8.ttf`, its licence note `font/unscii-license.txt` beside it, and `font/terminal.json` points the id `deepcharter:terminal` at it. It was downloaded only from its official source, and nothing in the download was run. The file name is lower case because the game refuses a font whose file name has a capital ("Not a valid resource location"); the bytes, and so the sha256, are the download's. A pack can replace `font/terminal.json` to use another font.
+The terminal font is Unscii. Its file is `font/unscii-8.ttf`, its licence note `font/unscii-license.txt` beside it, and `font/terminal.json` points the id `deepcharter:terminal` at it. It was downloaded only from its official source, and nothing in the download was run. The file name is lower case because the game refuses a font whose file name has a capital ("Not a valid resource location"); the bytes, and so the sha256, are the download's. A pack's own `font/terminal.json` adds font providers, which the game tries before the mod's, so a pack can use another font.
 
 | Font | Official source | Licence | File as committed | sha256 |
 |---|---|---|---|---|
@@ -63,11 +60,15 @@ The other fonts of the round (VT323, Departure Mono) and `tools/font_bitmap.py`,
 
 ## Label room
 
-On the upgrade screen the rows are about 12 pixels high at the default screen, and the labels sat tight against the top edge, while "SEEP SOUNDER T0", "SPOIL HOPPER T0" and "PER POD" touched their button edges. See the entry under [Label fix](#label-fix) for what changed.
+A button sprite has a 3-pixel border: an outline, a rim, and a shade. The face inside is the button's height less 4, and a line of Unscii capitals is 6 pixels high. On the upgrade screen the 12 tracks close up to fit, to a pitch of 12 pixels, and the rows were 10 high with 2 between, so the face was 6 pixels: the capitals filled it and touched the rim above and the shade below. "SEEP SOUNDER", "SPOIL HOPPER" and the work-order button's first line touched their edges, and the chosen track's "> " marker pushed a label past its button.
 
-### Label fix
+What changed:
 
-(Written once the fix is built.)
+- **Row height.** On the panel the upgrade screen's rows touch (a button's own outline is the gap), so a 12-pixel pitch is a 12-pixel button: a face of 8, one clear row above the capitals and one below. With the panel off the rows keep their 2-pixel gap, because the plain CRT outlines each button.
+- **The chosen track is lit, not marked.** `CrtButton.marked(true)` draws a button as it is when the cursor is on it (the knob turned, the label yellow). The "> " in front of the label is gone, so a label keeps its room.
+- **Width.** `PanelLook.LABEL_MARGIN` is 4, as the left pad is: the 3-pixel border and one clear column on each side. The track column is as wide as its longest label and 8 pixels (104 for the current names), and the column gap went from 8 to 6 so that the tier column (237) holds "BUY TIER 6  $125000  (WORKS AS TIER 2)" (228 + 8).
+- **Two lines.** The work-order button's lines sit 2 and 10 pixels down (they were 1 and 11), one clear row above the first and one below the second.
+- **Held by a test.** `TerminalPanelClientTest` fails when a button is shorter than 12 pixels (20 for a two-line one), or when its label, by the wider line, is nearer than 4 pixels to an edge.
 
 ## How to look at it
 

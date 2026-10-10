@@ -17,31 +17,29 @@ import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreen;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
-import io.github.pkeppeler.deepcharter.test.support.TerminalPanelScene.Contract;
 import io.github.pkeppeler.deepcharter.test.support.TerminalPanelScene.Scene;
 
 /** Opens the seven terminal screens on the real server, and waits until each has typed out its intro. */
 public final class TerminalPanelScreens {
 	/** The screens of the first world, by the id the stills use. */
 	public static final List<String> SCENE_SCREENS = List.of("hangar", "processor", "upgrade", "repair", "pump");
-	/** The screens of the second world. */
+	/** The screen of the second world. */
 	public static final String CONTRACT = "contract";
+	/** The screen of the third world. */
 	public static final String GENERIC = "generic";
-	public static final List<String> CONTRACT_SCREENS = List.of(CONTRACT, GENERIC);
 
 	private TerminalPanelScreens() {
 	}
 
 	/** Opens the screen {@code id} at its terminal and waits until its intro has typed out and its content is there. Returns the screen. */
-	public static Screen open(ClientGameTestContext context, String id, Scene scene, Contract contract) {
+	public static Screen open(ClientGameTestContext context, String id, Scene scene, BlockPos elsewhere) {
 		BlockPos at = switch (id) {
 			case "hangar" -> scene.hangar();
 			case "processor" -> scene.processor();
 			case "upgrade" -> scene.upgrade();
 			case "repair" -> scene.repair();
 			case "pump" -> scene.pump();
-			case CONTRACT -> contract.contract();
-			case GENERIC -> contract.offline();
+			case CONTRACT, GENERIC -> elsewhere;
 			default -> throw new IllegalArgumentException("no terminal concept screen " + id);
 		};
 		Class<? extends Screen> type = switch (id) {

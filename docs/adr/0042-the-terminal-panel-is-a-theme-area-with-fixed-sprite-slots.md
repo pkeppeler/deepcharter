@@ -24,3 +24,7 @@ Art direction section 7 decided that terminals become physical machine panels: a
 - A screen needs at least 192 pixels of content height at the default window (the layouts were drawn for that), so a panel takes at most 48 pixels from the top and bottom together; width has room to spare.
 - Fixed-size decals do not scale. A GUI smaller than 427 x 240 needs the frame to be a nine-slice (it is) and the decals to stay clear of the content (a test checks 427 x 240 only).
 - The pick may drop slots the chosen design never uses, and the build moves the chosen pack into the mod.
+
+## Update (#246 build)
+
+The pick was Hatch, with Unscii. The mod now ships both: `panel.json` has `enabled: 1` with Hatch's values, the sprites are under the mod's `assets/deepcharter/textures/gui/sprites/panel/`, and `font/terminal.json` points at `unscii-8.ttf`. The unpicked packs are removed. Everything else above stands: a pack still restyles any key, switches the panel off with `enabled: 0`, or puts its own font ahead of Unscii, and the code still names slots only. "Off until a pack turns it on" in the title is no longer true.
