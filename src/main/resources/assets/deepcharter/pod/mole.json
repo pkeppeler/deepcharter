@@ -2,6 +2,7 @@
 	"model": "deepcharter:pod/mole",
 	"texture": "deepcharter:textures/entity/pod/mole.png",
 	"glow": "lit",
+	"paint": "deepcharter:textures/entity/pod/mole_paint.png",
 	"cutters": {
 		"0": "tricone",
 		"1": "stacked",

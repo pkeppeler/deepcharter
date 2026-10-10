@@ -772,6 +772,31 @@ def paint_model(model, wear=None):
     return base, glow
 
 
+# Paint mask: the hull's paint is the one colour a charter changes (#383). The mask holds, for each texel of a "paint" cube, its brightness
+# against the base paint colour, as a grey where 128 is the base: the game multiplies a charter's paint colour by it, so the shading, the
+# seams and the rivets stay. Every other texel is transparent and keeps its own colour.
+MASK_UNIT = 128
+
+
+def luma(rgb):
+    return 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]
+
+
+def paint_mask(model, base):
+    """The paint mask of the model's new-paint texture."""
+    mask = Canvas(model.texture)
+    reference = luma(RAMPS["paint"][2])
+    for _, cube in model.cubes():
+        if cube.material != "paint":
+            continue
+        for face in faces_of(cube):
+            for j in range(face.h):
+                for i in range(face.w):
+                    grey = min(255, round(MASK_UNIT * luma(base.get(face.x + i, face.y + j)[:3]) / reference))
+                    mask.set(face.x + i, face.y + j, (grey, grey, grey))
+    return mask
+
+
 # ---------------------------------------------------------------------------------------------
 # Kit parts shared by the concepts
 # ---------------------------------------------------------------------------------------------
@@ -924,10 +949,13 @@ def capsule_hull(m, dz=0, brow_lamps=True):
     mast.box(-1, 24, 1 + dz, 1, 27, 3 + dz, "frame")
     rotor = m.bone("rotor", "mast", (0, 28, 2 + dz))
     rotor.box(-1.5, 27, 0.5 + dz, 1.5, 29, 3.5 + dz, "brass")
-    rotor.box(-14, 27.5, 1 + dz, -2, 28.5, 3 + dz, "paint")
-    rotor.box(2, 27.5, 1 + dz, 14, 28.5, 3 + dz, "paint")
-    rotor.box(-16, 27.5, 1 + dz, -14, 28.5, 3 + dz, "trim")
-    rotor.box(14, 27.5, 1 + dz, 16, 28.5, 3 + dz, "trim")
+    # Each blade is a bone of its own, hinged at the hub, so that it folds forward along the roof when the pod is not lifting off.
+    blade_l = m.bone("blade_l", "rotor", (2, 28, 2 + dz))
+    blade_l.box(2, 27.5, 1 + dz, 14, 28.5, 3 + dz, "paint")
+    blade_l.box(14, 27.5, 1 + dz, 16, 28.5, 3 + dz, "trim")
+    blade_r = m.bone("blade_r", "rotor", (-2, 28, 2 + dz))
+    blade_r.box(-14, 27.5, 1 + dz, -2, 28.5, 3 + dz, "paint")
+    blade_r.box(-16, 27.5, 1 + dz, -14, 28.5, 3 + dz, "trim")
 
 
 def capsule_running_gear(m, dz=0):
@@ -1453,10 +1481,12 @@ def prospector_body(m):
     mast.box(-1, 35, 8, 1, 38, 10, "frame")
     rotor = m.bone("rotor", "mast", (0, 39, 9))
     rotor.box(-1.5, 38, 7.5, 1.5, 40, 10.5, "brass")
-    rotor.box(-16, 38.5, 8, -2, 39.5, 10, "paint")
-    rotor.box(2, 38.5, 8, 16, 39.5, 10, "paint")
-    rotor.box(-18, 38.5, 8, -16, 39.5, 10, "trim")
-    rotor.box(16, 38.5, 8, 18, 39.5, 10, "trim")
+    blade_l = m.bone("blade_l", "rotor", (2, 39, 9))
+    blade_l.box(2, 38.5, 8, 16, 39.5, 10, "paint")
+    blade_l.box(16, 38.5, 8, 18, 39.5, 10, "trim")
+    blade_r = m.bone("blade_r", "rotor", (-2, 39, 9))
+    blade_r.box(-16, 38.5, 8, -2, 39.5, 10, "paint")
+    blade_r.box(-18, 38.5, 8, -16, 39.5, 10, "trim")
     # The winch: cheek plates, a spool (a square and a copy turned 45 degrees, so it reads round), the cable and a hook.
     winch = m.bone("winch", "body")
     winch.box(-12, 12, 21, -10, 22, 23, "frame")
@@ -1613,6 +1643,7 @@ def build(name, model_dir, texture_dir):
     if name in PODS:
         kind = "derelict" if name == "mole" else "scorched"
         worn, _ = paint_model(model, kind)
+        files[texture_dir / f"{name}_paint.png"] = paint_mask(model, base).png()
         files[texture_dir / f"{name}_wreck.png"] = worn.png()
         files[texture_dir / f"{name}_wreck_glowmask.png"] = wreck_glow(model, glow, kind).png()
     return model, files

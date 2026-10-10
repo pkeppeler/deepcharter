@@ -17,15 +17,21 @@ import net.minecraft.world.phys.Vec3;
  * <p>An angle here is the file's angle in degrees, added to the bone's rest rotation. GeckoLib bakes a file rotation as
  * (-x, -y, z) radians, so {@link #turn} negates x and y on the way in.
  */
-final class PodPose {
+public final class PodPose {
 	/** Pixels of travel for one full stride of a leg. */
 	private static final float STRIDE_PIXELS = 24f;
 	private static final float STRIDE_SWING_DEGREES = 18f;
 	private static final float STRIDE_LIFT_DEGREES = 22f;
 	/** How far a thigh tucks its leg up while the pod flies. */
 	private static final float FLIGHT_TUCK_DEGREES = 30f;
+	/** How far a blade turns from out to folded, about the rotor's hub. */
+	private static final float FOLD_DEGREES = 90f;
 	/** A thruster swings from pointing back to pointing down. */
 	private static final float THRUST_DEGREES = -90f;
+
+	/** A blade of a rotor, and which side of the hub it is on: 1 for the pod's left (+x), -1 for its right. */
+	private record Blade(String bone, float side) {
+	}
 
 	private record Wheel(String bone, float radius) {
 	}
@@ -42,6 +48,7 @@ final class PodPose {
 	private final List<String> drillHeads = new ArrayList<>();
 	private final List<String> drillRings = new ArrayList<>();
 	private final List<String> rotors = new ArrayList<>();
+	private final List<Blade> blades = new ArrayList<>();
 	private final List<String> fans = new ArrayList<>();
 	private final List<String> thrusters = new ArrayList<>();
 	private final List<String> flames = new ArrayList<>();
@@ -57,6 +64,7 @@ final class PodPose {
 				case DRILL_HEAD -> drillHeads.add(bone.name());
 				case DRILL_RING -> drillRings.add(bone.name());
 				case ROTOR -> rotors.add(bone.name());
+				case BLADE -> blades.add(new Blade(bone.name(), hubSide(geo, bone)));
 				case FAN -> fans.add(bone.name());
 				case THRUSTER -> thrusters.add(bone.name());
 				case FLAME -> flames.add(bone.name());
@@ -88,6 +96,9 @@ final class PodPose {
 		for (String rotor : rotors) {
 			snapshots.ifPresent(rotor, snapshot -> turn(snapshot, 0f, state.rotorSpin, 0f));
 		}
+		for (Blade blade : blades) {
+			snapshots.ifPresent(blade.bone(), snapshot -> turn(snapshot, 0f, bladeFold(state.rotorOut, blade.side()), 0f));
+		}
 		for (String fan : fans) {
 			snapshots.ifPresent(fan, snapshot -> turn(snapshot, 0f, 0f, state.fanSpin));
 		}
@@ -111,6 +122,24 @@ final class PodPose {
 			float lift = state.walk * STRIDE_LIFT_DEGREES * Math.max(0f, Mth.cos(stride + thigh.phase())) + state.thrust * FLIGHT_TUCK_DEGREES;
 			snapshots.ifPresent(thigh.bone(), snapshot -> turn(snapshot, 0f, 0f, -lift));
 		}
+	}
+
+	/**
+	 * The file's y angle of a blade on {@code side} of the hub (1 for +x, -1 for -x), with the rotor {@code out} (0 folded, 1 out to fly): 0 out,
+	 * and 90 degrees folded, turned so that each blade points forward (-z) and the pair lie along the roof.
+	 */
+	public static float bladeFold(float out, float side) {
+		return side * (1f - Mth.clamp(out, 0f, 1f)) * FOLD_DEGREES;
+	}
+
+	/** Which side of its rotor's hub a blade's pivot lies: 1 for +x, -1 for -x. */
+	private static float hubSide(GeoModel geo, GeoModel.Bone blade) {
+		GeoModel.Bone rotor = geo.bones().stream().filter(bone -> bone.name().equals(blade.parent().orElseThrow())).findFirst().orElseThrow();
+		float side = (float) Math.signum(blade.pivot().x - rotor.pivot().x);
+		if (side == 0f) {
+			throw new IllegalArgumentException(geo.source() + ": blade bone '" + blade.name() + "' has its pivot on its rotor's hub, so it has no side to fold to");
+		}
+		return side;
 	}
 
 	/** Turns by the file's angles in degrees: GeckoLib's x and y rotations are the file's, negated. */

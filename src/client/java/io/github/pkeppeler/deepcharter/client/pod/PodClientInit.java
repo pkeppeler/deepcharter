@@ -10,6 +10,7 @@ public final class PodClientInit {
 
 	public static void init() {
 		PodClientRegistry.register();
+		PodPaint.init();
 		PodStatusHud.init();
 		LowFuelBeep.init();
 		PilotFire.init();

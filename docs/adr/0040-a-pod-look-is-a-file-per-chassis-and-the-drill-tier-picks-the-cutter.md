@@ -43,3 +43,5 @@ Builds on [ADR 0030](0030-art-direction-decisions.md) (GeckoLib pods) and [ADR 0
 - A Minecraft bump means a new GeckoLib coordinate, hash and audit; `checkGeckoLib` stops a swap of the jar. The fallback of ADR 0030 stays possible: `.geo.json` is plain Bedrock, and the `ModelPart` renderer of #334 is in the history at `79422af7`.
 - The rider is still placed by the entity type's passenger attachments (0.9 up). The pilot sits in the hull's open top and does not yet sit inside under a canopy.
 - A new cutter is a bone set in the generator and a line in a look's map; a new chassis is a model, a texture, a look and an entry in `Chassis`.
+
+Amended by [ADR 0041](0041-pods-are-painted-per-charter-and-the-rotor-folds-out-to-fly.md): the look file has an optional `paint` key, and the hull is painted per charter.
