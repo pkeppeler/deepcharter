@@ -101,7 +101,7 @@ public final class HangarTerminal {
 			return refuse("insufficient_funds", price);
 		}
 		ServerLevel level = server.overworld();
-		Optional<Vec3> slot = Hangar.freeSlot(level, anchor.get());
+		Optional<Vec3> slot = Hangar.freeSlot(level, anchor.get(), Chassis.MOLE);
 		if (slot.isEmpty()) {
 			return refuse("bay_full");
 		}

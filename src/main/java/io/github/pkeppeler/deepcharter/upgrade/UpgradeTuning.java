@@ -8,10 +8,9 @@ import java.util.Map;
  * Tunables for the upgrade feature, read as {@code UpgradeTuning.DEFAULT.thing()}.
  *
  * @param tracks     for each {@link ComponentTrack}, what each tier is worth and costs
- * @param tierCaps   the best part tier each chassis takes, by chassis id (SPEC section 7)
  */
-public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks, Map<String, Integer> tierCaps) {
-	public static final UpgradeTuning DEFAULT = new UpgradeTuning(defaultTracks(), Map.of("mole", 2, "prospector", 3));
+public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks) {
+	public static final UpgradeTuning DEFAULT = new UpgradeTuning(defaultTracks());
 
 	/**
 	 * One track's table, with one entry for each tier from 0 (stock) up. {@code values} are the original's reference
@@ -31,7 +30,6 @@ public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks, Map<String, Integ
 
 	public UpgradeTuning {
 		tracks = Map.copyOf(tracks);
-		tierCaps = Map.copyOf(tierCaps);
 		for (ComponentTrack track : ComponentTrack.values()) {
 			Tiers tiers = tracks.get(track);
 			if (tiers == null || tiers.values().size() != track.maxTier() + 1) {
@@ -57,15 +55,6 @@ public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks, Map<String, Integ
 			throw new IllegalArgumentException("track " + track.id() + " has no stock part to compare with");
 		}
 		return value(track, tier) / stock;
-	}
-
-	/** The best part tier the chassis takes. A chassis with no entry is a bug, so it throws. */
-	public int tierCap(String chassisId) {
-		Integer cap = tierCaps.get(chassisId);
-		if (cap == null) {
-			throw new IllegalArgumentException("no component tier cap for chassis " + chassisId);
-		}
-		return cap;
 	}
 
 	private static int requireTier(ComponentTrack track, int tier) {

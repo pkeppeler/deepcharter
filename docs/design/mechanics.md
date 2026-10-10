@@ -66,7 +66,7 @@ The bot is unrealistic in two opposite ways. It never reacts, which is harsh. It
 **Problem.** The tier 1 scanner draws lava as open space (BLOCKERS: fluids), and its slice is one block thick while a bore is two wide. So it showed the lava a pod touched, 8 or more slabs ahead, in 13% of bores.
 
 **The tier.** Scanner tier 2, the best a Mole can fit, is the thermal tier (`ScannerTuning.lavaTier`).
-- Two shades. A cell with lava in the plane is bright red (`lavaColor`, `#FF2A10`). A cell with lava only within 2 blocks of either side of the plane (`lavaSpread`: the 2 x 2 bore and a block of margin) is a dim brown-red (`lavaNearColor`, `#78463A`), close to the rock, so that it reads as heat in the wall and does not drown the bright cells. The bright red is far from gold (`#FFD21E`). Ore and gas keep their colours when they share a cell with lava beside it.
+- Two shades. A cell with lava in the plane is bright red (`lavaColor`, `#FF2A10`). A cell with lava only within 2 blocks of either side of the plane (`ScannerTuning.lavaSpread(chassis)`: half the bore's width and a block of margin, 2 for a Mole and a Prospector) is a dim brown-red (`lavaNearColor`, `#78463A`), close to the rock, so that it reads as heat in the wall and does not drown the bright cells. The bright red is far from gold (`#FFD21E`). Ore and gas keep their colours when they share a cell with lava beside it.
 - Tier 1 is unchanged: lava is open space. That is what makes tier 2 worth its price. Water is open space at every tier, because no water hazard exists.
 - Price: the standard ladder's $500, unchanged. Reason: a tier 2 part pays back in about two runs of layer 2 with tier 2 parts, and the thermal tier is a layer 2 purchase (`EconomyAffordabilityTest`).
 - Tier 3 keeps gas, so the ladder reads: ore, then lava, then gas.
@@ -86,7 +86,7 @@ The bot is unrealistic in two opposite ways. It never reacts, which is harsh. It
 - The "plane only" column is a run with `lavaSpread` set to 0.
 - **Scan cost.** One tier 2 slice read (about 4 per second in the HUD) took a median of 0.9 ms and a mean of 2.3 ms in the 100-bore run, on 100 busy pods. Each cell reads 5 blocks, and no two cells share one, so a column mask would not save reads. Left as it is.
 
-**Knobs.** `ScannerTuning.lavaTier` (2), `ScannerTuning.lavaSpread` (2), `theme/scanner.json` `lavaColor` and `lavaNearColor`, `LayerTuning.lavaHullPerSecond` (10), `LayerTuning.lavaCueTicks` (15), `theme/hud.json` `podBurningColor`, the `pod.hull_burning` sound.
+**Knobs.** `ScannerTuning.lavaTier` (2), `ScannerTuning.lavaMargin` (1, so a spread of 2 for a Mole), `theme/scanner.json` `lavaColor` and `lavaNearColor`, `LayerTuning.lavaHullPerSecond` (10), `LayerTuning.lavaCueTicks` (15), `theme/hud.json` `podBurningColor`, the `pod.hull_burning` sound.
 
 **Open questions.**
 - ~~Should the tier 1 scanner mark lava, or is that a later tier's job (BLOCKERS: fluids)?~~ Answered by #300: a later tier's job. See the thermal tier above.
@@ -108,7 +108,7 @@ The bot is unrealistic in two opposite ways. It never reacts, which is harsh. It
 - **Spoil.** With a hopper the drill keeps one spoil for each block of waste rock it bores: the blocks in the tag `deepcharter:waste_rock` (stone and dirt). The bay holds 64, and a drill past that loses the rock, as it loses ore past a full cargo bay. Spoil is not cargo, so it takes no ore slot. It is a pod attachment (`PodLining.State`), and it cuts lift like ore does (0.1 mass each).
 - **Slag brick.** The processor's new button, MAKE SLAG BRICK, turns 2 spoil into 1 brick, for no money ([#363](#liner-bricks-363-a)), from every pod the charter may use that is parked at the processor. The bricks go to each pod's rack (32, 0.2 mass each) and, when a rack is full, to the buyer's pack (a stack is 64). It makes only the bricks that have a place to go. A brick is a plain full block, so lava neither flows into it nor replaces it. It drops itself when broken by hand. The drill bores it and gets nothing.
 - **Lining.** The key R, from the pilot's seat (`key.deepcharter.line_slab`). The pod places one brick every 8 ticks, and stops while it does: no drive, no climb, no drill (the pod keeps its power, its lights and its fuel burn). Another press stops it. The cells, in order: lava first, then open cells beside lava, then the rest, lowest first.
-  - The ring: the air and fluid cells beside the 2 x 2 footprint, from the slab below the pod to the top of its box.
+  - The ring: the air and fluid cells beside the footprint (2 x 2 for a Mole), from the slab below the pod to the top of its box.
   - The floor: lava in the footprint's cells in the slab below and the one under it. The drill bores no liquid, and the pod touches lava the moment it sinks onto it.
   - Never replaced: rock, ore, company rock, and a cell next to an unloaded chunk.
 - **Bricks used.** The rack first (if `PodComponents.mayAccess` lets the pilot use the pod's stores), then the pilot's pack. No brick is made by lining.
@@ -533,3 +533,27 @@ Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`Ea
 - It is client-only.
 - Black fog or generated rock were rejected: fog is the colour of the whole layer and cannot change on the surface's dusk, and rock below the crust would move `min_y`, which the crossing line, the depth readout and every layer test read.
 - A hole shows void only at angles steep enough to pass the 3 blocks of crust (31 degrees above the floor, in the test's 9 wide hole). A shallow view towards the edge of the render distance meets rock first, so the square needs no reach beyond what holes show. It still reaches the render distance.
+
+## Bore size and the economy (#399)
+
+**Problem.** The Mole is 1.9 wide and tall and bores 2 x 2. Cab and HUD ergonomics may want a larger pod, and a Prospector is 2.9 and bores 3 x 3. Nothing in the code may assume either size, so a chassis of any width and height has to scale the economy by the rules below. `Chassis` holds the two sizes; `OddChassisTest` and `TallChassisTest` run every behaviour on two test-only chassis, 3.9 x 2.9 (a 4-wide, 3-tall bore) and 1.9 x 3.9 (a 2-wide, 4-tall bore).
+
+**The bore.** `W = ceil(width)` blocks on both horizontal axes, `H = ceil(height)` blocks tall (`Chassis.boreWidth`, `boreHeight`; `PodFootprint` is the pod's cells). A pod is centred in its bore. Width is both the pod's width and depth; only width and height may differ. One downward step bores `W x W` cells (`Chassis.slabCells`), one sideways step `W x H`.
+
+**Drill time per slab.** The time does not grow with the bore. A slab takes the time of its hardest block: `ticks = ceil(hardness x ticksPerHardness x (1 + max(0, depthFeet) / 1000))` for that block (`PodDrill.drillTicks`). A wider bore is slower only because it is more likely to hold something harder than stone: with `p` the zone's ore chance, the chance a slab holds ore is `1 - (1 - p)^(W x W)`, and a slab with ore takes the ore's hardness (`EarlyRunModel.slabSeconds`). A Mole (4 cells) at `p` = 0.02 meets ore in 8% of slabs, a 4-wide pod (16 cells) in 28%.
+
+**Ore per slab.** `W x W x p x yield` (`EarlyRunModel.run`). A 4 x 4 bore brings four times a Mole's ore from each slab for the same fuel per second, so the cargo bay fills in a quarter of the slabs. Bigger pods get their ore from a bigger bay and tank, which is what the chassis and its price are for, not from the drill.
+
+**Fuel.** Per second, not per cell (`PodStats`): a bore costs the same fuel per second of drilling at any size. A wider pod costs more only through the slabs that hold ore.
+
+**Lining per ring.** The ring is the open cells beside the footprint, `4 x W` cells for each row of the pod's height and of the reach below it. Hand lining reaches 1 slab below the pod's feet: at most `4 x W x (H + 1)` bricks (24 for a Mole, 64 for a 4 x 3 pod), and the floor adds `W x W` cells for lava under the pod. The liner rings the stretch it is about to bore: `4 x W x (H + ringEverySlabs)` cells, at `cellsPerBrick` cells to a brick (`PodLining.cellsToLine`, `PodLiner`). Brick, spoil and rack sizes are per part, not per chassis, so a wide pod empties its rack faster: a 4 x 3 pod's full ring is 2.7 times a Mole's.
+
+**Sounder.** The footprint's `W x W` cells in each of the `slabsBelow` slabs; each side is a strip `sideReach` wide and `W` long, from the top of the pod's box (`H` high) to the slab it would land on (`PodSounder`).
+
+**Scanner.** The thermal tier marks lava a block beyond the bore's edge on either side of the plane: `W / 2 + lavaMargin` (`ScannerTuning.lavaSpread`, 2 for a Mole and a Prospector, 3 for 4 wide). The pod marker on the scanner is `ceil(height)` cells tall on the plane.
+
+**The hangar and the tow cable.** A bay place is `W + slotGap` blocks from the next (3 for a Mole, as before), so two parked pods never overlap (`Hangar.freeSlot`). A towed pod trails its tower by half of each hull's width plus `trailGap` (`TowTuning.trailDistance`): 2.5 for two Moles, as before, 3.0 for a Prospector behind a Mole and 3.5 for two Prospectors (both were 2.5, and the Prospector's hull overlapped its tower's). The gap between hulls is 0.6 for any pair. The colony's hangar and works bays are doors 4 wide and 4 high (`tools/colony/town.py`), so a chassis must stay under 4 x 4 to pass them (`OddChassisTest` reads the doors from the colony layout and checks it).
+
+**What is per chassis, not derived.** The seat count and the best part tier (`Chassis`), the rider offsets (`PodRegistry`), the model, texture and cutter map (`assets/deepcharter/pod/<id>.json`), the restore price (`HangarTuning.restoreCosts`) and the handbook's story beats. A new chassis needs each of them, and each throws if it is missing.
+
+**Open questions.** Is a pod worth more than four times a Mole's ore per slab? The price, bay and tank of a bigger chassis are the knobs that decide it. And a 5-wide pod does not pass the hangar's bay door: the town's door is the largest chassis the game can have until the town grows.

@@ -27,14 +27,14 @@ import io.github.pkeppeler.deepcharter.pod.Chassis;
  * @param catalyst          the ore that restoring a wreck uses up
  * @param wreckRadius       the hangar restores the nearest wreck this many blocks from the console, at most
  * @param bayRadius         a new Mole stands in a free place in the bay, this many blocks from the hangar anchor at most
- * @param slotSpacing       the places of the bay are this many blocks apart
+ * @param slotGap           the places of the bay are a pod's bore width plus this many blocks apart, so two parked pods of any chassis leave a block between them
  */
 public record HangarTuning(long refurbishedMole, long registrationFee, Map<String, RestoreCost> restoreCosts, OreType catalyst,
-		double wreckRadius, int bayRadius, int slotSpacing) {
+		double wreckRadius, int bayRadius, int slotGap) {
 	public static final HangarTuning DEFAULT = new HangarTuning(150, 75,
 			Map.of("mole", new RestoreCost(100, 1, 0, Optional.empty()),
 					"prospector", new RestoreCost(1_390, 3, 3, Optional.of(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "t17")))),
-			OreType.CICATRIUM, 24, 6, 3);
+			OreType.CICATRIUM, 24, 6, 1);
 
 	/**
 	 * The dollars and the catalysts that restoring a wreck takes, the catalysts that the Company advances to each charter against

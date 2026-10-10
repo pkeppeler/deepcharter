@@ -452,7 +452,8 @@ public class PodsScenario extends EvidenceScenario {
 		shot(subject, "first-person");
 		// Drive east at the ledge and chew into it, seen from above and to the pod's left, riding along with it: the cone's tip
 		// leads the pod by two blocks and goes into the rock first, and its turn shows against the cut.
-		double scale = subject.chassis() == Chassis.PROSPECTOR ? 1.5 : 1.0;
+		// The offsets below frame a Mole; a bigger chassis scales them by its width.
+		double scale = subject.chassis().width() / Chassis.MOLE.width();
 		Vec3 chewOffset = new Vec3(0.6 * scale, 3.6 * scale, -3.4 * scale);
 		Vec3 cutter = new Vec3(1.6 * scale, 0.1, 0);
 		look(start.add(chewOffset), start.add(cutter), middle);
@@ -614,10 +615,13 @@ public class PodsScenario extends EvidenceScenario {
 		return chassis.height() / 2;
 	}
 
+	/** Blocks from the pod to the camera for each block of the pod's width: 3.6 for a Mole, far enough to keep a cone's tip in view. */
+	private static final double ORBIT_PER_WIDTH = 3.6 / Chassis.MOLE.width();
+
 	/** A camera point north of the pod, {@code pitch} degrees up, far enough to keep a cone's tip in view when it points at the camera. */
 	private static Vec3 orbit(Vec3 pod, double pitch, Chassis chassis) {
 		double p = Math.toRadians(pitch);
-		double distance = chassis == Chassis.PROSPECTOR ? 5.4 : 3.6;
+		double distance = ORBIT_PER_WIDTH * chassis.width();
 		return pod.add(0, middleOf(chassis) + distance * Math.sin(p), -distance * Math.cos(p));
 	}
 
