@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.terminal;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 
@@ -100,9 +101,15 @@ public final class Terminals {
 				.stream().sorted(Comparator.comparingDouble(pod -> pod.position().distanceToSqr(centre))).toList();
 	}
 
-	/** The pods of {@link #parkedPods(Level, BlockPos)} that {@code charter}, the acting player's if on one, may use ({@link PodComponents#mayAccess}). */
+	/**
+	 * The pods of {@link #parkedPods(Level, BlockPos)} that {@code charter}, the acting player's if on one, may use
+	 * ({@link PodComponents#mayAccess}). The charter's own pods come first, then unowned ones, each nearest first: a stranger's
+	 * unowned pod parked nearer never hides the player's own.
+	 */
 	public static List<PodEntity> parkedPods(ServerLevel level, BlockPos pos, Optional<Charter> charter) {
-		return parkedPods(level, pos).stream().filter(pod -> PodComponents.mayAccess(pod, charter)).toList();
+		List<PodEntity> usable = parkedPods(level, pos).stream().filter(pod -> PodComponents.mayAccess(pod, charter)).toList();
+		return Stream.concat(usable.stream().filter(pod -> PodComponents.ownerCharter(pod).isPresent()),
+				usable.stream().filter(pod -> PodComponents.ownerCharter(pod).isEmpty())).toList();
 	}
 
 	private sealed interface Access {

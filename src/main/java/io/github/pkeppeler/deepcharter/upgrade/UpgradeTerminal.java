@@ -35,7 +35,7 @@ import io.github.pkeppeler.deepcharter.terminal.Terminals;
  * it keeps the litres and the damage, because other callers need that.
  *
  * <p>A pod is parked at the terminal as {@link Terminals#parkedPods} says, and is the player's to use as
- * {@link PodComponents#mayAccess} says. A pod nearer to the terminal wins over one farther away.
+ * {@link PodComponents#mayAccess} says. The charter's own pod wins over an unowned one; within each, the nearer wins.
  *
  * <p>Terminals have already checked distance, membership and repair when a handler here runs. The args are untrusted: the track
  * and tier are read defensively, and a part above the chassis' cap is allowed (it is shown and applied as capped).
@@ -143,7 +143,7 @@ public final class UpgradeTerminal {
 	private static Parked parked(ServerPlayer player, Charter charter, BlockPos terminal) {
 		ServerLevel level = player.level();
 		List<PodEntity> parked = Terminals.parkedPods(level, terminal);
-		Optional<PodEntity> ours = parked.stream().filter(pod -> PodComponents.mayAccess(pod, Optional.of(charter))).findFirst();
+		Optional<PodEntity> ours = Terminals.parkedPods(level, terminal, Optional.of(charter)).stream().findFirst();
 		if (ours.isPresent()) {
 			return new Parked.Ours(ours.get());
 		}
