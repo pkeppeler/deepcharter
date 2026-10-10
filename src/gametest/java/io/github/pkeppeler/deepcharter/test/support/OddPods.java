@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import java.util.List;
+
 import net.fabricmc.api.ModInitializer;
 
 import net.minecraft.resources.Identifier;
@@ -18,10 +20,10 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
  */
 public final class OddPods implements ModInitializer {
 	public static final Chassis CHASSIS = new Chassis("odd", 1, 2, 3.9f, 2.9f);
-	public static final EntityType<PodEntity> TYPE = PodRegistry.register(Identifier.fromNamespaceAndPath("deepcharter_test", "odd_pod"), CHASSIS, new Vec3(0, 0.9, 0));
+	public static final EntityType<PodEntity> TYPE = PodRegistry.register(Identifier.fromNamespaceAndPath("deepcharter_test", "odd_pod"), CHASSIS, List.of(new Vec3(0, 0.5, 0)));
 	/** Tall and narrow, 1.9 wide and 3.9 tall: a 2-wide, 4-tall bore, the shape a taller Mole would have. */
 	public static final Chassis TALL = new Chassis("tall", 1, 2, 1.9f, 3.9f);
-	public static final EntityType<PodEntity> TALL_TYPE = PodRegistry.register(Identifier.fromNamespaceAndPath("deepcharter_test", "tall_pod"), TALL, new Vec3(0, 0.9, 0));
+	public static final EntityType<PodEntity> TALL_TYPE = PodRegistry.register(Identifier.fromNamespaceAndPath("deepcharter_test", "tall_pod"), TALL, List.of(new Vec3(0, 0.5, 0)));
 
 	@Override
 	public void onInitialize() {
