@@ -37,7 +37,12 @@ public final class PodRegistry {
 	private PodRegistry() {
 	}
 
-	private static EntityType<PodEntity> register(String path, Chassis chassis, Vec3... seats) {
+	/**
+	 * Registers a pod entity type for {@code chassis}, with a seat at each of {@code seats} (rider offsets from the pod's feet: they depend on
+	 * the model, so they are per chassis and cannot be derived). The two chassis the game ships are registered below; this is public only so
+	 * that a test mod can register an odd-sized one (see {@code OddPods} in the gametest source set) before the registry freezes.
+	 */
+	public static EntityType<PodEntity> register(String path, Chassis chassis, Vec3... seats) {
 		ResourceKey<EntityType<?>> key = ResourceKey.create(Registries.ENTITY_TYPE, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
 		EntityType<PodEntity> type = Registry.register(BuiltInRegistries.ENTITY_TYPE, key,
 				EntityType.Builder.<PodEntity>of(PodEntity::new, MobCategory.MISC)
@@ -58,6 +63,16 @@ public final class PodRegistry {
 			throw new IllegalArgumentException("not a pod entity type: " + type);
 		}
 		return chassis;
+	}
+
+	/** The chassis registered with the id {@code id}, shipped or not; an id that is none is a bug, so it throws. */
+	public static Chassis chassisById(String id) {
+		for (Chassis chassis : CHASSIS.values()) {
+			if (chassis.id().equals(id)) {
+				return chassis;
+			}
+		}
+		throw new IllegalArgumentException("unknown pod chassis: " + id);
 	}
 
 	/** The entity type of the pods of {@code chassis}; a chassis with none is a bug, so it throws. */

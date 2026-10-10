@@ -97,9 +97,14 @@ public final class EarlyRunModel {
 	 * descent that cannot refuel at the pump. The way back down an open shaft is a braked drive instead (see {@link #driveDownLitres}).
 	 */
 	public static double boreLitres(Zone zone, PodStats stats, int blocks) {
+		return boreLitres(Chassis.MOLE, zone, stats, blocks);
+	}
+
+	/** As {@link #boreLitres(Zone, PodStats, int)} for a pod of {@code chassis}: a wider bore holds more ore in each slab, so more slabs wait on a hard block. */
+	public static double boreLitres(Chassis chassis, Zone zone, PodStats stats, int blocks) {
 		double litres = 0;
 		for (int slab = 1; slab <= blocks; slab++) {
-			litres += slabSeconds(zone, stats, slab - 0.5) * (stats.drillingLitresPerSecond() + stats.idleLitresPerSecond());
+			litres += slabSeconds(chassis, zone, stats, slab - 0.5) * (stats.drillingLitresPerSecond() + stats.idleLitresPerSecond());
 		}
 		return litres;
 	}
@@ -182,13 +187,18 @@ public final class EarlyRunModel {
 
 	/** As {@link #run(Zone, PodStats, int)} for a pod that carries {@code extraMass}: it slows the climb if the lift falls far enough, and costs rotor fuel on the way down. */
 	public static Run run(Zone zone, PodStats stats, int shaftBlocks, float extraMass) {
-		int cells = cellsPerSlab();
+		return run(Chassis.MOLE, zone, stats, shaftBlocks, extraMass);
+	}
+
+	/** As {@link #run(Zone, PodStats, int, float)} for a pod of {@code chassis}: each slab it bores has the chassis' {@link Chassis#slabCells} cells, and so that many chances of ore. */
+	public static Run run(Chassis chassis, Zone zone, PodStats stats, int shaftBlocks, float extraMass) {
+		int cells = chassis.slabCells();
 		double oreChance = zone.oreChance();
 		double climbSecondsPerBlock = 1 / (climbSpeed(stats, extraMass) * 20);
 		int slabs = 0;
 		double litres = 0;
 		for (int next = 1;; next++) {
-			double drillSeconds = slabSeconds(zone, stats, shaftBlocks + next / 2.0);
+			double drillSeconds = slabSeconds(chassis, zone, stats, shaftBlocks + next / 2.0);
 			double climbSeconds = (shaftBlocks + next) * climbSecondsPerBlock;
 			double used = driveDownLitres(stats, shaftBlocks, extraMass) + drillSeconds * next * stats.drillingLitresPerSecond() + climbSeconds * stats.movingLitresPerSecond()
 					+ (drillSeconds * next + climbSeconds) * stats.idleLitresPerSecond();
@@ -205,16 +215,11 @@ public final class EarlyRunModel {
 		return new Run(slabs, litres, ores, gross, gross - litres * FuelTuning.DEFAULT.pricePerLitre(), catalysts);
 	}
 
-	private static int cellsPerSlab() {
-		int width = (int) Math.ceil(Chassis.MOLE.width());
-		return width * width;
-	}
-
 	/** Seconds to drill one slab at {@code depthBlocks} below the surface. A slab with ore in it takes as long as its hardest block; the zone fill replaces vanilla stone. */
-	private static double slabSeconds(Zone zone, PodStats stats, double depthBlocks) {
+	private static double slabSeconds(Chassis chassis, Zone zone, PodStats stats, double depthBlocks) {
 		float stoneHardness = Blocks.STONE.defaultDestroyTime();
 		float oreHardness = zone.chances().keySet().stream().map(type -> OreRegistry.block(type).defaultDestroyTime()).max(Float::compare).orElseThrow();
-		double slabHasOre = 1 - Math.pow(1 - zone.oreChance(), cellsPerSlab());
+		double slabHasOre = 1 - Math.pow(1 - zone.oreChance(), chassis.slabCells());
 		int depthFeet = (int) (depthBlocks * LayerTuning.DEFAULT.feetPerBlock());
 		double stoneTicks = PodDrill.drillTicks(stats, stoneHardness, depthFeet);
 		double oreTicks = PodDrill.drillTicks(stats, oreHardness, depthFeet);
