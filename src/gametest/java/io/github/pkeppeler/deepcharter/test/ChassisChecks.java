@@ -32,6 +32,7 @@ import io.github.pkeppeler.deepcharter.pod.PodSounder;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
+import io.github.pkeppeler.deepcharter.pod.TowTuning;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice.Cell;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
@@ -351,10 +352,15 @@ final class ChassisChecks {
 		site(level, x);
 		Vec3 start = new Vec3(x - 4, FLOOR + 6, Z);
 		PodEntity[] pods = {null, null};
-		FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(start), () -> {
-			pods[0] = spawn(level, start);
-			pods[1] = spawn(level, start.add(-3, 0, 0));
-			PodTowing.attach(pods[0], pods[1]);
+		// The pods hang and swing over the whole room, which spans two chunks: the towed pod ticks only while its chunk does.
+		List<BlockPos> chunks = List.of(new BlockPos(x - RADIUS, FLOOR, Z), new BlockPos(x + RADIUS, FLOOR, Z));
+		int[] ready = {0};
+		FarChunks.awaitEntityTicking(helper, level, chunks, index -> {
+			if (++ready[0] == chunks.size()) {
+				pods[0] = spawn(level, start);
+				pods[1] = spawn(level, start.add(-3, 0, 0));
+				PodTowing.attach(pods[0], pods[1]);
+			}
 		});
 		int[] step = {0};
 		helper.onEachTick(() -> {
@@ -368,7 +374,9 @@ final class ChassisChecks {
 			if (step[0] == 24 && pods[1].tickCount > 40) {
 				expect(helper, !pods[0].getBoundingBox().intersects(pods[1].getBoundingBox()), "the towed pod's hull overlaps its tower's: %s and %s", pods[0].getBoundingBox(), pods[1].getBoundingBox());
 				double gap = pods[0].position().distanceTo(pods[1].position());
-				expect(helper, gap <= chassis.width() + 1.5, "the towed pod should trail close behind its tower, it is %s away", gap);
+				double trail = TowTuning.DEFAULT.trailDistance(chassis, chassis);
+				expect(helper, gap <= trail + 0.1, "the towed pod should hang within the line of %s from its tower, it is %s away", trail, gap);
+				expect(helper, gap > chassis.width(), "the towed pod should hang clear of its tower, it is %s away", gap);
 				pods[0].discard();
 				pods[1].discard();
 				helper.succeed();

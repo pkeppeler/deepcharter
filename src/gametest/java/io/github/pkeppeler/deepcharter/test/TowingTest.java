@@ -1,11 +1,15 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.IntFunction;
 
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -37,6 +41,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
@@ -51,7 +56,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 
 /**
- * Server GameTests for #76, the tow cable: a cable reaches 8 blocks, the towed pod trails its tower and passes through blocks,
+ * Server GameTests for #76, the tow cable: a cable reaches the longest line, the towed pod trails its tower and passes through blocks,
  * its mass cuts the tower's lift, the link is saved, anyone may tow, and the towed pod crosses a breach with its tower.
  */
 public class TowingTest {
@@ -67,6 +72,14 @@ public class TowingTest {
 	/** A block of rock fills x 1..5, y 2..5, z 1..4 (see fillRock). The pod sits in it and its tower beyond its south face, in the open. */
 	private static final Vec3 ROCK_POD = new Vec3(3.5, 3, 3.5);
 	private static final Vec3 ROCK_TOWER = new Vec3(3.5, 3, 6.0);
+	/** Where the tow scenes are built in layer 1, each in its own range of x so none builds on another, and the top of the stone bed they stand on. */
+	private static final int TOW_Z = 15008;
+	private static final int TOW_FLOOR = 60;
+	private static final int GROUND_X = 15000;
+	private static final int SKY_X = 15100;
+	private static final int SHAFT_X = 15300;
+	/** Blocks that the floor of a shaft's gallery is above the floor of its shaft. */
+	private static final int GALLERY_FLOOR = 10;
 	private static final Input JUMP = new Input(false, false, false, false, true, false, false);
 
 	static {
@@ -74,35 +87,36 @@ public class TowingTest {
 	}
 
 	@GameTest
-	public void aCableReachesEightBlocksAndNoFurther(GameTestHelper helper) {
+	public void aCableReachesAsFarAsTheLongestLineAndNoFurther(GameTestHelper helper) {
+		double reach = TowTuning.DEFAULT.reachFor(PodRegistry.chassis().stream().max(Comparator.comparingDouble(Chassis::width)).orElseThrow());
 		PodEntity tower = helper.spawn(PodRegistry.POD, new Vec3(1.5, 2, 1.5));
-		PodEntity atEight = helper.spawn(PodRegistry.POD, new Vec3(9.5, 2, 1.5));
-		PodEntity pastEight = helper.spawn(PodRegistry.POD, new Vec3(1.5, 2, 10.0));
+		PodEntity atReach = helper.spawn(PodRegistry.POD, new Vec3(1.5 + reach, 2, 1.5));
+		PodEntity pastReach = helper.spawn(PodRegistry.POD, new Vec3(1.5, 2, 1.5 + reach + 0.5));
 		try {
-			if (!Optional.of(Refusal.TOO_FAR).equals(PodTowing.refusal(tower, pastEight))) {
-				throw failure(helper, "a pod 8.5 blocks away should be out of reach, got %s", PodTowing.refusal(tower, pastEight));
+			if (!Optional.of(Refusal.TOO_FAR).equals(PodTowing.refusal(tower, pastReach))) {
+				throw failure(helper, "a pod half a block past the reach of %s should be out of reach, got %s", reach, PodTowing.refusal(tower, pastReach));
 			}
 			try {
-				PodTowing.attach(tower, pastEight);
+				PodTowing.attach(tower, pastReach);
 				throw failure(helper, "attaching out of reach must throw");
 			} catch (IllegalStateException expected) {
 				// Expected.
 			}
-			if (PodTowing.isTowed(pastEight)) {
+			if (PodTowing.isTowed(pastReach)) {
 				throw failure(helper, "a refused cable must leave no link");
 			}
-			if (PodTowing.refusal(tower, atEight).isPresent()) {
-				throw failure(helper, "a pod exactly 8 blocks away is in reach, got %s", PodTowing.refusal(tower, atEight));
+			if (PodTowing.refusal(tower, atReach).isPresent()) {
+				throw failure(helper, "a pod exactly the reach away is in reach, got %s", PodTowing.refusal(tower, atReach));
 			}
-			PodTowing.attach(tower, atEight);
-			if (!Optional.of(tower.getUUID()).equals(PodTowing.towerId(atEight)) || PodTowing.isTowed(tower)) {
+			PodTowing.attach(tower, atReach);
+			if (!Optional.of(tower.getUUID()).equals(PodTowing.towerId(atReach)) || PodTowing.isTowed(tower)) {
 				throw failure(helper, "the pod in reach should be towed by the tower, and not the reverse");
 			}
 			helper.succeed();
 		} finally {
 			tower.discard();
-			atEight.discard();
-			pastEight.discard();
+			atReach.discard();
+			pastReach.discard();
 		}
 	}
 
@@ -136,43 +150,184 @@ public class TowingTest {
 		}
 	}
 
-	@GameTest(maxTicks = 100)
-	public void aTowedPodTrailsItsTowerWithoutFallingOrTakingDamage(GameTestHelper helper) {
-		PodEntity tower = helper.spawn(PodRegistry.POD, new Vec3(4.5, 4, 4.5));
-		PodEntity towed = helper.spawn(PodRegistry.POD, new Vec3(3.5, 4, 4.5));
-		Vec3 towerStart = tower.position();
-		Vec3 towedStart = towed.position();
-		float hullStart = towed.hull();
-		PodTowing.attach(tower, towed);
-		int[] step = {0};
-		helper.onEachTick(() -> {
-			// The tower is pinned in the air: it walks 6 blocks east and then stays, so the towed pod's sinking could only be its own.
-			step[0] = Math.min(step[0] + 1, 24);
-			tower.setPos(towerStart.x + 0.25 * step[0], towerStart.y, towerStart.z);
-			tower.setDeltaMovement(Vec3.ZERO);
-		});
-		helper.runAfterDelay(40, () -> {
-			try {
-				double trail = TowTuning.DEFAULT.trailDistance(tower, towed);
-				double gap = tower.position().distanceTo(towed.position());
-				if (gap > trail + 0.5) {
-					throw failure(helper, "the towed pod should trail within %s blocks, it is %s away", trail, gap);
+	/**
+	 * On the ground the line is slack until the tower walks off, then the towed pod is pulled along the floor with the line taut:
+	 * the whole {@link TowTuning#lineLength} of free line between the hulls, 4 to 8 blocks, not the old 0.6.
+	 */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+	public void aTowedPodTrailsOnTheGroundAtTheLineLengthWithoutSinkingOrTakingDamage(GameTestHelper helper) {
+		ServerLevel level = layer(helper, 1);
+		int x = GROUND_X;
+		RoomCarver.carve(level, x, x + 40, TOW_FLOOR - 12, TOW_FLOOR - 1, TOW_Z, TOW_Z + 10, Blocks.STONE);
+		RoomCarver.carve(level, x, x + 40, TOW_FLOOR, TOW_FLOOR + 8, TOW_Z, TOW_Z + 10, Blocks.AIR);
+		Vec3 start = new Vec3(x + 12.5, TOW_FLOOR, TOW_Z + 5.5);
+		Vec3[] towedStart = {null};
+		float[] hullStart = {0f};
+		towScene(helper, level, columns(x, x + 40, TOW_Z), start, start.add(-2, 0, 0), step -> start.add(0.2 * Math.min(step, 50), 0, 0), (tower, towed, age) -> {
+			double trail = TowTuning.DEFAULT.trailDistance(tower, towed);
+			if (age == 1) {
+				towedStart[0] = towed.position();
+				hullStart[0] = towed.hull();
+				double freeLine = trail - (tower.chassis().width() + towed.chassis().width()) / 2.0;
+				if (freeLine < 4.0 || freeLine > 8.0) {
+					throw failure(helper, "the free line between the hulls should be 4 to 8 blocks, it is %s", freeLine);
 				}
-				if (towed.getX() - towedStart.x < 3.0) {
-					throw failure(helper, "the towed pod should have followed 6 blocks east, it moved from %s to %s", towedStart, towed.position());
-				}
-				if (Math.abs(towed.getY() - towedStart.y) > 0.3) {
-					throw failure(helper, "the towed pod should not sink while towed, it went from %s to %s", towedStart.y, towed.getY());
-				}
-				if (towed.hull() != hullStart) {
-					throw failure(helper, "a towed pod takes no damage, hull went from %s to %s", hullStart, towed.hull());
-				}
-				helper.succeed();
-			} finally {
-				tower.discard();
-				towed.discard();
 			}
+			if (age == 10 && towed.position().distanceTo(towedStart[0]) > 0.3) {
+				throw failure(helper, "the line is slack while the tower is 4 blocks from the pod, which should stay put, it went from %s to %s", towedStart[0], towed.position());
+			}
+			if (age < 120) {
+				return false;
+			}
+			double gap = tower.position().distanceTo(towed.position());
+			if (Math.abs(gap - trail) > 0.1) {
+				throw failure(helper, "the towed pod should trail on a taut line %s from its tower, it is %s away", trail, gap);
+			}
+			if (Math.abs(towed.getY() - TOW_FLOOR) > 0.05) {
+				throw failure(helper, "the towed pod should rest on the floor at y %s, it is at %s", TOW_FLOOR, towed.getY());
+			}
+			if (towed.hull() != hullStart[0]) {
+				throw failure(helper, "a towed pod takes no damage, hull went from %s to %s", hullStart[0], towed.hull());
+			}
+			return true;
 		});
+	}
+
+	/** In the air the towed pod hangs from the line like a sling load: below its tower and a little behind it while the tower flies on. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+	public void aTowedPodHangsBelowAndBehindItsTowerInTheAir(GameTestHelper helper) {
+		ServerLevel level = layer(helper, 1);
+		Vec3 start = skyRoom(level, SKY_X);
+		// The tower flies east at 0.2 a tick for 100 ticks, from a pod hanging straight below it. The pod swings about the place it settles
+		// to, so how far behind it hangs is the mean over the last 40 ticks of the flight.
+		double[] behindSum = {0};
+		towScene(helper, level, columns(SKY_X, SKY_X + 40, TOW_Z), start, start.add(0, -7, 0), step -> start.add(0.2 * Math.min(step, 100), 0, 0), (tower, towed, age) -> {
+			double trail = TowTuning.DEFAULT.trailDistance(tower, towed);
+			double gap = tower.position().distanceTo(towed.position());
+			// The tower has moved 0.2 since the cable held the pod.
+			if (gap > trail + 0.25) {
+				throw failure(helper, "the line is %s long, the towed pod is %s away", trail, gap);
+			}
+			if (age <= 60) {
+				return false;
+			}
+			behindSum[0] += tower.getX() - towed.getX();
+			double below = tower.getY() - towed.getY();
+			if (below < 0.8 * trail) {
+				throw failure(helper, "the towed pod should hang below its tower on the line, it is %s below of a %s line", below, trail);
+			}
+			if (age < 100) {
+				return false;
+			}
+			double behind = behindSum[0] / 40;
+			if (behind < 0.3) {
+				throw failure(helper, "the towed pod should hang a little behind a tower flying east, it is %s behind on average", behind);
+			}
+			return true;
+		});
+	}
+
+	/** A jerk of the tower swings the pod, and the swing only dies away: no window of 30 ticks swings wider than the one before. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
+	public void aSwingingTowedPodSettlesAndNeverSwingsWider(GameTestHelper helper) {
+		ServerLevel level = layer(helper, 1);
+		Vec3 start = skyRoom(level, SKY_X + 64);
+		int jerkTicks = 24;
+		int window = 30;
+		double[] widest = new double[6];
+		towScene(helper, level, columns(SKY_X + 64, SKY_X + 104, TOW_Z), start, start.add(0, -7, 0), step -> start.add(0.25 * Math.min(step, jerkTicks), 0, 0), (tower, towed, age) -> {
+			int since = age - jerkTicks;
+			if (since > 0 && since / window < widest.length) {
+				widest[since / window] = Math.max(widest[since / window], Math.abs(towed.getX() - tower.getX()));
+			}
+			if (since < window * widest.length) {
+				return false;
+			}
+			if (widest[0] < 0.5) {
+				throw failure(helper, "a jerk of the tower should swing the pod, it swung %s", widest[0]);
+			}
+			for (int i = 1; i < widest.length; i++) {
+				if (widest[i] > widest[i - 1] + 0.05) {
+					throw failure(helper, "the swing grew from %s to %s in window %s of %s", widest[i - 1], widest[i], i, Arrays.toString(widest));
+				}
+			}
+			if (widest[widest.length - 1] > 0.5 * widest[0]) {
+				throw failure(helper, "the swing should have died away, windows %s", Arrays.toString(widest));
+			}
+			return true;
+		});
+	}
+
+	/** Up a 2-wide shaft and out of its top, the towed pod hangs in the shaft below the tower and its hull is never in a wall. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
+	public void aTowUpAShaftAndOutOfItsTopNeverPutsThePodInTheWalls(GameTestHelper helper) {
+		ServerLevel level = layer(helper, 1);
+		Vec3 base = shaft(level, SHAFT_X);
+		towScene(helper, level, columns(SHAFT_X, SHAFT_X + 4, TOW_Z + 103), base.add(0, 4, 0), base, step -> base.add(0, 4 + 0.15 * Math.min(step, 140), 0), (tower, towed, age) -> {
+			requireNoWalls(helper, towed);
+			if (age < 200) {
+				return false;
+			}
+			double trail = TowTuning.DEFAULT.trailDistance(tower, towed);
+			double gap = tower.position().distanceTo(towed.position());
+			if (tower.getY() < base.y + 20 || gap > trail + 0.1 || tower.getY() - towed.getY() < 0.8 * trail) {
+				throw failure(helper, "the tower out of the shaft at %s should hold the pod on a taut line of %s below it, the pod is at %s", tower.position(), trail, towed.position());
+			}
+			return true;
+		});
+	}
+
+	/** Up the shaft and along a gallery, the line follows the bend: the pod is carried round the corner, never through the rock of it. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
+	public void aTowRoundABendInAShaftFollowsTheTowersPathWithoutSnagging(GameTestHelper helper) {
+		ServerLevel level = layer(helper, 1);
+		Vec3 base = shaft(level, SHAFT_X + 128);
+		// 6 up the shaft at 0.15 a tick (40 ticks) to the gallery's floor, then 15 east along it (100 ticks).
+		towScene(helper, level, columns(SHAFT_X + 128, SHAFT_X + 148, TOW_Z + 103), base.add(0, 4, 0), base, step -> step <= 40
+				? base.add(0, 4 + 0.15 * step, 0)
+				: base.add(0.15 * Math.min(step - 40, 100), GALLERY_FLOOR, 0), (tower, towed, age) -> {
+			requireNoWalls(helper, towed);
+			if (age < 240) {
+				return false;
+			}
+			double trail = TowTuning.DEFAULT.trailDistance(tower, towed);
+			double gap = tower.position().distanceTo(towed.position());
+			if (gap > trail + 0.1) {
+				throw failure(helper, "the towed pod should be on a line no longer than %s, it is %s away", trail, gap);
+			}
+			if (towed.getX() < base.x + 7) {
+				throw failure(helper, "the towed pod should have been carried round the bend into the gallery, it is at %s", towed.position());
+			}
+			return true;
+		});
+	}
+
+	/** The reach covers the longest taut line any pair of chassis can have, and a pod at that distance is in reach. */
+	@GameTest
+	public void theTowReachCoversTheLongestLine(GameTestHelper helper) {
+		List<Chassis> all = PodRegistry.chassis();
+		Chassis widest = all.stream().max(Comparator.comparingDouble(Chassis::width)).orElseThrow();
+		double reach = TowTuning.DEFAULT.reachFor(widest);
+		for (Chassis tower : all) {
+			for (Chassis towed : all) {
+				if (TowTuning.DEFAULT.trailDistance(tower, towed) > reach) {
+					throw failure(helper, "the reach %s should cover the line of %s towing %s, %s", reach, tower.id(), towed.id(), TowTuning.DEFAULT.trailDistance(tower, towed));
+				}
+			}
+		}
+		double line = TowTuning.DEFAULT.trailDistance(widest, widest);
+		PodEntity tower = helper.spawn(PodRegistry.POD, new Vec3(1.5, 2, 1.5));
+		PodEntity towed = helper.spawn(PodRegistry.POD, new Vec3(1.5, 2, 1.5 + line));
+		try {
+			Optional<Refusal> refusal = PodTowing.refusal(tower, towed);
+			if (refusal.isPresent()) {
+				throw failure(helper, "a pod the longest line away, %s, should be in reach, but a cable is refused: %s", line, refusal.get());
+			}
+			helper.succeed();
+		} finally {
+			tower.discard();
+			towed.discard();
+		}
 	}
 
 	@GameTest
@@ -756,6 +911,84 @@ public class TowingTest {
 		towed.discard();
 		// room-carver: clears the floor of the overworld test structure, not layer rock
 		fillFloor(helper, Blocks.AIR);
+	}
+
+	/** What a tow scene checks after each tick; true ends the test as passed, and a failure is thrown. */
+	private interface TowWatch {
+		boolean tick(PodEntity tower, PodEntity towed, int age);
+	}
+
+	/**
+	 * A tower and a pod it tows, spawned once every chunk of {@code columns} ticks entities. From then on the tower is pinned to the
+	 * position {@code path} gives for each tick counted from 1, so only the cable can move the towed pod, and {@code watch} runs after
+	 * each tick with that count. Both pods are removed when it returns true or throws.
+	 */
+	private static void towScene(GameTestHelper helper, ServerLevel level, List<BlockPos> columns, Vec3 towerAt, Vec3 towedAt,
+			IntFunction<Vec3> path, TowWatch watch) {
+		PodEntity[] pods = {null, null};
+		int[] ready = {0};
+		int[] age = {0};
+		FarChunks.awaitEntityTicking(helper, level, columns, index -> {
+			if (++ready[0] == columns.size()) {
+				pods[0] = spawn(level, towerAt.x, towerAt.y, towerAt.z);
+				pods[1] = spawn(level, towedAt.x, towedAt.y, towedAt.z);
+				PodTowing.attach(pods[0], pods[1]);
+			}
+		});
+		helper.onEachTick(() -> {
+			if (pods[1] == null) {
+				return;
+			}
+			try {
+				pods[0].setPos(path.apply(++age[0]));
+				pods[0].setDeltaMovement(Vec3.ZERO);
+				if (watch.tick(pods[0], pods[1], age[0])) {
+					pods[0].discard();
+					pods[1].discard();
+					helper.succeed();
+				}
+			} catch (RuntimeException failed) {
+				pods[0].discard();
+				pods[1].discard();
+				throw failed;
+			}
+		});
+	}
+
+	/** A column of blocks in layer 1 in every chunk from {@code fromX} to {@code toX}, on the row of chunks that holds {@code z}. */
+	private static List<BlockPos> columns(int fromX, int toX, int z) {
+		List<BlockPos> columns = new ArrayList<>();
+		for (int x = fromX; x <= toX + 15; x += 16) {
+			columns.add(new BlockPos(Math.min(x, toX), TOW_FLOOR, z));
+		}
+		return columns;
+	}
+
+	/** An open room in layer 1 over a bed of stone, 41 x 33 x 11 blocks, and the point in it where the tower starts, high above its floor. */
+	private static Vec3 skyRoom(ServerLevel level, int x) {
+		RoomCarver.carve(level, x, x + 40, TOW_FLOOR - 12, TOW_FLOOR - 1, TOW_Z, TOW_Z + 10, Blocks.STONE);
+		RoomCarver.carve(level, x, x + 40, TOW_FLOOR, TOW_FLOOR + 32, TOW_Z, TOW_Z + 10, Blocks.AIR);
+		return new Vec3(x + 6.5, TOW_FLOOR + 25, TOW_Z + 5.5);
+	}
+
+	/**
+	 * A rock of 23 x 29 x 7 blocks in layer 1 with a shaft 2 wide and 2 deep up its middle and out of its top (a Mole's hull of 1.9 just
+	 * fits), open air over the rock, and a gallery 3 high leading east from the shaft, its floor {@link #GALLERY_FLOOR} above the
+	 * shaft's. Returns the middle of the shaft's floor.
+	 */
+	private static Vec3 shaft(ServerLevel level, int x) {
+		int z = TOW_Z + 100;
+		RoomCarver.carve(level, x, x + 22, TOW_FLOOR - 12, TOW_FLOOR + 16, z, z + 6, Blocks.STONE);
+		RoomCarver.carve(level, x - 5, x + 27, TOW_FLOOR + 17, TOW_FLOOR + 40, z - 5, z + 11, Blocks.AIR);
+		RoomCarver.carve(level, x + 2, x + 3, TOW_FLOOR, TOW_FLOOR + 16, z + 2, z + 3, Blocks.AIR);
+		RoomCarver.carve(level, x + 2, x + 20, TOW_FLOOR + GALLERY_FLOOR, TOW_FLOOR + GALLERY_FLOOR + 2, z + 2, z + 3, Blocks.AIR);
+		return new Vec3(x + 3.0, TOW_FLOOR, z + 3.0);
+	}
+
+	private static void requireNoWalls(GameTestHelper helper, PodEntity towed) {
+		if (towed.level().getBlockCollisions(towed, towed.getBoundingBox()).iterator().hasNext()) {
+			throw failure(helper, "the towed pod is in a wall at %s on tick %s", towed.position(), towed.tickCount);
+		}
 	}
 
 	private static void fillFloor(GameTestHelper helper, Block block) {
