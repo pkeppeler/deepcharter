@@ -321,7 +321,7 @@ public final class PodLining {
 					boolean ring = insideX != insideZ && y >= foot.feetY() - reach;
 					boolean floor = insideX && insideZ && y < foot.feetY();
 					BlockPos pos = new BlockPos(x, y, z);
-					// Both chassis seat riders with their feet below the pod's own, so they would block their own pod's lining.
+					// The pod's own riders do not block its lining, even in the cell under the pod (a low seat puts them there); a stranger does.
 					if ((ring || floor) && !level.isOutsideBuildHeight(pos) && blocks.canChange(pos) && needsBrick(blocks.getBlockState(pos), floor)
 							&& level.getEntities((Entity) null, new AABB(pos), entity -> !entity.isSpectator() && !pod.hasPassenger(entity)).isEmpty()) {
 						cells.add(pos);

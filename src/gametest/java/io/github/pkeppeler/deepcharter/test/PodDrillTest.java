@@ -149,6 +149,7 @@ public class PodDrillTest {
 	public void drillingSidewaysNeedsGroundUnderThePod(GameTestHelper helper) {
 		int x = 3064;
 		int floor = 60;
+		int height = Chassis.MOLE.boreHeight();
 		ServerLevel level = layer(helper, 1);
 		room(level, x, floor, 4);
 		wall(level, x + 2, x + 5, Z, floor, floor + 10);
@@ -169,14 +170,14 @@ public class PodDrillTest {
 					throw failure(helper, "the wall was broken while the pod was airborne at %s", pod.position());
 				}
 			}
-			// The slab it bores: x+2, z in {Z-1, Z}, y in {floor, floor+1}.
-			if (count(level, x + 2, x + 2, floor, floor + 1, Z - 1, Z, Blocks.AIR) == 4) {
+			// The slab it bores: x+2, z in {Z-1, Z}, y from floor, as tall as the Mole's box.
+			if (count(level, x + 2, x + 2, floor, floor + height - 1, Z - 1, Z, Blocks.AIR) == 2 * height) {
 				if (airborneAgainstWall[0] == 0) {
 					throw failure(helper, "the pod never pressed against the wall in the air, so the test proved nothing");
 				}
-				if (count(level, x + 2, x + 2, floor, floor + 10, Z - 3, Z + 3, Blocks.AIR) != 4
+				if (count(level, x + 2, x + 2, floor, floor + 10, Z - 3, Z + 3, Blocks.AIR) != 2 * height
 						|| count(level, x + 3, x + 5, floor, floor + 10, Z - 3, Z + 3, Blocks.AIR) != 0) {
-					throw failure(helper, "the sideways bore is not exactly the 2 x 2 in front of the pod");
+					throw failure(helper, "the sideways bore is not exactly the 2 x %d in front of the pod", height);
 				}
 				rig.pod.discard();
 				helper.succeed();
@@ -220,7 +221,9 @@ public class PodDrillTest {
 		ServerLevel level = layer(helper, 1);
 		int top = level.getMaxY() - 1;
 		int x = 3192;
-		int floor = top - 1;
+		// The slab is as tall as the Mole's box, and its top row is the last row under the ceiling.
+		int height = Chassis.MOLE.boreHeight();
+		int floor = top - height + 1;
 		room(level, x, floor, 4);
 		wall(level, x + 2, x + 3, Z, floor, top);
 		Rig rig = Rig.await(helper, level, new Vec3(x + 0.3, floor, Z + 0.3), EAST, "drill-below-ceiling", FORWARD);
@@ -228,7 +231,7 @@ public class PodDrillTest {
 			if (!rig.ready()) {
 				throw failure(helper, "waiting for the far chunk to tick entities");
 			}
-			if (count(level, x + 2, x + 2, floor, top, Z - 1, Z, Blocks.AIR) != 4) {
+			if (count(level, x + 2, x + 2, floor, top, Z - 1, Z, Blocks.AIR) != 2 * height) {
 				throw failure(helper, "the wall one row below the ceiling was not bored");
 			}
 			rig.pod.discard();

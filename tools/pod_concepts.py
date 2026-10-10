@@ -13,7 +13,7 @@ A pod holds the cutter of every drill tier as bone sets (drill_head_<cutter>, dr
 shows the one that the pod's drill tier picks from assets/deepcharter/pod/<chassis>.json.
 
 Model space is Bedrock's: pixels, y up, the floor at y 0, the front of the pod toward -z, the pod's
-left toward +x. A Mole must fit its 2 x 2 bore at rest: x and z within -16 to 16, y within 0 to 30.4.
+left toward +x. A Mole must fit its 2-wide bore at rest: x and z within -16 to 16, y within 0 to its 46.4 pixel hitbox (2.9 blocks, #400).
 
 Box UV per cube of size (w, h, d) at uv (u, v): top (u+d, v), bottom (u+d+w, v), right side (u, v+d),
 front (u+d, v+d), left side (u+d+w, v+d), back (u+2d+w, v+d). Side faces have v down = world down.
@@ -36,6 +36,8 @@ TEXTURE_SIZE = 256
 # The bore a Mole digs, in model pixels: the model at rest must fit inside it.
 BORE_HALF_WIDTH = 16
 HITBOX_HEIGHT = 30.4
+# The Mole is 1.9 wide and 2.9 tall (#400): the pilot sits upright, feet on the pod's floor, so the cab needs the height.
+MOLE_HEIGHT = 46.4
 # The swing and bore rule (#366). The bore is 2 x 2 blocks: x and z within -16 to 16 and the model within the hitbox's height. The
 # one part allowed past the bore face is the cutter (the bones under drill_head and drill_ring), by at most CUTTER_REACH_PX, one
 # block: the block the pod is chewing. Everything else, the hull, the lamps, the yoke, stays inside the bore at rest and through
@@ -1441,19 +1443,21 @@ PROSPECTOR_BORE = 24
 PROSPECTOR_HEIGHT = 46.4
 
 
-# The cab (#382): the pilot sits inside. Below the sill the hull is solid and hides the pilot's hips and legs; above it is a hollow
-# cab, glazed on three sides, with a roof over it. The rider is the player's own model, 20.6 pixels from the bottom of the seat to the
-# top of the head, so the ceiling stands a little above that. Every number here is in pixels of the model; the seat offsets that put
-# a rider in the cab are in PodRegistry, and PodSeatsClientTest holds the two together.
-MOLE_SILL = 15
-MOLE_CEILING = 27
-MOLE_ROOF = 29
+# The cab (#382, sized by #400): the pilot sits inside, upright, feet on the pod's floor. Below the sill the hull is solid and hides the
+# pilot's hips and legs; above it is a hollow cab, glazed on three sides, with a roof over it. The rider is the player's own model:
+# from the pod's floor (the seat is 0.6 blocks up, and the rider hangs 0.6 below it) the head spans 22.5 to 30 pixels, so the glazing
+# spans that and a little more and the roof stands above it. Every number here is in pixels of the model; the seat offsets that put a
+# rider in the cab are in PodRegistry, and PodSeatsClientTest holds the two together.
+MOLE_SILL = 17
+MOLE_CEILING = 33
+MOLE_ROOF = 35
 MOLE_DZ = 3
 
 
 def mole_hull(m):
     """The Capsule with a cab: the bevelled lower hull to MOLE_SILL, a glazed cab to MOLE_CEILING (windscreen and side panes, a back wall
-    and the seat back), a roof, side tanks under the windows, one exhaust up the back, and the mast and rotor on the roof."""
+    and the seat back), a roof, side tanks under the windows, two exhaust stacks up the back, whip aerials, and the mast and rotor
+    standing on the roof."""
     dz = MOLE_DZ
     body = m.bone("body")
     bevelled_box(body, -10, 7, -5 + dz, 10, 13, 12 + dz, 2, "paint")
@@ -1463,7 +1467,7 @@ def mole_hull(m):
     body.box(-8, 6, -3 + dz, 8, 7, 10 + dz, "iron")
     # The back wall, the seat back and the roof.
     body.box(-10, MOLE_SILL, 10 + dz, 10, MOLE_CEILING, 12 + dz, "paint")
-    body.box(-5, MOLE_SILL, 6 + dz, 5, 24, 8 + dz, "steel")
+    body.box(-5, MOLE_SILL, 6 + dz, 5, 28, 8 + dz, "steel")
     body.box(-10, MOLE_CEILING, -6 + dz, 10, MOLE_ROOF - 1, 12 + dz, "paint")
     body.box(-10.5, MOLE_ROOF - 1, -6.5 + dz, 10.5, MOLE_ROOF, 12.5 + dz, "trim")
     canopy = m.bone("canopy", "body")
@@ -1483,33 +1487,36 @@ def mole_hull(m):
         canopy.box(x, MOLE_SILL, -6.5 + dz, x + 1, MOLE_CEILING - 1, -5.5 + dz, "brass")
     for side, x0, x1 in (("l", 10, 13), ("r", -13, -10)):
         tank = m.bone(f"tank_{side}", "body")
-        tank.box(x0, 9, 0 + dz, x1, 14, 10 + dz, "tank")
-        tank.box(x0 + 0.5, 10, -1 + dz, x1 - 0.5, 13, 0 + dz, "brass")
-    # One stack up the back wall, and two stubs of whip aerial on the roof.
+        tank.box(x0, 9, 0 + dz, x1, 15, 10 + dz, "tank")
+        tank.box(x0 + 0.5, 10, -1 + dz, x1 - 0.5, 14, 0 + dz, "brass")
+    # Two stacks up the back wall, and two whip aerials on the roof.
     exhaust = m.bone("exhaust", "body")
-    exhaust.box(-9, 17, 12 + dz, -7, MOLE_ROOF + 1, 13 + dz, "exhaust")
-    exhaust.box(-9.5, MOLE_ROOF, 11 + dz, -6.5, MOLE_ROOF + 1, 13 + dz, "frame")
+    for x0, x1, top in ((-9, -6, MOLE_ROOF + 4), (6, 9, MOLE_ROOF + 3)):
+        exhaust.box(x0, 17, 12 + dz, x1, top, 13 + dz, "exhaust")
+        exhaust.box(x0 - 0.5, top, 11 + dz, x1 + 0.5, top + 1, 13 + dz, "frame")
     for x in (5, -6):
-        exhaust.box(x, MOLE_ROOF, 10 + dz, x + 1, MOLE_ROOF + 1, 11 + dz, "trim")
+        exhaust.box(x, MOLE_ROOF, 8 + dz, x + 1, MOLE_ROOF + 3, 9 + dz, "frame")
+        exhaust.box(x - 0.5, MOLE_ROOF + 3, 7.5 + dz, x + 1.5, MOLE_ROOF + 4, 9.5 + dz, "trim")
     hatch = m.bone("hatch", "body")
-    hatch.box(1, MOLE_ROOF, 8 + dz, 5, MOLE_ROOF + 1, 12 + dz, "brass")
-    # The mast and the rotor lie low on the roof: the cab takes the height, and the hitbox ends at 30.4.
+    hatch.box(1, MOLE_ROOF, 3 + dz, 5, MOLE_ROOF + 1, 7 + dz, "brass")
+    # The mast and the rotor stand on the roof, and the blades turn above the stacks and the aerials.
     mast = m.bone("mast", "body")
-    mast.box(-1, MOLE_ROOF, 1 + dz, 1, MOLE_ROOF + 1, 3 + dz, "frame")
-    rotor = m.bone("rotor", "mast", (0, MOLE_ROOF + 0.9, 2 + dz))
-    rotor.box(-1.5, MOLE_ROOF + 0.4, 0.5 + dz, 1.5, MOLE_ROOF + 1.4, 3.5 + dz, "brass")
+    mast.box(-1, MOLE_ROOF, 1 + dz, 1, MOLE_ROOF + 5, 3 + dz, "frame")
+    hub = MOLE_ROOF + 6
+    rotor = m.bone("rotor", "mast", (0, hub, 2 + dz))
+    rotor.box(-1.5, hub - 1, 0.5 + dz, 1.5, hub + 1, 3.5 + dz, "brass")
     # Each blade is a bone of its own, hinged at the hub, so that it folds forward along the roof when the pod is not lifting off (#383).
-    blade_l = m.bone("blade_l", "rotor", (2, MOLE_ROOF + 0.9, 2 + dz))
-    blade_l.box(2, MOLE_ROOF + 0.4, 1 + dz, 14, MOLE_ROOF + 1.4, 3 + dz, "paint")
-    blade_l.box(14, MOLE_ROOF + 0.4, 1 + dz, 16, MOLE_ROOF + 1.4, 3 + dz, "trim")
-    blade_r = m.bone("blade_r", "rotor", (-2, MOLE_ROOF + 0.9, 2 + dz))
-    blade_r.box(-14, MOLE_ROOF + 0.4, 1 + dz, -2, MOLE_ROOF + 1.4, 3 + dz, "paint")
-    blade_r.box(-16, MOLE_ROOF + 0.4, 1 + dz, -14, MOLE_ROOF + 1.4, 3 + dz, "trim")
+    blade_l = m.bone("blade_l", "rotor", (2, hub, 2 + dz))
+    blade_l.box(2, hub - 0.5, 1 + dz, 14, hub + 0.5, 3 + dz, "paint")
+    blade_l.box(14, hub - 0.5, 1 + dz, 16, hub + 0.5, 3 + dz, "trim")
+    blade_r = m.bone("blade_r", "rotor", (-2, hub, 2 + dz))
+    blade_r.box(-14, hub - 0.5, 1 + dz, -2, hub + 0.5, 3 + dz, "paint")
+    blade_r.box(-16, hub - 0.5, 1 + dz, -14, hub + 0.5, 3 + dz, "trim")
 
 
 def mole():
     """The Mole: the round-3 Capsule with a cab for its pilot, and the four cutters of the drill tiers as bone sets on one yoke."""
-    m = Model("mole", texture=512)
+    m = Model("mole", height=MOLE_HEIGHT, texture=512)
     mole_hull(m)
     lamp_stalks(m)
     capsule_running_gear(m, MOLE_DZ)
@@ -1519,11 +1526,11 @@ def mole():
     return m
 
 
-# The Prospector's cab (#382), like the Mole's: a solid lower hull to the sill, a glazed cab with two seats in tandem to the deck, and the
-# roof on the deck. The pilot sits at PROSPECTOR_SEAT_Z[0] and the navigator behind.
+# The Prospector's cab (#382, raised by #400 so the riders sit upright, feet on the pod's floor, like the Mole's): a solid lower hull to the
+# sill, a glazed cab with two seats in tandem to the deck, and the roof on the deck. The pilot sits at PROSPECTOR_SEAT_Z[0] and the navigator behind.
 PROSPECTOR_SILL = 17
 PROSPECTOR_SEAT_Z = (3.5, 14.5)
-PROSPECTOR_DECK = 29
+PROSPECTOR_DECK = 33
 
 
 def prospector_body(m):
@@ -1539,11 +1546,11 @@ def prospector_body(m):
     # The back wall, a seat back for each seat, the deck and the roof.
     body.box(-17, sill, 19, 17, deck, 21, "paint")
     for z in PROSPECTOR_SEAT_Z:
-        body.box(-6, sill, z + 4, 6, 26, z + 6, "steel")
+        body.box(-6, sill, z + 4, 6, 30, z + 6, "steel")
     body.box(-18, deck, -5, 18, deck + 1, 22, "trim")
-    bevelled_box(body, -13, deck + 1, -1, 13, 35, 18, 2, "paint")
+    bevelled_box(body, -13, deck + 1, -1, 13, deck + 6, 18, 2, "paint")
     body.box(-14, 8, -2, 14, 9, 19, "iron")
-    body.box(-10, 23, 21, 10, 29, 22, "grille")
+    body.box(-10, 25, 21, 10, 31, 22, "grille")
     canopy = m.bone("canopy", "body")
     # The pilot's pane faces front; each seat has a side window, and a pillar stands between the two.
     canopy.box(-14, sill, -5, 14, deck - 1, -4, "pane")
@@ -1561,8 +1568,8 @@ def prospector_body(m):
         canopy.box(x0 - 0.5, sill, -0.5, x1 + 0.5, deck - 1, 0.5, "brass")
         canopy.box(x0 - 0.5, sill, 17.5, x1 + 0.5, deck - 1, 18.5, "brass")
     hatch = m.bone("hatch", "body")
-    hatch.box(-3, 35, 2, 3, 36, 7, "brass")
-    hatch.box(-3, 35, 11, 3, 36, 16, "brass")
+    hatch.box(-3, deck + 6, 2, 3, deck + 7, 7, "brass")
+    hatch.box(-3, deck + 6, 11, 3, deck + 7, 16, "brass")
     lamps = m.bone("lamps", "body")
     for sx in (-1, 1):
         # An arm bolted to the hull's side, and a post on its end that carries the lamp.
@@ -1573,24 +1580,26 @@ def prospector_body(m):
         tank = m.bone(f"tank_{side}", "body")
         tank.box(x0, 10, 4, x1, 16, 18, "tank")
         tank.box(x0 + 0.5, 11, 3, x1 - 0.5, 15, 4, "brass")
+    # Two stacks up the back wall, two aerials on the roof between them, and a propeller on a mast whose blades turn above them all.
     exhaust = m.bone("exhaust", "body")
-    exhaust.box(-12, 28, 17, -8, 41, 21, "exhaust")
-    exhaust.box(-12.5, 41, 16.5, -7.5, 42, 21.5, "frame")
-    exhaust.box(8, 28, 17, 12, 38, 21, "exhaust")
-    exhaust.box(7.5, 38, 16.5, 12.5, 39, 21.5, "frame")
+    exhaust.box(-12, 32, 17, -8, deck + 9, 21, "exhaust")
+    exhaust.box(-12.5, deck + 9, 16.5, -7.5, deck + 10, 21.5, "frame")
+    exhaust.box(8, 32, 17, 12, deck + 6, 21, "exhaust")
+    exhaust.box(7.5, deck + 6, 16.5, 12.5, deck + 7, 21.5, "frame")
     for x in (-3, 2):
-        exhaust.box(x, 34, 19, x + 1, 42, 20, "frame")
-        exhaust.box(x - 0.5, 42, 18.5, x + 1.5, 43, 20.5, "trim")
+        exhaust.box(x, deck + 6, 19, x + 1, deck + 8, 20, "frame")
+        exhaust.box(x - 0.5, deck + 8, 18.5, x + 1.5, deck + 9, 20.5, "trim")
     mast = m.bone("mast", "body")
-    mast.box(-1, 35, 8, 1, 38, 10, "frame")
-    rotor = m.bone("rotor", "mast", (0, 39, 9))
-    rotor.box(-1.5, 38, 7.5, 1.5, 40, 10.5, "brass")
-    blade_l = m.bone("blade_l", "rotor", (2, 39, 9))
-    blade_l.box(2, 38.5, 8, 16, 39.5, 10, "paint")
-    blade_l.box(16, 38.5, 8, 18, 39.5, 10, "trim")
-    blade_r = m.bone("blade_r", "rotor", (-2, 39, 9))
-    blade_r.box(-16, 38.5, 8, -2, 39.5, 10, "paint")
-    blade_r.box(-18, 38.5, 8, -16, 39.5, 10, "trim")
+    mast.box(-1, deck + 6, 8, 1, deck + 10, 10, "frame")
+    hub = deck + 11
+    rotor = m.bone("rotor", "mast", (0, hub, 9))
+    rotor.box(-1.5, hub - 1, 7.5, 1.5, hub + 1, 10.5, "brass")
+    blade_l = m.bone("blade_l", "rotor", (2, hub, 9))
+    blade_l.box(2, hub - 0.5, 8, 16, hub + 0.5, 10, "paint")
+    blade_l.box(16, hub - 0.5, 8, 18, hub + 0.5, 10, "trim")
+    blade_r = m.bone("blade_r", "rotor", (-2, hub, 9))
+    blade_r.box(-16, hub - 0.5, 8, -2, hub + 0.5, 10, "paint")
+    blade_r.box(-18, hub - 0.5, 8, -16, hub + 0.5, 10, "trim")
     # The winch: cheek plates, a spool (a square and a copy turned 45 degrees, so it reads round), the cable and a hook.
     winch = m.bone("winch", "body")
     winch.box(-12, 12, 21, -10, 22, 23, "frame")
