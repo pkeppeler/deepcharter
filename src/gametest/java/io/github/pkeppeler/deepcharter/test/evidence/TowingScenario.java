@@ -14,6 +14,8 @@ import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.scores.PlayerTeam;
+import net.minecraft.world.scores.Team;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -41,6 +43,9 @@ public class TowingScenario extends EvidenceScenario {
 	private static final int DRILL_TICKS_PER_FRAME = 16;
 	private static final int MAX_DRILL_TICKS = 900;
 	private static final double DRILL_DEPTH = 5;
+	/** The watcher starts level with the tower and then follows it along the slab, so both pods stay in the frame while they drive. */
+	private static final double WATCH_START_Z = Z - 4.5;
+	private static final double WATCH_SHAFT_Z = Z + 3.5;
 	private static final float WATCH_WEST = 90f;
 	private static final float WATCH_PITCH = 15f;
 	private static final float SHAFT_PITCH = 48f;
@@ -64,15 +69,17 @@ public class TowingScenario extends EvidenceScenario {
 			two.server().runOnServer(server -> two.mock().setInput(FORWARD));
 			for (int ticks = 0; ticks < DRIVE_TICKS; ticks += TICKS_PER_FRAME) {
 				context.waitTicks(TICKS_PER_FRAME);
+				two.server().runOnServer(server -> follow(server.overworld(), two, tower[0]));
 				look(context, two);
 			}
 			two.server().runOnServer(server -> two.mock().releaseInput());
 			context.waitTicks(10);
+			two.server().runOnServer(server -> follow(server.overworld(), two, tower[0]));
 			look(context, two);
 			still(context, two, "towing-on-the-flat");
 
 			two.server().runOnServer(server -> {
-				watch(server.overworld(), two, SHAFT_PITCH);
+				watch(server.overworld(), two, WATCH_SHAFT_Z, SHAFT_PITCH);
 				two.mock().setInput(SPRINT);
 			});
 			int ticks = 0;
@@ -125,7 +132,8 @@ public class TowingScenario extends EvidenceScenario {
 		fill(level, X - SLAB_WEST, X, FLOOR_Y, FLOOR_Y + 10, Blocks.AIR);
 		fill(level, X + PLATFORM_FROM, X + PLATFORM_TO, FLOOR_Y - 8, FLOOR_Y - 1, Blocks.STONE);
 		fill(level, X + PLATFORM_FROM, X + PLATFORM_TO, FLOOR_Y, FLOOR_Y + 10, Blocks.AIR);
-		watch(level, two, WATCH_PITCH);
+		watch(level, two, WATCH_START_Z, WATCH_PITCH);
+		hideNameTags(level, two);
 		Vec3 at = new Vec3(X - 0.5, FLOOR_Y, Z - 4.5);
 		two.mock().teleportTo(level, at, 0, 0);
 		PodEntity tower = spawn(level, at, "TOWER");
@@ -138,9 +146,21 @@ public class TowingScenario extends EvidenceScenario {
 		return tower.getUUID();
 	}
 
-	/** Puts the real player on the platform's edge, facing the slab and looking {@code pitch} degrees down. */
-	private static void watch(ServerLevel level, TwoPlayerServer two, float pitch) {
-		watcher(level, two).teleportTo(level, X + PLATFORM_FROM + 0.5, FLOOR_Y, Z + 3.5, Set.of(), WATCH_WEST, pitch, true);
+	/** Puts the real player on the platform's edge at {@code z}, facing the slab and looking {@code pitch} degrees down. */
+	private static void watch(ServerLevel level, TwoPlayerServer two, double z, float pitch) {
+		watcher(level, two).teleportTo(level, X + PLATFORM_FROM + 0.5, FLOOR_Y, z, Set.of(), WATCH_WEST, pitch, true);
+	}
+
+	/** Slides the watcher along the platform edge to the tower's z, so the pods stay in the frame. */
+	private static void follow(ServerLevel level, TwoPlayerServer two, UUID tower) {
+		watch(level, two, level.getEntity(tower).getZ(), WATCH_PITCH);
+	}
+
+	/** The mock pilot's name would hover over the tower; the pods' own TOWER and TOWED labels are the ones the picture is meant to show. */
+	private static void hideNameTags(ServerLevel level, TwoPlayerServer two) {
+		PlayerTeam team = level.getScoreboard().addPlayerTeam("no-name-tags");
+		team.setNameTagVisibility(Team.Visibility.NEVER);
+		level.getScoreboard().addPlayerToTeam(two.mock().player().getScoreboardName(), team);
 	}
 
 	private static PodEntity spawn(ServerLevel level, Vec3 at, String name) {

@@ -1,5 +1,5 @@
 # README tour media: media name, scenario, output (tab-separated). Columns and refresh: docs/tooling/readme-tour.md.
-hero.gif	m2-towing	gif	frames=6-
+hero.gif	m2-towing	gif	frames=2-21
 colony-hangar.png	design-tour	hangar-from-the-square
 pod-flying.png	pod-drive	pod-flying
 drilling.gif	pod-drill-lit	gif
@@ -15,4 +15,5 @@ handbook.png	m2-handbook-content	page-04-contents-1
 pod-lining.png	pod-lining	pod-lining-past
 pod-cutter-swap.gif	pod-upgrade	gif
 pod-liner.png	pod-liner	pod-liner-past
-pod-sounder.png	pod-sounder	pod-sounder-bleeding
+pod-sounder.png	pod-sounder	pod-sounder-last-slab
+colony-square.png	design-tour	statue-from-the-square
