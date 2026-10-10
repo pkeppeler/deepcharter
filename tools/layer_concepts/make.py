@@ -66,7 +66,6 @@ def pack_dir(option: str) -> Path:
 # How many models of the rock block an option has. A has the most: its beds are the likeliest to read as ruled courses, so no two
 # neighbours should match.
 ROCK_VARIANTS = {"a": 5, "b": 3, "c": 3}
-RUBBLE_VARIANTS = 2
 
 
 # What each option's rubble is: broken flags of bed, shards of breccia, shards of basalt.
@@ -295,9 +294,6 @@ def outputs() -> tuple[dict[Path, bytes], dict[Path, bytes]]:
         structures[STRUCTURES / f"{key}.nbt"] = structure_bytes(scene)
     files[SCENES] = _json(scene_body(built))
     return files, structures
-
-
-OWNED = (ROOT / "tools/textures/variants", STRUCTURES)
 
 
 def stale(path: Path, body: bytes) -> bool:

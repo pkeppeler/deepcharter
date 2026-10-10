@@ -87,6 +87,8 @@ Nothing is traced from any of these. They are for shape and feel.
 
 ## The three, one by one
 
+In every still the fog and the amber lamp are the layer's own, and only the breach crust has the cold tint.
+
 The stills are in the PR that carries this page ([#401](https://github.com/pkeppeler/deepcharter/pull/401)) and in [pr-media/401](https://github.com/pkeppeler/deepcharter/tree/pr-media/401). Each option has fourteen: seven places in layer 1, and the same seven in layer 2 (`<option>-layer<n>-<place>.png`, with the places `lamp-lit`, `fog-edge`, `silhouette` (a wide shot from the fog edge, for the outline of the cave), `company-rock`, `lava-flow`, `breach-crust` and `close-up` (the camera two blocks from the rock, with a pod lamp, for the texture)). All of them came from one run of the scenario on one renderer (Vulkan).
 
 ### A. Strata
@@ -95,23 +97,23 @@ The stills are in the PR that carries this page ([#401](https://github.com/pkepp
 
 Benches and slots, a stair of lava. The closest to Motherload's layered earth. The risk is that horizontal courses read as brick or timber, so the texture breaks every course with ragged shadows and flecks.
 
-**Judged.** Motherload: closest, because the bands go dark with depth. Lore: mystery from the sealed slots, a basalt plug that fills one; thalassophobia from the long drift with rails running into fog. Darkness: good, the benches throw shadows.
+**Judged** (the agent's own, from the stills). It reads as a brown, finely layered drift with steel frames. Motherload: closest, because the bands go dark with depth. Lore: mystery from the sealed slots, a basalt plug that fills one; thalassophobia from the long drift with rails running into fog. Darkness: good, the benches throw shadows.
 
 ### B. Fractured
 
 ![B in layer 1, lamp-lit](https://github.com/pkeppeler/deepcharter/blob/pr-media/401/b-layer1-lamp-lit.png?raw=true)
 
-Broken rock, Company concrete, a fall of lava from the roof. The most hostile: the Company has held a failing mine up with concrete. Its stencilled rock is the most legible Company mark of the three. The risk is noise: a polygon texture on a mosaic of plates is busy, and the pale concrete is the brightest thing in any still.
+Broken rock, Company concrete, a fall of lava from the roof. The most hostile: the Company has held a failing mine up with concrete. Its stencilled rock is the most legible Company mark of the three. The risk is noise: a polygon texture on a mosaic of plates is busy.
 
-**Judged.** Motherload: furthest (no bands). Lore: the Company's hand is clearest, and a fall from the roof is the best "something above is leaking". Darkness: the concrete is bright and may need darkening.
+**Judged** (the agent's own, from the stills). It shows broken orange plates, grey stained concrete and yellow hazard paint. Motherload: furthest (no bands). Lore: the Company's hand is clearest, and a fall from the roof is the best "something above is leaking". Darkness: the hazard paint is the brightest mark, so it may need toning down.
 
 ### C. Columnar
 
 ![C in layer 1, lamp-lit](https://github.com/pkeppeler/deepcharter/blob/pr-media/401/c-layer1-lamp-lit.png?raw=true)
 
-A field of columns, joints that run with lava, a crust that glows in its cracks. The most alien and the most unlike vanilla, and the one that makes the deep feel like a place nobody built. The risk is that brown columns read as stacked crates or timber, so the texture is grained and the edges are ragged, and the build may want layer 1's columns darker and cooler.
+A field of columns, joints that run with lava, a crust that glows in its cracks. The most alien and the most unlike vanilla, and the one that makes the deep feel like a place nobody built. The risk is that columns read as stacked crates, so the texture is grained and the edges are ragged.
 
-**Judged.** Motherload: far, though the glow in the dark is close to its lava. Lore: the best thalassophobia, because a wall of columns hides depth between them. Darkness: the open joints are black slots that the eye reads as deeper than they are.
+**Judged** (the agent's own, from the stills). It has black hexagonal columns. Motherload: far, though the glow in the dark is close to its lava. Lore: the best thalassophobia, because a wall of columns hides depth between them. Darkness: the open joints are black slots that the eye reads as deeper than they are.
 
 ## What each costs to build
 

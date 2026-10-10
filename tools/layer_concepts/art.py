@@ -528,7 +528,3 @@ def shotcrete(seed: int, cracked: bool = False) -> Grid:
             y += 1
             x += 1 if hashf(seed, x, y) > 0.55 else 0
     return g
-
-
-def fill_recipe(colour: str) -> dict:
-    return {"kind": "opaque", "layers": [{"op": "fill", "colour": colour}]}
