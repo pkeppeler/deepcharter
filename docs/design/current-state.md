@@ -686,6 +686,8 @@ Every look that is fixed in Java and cannot be replaced by swapping a resource-p
 
 ## The design tour
 
+Two runs of one commit give the same stills, apart from two that can differ a little (`colony-aerial-northwest`, `screen-pod-cargo`): see [evidence.md](../../.claude/skills/deepcharter-conventions/evidence.md).
+
 `design-tour` shoots these stills (name = file name on `pr-media`, under `227/`):
 
 1. `handbook-opened-from-the-item`

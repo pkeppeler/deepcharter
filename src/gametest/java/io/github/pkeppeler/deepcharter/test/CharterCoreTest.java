@@ -417,6 +417,26 @@ public class CharterCoreTest {
 	}
 
 	@GameTest
+	public void foundingWithAnIdThatExistsThrowsAndKeepsTheCharter(GameTestHelper helper) {
+		CharterData data = new CharterData();
+		CharterId id = CharterId.random();
+		expectDone(helper, data.found(UUID.randomUUID(), uniqueName(), id), "founding");
+		boolean threw = false;
+		try {
+			data.found(UUID.randomUUID(), uniqueName(), id);
+		} catch (IllegalArgumentException e) {
+			threw = e.getMessage().contains("already exists");
+		}
+		if (!threw) {
+			throw helper.assertionException("founding with an id that exists should throw and say so");
+		}
+		if (data.all().size() != 1) {
+			throw helper.assertionException("the refused founding must change nothing, got %s", data.all());
+		}
+		helper.succeed();
+	}
+
+	@GameTest
 	public void dataOfAnotherVersionIsKeptAndFailsLoud(GameTestHelper helper) {
 		CompoundTag future = new CompoundTag();
 		future.putInt("version", CharterData.VERSION + 1);
