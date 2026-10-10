@@ -25,8 +25,7 @@ done
 [[ $need_checks -eq 1 ]] || exit 0
 
 cd "$root"
-# Git exports GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE and the like to a hook. The tests below would inherit them, and a test that
-# runs git in a temp repo would then act on this repository instead (it set core.bare in the shared config once).
+# Git exports GIT_DIR and its siblings to a hook; a test that runs git in a temp repo must not inherit them.
 while IFS= read -r name; do unset "$name"; done < <(compgen -e | sed -n '/^GIT_/p')
 fail() {
   echo "pre-push: $1 failed. Fix it, or skip the hook once with: git push --no-verify" >&2

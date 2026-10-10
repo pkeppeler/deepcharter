@@ -4,24 +4,17 @@ Two checks: the real repo tracks no generated sheet and ignores the paths they a
 the real generator, two branches that each add a texture recipe merge into main with no conflict and `texgen.py --check` passes.
 """
 import json
-import os
 import shutil
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
+from git_env import clean_env
+
 ROOT = Path(__file__).resolve().parents[2]
 SHEET = "docs/design/texture-reference.png"
 GENERATED_SHEETS = (SHEET, "docs/design/texture-density/b-reference.png")
-
-
-def clean_env(cwd: Path) -> dict[str, str]:
-    """The environment with every GIT_* variable removed (a pre-push hook sets GIT_DIR, and git would then act on the real repo),
-    and git barred from walking up out of the parent of cwd."""
-    env = {name: value for name, value in os.environ.items() if not name.startswith("GIT_")}
-    env["GIT_CEILING_DIRECTORIES"] = str(cwd.resolve().parent)
-    return env
 
 
 def git(cwd: Path, *args: str) -> str:

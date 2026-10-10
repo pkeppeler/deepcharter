@@ -3,6 +3,8 @@
 # gate (MERGE_PR) in place of tools/merge-pr.sh. Never talks to GitHub.
 # Usage: tools/tests/merge-queue.test.sh
 set -euo pipefail
+# shellcheck source=/dev/null
+source "$(dirname "${BASH_SOURCE[0]}")/lib/no-git-env.sh"
 
 tools=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 script=$tools/merge-queue.sh

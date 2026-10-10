@@ -3,6 +3,8 @@
 # so it never touches the original game files. Needs ffmpeg, ffprobe and git.
 # Usage: tools/tests/build-audio-pack.test.sh
 set -euo pipefail
+# shellcheck source=/dev/null
+source "$(dirname "${BASH_SOURCE[0]}")/lib/no-git-env.sh"
 
 tools=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 root=$(cd "$tools/.." && pwd)
