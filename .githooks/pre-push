@@ -25,6 +25,8 @@ done
 [[ $need_checks -eq 1 ]] || exit 0
 
 cd "$root"
+# Git exports GIT_DIR and its siblings to a hook; a test that runs git in a temp repo must not inherit them.
+unset "${!GIT_@}"
 fail() {
   echo "pre-push: $1 failed. Fix it, or skip the hook once with: git push --no-verify" >&2
   exit 1

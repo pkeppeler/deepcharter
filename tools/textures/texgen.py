@@ -8,22 +8,23 @@ The default palette (tools/textures/palette.json) and recipes (tools/textures/re
 is merged over them key by key, and each --recipes directory replaces recipes and templates by name, so a skin is one palette
 file plus any recipes it redraws (docs/design/skins.md). Textures go to --out (default: the mod's
 src/main/resources/assets/deepcharter/textures), one PNG per recipe and a .png.mcmeta for each animated one; the reference
-sheet (palette swatches and every texture at light levels 0, 3, 7 and 15) goes to --sheet (default
-docs/design/texture-reference.png).
+sheet (palette swatches and every texture at light levels 0, 3, 7 and 15) is written only when --sheet FILE asks for it. No sheet
+is committed: it changes with every recipe, so a tracked copy conflicts between parallel PRs (#372). tools/texture-sheet.sh
+publishes it to pr-media/readme/.
 
 --variant builds one test pack named in variants.json (docs/design/texture-density.md): its palettes and recipe directories load
-over the default ones, and only the textures those directories define are written, into the pack, with a sheet of them alone. A
+over the default ones, and only the textures those directories define are written, into the pack (with --sheet, a sheet of them alone). A
 pack with overlays (docs/design/texture-density-2.md) also gets the blockstates and models of its ore blocks, each the host's own
 texture with an overlay over it. It owns every blockstate and model in it, and its assets/minecraft/: --check lists any file there
 that it does not make, since an overlay pack replaces nothing of vanilla.
 
-The default run (no --palette, --recipes, --out or --sheet) also writes the blockstates and models of the mod's ore blocks
+The default run (no --palette, --recipes or --out) also writes the blockstates and models of the mod's ore blocks
 (overlays.json, docs/design/ores.md), each the host's own texture, by reference, with the ore art over it, and its --check fails
 on any file under the mod's assets/minecraft/ block or item textures, models, blockstates or items, since the mod overrides
 no vanilla block or item.
 
 A file whose pixels already match is not rewritten, so a build on another zlib does not churn the repo. --check writes nothing:
-it exits 1 and lists every texture, .mcmeta or sheet that differs from what the recipes make, and every PNG under the managed
+it exits 1 and lists every texture or .mcmeta that differs from what the recipes make, and every PNG under the managed
 directories (block/, item/) that no recipe makes. Art drawn or curated by hand is a PNG under sources/ beside the recipes
 directory, which a recipe's source op draws, so it is checked like the rest. Standard library only.
 """
@@ -31,7 +32,7 @@ import argparse
 import json
 import sys
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -46,7 +47,6 @@ ROOT = HERE.parent.parent
 DEFAULT_PALETTE = HERE / "palette.json"
 DEFAULT_RECIPES = HERE / "recipes"
 DEFAULT_OUT = ROOT / "src/main/resources/assets/deepcharter/textures"
-DEFAULT_SHEET = ROOT / "docs/design/texture-reference.png"
 VARIANTS = HERE / "variants.json"
 # The mod's ore blocks: each draws the host block's texture, by reference, with a cutout overlay of our ore art over it
 # (docs/design/ores.md). The blockstates and models are generated into the mod's assets, beside DEFAULT_OUT.
@@ -66,13 +66,13 @@ OVERLAY_OWNED = ("deepcharter/blockstates", "deepcharter/models", "minecraft")
 
 @dataclass(frozen=True)
 class Target:
-    """What one run makes: the recipes it writes (keys), from which book, into out, and the sheet of them; and the blockstates and
+    """What one run makes: the recipes it writes (keys), from which book, into out, and the sheet of them if asked for; and the blockstates and
     models it writes, by path, with the directories where every file must be one of them (an overlay pack's, or none)."""
 
     book: Book
     keys: tuple[str, ...]
     out: Path
-    sheet: Path
+    sheet: Path | None
     models: Mapping[Path, bytes]
     owned: tuple[Path, ...]
 
@@ -86,20 +86,20 @@ def shipped() -> Target:
     book = load([], [])
     body = json.loads(OVERLAYS.read_text())
     files = Overlays.parse(body, str(OVERLAYS)).files(book, tuple(book.recipes))
-    return Target(book, tuple(book.recipes), DEFAULT_OUT, DEFAULT_SHEET, {MOD_ASSETS / path: text for path, text in files.items()},
+    return Target(book, tuple(book.recipes), DEFAULT_OUT, None, {MOD_ASSETS / path: text for path, text in files.items()},
                   MOD_OWNED)
 
 
 def variants() -> dict[str, dict]:
-    """The test packs of variants.json by name, each {palettes: [file, ...], recipes: [dir, ...], pack: dir, sheet: file} and
+    """The test packs of variants.json by name, each {palettes: [file, ...], recipes: [dir, ...], pack: dir} and
     optionally overlays, paths from the repo root."""
     body = json.loads(VARIANTS.read_text())
     if set(body) != {"description", "variants"}:
         raise RecipeError(f"{VARIANTS}: the keys are description and variants, found {sorted(body)}")
-    required = {"palettes", "recipes", "pack", "sheet"}
+    required = {"palettes", "recipes", "pack"}
     for name, entry in body["variants"].items():
         if not required <= set(entry) <= required | {"overlays"} or not entry["recipes"]:
-            raise RecipeError(f"{VARIANTS}: variant {name} has palettes, recipes (a non-empty list), pack, sheet and optionally "
+            raise RecipeError(f"{VARIANTS}: variant {name} has palettes, recipes (a non-empty list), pack and optionally "
                               f"overlays, found {sorted(entry)}")
     return body["variants"]
 
@@ -116,10 +116,10 @@ def variant(name: str) -> Target:
     keys = tuple(key for key, recipe in book.recipes.items() if recipe.origin in directories)
     pack = ROOT / entry["pack"]
     if "overlays" not in entry:
-        return Target(book, keys, pack / PACK_TEXTURES, ROOT / entry["sheet"], {}, ())
+        return Target(book, keys, pack / PACK_TEXTURES, None, {}, ())
     files = Overlays.parse(entry["overlays"], f"{VARIANTS}: variant {name}").files(book, keys)
     assets = pack / "assets"
-    return Target(book, keys, pack / PACK_TEXTURES, ROOT / entry["sheet"], {assets / path: body for path, body in files.items()},
+    return Target(book, keys, pack / PACK_TEXTURES, None, {assets / path: body for path, body in files.items()},
                   tuple(assets / directory for directory in OVERLAY_OWNED))
 
 
@@ -183,30 +183,33 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--palette", type=Path, action="append", default=[])
     parser.add_argument("--recipes", type=Path, action="append", default=[])
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
-    parser.add_argument("--sheet", type=Path, default=DEFAULT_SHEET)
+    parser.add_argument("--sheet", type=Path, help="also write the reference sheet here (not with --check)")
     parser.add_argument("--variant")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args(argv)
-    if args.variant and (args.palette or args.recipes or args.out != DEFAULT_OUT or args.sheet != DEFAULT_SHEET):
-        parser.error("--variant takes its palette, recipes, pack and sheet from variants.json; give none of them with it")
+    if args.variant and (args.palette or args.recipes or args.out != DEFAULT_OUT):
+        parser.error("--variant takes its palette, recipes and pack from variants.json; give none of them with it")
+    if args.check and args.sheet:
+        parser.error("--check compares no sheet: the sheet is generated on request and never committed")
     try:
         if args.variant:
             target = variant(args.variant)
-        elif args.out == DEFAULT_OUT and args.sheet == DEFAULT_SHEET and not args.palette and not args.recipes:
+        elif args.out == DEFAULT_OUT and not args.palette and not args.recipes:
             target = shipped()
         else:
             # A skin build writes textures only: the models and blockstates are the mod's, and a skin inherits them by name.
             book = load(args.palette, args.recipes)
-            target = Target(book, tuple(book.recipes), args.out, args.sheet, {}, ())
+            target = Target(book, tuple(book.recipes), args.out, None, {}, ())
+        target = replace(target, sheet=args.sheet)
         files = outputs(target)
-        reference = sheet.render(target.book, list(target.keys)).to_rgba()
+        reference = sheet.render(target.book, list(target.keys)).to_rgba() if target.sheet else None
     except RecipeError as error:
         print(f"texgen: {error}", file=sys.stderr)
         return 2
 
     changed = [name for name, want in files.items() if differs(target.out / name, want)]
     changed_models = [path for path, want in target.models.items() if differs(path, want)]
-    sheet_changed = differs(target.sheet, reference)
+    sheet_changed = target.sheet is not None and differs(target.sheet, reference)
     stray = strays(target)
     foreign = unmade(target)
     if stray:
@@ -214,14 +217,13 @@ def main(argv: list[str] | None = None) -> int:
     if foreign:
         print(unmade_help(foreign), file=sys.stderr)
     if args.check:
-        stale = (changed + [path.relative_to(ROOT).as_posix() for path in changed_models]
-                 + ([f"the reference sheet {target.sheet}"] if sheet_changed else []))
+        stale = changed + [path.relative_to(ROOT).as_posix() for path in changed_models]
         if stale:
             print(f"texgen --check: {len(stale)} file(s) differ from what their recipes make; run tools/textures/texgen.py to rebuild them:\n  "
                   + "\n  ".join(stale), file=sys.stderr)
         if stale or stray or foreign:
             return 1
-        print(f"texgen --check: {len(files) + len(target.models)} files and the reference sheet match {len(target.keys)} recipes")
+        print(f"texgen --check: {len(files) + len(target.models)} files match {len(target.keys)} recipes")
         return 0
     if stray or foreign:
         return 1

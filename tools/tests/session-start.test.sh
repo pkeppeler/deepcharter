@@ -4,6 +4,8 @@
 # 3 days; none for a limit expiring in 150 days; a one-line note when gh fails.
 # Usage: tools/tests/session-start.test.sh
 set -euo pipefail
+# shellcheck source=/dev/null
+source "$(dirname "${BASH_SOURCE[0]}")/lib/no-git-env.sh"
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 work=$(mktemp -d)

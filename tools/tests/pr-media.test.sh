@@ -3,6 +3,8 @@
 # The script is run from inside a clone whose `origin` is that bare repo.
 # Usage: tools/tests/pr-media.test.sh
 set -euo pipefail
+# shellcheck source=/dev/null
+source "$(dirname "${BASH_SOURCE[0]}")/lib/no-git-env.sh"
 
 tools=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 script=$tools/pr-media.sh

@@ -2,6 +2,8 @@
 # Tests .githooks/pre-push with stub gradlew, python3 and shellcheck: skip rules, failure blocking, worktree cwd.
 # Usage: tools/tests/pre-push-hook.test.sh
 set -euo pipefail
+# shellcheck source=/dev/null
+source "$(dirname "${BASH_SOURCE[0]}")/lib/no-git-env.sh"
 
 repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 work=$(mktemp -d)
@@ -18,6 +20,7 @@ S
 cat >"$work/bin/python3" <<'S'
 #!/usr/bin/env bash
 echo "python3 $*" >>"$STUB_LOG"
+[[ -z ${STUB_GIT_INIT:-} ]] || { git init -q "$STUB_GIT_INIT" && git -C "$STUB_GIT_INIT" config deepcharter.leak 1; }
 [[ ${STUB_FAIL:-} != python ]]
 S
 cat >"$work/bin/shellcheck" <<'S'
@@ -64,6 +67,18 @@ check "pinned local version prints no warning" "no" "$(grep -q 'CI pins' "$work/
 STUB_SC_VERSION=0.9.0 run_hook "refs/heads/b $sha refs/heads/b $zero$nl" >/dev/null
 check "other local version warns with both versions" "yes" "$(grep -q 'local version is 0.9.0 but CI pins 0.11.0' "$work/out" && echo yes || echo no)"
 check "last line without a newline still counts" "0:4" "$(run_hook "refs/heads/b $sha refs/heads/b $zero")"
+
+# Git hands a hook GIT_DIR. A test that runs `git init` must hit its own temp dir, never the repo GIT_DIR names: here a sacrificial
+# bare repo stands in for the real one, and the stub python3 plays the test.
+git init -q --bare "$work/sacrificial.git"
+fingerprint() { (cd "$work/sacrificial.git" && find . -type f -exec cksum {} + | sort | cksum); }
+before=$(fingerprint)
+: >"$work/calls"
+(cd "$work" && printf '%s' "refs/heads/b $sha refs/heads/b $zero$nl" | GIT_DIR="$work/sacrificial.git" STUB_GIT_INIT="$work/fixture" \
+  STUB_LOG="$work/calls" PATH="$work/bin:$PATH" bash "$work/.githooks/pre-push" origin url) >"$work/out" 2>&1 || true
+check "a test's git init under the hook's GIT_DIR leaves that repo untouched" "$before" "$(fingerprint)"
+check "the test's git config landed in its own temp repo" "1" "$(git -C "$work/fixture" config --local --get deepcharter.leak || true)"
+check "the sacrificial repo has no marker from the test" "none" "$(git --git-dir="$work/sacrificial.git" config --get deepcharter.leak || echo none)"
 
 # Missing shellcheck: warn, skip it, and let the push through. The PATH holds only the tools the hook needs.
 mkdir -p "$work/nosc"

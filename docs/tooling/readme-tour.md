@@ -13,6 +13,8 @@ tools/readme-tour.sh --no-record      # publish what build/evidence already hold
 
 For each item the script records its scenario with `tools/record-evidence.sh` (once per scenario, even when two items share it), copies the chosen file to the item's media name, and publishes all of them to `pr-media/readme/` with `tools/pr-media.sh readme`. A file with the same name is replaced. Other files and folders on `pr-media` stay: `tools/pr-media.sh` never deletes, so a file the README no longer links stays on the branch until someone removes it by hand. The `design-tour` item takes about 10 minutes alone. A full run takes about an hour on a busy Mac. It needs the game client, so it takes the machine-wide client slot.
 
+The texture reference sheet is not a tour item. Publish it with `tools/texture-sheet.sh` (it renders `texgen.py --sheet` and publishes `texture-reference.png` to the same folder) after a PR that changes the palette or a recipe.
+
 After a run, open each new image before you trust it. GitHub caches `raw.githubusercontent.com` for a few minutes, so an old image can show for a while.
 
 ## When to run it

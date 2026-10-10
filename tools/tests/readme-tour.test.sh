@@ -3,6 +3,8 @@
 # The script runs from a copy in a throwaway tree, so no game starts and nothing is pushed.
 # Usage: tools/tests/readme-tour.test.sh
 set -euo pipefail
+# shellcheck source=/dev/null
+source "$(dirname "${BASH_SOURCE[0]}")/lib/no-git-env.sh"
 
 tools=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 work=$(mktemp -d)
