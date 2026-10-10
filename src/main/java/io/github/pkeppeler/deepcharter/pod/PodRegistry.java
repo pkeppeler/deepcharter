@@ -85,16 +85,6 @@ public final class PodRegistry {
 		return chassis;
 	}
 
-	/** The chassis registered with the id {@code id}, shipped or not; an id that is none is a bug, so it throws. */
-	public static Chassis chassisById(String id) {
-		for (Chassis chassis : CHASSIS.values()) {
-			if (chassis.id().equals(id)) {
-				return chassis;
-			}
-		}
-		throw new IllegalArgumentException("unknown pod chassis: " + id);
-	}
-
 	/** The entity type of the pods of {@code chassis}; a chassis with none is a bug, so it throws. */
 	public static EntityType<PodEntity> typeOf(Chassis chassis) {
 		for (Map.Entry<EntityType<?>, Chassis> entry : CHASSIS.entrySet()) {
