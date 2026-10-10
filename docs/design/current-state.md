@@ -118,7 +118,7 @@ only) down. **Swap: (b)** the feature JSON.
 
 ## 2. Custom blocks
 
-19 blocks, each with a block item. All textures are 16 x 16 (an animated one is a strip of 16 x 16 frames), and `tools/textures/texgen.py` generates every one from its recipe (#242). The tour shows them in a row on the colony pad, fronts to the camera. The stills and the sheet below are from before #242; [texture-reference.png](texture-reference.png) shows the textures of today at four light levels.
+19 blocks, each with a block item. All textures are 16 x 16 (an animated one is a strip of 16 x 16 frames), and `tools/textures/texgen.py` generates every one from its recipe (#242). The tour shows them in a row on the colony pad, fronts to the camera. The stills and the sheet below are from before #242; [the reference sheet](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/texture-reference.png?raw=true) shows the textures of today at four light levels.
 
 ![block-gallery-1](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/block-gallery-1.png?raw=true) ![block-gallery-2](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/block-gallery-2.png?raw=true)
 ![block-gallery-3](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/block-gallery-3.png?raw=true)

@@ -33,7 +33,7 @@ def write_json(path, body):
 
 
 class CommittedTexturesTest(unittest.TestCase):
-    def test_every_committed_texture_and_the_reference_sheet_match_their_recipes(self):
+    def test_every_committed_texture_matches_its_recipes(self):
         code, out, err = run("--check")
         self.assertEqual(0, code, err)
         self.assertIn("match", out)
@@ -342,19 +342,30 @@ class SkinTest(unittest.TestCase):
     def test_a_skin_build_writes_a_whole_texture_set_and_its_check_passes(self):
         out = self.root / "pack" / "assets" / "deepcharter" / "textures"
         reference = self.root / "pack" / "reference.png"
-        code, _, err = run("--out", str(out), "--sheet", str(reference))
+        code, _, err = run("--out", str(out))
         self.assertEqual(0, code, err)
         self.assertTrue((out / "block" / "fuel_pump_front_glow.png.mcmeta").is_file())
-        self.assertEqual(0, run("--out", str(out), "--sheet", str(reference), "--check")[0])
+        self.assertFalse(reference.exists(), "a build writes no sheet unless --sheet asks for one")
+        self.assertEqual(0, run("--out", str(out), "--check")[0])
 
-    def test_check_names_a_changed_pixel_and_says_to_rebuild(self):
+    def test_sheet_writes_the_reference_sheet_and_check_compares_none(self):
         out = self.root / "textures"
         reference = self.root / "reference.png"
         self.assertEqual(0, run("--out", str(out), "--sheet", str(reference))[0])
+        self.assertGreater(len(pngio.decode(reference.read_bytes()).pixels), 0)
+        reference.unlink()
+        self.assertEqual(0, run("--out", str(out), "--check")[0], "a missing sheet is not stale")
+        with self.assertRaises(SystemExit) as refused:
+            run("--out", str(out), "--sheet", str(reference), "--check")
+        self.assertEqual(2, refused.exception.code)
+
+    def test_check_names_a_changed_pixel_and_says_to_rebuild(self):
+        out = self.root / "textures"
+        self.assertEqual(0, run("--out", str(out))[0])
         goldium = out / "item" / "goldium.png"
         image = pngio.decode(goldium.read_bytes())
         goldium.write_bytes(pngio.encode(pngio.Rgba(image.width, image.height, bytes([9, 9, 9, 255]) + image.pixels[4:])))
-        code, _, err = run("--out", str(out), "--sheet", str(reference), "--check")
+        code, _, err = run("--out", str(out), "--check")
         self.assertEqual(1, code)
         self.assertIn("run tools/textures/texgen.py to rebuild", err)
         self.assertIn("\n  item/goldium.png", err)
@@ -362,16 +373,15 @@ class SkinTest(unittest.TestCase):
 
     def test_check_says_how_to_give_a_png_with_no_recipe_one_and_not_to_rebuild(self):
         out = self.root / "textures"
-        reference = self.root / "reference.png"
-        self.assertEqual(0, run("--out", str(out), "--sheet", str(reference))[0])
+        self.assertEqual(0, run("--out", str(out))[0])
         (out / "block" / "hand_drawn.png").write_bytes(pngio.encode(pngio.Rgba(1, 1, bytes(4))))
-        code, _, err = run("--out", str(out), "--sheet", str(reference), "--check")
+        code, _, err = run("--out", str(out), "--check")
         self.assertEqual(1, code)
         for hint in ("1 PNG(s) have no recipe", "tools/textures/recipes/blocks.json", "tools/textures/sources/", "source op",
                      "docs/design/skins.md#textures", "\n  block/hand_drawn.png"):
             self.assertIn(hint, err)
         self.assertNotIn("rebuild", err)
-        self.assertEqual(1, run("--out", str(out), "--sheet", str(reference))[0], "a build refuses too, and says the same")
+        self.assertEqual(1, run("--out", str(out))[0], "a build refuses too, and says the same")
 
 
 class CommittedVariantsTest(unittest.TestCase):
@@ -400,7 +410,7 @@ class VariantTest(unittest.TestCase):
             f"block/goldium_ore_overlay_{i}": {"kind": "cutout", "layers": [{"op": "fill", "colour": "host.1", "rect": [4, 4, 2, 2]}]}
             for i in range(2)}})
         self.overlays = {"host": "minecraft:block/stone", "textures": 2, "blocks": ["goldium_ore"]}
-        self.variants({"palettes": ["o/palette.json"], "recipes": ["o/recipes"], "pack": "opack", "sheet": "osheet.png", "overlays": self.overlays})
+        self.variants({"palettes": ["o/palette.json"], "recipes": ["o/recipes"], "pack": "opack", "overlays": self.overlays})
         patches = [mock.patch.object(texgen, "VARIANTS", self.root / "variants.json"), mock.patch.object(texgen, "ROOT", self.root)]
         for patch in patches:
             patch.start()
@@ -408,7 +418,7 @@ class VariantTest(unittest.TestCase):
 
     def variants(self, overlaid):
         write_json(self.root / "variants.json", {"description": "test", "variants": {
-            "t": {"palettes": [], "recipes": ["v/recipes"], "pack": "pack", "sheet": "sheet.png"}, "o": overlaid}})
+            "t": {"palettes": [], "recipes": ["v/recipes"], "pack": "pack"}, "o": overlaid}})
 
     def test_a_variant_writes_only_the_textures_its_own_recipes_define_and_its_check_passes(self):
         code, _, err = run("--variant", "t")
@@ -416,7 +426,7 @@ class VariantTest(unittest.TestCase):
         textures = self.root / "pack" / "assets" / "deepcharter" / "textures"
         self.assertEqual(["block/new_rock.png", "item/goldium.png"], sorted(p.relative_to(textures).as_posix() for p in textures.rglob("*.png")))
         self.assertEqual(32, pngio.decode((textures / "block" / "new_rock.png").read_bytes()).width)
-        self.assertTrue((self.root / "sheet.png").is_file())
+        self.assertFalse((self.root / "sheet.png").exists(), "no sheet unless --sheet asks for one")
         self.assertEqual(0, run("--variant", "t", "--check")[0])
 
     def test_a_png_in_a_variant_pack_that_its_recipes_do_not_make_fails_the_check(self):
@@ -477,7 +487,7 @@ class VariantTest(unittest.TestCase):
         self.assertIn("minecraft:block/stone", model.read_text())
 
     def test_an_overlay_block_whose_texture_has_no_recipe_or_is_opaque_fails_naming_it(self):
-        self.variants({"palettes": ["o/palette.json"], "recipes": ["o/recipes"], "pack": "opack", "sheet": "osheet.png",
+        self.variants({"palettes": ["o/palette.json"], "recipes": ["o/recipes"], "pack": "opack",
                        "overlays": {**self.overlays, "textures": 3}})
         code, _, err = run("--variant", "o", "--check")
         self.assertEqual(2, code)
@@ -492,7 +502,7 @@ class VariantTest(unittest.TestCase):
         for overlays in ({"host": "minecraft:block/stone", "textures": 2}, {**self.overlays, "host": "stone"},
                          {**self.overlays, "textures": True}):
             with self.subTest(overlays=overlays):
-                self.variants({"palettes": [], "recipes": ["o/recipes"], "pack": "opack", "sheet": "osheet.png", "overlays": overlays})
+                self.variants({"palettes": [], "recipes": ["o/recipes"], "pack": "opack", "overlays": overlays})
                 code, _, err = run("--variant", "o", "--check")
                 self.assertEqual(2, code)
                 self.assertIn("variant o", err)

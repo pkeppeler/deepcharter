@@ -106,13 +106,7 @@ If every block in the game were 32x, the atlas would be 4 times as large. We do 
 
 ## Reference sheets
 
-The generator writes a sheet for each pack. It shows each texture at light levels 15, 7, 3 and 0:
-
-- [b-reference.png](texture-density/b-reference.png)
-- [c-reference.png](texture-density/c-reference.png)
-- [d-reference.png](texture-density/d-reference.png)
-
-Today's sheet is [texture-reference.png](texture-reference.png).
+The generator writes a sheet of a pack on request (`texgen.py --variant <name> --sheet FILE`). It shows each texture at light levels 15, 7, 3 and 0. The round-1 sheets are no longer committed, since a generated binary conflicts between parallel PRs (#372). Today's sheet is [texture-reference.png](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/texture-reference.png?raw=true).
 
 ## How it is built
 

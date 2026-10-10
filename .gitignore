@@ -28,3 +28,7 @@ __pycache__/
 # Third-party cheat-client jars used only by minecraft-dev-mcp's own tests: keep local, never commit
 /tooling/minecraft-dev-mcp/ai_reference/meteor-client-*.jar
 /tooling/minecraft-dev-mcp/__tests__/fixtures/meteor-client-*.jar
+
+# Generated reference sheets (tools/textures/texgen.py --sheet): published to pr-media, never committed (#372)
+/docs/design/texture-reference.png
+/docs/design/texture-density/*-reference.png
