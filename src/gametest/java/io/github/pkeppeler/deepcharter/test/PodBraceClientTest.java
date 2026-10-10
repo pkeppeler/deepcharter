@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import java.util.Arrays;
-import java.util.Optional;
+import java.util.List;
 import java.util.Set;
 
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -59,8 +59,11 @@ public class PodBraceClientTest implements FabricClientGameTest {
 			});
 			ClientWait.until(context, "the pod in layer 1", client -> client.player != null && client.player.getVehicle() instanceof PodEntity pod
 					&& client.level.dimension().equals(LayerChain.dimension(1)) && Math.round(pod.hull()) == Math.round(HULL));
-			Component line = crustLine(context).orElseThrow(() -> new AssertionError("A hull of " + HULL + " 7 slabs above the crust shows the crust warning"));
-			TranslatableContents contents = (TranslatableContents) line.getContents();
+			List<Component> lines = crustLines(context);
+			if (lines.size() != 1) {
+				throw new AssertionError("A hull of " + HULL + " 7 slabs above the crust shows the crust warning and no brace line: " + lines);
+			}
+			TranslatableContents contents = (TranslatableContents) lines.getFirst().getContents();
 			if (!contents.getKey().equals("hud.deepcharter.pod.crust_ahead") || !Arrays.equals(contents.getArgs(), new Object[] {7, 20, 24})) {
 				throw new AssertionError("The warning reads CRUST 7 DOWN, hull 20, price 24: " + contents.getKey() + " " + Arrays.toString(contents.getArgs()));
 			}
@@ -70,7 +73,7 @@ public class PodBraceClientTest implements FabricClientGameTest {
 				ScannerPods.fit(server, player, (PodEntity) player.getVehicle(), ComponentTrack.BRACE, 1);
 			});
 			ClientWait.until(context, "the brace with no ore to burn", client -> client.player.getVehicle() instanceof PodEntity pod
-					&& PodStatusHud.braceLine(pod).map(PodBraceClientTest::key).equals(Optional.of("hud.deepcharter.pod.brace_dry")));
+					&& PodStatusHud.crustLines(pod, true).stream().map(PodBraceClientTest::key).toList().equals(List.of("hud.deepcharter.pod.crust_ahead", "hud.deepcharter.pod.brace_dry")));
 
 			singleplayer.getServer().runOnServer(server -> {
 				PodEntity pod = (PodEntity) server.getPlayerList().getPlayers().getFirst().getVehicle();
@@ -82,10 +85,10 @@ public class PodBraceClientTest implements FabricClientGameTest {
 			ClientWait.until(context, "the brace burning one ore", client -> client.player.getVehicle() instanceof PodEntity pod
 					&& Math.round(pod.hull()) == 32 && pod.cargoUsed() == ORE - 1);
 			ClientWait.until(context, "no warning and no brace line once the hull outlasts the crust", client -> client.player.getVehicle() instanceof PodEntity pod
-					&& PodStatusHud.crustLine(pod).isEmpty() && PodStatusHud.braceLine(pod).isEmpty());
+					&& PodStatusHud.crustLines(pod, true).isEmpty());
 
 			singleplayer.getServer().runOnServer(server -> ((PodEntity) server.getPlayerList().getPlayers().getFirst().getVehicle()).setHull(100f));
-			ClientWait.until(context, "no warning for a full hull", client -> client.player.getVehicle() instanceof PodEntity pod && PodStatusHud.crustLine(pod).isEmpty());
+			ClientWait.until(context, "no warning for a full hull", client -> client.player.getVehicle() instanceof PodEntity pod && PodStatusHud.crustLines(pod, true).isEmpty());
 		}
 	}
 
@@ -93,7 +96,7 @@ public class PodBraceClientTest implements FabricClientGameTest {
 		return line.getContents() instanceof TranslatableContents contents ? contents.getKey() : line.getString();
 	}
 
-	private static Optional<Component> crustLine(ClientGameTestContext context) {
-		return context.computeOnClient(client -> PodStatusHud.crustLine((PodEntity) client.player.getVehicle()));
+	private static List<Component> crustLines(ClientGameTestContext context) {
+		return context.computeOnClient(client -> PodStatusHud.crustLines((PodEntity) client.player.getVehicle(), true));
 	}
 }

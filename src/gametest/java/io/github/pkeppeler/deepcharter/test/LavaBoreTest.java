@@ -359,6 +359,7 @@ public class LavaBoreTest {
 		int braceOre;
 		int braceValue;
 		boolean braceDry;
+		boolean braceDear;
 		int lastCargoUsed;
 		int lastCargoValue;
 		PodEntity pod;
@@ -798,7 +799,9 @@ public class LavaBoreTest {
 		}
 		bore.lastCargoUsed = used;
 		bore.lastCargoValue = cargoValue(pod);
-		bore.braceDry |= PodBrace.patching(pod) == PodBrace.Patching.NO_ORE;
+		PodBrace.Patching patching = PodBrace.patching(pod, true);
+		bore.braceDry |= patching == PodBrace.Patching.NO_ORE;
+		bore.braceDear |= patching == PodBrace.Patching.NO_CHEAP_ORE;
 	}
 
 	/**
@@ -806,8 +809,7 @@ public class LavaBoreTest {
 	 * and sprints again when the part is done. Returns whether the bot is holding back. With an empty bay it drills on.
 	 */
 	private static boolean braceIfAsked(Bore bore, PodEntity pod) {
-		PodBrace.Patching patching = PodBrace.patching(pod);
-		boolean asked = patching == PodBrace.Patching.WAITS_FOR_DRILL || patching == PodBrace.Patching.WORKING;
+		boolean asked = PodBrace.patching(pod, true) == PodBrace.Patching.WORKING;
 		if (asked && bore.phase == Phase.DOWN && pod.onGround()) {
 			if (!bore.bracing) {
 				bore.bracing = true;
@@ -1296,10 +1298,12 @@ public class LavaBoreTest {
 			return;
 		}
 		List<Bore> braced = bores.stream().filter(b -> b.braceTicks > 0).toList();
-		LOGGER.info("[lava-bore] brace: {} of {} bores stopped to burn ore for hull; ore burned per braced bore {} (worth ${} at the terminal), {} pod ticks at rest per braced bore; {} bores found the bay empty when the brace was wanted",
+		LOGGER.info("[lava-bore] brace: {} of {} bores stopped to burn ore for hull; ore burned per braced bore {} (worth ${} at the terminal), {} pod ticks at rest per braced bore; {} bores found the bay empty when the brace was wanted ({} of them died of the crust), {} found only ore dearer than the nanobots' price a hull ({} died of the crust)",
 				braced.size(), bores.size(), String.format("%.1f", braced.stream().mapToInt(b -> b.braceOre).average().orElse(0)),
 				String.format("%.0f", braced.stream().mapToInt(b -> b.braceValue).average().orElse(0)),
-				String.format("%.0f", braced.stream().mapToInt(b -> b.braceTicks).average().orElse(0)), bores.stream().filter(b -> b.braceDry).count());
+				String.format("%.0f", braced.stream().mapToInt(b -> b.braceTicks).average().orElse(0)), bores.stream().filter(b -> b.braceDry).count(),
+				bores.stream().filter(b -> b.braceDry && b.outcome == Outcome.DIED && b.lastCause == Cause.CRUST).count(), bores.stream().filter(b -> b.braceDear).count(),
+				bores.stream().filter(b -> b.braceDear && b.outcome == Outcome.DIED && b.lastCause == Cause.CRUST).count());
 	}
 
 	/** What the lining bot did and what it cost, when there was one: the bricks, the sessions and the time the pod stood still. */

@@ -66,23 +66,30 @@ public final class PodStatusHud {
 	}
 
 	/**
-	 * The warning line shown, in its own colour, when the hull would not outlast the crust at the foot of the layer (#378): the slabs to it (or that
-	 * the pod is in it), the hull, and what the crust rows left would take.
+	 * The lines shown, in their own colour, about the breach crust (#378), from one look at the crust ahead: when the hull would not outlast it, the slabs to it (or that
+	 * the pod is in it), the hull, and what the crust rows left would take; then what a breach brace does about that, if the pod has one. {@code resting} is whether the
+	 * pod is on the ground with its pilot giving no input.
 	 */
-	public static Optional<Component> crustLine(PodEntity pod) {
-		return PodBrace.warning(pod).map(warning -> warning.slabsAway() > 0
+	public static List<Component> crustLines(PodEntity pod, boolean resting) {
+		PodBrace.Status status = PodBrace.status(pod, resting);
+		List<Component> lines = new ArrayList<>();
+		status.warning().ifPresent(warning -> lines.add(warning.slabsAway() > 0
 				? Component.translatable("hud.deepcharter.pod.crust_ahead", warning.slabsAway(), Math.round(warning.hull()), Math.round(warning.cost()))
-				: Component.translatable("hud.deepcharter.pod.crust_in", Math.round(warning.hull()), Math.round(warning.cost())));
+				: Component.translatable("hud.deepcharter.pod.crust_in", Math.round(warning.hull()), Math.round(warning.cost()))));
+		switch (status.patching()) {
+			case IDLE -> {
+			}
+			case WAITS_FOR_REST -> lines.add(Component.translatable("hud.deepcharter.pod.brace_waits"));
+			case NO_ORE -> lines.add(Component.translatable("hud.deepcharter.pod.brace_dry"));
+			case NO_CHEAP_ORE -> lines.add(Component.translatable("hud.deepcharter.pod.brace_dear"));
+			case WORKING -> lines.add(Component.translatable("hud.deepcharter.pod.brace_working"));
+		}
+		return lines;
 	}
 
-	/** The line shown, in its own colour, while a breach brace is wanted: what it waits for, or that it is burning ore for hull. */
-	public static Optional<Component> braceLine(PodEntity pod) {
-		return switch (PodBrace.patching(pod)) {
-			case IDLE -> Optional.empty();
-			case WAITS_FOR_DRILL -> Optional.of(Component.translatable("hud.deepcharter.pod.brace_waits"));
-			case NO_ORE -> Optional.of(Component.translatable("hud.deepcharter.pod.brace_dry"));
-			case WORKING -> Optional.of(Component.translatable("hud.deepcharter.pod.brace_working"));
-		};
+	/** Whether the ridden pod is at rest as the local pilot sees it: on the ground, with no drill, drive or rotor key held. */
+	private static boolean resting(Minecraft client, PodEntity pod) {
+		return pod.onGround() && PodBrace.idle(client.player.input.keyPresses);
 	}
 
 	/** The line shown, in its own colour, while the pilot lines the slab: the bricks placed so far. */
@@ -153,8 +160,9 @@ public final class PodStatusHud {
 		for (Component line : sounderLines(pod)) {
 			y = warning(graphics, font, look, Optional.of(line), look.podSounderColor(), y);
 		}
-		y = warning(graphics, font, look, crustLine(pod), look.podHardLandingColor(), y);
-		y = warning(graphics, font, look, braceLine(pod), look.podHardLandingColor(), y);
+		for (Component line : crustLines(pod, resting(client, pod))) {
+			y = warning(graphics, font, look, Optional.of(line), look.podHardLandingColor(), y);
+		}
 		y = warning(graphics, font, look, liningLine(pod), look.podLiningColor(), y);
 		y = warning(graphics, font, look, outOfBrickLine(pod), look.podLiningDryColor(), y);
 		warning(graphics, font, look, hardLandingLine(pod), look.podHardLandingColor(), y);

@@ -5,12 +5,17 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.level.GameType;
 
+import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -20,8 +25,10 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
@@ -36,6 +43,9 @@ public class PodBraceTest {
 	private static final float ROW = 8f;
 	private static final float FULL_CRUST = 24f;
 	private static final int PATCH = PodBraceTuning.DEFAULT.patchTicks();
+	/** Slabs the pilot bores, each one a fall into a new hole. */
+	private static final int SLABS = 4;
+	private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
 
 	private static ServerLevel layer(GameTestHelper helper, int layer) {
 		ServerLevel level = helper.getLevel().getServer().getLevel(LayerChain.dimension(layer));
@@ -63,6 +73,7 @@ public class PodBraceTest {
 			ScannerPods.fit(helper.getLevel().getServer(), owner(helper).player(), pod, ComponentTrack.BRACE, 1);
 		}
 		pod.setHull(hull);
+		pod.setOnGround(true);
 		return pod;
 	}
 
@@ -72,6 +83,8 @@ public class PodBraceTest {
 				throw failure(helper, "the bay had no room for %s", ore);
 			}
 		}
+		// The brace reads the bay on its tick and the HUD reads what it found.
+		tick(pod, 1);
 	}
 
 	private static void expectNone(GameTestHelper helper, PodEntity pod, String when) {
@@ -89,7 +102,7 @@ public class PodBraceTest {
 	}
 
 	private static void expectPatching(GameTestHelper helper, PodEntity pod, PodBrace.Patching expected, String when) {
-		PodBrace.Patching now = PodBrace.patching(pod);
+		PodBrace.Patching now = PodBrace.patching(pod, true);
 		if (now != expected) {
 			throw failure(helper, "the brace should be %s %s, it is %s", expected, when, now);
 		}
@@ -190,17 +203,13 @@ public class PodBraceTest {
 	}
 
 	@GameTest
-	public void theBraceWaitsForTheDrillAndNeedsOreToBurn(GameTestHelper helper) {
+	public void theBraceWaitsForRestAndNeedsOreToBurn(GameTestHelper helper) {
 		ServerLevel one = layer(helper, 1);
 		PodEntity pod = pod(helper, one, 10, 5f, true);
 		expectPatching(helper, pod, PodBrace.Patching.NO_ORE, "for an empty bay");
 		ore(helper, pod, OreType.IRONIUM);
-		pod.setDrilling(true);
-		expectPatching(helper, pod, PodBrace.Patching.WAITS_FOR_DRILL, "while the drill works");
-		float before = pod.hull();
-		tick(pod, PATCH);
-		if (pod.hull() != before || pod.cargoUsed() != 1) {
-			throw failure(helper, "a drilling pod is not patched: hull %s of %s, %s ore", pod.hull(), before, pod.cargoUsed());
+		if (PodBrace.patching(pod, false) != PodBrace.Patching.WAITS_FOR_REST) {
+			throw failure(helper, "a pod that is not at rest waits, it is %s", PodBrace.patching(pod, false));
 		}
 		helper.succeed();
 	}
@@ -209,23 +218,121 @@ public class PodBraceTest {
 	public void aPatchBurnsTheCheapestOreForHullOnTheBeat(GameTestHelper helper) {
 		ServerLevel one = layer(helper, 1);
 		PodEntity pod = pod(helper, one, 10, 5f, true);
-		ore(helper, pod, OreType.GOLDIUM, OreType.IRONIUM);
+		ore(helper, pod, OreType.SILVERIUM, OreType.IRONIUM);
 		tick(pod, PATCH + 1);
 		if (pod.hull() != 5f || pod.cargoUsed() != 2) {
 			throw failure(helper, "the brace patches once every %d ticks, not at tick %d: hull %s, %s ore", PATCH, PATCH + 1, pod.hull(), pod.cargoUsed());
 		}
 		tick(pod, PATCH);
 		float hullPerOre = PodBraceTuning.DEFAULT.hullPerOre();
-		if (pod.hull() != 5f + hullPerOre || pod.cargoUsed() != 1 || pod.cargo().count(OreType.IRONIUM) != 0 || pod.cargo().count(OreType.GOLDIUM) != 1) {
-			throw failure(helper, "a patch burns the ironium, the cheapest ore, for %s hull: hull %s, %s ore, %s ironium, %s goldium", hullPerOre, pod.hull(), pod.cargoUsed(),
-					pod.cargo().count(OreType.IRONIUM), pod.cargo().count(OreType.GOLDIUM));
+		if (pod.hull() != 5f + hullPerOre || pod.cargoUsed() != 1 || pod.cargo().count(OreType.IRONIUM) != 0 || pod.cargo().count(OreType.SILVERIUM) != 1) {
+			throw failure(helper, "a patch burns the ironium, the cheapest ore, for %s hull: hull %s, %s ore, %s ironium, %s silverium", hullPerOre, pod.hull(), pod.cargoUsed(),
+					pod.cargo().count(OreType.IRONIUM), pod.cargo().count(OreType.SILVERIUM));
 		}
 		tick(pod, 2 * PATCH);
 		if (pod.hull() != 5f + 2 * hullPerOre || pod.cargoUsed() != 0) {
-			throw failure(helper, "the second patch burns the goldium: hull %s, %s ore", pod.hull(), pod.cargoUsed());
+			throw failure(helper, "the second patch burns the silverium: hull %s, %s ore", pod.hull(), pod.cargoUsed());
 		}
 		expectPatching(helper, pod, PodBrace.Patching.IDLE, "once the hull outlasts the crust by the reserve");
 		helper.succeed();
+	}
+
+	@GameTest
+	public void aPodInTheAirIsNotPatched(GameTestHelper helper) {
+		ServerLevel one = layer(helper, 1);
+		PodEntity pod = pod(helper, one, 10, 5f, true);
+		ore(helper, pod, OreType.IRONIUM);
+		pod.setOnGround(false);
+		tick(pod, PATCH);
+		tick(pod, 2 * PATCH);
+		if (pod.hull() != 5f || pod.cargoUsed() != 1) {
+			throw failure(helper, "a pod in the air is not patched: hull %s, %s ore", pod.hull(), pod.cargoUsed());
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aPodThatMovedWithinTheRestTimeIsNotPatchedUntilItHasRested(GameTestHelper helper) {
+		ServerLevel one = layer(helper, 1);
+		PodEntity pod = pod(helper, one, 10, 5f, true);
+		ore(helper, pod, OreType.IRONIUM);
+		pod.setOnGround(false);
+		tick(pod, 5);
+		pod.setOnGround(true);
+		tick(pod, PATCH);
+		if (pod.hull() != 5f || pod.cargoUsed() != 1) {
+			throw failure(helper, "a pod that landed %d ticks ago is not at rest: hull %s, %s ore", PATCH - 5, pod.hull(), pod.cargoUsed());
+		}
+		tick(pod, 2 * PATCH);
+		if (pod.hull() != 5f + PodBraceTuning.DEFAULT.hullPerOre() || pod.cargoUsed() != 0) {
+			throw failure(helper, "a pod that has rested is patched: hull %s, %s ore", pod.hull(), pod.cargoUsed());
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void theBraceRefusesAnOreThatCostsMoreAHullThanNanobotsDo(GameTestHelper helper) {
+		ServerLevel one = layer(helper, 1);
+		float cap = PodBrace.oreValueCap();
+		if (OreType.GOLDIUM.value() <= cap || OreType.SILVERIUM.value() > cap) {
+			throw failure(helper, "the cap of %s lets silverium through and stops goldium", cap);
+		}
+		PodEntity dear = pod(helper, one, 10, 5f, true);
+		ore(helper, dear, OreType.GOLDIUM);
+		expectPatching(helper, dear, PodBrace.Patching.NO_CHEAP_ORE, "for a bay of only dear ore");
+		tick(dear, PATCH);
+		if (dear.hull() != 5f || dear.cargoUsed() != 1) {
+			throw failure(helper, "dear ore is not burned: hull %s, %s ore", dear.hull(), dear.cargoUsed());
+		}
+		PodEntity mixed = pod(helper, one, 10, 5f, true);
+		ore(helper, mixed, OreType.GOLDIUM, OreType.IRONIUM);
+		tick(mixed, PATCH);
+		tick(mixed, 2 * PATCH);
+		if (mixed.cargo().count(OreType.GOLDIUM) != 1 || mixed.cargo().count(OreType.IRONIUM) != 0 || mixed.hull() != 5f + PodBraceTuning.DEFAULT.hullPerOre()) {
+			throw failure(helper, "the brace burns the ironium and leaves the goldium: hull %s, %s goldium, %s ironium", mixed.hull(),
+					mixed.cargo().count(OreType.GOLDIUM), mixed.cargo().count(OreType.IRONIUM));
+		}
+		helper.succeed();
+	}
+
+	/** A pilot who holds the drill and bores slab after slab: the pod falls into each hole, and no ore burns however many ticks pass. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 700)
+	public void aPilotWhoHoldsTheDrillIsNeverPatchedAcrossABoredSlab(GameTestHelper helper) {
+		int x = 4100;
+		int z = 3800;
+		ServerLevel one = layer(helper, 1);
+		RoomCarver.carve(one, x - 4, x + 4, 0, 2, z - 4, z + 4, LayerBlocks.BREACH_CRUST);
+		RoomCarver.carve(one, x - 4, x + 4, 3, 9, z - 4, z + 4, Blocks.STONE);
+		RoomCarver.carve(one, x - 4, x + 4, 10, 16, z - 4, z + 4, Blocks.AIR);
+		MockPlayer pilot = MockPlayers.join(helper, "brace-holder");
+		pilot.teleportTo(one, new Vec3(x, 10, z), 0f, 0f);
+		PodEntity[] pod = {null};
+		FarChunks.awaitEntityTicking(helper, one, new BlockPos(x, 10, z), () -> {
+			PodEntity spawned = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
+			spawned.setPos(x, 10, z);
+			one.addFreshEntity(spawned);
+			if (!pilot.player().startRiding(spawned)) {
+				throw failure(helper, "the pilot could not mount the pod");
+			}
+			ScannerPods.fit(helper.getLevel().getServer(), pilot.player(), spawned, ComponentTrack.BRACE, 1);
+			spawned.setHull(5f);
+			ore(helper, spawned, OreType.IRONIUM, OreType.IRONIUM, OreType.IRONIUM);
+			pilot.setInput(SPRINT);
+			pod[0] = spawned;
+		});
+		helper.onEachTick(() -> {
+			if (pod[0] == null) {
+				return;
+			}
+			if (pod[0].hull() > 5f || pod[0].cargoUsed() != 3) {
+				throw failure(helper, "a pilot holding the drill is never patched: hull %s, %s ore at y %s", pod[0].hull(), pod[0].cargoUsed(), pod[0].getY());
+			}
+			if (pod[0].getY() < 10 - SLABS + 0.01) {
+				pilot.releaseInput();
+				pod[0].discard();
+				helper.succeed();
+			}
+		});
 	}
 
 	@GameTest
