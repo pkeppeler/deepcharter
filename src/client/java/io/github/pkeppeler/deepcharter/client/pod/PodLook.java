@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -46,7 +47,7 @@ import io.github.pkeppeler.deepcharter.pod.Chassis;
  * entry at or below it. A model with several cutters (bones {@code drill_head_<cutter>}) needs the map and names only cutters it
  * holds; a model with one plain cutter has no map.
  */
-public record PodLook(Identifier model, Variant intact, Variant wreck, NavigableMap<Integer, String> cutters, String source) {
+public record PodLook(Identifier model, Variant intact, Variant wreck, Optional<Identifier> paintMask, NavigableMap<Integer, String> cutters, String source) {
 	/** When the glowmask is drawn over the texture. */
 	public enum Glow {
 		/** While the pod has a pilot and power, as its lamps are. */
@@ -70,7 +71,7 @@ public record PodLook(Identifier model, Variant intact, Variant wreck, Navigable
 		}
 	}
 
-	private static final Set<String> TOP_KEYS = Set.of("model", "texture", "glow", "hide", "cutters", "wreck");
+	private static final Set<String> TOP_KEYS = Set.of("model", "texture", "glow", "hide", "cutters", "wreck", "paint");
 	private static final Set<String> WRECK_KEYS = Set.of("texture", "glow", "hide");
 
 	public PodLook {
@@ -144,7 +145,8 @@ public record PodLook(Identifier model, Variant intact, Variant wreck, Navigable
 				throw new IllegalArgumentException(source + ": the cutters need an entry for tier 0, the stock drill, so that every tier has a cutter; has " + cutters.keySet());
 			}
 		}
-		return new PodLook(model, intact, wreck, cutters, source);
+		Optional<Identifier> paintMask = top.has("paint") ? Optional.of(texture(source, "paint", top, "paint")) : Optional.empty();
+		return new PodLook(model, intact, wreck, paintMask, cutters, source);
 	}
 
 	/** The cutter that a drill of {@code tier} shows: that of the highest entry at or below it. A pod without cutters has none to ask. */
@@ -199,7 +201,11 @@ public record PodLook(Identifier model, Variant intact, Variant wreck, Navigable
 	}
 
 	private static Identifier texture(String source, String where, JsonObject json) {
-		Identifier id = identifier(source, "texture", json);
+		return texture(source, where, json, "texture");
+	}
+
+	private static Identifier texture(String source, String where, JsonObject json, String key) {
+		Identifier id = identifier(source, key, json);
 		if (!id.getPath().startsWith("textures/") || !id.getPath().endsWith(".png")) {
 			throw new IllegalArgumentException(source + ": the " + where + " '" + id + "' is not a texture path, textures/....png");
 		}

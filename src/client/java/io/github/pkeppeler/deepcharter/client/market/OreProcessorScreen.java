@@ -28,7 +28,6 @@ import io.github.pkeppeler.deepcharter.market.WorkOrders;
 import io.github.pkeppeler.deepcharter.market.WorkOrdersView;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
-import io.github.pkeppeler.deepcharter.pod.PodLiningTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
@@ -100,7 +99,7 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 		addRenderableWidget(new CrtButton(MARGIN, cargoY, BUTTON_WIDTH, BUTTON_HEIGHT,
 				Component.translatable("screen.deepcharter.processor.sell_cargo"), button -> sell(OreProcessor.SELL_CARGO)));
 		addRenderableWidget(new CrtButton(rightColumn(), cargoY, Math.min(BUTTON_WIDTH, width - rightColumn() - MARGIN), BUTTON_HEIGHT,
-				Component.translatable("screen.deepcharter.processor.fuse", PodLiningTuning.DEFAULT.fusePrice()), button -> sell(OreProcessor.FUSE_SPOIL)));
+				Component.translatable("screen.deepcharter.processor.fuse"), button -> sell(OreProcessor.FUSE_SPOIL)));
 		layoutOrders(cargoY);
 	}
 

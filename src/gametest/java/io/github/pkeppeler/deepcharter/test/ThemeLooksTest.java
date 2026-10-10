@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Supplier;
 
 import javax.imageio.ImageIO;
@@ -19,10 +20,12 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 
+import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.client.theme.BreachLook;
 import io.github.pkeppeler.deepcharter.client.theme.CargoLook;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
+import io.github.pkeppeler.deepcharter.client.theme.PodPaintLook;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.client.theme.TransmissionLook;
 import io.github.pkeppeler.deepcharter.client.theme.UiTheme;
@@ -131,9 +134,38 @@ public class ThemeLooksTest {
 		helper.succeed();
 	}
 
+	/** The pods' paint palette (#383): six colours, written out; a pack adds one by raising the count; a charter's slot is a function of its id alone. */
+	@GameTest
+	public void thePodPaintPaletteIsPinnedAndACharterKeepsItsSlot(GameTestHelper helper) {
+		PodPaintLook look = PodPaintLook.of(area("pod", null));
+		List<Integer> expected = List.of(0xFFBAAC8E, 0xFFB5503C, 0xFF4A6FA5, 0xFF6E8B4E, 0xFFD2A03A, 0xFF7A6A9A);
+		if (!look.paints().equals(expected)) {
+			throw fail(helper, "the default paint palette should be " + expected + ", is " + look.paints());
+		}
+		CharterId charter = new CharterId(new UUID(0L, 8L));
+		if (look.slotOf(charter) != 2 || look.paintOf(charter) != expected.get(2)) {
+			throw fail(helper, "a charter's slot is its id's hash modulo the palette: expected slot 2 for 8 mod 6, got " + look.slotOf(charter));
+		}
+		if (look.slotOf(new CharterId(new UUID(0L, 1L << 31))) < 0) {
+			throw fail(helper, "a slot is never negative, even for an id whose hash is");
+		}
+		PodPaintLook seven = PodPaintLook.of(area("pod", "{ \"paintCount\": 7, \"paint6\": \"#102030\" }"));
+		if (seven.paints().size() != 7 || seven.paints().get(6) != 0xFF102030) {
+			throw fail(helper, "a pack adds a colour by raising the count and naming the key, got " + seven.paints());
+		}
+		rejected(helper, () -> PodPaintLook.of(area("pod", "{ \"paintCount\": 0 }")), "paintCount");
+		try {
+			PodPaintLook.of(area("pod", "{ \"paintCount\": 7 }"));
+			throw fail(helper, "a count of 7 with no key paint6 should be refused");
+		} catch (IllegalArgumentException | IllegalStateException e) {
+			requireContains(helper, String.valueOf(e.getMessage()), "paint6");
+		}
+		helper.succeed();
+	}
+
 	private static Map<String, ThemeData> defaultAreas() {
 		Map<String, ThemeData> areas = new LinkedHashMap<>();
-		for (String name : List.of("crt", "handbook", "scanner", "hud", "transmission", "breach", "cargo")) {
+		for (String name : List.of("crt", "handbook", "scanner", "hud", "transmission", "breach", "cargo", "pod")) {
 			areas.put(name, area(name, null));
 		}
 		return areas;
