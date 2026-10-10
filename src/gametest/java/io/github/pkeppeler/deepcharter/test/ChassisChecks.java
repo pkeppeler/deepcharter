@@ -50,6 +50,9 @@ import io.github.pkeppeler.deepcharter.wreck.Wrecks;
  * ({@code OddPods}). Each expectation is written from the chassis ({@link Chassis#boreWidth}, {@link Chassis#boreHeight}), never as a
  * literal. The pod's width and depth are one number, so the two shapes differ in width against height.
  *
+ * <p>A pod of an even bore width stands on a block corner and one of an odd width on a block's middle ({@code middle}), as the drill
+ * centres it, so the Prospector's 3-wide bore runs the same checks as the Mole's 2-wide one (#400).
+ *
  * <p>Each check builds its own site in layer 1, in its own range of X ({@code shift} keeps the two shapes apart), so the blocks it
  * changes never touch another test's.
  */
@@ -69,6 +72,8 @@ final class ChassisChecks {
 	private final int shift;
 	private final int width;
 	private final int height;
+	/** Blocks that a pod's middle stands from a block corner: 0 for an even bore, which is centred on a corner, and a half for an odd one, centred on a block. */
+	private final double middle;
 
 	/** @param shift blocks east that every site of this shape moves, so that two shapes never build on each other */
 	ChassisChecks(Chassis chassis, EntityType<PodEntity> type, int shift) {
@@ -77,6 +82,7 @@ final class ChassisChecks {
 		this.shift = shift;
 		this.width = chassis.boreWidth();
 		this.height = chassis.boreHeight();
+		this.middle = width % 2 == 0 ? 0 : 0.5;
 	}
 
 	private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
@@ -134,14 +140,14 @@ final class ChassisChecks {
 		MockPlayer pilot = MockPlayers.join(helper, chassis.id() + "-bore-down");
 		PodEntity[] pod = {null};
 		// Off the block grid on purpose: the pod must centre itself in its bore.
-		Vec3 start = new Vec3(x + 0.3, FLOOR, Z + 0.8);
+		Vec3 start = new Vec3(x + 0.3 + middle, FLOOR, Z + 0.8 + middle);
 		pilot.teleportTo(level, start, 0f, 0f);
 		FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(start), () -> {
 			pod[0] = spawn(level, start);
 			expect(helper, pilot.player().startRiding(pod[0]), "the pilot could not mount the pod");
 			pilot.setInput(SPRINT);
 		});
-		// The bore: the width x width square the pod centres on, x - width / 2 .. x + width / 2 - 1, and z + 1 as its middle.
+		// The bore: the width x width square the pod centres on, x - width / 2 .. x + width / 2 - 1, and z + 1 as its middle (a half block further for an odd width).
 		int lowX = x - width / 2;
 		int lowZ = Z + 1 - width / 2;
 		boolean[] released = {false};
@@ -162,7 +168,7 @@ final class ChassisChecks {
 						}
 					}
 				}
-				expect(helper, Math.abs(pod[0].getX() - x) < 0.01 && Math.abs(pod[0].getZ() - (Z + 1)) < 0.01, "the pod should end centred in its bore at (%d, %d), it is at %s", x, Z + 1, pod[0].position());
+				expect(helper, Math.abs(pod[0].getX() - (x + middle)) < 0.01 && Math.abs(pod[0].getZ() - (Z + 1 + middle)) < 0.01, "the pod should end centred in its bore at (%s, %s), it is at %s", x + middle, Z + 1 + middle, pod[0].position());
 				pod[0].discard();
 				helper.succeed();
 			}
@@ -207,10 +213,12 @@ final class ChassisChecks {
 		site(level, x);
 		MockPlayer pilot = MockPlayers.join(helper, chassis.id() + "-lining");
 		pilot.player().setGameMode(GameType.SURVIVAL);
-		Vec3 start = new Vec3(x, FLOOR, Z);
+		Vec3 start = new Vec3(x + middle, FLOOR, Z + middle);
 		pilot.teleportTo(level, start, 0f, 0f);
 		PodEntity[] pod = {null};
 		int ring = 4 * width * height;
+		int lowX = x - width / 2;
+		int lowZ = Z - width / 2;
 		FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(start), () -> {
 			pod[0] = spawn(level, start);
 			expect(helper, pilot.player().startRiding(pod[0]), "the pilot could not mount the pod");
@@ -231,7 +239,7 @@ final class ChassisChecks {
 				return;
 			}
 			if (!PodLining.working(pod[0])) {
-				expect(helper, count(level, x - width / 2 - 1, x + width / 2, FLOOR, FLOOR + height - 1, Z - width / 2 - 1, Z + width / 2, SlagBrick.BLOCK) == ring,
+				expect(helper, count(level, lowX - 1, lowX + width, FLOOR, FLOOR + height - 1, lowZ - 1, lowZ + width, SlagBrick.BLOCK) == ring,
 						"the ring should be %d bricks", ring);
 				expect(helper, PodLining.cellsToLine(pod[0]).isEmpty(), "nothing is left to line");
 				pod[0].discard();
@@ -251,7 +259,7 @@ final class ChassisChecks {
 		PodEntity[] pod = {null};
 		int[] ticks = {0};
 		FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
-			pod[0] = spawn(level, new Vec3(x, FLOOR, Z));
+			pod[0] = spawn(level, new Vec3(x + middle, FLOOR, Z + middle));
 			ScannerPods.fit(helper.getLevel().getServer(), owner.player(), pod[0], ComponentTrack.SOUNDER, tier);
 		});
 		helper.onEachTick(() -> {
@@ -280,7 +288,7 @@ final class ChassisChecks {
 	void soundsTheSideOfAPocketAtTheTopOfTheBox(GameTestHelper helper) {
 		int x = 9192 + shift;
 		// The first column east of the footprint, level with the pod's top row (its height is height, so the top row is height - 1 above its feet).
-		sounds(helper, x, 2, level -> pocket(level, x + width / 2, FLOOR + height - 1, Z), pod -> {
+		sounds(helper, x, 2, level -> pocket(level, x - width / 2 + width, FLOOR + height - 1, Z), pod -> {
 			PodSounder.State state = PodSounder.reading(pod).orElseThrow(() -> failure(helper, "the pod has a sounder and so a reading"));
 			for (Direction side : Direction.Plane.HORIZONTAL) {
 				expect(helper, state.marks(side) == (side == Direction.EAST), "the sounder should mark %s %s, it reads %s", side, side == Direction.EAST ? "yes" : "no", state);

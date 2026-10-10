@@ -38,6 +38,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.OddPods;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 
 /**
@@ -224,24 +225,60 @@ public class PodLiningTest {
 		});
 	}
 
-	/** #382: the pilot sits with its feet below the pod's, in the cell under the pod; that is not in the way of the lining, but a stranger there is. */
+	/**
+	 * #382, changed by #400: the pilot's feet stand on the pod's floor, so they are not in the cell under the pod (a seat once hung them below it), and that
+	 * cell is lined; a stranger standing there blocks it.
+	 */
 	@GameTest
-	public void aRiderOfThePodDoesNotBlockTheCellUnderItButAStrangerDoes(GameTestHelper helper) {
+	public void aStrangerInTheCellUnderThePodBlocksItButItsPilotDoesNot(GameTestHelper helper) {
 		rock(helper);
 		BlockPos next = new BlockPos(4, 1, 4);
 		helper.setBlock(next, Blocks.LAVA);
 		Rig rig = seat(helper, "Seated pilot", 20);
 		AABB cell = new AABB(helper.absolutePos(next));
-		if (!rig.pilot.player().getBoundingBox().intersects(cell)) {
-			throw failure(helper, "the pilot's feet should be in the cell under the pod, %s, or this test shows nothing", rig.pilot.player().getBoundingBox());
+		if (rig.pilot.player().getBoundingBox().intersects(cell)) {
+			throw failure(helper, "the pilot's feet should be on the pod's floor, not in the cell under the pod, %s", rig.pilot.player().getBoundingBox());
 		}
 		if (!PodLining.cellsToLine(rig.pod).contains(helper.absolutePos(next))) {
-			throw failure(helper, "the pod's own pilot is in the cell under it, and that cell is still lined: %s", PodLining.cellsToLine(rig.pod));
+			throw failure(helper, "the cell under the pod is lined: %s", PodLining.cellsToLine(rig.pod));
 		}
 		MockPlayer stranger = MockPlayers.join(helper, "Stranger");
 		stranger.teleportTo(helper.getLevel(), helper.absoluteVec(Vec3.atBottomCenterOf(next)), 0f, 0f);
 		if (PodLining.cellsToLine(rig.pod).contains(helper.absolutePos(next))) {
 			throw failure(helper, "a stranger stands in the cell under the pod, so it is not lined: %s", PodLining.cellsToLine(rig.pod));
+		}
+		helper.succeed();
+	}
+
+	/**
+	 * A seat is per chassis, and one that hangs its rider's feet below the pod's own puts the rider in the cell under the pod. No shipped seat does
+	 * (#400), so the test chassis does, 0.1 below: the pod's own pilot must not stop that cell from being lined.
+	 */
+	@GameTest
+	public void aRiderWhoseFeetHangBelowThePodDoesNotBlockTheCellUnderIt(GameTestHelper helper) {
+		rock(helper);
+		// A 4-wide bore for the test chassis, x 3 to 6 and z 3 to 6, and the pod on its corner point (5, 5): the rider's box covers the cells 4 and 5.
+		for (int x = 3; x <= 6; x++) {
+			for (int y = 2; y <= 4; y++) {
+				for (int z = 3; z <= 6; z++) {
+					helper.setBlock(new BlockPos(x, y, z), Blocks.AIR);
+				}
+			}
+		}
+		BlockPos under = new BlockPos(5, 1, 5);
+		helper.setBlock(under, Blocks.LAVA);
+		PodEntity pod = helper.spawn(OddPods.TYPE, new Vec3(5, 2, 5));
+		MockPlayer pilot = MockPlayers.join(helper, "Low pilot");
+		pilot.player().setGameMode(GameType.SURVIVAL);
+		pilot.teleportTo(helper.getLevel(), pod.position(), 0f, 0f);
+		if (!pilot.player().startRiding(pod, true, false)) {
+			throw failure(helper, "the pilot could not board the pod");
+		}
+		if (!pilot.player().getBoundingBox().intersects(new AABB(helper.absolutePos(under)))) {
+			throw failure(helper, "the pilot's feet should hang into the cell under the pod, %s, or this test shows nothing", pilot.player().getBoundingBox());
+		}
+		if (!PodLining.cellsToLine(pod).contains(helper.absolutePos(under))) {
+			throw failure(helper, "the pod's own pilot hangs into the cell under it, and that cell is still lined: %s", PodLining.cellsToLine(pod));
 		}
 		helper.succeed();
 	}
