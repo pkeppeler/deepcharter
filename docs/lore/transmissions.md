@@ -149,7 +149,7 @@ The full script, settled 2026-10-07. Canon and context: [LORE.md](../LORE.md). T
 > …no action is required… …turn your lamp on… …all hands to Head Office… …hold the light… …Friday… …no action is required…
 
 **T32 · L5 the Switchboard · many sources, in Hal's voice**
-> [CREW]? [CREW]? That you, kids? I can hear you all the way down here. Everybody can hear you down here.
+> [CREW]? [CREW]? That you lot? I can hear you all the way down here. Everybody can hear you down here.
 
 **T33 · L5 the Switchboard · Personnel, Template 0**
 > `▌INCOMING — PERSONNEL, TEMPLATE 0`
