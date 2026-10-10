@@ -6,7 +6,9 @@ import java.util.Optional;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 
 /**
@@ -81,15 +83,6 @@ public final class ClientChecks {
 		return Optional.empty();
 	}
 
-	public static Optional<String> buttonOverlaps(Button button, List<Button> buttons) {
-		for (Button other : buttons) {
-			if (other != button && overlaps(Box.of(button), Box.of(other))) {
-				return Optional.of(labelOf(button) + " overlaps " + labelOf(other));
-			}
-		}
-		return Optional.empty();
-	}
-
 	/** {@code kind} names the line in the message. */
 	public static Optional<String> textLeavesScreen(Screen screen, String kind, int x, int y, String text) {
 		Box box = Box.ofText(x, y, text);
@@ -118,10 +111,18 @@ public final class ClientChecks {
 		return widget.getClass().getSimpleName() + " '" + widget.getMessage().getString() + "'";
 	}
 
-	/** The visible widgets the screen holds, in the order it holds them. */
-	public static List<AbstractWidget> widgets(Screen screen) {
+	/** Every visible widget the screen holds, in the order it holds them: what must lie inside the screen. */
+	public static List<AbstractWidget> visibleWidgets(Screen screen) {
 		return screen.children().stream().filter(AbstractWidget.class::isInstance).map(AbstractWidget.class::cast)
 				.filter(widget -> widget.visible).toList();
+	}
+
+	/**
+	 * The visible widgets a player can press or type into: a button (also when greyed out), a text field, or any other widget that is
+	 * active. A label or a panel is not one, so it may sit under a button without counting as an overlap.
+	 */
+	public static List<AbstractWidget> interactiveWidgets(Screen screen) {
+		return visibleWidgets(screen).stream().filter(widget -> widget instanceof AbstractButton || widget instanceof EditBox || widget.active).toList();
 	}
 
 	/** How far {@code box} reaches past each edge of the screen, as "5 px past the right edge, 3 px past the bottom edge"; empty when it lies inside. */
@@ -153,7 +154,7 @@ public final class ClientChecks {
 	}
 
 	/** The overlap is in pixels, width by height. */
-	public static Optional<String> widgetOverlaps(AbstractWidget widget, List<AbstractWidget> widgets) {
+	public static Optional<String> widgetOverlaps(AbstractWidget widget, List<? extends AbstractWidget> widgets) {
 		Box box = Box.of(widget);
 		for (AbstractWidget other : widgets) {
 			Box otherBox = Box.of(other);

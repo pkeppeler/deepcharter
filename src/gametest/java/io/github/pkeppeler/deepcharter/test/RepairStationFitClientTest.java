@@ -119,7 +119,7 @@ public class RepairStationFitClientTest implements FabricClientGameTest {
 			seen.add(label);
 			Optional<String> problem = ClientChecks.buttonLeavesScreen(screen, button)
 					.or(() -> ClientChecks.labelClipped(button))
-					.or(() -> ClientChecks.buttonOverlaps(button, buttons));
+					.or(() -> ClientChecks.widgetOverlaps(button, buttons));
 			if (problem.isPresent()) {
 				return problem;
 			}

@@ -64,7 +64,7 @@ public class UpgradeScreenLayoutClientTest implements FabricClientGameTest {
 		for (Button button : buttons) {
 			String when = "with " + track.id() + " chosen";
 			requireNone(when, ClientChecks.buttonLeavesScreen(screen, button));
-			requireNone(when, ClientChecks.buttonOverlaps(button, buttons));
+			requireNone(when, ClientChecks.widgetOverlaps(button, buttons));
 			require(ClientChecks.Box.of(button).bottom() <= HEIGHT - 8, when + ": " + ClientChecks.labelOf(button) + " ends at " + ClientChecks.Box.of(button).bottom() + ", under the 8 pixel margin of the " + HEIGHT + " pixel screen");
 		}
 	}
