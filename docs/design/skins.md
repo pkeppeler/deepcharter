@@ -8,12 +8,12 @@ Paths are under `src/main/resources/` in the repo and under `assets/deepcharter/
 
 | Kind | Path | Reload |
 |---|---|---|
-| UI theme: colours, sizes, spacing and visual timings of the CRT terminals, handbook paper, scanner, pod readout, altimeter, account line, transmissions, breach fade and cargo screen | `assets/deepcharter/theme/<area>.json`, areas `crt`, `handbook`, `scanner`, `hud`, `transmission`, `breach`, `cargo` | F3+T |
+| UI theme: colours, sizes, spacing and visual timings of the CRT terminals, handbook paper, scanner, pod readout, altimeter, account line, transmissions, breach fade and cargo screen | `assets/deepcharter/theme/<area>.json`, areas `crt`, `handbook`, `scanner`, `hud`, `transmission`, `breach`, `cargo`, `pod` | F3+T |
 | UI frames drawn as a panel (today: the pod cargo panel and slot) | `assets/deepcharter/textures/gui/sprites/cargo/panel.png` and `slot.png`, each with a nine-slice `.png.mcmeta` | F3+T |
 | Block look, with its layers (glow, animation, active state, connected casing; see [Textures](#textures)) | `blockstates/<id>.json`, `models/block/<id>.json`, `textures/block/*.png` and `*.png.mcmeta` | F3+T |
 | Item look | `items/<id>.json` (item definition), `models/item/<id>.json`, `textures/item/*.png` | F3+T |
 | Block and item texture art: palette and recipes | `tools/textures/palette.json` and `tools/textures/recipes/*.json` in the repo; a skin's own palette file (see [Textures](#textures)) | rebuild, then F3+T |
-| Pod look, per chassis (`mole`, `prospector`): the GeckoLib model, its textures and glowmasks, the wreck variant, and the **drill tier map** that picks the cutter ([ADR 0040](../adr/0040-a-pod-look-is-a-file-per-chassis-and-the-drill-tier-picks-the-cutter.md)) | `pod/<chassis>.json` (the look file: a pack replaces it whole), `geckolib/models/pod/<chassis>.geo.json` (Bedrock geometry, box UV, bones named as in `BoneRole`, the cutters as bone sets `drill_head_<cutter>`), `textures/entity/pod/<chassis>.png` and `<chassis>_glowmask.png` and the same with `_wreck`; the model and textures are written by `tools/pod_concepts.py` | F3+T |
+| Pod look, per chassis (`mole`, `prospector`): the GeckoLib model, its textures and glowmasks, the wreck variant, and the **drill tier map** that picks the cutter ([ADR 0040](../adr/0040-a-pod-look-is-a-file-per-chassis-and-the-drill-tier-picks-the-cutter.md)) | `pod/<chassis>.json` (the look file: a pack replaces it whole), `geckolib/models/pod/<chassis>.geo.json` (Bedrock geometry, box UV, bones named as in `BoneRole`, the cutters as bone sets `drill_head_<cutter>`), `textures/entity/pod/<chassis>.png` and `<chassis>_glowmask.png` and the same with `_wreck`, and the paint mask `<chassis>_paint.png`; the model and textures are written by `tools/pod_concepts.py` | F3+T |
 | Tow cable particle | `particles/tow_cable.json` and `textures/particle/tow_cable.png` | F3+T |
 | Entity texture (the lampless figure) | `textures/entity/<id>.png` | F3+T |
 | Text | `lang/en_us.json` (generated from `src/lang/en_us/<feature>.json`; never edit it) | F3+T |
@@ -87,7 +87,7 @@ The `rock` ramp is the stone the ores sit in. It matches the layer rock (vanilla
 
 ### Pod models
 
-A pod model is a Bedrock `.geo.json` that GeckoLib draws, box UV only, at true size in pixels (y up, the floor at 0, the front toward -z). Blockbench exports it, and `tools/pod_concepts.py` writes the shipped ones. Name a bone one of the words of `BoneRole` (`drill_mount`, `drill_head`, `drill_ring`, `rotor`, `fan`, `thruster`, `flame`, `wheel`, `links`, `leg`, `thigh` move; `body`, `canopy`, `lamps`, `winch` and the other still words ride along), alone or with a suffix: the game poses a bone by its word, so a re-export that keeps the names keeps the motion. There is no animation file.
+A pod model is a Bedrock `.geo.json` that GeckoLib draws, box UV only, at true size in pixels (y up, the floor at 0, the front toward -z). Blockbench exports it, and `tools/pod_concepts.py` writes the shipped ones. Name a bone one of the words of `BoneRole` (`drill_mount`, `drill_head`, `drill_ring`, `rotor`, `blade`, `fan`, `thruster`, `flame`, `wheel`, `links`, `leg`, `thigh` move; `body`, `canopy`, `lamps`, `winch` and the other still words ride along), alone or with a suffix: the game poses a bone by its word, so a re-export that keeps the names keeps the motion. There is no animation file.
 
 A **look file**, `pod/<chassis>.json`, picks the model and the textures (a glowmask is the texture's name with `_glowmask`, drawn at full bright while the pod has power) and holds the tier map. The drill tier picks the cutter: a model holds a bone set for each cutter (`drill_head_tricone`, `drill_ring_tricone`, `drill_head_stacked` and so on) and the map says from which tier each shows.
 
@@ -96,12 +96,15 @@ A **look file**, `pod/<chassis>.json`, picks the model and the textures (a glowm
   "model": "deepcharter:pod/mole",
   "texture": "deepcharter:textures/entity/pod/mole.png",
   "glow": "lit",
+  "paint": "deepcharter:textures/entity/pod/mole_paint.png",
   "cutters": {"0": "tricone", "1": "stacked", "2": "fluted", "3": "cluster"},
   "wreck": {"texture": "deepcharter:textures/entity/pod/mole_wreck.png", "glow": "never", "hide": ["rotor"]}
 }
 ```
 
 Re-map the cutters by replacing that file in a pack, with the same keys and other cutter names the model holds: F3+T applies it, and no build is needed. A tier shows the cutter of the highest key at or below it, and the map needs a key `0`, the stock drill. The tiers are the game's: the terminal shows the stock drill as `DRILL T0`. A look file that is broken (not JSON, an unknown key, a cutter or bone its model does not hold, a missing texture) does not stop the game: the game logs one error that names the pack, the file and the place, and draws the mod's own look for that chassis until the pack is fixed. `PodLookTest` and `PodGeoModelTest` check the shipped files, and `PodGeckoLibClientTest` checks that an install swaps the cutter in the game.
+
+**Paint per charter.** A charter's pods carry the paint colour its id picks from a palette, `theme/pod.json` (`paintCount`, then `paint0` to `paint<n-1>`, each `"#RRGGBB"`), so every pod of a charter is one colour and a pack restyles the palette on F3+T like any theme area (`PodPaintLook`). A pack adds a colour by raising `paintCount` and naming the new key. A pod of no charter keeps the stock paint, and a wreck is never painted (it has its own weathered texture). The look file's `paint` is the **paint mask**, `<chassis>_paint.png`, which `tools/pod_concepts.py` writes: a grey texel for each texel of the hull's paint, 128 for the base paint and brighter or darker for the shading, seams and rivets, and transparent everywhere else. The game multiplies the charter's colour by that grey and keeps every other texel as it was, once for each texture and colour (`PodPaint`). A look without a `paint` key is not painted. A pack that redraws the hull's texture redraws the mask too.
 
 The lampless figure keeps the vanilla zombie model and only its texture is a skin (ADR 0033). `SkinAssetsTest` checks that every pod look has its files, and every particle has its own.
 
@@ -135,7 +138,7 @@ One flat JSON object. A colour is a string, `"#RRGGBB"` (opaque) or `"#AARRGGBB"
 }
 ```
 
-The key names are the component names of the matching record: `CrtTuning` for `crt.json`, `HandbookScreenTuning`, and `ScannerLook`, `HudLook`, `TransmissionLook`, `BreachLook`, `CargoLook` in `client/theme/`. Each record's Javadoc says what a key does. The mod's own file at the bottom lists every key and is the reference.
+The key names are the component names of the matching record: `CrtTuning` for `crt.json`, `HandbookScreenTuning`, and `ScannerLook`, `HudLook`, `TransmissionLook`, `BreachLook`, `CargoLook`, `PodPaintLook` in `client/theme/`. Each record's Javadoc says what a key does. The mod's own file at the bottom lists every key and is the reference.
 
 An open screen follows the reload at once. A typewriter's speed is read when it starts, so it applies to the next text.
 

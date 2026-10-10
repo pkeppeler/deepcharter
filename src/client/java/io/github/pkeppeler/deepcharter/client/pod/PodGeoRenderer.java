@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalInt;
 import java.util.WeakHashMap;
 
 import com.geckolib.constant.DataTickets;
@@ -23,6 +24,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.phys.AABB;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.client.theme.PodPaintLook;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -40,8 +42,11 @@ public class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimatable, 
 	/** How far the hull shakes while the drill bites, in blocks. */
 	public static final float SHAKE = 0.02f;
 
-	/** What a pod shows: the cutter its drill tier picks (null for a model with one plain cutter), and its variant, intact or wreck. */
-	public record Appearance(String cutter, PodLook.Variant variant, boolean wrecked) {
+	/**
+	 * What a pod shows: the cutter its drill tier picks (null for a model with one plain cutter), its variant, intact or wreck, and the paint
+	 * colour of its charter (ARGB) when its hull is painted: an intact pod of a registered owner, on a look that has a paint mask.
+	 */
+	public record Appearance(String cutter, PodLook.Variant variant, boolean wrecked, OptionalInt paint) {
 		/** Whether the glowmask is drawn, given whether the pod's lamps are on. */
 		public boolean glows(boolean lit) {
 			return switch (variant.glow()) {
@@ -116,6 +121,9 @@ public class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimatable, 
 					checkTexture(resources, geo, variant.glowmask());
 				}
 			}
+			if (look.paintMask().isPresent()) {
+				checkTexture(resources, geo, look.paintMask().get());
+			}
 			return new Loaded(look, geo);
 		} catch (RuntimeException e) {
 			throw e.getMessage() != null && e.getMessage().contains(look.source()) ? e : new IllegalArgumentException(look.source() + ": " + e.getMessage(), e);
@@ -139,7 +147,17 @@ public class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimatable, 
 	public Appearance appearanceOf(PodEntity pod) {
 		boolean wrecked = Wrecks.isWreck(pod);
 		String cutter = geo.cutters().isEmpty() ? null : look.cutterFor(PodComponents.effectiveTier(pod, ComponentTrack.DRILL));
-		return new Appearance(cutter, wrecked ? look.wreck() : look.intact(), wrecked);
+		OptionalInt paint = OptionalInt.empty();
+		if (!wrecked && look.paintMask().isPresent()) {
+			paint = PodComponents.registration(pod).map(registration -> OptionalInt.of(PodPaintLook.current().paintOf(registration.owner()))).orElse(OptionalInt.empty());
+		}
+		return new Appearance(cutter, wrecked ? look.wreck() : look.intact(), wrecked, paint);
+	}
+
+	/** The texture {@code appearance} is drawn with: its variant's, painted in its paint colour if it has one. */
+	public Identifier textureOf(Appearance appearance) {
+		Identifier texture = appearance.variant().texture();
+		return appearance.paint().isPresent() ? PodPaint.texture(texture, look.paintMask().orElseThrow(), appearance.paint().getAsInt()) : texture;
 	}
 
 	/**
@@ -182,6 +200,7 @@ public class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimatable, 
 	public void addRenderData(PodGeoAnimatable animatable, PodEntity pod, PodGeoRenderState state, float partialTick) {
 		Appearance appearance = appearanceOf(pod);
 		state.appearance = appearance;
+		state.texture = textureOf(appearance);
 		motions.computeIfAbsent(pod, ignored -> new PodMotion()).advance(pod, state, pose.mountRestPitch(), spinScaleOf(appearance));
 		// The pod turns as its motion says (towards where it drives or drills), not as its entity yaw does.
 		state.addGeckolibData(DataTickets.ENTITY_BODY_YAW, state.heading);
