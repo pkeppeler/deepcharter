@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""Writes the lampless figure concepts of #250: four models of a counterfeit miner, each with its texture and its animations.
+"""Writes the lampless figure (#250): the Reacher, a counterfeit miner, with its texture and its animations.
 
 Usage:
-  python3 -I tools/figure_concepts.py           write the concepts into src/main/resources
-  python3 -I tools/figure_concepts.py --check   exit 1 if a written file differs from what this script makes
+  python3 -I tools/lampless_figure.py           write the model, texture and animations into src/main/resources
+  python3 -I tools/lampless_figure.py --check   exit 1 if a written file differs from what this script makes
 
 Art direction section 10: almost a miner, but too tall and thin, with joints in the wrong places; matte black, even in the
-lamp beam; an empty lamp bracket on the helmet; no face; edges slightly smeared; wrong, not gory. The four options differ in
-where the wrongness lives (the neck, the knees, the arms, the joints) and in how the figure stands when it is idle, so they
-differ in silhouette and not in colour.
+lamp beam; an empty lamp bracket on the helmet; no face; edges slightly smeared; wrong, not gory. The Reacher's wrongness is in
+the limbs: arms that reach the knees, a second joint in each forearm and each shin, and a stoop. It was the user's pick of the
+four concepts of round 1 (docs/design/figure-concepts.md).
 
 The output is plain Blockbench-compatible data, the same path as the pods (tools/pod_concepts.py): a Bedrock geometry with box UV
-and named bones, a texture, and a GeckoLib animation file with an idle and a walk. The game draws one of them only when the dev
-switch -Ddeepcharter.figureConcept=<id> names it (client/creature/FigureConcept). Model space is Bedrock's: pixels, y up, the
-floor at y 0, the front toward -z, the figure's left toward +x. A bone's rest rotation and an animation's rotation are degrees;
-a positive x angle tips the top of a bone forward and swings the foot of a hanging bone back.
+and named bones, a texture, and a GeckoLib animation file with an idle and a walk. The game always draws it
+(client/creature/LamplessFigureRenderer). Model space is Bedrock's: pixels, y up, the floor at y 0, the front toward -z, the
+figure's left toward +x. A bone's rest rotation and an animation's rotation are degrees; a positive x angle tips the top of a bone
+forward and swings the foot of a hanging bone back.
 """
 import argparse
 import json
@@ -32,21 +32,22 @@ import pod_concepts as pc  # noqa: E402
 
 ROOT = pc.ROOT
 ASSETS = pc.ASSETS
-MODEL_DIR = ASSETS / "geckolib/models/creature/figure"
-TEXTURE_DIR = ASSETS / "textures/entity/creature/figure"
-ANIMATION_DIR = ASSETS / "geckolib/animations/creature/figure"
+ID = "lampless_figure"
+MODEL_FILE = ASSETS / f"geckolib/models/creature/{ID}.geo.json"
+TEXTURE_FILE = ASSETS / f"textures/entity/{ID}.png"
+ANIMATION_FILE = ASSETS / f"geckolib/animations/creature/{ID}.animation.json"
 TEXTURE_SIZE = 128
 
-# Too tall and thin: a miner is about 36 px, an option is at least 1.2 times that. Every option is 44 px (2.75 blocks) to within half a pixel,
+# Too tall and thin: a miner is about 36 px, the figure is at least 1.2 times that. It is 44 px (2.75 blocks) to within half a pixel,
 # so MIN_HEIGHT_PX and MAX_HEIGHT_PX are that figure either side. The body (the head, torso and legs, not the arms) is at most
 # MAX_WIDTH_PX across.
 MIN_HEIGHT_PX = 43.5
 MAX_HEIGHT_PX = 44.5
 MAX_WIDTH_PX = 16
-# The box the renderer culls by (FigureConceptRenderer): the tallest and widest the figure can stand, with its lean and its arms.
+# The box the renderer culls by (LamplessFigureRenderer): the tallest and widest the figure can stand, with its lean and its arms.
 CULL_HEIGHT_PX = 48
 CULL_REACH_PX = 24
-# Two options may share at most this share of their silhouette (overlap of the front views, and of the side views).
+# The figure may share at most this share of its silhouette with a miner's (overlap of the front views, and of the side views).
 MAX_SILHOUETTE_OVERLAP = 0.70
 # Matte black: no texel of the texture is brighter than this (0 to 255), so the figure is black in the beam too.
 MAX_LUMA = 36
@@ -102,7 +103,7 @@ class FigureModel(pc.Model):
 
 
 # ---------------------------------------------------------------------------------------------
-# A figure is a spec: the same builder makes the miner and every option, so what differs is the numbers.
+# A figure is a spec: the same builder makes the miner and the figure, so what differs is the numbers.
 # ---------------------------------------------------------------------------------------------
 
 
@@ -245,7 +246,7 @@ def frays(bone, rng, count, width, depth, bottom, x_centre=0.0, z_centre=0.0):
 
 
 # ---------------------------------------------------------------------------------------------
-# The miner every option is a counterfeit of, and the four options
+# The miner the figure is a counterfeit of, and the figure
 # ---------------------------------------------------------------------------------------------
 
 LEG = lambda name, length, w=3, d=3, rest=0.0: Seg(name, length, w, d, rest)  # noqa: E731
@@ -264,33 +265,15 @@ MINER = Spec(
     arms=(Seg("upper_arm", 5, 4, 4), Seg("forearm", 5, 4, 4), Seg("hand", 2, 4, 4)),
     walk=Walk(thigh=24, leg_bends=(18,), arm=18, arm_bends=(-10,)), hem_frays=0, sleeve_frays=0)
 
-CANDLE = Spec(
-    torso=(6, 10, 3), torso_below_hip=0, neck=(2, 6, 2), head=(5, 6, 5), hip_x=1.5, shoulder_x=3.5, shoulder_drop=1, shoulder_z=0,
-    legs=(LEG("thigh", 8), LEG("shin", 7), BOOT),
-    arms=arm_segs(("upper_arm", 6, 0), ("forearm", 6, 0)),
-    walk=Walk(thigh=18, leg_bends=(26,), arm=10, arm_bends=(-8,)))
-
-HERON = Spec(
-    torso=(6, 7, 4), torso_below_hip=0, neck=(3, 2, 3), head=(5, 6, 5), hip_x=3.5, shoulder_x=4, shoulder_drop=1, shoulder_z=0,
-    legs=(LEG("thigh", 12, rest=24), LEG("shin", 12, rest=-48), BOOT),
-    arms=arm_segs(("upper_arm", 8, 0), ("forearm", 7, 0)),
-    walk=Walk(thigh=20, leg_bends=(-38,), arm=12, arm_bends=(-8,)))
-
 REACHER = Spec(
     torso=(7, 9, 3), torso_below_hip=0, neck=(2, 2, 2), head=(5, 6, 5), hip_x=2, shoulder_x=4.5, shoulder_drop=1, shoulder_z=0,
     legs=(LEG("thigh", 8, rest=6), LEG("shin", 6, rest=-14), LEG("shin_low", 6, rest=16), BOOT),
     arms=arm_segs(("upper_arm", 7, 4, 14), ("forearm", 5, -14, -8), ("forearm_low", 5, 20, 6)),
     walk=Walk(thigh=16, leg_bends=(22, -18), arm=10, arm_bends=(-12, 14)), lean=16)
 
-MISFIT = Spec(
-    torso=(10, 13, 4), torso_below_hip=5, neck=(2, 2, 2), head=(5, 6, 5), hip_x=2, shoulder_x=3, shoulder_drop=6, shoulder_z=-3,
-    legs=(LEG("thigh", 5, rest=-10), LEG("shin", 16, rest=10), BOOT),
-    arms=arm_segs(("upper_arm", 14, -6, 32), ("forearm", 5, 0, -32)),
-    walk=Walk(thigh=26, leg_bends=(18,), arm=8, arm_bends=(-6,)))
-
 
 def miner():
-    """The plain miner the options are counterfeits of: a person's proportions, a hard hat, no wrongness. Not a concept."""
+    """The plain miner the figure is a counterfeit of: a person's proportions, a hard hat, no wrongness. The baseline of the tests."""
     return build_model("miner", MINER)
 
 
@@ -314,10 +297,6 @@ def lowest(model, name):
     return min(p[1] for cube in bone.cubes for p in pc.corners(model, bone, cube))
 
 
-def cube_height(model, name):
-    return bone_named(model, name).cubes[0].size[1]
-
-
 def has_bone(model, name):
     return any(bone.name == name for bone in model.bones)
 
@@ -338,6 +317,33 @@ def extent(model, skip=()):
                 lo[i] = min(lo[i], p[i])
                 hi[i] = max(hi[i], p[i])
     return lo, hi
+
+
+def posed_extents(model, animations):
+    """The lowest and highest x, y and z of the model at every keyframe of the given animations (each a dict bone -> {"rotation": {time: [x, y, z]}}),
+    with each keyframe added to the bone's rest rotation. Whether GeckoLib adds or subtracts an animation's angle is not modelled, so both signs are tried."""
+    lo = [math.inf] * 3
+    hi = [-math.inf] * 3
+    for bones in animations:
+        times = sorted({t for channels in bones.values() for t in channels["rotation"]})
+        for time in times:
+            for sign in (1, -1):
+                rests = {bone.name: bone.rotation for bone in model.bones}
+                for bone in model.bones:
+                    delta = bones.get(bone.name, {}).get("rotation", {}).get(time)
+                    if delta is not None:
+                        bone.rotation = tuple(r + sign * d for r, d in zip(rests[bone.name], delta))
+                pose_lo, pose_hi = extent(model)
+                for bone in model.bones:
+                    bone.rotation = rests[bone.name]
+                lo = [min(a, b) for a, b in zip(lo, pose_lo)]
+                hi = [max(a, b) for a, b in zip(hi, pose_hi)]
+    return lo, hi
+
+
+def animated_bones():
+    """The idle's and the walk's rotation channels, as {bone: {"rotation": {time: [x, y, z]}}}."""
+    return [idle_bones()[1], walk_bones(REACHER)[1]]
 
 
 def body_width(model):
@@ -367,57 +373,24 @@ def luma(rgba):
 
 
 # ---------------------------------------------------------------------------------------------
-# The options: what is wrong with each, and how it stands
+# What is wrong with the figure
 # ---------------------------------------------------------------------------------------------
 
 
-class Option:
-    def __init__(self, name, title, spec, idle, claims):
-        self.name = name
-        self.title = title
-        self.spec = spec
-        # One of upright, listening, tilted, thrown-back: how the figure stands when it is idle.
-        self.idle = idle
-        # (text, test(model) -> bool): what the option says is wrong with it, checked on its model. Each is false of the plain miner.
-        self.claims = claims
-
-    def model(self):
-        return build_model(self.name, self.spec)
+# (text, test(model) -> bool): what the figure says is wrong with it, checked on its model. Each is false of the plain miner.
+CLAIMS = [
+    ("the hands reach the knees", lambda m: lowest(m, "hand_l") <= joint(m, "shin_l")[1] + 1),
+    ("the forearm has a second elbow that bends the wrong way",
+     lambda m: has_bone(m, "forearm_low_l") and bone_named(m, "forearm_low_l").rotation[0] > 0 > bone_named(m, "forearm_l").rotation[0]),
+    ("the shin has a second knee", lambda m: has_bone(m, "shin_low_l") and bone_named(m, "shin_low_l").rotation[0] > 0 > bone_named(m, "shin_l").rotation[0]),
+    ("the torso stoops forward 12 degrees or more", lambda m: bone_named(m, "spine").rotation[0] >= 12),
+    ("each arm is at least 1.8 times as long as the torso", lambda m: joint(m, "upper_arm_l")[1] - lowest(m, "hand_l") >= 1.8 * torso_cube(m).size[1]),
+]
 
 
-def height_of(model):
-    return extent(model)[1][1]
+def figure():
+    return build_model(ID, REACHER)
 
-
-OPTIONS = {
-    "candle": Option("candle", "Candle", CANDLE, "upright", [
-        ("the neck is as long as the head is tall, so the helmet sits high", lambda m: cube_height(m, "neck") >= cube_height(m, "head")),
-        ("the shoulders are narrower than 9 px across", lambda m: abs(joint(m, "upper_arm_l")[0] - joint(m, "upper_arm_r")[0]) < 9),
-        ("the helmet stands at least 42 px high", lambda m: height_of(m) >= 42),
-    ]),
-    "heron": Option("heron", "Heron", HERON, "listening", [
-        ("the knees bend backward: each knee is behind its hip and its ankle",
-         lambda m: joint(m, "shin_l")[2] - joint(m, "thigh_l")[2] >= 4 and joint(m, "shin_l")[2] - joint(m, "foot_l")[2] >= 4),
-        ("the torso is under 40 percent of the leg", lambda m: torso_cube(m).size[1] <= 0.4 * joint(m, "thigh_l")[1]),
-        ("the hands hang below the hips", lambda m: lowest(m, "hand_l") < joint(m, "thigh_l")[1] - 8),
-        ("seen from the front the legs stand on stilts, 3 px or more apart", lambda m: joint(m, "thigh_l")[0] - joint(m, "thigh_r")[0] - bone_named(m, "thigh_l").cubes[0].size[0] >= 3),
-    ]),
-    "reacher": Option("reacher", "Reacher", REACHER, "tilted", [
-        ("the hands reach the knees", lambda m: lowest(m, "hand_l") <= joint(m, "shin_l")[1] + 1),
-        ("the forearm has a second elbow that bends the wrong way",
-         lambda m: has_bone(m, "forearm_low_l") and bone_named(m, "forearm_low_l").rotation[0] > 0 > bone_named(m, "forearm_l").rotation[0]),
-        ("the shin has a second knee", lambda m: has_bone(m, "shin_low_l") and bone_named(m, "shin_low_l").rotation[0] > 0 > bone_named(m, "shin_l").rotation[0]),
-        ("the torso stoops forward 12 degrees or more", lambda m: bone_named(m, "spine").rotation[0] >= 12),
-        ("each arm is at least 1.8 times as long as the torso", lambda m: joint(m, "upper_arm_l")[1] - lowest(m, "hand_l") >= 1.8 * torso_cube(m).size[1]),
-    ]),
-    "misfit": Option("misfit", "Misfit", MISFIT, "thrown-back", [
-        ("the shoulders are set in the middle of the chest", lambda m: 0.35 <= (torso_cube(m).origin[1] + torso_cube(m).size[1] - joint(m, "upper_arm_l")[1]) / torso_cube(m).size[1] <= 0.65),
-        ("the elbows hang below the hips", lambda m: joint(m, "forearm_l")[1] < joint(m, "thigh_l")[1]),
-        ("seen from the front the elbows bow out, 6 px or more beyond the shoulders", lambda m: joint(m, "forearm_l")[0] - joint(m, "upper_arm_l")[0] >= 6),
-        ("the thigh is under 40 percent of the shin, so the knees sit high", lambda m: bone_named(m, "thigh_l").cubes[0].size[1] <= 0.4 * bone_named(m, "shin_l").cubes[0].size[1]),
-        ("the hips are inside the torso", lambda m: torso_cube(m).origin[1] <= joint(m, "thigh_l")[1] - 4),
-    ]),
-}
 
 # ---------------------------------------------------------------------------------------------
 # Rules
@@ -435,6 +408,10 @@ def check_figure(model):
         raise ValueError(f"{model.name} is {body_width(model):.1f} px across the body, not thin: at most {MAX_WIDTH_PX}")
     if hi[1] > CULL_HEIGHT_PX or max(-lo[0], hi[0], -lo[2], hi[2]) > CULL_REACH_PX:
         raise ValueError(f"{model.name} leaves the box the renderer culls by: height {hi[1]:.1f} of {CULL_HEIGHT_PX}, reach {max(-lo[0], hi[0], -lo[2], hi[2]):.1f} of {CULL_REACH_PX}")
+    posed_lo, posed_hi = posed_extents(model, animated_bones())
+    if posed_hi[1] > CULL_HEIGHT_PX or max(-posed_lo[0], posed_hi[0], -posed_lo[2], posed_hi[2]) > CULL_REACH_PX:
+        raise ValueError(f"{model.name} leaves the box the renderer culls by while it moves: height {posed_hi[1]:.1f} of {CULL_HEIGHT_PX}, "
+                         f"reach {max(-posed_lo[0], posed_hi[0], -posed_lo[2], posed_hi[2]):.1f} of {CULL_REACH_PX}")
     if not has_bone(model, "lamp_bracket") or len(bone_named(model, "lamp_bracket").cubes) < 3:
         raise ValueError(f"{model.name} has no lamp bracket of three or more cubes on its helmet")
     for bone in model.bones:
@@ -493,7 +470,7 @@ def read_png(data):
 
 
 # ---------------------------------------------------------------------------------------------
-# Animations: an idle that holds the pose of the option, and a walk
+# Animations: an idle that holds the pose, and a walk
 # ---------------------------------------------------------------------------------------------
 
 
@@ -523,43 +500,16 @@ def sway(length, steps, base, amplitude, axis, phase=0.0):
     return out
 
 
-def idle_bones(kind):
+def idle_bones():
+    """Stands stooped with the head tipped well over to one side, the wrong way for a neck, and the arms swaying."""
     zero = [0, 0, 0]
-    if kind == "upright":
-        # Still and too upright: nothing moves but a drift of under half a degree, so that the thing is not a statue.
-        length = 8.0
-        return length, {
-            "neck": frames(sway(length, 4, zero, 0.4, 1)),
-            "head": frames(sway(length, 4, zero, 0.3, 0, 1.0)),
-        }
-    if kind == "listening":
-        # Leans forward from the hips as if listening, the head cocked and pushed out.
-        length = 5.0
-        return length, {
-            "spine": frames(sway(length, 4, [14, 0, 0], 1.0, 0)),
-            "neck": frames(hold(length, [10, 0, 0])),
-            "head": frames(sway(length, 4, [6, 0, 12], 1.5, 2)),
-            "upper_arm_l": frames(hold(length, [-8, 0, 0])),
-            "upper_arm_r": frames(hold(length, [-8, 0, 0])),
-        }
-    if kind == "tilted":
-        # Stands straight with the head tipped well over to one side, the wrong way for a neck.
-        length = 6.0
-        return length, {
-            "neck": frames(hold(length, [0, 0, 8])),
-            "head": frames(sway(length, 4, [2, 0, 26], 2.5, 2)),
-            "upper_arm_l": frames(sway(length, 4, zero, 1.5, 0)),
-            "upper_arm_r": frames(sway(length, 4, zero, 1.5, 0, math.pi)),
-        }
-    if kind == "thrown-back":
-        # The head thrown back so that the helmet looks at the ceiling, the body hanging and swaying a little from the hips.
-        length = 6.0
-        return length, {
-            "spine": frames(sway(length, 4, zero, 2.5, 2)),
-            "neck": frames(hold(length, [-10, 0, 0])),
-            "head": frames(sway(length, 4, [-24, 0, 0], 2.0, 0)),
-        }
-    raise ValueError(f"unknown idle {kind}")
+    length = 6.0
+    return length, {
+        "neck": frames(hold(length, [0, 0, 8])),
+        "head": frames(sway(length, 4, [2, 0, 26], 2.5, 2)),
+        "upper_arm_l": frames(sway(length, 4, zero, 1.5, 0)),
+        "upper_arm_r": frames(sway(length, 4, zero, 1.5, 0, math.pi)),
+    }
 
 
 def walk_bones(spec):
@@ -586,10 +536,10 @@ def vector_text(values):
     return "[" + ", ".join(pc.number(v) for v in values) + "]"
 
 
-def animation_json(option):
+def animation_json(spec):
     """The GeckoLib animation file: animation.figure.idle and animation.figure.walk, both looping, bones as the model names them."""
-    idle_length, idle = idle_bones(option.idle)
-    walk_length, walk = walk_bones(option.spec)
+    idle_length, idle = idle_bones()
+    walk_length, walk = walk_bones(spec)
     lines = ["{", '\t"format_version": "1.8.0",', '\t"animations": {']
     blocks = []
     for name, length, bones in (("animation.figure.idle", idle_length, idle), ("animation.figure.walk", walk_length, walk)):
@@ -611,25 +561,24 @@ def animation_json(option):
 # ---------------------------------------------------------------------------------------------
 
 
-def build(name):
-    """Makes an option: its model, rules and files, keyed by path."""
-    option = OPTIONS[name]
-    model = option.model()
+def build():
+    """Makes the figure: its model and its three files, keyed by path. Throws if the model or the texture breaks a rule."""
+    model = figure()
     check_figure(model)
     pack(model)
     canvas = paint_figure(model)
-    check_matte(name, canvas)
+    check_matte(ID, canvas)
     files = {
-        MODEL_DIR / f"{name}.geo.json": pc.geo_json(model).encode(),
-        TEXTURE_DIR / f"{name}.png": canvas.png(),
-        ANIMATION_DIR / f"{name}.animation.json": animation_json(option).encode(),
+        MODEL_FILE: pc.geo_json(model).encode(),
+        TEXTURE_FILE: canvas.png(),
+        ANIMATION_FILE: animation_json(REACHER).encode(),
     }
     return model, files
 
 
-def describe(name, model):
+def describe(model):
     lo, hi = extent(model)
-    return f"{name}: {len(model.bones)} bones, {len(model.cubes())} cubes, {round(hi[1])} px tall ({round(hi[1]) / 16:.2f} blocks), body {body_width(model):.1f} px across, idle {OPTIONS[name].idle}"
+    return f"{ID}: {len(model.bones)} bones, {len(model.cubes())} cubes, {round(hi[1])} px tall ({round(hi[1]) / 16:.2f} blocks), body {body_width(model):.1f} px across"
 
 
 def main(argv=None):
@@ -637,18 +586,17 @@ def main(argv=None):
     parser.add_argument("--check", action="store_true", help="fail if a written file differs from what this script makes")
     args = parser.parse_args(argv)
     stale = []
-    for name in OPTIONS:
-        model, files = build(name)
-        print(describe(name, model))
-        for path, data in files.items():
-            if args.check:
-                if not path.exists() or path.read_bytes() != data:
-                    stale.append(path.relative_to(ROOT))
-            else:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_bytes(data)
+    model, files = build()
+    print(describe(model))
+    for path, data in files.items():
+        if args.check:
+            if not path.exists() or path.read_bytes() != data:
+                stale.append(path.relative_to(ROOT))
+        else:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
     if stale:
-        print("stale, run python3 -I tools/figure_concepts.py: " + ", ".join(str(p) for p in stale), file=sys.stderr)
+        print("stale, run python3 -I tools/lampless_figure.py: " + ", ".join(str(p) for p in stale), file=sys.stderr)
         return 1
     return 0
 

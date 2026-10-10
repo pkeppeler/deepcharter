@@ -1,9 +1,9 @@
 package io.github.pkeppeler.deepcharter.client.creature;
 
-import net.minecraft.client.renderer.entity.state.HumanoidRenderState;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
 
-/** Per-frame copy of what the placeholder renderer needs. */
-public class LamplessFigureRenderState extends HumanoidRenderState {
+/** Per-frame copy of what the renderer needs. */
+public class LamplessFigureRenderState extends EntityRenderState {
 	/** 0 when whole, up to 1 as the figure fades out. */
 	public float fade;
 }
