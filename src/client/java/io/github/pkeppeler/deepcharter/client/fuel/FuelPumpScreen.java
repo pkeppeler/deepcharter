@@ -78,11 +78,11 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
 	@Override
 	protected void layout() {
 		buyButtons.clear();
-		int closeY = height - MARGIN - BUTTON_HEIGHT;
-		addRenderableWidget(new CrtButton(MARGIN, closeY, BUTTON_WIDTH, BUTTON_HEIGHT,
+		int closeY = contentBottom(MARGIN) - BUTTON_HEIGHT;
+		addRenderableWidget(new CrtButton(contentLeft(MARGIN), closeY, BUTTON_WIDTH, BUTTON_HEIGHT,
 				Component.translatable("screen.deepcharter.terminal.close"), button -> onClose()));
 		int rowY = closeY - GAP - BUTTON_HEIGHT;
-		int x = MARGIN;
+		int x = contentLeft(MARGIN);
 		for (int litres : FuelTuning.DEFAULT.purchaseSteps()) {
 			buyButtons.add(addRenderableWidget(new CrtButton(x, rowY, BUTTON_WIDTH, BUTTON_HEIGHT,
 					Component.translatable("screen.deepcharter.fuel_pump.buy", litres), button -> buy(litres))));
@@ -129,16 +129,16 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		CrtTuning tuning = CrtTuning.current();
-		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), MARGIN, width);
-		int below = drawTypewriter(graphics, typewriter, MARGIN, MARGIN + font.lineHeight + 14, width - 2 * MARGIN);
+		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), contentLeft(MARGIN), contentTop(MARGIN), contentRight(MARGIN));
+		int below = drawTypewriter(graphics, typewriter, contentLeft(MARGIN), contentTop(MARGIN) + font.lineHeight + 14, contentWidth(MARGIN));
 		Optional<PodEntity> pod = pod();
 		int y = below + GAP;
-		CrtDraw.glowText(graphics, font, Component.translatable("screen.deepcharter.terminal.account", balance()).getString(), MARGIN, y, tuning.phosphorColor());
+		CrtDraw.glowText(graphics, font, Component.translatable("screen.deepcharter.terminal.account", balance()).getString(), contentLeft(MARGIN), y, tuning.phosphorColor());
 		y += font.lineHeight + GAP;
 		String tank = pod.map(found -> Component.translatable("screen.deepcharter.fuel_pump.tank",
 				String.format(Locale.ROOT, "%.1f", FuelPump.litres(found)), String.format(Locale.ROOT, "%.0f", PodStats.of(found).tankLitres())).getString())
 				.orElseGet(() -> Component.translatable("screen.deepcharter.fuel_pump.no_pod").getString());
-		CrtDraw.glowText(graphics, font, tank, MARGIN, y, tuning.phosphorColor());
+		CrtDraw.glowText(graphics, font, tank, contentLeft(MARGIN), y, tuning.phosphorColor());
 		refreshButtons(pod);
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 	}

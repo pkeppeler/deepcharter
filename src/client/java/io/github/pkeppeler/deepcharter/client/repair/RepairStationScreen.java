@@ -14,8 +14,6 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.FormattedText;
-import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
@@ -26,6 +24,7 @@ import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
+import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -83,6 +82,10 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 		rebuildWidgets();
 	}
 
+	public Typewriter typewriter() {
+		return typewriter;
+	}
+
 	private static List<Row> rows() {
 		List<Row> rows = new ArrayList<>();
 		for (int hp : REPAIR_STEPS) {
@@ -103,7 +106,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 
 	/** The y where the intro starts, below the header. */
 	private int introTop() {
-		return MARGIN + font.lineHeight + 14;
+		return contentTop(MARGIN) + font.lineHeight + 14;
 	}
 
 	private int lineStep() {
@@ -112,11 +115,10 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 
 	/** The intro as wrapped once it has typed out in full, one entry per line, where each is drawn. */
 	public List<TextLine> introLines() {
-		List<String> wrapped = font.getSplitter().splitLines(FormattedText.of(typewriter.text()), width - 2 * MARGIN, Style.EMPTY)
-				.stream().map(FormattedText::getString).toList();
+		List<String> wrapped = CrtText.wrap(font, typewriter.text(), contentWidth(MARGIN));
 		List<TextLine> lines = new ArrayList<>();
 		for (int i = 0; i < wrapped.size(); i++) {
-			lines.add(new TextLine(wrapped.get(i), MARGIN, introTop() + i * lineStep(), false));
+			lines.add(new TextLine(wrapped.get(i), contentLeft(MARGIN), introTop() + i * lineStep(), false));
 		}
 		return lines;
 	}
@@ -134,7 +136,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 
 	/** CLOSE sits near the bottom edge, so that the list gets the space above it. */
 	private int closeY() {
-		return height - GAP - BUTTON_HEIGHT;
+		return contentBottom(GAP) - BUTTON_HEIGHT;
 	}
 
 	/** How many rows fit between the header and CLOSE, at least one. */
@@ -170,12 +172,12 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 		rowButtons.clear();
 		for (int i = firstRow; i < Math.min(rows.size(), firstRow + visible); i++) {
 			Row row = rows.get(i);
-			CrtButton button = new CrtButton(MARGIN, listTop() + (i - firstRow) * (BUTTON_HEIGHT + GAP), COLUMN_WIDTH, BUTTON_HEIGHT, row.label(),
+			CrtButton button = new CrtButton(contentLeft(MARGIN), listTop() + (i - firstRow) * (BUTTON_HEIGHT + GAP), COLUMN_WIDTH, BUTTON_HEIGHT, row.label(),
 					pressed -> ClientPlayNetworking.send(new TerminalActionPayload(view.pos(), row.action(), row.args())));
 			rowButtons.add(button);
 			addRenderableWidget(button);
 		}
-		addRenderableWidget(new CrtButton(MARGIN, closeY(), CLOSE_WIDTH, BUTTON_HEIGHT,
+		addRenderableWidget(new CrtButton(contentLeft(MARGIN), closeY(), CLOSE_WIDTH, BUTTON_HEIGHT,
 				Component.translatable("screen.deepcharter.terminal.close"), button -> onClose()));
 	}
 
@@ -188,9 +190,9 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 				.orElse(Component.translatable("screen.deepcharter.repair.no_pod"));
 		int hullY = headerBottom() - font.lineHeight;
 		List<TextLine> lines = new ArrayList<>();
-		lines.add(new TextLine(account, MARGIN, hullY - GAP - font.lineHeight, false));
-		lines.add(new TextLine(hull.getString().toUpperCase(Locale.ROOT), MARGIN, hullY, false));
-		scrollHint().ifPresent(hint -> lines.add(new TextLine(hint, MARGIN + CLOSE_WIDTH + GAP, closeY() + (BUTTON_HEIGHT - font.lineHeight) / 2, true)));
+		lines.add(new TextLine(account, contentLeft(MARGIN), hullY - GAP - font.lineHeight, false));
+		lines.add(new TextLine(hull.getString().toUpperCase(Locale.ROOT), contentLeft(MARGIN), hullY, false));
+		scrollHint().ifPresent(hint -> lines.add(new TextLine(hint, contentLeft(MARGIN) + CLOSE_WIDTH + GAP, closeY() + (BUTTON_HEIGHT - font.lineHeight) / 2, true)));
 		return lines;
 	}
 
@@ -261,8 +263,8 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		CrtTuning tuning = CrtTuning.current();
-		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), MARGIN, width);
-		drawTypewriter(graphics, typewriter, MARGIN, introTop(), width - 2 * MARGIN);
+		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), contentLeft(MARGIN), contentTop(MARGIN), contentRight(MARGIN));
+		drawTypewriter(graphics, typewriter, contentLeft(MARGIN), introTop(), contentWidth(MARGIN));
 		for (TextLine line : textLines()) {
 			CrtDraw.glowText(graphics, font, line.text(), line.x(), line.y(), line.dim() ? tuning.dimColor() : tuning.phosphorColor());
 		}

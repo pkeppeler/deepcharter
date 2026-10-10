@@ -25,6 +25,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.client.theme.BreachLook;
 import io.github.pkeppeler.deepcharter.client.theme.CargoLook;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
+import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.theme.PodPaintLook;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.client.theme.TransmissionLook;
@@ -163,9 +164,57 @@ public class ThemeLooksTest {
 		helper.succeed();
 	}
 
+	/** The machine panel (#246 concept round): the mod ships it off and with every decal slot empty, so a terminal is the CRT it always was. */
+	@GameTest
+	public void thePanelIsOffAndEmptyInTheDefaultTheme(GameTestHelper helper) {
+		PanelLook look = PanelLook.of(area("panel", null));
+		if (look.enabled()) {
+			throw fail(helper, "the panel must be off in the mod's own theme");
+		}
+		for (PanelLook.Decal decal : List.of(look.nameplate(), look.dressA(), look.dressB(), look.dressC(), look.dressD())) {
+			if (decal.on()) {
+				throw fail(helper, "a decal slot must be empty in the mod's own theme, got " + decal);
+			}
+		}
+		if (look.pipSize() != 0) {
+			throw fail(helper, "no pip in the mod's own theme, got " + look.pipSize());
+		}
+		helper.succeed();
+	}
+
+	/** A pack switches the panel on and places a decal from the right edge and the bottom edge by naming a few keys. */
+	@GameTest
+	public void aPackSwitchesThePanelOnAndAnchorsDecals(GameTestHelper helper) {
+		PanelLook look = PanelLook.of(area("panel", """
+				{ "enabled": 1, "insetTop": 18, "nameplateW": 70, "nameplateH": 14, "nameplateAnchorX": 2, "nameplateX": 6,
+				  "dressAW": 30, "dressAH": 20, "dressAAnchorX": 1, "dressAAnchorY": 2, "dressAX": -10, "dressAY": 3 }"""));
+		if (!look.enabled() || look.content().top() != 18 || look.content().left() != 24) {
+			throw fail(helper, "a pack names a key and keeps the rest, got " + look);
+		}
+		PanelLook.Decal plate = look.nameplate();
+		if (plate.left(427) != 427 - 70 - 6 || plate.top(240) != 0) {
+			throw fail(helper, "the nameplate sits 6 from the right and at the top, got " + plate.left(427) + ", " + plate.top(240));
+		}
+		PanelLook.Decal strip = look.dressA();
+		if (strip.left(427) != (427 - 30) / 2 - 10 || strip.top(240) != 240 - 20 - 3) {
+			throw fail(helper, "the strip is centred, 10 left, and 3 above the bottom, got " + strip.left(427) + ", " + strip.top(240));
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void thePanelRejectsValuesOutOfRange(GameTestHelper helper) {
+		rejected(helper, () -> PanelLook.of(area("panel", "{ \"enabled\": 2 }")), "enabled");
+		rejected(helper, () -> PanelLook.of(area("panel", "{ \"nameplateAnchorX\": 3 }")), "nameplateAnchorX");
+		rejected(helper, () -> PanelLook.of(area("panel", "{ \"insetTop\": -1 }")), "insetTop");
+		rejected(helper, () -> PanelLook.of(area("panel", "{ \"buttonAlign\": 2 }")), "buttonAlign");
+		rejected(helper, () -> PanelLook.of(area("panel", "{ \"wallColor\": 5 }")), "wallColor");
+		helper.succeed();
+	}
+
 	private static Map<String, ThemeData> defaultAreas() {
 		Map<String, ThemeData> areas = new LinkedHashMap<>();
-		for (String name : List.of("crt", "handbook", "scanner", "hud", "transmission", "breach", "cargo", "pod")) {
+		for (String name : List.of("crt", "handbook", "scanner", "hud", "transmission", "breach", "cargo", "pod", "panel")) {
 			areas.put(name, area(name, null));
 		}
 		return areas;

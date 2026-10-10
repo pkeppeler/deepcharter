@@ -10,8 +10,6 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.FormattedText;
-import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
@@ -19,6 +17,7 @@ import io.github.pkeppeler.deepcharter.client.sound.TypewriterSound;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
+import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
@@ -89,16 +88,17 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 	@Override
 	protected void layout() {
 		orderRows.clear();
-		int closeY = height - MARGIN - BUTTON_HEIGHT;
-		addRenderableWidget(new CrtButton(MARGIN, closeY, CLOSE_WIDTH, BUTTON_HEIGHT,
+		int left = contentLeft(MARGIN);
+		int closeY = contentBottom(MARGIN) - BUTTON_HEIGHT;
+		addRenderableWidget(new CrtButton(left, closeY, CLOSE_WIDTH, BUTTON_HEIGHT,
 				Component.translatable("screen.deepcharter.processor.close"), button -> onClose()));
 		int inventoryY = closeY - GAP - BUTTON_HEIGHT;
-		addRenderableWidget(new CrtButton(MARGIN, inventoryY, BUTTON_WIDTH, BUTTON_HEIGHT,
+		addRenderableWidget(new CrtButton(left, inventoryY, BUTTON_WIDTH, BUTTON_HEIGHT,
 				Component.translatable("screen.deepcharter.processor.sell_inventory"), button -> sell(OreProcessor.SELL_INVENTORY)));
 		int cargoY = inventoryY - GAP - BUTTON_HEIGHT;
-		addRenderableWidget(new CrtButton(MARGIN, cargoY, BUTTON_WIDTH, BUTTON_HEIGHT,
+		addRenderableWidget(new CrtButton(left, cargoY, BUTTON_WIDTH, BUTTON_HEIGHT,
 				Component.translatable("screen.deepcharter.processor.sell_cargo"), button -> sell(OreProcessor.SELL_CARGO)));
-		addRenderableWidget(new CrtButton(rightColumn(), cargoY, Math.min(BUTTON_WIDTH, width - rightColumn() - MARGIN), BUTTON_HEIGHT,
+		addRenderableWidget(new CrtButton(rightColumn(), cargoY, Math.min(BUTTON_WIDTH, contentRight(MARGIN) - rightColumn()), BUTTON_HEIGHT,
 				Component.translatable("screen.deepcharter.processor.fuse"), button -> sell(OreProcessor.FUSE_SPOIL)));
 		layoutOrders(cargoY);
 	}
@@ -116,7 +116,7 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 		int rowY = cargoY - ORDER_GAP - perPage * ORDER_ROW_PITCH + ORDER_ROW_GAP;
 		for (WorkOrdersView.Entry entry : listed.subList(first, Math.min(listed.size(), first + perPage))) {
 			Component deliver = Component.translatable("screen.deepcharter.processor.deliver", entry.order().oreName().getString().toUpperCase(Locale.ROOT));
-			OrderRowButton row = new OrderRowButton(MARGIN, rowY, BUTTON_WIDTH, deliver,
+			OrderRowButton row = new OrderRowButton(contentLeft(MARGIN), rowY, BUTTON_WIDTH, deliver,
 					Component.translatable(entry.order().titleKey()).getString().toUpperCase(Locale.ROOT), progressLine(entry), !entry.done(),
 					button -> deliver(entry.order()));
 			orderRows.add(row);
@@ -147,8 +147,8 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 
 	/** The y of the account line, which is below the intro in full. Fixed, so that the rows do not move while the intro types. */
 	private int accountTop() {
-		int introLines = font.getSplitter().splitLines(FormattedText.of(typewriter.text()), width - 2 * MARGIN, Style.EMPTY).size();
-		return MARGIN + font.lineHeight + 14 + introLines * (font.lineHeight + CrtTuning.current().lineSpacing()) + GAP * 2;
+		int introLines = CrtText.wrap(font, typewriter.text(), contentWidth(MARGIN)).size();
+		return contentTop(MARGIN) + font.lineHeight + 14 + introLines * (font.lineHeight + CrtTuning.current().lineSpacing()) + GAP * 2;
 	}
 
 	/** The y below the account line: the order rows start under it. */
@@ -157,7 +157,7 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 	}
 
 	private int rightColumn() {
-		return MARGIN + BUTTON_WIDTH + 2 * GAP;
+		return contentLeft(MARGIN) + BUTTON_WIDTH + 2 * GAP;
 	}
 
 	private int pricesBottom() {
@@ -225,10 +225,10 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		CrtTuning tuning = CrtTuning.current();
-		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), MARGIN, width);
-		drawTypewriter(graphics, typewriter, MARGIN, MARGIN + font.lineHeight + 14, width - 2 * MARGIN);
+		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), contentLeft(MARGIN), contentTop(MARGIN), contentRight(MARGIN));
+		drawTypewriter(graphics, typewriter, contentLeft(MARGIN), contentTop(MARGIN) + font.lineHeight + 14, contentWidth(MARGIN));
 		int top = accountTop();
-		CrtDraw.glowText(graphics, font, accountLine(), MARGIN, top, tuning.phosphorColor());
+		CrtDraw.glowText(graphics, font, accountLine(), contentLeft(MARGIN), top, tuning.phosphorColor());
 		if (typewriter.done()) {
 			int y = top;
 			int x = rightColumn();

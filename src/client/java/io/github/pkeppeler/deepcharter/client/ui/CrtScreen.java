@@ -9,8 +9,8 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.FormattedText;
-import net.minecraft.network.chat.Style;
+
+import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 
 /**
  * Base of every retro CRT-terminal screen: a phosphor backdrop, scanlines over everything, and typewriter text.
@@ -23,6 +23,11 @@ import net.minecraft.network.chat.Style;
  * <p>Override {@link #extractRenderState} and draw your own content BEFORE calling {@code super}: the base draws
  * the widgets and then the scanlines over everything, so content drawn before {@code super} gets the scanlines
  * and content drawn after it would sit on top of them.
+ *
+ * <p>With the machine panel on ({@link PanelLook}, a pack's choice) the screen sits in a frame: the backdrop shrinks to the CRT glass, the
+ * frame and its decals are drawn behind the content and the glass sprite and scanlines over it, and a screen puts its content inside
+ * {@link #contentLeft}, {@link #contentTop}, {@link #contentRight} and {@link #contentBottom}, which are the panel's insets or, without
+ * the panel, the screen's own margin.
  *
  * <p>Typewriter text is plain and single-coloured; the colour is chosen per typewriter. The screen narrates the
  * full text of every typewriter once, when it opens, as part of {@link #getNarrationMessage()}.
@@ -98,13 +103,54 @@ public abstract class CrtScreen extends Screen {
 		return Component.literal(joiner.toString());
 	}
 
+	/** The x where content starts: the panel's left inset, or {@code margin} without the panel. */
+	protected final int contentLeft(int margin) {
+		PanelLook panel = PanelLook.current();
+		return panel.enabled() ? panel.content().left() : margin;
+	}
+
+	/** The y where content starts: the panel's top inset, or {@code margin} without the panel. */
+	protected final int contentTop(int margin) {
+		PanelLook panel = PanelLook.current();
+		return panel.enabled() ? panel.content().top() : margin;
+	}
+
+	/** The x where content ends: the screen's width less the panel's right inset, or less {@code margin} without the panel. */
+	protected final int contentRight(int margin) {
+		PanelLook panel = PanelLook.current();
+		return width - (panel.enabled() ? panel.content().right() : margin);
+	}
+
+	/** The y where content ends: the screen's height less the panel's bottom inset, or less {@code margin} without the panel. */
+	protected final int contentBottom(int margin) {
+		PanelLook panel = PanelLook.current();
+		return height - (panel.enabled() ? panel.content().bottom() : margin);
+	}
+
+	/** The width of the content area, which is where text wraps. */
+	protected final int contentWidth(int margin) {
+		return contentRight(margin) - contentLeft(margin);
+	}
+
 	@Override
 	public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-		CrtDraw.backdrop(graphics, width, height);
+		PanelLook panel = PanelLook.current();
+		if (panel.enabled()) {
+			CrtDraw.panelBackground(graphics, panel, width, height);
+		} else {
+			CrtDraw.backdrop(graphics, width, height);
+		}
 	}
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+		PanelLook panel = PanelLook.current();
+		if (panel.enabled()) {
+			// The glass and its scanlines go over the text and the phosphor only: the buttons are metal, and are drawn after them.
+			CrtDraw.panelGlass(graphics, panel, width, height);
+			super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+			return;
+		}
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 		CrtDraw.scanlines(graphics, width, height);
 	}
@@ -126,8 +172,7 @@ public abstract class CrtScreen extends Screen {
 		CrtTuning tuning = CrtTuning.current();
 		Font font = this.font;
 		if (entry.cachedRevealed != writer.revealed() || entry.cachedWidth != wrapWidth) {
-			entry.lines = font.getSplitter().splitLines(FormattedText.of(writer.visible()), wrapWidth, Style.EMPTY)
-					.stream().map(FormattedText::getString).toList();
+			entry.lines = CrtText.wrap(font, writer.visible(), wrapWidth);
 			entry.cachedRevealed = writer.revealed();
 			entry.cachedWidth = wrapWidth;
 		}
@@ -137,13 +182,13 @@ public abstract class CrtScreen extends Screen {
 		int lastY = y;
 		for (String line : entry.lines) {
 			CrtDraw.glowText(graphics, font, line, x, lineY, color);
-			lastX = x + font.width(line);
+			lastX = x + CrtText.width(font, line);
 			lastY = lineY;
 			lineY += font.lineHeight + tuning.lineSpacing();
 		}
 		boolean cursorOn = !writer.done() || (ticks / tuning.cursorBlinkTicks()) % 2 == 0;
 		if (cursorOn) {
-			graphics.fill(lastX + 1, lastY, lastX + font.width("W"), lastY + font.lineHeight - 1, color);
+			graphics.fill(lastX + 1, lastY, lastX + CrtText.width(font, "W"), lastY + font.lineHeight - 1, color);
 		}
 		return Math.max(lineY, y + font.lineHeight + tuning.lineSpacing());
 	}

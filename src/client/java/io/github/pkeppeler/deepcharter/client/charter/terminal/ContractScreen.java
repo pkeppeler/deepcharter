@@ -91,33 +91,44 @@ public final class ContractScreen extends CrtScreen implements TerminalViewScree
 		return state.flatMap(ContractState::notice).map(key -> Component.translatable("screen.deepcharter.contract.refused", Component.translatable(key)));
 	}
 
+	/** The y of the status line: the same distance below the top of the content as before the panel. */
+	private int statusY() {
+		return contentTop(MARGIN) + STATUS_Y - MARGIN;
+	}
+
+	/** The y of the first row of the lists and the name field. */
+	private int rowsTop() {
+		return contentTop(MARGIN) + ROWS_TOP - MARGIN;
+	}
+
 	@Override
 	protected void layout() {
 		String typed = nameField == null ? "" : nameField.getValue();
 		nameField = null;
-		int closeY = height - MARGIN - ROW_HEIGHT;
-		addRenderableWidget(new CrtButton(MARGIN, closeY, CLOSE_WIDTH, ROW_HEIGHT, Component.translatable("screen.deepcharter.terminal.close"), button -> onClose()));
+		int left = contentLeft(MARGIN);
+		int closeY = contentBottom(MARGIN) - ROW_HEIGHT;
+		addRenderableWidget(new CrtButton(left, closeY, CLOSE_WIDTH, ROW_HEIGHT, Component.translatable("screen.deepcharter.terminal.close"), button -> onClose()));
 		if (state.isEmpty()) {
 			return;
 		}
 		ContractState shown = state.get();
-		int columnWidth = Math.min(COLUMN_WIDTH, (width - 2 * MARGIN - COLUMN_GAP) / 2);
-		int rightX = MARGIN + columnWidth + COLUMN_GAP;
-		int actionX = MARGIN + CLOSE_WIDTH + 6;
+		int columnWidth = Math.min(COLUMN_WIDTH, (contentWidth(MARGIN) - COLUMN_GAP) / 2);
+		int rightX = left + columnWidth + COLUMN_GAP;
+		int actionX = left + CLOSE_WIDTH + 6;
 		switch (shown.role()) {
 			case NONE -> {
-				nameField = addRenderableWidget(new CrtTextField(font, MARGIN + CrtTextField.FRAME, ROWS_TOP + CrtTextField.FRAME,
+				nameField = addRenderableWidget(new CrtTextField(font, left + CrtTextField.FRAME, rowsTop() + CrtTextField.FRAME,
 						columnWidth - 2 * CrtTextField.FRAME, FIELD_HEIGHT, Component.translatable("screen.deepcharter.contract.name_hint")));
 				nameField.setMaxLength(CharterTuning.DEFAULT.maxNameLength());
 				nameField.setValue(typed);
-				addRenderableWidget(new CrtButton(MARGIN, ROWS_TOP + ROW_PITCH + 2, columnWidth, ROW_HEIGHT,
+				addRenderableWidget(new CrtButton(left, rowsTop() + ROW_PITCH + 2, columnWidth, ROW_HEIGHT,
 						Component.translatable("screen.deepcharter.contract.found"), button -> send(ContractActions.FOUND, nameField.getValue())));
 				rows(shown.charters(), rightX, columnWidth, "screen.deepcharter.contract.apply", ContractActions.APPLY);
 			}
 			case APPLICANT -> leaveButton(actionX, closeY, "screen.deepcharter.contract.withdraw");
 			case CREW -> leaveButton(actionX, closeY, "screen.deepcharter.contract.leave");
 			case DIRECTOR -> {
-				rows(shown.applicants(), MARGIN, columnWidth, "screen.deepcharter.contract.approve", ContractActions.APPROVE);
+				rows(shown.applicants(), left, columnWidth, "screen.deepcharter.contract.approve", ContractActions.APPROVE);
 				rows(shown.applicants(), rightX, columnWidth, "screen.deepcharter.contract.deny", ContractActions.DENY);
 				leaveButton(actionX, closeY, "screen.deepcharter.contract.leave");
 			}
@@ -134,7 +145,7 @@ public final class ContractScreen extends CrtScreen implements TerminalViewScree
 			String name = names.get(i);
 			String shownName = name.length() > MAX_LABEL_NAME ? name.substring(0, MAX_LABEL_NAME) + ".." : name;
 			Component label = Component.translatable(labelKey, shownName.toUpperCase(Locale.ROOT));
-			addRenderableWidget(new CrtButton(x, ROWS_TOP + i * ROW_PITCH, columnWidth, ROW_HEIGHT, label, button -> send(action, name)));
+			addRenderableWidget(new CrtButton(x, rowsTop() + i * ROW_PITCH, columnWidth, ROW_HEIGHT, label, button -> send(action, name)));
 		}
 	}
 
@@ -167,10 +178,10 @@ public final class ContractScreen extends CrtScreen implements TerminalViewScree
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		CrtTuning tuning = CrtTuning.current();
-		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), MARGIN, width);
-		drawTypewriter(graphics, typewriter, MARGIN, MARGIN + font.lineHeight + 14, width - 2 * MARGIN);
-		CrtDraw.glowText(graphics, font, statusLine().getString(), MARGIN, STATUS_Y, tuning.phosphorColor());
-		refusal().ifPresent(message -> CrtDraw.glowText(graphics, font, message.getString().toUpperCase(Locale.ROOT), MARGIN, STATUS_Y + font.lineHeight + 4, tuning.refusalColor()));
+		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), contentLeft(MARGIN), contentTop(MARGIN), contentRight(MARGIN));
+		drawTypewriter(graphics, typewriter, contentLeft(MARGIN), contentTop(MARGIN) + font.lineHeight + 14, contentWidth(MARGIN));
+		CrtDraw.glowText(graphics, font, statusLine().getString(), contentLeft(MARGIN), statusY(), tuning.phosphorColor());
+		refusal().ifPresent(message -> CrtDraw.glowText(graphics, font, message.getString().toUpperCase(Locale.ROOT), contentLeft(MARGIN), statusY() + font.lineHeight + 4, tuning.refusalColor()));
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 	}
 }

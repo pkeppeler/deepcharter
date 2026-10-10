@@ -6,7 +6,9 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
 
+import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
+import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 
 /**
@@ -41,6 +43,15 @@ public final class OrderRowButton extends Button {
 	protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		CrtTuning tuning = CrtTuning.current();
 		boolean lit = isHoveredOrFocused() && active;
+		PanelLook panel = PanelLook.current();
+		if (panel.enabled()) {
+			Font panelFont = Minecraft.getInstance().font;
+			int labelX = CrtDraw.panelButtonFace(graphics, panel, getX(), getY(), getWidth(), getHeight(), active, lit);
+			int ink = !active ? panel.buttonLabelOffColor() : lit ? panel.buttonLabelHotColor() : panel.buttonLabelColor();
+			graphics.text(panelFont, CrtText.of(title), labelX, getY() + 1, ink, false);
+			graphics.text(panelFont, CrtText.of(progress), labelX, getY() + 2 + panelFont.lineHeight, panel.buttonLabelOffColor(), false);
+			return;
+		}
 		graphics.fill(getX(), getY(), getRight(), getBottom(), lit ? tuning.hoverFillColor() : tuning.backgroundColor());
 		CrtDraw.border(graphics, getX(), getY(), getRight(), getBottom(), lit ? tuning.phosphorColor() : tuning.dimColor());
 		Font font = Minecraft.getInstance().font;
