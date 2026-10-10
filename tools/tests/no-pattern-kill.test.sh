@@ -56,6 +56,30 @@ EOF
 allowed './gradlew --stop'
 allowed ''
 allowed 'echo "unbalanced'
+# Redirections and special parameters after a plain-PID kill.
+allowed 'kill -0 "$pid" 2>/dev/null'
+allowed 'kill 123 2>/dev/null'
+allowed 'kill $p 2>&1'
+allowed 'kill -9 $pid >/dev/null 2>&1'
+allowed 'kill $pid &>/dev/null'
+allowed 'kill -TERM $pid 2>/dev/null || true'
+allowed 'kill $!'
+allowed 'kill $$'
+allowed 'sleep 5 & kill $!'
+allowed 'kill "${pid:-}"'
+allowed 'kill "${PIDS[@]}"'
+allowed 'for p in 1 2; do kill $p; done'
+# Pidfile idiom, process groups, quoted operators, comments, unterminated heredoc.
+allowed 'kill "$(cat /tmp/server.pid)"'
+allowed 'kill -- -123'
+allowed 'kill -9 -123'
+allowed 'kill -- -$pgid'
+allowed "echo ';' pkill"
+allowed 'echo a # pkill x'
+allowed 'echo a
+# pkill x'
+allowed 'cat <<EOF
+pkill java'
 
 refused 'pkill -f gametest.sh'
 refused 'killall java'
@@ -77,6 +101,18 @@ refused 'pgrep -f gametest | xargs -n1 kill -9'
 refused 'echo $(pkill java)'
 refused 'echo hi
 pkill java'
+# Shell keywords before the command word.
+refused 'if true; then pkill java; fi'
+refused 'for p in 1; do pkill java; done'
+refused '{ pkill java; }'
+refused '( pkill java )'
+refused '! pkill java'
+refused 'while true; do kill $(pgrep x); done'
+# Other substitutions stay refused.
+refused 'kill "$(pgrep java)"'
+refused 'kill "$(cat /tmp/a /tmp/b)"'
+refused 'kill "$(cat /tmp/a; pgrep java)"'
+refused 'kill $pid $(pgrep java) 2>/dev/null'
 
 # Malformed hook input must never block.
 for bad in '' 'not json' '{"tool_input": 5}' '{"tool_input": {"command": 7}}' '[]'; do
