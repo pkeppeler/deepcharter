@@ -536,7 +536,7 @@ Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`Ea
 
 ## Bore size and the economy (#399)
 
-**Problem.** The Mole is 1.9 wide and tall and bores 2 x 2. Cab and HUD ergonomics may want a larger pod, and a Prospector is 2.9 and bores 3 x 3. Nothing in the code may assume either size, so a chassis of any width and height has to scale the economy by the rules below. `Chassis` holds the two sizes; `OddChassisTest` runs every behaviour on a test-only 3.9 x 2.9 chassis (a 4-wide, 3-tall bore).
+**Problem.** The Mole is 1.9 wide and tall and bores 2 x 2. Cab and HUD ergonomics may want a larger pod, and a Prospector is 2.9 and bores 3 x 3. Nothing in the code may assume either size, so a chassis of any width and height has to scale the economy by the rules below. `Chassis` holds the two sizes; `OddChassisTest` and `TallChassisTest` run every behaviour on two test-only chassis, 3.9 x 2.9 (a 4-wide, 3-tall bore) and 1.9 x 3.9 (a 2-wide, 4-tall bore).
 
 **The bore.** `W = ceil(width)` blocks on both horizontal axes, `H = ceil(height)` blocks tall (`Chassis.boreWidth`, `boreHeight`; `PodFootprint` is the pod's cells). A pod is centred in its bore. Width is both the pod's width and depth; only width and height may differ. One downward step bores `W x W` cells (`Chassis.slabCells`), one sideways step `W x H`.
 
@@ -552,7 +552,7 @@ Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`Ea
 
 **Scanner.** The thermal tier marks lava a block beyond the bore's edge on either side of the plane: `W / 2 + lavaMargin` (`ScannerTuning.lavaSpread`, 2 for a Mole and a Prospector, 3 for 4 wide). The pod marker on the scanner is `ceil(height)` cells tall on the plane.
 
-**The hangar and the tow cable.** A bay place is `W + slotGap` blocks from the next (3 for a Mole, as before), so two parked pods never overlap (`Hangar.freeSlot`). A towed pod trails its tower by half of each hull's width plus `trailGap` (`TowTuning.trailDistance`): 2.5 for two Moles, as before, and a gap between hulls of 0.6 for any pair. The colony's hangar and works bays are doors 4 wide and 4 high (`tools/colony/town.py`), so a chassis must stay under 4 x 4 to pass them (`OddChassisTest` checks it).
+**The hangar and the tow cable.** A bay place is `W + slotGap` blocks from the next (3 for a Mole, as before), so two parked pods never overlap (`Hangar.freeSlot`). A towed pod trails its tower by half of each hull's width plus `trailGap` (`TowTuning.trailDistance`): 2.5 for two Moles, as before, 3.0 for a Prospector behind a Mole and 3.5 for two Prospectors (both were 2.5, and the Prospector's hull overlapped its tower's). The gap between hulls is 0.6 for any pair. The colony's hangar and works bays are doors 4 wide and 4 high (`tools/colony/town.py`), so a chassis must stay under 4 x 4 to pass them (`OddChassisTest` reads the doors from the colony layout and checks it).
 
 **What is per chassis, not derived.** The seat count and the best part tier (`Chassis`), the rider offsets (`PodRegistry`), the model, texture and cutter map (`assets/deepcharter/pod/<id>.json`), the restore price (`HangarTuning.restoreCosts`) and the handbook's story beats. A new chassis needs each of them, and each throws if it is missing.
 

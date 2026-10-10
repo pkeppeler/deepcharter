@@ -117,7 +117,7 @@ public final class ScannerHud {
 			}
 		}
 		// The cells above the feet cell that the ridden pod fills: 1 for a Mole (two blocks tall), 2 for a Prospector.
-		int podCellsUp = client.player.getVehicle() instanceof PodEntity pod ? Mth.ceil(pod.chassis().height()) - 1 : 0;
+		int podCellsUp = client.player.getVehicle() instanceof PodEntity pod ? pod.chassis().boreHeight() - 1 : 0;
 		for (int up = 0; up <= podCellsUp; up++) {
 			fillCell(graphics, guiWidth, guiHeight, area, 0, up, look.podColor());
 		}

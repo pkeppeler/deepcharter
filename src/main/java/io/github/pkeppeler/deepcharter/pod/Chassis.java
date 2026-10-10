@@ -4,6 +4,8 @@ import java.util.List;
 
 import net.minecraft.util.Mth;
 
+import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
+
 /**
  * The fixed frame a pod is built on (SPEC section 7). Width is the hitbox width and depth; height is its height. They may differ (a
  * tall, narrow cab). The bore, the lining, the sounder, the hangar slot and the tow cable all derive from them: nothing else in the
@@ -27,8 +29,13 @@ public record Chassis(String id, int seats, int tierCap, float width, float heig
 		if (seats < 1) {
 			throw new IllegalArgumentException("a chassis needs at least one seat: " + id);
 		}
-		if (tierCap < 1) {
-			throw new IllegalArgumentException("a chassis takes at least tier 1 parts: " + id);
+		int bestTier = 0;
+		for (ComponentTrack track : ComponentTrack.values()) {
+			bestTier = Math.max(bestTier, track.maxTier());
+		}
+		// The cap and the seats are adjacent ints, so a swap of the two must not register.
+		if (tierCap < 1 || tierCap > bestTier) {
+			throw new IllegalArgumentException("a chassis takes part tiers 1 to " + bestTier + ", " + id + " says " + tierCap);
 		}
 		if (!(width > 0f) || !(height > 0f)) {
 			throw new IllegalArgumentException("a chassis needs a width and a height above 0: " + id + " " + width + " x " + height);
