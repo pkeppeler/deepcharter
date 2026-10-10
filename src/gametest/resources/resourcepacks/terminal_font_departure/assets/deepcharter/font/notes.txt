@@ -1,0 +1,8 @@
+Departure Mono 1.500 (departuremono-regular.otf)
+Official source: https://departuremono.com/ , release v1.500 of https://github.com/rektdeckard/departure-mono/releases/tag/v1.500
+Licence: SIL Open Font License 1.1, in license.txt beside this file. Copyright 2022-2024 Helena Zhang.
+
+The game's ttf font provider refuses this file ("Font is not in TTF format, was CFF"): Departure Mono is released only with CFF
+outlines. textures/font/departuremono.png and font/terminal.json were therefore made from the .otf by tools/font_bitmap.py, which reads the file as data,
+draws each glyph 7 pixels tall in capitals (the cap height of the game's own font), and writes a bitmap font. The .otf is not read by the
+game. The font declares no Reserved Font Name. Regenerate with: python3 tools/font_bitmap.py

@@ -322,7 +322,7 @@ public class M2SliceScenario extends EvidenceScenario {
 			return null;
 		});
 		Vec3 at = onServer(server -> pod(server, mole).position());
-		stand(at.add(-2.5, 0, 0), at.add(0, 0.95, 0));
+		stand(at.add(-2.5, 0, 0), at.add(0, Chassis.MOLE.height() / 2, 0));
 		ctx.waitTicks(20);
 		snap(HOLD_FRAMES);
 		still("14-the-mole-in-the-colony");

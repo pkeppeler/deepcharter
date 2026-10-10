@@ -9,6 +9,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 
+import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice.Cell;
@@ -76,7 +77,7 @@ public class ScanSliceTest {
 			// Off the slice plane for an east or west facing: must not show.
 			place(level, origin.offset(3, -2, 1), Blocks.GOLD_ORE.defaultBlockState());
 
-			ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, 1);
+			ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, 1, Chassis.MOLE);
 			expect(helper, slice, 3, -2, new Cell.Ore(Blocks.GOLD_ORE));
 			expect(helper, slice, -1, -1, Cell.ROCK);
 			expect(helper, slice, 0, -1, Cell.ROCK);
@@ -112,7 +113,7 @@ public class ScanSliceTest {
 			place(level, origin.offset(0, 9, 0), stone);
 			place(level, origin.offset(0, -33, 0), stone);
 
-			ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, 1);
+			ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, 1, Chassis.MOLE);
 			expect(helper, slice, 24, 8, Cell.ROCK);
 			expect(helper, slice, -24, 8, Cell.ROCK);
 			expect(helper, slice, 24, -32, Cell.ROCK);
@@ -146,13 +147,13 @@ public class ScanSliceTest {
 			place(level, origin.offset(0, 0, 7), Blocks.STONE.defaultBlockState());
 
 			Cell gold = new Cell.Ore(Blocks.GOLD_ORE);
-			expect(helper, ScanSlice.scan(level, origin, Direction.EAST, 1), 5, 0, gold);
-			expect(helper, ScanSlice.scan(level, origin, Direction.WEST, 1), -5, 0, gold);
-			expect(helper, ScanSlice.scan(level, origin, Direction.SOUTH, 1), 7, 0, Cell.ROCK);
-			expect(helper, ScanSlice.scan(level, origin, Direction.NORTH, 1), -7, 0, Cell.ROCK);
+			expect(helper, ScanSlice.scan(level, origin, Direction.EAST, 1, Chassis.MOLE), 5, 0, gold);
+			expect(helper, ScanSlice.scan(level, origin, Direction.WEST, 1, Chassis.MOLE), -5, 0, gold);
+			expect(helper, ScanSlice.scan(level, origin, Direction.SOUTH, 1, Chassis.MOLE), 7, 0, Cell.ROCK);
+			expect(helper, ScanSlice.scan(level, origin, Direction.NORTH, 1, Chassis.MOLE), -7, 0, Cell.ROCK);
 			// The other axis is not in the plane.
-			expect(helper, ScanSlice.scan(level, origin, Direction.SOUTH, 1), 5, 0, Cell.AIR);
-			expect(helper, ScanSlice.scan(level, origin, Direction.EAST, 1), 7, 0, Cell.AIR);
+			expect(helper, ScanSlice.scan(level, origin, Direction.SOUTH, 1, Chassis.MOLE), 5, 0, Cell.AIR);
+			expect(helper, ScanSlice.scan(level, origin, Direction.EAST, 1, Chassis.MOLE), 7, 0, Cell.AIR);
 			helper.succeed();
 		} finally {
 			clearBox(level, origin);
@@ -169,7 +170,7 @@ public class ScanSliceTest {
 			place(level, origin.offset(2, 0, 0), Blocks.COAL_ORE.defaultBlockState());
 			// A gold block is solid but not in #c:ores.
 			place(level, origin.offset(3, 0, 0), Blocks.GOLD_BLOCK.defaultBlockState());
-			ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, 1);
+			ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, 1, Chassis.MOLE);
 			expect(helper, slice, 1, 0, new Cell.Ore(Blocks.DEEPSLATE_GOLD_ORE));
 			expect(helper, slice, 2, 0, new Cell.Ore(Blocks.COAL_ORE));
 			expect(helper, slice, 3, 0, Cell.ROCK);
@@ -190,7 +191,7 @@ public class ScanSliceTest {
 			// Apart from the water: lava next to water turns to stone.
 			place(level, origin.offset(6, 0, 0), Blocks.LAVA.defaultBlockState());
 			place(level, origin.offset(3, 0, 0), Blocks.SHORT_GRASS.defaultBlockState());
-			ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, 1);
+			ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, 1, Chassis.MOLE);
 			expect(helper, slice, 1, 0, Cell.AIR);
 			expect(helper, slice, 6, 0, Cell.AIR);
 			expect(helper, slice, 3, 0, Cell.AIR);
@@ -203,7 +204,7 @@ public class ScanSliceTest {
 	@GameTest
 	public void scanningVerticallyRefusesAFacingThatIsNotHorizontal(GameTestHelper helper) {
 		try {
-			ScanSlice.scan(helper.getLevel(), origin(helper), Direction.DOWN, 1);
+			ScanSlice.scan(helper.getLevel(), origin(helper), Direction.DOWN, 1, Chassis.MOLE);
 		} catch (IllegalArgumentException expected) {
 			helper.succeed();
 			return;

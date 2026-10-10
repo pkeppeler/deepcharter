@@ -27,3 +27,7 @@
   - Every other still (tolerance 2, 1%): a change of up to 4,099 pixels, for example one recoloured 16 x 16 block seen from far away.
 
   A recolour of one texture colour, applied to 15 stills, changed 1.3% to 24% of their pixels by 20 to 45 levels, and all 15 stayed above these floors. A smaller change can hide, so run step 4. If a new still differs between two runs of one commit, fix it in `DesignTourScenario.settle` or `pinWorld` where you can, and add its prefix to `NOISE_FAMILIES` where you cannot.
+
+## Concept rounds
+
+A concept round shows each option at least once in its real in-game place and lighting (fog, grade, lamp light), not only in a comparison set: a staged backdrop can flatter an option in a way the game never shows it.

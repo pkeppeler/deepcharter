@@ -58,7 +58,8 @@ public class PodMovementClientTest implements FabricClientGameTest {
 			ServerPlayer real = realPlayer(server, two.mock().player().getUUID());
 			PodEntity realPod = spawnPod(real);
 			mount(real, realPod);
-			two.mock().teleportTo(real.level(), real.position().add(MOCK_OFFSET_BLOCKS, 0, 0), real.getYRot(), 0f);
+			// Beside the real pod, not the real rider: a rider sits with its feet below the pod's (#382), so its position is in the ground.
+			two.mock().teleportTo(real.level(), realPod.position().add(MOCK_OFFSET_BLOCKS, 0, 0), real.getYRot(), 0f);
 			PodEntity mockPod = spawnPod(two.mock().player());
 			mount(two.mock().player(), mockPod);
 			return mockPod.getId();

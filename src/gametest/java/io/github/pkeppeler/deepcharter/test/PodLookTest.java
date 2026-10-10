@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
@@ -56,6 +57,16 @@ public class PodLookTest {
 		require(helper, look.cutterFor(1).equals("tricone"), "tier 1 shows the cutter of tier 0, the highest entry at or below it");
 		require(helper, look.cutterFor(2).equals("stacked"), "tier 2 shows the stacked cutter");
 		require(helper, look.cutterFor(6).equals("fluted"), "tier 6 shows the cutter of tier 3, the highest entry below it");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aLookNamesItsPaintMaskOrHasNone(GameTestHelper helper) {
+		PodLook painted = PodLook.parse("test", new StringReader(PLAIN.replace("\"wreck\"", "\"paint\": \"deepcharter:textures/entity/pod/plain_paint.png\", \"wreck\"")));
+		require(helper, painted.paintMask().equals(Optional.of(Identifier.parse("deepcharter:textures/entity/pod/plain_paint.png"))), "the paint mask, got " + painted.paintMask());
+		require(helper, PodLook.parse("test", new StringReader(PLAIN)).paintMask().isEmpty(), "a look with no paint key is not painted");
+		String bad = failure(helper, () -> PodLook.parse("test", new StringReader(PLAIN.replace("\"wreck\"", "\"paint\": \"deepcharter:pod/plain\", \"wreck\""))));
+		require(helper, bad.contains("paint") && bad.contains("not a texture path"), "a paint mask that is no texture path is refused and says so, got " + bad);
 		helper.succeed();
 	}
 

@@ -237,6 +237,22 @@
       "..bsutsutsutsb",
       "..BBBBBBBBBBBB",
       "..dddddddddddd"]}},
+    "item/part_brace": {"template": "sprite", "args": {"legend": {
+      "C": "brass.5", "b": "brass.4", "B": "brass.3", "m": "steel.4", "k": "steel.2", "h": "hazard.3"}, "rows": [
+      "",
+      "..CCCCCCCCCCCC",
+      "..bmmmmmmmmmmb",
+      "..bmkmmmmmmkmb",
+      "..bmmkmmmmkmmb",
+      "..bmmmkmmkmmmb",
+      "..bmmmmkkmmmmb",
+      "..bmmmmkkmmmmb",
+      "..bmmmkmmkmmmb",
+      "..bmmkmmmmkmmb",
+      "..bmkmmmmmmkmb",
+      "..bmmmmmmmmmmb",
+      "..BBBBBBBBBBBB",
+      "..hhhhhhhhhhhh"]}},
     "item/part_sounder": {"template": "sprite", "args": {"legend": {
       "m": "steel.4", "l": "steel.5", "k": "steel.2", "C": "brass.5", "b": "brass.4", "B": "brass.3", "h": "hazard.3"}, "rows": [
       "",

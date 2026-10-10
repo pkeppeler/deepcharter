@@ -15,6 +15,7 @@ import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -224,11 +225,36 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 	}
 
 	private double[] bounds(Predicate<Bone> only, OptionalDouble pitch) {
+		double[] bounds = {Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE};
+		for (RestCube cube : restCubes(only, pitch)) {
+			for (int i = 0; i < 3; i++) {
+				bounds[i] = Math.min(bounds[i], cube.box()[i]);
+				bounds[i + 3] = Math.max(bounds[i + 3], cube.box()[i + 3]);
+			}
+		}
+		return bounds;
+	}
+
+	/** Used by {@code PodSeatsClientTest} to hold a rider to the cab. A cube at rest: its bone, the cube as the file has it, and its box in pixels as {minX, minY, minZ, maxX, maxY, maxZ}. */
+	public record RestCube(Bone bone, Cube cube, double[] box) {
+	}
+
+	/**
+	 * Used by {@code PodSeatsClientTest} only. The box of each cube of the bones {@code only} accepts at rest, in pixels, as {minX, minY, minZ, maxX, maxY, maxZ}: the box of the
+	 * cube's corners turned by its own rotation and its bones'. A turned cube is held by the box of its turned corners, which holds it
+	 * and a little more, so a test that a point is clear of every cube errs towards "not clear".
+	 */
+	public List<RestCube> restCubes(Predicate<Bone> only) {
+		return restCubes(only, OptionalDouble.empty());
+	}
+
+	private List<RestCube> restCubes(Predicate<Bone> only, OptionalDouble pitch) {
 		Map<String, Bone> byName = new HashMap<>();
 		bones.forEach(bone -> byName.put(bone.name(), bone));
-		double[] bounds = {Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE};
+		List<RestCube> cubes = new ArrayList<>();
 		for (Bone bone : bones.stream().filter(only).toList()) {
 			for (Cube cube : bone.cubes()) {
+				double[] box = {Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE};
 				for (int corner = 0; corner < CUBE_CORNERS; corner++) {
 					Vec3 p = turnedCorner(cube, corner);
 					for (Bone at = bone; at != null; at = at.parent().map(byName::get).orElse(null)) {
@@ -238,13 +264,14 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 					}
 					double[] xyz = {p.x, p.y, p.z};
 					for (int i = 0; i < 3; i++) {
-						bounds[i] = Math.min(bounds[i], xyz[i]);
-						bounds[i + 3] = Math.max(bounds[i + 3], xyz[i]);
+						box[i] = Math.min(box[i], xyz[i]);
+						box[i + 3] = Math.max(box[i + 3], xyz[i]);
 					}
 				}
+				cubes.add(new RestCube(bone, cube, box));
 			}
 		}
-		return bounds;
+		return cubes;
 	}
 
 	/**
@@ -304,13 +331,14 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 	 * How far from the pod's middle, across x and z in pixels, a rotor reaches as it spins: the horizontal distance of its pivot from
 	 * the middle plus the furthest any corner of its cubes is from the pivot. A rotor spins about its own pivot, which is off the
 	 * pod's middle on a pod whose mast is behind it, so its tips sweep a circle that the model at rest does not show. 0 for a model
-	 * with no rotor.
+	 * with no rotor. The blades that fold from the rotor ({@link BoneRole#BLADE}) are part of it, out to fly.
 	 */
 	public double rotorReach() {
 		double reach = 0;
 		for (Bone rotor : bones.stream().filter(bone -> bone.role() == BoneRole.ROTOR).toList()) {
 			double sweep = 0;
-			for (Cube cube : rotor.cubes()) {
+			Stream<Bone> turning = Stream.concat(Stream.of(rotor), children(rotor.name()).stream().filter(bone -> bone.role() == BoneRole.BLADE));
+			for (Cube cube : turning.flatMap(bone -> bone.cubes().stream()).toList()) {
 				for (int corner = 0; corner < CUBE_CORNERS; corner++) {
 					Vec3 point = turnedCorner(cube, corner);
 					sweep = Math.max(sweep, Math.hypot(point.x - rotor.pivot().x, point.z - rotor.pivot().z));
@@ -374,6 +402,12 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 			// A ring that does not ride the mount would not aim with the drill; one under the head would spin with it and stand still.
 			if (!hasAncestor(byName, ring, BoneRole.DRILL_MOUNT) || hasAncestor(byName, ring, BoneRole.DRILL_HEAD)) {
 				throw new IllegalArgumentException(source + ": drill_ring bone '" + ring.name() + "' must be under drill_mount and not under drill_head");
+			}
+		}
+		for (Bone blade : bones.stream().filter(bone -> bone.role() == BoneRole.BLADE).toList()) {
+			// A blade folds from the rotor's hub, and turns with the rotor once it is out.
+			if (blade.parent().map(byName::get).map(parent -> parent.role() != BoneRole.ROTOR).orElse(true)) {
+				throw new IllegalArgumentException(source + ": blade bone '" + blade.name() + "' must be a child of a rotor bone");
 			}
 		}
 	}

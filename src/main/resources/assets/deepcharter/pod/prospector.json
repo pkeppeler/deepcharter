@@ -2,6 +2,7 @@
 	"model": "deepcharter:pod/prospector",
 	"texture": "deepcharter:textures/entity/pod/prospector.png",
 	"glow": "lit",
+	"paint": "deepcharter:textures/entity/pod/prospector_paint.png",
 	"cutters": {
 		"0": "tricone",
 		"1": "stacked",

@@ -536,7 +536,7 @@ public class RepairStationTest {
 		try {
 			Field chassis = PodEntity.class.getDeclaredField("chassis");
 			chassis.setAccessible(true);
-			chassis.set(pod, new Chassis("mole", 2, Chassis.MOLE.width(), Chassis.MOLE.height()));
+			chassis.set(pod, new Chassis("mole", 2, Chassis.MOLE.tierCap(), Chassis.MOLE.width(), Chassis.MOLE.height()));
 		} catch (ReflectiveOperationException failure) {
 			throw helper.assertionException("could not add a seat: %s", failure);
 		}

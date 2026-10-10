@@ -27,6 +27,7 @@ import net.minecraft.world.level.block.LiquidBlock;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
+import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -92,8 +93,8 @@ public class ScannerTiersTest {
 		place(level, far, Blocks.GOLD_ORE);
 		place(level, deep, Blocks.DIAMOND_ORE);
 		try {
-			ScanSlice one = ScanSlice.scan(level, origin, Direction.EAST, 1);
-			ScanSlice two = ScanSlice.scan(level, origin, Direction.EAST, 2);
+			ScanSlice one = ScanSlice.scan(level, origin, Direction.EAST, 1, Chassis.MOLE);
+			ScanSlice two = ScanSlice.scan(level, origin, Direction.EAST, 2, Chassis.MOLE);
 			for (int[] cell : new int[][] {{30, 10}, {-30, -40}}) {
 				if (one.area().contains(cell[0], cell[1])) {
 					throw failure(helper, "cell %s should be outside tier 1", Arrays.toString(cell));
@@ -120,7 +121,7 @@ public class ScannerTiersTest {
 		place(level, ore, Blocks.GOLD_ORE);
 		try {
 			for (int tier = 1; tier <= 4; tier++) {
-				ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, tier);
+				ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, tier, Chassis.MOLE);
 				Cell expectedGas = tier >= 3 ? Cell.GAS : Cell.ROCK;
 				if (!slice.cell(3, -2).equals(expectedGas)) {
 					throw failure(helper, "a gas pocket at tier %d should read as %s, read as %s", tier, expectedGas, slice.cell(3, -2));
@@ -145,7 +146,7 @@ public class ScannerTiersTest {
 		place(level, water, Blocks.WATER);
 		try {
 			for (int tier = 1; tier <= 4; tier++) {
-				ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, tier);
+				ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, tier, Chassis.MOLE);
 				if (!slice.cell(1, 0).equals(Cell.AIR)) {
 					throw failure(helper, "water should read as air at tier %d, read %s", tier, slice.cell(1, 0));
 				}
@@ -173,7 +174,7 @@ public class ScannerTiersTest {
 			}
 			for (int tier = 1; tier <= 4; tier++) {
 				Cell expected = tier >= 2 ? Cell.LAVA : Cell.AIR;
-				ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, tier);
+				ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, tier, Chassis.MOLE);
 				if (!slice.cell(6, 0).equals(expected) || !slice.cell(7, -3).equals(expected)) {
 					throw failure(helper, "lava at tier %d should read as %s, read %s (source) and %s (flowing)", tier, expected,
 							slice.cell(6, 0), slice.cell(7, -3));
@@ -188,16 +189,16 @@ public class ScannerTiersTest {
 
 	/**
 	 * The slice is one block thick, but a bore is two wide, so the thermal tier marks a cell when lava is in the plane (bright) or within
-	 * {@link ScannerTuning#lavaSpread()} blocks to either side of it (near). Tier 1 reads only the plane, and as open space. PR 287 measured
+	 * {@link ScannerTuning#lavaSpread(Chassis)} blocks to either side of it (near). Tier 1 reads only the plane, and as open space. PR 287 measured
 	 * that the plane alone shows only 1 in 7 of the lava a pod touches.
 	 */
 	@GameTest
 	public void theThermalTierMarksLavaInThePlaneAndNearLavaBesideItAndTierOneDoesNot(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		BlockPos origin = origin(helper);
-		int spread = ScannerTuning.DEFAULT.lavaSpread();
-		if (spread != 2) {
-			throw failure(helper, "the thermal tier should reach 2 blocks either side of the plane (a 2 x 2 bore and a block of margin), got %d", spread);
+		int spread = ScannerTuning.DEFAULT.lavaSpread(Chassis.MOLE);
+		if (spread != 2 || ScannerTuning.DEFAULT.lavaSpread(Chassis.PROSPECTOR) != 2) {
+			throw failure(helper, "the thermal tier should reach 2 blocks either side of the plane for the Mole and the Prospector (a bore of 2 or 3 and a block of margin), got %d", spread);
 		}
 		// Perpendicular to an east-facing plane is the Z axis. Each column ahead holds lava at one offset from the plane.
 		int[] offsets = {0, 1, 2, -1, -2, 3, -3};
@@ -207,7 +208,7 @@ public class ScannerTiersTest {
 		}
 		try {
 			for (int tier = 1; tier <= 4; tier++) {
-				ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, tier);
+				ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, tier, Chassis.MOLE);
 				for (int i = 0; i < offsets.length; i++) {
 					Cell want = tier >= 2 ? expected[i] : Cell.AIR;
 					Cell got = slice.cell(5 + 3 * i, -1);
@@ -237,7 +238,7 @@ public class ScannerTiersTest {
 		place(level, lava[0], Blocks.LAVA);
 		place(level, lava[1], Blocks.LAVA);
 		try {
-			ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, 3);
+			ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, 3, Chassis.MOLE);
 			if (!slice.cell(4, -3).equals(new Cell.Ore(Blocks.GOLD_ORE)) || !slice.cell(7, -3).equals(Cell.GAS)) {
 				throw failure(helper, "ore and gas with lava beside them should keep their own readings, read %s and %s", slice.cell(4, -3), slice.cell(7, -3));
 			}
@@ -259,7 +260,7 @@ public class ScannerTiersTest {
 		place(level, origin.offset(5, -2, 0), Blocks.GOLD_ORE);
 		place(level, origin.offset(6, -2, 0), HazardBlocks.GAS_POCKET);
 		try {
-			ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, 3);
+			ScanSlice slice = ScanSlice.scan(level, origin, Direction.EAST, 3, Chassis.MOLE);
 			if (!slice.cell(4, -2).equals(Cell.LAVA) || !slice.cell(5, -2).equals(new Cell.Ore(Blocks.GOLD_ORE)) || !slice.cell(6, -2).equals(Cell.GAS)) {
 				throw failure(helper, "lava, ore and gas side by side should read as lava, gold and gas, read %s, %s, %s",
 						slice.cell(4, -2), slice.cell(5, -2), slice.cell(6, -2));

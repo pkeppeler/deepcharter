@@ -153,7 +153,7 @@ public class TowingTest {
 		});
 		helper.runAfterDelay(40, () -> {
 			try {
-				double trail = TowTuning.DEFAULT.trailDistance();
+				double trail = TowTuning.DEFAULT.trailDistance(tower, towed);
 				double gap = tower.position().distanceTo(towed.position());
 				if (gap > trail + 0.5) {
 					throw failure(helper, "the towed pod should trail within %s blocks, it is %s away", trail, gap);
@@ -606,7 +606,7 @@ public class TowingTest {
 				throw failure(helper, "the cable did not cross with the towed pod, got %s", PodTowing.towerId(crossed));
 			}
 			double gap = crossed.position().distanceTo(arrived.position());
-			double trail = TowTuning.DEFAULT.trailDistance();
+			double trail = TowTuning.DEFAULT.trailDistance(arrived, crossed);
 			if (Math.abs(gap - trail) > 0.5) {
 				throw failure(helper, "the towed pod should arrive at the trail offset of %s from its tower, not inside it, it is %s away", trail, gap);
 			}

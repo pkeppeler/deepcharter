@@ -6,6 +6,7 @@ import com.geckolib.renderer.base.GeoRenderer;
 import com.geckolib.renderer.layer.builtin.AutoGlowingGeoLayer;
 
 import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.resources.Identifier;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 
@@ -19,6 +20,12 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 final class PodGlowLayer extends AutoGlowingGeoLayer<PodGeoAnimatable, PodEntity, PodGeoRenderState> {
 	PodGlowLayer(GeoRenderer<PodGeoAnimatable, PodEntity, PodGeoRenderState> renderer) {
 		super(renderer);
+	}
+
+	/** The glowmask of the variant on show: a painted texture has none of its own, and the mask does not change with the paint. */
+	@Override
+	protected Identifier getTextureResource(PodGeoRenderState renderState) {
+		return renderState.appearance.variant().glowmask();
 	}
 
 	@Override

@@ -20,6 +20,8 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param transmission the transmission panel
  * @param breach the fade and jitter of a crossing
  * @param cargo the pod cargo screen
+ * @param pod the paint palette of the pods' hulls
+ * @param panel the machine panel round the terminals, off until a pack switches it on
  */
 public record UiTheme(
 		CrtTuning crt,
@@ -28,9 +30,11 @@ public record UiTheme(
 		HudLook hud,
 		TransmissionLook transmission,
 		BreachLook breach,
-		CargoLook cargo) {
+		CargoLook cargo,
+		PodPaintLook pod,
+		PanelLook panel) {
 	/** The areas, each one a file {@code theme/<name>.json}. */
-	static final Set<String> AREAS = Set.of("crt", "handbook", "scanner", "hud", "transmission", "breach", "cargo");
+	static final Set<String> AREAS = Set.of("crt", "handbook", "scanner", "hud", "transmission", "breach", "cargo", "pod", "panel");
 
 	private static volatile UiTheme current;
 
@@ -59,7 +63,9 @@ public record UiTheme(
 				HudLook.of(areas.get("hud")),
 				TransmissionLook.of(areas.get("transmission")),
 				BreachLook.of(areas.get("breach")),
-				CargoLook.of(areas.get("cargo")));
+				CargoLook.of(areas.get("cargo")),
+				PodPaintLook.of(areas.get("pod")),
+				PanelLook.of(areas.get("panel")));
 		if (theme.transmission().maxWidth() <= 2 * theme.crt().padding()) {
 			throw new IllegalArgumentException(areas.get("transmission").conflict("maxWidth must be more than twice the padding of the crt area, "
 					+ "or the panel has no room for text", "maxWidth").getMessage()

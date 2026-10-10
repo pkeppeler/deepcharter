@@ -21,6 +21,7 @@ public final class PodInit {
 		PodLining.init();
 		PodLiner.init();
 		PodSounder.init();
+		PodBrace.init();
 		PodTowing.init();
 	}
 }

@@ -80,13 +80,19 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 		return typewriter;
 	}
 
+	/** The y of the first row: the same distance below the top of the content as before the panel. */
+	private int listTop() {
+		return contentTop(MARGIN) + LIST_TOP - MARGIN;
+	}
+
 	@Override
 	protected void layout() {
-		int pitch = Mth.clamp((height - MARGIN - LIST_TOP + ROW_GAP) / ComponentTrack.values().length, MIN_PITCH, MAX_PITCH);
+		int left = contentLeft(MARGIN);
+		int pitch = Mth.clamp((contentBottom(MARGIN) - listTop() + ROW_GAP) / ComponentTrack.values().length, MIN_PITCH, MAX_PITCH);
 		int rowHeight = pitch - ROW_GAP;
-		int tierX = MARGIN + TRACK_WIDTH + COLUMN_GAP;
+		int tierX = left + TRACK_WIDTH + COLUMN_GAP;
 		// Close sits under the longest list of tiers, so it stays on the screen however many tracks the left column holds.
-		int closeY = LIST_TOP + Arrays.stream(ComponentTrack.values()).mapToInt(ComponentTrack::maxTier).max().orElse(0) * pitch + ROW_GAP;
+		int closeY = listTop() + Arrays.stream(ComponentTrack.values()).mapToInt(ComponentTrack::maxTier).max().orElse(0) * pitch + ROW_GAP;
 		addRenderableWidget(new CrtButton(tierX, closeY, CLOSE_WIDTH, rowHeight,
 				Component.translatable("screen.deepcharter.terminal.close"), button -> onClose()));
 		Optional<UpgradeView.Pod> shownPod = upgrade().flatMap(UpgradeView::pod);
@@ -94,11 +100,11 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 			return;
 		}
 		UpgradeView.Pod pod = shownPod.get();
-		int tierWidth = Math.min(width - MARGIN - tierX, TIER_MAX_WIDTH);
+		int tierWidth = Math.min(contentRight(MARGIN) - tierX, TIER_MAX_WIDTH);
 		for (UpgradeView.Slot slot : pod.slots()) {
 			ComponentTrack track = slot.track();
 			Component label = Component.translatable("screen.deepcharter.upgrade.track", trackName(track), slot.installed());
-			addRenderableWidget(new CrtButton(MARGIN, LIST_TOP + track.ordinal() * pitch,
+			addRenderableWidget(new CrtButton(left, listTop() + track.ordinal() * pitch,
 					TRACK_WIDTH, rowHeight, track == selected ? Component.literal("> ").append(label) : label, pressed -> select(track)));
 		}
 		UpgradeView.Slot held = slotOf(pod, selected);
@@ -113,7 +119,7 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 			Component label = here && held.installed() == tier
 					? Component.translatable("screen.deepcharter.upgrade.installed", tier).append(capped)
 					: Component.translatable("screen.deepcharter.upgrade.buy", tier, price, capped);
-			CrtButton button = addRenderableWidget(new CrtButton(tierX, LIST_TOP + (tier - 1) * pitch,
+			CrtButton button = addRenderableWidget(new CrtButton(tierX, listTop() + (tier - 1) * pitch,
 					tierWidth, rowHeight, label, pressed -> buy(selected, offered)));
 			// An unregistered pod (no serial) takes no parts: they would be void.
 			button.active = !here && balance >= price && !pod.serial().isEmpty();
@@ -144,9 +150,9 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		CrtTuning tuning = CrtTuning.current();
-		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), MARGIN, width);
-		int below = drawTypewriter(graphics, typewriter, MARGIN, MARGIN + font.lineHeight + 10, width - 2 * MARGIN);
-		CrtDraw.glowText(graphics, font, status(), MARGIN, below, tuning.phosphorColor());
+		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), contentLeft(MARGIN), contentTop(MARGIN), contentRight(MARGIN));
+		int below = drawTypewriter(graphics, typewriter, contentLeft(MARGIN), contentTop(MARGIN) + font.lineHeight + 10, contentWidth(MARGIN));
+		CrtDraw.glowText(graphics, font, status(), contentLeft(MARGIN), below, tuning.phosphorColor());
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 	}
 

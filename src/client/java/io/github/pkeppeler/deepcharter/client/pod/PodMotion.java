@@ -9,14 +9,15 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
  * One pod's animation, advanced every frame from what the pod does: phases keep running across frames, so a part never jumps when
  * its speed changes. Client thread only. Rates are per tick; 20 ticks are a second.
  */
-final class PodMotion {
+public final class PodMotion {
 	private static final float TURN_DEGREES = 15f;
 	private static final float DRILL_SPIN_DEGREES = 40f;
 	private static final float MOUNT_DEGREES = 8f;
-	private static final float ROTOR_IDLE_DEGREES = 6f;
 	private static final float ROTOR_FLYING_DEGREES = 60f;
 	/** How fast the rotor's speed changes, degrees per tick, per tick. */
 	private static final float ROTOR_SPIN_UP = 3f;
+	/** How fast the rotor folds out or in, as a share of the whole fold per tick: half a second. */
+	private static final float FOLD_PER_TICK = 0.1f;
 	private static final float FAN_DEGREES = 24f;
 	private static final float THRUST_PER_TICK = 0.1f;
 	private static final float WALK_PER_TICK = 0.2f;
@@ -39,6 +40,7 @@ final class PodMotion {
 	private float drillSpin;
 	private float rotorSpeed;
 	private float rotorSpin;
+	private float rotorOut;
 	private float fanSpin;
 	private float thrust;
 	private float travel;
@@ -48,8 +50,9 @@ final class PodMotion {
 	 * Advances to the state's frame and writes the pose into it. {@code mountRestPitch} is the drill mount's idle angle in the model,
 	 * and {@code drillSpinScale} its share of the full drill spin ({@link GeoModel#drillSpinScale(String)}).
 	 */
-	void advance(PodEntity pod, PodGeoRenderState state, float mountRestPitch, float drillSpinScale) {
-		if (!started) {
+	public void advance(PodEntity pod, PodGeoRenderState state, float mountRestPitch, float drillSpinScale) {
+		boolean firstFrame = !started;
+		if (firstFrame) {
 			started = true;
 			lastAge = state.ageInTicks;
 			lastX = state.x;
@@ -60,7 +63,9 @@ final class PodMotion {
 		float step = Mth.clamp(state.ageInTicks - lastAge, 0f, MAX_STEP);
 		double dx = state.x - lastX;
 		double dz = state.z - lastZ;
-		lastAge = state.ageInTicks;
+		// A frame drawn at an earlier partial tick than one already seen (a second view of the pod in one frame) must not move the clock back,
+		// or the next frame would count the same ticks again.
+		lastAge = Math.max(lastAge, state.ageInTicks);
 		lastX = state.x;
 		lastZ = state.z;
 		if (Math.sqrt(dx * dx + dz * dz) > TELEPORT_SPEED * Math.max(step, MIN_STEP)) {
@@ -92,9 +97,13 @@ final class PodMotion {
 		if (drilling) {
 			drillSpin = (drillSpin + DRILL_SPIN_DEGREES * drillSpinScale * step) % 360f;
 		}
-		float rotorTarget = pod.flying() ? ROTOR_FLYING_DEGREES : powered ? ROTOR_IDLE_DEGREES : 0f;
-		rotorSpeed = Mth.approach(rotorSpeed, rotorTarget, ROTOR_SPIN_UP * step);
-		rotorSpin = (rotorSpin + rotorSpeed * step) % 360f;
+		// The blades fold out to lift off and stay out while the pod is in the air, and fold in on landing and stay in while the drill bites.
+		// A pod first seen takes the pose its state asks for, so one that is already in the air or on the ground is not seen unfolding.
+		boolean rotorOutTarget = !drilling && (pod.flying() || !pod.onGround());
+		rotorOut = firstFrame ? (rotorOutTarget ? 1f : 0f) : Mth.approach(rotorOut, rotorOutTarget ? 1f : 0f, FOLD_PER_TICK * step);
+		rotorSpeed = Mth.approach(rotorSpeed, pod.flying() && !drilling ? ROTOR_FLYING_DEGREES : 0f, ROTOR_SPIN_UP * step);
+		// rotorSpeed is 0 while drilling and rotorOut scales it, so the rotor turns only with its blades out and the engine lifting.
+		rotorSpin = (rotorSpin + rotorSpeed * rotorOut * step) % 360f;
 		if (powered) {
 			fanSpin = (fanSpin + FAN_DEGREES * step) % 360f;
 		}
@@ -105,6 +114,7 @@ final class PodMotion {
 		state.mountPitch = mountPitch;
 		state.drillSpin = drillSpin;
 		state.rotorSpin = rotorSpin;
+		state.rotorOut = rotorOut;
 		state.fanSpin = fanSpin;
 		state.thrust = thrust;
 		state.travel = travel;

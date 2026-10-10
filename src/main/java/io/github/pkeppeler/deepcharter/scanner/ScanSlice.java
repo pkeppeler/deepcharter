@@ -14,6 +14,7 @@ import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
+import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -48,7 +49,7 @@ public final class ScanSlice {
 	 */
 	public static Optional<ScanSlice> scan(BlockGetter level, PodEntity pod) {
 		int tier = PodComponents.effectiveTier(pod, ComponentTrack.SCANNER);
-		return tier == 0 ? Optional.empty() : Optional.of(scan(level, pod.blockPosition(), pod.getDirection(), tier));
+		return tier == 0 ? Optional.empty() : Optional.of(scan(level, pod.blockPosition(), pod.getDirection(), tier, pod.chassis()));
 	}
 
 	/**
@@ -75,19 +76,20 @@ public final class ScanSlice {
 		return false;
 	}
 
-	/** Reads the slice of a scanner of {@code tier} (1 or more) around {@code origin}, the pod's feet. */
-	public static ScanSlice scan(BlockGetter level, BlockPos origin, Direction facing, int tier) {
+	/** Reads the slice of a scanner of {@code tier} (1 or more) around {@code origin}, the feet of a pod of {@code chassis}, whose bore sets how far beside the plane lava counts. */
+	public static ScanSlice scan(BlockGetter level, BlockPos origin, Direction facing, int tier, Chassis chassis) {
 		if (facing.getAxis().isVertical()) {
 			throw new IllegalArgumentException("a slice runs along a horizontal facing, not " + facing);
 		}
 		ScanArea area = TUNING.area(tier);
 		boolean showsLava = TUNING.showsLava(tier);
 		boolean showsGas = TUNING.showsGas(tier);
+		int lavaSpread = TUNING.lavaSpread(chassis);
 		Cell[] cells = new Cell[area.columns() * area.rows()];
 		for (int up = area.up(); up >= -area.down(); up--) {
 			for (int ahead = -area.halfWidth(); ahead <= area.halfWidth(); ahead++) {
 				BlockPos pos = origin.relative(facing, ahead).above(up);
-				cells[index(area, ahead, up)] = classify(level, pos, level.getBlockState(pos), facing, showsLava, showsGas);
+				cells[index(area, ahead, up)] = classify(level, pos, level.getBlockState(pos), facing, showsLava, showsGas, lavaSpread);
 			}
 		}
 		return new ScanSlice(tier, area, cells);
@@ -113,7 +115,7 @@ public final class ScanSlice {
 		return (area.up() - up) * area.columns() + ahead + area.halfWidth();
 	}
 
-	private static Cell classify(BlockGetter level, BlockPos pos, BlockState state, Direction facing, boolean showsLava, boolean showsGas) {
+	private static Cell classify(BlockGetter level, BlockPos pos, BlockState state, Direction facing, boolean showsLava, boolean showsGas, int lavaSpread) {
 		if (state.is(ORES)) {
 			return new Cell.Ore(state.getBlock());
 		}
@@ -121,7 +123,7 @@ public final class ScanSlice {
 			return Cell.GAS;
 		}
 		if (showsLava) {
-			Cell lava = lavaReading(level, pos, facing);
+			Cell lava = lavaReading(level, pos, facing, lavaSpread);
 			if (lava != null) {
 				return lava;
 			}
@@ -134,16 +136,16 @@ public final class ScanSlice {
 	}
 
 	/**
-	 * {@link Cell#LAVA} when the block at {@code pos} is lava, {@link Cell#LAVA_NEAR} when only a block within {@link ScannerTuning#lavaSpread()}
+	 * {@link Cell#LAVA} when the block at {@code pos} is lava, {@link Cell#LAVA_NEAR} when only a block within {@link ScannerTuning#lavaSpread(Chassis)}
 	 * blocks either side of the plane at that spot is, and null for neither. The pod's bore is wider than the one-block plane, and lava beside
 	 * the plane is lava the pod can touch.
 	 */
-	private static Cell lavaReading(BlockGetter level, BlockPos pos, Direction facing) {
+	private static Cell lavaReading(BlockGetter level, BlockPos pos, Direction facing, int lavaSpread) {
 		if (level.getFluidState(pos).is(FluidTags.LAVA)) {
 			return Cell.LAVA;
 		}
 		Direction side = facing.getClockWise();
-		for (int distance = 1; distance <= TUNING.lavaSpread(); distance++) {
+		for (int distance = 1; distance <= lavaSpread; distance++) {
 			if (level.getFluidState(pos.relative(side, distance)).is(FluidTags.LAVA)
 					|| level.getFluidState(pos.relative(side, -distance)).is(FluidTags.LAVA)) {
 				return Cell.LAVA_NEAR;
@@ -175,7 +177,7 @@ public final class ScanSlice {
 		record Lava() implements Cell {
 		}
 
-		/** A cell with no lava in it but lava within {@link ScannerTuning#lavaSpread()} blocks beside the plane, seen by a scanner of {@link ScannerTuning#lavaTier()} or better. */
+		/** A cell with no lava in it but lava within {@link ScannerTuning#lavaSpread(Chassis)} blocks beside the plane, seen by a scanner of {@link ScannerTuning#lavaTier()} or better. */
 		record LavaNear() implements Cell {
 		}
 

@@ -9,8 +9,6 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.FormattedText;
-import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
@@ -19,6 +17,7 @@ import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
+import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
@@ -74,8 +73,9 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 	@Override
 	protected void layout() {
 		HangarTuning tuning = HangarTuning.DEFAULT;
-		int closeY = height - MARGIN - BUTTON_HEIGHT;
-		addRenderableWidget(new CrtButton(MARGIN, closeY, CLOSE_WIDTH, BUTTON_HEIGHT,
+		int closeY = contentBottom(MARGIN) - BUTTON_HEIGHT;
+		int left = contentLeft(MARGIN);
+		addRenderableWidget(new CrtButton(left, closeY, CLOSE_WIDTH, BUTTON_HEIGHT,
 				Component.translatable("screen.deepcharter.terminal.close"), button -> onClose()));
 		// The restore prices are text under the restore button, wrapped to the screen, so no price can run off its edge.
 		String catalyst = OreRegistry.stack(tuning.catalyst()).getHoverName().getString().toUpperCase(Locale.ROOT);
@@ -95,30 +95,31 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 		advanceLines = placed(advance, pricesY + wrapped.size() * lineHeight, lineHeight);
 		int restoreY = pricesY - GAP - BUTTON_HEIGHT;
 		int buyY = restoreY - GAP - BUTTON_HEIGHT;
-		addRenderableWidget(new CrtButton(MARGIN, buyY, BUTTON_WIDTH, BUTTON_HEIGHT,
+		addRenderableWidget(new CrtButton(left, buyY, BUTTON_WIDTH, BUTTON_HEIGHT,
 				Component.translatable("screen.deepcharter.hangar.buy", tuning.refurbishedMole(), tuning.registrationFee()),
 				button -> send(HangarTerminal.BUY_MOLE)));
 		// The wreck the server restores is the nearest one, so the lines under the button name the price of each chassis.
-		addRenderableWidget(new CrtButton(MARGIN, restoreY, BUTTON_WIDTH, BUTTON_HEIGHT,
+		addRenderableWidget(new CrtButton(left, restoreY, BUTTON_WIDTH, BUTTON_HEIGHT,
 				Component.translatable("screen.deepcharter.hangar.restore"), button -> send(HangarTerminal.RESTORE_WRECK)));
 	}
 
 	private List<String> wrap(String text) {
-		return font.getSplitter().splitLines(FormattedText.of(text), width - 2 * MARGIN, Style.EMPTY).stream().map(FormattedText::getString).toList();
+		return CrtText.wrap(font, text, contentWidth(MARGIN));
 	}
 
-	private static List<PriceLine> placed(List<String> lines, int y, int lineHeight) {
+	private List<PriceLine> placed(List<String> lines, int y, int lineHeight) {
+		int left = contentLeft(MARGIN);
 		List<PriceLine> placed = new ArrayList<>();
 		for (int i = 0; i < lines.size(); i++) {
-			placed.add(new PriceLine(lines.get(i), MARGIN, y + i * lineHeight));
+			placed.add(new PriceLine(lines.get(i), left, y + i * lineHeight));
 		}
 		return List.copyOf(placed);
 	}
 
 	/** The y below the header text once the welcome has typed out in full: the welcome lines, then the account line. */
 	public int headerBottom() {
-		int welcomeLines = font.getSplitter().splitLines(FormattedText.of(typewriter.text()), width - 2 * MARGIN, Style.EMPTY).size();
-		int welcomeBottom = MARGIN + font.lineHeight + 14 + Math.max(welcomeLines, 1) * (font.lineHeight + CrtTuning.current().lineSpacing());
+		int welcomeLines = CrtText.wrap(font, typewriter.text(), contentWidth(MARGIN)).size();
+		int welcomeBottom = contentTop(MARGIN) + font.lineHeight + 14 + Math.max(welcomeLines, 1) * (font.lineHeight + CrtTuning.current().lineSpacing());
 		return welcomeBottom + GAP + font.lineHeight;
 	}
 
@@ -139,12 +140,12 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		CrtTuning tuning = CrtTuning.current();
-		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), MARGIN, width);
-		int below = drawTypewriter(graphics, typewriter, MARGIN, MARGIN + font.lineHeight + 14, width - 2 * MARGIN);
+		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), contentLeft(MARGIN), contentTop(MARGIN), contentRight(MARGIN));
+		int below = drawTypewriter(graphics, typewriter, contentLeft(MARGIN), contentTop(MARGIN) + font.lineHeight + 14, contentWidth(MARGIN));
 		String account = ClientCharter.view()
 				.map(charter -> Component.translatable("screen.deepcharter.terminal.account", charter.balance()).getString())
 				.orElse("");
-		CrtDraw.glowText(graphics, font, account, MARGIN, below + GAP, tuning.phosphorColor());
+		CrtDraw.glowText(graphics, font, account, contentLeft(MARGIN), below + GAP, tuning.phosphorColor());
 		for (PriceLine line : priceLines) {
 			CrtDraw.glowText(graphics, font, line.text(), line.x(), line.y(), tuning.phosphorColor());
 		}

@@ -8,10 +8,9 @@ import java.util.Map;
  * Tunables for the upgrade feature, read as {@code UpgradeTuning.DEFAULT.thing()}.
  *
  * @param tracks     for each {@link ComponentTrack}, what each tier is worth and costs
- * @param tierCaps   the best part tier each chassis takes, by chassis id (SPEC section 7)
  */
-public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks, Map<String, Integer> tierCaps) {
-	public static final UpgradeTuning DEFAULT = new UpgradeTuning(defaultTracks(), Map.of("mole", 2, "prospector", 3));
+public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks) {
+	public static final UpgradeTuning DEFAULT = new UpgradeTuning(defaultTracks());
 
 	/**
 	 * One track's table, with one entry for each tier from 0 (stock) up. {@code values} are the original's reference
@@ -31,7 +30,6 @@ public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks, Map<String, Integ
 
 	public UpgradeTuning {
 		tracks = Map.copyOf(tracks);
-		tierCaps = Map.copyOf(tierCaps);
 		for (ComponentTrack track : ComponentTrack.values()) {
 			Tiers tiers = tracks.get(track);
 			if (tiers == null || tiers.values().size() != track.maxTier() + 1) {
@@ -57,15 +55,6 @@ public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks, Map<String, Integ
 			throw new IllegalArgumentException("track " + track.id() + " has no stock part to compare with");
 		}
 		return value(track, tier) / stock;
-	}
-
-	/** The best part tier the chassis takes. A chassis with no entry is a bug, so it throws. */
-	public int tierCap(String chassisId) {
-		Integer cap = tierCaps.get(chassisId);
-		if (cap == null) {
-			throw new IllegalArgumentException("no component tier cap for chassis " + chassisId);
-		}
-		return cap;
 	}
 
 	private static int requireTier(ComponentTrack track, int tier) {
@@ -106,6 +95,9 @@ public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks, Map<String, Integ
 		// Invented (#373): the seep sounder has no stock part. Its value is the tier number; what each tier does is in PodSounderTuning. Both tiers fit a Mole (cap 2).
 		// Tier 1 is $400, two layer 2 runs, and tier 2 is $1,000, as the liner's tier 2 (EconomyAffordabilityTest).
 		tracks.put(ComponentTrack.SOUNDER, new Tiers(List.of(0f, 1f, 2f), List.of(0L, 400L, 1000L)));
+		// Invented (#378): the breach brace has no stock part. One tier, 1 for "fitted"; what it does is in PodBraceTuning. $200 is two stock layer-1 runs,
+		// and the crust it answers ends layer 1 (EconomyAffordabilityTest).
+		tracks.put(ComponentTrack.BRACE, new Tiers(List.of(0f, 1f), List.of(0L, 200L)));
 		return tracks;
 	}
 }

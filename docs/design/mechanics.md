@@ -66,7 +66,7 @@ The bot is unrealistic in two opposite ways. It never reacts, which is harsh. It
 **Problem.** The tier 1 scanner draws lava as open space (BLOCKERS: fluids), and its slice is one block thick while a bore is two wide. So it showed the lava a pod touched, 8 or more slabs ahead, in 13% of bores.
 
 **The tier.** Scanner tier 2, the best a Mole can fit, is the thermal tier (`ScannerTuning.lavaTier`).
-- Two shades. A cell with lava in the plane is bright red (`lavaColor`, `#FF2A10`). A cell with lava only within 2 blocks of either side of the plane (`lavaSpread`: the 2 x 2 bore and a block of margin) is a dim brown-red (`lavaNearColor`, `#78463A`), close to the rock, so that it reads as heat in the wall and does not drown the bright cells. The bright red is far from gold (`#FFD21E`). Ore and gas keep their colours when they share a cell with lava beside it.
+- Two shades. A cell with lava in the plane is bright red (`lavaColor`, `#FF2A10`). A cell with lava only within 2 blocks of either side of the plane (`ScannerTuning.lavaSpread(chassis)`: half the bore's width and a block of margin, 2 for a Mole and a Prospector) is a dim brown-red (`lavaNearColor`, `#78463A`), close to the rock, so that it reads as heat in the wall and does not drown the bright cells. The bright red is far from gold (`#FFD21E`). Ore and gas keep their colours when they share a cell with lava beside it.
 - Tier 1 is unchanged: lava is open space. That is what makes tier 2 worth its price. Water is open space at every tier, because no water hazard exists.
 - Price: the standard ladder's $500, unchanged. Reason: a tier 2 part pays back in about two runs of layer 2 with tier 2 parts, and the thermal tier is a layer 2 purchase (`EconomyAffordabilityTest`).
 - Tier 3 keeps gas, so the ladder reads: ore, then lava, then gas.
@@ -86,7 +86,7 @@ The bot is unrealistic in two opposite ways. It never reacts, which is harsh. It
 - The "plane only" column is a run with `lavaSpread` set to 0.
 - **Scan cost.** One tier 2 slice read (about 4 per second in the HUD) took a median of 0.9 ms and a mean of 2.3 ms in the 100-bore run, on 100 busy pods. Each cell reads 5 blocks, and no two cells share one, so a column mask would not save reads. Left as it is.
 
-**Knobs.** `ScannerTuning.lavaTier` (2), `ScannerTuning.lavaSpread` (2), `theme/scanner.json` `lavaColor` and `lavaNearColor`, `LayerTuning.lavaHullPerSecond` (10), `LayerTuning.lavaCueTicks` (15), `theme/hud.json` `podBurningColor`, the `pod.hull_burning` sound.
+**Knobs.** `ScannerTuning.lavaTier` (2), `ScannerTuning.lavaMargin` (1, so a spread of 2 for a Mole), `theme/scanner.json` `lavaColor` and `lavaNearColor`, `LayerTuning.lavaHullPerSecond` (10), `LayerTuning.lavaCueTicks` (15), `theme/hud.json` `podBurningColor`, the `pod.hull_burning` sound.
 
 **Open questions.**
 - ~~Should the tier 1 scanner mark lava, or is that a later tier's job (BLOCKERS: fluids)?~~ Answered by #300: a later tier's job. See the thermal tier above.
@@ -106,9 +106,9 @@ The bot is unrealistic in two opposite ways. It never reacts, which is harsh. It
 **The mechanic.**
 - **The spoil hopper.** The stock pod keeps no spoil: SPEC section 7 says only ore is kept, and the hopper is the "keep stone" upgrade it allows. The hopper is a part of its own track (`spoil_hopper`, one tier) that the upgrade terminal sells for $100, one early layer 1 run of a stock Mole (`EconomyAffordabilityTest`), so a charter has it before Deep Claim, where lava starts. Without it the drill destroys stone and dirt as before. The user chose this form (#313).
 - **Spoil.** With a hopper the drill keeps one spoil for each block of waste rock it bores: the blocks in the tag `deepcharter:waste_rock` (stone and dirt). The bay holds 64, and a drill past that loses the rock, as it loses ore past a full cargo bay. Spoil is not cargo, so it takes no ore slot. It is a pod attachment (`PodLining.State`), and it cuts lift like ore does (0.1 mass each).
-- **Slag brick.** The processor's new button, MAKE SLAG BRICK, turns 2 spoil into 1 brick for $2 a brick, from every pod the charter may use that is parked at the processor. The bricks go to each pod's rack (32, 0.2 mass each) and, when a rack is full, to the buyer's pack (a stack is 64). It makes only the bricks that have a place to go and that the account pays for, and charges for those. A brick is a plain full block, so lava neither flows into it nor replaces it. It drops itself when broken by hand. The drill bores it and gets nothing.
+- **Slag brick.** The processor's new button, MAKE SLAG BRICK, turns 2 spoil into 1 brick, for no money ([#363](#liner-bricks-363-a)), from every pod the charter may use that is parked at the processor. The bricks go to each pod's rack (32, 0.2 mass each) and, when a rack is full, to the buyer's pack (a stack is 64). It makes only the bricks that have a place to go. A brick is a plain full block, so lava neither flows into it nor replaces it. It drops itself when broken by hand. The drill bores it and gets nothing.
 - **Lining.** The key R, from the pilot's seat (`key.deepcharter.line_slab`). The pod places one brick every 8 ticks, and stops while it does: no drive, no climb, no drill (the pod keeps its power, its lights and its fuel burn). Another press stops it. The cells, in order: lava first, then open cells beside lava, then the rest, lowest first.
-  - The ring: the air and fluid cells beside the 2 x 2 footprint, from the slab below the pod to the top of its box.
+  - The ring: the air and fluid cells beside the footprint (2 x 2 for a Mole), from the slab below the pod to the top of its box.
   - The floor: lava in the footprint's cells in the slab below and the one under it. The drill bores no liquid, and the pod touches lava the moment it sinks onto it.
   - Never replaced: rock, ore, company rock, and a cell next to an unloaded chunk.
 - **Bricks used.** The rack first (if `PodComponents.mayAccess` lets the pilot use the pod's stores), then the pilot's pack. No brick is made by lining.
@@ -117,13 +117,13 @@ The bot is unrealistic in two opposite ways. It never reacts, which is harsh. It
 
 **Trade-offs.**
 - Time: 8 ticks a brick. A lining of one slab with lava on both sides is 4 to 8 bricks, 32 to 64 ticks, about 1 to 2 slabs of drilling at 36 ticks a slab.
-- Money: $100 for the hopper and $2 for each brick.
+- Money: $100 for the hopper. A brick costs spoil, not money ([#363](#liner-bricks-363-a); it was $2).
 - Mass: a full bay and rack weigh 12.8 of the Mole's 100 engine power, which is the hopper's trade-off. The rotor still climbs at its cap with that load (it needs 54% of its power for lift), and `EarlyRunModel` carries the mass (`hopperMass`): a hopper pod's braked descent burns a little more rotor fuel, and the Prospector restore still takes its 4 layer 2 runs (`EconomyAffordabilityTest`).
 - Fuel: the pod burns idle fuel while it works.
 - Spoil: it fills the bay in about 16 slabs, so a dive has a standing stock of 32 bricks. A pilot must go back to the processor for more.
 - Honest limits: the pod lines only at rest. In a fall through a cave nothing can be done by hand.
 
-**Tuning knobs.** `PodLiningTuning`: `spoilCapacity` (64), `spoilPerBrick` (2), `brickCapacity` (32), `fusePrice` ($2), `ticksPerBrick` (8), `spoilMass` (0.1), `brickMass` (0.2). The tag `data/deepcharter/tags/block/waste_rock.json`. `PodLining.FLOOR_DEPTH` (2). The hopper's price: `UpgradeTuning` `SPOIL_HOPPER`, tier 1 ($100). The brick's stack size is the vanilla default of 64. Skins: the block texture, model and loot table, the hopper's item model and icon, the sound `pod.lining_place`, the lang keys, and `theme/hud.json` `podLiningColor` and `podLiningDryColor`.
+**Tuning knobs.** `PodLiningTuning`: `spoilCapacity` (64), `spoilPerBrick` (2), `brickCapacity` (32), `ticksPerBrick` (8), `spoilMass` (0.1), `brickMass` (0.2). The tag `data/deepcharter/tags/block/waste_rock.json`. `PodLining.FLOOR_DEPTH` (2). The hopper's price: `UpgradeTuning` `SPOIL_HOPPER`, tier 1 ($100). The brick's stack size is the vanilla default of 64. Skins: the block texture, model and loot table, the hopper's item model and icon, the sound `pod.lining_place`, the lang keys, and `theme/hud.json` `podLiningColor` and `podLiningDryColor`.
 
 ### Lining vs. a straight bore: measured
 
@@ -145,7 +145,7 @@ The bot is unrealistic in two opposite ways. It never reacts, which is harsh. It
 The no-lining column is a new run of the #300 bot: a pod with no hopper keeps no spoil, so it carries none, and its numbers moved by one bore from #300's (96 touched lava). The lining pods have the hopper.
 
 - **Lining halves the loss and does not make a bore safe.** 10 to 12 bores reach layer 2 against none, and the mean hull lost to lava falls from 78 to 24 to 28. Most encounters are shorter now: the median is 23 hull against 100.
-- **It costs about 20 bricks and 9 seconds of standing still a bore.** That is about $40 of brick, and 2% of the 8,000 ticks of a bore. The cost is small beside the gain, so the price and the time are not the limit.
+- **It costs about 20 bricks and 9 seconds of standing still a bore.** That was about $40 of brick at the $2 a brick of #313 (bricks are free since [#363](#liner-bricks-363-a)), and it is 2% of the 8,000 ticks of a bore. The cost is small beside the gain, so the price and the time are not the limit.
 - **A bigger rack buys 2 more survivors.** 16 bores ran out with 32 bricks, and 999 bricks gave 12 against 10. Supply is not what limits the hand rung.
 - **What is left.** Of the 73 encounters of the 32-brick run, 11 began with a lining that was asked for and not done (the pod was falling through open cave, and the bot lines only at rest), 50 began within 2 slabs below a lining, and 12 had no lining asked for. The one bore traced in detail (a 12-bore diagnostic) was a fall: the pod dropped through open cave past the slab where the bot wanted to line, so it was never at rest there, and lava crept in through the cave from farther than the scanner marks. The other cases are not traced. By hand cannot cover that, which is the case for rung 2 (a liner that works as the pod drills, measured in [Liner (#339, A)](#liner-339-a)) and for the heat-shield hull.
 - **The bores that line go deeper**, so they meet more lava than a bore that dies at the first. The no-lining bores last 6,149 pod ticks and the lining ones 8,092, so the table is a lower bound on what lining buys.
@@ -180,7 +180,7 @@ The no-lining column is a new run of the #300 bot: a pod with no hopper keeps no
 | 1 | $500 | 4 slabs | 1 | -10% | no | 2 |
 | 2 | $1,000 | 3 slabs | 2 | -15% | yes | 4 |
 
-- Money: the part, and $2 a brick (a brick is two spoil, and a ring of an open cave is dear; the liner draws on the pilot's pack too). A run in layer 2 with tier 2 parts and a hopper pod nets about $300 (`EconomyAffordabilityTest`, which bands both tiers).
+- Money: the part. Bricks cost spoil and no money ([#363](#liner-bricks-363-a); the build of #339 charged $2 a brick). A run in layer 2 with tier 2 parts and a hopper pod nets about $300 (`EconomyAffordabilityTest`, which bands both tiers).
 - Time: the drill is 10% to 15% slower, which `EarlyRunModel` carries (`withLiner`), but the pod never stops. The liner pods spend 9,000 to 10,000 ticks a bore against 8,160 for hand lining and 6,170 unlined (the bores run longer because they live longer, and the drill is slower).
 - Cargo and mass: the rack is the one the hopper has; the liner adds none.
 - Honest limits: the liner holds lava and nothing else. Most of the bores it saves from lava die of gas (below).
@@ -203,7 +203,7 @@ The no-lining column is a new run of the #300 bot: a pod with no hopper keeps no
 | Bores that touch lava | 99 | 69 | 55 | 39 | 18 | 23 | 30 |
 | Lava encounters per bore | 1.00 | 0.78 | 0.56 | 0.40 | 0.18 | 0.23 | 0.30 |
 | Died of something else | 1 | 27 | 40 | 56 | 70 | 64 | 59 |
-| Bricks (not cells) placed per bore: mean | none | 20 | 24 | 21 | 28 | 78 | 82 |
+| Bricks (not cells) placed per bore: mean | none | 20 | 24 | 21 | 28 | 28 | 33 |
 | Ticks standing still lining per bore: mean | none | 186 | 0 | 0 | 0 | 0 | 0 |
 | Pod ticks per bore | 6,170 | 8,160 | 8,943 | 9,663 | 10,073 | 10,113 | 9,557 |
 | Bores whose rack ran out (hand: pressed with none) | none | 20 | 40 | 27 | 0 | 3 | 2 |
@@ -235,8 +235,8 @@ The no-lining column is a new run of the #300 bot: a pod with no hopper keeps no
 
   Gas deals every big non-lava hit but 14 landings (all in the 999-brick column, braked and still over 0.7), and it ends 23 to 52 bores of each lining column. The crust ends 4 to 17: those are pods that reached the breach with little hull. Gas is a hazard of its own (its counterplay is the radiator, not the liner). So "reach layer 2" is a gas figure as much as a lava one, and it is the secondary number here: a bore that survives lava lives long enough to meet more gas. With the rack of 32 the liner reaches layer 2 less often than the hand (5 and 6 against 11) for that reason, since it holds lava better and then dies of gas. Unbraked, the first #313 bot had 12 to 15 landings of this size per column and about the same count of other big hits (37 to 160), so braking changes the landings and not the reach.
 - **The rack is the limit.** With 32 bricks, 40 and 27 bores ran out, and the dry bores are where lava gets through: tier 2 with 999 bricks has lava ending 18 bores, against 39. The first measurement here (unbraked) said the same.
-- **The pack closes most of the gap (the better design, kept).** The liner draws on the pilot's pack after the rack, as hand lining does. With one stack (64) in the pack, tier 2 has lava ending 23 bores and loses 11 hull per bore, and 13 reach layer 2, better than the hand on every lava figure and close to the 999-brick pod. The cost is bricks: 78 to 82 bricks a bore, about $160 at $2, against 20 to 24 on the rack alone. The bricks the liner places per bore (rack alone) are 21 to 24 of 32 and the dry bores are the cost of leaving the rest of the stretch unlined.
-- **Tier 2 against tier 1.** Rack alone: 39 against 54 in lava, 24 against 29 hull. With the pack: 23 against 29 and 11 against 12. Tier 2 costs twice the price and 5% more drill speed. With a full supply the second tier is a small gain on lava, and its fall lining and half-price bricks are what it buys.
+- **The pack closes most of the gap (the better design, kept).** The liner draws on the pilot's pack after the rack, as hand lining does. With one stack (64) in the pack, tier 2 has lava ending 23 bores and loses 11 hull per bore, and 13 reach layer 2, better than the hand on every lava figure and close to the 999-brick pod. The cost is bricks: 28 to 33 a bore on average over all 100 bores, and 40 for the bores that get through to layer 2 (the first build of this table said 78 to 82, a counting error, see [#363](#liner-bricks-363-a)), against 20 to 24 on the rack alone. The bricks the liner places per bore (rack alone) are 21 to 24 of 32 and the dry bores are the cost of leaving the rest of the stretch unlined.
+- **Tier 2 against tier 1.** Rack alone: 39 against 54 in lava, 24 against 29 hull. With the pack: 23 against 29 and 11 against 12. Tier 2 costs twice the price and 5% more drill speed. With a full supply the second tier is a small gain on lava, and its fall lining and half the bricks a cell (2 cells a brick) are what it buys.
 - **How the ring got its shape.** The first build laid a ring one slab tall, as by hand: it met lava in 93 to 97 bores and lost 59 to 69 hull a bore (unbraked), no better than no lining. The pod bores 3 or 4 slabs before the next ring, so a ring that covers one slab leaves the rest open. A ring as tall as the interval met lava in 75 to 80 bores (hull 43 to 48). A ring that is also due when the bore turns into a new column (the bot sidesteps 8 times a bore, and each sidestep starts a stretch no ring covers) gave the table.
 - **A ring the rack cannot pay for stays unlined.** The liner lines the first cells (lava first) and the rest stay open. It does not catch up later, even when the pilot refills: the next ring covers the next stretch. That is a cost of a rack that runs dry, and one reason the dry bores die.
 - **The bores that live longer meet more.** The lining bores last 8,100 to 10,100 pod ticks and the unlined 6,170, so the table is a lower bound on what lining buys (as in #313).
@@ -244,10 +244,54 @@ The no-lining column is a new run of the #300 bot: a pod with no hopper keeps no
 
 **Open questions.**
 - Does a rack-limited liner earn its price when the hopper already refills the rack? On the rack of 32 the liner beats the hand by 8 to 23 bores in lava for $500 to $1,000, and the pack brings it close to an unlimited rack, but a pod with a hopper and a stack of bricks that stops to line by hand reaches layer 2 as often (11 against 5 to 6). The liner's case is the pilot's time and the fall, not reach.
-- Does a ring as tall as the interval waste bricks? A tier 2 ring lines every open cell of three slabs plus the pod's box, and the bore later removes (and loses) the bricks in its own path only when a ring cell was in the footprint. The measured bricks a bore are 21 to 24 on the rack, 78 to 82 with the pack: that is more than hand lining's 20, for 23 to 40 bores more held back.
+- Does a ring as tall as the interval waste bricks? A tier 2 ring lines every open cell of three slabs plus the pod's box, and the bore later removes (and loses) the bricks in its own path only when a ring cell was in the footprint. The measured bricks a bore are 21 to 24 on the rack and 28 to 33 with the pack: that is more than hand lining's 20, for 23 to 40 bores more held back.
 - Should a rack upgrade (more than 32 bricks, more mass) be a part of its own, or a bigger stack of bricks the pilot carries? The lava ladder's rung 3 may make either unnecessary.
 - Should the pod place bricks only beside lava when the rack is low, so a short rack is spent where lava is? Today it lines the open cells in order, lava first, and leaves the rest.
 - The gas: measured, gas ends 23 to 52 of the 100 bores of each lining column (the crust 4 to 17), more than any lining stops. Answered by [Gas and the bore (#368)](#gas-and-the-bore-368-a): gas caps reach even for a pilot who steers, and the rung is a sounder part (#373), not the liner or the radiator.
+
+## Liner bricks (#363, A)
+
+**Problem.** The liner draws on the pilot's pack after its rack of 32, and the bricks cost $2 each at the processor. Issue #363 said a pack-fed liner lays 78 bricks a bore, $160, more than the $115 that a stock Mole's layer 1 run nets. **That 78 was a counting error in `LavaBoreTest`.** It counted the bricks in the pilot's pack at the end of the bore, and a pilot who dies has an empty inventory, so every dead pilot's 64 looked spent. The harness now keeps the pack count of the last tick the pilot was alive. The right numbers (100 braked bores, seed 0, liner 2, rack 32, pack 64):
+
+| Bricks placed per bore | Mean | p50 | p90 | Max |
+|---|---|---|---|---|
+| All 100 bores | 27.6 | 19 | 56 | 96 |
+| The 13 bores that reach layer 2 | 39.8 | 46 | 74 | 83 |
+
+Liner 1 with the pack: 33.2 (was 82). The "Liner 2, 999 bricks" column (28) never used the pack, so it was right, and an unlimited pod and a pack-fed pod now agree (28 and 28). `EarlyRunModel` has no brick count in it: with free bricks nothing in the model needs one.
+
+So the bill at $2 was about $55 a bore, and $80 (up to $166) for the bores that reach layer 2, which is the bore the liner is bought for. That is 70% of a layer 1 run, not 140%, and a lined run to layer 2 still nets $220 after it. The problem is smaller than the issue said. It is still a tax on the one bore that matters, in a part that already costs $1,000.
+
+**Options weighed.** Net is a lined layer 2 run from `EarlyRunModel` ($300: Mole with tier 2 parts, tier 2 liner, hopper mass) less the bricks of one bore, at the mean of the 13 bores that reach layer 2 (40 bricks). An unlined stock layer 1 run nets $115.
+
+| Option | Bricks a bore | Bill | Lined run nets | Against $115 | Cost to the rest of the game |
+|---|---|---|---|---|---|
+| $2 a brick (#339) | 40 | $80 | $220 | 1.9x | the tax above |
+| $1 a brick | 40 | $40 | $260 | 2.3x | a price on spoil with no other use |
+| **Free fuse: the spoil is the price (picked)** | 40 | $0 | $300 | 2.6x | spoil is the limit (below) |
+| Line only lava-facing cells | 6.8 (all 100 bores, measured) | $14 (all bores) | about $290 | 2.5x | lava deaths 31 against 23, reach 11 against 13; needs a toggle |
+| Layer 2 ore worth 17% more, bricks at $2 | 40 | $80 | $300 | 2.6x | every ore-priced pin moves: the matter transmitter falls to 3.4 runs (band 3.5 to 4) |
+
+Net for lava-only is $300 less 6.8 bricks scaled to the layer 2 bores; it is an estimate (A), since only the all-bores mean was measured. 2.6x is the best case, for a bore that reaches layer 2 (13 of 100): it is not an average. A bore that dies early earns less and spends less.
+
+- **Lava-facing only** was measured with a temporary filter in `PodLining.cellsToLine` (lava cells and open cells beside lava; not kept): 6.8 bricks a bore against 27.6 (-75%), lava deaths 31 against 23, reach 11 against 13. This is a real saving, and it costs 8 more bores in lava. It needs a toggle (a key, a pod state, a HUD word) to give the pilot the full ring back, which is more than #363 asked for. Not built; it is the next lever if bricks need to be scarcer.
+- **More valuable ore** moves every other price to fix one line. Not built.
+- **A cheaper brick** ($1) halves the bill and keeps a price on spoil that has no other use.
+
+**The pick: bricks cost spoil and no money (A).** The processor fuses 2 spoil into a brick for nothing. Waste rock was already the brick's raw material (SPEC section 7: only ore is kept, and the hopper is the "keep stone" upgrade), so a hopper pod that brings spoil home lines for free, and a pod without a hopper has no rack to fill. The hopper stays a $100 part and SPEC section 4 is unchanged. The price and its charge code are removed: a later price is a redesign, not a knob.
+
+**What limits it now is spoil.** (A) A bay holds 64 spoil, which is 32 bricks a dive. A bore that reaches layer 2 uses 40 on average and 83 at most: 80 bricks x 2 spoil / 64 a bay is 2.5 bays, so 3 dives of spoil for the dearest bores. The pilot fuses after each dive, the overflow of a full rack goes to the pack, and the pack fills over a few dives. This is arithmetic, not a pinned claim.
+
+**Trade-offs.**
+- Money: the bill falls to $0. The lined run nets $300 at best, 2.6x a layer 1 run, which is what the layer 2 run nets without bricks.
+- Time: lining is paid for in earlier dives, not dollars.
+- The bores do not change: the same liner, the same bricks. The 100-bore tables of the [Liner](#liner-vs-hand-lining-vs-a-straight-bore-measured) section are unchanged apart from the bricks rows (lava 23, reach 13, hull to lava 10.6 on this build).
+
+**Pins.** `EconomyAffordabilityTest.aLinedRunToLayerTwoNetsMoreThanAnUnlinedLayerOneRun` keeps the liner's drill penalty and the hopper's mass from sinking a layer 2 run below a layer 1 run. `OreProcessorTest` (fusing takes no money, with a funded and an empty account) and `OreProcessorClientTest` pin that fusing is free.
+
+**Open questions.**
+- Is the 3-trip pack a slow loop for the dearest bores? A bigger bay costs mass, so lift.
+- Should lava-only lining be the default, with full rings as a toggle? It saves 75% of the bricks for 8 more lava deaths in 100.
 
 ## Gas and the bore (#368, A)
 
@@ -489,3 +533,96 @@ Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`Ea
 - It is client-only.
 - Black fog or generated rock were rejected: fog is the colour of the whole layer and cannot change on the surface's dusk, and rock below the crust would move `min_y`, which the crossing line, the depth readout and every layer test read.
 - A hole shows void only at angles steep enough to pass the 3 blocks of crust (31 degrees above the floor, in the test's 9 wide hole). A shallow view towards the edge of the render distance meets rock first, so the square needs no reach beyond what holes show. It still reaches the render distance.
+
+## The breach crust (#378, A)
+
+**Problem.** With the [seep sounder](#seep-sounder-373-a) fitted, the crust at the foot of layer 1 ends 12 to 21 of 100 bores (the three columns measured below). It takes 8 hull a row, 3 rows, 24 in all. Nothing tells the pilot that the hull will not last it, and nothing repairs the hull between the last pocket and the crust.
+
+### Measured: what a crust death brings to the crust
+
+`LavaBoreTest` now splits each crust death (a death whose last hull loss was at the foot of the layer) into the hull the pod brought to its first crust row (the crust takes what is left of it, so that is also the hull the crust took) and tallies what had cost the brought pod its hull. Same bores as the [seep sounder table](#measured-the-part-against-its-target): 100 bores of layer 1, braked, liner 2, rack of 32 bricks, `DEEPCHARTER_LAVA_BORES_SOUNDER=<tier>`, and `DEEPCHARTER_LAVA_BORES_PACK=64` where marked. Output: the `[lava-bore] crust` lines.
+
+| Crust deaths, no brace | Tier 1, 32 | Tier 1, 32 + pack | Tier 2, 32 + pack |
+|---|---|---|---|
+| Deaths | 16 | 21 | 12 |
+| Hull brought to the crust, mean (max) | 7.5 (12.7) | 7.3 (12.7) | 10.5 (12.1) |
+| Short of the full crust price of 24, mean (max) | 16.5 (23.4) | 16.7 (23.4) | 13.5 (14.0) |
+| Hull the brought pod had lost to gas, mean | 92.5 | 92.7 | 89.5 |
+| Hull the brought pod had lost to lava, landing, other | 0 | 0 | 0 |
+
+- **No crust death is a fair one.** Every pod that died in the crust brought under 13 hull, and every one had lost about 90 hull to gas on the way. The crust took what was left, and its first row killed or nearly killed all of them. A pod that brought 24 or more was never killed by the crust.
+- **The crust is the finishing blow, not the cause.** Halving what the crust takes would save only the pods that brought 12 or more, which is almost none of them (a first try that did halve it, measured 19 crust deaths against 21). The gap to close is the missing hull: 12 to 23 points.
+- **Hull is the only thing that is missing, and there was no way to buy it mid-dive.** Hull Nanobots (+30) are priced for layer 2 ($345, $11.50 a hull), and the repair station is on the surface.
+
+### The rung: a crust warning for every pod, and the breach brace part
+
+**The warning (every pod).** Within 16 slabs of the foot of a layer that has a crust to bore, and in the crust, the HUD shows an amber line when the hull is no more than what the crust rows left would take: `CRUST 7 DOWN  HULL 20, IT TAKES 24`, then `IN THE CRUST  HULL 12, IT TAKES 16`. A pod with enough hull sees nothing. The server and the client work it out from the same synced state (`PodBrace.status`). The last layer's crust is not drilled, so it has no warning.
+
+**The breach brace (a part).** A new track, `brace`, one tier, $200 (two stock layer 1 runs, `EconomyAffordabilityTest`). It fits every chassis. It has no stock part.
+- **At rest** means the pod is on the ground and its pilot gives no drill, drive or rotor input (sprint, a direction key or jump), and has given none for 20 ticks. A pod that falls into the hole of a slab it bored is not at rest, and neither is one whose pilot holds sprint: the brace never spends ore while the pilot is drilling.
+- At rest, within 16 slabs of the crust, with the hull under the crust's price plus 4, the brace burns the cheapest ore in the bay once a second. Each ore patches 12 hull. It stops when the hull is 4 over the price.
+- **It never spends more a hull than Hull Nanobots would.** It burns an ore only if the ore's price is at most the nanobots' price for the hull of one patch (`Consumable.HULL_NANOBOTS` price over `RepairTuning.nanobotHp`, times `hullPerOre`: $345 / 30 x 12 = $138). Ironium ($30), bronzium ($60) and silverium ($100) pass; goldium ($250) and the dearer ores do not. The cheapest ore patches at $2.50 a hull, 22% of the nanobots' $11.50: a deliberate discount for the part and for the ore that is nearly waste.
+- The HUD says what it needs: `BRACE WAITS  LET GO OF THE CONTROLS` when the pod is not at rest, `BRACING  BURNING ORE FOR HULL` while it burns, `BRACE HAS NO ORE TO BURN` with an empty bay, `BRACE: NO ORE CHEAP ENOUGH` when every ore in the bay is over the cap. A pod with no power, or stranded, shows none of them.
+- **What it costs.** The ore is the pilot's money: a patch from 6 hull is 2 ore, from 1 hull is 3. The time at rest is a second an ore, and the pilot must let go of the controls. The part never repairs more than the crust needs, and works nowhere else, so it is not a mid-dive heal against lava or gas.
+- **The ladder.** By hand, the pilot reads the warning and uses Hull Nanobots, if the pack has them ($345, a layer 2 price): a layer 1 pilot has nothing else mid-dive. The brace automates a cheaper repair for ore the nanobots would not be spent on. Mastery is the hull track: a hull of 24 plus needs neither, and the warning stays quiet.
+
+### Measured: the brace against no brace
+
+Same bot and columns, plus `DEEPCHARTER_LAVA_BORES_BRACE=1`. The bot lets go of the drill when the brace is wanted and the pod rests, and sprints again when it is done (`braceIfAsked`). Measured on main after #394 (slag brick costs spoil) and with the brace gated on rest.
+
+| 100 bores | Tier 1, 32: before | after | Tier 1, 32 + pack: before | after | Tier 2, 32 + pack: before | after |
+|---|---|---|---|---|---|---|
+| Reach layer 2 | 36 | 52 | 50 | 71 | 60 | 72 |
+| Deaths: lava / gas / crust | 42 / 6 / 16 | 42 / 6 / 0 | 20 / 9 / 21 | 20 / 9 / 0 | 18 / 10 / 12 | 18 / 10 / 0 |
+| Hull lost per bore to the crust | 9.8 | 12.5 | 13.5 | 17.0 | 15.7 | 17.3 |
+| Bores that stopped to burn ore | 0 | 25 | 0 | 26 | 0 | 22 |
+| Ore burned per braced bore (worth at the terminal) | 0 | 3.5 ($156) | 0 | 2.7 ($111) | 0 | 2.7 ($117) |
+| Pod ticks at rest per braced bore | 0 | 87 | 0 | 68 | 0 | 68 |
+| Bores that found the bay empty when the brace was wanted (died of the crust) | | 6 (0) | | 3 (0) | | 3 (0) |
+| Bores that found only ore over the cap (died of the crust) | | 1 (0) | | 0 | | 0 |
+
+The no-brace columns were measured again on the merged code and give the sounder table's own numbers (the tier 1 pack column reproduces 21 / 20 / 9 and 13.5 crust hull).
+
+- **The crust stops ending bores, and the next cap is lava.** All 49 crust deaths in these three columns become reach (the reach gains, 16, 21 and 12, equal them). Lava is now the largest cause (42, 20 and 18 deaths).
+- **It does not trivialize the crust.** Every bore that reaches it still loses 24 hull, which is up to a quarter of the hull, and a quarter of the bores pay for it in ore: $111 to $156, about a stock layer 1 run ($115). The pod that arrives with 24 hull or more pays nothing. A pod with an empty bay is not helped: 6, 3 and 3 bores found it empty when the brace was wanted, and none of them died of the crust (the output counts them: `died of the crust`). One bore found only ore over the cap, and did not die of the crust either.
+- **What it leaves alone.** Gas and lava deaths are unchanged to the bore (6 and 42; 9 and 20; 10 and 18). The brace cannot repair outside the approach to the crust.
+
+**Decisions (A).**
+- **A part and a warning, not a halved crust.** Halving the crust's price saved 2 of 21 deaths; a repair saves all of them.
+- **12 hull an ore, once a second, cheapest ore first.** A patch is 2 to 4 ore: about a layer 1 run's money, the price of a hull the pilot let the gas take. Cheapest first because the pilot would choose to burn it first; a lower figure makes the toll dearer than the cargo it saves.
+- **The cap is derived from the nanobots' price and hull, never a literal.** `EconomyAffordabilityTest` pins both sides: (a) the cheapest ore is cheaper a hull than the nanobots; (b) the cap is exactly the nanobots' rate. `PodBraceTest` pins the refusal of ore over it, and the HUD line for it.
+- **Rest is judged on the server from the pilot's input and the pod's contact with the ground, with 20 ticks of debounce.** A first version used "the drill is not working", which is false for the tick after each slab (the pod is off the ground, so the drill stops), and burned ore under a pilot who held sprint. Tests: a pod in the air, a pod that moved within the rest time, and a pilot holding the drill across bored slabs.
+- **Reserve of 4**, so a patched pod crosses with a little hull and not with a fraction of a point.
+- **The warning is for every pod and its colour is the hard landing's amber (`podHardLandingColor`).** No new theme key.
+- **One tier, $200, any chassis**, bought for the dive down.
+- **Placeholders.** The brace plays the Hull Nanobots sound (`repair.nanobots`) with each patch. Its item sprite is a recipe in `tools/textures/recipes/items.json`.
+
+**Knobs.** `PodBraceTuning`: `hullPerOre` (12), `patchTicks` (20), `reserveHull` (4), `warnSlabs` (16), `restTicks` (20). `UpgradeTuning` price (200).
+
+**Open questions.**
+- Should the brace burn spoil from the hopper before ore? Cargo holds only ore, spoil sits in the hopper, and bricks now cost spoil (#394).
+- Should the surface station sell a cheap layer 1 hull patch, so the warning has a by-hand answer short of Hull Nanobots?
+
+## Bore size and the economy (#399)
+
+**Problem.** The Mole is 1.9 wide and tall and bores 2 x 2. Cab and HUD ergonomics may want a larger pod, and a Prospector is 2.9 and bores 3 x 3. Nothing in the code may assume either size, so a chassis of any width and height has to scale the economy by the rules below. `Chassis` holds the two sizes; `OddChassisTest` and `TallChassisTest` run every behaviour on two test-only chassis, 3.9 x 2.9 (a 4-wide, 3-tall bore) and 1.9 x 3.9 (a 2-wide, 4-tall bore).
+
+**The bore.** `W = ceil(width)` blocks on both horizontal axes, `H = ceil(height)` blocks tall (`Chassis.boreWidth`, `boreHeight`; `PodFootprint` is the pod's cells). A pod is centred in its bore. Width is both the pod's width and depth; only width and height may differ. One downward step bores `W x W` cells (`Chassis.slabCells`), one sideways step `W x H`.
+
+**Drill time per slab.** The time does not grow with the bore. A slab takes the time of its hardest block: `ticks = ceil(hardness x ticksPerHardness x (1 + max(0, depthFeet) / 1000))` for that block (`PodDrill.drillTicks`). A wider bore is slower only because it is more likely to hold something harder than stone: with `p` the zone's ore chance, the chance a slab holds ore is `1 - (1 - p)^(W x W)`, and a slab with ore takes the ore's hardness (`EarlyRunModel.slabSeconds`). A Mole (4 cells) at `p` = 0.02 meets ore in 8% of slabs, a 4-wide pod (16 cells) in 28%.
+
+**Ore per slab.** `W x W x p x yield` (`EarlyRunModel.run`). A 4 x 4 bore brings four times a Mole's ore from each slab for the same fuel per second, so the cargo bay fills in a quarter of the slabs. Bigger pods get their ore from a bigger bay and tank, which is what the chassis and its price are for, not from the drill.
+
+**Fuel.** Per second, not per cell (`PodStats`): a bore costs the same fuel per second of drilling at any size. A wider pod costs more only through the slabs that hold ore.
+
+**Lining per ring.** The ring is the open cells beside the footprint, `4 x W` cells for each row of the pod's height and of the reach below it. Hand lining reaches 1 slab below the pod's feet: at most `4 x W x (H + 1)` bricks (24 for a Mole, 64 for a 4 x 3 pod), and the floor adds `W x W` cells for lava under the pod. The liner rings the stretch it is about to bore: `4 x W x (H + ringEverySlabs)` cells, at `cellsPerBrick` cells to a brick (`PodLining.cellsToLine`, `PodLiner`). Brick, spoil and rack sizes are per part, not per chassis, so a wide pod empties its rack faster: a 4 x 3 pod's full ring is 2.7 times a Mole's.
+
+**Sounder.** The footprint's `W x W` cells in each of the `slabsBelow` slabs; each side is a strip `sideReach` wide and `W` long, from the top of the pod's box (`H` high) to the slab it would land on (`PodSounder`).
+
+**Scanner.** The thermal tier marks lava a block beyond the bore's edge on either side of the plane: `W / 2 + lavaMargin` (`ScannerTuning.lavaSpread`, 2 for a Mole and a Prospector, 3 for 4 wide). The pod marker on the scanner is `ceil(height)` cells tall on the plane.
+
+**The hangar and the tow cable.** A bay place is `W + slotGap` blocks from the next (3 for a Mole, as before), so two parked pods never overlap (`Hangar.freeSlot`). A towed pod trails its tower by half of each hull's width plus `trailGap` (`TowTuning.trailDistance`): 2.5 for two Moles, as before, 3.0 for a Prospector behind a Mole and 3.5 for two Prospectors (both were 2.5, and the Prospector's hull overlapped its tower's). The gap between hulls is 0.6 for any pair. The colony's hangar and works bays are doors 4 wide and 4 high (`tools/colony/town.py`), so a chassis must stay under 4 x 4 to pass them (`OddChassisTest` reads the doors from the colony layout and checks it).
+
+**What is per chassis, not derived.** The seat count and the best part tier (`Chassis`), the rider offsets (`PodRegistry`), the model, texture and cutter map (`assets/deepcharter/pod/<id>.json`), the restore price (`HangarTuning.restoreCosts`) and the handbook's story beats. A new chassis needs each of them, and each throws if it is missing.
+
+**Open questions.** Is a pod worth more than four times a Mole's ore per slab? The price, bay and tank of a bigger chassis are the knobs that decide it. And a 5-wide pod does not pass the hangar's bay door: the town's door is the largest chassis the game can have until the town grows.

@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.pod;
 
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -45,7 +46,7 @@ import io.github.pkeppeler.deepcharter.layer.BreachEvents;
 
 /**
  * The tow cable between two pods. A player riding a pod uses a {@link PodRegistry#TOW_CABLE} on another pod within
- * {@link TowTuning#reach()} to make it the towed pod of theirs, and uses it on a towed pod to take the cable off. A pod moved
+ * {@link TowTuning#reachFor} to make it the towed pod of theirs, and uses it on a towed pod to take the cable off. A pod moved
  * where its owner did not choose needs a rule for who may do it: a player may tow a pod only when {@link PodComponents#mayAccess}
  * lets their charter at it, and the tower's charter or the towed pod's owner charter may free it, so an owner can always recover a
  * pod someone else towed.
@@ -53,7 +54,7 @@ import io.github.pkeppeler.deepcharter.layer.BreachEvents;
  * <p>The link is one versioned attachment on the towed pod, {@link #STATE}, holding the tower's UUID. It is saved and synced, and a
  * pod keeps its UUID when a breach recreates it, so the link outlives unloading and crossing. While the tower is in the towed pod's
  * level the towed pod passes through blocks ({@link PodEvents#IGNORES_BLOCK_COLLISION}), is held still or pulled in to
- * {@link TowTuning#trailDistance()} from the tower at the end of each tick ({@link PodEvents#AFTER_TICK}), and its mass and its
+ * {@link TowTuning#trailDistance} from the tower at the end of each tick ({@link PodEvents#AFTER_TICK}), and its mass and its
  * cargo's cut the tower's lift ({@link PodEvents#EXTRA_MASS}). With no tower in the level it is an ordinary pod that still remembers
  * the cable. A pod freed, or left by its tower, inside blocks is moved to the nearest open space. A tower with a player crossing a
  * breach carries the pod it tows across with it, to the trail distance from the tower. The cable is drawn as particles.
@@ -121,6 +122,11 @@ public final class PodTowing {
 
 	/** Why {@code tower} cannot tow {@code towed} now, or empty. Never throws. */
 	public static Optional<Refusal> refusal(PodEntity tower, PodEntity towed) {
+		return refusal(tower, towed, TowTuning.DEFAULT);
+	}
+
+	/** As {@link #refusal(PodEntity, PodEntity)} with the tunables {@code tuning}; package-private so that a test can give a short reach. */
+	static Optional<Refusal> refusal(PodEntity tower, PodEntity towed, TowTuning tuning) {
 		if (tower == towed) {
 			return Optional.of(Refusal.SAME_POD);
 		}
@@ -136,13 +142,13 @@ public final class PodTowing {
 		if (isTowed(tower)) {
 			return Optional.of(Refusal.TOWER_IS_TOWED);
 		}
-		if (!towedBy(towed).isEmpty()) {
+		if (!towedBy(towed, tuning).isEmpty()) {
 			return Optional.of(Refusal.TOWED_TOWS);
 		}
-		if (!towedBy(tower).isEmpty()) {
+		if (!towedBy(tower, tuning).isEmpty()) {
 			return Optional.of(Refusal.ALREADY_TOWING);
 		}
-		double reach = TowTuning.DEFAULT.reach();
+		double reach = reach(tuning);
 		if (tower.level() != towed.level() || tower.distanceToSqr(towed) > reach * reach) {
 			return Optional.of(Refusal.TOO_FAR);
 		}
@@ -187,9 +193,20 @@ public final class PodTowing {
 		return Optional.of(tower);
 	}
 
+	/** The widest chassis registered, found on first use: pods exist only after the registry is frozen. */
+	private static final class Widest {
+		static final Chassis CHASSIS = PodRegistry.chassis().stream().max(Comparator.comparingDouble(Chassis::width))
+				.orElseThrow(() -> new IllegalStateException("no pod chassis is registered"));
+	}
+
+	/** Blocks from the tower within which a cable fits: {@link TowTuning#reachFor} for the widest chassis, so a wide chassis still trails within it. */
+	private static double reach(TowTuning tuning) {
+		return tuning.reachFor(Widest.CHASSIS);
+	}
+
 	/** The pods on a cable from {@code tower} that are within its reach. */
-	private static List<PodEntity> towedBy(PodEntity tower) {
-		return tower.level().getEntitiesOfClass(PodEntity.class, tower.getBoundingBox().inflate(TowTuning.DEFAULT.reach()),
+	static List<PodEntity> towedBy(PodEntity tower, TowTuning tuning) {
+		return tower.level().getEntitiesOfClass(PodEntity.class, tower.getBoundingBox().inflate(reach(tuning)),
 				other -> other != tower && towerId(other).filter(tower.getUUID()::equals).isPresent());
 	}
 
@@ -198,7 +215,7 @@ public final class PodTowing {
 			return 0f;
 		}
 		float mass = 0f;
-		for (PodEntity towed : towedBy(tower)) {
+		for (PodEntity towed : towedBy(tower, TowTuning.DEFAULT)) {
 			mass += TowTuning.DEFAULT.baseMass() + towed.cargoMass();
 		}
 		return mass;
@@ -206,7 +223,7 @@ public final class PodTowing {
 
 	/**
 	 * Holds the towed pod where it started the tick, or pulls it in along the line to its tower until it is
-	 * {@link TowTuning#trailDistance()} away. It has no block collision, so nothing else stops it, and its own gravity is undone here.
+	 * {@link TowTuning#trailDistance} away. It has no block collision, so nothing else stops it, and its own gravity is undone here.
 	 */
 	private static void follow(PodEntity towed) {
 		Optional<PodEntity> tower = tower(towed);
@@ -219,7 +236,7 @@ public final class PodTowing {
 		Vec3 anchor = tower.get().position();
 		Vec3 held = new Vec3(towed.xo, towed.yo, towed.zo);
 		Vec3 away = held.subtract(anchor);
-		double trail = TowTuning.DEFAULT.trailDistance();
+		double trail = TowTuning.DEFAULT.trailDistance(tower.get(), towed);
 		towed.setPos(away.lengthSqr() > trail * trail ? anchor.add(away.normalize().scale(trail)) : held);
 		towed.setDeltaMovement(Vec3.ZERO);
 		towed.resetFallDistance();
@@ -303,13 +320,13 @@ public final class PodTowing {
 		}
 	}
 
-	/** {@link TowTuning#trailDistance()} from the tower, level with it, on the side the pod was on, or behind the tower if it was straight above or below. */
+	/** {@link TowTuning#trailDistance} from the tower, level with it, on the side the pod was on, or behind the tower if it was straight above or below. */
 	private static Vec3 trailSpot(PodEntity tower, PodEntity towed) {
 		Vec3 side = new Vec3(towed.getX() - tower.getX(), 0, towed.getZ() - tower.getZ());
 		if (side.lengthSqr() < 1e-6) {
 			side = Vec3.directionFromRotation(0, tower.getYRot()).scale(-1);
 		}
-		return tower.position().add(side.normalize().scale(TowTuning.DEFAULT.trailDistance()));
+		return tower.position().add(side.normalize().scale(TowTuning.DEFAULT.trailDistance(tower, towed)));
 	}
 
 	private static InteractionResult onUse(Player player, Level level, InteractionHand hand, Entity entity, EntityHitResult hit) {

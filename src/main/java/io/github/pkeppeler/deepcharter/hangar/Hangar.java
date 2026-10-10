@@ -31,6 +31,7 @@ import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonyEvents;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
+import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -128,17 +129,23 @@ public final class Hangar {
 		return pods.size();
 	}
 
-	/** A free place in the bay for a new Mole, the nearest to the hangar anchor first; empty when the bay is full. */
-	static Optional<Vec3> freeSlot(ServerLevel level, BlockPos anchor) {
+	/**
+	 * A free place in the bay for a new pod of {@code chassis}, the nearest to the anchor first; empty when the bay is full. The
+	 * places are a bore width and {@link HangarTuning#slotGap()} apart, as many as fit within {@link HangarTuning#bayRadius()} of the anchor, and
+	 * a place is free when a pod's box fits there clear of blocks and of other pods.
+	 */
+	public static Optional<Vec3> freeSlot(ServerLevel level, BlockPos anchor, Chassis chassis) {
 		HangarTuning tuning = HangarTuning.DEFAULT;
+		int spacing = chassis.boreWidth() + tuning.slotGap();
+		int reach = tuning.bayRadius() / spacing * spacing;
 		List<Vec3> slots = new ArrayList<>();
-		for (int dx = -tuning.bayRadius(); dx <= tuning.bayRadius(); dx += tuning.slotSpacing()) {
-			for (int dz = -tuning.bayRadius(); dz <= tuning.bayRadius(); dz += tuning.slotSpacing()) {
+		for (int dx = -reach; dx <= reach; dx += spacing) {
+			for (int dz = -reach; dz <= reach; dz += spacing) {
 				slots.add(Vec3.atBottomCenterOf(anchor.offset(dx, 0, dz)));
 			}
 		}
 		slots.sort(Comparator.comparingDouble(slot -> slot.distanceToSqr(Vec3.atBottomCenterOf(anchor))));
-		EntityType<PodEntity> type = PodRegistry.POD;
+		EntityType<PodEntity> type = PodRegistry.typeOf(chassis);
 		return slots.stream().filter(slot -> {
 			AABB box = type.getDimensions().makeBoundingBox(slot);
 			return level.hasChunkAt(BlockPos.containing(slot)) && level.noCollision(box)

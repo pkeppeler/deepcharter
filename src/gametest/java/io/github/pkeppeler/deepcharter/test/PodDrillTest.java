@@ -24,6 +24,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodDrill;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -502,7 +503,7 @@ public class PodDrillTest {
 	 */
 	@GameTest(maxTicks = MAX_TICKS)
 	public void progressIsLostWhenATowedPodIsPulledOffItsSlabAndBack(GameTestHelper helper) {
-		double trail = TowTuning.DEFAULT.trailDistance();
+		double trail = TowTuning.DEFAULT.trailDistance(Chassis.MOLE, Chassis.MOLE);
 		ServerLevel level = layer(helper, 1);
 		int x = 3960;
 		room(level, x, FLOOR, 4);

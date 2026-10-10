@@ -63,7 +63,8 @@ public class TowingClientTest implements FabricClientGameTest {
 			double followed = towedEnd.subtract(towedStart).horizontalDistance();
 			require(!(followed < MIN_FOLLOWED_BLOCKS), "The client should see the towed pod follow its tower, it moved " + followed + " blocks");
 			double gap = towedEnd.distanceTo(towerEnd);
-			require(!(gap > TowTuning.DEFAULT.trailDistance() + CLIENT_LAG_BLOCKS), "The client should see the towed pod within the cable's trail of its tower, it is " + gap + " blocks away");
+			double trail = context.computeOnClient(client -> TowTuning.DEFAULT.trailDistance(pod(client, rig.tower()), pod(client, rig.towed())));
+			require(!(gap > trail + CLIENT_LAG_BLOCKS), "The client should see the towed pod within the cable's trail of its tower, it is " + gap + " blocks away");
 
 			two.server().runOnServer(server -> {
 				require(PodTowing.detach((PodEntity) server.overworld().getEntity(rig.towed())), "the towed pod should have a cable to take off");

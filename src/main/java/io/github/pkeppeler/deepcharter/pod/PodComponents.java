@@ -180,7 +180,7 @@ public final class PodComponents {
 
 	/** The one place a chassis' tier cap applies: the tier a counted part works at. */
 	private static int cappedTier(PodEntity pod, PartLabel label) {
-		return Math.min(label.tier(), UpgradeTuning.DEFAULT.tierCap(pod.chassis().id()));
+		return Math.min(label.tier(), pod.chassis().tierCap());
 	}
 
 	/**
