@@ -1,0 +1,774 @@
+{
+  "recipes": {
+    "block/lc_core_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2"
+          },
+          "rows": [
+            "bbaaaaaaaaabbbbb",
+            "bbaaaaaaaaabbbbb",
+            "aaabbbaaaaabbbaa",
+            "aabbbbbaaaaaaaaa",
+            "aabbcbbaaaaaaaaa",
+            "aabbcbbaaaaaaaaa",
+            "aabbbbbaaaaaaaaa",
+            "bbbbbbaaaaaaaaab",
+            "bbbbbbaaaaaaaaab",
+            "bbbbbbaaaaaaaaab",
+            "bbaaaaaaaaaaaaaa",
+            "aaaaaaabbbbaaaaa",
+            "aaaaaaabbbbbbaaa",
+            "aaaaaaabbbbbbbaa",
+            "aaaaaaaaaabbbbbb",
+            "bbaaaaaaaaabbbbb"
+          ]
+        }
+      ]
+    },
+    "block/lc_stone_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.4",
+            "e": "shale1.5"
+          },
+          "rows": [
+            "caaaaabbbbbbbbcc",
+            "aaaadaaaabbaaaaa",
+            "daaddddaaaddeddd",
+            "daeeeddaaddeeeee",
+            "aadeeedaadeeeeed",
+            "aadeeeeadedeeeaa",
+            "aaddddaaeddeeadd",
+            "daadddaadddaaded",
+            "aaaaeaaadaaddddd",
+            "aaaaddddaaaaaaaa",
+            "daaddedeaaaadddd",
+            "adddddeeaadddddd",
+            "addddeeeaeeeaaaa",
+            "aaaddddaaaaaddbb",
+            "daaaadaaabddbbbb",
+            "caaaaaadbbbbcbbc"
+          ]
+        }
+      ]
+    },
+    "block/lc_stone_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.4",
+            "e": "shale1.5"
+          },
+          "rows": [
+            "aaabddaadbbbbbbb",
+            "dddbbbaaabbaaaaa",
+            "aaabbaaaaaddaaad",
+            "bbbbaadaadddaaaa",
+            "bbaaddeaaddddadb",
+            "baddedeaeedeaaab",
+            "aaddddaadeddaaaa",
+            "daadddaadddaaddd",
+            "aaaadaaadaaeeddd",
+            "aaaaddddaaaaaaaa",
+            "daadedddaaaaeedd",
+            "addeddddaaddeeed",
+            "adedddddadeeaaaa",
+            "aaaddddaaaaaddbb",
+            "daaaadaaabddbbbb",
+            "baaaaaabbbbcbbbb"
+          ]
+        }
+      ]
+    },
+    "block/lc_stone_2": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.4",
+            "e": "shale1.5"
+          },
+          "rows": [
+            "aaadadaadcbbbbcb",
+            "dddaaaaaadbaaaaa",
+            "abaaaaaaaaddaaab",
+            "aaaaaaaaadeeaaaa",
+            "aaaaaedaadeeeada",
+            "ddaaeeeaddeeaaaa",
+            "caaeeeaaddedaaad",
+            "daadddaadddaaaad",
+            "aaaadaaadaaddddd",
+            "aaaadeddaaaaaaaa",
+            "daadedddaaaaddde",
+            "aededdddaadddeee",
+            "adeeddddaddeaaaa",
+            "aaaddddaaaaabbdd",
+            "daaaadaaadbbbbcb",
+            "baaaaaaddcbbbcbb"
+          ]
+        }
+      ]
+    },
+    "block/lc_stone_end": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4"
+          },
+          "rows": [
+            "aaaeccccdaaaaaaa",
+            "aaeccdcaaaaaaaaa",
+            "aacdcaaeddaaaaaa",
+            "aaaaaeededeaaaaa",
+            "aaaaaedddddaaaaa",
+            "ebaaaaaaaaeaaaaa",
+            "bbbeeebaaaaaaaab",
+            "cbbbbbbebaaaabeb",
+            "bbbbcbbbbbaaebbb",
+            "bcbbbbbbcbeebbbb",
+            "bbbbbbbbaaaaebbb",
+            "bbbbaaaeeceaabbb",
+            "aaaaacecccccaaaa",
+            "aaaaecccccccaaaa",
+            "aaaaeccdcccaaaaa",
+            "aaaecdccdcaaaaaa"
+          ]
+        }
+      ]
+    },
+    "block/lc_cobble_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4"
+          },
+          "rows": [
+            "aaaaaaaaaaaaaada",
+            "aaaadddddaaaadaa",
+            "aaaaaddaaaddaada",
+            "abdbaaaaadbbbaaa",
+            "dbbcaadaadbbbaad",
+            "bbbaaaaaaaaaaadb",
+            "aaaaadddddaaaaaa",
+            "aadaaddeeaadcdaa",
+            "aaaaadeaadcccaaa",
+            "aaaaaaadddccdada",
+            "aaaaaacddccdcaaa",
+            "aaaaaaaadcccaada",
+            "aabbdddaaaaaaaaa",
+            "abcbbbbbaaaaaaaa",
+            "aadbbbbaaaaaaaaa",
+            "aaadbcaaaaaaaaad"
+          ]
+        }
+      ]
+    },
+    "block/lc_cobble_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4"
+          },
+          "rows": [
+            "bbbbaaaaaaaaaaaa",
+            "aaaaddeddaaaddda",
+            "aaaaaddaaaddbbba",
+            "bbbdaaaaadbbcbaa",
+            "bbcbaadaadbbbbab",
+            "bbbaaaaaaaaaaabb",
+            "aaaaadddddaaaaaa",
+            "aadaaddedaadddad",
+            "aaaaaddaaddddaad",
+            "aaaaaaacdcdddaad",
+            "ddadaaccdcccdaaa",
+            "aaaaaaaadccaadad",
+            "aaaaddcaaaaaaaaa",
+            "aabdbbbdaaaaaaaa",
+            "ddbbbbbaaaaaaaaa",
+            "bbbbcbaaaaaaaaaa"
+          ]
+        }
+      ]
+    },
+    "block/lc_cobble_end": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4"
+          },
+          "rows": [
+            "daaaaaaaaaaaaaaa",
+            "aaaadddddaaaddaa",
+            "aaaaaddaaaaadaaa",
+            "abbbaaaaaaaadaaa",
+            "dbbbaaddbaaaaaad",
+            "bbbaaaaaadddaabb",
+            "aaaaaddddeaaaaaa",
+            "ddaaaddedaaddcad",
+            "aaaaaddaaddccaad",
+            "aaaaaaaddccccaad",
+            "daddaaccccccdaaa",
+            "aaabaaaacccaaadd",
+            "aaaadbdaaaaaaada",
+            "aadbbbbdaaaaaaaa",
+            "aadbbbbaaaaaaaaa",
+            "aaabbbaaaaaaaaad"
+          ]
+        }
+      ]
+    },
+    "block/lc_core_2": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.1",
+            "c": "shale2.2"
+          },
+          "rows": [
+            "aaaaaaaabbbbbbba",
+            "baaaaaaaabbbbbbb",
+            "bbaaaaaaaabbbbbb",
+            "bbaaaaaaaabbccbb",
+            "bbaaaaaaaabccccb",
+            "bbbaaaaaaabccccc",
+            "cbbaaaaaaabccccc",
+            "ccbaaaaaaabccccc",
+            "ccbaaaaaaabccccc",
+            "ccbaaaaaaabbcccc",
+            "cbbaaaaaaabbbbbc",
+            "bbbbbbbaabbbbbbb",
+            "bbbbbbbbbbbbbbbb",
+            "bbbbbbbbbbbbbbbb",
+            "bbbbaabbbbbbbbbb",
+            "aaaaaaaabbbbbbbb"
+          ]
+        }
+      ]
+    },
+    "block/lc_deepslate_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
+          },
+          "rows": [
+            "bacccccaaccbbbcb",
+            "accccccaabbcbbbb",
+            "cccccccaabbbbbba",
+            "cdcccccaacbbcaac",
+            "ccccccaaaaaaaacc",
+            "ccccdaaccccccaac",
+            "ccaaaccdddccccaa",
+            "aaaacccddddccaaa",
+            "baaaccdddddaaaab",
+            "bbcaacddaaaaaaac",
+            "bcbcaaadcccaaaac",
+            "bbbaacccccaacaab",
+            "bbaacccccaccccaa",
+            "aaacccccacccccaa",
+            "aaacccaacccccaaa",
+            "baaaaaaaaaaacccc"
+          ]
+        }
+      ]
+    },
+    "block/lc_deepslate_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
+          },
+          "rows": [
+            "cacccccaabbcbbbb",
+            "accccccaabbbcbbb",
+            "cdcccccaacbbcbba",
+            "cccccccaabbbcaac",
+            "ccdcccaaaaaaaacc",
+            "cccccaaccccccaaa",
+            "aaaaaccccdcdaaca",
+            "caaaccccccdaaccb",
+            "aaaacccccdaccccb",
+            "accaacccaaacccca",
+            "cbbcaaaccaacccaa",
+            "bbbaaccccaaaaaac",
+            "cbaaccdccaccccaa",
+            "aaacccccacccccaa",
+            "aaacccaacccccaaa",
+            "baaaaaaaaaaacccc"
+          ]
+        }
+      ]
+    },
+    "block/lc_deepslate_2": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
+          },
+          "rows": [
+            "bacccccaabbcbbcb",
+            "acccccdaabbbbbba",
+            "accccccaabbbaaaa",
+            "acccdccaaaaaccba",
+            "accdccaaabccbcba",
+            "acdccaaaacbbbbba",
+            "aaaaacaaaacbbbaa",
+            "caaaccccccaaaacc",
+            "aaaaccccccabbbcc",
+            "accaacccaaacbbca",
+            "cbbcaaacdaabcbaa",
+            "bbbaaccccaaaaaab",
+            "bbaacccccaccccaa",
+            "aaacccccacccccaa",
+            "aaacccaacccccaaa",
+            "baaaaaaaaaaacccc"
+          ]
+        }
+      ]
+    },
+    "block/lc_deepslate_end": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
+          },
+          "rows": [
+            "cacccccaaccccccb",
+            "accccccaabbccdca",
+            "accccccaacbbaaaa",
+            "accccccaaaaaccba",
+            "acdddcaaabccbbba",
+            "accddaabccbbbbba",
+            "aaaaaacbbbbbbbaa",
+            "bccaabbcbbbaaacc",
+            "bbbbaccaaaccccbb",
+            "baaaaaaabccbbbbb",
+            "aaaaaccccbbbbbba",
+            "ccccaccbbbaaaacc",
+            "ccccaaaaaacccccc",
+            "ccaaaaaccccccccc",
+            "aaaaaaacccccdaaa",
+            "baaccaaaaaaacccc"
+          ]
+        }
+      ]
+    },
+    "block/lc_cobbled_deepslate_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.1",
+            "c": "shale2.2",
+            "d": "shale2.3",
+            "e": "shale2.4"
+          },
+          "rows": [
+            "cbbbaadaaaaaaadd",
+            "bbbacdcaaaaaaadb",
+            "baadccaaaaaaaaad",
+            "ddaaaaaaaaaadaaa",
+            "dcaadddaaadaaadc",
+            "caaaaaaaaaaaaadc",
+            "caaaacdaaaaaaacc",
+            "adddcccaaaaaaaca",
+            "aaaaaaaaaaaaaaaa",
+            "aabdbbaacddcdaaa",
+            "bbbbbaadccccdaaa",
+            "adbaacdddddaadaa",
+            "aaaadcddddaedddd",
+            "ddaacccdeaeedddd",
+            "aadaaaaaaddddddd",
+            "ddbbbaaaaaadedaa"
+          ]
+        }
+      ]
+    },
+    "block/lc_cobbled_deepslate_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.1",
+            "c": "shale2.2",
+            "d": "shale2.3",
+            "e": "shale2.4"
+          },
+          "rows": [
+            "bbbbaacaaaaaaadb",
+            "bbbadcdaaaaaaabb",
+            "baacccaaaaaaaaad",
+            "ddaaaaaaaaaaaaaa",
+            "ccaaadadaaadaacd",
+            "caaaaaaaadaaaadc",
+            "adddaaaaadaaaaca",
+            "aaaaccdaaaaaaaaa",
+            "aaaaaaaaaaaaaaaa",
+            "aadbbcaadccddaaa",
+            "bbbbbaaddcccdaab",
+            "bbbaaddcdeddaadb",
+            "baaaccccddddaacb",
+            "aaaadccccdaaaaaa",
+            "cbbaaaaaaaaaaaad",
+            "bbbbdaaaaaaaaaad"
+          ]
+        }
+      ]
+    },
+    "block/lc_cobbled_deepslate_end": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.1",
+            "c": "shale2.2",
+            "d": "shale2.3",
+            "e": "shale2.4"
+          },
+          "rows": [
+            "aacddccaaaaaaaaa",
+            "aaadcccaaaaaaaaa",
+            "aaaccdaaaaaaaaaa",
+            "dcaaaaaaaaaadaaa",
+            "ccaaaaddaadaaacc",
+            "caaaaaaaadaaaadc",
+            "adddaaaaadbaaaca",
+            "aaaacdcaaaaaaaaa",
+            "aaaaaaaaaaaaaaaa",
+            "aadbddaadccddaaa",
+            "ddbbcaaddccccaaa",
+            "acdaaddccccaadaa",
+            "aaaadcccccaddddd",
+            "ddadcccccaddddde",
+            "daacccaaaddddded",
+            "daaaaddaaaaedddd"
+          ]
+        }
+      ]
+    },
+    "block/colony/concrete_footing": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "concrete.0",
+            "b": "concrete.1",
+            "c": "concrete.2",
+            "d": "concrete.3",
+            "e": "concrete.4",
+            "f": "concrete.5",
+            "g": "grime.1",
+            "h": "grime.2",
+            "i": "rust.1"
+          },
+          "rows": [
+            "ffdccbbbbbcgdcdf",
+            "fdcccbcbbbahcddc",
+            "dddddbbbbbahccdd",
+            "dddcdcbbbbbgcccc",
+            "ccgddcgbbbbhcccc",
+            "cdhdcchbbibhbccc",
+            "ddhdcchccccgbddd",
+            "edgdcdgcdddeidee",
+            "dehccchddeddddee",
+            "ddhccchdddddddee",
+            "ddgdccgccccccddg",
+            "cdceddcdcccbbcch",
+            "ccceedccccbbccch",
+            "cddcecccccbbdccg",
+            "edddccccdcbbbcdh",
+            "fdddcbbabbibcddd"
+          ]
+        }
+      ]
+    },
+    "block/colony/concrete_footing_cracked": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "concrete.0",
+            "b": "concrete.1",
+            "c": "concrete.2",
+            "d": "concrete.3",
+            "e": "concrete.4",
+            "f": "concrete.5",
+            "g": "grime.1",
+            "h": "grime.2",
+            "i": "rust.1"
+          },
+          "rows": [
+            "ffdccbbbbbcgdcdf",
+            "fdcacbcbbbahcddc",
+            "ddddacbbbbahccdd",
+            "dddcdacbbbbgcccc",
+            "ccgddacbbbbhcccc",
+            "cdhdcacbbibhbccc",
+            "ddhdcacccccgbddd",
+            "edgdcdacdddeidee",
+            "dehcccacdeddddee",
+            "ddhccchacdddddee",
+            "ddgdccgcaccccddg",
+            "cdceddcdcacbbcch",
+            "ccceedcccacbccch",
+            "cddcecccccacdccg",
+            "edddccccdcbaccdh",
+            "fdddcbbabbibcddd"
+          ]
+        }
+      ]
+    },
+    "block/lc_company_rock_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "company.2",
+            "b": "concrete.0",
+            "c": "concrete.1",
+            "d": "concrete.2",
+            "e": "concrete.3",
+            "f": "concrete.4",
+            "g": "grime.1",
+            "h": "grime.2",
+            "i": "hazard.1",
+            "j": "rust.1",
+            "k": "steel.0"
+          },
+          "rows": [
+            "ccccdddeeeeeeddc",
+            "hhhchdeeeehhhdhh",
+            "gggcgeeeeegggbgg",
+            "hhhdaaaeeeaaaehh",
+            "eggaeeeaeeggejge",
+            "bhbabbbbbahhbahb",
+            "dddeeeeeddegdddd",
+            "dddaeeeddddeddcd",
+            "ddbaeeeadadedbcd",
+            "dddeeaedddaaadcd",
+            "eejeeeeeeeeeejee",
+            "bbhbbbbbbbbbbhbb",
+            "ddeeefffffeedded",
+            "ikggikhiikkgghhg",
+            "kkghgghhkhhihkii",
+            "hihhkiighhikkiik"
+          ]
+        }
+      ]
+    },
+    "block/lc_company_rock_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "company.2",
+            "b": "concrete.0",
+            "c": "concrete.1",
+            "d": "concrete.2",
+            "e": "concrete.3",
+            "f": "concrete.4",
+            "g": "grime.1",
+            "h": "grime.2",
+            "i": "hazard.1",
+            "j": "rust.1",
+            "k": "steel.0"
+          },
+          "rows": [
+            "eeeeedccccccddee",
+            "fhhheddhhhcchheh",
+            "fgggeddgggddggcg",
+            "fhhheaahhaaahafh",
+            "eggaeeeeggeeeaee",
+            "bbhbbbbahhbbahbb",
+            "eehdcdccgddeeffe",
+            "eedacccaddaeefee",
+            "eebacccaddaeebce",
+            "eeddaaadddaeefee",
+            "eejeeeeeeeeeejee",
+            "bbhbbbbbbbbbbhbb",
+            "eeefeeedddeeehfe",
+            "ggkiihkigkkighhg",
+            "hgiihhggkhhikkih",
+            "hhihgiikkihhkiik"
+          ]
+        }
+      ]
+    },
+    "block/lc_company_rock_end": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "concrete.0",
+            "b": "concrete.1",
+            "c": "concrete.2",
+            "d": "concrete.3",
+            "e": "concrete.4",
+            "f": "grime.1",
+            "g": "grime.2",
+            "h": "rust.1"
+          },
+          "rows": [
+            "dddddddccccccccd",
+            "gdggedgdggccgggd",
+            "fdffeefdffddfffd",
+            "gdggeegeggddgggd",
+            "fdhfddddffddfhdd",
+            "aaggaaaaggaaggaa",
+            "aagcccdddfdddgbb",
+            "aaabbccdddddcbba",
+            "aaabbbcddddccaba",
+            "aaabbccdddddccba",
+            "ddhddddddddddhdd",
+            "aagaaaaaaaaaagaa",
+            "ddgcddeeeeeeegdd",
+            "eedddddeeeeeeeee",
+            "dddddddddddddddd",
+            "ddddddddccccccdd"
+          ]
+        }
+      ]
+    },
+    "block/lc_crust_side": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "crust.0",
+            "b": "crust.4",
+            "c": "crust.5"
+          },
+          "rows": [
+            "cccccccaccccccca",
+            "ccccccccacccccaa",
+            "cccccccacbaaaaaa",
+            "ccaaaaaacbaacccc",
+            "aaaacccacbacbbbb",
+            "aaccccccaacbbbbb",
+            "acccccccaacbbbbb",
+            "acccccccaacbbbbb",
+            "acccccccaacbbbbb",
+            "acccccccaacbbbbb",
+            "accccccaaaaaaaaa",
+            "aaaaaaaccccccccc",
+            "acccccaccccccccc",
+            "acccccaccccccccc",
+            "ccccccaacccccccc",
+            "cccccccaccccccca"
+          ]
+        }
+      ]
+    },
+    "block/lc_crust_top": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "crust.0",
+            "b": "crust.4",
+            "c": "crust.5"
+          },
+          "rows": [
+            "ccccccccacaaaaac",
+            "ccccccccacaaaaaa",
+            "cccccccacbaaaaca",
+            "ccaaaaaacbaaccbc",
+            "aaaacccacbacbbbb",
+            "aacccccaaacbbbbb",
+            "acccccaacacbbbbb",
+            "acaaaaccccacbbbb",
+            "aaaaacccccaacbbb",
+            "aaaacccccccaacbb",
+            "aaaccccccccaaacb",
+            "aaaaccccccccaaaa",
+            "ccccaaaaccccaaac",
+            "ccccccccaaaaaaac",
+            "cccccccccaaaaaac",
+            "ccccccccaacaaaac"
+          ]
+        }
+      ]
+    }
+  }
+}

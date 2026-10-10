@@ -1,0 +1,51 @@
+{
+  "variants": {
+    "": [
+      {
+        "model": "deepcharter:block/lc_stone_0"
+      },
+      {
+        "model": "deepcharter:block/lc_stone_0",
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/lc_stone_0",
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/lc_stone_0",
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/lc_stone_1"
+      },
+      {
+        "model": "deepcharter:block/lc_stone_1",
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/lc_stone_1",
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/lc_stone_1",
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/lc_stone_2"
+      },
+      {
+        "model": "deepcharter:block/lc_stone_2",
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/lc_stone_2",
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/lc_stone_2",
+        "y": 270
+      }
+    ]
+  }
+}
