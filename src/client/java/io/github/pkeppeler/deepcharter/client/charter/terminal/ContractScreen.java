@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.client.charter.terminal;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.function.Function;
 
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 
@@ -19,6 +20,7 @@ import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
+import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTextField;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
@@ -161,13 +163,27 @@ public final class ContractScreen extends CrtScreen implements TerminalViewScree
 					.append(shown.charterCount() > shown.charters().size()
 							? Component.literal(" ").append(Component.translatable("screen.deepcharter.contract.more", shown.charterCount() - shown.charters().size()))
 							: Component.empty());
-			case APPLICANT -> Component.translatable("screen.deepcharter.contract.status.applicant", shown.charter());
-			case CREW -> Component.translatable("screen.deepcharter.contract.status.crew", shown.charter());
-			case DIRECTOR -> Component.translatable("screen.deepcharter.contract.status.director", shown.charter(), shown.applicantCount())
+			case APPLICANT -> fitted(shown.charter(), name -> Component.translatable("screen.deepcharter.contract.status.applicant", name));
+			case CREW -> fitted(shown.charter(), name -> Component.translatable("screen.deepcharter.contract.status.crew", name));
+			case DIRECTOR -> fitted(shown.charter(), name -> Component.translatable("screen.deepcharter.contract.status.director", name, shown.applicantCount())
 					.append(shown.applicantCount() > shown.applicants().size()
 							? Component.literal(" ").append(Component.translatable("screen.deepcharter.contract.shown", shown.applicants().size(), shown.applicantCount()))
-							: Component.empty());
+							: Component.empty()));
 		};
+	}
+
+	/** The status line for {@code name}, with the name cut and ended in "..." when the line would be wider than the content: a long charter name must not run off the screen. */
+	private Component fitted(String name, Function<String, Component> line) {
+		Component full = line.apply(name);
+		int over = CrtText.width(font, full.getString()) - contentWidth(MARGIN);
+		if (over <= 0) {
+			return full;
+		}
+		String cut = name;
+		while (!cut.isEmpty() && CrtText.width(font, line.apply(cut + "...").getString()) > contentWidth(MARGIN)) {
+			cut = cut.substring(0, cut.length() - 1);
+		}
+		return line.apply(cut + "...");
 	}
 
 	/** The status line as the screen draws it, for a test to read. */

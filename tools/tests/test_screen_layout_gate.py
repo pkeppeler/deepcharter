@@ -3,7 +3,9 @@
 ScreenLayoutClientTest finds the screens the game registers (terminal screens through TerminalScreens.register, container
 screens through MenuScreens.register). A screen nothing registers, such as the handbook, has to be named inside the body of
 standalone() in that test. This fails on a screen class under src/client that is registered, named or allow-listed nowhere,
-and on a `setScreen(new X` of such a class, so a new screen cannot skip the gate.
+and on a `setScreen(new X` of such a class, so a new screen cannot skip the gate. A screen class extends a class named ...Screen or any
+class that already is one (`class Foo extends PanelBase` counts when `PanelBase` extends `CrtScreen`). A `setScreen(make())` hides which
+class it opens, so it fails unless the factory is in FACTORIES, where a layout case builds the same screens.
 
 The match is on declarations, never on a bare mention: a name in a comment or in another method does not count.
 """
@@ -21,25 +23,62 @@ ALLOWED = {
     "TerminalScreen": "the generic screen TerminalScreens.create builds; the offline case of every terminal type covers it",
 }
 
-# `class X extends <anything ending in Screen>`, nested or not, with the extends possibly on the next line.
-SCREEN_CLASS = re.compile(
+# Factories whose result a layout case builds the same way: (class that calls setScreen, the factory it calls). Any other
+# `setScreen(make())` hides which screen it opens, so it fails.
+FACTORIES = {
+    ("TerminalScreens", "create"): "ScreenLayoutClientTest builds every terminal screen with TerminalScreens.create",
+}
+
+# `class X extends Y`, nested or not, with the extends possibly on the next line. Y is a screen when its name ends in Screen or
+# when it is itself a screen class, so the screens are the closure of the two (see screen_closure).
+SUBCLASS = re.compile(
     r"((?:(?:public|protected|private|static|final|abstract|sealed|non-sealed)\s+)*)class\s+(\w+)(?:<[^>{]*>)?\s+extends\s+"
-    r"(?:[\w.]+\.)?\w*Screen\b",
+    r"(?:[\w.]+\.)?(\w+)",
     re.DOTALL,
 )
 REGISTERED = re.compile(r"(?:TerminalScreens|MenuScreens)\s*\.\s*register\s*\([^;]*?\b(\w+)::new", re.DOTALL)
 SET_SCREEN = re.compile(r"setScreen\s*\(\s*new\s+(\w+)", re.DOTALL)
+# `setScreen(make(...))` or `setScreen(Screens.make(...))`: a call that is not `new`. A variable or null is no factory.
+FACTORY_SET_SCREEN = re.compile(r"setScreen\s*\(\s*(?!new\b)([\w.]+)\s*\(", re.DOTALL)
 STANDALONE = re.compile(r"List<Case>\s+standalone\s*\(\s*\)\s*\{")
 
 
-def screen_classes(sources: list[str]) -> set[str]:
-    """Concrete classes, nested ones too, that extend any class whose name ends in Screen."""
-    return {
-        match.group(2)
+def screen_closure(sources: list[str]) -> dict[str, bool]:
+    """Every class that is a screen, abstract ones too, mapped to whether it is abstract.
+
+    A class is a screen when it extends a class named ...Screen, or a class that is already a screen: an abstract PanelBase that
+    extends CrtScreen makes `class Foo extends PanelBase` a screen. Taken to a fixed point, so the order of the files does not matter.
+    """
+    classes = [
+        (match.group(2), match.group(3), "abstract" in match.group(1).split())
         for text in sources
-        for match in SCREEN_CLASS.finditer(text)
-        if "abstract" not in match.group(1).split()
-    }
+        for match in SUBCLASS.finditer(text)
+    ]
+    known: dict[str, bool] = {}
+    changed = True
+    while changed:
+        changed = False
+        for name, base, abstract in classes:
+            if name not in known and (base.endswith("Screen") or base in known):
+                known[name] = abstract
+                changed = True
+    return known
+
+
+def screen_classes(sources: list[str]) -> set[str]:
+    """Concrete classes, nested ones too, that are screens (see screen_closure)."""
+    return {name for name, abstract in screen_closure(sources).items() if not abstract}
+
+
+def unguarded_factories(sources: list[str]) -> list[str]:
+    """The methods a `setScreen(make())` calls to build the screen, other than the ones in FACTORIES."""
+    found = []
+    for text in sources:
+        declared = set(re.findall(r"\bclass\s+(\w+)", text))
+        for callee in FACTORY_SET_SCREEN.findall(text):
+            if not any((name, callee.rsplit(".", 1)[-1]) in FACTORIES for name in declared):
+                found.append(callee)
+    return sorted(found)
 
 
 def registered_classes(sources: list[str]) -> set[str]:
@@ -87,6 +126,19 @@ class ScreenLayoutGateTest(unittest.TestCase):
             f"standalone() of {TEST.relative_to(ROOT)}, and not in ALLOWED: register the screen, or add a case for it in standalone()",
         )
 
+    def test_no_screen_is_opened_through_an_unguarded_factory(self):
+        loose = unguarded_factories(client_sources())
+        self.assertEqual(
+            loose, [],
+            f"setScreen({loose}(...)) opens a screen the gate cannot see: open it with `new X(...)`, or add the factory to FACTORIES "
+            "with the layout case that builds the same screens",
+        )
+
+    def test_the_factories_exist(self):
+        text = "\n".join(client_sources())
+        for owner, callee in FACTORIES:
+            self.assertRegex(text, rf"class\s+{owner}\b[\s\S]*setScreen\s*\(\s*{callee}\s*\(", (owner, callee))
+
     def test_finds_the_screens_of_the_repo(self):
         found = screen_classes(client_sources())
         self.assertTrue({"HangarScreen", "UpgradeScreen", "HandbookScreen", "OreCargoScreen", "TerminalScreen"} <= found, found)
@@ -126,6 +178,30 @@ class BypassFixtureTest(unittest.TestCase):
 
     def test_an_abstract_screen_is_not_a_screen_to_cover(self):
         self.assertEqual(uncovered(["public abstract class Base extends Screen {}"], self.NAMED_ELSEWHERE), [])
+
+    def test_a_subclass_of_an_abstract_base_that_is_not_named_screen_is_found(self):
+        sources = ["abstract class PanelBase extends CrtScreen {}", "class Foo extends PanelBase {}"]
+        self.assertEqual(uncovered(sources, self.NAMED_ELSEWHERE), ["Foo"])
+
+    def test_a_subclass_through_two_bases_is_found_whatever_the_order(self):
+        sources = ["class Foo extends Mid {}", "abstract class Mid<T> extends Base {}", "abstract class Base extends Screen {}"]
+        self.assertEqual(uncovered(sources, self.NAMED_ELSEWHERE), ["Foo"])
+
+    def test_a_class_extending_something_unrelated_is_not_a_screen(self):
+        self.assertEqual(uncovered(["class Foo extends Widget {}", "abstract class Widget extends Thing {}"], self.NAMED_ELSEWHERE), [])
+
+    def test_a_screen_built_by_a_factory_is_found(self):
+        self.assertEqual(unguarded_factories(["void open() { client.gui.setScreen(make()); }"]), ["make"])
+        self.assertEqual(unguarded_factories(["void open() { client.gui.setScreen(Screens.make(view)); }"]), ["Screens.make"])
+
+    def test_set_screen_of_new_null_or_a_variable_is_not_a_factory(self):
+        for call in ("new X(view)", "null", "parent", "screen"):
+            with self.subTest(call=call):
+                self.assertEqual(unguarded_factories([f"void open() {{ client.gui.setScreen({call}); }}"]), [])
+
+    def test_the_terminal_factory_is_guarded_by_the_terminal_cases(self):
+        self.assertEqual(unguarded_factories(["final class TerminalScreens { void open() { client.gui.setScreen(create(view)); } }"]), [])
+        self.assertEqual(unguarded_factories(["final class Other { void open() { client.gui.setScreen(create(view)); } }"]), ["create"])
 
     def test_the_allow_list_is_honoured(self):
         self.assertEqual(uncovered(["final class TerminalScreen extends CrtScreen {}"], self.NAMED_ELSEWHERE), [])
