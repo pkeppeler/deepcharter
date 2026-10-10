@@ -13,7 +13,7 @@ import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 
 /** Draws the lampless figure, the Reacher of #250, from the model, texture and animations of {@link LamplessFigureAssets}; it fades by going see-through. */
 public class LamplessFigureRenderer extends GeoReplacedEntityRenderer<LamplessFigureAnimatable, LamplessFigure, LamplessFigureRenderState> {
-	private static final float SHADOW_RADIUS = 0.4f;
+	public static final float SHADOW_RADIUS = 0.4f;
 
 	public LamplessFigureRenderer(EntityRendererProvider.Context context) {
 		super(context, checkedModel(context), new LamplessFigureAnimatable());
@@ -30,11 +30,17 @@ public class LamplessFigureRenderer extends GeoReplacedEntityRenderer<LamplessFi
 		return new LamplessFigureRenderState();
 	}
 
+	/** The fade is read before the base class extracts the shadow, which asks for {@link #getShadowRadius}. */
 	@Override
-	public void addRenderData(LamplessFigureAnimatable animatable, LamplessFigure figure, LamplessFigureRenderState state, float partialTick) {
+	public void extractRenderState(LamplessFigure figure, LamplessFigureRenderState state, float partialTick) {
 		state.fade = figure.fadeFraction();
-		// The shadow goes with the body.
-		state.shadowRadius = SHADOW_RADIUS * (1f - state.fade);
+		super.extractRenderState(figure, state, partialTick);
+	}
+
+	/** The shadow goes with the body. */
+	@Override
+	protected float getShadowRadius(LamplessFigureRenderState state) {
+		return super.getShadowRadius(state) * (1f - state.fade);
 	}
 
 	/** The figure is taller than its hitbox, and its arms and stoop reach past it. */

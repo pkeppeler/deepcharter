@@ -20,10 +20,14 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.ARGB;
 import net.minecraft.world.entity.EntitySpawnReason;
 
 import io.github.pkeppeler.deepcharter.client.creature.LamplessFigureAssets;
+import io.github.pkeppeler.deepcharter.client.creature.LamplessFigureAnimatable;
+import io.github.pkeppeler.deepcharter.client.creature.LamplessFigureRenderState;
 import io.github.pkeppeler.deepcharter.client.creature.LamplessFigureRenderer;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
@@ -33,7 +37,8 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 /**
  * Client GameTest for #250: the figure is drawn by {@link LamplessFigureRenderer} with no switch; GeckoLib bakes every bone and both
- * animations of its files; it draws in view; and it is not culled at the edge of the screen while any part of it is still in view.
+ * animations of its files; it draws in view; a whole figure has its full shadow, a cutout type and alpha 1 while a fading one has a smaller
+ * shadow, a translucent type and alpha under 1; and it is not culled at the edge of the screen while any part of it is still in view.
  */
 public class LamplessFigureClientTest implements FabricClientGameTest {
 	/** The camera's field of view and the window's shape: only their ratio matters to the edge. */
@@ -47,7 +52,10 @@ public class LamplessFigureClientTest implements FabricClientGameTest {
 	@Override
 	public void runTest(ClientGameTestContext context) {
 		ClientTestLog.start(this);
+		boolean shadows = context.computeOnClient(client -> client.options.entityShadows().get());
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+			// The renderer extracts a shadow only when the player's option has entity shadows on.
+			context.runOnClient(client -> client.options.entityShadows().set(true));
 			int[] figureId = {0};
 			singleplayer.getServer().runOnServer(server -> {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
@@ -66,7 +74,74 @@ public class LamplessFigureClientTest implements FabricClientGameTest {
 			// One rendered frame with the figure in view: the pose and the draw run.
 			context.waitTick(); // tick-wait: one frame draws the posed model; nothing else is awaited
 			context.runOnClient(client -> notCulledAtTheEdge(client, figureId[0]));
+			context.runOnClient(client -> require(drawnWhole(client, figureId[0]).isEmpty(), "a whole figure is drawn wrong: " + drawnWhole(client, figureId[0])));
+
+			// A second figure with its AI on fades as the player stands near it; its AI is then stopped, which freezes the fade part way.
+			int[] fadingId = {0};
+			singleplayer.getServer().runOnServer(server -> {
+				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+				LamplessFigure figure = CreatureRegistry.LAMPLESS_FIGURE.create(player.level(), EntitySpawnReason.COMMAND);
+				figure.setPos(player.position().add(3, 0, 0));
+				player.level().addFreshEntity(figure);
+				fadingId[0] = figure.getId();
+			});
+			ClientWait.until(context, "the second figure part way through its fade",
+					client -> client.level.getEntity(fadingId[0]) instanceof LamplessFigure f && f.fadeFraction() > 0);
+			singleplayer.getServer().runOnServer(server -> ((LamplessFigure) server.getPlayerList().getPlayers().getFirst().level().getEntity(fadingId[0])).setNoAi(true));
+			context.waitTick(); // tick-wait: the freeze reaches the client before the figure is read
+			context.runOnClient(client -> require(drawnFading(client, fadingId[0]).isEmpty(), "a fading figure is drawn wrong: " + drawnFading(client, fadingId[0])));
+		} finally {
+			context.runOnClient(client -> client.options.entityShadows().set(shadows));
 		}
+	}
+
+	/** What is wrong with the way a whole figure (fade 0) is drawn: its state is read as the renderer reads it, so a dropped line in the renderer shows here. */
+	private static List<String> drawnWhole(Minecraft client, int id) {
+		LamplessFigure figure = (LamplessFigure) client.level.getEntity(id);
+		LamplessFigureRenderer renderer = (LamplessFigureRenderer) renderer(client, id);
+		LamplessFigureRenderState state = extract(client, figure);
+		List<String> wrong = new ArrayList<>();
+		if (state.fade != 0f) {
+			wrong.add("fade " + state.fade + " is not 0");
+		}
+		if (state.shadowRadius != LamplessFigureRenderer.SHADOW_RADIUS) {
+			wrong.add("shadow radius " + state.shadowRadius + " is not the full " + LamplessFigureRenderer.SHADOW_RADIUS);
+		}
+		if (renderer.getRenderType(state, LamplessFigureAssets.texture()).equals(RenderTypes.entityTranslucent(LamplessFigureAssets.texture()))) {
+			wrong.add("the render type is translucent");
+		}
+		int alpha = ARGB.alpha(renderer.getRenderColor(new LamplessFigureAnimatable(), figure, 1f));
+		if (alpha != 255) {
+			wrong.add("alpha " + alpha + " is not 255");
+		}
+		return wrong;
+	}
+
+	/** What is wrong with the way a figure with fade above 0 is drawn: a smaller shadow, a translucent type, alpha under 255. */
+	private static List<String> drawnFading(Minecraft client, int id) {
+		LamplessFigure figure = (LamplessFigure) client.level.getEntity(id);
+		LamplessFigureRenderer renderer = (LamplessFigureRenderer) renderer(client, id);
+		LamplessFigureRenderState state = extract(client, figure);
+		List<String> wrong = new ArrayList<>();
+		if (state.fade <= 0f || state.fade >= 1f) {
+			wrong.add("fade " + state.fade + " is not part way");
+		}
+		if (state.shadowRadius >= LamplessFigureRenderer.SHADOW_RADIUS) {
+			wrong.add("shadow radius " + state.shadowRadius + " did not shrink from " + LamplessFigureRenderer.SHADOW_RADIUS);
+		}
+		if (!renderer.getRenderType(state, LamplessFigureAssets.texture()).equals(RenderTypes.entityTranslucent(LamplessFigureAssets.texture()))) {
+			wrong.add("the render type is not translucent");
+		}
+		int alpha = ARGB.alpha(renderer.getRenderColor(new LamplessFigureAnimatable(), figure, 1f));
+		if (alpha >= 255) {
+			wrong.add("alpha " + alpha + " is not under 255");
+		}
+		return wrong;
+	}
+
+	/** The state as a frame builds it: the dispatcher extracts the renderer's state, then the shadow, which asks the renderer for its radius. */
+	private static LamplessFigureRenderState extract(Minecraft client, LamplessFigure figure) {
+		return (LamplessFigureRenderState) client.getEntityRenderDispatcher().extractEntity(figure, 1f);
 	}
 
 	/** GeckoLib baked the model with every bone its file names, and loaded both of its animations. */
