@@ -536,7 +536,7 @@ Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`Ea
 
 ## The breach crust (#378, A)
 
-**Problem.** With the [seep sounder](#seep-sounder-373-a) fitted, the crust at the foot of layer 1 ends 12 to 21 of 100 bores (the three columns measured below). It takes 8 hull a row, 3 rows, 24 in all, and the pod crosses it row by row. Nothing in the game tells the pilot that the hull will not last it, and nothing repairs the hull between the last pocket and the crust.
+**Problem.** With the [seep sounder](#seep-sounder-373-a) fitted, the crust at the foot of layer 1 ends 12 to 21 of 100 bores (the three columns measured below). It takes 8 hull a row, 3 rows, 24 in all. Nothing tells the pilot that the hull will not last it, and nothing repairs the hull between the last pocket and the crust.
 
 ### Measured: what a crust death brings to the crust
 
@@ -556,7 +556,7 @@ Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`Ea
 
 ### The rung: a crust warning for every pod, and the breach brace part
 
-**The warning (every pod).** Within 16 slabs of the foot of a layer that has a crust to bore, and in the crust, the HUD shows an amber line when the hull is no more than what the crust rows left would take: `CRUST 7 DOWN  HULL 20, IT TAKES 24`, then `IN THE CRUST  HULL 12, IT TAKES 16`. A pod with enough hull sees nothing. The server and the client work it out from the same synced state (`PodBrace.warning`). The last layer's crust is not drilled, so it has no warning.
+**The warning (every pod).** Within 16 slabs of the foot of a layer that has a crust to bore, and in the crust, the HUD shows an amber line when the hull is no more than what the crust rows left would take: `CRUST 7 DOWN  HULL 20, IT TAKES 24`, then `IN THE CRUST  HULL 12, IT TAKES 16`. A pod with enough hull sees nothing. The server and the client work it out from the same synced state (`PodBrace.status`). The last layer's crust is not drilled, so it has no warning.
 
 **The breach brace (a part).** A new track, `brace`, one tier, $200 (two stock layer 1 runs, `EconomyAffordabilityTest`). It fits every chassis. It has no stock part.
 - **At rest** means the pod is on the ground and its pilot gives no drill, drive or rotor input (sprint, a direction key or jump), and has given none for 20 ticks. A pod that falls into the hole of a slab it bored is not at rest, and neither is one whose pilot holds sprint: the brace never spends ore while the pilot is drilling.
@@ -588,13 +588,13 @@ The no-brace columns were measured again on the merged code and give the sounder
 - **What it leaves alone.** Gas and lava deaths are unchanged to the bore (6 and 42; 9 and 20; 10 and 18). The brace cannot repair outside the approach to the crust.
 
 **Decisions (A).**
-- **A part and a warning, not a halved crust.** The measurement showed the pods that die in the crust are short 12 to 23 hull. Halving the crust's price saved 2 of 21; a repair saves all of them.
+- **A part and a warning, not a halved crust.** Halving the crust's price saved 2 of 21 deaths; a repair saves all of them.
 - **12 hull an ore, once a second, cheapest ore first.** A patch is 2 to 4 ore: about a layer 1 run's money, the price of a hull the pilot let the gas take. Cheapest first because the pilot would choose to burn it first; a lower figure makes the toll dearer than the cargo it saves.
-- **The brace never spends more a hull than the nanobots.** The cap is derived from the nanobots' price and hull (see above), never a literal. `EconomyAffordabilityTest` pins both sides: (a) the cheapest ore is cheaper a hull than the nanobots, a deliberate discount; (b) the cap is exactly the nanobots' rate, so ore over it is refused (`PodBraceTest` pins the refusal on a pod, and the HUD line for it).
+- **The cap is derived from the nanobots' price and hull, never a literal.** `EconomyAffordabilityTest` pins both sides: (a) the cheapest ore is cheaper a hull than the nanobots; (b) the cap is exactly the nanobots' rate. `PodBraceTest` pins the refusal of ore over it, and the HUD line for it.
 - **Rest is judged on the server from the pilot's input and the pod's contact with the ground, with 20 ticks of debounce.** A first version used "the drill is not working", which is false for the tick after each slab (the pod is off the ground, so the drill stops), and burned ore under a pilot who held sprint. Tests: a pod in the air, a pod that moved within the rest time, and a pilot holding the drill across bored slabs.
-- **Reserve of 4.** The brace stops at the price plus 4, so a patched pod crosses with a little hull and not with a fraction of a point.
+- **Reserve of 4**, so a patched pod crosses with a little hull and not with a fraction of a point.
 - **The warning is for every pod and its colour is the hard landing's amber (`podHardLandingColor`).** No new theme key.
-- **One tier, $200, any chassis.** Two layer 1 runs, bought for the dive down.
+- **One tier, $200, any chassis**, bought for the dive down.
 - **Placeholders.** The brace plays the Hull Nanobots sound (`repair.nanobots`) with each patch. Its item sprite is a recipe in `tools/textures/recipes/items.json`.
 
 **Knobs.** `PodBraceTuning`: `hullPerOre` (12), `patchTicks` (20), `reserveHull` (4), `warnSlabs` (16), `restTicks` (20). `UpgradeTuning` price (200).

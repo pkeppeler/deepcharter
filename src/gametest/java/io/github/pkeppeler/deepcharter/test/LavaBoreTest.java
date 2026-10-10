@@ -801,7 +801,7 @@ public class LavaBoreTest {
 		}
 		bore.lastCargoUsed = used;
 		bore.lastCargoValue = cargoValue(pod);
-		PodBrace.Patching patching = PodBrace.patching(pod, true);
+		PodBrace.Patching patching = PodBrace.status(pod, true).patching();
 		bore.braceDry |= patching == PodBrace.Patching.NO_ORE;
 		bore.braceDear |= patching == PodBrace.Patching.NO_CHEAP_ORE;
 	}
@@ -811,7 +811,7 @@ public class LavaBoreTest {
 	 * and sprints again when the part is done. Returns whether the bot is holding back. With an empty bay it drills on.
 	 */
 	private static boolean braceIfAsked(Bore bore, PodEntity pod) {
-		boolean asked = PodBrace.patching(pod, true) == PodBrace.Patching.WORKING;
+		boolean asked = PodBrace.status(pod, true).patching() == PodBrace.Patching.WORKING;
 		if (asked && bore.phase == Phase.DOWN && pod.onGround()) {
 			if (!bore.bracing) {
 				bore.bracing = true;
@@ -1289,14 +1289,15 @@ public class LavaBoreTest {
 				distribution(killed, b -> b.hullAtCrust), distribution(killed, b -> b.hullBy[Cause.CRUST.ordinal()]), short_, killed.size(),
 				distribution(killed, b -> Math.max(0f, full - b.hullAtCrust)));
 		LOGGER.info("[lava-bore] crust deaths, hull the brought pod had lost before the crust, per death: lava {} gas {} landing {} other {}; start hull {}",
-				String.format("%.1f", killed.stream().mapToDouble(b -> b.broughtBy[Cause.LAVA.ordinal()]).average().orElse(0)),
-				String.format("%.1f", killed.stream().mapToDouble(b -> b.broughtBy[Cause.GAS.ordinal()]).average().orElse(0)),
-				String.format("%.1f", killed.stream().mapToDouble(b -> b.broughtBy[Cause.LANDING.ordinal()]).average().orElse(0)),
-				String.format("%.1f", killed.stream().mapToDouble(b -> b.broughtBy[Cause.OTHER.ordinal()]).average().orElse(0)),
-				String.format("%.0f", killed.stream().mapToDouble(b -> b.startHull).average().orElse(0)));
+				mean(killed, "%.1f", b -> b.broughtBy[Cause.LAVA.ordinal()]), mean(killed, "%.1f", b -> b.broughtBy[Cause.GAS.ordinal()]),
+				mean(killed, "%.1f", b -> b.broughtBy[Cause.LANDING.ordinal()]), mean(killed, "%.1f", b -> b.broughtBy[Cause.OTHER.ordinal()]),
+				mean(killed, "%.0f", b -> b.startHull));
 		LOGGER.info("[lava-bore] crust deaths summary: {} deaths, mean brought {}, mean crust took {}, {} short of the full crust cost",
-				killed.size(), String.format("%.1f", killed.stream().mapToDouble(b -> b.hullAtCrust).average().orElse(0)),
-				String.format("%.1f", killed.stream().mapToDouble(b -> b.hullBy[Cause.CRUST.ordinal()]).average().orElse(0)), short_);
+				killed.size(), mean(killed, "%.1f", b -> b.hullAtCrust), mean(killed, "%.1f", b -> b.hullBy[Cause.CRUST.ordinal()]), short_);
+	}
+
+	private static String mean(List<Bore> bores, String format, ToDoubleFunction<Bore> value) {
+		return String.format(format, bores.stream().mapToDouble(value).average().orElse(0));
 	}
 
 	/** What the breach brace did and cost, when the pods carried one (#378): the bores that stopped to burn ore, the ore and its value, and the time. */
@@ -1306,9 +1307,9 @@ public class LavaBoreTest {
 		}
 		List<Bore> braced = bores.stream().filter(b -> b.braceTicks > 0).toList();
 		LOGGER.info("[lava-bore] brace: {} of {} bores stopped to burn ore for hull; ore burned per braced bore {} (worth ${} at the terminal), {} pod ticks at rest per braced bore; {} bores found the bay empty when the brace was wanted ({} of them died of the crust), {} found only ore dearer than the nanobots' price a hull ({} died of the crust)",
-				braced.size(), bores.size(), String.format("%.1f", braced.stream().mapToInt(b -> b.braceOre).average().orElse(0)),
-				String.format("%.0f", braced.stream().mapToInt(b -> b.braceValue).average().orElse(0)),
-				String.format("%.0f", braced.stream().mapToInt(b -> b.braceTicks).average().orElse(0)), bores.stream().filter(b -> b.braceDry).count(),
+				braced.size(), bores.size(), mean(braced, "%.1f", b -> b.braceOre),
+				mean(braced, "%.0f", b -> b.braceValue),
+				mean(braced, "%.0f", b -> b.braceTicks), bores.stream().filter(b -> b.braceDry).count(),
 				bores.stream().filter(b -> b.braceDry && b.outcome == Outcome.DIED && b.lastCause == Cause.CRUST).count(), bores.stream().filter(b -> b.braceDear).count(),
 				bores.stream().filter(b -> b.braceDear && b.outcome == Outcome.DIED && b.lastCause == Cause.CRUST).count());
 	}

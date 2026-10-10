@@ -101,19 +101,10 @@ public final class PodBrace {
 	}
 
 	/**
-	 * The warning for this pod now, or empty: in a layer with a crust to bore, within {@link PodBraceTuning#warnSlabs} of the crust or in it, with a
-	 * hull no greater than what the crust rows left would take (a hull of exactly that is gone with the last row). Works on both sides.
+	 * The warning for this pod now, empty unless it is in a layer with a crust to bore, within {@link PodBraceTuning#warnSlabs} of the crust or in it, with a hull no
+	 * greater than what the crust rows left would take (a hull of exactly that is gone with the last row); and what the brace does about it, for {@code resting} as the
+	 * caller judges it. Works on both sides, from synced state.
 	 */
-	public static Optional<Warning> warning(PodEntity pod) {
-		return status(pod, true).warning();
-	}
-
-	/** What the brace is doing for this pod, if it is at rest. Works on both sides, from synced state. */
-	public static Patching patching(PodEntity pod, boolean resting) {
-		return status(pod, resting).patching();
-	}
-
-	/** The warning and the brace's state from one look at the crust ahead, for {@code resting} as the caller judges it. Works on both sides, from synced state. */
 	public static Status status(PodEntity pod, boolean resting) {
 		Optional<Ahead> crust = ahead(pod);
 		Optional<Warning> warning = crust.filter(c -> pod.hull() > 0f && pod.hull() <= c.cost())
@@ -138,7 +129,7 @@ public final class PodBrace {
 	}
 
 	/** Whether the pilot gives no drill, drive or rotor input. A pod with no pilot has none. Server only. */
-	public static boolean pilotIdle(PodEntity pod) {
+	private static boolean pilotIdle(PodEntity pod) {
 		if (!(pod.getControllingPassenger() instanceof ServerPlayer pilot)) {
 			return true;
 		}
@@ -175,7 +166,7 @@ public final class PodBrace {
 			return;
 		}
 		boolean rested = pod.tickCount - LAST_ACTIVE.getOrDefault(pod, Integer.MIN_VALUE / 2) >= tuning.restTicks();
-		if (!rested || pod.tickCount % tuning.patchTicks() != 0 || !PodEvents.isPowered(pod) || patching(pod, true) != Patching.WORKING) {
+		if (!rested || pod.tickCount % tuning.patchTicks() != 0 || !PodEvents.isPowered(pod) || status(pod, true).patching() != Patching.WORKING) {
 			return;
 		}
 		Optional<OreType> ore = cheapest(pod);

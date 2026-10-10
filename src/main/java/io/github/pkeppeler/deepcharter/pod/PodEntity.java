@@ -85,7 +85,6 @@ public class PodEntity extends Entity {
 		setHull(hull() - damage);
 	}
 
-	/** True while lava is burning the hull (set each tick by LavaHazard); the HUD shows it. Not saved: a loaded pod starts cool. */
 	/** Whether the bay holds an ore the breach brace may burn; kept by the brace on the server, synced for the HUD. */
 	public boolean braceOre() {
 		return entityData.get(PodData.BRACE_ORE);
@@ -95,6 +94,7 @@ public class PodEntity extends Entity {
 		entityData.set(PodData.BRACE_ORE, braceOre);
 	}
 
+	/** True while lava is burning the hull (set each tick by LavaHazard); the HUD shows it. Not saved: a loaded pod starts cool. */
 	public boolean hullBurning() {
 		return entityData.get(PodData.HULL_BURNING);
 	}

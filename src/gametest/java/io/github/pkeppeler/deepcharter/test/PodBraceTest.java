@@ -91,21 +91,21 @@ public class PodBraceTest {
 	}
 
 	private static void expectNone(GameTestHelper helper, PodEntity pod, String when) {
-		Optional<PodBrace.Warning> warning = PodBrace.warning(pod);
+		Optional<PodBrace.Warning> warning = PodBrace.status(pod, true).warning();
 		if (warning.isPresent()) {
 			throw failure(helper, "no crust warning %s, got %s", when, warning.get());
 		}
 	}
 
 	private static void expectWarning(GameTestHelper helper, PodEntity pod, int slabsAway, int crustSlabs, float cost, String when) {
-		PodBrace.Warning warning = PodBrace.warning(pod).orElseThrow(() -> failure(helper, "a crust warning %s", when));
+		PodBrace.Warning warning = PodBrace.status(pod, true).warning().orElseThrow(() -> failure(helper, "a crust warning %s", when));
 		if (warning.slabsAway() != slabsAway || warning.crustSlabs() != crustSlabs || Math.abs(warning.cost() - cost) > 0.01f) {
 			throw failure(helper, "the warning %s should be %d away, %d crust slabs, cost %s; it is %s", when, slabsAway, crustSlabs, cost, warning);
 		}
 	}
 
 	private static void expectPatching(GameTestHelper helper, PodEntity pod, PodBrace.Patching expected, String when) {
-		PodBrace.Patching now = PodBrace.patching(pod, true);
+		PodBrace.Patching now = PodBrace.status(pod, true).patching();
 		if (now != expected) {
 			throw failure(helper, "the brace should be %s %s, it is %s", expected, when, now);
 		}
@@ -211,8 +211,8 @@ public class PodBraceTest {
 		PodEntity pod = pod(helper, one, 10, 5f, true);
 		expectPatching(helper, pod, PodBrace.Patching.NO_ORE, "for an empty bay");
 		ore(helper, pod, OreType.IRONIUM);
-		if (PodBrace.patching(pod, false) != PodBrace.Patching.WAITS_FOR_REST) {
-			throw failure(helper, "a pod that is not at rest waits, it is %s", PodBrace.patching(pod, false));
+		if (PodBrace.status(pod, false).patching() != PodBrace.Patching.WAITS_FOR_REST) {
+			throw failure(helper, "a pod that is not at rest waits, it is %s", PodBrace.status(pod, false).patching());
 		}
 		helper.succeed();
 	}
@@ -352,7 +352,7 @@ public class PodBraceTest {
 				throw failure(helper, "the %s works the brace at tier 1, it works it at %s", pod.chassis().id(), PodBrace.tier(pod));
 			}
 			ore(helper, pod, OreType.IRONIUM);
-			if (PodBrace.warning(pod).isEmpty()) {
+			if (PodBrace.status(pod, true).warning().isEmpty()) {
 				throw failure(helper, "the %s with 5 hull above the crust is warned", pod.chassis().id());
 			}
 			expectPatching(helper, pod, PodBrace.Patching.WORKING, "for a hurt " + pod.chassis().id());
