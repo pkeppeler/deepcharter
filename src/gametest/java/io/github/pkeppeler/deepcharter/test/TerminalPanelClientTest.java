@@ -47,10 +47,8 @@ public class TerminalPanelClientTest implements FabricClientGameTest {
 	public void runTest(ClientGameTestContext context) {
 		ClientTestLog.start(this);
 		require(context.computeOnClient(client -> PanelLook.current().enabled()), "the panel is on with no pack");
-		require(context.computeOnClient(client -> !CrtText.style().equals(Style.EMPTY)), "the terminal font is in force with no pack");
-		// A font the game cannot load (a file name with a capital, a bad size) falls back to the missing-glyph font silently, so measure it.
-		require(context.computeOnClient(client -> CrtText.width(client.font, SAMPLE) != client.font.width(SAMPLE)),
-				"Unscii draws the sample text no wider or narrower than the game's own font: the font did not load");
+		require(context.computeOnClient(client -> CrtText.style().equals(Style.EMPTY) && !PanelLook.drawn()),
+				"with no terminal screen open (the HUD) the text is the game's own font and the panel is not drawn");
 		List<String> problems = new ArrayList<>();
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			Scene scene = singleplayer.getServer().computeOnServer(TerminalPanelScene::setUp);
@@ -58,6 +56,10 @@ public class TerminalPanelClientTest implements FabricClientGameTest {
 					client -> "charter " + ClientCharter.view());
 			for (String screen : TerminalPanelScreens.SCENE_SCREENS) {
 				Screen open = TerminalPanelScreens.open(context, screen, scene, null);
+				require(context.computeOnClient(client -> PanelLook.drawn() && !CrtText.style().equals(Style.EMPTY)), "the terminal font is in force on " + screen + " with no pack");
+				// A font the game cannot load (a file name with a capital, a bad size) falls back to the missing-glyph font silently, so measure it.
+				require(context.computeOnClient(client -> CrtText.width(client.font, SAMPLE) != client.font.width(SAMPLE)),
+						"Unscii draws the sample text no wider or narrower than the game's own font: the font did not load");
 				context.computeOnClient(client -> check(open, screen, problems));
 				TerminalPanelScreens.close(context);
 			}

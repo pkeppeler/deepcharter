@@ -135,14 +135,12 @@ public record PanelLook(
 	}
 
 	/**
-	 * Whether the panel is drawn now: it {@link #fits} the open screen's size, or the window's GUI when no screen is open. Every screen and button asks
-	 * this, never {@link #enabled()}.
+	 * Whether the panel is drawn now: a {@link PanelScreen} is open and the panel {@link #fits} its size. Every terminal screen and button asks this,
+	 * never {@link #enabled()}. The HUD, with no screen open, and any other screen are not in the panel: they keep the game's font.
 	 */
 	public static boolean drawn() {
-		Minecraft client = Minecraft.getInstance();
-		Screen screen = client.gui.screen();
-		return screen != null ? current().fits(screen.width, screen.height)
-				: current().fits(client.getWindow().getGuiScaledWidth(), client.getWindow().getGuiScaledHeight());
+		Screen screen = Minecraft.getInstance().gui.screen();
+		return screen instanceof PanelScreen && current().fits(screen.width, screen.height);
 	}
 
 	/** The colour of a button's label for its state. */

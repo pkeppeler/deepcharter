@@ -11,6 +11,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
+import io.github.pkeppeler.deepcharter.client.theme.PanelScreen;
 
 /**
  * Base of every retro CRT-terminal screen: a phosphor backdrop, scanlines over everything, and typewriter text.
@@ -32,7 +33,7 @@ import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
  * <p>Typewriter text is plain and single-coloured; the colour is chosen per typewriter. The screen narrates the
  * full text of every typewriter once, when it opens, as part of {@link #getNarrationMessage()}.
  */
-public abstract class CrtScreen extends Screen {
+public abstract class CrtScreen extends Screen implements PanelScreen {
 	private static final double SECONDS_PER_TICK = 1.0 / 20.0;
 
 	/** A typewriter, its colour, and its wrapped lines, kept until the revealed text or the width changes. */
