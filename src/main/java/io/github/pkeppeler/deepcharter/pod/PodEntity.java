@@ -85,6 +85,15 @@ public class PodEntity extends Entity {
 		setHull(hull() - damage);
 	}
 
+	/** Whether the bay holds an ore the breach brace may burn; kept by the brace on the server, synced for the HUD. */
+	public boolean braceOre() {
+		return entityData.get(PodData.BRACE_ORE);
+	}
+
+	public void setBraceOre(boolean braceOre) {
+		entityData.set(PodData.BRACE_ORE, braceOre);
+	}
+
 	/** True while lava is burning the hull (set each tick by LavaHazard); the HUD shows it. Not saved: a loaded pod starts cool. */
 	public boolean hullBurning() {
 		return entityData.get(PodData.HULL_BURNING);
@@ -157,10 +166,10 @@ public class PodEntity extends Entity {
 
 	@Override
 	protected void readAdditionalSaveData(ValueInput input) {
-		Chassis saved = PodRegistry.chassisById(required(input, CHASSIS_KEY, Codec.STRING));
-		if (saved != chassis) {
-			// The entity type decides the hitbox, so the type's chassis wins.
-			DeepCharter.LOGGER.error("Pod {} was saved as a {} but is a {}: it keeps the type's chassis", getUUID(), saved.id(), chassis.id());
+		// The entity type decides the chassis, so the saved id is only a cross-check: a different, unknown or missing one never fails the load.
+		String saved = input.read(CHASSIS_KEY, Codec.STRING).orElse("(none)");
+		if (!saved.equals(chassis.id())) {
+			DeepCharter.LOGGER.error("Pod {} was saved as the chassis {} but is a {}: it keeps the type's chassis", getUUID(), saved, chassis.id());
 		}
 		// Not setHull: loading a pod that has no hull left is not the hull running out.
 		float hull = required(input, HULL_KEY, Codec.FLOAT);

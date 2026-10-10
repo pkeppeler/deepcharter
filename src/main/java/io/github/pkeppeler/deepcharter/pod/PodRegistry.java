@@ -22,7 +22,6 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 public final class PodRegistry {
 	/** Declared first: each registration below adds its chassis. */
 	private static final Map<EntityType<?>, Chassis> CHASSIS = new HashMap<>();
-	private static final Map<Chassis, List<Vec3>> SEATS = new HashMap<>();
 
 	/** How far a rider hangs below its seat (the player's vehicle attachment), so a seat this high puts its rider's feet on the pod's floor. */
 	private static final double SEAT_HEIGHT = 0.6;
@@ -56,7 +55,6 @@ public final class PodRegistry {
 		if (seats.size() != chassis.seats()) {
 			throw new IllegalArgumentException("the chassis " + chassis.id() + " has " + chassis.seats() + " seats and the seat offsets " + seats);
 		}
-		SEATS.put(chassis, List.copyOf(seats));
 		ResourceKey<EntityType<?>> key = ResourceKey.create(Registries.ENTITY_TYPE, id);
 		EntityType<PodEntity> type = Registry.register(BuiltInRegistries.ENTITY_TYPE, key,
 				EntityType.Builder.<PodEntity>of(PodEntity::new, MobCategory.MISC)
@@ -70,13 +68,9 @@ public final class PodRegistry {
 		return type;
 	}
 
-	/** The seats of {@code chassis}, pilot first: where a rider sits, in blocks from the pod's feet (+z is forward). */
-	public static List<Vec3> seatsOf(Chassis chassis) {
-		List<Vec3> seats = SEATS.get(chassis);
-		if (seats == null) {
-			throw new IllegalArgumentException("no seats for the chassis " + chassis.id() + ": it is not registered");
-		}
-		return seats;
+	/** Every chassis registered, shipped or not. */
+	public static List<Chassis> chassis() {
+		return List.copyOf(CHASSIS.values());
 	}
 
 	/** The chassis of the pods of {@code type}; a type that is no pod's throws. */
@@ -86,16 +80,6 @@ public final class PodRegistry {
 			throw new IllegalArgumentException("not a pod entity type: " + type);
 		}
 		return chassis;
-	}
-
-	/** The chassis registered with the id {@code id}, shipped or not; an id that is none is a bug, so it throws. */
-	public static Chassis chassisById(String id) {
-		for (Chassis chassis : CHASSIS.values()) {
-			if (chassis.id().equals(id)) {
-				return chassis;
-			}
-		}
-		throw new IllegalArgumentException("unknown pod chassis: " + id);
 	}
 
 	/** The entity type of the pods of {@code chassis}; a chassis with none is a bug, so it throws. */

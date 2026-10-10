@@ -170,7 +170,7 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 			List<Button> buttons = ClientChecks.buttons(screen);
 			for (Button button : buttons) {
 				Optional<String> buttonProblem = ClientChecks.buttonLeavesScreen(screen, button)
-						.or(() -> ClientChecks.buttonOverlaps(button, buttons));
+						.or(() -> ClientChecks.widgetOverlaps(button, buttons));
 				if (buttonProblem.isPresent()) {
 					return buttonProblem;
 				}

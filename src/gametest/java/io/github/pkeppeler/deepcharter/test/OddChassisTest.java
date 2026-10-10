@@ -5,6 +5,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.StreamSupport;
 
 import com.google.gson.JsonElement;
@@ -15,15 +16,21 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.pod.Chassis;
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodTowing;
+import io.github.pkeppeler.deepcharter.pod.TowReachProbe;
+import io.github.pkeppeler.deepcharter.pod.TowTuning;
 import io.github.pkeppeler.deepcharter.test.support.OddPods;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
 /**
  * Server GameTests for #399 on a wide chassis ({@link OddPods#CHASSIS}: 3.9 wide, 2.9 tall, a 4-wide, 3-tall bore), neither the Mole's
- * 2 x 2 nor the Prospector's 3 x 3. The checks are {@link ChassisChecks}, the same as {@link TallChassisTest} runs on a tall one. The two
- * tests at the end hold for every chassis there is: the part tier it takes, and the doors of the colony's bays.
+ * 2 x 2 nor the Prospector's 3 x 3. The checks are {@link ChassisChecks}, the same as {@link TallChassisTest} runs on a tall one. The
+ * tests at the end hold for every chassis there is: the tow reach, the part tier the constructor accepts, and the doors of the colony's bays.
  */
 public class OddChassisTest {
 	private static final ChassisChecks CHECKS = new ChassisChecks(OddPods.CHASSIS, OddPods.TYPE, 0);
@@ -96,17 +103,45 @@ public class OddChassisTest {
 		CHECKS.parksInBayPlacesThatFitAndNeverOverlap(helper);
 	}
 
-	/** A part tier is 1 to the best any track has; the constructor refuses others, so a swap of the cap and the seats cannot register. */
+	/**
+	 * A cable's reach covers the trail of the widest chassis, even when the configured reach is short. With a reach of 1 and the widest
+	 * hull the 3.9 of {@link OddPods#CHASSIS}, the reach in use is 5.1: 3.9 + 0.6 for the trail, and 0.6 to spare. Two Moles 5 blocks
+	 * apart are then in reach for fitting a cable and for the tower to feel the pod it tows.
+	 */
 	@GameTest
-	public void everyChassisTakesAPartTierThatExists(GameTestHelper helper) {
+	public void theTowReachCoversTheTrailOfTheWidestChassis(GameTestHelper helper) {
+		TowTuning shortReach = new TowTuning(1.0, 0.6, 25f, 4, 0.4, 16);
+		double reach = shortReach.reachFor(OddPods.CHASSIS);
+		if (Math.abs(reach - 5.1) > 1e-4) {
+			throw failure(helper, "the tow reach should be 5.1 for a widest hull of 3.9 and a configured reach of 1, it is %s", reach);
+		}
+		PodEntity tower = helper.spawn(PodRegistry.POD, new Vec3(1.5, 2, 1.5));
+		PodEntity towed = helper.spawn(PodRegistry.POD, new Vec3(1.5, 2, 6.5));
+		Optional<PodTowing.Refusal> refusal = TowReachProbe.refusal(tower, towed, shortReach);
+		if (refusal.isPresent()) {
+			throw failure(helper, "a pod 5 blocks away should be in reach, but a cable is refused: %s", refusal.get());
+		}
+		PodTowing.attach(tower, towed);
+		if (!TowReachProbe.towedBy(tower, shortReach).contains(towed)) {
+			throw failure(helper, "the tower should find the pod it tows 5 blocks away");
+		}
+		helper.succeed();
+	}
+
+	/** The constructor refuses a part tier no track has: 0, and one above the best, so a swap of the cap and the seats cannot register. */
+	@GameTest
+	public void aChassisRefusesAPartTierThatDoesNotExist(GameTestHelper helper) {
 		int best = 0;
 		for (ComponentTrack track : ComponentTrack.values()) {
 			best = Math.max(best, track.maxTier());
 		}
-		for (Chassis chassis : everyChassis()) {
-			if (chassis.tierCap() < 1 || chassis.tierCap() > best) {
-				throw failure(helper, "the chassis %s takes part tier %s, and tiers go from 1 to %s", chassis.id(), chassis.tierCap(), best);
+		for (int cap : new int[] {0, best + 1}) {
+			try {
+				new Chassis("bad", 1, cap, 1.9f, 1.9f);
+			} catch (IllegalArgumentException expected) {
+				continue;
 			}
+			throw failure(helper, "a chassis with part tier cap %s should be refused, tiers go from 1 to %s", cap, best);
 		}
 		helper.succeed();
 	}

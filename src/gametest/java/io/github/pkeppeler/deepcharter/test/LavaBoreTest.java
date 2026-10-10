@@ -43,8 +43,10 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.LavaHazard;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
+import io.github.pkeppeler.deepcharter.pod.PodBrace;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLiner;
 import io.github.pkeppeler.deepcharter.pod.PodLinerTuning;
@@ -54,6 +56,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodSounder;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
+import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreTuning;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
@@ -127,19 +130,27 @@ public class LavaBoreTest {
 	/** The tier whose slice the avoiding bot reads: the lowest scanner that shows gas pockets. */
 	private static final int GAS_TIER = ScannerTuning.DEFAULT.gasTier();
 	private static final float BIG_HIT_HULL = 20f;
+	/** {@link Bore#hullAtCrust} for a bore the crust never hurt. */
+	private static final float NO_CRUST = -1f;
+	/** A pod whose feet are this far above the foot of the layer is in the crust: the breach crust is the bottom {@code crustThickness} blocks, and the pod stands on top of it. */
+	private static final int CRUST_BAND = LayerTuning.DEFAULT.crustThickness() + 1;
 	/** A loss with the pod sinking faster than this the tick before is a landing (the hard landing speed, {@code PodTuning} movement). */
 	private static final double LANDING_SINK = PodTuning.DEFAULT.movement().hardLandingSpeed();
 
 	/**
-	 * What took hull: lava (the pod touched it), a gas blast (a gas pocket in range was mined this tick), a hard landing, or the rest (the crust).
+	 * What took hull: lava (the pod touched it), a gas blast (a gas pocket in range was mined this tick), a hard landing, the breach crust (a loss
+	 * with the pod at the foot of the layer, #378), or the rest.
 	 * A tick takes one cause, in that order of priority: a tick with lava contact and a gas blast books all its hull to lava, which undercounts gas.
 	 */
-	private enum Cause { LAVA, GAS, LANDING, OTHER }
+	private enum Cause { LAVA, GAS, LANDING, CRUST, OTHER }
 	/** Blocks per tick of sink above which the braking bot holds the rotor on: the sink that {@code EarlyRunModel.driveDownLitres} models. */
 	private static final double BRAKE_ABOVE_SINK = EarlyRunModel.DRIVE_DOWN_SINK;
 	/** The tier of the real seep sounder part (#373) the pod carries; the bot reads what the part tells it and nothing else about gas. */
 	static final String SOUNDER_ENV = "DEEPCHARTER_LAVA_BORES_SOUNDER";
 	private static final String REQUESTED_SOUNDER = System.getenv(SOUNDER_ENV);
+	/** The tier of the real breach brace part (#378) the pod carries, for the crust columns; 1 is the only tier. */
+	static final String BRACE_ENV = "DEEPCHARTER_LAVA_BORES_BRACE";
+	private static final String REQUESTED_BRACE = System.getenv(BRACE_ENV);
 	static final String LINER_ENV = "DEEPCHARTER_LAVA_BORES_LINER";
 	private static final String REQUESTED_LINER = System.getenv(LINER_ENV);
 	private static final String REQUESTED_LINING = System.getenv(LINING_ENV);
@@ -341,6 +352,18 @@ public class LavaBoreTest {
 		final int linerTier;
 		/** The tier of seep sounder part the pod carries (#373); 0 for none. */
 		final int sounderTier;
+		/** The tier of breach brace part the pod carries (#378); 0 for none. */
+		final int braceTier;
+		/** The bot let go of the drill for the brace, which is burning ore into hull or waiting for the drill to stop. */
+		boolean bracing;
+		/** Pod ticks spent letting go of the drill for the brace, ore the brace burned and its value in dollars, and whether it ever found the bay empty. */
+		int braceTicks;
+		int braceOre;
+		int braceValue;
+		boolean braceDry;
+		boolean braceDear;
+		int lastCargoUsed;
+		int lastCargoValue;
 		PodEntity pod;
 		int startY;
 
@@ -382,6 +405,12 @@ public class LavaBoreTest {
 		final float[] hullBy = new float[Cause.values().length];
 		final int[] bigHitsBy = new int[Cause.values().length];
 		Cause lastCause = Cause.OTHER;
+		/**
+		 * The hull the pod had when the crust first took hull (#378), and what each earlier cause had cost it by then ({@link #hullBy} at that moment);
+		 * {@link #NO_CRUST} for a bore that never lost hull to the crust.
+		 */
+		float hullAtCrust = NO_CRUST;
+		float[] broughtBy;
 		/** The gas pockets within a blast of the pod at the end of the last tick: one that is gone now blew up this tick. */
 		final Set<BlockPos> gasPockets = new HashSet<>();
 		boolean wasLining;
@@ -414,7 +443,7 @@ public class LavaBoreTest {
 		final Map<BlockPos, Integer> thermalShownAt = new HashMap<>();
 		final List<Encounter> encounters = new ArrayList<>();
 
-		Bore(int index, MockPlayer pilot, ServerLevel level, int centreX, int centreZ, int shaftBottomY, int lookahead, int linerTier, int sounderTier) {
+		Bore(int index, MockPlayer pilot, ServerLevel level, int centreX, int centreZ, int shaftBottomY, int lookahead, int linerTier, int sounderTier, int braceTier) {
 			this.index = index;
 			this.pilot = pilot;
 			this.level = level;
@@ -424,6 +453,7 @@ public class LavaBoreTest {
 			this.lookahead = lookahead;
 			this.linerTier = linerTier;
 			this.sounderTier = sounderTier;
+			this.braceTier = braceTier;
 		}
 
 		boolean ready() {
@@ -457,6 +487,10 @@ public class LavaBoreTest {
 		if (measuredSounder > ComponentTrack.SOUNDER.maxTier() || measuredSounder > 0 && GAS != GasMode.IGNORE) {
 			throw helper.assertionException(Component.literal(SOUNDER_ENV + " is a sounder tier from 1 to " + ComponentTrack.SOUNDER.maxTier() + ", measured without " + GAS_ENV + " (the part is the bot's only gas sense)"));
 		}
+		int measuredBrace = positiveEnv(helper, BRACE_ENV, REQUESTED_BRACE, 0);
+		if (measuredBrace > ComponentTrack.BRACE.maxTier()) {
+			throw helper.assertionException(Component.literal(BRACE_ENV + " is a brace tier from 1 to " + ComponentTrack.BRACE.maxTier()));
+		}
 		List<Bore> bores = new ArrayList<>();
 		CharterId charter = null;
 		for (int i = 0; i < count; i++) {
@@ -469,7 +503,7 @@ public class LavaBoreTest {
 			pilot.teleportTo(level, new Vec3(centreX, PILOT_WAIT_Y, centreZ), 0f, 0f);
 			int shaftBottomY = !smoke ? NO_SHAFT : i == 0 ? SMOKE_CROSSING_Y : SMOKE_LAVA_Y;
 			int lookahead = smoke ? (i == SMOKE_LINING_BORE ? SMOKE_LOOKAHEAD : 0) : measuredLookahead;
-			bores.add(new Bore(i, pilot, level, centreX, centreZ, shaftBottomY, lookahead, smoke ? 0 : measuredLiner, smoke ? 0 : measuredSounder));
+			bores.add(new Bore(i, pilot, level, centreX, centreZ, shaftBottomY, lookahead, smoke ? 0 : measuredLiner, smoke ? 0 : measuredSounder, smoke ? 0 : measuredBrace));
 		}
 		long wallStart = System.nanoTime();
 		boolean[] reported = {false};
@@ -560,6 +594,9 @@ public class LavaBoreTest {
 		if (bore.sounderTier > 0) {
 			ScannerPods.fit(server, bore.pilot.player(), pod, ComponentTrack.SOUNDER, bore.sounderTier);
 		}
+		if (bore.braceTier > 0) {
+			ScannerPods.fit(server, bore.pilot.player(), pod, ComponentTrack.BRACE, bore.braceTier);
+		}
 		if (bore.lookahead > 0 || bore.linerTier > 0) {
 			int bricks = positiveEnv(helper, BRICKS_ENV, REQUESTED_BRICKS, PodLiningTuning.DEFAULT.brickCapacity());
 			PodLining.modify(pod, state -> new PodLining.State(0, bricks, 0, false, false));
@@ -620,8 +657,13 @@ public class LavaBoreTest {
 			bore.biggestOtherHit = hullLost;
 			bore.biggestOtherHitY = pod.blockPosition().getY();
 		}
-		Cause cause = touching ? Cause.LAVA : gasPocketVanished(level, pod, bore) ? Cause.GAS : -bore.prevVy > LANDING_SINK ? Cause.LANDING : Cause.OTHER;
+		boolean inCrust = pod.blockPosition().getY() <= level.getMinY() + CRUST_BAND;
+		Cause cause = touching ? Cause.LAVA : gasPocketVanished(level, pod, bore) ? Cause.GAS : -bore.prevVy > LANDING_SINK ? Cause.LANDING : inCrust ? Cause.CRUST : Cause.OTHER;
 		if (hullLost > 0) {
+			if (cause == Cause.CRUST && bore.hullAtCrust == NO_CRUST) {
+				bore.hullAtCrust = pod.hull() + hullLost;
+				bore.broughtBy = bore.hullBy.clone();
+			}
 			bore.hullBy[cause.ordinal()] += hullLost;
 			bore.lastCause = cause;
 			if (cause == Cause.GAS) {
@@ -680,6 +722,9 @@ public class LavaBoreTest {
 		bore.wasLining = lining;
 		if (bore.linerTier > 0) {
 			noteLiner(bore, pod);
+		}
+		if (bore.braceTier > 0) {
+			noteBrace(bore, pod);
 		}
 		if (bore.phase == Phase.DOWN && !pod.blockPosition().equals(bore.lastScanned)) {
 			bore.lastScanned = pod.blockPosition();
@@ -742,10 +787,54 @@ public class LavaBoreTest {
 		}
 	}
 
+	/** What the bay holds, in dollars at the terminal's price. */
+	private static int cargoValue(PodEntity pod) {
+		return pod.cargo().entries().stream().mapToInt(entry -> OreRegistry.typeOf(entry.stack()).orElseThrow().value()).sum();
+	}
+
+	/** Counts the ore the brace burned (#378): a drop in the bay while it works, and what it was worth. */
+	private static void noteBrace(Bore bore, PodEntity pod) {
+		int used = pod.cargoUsed();
+		if (bore.bracing && used < bore.lastCargoUsed) {
+			bore.braceOre += bore.lastCargoUsed - used;
+			bore.braceValue += bore.lastCargoValue - cargoValue(pod);
+		}
+		bore.lastCargoUsed = used;
+		bore.lastCargoValue = cargoValue(pod);
+		PodBrace.Patching patching = PodBrace.status(pod, true).patching();
+		bore.braceDry |= patching == PodBrace.Patching.NO_ORE;
+		bore.braceDear |= patching == PodBrace.Patching.NO_CHEAP_ORE;
+	}
+
+	/**
+	 * The brace bot (#378): when the HUD says the brace waits for the drill or works, and the pod rests, lets go of the drill so the part can burn ore for hull,
+	 * and sprints again when the part is done. Returns whether the bot is holding back. With an empty bay it drills on.
+	 */
+	private static boolean braceIfAsked(Bore bore, PodEntity pod) {
+		boolean asked = PodBrace.status(pod, true).patching() == PodBrace.Patching.WORKING;
+		if (asked && bore.phase == Phase.DOWN && pod.onGround()) {
+			if (!bore.bracing) {
+				bore.bracing = true;
+				bore.pilot.releaseInput();
+			}
+			bore.braceTicks++;
+			bore.idleTicks = 0;
+			return true;
+		}
+		if (bore.bracing) {
+			bore.bracing = false;
+			bore.pilot.setInput(SPRINT);
+		}
+		return false;
+	}
+
 	/** The bot: sprint down; on a refused slab, move two blocks to a side and sprint down again. */
 	private static void drive(Bore bore, PodEntity pod) {
 		if (BRAKING) {
 			brake(bore, pod);
+		}
+		if (bore.braceTier > 0 && braceIfAsked(bore, pod)) {
+			return;
 		}
 		if (bore.phase == Phase.DOWN && bore.wantAvoid && pod.onGround() && stepAsideFromGas(bore, pod)) {
 			return;
@@ -1102,6 +1191,8 @@ public class LavaBoreTest {
 				survived, n, percent(survived, n), died, diedInLava, pilotsKilled, stalled, touched, percent(touched, n));
 		reportLining(bores);
 		reportLiner(bores);
+		reportCrust(bores);
+		reportBrace(bores);
 		LOGGER.info("[lava-bore] hull lost to lava, per bore:   {}", distribution(bores, b -> b.lavaHull));
 		LOGGER.info("[lava-bore] pilot health lost to lava:     {}", distribution(bores, b -> b.lavaPilot));
 		List<Bore> through = bores.stream().filter(b -> b.outcome == Outcome.SURVIVED).toList();
@@ -1175,6 +1266,52 @@ public class LavaBoreTest {
 			LOGGER.info("[lava-bore] verdict: survival {} of a stock Mole is {} the near-hopeless line of {}", percent(survived, n),
 					rate < NEAR_HOPELESS_SURVIVAL ? "UNDER" : "at or over", String.format("%.0f%%", NEAR_HOPELESS_SURVIVAL * 100));
 		}
+	}
+
+	/**
+	 * The breach crust (#378): for each bore the crust hurt, the hull the pod brought to its first crust slab and the hull the crust took, and for the bores
+	 * it ended, what the brought hull had already lost to each cause. The crust costs {@code thickness x crustHullDamage} in all (a slab each), so a pod that
+	 * brings less than that cannot cross it on the drill's hits alone.
+	 */
+	private static void reportCrust(List<Bore> bores) {
+		float row = PodTuning.DEFAULT.drill().crustHullDamage();
+		float full = LayerTuning.DEFAULT.crustThickness() * row;
+		List<Bore> hurt = bores.stream().filter(b -> b.hullAtCrust != NO_CRUST).toList();
+		List<Bore> killed = bores.stream().filter(b -> b.outcome == Outcome.DIED && b.lastCause == Cause.CRUST).toList();
+		LOGGER.info("[lava-bore] crust: the full crust costs {} hull ({} slabs of {}); {} of {} bores lost hull to it; {} died of it as the last loss",
+				full, LayerTuning.DEFAULT.crustThickness(), row, hurt.size(), bores.size(), killed.size());
+		LOGGER.info("[lava-bore] crust, every bore it hurt: hull brought {}; hull the crust took {}", distribution(hurt, b -> b.hullAtCrust), distribution(hurt, b -> b.hullBy[Cause.CRUST.ordinal()]));
+		if (killed.isEmpty()) {
+			return;
+		}
+		long short_ = killed.stream().filter(b -> b.hullAtCrust < full).count();
+		LOGGER.info("[lava-bore] crust deaths: hull brought {}; hull the crust took {}; brought under the full crust cost {} of {}; short by (full cost minus brought, floor 0) {}",
+				distribution(killed, b -> b.hullAtCrust), distribution(killed, b -> b.hullBy[Cause.CRUST.ordinal()]), short_, killed.size(),
+				distribution(killed, b -> Math.max(0f, full - b.hullAtCrust)));
+		LOGGER.info("[lava-bore] crust deaths, hull the brought pod had lost before the crust, per death: lava {} gas {} landing {} other {}; start hull {}",
+				mean(killed, "%.1f", b -> b.broughtBy[Cause.LAVA.ordinal()]), mean(killed, "%.1f", b -> b.broughtBy[Cause.GAS.ordinal()]),
+				mean(killed, "%.1f", b -> b.broughtBy[Cause.LANDING.ordinal()]), mean(killed, "%.1f", b -> b.broughtBy[Cause.OTHER.ordinal()]),
+				mean(killed, "%.0f", b -> b.startHull));
+		LOGGER.info("[lava-bore] crust deaths summary: {} deaths, mean brought {}, mean crust took {}, {} short of the full crust cost",
+				killed.size(), mean(killed, "%.1f", b -> b.hullAtCrust), mean(killed, "%.1f", b -> b.hullBy[Cause.CRUST.ordinal()]), short_);
+	}
+
+	private static String mean(List<Bore> bores, String format, ToDoubleFunction<Bore> value) {
+		return String.format(format, bores.stream().mapToDouble(value).average().orElse(0));
+	}
+
+	/** What the breach brace did and cost, when the pods carried one (#378): the bores that stopped to burn ore, the ore and its value, and the time. */
+	private static void reportBrace(List<Bore> bores) {
+		if (bores.getFirst().braceTier == 0) {
+			return;
+		}
+		List<Bore> braced = bores.stream().filter(b -> b.braceTicks > 0).toList();
+		LOGGER.info("[lava-bore] brace: {} of {} bores stopped to burn ore for hull; ore burned per braced bore {} (worth ${} at the terminal), {} pod ticks at rest per braced bore; {} bores found the bay empty when the brace was wanted ({} of them died of the crust), {} found only ore dearer than the nanobots' price a hull ({} died of the crust)",
+				braced.size(), bores.size(), mean(braced, "%.1f", b -> b.braceOre),
+				mean(braced, "%.0f", b -> b.braceValue),
+				mean(braced, "%.0f", b -> b.braceTicks), bores.stream().filter(b -> b.braceDry).count(),
+				bores.stream().filter(b -> b.braceDry && b.outcome == Outcome.DIED && b.lastCause == Cause.CRUST).count(), bores.stream().filter(b -> b.braceDear).count(),
+				bores.stream().filter(b -> b.braceDear && b.outcome == Outcome.DIED && b.lastCause == Cause.CRUST).count());
 	}
 
 	/** What the lining bot did and what it cost, when there was one: the bricks, the sessions and the time the pod stood still. */
