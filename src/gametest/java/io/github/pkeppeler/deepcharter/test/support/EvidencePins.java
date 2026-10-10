@@ -13,13 +13,15 @@ public final class EvidencePins {
 	public static volatile boolean vignetteHidden;
 	/** The player's hands and the item in them are not drawn, so a rider's arm is not in a still. */
 	public static volatile boolean handsHidden;
+	/** Block light does not flicker: vanilla moves the brightness of every block-lit surface by a random walk on each client tick. */
+	public static volatile boolean lightFlickerOff;
 	/** The breach fade shows this alpha (0 clear to 1 black) and the HUD jitter is off; negative leaves the fade running on its ticks. */
 	public static volatile float breachFadeAlpha = -1f;
-	/** A lampless figure is drawn in its rest pose: no idle sway and no walk cycle. */
-	public static volatile boolean figuresPosed;
+	/** Entities other than pods are drawn at rest: no idle sway of the arms and no walk cycle, whatever the age of the entity or its steps. */
+	public static volatile boolean entitiesPosed;
 	/** The level does not put lampless figures on the rails of Prospector's Run: a figure that spawns between the last wait and the shot is in the still. */
 	public static volatile boolean figureSpawningOff;
-	/** The fade (0 whole to 1 gone) a posed lampless figure is drawn with; negative leaves the fade it has. */
+	/** The fade (0 whole to 1 gone) a lampless figure is drawn with; negative leaves the fade it has. */
 	public static volatile float figureFade = -1f;
 
 	private EvidencePins() {
@@ -29,9 +31,10 @@ public final class EvidencePins {
 	public static void reset() {
 		spritesFrozen = false;
 		vignetteHidden = false;
+		lightFlickerOff = false;
 		handsHidden = false;
 		breachFadeAlpha = -1f;
-		figuresPosed = false;
+		entitiesPosed = false;
 		figureSpawningOff = false;
 		figureFade = -1f;
 	}

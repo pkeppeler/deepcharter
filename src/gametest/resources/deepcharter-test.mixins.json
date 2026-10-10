@@ -5,11 +5,14 @@
   "client": [
     "BreachEffectsMixin",
     "ClientGameTestImplMixin",
+    "EntityRenderStateMixin",
     "GameRendererHandsMixin",
     "HudVignetteMixin",
     "LamplessFigureRendererMixin",
+    "LightmapFlickerMixin",
     "LamplessFiguresMixin",
-    "SpriteAnimationStateMixin"
+    "SpriteAnimationStateMixin",
+    "TransmissionOverlayMixin"
   ],
   "injectors": {
     "defaultRequire": 1

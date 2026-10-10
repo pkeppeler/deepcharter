@@ -165,7 +165,7 @@ public class DesignTourScenario extends EvidenceScenario {
 	private static final int SETTLE_STABLE_POLLS = 5;
 	/** Where the cursor is parked when a screen is open: well outside the window, so that no slot or button is hovered. */
 	private static final double OFF_SCREEN = -10_000;
-	/** The breach fade is shot at the first client tick where it is half black: tick 4 of its 8 ticks of fading in. */
+	/** The breach fade is shot held half black. */
 	private static final float FADE_SHOT_ALPHA = 0.5f;
 	/** The tour's charter has this id on every run, so that its pods are painted the same colour on every run (ADR 0041: the slot is the id's hash). */
 	private static final CharterId TOUR_CHARTER = new CharterId(new UUID(0L, 0L));
@@ -223,14 +223,15 @@ public class DesignTourScenario extends EvidenceScenario {
 
 	/**
 	 * Holds still what moves on client ticks and frames and that no wait can settle (issue 309): the animated textures (lava) on their
-	 * first frame, no HUD vignette (its brightness eases over ticks) and no hands (a rider's arm), the lampless figures at rest and none spawned on the rails. The
+	 * first frame, no block light flicker (a random walk on each tick), no HUD vignette (its brightness eases over ticks) and no hands (a rider's arm), the figures and the player at rest and none spawned on the rails. The
 	 * breach fade and the fading figure are held only for their own still.
 	 */
 	private void pinTheClient() {
 		EvidencePins.spritesFrozen = true;
 		EvidencePins.vignetteHidden = true;
+		EvidencePins.lightFlickerOff = true;
 		EvidencePins.handsHidden = true;
-		EvidencePins.figuresPosed = true;
+		EvidencePins.entitiesPosed = true;
 		EvidencePins.figureSpawningOff = true;
 		// The textures go back to their first frame on the next client tick.
 		ctx.waitTicks(2);
@@ -1085,26 +1086,24 @@ public class DesignTourScenario extends EvidenceScenario {
 		view(1, new Vec3(x + 0.5, 4.0, z + 0.5), new Vec3(x + 0.5, 0.5, z + 1.5), 30);
 		clearTransmissions();
 		still("hud-altimeter-layer-1-floor");
+		// The fade, held: with the pin set, the fade and the typing of the transmission stand still from the moment the crossing begins,
+		// so the still does not depend on the client tick that it lands on, or on how long the new level takes to load.
+		EvidencePins.breachFadeAlpha = FADE_SHOT_ALPHA;
 		serverDo(server -> {
 			ServerLevel one = server.getLevel(LayerChain.dimension(1));
 			player(server).teleportTo(one, x + 0.5, one.getMinY() - 1, z + 0.5, Set.of(), 0, 60, true);
 		});
+		ctx.waitFor(client -> client.level.dimension().equals(LayerChain.dimension(2)) && client.gui.screen() == null
+				&& BreachEffects.fadeAlpha(0f) > 0f, WAIT);
+		settle("hud-breach-fade");
+		screenshot(ctx, "hud-breach-fade");
+		EvidencePins.breachFadeAlpha = -1f;
 
-		// The fade, then the two transmissions of the crossing, each shot once it has typed out.
-		boolean faded = false;
+		// Then the two transmissions of the crossing, each shot once it has typed out.
 		Set<Identifier> shot = new HashSet<>();
 		int tail = 0;
 		Identifier last = null;
 		for (int tick = 0; tick < 1500 && !(shot.size() >= 2 && tail >= 12); tick++) {
-			float alpha = ctx.computeOnClient(client -> BreachEffects.fadeAlpha(0f));
-			if (!faded && alpha >= FADE_SHOT_ALPHA && ctx.computeOnClient(client -> client.gui.screen() == null)) {
-				faded = true;
-				// Held at the alpha it just reached: a frame lands anywhere in a client tick, so the running fade differs every run.
-				EvidencePins.breachFadeAlpha = FADE_SHOT_ALPHA;
-				ctx.waitTicks(2);
-				screenshot(ctx, "hud-breach-fade");
-				EvidencePins.breachFadeAlpha = -1f;
-			}
 			Identifier current = ctx.computeOnClient(client -> TransmissionOverlay.transmission().map(Transmission::id).orElse(null));
 			boolean typed = ctx.computeOnClient(client -> TransmissionOverlay.typed());
 			if (typed && current != null && shot.add(current)) {
