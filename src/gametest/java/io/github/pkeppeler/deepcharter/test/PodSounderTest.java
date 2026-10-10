@@ -563,6 +563,32 @@ public class PodSounderTest {
 	}
 
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + DRILL_TICKS)
+	public void aPodMovedOffItsSlabInThePauseWaitsTheWholePauseAgain(GameTestHelper helper) {
+		int x = 6960;
+		int[] back = {0};
+		inThePause(helper, x, (ticks, slabTicks, pod, pilot, pocket, ores) -> {
+			if (ticks == slabTicks + 30) {
+				// Something moves the pod off its slab, not centred on the next one: the slab's progress, and the pause with it, is lost.
+				pod.setPos(x + 1.3, FLOOR, Z);
+			} else if (ticks == slabTicks + 32) {
+				pod.setPos(x, FLOOR, Z);
+				back[0] = ticks;
+			}
+			boolean vented = !pod.level().getBlockState(pocket).is(HazardBlocks.GAS_POCKET);
+			if (vented && back[0] == 0) {
+				throw failure(helper, "the pocket vented at tick %s, before the pod was moved at %s", ticks, slabTicks + 30);
+			}
+			if (vented) {
+				int waited = ticks - back[0];
+				if (waited < slabTicks + 55) {
+					throw failure(helper, "a pod moved off its slab in the pause starts it again: it was back at tick %s and vented %s ticks later, with the slab at %s ticks", back[0], waited, slabTicks);
+				}
+			}
+			return vented;
+		});
+	}
+
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + DRILL_TICKS)
 	public void aPocketVentedByHandInThePauseLeavesASlabThatBoresAtItsOwnDrillTicks(GameTestHelper helper) {
 		int x = 6864;
 		int[] ventedAt = {0};
