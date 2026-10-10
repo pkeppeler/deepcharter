@@ -19,7 +19,6 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import net.minecraft.util.Mth;
 import net.minecraft.world.phys.AABB;
 
 import io.github.pkeppeler.deepcharter.client.pod.BoneRole;
@@ -87,7 +86,7 @@ public class PodGeoModelTest {
 	public void everyCutterFitsItsPodsBoreAtRest(GameTestHelper helper) throws IOException {
 		double slack = 1e-4;
 		for (Chassis chassis : Chassis.all()) {
-			double half = Mth.ceil(chassis.width()) * 16 / 2.0;
+			double half = chassis.boreWidth() * 16 / 2.0;
 			double top = chassis.height() * 16;
 			GeoModel model = read(helper, look(helper, chassis).modelFile());
 			double[] hull = model.restBounds(bone -> !model.inCutter(bone, null));
