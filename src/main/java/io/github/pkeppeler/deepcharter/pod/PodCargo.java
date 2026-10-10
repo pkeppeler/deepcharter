@@ -44,8 +44,8 @@ import io.github.pkeppeler.deepcharter.ore.OreType;
 public final class PodCargo {
 	/** The version of the saved cargo; 1 is the first with ore items. */
 	public static final int VERSION = 1;
-	static final String CARGO_KEY = "cargo";
-	static final String VERSION_KEY = "cargo_version";
+	private static final String CARGO_KEY = "cargo";
+	private static final String VERSION_KEY = "cargo_version";
 
 	/** The stack and mass of an entry as saved, before it is known to be ore. */
 	private record Saved(ItemStack stack, float mass) {

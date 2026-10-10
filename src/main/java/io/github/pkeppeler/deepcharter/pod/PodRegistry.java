@@ -3,7 +3,6 @@ package io.github.pkeppeler.deepcharter.pod;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import net.fabricmc.fabric.api.particle.v1.FabricParticleTypes;
 
@@ -84,11 +83,6 @@ public final class PodRegistry {
 			throw new IllegalArgumentException("not a pod entity type: " + type);
 		}
 		return chassis;
-	}
-
-	/** The chassis registered with the id {@code id}, shipped or not, or empty: saved data may name a chassis this build lacks. */
-	public static Optional<Chassis> findChassis(String id) {
-		return CHASSIS.values().stream().filter(chassis -> chassis.id().equals(id)).findFirst();
 	}
 
 	/** The entity type of the pods of {@code chassis}; a chassis with none is a bug, so it throws. */

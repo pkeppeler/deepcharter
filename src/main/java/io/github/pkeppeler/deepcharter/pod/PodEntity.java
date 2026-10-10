@@ -1,13 +1,8 @@
 package io.github.pkeppeler.deepcharter.pod;
 
-import java.util.List;
-
 import com.mojang.serialization.Codec;
-import com.mojang.serialization.Dynamic;
 
 import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
@@ -31,15 +26,11 @@ public class PodEntity extends Entity {
 	private static final String FUEL_KEY = "fuel";
 	private static final String STRANDED_KEY = "stranded";
 
-	private static final List<String> SAVED_KEYS = List.of(CHASSIS_KEY, HULL_KEY, FUEL_KEY, STRANDED_KEY, PodCargo.CARGO_KEY, PodCargo.VERSION_KEY);
-
 	// Not synced: the entity type says which chassis a pod is, and its hitbox comes from the type too (ADR 0027).
 	private final Chassis chassis;
 	private final PodCargo cargo = new PodCargo();
 	// Neither saved nor synced: a loaded pod starts its slab over. Server only.
 	private PodDrill.Progress drillProgress;
-	// The pod's own saved data when its chassis id is not one this build knows, held as read and written back unchanged; null for a normal pod. Server only.
-	private CompoundTag unreadable;
 
 	public PodEntity(EntityType<? extends PodEntity> type, Level level) {
 		super(type, level);
@@ -48,15 +39,6 @@ public class PodEntity extends Entity {
 
 	public Chassis chassis() {
 		return chassis;
-	}
-
-	/**
-	 * True for a pod whose saved chassis id this build does not know (a removed chassis, a missing mod). It is an inert placeholder: it
-	 * keeps its saved data and writes it back, but does not tick, carry riders or take part in any pod feature. Code that
-	 * acts on the pods it finds skips it. Server only; the client never learns it.
-	 */
-	public boolean isUnreadable() {
-		return unreadable != null;
 	}
 
 	public PodCargo cargo() {
@@ -175,15 +157,10 @@ public class PodEntity extends Entity {
 
 	@Override
 	protected void readAdditionalSaveData(ValueInput input) {
-		Chassis saved = input.read(CHASSIS_KEY, Codec.STRING).flatMap(PodRegistry::findChassis).orElse(null);
-		if (saved == null) {
-			keepUnreadable(input);
-			return;
-		}
-		unreadable = null;
-		if (saved != chassis) {
-			// The entity type decides the hitbox, so the type's chassis wins.
-			DeepCharter.LOGGER.error("Pod {} was saved as a {} but is a {}: it keeps the type's chassis", getUUID(), saved.id(), chassis.id());
+		// The entity type decides the chassis, so the saved id is only a cross-check: a different, unknown or missing one never fails the load.
+		String saved = input.read(CHASSIS_KEY, Codec.STRING).orElse("(none)");
+		if (!saved.equals(chassis.id())) {
+			DeepCharter.LOGGER.error("Pod {} was saved as the chassis {} but is a {}: it keeps the type's chassis", getUUID(), saved, chassis.id());
 		}
 		// Not setHull: loading a pod that has no hull left is not the hull running out.
 		float hull = required(input, HULL_KEY, Codec.FLOAT);
@@ -201,23 +178,8 @@ public class PodEntity extends Entity {
 		cargo.load(input, this);
 	}
 
-	/** The chassis is none this build knows: hold the pod's saved data untouched, so the next save writes it back as it was. */
-	private void keepUnreadable(ValueInput input) {
-		CompoundTag raw = new CompoundTag();
-		for (String key : SAVED_KEYS) {
-			input.read(key, Codec.PASSTHROUGH).ifPresent(value -> raw.put(key, value.convert(NbtOps.INSTANCE).getValue()));
-		}
-		unreadable = raw;
-		DeepCharter.LOGGER.error("Pod {} was saved with chassis {}, which this build does not know: it is kept unchanged and does nothing",
-				getUUID(), raw.get(CHASSIS_KEY));
-	}
-
 	@Override
 	protected void addAdditionalSaveData(ValueOutput output) {
-		if (unreadable != null) {
-			unreadable.keySet().forEach(key -> output.store(key, Codec.PASSTHROUGH, new Dynamic<>(NbtOps.INSTANCE, unreadable.get(key))));
-			return;
-		}
 		output.putString(CHASSIS_KEY, chassis.id());
 		output.putFloat(HULL_KEY, hull());
 		output.putFloat(FUEL_KEY, fuel());
@@ -234,7 +196,7 @@ public class PodEntity extends Entity {
 	public void tick() {
 		super.tick();
 		// Everything a pod does on its own is the server's: clients only see the result.
-		if (level().isClientSide() || unreadable != null) {
+		if (level().isClientSide()) {
 			return;
 		}
 		// One snapshot of the stats for the whole tick, so the three parts agree on what the pod is.
@@ -271,7 +233,7 @@ public class PodEntity extends Entity {
 
 	@Override
 	public InteractionResult interact(Player player, InteractionHand hand, Vec3 location) {
-		if (unreadable != null || player.isSecondaryUseActive() || !canAddPassenger(player)) {
+		if (player.isSecondaryUseActive() || !canAddPassenger(player)) {
 			return InteractionResult.PASS;
 		}
 		if (level().isClientSide()) {
@@ -283,12 +245,12 @@ public class PodEntity extends Entity {
 	@Override
 	protected boolean canAddPassenger(Entity passenger) {
 		// Only the server asks the listeners: the client guesses, and the server settles it.
-		return unreadable == null && getPassengers().size() < chassis.seats() && (level().isClientSide() || PodEvents.canMount(this, passenger));
+		return getPassengers().size() < chassis.seats() && (level().isClientSide() || PodEvents.canMount(this, passenger));
 	}
 
 	@Override
 	protected boolean couldAcceptPassenger() {
-		return unreadable == null && getPassengers().size() < chassis.seats();
+		return getPassengers().size() < chassis.seats();
 	}
 
 	@Override
