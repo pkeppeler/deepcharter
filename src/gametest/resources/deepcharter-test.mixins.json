@@ -3,7 +3,16 @@
   "package": "io.github.pkeppeler.deepcharter.test.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
-    "ClientGameTestImplMixin"
+    "BreachEffectsMixin",
+    "ClientGameTestImplMixin",
+    "EntityRenderStateMixin",
+    "GameRendererHandsMixin",
+    "HudMixin",
+    "LamplessFigureRendererMixin",
+    "LamplessFiguresMixin",
+    "LightmapFlickerMixin",
+    "SpriteAnimationStateMixin",
+    "TransmissionOverlayMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -137,22 +137,31 @@ class DiffStillsTest(unittest.TestCase):
         self.assertIn("1 stills hidden by floors", out)
         self.assertIn("0 of 1 stills differ (floors applied)", out)
 
-    def test_design_tour_uses_the_noise_families(self):
-        self.assertTrue(any(prefix == "layer-2-cave-" for prefix, _, _ in ds.NOISE_FAMILIES))
-        # 200 pixels, 2 of them (1%) changed by 60: under the 6% floor of the lava caves, and at the 1% catch-all.
-        cave = {(0, 0), (1, 0)}
-        for name in ("layer-2-cave-south", "surface-south-noon"):
-            ds_png = ds.encode_png(ds.Image(20, 10, bytes(600)))
-            (self.a / f"{name}.png").write_bytes(ds_png)
+    def test_design_tour_floors_hide_only_the_measured_noise(self):
+        self.assertEqual(["colony-aerial-northwest", "screen-pod-cargo"], [prefix for prefix, _, _ in ds.NOISE_FAMILIES])
+        # 200 pixels, 2 of them (1%) changed by 60: under the floor of the one noisy still, and a finding anywhere else.
+        for name in ("colony-aerial-northwest", "layer-2-cave-south"):
+            (self.a / f"{name}.png").write_bytes(ds.encode_png(ds.Image(20, 10, bytes(600))))
             changed = bytearray(600)
-            for x, _ in cave:
+            for x in (0, 1):
                 changed[3 * x:3 * x + 3] = b"\x3c\x3c\x3c"
             (self.b / f"{name}.png").write_bytes(ds.encode_png(ds.Image(20, 10, bytes(changed))))
         code, out, _ = run(str(self.a), str(self.b), "--design-tour")
-        self.assertEqual(0, code)
-        self.assertIn("2 stills hidden by floors", out)
-        self.assertIn("layer-2-cave-south", out)
-        self.assertIn("floors applied", out)
+        self.assertEqual(1, code)
+        table, _, hidden = out.partition("1 stills hidden by floors")
+        self.assertIn("layer-2-cave-south", table)
+        self.assertNotIn("colony-aerial-northwest", table)
+        self.assertIn("colony-aerial-northwest", hidden)
+        self.assertIn("1 of 2 stills differ (floors applied)", out)
+
+    def test_design_tour_floor_of_screen_pod_cargo_hides_5_levels_not_6(self):
+        # Share 0.0: no pixel may change by more than the 5-level tolerance.
+        name = "screen-pod-cargo"
+        (self.a / f"{name}.png").write_bytes(ds.encode_png(ds.Image(20, 10, bytes(600))))
+        for delta, expected_code in ((5, 0), (6, 1)):
+            (self.b / f"{name}.png").write_bytes(ds.encode_png(ds.Image(20, 10, bytes([delta] * 3 + [0] * 597))))
+            code, out, _ = run(str(self.a), str(self.b), "--design-tour")
+            self.assertEqual(expected_code, code, out)
 
     def test_design_tour_with_an_explicit_tolerance_is_a_usage_error(self):
         png(self.a / "x.png", grey)

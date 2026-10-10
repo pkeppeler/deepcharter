@@ -25,8 +25,12 @@ ORES_DOC = texgen.ROOT / "docs/design/ores.md"
 # The one vanilla file the mod ships: the sky's sun (ADR 0030). Anything else under assets/minecraft/ overrides vanilla art the mod
 # promised not to touch, an ore's host stone first.
 VANILLA_FILES = {"textures/environment/celestial/sun.png"}
-# The vanilla blocks a pack may redraw: layer rock is vanilla stone until it has blocks of its own (#241).
-VANILLA_BLOCKSTATES = {"minecraft/blockstates/stone.json"}
+# The vanilla blocks a pack may redraw: layer rock is vanilla stone until it has blocks of its own (#241). The layer concept packs
+# (docs/design/layer-concepts.md) stand in vanilla cobblestone for layer 1's rubble, and deepslate and cobbled deepslate for layer 2's rock.
+VANILLA_BLOCKSTATES = {"minecraft/blockstates/stone.json", "minecraft/blockstates/cobblestone.json", "minecraft/blockstates/deepslate.json",
+                       "minecraft/blockstates/cobbled_deepslate.json"}
+# The vanilla textures a pack may redraw by file: the layer concept packs give all three options one crusted lava (a test pack only).
+VANILLA_TEXTURES = {"minecraft/textures/block/lava_still.png", "minecraft/textures/block/lava_flow.png"}
 
 
 def resolve(pack_assets: Path, ref: str, kind: str, suffix: str) -> Path | None:
@@ -193,7 +197,7 @@ class TexturePacksTest(unittest.TestCase):
                 problems.append(f"{model.relative_to(assets)}: no blockstate of the pack uses it")
         for texture in sorted(assets.glob("*/textures/**/*.png")):
             relative = texture.relative_to(assets).as_posix()
-            if texture not in used_textures and not (MOD_ASSETS / relative).is_file():
+            if texture not in used_textures and not (MOD_ASSETS / relative).is_file() and relative not in VANILLA_TEXTURES:
                 problems.append(f"{relative}: no model of the pack uses it, and it replaces no texture of the mod")
         return problems
 

@@ -30,7 +30,7 @@ or `...-as-played` show what a player sees; the other layer stills use night vis
 | Custom blocks | 24 (7 ores, 2 hazards, breach crust, conduit, Company lamp, note, 6 terminals, 5 surface blocks) |
 | Block textures | 55, all 16 x 16 frames, generated from recipes (`tools/textures/`); 7 animated; 77 block-state variants |
 | Items | 67 (43 with a 16 x 16 sprite, 24 block items) |
-| Entities | 3 types (Mole, Prospector, lampless figure); looks: 2 pods, 1 wreck look, 1 derelict, 1 figure |
+| Entities | 3 types (Mole, Prospector, lampless figure); looks: 2 pods, 1 wreck look, 1 derelict, 1 figure (the Reacher, GeckoLib) |
 | Structures | 14 colony structure files (the square with the Host, the terminal plinths, the streets, the Works, the headframe, the hoist house, the hangar, the Continuity Office, the chapel, the bunkhouse, the two offices, the Lamp and Pick, and the Host's hands) placed from one layout file, the Conduit, and 7 layer structure kinds; the colony kit of 24 blocks and 12 signs they are built from |
 | Screens | 10 shot (handbook, offline terminal, fuel pump, ore processor, upgrade, repair station, hangar console, contract, pod cargo, vanilla inventory), 1 not reachable (CRT demo) |
 | HUDs | 6 (pod status, scanner, altimeter, account, transmission overlay, breach fade) |
@@ -290,20 +290,21 @@ Swap: as the Mole.
 
 ### Lampless figure (`deepcharter:lampless_figure`)
 
-![lampless-figure-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/lampless-figure-front.png?raw=true) ![lampless-figure-side](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/lampless-figure-side.png?raw=true)
-![lampless-figure-back](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/lampless-figure-back.png?raw=true) ![lampless-figure-close](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/lampless-figure-close.png?raw=true)
-![lampless-figure-dark-no-night-vision](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/lampless-figure-dark-no-night-vision.png?raw=true) ![lampless-figure-fading-by-a-lit-pod](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/lampless-figure-fading-by-a-lit-pod.png?raw=true)
+![lampless-figure-front](https://github.com/pkeppeler/deepcharter/blob/pr-media/423/lampless-figure-front.png?raw=true) ![lampless-figure-side](https://github.com/pkeppeler/deepcharter/blob/pr-media/423/lampless-figure-side.png?raw=true)
+![lampless-figure-back](https://github.com/pkeppeler/deepcharter/blob/pr-media/423/lampless-figure-back.png?raw=true) ![lampless-figure-close](https://github.com/pkeppeler/deepcharter/blob/pr-media/423/lampless-figure-close.png?raw=true)
+![lampless-figure-dark-no-night-vision](https://github.com/pkeppeler/deepcharter/blob/pr-media/423/lampless-figure-dark-no-night-vision.png?raw=true) ![lampless-figure-fading-by-a-lit-pod](https://github.com/pkeppeler/deepcharter/blob/pr-media/423/lampless-figure-fading-by-a-lit-pod.png?raw=true)
 
 | | |
 |---|---|
-| Source | `main/creature/LamplessFigure.java` (marked PLACEHOLDER), `client/creature/LamplessFigureRenderer.java` |
-| Model | Vanilla's zombie humanoid model (`ModelLayers.ZOMBIE`, `LamplessFigureRenderer.java:20`) |
-| Texture | `assets/deepcharter/textures/entity/lampless_figure.png`, 64 x 64: a near-black skin |
-| Variants | 1; it goes translucent as it fades near light |
-| Vanilla | **partly** (the zombie model with a new skin) |
-| Swap | **(a)** the texture; **(c)** the model class is the vanilla zombie model at `LamplessFigureRenderer.java:20` |
+| Source | `main/creature/LamplessFigure.java` (the behaviour is marked PLACEHOLDER until the creatures session, #13), `client/creature/LamplessFigureRenderer.java` (built in #250: the Reacher) |
+| Model | `assets/deepcharter/geckolib/models/creature/lampless_figure.geo.json`: 22 bones, 46 cubes, 44 px (2.75 blocks) tall, a hard hat with an empty lamp bracket, no face; written by `tools/lampless_figure.py` |
+| Texture | `assets/deepcharter/textures/entity/lampless_figure.png`, 128 x 128: matte black, no texel brighter than 36 of 255, no glowmask |
+| Animations | `assets/deepcharter/geckolib/animations/creature/lampless_figure.animation.json`: `animation.figure.idle` (stooped, head tipped over) and `animation.figure.walk`, both looping |
+| Variants | 1; it goes translucent as it fades near light, and its shadow goes with it |
+| Vanilla | **no** |
+| Swap | **(a)** the texture, model and animation files, each a pack file ([skins.md](skins.md)); **(c)** nothing: the renderer only names the three ids in `LamplessFigureAssets.java` |
 
-![texture-lampless-figure](https://github.com/pkeppeler/deepcharter/blob/pr-media/227/texture-lampless-figure.png?raw=true)
+Built from the user's pick, C, the Reacher, of [figure-concepts.md](figure-concepts.md) (#250, [ADR 0044](../adr/0044-the-lampless-figure-is-a-geckolib-model-and-the-reacher.md)). The pictures above are the figure as built, from the design tour; the zombie it replaced is on the left of the before and after pictures in [PR #423](https://github.com/pkeppeler/deepcharter/pull/423).
 
 ### Other entities
 
@@ -636,7 +637,7 @@ Nothing of these exists yet, so there is nothing to restyle and each one is new 
 Already marked placeholder in code or issues:
 
 - ~~**Pod model (Mole, Prospector, wrecks):** `client/pod/PodRenderer.java:19`: "Placeholder model", a scaled vanilla block~~ Done in #243: GeckoLib models, see [ADR 0040](../adr/0040-a-pod-look-is-a-file-per-chassis-and-the-drill-tier-picks-the-cutter.md)
-- **Lampless figure:** `main/creature/LamplessFigure.java:20` ("PLACEHOLDER until the creatures session (#13)"), `CreatureRegistry.java:19`, `client/creature/LamplessFigureRenderer.java:15`; issue #83 "M2 (placeholder): the lampless figure"
+- **Lampless figure (behaviour):** `main/creature/LamplessFigure.java:20` ("PLACEHOLDER until the creatures session (#13)"), `CreatureRegistry.java:19`; its look is built since #250; issue #83 "M2 (placeholder): the lampless figure"
 - **Pod status HUD:** `client/pod/PodStatusHud.java:19`: "Plain text readout of the ridden pod; the real HUD design comes later"
 - **Transmission texts:** `src/lang/en_us/transmission.json:10-27`: every body of T01 to T18 starts "[PLACEHOLDER Txx: the lore session writes this text]"
 - **All sounds and music:** `main/sound/DeepSound.java:10`, `main/sound/SoundRegistry.java:10`, `assets/deepcharter/sounds.json`: vanilla sounds stand in until the private audio pack (issue #57)
@@ -654,7 +655,7 @@ Every look that is fixed in Java and cannot be replaced by swapping a resource-p
 | Visual | What is fixed | Where |
 |---|---|---|
 | ~~Pod models~~ | Done in #258 (item models) and replaced in #243 ([ADR 0040](../adr/0040-a-pod-look-is-a-file-per-chassis-and-the-drill-tier-picks-the-cutter.md)): each chassis is a GeckoLib model, textures and a look file a pack replaces, and the drill tier map is data. | `client/pod/PodGeoRenderer.java`, `PodLook.java`, `assets/deepcharter/pod/` |
-| Lampless figure model | Vanilla zombie model; only the skin is a resource. A documented exception in ADR 0033: a bone rig comes with GeckoLib (#243) | `client/creature/LamplessFigureRenderer.java:20` |
+| ~~Lampless figure model~~ | Done in #250 ([ADR 0044](../adr/0044-the-lampless-figure-is-a-geckolib-model-and-the-reacher.md)): the Reacher is a GeckoLib model, a texture and an animation file a pack replaces. | `client/creature/LamplessFigureRenderer.java`, `LamplessFigureAssets.java` |
 | CRT look (all terminal screens, account HUD, transmissions) | Colours (background `#050A06`, phosphor `#7CFC9A`, dim `#2E7A45`, hover `#123D20`), scanline spacing 2 and colour, glow, bloom, padding, typewriter speed | `client/ui/CrtTuning.java:36-38` |
 | CRT drawing | Background fill, scanlines, bloom bands, 4-way halo text, 1-pixel frames, button fill | `client/ui/CrtDraw.java:15-43`, `client/ui/CrtButton.java:23`; the typewriter cursor block is `client/ui/CrtScreen.java:144` |
 | Each terminal screen's layout | Fixed GUI coordinates and text; no textures | `client/terminal/TerminalScreen.java`, `client/fuel/FuelPumpScreen.java`, `client/market/OreProcessorScreen.java`, `client/upgrade/UpgradeScreen.java`, `client/repair/RepairStationScreen.java`, `client/hangar/HangarScreen.java`, `client/charter/terminal/ContractScreen.java` (refusal colour `:48`) |
@@ -678,12 +679,14 @@ Every look that is fixed in Java and cannot be replaced by swapping a resource-p
 
 - **Unchanged:** the surface's sky, sun, moon, clouds, weather and night monsters (its terrain, biomes and blocks are ours since #240), the font, the hotbar and inventory screens, health and hunger bars,
   the crosshair, chat, toasts, the particle used for the tow cable, the light block, every block in the colony and the structures except the terminals, the Conduit and the Notes.
-- **Reused as the look of a mod thing:** Mole (raw copper block), Prospector (iron block), wrecks (coal block), the lampless figure's model (zombie), the Gas Pocket's
+- **Reused as the look of a mod thing:** Mole (raw copper block), Prospector (iron block), wrecks (coal block), the Gas Pocket's
   texture (stone), every sound (vanilla sounds as placeholders), the layer rock (stone).
 
 ---
 
 ## The design tour
+
+Two runs of one commit give the same stills, apart from two that can differ a little (`colony-aerial-northwest`, `screen-pod-cargo`): see [evidence.md](../../.claude/skills/deepcharter-conventions/evidence.md).
 
 `design-tour` shoots these stills (name = file name on `pr-media`, under `227/`):
 

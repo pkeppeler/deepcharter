@@ -59,8 +59,15 @@ public final class Charters {
 	}
 
 	public static Optional<CharterRefusal> found(MinecraftServer server, UUID founder, String name) {
+		return found(server, founder, name, CharterId.random());
+	}
+
+	/**
+	 * Founds the charter with the given {@code id}, not a random one. For code that must make the same charter every run, such as an
+	 * evidence scenario whose pods are painted from the id (ADR 0041); a game founds with a random id.
+	 */
+	public static Optional<CharterRefusal> found(MinecraftServer server, UUID founder, String name, CharterId id) {
 		CharterData data = CharterData.get(server);
-		CharterId id = CharterId.random();
 		Optional<CharterRefusal> refusal = data.found(founder, name, id);
 		if (refusal.isEmpty()) {
 			Charter charter = data.find(id).orElseThrow();

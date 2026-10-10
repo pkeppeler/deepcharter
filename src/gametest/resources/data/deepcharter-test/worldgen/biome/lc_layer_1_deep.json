@@ -1,0 +1,29 @@
+{
+  "attributes": {
+    "minecraft:visual/fog_color": "#24160e",
+    "minecraft:visual/fog_start_distance": 2.0,
+    "minecraft:visual/fog_end_distance": 40.0,
+    "minecraft:visual/ambient_light_color": "#1c1814",
+    "minecraft:visual/block_light_tint": "#b4d2ff"
+  },
+  "carvers": [],
+  "downfall": 0.0,
+  "effects": {
+    "water_color": "#3f76e4"
+  },
+  "features": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    []
+  ],
+  "has_precipitation": false,
+  "temperature": 0.5
+}

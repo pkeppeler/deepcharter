@@ -79,6 +79,7 @@ Rules for all areas:
 - **Material, palette, silhouette:** layer 1 fog brown going black, layer 2 a near-black green, dust in the lamp light. Own rock per layer: rust-brown packed regolith going to dark shale, then grey-green shale scarred by old workings. Company infrastructure and miners' traces as dressing. Company Rock becomes a basalt plug or stencilled Company concrete that belongs in rock, lava becomes flows and falls instead of single cubes, and the breach crust becomes a cracked, layered crust.
 - **Tools:** biome attributes (`fog_color`, `ambient_light_color`, `block_light_tint`), vanilla post effects for the per-layer grade, added when a player crosses a breach.
 - **Skin and data:** `data/deepcharter/worldgen/biome/*.json`, `assets/deepcharter/post_effect/*.json`, `shaders/post/*.fsh`.
+- **Concept round 1 (#241):** three looks for the rock, Company Rock, lava and crust, for you to pick from: [layer-concepts.md](layer-concepts.md).
 - **Not chosen:** pure black everywhere (layers lose their identity). The anatomy palette (the lore's hidden reading) stays a texture detail at most.
 
 ## 7. UI and HUD
