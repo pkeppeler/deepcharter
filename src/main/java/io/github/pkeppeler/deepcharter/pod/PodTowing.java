@@ -200,7 +200,7 @@ public final class PodTowing {
 	}
 
 	/** Blocks from the tower within which a cable fits: {@link TowTuning#reachFor} for the widest chassis, so a wide chassis still trails within it. */
-	static double reach(TowTuning tuning) {
+	private static double reach(TowTuning tuning) {
 		return tuning.reachFor(Widest.CHASSIS);
 	}
 

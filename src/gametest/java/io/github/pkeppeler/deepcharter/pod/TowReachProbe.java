@@ -8,10 +8,6 @@ public final class TowReachProbe {
 	private TowReachProbe() {
 	}
 
-	public static double reach(TowTuning tuning) {
-		return PodTowing.reach(tuning);
-	}
-
 	public static Optional<PodTowing.Refusal> refusal(PodEntity tower, PodEntity towed, TowTuning tuning) {
 		return PodTowing.refusal(tower, towed, tuning);
 	}
