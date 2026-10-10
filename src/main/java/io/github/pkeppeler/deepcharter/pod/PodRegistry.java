@@ -1,6 +1,5 @@
 package io.github.pkeppeler.deepcharter.pod;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,8 +66,8 @@ public final class PodRegistry {
 	}
 
 	/** Every chassis registered, shipped or not. */
-	public static Collection<Chassis> chassis() {
-		return CHASSIS.values();
+	public static List<Chassis> chassis() {
+		return List.copyOf(CHASSIS.values());
 	}
 
 	/** The chassis of the pods of {@code type}; a type that is no pod's throws. */

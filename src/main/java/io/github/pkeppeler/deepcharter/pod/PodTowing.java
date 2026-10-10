@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.pod;
 
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -45,7 +46,7 @@ import io.github.pkeppeler.deepcharter.layer.BreachEvents;
 
 /**
  * The tow cable between two pods. A player riding a pod uses a {@link PodRegistry#TOW_CABLE} on another pod within
- * {@link TowTuning#reach()} to make it the towed pod of theirs, and uses it on a towed pod to take the cable off. A pod moved
+ * {@link TowTuning#reachFor} to make it the towed pod of theirs, and uses it on a towed pod to take the cable off. A pod moved
  * where its owner did not choose needs a rule for who may do it: a player may tow a pod only when {@link PodComponents#mayAccess}
  * lets their charter at it, and the tower's charter or the towed pod's owner charter may free it, so an owner can always recover a
  * pod someone else towed.
@@ -121,6 +122,11 @@ public final class PodTowing {
 
 	/** Why {@code tower} cannot tow {@code towed} now, or empty. Never throws. */
 	public static Optional<Refusal> refusal(PodEntity tower, PodEntity towed) {
+		return refusal(tower, towed, TowTuning.DEFAULT);
+	}
+
+	/** As {@link #refusal(PodEntity, PodEntity)} with the tunables {@code tuning}; package-private so that a test can give a short reach. */
+	static Optional<Refusal> refusal(PodEntity tower, PodEntity towed, TowTuning tuning) {
 		if (tower == towed) {
 			return Optional.of(Refusal.SAME_POD);
 		}
@@ -136,13 +142,13 @@ public final class PodTowing {
 		if (isTowed(tower)) {
 			return Optional.of(Refusal.TOWER_IS_TOWED);
 		}
-		if (!towedBy(towed).isEmpty()) {
+		if (!towedBy(towed, tuning).isEmpty()) {
 			return Optional.of(Refusal.TOWED_TOWS);
 		}
-		if (!towedBy(tower).isEmpty()) {
+		if (!towedBy(tower, tuning).isEmpty()) {
 			return Optional.of(Refusal.ALREADY_TOWING);
 		}
-		double reach = reach();
+		double reach = reach(tuning);
 		if (tower.level() != towed.level() || tower.distanceToSqr(towed) > reach * reach) {
 			return Optional.of(Refusal.TOO_FAR);
 		}
@@ -187,14 +193,20 @@ public final class PodTowing {
 		return Optional.of(tower);
 	}
 
-	/** Blocks from the tower within which a cable fits: {@link TowTuning#reachFor} for the chassis registered, so a wide chassis still trails within it. */
-	private static double reach() {
-		return TowTuning.DEFAULT.reachFor(PodRegistry.chassis());
+	/** The widest chassis registered, found on first use: pods exist only after the registry is frozen. */
+	private static final class Widest {
+		static final Chassis CHASSIS = PodRegistry.chassis().stream().max(Comparator.comparingDouble(Chassis::width))
+				.orElseThrow(() -> new IllegalStateException("no pod chassis is registered"));
+	}
+
+	/** Blocks from the tower within which a cable fits: {@link TowTuning#reachFor} for the widest chassis, so a wide chassis still trails within it. */
+	static double reach(TowTuning tuning) {
+		return tuning.reachFor(Widest.CHASSIS);
 	}
 
 	/** The pods on a cable from {@code tower} that are within its reach. */
-	private static List<PodEntity> towedBy(PodEntity tower) {
-		return tower.level().getEntitiesOfClass(PodEntity.class, tower.getBoundingBox().inflate(reach()),
+	static List<PodEntity> towedBy(PodEntity tower, TowTuning tuning) {
+		return tower.level().getEntitiesOfClass(PodEntity.class, tower.getBoundingBox().inflate(reach(tuning)),
 				other -> other != tower && towerId(other).filter(tower.getUUID()::equals).isPresent());
 	}
 
@@ -203,7 +215,7 @@ public final class PodTowing {
 			return 0f;
 		}
 		float mass = 0f;
-		for (PodEntity towed : towedBy(tower)) {
+		for (PodEntity towed : towedBy(tower, TowTuning.DEFAULT)) {
 			mass += TowTuning.DEFAULT.baseMass() + towed.cargoMass();
 		}
 		return mass;

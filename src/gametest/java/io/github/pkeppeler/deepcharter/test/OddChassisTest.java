@@ -5,6 +5,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.StreamSupport;
 
 import com.google.gson.JsonElement;
@@ -15,8 +16,13 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.pod.Chassis;
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodTowing;
+import io.github.pkeppeler.deepcharter.pod.TowReachProbe;
 import io.github.pkeppeler.deepcharter.pod.TowTuning;
 import io.github.pkeppeler.deepcharter.test.support.OddPods;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -97,14 +103,27 @@ public class OddChassisTest {
 		CHECKS.parksInBayPlacesThatFitAndNeverOverlap(helper);
 	}
 
-	/** The cable's reach covers the trail of the widest pods, even when the configured reach is short: a trailing pod is never out of its tower's reach. */
+	/**
+	 * A cable's reach covers the trail of the widest chassis, even when the configured reach is short. With a reach of 1 and the widest
+	 * hull the 3.9 of {@link OddPods#CHASSIS}, the reach in use is 5.1: 3.9 + 0.6 for the trail, and 0.6 to spare. Two Moles 5 blocks
+	 * apart are then in reach for fitting a cable and for the tower to feel the pod it tows.
+	 */
 	@GameTest
 	public void theTowReachCoversTheTrailOfTheWidestChassis(GameTestHelper helper) {
-		TowTuning shortReach = new TowTuning(1.0, TowTuning.DEFAULT.trailGap(), 25f, 4, 0.4, 16);
-		double trail = shortReach.trailDistance(OddPods.CHASSIS, OddPods.CHASSIS);
-		double reach = shortReach.reachFor(everyChassis());
-		if (reach < trail) {
-			throw failure(helper, "the tow reach %s is shorter than the %s a wide pod trails behind its tower", reach, trail);
+		TowTuning shortReach = new TowTuning(1.0, 0.6, 25f, 4, 0.4, 16);
+		double reach = TowReachProbe.reach(shortReach);
+		if (Math.abs(reach - 5.1) > 1e-4) {
+			throw failure(helper, "the tow reach should be 5.1 for a widest hull of 3.9 and a configured reach of 1, it is %s", reach);
+		}
+		PodEntity tower = helper.spawn(PodRegistry.POD, new Vec3(1.5, 2, 1.5));
+		PodEntity towed = helper.spawn(PodRegistry.POD, new Vec3(1.5, 2, 6.5));
+		Optional<PodTowing.Refusal> refusal = TowReachProbe.refusal(tower, towed, shortReach);
+		if (refusal.isPresent()) {
+			throw failure(helper, "a pod 5 blocks away should be in reach, but a cable is refused: %s", refusal.get());
+		}
+		PodTowing.attach(tower, towed);
+		if (!TowReachProbe.towedBy(tower, shortReach).contains(towed)) {
+			throw failure(helper, "the tower should find the pod it tows 5 blocks away");
 		}
 		helper.succeed();
 	}

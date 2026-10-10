@@ -1,13 +1,11 @@
 package io.github.pkeppeler.deepcharter.pod;
 
-import java.util.Collection;
-import java.util.Comparator;
-
 /**
  * Tunables for the tow cable, read as {@code TowTuning.DEFAULT.thing()}. It is not a record of {@link PodTuning}, which takes no
  * more changes.
  *
- * @param reach         blocks from the tower within which a cable can be fitted to a pod, and within which a tower feels the pod it tows
+ * @param reach         least blocks from the tower within which a cable can be fitted to a pod, and within which a tower feels the pod it tows;
+ *                      the reach in use is {@link #reachFor}, which is longer when the widest chassis trails further
  * @param trailGap      blocks between the faces of the two hulls when the towed pod trails behind its tower; it is held still while nearer
  *                      and pulled in when further (see {@link #trailDistance}, which adds the two pods' half widths, 2.5 for two Moles)
  * @param baseMass      mass a towed pod adds to its tower besides its cargo; shares a unit with {@code PodTuning.Movement#enginePower}
@@ -39,9 +37,8 @@ public record TowTuning(double reach, double trailGap, float baseMass, int cable
 		}
 	}
 
-	/** The reach for pods of {@code chassis}: {@link #reach}, or the trail of the two widest hulls plus {@link #trailGap} to spare if that is longer, so no trailing pod is out of reach. */
-	public double reachFor(Collection<Chassis> chassis) {
-		Chassis widest = chassis.stream().max(Comparator.comparingDouble(Chassis::width)).orElseThrow();
+	/** The reach with {@code widest}, the widest chassis registered: {@link #reach}, or the trail of two such hulls plus {@link #trailGap} to spare if that is longer, so no trailing pod is out of reach. */
+	public double reachFor(Chassis widest) {
 		return Math.max(reach, trailDistance(widest, widest) + trailGap);
 	}
 
