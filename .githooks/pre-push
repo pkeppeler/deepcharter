@@ -26,7 +26,7 @@ done
 
 cd "$root"
 # Git exports GIT_DIR and its siblings to a hook; a test that runs git in a temp repo must not inherit them.
-while IFS= read -r name; do unset "$name"; done < <(compgen -e | sed -n '/^GIT_/p')
+unset "${!GIT_@}"
 fail() {
   echo "pre-push: $1 failed. Fix it, or skip the hook once with: git push --no-verify" >&2
   exit 1
