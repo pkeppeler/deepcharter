@@ -78,11 +78,11 @@ Nothing is traced from any of these. They are for shape and feel.
 
 ## The three, one by one
 
-The stills are in the PR that carries this page ([#PR](https://github.com/pkeppeler/deepcharter/pull/PR)) and in [pr-media/PR](https://github.com/pkeppeler/deepcharter/tree/pr-media/PR). Each option has ten: five places in layer 1, and the same five in layer 2 (`<option>-layer<n>-<place>.png`, with the places `lamp-lit`, `fog-edge`, `company-rock`, `lava-flow` and `breach-crust`).
+The stills are in the PR that carries this page ([#401](https://github.com/pkeppeler/deepcharter/pull/401)) and in [pr-media/401](https://github.com/pkeppeler/deepcharter/tree/pr-media/401). Each option has ten: five places in layer 1, and the same five in layer 2 (`<option>-layer<n>-<place>.png`, with the places `lamp-lit`, `fog-edge`, `company-rock`, `lava-flow` and `breach-crust`).
 
 ### A. Strata
 
-![A in layer 1, lamp-lit](https://github.com/pkeppeler/deepcharter/blob/pr-media/PR/a-layer1-lamp-lit.png?raw=true)
+![A in layer 1, lamp-lit](https://github.com/pkeppeler/deepcharter/blob/pr-media/401/a-layer1-lamp-lit.png?raw=true)
 
 Benches and slots, a stair of lava. The closest to Motherload's layered earth. The risk is that horizontal courses read as brick or timber, so the texture breaks every course with ragged shadows and flecks.
 
@@ -90,7 +90,7 @@ Benches and slots, a stair of lava. The closest to Motherload's layered earth. T
 
 ### B. Fractured
 
-![B in layer 1, lamp-lit](https://github.com/pkeppeler/deepcharter/blob/pr-media/PR/b-layer1-lamp-lit.png?raw=true)
+![B in layer 1, lamp-lit](https://github.com/pkeppeler/deepcharter/blob/pr-media/401/b-layer1-lamp-lit.png?raw=true)
 
 Broken rock, Company concrete, a fall of lava from the roof. The most hostile: the Company has held a failing mine up with concrete. Its stencilled rock is the most legible Company mark of the three. The risk is noise: a polygon texture on a mosaic of plates is busy, and the pale concrete is the brightest thing in any still.
 
@@ -98,7 +98,7 @@ Broken rock, Company concrete, a fall of lava from the roof. The most hostile: t
 
 ### C. Columnar
 
-![C in layer 1, lamp-lit](https://github.com/pkeppeler/deepcharter/blob/pr-media/PR/c-layer1-lamp-lit.png?raw=true)
+![C in layer 1, lamp-lit](https://github.com/pkeppeler/deepcharter/blob/pr-media/401/c-layer1-lamp-lit.png?raw=true)
 
 A field of columns, joints that run with lava, a crust that glows in its cracks. The most alien and the most unlike vanilla, and the one that makes the deep feel like a place nobody built. The risk is that brown columns read as stacked crates or timber, so the texture is grained and the edges are ragged, and the build may want layer 1's columns darker and cooler.
 
