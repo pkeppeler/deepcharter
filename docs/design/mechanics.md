@@ -536,38 +536,39 @@ Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`Ea
 
 ## The breach crust (#378, A)
 
-**Problem.** With the [seep sounder](#seep-sounder-373-a) fitted, the crust at the foot of layer 1 ends 10 to 21 of 100 bores. It takes 8 hull a row, 3 rows, 24 in all, and the pod crosses it row by row. Nothing in the game tells the pilot that the hull will not last it, and nothing repairs the hull between the last pocket and the crust.
+**Problem.** With the [seep sounder](#seep-sounder-373-a) fitted, the crust at the foot of layer 1 ends 12 to 21 of 100 bores (the three columns measured below). It takes 8 hull a row, 3 rows, 24 in all, and the pod crosses it row by row. Nothing in the game tells the pilot that the hull will not last it, and nothing repairs the hull between the last pocket and the crust.
 
 ### Measured: what a crust death brings to the crust
 
-`LavaBoreTest` now splits each crust death (a death whose last hull loss was at the foot of the layer) into the hull the pod brought to its first crust row and the hull the crust took, and tallies what had cost the brought pod its hull. Same bores as the [seep sounder table](#measured-the-part-against-its-target): 100 bores of layer 1, braked, liner 2, rack of 32 bricks, `DEEPCHARTER_LAVA_BORES_SOUNDER=<tier>`, and `DEEPCHARTER_LAVA_BORES_PACK=64` where marked. Output: the `[lava-bore] crust` lines.
+`LavaBoreTest` now splits each crust death (a death whose last hull loss was at the foot of the layer) into the hull the pod brought to its first crust row (the crust takes what is left of it, so that is also the hull the crust took) and tallies what had cost the brought pod its hull. Same bores as the [seep sounder table](#measured-the-part-against-its-target): 100 bores of layer 1, braked, liner 2, rack of 32 bricks, `DEEPCHARTER_LAVA_BORES_SOUNDER=<tier>`, and `DEEPCHARTER_LAVA_BORES_PACK=64` where marked. Output: the `[lava-bore] crust` lines.
 
 | Crust deaths, no brace | Tier 1, 32 | Tier 1, 32 + pack | Tier 2, 32 + pack |
 |---|---|---|---|
 | Deaths | 16 | 21 | 12 |
 | Hull brought to the crust, mean (max) | 7.5 (12.7) | 7.3 (12.7) | 10.5 (12.1) |
-| Hull the crust took, mean | 7.5 | 7.3 | 10.5 |
 | Short of the full crust price of 24, mean (max) | 16.5 (23.4) | 16.7 (23.4) | 13.5 (14.0) |
 | Hull the brought pod had lost to gas, mean | 92.5 | 92.7 | 89.5 |
 | Hull the brought pod had lost to lava, landing, other | 0 | 0 | 0 |
 
 - **No crust death is a fair one.** Every pod that died in the crust brought under 13 hull, and every one had lost about 90 hull to gas on the way. The crust took what was left, and its first row killed or nearly killed all of them. A pod that brought 24 or more was never killed by the crust.
 - **The crust is the finishing blow, not the cause.** Halving what the crust takes would save only the pods that brought 12 or more, which is almost none of them (a first try that did halve it, measured 19 crust deaths against 21). The gap to close is the missing hull: 12 to 23 points.
-- **Hull is the only thing that is missing, and there was no way to buy it mid-dive.** Hull Nanobots (+30) are priced for layer 2 ($345), and the repair station is on the surface.
+- **Hull is the only thing that is missing, and there was no way to buy it mid-dive.** Hull Nanobots (+30) are priced for layer 2 ($345, $11.50 a hull), and the repair station is on the surface.
 
 ### The rung: a crust warning for every pod, and the breach brace part
 
 **The warning (every pod).** Within 16 slabs of the foot of a layer that has a crust to bore, and in the crust, the HUD shows an amber line when the hull is no more than what the crust rows left would take: `CRUST 7 DOWN  HULL 20, IT TAKES 24`, then `IN THE CRUST  HULL 12, IT TAKES 16`. A pod with enough hull sees nothing. The server and the client work it out from the same synced state (`PodBrace.warning`). The last layer's crust is not drilled, so it has no warning.
 
 **The breach brace (a part).** A new track, `brace`, one tier, $200 (two stock layer 1 runs, `EconomyAffordabilityTest`). It fits every chassis. It has no stock part.
-- While the pod rests (the drill is not working, and a pilot who lets go of sprint is enough) within 16 slabs of the crust, and the hull is under the crust's price plus 4, the brace burns the cheapest ore in the bay once a second. Each ore patches 12 hull. It stops when the hull is 4 over the price.
-- The HUD says what it needs: `BRACE WAITS  STOP THE DRILL` while the drill works, `BRACING  BURNING ORE FOR HULL` while it burns, `BRACE HAS NO ORE TO BURN` with an empty bay.
-- **What it costs.** The ore is the pilot's money: a patch from 6 hull is 2 ore, from 1 hull is 3. The time at rest is a second an ore. The part never repairs more than the crust needs, and works nowhere else, so it is not a mid-dive heal against lava or gas.
-- **The ladder.** By hand, the pilot reads the warning and uses Hull Nanobots or goes back to the station. The brace automates it for ore. Mastery is the hull track: a hull of 24 plus needs neither, and the warning stays quiet.
+- **At rest** means the pod is on the ground and its pilot gives no drill, drive or rotor input (sprint, a direction key or jump), and has given none for 20 ticks. A pod that falls into the hole of a slab it bored is not at rest, and neither is one whose pilot holds sprint: the brace never spends ore while the pilot is drilling.
+- At rest, within 16 slabs of the crust, with the hull under the crust's price plus 4, the brace burns the cheapest ore in the bay once a second. Each ore patches 12 hull. It stops when the hull is 4 over the price.
+- **It never spends more a hull than Hull Nanobots would.** It burns an ore only if the ore's price is at most the nanobots' price for the hull of one patch (`Consumable.HULL_NANOBOTS` price over `RepairTuning.nanobotHp`, times `hullPerOre`: $345 / 30 x 12 = $138). Ironium ($30), bronzium ($60) and silverium ($100) pass; goldium ($250) and the dearer ores do not. The cheapest ore patches at $2.50 a hull, 22% of the nanobots' $11.50: a deliberate discount for the part and for the ore that is nearly waste.
+- The HUD says what it needs: `BRACE WAITS  LET GO OF THE CONTROLS` when the pod is not at rest, `BRACING  BURNING ORE FOR HULL` while it burns, `BRACE HAS NO ORE TO BURN` with an empty bay, `BRACE: NO ORE CHEAP ENOUGH` when every ore in the bay is over the cap. A pod with no power, or stranded, shows none of them.
+- **What it costs.** The ore is the pilot's money: a patch from 6 hull is 2 ore, from 1 hull is 3. The time at rest is a second an ore, and the pilot must let go of the controls. The part never repairs more than the crust needs, and works nowhere else, so it is not a mid-dive heal against lava or gas.
+- **The ladder.** By hand, the pilot reads the warning and uses Hull Nanobots, if the pack has them ($345, a layer 2 price): a layer 1 pilot has nothing else mid-dive. The brace automates a cheaper repair for ore the nanobots would not be spent on. Mastery is the hull track: a hull of 24 plus needs neither, and the warning stays quiet.
 
 ### Measured: the brace against no brace
 
-Same bot and columns, plus `DEEPCHARTER_LAVA_BORES_BRACE=1`. The bot lets go of the drill when the HUD says the brace is wanted, and sprints again when it is done (`braceIfAsked`).
+Same bot and columns, plus `DEEPCHARTER_LAVA_BORES_BRACE=1`. The bot lets go of the drill when the brace is wanted and the pod rests, and sprints again when it is done (`braceIfAsked`). Measured on main after #394 (slag brick costs spoil) and with the brace gated on rest.
 
 | 100 bores | Tier 1, 32: before | after | Tier 1, 32 + pack: before | after | Tier 2, 32 + pack: before | after |
 |---|---|---|---|---|---|---|
@@ -575,25 +576,29 @@ Same bot and columns, plus `DEEPCHARTER_LAVA_BORES_BRACE=1`. The bot lets go of 
 | Deaths: lava / gas / crust | 42 / 6 / 16 | 42 / 6 / 0 | 20 / 9 / 21 | 20 / 9 / 0 | 18 / 10 / 12 | 18 / 10 / 0 |
 | Hull lost per bore to the crust | 9.8 | 12.5 | 13.5 | 17.0 | 15.7 | 17.3 |
 | Bores that stopped to burn ore | 0 | 25 | 0 | 26 | 0 | 22 |
-| Ore burned per braced bore (worth at the terminal) | 0 | 3.2 ($156) | 0 | 2.3 ($100) | 0 | 2.3 ($106) |
-| Pod ticks at rest per braced bore | 0 | 41 | 0 | 34 | 0 | 32 |
+| Ore burned per braced bore (worth at the terminal) | 0 | 3.5 ($156) | 0 | 2.7 ($111) | 0 | 2.7 ($117) |
+| Pod ticks at rest per braced bore | 0 | 87 | 0 | 68 | 0 | 68 |
+| Bores that found the bay empty when the brace was wanted (died of the crust) | | 6 (0) | | 3 (0) | | 3 (0) |
+| Bores that found only ore over the cap (died of the crust) | | 1 (0) | | 0 | | 0 |
 
-The no-brace columns are the sounder table's own numbers (the tier 1 pack column reproduces 21 / 20 / 9 and 13.5 crust hull).
+The no-brace columns were measured again on the merged code and give the sounder table's own numbers (the tier 1 pack column reproduces 21 / 20 / 9 and 13.5 crust hull).
 
 - **The crust stops ending bores, and the next cap is lava.** All 49 crust deaths in these three columns become reach (the reach gains, 16, 21 and 12, equal them). Lava is now the largest cause (42, 20 and 18 deaths).
-- **It does not trivialize the crust.** Every bore that reaches it still loses 24 hull, which is up to a quarter of the hull, and a quarter of the bores pay for it in ore: $100 to $156, about a stock layer 1 run ($115). The pod that arrives with 24 hull or more pays nothing. A pod with an empty bay is not helped (7 bores in the tier 1 column found it empty when the brace was wanted; none of them died of the crust, so each had the hull for it or ended elsewhere first).
+- **It does not trivialize the crust.** Every bore that reaches it still loses 24 hull, which is up to a quarter of the hull, and a quarter of the bores pay for it in ore: $111 to $156, about a stock layer 1 run ($115). The pod that arrives with 24 hull or more pays nothing. A pod with an empty bay is not helped: 6, 3 and 3 bores found it empty when the brace was wanted, and none of them died of the crust (the output counts them: `died of the crust`). One bore found only ore over the cap, and did not die of the crust either.
 - **What it leaves alone.** Gas and lava deaths are unchanged to the bore (6 and 42; 9 and 20; 10 and 18). The brace cannot repair outside the approach to the crust.
 
 **Decisions (A).**
 - **A part and a warning, not a halved crust.** The measurement showed the pods that die in the crust are short 12 to 23 hull. Halving the crust's price saved 2 of 21; a repair saves all of them.
-- **12 hull an ore, once a second, cheapest ore first.** A patch is 2 to 3 ore: about a layer 1 run's money, the price of a hull the pilot let the gas take. Cheapest first because the pilot would choose to burn it first; a lower figure makes the toll dearer than the cargo it saves.
+- **12 hull an ore, once a second, cheapest ore first.** A patch is 2 to 4 ore: about a layer 1 run's money, the price of a hull the pilot let the gas take. Cheapest first because the pilot would choose to burn it first; a lower figure makes the toll dearer than the cargo it saves.
+- **The brace never spends more a hull than the nanobots.** The cap is derived from the nanobots' price and hull (see above), never a literal. `EconomyAffordabilityTest` pins both sides: (a) the cheapest ore is cheaper a hull than the nanobots, a deliberate discount; (b) the cap is exactly the nanobots' rate, so ore over it is refused (`PodBraceTest` pins the refusal on a pod, and the HUD line for it).
+- **Rest is judged on the server from the pilot's input and the pod's contact with the ground, with 20 ticks of debounce.** A first version used "the drill is not working", which is false for the tick after each slab (the pod is off the ground, so the drill stops), and burned ore under a pilot who held sprint. Tests: a pod in the air, a pod that moved within the rest time, and a pilot holding the drill across bored slabs.
 - **Reserve of 4.** The brace stops at the price plus 4, so a patched pod crosses with a little hull and not with a fraction of a point.
 - **The warning is for every pod and its colour is the hard landing's amber (`podHardLandingColor`).** No new theme key.
 - **One tier, $200, any chassis.** Two layer 1 runs, bought for the dive down.
 - **Placeholders.** The brace plays the Hull Nanobots sound (`repair.nanobots`) with each patch. Its item sprite is a recipe in `tools/textures/recipes/items.json`.
 
-**Knobs.** `PodBraceTuning`: `hullPerOre` (12), `patchTicks` (20), `reserveHull` (4), `warnSlabs` (16). `UpgradeTuning` price (200).
+**Knobs.** `PodBraceTuning`: `hullPerOre` (12), `patchTicks` (20), `reserveHull` (4), `warnSlabs` (16), `restTicks` (20). `UpgradeTuning` price (200).
 
 **Open questions.**
-- Should the brace burn lining bricks or waste rock before ore? It would spare the money, and conflicts with the liner's brick economy (#363).
+- Should the brace burn spoil from the hopper before ore? Cargo holds only ore, spoil sits in the hopper, and bricks now cost spoil (#394).
 - Should the surface station sell a cheap layer 1 hull patch, so the warning has a by-hand answer short of Hull Nanobots?
