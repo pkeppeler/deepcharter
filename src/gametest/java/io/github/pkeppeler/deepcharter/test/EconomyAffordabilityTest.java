@@ -161,6 +161,21 @@ public class EconomyAffordabilityTest {
 	}
 
 	/**
+	 * A lined run that reaches layer 2 nets more than an unlined layer 1 run (#363): the liner's drill penalty and the hopper's mass must not
+	 * sink a layer 2 run below the layer 1 run that a charter does without them. Slag brick costs no money, so there is no brick bill to take off.
+	 */
+	@GameTest
+	public void aLinedRunToLayerTwoNetsMoreThanAnUnlinedLayerOneRun(GameTestHelper helper) {
+		Run layerOne = stockRunInLayerOne();
+		Run lined = EarlyRunModel.run(Zone.load("upper_levels"), EarlyRunModel.withLiner(EarlyRunModel.mole(2, 2, 2), 2), EarlyRunModel.layerOneBlocks(), EarlyRunModel.hopperMass());
+		LOGGER.info("[economy] lined layer 2 run {}; an unlined layer 1 run nets ${}", lined, Math.round(layerOne.net()));
+		if (lined.net() <= layerOne.net()) {
+			throw failure(helper, "a lined run to layer 2 nets $%.0f, no more than the $%.0f of an unlined layer 1 run", lined.net(), layerOne.net());
+		}
+		helper.succeed();
+	}
+
+	/**
 	 * The seep sounder (#373) is the gas ladder's second rung and is bought in layer 2: a run there pays for tier 1 in at most
 	 * {@value #SOUNDER_TIER_ONE_RUNS} runs and for tier 2 in at most {@value #SOUNDER_TIER_TWO_RUNS}. The run is a Mole's with tier 2 parts and the sounder's
 	 * drill penalty, so a dearer sounder is a slower income.
