@@ -502,6 +502,9 @@ public class DesignTourScenario extends EvidenceScenario {
 		shoot("colony-aerial-south", 0, p(0, 38, 62), middle, 80, town);
 		shoot("colony-aerial-northwest", 0, p(-52, 38, -52), middle, 30, town);
 		shoot("colony-aerial-northeast", 0, p(52, 38, -52), middle, 30, town);
+		// From out on the graded land, looking back at the pad's edge: the south margin, and the east side where the land is higher.
+		shoot("colony-margin-looking-back-south", 0, p(14, 12, 60), p(0, 6, 8), 30, town);
+		shoot("colony-margin-from-the-east", 0, p(60, 14, 8), p(0, 6, -4), 30, town);
 		shoot("colony-from-straight-above", 0, p(0, 80, 6), p(0, 0, -2), 30, town);
 		shoot("colony-from-the-south-edge", 0, p(0, EYE, 11.5), p(0, 9, 0), 30, new Subject("the plinth", state -> state.is(ColonyKit.BRASS_TRIM), 8));
 

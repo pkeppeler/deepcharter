@@ -26,10 +26,11 @@ import io.github.pkeppeler.deepcharter.attachment.Versioned;
  * Gameplay code reads it through {@link Colony}, which never throws.
  *
  * <p>The saved form has a {@link #VERSION}. Data of another version loads as unreadable, is written back unchanged, and every
- * use of it throws, as for {@code CharterData} (ADR 0007).
+ * use of it throws, as for {@code CharterData} (ADR 0007). Version 1 had no {@code edgeGraded}: it loads with the edge counted as
+ * graded, so a colony of an older world is never graded again, and is saved as version 2.
  */
 public final class ColonySite extends SavedData {
-	public static final int VERSION = 1;
+	public static final int VERSION = 2;
 	private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "colony");
 
 	/**
@@ -39,15 +40,28 @@ public final class ColonySite extends SavedData {
 	 *                 is built again at the same height
 	 * @param anchors  every anchor, so a colony saved without one is unreadable and not half there
 	 * @param finished false while the build is under way
+	 * @param edgeGraded true once the land around the pad is graded to it: the grade reads the natural ground, so it is done once
 	 */
-	public record Placed(BlockPos center, Map<ColonyAnchor, BlockPos> anchors, boolean finished) {
+	public record Placed(BlockPos center, Map<ColonyAnchor, BlockPos> anchors, boolean finished, boolean edgeGraded) {
 		private static final Codec<Placed> CODEC = RecordCodecBuilder.<Placed>create(instance -> instance.group(
 				BlockPos.CODEC.fieldOf("center").forGetter(Placed::center),
 				Codec.unboundedMap(ColonyAnchor.CODEC, BlockPos.CODEC).fieldOf("anchors").forGetter(Placed::anchors),
-				Codec.BOOL.fieldOf("finished").forGetter(Placed::finished)).apply(instance, Placed::new))
-				.validate(placed -> placed.anchors().keySet().containsAll(List.of(ColonyAnchor.values()))
-						? DataResult.success(placed)
-						: DataResult.error(() -> "the colony is saved without every anchor"));
+				Codec.BOOL.fieldOf("finished").forGetter(Placed::finished),
+				Codec.BOOL.fieldOf("edgeGraded").forGetter(Placed::edgeGraded)).apply(instance, Placed::new))
+				.validate(Placed::everyAnchor);
+
+		/** The version 1 form, which has no {@code edgeGraded}: an older world's colony is not graded. */
+		private static final Codec<Placed> CODEC_V1 = RecordCodecBuilder.<Placed>create(instance -> instance.group(
+				BlockPos.CODEC.fieldOf("center").forGetter(Placed::center),
+				Codec.unboundedMap(ColonyAnchor.CODEC, BlockPos.CODEC).fieldOf("anchors").forGetter(Placed::anchors),
+				Codec.BOOL.fieldOf("finished").forGetter(Placed::finished)).apply(instance, (center, anchors, finished) -> new Placed(center, anchors, finished, true)))
+				.validate(Placed::everyAnchor);
+
+		private DataResult<Placed> everyAnchor() {
+			return anchors().keySet().containsAll(List.of(ColonyAnchor.values()))
+					? DataResult.success(this)
+					: DataResult.error(() -> "the colony is saved without every anchor");
+		}
 
 		public Placed {
 			EnumMap<ColonyAnchor, BlockPos> sorted = new EnumMap<>(ColonyAnchor.class);
@@ -62,7 +76,8 @@ public final class ColonySite extends SavedData {
 		}
 	}
 
-	private static final Codec<Versioned<Optional<Placed>>> VERSIONED_CODEC = Versioned.codec(VERSION, Placed.CODEC.optionalFieldOf("colony"));
+	private static final Codec<Versioned<Optional<Placed>>> VERSIONED_CODEC = Versioned.codec(VERSION, Placed.CODEC.optionalFieldOf("colony"),
+			Map.of(1, Placed.CODEC_V1.optionalFieldOf("colony")));
 
 	/** The codec of the saved data, which never fails to decode. */
 	public static final Codec<ColonySite> CODEC = VERSIONED_CODEC.xmap(ColonySite::new, ColonySite::versioned);
@@ -124,7 +139,14 @@ public final class ColonySite extends SavedData {
 	/** Marks the colony built to the end. */
 	void finish() {
 		Placed begun = readable().orElseThrow(() -> new IllegalStateException("the colony has not begun"));
-		state.set(Optional.of(new Placed(begun.center(), begun.anchors(), true)));
+		state.set(Optional.of(new Placed(begun.center(), begun.anchors(), true, begun.edgeGraded())));
+		setDirty();
+	}
+
+	/** Records that the land around the pad is graded. */
+	void gradedEdge() {
+		Placed begun = readable().orElseThrow(() -> new IllegalStateException("the colony has not begun"));
+		state.set(Optional.of(new Placed(begun.center(), begun.anchors(), begun.finished(), true)));
 		setDirty();
 	}
 }

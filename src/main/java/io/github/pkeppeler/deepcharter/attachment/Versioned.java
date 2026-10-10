@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.attachment;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.UnaryOperator;
 
@@ -62,9 +63,18 @@ public sealed interface Versioned<T> {
 
 	/** The disk codec. It never fails: see the class comment. */
 	static <T> Codec<Versioned<T>> codec(int currentVersion, MapCodec<T> body) {
+		return codec(currentVersion, body, Map.of());
+	}
+
+	/**
+	 * The disk codec of a value whose shape has changed: {@code previous} holds a body codec for each older version that this build
+	 * still reads. An older version decodes to the current value (the body codec fills what the old shape lacks) and is written back
+	 * as {@code currentVersion}. A version in neither place is {@link Unreadable}.
+	 */
+	static <T> Codec<Versioned<T>> codec(int currentVersion, MapCodec<T> body, Map<Integer, MapCodec<T>> previous) {
 		requireValidVersion(currentVersion);
 		return Codec.PASSTHROUGH.xmap(
-				dynamic -> decode(currentVersion, body, dynamic),
+				dynamic -> decode(currentVersion, body, previous, dynamic),
 				versioned -> encode(currentVersion, body, versioned));
 	}
 
@@ -147,10 +157,11 @@ public sealed interface Versioned<T> {
 				+ unreadable.version() + " that this build cannot read");
 	}
 
-	private static <T> Versioned<T> decode(int currentVersion, MapCodec<T> body, Dynamic<?> dynamic) {
+	private static <T> Versioned<T> decode(int currentVersion, MapCodec<T> body, Map<Integer, MapCodec<T>> previous, Dynamic<?> dynamic) {
 		Optional<Number> version = dynamic.get(VERSION_KEY).asNumber().result();
-		if (version.isPresent() && version.get().intValue() == currentVersion) {
-			Optional<T> value = body.codec().parse(dynamic).result();
+		MapCodec<T> reader = version.isEmpty() ? null : version.get().intValue() == currentVersion ? body : previous.get(version.get().intValue());
+		if (reader != null) {
+			Optional<T> value = reader.codec().parse(dynamic).result();
 			if (value.isPresent()) {
 				return new Readable<>(value.get());
 			}

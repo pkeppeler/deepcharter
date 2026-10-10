@@ -6,7 +6,7 @@ Source paths below are at `e771d86` under `common/src/main/java/com/geckolib/`, 
 
 ## For the owner
 
-- **Our own licence fields disagree.** [LICENSE](../../LICENSE) says MIT, but [fabric.mod.json:13](../../src/main/resources/fabric.mod.json) says `All-Rights-Reserved`. This is not GeckoLib's issue, but bundling a third-party jar makes it matter. Settle it before any public release.
+- **Our own licence fields are settled.** The user chose MIT on 2026-10-09 ([#386](https://github.com/pkeppeler/deepcharter/issues/386)). [LICENSE](../../LICENSE), [fabric.mod.json](../../src/main/resources/fabric.mod.json) and the gametest template all say MIT, and `tools/tests/test_license.py` keeps them in step.
 
 ## Verdict: adopt, pinned, jar-in-jar
 
