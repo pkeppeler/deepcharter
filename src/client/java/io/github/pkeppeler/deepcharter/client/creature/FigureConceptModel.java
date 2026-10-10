@@ -5,7 +5,6 @@ import com.geckolib.renderer.base.GeoRenderState;
 
 import net.minecraft.resources.Identifier;
 
-/** Tells GeckoLib which model, texture and animation file the figure shows: the files of the concept that the dev switch names. */
 final class FigureConceptModel extends GeoModel<FigureConceptAnimatable> {
 	private final FigureConcept concept;
 

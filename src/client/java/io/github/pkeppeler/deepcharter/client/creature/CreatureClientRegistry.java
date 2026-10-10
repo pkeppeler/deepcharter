@@ -16,7 +16,7 @@ public final class CreatureClientRegistry {
 		EntityRendererRegistry.register(CreatureRegistry.LAMPLESS_FIGURE, CreatureClientRegistry::figureRenderer);
 	}
 
-	/** The figure's renderer: a concept of #250 while the dev switch names one, else the placeholder. It is chosen again on every resource reload. */
+	/** Chosen again on every resource reload, so the dev switch is read then. */
 	private static EntityRenderer<LamplessFigure, ?> figureRenderer(EntityRendererProvider.Context context) {
 		return FigureConcept.selected().<EntityRenderer<LamplessFigure, ?>>map(concept -> new FigureConceptRenderer(context, concept))
 				.orElseGet(() -> new LamplessFigureRenderer(context));

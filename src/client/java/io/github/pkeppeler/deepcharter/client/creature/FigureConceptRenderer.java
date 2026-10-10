@@ -11,11 +11,7 @@ import net.minecraft.world.phys.AABB;
 
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 
-/**
- * Draws the lampless figure as one of the concepts of #250, with GeckoLib. It replaces {@link LamplessFigureRenderer} only while the dev
- * switch {@link FigureConcept#PROPERTY} names a concept. Behaviour is the figure's own, untouched: it walks, and it fades as it always did,
- * here by going see-through as the placeholder does.
- */
+/** Replaces {@link LamplessFigureRenderer} while the dev switch {@link FigureConcept#PROPERTY} names a concept; it fades by going see-through as the placeholder does. */
 public class FigureConceptRenderer extends GeoReplacedEntityRenderer<FigureConceptAnimatable, LamplessFigure, FigureConceptRenderState> {
 	private static final float SHADOW_RADIUS = 0.4f;
 
@@ -41,7 +37,7 @@ public class FigureConceptRenderer extends GeoReplacedEntityRenderer<FigureConce
 		state.fade = figure.fadeFraction();
 	}
 
-	/** The box the game culls the figure by: a concept is taller than the figure's hitbox, and its arms and lean reach past it. */
+	/** A concept is taller than the figure's hitbox, and its arms and lean reach past it. */
 	@Override
 	public AABB getBoundingBoxForCulling(LamplessFigure figure, float partialTick) {
 		double x = figure.getX();

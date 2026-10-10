@@ -17,36 +17,25 @@ import net.minecraft.server.packs.resources.ResourceManager;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 
-/**
- * The lampless figure concepts of #250, for the user to pick one before the build. A concept is drawn only when the dev switch
- * {@value #PROPERTY} names it; without the switch the figure keeps its placeholder look ({@link LamplessFigureRenderer}). Each concept is
- * three resource-pack files, written by {@code tools/figure_concepts.py}: a GeckoLib model, a texture and an animation file. Java names the
- * files and the two animations, and holds no visual of its own.
- */
+/** The lampless figure concepts of #250: drawn only while the dev switch {@link #PROPERTY} names one. Files are written by {@code tools/figure_concepts.py}. */
 public enum FigureConcept {
 	CANDLE,
 	HERON,
 	REACHER,
 	MISFIT;
 
-	/** The system property that picks a concept. It is read whenever the renderers are built, which is on every resource reload. */
 	public static final String PROPERTY = "deepcharter.figureConcept";
-	/** The animation played while the figure stands, and while it walks. */
 	public static final String IDLE = "animation.figure.idle";
 	public static final String WALK = "animation.figure.walk";
-	/**
-	 * The box the figure is culled by, round its feet: the tallest and widest any concept stands, with its lean and its reach. It is
-	 * 48 by 24 px in {@code tools/figure_concepts.py}, which fails a model that leaves it.
-	 */
+	/** Matches CULL_HEIGHT_PX and CULL_REACH_PX in {@code tools/figure_concepts.py}, which fails a model that leaves the box. */
 	public static final double CULL_HEIGHT_BLOCKS = 3.0;
 	public static final double CULL_REACH_BLOCKS = 1.5;
 
-	/** The concept's name in the switch and in its file names. */
 	public String id() {
 		return name().toLowerCase(Locale.ROOT);
 	}
 
-	/** The id GeckoLib knows the model and the animations by: {@code geckolib/models/<path>.geo.json} and {@code geckolib/animations/<path>.animation.json}. */
+	/** The id GeckoLib knows the model and the animations by. */
 	public Identifier resource() {
 		return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "creature/figure/" + id());
 	}
@@ -63,7 +52,7 @@ public enum FigureConcept {
 		return resource().withPath("textures/entity/creature/figure/" + id() + ".png");
 	}
 
-	/** The concept the switch names, or empty when it is unset or blank. A name that is no concept throws. */
+	/** Empty when the switch is unset or blank; a name that is no concept throws. */
 	public static Optional<FigureConcept> selected() {
 		String value = System.getProperty(PROPERTY, "").strip();
 		if (value.isEmpty()) {
@@ -74,11 +63,7 @@ public enum FigureConcept {
 						+ Arrays.stream(values()).map(FigureConcept::id).toList())));
 	}
 
-	/**
-	 * Returns this concept after checking that its files are there: the model, the texture, and an animation file with the idle and the
-	 * walk. A missing one would draw a missing-model cube, or magenta, or a figure frozen in its bind pose, with no error, so this throws
-	 * and names the file.
-	 */
+	/** Throws, naming the file, when a file or animation is missing: that would otherwise draw a missing-model cube, magenta, or a frozen bind pose. */
 	public FigureConcept checked(ResourceManager resources) {
 		for (Identifier file : new Identifier[] {modelFile(), texture()}) {
 			if (resources.getResource(file).isEmpty()) {

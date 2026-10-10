@@ -497,6 +497,16 @@ def read_png(data):
 # ---------------------------------------------------------------------------------------------
 
 
+def hold(length, value):
+    """Keyframes that keep one rotation for the whole animation."""
+    return [(0.0, value), (length, value)]
+
+
+def lifted(length, steps, bend, phase):
+    """Keyframes of a bend that lifts for half of each period and rests for the other half."""
+    return [(length * s / steps, [round(bend * max(0.0, math.sin(2 * math.pi * s / steps + phase)), 3), 0, 0]) for s in range(steps + 1)]
+
+
 def frames(rotations):
     """Rotation keyframes at the given seconds: rotations is a list of (seconds, [x, y, z])."""
     return {"rotation": {f"{t:.2f}": values for t, values in rotations}}
@@ -527,16 +537,16 @@ def idle_bones(kind):
         length = 5.0
         return length, {
             "spine": frames(sway(length, 4, [14, 0, 0], 1.0, 0)),
-            "neck": frames([(0.0, [10, 0, 0]), (length, [10, 0, 0])]),
+            "neck": frames(hold(length, [10, 0, 0])),
             "head": frames(sway(length, 4, [6, 0, 12], 1.5, 2)),
-            "upper_arm_l": frames([(0.0, [-8, 0, 0]), (length, [-8, 0, 0])]),
-            "upper_arm_r": frames([(0.0, [-8, 0, 0]), (length, [-8, 0, 0])]),
+            "upper_arm_l": frames(hold(length, [-8, 0, 0])),
+            "upper_arm_r": frames(hold(length, [-8, 0, 0])),
         }
     if kind == "tilted":
         # Stands straight with the head tipped well over to one side, the wrong way for a neck.
         length = 6.0
         return length, {
-            "neck": frames([(0.0, [0, 0, 8]), (length, [0, 0, 8])]),
+            "neck": frames(hold(length, [0, 0, 8])),
             "head": frames(sway(length, 4, [2, 0, 26], 2.5, 2)),
             "upper_arm_l": frames(sway(length, 4, zero, 1.5, 0)),
             "upper_arm_r": frames(sway(length, 4, zero, 1.5, 0, math.pi)),
@@ -546,7 +556,7 @@ def idle_bones(kind):
         length = 6.0
         return length, {
             "spine": frames(sway(length, 4, zero, 2.5, 2)),
-            "neck": frames([(0.0, [-10, 0, 0]), (length, [-10, 0, 0])]),
+            "neck": frames(hold(length, [-10, 0, 0])),
             "head": frames(sway(length, 4, [-24, 0, 0], 2.0, 0)),
         }
     raise ValueError(f"unknown idle {kind}")
@@ -565,21 +575,15 @@ def walk_bones(spec):
     for side, phase in (("l", 0.0), ("r", math.pi)):
         bones[f"{spec.legs[0].name}_{side}"] = frames(sway(length, steps, [0, 0, 0], walk.thigh, 0, phase))
         for name, bend in zip(mid_legs, walk.leg_bends):
-            lifted = [(length * s / steps, [round(bend * max(0.0, math.sin(2 * math.pi * s / steps + phase + 1.0)), 3), 0, 0]) for s in range(steps + 1)]
-            bones[f"{name}_{side}"] = frames(lifted)
+            bones[f"{name}_{side}"] = frames(lifted(length, steps, bend, phase + 1.0))
         bones[f"{spec.arms[0].name}_{side}"] = frames(sway(length, steps, [0, 0, 0], walk.arm, 0, phase + math.pi))
         for name, bend in zip(mid_arms, walk.arm_bends):
-            lifted = [(length * s / steps, [round(bend * max(0.0, math.sin(2 * math.pi * s / steps + phase + math.pi + 1.0)), 3), 0, 0]) for s in range(steps + 1)]
-            bones[f"{name}_{side}"] = frames(lifted)
+            bones[f"{name}_{side}"] = frames(lifted(length, steps, bend, phase + math.pi + 1.0))
     return length, bones
 
 
-def number(value):
-    return pc.number(value)
-
-
 def vector_text(values):
-    return "[" + ", ".join(number(v) for v in values) + "]"
+    return "[" + ", ".join(pc.number(v) for v in values) + "]"
 
 
 def animation_json(option):
@@ -589,7 +593,7 @@ def animation_json(option):
     lines = ["{", '\t"format_version": "1.8.0",', '\t"animations": {']
     blocks = []
     for name, length, bones in (("animation.figure.idle", idle_length, idle), ("animation.figure.walk", walk_length, walk)):
-        block = [f'\t\t"{name}": {{', '\t\t\t"loop": true,', f'\t\t\t"animation_length": {number(length)},', '\t\t\t"bones": {']
+        block = [f'\t\t"{name}": {{', '\t\t\t"loop": true,', f'\t\t\t"animation_length": {pc.number(length)},', '\t\t\t"bones": {']
         bone_lines = []
         for bone, channels in bones.items():
             keys = ", ".join(f'"{t}": {vector_text(v)}' for t, v in channels["rotation"].items())
