@@ -134,7 +134,7 @@ Noise:
 
 ## Principles for the Mole concepts
 
-These rules guide the concepts and bind #243's build. The Mole's hitbox is 1.9 blocks wide, deep and tall (about 30 model units). The bore is the size of the pod (SPEC section 7), so nothing except the drill sticks out of that box at the sides or top while the pod drives or drills.
+These rules guide the concepts and bind #243's build. The Mole's hitbox was 1.9 blocks wide, deep and tall (about 30 model units) when #243 was built; since #400 it is 1.9 wide and deep and 2.9 tall (46.4 units). The bore is the size of the pod (SPEC section 7), so nothing except the drill sticks out of that box at the sides or top while the pod drives or drills.
 
 The concepts of [pod-concepts.md](pod-concepts.md) depart from four rules on purpose, because they drew through vanilla `ModelPart`: tread links slide as cubes, one link pitch at a time (rule 8: `ModelPart` has no UV scroll); the canopy is opaque dark glass (rule 10; clear panes since #382); the drill has up to 36 cubes (rule 4); and the beam bone, the damage stages and the fuel gauge (rules 6 and 11) were left for #243. #243 built the pods with GeckoLib and kept all of these departures except the cube budget: the links still slide as cubes. The canopy was opaque glass until #382, which made its panes clear (alpha 0, cut out by the renderer) so the pilot shows through. The beam bone, the damage stages and the fuel gauge are not built.
 

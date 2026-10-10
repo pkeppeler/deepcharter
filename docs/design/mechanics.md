@@ -108,7 +108,7 @@ The bot is unrealistic in two opposite ways. It never reacts, which is harsh. It
 - **Spoil.** With a hopper the drill keeps one spoil for each block of waste rock it bores: the blocks in the tag `deepcharter:waste_rock` (stone and dirt). The bay holds 64, and a drill past that loses the rock, as it loses ore past a full cargo bay. Spoil is not cargo, so it takes no ore slot. It is a pod attachment (`PodLining.State`), and it cuts lift like ore does (0.1 mass each).
 - **Slag brick.** The processor's new button, MAKE SLAG BRICK, turns 2 spoil into 1 brick, for no money ([#363](#liner-bricks-363-a)), from every pod the charter may use that is parked at the processor. The bricks go to each pod's rack (32, 0.2 mass each) and, when a rack is full, to the buyer's pack (a stack is 64). It makes only the bricks that have a place to go. A brick is a plain full block, so lava neither flows into it nor replaces it. It drops itself when broken by hand. The drill bores it and gets nothing.
 - **Lining.** The key R, from the pilot's seat (`key.deepcharter.line_slab`). The pod places one brick every 8 ticks, and stops while it does: no drive, no climb, no drill (the pod keeps its power, its lights and its fuel burn). Another press stops it. The cells, in order: lava first, then open cells beside lava, then the rest, lowest first.
-  - The ring: the air and fluid cells beside the footprint (2 x 2 for a Mole), from the slab below the pod to the top of its box.
+  - The ring: the air and fluid cells beside the footprint (2 wide and 3 tall for a Mole since #400), from the slab below the pod to the top of its box.
   - The floor: lava in the footprint's cells in the slab below and the one under it. The drill bores no liquid, and the pod touches lava the moment it sinks onto it.
   - Never replaced: rock, ore, company rock, and a cell next to an unloaded chunk.
 - **Bricks used.** The rack first (if `PodComponents.mayAccess` lets the pilot use the pod's stores), then the pilot's pack. No brick is made by lining.
@@ -668,10 +668,32 @@ The no-brace columns were measured again on the merged code and give the sounder
 | Sounder 2, 32 + pack, after | 39 (1 stalled) | 21 / 24 / 0 / 15 | 13.1 / 55.1 / 0 / 11.0 |
 
 - **The columns without a sounder hardly move.** A pod without the part has no sidestep sight to lose: the plain and the liner rows move by a bore or two.
-- **The sounder rows lose 15 to 21 bores of reach.** The likely cause (not isolated by a run of its own): a sidestep bores 2 x 3 cells a step and not 2 x 2, so the blind half of it (tier 1 reads only the footprint below) is half as big again, and tier 2's side strips are the whole box height. Gas deaths go from 6 to 26 (tier 1) and 7 to 18 (tier 2) of 100. The parts still help: tier 2 with the pack reaches layer 2 in 39 bores of 100 against 11 with no part.
-- **The #373 targets are no longer met** (tier 1: 31, tier 2: 41, with the pack 45 and 55). They were set against the 2 x 2 bot and a 2 x 2 step. Not re-tuned here: the price is the taller cab, the knob is the side strips or the sounder tiers' price, and a re-tune needs a measurement of its own. Filed as a follow-up in the PR.
-- **The harness's lead check** (`LavaBoreTest.check`) compared the whole lava body's lead with the scanner's reach. A taller pod meets bodies that stretch above it (bore 75 of the sounder 2 column read 62 slabs against a reach of 60), so it now reads the lava the pod touched, with the box's height added to the reach.
+- **The sounder rows lose 15 to 21 bores of reach. The cause is the exposure of a bigger sidestep, not the part.** Isolated on this build, with the Mole's height set back to 1.9 for the "before" runs (they reproduced the earlier tables to the bore), tier 1 and 2 with the pack:
+
+  | Per bore | Tier 1 + pack, before | Tier 1 + pack, after | Tier 2 + pack, before | Tier 2 + pack, after |
+  |---|---|---|---|---|
+  | Sidesteps | 13.8 | 12.8 | 13.3 | 12.6 |
+  | Steps aside from a pocket | 3.4 | 3.1 | 2.7 | 2.2 |
+  | Gas blasts, all / while sidestepping | 1.2 / 1.1 | 1.7 / 1.5 | 0.9 / 0.8 | 1.4 / 1.2 |
+  | Gas blasts while sidestepping, per sidestep | 0.080 | 0.117 (1.47 times) | 0.060 | 0.095 (1.58 times) |
+  | Hits over 20 hull from gas | 106 | 138 | 79 | 117 |
+
+  - **The bot does not sidestep more often** (13.8 to 12.8, 13.3 to 12.6), so a 6-cell slab refused whole is not the cause. Each sidestep meets a pocket about 1.5 times as often, which is the 6 cells over 4.
+  - **The part equals its bound in all four columns** (tier 1: 16 and 30, tier 2: 22 and 39 of 100). The bounds are the omniscient bots (`GAS=sounder1`, `GAS=sounder`). Before, they were 36 and 50, 46 and 60. So the part reads what it should. The omniscient bot also loses 20 points, because its sidestep meets more pockets and, at tier 2, more often finds all four sides marked and bores the pocket. No tuning of the sounder can pass its bound.
+  - Gas deaths go from 6 to 26 (tier 1) and 7 to 18 (tier 2) of 100 without the pack, and 9 to 35 and 10 to 24 with it. The parts still help: tier 2 with the pack reaches layer 2 in 39 bores of 100 against 11 with no part.
+- **The #373 bars are re-based, as an (A) decision.** A bar was the bound minus 5 reach (and plus 5 gas deaths and gas hull). The bounds moved, so the bars move with them:
+
+  | Column | Reach: old bar | Reach: new bar (bound minus 5) | Measured |
+  |---|---|---|---|
+  | Tier 1, rack 32 | 31 | 11 | 16 |
+  | Tier 1, rack 32 + pack | 45 | 25 | 30 |
+  | Tier 2, rack 32 | 41 | 17 | 22 |
+  | Tier 2, rack 32 + pack | 55 | 34 | 39 |
+
+  No cheap change brings the old bars back: a tier 1 `sideReach` of 1 would blur tier 1 into tier 2, and tier 2 is already at its omniscient bound. The retune is issue [#424](https://github.com/pkeppeler/deepcharter/issues/424). The exposure (lava touch, gas blast) is box physics and was not touched.
+- **The braced column** (`DEEPCHARTER_LAVA_BORES_BRACE=1`, tier 1 sounder, rack 32 + pack, on code with #403): 46 of 100 reach layer 2 (30 without the brace). Deaths lava / gas / landing / crust: 17 / 35 / 0 / 0; hull lost 11.0 / 68.9; 26 bores stopped to burn 2.6 ore each ($93) for hull. The brace takes away the crust deaths (16 without it) and leaves the gas ones.
+- **The harness's lead check** (`LavaBoreTest.check`) compared the whole lava body's lead with the scanner's reach. A taller pod meets bodies that stretch above it (bore 75 of the sounder 2 column read 62 slabs against a reach of 60), so it now reads the lava the pod touched. A touched block is at most the box's top row, `height - 1` above the feet, so that is what it adds to the reach (tier 1 and thermal both).
 
 **The economy pins.** `EarlyRunModel` and `EconomyAffordabilityTest` read the slab only, so none of their numbers move (Mole layer 2 run $348 net, Prospector restore 4 runs, tier prices). No pin was re-pinned.
 
-**Open questions.** Is a Mole's 2 x 3 sidestep worth its extra gas exposure, or should a sidestep bore only 2 rows (the pod's feet and chest) and let the head clear by hovering? The sounder's side strips are the knob that would pay for it.
+**Open questions.** What gives the Mole back some of the sidestep's exposure without the small cab (tier 1 `sideReach`, a 2-row sidestep, longer tier 2 strips, a cheaper bleed)? That is [#424](https://github.com/pkeppeler/deepcharter/issues/424).

@@ -1389,9 +1389,9 @@ public class LavaBoreTest {
 	 */
 	private static void check(GameTestHelper helper, List<Bore> bores, boolean smoke) {
 		// The lead is read for the lava the pod touched, not the whole body it belongs to, which can stretch any way above the pod. A touched
-		// block may be level with the top of the pod's box, so the lead may exceed the scanner's reach by the box's height.
-		int reach = ScannerTuning.DEFAULT.tierOneArea().down() + ScannerTuning.DEFAULT.tierOneArea().up() + POD_HEIGHT;
-		int thermalReach = ScannerTuning.DEFAULT.area(THERMAL_TIER).down() + ScannerTuning.DEFAULT.area(THERMAL_TIER).up() + POD_HEIGHT;
+		// block may be level with the top row of the pod's box, which is POD_HEIGHT - 1 above its feet, so the lead may exceed the scanner's reach by that.
+		int reach = ScannerTuning.DEFAULT.tierOneArea().down() + ScannerTuning.DEFAULT.tierOneArea().up() + POD_HEIGHT - 1;
+		int thermalReach = ScannerTuning.DEFAULT.area(THERMAL_TIER).down() + ScannerTuning.DEFAULT.area(THERMAL_TIER).up() + POD_HEIGHT - 1;
 		for (Bore bore : bores) {
 			if (bore.encounters.stream().anyMatch(e -> e.contactCellsShownAhead() > reach)) {
 				throw helper.assertionException(Component.literal("bore " + bore.index + ": the scanner showed lava from farther than its reach of " + reach + " slabs, so the lead is mismeasured"));
