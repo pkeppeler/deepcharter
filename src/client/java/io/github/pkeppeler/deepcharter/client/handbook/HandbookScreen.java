@@ -191,7 +191,6 @@ public class HandbookScreen extends Screen {
 		};
 		if (viewed != null && !isRead.test(viewed) && reported.add(viewed)) {
 			onViewed.accept(viewed);
-			notePage = Mth.clamp(notePage, 0, noteSheets() - 1);
 		}
 		updateButtons();
 	}
@@ -236,7 +235,6 @@ public class HandbookScreen extends Screen {
 		notePage = 0;
 		if (noteUnread(note) && reported.add(note)) {
 			onViewed.accept(note);
-			notePage = Mth.clamp(notePage, 0, noteSheets() - 1);
 		}
 		updateButtons();
 	}
