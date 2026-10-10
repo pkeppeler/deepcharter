@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.IntBinaryOperator;
 
 import com.google.gson.JsonElement;
@@ -23,6 +24,7 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtAccounter;
@@ -39,6 +41,7 @@ import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.AABB;
@@ -62,6 +65,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.TestRegions;
 
 /**
  * Server GameTests for #244, the colony rebuild: the town the world builds at spawn (tools/colony/town.py, the layout file
@@ -471,12 +475,19 @@ public class ColonyPlacementTest {
 		int half = ColonyTuning.DEFAULT.padSize() / 2;
 		int reach = half + ColonyTuning.DEFAULT.edgeMargin();
 		int size = 2 * reach;
-		for (int x = centre.getX() - reach; x < centre.getX() + reach; x += 16) {
-			for (int z = centre.getZ() - reach; z < centre.getZ() + reach; z += 16) {
-				level.getChunk(x >> 4, z >> 4);
+		// The chunks are held, and read through the held objects: a chunk that nothing keeps loaded can unload while the rest load, and
+		// a column of an unloaded chunk reads as the void, 68 blocks below the ground (#393). The sweep takes every chunk the ring touches.
+		int minChunkX = (centre.getX() - reach) >> 4;
+		int minChunkZ = (centre.getZ() - reach) >> 4;
+		LevelChunk[][] chunks = new LevelChunk[((centre.getX() + reach - 1) >> 4) - minChunkX + 1][((centre.getZ() + reach - 1) >> 4) - minChunkZ + 1];
+		for (int i = 0; i < chunks.length; i++) {
+			for (int j = 0; j < chunks[0].length; j++) {
+				chunks[i][j] = level.getChunk(minChunkX + i, minChunkZ + j);
 			}
 		}
+		Function<BlockPos, BlockState> blockAt = pos -> chunks[(pos.getX() >> 4) - minChunkX][(pos.getZ() >> 4) - minChunkZ].getBlockState(pos);
 		List<String> problems = new ArrayList<>();
+		List<TestRegions.Region> regions = TestRegions.in(level, centre.getX() - reach, centre.getX() + reach - 1, centre.getZ() - reach, centre.getZ() + reach - 1);
 		int[][] surface = new int[size][size];
 		for (int i = 0; i < size; i++) {
 			for (int j = 0; j < size; j++) {
@@ -484,10 +495,10 @@ public class ColonyPlacementTest {
 				int z = centre.getZ() - reach + j;
 				boolean onPad = x >= centre.getX() - half && x < centre.getX() + half && z >= centre.getZ() - half && z < centre.getZ() + half;
 				boolean edge = onPad && (x == centre.getX() - half || x == centre.getX() + half - 1 || z == centre.getZ() - half || z == centre.getZ() + half - 1);
-				if (edge && level.getBlockState(new BlockPos(x, centre.getY(), z)).isAir()) {
+				if (edge && blockAt.apply(new BlockPos(x, centre.getY(), z)).isAir()) {
 					problems.add("no pad ground at " + x + " " + z);
 				}
-				surface[i][j] = onPad ? centre.getY() : level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - 1;
+				surface[i][j] = onPad ? centre.getY() : chunks[(x >> 4) - minChunkX][(z >> 4) - minChunkZ].getHeight(Heightmap.Types.WORLD_SURFACE, x & 15, z & 15);
 			}
 		}
 		int checked = 0;
@@ -497,10 +508,10 @@ public class ColonyPlacementTest {
 				int z = centre.getZ() - reach + j;
 				checked++;
 				if (i + 1 < size && Math.abs(surface[i][j] - surface[i + 1][j]) > STEP) {
-					problems.add("step of " + (surface[i + 1][j] - surface[i][j]) + " at " + x + " " + z + " going east");
+					problems.add(step(blockAt, regions, surface, x, z, i, j, i + 1, j, "east"));
 				}
 				if (j + 1 < size && Math.abs(surface[i][j] - surface[i][j + 1]) > STEP) {
-					problems.add("step of " + (surface[i][j + 1] - surface[i][j]) + " at " + x + " " + z + " going south");
+					problems.add(step(blockAt, regions, surface, x, z, i, j, i, j + 1, "south"));
 				}
 			}
 		}
@@ -508,6 +519,21 @@ public class ColonyPlacementTest {
 			problems.add("no column of the margin was checked");
 		}
 		finish(helper, problems.size() > 5 ? problems.subList(0, 5) : problems);
+	}
+
+	/**
+	 * A step between the margin's neighbouring columns, with the surface block of each side and the test regions that hold each
+	 * column, so that a cell another test carved is named by its owner (see #393).
+	 */
+	private static String step(Function<BlockPos, BlockState> blockAt, List<TestRegions.Region> regions, int[][] surface, int x, int z, int i, int j, int nextI, int nextJ, String going) {
+		int nextX = x + nextI - i;
+		int nextZ = z + nextJ - j;
+		BlockPos here = new BlockPos(x, surface[i][j], z);
+		BlockPos next = new BlockPos(nextX, surface[nextI][nextJ], nextZ);
+		return "step of " + (surface[nextI][nextJ] - surface[i][j]) + " at " + x + " " + z + " going " + going
+				+ ": " + BuiltInRegistries.BLOCK.getKey(blockAt.apply(here).getBlock()) + " at " + here.toShortString() + " ("
+				+ TestRegions.ownerOfColumn(regions, x, z) + "), then " + BuiltInRegistries.BLOCK.getKey(blockAt.apply(next).getBlock()) + " at "
+				+ next.toShortString() + " (" + TestRegions.ownerOfColumn(regions, nextX, nextZ) + ")";
 	}
 
 	/**
