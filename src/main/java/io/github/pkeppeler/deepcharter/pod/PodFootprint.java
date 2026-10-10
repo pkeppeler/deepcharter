@@ -12,8 +12,8 @@ record PodFootprint(int lowX, int lowZ, int width, int height, int feetY) {
 
 	static PodFootprint of(PodEntity pod) {
 		Chassis chassis = pod.chassis();
-		int width = Mth.ceil(chassis.width());
-		int height = Mth.ceil(chassis.height());
+		int width = chassis.boreWidth();
+		int height = chassis.boreHeight();
 		return new PodFootprint(Mth.floor(pod.getX() - width / 2.0 + 0.5), Mth.floor(pod.getZ() - width / 2.0 + 0.5), width, height,
 				Mth.floor(pod.getY() + EPSILON));
 	}

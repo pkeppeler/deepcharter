@@ -36,6 +36,7 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
@@ -48,7 +49,6 @@ import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.PartLabel;
-import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 
 /**
@@ -62,7 +62,6 @@ public class PodComponentsTest {
 	private static final String ATTACHMENTS_KEY = "fabric:attachments";
 	private static final String BOOSTED = "pod-components-test-boosted";
 	private static final AtomicInteger CHARTERS = new AtomicInteger();
-	private static final UpgradeTuning TUNING = UpgradeTuning.DEFAULT;
 
 	static {
 		// Runs in the default phase, which is before CAP: a cap must still limit what this adds. Marked pods only.
@@ -202,7 +201,7 @@ public class PodComponentsTest {
 		CharterId charter = charter(helper);
 		PodEntity pod = ownedPod(helper, charter);
 		try {
-			install(helper, pod, ComponentTrack.HULL, TUNING.tierCap("mole"), charter);
+			install(helper, pod, ComponentTrack.HULL, Chassis.MOLE.tierCap(), charter);
 			expectEqual(helper, "tier 2 hull", 300f, PodStats.of(pod).maxHull());
 			expectEqual(helper, "tier 2 hull effective tier", 2f, PodComponents.effectiveTier(pod, ComponentTrack.HULL));
 			// The cap limits parts above it, not what other features add to a stat that no such part touches.

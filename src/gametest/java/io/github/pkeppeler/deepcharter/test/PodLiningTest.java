@@ -21,6 +21,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
@@ -221,6 +222,28 @@ public class PodLiningTest {
 			}
 			helper.succeed();
 		});
+	}
+
+	/** #382: the pilot sits with its feet below the pod's, in the cell under the pod; that is not in the way of the lining, but a stranger there is. */
+	@GameTest
+	public void aRiderOfThePodDoesNotBlockTheCellUnderItButAStrangerDoes(GameTestHelper helper) {
+		rock(helper);
+		BlockPos next = new BlockPos(4, 1, 4);
+		helper.setBlock(next, Blocks.LAVA);
+		Rig rig = seat(helper, "Seated pilot", 20);
+		AABB cell = new AABB(helper.absolutePos(next));
+		if (!rig.pilot.player().getBoundingBox().intersects(cell)) {
+			throw failure(helper, "the pilot's feet should be in the cell under the pod, %s, or this test shows nothing", rig.pilot.player().getBoundingBox());
+		}
+		if (!PodLining.cellsToLine(rig.pod).contains(helper.absolutePos(next))) {
+			throw failure(helper, "the pod's own pilot is in the cell under it, and that cell is still lined: %s", PodLining.cellsToLine(rig.pod));
+		}
+		MockPlayer stranger = MockPlayers.join(helper, "Stranger");
+		stranger.teleportTo(helper.getLevel(), helper.absoluteVec(Vec3.atBottomCenterOf(next)), 0f, 0f);
+		if (PodLining.cellsToLine(rig.pod).contains(helper.absolutePos(next))) {
+			throw failure(helper, "a stranger stands in the cell under the pod, so it is not lined: %s", PodLining.cellsToLine(rig.pod));
+		}
+		helper.succeed();
 	}
 
 	@GameTest(maxTicks = LINING_BUDGET_TICKS)

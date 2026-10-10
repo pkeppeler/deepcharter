@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -10,6 +11,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
@@ -28,6 +30,7 @@ import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.OddPods;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -333,6 +336,32 @@ public class PodBraceTest {
 				helper.succeed();
 			}
 		});
+	}
+
+	/** The brace is one tier for every chassis, and the warning and the patch read the pod's own footprint and stats, whatever its size. */
+	@GameTest
+	public void theBraceFitsAndWorksOnEveryChassis(GameTestHelper helper) {
+		ServerLevel one = layer(helper, 1);
+		for (EntityType<PodEntity> type : List.of(PodRegistry.POD, PodRegistry.PROSPECTOR, OddPods.TYPE, OddPods.TALL_TYPE)) {
+			PodEntity pod = type.create(one, EntitySpawnReason.COMMAND);
+			pod.setPos(100, 10, 3800);
+			ScannerPods.fit(helper.getLevel().getServer(), owner(helper).player(), pod, ComponentTrack.BRACE, 1);
+			pod.setHull(5f);
+			pod.setOnGround(true);
+			if (PodBrace.tier(pod) != 1) {
+				throw failure(helper, "the %s works the brace at tier 1, it works it at %s", pod.chassis().id(), PodBrace.tier(pod));
+			}
+			ore(helper, pod, OreType.IRONIUM);
+			if (PodBrace.warning(pod).isEmpty()) {
+				throw failure(helper, "the %s with 5 hull above the crust is warned", pod.chassis().id());
+			}
+			expectPatching(helper, pod, PodBrace.Patching.WORKING, "for a hurt " + pod.chassis().id());
+			tick(pod, PATCH);
+			if (pod.hull() != 5f + PodBraceTuning.DEFAULT.hullPerOre() || pod.cargoUsed() != 0) {
+				throw failure(helper, "the %s is patched: hull %s, %s ore", pod.chassis().id(), pod.hull(), pod.cargoUsed());
+			}
+		}
+		helper.succeed();
 	}
 
 	@GameTest

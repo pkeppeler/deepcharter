@@ -166,7 +166,7 @@ public class PodEntity extends Entity {
 
 	@Override
 	protected void readAdditionalSaveData(ValueInput input) {
-		Chassis saved = Chassis.byId(required(input, CHASSIS_KEY, Codec.STRING));
+		Chassis saved = PodRegistry.chassisById(required(input, CHASSIS_KEY, Codec.STRING));
 		if (saved != chassis) {
 			// The entity type decides the hitbox, so the type's chassis wins.
 			DeepCharter.LOGGER.error("Pod {} was saved as a {} but is a {}: it keeps the type's chassis", getUUID(), saved.id(), chassis.id());
