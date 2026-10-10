@@ -134,7 +134,9 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
  *
  * <p>Two runs of one commit give the same stills (tools/diff-stills compares them): the world is pinned by {@link EvidenceWorld#pin} (seed,
  * clock, weather, random ticks, mob spawning, particles) and every still goes through {@link #settle} first, which clears the mobs
- * and the particles, parks the cursor off the window, and waits until the chunks have rendered. See docs/design/skins.md.
+ * and the particles, parks the cursor off the window, and waits until the chunks have rendered. {@link #pinTheClient} holds still
+ * what moves on client ticks (lava, light flicker, the HUD vignette, the rider's arm, entity animation), and the charter has a fixed
+ * id so that the pods are painted the same colour. See .claude/skills/deepcharter-conventions/evidence.md for what still differs.
  *
  * <p>The order: handbook and item gallery, the surface by day, dusk and night, the colony, the terminal screens, the pods by day,
  * a dark room (pods lit and unlit, the lampless figure), the HUDs, layer 1, the breach into layer 2, layer 2 and its structures.
