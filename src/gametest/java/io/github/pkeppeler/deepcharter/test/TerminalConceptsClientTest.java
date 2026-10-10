@@ -18,6 +18,7 @@ import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.hangar.HangarScreen;
 import io.github.pkeppeler.deepcharter.client.repair.RepairStationScreen;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
+import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
@@ -38,6 +39,8 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
  */
 public class TerminalConceptsClientTest implements FabricClientGameTest {
 	private static final List<String> PANELS = List.of(TestPacks.TERMINAL_SLAB, TestPacks.TERMINAL_CONSOLE, TestPacks.TERMINAL_RACK, TestPacks.TERMINAL_HATCH);
+	/** The height the tallest screen (the upgrade terminal, the repair station) needs for its content. */
+	private static final int MIN_CONTENT_HEIGHT = 192;
 	private static final String SAMPLE = "ORE PROCESSOR ONLINE 0123456789";
 	private static final List<String> FONTS = List.of(TestPacks.TERMINAL_FONT_UNSCII, TestPacks.TERMINAL_FONT_VT323, TestPacks.TERMINAL_FONT_DEPARTURE);
 
@@ -107,19 +110,23 @@ public class TerminalConceptsClientTest implements FabricClientGameTest {
 	private static Object check(Screen screen, String when, List<String> problems) {
 		PanelLook.Insets content = PanelLook.current().content();
 		Box rect = new Box(content.left(), content.top(), screen.width - content.left() - content.right(), screen.height - content.top() - content.bottom());
+		if (rect.height() < MIN_CONTENT_HEIGHT) {
+			problems.add(when + ": the content is " + rect.height() + " high, the screens need " + MIN_CONTENT_HEIGHT);
+		}
 		List<Button> buttons = ClientChecks.buttons(screen);
+		boolean pips = CrtDraw.pipsFit(PanelLook.current(), Minecraft.getInstance().font, screen);
 		for (Button button : buttons) {
 			Box box = Box.of(button);
 			if (box.x() < rect.x() || box.y() < rect.y() || box.right() > rect.right() || box.bottom() > rect.bottom()) {
 				problems.add(when + ": " + ClientChecks.labelOf(button) + " at " + box + " leaves the content " + rect);
 			}
-			// The label stays 2 pixels clear of both edges of its button, where the panel starts it (a pip is dropped, not the end of the label, when the label is long).
+			// The label stays 2 pixels clear of both edges of its button, where the panel starts it (the screen draws a pip on every button or on none).
 			int width = CrtText.width(Minecraft.getInstance().font, button.getMessage().getString());
-			int start = PanelLook.current().labelStart(button.getWidth(), width);
+			int start = PanelLook.current().labelStart(button.getWidth(), width, pips);
 			if (start < PanelLook.LABEL_MARGIN || start + width > button.getWidth() - PanelLook.LABEL_MARGIN) {
 				problems.add(when + ": " + ClientChecks.labelOf(button) + " is " + width + " wide, starting " + start + " in a button " + button.getWidth() + " wide");
 			}
-			ClientChecks.buttonOverlaps(button, buttons).ifPresent(message -> problems.add(when + ": " + message));
+			ClientChecks.widgetOverlaps(button, buttons).ifPresent(message -> problems.add(when + ": " + message));
 		}
 		for (String[] line : textLines(screen)) {
 			int x = Integer.parseInt(line[1]);

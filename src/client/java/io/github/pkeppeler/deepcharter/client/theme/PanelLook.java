@@ -110,19 +110,20 @@ public record PanelLook(
 	}
 
 	/**
-	 * Whether a button {@code buttonWidth} wide draws its pip beside a label {@code labelWidth} wide. Only a left-set label has one, and a
-	 * label that would run past the edge with the pip beside it has none: a long label is never cut off to keep the pip.
+	 * Whether a button {@code buttonWidth} wide has room for its pip beside a label {@code labelWidth} wide. Only a left-set label has a pip.
+	 * A screen draws pips on all of its buttons or on none ({@link io.github.pkeppeler.deepcharter.client.ui.CrtDraw#pipsFit}), so one button
+	 * that cannot fit its pip never leaves the others looking odd.
 	 */
 	public boolean showsPip(int buttonWidth, int labelWidth) {
 		return pipSize > 0 && buttonAlign == 1 && pipX + pipSize + buttonPad + labelWidth + LABEL_MARGIN <= buttonWidth;
 	}
 
-	/** The x, from a button's left edge, where its label starts. */
-	public int labelStart(int buttonWidth, int labelWidth) {
+	/** The x, from a button's left edge, where its label starts; {@code pips} says whether the screen draws pips. */
+	public int labelStart(int buttonWidth, int labelWidth, boolean pips) {
 		if (buttonAlign == 0) {
 			return (buttonWidth - labelWidth) / 2;
 		}
-		return showsPip(buttonWidth, labelWidth) ? pipX + pipSize + buttonPad : buttonPad;
+		return pips && pipSize > 0 ? pipX + pipSize + buttonPad : buttonPad;
 	}
 
 	private static Identifier sprite(String path) {

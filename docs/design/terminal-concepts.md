@@ -20,14 +20,18 @@ The rule is that options differ in shape and structure, never in colour alone. T
 
 | | A. Slab | B. Console | C. Rack | D. Hatch |
 |---|---|---|---|---|
-| **Panel architecture** | A thick frame all round with a deep-set CRT | A hood over the CRT with chamfered shoulders, vent cheeks, and a row of keys under it | A 19-inch rack ear on the left, a column of readouts on the right, a patch bay under | A bulkhead door: a porthole CRT with rounded corners, a hatch dog column down each side |
-| **Content area** | 359 x 192 | 371 x 192 | 347 x 192 | 355 x 196 |
+| **Panel architecture** | A thick frame all round with a deep-set CRT | A hood over the CRT with chamfered shoulders, vent cheeks, and a row of keys under it | A 19-inch rack ear on the left, a column of readouts on the right, a patch bay under | A bulkhead door: a round-cornered porthole CRT with a rolled steel ring, set to the right of a piano hinge with bolted straps, and a latch edge with dogs on the right |
+| **Content area** | 359 x 192 | 371 x 192 | 347 x 192 | 347 x 192 |
 | **Button form** | Chunky push-button, extruded 3 rows | Keycap, pressed when hovered | Toggle switch with a lamp, lever down when hovered | Rotary selector, knob turns when hovered |
-| **Label** | Centred, green | Centred, dark ink on a cream key | Set left after the toggle, cream | Set left after the knob, stencil white |
-| **Nameplate and dressing** | Chrome plate top right; a toggle row, a serial plate and a warning triangle on the bottom edge | Chrome plate on the hood; a gauge, a traffic-light lamp stack and a CAUTION label | Chrome plate top left; three amber seven-segment readouts and a patch bay | Chrome plate at the bottom; stencils, a hazard-striped PRESSURE DOOR label and hatch dogs |
+| **Label** | Centred, green | Centred, dark ink on a cream key | Set left after the toggle, cream (no toggle on a screen where a label is too long for one) | Set left after the knob, stencil white (no knob on a screen where a label is too long for one) |
+| **Nameplate and dressing** | Chrome plate top right; a toggle row, a serial plate and a warning triangle on the bottom edge | Chrome plate on the hood; a gauge, a traffic-light lamp stack and a CAUTION label | Chrome plate top left; three amber seven-segment readouts and a patch bay | Chrome plate at the bottom between a stencil and a hazard-striped PRESSURE DOOR label; a pressure gauge and a dogging wheel in the hinge-side corners |
 | **Home font** | Unscii | VT323 | Departure Mono | Unscii |
 
-The content area is the room a screen has for text and buttons. The screens were drawn for 427 x 240 less 24 on every side, which is 379 x 192, and several need all 192 of the height. So each panel takes at most 48 pixels from the top and bottom together. Width had room to spare, and that is where the shapes differ most.
+The content area is the room a screen has for text and buttons. The screens were drawn for 427 x 240 less 24 on every side, which is 379 x 192, and several need all 192 of the height. So each panel takes at most 48 pixels from the top and bottom together. Width had room to spare, and that is where the shapes differ most: A is even all round, B is a hood over a key deck, C has a rack ear on the left and instruments on the right, and D is a door that is heavy on the hinge side.
+
+**Surface.** All four are built the same way, so the comparison is about shape: a light edge on the top left and a dark edge on the bottom right of every part (a bevel of three tones, not one line), a soft shadow where the bezel meets the glass, rivets and screws that are domes with a highlight and a drop shadow, brushed or cast grain, grime that runs below the hardware, chipped paint on the corners, and buttons that sink when hovered (the face goes down, the side gets shorter).
+
+A screen draws the lever, lamp or knob on every button or on none (C and D). If one label on a screen is too long to sit beside it, no button on that screen has one, because one bare button among buttons that have one looks like a fault. The upgrade terminal's track buttons are 104 pixels wide, so it is the screen that has none.
 
 ## A. Slab
 
@@ -63,9 +67,9 @@ The content area is the room a screen has for text and buttons. The screens were
 
 **Shape.** A computer console from the 1960s and 1970s: the CRT sits under a louvred hood that casts a shadow onto the glass, the shoulders are chamfered, the cheeks are vent stacks, and a row of cream keycaps runs along the bottom edge like the front of a keyboard. The content area is the widest of the four (371 pixels).
 
-**Buttons.** Keycaps. A cream top, a darker side and a shadow, with dark ink for the label. Hovered, the key is pressed: it sinks a pixel and its top takes a green tint. Disabled, it goes dark brown.
+**Buttons.** Keycaps. A cream top, a darker side and a shadow, with dark ink for the label. Hovered, the key is pressed: it sinks a pixel and its top takes a green tint. Disabled, it goes dark with pale ink, so that the label stays readable on the 12-pixel rows of the upgrade terminal.
 
-**Nameplate and dressing.** A chrome plate with the bull's head and "H. COLOM & CO." centred on the hood. A round gauge with a red needle on the left cheek, a traffic-light lamp stack on the right cheek (red off, amber and green on), and a yellow CAUTION label on the hood.
+**Nameplate and dressing.** A chrome plate with the bull's head and "COLOM & CO." centred on the hood. A round gauge with a red needle on the left cheek, a traffic-light lamp stack on the right cheek (red off, amber and green on), and a yellow CAUTION label on the hood.
 
 **References** (read on 2026-10-10):
 
@@ -90,9 +94,9 @@ The content area is the room a screen has for text and buttons. The screens were
 
 **Shape.** A rack-mount instrument panel. A brushed aluminium rack ear with slotted mounting holes runs down the left. A black column down the right holds three amber seven-segment readouts, FUND, FUEL and HULL. Under the glass is a patch bay with eight jacks and three cable glands. The CRT is the smallest of the four (347 x 192), because the instruments take the room.
 
-**Buttons.** Toggle switches. Each button is a black plate with a silver edge and a 12-pixel lever at the left. Idle, the lever is up and its lamp is dark red. Hovered, the lever is down, the lamp is green and the edge turns brass. The label is set to the left, in cream. A button whose label would not fit beside the lever (the long rows of the upgrade terminal, one of the contract terminal's apply buttons) draws no lever, so no label is ever cut off to keep one.
+**Buttons.** Toggle switches. Each button is a black plate with a silver edge and a 12-pixel lever at the left. Idle, the lever is up and its lamp is dark red. Hovered, the lever is down, the lamp is green and the edge turns brass. The label is set to the left, in cream. On a screen where a label does not fit beside the lever (the upgrade terminal, and the contract terminal's long apply buttons), no button draws one.
 
-**Nameplate and dressing.** A chrome plate with the bull's head and "COLOM & CO." in the top left. The readouts show 0420, 0075 and 0100 in this concept. They are pictures; the build would feed them from the charter's account, the pod's fuel and its hull (see [the costs](#what-each-costs-to-build)).
+**Nameplate and dressing.** A chrome plate with the bull's head and "COLOM & CO." in the top left. The readouts are pictures and show no data: the four digits are unlit (a dim 8888 with a lit bar in the middle of each) and both lamps are dark, so no one reads them as live. The build would feed them from the charter's account, the pod's fuel and its hull (see [the costs](#what-each-costs-to-build)). **Live readouts are a build cost, not part of this concept.**
 
 **References** (read on 2026-10-10):
 
@@ -116,19 +120,19 @@ The content area is the room a screen has for text and buttons. The screens were
 
 ![D. Hatch: the hangar console](https://github.com/pkeppeler/deepcharter/blob/pr-media/408/hatch-unscii-hangar.png?raw=true)
 
-**Shape.** A bulkhead door with a porthole. The glass has rounded corners and a rolled steel ring with a black gasket round it. Down each side runs a column of four hatch dogs, the lugs that lock a pressure door. The plate round them is weld-seamed and bolted, with rust run from the bolts. It is the one design whose glass is not a rectangle.
+**Shape.** A bulkhead door, drawn so that it is not a frame round a window. The glass is a porthole: a round-cornered window in a rolled steel ring, with a black gasket inside it. It sits to the right of the middle, because the left of the door is the hinge side: a piano hinge runs the length of the door with a bolted strap leaf at each knuckle, a pressure gauge sits at the top and a dogging wheel at the bottom. The right edge is the latch side: a latch bar with a dog on it at each knuckle's height. The top is a thin riveted band, and the bottom carries the stencils and the nameplate. The panel is 46 pixels wide on the left and 22 on the right, so the content is shifted right of centre, which A, B and C are not.
 
-**Buttons.** Rotary selectors. Each button is an engraved grey plate with a 12-pixel knob at the left. The knob's pointer sits at about ten o'clock. Hovered, the pointer turns to two o'clock and the knob's rim and the plate's edge go yellow. The label is stencil white, set to the left. As in C, a long label drops the knob, and so does the hangar's buy button.
+**Buttons.** Rotary selectors. Each button is an engraved grey plate with a 12-pixel knob at the left, a knurled skirt and a pointer at about ten o'clock. Hovered, the pointer turns to two o'clock and the knob's rim and the plate's edge go yellow. The label is stencil white, set to the left. On a screen where a label is too long to sit beside a knob (the upgrade terminal), no button has one.
 
-**Nameplate and dressing.** A chrome plate with the bull's head and "COLOM & CO." at the bottom centre, a stencilled "H-04 DECK 3" at the bottom left, and a hazard-striped "PRESSURE DOOR" label at the bottom right.
+**Nameplate and dressing.** A chrome plate with the bull's head and "COLOM & CO." at the bottom, a stencilled "H-04  DECK 3" on its left and a hazard-striped "PRESSURE DOOR" label on its right. The gauge and the wheel are decals in the two corners of the hinge side.
 
 **References** (read on 2026-10-10):
 
 - A [porthole](https://en.wikipedia.org/wiki/Porthole), also called a "bull's-eye window", is "a circular glass disk, known as a portlight, encased in a metal frame that is bolted securely into the side of a ship's hull". The bull's eye is also, by luck, the Company's animal.
 - [Alien](https://en.wikipedia.org/wiki/Alien_(film)): the sets used "large transistors and low-resolution computer screens to give the ship a 'used', industrial look and make it appear as though it was constructed of 'retrofitted old technology'". Ron Cobb drew stencilled symbols and colour-coded signs, which he called the Semiotic Standard, "to create a sense of being lost in machines", and Ridley Scott's metaphor for the ship was "a Gothic castle or World War II submarine".
-- Motherload's cogs at the corners: the dogs are cogs in the same role, drawn as steel lugs.
+- Motherload's cogs at the corners: the dogging wheel is a cog in the same role.
 
-**We take:** a glass that is not a rectangle; stencils and colour-coded labels as the dressing; a button whose pointer moves.
+**We take:** a glass that is not a rectangle and a panel that is not symmetric; stencils and colour-coded labels as the dressing; a button whose pointer moves.
 
 **Against Motherload and the lore.** The strongest for the lore: a pressure door says "something is on the other side", and the stencils say that the Company's workers were trusted with a great deal and told very little. It is the weakest against Motherload: a shop that looks like an airlock is not a shop. It risks making every terminal feel like a door, and the screens that are used all the time (the processor, the repair station) may want the lighter touch of A.
 
@@ -159,9 +163,7 @@ How each looks in the game depends on its size. The text of every screen is wrap
 | VT323 | 14 | 6 px (5.6 by the font, and the game rounds a glyph's advance) | 7.8 px | Fits as it is. A tall, thin face. |
 | Departure Mono | bitmap, cap height 7 | 6 px | 7 px | Fits. Its native size is 11, 7 px a letter, 27% wider than today's text. Drawn into a bitmap font, see below. |
 
-**Departure Mono does not load as released.** The game's `ttf` font provider refuses a file with CFF outlines (`Font is not in TTF format, was CFF`), and Departure Mono is released only as CFF (`.otf`, `.woff`, `.woff2`). So `tools/font_bitmap.py` reads the `.otf` as data (it parses the CFF charstrings itself, and never runs anything from the download), draws each glyph with its cap height at 7 pixels, the game's own, and writes a PNG atlas and a bitmap font: `textures/font/departuremono.png` and `font/terminal.json`. The OFL allows that if the copyright and licence travel with it, and the font declares no Reserved Font Name; `notes.txt` says what was done. The result is a little soft, because it is the 11-pixel font drawn at 0.875 of its size. If Departure Mono is picked, the build must either keep this atlas or convert the font to TrueType outlines properly (a tool such as fontTools; it would need an audit first), and the pixel-perfect size is then a decision about layout, as it is for Unscii.
-
-Unscii at its native size is the font that would need a layout rework: the ore processor's order title "RESTORE THE FOUNDER'S HANDS" would be 216 px in a 200 px button, and in a test shot at that size it ran into the price column. At the size used here it needs none, and it reads as a stencilled bitmap, which is the look it is chosen for.
+**Departure Mono does not load as released.** The game's `ttf` font provider refuses a file with CFF outlines (`Font is not in TTF format, was CFF`), and Departure Mono is released only as CFF (`.otf`, `.woff`, `.woff2`). So `tools/font_bitmap.py` reads the `.otf` as data (it parses the CFF charstrings itself, and never runs anything from the download), draws each glyph with its cap height at 7 pixels, the game's own, and writes a PNG atlas and a bitmap font: `textures/font/departuremono.png` and `font/terminal.json`. The OFL allows that if the copyright and licence travel with it, and the font declares no Reserved Font Name; `notes.txt` says what was done. The result is a little soft, because it is the 11-pixel font drawn at 0.875 of its size. If Departure Mono is picked, the build keeps this atlas or converts the font to TrueType outlines (a tool such as fontTools; it needs an audit first).
 
 The same hangar console in every font, in each panel (the home font of a panel is the one its other stills use: A Unscii, B VT323, C Departure Mono, D Unscii):
 
@@ -182,16 +184,16 @@ All four share the code this PR adds: the `panel` theme area, the content insets
 
 | | A. Slab | B. Console | C. Rack | D. Hatch |
 |---|---|---|---|---|
-| **Sprites** | 9 files, 5.9 KB: frame 120 x 90, glass 32 x 32, 3 buttons 14 x 14, nameplate and 3 decals | 9 files, 4.4 KB: frame 108 x 98, 3 keycaps, nameplate and 3 decals | 13 files, 5.8 KB: frame 132 x 92, 3 buttons 10 x 10, 3 lever pips, nameplate and 4 decals | 13 files, 6.5 KB: frame 124 x 96, glass 40 x 40, 3 buttons 12 x 12, 3 knob pips, nameplate and 4 decals |
-| **Java beyond this PR** | None | None | A seven-segment readout that draws the account, fuel and hull live (about 60 lines, and three data sources on screens where the pod is not known); the build must also say what the readout shows on a screen that has no pod | None |
-| **Risk** | Low. | Low. The cream keys may need to be less bright to suit the lore. | Medium. Live numbers must agree with the server's, and the column is a second thing to keep right at other GUI sizes. | Medium. The two 28 x 176 dog columns are fixed-size, so a GUI shorter than 240 pixels clips them; they must become a tiled strip. The rounded glass only works if the content stays inside its corners. |
-| **Other GUI sizes** | The frame is nine-slice and scales. The decals are anchored to the edges. | Same. | Same. The readouts are anchored to the right edge. | The frame scales; the dogs do not (see Risk). |
+| **Sprites** | 9 files, 15.5 KB: frame 120 x 90, glass 32 x 32, 3 buttons 16 x 16, nameplate and 3 decals | 9 files, 10.6 KB: frame 108 x 98, 3 keycaps, nameplate and 3 decals | 13 files, 10.0 KB: frame 132 x 92, 3 buttons 12 x 12, 3 lever pips, nameplate and 4 decals | 13 files, 20.0 KB: frame 152 x 110, glass 32 x 32, 3 buttons 12 x 12, 3 knob pips, nameplate and 4 decals |
+| **Java beyond this PR** | None | None | **Live readouts.** The sprites here show no data. The build must add a seven-segment readout that draws the account, fuel and hull (about 60 lines, and three data sources on screens where the pod is not known), light the lamps from real state, and say what the readout shows on a screen that has no pod | None |
+| **Risk** | Low. | Low. The cream keys may need to be less bright to suit the lore. | Medium. Live numbers must agree with the server's, and the column is a second thing to keep right at other GUI sizes. | Medium. The porthole's corner arcs are part of the frame's corner cells, so the content must stay 6 pixels inside the glass edge or its corners are clipped, and a GUI shorter than 240 pixels has less room for the hinge and the latch edge (they tile, but the wheel and the gauge are fixed). |
+| **Other GUI sizes** | The frame is nine-slice and scales. The decals are anchored to the edges. | Same. | Same. The readouts are anchored to the right edge. | The frame scales and the hinge and the dogs tile; the wheel and the gauge are anchored to the left edge. |
 
 Whichever panel is picked, the same work remains:
 
 - The fuel pump and the generic terminal screens already use the panel code, but they are not in the stills. The build adds them to the evidence.
 - The handbook keeps paper, with a paper texture and fonts, as decided. That is a separate piece of work, not part of any panel.
-- The upgrade terminal's track list closes up to fit ten tracks and makes its buttons 11 pixels high. A panel's button sprites must stay readable at that height; a chunky 3-row extrusion (A) and a 10-pixel keycap (B) both are, barely.
+- **Row pitch.** The upgrade terminal's track list closes up to fit its eleven tracks: the pitch is 16 pixels at most and 11 at least, and a button is 2 pixels less than the pitch. In these stills the pitch is 14 and the buttons are 12 pixels high; at the floor they would be 9. A panel's button sprite must be legible at 9 pixels: a face of at least 5 rows (A's 3-row extrusion and B's keycap leave about 5), and a label that contrasts with it (B's disabled keys are pale ink on a dark face for this). C and D draw a 12-pixel pip, which is taller than a 9-pixel button, so the build gives them a smaller pip or none at that pitch.
 - A font chosen at a larger size than the game's needs a layout pass. Unscii at its native size needs the most (see Fonts).
 - A `design-tour` before and after, because every terminal still in the tour changes.
 
@@ -218,7 +220,7 @@ To change a design, edit `tools/terminal_concepts.py` and run it. `python3 tools
 
 Which would you build?
 
-1. **A panel:** A. Slab, B. Console, C. Rack or D. Hatch.
+1. **A panel:** A. Slab, B. Console, C. Rack or D. Hatch. The Rack's readouts are pictures that show no data; making them live is a build cost ([the costs](#what-each-costs-to-build)).
 2. **A font:** Unscii, VT323 or Departure Mono. A font pack goes over any panel, so this is a separate choice.
 3. **Or a mix.** The frame, the buttons and the decals are separate sprite slots, so, for example, "the Rack's frame with the Slab's push-buttons" is a matter of copying files and merging two `panel.json` files. Say which parts of which.
 

@@ -202,20 +202,25 @@ public class ThemeLooksTest {
 		helper.succeed();
 	}
 
-	/** A left-set label has a pip beside it unless it would then run past the edge: the pip is dropped, never the end of the label. */
+	/**
+	 * A label has room for its pip when it would not then run past the edge. A screen draws pips on all its buttons or on none, so the label
+	 * starts after the pip when the screen has them and at the pad when it has not.
+	 */
 	@GameTest
-	public void aButtonDropsItsPipWhenTheLabelWouldNotFit(GameTestHelper helper) {
+	public void aLabelFitsBesideItsPipOrTheScreenDrawsNone(GameTestHelper helper) {
 		PanelLook left = PanelLook.of(area("panel", "{ \"enabled\": 1, \"buttonAlign\": 1, \"buttonPad\": 4, \"pipSize\": 12, \"pipX\": 2 }"));
-		if (!left.showsPip(104, 60) || left.labelStart(104, 60) != 18) {
-			throw fail(helper, "a short label sits after the pip at 18, got " + left.showsPip(104, 60) + " and " + left.labelStart(104, 60));
+		if (!left.showsPip(104, 60) || left.labelStart(104, 60, true) != 18) {
+			throw fail(helper, "a short label sits after the pip at 18, got " + left.showsPip(104, 60) + " and " + left.labelStart(104, 60, true));
 		}
-		if (left.showsPip(104, 96) || left.labelStart(104, 96) != 4) {
-			throw fail(helper, "a 96 pixel label does not fit beside the pip in a 104 pixel button, so it starts at the pad, got " + left.showsPip(104, 96)
-					+ " and " + left.labelStart(104, 96));
+		if (left.showsPip(104, 96)) {
+			throw fail(helper, "a 96 pixel label does not fit beside the pip in a 104 pixel button");
+		}
+		if (left.labelStart(104, 60, false) != 4) {
+			throw fail(helper, "on a screen with no pips a label starts at the pad, got " + left.labelStart(104, 60, false));
 		}
 		PanelLook centred = PanelLook.of(area("panel", "{ \"enabled\": 1, \"buttonAlign\": 0, \"pipSize\": 12 }"));
-		if (centred.showsPip(104, 20) || centred.labelStart(104, 60) != 22) {
-			throw fail(helper, "a centred label has no pip and starts in the middle, got " + centred.showsPip(104, 20) + " and " + centred.labelStart(104, 60));
+		if (centred.showsPip(104, 20) || centred.labelStart(104, 60, true) != 22) {
+			throw fail(helper, "a centred label has no pip and starts in the middle, got " + centred.showsPip(104, 20) + " and " + centred.labelStart(104, 60, true));
 		}
 		helper.succeed();
 	}

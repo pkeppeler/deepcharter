@@ -149,6 +149,8 @@ class Cff:
             state["x"], state["y"] = x3, y3
 
         def run(code: bytes, depth=0):
+            if depth > 10:
+                raise ValueError("subr nesting too deep")
             i = 0
             while i < len(code):
                 b = code[i]

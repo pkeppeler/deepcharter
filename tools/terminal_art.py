@@ -123,6 +123,62 @@ class Img:
                         self.set(xx + k, yy, shade(c, tone))
                 xx += run
 
+    def tint(self, x, y, w, h, c):
+        """Blends the translucent colour `c` over the opaque pixels of a rectangle only: shadow and grime never fill a hole."""
+        for yy in range(y, y + h):
+            for xx in range(x, x + w):
+                if self.get(xx, yy)[3] == 255:
+                    self.over(xx, yy, c)
+
+    def shade_edges(self, x, y, w, h, depth, top=0, left=0, bottom=0, right=0):
+        """Darkens (a positive alpha, 0 to 255) or lightens (a negative one) the `depth` pixels along each edge of a rectangle, strongest at the edge: a soft
+        shadow or light that a hard bevel line cannot give. Each side has its own strength, so the light can come from the top left."""
+        for i in range(depth):
+            fall = (1 - i / depth) ** 1.5
+            for side, a in (("t", top), ("l", left), ("b", bottom), ("r", right)):
+                if not a:
+                    continue
+                c = (0, 0, 0, round(a * fall)) if a > 0 else (255, 255, 255, round(-a * fall))
+                if side == "t":
+                    self.tint(x, y + i, w, 1, c)
+                elif side == "b":
+                    self.tint(x, y + h - 1 - i, w, 1, c)
+                elif side == "l":
+                    self.tint(x + i, y, 1, h, c)
+                else:
+                    self.tint(x + w - 1 - i, y, 1, h, c)
+
+    def drip(self, x, y, length, c, rng):
+        """A thin run of grime or rust that tapers as it falls from (x, y): its alpha halves along `length`."""
+        for k in range(length):
+            self.tint(x, y + k, 1, 1, (c[0], c[1], c[2], round(c[3] * (1 - k / length) ** 1.2)))
+            if k < length // 3 and rng.random() < 0.4:
+                self.tint(x + rng.choice((-1, 1)), y + k, 1, 1, (c[0], c[1], c[2], c[3] // 3))
+
+    def chips(self, rng, count, x, y, w, h, c):
+        """Bare-metal chips: `count` single pixels or pairs of the colour `c` on opaque pixels of a rectangle, where paint has worn off an edge."""
+        for _ in range(count):
+            xx, yy = rng.randint(x, x + w - 1), rng.randint(y, y + h - 1)
+            if self.get(xx, yy)[3] == 255:
+                self.set(xx, yy, c)
+                if rng.random() < 0.5 and self.get(xx + 1, yy)[3] == 255:
+                    self.set(xx + 1, yy, shade(c, -0.15))
+
+    def rim_light(self, light=0.35, dark=0.4):
+        """Lights each opaque pixel that touches a clear one on its left or above, and darkens one that touches a clear pixel on its right or below: the light
+        comes from the top left, so a chamfer, a rounded corner or a cut-out gets a lit and a shadowed edge."""
+        marks = []
+        for y in range(self.h):
+            for x in range(self.w):
+                if self.px[y * self.w + x][3] != 255:
+                    continue
+                if self.get(x - 1, y)[3] == 0 or self.get(x, y - 1)[3] == 0:
+                    marks.append((x, y, light))
+                elif self.get(x + 1, y)[3] == 0 or self.get(x, y + 1)[3] == 0:
+                    marks.append((x, y, -dark))
+        for x, y, amount in marks:
+            self.set(x, y, shade(self.get(x, y), amount))
+
     def text(self, x, y, s, c, gap=1):
         for ch in s.upper():
             glyph = GLYPHS.get(ch, GLYPHS["?"])

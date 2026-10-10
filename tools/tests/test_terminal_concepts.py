@@ -17,8 +17,10 @@ from pathlib import Path
 TOOLS = Path(__file__).resolve().parent.parent
 ROOT = TOOLS.parent
 sys.path.insert(0, str(TOOLS))
+sys.path.insert(0, str(TOOLS / "textures"))
 
 import font_bitmap  # noqa: E402
+import pngio  # noqa: E402
 import terminal_concepts  # noqa: E402
 
 PACKS = ROOT / "src/gametest/resources/resourcepacks"
@@ -44,6 +46,18 @@ def png_size(path: Path) -> tuple[int, int]:
 
 def load(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def luminance(colour: str) -> float:
+    channels = [int(colour.lstrip("#")[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+    linear = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+
+def contrast(a: str, b: str) -> float:
+    """The WCAG contrast ratio of two #rrggbb colours."""
+    high, low = sorted((luminance(a), luminance(b)), reverse=True)
+    return (high + 0.05) / (low + 0.05)
 
 
 def sprites(pack: str) -> Path:
@@ -124,6 +138,21 @@ class PanelPacks(unittest.TestCase):
                 self.assertGreaterEqual(240 - theme["insetTop"] - theme["insetBottom"], 192)
                 self.assertGreaterEqual(427 - theme["insetLeft"] - theme["insetRight"], 300)
 
+    def test_a_disabled_label_is_readable_on_its_button(self):
+        # B's disabled keycaps were pale brown on brown (1.9 : 1) and the upgrade terminal's rows are only 12 pixels high.
+        for pack in OPTIONS:
+            theme = load(PACKS / pack / "assets/deepcharter/theme/panel.json")
+            sprite = pngio.decode((sprites(pack) / "button_off.png").read_bytes())
+            centre = 4 * (sprite.height // 2 * sprite.width + sprite.width // 2)
+            face = "#%02x%02x%02x" % tuple(sprite.pixels[centre:centre + 3])
+            with self.subTest(pack=pack):
+                self.assertGreaterEqual(contrast(theme["buttonLabelOffColor"], face), 4.5)
+
+    def test_the_four_nameplates_say_the_same_name(self):
+        # The plate is as wide as its text needs, so one name is one width.
+        widths = {pack: load(PACKS / pack / "assets/deepcharter/theme/panel.json")["nameplateW"] for pack in OPTIONS}
+        self.assertEqual(1, len(set(widths.values())), widths)
+
     def test_the_generator_has_nothing_to_rewrite(self):
         self.assertEqual([], terminal_concepts.check(), "run `python3 tools/terminal_concepts.py` to rewrite the packs")
 
@@ -152,6 +181,14 @@ class FontPacks(unittest.TestCase):
     def test_the_bitmap_font_is_what_the_tool_makes(self):
         self.assertEqual([], font_bitmap.check(), "run `python3 tools/font_bitmap.py` to rewrite the Departure Mono atlas")
 
+    def test_a_subroutine_that_calls_itself_is_refused_not_followed_forever(self):
+        font = font_bitmap.Cff.__new__(font_bitmap.Cff)  # no font file: just a charstring and a subroutine
+        font.global_subrs, font.default_width, font.nominal_width = [], 0, 0
+        callsubr_zero = bytes([32, 10])  # the number -107 (subroutine 0 at bias 107), then callsubr
+        font.local_subrs, font.charstrings = [callsubr_zero], [callsubr_zero]
+        with self.assertRaisesRegex(ValueError, "subr nesting too deep"):
+            font.outline(0)
+
     def test_every_file_in_a_font_pack_has_a_valid_resource_location_name(self):
         # The game refuses a font whose file has a capital ("Not a valid resource location") and logs an error for any other file with one.
         # The sha256 does not change with the name.
@@ -174,6 +211,13 @@ class Doc(unittest.TestCase):
         for heading in ["## A. Slab", "## B. Console", "## C. Rack", "## D. Hatch", "## Fonts", "## What each costs to build", "## How to try one", "## Pick one"]:
             self.assertIn(heading, text)
         self.assertIn("pkeppeler/deepcharter/issues/246", text)
+
+    def test_the_doc_says_the_rack_readouts_show_no_data_and_that_live_ones_cost_build_work(self):
+        text = DOC.read_text(encoding="utf-8")
+        self.assertIn("show no data", text)
+        self.assertIn("Live readouts", text)
+        pick_one = text[text.index("## Pick one"):]
+        self.assertIn("readouts are pictures that show no data", pick_one)
 
     def test_every_link_in_the_references_is_https(self):
         text = DOC.read_text(encoding="utf-8")

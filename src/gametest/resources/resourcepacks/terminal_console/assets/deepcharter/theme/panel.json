@@ -9,7 +9,7 @@
   "glassTop": 22,
   "glassRight": 22,
   "glassBottom": 18,
-  "nameplateW": 113,
+  "nameplateW": 95,
   "nameplateH": 14,
   "nameplateAnchorX": 1,
   "nameplateAnchorY": 0,
@@ -36,7 +36,7 @@
   "buttonUnderColor": "#0e0f11",
   "buttonLabelColor": "#24201a",
   "buttonLabelHotColor": "#10381a",
-  "buttonLabelOffColor": "#7c735c",
+  "buttonLabelOffColor": "#c9bf9c",
   "buttonAlign": 0,
   "buttonPad": 6
 }

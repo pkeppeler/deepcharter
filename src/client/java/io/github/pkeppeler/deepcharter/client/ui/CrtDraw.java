@@ -2,6 +2,9 @@ package io.github.pkeppeler.deepcharter.client.ui;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -68,18 +71,32 @@ public final class CrtDraw {
 	}
 
 	/**
-	 * The face of a button of the machine panel: the under-fill, the button sprite for its state and, when the label leaves room for it
-	 * ({@link PanelLook#showsPip}), the pip. Returns the x where the label starts.
+	 * The face of a button of the machine panel: the under-fill, the button sprite for its state and, when {@code pips} is set (the whole
+	 * screen has room for pips, {@link #pipsFit}), the pip. Returns the x where the label starts.
 	 */
 	public static int panelButtonFace(GuiGraphicsExtractor graphics, PanelLook panel, int x, int y, int width, int height, boolean active, boolean lit,
-			int labelWidth) {
+			int labelWidth, boolean pips) {
 		graphics.fill(x, y, x + width, y + height, panel.buttonUnderColor());
 		sprite(graphics, !active ? PanelLook.BUTTON_OFF : lit ? PanelLook.BUTTON_HOT : PanelLook.BUTTON, x, y, width, height);
-		if (panel.showsPip(width, labelWidth)) {
+		if (pips && panel.pipSize() > 0 && panel.buttonAlign() == 1) {
 			sprite(graphics, !active ? PanelLook.PIP_OFF : lit ? PanelLook.PIP_HOT : PanelLook.PIP, x + panel.pipX(),
 					y + (height - panel.pipSize()) / 2 + panel.pipY(), panel.pipSize(), panel.pipSize());
 		}
-		return x + panel.labelStart(width, labelWidth);
+		return x + panel.labelStart(width, labelWidth, pips);
+	}
+
+	/**
+	 * Whether every button of {@code screen} has room for its pip beside its label in the terminal font. A screen draws pips on all of its
+	 * buttons or on none: a pip on most of them and not on one reads as a fault.
+	 */
+	public static boolean pipsFit(PanelLook panel, Font font, Screen screen) {
+		for (GuiEventListener child : screen.children()) {
+			if (child instanceof PanelButton button && child instanceof AbstractWidget widget && widget.visible
+					&& !panel.showsPip(widget.getWidth(), button.panelLabelWidth(font))) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	private static void decal(GuiGraphicsExtractor graphics, Identifier sprite, PanelLook.Decal decal, int width, int height) {
