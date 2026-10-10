@@ -32,32 +32,32 @@ Between any two options, the front silhouettes share at most 79 percent of their
 
 The pod's lamp lights the near end of a sealed, dark chamber, and the figure stands where its reach thins out. A is top left, B top right, C bottom left and D bottom right. The view is from behind the pod, down the chamber.
 
-![The four figures at the edge of the light, wide: A, B, C and D](https://github.com/pkeppeler/deepcharter/blob/pr-media/{PR}/figure-concepts-wide-grid.png?raw=true)
+![The four figures at the edge of the light, wide: A, B, C and D](https://github.com/pkeppeler/deepcharter/blob/pr-media/407/figure-concepts-wide-grid.png?raw=true)
 
 ## The four, closer
 
-![The four figures, closer: A, B, C and D](https://github.com/pkeppeler/deepcharter/blob/pr-media/{PR}/figure-concepts-close-grid.png?raw=true)
+![The four figures, closer: A, B, C and D](https://github.com/pkeppeler/deepcharter/blob/pr-media/407/figure-concepts-close-grid.png?raw=true)
 
 ## The four, side-on
 
 The side-on view is where a figure reads as a silhouette against the lit wall behind it. It is also where the idles differ most: A stands straight, B bows forward on bent-back knees, C stands straight with its head tipped (the tilt is toward the camera here, so it shows less), and D leans its head back.
 
-![The four figures side-on: A, B, C and D](https://github.com/pkeppeler/deepcharter/blob/pr-media/{PR}/figure-concepts-side-grid.png?raw=true)
+![The four figures side-on: A, B, C and D](https://github.com/pkeppeler/deepcharter/blob/pr-media/407/figure-concepts-side-grid.png?raw=true)
 
 ## The four, beside a miner
 
 A miner, the player, stands beside each figure for scale.
 
-![A miner beside each of the four figures: A, B, C and D](https://github.com/pkeppeler/deepcharter/blob/pr-media/{PR}/figure-concepts-scale-grid.png?raw=true)
+![A miner beside each of the four figures: A, B, C and D](https://github.com/pkeppeler/deepcharter/blob/pr-media/407/figure-concepts-scale-grid.png?raw=true)
 
 ## One by one
 
 | | Idle | Walking | The idea |
 |---|---|---|---|
-| **A. Candle** | ![Candle idle](https://github.com/pkeppeler/deepcharter/blob/pr-media/{PR}/figure-candle-idle.gif?raw=true) | ![Candle walking](https://github.com/pkeppeler/deepcharter/blob/pr-media/{PR}/figure-candle-walk.gif?raw=true) | The quietest and the tallest-looking. A lamp post with a hard hat on top: a thin neck, a thin coat, narrow shoulders. It does nothing, and that is what is wrong with it. 18 bones, 36 cubes. |
-| **B. Heron** | ![Heron idle](https://github.com/pkeppeler/deepcharter/blob/pr-media/{PR}/figure-heron-idle.gif?raw=true) | ![Heron walking](https://github.com/pkeppeler/deepcharter/blob/pr-media/{PR}/figure-heron-walk.gif?raw=true) | A man on a bird's legs. The knee is behind the hip and the ankle, and the torso is a short box on top. It leans toward you and listens. The walk lifts the shin forward, which no man's leg does. 18 bones, 36 cubes. |
-| **C. Reacher** | ![Reacher idle](https://github.com/pkeppeler/deepcharter/blob/pr-media/{PR}/figure-reacher-idle.gif?raw=true) | ![Reacher walking](https://github.com/pkeppeler/deepcharter/blob/pr-media/{PR}/figure-reacher-walk.gif?raw=true) | The widest silhouette. Arms hang to the knees and kink twice, and the shins kink as well, so every limb has one joint more than it should. The head is cocked over. 22 bones, 40 cubes. |
-| **D. Misfit** | ![Misfit idle](https://github.com/pkeppeler/deepcharter/blob/pr-media/{PR}/figure-misfit-idle.gif?raw=true) | ![Misfit walking](https://github.com/pkeppeler/deepcharter/blob/pr-media/{PR}/figure-misfit-walk.gif?raw=true) | The most like a puppet put together wrong. The arms hang from the middle of the chest, in front of the coat, and reach below the hips. The legs are two short thighs and two long shins. The head is thrown back. 18 bones, 36 cubes. |
+| **A. Candle** | ![Candle idle](https://github.com/pkeppeler/deepcharter/blob/pr-media/407/figure-candle-idle.gif?raw=true) | ![Candle walking](https://github.com/pkeppeler/deepcharter/blob/pr-media/407/figure-candle-walk.gif?raw=true) | The quietest and the tallest-looking. A lamp post with a hard hat on top: a thin neck, a thin coat, narrow shoulders. It does nothing, and that is what is wrong with it. 18 bones, 37 cubes. |
+| **B. Heron** | ![Heron idle](https://github.com/pkeppeler/deepcharter/blob/pr-media/407/figure-heron-idle.gif?raw=true) | ![Heron walking](https://github.com/pkeppeler/deepcharter/blob/pr-media/407/figure-heron-walk.gif?raw=true) | A man on a bird's legs. The knee is behind the hip and the ankle, and the torso is a short box on top. It leans toward you and listens. The walk lifts the shin forward, which no man's leg does. 18 bones, 37 cubes. |
+| **C. Reacher** | ![Reacher idle](https://github.com/pkeppeler/deepcharter/blob/pr-media/407/figure-reacher-idle.gif?raw=true) | ![Reacher walking](https://github.com/pkeppeler/deepcharter/blob/pr-media/407/figure-reacher-walk.gif?raw=true) | The widest silhouette. Arms hang to the knees and kink twice, and the shins kink as well, so every limb has one joint more than it should. The head is cocked over. 22 bones, 41 cubes. |
+| **D. Misfit** | ![Misfit idle](https://github.com/pkeppeler/deepcharter/blob/pr-media/407/figure-misfit-idle.gif?raw=true) | ![Misfit walking](https://github.com/pkeppeler/deepcharter/blob/pr-media/407/figure-misfit-walk.gif?raw=true) | The most like a puppet put together wrong. The arms hang from the middle of the chest, in front of the coat, and reach below the hips. The legs are two short thighs and two long shins. The head is thrown back. 18 bones, 37 cubes. |
 
 The idle clips are the close view. The walking clips are shot in the dark with the camera on night vision, 10 blocks away, because a figure that is lit or approached fades: the figure walks across the chamber under its own AI.
 
@@ -67,10 +67,10 @@ All four share one build: a GeckoLib renderer in place of the zombie renderer, a
 
 | | Cubes and bones | Animation work | Risk |
 |---|---|---|---|
-| **A. Candle** | 36 cubes, 18 bones | Smallest. Two animated bones in the idle and nine in the walk. | The silhouette is closest to the Enderman (black, thin, about 2.7 blocks tall). The hard hat and the bracket are what set it apart, and from the front they read little. |
-| **B. Heron** | 36 cubes, 18 bones | Medium. The reverse knee needs its foot plant checked by hand in the walk: the foot must lift forward and not drag. | The bowed idle needs head and neck tuned together. |
-| **C. Reacher** | 40 cubes, 22 bones | The most. Four extra bones, two extra bend tracks in the walk, and arms that can pass through the legs. | The widest figure (up to 20 pixels from tip to tip): it needs a wider cull box and a wider margin in the narrowest rail rooms. |
-| **D. Misfit** | 36 cubes, 18 bones | Medium. The hips sit inside the torso and the arms in front of the chest, so the cubes overlap and a hand can clip the coat as the figure walks. | The wrongness is the least readable from the front. Only the side view and the walk show it. |
+| **A. Candle** | 37 cubes, 18 bones | Smallest. Two animated bones in the idle and nine in the walk. | The silhouette is closest to the Enderman (black, thin, about 2.7 blocks tall). The hard hat and the bracket are what set it apart, and from the front they read little. |
+| **B. Heron** | 37 cubes, 18 bones | Medium. The reverse knee needs its foot plant checked by hand in the walk: the foot must lift forward and not drag. | The bowed idle needs head and neck tuned together. |
+| **C. Reacher** | 41 cubes, 22 bones | The most. Four extra bones, two extra bend tracks in the walk, and arms that can pass through the legs. | The widest figure (up to 20 pixels from tip to tip): it needs a wider cull box and a wider margin in the narrowest rail rooms. |
+| **D. Misfit** | 37 cubes, 18 bones | Medium. The hips sit inside the torso and the arms in front of the chest, so the cubes overlap and a hand can clip the coat as the figure walks. | The wrongness is the least readable from the front. Only the side view and the walk show it. |
 
 Costs are my estimate from the models and animations of this round. Nothing was built to measure them.
 
