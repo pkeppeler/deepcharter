@@ -1,5 +1,5 @@
 {
-  "deepcharter.market.fused": "Fused %s slag brick for $%s: %s to the pod's rack, %s to your pack",
+  "deepcharter.market.fused": "Fused %s slag brick: %s to the pod's rack, %s to your pack",
   "deepcharter.market.order_completed": "Work order done: %s. Bonus $%s",
   "deepcharter.market.order_delivered": "Handed in %s %s. %s still owed",
   "deepcharter.market.refusal.bad_order": "That is not a work order",
@@ -8,7 +8,6 @@
   "deepcharter.market.refusal.no_room": "The pod's rack is full and your pack has no room for slag brick",
   "deepcharter.market.refusal.no_spoil": "No pod parked here holds spoil enough for a brick",
   "deepcharter.market.refusal.no_statue": "The Founder's statue cannot be found, so the order cannot be finished yet",
-  "deepcharter.market.refusal.cannot_pay_fuse": "The account cannot pay for slag brick, $%s each",
   "deepcharter.market.refusal.nothing_to_sell": "There is no ore to sell",
   "deepcharter.market.refusal.order_done": "Your charter has finished this work order",
   "deepcharter.market.refusal.order_locked": "Your charter has not reached the depth where this work order is offered",
@@ -22,7 +21,7 @@
   "screen.deepcharter.processor.account": "ACCOUNT $%s",
   "screen.deepcharter.processor.close": "CLOSE",
   "screen.deepcharter.processor.deliver": "DELIVER %s",
-  "screen.deepcharter.processor.fuse": "MAKE SLAG BRICK  $%s EACH",
+  "screen.deepcharter.processor.fuse": "MAKE SLAG BRICK",
   "screen.deepcharter.processor.intro": "ORE PROCESSOR ONLINE. FEED IT ORE; THE CHARTER ACCOUNT IS PAID AT THESE RATES.",
   "screen.deepcharter.processor.order": "%s / %s %s",
   "screen.deepcharter.processor.order_done": "DONE",

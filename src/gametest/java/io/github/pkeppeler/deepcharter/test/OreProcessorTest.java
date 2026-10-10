@@ -445,7 +445,6 @@ public class OreProcessorTest {
 
 	private static final String NO_SPOIL = "deepcharter.market.refusal.no_spoil";
 	private static final String NO_ROOM = "deepcharter.market.refusal.no_room";
-	private static final String CANNOT_PAY_FUSE = "deepcharter.market.refusal.cannot_pay_fuse";
 
 	private static void withSpoil(PodEntity pod, int spoil, int bricks) {
 		PodLining.modify(pod, state -> new PodLining.State(spoil, bricks, 0, false, false));
@@ -466,7 +465,7 @@ public class OreProcessorTest {
 	}
 
 	@GameTest
-	public void fusingTurnsTwoSpoilIntoABrickForTwoDollarsAndKeepsTheRemainder(GameTestHelper helper) {
+	public void fusingTurnsTwoSpoilIntoABrickForNothingAndKeepsTheRemainder(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		withProcessorOnline(server, () -> {
 			MockPlayer mock = player(helper, "Smelter", true);
@@ -479,8 +478,8 @@ public class OreProcessorTest {
 				long before = balance(server, player);
 				expectDone(helper, Terminals.act(player, processor, OreProcessor.FUSE_SPOIL, new CompoundTag()), "fusing 7 spoil");
 				PodLining.State after = PodLining.of(pod);
-				if (after.bricks() != 3 || after.spoil() != 1 || balance(server, player) != before - 6 || bricksCarried(player) != 0) {
-					throw helper.assertionException("7 spoil make 3 bricks for $6 and leave 1 spoil: rack %s, spoil %s, balance %s -> %s, carried %s",
+				if (after.bricks() != 3 || after.spoil() != 1 || balance(server, player) != before || bricksCarried(player) != 0) {
+					throw helper.assertionException("7 spoil make 3 bricks for $0 and leave 1 spoil: rack %s, spoil %s, balance %s -> %s, carried %s",
 							after.bricks(), after.spoil(), before, balance(server, player), bricksCarried(player));
 				}
 				expectKey(helper, NO_SPOIL, OreProcessor.fuseSpoil(context(server, player, processor)), "fusing the single spoil left");
@@ -526,7 +525,7 @@ public class OreProcessorTest {
 	}
 
 	@GameTest
-	public void fusingNeedsSpoilAndMoneyAndChargesOnlyForTheBrickMade(GameTestHelper helper) {
+	public void fusingNeedsSpoilAndNoMoney(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		withProcessorOnline(server, () -> {
 			MockPlayer mock = player(helper, "Pauper", true);
@@ -536,17 +535,15 @@ public class OreProcessorTest {
 			try {
 				expectKey(helper, NO_SPOIL, OreProcessor.fuseSpoil(context(server, player, processor)), "fusing a pod with no spoil");
 				withSpoil(pod, 1, 0);
-				expectKey(helper, NO_SPOIL, OreProcessor.fuseSpoil(context(server, player, processor)), "fusing one spoil, which is under the 2 a brick takes");
-				// Leave $3: enough for one brick at $2 and not for the two that 4 spoil would make.
+				expectKey(helper, NO_SPOIL, OreProcessor.fuseSpoil(context(server, player, processor)), "fusing one spoil, which is under the 2 spoil a brick takes");
+				// An empty account fuses all the same (#363): the brick costs spoil, not money.
 				fund(server, player, 1000);
-				long balance = balance(server, player);
-				Charters.spend(server, Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id(), balance - 3);
+				Charters.spend(server, Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id(), balance(server, player));
 				withSpoil(pod, 4, 0);
-				expectDone(helper, Terminals.act(player, processor, OreProcessor.FUSE_SPOIL, new CompoundTag()), "fusing with $3");
-				if (PodLining.of(pod).bricks() != 1 || PodLining.of(pod).spoil() != 2 || balance(server, player) != 1) {
-					throw helper.assertionException("$3 pays for one brick: rack %s, spoil %s, balance %s", PodLining.of(pod).bricks(), PodLining.of(pod).spoil(), balance(server, player));
+				expectDone(helper, Terminals.act(player, processor, OreProcessor.FUSE_SPOIL, new CompoundTag()), "fusing with $0");
+				if (PodLining.of(pod).bricks() != 2 || PodLining.of(pod).spoil() != 0 || balance(server, player) != 0) {
+					throw helper.assertionException("4 spoil make 2 bricks with no money: rack %s, spoil %s, balance %s", PodLining.of(pod).bricks(), PodLining.of(pod).spoil(), balance(server, player));
 				}
-				expectKey(helper, CANNOT_PAY_FUSE, OreProcessor.fuseSpoil(context(server, player, processor)), "fusing with $1");
 			} finally {
 				pod.discard();
 			}

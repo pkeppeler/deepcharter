@@ -77,12 +77,13 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 			});
 			require(ore == 0, "the sold ore left the inventory, " + ore + " remain");
 
-			// #313: four spoil in the parked pod's bay become two slag brick in its rack for $4.
+			// #313, #363: four spoil in the parked pod's bay become two slag brick in its rack, and the account is not charged.
 			singleplayer.getServer().runOnServer(server -> PodLining.modify(parkedPod(server),
 					state -> state.withSpoil(4)));
-			context.clickScreenButton("MAKE SLAG BRICK  $2 EACH");
-			long afterFuse = cargo + carried - 4;
-			ClientWait.until(context, "the hud showing the price of two bricks taken", client -> hud(client).endsWith("$" + afterFuse), client -> "hud '" + hud(client) + "'");
+			context.clickScreenButton("MAKE SLAG BRICK");
+			ClientWait.until(context, "two bricks in the rack", () -> singleplayer.getServer().computeOnServer(server -> PodLining.of(parkedPod(server)).bricks()) == 2,
+					() -> "rack " + singleplayer.getServer().computeOnServer(server -> PodLining.of(parkedPod(server))));
+			require(hud(context).equals(CHARTER + "  $" + (cargo + carried)), "fusing is free, the HUD shows '" + hud(context) + "'");
 			PodLining.State fused = singleplayer.getServer().computeOnServer(server -> PodLining.of(parkedPod(server)));
 			require(fused.bricks() == 2 && fused.spoil() == 0, "four spoil make two bricks in the rack, got " + fused);
 
