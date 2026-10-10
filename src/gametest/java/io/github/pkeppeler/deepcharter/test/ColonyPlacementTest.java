@@ -478,12 +478,7 @@ public class ColonyPlacementTest {
 		// Read through held chunks: getHeight answers the world minimum, 68 below the ground, for a chunk that is not loaded (#393).
 		int minChunkX = (centre.getX() - reach) >> 4;
 		int minChunkZ = (centre.getZ() - reach) >> 4;
-		LevelChunk[][] chunks = new LevelChunk[((centre.getX() + reach - 1) >> 4) - minChunkX + 1][((centre.getZ() + reach - 1) >> 4) - minChunkZ + 1];
-		for (int i = 0; i < chunks.length; i++) {
-			for (int j = 0; j < chunks[0].length; j++) {
-				chunks[i][j] = level.getChunk(minChunkX + i, minChunkZ + j);
-			}
-		}
+		LevelChunk[][] chunks = loadChunks(level, centre.getX() - reach, centre.getX() + reach - 1, centre.getZ() - reach, centre.getZ() + reach - 1);
 		Function<BlockPos, BlockState> blockAt = pos -> chunks[(pos.getX() >> 4) - minChunkX][(pos.getZ() >> 4) - minChunkZ].getBlockState(pos);
 		List<String> problems = new ArrayList<>();
 		List<TestRegions.Region> regions = TestRegions.in(level, centre.getX() - reach, centre.getX() + reach - 1, centre.getZ() - reach, centre.getZ() + reach - 1);
@@ -507,10 +502,10 @@ public class ColonyPlacementTest {
 				int z = centre.getZ() - reach + j;
 				checked++;
 				if (i + 1 < size && Math.abs(surface[i][j] - surface[i + 1][j]) > STEP) {
-					problems.add(step(blockAt, regions, surface, x, z, i, j, i + 1, j, "east"));
+					problems.add(step(blockAt, regions, new BlockPos(x, surface[i][j], z), new BlockPos(x + 1, surface[i + 1][j], z), "east"));
 				}
 				if (j + 1 < size && Math.abs(surface[i][j] - surface[i][j + 1]) > STEP) {
-					problems.add(step(blockAt, regions, surface, x, z, i, j, i, j + 1, "south"));
+					problems.add(step(blockAt, regions, new BlockPos(x, surface[i][j], z), new BlockPos(x, surface[i][j + 1], z + 1), "south"));
 				}
 			}
 		}
@@ -521,15 +516,11 @@ public class ColonyPlacementTest {
 	}
 
 	/** The failure text of a step: the block on each side, and the test region that holds each column. */
-	private static String step(Function<BlockPos, BlockState> blockAt, List<TestRegions.Region> regions, int[][] surface, int x, int z, int i, int j, int nextI, int nextJ, String going) {
-		int nextX = x + nextI - i;
-		int nextZ = z + nextJ - j;
-		BlockPos here = new BlockPos(x, surface[i][j], z);
-		BlockPos next = new BlockPos(nextX, surface[nextI][nextJ], nextZ);
-		return "step of " + (surface[nextI][nextJ] - surface[i][j]) + " at " + x + " " + z + " going " + going
+	private static String step(Function<BlockPos, BlockState> blockAt, List<TestRegions.Region> regions, BlockPos here, BlockPos next, String going) {
+		return "step of " + (next.getY() - here.getY()) + " at " + here.getX() + " " + here.getZ() + " going " + going
 				+ ": " + BuiltInRegistries.BLOCK.getKey(blockAt.apply(here).getBlock()) + " at " + here.toShortString() + " ("
-				+ TestRegions.ownerOfColumn(regions, x, z) + "), then " + BuiltInRegistries.BLOCK.getKey(blockAt.apply(next).getBlock()) + " at "
-				+ next.toShortString() + " (" + TestRegions.ownerOfColumn(regions, nextX, nextZ) + ")";
+				+ TestRegions.ownerOfColumn(regions, here.getX(), here.getZ()) + "), then " + BuiltInRegistries.BLOCK.getKey(blockAt.apply(next).getBlock()) + " at "
+				+ next.toShortString() + " (" + TestRegions.ownerOfColumn(regions, next.getX(), next.getZ()) + ")";
 	}
 
 	/**
@@ -671,11 +662,18 @@ public class ColonyPlacementTest {
 	private static void loadPad(ServerLevel level, ColonySite.Placed colony) {
 		int half = ColonyTuning.DEFAULT.padSize() / 2;
 		BlockPos centre = colony.center();
-		for (int chunkX = (centre.getX() - half) >> 4; chunkX <= (centre.getX() + half - 1) >> 4; chunkX++) {
-			for (int chunkZ = (centre.getZ() - half) >> 4; chunkZ <= (centre.getZ() + half - 1) >> 4; chunkZ++) {
-				level.getChunk(chunkX, chunkZ);
+		loadChunks(level, centre.getX() - half, centre.getX() + half - 1, centre.getZ() - half, centre.getZ() + half - 1);
+	}
+
+	/** Loads the chunks over the columns {@code x1..x2}, {@code z1..z2}; indexed from the chunk of {@code x1}, {@code z1}. */
+	private static LevelChunk[][] loadChunks(ServerLevel level, int x1, int x2, int z1, int z2) {
+		LevelChunk[][] chunks = new LevelChunk[(x2 >> 4) - (x1 >> 4) + 1][(z2 >> 4) - (z1 >> 4) + 1];
+		for (int i = 0; i < chunks.length; i++) {
+			for (int j = 0; j < chunks[i].length; j++) {
+				chunks[i][j] = level.getChunk((x1 >> 4) + i, (z1 >> 4) + j);
 			}
 		}
+		return chunks;
 	}
 
 	private static MinecraftServer server(GameTestHelper helper) {
