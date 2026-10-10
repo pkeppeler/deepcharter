@@ -15,12 +15,14 @@ package io.github.pkeppeler.deepcharter.pod;
  * @param drag           share of its speed a towed pod keeps each tick; it is what damps a swing, so it is under 1
  * @param groundFriction share of its speed a towed pod keeps each tick that it rests on a floor
  * @param cableInterval  ticks between two draws of the cable's particles
+ * @param cableLifetime  ticks a particle of the cable lives on the client, a little more than the interval so that one draw gives way to the next without a gap or a trail of old lines
  * @param cableSpacing   blocks between the particles of one draw
+ * @param cableScale     size of a cable particle against the end rod's it is drawn like
  * @param cableMaxParticles most particles in one draw, which bounds the cost of a long cable
  */
 public record TowTuning(double reach, double lineLength, double reachSpare, float baseMass, double gravity, double drag, double groundFriction,
-		int cableInterval, double cableSpacing, int cableMaxParticles) {
-	public static final TowTuning DEFAULT = new TowTuning(8.0, 5.0, 0.5, 25f, 0.08, 0.97, 0.6, 4, 0.5, 40);
+		int cableInterval, int cableLifetime, double cableSpacing, float cableScale, int cableMaxParticles) {
+	public static final TowTuning DEFAULT = new TowTuning(8.0, 5.0, 0.5, 25f, 0.08, 0.97, 0.6, 2, 4, 0.3, 1.5f, 40);
 
 	public TowTuning {
 		if (!(lineLength > 0)) {
@@ -47,8 +49,14 @@ public record TowTuning(double reach, double lineLength, double reachSpare, floa
 		if (cableInterval < 1) {
 			throw new IllegalArgumentException("the cable interval must be at least 1 tick, got " + cableInterval);
 		}
+		if (cableLifetime < cableInterval) {
+			throw new IllegalArgumentException("a cable particle must live at least as long as the interval between draws, " + cableInterval + ", got " + cableLifetime);
+		}
 		if (!(cableSpacing > 0)) {
 			throw new IllegalArgumentException("the cable spacing must be positive, got " + cableSpacing);
+		}
+		if (!(cableScale > 0f)) {
+			throw new IllegalArgumentException("the cable scale must be positive, got " + cableScale);
 		}
 		if (cableMaxParticles < 1) {
 			throw new IllegalArgumentException("the cable must draw at least 1 particle, got " + cableMaxParticles);

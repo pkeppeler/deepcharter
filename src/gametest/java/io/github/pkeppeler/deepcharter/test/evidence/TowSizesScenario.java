@@ -34,8 +34,8 @@ public class TowSizesScenario extends EvidenceScenario {
 	private static final int FLOOR_Y = 200;
 	/** Blocks between the rows of pods. */
 	private static final int ROW_SPACING = 7;
-	/** Centre to centre, inside the cable's reach and past every trail. */
-	private static final double FAR = 6.0;
+	/** Centre to centre, inside the cable's reach and past every trail (7.9 for two Prospectors, 6.9 for two Moles). */
+	private static final double FAR = 8.2;
 	private static final double EYE_HEIGHT = 13;
 	private static final int SETTLE_TICKS = 80;
 
