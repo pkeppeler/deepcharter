@@ -29,7 +29,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 
 /**
- * Evidence scenario "pilot-in-canopy" for #382, in a stone hall that light blocks fill with full light. For each pod: two close stills
+ * Evidence scenario "pilot-in-canopy" for #382 and #400 (the Mole is 2.9 tall, so the pilot sits upright), in a stone hall that light blocks fill with full light. For each pod: two close stills
  * from outside (a three-quarter view from the front and one from the side), where a mock pilot, and for the Prospector a mock navigator,
  * show through the panes and not over the roof; then the real player pilots the pod, and first person looks ahead, down and up, which
  * frames the canopy, the sill and the cutter, and never looks from inside the hull.
@@ -57,11 +57,11 @@ public class PilotInCanopyScenario extends EvidenceScenario {
 
 	private static final List<Subject> SUBJECTS = List.of(
 			new Subject("mole", PodRegistry.POD, List.of(
-					new Shot("front-three-quarter", new Vec3(1.9, 1.9, 1.0), new Vec3(0, 1.2, -0.4)),
-					new Shot("side-close", new Vec3(1.9, 1.6, -0.4), new Vec3(0, 1.3, -0.4)))),
+					new Shot("front-three-quarter", new Vec3(2.6, 2.6, 1.6), new Vec3(0, 1.45, -0.4)),
+					new Shot("side-close", new Vec3(2.6, 2.0, -0.4), new Vec3(0, 1.6, -0.4)))),
 			new Subject("prospector", PodRegistry.PROSPECTOR, List.of(
-					new Shot("front-three-quarter", new Vec3(3.0, 3.0, 1.6), new Vec3(0, 1.8, -0.55)),
-					new Shot("side-close", new Vec3(3.0, 2.3, -0.55), new Vec3(0, 1.85, -0.55)))));
+					new Shot("front-three-quarter", new Vec3(3.4, 3.2, 1.9), new Vec3(0, 1.9, -0.55)),
+					new Shot("side-close", new Vec3(3.4, 2.5, -0.55), new Vec3(0, 2.0, -0.55)))));
 
 	@Override
 	protected String name() {

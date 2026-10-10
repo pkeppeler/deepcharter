@@ -24,9 +24,12 @@ public final class PodRegistry {
 	private static final Map<EntityType<?>, Chassis> CHASSIS = new HashMap<>();
 	private static final Map<Chassis, List<Vec3>> SEATS = new HashMap<>();
 
+	/** How far a rider hangs below its seat (the player's vehicle attachment), so a seat this high puts its rider's feet on the pod's floor. */
+	private static final double SEAT_HEIGHT = 0.6;
+
 	/** Seats are Java, not look data, because the server places passengers and a dedicated server has no models. Offsets: {@code PodSeatsClientTest} and ADR 0040. */
-	private static final List<Vec3> MOLE_SEATS = List.of(new Vec3(0, 6 / 16.0, -5 / 16.0));
-	private static final List<Vec3> PROSPECTOR_SEATS = List.of(new Vec3(0, 8 / 16.0, -3.5 / 16.0), new Vec3(0, 8 / 16.0, -14.5 / 16.0));
+	private static final List<Vec3> MOLE_SEATS = List.of(new Vec3(0, SEAT_HEIGHT, -5 / 16.0));
+	private static final List<Vec3> PROSPECTOR_SEATS = List.of(new Vec3(0, SEAT_HEIGHT, -3.5 / 16.0), new Vec3(0, SEAT_HEIGHT, -14.5 / 16.0));
 
 	// The rider sits inside the cab. Updates every tick because pods move fast.
 	public static final EntityType<PodEntity> POD = register(id("pod"), Chassis.MOLE, MOLE_SEATS);

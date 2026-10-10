@@ -13,8 +13,8 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
  * here, the seat offsets next to its registration in {@link PodRegistry}, and the model in its look file.
  */
 public record Chassis(String id, int seats, int tierCap, float width, float height) {
-	// 1.9 x 1.9 so that a 2 x 2 bore clears it.
-	public static final Chassis MOLE = new Chassis("mole", 1, 2, 1.9f, 1.9f);
+	// 1.9 wide and 2.9 tall (ADR 0042) so that a 2-wide, 3-tall bore clears it: the pilot sits upright in the cab.
+	public static final Chassis MOLE = new Chassis("mole", 1, 2, 1.9f, 2.9f);
 	// 2.9 x 2.9 so that a 3 x 3 bore clears it. The pilot's seat, then the navigator's.
 	public static final Chassis PROSPECTOR = new Chassis("prospector", 2, 3, 2.9f, 2.9f);
 

@@ -30,10 +30,11 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 /**
- * Client GameTest for #382: the pilot sits inside a canopy. It pins the seat offsets of each chassis to literal values (the Prospector
- * has two, in tandem), seats real riders in each pod and holds them against the cab of the pod's own model: a rider's head is inside
- * the cab's window band and touches no cube of the model, the camera at the pilot's eye keeps clear of every cube (so no pitch looks
- * from inside a hull face), and the pilot looks ahead through a pane at the cutter.
+ * Client GameTest for #382 and #400: the pilot sits upright inside a canopy. It pins the seat offsets of each chassis to literal values
+ * (the Prospector has two, in tandem), seats real riders in each pod and holds them against the cab of the pod's own model: a rider's
+ * feet are not below the pod's floor, a rider's head is inside the cab's window band and touches no cube of the model, the camera at
+ * the pilot's eye keeps clear of every cube (so no pitch looks from inside a hull face), and the pilot looks ahead through a pane at the
+ * cutter.
  */
 public class PodSeatsClientTest implements FabricClientGameTest {
 	private static final double TOLERANCE = 1e-6;
@@ -53,12 +54,13 @@ public class PodSeatsClientTest implements FabricClientGameTest {
 
 	/**
 	 * The seats of each chassis, pilot first, in blocks from the pod's feet with +z the way the pod faces: the bottom of the seat. A
-	 * literal, so a change to a seat is a change to this test. The Mole sits 6 pixels up and 5 back of its nose; the Prospector's two
-	 * sit 8 up, 3.5 and 14.5 back, the pilot in front.
+	 * literal, so a change to a seat is a change to this test. Every seat is 0.6 up, which is how far a rider hangs below its seat, so a
+	 * rider's feet stand on the pod's floor. The Mole sits 5 pixels back of its nose; the Prospector's two sit 3.5 and 14.5 back, the
+	 * pilot in front.
 	 */
 	private static final Map<Chassis, List<Vec3>> SEATS = Map.of(
-			Chassis.MOLE, List.of(new Vec3(0, 0.375, -0.3125)),
-			Chassis.PROSPECTOR, List.of(new Vec3(0, 0.5, -0.21875), new Vec3(0, 0.5, -0.90625)));
+			Chassis.MOLE, List.of(new Vec3(0, 0.6, -0.3125)),
+			Chassis.PROSPECTOR, List.of(new Vec3(0, 0.6, -0.21875), new Vec3(0, 0.6, -0.90625)));
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
@@ -146,6 +148,8 @@ public class PodSeatsClientTest implements FabricClientGameTest {
 		for (int i = 0; i < seats.size(); i++) {
 			Entity rider = pod.getPassengers().get(i);
 			String who = chassis.id() + "'s " + (i == 0 ? "pilot" : "navigator");
+			// The rider stands on the pod's floor: its feet are not below the pod's.
+			require(rider.position().y >= pod.position().y - TOLERANCE, who + "'s feet, at y " + rider.position().y + ", are below the pod's feet, at y " + pod.position().y);
 			Vec3 eye = model(pod, rider.getEyePosition());
 			double[] head = box(model(pod, rider.position().add(0, HEAD_BOTTOM, 0)), model(pod, rider.position().add(0, HEAD_TOP, 0)), HEAD_HALF_WIDTH);
 			// The head is in the window band, so the pilot shows through the windows and not over the roof.

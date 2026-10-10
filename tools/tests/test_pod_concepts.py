@@ -128,6 +128,27 @@ class Cabs(unittest.TestCase):
                     if min(face.w, face.h) > 1:
                         self.assertTrue(any(worn.get(face.x + i, face.y + j)[3] == 0 for j in range(face.h) for i in range(face.w)), f"{name}: a wreck's pane is opaque")
 
+    def test_a_rider_sits_upright_with_head_room_and_the_roof_gear_is_restored(self):
+        """#400: the rider's head spans 22.5 to 30 pixels above the pod's floor, so the glazing covers it and the roof is above it; the
+        Mole is 2.9 blocks tall to hold that; both pods keep their stacks and their rotor, whose blades turn above the stacks."""
+        self.assertEqual(46.4, pc.mole().height)
+        for name, make in pc.PODS.items():
+            with self.subTest(pod=name):
+                model = make()
+                bones = {bone.name: bone for bone in model.bones}
+                glass = [cube for cube in bones["canopy"].cubes if cube.material == "pane"]
+                self.assertLessEqual(min(cube.origin[1] for cube in glass), 22.5)
+                self.assertGreaterEqual(max(cube.origin[1] + cube.size[1] for cube in glass), 31)
+                _, hi = pc.rest_bounds(model, cutter=False)
+                self.assertLessEqual(hi[1], model.height)
+                stacks = [cube for cube in bones["exhaust"].cubes if cube.size[0] >= 3 and cube.size[1] >= 7]
+                self.assertGreaterEqual(len(stacks), 2, f"{name} keeps both its exhaust stacks")
+                blades = bones["blade_l"].cubes + bones["blade_r"].cubes
+                lowest_blade = min(cube.origin[1] for cube in blades)
+                for cube in bones["exhaust"].cubes:
+                    self.assertLessEqual(cube.origin[1] + cube.size[1], lowest_blade, f"{name}: a blade turns through the exhaust")
+                self.assertGreater(lowest_blade, max(cube.origin[1] + cube.size[1] for cube in glass) + 3, f"{name}: the rotor stands clear of the cab")
+
 
 class Wrecks(unittest.TestCase):
     def test_a_wreck_is_the_same_model_weathered(self):
