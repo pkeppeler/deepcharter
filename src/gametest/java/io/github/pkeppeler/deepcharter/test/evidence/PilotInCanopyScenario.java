@@ -8,6 +8,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 
 import net.minecraft.client.CameraType;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
@@ -20,7 +21,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
-import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -52,14 +52,14 @@ public class PilotInCanopyScenario extends EvidenceScenario {
 	private record Shot(String name, Vec3 camera, Vec3 target) {
 	}
 
-	private record Subject(String id, EntityType<PodEntity> type, Chassis chassis, List<Shot> shots) {
+	private record Subject(String id, EntityType<PodEntity> type, List<Shot> shots) {
 	}
 
 	private static final List<Subject> SUBJECTS = List.of(
-			new Subject("mole", PodRegistry.POD, Chassis.MOLE, List.of(
+			new Subject("mole", PodRegistry.POD, List.of(
 					new Shot("front-three-quarter", new Vec3(1.9, 1.9, 1.0), new Vec3(0, 1.2, -0.4)),
 					new Shot("side-close", new Vec3(1.9, 1.6, -0.4), new Vec3(0, 1.3, -0.4)))),
-			new Subject("prospector", PodRegistry.PROSPECTOR, Chassis.PROSPECTOR, List.of(
+			new Subject("prospector", PodRegistry.PROSPECTOR, List.of(
 					new Shot("front-three-quarter", new Vec3(3.0, 3.0, 1.6), new Vec3(0, 1.8, -0.55)),
 					new Shot("side-close", new Vec3(3.0, 2.3, -0.55), new Vec3(0, 1.85, -0.55)))));
 
@@ -106,19 +106,18 @@ public class PilotInCanopyScenario extends EvidenceScenario {
 			camera.setNoGravity(true);
 			PodEntity pod = pod(level, subject);
 			riders[0] = board(server, pod, "Pilot");
-			if (subject.chassis().seats() > 1) {
+			if (PodRegistry.chassisOf(subject.type()).seats() > 1) {
 				riders[1] = board(server, pod, "Navigator");
 			}
 			made[0] = pod;
 		});
 		PodEntity pod = made[0];
 		ClientWait.until(context, "the " + subject.id() + " with its riders on the client", client -> client.level.getEntity(pod.getId()) instanceof PodEntity shown
-				&& shown.getPassengers().size() == subject.chassis().seats());
+				&& shown.getPassengers().size() == PodRegistry.chassisOf(subject.type()).seats());
 		context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+		Vec3 feet = new Vec3(X + 0.5, FLOOR_Y, Z + 0.5);
 		for (Shot shot : subject.shots()) {
-			Vec3 camera = new Vec3(X + 0.5, FLOOR_Y, Z + 0.5).add(shot.camera());
-			Vec3 target = new Vec3(X + 0.5, FLOOR_Y, Z + 0.5).add(shot.target());
-			lookAt(singleplayer, camera, target);
+			lookAt(singleplayer, feet.add(shot.camera()), feet.add(shot.target()));
 			settle(context);
 			screenshot(context, subject.id() + "-" + shot.name());
 			frame(context);
@@ -179,7 +178,7 @@ public class PilotInCanopyScenario extends EvidenceScenario {
 		return pod;
 	}
 
-	private static MockPlayer board(net.minecraft.server.MinecraftServer server, PodEntity pod, String name) {
+	private static MockPlayer board(MinecraftServer server, PodEntity pod, String name) {
 		MockPlayer rider = MockPlayers.join(server, name);
 		rider.teleportTo(server.overworld(), pod.position(), POD_YAW, 0f);
 		if (!rider.player().startRiding(pod)) {

@@ -225,24 +225,11 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 	}
 
 	private double[] bounds(Predicate<Bone> only, OptionalDouble pitch) {
-		Map<String, Bone> byName = new HashMap<>();
-		bones.forEach(bone -> byName.put(bone.name(), bone));
 		double[] bounds = {Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE};
-		for (Bone bone : bones.stream().filter(only).toList()) {
-			for (Cube cube : bone.cubes()) {
-				for (int corner = 0; corner < CUBE_CORNERS; corner++) {
-					Vec3 p = turnedCorner(cube, corner);
-					for (Bone at = bone; at != null; at = at.parent().map(byName::get).orElse(null)) {
-						Vec3 rotation = pitch.isPresent() && at.role() == BoneRole.DRILL_MOUNT
-								? new Vec3(pitch.getAsDouble(), at.rotation().y, at.rotation().z) : at.rotation();
-						p = turn(p, at.pivot(), rotation);
-					}
-					double[] xyz = {p.x, p.y, p.z};
-					for (int i = 0; i < 3; i++) {
-						bounds[i] = Math.min(bounds[i], xyz[i]);
-						bounds[i + 3] = Math.max(bounds[i + 3], xyz[i]);
-					}
-				}
+		for (RestCube cube : restCubes(only, pitch)) {
+			for (int i = 0; i < 3; i++) {
+				bounds[i] = Math.min(bounds[i], cube.box()[i]);
+				bounds[i + 3] = Math.max(bounds[i + 3], cube.box()[i + 3]);
 			}
 		}
 		return bounds;
@@ -258,6 +245,10 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 	 * and a little more, so a test that a point is clear of every cube errs towards "not clear".
 	 */
 	public List<RestCube> restCubes(Predicate<Bone> only) {
+		return restCubes(only, OptionalDouble.empty());
+	}
+
+	private List<RestCube> restCubes(Predicate<Bone> only, OptionalDouble pitch) {
 		Map<String, Bone> byName = new HashMap<>();
 		bones.forEach(bone -> byName.put(bone.name(), bone));
 		List<RestCube> cubes = new ArrayList<>();
@@ -267,7 +258,9 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 				for (int corner = 0; corner < CUBE_CORNERS; corner++) {
 					Vec3 p = turnedCorner(cube, corner);
 					for (Bone at = bone; at != null; at = at.parent().map(byName::get).orElse(null)) {
-						p = turn(p, at.pivot(), at.rotation());
+						Vec3 rotation = pitch.isPresent() && at.role() == BoneRole.DRILL_MOUNT
+								? new Vec3(pitch.getAsDouble(), at.rotation().y, at.rotation().z) : at.rotation();
+						p = turn(p, at.pivot(), rotation);
 					}
 					double[] xyz = {p.x, p.y, p.z};
 					for (int i = 0; i < 3; i++) {
