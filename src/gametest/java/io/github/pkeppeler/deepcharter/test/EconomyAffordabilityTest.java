@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.util.Arrays;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -15,6 +16,8 @@ import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.HardLanding;
+import io.github.pkeppeler.deepcharter.pod.PodBrace;
+import io.github.pkeppeler.deepcharter.pod.PodBraceTuning;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
@@ -171,6 +174,31 @@ public class EconomyAffordabilityTest {
 		LOGGER.info("[economy] lined layer 2 run {}; an unlined layer 1 run nets ${}", lined, Math.round(layerOne.net()));
 		if (lined.net() <= layerOne.net()) {
 			throw failure(helper, "a lined run to layer 2 nets $%.0f, no more than the $%.0f of an unlined layer 1 run", lined.net(), layerOne.net());
+		}
+		helper.succeed();
+	}
+
+	/**
+	 * The breach brace (#378) burns ore for hull, and never at a dearer rate than Hull Nanobots charge for the same hull: its cap is the nanobots' price a hull times
+	 * the hull of one patch. The cheapest ore is a discount inside that, and an ore above the cap is refused (PodBraceTest pins the refusal on a pod).
+	 */
+	@GameTest
+	public void theBraceNeverCostsMoreAHullThanNanobotsAndTheCheapestOreIsADiscount(GameTestHelper helper) {
+		float hullPerOre = PodBraceTuning.DEFAULT.hullPerOre();
+		float nanobotsPerHull = (float) Consumable.HULL_NANOBOTS.price() / RepairTuning.DEFAULT.nanobotHp();
+		int cheapest = Arrays.stream(OreType.values()).mapToInt(OreType::value).min().orElseThrow();
+		LOGGER.info("[economy] brace: cheapest ore ${} for {} hull is ${} a hull; nanobots ${} a hull; the cap is ${} an ore", cheapest, hullPerOre, cheapest / hullPerOre, nanobotsPerHull, PodBrace.oreValueCap());
+		if (!(cheapest / hullPerOre > 0f && cheapest / hullPerOre < nanobotsPerHull)) {
+			throw failure(helper, "the cheapest ore patches at $%.2f a hull, which must be under the nanobots' $%.2f", cheapest / hullPerOre, nanobotsPerHull);
+		}
+		if (Math.abs(PodBrace.oreValueCap() / hullPerOre - nanobotsPerHull) > 0.001f) {
+			throw failure(helper, "the cap is the nanobots' rate: $%.2f an ore for %s hull, not $%.2f a hull", PodBrace.oreValueCap(), hullPerOre, nanobotsPerHull);
+		}
+		for (OreType ore : OreType.values()) {
+			boolean allowed = ore.value() <= PodBrace.oreValueCap();
+			if (allowed != (ore.value() / hullPerOre <= nanobotsPerHull)) {
+				throw failure(helper, "%s at $%d is %s by the cap but costs $%.2f a hull against the nanobots' $%.2f", ore, ore.value(), allowed ? "allowed" : "refused", ore.value() / hullPerOre, nanobotsPerHull);
+			}
 		}
 		helper.succeed();
 	}
