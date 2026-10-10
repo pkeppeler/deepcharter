@@ -15,6 +15,7 @@ import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.HardLanding;
+import io.github.pkeppeler.deepcharter.pod.PodLiningTuning;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
@@ -42,6 +43,10 @@ public class EconomyAffordabilityTest {
 	/** The liner's tiers, in runs of a Mole with tier 2 parts in layer 2, at most. */
 	private static final int LINER_TIER_ONE_RUNS = 2;
 	private static final int LINER_TIER_TWO_RUNS = 4;
+	/** What a pack-fed liner's bricks may cost, as a share of what a stock Mole's layer 1 run nets (#363). */
+	private static final double BRICK_BILL_SHARE = 0.5;
+	/** Bays of spoil (a bay is 64, a dive brings home one) that the bricks of a pack-fed bore may take (#363). */
+	private static final int BAY_TRIPS_PER_PACK_FED_BORE = 3;
 	/** The seep sounder's tiers, in runs of a Mole with tier 2 parts in layer 2, at most. */
 	private static final int SOUNDER_TIER_ONE_RUNS = 2;
 	private static final int SOUNDER_TIER_TWO_RUNS = 4;
@@ -156,6 +161,42 @@ public class EconomyAffordabilityTest {
 		}
 		if (allowed.length != ComponentTrack.LINER.maxTier()) {
 			throw failure(helper, "the test has bands for %d liner tiers, the track has %d", allowed.length, ComponentTrack.LINER.maxTier());
+		}
+		helper.succeed();
+	}
+
+	/**
+	 * A liner that draws on a stack in the pilot's pack lays {@value EarlyRunModel#PACK_FED_BRICKS} bricks a bore (#363), and a bore that reaches layer 2 must pay
+	 * for them: the run nets more than an unlined layer 1 run once the bricks are paid, and the bill is at most {@value #BRICK_BILL_SHARE} of that layer 1 run.
+	 */
+	@GameTest
+	public void aPackFedLinedRunToLayerTwoNetsMoreThanAnUnlinedLayerOneRun(GameTestHelper helper) {
+		Run layerOne = stockRunInLayerOne();
+		Run lined = EarlyRunModel.run(Zone.load("upper_levels"), EarlyRunModel.withLiner(EarlyRunModel.mole(2, 2, 2), 2), EarlyRunModel.layerOneBlocks(), EarlyRunModel.hopperMass());
+		long bill = EarlyRunModel.brickBill(EarlyRunModel.PACK_FED_BRICKS);
+		double net = EarlyRunModel.netOfBricks(lined, EarlyRunModel.PACK_FED_BRICKS);
+		LOGGER.info("[economy] lined layer 2 run {} less ${} of bricks nets ${}; an unlined layer 1 run nets ${}", lined, bill, Math.round(net), Math.round(layerOne.net()));
+		if (net <= layerOne.net()) {
+			throw failure(helper, "a lined run to layer 2 nets $%.0f after $%d of bricks, no more than the $%.0f of an unlined layer 1 run", net, bill, layerOne.net());
+		}
+		if (bill > BRICK_BILL_SHARE * layerOne.net()) {
+			throw failure(helper, "%d bricks cost $%d, over %.0f%% of the $%.0f that a layer 1 run nets", EarlyRunModel.PACK_FED_BRICKS, bill, BRICK_BILL_SHARE * 100, layerOne.net());
+		}
+		helper.succeed();
+	}
+
+	/**
+	 * Slag brick costs spoil and no money (#363): the spoil hopper's own output lines for free. The spoil is the limit, one bay a dive, so a
+	 * pack-fed bore takes at most {@value #BAY_TRIPS_PER_PACK_FED_BORE} bays of it.
+	 */
+	@GameTest
+	public void slagBrickCostsSpoilAndNoMoneyAndAPackFedBoreTakesThreeBaysOfIt(GameTestHelper helper) {
+		if (PodLiningTuning.DEFAULT.fusePrice() != 0) {
+			throw failure(helper, "slag brick costs $%d each, expected it to be free", PodLiningTuning.DEFAULT.fusePrice());
+		}
+		int trips = EarlyRunModel.baySpoilTrips(EarlyRunModel.PACK_FED_BRICKS);
+		if (trips > BAY_TRIPS_PER_PACK_FED_BORE) {
+			throw failure(helper, "%d bricks take %d bays of spoil, at most %d are allowed", EarlyRunModel.PACK_FED_BRICKS, trips, BAY_TRIPS_PER_PACK_FED_BORE);
 		}
 		helper.succeed();
 	}

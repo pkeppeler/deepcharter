@@ -176,7 +176,7 @@ public final class OreProcessor {
 				context.player().spawnAtLocation(context.player().level(), bricks);
 			}
 		}
-		context.player().sendOverlayMessage(Component.translatable("deepcharter.market.fused", made, price, rackTotal, packTotal));
+		context.player().sendOverlayMessage(Component.translatable("deepcharter.market.fused", made, rackTotal, packTotal));
 		return Optional.empty();
 	}
 
