@@ -97,8 +97,8 @@ public class ProspectorChassisTest {
 					"a Prospector has the Prospector chassis with 2 seats, it has %s", prospector.chassis());
 			expect(helper, prospector.getBbWidth() == 2.9f && prospector.getBbHeight() == 2.9f,
 					"the Prospector's hitbox is 2.9 x 2.9, it is %s x %s", prospector.getBbWidth(), prospector.getBbHeight());
-			expect(helper, mole.chassis() == Chassis.MOLE && mole.getBbWidth() == 1.9f && mole.getBbHeight() == 2.9f,
-					"the Mole keeps its 1.9 x 2.9 hitbox, it is %s %s x %s", mole.chassis(), mole.getBbWidth(), mole.getBbHeight());
+			expect(helper, mole.chassis() == Chassis.MOLE && mole.getBbWidth() == Chassis.MOLE.width() && mole.getBbHeight() == Chassis.MOLE.height(),
+					"the Mole keeps its chassis hitbox, it is %s %s x %s", mole.chassis(), mole.getBbWidth(), mole.getBbHeight());
 
 			ServerLevel level = helper.getLevel();
 			TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
@@ -116,8 +116,8 @@ public class ProspectorChassisTest {
 			Entity mismatched = EntityType.create(PodRegistry.POD, TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), saved),
 					level, EntitySpawnReason.LOAD).orElseThrow(() -> failure(helper, "a Prospector's save must still load into a Mole's type"));
 			try {
-				expect(helper, mismatched instanceof PodEntity copy && copy.chassis() == Chassis.MOLE && copy.getBbWidth() == 1.9f
-						&& copy.getBbHeight() == 2.9f, "a Prospector's save in a Mole's type keeps the Mole chassis and hitbox, it loaded as %s", mismatched);
+				expect(helper, mismatched instanceof PodEntity copy && copy.chassis() == Chassis.MOLE && copy.getBbWidth() == Chassis.MOLE.width()
+						&& copy.getBbHeight() == Chassis.MOLE.height(), "a Prospector's save in a Mole's type keeps the Mole chassis and hitbox, it loaded as %s", mismatched);
 				// The save carries the Prospector's uuid, which is still in the level.
 				mismatched.setUUID(UUID.randomUUID());
 				expect(helper, level.addFreshEntity(mismatched) && level.getEntity(mismatched.getUUID()) == mismatched,

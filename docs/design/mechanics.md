@@ -690,7 +690,7 @@ The no-brace columns were measured again on the merged code and give the sounder
   | Tier 2, rack 32 | 41 | 17 | 22 |
   | Tier 2, rack 32 + pack | 55 | 34 | 39 |
 
-  No cheap change brings the old bars back: a tier 1 `sideReach` of 1 would blur tier 1 into tier 2, and tier 2 is already at its omniscient bound. The retune is issue [#424](https://github.com/pkeppeler/deepcharter/issues/424). The exposure (lava touch, gas blast) is box physics and was not touched.
+  No cheap change brings the old bars back: a tier 1 `sideReach` of 1 would blur tier 1 into tier 2, and tier 2 is already at its omniscient bound. The exposure (lava touch, gas blast) is box physics and was not touched.
 - **The braced column** (`DEEPCHARTER_LAVA_BORES_BRACE=1`, tier 1 sounder, rack 32 + pack, on code with #403): 46 of 100 reach layer 2 (30 without the brace). Deaths lava / gas / landing / crust: 17 / 35 / 0 / 0; hull lost 11.0 / 68.9; 26 bores stopped to burn 2.6 ore each ($93) for hull. The brace takes away the crust deaths (16 without it) and leaves the gas ones.
 - **The harness's lead check** (`LavaBoreTest.check`) compared the whole lava body's lead with the scanner's reach. A taller pod meets bodies that stretch above it (bore 75 of the sounder 2 column read 62 slabs against a reach of 60), so it now reads the lava the pod touched. A touched block is at most the box's top row, `height - 1` above the feet, so that is what it adds to the reach (tier 1 and thermal both).
 
