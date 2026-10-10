@@ -86,7 +86,8 @@ public final class DrawnText {
 		@Override
 		public void enableScissor(int x0, int y0, int x1, int y1) {
 			super.enableScissor(x0, y0, x1, y1);
-			Box now = new Box(x0, y0, x1 - x0, y1 - y0);
+			// Vanilla pushes the scissor transformed by the current pose (ScreenRectangle.transformAxisAligned), so the text boxes and the scissor are in the same space.
+			Box now = transformed(x0, y0, x1 - x0, y1 - y0);
 			scissors.push(scissors.isEmpty() ? now : intersection(scissors.peek(), now));
 		}
 

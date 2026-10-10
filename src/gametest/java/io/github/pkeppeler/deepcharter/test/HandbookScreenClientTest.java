@@ -11,6 +11,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.MouseButtonInfo;
@@ -23,8 +24,10 @@ import net.minecraft.world.entity.player.Inventory;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
+import io.github.pkeppeler.deepcharter.client.handbook.ClientNotes;
 import io.github.pkeppeler.deepcharter.client.handbook.ClientReadMarks;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookKeys;
+import io.github.pkeppeler.deepcharter.client.handbook.HandbookNote;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookPage;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookPages;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
@@ -34,8 +37,10 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
 import io.github.pkeppeler.deepcharter.handbook.HandbookItems;
 import io.github.pkeppeler.deepcharter.handbook.HandbookReadPayload;
 import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
+import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
@@ -72,6 +77,7 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 		viewingATextPageReportsItsChapterOnce(context);
 		viewingOnlyFullChaptersMarksThemReadOnce(context);
 		notesTabShowsAnEmptyState(context);
+		aLongNoteRunsOnToMoreSheets(context);
 		theServerRefusesWhatTheCharterMayNotRead();
 		redactionMarksSplitIntoWordsAndAnOddCountRedactsTheTail();
 		marginKeysCarryTheNamespaceAndThePath();
@@ -316,6 +322,105 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 			screen.showHandbook();
 			require(!screen.onNotesTab(), "the handbook tab opens again");
 		});
+	}
+
+	/** The longest real Note, Ines's log: it takes more than one sheet in a small window and at the default one. */
+	private static final int LONG_NOTE = 10;
+	/** A Note of one short line, which takes one sheet. */
+	private static final int SHORT_NOTE = 6;
+	private static final int SHORT_WINDOW_HEIGHT = 140;
+	private static final int DEFAULT_GUI_WIDTH = 427;
+	private static final int DEFAULT_GUI_HEIGHT = 240;
+
+	/**
+	 * #411: a Note that does not fit one sheet runs on to the next. Next turns the sheets and wraps from the last to the first, the arrow keys
+	 * turn them without wrapping, opening a Note starts at its first sheet, the sheets together hold every line of the Note once, and a
+	 * resize that leaves fewer sheets does not leave the screen on one that is gone.
+	 */
+	private static void aLongNoteRunsOnToMoreSheets(ClientGameTestContext context) {
+		context.runOnClient(client -> {
+			List<HandbookNote> notes = Notes.all().stream().map(ClientNotes::entry).toList();
+			HandbookScreen screen = new HandbookScreen(HandbookPages.of(chapters(), Set.of()), id -> true, id -> { }, notes);
+			screen.init(DEFAULT_GUI_WIDTH, DEFAULT_GUI_HEIGHT);
+			Identifier longNote = Notes.id(LONG_NOTE);
+			Identifier shortNote = Notes.id(SHORT_NOTE);
+
+			screen.openNote(shortNote);
+			require(screen.noteSheets() == 1, "a one-line Note takes one sheet, got " + screen.noteSheets());
+			require(!nextButton(screen).visible, "Next is hidden on a Note of one sheet");
+
+			screen.openNote(longNote);
+			int sheets = screen.noteSheets();
+			require(sheets >= 2, "Ines's log takes more than one sheet, got " + sheets);
+			require(screen.noteSheet() == 0 && nextButton(screen).visible, "a long Note opens on its first sheet, with Next shown");
+			for (int sheet = 1; sheet < sheets; sheet++) {
+				press(screen, nextButton(screen));
+				require(screen.noteSheet() == sheet, "Next goes to sheet " + (sheet + 1) + ", was " + (screen.noteSheet() + 1));
+			}
+			press(screen, nextButton(screen));
+			require(screen.noteSheet() == 0, "Next on the last sheet wraps to the first, was " + (screen.noteSheet() + 1));
+
+			require(screen.keyPressed(new KeyEvent(InputConstants.KEY_RIGHT, 0, 0)) && screen.noteSheet() == 1, "the right arrow turns to the next sheet");
+			require(screen.keyPressed(new KeyEvent(InputConstants.KEY_LEFT, 0, 0)) && screen.noteSheet() == 0, "the left arrow turns back");
+			screen.keyPressed(new KeyEvent(InputConstants.KEY_LEFT, 0, 0));
+			require(screen.noteSheet() == 0, "the left arrow stops at the first sheet");
+			for (int i = 0; i < sheets + 2; i++) {
+				screen.keyPressed(new KeyEvent(InputConstants.KEY_RIGHT, 0, 0));
+			}
+			require(screen.noteSheet() == sheets - 1, "the right arrow stops at the last sheet, was " + (screen.noteSheet() + 1));
+			screen.turnNote(sheets + 5);
+			require(screen.noteSheet() == sheets - 1, "turnNote stops at the last sheet");
+			screen.turnNote(-3);
+			require(screen.noteSheet() == 0, "turnNote stops at the first sheet");
+
+			screen.turnNote(sheets - 1);
+			screen.closeNote();
+			screen.openNote(longNote);
+			require(screen.noteSheet() == 0, "opening a Note starts at its first sheet, was " + (screen.noteSheet() + 1));
+
+			HandbookNote note = notes.stream().filter(entry -> entry.id().equals(longNote)).findFirst().orElseThrow();
+			requireEveryLineOnce(screen, note);
+
+			// A resize that leaves fewer sheets: start short (more sheets), go to the last, then grow.
+			screen.init(DEFAULT_GUI_WIDTH, SHORT_WINDOW_HEIGHT);
+			int narrow = screen.noteSheets();
+			require(narrow > sheets, "a short window takes more sheets than the default one: " + narrow + " against " + sheets);
+			screen.turnNote(narrow - 1);
+			screen.init(DEFAULT_GUI_WIDTH, DEFAULT_GUI_HEIGHT);
+			require(screen.noteSheets() == sheets && screen.noteSheet() == sheets - 1,
+					"after a resize to " + sheets + " sheets the screen is on its last, not on a sheet that is gone: sheet " + (screen.noteSheet() + 1) + " of " + screen.noteSheets());
+		});
+	}
+
+	/** The text each sheet draws, less the label, the title and the sheet counter, read in order, is the Note's text: no line twice, none lost. */
+	private static void requireEveryLineOnce(HandbookScreen screen, HandbookNote note) {
+		List<String> body = new ArrayList<>();
+		for (int sheet = 0; sheet < screen.noteSheets(); sheet++) {
+			screen.turnNote(sheet);
+			for (DrawnText.Drawn drawn : DrawnText.of(screen)) {
+				String text = drawn.text();
+				boolean heading = text.equals(note.title().getString()) || text.contains(String.format("N%02d", note.number())) || text.matches("\\d+ ?/ ?\\d+");
+				if (!heading) {
+					body.add(text);
+				}
+			}
+		}
+		screen.turnNote(0);
+		String expected = note.text().getString().replaceAll("\\s+", " ").trim();
+		String drawn = String.join(" ", body).replaceAll("\\s+", " ").trim();
+		require(drawn.equals(expected), "the sheets of Note " + note.number() + " draw its text once, in order.\nexpected: " + expected + "\ndrawn:    " + drawn);
+	}
+
+	private static AbstractWidget nextButton(HandbookScreen screen) {
+		String label = Component.translatable("deepcharter.handbook.screen.next").getString();
+		return screen.children().stream().filter(AbstractWidget.class::isInstance).map(AbstractWidget.class::cast)
+				.filter(widget -> widget.getMessage().getString().equals(label)).findFirst().orElseThrow(() -> new AssertionError("no Next button"));
+	}
+
+	private static void press(HandbookScreen screen, AbstractWidget button) {
+		require(button.visible && button.active, "the button '" + button.getMessage().getString() + "' can be pressed");
+		MouseButtonEvent click = new MouseButtonEvent(button.getX() + 2, button.getY() + 2, new MouseButtonInfo(LEFT_MOUSE, 0));
+		require(screen.mouseClicked(click, false), "the click on '" + button.getMessage().getString() + "' is taken");
 	}
 
 	/** Four chapters in registry order: the id list and the directive list must match by index. */

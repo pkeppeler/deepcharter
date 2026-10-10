@@ -7,6 +7,10 @@ and on a `setScreen(new X` of such a class, so a new screen cannot skip the gate
 class that already is one (`class Foo extends PanelBase` counts when `PanelBase` extends `CrtScreen`). A `setScreen(make())` hides which
 class it opens, so it fails unless the factory is in FACTORIES, where a layout case builds the same screens.
 
+Known gaps, as with any source scan: `Screen s = make(); setScreen(s)`, a ternary (`setScreen(a ? new X() : new Y())`) and a method
+reference to a factory hide the class from it. ScreenLayoutClientTest still checks every screen the game registers; only a screen
+reached solely one of these ways can slip by, so a reviewer looks for one.
+
 The match is on declarations, never on a bare mention: a name in a comment or in another method does not count.
 """
 import re
@@ -40,6 +44,9 @@ REGISTERED = re.compile(r"(?:TerminalScreens|MenuScreens)\s*\.\s*register\s*\([^
 SET_SCREEN = re.compile(r"setScreen\s*\(\s*new\s+(\w+)", re.DOTALL)
 # `setScreen(make(...))` or `setScreen(Screens.make(...))`: a call that is not `new`. A variable or null is no factory.
 FACTORY_SET_SCREEN = re.compile(r"setScreen\s*\(\s*(?!new\b)([\w.]+)\s*\(", re.DOTALL)
+# The drawn-text gate skips text drawn while any Renderable that is not a Screen is on the stack (that is a widget's own text), so a
+# screen must not draw text through one of its own making. AbstractWidget subclasses are the widgets; these are the other ways in.
+HIDDEN_TEXT = re.compile(r"\b(addRenderableOnly)\s*\(|\bimplements\b[^{;]*?\b(Renderable)\b|\bnew\s+(Renderable)\s*\(")
 STANDALONE = re.compile(r"List<Case>\s+standalone\s*\(\s*\)\s*\{")
 
 
@@ -79,6 +86,11 @@ def unguarded_factories(sources: list[str]) -> list[str]:
             if not any((name, callee.rsplit(".", 1)[-1]) in FACTORIES for name in declared):
                 found.append(callee)
     return sorted(found)
+
+
+def hidden_text_sources(sources: list[str]) -> list[str]:
+    """What a screen can use to draw text that DrawnText never sees: addRenderableOnly, and a class or object that is a Renderable."""
+    return sorted(next(group for group in match.groups() if group) for text in sources for match in HIDDEN_TEXT.finditer(text))
 
 
 def registered_classes(sources: list[str]) -> set[str]:
@@ -132,6 +144,14 @@ class ScreenLayoutGateTest(unittest.TestCase):
             loose, [],
             f"setScreen({loose}(...)) opens a screen the gate cannot see: open it with `new X(...)`, or add the factory to FACTORIES "
             "with the layout case that builds the same screens",
+        )
+
+    def test_no_screen_draws_text_through_a_renderable_the_gate_cannot_see(self):
+        loose = hidden_text_sources(client_sources())
+        self.assertEqual(
+            loose, [],
+            f"{loose} in src/client: the drawn-text gate skips text under any Renderable that is not a Screen. Draw the text in the screen's "
+            "own extract method, or inside a widget (an AbstractWidget subclass)",
         )
 
     def test_the_factories_exist(self):
@@ -198,6 +218,17 @@ class BypassFixtureTest(unittest.TestCase):
         for call in ("new X(view)", "null", "parent", "screen"):
             with self.subTest(call=call):
                 self.assertEqual(unguarded_factories([f"void open() {{ client.gui.setScreen({call}); }}"]), [])
+
+    def test_add_renderable_only_is_refused(self):
+        self.assertEqual(hidden_text_sources(["void init() { addRenderableOnly((graphics, x, y, t) -> { }); }"]), ["addRenderableOnly"])
+
+    def test_a_class_implementing_renderable_is_refused(self):
+        for text in ("class Label implements Renderable { }", "final class Label extends Foo implements Bar, Renderable { }", "var r = new Renderable() { };"):
+            with self.subTest(text=text):
+                self.assertEqual(hidden_text_sources([text]), ["Renderable"])
+
+    def test_a_widget_and_a_mention_of_renderable_are_not_refused(self):
+        self.assertEqual(hidden_text_sources(["class Button extends AbstractWidget { }", "// a Renderable is refused", "List<Renderable> all;"]), [])
 
     def test_the_terminal_factory_is_guarded_by_the_terminal_cases(self):
         self.assertEqual(unguarded_factories(["final class TerminalScreens { void open() { client.gui.setScreen(create(view)); } }"]), [])

@@ -194,6 +194,23 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
 				"a problem names the screen, the string and the overflow in pixels, got " + drawn.get(0));
 		require(drawn.get(1).contains("text 'UNDER'") && drawn.get(1).contains("overlaps 'ON ITS OWN'"),
 				"a problem names the string and the widget under it, got " + drawn.get(1));
+		List<String> overloads = new ArrayList<>();
+		List<String> scissored = new ArrayList<>();
+		context.runOnClient(client -> {
+			Screen all = new OverloadsFixtureScreen();
+			all.init(WIDTH, HEIGHT);
+			overloads.addAll(problemsOf("overloads fixture", all, List.of()));
+			Screen scissor = new ScissorFixtureScreen();
+			scissor.init(WIDTH, HEIGHT);
+			DrawnText.of(scissor).forEach(text -> scissored.add(text.text()));
+		});
+		require(overloads.size() == OVERLOAD_STRINGS.size(), "every overload of text and centeredText is recorded: expected " + OVERLOAD_STRINGS.size()
+				+ " problems, got " + overloads.size() + ": " + overloads);
+		for (String string : OVERLOAD_STRINGS) {
+			require(overloads.stream().anyMatch(problem -> problem.contains("text '" + string + "'") && problem.contains("past the right edge")),
+					"the string '" + string + "' past the edge is reported, got " + overloads);
+		}
+		require(scissored.equals(List.of("IN")), "a scissor under a translate is read in screen space: only 'IN' is inside it, got " + scissored);
 		require(problems.size() == 2, "the overflowing fixture should give 2 problems (one leaves the screen, one overlap), got " + problems);
 		require(problems.get(0).contains("fixture") && problems.get(0).contains("'WIDE'") && problems.get(0).contains("10 px past the right edge"),
 				"a problem names the screen, the widget and the overflow in pixels, got " + problems.get(0));
@@ -219,6 +236,55 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
 			CrtDraw.glowText(graphics, font, "PAST THE EDGE", WIDTH - 20, 40, 0xFFFFFFFF);
 			graphics.text(font, "UNDER", 110, 105, 0xFFFFFFFF);
 			super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+		}
+	}
+
+	/** The strings {@link OverloadsFixtureScreen} draws, one for each overload of {@code text} and {@code centeredText} the recorder overrides. */
+	private static final List<String> OVERLOAD_STRINGS = List.of("S5", "S6", "F5", "F6", "C5", "C6", "K1", "K2", "K3");
+
+	/**
+	 * One string past the right edge through every overload the recorder overrides. If an update routes one of them around the recorder, the
+	 * gate goes blind to it, and the count of problems drops below {@link #OVERLOAD_STRINGS}.
+	 */
+	private static final class OverloadsFixtureScreen extends Screen {
+		OverloadsFixtureScreen() {
+			super(Component.literal("overloads fixture"));
+		}
+
+		@Override
+		public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+			int x = WIDTH - 5;
+			graphics.text(font, "S5", x, 10, 0xFFFFFFFF);
+			graphics.text(font, "S6", x, 30, 0xFFFFFFFF, false);
+			graphics.text(font, Component.literal("F5").getVisualOrderText(), x, 50, 0xFFFFFFFF);
+			graphics.text(font, Component.literal("F6").getVisualOrderText(), x, 70, 0xFFFFFFFF, false);
+			graphics.text(font, Component.literal("C5"), x, 90, 0xFFFFFFFF);
+			graphics.text(font, Component.literal("C6"), x, 110, 0xFFFFFFFF, false);
+			graphics.centeredText(font, "K1", WIDTH, 130, 0xFFFFFFFF);
+			graphics.centeredText(font, Component.literal("K2"), WIDTH, 150, 0xFFFFFFFF);
+			graphics.centeredText(font, Component.literal("K3").getVisualOrderText(), WIDTH, 170, 0xFFFFFFFF);
+		}
+	}
+
+	/**
+	 * A scissor drawn under a translation: vanilla pushes it transformed by the pose, so it covers x 100 to 140 on the screen. "IN" is drawn at
+	 * local x 0 (screen x 100, inside it) and stays; "OUT" at local x 100 (screen x 200, outside it) is clipped away. A scissor kept raw (0 to 40)
+	 * would drop "IN" and keep nothing.
+	 */
+	private static final class ScissorFixtureScreen extends Screen {
+		ScissorFixtureScreen() {
+			super(Component.literal("scissor fixture"));
+		}
+
+		@Override
+		public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+			graphics.pose().pushMatrix();
+			graphics.pose().translate(100f, 0f);
+			graphics.enableScissor(0, 50, 40, 90);
+			graphics.text(font, "IN", 0, 60, 0xFFFFFFFF);
+			graphics.text(font, "OUT", 100, 60, 0xFFFFFFFF);
+			graphics.disableScissor();
+			graphics.pose().popMatrix();
 		}
 	}
 

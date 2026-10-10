@@ -191,6 +191,7 @@ public class HandbookScreen extends Screen {
 		};
 		if (viewed != null && !isRead.test(viewed) && reported.add(viewed)) {
 			onViewed.accept(viewed);
+			notePage = Mth.clamp(notePage, 0, noteSheets() - 1);
 		}
 		updateButtons();
 	}
@@ -235,6 +236,7 @@ public class HandbookScreen extends Screen {
 		notePage = 0;
 		if (noteUnread(note) && reported.add(note)) {
 			onViewed.accept(note);
+			notePage = Mth.clamp(notePage, 0, noteSheets() - 1);
 		}
 		updateButtons();
 	}
@@ -297,6 +299,10 @@ public class HandbookScreen extends Screen {
 				Component.translatable("deepcharter.handbook.screen.back"), button -> goTo(page - 1)));
 		next = addRenderableWidget(new PaperButton(paperLeft + paperWidth - tuning().padding() - tuning().buttonWidth(), buttonY, tuning().buttonWidth(), tuning().buttonHeight(),
 				Component.translatable("deepcharter.handbook.screen.next"), button -> pressNext()));
+		// A resize can change how many sheets a Note takes, so the sheet that was on screen may be gone.
+		if (openNote != null) {
+			notePage = Mth.clamp(notePage, 0, noteSheets() - 1);
+		}
 		updateButtons();
 	}
 
@@ -314,9 +320,17 @@ public class HandbookScreen extends Screen {
 		return openNote == null ? 0 : notePages(note(openNote));
 	}
 
-	/** Turns the open Note to sheet {@code sheet}, from 0. */
+	/** The sheet of the open Note on screen, from 0. */
+	public int noteSheet() {
+		return notePage;
+	}
+
+	/** Turns the open Note to sheet {@code sheet}, from 0, stopping at its first and last sheet. Does nothing while no Note is open. */
 	public void turnNote(int sheet) {
-		notePage = sheet;
+		if (openNote == null) {
+			return;
+		}
+		notePage = Mth.clamp(sheet, 0, noteSheets() - 1);
 		updateButtons();
 	}
 
