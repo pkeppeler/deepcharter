@@ -23,6 +23,9 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.requireN
 /**
  * Client GameTest for the layout of the upgrade screen at the default window (854 x 480, GUI scale 2, so 427 x 240): with a button for every
  * track in {@code ComponentTrack}, and whichever track is chosen, every button lies inside the screen, none overlaps another, and the Close button is among them.
+ *
+ * <p>Kept beside {@code ScreenLayoutClientTest} (#381), which checks the same fit for every screen, because this one also holds the screen to an 8 pixel
+ * bottom margin and counts one button per track.
  */
 public class UpgradeScreenLayoutClientTest implements FabricClientGameTest {
 	private static final int WIDTH = 427;

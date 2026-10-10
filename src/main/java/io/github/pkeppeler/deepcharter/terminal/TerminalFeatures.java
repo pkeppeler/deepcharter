@@ -56,6 +56,11 @@ public final class TerminalFeatures {
 		}
 	}
 
+	/** True when {@code type} adds a feature to its view, so a test can require a fixture for each. */
+	public static boolean registered(TerminalType type) {
+		return REGISTRATIONS.containsKey(type.id());
+	}
+
 	/** The feature of a view of {@code type}, or empty for a type with none or a terminal that is offline. */
 	static Optional<TerminalFeature> supply(TerminalType type, boolean repaired, MinecraftServer server, ServerPlayer player,
 			Optional<Charter> charter, BlockPos pos) {

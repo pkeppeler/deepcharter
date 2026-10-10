@@ -1,9 +1,11 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 
@@ -17,8 +19,8 @@ public final class ClientChecks {
 
 	/** A rectangle on the screen, in GUI pixels. */
 	public record Box(int x, int y, int width, int height) {
-		public static Box of(Button button) {
-			return new Box(button.getX(), button.getY(), button.getWidth(), button.getHeight());
+		public static Box of(AbstractWidget widget) {
+			return new Box(widget.getX(), widget.getY(), widget.getWidth(), widget.getHeight());
 		}
 
 		public static Box ofText(int x, int y, String text) {
@@ -103,6 +105,62 @@ public final class ClientChecks {
 		for (Button button : buttons) {
 			if (overlaps(box, Box.of(button))) {
 				return Optional.of(kind + " '" + text + "' is under " + labelOf(button));
+			}
+		}
+		return Optional.empty();
+	}
+
+	/** A widget by what a failure message should call it: a button by its label, any other by its class and message. */
+	public static String describe(AbstractWidget widget) {
+		if (widget instanceof Button button) {
+			return labelOf(button);
+		}
+		return widget.getClass().getSimpleName() + " '" + widget.getMessage().getString() + "'";
+	}
+
+	/** The visible widgets the screen holds, in the order it holds them. */
+	public static List<AbstractWidget> widgets(Screen screen) {
+		return screen.children().stream().filter(AbstractWidget.class::isInstance).map(AbstractWidget.class::cast)
+				.filter(widget -> widget.visible).toList();
+	}
+
+	/** How far {@code box} reaches past each edge of the screen, as "5 px past the right edge, 3 px past the bottom edge"; empty when it lies inside. */
+	public static Optional<String> overflowOf(Screen screen, Box box) {
+		List<String> edges = new ArrayList<>();
+		if (box.x() < 0) {
+			edges.add(-box.x() + " px past the left edge");
+		}
+		if (box.y() < 0) {
+			edges.add(-box.y() + " px past the top edge");
+		}
+		if (box.right() > screen.width) {
+			edges.add((box.right() - screen.width) + " px past the right edge");
+		}
+		if (box.bottom() > screen.height) {
+			edges.add((box.bottom() - screen.height) + " px past the bottom edge");
+		}
+		return edges.isEmpty() ? Optional.empty() : Optional.of(String.join(", ", edges));
+	}
+
+	/** {@code what} names the rectangle in the message; the overflow is in pixels past each edge. */
+	public static Optional<String> boxLeavesScreen(Screen screen, String what, Box box) {
+		return overflowOf(screen, box).map(overflow -> what + " at " + box.x() + "," + box.y() + " " + box.width() + " x " + box.height()
+				+ " leaves the " + screen.width + " by " + screen.height + " screen: " + overflow);
+	}
+
+	public static Optional<String> widgetLeavesScreen(Screen screen, AbstractWidget widget) {
+		return boxLeavesScreen(screen, describe(widget), Box.of(widget));
+	}
+
+	/** The overlap is in pixels, width by height. */
+	public static Optional<String> widgetOverlaps(AbstractWidget widget, List<AbstractWidget> widgets) {
+		Box box = Box.of(widget);
+		for (AbstractWidget other : widgets) {
+			Box otherBox = Box.of(other);
+			if (other != widget && overlaps(box, otherBox)) {
+				int across = Math.min(box.right(), otherBox.right()) - Math.max(box.x(), otherBox.x());
+				int down = Math.min(box.bottom(), otherBox.bottom()) - Math.max(box.y(), otherBox.y());
+				return Optional.of(describe(widget) + " overlaps " + describe(other) + " by " + across + " x " + down + " px");
 			}
 		}
 		return Optional.empty();
