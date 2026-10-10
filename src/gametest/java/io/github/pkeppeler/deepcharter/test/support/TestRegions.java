@@ -14,6 +14,9 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
  * stretch of the world another test may be using can say whose cell it found. Only chunks that are already loaded are read.
  */
 public final class TestRegions {
+	/** How far outside the columns a test's block may sit and still be found: every test here uses the default structure, which is small. */
+	public static final int BLOCK_REACH = 32;
+
 	private TestRegions() {
 	}
 
@@ -25,11 +28,11 @@ public final class TestRegions {
 		}
 	}
 
-	/** The regions of the tests whose block lies in a loaded chunk that the columns {@code x1..x2}, {@code z1..z2} touch. */
+	/** The regions of the tests whose block lies in a loaded chunk within {@link #BLOCK_REACH} of the columns {@code x1..x2}, {@code z1..z2}. */
 	public static List<Region> in(ServerLevel level, int x1, int x2, int z1, int z2) {
 		List<Region> regions = new ArrayList<>();
-		for (int chunkX = x1 >> 4; chunkX <= x2 >> 4; chunkX++) {
-			for (int chunkZ = z1 >> 4; chunkZ <= z2 >> 4; chunkZ++) {
+		for (int chunkX = (x1 - BLOCK_REACH) >> 4; chunkX <= (x2 + BLOCK_REACH) >> 4; chunkX++) {
+			for (int chunkZ = (z1 - BLOCK_REACH) >> 4; chunkZ <= (z2 + BLOCK_REACH) >> 4; chunkZ++) {
 				LevelChunk chunk = level.getChunkSource().getChunkNow(chunkX, chunkZ);
 				if (chunk == null) {
 					continue;
@@ -44,7 +47,7 @@ public final class TestRegions {
 		return regions;
 	}
 
-	/** The test regions that hold the column {@code x}, {@code z}, as text; "no test region" when none does. */
+	/** The test regions that hold the column {@code x}, {@code z}, as text; "no test block within " + BLOCK_REACH + " blocks" when none does. */
 	public static String ownerOfColumn(List<Region> regions, int x, int z) {
 		List<Region> owners = new ArrayList<>();
 		for (Region region : regions) {
@@ -52,6 +55,6 @@ public final class TestRegions {
 				owners.add(region);
 			}
 		}
-		return owners.isEmpty() ? "no test region" : "test region " + owners;
+		return owners.isEmpty() ? "no test block within " + BLOCK_REACH + " blocks" : "test region " + owners;
 	}
 }

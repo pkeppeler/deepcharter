@@ -475,8 +475,7 @@ public class ColonyPlacementTest {
 		int half = ColonyTuning.DEFAULT.padSize() / 2;
 		int reach = half + ColonyTuning.DEFAULT.edgeMargin();
 		int size = 2 * reach;
-		// The chunks are held, and read through the held objects: a chunk that nothing keeps loaded can unload while the rest load, and
-		// a column of an unloaded chunk reads as the void, 68 blocks below the ground (#393). The sweep takes every chunk the ring touches.
+		// Read through held chunks: getHeight answers the world minimum, 68 below the ground, for a chunk that is not loaded (#393).
 		int minChunkX = (centre.getX() - reach) >> 4;
 		int minChunkZ = (centre.getZ() - reach) >> 4;
 		LevelChunk[][] chunks = new LevelChunk[((centre.getX() + reach - 1) >> 4) - minChunkX + 1][((centre.getZ() + reach - 1) >> 4) - minChunkZ + 1];
@@ -521,10 +520,7 @@ public class ColonyPlacementTest {
 		finish(helper, problems.size() > 5 ? problems.subList(0, 5) : problems);
 	}
 
-	/**
-	 * A step between the margin's neighbouring columns, with the surface block of each side and the test regions that hold each
-	 * column, so that a cell another test carved is named by its owner (see #393).
-	 */
+	/** The failure text of a step: the block on each side, and the test region that holds each column. */
 	private static String step(Function<BlockPos, BlockState> blockAt, List<TestRegions.Region> regions, int[][] surface, int x, int z, int i, int j, int nextI, int nextJ, String going) {
 		int nextX = x + nextI - i;
 		int nextZ = z + nextJ - j;
@@ -671,16 +667,15 @@ public class ColonyPlacementTest {
 		return new AABB(centre.getX() - half, centre.getY(), centre.getZ() - half, centre.getX() + half, centre.getY() + ColonyTuning.DEFAULT.clearHeight(), centre.getZ() + half);
 	}
 
-	/** Loads every chunk of the pad: a block read in an unloaded chunk answers void air. */
+	/** Loads every chunk of the pad, so a height read there is not the world minimum. */
 	private static void loadPad(ServerLevel level, ColonySite.Placed colony) {
 		int half = ColonyTuning.DEFAULT.padSize() / 2;
 		BlockPos centre = colony.center();
-		for (int x = centre.getX() - half; x < centre.getX() + half; x += 16) {
-			for (int z = centre.getZ() - half; z < centre.getZ() + half; z += 16) {
-				level.getChunk(x >> 4, z >> 4);
+		for (int chunkX = (centre.getX() - half) >> 4; chunkX <= (centre.getX() + half - 1) >> 4; chunkX++) {
+			for (int chunkZ = (centre.getZ() - half) >> 4; chunkZ <= (centre.getZ() + half - 1) >> 4; chunkZ++) {
+				level.getChunk(chunkX, chunkZ);
 			}
 		}
-		level.getChunk((centre.getX() + half - 1) >> 4, (centre.getZ() + half - 1) >> 4);
 	}
 
 	private static MinecraftServer server(GameTestHelper helper) {
