@@ -154,6 +154,15 @@ class DiffStillsTest(unittest.TestCase):
         self.assertIn("colony-aerial-northwest", hidden)
         self.assertIn("1 of 2 stills differ (floors applied)", out)
 
+    def test_design_tour_floor_of_screen_pod_cargo_hides_5_levels_not_6(self):
+        # Share 0.0: no pixel may change by more than the 5-level tolerance.
+        name = "screen-pod-cargo"
+        (self.a / f"{name}.png").write_bytes(ds.encode_png(ds.Image(20, 10, bytes(600))))
+        for delta, expected_code in ((5, 0), (6, 1)):
+            (self.b / f"{name}.png").write_bytes(ds.encode_png(ds.Image(20, 10, bytes([delta] * 3 + [0] * 597))))
+            code, out, _ = run(str(self.a), str(self.b), "--design-tour")
+            self.assertEqual(expected_code, code, out)
+
     def test_design_tour_with_an_explicit_tolerance_is_a_usage_error(self):
         png(self.a / "x.png", grey)
         png(self.b / "x.png", grey)

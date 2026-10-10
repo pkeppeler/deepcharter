@@ -224,9 +224,8 @@ public class DesignTourScenario extends EvidenceScenario {
 	}
 
 	/**
-	 * Holds still what moves on client ticks and frames and that no wait can settle (issue 309): the animated textures (lava) on their
-	 * first frame, no block light flicker (a random walk on each tick), no HUD vignette (its brightness eases over ticks), no held item name (it fades on ticks) and no hands (a rider's arm), the figures and the player at rest and none spawned on the rails. The
-	 * breach fade and the fading figure are held only for their own still.
+	 * Holds still what moves on client ticks and frames and that no wait can settle (issue 309). The switches are in
+	 * {@link EvidencePins}. The breach fade and the fading figure are held only for their own still.
 	 */
 	private void pinTheClient() {
 		EvidencePins.spritesFrozen = true;
@@ -303,7 +302,10 @@ public class DesignTourScenario extends EvidenceScenario {
 				return;
 			}
 			if (System.nanoTime() > deadline) {
-				throw new AssertionError("still " + stillName + ": the world did not settle (mobs gone, chunks rendered) in "
+				BlockPos room = lightRoom;
+				String light = room == null ? "" : " or the room's light on the client still differs from the server's (client maxSky="
+						+ ctx.computeOnClient(c -> maxSky(c.level, room)) + ", server maxSky=" + serverGet(srv -> maxSky(srv.overworld(), room)) + ")";
+				throw new AssertionError("still " + stillName + ": the world did not settle (mobs gone, chunks rendered)" + light + " in "
 						+ SETTLE_LIMIT_NANOS / 1_000_000_000L + " s");
 			}
 		}
@@ -332,6 +334,19 @@ public class DesignTourScenario extends EvidenceScenario {
 			}
 		});
 		return false;
+	}
+
+	/** The highest sky light in the room: 15 in a sealed room is the stale light of issue 309. */
+	private static int maxSky(Level level, BlockPos floor) {
+		int max = 0;
+		for (int dx = -ROOM_RADIUS; dx <= ROOM_RADIUS; dx++) {
+			for (int dz = -ROOM_RADIUS; dz <= ROOM_RADIUS; dz++) {
+				for (int dy = 1; dy <= ROOM_HEIGHT; dy++) {
+					max = Math.max(max, level.getBrightness(LightLayer.SKY, floor.offset(dx, dy, dz)));
+				}
+			}
+		}
+		return max;
 	}
 
 	/** One number for the sky and block light of every cell of the room, so that two levels with the same light give the same number. */

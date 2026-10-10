@@ -9,21 +9,21 @@ package io.github.pkeppeler.deepcharter.test.support;
 public final class EvidencePins {
 	/** Every animated texture (lava, water, fire) shows its first frame and no longer advances. */
 	public static volatile boolean spritesFrozen;
-	/** The screen-edge vignette of the HUD, whose brightness eases over ticks to the light at the player, is not drawn. */
+	/** The HUD vignette is not drawn: its brightness eases over ticks. */
 	public static volatile boolean vignetteHidden;
-	/** The name of the held item, which shows for two seconds after a slot changes and fades on client ticks, is not drawn. */
+	/** The held item name is not drawn: it fades on client ticks. */
 	public static volatile boolean itemNameHidden;
 	/** The player's hands and the item in them are not drawn, so a rider's arm is not in a still. */
 	public static volatile boolean handsHidden;
-	/** Block light does not flicker: vanilla moves the brightness of every block-lit surface by a random walk on each client tick. */
+	/** Block light does not flicker: vanilla random-walks every lit surface on each client tick. */
 	public static volatile boolean lightFlickerOff;
-	/** The breach fade shows this alpha (0 clear to 1 black) and the HUD jitter is off; negative leaves the fade running on its ticks. */
+	/** The breach fade shows this alpha (0 clear to 1 black), HUD jitter off; negative lets it run. */
 	public static volatile float breachFadeAlpha = -1f;
-	/** Entities other than pods are drawn at rest: no idle sway of the arms and no walk cycle, whatever the age of the entity or its steps. */
+	/** Entities other than pods are drawn at rest: no arm sway, no walk cycle, whatever their age. */
 	public static volatile boolean entitiesPosed;
-	/** The level does not put lampless figures on the rails of Prospector's Run: a figure that spawns between the last wait and the shot is in the still. */
+	/** No lampless figures spawn on the rails: one that spawned between the last wait and the shot would be in the still. */
 	public static volatile boolean figureSpawningOff;
-	/** The fade (0 whole to 1 gone) a lampless figure is drawn with; negative leaves the fade it has. */
+	/** The fade (0 whole to 1 gone) of a lampless figure; negative keeps its own. */
 	public static volatile float figureFade = -1f;
 
 	private EvidencePins() {
