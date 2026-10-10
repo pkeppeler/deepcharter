@@ -535,7 +535,7 @@ public class OreProcessorTest {
 			try {
 				expectKey(helper, NO_SPOIL, OreProcessor.fuseSpoil(context(server, player, processor)), "fusing a pod with no spoil");
 				withSpoil(pod, 1, 0);
-				expectKey(helper, NO_SPOIL, OreProcessor.fuseSpoil(context(server, player, processor)), "fusing one spoil, which is under the 2 a brick takes");
+				expectKey(helper, NO_SPOIL, OreProcessor.fuseSpoil(context(server, player, processor)), "fusing one spoil, which is under the 2 spoil a brick takes");
 				// An empty account fuses all the same (#363): the brick costs spoil, not money.
 				fund(server, player, 1000);
 				Charters.spend(server, Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id(), balance(server, player));

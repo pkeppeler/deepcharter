@@ -44,29 +44,7 @@ public final class EarlyRunModel {
 	public static final double DRIVE_DOWN_SINK = 0.6;
 	private static final int TICKS_PER_SECOND = 20;
 
-	/**
-	 * (A) Slag bricks that a liner of tier 2 lays in one bore of layer 1 when it draws on a full rack and a stack of 64 in the pilot's pack:
-	 * 78 on average of 100 bores, 96 at most (LavaBoreTest, {@code DEEPCHARTER_LAVA_BORES_LINER=2 DEEPCHARTER_LAVA_BORES_PACK=64}, #363).
-	 */
-	public static final int PACK_FED_BRICKS = 80;
-
 	private EarlyRunModel() {
-	}
-
-	/** The money that {@code bricks} slag bricks cost at the processor: the fuse price of each (#363). */
-	public static long brickBill(int bricks) {
-		return (long) bricks * PodLiningTuning.DEFAULT.fusePrice();
-	}
-
-	/** Trips of a full spoil bay that {@code bricks} slag bricks take, rounded up: a dive brings home one bay of spoil at most. */
-	public static int baySpoilTrips(int bricks) {
-		PodLiningTuning tuning = PodLiningTuning.DEFAULT;
-		return (int) Math.ceil((double) bricks * tuning.spoilPerBrick() / tuning.spoilCapacity());
-	}
-
-	/** What {@code run} nets once {@code bricks} slag bricks are paid for. */
-	public static double netOfBricks(Run run, int bricks) {
-		return run.net() - brickBill(bricks);
 	}
 
 	/**

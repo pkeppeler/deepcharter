@@ -145,7 +145,7 @@ The bot is unrealistic in two opposite ways. It never reacts, which is harsh. It
 The no-lining column is a new run of the #300 bot: a pod with no hopper keeps no spoil, so it carries none, and its numbers moved by one bore from #300's (96 touched lava). The lining pods have the hopper.
 
 - **Lining halves the loss and does not make a bore safe.** 10 to 12 bores reach layer 2 against none, and the mean hull lost to lava falls from 78 to 24 to 28. Most encounters are shorter now: the median is 23 hull against 100.
-- **It costs about 20 bricks and 9 seconds of standing still a bore.** That is about $40 of brick, and 2% of the 8,000 ticks of a bore. The cost is small beside the gain, so the price and the time are not the limit.
+- **It costs about 20 bricks and 9 seconds of standing still a bore.** That was about $40 of brick at the $2 a brick of #313 (bricks are free since [#363](#liner-bricks-363-a)), and it is 2% of the 8,000 ticks of a bore. The cost is small beside the gain, so the price and the time are not the limit.
 - **A bigger rack buys 2 more survivors.** 16 bores ran out with 32 bricks, and 999 bricks gave 12 against 10. Supply is not what limits the hand rung.
 - **What is left.** Of the 73 encounters of the 32-brick run, 11 began with a lining that was asked for and not done (the pod was falling through open cave, and the bot lines only at rest), 50 began within 2 slabs below a lining, and 12 had no lining asked for. The one bore traced in detail (a 12-bore diagnostic) was a fall: the pod dropped through open cave past the slab where the bot wanted to line, so it was never at rest there, and lava crept in through the cave from farther than the scanner marks. The other cases are not traced. By hand cannot cover that, which is the case for rung 2 (a liner that works as the pod drills, measured in [Liner (#339, A)](#liner-339-a)) and for the heat-shield hull.
 - **The bores that line go deeper**, so they meet more lava than a bore that dies at the first. The no-lining bores last 6,149 pod ticks and the lining ones 8,092, so the table is a lower bound on what lining buys.
@@ -180,7 +180,7 @@ The no-lining column is a new run of the #300 bot: a pod with no hopper keeps no
 | 1 | $500 | 4 slabs | 1 | -10% | no | 2 |
 | 2 | $1,000 | 3 slabs | 2 | -15% | yes | 4 |
 
-- Money: the part. Bricks cost spoil and no money ([#363](#liner-bricks-363-a); the build of #339 charged $2 a brick, and a pack-fed liner spent about $160 a bore). A run in layer 2 with tier 2 parts and a hopper pod nets about $300 (`EconomyAffordabilityTest`, which bands both tiers).
+- Money: the part. Bricks cost spoil and no money ([#363](#liner-bricks-363-a); the build of #339 charged $2 a brick). A run in layer 2 with tier 2 parts and a hopper pod nets about $300 (`EconomyAffordabilityTest`, which bands both tiers).
 - Time: the drill is 10% to 15% slower, which `EarlyRunModel` carries (`withLiner`), but the pod never stops. The liner pods spend 9,000 to 10,000 ticks a bore against 8,160 for hand lining and 6,170 unlined (the bores run longer because they live longer, and the drill is slower).
 - Cargo and mass: the rack is the one the hopper has; the liner adds none.
 - Honest limits: the liner holds lava and nothing else. Most of the bores it saves from lava die of gas (below).
@@ -203,7 +203,7 @@ The no-lining column is a new run of the #300 bot: a pod with no hopper keeps no
 | Bores that touch lava | 99 | 69 | 55 | 39 | 18 | 23 | 30 |
 | Lava encounters per bore | 1.00 | 0.78 | 0.56 | 0.40 | 0.18 | 0.23 | 0.30 |
 | Died of something else | 1 | 27 | 40 | 56 | 70 | 64 | 59 |
-| Bricks (not cells) placed per bore: mean | none | 20 | 24 | 21 | 28 | 78 | 82 |
+| Bricks (not cells) placed per bore: mean | none | 20 | 24 | 21 | 28 | 28 | 33 |
 | Ticks standing still lining per bore: mean | none | 186 | 0 | 0 | 0 | 0 | 0 |
 | Pod ticks per bore | 6,170 | 8,160 | 8,943 | 9,663 | 10,073 | 10,113 | 9,557 |
 | Bores whose rack ran out (hand: pressed with none) | none | 20 | 40 | 27 | 0 | 3 | 2 |
@@ -235,8 +235,8 @@ The no-lining column is a new run of the #300 bot: a pod with no hopper keeps no
 
   Gas deals every big non-lava hit but 14 landings (all in the 999-brick column, braked and still over 0.7), and it ends 23 to 52 bores of each lining column. The crust ends 4 to 17: those are pods that reached the breach with little hull. Gas is a hazard of its own (its counterplay is the radiator, not the liner). So "reach layer 2" is a gas figure as much as a lava one, and it is the secondary number here: a bore that survives lava lives long enough to meet more gas. With the rack of 32 the liner reaches layer 2 less often than the hand (5 and 6 against 11) for that reason, since it holds lava better and then dies of gas. Unbraked, the first #313 bot had 12 to 15 landings of this size per column and about the same count of other big hits (37 to 160), so braking changes the landings and not the reach.
 - **The rack is the limit.** With 32 bricks, 40 and 27 bores ran out, and the dry bores are where lava gets through: tier 2 with 999 bricks has lava ending 18 bores, against 39. The first measurement here (unbraked) said the same.
-- **The pack closes most of the gap (the better design, kept).** The liner draws on the pilot's pack after the rack, as hand lining does. With one stack (64) in the pack, tier 2 has lava ending 23 bores and loses 11 hull per bore, and 13 reach layer 2, better than the hand on every lava figure and close to the 999-brick pod. The cost is bricks: 78 to 82 bricks a bore (about $160 at the $2 a brick that #339 charged, which [#363](#liner-bricks-363-a) removed), against 20 to 24 on the rack alone. The bricks the liner places per bore (rack alone) are 21 to 24 of 32 and the dry bores are the cost of leaving the rest of the stretch unlined.
-- **Tier 2 against tier 1.** Rack alone: 39 against 54 in lava, 24 against 29 hull. With the pack: 23 against 29 and 11 against 12. Tier 2 costs twice the price and 5% more drill speed. With a full supply the second tier is a small gain on lava, and its fall lining and half-price bricks are what it buys.
+- **The pack closes most of the gap (the better design, kept).** The liner draws on the pilot's pack after the rack, as hand lining does. With one stack (64) in the pack, tier 2 has lava ending 23 bores and loses 11 hull per bore, and 13 reach layer 2, better than the hand on every lava figure and close to the 999-brick pod. The cost is bricks: 28 to 33 a bore on average over all 100 bores, and 40 for the bores that get through to layer 2 (the first build of this table said 78 to 82, a counting error, see [#363](#liner-bricks-363-a)), against 20 to 24 on the rack alone. The bricks the liner places per bore (rack alone) are 21 to 24 of 32 and the dry bores are the cost of leaving the rest of the stretch unlined.
+- **Tier 2 against tier 1.** Rack alone: 39 against 54 in lava, 24 against 29 hull. With the pack: 23 against 29 and 11 against 12. Tier 2 costs twice the price and 5% more drill speed. With a full supply the second tier is a small gain on lava, and its fall lining and half the bricks a cell (2 cells a brick) are what it buys.
 - **How the ring got its shape.** The first build laid a ring one slab tall, as by hand: it met lava in 93 to 97 bores and lost 59 to 69 hull a bore (unbraked), no better than no lining. The pod bores 3 or 4 slabs before the next ring, so a ring that covers one slab leaves the rest open. A ring as tall as the interval met lava in 75 to 80 bores (hull 43 to 48). A ring that is also due when the bore turns into a new column (the bot sidesteps 8 times a bore, and each sidestep starts a stretch no ring covers) gave the table.
 - **A ring the rack cannot pay for stays unlined.** The liner lines the first cells (lava first) and the rest stay open. It does not catch up later, even when the pilot refills: the next ring covers the next stretch. That is a cost of a rack that runs dry, and one reason the dry bores die.
 - **The bores that live longer meet more.** The lining bores last 8,100 to 10,100 pod ticks and the unlined 6,170, so the table is a lower bound on what lining buys (as in #313).
@@ -244,45 +244,54 @@ The no-lining column is a new run of the #300 bot: a pod with no hopper keeps no
 
 **Open questions.**
 - Does a rack-limited liner earn its price when the hopper already refills the rack? On the rack of 32 the liner beats the hand by 8 to 23 bores in lava for $500 to $1,000, and the pack brings it close to an unlimited rack, but a pod with a hopper and a stack of bricks that stops to line by hand reaches layer 2 as often (11 against 5 to 6). The liner's case is the pilot's time and the fall, not reach.
-- Does a ring as tall as the interval waste bricks? A tier 2 ring lines every open cell of three slabs plus the pod's box, and the bore later removes (and loses) the bricks in its own path only when a ring cell was in the footprint. The measured bricks a bore are 21 to 24 on the rack, 78 to 82 with the pack: that is more than hand lining's 20, for 23 to 40 bores more held back.
+- Does a ring as tall as the interval waste bricks? A tier 2 ring lines every open cell of three slabs plus the pod's box, and the bore later removes (and loses) the bricks in its own path only when a ring cell was in the footprint. The measured bricks a bore are 21 to 24 on the rack and 28 to 33 with the pack: that is more than hand lining's 20, for 23 to 40 bores more held back.
 - Should a rack upgrade (more than 32 bricks, more mass) be a part of its own, or a bigger stack of bricks the pilot carries? The lava ladder's rung 3 may make either unnecessary.
 - Should the pod place bricks only beside lava when the rack is low, so a short rack is spent where lava is? Today it lines the open cells in order, lava first, and leaves the rest.
 - The gas: measured, gas ends 23 to 52 of the 100 bores of each lining column (the crust 4 to 17), more than any lining stops. Answered by [Gas and the bore (#368)](#gas-and-the-bore-368-a): gas caps reach even for a pilot who steers, and the rung is a sounder part (#373), not the liner or the radiator.
 
 ## Liner bricks (#363, A)
 
-**Problem.** A liner that draws on a stack of 64 in the pilot's pack after its rack of 32 lays 78 bricks a bore (96 at most; 100 braked bores, tier 2, seed 0). At $2 a brick that was $160, more than the $115 that a stock Mole's layer 1 run nets. The liner holds back lava (39 to 23 deaths) and lets 13 of 100 bores reach layer 2, but a charter that bought the bricks lost money on the bore that got there. A part that does not pay for its own use is not a ladder rung.
+**Problem.** The liner draws on the pilot's pack after its rack of 32, and the bricks cost $2 each at the processor. Issue #363 said a pack-fed liner lays 78 bricks a bore, $160, more than the $115 that a stock Mole's layer 1 run nets. **That 78 was a counting error in `LavaBoreTest`.** It counted the bricks in the pilot's pack at the end of the bore, and a pilot who dies has an empty inventory, so every dead pilot's 64 looked spent. The harness now keeps the pack count of the last tick the pilot was alive. The right numbers (100 braked bores, seed 0, liner 2, rack 32, pack 64):
 
-**Options weighed.** Net is what a lined run in layer 2 earns, from `EarlyRunModel` (a Mole with tier 2 parts, the tier 2 liner's drill penalty and a hopper's mass: $300 before bricks, 27 slabs) less the bricks of one pack-fed bore. An unlined stock layer 1 run nets $115.
+| Bricks placed per bore | Mean | p50 | p90 | Max |
+|---|---|---|---|---|
+| All 100 bores | 27.6 | 19 | 56 | 96 |
+| The 13 bores that reach layer 2 | 39.8 | 46 | 74 | 83 |
 
-| Option | Bricks a bore | Brick bill | Lined layer 2 run nets | Against $115 | Cost to the rest of the game |
+Liner 1 with the pack: 33.2 (was 82). The "Liner 2, 999 bricks" column (28) never used the pack, so it was right, and an unlimited pod and a pack-fed pod now agree (28 and 28). `EarlyRunModel` has no brick count in it: with free bricks nothing in the model needs one.
+
+So the bill at $2 was about $55 a bore, and $80 (up to $166) for the bores that reach layer 2, which is the bore the liner is bought for. That is 70% of a layer 1 run, not 140%, and a lined run to layer 2 still nets $220 after it. The problem is smaller than the issue said. It is still a tax on the one bore that matters, in a part that already costs $1,000.
+
+**Options weighed.** Net is a lined layer 2 run from `EarlyRunModel` ($300: Mole with tier 2 parts, tier 2 liner, hopper mass) less the bricks of one bore, at the mean of the 13 bores that reach layer 2 (40 bricks). An unlined stock layer 1 run nets $115.
+
+| Option | Bricks a bore | Bill | Lined run nets | Against $115 | Cost to the rest of the game |
 |---|---|---|---|---|---|
-| As built (#339): $2 a brick | 78 (80 modelled) | $160 | $140 | 1.2x | none; this is the problem |
-| $1 a brick | 80 | $80 | $220 | 1.9x | still a tax on a part that the user already paid $1,000 for |
-| **Free fuse: the spoil is the price (picked)** | 78 | $0 | $300 | 2.6x | spoil is the limit (below) |
-| Line only lava-facing cells by default | 64 (measured) | $128 | $172 | 1.5x | lava ends 31 bores against 23, 11 reach layer 2 against 13, and it needs a toggle |
-| Layer 2 ore worth 49% more, bricks at $2 | 80 | $160 | $300 | 2.6x | every ore-priced pin moves: the Prospector restore falls from 4 runs to 3 (pinned at 4), the matter transmitter from 4.0 runs to 2.7 (band 3.5 to 4), and layer 1 pays more too |
+| $2 a brick (#339) | 40 | $80 | $220 | 1.9x | the tax above |
+| $1 a brick | 40 | $40 | $260 | 2.3x | a price on spoil with no other use |
+| **Free fuse: the spoil is the price (picked)** | 40 | $0 | $300 | 2.6x | spoil is the limit (below) |
+| Line only lava-facing cells | 6.8 (all 100 bores, measured) | $14 (all bores) | about $290 | 2.5x | lava deaths 31 against 23, reach 11 against 13; needs a toggle |
+| Layer 2 ore worth 17% more, bricks at $2 | 40 | $80 | $300 | 2.6x | every ore-priced pin moves: the matter transmitter falls to 3.4 runs (band 3.5 to 4) |
 
-- **Lava-facing only** was measured (a temporary filter in `PodLining.cellsToLine` that kept lava cells and open cells beside lava, 100 braked bores, liner 2, rack 32 plus pack 64; not kept): 63.8 bricks a bore against 78.4 (-19%), lava deaths 31 against 23, reach 11 against 13, gas deaths 45. Most of the bricks go next to lava already, because the order is lava first and the open cells of a cave come last, so the filter saves little and gives up protection. Full rings as a toggle also needs a key, a pod state and a HUD word for 19% of the bricks. Not built.
-- **More valuable ore** fixes the sum by moving every other price with it. It makes the early game richer for a problem that only the liner has. Not built.
-- **A cheaper brick** ($1) halves the bill and keeps a price on spoil that has no other use: a charter with a hopper has spoil and nothing else to spend it on, so the price only taxes the part it paid for.
+Net for lava-only is $300 less 6.8 bricks scaled to the layer 2 bores; it is an estimate (A), since only the all-bores mean was measured. 2.6x is the best case, for a bore that reaches layer 2 (13 of 100): it is not an average. A bore that dies early earns less and spends less.
 
-**The pick: bricks cost spoil and no money.** `PodLiningTuning.fusePrice` is 0. Waste rock was already the brick's raw material (SPEC section 7: only ore is kept, and the hopper is the "keep stone" upgrade). So the hopper pod that brings spoil home lines for free, and a pod without a hopper has no rack to fill, so it has no free bricks. The hopper stays a $100 part and SPEC section 4 is unchanged.
+- **Lava-facing only** was measured with a temporary filter in `PodLining.cellsToLine` (lava cells and open cells beside lava; not kept): 6.8 bricks a bore against 27.6 (-75%), lava deaths 31 against 23, reach 11 against 13. This is a real saving, and it costs 8 more bores in lava. It needs a toggle (a key, a pod state, a HUD word) to give the pilot the full ring back, which is more than #363 asked for. Not built; it is the next lever if bricks need to be scarcer.
+- **More valuable ore** moves every other price to fix one line. Not built.
+- **A cheaper brick** ($1) halves the bill and keeps a price on spoil that has no other use.
 
-**What limits it now is spoil, and the trips.** A bay holds 64 spoil, which is 32 bricks a dive, one rack. A pack-fed bore uses 78 to 80 bricks, so it takes 3 bays: the pilot fuses after each dive, the overflow of a full rack goes to the pack, and the pack fills over a few dives. A pilot who wants the full 96 bricks needs 3 trips of spoil. The bay (64) and the rack (32) are unchanged; a liner on the rack alone is the short-trip liner (21 to 24 bricks, 39 deaths in lava), and the pack is the long-trip one (78 bricks, 23 deaths). This is the trade-off: lining is time and trips, not dollars. It leaves the money for the parts that are a shop decision.
+**The pick: bricks cost spoil and no money (A).** The processor fuses 2 spoil into a brick for nothing. Waste rock was already the brick's raw material (SPEC section 7: only ore is kept, and the hopper is the "keep stone" upgrade), so a hopper pod that brings spoil home lines for free, and a pod without a hopper has no rack to fill. The hopper stays a $100 part and SPEC section 4 is unchanged. The price and its charge code are removed: a later price is a redesign, not a knob.
+
+**What limits it now is spoil.** (A) A bay holds 64 spoil, which is 32 bricks a dive. A bore that reaches layer 2 uses 40 on average and 83 at most: 80 bricks x 2 spoil / 64 a bay is 2.5 bays, so 3 dives of spoil for the dearest bores. The pilot fuses after each dive, the overflow of a full rack goes to the pack, and the pack fills over a few dives. This is arithmetic, not a pinned claim.
 
 **Trade-offs.**
-- Money: the brick bill falls from $160 to $0. A lined run to layer 2 nets $300, 2.6 times a layer 1 run, which is what the layer 2 run nets without bricks.
-- Time: a lined dive is paid for in earlier dives. A charter that lines every dive makes 32 bricks a dive and uses 21 to 24 of them from the rack; the pack grows by the 8 to 11 it does not use.
-- No change to the bores: the same liner, the same bricks, so the 100-bore table of the [Liner](#liner-vs-hand-lining-vs-a-straight-bore-measured) section is unchanged. It was re-measured on this build (liner 2, rack 32, pack 64): 78.4 bricks a bore, 23 deaths in lava, 13 reach, 10.6 hull to lava. The harness fills the pack itself, so the price does not enter it.
+- Money: the bill falls to $0. The lined run nets $300 at best, 2.6x a layer 1 run, which is what the layer 2 run nets without bricks.
+- Time: lining is paid for in earlier dives, not dollars.
+- The bores do not change: the same liner, the same bricks. The 100-bore tables of the [Liner](#liner-vs-hand-lining-vs-a-straight-bore-measured) section are unchanged apart from the bricks rows (lava 23, reach 13, hull to lava 10.6 on this build).
 
-**Pins.** `EconomyAffordabilityTest`: `aPackFedLinedRunToLayerTwoNetsMoreThanAnUnlinedLayerOneRun` (the lined run nets more than the layer 1 run, and the 80 bricks cost at most half of it) and `slagBrickCostsSpoilAndNoMoneyAndAPackFedBoreTakesThreeBaysOfIt` (the price is 0, and 80 bricks take at most 3 bays). `EarlyRunModel` carries `PACK_FED_BRICKS` (80, a modelled round number of the 78 mean), `brickBill`, `baySpoilTrips` and `netOfBricks`. `OreProcessorTest` and `OreProcessorClientTest` pin that fusing takes no money, with an empty account too.
-
-**Tuning knobs.** `PodLiningTuning.fusePrice` (0; the processor charges it when it is above 0, and the "cannot pay" refusal remains for that case), `spoilCapacity` (64) and `brickCapacity` (32).
+**Pins.** `EconomyAffordabilityTest.aLinedRunToLayerTwoNetsMoreThanAnUnlinedLayerOneRun` keeps the liner's drill penalty and the hopper's mass from sinking a layer 2 run below a layer 1 run. `OreProcessorTest` (fusing takes no money, with a funded and an empty account) and `OreProcessorClientTest` pin that fusing is free.
 
 **Open questions.**
-- Is the 3-trip pack too slow a loop? If a charter does not line because it must save spoil for three dives, a bigger bay is the next knob (it costs mass and so lift), or a bay and rack part of its own.
-- Should the brick sell for a few dollars as scrap? It would reopen the price this section removed, so not unless bricks pile up.
+- Is the 3-trip pack a slow loop for the dearest bores? A bigger bay costs mass, so lift.
+- Should lava-only lining be the default, with full rings as a toggle? It saves 75% of the bricks for 8 more lava deaths in 100.
 
 ## Gas and the bore (#368, A)
 

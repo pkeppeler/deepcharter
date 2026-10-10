@@ -115,10 +115,9 @@ public final class OreProcessor {
 	}
 
 	/**
-	 * Turns spoil into slag brick: {@link PodLiningTuning#spoilPerBrick()} spoil for a brick, at {@link PodLiningTuning#fusePrice()}
-	 * dollars each. Each parked pod's bricks go to its rack until the rack is full, and the rest to the player's pack while it has room.
-	 * It makes only the bricks that have somewhere to go and that the account pays for, and refuses when that is none. Nothing after the
-	 * charge can throw or refuse, and the charge is for the bricks made.
+	 * Turns spoil into slag brick: {@link PodLiningTuning#spoilPerBrick()} spoil for a brick, and no money (#363). Each parked pod's
+	 * bricks go to its rack until the rack is full, and the rest to the player's pack while it has room. It makes only the bricks that
+	 * have somewhere to go, and refuses when that is none.
 	 */
 	public static Optional<Component> fuseSpoil(TerminalAction.Context context) {
 		Charter charter = context.charter().orElseThrow();
@@ -128,23 +127,20 @@ public final class OreProcessor {
 		}
 		PodLiningTuning tuning = PodLiningTuning.DEFAULT;
 		Inventory inventory = context.player().getInventory();
-		long budget = tuning.fusePrice() == 0 ? Long.MAX_VALUE : charter.account() / tuning.fusePrice();
 		List<Fusion> racked = new ArrayList<>();
 		for (PodEntity pod : pods) {
 			// A pod whose lining state cannot be read has nothing to fuse and is left as it is.
 			Optional<PodLining.State> state = PodLining.readable(pod);
 			if (state.isPresent()) {
 				int makeable = state.get().spoil() / tuning.spoilPerBrick();
-				int toRack = (int) Math.min(budget, Math.min(makeable, Math.max(0, tuning.brickCapacity() - state.get().bricks())));
-				budget -= toRack;
+				int toRack = (int) Math.min(makeable, Math.max(0, tuning.brickCapacity() - state.get().bricks()));
 				racked.add(new Fusion(pod, makeable, toRack, 0));
 			}
 		}
 		int packRoom = packRoom(inventory);
 		List<Fusion> fusions = new ArrayList<>();
 		for (Fusion fusion : racked) {
-			int toPack = (int) Math.min(budget, Math.min(fusion.makeable() - fusion.toRack(), packRoom));
-			budget -= toPack;
+			int toPack = (int) Math.min(fusion.makeable() - fusion.toRack(), packRoom);
 			packRoom -= toPack;
 			fusions.add(fusion.withPack(toPack));
 		}
@@ -153,15 +149,7 @@ public final class OreProcessor {
 			return Optional.of(Component.translatable("deepcharter.market.refusal.no_spoil"));
 		}
 		if (made == 0) {
-			return Optional.of(budget == 0 ? Component.translatable("deepcharter.market.refusal.cannot_pay_fuse", tuning.fusePrice())
-					: Component.translatable("deepcharter.market.refusal.no_room"));
-		}
-		long price = (long) made * tuning.fusePrice();
-		if (price > 0) {
-			Optional<CharterRefusal> refusal = Charters.spend(context.server(), charter.id(), price);
-			if (refusal.isPresent()) {
-				return Optional.of(refusal.get().message());
-			}
+			return Optional.of(Component.translatable("deepcharter.market.refusal.no_room"));
 		}
 		int rackTotal = fusions.stream().mapToInt(Fusion::toRack).sum();
 		int packTotal = made - rackTotal;
