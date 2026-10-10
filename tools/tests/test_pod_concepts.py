@@ -97,6 +97,38 @@ class Pods(unittest.TestCase):
             self.assertEqual(512, model.texture)
 
 
+class Cabs(unittest.TestCase):
+    """The pilot sits inside a canopy (#382): the panes are clear, so the rider shows through them, and carry no glow that would draw over the rider."""
+
+    def test_a_pane_is_see_through_and_does_not_glow(self):
+        for name, make in pc.PODS.items():
+            model = make()
+            pc.pack(model)
+            base, glow = pc.paint_model(model)
+            panes = [cube for _, cube in model.cubes() if cube.material == "pane"]
+            self.assertGreaterEqual(len(panes), 3, f"{name} has a windscreen and a window on each side")
+            for cube in panes:
+                for face in pc.faces_of(cube):
+                    if min(face.w, face.h) <= 1:
+                        continue
+                    pixels = [base.get(face.x + i, face.y + j)[3] for j in range(face.h) for i in range(face.w)]
+                    clear = sum(1 for alpha in pixels if alpha == 0)
+                    self.assertGreater(clear, 0.7 * len(pixels), f"{name}: a wide pane face should be mostly clear, {clear} of {len(pixels)} are")
+                    self.assertTrue(all(glow.get(face.x + i, face.y + j)[3] == 0 for j in range(face.h) for i in range(face.w)), f"{name}: a pane glows")
+
+    def test_a_wreck_keeps_its_panes_clear(self):
+        for name, make in pc.PODS.items():
+            model = make()
+            pc.pack(model)
+            worn, _ = pc.paint_model(model, "derelict" if name == "mole" else "scorched")
+            for _, cube in model.cubes():
+                if cube.material != "pane":
+                    continue
+                for face in pc.faces_of(cube):
+                    if min(face.w, face.h) > 1:
+                        self.assertTrue(any(worn.get(face.x + i, face.y + j)[3] == 0 for j in range(face.h) for i in range(face.w)), f"{name}: a wreck's pane is opaque")
+
+
 class Wrecks(unittest.TestCase):
     def test_a_wreck_is_the_same_model_weathered(self):
         for name in pc.PODS:
@@ -120,7 +152,7 @@ class Wrecks(unittest.TestCase):
         self.assertGreater(lit_pixels, 0)
         lenses = [cube for _, cube in prospector.cubes() if cube.material == "lens"]
         self.assertGreaterEqual(len(lenses), 2, "the Prospector has two lamps")
-        self.assertLess(lit_pixels, full_pixels / 2, "one lamp lit, not the cab and the other lamp as well")
+        self.assertEqual(full_pixels, 2 * lit_pixels, "one lamp of the two lit; the clear panes glow nowhere, so the mask is the two lamps")
 
 
 class Limits(unittest.TestCase):

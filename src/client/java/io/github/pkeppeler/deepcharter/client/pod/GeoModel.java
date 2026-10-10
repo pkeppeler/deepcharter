@@ -225,11 +225,36 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 	}
 
 	private double[] bounds(Predicate<Bone> only, OptionalDouble pitch) {
+		double[] bounds = {Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE};
+		for (RestCube cube : restCubes(only, pitch)) {
+			for (int i = 0; i < 3; i++) {
+				bounds[i] = Math.min(bounds[i], cube.box()[i]);
+				bounds[i + 3] = Math.max(bounds[i + 3], cube.box()[i + 3]);
+			}
+		}
+		return bounds;
+	}
+
+	/** Used by {@code PodSeatsClientTest} to hold a rider to the cab. A cube at rest: its bone, the cube as the file has it, and its box in pixels as {minX, minY, minZ, maxX, maxY, maxZ}. */
+	public record RestCube(Bone bone, Cube cube, double[] box) {
+	}
+
+	/**
+	 * Used by {@code PodSeatsClientTest} only. The box of each cube of the bones {@code only} accepts at rest, in pixels, as {minX, minY, minZ, maxX, maxY, maxZ}: the box of the
+	 * cube's corners turned by its own rotation and its bones'. A turned cube is held by the box of its turned corners, which holds it
+	 * and a little more, so a test that a point is clear of every cube errs towards "not clear".
+	 */
+	public List<RestCube> restCubes(Predicate<Bone> only) {
+		return restCubes(only, OptionalDouble.empty());
+	}
+
+	private List<RestCube> restCubes(Predicate<Bone> only, OptionalDouble pitch) {
 		Map<String, Bone> byName = new HashMap<>();
 		bones.forEach(bone -> byName.put(bone.name(), bone));
-		double[] bounds = {Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE};
+		List<RestCube> cubes = new ArrayList<>();
 		for (Bone bone : bones.stream().filter(only).toList()) {
 			for (Cube cube : bone.cubes()) {
+				double[] box = {Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE};
 				for (int corner = 0; corner < CUBE_CORNERS; corner++) {
 					Vec3 p = turnedCorner(cube, corner);
 					for (Bone at = bone; at != null; at = at.parent().map(byName::get).orElse(null)) {
@@ -239,13 +264,14 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 					}
 					double[] xyz = {p.x, p.y, p.z};
 					for (int i = 0; i < 3; i++) {
-						bounds[i] = Math.min(bounds[i], xyz[i]);
-						bounds[i + 3] = Math.max(bounds[i + 3], xyz[i]);
+						box[i] = Math.min(box[i], xyz[i]);
+						box[i + 3] = Math.max(box[i + 3], xyz[i]);
 					}
 				}
+				cubes.add(new RestCube(bone, cube, box));
 			}
 		}
-		return bounds;
+		return cubes;
 	}
 
 	/**

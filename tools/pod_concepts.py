@@ -566,6 +566,23 @@ def glass(canvas, glow, face, rng):
                 glow.set(face.x + i, face.y + j, mix(CAB_GLOW, (0, 0, 0), rng.random() * 0.5))
 
 
+def pane(canvas, glow, face, rng):
+    """Clear glass (#382): the pilot shows through it. A wide face is see-through (alpha 0, which the renderer cuts out) apart from
+    two diagonal glints; the thin edge faces are dark glass, so the pane keeps an outline. It has no glow, which would draw over the pilot."""
+    w, h = face.w, face.h
+    wide = min(w, h) > 1
+    for j in range(h):
+        for i in range(w):
+            if not wide:
+                canvas.set(face.x + i, face.y + j, shade("glass", 1))
+                continue
+            band = (i + j * 1.3) % (w + h * 1.3 + 4)
+            if 1 <= band < 2.5:
+                canvas.set(face.x + i, face.y + j, shade("glass", 4))
+            elif 2.5 <= band < 3.5:
+                canvas.set(face.x + i, face.y + j, shade("glass", 3))
+
+
 def porthole(canvas, glow, face, rng):
     """A round window in a riveted brass ring on the front and back; plain brass on the other faces."""
     w, h = face.w, face.h
@@ -742,6 +759,7 @@ MATERIALS = {
     "tank": metal("brass", banded=True),
     "rubber": rubber,
     "glass": glass,
+    "pane": pane,
     "porthole": porthole,
     "lens": lens,
     "grille": grille,
@@ -1423,39 +1441,125 @@ PROSPECTOR_BORE = 24
 PROSPECTOR_HEIGHT = 46.4
 
 
+# The cab (#382): the pilot sits inside. Below the sill the hull is solid and hides the pilot's hips and legs; above it is a hollow
+# cab, glazed on three sides, with a roof over it. The rider is the player's own model, 20.6 pixels from the bottom of the seat to the
+# top of the head, so the ceiling stands a little above that. Every number here is in pixels of the model; the seat offsets that put
+# a rider in the cab are in PodRegistry, and PodSeatsClientTest holds the two together.
+MOLE_SILL = 15
+MOLE_CEILING = 27
+MOLE_ROOF = 29
+MOLE_DZ = 3
+
+
+def mole_hull(m):
+    """The Capsule with a cab: the bevelled lower hull to MOLE_SILL, a glazed cab to MOLE_CEILING (windscreen and side panes, a back wall
+    and the seat back), a roof, side tanks under the windows, one exhaust up the back, and the mast and rotor on the roof."""
+    dz = MOLE_DZ
+    body = m.bone("body")
+    bevelled_box(body, -10, 7, -5 + dz, 10, 13, 12 + dz, 2, "paint")
+    body.box(-10, 13, -5 + dz, 10, MOLE_SILL, 12 + dz, "paint")
+    body.box(-10.5, 12, -5.5 + dz, 10.5, 13, 12.5 + dz, "trim")
+    body.box(-6, 9, 12 + dz, 6, 18, 13 + dz, "grille")
+    body.box(-8, 6, -3 + dz, 8, 7, 10 + dz, "iron")
+    # The back wall, the seat back and the roof.
+    body.box(-10, MOLE_SILL, 10 + dz, 10, MOLE_CEILING, 12 + dz, "paint")
+    body.box(-5, MOLE_SILL, 6 + dz, 5, 24, 8 + dz, "steel")
+    body.box(-10, MOLE_CEILING, -6 + dz, 10, MOLE_ROOF - 1, 12 + dz, "paint")
+    body.box(-10.5, MOLE_ROOF - 1, -6.5 + dz, 10.5, MOLE_ROOF, 12.5 + dz, "trim")
+    canopy = m.bone("canopy", "body")
+    # Clear panes in a brass frame: the windscreen, and a window down each side.
+    canopy.box(-8, MOLE_SILL, -6 + dz, 8, MOLE_CEILING - 1, -5 + dz, "pane")
+    for x0, x1 in ((-10, -9), (9, 10)):
+        canopy.box(x0, MOLE_SILL, -2 + dz, x1, MOLE_CEILING - 1, 9 + dz, "pane")
+    for x0, x1 in ((-10.5, -8.5), (8.5, 10.5)):
+        canopy.box(x0, MOLE_SILL, -6.5 + dz, x1, MOLE_CEILING - 1, -4.5 + dz, "brass")
+        canopy.box(x0, MOLE_SILL, -3 + dz, x1, MOLE_CEILING - 1, -1 + dz, "brass")
+        canopy.box(x0, MOLE_SILL, 9 + dz, x1, MOLE_CEILING - 1, 11 + dz, "brass")
+        canopy.box(x0, MOLE_SILL - 1, -6.5 + dz, x1, MOLE_SILL, 11.5 + dz, "brass")
+        canopy.box(x0, MOLE_CEILING - 1, -6.5 + dz, x1, MOLE_CEILING, 11.5 + dz, "brass")
+    canopy.box(-8.5, MOLE_SILL - 1, -6.5 + dz, 8.5, MOLE_SILL, -4.5 + dz, "brass")
+    canopy.box(-8.5, MOLE_CEILING - 1, -6.5 + dz, 8.5, MOLE_CEILING, -4.5 + dz, "brass")
+    for x in (-4, 3):
+        canopy.box(x, MOLE_SILL, -6.5 + dz, x + 1, MOLE_CEILING - 1, -5.5 + dz, "brass")
+    for side, x0, x1 in (("l", 10, 13), ("r", -13, -10)):
+        tank = m.bone(f"tank_{side}", "body")
+        tank.box(x0, 9, 0 + dz, x1, 14, 10 + dz, "tank")
+        tank.box(x0 + 0.5, 10, -1 + dz, x1 - 0.5, 13, 0 + dz, "brass")
+    # One stack up the back wall, and two stubs of whip aerial on the roof.
+    exhaust = m.bone("exhaust", "body")
+    exhaust.box(-9, 17, 12 + dz, -7, MOLE_ROOF + 1, 13 + dz, "exhaust")
+    exhaust.box(-9.5, MOLE_ROOF, 11 + dz, -6.5, MOLE_ROOF + 1, 13 + dz, "frame")
+    for x in (5, -6):
+        exhaust.box(x, MOLE_ROOF, 10 + dz, x + 1, MOLE_ROOF + 1, 11 + dz, "trim")
+    hatch = m.bone("hatch", "body")
+    hatch.box(1, MOLE_ROOF, 8 + dz, 5, MOLE_ROOF + 1, 12 + dz, "brass")
+    # The mast and the rotor lie low on the roof: the cab takes the height, and the hitbox ends at 30.4.
+    mast = m.bone("mast", "body")
+    mast.box(-1, MOLE_ROOF, 1 + dz, 1, MOLE_ROOF + 1, 3 + dz, "frame")
+    rotor = m.bone("rotor", "mast", (0, MOLE_ROOF + 0.9, 2 + dz))
+    rotor.box(-1.5, MOLE_ROOF + 0.4, 0.5 + dz, 1.5, MOLE_ROOF + 1.4, 3.5 + dz, "brass")
+    # Each blade is a bone of its own, hinged at the hub, so that it folds forward along the roof when the pod is not lifting off (#383).
+    blade_l = m.bone("blade_l", "rotor", (2, MOLE_ROOF + 0.9, 2 + dz))
+    blade_l.box(2, MOLE_ROOF + 0.4, 1 + dz, 14, MOLE_ROOF + 1.4, 3 + dz, "paint")
+    blade_l.box(14, MOLE_ROOF + 0.4, 1 + dz, 16, MOLE_ROOF + 1.4, 3 + dz, "trim")
+    blade_r = m.bone("blade_r", "rotor", (-2, MOLE_ROOF + 0.9, 2 + dz))
+    blade_r.box(-14, MOLE_ROOF + 0.4, 1 + dz, -2, MOLE_ROOF + 1.4, 3 + dz, "paint")
+    blade_r.box(-16, MOLE_ROOF + 0.4, 1 + dz, -14, MOLE_ROOF + 1.4, 3 + dz, "trim")
+
+
 def mole():
-    """The Mole: the round-3 Capsule, and the four cutters of the drill tiers as bone sets on one yoke."""
+    """The Mole: the round-3 Capsule with a cab for its pilot, and the four cutters of the drill tiers as bone sets on one yoke."""
     m = Model("mole", texture=512)
-    cone_base(m, MOLE_RIG)
+    mole_hull(m)
+    lamp_stalks(m)
+    capsule_running_gear(m, MOLE_DZ)
+    cone_mount(m, MOLE_RIG)
     for name, build_cutter in CUTTERS.items():
         build_cutter(m, MOLE_RIG, "_" + name)
     return m
 
 
+# The Prospector's cab (#382), like the Mole's: a solid lower hull to the sill, a glazed cab with two seats in tandem to the deck, and the
+# roof on the deck. The pilot sits at PROSPECTOR_SEAT_Z[0] and the navigator behind.
+PROSPECTOR_SILL = 17
+PROSPECTOR_SEAT_Z = (3.5, 14.5)
+PROSPECTOR_DECK = 29
+
+
 def prospector_body(m):
-    """The Capsule's family, longer and wider: a bevelled hull with two window bands, one for each seat of the tandem, a roof with a
-    hatch over each seat, side tanks, two stacks, a propeller on a mast, the brow lamps on posts that stand on arms beside the cone, treads with
-    four wheels, and a winch at the back with its cable and hook."""
+    """The Capsule's family, longer and wider, with a cab: a bevelled lower hull to the sill, a glazed cab with two window bands, one for
+    each seat of the tandem, a deck and a roof with a hatch over each seat, side tanks under the windows, two stacks, a propeller on a
+    mast, the brow lamps on posts that stand on arms beside the cone, treads with four wheels, and a winch at the back with its cable
+    and hook."""
+    sill, deck = PROSPECTOR_SILL, PROSPECTOR_DECK
     body = m.bone("body")
-    bevelled_box(body, -17, 9, -4, 17, 30, 21, 3, "paint")
-    body.box(-17.5, 17, -4.5, 17.5, 18, 21.5, "trim")
-    bevelled_box(body, -13, 30, -1, 13, 35, 18, 2, "paint")
+    bevelled_box(body, -17, 9, -4, 17, 16, 21, 3, "paint")
+    body.box(-17, 16, -4, 17, sill, 21, "paint")
+    body.box(-17.5, 14, -4.5, 17.5, 15, 21.5, "trim")
+    # The back wall, a seat back for each seat, the deck and the roof.
+    body.box(-17, sill, 19, 17, deck, 21, "paint")
+    for z in PROSPECTOR_SEAT_Z:
+        body.box(-6, sill, z + 4, 6, 26, z + 6, "steel")
+    body.box(-18, deck, -5, 18, deck + 1, 22, "trim")
+    bevelled_box(body, -13, deck + 1, -1, 13, 35, 18, 2, "paint")
     body.box(-14, 8, -2, 14, 9, 19, "iron")
     body.box(-10, 23, 21, 10, 29, 22, "grille")
     canopy = m.bone("canopy", "body")
     # The pilot's pane faces front; each seat has a side window, and a pillar stands between the two.
-    canopy.box(-13, 21, -5, 13, 28, -4, "glass")
-    canopy.box(-14, 28, -5.5, 14, 29, -3.5, "brass")
-    canopy.box(-14, 20, -5.5, 14, 21, -3.5, "brass")
+    canopy.box(-14, sill, -5, 14, deck - 1, -4, "pane")
+    canopy.box(-14, deck - 1, -5.5, 14, deck, -3.5, "brass")
+    canopy.box(-14, sill - 1, -5.5, 14, sill, -3.5, "brass")
     for x in (-5, 4):
-        canopy.box(x, 21, -5.5, x + 1, 28, -4.5, "brass")
+        canopy.box(x, sill, -5.5, x + 1, deck - 1, -4.5, "brass")
     for sx in (-1, 1):
         x0, x1 = (17, 18) if sx > 0 else (-18, -17)
         for z0, z1 in ((0, 7), (11, 18)):
-            canopy.box(x0, 21, z0, x1, 28, z1, "glass")
-        canopy.box(x0 - 0.5, 28, -0.5, x1 + 0.5, 29, 18.5, "brass")
-        canopy.box(x0 - 0.5, 20, -0.5, x1 + 0.5, 21, 18.5, "brass")
-        canopy.box(x0 - 0.5, 21, 7, x1 + 0.5, 28, 11, "brass")
+            canopy.box(x0, sill, z0, x1, deck - 1, z1, "pane")
+        canopy.box(x0 - 0.5, deck - 1, -0.5, x1 + 0.5, deck, 18.5, "brass")
+        canopy.box(x0 - 0.5, sill - 1, -0.5, x1 + 0.5, sill, 18.5, "brass")
+        canopy.box(x0 - 0.5, sill, 7, x1 + 0.5, deck - 1, 11, "brass")
+        canopy.box(x0 - 0.5, sill, -0.5, x1 + 0.5, deck - 1, 0.5, "brass")
+        canopy.box(x0 - 0.5, sill, 17.5, x1 + 0.5, deck - 1, 18.5, "brass")
     hatch = m.bone("hatch", "body")
     hatch.box(-3, 35, 2, 3, 36, 7, "brass")
     hatch.box(-3, 35, 11, 3, 36, 16, "brass")
@@ -1467,8 +1571,8 @@ def prospector_body(m):
         caged_lamp(lamps, sx * 20, 39.5, -2)
     for side, x0, x1 in (("l", 17, 21), ("r", -21, -17)):
         tank = m.bone(f"tank_{side}", "body")
-        tank.box(x0, 12, 4, x1, 19, 18, "tank")
-        tank.box(x0 + 0.5, 13, 3, x1 - 0.5, 18, 4, "brass")
+        tank.box(x0, 10, 4, x1, 16, 18, "tank")
+        tank.box(x0 + 0.5, 11, 3, x1 - 0.5, 15, 4, "brass")
     exhaust = m.bone("exhaust", "body")
     exhaust.box(-12, 28, 17, -8, 41, 21, "exhaust")
     exhaust.box(-12.5, 41, 16.5, -7.5, 42, 21.5, "frame")

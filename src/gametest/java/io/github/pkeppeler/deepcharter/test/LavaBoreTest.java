@@ -44,6 +44,7 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.LavaHazard;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
+import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLiner;
 import io.github.pkeppeler.deepcharter.pod.PodLinerTuning;
@@ -147,7 +148,7 @@ public class LavaBoreTest {
 	static final String PACK_ENV = "DEEPCHARTER_LAVA_BORES_PACK";
 	private static final String REQUESTED_PACK = System.getenv(PACK_ENV);
 	/** How far either side of the shaft's column the lining bot looks for lava: the thermal tier's own spread. */
-	private static final int LINING_REACH = ScannerTuning.DEFAULT.lavaSpread();
+	private static final int LINING_REACH = ScannerTuning.DEFAULT.lavaSpread(Chassis.MOLE);
 	/** The smoke case: a control that bores only the crust, and a bore through the last stretch of Deep Claim. */
 	static final int SMOKE_BORES = 3;
 	/** A lava encounter this many slabs or fewer below a lining press counts as one the lining did not hold. */
@@ -190,9 +191,10 @@ public class LavaBoreTest {
 	private static final int PILOT_WAIT_Y = 150;
 
 	private static final int SIDE_STEP = 2;
-	/** The Mole's footprint, as {@code PodFootprint} (package private in the main code) reads it: a 2 x 2 square. */
-	private static final int FOOTPRINT_WIDTH = 2;
-	private static final int POD_HEIGHT = 2;
+	/** The chassis the bot drives, the Mole. Its footprint is as {@code PodFootprint} (package private in the main code) reads it: the bore square. */
+	private static final Chassis CHASSIS = Chassis.MOLE;
+	private static final int FOOTPRINT_WIDTH = CHASSIS.boreWidth();
+	private static final int POD_HEIGHT = CHASSIS.boreHeight();
 	/** The bot does not stray farther than this from its first column, so that it stays inside its chunk (the drill will not bore at an unloaded edge). */
 	private static final int MAX_DRIFT = 5;
 	/** Ticks a pod on the ground neither drills nor moves before the bot calls the slab refused. */
@@ -542,7 +544,7 @@ public class LavaBoreTest {
 				RoomCarver.carve(level, bore.centreX, bore.centreX, SMOKE_LAVA_BLOCK_Y, SMOKE_LAVA_BLOCK_Y, bore.centreZ, bore.centreZ, Blocks.LAVA);
 			}
 		}
-		PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+		PodEntity pod = PodRegistry.typeOf(CHASSIS).create(level, EntitySpawnReason.COMMAND);
 		pod.setPos(bore.centreX, feetY, bore.centreZ);
 		level.addFreshEntity(pod);
 		ScannerPods.fit(server, bore.pilot.player(), pod, SCANNER_TIER);
@@ -577,11 +579,11 @@ public class LavaBoreTest {
 		bore.pilot.setInput(SPRINT);
 	}
 
-	/** The highest block in the 2 x 2 columns of the bore. */
+	/** The highest block in the columns of the bore. */
 	private static int topOfTheRock(ServerLevel level, int centreX, int centreZ) {
 		for (int y = level.getMaxY() - 1; y >= level.getMinY(); y--) {
-			for (int x = centreX - 1; x <= centreX; x++) {
-				for (int z = centreZ - 1; z <= centreZ; z++) {
+			for (int x = centreX - FOOTPRINT_WIDTH / 2; x < centreX - FOOTPRINT_WIDTH / 2 + FOOTPRINT_WIDTH; x++) {
+				for (int z = centreZ - FOOTPRINT_WIDTH / 2; z < centreZ - FOOTPRINT_WIDTH / 2 + FOOTPRINT_WIDTH; z++) {
 					if (!level.getBlockState(new BlockPos(x, y, z)).isAir()) {
 						return y;
 					}
@@ -825,7 +827,7 @@ public class LavaBoreTest {
 	 * of the slab the drill bores next. A pocket in the footprint's other column is out of the plane and unseen, as it is for a player.
 	 */
 	private static boolean gasInNextSlab(ServerLevel level, PodEntity pod) {
-		ScanSlice gas = ScanSlice.scan(new LoadedBlocks(level), pod.blockPosition(), pod.getDirection(), GAS_TIER);
+		ScanSlice gas = ScanSlice.scan(new LoadedBlocks(level), pod.blockPosition(), pod.getDirection(), GAS_TIER, pod.chassis());
 		// The scan runs when the pod enters a block, which may be in a fall; the pod will rest on its block, so the next slab is the one under it.
 		Direction facing = pod.getDirection();
 		BlockPos origin = pod.blockPosition();
@@ -863,12 +865,17 @@ public class LavaBoreTest {
 		return false;
 	}
 
+	/** The low corner of the footprint on one axis for a pod at {@code at}, as {@code PodFootprint} works it out. */
+	private static int lowCorner(double at) {
+		return Mth.floor(at - FOOTPRINT_WIDTH / 2.0 + 0.5);
+	}
+
 	/** The cells of the footprint square shifted by {@code dx}, {@code dz} blocks and {@code dy} blocks down from the pod's feet. */
 	private static List<BlockPos> footprintSlab(PodEntity pod, int dx, int dz, int dy) {
 		List<BlockPos> cells = new ArrayList<>();
 		for (int x = 0; x < FOOTPRINT_WIDTH; x++) {
 			for (int z = 0; z < FOOTPRINT_WIDTH; z++) {
-				cells.add(new BlockPos(Mth.floor(pod.getX() - 0.5) + x + dx, pod.blockPosition().getY() + dy, Mth.floor(pod.getZ() - 0.5) + z + dz));
+				cells.add(new BlockPos(lowCorner(pod.getX()) + x + dx, pod.blockPosition().getY() + dy, lowCorner(pod.getZ()) + z + dz));
 			}
 		}
 		return cells;
@@ -946,12 +953,12 @@ public class LavaBoreTest {
 
 	/** For the message of a stalled bore only: what is under the pod, and whether the drill may change it (it refuses at an unloaded chunk edge). */
 	private static List<String> cellsBelow(ServerLevel level, PodEntity pod) {
-		int lowX = (int) Math.floor(pod.getX() - 0.5);
-		int lowZ = (int) Math.floor(pod.getZ() - 0.5);
+		int lowX = lowCorner(pod.getX());
+		int lowZ = lowCorner(pod.getZ());
 		int y = pod.blockPosition().getY() - 1;
 		List<String> cells = new ArrayList<>();
-		for (int x = lowX; x <= lowX + 1; x++) {
-			for (int z = lowZ; z <= lowZ + 1; z++) {
+		for (int x = lowX; x < lowX + FOOTPRINT_WIDTH; x++) {
+			for (int z = lowZ; z < lowZ + FOOTPRINT_WIDTH; z++) {
 				BlockPos pos = new BlockPos(x, y, z);
 				cells.add(level.getBlockState(pos).getBlock().builtInRegistryHolder().key().identifier().getPath() + (level.hasChunkAt(pos.north()) && level.hasChunkAt(pos.south()) && level.hasChunkAt(pos.east()) && level.hasChunkAt(pos.west()) ? "" : "(edge)"));
 			}
@@ -1003,7 +1010,7 @@ public class LavaBoreTest {
 	 * Then reads a scanner of the thermal tier from the same spot, notes each lava block it marks as lava, and returns that reading.
 	 */
 	private static ScanSlice noteLavaInView(ServerLevel level, PodEntity pod, Bore bore, int feetY) {
-		ScanSlice thermal = ScanSlice.scan(new LoadedBlocks(level), pod.blockPosition(), pod.getDirection(), THERMAL_TIER);
+		ScanSlice thermal = ScanSlice.scan(new LoadedBlocks(level), pod.blockPosition(), pod.getDirection(), THERMAL_TIER, pod.chassis());
 		ScanArea thermalArea = thermal.area();
 		for (int up = thermalArea.up(); up >= -thermalArea.down(); up--) {
 			for (int ahead = -thermalArea.halfWidth(); ahead <= thermalArea.halfWidth(); ahead++) {
@@ -1013,7 +1020,7 @@ public class LavaBoreTest {
 				}
 				// A marked cell, bright or near, stands for the lava in the plane or beside it: every lava block of that band is shown.
 				BlockPos inPlane = pod.blockPosition().relative(pod.getDirection(), ahead).above(up);
-				for (int offset = -ScannerTuning.DEFAULT.lavaSpread(); offset <= ScannerTuning.DEFAULT.lavaSpread(); offset++) {
+				for (int offset = -LINING_REACH; offset <= LINING_REACH; offset++) {
 					BlockPos pos = inPlane.relative(pod.getDirection().getClockWise(), offset);
 					if (level.getFluidState(pos).is(FluidTags.LAVA)) {
 						bore.thermalShownAt.merge(pos.immutable(), feetY, Math::max);
