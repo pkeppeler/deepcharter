@@ -562,7 +562,7 @@ public class PodDrillTest {
 		});
 	}
 
-	private static void boreInterruptedBy(GameTestHelper helper, int x, String name,BiConsumer<PodEntity, Integer> away, BiPredicate<PodEntity, Integer> back) {
+	private static void boreInterruptedBy(GameTestHelper helper, int x, String name, BiConsumer<PodEntity, Integer> away, BiPredicate<PodEntity, Integer> back) {
 		ServerLevel level = layer(helper, 1);
 		room(level, x, FLOOR, 4);
 		boreInterruptedBy(helper, level, x, name, pod -> {
