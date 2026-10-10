@@ -35,7 +35,12 @@ public final class TerminalScreens {
 			open.update(view);
 			return;
 		}
+		client.gui.setScreen(create(view));
+	}
+
+	/** The screen {@code view} opens: the offline screen when it is not repaired, else the type's online screen. A test builds every screen through this. */
+	public static Screen create(TerminalView view) {
 		TerminalType type = TerminalTypes.get(view.type()).orElseThrow(() -> new IllegalStateException("unknown terminal type " + view.type()));
-		client.gui.setScreen(view.repaired() ? ONLINE.getOrDefault(type, TerminalScreen::new).apply(view) : new TerminalScreen(view));
+		return view.repaired() ? ONLINE.getOrDefault(type, TerminalScreen::new).apply(view) : new TerminalScreen(view);
 	}
 }

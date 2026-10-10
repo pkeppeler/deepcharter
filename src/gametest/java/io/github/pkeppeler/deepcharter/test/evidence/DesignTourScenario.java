@@ -96,6 +96,7 @@ import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -715,8 +716,8 @@ public class DesignTourScenario extends EvidenceScenario {
 		expectOpenGround("pods-by-day", stage);
 		PodEntity mole = spawnPod(PodRegistry.POD, 0, stage, 0f, false);
 		view(0, stage.add(0, 1.8, 6), stage.add(0, 1, 0), 60);
-		podAngles("mole-unlit-day", 0, stage, 5.5, 1.9, FSB);
-		podAngles("mole-unlit-day", 0, stage, 5.5, 1.9, new String[] {"top"});
+		podAngles("mole-unlit-day", 0, stage, 5.5, Chassis.MOLE.height(), FSB);
+		podAngles("mole-unlit-day", 0, stage, 5.5, Chassis.MOLE.height(), new String[] {"top"});
 		serverDo(server -> mole.discard());
 		PodEntity prospector = spawnPod(PodRegistry.PROSPECTOR, 0, stage, 0f, false);
 		podAngles("prospector-unlit-day", 0, stage, 7.5, 2.9, FSB);
@@ -803,7 +804,7 @@ public class DesignTourScenario extends EvidenceScenario {
 		PodEntity litMole = spawnPod(PodRegistry.POD, 0, base, 0f, true);
 		awaitLight(litMole);
 		ctx.waitTicks(30);
-		podAngles("mole-lit-dark", 0, base, 5.5, 1.9, FSB);
+		podAngles("mole-lit-dark", 0, base, 5.5, Chassis.MOLE.height(), FSB);
 		serverDo(server -> litMole.discard());
 		PodEntity litProspector = spawnPod(PodRegistry.PROSPECTOR, 0, base, 0f, true);
 		awaitLight(litProspector);

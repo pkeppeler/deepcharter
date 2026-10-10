@@ -53,7 +53,7 @@ import io.github.pkeppeler.deepcharter.layer.BreachEvents;
  * <p>The link is one versioned attachment on the towed pod, {@link #STATE}, holding the tower's UUID. It is saved and synced, and a
  * pod keeps its UUID when a breach recreates it, so the link outlives unloading and crossing. While the tower is in the towed pod's
  * level the towed pod passes through blocks ({@link PodEvents#IGNORES_BLOCK_COLLISION}), is held still or pulled in to
- * {@link TowTuning#trailDistance()} from the tower at the end of each tick ({@link PodEvents#AFTER_TICK}), and its mass and its
+ * {@link TowTuning#trailDistance} from the tower at the end of each tick ({@link PodEvents#AFTER_TICK}), and its mass and its
  * cargo's cut the tower's lift ({@link PodEvents#EXTRA_MASS}). With no tower in the level it is an ordinary pod that still remembers
  * the cable. A pod freed, or left by its tower, inside blocks is moved to the nearest open space. A tower with a player crossing a
  * breach carries the pod it tows across with it, to the trail distance from the tower. The cable is drawn as particles.
@@ -206,7 +206,7 @@ public final class PodTowing {
 
 	/**
 	 * Holds the towed pod where it started the tick, or pulls it in along the line to its tower until it is
-	 * {@link TowTuning#trailDistance()} away. It has no block collision, so nothing else stops it, and its own gravity is undone here.
+	 * {@link TowTuning#trailDistance} away. It has no block collision, so nothing else stops it, and its own gravity is undone here.
 	 */
 	private static void follow(PodEntity towed) {
 		Optional<PodEntity> tower = tower(towed);
@@ -219,7 +219,7 @@ public final class PodTowing {
 		Vec3 anchor = tower.get().position();
 		Vec3 held = new Vec3(towed.xo, towed.yo, towed.zo);
 		Vec3 away = held.subtract(anchor);
-		double trail = TowTuning.DEFAULT.trailDistance();
+		double trail = TowTuning.DEFAULT.trailDistance(tower.get(), towed);
 		towed.setPos(away.lengthSqr() > trail * trail ? anchor.add(away.normalize().scale(trail)) : held);
 		towed.setDeltaMovement(Vec3.ZERO);
 		towed.resetFallDistance();
@@ -303,13 +303,13 @@ public final class PodTowing {
 		}
 	}
 
-	/** {@link TowTuning#trailDistance()} from the tower, level with it, on the side the pod was on, or behind the tower if it was straight above or below. */
+	/** {@link TowTuning#trailDistance} from the tower, level with it, on the side the pod was on, or behind the tower if it was straight above or below. */
 	private static Vec3 trailSpot(PodEntity tower, PodEntity towed) {
 		Vec3 side = new Vec3(towed.getX() - tower.getX(), 0, towed.getZ() - tower.getZ());
 		if (side.lengthSqr() < 1e-6) {
 			side = Vec3.directionFromRotation(0, tower.getYRot()).scale(-1);
 		}
-		return tower.position().add(side.normalize().scale(TowTuning.DEFAULT.trailDistance()));
+		return tower.position().add(side.normalize().scale(TowTuning.DEFAULT.trailDistance(tower, towed)));
 	}
 
 	private static InteractionResult onUse(Player player, Level level, InteractionHand hand, Entity entity, EntityHitResult hit) {

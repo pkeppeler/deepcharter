@@ -165,7 +165,7 @@ public final class UpgradeTerminal {
 				}
 				// An unowned pod is anyone's and has no serial: the screen words that.
 				String serial = PodComponents.registration(pod).map(PodComponents.Registration::serial).orElse("");
-				yield new UpgradeView(Optional.of(new UpgradeView.Pod(serial, UpgradeTuning.DEFAULT.tierCap(pod.chassis().id()), slots)), false);
+				yield new UpgradeView(Optional.of(new UpgradeView.Pod(serial, pod.chassis().tierCap(), slots)), false);
 			}
 		};
 	}

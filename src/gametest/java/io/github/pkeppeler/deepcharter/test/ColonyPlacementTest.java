@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.IntBinaryOperator;
 
 import com.google.gson.JsonElement;
@@ -23,6 +24,7 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtAccounter;
@@ -39,6 +41,7 @@ import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.AABB;
@@ -62,6 +65,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.TestRegions;
 
 /**
  * Server GameTests for #244, the colony rebuild: the town the world builds at spawn (tools/colony/town.py, the layout file
@@ -471,12 +475,13 @@ public class ColonyPlacementTest {
 		int half = ColonyTuning.DEFAULT.padSize() / 2;
 		int reach = half + ColonyTuning.DEFAULT.edgeMargin();
 		int size = 2 * reach;
-		for (int x = centre.getX() - reach; x < centre.getX() + reach; x += 16) {
-			for (int z = centre.getZ() - reach; z < centre.getZ() + reach; z += 16) {
-				level.getChunk(x >> 4, z >> 4);
-			}
-		}
+		// Read through held chunks: getHeight answers the world minimum, 68 below the ground, for a chunk that is not loaded (#393).
+		int minChunkX = (centre.getX() - reach) >> 4;
+		int minChunkZ = (centre.getZ() - reach) >> 4;
+		LevelChunk[][] chunks = loadChunks(level, centre.getX() - reach, centre.getX() + reach - 1, centre.getZ() - reach, centre.getZ() + reach - 1);
+		Function<BlockPos, BlockState> blockAt = pos -> chunks[(pos.getX() >> 4) - minChunkX][(pos.getZ() >> 4) - minChunkZ].getBlockState(pos);
 		List<String> problems = new ArrayList<>();
+		List<TestRegions.Region> regions = TestRegions.in(level, centre.getX() - reach, centre.getX() + reach - 1, centre.getZ() - reach, centre.getZ() + reach - 1);
 		int[][] surface = new int[size][size];
 		for (int i = 0; i < size; i++) {
 			for (int j = 0; j < size; j++) {
@@ -484,10 +489,10 @@ public class ColonyPlacementTest {
 				int z = centre.getZ() - reach + j;
 				boolean onPad = x >= centre.getX() - half && x < centre.getX() + half && z >= centre.getZ() - half && z < centre.getZ() + half;
 				boolean edge = onPad && (x == centre.getX() - half || x == centre.getX() + half - 1 || z == centre.getZ() - half || z == centre.getZ() + half - 1);
-				if (edge && level.getBlockState(new BlockPos(x, centre.getY(), z)).isAir()) {
+				if (edge && blockAt.apply(new BlockPos(x, centre.getY(), z)).isAir()) {
 					problems.add("no pad ground at " + x + " " + z);
 				}
-				surface[i][j] = onPad ? centre.getY() : level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - 1;
+				surface[i][j] = onPad ? centre.getY() : chunks[(x >> 4) - minChunkX][(z >> 4) - minChunkZ].getHeight(Heightmap.Types.WORLD_SURFACE, x & 15, z & 15);
 			}
 		}
 		int checked = 0;
@@ -497,10 +502,10 @@ public class ColonyPlacementTest {
 				int z = centre.getZ() - reach + j;
 				checked++;
 				if (i + 1 < size && Math.abs(surface[i][j] - surface[i + 1][j]) > STEP) {
-					problems.add("step of " + (surface[i + 1][j] - surface[i][j]) + " at " + x + " " + z + " going east");
+					problems.add(step(blockAt, regions, new BlockPos(x, surface[i][j], z), new BlockPos(x + 1, surface[i + 1][j], z), "east"));
 				}
 				if (j + 1 < size && Math.abs(surface[i][j] - surface[i][j + 1]) > STEP) {
-					problems.add("step of " + (surface[i][j + 1] - surface[i][j]) + " at " + x + " " + z + " going south");
+					problems.add(step(blockAt, regions, new BlockPos(x, surface[i][j], z), new BlockPos(x, surface[i][j + 1], z + 1), "south"));
 				}
 			}
 		}
@@ -508,6 +513,14 @@ public class ColonyPlacementTest {
 			problems.add("no column of the margin was checked");
 		}
 		finish(helper, problems.size() > 5 ? problems.subList(0, 5) : problems);
+	}
+
+	/** The failure text of a step: the block on each side, and the test region that holds each column. */
+	private static String step(Function<BlockPos, BlockState> blockAt, List<TestRegions.Region> regions, BlockPos here, BlockPos next, String going) {
+		return "step of " + (next.getY() - here.getY()) + " at " + here.getX() + " " + here.getZ() + " going " + going
+				+ ": " + BuiltInRegistries.BLOCK.getKey(blockAt.apply(here).getBlock()) + " at " + here.toShortString() + " ("
+				+ TestRegions.ownerOfColumn(regions, here.getX(), here.getZ()) + "), then " + BuiltInRegistries.BLOCK.getKey(blockAt.apply(next).getBlock()) + " at "
+				+ next.toShortString() + " (" + TestRegions.ownerOfColumn(regions, next.getX(), next.getZ()) + ")";
 	}
 
 	/**
@@ -645,16 +658,22 @@ public class ColonyPlacementTest {
 		return new AABB(centre.getX() - half, centre.getY(), centre.getZ() - half, centre.getX() + half, centre.getY() + ColonyTuning.DEFAULT.clearHeight(), centre.getZ() + half);
 	}
 
-	/** Loads every chunk of the pad: a block read in an unloaded chunk answers void air. */
+	/** Loads every chunk of the pad, so a height read there is not the world minimum. */
 	private static void loadPad(ServerLevel level, ColonySite.Placed colony) {
 		int half = ColonyTuning.DEFAULT.padSize() / 2;
 		BlockPos centre = colony.center();
-		for (int x = centre.getX() - half; x < centre.getX() + half; x += 16) {
-			for (int z = centre.getZ() - half; z < centre.getZ() + half; z += 16) {
-				level.getChunk(x >> 4, z >> 4);
+		loadChunks(level, centre.getX() - half, centre.getX() + half - 1, centre.getZ() - half, centre.getZ() + half - 1);
+	}
+
+	/** Loads the chunks over the columns {@code x1..x2}, {@code z1..z2}; indexed from the chunk of {@code x1}, {@code z1}. */
+	private static LevelChunk[][] loadChunks(ServerLevel level, int x1, int x2, int z1, int z2) {
+		LevelChunk[][] chunks = new LevelChunk[(x2 >> 4) - (x1 >> 4) + 1][(z2 >> 4) - (z1 >> 4) + 1];
+		for (int i = 0; i < chunks.length; i++) {
+			for (int j = 0; j < chunks[i].length; j++) {
+				chunks[i][j] = level.getChunk((x1 >> 4) + i, (z1 >> 4) + j);
 			}
 		}
-		level.getChunk((centre.getX() + half - 1) >> 4, (centre.getZ() + half - 1) >> 4);
+		return chunks;
 	}
 
 	private static MinecraftServer server(GameTestHelper helper) {
