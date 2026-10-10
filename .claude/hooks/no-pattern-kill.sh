@@ -5,7 +5,7 @@
 # Refuses a command word of pkill or killall, `xargs kill`, and `kill` whose target is not a plain PID
 # (123, -123 for a group), a single parameter expansion ($pid, $!, ${pid:-}, "${PIDS[@]}") or the pidfile
 # idiom "$(cat <one path>)". Options (-9, -s TERM, --) and redirections (2>/dev/null) are ignored. The
-# command word is found after ; & | && || ( ) newlines and the keywords if/then/do/else/while/until/{/!.
+# command word is found after ; & | && || ( ) newlines and the keywords if/then/do/elif/else/while/until/{/!.
 # Quoted text, comments, heredoc bodies and arguments of other commands (grep pkill, git commit -m "...")
 # pass.
 #
@@ -62,7 +62,7 @@ def strip_heredocs(s):
 
 
 def tokenize(s):
-    """Yield ("w", raw word, quotes kept) and ("o", operator). Raises on an unterminated quote."""
+    """Return ("w", word) and ("o", operator) tokens. Raises on an unterminated quote."""
     toks = []
     word = ""
     has_word = False
@@ -188,14 +188,7 @@ def check_segment(words):
 
 
 try:
-    command = json.load(sys.stdin)["tool_input"]["command"]
-    if not isinstance(command, str):
-        sys.exit(0)
-    tokens = tokenize(strip_heredocs(command))
-except Exception:
-    sys.exit(0)
-
-try:
+    tokens = tokenize(strip_heredocs(json.load(sys.stdin)["tool_input"]["command"]))
     words = []
     skip = False
     for kind, text in tokens:
@@ -212,6 +205,5 @@ try:
             words = []
     check_segment(words)
 except Exception:
-    sys.exit(0)
-sys.exit(0)
+    pass
 '
