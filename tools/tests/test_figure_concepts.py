@@ -66,7 +66,13 @@ class Proportions(unittest.TestCase):
                     self.assertTrue(claim(model), f"{name} does not do what it says")
                     self.assertFalse(claim(miner), f"a plain miner would pass '{text}': it does not say what is wrong")
 
+    def test_every_option_is_two_and_three_quarter_blocks_tall(self):
+        for name, option in fc.OPTIONS.items():
+            with self.subTest(option=name):
+                self.assertAlmostEqual(44.0, fc.extent(option.model())[1][1], delta=0.5, msg="the figure is 44 px, 2.75 blocks, in every text")
+
     def test_the_options_differ_in_silhouette_not_in_colour(self):
+        self.assertLessEqual(fc.MAX_SILHOUETTE_OVERLAP, 0.70, "the limit was loosened: two options may share at most 70 percent of a silhouette")
         models = {name: option.model() for name, option in fc.OPTIONS.items()}
         for first in IDS:
             for second in IDS:
@@ -160,6 +166,60 @@ class LampBracketAndFace(unittest.TestCase):
                 for kind in ("front", "back", "left", "right"):
                     values = {fc.luma(png.get(faces[kind].x + i, faces[kind].y + j)) for i in range(faces[kind].w) for j in range(faces[kind].h)}
                     self.assertLessEqual(max(values) - min(values), fc.MAX_FACE_CONTRAST, f"the {kind} of the head has marks on it")
+
+
+class HardHat(unittest.TestCase):
+    """The helmet is a miner's hard hat, not a stovepipe or a bowler, and the empty bracket is a frame, not a pair of horns."""
+
+    def hat_cubes(self, model):
+        return bone_cubes(model, "helmet")
+
+    def test_the_brim_runs_all_round_and_is_wider_than_the_dome(self):
+        for name, option in fc.OPTIONS.items():
+            model = option.model()
+            head = fc.bone_named(model, "head").cubes[0].size
+            brim, dome = self.hat_cubes(model)[0], self.hat_cubes(model)[2]
+            with self.subTest(option=name):
+                self.assertGreaterEqual(brim.size[0], head[0] + 4, "no brim on the sides")
+                self.assertGreaterEqual(brim.size[2], head[2] + 4, "no brim at the front and back")
+                self.assertGreaterEqual(brim.size[0], dome.size[0] + 2, "the dome is as wide as the brim: a stovepipe")
+                self.assertLessEqual(sum(c.size[1] for c in self.hat_cubes(model)[2:4]), 3, "the dome is a tall tube")
+
+    def test_the_hat_has_a_peak_and_a_ridge(self):
+        for name, option in fc.OPTIONS.items():
+            model = option.model()
+            brim, peak, ridge = self.hat_cubes(model)[0], self.hat_cubes(model)[1], self.hat_cubes(model)[4]
+            with self.subTest(option=name):
+                self.assertLessEqual(peak.origin[2], brim.origin[2] - 2, "the peak does not stand out past the brim at the front")
+                self.assertEqual(1, ridge.size[0], "the ridge is a single rib")
+                self.assertGreater(ridge.size[2], ridge.size[0] * 3, "the ridge runs front to back")
+
+    def test_the_bracket_is_a_frame_with_a_hole_held_off_the_hat(self):
+        for name, option in fc.OPTIONS.items():
+            model = option.model()
+            cubes = bone_cubes(model, "lamp_bracket")
+            frame = [c for c in cubes if c.size[1] >= 1 and c.size[2] == 1]
+            with self.subTest(option=name):
+                self.assertEqual(4, len(frame), "a bar above, a bar below and a post at each side")
+                left = min(c.origin[0] for c in frame)
+                right = max(c.origin[0] + c.size[0] for c in frame)
+                bottom = min(c.origin[1] for c in frame)
+                top = max(c.origin[1] + c.size[1] for c in frame)
+                self.assertGreaterEqual(right - left, 4, "too narrow to read as a frame")
+                self.assertLessEqual(right - left, self.hat_cubes(model)[2].size[0] - 2, "as wide as the dome: the dome is hidden and the hat is a box")
+                self.assertGreaterEqual(top - bottom, 4, "too short to read as a frame")
+                hole = (left + 1, bottom + 1, right - 1, top - 1)
+                for cube in frame:
+                    inside = hole[0] < cube.origin[0] + cube.size[0] and cube.origin[0] < hole[2] and hole[1] < cube.origin[1] + cube.size[1] and cube.origin[1] < hole[3]
+                    self.assertFalse(inside, "something stands in the hole: a lamp, or a plate")
+                dome_front = min(c.origin[2] for c in self.hat_cubes(model)[2:4])
+                self.assertLessEqual(max(c.origin[2] + c.size[2] for c in frame), dome_front - 1, "the frame is not held off the hat")
+                self.assertGreaterEqual(len(cubes) - len(frame), 2, "the frame has no stays back to the hat")
+                self.assertLessEqual(max(c.size[1] for c in cubes if c not in frame), 1, "a stay stands up like a horn")
+
+
+def bone_cubes(model, name):
+    return fc.bone_named(model, name).cubes
 
 
 class Matte(unittest.TestCase):

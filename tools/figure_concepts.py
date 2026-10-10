@@ -37,16 +37,17 @@ TEXTURE_DIR = ASSETS / "textures/entity/creature/figure"
 ANIMATION_DIR = ASSETS / "geckolib/animations/creature/figure"
 TEXTURE_SIZE = 128
 
-# Too tall and thin: a miner is about 36 px, an option is at least 1.2 times that and at most MAX_HEIGHT_PX. The body (the head,
-# torso and legs, not the arms) is at most MAX_WIDTH_PX across.
-MIN_HEIGHT_PX = 40
-MAX_HEIGHT_PX = 45
+# Too tall and thin: a miner is about 36 px, an option is at least 1.2 times that. Every option is 44 px (2.75 blocks) to within half a pixel,
+# so MIN_HEIGHT_PX and MAX_HEIGHT_PX are that figure either side. The body (the head, torso and legs, not the arms) is at most
+# MAX_WIDTH_PX across.
+MIN_HEIGHT_PX = 43.5
+MAX_HEIGHT_PX = 44.5
 MAX_WIDTH_PX = 16
 # The box the renderer culls by (FigureConceptRenderer): the tallest and widest the figure can stand, with its lean and its arms.
 CULL_HEIGHT_PX = 48
 CULL_REACH_PX = 24
 # Two options may share at most this share of their silhouette (overlap of the front views, and of the side views).
-MAX_SILHOUETTE_OVERLAP = 0.85
+MAX_SILHOUETTE_OVERLAP = 0.70
 # Matte black: no texel of the texture is brighter than this (0 to 255), so the figure is black in the beam too.
 MAX_LUMA = 36
 # No face: the sides of the head differ by at most this much in brightness.
@@ -76,7 +77,7 @@ MATERIALS = {
     "cloth": black(11, 2),
     "veil": black(8, 1),
     "hat": black(19, 2),
-    "bracket": black(27, 3),
+    "bracket": black(31, 2),
     "fray": black(5, 1),
 }
 
@@ -142,6 +143,8 @@ class Spec:
     walk: Walk
     hem_frays: int = 8
     sleeve_frays: int = 4
+    # Degrees the torso, with the neck, head and arms on it, is tipped forward from the hips at rest.
+    lean: float = 0.0
 
 
 def limb(model, side, parent, pivot, segs):
@@ -184,7 +187,7 @@ def build_model(name, spec):
     model.bone("root")
     for side, sign in (("l", 1), ("r", -1)):
         limb(model, side, "root", (sign * spec.hip_x, hip_y, 0), spec.legs)
-    spine = model.bone("spine", "root", (0, hip_y, 0))
+    spine = model.bone("spine", "root", (0, hip_y, 0), (spec.lean, 0, 0))
     spine.box(-tw / 2, torso_bottom, -td / 2, tw / 2, torso_top, td / 2, "cloth")
     frays(spine, rng, spec.hem_frays, tw, td, torso_bottom)
     nw, nh, nd = spec.neck
@@ -203,17 +206,29 @@ def build_model(name, spec):
 
 
 def helmet(model, head_top, hw, hd):
-    """A hard hat with an empty lamp bracket on its front: a cradle with an open top and nothing in it."""
-    brim = model.bone("helmet", "head", (0, head_top, 0))
-    brim.box(-(hw + 4) / 2, head_top - 1, -(hd + 4) / 2, (hw + 4) / 2, head_top, (hd + 4) / 2, "hat")
-    brim.box(-(hw + 2) / 2, head_top, -(hd + 2) / 2, (hw + 2) / 2, head_top + 4, (hd + 2) / 2, "hat")
+    """A miner's hard hat: a domed shell with a ridge, a brim all round and a longer peak at the front, and an empty lamp bracket on the front
+    of the dome. The bracket is a flat frame held off the shell on two stays, with a hole where a lamp would sit and nothing in it."""
+    brim_w, brim_d = hw + 4, hd + 4
+    hat = model.bone("helmet", "head", (0, head_top, 0))
+    # The brim runs all round, and the peak stands two pixels further out at the front.
+    hat.box(-brim_w / 2, head_top - 1, -brim_d / 2, brim_w / 2, head_top, brim_d / 2, "hat")
+    hat.box(-(hw + 2) / 2, head_top - 1, -brim_d / 2 - 2, (hw + 2) / 2, head_top, -brim_d / 2, "hat")
+    # The dome is two steps narrower than the brim, so it reads as a rounded shell and not as a stovepipe.
+    hat.box(-(hw + 2) / 2, head_top, -(hd + 2) / 2, (hw + 2) / 2, head_top + 2, (hd + 2) / 2, "hat")
+    hat.box(-hw / 2, head_top + 2, -hd / 2, hw / 2, head_top + 3, hd / 2, "hat")
+    # The ridge: a rib along the top, from front to back.
+    hat.box(-0.5, head_top + 3, -(hd - 1) / 2, 0.5, head_top + 4, (hd - 1) / 2, "hat")
     front = -(hd + 2) / 2
     bracket = model.bone("lamp_bracket", "helmet", (0, head_top + 1, front))
-    # A frame that stood out from the helmet and held a lamp: a bar above, a bar below and a post at each side, with a hole between them.
-    bracket.box(-2.5, head_top, front - 2, 2.5, head_top + 1, front, "bracket")
-    bracket.box(-2.5, head_top + 3, front - 2, 2.5, head_top + 4, front, "bracket")
-    bracket.box(-2.5, head_top + 1, front - 2, -1.5, head_top + 3, front, "bracket")
-    bracket.box(1.5, head_top + 1, front - 2, 2.5, head_top + 3, front, "bracket")
+    # A frame 4 px wide and 4 tall, narrower than the dome so that the dome still shows round it, standing 2 px off the front of the shell: a bar
+    # above, a bar below and a post at each side, with a hole between them, and a stay at each lower corner back to the shell.
+    top, bottom = head_top + 4, head_top
+    bracket.box(-2, top - 1, front - 3, 2, top, front - 2, "bracket")
+    bracket.box(-2, bottom, front - 3, 2, bottom + 1, front - 2, "bracket")
+    bracket.box(-2, bottom + 1, front - 3, -1, top - 1, front - 2, "bracket")
+    bracket.box(1, bottom + 1, front - 3, 2, top - 1, front - 2, "bracket")
+    bracket.box(-2, bottom, front - 2, -1, bottom + 1, front, "bracket")
+    bracket.box(1, bottom, front - 2, 2, bottom + 1, front, "bracket")
 
 
 def frays(bone, rng, count, width, depth, bottom, x_centre=0.0, z_centre=0.0):
@@ -250,27 +265,27 @@ MINER = Spec(
     walk=Walk(thigh=24, leg_bends=(18,), arm=18, arm_bends=(-10,)), hem_frays=0, sleeve_frays=0)
 
 CANDLE = Spec(
-    torso=(6, 10, 3), torso_below_hip=0, neck=(2, 6, 2), head=(5, 6, 5), hip_x=2, shoulder_x=4, shoulder_drop=1, shoulder_z=0,
+    torso=(6, 10, 3), torso_below_hip=0, neck=(2, 6, 2), head=(5, 6, 5), hip_x=1.5, shoulder_x=3.5, shoulder_drop=1, shoulder_z=0,
     legs=(LEG("thigh", 8), LEG("shin", 7), BOOT),
     arms=arm_segs(("upper_arm", 6, 0), ("forearm", 6, 0)),
     walk=Walk(thigh=18, leg_bends=(26,), arm=10, arm_bends=(-8,)))
 
 HERON = Spec(
-    torso=(8, 7, 4), torso_below_hip=0, neck=(3, 2, 3), head=(5, 6, 5), hip_x=2, shoulder_x=5, shoulder_drop=1, shoulder_z=0,
+    torso=(6, 7, 4), torso_below_hip=0, neck=(3, 2, 3), head=(5, 6, 5), hip_x=3.5, shoulder_x=4, shoulder_drop=1, shoulder_z=0,
     legs=(LEG("thigh", 12, rest=24), LEG("shin", 12, rest=-48), BOOT),
     arms=arm_segs(("upper_arm", 8, 0), ("forearm", 7, 0)),
     walk=Walk(thigh=20, leg_bends=(-38,), arm=12, arm_bends=(-8,)))
 
 REACHER = Spec(
     torso=(7, 9, 3), torso_below_hip=0, neck=(2, 2, 2), head=(5, 6, 5), hip_x=2, shoulder_x=4.5, shoulder_drop=1, shoulder_z=0,
-    legs=(LEG("thigh", 8, rest=8), LEG("shin", 6, rest=-20), LEG("shin_low", 6, rest=24), BOOT),
+    legs=(LEG("thigh", 8, rest=6), LEG("shin", 6, rest=-14), LEG("shin_low", 6, rest=16), BOOT),
     arms=arm_segs(("upper_arm", 7, 4, 14), ("forearm", 5, -14, -8), ("forearm_low", 5, 20, 6)),
-    walk=Walk(thigh=16, leg_bends=(22, -18), arm=10, arm_bends=(-12, 14)))
+    walk=Walk(thigh=16, leg_bends=(22, -18), arm=10, arm_bends=(-12, 14)), lean=16)
 
 MISFIT = Spec(
-    torso=(8, 13, 4), torso_below_hip=5, neck=(2, 2, 2), head=(5, 6, 5), hip_x=2, shoulder_x=3, shoulder_drop=6, shoulder_z=-3,
+    torso=(10, 13, 4), torso_below_hip=5, neck=(2, 2, 2), head=(5, 6, 5), hip_x=2, shoulder_x=3, shoulder_drop=6, shoulder_z=-3,
     legs=(LEG("thigh", 5, rest=-10), LEG("shin", 16, rest=10), BOOT),
-    arms=arm_segs(("upper_arm", 14, -6), ("forearm", 5, 0)),
+    arms=arm_segs(("upper_arm", 14, -6, 32), ("forearm", 5, 0, -32)),
     walk=Walk(thigh=26, leg_bends=(18,), arm=8, arm_bends=(-6,)))
 
 
@@ -385,17 +400,20 @@ OPTIONS = {
          lambda m: joint(m, "shin_l")[2] - joint(m, "thigh_l")[2] >= 4 and joint(m, "shin_l")[2] - joint(m, "foot_l")[2] >= 4),
         ("the torso is under 40 percent of the leg", lambda m: torso_cube(m).size[1] <= 0.4 * joint(m, "thigh_l")[1]),
         ("the hands hang below the hips", lambda m: lowest(m, "hand_l") < joint(m, "thigh_l")[1] - 8),
+        ("seen from the front the legs stand on stilts, 3 px or more apart", lambda m: joint(m, "thigh_l")[0] - joint(m, "thigh_r")[0] - bone_named(m, "thigh_l").cubes[0].size[0] >= 3),
     ]),
     "reacher": Option("reacher", "Reacher", REACHER, "tilted", [
         ("the hands reach the knees", lambda m: lowest(m, "hand_l") <= joint(m, "shin_l")[1] + 1),
         ("the forearm has a second elbow that bends the wrong way",
          lambda m: has_bone(m, "forearm_low_l") and bone_named(m, "forearm_low_l").rotation[0] > 0 > bone_named(m, "forearm_l").rotation[0]),
         ("the shin has a second knee", lambda m: has_bone(m, "shin_low_l") and bone_named(m, "shin_low_l").rotation[0] > 0 > bone_named(m, "shin_l").rotation[0]),
+        ("the torso stoops forward 12 degrees or more", lambda m: bone_named(m, "spine").rotation[0] >= 12),
         ("each arm is at least 1.8 times as long as the torso", lambda m: joint(m, "upper_arm_l")[1] - lowest(m, "hand_l") >= 1.8 * torso_cube(m).size[1]),
     ]),
     "misfit": Option("misfit", "Misfit", MISFIT, "thrown-back", [
         ("the shoulders are set in the middle of the chest", lambda m: 0.35 <= (torso_cube(m).origin[1] + torso_cube(m).size[1] - joint(m, "upper_arm_l")[1]) / torso_cube(m).size[1] <= 0.65),
         ("the elbows hang below the hips", lambda m: joint(m, "forearm_l")[1] < joint(m, "thigh_l")[1]),
+        ("seen from the front the elbows bow out, 6 px or more beyond the shoulders", lambda m: joint(m, "forearm_l")[0] - joint(m, "upper_arm_l")[0] >= 6),
         ("the thigh is under 40 percent of the shin, so the knees sit high", lambda m: bone_named(m, "thigh_l").cubes[0].size[1] <= 0.4 * bone_named(m, "shin_l").cubes[0].size[1]),
         ("the hips are inside the torso", lambda m: torso_cube(m).origin[1] <= joint(m, "thigh_l")[1] - 4),
     ]),
@@ -607,7 +625,7 @@ def build(name):
 
 def describe(name, model):
     lo, hi = extent(model)
-    return f"{name}: {len(model.bones)} bones, {len(model.cubes())} cubes, {hi[1]:.1f} px tall ({hi[1] / 16:.2f} blocks), body {body_width(model):.1f} px across, idle {OPTIONS[name].idle}"
+    return f"{name}: {len(model.bones)} bones, {len(model.cubes())} cubes, {round(hi[1])} px tall ({round(hi[1]) / 16:.2f} blocks), body {body_width(model):.1f} px across, idle {OPTIONS[name].idle}"
 
 
 def main(argv=None):
