@@ -69,7 +69,7 @@ Money buys better parts: drill, hull, engine, tank, radiator, cargo, scanner, li
 
 ![The Mole's cutter changes from a tricone to stacked rings to a fluted auger as two drill upgrades are bought](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-cutter-swap.gif?raw=true)
 
-The drill part shows on the pod. Each drill tier changes the cutter on the front, and the swap is at once: a tricone at tier 0, stacked rings at tier 1, a fluted auger at tier 2, and and the Mole tops out there. A cluster comes from tier 3, on pods that can fit it, such as the Prospector. A glance tells you how well a pod is fitted.
+The drill part shows on the pod. Each drill tier changes the cutter on the front, and the swap is at once: a tricone at tier 0, stacked rings at tier 1, a fluted auger at tier 2, where the Mole tops out. A cluster comes from tier 3, on pods that can fit it, such as the Prospector. A glance tells you how well a pod is fitted.
 
 ### 7. Repair
 
