@@ -25,6 +25,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundLightUpdatePacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -43,7 +44,10 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -106,6 +110,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest;
+import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
@@ -162,12 +167,18 @@ public class DesignTourScenario extends EvidenceScenario {
 	private static final double OFF_SCREEN = -10_000;
 	/** The breach fade is shot at the first client tick where it is half black: tick 4 of its 8 ticks of fading in. */
 	private static final float FADE_SHOT_ALPHA = 0.5f;
+	/** The tour's charter has this id on every run, so that its pods are painted the same colour on every run (ADR 0041: the slot is the id's hash). */
+	private static final CharterId TOUR_CHARTER = new CharterId(new UUID(0L, 0L));
+	/** How far the figure by the lit pod has faded in its still: half way. */
+	private static final float FIGURE_SHOT_FADE = 0.5f;
 
 	private ClientGameTestContext ctx;
 	private TestSingleplayerContext sp;
 	private BlockPos ground;
 	private Map<ColonyAnchor, BlockPos> anchors;
 	private CharterId charter;
+	/** The floor of the dark room while it stands: settle also waits until the client reads the light the server holds in it. Null otherwise. */
+	private BlockPos lightRoom;
 	/** The mobs the tour made itself (the lampless figures it poses): settle leaves them, and clears every other mob. */
 	private final Set<UUID> tourMobs = ConcurrentHashMap.newKeySet();
 
@@ -190,6 +201,7 @@ public class DesignTourScenario extends EvidenceScenario {
 			anchors = colony.anchors();
 
 			EvidenceWorld.pin(ctx, sp);
+			pinTheClient();
 			handbook();
 			itemGallery();
 			setUpCamera();
@@ -204,7 +216,24 @@ public class DesignTourScenario extends EvidenceScenario {
 			breachToLayerTwo();
 			layerTwo();
 			remainingTransmissions();
+		} finally {
+			EvidencePins.reset();
 		}
+	}
+
+	/**
+	 * Holds still what moves on client ticks and frames and that no wait can settle (issue 309): the animated textures (lava) on their
+	 * first frame, no HUD vignette (its brightness eases over ticks) and no hands (a rider's arm), the lampless figures at rest and none spawned on the rails. The
+	 * breach fade and the fading figure are held only for their own still.
+	 */
+	private void pinTheClient() {
+		EvidencePins.spritesFrozen = true;
+		EvidencePins.vignetteHidden = true;
+		EvidencePins.handsHidden = true;
+		EvidencePins.figuresPosed = true;
+		EvidencePins.figureSpawningOff = true;
+		// The textures go back to their first frame on the next client tick.
+		ctx.waitTicks(2);
 	}
 
 	// ------------------------------------------------------------------------------------------------ determinism
@@ -260,6 +289,9 @@ public class DesignTourScenario extends EvidenceScenario {
 				}
 				return chunksLoaded(client) && client.levelRenderer.hasRenderedAllSections();
 			});
+			if (ready && lightRoom != null) {
+				ready = roomLightMatches(lightRoom);
+			}
 			String pose = ctx.computeOnClient(DesignTourScenario::pose);
 			stable = ready && pose.equals(lastPose) ? stable + 1 : 0;
 			lastPose = pose;
@@ -271,6 +303,45 @@ public class DesignTourScenario extends EvidenceScenario {
 						+ SETTLE_LIMIT_NANOS / 1_000_000_000L + " s");
 			}
 		}
+	}
+
+	/**
+	 * True when the client reads, in every cell of the sealed room, the sky and block light that the server holds. When it does not,
+	 * the server sends the room's light again: a client that was sent the chunk while the light engine still worked on the room keeps
+	 * the light of the open sky (sky light 15 in a sealed room), and nothing sends the change that would clear it. That stale light
+	 * lit the dark room in some runs and not in others (issue 309).
+	 */
+	private boolean roomLightMatches(BlockPos floor) {
+		int server = serverGet(srv -> lightOf(srv.overworld(), floor));
+		int client = ctx.computeOnClient(c -> lightOf(c.level, floor));
+		if (server == client) {
+			return true;
+		}
+		serverDo(srv -> {
+			ServerLevel level = srv.overworld();
+			int reach = ROOM_RADIUS + 1;
+			for (int x = (floor.getX() - reach) >> 4; x <= (floor.getX() + reach) >> 4; x++) {
+				for (int z = (floor.getZ() - reach) >> 4; z <= (floor.getZ() + reach) >> 4; z++) {
+					// Null filters: every section of the chunk.
+					player(srv).connection.send(new ClientboundLightUpdatePacket(new ChunkPos(x, z), level.getLightEngine(), null, null));
+				}
+			}
+		});
+		return false;
+	}
+
+	/** One number for the sky and block light of every cell of the room, so that two levels with the same light give the same number. */
+	private static int lightOf(Level level, BlockPos floor) {
+		int hash = 1;
+		for (int dx = -ROOM_RADIUS; dx <= ROOM_RADIUS; dx++) {
+			for (int dz = -ROOM_RADIUS; dz <= ROOM_RADIUS; dz++) {
+				for (int dy = 1; dy <= ROOM_HEIGHT; dy++) {
+					BlockPos pos = floor.offset(dx, dy, dz);
+					hash = 31 * hash + level.getBrightness(LightLayer.SKY, pos) * 16 + level.getBrightness(LightLayer.BLOCK, pos);
+				}
+			}
+		}
+		return hash;
 	}
 
 	/** Where the camera is, and the pod it rides if it rides one: a pod still gliding to a halt is not settled. */
@@ -383,7 +454,7 @@ public class DesignTourScenario extends EvidenceScenario {
 			player.getAbilities().flying = true;
 			player.onUpdateAbilities();
 			player.setPermanentlyInvulnerable(true);
-			if (Charters.found(server, player.getUUID(), "Design Tour Co.").isPresent()) {
+			if (Charters.found(server, player.getUUID(), "Design Tour Co.", TOUR_CHARTER).isPresent()) {
 				throw new AssertionError("founding the charter should succeed");
 			}
 			charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id();
@@ -787,6 +858,7 @@ public class DesignTourScenario extends EvidenceScenario {
 				}
 			}
 		});
+		lightRoom = floor;
 		Vec3 base = Vec3.atBottomCenterOf(floor.above());
 		view(0, base.add(0, 1.8, 6), base.add(0, 1, 0), 120);
 
@@ -839,28 +911,32 @@ public class DesignTourScenario extends EvidenceScenario {
 		still("lampless-figure-close");
 		serverDo(server -> figure.discard());
 
-		// Walking toward a lit pod: it fades near the light.
+		// A figure half faded by a lit pod. It stands at rest beside the pod and is drawn half faded, because a figure that walks into the
+		// light fades on its own clock and stands at a different place in every run.
 		PodEntity lamp = spawnPod(PodRegistry.POD, 0, base.add(3, 0, 0), 0f, true);
+		awaitLight(lamp);
 		LamplessFigure walker = serverGet(server -> {
 			ServerLevel level = server.overworld();
 			LamplessFigure f = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
-			f.setPos(base.add(-6, 0, 0));
-			f.setHeading(Direction.EAST);
+			f.setPos(base.add(-1, 0, 0));
+			f.setNoAi(true);
+			f.setYRot(-90f);
+			f.setYBodyRot(-90f);
+			f.setYHeadRot(-90f);
 			tourMobs.add(f.getUUID());
 			level.addFreshEntity(f);
 			return f;
 		});
-		view(0, base.add(-1, 2.2, 7), base.add(-1, 1.2, 0), 10);
-		for (int frames = 0; frames < 80 && !serverGet(server -> walker.fadeFraction() > 0 || walker.isRemoved()); frames++) {
-			ctx.waitTicks(3);
-		}
-		ctx.waitTicks(4);
+		view(0, base.add(-1, 2.2, 7), base.add(-1, 1.2, 0), 30);
+		EvidencePins.figureFade = FIGURE_SHOT_FADE;
 		still("lampless-figure-fading-by-a-lit-pod");
+		EvidencePins.figureFade = -1f;
 		serverDo(server -> {
 			walker.discard();
 			lamp.discard();
 			player(server).removeEffect(MobEffects.NIGHT_VISION);
 		});
+		lightRoom = null;
 	}
 
 	// ------------------------------------------------------------------------------------------------ HUDs
@@ -1023,7 +1099,11 @@ public class DesignTourScenario extends EvidenceScenario {
 			float alpha = ctx.computeOnClient(client -> BreachEffects.fadeAlpha(0f));
 			if (!faded && alpha >= FADE_SHOT_ALPHA && ctx.computeOnClient(client -> client.gui.screen() == null)) {
 				faded = true;
+				// Held at the alpha it just reached: a frame lands anywhere in a client tick, so the running fade differs every run.
+				EvidencePins.breachFadeAlpha = FADE_SHOT_ALPHA;
+				ctx.waitTicks(2);
 				screenshot(ctx, "hud-breach-fade");
+				EvidencePins.breachFadeAlpha = -1f;
 			}
 			Identifier current = ctx.computeOnClient(client -> TransmissionOverlay.transmission().map(Transmission::id).orElse(null));
 			boolean typed = ctx.computeOnClient(client -> TransmissionOverlay.typed());
