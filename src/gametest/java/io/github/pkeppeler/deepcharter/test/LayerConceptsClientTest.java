@@ -18,6 +18,7 @@ public class LayerConceptsClientTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		ClientTestLog.start(this);
 		for (String pack : PACKS) {
 			require(!selected(context, pack), "the pack " + pack + " is on by default: a concept must show only behind its own switch");
 		}
