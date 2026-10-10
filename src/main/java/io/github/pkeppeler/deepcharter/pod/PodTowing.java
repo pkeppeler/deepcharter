@@ -125,8 +125,8 @@ public final class PodTowing {
 			return Optional.of(Refusal.SAME_POD);
 		}
 		// Both are read before the test, so each unreadable pod is logged.
-		boolean towerReadable = Versioned.readable(tower, STATE).isPresent();
-		boolean towedReadable = Versioned.readable(towed, STATE).isPresent();
+		boolean towerReadable = Versioned.readable(tower, STATE).isPresent() && !tower.isUnreadable();
+		boolean towedReadable = Versioned.readable(towed, STATE).isPresent() && !towed.isUnreadable();
 		if (!towerReadable || !towedReadable) {
 			return Optional.of(Refusal.UNREADABLE);
 		}
@@ -190,7 +190,7 @@ public final class PodTowing {
 	/** The pods on a cable from {@code tower} that are within its reach. */
 	private static List<PodEntity> towedBy(PodEntity tower) {
 		return tower.level().getEntitiesOfClass(PodEntity.class, tower.getBoundingBox().inflate(TowTuning.DEFAULT.reach()),
-				other -> other != tower && towerId(other).filter(tower.getUUID()::equals).isPresent());
+				other -> other != tower && !other.isUnreadable() && towerId(other).filter(tower.getUUID()::equals).isPresent());
 	}
 
 	private static float towedMass(PodEntity tower) {
@@ -285,7 +285,7 @@ public final class PodTowing {
 			return;
 		}
 		List<? extends PodEntity> towed = from.getEntities(EntityTypeTest.forClass(PodEntity.class),
-				pod -> towerId(pod).filter(tower.getUUID()::equals).isPresent());
+				pod -> !pod.isUnreadable() && towerId(pod).filter(tower.getUUID()::equals).isPresent());
 		for (PodEntity pod : towed) {
 			if (!pod.canTeleport(from, to)) {
 				DeepCharter.LOGGER.error("Pod {} cannot cross to {} with its tower {}: it stays behind on its cable", pod.getUUID(), to.dimension(), tower.getUUID());

@@ -63,7 +63,7 @@ public final class GasHazard {
 		try {
 			int radius = OreTuning.DEFAULT.blastRadius();
 			int depthFeet = Depth.feet(Depth.of(level, pos.getY()));
-			for (PodEntity pod : level.getEntitiesOfClass(PodEntity.class, new AABB(pos).inflate(radius))) {
+			for (PodEntity pod : level.getEntitiesOfClass(PodEntity.class, new AABB(pos).inflate(radius), pod -> !pod.isUnreadable())) {
 				float radiator = PodComponents.radiatorRatio(pod);
 				float blast = damage(depthFeet, radiator);
 				pod.damageHull(pod == drilling ? PodSounder.drilledBlast(pod, blast) : blast);

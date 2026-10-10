@@ -96,7 +96,7 @@ public final class Terminals {
 		double radius = TerminalTuning.DEFAULT.parkedRadius();
 		Vec3 centre = Vec3.atCenterOf(pos);
 		return level.getEntitiesOfClass(PodEntity.class, new AABB(pos).inflate(radius),
-						pod -> !pod.flying() && !pod.drilling() && pod.position().distanceToSqr(centre) <= radius * radius)
+						pod -> !pod.isUnreadable() && !pod.flying() && !pod.drilling() && pod.position().distanceToSqr(centre) <= radius * radius)
 				.stream().sorted(Comparator.comparingDouble(pod -> pod.position().distanceToSqr(centre))).toList();
 	}
 

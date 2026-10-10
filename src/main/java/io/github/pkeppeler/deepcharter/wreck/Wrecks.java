@@ -41,9 +41,9 @@ public final class Wrecks {
 	private Wrecks() {
 	}
 
-	/** True when the pod is a wreck. Safe on either side; the client sees the synced state. Unreadable state is not a wreck. */
+	/** True when the pod is a wreck. Safe on either side; the client sees the synced state. Unreadable state, and an unreadable pod, is not a wreck. */
 	public static boolean isWreck(PodEntity pod) {
-		return Versioned.readable(pod, WreckRegistry.STATE).map(WreckState::wrecked).orElse(false);
+		return !pod.isUnreadable() && Versioned.readable(pod, WreckRegistry.STATE).map(WreckState::wrecked).orElse(false);
 	}
 
 	/**
@@ -116,7 +116,7 @@ public final class Wrecks {
 
 	/** A pod that comes into the world at hull 0 (saved before wrecks, or by {@code setHull} elsewhere) is a wreck too. */
 	static void onLoad(Entity entity, ServerLevel level) {
-		if (!(entity instanceof PodEntity pod) || pod.hull() > 0f || isWreck(pod)) {
+		if (!(entity instanceof PodEntity pod) || pod.isUnreadable() || pod.hull() > 0f || isWreck(pod)) {
 			return;
 		}
 		if (!isReadable(pod)) {
