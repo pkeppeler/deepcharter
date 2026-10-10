@@ -102,6 +102,7 @@ public final class PodMotion {
 		boolean rotorOutTarget = !drilling && (pod.flying() || !pod.onGround());
 		rotorOut = firstFrame ? (rotorOutTarget ? 1f : 0f) : Mth.approach(rotorOut, rotorOutTarget ? 1f : 0f, FOLD_PER_TICK * step);
 		rotorSpeed = Mth.approach(rotorSpeed, pod.flying() && !drilling ? ROTOR_FLYING_DEGREES : 0f, ROTOR_SPIN_UP * step);
+		// rotorSpeed is 0 while drilling and rotorOut scales it, so the rotor turns only with its blades out and the engine lifting.
 		rotorSpin = (rotorSpin + rotorSpeed * rotorOut * step) % 360f;
 		if (powered) {
 			fanSpin = (fanSpin + FAN_DEGREES * step) % 360f;

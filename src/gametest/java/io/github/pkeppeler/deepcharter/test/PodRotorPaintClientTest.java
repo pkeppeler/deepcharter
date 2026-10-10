@@ -72,6 +72,7 @@ public class PodRotorPaintClientTest implements FabricClientGameTest {
 				aBackwardsFrameIsNotCountedTwice(client, scene.ember());
 				eachCharterCarriesItsPaint(client, scene);
 				theHullIsRecoloured(client, scene.ember());
+				aMaskOfAnotherSizeIsRefusedAndNeverCrashesAFrame(client, scene.ember());
 			});
 			// A frame draws the painted, folded pods through the real renderer, the glow layer included.
 			context.waitTick(); // tick-wait: one frame draws the pods; nothing else is awaited
@@ -210,37 +211,71 @@ public class PodRotorPaintClientTest implements FabricClientGameTest {
 		require(renderer(client, scene.prospector()).appearanceOf(pod(client, scene.prospector())).paint().isPresent(), "the Prospector is painted too");
 	}
 
-	/** The paint mask's texels take the colour times their shade, and no other texel changes. */
+	/**
+	 * Literal texels: a mask grey of 128 gives the palette colour as it is, 64 half of it, 255 a clamped brighter one, and a transparent mask texel leaves
+	 * the texture alone. Red, green and blue are each checked, so a channel mixed up in {@link PodPaint#paint} fails here. Then the shipped mask: its
+	 * unshaded texels come out as exactly the palette colour, and nothing else changes.
+	 */
 	private static void theHullIsRecoloured(Minecraft client, int id) {
+		// The colour is #B5503C: red 181, green 80, blue 60.
+		try (NativeImage base = new NativeImage(2, 2, false); NativeImage mask = new NativeImage(2, 2, false)) {
+			base.fillRect(0, 0, 2, 2, 0xFF112233);
+			mask.setPixel(0, 0, 0xFF808080);
+			mask.setPixel(1, 0, 0xFF404040);
+			mask.setPixel(0, 1, 0xFFFFFFFF);
+			mask.setPixel(1, 1, 0x00000000);
+			try (NativeImage painted = PodPaint.paint(base, mask, 0xFFB5503C)) {
+				requirePixel(painted, 0, 0, 0xFFB5503C, "the base paint grey gives the palette colour");
+				requirePixel(painted, 1, 0, 0xFF5A281E, "half the grey gives half the colour");
+				requirePixel(painted, 0, 1, 0xFFFF9F77, "a bright grey clamps red and scales green and blue");
+				requirePixel(painted, 1, 1, 0xFF112233, "a transparent mask texel leaves the texture alone");
+			}
+		}
 		PodGeoRenderer renderer = renderer(client, id);
 		Identifier baseId = renderer.look().intact().texture();
 		Identifier maskId = renderer.look().paintMask().orElseThrow();
 		int rgb = PodPaintLook.current().paintOf(EMBER);
 		try (NativeImage base = read(client, baseId); NativeImage mask = read(client, maskId); NativeImage painted = PodPaint.paint(base, mask, rgb)) {
-			int masked = 0;
+			int unshaded = 0;
+			int shaded = 0;
 			int bare = 0;
-			boolean shaded = false;
 			for (int y = 0; y < base.getHeight(); y++) {
 				for (int x = 0; x < base.getWidth(); x++) {
 					int mark = mask.getPixel(x, y);
 					if (mark >>> 24 == 0) {
-						require(painted.getPixel(x, y) == base.getPixel(x, y), "a texel outside the paint changed at " + x + ", " + y);
+						requirePixel(painted, x, y, base.getPixel(x, y), "a texel outside the paint changed at " + x + ", " + y);
 						bare++;
+					} else if ((mark & 0xFF) == PodPaint.MASK_UNIT) {
+						requirePixel(painted, x, y, rgb, "an unshaded paint texel is the palette colour at " + x + ", " + y);
+						unshaded++;
 					} else {
-						int grey = mark >> 16 & 255;
-						int expected = (rgb >> 16 & 255) * grey / PodPaint.MASK_UNIT;
-						int red = Math.min(255, expected);
-						require((painted.getPixel(x, y) >> 16 & 255) == red && painted.getPixel(x, y) >>> 24 == 255,
-								"the paint texel at " + x + ", " + y + " should be the colour's red times " + grey + "/" + PodPaint.MASK_UNIT + " = " + red + ", is "
-										+ (painted.getPixel(x, y) >> 16 & 255));
-						shaded |= grey != PodPaint.MASK_UNIT;
-						masked++;
+						shaded++;
 					}
 				}
 			}
-			require(masked > 1000 && bare > 1000, "the mask picks the hull's paint and leaves the rest: " + masked + " painted texels, " + bare + " others");
-			require(shaded, "the paint keeps its shading");
+			require(unshaded > 100 && shaded > 100 && bare > 1000, "the mask picks the hull's paint, shaded, and leaves the rest: " + unshaded + " unshaded, " + shaded + " shaded, " + bare + " others");
 		}
+	}
+
+	/** A paint whose mask is not the texture's size is refused at load, and a frame that meets one anyway draws the unpainted texture. */
+	private static void aMaskOfAnotherSizeIsRefusedAndNeverCrashesAFrame(Minecraft client, int id) {
+		PodGeoRenderer renderer = renderer(client, id);
+		Identifier maskId = renderer.look().paintMask().orElseThrow();
+		Identifier small = Identifier.withDefaultNamespace("textures/block/stone.png");
+		PodPaint.check(client.getResourceManager(), renderer.look().intact().texture(), maskId);
+		String refusal = null;
+		try {
+			PodPaint.check(client.getResourceManager(), small, maskId);
+		} catch (IllegalArgumentException e) {
+			refusal = e.getMessage();
+		}
+		require(refusal != null && refusal.contains(maskId.toString()) && refusal.contains(small.toString()) && refusal.contains("512 x 512") && refusal.contains("16 x 16"),
+				"a mask of another size than the texture is refused, naming both and their sizes, got " + refusal);
+		require(PodPaint.texture(small, maskId, PodPaintLook.current().paintOf(EMBER)).equals(small), "a frame with a texture and mask that disagree draws the texture unpainted");
+	}
+
+	private static void requirePixel(NativeImage image, int x, int y, int expected, String what) {
+		require(image.getPixel(x, y) == expected, what + ": the texel at " + x + ", " + y + " should be 0x" + Integer.toHexString(expected) + ", is 0x" + Integer.toHexString(image.getPixel(x, y)));
 	}
 
 	/** {@code count} frames, one tick apart, starting at tick {@code from}. */

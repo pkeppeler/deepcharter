@@ -3,7 +3,9 @@ package io.github.pkeppeler.deepcharter.client.pod;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.mojang.blaze3d.platform.NativeImage;
@@ -41,6 +43,7 @@ public final class PodPaint {
 	}
 
 	private static final Map<Key, Identifier> TEXTURES = new HashMap<>();
+	private static final List<Identifier> REGISTERED = new ArrayList<>();
 	/** How many painted textures have been made, for their ids: an id is never reused, so a stale one can never be drawn. */
 	private static int made;
 	private static final Identifier RELOAD = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "pod_paint");
@@ -71,17 +74,38 @@ public final class PodPaint {
 		return TEXTURES.computeIfAbsent(new Key(base, mask, rgb), key -> {
 			Minecraft client = Minecraft.getInstance();
 			ResourceManager resources = client.getResourceManager();
-			Identifier id = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "pod_paint/" + made++);
 			try (NativeImage baseImage = read(resources, base); NativeImage maskImage = read(resources, mask)) {
+				Identifier id = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "pod_paint/" + made++);
 				client.getTextureManager().register(id, new DynamicTexture(() -> "deepcharter pod paint " + id, paint(baseImage, maskImage, rgb)));
+				REGISTERED.add(id);
+				return id;
+			} catch (RuntimeException e) {
+				// A pack's texture or mask that the load check could not see (it changed after the load, or does not decode) must not stop
+				// the frame: the pod is drawn unpainted, and the log says why once, until the next reload.
+				DeepCharter.LOGGER.error("The pod texture {} cannot be painted with the mask {}, so it is drawn unpainted: {}", base, mask, e.getMessage());
+				return base;
 			}
-			return id;
 		});
+	}
+
+	/**
+	 * Throws unless {@code base} and {@code mask} both decode and are the same size, so that {@link #texture} can paint them. The look load
+	 * runs this, so a pack whose texture and mask disagree falls back to the mod's own look.
+	 */
+	public static void check(ResourceManager resources, Identifier base, Identifier mask) {
+		try (NativeImage baseImage = read(resources, base); NativeImage maskImage = read(resources, mask)) {
+			if (baseImage.getWidth() != maskImage.getWidth() || baseImage.getHeight() != maskImage.getHeight()) {
+				throw new IllegalArgumentException("the paint mask " + mask + " is " + maskImage.getWidth() + " x " + maskImage.getHeight() + ", but the texture "
+						+ base + " is " + baseImage.getWidth() + " x " + baseImage.getHeight());
+			}
+		}
 	}
 
 	/** Closes every painted texture, so the next frame makes them again from what the packs now say. */
 	static void release() {
-		TEXTURES.values().forEach(Minecraft.getInstance().getTextureManager()::release);
+		// Only the textures made here: an entry that fell back to the unpainted texture holds a texture that is not ours to close.
+		REGISTERED.forEach(Minecraft.getInstance().getTextureManager()::release);
+		REGISTERED.clear();
 		TEXTURES.clear();
 	}
 

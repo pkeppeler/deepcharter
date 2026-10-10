@@ -123,6 +123,7 @@ public class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimatable, 
 			}
 			if (look.paintMask().isPresent()) {
 				checkTexture(resources, geo, look.paintMask().get());
+				PodPaint.check(resources, look.intact().texture(), look.paintMask().get());
 			}
 			return new Loaded(look, geo);
 		} catch (RuntimeException e) {
