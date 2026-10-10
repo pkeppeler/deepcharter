@@ -297,10 +297,6 @@ def lowest(model, name):
     return min(p[1] for cube in bone.cubes for p in pc.corners(model, bone, cube))
 
 
-def cube_height(model, name):
-    return bone_named(model, name).cubes[0].size[1]
-
-
 def has_bone(model, name):
     return any(bone.name == name for bone in model.bones)
 
@@ -379,10 +375,6 @@ def luma(rgba):
 # ---------------------------------------------------------------------------------------------
 # What is wrong with the figure
 # ---------------------------------------------------------------------------------------------
-
-
-def height_of(model):
-    return extent(model)[1][1]
 
 
 # (text, test(model) -> bool): what the figure says is wrong with it, checked on its model. Each is false of the plain miner.
