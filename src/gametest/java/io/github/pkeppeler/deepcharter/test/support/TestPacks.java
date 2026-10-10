@@ -27,9 +27,25 @@ public final class TestPacks implements ModInitializer {
 	/** Texture density D: B, with crystals and a glint standing out of every ore. */
 	public static final String TEXTURE_DENSITY_D = "texture_density_d";
 
+	/** Terminal panel A (#246, docs/design/terminal-concepts.md): a heavy riveted frame, a deep-set CRT, a toggle row, chunky push-buttons. */
+	public static final String TERMINAL_SLAB = "terminal_slab";
+	/** Terminal panel B: a hooded console with chamfered shoulders over a row of keycaps, keycap buttons. */
+	public static final String TERMINAL_CONSOLE = "terminal_console";
+	/** Terminal panel C: a rack-mount instrument panel with rack ears, segmented readouts and a patch bay, toggle buttons. */
+	public static final String TERMINAL_RACK = "terminal_rack";
+	/** Terminal panel D: a bulkhead hatch with a porthole CRT, hatch dogs down both sides, stencils, rotary buttons. */
+	public static final String TERMINAL_HATCH = "terminal_hatch";
+	/** The terminal font as Unscii 8 (public domain), over a panel pack. */
+	public static final String TERMINAL_FONT_UNSCII = "terminal_font_unscii";
+	/** The terminal font as VT323 (SIL OFL), over a panel pack. */
+	public static final String TERMINAL_FONT_VT323 = "terminal_font_vt323";
+	/** The terminal font as Departure Mono (SIL OFL), over a panel pack. */
+	public static final String TERMINAL_FONT_DEPARTURE = "terminal_font_departure";
+
 	@Override
 	public void onInitialize() {
-		for (String pack : new String[] {AMBER_CRT, BAD_CRT, RED_INK, TEXTURE_DENSITY_B, TEXTURE_DENSITY_C, TEXTURE_DENSITY_D}) {
+		for (String pack : new String[] {AMBER_CRT, BAD_CRT, RED_INK, TEXTURE_DENSITY_B, TEXTURE_DENSITY_C, TEXTURE_DENSITY_D,
+				TERMINAL_SLAB, TERMINAL_CONSOLE, TERMINAL_RACK, TERMINAL_HATCH, TERMINAL_FONT_UNSCII, TERMINAL_FONT_VT323, TERMINAL_FONT_DEPARTURE}) {
 			ResourceLoader.registerBuiltinPack(Identifier.fromNamespaceAndPath("deepcharter-test", pack),
 					FabricLoader.getInstance().getModContainer("deepcharter-test").orElseThrow(),
 					Component.literal(pack + " (test pack)"), PackActivationType.NORMAL);

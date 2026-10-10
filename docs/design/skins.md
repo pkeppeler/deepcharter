@@ -8,8 +8,9 @@ Paths are under `src/main/resources/` in the repo and under `assets/deepcharter/
 
 | Kind | Path | Reload |
 |---|---|---|
-| UI theme: colours, sizes, spacing and visual timings of the CRT terminals, handbook paper, scanner, pod readout, altimeter, account line, transmissions, breach fade and cargo screen | `assets/deepcharter/theme/<area>.json`, areas `crt`, `handbook`, `scanner`, `hud`, `transmission`, `breach`, `cargo`, `pod` | F3+T |
+| UI theme: colours, sizes, spacing and visual timings of the CRT terminals, handbook paper, scanner, pod readout, altimeter, account line, transmissions, breach fade and cargo screen | `assets/deepcharter/theme/<area>.json`, areas `crt`, `handbook`, `scanner`, `hud`, `transmission`, `breach`, `cargo`, `pod`, `panel` | F3+T |
 | UI frames drawn as a panel (today: the pod cargo panel and slot) | `assets/deepcharter/textures/gui/sprites/cargo/panel.png` and `slot.png`, each with a nine-slice `.png.mcmeta` | F3+T |
+| The terminal panel (#246, off in the mod; a pack turns it on): the frame round the CRT, the glass over it, the buttons, the nameplate and the dressing, as nine-slice and fixed-size sprites placed by `theme/panel.json`; the terminal font | `assets/deepcharter/textures/gui/sprites/panel/<slot>.png` (slots `frame`, `glass`, `button`, `button_hover`, `button_off`, `pip`, `pip_hot`, `pip_off`, `nameplate`, `dress_a` to `dress_d`; the nine-slice ones with a `.png.mcmeta`), `theme/panel.json`, `font/terminal.json`. The four concepts are the test packs `terminal_slab`, `terminal_console`, `terminal_rack` and `terminal_hatch`, and the fonts `terminal_font_*`, written by `tools/terminal_concepts.py` ([ADR 0042](../adr/0042-the-terminal-panel-is-a-theme-area-with-fixed-sprite-slots.md), [terminal-concepts.md](terminal-concepts.md)) | F3+T |
 | Block look, with its layers (glow, animation, active state, connected casing; see [Textures](#textures)) | `blockstates/<id>.json`, `models/block/<id>.json`, `textures/block/*.png` and `*.png.mcmeta` | F3+T |
 | Item look | `items/<id>.json` (item definition), `models/item/<id>.json`, `textures/item/*.png` | F3+T |
 | Block and item texture art: palette and recipes | `tools/textures/palette.json` and `tools/textures/recipes/*.json` in the repo; a skin's own palette file (see [Textures](#textures)) | rebuild, then F3+T |
@@ -139,7 +140,7 @@ One flat JSON object. A colour is a string, `"#RRGGBB"` (opaque) or `"#AARRGGBB"
 }
 ```
 
-The key names are the component names of the matching record: `CrtTuning` for `crt.json`, `HandbookScreenTuning`, and `ScannerLook`, `HudLook`, `TransmissionLook`, `BreachLook`, `CargoLook`, `PodPaintLook` in `client/theme/`. Each record's Javadoc says what a key does. The mod's own file at the bottom lists every key and is the reference.
+The key names are the component names of the matching record: `CrtTuning` for `crt.json`, `HandbookScreenTuning`, and `ScannerLook`, `HudLook`, `TransmissionLook`, `BreachLook`, `CargoLook`, `PodPaintLook`, `PanelLook` in `client/theme/`. Each record's Javadoc says what a key does. The mod's own file at the bottom lists every key and is the reference.
 
 An open screen follows the reload at once. A typewriter's speed is read when it starts, so it applies to the next text.
 

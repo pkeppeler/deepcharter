@@ -90,8 +90,9 @@ public final class TerminalScreen extends CrtScreen implements TerminalViewScree
 
 	@Override
 	protected void layout() {
-		int closeY = height - MARGIN - BUTTON_HEIGHT;
-		addRenderableWidget(new CrtButton(MARGIN, closeY, CLOSE_WIDTH, BUTTON_HEIGHT,
+		int closeY = contentBottom(MARGIN) - BUTTON_HEIGHT;
+		int left = contentLeft(MARGIN);
+		addRenderableWidget(new CrtButton(left, closeY, CLOSE_WIDTH, BUTTON_HEIGHT,
 				Component.translatable("screen.deepcharter.terminal.close"), button -> onClose()));
 		if (view.repaired()) {
 			return;
@@ -102,7 +103,7 @@ public final class TerminalScreen extends CrtScreen implements TerminalViewScree
 			TerminalView.PartStatus part = parts.get(i);
 			Component label = Component.translatable(part.inserted() ? "screen.deepcharter.terminal.inserted" : "screen.deepcharter.terminal.insert",
 					partName(part));
-			CrtButton button = addRenderableWidget(new CrtButton(MARGIN, top + i * (BUTTON_HEIGHT + GAP), BUTTON_WIDTH, BUTTON_HEIGHT, label,
+			CrtButton button = addRenderableWidget(new CrtButton(left, top + i * (BUTTON_HEIGHT + GAP), BUTTON_WIDTH, BUTTON_HEIGHT, label,
 					pressed -> insert(part)));
 			button.active = view.unlocked() && !part.inserted();
 		}
@@ -123,13 +124,13 @@ public final class TerminalScreen extends CrtScreen implements TerminalViewScree
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		CrtTuning tuning = CrtTuning.current();
-		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), MARGIN, width);
-		int below = drawTypewriter(graphics, typewriter, MARGIN, MARGIN + font.lineHeight + 14, width - 2 * MARGIN);
+		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), contentLeft(MARGIN), contentTop(MARGIN), contentRight(MARGIN));
+		int below = drawTypewriter(graphics, typewriter, contentLeft(MARGIN), contentTop(MARGIN) + font.lineHeight + 14, contentWidth(MARGIN));
 		if (view.repaired()) {
 			String account = ClientCharter.view()
 					.map(charter -> Component.translatable("screen.deepcharter.terminal.account", charter.balance()).getString())
 					.orElse("");
-			CrtDraw.glowText(graphics, font, account, MARGIN, below + GAP, tuning.phosphorColor());
+			CrtDraw.glowText(graphics, font, account, contentLeft(MARGIN), below + GAP, tuning.phosphorColor());
 		}
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 	}

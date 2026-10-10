@@ -1,0 +1,12 @@
+Unscii 2.1, unscii-8 (unscii-8.ttf)
+Created by Viznut. Official source: https://viznut.fi/unscii/ (file https://viznut.fi/unscii/unscii-8.ttf)
+
+Licence, as the author states it on the official page (retrieved 2026-10-10):
+
+    "Unscii is a set of bitmapped Unicode fonts based on classic system fonts. ...
+    The two main variants are unscii-8 (8x8 pixels per glyph) and unscii-16 (8x16). ...
+    "unscii-16-full" falls under GPL because of how Unifont is licensed; the other
+    variants are in the Public Domain."
+
+This file is unscii-8, which is one of "the other variants": it is in the Public Domain. The author's
+page gives no separate licence text, so this file records the statement and where it was read.
