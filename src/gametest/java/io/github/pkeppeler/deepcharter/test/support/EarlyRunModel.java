@@ -97,14 +97,9 @@ public final class EarlyRunModel {
 	 * descent that cannot refuel at the pump. The way back down an open shaft is a braked drive instead (see {@link #driveDownLitres}).
 	 */
 	public static double boreLitres(Zone zone, PodStats stats, int blocks) {
-		return boreLitres(Chassis.MOLE, zone, stats, blocks);
-	}
-
-	/** As {@link #boreLitres(Zone, PodStats, int)} for a pod of {@code chassis}: a wider bore holds more ore in each slab, so more slabs wait on a hard block. */
-	public static double boreLitres(Chassis chassis, Zone zone, PodStats stats, int blocks) {
 		double litres = 0;
 		for (int slab = 1; slab <= blocks; slab++) {
-			litres += slabSeconds(chassis, zone, stats, slab - 0.5) * (stats.drillingLitresPerSecond() + stats.idleLitresPerSecond());
+			litres += slabSeconds(Chassis.MOLE, zone, stats, slab - 0.5) * (stats.drillingLitresPerSecond() + stats.idleLitresPerSecond());
 		}
 		return litres;
 	}
