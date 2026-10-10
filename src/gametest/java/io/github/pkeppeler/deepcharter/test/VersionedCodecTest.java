@@ -17,11 +17,7 @@ import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.attachment.Versioned.Readable;
 import io.github.pkeppeler.deepcharter.attachment.Versioned.Unreadable;
 
-/**
- * {@link Versioned#codec(int, MapCodec, Map)} on its own, with test-only record types: an older body decodes through its own
- * codec and is written back at the current version; a body that does not parse, an unknown version and a missing version are
- * {@link Unreadable}, keep the raw data and throw nothing; the two-argument form is unchanged.
- */
+/** {@link Versioned#codec(int, MapCodec, Map)} on its own, with test-only record types. */
 public class VersionedCodecTest {
 	private static final int CURRENT = 2;
 	private static final int OLD = 1;
