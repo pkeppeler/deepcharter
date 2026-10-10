@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.pod;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import net.fabricmc.fabric.api.particle.v1.FabricParticleTypes;
@@ -22,10 +23,15 @@ public final class PodRegistry {
 	/** Declared first: each registration below adds its chassis. */
 	private static final Map<EntityType<?>, Chassis> CHASSIS = new HashMap<>();
 
-	// Seat 0.9 up: the rider sits on the hull. Updates every tick because pods move fast.
-	public static final EntityType<PodEntity> POD = register("pod", Chassis.MOLE, new Vec3(0, 0.9, 0));
-	// The pilot sits ahead of the navigator, on the same 0.9 hull.
-	public static final EntityType<PodEntity> PROSPECTOR = register("prospector", Chassis.PROSPECTOR, new Vec3(0, 0.9, 0.7), new Vec3(0, 0.9, -0.7));
+	/** Seats are Java, not look data, because the server places passengers and a dedicated server has no models. Offsets: {@code PodSeatsClientTest} and ADR 0040. */
+	private static final Map<Chassis, List<Vec3>> SEATS = Map.of(
+			Chassis.MOLE, List.of(new Vec3(0, 6 / 16.0, -5 / 16.0)),
+			Chassis.PROSPECTOR, List.of(new Vec3(0, 8 / 16.0, -3.5 / 16.0), new Vec3(0, 8 / 16.0, -14.5 / 16.0)));
+
+	// The rider sits inside the cab. Updates every tick because pods move fast.
+	public static final EntityType<PodEntity> POD = register("pod", Chassis.MOLE);
+	// The pilot sits ahead of the navigator, in tandem.
+	public static final EntityType<PodEntity> PROSPECTOR = register("prospector", Chassis.PROSPECTOR);
 
 	/** Used on a pod, it fits a tow cable from the pod the player rides, or takes one off (see {@link PodTowing}). */
 	public static final Item TOW_CABLE = item("tow_cable");
@@ -37,18 +43,27 @@ public final class PodRegistry {
 	private PodRegistry() {
 	}
 
-	private static EntityType<PodEntity> register(String path, Chassis chassis, Vec3... seats) {
+	private static EntityType<PodEntity> register(String path, Chassis chassis) {
 		ResourceKey<EntityType<?>> key = ResourceKey.create(Registries.ENTITY_TYPE, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
 		EntityType<PodEntity> type = Registry.register(BuiltInRegistries.ENTITY_TYPE, key,
 				EntityType.Builder.<PodEntity>of(PodEntity::new, MobCategory.MISC)
 						.sized(chassis.width(), chassis.height())
-						.passengerAttachments(seats)
+						.passengerAttachments(seatsOf(chassis).toArray(Vec3[]::new))
 						.fireImmune()
 						.clientTrackingRange(10)
 						.updateInterval(1)
 						.build(key));
 		CHASSIS.put(type, chassis);
 		return type;
+	}
+
+	/** The seats of {@code chassis}, pilot first: where a rider sits, in blocks from the pod's feet (+z is forward). */
+	public static List<Vec3> seatsOf(Chassis chassis) {
+		List<Vec3> seats = SEATS.get(chassis);
+		if (seats == null || seats.size() != chassis.seats()) {
+			throw new IllegalStateException("the chassis " + chassis.id() + " has " + chassis.seats() + " seats and the seat offsets " + seats);
+		}
+		return seats;
 	}
 
 	/** The chassis of the pods of {@code type}; a type that is no pod's throws. */
