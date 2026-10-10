@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.pod;
 
+import java.util.Collection;
+import java.util.Comparator;
+
 /**
  * Tunables for the tow cable, read as {@code TowTuning.DEFAULT.thing()}. It is not a record of {@link PodTuning}, which takes no
  * more changes.
@@ -34,6 +37,12 @@ public record TowTuning(double reach, double trailGap, float baseMass, int cable
 		if (cableMaxParticles < 1) {
 			throw new IllegalArgumentException("the cable must draw at least 1 particle, got " + cableMaxParticles);
 		}
+	}
+
+	/** The reach for pods of {@code chassis}: {@link #reach}, or the trail of the two widest hulls plus {@link #trailGap} to spare if that is longer, so no trailing pod is out of reach. */
+	public double reachFor(Collection<Chassis> chassis) {
+		Chassis widest = chassis.stream().max(Comparator.comparingDouble(Chassis::width)).orElseThrow();
+		return Math.max(reach, trailDistance(widest, widest) + trailGap);
 	}
 
 	/** Blocks from the tower's middle to the middle of the pod it tows: half of each hull's width and the gap between the hulls, so wide pods never overlap. */

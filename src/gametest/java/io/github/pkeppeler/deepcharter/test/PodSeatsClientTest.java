@@ -74,7 +74,6 @@ public class PodSeatsClientTest implements FabricClientGameTest {
 		List<Vec3> seats = SEATS.get(chassis);
 		require(seats != null && seats.size() == chassis.seats(), chassis.id() + " should have " + chassis.seats() + " pinned seats, has " + seats);
 		require(chassis != Chassis.PROSPECTOR || seats.get(0).z > seats.get(1).z, "the Prospector's pilot sits ahead of its navigator: " + seats);
-		require(seats.equals(PodRegistry.seatsOf(chassis)), chassis.id() + "'s seats are " + PodRegistry.seatsOf(chassis) + ", not the pinned " + seats);
 
 		int[] pod = {0};
 		MockPlayer[] navigator = {null};

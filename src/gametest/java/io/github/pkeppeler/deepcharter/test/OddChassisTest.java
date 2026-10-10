@@ -17,13 +17,14 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 
 import io.github.pkeppeler.deepcharter.pod.Chassis;
+import io.github.pkeppeler.deepcharter.pod.TowTuning;
 import io.github.pkeppeler.deepcharter.test.support.OddPods;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
 /**
  * Server GameTests for #399 on a wide chassis ({@link OddPods#CHASSIS}: 3.9 wide, 2.9 tall, a 4-wide, 3-tall bore), neither the Mole's
- * 2 x 2 nor the Prospector's 3 x 3. The checks are {@link ChassisChecks}, the same as {@link TallChassisTest} runs on a tall one. The two
- * tests at the end hold for every chassis there is: the part tier it takes, and the doors of the colony's bays.
+ * 2 x 2 nor the Prospector's 3 x 3. The checks are {@link ChassisChecks}, the same as {@link TallChassisTest} runs on a tall one. The
+ * tests at the end hold for every chassis there is: the tow reach, the part tier the constructor accepts, and the doors of the colony's bays.
  */
 public class OddChassisTest {
 	private static final ChassisChecks CHECKS = new ChassisChecks(OddPods.CHASSIS, OddPods.TYPE, 0);
@@ -96,17 +97,32 @@ public class OddChassisTest {
 		CHECKS.parksInBayPlacesThatFitAndNeverOverlap(helper);
 	}
 
-	/** A part tier is 1 to the best any track has; the constructor refuses others, so a swap of the cap and the seats cannot register. */
+	/** The cable's reach covers the trail of the widest pods, even when the configured reach is short: a trailing pod is never out of its tower's reach. */
 	@GameTest
-	public void everyChassisTakesAPartTierThatExists(GameTestHelper helper) {
+	public void theTowReachCoversTheTrailOfTheWidestChassis(GameTestHelper helper) {
+		TowTuning shortReach = new TowTuning(1.0, TowTuning.DEFAULT.trailGap(), 25f, 4, 0.4, 16);
+		double trail = shortReach.trailDistance(OddPods.CHASSIS, OddPods.CHASSIS);
+		double reach = shortReach.reachFor(everyChassis());
+		if (reach < trail) {
+			throw failure(helper, "the tow reach %s is shorter than the %s a wide pod trails behind its tower", reach, trail);
+		}
+		helper.succeed();
+	}
+
+	/** The constructor refuses a part tier no track has: 0, and one above the best, so a swap of the cap and the seats cannot register. */
+	@GameTest
+	public void aChassisRefusesAPartTierThatDoesNotExist(GameTestHelper helper) {
 		int best = 0;
 		for (ComponentTrack track : ComponentTrack.values()) {
 			best = Math.max(best, track.maxTier());
 		}
-		for (Chassis chassis : everyChassis()) {
-			if (chassis.tierCap() < 1 || chassis.tierCap() > best) {
-				throw failure(helper, "the chassis %s takes part tier %s, and tiers go from 1 to %s", chassis.id(), chassis.tierCap(), best);
+		for (int cap : new int[] {0, best + 1}) {
+			try {
+				new Chassis("bad", 1, cap, 1.9f, 1.9f);
+			} catch (IllegalArgumentException expected) {
+				continue;
 			}
+			throw failure(helper, "a chassis with part tier cap %s should be refused, tiers go from 1 to %s", cap, best);
 		}
 		helper.succeed();
 	}

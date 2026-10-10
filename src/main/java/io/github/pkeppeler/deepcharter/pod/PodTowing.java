@@ -142,7 +142,7 @@ public final class PodTowing {
 		if (!towedBy(tower).isEmpty()) {
 			return Optional.of(Refusal.ALREADY_TOWING);
 		}
-		double reach = TowTuning.DEFAULT.reach();
+		double reach = reach();
 		if (tower.level() != towed.level() || tower.distanceToSqr(towed) > reach * reach) {
 			return Optional.of(Refusal.TOO_FAR);
 		}
@@ -187,9 +187,14 @@ public final class PodTowing {
 		return Optional.of(tower);
 	}
 
+	/** Blocks from the tower within which a cable fits: {@link TowTuning#reachFor} for the chassis registered, so a wide chassis still trails within it. */
+	private static double reach() {
+		return TowTuning.DEFAULT.reachFor(PodRegistry.chassis());
+	}
+
 	/** The pods on a cable from {@code tower} that are within its reach. */
 	private static List<PodEntity> towedBy(PodEntity tower) {
-		return tower.level().getEntitiesOfClass(PodEntity.class, tower.getBoundingBox().inflate(TowTuning.DEFAULT.reach()),
+		return tower.level().getEntitiesOfClass(PodEntity.class, tower.getBoundingBox().inflate(reach()),
 				other -> other != tower && towerId(other).filter(tower.getUUID()::equals).isPresent());
 	}
 

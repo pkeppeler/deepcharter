@@ -208,7 +208,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 
 	/** The layer 1 columns a pod bores: its footprint on the block grid, as the drill picks it. */
 	private static List<BlockPos> columns(PodEntity pod) {
-		int width = Mth.ceil(pod.chassis().width());
+		int width = pod.chassis().boreWidth();
 		int lowX = Mth.floor(pod.getX() - width / 2.0 + 0.5);
 		int lowZ = Mth.floor(pod.getZ() - width / 2.0 + 0.5);
 		require(lowX >= X - ROOM_WEST + 1 && lowX + width <= X + ROOM_EAST - 1, "The pod at " + pod.position() + " stands outside the room");

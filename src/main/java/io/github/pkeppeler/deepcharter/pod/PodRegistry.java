@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.pod;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +23,6 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 public final class PodRegistry {
 	/** Declared first: each registration below adds its chassis. */
 	private static final Map<EntityType<?>, Chassis> CHASSIS = new HashMap<>();
-	private static final Map<Chassis, List<Vec3>> SEATS = new HashMap<>();
 
 	/** Seats are Java, not look data, because the server places passengers and a dedicated server has no models. Offsets: {@code PodSeatsClientTest} and ADR 0040. */
 	private static final List<Vec3> MOLE_SEATS = List.of(new Vec3(0, 6 / 16.0, -5 / 16.0));
@@ -53,7 +53,6 @@ public final class PodRegistry {
 		if (seats.size() != chassis.seats()) {
 			throw new IllegalArgumentException("the chassis " + chassis.id() + " has " + chassis.seats() + " seats and the seat offsets " + seats);
 		}
-		SEATS.put(chassis, List.copyOf(seats));
 		ResourceKey<EntityType<?>> key = ResourceKey.create(Registries.ENTITY_TYPE, id);
 		EntityType<PodEntity> type = Registry.register(BuiltInRegistries.ENTITY_TYPE, key,
 				EntityType.Builder.<PodEntity>of(PodEntity::new, MobCategory.MISC)
@@ -67,13 +66,9 @@ public final class PodRegistry {
 		return type;
 	}
 
-	/** The seats of {@code chassis}, pilot first: where a rider sits, in blocks from the pod's feet (+z is forward). */
-	public static List<Vec3> seatsOf(Chassis chassis) {
-		List<Vec3> seats = SEATS.get(chassis);
-		if (seats == null) {
-			throw new IllegalArgumentException("no seats for the chassis " + chassis.id() + ": it is not registered");
-		}
-		return seats;
+	/** Every chassis registered, shipped or not. */
+	public static Collection<Chassis> chassis() {
+		return CHASSIS.values();
 	}
 
 	/** The chassis of the pods of {@code type}; a type that is no pod's throws. */
