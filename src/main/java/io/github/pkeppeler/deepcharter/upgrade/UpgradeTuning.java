@@ -106,6 +106,9 @@ public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks, Map<String, Integ
 		// Invented (#373): the seep sounder has no stock part. Its value is the tier number; what each tier does is in PodSounderTuning. Both tiers fit a Mole (cap 2).
 		// Tier 1 is $400, two layer 2 runs, and tier 2 is $1,000, as the liner's tier 2 (EconomyAffordabilityTest).
 		tracks.put(ComponentTrack.SOUNDER, new Tiers(List.of(0f, 1f, 2f), List.of(0L, 400L, 1000L)));
+		// Invented (#378): the breach brace has no stock part. One tier, 1 for "fitted"; what it does is in PodBraceTuning. $200 is two stock layer-1 runs,
+		// and the crust it answers ends layer 1 (EconomyAffordabilityTest).
+		tracks.put(ComponentTrack.BRACE, new Tiers(List.of(0f, 1f), List.of(0L, 200L)));
 		return tracks;
 	}
 }

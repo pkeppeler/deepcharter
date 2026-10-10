@@ -19,6 +19,7 @@ import net.minecraft.resources.Identifier;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.pod.HardLanding;
+import io.github.pkeppeler.deepcharter.pod.PodBrace;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLiner;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
@@ -62,6 +63,26 @@ public final class PodStatusHud {
 	/** The warning line shown, in its own colour, while lava burns the hull. */
 	public static Optional<Component> burningLine(PodEntity pod) {
 		return pod.hullBurning() ? Optional.of(Component.translatable("hud.deepcharter.pod.burning")) : Optional.empty();
+	}
+
+	/**
+	 * The warning line shown, in its own colour, when the hull would not outlast the crust at the foot of the layer (#378): the slabs to it (or that
+	 * the pod is in it), the hull, and what the crust rows left would take.
+	 */
+	public static Optional<Component> crustLine(PodEntity pod) {
+		return PodBrace.warning(pod).map(warning -> warning.slabsAway() > 0
+				? Component.translatable("hud.deepcharter.pod.crust_ahead", warning.slabsAway(), Math.round(warning.hull()), Math.round(warning.cost()))
+				: Component.translatable("hud.deepcharter.pod.crust_in", Math.round(warning.hull()), Math.round(warning.cost())));
+	}
+
+	/** The line shown, in its own colour, while a breach brace is wanted: what it waits for, or that it is burning ore for hull. */
+	public static Optional<Component> braceLine(PodEntity pod) {
+		return switch (PodBrace.patching(pod)) {
+			case IDLE -> Optional.empty();
+			case WAITS_FOR_DRILL -> Optional.of(Component.translatable("hud.deepcharter.pod.brace_waits"));
+			case NO_ORE -> Optional.of(Component.translatable("hud.deepcharter.pod.brace_dry"));
+			case WORKING -> Optional.of(Component.translatable("hud.deepcharter.pod.brace_working"));
+		};
 	}
 
 	/** The line shown, in its own colour, while the pilot lines the slab: the bricks placed so far. */
@@ -132,6 +153,8 @@ public final class PodStatusHud {
 		for (Component line : sounderLines(pod)) {
 			y = warning(graphics, font, look, Optional.of(line), look.podSounderColor(), y);
 		}
+		y = warning(graphics, font, look, crustLine(pod), look.podHardLandingColor(), y);
+		y = warning(graphics, font, look, braceLine(pod), look.podHardLandingColor(), y);
 		y = warning(graphics, font, look, liningLine(pod), look.podLiningColor(), y);
 		y = warning(graphics, font, look, outOfBrickLine(pod), look.podLiningDryColor(), y);
 		warning(graphics, font, look, hardLandingLine(pod), look.podHardLandingColor(), y);
