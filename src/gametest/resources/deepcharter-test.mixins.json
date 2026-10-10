@@ -7,10 +7,10 @@
     "ClientGameTestImplMixin",
     "EntityRenderStateMixin",
     "GameRendererHandsMixin",
-    "HudVignetteMixin",
+    "HudMixin",
     "LamplessFigureRendererMixin",
-    "LightmapFlickerMixin",
     "LamplessFiguresMixin",
+    "LightmapFlickerMixin",
     "SpriteAnimationStateMixin",
     "TransmissionOverlayMixin"
   ],

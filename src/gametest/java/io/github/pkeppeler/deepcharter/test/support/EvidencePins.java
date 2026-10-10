@@ -11,6 +11,8 @@ public final class EvidencePins {
 	public static volatile boolean spritesFrozen;
 	/** The screen-edge vignette of the HUD, whose brightness eases over ticks to the light at the player, is not drawn. */
 	public static volatile boolean vignetteHidden;
+	/** The name of the held item, which shows for two seconds after a slot changes and fades on client ticks, is not drawn. */
+	public static volatile boolean itemNameHidden;
 	/** The player's hands and the item in them are not drawn, so a rider's arm is not in a still. */
 	public static volatile boolean handsHidden;
 	/** Block light does not flicker: vanilla moves the brightness of every block-lit surface by a random walk on each client tick. */
@@ -33,6 +35,7 @@ public final class EvidencePins {
 		vignetteHidden = false;
 		lightFlickerOff = false;
 		handsHidden = false;
+		itemNameHidden = false;
 		breachFadeAlpha = -1f;
 		entitiesPosed = false;
 		figureSpawningOff = false;
