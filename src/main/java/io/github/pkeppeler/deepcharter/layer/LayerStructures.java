@@ -76,6 +76,8 @@ public final class LayerStructures {
 					placeWreck(level, site, chunk, famous);
 				}
 			}
+			// The chunk may be sent at once: its light (candles, a lamp, the lava the plan sealed away) must be computed first.
+			LightSync.holdSendUntilLit(level, chunk.getPos());
 		} catch (RuntimeException e) {
 			if (LOGGED_FAILURE.compareAndSet(false, true)) {
 				DeepCharter.LOGGER.error("Layer structures failed in chunk {} of layer {}; this and later chunks may lack theirs", chunk.getPos(), layer.getAsInt(), e);

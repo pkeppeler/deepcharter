@@ -9,13 +9,15 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 
+import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 
 /**
  * The one way a test or scenario may open a room in the rock of a layer dimension. It seals the shell with {@link RoomSeal}
  * first and fills the box after, because worldgen leaves lava in layer rock and a room that is opened unsealed floods
  * (PR 229). The gametest generator in {@code gradle/gametest.gradle} fails the build on a direct air write in a file that
- * touches a layer dimension. A solid fill (a stone bed) goes through here too, so that its shell is sealed to the same depth.
+ * touches a layer dimension. It also holds the sending of the room's chunks until their light is computed ({@link LightSync}), so that
+ * a client does not keep the light of the rock that was there. A solid fill (a stone bed) goes through here too, so that its shell is sealed to the same depth.
  */
 public final class RoomCarver {
 	private static final int ARRIVAL_RADIUS = 4;
@@ -42,6 +44,8 @@ public final class RoomCarver {
 		for (BlockPos pos : BlockPos.betweenClosed(min, max)) {
 			level.setBlock(pos, fill, flags);
 		}
+		// A client sent a chunk of the room while its light is pending keeps the old light (issue 427).
+		LightSync.holdSendUntilLit(level, min.offset(-1, -1, -1), max.offset(1, 1, 1));
 	}
 
 	/** The layer 2 arrival point is in lava, which burns a pod seated there; a sealed room of air around the first player keeps it out. */
