@@ -40,10 +40,10 @@ TEXTURE_SIZE = 128
 # Too tall and thin: a miner is about 36 px, an option is at least 1.2 times that and at most MAX_HEIGHT_PX. The body (the head,
 # torso and legs, not the arms) is at most MAX_WIDTH_PX across.
 MIN_HEIGHT_PX = 40
-MAX_HEIGHT_PX = 50
+MAX_HEIGHT_PX = 45
 MAX_WIDTH_PX = 16
 # The box the renderer culls by (FigureConceptRenderer): the tallest and widest the figure can stand, with its lean and its arms.
-CULL_HEIGHT_PX = 56
+CULL_HEIGHT_PX = 48
 CULL_REACH_PX = 24
 # Two options may share at most this share of their silhouette (overlap of the front views, and of the side views).
 MAX_SILHOUETTE_OVERLAP = 0.85
@@ -209,9 +209,11 @@ def helmet(model, head_top, hw, hd):
     brim.box(-(hw + 2) / 2, head_top, -(hd + 2) / 2, (hw + 2) / 2, head_top + 4, (hd + 2) / 2, "hat")
     front = -(hd + 2) / 2
     bracket = model.bone("lamp_bracket", "helmet", (0, head_top + 1, front))
+    # A frame that stood out from the helmet and held a lamp: a bar above, a bar below and a post at each side, with a hole between them.
     bracket.box(-2.5, head_top, front - 2, 2.5, head_top + 1, front, "bracket")
-    bracket.box(-2.5, head_top, front - 2, -1.5, head_top + 3, front, "bracket")
-    bracket.box(1.5, head_top, front - 2, 2.5, head_top + 3, front, "bracket")
+    bracket.box(-2.5, head_top + 3, front - 2, 2.5, head_top + 4, front, "bracket")
+    bracket.box(-2.5, head_top + 1, front - 2, -1.5, head_top + 3, front, "bracket")
+    bracket.box(1.5, head_top + 1, front - 2, 2.5, head_top + 3, front, "bracket")
 
 
 def frays(bone, rng, count, width, depth, bottom, x_centre=0.0, z_centre=0.0):
@@ -248,25 +250,25 @@ MINER = Spec(
     walk=Walk(thigh=24, leg_bends=(18,), arm=18, arm_bends=(-10,)), hem_frays=0, sleeve_frays=0)
 
 CANDLE = Spec(
-    torso=(6, 10, 3), torso_below_hip=0, neck=(2, 8, 2), head=(5, 6, 5), hip_x=2, shoulder_x=4, shoulder_drop=1, shoulder_z=0,
-    legs=(LEG("thigh", 9), LEG("shin", 8), BOOT),
+    torso=(6, 10, 3), torso_below_hip=0, neck=(2, 6, 2), head=(5, 6, 5), hip_x=2, shoulder_x=4, shoulder_drop=1, shoulder_z=0,
+    legs=(LEG("thigh", 8), LEG("shin", 7), BOOT),
     arms=arm_segs(("upper_arm", 6, 0), ("forearm", 6, 0)),
     walk=Walk(thigh=18, leg_bends=(26,), arm=10, arm_bends=(-8,)))
 
 HERON = Spec(
-    torso=(8, 8, 4), torso_below_hip=0, neck=(3, 2, 3), head=(5, 7, 5), hip_x=2, shoulder_x=5, shoulder_drop=1, shoulder_z=0,
-    legs=(LEG("thigh", 13, rest=24), LEG("shin", 13, rest=-48), BOOT),
+    torso=(8, 7, 4), torso_below_hip=0, neck=(3, 2, 3), head=(5, 6, 5), hip_x=2, shoulder_x=5, shoulder_drop=1, shoulder_z=0,
+    legs=(LEG("thigh", 12, rest=24), LEG("shin", 12, rest=-48), BOOT),
     arms=arm_segs(("upper_arm", 8, 0), ("forearm", 7, 0)),
     walk=Walk(thigh=20, leg_bends=(-38,), arm=12, arm_bends=(-8,)))
 
 REACHER = Spec(
-    torso=(7, 10, 3), torso_below_hip=0, neck=(2, 2, 2), head=(5, 6, 5), hip_x=2, shoulder_x=4.5, shoulder_drop=1, shoulder_z=0,
-    legs=(LEG("thigh", 9, rest=8), LEG("shin", 6, rest=-20), LEG("shin_low", 6, rest=24), BOOT),
+    torso=(7, 9, 3), torso_below_hip=0, neck=(2, 2, 2), head=(5, 6, 5), hip_x=2, shoulder_x=4.5, shoulder_drop=1, shoulder_z=0,
+    legs=(LEG("thigh", 8, rest=8), LEG("shin", 6, rest=-20), LEG("shin_low", 6, rest=24), BOOT),
     arms=arm_segs(("upper_arm", 7, 4, 14), ("forearm", 5, -14, -8), ("forearm_low", 5, 20, 6)),
     walk=Walk(thigh=16, leg_bends=(22, -18), arm=10, arm_bends=(-12, 14)))
 
 MISFIT = Spec(
-    torso=(8, 14, 4), torso_below_hip=5, neck=(2, 2, 2), head=(5, 7, 5), hip_x=2, shoulder_x=3, shoulder_drop=6, shoulder_z=-3,
+    torso=(8, 13, 4), torso_below_hip=5, neck=(2, 2, 2), head=(5, 6, 5), hip_x=2, shoulder_x=3, shoulder_drop=6, shoulder_z=-3,
     legs=(LEG("thigh", 5, rest=-10), LEG("shin", 16, rest=10), BOOT),
     arms=arm_segs(("upper_arm", 14, -6), ("forearm", 5, 0)),
     walk=Walk(thigh=26, leg_bends=(18,), arm=8, arm_bends=(-6,)))
@@ -376,7 +378,7 @@ OPTIONS = {
     "candle": Option("candle", "Candle", CANDLE, "upright", [
         ("the neck is as long as the head is tall, so the helmet sits high", lambda m: cube_height(m, "neck") >= cube_height(m, "head")),
         ("the shoulders are narrower than 9 px across", lambda m: abs(joint(m, "upper_arm_l")[0] - joint(m, "upper_arm_r")[0]) < 9),
-        ("the helmet stands at least 46 px high", lambda m: height_of(m) >= 46),
+        ("the helmet stands at least 42 px high", lambda m: height_of(m) >= 42),
     ]),
     "heron": Option("heron", "Heron", HERON, "listening", [
         ("the knees bend backward: each knee is behind its hip and its ankle",

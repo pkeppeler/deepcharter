@@ -36,9 +36,9 @@ public enum FigureConcept {
 	public static final String WALK = "animation.figure.walk";
 	/**
 	 * The box the figure is culled by, round its feet: the tallest and widest any concept stands, with its lean and its reach. It is
-	 * 56 by 24 px in {@code tools/figure_concepts.py}, which fails a model that leaves it.
+	 * 48 by 24 px in {@code tools/figure_concepts.py}, which fails a model that leaves it.
 	 */
-	public static final double CULL_HEIGHT_BLOCKS = 3.5;
+	public static final double CULL_HEIGHT_BLOCKS = 3.0;
 	public static final double CULL_REACH_BLOCKS = 1.5;
 
 	/** The concept's name in the switch and in its file names. */

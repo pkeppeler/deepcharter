@@ -85,6 +85,14 @@ class Proportions(unittest.TestCase):
                 self.assertLessEqual(max(-lo[0], hi[0], -lo[2], hi[2]), fc.CULL_REACH_PX)
 
 
+    def test_the_renderers_culling_box_is_the_one_the_generator_checks(self):
+        java = (ROOT / "src/client/java/io/github/pkeppeler/deepcharter/client/creature/FigureConcept.java").read_text()
+        height = float(re.search(r"CULL_HEIGHT_BLOCKS = ([\d.]+);", java).group(1))
+        reach = float(re.search(r"CULL_REACH_BLOCKS = ([\d.]+);", java).group(1))
+        self.assertEqual(fc.CULL_HEIGHT_PX, height * 16)
+        self.assertEqual(fc.CULL_REACH_PX, reach * 16)
+
+
 class Idle(unittest.TestCase):
     def animations(self, name):
         _, files = fc.build(name)
