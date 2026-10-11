@@ -1,17 +1,21 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import java.util.List;
 import java.util.Set;
 
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Display;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.FounderStatue;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 
 /**
  * Evidence scenario "statue-hands" for #458: a close orbit of each of the Host's hands, so the thumbs show. The hands sit where
@@ -21,6 +25,8 @@ public class StatueHandsScenario extends EvidenceScenario {
 	/** The raised right hand (the Host's right, at -X) and the lowered left hand, in blocks east, up and south of his feet. */
 	private static final Vec3 RIGHT_HAND = new Vec3(-1.7, 7.0, 2.0);
 	private static final Vec3 LEFT_HAND = new Vec3(2.3, 2.6, 1.3);
+	/** How far from his feet the hands display may stand: it is placed in the feet block. */
+	private static final double MAX_DISPLAY_OFFSET = 3;
 	private static final double RADIUS = 4.0;
 	/** The orbit starts in front of the Host (south) and swings this far to the east, in degrees. */
 	private static final double ARC = 70;
@@ -44,10 +50,29 @@ public class StatueHandsScenario extends EvidenceScenario {
 				FounderStatue.restoreHands(server);
 				server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), "time set noon");
 				server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), "weather clear");
-				return Vec3.atBottomCenterOf(Colony.placed(server).orElseThrow().anchors().get(ColonyAnchor.STATUE));
+				Vec3 anchor = Vec3.atBottomCenterOf(Colony.placed(server).orElseThrow().anchors().get(ColonyAnchor.STATUE));
+				requireHandsAt(server, anchor);
+				return anchor;
 			});
-			orbit(context, singleplayer, feet.add(RIGHT_HAND), "statue-right-hand");
-			orbit(context, singleplayer, feet.add(LEFT_HAND), "statue-left-hand");
+			ClientChecks.withHudHidden(context, () -> {
+				orbit(context, singleplayer, feet.add(RIGHT_HAND), "statue-right-hand");
+				orbit(context, singleplayer, feet.add(LEFT_HAND), "statue-left-hand");
+			});
+		}
+	}
+
+	/**
+	 * The hand offsets are measured from {@code host()}, so they are only right while the hands display stands in the Host's feet
+	 * block. A moved statue or a rebuilt hands piece fails here, not as a still of the wrong place.
+	 */
+	private static void requireHandsAt(MinecraftServer server, Vec3 feet) {
+		List<Display.BlockDisplay> hands = FounderStatue.hands(server);
+		if (hands.isEmpty()) {
+			throw new AssertionError("restoreHands left the Host without a hands display");
+		}
+		if (hands.stream().noneMatch(hand -> hand.position().distanceTo(feet) <= MAX_DISPLAY_OFFSET)) {
+			throw new AssertionError("no hands display stands within " + MAX_DISPLAY_OFFSET + " blocks of the Host's feet at " + feet
+					+ ", so the hand offsets are stale");
 		}
 	}
 
