@@ -117,15 +117,20 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 			long price = UpgradeTuning.DEFAULT.price(selected, tier);
 			boolean counts = held.effective() > 0;
 			boolean here = counts && held.installed() >= tier;
+			// The crafted first tier is not sold (the scanner's, ADR 0048); the tiers above it wait for it to be fitted.
+			boolean crafted = selected.firstTierCrafted() && tier == 1;
+			boolean needsFirst = selected.firstTierCrafted() && tier > 1 && !counts;
 			String capped = tier > pod.cap()
 					? Component.translatable("screen.deepcharter.upgrade.capped", pod.cap()).getString() : "";
 			Component label = here && held.installed() == tier
 					? Component.translatable("screen.deepcharter.upgrade.installed", tier).append(capped)
+					: crafted ? Component.translatable("screen.deepcharter.upgrade.crafted", tier)
+					: needsFirst ? Component.translatable("screen.deepcharter.upgrade.needs_first", tier, price)
 					: Component.translatable("screen.deepcharter.upgrade.buy", tier, price, capped);
 			CrtButton button = addRenderableWidget(new CrtButton(tierX, listTop() + (tier - 1) * pitch,
 					tierWidth, rowHeight, label, pressed -> buy(selected, offered)));
 			// An unregistered pod (no serial) takes no parts: they would be void.
-			button.active = !here && balance >= price && !pod.serial().isEmpty();
+			button.active = !here && !crafted && !needsFirst && balance >= price && !pod.serial().isEmpty();
 		}
 	}
 

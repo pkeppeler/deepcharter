@@ -17,7 +17,11 @@ public enum UpgradeRefusal {
 	/** The world's saved serials are of a version this build cannot read, so no part can be minted. */
 	SERIALS_UNREADABLE,
 	/** The pod has a part of this track that is as good or better, and works for the charter. */
-	NOT_AN_UPGRADE;
+	NOT_AN_UPGRADE,
+	/** The part's first tier is crafted, not sold (the scanner's tier 1, SPEC section 7). */
+	CRAFTED,
+	/** A later tier of a track whose first tier is crafted needs that first part fitted to the pod first. */
+	NEEDS_FIRST_TIER;
 
 	public String translationKey() {
 		return "deepcharter.upgrade.refusal." + name().toLowerCase(Locale.ROOT);

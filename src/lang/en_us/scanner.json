@@ -1,3 +1,11 @@
 {
-  "deepcharter.scanner.title": "SCANNER MK %s"
+  "deepcharter.scanner.title": "SCANNER MK %s",
+  "item.deepcharter.scanner_unit": "Scanner Unit",
+  "message.deepcharter.scanner.fitted": "Scanner fitted: tier 1",
+  "message.deepcharter.scanner.refusal.already_fitted": "The pod already has a scanner",
+  "message.deepcharter.scanner.refusal.charters_unreadable": "This world has charter data from another version of the mod",
+  "message.deepcharter.scanner.refusal.no_charter": "Join a charter to fit a scanner",
+  "message.deepcharter.scanner.refusal.not_registered": "This pod has no charter's papers",
+  "message.deepcharter.scanner.refusal.not_your_pod": "That pod belongs to another charter",
+  "message.deepcharter.scanner.refusal.serials_unreadable": "This world has serial data from another version of the mod"
 }
