@@ -111,12 +111,19 @@ public class RetainedTest {
 	private static final double LAYER_TWO_MIN_ROLL_SHARE = 0.04;
 	/** The figure stands within this much of facing the pod's centre (the cosine of the angle; 0.97 is 14 degrees). */
 	private static final double FACING_COSINE_MIN = 0.97;
+	/** Ticks after the grab before the facing is read: the figure closes on its place on the hull at 0.4 blocks a tick. */
+	private static final int FACING_SETTLE_TICKS = 20;
 	private static final CreatureTuning TUNING = CreatureTuning.DEFAULT;
 	private static final CreatureTuning.Cling CLING = TUNING.cling();
 
 	/** A closed arena with a pod at its east end and a pilot aboard, and a figure at its west end. */
 	private record Arena(ServerLevel level, BlockPos origin, PodEntity pod, MockPlayer pilot, LamplessFigure figure) {
 		static Arena build(GameTestHelper helper, ServerLevel level, BlockPos origin, boolean lights) {
+			return build(helper, level, origin, lights, origin.west(HALF - 1));
+		}
+
+		/** As above, with the figure placed at {@code figureAt} (inside the arena), so that it comes to the hull from any side. */
+		static Arena build(GameTestHelper helper, ServerLevel level, BlockPos origin, boolean lights, BlockPos figureAt) {
 			for (int u = -HALF - 1; u <= HALF + 1; u++) {
 				for (int v = -HALF - 1; v <= HALF + 1; v++) {
 					for (int y = -1; y <= ARENA_HEIGHT; y++) {
@@ -141,7 +148,7 @@ public class RetainedTest {
 				throw failure(helper, "the pilot could not mount the pod");
 			}
 			LamplessFigure figure = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
-			figure.setPos(Vec3.atBottomCenterOf(origin.west(HALF - 1)));
+			figure.setPos(Vec3.atBottomCenterOf(figureAt));
 			figure.setHeading(Direction.NORTH);
 			level.addFreshEntity(figure);
 			return new Arena(level, origin, pod, pilot, figure);
@@ -217,6 +224,47 @@ public class RetainedTest {
 				throw failure(helper, "a powered pod with a pilot, no lights and a tank over the floor does not draw a figure");
 			}
 		});
+	}
+
+	/**
+	 * (#506) A figure that comes to the pod from the north, and one from the south and a little west, each turns to face the pod's centre.
+	 * The first test comes from the west (no z offset), which a wrong sign on z would not show.
+	 */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + 100)
+	public void aClingingFigureFacesThePodWhenItComesFromTheNorth(GameTestHelper helper) {
+		expectFacingFrom(helper, slot(15), 0, -(HALF - 1));
+	}
+
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + 100)
+	public void aClingingFigureFacesThePodWhenItComesFromTheSouthAndWest(GameTestHelper helper) {
+		expectFacingFrom(helper, slot(16), 2, HALF - 1);
+	}
+
+	/** Builds the arena with the figure at {@code (u, v)} from its centre, waits for the grip and for the turn to settle, then checks the facing. */
+	private static void expectFacingFrom(GameTestHelper helper, BlockPos origin, int u, int v) {
+		ServerLevel level = helper.getLevel();
+		Arena[] made = {null};
+		long[] clungAt = {-1};
+		helper.onEachTick(() -> {
+			Arena arena = made[0];
+			if (arena == null) {
+				return;
+			}
+			if (clungAt[0] < 0) {
+				if (arena.figure.isClinging()) {
+					clungAt[0] = helper.getTick();
+				} else if (helper.getTick() > APPROACH_BUDGET_TICKS + FarChunks.AWAIT_BUDGET_TICKS) {
+					throw failure(helper, "the figure from (%d, %d) had not grabbed the pod", u, v);
+				}
+				return;
+			}
+			if (helper.getTick() - clungAt[0] >= FACING_SETTLE_TICKS) {
+				expectFacesPod(helper, arena);
+				arena.clear();
+				helper.succeed();
+			}
+		});
+		FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, false, origin.offset(u, 0, v)));
 	}
 
 	/** The figure is on the hull and alive after {@code ticks} of a grip nobody ended. */

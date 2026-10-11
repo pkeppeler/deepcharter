@@ -39,7 +39,12 @@ public class RetainedEconomyTest {
 	/** A lights part must pay for itself in this many unanswered grabs, at most: a part the dark pilot can believe in. */
 	private static final double LIGHTS_PAYBACK_GRABS_MAX = 10;
 
-	/** Figures the game's spawner placed per minute of play for each unit of roll chance: 6 in 12,000 ticks (10 minutes) at 0.02 in #449, so 30. */
+	/**
+	 * Measured in #449, pinned: the game's spawner placed 6 figures in 12,000 ticks (10 minutes) of one player in layer 2 at a roll of 0.02, so
+	 * 300 tries in 10 minutes passed every rule but the roll, which is 30 a minute for each unit of chance. It depends on the spawner's tries
+	 * reaching a dark floor with room, 24 or more blocks from the player, and not on the cap while the level is under it; it does not move
+	 * when the roll or the cap changes. The cap and the delay after a kill are applied by {@link #placedPerMinute}, from the tuning.
+	 */
 	private static final double PLACED_PER_MINUTE_PER_CHANCE = 30;
 	/** (A) Minutes of a first-hour run in layer 1, down and back up; and of a run in layer 2, which is as long. */
 	private static final double RUN_MINUTES = 4;
@@ -137,9 +142,19 @@ public class RetainedEconomyTest {
 		helper.succeed();
 	}
 
+	/**
+	 * Figures placed in a run in a layer whose roll passes {@code chance}: the pinned rate, held down by the two limits the tuning sets. The
+	 * delay after a kill allows one placement per {@code respawnDelayTicks}; and the figures that are not met are not killed, so they stand
+	 * until the cap, which leaves {@code maxPerLevel / (1 - MEET_SHARE)} placements before the level is full.
+	 */
+	private static double placedPerRun(CreatureTuning tuning, double chance) {
+		double perMinute = Math.min(PLACED_PER_MINUTE_PER_CHANCE * chance, 60.0 * TICKS_PER_SECOND / tuning.respawnDelayTicks());
+		return Math.min(perMinute * RUN_MINUTES, tuning.maxPerLevel() / (1 - MEET_SHARE));
+	}
+
 	/** Grabs a run of {@code RUN_MINUTES} meets in a layer whose roll passes {@code chance} of the spawner's tries. */
-	private static double grabsPerRun(double chance) {
-		return PLACED_PER_MINUTE_PER_CHANCE * chance * RUN_MINUTES * MEET_SHARE;
+	private static double grabsPerRun(CreatureTuning tuning, double chance) {
+		return placedPerRun(tuning, chance) * MEET_SHARE;
 	}
 
 	/**
@@ -152,8 +167,8 @@ public class RetainedEconomyTest {
 		PodStats stock = PodStats.base();
 		double whole = EarlyRunModel.run(Zone.load("topsoil_claims"), stock, 0).litres();
 		double grabLitres = killedLitres(tuning, CUED_REACTION_SECONDS);
-		double oneGrabs = grabsPerRun(tuning.natural().layerOneChancePerTry());
-		double twoGrabs = grabsPerRun(tuning.natural().chancePerTry());
+		double oneGrabs = grabsPerRun(tuning, tuning.natural().layerOneChancePerTry());
+		double twoGrabs = grabsPerRun(tuning, tuning.natural().chancePerTry());
 		double oneShare = oneGrabs * grabLitres / whole;
 		PodStats deep = EarlyRunModel.mole(2, 2, 2);
 		double twoShare = twoGrabs * grabLitres / deep.tankLitres();
@@ -163,6 +178,9 @@ public class RetainedEconomyTest {
 		}
 		if (twoGrabs < LAYER_TWO_GRABS_MIN || twoGrabs > LAYER_TWO_GRABS_MAX) {
 			throw failure(helper, "a layer 2 run meets %.2f figures on average, outside %.0f to %.0f", twoGrabs, LAYER_TWO_GRABS_MIN, LAYER_TWO_GRABS_MAX);
+		}
+		if (placedPerRun(tuning, tuning.natural().chancePerTry()) >= tuning.maxPerLevel() / (1 - MEET_SHARE)) {
+			throw failure(helper, "the cap of %d binds a layer 2 run: the model's placements stop at the cap, not at the roll", tuning.maxPerLevel());
 		}
 		if (twoGrabs <= oneGrabs) {
 			throw failure(helper, "a layer 2 run meets %.2f figures and layer 1 %.2f: they do not rise with depth", twoGrabs, oneGrabs);
