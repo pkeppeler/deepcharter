@@ -558,14 +558,6 @@ def paint_figure(model):
     return canvas, glow
 
 
-def read_png(data):
-    """Reads back a PNG that Canvas.png wrote."""
-    image = pngio.decode(data)
-    canvas = pc.Canvas(image.width)
-    canvas.pixels[:] = image.pixels
-    return canvas
-
-
 # ---------------------------------------------------------------------------------------------
 # Animations: an idle that holds the pose, and a walk
 # ---------------------------------------------------------------------------------------------

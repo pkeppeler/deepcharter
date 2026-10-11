@@ -54,11 +54,17 @@ def decode(data: bytes, name: str = "PNG") -> Rgba:
     if not data.startswith(SIGNATURE):
         raise ValueError(f"{name}: not a PNG")
     pos = len(SIGNATURE)
-    while pos + 8 <= len(data):
+    while pos < len(data):
+        if pos + 12 > len(data):
+            raise ValueError(f"{name}: truncated chunk")
         length, kind = struct.unpack(">I4s", data[pos:pos + 8])
+        if pos + 12 + length > len(data):
+            raise ValueError(f"{name}: truncated {kind.decode('latin-1')} chunk")
         body = data[pos + 8:pos + 8 + length]
         pos += 12 + length
         if kind == b"IHDR":
+            if length != 13:
+                raise ValueError(f"{name}: truncated IHDR")
             header = struct.unpack(">IIBBBBB", body)
         elif kind == b"PLTE":
             palette = body
@@ -123,8 +129,7 @@ def decode(data: bytes, name: str = "PNG") -> Rgba:
 
 
 def stale(path: Path, body: bytes) -> bool:
-    """Whether the file is missing or differs from body. A PNG is compared by its pixels, so another zlib makes no difference; an
-    unreadable PNG is stale. Any other file is compared by bytes."""
+    """Whether the file is missing or differs from body, compared by decoded pixels for a PNG and by bytes for any other file."""
     if not path.is_file():
         return True
     held = path.read_bytes()
