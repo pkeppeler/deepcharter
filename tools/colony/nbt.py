@@ -8,7 +8,7 @@ import struct
 import zlib
 from dataclasses import dataclass
 
-END, BYTE, SHORT, INT, LONG, FLOAT, DOUBLE, BYTE_ARRAY, STRING, LIST, COMPOUND, INT_ARRAY, LONG_ARRAY = range(13)
+END, BYTE, SHORT, INT, LONG, FLOAT, DOUBLE, BYTE_ARRAY, STRING, LIST, COMPOUND, INT_ARRAY, LONG_ARRAY = range(13)  # unused-ok: NBT tag ids in spec order, so the array tags this writer never emits still number the rest
 
 
 @dataclass(frozen=True)

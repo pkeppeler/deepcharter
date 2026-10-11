@@ -174,5 +174,7 @@ public final class BreachService {
 				}
 			}
 		}
+		// The arriving entity is sent these chunks in this tick: hold them until the light of the carve (a layer's lava gone) is computed.
+		LightSync.holdSendUntilLit(level, bottom.offset(-radius, -1, -radius), bottom.offset(radius, tuning.pocketHeight() - 1, radius));
 	}
 }

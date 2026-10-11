@@ -9,10 +9,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.stream.Stream;
 
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -26,8 +26,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.game.ClientboundLightUpdatePacket;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -45,9 +45,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ClipContext;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
-import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Block;
@@ -97,6 +95,7 @@ import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.layer.BreachService;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
+import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
@@ -113,6 +112,8 @@ import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight.Box;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
 import io.github.pkeppeler.deepcharter.transmission.Transmissions;
@@ -175,13 +176,17 @@ public class DesignTourScenario extends EvidenceScenario {
 	/** How far the figure by the lit pod has faded in its still: half way. */
 	private static final float FIGURE_SHOT_FADE = 0.5f;
 
+	/** A room carved by the tour, in its dimension. */
+	private record LitRoom(ResourceKey<Level> dimension, Box box) {
+	}
+
 	private ClientGameTestContext ctx;
 	private TestSingleplayerContext sp;
 	private BlockPos ground;
 	private Map<ColonyAnchor, BlockPos> anchors;
 	private CharterId charter;
-	/** The floor of the dark room while it stands: settle also waits until the client reads the light the server holds in it. Null otherwise. */
-	private BlockPos lightRoom;
+	/** The rooms the tour carved whose light settle waits on: it waits until the client reads the light the server holds in each room it is in. */
+	private final List<LitRoom> litRooms = new CopyOnWriteArrayList<>();
 	/** The mobs the tour made itself (the lampless figures it poses): settle leaves them, and clears every other mob. */
 	private final Set<UUID> tourMobs = ConcurrentHashMap.newKeySet();
 
@@ -293,8 +298,8 @@ public class DesignTourScenario extends EvidenceScenario {
 				}
 				return chunksLoaded(client) && client.levelRenderer.hasRenderedAllSections();
 			});
-			if (ready && lightRoom != null) {
-				ready = roomLightMatches(lightRoom);
+			if (ready) {
+				ready = roomsInStep().isEmpty();
 			}
 			String pose = ctx.computeOnClient(DesignTourScenario::pose);
 			stable = ready && pose.equals(lastPose) ? stable + 1 : 0;
@@ -303,9 +308,7 @@ public class DesignTourScenario extends EvidenceScenario {
 				return;
 			}
 			if (System.nanoTime() > deadline) {
-				BlockPos room = lightRoom;
-				String light = room == null ? "" : " or the room's light on the client still differs from the server's (client maxSky="
-						+ ctx.computeOnClient(c -> maxSky(c.level, room)) + ", server maxSky=" + serverGet(srv -> maxSky(srv.overworld(), room)) + ")";
+				String light = roomsInStep().map(mismatch -> " or the light of a carved room on the client differs from the server's (" + mismatch + ")").orElse("");
 				throw new AssertionError("still " + stillName + ": the world did not settle (mobs gone, chunks rendered)" + light + " in "
 						+ SETTLE_LIMIT_NANOS / 1_000_000_000L + " s");
 			}
@@ -313,44 +316,21 @@ public class DesignTourScenario extends EvidenceScenario {
 	}
 
 	/**
-	 * True when the client reads, in every cell of the sealed room, the sky and block light that the server holds. When it does not,
-	 * the server sends the room's light again: a client that was sent the chunk while the light engine still worked on the room keeps
-	 * the light of the open sky (sky light 15 in a sealed room), and nothing sends the change that would clear it. That stale light
-	 * lit the dark room in some runs and not in others (issue 309).
+	 * Empty when the client reads, in each carved room it holds, the light the server holds; otherwise what differs. A room is carved
+	 * with {@link LightSync#holdSendUntilLit} after it, so the client is not sent its chunk before the light is computed (issue 427, found
+	 * in the dark room of PR 422); a room the client still reads wrong is a failure of that, and settle names it. A room in another
+	 * dimension, or whose chunks the client has dropped since the camera left it, is not checked.
 	 */
-	private boolean roomLightMatches(BlockPos floor) {
-		int server = serverGet(srv -> lightOf(srv.overworld(), floor));
-		int client = ctx.computeOnClient(c -> lightOf(c.level, floor));
-		if (server == client) {
-			return true;
-		}
-		serverDo(srv -> {
-			ServerLevel level = srv.overworld();
-			int reach = ROOM_RADIUS + 1;
-			for (int x = (floor.getX() - reach) >> 4; x <= (floor.getX() + reach) >> 4; x++) {
-				for (int z = (floor.getZ() - reach) >> 4; z <= (floor.getZ() + reach) >> 4; z++) {
-					// Null filters: every section of the chunk.
-					player(srv).connection.send(new ClientboundLightUpdatePacket(new ChunkPos(x, z), level.getLightEngine(), null, null));
+	private Optional<String> roomsInStep() {
+		for (LitRoom room : litRooms) {
+			if (ClientLight.clientHolds(ctx, room.dimension(), room.box())) {
+				Optional<String> mismatch = ClientLight.describeMismatch(ctx, sp.getServer(), room.dimension(), room.box());
+				if (mismatch.isPresent()) {
+					return mismatch;
 				}
 			}
-		});
-		return false;
-	}
-
-	/** The highest sky light in the room: 15 in a sealed room is the stale light of issue 309. */
-	private static int maxSky(Level level, BlockPos floor) {
-		return roomCells(floor).mapToInt(pos -> level.getBrightness(LightLayer.SKY, pos)).max().orElse(0);
-	}
-
-	/** One number for the sky and block light of every cell of the room, so that two levels with the same light give the same number. */
-	private static int lightOf(Level level, BlockPos floor) {
-		return roomCells(floor)
-				.mapToInt(pos -> level.getBrightness(LightLayer.SKY, pos) * 16 + level.getBrightness(LightLayer.BLOCK, pos))
-				.reduce(1, (hash, light) -> 31 * hash + light);
-	}
-
-	private static Stream<BlockPos> roomCells(BlockPos floor) {
-		return BlockPos.betweenClosedStream(floor.offset(-ROOM_RADIUS, 1, -ROOM_RADIUS), floor.offset(ROOM_RADIUS, ROOM_HEIGHT, ROOM_RADIUS));
+		}
+		return Optional.empty();
 	}
 
 	/** Where the camera is, and the pod it rides if it rides one: a pod still gliding to a halt is not settled. */
@@ -866,8 +846,10 @@ public class DesignTourScenario extends EvidenceScenario {
 					}
 				}
 			}
+			LightSync.holdSendUntilLit(level, floor.offset(-ROOM_RADIUS - 1, 0, -ROOM_RADIUS - 1), floor.offset(ROOM_RADIUS + 1, ROOM_HEIGHT + 1, ROOM_RADIUS + 1));
 		});
-		lightRoom = floor;
+		LitRoom dark = new LitRoom(Level.OVERWORLD, new Box(floor.offset(-ROOM_RADIUS, 1, -ROOM_RADIUS), floor.offset(ROOM_RADIUS, ROOM_HEIGHT, ROOM_RADIUS)));
+		litRooms.add(dark);
 		Vec3 base = Vec3.atBottomCenterOf(floor.above());
 		view(0, base.add(0, 1.8, 6), base.add(0, 1, 0), 120);
 
@@ -949,7 +931,7 @@ public class DesignTourScenario extends EvidenceScenario {
 			lamp.discard();
 			player(server).removeEffect(MobEffects.NIGHT_VISION);
 		});
-		lightRoom = null;
+		litRooms.remove(dark);
 	}
 
 	// ------------------------------------------------------------------------------------------------ HUDs
@@ -1065,6 +1047,7 @@ public class DesignTourScenario extends EvidenceScenario {
 			BlockPos max = new BlockPos(x + 3, 8, z + 3);
 			RoomCarver.carve(one, min, max, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
 		});
+		litRooms.add(new LitRoom(LayerChain.dimension(1), new Box(new BlockPos(x - 3, 3, z - 3), new BlockPos(x + 3, 8, z + 3))));
 		nightVision();
 		view(1, new Vec3(x + 0.5, 6.5, z + 0.5), new Vec3(x + 0.5, 1.5, z + 1.5), 120);
 		still("layer-1-breach-crust-floor");
@@ -1151,6 +1134,7 @@ public class DesignTourScenario extends EvidenceScenario {
 			RoomCarver.carve(two, min, max, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
 			return new Vec3(x + 0.5, floor + EYE, z + 0.5);
 		});
+		litRooms.add(new LitRoom(LayerChain.dimension(2), new Box(BlockPos.containing(hall).offset(-6, -1, -6), BlockPos.containing(hall).offset(6, 6, 6))));
 		view(2, hall, hall.add(1, 0, 0), 60);
 		hud(true);
 		serverDo(server -> player(server).removeEffect(MobEffects.NIGHT_VISION));

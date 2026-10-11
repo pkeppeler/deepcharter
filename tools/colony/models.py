@@ -114,10 +114,6 @@ def cube_all(texture: str) -> Model:
     return Model({"all": texture}, parent="minecraft:block/cube_all")
 
 
-def cube_column(side: str, end: str) -> Model:
-    return Model({"side": side, "end": end}, parent="minecraft:block/cube_column")
-
-
 def rotation_matrix(x: float, y: float, z: float) -> list[list[float]]:
     """Rz(z) * Ry(y) * Rx(x), degrees: the order Minecraft applies an element's Euler rotation in."""
     rx, ry, rz = (math.radians(a) for a in (x, y, z))
