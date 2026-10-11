@@ -62,7 +62,7 @@ public class RetainedClientTest implements FabricClientGameTest {
 			context.runOnClient(client -> expectModels(client, ids[0], ids[1]));
 			List<Integer> looks = new ArrayList<>();
 			looks.add(context.computeOnClient(RetainedClientTest::lampLook));
-			for (String pack : List.of(TestPacks.RETAINED_LAMP_POLE, TestPacks.RETAINED_LAMP_RIBS)) {
+			for (String pack : List.of(TestPacks.RETAINED_LAMP_HAND, TestPacks.RETAINED_LAMP_RIBS)) {
 				ClientPacks.enable(context, pack);
 				try {
 					context.runOnClient(client -> expectModels(client, ids[0], ids[1]));

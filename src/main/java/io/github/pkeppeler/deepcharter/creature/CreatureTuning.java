@@ -34,7 +34,7 @@ public record CreatureTuning(float walkSpeed, double approachBlocks, int fadeBlo
 
 	/**
 	 * A pod with a pilot, no lights and power draws a figure; it grabs the hull and drains the tank until it has had its fill, the
-	 * pilot shakes it off with the rotor, or the pod is lit. It never takes the tank below the floor.
+	 * pilot shakes it off by moving the pod, or the pod is lit. It never takes the tank below the floor.
 	 *
 	 * @param senseBlocks  a dark pod this close draws a figure that is not clinging
 	 * @param reachBlocks  a figure this close to the hull (the gap between the two boxes) grabs it
@@ -42,11 +42,11 @@ public record CreatureTuning(float walkSpeed, double approachBlocks, int fadeBlo
 	 * @param drainLitres  litres a second that a clinging figure takes
 	 * @param fillLitres   litres a figure takes in all before it lets go
 	 * @param floorPercent fuel percent below which a figure takes nothing, and lets go
-	 * @param shakeTicks   ticks of rotor thrust that shake a figure off; a tick without thrust gives one back
+	 * @param shakeTicks   ticks of the pod moving (the rotor, or the treads) that shake a figure off; a tick standing still gives one back
 	 */
 	public record Cling(double senseBlocks, double reachBlocks, double latchSpeed, float drainLitres, float fillLitres, float floorPercent,
 			int shakeTicks) {
-		public static final Cling DEFAULT = new Cling(20, 2.5, 0.4, 0.25f, 2.5f, 5f, 40);
+		public static final Cling DEFAULT = new Cling(20, 2.5, 0.4, 0.25f, 2.5f, 5f, 30);
 
 		public Cling {
 			if (senseBlocks <= 0 || reachBlocks <= 0 || latchSpeed <= 0 || drainLitres <= 0 || fillLitres <= 0 || floorPercent < 0 || floorPercent >= 100

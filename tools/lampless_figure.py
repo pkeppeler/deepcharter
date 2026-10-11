@@ -12,8 +12,8 @@ four concepts of round 1 (docs/design/figure-concepts.md).
 
 A figure may carry a lamp (#449), so that it shows from far off in the dark. A lamp-carrier has a model, a texture and a glowmask of its own, the
 Reacher plus one bone, "lantern"; the lampless figure's files are untouched by it. The lamp's glass is dark in the texture and lit in the
-glowmask, drawn at full bright. How the lamp is carried is a choice of three (docs/design/figure-concepts.md): in the hand (the default, written
-into the mod), on a pole, or inside the ribcage. The other two are written as test packs, which replace the three lamp files.
+glowmask, drawn at full bright. How the lamp is carried is a choice of three (docs/design/figure-concepts.md): on a pole (the default, written
+into the mod), in the hand, or inside the ribcage. The other two are written as test packs, which replace the three lamp files.
 
 The output is plain Blockbench-compatible data, the same path as the pods (tools/pod_concepts.py): a Bedrock geometry with box UV
 and named bones, a texture, and a GeckoLib animation file with an idle and a walk. The game always draws it
@@ -47,11 +47,11 @@ LAMP_TEXTURE_FILE = ASSETS / f"textures/entity/{LAMP_ID}.png"
 LAMP_GLOWMASK_FILE = ASSETS / f"textures/entity/{LAMP_ID}_glowmask.png"
 ANIMATION_FILE = ASSETS / f"geckolib/animations/creature/{ID}.animation.json"
 # How the lamp is carried: the first is the default, written into the mod; each of the others is a test pack, retained_lamp_<option>.
-LAMP_OPTIONS = ("hand", "pole", "ribs")
+LAMP_OPTIONS = ("pole", "hand", "ribs")
 DEFAULT_LAMP = LAMP_OPTIONS[0]
 LANTERN = "lantern"
 # The glass of the lamp is small: a hand lantern, not a floodlight.
-MAX_GLASS_TEXELS = 16
+MAX_GLASS_TEXELS = 40
 TEXTURE_SIZE = 128
 
 # Too tall and thin: a miner is about 36 px, the figure is at least 1.2 times that. It is 44 px (2.75 blocks) to within half a pixel,
@@ -103,9 +103,9 @@ def lit_glass(canvas, face, rng):
     for j in range(face.h):
         for i in range(face.w):
             edge = min(i, j, face.w - 1 - i, face.h - 1 - j)
-            heat = 1.0 if edge > 0 or min(face.w, face.h) <= 2 else 0.78
-            heat -= rng.random() * 0.08
-            canvas.set(face.x + i, face.y + j, (round(255 * heat), round(190 * heat), round(92 * heat)))
+            heat = 1.0 if edge > 0 or min(face.w, face.h) <= 2 else 0.8
+            heat -= rng.random() * 0.06
+            canvas.set(face.x + i, face.y + j, (round(255 * heat), round(214 * heat), round(130 * heat)))
 
 
 MATERIALS = {
@@ -243,7 +243,7 @@ def build_model(name, spec, lamp=None):
         sleeve = model.bones[-2]
         frays(sleeve, rng, spec.sleeve_frays, sleeve.cubes[0].size[0] + 2, sleeve.cubes[0].size[2] + 2, sleeve.pivot[1] - sleeve.cubes[0].size[1], x_centre=sleeve.pivot[0], z_centre=sleeve.pivot[2])
     if lamp is not None:
-        LAMPS[lamp](model, spec)
+        LAMPS[lamp](model)
     return model
 
 
@@ -274,22 +274,22 @@ def helmet(model, head_top, hw, hd):
 
 
 def hanging_lantern(bone, x, top, z):
-    """A small lantern hung from (x, top, z): a ring, a cap, 2 x 3 x 2 of glass and a base, 6 px from the ring to the base."""
+    """A small lantern hung from (x, top, z): a ring, a cap, 3 x 4 x 3 of glass and a base, 7 px from the ring to the base."""
     bone.box(x - 0.5, top - 1, z - 0.5, x + 0.5, top, z + 0.5, "iron")
-    bone.box(x - 1.5, top - 2, z - 1.5, x + 1.5, top - 1, z + 1.5, "iron")
-    bone.box(x - 1, top - 5, z - 1, x + 1, top - 2, z + 1, "glass")
-    bone.box(x - 1.5, top - 6, z - 1.5, x + 1.5, top - 5, z + 1.5, "iron")
+    bone.box(x - 2, top - 2, z - 2, x + 2, top - 1, z + 2, "iron")
+    bone.box(x - 1.5, top - 6, z - 1.5, x + 1.5, top - 2, z + 1.5, "glass")
+    bone.box(x - 2, top - 7, z - 2, x + 2, top - 6, z + 2, "iron")
 
 
-def lamp_in_hand(model, spec):
-    """The default: a lantern on a ring in the right hand, which hangs at the knee and swings with the walk."""
+def lamp_in_hand(model):
+    """A lantern on a ring in the right hand, forearm bent so that it hangs in front at the waist and swings with the walk."""
     hand = bone_named(model, "hand_r")
     x, y, z = hand.pivot
     bone = model.bone(LANTERN, "hand_r", (x, y - 3, z))
     hanging_lantern(bone, x, y - 3, z)
 
 
-def lamp_on_pole(model, spec):
+def lamp_on_pole(model):
     """A staff in the right hand with a crook at the top, and the lantern hung from the crook beside the head."""
     hand = bone_named(model, "hand_r")
     x, y, z = hand.pivot
@@ -300,17 +300,17 @@ def lamp_on_pole(model, spec):
     hanging_lantern(bone, x, top, z - 4)
 
 
-def lamp_in_ribs(model, spec):
+def lamp_in_ribs(model):
     """A lamp inside the ribcage: glass in the chest, and iron ribs across it, so that the light shows between the bars."""
     spine = bone_named(model, "spine")
     torso = spine.cubes[0]
     x0, y0, z0 = torso.origin
     w, h, d = torso.size
     bone = model.bone(LANTERN, "spine", (0, y0 + h / 2, z0))
-    bone.box(-1.5, y0 + 2, z0 - 1, 1.5, y0 + 7, z0, "glass")
-    for y in (y0 + 2, y0 + 4, y0 + 6):
-        bone.box(-2.5, y, z0 - 2, 2.5, y + 1, z0 - 1, "iron")
-    bone.box(-0.5, y0 + 2, z0 - 2, 0.5, y0 + 7, z0 - 1, "iron")
+    bone.box(-2, y0 + 1, z0 - 1, 2, y0 + 7, z0, "glass")
+    for y in (y0 + 1, y0 + 3, y0 + 5):
+        bone.box(-3, y, z0 - 2, 3, y + 1, z0 - 1, "iron")
+    bone.box(-0.5, y0 + 1, z0 - 2, 0.5, y0 + 7, z0 - 1, "iron")
 
 
 LAMPS = {"hand": lamp_in_hand, "pole": lamp_on_pole, "ribs": lamp_in_ribs}

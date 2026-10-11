@@ -846,3 +846,45 @@ The tier 1 part equals its bound to the bore and the tier 2 part beats it by 3, 
 **Open questions.**
 - The towed pod does not turn to face its tower. A wreck hanging from a Mole could pitch and yaw with the line.
 - A pilot in the towed pod cannot steer it. A tow that a rider can brake (a drag on the line) would be a counter to a tower that outpaces its tow.
+
+## The Retained at dark pods (#449, A)
+
+**Problem.** The lore says "Things come to dark pods" ([LORE.md](../LORE.md#6-motifs)) and the game had a placeholder that walked the rails and faded. The user (pkeppeler, 2026-10-11) wants the Retained as a normal mob: scary, to be avoided, never a boss, never an attack. "Them grabbing and draining a pod, its gas, but not attacking is good." They are seen "in caverns and shafts", and "even creepier, if they had a small glowing lamp so you could see them from a distance in the dark". The decisions are in [ADR 0046](../adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md).
+
+**The rule.**
+- **Where.** The game's spawner places them in the open dark of layers 1 and 2 (every biome of the two lists them: weight 1, one at a time), at most 3 in a level, a delay (400 ticks) after one fades, and about 2 tries in 100 pass the roll. Never on the surface, and never where it is lit: the spawn needs block light under 3, a solid floor and 3 blocks of air. The colony, the hangar and the founding Mole's bay stand in the surface level, so they are out whatever their light. The rail line of layer 2 keeps its own spawner (a figure on a rail site when a player is within 96 blocks), and its figures count against the same cap of 3. About a third carry a lamp.
+- **Draw.** A pod draws a Retained that is within 20 blocks when it has a pilot, power and fuel above 5 per cent, and no lights part that counts. A parked pod is left alone, and so are wrecks and lit pods. The figure walks to the pod (about 3 blocks a second; a Mole drives at 4).
+- **Grab.** A figure whose box is within 2.5 blocks of the hull takes hold: it closes on its place on the side of the hull that it came from, faces the pod and clings in a pose of its own, and the pilot reads "Something has hold of the hull." It never hurts the pilot, the hull or itself: nothing in it attacks, and nothing hurts it.
+- **Drain.** It takes 0.25 litres a second (2.5 points of a stock tank), until it has had its fill of 2.5 litres (a quarter of a stock tank; 10 per cent of a tier 2 tank of 25 litres), and never under 5 per cent of the tank, so it cannot strand a pod by itself. Then it lets go and fades. Left alone, a grip lasts 200 ticks (10 seconds).
+- **Let go.** The pod moves for 30 ticks (1.5 seconds), by the rotor or by the treads: a tick standing still gives one tick back. A light: a lights part fitted, or any light of 3 or more at the figure's feet. The figure then fades and does not come back.
+- **Fade, reconciled.** The rule of #83 stands for people on foot: a figure fades when one comes within 8 blocks or when it stands in light. A pilot in a pod is not "on foot", and a figure that has hold of a pod ignores people on foot as well, so stepping out of the pod frees nothing. A pod's own light still fades it, as it always did.
+
+**Counterplay, on the ladder.**
+1. **By hand: move.** Drive or lift for a second and a half. It costs the reaction time (the drain runs while the pilot reads the line), and the rotor or the treads burn at the moving rate (0.19 litres a second) in place of the idle one (0.063). A pod that drives away before the figure arrives is not caught at all: the figure walks 3 blocks a second and a pod drives at 4. In a bore the rotor lifts the pod for the 30 ticks, and a pilot who does not brake the way down pays the hard landing (see [Hard landings](#hard-landings-319-a)). That is the price of the by-hand answer, and a reason to buy the next rung.
+2. **A part: lights.** A lights part (tier 1, $125) makes the pod lit. A lit pod draws nothing, and a figure that clings to a pod that is lit lets go on the next tick. A pilot with lights is safe from this mechanic, whatever the tier.
+3. **Mastery: a bigger tank.** The fill is litres, not a share, so a bigger tank shrugs it: the same 2.5 litres is a quarter of a stock tank and a tenth of a tier 2 tank. The old tool keeps its niche: a spare stock pod without lights is still a pod the pilot must watch.
+
+**Candidates not built.**
+
+| Candidate | Cost | Why not |
+|---|---|---|
+| A lamp toggle (lamp off to save fuel) | an input, a packet and a cost on `PodFuel` | The lamp costs no fuel today, so there is nothing to save; the lights part is the choice. A follow-up if the lamp is given a fuel cost |
+| A flare (a consumable thrown to draw it away) | an item, a recipe, a repair-station price | A good rung 2.5 for a pilot with no lights. A follow-up |
+| A sound when one comes | an audio file | The line on the action bar and the figure in view say it; a sound is a follow-up for the sound pass |
+| A dynamic light that moves with a lamp-carrier | a light block that follows it and a ledger | The glowmask already shows from afar with vanilla lighting; a follow-up |
+| Outrun it | none | It is already true: 3 against 4 blocks a second |
+
+**Measured.** All from the data the game runs on; the run model is `EarlyRunModel` (see [Fuel per descent](#fuel-per-descent-289-a)) and the tests are `RetainedEconomyTest` and `RetainedTest`.
+- **A stock Mole in layer 1.** A whole run: 16 slabs, $115 net. A grip shaken off after a reaction of 2 seconds takes 1.07 litres: 14 slabs, $101 net (12.5 per cent of the run). A grip nobody answers takes 2.5 litres: 12 slabs, $86.5 net (25 per cent). A lights part costs $125, which is 4.3 unanswered grabs, or 8.7 shaken ones.
+- **A Mole with tier 2 parts in layer 2.** A whole run: 31 slabs, $348 net. A grip nobody answers takes 2.5 of 25 litres: 26 slabs, $291 net (16.5 per cent of the run).
+- **In the game.** A figure placed 10 blocks from a dark pod reaches it in 67 ticks. A grip left alone takes 2.500 litres in 200 ticks, and the tank lost 31.3 points in that time with the pod's own idle burn (a stock tank's 25 points and the rest). A grip shaken off took 0.36 litres in 30 ticks, by the rotor and by the treads alike.
+- **How often.** The cap is 3 in a level. The game's spawner, with a player standing in 81 chunks of layer 2 and each figure removed the moment it appeared (so that the cap did not hold it back), made 6 figures in 12,000 ticks (10 minutes), all in the upper part of the layer where the caverns are; the rail site made one more each 100 ticks, as it does on its own. A careful pilot meets it rarely: the exposure is one grab in several runs, not one in each.
+
+**Verdict (A).** A lit, careful pilot is never grabbed, and a pilot without lights who answers a grab within 2 seconds loses about an eighth of a run's income and a little time. A pilot who ignores it loses a quarter of the run, and the stock tank is never emptied by it. The lights part pays for itself after 4 unanswered grabs, so a pilot who is grabbed a few times in the first runs has a reason to buy it, and one who never meets a figure has none. That is the shop decision this mechanic was to give.
+
+**Knobs.** `CreatureTuning.Cling`: `senseBlocks` (20), `reachBlocks` (2.5), `latchSpeed` (0.4 blocks a tick), `drainLitres` (0.25 a second), `fillLitres` (2.5), `floorPercent` (5), `shakeTicks` (30). `CreatureTuning.Natural`: `lampShare` (0.35), `chancePerTry` (0.02), `roomBlocks` (3). `CreatureTuning`: `maxPerLevel` (3), `respawnDelayTicks` (400), `walkSpeed` (0.22), `fadeBlockLight` (3). The biome files' `spawns_by_category.monster` weight (1) sets how often the spawner picks it among the biome's monsters.
+
+**Open questions.**
+- Should the lamp cost fuel, and have a switch? Then "run dark to save fuel" is a real choice and the Retained are its price.
+- Is 1.5 seconds of motion too cheap for a pod in a bore, where the answer is to lift? A figure might hold on while the pod drills.
+- Should a lamp-carrier grab harder (a longer fill) than one without a lamp, so that the lamp is a warning and a threat at once?

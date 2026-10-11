@@ -6,7 +6,6 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -78,9 +77,12 @@ public class RetainedTest {
 	private static final int FILL_BUDGET_TICKS = 300;
 	/** The fade (40 ticks) of a figure that let go, with a margin. */
 	private static final int FADE_BUDGET_TICKS = 80;
-	/** Ticks, once the rotor is held, in which the grip must break: the shake (40), a tick of lag and the check. */
-	private static final int SHAKE_BUDGET_TICKS = 50;
+	/** Ticks, once the rotor is held, in which the grip must break: the shake (30), a tick of lag and the check. */
+	private static final int SHAKE_BUDGET_TICKS = 40;
 	private static final Input JUMP = new Input(false, false, false, false, true, false, false);
+	private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
+	/** The yaw at which forward is west, along the arena toward the figure's end. */
+	private static final float WEST = 90f;
 	private static final String GRAB_KEY = "creature.deepcharter.grab";
 	/** Ticks for the light of a block to spread through a sealed room, or to go out of it: slow on a loaded runner. */
 	private static final int LIGHT_BUDGET_TICKS = 200;
@@ -111,7 +113,7 @@ public class RetainedTest {
 				PodComponents.register(pod, charter);
 				PodComponents.install(pod, ComponentItems.mint(level.getServer(), ComponentTrack.LIGHTS, 1, charter));
 			}
-			pilot.teleportTo(level, pod.position(), 0f, 0f);
+			pilot.teleportTo(level, pod.position(), WEST, 0f);
 			if (!pilot.player().startRiding(pod)) {
 				throw failure(helper, "the pilot could not mount the pod");
 			}
@@ -262,7 +264,7 @@ public class RetainedTest {
 		MockPlayer pilot = MockPlayers.join(helper, "retained-draw");
 		try {
 			expect(helper, !LamplessFigure.draws(pod), "an empty pod draws a figure");
-			pilot.teleportTo(level, pod.position(), 0f, 0f);
+			pilot.teleportTo(level, pod.position(), WEST, 0f);
 			expect(helper, pilot.player().startRiding(pod), "the pilot could not mount the pod");
 			expect(helper, LamplessFigure.draws(pod), "a dark pod with a pilot does not draw a figure");
 			pod.setFuel(TUNING.cling().floorPercent());
@@ -280,12 +282,20 @@ public class RetainedTest {
 
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + 60 + SHAKE_BUDGET_TICKS + 100)
 	public void shakingTheFigureOffWithTheRotorFreesThePodBeforeItIsFull(GameTestHelper helper) {
+		expectShakenOff(helper, slot(3), JUMP, "the rotor");
+	}
+
+	/** The pilot drives west: the treads move the pod, which shakes the figure off as the rotor does. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + 60 + SHAKE_BUDGET_TICKS + 100)
+	public void drivingTheTreadsShakesTheFigureOffToo(GameTestHelper helper) {
+		expectShakenOff(helper, slot(6), FORWARD, "the treads");
+	}
+
+	private static void expectShakenOff(GameTestHelper helper, BlockPos origin, Input input, String how) {
 		ServerLevel level = helper.getLevel();
-		BlockPos origin = slot(3);
 		Arena[] made = {null};
 		long[] grabbedAt = {-1};
 		float[] takenAtRelease = {-1};
-		float[] fuelAtRelease = {0};
 		helper.onEachTick(() -> {
 			Arena arena = made[0];
 			if (arena == null) {
@@ -295,7 +305,7 @@ public class RetainedTest {
 				if (arena.figure.isClinging()) {
 					grabbedAt[0] = helper.getTick();
 					LOGGER.info("[retained] the figure grabbed the pod {} ticks after it was placed 10 blocks away", helper.getTick());
-					arena.pilot.setInput(JUMP);
+					arena.pilot.setInput(input);
 				} else if (helper.getTick() > APPROACH_BUDGET_TICKS + 20) {
 					throw failure(helper, "the figure had not grabbed the dark pod");
 				}
@@ -305,25 +315,23 @@ public class RetainedTest {
 			if (takenAtRelease[0] < 0) {
 				if (!arena.figure.isClinging()) {
 					takenAtRelease[0] = arena.figure.taken();
-					fuelAtRelease[0] = arena.pod.fuel();
-					LOGGER.info("[retained] a grip shaken off: {} ticks of rotor, {} litres taken", held, takenAtRelease[0]);
+					LOGGER.info("[retained] a grip shaken off by {}: {} ticks, {} litres taken", how, held, takenAtRelease[0]);
 					if (takenAtRelease[0] >= CLING.fillLitres() - 0.05f) {
-						throw failure(helper, "the figure took its full %.2f litres: the rotor did not free the pod", takenAtRelease[0]);
+						throw failure(helper, "the figure took its full %.2f litres: %s did not free the pod", takenAtRelease[0], how);
 					}
 					if (held < CLING.shakeTicks() - 2) {
-						throw failure(helper, "the grip broke after %d ticks of thrust, under the %d the tuning asks", held, CLING.shakeTicks());
+						throw failure(helper, "the grip broke after %d ticks of %s, under the %d the tuning asks", held, how, CLING.shakeTicks());
 					}
 				} else if (held > SHAKE_BUDGET_TICKS) {
-					throw failure(helper, "the figure still clung %d ticks after the pilot held the rotor (the pod is at %s)", held, arena.pod.position());
+					throw failure(helper, "the figure still clung %d ticks after the pilot used %s (the pod is at %s)", held, how, arena.pod.position());
 				}
 				return;
 			}
-			// The pod is free: nothing takes more, whatever the pilot does.
+			// The pod is free: the figure does not take hold again and takes nothing more, whatever the pilot does.
+			if (arena.figure.isClinging() || arena.figure.taken() != takenAtRelease[0]) {
+				throw failure(helper, "the figure took hold of the pod again, or took more, after %s shook it off", how);
+			}
 			if (held > CLING.shakeTicks() + 40) {
-				float burnedLitres = (fuelAtRelease[0] - arena.pod.fuel()) / 100f * 10f;
-				if (burnedLitres > 0.5f) {
-					throw failure(helper, "the tank lost %.2f litres in 40 ticks after the figure let go: the pod's own burn is under half of that", burnedLitres);
-				}
 				arena.clear();
 				helper.succeed();
 			}
@@ -431,7 +439,6 @@ public class RetainedTest {
 							expect(helper, LamplessFigures.canAppearAt(layer, column), "the room is dark again and a figure may not appear in " + layer.dimension().identifier());
 							expectNotOverAir(helper, layer, column);
 						}
-						expectFullLevelRefuses(helper, layers.get(1), column);
 						helper.succeed();
 					} else {
 						expect(helper, since[0] < LIGHT_BUDGET_TICKS, "the light did not go out of the room in " + LIGHT_BUDGET_TICKS + " ticks");
@@ -470,22 +477,8 @@ public class RetainedTest {
 		expect(helper, !over, "a figure may appear over air in " + layer.dimension().identifier() + ", with nothing to stand on");
 	}
 
-	private static void expectFullLevelRefuses(GameTestHelper helper, ServerLevel level, BlockPos column) {
-		List<LamplessFigure> filling = new ArrayList<>();
-		for (int i = 0; i < TUNING.maxPerLevel(); i++) {
-			LamplessFigure figure = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
-			figure.setPos(Vec3.atBottomCenterOf(column.east(2)));
-			figure.setNoAi(true);
-			level.addFreshEntity(figure);
-			filling.add(figure);
-		}
-		boolean full = LamplessFigures.canAppearAt(level, column);
-		filling.forEach(LamplessFigure::discard);
-		expect(helper, !full, "a figure may appear in a level that holds " + TUNING.maxPerLevel());
-	}
-
 	/**
-	 * What the game's spawner asks of a figure it tries to place: about {@code chancePerTry} of the tries pass in a dark room, none beside a
+	 * What the game's spawner asks of a figure it tries to place: the roll passes about {@code chancePerTry} of the tries, no try passes beside a
 	 * light, and a figure made by a command is never refused.
 	 */
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
@@ -505,7 +498,7 @@ public class RetainedTest {
 				LamplessFigures.clearFadeDelays();
 				int rolled = 0;
 				for (int i = 0; i < tries; i++) {
-					rolled += figure[0].checkSpawnRules(two, EntitySpawnReason.NATURAL) ? 1 : 0;
+					rolled += LamplessFigures.rolls(two.getRandom()) ? 1 : 0;
 				}
 				double expected = tries * TUNING.natural().chancePerTry();
 				expect(helper, rolled > expected * 0.4 && rolled < expected * 1.8,

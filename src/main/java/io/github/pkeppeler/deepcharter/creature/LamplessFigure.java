@@ -38,7 +38,7 @@ import io.github.pkeppeler.deepcharter.pod.PodLights;
  * A Retained: a veteran of the Workings that the Company rebuilt too often, and that stopped using its lamp. A normal mob of the deep
  * layers (never a boss, ADR 0046): it never attacks anyone and nothing hurts it. It walks on whatever happens, fades when it is lit or
  * a person on foot comes near, and comes to a dark pod, one with a pilot, power and no lights. It grabs the hull and takes fuel until it
- * has had its fill; the pilot shakes it off with the rotor, or a lit pod frees itself. Some carry a lamp, so that they show from afar.
+ * has had its fill; the pilot shakes it off by moving the pod, or a lit pod frees itself. Some carry a lamp, so that they show from afar.
  * It is not saved: a figure whose chunk unloads is gone, and the level makes another.
  */
 public class LamplessFigure extends PathfinderMob {
@@ -50,6 +50,8 @@ public class LamplessFigure extends PathfinderMob {
 	private static final EntityDataAccessor<Boolean> LAMP = SynchedEntityData.defineId(LamplessFigure.class, EntityDataSerializers.BOOLEAN);
 	/** How far ahead along its heading the figure aims, so that it never reaches the point it walks to. */
 	private static final double LOOK_AHEAD = 4;
+	/** Blocks per tick, squared, over which a pod counts as driving: a quarter of its walk (0.2) is far above a drift or a push. */
+	private static final double MOVING_SPEED_SQR = 0.05 * 0.05;
 	/** How far off the hull the figure stands, beyond the half width of the pod. */
 	private static final double HULL_GAP = 0.3;
 
@@ -58,6 +60,8 @@ public class LamplessFigure extends PathfinderMob {
 	private @Nullable PodEntity grip;
 	/** The pod this figure walks to, null when none draws it. Server only. */
 	private @Nullable PodEntity target;
+	/** Whether the game's spawner made this figure: only those go when no player is near, so that the level's cap is not held by figures nobody will meet. */
+	private boolean natural;
 	/** The side of the hull the figure holds, as the direction from the pod to the figure. */
 	private Direction side = Direction.NORTH;
 	/** Litres taken from the pod this grip. */
@@ -89,6 +93,7 @@ public class LamplessFigure extends PathfinderMob {
 	@Override
 	public @Nullable SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty, EntitySpawnReason reason, @Nullable SpawnGroupData groupData) {
 		setLamp(level.getRandom().nextDouble() < CreatureTuning.DEFAULT.natural().lampShare());
+		natural = reason == EntitySpawnReason.NATURAL;
 		return super.finalizeSpawn(level, difficulty, reason, groupData);
 	}
 
@@ -185,7 +190,7 @@ public class LamplessFigure extends PathfinderMob {
 			return;
 		}
 		boolean lit = PodLights.isLit(pod) || (tickCount % tuning.fadeCheckTicks() == 0 && isLit(level, tuning));
-		shake = pod.flying() ? shake + 1 : Math.max(0, shake - 1);
+		shake = isMoving(pod) ? shake + 1 : Math.max(0, shake - 1);
 		if (lit || shake >= cling.shakeTicks()) {
 			letGo();
 			return;
@@ -197,6 +202,11 @@ public class LamplessFigure extends PathfinderMob {
 			return;
 		}
 		holdTo(pod, cling);
+	}
+
+	/** Whether the pod is under way: the rotor is on, or the treads carry it along. A pod that only sinks as its drill bites is not. */
+	private static boolean isMoving(PodEntity pod) {
+		return pod.flying() || pod.getDeltaMovement().horizontalDistanceSqr() > MOVING_SPEED_SQR;
 	}
 
 	/** Closes on its place on the hull, side by side with the pod, and faces the pod. */
@@ -279,7 +289,7 @@ public class LamplessFigure extends PathfinderMob {
 
 	@Override
 	public boolean removeWhenFarAway(double distanceToClosestPlayer) {
-		return true;
+		return natural;
 	}
 
 	public void setHeading(Direction heading) {

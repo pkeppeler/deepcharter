@@ -39,15 +39,15 @@ public final class TestPacks implements ModInitializer {
 	/** Cockpit concept C, Consoles. */
 	public static final String COCKPIT_CONSOLES = "cockpit_consoles";
 
-	/** The Retained's lamp (#449, docs/design/figure-concepts.md): the lamp on a pole. The default, a lantern in the hand, is the mod's own look. */
-	public static final String RETAINED_LAMP_POLE = "retained_lamp_pole";
+	/** The Retained's lamp (#449, docs/design/figure-concepts.md): a lantern in the hand. The default, the lamp on a pole, is the mod's own look. */
+	public static final String RETAINED_LAMP_HAND = "retained_lamp_hand";
 	/** The Retained's lamp inside the ribcage. */
 	public static final String RETAINED_LAMP_RIBS = "retained_lamp_ribs";
 
 	@Override
 	public void onInitialize() {
 		for (String pack : new String[] {AMBER_CRT, BAD_CRT, RED_INK, TEXTURE_DENSITY_B, TEXTURE_DENSITY_C, TEXTURE_DENSITY_D,
-				LAYER_CONCEPT_A, LAYER_CONCEPT_B, LAYER_CONCEPT_C, COCKPIT_DIALS, COCKPIT_STRIP, COCKPIT_CONSOLES, RETAINED_LAMP_POLE, RETAINED_LAMP_RIBS}) {
+				LAYER_CONCEPT_A, LAYER_CONCEPT_B, LAYER_CONCEPT_C, COCKPIT_DIALS, COCKPIT_STRIP, COCKPIT_CONSOLES, RETAINED_LAMP_HAND, RETAINED_LAMP_RIBS}) {
 			ResourceLoader.registerBuiltinPack(Identifier.fromNamespaceAndPath("deepcharter-test", pack),
 					FabricLoader.getInstance().getModContainer("deepcharter-test").orElseThrow(),
 					Component.literal(pack + " (test pack)"), PackActivationType.NORMAL);

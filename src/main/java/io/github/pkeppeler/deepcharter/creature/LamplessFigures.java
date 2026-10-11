@@ -130,26 +130,31 @@ public final class LamplessFigures {
 	}
 
 	/** Whether the level may take one more figure now: under the cap, and long enough since the last one faded. */
-	private static boolean levelHasRoom(ServerLevel level) {
+	public static boolean levelHasRoom(ServerLevel level) {
 		CreatureTuning tuning = CreatureTuning.DEFAULT;
 		Long lastFade = LAST_FADE.get(level.dimension());
 		return (lastFade == null || level.getGameTime() - lastFade >= tuning.respawnDelayTicks())
 				&& level.getEntities(CreatureRegistry.LAMPLESS_FIGURE, figure -> true).size() < tuning.maxPerLevel();
 	}
 
-	/** What the game's own spawner asks of a try at {@code pos}: the rules of {@link #canAppearAt}, and a roll that keeps them rare. */
+	/** What the game's own spawner asks of a try at {@code pos}: the rules of {@link #canAppearAt}, room in the level, and a roll that keeps them rare. */
 	static boolean mayAppearNaturally(ServerLevel level, BlockPos pos, RandomSource random) {
-		return canAppearAt(level, pos) && random.nextDouble() < CreatureTuning.DEFAULT.natural().chancePerTry();
+		return canAppearAt(level, pos) && levelHasRoom(level) && rolls(random);
+	}
+
+	/** One try in {@link CreatureTuning.Natural#chancePerTry} passes. */
+	public static boolean rolls(RandomSource random) {
+		return random.nextDouble() < CreatureTuning.DEFAULT.natural().chancePerTry();
 	}
 
 	/**
 	 * Whether a figure may appear of itself with its feet at {@code pos}: in layer 1 or 2, in the dark (under the light at which a figure
-	 * fades), on a solid floor with room to stand, and with room in the level. Never the surface, and never a lit space.
+	 * fades), and on a solid floor with room to stand. Never the surface, and never a lit space.
 	 */
 	public static boolean canAppearAt(ServerLevel level, BlockPos pos) {
 		CreatureTuning tuning = CreatureTuning.DEFAULT;
 		if (!NATURAL_LEVELS.contains(level.dimension()) || !level.isPositionEntityTicking(pos)
-				|| level.getBrightness(LightLayer.BLOCK, pos) >= tuning.fadeBlockLight() || !levelHasRoom(level)) {
+				|| level.getBrightness(LightLayer.BLOCK, pos) >= tuning.fadeBlockLight()) {
 			return false;
 		}
 		BlockPos floor = pos.below();
