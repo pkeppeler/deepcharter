@@ -19,15 +19,12 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 public final class ColonyKit {
 	private static final List<Block> ALL = new ArrayList<>();
 
-	// test-seam: DesignTourScenario reads the registered handle
 	public static final Block RIVETED_PLATE = cube("riveted_plate", SoundType.METAL);
 	public static final Block RIVETED_PLATE_RED = cube("riveted_plate_red", SoundType.METAL);
 	public static final Block HAZARD_BAND = cube("hazard_band", SoundType.METAL);
 	public static final Block CONCRETE_FOOTING = cube("concrete_footing", SoundType.STONE);
-	// test-seam: DesignTourScenario reads the registered handle
 	public static final Block BRASS_TRIM = cube("brass_trim", SoundType.METAL);
 	/** Open steel grating: a full block that lets the light and the view through. */
-	// test-seam: DesignTourScenario reads the registered handle
 	public static final Block GRATING = register("grating", SoundType.METAL, properties -> new Block(properties.noOcclusion()));
 
 	public static final Block WINDOW_RIBBON_LIT = window("window_ribbon_lit", 10);
@@ -48,7 +45,6 @@ public final class ColonyKit {
 	public static final Block ORE_CAR = facing("ore_car", SoundType.METAL, 0, Block.box(1, 0, 0, 15, 16, 16));
 
 	public static final Block STEEL_BEAM = pillar("steel_beam", 12);
-	// test-seam: DesignTourScenario reads the registered handle
 	public static final Block LATTICE_GIRDER = pillar("lattice_girder", 16);
 	public static final Block PIPE = pillar("pipe", 8);
 	public static final Block PIPE_BRASS = pillar("pipe_brass", 8);
@@ -67,7 +63,6 @@ public final class ColonyKit {
 	}
 
 	/** Every kit block, in the order above. */
-	// test-seam: the design-tour scenario picks colony blocks out of a view with it
 	public static List<Block> all() {
 		return Collections.unmodifiableList(ALL);
 	}

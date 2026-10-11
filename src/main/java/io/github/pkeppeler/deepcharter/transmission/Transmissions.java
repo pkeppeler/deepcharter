@@ -62,7 +62,6 @@ public final class Transmissions {
 	 * @throws IllegalStateException if no server is running
 	 * @throws IllegalArgumentException if the charter or the transmission does not exist
 	 */
-	// test-seam: tests fire on the running server without naming it
 	public static void fire(CharterId charter, Identifier transmission) {
 		Objects.requireNonNull(charter, "charter");
 		Objects.requireNonNull(transmission, "transmission");
@@ -118,7 +117,6 @@ public final class Transmissions {
 	 * Sends {@code player} what they have not been sent of the charter's story, in order. Call it when the player logs in, passing the
 	 * player in: the server's lookup by UUID does not find a player in their own join event.
 	 */
-	// test-seam: tests deliver to one player directly
 	public static void deliverTo(MinecraftServer server, TransmissionData data, CharterId charter, ServerPlayer player) {
 		if (readable(server, data)) {
 			sendUnsent(server, data, requireCharter(server, charter), player);

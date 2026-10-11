@@ -63,7 +63,6 @@ public final class OreRegistry {
 		return ITEMS.get(type);
 	}
 
-	// test-seam: tests place an ore by type
 	public static Block block(OreType type) {
 		return BLOCKS.get(type);
 	}

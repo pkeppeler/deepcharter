@@ -78,18 +78,16 @@ public final class ContractScreen extends CrtScreen implements TerminalViewScree
 		rebuildWidgets();
 	}
 
-	// test-seam: ContractTerminalScenario asserts on it
 	public Optional<ContractState> state() {
 		return state;
 	}
 
-	// test-seam: client tests finish the typewriter before they assert on the screen
+	@Override
 	public Typewriter typewriter() {
 		return typewriter;
 	}
 
 	/** The field a new charter's name is typed in, or null when the player has a charter. */
-	// test-seam: ContractTerminalScenario asserts on it
 	public CrtTextField nameField() {
 		return nameField;
 	}

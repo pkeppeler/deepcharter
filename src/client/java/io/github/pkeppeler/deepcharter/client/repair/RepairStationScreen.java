@@ -86,12 +86,11 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 		rebuildWidgets();
 	}
 
-	// test-seam: ParkedPodChoiceClientTest reads the view the screen was opened with
 	public TerminalView view() {
 		return view;
 	}
 
-	// test-seam: client tests finish the typewriter before they assert on the screen
+	@Override
 	public Typewriter typewriter() {
 		return typewriter;
 	}
@@ -169,7 +168,6 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 	}
 
 	/** The index of the first row shown. */
-	// test-seam: RepairStationFitClientTest asserts on it
 	public int firstRow() {
 		return firstRow;
 	}

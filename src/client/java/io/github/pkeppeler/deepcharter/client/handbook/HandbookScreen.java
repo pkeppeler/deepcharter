@@ -167,12 +167,10 @@ public class HandbookScreen extends Screen {
 		return "deepcharter.handbook.chapter." + chapter.getNamespace() + "." + chapter.getPath().replace('/', '.');
 	}
 
-	// test-seam: HandbookScreenClientTest asserts on it
 	public int page() {
 		return page;
 	}
 
-	// test-seam: HandbookScreenClientTest asserts on it
 	public List<HandbookPage> pages() {
 		return pages;
 	}
@@ -197,7 +195,6 @@ public class HandbookScreen extends Screen {
 		updateButtons();
 	}
 
-	// test-seam: HandbookScreenClientTest asserts on it
 	public boolean onNotesTab() {
 		return notesTab;
 	}
@@ -214,7 +211,6 @@ public class HandbookScreen extends Screen {
 	}
 
 	/** Whether the Notes tab shows its empty state. */
-	// test-seam: HandbookScreenClientTest asserts on it
 	public boolean notesEmpty() {
 		return notes.isEmpty();
 	}
@@ -225,7 +221,6 @@ public class HandbookScreen extends Screen {
 	}
 
 	/** The Note being read on the Notes tab, or null while the tab shows the list. */
-	// test-seam: NotesClientTest asserts on it
 	public Identifier openNote() {
 		return openNote;
 	}
@@ -324,7 +319,6 @@ public class HandbookScreen extends Screen {
 	}
 
 	/** The sheet of the open Note on screen, from 0. */
-	// test-seam: HandbookScreenClientTest asserts on it
 	public int noteSheet() {
 		return notePage;
 	}
@@ -506,7 +500,6 @@ public class HandbookScreen extends Screen {
 	}
 
 	/** The lowest y a contents entry may reach: the top of the Back and Next buttons, less a gap. */
-	// test-seam: HandbookScreenClientTest asserts on it
 	public int contentsBottom() {
 		return bottom();
 	}

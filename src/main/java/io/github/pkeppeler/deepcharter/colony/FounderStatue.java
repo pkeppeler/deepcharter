@@ -51,7 +51,6 @@ public final class FounderStatue {
 	}
 
 	/** Takes the hands away: the displays that are found and the marker, which gives the plinth its plate back. For tests and for a dev who wants them gone. */
-	// test-seam: tests strip the statue's hands to start a work-order case
 	public static void removeHands(MinecraftServer server) {
 		markerPos(server).ifPresent(pos -> {
 			ServerLevel overworld = server.overworld();
@@ -91,7 +90,6 @@ public final class FounderStatue {
 	}
 
 	/** The displays of the statue's body, loading the chunk it stands in; empty before the colony is built. */
-	// test-seam: tests read the statue's body cells to check placement
 	public static List<Display.BlockDisplay> body(MinecraftServer server) {
 		return displays(server, bodyState());
 	}

@@ -1,10 +1,16 @@
-package io.github.pkeppeler.deepcharter.client.ui;
+package io.github.pkeppeler.deepcharter.test.support;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
+
+import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
+import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
+import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
+import io.github.pkeppeler.deepcharter.client.ui.CrtTextField;
+import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 
 /**
  * A small screen that uses every part of the kit, and the example for the screens that build on it. It is test
@@ -27,7 +33,6 @@ public final class CrtDemoScreen extends CrtScreen {
 	private int presses;
 	private String lastTyped = "";
 
-	// test-seam: the UI kit's demo screen; only the UI kit test and the UI scenario open it
 	public CrtDemoScreen() {
 		super(Component.translatable("ui.deepcharter.demo.title"));
 		typewriter = typewriter(Component.translatable("ui.deepcharter.demo.body"), (index, letter) -> hookCalls.add(index));
@@ -57,34 +62,28 @@ public final class CrtDemoScreen extends CrtScreen {
 	}
 
 	/** Times the acknowledge button has been pressed. */
-	// test-seam: CrtUiKitClientTest asserts on it
 	public int presses() {
 		return presses;
 	}
 
-	// test-seam: CrtUiKitClientTest asserts on it
 	public CrtButton acknowledge() {
 		return acknowledge;
 	}
 
-	// test-seam: CrtUiKitClientTest asserts on it
 	public CrtTextField field() {
 		return field;
 	}
 
 	/** The field's text as of its last change. */
-	// test-seam: CrtUiKitClientTest asserts on it
 	public String lastTyped() {
 		return lastTyped;
 	}
 
 	/** The letter index of every hook call so far, in order. */
-	// test-seam: CrtUiKitClientTest asserts on it
 	public List<Integer> hookCalls() {
 		return hookCalls;
 	}
 
-	// test-seam: client tests finish the typewriter before they assert on the screen
 	public Typewriter typewriter() {
 		return typewriter;
 	}

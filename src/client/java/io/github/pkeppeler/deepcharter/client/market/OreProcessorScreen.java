@@ -76,7 +76,7 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 		return view;
 	}
 
-	// test-seam: client tests finish the typewriter before they assert on the screen
+	@Override
 	public Typewriter typewriter() {
 		return typewriter;
 	}
@@ -157,7 +157,6 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 	}
 
 	/** The y below the account line: the order rows start under it. */
-	// test-seam: OreProcessorClientTest asserts on it
 	public int accountBottom() {
 		return accountTop() + font.lineHeight;
 	}
@@ -195,7 +194,6 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 	}
 
 	/** The order rows on screen, top to bottom. */
-	// test-seam: OreProcessorClientTest asserts on it
 	public List<OrderRowButton> orderRows() {
 		return List.copyOf(orderRows);
 	}

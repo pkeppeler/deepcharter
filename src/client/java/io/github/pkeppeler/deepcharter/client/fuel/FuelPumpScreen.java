@@ -67,12 +67,11 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
 		view = newer;
 	}
 
-	// test-seam: ParkedPodChoiceClientTest reads the view the screen was opened with
 	public TerminalView view() {
 		return view;
 	}
 
-	// test-seam: client tests finish the typewriter before they assert on the screen
+	@Override
 	public Typewriter typewriter() {
 		return typewriter;
 	}

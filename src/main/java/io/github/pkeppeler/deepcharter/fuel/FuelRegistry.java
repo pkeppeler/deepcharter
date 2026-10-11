@@ -12,7 +12,6 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 /** Registers biofuel and the reserve tank. The pump itself is a terminal, registered by the terminal feature. */
 public final class FuelRegistry {
 	/** Fuel: its litres are in {@code data/deepcharter/pod_fuel/biofuel.json} and it is in the {@code pod_fuel} tag. */
-	// test-seam: FuelPumpTest reads the registered handle
 	public static final Item BIOFUEL = item("biofuel", 64);
 	/** Used on a pod, it fits a {@link ReserveTank}. */
 	public static final Item RESERVE_TANK = item("reserve_tank", 16);

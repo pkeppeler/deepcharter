@@ -52,7 +52,6 @@ public final class Typewriter {
 	}
 
 	/** Reveals the rest of the text now. No letter hook fires for the skipped letters: a burst of sound would be noise. */
-	// test-seam: CrtUiKitClientTest asserts on it
 	public void skip() {
 		revealed = text.length();
 	}

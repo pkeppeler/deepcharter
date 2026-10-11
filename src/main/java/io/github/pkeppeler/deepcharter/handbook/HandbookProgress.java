@@ -59,7 +59,6 @@ public final class HandbookProgress {
 	 *
 	 * @throws IllegalStateException if the saved progress is of a version this build cannot read
 	 */
-	// test-seam: tests assert one charter's completed set
 	public static Set<Identifier> completed(MinecraftServer server, CharterId charter) {
 		return HandbookProgressData.get(server).completed(charter);
 	}

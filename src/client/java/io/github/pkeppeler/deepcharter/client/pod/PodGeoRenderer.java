@@ -131,18 +131,15 @@ public class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimatable, 
 		}
 	}
 
-	// test-seam: PodGeckoLibClientTest asserts on it
 	public Chassis chassis() {
 		return chassis;
 	}
 
-	// test-seam: PodGeckoLibClientTest asserts on it
 	public PodLook look() {
 		return look;
 	}
 
 	/** The model as the game measures it, which GeckoLib draws from the same file. */
-	// test-seam: PodGeckoLibClientTest asserts on it
 	public GeoModel geometry() {
 		return geo;
 	}
@@ -181,7 +178,6 @@ public class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimatable, 
 	 * {@link PodMotion} with the scale that {@link #addRenderData} gives it. It touches no frame of the pod's own animation, so it does
 	 * not depend on how often the game draws.
 	 */
-	// test-seam: PodGeckoLibClientTest asserts on it
 	public float drillSpinPerTick(PodEntity pod) {
 		PodMotion motion = new PodMotion();
 		float scale = spinScaleOf(appearanceOf(pod));

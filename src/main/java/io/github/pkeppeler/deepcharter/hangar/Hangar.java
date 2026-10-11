@@ -61,7 +61,6 @@ public final class Hangar {
 	}
 
 	/** Where the console stands: beside the hangar bay. Empty before the colony is built. */
-	// test-seam: tests and scenarios find the console to use it
 	public static Optional<BlockPos> consolePos(MinecraftServer server) {
 		return Colony.anchor(server, ColonyAnchor.HANGAR).map(anchor -> anchor.offset(CONSOLE_OFFSET));
 	}
@@ -102,7 +101,6 @@ public final class Hangar {
 	}
 
 	/** The founding Mole, if it is placed and loaded. */
-	// test-seam: tests and scenarios find the derelict pod to drive it
 	public static Optional<PodEntity> derelict(MinecraftServer server) {
 		return HangarData.readable(server).flatMap(data -> data.state().derelict()).flatMap(id -> podOf(server, id));
 	}

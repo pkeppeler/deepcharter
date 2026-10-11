@@ -125,7 +125,6 @@ public final class TransmissionOverlay {
 	}
 
 	/** How many transmissions wait behind the one on screen. */
-	// test-seam: queue depth the client test reads
 	public static int waiting() {
 		return PENDING.size();
 	}
@@ -140,7 +139,6 @@ public final class TransmissionOverlay {
 		return current == null ? "" : current.header().visible();
 	}
 
-	// test-seam: full header text the client test asserts once the typewriter is done
 	public static String headerFull() {
 		return current == null ? "" : current.header().text();
 	}

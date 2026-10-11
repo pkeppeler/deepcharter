@@ -68,7 +68,6 @@ public enum DeepSound {
 		this.event = SoundEvent.createVariableRangeEvent(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
 	}
 
-	// test-seam: SoundEventsTest asserts on it
 	public String path() {
 		return path;
 	}

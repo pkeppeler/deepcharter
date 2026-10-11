@@ -3,11 +3,14 @@
 //
 // The scan is tools/TestOnlyGate.java (the JDK's class-file API, no dependency), run over the compiled classes so a reference is what javac
 // resolved. What it exempts, and the marker `// test-seam: <reason>` for a deliberate seam, are in its header.
+// tools/test-only-baseline.txt lists the findings that exist already (burn-down: #463). A new finding fails; so does a baseline entry that
+// is no longer a finding, so the list only shrinks. -PtestOnlyList prints the key of every finding, to rebuild the list after a merge.
 // tools/tests/test_only_gate_check.py runs it over fixture trees (python3 -I tools/tests/gate_checks.py test_only).
 def mainClasses = sourceSets.main.output.classesDirs
 def clientClasses = sourceSets.client.output.classesDirs
 def gametestClasses = sourceSets.gametest.output.classesDirs
 def gateSource = file("tools/TestOnlyGate.java")
+def baseline = file("tools/test-only-baseline.txt")
 
 tasks.register("checkTestOnlyMembers") {
 	group = "verification"
@@ -16,20 +19,26 @@ tasks.register("checkTestOnlyMembers") {
 	inputs.files(mainClasses, clientClasses, gametestClasses).withPropertyName("classes")
 	inputs.files(sourceSets.main.java, sourceSets.client.java).withPropertyName("modSources")
 	inputs.file(gateSource).withPropertyName("gate")
+	inputs.file(baseline).withPropertyName("baseline")
 	def compileClasspath = sourceSets.gametest.compileClasspath
 	def sources = [file("src/main/java"), file("src/client/java")]
 	def mod = [mainClasses, clientClasses]
 	def tests = gametestClasses
 	def root = projectDir
+	def listKeys = providers.gradleProperty("testOnlyList").isPresent()
+	inputs.property("listKeys", listKeys)
 	doLast {
 		def command = [new File(System.getProperty("java.home"), "bin/java").path, gateSource.path, "--root", root.path]
 		command << "--production" << mod.collectMany { it.files }.collect { it.path }
 		command << "--tests" << tests.files.collect { it.path }
 		command << "--sources" << sources.collect { it.path }
+		command << "--baseline" << baseline.path
+		if (listKeys) command << "--list"
 		command << "--classpath" << compileClasspath.files.collect { it.path }
 		def process = new ProcessBuilder(command.flatten() as List<String>).directory(root).redirectErrorStream(true).start()
 		def output = process.inputStream.text
 		if (process.waitFor() != 0) throw new GradleException(output.trim())
+		if (listKeys) println(output.trim())
 	}
 }
 

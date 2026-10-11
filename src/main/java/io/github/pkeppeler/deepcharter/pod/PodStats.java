@@ -140,7 +140,6 @@ public record PodStats(float maxHull, float horizontalSpeed, float enginePower, 
 				idleLitresPerSecond, movingLitresPerSecond, drillingLitresPerSecond);
 	}
 
-	// test-seam: PodStatsTest asserts on it
 	public PodStats withHullDamagePerSpeed(float hullDamagePerSpeed) {
 		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingSpeed,
 				hullDamagePerSpeed, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
@@ -153,7 +152,6 @@ public record PodStats(float maxHull, float horizontalSpeed, float enginePower, 
 				idleLitresPerSecond, movingLitresPerSecond, drillingLitresPerSecond);
 	}
 
-	// test-seam: PodStatsTest asserts on it
 	public PodStats withCrustHullDamage(float crustHullDamage) {
 		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingSpeed,
 				hullDamagePerSpeed, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
@@ -178,7 +176,6 @@ public record PodStats(float maxHull, float horizontalSpeed, float enginePower, 
 				idleLitresPerSecond, movingLitresPerSecond, drillingLitresPerSecond);
 	}
 
-	// test-seam: PodStatsTest asserts on it
 	public PodStats withIdleLitresPerSecond(float idleLitresPerSecond) {
 		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingSpeed,
 				hullDamagePerSpeed, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,

@@ -81,7 +81,6 @@ public final class Terminals {
 	}
 
 	/** {@link #act} with {@link #INSERT_PART} and {@code part}. */
-	// test-seam: tests insert a part with no client packet
 	public static Optional<TerminalRefusal> insertPart(ServerPlayer player, BlockPos pos, Item part) {
 		CompoundTag args = new CompoundTag();
 		args.putString(PART_KEY, BuiltInRegistries.ITEM.getKey(part).toString());

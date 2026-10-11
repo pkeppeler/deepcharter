@@ -26,7 +26,6 @@ public final class HazardBlocks {
 	public static final TagKey<Block> UNDIGGABLE = tag("undiggable");
 
 	/** Unbreakable by hand (hardness -1) and, through {@link #UNDIGGABLE}, by a drill. */
-	// test-seam: RepairStationTest reads the registered handle
 	public static final Block COMPANY_ROCK = registerBlock(id("company_rock"),
 			key -> new Block(BlockBehaviour.Properties.of().setId(key).strength(-1.0F, 3600000.0F).sound(SoundType.STONE).noLootTable()));
 

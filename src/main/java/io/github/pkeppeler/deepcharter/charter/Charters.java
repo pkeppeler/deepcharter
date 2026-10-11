@@ -145,7 +145,6 @@ public final class Charters {
 	}
 
 	/** Raises the charter's deepest point to {@code depth} blocks below the surface, if that is deeper than before. */
-	// test-seam: tests record a depth without a dig
 	public static Optional<CharterRefusal> recordDeepestPoint(MinecraftServer server, CharterId id, int depth) {
 		CharterData data = CharterData.get(server);
 		Optional<Charter> before = data.find(id);
