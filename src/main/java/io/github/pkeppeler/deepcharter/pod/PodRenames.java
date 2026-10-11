@@ -6,6 +6,7 @@ import java.util.Optional;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.storage.ValueInput;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 
@@ -34,9 +35,6 @@ public final class PodRenames {
 			if (BuiltInRegistries.ENTITY_TYPE.containsKey(old)) {
 				throw new IllegalStateException(entry + "the old id is still registered, so it is not renamed");
 			}
-			if (!BuiltInRegistries.ENTITY_TYPE.containsKey(current)) {
-				throw new IllegalStateException(entry + "new id is not a registered pod type");
-			}
 			try {
 				PodRegistry.chassisOf(BuiltInRegistries.ENTITY_TYPE.getValue(current));
 			} catch (IllegalArgumentException e) {
@@ -45,9 +43,9 @@ public final class PodRenames {
 		});
 	}
 
-	/** The type that pods saved under {@code savedId} are now, or empty when {@code savedId} is no renamed pod type. */
-	public static Optional<EntityType<?>> current(Identifier savedId) {
-		return Optional.ofNullable(RENAMES.get(savedId)).map(BuiltInRegistries.ENTITY_TYPE::getValue);
+	/** The current type of the entity saved in {@code input}, or empty when its id is no renamed pod type. */
+	public static Optional<EntityType<?>> current(ValueInput input) {
+		return input.read("id", Identifier.CODEC).map(RENAMES::get).map(BuiltInRegistries.ENTITY_TYPE::getValue);
 	}
 
 	private static Identifier id(String path) {

@@ -26,13 +26,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodRenames;
 
-/**
- * Server GameTests for #416: a pod saved under the id of a renamed pod entity type loads as the new type with its chassis and cargo.
- * The saved data is a pod's real entity NBT with the old id, read the way a chunk's entities are read (the {@code Entities} list of an
- * entity chunk, through {@code EntityType.loadEntitiesRecursive}, as {@code EntityStorage} does).
- */
 public class PodRenamesTest {
-	/** The one rename in the table, which exists for this test. */
 	private static final String RETIRED = "deepcharter:retired_pod_for_test";
 
 	private static CompoundTag savedPodUnder(ServerLevel level, String id) {
