@@ -33,6 +33,7 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
 import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
@@ -632,6 +633,154 @@ public class OreProcessorTest {
 			try {
 				fund(server, player, 1000);
 				expectKey(helper, NO_SPOIL, OreProcessor.fuseSpoil(context(server, player, processor)), "fusing a pod whose lining cannot be read");
+				if (!(bad.getAttached(PodLining.STATE) instanceof Versioned.Unreadable<PodLining.State>)) {
+					throw helper.assertionException("the unreadable lining state must be left as it was read");
+				}
+			} finally {
+				bad.discard();
+			}
+		});
+		helper.succeed();
+	}
+
+	// ---- salvage crates (#470) ----
+
+	private static final String NO_SPOIL_FOR_CRATE = "deepcharter.market.refusal.no_spoil_for_crate";
+	private static final String NO_ROOM_FOR_CRATE = "deepcharter.market.refusal.no_room_for_crate";
+
+	private static int cratesCarried(ServerPlayer player) {
+		return player.getInventory().countItem(SurfaceBlocks.SALVAGE_CRATE.asItem());
+	}
+
+	/** 55 spoil is two crates at 24 a crate (#470): 48 taken, 7 kept, no money charged and the brick rack and its dry flag left alone. */
+	@GameTest
+	public void pressingTurnsTwentyFourSpoilIntoACrateForNothingAndKeepsTheRemainder(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		withProcessorOnline(server, () -> {
+			MockPlayer mock = player(helper, "Presser", true);
+			ServerPlayer player = mock.player();
+			BlockPos processor = processorFor(helper, mock);
+			PodEntity pod = podAt(helper, beside(processor, 4));
+			PodLining.modify(pod, state -> new PodLining.State(55, 5, 3, false, true));
+			try {
+				fund(server, player, 1000);
+				expectDone(helper, Terminals.act(player, processor, OreProcessor.PRESS_CRATES, new CompoundTag()), "pressing 55 spoil");
+				PodLining.State after = PodLining.of(pod);
+				if (cratesCarried(player) != 2 || after.spoil() != 7 || balance(server, player) != 1000
+						|| after.bricks() != 5 || after.used() != 3 || !after.dry()) {
+					throw helper.assertionException("55 spoil press 2 crates for $0 and leave 7 spoil, the rack as it was: crates %s, state %s, balance %s",
+							cratesCarried(player), after, balance(server, player));
+				}
+			} finally {
+				pod.discard();
+			}
+		});
+		helper.succeed();
+	}
+
+	@GameTest
+	public void pressingNeedsAFullCratesWorthOfSpoilAndNoMoney(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		withProcessorOnline(server, () -> {
+			MockPlayer mock = player(helper, "Pauper", true);
+			ServerPlayer player = mock.player();
+			BlockPos processor = processorFor(helper, mock);
+			PodEntity pod = podAt(helper, beside(processor, 4));
+			try {
+				expectKey(helper, NO_SPOIL_FOR_CRATE, OreProcessor.pressCrates(context(server, player, processor)), "pressing a pod with no spoil");
+				withSpoil(pod, 23, 0);
+				expectKey(helper, NO_SPOIL_FOR_CRATE, OreProcessor.pressCrates(context(server, player, processor)), "pressing 23 spoil, one under a crate");
+				if (PodLining.of(pod).spoil() != 23 || cratesCarried(player) != 0) {
+					throw helper.assertionException("a refused press takes nothing and makes nothing: spoil %s, crates %s", PodLining.of(pod).spoil(), cratesCarried(player));
+				}
+				// An empty account presses all the same: the crate costs spoil, not money.
+				withSpoil(pod, 24, 0);
+				expectDone(helper, Terminals.act(player, processor, OreProcessor.PRESS_CRATES, new CompoundTag()), "pressing 24 spoil with $0");
+				if (cratesCarried(player) != 1 || PodLining.of(pod).spoil() != 0 || balance(server, player) != 0) {
+					throw helper.assertionException("24 spoil press 1 crate with no money: crates %s, spoil %s, balance %s", cratesCarried(player), PodLining.of(pod).spoil(), balance(server, player));
+				}
+			} finally {
+				pod.discard();
+			}
+		});
+		helper.succeed();
+	}
+
+	/** The crates go to the pack and nowhere else: a pack with room for one makes one and keeps the spoil of the other, and a full pack makes none. */
+	@GameTest
+	public void pressingStopsAtTheRoomInThePackAndKeepsTheRestOfTheSpoil(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		withProcessorOnline(server, () -> {
+			MockPlayer mock = player(helper, "Packed", true);
+			ServerPlayer player = mock.player();
+			BlockPos processor = processorFor(helper, mock);
+			PodEntity pod = podAt(helper, beside(processor, 4));
+			withSpoil(pod, 64, 0);
+			try {
+				int slots = player.getInventory().getNonEquipmentItems().size();
+				for (int slot = 0; slot < slots; slot++) {
+					player.getInventory().setItem(slot, new ItemStack(SlagBrick.item(), 64));
+				}
+				player.getInventory().setItem(0, new ItemStack(SurfaceBlocks.SALVAGE_CRATE.asItem(), 63));
+				expectDone(helper, Terminals.act(player, processor, OreProcessor.PRESS_CRATES, new CompoundTag()), "pressing with room for one crate");
+				if (cratesCarried(player) != 64 || PodLining.of(pod).spoil() != 40) {
+					throw helper.assertionException("room for one crate makes one and keeps 40 spoil: crates %s, spoil %s", cratesCarried(player), PodLining.of(pod).spoil());
+				}
+				expectKey(helper, NO_ROOM_FOR_CRATE, OreProcessor.pressCrates(context(server, player, processor)), "pressing into a full pack");
+				if (PodLining.of(pod).spoil() != 40) {
+					throw helper.assertionException("a refused press takes no spoil, the pod holds %s", PodLining.of(pod).spoil());
+				}
+			} finally {
+				pod.discard();
+			}
+		});
+		helper.succeed();
+	}
+
+	@GameTest
+	public void pressingTakesFromEveryPodOfTheCharterAndOnlyThose(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		withProcessorOnline(server, () -> {
+			MockPlayer mock = player(helper, "Fleet", true);
+			MockPlayer rival = player(helper, "Rival", true);
+			ServerPlayer player = mock.player();
+			BlockPos processor = processorFor(helper, mock);
+			PodEntity theirs = podAt(helper, beside(processor, 4));
+			register(server, theirs, rival.player());
+			withSpoil(theirs, 64, 0);
+			PodEntity first = podAt(helper, beside(processor, -4));
+			PodEntity second = podAt(helper, beside(processor, -5));
+			register(server, first, player);
+			register(server, second, player);
+			withSpoil(first, 40, 0);
+			withSpoil(second, 40, 0);
+			try {
+				expectDone(helper, Terminals.act(player, processor, OreProcessor.PRESS_CRATES, new CompoundTag()), "pressing the spoil of two pods");
+				// 40 and 40 spoil: one crate from each (16 left over in each), and the rival's pod is not touched.
+				if (cratesCarried(player) != 2 || PodLining.of(first).spoil() != 16 || PodLining.of(second).spoil() != 16 || PodLining.of(theirs).spoil() != 64) {
+					throw helper.assertionException("one crate from each own pod and none from the rival's: crates %s, spoil %s and %s, rival %s",
+							cratesCarried(player), PodLining.of(first).spoil(), PodLining.of(second).spoil(), PodLining.of(theirs).spoil());
+				}
+			} finally {
+				first.discard();
+				second.discard();
+				theirs.discard();
+			}
+		});
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aPodWithUnreadableLiningIsLeftAloneWhenPressing(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		withProcessorOnline(server, () -> {
+			MockPlayer mock = player(helper, "Careful2", true);
+			ServerPlayer player = mock.player();
+			BlockPos processor = processorFor(helper, mock);
+			PodEntity bad = podAt(helper, beside(processor, 4));
+			UnreadableChecks.makeUnreadable(bad, PodLining.STATE);
+			try {
+				expectKey(helper, NO_SPOIL_FOR_CRATE, OreProcessor.pressCrates(context(server, player, processor)), "pressing a pod whose lining cannot be read");
 				if (!(bad.getAttached(PodLining.STATE) instanceof Versioned.Unreadable<PodLining.State>)) {
 					throw helper.assertionException("the unreadable lining state must be left as it was read");
 				}

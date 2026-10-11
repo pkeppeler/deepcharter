@@ -29,6 +29,7 @@ import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
@@ -87,6 +88,15 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 			require(hud(context).equals(CHARTER + "  $" + (cargo + carried)), "fusing is free, the HUD shows '" + hud(context) + "'");
 			PodLining.State fused = singleplayer.getServer().computeOnServer(server -> PodLining.of(parkedPod(server)));
 			require(fused.bricks() == 2 && fused.spoil() == 0, "four spoil make two bricks in the rack, got " + fused);
+
+			// #470: forty-eight spoil are two salvage crates in the pack, and the account is not charged.
+			singleplayer.getServer().runOnServer(server -> PodLining.modify(parkedPod(server), state -> state.withSpoil(48)));
+			context.clickScreenButton("PRESS CRATE");
+			ClientWait.until(context, "two crates in the pack", () -> singleplayer.getServer().computeOnServer(server -> server.getPlayerList().getPlayers().getFirst()
+					.getInventory().countItem(SurfaceBlocks.SALVAGE_CRATE.asItem())) == 2, () -> "no crates in the pack");
+			require(hud(context).equals(CHARTER + "  $" + (cargo + carried)), "pressing is free, the HUD shows '" + hud(context) + "'");
+			int spoilLeft = singleplayer.getServer().computeOnServer(server -> PodLining.of(parkedPod(server)).spoil());
+			require(spoilLeft == 0, "forty-eight spoil press two crates and leave none, left " + spoilLeft);
 
 			// #80: the work order is listed with no progress, and handing in ten Bronzium finishes it and restores the Founder's hands.
 			require(context.computeOnClient(client -> screen.orderLines()).equals(List.of("WORK ORDERS", "RESTORE THE FOUNDER'S HANDS", "0 / 10 BRONZIUM")),

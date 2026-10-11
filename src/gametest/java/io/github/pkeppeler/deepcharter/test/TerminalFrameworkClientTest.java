@@ -97,10 +97,9 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
 	private static void offlineScreenOpensAndRenders(ClientGameTestContext context, Scene scene) {
 		request(context, scene.pump());
 		TerminalScreen screen = awaitScreen(context);
-		require(!screen.online(), "an unrepaired terminal opens offline");
-		require(screen.view().unlocked(), "the pump has no prerequisite, so its parts can go in");
 		ClientWait.until(context, "the terminal screen finished typing", client -> screen.typewriter().done(), client -> "typewriter text '" + screen.typewriter().text() + "'");
-		require(screen.typewriter().text().contains("OFFLINE"), "the offline text says so, got '" + screen.typewriter().text() + "'");
+		require(screen.typewriter().text().contains("OFFLINE"), "an unrepaired terminal opens offline, the text says so, got '" + screen.typewriter().text() + "'");
+		require(screen.typewriter().text().contains("INSERT EVERY PART"), "the pump has no prerequisite, so its parts can go in, got '" + screen.typewriter().text() + "'");
 		require(buttons(context, screen).stream().filter(button -> button.active).count() == TerminalTypes.FUEL_PUMP.parts().size() + 1,
 				"every part button and CLOSE are live");
 		context.waitTicks(5);
@@ -110,9 +109,9 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
 	private static void lockedTerminalHasDeadButtons(ClientGameTestContext context, Scene scene) {
 		request(context, scene.processor());
 		TerminalScreen screen = awaitScreen(context);
-		require(!screen.online() && !screen.view().unlocked(), "the processor is offline and locked while the pump is not repaired");
 		ClientWait.until(context, "the terminal screen finished typing", client -> screen.typewriter().done(), client -> "typewriter text '" + screen.typewriter().text() + "'");
-		require(screen.typewriter().text().contains("FIRST"), "the locked text names what to repair first, got '" + screen.typewriter().text() + "'");
+		require(screen.typewriter().text().contains("OFFLINE") && screen.typewriter().text().contains("FIRST"),
+				"the processor is offline and locked while the pump is not repaired, the locked text names what to repair first, got '" + screen.typewriter().text() + "'");
 		require(buttons(context, screen).stream().filter(button -> button.active).count() == 1, "only CLOSE is live on a locked terminal");
 		context.setScreen(() -> null);
 	}
@@ -122,8 +121,12 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
 		TerminalScreen screen = awaitScreen(context);
 		String firstLabel = "INSERT " + partLabel(TerminalTypes.FUEL_PUMP, 0);
 		context.clickScreenButton(firstLabel);
-		ClientWait.until(context, "the first part inserted", client -> screen.view().parts().getFirst().inserted());
-		require(!screen.online(), "one part of two does not repair the pump");
+		String insertedLabel = "[X] " + partLabel(TerminalTypes.FUEL_PUMP, 0);
+		ClientWait.until(context, "the first part inserted", client -> buttonsOf(screen).stream().anyMatch(button -> button.getMessage().getString().equals(insertedLabel)),
+				client -> "buttons " + buttonsOf(screen).stream().map(button -> button.getMessage().getString()).toList());
+		// A repaired terminal's view is not accepted by the offline screen (TerminalScreen.accepts), so the screen is replaced; this one stays.
+		require(context.computeOnClient(client -> client.gui.screen() == screen) && screen.typewriter().text().contains("OFFLINE"),
+				"one part of two does not repair the pump, the offline screen stays");
 		require(buttons(context, screen).stream().noneMatch(button -> button.getMessage().getString().equals(firstLabel)),
 				"the inserted part's button now reads inserted");
 
@@ -146,7 +149,6 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
 		request(context, scene.pump());
 		ClientWait.screen(context, FuelPumpScreen.class);
 		FuelPumpScreen screen = context.computeOnClient(client -> (FuelPumpScreen) client.gui.screen());
-		require(screen.view().repaired(), "a repaired terminal opens online");
 		ClientWait.until(context, "the fuel pump screen finished typing", client -> screen.typewriter().done(), client -> "typewriter text '" + screen.typewriter().text() + "'");
 		require(screen.typewriter().text().contains("ONLINE"), "the online text says so, got '" + screen.typewriter().text() + "'");
 		context.waitTicks(5);
@@ -154,7 +156,8 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
 
 		request(context, scene.processor());
 		TerminalScreen processor = awaitScreen(context);
-		require(!processor.online() && processor.view().unlocked(), "with the pump repaired the processor's parts can go in");
+		ClientWait.until(context, "the processor screen finished typing", client -> processor.typewriter().done(), client -> "typewriter text '" + processor.typewriter().text() + "'");
+		require(processor.typewriter().text().contains("INSERT EVERY PART"), "with the pump repaired the processor's parts can go in, got '" + processor.typewriter().text() + "'");
 		context.setScreen(() -> null);
 	}
 
@@ -227,7 +230,10 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
 	}
 
 	private static List<CrtButton> buttons(ClientGameTestContext context, TerminalScreen screen) {
-		return context.computeOnClient(client -> screen.children().stream()
-				.filter(CrtButton.class::isInstance).map(CrtButton.class::cast).toList());
+		return context.computeOnClient(client -> buttonsOf(screen));
+	}
+
+	private static List<CrtButton> buttonsOf(TerminalScreen screen) {
+		return screen.children().stream().filter(CrtButton.class::isInstance).map(CrtButton.class::cast).toList();
 	}
 }

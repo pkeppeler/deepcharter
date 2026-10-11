@@ -47,6 +47,8 @@ public class TransmissionsClientTest implements FabricClientGameTest {
 	private static final double Z = 2400.5;
 	/** A fuse on client ticks for a wait that has no other limit. About 3 minutes at 20 ticks a second. */
 	private static final int CLIENT_TICK_FUSE = 3600;
+	/** Client ticks to wait for a queued transmission to start, if it was wrongly queued. */
+	private static final int DROP_TICKS = 10;
 	/** Player count once the client has dropped: the mock stays online. */
 	private static final int MOCK_ONLY = 1;
 
@@ -90,8 +92,9 @@ public class TransmissionsClientTest implements FabricClientGameTest {
 			ClientWait.until(context, "transmission t05 on the overlay", client -> TransmissionOverlay.transmission().map(Transmission::id).equals(Optional.of(id("t05"))), client -> seen());
 			String body = context.computeOnClient(client -> TransmissionOverlay.bodyFull());
 			require(!body.contains("[CHARTER]") && !body.contains("[DIRECTOR]") && body.contains(CREW_NAME) && body.contains(player), "The charter and Director fields should be filled with '" + CREW_NAME + "' and '" + player + "', the text is: " + body);
-			require(context.computeOnClient(client -> TransmissionOverlay.headerFull()).equals("> LIVE FROM THE EMPLOYER"), "t05 is live from the employer, the header is: " + context.computeOnClient(client -> TransmissionOverlay.headerFull()));
 			ClientWait.until(context, "the transmission typed out", client -> TransmissionOverlay.typed(), client -> seen());
+			String header = context.computeOnClient(client -> TransmissionOverlay.headerShown());
+			require(header.equals("> LIVE FROM THE EMPLOYER"), "t05 is live from the employer, the header is: " + header);
 			require(context.computeOnClient(client -> TransmissionOverlay.bodyShown().equals(TransmissionOverlay.bodyFull())), "A typed transmission shows its whole text");
 			require(greenPixels(context.takeScreenshot("transmission-overlay")) >= 50, "The overlay should draw its text on screen");
 
@@ -110,7 +113,9 @@ public class TransmissionsClientTest implements FabricClientGameTest {
 
 			// A transmission the data file does not list must be dropped, not thrown from the packet handler, which would disconnect the player.
 			context.runOnClient(client -> TransmissionOverlay.enqueue(new TransmissionPayload(id("t99"), CREW_NAME, player)));
-			require(!context.computeOnClient(client -> TransmissionOverlay.waiting() != 0 || TransmissionOverlay.active()), "An unknown transmission should be dropped");
+			require(context.computeOnClient(client -> client.gui.screen() == null), "no screen is open, so the overlay ticks and would start a queued transmission");
+			context.waitTicks(DROP_TICKS); // tick-wait: the overlay starts a queued transmission on a client tick, so a dropped one must stay off the screen for a few
+			require(!context.computeOnClient(client -> TransmissionOverlay.active()), "An unknown transmission should be dropped");
 		}
 	}
 
@@ -132,13 +137,12 @@ public class TransmissionsClientTest implements FabricClientGameTest {
 				require(Charters.apply(server, real, charter).isEmpty() && Charters.approve(server, mock, real).isEmpty(), "applying and approving should succeed");
 			});
 
-			// Two at once: the first types out, the second waits for it.
+			// Two at once: the first types out, the second waits for it and takes the screen when the first is done.
 			two.server().runOnServer(server -> {
 				Transmissions.fire(server, charter, id("t01"));
 				Transmissions.fire(server, charter, id("t06"));
 			});
 			ClientWait.until(context, "transmission t01 on the overlay", client -> TransmissionOverlay.transmission().map(Transmission::id).equals(Optional.of(id("t01"))), client -> seen());
-			require(context.computeOnClient(client -> TransmissionOverlay.waiting()) == 1, "The second transmission should wait behind the first");
 			String body = context.computeOnClient(client -> TransmissionOverlay.bodyFull());
 			require(body.contains(TWO_PLAYER_NAME) && body.contains(MOCK_NAME) && !body.contains("[CHARTER]") && !body.contains("[DIRECTOR]"), "The Director is " + MOCK_NAME + " and the charter " + TWO_PLAYER_NAME + ", the text is: " + body);
 			ClientWait.until(context, "the transmission typed out", client -> TransmissionOverlay.typed(), client -> seen());

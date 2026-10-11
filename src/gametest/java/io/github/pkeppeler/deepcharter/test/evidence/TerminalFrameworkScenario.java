@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreen;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 
 /**
  * Evidence scenario "m2-terminal-framework" for #59: a charter opens the offline fuel pump terminal, puts its two parts in one
@@ -63,7 +64,7 @@ public class TerminalFrameworkScenario extends EvidenceScenario {
 				// The repaired pump opens its own screen (#69).
 				ClientWait.until(context, "the fuel pump screen, or the terminal with " + inserted + " parts inserted",
 						client -> client.gui.screen() instanceof FuelPumpScreen || client.gui.screen() instanceof TerminalScreen open
-						&& open.view().parts().stream().filter(status -> status.inserted()).count() == inserted);
+						&& ClientChecks.buttons(open).stream().filter(button -> button.getMessage().getString().startsWith("[X] ")).count() == inserted);
 				hold(context);
 			}
 

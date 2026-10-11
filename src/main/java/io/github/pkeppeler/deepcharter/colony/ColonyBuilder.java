@@ -79,6 +79,8 @@ public final class ColonyBuilder {
 		long began = System.nanoTime();
 		ColonySite.Placed started = site.get().started().orElseGet(() -> begin(server, overworld, site.get()));
 		ColonyBuilder builder = new ColonyBuilder(overworld, started.center());
+		// Every attempt starts a build: the displays that an earlier one left in chunks that are not loaded discard themselves when they load.
+		ColonyDisplays.readable(server).ifPresent(displays -> displays.beginBuild(started.center()));
 		builder.build(site.get(), started);
 		site.get().finish();
 		ColonySite.Placed placed = site.get().placed().orElseThrow();
@@ -366,6 +368,7 @@ public final class ColonyBuilder {
 		int top = Math.min(ground + ColonyTuning.DEFAULT.clearHeight(), level.getMaxY());
 		int bottom = Math.max(ground - ColonyTuning.DEFAULT.fillDepth(), level.getMinY());
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+		// entity-query: clears the displays that are loaded at once; the rest are of an earlier build and discard themselves on load (ColonyDisplays)
 		level.getEntitiesOfClass(Display.BlockDisplay.class, new AABB(minX, ground, minZ, maxX + 1, top + 1, maxZ + 1)).forEach(Entity::discard);
 		for (int x = minX; x <= maxX; x++) {
 			for (int z = minZ; z <= maxZ; z++) {

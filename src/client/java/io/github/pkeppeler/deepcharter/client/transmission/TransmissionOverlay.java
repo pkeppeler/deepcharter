@@ -124,11 +124,6 @@ public final class TransmissionOverlay {
 		return current != null;
 	}
 
-	/** How many transmissions wait behind the one on screen. */
-	public static int waiting() {
-		return PENDING.size();
-	}
-
 	/** The transmission on screen, if any. */
 	public static Optional<Transmission> transmission() {
 		return Optional.ofNullable(current).map(Current::transmission);
@@ -137,10 +132,6 @@ public final class TransmissionOverlay {
 	/** The header typed so far, or empty when nothing is on screen. */
 	public static String headerShown() {
 		return current == null ? "" : current.header().visible();
-	}
-
-	public static String headerFull() {
-		return current == null ? "" : current.header().text();
 	}
 
 	/** The text typed so far, or empty when nothing is on screen. */

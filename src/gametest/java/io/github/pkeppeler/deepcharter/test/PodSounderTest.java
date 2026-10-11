@@ -30,7 +30,6 @@ import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.GasHazard;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
-import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
@@ -43,6 +42,7 @@ import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
@@ -510,7 +510,7 @@ public class PodSounderTest {
 		BlockPos pocket = new BlockPos(x, FLOOR - 1, Z);
 		pocket(level, x, FLOOR - 1, Z);
 		List<BlockPos> ores = List.of(new BlockPos(x - 1, FLOOR - 1, Z - 1), new BlockPos(x, FLOOR - 1, Z - 1), new BlockPos(x - 1, FLOOR - 1, Z));
-		ores.forEach(ore -> level.setBlock(ore, OreRegistry.block(OreType.IRONIUM).defaultBlockState(), 3));
+		ores.forEach(ore -> level.setBlock(ore, OreBlocks.of(OreType.IRONIUM).defaultBlockState(), 3));
 		MockPlayer pilot = owner(helper);
 		pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
 		PodEntity[] pod = {null};
@@ -608,7 +608,7 @@ public class PodSounderTest {
 			if (ventedAt[0] == 0) {
 				return false;
 			}
-			boolean bored = ores.stream().noneMatch(ore -> level.getBlockState(ore).is(OreRegistry.block(OreType.IRONIUM)));
+			boolean bored = ores.stream().noneMatch(ore -> level.getBlockState(ore).is(OreBlocks.of(OreType.IRONIUM)));
 			int allowed = Math.max(0, needed[0] - ventedAt[0]) + 4;
 			if (bored) {
 				if (allowed >= 56) {

@@ -20,6 +20,7 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.OreCargoSlots;
 import io.github.pkeppeler.deepcharter.test.support.PodReadout;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -81,11 +82,11 @@ public class PodComponentsClientTest implements FabricClientGameTest {
 			});
 			ClientWait.screen(context, OreCargoScreen.class);
 			ClientWait.until(context, "the cargo menu with its " + LOAD.length + " ore",
-					client -> client.player.containerMenu instanceof OreCargoMenu menu && menu.shownOre().size() == LOAD.length,
-					client -> client.player.containerMenu instanceof OreCargoMenu menu ? menu.shownOre().size() + " ore" : "no cargo menu");
+					client -> client.player.containerMenu instanceof OreCargoMenu menu && OreCargoSlots.shown(menu).size() == LOAD.length,
+					client -> client.player.containerMenu instanceof OreCargoMenu menu ? OreCargoSlots.shown(menu).size() + " ore" : "no cargo menu");
 			int slots = context.computeOnClient(client -> ((OreCargoMenu) client.player.containerMenu).cargoSlots());
 			int menuSlots = context.computeOnClient(client -> client.player.containerMenu.slots.size());
-			int shown = context.computeOnClient(client -> ((OreCargoMenu) client.player.containerMenu).shownOre().size());
+			int shown = context.computeOnClient(client -> OreCargoSlots.shown((OreCargoMenu) client.player.containerMenu).size());
 			require(slots == BAY_SLOTS && menuSlots == BAY_SLOTS && shown == LOAD.length, "The cargo screen should have " + BAY_SLOTS + " slots and show " + LOAD.length + " ore, has "
 						+ slots + " slots (" + menuSlots + " in the menu) and shows " + shown);
 			context.waitTicks(10);

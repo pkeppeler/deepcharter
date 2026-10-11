@@ -17,7 +17,6 @@ import net.minecraft.world.level.block.Blocks;
 
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
-import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodDrill;
@@ -72,7 +71,7 @@ public final class EarlyRunModel {
 			return new Zone(chances, catalystChance);
 		}
 
-		double oreChance() {
+		public double oreChance() {
 			return chances.values().stream().mapToDouble(Double::doubleValue).sum();
 		}
 
@@ -210,10 +209,19 @@ public final class EarlyRunModel {
 		return new Run(slabs, litres, ores, gross, gross - litres * FuelTuning.DEFAULT.pricePerLitre(), catalysts);
 	}
 
+	/**
+	 * The spoil a run brings home in a hopper pod (#470): one for each block of waste rock bored, and no more than the bay holds. (A) Every
+	 * block that is not ore is waste rock (stone and dirt, the tag {@code waste_rock}), and {@link #YIELD} of the bored blocks count, as it does for ore.
+	 */
+	public static int spoil(Chassis chassis, Zone zone, Run run) {
+		double wasteBlocks = run.slabs() * chassis.slabCells() * (1 - zone.oreChance()) * YIELD;
+		return (int) Math.min(PodLiningTuning.DEFAULT.spoilCapacity(), Math.floor(wasteBlocks));
+	}
+
 	/** Seconds to drill one slab at {@code depthBlocks} below the surface. A slab with ore in it takes as long as its hardest block; the zone fill replaces vanilla stone. */
 	private static double slabSeconds(Chassis chassis, Zone zone, PodStats stats, double depthBlocks) {
 		float stoneHardness = Blocks.STONE.defaultDestroyTime();
-		float oreHardness = zone.chances().keySet().stream().map(type -> OreRegistry.block(type).defaultDestroyTime()).max(Float::compare).orElseThrow();
+		float oreHardness = zone.chances().keySet().stream().map(type -> OreBlocks.of(type).defaultDestroyTime()).max(Float::compare).orElseThrow();
 		double slabHasOre = 1 - Math.pow(1 - zone.oreChance(), chassis.slabCells());
 		int depthFeet = (int) (depthBlocks * LayerTuning.DEFAULT.feetPerBlock());
 		double stoneTicks = PodDrill.drillTicks(stats, stoneHardness, depthFeet);

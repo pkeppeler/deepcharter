@@ -14,8 +14,6 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.Vec3;
@@ -37,7 +35,6 @@ public class SalvageGatherScenario extends EvidenceScenario {
 	private static final int MIN_CRATE_DISTANCE = 70;
 	private static final int TICKS_PER_FRAME = 2;
 	private static final int WALK_UP_TICKS = 40;
-	private static final int BREAK_LIMIT_TICKS = 160;
 	private static final int PICK_UP_TICKS = 16;
 	private static final int HOLD_FRAMES = 10;
 	/** How far in front of the block the player starts, and how near the walk ends. */
@@ -117,31 +114,9 @@ public class SalvageGatherScenario extends EvidenceScenario {
 		ctx.getInput().releaseKey(options -> options.keyUp);
 	}
 
-	/**
-	 * Looks at the block and mines it as the attack button does, through the game mode: one start and then one continue on every tick, with a
-	 * swing, so the crack shows. A frame every {@link #TICKS_PER_FRAME}. (The test client's mouse is not grabbed, so a held button does nothing.)
-	 */
+	/** Mines the block bare handed, a frame every {@link #TICKS_PER_FRAME} ticks. */
 	private void breakBlock(BlockPos target) {
-		ctx.getInput().lookAt(target);
-		for (int tick = 0; tick < BREAK_LIMIT_TICKS; tick++) {
-			boolean first = tick == 0;
-			ctx.runOnClient(client -> {
-				if (first) {
-					client.gameMode.startDestroyBlock(target, Direction.SOUTH);
-				} else {
-					client.gameMode.continueDestroyBlock(target, Direction.SOUTH);
-				}
-				client.player.swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, false);
-			});
-			ctx.waitTicks(1); // tick-wait: the mining is one call a tick
-			if (tick % TICKS_PER_FRAME == 1) {
-				frame(ctx);
-			}
-			if (world.getServer().computeOnServer(server -> server.overworld().getBlockState(target).isAir())) {
-				return;
-			}
-		}
-		throw new AssertionError("the block at " + target.toShortString() + " was not broken in " + BREAK_LIMIT_TICKS + " ticks bare handed");
+		mineBlock(ctx, world, target, TICKS_PER_FRAME);
 	}
 
 	/**

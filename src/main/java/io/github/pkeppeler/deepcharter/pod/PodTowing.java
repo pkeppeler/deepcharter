@@ -270,6 +270,7 @@ public final class PodTowing {
 	/** The tower of a towed pod, when it is in the same level and still there. */
 	public static Optional<PodEntity> tower(PodEntity towed) {
 		Optional<UUID> id = towerId(towed);
+		// entity-query: a tower that is not loaded reads as away, the state of a cable whose tower left; the towed pod then only frees itself from rock and keeps its cable
 		if (id.isEmpty() || !(towed.level() instanceof ServerLevel level) || !(level.getEntity(id.get()) instanceof PodEntity tower) || tower.isRemoved()) {
 			return Optional.empty();
 		}
@@ -289,6 +290,7 @@ public final class PodTowing {
 
 	/** The pods on a cable from {@code tower} that are within its reach. */
 	static List<PodEntity> towedBy(PodEntity tower, TowTuning tuning) {
+		// entity-query: a cable's reach round a ticking tower, and keepTowedChunksTicking holds the chunks of the pods it tows entity-ticking
 		return tower.level().getEntitiesOfClass(PodEntity.class, tower.getBoundingBox().inflate(reach(tuning)),
 				other -> other != tower && towerId(other).filter(tower.getUUID()::equals).isPresent());
 	}
@@ -523,6 +525,7 @@ public final class PodTowing {
 		if (!(entity instanceof PodEntity tower)) {
 			return;
 		}
+		// entity-query: the pods on this tower's cable, whose chunks keepTowedChunksTicking holds entity-ticking while the tower flies
 		List<? extends PodEntity> towed = from.getEntities(EntityTypeTest.forClass(PodEntity.class),
 				pod -> towerId(pod).filter(tower.getUUID()::equals).isPresent());
 		for (PodEntity pod : towed) {

@@ -58,7 +58,7 @@ public final class HangarData extends SavedData {
 	 * @param derelict the founding Mole's pod, once placed: the hangar places it once, so a world that has one never gets a second
 	 * @param founder  the charter whose last part repaired the founding Mole
 	 * @param founded  the founding Mole belongs to {@code founder}: it is registered and restored
-	 * @param held     the pods the hangar gave each charter. A pod a charter owns by another road counts when it is loaded.
+	 * @param held     every pod registered to each charter, recorded when it is registered ({@code PodEvents.REGISTERED}) or, for a pod registered earlier, when it first loads
 	 * @param advanced the catalysts of the Company's advance that each charter has used. Absent from data saved before the advance
 	 *                 (it reads as nothing used), so the version stays 1.
 	 */
@@ -144,6 +144,9 @@ public final class HangarData extends SavedData {
 
 	/** Records a pod as the charter's. Recording it twice changes nothing. */
 	void hold(CharterId charter, UUID pod) {
+		if (held(charter).contains(pod)) {
+			return;
+		}
 		change(old -> {
 			List<Held> held = new ArrayList<>(old.held());
 			Set<UUID> pods = new LinkedHashSet<>(held(old, charter));
@@ -176,6 +179,11 @@ public final class HangarData extends SavedData {
 			advanced.add(new Advanced(charter, spent));
 			return new State(old.derelict(), old.founder(), old.founded(), old.held(), advanced);
 		});
+	}
+
+	/** How many pods the charter has: every pod registered to it, recorded when it was registered or first loaded. */
+	public int podCount(CharterId charter) {
+		return held(charter).size();
 	}
 
 	/** The pods recorded as the charter's. */

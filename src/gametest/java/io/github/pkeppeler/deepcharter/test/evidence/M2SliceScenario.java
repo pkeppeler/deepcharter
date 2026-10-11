@@ -92,6 +92,7 @@ import io.github.pkeppeler.deepcharter.test.HandbookChaptersOneToFiveTest;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.M2SliceEndState;
+import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ShippedHandbook;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
@@ -313,10 +314,10 @@ public class M2SliceScenario extends EvidenceScenario {
 					overworld.setBlock(new BlockPos(lowX + dx, -64, lowZ + dz), Blocks.AIR.defaultBlockState(), 3);
 				}
 			}
-			overworld.setBlock(new BlockPos(lowX, -62, lowZ), OreRegistry.block(OreType.IRONIUM).defaultBlockState(), 3);
-			overworld.setBlock(new BlockPos(lowX + 1, -62, lowZ + 1), OreRegistry.block(OreType.BRONZIUM).defaultBlockState(), 3);
-			overworld.setBlock(new BlockPos(lowX + 1, -63, lowZ), OreRegistry.block(OreType.IRONIUM).defaultBlockState(), 3);
-			overworld.setBlock(new BlockPos(lowX, -63, lowZ + 1), OreRegistry.block(OreType.SILVERIUM).defaultBlockState(), 3);
+			overworld.setBlock(new BlockPos(lowX, -62, lowZ), OreBlocks.of(OreType.IRONIUM).defaultBlockState(), 3);
+			overworld.setBlock(new BlockPos(lowX + 1, -62, lowZ + 1), OreBlocks.of(OreType.BRONZIUM).defaultBlockState(), 3);
+			overworld.setBlock(new BlockPos(lowX + 1, -63, lowZ), OreBlocks.of(OreType.IRONIUM).defaultBlockState(), 3);
+			overworld.setBlock(new BlockPos(lowX, -63, lowZ + 1), OreBlocks.of(OreType.SILVERIUM).defaultBlockState(), 3);
 			return null;
 		});
 		Vec3 at = onServer(server -> pod(server, mole).position());
@@ -1216,10 +1217,10 @@ public class M2SliceScenario extends EvidenceScenario {
 			level.setBlock(new BlockPos(x, FLOOR_Y + 3, Z - 4), Blocks.GLOWSTONE.defaultBlockState(), 3);
 		}
 		// Ore under the Mole (it is drilled and collected) and in the walls (the scanner sees it).
-		level.setBlock(new BlockPos(X, FLOOR_Y - 1, Z), OreRegistry.block(OreType.GOLDIUM).defaultBlockState(), 3);
-		level.setBlock(new BlockPos(X + 6, FLOOR_Y + 1, Z + ROOM_RADIUS_Z + 1), OreRegistry.block(OreType.PLATINIUM).defaultBlockState(), 3);
-		level.setBlock(new BlockPos(X + 9, FLOOR_Y, Z - ROOM_RADIUS_Z - 1), OreRegistry.block(OreType.SILVERIUM).defaultBlockState(), 3);
-		level.setBlock(new BlockPos(X + ROOM_EAST + 1, FLOOR_Y + 1, Z), OreRegistry.block(OreType.IRONIUM).defaultBlockState(), 3);
+		level.setBlock(new BlockPos(X, FLOOR_Y - 1, Z), OreBlocks.of(OreType.GOLDIUM).defaultBlockState(), 3);
+		level.setBlock(new BlockPos(X + 6, FLOOR_Y + 1, Z + ROOM_RADIUS_Z + 1), OreBlocks.of(OreType.PLATINIUM).defaultBlockState(), 3);
+		level.setBlock(new BlockPos(X + 9, FLOOR_Y, Z - ROOM_RADIUS_Z - 1), OreBlocks.of(OreType.SILVERIUM).defaultBlockState(), 3);
+		level.setBlock(new BlockPos(X + ROOM_EAST + 1, FLOOR_Y + 1, Z), OreBlocks.of(OreType.IRONIUM).defaultBlockState(), 3);
 	}
 
 	private static void box(ServerLevel level, int yFrom, int yTo, Block block) {

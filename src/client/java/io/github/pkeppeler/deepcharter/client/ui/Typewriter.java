@@ -51,11 +51,6 @@ public final class Typewriter {
 		}
 	}
 
-	/** Reveals the rest of the text now. No letter hook fires for the skipped letters: a burst of sound would be noise. */
-	public void skip() {
-		revealed = text.length();
-	}
-
 	public int revealed() {
 		return revealed;
 	}
