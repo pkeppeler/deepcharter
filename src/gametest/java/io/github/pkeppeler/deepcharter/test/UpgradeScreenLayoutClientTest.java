@@ -47,7 +47,7 @@ public class UpgradeScreenLayoutClientTest implements FabricClientGameTest {
 			for (ComponentTrack track : ComponentTrack.values()) {
 				String name = context.computeOnClient(client -> Component.translatable("deepcharter.upgrade.track." + track.id()).getString());
 				context.clickScreenButton(name + "  T0");
-				ClientWait.until(context, "the tiers of the track " + track.id(), client -> UpgradeShown.listsTiersOf(screen, track));
+				ClientWait.until(context, "the track " + track.id(), client -> UpgradeShown.isChosen(screen, track));
 				context.runOnClient(client -> checkLayout(screen, track));
 			}
 			context.setScreen(() -> null);

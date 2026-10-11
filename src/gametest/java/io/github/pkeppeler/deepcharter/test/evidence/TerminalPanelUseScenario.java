@@ -35,7 +35,7 @@ public class TerminalPanelUseScenario extends EvidenceScenario {
 			UpgradeScreen upgrade = (UpgradeScreen) TerminalPanelScreens.open(context, "upgrade", scene, null);
 			hold(context);
 			context.clickScreenButton("HULL  T0");
-			ClientWait.until(context, "the hull parts listed", client -> UpgradeShown.listsTiersOf(upgrade, ComponentTrack.HULL));
+			ClientWait.until(context, "the hull track lit", client -> UpgradeShown.isChosen(upgrade, ComponentTrack.HULL));
 			hold(context);
 			screenshot(context, "upgrade-hull");
 			context.clickScreenButton("BUY TIER 1  $200");

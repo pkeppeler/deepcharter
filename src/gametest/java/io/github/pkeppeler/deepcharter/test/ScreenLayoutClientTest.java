@@ -465,7 +465,7 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
 						Component.translatable("deepcharter.upgrade.track." + track.id()).getString(), track.maxTier()).getString());
 				UpgradeScreen upgrade = (UpgradeScreen) screen;
 				context.clickScreenButton(label);
-				ClientWait.until(context, "the tiers of the track " + track.id(), client -> UpgradeShown.listsTiersOf(upgrade, track));
+				ClientWait.until(context, "the track " + track.id(), client -> UpgradeShown.isChosen(upgrade, track));
 				return List.of();
 			}));
 		}

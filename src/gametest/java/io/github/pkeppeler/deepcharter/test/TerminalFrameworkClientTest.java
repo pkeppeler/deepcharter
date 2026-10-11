@@ -124,7 +124,9 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
 		String insertedLabel = "[X] " + partLabel(TerminalTypes.FUEL_PUMP, 0);
 		ClientWait.until(context, "the first part inserted", client -> buttonsOf(screen).stream().anyMatch(button -> button.getMessage().getString().equals(insertedLabel)),
 				client -> "buttons " + buttonsOf(screen).stream().map(button -> button.getMessage().getString()).toList());
-		require(context.computeOnClient(client -> client.gui.screen() == screen), "one part of two does not repair the pump, the offline screen stays");
+		// A repaired terminal's view is not accepted by the offline screen (TerminalScreen.accepts), so the screen is replaced; this one stays.
+		require(context.computeOnClient(client -> client.gui.screen() == screen) && screen.typewriter().text().contains("OFFLINE"),
+				"one part of two does not repair the pump, the offline screen stays");
 		require(buttons(context, screen).stream().noneMatch(button -> button.getMessage().getString().equals(firstLabel)),
 				"the inserted part's button now reads inserted");
 

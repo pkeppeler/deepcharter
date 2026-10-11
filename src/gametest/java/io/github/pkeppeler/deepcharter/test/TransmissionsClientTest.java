@@ -47,6 +47,7 @@ public class TransmissionsClientTest implements FabricClientGameTest {
 	private static final double Z = 2400.5;
 	/** A fuse on client ticks for a wait that has no other limit. About 3 minutes at 20 ticks a second. */
 	private static final int CLIENT_TICK_FUSE = 3600;
+	/** Client ticks to wait for a queued transmission to start, if it was wrongly queued. */
 	private static final int DROP_TICKS = 10;
 	/** Player count once the client has dropped: the mock stays online. */
 	private static final int MOCK_ONLY = 1;
@@ -112,6 +113,7 @@ public class TransmissionsClientTest implements FabricClientGameTest {
 
 			// A transmission the data file does not list must be dropped, not thrown from the packet handler, which would disconnect the player.
 			context.runOnClient(client -> TransmissionOverlay.enqueue(new TransmissionPayload(id("t99"), CREW_NAME, player)));
+			require(context.computeOnClient(client -> client.gui.screen() == null), "no screen is open, so the overlay ticks and would start a queued transmission");
 			context.waitTicks(DROP_TICKS); // tick-wait: the overlay starts a queued transmission on a client tick, so a dropped one must stay off the screen for a few
 			require(!context.computeOnClient(client -> TransmissionOverlay.active()), "An unknown transmission should be dropped");
 		}
