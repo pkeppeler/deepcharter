@@ -87,7 +87,7 @@ public final class PodDrill {
 			return;
 		}
 		pod.setDrillProgress(null);
-		slab.bore(pod, stats);
+		slab.bore(pod, stats, wanted == Direction.DOWN ? 1f : pod.chassis().sidewaysBlastShare());
 	}
 
 	private static void stop(PodEntity pod) {
@@ -196,7 +196,7 @@ public final class PodDrill {
 		}
 
 		/** A full bay, or cargo that cannot be read, loses the ore: a drill that refused would trap the pod in its own tunnel (SPEC: only ore is kept). */
-		void bore(PodEntity pod, PodStats stats) {
+		void bore(PodEntity pod, PodStats stats, float blastShare) {
 			boolean crust = false;
 			for (BlockPos pos : cells) {
 				BlockState state = state(pos);
@@ -219,7 +219,7 @@ public final class PodDrill {
 					}
 					level.destroyBlock(pos, false);
 					if (state.is(HazardBlocks.GAS_POCKET)) {
-						GasHazard.vent(level, pos, pod);
+						GasHazard.vent(level, pos, pod, blastShare);
 					}
 				}
 			}

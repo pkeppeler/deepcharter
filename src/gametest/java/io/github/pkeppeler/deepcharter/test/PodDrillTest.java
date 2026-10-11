@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
@@ -22,9 +23,12 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.ore.GasHazard;
+import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
+import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodDrill;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -35,6 +39,7 @@ import io.github.pkeppeler.deepcharter.pod.TowTuning;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.OddPods;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 
 /**
@@ -402,6 +407,73 @@ public class PodDrillTest {
 			}
 			rig.pilot.releaseInput();
 			rig.pod.discard();
+		});
+	}
+
+	/** The share of a gas blast a drill's own pod takes in a sideways bore (#424): the slab's cells over the face's, 1 at most. */
+	@GameTest
+	public void aSidewaysBlastIsSharedOverTheFaceOfThePodAndNeverRaisedAboveTheWholeBlast(GameTestHelper helper) {
+		float[] got = {Chassis.MOLE.sidewaysBlastShare(), Chassis.PROSPECTOR.sidewaysBlastShare(), OddPods.TALL.sidewaysBlastShare(), OddPods.CHASSIS.sidewaysBlastShare()};
+		float[] want = {2f / 3f, 1f, 0.5f, 1f};
+		for (int i = 0; i < got.length; i++) {
+			if (Math.abs(got[i] - want[i]) > 1e-6f) {
+				throw failure(helper, "the shares of a 2 x 3 Mole, a 3 x 3 Prospector, a 2 x 4 and a 4 x 3 pod should be %s, got %s", Arrays.toString(want), Arrays.toString(got));
+			}
+		}
+		helper.succeed();
+	}
+
+	/** A pod with no sounder bores a pocket as soon as the slab is done; {@code sideways} says whether the pocket is in the wall or under the pod. The check gets the hull the blast cost and the whole blast. */
+	private void boreAPocket(GameTestHelper helper, int x, boolean sideways, BiConsumer<Float, Float> check) {
+		ServerLevel level = layer(helper, 1);
+		room(level, x, FLOOR, 4);
+		BlockPos pocket;
+		Rig rig;
+		if (sideways) {
+			wall(level, x + 2, x + 3, Z, FLOOR, FLOOR + 10);
+			// The face the pod bores first is x+2, z in {Z-1, Z}, y from the floor up: the pocket is in its middle row.
+			pocket = new BlockPos(x + 2, FLOOR + 1, Z);
+			level.setBlock(pocket, HazardBlocks.GAS_POCKET.defaultBlockState(), 2);
+			rig = Rig.await(helper, level, new Vec3(x + 0.3, FLOOR, Z + 0.3), EAST, "drill-gas-side", FORWARD);
+		} else {
+			pocket = new BlockPos(x, FLOOR - 1, Z);
+			level.setBlock(pocket, HazardBlocks.GAS_POCKET.defaultBlockState(), 2);
+			rig = Rig.await(helper, level, new Vec3(x + 0.3, FLOOR, Z + 0.3), 0f, "drill-gas-down", SPRINT);
+		}
+		float[] start = {Float.NaN};
+		helper.onEachTick(() -> {
+			if (!rig.ready()) {
+				return;
+			}
+			if (Float.isNaN(start[0])) {
+				start[0] = rig.pod.hull();
+			}
+			if (!level.getBlockState(pocket).is(HazardBlocks.GAS_POCKET)) {
+				float whole = GasHazard.damage(Depth.feet(Depth.of(level, pocket.getY())), PodComponents.radiatorRatio(rig.pod));
+				float lost = start[0] - rig.pod.hull();
+				rig.pilot.releaseInput();
+				rig.pod.discard();
+				check.accept(lost, whole);
+				helper.succeed();
+			}
+		});
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void aMolePaysTwoThirdsOfAGasBlastWhenItBoresThePocketSideways(GameTestHelper helper) {
+		boreAPocket(helper, 4088, true, (lost, whole) -> {
+			if (whole < 3f || Math.abs(lost - whole * Chassis.MOLE.sidewaysBlastShare()) > 1e-3f) {
+				throw failure(helper, "a sideways bore of a pocket should cost 2/3 of the blast of %s, it cost %s", whole, lost);
+			}
+		});
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void aMolePaysTheWholeGasBlastWhenItBoresThePocketDownward(GameTestHelper helper) {
+		boreAPocket(helper, 4152, false, (lost, whole) -> {
+			if (whole < 3f || Math.abs(lost - whole) > 1e-3f) {
+				throw failure(helper, "a downward bore of a pocket should cost the whole blast of %s, it cost %s", whole, lost);
+			}
 		});
 	}
 

@@ -48,14 +48,16 @@ public final class GasHazard {
 
 	/** A gas pocket at {@code pos} has just been mined. */
 	public static void vent(ServerLevel level, BlockPos pos) {
-		vent(level, pos, null);
+		vent(level, pos, null, 1f);
 	}
 
 	/**
 	 * A gas pocket at {@code pos} has just been bored by {@code drilling}'s drill. That pod takes the blast as {@link PodSounder#drilledBlast} says
 	 * (less, when its sounder bled the pocket first); every other pod in reach takes the whole of it.
+	 *
+	 * @param drillingShare the share of the blast the drilling pod takes before its sounder bleeds it: below 1 for a pocket opened in a sideways bore (#424)
 	 */
-	public static void vent(ServerLevel level, BlockPos pos, PodEntity drilling) {
+	public static void vent(ServerLevel level, BlockPos pos, PodEntity drilling, float drillingShare) {
 		if (venting) {
 			return;
 		}
@@ -66,7 +68,7 @@ public final class GasHazard {
 			for (PodEntity pod : level.getEntitiesOfClass(PodEntity.class, new AABB(pos).inflate(radius))) {
 				float radiator = PodComponents.radiatorRatio(pod);
 				float blast = damage(depthFeet, radiator);
-				pod.damageHull(pod == drilling ? PodSounder.drilledBlast(pod, blast) : blast);
+				pod.damageHull(pod == drilling ? PodSounder.drilledBlast(pod, blast * drillingShare) : blast);
 			}
 			// A blast at the edge of the loaded chunks clears the rock it can reach without loading one; the rest stays.
 			LoadedBlocks blocks = new LoadedBlocks(level);
