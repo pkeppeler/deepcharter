@@ -490,8 +490,11 @@ def lava_sources(c: Cave) -> list[tuple[int, int, int]]:
 
 # The north wall of the hall is z = CZ - 6: the first panel is the layer's rock, the second vanilla stone and the third vanilla deepslate.
 HALL_NORTH_WALL = CZ - 6
-# A light block in the middle of each panel's span, the same height and distance from every panel, so the three are lit alike.
+# Light blocks along both sides of each panel's span, the same height and distance from every panel, so the three are lit alike and the wall
+# is lit about evenly: the stills are of the texture, and a bright spot round a lamp would be the first thing in them.
 HALL_LIGHT_LEVEL = 15
+HALL_LIGHT_OFFSETS = (-2, 0, 2)
+CAVE_LIGHT_LEVEL = 13
 
 
 def hall_dressing(p: Piece) -> None:
@@ -500,7 +503,18 @@ def hall_dressing(p: Piece) -> None:
             for y in range(BASE, BASE + HALL_HEIGHT):
                 p.set(x, y, HALL_NORTH_WALL, (vanilla, {}))
     for x0, x1 in HALL_PANELS:
-        p.set((x0 + x1) // 2, BASE + 5, CZ, light(HALL_LIGHT_LEVEL))
+        for offset in HALL_LIGHT_OFFSETS:
+            for z in (CZ - 3, CZ + 3):
+                p.set((x0 + x1) // 2 + offset, BASE + 4, z, light(HALL_LIGHT_LEVEL))
+
+
+def cave_dressing(c: Cave, p: Piece) -> None:
+    """Light blocks in the open middle of the cave, as the lamps of a working that reaches into it would be: a cave with no light is a black frame."""
+    for x in (CAVE_X0 + 8, CAVE_X0 + 14, CAVE_X0 + 20):
+        for z in (CZ - 2, CZ + 2):
+            if not c.air(x, BASE + 4, z):
+                raise ValueError(f"layer {c.layer}: no room for a light of the cave at {x},{BASE + 4},{z}")
+            p.set(x, BASE + 4, z, light(CAVE_LIGHT_LEVEL))
 
 
 def build(layer: int) -> Scene:
@@ -518,6 +532,7 @@ def build(layer: int) -> Scene:
     d = Dressing(c, p, 0.0 if layer == 1 else 0.3)
     DRESSERS[c.formation](d)
     hall_dressing(p)
+    cave_dressing(c, p)
     # The breach chamber has a hanging work light of its own, so the crust is lit as the rest of the gallery is.
     p.set(CRUST_X, BASE + 3, CZ, light(15))
     lava = lava_sources(c)

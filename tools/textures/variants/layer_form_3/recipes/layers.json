@@ -6,27 +6,27 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "basalt3.0",
-            "b": "basalt3.1",
-            "c": "basalt3.2"
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3"
           },
           "rows": [
-            "cccbbbbbbbbbcccc",
-            "cccbbbbbbbbbbbcc",
-            "ccccbbbbbbbbbbbc",
-            "ccccccbbbbbaabbc",
+            "ccbbbbbbbbbbbbcc",
+            "ccbbbbbbbbbbbbcc",
+            "cccbbbbbbbbbbbbc",
+            "cccccbbbbbbaaabb",
+            "ccccccbbbbaaaabb",
+            "ccccccbbbbbaaabb",
             "ccccccbbbbbaaabb",
             "cccccccbbbbaaabb",
-            "cccccccbbbbaaabc",
-            "cccccccccbbaabbc",
-            "cccccccccbbbabbc",
-            "bcccccccbbbaaabb",
-            "bbbbbbbbbbbaaaab",
-            "aaabbbbbaaaaaaaa",
+            "cccccccccbbaaabb",
+            "bbbcccbbbbbaaabb",
+            "bbbbbbbbbbaaaaab",
+            "aaabbbbaaaaaaaaa",
             "aaaaaaaaaaaaaaaa",
-            "aaabbbaaaaaaaaaa",
-            "bbbbbbbbbbbbbbbb",
-            "ccbbbbbbbbbbbbbc"
+            "aaaabaaaaaaaaaaa",
+            "bbbbbbbbaabbbbbb",
+            "cbbbbbbbbbbbbbbb"
           ]
         }
       ]

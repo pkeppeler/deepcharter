@@ -49,8 +49,11 @@ CORE = Box((3, 0.1, 3), (13, 15.9, 13), {"*": "#core"})
 # ---------------------------------------------------------------------------------------------------------------- A: strata
 
 # The most a bed stands back from its block's face, in pixels. Faces recessed deeper than this, or turned off the axes, are not lit (a face
-# inside a solid block takes the block's own light, which is 0) and read as holes, so the shadow under a lip stays a shadow.
-INSET = 1.3
+# inside a solid block takes the block's own light, which is 0) and read as holes, so the shadow under a lip stays a shadow. Round 1 had 1.3:
+# the blockstate turns a block about the vertical, so a recess meant as a depth can land on a side, and where two blocks recess toward each
+# other the slot between them is a dark line round every block, the outlined square of the user's round 1 feedback. At 0.6 the line is a
+# pixel at most.
+INSET = 0.6
 
 
 def beds(variant: int) -> Model:
@@ -78,6 +81,10 @@ PLATE_DEPTHS = (
 )
 
 
+# How much of PLATE_DEPTHS is used: round 1 used all of it, up to 1.5 pixels, and the slots between neighbouring blocks outlined each one.
+PLATE_SCALE = 0.4
+
+
 def plates(variant: int) -> Model:
     """Eight plates, one to an octant, each set back by its own depth along each outward axis."""
     boxes = [CORE]
@@ -85,7 +92,7 @@ def plates(variant: int) -> Model:
     for i in (0, 1):
         for j in (0, 1):
             for k in (0, 1):
-                d = next(depths)
+                d = tuple(PLATE_SCALE * depth for depth in next(depths))
                 lo = tuple(8 * q + (d[a] if q == 0 else 0) for a, q in enumerate((i, j, k)))
                 hi = tuple(8 + 8 * q - (d[a] if q == 1 else 0) for a, q in enumerate((i, j, k)))
                 boxes.append(Box(lo, hi, FACES))
@@ -94,7 +101,9 @@ def plates(variant: int) -> Model:
 
 # ---------------------------------------------------------------------------------------------------------------- C: columnar
 
-HEX_R = 8.0
+# The circumradius and the offset of each of the three columns, so that the open joints between neighbours are not one width.
+HEX_R = (7.4, 7.8, 7.6)
+COLUMN_SHIFT = (0.0, 0.7, -0.6)
 JOINTS = (None, 9.0, 6.5)
 HEX_ROTATIONS = (0.0, 60.0, 120.0)
 
@@ -120,14 +129,15 @@ def prism(variant: int, collar: bool = False) -> Model:
     block's own, solid, cell, which is none), so every column shows one lit face to the camera and dark flanks. The four turns of the
     blockstate show the lit faces to north and south, or to east and west."""
     joint = JOINTS[variant]
+    r, shift = HEX_R[variant], COLUMN_SHIFT[variant]
     boxes = [Box((4, 0.1, 4), (12, 15.9, 12), {"*": "#core"})]
     if joint:
-        boxes += hex_boxes(0, joint, 0.0, 0.0, HEX_R, FACES)
-        boxes += hex_boxes(joint, 16, 0.0, 0.4, HEX_R, FACES)
+        boxes += hex_boxes(0, joint, 0.0, shift, r, FACES)
+        boxes += hex_boxes(joint, 16, 0.0, shift + 0.4, r, FACES)
     else:
-        boxes += hex_boxes(0, 16, 0.0, 0.0, HEX_R, FACES)
+        boxes += hex_boxes(0, 16, 0.0, shift, r, FACES)
     if collar:
-        boxes += hex_boxes(6, 9, 0.0, 0.0, HEX_R + 0.6, {"*": "#side", "up": "#end", "down": "#end"})
+        boxes += hex_boxes(6, 9, 0.0, shift, r + 0.6, {"*": "#side", "up": "#end", "down": "#end"})
     return Model({}, boxes)
 
 

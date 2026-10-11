@@ -10,15 +10,15 @@ does the same, as ratios of colour steps, a colour step being the mean absolute 
         differently from the middle: an outline, a bevel, an edge darkened or lit. A rim of equal pixels has a wrap step of 0, so
         the wrap number alone would let it through.
 
-Vanilla's own textures, measured: stone 1.14 and 1.07, deepslate 0.87 and 0.81, tuff 1.04 and 0.96 (wrap, rim).
+Vanilla's own textures, measured as (wrap, rim): stone 1.14 and 0.92, deepslate 0.87 and 0.71, tuff 1.04 and 1.02.
 """
 from dataclasses import dataclass
 
 # How far above 1 a texture's wrap or rim ratio may be: the noise of a tile of 480 neighbouring pairs, of which 32 cross the seams and
 # 60 the rim. Vanilla stone, deepslate and tuff are all below 1.15.
 MARGIN = 0.2
-# The mean colour step inside a rock texture, vanilla stone 9.7, deepslate 16.2, tuff 17.5, cobblestone 28.7: a rock texture stays between
-# the first two limits and a rubble or crust texture between the first and the third.
+# Bounds on the mean colour step inside a texture, set by vanilla's: stone 9.7, deepslate 16.2, tuff 17.5, cobblestone 28.7. A rock texture
+# stays within MIN_INSIDE to MAX_INSIDE; rubble and crust, which are busier in vanilla too, up to MAX_RUBBLE_INSIDE.
 MIN_INSIDE = 6.0
 MAX_INSIDE = 22.0
 MAX_RUBBLE_INSIDE = 30.0

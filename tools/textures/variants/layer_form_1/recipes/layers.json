@@ -6,27 +6,27 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.0",
-            "b": "shale1.1",
-            "c": "shale1.2"
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3"
           },
           "rows": [
-            "cccbbbbbbbbbcccc",
-            "cccbbbbbbbbbbbcc",
-            "ccccbbbbbbbbbbbc",
-            "ccccccbbbbbaabbc",
+            "ccbbbbbbbbbbbbcc",
+            "ccbbbbbbbbbbbbcc",
+            "cccbbbbbbbbbbbbc",
+            "cccccbbbbbbaaabb",
+            "ccccccbbbbaaaabb",
+            "ccccccbbbbbaaabb",
             "ccccccbbbbbaaabb",
             "cccccccbbbbaaabb",
-            "cccccccbbbbaaabc",
-            "cccccccccbbaabbc",
-            "cccccccccbbbabbc",
-            "bcccccccbbbaaabb",
-            "bbbbbbbbbbbaaaab",
-            "aaabbbbbaaaaaaaa",
+            "cccccccccbbaaabb",
+            "bbbcccbbbbbaaabb",
+            "bbbbbbbbbbaaaaab",
+            "aaabbbbaaaaaaaaa",
             "aaaaaaaaaaaaaaaa",
-            "aaabbbaaaaaaaaaa",
-            "bbbbbbbbbbbbbbbb",
-            "ccbbbbbbbbbbbbbc"
+            "aaaabaaaaaaaaaaa",
+            "bbbbbbbbaabbbbbb",
+            "cbbbbbbbbbbbbbbb"
           ]
         }
       ]

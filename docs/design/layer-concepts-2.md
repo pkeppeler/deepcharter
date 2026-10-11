@@ -33,7 +33,7 @@ Vanilla stone, deepslate and tuff tile because they are low-contrast clustered n
 - **wrap**: the step across the wrap seams (column 15 to 0, row 15 to 0) over the step inside the texture. Above 1 the texture jumps where it meets its copy.
 - **rim**: the step between the outer ring of pixels and the ring inside it, over the step inside. Above 1 the edge is drawn differently from the middle: an outline or a bevel. A texture with a dark border has a wrap step of 0, so the wrap number alone would let it through.
 
-Both must stay under 1.2 (vanilla stone, deepslate and tuff measure 0.81 to 1.14). The inside step must be between 6 and 22 for a rock texture (vanilla stone 9.7, deepslate 16.2, tuff 17.5) and at most 30 for rubble and crust (vanilla cobblestone 28.7). `tools/tests/test_layer_concepts.py` runs it on every written texture, and on two red fixtures: an outlined square, which fails the rim number, and beds that do not come back up, which fail the wrap number.
+Both must stay under 1.2 (vanilla stone, deepslate and tuff measure 0.71 to 1.14). The inside step must be between 6 and 22 for a rock texture (vanilla stone 9.7, deepslate 16.2, tuff 17.5) and at most 30 for rubble and crust (vanilla cobblestone 28.7). `tools/tests/test_layer_concepts.py` runs it on every written texture, and on two red fixtures: an outlined square, which fails the rim number, and beds that do not come back up, which fail the wrap number.
 
 ## References
 

@@ -82,8 +82,9 @@ STAND_INS = {1: ("granite", "cobblestone"), 2: ("tuff", "cobbled_deepslate"), 3:
 
 # The colour ramp of each layer's rock: rust-brown shale, grey-green shale, and the cold basalt of the columns.
 SHADES = {1: art.ramp("shale1", 6), 2: art.ramp("shale2", 6), 3: art.ramp("basalt3", 6)}
-# The middle shade of each ramp: layer 2's shale is darker and its steps smaller, so its texture sits one shade higher for the same contrast.
-MID = {1: 2, 2: 3, 3: 2}
+# The middle shade of each ramp. Round 1 sat at 2 and the stills were nearly black; 3 is as light as the lit rock can be and stay a near-black
+# layer. Layer 2's shale is darker and its steps smaller, so its texture sits one shade higher again for the same contrast.
+MID = {1: 3, 2: 4, 3: 3}
 CRUST = art.ramp("crust", 6)
 # The seed of layer 3's crust plates, which the glow of their cracks must match.
 CRUST_SEED = 61

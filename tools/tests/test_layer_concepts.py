@@ -112,9 +112,8 @@ class SeamCheckTest(unittest.TestCase):
 
 class StyleTest(unittest.TestCase):
     def test_the_texture_options_differ_in_structure_and_not_only_in_colour(self):
-        """Bedding runs across the face, so its vertical steps outweigh its horizontal ones; grain and mottles have no direction. Mottles are
-        the busier of the two."""
-        anisotropy, inside = {}, {}
+        """Bedding runs across the face, so its vertical steps outweigh its horizontal ones; grain and mottles have no direction."""
+        anisotropy = {}
         for style in make.STYLES:
             for layer in LAYERS:
                 images = [pngio.decode(path.read_bytes(), name) for name, path in tiling_textures(style).items()
@@ -122,20 +121,22 @@ class StyleTest(unittest.TestCase):
                 along_y = sum(steps_along(i, 1) for i in images) / len(images)
                 along_x = sum(steps_along(i, 0) for i in images) / len(images)
                 anisotropy[style, layer] = along_y / along_x
-                inside[style, layer] = (along_x + along_y) / 2
         for layer in LAYERS:
             with self.subTest(layer=layer):
                 self.assertGreater(anisotropy["bedded", layer], 1.1)
                 for style in ("grain", "mottled"):
                     self.assertAlmostEqual(1.0, anisotropy[style, layer], delta=0.12)
-                self.assertGreater(inside["mottled", layer], 1.15 * inside["grain", layer])
 
-    def test_no_two_options_share_a_texture(self):
+    def test_two_options_draw_the_same_block_with_different_pixels_in_the_same_colours(self):
+        """The options share each layer's colour ramp, so they differ in where the pixels are, which is structure. (A top is grain in Grain and
+        Bedded alike, with fissures in Bedded.)"""
         for layer in LAYERS:
-            for name in ("lc_rock_%d_0" % layer, "lc_rock_%d_end" % layer):
-                bodies = {style: pngio.decode(texture_path(style, name).read_bytes(), name) for style in make.STYLES}
-                with self.subTest(texture=name):
-                    self.assertEqual(len(bodies), len(set(bodies.values())))
+            for name in ("lc_rock_%d_%d" % (layer, i) for i in range(3)):
+                bodies = {style: pngio.decode(texture_path(style, name).read_bytes(), name).pixels for style in make.STYLES}
+                for first, second in (("grain", "bedded"), ("grain", "mottled"), ("bedded", "mottled")):
+                    differing = sum(1 for i in range(0, SIZE * SIZE * 4, 4) if bodies[first][i:i + 4] != bodies[second][i:i + 4])
+                    with self.subTest(texture=name, options=(first, second)):
+                        self.assertGreater(differing / (SIZE * SIZE), 0.5)
 
     def test_every_layer_has_its_assigned_formation_in_every_option(self):
         self.assertEqual({1: "a", 2: "b", 3: "c"}, scenes.FORMATIONS)

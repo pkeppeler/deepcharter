@@ -148,19 +148,21 @@ def ledge(shades: list[str], seed: int, mid: int = 2) -> Grid:
 # ---------------------------------------------------------------------------------------------------------------- mottled
 
 def mottled(shades: list[str], seed: int, mid: int = 2, veins: bool = True) -> Grid:
-    """Large soft mottles, patches a few pixels across that are a shade or two lighter or darker than the rest, and thin lighter veins that
-    follow the contour of a second noise, so a vein is one unbroken line that wraps round the face and runs on across every edge."""
+    """Large soft mottles, patches a few pixels across a shade lighter or darker than the rest, and one or two thin lighter veins, short lines
+    that wander a pixel and end inside the face (2 to 13), as a vein does that does not reach the edge of the stone; none touches an edge, so
+    none draws a line at the edge of a block."""
     g = blank(shades[mid])
     for y in range(SIZE):
         for x in range(SIZE):
-            n = 0.6 * vnoise(seed, x, y, 4, 4) + 0.4 * vnoise(seed + 1, x, y, 2, 2)
-            patch = (1 if n > 0.58 else -1 if n < 0.42 else 0) + (1 if n > 0.68 else -1 if n < 0.32 else 0)
-            shade = mid + patch + grain(seed + 2, x, y, 0.3, 0.7)
-            if veins:
-                v = 0.5 * vnoise(seed + 5, x, y, 8, 8) + 0.5 * vnoise(seed + 6, x, y, 4, 4)
-                if abs(v - 0.5) < 0.025 and hashf(seed, x, y, 7) < 0.85:
-                    shade = mid + 2
-            g[y][x] = clamp(shade, shades)
+            n = 0.7 * vnoise(seed, x, y, 4, 4) + 0.3 * vnoise(seed + 1, x, y, 2, 2)
+            g[y][x] = clamp(mid + (1 if n > 0.58 else -1 if n < 0.42 else 0) + grain(seed + 2, x, y, 0.38, 0.62), shades)
+    for k in range(1 + int(hashf(seed, 80) * 2) if veins else 0):
+        x0, y0 = 2 + int(hashf(seed, 81, k) * 4), 3 + int(hashf(seed, 82, k) * 7)
+        slope = (-1, 0, 1)[int(hashf(seed, 83, k) * 3)]
+        for i in range(5 + int(hashf(seed, 84, k) * 5)):
+            x, y = x0 + i, y0 + (i * slope) // 2 + (1 if hashf(seed, 85, k, i) > 0.8 else 0)
+            if 2 <= x <= 13 and 2 <= y <= 13:
+                g[y][x] = clamp(mid + 2, shades)
     return g
 
 
@@ -454,11 +456,11 @@ def recipe(grid: Grid, kind: str = "opaque", glow_over: str | None = None) -> di
 
 def core(shades: list[str], seed: int) -> Grid:
     """The dark body inside every block: the colour a gap between two stepped or turned blocks shows, and the floor of a recess. It is the
-    rock's own darkest tones, never black, so a gap reads as a shadow in rock and not as a hole."""
+    rock's own darker tones, never black, so a gap reads as a shadow in rock and not as a hole, and a gap is not a black line round a block."""
     g = blank(shades[1])
     for y in range(SIZE):
         for x in range(SIZE):
-            g[y][x] = clamp(int(vnoise(seed, x, y, 4, 4) * 2.6), shades)
+            g[y][x] = clamp(1 + int(vnoise(seed, x, y, 4, 4) * 2.4), shades)
     return g
 
 

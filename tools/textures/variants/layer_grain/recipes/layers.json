@@ -6,11 +6,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.0",
-            "b": "shale1.1",
-            "c": "shale1.2",
-            "d": "shale1.3",
-            "e": "shale1.4"
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3",
+            "d": "shale1.4",
+            "e": "shale1.5"
           },
           "rows": [
             "bddbbbbbbabbbcdc",
@@ -39,11 +39,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.0",
-            "b": "shale1.1",
-            "c": "shale1.2",
-            "d": "shale1.3",
-            "e": "shale1.4"
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3",
+            "d": "shale1.4",
+            "e": "shale1.5"
           },
           "rows": [
             "bbbdddbbabbbbbbb",
@@ -72,11 +72,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.0",
-            "b": "shale1.1",
-            "c": "shale1.2",
-            "d": "shale1.3",
-            "e": "shale1.4"
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3",
+            "d": "shale1.4",
+            "e": "shale1.5"
           },
           "rows": [
             "bbbbbbdcddcbbbbb",
@@ -105,11 +105,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.0",
-            "b": "shale1.1",
-            "c": "shale1.2",
-            "d": "shale1.3",
-            "e": "shale1.4"
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3",
+            "d": "shale1.4",
+            "e": "shale1.5"
           },
           "rows": [
             "cbbbcbabbbcdddbb",
@@ -138,11 +138,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.0",
-            "b": "shale1.1",
-            "c": "shale1.2",
-            "d": "shale1.3",
-            "e": "shale1.4"
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3",
+            "d": "shale1.4",
+            "e": "shale1.5"
           },
           "rows": [
             "bddbbadddbbbbbdd",
@@ -171,11 +171,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.0",
-            "b": "shale1.1",
-            "c": "shale1.2",
-            "d": "shale1.3",
-            "e": "shale1.4"
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3",
+            "d": "shale1.4",
+            "e": "shale1.5"
           },
           "rows": [
             "bbddddcdddbbbbbb",
@@ -204,11 +204,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.0",
-            "b": "shale1.1",
-            "c": "shale1.2",
-            "d": "shale1.3",
-            "e": "shale1.4"
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3",
+            "d": "shale1.4",
+            "e": "shale1.5"
           },
           "rows": [
             "ddddbdeddddddddd",
@@ -337,11 +337,10 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale2.1",
-            "b": "shale2.2",
-            "c": "shale2.3",
-            "d": "shale2.4",
-            "e": "shale2.5"
+            "a": "shale2.2",
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
           },
           "rows": [
             "bbdbbcddddbbbcdc",
@@ -349,14 +348,14 @@
             "bbbbbbddddbcdddb",
             "bbbbbbddcbbbdccb",
             "dcbbbcdcbbbbcbbb",
-            "ebbbbbedbbabdbbb",
+            "dbbbbbddbbabdbbb",
             "dbbbbbddddbcdcbb",
             "dbbbcddddddddddd",
-            "ebbcdddddddddddd",
+            "dbbcdddddddddddd",
             "dddddddddcdddddd",
             "ddddddcdcddddddd",
-            "cbcdeddddecccedd",
-            "bbbbdeddcbbbbddc",
+            "cbcdddddddcccddd",
+            "bbbbddddcbbbbddc",
             "bbbbbddddbbacddb",
             "bcdabcdddcbcddcb",
             "bccbbcddddbbcdcc"
@@ -370,11 +369,10 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale2.1",
-            "b": "shale2.2",
-            "c": "shale2.3",
-            "d": "shale2.4",
-            "e": "shale2.5"
+            "a": "shale2.2",
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
           },
           "rows": [
             "cccddcbcdcbbbddd",
@@ -385,10 +383,10 @@
             "ccbbbcdcbcdcbbbb",
             "dbbbbbdcbcddccdc",
             "ddcbbbdddddddddd",
-            "dedbbbdddddddddd",
+            "dddbbbdddddddddd",
             "ddddcdddcddddddd",
             "dddddddcdcdddddd",
-            "dddcbccdedddeddd",
+            "dddcbccddddddddd",
             "dddbcbbddccbbbdd",
             "ddbbbbbbddccbcdd",
             "dcabdcbbcdddbcdd",
@@ -403,28 +401,27 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale2.1",
-            "b": "shale2.2",
-            "c": "shale2.3",
-            "d": "shale2.4",
-            "e": "shale2.5"
+            "a": "shale2.2",
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
           },
           "rows": [
             "bbacccddddbbbbbb",
-            "bbcbbbcdedbbbbca",
-            "addbcbbcdddcbded",
+            "bbcbbbcdddbbbbca",
+            "addbcbbcdddcbddd",
             "dddcbcddcddccbbd",
-            "deddddddbddddbbc",
+            "ddddddddbddddbbc",
             "ddbddddcbccbbbbd",
             "dcbcddbbcbbbacdd",
-            "dcbcdceddddddddd",
-            "ddbbcddedddddddd",
+            "dcbcdcdddddddddd",
+            "ddbbcddddddddddd",
             "ddcddddddddddddd",
             "ddcdddddcbbdddcd",
             "ddddddddcccdddbb",
             "cdddbdddddddcdbb",
             "bcddbbdddddcddbc",
-            "bbdbbbbddcbdecba",
+            "bbdbbbbddcbddcba",
             "bacbbbcdddbbcbbb"
           ]
         }
@@ -436,28 +433,27 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale2.1",
-            "b": "shale2.2",
-            "c": "shale2.3",
-            "d": "shale2.4",
-            "e": "shale2.5"
+            "a": "shale2.2",
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
           },
           "rows": [
             "bbcabcddddddcbbb",
-            "bbbbbcdddecddcab",
-            "dbbddeccbbbcddbc",
+            "bbbbbcddddcddcab",
+            "dbbdddccbbbcddbc",
             "bbddddcccbbcddcb",
             "cbddddbcddddcddb",
             "bbddddbbbdddbcdc",
             "dcbbbbbbbcddbbdd",
-            "ddddacceddddbddd",
-            "ddddcdedddccbddd",
-            "dddebbddddddcddd",
+            "ddddaccdddddbddd",
+            "ddddcdddddccbddd",
+            "ddddbbddddddcddd",
             "dddbbbcddddddddd",
             "bddbbbdddddcdddd",
             "bcddddddddbbdcdc",
             "bcdbbcdddcabdddb",
-            "bbcbbbdddbbcdeab",
+            "bbcbbbdddbbcddab",
             "abbbbbddddcddcbb"
           ]
         }
@@ -469,11 +465,10 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale2.1",
-            "b": "shale2.2",
-            "c": "shale2.3",
-            "d": "shale2.4",
-            "e": "shale2.5"
+            "a": "shale2.2",
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
           },
           "rows": [
             "dbbbcdddbcdbbbcd",
@@ -481,13 +476,13 @@
             "cbbddddcbbcbbcdc",
             "bbbcddddccdddddb",
             "bbbbdcbddddddddb",
-            "bbcbecbcddcdddcb",
+            "bbcbdcbcddcdddcb",
             "bbbbdbbbdcbbbcdb",
             "bbbbdbbccbbbcddc",
-            "bbcceddccbbcdddc",
+            "bbccdddccbbcdddc",
             "bcddccddcccddcdd",
             "cdcdccddddddcddd",
-            "dbbccdddbccddedd",
+            "dbbccdddbccddddd",
             "bcbbcdddbbbccddd",
             "bbbbdddcbbbbcddc",
             "bbbddddabcdbbcdd",
@@ -502,11 +497,10 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale2.1",
-            "b": "shale2.2",
-            "c": "shale2.3",
-            "d": "shale2.4",
-            "e": "shale2.5"
+            "a": "shale2.2",
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
           },
           "rows": [
             "dbbcddbbbbbbbbbc",
@@ -518,7 +512,7 @@
             "bbbccddbabbddddb",
             "cbbcdddbbbcddddc",
             "dbbdddbbbccddddd",
-            "dcbccccbcbddcedd",
+            "dcbccccbcbddcddd",
             "bbdbbbbbbbddccdc",
             "bbdbbbbbbbcdddbb",
             "badbbbdddbbcdcbb",
@@ -634,11 +628,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "basalt3.0",
-            "b": "basalt3.1",
-            "c": "basalt3.2",
-            "d": "basalt3.3",
-            "e": "basalt3.4"
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3",
+            "d": "basalt3.4",
+            "e": "basalt3.5"
           },
           "rows": [
             "bbbbbbddebbabbbb",
@@ -667,11 +661,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "basalt3.0",
-            "b": "basalt3.1",
-            "c": "basalt3.2",
-            "d": "basalt3.3",
-            "e": "basalt3.4"
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3",
+            "d": "basalt3.4",
+            "e": "basalt3.5"
           },
           "rows": [
             "dbbbbbbbbcabccdd",
@@ -700,11 +694,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "basalt3.0",
-            "b": "basalt3.1",
-            "c": "basalt3.2",
-            "d": "basalt3.3",
-            "e": "basalt3.4"
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3",
+            "d": "basalt3.4",
+            "e": "basalt3.5"
           },
           "rows": [
             "baccbbbbbbbbccbb",
@@ -733,11 +727,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "basalt3.0",
-            "b": "basalt3.1",
-            "c": "basalt3.2",
-            "d": "basalt3.3",
-            "e": "basalt3.4"
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3",
+            "d": "basalt3.4",
+            "e": "basalt3.5"
           },
           "rows": [
             "ddddbbbbdccddccd",
@@ -766,11 +760,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "basalt3.0",
-            "b": "basalt3.1",
-            "c": "basalt3.2",
-            "d": "basalt3.3",
-            "e": "basalt3.4"
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3",
+            "d": "basalt3.4",
+            "e": "basalt3.5"
           },
           "rows": [
             "bccbdcbbbcddddcb",
@@ -799,11 +793,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "basalt3.0",
-            "b": "basalt3.1",
-            "c": "basalt3.2",
-            "d": "basalt3.3",
-            "e": "basalt3.4"
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3",
+            "d": "basalt3.4",
+            "e": "basalt3.5"
           },
           "rows": [
             "bbbabbbbcbbdddbb",
@@ -932,26 +926,26 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.0",
-            "b": "shale1.1",
-            "c": "shale1.2"
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3"
           },
           "rows": [
             "bbaaaaaaaaabbbbb",
             "bbaaaaaaaaabbbbb",
-            "aaabbbaaaaabbbaa",
-            "aabbbbbaaaaaaaaa",
+            "aaabbaaaaaaabbaa",
+            "aaabbbaaaaaaaaaa",
             "aabbcbbaaaaaaaaa",
-            "aabbcbbaaaaaaaaa",
             "aabbbbbaaaaaaaaa",
+            "aabbbbaaaaaaaaaa",
             "bbbbbbaaaaaaaaab",
             "bbbbbbaaaaaaaaab",
             "bbbbbbaaaaaaaaab",
-            "bbaaaaaaaaaaaaaa",
-            "aaaaaaabbbbaaaaa",
-            "aaaaaaabbbbbbaaa",
-            "aaaaaaabbbbbbbaa",
-            "aaaaaaaaaabbbbbb",
+            "aaaaaaaaaaaaaaaa",
+            "aaaaaaaabbaaaaaa",
+            "aaaaaaabbbbbaaaa",
+            "aaaaaaaabbbbbaaa",
+            "aaaaaaaaaaabbbba",
             "bbaaaaaaaaabbbbb"
           ]
         }
@@ -963,27 +957,27 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale2.0",
-            "b": "shale2.1",
-            "c": "shale2.2"
+            "a": "shale2.1",
+            "b": "shale2.2",
+            "c": "shale2.3"
           },
           "rows": [
-            "aaaaaaaabbbbbbba",
-            "baaaaaaaabbbbbbb",
+            "aaaaaaaaaabbbbaa",
+            "aaaaaaaaaabbbbba",
+            "bbaaaaaaaabbbbbb",
             "bbaaaaaaaabbbbbb",
             "bbaaaaaaaabbccbb",
-            "bbaaaaaaaabccccb",
-            "bbbaaaaaaabccccc",
-            "cbbaaaaaaabccccc",
-            "ccbaaaaaaabccccc",
-            "ccbaaaaaaabccccc",
-            "ccbaaaaaaabbcccc",
-            "cbbaaaaaaabbbbbc",
-            "bbbbbbbaabbbbbbb",
+            "bbaaaaaaaabbcccb",
+            "cbbaaaaaaabbcccc",
+            "cbbaaaaaaabbcccc",
+            "cbbaaaaaaabbcccc",
+            "cbbaaaaaaabbcccc",
+            "bbbaaaaaaabbbbbb",
+            "bbbbbbaaaabbbbbb",
             "bbbbbbbbbbbbbbbb",
             "bbbbbbbbbbbbbbbb",
-            "bbbbaabbbbbbbbbb",
-            "aaaaaaaabbbbbbbb"
+            "bbbaaaaaabbbbbbb",
+            "aaaaaaaaaabbbbba"
           ]
         }
       ]
@@ -994,25 +988,25 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "basalt3.0",
-            "b": "basalt3.1",
-            "c": "basalt3.2"
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3"
           },
           "rows": [
-            "bbbbbbbbbbbaaaaa",
+            "aabbbbbbbbbaaaaa",
             "bbbbbbbbbbbaaaab",
             "bbbbbbbbbbbaaabb",
+            "ccbbbbbbbbbaaabb",
+            "ccbbbbbbbbaaaabc",
             "ccbbbbbbbbbaaabc",
-            "cccbbbbbbbbaaabc",
-            "cccbbbbbbbbaaabc",
-            "ccbbbbbbbbbaaabc",
-            "ccbbbbcccbbaaabb",
-            "cbbbbbcccbbaaabb",
-            "ccbbbbcccbbaaabb",
-            "cccbbbbbbbbbbbbc",
-            "cccbbbbbbbbccccc",
-            "cccbbbbbbbcccccc",
+            "ccbbbbbbbbbaaabb",
+            "bbbbbbbbbbbaaabb",
+            "bbbbbbbccbbaaabb",
+            "bbbbbbbbbbbaaabb",
+            "ccbbbbbbbbbbbbbb",
+            "ccbbbbbbbbbbbbcc",
             "ccbbbbbbbbbccccc",
+            "ccbbbbbbbbbbbbcc",
             "bbbbbbbbbbbbbbbb",
             "bbbbbbbbbbbbaabb"
           ]
