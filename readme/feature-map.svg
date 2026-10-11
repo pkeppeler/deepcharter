@@ -1,0 +1,776 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1222" height="1522" viewBox="0 0 1222 1522"><style>text{font-family:ui-sans-serif,system-ui,sans-serif;fill:#e8d9c5}.title{font-size:30px;font-weight:700}.h{font-size:15px;font-weight:700;fill:#f0b429}.d{font-size:13px;fill:#a89580}.k{font-size:18px}</style><rect width="100%" height="100%" fill="#17110e"/><text x="30" y="52" class="title">Deep Charter feature map</text><text x="30" y="80" class="d">249 features on 29 ladders, 169 built. Frame: green built, amber in progress, grey planned, dashed idea.</text><text x="30" y="102" class="d">Interactive view: https://pkeppeler.github.io/deepcharter/</text><text x="30" y="146" class="h">The core loop</text>
+<g><title>Start in Prosperity (Built)</title><rect x="30" y="156" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="48" y="181" class="k" text-anchor="middle">📍</text>
+</g>
+<g><title>Get a pod running (Built)</title><rect x="72" y="156" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="90" y="181" class="k" text-anchor="middle">🎯</text>
+</g>
+<g><title>Drive and drill down (Built)</title><rect x="114" y="156" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="118" y="160" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAbElEQVR42mNgQAMyUir/8WEGfACkYG2tCV6M1xCYAXF2UlgxXgNAEu1TFvxPzK2CY4+gOBRsZufxX0ZBDbshyAZg04hXMzGuIMkAsmzH5QqibcflCpI04wpQsg0gSzO6IQNrANmakQ1hoDUAAJJ0w3fvUZ0NAAAAAElFTkSuQmCC"/>
+</g>
+<g><title>Fuel is the clock (Built)</title><rect x="156" y="156" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="160" y="160" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAgElEQVR42mNgwAFkpFT+I2MGUgBIg5WRLgomyRCQYm1VJRRMtAEgheKq8v/5JUVRMEiMoCG4NCNjvIYgG/Dm2RkUfP74CvINAGkm2wCY5gXTq0g3AFkzyQbcvbwLBZNsALrtZBmArDk7yYM0A5A1wjBBA2CGkJ2QcOVEsnMlMQAApTzxkCHo1Q0AAAAASUVORK5CYII="/>
+</g>
+<g><title>Scan for ore (Built)</title><rect x="198" y="156" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="202" y="160" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAiElEQVR42mNgwANkpFT+I2MGYgFMQ2JuFQomyhBkjR5BcSjYzM4DvyEwzTANHFrGKBivIbg0SzVMwTBAQ88M0xBkA5A1z3nznThD0A2AaYZhmCFEG0CRC8gKA1JiAacBMENAirClAYKa0VPi2loTFEx0kgYrVFAD2wbDID5JmnFiog3BgRmoDQCqWwYD3bTF9wAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Haul ore in the cargo bay (Built)</title><rect x="240" y="156" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="244" y="160" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAaklEQVR42mNgoBaQkVL5TwrG0Nw+ZQFJGMUQmAGJuVVEYQ09M0wDrizzIxrH2UnhdoFHUBxebGbngd0FyAZ8en0DKybJgD5ZMRRMsgEUuYCsMBgcsQCSJISzjUSwGwASJAVjzQ9kZyZKAABFiYyHfupldQAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Fly home (Built)</title><rect x="282" y="156" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="300" y="181" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Sell at the ore processor (Built)</title><rect x="324" y="156" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="328" y="160" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAuUlEQVR42mPwCIr7TwlmABGJuVVkYSERCYQBZnYeYMzCzoYXw9TJKKhhGgBSwCnAC8biqvJY2SD1BA0AacCGiTIAXQO6gbQ3gGIvUBSIIEwo4eCNRhCO4eUCY5CCPBM2MAaxea3kwRirASAOORhuQPuUBWDnaeiZ/f9wseX/2loTrBgkB1IDUw83AOYKkKStutD/1igVrBgkBwsnDC+ANHtZGYAxjA/zK4gG8UFsdwV+OB9sAIigBAMAuXegepeThXsAAAAASUVORK5CYII="/>
+</g>
+<g><title>Buy better parts (Built)</title><rect x="366" y="156" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="370" y="160" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAwklEQVR42mPwCIr7TwlmABGJuVVkYSERCYQBZnYeYMzCzoYXw9TJKKhhGgBSwCnAC8fiqvJgjCwGUk+UATDN6IYQZQC6ZmRDCBqArBgbm2gvUBwGZBkAwoQSDt5oBOEYXi4wBinIM2EDYxCb10oejLEaAOKQg+EGtE9ZAHaeuwL//w8XW/6vrTXBikFyGnpmcPVwA2CuAEnaqgv9b41SwYpBcl5WBnD1cANAfgJJgAxAxyBXIfNB6kDqQWywASCCEgwA0Yifli+LvbEAAAAASUVORK5CYII="/>
+</g>
+<g><title>Go deeper (Built)</title><rect x="408" y="156" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="426" y="181" class="k" text-anchor="middle">🎯</text>
+</g>
+<g><title>The deep fights back (Built)</title><rect x="450" y="156" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="468" y="181" class="k" text-anchor="middle">☠️</text>
+</g>
+<text x="626" y="146" class="h">Money, fuel and spoil</text>
+<g><title>Ore in the cargo bay (Built)</title><rect x="626" y="156" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="630" y="160" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAfUlEQVR42mNgGLRARkrlPzImWaOXldH/qqQQMAaxiTIIWePirgoUjGwQUZqfXTsGxkQbAhLEpxlmAFZD8DmdagbANMMMkBMTQRiCHuq4NMI0YxiAzRBsGKdmmAEgCVyGIGvGagCyITCD0DFMI94EBVMAMwjZRrKSNMkaSQUAoKoPWUkOmF8AAAAASUVORK5CYII="/>
+</g>
+<g><title>Sell ore for money (Built)</title><rect x="668" y="156" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="672" y="160" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAuUlEQVR42mPwCIr7TwlmABGJuVVkYSERCYQBZnYeYMzCzoYXw9TJKKhhGgBSwCnAC8biqvJY2SD1BA0AacCGiTIAXQO6gbQ3gGIvUBSIIEwo4eCNRhCO4eUCY5CCPBM2MAaxea3kwRirASAOORhuQPuUBWDnaeiZ/f9wseX/2loTrBgkB1IDUw83AOYKkKStutD/1igVrBgkBwsnDC+ANHtZGYAxjA/zK4gG8UFsdwV+OB9sAIigBAMAuXegepeThXsAAAAASUVORK5CYII="/>
+</g>
+<g><title>Spoil (Built)</title><rect x="710" y="156" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="714" y="160" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAoElEQVR42mNggAIZKZX/pGAGZAASuLLMjySMYgiI0xql8n9trQlRGKQWw4DE3Kr/m+Ns/09z1/sfoyEDpmF8dDENPTPsBiArxGcQhgHIhngExeHFWDXDDDg5S+a/iKAAQRqrAdhcYWbnQZztxHqDoAH4DCFKM7oByF4g2gBsriBJM8wAAwMzFEyyAZVmKuBEA6JBmCQDkA0hSzN6FsenBgDF7Rny9bZV+gAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Work orders (Built)</title><rect x="752" y="156" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="770" y="181" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>The charter&#x27;s account (Built)</title><rect x="794" y="156" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="812" y="181" class="k" text-anchor="middle">💎</text>
+</g>
+<g><title>Press spoil into salvage crates (Built)</title><rect x="836" y="156" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="840" y="160" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAi0lEQVR42mNoirT9TwlmABEywjz/U12NsGKQPIxtoCiFIg7SBzYgMbcKRROyQlwYpAdugIaeGckGgPTADcDnBXxeQzGAVIxhAHrobtWSx8DoanB6AabBy0QVjmHiOL0AkwApxmYATJygAeiGIGNkzbQPRGIw9dIBelImBuNNysRgeFKGBQqpBsD0AQB/zcfkMyxKaQAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Slag brick (Built)</title><rect x="878" y="156" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="882" y="160" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAqElEQVR42s1TuwqDQBC8HzBgbSEJGMQ0EqzSiuny/5+zYQ4mjOuGoKawGFf3cTizc+k5vuwbpqayX/V0rq8GdG1vp6LMEbg1l9zAd0T2MeYDMISEDhNowDAQ9eQD8NiDtJazz800IOcIqgmoUJfED0TfwEhQE83/V4NNPojWR37qA+YWPhjuDwOUu3L2BuPwgXwQWVd/l1b3PvmsUffqL4/WIqOhtluDNxr2i+52ku0QAAAAAElFTkSuQmCC"/>
+</g>
+<g><title>Buy repairs and consumables (Built)</title><rect x="920" y="156" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="924" y="160" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAArUlEQVR42mPwCIr7TwlmABGJuVVkYSERCYQBZnYeYMzCzoYXw9TJKKhhGgBSwCnAC8fiqvJgjCwGUk97A2Aa0TH9DBi4MABhQgkHbzSCcAwvFxiDFOSZsIExiM1rJQ/GWA0AccjBcAPapywAO89dgf//h4st/9fWmmDFIDkNPTO4ergByK6wVRf63xqlghWD5LysDODq4QaATEXGIEmQa0A0uhwMgwwCGwAiKMEAIbOeJlMmmsEAAAAASUVORK5CYII="/>
+</g>
+<g><title>Buy fuel at the pump (Built)</title><rect x="962" y="156" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="966" y="160" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAtklEQVR42mPwCIr7TwlmABGJuVVkYSERCYQBZnYeYMzCzoYXw9TJKKhhGgBSwCnAC8fiqvJgjCwGUk+UATDN6IYQZQC6ZmRDhogBZIcBCBNKOHijEYRjeLnAGKQgz4QNjEFsXit5MMZqAIhDDoYb0D5lAdh5Gnpm/z9cbPm/ttYEKwbJgdTA1MMNgLkCJGmrLvS/NUoFKwbJgdTA1MMNAAnCMEjCXYEfzPayMoCzsWGwASCCEgwAExGf+vjQjxoAAAAASUVORK5CYII="/>
+</g>
+<g><title>Buy pod parts (Built)</title><rect x="1004" y="156" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="1008" y="160" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAfklEQVR42mNgoAaQkVL5TypG0SzVMIVkDDcEZgC/XwzRmEPLGLsBZnYeKBgkdmWZHxwTZYCMghoYwwyAYbIMQLYd2RUkeQGb/3EagO5UXIbiNACbc5G9BcJ4DcDlApIMgGHXIzmke4HshAQLWVIwRn5ojYJkEmJprDmSFBoGAIOHa7pL6Mn7AAAAAElFTkSuQmCC"/>
+</g>
+<g><title>Catalysts (Planned)</title><rect x="1046" y="156" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<image x="1050" y="160" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAj0lEQVR42mNgoDWQkVL5D8Jka47iFwNjkg2Bab5kZQXGBA1Bdiqy5v8Lev5Pk1FBMQDDW+hORTYApBnZAAxvodsGk8BlALI4iM2ASzExYipsXP8xAgxZAz4+SDM8HLAZAMLIfHTDUAzAZwg6xqoZ2QBCmnEaADMEJInNIIKa0Q2BGYSskaBm9FSJDVM9twIAQu/6VSL+WTcAAAAASUVORK5CYII="/>
+</g>
+<g><title>Records board (Idea)</title><rect x="1088" y="156" width="36" height="36" rx="5" fill="#2a2018" stroke="#757575" stroke-width="3" stroke-dasharray="3 2" opacity="0.7"/>
+<text x="1106" y="181" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Registration fees grow (Idea)</title><rect x="1130" y="156" width="36" height="36" rx="5" fill="#2a2018" stroke="#757575" stroke-width="3" stroke-dasharray="3 2" opacity="0.7"/>
+<text x="1148" y="181" class="k" text-anchor="middle">⚙️</text>
+</g>
+<text x="30" y="236" class="h">The ore ladder</text>
+<g><title>Ironium (Built)</title><rect x="30" y="246" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="34" y="250" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAfUlEQVR42mNgGLRARkrlPzImWaOXldH/qqQQMAaxiTIIWePirgoUjGwQUZqfXTsGxkQbAhLEpxlmAFZD8DmdagbANMMMkBMTQRiCHuq4NMI0YxiAzRBsGKdmmAEgCVyGIGvGagCyITCD0DFMI94EBVMAMwjZRrKSNMkaSQUAoKoPWUkOmF8AAAAASUVORK5CYII="/>
+</g>
+<g><title>Bronzium (Built)</title><rect x="72" y="246" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="76" y="250" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAk0lEQVR42mNgoCWQkVL5D8Jka8wzEgBjkgxB1vigywyMYYYQNAimGabx/6VZcPbaKBn8rkHWDNKIrhmGcRqCbgA2zTADMAzB5m90jTDNGK6AaUZWhM9mGF9LiA1iCLIByKGOTzNWA9CdDtOEyzC4Adi8ge5nvJqxBSSuAMSpGdkQkAIQRvYCTAyvZvR8gAtTPccCALKqI7aPmjzaAAAAAElFTkSuQmCC"/>
+</g>
+<g><title>Silverium (Built)</title><rect x="114" y="246" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="118" y="250" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAcklEQVR42mNgGJRARkrlPzomSWNYUs7/vllL4BjEJ2gQTCMIHzpzBQMjG4RTM0wxDBBtCLIB+DSjewmr7bicT9AAkASxmsEGKGlADEEPdVwasWpGDwNsmghqRkkDQEmYQpI0Y6RAkEJ0TE6KJDkpDwgAANVZQ2BA6WD5AAAAAElFTkSuQmCC"/>
+</g>
+<g><title>Goldium (Built)</title><rect x="156" y="246" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="160" y="250" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAiUlEQVR42mNgoBeQkVL5D8MkawDhqjCu/+8PWYFpvIbg0gCi/3/b8f9AjxhuQ2AKYZpBGkAYZhBIMwjrybFgGoBsK0wTOoYZjmEAMZpBGOYCDC8gG0BIM4YBMM0gCWI1o3gB2QB0Q5A1wjTjDQNkg4jWjGwISBKbQQQ1oycikEJ0TFEyJlrjgAAA7Hsp97caBQgAAAAASUVORK5CYII="/>
+</g>
+<g><title>Platinium (Built)</title><rect x="198" y="246" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="202" y="250" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAbklEQVR42mNgGL5ARkrlPzImWWN2SsH/1Ys3gTGITZRBMI0g/Oj2MxSMbBBezSDFMIBuAF5D0A3AphmnAciasWF0A1Tk1VANQQ40QpqxGoBuCDaMVzOyISAFMMXoGK9m9HQAUoyMyU5QJGukOwAAcQADg/KvbAQAAAAASUVORK5CYII="/>
+</g>
+<g><title>Einsteinium (Built)</title><rect x="240" y="246" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="244" y="250" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAjklEQVR42mNgIBLISKn8ZyAXgDRzB3n8J8oQdEUwzS7XthA2BJtNyAaITWnAbQg2m5DFTvz/QLwByAqRxZDFMQzBZRsuAzBcgss2fGIgGkUzsQYgexMj8NAV4DOARUHmP9bAw8ZGNgDGxmoACONioxsENgA5DLApxKcZIxZAgiAM8zs2DFODMzERixmoBQAaPEbEVOlGrQAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Cicatrium (Built)</title><rect x="282" y="246" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="286" y="250" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAj0lEQVR42mNgoDWQkVL5D8Jka47iFwNjkg2Bab5kZQXGBA1Bdiqy5v8Lev5Pk1FBMQDDW+hORTYApBnZAAxvodsGk8BlALI4iM2ASzExYipsXP8xAgxZAz4+SDM8HLAZAMLIfHTDUAzAZwg6xqoZ2QBCmnEaADMEJInNIIKa0Q2BGYSskaBm9FSJDVM9twIAQu/6VSL+WTcAAAAASUVORK5CYII="/>
+</g>
+<text x="626" y="236" class="h">Bootstrap: salvage to the first run</text>
+<g><title>Fungal stalks (Built)</title><rect x="626" y="246" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="630" y="250" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAX0lEQVR42mO4cu3EfxBet2kFnIZhmFx1Uz2KOLI8A0wRuiHI4u/ePcIpj2IANs2EMAPIeZRgBlJsw+qCgTdg6IYByHa4AbCEMjjDgFDKZCCkGZaRsPkfb14gNk9QHAYA1VUokOV7PCkAAAAASUVORK5CYII="/>
+</g>
+<g><title>Salvage crates (Built)</title><rect x="668" y="246" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="672" y="250" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAi0lEQVR42mNoirT9TwlmABEywjz/U12NsGKQPIxtoCiFIg7SBzYgMbcKRROyQlwYpAdugIaeGckGgPTADcDnBXxeQzGAVIxhAHrobtWSx8DoanB6AabBy0QVjmHiOL0AkwApxmYATJygAeiGIGNkzbQPRGIw9dIBelImBuNNysRgeFKGBQqpBsD0AQB/zcfkMyxKaQAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Salvage cloth (Built)</title><rect x="710" y="246" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="714" y="250" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAaUlEQVR42mNgoBaQkVL5TwzGqTm1uIAojGEITLN3WAhebO5gj90QZAN2rJ2CE8MMUdczxG0AMa7AaQBIEob7ZMXgGFmcaANwYZBmsg2AaZaSV8QeEyBJQppxGoBsCD6MUzMpqZFhFGAAAOS+8z/ifywdAAAAAElFTkSuQmCC"/>
+</g>
+<g><title>Scrap iron and copper (Built)</title><rect x="752" y="246" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="756" y="250" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAgUlEQVR42mNgGHRARkrlPzImWXP7lAUomGiDYJoTc6vg2CMoDoxhBhGtGaYRhs3sPPAbgmwATNNkT2m4ZhjW0DMjbAiyzdlGIlg14wwXkCBIIbKtMM0wA5ADGq8hyBhZI8ybIIPxegcdI3uPYHjgCh9QwKJ7iaREhu4lspP54Mp8AG5zuzyn9pF8AAAAAElFTkSuQmCC"/>
+</g>
+<g><title>Melt scrap in a furnace (Built)</title><rect x="794" y="246" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="812" y="271" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Tools, a table and a torch (Built)</title><rect x="836" y="246" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="854" y="271" class="k" text-anchor="middle">🎯</text>
+</g>
+<g><title>Craft the terminal parts (Built)</title><rect x="878" y="246" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="896" y="271" class="k" text-anchor="middle">🎯</text>
+</g>
+<g><title>Repair the terminals in order (Built)</title><rect x="920" y="246" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="924" y="250" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAtklEQVR42mPwCIr7TwlmABGJuVVkYSERCYQBZnYeYMzCzoYXw9TJKKhhGgBSwCnAC8fiqvJgjCwGUk+UATDN6IYQZQC6ZmRDhogBZIcBCBNKOHijEYRjeLnAGKQgz4QNjEFsXit5MMZqAIhDDoYb0D5lAdh5Gnpm/z9cbPm/ttYEKwbJgdTA1MMNgLkCJGmrLvS/NUoFKwbJgdTA1MMNAAnCMEjCXYEfzPayMoCzsWGwASCCEgwAExGf+vjQjxoAAAAASUVORK5CYII="/>
+</g>
+<g><title>Craft the Mole&#x27;s parts (Built)</title><rect x="962" y="246" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="966" y="250" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAqUlEQVR42mNgwAFkpFT+I2MGUgBIw5VlfiiYJENgBrRGqYBxnJ0UYQOQnds+ZcH/xNwqMPYIivtvZufxX0ZBDbeXYJpgGpENgRsAFAPRyIahaIYpBmGYITAxGBukGd1FOA2AsZHFsBoAcwVME4xG9wKGAcjhgO4KXF7AajuyIcgasPHBbGya0V2BywCctqO7Aj09wOMfn2ZkQ5BdhKyJrDxBlK3EuIhmAACYmggpDQ/YSgAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Craft the first scanner (In progress)</title><rect x="1004" y="246" width="36" height="36" rx="5" fill="#2a2018" stroke="#f0b429" stroke-width="3"/>
+<image x="1008" y="250" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAiElEQVR42mNgwANkpFT+I2MGYgFMQ2JuFQomyhBkjR5BcSjYzM4DvyEwzTANHFrGKBivIbg0SzVMwTBAQ88M0xBkA5A1z3nznThD0A2AaYZhmCFEG0CRC8gKA1JiAacBMENAirClAYKa0VPi2loTFEx0kgYrVFAD2wbDID5JmnFiog3BgRmoDQCqWwYD3bTF9wAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Repair the founding Mole (Built)</title><rect x="1046" y="246" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="1064" y="271" class="k" text-anchor="middle">🎯</text>
+</g>
+<g><title>The first run (Built)</title><rect x="1088" y="246" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="1106" y="271" class="k" text-anchor="middle">🎯</text>
+</g>
+<text x="30" y="326" class="h">The colony&#x27;s terminals</text>
+<g><title>Contract terminal (Built)</title><rect x="30" y="336" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="34" y="340" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAu0lEQVR42mPwCIr7TwlmABGJuVVkYSERCYQBZnYeYMzCzoYXw9TJKKhhGgBSwCnAixeD1BNlgLiqPFY2/QygyAvINqK7giQvIGOiXADChBIO3mgE4RheLjAGKcgzYQNjEJvXSh6MsRoA4pCD4Qa0T1kAdp6Gntn/Dxdb/q+tNcGKQXIgNTD1cANgrgBJ2qoL/W+NUsGKQXIgNTD1cAPcFfjhLgBJgPwIYoPEQTSM72VlAKZhGGwAiKAEAwDhBZ0M9NPVZQAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Fuel pump (Built)</title><rect x="72" y="336" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="76" y="340" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAtklEQVR42mPwCIr7TwlmABGJuVVkYSERCYQBZnYeYMzCzoYXw9TJKKhhGgBSwCnAC8fiqvJgjCwGUk+UATDN6IYQZQC6ZmRDhogBZIcBCBNKOHijEYRjeLnAGKQgz4QNjEFsXit5MMZqAIhDDoYb0D5lAdh5Gnpm/z9cbPm/ttYEKwbJgdTA1MMNgLkCJGmrLvS/NUoFKwbJgdTA1MMNAAnCMEjCXYEfzPayMoCzsWGwASCCEgwAExGf+vjQjxoAAAAASUVORK5CYII="/>
+</g>
+<g><title>Ore processor (Built)</title><rect x="114" y="336" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="118" y="340" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAuUlEQVR42mPwCIr7TwlmABGJuVVkYSERCYQBZnYeYMzCzoYXw9TJKKhhGgBSwCnAC8biqvJY2SD1BA0AacCGiTIAXQO6gbQ3gGIvUBSIIEwo4eCNRhCO4eUCY5CCPBM2MAaxea3kwRirASAOORhuQPuUBWDnaeiZ/f9wseX/2loTrBgkB1IDUw83AOYKkKStutD/1igVrBgkBwsnDC+ANHtZGYAxjA/zK4gG8UFsdwV+OB9sAIigBAMAuXegepeThXsAAAAASUVORK5CYII="/>
+</g>
+<g><title>Upgrade terminal (Built)</title><rect x="156" y="336" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="160" y="340" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAwklEQVR42mPwCIr7TwlmABGJuVVkYSERCYQBZnYeYMzCzoYXw9TJKKhhGgBSwCnAC8fiqvJgjCwGUk+UATDN6IYQZQC6ZmRDCBqArBgbm2gvUBwGZBkAwoQSDt5oBOEYXi4wBinIM2EDYxCb10oejLEaAOKQg+EGtE9ZAHaeuwL//w8XW/6vrTXBikFyGnpmcPVwA2CuAEnaqgv9b41SwYpBcl5WBnD1cANAfgJJgAxAxyBXIfNB6kDqQWywASCCEgwA0Yifli+LvbEAAAAASUVORK5CYII="/>
+</g>
+<g><title>Repair station (Built)</title><rect x="198" y="336" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="202" y="340" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAArUlEQVR42mPwCIr7TwlmABGJuVVkYSERCYQBZnYeYMzCzoYXw9TJKKhhGgBSwCnAC8fiqvJgjCwGUk97A2Aa0TH9DBi4MABhQgkHbzSCcAwvFxiDFOSZsIExiM1rJQ/GWA0AccjBcAPapywAO89dgf//h4st/9fWmmDFIDkNPTO4ergByK6wVRf63xqlghWD5LysDODq4QaATEXGIEmQa0A0uhwMgwwCGwAiKMEAIbOeJlMmmsEAAAAASUVORK5CYII="/>
+</g>
+<g><title>Hangar console (Built)</title><rect x="240" y="336" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="244" y="340" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAxUlEQVR42mPwCIr7TwlmABGJuVVkYSERCYQBZnYeYMzCzoYXw9TJKKhhGgBSwCnA+19cVR4Fg8RgGKQerwEwDciakQ0h2wAYJtoAZEySAdjCgCQvINuKjY3XABAmlHDwRiMIx/BygTFIQZ4JGxiD2LxW8mCM1QAQhxwMN6B9ygKw8zT0zP5/uNjyf22tCVYMkgOpgamHGwBzhbsC/39bdaH/rVEqWDFIDqQGph5uAMhUZOxlZQBngzTAMLJaEB9sAIigBAMAOrGfmV53uSgAAAAASUVORK5CYII="/>
+</g>
+<g><title>Parked pod uses the terminal (Built)</title><rect x="282" y="336" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="300" y="361" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Outpost terminals (Planned)</title><rect x="324" y="336" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="342" y="361" class="k" text-anchor="middle">🖥️</text>
+</g>
+<text x="626" y="326" class="h">The Employee Handbook</text>
+<g><title>The handbook item (Built)</title><rect x="626" y="336" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="630" y="340" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAeklEQVR42mNgQAIyUir/icEM2ABIYquWPEH84s5eTENgmvtkxQjiFGF+TEOQDVhba4ITwwzYvKgJtwEUuwAZf7jYAsboBhDlApBGmNPj7KTwuwKXC3Bppm0YDK5YwGUATheAJInBWF1gy81FFAbZjuECUnIi3hxJDgAAtKNuj9D2fCYAAAAASUVORK5CYII="/>
+</g>
+<g><title>1. Welcome to Prosperity (Built)</title><rect x="668" y="336" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="672" y="340" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAeklEQVR42mNgQAIyUir/icEM2ABIYquWPEH84s5eTENgmvtkxQjiFGF+TEOQDVhba4ITwwzYvKgJtwEUuwAZf7jYAsboBhDlApBGmNPj7KTwuwKXC3Bppm0YDK5YwGUATheAJInBWF1gy81FFAbZjuECUnIi3hxJDgAAtKNuj9D2fCYAAAAASUVORK5CYII="/>
+</g>
+<g><title>2. Bringing Prosperity Back Online (Built)</title><rect x="710" y="336" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="714" y="340" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAeklEQVR42mNgQAIyUir/icEM2ABIYquWPEH84s5eTENgmvtkxQjiFGF+TEOQDVhba4ITwwzYvKgJtwEUuwAZf7jYAsboBhDlApBGmNPj7KTwuwKXC3Bppm0YDK5YwGUATheAJInBWF1gy81FFAbZjuECUnIi3hxJDgAAtKNuj9D2fCYAAAAASUVORK5CYII="/>
+</g>
+<g><title>3. Meet the Mole (Built)</title><rect x="752" y="336" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="756" y="340" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAeklEQVR42mNgQAIyUir/icEM2ABIYquWPEH84s5eTENgmvtkxQjiFGF+TEOQDVhba4ITwwzYvKgJtwEUuwAZf7jYAsboBhDlApBGmNPj7KTwuwKXC3Bppm0YDK5YwGUATheAJInBWF1gy81FFAbZjuECUnIi3hxJDgAAtKNuj9D2fCYAAAAASUVORK5CYII="/>
+</g>
+<g><title>4. Fuel Is Life (Built)</title><rect x="794" y="336" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="798" y="340" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAeklEQVR42mNgQAIyUir/icEM2ABIYquWPEH84s5eTENgmvtkxQjiFGF+TEOQDVhba4ITwwzYvKgJtwEUuwAZf7jYAsboBhDlApBGmNPj7KTwuwKXC3Bppm0YDK5YwGUATheAJInBWF1gy81FFAbZjuECUnIi3hxJDgAAtKNuj9D2fCYAAAAASUVORK5CYII="/>
+</g>
+<g><title>5. Every Sale Counts (Built)</title><rect x="836" y="336" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="840" y="340" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAeklEQVR42mNgQAIyUir/icEM2ABIYquWPEH84s5eTENgmvtkxQjiFGF+TEOQDVhba4ITwwzYvKgJtwEUuwAZf7jYAsboBhDlApBGmNPj7KTwuwKXC3Bppm0YDK5YwGUATheAJInBWF1gy81FFAbZjuECUnIi3hxJDgAAtKNuj9D2fCYAAAAASUVORK5CYII="/>
+</g>
+<g><title>6. Seeing Below (Built)</title><rect x="878" y="336" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="882" y="340" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAeklEQVR42mNgQAIyUir/icEM2ABIYquWPEH84s5eTENgmvtkxQjiFGF+TEOQDVhba4ITwwzYvKgJtwEUuwAZf7jYAsboBhDlApBGmNPj7KTwuwKXC3Bppm0YDK5YwGUATheAJInBWF1gy81FFAbZjuECUnIi3hxJDgAAtKNuj9D2fCYAAAAASUVORK5CYII="/>
+</g>
+<g><title>Hazards on higher scanners (Planned)</title><rect x="920" y="336" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="938" y="361" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>7. Staying Safe on the Claim (Built)</title><rect x="962" y="336" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="966" y="340" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAeklEQVR42mNgQAIyUir/icEM2ABIYquWPEH84s5eTENgmvtkxQjiFGF+TEOQDVhba4ITwwzYvKgJtwEUuwAZf7jYAsboBhDlApBGmNPj7KTwuwKXC3Bppm0YDK5YwGUATheAJInBWF1gy81FFAbZjuECUnIi3hxJDgAAtKNuj9D2fCYAAAAASUVORK5CYII="/>
+</g>
+<g><title>8. Your First Breach (Built)</title><rect x="1004" y="336" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="1008" y="340" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAeklEQVR42mNgQAIyUir/icEM2ABIYquWPEH84s5eTENgmvtkxQjiFGF+TEOQDVhba4ITwwzYvKgJtwEUuwAZf7jYAsboBhDlApBGmNPj7KTwuwKXC3Bppm0YDK5YwGUATheAJInBWF1gy81FFAbZjuECUnIi3hxJDgAAtKNuj9D2fCYAAAAASUVORK5CYII="/>
+</g>
+<g><title>9. Recovering Company Property (Built)</title><rect x="1046" y="336" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="1050" y="340" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAeklEQVR42mNgQAIyUir/icEM2ABIYquWPEH84s5eTENgmvtkxQjiFGF+TEOQDVhba4ITwwzYvKgJtwEUuwAZf7jYAsboBhDlApBGmNPj7KTwuwKXC3Bppm0YDK5YwGUATheAJInBWF1gy81FFAbZjuECUnIi3hxJDgAAtKNuj9D2fCYAAAAASUVORK5CYII="/>
+</g>
+<g><title>Notes (Built)</title><rect x="1088" y="336" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="1092" y="340" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAiklEQVR42mPYvKjpPyWYgWoGTGxIIQnjNeDS4QX/3Zyi4BjEf3FnL5zGaUCfrBgYgxSCMMwwGIYZgtMAZMXomohygZ62FRyDFCPzQRikGcbG6QKYTfhcQtAF2Gwn2gXoGFtAtmX6Ew4DbK6BsUmKBVyuIioWkDHI2QQNQMcgTUQnZbIzE6mZCB0DANOgrk8KuwWTAAAAAElFTkSuQmCC"/>
+</g>
+<g><title>Revisions (Planned)</title><rect x="1130" y="336" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="1148" y="361" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Spec sheets and first-exposure warnings (Planned)</title><rect x="626" y="378" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="644" y="403" class="k" text-anchor="middle">⚙️</text>
+</g>
+<text x="30" y="416" class="h">Layers, breaches and the story</text>
+<g><title>The surface (Built)</title><rect x="30" y="426" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="34" y="430" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAi0lEQVR42mOY5q73nxDeHGeLU44Bm2Bbpj+G5mXtySgGVZqpoBoAksRnE0wOphHDBSBbYZK4DALJx2jI4DYAl+345FDCAN2fxGAUA9Cdh8sbyJYw4Iou9MAiygXYnA8yCIaJTgfoAYfPNQyEnAgKWHyGMBBKwqCApcgFJAUiKQmIdi6A+RdmO6GUCQB3EgxhZzHtTwAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Layer 1: The Claim (Built)</title><rect x="72" y="426" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="90" y="451" class="k" text-anchor="middle">📍</text>
+</g>
+<g><title>Topsoil Claims (Built)</title><rect x="114" y="426" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="118" y="430" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAqUlEQVR42o1SOQ6AMAzLExgQE2wMSOw8gHfwEV5flEquLDdtGaxCDjeNbc+xpvfaM/z73pZ8RvAazRs344ygjeizc56SY3STAn3mhQy+EUSa51yXgIGRlchGb9VYtcTe5lvL5XprbR9FmtN/i/T/Iydqig9YOo4hrmYrPogaegQaN5aFi1VWtXylgo7fcmYoo47W057JyxPga4DdF9mavwtBZF0eW0dH7AOK35zH394c3wAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Stone Benches (Built)</title><rect x="156" y="426" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="160" y="430" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAqUlEQVR42o1SOQ6AMAzLExgQE2wMSOw8gHfwEV5flEquLDdtGaxCDjeNbc+xpvfaM/z73pZ8RvAazRs344ygjeizc56SY3STAn3mhQy+EUSa51yXgIGRlchGb9VYtcTe5lvL5XprbR9FmtN/i/T/Iydqig9YOo4hrmYrPogaegQaN5aFi1VWtXylgo7fcmYoo47W057JyxPga4DdF9mavwtBZF0eW0dH7AOK35zH394c3wAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Deep Claim (Built)</title><rect x="198" y="426" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="202" y="430" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAqUlEQVR42o1SOQ6AMAzLExgQE2wMSOw8gHfwEV5flEquLDdtGaxCDjeNbc+xpvfaM/z73pZ8RvAazRs344ygjeizc56SY3STAn3mhQy+EUSa51yXgIGRlchGb9VYtcTe5lvL5XprbR9FmtN/i/T/Iydqig9YOo4hrmYrPogaegQaN5aFi1VWtXylgo7fcmYoo47W057JyxPga4DdF9mavwtBZF0eW0dH7AOK35zH394c3wAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Structures in the layers (Built)</title><rect x="240" y="426" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="258" y="451" class="k" text-anchor="middle">📍</text>
+</g>
+<g><title>The first breach (Built)</title><rect x="282" y="426" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="300" y="451" class="k" text-anchor="middle">📍</text>
+</g>
+<g><title>Deepest point (Built)</title><rect x="324" y="426" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="342" y="451" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Transmissions (Built)</title><rect x="366" y="426" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="384" y="451" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Layer 2: The Old Workings (Built)</title><rect x="408" y="426" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="426" y="451" class="k" text-anchor="middle">📍</text>
+</g>
+<g><title>Layer palettes and grades (Planned)</title><rect x="450" y="426" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="468" y="451" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Upper Levels (Built)</title><rect x="492" y="426" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="496" y="430" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAqUlEQVR42o1SOQ6AMAzLExgQE2wMSOw8gHfwEV5flEquLDdtGaxCDjeNbc+xpvfaM/z73pZ8RvAazRs344ygjeizc56SY3STAn3mhQy+EUSa51yXgIGRlchGb9VYtcTe5lvL5XprbR9FmtN/i/T/Iydqig9YOo4hrmYrPogaegQaN5aFi1VWtXylgo7fcmYoo47W057JyxPga4DdF9mavwtBZF0eW0dH7AOK35zH394c3wAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Shift Change (Built)</title><rect x="534" y="426" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="538" y="430" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAqUlEQVR42o1SOQ6AMAzLExgQE2wMSOw8gHfwEV5flEquLDdtGaxCDjeNbc+xpvfaM/z73pZ8RvAazRs344ygjeizc56SY3STAn3mhQy+EUSa51yXgIGRlchGb9VYtcTe5lvL5XprbR9FmtN/i/T/Iydqig9YOo4hrmYrPogaegQaN5aFi1VWtXylgo7fcmYoo47W057JyxPga4DdF9mavwtBZF0eW0dH7AOK35zH394c3wAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Prospector&#x27;s Run (Built)</title><rect x="30" y="468" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="34" y="472" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAqUlEQVR42o1SOQ6AMAzLExgQE2wMSOw8gHfwEV5flEquLDdtGaxCDjeNbc+xpvfaM/z73pZ8RvAazRs344ygjeizc56SY3STAn3mhQy+EUSa51yXgIGRlchGb9VYtcTe5lvL5XprbR9FmtN/i/T/Iydqig9YOo4hrmYrPogaegQaN5aFi1VWtXylgo7fcmYoo47W057JyxPga4DdF9mavwtBZF0eW0dH7AOK35zH394c3wAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Breach crossing with no teleport (Planned)</title><rect x="72" y="468" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="90" y="493" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>One tall campaign world (Planned)</title><rect x="114" y="468" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="132" y="493" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Layer 3: Fungal Hollows (Planned)</title><rect x="156" y="468" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="174" y="493" class="k" text-anchor="middle">📍</text>
+</g>
+<g><title>Layer 4: The Drowned Deep (Planned)</title><rect x="198" y="468" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="216" y="493" class="k" text-anchor="middle">📍</text>
+</g>
+<g><title>Layers 5 to 8 (Planned)</title><rect x="240" y="468" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="258" y="493" class="k" text-anchor="middle">📍</text>
+</g>
+<g><title>The finale: a choice (Planned)</title><rect x="282" y="468" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="300" y="493" class="k" text-anchor="middle">🎯</text>
+</g>
+<g><title>The Ramp (Planned)</title><rect x="324" y="468" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="342" y="493" class="k" text-anchor="middle">📍</text>
+</g>
+<g><title>Seams and the grained crust (Planned)</title><rect x="366" y="468" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="384" y="493" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Story-layer splicing (Planned)</title><rect x="408" y="468" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="426" y="493" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Uncharted layers (Idea)</title><rect x="450" y="468" width="36" height="36" rx="5" fill="#2a2018" stroke="#757575" stroke-width="3" stroke-dasharray="3 2" opacity="0.7"/>
+<text x="468" y="493" class="k" text-anchor="middle">📍</text>
+</g>
+<text x="626" y="458" class="h">Charters, crews and accounts</text>
+<g><title>Found a charter (Built)</title><rect x="626" y="468" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="644" y="493" class="k" text-anchor="middle">🎯</text>
+</g>
+<g><title>Parts are company property (Built)</title><rect x="668" y="468" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="686" y="493" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Sign on as crew (Built)</title><rect x="710" y="468" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="728" y="493" class="k" text-anchor="middle">🎯</text>
+</g>
+<g><title>Dormant charters (Built)</title><rect x="752" y="468" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="770" y="493" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Serial numbers (Built)</title><rect x="794" y="468" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="812" y="493" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Revive at the contract terminal (Planned)</title><rect x="836" y="468" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="854" y="493" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>A restored wreck keeps its serial (In progress)</title><rect x="878" y="468" width="36" height="36" rx="5" fill="#2a2018" stroke="#f0b429" stroke-width="3"/>
+<text x="896" y="493" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Outposts and pads shared (Planned)</title><rect x="920" y="468" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="938" y="493" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Competition between charters (Idea)</title><rect x="962" y="468" width="36" height="36" rx="5" fill="#2a2018" stroke="#757575" stroke-width="3" stroke-dasharray="3 2" opacity="0.7"/>
+<text x="980" y="493" class="k" text-anchor="middle">⚙️</text>
+</g>
+<text x="30" y="548" class="h">The colony: Prosperity</text>
+<g><title>The square and the Host (Built)</title><rect x="30" y="558" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="48" y="583" class="k" text-anchor="middle">📍</text>
+</g>
+<g><title>Chapel, bunkhouse and the Lamp and Pick (Built)</title><rect x="72" y="558" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="90" y="583" class="k" text-anchor="middle">📍</text>
+</g>
+<g><title>The hangar (Built)</title><rect x="114" y="558" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="132" y="583" class="k" text-anchor="middle">📍</text>
+</g>
+<g><title>Offices and the Works (Built)</title><rect x="156" y="558" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="174" y="583" class="k" text-anchor="middle">📍</text>
+</g>
+<g><title>The statue&#x27;s hands (Built)</title><rect x="198" y="558" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="216" y="583" class="k" text-anchor="middle">📍</text>
+</g>
+<g><title>Company lamps (Built)</title><rect x="240" y="558" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="244" y="562" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAqElEQVR42o1TMQqAMBC7RziIg4PgJC4dxcnVp/j/uXLClRhy0CFcW5pcmlPb1qUeZa9RA74PPGVo63ka29rvGZOwOvG+zp+Yw8+CY6qjcoSdux2weIjEk7z+BJQIkhFdDpQIOvgE+FIPUNwibdURU0cyOjY8VCPjuUsHsWEBDC3LyrgTBoWJZ8Ead0Qii6YZsIMM7EQ6YBF+Fk9JOlDTyGCcfvZjZR/TC6n3e7GKmr+mAAAAAElFTkSuQmCC"/>
+</g>
+<g><title>The Conduit (Built)</title><rect x="282" y="558" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="286" y="562" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAwUlEQVR42mOQk5L4TwlmABEnZ8mg4Gwjkf8iggJwDBLrShGAy4PYIHG4ATBFyAqRDdBWVcJqCYoBICwkIvFfQ88Mjj2C4rCKwQzBMMBdgf+/jIIaigaQGDIfhHEagK4ZF4Z5CSUQQX4nRjMIw8IMIxaIdQHMxRgGgAII3RD0QATJYxgA8hMoWoj1Akg91nRArAGwdIIRC8QaAHItKNDxGgAKD3wuwJoOQBiWlJGTL7I8crJHiQVsGQgZY7MEbgAlGABf8ZjUlOguPgAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>The colony kit (Built)</title><rect x="324" y="558" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="328" y="562" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAmUlEQVR42mMQEpH47xEU9x9Ek4MZYAaQi+EGaOiZ/Tez8yCallFQA7PhBoAE26csgLNhimFiyJbAxDAMgIUFTDMIw8SQXYCsDsUAZJuRDUHGyPIoBuDThM8QuAGwQCHFEAwXIAcOsYZgDUSyXUBRGMAEYWFBjGaSXYAtRWJNidgMw5WsUVyALSXCxNFTIkwOxQBkv2HD2FwGAEMRoqeWpWqLAAAAAElFTkSuQmCC"/>
+</g>
+<g><title>Anchor mode and outposts (Idea)</title><rect x="366" y="558" width="36" height="36" rx="5" fill="#2a2018" stroke="#757575" stroke-width="3" stroke-dasharray="3 2" opacity="0.7"/>
+<text x="384" y="583" class="k" text-anchor="middle">📍</text>
+</g>
+<text x="626" y="548" class="h">The pod chassis ladder</text>
+<g><title>Mole (Built)</title><rect x="626" y="558" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="630" y="562" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAdklEQVR42mNgoBWQkVL5j4xJ1tg+ZQEKJsoQZI2JuVUo2CMoDr8hMM3IGtCxmZ0HdkOQNcMUyyioYWVjNQSbAbhcoKFnhmoAsZqJNgCX07ONRChzAUgz2Qbg1EyMAXg1IxsAU4gN49SMbAhIES5MdDLGhRloCQBy5BVHq2eipQAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Pod looks (Built)</title><rect x="668" y="558" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="686" y="583" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Charter paint (Built)</title><rect x="710" y="558" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="728" y="583" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Prospector (Built)</title><rect x="752" y="558" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="756" y="562" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAiElEQVR42mNgwANkpFT+I2MGYgFMQ2JuFQomyhBkjR5BcSjYzM4DvyEwzTANHFrGKBivIbg0SzVMwTBAQ88M0xBkA5A1z3nznThD0A2AaYZhmCFEG0CRC8gKA1JiAacBMENAirClAYKa0VPi2loTFEx0kgYrVFAD2wbDID5JmnFiog3BgRmoDQCqWwYD3bTF9wAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Restore a wreck into a pod (Built)</title><rect x="794" y="558" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="812" y="583" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Badger (Planned)</title><rect x="836" y="558" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="854" y="583" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Bore scales with the chassis (Built)</title><rect x="878" y="558" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="896" y="583" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Hauler (Planned)</title><rect x="920" y="558" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="938" y="583" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Crawler (Planned)</title><rect x="962" y="558" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="980" y="583" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Behemoth (Planned)</title><rect x="1004" y="558" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="1022" y="583" class="k" text-anchor="middle">⚙️</text>
+</g>
+<text x="30" y="638" class="h">Drill</text>
+<g><title>Drill: stock (Built)</title><rect x="30" y="648" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="34" y="652" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAbElEQVR42mNgQAMyUir/8WEGfACkYG2tCV6M1xCYAXF2UlgxXgNAEu1TFvxPzK2CY4+gOBRsZufxX0ZBDbshyAZg04hXMzGuIMkAsmzH5QqibcflCpI04wpQsg0gSzO6IQNrANmakQ1hoDUAAJJ0w3fvUZ0NAAAAAElFTkSuQmCC"/>
+</g>
+<g><title>Drill tier 1 (Built)</title><rect x="72" y="648" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="76" y="652" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAbElEQVR42mNgQAMyUir/8WEGfACkYG2tCV6M1xCYAXF2UlgxXgNAEu1TFvxPzK2CY4+gOBRsZufxX0ZBDbshyAZg04hXMzGuIMkAsmzH5QqibcflCpI04wpQsg0gSzO6IQNrANmakQ1hoDUAAJJ0w3fvUZ0NAAAAAElFTkSuQmCC"/>
+</g>
+<g><title>Drill tier 2 (Built)</title><rect x="114" y="648" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="118" y="652" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAbElEQVR42mNgQAMyUir/8WEGfACkYG2tCV6M1xCYAXF2UlgxXgNAEu1TFvxPzK2CY4+gOBRsZufxX0ZBDbshyAZg04hXMzGuIMkAsmzH5QqibcflCpI04wpQsg0gSzO6IQNrANmakQ1hoDUAAJJ0w3fvUZ0NAAAAAElFTkSuQmCC"/>
+</g>
+<g><title>Drill tier 3 (Built)</title><rect x="156" y="648" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="160" y="652" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAbElEQVR42mNgQAMyUir/8WEGfACkYG2tCV6M1xCYAXF2UlgxXgNAEu1TFvxPzK2CY4+gOBRsZufxX0ZBDbshyAZg04hXMzGuIMkAsmzH5QqibcflCpI04wpQsg0gSzO6IQNrANmakQ1hoDUAAJJ0w3fvUZ0NAAAAAElFTkSuQmCC"/>
+</g>
+<g><title>Drill tier 4 (Planned)</title><rect x="198" y="648" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<image x="202" y="652" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAbElEQVR42mNgQAMyUir/8WEGfACkYG2tCV6M1xCYAXF2UlgxXgNAEu1TFvxPzK2CY4+gOBRsZufxX0ZBDbshyAZg04hXMzGuIMkAsmzH5QqibcflCpI04wpQsg0gSzO6IQNrANmakQ1hoDUAAJJ0w3fvUZ0NAAAAAElFTkSuQmCC"/>
+</g>
+<g><title>Drill tier 5 (Planned)</title><rect x="240" y="648" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<image x="244" y="652" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAbElEQVR42mNgQAMyUir/8WEGfACkYG2tCV6M1xCYAXF2UlgxXgNAEu1TFvxPzK2CY4+gOBRsZufxX0ZBDbshyAZg04hXMzGuIMkAsmzH5QqibcflCpI04wpQsg0gSzO6IQNrANmakQ1hoDUAAJJ0w3fvUZ0NAAAAAElFTkSuQmCC"/>
+</g>
+<g><title>Drill tier 6 (Planned)</title><rect x="282" y="648" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<image x="286" y="652" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAbElEQVR42mNgQAMyUir/8WEGfACkYG2tCV6M1xCYAXF2UlgxXgNAEu1TFvxPzK2CY4+gOBRsZufxX0ZBDbshyAZg04hXMzGuIMkAsmzH5QqibcflCpI04wpQsg0gSzO6IQNrANmakQ1hoDUAAJJ0w3fvUZ0NAAAAAElFTkSuQmCC"/>
+</g>
+<text x="626" y="638" class="h">Hull</text>
+<g><title>Hull: stock (Built)</title><rect x="626" y="648" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="630" y="652" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAdklEQVR42mNgoBWQkVL5j4xJ1tg+ZQEKJsoQZI2JuVUo2CMoDr8hMM3IGtCxmZ0HdkOQNcMUyyioYWVjNQSbAbhcoKFnhmoAsZqJNgCX07ONRChzAUgz2Qbg1EyMAXg1IxsAU4gN49SMbAhIES5MdDLGhRloCQBy5BVHq2eipQAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Hull tier 1 (Built)</title><rect x="668" y="648" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="672" y="652" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAdklEQVR42mNgoBWQkVL5j4xJ1tg+ZQEKJsoQZI2JuVUo2CMoDr8hMM3IGtCxmZ0HdkOQNcMUyyioYWVjNQSbAbhcoKFnhmoAsZqJNgCX07ONRChzAUgz2Qbg1EyMAXg1IxsAU4gN49SMbAhIES5MdDLGhRloCQBy5BVHq2eipQAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Hull tier 2 (Built)</title><rect x="710" y="648" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="714" y="652" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAdklEQVR42mNgoBWQkVL5j4xJ1tg+ZQEKJsoQZI2JuVUo2CMoDr8hMM3IGtCxmZ0HdkOQNcMUyyioYWVjNQSbAbhcoKFnhmoAsZqJNgCX07ONRChzAUgz2Qbg1EyMAXg1IxsAU4gN49SMbAhIES5MdDLGhRloCQBy5BVHq2eipQAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Hull tier 3 (Built)</title><rect x="752" y="648" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="756" y="652" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAdklEQVR42mNgoBWQkVL5j4xJ1tg+ZQEKJsoQZI2JuVUo2CMoDr8hMM3IGtCxmZ0HdkOQNcMUyyioYWVjNQSbAbhcoKFnhmoAsZqJNgCX07ONRChzAUgz2Qbg1EyMAXg1IxsAU4gN49SMbAhIES5MdDLGhRloCQBy5BVHq2eipQAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Hull tier 4 (Planned)</title><rect x="794" y="648" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<image x="798" y="652" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAdklEQVR42mNgoBWQkVL5j4xJ1tg+ZQEKJsoQZI2JuVUo2CMoDr8hMM3IGtCxmZ0HdkOQNcMUyyioYWVjNQSbAbhcoKFnhmoAsZqJNgCX07ONRChzAUgz2Qbg1EyMAXg1IxsAU4gN49SMbAhIES5MdDLGhRloCQBy5BVHq2eipQAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Hull tier 5 (Planned)</title><rect x="836" y="648" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<image x="840" y="652" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAdklEQVR42mNgoBWQkVL5j4xJ1tg+ZQEKJsoQZI2JuVUo2CMoDr8hMM3IGtCxmZ0HdkOQNcMUyyioYWVjNQSbAbhcoKFnhmoAsZqJNgCX07ONRChzAUgz2Qbg1EyMAXg1IxsAU4gN49SMbAhIES5MdDLGhRloCQBy5BVHq2eipQAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Hull tier 6 (Planned)</title><rect x="878" y="648" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<image x="882" y="652" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAdklEQVR42mNgoBWQkVL5j4xJ1tg+ZQEKJsoQZI2JuVUo2CMoDr8hMM3IGtCxmZ0HdkOQNcMUyyioYWVjNQSbAbhcoKFnhmoAsZqJNgCX07ONRChzAUgz2Qbg1EyMAXg1IxsAU4gN49SMbAhIES5MdDLGhRloCQBy5BVHq2eipQAAAABJRU5ErkJggg=="/>
+</g>
+<text x="30" y="728" class="h">Engine</text>
+<g><title>Engine: stock (Built)</title><rect x="30" y="738" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="34" y="742" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAhklEQVR42mNgoCaQkVL5D8LE8jE0J+ZW/Tez8/gPU4iPT10DQALxob5EYzkpCVRDYAZ4O9kQxNqqSqgGwJwHM8DKSBcvxjBAWVnjPwgjG3BlmR9WTJIBrVEqKBinARR7AT0QQYome0pjaISJ4TUAJEkIgzRjGAAzBFkSG8apmai0ToT8wAAAe+EK/NpmRMYAAAAASUVORK5CYII="/>
+</g>
+<g><title>Engine tier 1 (Built)</title><rect x="72" y="738" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="76" y="742" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAhklEQVR42mNgoCaQkVL5D8LE8jE0J+ZW/Tez8/gPU4iPT10DQALxob5EYzkpCVRDYAZ4O9kQxNqqSqgGwJwHM8DKSBcvxjBAWVnjPwgjG3BlmR9WTJIBrVEqKBinARR7AT0QQYome0pjaISJ4TUAJEkIgzRjGAAzBFkSG8apmai0ToT8wAAAe+EK/NpmRMYAAAAASUVORK5CYII="/>
+</g>
+<g><title>Engine tier 2 (Built)</title><rect x="114" y="738" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="118" y="742" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAhklEQVR42mNgoCaQkVL5D8LE8jE0J+ZW/Tez8/gPU4iPT10DQALxob5EYzkpCVRDYAZ4O9kQxNqqSqgGwJwHM8DKSBcvxjBAWVnjPwgjG3BlmR9WTJIBrVEqKBinARR7AT0QQYome0pjaISJ4TUAJEkIgzRjGAAzBFkSG8apmai0ToT8wAAAe+EK/NpmRMYAAAAASUVORK5CYII="/>
+</g>
+<g><title>Engine tier 3 (Built)</title><rect x="156" y="738" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="160" y="742" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAhklEQVR42mNgoCaQkVL5D8LE8jE0J+ZW/Tez8/gPU4iPT10DQALxob5EYzkpCVRDYAZ4O9kQxNqqSqgGwJwHM8DKSBcvxjBAWVnjPwgjG3BlmR9WTJIBrVEqKBinARR7AT0QQYome0pjaISJ4TUAJEkIgzRjGAAzBFkSG8apmai0ToT8wAAAe+EK/NpmRMYAAAAASUVORK5CYII="/>
+</g>
+<g><title>Engine tier 4 (Planned)</title><rect x="198" y="738" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<image x="202" y="742" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAhklEQVR42mNgoCaQkVL5D8LE8jE0J+ZW/Tez8/gPU4iPT10DQALxob5EYzkpCVRDYAZ4O9kQxNqqSqgGwJwHM8DKSBcvxjBAWVnjPwgjG3BlmR9WTJIBrVEqKBinARR7AT0QQYome0pjaISJ4TUAJEkIgzRjGAAzBFkSG8apmai0ToT8wAAAe+EK/NpmRMYAAAAASUVORK5CYII="/>
+</g>
+<g><title>Engine tier 5 (Planned)</title><rect x="240" y="738" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<image x="244" y="742" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAhklEQVR42mNgoCaQkVL5D8LE8jE0J+ZW/Tez8/gPU4iPT10DQALxob5EYzkpCVRDYAZ4O9kQxNqqSqgGwJwHM8DKSBcvxjBAWVnjPwgjG3BlmR9WTJIBrVEqKBinARR7AT0QQYome0pjaISJ4TUAJEkIgzRjGAAzBFkSG8apmai0ToT8wAAAe+EK/NpmRMYAAAAASUVORK5CYII="/>
+</g>
+<g><title>Engine tier 6 (Planned)</title><rect x="282" y="738" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<image x="286" y="742" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAhklEQVR42mNgoCaQkVL5D8LE8jE0J+ZW/Tez8/gPU4iPT10DQALxob5EYzkpCVRDYAZ4O9kQxNqqSqgGwJwHM8DKSBcvxjBAWVnjPwgjG3BlmR9WTJIBrVEqKBinARR7AT0QQYome0pjaISJ4TUAJEkIgzRjGAAzBFkSG8apmai0ToT8wAAAe+EK/NpmRMYAAAAASUVORK5CYII="/>
+</g>
+<text x="626" y="728" class="h">Fuel tank</text>
+<g><title>Fuel tank: stock (Built)</title><rect x="626" y="738" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="630" y="742" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAhUlEQVR42mNgwAFkpFT+wzADqQCkKTG3CozN7DxIMwSk+MoyPzhujVIBY6IMASnaqiUPxn2yYig4RZgfvyEwzegakQ2w5ebCbQi609ExQa+gu+DT6xtwTLQLYAaANHEK8ILxzQYpMJ8kAyh2weAIRJJdQMgQggkJ2RCQYnRMcn5Axwy0AgDeJPrHtNHSsQAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Fuel tank tier 1 (Built)</title><rect x="668" y="738" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="672" y="742" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAhUlEQVR42mNgwAFkpFT+wzADqQCkKTG3CozN7DxIMwSk+MoyPzhujVIBY6IMASnaqiUPxn2yYig4RZgfvyEwzegakQ2w5ebCbQi609ExQa+gu+DT6xtwTLQLYAaANHEK8ILxzQYpMJ8kAyh2weAIRJJdQMgQggkJ2RCQYnRMcn5Axwy0AgDeJPrHtNHSsQAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Fuel tank tier 2 (Built)</title><rect x="710" y="738" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="714" y="742" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAhUlEQVR42mNgwAFkpFT+wzADqQCkKTG3CozN7DxIMwSk+MoyPzhujVIBY6IMASnaqiUPxn2yYig4RZgfvyEwzegakQ2w5ebCbQi609ExQa+gu+DT6xtwTLQLYAaANHEK8ILxzQYpMJ8kAyh2weAIRJJdQMgQggkJ2RCQYnRMcn5Axwy0AgDeJPrHtNHSsQAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Fuel tank tier 3 (Built)</title><rect x="752" y="738" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="756" y="742" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAhUlEQVR42mNgwAFkpFT+wzADqQCkKTG3CozN7DxIMwSk+MoyPzhujVIBY6IMASnaqiUPxn2yYig4RZgfvyEwzegakQ2w5ebCbQi609ExQa+gu+DT6xtwTLQLYAaANHEK8ILxzQYpMJ8kAyh2weAIRJJdQMgQggkJ2RCQYnRMcn5Axwy0AgDeJPrHtNHSsQAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Fuel tank tier 4 (Planned)</title><rect x="794" y="738" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<image x="798" y="742" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAhUlEQVR42mNgwAFkpFT+wzADqQCkKTG3CozN7DxIMwSk+MoyPzhujVIBY6IMASnaqiUPxn2yYig4RZgfvyEwzegakQ2w5ebCbQi609ExQa+gu+DT6xtwTLQLYAaANHEK8ILxzQYpMJ8kAyh2weAIRJJdQMgQggkJ2RCQYnRMcn5Axwy0AgDeJPrHtNHSsQAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Fuel tank tier 5 (Planned)</title><rect x="836" y="738" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<image x="840" y="742" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAhUlEQVR42mNgwAFkpFT+wzADqQCkKTG3CozN7DxIMwSk+MoyPzhujVIBY6IMASnaqiUPxn2yYig4RZgfvyEwzegakQ2w5ebCbQi609ExQa+gu+DT6xtwTLQLYAaANHEK8ILxzQYpMJ8kAyh2weAIRJJdQMgQggkJ2RCQYnRMcn5Axwy0AgDeJPrHtNHSsQAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Fuel tank tier 6 (Planned)</title><rect x="878" y="738" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<image x="882" y="742" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAhUlEQVR42mNgwAFkpFT+wzADqQCkKTG3CozN7DxIMwSk+MoyPzhujVIBY6IMASnaqiUPxn2yYig4RZgfvyEwzegakQ2w5ebCbQi609ExQa+gu+DT6xtwTLQLYAaANHEK8ILxzQYpMJ8kAyh2weAIRJJdQMgQggkJ2RCQYnRMcn5Axwy0AgDeJPrHtNHSsQAAAABJRU5ErkJggg=="/>
+</g>
+<text x="30" y="818" class="h">Radiator</text>
+<g><title>Radiator: stock (Built)</title><rect x="30" y="828" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="34" y="832" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAYklEQVR42mNgoBaQkVL5TwrG0OwRFEc01tAzQzUEZgBIgliMYcCrZXn/fRWFiKYxDDhf6wqWIJbGacCKCB2iaAwDiNVYZSVHmgEwDeg0TgNwaSBoALEacRowsAmJ4rwwoAAAsFsuiwgMBOEAAAAASUVORK5CYII="/>
+</g>
+<g><title>Radiator tier 1 (Built)</title><rect x="72" y="828" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="76" y="832" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAYklEQVR42mNgoBaQkVL5TwrG0OwRFEc01tAzQzUEZgBIgliMYcCrZXn/fRWFiKYxDDhf6wqWIJbGacCKCB2iaAwDiNVYZSVHmgEwDeg0TgNwaSBoALEacRowsAmJ4rwwoAAAsFsuiwgMBOEAAAAASUVORK5CYII="/>
+</g>
+<g><title>Radiator tier 2 (Built)</title><rect x="114" y="828" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="118" y="832" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAYklEQVR42mNgoBaQkVL5TwrG0OwRFEc01tAzQzUEZgBIgliMYcCrZXn/fRWFiKYxDDhf6wqWIJbGacCKCB2iaAwDiNVYZSVHmgEwDeg0TgNwaSBoALEacRowsAmJ4rwwoAAAsFsuiwgMBOEAAAAASUVORK5CYII="/>
+</g>
+<g><title>Radiator tier 3 (Built)</title><rect x="156" y="828" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="160" y="832" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAYklEQVR42mNgoBaQkVL5TwrG0OwRFEc01tAzQzUEZgBIgliMYcCrZXn/fRWFiKYxDDhf6wqWIJbGacCKCB2iaAwDiNVYZSVHmgEwDeg0TgNwaSBoALEacRowsAmJ4rwwoAAAsFsuiwgMBOEAAAAASUVORK5CYII="/>
+</g>
+<g><title>Radiator tier 4 (Planned)</title><rect x="198" y="828" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<image x="202" y="832" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAYklEQVR42mNgoBaQkVL5TwrG0OwRFEc01tAzQzUEZgBIgliMYcCrZXn/fRWFiKYxDDhf6wqWIJbGacCKCB2iaAwDiNVYZSVHmgEwDeg0TgNwaSBoALEacRowsAmJ4rwwoAAAsFsuiwgMBOEAAAAASUVORK5CYII="/>
+</g>
+<g><title>Radiator tier 5 (Planned)</title><rect x="240" y="828" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<image x="244" y="832" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAYklEQVR42mNgoBaQkVL5TwrG0OwRFEc01tAzQzUEZgBIgliMYcCrZXn/fRWFiKYxDDhf6wqWIJbGacCKCB2iaAwDiNVYZSVHmgEwDeg0TgNwaSBoALEacRowsAmJ4rwwoAAAsFsuiwgMBOEAAAAASUVORK5CYII="/>
+</g>
+<text x="626" y="818" class="h">Cargo bay</text>
+<g><title>Cargo bay: stock (Built)</title><rect x="626" y="828" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="630" y="832" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAaklEQVR42mNgoBaQkVL5TwrG0Nw+ZQFJGMUQmAGJuVVEYQ09M0wDrizzIxrH2UnhdoFHUBxebGbngd0FyAZ8en0DKybJgD5ZMRRMsgEUuYCsMBgcsQCSJISzjUSwGwASJAVjzQ9kZyZKAABFiYyHfupldQAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Cargo bay tier 1 (Built)</title><rect x="668" y="828" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="672" y="832" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAaklEQVR42mNgoBaQkVL5TwrG0Nw+ZQFJGMUQmAGJuVVEYQ09M0wDrizzIxrH2UnhdoFHUBxebGbngd0FyAZ8en0DKybJgD5ZMRRMsgEUuYCsMBgcsQCSJISzjUSwGwASJAVjzQ9kZyZKAABFiYyHfupldQAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Cargo bay tier 2 (Built)</title><rect x="710" y="828" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="714" y="832" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAaklEQVR42mNgoBaQkVL5TwrG0Nw+ZQFJGMUQmAGJuVVEYQ09M0wDrizzIxrH2UnhdoFHUBxebGbngd0FyAZ8en0DKybJgD5ZMRRMsgEUuYCsMBgcsQCSJISzjUSwGwASJAVjzQ9kZyZKAABFiYyHfupldQAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Cargo bay tier 3 (Built)</title><rect x="752" y="828" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="756" y="832" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAaklEQVR42mNgoBaQkVL5TwrG0Nw+ZQFJGMUQmAGJuVVEYQ09M0wDrizzIxrH2UnhdoFHUBxebGbngd0FyAZ8en0DKybJgD5ZMRRMsgEUuYCsMBgcsQCSJISzjUSwGwASJAVjzQ9kZyZKAABFiYyHfupldQAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Cargo bay tier 4 (Planned)</title><rect x="794" y="828" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<image x="798" y="832" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAaklEQVR42mNgoBaQkVL5TwrG0Nw+ZQFJGMUQmAGJuVVEYQ09M0wDrizzIxrH2UnhdoFHUBxebGbngd0FyAZ8en0DKybJgD5ZMRRMsgEUuYCsMBgcsQCSJISzjUSwGwASJAVjzQ9kZyZKAABFiYyHfupldQAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Cargo bay tier 5 (Planned)</title><rect x="836" y="828" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<image x="840" y="832" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAaklEQVR42mNgoBaQkVL5TwrG0Nw+ZQFJGMUQmAGJuVVEYQ09M0wDrizzIxrH2UnhdoFHUBxebGbngd0FyAZ8en0DKybJgD5ZMRRMsgEUuYCsMBgcsQCSJISzjUSwGwASJAVjzQ9kZyZKAABFiYyHfupldQAAAABJRU5ErkJggg=="/>
+</g>
+<text x="30" y="908" class="h">Scanner</text>
+<g><title>Scanner tier 1 (Built)</title><rect x="30" y="918" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="34" y="922" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAiElEQVR42mNgwANkpFT+I2MGYgFMQ2JuFQomyhBkjR5BcSjYzM4DvyEwzTANHFrGKBivIbg0SzVMwTBAQ88M0xBkA5A1z3nznThD0A2AaYZhmCFEG0CRC8gKA1JiAacBMENAirClAYKa0VPi2loTFEx0kgYrVFAD2wbDID5JmnFiog3BgRmoDQCqWwYD3bTF9wAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Scanner tier 2 (Built)</title><rect x="72" y="918" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="76" y="922" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAiElEQVR42mNgwANkpFT+I2MGYgFMQ2JuFQomyhBkjR5BcSjYzM4DvyEwzTANHFrGKBivIbg0SzVMwTBAQ88M0xBkA5A1z3nznThD0A2AaYZhmCFEG0CRC8gKA1JiAacBMENAirClAYKa0VPi2loTFEx0kgYrVFAD2wbDID5JmnFiog3BgRmoDQCqWwYD3bTF9wAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Scanner tier 3 (Built)</title><rect x="114" y="918" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="118" y="922" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAiElEQVR42mNgwANkpFT+I2MGYgFMQ2JuFQomyhBkjR5BcSjYzM4DvyEwzTANHFrGKBivIbg0SzVMwTBAQ88M0xBkA5A1z3nznThD0A2AaYZhmCFEG0CRC8gKA1JiAacBMENAirClAYKa0VPi2loTFEx0kgYrVFAD2wbDID5JmnFiog3BgRmoDQCqWwYD3bTF9wAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Scanner tier 4 (Planned)</title><rect x="156" y="918" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<image x="160" y="922" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAiElEQVR42mNgwANkpFT+I2MGYgFMQ2JuFQomyhBkjR5BcSjYzM4DvyEwzTANHFrGKBivIbg0SzVMwTBAQ88M0xBkA5A1z3nznThD0A2AaYZhmCFEG0CRC8gKA1JiAacBMENAirClAYKa0VPi2loTFEx0kgYrVFAD2wbDID5JmnFiog3BgRmoDQCqWwYD3bTF9wAAAABJRU5ErkJggg=="/>
+</g>
+<text x="626" y="908" class="h">Lights</text>
+<g><title>Lights tier 1 (Built)</title><rect x="626" y="918" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="630" y="922" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAlUlEQVR42mNgoDaQkVL5jw0TrTkxtworJmgITLNHUBxWbGbngdsQZM1ra03AbGw0TkOQDQDR/7/dheMX19fADQEZoKFnhmkIuguQNYPwhlkFYHGYVzAMweYCZM0wA3C6At0F6JpJMgBXACIHJMFwwBeVWDUjGwJShAvj1YyRlBXUwBrAmoBsopM0TDNWTEqeIDtDkQoAkjQo4LER8lsAAAAASUVORK5CYII="/>
+</g>
+<g><title>Lights tier 2 (Built)</title><rect x="668" y="918" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="672" y="922" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAlUlEQVR42mNgoDaQkVL5jw0TrTkxtworJmgITLNHUBxWbGbngdsQZM1ra03AbGw0TkOQDQDR/7/dheMX19fADQEZoKFnhmkIuguQNYPwhlkFYHGYVzAMweYCZM0wA3C6At0F6JpJMgBXACIHJMFwwBeVWDUjGwJShAvj1YyRlBXUwBrAmoBsopM0TDNWTEqeIDtDkQoAkjQo4LER8lsAAAAASUVORK5CYII="/>
+</g>
+<g><title>Lights tier 3 (Built)</title><rect x="710" y="918" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="714" y="922" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAlUlEQVR42mNgoDaQkVL5jw0TrTkxtworJmgITLNHUBxWbGbngdsQZM1ra03AbGw0TkOQDQDR/7/dheMX19fADQEZoKFnhmkIuguQNYPwhlkFYHGYVzAMweYCZM0wA3C6At0F6JpJMgBXACIHJMFwwBeVWDUjGwJShAvj1YyRlBXUwBrAmoBsopM0TDNWTEqeIDtDkQoAkjQo4LER8lsAAAAASUVORK5CYII="/>
+</g>
+<g><title>Lights tier 4 (Planned)</title><rect x="752" y="918" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<image x="756" y="922" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAlUlEQVR42mNgoDaQkVL5jw0TrTkxtworJmgITLNHUBxWbGbngdsQZM1ra03AbGw0TkOQDQDR/7/dheMX19fADQEZoKFnhmkIuguQNYPwhlkFYHGYVzAMweYCZM0wA3C6At0F6JpJMgBXACIHJMFwwBeVWDUjGwJShAvj1YyRlBXUwBrAmoBsopM0TDNWTEqeIDtDkQoAkjQo4LER8lsAAAAASUVORK5CYII="/>
+</g>
+<text x="30" y="998" class="h">Lava and its counters</text>
+<g><title>Lava in the rock (Built)</title><rect x="30" y="1008" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="48" y="1033" class="k" text-anchor="middle">☠️</text>
+</g>
+<g><title>The pod shields its pilot (Built)</title><rect x="72" y="1008" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="90" y="1033" class="k" text-anchor="middle">🛡️</text>
+</g>
+<g><title>Spoil hopper (Built)</title><rect x="114" y="1008" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="118" y="1012" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAoElEQVR42mNggAIZKZX/pGAGZAASuLLMjySMYgiI0xql8n9trQlRGKQWw4DE3Kr/m+Ns/09z1/sfoyEDpmF8dDENPTPsBiArxGcQhgHIhngExeHFWDXDDDg5S+a/iKAAQRqrAdhcYWbnQZztxHqDoAH4DCFKM7oByF4g2gBsriBJM8wAAwMzFEyyAZVmKuBEA6JBmCQDkA0hSzN6FsenBgDF7Rny9bZV+gAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Hand lining (Built)</title><rect x="156" y="1008" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="160" y="1012" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAqElEQVR42s1TuwqDQBC8HzBgbSEJGMQ0EqzSiuny/5+zYQ4mjOuGoKawGFf3cTizc+k5vuwbpqayX/V0rq8GdG1vp6LMEbg1l9zAd0T2MeYDMISEDhNowDAQ9eQD8NiDtJazz800IOcIqgmoUJfED0TfwEhQE83/V4NNPojWR37qA+YWPhjuDwOUu3L2BuPwgXwQWVd/l1b3PvmsUffqL4/WIqOhtluDNxr2i+52ku0QAAAAAElFTkSuQmCC"/>
+</g>
+<g><title>Liner tier 1 (Built)</title><rect x="198" y="1008" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="202" y="1012" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAdElEQVR42mNggAIZKZX/pGAGZAASuLLMjySMYgiIs7bW5L+WhsF/EyOr/4ryanjZILVYDSBGM4iN0wCYAj5eQayYoAtAkiBFuAwAGU6UF3AZQHsvwBRQ5AV8BtAvGslKSK1RpGEMAzT0zEjCWDMU2bmREgAAxM9JcPYLzS4AAAAASUVORK5CYII="/>
+</g>
+<g><title>Liner tier 2 (Built)</title><rect x="240" y="1008" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="244" y="1012" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAdElEQVR42mNggAIZKZX/pGAGZAASuLLMjySMYgiIs7bW5L+WhsF/EyOr/4ryanjZILVYDSBGM4iN0wCYAj5eQayYoAtAkiBFuAwAGU6UF3AZQHsvwBRQ5AV8BtAvGslKSK1RpGEMAzT0zEjCWDMU2bmREgAAxM9JcPYLzS4AAAAASUVORK5CYII="/>
+</g>
+<g><title>The lava watch (Built)</title><rect x="282" y="1008" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="300" y="1033" class="k" text-anchor="middle">🛡️</text>
+</g>
+<g><title>Heat shield hull (In progress)</title><rect x="324" y="1008" width="36" height="36" rx="5" fill="#2a2018" stroke="#f0b429" stroke-width="3"/>
+<image x="328" y="1012" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAdklEQVR42mNgoBWQkVL5j4xJ1tg+ZQEKJsoQZI2JuVUo2CMoDr8hMM3IGtCxmZ0HdkOQNcMUyyioYWVjNQSbAbhcoKFnhmoAsZqJNgCX07ONRChzAUgz2Qbg1EyMAXg1IxsAU4gN49SMbAhIES5MdDLGhRloCQBy5BVHq2eipQAAAABJRU5ErkJggg=="/>
+</g>
+<text x="626" y="998" class="h">Gas and its counters</text>
+<g><title>Gas pockets (Built)</title><rect x="626" y="1008" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="644" y="1033" class="k" text-anchor="middle">☠️</text>
+</g>
+<g><title>Dynamite on a slab (Built)</title><rect x="668" y="1008" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="672" y="1012" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAb0lEQVR42mNgIABkpFT+M5ALQJr/f7v7nyxDQJq+rjD635bpT74BJGkGKUTG2qpKYIwujtuvWV7/L2hJ/Z8sxo+THcPLhd0Qqhjw6fUNojBeA/pkxeAYG5+gARS5YOADkWIDQJLEYLyJiRjMQG0AAA/dIlBdxMf0AAAAAElFTkSuQmCC"/>
+</g>
+<g><title>Seep sounder tier 1 (Built)</title><rect x="710" y="1008" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="714" y="1012" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAfElEQVR42mNgwAFkpFT+I2MGUgBIg0dQHAomyRCYAYm5VWBMXwNACq8s8wPjtbUmYAzjEzQEphmmER3jNQSb5tYoFTAmaAg+zUQZAuJo6JnB/UoIg9RidQUpGGfKe3PIBivGmyKRNeKyEVkeq2ZCaR7ZIKyGkJJKGQYVAAA8QPfHr/80NgAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Seep sounder tier 2 (Built)</title><rect x="752" y="1008" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="756" y="1012" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAfElEQVR42mNgwAFkpFT+I2MGUgBIg0dQHAomyRCYAYm5VWBMXwNACq8s8wPjtbUmYAzjEzQEphmmER3jNQSb5tYoFTAmaAg+zUQZAuJo6JnB/UoIg9RidQUpGGfKe3PIBivGmyKRNeKyEVkeq2ZCaR7ZIKyGkJJKGQYVAAA8QPfHr/80NgAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Sideways bores spread the blast (Built)</title><rect x="794" y="1008" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="812" y="1033" class="k" text-anchor="middle">🛡️</text>
+</g>
+<g><title>Gas on the map (Built)</title><rect x="836" y="1008" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="840" y="1012" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAiElEQVR42mNgwANkpFT+I2MGYgFMQ2JuFQomyhBkjR5BcSjYzM4DvyEwzTANHFrGKBivIbg0SzVMwTBAQ88M0xBkA5A1z3nznThD0A2AaYZhmCFEG0CRC8gKA1JiAacBMENAirClAYKa0VPi2loTFEx0kgYrVFAD2wbDID5JmnFiog3BgRmoDQCqWwYD3bTF9wAAAABJRU5ErkJggg=="/>
+</g>
+<text x="30" y="1088" class="h">Company Rock and its counters</text>
+<g><title>Company Rock (Built)</title><rect x="30" y="1098" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="34" y="1102" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAwUlEQVR42mMws/P4TwlmABEyCmr/NfTMwDQyFhKRwBCDYZB6Lk5uhAGJuVX/YWx8GFkdigEgGp+NMIysDsUAEHZX4IdL4nMNSB2KAdgUI7sGl2FgA9bWmvynBDPE2Un9h2FbdaH/yHx8GKYWbEBrlApOA7KNRP7js4QBJEAJZsAVQOiBiE0dRjTiSnEg2svKACNGcKZEkGJkNnL8Y02JIAmQQlgCgSlG5iN7BeQ9kHq4ATBnohsAYyO7AiMlgghKMABcC4lSAdv9uQAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Company Rock look (Planned)</title><rect x="72" y="1098" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="90" y="1123" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Steer round it (Built)</title><rect x="114" y="1098" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="132" y="1123" class="k" text-anchor="middle">🛡️</text>
+</g>
+<g><title>Blasting charge (Planned)</title><rect x="156" y="1098" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="174" y="1123" class="k" text-anchor="middle">🧪</text>
+</g>
+<g><title>Shaped charge (Planned)</title><rect x="198" y="1098" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="216" y="1123" class="k" text-anchor="middle">🧪</text>
+</g>
+<g><title>A drill tier that bites Company Rock (Planned)</title><rect x="240" y="1098" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="258" y="1123" class="k" text-anchor="middle">⬆️</text>
+</g>
+<text x="626" y="1088" class="h">The Retained and other creatures</text>
+<g><title>The Retained (Built)</title><rect x="626" y="1098" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="644" y="1123" class="k" text-anchor="middle">👁️</text>
+</g>
+<g><title>The grab and the drain (Built)</title><rect x="668" y="1098" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="686" y="1123" class="k" text-anchor="middle">☠️</text>
+</g>
+<g><title>Keep moving (Built)</title><rect x="710" y="1098" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="728" y="1123" class="k" text-anchor="middle">🛡️</text>
+</g>
+<g><title>Lights keep them away (Built)</title><rect x="752" y="1098" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="756" y="1102" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAlUlEQVR42mNgoDaQkVL5jw0TrTkxtworJmgITLNHUBxWbGbngdsQZM1ra03AbGw0TkOQDQDR/7/dheMX19fADQEZoKFnhmkIuguQNYPwhlkFYHGYVzAMweYCZM0wA3C6At0F6JpJMgBXACIHJMFwwBeVWDUjGwJShAvj1YyRlBXUwBrAmoBsopM0TDNWTEqeIDtDkQoAkjQo4LER8lsAAAAASUVORK5CYII="/>
+</g>
+<g><title>Kill it with the drill (In progress)</title><rect x="794" y="1098" width="36" height="36" rx="5" fill="#2a2018" stroke="#f0b429" stroke-width="3"/>
+<image x="798" y="1102" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAbElEQVR42mNgQAMyUir/8WEGfACkYG2tCV6M1xCYAXF2UlgxXgNAEu1TFvxPzK2CY4+gOBRsZufxX0ZBDbshyAZg04hXMzGuIMkAsmzH5QqibcflCpI04wpQsg0gSzO6IQNrANmakQ1hoDUAAJJ0w3fvUZ0NAAAAAElFTkSuQmCC"/>
+</g>
+<g><title>More common deep, facing the pod, a dim helmet light (Planned)</title><rect x="836" y="1098" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="854" y="1123" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Creatures and combat session (Planned)</title><rect x="878" y="1098" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="896" y="1123" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Layer bosses (Idea)</title><rect x="920" y="1098" width="36" height="36" rx="5" fill="#2a2018" stroke="#757575" stroke-width="3" stroke-dasharray="3 2" opacity="0.7"/>
+<text x="938" y="1123" class="k" text-anchor="middle">👁️</text>
+</g>
+<g><title>The Chairman (Idea)</title><rect x="962" y="1098" width="36" height="36" rx="5" fill="#2a2018" stroke="#757575" stroke-width="3" stroke-dasharray="3 2" opacity="0.7"/>
+<text x="980" y="1123" class="k" text-anchor="middle">👁️</text>
+</g>
+<text x="30" y="1178" class="h">Darkness and sight</text>
+<g><title>Darkness (Built)</title><rect x="30" y="1188" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="48" y="1213" class="k" text-anchor="middle">☠️</text>
+</g>
+<g><title>Pod light ledger (Built)</title><rect x="72" y="1188" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="90" y="1213" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>A stranded pod goes dark (Built)</title><rect x="114" y="1188" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="132" y="1213" class="k" text-anchor="middle">☠️</text>
+</g>
+<g><title>Smooth moving light (Planned)</title><rect x="156" y="1188" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="174" y="1213" class="k" text-anchor="middle">🛡️</text>
+</g>
+<g><title>The suit lamp (Idea)</title><rect x="198" y="1188" width="36" height="36" rx="5" fill="#2a2018" stroke="#757575" stroke-width="3" stroke-dasharray="3 2" opacity="0.7"/>
+<text x="216" y="1213" class="k" text-anchor="middle">🛡️</text>
+</g>
+<g><title>HUD signal decay (Planned)</title><rect x="240" y="1188" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="258" y="1213" class="k" text-anchor="middle">☠️</text>
+</g>
+<g><title>Console upgrade (Planned)</title><rect x="282" y="1188" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="300" y="1213" class="k" text-anchor="middle">⬆️</text>
+</g>
+<g><title>Per-layer drones and the Lamp Hymn (Planned)</title><rect x="324" y="1188" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="342" y="1213" class="k" text-anchor="middle">⚙️</text>
+</g>
+<text x="626" y="1178" class="h">The breach crust and hard landings</text>
+<g><title>Hard landings (Built)</title><rect x="626" y="1188" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="644" y="1213" class="k" text-anchor="middle">☠️</text>
+</g>
+<g><title>Brake with the rotor (Built)</title><rect x="668" y="1188" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="672" y="1192" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAwElEQVR42pWTPQ7CMAxGc46KgQEhJsaOnTt1YGSoxAG4ADtX6Yl6nyBHfcFxHWgtfVIU5Xv+SRKCE4fmFK3CluDw4/lK6m9jbLs+6S/IGrVZdLm2SS4EM0ayzdMQ3/dvG1WIBui+LQBIAbBm2rAAPYsC4gFkLWYAIubwE4AJjV2TAUj2XADlkUkbsul4rleg++MAgDRAMXsAIPqxoAKAFsjqGoVqISuAqsJ9TJTvVVPNXoPkoWlt+VRu5j0/cm98AJknJunDh1AgAAAAAElFTkSuQmCC"/>
+</g>
+<g><title>The breach crust (Built)</title><rect x="710" y="1188" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="714" y="1192" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAApElEQVR42o1SQQrDMAzTDwaFnnIqdA9YD/vBftGP7PUrDigonp3mIJJgWY4t4/Msvzucr72eR1nbnW+QYI9RcgZQ1fB99+oUjkBxZAQiEtECyKrwV75/D5Cgp0/WefwJaFCrzLhShziauPaciWDWMr8DnY0k+ASzdWRjXaQ7G7WVCIiWZtaBbgbb8ghJJFpc0QQygiFbHo0jqzoLaH+ZVX5T1bELM0GGQusH6RsAAAAASUVORK5CYII="/>
+</g>
+<g><title>Crust warning (Built)</title><rect x="752" y="1188" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="770" y="1213" class="k" text-anchor="middle">🛡️</text>
+</g>
+<g><title>Breach brace (Built)</title><rect x="794" y="1188" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="798" y="1192" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAaElEQVR42mNggAIZKZX/pGAGZAASuLLMjySMYgiIs7bW5L9HUBxRGKQWpwEaemY4NcLk8BqAyxBkMYIGoGtAN5AoA2AasbmGPgZQ5AWKApEq0UhWQmqNIg1jGPDmkA1JGGuGIjs3UgIAvrqMytL7MPIAAAAASUVORK5CYII="/>
+</g>
+<g><title>Earthquakes and cave-ins (Idea)</title><rect x="836" y="1188" width="36" height="36" rx="5" fill="#2a2018" stroke="#757575" stroke-width="3" stroke-dasharray="3 2" opacity="0.7"/>
+<text x="854" y="1213" class="k" text-anchor="middle">☠️</text>
+</g>
+<g><title>Clearing a blockage (Idea)</title><rect x="878" y="1188" width="36" height="36" rx="5" fill="#2a2018" stroke="#757575" stroke-width="3" stroke-dasharray="3 2" opacity="0.7"/>
+<text x="896" y="1213" class="k" text-anchor="middle">🛡️</text>
+</g>
+<g><title>Heat, pressure and flooding (Planned)</title><rect x="920" y="1188" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="938" y="1213" class="k" text-anchor="middle">☠️</text>
+</g>
+<text x="30" y="1268" class="h">Stranded, rescue and the way home</text>
+<g><title>Stranded (Built)</title><rect x="30" y="1278" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="48" y="1303" class="k" text-anchor="middle">☠️</text>
+</g>
+<g><title>Refuel by hand (Built)</title><rect x="72" y="1278" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="76" y="1282" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAgElEQVR42mNgwAFkpFT+I2MGUgBIg5WRLgomyRCQYm1VJRRMtAEgheKq8v/5JUVRMEiMoCG4NCNjvIYgG/Dm2RkUfP74CvINAGkm2wCY5gXTq0g3AFkzyQbcvbwLBZNsALrtZBmArDk7yYM0A5A1wjBBA2CGkJ2QcOVEsnMlMQAApTzxkCHo1Q0AAAAASUVORK5CYII="/>
+</g>
+<g><title>Reserve tank (Built)</title><rect x="114" y="1278" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="118" y="1282" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAe0lEQVR42mNgwAFkpFT+wzADqQCk6coyPzBujSLREJDixNyq/x5BcWBsZufxX0ZBjThD0DXDDCDKEGyakQ3Q0DPDbwiyAZwCvBiYZANezLKC40NZEgNgAEgTMqZPGMASDzYMSlB4ExVVo5EsA2CGgBRiwyQlZ1yYgRYAABfb8rd2/NUYAAAAAElFTkSuQmCC"/>
+</g>
+<g><title>The tow line (Built)</title><rect x="156" y="1278" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="160" y="1282" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAi0lEQVR42mNgQAMyUir/sWEGYgBIYWJuFVZM0BCYZo+guP9mdh4oGCSG1xBkzdicT9AQdAPQnY5sCFEGIHsDZghZBsDYJBuAroGgAcTEAkEDYIZo6JlhxcjeIZgecGHksGEgFoAUvzlk8//kLBniXYFLM1kGgDUrqME1w8KDJC+ADQBikjVjC1h0OQBIIvCvVrBbYwAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Wrecks (Built)</title><rect x="198" y="1278" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="216" y="1303" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>A chain, not smoke (Planned)</title><rect x="240" y="1278" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="258" y="1303" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Wrecked prefabs that drop salvage (Planned)</title><rect x="282" y="1278" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="300" y="1303" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Outposts at depth (Planned)</title><rect x="324" y="1278" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="342" y="1303" class="k" text-anchor="middle">📍</text>
+</g>
+<g><title>Environment ratings (Planned)</title><rect x="366" y="1278" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="384" y="1303" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Teleport pads (Planned)</title><rect x="408" y="1278" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="426" y="1303" class="k" text-anchor="middle">📍</text>
+</g>
+<g><title>Anchor mode (Idea)</title><rect x="450" y="1278" width="36" height="36" rx="5" fill="#2a2018" stroke="#757575" stroke-width="3" stroke-dasharray="3 2" opacity="0.7"/>
+<text x="468" y="1303" class="k" text-anchor="middle">⚙️</text>
+</g>
+<text x="626" y="1268" class="h">The repair station&#x27;s shelf</text>
+<g><title>Dynamite (Built)</title><rect x="626" y="1278" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="630" y="1282" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAb0lEQVR42mNgIABkpFT+M5ALQJr/f7v7nyxDQJq+rjD635bpT74BJGkGKUTG2qpKYIwujtuvWV7/L2hJ/Z8sxo+THcPLhd0Qqhjw6fUNojBeA/pkxeAYG5+gARS5YOADkWIDQJLEYLyJiRjMQG0AAA/dIlBdxMf0AAAAAElFTkSuQmCC"/>
+</g>
+<g><title>Reserve fuel tank (Built)</title><rect x="668" y="1278" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="672" y="1282" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAh0lEQVR42mNgwAFkpFT+wzC6GAMhAFKUmFsFxmZ2HnCDkPkENYMUwjBIDETLSUkQ1vw/ywsvxmkATPMFLSmceLIY//8YXi7shqAbgI1NtAG4DCLKAHyaSfICRWHw6fUNDEyyASdnycAxWQZQ5AKKwgAW2rgwTgNghoAU4MMEcyNyNsaG0dUDACAuUrBoSLCaAAAAAElFTkSuQmCC"/>
+</g>
+<g><title>Hull repair nanobots (Built)</title><rect x="710" y="1278" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="714" y="1282" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAf0lEQVR42mNgwAFkpFT+I2MGUgBIw9paExRMkiEwA+LspOCYaANAChNzq/57BMWhYBkFNeIMAfsZqNjMzgMFE2UAzHZ+SVEMTLoBfjH/bXZdANNkGQDSPOfNd4ghlLoARJPlApBmkCsGJgzIigW8CYmUlAi2DR2Tmhcoyo2kAADFEr3JV9Ne8wAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Plastic explosives (Built)</title><rect x="752" y="1278" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="756" y="1282" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAeklEQVR42mNgGNRARkrlPwijs4nW7BEU919Dzwys8YKW1P//WV74DYHZgqwZZgDMEJwGgCTePDtDEGM1AKb5/PEVBPGC6VWYhiAbcHKWzH85KQmsNMyA7CQPVENIdcHAGQDSTNAAmCJ8GMMAmCEgCWIxzugkFg+eDAcAmwJOFR69FCQAAAAASUVORK5CYII="/>
+</g>
+<g><title>Quantum teleporter (Built)</title><rect x="794" y="1278" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="798" y="1282" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAkElEQVR42mNgoAWQkVL5j45J0vjhYgsGJmgQssYry/ww8NpaEzDGaghMM0wxv18MBoYZ0hqFxSXIBsA0SDVMgWOYGFYDcGm22XUBjvEagm4ATDOIPefNdzCNbAjRBsA0g2iSDCDZCxQHIrIBsLjGFo0wzbbqQrjTAkgBCMMMQsZ4NaMnZZBCdExWniA5M5EDAMooUPQqGljWAAAAAElFTkSuQmCC"/>
+</g>
+<g><title>Matter transmitter (Built)</title><rect x="836" y="1278" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="840" y="1282" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAjUlEQVR42mNgIABkpFT+M5ALQJrnvPn+nyxDQJpsdl34L6OgBqHJNQRkAMmawRphGGoA0YaAFCbmVmHFBA2BafYIisOKzew88BuCbAC/XwwKhhmgoWeG2xB0A0ChD4pGsg2gyAW4woBoA9bWmvy/oCUFpok2hGouACnChwlGJTj14cLEpEiUpIyG0dUCAEVU4j+twtTbAAAAAElFTkSuQmCC"/>
+</g>
+<text x="30" y="1358" class="h">Crew roles and seats</text>
+<g><title>Pilot (Built)</title><rect x="30" y="1368" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="48" y="1393" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Passengers (Planned)</title><rect x="72" y="1368" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="90" y="1393" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Navigator (Idea)</title><rect x="114" y="1368" width="36" height="36" rx="5" fill="#2a2018" stroke="#757575" stroke-width="3" stroke-dasharray="3 2" opacity="0.7"/>
+<text x="132" y="1393" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Operator (Idea)</title><rect x="156" y="1368" width="36" height="36" rx="5" fill="#2a2018" stroke="#757575" stroke-width="3" stroke-dasharray="3 2" opacity="0.7"/>
+<text x="174" y="1393" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Robots fill empty seats (Idea)</title><rect x="198" y="1368" width="36" height="36" rx="5" fill="#2a2018" stroke="#757575" stroke-width="3" stroke-dasharray="3 2" opacity="0.7"/>
+<text x="216" y="1393" class="k" text-anchor="middle">⬆️</text>
+</g>
+<g><title>Tender runs and spotting (Idea)</title><rect x="240" y="1368" width="36" height="36" rx="5" fill="#2a2018" stroke="#757575" stroke-width="3" stroke-dasharray="3 2" opacity="0.7"/>
+<text x="258" y="1393" class="k" text-anchor="middle">⚙️</text>
+</g>
+<text x="626" y="1358" class="h">Cockpit, screens and HUD</text>
+<g><title>Altimeter (Built)</title><rect x="626" y="1368" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="644" y="1393" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Pod status readout (Built)</title><rect x="668" y="1368" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="686" y="1393" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Account readout (Built)</title><rect x="710" y="1368" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="728" y="1393" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Scanner map (Built)</title><rect x="752" y="1368" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<image x="756" y="1372" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAiElEQVR42mNgwANkpFT+I2MGYgFMQ2JuFQomyhBkjR5BcSjYzM4DvyEwzTANHFrGKBivIbg0SzVMwTBAQ88M0xBkA5A1z3nznThD0A2AaYZhmCFEG0CRC8gKA1JiAacBMENAirClAYKa0VPi2loTFEx0kgYrVFAD2wbDID5JmnFiog3BgRmoDQCqWwYD3bTF9wAAAABJRU5ErkJggg=="/>
+</g>
+<g><title>Breach fade (Built)</title><rect x="794" y="1368" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="812" y="1393" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Transmission overlay (Built)</title><rect x="836" y="1368" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="854" y="1393" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Green-screen terminal panels (Built)</title><rect x="878" y="1368" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="896" y="1393" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Skins (Built)</title><rect x="920" y="1368" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="938" y="1393" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Cockpit HUD with gauges (Planned)</title><rect x="962" y="1368" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="980" y="1393" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Front camera (Planned)</title><rect x="1004" y="1368" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="1022" y="1393" class="k" text-anchor="middle">⬆️</text>
+</g>
+<text x="30" y="1448" class="h">Look and sound</text>
+<g><title>A dusk sky that never reaches day (Built)</title><rect x="30" y="1458" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="48" y="1483" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Textures from recipes (Built)</title><rect x="72" y="1458" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="90" y="1483" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Placeholder sound (Built)</title><rect x="114" y="1458" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
+<text x="132" y="1483" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Lighting art (Planned)</title><rect x="156" y="1458" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="174" y="1483" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>Salvage looks (Planned)</title><rect x="198" y="1458" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<text x="216" y="1483" class="k" text-anchor="middle">⚙️</text>
+</g>
+<g><title>A public release (Idea)</title><rect x="240" y="1458" width="36" height="36" rx="5" fill="#2a2018" stroke="#757575" stroke-width="3" stroke-dasharray="3 2" opacity="0.7"/>
+<text x="258" y="1483" class="k" text-anchor="middle">🎯</text>
+</g></svg>
