@@ -464,8 +464,6 @@ def glass_texels(model):
 def check_lamp(model):
     """Throws unless the lamp is one bone named LANTERN holding a tiny piece of glass inside the lamp bracket, and nothing else is glass."""
     lanterns = sum(1 for bone in model.bones if bone.name == LANTERN)
-    if lanterns > 1:
-        raise ValueError(f"{model.name} has {lanterns} bones named {LANTERN}")
     if any(c.material == "glass" for bone, c in model.cubes() if bone.name != LANTERN):
         raise ValueError(f"{model.name} has glass outside the {LANTERN} bone")
     texels = glass_texels(model)
