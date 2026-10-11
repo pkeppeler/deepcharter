@@ -350,7 +350,7 @@ public final class PodLining {
 		int minZ = foot.lowZ() - 1 - tuning.lavaSpread();
 		int maxZ = foot.lowZ() + foot.width() + tuning.lavaSpread();
 		int minY = foot.feetY() - depth;
-		int maxY = foot.feetY() + foot.height() + tuning.lavaAbove();
+		int maxY = foot.feetY() + foot.height() - 1 + tuning.lavaAbove();
 		Set<BlockPos> reached = new HashSet<>();
 		ArrayDeque<BlockPos> frontier = new ArrayDeque<>();
 		for (int y = minY; y <= maxY; y++) {

@@ -8,8 +8,8 @@ import java.util.List;
  * {@code UpgradeTuning}'s.
  *
  * @param tiers     one entry for each part tier from 1
- * @param lavaSpread blocks beyond the ring, on each side, in which the liner looks for lava: how far lava flows over open ground
- * @param lavaAbove  blocks above the pod's box in which the liner looks for lava: lava pours down an open shaft, and never up
+ * @param lavaSpread blocks beyond the ring, on each side, in which the liner looks for lava (3: the 3rd cell beside the ring is in view, the 4th is not): how far lava flows over open ground
+ * @param lavaAbove  blocks above the top row of the pod's box in which the liner looks for lava (4: the 4th cell over the box is in view, the 5th is not): lava pours down an open shaft, and never up
  */
 public record PodLinerTuning(List<Tier> tiers, int lavaSpread, int lavaAbove) {
 	/**

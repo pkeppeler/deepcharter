@@ -256,11 +256,14 @@ public class PodLinerTest {
 		});
 	}
 
+	/** The top row of the Mole's box is the third (FLOOR + 2): the 4th cell over it is in the liner's view, the 5th is not. */
+	private static final int LAST_CELL_IN_VIEW = FLOOR + 2 + 4;
+
 	/** Lava in the pod's own shaft, 4 blocks over the top of its box, runs down it into the ring: the open cells are lined. */
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + RING_TICKS)
 	public void aRingJoinedToLavaByOpenCellsIsLinedLavaFourBlocksAboveTheBox(GameTestHelper helper) {
 		int x = 6068;
-		ringTest(helper, x, 1, 10, lavaOnlyAt(x, new BlockPos(x, FLOOR + 3 + 4, Z)), state -> {
+		ringTest(helper, x, 1, 10, lavaOnlyAt(x, new BlockPos(x, LAST_CELL_IN_VIEW, Z)), state -> {
 			ServerLevel level = layer(helper);
 			if (bricksIn(level, ringCells(x)) != 4 || state.bricks() != 6) {
 				throw failure(helper, "lava 4 blocks over the box floods the ring, so its 4 cells are lined, it lined %s and left %s", bricksIn(level, ringCells(x)), state.bricks());
@@ -268,14 +271,50 @@ public class PodLinerTest {
 		});
 	}
 
-	/** Lava 5 blocks over the box is too far to matter before the pod has bored on: nothing is lined. */
+	/** Lava 5 blocks over the top of the box is too far to matter before the pod has bored on: nothing is lined. */
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + RING_TICKS)
 	public void lavaFiveBlocksAboveTheBoxDoesNotCallForARing(GameTestHelper helper) {
 		int x = 6116;
-		ringTest(helper, x, 1, 10, lavaOnlyAt(x, new BlockPos(x, FLOOR + 3 + 5, Z)), state -> {
+		ringTest(helper, x, 1, 10, lavaOnlyAt(x, new BlockPos(x, LAST_CELL_IN_VIEW + 1, Z)), state -> {
 			ServerLevel level = layer(helper);
 			if (bricksIn(level, ringCells(x)) != 0 || state.bricks() != 10) {
 				throw failure(helper, "lava 5 blocks over the box is out of the liner's view, it lined %s and left %s", bricksIn(level, ringCells(x)), state.bricks());
+			}
+		});
+	}
+
+	/**
+	 * A corridor of open cells runs east from the ring (x + 1) to {@code to}, and lava ends it. The ring is x + 1, so x + 4 is the 3rd cell
+	 * beside it, the last in the liner's view, and x + 5 is the 4th.
+	 */
+	private static Consumer<ServerLevel> lavaDownACorridorTo(int x, int to) {
+		return level -> {
+			level.setBlock(lavaPockets(x, false).getFirst(), Blocks.STONE.defaultBlockState(), 3);
+			RoomCarver.carve(level, x + 2, to - 1, FLOOR, FLOOR, Z, Z, Blocks.AIR);
+			level.setBlock(new BlockPos(to, FLOOR, Z), Blocks.LAVA.defaultBlockState(), 3);
+		};
+	}
+
+	/** Lava 3 blocks beside the ring, joined to it by open cells, floods it. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + RING_TICKS)
+	public void aRingJoinedToLavaThreeBlocksBesideItIsLined(GameTestHelper helper) {
+		int x = 6212;
+		ringTest(helper, x, 1, 10, lavaDownACorridorTo(x, x + 4), state -> {
+			ServerLevel level = layer(helper);
+			if (bricksIn(level, ringCells(x)) != 4 || state.bricks() != 6) {
+				throw failure(helper, "lava 3 blocks beside the ring floods it, so its 4 cells are lined, it lined %s and left %s", bricksIn(level, ringCells(x)), state.bricks());
+			}
+		});
+	}
+
+	/** Lava 4 blocks beside the ring is out of the liner's view, joined by open cells or not: nothing is lined. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + RING_TICKS)
+	public void lavaFourBlocksBesideTheRingDoesNotCallForARing(GameTestHelper helper) {
+		int x = 6260;
+		ringTest(helper, x, 1, 10, lavaDownACorridorTo(x, x + 5), state -> {
+			ServerLevel level = layer(helper);
+			if (bricksIn(level, ringCells(x)) != 0 || state.bricks() != 10) {
+				throw failure(helper, "lava 4 blocks beside the ring is out of the liner's view, it lined %s and left %s", bricksIn(level, ringCells(x)), state.bricks());
 			}
 		});
 	}
@@ -652,7 +691,7 @@ public class PodLinerTest {
 		RoomCarver.carve(level, x - RADIUS, x + RADIUS + 1, FLOOR - 8, FLOOR - 1, Z - RADIUS, Z + RADIUS, Blocks.STONE);
 		RoomCarver.carve(level, x - RADIUS, x + RADIUS + 1, FLOOR, FLOOR + 10, Z - RADIUS, Z + RADIUS, Blocks.AIR);
 		// Lava high on the east wall: in the liner's view at the landing and in the fall, and a stream that has not reached the pod when it lands.
-		level.setBlock(new BlockPos(x + 4, FLOOR + 7, Z), Blocks.LAVA.defaultBlockState(), 3);
+		level.setBlock(new BlockPos(x + 4, FLOOR + 6, Z), Blocks.LAVA.defaultBlockState(), 3);
 		Rig rig = Rig.await(helper, level, new Vec3(x, FLOOR + 8, Z), tier, false);
 		boolean[] airborne = {false};
 		int[] settled = {0};

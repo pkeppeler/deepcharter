@@ -64,6 +64,11 @@ public class OddChassisTest {
 	}
 
 	@GameTest(maxTicks = ChassisChecks.TICKS)
+	public void anOddPodLinerLinesTheWholeRingLavaCanReachAndNothingElse(GameTestHelper helper) {
+		CHECKS.linerLinesTheWholeRingLavaCanReachAndNothingElse(helper);
+	}
+
+	@GameTest(maxTicks = ChassisChecks.TICKS)
 	public void anOddPodSounderHearsAPocketInTheFarCornerOfItsFootprint(GameTestHelper helper) {
 		CHECKS.soundsAPocketInTheFarCornerOfTheFootprint(helper);
 	}
