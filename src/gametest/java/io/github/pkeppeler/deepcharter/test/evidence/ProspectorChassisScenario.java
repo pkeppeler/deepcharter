@@ -26,6 +26,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
 /**
@@ -69,7 +70,7 @@ public class ProspectorChassisScenario extends EvidenceScenario {
 	/** The wreck at the site nearest the Conduit: the pod, the lamp that still burns, and Ines's log. */
 	private void wreck(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			context.waitFor(client -> client.player != null && client.level != null);
+			awaitWorld(context);
 			StructureSite site = singleplayer.getServer().computeOnServer(server -> {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 				player.setPermanentlyInvulnerable(true);
@@ -116,7 +117,7 @@ public class ProspectorChassisScenario extends EvidenceScenario {
 			UUID[] pilot = {null};
 			two.server().runOnServer(server -> buildSlab(server.overworld(), two));
 			// The client must have the slab before the players board, or the boarding reaches it before the pod does.
-			context.waitFor(client -> client.level.getBlockState(new BlockPos(X, FLOOR_Y - 1, Z)).is(Blocks.STONE));
+			ClientWait.until(context, "stone under the pad", client -> client.level.getBlockState(new BlockPos(X, FLOOR_Y - 1, Z)).is(Blocks.STONE));
 			two.server().runOnServer(server -> pilot[0] = board(server.overworld(), two));
 			context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
 			context.waitTicks(CHAT_FADE_TICKS);

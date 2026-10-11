@@ -20,6 +20,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.HardLanding;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 
@@ -59,12 +60,12 @@ public class PodHardLandingScenario extends EvidenceScenario {
 				player.setGameMode(GameType.SURVIVAL);
 				player.teleportTo(one, X + 0.5, FLOOR_Y + SHAFT_BLOCKS - 2, Z + 0.5, Set.of(), 0, 0, true);
 			});
-			context.waitFor(client -> client.player != null && client.level.dimension().equals(LayerChain.dimension(1)));
+			ClientWait.until(context, "the player in layer 1", client -> client.player != null && client.level.dimension().equals(LayerChain.dimension(1)));
 			context.waitTicks(30);
 
 			// Braked: the pilot taps the rotor whenever the sink passes BRAKE_ABOVE_SINK.
 			boardNewPod(singleplayer);
-			context.waitFor(client -> client.player.getVehicle() instanceof PodEntity);
+			ClientWait.until(context, "the player riding a pod", client -> client.player.getVehicle() instanceof PodEntity);
 			context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
 			context.waitTicks(10);
 			screenshot(context, "hard-landing-braked-start");
@@ -108,7 +109,7 @@ public class PodHardLandingScenario extends EvidenceScenario {
 			});
 			context.waitTicks(20);
 			boardNewPod(singleplayer);
-			context.waitFor(client -> client.player.getVehicle() instanceof PodEntity);
+			ClientWait.until(context, "the player riding a pod", client -> client.player.getVehicle() instanceof PodEntity);
 			screenshot(context, "hard-landing-free-start");
 			boolean warned = false;
 			ticks = 0;

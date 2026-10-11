@@ -18,6 +18,7 @@ import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Evidence scenario "m2-surface-breach": a player stands on the surface, drops through the open floor of the
@@ -49,7 +50,7 @@ public class SurfaceBreachScenario extends EvidenceScenario {
 	@Override
 	protected void run(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			context.waitFor(client -> client.player != null && client.level != null);
+			awaitWorld(context);
 			singleplayer.getServer().runOnServer(server -> {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 				player.setPermanentlyInvulnerable(true);
@@ -68,7 +69,7 @@ public class SurfaceBreachScenario extends EvidenceScenario {
 				int y = surface.getHeight(Heightmap.Types.MOTION_BLOCKING, (int) X, (int) Z);
 				server.getPlayerList().getPlayers().getFirst().teleportTo(surface, X, y, Z, Set.of(), 0, -10, true);
 			});
-			context.waitFor(client -> client.level.dimension().equals(LayerChain.dimension(LayerChain.SURFACE)));
+			ClientWait.until(context, "the client on the surface", client -> client.level.dimension().equals(LayerChain.dimension(LayerChain.SURFACE)));
 			context.waitTicks(SETTLE_TICKS);
 			screenshot(context, "overworld-surface");
 			for (int i = 0; i < SURFACE_FRAMES; i++) {

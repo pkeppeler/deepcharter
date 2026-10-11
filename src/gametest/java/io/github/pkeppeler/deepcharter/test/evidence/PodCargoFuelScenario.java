@@ -16,6 +16,7 @@ import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Evidence scenario "pod-cargo-fuel": a pod that holds the jump key while too heavy to lift off, then lifts once its bay is
@@ -52,7 +53,7 @@ public class PodCargoFuelScenario extends EvidenceScenario {
 					throw new AssertionError("the player could not mount the pod");
 				}
 			});
-			context.waitFor(client -> client.player.getVehicle() instanceof PodEntity);
+			ClientWait.until(context, "the player riding a pod", client -> client.player.getVehicle() instanceof PodEntity);
 			context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
 			context.waitTicks(20);
 			frame(context);

@@ -22,6 +22,7 @@ import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Evidence scenario "m2-work-orders" for #80: the Founder statue stands in the colony square without its hands. A charter opens
@@ -33,7 +34,6 @@ public class WorkOrdersScenario extends EvidenceScenario {
 	private static final int TYPING_FRAMES = 45;
 	private static final int HOLD_FRAMES = 8;
 	private static final int SETTLE_TICKS = 60;
-	private static final int WAIT_TICKS = 200;
 	private static final String FIRST_DELIVERY = "4 / 10 BRONZIUM";
 
 	@Override
@@ -44,7 +44,7 @@ public class WorkOrdersScenario extends EvidenceScenario {
 	@Override
 	protected void run(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			context.waitFor(client -> client.player != null && client.level != null);
+			awaitWorld(context);
 			ColonySite.Placed colony = singleplayer.getServer().computeOnServer(server -> {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 				player.setPermanentlyInvulnerable(true);
@@ -75,7 +75,7 @@ public class WorkOrdersScenario extends EvidenceScenario {
 			stand(singleplayer, terminalViewpoint, Vec3.atCenterOf(processor));
 			context.waitTicks(SETTLE_TICKS);
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(processor)));
-			context.waitForScreen(OreProcessorScreen.class);
+			ClientWait.screen(context, OreProcessorScreen.class);
 			OreProcessorScreen screen = context.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
 			for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
 				context.waitTicks(TICKS_PER_FRAME);
@@ -86,13 +86,15 @@ public class WorkOrdersScenario extends EvidenceScenario {
 
 			give(singleplayer, 4);
 			context.clickScreenButton("DELIVER BRONZIUM");
-			context.waitFor(client -> screen.orderLines().getLast().equals(FIRST_DELIVERY), WAIT_TICKS);
+			ClientWait.until(context, "the last order line " + FIRST_DELIVERY, client -> screen.orderLines().getLast().equals(FIRST_DELIVERY),
+					client -> "the order lines " + screen.orderLines());
 			hold(context);
 			screenshot(context, "partial-delivery");
 
 			give(singleplayer, 6);
 			context.clickScreenButton("DELIVER BRONZIUM");
-			context.waitFor(client -> screen.orderLines().getLast().endsWith("DONE"), WAIT_TICKS);
+			ClientWait.until(context, "the last order line ending DONE", client -> screen.orderLines().getLast().endsWith("DONE"),
+					client -> "the order lines " + screen.orderLines());
 			hold(context);
 			screenshot(context, "order-done");
 			context.setScreen(() -> null);
