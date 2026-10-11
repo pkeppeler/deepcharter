@@ -17,6 +17,7 @@ import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.colony.Colony;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 
@@ -75,6 +76,10 @@ public class ColonyWalkScenario extends EvidenceScenario {
 
 	@Override
 	protected void run(ClientGameTestContext context) {
+		ClientChecks.withHudHidden(context, () -> runHidden(context));
+	}
+
+	private void runHidden(ClientGameTestContext context) {
 		ctx = context;
 		// The design tour's world: the campaign's own surface, under the pinned sky.
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().setUseConsistentSettings(false)
@@ -84,15 +89,7 @@ public class ColonyWalkScenario extends EvidenceScenario {
 			centre = serverGet(server -> Colony.placed(server).orElseThrow(() -> new AssertionError("the colony was not built")).center());
 			EvidenceWorld.pin(ctx, sp);
 			setUpCamera();
-			try {
-				walk();
-			} finally {
-				ctx.runOnClient(client -> {
-					if (client.gui.hud.isHidden()) {
-						client.gui.hud.toggle();
-					}
-				});
-			}
+			walk();
 		}
 	}
 
@@ -105,12 +102,7 @@ public class ColonyWalkScenario extends EvidenceScenario {
 			// Feet on the ground, never flying: the view is a walking player's.
 			player.setNoGravity(true);
 		});
-		ctx.runOnClient(client -> {
-			client.options.setCameraType(CameraType.FIRST_PERSON);
-			if (!client.gui.hud.isHidden()) {
-				client.gui.hud.toggle();
-			}
-		});
+		ctx.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
 	}
 
 	private void walk() {

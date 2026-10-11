@@ -24,6 +24,7 @@ import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
@@ -73,6 +74,10 @@ final class LayerConceptsWorld {
 	 * because a full-suite run goes on to tests that draw on it.
 	 */
 	static void open(ClientGameTestContext ctx, Consumer<String> shoot, Consumer<LayerConceptsWorld> body) {
+		ClientChecks.withHudHidden(ctx, () -> openHidden(ctx, shoot, body));
+	}
+
+	private static void openHidden(ClientGameTestContext ctx, Consumer<String> shoot, Consumer<LayerConceptsWorld> body) {
 		int renderDistance = ctx.computeOnClient(client -> client.options.renderDistance().get());
 		try (TestSingleplayerContext singleplayer = ctx.worldBuilder().setUseConsistentSettings(false)
 				.adjustSettings(state -> state.setSeed("deepcharter-design-tour")).create()) {
@@ -85,19 +90,11 @@ final class LayerConceptsWorld {
 			ctx.runOnClient(client -> {
 				client.options.renderDistance().set(RENDER_DISTANCE);
 				client.options.setCameraType(CameraType.FIRST_PERSON);
-				if (!client.gui.hud.isHidden()) {
-					client.gui.hud.toggle();
-				}
 			});
 			world.buildScenes();
 			body.accept(world);
 		} finally {
-			ctx.runOnClient(client -> {
-				client.options.renderDistance().set(renderDistance);
-				if (client.gui.hud.isHidden()) {
-					client.gui.hud.toggle();
-				}
-			});
+			ctx.runOnClient(client -> client.options.renderDistance().set(renderDistance));
 		}
 	}
 

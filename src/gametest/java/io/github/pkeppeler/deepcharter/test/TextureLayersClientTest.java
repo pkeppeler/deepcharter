@@ -29,6 +29,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.texture.TextureProperties;
 
@@ -59,16 +60,8 @@ public class TextureLayersClientTest implements FabricClientGameTest {
 	@Override
 	public void runTest(ClientGameTestContext context) {
 		ClientTestLog.start(this);
-		try {
-			measureGlow(context);
-		} finally {
-			// The HUD is hidden for the screenshots. Every client test shares one client, and a later one draws on the HUD.
-			context.runOnClient(client -> {
-				if (client.gui.hud.isHidden()) {
-					client.gui.hud.toggle();
-				}
-			});
-		}
+		// The HUD is hidden for the screenshots. Every client test shares one client, and a later one draws on the HUD.
+		ClientChecks.withHudHidden(context, () -> measureGlow(context));
 	}
 
 	private static void measureGlow(ClientGameTestContext context) {
@@ -77,12 +70,7 @@ public class TextureLayersClientTest implements FabricClientGameTest {
 			BlockPos floor = singleplayer.getServer().computeOnServer(server -> player(server).blockPosition().above(30));
 			BlockPos terminal = floor.offset(0, 2, DISTANCE);
 			singleplayer.getServer().runOnServer(server -> build(player(server).level(), floor));
-			context.runOnClient(client -> {
-				client.options.setCameraType(CameraType.FIRST_PERSON);
-				if (!client.gui.hud.isHidden()) {
-					client.gui.hud.toggle();
-				}
-			});
+			context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
 
 			place(context, singleplayer, terminal, ContractTerminal.TYPE.block().defaultBlockState());
 			Reading online = Reading.of(context.takeScreenshot("texture-layers-online-terminal"));

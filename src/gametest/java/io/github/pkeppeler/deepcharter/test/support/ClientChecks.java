@@ -4,15 +4,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.server.level.ParticleStatus;
 
 /**
- * The assertion and the screen-layout checks that client GameTests share. A layout check returns the problem it found, so a
+ * The assertion, the HUD scope and the screen-layout checks that client GameTests share. A layout check returns the problem it found, so a
  * test can name the case it was running in the failure. The layout checks read the client's font, so call them on the client thread.
  */
 public final class ClientChecks {
@@ -43,6 +46,55 @@ public final class ClientChecks {
 		if (!condition) {
 			throw new AssertionError(message);
 		}
+	}
+
+	/**
+	 * Runs {@code body} with the HUD hidden (F1), then puts the HUD back as it was, in a finally, also when {@code body} throws. Every client
+	 * test shares one client, and a later one draws on the HUD. This is the one place a test toggles the HUD: {@code gradle/gametest.gradle}
+	 * fails the build for a direct toggle elsewhere.
+	 */
+	public static void withHudHidden(ClientGameTestContext context, Runnable body) {
+		withHud(context, true, body);
+	}
+
+	/** Like {@link #withHudHidden(ClientGameTestContext, Runnable)} with the HUD shown, for a still in the middle of a run that hides it. */
+	public static void withHudShown(ClientGameTestContext context, Runnable body) {
+		withHud(context, false, body);
+	}
+
+	/**
+	 * Like {@link #withHudHidden(ClientGameTestContext, Runnable)}, and the particle option is set to {@code particles} (and the live
+	 * particles cleared) for the body and put back with the HUD, so a throw anywhere after the saves restores both.
+	 */
+	public static void withHudHidden(ClientGameTestContext context, ParticleStatus particles, Runnable body) {
+		ParticleStatus particlesWere = context.computeOnClient(client -> client.options.particles().get());
+		try {
+			context.runOnClient(client -> {
+				client.options.particles().set(particles);
+				client.particleEngine.clearParticles();
+			});
+			withHud(context, true, body);
+		} finally {
+			context.runOnClient(client -> client.options.particles().set(particlesWere));
+		}
+	}
+
+	private static void withHud(ClientGameTestContext context, boolean hidden, Runnable body) {
+		boolean hudWasHidden = context.computeOnClient(client -> client.gui.hud.isHidden());
+		try {
+			setHudHidden(context, hidden);
+			body.run();
+		} finally {
+			setHudHidden(context, hudWasHidden);
+		}
+	}
+
+	private static void setHudHidden(ClientGameTestContext context, boolean hidden) {
+		context.runOnClient(client -> {
+			if (client.gui.hud.isHidden() != hidden) {
+				client.gui.hud.toggle();
+			}
+		});
 	}
 
 	public static void requireNone(String when, Optional<String> problem) {

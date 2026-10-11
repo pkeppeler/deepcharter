@@ -25,6 +25,7 @@ import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight.Box;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -57,16 +58,15 @@ public class StaleLightScenario extends EvidenceScenario {
 
 	@Override
 	protected void run(ClientGameTestContext context) {
+		ClientChecks.withHudHidden(context, () -> runHidden(context));
+	}
+
+	private void runHidden(ClientGameTestContext context) {
 		ResourceKey<Level> layer = LayerChain.dimension(2);
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			ClientWait.until(context, "the player in the world", client -> client.player != null && client.level != null);
 			TestServerContext server = singleplayer.getServer();
 			ClientWait.until(context, "the colony built", () -> server.computeOnServer(s -> Colony.placed(s).isPresent()), () -> "no colony");
-			context.runOnClient(client -> {
-				if (!client.gui.hud.isHidden()) {
-					client.gui.hud.toggle();
-				}
-			});
 			server.runOnServer(s -> s.getPlayerList().getPlayers().getFirst().setGameMode(GameType.SPECTATOR));
 			String pinned = System.getenv(CELL_VARIABLE);
 			int first = pinned == null ? FIRST_CELL : Integer.parseInt(pinned);
