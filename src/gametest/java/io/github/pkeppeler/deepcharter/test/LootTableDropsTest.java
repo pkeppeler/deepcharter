@@ -106,6 +106,8 @@ public class LootTableDropsTest {
 	public void theSalvageCrateDropsEachItemWithinItsCountAndReachesBothEnds(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		Map<String, Set<Integer>> seen = new TreeMap<>();
+		Set<String> known = new TreeSet<>();
+		CRATE.forEach(range -> known.add(range.item()));
 		for (long seed = 1; seed <= SEEDS; seed++) {
 			List<ItemStack> drops = roll(level, "salvage_crate", seed, null);
 			for (Range range : CRATE) {
@@ -115,8 +117,6 @@ public class LootTableDropsTest {
 				}
 				seen.computeIfAbsent(range.item(), key -> new TreeSet<>()).add(count);
 			}
-			Set<String> known = new TreeSet<>();
-			CRATE.forEach(range -> known.add(range.item()));
 			for (ItemStack stack : drops) {
 				if (!known.contains(id(stack))) {
 					throw helper.assertionException("salvage_crate seed %s drops %s, which is not in its table", seed, id(stack));

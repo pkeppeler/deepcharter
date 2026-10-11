@@ -11,6 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
+# Not `modifier`: `minecraft:sequence` has a legitimate `functions` key there.
 OLD_KEYS = ("conditions", "functions")
 
 
