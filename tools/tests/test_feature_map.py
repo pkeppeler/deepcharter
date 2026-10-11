@@ -66,6 +66,16 @@ class TheCommittedMap(unittest.TestCase):
         self.assertEqual(text.count("```mermaid"), images.count("```mermaid"))
 
 
+class ThePage(unittest.TestCase):
+    def test_a_script_end_tag_in_a_summary_cannot_break_the_page(self):
+        data = copy.deepcopy(DATA)
+        data["nodes"][0]["summary"] = "ends </script><img src=x> the script"
+        page = fm.render_page(data, ROOT)
+        self.assertNotIn("</script><img", page)
+        self.assertIn("<\\/script><img", page)
+        self.assertEqual((ROOT / fm.PAGE).read_text(encoding="utf-8").count("</script>"), page.count("</script>"))
+
+
 class TheValidator(unittest.TestCase):
     def test_a_repeated_node_id_is_found(self):
         problems = mutated(lambda d: d["nodes"].append(dict(d["nodes"][0])))

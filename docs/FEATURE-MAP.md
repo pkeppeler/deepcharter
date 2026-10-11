@@ -93,7 +93,7 @@ flowchart LR
   l_lava["Lava and its counters<br/>7 of 8 built"]
   l_gas["Gas and its counters<br/>6 of 6 built"]
   l_company_rock["Company Rock and its counters<br/>2 of 6 built"]
-  l_creatures["The Retained and other creatures<br/>4 of 9 built"]
+  l_creatures["The Retained and other creatures<br/>4 of 8 built"]
   l_darkness["Darkness and sight<br/>3 of 8 built"]
   l_crust["The breach crust and hard landings<br/>5 of 8 built"]
   l_getting_out["Stranded, rescue and the way home<br/>5 of 11 built"]
@@ -172,7 +172,7 @@ flowchart LR
 | [Lava and its counters](#lava-and-its-counters) | 7 | 1 | 0 | 0 |
 | [Gas and its counters](#gas-and-its-counters) | 6 | 0 | 0 | 0 |
 | [Company Rock and its counters](#company-rock-and-its-counters) | 2 | 0 | 4 | 0 |
-| [The Retained and other creatures](#the-retained-and-other-creatures) | 4 | 1 | 2 | 2 |
+| [The Retained and other creatures](#the-retained-and-other-creatures) | 4 | 0 | 2 | 2 |
 | [Darkness and sight](#darkness-and-sight) | 3 | 0 | 4 | 1 |
 | [The breach crust and hard landings](#the-breach-crust-and-hard-landings) | 5 | 0 | 1 | 2 |
 | [Stranded, rescue and the way home](#stranded-rescue-and-the-way-home) | 5 | 0 | 5 | 1 |
@@ -187,7 +187,6 @@ flowchart LR
 
 - **Craft the first scanner** (bootstrap): A scanner unit crafted from 4 iron, 2 copper and 2 redstone replaces the $200 first buy. [#483](https://github.com/pkeppeler/deepcharter/issues/483), [#500](https://github.com/pkeppeler/deepcharter/issues/500)
 - **A restored wreck keeps its serial** (charter): PROSPECTOR-0002 stays 0002 and its name tag after the restore. [#484](https://github.com/pkeppeler/deepcharter/issues/484), [#499](https://github.com/pkeppeler/deepcharter/issues/499)
-- **Kill it with the drill** (creatures): No more fading: a grab ends only when the Retained dies. The cutter bites it while the pod drills rock; a sword kills it on foot. [#485](https://github.com/pkeppeler/deepcharter/issues/485), [#498](https://github.com/pkeppeler/deepcharter/issues/498)
 - **Heat shield hull** (lava): A hull part whose slag glaze soaks lava, spending brick, so lava costs far less hull. [#482](https://github.com/pkeppeler/deepcharter/issues/482), [#501](https://github.com/pkeppeler/deepcharter/issues/501), [#232](https://github.com/pkeppeler/deepcharter/issues/232)
 
 ### Planned
@@ -370,7 +369,7 @@ flowchart LR
 |---|---|---|---|---|---|
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_drill.png" width="32" alt=""> | no still yet | <a id="drill-stock"></a>**Drill: stock**<br>upgrade | The stock tricone cutter. Speed 1x. | ✅ Built |  |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_drill.png" width="32" alt=""> | no still yet | <a id="drill-t1"></a>**Drill tier 1**<br>upgrade | Drill speed 1.4x stock, $200. A Mole fits it. | ✅ Built | [SPEC.md](SPEC.md#components) |
-| <img src="../src/main/resources/assets/deepcharter/textures/item/part_drill.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-cutter-swap.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-cutter-swap.gif?raw=true" width="160" alt=""></a> | <a id="drill-t2"></a>**Drill tier 2**<br>upgrade | Stacked rings. The best a Mole takes; later cutters wait for bigger pods. The best a Mole takes. | ✅ Built | [SPEC.md](SPEC.md#components) |
+| <img src="../src/main/resources/assets/deepcharter/textures/item/part_drill.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-cutter-swap.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-cutter-swap.gif?raw=true" width="160" alt=""></a> | <a id="drill-t2"></a>**Drill tier 2**<br>upgrade | Stacked rings on the cutter, $500. The best a Mole takes. | ✅ Built | [SPEC.md](SPEC.md#components) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_drill.png" width="32" alt=""> | no still yet | <a id="drill-t3"></a>**Drill tier 3**<br>upgrade | Drill speed 2.5x stock, $1,250. The best a Prospector takes. | ✅ Built | [SPEC.md](SPEC.md#components) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_drill.png" width="32" alt=""> | no still yet | <a id="drill-t4"></a>**Drill tier 4**<br>upgrade | Drill speed 3.5x stock, $5,000. No chassis built yet can fit it (a Badger or later). | 📋 Planned | [SPEC.md](SPEC.md#components) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_drill.png" width="32" alt=""> | no still yet | <a id="drill-t5"></a>**Drill tier 5**<br>upgrade | Drill speed 4.75x stock, $25,000. No chassis built yet can fit it (a Badger or later). | 📋 Planned | [SPEC.md](SPEC.md#components) |
@@ -922,13 +921,12 @@ flowchart LR
 
 ### The Retained and other creatures
 
-The Retained are tall, thin, lampless figures that come to dark pods and drain their fuel. They never attack. Lights keep them away; the user has decided they must also be killable.
+The Retained are tall, thin, lampless figures that come to dark pods and drain their fuel. They never attack. Lights keep them away, and a grab ends only when the figure is killed: by the pod's drill, or a sword on foot.
 
 ```mermaid
 flowchart LR
   n_retained["👁️ The Retained"]
   n_retained_grab["☠️ The grab and the drain"]
-  n_retained_keep_moving["🛡️ Keep moving"]
   n_retained_lights["🛡️ Lights keep them away"]
   n_retained_kill["🛡️ Kill it with the drill"]
   n_retained_tuning["⚙️ More common deep, facing the pod, a dim helmet light"]
@@ -941,7 +939,6 @@ flowchart LR
   n_layer_bosses --> n_the_chairman
   n_lights_t1 --> n_retained_lights
   n_retained --> n_retained_grab
-  n_retained_keep_moving -. counters .-> n_retained_grab
   n_retained_kill -. counters .-> n_retained_grab
   n_retained_kill --> n_retained_tuning
   n_retained_lights -. counters .-> n_retained_grab
@@ -951,8 +948,7 @@ flowchart LR
   classDef planned fill:#2e2e2e,stroke:#9e9e9e,stroke-width:1px,color:#d6d6d6
   classDef idea fill:#1a1a1a,stroke:#757575,stroke-width:1px,stroke-dasharray:4 3,color:#a0a0a0
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
-  class n_retained,n_retained_grab,n_retained_keep_moving,n_retained_lights built
-  class n_retained_kill progress
+  class n_retained,n_retained_grab,n_retained_lights,n_retained_kill built
   class n_retained_tuning,n_creatures_session planned
   class n_layer_bosses,n_the_chairman idea
   class n_lights_t1,n_the_deep_bites ext
@@ -960,11 +956,10 @@ flowchart LR
 
 | Icon | Still | Feature | What it is | Status | Links |
 |---|---|---|---|---|---|
-| 👁️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/lampless-figure-front.jpg?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/lampless-figure-front.jpg?raw=true" width="160" alt=""></a> | <a id="retained"></a>**The Retained**<br>creature | A lampless figure in the open dark of layers 1 and 2, drawn to pods with no lights. It never attacks and never speaks. | ✅ Built | [ADR 0046](adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md), [ADR 0044](adr/0044-the-lampless-figure-is-a-geckolib-model-and-the-reacher.md), [#449](https://github.com/pkeppeler/deepcharter/issues/449) |
-| ☠️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/reacher.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/reacher.png?raw=true" width="160" alt=""></a> | <a id="retained-grab"></a>**The grab and the drain**<br>hazard | It walks to a pod within 20 blocks, clings to the hull and drains fuel, never below 5 percent. | ✅ Built | [ADR 0046](adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md), [mechanics.md](design/mechanics.md#the-retained-at-dark-pods-449-a) |
-| 🛡️ | no still yet | <a id="retained-keep-moving"></a>**Keep moving**<br>counter | Today a pod that drives, flies or drills for a second shakes it off. | ✅ Built | [#449](https://github.com/pkeppeler/deepcharter/issues/449) |
-| <img src="../src/main/resources/assets/deepcharter/textures/item/part_lights.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-lights.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-lights.gif?raw=true" width="160" alt=""></a> | <a id="retained-lights"></a>**Lights keep them away**<br>counter | A pod with a lights part draws no Retained. | ✅ Built | [#449](https://github.com/pkeppeler/deepcharter/issues/449) |
-| <img src="../src/main/resources/assets/deepcharter/textures/item/part_drill.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/498/retained-drain.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/498/retained-drain.gif?raw=true" width="160" alt=""></a> | <a id="retained-kill"></a>**Kill it with the drill**<br>counter | No more fading: a grab ends only when the Retained dies. The cutter bites it while the pod drills rock; a sword kills it on foot. | 🔨 In progress | [#485](https://github.com/pkeppeler/deepcharter/issues/485), [#498](https://github.com/pkeppeler/deepcharter/issues/498) |
+| 👁️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/lampless-figure-front.jpg?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/lampless-figure-front.jpg?raw=true" width="160" alt=""></a> | <a id="retained"></a>**The Retained**<br>creature | A lampless figure in the open dark of layers 1 and 2, drawn to pods with no lights; about a third carry a small lamp. It never attacks and never speaks. | ✅ Built | [ADR 0046](adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md), [ADR 0044](adr/0044-the-lampless-figure-is-a-geckolib-model-and-the-reacher.md), [#449](https://github.com/pkeppeler/deepcharter/issues/449) |
+| ☠️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/reacher.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/reacher.png?raw=true" width="160" alt=""></a> | <a id="retained-grab"></a>**The grab and the drain**<br>hazard | It walks to a pod within 20 blocks, clings to the hull and drains fuel, never below 5 percent. The grip ends only when the figure dies. | ✅ Built | [ADR 0046](adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md), [mechanics.md](design/mechanics.md#the-retained-at-dark-pods-449-a) |
+| <img src="../src/main/resources/assets/deepcharter/textures/item/part_lights.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-lights.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-lights.gif?raw=true" width="160" alt=""></a> | <a id="retained-lights"></a>**Lights keep them away**<br>counter | A pod with a lights part draws no Retained. Lights do not free a pod that is already held. | ✅ Built | [#449](https://github.com/pkeppeler/deepcharter/issues/449) |
+| <img src="../src/main/resources/assets/deepcharter/textures/item/part_drill.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/498/retained-drain.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/498/retained-drain.gif?raw=true" width="160" alt=""></a> | <a id="retained-kill"></a>**Kill it with the drill**<br>counter | No fading: a grab ends only when the Retained dies. The cutter bites it while the pod drills rock, and a sword kills it on foot. | ✅ Built | [#485](https://github.com/pkeppeler/deepcharter/issues/485), [#498](https://github.com/pkeppeler/deepcharter/issues/498), [ADR 0046](adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md) |
 | ⚙️ | no still yet | <a id="retained-tuning"></a>**More common deep, facing the pod, a dim helmet light**<br>mechanic | Spawns rise with depth, the figure faces the pod it holds, and a tiny light shines in its helmet. | 📋 Planned | [#506](https://github.com/pkeppeler/deepcharter/issues/506) |
 | ⚙️ | no still yet | <a id="creatures-session"></a>**Creatures and combat session**<br>mechanic | A session with the user on rare unsettling creatures per layer and bosses; pod combat uses mining gear first. | 📋 Planned | [#13](https://github.com/pkeppeler/deepcharter/issues/13), [SPEC.md](SPEC.md#13-creatures-and-combat) |
 | 👁️ | no still yet | <a id="layer-bosses"></a>**Layer bosses**<br>creature | Bosses that mix pod fights and on-foot fights, by layer. | 💭 Idea | [SPEC.md](SPEC.md#13-creatures-and-combat) |

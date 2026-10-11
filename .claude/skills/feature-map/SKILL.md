@@ -60,8 +60,10 @@ The page redeploys by itself when `docs/feature-map/**` changes on `main` (`.git
 
 - `tools/tests/test_feature_map.py` (CI `tool-tests`, pre-push): the map validates (unique ids, edges, refs and headings, icons, statuses, stills are `pr-media` paths) and both outputs equal what the generator makes.
 - `FeatureMapCoverageTest` (server GameTest): the registered game and the map's `covers` agree.
-- `tools/merge-pr.sh`: a PR labelled `gameplay` must change `docs/feature-map/map.json` or carry a body line `No map change: <reason>` at the start of a line.
+- `tools/merge-pr.sh`, two rules, both skipped by a body line `No map change: <reason>` at the start of a line:
+  - a PR labelled `gameplay` must change `docs/feature-map/map.json`;
+  - any PR is refused if the map at its head has a node whose `refs` cite the issue the PR closes (or the PR's own number) and whose `status` is not `built`. So the PR that finishes a feature flips its node: set `status` to `built`, fix the summary to what is true on main, and keep or drop the ref.
 
 ## Reviewing
 
-A gameplay PR that adds or changes something visible to the player without touching `map.json` is a finding, unless its body carries a believable `No map change:` line. Check that the status is true (a node is `built` only when its code is on `main`), that the summary is player language, and that edges point the right way (`counters` from the counter to the hazard).
+A gameplay PR that adds or changes something visible to the player without touching `map.json` is a finding, unless its body carries a believable `No map change:` line. Check that the status is true (a node is `built` only when its code is on `main`, and a node of a PR in flight cites that PR and its issue in `refs`, which is how the merge gate finds it), that the summary is player language, and that edges point the right way (`counters` from the counter to the hazard).
