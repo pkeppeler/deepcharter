@@ -17,10 +17,12 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
@@ -39,6 +41,12 @@ import io.github.pkeppeler.deepcharter.layer.StructureSite;
 public final class LamplessFigures {
 	/** The rail level, kept so that a tick does not build the key again. */
 	private static final ResourceKey<Level> RAIL_LEVEL = LayerChain.dimension(StructureKind.RAILS.layer());
+
+	/**
+	 * The levels where a figure appears of itself, in the open dark: layers 1 and 2. The surface is not one of them, and the colony, the
+	 * hangar and the founding Mole's bay are in the surface level; an outpost is lit.
+	 */
+	private static final Set<ResourceKey<Level>> NATURAL_LEVELS = Set.of(LayerChain.dimension(1), LayerChain.dimension(2));
 
 	/** The failures already logged, each as a level and an exception class, so that a later and different one is not silent. Server thread only. */
 	private static final Set<String> LOGGED_FAILURES = new HashSet<>();
@@ -100,13 +108,8 @@ public final class LamplessFigures {
 	 */
 	public static Optional<LamplessFigure> spawnAt(ServerLevel level, StructureSite site) {
 		CreatureTuning tuning = CreatureTuning.DEFAULT;
-		Long lastFade = LAST_FADE.get(level.dimension());
-		if (lastFade != null && level.getGameTime() - lastFade < tuning.respawnDelayTicks()) {
-			return Optional.empty();
-		}
 		BoundingBox bounds = site.bounds();
-		if (level.getEntities(CreatureRegistry.LAMPLESS_FIGURE, figure -> bounds.isInside(figure.blockPosition())).size() >= tuning.maxPerSite()
-				|| level.getEntities(CreatureRegistry.LAMPLESS_FIGURE, figure -> true).size() >= tuning.maxPerLevel()) {
+		if (!levelHasRoom(level) || level.getEntities(CreatureRegistry.LAMPLESS_FIGURE, figure -> bounds.isInside(figure.blockPosition())).size() >= tuning.maxPerSite()) {
 			return Optional.empty();
 		}
 		List<BlockPos> places = places(level, site, tuning);
@@ -119,10 +122,48 @@ public final class LamplessFigures {
 			throw new IllegalStateException("The lampless figure could not be created in " + level.dimension().identifier());
 		}
 		figure.setPos(place.getX() + 0.5, place.getY(), place.getZ() + 0.5);
+		figure.setLamp(level.getRandom().nextDouble() < tuning.natural().lampShare());
 		Direction along = site.alongZ() ? Direction.SOUTH : Direction.EAST;
 		figure.setHeading(level.getRandom().nextBoolean() ? along : along.getOpposite());
 		level.addFreshEntity(figure);
 		return Optional.of(figure);
+	}
+
+	/** Whether the level may take one more figure now: under the cap, and long enough since the last one faded. */
+	private static boolean levelHasRoom(ServerLevel level) {
+		CreatureTuning tuning = CreatureTuning.DEFAULT;
+		Long lastFade = LAST_FADE.get(level.dimension());
+		return (lastFade == null || level.getGameTime() - lastFade >= tuning.respawnDelayTicks())
+				&& level.getEntities(CreatureRegistry.LAMPLESS_FIGURE, figure -> true).size() < tuning.maxPerLevel();
+	}
+
+	/** What the game's own spawner asks of a try at {@code pos}: the rules of {@link #canAppearAt}, and a roll that keeps them rare. */
+	static boolean mayAppearNaturally(ServerLevel level, BlockPos pos, RandomSource random) {
+		return canAppearAt(level, pos) && random.nextDouble() < CreatureTuning.DEFAULT.natural().chancePerTry();
+	}
+
+	/**
+	 * Whether a figure may appear of itself with its feet at {@code pos}: in layer 1 or 2, in the dark (under the light at which a figure
+	 * fades), on a solid floor with room to stand, and with room in the level. Never the surface, and never a lit space.
+	 */
+	public static boolean canAppearAt(ServerLevel level, BlockPos pos) {
+		CreatureTuning tuning = CreatureTuning.DEFAULT;
+		if (!NATURAL_LEVELS.contains(level.dimension()) || !level.isPositionEntityTicking(pos)
+				|| level.getBrightness(LightLayer.BLOCK, pos) >= tuning.fadeBlockLight() || !levelHasRoom(level)) {
+			return false;
+		}
+		BlockPos floor = pos.below();
+		if (!level.getBlockState(floor).isFaceSturdy(level, floor, Direction.UP)) {
+			return false;
+		}
+		for (int up = 0; up < tuning.natural().roomBlocks(); up++) {
+			BlockPos cell = pos.above(up);
+			BlockState state = level.getBlockState(cell);
+			if (!state.getCollisionShape(level, cell).isEmpty() || !state.getFluidState().isEmpty()) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/** The rails of the site where a figure may appear. Checks the position is ticking before it reads a block, so that no chunk loads. */

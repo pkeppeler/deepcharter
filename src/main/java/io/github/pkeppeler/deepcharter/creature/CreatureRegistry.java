@@ -16,11 +16,11 @@ public final class CreatureRegistry {
 	private static final ResourceKey<EntityType<?>> LAMPLESS_FIGURE_KEY =
 			ResourceKey.create(Registries.ENTITY_TYPE, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "lampless_figure"));
 
-	/** Placeholder until the creatures session (#13). Not saved, so there is nothing to version. */
+	/** A Retained (ADR 0046). A monster for the game's spawner, which the layer biomes list; it never attacks. Not saved, so there is nothing to version. */
 	public static final EntityType<LamplessFigure> LAMPLESS_FIGURE = Registry.register(
 			BuiltInRegistries.ENTITY_TYPE,
 			LAMPLESS_FIGURE_KEY,
-			EntityType.Builder.<LamplessFigure>of(LamplessFigure::new, MobCategory.MISC)
+			EntityType.Builder.<LamplessFigure>of(LamplessFigure::new, MobCategory.MONSTER)
 					.sized(0.6f, 1.95f)
 					.noSave()
 					.fireImmune()
