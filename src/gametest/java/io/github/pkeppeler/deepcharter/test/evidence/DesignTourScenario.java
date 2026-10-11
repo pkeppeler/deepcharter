@@ -209,9 +209,12 @@ public class DesignTourScenario extends EvidenceScenario {
 			anchors = colony.anchors();
 
 			EvidenceWorld.pin(ctx, sp);
-			pinTheClient();
-			handbook();
-			itemGallery();
+			// The handbook and item stills have the HUD under their screen; it is hidden from setUpCamera on.
+			ClientChecks.withHudShown(ctx, () -> {
+				pinTheClient();
+				handbook();
+				itemGallery();
+			});
 			setUpCamera();
 			surface();
 			colonyTour();

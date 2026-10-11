@@ -26,6 +26,8 @@ public class HudHiddenClientTest implements FabricClientGameTest {
 				setHidden(context, startsHidden);
 				requireRestoredAfterThrow(context, startsHidden);
 				requireRestoredAfterReturn(context, startsHidden);
+				requireShownRestoredAfterThrow(context, startsHidden);
+				requireNestingRestoresEachLevel(context, startsHidden);
 			}
 			requireParticlesRestoredAfterThrow(context);
 		} finally {
@@ -45,6 +47,33 @@ public class HudHiddenClientTest implements FabricClientGameTest {
 		}
 	}
 
+	private static void requireShownRestoredAfterThrow(ClientGameTestContext context, boolean startsHidden) {
+		try {
+			ClientChecks.withHudShown(context, () -> {
+				require(!hidden(context), "The HUD should be shown inside the body");
+				throw new Boom();
+			});
+			throw new AssertionError("The body's exception should leave withHudShown");
+		} catch (Boom expected) {
+			require(hidden(context) == startsHidden, "After a throw the HUD should be back to hidden=" + startsHidden + ", was hidden=" + hidden(context));
+		}
+	}
+
+	private static void requireNestingRestoresEachLevel(ClientGameTestContext context, boolean startsHidden) {
+		ClientChecks.withHudHidden(context, () -> {
+			ClientChecks.withHudShown(context, () -> require(!hidden(context), "The HUD should be shown in the inner body"));
+			require(hidden(context), "The HUD should be hidden again after the inner body");
+			try {
+				ClientChecks.withHudShown(context, () -> {
+					throw new Boom();
+				});
+			} catch (Boom expected) {
+				require(hidden(context), "The HUD should be hidden again after the inner body threw");
+			}
+		});
+		require(hidden(context) == startsHidden, "After the nested bodies the HUD should be back to hidden=" + startsHidden + ", was hidden=" + hidden(context));
+	}
+
 	private static void requireRestoredAfterReturn(ClientGameTestContext context, boolean startsHidden) {
 		ClientChecks.withHudHidden(context, () -> require(hidden(context), "The HUD should be hidden inside the body"));
 		require(hidden(context) == startsHidden, "After the body the HUD should be back to hidden=" + startsHidden + ", was hidden=" + hidden(context));
@@ -54,6 +83,7 @@ public class HudHiddenClientTest implements FabricClientGameTest {
 
 	private static void requireParticlesRestoredAfterThrow(ClientGameTestContext context) {
 		ParticleStatus before = particles(context);
+		boolean hudBefore = hidden(context);
 		ParticleStatus other = before == ParticleStatus.MINIMAL ? ParticleStatus.ALL : ParticleStatus.MINIMAL;
 		try {
 			ClientChecks.withHudHidden(context, other, () -> {
@@ -63,6 +93,7 @@ public class HudHiddenClientTest implements FabricClientGameTest {
 			throw new AssertionError("The body's exception should leave withHudHidden");
 		} catch (Boom expected) {
 			require(particles(context) == before, "After a throw the particle option should be back to " + before + ", was " + particles(context));
+			require(hidden(context) == hudBefore, "After a throw the HUD should be back to hidden=" + hudBefore + ", was hidden=" + hidden(context));
 		}
 	}
 
