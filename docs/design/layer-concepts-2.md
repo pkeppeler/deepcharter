@@ -80,17 +80,21 @@ Each rock patch must score no more than the **vanilla deepslate** patch in the r
 
 | Option | Layer | Wide wall | Reference: rock | Reference: vanilla stone | Reference: vanilla deepslate | Verdict |
 |---|---|---|---|---|---|---|
-| grain | 1 | 0.68 | 0.42 | 0.31 | 0.62 | ok |
-| grain | 2 | 0.65 | 0.59 | 0.30 | 0.62 | ok |
-| grain | 3 | 2.46 | 2.65 | 0.31 | 0.61 | columns |
-| bedded | 1 | 0.56 | 0.41 | 0.31 | 0.62 | ok |
-| bedded | 2 | 0.50 | 0.54 | 0.30 | 0.62 | ok |
+| grain | 1 | 0.68 | 0.42 | 0.31 | 0.61 | near |
+| grain | 2 | 0.65 | 0.59 | 0.31 | 0.61 | near |
+| grain | 3 | 2.45 | 2.65 | 0.31 | 0.61 | columns |
+| bedded | 1 | 0.56 | 0.41 | 0.32 | 0.61 | ok |
+| bedded | 2 | 0.50 | 0.54 | 0.30 | 0.61 | ok |
 | bedded | 3 | 1.96 | 2.00 | 0.31 | 0.61 | columns |
-| mottled | 1 | 0.48 | 0.47 | 0.31 | 0.61 | ok |
-| mottled | 2 | 0.63 | 0.54 | 0.30 | 0.62 | ok |
-| mottled | 3 | 2.02 | 2.11 | 0.30 | 0.61 | columns |
+| mottled | 1 | 0.48 | 0.47 | 0.31 | 0.62 | ok |
+| mottled | 2 | 0.64 | 0.55 | 0.30 | 0.61 | near |
+| mottled | 3 | 2.02 | 2.12 | 0.31 | 0.61 | columns |
 
 Layer 3 is reported and not judged. Its columns are one block wide, so their open joints come back at every block, which is the formation: a score of 2 to 2.5 says how much. A pick of a texture for layer 3 does not change it.
+
+**It is a necessary check and not a sufficient one.** It folds each column and each row to one number, so it sees a line that comes back at every block and does not see a point motif: a speck or a short vein that comes back once a block spreads over every place of the fold. The outlines of round 1 are gone, and I could still see faint motifs at mid range: a faint lattice of small dark specks in `mottled` in layer 1, and faint single-block lines in `grain` in layers 1 and 2. They are judged by eye, and the pick should be too.
+
+**It runs with the recording.** `tools/record-evidence.sh layer-concepts` runs it over the stills and prints the table. It exits non-zero on a `grid` verdict in layers 1 and 2, and prints `near` for a score within 0.08 of its limit. Across two recordings of one commit every number moved by at most 0.01, so `near` is a warning that the margin is thin, not noise.
 
 ## References
 
@@ -115,11 +119,12 @@ Bedding streaks that run on across blocks, in rows that are about 3 pixels deep.
 
 ### Mottled
 
-Bold soft mottles and a few short veins. The most varied, and the furthest from vanilla stone. It has the strongest pattern of the three at the wide wall.
+Bold soft mottles and, in one texture in seven, a short vein. The most varied, and the furthest from vanilla stone. It shows a faint lattice of small dark specks at mid range in layer 1.
 
 ## Limits
 
 - **Layer 3's flank faces are dark.** The hexagon of a column has four faces off the axes, and the game lights a face from the block's own, solid cell, which has no light. A wall of columns is lit and black faces, as in round 1. I tried a light floor for them in the model and it did nothing. The fix is in the build: a block that the mod owns can set its own light, which a stand-in cannot.
+- **Faint motifs remain at mid range** in layers 1 and 2 (see the grid check). The outlines are gone.
 - **Layer 3's columns repeat at the size of a block by design**, and the grid check reports and does not judge them.
 - **Layer 2's crust reads as a maze in the breach-crust still.** Round 1's texture and model, unchanged: not in this round's scope.
 - **The lava texture is round 1's.** The flow is a 2 x 2 sheet of four separate 16 x 16 tiles, so it may show a grid at 16 pixels. Not changed.
@@ -130,6 +135,8 @@ Bold soft mottles and a few short veins. The most varied, and the furthest from 
 The groundwork is the same for all three: real rock blocks for each layer and its rubble, the Company Rock and crust models in the mod, a worldgen pass that places the formations and the caves, the fog and grade, and a lava redraw. A texture is one PNG for each variant of the block (six for layer 1, five for the others), its end and its rubble, and costs nothing at run time.
 
 ## Pick
+
+The reviewer's lean, as advice and not as a decision: **Bedded for layer 1, Grain for layer 2, Grain for layer 3.** Bedded reads as layered earth and is the least repeated of the three at layer 1; Grain is the quietest and leaves the formation to carry layers 2 and 3.
 
 Reply with a texture for each layer, for example "Bedded for layer 1, Grain for layers 2 and 3". The choice is per layer.
 

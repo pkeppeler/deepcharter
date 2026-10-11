@@ -219,8 +219,8 @@ def mottled(shades: list[str], seed: int, mid: int = 2, veins: bool = True, base
         for x in range(SIZE):
             n = soft(seed, base, x, y, 2)
             g[y][x] = clamp(mid + (2 if n > 1.3 else 1 if n > 0.45 else -2 if n < -1.3 else -1 if n < -0.45 else 0) + grain(seed + 2, base + 2, x, y, 1.1), shades)
-    for k in range(1 if veins and hashf(seed, 80) < 0.4 else 0):
-        x0, y0 = 2 + int(hashf(seed, 81, k) * 4), 3 + int(hashf(seed, 82, k) * 7)
+    for k in range(1 if veins and hashf(seed, 80) < 0.15 else 0):
+        x0, y0 = 2 + int(hashf(seed, 81, k) * 7), 3 + int(hashf(seed, 82, k) * 8)
         slope = (-1, 0, 1)[int(hashf(seed, 83, k) * 3)]
         for i in range(5 + int(hashf(seed, 84, k) * 5)):
             x, y = x0 + i, y0 + (i * slope) // 2 + (1 if hashf(seed, 85, k, i) > 0.8 else 0)

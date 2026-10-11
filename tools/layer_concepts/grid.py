@@ -6,11 +6,18 @@ Usage: tools/layer_concepts/grid.py <screenshots directory>
 The seam check of seams.py reads a texture, and cannot see a grid that a model or a motif makes: relief that starts and stops at a block edge, a
 slot between two blocks, one mottle repeated on every block. Those show only in the render. In the `wide-wall` still the camera looks square at a flat
 wall, so a block is the same number of pixels everywhere on it; in the `vanilla-reference` still the layer's rock stands beside vanilla stone and
-deepslate under the same light, at the same scale. For a patch of wall the score is the height of the peak of its autocorrelation at the block
-size, over the autocorrelation at the lags round it, along X and along Y, after a high-pass filter that removes the light's gradient: a thin line,
-or one motif, that comes back every block makes a peak, and noise does not. Each rock patch must score no more than the vanilla deepslate patch in the
-reference still of the same option and layer, plus MARGIN. Layer 3 is reported and not judged: its columns are one block wide, so their open joints
-come back at every block by design, and the number says how much.
+deepslate under the same light, at the same scale.
+
+For a patch of wall the score is a comb: the mean size of the step between neighbouring pixels is taken for each column (and, separately, each row) of
+the patch, that line of numbers is folded on the pitch of a block into BINS places, and the score is the largest place over the mean of the places, less 1,
+for the best pitch within SEARCH of the measured one. Steps that fall anywhere in a block give a flat fold and a score near 0; a seam or a lip at every
+block edge piles its steps into one place. Each rock patch must score no more than the vanilla deepslate patch in the reference still of the same option and
+layer, plus MARGIN; a score within NEAR of that limit is printed as a warning and does not fail. Layer 3 is reported and not judged: its columns are one
+block wide, so their open joints come back at every block by design, and the number says how much.
+
+It is a necessary check and not a sufficient one. It sees a line that comes back at every block, in X or in Y. It folds each line to one number, so it does
+not see a point motif: a speck or a short vein that comes back once a block, at no one column or row, spreads over every place of the fold. Those are
+judged by eye on the stills.
 
 The scale is measured from the stills: the three panels of the reference still are 7 blocks wide each, 31.1 pixels a block at its distance of 9.6
 blocks, so 30.2 pixels a block at the 9.9 blocks of the wide wall. Standard library only.
@@ -33,6 +40,8 @@ COLUMNS_LAYER = 3
 # limit and not stone, which has no pattern to speak of: a 16 pixel texture that repeats with a strong, fixed pattern scores 0.6 and passes the eye of
 # every Minecraft player. Measured on the stills of this round, vanilla stone scores 0.30 to 0.32 and deepslate 0.61 to 0.62.
 MARGIN = 0.1
+# A score this close to the limit, or closer, is printed as "near" and does not fail: two recordings of one commit differ by about this much.
+NEAR = 0.08
 
 
 def luminance(image: pngio.Rgba) -> list[list[float]]:
@@ -92,18 +101,29 @@ def reference_scores(still: list[list[float]]) -> dict[str, float]:
 
 def main() -> int:
     directory = Path(sys.argv[1])
-    failed = 0
+    failed = judged = nears = 0
     print("| Option | Layer | Wide wall | Reference: rock | Reference: vanilla stone | Reference: vanilla deepslate | Verdict |")
     print("|---|---|---|---|---|---|---|")
     for option in ("grain", "bedded", "mottled"):
+        if not (directory / f"{option}-layer1-wide-wall.png").is_file():
+            # A recording of some of the options (DEEPCHARTER_LAYER_OPTIONS) has no stills of the others.
+            continue
         for layer in (1, 2, 3):
+            judged += 1
             wall = wall_score(read(directory / f"{option}-layer{layer}-wide-wall.png"))
             reference = reference_scores(read(directory / f"{option}-layer{layer}-vanilla-reference.png"))
             limit = reference["deepslate"] + MARGIN
             clean = wall <= limit and reference["rock"] <= limit
             failed += not clean and layer != COLUMNS_LAYER
-            verdict = "ok" if clean else "columns" if layer == COLUMNS_LAYER else "grid"
+            worst = max(wall, reference["rock"])
+            verdict = "columns" if layer == COLUMNS_LAYER and not clean else "ok" if clean and worst <= limit - NEAR else "near" if clean else "grid"
+            nears += verdict == "near"
             print(f"| {option} | {layer} | {wall:.2f} | {reference['rock']:.2f} | {reference['stone']:.2f} | {reference['deepslate']:.2f} | {verdict} |")
+    if not judged:
+        print(f"grid.py: no wide-wall still in {directory}", file=sys.stderr)
+        return 1
+    if nears:
+        print("grid.py: warning: a score is near its limit; look at that still", file=sys.stderr)
     return 1 if failed else 0
 
 
