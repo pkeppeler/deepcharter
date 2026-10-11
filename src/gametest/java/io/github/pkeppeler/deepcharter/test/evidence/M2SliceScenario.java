@@ -85,6 +85,7 @@ import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
@@ -156,7 +157,7 @@ public class M2SliceScenario extends EvidenceScenario {
 			ctx = context;
 			colony = onServer(minecraft -> Colony.placed(minecraft).orElseThrow(() -> new AssertionError("the colony was not built when the world started")));
 			List<Runnable> beats = List.of(this::foundTheCharter, this::starterItems, this::repairColonyTerminals, this::repairFoundingMole,
-					this::refuel, this::boardAndDrillDown, this::sellOre, this::buyScanner, this::diveToTheDeepClaim, this::crossTheBreach,
+					this::refuel, this::boardAndDrillDown, this::sellOre, this::fitScannerBuyLights, this::diveToTheDeepClaim, this::crossTheBreach,
 					this::lamplessFigure, this::wreckSite, this::towHome, this::repairHullAndRestore, this::workOrder, this::theOldWorkingsFloor);
 			for (int i = 0; i < beats.size(); i++) {
 				beat = i + 1;
@@ -209,7 +210,7 @@ public class M2SliceScenario extends EvidenceScenario {
 	}
 
 	private void starterItems() {
-		say("2. Handbook chapter 1. SHORTCUT: a stalk, a crafting table, stone tools, scrap and iron are handed over, not gathered.");
+		say("2. Handbook chapter 1. SHORTCUT: a stalk, a crafting table, stone tools, scrap, iron and a scanner unit are handed over, not gathered.");
 		onServer(server -> {
 			ServerPlayer real = real(server);
 			stash(real, new ItemStack(HandbookChaptersOneToFiveTest.ours("fungal_stalk"), 4));
@@ -217,6 +218,7 @@ public class M2SliceScenario extends EvidenceScenario {
 			stash(real, new ItemStack(Items.STONE_PICKAXE));
 			stash(real, new ItemStack(HandbookChaptersOneToFiveTest.ours("scrap_iron"), 3));
 			stash(real, new ItemStack(Items.IRON_INGOT, 3));
+			stash(real, new ItemStack(ScannerRegistry.SCANNER_UNIT));
 			return null;
 		});
 		awaitServer(server -> chapterDone(server, "welcome"));
@@ -393,8 +395,8 @@ public class M2SliceScenario extends EvidenceScenario {
 		ctx.setScreen(() -> null);
 	}
 
-	private void buyScanner() {
-		say("8. Handbook chapters 5 and 6. SHORTCUT: $400 is granted. A scanner and lights are bought on the real upgrade screen.");
+	private void fitScannerBuyLights() {
+		say("8. Handbook chapters 5 and 6. SHORTCUT: $400 is granted. The scanner unit is used on the Mole, and the lights are bought on the real upgrade screen.");
 		onServer(server -> {
 			Charters.deposit(server, charter, 400);
 			return null;
@@ -407,10 +409,26 @@ public class M2SliceScenario extends EvidenceScenario {
 		still("24-upgrade-terminal");
 		click("SCANNER  T0");
 		snap(HOLD_FRAMES);
-		click("BUY TIER 1  $200");
+		still("24b-scanner-tier-1-is-crafted");
+		ctx.setScreen(() -> null);
+		onServer(server -> {
+			ServerPlayer real = real(server);
+			PodEntity fitting = pod(server, mole);
+			// The unit stashed in the pack is moved to the hand for the use, and what the hand held comes back.
+			ItemStack held = real.getItemInHand(InteractionHand.MAIN_HAND);
+			real.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ScannerRegistry.SCANNER_UNIT));
+			InteractionResult used = UseEntityCallback.EVENT.invoker().interact(real, fitting.level(), InteractionHand.MAIN_HAND, fitting, null);
+			real.setItemInHand(InteractionHand.MAIN_HAND, held);
+			if (!used.consumesAction()) {
+				throw new AssertionError("the scanner unit should fit the Mole");
+			}
+			return null;
+		});
 		awaitServer(server -> directiveDone(server, "seeing_below/install_scanner"));
+		openTerminal(new Vec3(0, FEET_Y, VIEW_Z), terminal, UpgradeScreen.class);
+		click("SCANNER  T1");
 		snap(HOLD_FRAMES);
-		still("25-scanner-bought");
+		still("25-scanner-fitted");
 		click("LIGHTS  T0");
 		snap(2);
 		click("BUY TIER 1  $125");

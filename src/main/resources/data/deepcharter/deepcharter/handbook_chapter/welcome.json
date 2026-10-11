@@ -33,6 +33,12 @@
       "text": {
         "translate": "deepcharter.handbook.directive.welcome.smelt_iron"
       }
+    },
+    {
+      "id": "deepcharter:handbook/welcome/craft_scanner",
+      "text": {
+        "translate": "deepcharter.handbook.directive.welcome.craft_scanner"
+      }
     }
   ]
 }

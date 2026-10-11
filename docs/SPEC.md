@@ -100,6 +100,7 @@ A few hundred blocks at the top of the first uncharted world, below the seam at 
 ### Bootstrap
 
 - Start from the colony's salvage and fungal "wood". This replaces "start like normal Minecraft" on the user's art direction ([art direction](design/art-direction.md) section 11, decided with the user on 2026-10-08, issue #225, PR #234; built in [#245](https://github.com/pkeppeler/deepcharter/issues/245)). Salvage crates supply wood, cloth and scrap (scrap iron and scrap copper, melted in a furnace) and redstone. They are littered round the colony within a set block radius, not only at it (none stand on the pad or its margin): the radius is one number, `min_inclusive` and `max_exclusive` of `data/deepcharter/worldgen/density_function/surface/yard.json`: a ring from 100 to 160 blocks, which starts past the colony's pad and its graded margin. Hardy alien fungal stalks on crater floors, and in the caves of layer 1, are gatherable stand-ins for trees: a stalk presses into four planks, burns, and chars to charcoal. A new player reaches tools, a light and the first terminal repair with no tree and no ore.
+- Craft the first scanner too: a **scanner unit** from 4 iron, 2 copper and 2 redstone, about four crates' worth of the yard ([mechanics.md](design/mechanics.md#the-crafted-scanner-483-a)). It is the tier 1 part of the first mining pod, made like the Mole's own parts (SPEC section 7, Scanner); the upgrade terminal does not sell it.
 - Repair the colony's terminals one by one (fuel pump, then ore processor, then upgrade terminal, and so on). Each is a crafting goal; the employer gets in touch as they come back online.
 - The first charter also repairs the founding pod (the Mole) in the colony hangar.
 
@@ -240,6 +241,7 @@ The original's rules, in 3D.
 ### Scanner
 
 - An early component: a side-view minimap in the HUD, a vertical slice around the pod showing ore in range.
+- **Tier 1 is crafted, every later tier is bought.** The player crafts a scanner unit in the bootstrap and fits it by using it on their own charter's pod; it becomes a tier 1 part stamped for the charter, like a bought one. The upgrade terminal does not sell tier 1. Tiers 2 and up are purchases and need the tier 1 part fitted first: by then mining by hand is too slow, so the game pushes the player into the pod and its economy ([ADR 0048](adr/0048-the-tier-1-scanner-is-a-crafted-unit-fitted-by-use.md), user decision of 2026-10-11).
 - Upgrades extend range and detail. Later tiers reveal hazards such as gas pockets, otherwise invisible.
 
 ### Camera

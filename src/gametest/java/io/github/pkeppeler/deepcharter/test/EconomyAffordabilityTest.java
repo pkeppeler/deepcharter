@@ -38,7 +38,7 @@ import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 public class EconomyAffordabilityTest {
 	private static final Logger LOGGER = LoggerFactory.getLogger(EconomyAffordabilityTest.class);
 
-	/** A tier 1 part, the scanner and the lights are an early buy: this many runs of a stock Mole in layer 1, at most. */
+	/** A tier 1 part and the lights are an early buy (the scanner's tier 1 is crafted, #483): this many runs of a stock Mole in layer 1, at most. */
 	private static final int EARLY_BUY_RUNS = 2;
 	/** The spoil hopper is the entry to the lava ladder: a stock Mole buys it with one layer 1 run. */
 	private static final int HOPPER_RUNS = 1;
@@ -104,6 +104,9 @@ public class EconomyAffordabilityTest {
 			}
 			if (track == ComponentTrack.SOUNDER) {
 				continue; // A layer 2 buy with its own band: theSounderTiersAreAffordableAfterTheirLayerTwoRuns.
+			}
+			if (track == ComponentTrack.SCANNER) {
+				continue; // Tier 1 is crafted and costs no money (#483): its cost is in crates, ScannerCostTest. Tier 2 has its own band below.
 			}
 			long price = UpgradeTuning.DEFAULT.price(track, 1);
 			int runs = run.toAfford(price);

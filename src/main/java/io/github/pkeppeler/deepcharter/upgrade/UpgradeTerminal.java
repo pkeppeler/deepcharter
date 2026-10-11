@@ -37,6 +37,9 @@ import io.github.pkeppeler.deepcharter.terminal.Terminals;
  * <p>A pod is parked at the terminal as {@link Terminals#parkedPods} says, and is the player's to use as
  * {@link PodComponents#mayAccess} says. The charter's own pod wins over an unowned one; within each, the nearer wins.
  *
+ * <p>A track whose first tier is crafted ({@link ComponentTrack#firstTierCrafted}, the scanner) does not sell that tier, and sells the
+ * ones above it only to a pod that has the crafted part fitted for the buying charter.
+ *
  * <p>Terminals have already checked distance, membership and repair when a handler here runs. The args are untrusted: the track
  * and tier are read defensively, and a part above the chassis' cap is allowed (it is shown and applied as capped).
  */
@@ -86,6 +89,9 @@ public final class UpgradeTerminal {
 		if (tier < 1 || tier > track.maxTier()) {
 			return Optional.of(UpgradeRefusal.BAD_REQUEST.message());
 		}
+		if (track.firstTierCrafted() && tier == 1) {
+			return Optional.of(UpgradeRefusal.CRAFTED.message());
+		}
 		Charter charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow();
 		PodEntity pod;
 		switch (parked(player, charter, terminal)) {
@@ -102,6 +108,10 @@ public final class UpgradeTerminal {
 			return Optional.of(UpgradeRefusal.NOT_REGISTERED.message());
 		}
 		Optional<PartLabel> held = PodComponents.partOf(pod, track);
+		if (track.firstTierCrafted() && (held.isEmpty() || !held.get().charter().equals(charter.id()))) {
+			// The crafted first tier is what a later tier replaces: buying past it would sell a scanner to a pod that never had one.
+			return Optional.of(UpgradeRefusal.NEEDS_FIRST_TIER.message());
+		}
 		if (held.isPresent() && held.get().charter().equals(charter.id()) && held.get().tier() >= tier) {
 			return Optional.of(UpgradeRefusal.NOT_AN_UPGRADE.message());
 		}

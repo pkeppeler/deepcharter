@@ -268,6 +268,66 @@ public class UpgradeTerminalTest {
 		});
 	}
 
+	/** #483: the scanner's tier 1 is crafted and fitted from the unit, so the terminal does not sell it, whatever the account holds. */
+	@GameTest
+	public void theTierOneScannerIsCraftedAndNotSoldAtTheTerminal(GameTestHelper helper) {
+		withRepairedTerminal(helper, () -> {
+			Scene scene = scene(helper, 10_000);
+			try {
+				expectEqual(helper, "the price table has no price for the crafted tier", 0, UpgradeTuning.DEFAULT.price(ComponentTrack.SCANNER, 1));
+				expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(scene, ComponentTrack.SCANNER, 1), "a tier 1 scanner");
+				expectSame(helper, UpgradeTerminal.buy(helper.getLevel().getServer(), scene.player(), scene.terminal(), ComponentTrack.SCANNER, 1),
+						Optional.of(UpgradeRefusal.CRAFTED.message()), "the reason");
+				expectEqual(helper, "the account", 10_000, balance(helper, scene));
+				if (PodComponents.partOf(scene.pod(), ComponentTrack.SCANNER).isPresent()) {
+					throw failure(helper, "a refused scanner must not be installed");
+				}
+				for (ComponentTrack track : ComponentTrack.values()) {
+					if (track != ComponentTrack.SCANNER && track.firstTierCrafted()) {
+						throw failure(helper, "only the scanner has a crafted first tier, %s says it has too", track);
+					}
+				}
+				helper.succeed();
+			} finally {
+				clean(helper, scene);
+			}
+		});
+	}
+
+	/** #483: the tiers above the crafted one are purchases, and need the crafted one fitted to the pod (and working for the charter) first. */
+	@GameTest
+	public void aHigherScannerTierIsBoughtAfterTheCraftedOneIsFitted(GameTestHelper helper) {
+		withRepairedTerminal(helper, () -> {
+			Scene scene = scene(helper, 10_000);
+			try {
+				MinecraftServer server = helper.getLevel().getServer();
+				for (int tier = 2; tier <= ComponentTrack.SCANNER.maxTier(); tier++) {
+					expectSame(helper, UpgradeTerminal.buy(server, scene.player(), scene.terminal(), ComponentTrack.SCANNER, tier),
+							Optional.of(UpgradeRefusal.NEEDS_FIRST_TIER.message()), "the reason for tier " + tier + " with no scanner");
+				}
+				expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(scene, ComponentTrack.SCANNER, 2), "tier 2 with no scanner");
+				expectEqual(helper, "nothing was charged", 10_000, balance(helper, scene));
+
+				// A void scanner of another charter is not the first tier.
+				PodComponents.install(scene.pod(), ComponentItems.mint(server, ComponentTrack.SCANNER, 1, otherCharter(helper)));
+				expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(scene, ComponentTrack.SCANNER, 2), "tier 2 over a void scanner");
+				expectEqual(helper, "nothing was charged for the void scanner", 10_000, balance(helper, scene));
+
+				PodComponents.install(scene.pod(), ComponentItems.mint(server, ComponentTrack.SCANNER, 1, scene.charter()));
+				PartLabel crafted = PodComponents.partOf(scene.pod(), ComponentTrack.SCANNER).orElseThrow();
+				expectDone(helper, buy(scene, ComponentTrack.SCANNER, 2), "buying tier 2 over the fitted tier 1");
+				expectEqual(helper, "tier 2 is charged at its price", 10_000 - UpgradeTuning.DEFAULT.price(ComponentTrack.SCANNER, 2), balance(helper, scene));
+				expectEqual(helper, "the pod scans at tier 2", 2, PodComponents.effectiveTier(scene.pod(), ComponentTrack.SCANNER));
+				if (!drops(helper, scene).contains(crafted)) {
+					throw failure(helper, "the tier 1 scanner it replaced should drop, got %s", drops(helper, scene));
+				}
+				helper.succeed();
+			} finally {
+				clean(helper, scene);
+			}
+		});
+	}
+
 	@GameTest
 	public void aVoidPartOfAnotherCharterCanBeReplacedByTheSameTier(GameTestHelper helper) {
 		withRepairedTerminal(helper, () -> {

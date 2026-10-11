@@ -98,7 +98,7 @@ public class HandbookChaptersOneToFiveTest {
 	static final Map<String, List<String>> PINNED = Map.of(
 			"deepcharter:welcome", List.of("deepcharter:handbook/welcome/gather_wood", "deepcharter:handbook/welcome/craft_crafting_table",
 					"deepcharter:handbook/welcome/craft_stone_tools", "deepcharter:handbook/welcome/gather_scrap",
-					"deepcharter:handbook/welcome/smelt_iron"),
+					"deepcharter:handbook/welcome/smelt_iron", "deepcharter:handbook/welcome/craft_scanner"),
 			"deepcharter:back_online", List.of("deepcharter:handbook/back_online/repair_fuel_pump",
 					"deepcharter:handbook/back_online/repair_ore_processor", "deepcharter:handbook/back_online/repair_upgrade_terminal"),
 			"deepcharter:meet_the_mole", List.of("deepcharter:handbook/meet_the_mole/repair_mole", "deepcharter:handbook/meet_the_mole/board_mole"),
@@ -356,6 +356,9 @@ public class HandbookChaptersOneToFiveTest {
 						directive("welcome", "craft_stone_tools"), directive("welcome", "gather_scrap")));
 				expectRoadAt(helper, server, second, 0);
 				give(second, Items.IRON_INGOT);
+				expectCompleted(helper, server, "smelting scrap", both, Set.of(directive("welcome", "gather_wood"), directive("welcome", "craft_crafting_table"),
+						directive("welcome", "craft_stone_tools"), directive("welcome", "gather_scrap"), directive("welcome", "smelt_iron")));
+				give(first, ours("scanner_unit"));
 				expectCompleted(helper, server, "chapter 1", both, through(1));
 				expectRoadAt(helper, server, first, 1);
 
