@@ -11,7 +11,6 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
@@ -36,6 +35,9 @@ import io.github.pkeppeler.deepcharter.terminal.Terminals;
  *
  * <p>A pod is parked at the terminal as {@link Terminals#parkedPods} says, and is the player's to use as
  * {@link PodComponents#mayAccess} says. The charter's own pod wins over an unowned one; within each, the nearer wins.
+ *
+ * <p>A track whose first tier is crafted ({@link ComponentTrack#firstTierCrafted}, the scanner) does not sell that tier, and sells the
+ * ones above it only to a pod that has the crafted part fitted for the buying charter.
  *
  * <p>Terminals have already checked distance, membership and repair when a handler here runs. The args are untrusted: the track
  * and tier are read defensively, and a part above the chassis' cap is allowed (it is shown and applied as capped).
@@ -86,6 +88,9 @@ public final class UpgradeTerminal {
 		if (tier < 1 || tier > track.maxTier()) {
 			return Optional.of(UpgradeRefusal.BAD_REQUEST.message());
 		}
+		if (track.firstTierCrafted() && tier == 1) {
+			return Optional.of(UpgradeRefusal.CRAFTED.message());
+		}
 		Charter charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow();
 		PodEntity pod;
 		switch (parked(player, charter, terminal)) {
@@ -101,8 +106,12 @@ public final class UpgradeTerminal {
 			// A part there would be void, and the refill would make the purchase a repair.
 			return Optional.of(UpgradeRefusal.NOT_REGISTERED.message());
 		}
-		Optional<PartLabel> held = PodComponents.partOf(pod, track);
-		if (held.isPresent() && held.get().charter().equals(charter.id()) && held.get().tier() >= tier) {
+		Optional<PartLabel> held = PodComponents.partOf(pod, track, charter.id());
+		if (track.firstTierCrafted() && held.isEmpty()) {
+			// The crafted first tier is what a later tier replaces: buying past it would sell a scanner to a pod that never had one.
+			return Optional.of(UpgradeRefusal.NEEDS_FIRST_TIER.message());
+		}
+		if (held.isPresent() && held.get().tier() >= tier) {
 			return Optional.of(UpgradeRefusal.NOT_AN_UPGRADE.message());
 		}
 		// Everything that can throw or refuse comes before the spend, so a charge always buys an install. A serial burnt by a later refusal is harmless.
@@ -114,9 +123,8 @@ public final class UpgradeTerminal {
 		if (unpaid.isPresent()) {
 			return Optional.of(unpaid.get().message());
 		}
-		Optional<PartLabel> replaced = PodComponents.install(pod, part);
+		PodComponents.installAndDropReplaced(pod, part);
 		refill(pod, track);
-		replaced.ifPresent(label -> drop(pod, ComponentItems.stackOf(track, label)));
 		UpgradeEvents.BOUGHT.invoker().onBought(server, player, pod, track, tier);
 		return Optional.empty();
 	}
@@ -134,10 +142,6 @@ public final class UpgradeTerminal {
 			case DRILL, ENGINE, RADIATOR, CARGO_BAY, SCANNER, LIGHTS, SPOIL_HOPPER, LINER, SOUNDER, BRACE -> {
 			}
 		}
-	}
-
-	private static void drop(PodEntity pod, ItemStack stack) {
-		pod.level().addFreshEntity(new ItemEntity(pod.level(), pod.getX(), pod.getY() + pod.getBbHeight(), pod.getZ(), stack));
 	}
 
 	private static Parked parked(ServerPlayer player, Charter charter, BlockPos terminal) {

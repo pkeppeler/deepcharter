@@ -17,7 +17,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
 
 import io.github.pkeppeler.deepcharter.charter.Charters;
-import io.github.pkeppeler.deepcharter.colony.FounderStatue;
 import io.github.pkeppeler.deepcharter.client.market.AccountHud;
 import io.github.pkeppeler.deepcharter.client.market.OrderRowButton;
 import io.github.pkeppeler.deepcharter.client.market.OreProcessorScreen;
@@ -37,6 +36,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
@@ -109,7 +109,7 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 			context.clickScreenButton("DELIVER BRONZIUM");
 			ClientWait.until(context, "the last work order DONE", client -> screen.orderLines().getLast().endsWith("DONE"), client -> "order lines " + screen.orderLines());
 			require(singleplayer.getServer().computeOnServer(WorkOrdersTest::handsRestored), "the Founder's hands are restored");
-			singleplayer.getServer().runOnServer(FounderStatue::removeHands);
+			singleplayer.getServer().runOnServer(ColonyChunks::removeHands);
 			context.setScreen(() -> null);
 
 			// #188: a charter that reached layer 3 is offered the repeatable Morale Initiative beside the finished Founder's hands.

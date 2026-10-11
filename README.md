@@ -74,7 +74,7 @@ Ore is heavy and lives in the pod's cargo bay. A heavy load cuts your lift. Park
 
 ![The upgrade terminal showing hull prices](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/upgrade-terminal.png?raw=true)
 
-Every terminal is a Hatch machine panel: a green screen in a riveted steel frame, with a status strip along the bottom. Money buys better parts there: drill, hull, engine, tank, radiator, cargo, scanner, lights, spoil hopper, liner, seep sounder and breach brace. The hangar holds your pods and sells a new one. Wrecks you find deeper down become better pods.
+Every terminal is a Hatch machine panel: a green screen in a riveted steel frame, with a status strip along the bottom. Money buys better parts there: drill, hull, engine, tank, radiator, cargo, scanner, lights, spoil hopper, liner, seep sounder and breach brace. The first scanner is not sold: you craft a scanner unit from salvage metal and fit it by using it on your pod. The hangar holds your pods and sells a new one. Wrecks you find deeper down become better pods.
 
 ![The Mole's cutter changes from a tricone to stacked rings to a fluted auger as two drill upgrades are bought](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-cutter-swap.gif?raw=true)
 

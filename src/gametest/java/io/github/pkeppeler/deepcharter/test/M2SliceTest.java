@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.core.BlockPos;
@@ -13,7 +14,9 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
@@ -46,11 +49,13 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
 import io.github.pkeppeler.deepcharter.pod.Serials;
 import io.github.pkeppeler.deepcharter.repair.RepairStation;
+import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.M2SliceEndState;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -168,7 +173,7 @@ public class M2SliceTest {
 						&& Charters.deposit(server, charter, FUNDS).isEmpty(), "the crewmate should join the charter, which is then funded");
 
 				// Chapter 1.
-				for (var item : List.of(HandbookChaptersOneToFiveTest.ours("fungal_stalk"), Items.CRAFTING_TABLE, Items.STONE_PICKAXE, HandbookChaptersOneToFiveTest.ours("scrap_iron"), Items.IRON_INGOT)) {
+				for (var item : List.of(HandbookChaptersOneToFiveTest.ours("fungal_stalk"), Items.CRAFTING_TABLE, Items.STONE_PICKAXE, HandbookChaptersOneToFiveTest.ours("scrap_iron"), Items.IRON_INGOT, HandbookChaptersOneToFiveTest.ours("scanner_unit"))) {
 					HandbookChaptersOneToFiveTest.give(first, item);
 				}
 
@@ -214,12 +219,17 @@ public class M2SliceTest {
 				first.getInventory().add(OreRegistry.stack(OreType.IRONIUM));
 				expectDone(helper, Terminals.act(first, terminal, OreProcessor.SELL_INVENTORY, new CompoundTag()), "selling the ore");
 
-				// Chapter 6: the scanner, then ore in view from the pilot's seat.
+				// Chapter 5 again: a part is bought at the upgrade terminal (the scanner is not sold: its first tier is crafted).
 				helper.getLevel().setBlock(terminal, TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(), 3);
 				CompoundTag args = new CompoundTag();
-				args.putString(UpgradeTerminal.TRACK_KEY, ComponentTrack.SCANNER.id());
+				args.putString(UpgradeTerminal.TRACK_KEY, ComponentTrack.LIGHTS.id());
 				args.putInt(UpgradeTerminal.TIER_KEY, 1);
-				expectDone(helper, Terminals.act(first, terminal, UpgradeTerminal.BUY, args), "buying a scanner");
+				expectDone(helper, Terminals.act(first, terminal, UpgradeTerminal.BUY, args), "buying lights");
+
+				// Chapter 6: the scanner crafted in chapter 1 is fitted to the Mole, then ore in view from the pilot's seat.
+				first.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ScannerRegistry.SCANNER_UNIT));
+				expect(helper, UseEntityCallback.EVENT.invoker().interact(first, mole.level(), InteractionHand.MAIN_HAND, mole, null).consumesAction(),
+						"the scanner unit should fit the Mole");
 				BlockPos ore = mole.blockPosition().above(2);
 				helper.getLevel().setBlock(ore, net.minecraft.world.level.block.Blocks.GOLD_ORE.defaultBlockState(), 3);
 				expect(helper, first.startRiding(mole, true, false), "the player should board the Mole");
@@ -308,7 +318,7 @@ public class M2SliceTest {
 				pods.forEach(PodEntity::discard);
 				director.leave();
 				crew.leave();
-				FounderStatue.removeHands(server);
+				ColonyChunks.removeHands(server);
 				if (hadHands) {
 					FounderStatue.restoreHands(server);
 				}

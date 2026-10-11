@@ -1,9 +1,0 @@
-# Test-only gate baseline (tools/TestOnlyGate.java, gradle/test-only-gate.gradle): members of src/main and src/client that only src/gametest
-# references, found when the gate arrived. Burn-down: #463. The list only shrinks: the build fails on a finding that is not here, and on
-# a line here that is no longer a finding. New code gets no line. Fix the member, or mark a deliberate seam '// test-seam: <reason>'.
-# One Class#member(parameter descriptors) per line, sorted.
-
-io.github.pkeppeler.deepcharter.colony.FounderStatue#body(Lnet/minecraft/server/MinecraftServer;)
-io.github.pkeppeler.deepcharter.colony.FounderStatue#removeHands(Lnet/minecraft/server/MinecraftServer;)
-io.github.pkeppeler.deepcharter.hangar.Hangar#consolePos(Lnet/minecraft/server/MinecraftServer;)
-io.github.pkeppeler.deepcharter.hangar.Hangar#derelict(Lnet/minecraft/server/MinecraftServer;)

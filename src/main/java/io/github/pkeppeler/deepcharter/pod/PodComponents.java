@@ -28,6 +28,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
@@ -114,6 +115,13 @@ public final class PodComponents {
 					.initializer(() -> Versioned.of(State.EMPTY))
 					.syncWith(Versioned.streamCodec(VERSION, State.STREAM), AttachmentSyncPredicate.all()));
 
+	/** The lore mark of a pod, saved and not synced: only the server reads it. */
+	public static final AttachmentType<Versioned<PodLore>> LORE = AttachmentRegistry.create(
+			Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "pod_lore"),
+			builder -> builder
+					.persistent(Versioned.codec(PodLore.VERSION, PodLore.BODY))
+					.initializer(() -> Versioned.of(PodLore.NONE)));
+
 	/**
 	 * One stat a track moves, and which way is better. A part scales the stat by the tier's ratio against the stock part, so it
 	 * composes with other listeners. A drill is better when its ticks for each hardness are fewer, so it divides.
@@ -157,6 +165,11 @@ public final class PodComponents {
 		return Optional.ofNullable(read(pod).parts().get(track));
 	}
 
+	/** The part of {@code track} on the pod, if it is stamped for {@code charter}. */
+	public static Optional<PartLabel> partOf(PodEntity pod, ComponentTrack track, CharterId charter) {
+		return partOf(pod, track).filter(label -> label.charter().equals(charter));
+	}
+
 	/**
 	 * The tier the pod gets from {@code track}: 0 for no part or a void one, and never above the chassis' cap. The scanner,
 	 * lights and radiator read this to know what they do.
@@ -188,13 +201,43 @@ public final class PodComponents {
 	 * once, so a second call throws.
 	 */
 	public static void register(PodEntity pod, CharterId owner) {
+		requireUnregistered(pod);
+		String serial = Serials.get(requireServer(pod)).next(pod.chassis().id().toUpperCase(Locale.ROOT));
+		change(pod, state -> new State(Optional.of(new Registration(owner, serial)), state.parts()));
+		PodEvents.REGISTERED.invoker().onRegistered(pod, owner);
+	}
+
+	/** Server only: marks the pod as the wreck that holds {@link Serials#FAMOUS_PROSPECTOR}, for {@link #registerLoreWreck}. */
+	public static void markFamousProspector(PodEntity pod) {
+		requireServer(pod);
+		Versioned.modifyOrThrow(pod, LORE, lore -> PodLore.FAMOUS_PROSPECTOR);
+	}
+
+	/** True for the wreck marked by {@link #markFamousProspector} that no restore has registered yet. Unreadable lore reads as false (logged once). */
+	public static boolean isFamousProspector(PodEntity pod) {
+		return Versioned.readable(pod, LORE).map(PodLore::famousProspector).orElse(false);
+	}
+
+	/**
+	 * Server only: registers the marked wreck to {@code owner} under {@link Serials#FAMOUS_PROSPECTOR} and clears the mark. Throws
+	 * for a pod that is not the marked wreck or is registered already, and on a second claim of the number on any pod.
+	 */
+	public static void registerLoreWreck(PodEntity pod, CharterId owner) {
 		MinecraftServer server = requireServer(pod);
+		if (!Versioned.orThrow(pod, LORE).famousProspector()) {
+			throw new IllegalStateException("pod " + pod.getUUID() + " is not the wreck that holds " + Serials.FAMOUS_PROSPECTOR);
+		}
+		requireUnregistered(pod);
+		Serials.get(server).claimFamousProspector();
+		change(pod, state -> new State(Optional.of(new Registration(owner, Serials.FAMOUS_PROSPECTOR)), state.parts()));
+		Versioned.modifyOrThrow(pod, LORE, lore -> PodLore.NONE);
+		PodEvents.REGISTERED.invoker().onRegistered(pod, owner);
+	}
+
+	private static void requireUnregistered(PodEntity pod) {
 		if (Versioned.orThrow(pod, STATE).registration().isPresent()) {
 			throw new IllegalStateException("pod " + pod.getUUID() + " is already registered");
 		}
-		String serial = Serials.get(server).next(pod.chassis().id().toUpperCase(Locale.ROOT));
-		change(pod, state -> new State(Optional.of(new Registration(owner, serial)), state.parts()));
-		PodEvents.REGISTERED.invoker().onRegistered(pod, owner);
 	}
 
 	/**
@@ -212,6 +255,18 @@ public final class PodComponents {
 		track.requirePartTier(label.tier());
 		Optional<PartLabel> replaced = Optional.ofNullable(Versioned.orThrow(pod, STATE).parts().get(track));
 		change(pod, state -> state.with(track, label));
+		return replaced;
+	}
+
+	/**
+	 * As {@link #install}, and the part it replaces drops as an item at the pod, so no part is lost to a fit or a purchase. The one
+	 * place that rule lives: the upgrade terminal and the scanner unit both install through it.
+	 */
+	public static Optional<PartLabel> installAndDropReplaced(PodEntity pod, ItemStack stack) {
+		Optional<PartLabel> replaced = install(pod, stack);
+		ComponentTrack track = ComponentItems.trackOf(stack).orElseThrow();
+		replaced.ifPresent(label -> pod.level().addFreshEntity(
+				new ItemEntity(pod.level(), pod.getX(), pod.getY() + pod.getBbHeight(), pod.getZ(), ComponentItems.stackOf(track, label))));
 		return replaced;
 	}
 
