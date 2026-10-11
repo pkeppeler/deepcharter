@@ -4,10 +4,11 @@ fails the build, unless production references it too, it overrides a supertype's
 outside it fails, and so does an entry that is no longer a finding.
 
 Each tree is compiled with javac (a mod tree, then a test tree against it) and scanned by the gate, so it needs JDK 25 on PATH. It does not use the
-Gradle batch of the other checks, so CASES is empty. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job
+Gradle batch of the other checks, so CASES is empty. Its name (testonly, not test_only) misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job
 and the pre-push hook run it.
-Usage: python3 -I tools/tests/gate_checks.py test_only
+Usage: python3 -I tools/tests/gate_checks.py testonly
 """
+import re
 import subprocess
 import tempfile
 import unittest
@@ -360,9 +361,17 @@ def findings(done: subprocess.CompletedProcess[str]) -> set[str]:
     return {line.strip() for line in section.splitlines() if line.startswith("  ")}
 
 
+def require_jdk_25() -> None:
+    done = subprocess.run(["java", "-version"], capture_output=True, text=True, check=False)
+    match = re.search(r'version "(\d+)', done.stderr)
+    if match is None or int(match.group(1)) < 25:
+        raise RuntimeError(f"the test-only gate check needs JDK 25 on PATH (the gate uses the class-file API and switch patterns), got: {done.stderr.strip()!r}")
+
+
 class TestOnlyGateTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        require_jdk_25()
         cls.red = Tree({**MOD_GREEN, **MOD_RED}, test_sources(GREEN_USES + RED_USES))
         cls.green = Tree(MOD_GREEN, test_sources(GREEN_USES))
         cls.missing = Tree(

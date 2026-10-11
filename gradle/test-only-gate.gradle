@@ -5,7 +5,7 @@
 // resolved. What it exempts, and the marker `// test-seam: <reason>` for a deliberate seam, are in its header.
 // tools/test-only-baseline.txt lists the findings that exist already (burn-down: #463). A new finding fails; so does a baseline entry that
 // is no longer a finding, so the list only shrinks. -PtestOnlyList prints the key of every finding, to rebuild the list after a merge.
-// tools/tests/test_only_gate_check.py runs it over fixture trees (python3 -I tools/tests/gate_checks.py test_only).
+// tools/tests/testonly_gate_check.py runs it over fixture trees (python3 -I tools/tests/gate_checks.py testonly).
 def mainClasses = sourceSets.main.output.classesDirs
 def clientClasses = sourceSets.client.output.classesDirs
 def gametestClasses = sourceSets.gametest.output.classesDirs
