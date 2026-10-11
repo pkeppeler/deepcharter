@@ -357,7 +357,7 @@ public final class PodTowing {
 		Vec3 carried = null;
 		if (!fits(towed, anchor, next)) {
 			carried = line.pathPoints(anchor, rope).stream()
-					.filter(point -> inOpenSpace(towed.level(), towed, towed.getBoundingBox().move(point.subtract(towed.position()))))
+					.filter(point -> openAt(towed.level(), towed, point))
 					.findFirst()
 					.or(() -> held.distanceToSqr(anchor) > rope * rope ? nearestOpenOnLine(towed, anchor, held, rope) : Optional.empty())
 					.orElse(held);
@@ -380,7 +380,7 @@ public final class PodTowing {
 		direction = direction.lengthSqr() < EPSILON ? new Vec3(0, -1, 0) : direction.normalize();
 		for (double distance = rope; distance > OPEN_STEP; distance -= OPEN_STEP) {
 			Vec3 spot = anchor.add(direction.scale(distance));
-			if (inOpenSpace(towed.level(), towed, towed.getBoundingBox().move(spot.subtract(towed.position())))) {
+			if (openAt(towed.level(), towed, spot)) {
 				return Optional.of(spot);
 			}
 		}
@@ -423,6 +423,11 @@ public final class PodTowing {
 	/** True when no block meets {@code box}. Pods and other entities do not count: the towed pod and its tower overlap by design at times. */
 	private static boolean inOpenSpace(Level level, PodEntity pod, AABB box) {
 		return !level.getBlockCollisions(pod, box).iterator().hasNext();
+	}
+
+	/** {@link #inOpenSpace} for {@code pod}'s box moved to stand at {@code spot} in {@code level}. */
+	private static boolean openAt(Level level, PodEntity pod, Vec3 spot) {
+		return inOpenSpace(level, pod, pod.getBoundingBox().move(spot.subtract(pod.position())));
 	}
 
 	/**
@@ -551,11 +556,11 @@ public final class PodTowing {
 		side = side.normalize();
 		double full = TowTuning.DEFAULT.trailDistance(tower, towed);
 		double least = (tower.chassis().width() + towed.chassis().width()) / 2.0 + ARRIVAL_STEP;
-		Vec3 hang = new Vec3(0, -1, 0);
+		Vec3[] directions = {side, new Vec3(0, -1, 0)};
 		for (double distance = full; distance >= least; distance -= ARRIVAL_STEP) {
-			for (Vec3 direction : new Vec3[] {side, hang}) {
+			for (Vec3 direction : directions) {
 				Vec3 spot = tower.position().add(direction.scale(distance));
-				if (inOpenSpace(to, towed, towed.getBoundingBox().move(spot.subtract(towed.position())))) {
+				if (openAt(to, towed, spot)) {
 					return spot;
 				}
 			}
