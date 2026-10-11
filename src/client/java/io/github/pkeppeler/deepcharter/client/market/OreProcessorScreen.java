@@ -76,6 +76,7 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 		return view;
 	}
 
+	@Override
 	public Typewriter typewriter() {
 		return typewriter;
 	}

@@ -43,6 +43,6 @@ if command -v shellcheck >/dev/null 2>&1; then
 else
   echo "pre-push: shellcheck not found, skipping it (CI runs it)" >&2
 fi
-echo "pre-push: gate checks on fixtures: room-carver, client-test filter, tick-wait, world-data, world-clock, hud-toggle, entity-query (one Gradle run)" >&2
+echo "pre-push: gate checks on fixtures: room-carver, client-test filter, tick-wait, world-data, world-clock, hud-toggle, test-only, entity-query (one Gradle run)" >&2
 python3 -I tools/tests/gate_checks.py \
-  || fail "gate checks (room-carver, client-test filter, tick-wait, world-data, world-clock, hud-toggle, entity-query)"
+  || fail "gate checks (room-carver, client-test filter, tick-wait, world-data, world-clock, hud-toggle, test-only, entity-query)"

@@ -136,6 +136,7 @@ apply from: "gradle/literals.gradle"
 apply from: "gradle/entity-query-gate.gradle"
 apply from: "gradle/gametest.gradle"
 apply from: "gradle/colour-gate.gradle"
+apply from: "gradle/test-only-gate.gradle"
 apply from: "gradle/clientlock.gradle"
 
 processResources {

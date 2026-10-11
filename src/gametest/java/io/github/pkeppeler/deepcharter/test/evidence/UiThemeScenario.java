@@ -2,8 +2,8 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 
-import io.github.pkeppeler.deepcharter.client.ui.CrtDemoScreen;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
+import io.github.pkeppeler.deepcharter.test.support.CrtDemoScreen;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 
 /**

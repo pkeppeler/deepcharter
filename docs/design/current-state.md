@@ -524,7 +524,7 @@ The inventory screen is vanilla, unchanged (the item gallery stills show it). Sw
 
 ### UI kit demo
 
-`client/ui/CrtDemoScreen.java` is a development demo of the CRT kit and is not reachable in play. Not shot.
+`test/support/CrtDemoScreen.java` (a test source) is a development demo of the CRT kit and is not reachable in play. Not shot.
 
 ### Pod status HUD
 

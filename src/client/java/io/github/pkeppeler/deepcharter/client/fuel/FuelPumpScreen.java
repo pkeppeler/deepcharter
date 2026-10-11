@@ -71,6 +71,7 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
 		return view;
 	}
 
+	@Override
 	public Typewriter typewriter() {
 		return typewriter;
 	}

@@ -14,7 +14,7 @@ from pathlib import Path
 TOOLS = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(TOOLS / "layer_concepts"))
 sys.path.insert(0, str(TOOLS / "colony"))
-sys.path.insert(0, str(TOOLS / "textures"))
+sys.path.insert(0, str(TOOLS))
 
 import make  # noqa: E402
 import pngio  # noqa: E402

@@ -14,10 +14,10 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.MouseButtonInfo;
 
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
-import io.github.pkeppeler.deepcharter.client.ui.CrtDemoScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.CrtDemoScreen;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 

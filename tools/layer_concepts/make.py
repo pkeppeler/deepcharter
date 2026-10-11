@@ -30,8 +30,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "colony"))
-
-sys.path.insert(0, str(HERE.parent / "textures"))
+sys.path.insert(0, str(HERE.parent))
 
 import art  # noqa: E402
 import nbt  # noqa: E402
@@ -403,19 +402,10 @@ def outputs() -> tuple[dict[Path, bytes], dict[Path, bytes]]:
     return files, structures
 
 
-def stale(path: Path, body: bytes) -> bool:
-    """Whether the file is missing or differs from body: a PNG by its pixels (another zlib makes other bytes of the same image), the rest by bytes."""
-    if not path.is_file():
-        return True
-    if path.suffix == ".png":
-        return pngio.decode(path.read_bytes(), path.name) != pngio.decode(body, path.name)
-    return path.read_bytes() != body
-
-
 def problems(files: dict[Path, bytes], structures: dict[Path, bytes]) -> list[str]:
     out = []
     for path, body in files.items():
-        if stale(path, body):
+        if pngio.stale(path, body):
             out.append(f"{path.relative_to(ROOT)}: differs from what make.py makes")
     for path, body in structures.items():
         if not path.is_file() or nbt.decode(path.read_bytes()) != nbt.decode(body):
@@ -446,7 +436,7 @@ def main() -> int:
             print(line)
         return 1 if found else 0
     for path, body in files.items():
-        if stale(path, body):
+        if pngio.stale(path, body):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(body)
     for path, body in structures.items():
