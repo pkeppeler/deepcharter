@@ -27,6 +27,10 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param heatRisePerTick how fast the heat gauge climbs toward 1 while lava burns the hull, per client tick
  * @param heatFallPerTick how fast it falls back to 0 when the hull stops burning, per client tick
  * @param platePad the space between the readout plate's edge and its text
+ * @param needleInset how far a needle stops short of the edge of its dial
+ * @param hubSize the side of the square hub a needle turns on
+ * @param heatWarning the heat from which the heat gauge is in warning
+ * @param scannerTitleGap the space between the scanner window and its title under it
  */
 public record CockpitLook(
 		Style style,
@@ -43,7 +47,11 @@ public record CockpitLook(
 		double hullLowFraction,
 		double heatRisePerTick,
 		double heatFallPerTick,
-		int platePad) {
+		int platePad,
+		int needleInset,
+		int hubSize,
+		double heatWarning,
+		int scannerTitleGap) {
 	/** The options. The ordinal is the {@code style} value in the theme. */
 	public enum Style {
 		OFF("off"),
@@ -168,6 +176,7 @@ public record CockpitLook(
 		return new CockpitLook(Style.values()[d.integer("style", 0, Style.values().length - 1)], Layout.of(d, Style.DIALS), Layout.of(d, Style.STRIP),
 				Layout.of(d, Style.CONSOLES), d.color("needleColor"), d.color("fuelColor"), d.color("hullColor"), d.color("depthColor"), d.color("heatColor"),
 				d.color("lowColor"), d.color("offColor"), d.decimal("hullLowFraction", 0, 1), d.decimal("heatRisePerTick", 0.001, 1),
-				d.decimal("heatFallPerTick", 0.001, 1), d.integer("platePad", 0, 16));
+				d.decimal("heatFallPerTick", 0.001, 1), d.integer("platePad", 0, 16),
+				d.integer("needleInset", 0, 16), d.integer("hubSize", 1, 9), d.decimal("heatWarning", 0, 1), d.integer("scannerTitleGap", 0, 16));
 	}
 }

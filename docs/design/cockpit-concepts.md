@@ -65,8 +65,10 @@
 
 - **Small and large GUIs.** The layouts hold at the game's smallest GUI, 320 x 240, and at 427 x 240 (`test_cockpit_concepts.py` checks that every gauge sits on a housing, the scanner window sits in its bezel, and nothing overlaps or leaves the screen at both sizes). On a GUI under that they overlap: the `-calm-scale3` stills force GUI scale 3 on the 854 x 480 window, which is 284 x 160 and below what the game allows, and all three crowd (A's sonar covers the dials, B's dock covers the depth and heat bars, C's right console is taller than the screen). The `-calm-scale1` stills show an 854 x 480 GUI, where every look is small and clean. Like the terminal panel, the build should draw the plain HUD when the GUI is smaller than the style needs.
 - **Scanner tier 4.** A tier 4 slice is 145 x 121 cells, so a window of 98 x 82 does not hold it whole. The pick needs a rule: clip to the window, zoom out, or a larger window.
-- **The navigator.** A second seat gets the frame, the housings and the scanner, and no gauges or plate, as it gets no readout today. Only the pilot is drawn in the stills.
-- **Heat.** It is the burning of the hull, eased. If heat becomes a pod value, the gauge reads that.
+- **The navigator.** A second seat gets the frame, the housings and the scanner, and no gauges or plate, as it gets no readout today. Only the pilot is drawn in the stills. Any rider counts as seated, so a navigator also loses the vanilla hotbar under a style. The build must decide if that is right.
+- **Heat.** It is the burning of the hull, eased. If heat becomes a pod value, the gauge reads that. The easing has no test yet: the build needs one, with a held `hullBurning`.
+- **Depth.** The depth gauge reads a share of the floor of the last layer. A new layer moves every reading.
+- **Scanner tier 4 is clipped.** The window cuts a slice larger than itself at its edge, so a tier 4 map shows its middle only.
 
 ## Pick one
 

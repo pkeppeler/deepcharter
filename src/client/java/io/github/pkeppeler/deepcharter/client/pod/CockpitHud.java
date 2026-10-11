@@ -71,6 +71,11 @@ public final class CockpitHud {
 		return seated(client).isPresent() && client.player.getVehicle() instanceof PodEntity pod && PodSeat.showsPodStatus(pod, client.player);
 	}
 
+	/** The vanilla elements the cockpit replaces, for a test to hold to the list. */
+	public static List<Identifier> hiddenWhileSeated() {
+		return HIDDEN_WHILE_SEATED;
+	}
+
 	private static void tick(Minecraft client) {
 		if (client.player == null || !(client.player.getVehicle() instanceof PodEntity pod)) {
 			heat = 0;
@@ -108,7 +113,7 @@ public final class CockpitHud {
 			gauge(graphics, layout.fuel(), reading.fuel(), fuelLow ? look.lowColor() : look.fuelColor(), fuelLow, look);
 			gauge(graphics, layout.hull(), reading.hull(), hullLow ? look.lowColor() : look.hullColor(), hullLow, look);
 			gauge(graphics, layout.depth(), reading.depth(), look.depthColor(), false, look);
-			gauge(graphics, layout.heat(), reading.heat(), look.heatColor(), reading.heat() > 0.5, look);
+			gauge(graphics, layout.heat(), reading.heat(), look.heatColor(), reading.heat() > look.heatWarning(), look);
 			decal(graphics, layout, "header", layout.header(), width, height);
 			List<Line> readout = new ArrayList<>(PodStatusHud.readout(client, pod));
 			AccountHud.text().ifPresent(account -> readout.add(new Line(account, HudLook.current().accountColor())));
@@ -137,8 +142,8 @@ public final class CockpitHud {
 		int width = gauge.area().width();
 		int height = gauge.area().height();
 		switch (gauge.kind()) {
-			case DIAL -> needle(graphics, left + width / 2, top + height / 2, Math.min(width, height) / 2 - 3,
-					Math.toRadians(gauge.from() + (gauge.to() - gauge.from()) * value), warning ? look.lowColor() : look.needleColor());
+			case DIAL -> needle(graphics, left + width / 2, top + height / 2, Math.min(width, height) / 2 - look.needleInset(),
+					Math.toRadians(gauge.from() + (gauge.to() - gauge.from()) * value), warning ? look.lowColor() : look.needleColor(), look.hubSize());
 			case ACROSS -> {
 				int lit = (int) Math.ceil(value * gauge.segments() - 1e-9);
 				for (int i = 0; i < gauge.segments(); i++) {
@@ -158,14 +163,14 @@ public final class CockpitHud {
 		}
 	}
 
-	/** A needle one pixel thick from ({@code cx}, {@code cy}) {@code length} pixels out at {@code angle} radians clockwise from straight up, and a hub of 3 by 3. */
-	private static void needle(GuiGraphicsExtractor graphics, int cx, int cy, int length, double angle, int color) {
+	/** A needle one pixel thick from ({@code cx}, {@code cy}) {@code length} pixels out at {@code angle} radians clockwise from straight up, and a square hub of {@code hub} pixels. */
+	private static void needle(GuiGraphicsExtractor graphics, int cx, int cy, int length, double angle, int color, int hub) {
 		for (int step = 0; step <= length; step++) {
 			int x = cx + (int) Math.round(Math.sin(angle) * step);
 			int y = cy - (int) Math.round(Math.cos(angle) * step);
 			graphics.fill(x, y, x + 1, y + 1, color);
 		}
-		graphics.fill(cx - 1, cy - 1, cx + 2, cy + 2, color);
+		graphics.fill(cx - hub / 2, cy - hub / 2, cx - hub / 2 + hub, cy - hub / 2 + hub, color);
 	}
 
 	/** The text readout, on a plate that is as big as its longest line and the number of lines. */

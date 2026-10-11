@@ -43,6 +43,7 @@ KIND = {"dial": 0, "across": 1, "up": 2}
 SHARED = {
     "needleColor": "#16181A", "fuelColor": "#F0A010", "hullColor": "#B02A1A", "depthColor": "#F2D21E", "heatColor": "#FF6A1E", "lowColor": "#FF3A2A",
     "offColor": "#141B19", "hullLowFraction": 0.3, "heatRisePerTick": 0.08, "heatFallPerTick": 0.02, "platePad": 3,
+    "needleInset": 3, "hubSize": 3, "heatWarning": 0.5, "scannerTitleGap": 2,
 }
 CREAM = rgb("#d9d4bd")
 BRASS = [rgb(c) for c in ("#3a2c12", "#6b5222", "#a07e36", "#d1ad54", "#f0d98a")]

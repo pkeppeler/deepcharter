@@ -14,6 +14,7 @@ import net.minecraft.world.level.block.Block;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
+import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -40,8 +41,6 @@ public final class ScannerHud {
 	private static final int ALTIMETER_HALF_WIDTH = 36;
 	/** GUI pixels kept clear between the altimeter and the panel. */
 	private static final int ALTIMETER_GAP = 4;
-	/** GUI pixels between the cockpit window and the title under it. */
-	private static final int TITLE_GAP = 2;
 
 	private static ScanSlice slice;
 	private static int ticksUntilScan;
@@ -130,7 +129,13 @@ public final class ScannerHud {
 		int left = windowLeft + (window.width() - area.columns() * cell) / 2;
 		int top = windowTop + (window.height() - area.rows() * cell) / 2;
 		graphics.fill(windowLeft, windowTop, windowLeft + window.width(), windowTop + window.height(), look.airColor());
-		drawCells(graphics, client, scanned, cell, left, top);
+		// A slice larger than the window (tier 4) is cut at the window's edge, never drawn over the gauges beside it.
+		graphics.enableScissor(windowLeft, windowTop, windowLeft + window.width(), windowTop + window.height());
+		try {
+			drawCells(graphics, client, scanned, cell, left, top);
+		} finally {
+			graphics.disableScissor();
+		}
 	}
 
 	/** The title of the cockpit's window, centred just under it. It is drawn after the bezel, which has a recess for it. */
@@ -141,7 +146,7 @@ public final class ScannerHud {
 		}
 		Component title = title(scanned);
 		graphics.text(client.font, title, window.left(graphics.guiWidth()) + (window.width() - client.font.width(title)) / 2,
-				window.top(graphics.guiHeight()) + window.height() + TITLE_GAP, ScannerLook.current().titleColor());
+				window.top(graphics.guiHeight()) + window.height() + CockpitLook.current().scannerTitleGap(), ScannerLook.current().titleColor());
 	}
 
 	private static Component title(ScanSlice scanned) {

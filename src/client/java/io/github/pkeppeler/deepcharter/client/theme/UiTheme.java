@@ -21,7 +21,7 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param breach the fade and jitter of a crossing
  * @param cargo the pod cargo screen
  * @param pod the paint palette of the pods' hulls
- * @param panel the machine panel round the terminals, off until a pack switches it on
+ * @param panel the machine panel round the terminals, on in the mod; a pack restyles it or switches it off
  * @param cockpit the cockpit HUD of a seated pilot, style 0 (none) until a pack picks one
  */
 public record UiTheme(

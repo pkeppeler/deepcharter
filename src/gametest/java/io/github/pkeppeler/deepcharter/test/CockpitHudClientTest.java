@@ -14,7 +14,10 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
+import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
+
 import net.minecraft.client.Minecraft;
+import net.minecraft.resources.Identifier;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.level.ServerLevel;
@@ -32,6 +35,7 @@ import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
@@ -51,6 +55,9 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 	private static final int RISE = 20;
 	/** The middle of the bottom of the screen at GUI scale 2 (427 x 240): where the hotbar, the hearts, the held item name and the action bar are, clear of every console. */
 	private static final int[] VANILLA_BOX = {126, 165, 298, 232};
+	/** The rows of the held item name and the action bar (the dismount hint), over the hotbar and the hearts: a leaked line of text is a few percent of the box above but most of this strip. */
+	private static final int[] TEXT_STRIP = {126, 170, 298, 190};
+	private static final double SAME_TEXT = 0.005;
 	private static final int GUI_SCALE = 2;
 	/**
 	 * How much of the vanilla box may differ between a shot of the cockpit and a shot of the bare game (the pod's idle pose moves a few pixels between shots:
@@ -93,6 +100,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 						&& client.level.dimension().equals(LayerChain.dimension(1)));
 				context.waitTicks(40); // tick-wait: the charter's first transmission arrives a moment after the mount, and is cleared below
 
+				expectTheCockpitHidesExactlyTheVanillaBottomCluster();
 				expectNoCockpitWithoutAStyle(context);
 				ClientPacks.enable(context, TestPacks.COCKPIT_CONSOLES);
 				try {
@@ -105,6 +113,16 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 			} finally {
 				EvidencePins.reset();
 			}
+		}
+	}
+
+	private static void expectTheCockpitHidesExactlyTheVanillaBottomCluster() {
+		Set<Identifier> expected = Set.of(VanillaHudElements.HOTBAR, VanillaHudElements.ARMOR_BAR, VanillaHudElements.HEALTH_BAR, VanillaHudElements.FOOD_BAR,
+				VanillaHudElements.AIR_BAR, VanillaHudElements.MOUNT_HEALTH, VanillaHudElements.INFO_BAR, VanillaHudElements.EXPERIENCE_LEVEL,
+				VanillaHudElements.HELD_ITEM_TOOLTIP, VanillaHudElements.OVERLAY_MESSAGE);
+		if (!Set.copyOf(CockpitHud.hiddenWhileSeated()).equals(expected) || CockpitHud.hiddenWhileSeated().size() != expected.size()) {
+			throw new AssertionError("The cockpit hides the hotbar, health, armour, food, air, mount health, experience bar and level, held item name and action bar, got "
+					+ CockpitHud.hiddenWhileSeated());
 		}
 	}
 
@@ -122,16 +140,20 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 		}
 		BufferedImage bare = shotOfBareGame(context);
 		BufferedImage cockpit = shot(context, "cockpit-seated");
-		double seated = differing(bare, cockpit);
+		double seated = differing(bare, cockpit, VANILLA_BOX);
 		if (seated > SAME) {
 			throw new AssertionError("Seated under the cockpit, the vanilla hotbar, hearts, held item name and dismount hint must not be drawn: "
 					+ seated + " of the middle of the bottom of the screen differs from the game with no HUD");
+		}
+		double text = differing(bare, cockpit, TEXT_STRIP);
+		if (text > SAME_TEXT) {
+			throw new AssertionError("Seated under the cockpit, no held item name or action bar line is drawn: " + text + " of the text rows differs from the game with no HUD");
 		}
 		singleplayer.getServer().runOnServer(server -> server.getPlayerList().getPlayers().getFirst().stopRiding());
 		ClientWait.until(context, "the pilot on foot", client -> client.player.getVehicle() == null);
 		ClientWait.until(context, "the cockpit gone on foot", client -> CockpitHud.seated(client).isEmpty());
 		BufferedImage onFoot = shot(context, "cockpit-on-foot");
-		double back = differing(bare, onFoot);
+		double back = differing(bare, onFoot, VANILLA_BOX);
 		if (back < DIFFERENT) {
 			throw new AssertionError("On foot the vanilla HUD is back: the middle of the bottom of the screen should differ from the bare game, but only " + back + " of it does");
 		}
@@ -145,12 +167,9 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 
 	/** A shot with the whole HUD switched off, which is what the vanilla box shows when nothing is drawn in it. */
 	private BufferedImage shotOfBareGame(ClientGameTestContext context) {
-		context.runOnClient(client -> client.gui.hud.toggle());
-		try {
-			return shot(context, "cockpit-bare");
-		} finally {
-			context.runOnClient(client -> client.gui.hud.toggle());
-		}
+		BufferedImage[] bare = {null};
+		ClientChecks.withHudHidden(context, () -> bare[0] = shot(context, "cockpit-bare"));
+		return bare[0];
 	}
 
 	/** A shot of the game, with the held item name and a message above the hotbar up, as when a pilot has just boarded. */
@@ -173,12 +192,12 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 	}
 
 	/** The share of the pixels of the vanilla box that differ by more than a few levels between two shots. */
-	private static double differing(BufferedImage a, BufferedImage b) {
+	private static double differing(BufferedImage a, BufferedImage b, int[] box) {
 		int scale = GUI_SCALE;
 		int differing = 0;
 		int total = 0;
-		for (int y = VANILLA_BOX[1] * scale; y < VANILLA_BOX[3] * scale; y++) {
-			for (int x = VANILLA_BOX[0] * scale; x < VANILLA_BOX[2] * scale; x++) {
+		for (int y = box[1] * scale; y < box[3] * scale; y++) {
+			for (int x = box[0] * scale; x < box[2] * scale; x++) {
 				total++;
 				int pa = a.getRGB(x, y);
 				int pb = b.getRGB(x, y);
