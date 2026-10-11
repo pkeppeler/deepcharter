@@ -336,6 +336,7 @@ public final class PodLining {
 					// The pod's own riders do not block its lining, even in the cell under the pod (a low seat puts them there); a stranger does.
 					boolean reachedByLava = floor || !lavaOnly || flooded.contains(pos);
 					if ((ring || floor || lid) && reachedByLava && !level.isOutsideBuildHeight(pos) && blocks.canChange(pos) && needsBrick(blocks.getBlockState(pos), floor)
+							// entity-query: the cell is beside a ticking pod, and canChange above refuses a cell in or beside an unloaded chunk
 							&& level.getEntities((Entity) null, new AABB(pos), entity -> !entity.isSpectator() && !pod.hasPassenger(entity)).isEmpty()) {
 						cells.add(pos);
 					}

@@ -194,6 +194,7 @@ public final class PodComponents {
 		}
 		String serial = Serials.get(server).next(pod.chassis().id().toUpperCase(Locale.ROOT));
 		change(pod, state -> new State(Optional.of(new Registration(owner, serial)), state.parts()));
+		PodEvents.REGISTERED.invoker().onRegistered(pod, owner);
 	}
 
 	/**
