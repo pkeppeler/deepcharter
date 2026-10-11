@@ -79,6 +79,9 @@ public class SalvageBootstrapTest {
 	/** What a survey of the sample world found with its fixed seed; the tests allow half of it. */
 	private static final int CRATES_BEYOND_THE_PAD = 160;
 	private static final int STALK_COLUMNS = 40;
+	/** The walk from a crate to the nearest stalk column, in blocks: the survey of the fixed seed found 167 and 281 (a crate near the edge of the survey has the stalks beyond it out of count). */
+	private static final int MEDIAN_WALK_TO_A_STALK = 200;
+	private static final int MOST_WALK_TO_A_STALK = 320;
 	/** A plains block's top is no lower than 61 (ground 64 less the rolling plains' 2.6), so a stalk's base this low or lower is a crater's. */
 	private static final int HIGHEST_STALK_BASE = 60;
 	/** How many crates a new player must break to reach the first goals, and the whole repair chain. */
@@ -237,6 +240,30 @@ public class SalvageBootstrapTest {
 			}
 		}
 		helper.succeed();
+	}
+
+	/** How far a player walks from a crate to the nearest stalk column: the wood is a walk from the salvage, not a trek. */
+	@GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+	public void aStalkColumnIsAWalkFromEveryCrate(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		List<BlockPos> stalks = find(level, SURVEY_CHUNKS, block("fungal_stalk"));
+		Set<BlockPos> all = new LinkedHashSet<>(stalks);
+		List<BlockPos> bases = stalks.stream().filter(pos -> !all.contains(pos.below())).toList();
+		List<BlockPos> crates = find(level, SURVEY_CHUNKS, block("salvage_crate"));
+		double[] nearest = crates.stream().mapToDouble(crate -> bases.stream().mapToDouble(base -> Math.sqrt(horizontalDistanceSqr(crate, base))).min().orElse(Double.MAX_VALUE))
+				.sorted().toArray();
+		double nearestToTheOrigin = bases.stream().mapToDouble(SalvageBootstrapTest::distance).min().orElse(Double.MAX_VALUE);
+		LOGGER.info("[salvage] {} stalk columns, the nearest {} blocks from the colony's centre; from a crate to the nearest column: least {}, median {}, most {} blocks ({} crates)",
+				bases.size(), (int) nearestToTheOrigin, (int) nearest[0], (int) nearest[nearest.length / 2], (int) nearest[nearest.length - 1], nearest.length);
+		if (nearest[nearest.length / 2] > MEDIAN_WALK_TO_A_STALK || nearest[nearest.length - 1] > MOST_WALK_TO_A_STALK) {
+			throw helper.assertionException("a stalk column is a median %s and at most %s blocks from a crate, over the %s and %s allowed",
+					(int) nearest[nearest.length / 2], (int) nearest[nearest.length - 1], MEDIAN_WALK_TO_A_STALK, MOST_WALK_TO_A_STALK);
+		}
+		helper.succeed();
+	}
+
+	private static double horizontalDistanceSqr(BlockPos a, BlockPos b) {
+		return (double) (a.getX() - b.getX()) * (a.getX() - b.getX()) + (double) (a.getZ() - b.getZ()) * (a.getZ() - b.getZ());
 	}
 
 	@GameTest(dimension = "deepcharter:layer_1", maxTicks = MAX_TICKS)

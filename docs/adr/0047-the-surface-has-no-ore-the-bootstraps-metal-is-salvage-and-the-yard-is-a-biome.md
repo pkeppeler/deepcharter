@@ -50,4 +50,13 @@ The ladder of `designing-mechanics`: by hand, then the pod, then mastery. Scrap 
 | `tall_surface_biomes` over `tall_baseline_biomes` (the biome source over the whole height) | 1.26x | 1.23x |
 | The same pair with no features in the surface | 1.16x | 1.09x |
 
-This shows that the features add about 8% of CPU for the stalks and nothing that shows for the crates. It does not show that the bar holds with margin: the bar's own pair is on 1.15x, and the biome-source pair, over the bar before this PR (1.16x with no feature of it), is over it with the stalks (1.26x). The Mac was shared (load average 2 to 65). Heap is unreadable beyond each JVM's first round. If the bar must be held with margin, the cut is in the stalks: place them in a crater biome of their own, or try 3 places in a chunk and not 6. The crates need no cut.
+Before the cut the stalks were the only measurable cost, so **the stalk placement was cut from 6 tries to 3 a chunk** (`fungal_stalks.json`), which a crater biome of the stalks' own would have done at the price of a fourth biome and a second density function. A 12-chunk survey now finds 47 stalk columns (89 before): the nearest is 129 blocks from the colony's centre, and from a crate the nearest column is 167 blocks at the median (281 at most). Crates also drop planks and sticks, so the first hour needs a stalk for fuel and charcoal only. After the cut, two passes of five rounds, each run started at a one-minute load under 6:
+
+| Pair | Ratio of the medians | Ratio of the minima |
+|---|---|---|
+| The stalks alone | 0.98x | 1.01x |
+| `tall_surface` over `tall_baseline` (the bar's own pair) | 1.21x | 1.09x |
+| `tall_surface_biomes` over `tall_baseline_biomes` | 1.11x | 1.14x |
+| The same pair with no features | 1.13x | 1.12x |
+
+This shows that the stalks now cost nothing that shows and the crates never did. It does not show that the bar holds in the medians. The bar's own pair has no stalk in it (the zone biomes hold none of the surface biomes), so the cut cannot move it. It read 1.15x before the cut and 1.21x after, from the spread of its own rounds (164 to 209 ms for the layers, 179 to 248 for the surface). Its minima are 1.12x and 1.09x, under the bar. The biome-source pair is pre-existing and load-sensitive: 1.16x and 1.13x with no feature of this PR in the surface, against ADR 0036's 1.08x. A quiet machine would settle both; the full method and the readings before the cut are in [salvage-concepts.md](../design/salvage-concepts.md#feature-cost). Heap is unreadable beyond each JVM's first round.
