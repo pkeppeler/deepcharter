@@ -34,7 +34,8 @@ public class TowingClientTest implements FabricClientGameTest {
 	private static final int X = 700;
 	private static final int Z = 700;
 	private static final int FLOOR_Y = 200;
-	private static final int DRIVE_TICKS = 60;
+	/** Long enough for the tower to drive out the 4.9 blocks of slack the pod starts with and then pull it 5 blocks. */
+	private static final int DRIVE_TICKS = 100;
 	private static final double MIN_FOLLOWED_BLOCKS = 5;
 	/** What the client's pods may disagree by: each one is interpolated from what the server last sent. */
 	private static final double CLIENT_LAG_BLOCKS = 1.5;

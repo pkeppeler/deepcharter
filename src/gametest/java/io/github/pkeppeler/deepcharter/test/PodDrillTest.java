@@ -509,7 +509,8 @@ public class PodDrillTest {
 		double trail = TowTuning.DEFAULT.trailDistance(Chassis.MOLE, Chassis.MOLE);
 		ServerLevel level = layer(helper, 1);
 		int x = 3960;
-		room(level, x, FLOOR, 4);
+		// The tower stands a whole line from the pod, 6.9 blocks and more, so the room is wide enough to hold it in open air.
+		room(level, x, FLOOR, 12);
 		PodEntity[] tower = {null};
 		int[] backTicks = {0};
 		boreInterruptedBy(helper, level, x, "drill-towed", pod -> {
