@@ -18,6 +18,14 @@ Builds on [ADR 0004](0004-pods-are-vehicles.md) (pods are vehicles), [ADR 0021](
 
 ## Consequences
 
-- The Prospector wreck is `PROSPECTOR-0002` in the world and `PROSPECTOR-0001` once a charter has restored it. The lore number is the wreck's; the serial is the charter's.
+- ~~The Prospector wreck is `PROSPECTOR-0002` in the world and `PROSPECTOR-0001` once a charter has restored it.~~ Superseded: see Amended, 2026-10-11.
 - A world whose layer 2 chunks were generated before this build has no Prospector wrecks, like any structure (ADR 0025).
 - A new chassis is a `Chassis` constant, a `PodRegistry` line, a tier cap in `UpgradeTuning`, a restore price in `HangarTuning` and a renderer line.
+
+## Amended, 2026-10-11
+
+User decision (M2 demo, issue #484): a restored wreck keeps its own number. PROSPECTOR-0002 stays PROSPECTOR-0002.
+
+- **A wreck that carries the name `PROSPECTOR-0002` (`Serials.FAMOUS_PROSPECTOR`) is registered to the restoring charter under that serial, and keeps its name tag.** A wreck with no lore name still takes the charter's next serial of its chassis, as before. This replaces the bullet "A restore registers an unowned wreck to the restoring charter" for the named wreck only.
+- **Serials are world-wide, one counter for each prefix (`Serials`), and the counter skips `PROSPECTOR-0002`.** The number is the lore wreck's from the day the world is made, so no Prospector bought or restored by any charter is ever handed it, whether or not the wreck has been restored yet. The first new Prospector is `PROSPECTOR-0001`, the next `PROSPECTOR-0003`. A collision cannot happen by construction.
+- **Saved data does not change.** `Registration` is still an owner and a serial string, and `Serials` still saves the count issued for each prefix (version 1); the skip is in `next`, so nothing is stored. A wreck restored before this change was registered `PROSPECTOR-000N` from the counter and has no name; it keeps that, because a pod is registered once. A world where an earlier Prospector already holds `PROSPECTOR-0002` from the counter, and that has not yet restored the wreck, can hold the number twice. This is accepted: the restore does not rename either pod.

@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.Serials;
 
 /**
  * The Prospectors that lie at the wreck sites ({@link StructureKind#WRECK}), drawn with the site (ADR 0025, ADR 0027). Each bay holds
@@ -18,8 +19,8 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
  * PROSPECTOR-0002, with one lamp still burning and Note N10. Any charter may tow a wreck nobody owns to the hangar and restore it.
  */
 final class ProspectorWrecks {
-	/** The name the nearest wreck carries until a charter restores it; the registration names it after that. */
-	static final String FAMOUS_NAME = "PROSPECTOR-0002";
+	/** The name the nearest wreck carries and keeps when a charter restores it: its registration holds the same serial. */
+	static final String FAMOUS_NAME = Serials.FAMOUS_PROSPECTOR;
 	private static final int NOTE = 10;
 
 	private ProspectorWrecks() {

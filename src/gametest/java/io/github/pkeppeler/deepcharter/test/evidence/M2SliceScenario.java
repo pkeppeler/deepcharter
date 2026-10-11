@@ -707,7 +707,10 @@ public class M2SliceScenario extends EvidenceScenario {
 		still("47-prospector-restored");
 		ctx.setScreen(() -> null);
 		String serial = onServer(server -> PodComponents.registration(pod(server, prospector)).orElseThrow().serial());
-		say("16. The wreck is registered to the charter by its serials: it is " + serial + " now, not PROSPECTOR-0002.");
+		say("16. The wreck is registered to the charter and keeps its own number: it is " + serial + " still, and its name tag says so.");
+		if (!serial.equals("PROSPECTOR-0002")) {
+			throw new AssertionError("the restored wreck should keep PROSPECTOR-0002, it is " + serial);
+		}
 		showTransmission("48-t17-transmission");
 		Vec3 wreckAt = onServer(server -> pod(server, prospector).position());
 		// The hangar's walls are in the way at ground level, so the camera hovers over them.

@@ -456,6 +456,33 @@ public class PodComponentsTest {
 		helper.succeed();
 	}
 
+	/** PROSPECTOR-0002 is the wreck's number, so the counter skips it; a saved table of the same version still loads and counts on. */
+	@GameTest
+	public void aSerialCounterSkipsTheNumberOfTheFamousWreckAndOldSavedSerialsLoad(GameTestHelper helper) {
+		Serials fresh = new Serials();
+		String first = fresh.next("PROSPECTOR");
+		String second = fresh.next("PROSPECTOR");
+		if (!"PROSPECTOR-0001".equals(first) || !"PROSPECTOR-0003".equals(second) || !"MOLE-0002".equals(freshMoles(fresh))) {
+			throw failure(helper, "the Prospector counter should skip 0002 and the Mole counter not, got %s and %s", first, second);
+		}
+		CompoundTag old = new CompoundTag();
+		old.putInt("version", 1);
+		CompoundTag issued = new CompoundTag();
+		issued.putInt("PROSPECTOR", 2);
+		issued.putInt("MOLE", 5);
+		old.put("issued", issued);
+		Serials loaded = Serials.CODEC.parse(NbtOps.INSTANCE, old).getOrThrow();
+		if (!"PROSPECTOR-0003".equals(loaded.next("PROSPECTOR")) || !"MOLE-0006".equals(loaded.next("MOLE"))) {
+			throw failure(helper, "a table saved before this change should load and count on");
+		}
+		helper.succeed();
+	}
+
+	private static String freshMoles(Serials serials) {
+		serials.next("MOLE");
+		return serials.next("MOLE");
+	}
+
 	@GameTest
 	public void onlyMembersOfTheOwnerCharterCanPilot(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();

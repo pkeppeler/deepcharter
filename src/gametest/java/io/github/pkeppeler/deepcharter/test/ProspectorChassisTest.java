@@ -428,9 +428,18 @@ public class ProspectorChassisTest {
 					"restoring a Prospector uses up 3 Cicatrium, the player holds %s", FoundingMoleHangarTest.count(owner.player(), FoundingMoleHangarTest.CATALYST));
 			expect(helper, !Wrecks.isWreck(wreck) && wreck.hull() == wreck.maxHull(), "the restored Prospector is whole: hull %s of %s", wreck.hull(), wreck.maxHull());
 			PodComponents.Registration registration = PodComponents.registration(wreck).orElseThrow(() -> failure(helper, "the restored Prospector should be registered"));
-			expect(helper, registration.owner().equals(charter) && registration.serial().equals("PROSPECTOR-0001"),
-					"the Prospector is re-registered to the restoring charter as PROSPECTOR-0001 (this world issues serials afresh), it is %s", registration);
-			expect(helper, wreck.getCustomName() == null, "the wreck's old name goes: the registration names the pod now");
+			expect(helper, registration.owner().equals(charter) && registration.serial().equals("PROSPECTOR-0002"),
+					"the Prospector is registered to the restoring charter and keeps its own serial PROSPECTOR-0002, it is %s", registration);
+			expect(helper, wreck.getCustomName() != null && wreck.getCustomName().getString().equals("PROSPECTOR-0002"),
+					"the restored wreck keeps its name tag, it is %s", wreck.getCustomName());
+			PodEntity bought = helper.spawn(PodRegistry.PROSPECTOR, new Vec3(8.5, 2, 5.5));
+			PodComponents.register(bought, charter);
+			PodEntity boughtNext = helper.spawn(PodRegistry.PROSPECTOR, new Vec3(11.5, 2, 5.5));
+			PodComponents.register(boughtNext, charter);
+			expect(helper, PodComponents.registration(bought).orElseThrow().serial().equals("PROSPECTOR-0001")
+					&& PodComponents.registration(boughtNext).orElseThrow().serial().equals("PROSPECTOR-0003"),
+					"the charter's own Prospectors are 0001 and 0003: no second PROSPECTOR-0002, they are %s and %s",
+					PodComponents.registration(bought), PodComponents.registration(boughtNext));
 			expect(helper, fired(helper, charter), "restoring a Prospector fires T17");
 			FoundingMoleHangarTest.clearFloor(helper);
 			helper.succeed();

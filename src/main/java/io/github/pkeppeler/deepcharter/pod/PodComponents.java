@@ -188,13 +188,24 @@ public final class PodComponents {
 	 * once, so a second call throws.
 	 */
 	public static void register(PodEntity pod, CharterId owner) {
-		MinecraftServer server = requireServer(pod);
+		requireUnregistered(pod);
+		register(pod, owner, Serials.get(requireServer(pod)).next(pod.chassis().id().toUpperCase(Locale.ROOT)));
+	}
+
+	/**
+	 * Server only: makes {@code owner} the pod's owner under the serial the pod already holds, such as a lore wreck's. The serial
+	 * counter is not touched. A second registration throws.
+	 */
+	public static void register(PodEntity pod, CharterId owner, String serial) {
+		requireUnregistered(pod);
+		change(pod, state -> new State(Optional.of(new Registration(owner, serial)), state.parts()));
+		PodEvents.REGISTERED.invoker().onRegistered(pod, owner);
+	}
+
+	private static void requireUnregistered(PodEntity pod) {
 		if (Versioned.orThrow(pod, STATE).registration().isPresent()) {
 			throw new IllegalStateException("pod " + pod.getUUID() + " is already registered");
 		}
-		String serial = Serials.get(server).next(pod.chassis().id().toUpperCase(Locale.ROOT));
-		change(pod, state -> new State(Optional.of(new Registration(owner, serial)), state.parts()));
-		PodEvents.REGISTERED.invoker().onRegistered(pod, owner);
 	}
 
 	/**
