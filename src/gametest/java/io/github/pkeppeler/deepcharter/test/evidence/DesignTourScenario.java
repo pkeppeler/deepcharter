@@ -171,6 +171,8 @@ public class DesignTourScenario extends EvidenceScenario {
 	private static final float FADE_SHOT_ALPHA = 0.5f;
 	/** The tour's charter has this id on every run, so that its pods are painted the same colour on every run (ADR 0041: the slot is the id's hash). */
 	private static final CharterId TOUR_CHARTER = new CharterId(new UUID(0L, 0L));
+	/** The kit's blocks: the public block fields of {@link ColonyKit}. */
+	private static final Set<Block> KIT = kitBlocks();
 	/** How far the figure by the lit pod has faded in its still: half way. */
 	private static final float FIGURE_SHOT_FADE = 0.5f;
 
@@ -551,9 +553,6 @@ public class DesignTourScenario extends EvidenceScenario {
 		serverDo(server -> command(server, "time set noon"));
 		EvidenceWorld.skyPhase(ctx, sp, EvidenceWorld.SKY_BRIGHTEST);
 	}
-
-	/** The kit's blocks: the public block fields of {@link ColonyKit}. */
-	private static final Set<Block> KIT = kitBlocks();
 
 	private static Set<Block> kitBlocks() {
 		Set<Block> blocks = new HashSet<>();
