@@ -113,11 +113,6 @@ public final class OreCargoMenu extends AbstractContainerMenu {
 		return slotCount;
 	}
 
-	/** The ore the bay holds, in slot order. */
-	public List<ItemStack> shownOre() {
-		return view.getItems().stream().filter(stack -> !stack.isEmpty()).map(ItemStack::copy).toList();
-	}
-
 	/** The cargo mass, whole units. */
 	public int cargoMass() {
 		return data.get(0);

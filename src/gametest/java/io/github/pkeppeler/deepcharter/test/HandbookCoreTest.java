@@ -195,7 +195,7 @@ public class HandbookCoreTest {
 
 		expectDone(helper, Charters.leave(server, newcomer.getUUID()), "leaving");
 		expectComplete(helper, server, newcomer, CUSTOM_DIRECTIVE, false);
-		if (!HandbookProgress.completed(server, id).contains(CUSTOM_DIRECTIVE)) {
+		if (!HandbookProgressData.get(server).completed(id).contains(CUSTOM_DIRECTIVE)) {
 			throw helper.assertionException("the charter keeps its progress when someone leaves");
 		}
 		helper.succeed();
@@ -210,7 +210,7 @@ public class HandbookCoreTest {
 
 		expectDone(helper, Charters.leave(server, director.getUUID()), "the last person leaving");
 
-		if (!HandbookProgress.completed(server, id).contains(CUSTOM_DIRECTIVE)) {
+		if (!HandbookProgressData.get(server).completed(id).contains(CUSTOM_DIRECTIVE)) {
 			throw helper.assertionException("a dormant charter keeps its progress");
 		}
 		helper.succeed();

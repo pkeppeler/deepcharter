@@ -19,6 +19,7 @@ import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.OreCargoSlots;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
@@ -48,11 +49,11 @@ public class OreCargoClientTest implements FabricClientGameTest {
 			int expected = Math.round(OreType.GOLDIUM.mass() + OreType.EINSTEINIUM.mass());
 			// The slot contents and the mass sync separately from the open-screen packet.
 			ClientWait.until(context, "the cargo menu with 2 ore and mass " + expected,
-					client -> client.player.containerMenu instanceof OreCargoMenu menu && menu.shownOre().size() == 2 && menu.cargoMass() == expected,
+					client -> client.player.containerMenu instanceof OreCargoMenu menu && OreCargoSlots.shown(menu).size() == 2 && menu.cargoMass() == expected,
 					client -> client.player.containerMenu instanceof OreCargoMenu menu
-							? menu.shownOre().size() + " ore, mass " + menu.cargoMass() : "no cargo menu");
+							? OreCargoSlots.shown(menu).size() + " ore, mass " + menu.cargoMass() : "no cargo menu");
 
-			List<ItemStack> shown = context.computeOnClient(client -> ((OreCargoMenu) client.player.containerMenu).shownOre());
+			List<ItemStack> shown = context.computeOnClient(client -> OreCargoSlots.shown((OreCargoMenu) client.player.containerMenu));
 			require(shown.size() == 2 && shown.get(0).is(OreRegistry.item(OreType.GOLDIUM)) && shown.get(1).is(OreRegistry.item(OreType.EINSTEINIUM)), "The cargo screen should show the Goldium and the Einsteinium, it shows " + shown);
 			int mass = context.computeOnClient(client -> ((OreCargoMenu) client.player.containerMenu).cargoMass());
 			require(mass == expected, "The cargo screen should show mass " + expected + ", it shows " + mass);

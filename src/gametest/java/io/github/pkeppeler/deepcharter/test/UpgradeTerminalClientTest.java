@@ -63,7 +63,7 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
 					"every track is listed with its installed tier, got " + labels(context, screen));
 
 			context.clickScreenButton("HULL  T0");
-			ClientWait.until(context, "the hull track selected", client -> screen.selected() == ComponentTrack.HULL);
+			ClientWait.until(context, "the hull parts listed", client -> labels(client, screen).contains("BUY TIER 4  $5000  (WORKS AS TIER 2)"));
 			List<String> hull = labels(context, screen);
 			require(hull.contains("BUY TIER 1  $200") && hull.contains("BUY TIER 2  $500"), "the hull parts show their prices, got " + hull);
 			require(hull.contains("BUY TIER 3  $1250  (WORKS AS TIER 2)") && hull.contains("BUY TIER 4  $5000  (WORKS AS TIER 2)"),

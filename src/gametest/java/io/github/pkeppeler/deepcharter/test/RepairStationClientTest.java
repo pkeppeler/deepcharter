@@ -28,6 +28,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.RepairRows;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
@@ -83,8 +84,8 @@ public class RepairStationClientTest implements FabricClientGameTest {
 				screen.scrollTo(first);
 				List<Button> buttons = screen.children().stream().filter(Button.class::isInstance).map(Button.class::cast).toList();
 				for (int i = 0; i < buttons.size(); i++) {
-					if (buttons.get(i).getMessage().getString().equals(label) && rows.add(screen.firstRow() + i)) {
-						shownAt = screen.firstRow();
+					if (buttons.get(i).getMessage().getString().equals(label) && rows.add(RepairRows.firstRow(screen) + i)) {
+						shownAt = RepairRows.firstRow(screen);
 					}
 				}
 			}

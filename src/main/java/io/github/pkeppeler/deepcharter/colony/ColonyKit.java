@@ -1,8 +1,5 @@
 package io.github.pkeppeler.deepcharter.colony;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.function.Function;
 
 import net.minecraft.world.level.block.Block;
@@ -17,8 +14,6 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * they are Company property: unbreakable in survival ({@link ColonyBlocks#register}).
  */
 public final class ColonyKit {
-	private static final List<Block> ALL = new ArrayList<>();
-
 	public static final Block RIVETED_PLATE = cube("riveted_plate", SoundType.METAL);
 	public static final Block RIVETED_PLATE_RED = cube("riveted_plate_red", SoundType.METAL);
 	public static final Block HAZARD_BAND = cube("hazard_band", SoundType.METAL);
@@ -62,11 +57,6 @@ public final class ColonyKit {
 	public static void register() {
 	}
 
-	/** Every kit block, in the order above. */
-	public static List<Block> all() {
-		return Collections.unmodifiableList(ALL);
-	}
-
 	private static Block cube(String path, SoundType sound) {
 		return register(path, sound, Block::new);
 	}
@@ -85,15 +75,10 @@ public final class ColonyKit {
 	}
 
 	private static Block register(String path, SoundType sound, Function<BlockBehaviour.Properties, Block> factory) {
-		return kept(ColonyBlocks.register(path, sound, factory));
+		return ColonyBlocks.register(path, sound, factory);
 	}
 
 	private static Block registerBlock(String path, SoundType sound, Function<BlockBehaviour.Properties, Block> factory) {
-		return kept(ColonyBlocks.registerBlock(path, sound, factory));
-	}
-
-	private static Block kept(Block block) {
-		ALL.add(block);
-		return block;
+		return ColonyBlocks.registerBlock(path, sound, factory);
 	}
 }

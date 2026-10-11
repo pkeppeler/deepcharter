@@ -45,6 +45,8 @@ import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
+import io.github.pkeppeler.deepcharter.test.support.OreCargoSlots;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 
 /**
@@ -78,15 +80,16 @@ public class OreCargoTest {
 		int[] masses = {1, 1, 1, 2, 3, 4};
 		for (int i = 0; i < originals.length; i++) {
 			OreType type = originals[i];
-			if (type.value() != values[i] || type.referenceMass() != masses[i]) {
-				throw failure(helper, "%s is $%d mass %d, the original says $%d mass %d", type, type.value(), type.referenceMass(), values[i], masses[i]);
+			if (type.value() != values[i]) {
+				throw failure(helper, "%s is $%d, the original says $%d", type, type.value(), values[i]);
 			}
+			// mass() is the original's mass times the pod-unit scale.
 			float expected = masses[i] * OreTuning.DEFAULT.massScale();
 			if (type.mass() != expected) {
 				throw failure(helper, "%s weighs %s in pod units, expected %s", type, type.mass(), expected);
 			}
 		}
-		if (OreType.values().length != 7 || OreType.CICATRIUM.value() <= 0 || OreType.CICATRIUM.referenceMass() <= 0) {
+		if (OreType.values().length != 7 || OreType.CICATRIUM.value() <= 0 || OreType.CICATRIUM.mass() <= 0) {
 			throw failure(helper, "the table is the six originals plus Cicatrium with a value and a mass, got %s", List.of(OreType.values()));
 		}
 		helper.succeed();
@@ -127,7 +130,7 @@ public class OreCargoTest {
 		int floor = 60;
 		ServerLevel level = layer(helper, 1);
 		room(level, x, floor);
-		level.setBlock(new BlockPos(x - 1, floor - 1, Z - 1), OreRegistry.block(OreType.EINSTEINIUM).defaultBlockState(), 3);
+		level.setBlock(new BlockPos(x - 1, floor - 1, Z - 1), OreBlocks.of(OreType.EINSTEINIUM).defaultBlockState(), 3);
 		level.setBlock(new BlockPos(x, floor - 1, Z), Blocks.DIAMOND_ORE.defaultBlockState(), 3);
 		level.setBlock(new BlockPos(x, floor - 1, Z - 1), Blocks.IRON_ORE.defaultBlockState(), 3);
 		MockPlayer pilot = MockPlayers.join(helper, "ore-drill");
@@ -159,7 +162,7 @@ public class OreCargoTest {
 		ServerLevel level = layer(helper, 1);
 		room(level, x, floor);
 		for (int i = 0; i < 4; i++) {
-			level.setBlock(new BlockPos(x - 1 + i % 2, floor - 1, Z - 1 + i / 2), OreRegistry.block(OreType.EINSTEINIUM).defaultBlockState(), 3);
+			level.setBlock(new BlockPos(x - 1 + i % 2, floor - 1, Z - 1 + i / 2), OreBlocks.of(OreType.EINSTEINIUM).defaultBlockState(), 3);
 		}
 		MockPlayer pilot = MockPlayers.join(helper, "ore-lift");
 		PodEntity pod = pod(level, pilot, new Vec3(x, floor, Z));
@@ -287,7 +290,7 @@ public class OreCargoTest {
 			if (!result.consumesAction() || !(player.player().containerMenu instanceof OreCargoMenu menu)) {
 				throw failure(helper, "sneak-use should open the cargo menu, got %s with %s", result, player.player().containerMenu);
 			}
-			List<ItemStack> shown = menu.shownOre();
+			List<ItemStack> shown = OreCargoSlots.shown(menu);
 			if (shown.size() != 2 || !shown.get(0).is(OreRegistry.item(OreType.SILVERIUM)) || !shown.get(1).is(OreRegistry.item(OreType.PLATINIUM))) {
 				throw failure(helper, "the menu should show the Silverium and the Platinium, it shows %s", shown);
 			}
@@ -372,8 +375,8 @@ public class OreCargoTest {
 		int floor = 60;
 		ServerLevel level = layer(helper, 1);
 		room(level, x, floor);
-		level.setBlock(new BlockPos(x - 1, floor - 1, Z - 1), OreRegistry.block(OreType.IRONIUM).defaultBlockState(), 3);
-		level.setBlock(new BlockPos(x, floor - 1, Z), OreRegistry.block(OreType.GOLDIUM).defaultBlockState(), 3);
+		level.setBlock(new BlockPos(x - 1, floor - 1, Z - 1), OreBlocks.of(OreType.IRONIUM).defaultBlockState(), 3);
+		level.setBlock(new BlockPos(x, floor - 1, Z), OreBlocks.of(OreType.GOLDIUM).defaultBlockState(), 3);
 		MockPlayer pilot = MockPlayers.join(helper, "ore-unreadable");
 		PodEntity pod = pod(level, pilot, new Vec3(x, floor, Z));
 		pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.SILVERIUM));
@@ -506,7 +509,7 @@ public class OreCargoTest {
 			menu.setCarried(new ItemStack(Items.DIAMOND));
 			menu.clicked(3, 0, ContainerInput.PICKUP, player.player());
 			menu.clicked(0, 0, ContainerInput.QUICK_MOVE, player.player());
-			if (!menu.getCarried().is(Items.DIAMOND) || pod.cargo().entries().size() != 1 || menu.shownOre().size() != 1) {
+			if (!menu.getCarried().is(Items.DIAMOND) || pod.cargo().entries().size() != 1 || OreCargoSlots.shown(menu).size() != 1) {
 				throw failure(helper, "clicks must not move ore, carried %s, bay %s", menu.getCarried(), pod.cargo().entries());
 			}
 			helper.succeed();
