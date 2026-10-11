@@ -6,7 +6,8 @@
 # current head (see tools/mark-review-passed.sh), closes exactly its branch's
 # issue (GitHub's closingIssuesReferences set is {N} for branch `<N>-<slug>`),
 # adds no docs/adr/NNNN-*.md whose NNNN is already on origin/main (any slug) or twice in the PR,
-# mergeable, shows a demo if it changes in-game code (see the demo check below), and every check is
+# mergeable, shows a demo if it changes in-game code (see the demo check below), changes docs/feature-map/map.json
+# or says `No map change: <reason>` if it is labelled `gameplay` (#510), and every check is
 # `pass` or `skipping` (at least one check, and all of REQUIRED_CHECKS passing). A
 # check's state is its newest non-skipped run, so a later skipped run cannot hide
 # a failure.
@@ -226,6 +227,20 @@ if [[ -n $in_game ]]; then
       || refuse "changes in-game code ($in_game) with the 'no-demo' label but its body has no 'No demo: <reason>' line"
   else
     refuse "changes in-game code ($in_game) with no demo: $demo_fix"
+  fi
+fi
+
+# A `gameplay` PR changes what the game has, so it must change the feature map
+# (docs/feature-map/map.json, #510) or say why not with a body line `No map change: <reason>`.
+# Reuses pr_files, so an unreadable list has already refused.
+if has_label gameplay; then
+  map_changed=
+  while IFS=$'\t' read -r _ path _; do
+    [[ $path == docs/feature-map/map.json ]] && map_changed=1
+  done <<<"$pr_files"
+  if [[ -z $map_changed ]]; then
+    grep -qE '^No map change:[[:space:]]*[^[:space:]]' <<<"$body" \
+      || refuse "is labelled 'gameplay' but does not change docs/feature-map/map.json: update the map (skill .claude/skills/feature-map/SKILL.md) or add a body line 'No map change: <reason>'"
   fi
 fi
 

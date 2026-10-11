@@ -12,6 +12,15 @@ It is a Fabric mod for Minecraft 26.3, for 2 to 4 friends (up to about 8). The p
 
 **Status.** This is an early friends build. It has the colony, layers 1 and 2, and the main machines. There is no public release (not on Modrinth yet). The look is "Prosperity at dusk": a rust-red world under a slow dusk sky, a small riveted company town, and a black shaft below that your lamp barely lights ([art direction](docs/design/art-direction.md)). The ores, the town and the pods are in their new art. The sounds and the story text are still stand-ins.
 
+## Feature map
+
+Everything in the game on one page: every part you can buy, every hazard and what answers it, the goals, the ore and money flows, the creatures and the machines, with what is built next to what is planned.
+
+[![The feature map poster: every feature of the game as a tile, grouped by ladder](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/feature-map.png?raw=true)](https://pkeppeler.github.io/deepcharter/)
+
+- [The interactive map](https://pkeppeler.github.io/deepcharter/): pan, zoom, filter by ladder, status and kind, click a feature for a screenshot and its links.
+- [The map in the repo](docs/FEATURE-MAP.md): a graph for each ladder, with icons and screenshots, that GitHub shows as it is.
+
 ## What is in the pack
 
 A player installs one modpack in a launcher such as Prism. [docs/PLAYING.md](docs/PLAYING.md) has the install steps, the controls and the known issues.

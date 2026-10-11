@@ -330,6 +330,26 @@ exited "non-game PR with demo label and media merges" 0
 run_script "STUB_FILES=$(files modified:tools/merge-pr.sh added:src/test/java/T.java added:src/mainly/x.java)"
 exited "non-game files need no demo" 0
 
+# Map gate (#510): a `gameplay` PR must change docs/feature-map/map.json or carry a `No map change: <reason>` body line.
+gameplay_labels="infra${nl}review-passed${nl}gameplay"
+refusal "gameplay PR with no map change" "does not change docs/feature-map/map.json" "STUB_LABELS=$gameplay_labels"
+refusal "refusal names the skill and the escape" "or add a body line 'No map change: <reason>'" "STUB_LABELS=$gameplay_labels"
+refusal "generated map files alone are not a map change" "does not change docs/feature-map/map.json" "STUB_LABELS=$gameplay_labels" \
+  "STUB_FILES=$(files modified:docs/FEATURE-MAP.md modified:docs/feature-map/index.html)"
+refusal "no-map-change reason empty" "does not change docs/feature-map/map.json" "STUB_LABELS=$gameplay_labels" "STUB_BODY=Closes #12${nl}No map change:   "
+refusal "no-map-change reason not at line start" "does not change docs/feature-map/map.json" "STUB_LABELS=$gameplay_labels" \
+  "STUB_BODY=Closes #12${nl}- No map change: tooling only"
+run_script "STUB_LABELS=$gameplay_labels" "STUB_FILES=$(files modified:docs/feature-map/map.json)"
+exited "gameplay PR that changes the map merges" 0
+run_script "STUB_LABELS=$gameplay_labels" "STUB_BODY=Closes #12${nl}No map change: a tuning number, no new feature."
+exited "gameplay PR with a no-map-change reason merges" 0
+run_script "STUB_LABELS=$gameplay_labels" "STUB_BODY=Closes #12"$'\r'"${nl}No map change: tuning"$'\r'
+exited "no-map-change reason line with CRLF merges" 0
+run_script "STUB_LABELS=infra${nl}review-passed${nl}gameplays"
+exited "gameplay label lookalike needs no map change" 0
+run_script "STUB_FILES=$(files modified:README.md)"
+exited "PR without the gameplay label needs no map change" 0
+
 refusal "missing label" "REFUSED: PR #7 lacks the review-passed label" STUB_LABELS=infra
 refusal "no labels at all" "REFUSED: PR #7 lacks the review-passed label" STUB_LABELS=
 refusal "similar label only" "REFUSED: PR #7 lacks the review-passed label" STUB_LABELS=review-passed-ish
