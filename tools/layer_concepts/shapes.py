@@ -1,16 +1,14 @@
-"""The block models and blockstates of the layer concept packs: the formation of each layer, which is the user's assignment after round 1.
+"""The block models and blockstates of the layer concept packs, and the guard that holds them to the rules the user's feedback set.
 
-Each layer gives the same blocks a different solid form:
+The formation of each layer is the user's assignment after round 1 (Strata for layer 1, Fractured for layer 2, Columnar for layer 3), and it
+lives in the scene: benches and slots, faults and rubble heaps, a field of columns. At the size of one block:
 
-  A. Strata     (layer 1) a cube with beds standing out of its four sides: bands the width of the face, each at its own height and depth, so a
-                wall of them is a stair of broken ledges, never a ruled course
-  B. Fractured  (layer 2) a cube with plates standing out of its six faces, two to a face, so every face is a mosaic of levels
-  C. Columnar   (layer 3) a hexagonal column (three rectangles turned 0, 60 and 120 degrees), cut across by a joint whose upper drum is
-                shifted a little, so a wall is a bundle of basalt columns with hexagonal ends
-
-A and B are cubes whose relief stands out of a face and never touches the sides between two blocks, because a recess there is a dark line
-round every block (see `proud`). Every face of every model is drawn (no cullface), because a block's faces are culled by its occlusion
-shape and not by its model.
+  layers 1 and 2   the rock is a plain cube, a vanilla cube model (`cube_column`) with the layer's textures. A block that has anything standing
+                   out of its face or back from its sides, at the same place on every block, is a grid: a dark line round each block, or a
+                   row of lips. The variety is several textures, which share their edges.
+  layer 3          a hexagonal column (three rectangles turned 0, 60 and 120 degrees), cut across by a joint whose upper drum is shifted a
+                   little, each variant of its own width and offset. The open joints between columns are the formation, and they repeat at the
+                   size of a block; the rendered check (grid.py) reports how much.
 
 The blocks are stand-ins until the layers have rock blocks of their own (#241): vanilla granite, tuff and andesite are the rock of layers 1,
 2 and 3, cobblestone, cobbled deepslate and diorite their rubble, and the pack redraws their blockstates.
@@ -21,12 +19,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "colony"))
 
-from art import hashf  # noqa: E402
 from models import Box, Model  # noqa: E402
 
 NS = "deepcharter"
 TEXTURES = f"{NS}:block/"
-ROTATIONS = (0, 90, 180, 270)
+# A cube is neither turned nor mirrored: its textures share their edges with each other (art.soft), and a block turned has another edge of them on the side
+# that meets its neighbour. A mirrored texture keeps the edge, but a mirror of a texture with features of three pixels or more is a pair that is symmetrical
+# about its seam, and a wall of them is a lattice of chevrons: vanilla's grain is too fine for that to show.
+HEX_Y_TURNS = (0, 90, 180, 270)
 
 
 def tex(name: str) -> str:
@@ -42,111 +42,62 @@ def rock_textures(side: str, end: str, core: str) -> dict:
 
 
 FACES = {"*": "#side", "up": "#end", "down": "#end"}
-# ---------------------------------------------------------------------------------------------------------------- A and B: relief that stands out of a face
-
-SIDES = ("north", "south", "west", "east", "up", "down")
 
 
-def proud(side: str, u0: float, v0: float, u1: float, v1: float, depth: float) -> Box:
-    """A piece of relief on one face of the block: the rectangle u0..u1 by v0..v1 of the face, standing out of it by `depth` pixels. u runs
-    along X, or along Z on a face of X; v up the face, or along Z on the top and bottom. It is the only part of a block that is not a cube,
-    and it never touches an edge of the face, or only runs from edge to edge, so nothing is recessed between two blocks: round 1's beds and
-    plates stood back from their block's sides, and the slot between two blocks was a dark line round each one, the outlined square of the
-    user's round 1 feedback. A relief stands out into the cell in front, which is air when the face is seen and rock when it is not."""
-    lo, hi = {
-        "south": ((u0, v0, 16.0), (u1, v1, 16.0 + depth)),
-        "north": ((u0, v0, -depth), (u1, v1, 0.0)),
-        "east": ((16.0, v0, u0), (16.0 + depth, v1, u1)),
-        "west": ((-depth, v0, u0), (0.0, v1, u1)),
-        "up": ((u0, 16.0, v0), (u1, 16.0 + depth, v1)),
-        "down": ((u0, -depth, v0), (u1, 0.0, v1)),
-    }[side]
-    texture = "#end" if side in ("up", "down") else "#side"
-    return Box(lo, hi, {"*": texture, {"south": "north", "north": "south", "east": "west", "west": "east", "up": "down", "down": "up"}[side]: None})
+# ---------------------------------------------------------------------------------------------------------------- layers 1 and 2: cubes
+
+def cube(side: str, end: str) -> dict:
+    """A plain cube of vanilla's `cube_column`, with the side and end textures given."""
+    return {"parent": "minecraft:block/cube_column", "textures": {"side": tex(side), "end": tex(end)}}
 
 
-def solid_cube() -> Box:
-    return Box((0, 0, 0), (16, 16, 16), FACES)
+def variants(models: list[str], y_turns: tuple[int, ...]) -> list[dict]:
+    """Every model turned each way about the vertical, as entries of one weighted list: the random pick of a block's position takes one."""
+    return [{"model": model_id(m), **({"y": y} if y else {})} for m in models for y in y_turns]
 
 
-# The most that relief stands out of a face, in pixels, and the least. A relief is a lit face of its own and the step at its edge a shadow,
-# which is all it can be at this size.
-RELIEF_DEPTH = (0.3, 0.6)
+# ---------------------------------------------------------------------------------------------------------------- layer 3: columnar
 
-
-def depth(variant: int, *keys: int) -> float:
-    return RELIEF_DEPTH[0] + hashf(variant, *keys) * (RELIEF_DEPTH[1] - RELIEF_DEPTH[0])
-
-
-# The three beds of a face: where each starts and how thick it is, in pixels. They are the same on every block and every side, so a ledge runs
-# on across the edge to the next block; the three thicknesses and the three gaps between them all differ, so the beds are not courses.
-BEDS = ((0.5, 2.5), (4.5, 3.5), (10.0, 4.0))
-
-
-def beds(variant: int) -> Model:
-    """A cube with beds standing out of each of its four sides: three bands that run the width of the face, at the same heights on every
-    block, each standing out by a depth of its own that changes from block to block. A ledge runs on across the edge to the next block, and
-    where the depths differ it steps: a wall of them is a stair of broken ledges. No band is recessed, so no slot runs between blocks. The top
-    and the bottom are flat."""
-    boxes = [solid_cube()]
-    for index, side in enumerate(SIDES[:4]):
-        for bed, (top, thickness) in enumerate(BEDS):
-            boxes.append(proud(side, 0.0, top, 16.0, top + thickness, depth(variant, bed, index)))
-    return Model({}, boxes)
-
-
-def plates(variant: int) -> Model:
-    """A cube with plates standing out of each of its six faces: two rectangles, 4 to 8 pixels across, at random places inside the face
-    and at their own depth, each at least a pixel from the edge, so the face is a mosaic of levels that does not meet the edge of the face."""
-    boxes = [solid_cube()]
-    for index, side in enumerate(SIDES):
-        for plate in range(2):
-            width, height = (4.0 + hashf(variant, index, plate, k) * 4.0 for k in (1, 2))
-            u0 = 1.0 + hashf(variant, index, plate, 3) * (14.0 - width)
-            v0 = 1.0 + hashf(variant, index, plate, 4) * (14.0 - height)
-            boxes.append(proud(side, u0, v0, u0 + width, v0 + height, depth(variant, index, plate, 5)))
-    return Model({}, boxes)
-
-
-# ---------------------------------------------------------------------------------------------------------------- C: columnar
-
-# The circumradius and the offset of each of the three columns, so that the open joints between neighbours are not one width.
-HEX_R = (7.4, 7.8, 7.6)
-COLUMN_SHIFT = (0.0, 0.7, -0.6)
-JOINTS = (None, 9.0, 6.5)
+# The circumradius and the offset along X and along Z of each variant of the column, so that the open joints between neighbours are not one
+# width and do not fall at the same place on every block.
+HEX_R = (7.0, 7.4, 6.6, 7.2, 6.8, 7.5)
+COLUMN_SHIFT = ((0.0, 0.0), (1.0, -0.8), (-1.4, 1.2), (0.8, 1.2), (-1.2, -1.2), (0.4, -0.4))
+JOINTS = (None, 9.0, 6.5, 8.0, None, 7.5)
 HEX_ROTATIONS = (0.0, 60.0, 120.0)
 
 
-def hex_boxes(y0: float, y1: float, turn: float, shift: float, r: float, textures: dict) -> list[Box]:
+def hex_boxes(y0: float, y1: float, turn: float, shift: tuple[float, float], r: float, textures: dict) -> list[Box]:
     """A hexagonal prism of circumradius r between y0 and y1, turned by `turn` degrees about the vertical: the union of three rectangles,
     each r wide and r * sqrt(3) deep, turned 60 degrees apart (their corners are the hexagon's corners). The tops are a hair apart in
     height so the overlapping caps do not fight."""
     depth = r * math.sqrt(3) / 2
+    sx, sz = shift
     boxes = []
     for i, base in enumerate(HEX_ROTATIONS):
         lift = 0.0 if y1 < 16 else -0.015 * i
         sink = 0.0 if y0 > 0 else 0.015 * i
-        boxes.append(Box((8 - r / 2 + shift, y0 + sink, 8 - depth + shift), (8 + r / 2 + shift, y1 + lift, 8 + depth + shift), textures,
-                         rotation=(0.0, turn + base, 0.0), pivot=(8.0 + shift, 8.0, 8.0 + shift)))
+        boxes.append(Box((8 - r / 2 + sx, y0 + sink, 8 - depth + sz), (8 + r / 2 + sx, y1 + lift, 8 + depth + sz), textures,
+                         rotation=(0.0, turn + base, 0.0), pivot=(8.0 + sx, 8.0, 8.0 + sz)))
     return boxes
 
 
 def prism(variant: int, collar: bool = False) -> Model:
-    """A basalt column: a hexagonal prism, in two of three variants cut across by a cross-joint with the upper drum shifted by a
-    fraction of a pixel, and a flat hexagonal cap at each end. The gaps between columns are open joints. The hexagon is never turned off the
-    axes: two of its six faces then face the axes, and those are the faces the game lights (a face turned off the axes takes the light of the
-    block's own, solid, cell, which is none), so every column shows one lit face to the camera and dark flanks. The four turns of the
-    blockstate show the lit faces to north and south, or to east and west."""
+    """A basalt column: a hexagonal prism, in most variants cut across by a cross-joint with the upper drum shifted by a fraction of a pixel,
+    and a flat hexagonal cap at each end. The gaps between columns are open joints. The hexagon is never turned off the axes: two of its six
+    faces then face the axes, and those are the faces the game lights (a face turned off the axes takes the light of the block's own, solid,
+    cell, which is none), so every column shows one lit face to the camera and dark flanks. The four turns of the blockstate show the lit faces
+    to north and south, or to east and west."""
+    variant %= len(HEX_R)
     joint = JOINTS[variant]
-    r, shift = HEX_R[variant], COLUMN_SHIFT[variant]
+    r, (sx, sz) = HEX_R[variant], COLUMN_SHIFT[variant]
     boxes = [Box((4, 0.1, 4), (12, 15.9, 12), {"*": "#core"})]
     if joint:
-        boxes += hex_boxes(0, joint, 0.0, shift, r, FACES)
-        boxes += hex_boxes(joint, 16, 0.0, shift + 0.4, r, FACES)
+        boxes += hex_boxes(0, joint, 0.0, (sx, sz), r, FACES)
+        boxes += hex_boxes(joint, 16, 0.0, (sx + 0.4, sz + 0.4), r, FACES)
     else:
-        boxes += hex_boxes(0, 16, 0.0, shift, r, FACES)
+        boxes += hex_boxes(0, 16, 0.0, (sx, sz), r, FACES)
     if collar:
-        boxes += hex_boxes(6, 9, 0.0, shift, r + 0.6, {"*": "#side", "up": "#end", "down": "#end"})
+        boxes += hex_boxes(6, 9, 0.0, (sx, sz), r + 0.6, {"*": "#side", "up": "#end", "down": "#end"})
     return Model({}, boxes)
 
 
@@ -178,24 +129,6 @@ def concrete_b() -> Model:
 
 # ---------------------------------------------------------------------------------------------------------------- breach crust
 
-def crust_a() -> Model:
-    """A: a layered crust: three slabs, each stepped back further than the one beneath, so a cut across it shows the layers."""
-    boxes = [Box((0, 0, 0), (16, 16, 16), {"*": "#core"})]
-    for (y0, y1), inset in zip(((0, 5.5), (5.5, 11), (11, 16)), (0.0, 1.0, 0.5)):
-        boxes.append(Box((inset, y0, inset), (16 - inset, y1, 16 - inset), {"*": "#side", "up": "#top", "down": "#top"}))
-    return Model({}, boxes)
-
-
-def crust_b(variant: int) -> Model:
-    """B: a cracked crust: four plates on a body, each at its own height, with a 2 pixel crack between them."""
-    heights = ((16.0, 15.0, 14.5, 15.5), (15.0, 16.0, 15.5, 14.5))[variant]
-    boxes = [Box((0, 0, 0), (16, 14, 16), {"*": "#side", "up": "#core", "down": "#top"})]
-    for h, (x0, z0) in zip(heights, ((0, 0), (8.5, 0), (0, 8.5), (8.5, 8.5))):
-        w = 7.5
-        boxes.append(Box((x0, 12, z0), (x0 + w, h, z0 + w), {"*": "#side", "up": "#top", "down": "#top"}))
-    return Model({}, boxes)
-
-
 def crust_c() -> Model:
     """C: a seamed crust: a whole block, and a glow layer over five faces that lights the cracks."""
     boxes = [Box((0, 0, 0), (16, 16, 16), {"*": "#side", "up": "#top", "down": "#top"})]
@@ -208,8 +141,24 @@ def crust_c() -> Model:
     return Model({}, boxes)
 
 
-# ---------------------------------------------------------------------------------------------------------------- blockstates
+# ---------------------------------------------------------------------------------------------------------------- the guard
 
-def variants_y(models: list[str]) -> list[dict]:
-    """Every model turned four ways about the vertical: all of them symmetrical about it."""
-    return [{"model": model_id(m), **({"y": y} if y else {})} for m in models for y in ROTATIONS]
+FACE_PLANE = {"north": (2, "from"), "south": (2, "to"), "west": (0, "from"), "east": (0, "to"), "down": (1, "from"), "up": (1, "to")}
+
+
+def faults(model: dict) -> list[str]:
+    """What is wrong with the model of a natural rock block, by the rules of round 2's feedback: it is a plain vanilla cube, or every element of
+    it is inside the block (0 to 16) and every face of every element lies on a face of the block. A face that lies strictly inside the block is
+    a recess, and between two blocks a recess is a dark line round each one."""
+    if "elements" not in model:
+        return [] if str(model.get("parent", "")).startswith("minecraft:block/cube_column") else [f"parent {model.get('parent')!r} is not a cube"]
+    out = []
+    for index, element in enumerate(model["elements"]):
+        for corner in ("from", "to"):
+            if any(not 0.0 <= value <= 16.0 for value in element[corner]):
+                out.append(f"element {index} has {corner} {element[corner]}: outside the block (0 to 16)")
+        for face in element["faces"]:
+            axis, corner = FACE_PLANE[face]
+            if 0.0 < element[corner][axis] < 16.0:
+                out.append(f"element {index} has its {face} face at {element[corner][axis]}: recessed into the block")
+    return out

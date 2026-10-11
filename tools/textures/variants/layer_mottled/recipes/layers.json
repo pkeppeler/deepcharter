@@ -14,22 +14,22 @@
             "f": "shale1.5"
           },
           "rows": [
-            "dddbbcdcddcbbbcd",
-            "eddbcbddddadccde",
-            "eedefeccdccdddef",
-            "eeedefdcdceeeeee",
-            "edfffedccceeeffe",
-            "eeffefedbdeffffe",
-            "deefffeebdefefed",
-            "dedeeeeedeefeedd",
-            "ccdffdddedededee",
-            "eeeffffdddededdd",
-            "ffffffffcdeefede",
-            "fffffffffedfeeed",
-            "eeeeeeeeefeeeede",
-            "dededeefeedefecd",
-            "eedcccddfebdfdcd",
-            "eddbbcddddccdbcd"
+            "dbccddccccdcefff",
+            "eddeecdddbaccffe",
+            "dffffecccbacccdd",
+            "effeefecbabccbcc",
+            "efffffecbabccbbc",
+            "effedffdbbbcbbbd",
+            "eedcdeedcdeedbac",
+            "dccddddfeffedcbc",
+            "ccdeeccefefecccd",
+            "ddddcbbdfefddddd",
+            "ddcccbdddeeefedd",
+            "cdcccccdeeefeedc",
+            "cdcbbdeeddeeeedc",
+            "cdbbddddddeeeedd",
+            "dcbcddcbdedeffff",
+            "cabccdcccddcffff"
           ]
         }
       ]
@@ -40,29 +40,30 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.1",
-            "b": "shale1.2",
-            "c": "shale1.3",
-            "d": "shale1.4",
-            "e": "shale1.5"
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4",
+            "f": "shale1.5"
           },
           "rows": [
-            "bbadddaaaabccbaa",
-            "bbcdcdbaaadacbaa",
-            "aceeddcbccbcbbaa",
-            "ddcdcbddedcbaaad",
-            "cdccbccceedbaabd",
-            "edccbbcdddcbacce",
-            "eddcbbcccbbcccde",
-            "ecbbbcccccbbccdd",
-            "dcabbeecccbccced",
-            "dcccbcceebbcccdd",
-            "deddcdeeceeddedd",
-            "ddccddddddeedddd",
-            "ccbcddcdeddeeedd",
-            "ccccddbdedddceee",
-            "cccdddacccdccddd",
-            "bbcdddbaabccbcbb"
+            "deeccddcbabceffe",
+            "eedccfedcbbadeee",
+            "deeffecbdcbbcced",
+            "dddeedccdcbbcdee",
+            "ddeeeecbccbbcdee",
+            "edeeebccddcccddd",
+            "cddeedccddedcccc",
+            "bcdddefdeffecccc",
+            "bbeddfdddffedcdc",
+            "cddcbdddcdeeeddc",
+            "efcbbcdfcbefffcd",
+            "edbbbcdeccfffdbc",
+            "dcbcccdeedeeeddc",
+            "ccbbdddeeeeedddd",
+            "eddddcbdeeddddee",
+            "deeddcccddccdefe"
           ]
         }
       ]
@@ -73,29 +74,30 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.1",
-            "b": "shale1.2",
-            "c": "shale1.3",
-            "d": "shale1.4",
-            "e": "shale1.5"
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4",
+            "f": "shale1.5"
           },
           "rows": [
-            "bbcbaaeeddbaabcb",
-            "bbbbbceccecaaabb",
-            "cbaccdedcddbabbc",
-            "bacdddcddeddcccb",
-            "aacccddcddedccca",
-            "abddddccccdcdccb",
-            "bcddcccbabbcddbb",
-            "cddcccbaaabbcccc",
-            "cddccbbaaacabccc",
-            "cddcceeeeeeeeccc",
-            "ddddeccbaaacccdd",
-            "ddcccccbaccccccd",
-            "ccccccdcbcddcccd",
-            "cdcbccddcdcddccc",
-            "dddbaaddddddddcd",
-            "bbcbacddddcbbbca"
+            "ddecdedaabddeffd",
+            "eedddfeaacbdeeee",
+            "feedccedccccccee",
+            "fddccddfecbbbcef",
+            "eeecbcdfebbbbcde",
+            "eefecbcffdbbddcc",
+            "ccdddcefffdcccbb",
+            "bcdcceeffffdcccb",
+            "dcdbbefddffccdcd",
+            "ddedddccdeedcddd",
+            "ccfffecccdceeded",
+            "ccdefeccdedeedbb",
+            "cbceedcdeededccd",
+            "ebbdddddeeeedcdd",
+            "eddddbbbcdefeeee",
+            "ceedddbbaacdeffd"
           ]
         }
       ]
@@ -114,22 +116,22 @@
             "f": "shale1.5"
           },
           "rows": [
-            "ccccccbccccddecc",
-            "ccccccbcdaceeedc",
-            "eeddabdddccdfdcd",
-            "dedbbcdcddddeede",
-            "eeabbacdddddeeee",
-            "edcbcffcddeddeee",
-            "edccccbffddbccdd",
-            "ddcdedcccffbbbcd",
-            "dccdfecdcbafcbcc",
-            "dcdeeedcbbbbbbcc",
-            "cdefdfecbccacccd",
-            "cceeeedddccccccc",
-            "dccdedcdddcdddde",
-            "ecceedcceeddfede",
-            "dccddecddeeffedd",
-            "dcccdcccccdeeecd"
+            "edccedcbbbddeffe",
+            "edddddcddacdeeee",
+            "ffedabeedcddddde",
+            "ffebbcedecccccce",
+            "ffecbceedccccccd",
+            "effcdffcdcbcddbc",
+            "ddeedeeffedcccbc",
+            "cbcdeeedeffedccc",
+            "cbcddddeeeeffccd",
+            "dddedcbbdeeddddd",
+            "cceffebbcedbcddd",
+            "ccdffecbddcccddc",
+            "cdddeedddeddcdcc",
+            "cccccdeeeeeddddd",
+            "edcccdcdcdeeffee",
+            "dcbdddccbccdeffe"
           ]
         }
       ]
@@ -148,22 +150,22 @@
             "f": "shale1.5"
           },
           "rows": [
-            "deebbceeddcccbde",
-            "edeccdeededcbcce",
-            "eeddeefdfddcbcde",
-            "bcdeefdfddddcddd",
-            "ccbddffddddddddc",
-            "abcccddffdddcccc",
-            "bbccbcdccffbabbb",
-            "bbccbccccbbfbbbb",
-            "cbbbbbccbbbccabb",
-            "bbbbbbcccbbbbbbb",
-            "dccbcbbcdccbabbc",
-            "ccbbbbbccccbbbbd",
-            "ccdbbbbcccccbccc",
-            "dcdbbbbdddccbced",
-            "deebccdeeeedcdee",
-            "eedccceeededbdee"
+            "feecddddcdeccdee",
+            "efeedccddcdcccee",
+            "dedcbbccfffedddd",
+            "ddcbbcdefeeeeecd",
+            "cccdddddcccceffe",
+            "dcdefedcbaacdffe",
+            "dddeffeccaacdedd",
+            "dddeeefddcccdddd",
+            "dddeeffeedcccccd",
+            "dcdfeefffdcddcbd",
+            "ccdddeeeddddddcc",
+            "ccddeeecbccefecb",
+            "cddecdcccdeedfdc",
+            "dddddbbbcefededc",
+            "fdeedcbbdffedcce",
+            "eeeeddcbcdecccde"
           ]
         }
       ]
@@ -182,27 +184,27 @@
             "f": "shale1.5"
           },
           "rows": [
-            "bbcffeccdcbdeddb",
-            "cdddeeccdccefeec",
-            "febcfddcbceffedd",
-            "fddfccbcccdeeede",
-            "eefbabbccccdddde",
-            "dcccccccdccddddd",
-            "cbbbdccccccbbabb",
-            "bbcbcbbccbbbcbbb",
-            "bcbbcbbbcbcbbdbb",
-            "bbbccbbbbbbbcccb",
-            "bbcdcdbbbcccbbcb",
-            "bbccddcbbbbcccdb",
-            "cbbcddcbbbbcdcbb",
-            "ccbdedcbcccdddbb",
-            "dcaeffedcddeedbc",
-            "ccdefeddcdddfddc"
+            "defefedcbbdbdfed",
+            "eddddcbbceecdefe",
+            "dcabccbceffeeeff",
+            "dbbbbbacfffeeefe",
+            "ccbaabadffeeffed",
+            "cacbbadefedeffec",
+            "cccccdfffdcdeddc",
+            "cbecefffedcccddd",
+            "ddcdeffdddebaeee",
+            "ecdcdeedccdddddd",
+            "dddededdcdeeeccc",
+            "dddddeddcceedccb",
+            "deddddeedcdddcbc",
+            "eeddeeeddddddbbd",
+            "ffeffecbcbbccccf",
+            "eefffedcbabacddd"
           ]
         }
       ]
     },
-    "block/lc_rock_1_end": {
+    "block/lc_rock_1_6": {
       "kind": "opaque",
       "layers": [
         {
@@ -216,22 +218,258 @@
             "f": "shale1.5"
           },
           "rows": [
-            "effefeffffffeefe",
-            "edfedfffffeeeeee",
-            "cdeeedfffedddedd",
-            "bcdeeeeeeeccddcc",
-            "cbcefedddcddcdbb",
-            "bbbdeeccddddddcc",
-            "bbcccbaccddddddc",
-            "ccccddcccbcddeed",
-            "edccdcccbbcdeeee",
-            "eedddddcbbcdedde",
-            "ddeededccdcccccc",
-            "cddddefddcdcbbcc",
-            "ccdeeedddddcbbcc",
-            "dddeeedfeedddccc",
-            "feeeeeeffedeeedf",
-            "fffeeeffffeeeeff"
+            "eeeddddccddbbffd",
+            "edcbcccccdedcffe",
+            "cbbbbbccceffffee",
+            "cbffaabccdffffed",
+            "ccbbffbacdffffdd",
+            "ddbcbccfdcefffdc",
+            "dcccdefdfcdeeebc",
+            "cedceffddddddddc",
+            "bcedeffdcedcdeec",
+            "ccdeeeedddcbbddd",
+            "ddeffeededdaabcd",
+            "eddffeddfdbaabcd",
+            "eddfeedeecbbcbbd",
+            "eededeeeeccdcbbc",
+            "feeeeddddbbcccce",
+            "eeeeededccbacedd"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_1_7": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3",
+            "d": "shale1.4",
+            "e": "shale1.5"
+          },
+          "rows": [
+            "bdcbdccbabcddecb",
+            "bccddcbcccabddcb",
+            "bcccbcabbcedecdd",
+            "dbbbbbbbbcdebbee",
+            "dbbbabccabdcbcee",
+            "dcbbbcddbbbbbddd",
+            "ccdcbcedbaaccccd",
+            "bccddedcbbbcbccc",
+            "bbdddedcaabccbbc",
+            "bbddedccdbcddbab",
+            "ccbbcdccccbcccbb",
+            "cdbabdccdcbbccbc",
+            "cdcbbbcdedcbbccc",
+            "cdccbabdeecbccdc",
+            "dddccbbcdedcbbbc",
+            "cddddcbabccbedcb"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_1_8": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4",
+            "f": "shale1.5"
+          },
+          "rows": [
+            "dddbeffecabcdedd",
+            "dccacededddeeddd",
+            "dbaccccceffffedd",
+            "babccbbbeffffffd",
+            "bbbccbbcefffffec",
+            "bbbcbbbdeffeefeb",
+            "dceedbbdeedcdedd",
+            "eefedcbcdccdddde",
+            "edeecccdccdedcce",
+            "eefdddddddcdcbbe",
+            "eeeeeeddedcccbcc",
+            "efeeeeedcdcccccd",
+            "deeeeeedbdcbbddd",
+            "eeeeeeddcccbdddd",
+            "eeeeeedccaabdedf",
+            "deddeffdbaaadedd"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_1_9": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3",
+            "d": "shale1.4",
+            "e": "shale1.5"
+          },
+          "rows": [
+            "bbccdddbbadddedc",
+            "aacdcddcbbccddeb",
+            "acdddcbabbbddddb",
+            "acccdcabcddddeca",
+            "accddcbcdedeecaa",
+            "cbbbcddcdedddbaa",
+            "ddbbbdddddccdbab",
+            "edcbbcdddcbbaccd",
+            "cddbcccdccaaacde",
+            "deedbbdcbbbbbced",
+            "cddcbbbccccbbccc",
+            "cdccbcceddccbbcb",
+            "cbbbdddeedcbabbc",
+            "dcdcccccccbcbccd",
+            "eddcbbbbabbccdde",
+            "cccddccaaaccdddd"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_1_end_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4",
+            "f": "shale1.5"
+          },
+          "rows": [
+            "dfffdcbbbdfeddcd",
+            "ddfecdcddeedcccd",
+            "dddcbacdeefeeddd",
+            "ecdcbbcdeffffedc",
+            "bcccbbdeeeefffda",
+            "bcccddeffedefedc",
+            "dccceeeefdcccddd",
+            "eeddeffedbbbbccd",
+            "eeddeecdccbcccde",
+            "dccdeedddccddddd",
+            "bceddddedecdefec",
+            "cdfffeeedccccddc",
+            "defffffdbbbbbbdd",
+            "feddeedcbcddccef",
+            "edcccdcbbdffeeff",
+            "dddddccbbdffdeef"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_1_end_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4",
+            "f": "shale1.5"
+          },
+          "rows": [
+            "cdeededccceddfdc",
+            "ecccefedcbdcdedd",
+            "dcbbcdeddcceeffe",
+            "dbbbcddcdeeefffd",
+            "ddcbcccbcefeeedc",
+            "eefecaabceeeedde",
+            "ffffcbbbdbdcccdf",
+            "ffffecccccdbbbbe",
+            "effedcbddcbdcaad",
+            "eddedcbdeeeedcbd",
+            "dcdddeeccdeedcdd",
+            "deeeefedcedcccdd",
+            "deeeffffdcbbbabd",
+            "bcdddffffeccccdc",
+            "baccccdeeeeefffc",
+            "bbdddccccdeedffd"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_1_end_2": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4",
+            "f": "shale1.5"
+          },
+          "rows": [
+            "eeddccbbbcddeffe",
+            "ffdcbabcccceeeef",
+            "ffdcaaddccdfeede",
+            "edcbbdeeddefeecd",
+            "cbbbefffeddefdca",
+            "baacffffeeeddbab",
+            "cccdefeedddddcbb",
+            "dddcceedcddddddc",
+            "dcddcccccedddeee",
+            "dcdddcccdeedcdfd",
+            "cccfedccdeebcdee",
+            "ddeeddddcdddcbee",
+            "deffddddeedcbbee",
+            "deffeeddedcccbbc",
+            "ddeffdccccbceedd",
+            "ddeeedcbbbbdefed"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_1_end_3": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4",
+            "f": "shale1.5"
+          },
+          "rows": [
+            "ddeeddddccfededd",
+            "bdeffecdebdedddb",
+            "ccdeeeddcdddddcc",
+            "dbcddcefffddddcd",
+            "cdeecbdfffcccccc",
+            "defecbcefecccddd",
+            "effedcccbdcbdeed",
+            "fffeddbabcccceed",
+            "fffddccaacdcceed",
+            "dedcccccddeddedd",
+            "cddbccdefddcdfed",
+            "eccdcdefecceeede",
+            "dddeefecbdeedccc",
+            "dcbcffebbeffdbdd",
+            "ebbbdfecbdffedde",
+            "fdcccddcccefcdef"
           ]
         }
       ]
@@ -246,25 +484,26 @@
             "b": "shale1.1",
             "c": "shale1.2",
             "d": "shale1.3",
-            "e": "shale1.4"
+            "e": "shale1.4",
+            "f": "shale1.5"
           },
           "rows": [
-            "aaaacdcbceddcaaa",
-            "aaaacdcdecbabaaa",
-            "aaaacddccacbbaaa",
-            "bbbbaaababbbaaaa",
-            "cbbbbaaaaaabbbaa",
-            "bbbabaababaaacab",
-            "baaacdcddccccbba",
-            "aaaacedddebbddba",
-            "aaaacddcbcccccaa",
-            "aaaacccbcccccbaa",
-            "aaaaabdccccccaaa",
-            "aaaaabbccbbbaaab",
+            "aaabdcaaadccbaaa",
+            "aaaacdccdbaabaaa",
+            "aaaabdeccabbcaaa",
+            "bbababbcabbbaaaa",
+            "babbcbccabbaabaa",
+            "aaabcbacacaaacab",
+            "aaaaddddeddcbbba",
+            "aaaaceddefcbddba",
+            "aaaaccccbcddddaa",
+            "aaaabbbabccddcaa",
+            "baaaaacccccddaaa",
+            "baaaaabdcbbbabbc",
             "aaaabbbabcbbbaaa",
-            "aabbcbabccbbccaa",
-            "aabbcbacbbbbdcda",
-            "aaabcabcbacdccaa"
+            "abccbbabcbbbccaa",
+            "abccbbacbabbcbda",
+            "aaaccaaaaabcbbaa"
           ]
         }
       ]
@@ -283,22 +522,22 @@
             "f": "shale1.5"
           },
           "rows": [
-            "aaabbfaccddddaaa",
-            "aaaadedccdaaaaaa",
-            "aaaacddccabbaaaa",
-            "bbbbaabaabbbaaaa",
-            "cdbbaaaaabbacabb",
-            "bbbaabacaabcdccb",
-            "abaacdddcbcbbccc",
-            "aaaaedddebbbccca",
-            "aaaadddccbbabaaa",
-            "aaaaccccdccbbbaa",
-            "aaaaaccddcbbbaaa",
-            "baaaaacbccbaaaba",
-            "bbaabbbaaaaacaab",
-            "abbbbbbaaaacbbaa",
-            "aabbabbaaadcbcca",
-            "aaaabbaaaadcccaa"
+            "aaabbfbccdcbbaaa",
+            "aaaacdedddaaaaaa",
+            "aaaabddccabbaaaa",
+            "cccbaabaaabbaaaa",
+            "cdccabaaaabababc",
+            "bbcbbaabbabbccdc",
+            "ababccccdbcbcddd",
+            "aaaaddccdbbcddda",
+            "aaaacddbabccdcaa",
+            "aaaacccbcddddbaa",
+            "aaaaabcddddddaaa",
+            "baaaaaccdddcaaba",
+            "baaabbbaaaaadaaa",
+            "aabbcccaaaacccaa",
+            "aabbcccaaabbbcba",
+            "aaabccbbbacbbbaa"
           ]
         }
       ]
@@ -316,22 +555,22 @@
             "e": "shale1.4"
           },
           "rows": [
-            "aaaabcdbaeeecaaa",
-            "aaaacdeedcbaaaaa",
-            "aabacdedcabbaaaa",
-            "bbbbabaabbbbbaab",
-            "abcbaababbbbaaab",
-            "abbaaabcaaababac",
-            "aabacdddddbbcbaa",
-            "aaaaceeedbbdccca",
-            "aaaadeecbccccaaa",
-            "aaaaddcbcccccbaa",
-            "aaaabcccccddcaaa",
-            "aaabacbccccbabaa",
-            "bbabcccaaaaacaaa",
-            "aacccbbabaacccaa",
-            "aabbbbbabbccdcca",
-            "aaabbbaabccccdaa"
+            "aaaabddbbedcbaaa",
+            "aaaacdddddcaaaaa",
+            "bcbaccdccabbaaaa",
+            "cccbabaaaabbaaac",
+            "bcdcabbaabbbaaab",
+            "bccaaabbaaabaaac",
+            "bbcaccccddcbcbab",
+            "aaaacccdcbbdcccb",
+            "aaaaddcbaccddcaa",
+            "aaaacccbccdddbaa",
+            "aaaaaccddddddaaa",
+            "aaaaaabddddbabaa",
+            "aaaabbbaaaaacaba",
+            "aabbccbaaaabcdaa",
+            "aabbcccbbabbccda",
+            "aaabbcbbbbbbbdaa"
           ]
         }
       ]
@@ -349,22 +588,22 @@
             "e": "shale2.5"
           },
           "rows": [
-            "deecbcdededdeddd",
-            "deecbbdeeedddddd",
-            "cddcbbdeeedddccd",
-            "eddcccdeeddccccd",
-            "eeddccddddccccbd",
-            "eedccceeedccbcbd",
-            "dddccddeeecdeddd",
-            "deeeeeeeeeeeeedd",
-            "eeeeeeeeeeeeeeee",
-            "eeeeeeeeeeeeeeed",
-            "deeeeeeeeeeeeede",
-            "ddeeeeeeeeeeedde",
-            "dddeedddedddcdbc",
-            "cdedcddeedccdccc",
-            "bdecbceeeddddddd",
-            "ddecacdededdddcd"
+            "deddbccddccdeeee",
+            "ddddddeeeccdedcc",
+            "cdddeddeeddedbcc",
+            "dccdedccdddddddd",
+            "ddceedcccdcceeee",
+            "eddeeddcbbbbdeee",
+            "eeeeedecbbbbacee",
+            "eeeeecedccccccee",
+            "edeeedeedccbbcee",
+            "ddeeeeedddcbbcde",
+            "cbbceeeedddcccbc",
+            "accceeeddededcbb",
+            "ccdcdedcdeeedcbb",
+            "cddccddeeeeeecbb",
+            "cedbbcbdeeeeeecb",
+            "ddecbabcedddeeed"
           ]
         }
       ]
@@ -381,22 +620,22 @@
             "d": "shale2.5"
           },
           "rows": [
-            "abdddcbbcbbcdddc",
-            "abcdcccccbbcddcb",
-            "abcdddbcbccddccb",
-            "aabcccbcbbcddcbb",
-            "aaabcccbacdddcbb",
-            "abbbbccdabdddbbb",
-            "cbdbbcdcbcddddbc",
-            "dccddddddddddddd",
-            "ddddcddddddddddd",
-            "dddddddddddddddd",
-            "dddddddddddddddd",
-            "ddcdccbcccdddddd",
-            "ccdcccbbbcccdcdb",
-            "cbbccccbcccccccc",
-            "bcbcbdcccccddcbb",
-            "bbcddbcccbbcddcc"
+            "accccddddcbbdddb",
+            "bbccbbcddcbcddcb",
+            "aabcbacdddcbcddd",
+            "babcbbddcdcbdddc",
+            "abcddddccbbdccba",
+            "bdddddddaacddbaa",
+            "bcdddccbabdddcbb",
+            "cccddbbbcddddcbb",
+            "ddcdddddddcccccc",
+            "ddccdbabddabcccd",
+            "ddcbdbaabccbacdd",
+            "ccbccdbbbcdcabdd",
+            "cddcddddcccbabbc",
+            "cdcbddddbbbbabbc",
+            "cdcaadddcccccccc",
+            "bacbbcdddccddcdc"
           ]
         }
       ]
@@ -407,28 +646,29 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale2.2",
-            "b": "shale2.3",
-            "c": "shale2.4",
-            "d": "shale2.5"
+            "a": "shale2.1",
+            "b": "shale2.2",
+            "c": "shale2.3",
+            "d": "shale2.4",
+            "e": "shale2.5"
           },
           "rows": [
-            "ddccccdcbccbbbbc",
-            "ddcccddbbccbbbbc",
-            "ddccccdccccbbbbc",
-            "cccccdccccbbbccc",
-            "cccddddddcddcccc",
-            "ccdcdcccddbbbcbc",
-            "dccdccbcccbbbbcc",
-            "cccddcccccbcccdd",
-            "cdddddccddcddddd",
-            "ddddddccccdddddd",
-            "ddddccccccdddddd",
-            "dddccbcbbdcddddd",
-            "ddcbbccbabcddddc",
-            "ccccccbbacccccdb",
-            "cddccdcbbcccbcdc",
-            "cdccddccccbbabbc"
+            "ddccddeeecdeeddd",
+            "dcbccddcdcdeeddd",
+            "bcddccbbbdeeeeee",
+            "ddddddcbcdeddeed",
+            "dddeeeeeddeeacdd",
+            "eeeeeeeeeeaaaace",
+            "eeddeddeeebaabee",
+            "eededcbeeecbbbee",
+            "dddeebbccdeeddee",
+            "dcdeecbcccdeedee",
+            "cccedbcccdeeeedc",
+            "bcddddeddedeeecb",
+            "deecdeedccddcdbb",
+            "ceeceeeeccccddcb",
+            "beecdeebcdddeecb",
+            "ccccdeedecdeeedc"
           ]
         }
       ]
@@ -446,22 +686,22 @@
             "e": "shale2.5"
           },
           "rows": [
-            "eddddddccccdeedd",
-            "eeeddecccccdeecd",
-            "deeededcdccdedcd",
-            "cddedddceecddddd",
-            "ccdcdceedddedeed",
-            "cddddeccddcdddec",
-            "cdeedeeeeedccddd",
-            "deeedeeeedeccdde",
-            "eeeeeeeeeeeeddee",
-            "eeeeeeeeeeeedeee",
-            "eeedeeeeeeeedcde",
-            "dedeeeeeeeededdd",
-            "edddddeeeedccacc",
-            "dddeddeeedcdcbbc",
-            "ceeeddddedbdedcc",
-            "eeeddedbccbceddd"
+            "edbcdeedccddddee",
+            "dcbceecdcddddeee",
+            "dddccbbbbddeeeee",
+            "eeedcbbccdeeedcd",
+            "deedccdededdcbcd",
+            "eeeeeeededcccbbc",
+            "eeededdddccccced",
+            "eeeeddccccdeddee",
+            "deeeddcccdeedced",
+            "cdeedcddcdddcdde",
+            "bcedddedddddeddb",
+            "accdeeeeedddeecc",
+            "ccceeeeeecbcdccc",
+            "ddcdeeeeecbcccbd",
+            "dccddedeeddddedd",
+            "dbbcdeedeeedeede"
           ]
         }
       ]
@@ -472,60 +712,326 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale2.2",
-            "b": "shale2.3",
-            "c": "shale2.4",
-            "d": "shale2.5"
+            "a": "shale2.1",
+            "b": "shale2.2",
+            "c": "shale2.3",
+            "d": "shale2.4",
+            "e": "shale2.5"
           },
           "rows": [
-            "bbcdddccccdbbbcb",
-            "abcdddccbcdbbbbb",
-            "ccdddcccbcdcbccc",
-            "ccbcddccddddddcb",
-            "cbbcccbddddddddb",
-            "ccccdcddddcdddcb",
-            "babbcbabbdccccbb",
-            "bbbbbdbbdbbccbbb",
-            "cccbbdddbbbcccbb",
-            "bcccdccbbcdcddcc",
-            "bbddccccbddddddc",
-            "bbcddccbbcdddddc",
-            "bbcdccbaabccdccb",
-            "bbccddbaabdccddc",
-            "cbbcddbbadddbcdc",
-            "bbcdddcbbcdcbbdc"
+            "ceedccddccccdeee",
+            "bcccddeeeedcdddc",
+            "aaabddeeeeeeedcb",
+            "baacdeeedddeeecc",
+            "ddcceeeecbbcdddd",
+            "eeedeeeecbabbddd",
+            "ecdddeeeddcbbcee",
+            "dcdceeedddccddee",
+            "ccbceeeecdcdeeed",
+            "cecceeedddeeddcc",
+            "dedcdedcbeeeedcc",
+            "deeedbbbcceeedde",
+            "eeeedbacbcdddcce",
+            "eeeeebadedddcaad",
+            "eeeecaaceeeddddd",
+            "eeeecaabdcddeeee"
           ]
         }
       ]
     },
-    "block/lc_rock_2_end": {
+    "block/lc_rock_2_5": {
       "kind": "opaque",
       "layers": [
         {
           "op": "pixels",
           "legend": {
-            "a": "shale2.2",
-            "b": "shale2.3",
-            "c": "shale2.4",
-            "d": "shale2.5"
+            "a": "shale2.1",
+            "b": "shale2.2",
+            "c": "shale2.3",
+            "d": "shale2.4",
+            "e": "shale2.5"
           },
           "rows": [
-            "dcbcccbcccbbbbbc",
-            "ccacdcbbcccabbcc",
-            "bbacdcaabccccbab",
-            "baccdccaaabbccba",
-            "abcdddcaaabbabba",
-            "aadddddbbccbbbba",
-            "abdddddbccabbbcb",
-            "bbcdddbbcccbabbb",
-            "ccbdddabcccbbbcd",
-            "ccccdcbbccdbbbcd",
-            "aacabbcccccbabcb",
-            "abbbabccccbbcbbb",
-            "abcaabccccbbdbaa",
-            "bbbbabbcccbcdbbb",
-            "cbcbcaaccbccdccc",
-            "dcbbdcbccccccbbc"
+            "eedccdddcccceeee",
+            "babccdeeeddeeddc",
+            "acdcbceeeeeeeecb",
+            "cdedccceeeeddedc",
+            "ddeeecceedbbbded",
+            "eeeeedeeedaaccee",
+            "dcdedeeeedbbcdee",
+            "cbcdeeeeedbbdeed",
+            "dbbdeedeedddeeec",
+            "ddbdeedbcdeeecdd",
+            "ecbdeecaaceeecce",
+            "dedddecbaceeecde",
+            "eeedcddcbbdddccd",
+            "deeecddccdedccbb",
+            "dedccccbdeeeddcc",
+            "ededcccbccdeeeee"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_2_6": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.1",
+            "b": "shale2.2",
+            "c": "shale2.3",
+            "d": "shale2.4",
+            "e": "shale2.5"
+          },
+          "rows": [
+            "eedddeecaabdeeee",
+            "eeeddddccccddcce",
+            "eeedccbcceebaabe",
+            "deedccdddeedbccd",
+            "cdedcbdddeeddddc",
+            "cdeecdddcdceeecc",
+            "bcddddeeedeeedcb",
+            "bbbeedeeededeeec",
+            "cccbeeeeeccceded",
+            "dcdcdeeedddddcee",
+            "edccdcbdeedddeee",
+            "dedddcbdedccceee",
+            "deeddccdedbbceed",
+            "ccdddddeeeddcccc",
+            "ddcddeeedddedbbc",
+            "dbcedeedcbceedee"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_2_7": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.1",
+            "b": "shale2.2",
+            "c": "shale2.3",
+            "d": "shale2.4",
+            "e": "shale2.5"
+          },
+          "rows": [
+            "deddddcccccdeeed",
+            "ccbbeedccdeeeddd",
+            "cbbbdeccceeedddd",
+            "ebbceedcecedeede",
+            "dcdeeedcbbcdeedc",
+            "ceedeeecbbceeddb",
+            "ddbceeedccdeedcc",
+            "ddbbceeeeeeeeeee",
+            "dccbceeeddceccee",
+            "cdecbdeeeecbcbee",
+            "ddecbceeeecacccc",
+            "ceedcbeeedbbddcc",
+            "deeeecbcddbacccd",
+            "deeeecbcddddcbbc",
+            "ddeeebbcdeedddcc",
+            "edeedbbbdccdeeee"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_2_8": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.1",
+            "b": "shale2.2",
+            "c": "shale2.3",
+            "d": "shale2.4",
+            "e": "shale2.5"
+          },
+          "rows": [
+            "eeddeeeeddcbbbbd",
+            "ddcdeedcedcdccde",
+            "cddedbcccdddeddd",
+            "cddeeeededcdedcc",
+            "cceceeeeedceedcb",
+            "bbbbdeeeeddeeddc",
+            "cbbbaceeeeeeeded",
+            "dccccceedeeeecee",
+            "dccbbceedeeeedee",
+            "ddcbbcddcceeeeee",
+            "eedccccbbcbceeee",
+            "dddedccbbccceeed",
+            "ceeedccbcddcdecc",
+            "deeeeccccddccdcd",
+            "eeeeeecbdedbbbcd",
+            "edeeeeededcbbabd"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_2_9": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.1",
+            "b": "shale2.2",
+            "c": "shale2.3",
+            "d": "shale2.4",
+            "e": "shale2.5"
+          },
+          "rows": [
+            "cddddeeedddddddc",
+            "cbcdddeeeddcdcdc",
+            "cbddccddeeeeddde",
+            "ebccbccbdeeeddee",
+            "ebcccbbbceeedeee",
+            "dcceeddeeedddedd",
+            "cccdcdeeeedcdeed",
+            "edcddeeeeedcdedd",
+            "eeddeeeeecbcdddd",
+            "eeeeeedbbbecccce",
+            "eeeeeedbbebccbde",
+            "deeeeeedbaabbddd",
+            "ceeeeeeecabddcdc",
+            "bdeeccdeedddeecb",
+            "cddbbbbdeeeeeddc",
+            "ccdccdddeeeededd"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_2_end_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.1",
+            "b": "shale2.2",
+            "c": "shale2.3",
+            "d": "shale2.4",
+            "e": "shale2.5"
+          },
+          "rows": [
+            "eddeddddddcdcdee",
+            "eddcdeedccccddee",
+            "ddcbdeedddddddbc",
+            "dbcbeeeeeeeddbcc",
+            "dcbbeeeeeeedcabc",
+            "edddedddeeedcbcd",
+            "deeddcbbbededccd",
+            "deeedcbbbcdeeddc",
+            "bdeedcedbbdddddb",
+            "cddeedeedbeddddc",
+            "cddcdeeeecdcdedc",
+            "ddddddeeecccdeec",
+            "eddcdcdeecccdddd",
+            "ddddcbcedccdeeed",
+            "edeccccdccdddeee",
+            "edddcccdeedccdee"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_2_end_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.1",
+            "b": "shale2.2",
+            "c": "shale2.3",
+            "d": "shale2.4",
+            "e": "shale2.5"
+          },
+          "rows": [
+            "eeddccdddcdddcee",
+            "edcdcccccdeebdee",
+            "dcdeeddddeedbbdd",
+            "eccdeeeeeeedaabd",
+            "dcbceeeedeedaabc",
+            "ddbceeedccddceed",
+            "dccdeeecbbbcddee",
+            "cdddeedcbbbceeed",
+            "bcdcccbbdedeeeeb",
+            "ccddbbbdeeeeeedc",
+            "cdecabceeeeeeedc",
+            "ddecbabeeedeeeed",
+            "ccddbabeedceeeed",
+            "ddeedccdebbceded",
+            "eeedeedddbabccce",
+            "eeeddeeedbbccbde"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_2_end_2": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.1",
+            "b": "shale2.2",
+            "c": "shale2.3",
+            "d": "shale2.4",
+            "e": "shale2.5"
+          },
+          "rows": [
+            "eededddddcdebdee",
+            "eeeddcddbbcecbee",
+            "deeeddeecbddccde",
+            "eeeeddeeecccbccc",
+            "deeedeeedbcccbbc",
+            "eedddedcdbceeddd",
+            "eedcdeddbbcdcdee",
+            "dddcdedcddcddded",
+            "bbbcddcceeddeeda",
+            "bbcccccdeeeeeedb",
+            "bbbccbcdeeeeeedc",
+            "cbabbdddeeeeeeec",
+            "cbbddcdcceeeeeee",
+            "edddeedbbdeeccde",
+            "eeedeeeccddbbbbe",
+            "eedeeeddddcbbbce"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_2_end_3": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.1",
+            "b": "shale2.2",
+            "c": "shale2.3",
+            "d": "shale2.4",
+            "e": "shale2.5"
+          },
+          "rows": [
+            "ddeeeeedddcdcdde",
+            "cdeddeeedbceecbd",
+            "cdeededddcddecbc",
+            "deeeeeeedccddbbb",
+            "deeeeeeeecbcccbb",
+            "cdeeeeeeddbcdccc",
+            "dddeeeeedcbbcdcd",
+            "ddddcdeeddccddde",
+            "dcaaaaddeeeeeeed",
+            "ddaaabcdeeeeeeee",
+            "edbbbbbddeeeceee",
+            "ecbbccbbdeeedeee",
+            "dcbbbcccceeddeee",
+            "dddcdddddeeddddd",
+            "deeeeeddcdddbccc",
+            "deeeeedccddcccdd"
           ]
         }
       ]
@@ -543,22 +1049,22 @@
             "e": "shale2.4"
           },
           "rows": [
-            "baaaaaccccdbcccc",
-            "cbaacdddddcccccc",
-            "bbacddbddeccbccc",
-            "aaaccdddddbbcccb",
-            "aaaaaaccaaaaaaaa",
-            "aaaaaaabaaaaaaaa",
-            "aaaaaaaaaababaaa",
-            "aaabaaaacbaaaaaa",
-            "abababaabbaaabab",
-            "abbaccbcdcababbb",
-            "aaaccdcccecbabab",
-            "ccaaddcdbbdcbbcc",
-            "cbaaaabbbcccaddc",
-            "caaabccbccccdddd",
-            "aaaaabccdccbcddc",
-            "aaaaaacccccbdcbb"
+            "bcdaaaaabbbccbbb",
+            "bcbaabbaaadeccab",
+            "bbaabbaaacdcccab",
+            "aaaaaaaacddcccab",
+            "aaaaaaabdddcbaaa",
+            "aaabbcbbdccbaaaa",
+            "babbcdcbbbaacccc",
+            "bbcccdbbbaabccba",
+            "bbcbbabbbbaccbca",
+            "cbaaabaaaabccccc",
+            "dbabaaaaabbcbbbc",
+            "baaaaaaabcccdcbb",
+            "aaaaaaaacbcddddb",
+            "aaaaaaabbccdddca",
+            "aaaaaaaaabddcbaa",
+            "bcdcaaaaaabcbaaa"
           ]
         }
       ]
@@ -576,22 +1082,22 @@
             "e": "shale2.4"
           },
           "rows": [
-            "bbbaaaadbbbbdccc",
-            "bcbaaabaabdeddbc",
-            "abaaaaaaadeeddab",
-            "aaaaaaaacddddcaa",
-            "aaaaaaacddddcaaa",
-            "aaacbccacdccaaaa",
-            "bbccccbabbbbdcbb",
-            "ccdcbbabbbaccccb",
-            "bcccaaabcbcbbbad",
-            "ccaaaaaaacddcccc",
-            "bbbaaaaadcccbacc",
-            "babaaaadccccbcbb",
-            "aaabbadccbcdddcd",
-            "aabbcacbccccdcbb",
-            "cccbbaaabbccccbc",
-            "bcbbaaaaaabacbcc"
+            "bbbabbadaaaadccb",
+            "bbbaabcaaadedcbb",
+            "bbaaaaaaaceeddab",
+            "aaaaaaaabddedcba",
+            "baaaaaacccdddaaa",
+            "aaabaccacdccaaaa",
+            "bbccbbbacccbbbbc",
+            "bbcccbabccbcccba",
+            "bcbcbaabcbcbbbac",
+            "ccaabaaaacddcccc",
+            "baaaaaaadccddbdd",
+            "babbaaadccbcbcbb",
+            "abbcbaccbbcbbbab",
+            "aaccdacabcbbbcbb",
+            "dccbcaaaaabbcccd",
+            "abbbbbbaaaaabcdc"
           ]
         }
       ]
@@ -609,22 +1115,22 @@
             "e": "shale2.4"
           },
           "rows": [
-            "bbbabaaaabbacbdd",
-            "cbaaaabaaaccccbc",
-            "bbaaaaaadbcddcab",
-            "aaaaaaabbcdddeaa",
-            "aaaaabccabccbaaa",
-            "aaacaccbcccbaaaa",
-            "cbbbcbbabbbabccb",
-            "bbcccbabcbabcccb",
-            "cbbccaaaccccdabc",
-            "cbaaaaaaabbbcccc",
-            "cbaaaaaaabaaaabc",
-            "baaabaaacccccbcb",
-            "aaaaaabcccccccbb",
-            "aabbbabcccccccbb",
-            "bccbbaaabbcbbbbb",
-            "bbcbaaaaaabbbbcc"
+            "bbcbcbaaaaaadccc",
+            "bbaaabcaaadddcab",
+            "caaaaaaacbdedcac",
+            "aaaaaaabbdeddeaa",
+            "aaaaabccbcddcaab",
+            "aaabaccbccedaaaa",
+            "bbbbcbbabcccdbba",
+            "abcccaabccbcdcba",
+            "cbdccaaabbbcdabc",
+            "cbbaaaaaabbbcddc",
+            "cbbaaaaaacbabcdc",
+            "babbbaaaccbbbbcb",
+            "bbbbaabcdcbbbbab",
+            "aacbbabcccbbbcbc",
+            "cddbbaaababbcccc",
+            "bcccbbbaaaaabccb"
           ]
         }
       ]
@@ -635,28 +1141,29 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "basalt3.2",
-            "b": "basalt3.3",
-            "c": "basalt3.4",
-            "d": "basalt3.5"
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3",
+            "d": "basalt3.4",
+            "e": "basalt3.5"
           },
           "rows": [
-            "aabdbbccbbabbbba",
-            "abcbbdccccbbccba",
-            "bccbbcdccdcccbbb",
-            "ccbbcdcccbbbcbcd",
-            "dccbccbcccccbccd",
-            "cccdddddccbacccd",
-            "ddccdcccdcbcdbcd",
-            "bcdccccbcbbbbbbb",
-            "bbdccccbbbabbbcb",
-            "bbcddcbccbbbcccc",
-            "dcbcddbbcccdccdd",
-            "dcbcdcbbccddccdc",
-            "dcbcdccbbcddbddd",
-            "cbccbcccbcccbcbb",
-            "bbbabcccbcdbabcb",
-            "bbcbbbcbbbbbbbbb"
+            "eeedcdcbcdeedcde",
+            "eeccceddcceeedde",
+            "dbbbcddeeeeedcdc",
+            "baaccddeeeeedddc",
+            "abcdccdeeeeeeddc",
+            "cceeeeeecbbceedc",
+            "cceeeeeeeaabdeec",
+            "dddeededcaabceed",
+            "dddeeddeddcbbced",
+            "cdeeeeceeedcbbcc",
+            "cdeeeeddeedccbbb",
+            "ddecceddeeeecccc",
+            "eecdbcccceddeeee",
+            "edddabbccdbdeeee",
+            "eddccccbcbcdeeee",
+            "eeeddcbccddeecee"
           ]
         }
       ]
@@ -674,22 +1181,22 @@
             "e": "basalt3.5"
           },
           "rows": [
-            "cccbcdddcccccddd",
-            "ccbcedcccccddded",
-            "ccddeeeccddcbded",
-            "ccddeedccddcdddd",
-            "cdeeddecddecdded",
-            "cceddedcddcddeed",
-            "eeddddedddedddde",
-            "eedddeeeedeedcde",
-            "eeccdcbccedddcbe",
-            "eeedddeddccddcbe",
-            "deedcdeeedccdccd",
-            "eeedcddeeddddccd",
-            "eedccdcdecbcdccd",
-            "eeddcabdedcbcdcc",
-            "eecccbccddcdddde",
-            "ddbcccdccccddddd"
+            "edeeeccccccedeee",
+            "edcceeddccdeedee",
+            "dcbbeeeddeeedccc",
+            "bbbbeeeeeeeedccc",
+            "acccdeeeddeeedcc",
+            "dcedceedcbceeecc",
+            "deddccdecabceedc",
+            "eeeeccedcaabdedd",
+            "deeededcccccddec",
+            "deeeeedcdeddcbbc",
+            "ddeeeecceeeedbbc",
+            "ddeeecbceeeedbbc",
+            "eedccbbceeedcdde",
+            "eddcbabdeecbceee",
+            "edcdbccdddbbdeee",
+            "eddddcccdcdcdeee"
           ]
         }
       ]
@@ -707,22 +1214,22 @@
             "e": "basalt3.5"
           },
           "rows": [
-            "cedbccccccceeedc",
-            "ddcccccddcdeedde",
-            "cccbbceeeeeeedcc",
-            "bcccccdeeeeeedcc",
-            "cbcbccceeeeeeedc",
-            "cdccccdeeeeeeedc",
-            "cbcddcceeeeeeeec",
-            "bcdcccceeeeeeeec",
-            "bcdcbceeeccddedb",
-            "ccdceeccddeedeec",
-            "eddeeeccdeeeddee",
-            "eeeeedcbcdeedddd",
-            "eeeddddbbbedddde",
-            "eeedddbbabdddcdd",
-            "eddccbcbccdeeeee",
-            "ddcccbbcccdeeedd"
+            "eedeedbbccddcbde",
+            "ddacdeecdeeedccd",
+            "dcbcddeeeeeecccc",
+            "bcccddeeeeeeeddb",
+            "adcddeddeddeedcc",
+            "cddcdeeedeeeddbb",
+            "cdcbceeeeeecbccb",
+            "bccddeeeeddccedb",
+            "aceeeeeddbbdeeea",
+            "beeeecbaabbeeeec",
+            "eeeedddbabbceedc",
+            "dddeceedcdcdeedd",
+            "eeccaceeeedcdeee",
+            "edddbbcdeebcccee",
+            "eeeccbbcddccccee",
+            "eecdebbbcdddccee"
           ]
         }
       ]
@@ -740,22 +1247,22 @@
             "e": "basalt3.5"
           },
           "rows": [
-            "ccceeedededcccbb",
-            "cccdeeeeddecccdc",
-            "dcbdddddceeededd",
-            "cbccccecdeeeeeec",
-            "bbcebbdceeeeeeec",
-            "cccceeeeeeeeeeec",
-            "acdccceeeeeeeeec",
-            "dcccecceeeeddeec",
-            "dcbcdebdeededccc",
-            "dccedcdeeeddecbc",
-            "deeeceeeeecdedbd",
-            "eedeeeeeeebbcbbd",
-            "edcdeeddcbbbbbbd",
-            "eeddeeeddccbaacd",
-            "bcdedeeeeeedccdc",
-            "bbceedeeeeeccccb"
+            "ddeeddcdeeccddcd",
+            "bcdeeeeeeecbccdc",
+            "cbdeeeeeeedbbbcb",
+            "bacddeeeeeecccdc",
+            "cccdddceeedddddd",
+            "ededeedeccbbbdee",
+            "edeeeeecbaabceee",
+            "ddeeeecbaabdeeed",
+            "cdeeedcbabdeeeeb",
+            "dddddccdcdeedccc",
+            "dedcbceedeeecccd",
+            "dedbbdddeeeeecbc",
+            "dddccccbceeeedcd",
+            "eddccccabbdeeeee",
+            "eedcccccbcdeeeee",
+            "eeedecbbdeeddede"
           ]
         }
       ]
@@ -766,33 +1273,34 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "basalt3.2",
-            "b": "basalt3.3",
-            "c": "basalt3.4",
-            "d": "basalt3.5"
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3",
+            "d": "basalt3.4",
+            "e": "basalt3.5"
           },
           "rows": [
-            "cdbbbacddcccccdc",
-            "cdcbbbccddccddcc",
-            "ccdcddddddcddccc",
-            "cdcdbcadddccddcc",
-            "ccabcbbdddccdccd",
-            "dcbbcccdddcddddc",
-            "dcbbdcbbdcddddcd",
-            "aabccbbbabccccca",
-            "aaccabcbaabbbbba",
-            "abcdcccbabbbbccb",
-            "cccdddcbabdcbcdd",
-            "ccddddcbabcdcddd",
-            "ccddddcbbabccdcc",
-            "bcddddccbbbcddcc",
-            "cccccccbcdcddddd",
-            "cccbbcccdcddcddd"
+            "cceecbcdeeeddddd",
+            "bdddeeeeeeccdddc",
+            "ccdeeeeedcbbcddb",
+            "cdceeeeecabbcedd",
+            "cdddeeeccbbbdeed",
+            "eeeddcccbccddedd",
+            "eeeecbaababdeeee",
+            "eeedccbaaaadeeee",
+            "edcdccbbbbcdeeed",
+            "ddddccdddddeeddd",
+            "dcddccddeeeeddcd",
+            "cdddddddeeeecbbb",
+            "cdeeedceeeedbaac",
+            "deeedddeeecbbbad",
+            "eddccccbeedeedde",
+            "dddddbbceeeeddee"
           ]
         }
       ]
     },
-    "block/lc_rock_3_end": {
+    "block/lc_rock_3_5": {
       "kind": "opaque",
       "layers": [
         {
@@ -804,22 +1312,153 @@
             "d": "basalt3.5"
           },
           "rows": [
-            "aacccbddddccdcba",
-            "bbdcdccdddddddcc",
-            "dddddddddddddddd",
-            "ddcddccbcbdddcdd",
-            "ddccdccbbbbcdddd",
-            "ddccbdbbbbadddcd",
-            "ddcccdbbbaabbbbc",
-            "bcccddbbabbbbabc",
-            "bcddddcbabbbbbbc",
-            "cccdddcbcaaaabbb",
-            "dbbcdcaabaabbbcc",
-            "cbbcddaababcccbb",
-            "bcccccbaabccdbbb",
-            "abdccbcbabbbccbb",
-            "bccddddbbbcbabbb",
-            "abbccdccccdccbba"
+            "bbddcbbbcdcccddc",
+            "bbcddddbcbccccbb",
+            "dccddddbaacccabb",
+            "dddddddbbabbcaac",
+            "cdccddccbbbcbbdc",
+            "ddcccccbbbbccdcc",
+            "dcbbccaaabcbddcd",
+            "cdcabcbbcbbbdddc",
+            "bccbbabcdcbbcdda",
+            "abdcbbcddccccdcb",
+            "abcccbcdddddccca",
+            "cccccccdddddbbcc",
+            "ddcccccccddcabbd",
+            "dccccccdcccaaabd",
+            "dcccbbacddcdcddd",
+            "baccbabcddcccddd"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_3_end_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3",
+            "d": "basalt3.4",
+            "e": "basalt3.5"
+          },
+          "rows": [
+            "ddccebbcdeeeeeee",
+            "edcdcccdedeeedde",
+            "dddccdeeeedcdddd",
+            "cedddeeeeecbcdca",
+            "bddedeeeeebbcdba",
+            "bccdeeeeeedbedcb",
+            "cabddddeeedeeedd",
+            "dbbcddcddeeeeeed",
+            "dcccdddccdedddee",
+            "ecddddecbcddcbde",
+            "ddeeedeebbddabde",
+            "eeeedeeecbcccccd",
+            "eeeeddddcccccccd",
+            "deeeeecbccddddcd",
+            "ddddedabcdeeeeed",
+            "dcbcdcaacdeeeeee"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_3_end_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3",
+            "d": "basalt3.4",
+            "e": "basalt3.5"
+          },
+          "rows": [
+            "dcceeeddddddccde",
+            "ddceddcdeeeeccde",
+            "cedbbcceeeeedccc",
+            "dedbbabdeeeedcbb",
+            "eedccabbeeedddcd",
+            "eeedccbbcbccdeee",
+            "eeeecbbbbaadeeee",
+            "eeeecaaabcbceede",
+            "eeeedcbbbcddedde",
+            "dddddeddccddeddc",
+            "cccceeeedddddccc",
+            "cabdeeeeedcbcccc",
+            "bbbceeeeeddccddd",
+            "bbaceededddedeed",
+            "ccdeeddddcdddeed",
+            "cbceeedecccdcded"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_3_end_2": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.2",
+            "b": "basalt3.3",
+            "c": "basalt3.4",
+            "d": "basalt3.5"
+          },
+          "rows": [
+            "bbcdddbcddcbabcc",
+            "cbcddcbbdddbaacd",
+            "cbabcccdddddcbac",
+            "bcaaaacdddddccba",
+            "ddcaabbcdcddddcb",
+            "cddbaabbbccddcbb",
+            "cdddabbbccddddcc",
+            "dddcabaaaccdddbc",
+            "dddcbaaaaabcddcc",
+            "dddbccdbabbcccdd",
+            "cbbcddddcbbabbcc",
+            "baacddddcbababcc",
+            "babdddddcbbcbccc",
+            "abbbdddcccdddcdc",
+            "bccddccccbccdddb",
+            "bbcdddccccccbcdb"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_3_end_3": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3",
+            "d": "basalt3.4",
+            "e": "basalt3.5"
+          },
+          "rows": [
+            "dedcedddddededcc",
+            "dededdcaceeeedcc",
+            "cbceedbbceeeebbd",
+            "dcceecbcdeeedccc",
+            "dddddcccdeeedccd",
+            "eeeddcccdddeddcd",
+            "eeeedcbcceddcdee",
+            "eeedbbbcdddcbdee",
+            "ddecbccddcbbdeed",
+            "bdeddededcbceeeb",
+            "bbcdeeeeecbdeecb",
+            "cbbdeeeeebccddcc",
+            "ecbbdeeeecccddde",
+            "ddbbceeeeeddddee",
+            "dddddddeedccdeee",
+            "ddcccddeedbbdddd"
           ]
         }
       ]
@@ -837,22 +1476,22 @@
             "e": "basalt3.4"
           },
           "rows": [
-            "abbabccaaaaaaaaa",
-            "bbaaaaaaaaaaaabc",
-            "baaabaaaaaaaaacb",
-            "aabbcbabccbbaaaa",
-            "abbbcabcbcbcbbba",
-            "abbbacbcccbabbba",
-            "aaacdccdcbbaaaab",
-            "bcdddddbbabaaaaa",
-            "ddddddddaaabbcca",
-            "cdddddddbbcdcccb",
-            "cceddcccbcccdcac",
-            "dddeddbbccccaacd",
-            "dddeedcbbaaaaacd",
-            "cccccdaaaaaaaabd",
-            "cbbbbbaadcccaaab",
-            "bbbbbcccdcaaaaab"
+            "bcbabccaaaaaaaab",
+            "cbbaaaaaaaaaaabd",
+            "cabaaaaaaaaaaadc",
+            "bbbaababccbbaabb",
+            "bcbbbabbbcbcaaaa",
+            "bccbacbbbcbabbaa",
+            "bbbcdbbcbbaaabab",
+            "bdeeddcaaaaaaaaa",
+            "cddeedddaaacccba",
+            "bcddeeddcbcedcca",
+            "bbccccccccccddcb",
+            "cccdccbbdcccaadc",
+            "cccddcbbcaaaaacc",
+            "bbccbdaaaaaaaabc",
+            "bbbbccaadcdbaaab",
+            "abcccddddcaaaaab"
           ]
         }
       ]
@@ -867,26 +1506,25 @@
             "b": "basalt3.1",
             "c": "basalt3.2",
             "d": "basalt3.3",
-            "e": "basalt3.4",
-            "f": "basalt3.5"
+            "e": "basalt3.4"
           },
           "rows": [
-            "bbabbcbcbdcaaaaa",
-            "bbbaaaccdcaaaacb",
-            "ababbbacaaaaaacc",
-            "bbbbbbacccbbaabb",
-            "bcbbaaaccccbabbb",
-            "aabbbbbcccbabacb",
-            "aaacddcccbaaaaca",
-            "acddddcccaaaaabb",
-            "edddeddcaaaabccc",
-            "cdddddddbcdcccdd",
-            "ccddccbbcccddccc",
-            "ddedccbcccddcadd",
-            "ddddcdddeefaaade",
-            "ccdbcdedecaaaaec",
-            "bcbbaddddccdddab",
-            "abbbbccccddbaaac"
+            "cbabbcccbdbaaaab",
+            "cbaaaacdecaaaadc",
+            "abaaabadbbaaaacd",
+            "aabaabbdddbbaaaa",
+            "aabbbacdcccbaaaa",
+            "aabbbccdccbababa",
+            "aaacdeddcbaaaaaa",
+            "abddeeddcaaaaaaa",
+            "cddeeddcaaacccaa",
+            "ceeeddccacdddccb",
+            "ddcdcbbabcddcbbc",
+            "edddcbabcdeecace",
+            "ddddcccccdeaaade",
+            "ddebdddcccaaaaed",
+            "cdccbddbccbcbcac",
+            "cccccdcbcdcaaaac"
           ]
         }
       ]
@@ -904,84 +1542,22 @@
             "e": "basalt3.4"
           },
           "rows": [
-            "baabacdddcdaaaab",
-            "bbbaaaddbdaaaabc",
-            "babbbbabcbcdcbab",
-            "bacbbbbcbcccdbaa",
-            "bccbaabbbcbbbaaa",
-            "abababbccccacabb",
-            "aaacddccdbaaabab",
-            "acdddddbaaaaaaaa",
-            "ddedddecaaabbbcb",
-            "cddddddccccccccb",
-            "ecbbbccccccccccd",
-            "ddccbbbcddcbaacd",
-            "ddddcccbcaaaaacd",
-            "cdbbbcaaaaaaaacd",
-            "bbbbbbaadddcccab",
-            "bbabbcccbcecaaab"
-          ]
-        }
-      ]
-    },
-    "block/lc_core_1": {
-      "kind": "opaque",
-      "layers": [
-        {
-          "op": "pixels",
-          "legend": {
-            "a": "shale1.1",
-            "b": "shale1.2",
-            "c": "shale1.3"
-          },
-          "rows": [
-            "bbaaaaaaaaabbbbb",
-            "bbaaaaaaaaabbbbb",
-            "aaabbaaaaaaabbaa",
-            "aaabbbaaaaaaaaaa",
-            "aabbcbbaaaaaaaaa",
-            "aabbbbbaaaaaaaaa",
-            "aabbbbaaaaaaaaaa",
-            "bbbbbbaaaaaaaaab",
-            "bbbbbbaaaaaaaaab",
-            "bbbbbbaaaaaaaaab",
+            "aabcaaaaadccdbca",
+            "abdcaaaaabbcdaaa",
+            "bddccababbacaaaa",
+            "cdccdabcbacaaaab",
+            "bbccacbbaaaaaaab",
+            "bbaaaccccaaaacdc",
+            "bbaaacbcbaacdddd",
+            "dbaaaaaaaaaabcdd",
+            "caaaaaaaaaaaabbc",
             "aaaaaaaaaaaaaaaa",
-            "aaaaaaaabbaaaaaa",
-            "aaaaaaabbbbbaaaa",
-            "aaaaaaaabbbbbaaa",
-            "aaaaaaaaaaabbbba",
-            "bbaaaaaaaaabbbbb"
-          ]
-        }
-      ]
-    },
-    "block/lc_core_2": {
-      "kind": "opaque",
-      "layers": [
-        {
-          "op": "pixels",
-          "legend": {
-            "a": "shale2.1",
-            "b": "shale2.2",
-            "c": "shale2.3"
-          },
-          "rows": [
-            "aaaaaaaaaabbbbaa",
-            "aaaaaaaaaabbbbba",
-            "bbaaaaaaaabbbbbb",
-            "bbaaaaaaaabbbbbb",
-            "bbaaaaaaaabbccbb",
-            "bbaaaaaaaabbcccb",
-            "cbbaaaaaaabbcccc",
-            "cbbaaaaaaabbcccc",
-            "cbbaaaaaaabbcccc",
-            "cbbaaaaaaabbcccc",
-            "bbbaaaaaaabbbbbb",
-            "bbbbbbaaaabbbbbb",
-            "bbbbbbbbbbbbbbbb",
-            "bbbbbbbbbbbbbbbb",
-            "bbbaaaaaabbbbbbb",
-            "aaaaaaaaaabbbbba"
+            "aaaaaaaaaaaaaaaa",
+            "daaaaaaaaaaaaacd",
+            "cbbbaaaaaadcdddc",
+            "ccbccaaccdddddcb",
+            "ccbccaaacedcbacc",
+            "aabcbaaadeecbcbb"
           ]
         }
       ]

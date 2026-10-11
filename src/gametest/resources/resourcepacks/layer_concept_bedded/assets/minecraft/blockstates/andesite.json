@@ -75,6 +75,21 @@
       {
         "model": "deepcharter:block/lc_rock_3_4",
         "y": 270
+      },
+      {
+        "model": "deepcharter:block/lc_rock_3_5"
+      },
+      {
+        "model": "deepcharter:block/lc_rock_3_5",
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/lc_rock_3_5",
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/lc_rock_3_5",
+        "y": 270
       }
     ]
   }

@@ -11,6 +11,7 @@ tools/textures/variants/layers/palette.json. The three options draw the same two
 """
 import math
 import sys
+from functools import lru_cache
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "colony"))
@@ -65,15 +66,64 @@ def clamp(index: int, shades: list[str]) -> str:
 
 # ---------------------------------------------------------------------------------------------------------------- how the rock tiles
 
-TAU = 2 * math.pi
+# One turn of a sine in sixteenths, as literals: a table, so that no pixel depends on the sine of a platform's maths library. The only functions of
+# a float that decide a pixel are IEEE 754's exactly rounded ones (+, -, *, / and sqrt), which give the same bits on every machine.
+SINE16 = (0.0, 0.3826834324, 0.7071067812, 0.9238795325, 1.0, 0.9238795325, 0.7071067812, 0.3826834324,
+          0.0, -0.3826834324, -0.7071067812, -0.9238795325, -1.0, -0.9238795325, -0.7071067812, -0.3826834324)
 
 
-def grain(seed: int, x: int, y: int, low: float = 0.47, high: float = 0.53) -> int:
-    """Clustered grain as vanilla stone has it: a shade up or down where a soft, tiling noise runs high or low, and a speck in a few pixels. No
-    pixel is told apart from its neighbours by where it is in the texture, so the grain runs on across every edge."""
-    n = 0.4 * vnoise(seed, x, y, 4, 4) + 0.6 * vnoise(seed + 1, x, y, 2, 2)
-    speck = hashf(seed + 2, x, y)
-    return (1 if n > high else -1 if n < low else 0) + (1 if speck > 0.96 else -1 if speck < 0.04 else 0)
+@lru_cache(maxsize=None)
+def zfield(seed: int, passes: int) -> tuple[tuple[float, ...], ...]:
+    """Soft noise, with a mean of 0 and a spread of 1: white noise blurred `passes` times by a 3 x 3 kernel on the tiling texture. A noise of lattice cells
+    has its extremes at the lattice, and a texture made of it has more going on at every 2nd, 4th and 8th pixel than between them; this has none, so no
+    pixel is told apart by where it is. Every row and column of the white noise is first made to have the mean of the whole, and the blur keeps that, so no row
+    or column of the soft noise is dark or light all along: such a row is the top of every block, and comes back as a dark line across the wall."""
+    field = [[hashf(seed, x, y) for x in range(SIZE)] for y in range(SIZE)]
+    mean = sum(map(sum, field)) / (SIZE * SIZE)
+    rows = [sum(row) / SIZE for row in field]
+    columns = [sum(field[y][x] for y in range(SIZE)) / SIZE for x in range(SIZE)]
+    field = [[field[y][x] - rows[y] - columns[x] + mean for x in range(SIZE)] for y in range(SIZE)]
+    for _ in range(passes):
+        field = [[sum(wx * wy * field[(y + dy) % SIZE][(x + dx) % SIZE] for dy, wy in ((-1, 1), (0, 2), (1, 1)) for dx, wx in ((-1, 1), (0, 2), (1, 1)))
+                  / 16 for x in range(SIZE)] for y in range(SIZE)]
+    mean = sum(map(sum, field)) / (SIZE * SIZE)
+    spread = math.sqrt(sum((v - mean) ** 2 for row in field for v in row) / (SIZE * SIZE))
+    return tuple(tuple((v - mean) / spread for v in row) for row in field)
+
+
+# How much of its own noise a variant has on its outermost ring, and how many rings it takes to have all of it. At none the edges of all the variants
+# are one pattern, which meets itself well at a seam and is itself the pattern that comes back at every block; at all of it two variants meet as
+# two textures that have nothing to do with each other.
+EDGE_OWN = 0.75
+EDGE_RAMP = 2
+
+
+def edge_weight(x: int, y: int) -> float:
+    """How much of the variant's own noise a pixel has: EDGE_OWN on the outermost ring, then in equal steps to 1 from EDGE_RAMP rings in. The noise of the
+    variant is let in a little at a time, so no ring of the texture has more going on than the rest."""
+    return EDGE_OWN + (1 - EDGE_OWN) * min(min(x, y, SIZE - 1 - x, SIZE - 1 - y), EDGE_RAMP) / EDGE_RAMP
+
+
+def soft(seed: int, base: int, x: int, y: int, passes: int) -> float:
+    """Soft noise of this variant (`seed`), blended into the noise that every variant of its layer shares (`base`) towards the edge, and equal to it on the
+    outermost ring. Each variant then meets any other, at an edge, where the shared noise meets itself across the wrap, and not where two noises that have
+    nothing to do with each other meet: that is a line at the edge of every block. Vanilla stone gets this by having one texture, mirrored. The weights
+    keep the spread the same everywhere, so no band along the edge is calmer than the rest."""
+    w = edge_weight(x, y)
+    return math.sqrt(1 - w) * zfield(base, passes)[y][x] + math.sqrt(w) * zfield(seed, passes)[y][x]
+
+
+def pinned(seed: int, base: int, x: int, y: int, *keys: int) -> float:
+    """A hash for the pixel: the shared one on the outermost ring, the variant's own elsewhere."""
+    return hashf(base if min(x, y, SIZE - 1 - x, SIZE - 1 - y) == 0 else seed, x, y, *keys)
+
+
+def grain(seed: int, base: int, x: int, y: int, spread: float = 0.52) -> int:
+    """Clustered grain as vanilla stone has it: a shade down where a soft noise is more than `spread` below its mean and up where it is that much above it,
+    and a speck in a few pixels. No pixel is told apart from its neighbours by where it is in the texture, so the grain runs on across every edge."""
+    n = soft(seed + 1, base + 1, x, y, 2)
+    speck = pinned(seed + 2, base + 2, x, y)
+    return (1 if n > spread else -1 if n < -spread else 0) + (1 if speck > 0.96 else -1 if speck < 0.04 else 0)
 
 
 def voronoi(seed: int, cells: int, aspect: float = 1.0, shear: float = 0.0) -> list[list[tuple[int, float]]]:
@@ -97,46 +147,58 @@ def voronoi(seed: int, cells: int, aspect: float = 1.0, shear: float = 0.0) -> l
 # ---------------------------------------------------------------------------------------------------------------- bedded (A)
 
 # Where the five beds of a face start, in pixels from its top. They are the same in every variant of a layer, so a bed runs on from block to
-# block, and the five thicknesses (3.5, 1.5, 4, 3, 4) are all different.
-BED_STARTS = (1.0, 4.5, 6.0, 10.0, 13.0)
+# block, and the five thicknesses (3, 3, 2.8, 3, 4.2) are close but not equal, and none is near the wrap of the face, where a bed's top would run along the seam.
+BED_STARTS = (2.0, 5.0, 8.0, 10.8, 13.8)
 # The shade of each bed against the middle shade. The neighbours differ by one, apart from the pair that meets where the face wraps.
-BED_SHADES = (-1, 0, 1, 0, 1)
+BED_SHADES = (-1, 1, 0, 1, -1)
 
 
-def bedded(shades: list[str], seed: int, form: int, mid: int = 2) -> Grid:
+def sine_at(position: float) -> float:
+    """SINE16 at a place that need not be a whole number, by a straight line between two entries."""
+    index = int(position // 1)
+    fraction = position - index
+    return SINE16[index % len(SINE16)] * (1 - fraction) + SINE16[(index + 1) % len(SINE16)] * fraction
+
+
+def bedded(shades: list[str], seed: int, form: int, mid: int = 2, base: int | None = None) -> Grid:
     """Beds of sediment, side on. Each bed's top is a wave that goes once or twice across the face, so a bed is thick at one edge of a block and
-    thin at the other, and the waves are the layer's own (`form`): every variant shares them, give or take a half turn of phase, so a bed
-    runs on across the edge to the next block and over the top of the one below. The beds differ by a shade, the first row of a bed is a
+    thin at the other, and the waves are the layer's own (`form`): every variant shares them, give or take a turn of phase and a pixel or
+    two of height, so a bed runs on across the edge to the next block and over the top of the one below. The beds differ by a shade, the first row of a bed is a
     shade darker in places, and a grain runs through all of it. The face wraps on itself, so the sixth bed is the first."""
+    base = seed if base is None else base
     edges = []
     for k, start in enumerate(BED_STARTS):
-        edges.append((start + (hashf(form, k, 1) - 0.5) * 0.8, 0.5 + hashf(form, k, 2) * 1.0, 1 + int(hashf(form, k, 3) * 2),
-                      hashf(form, k, 4) * TAU + (hashf(seed, k, 5) - 0.5)))
-    turn = int(hashf(seed, 9) * len(BED_SHADES))
+        edges.append((start + (hashf(form, k, 1) - 0.5) * 0.8, 0.8 + hashf(form, k, 2) * 0.8, 1 + int(hashf(form, k, 3) * 2),
+                      float(int(hashf(form, k, 4) * len(SINE16))), (hashf(seed, k, 5) - 0.5) * 6, (hashf(seed, k, 8) - 0.5) * 3))
     g = blank(shades[mid])
     for x in range(SIZE):
-        tops = sorted((y0 + amp * math.sin(TAU * turns * (x + 0.5) / SIZE + phase)) % SIZE for y0, amp, turns, phase in edges)
         for y in range(SIZE):
-            above = [t for t in tops if t <= y + 0.5]
-            bed = len(above) - 1
-            lip = y + 0.5 - above[-1] if above else y + 0.5 + SIZE - tops[-1]
-            shade = mid + BED_SHADES[(bed + turn) % len(BED_SHADES)] - (1 if lip < 1.0 and hashf(seed, x, y, 6) > 0.5 else 0)
-            g[y][x] = clamp(shade + grain(seed + 10, x, y, 0.36, 0.64), shades)
+            # A variant's own phase is let in a step at a time from the edge, so the beds are the layer's own on the outermost ring, whatever the
+            # variant. Each top keeps its number, so the shade of a bed does not change when two tops cross, or one goes over the wrap of the face.
+            w = edge_weight(x, y)
+            tops = sorted(((y0 + lift * w + amp * sine_at(turns * x + phase + jitter * w)) % SIZE, k) for k, (y0, amp, turns, phase, jitter, lift) in enumerate(edges))
+            # A bed's edge is frayed: each pixel is a little above or below where it is, so the edge is a band two rows deep and not a line.
+            place = y + 0.5 + (pinned(seed, base, x, y, 7) - 0.5) * 1.6
+            above = [t for t in tops if t[0] <= place % SIZE]
+            top, bed = above[-1] if above else (tops[-1][0] - SIZE, tops[-1][1])
+            lip = place % SIZE - top
+            shade = mid + BED_SHADES[bed] - (1 if lip < 1.0 and pinned(seed, base, x, y, 6) > 0.75 else 0)
+            g[y][x] = clamp(shade + grain(seed + 10, base + 10, x, y, 0.58), shades)
     return g
 
 
-def grained(shades: list[str], seed: int, mid: int = 2) -> Grid:
+def grained(shades: list[str], seed: int, mid: int = 2, base: int | None = None) -> Grid:
     """Fine clustered grain and nothing else, as vanilla stone is: soft clusters a shade up or down, and a speck here and there."""
     g = blank(shades[mid])
     for y in range(SIZE):
         for x in range(SIZE):
-            g[y][x] = clamp(mid + grain(seed, x, y), shades)
+            g[y][x] = clamp(mid + grain(seed, seed if base is None else base, x, y), shades)
     return g
 
 
-def ledge(shades: list[str], seed: int, mid: int = 2) -> Grid:
+def ledge(shades: list[str], seed: int, mid: int = 2, base: int | None = None) -> Grid:
     """The top of a bed, which a floor, a bench or a roof shows: grain, and two short fissures that run on across the edge."""
-    g = grained(shades, seed, mid)
+    g = grained(shades, seed, mid, base)
     for k in range(2):
         y = 3 + int(hashf(seed, 90 + k) * 10)
         x0 = int(hashf(seed, 91 + k) * SIZE)
@@ -147,16 +209,17 @@ def ledge(shades: list[str], seed: int, mid: int = 2) -> Grid:
 
 # ---------------------------------------------------------------------------------------------------------------- mottled
 
-def mottled(shades: list[str], seed: int, mid: int = 2, veins: bool = True) -> Grid:
-    """Large soft mottles, patches a few pixels across a shade lighter or darker than the rest, and one or two thin lighter veins, short lines
+def mottled(shades: list[str], seed: int, mid: int = 2, veins: bool = True, base: int | None = None) -> Grid:
+    """Bold mottles, patches of a few pixels a shade or two lighter or darker than the rest, and, in some of them, a thin lighter vein, a short line
     that wander a pixel and end inside the face (2 to 13), as a vein does that does not reach the edge of the stone; none touches an edge, so
     none draws a line at the edge of a block."""
+    base = seed if base is None else base
     g = blank(shades[mid])
     for y in range(SIZE):
         for x in range(SIZE):
-            n = 0.7 * vnoise(seed, x, y, 4, 4) + 0.3 * vnoise(seed + 1, x, y, 2, 2)
-            g[y][x] = clamp(mid + (1 if n > 0.58 else -1 if n < 0.42 else 0) + grain(seed + 2, x, y, 0.38, 0.62), shades)
-    for k in range(1 + int(hashf(seed, 80) * 2) if veins else 0):
+            n = soft(seed, base, x, y, 2)
+            g[y][x] = clamp(mid + (2 if n > 1.3 else 1 if n > 0.45 else -2 if n < -1.3 else -1 if n < -0.45 else 0) + grain(seed + 2, base + 2, x, y, 1.1), shades)
+    for k in range(1 if veins and hashf(seed, 80) < 0.4 else 0):
         x0, y0 = 2 + int(hashf(seed, 81, k) * 4), 3 + int(hashf(seed, 82, k) * 7)
         slope = (-1, 0, 1)[int(hashf(seed, 83, k) * 3)]
         for i in range(5 + int(hashf(seed, 84, k) * 5)):
@@ -179,7 +242,7 @@ def breccia(shades: list[str], seed: int, cells: int = 9, aspect: float = 1.4, s
     for y in range(SIZE):
         for x in range(SIZE):
             cell, gap = field[y][x]
-            shade = mid + clast[int(hashf(seed, cell, 5) * len(clast))] + grain(seed + 10, x, y, 0.3, 0.7)
+            shade = mid + clast[int(hashf(seed, cell, 5) * len(clast))] + grain(seed + 10, seed + 10, x, y, 0.84)
             if gap < seam_gap and hashf(seed, x, y, 6) < seam_p:
                 shade -= 1
             g[y][x] = clamp(shade, shades)
@@ -230,7 +293,7 @@ def columns(shades: list[str], seed: int, mid: int = 2) -> Grid:
         at = [joint + WIGGLE[(phase + turns * y) % len(WIGGLE)] for joint, (phase, turns) in zip(joints, wander)]
         for x in range(SIZE):
             column = (sum(1 for a in at if a <= x) - 1) % 3
-            shade = mid + tones[column] + grain(seed + 30, x, y, 0.38, 0.62)
+            shade = mid + tones[column] + grain(seed + 30, seed + 30, x, y, 0.67)
             if x in at and hashf(seed, x, y, 8) < 0.88:
                 shade = mid + tones[column] - 2
             elif y == drums[column] and hashf(seed, x, y, 9) < 0.75:
@@ -250,7 +313,7 @@ def hex_cap(shades: list[str], seed: int) -> Grid:
     and dark outside it. The model builds the hexagon from three rectangles at 0, 60 and 120 degrees, each showing this texture turned;
     the plates are not drawn to match across them, because on a cap a seam between plates is a crack."""
     g = plated(shades, seed)
-    normals = [(math.cos(math.radians(a)), math.sin(math.radians(a))) for a in (30, 90, 150)]
+    normals = [(math.sqrt(3) / 2, 0.5), (0.0, 1.0), (-math.sqrt(3) / 2, 0.5)]
     for y in range(SIZE):
         for x in range(SIZE):
             px, py = x + 0.5 - SIZE / 2, y + 0.5 - SIZE / 2
@@ -491,3 +554,4 @@ def shotcrete(seed: int, cracked: bool = False) -> Grid:
             y += 1
             x += 1 if hashf(seed, x, y) > 0.55 else 0
     return g
+

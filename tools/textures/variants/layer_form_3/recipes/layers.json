@@ -112,25 +112,26 @@
             "g": "plug.1",
             "h": "plug.2",
             "i": "plug.3",
-            "j": "plug.4"
+            "j": "plug.4",
+            "k": "plug.5"
           },
           "rows": [
-            "hhgghfgghghhfhhh",
-            "ggghihfgeghhgfhh",
-            "gghhihhfeghgfhhg",
-            "hhgiiifgeggfgghh",
-            "hhhiifgggggffghh",
-            "ihgiiiffffffffhh",
+            "ggggjfhhhgfffhhg",
+            "fggjkjfhefffffhh",
+            "hgjjjjjheffffhhh",
+            "iigiihfgefffhhhh",
+            "iiiihffgffggfiih",
+            "jigihhfffffggfih",
             "bbbbbbbbbbbbbbbb",
             "dddddddddddddddd",
             "cccaccccccccaccc",
             "bbbbbbbbbbbbbbbb",
-            "igijihhfggggfhii",
-            "hhgjijfggggfghhh",
-            "fghgjfhhhggffggg",
-            "hggijjfggggggfhh",
-            "igiijjiffghgfhgh",
-            "ihghiiggfggfihhh"
+            "igghhghfhhhgfghi",
+            "hggiiifhhhhfgghi",
+            "fghgifghhhggfhhh",
+            "gfgjihffgghhhfjh",
+            "ggjjihgffhihfihg",
+            "gggiijgffhhfiihg"
           ]
         }
       ]
@@ -150,26 +151,25 @@
             "g": "plug.1",
             "h": "plug.2",
             "i": "plug.3",
-            "j": "plug.4",
-            "k": "plug.5"
+            "j": "plug.4"
           },
           "rows": [
-            "gggiihhifggfhiii",
-            "ggggihhfegfgfiih",
-            "ggggghfgehggfhig",
-            "ggghhhhfegfggfgg",
-            "hhgiiihighgggfgg",
-            "hhgghiifggggfggg",
+            "gggijjjjfgffihgh",
+            "ghhgjjjfeffffggg",
+            "iihigjffeffffghh",
+            "iihijjifeffggfhi",
+            "iigiiiihfffghfii",
+            "iihgiiiffffgfihi",
             "bbbbbbbbbbbbbbbb",
             "dddddddddddddddd",
             "cccaccccccccaccc",
             "bbbbbbbbbbbbbbbb",
-            "iiiigifgggggfhhh",
-            "hhigiiifhhgggfgh",
-            "gggiiiiifhhgffgg",
-            "gghgjjifhhggfhhg",
-            "ggiijkfhggfffiih",
-            "gghgjiifggffhiih"
+            "ihhggifghhhgfghh",
+            "gghghijfhhgfffih",
+            "gggihijifhgfgfih",
+            "gghghhgfhihgfiih",
+            "hghhhifghhhhfjih",
+            "hhgghhhfhhgfiihh"
           ]
         }
       ]
@@ -190,18 +190,18 @@
           "rows": [
             "aaaaaaaaaaaaaaaa",
             "aaaaaaaaaaaaaaaa",
-            "aaaaedeeddddaaaa",
-            "aaaaedefeefdaaaa",
-            "aaaedddeeffeeaaa",
-            "aaeedeeeffeefeaa",
-            "aadeeedfffffeeaa",
-            "aeddeeeeeeebbcea",
-            "abeeeeeeedcbbcda",
-            "aacbddedddbbccaa",
-            "aacbdddcddbcccaa",
-            "aaacdddbdddbbaaa",
-            "aaaacdcdeeedaaaa",
-            "aaaacdddbeeeaaaa",
+            "aaaaeefffdddaaaa",
+            "aaaaffffeeedaaaa",
+            "aaaeeeeeddeefaaa",
+            "aaeedddededeffaa",
+            "aaeedddfeeeedeaa",
+            "aeeeeeeeeddbbcea",
+            "abefffeeedbbccca",
+            "aadceeedddbbbbaa",
+            "aadceedbddbbbbaa",
+            "aaadeddbdedbbaaa",
+            "aaaaeeddfffeaaaa",
+            "aaaadddecffeaaaa",
             "aaaaaaaaaaaaaaaa",
             "aaaaaaaaaaaaaaaa"
           ]

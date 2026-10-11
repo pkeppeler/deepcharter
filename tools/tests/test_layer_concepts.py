@@ -20,6 +20,9 @@ import make  # noqa: E402
 import pngio  # noqa: E402
 import scenes  # noqa: E402
 import seams  # noqa: E402
+import shapes  # noqa: E402
+import grid  # noqa: E402
+import art  # noqa: E402
 
 ROOT = make.ROOT
 LAYERS = scenes.LAYERS
@@ -38,7 +41,7 @@ def tiling_textures(pack: str) -> dict[str, Path]:
     """The textures of a pack that tile as the rock does: the rock, rubble and crust of the natural rock, by name. Not a core (a body inside a
     block, never seen), a glow layer, or the Company's own things, which are stencilled and banded on purpose."""
     found = {p.stem: p for p in texture_path(pack, "x").parent.glob("lc_*.png")}
-    return {name: path for name, path in sorted(found.items()) if re.fullmatch(r"lc_(rock|rubble)_\d_(\d|end)|lc_crust_(side|top)", name)}
+    return {name: path for name, path in sorted(found.items()) if re.fullmatch(r"lc_(rock|rubble)_\d_(\d|end|end_\d)|lc_crust_(side|top)", name)}
 
 
 def measure(path: Path) -> seams.Seams:
@@ -46,42 +49,32 @@ def measure(path: Path) -> seams.Seams:
     return seams.measure(image.pixels, image.width)
 
 
-def steps_along(image: pngio.Rgba, axis: int) -> float:
-    """The mean colour step between neighbours along X (axis 0) or Y (axis 1)."""
-    total = count = 0
-    for y in range(image.height - (axis == 1)):
-        for x in range(image.width - (axis == 0)):
-            here = (y * image.width + x) * 4
-            there = here + 4 if axis == 0 else here + image.width * 4
-            total += seams.step(image.pixels[here:here + 3], image.pixels[there:there + 3])
-            count += 1
-    return total / count
-
-
 class SeamCheckTest(unittest.TestCase):
     """A texture tiles when it runs on across its wrap seams and has no edge of its own (seams.py)."""
 
     @staticmethod
-    def outlined_square() -> bytes:
-        """A texture with a one pixel dark border and a flat middle: every block it covers is an outlined square."""
-        grid = [["shale1.3"] * SIZE for _ in range(SIZE)]
-        for i in range(SIZE):
-            for edge in ((i, 0), (i, SIZE - 1), (0, i), (SIZE - 1, i)):
-                grid[edge[1]][edge[0]] = "shale1.0"
-        for y in range(2, SIZE - 2):
-            for x in range(2, SIZE - 2):
-                grid[y][x] = "shale1.3" if (x * 7 + y * 3) % 5 else "shale1.4"
-        return pixels(grid)
+    def outlined_square(border: int) -> bytes:
+        """A texture with a dark border `border` pixels wide and a flat middle: every block it covers is an outlined square."""
+        rows = [["shale1.3"] * SIZE for _ in range(SIZE)]
+        for y in range(SIZE):
+            for x in range(SIZE):
+                if min(x, y, SIZE - 1 - x, SIZE - 1 - y) < border:
+                    rows[y][x] = "shale1.0"
+                else:
+                    rows[y][x] = "shale1.3" if (x * 7 + y * 3) % 5 else "shale1.4"
+        return pixels(rows)
 
     @staticmethod
     def not_wrapping() -> bytes:
         """Beds that step down the face and do not come back up: the top of a block is not the bottom of the one above."""
         return pixels([[f"shale1.{min(5, y // 3)}"] * SIZE for y in range(SIZE)])
 
-    def test_an_outlined_square_fails_the_rim_check(self):
-        found = seams.measure(self.outlined_square(), SIZE)
-        self.assertGreater(found.rim_ratio, 1 + seams.MARGIN, found)
-        self.assertFalse(found.seamless())
+    def test_an_outlined_square_fails_the_rim_check_with_a_border_of_one_pixel_or_two(self):
+        for border in (1, 2):
+            found = seams.measure(self.outlined_square(border), SIZE)
+            with self.subTest(border=border):
+                self.assertGreater(found.rim_ratio, 1 + seams.MARGIN, found)
+                self.assertFalse(found.seamless())
 
     def test_a_texture_that_does_not_wrap_fails_the_wrap_check(self):
         found = seams.measure(self.not_wrapping(), SIZE)
@@ -94,7 +87,7 @@ class SeamCheckTest(unittest.TestCase):
             self.assertTrue(textures, f"{pack} has no rock texture to check")
             for name, path in textures.items():
                 found = measure(path)
-                ceiling = seams.MAX_INSIDE if re.fullmatch(r"lc_rock_\d_(\d|end)", name) else seams.MAX_RUBBLE_INSIDE
+                ceiling = seams.MAX_INSIDE if re.fullmatch(r"lc_rock_\d_(\d|end_\d)", name) else seams.MAX_RUBBLE_INSIDE
                 with self.subTest(pack=pack, texture=name):
                     self.assertLessEqual(found.wrap_ratio, 1 + seams.MARGIN, "does not run on across its wrap seams")
                     self.assertLessEqual(found.rim_ratio, 1 + seams.MARGIN, "has an edge of its own")
@@ -111,21 +104,28 @@ class SeamCheckTest(unittest.TestCase):
 
 
 class StyleTest(unittest.TestCase):
-    def test_the_texture_options_differ_in_structure_and_not_only_in_colour(self):
-        """Bedding runs across the face, so its vertical steps outweigh its horizontal ones; grain and mottles have no direction."""
-        anisotropy = {}
+    def test_the_variants_of_a_layer_agree_more_on_their_outermost_ring_than_inside(self):
+        """The edge pixels of the variants of a layer's rock are drawn mostly from one shared noise (art.soft), so a block next to a block of another variant
+        meets it nearly where a texture meets its own wrap, and not where two textures that have nothing to do with each other meet: that is a line at
+        every block. Not all from it, because the shared edge would be one pattern that comes back at every block."""
+        ring = [(x, y) for x in range(SIZE) for y in range(SIZE) if min(x, y, SIZE - 1 - x, SIZE - 1 - y) == 0]
+        inside = [(x, y) for x in range(SIZE) for y in range(SIZE) if min(x, y, SIZE - 1 - x, SIZE - 1 - y) >= 4]
+
+        def share(images, places):
+            pairs = [(a, b) for i, a in enumerate(images) for b in images[i + 1:]]
+            same = sum(a.pixels[4 * (y * SIZE + x):4 * (y * SIZE + x) + 4] == b.pixels[4 * (y * SIZE + x):4 * (y * SIZE + x) + 4]
+                       for a, b in pairs for x, y in places)
+            return same / (len(pairs) * len(places))
+
+        shares = []
         for style in make.STYLES:
             for layer in LAYERS:
-                images = [pngio.decode(path.read_bytes(), name) for name, path in tiling_textures(style).items()
-                          if re.fullmatch(rf"lc_rock_{layer}_\d", name)]
-                along_y = sum(steps_along(i, 1) for i in images) / len(images)
-                along_x = sum(steps_along(i, 0) for i in images) / len(images)
-                anisotropy[style, layer] = along_y / along_x
-        for layer in LAYERS:
-            with self.subTest(layer=layer):
-                self.assertGreater(anisotropy["bedded", layer], 1.1)
-                for style in ("grain", "mottled"):
-                    self.assertAlmostEqual(1.0, anisotropy[style, layer], delta=0.12)
+                images = [pngio.decode(p.read_bytes(), n) for n, p in tiling_textures(style).items() if re.fullmatch(rf"lc_rock_{layer}_\d", n)]
+                self.assertGreater(len(images), 3)
+                shares.append((share(images, ring), share(images, inside)))
+                with self.subTest(style=style, layer=layer):
+                    self.assertLess(shares[-1][0], 0.9, "the edges are one pattern")
+        self.assertGreater(sum(r for r, _ in shares) / len(shares), sum(i for _, i in shares) / len(shares) + 0.05)
 
     def test_two_options_draw_the_same_block_with_different_pixels_in_the_same_colours(self):
         """The options share each layer's colour ramp, so they differ in where the pixels are, which is structure. (A top is grain in Grain and
@@ -138,13 +138,90 @@ class StyleTest(unittest.TestCase):
                     with self.subTest(texture=name, options=(first, second)):
                         self.assertGreater(differing / (SIZE * SIZE), 0.35)
 
-    def test_every_layer_has_its_assigned_formation_in_every_option(self):
+    def test_layer_1_and_2_rock_is_a_plain_cube_and_layer_3_is_the_column(self):
         self.assertEqual({1: "a", 2: "b", 3: "c"}, scenes.FORMATIONS)
         files, _ = make.outputs()
         for style in make.STYLES:
             models = {p.stem: json.loads(b) for p, b in files.items() if make.pack_dir(style) in p.parents and "/models/block/" in p.as_posix()}
-            forms = {json.dumps(models[f"lc_rock_{layer}_0"]["elements"], sort_keys=True) for layer in LAYERS}
-            self.assertEqual(len(LAYERS), len(forms), "two layers share one formation's block")
+            for layer in (1, 2):
+                with self.subTest(style=style, layer=layer):
+                    self.assertTrue(all("elements" not in models[name] for name in models if name.startswith(f"lc_rock_{layer}_")))
+            self.assertTrue(all("elements" in models[name] for name in models if name.startswith("lc_rock_3_")), "layer 3 is the hexagonal column")
+
+    def test_a_cube_is_never_turned_or_mirrored_because_its_textures_share_their_edges_only_so(self):
+        files, _ = make.outputs()
+        for style in make.STYLES:
+            entries = json.loads(files[make.pack_dir(style) / "assets/minecraft/blockstates/granite.json"])["variants"][""]
+            with self.subTest(style=style):
+                self.assertFalse([e for e in entries if "x" in e or "y" in e])
+                self.assertEqual(make.ROCK_VARIANTS[1], len(entries))
+
+    def test_a_rock_block_has_many_ways_to_look(self):
+        files, _ = make.outputs()
+        for style in make.STYLES:
+            for layer, (rock, _) in make.STAND_INS.items():
+                entries = json.loads(files[make.pack_dir(style) / f"assets/minecraft/blockstates/{rock}.json"])["variants"][""]
+                with self.subTest(style=style, layer=layer):
+                    self.assertGreaterEqual(len(entries), 6, "the rock repeats at the size of a block")
+
+
+class ModelGuardTest(unittest.TestCase):
+    """The models of natural rock have no element outside the block and no face inside it (shapes.faults): a recess between two blocks is a dark line
+    round each, and a lip at every block's edge is a row of them. The Company Rock is a placed object with a form of its own (studs, chamfers, a
+    collared column), layer 3's columns have open joints between them as their formation, and layer 3's crust has a layer of glow 0.02 pixel
+    over its cracks; all are exempt by name."""
+
+    EXEMPT = re.compile(r"lc_company_rock_\d|lc_(rock|rubble)_3_\d")
+    GLOW_CRUST = ("layer_concept_form_3", "lc_breach_crust_0")
+
+    @staticmethod
+    def element(lo, hi, faces=("north", "south", "west", "east", "up", "down")):
+        return {"elements": [{"from": lo, "to": hi, "faces": {face: {} for face in faces}}]}
+
+    def test_a_model_with_an_element_outside_the_block_fails(self):
+        self.assertTrue(shapes.faults(self.element([0, 0, 0], [16, 16, 17])))
+
+    def test_a_model_with_a_face_recessed_into_the_block_fails(self):
+        self.assertTrue(shapes.faults(self.element([0, 0, 1], [16, 16, 16], ("north",))))
+        self.assertTrue(shapes.faults(self.element([1, 0, 0], [15, 16, 16])))
+
+    def test_a_model_that_is_not_a_cube_fails_and_a_full_cube_passes(self):
+        self.assertTrue(shapes.faults({"parent": "minecraft:block/slab"}))
+        self.assertEqual([], shapes.faults(self.element([0, 0, 0], [16, 16, 16])))
+
+    def test_every_natural_rock_model_passes(self):
+        files, _ = make.outputs()
+        checked = 0
+        for path, body in files.items():
+            if "/models/block/" in path.as_posix() and not self.EXEMPT.fullmatch(path.stem) and not (
+                    self.GLOW_CRUST[0] in path.as_posix() and path.stem == self.GLOW_CRUST[1]):
+                checked += 1
+                with self.subTest(model=f"{path.parent.parent.parent.parent.name}/{path.name}"):
+                    self.assertEqual([], shapes.faults(json.loads(body)))
+        self.assertGreater(checked, 60)
+
+
+class GridTest(unittest.TestCase):
+    """The rendered check (grid.py): noise passes, and a line that comes back every block does not, wherever it comes from."""
+
+    @staticmethod
+    def wall(lines: bool) -> list[list[float]]:
+        pitch = grid.WALL["pixels"]
+        return [[40.0 + 30.0 * art.hashf(7, x, y) - (45.0 if lines and (x % pitch) < 2.0 else 0.0) for x in range(854)] for y in range(480)]
+
+    def test_noise_scores_low_and_a_seam_at_every_block_scores_high(self):
+        quiet = grid.wall_score(self.wall(False))
+        seamed = grid.wall_score(self.wall(True))
+        self.assertLess(quiet, 0.3)
+        self.assertGreater(seamed, 1.0 + quiet)
+
+    def test_the_scale_is_the_projection_of_a_block_at_the_distance_of_each_view(self):
+        """The wide wall is 9.9 blocks from its camera and the reference 9.6, and a block covers pixels * distance / distance of them."""
+        scene = scenes.build(1)
+        views = {v.name: v for v in scene.views}
+        distances = {name: abs(views[name].eye[2] - views[name].target[2]) for name in ("wide-wall", "vanilla-reference")}
+        focal = grid.REFERENCE["pixels"] * distances["vanilla-reference"]
+        self.assertAlmostEqual(grid.WALL["pixels"], focal / distances["wide-wall"], delta=0.3)
 
 
 class LayerConceptsTest(unittest.TestCase):

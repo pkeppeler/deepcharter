@@ -24,6 +24,7 @@ covers them. A PNG is compared by its pixels, so another zlib on another machine
 import argparse
 import json
 import sys
+from functools import lru_cache
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -75,10 +76,11 @@ def pack_dir(pack: str) -> Path:
 
 
 # How many models of the rock block each layer has. Layer 1's beds are the likeliest to read as ruled courses, so no two neighbours should match.
-ROCK_VARIANTS = {1: 6, 2: 5, 3: 5}
+ROCK_VARIANTS = {1: 10, 2: 10, 3: 6}
 RUBBLE_VARIANTS = 2
-# The rubble is the same relief as the rock, drawn from other numbers.
-RUBBLE_SHAPE_OFFSET = 50
+# How many textures a layer's rock has for its top and bottom: a floor or a roof is one texture turned and mirrored, and three of them keep
+# it from repeating at the size of a block.
+END_VARIANTS = 4
 # The vanilla blocks that stand in for each layer's rock and its rubble, and the name the pack gives their textures and models.
 STAND_INS = {1: ("granite", "cobblestone"), 2: ("tuff", "cobbled_deepslate"), 3: ("andesite", "diorite")}
 
@@ -87,6 +89,7 @@ SHADES = {1: art.ramp("shale1", 6), 2: art.ramp("shale2", 6), 3: art.ramp("basal
 # The middle shade of each ramp. Round 1 sat at 2 and the stills were nearly black; 3 is as light as the lit rock can be and stay a near-black
 # layer. Layer 2's shale is darker and its steps smaller, so its texture sits one shade higher again for the same contrast.
 MID = {1: 3, 2: 4, 3: 4}
+
 CRUST = art.ramp("crust", 6)
 # The seed of layer 3's crust plates, which the glow of their cracks must match.
 CRUST_SEED = 61
@@ -94,22 +97,35 @@ CRUST_SEED = 61
 
 # ---------------------------------------------------------------------------------------------------------------- textures
 
+@lru_cache(maxsize=None)
+def shared_noise(layer: int, top: bool) -> int:
+    """The seed of the noise that all the variants of a layer's rock share at their edges (art.soft), so that a block of one variant meets a block of
+    another where the noise meets itself: the first seed whose own grain and own mottles tile. The same noise is at the edge of every variant, so a base that did not
+    tile would make every one of them fail, and the seeds of the variants cannot mend it."""
+    for attempt in range(50):
+        base = 90000 + 100 * layer + 7 * top + 1000 * attempt
+        plain = (art.grained(SHADES[layer], base, MID[layer]), art.mottled(SHADES[layer], base, MID[layer], veins=False))
+        if all(seams.measure(image(texture).pixels, art.SIZE).seamless() for texture in plain):
+            return base
+    raise ValueError(f"no shared noise for layer {layer} that tiles")
+
+
 def rock_side(style: str, layer: int, seed: int) -> art.Grid:
     shades, mid = SHADES[layer], MID[layer]
     if style == "grain":
-        return art.grained(shades, seed, mid)
+        return art.grained(shades, seed, mid, shared_noise(layer, False))
     if style == "bedded":
-        return art.bedded(shades, seed, 10 + layer, mid)
-    return art.mottled(shades, seed, mid)
+        return art.bedded(shades, seed, 10 + layer, mid, shared_noise(layer, False))
+    return art.mottled(shades, seed, mid, base=shared_noise(layer, False))
 
 
 def rock_end(style: str, layer: int, seed: int) -> art.Grid:
     shades, mid = SHADES[layer], MID[layer]
     if style == "grain":
-        return art.grained(shades, seed, mid)
+        return art.grained(shades, seed, mid, shared_noise(layer, True))
     if style == "bedded":
-        return art.ledge(shades, seed, mid)
-    return art.mottled(shades, seed, mid, veins=False)
+        return art.ledge(shades, seed, mid, shared_noise(layer, True))
+    return art.mottled(shades, seed, mid, veins=False, base=shared_noise(layer, True))
 
 
 def rubble(style: str, layer: int, seed: int) -> art.Grid:
@@ -135,7 +151,8 @@ def rock_grids(style: str) -> dict[str, art.Grid]:
         seed = 100 * layer
         for i in range(ROCK_VARIANTS[layer]):
             out[f"lc_rock_{layer}_{i}"] = fitted(lambda s: rock_side(style, layer, s), seed + i)
-        out[f"lc_rock_{layer}_end"] = fitted(lambda s: rock_end(style, layer, s), seed + 15)
+        for j in range(END_VARIANTS):
+            out[f"lc_rock_{layer}_end_{j}"] = fitted(lambda s: rock_end(style, layer, s), seed + 15 + j)
         for i in range(RUBBLE_VARIANTS):
             out[f"lc_rubble_{layer}_{i}"] = fitted(lambda s: rubble(style, layer, s), seed + 20 + i, seams.MAX_RUBBLE_INSIDE)
         out[f"lc_rubble_{layer}_end"] = fitted(lambda s: rubble(style, layer, s), seed + 22, seams.MAX_RUBBLE_INSIDE)
@@ -189,53 +206,54 @@ def textures(pack: str) -> dict[str, dict]:
     """Every texture recipe of a pack, by key (block/<name>)."""
     if pack in STYLES:
         return {f"block/{name}": art.recipe(grid) for name, grid in rock_grids(pack).items()} | {
-            f"block/lc_core_{layer}": art.recipe(art.core(SHADES[layer], 100 * layer + 9)) for layer in scenes.LAYERS}
+            "block/lc_core_3": art.recipe(art.core(SHADES[3], 309))}
     return form_textures(int(pack.removeprefix("form_")))
 
 
 # ---------------------------------------------------------------------------------------------------------------- models
 
-def rock_model(layer: int, variant: int, rubble_block: bool):
-    formation = scenes.FORMATIONS[layer]
-    if formation == "a":
-        return shapes.plates(variant + RUBBLE_SHAPE_OFFSET) if rubble_block else shapes.beds(variant)
-    if formation == "b":
-        return shapes.plates(variant + (RUBBLE_SHAPE_OFFSET if rubble_block else 0))
-    return shapes.prism((variant + 1) % 3 if rubble_block else variant % 3)
+def cube_models(layer: int, kind: str, count: int) -> dict[str, dict]:
+    """The plain cubes of a layer's rock or rubble: each texture, with the end texture of the next of its few."""
+    out = {}
+    for i in range(count):
+        end = f"lc_{kind}_{layer}_end_{i % END_VARIANTS}" if kind == "rock" else f"lc_{kind}_{layer}_end"
+        out[f"lc_{kind}_{layer}_{i}"] = shapes.cube(f"lc_{kind}_{layer}_{i}", end)
+    return out
 
 
 def style_models() -> dict[str, dict]:
-    """Every model of a texture style's pack, by name. The same in all styles: the formation is the layer's, and the style is the texture."""
+    """Every model of a texture style's pack, by name. The same in all styles: the formation is the layer's, and the style is the texture. The
+    rock of layers 1 and 2 is a plain cube; layer 3's is the hexagonal column."""
     out = {}
     for layer in scenes.LAYERS:
-        for kind, count, is_rubble in (("rock", ROCK_VARIANTS[layer], False), ("rubble", RUBBLE_VARIANTS, True)):
-            for i in range(count):
-                m = rock_model(layer, i, is_rubble)
-                m.textures = shapes.rock_textures(f"lc_{kind}_{layer}_{i}", f"lc_{kind}_{layer}_end", f"lc_core_{layer}")
-                out[f"lc_{kind}_{layer}_{i}"] = m.json(f"layer {layer} {kind} {i}")
+        for kind, count in (("rock", ROCK_VARIANTS[layer]), ("rubble", RUBBLE_VARIANTS)):
+            if scenes.FORMATIONS[layer] == "c":
+                for i in range(count):
+                    m = shapes.prism(i if kind == "rock" else i + 1)
+                    end = f"lc_rock_{layer}_end_{i % END_VARIANTS}" if kind == "rock" else f"lc_rubble_{layer}_end"
+                    m.textures = shapes.rock_textures(f"lc_{kind}_{layer}_{i}", end, f"lc_core_{layer}")
+                    out[f"lc_{kind}_{layer}_{i}"] = m.json(f"layer {layer} {kind} {i}")
+            else:
+                out |= cube_models(layer, kind, count)
     return out
 
 
 def form_models(layer: int) -> dict[str, dict]:
-    """Every model of a layer form's pack, by name: the Company Rock in two variants and the breach crust."""
+    """Every model of a layer form's pack, by name: the Company Rock in two variants and the breach crust, a plain cube in layers 1 and 2 and a
+    cube with a layer of glow over its cracks in layer 3."""
     formation = scenes.FORMATIONS[layer]
     out = {}
     for i in range(2):
         m = {"a": shapes.plug_a, "b": shapes.concrete_b}.get(formation, lambda: shapes.prism(0, collar=True))()
         m.textures = shapes.rock_textures(f"lc_company_rock_{i}", "lc_company_rock_end", "lc_core")
         out[f"lc_company_rock_{i}"] = m.json(f"layer {layer} company rock {i}")
-    textures_of_crust = {"side": shapes.tex("lc_crust_side"), "top": shapes.tex("lc_crust_top"), "core": shapes.tex("lc_core"),
-                         "particle": shapes.tex("lc_crust_side")}
-    if formation == "a":
-        crusts = [shapes.crust_a()]
-    elif formation == "b":
-        crusts = [shapes.crust_b(0), shapes.crust_b(1)]
+    if formation == "c":
+        m = shapes.crust_c()
+        m.textures = {"side": shapes.tex("lc_crust_side"), "top": shapes.tex("lc_crust_top"), "glow": shapes.tex("lc_crust_seam_glow"),
+                      "particle": shapes.tex("lc_crust_side")}
+        out["lc_breach_crust_0"] = m.json(f"layer {layer} crust")
     else:
-        crusts = [shapes.crust_c()]
-        textures_of_crust["glow"] = shapes.tex("lc_crust_seam_glow")
-    for i, m in enumerate(crusts):
-        m.textures = dict(textures_of_crust)
-        out[f"lc_breach_crust_{i}"] = m.json(f"layer {layer} crust {i}")
+        out["lc_breach_crust_0"] = shapes.cube("lc_crust_side", "lc_crust_top")
     return out
 
 
@@ -245,18 +263,22 @@ def pack_models(pack: str) -> dict[str, dict]:
 
 def blockstates(pack: str, models: dict[str, dict]) -> dict[str, dict]:
     """The blockstates of a pack, by path under assets/."""
-    def listed(names):
-        return {"variants": {"": shapes.variants_y(names)}}
+    def listed(names, y_turns=shapes.HEX_Y_TURNS):
+        return {"variants": {"": shapes.variants(names, y_turns)}}
 
     if pack in STYLES:
         out = {}
         for layer, (rock, rubble_block) in STAND_INS.items():
-            out[f"minecraft/blockstates/{rock}.json"] = listed([f"lc_rock_{layer}_{i}" for i in range(ROCK_VARIANTS[layer])])
-            out[f"minecraft/blockstates/{rubble_block}.json"] = listed([f"lc_rubble_{layer}_{i}" for i in range(RUBBLE_VARIANTS)])
+            cube = scenes.FORMATIONS[layer] != "c"
+            for kind, block, count in (("rock", rock, ROCK_VARIANTS[layer]), ("rubble", rubble_block, RUBBLE_VARIANTS)):
+                names = [n for n in models if n.startswith(f"lc_{kind}_{layer}_")]
+                assert len(names) == count, (kind, layer, names)
+                out[f"minecraft/blockstates/{block}.json"] = listed(names, (0,)) if cube else listed(names)
         return out
+    crusts = [n for n in models if n.startswith("lc_breach_crust_")]
     return {
         "deepcharter/blockstates/company_rock.json": listed([f"lc_company_rock_{i}" for i in range(2)]),
-        "deepcharter/blockstates/breach_crust.json": listed([n for n in models if n.startswith("lc_breach_crust_")]),
+        "deepcharter/blockstates/breach_crust.json": listed(crusts),
     }
 
 

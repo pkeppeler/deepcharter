@@ -19,8 +19,10 @@ The user's other round 1 comment was that the strata textures looked like outlin
 | | Structure | How it avoids the outlined look |
 |---|---|---|
 | **Grain** | fine clustered grain and nothing else, as vanilla stone is | no feature but the grain, which is soft noise that wraps, so nothing can be cut by an edge |
-| **Bedded** | bedding streaks that run on across blocks | the five beds are the layer's own, the same in every variant: a bed leaves a block at one height and enters the next at the same height, and runs over the top of the block below |
-| **Mottled** | large soft mottles, with short lighter veins | the mottles are soft noise that wraps; a vein is a short line that ends inside the face, so none is drawn at an edge |
+| **Bedded** | bedding streaks that run on across blocks | the five beds are the layer's own, the same in every variant: a bed leaves a block at one height and enters the next at about the same height, and the edge of a bed is frayed, not a line |
+| **Mottled** | bold soft mottles, with a few short lighter veins | the mottles are soft noise that wraps; a vein is a short line that ends inside the face, so none is drawn at an edge |
+
+Every texture of a layer shares the noise of its outermost ring with the others, so a block meets a block of another variant about where a texture meets its own wrap. The rock of layers 1 and 2 is a plain cube, with ten textures for layer 1 and ten for layer 2 and four for the top and bottom; layer 3's is the column of round 1, with six.
 
 ## What "shape" covers
 
@@ -52,21 +54,43 @@ Each layer has one sealed box, 104 blocks long: a gallery, a hall with flat wall
 Vanilla stone, deepslate and tuff tile because they are low-contrast clustered noise with no edge treatment: the pixel next to an edge is drawn like the pixel in the middle, and the texture runs on across its wrap seam as if it were not there. Two numbers say whether a texture does the same ([seams.py](../../tools/layer_concepts/seams.py)), both as ratios of mean colour steps between neighbouring pixels (the mean absolute difference of red, green and blue):
 
 - **wrap**: the step across the wrap seams (column 15 to 0, row 15 to 0) over the step inside the texture. Above 1 the texture jumps where it meets its copy.
-- **rim**: the step between the outer ring of pixels and the ring inside it, over the step inside. Above 1 the edge is drawn differently from the middle: an outline or a bevel. A texture with a dark border has a wrap step of 0, so the wrap number alone would let it through.
+- **rim**: the step across the four boundaries nearest an edge (the outer ring to the next, and the next to the one inside it, on each side), over the step inside. Above 1 the edge is drawn differently from the middle: an outline or a bevel of one pixel or two. A texture with a dark border has a wrap step of 0, so the wrap number alone would let it through.
 
-Both must stay under 1.2. Vanilla measures (wrap, rim) stone 1.14 and 0.92, deepslate 0.87 and 0.71, tuff 1.04 and 1.02. The step inside must be between 6 and 22 for a rock texture (vanilla stone 9.7, deepslate 16.2, tuff 17.5) and at most 30 for rubble and crust (vanilla cobblestone 28.7). `tools/tests/test_layer_concepts.py` runs the check on every written rock, rubble and crust texture, and on two red fixtures: an outlined square, which fails the rim number, and beds that do not come back up, which fail the wrap number. The generator draws each texture from a seed and takes the first of 50 that passes, so a texture that does not tile cannot be written. A PNG is compared by its pixels, so another zlib on another machine does not fail `--check`, and no texture is drawn with a rounded float: a pixel is decided by integers, or by a comparison that a last-digit difference cannot flip.
+Both must stay under 1.2. Vanilla measures (wrap, rim) stone 1.14 and 0.91, deepslate 0.87 and 1.12, tuff 1.04 and 1.00. The step inside must be between 6 and 22 for a rock texture (vanilla stone 9.7, deepslate 16.2, tuff 17.5) and at most 30 for rubble and crust (vanilla cobblestone 28.7). `tools/tests/test_layer_concepts.py` runs the check on every written rock, rubble and crust texture, and on three red fixtures: an outlined square with a border of one pixel and one of two, which fail the rim number, and beds that do not come back up, which fail the wrap number. The generator draws each texture from a seed and takes the first of 50 that passes, so a texture that does not tile cannot be written. A PNG is compared by its pixels, so another zlib on another machine does not fail `--check`. No pixel is decided by a `sin`, a `cos` or a rounded float of a platform's maths library: the beds' waves are a table of sixteenths, and the rest is `+`, `-`, `*`, `/` and `sqrt`, which IEEE 754 rounds exactly, so every machine gets the same bits.
 
 | | Textures | Wrap, mean | Wrap, worst | Rim, mean | Rim, worst | Step inside, mean | Failing the check |
 |---|---|---|---|---|---|---|---|
-| Round 1, A Strata | 20 | 1.08 | 2.71 | 0.75 | 1.03 | 14.6 | 9 |
-| Round 1, B Fractured | 16 | 1.00 | 1.57 | 0.95 | 1.32 | 16.3 | 7 |
-| Round 1, C Columnar | 16 | 0.79 | 1.47 | 0.71 | 1.07 | 16.6 | 2 |
-| Round 2, Grain | 28 | 0.81 | 1.15 | 0.94 | 1.16 | 9.3 | 0 |
-| Round 2, Bedded | 28 | 0.83 | 1.17 | 0.90 | 1.18 | 10.2 | 0 |
-| Round 2, Mottled | 28 | 0.81 | 1.12 | 0.90 | 1.11 | 10.4 | 0 |
-| Round 2, the crusts of the three layers | 6 | 1.02 | 1.09 | 1.04 | 1.11 | 18.1 | 0 |
+| Round 1, A Strata | 20 | 1.08 | 2.71 | 0.83 | 1.02 | 14.6 | 9 |
+| Round 1, B Fractured | 16 | 1.00 | 1.57 | 0.89 | 1.15 | 16.3 | 5 |
+| Round 1, C Columnar | 16 | 0.79 | 1.47 | 0.77 | 1.15 | 16.6 | 2 |
+| Round 2, Grain | 47 | 0.86 | 1.20 | 1.03 | 1.18 | 9.0 | 0 |
+| Round 2, Bedded | 47 | 0.85 | 1.19 | 1.01 | 1.20 | 10.6 | 0 |
+| Round 2, Mottled | 47 | 0.88 | 1.16 | 1.04 | 1.20 | 11.8 | 0 |
+| Round 2, the crusts of the three layers | 6 | 1.03 | 1.15 | 0.94 | 1.13 | 19.2 | 0 |
 
-Each row is a pack's rock, rubble and crust textures. 18 of round 1's 52 fail the check. The check measures textures only: most of the outlined look of round 1 was the models (see Decisions), which no texture number sees, so the stills are the evidence for them.
+Each row is a pack's rock, rubble and crust textures. 16 of round 1's 52 fail the check (the two-ring rim number, measured on round 1's committed textures). The rim number measures the two outermost rings, so a border of two pixels fails it, and a red fixture of each width proves it.
+
+**The seam check cannot see a grid that the models or a motif make.** Round 1's recessed beds and plates, a lip at every block edge, one mottle repeated on every block: none is in any texture. Round 2's first pass passed the seam check with 0 failures and still showed a grid in the wide wall stills. So there is a second check, on the rendered stills.
+
+## The rendered grid check
+
+`tools/layer_concepts/grid.py <screenshots>` reads the `wide-wall` and `vanilla-reference` stills. In both, the camera looks square at a flat wall, so a block is the same number of pixels everywhere on it (30.2 at the wide wall, 31.1 at the reference). For a patch of wall it takes the mean size of the step between neighbouring pixels along each column and each row, folds that on the pitch of a block into ten places, and scores the largest place over the mean of the ten, less 1. Steps that fall anywhere in a block give a flat fold; a seam or a lip at every block edge gives a peak. The pitch is searched 0.6 pixel either way.
+
+Each rock patch must score no more than the **vanilla deepslate** patch in the reference still of the same option and layer, plus 0.1. Vanilla stone, which has no pattern to speak of, scores about 0.31 and deepslate, which has a regular scale pattern, about 0.61. The wide wall score is the mean of three patches as wide as a reference panel.
+
+| Option | Layer | Wide wall | Reference: rock | Reference: vanilla stone | Reference: vanilla deepslate | Verdict |
+|---|---|---|---|---|---|---|
+| grain | 1 | 0.68 | 0.42 | 0.31 | 0.62 | ok |
+| grain | 2 | 0.65 | 0.59 | 0.30 | 0.62 | ok |
+| grain | 3 | 2.46 | 2.65 | 0.31 | 0.61 | columns |
+| bedded | 1 | 0.56 | 0.41 | 0.31 | 0.62 | ok |
+| bedded | 2 | 0.50 | 0.54 | 0.30 | 0.62 | ok |
+| bedded | 3 | 1.96 | 2.00 | 0.31 | 0.61 | columns |
+| mottled | 1 | 0.48 | 0.47 | 0.31 | 0.61 | ok |
+| mottled | 2 | 0.63 | 0.54 | 0.30 | 0.62 | ok |
+| mottled | 3 | 2.02 | 2.11 | 0.30 | 0.61 | columns |
+
+Layer 3 is reported and not judged. Its columns are one block wide, so their open joints come back at every block, which is the formation: a score of 2 to 2.5 says how much. A pick of a texture for layer 3 does not change it.
 
 ## References
 
@@ -79,31 +103,27 @@ Each row is a pack's rock, rubble and crust textures. 18 of round 1's 52 fail th
 
 ## The three, one by one
 
-Each option's wide wall in layer 1, layer 2 and layer 3. The other seven stills of each layer and the reference are in the PR.
+Each option's wide wall in layer 1, layer 2 and layer 3 is in the PR, with the other stills.
 
 ### Grain
 
 Fine clustered grain: the closest to vanilla stone. It is quiet, so the formation (benches, plates, columns) and the Company's dressing carry the layer.
 
-![Grain, layer 1, wide wall](https://github.com/pkeppeler/deepcharter/blob/pr-media/450/grain-layer1-wide-wall.png?raw=true)
-![Grain, layer 2, wide wall](https://github.com/pkeppeler/deepcharter/blob/pr-media/450/grain-layer2-wide-wall.png?raw=true)
-![Grain, layer 3, wide wall](https://github.com/pkeppeler/deepcharter/blob/pr-media/450/grain-layer3-wide-wall.png?raw=true)
-
 ### Bedded
 
-Bedding streaks that run on across blocks. It reads as a layered earth, closest to Motherload's bands, and strengthens layer 1's Strata. In layer 3 it puts streaks across basalt columns, which is the least natural of the nine pairs.
-
-![Bedded, layer 1, wide wall](https://github.com/pkeppeler/deepcharter/blob/pr-media/450/bedded-layer1-wide-wall.png?raw=true)
-![Bedded, layer 2, wide wall](https://github.com/pkeppeler/deepcharter/blob/pr-media/450/bedded-layer2-wide-wall.png?raw=true)
-![Bedded, layer 3, wide wall](https://github.com/pkeppeler/deepcharter/blob/pr-media/450/bedded-layer3-wide-wall.png?raw=true)
+Bedding streaks that run on across blocks, in rows that are about 3 pixels deep. It reads as layered earth, closest to Motherload's bands, and strengthens layer 1's Strata. In layer 3 it puts streaks across basalt columns, the least natural of the nine pairs.
 
 ### Mottled
 
-Large soft mottles and short veins. The most varied, and the one that stays furthest from vanilla stone. The veins are the one place a texture can read as a repeated mark.
+Bold soft mottles and a few short veins. The most varied, and the furthest from vanilla stone. It has the strongest pattern of the three at the wide wall.
 
-![Mottled, layer 1, wide wall](https://github.com/pkeppeler/deepcharter/blob/pr-media/450/mottled-layer1-wide-wall.png?raw=true)
-![Mottled, layer 2, wide wall](https://github.com/pkeppeler/deepcharter/blob/pr-media/450/mottled-layer2-wide-wall.png?raw=true)
-![Mottled, layer 3, wide wall](https://github.com/pkeppeler/deepcharter/blob/pr-media/450/mottled-layer3-wide-wall.png?raw=true)
+## Limits
+
+- **Layer 3's flank faces are dark.** The hexagon of a column has four faces off the axes, and the game lights a face from the block's own, solid cell, which has no light. A wall of columns is lit and black faces, as in round 1. I tried a light floor for them in the model and it did nothing. The fix is in the build: a block that the mod owns can set its own light, which a stand-in cannot.
+- **Layer 3's columns repeat at the size of a block by design**, and the grid check reports and does not judge them.
+- **Layer 2's crust reads as a maze in the breach-crust still.** Round 1's texture and model, unchanged: not in this round's scope.
+- **The lava texture is round 1's.** The flow is a 2 x 2 sheet of four separate 16 x 16 tiles, so it may show a grid at 16 pixels. Not changed.
+- **The checks use stand-in blocks and test lighting.** In the real game the pod lamp and the layer's fog change the contrast of a texture, which the numbers do not.
 
 ## What each costs to build
 
@@ -118,7 +138,8 @@ Reply with a texture for each layer, for example "Bedded for layer 1, Grain for 
 - **The formation of each layer is the user's.** Strata for layer 1, Fractured for layer 2, Columnar for layer 3.
 - **The rock stands in for granite, tuff and andesite, and the rubble for cobblestone, cobbled deepslate and diorite**, not for stone and deepslate, so that vanilla stone and deepslate stand beside the layer's rock, untouched, in the hall. A block has one blockstate, so the pack redraws a block the mod does not use.
 - **Each layer's Company Rock and breach crust are a form pack that the scenario turns on with the layer**, because one block has one blockstate and the three layers draw it three ways.
-- **Round 1's relief is redrawn so that no part of a block is recessed from its sides.** A bed stood back up to 1.3 pixels and a plate up to 1.5. The blockstate turns a block, so a recess meant as a depth could land on a side, and the slot between two blocks was a dark line round each one: the outlined square, which no texture number sees. Layers 1 and 2 are now cubes whose beds (layer 1: three bands the width of the face, at the same heights on every block) and plates (layer 2: two to a face) stand out of a face and never touch the sides between two blocks. The three columns of layer 3 are round 1's, with a different width and offset each, so that the open joints between them are not one width. The hexagon's four faces off the axes take no light, so a wall of columns is a pattern of lit and black faces, as in round 1.
+- **Layers 1 and 2 are plain cubes.** Round 1's beds and plates stood back from the sides of a block by up to 1.3 and 1.5 pixels. A blockstate turns a block, so a recess meant as a depth could land on a side, and the slot between two blocks was a dark line round each one. Round 2's first pass drew bands and plates that stand out of a face, and the render showed a row of lips at every block. Both are gone: the formation of layers 1 and 2 is in the scene (benches and slots, faults and rubble), and the block is a cube. A model guard (`shapes.faults`) fails any element outside 0 to 16 and any face inside the block, with a red fixture for each. The Company Rock (studs, a chamfer, a collared column) and layer 3's columns are exempt by name.
+- **No turns and no mirrors on a cube.** The textures of a layer share their outermost ring, and a turned or mirrored block has another edge of them on the side that meets its neighbour. A mirror of a texture with features of three pixels or more is symmetrical about its seam, and a wall of them is a lattice of chevrons. Vanilla stone mirrors and turns because its grain is too fine for that to show.
 - **The rock is one shade lighter than round 1**: round 1's stills were nearly black. Layers 2 and 3 are one shade lighter again, for the same contrast.
 - **The inside of a scene is plain vanilla stone.** A block of the layer's rock draws dozens of faces that the renderer cannot cull, so only a block that touches air is the layer's rock.
 - **A scene has a hall and a natural cave**, so that the flat wall, the reference and the cave are shot in the same light and fog as the gallery. The hall's lights are light blocks in the air, the same for each of the three panels.
