@@ -498,17 +498,17 @@ public class OreProcessorTest {
 			ServerPlayer player = mock.player();
 			BlockPos processor = processorFor(helper, mock);
 			PodEntity pod = podAt(helper, beside(processor, 4));
-			// The rack holds 32: 30 in it leaves room for 2 of the 10 bricks, and the other 8 go to the pack.
-			withSpoil(pod, 20, 30);
+			// The rack holds 16: 14 in it leaves room for 2 of the 10 bricks, and the other 8 go to the pack.
+			withSpoil(pod, 20, 14);
 			try {
 				fund(server, player, 1000);
 				expectDone(helper, Terminals.act(player, processor, OreProcessor.FUSE_SPOIL, new CompoundTag()), "fusing into a nearly full rack");
 				PodLining.State after = PodLining.of(pod);
-				if (after.bricks() != 32 || after.spoil() != 0 || bricksCarried(player) != 8) {
+				if (after.bricks() != 16 || after.spoil() != 0 || bricksCarried(player) != 8) {
 					throw helper.assertionException("2 bricks fill the rack and 8 go to the pack: rack %s, spoil %s, carried %s", after.bricks(), after.spoil(), bricksCarried(player));
 				}
 				// A full rack and a pack with no room: nothing is made, nothing is charged.
-				withSpoil(pod, 10, 32);
+				withSpoil(pod, 10, 16);
 				for (int slot = 0; slot < player.getInventory().getNonEquipmentItems().size(); slot++) {
 					player.getInventory().setItem(slot, new ItemStack(SlagBrick.item(), 64));
 				}
@@ -516,6 +516,29 @@ public class OreProcessorTest {
 				expectKey(helper, NO_ROOM, OreProcessor.fuseSpoil(context(server, player, processor)), "fusing with nowhere to put the brick");
 				if (PodLining.of(pod).spoil() != 10 || balance(server, player) != before) {
 					throw helper.assertionException("a refused fuse takes no spoil and no money: spoil %s, balance %s -> %s", PodLining.of(pod).spoil(), before, balance(server, player));
+				}
+			} finally {
+				pod.discard();
+			}
+		});
+		helper.succeed();
+	}
+
+	/** A full bay is 64 spoil, 32 bricks: the rack of 16 takes half and the pack the other half, so a hopper dive refills both stores (#442). */
+	@GameTest
+	public void aFullBayFusesHalfIntoAnEmptyRackAndHalfIntoThePack(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		withProcessorOnline(server, () -> {
+			MockPlayer mock = player(helper, "Full bay", true);
+			ServerPlayer player = mock.player();
+			BlockPos processor = processorFor(helper, mock);
+			PodEntity pod = podAt(helper, beside(processor, 4));
+			withSpoil(pod, 64, 0);
+			try {
+				expectDone(helper, Terminals.act(player, processor, OreProcessor.FUSE_SPOIL, new CompoundTag()), "fusing a full bay into an empty rack");
+				PodLining.State after = PodLining.of(pod);
+				if (after.bricks() != 16 || after.spoil() != 0 || bricksCarried(player) != 16) {
+					throw helper.assertionException("a full bay makes 32 bricks, 16 for the rack and 16 for the pack: rack %s, spoil %s, carried %s", after.bricks(), after.spoil(), bricksCarried(player));
 				}
 			} finally {
 				pod.discard();

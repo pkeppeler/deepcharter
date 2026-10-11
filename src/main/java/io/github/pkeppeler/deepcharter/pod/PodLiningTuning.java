@@ -13,7 +13,8 @@ package io.github.pkeppeler.deepcharter.pod;
  */
 public record PodLiningTuning(int spoilCapacity, int spoilPerBrick, int brickCapacity, int ticksPerBrick,
 		float spoilMass, float brickMass) {
-	public static final PodLiningTuning DEFAULT = new PodLiningTuning(64, 2, 32, 8, 0.1f, 0.2f);
+	/** (A) The rack holds 16 bricks, a bore's worth; the pack carries the rest (#442). */
+	public static final PodLiningTuning DEFAULT = new PodLiningTuning(64, 2, 16, 8, 0.1f, 0.2f);
 
 	public PodLiningTuning {
 		if (spoilCapacity < 1 || spoilPerBrick < 1 || brickCapacity < 1 || ticksPerBrick < 1) {
