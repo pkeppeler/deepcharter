@@ -53,6 +53,18 @@ public final class PodFuel {
 		}
 	}
 
+	/**
+	 * Takes up to {@code litres} from the pod's tank, never below {@code floorPercent}, and answers the litres it took. The pod's own
+	 * burn is {@link #tick}; this is what something else takes from it.
+	 */
+	public static float drain(PodEntity pod, float litres, float floorPercent) {
+		PodStats stats = PodStats.of(pod);
+		float before = pod.fuel();
+		float after = Math.max(Math.min(before, floorPercent), before - litresToPercent(stats, litres));
+		pod.setFuel(after);
+		return (before - after) / PodTuning.DEFAULT.shell().fullFuel() * stats.tankLitres();
+	}
+
 	private static Activity activity(PodEntity pod) {
 		if (pod.drilling()) {
 			return Activity.DRILLING;

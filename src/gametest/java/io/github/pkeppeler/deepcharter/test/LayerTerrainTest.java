@@ -30,6 +30,7 @@ import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
+import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
@@ -123,7 +124,7 @@ public class LayerTerrainTest {
 	}
 
 	@GameTest
-	public void thereAreNoNaturalSpawns(GameTestHelper helper) {
+	public void onlyTheRetainedSpawnNaturally(GameTestHelper helper) {
 		for (int layer = 1; layer <= 2; layer++) {
 			ServerLevel level = layer(helper, layer);
 			for (int zone = 0; zone < 3; zone++) {
@@ -131,7 +132,9 @@ public class LayerTerrainTest {
 				level.getChunk(pos.getX() >> 4, pos.getZ() >> 4, ChunkStatus.FULL);
 				for (MobCategory category : MobCategory.values()) {
 					var mobs = level.getChunkSource().getGenerator().getMobsAt(level, level.structureManager(), category, pos);
-					if (!mobs.isEmpty()) {
+					// #449: the Retained are the one thing the biomes of layers 1 and 2 list, as a rare monster.
+					boolean onlyRetained = category == MobCategory.MONSTER && mobs.unwrap().stream().allMatch(entry -> entry.value().type() == CreatureRegistry.LAMPLESS_FIGURE);
+					if (!mobs.isEmpty() && !onlyRetained) {
 						throw failure(helper, "layer_%d zone %d spawns %s mobs: %s", layer, zone, category, mobs);
 					}
 				}

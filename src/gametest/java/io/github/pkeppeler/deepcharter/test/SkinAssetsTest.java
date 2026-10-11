@@ -75,10 +75,11 @@ public class SkinAssetsTest {
 		helper.succeed();
 	}
 
-	/** The figure's look is a model, a texture and an animation file, which a pack replaces (#250). */
+	/** The figure's look is a model, a texture and an animation file, and a lamp-carrier's a model, a texture and a glowmask, which a pack replaces (#250, #449). */
 	@GameTest
 	public void theLamplessFigureHasItsFiles(GameTestHelper helper) {
-		for (Identifier file : List.of(LamplessFigureAssets.modelFile(), LamplessFigureAssets.animationFile(), LamplessFigureAssets.texture())) {
+		for (Identifier file : List.of(LamplessFigureAssets.modelFile(), LamplessFigureAssets.animationFile(), LamplessFigureAssets.texture(),
+				LamplessFigureAssets.lampModelFile(), LamplessFigureAssets.lampTexture(), LamplessFigureAssets.glowmask())) {
 			if (SkinAssetsTest.class.getResource("/assets/%s/%s".formatted(file.getNamespace(), file.getPath())) == null) {
 				throw failure(helper, "the lampless figure's file %s is not on the classpath", file);
 			}
