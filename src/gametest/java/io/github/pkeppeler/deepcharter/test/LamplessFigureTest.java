@@ -69,12 +69,8 @@ public class LamplessFigureTest {
 	private static final int RAIL_SITE_CELL = 9;
 	/** The respawn delay (400) twice, two fades, the light going out and the checks round them, with a margin. */
 	private static final int RESPAWN_TEST_TICKS = 1500;
-	/** Ticks a figure has to start fading after a cause: light spreads and a check comes round, both slow on a loaded runner. */
-	private static final int FADE_START_BUDGET_TICKS = 200;
-	/** Ticks a fade, once started, has to end: it counts one a tick whatever the load, so the margin is small. */
-	private static final int FADE_END_BUDGET_TICKS = CreatureTuning.DEFAULT.fadeTicks() + 20;
-	/** Test ticks for a fade test after the chunk is ready: the quiet walk, the start of the fade, the fade (40 ticks), and a margin. */
-	private static final int FADE_TEST_TICKS = QUIET_TICKS + FADE_START_BUDGET_TICKS + 100;
+	/** Ticks a figure is watched with a person near it or a light on it: it must go on walking, far over the 40 ticks of the old fade. */
+	private static final int NO_FADE_TICKS = 300;
 	/** Ticks a killed or fallen figure has to be gone: the void hurts for 4 a tick and a death takes 20 ticks. */
 	private static final int REMOVAL_TICKS = 100;
 	private static final String MOD_NAMESPACE = "deepcharter";
@@ -245,12 +241,12 @@ public class LamplessFigureTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + FADE_TEST_TICKS)
-	public void itFadesWhenAPlayerApproachesAndHurtsNobody(GameTestHelper helper) {
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + QUIET_TICKS + NO_FADE_TICKS + 40)
+	public void itDoesNotFadeWhenAPlayerStandsNearAndHurtsNobody(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		BlockPos origin = slot(2);
-		FadeRun run = new FadeRun();
-		helper.onEachTick(() -> run.step(helper, level, () -> {
+		StayRun run = new StayRun();
+		helper.onEachTick(() -> run.step(helper, () -> {
 			MockPlayer mock = MockPlayers.join(helper, "figure-approach");
 			mock.teleportTo(level, new Vec3(origin.getX() - 1.5, origin.getY(), origin.getZ() + 0.5), 0f, 0f);
 			run.player = mock.player();
@@ -261,70 +257,102 @@ public class LamplessFigureTest {
 		});
 		run.onDone = () -> {
 			if (run.player.getHealth() != run.player.getMaxHealth()) {
-				throw failure(helper, "the approaching player's health went from %s to %s", run.player.getMaxHealth(), run.player.getHealth());
+				throw failure(helper, "the player's health went from %s to %s", run.player.getMaxHealth(), run.player.getHealth());
 			}
 		};
 	}
 
-	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + FADE_TEST_TICKS)
-	public void itFadesWhenLit(GameTestHelper helper) {
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + QUIET_TICKS + NO_FADE_TICKS + 40)
+	public void itDoesNotFadeWhenLit(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		BlockPos origin = slot(3);
-		FadeRun run = new FadeRun();
-		helper.onEachTick(() -> run.step(helper, level, () -> level.setBlock(origin.offset(2, 1, 0), light(LIT_LEVEL), 3)));
+		StayRun run = new StayRun();
+		helper.onEachTick(() -> run.step(helper, () -> level.setBlock(origin.offset(2, 1, 0), light(LIT_LEVEL), 3)));
 		FarChunks.awaitEntityTicking(helper, level, origin, () -> {
 			buildCorridor(level, origin);
 			run.figure = spawnFigure(level, origin, -4, Direction.SOUTH);
 		});
 	}
 
+	/** Only a person's blow or the pod's cutter hurts it: anything the world does to it, and an arrow from nobody, does not. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 40)
+	public void aPlayersBlowHurtsItAndTheWorldDoesNot(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos origin = slot(5);
+		LamplessFigure[] figure = {null};
+		FarChunks.awaitEntityTicking(helper, level, origin, () -> {
+			buildCorridor(level, origin);
+			figure[0] = spawnFigure(level, origin, 0, Direction.SOUTH);
+			MockPlayer mock = MockPlayers.join(helper, "figure-striker");
+			try {
+				for (DamageSource source : List.of(level.damageSources().fall(), level.damageSources().drown(), level.damageSources().lava(),
+						level.damageSources().explosion(null, null))) {
+					if (figure[0].hurtServer(level, source, 5f)) {
+						throw failure(helper, "the figure took damage from %s", source.getMsgId());
+					}
+				}
+				float before = figure[0].getHealth();
+				if (!figure[0].hurtServer(level, level.damageSources().playerAttack(mock.player()), 5f) || figure[0].getHealth() != before - 5f) {
+					throw failure(helper, "a player's blow of 5 took the figure from %s to %s", before, figure[0].getHealth());
+				}
+				if (figure[0].getMaxHealth() != TUNING.maxHealth()) {
+					throw failure(helper, "the figure has %s health, not the %s of the tuning", figure[0].getMaxHealth(), TUNING.maxHealth());
+				}
+			} finally {
+				mock.leave();
+				figure[0].discard();
+			}
+			helper.succeed();
+		});
+	}
+
 	/**
-	 * Runs in the Nether, not layer 2, because the delay after a fade is kept for each level: a fade here would hold back the layer 2
+	 * Runs in the Nether, not layer 2, because the delay after a kill is kept for each level: a kill here would hold back the layer 2
 	 * tests' own spawns. The wiring of {@code tick()} is covered by the layer 2 test below and the delay logic does not look at the
 	 * dimension. The slot is far from every other test's.
 	 */
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + RESPAWN_TEST_TICKS)
-	public void aFadeDelaysTheNextFigureUntilTheDelayEndsOrAServerStarts(GameTestHelper helper) {
+	public void aKillDelaysTheNextFigureUntilTheDelayEndsOrAServerStarts(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel().getServer().getLevel(Level.NETHER);
 		BlockPos origin = slot(4);
 		StructureSite site = new StructureSite(StructureKind.RAILS, origin, true, 4, 0L);
 		LamplessFigure[] figure = {null};
 		int[] phase = {0};
-		long[] fadedAt = {0};
+		long[] killedAt = {0};
 		helper.onEachTick(() -> {
 			if (figure[0] == null) {
 				return;
 			}
 			if (phase[0] == 0 && figure[0].isRemoved()) {
-				fadedAt[0] = level.getGameTime();
 				if (LamplessFigures.spawnAt(level, site).isPresent()) {
-					throw failure(helper, "a figure was spawned the tick after one faded");
+					throw failure(helper, "a figure was spawned the tick after one was killed");
 				}
-				level.setBlock(origin.above(), light(TUNING.fadeBlockLight() + 3), 3);
+				level.setBlock(origin.above(), light(TUNING.litBlockLight() + 3), 3);
 				phase[0] = 1;
-			} else if (phase[0] == 1 && level.getGameTime() - fadedAt[0] > TUNING.respawnDelayTicks() + 5) {
+			} else if (phase[0] == 1 && level.getGameTime() - killedAt[0] > TUNING.respawnDelayTicks() + 5) {
 				figure[0] = LamplessFigures.spawnAt(level, site)
-						.orElseThrow(() -> failure(helper, "no figure came back %d ticks after the first faded", level.getGameTime() - fadedAt[0]));
+						.orElseThrow(() -> failure(helper, "no figure came back %d ticks after the first was killed", level.getGameTime() - killedAt[0]));
 				BlockPos feet = figure[0].blockPosition();
 				if (!level.getBlockState(feet).is(BlockTags.RAILS)) {
 					throw failure(helper, "the second figure stands at %s, which is not a rail", feet.toShortString());
 				}
-				if (level.getBrightness(LightLayer.BLOCK, feet) >= TUNING.fadeBlockLight()) {
+				if (level.getBrightness(LightLayer.BLOCK, feet) >= TUNING.litBlockLight()) {
 					throw failure(helper, "the second figure appeared at %s, where the light is %d", feet.toShortString(), level.getBrightness(LightLayer.BLOCK, feet));
 				}
-				level.setBlock(origin.above(), light(LIT_LEVEL), 3);
+				killedAt[0] = level.getGameTime();
+				figure[0].kill(level);
 				phase[0] = 2;
 			} else if (phase[0] == 2 && figure[0].isRemoved()) {
 				// room-carver: removes a block this test placed itself in the overworld test structure, not layer rock
 				level.setBlock(origin.above(), Blocks.AIR.defaultBlockState(), 3);
 				phase[0] = 3;
-			} else if (phase[0] == 3 && railsAreDark(level, origin)) {
-				// The light is out, so only the delay of the second fade can hold the next figure back.
+			} else if (phase[0] == 3) {
+				// Only the delay of the second kill can hold the next figure back.
 				if (LamplessFigures.spawnAt(level, site).isPresent()) {
-					throw failure(helper, "a figure was spawned in the delay after the second fade");
+					throw failure(helper, "a figure was spawned in the delay after the second kill");
 				}
-				LamplessFigures.clearFadeDelays();
-				LamplessFigures.spawnAt(level, site).orElseThrow(() -> failure(helper, "no figure was spawned after the fade delays were cleared")).discard();
+				LamplessFigures.clearRespawnDelays();
+				LamplessFigures.spawnAt(level, site).orElseThrow(() -> failure(helper, "no figure was spawned after the delays were cleared")).discard();
 				helper.succeed();
 			}
 		});
@@ -337,7 +365,8 @@ public class LamplessFigureTest {
 			if (LamplessFigures.spawnAt(level, site).isPresent()) {
 				throw failure(helper, "a second figure was spawned on a site that holds one");
 			}
-			level.setBlock(origin.above(), light(LIT_LEVEL), 3);
+			killedAt[0] = level.getGameTime();
+			figure[0].kill(level);
 		});
 	}
 
@@ -425,48 +454,34 @@ public class LamplessFigureTest {
 	}
 
 	/**
-	 * A figure that walks undisturbed for {@link #QUIET_TICKS}, then meets a cause, and must fade out and be gone. The two waits
-	 * are bounded apart: first for the fade to start, whatever the light and the check interval take, then for the fade itself.
+	 * A figure that walks undisturbed for {@link #QUIET_TICKS}, then meets a cause (a person near it, a light on it), and must go on
+	 * walking, whole and alive, for {@link #NO_FADE_TICKS}: the cause does not fade it (#485).
 	 */
-	private static final class FadeRun {
+	private static final class StayRun {
 		LamplessFigure figure;
 		ServerPlayer player;
 		Runnable onDone = () -> { };
 		private int ticks;
 		private int causeAt = -1;
-		private int fadingAt = -1;
 
-		void step(GameTestHelper helper, ServerLevel level, Runnable cause) {
+		void step(GameTestHelper helper, Runnable cause) {
 			if (figure == null) {
 				return;
 			}
 			ticks++;
+			if (figure.fadeFraction() > 0 || !figure.isAlive() || figure.isRemoved()) {
+				throw failure(helper, "the figure faded or went %d ticks in (%d ticks after the cause)", ticks, causeAt < 0 ? -1 : ticks - causeAt);
+			}
 			if (ticks < QUIET_TICKS) {
-				if (figure.fadeFraction() > 0 || !figure.isAlive()) {
-					throw failure(helper, "the figure faded after %d ticks with nothing near it", ticks);
-				}
 				return;
 			}
 			if (causeAt < 0) {
 				causeAt = ticks;
 				cause.run();
-				return;
-			}
-			if (fadingAt < 0 && figure.fadeFraction() > 0) {
-				fadingAt = ticks;
-			}
-			if (figure.isRemoved()) {
-				if (fadingAt < 0) {
-					throw failure(helper, "the figure vanished without a fade");
-				}
+			} else if (ticks - causeAt >= NO_FADE_TICKS) {
+				figure.discard();
 				onDone.run();
 				helper.succeed();
-			} else if (fadingAt < 0 && ticks - causeAt > FADE_START_BUDGET_TICKS) {
-				figure.discard();
-				throw failure(helper, "the figure had not started to fade %d ticks after the cause", ticks - causeAt);
-			} else if (fadingAt >= 0 && ticks - fadingAt > FADE_END_BUDGET_TICKS) {
-				figure.discard();
-				throw failure(helper, "the figure was still there %d ticks after it started to fade (%d ticks after the cause)", ticks - fadingAt, ticks - causeAt);
 			}
 		}
 	}
@@ -499,15 +514,6 @@ public class LamplessFigureTest {
 		if (LamplessFigures.isSpawnTick(dimension, gameTime) != expected) {
 			throw failure(helper, "%s at game time %d: a spawn tick should be %s", dimension.identifier(), gameTime, expected);
 		}
-	}
-
-	private static boolean railsAreDark(ServerLevel level, BlockPos origin) {
-		for (int u = -HALF; u <= HALF; u++) {
-			if (level.getBrightness(LightLayer.BLOCK, origin.offset(0, 0, u)) >= TUNING.fadeBlockLight()) {
-				return false;
-			}
-		}
-		return true;
 	}
 
 	private static List<? extends LamplessFigure> figuresIn(ServerLevel level, StructureSite site) {

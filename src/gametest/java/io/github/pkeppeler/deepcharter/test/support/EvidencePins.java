@@ -23,8 +23,6 @@ public final class EvidencePins {
 	public static volatile boolean entitiesPosed;
 	/** No lampless figures spawn on the rails: one that spawned between the last wait and the shot would be in the still. */
 	public static volatile boolean figureSpawningOff;
-	/** The fade (0 whole to 1 gone) of a lampless figure; negative keeps its own. */
-	public static volatile float figureFade = -1f;
 
 	/**
 	 * The age in ticks that GeckoLib reads as the clock of a lampless figure's animation (0 or more); negative keeps the figure's own.
@@ -45,7 +43,6 @@ public final class EvidencePins {
 		breachFadeAlpha = -1f;
 		entitiesPosed = false;
 		figureSpawningOff = false;
-		figureFade = -1f;
 		figureAnimationAge = -1f;
 	}
 }

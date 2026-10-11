@@ -17,27 +17,25 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 
 /**
- * Server GameTests for #449: what a Retained's grip costs a run of {@link EarlyRunModel}. A grab takes litres from the tank, so a run that
- * suffers one has a smaller tank to spend. No world is built; the numbers go in {@code docs/design/mechanics.md}.
+ * Server GameTests for #449 and #485: what a Retained's grip costs a run of {@link EarlyRunModel}. A grab takes litres from the tank until
+ * the figure dies, so a run that suffers one has a smaller tank to spend. No world is built; the numbers go in {@code docs/design/mechanics.md}.
  *
- * <p>(A) A pilot who moves the pod after a reaction time burns the moving rate in place of the idle one for {@code shakeTicks}; a pilot who does
- * nothing pays the whole fill.
+ * <p>(A) A pilot who drills after a reaction time loses the drain over the reaction and over the time the cutter takes to kill the figure;
+ * the burn of the drill itself is not counted, because the pilot would drill anyway. A pilot who does nothing loses the tank down to the floor.
  */
 public class RetainedEconomyTest {
 	private static final Logger LOGGER = LoggerFactory.getLogger(RetainedEconomyTest.class);
 	private static final int TICKS_PER_SECOND = 20;
-	/** (A) Seconds between the grab and the pilot moving, for a pilot who read the approach cue and watches the pod: the figure is in view. */
+	/** (A) Seconds between the grab and the pilot drilling, for a pilot who read the approach cue and watches the pod: the figure is in view. */
 	private static final double CUED_REACTION_SECONDS = 0.5;
 	/** (A) Seconds for a pilot who did not see it come: the action bar line at the grab, and a look at the hull. */
 	private static final double UNCUED_REACTION_SECONDS = 2;
-	/** A first-hour pilot who reacts to the cue loses at most this share of the net of a layer 1 run to a grab. */
+	/** A first-hour pilot who reacts to the cue loses at most this share of the litres a layer 1 run burns to a grab. */
 	private static final double CUED_SHARE_MAX = 0.05;
 	/** One who did not see it come loses at most this share. */
 	private static final double UNCUED_SHARE_MAX = 0.10;
-	/** A grip nobody answers costs at most this share: a real loss, and still a run that pays. */
-	private static final double FILL_SHARE_MAX = 0.40;
-	/** And at least this much, or a dark pod would not be a decision. */
-	private static final double FILL_SHARE_MIN = 0.15;
+	/** A grip nobody answers costs at least this share of a layer 1 run, or nobody would need to answer it. */
+	private static final double UNANSWERED_SHARE_MIN = 0.9;
 	/** A lights part must pay for itself in this many unanswered grabs, at most: a part the dark pilot can believe in. */
 	private static final double LIGHTS_PAYBACK_GRABS_MAX = 10;
 
@@ -45,86 +43,83 @@ public class RetainedEconomyTest {
 		return helper.assertionException(Component.literal(String.format(format, args)));
 	}
 
-	/** Litres a grip takes before the pilot's moving frees the pod: the drain while the pilot reacts and moves, and the extra burn of moving. */
-	private static double shakenLitres(PodStats stats, float drainLitres, int shakeTicks, double reactionSeconds) {
-		double shakeSeconds = (double) shakeTicks / TICKS_PER_SECOND;
-		double drained = drainLitres * (reactionSeconds + shakeSeconds);
-		double movingExtra = (stats.movingLitresPerSecond() - stats.idleLitresPerSecond()) * shakeSeconds;
-		return drained + movingExtra;
+	/** Seconds the cutter takes to kill a figure: a bite as the drill starts and one each {@code biteTicks}, until the health is gone. */
+	private static double killSeconds(CreatureTuning tuning) {
+		int bites = (int) Math.ceil(tuning.maxHealth() / tuning.cling().biteDamage());
+		return (double) (bites - 1) * tuning.cling().biteTicks() / TICKS_PER_SECOND;
+	}
+
+	/** Litres a grip takes before the pilot's drilling kills the figure: the drain while the pilot reacts and while the cutter works. */
+	private static double killedLitres(CreatureTuning tuning, double reactionSeconds) {
+		return tuning.cling().drainLitres() * (reactionSeconds + killSeconds(tuning));
+	}
+
+	/** Litres a grip nobody answers takes: the tank down to the floor. */
+	private static double unansweredLitres(PodStats stats, CreatureTuning tuning) {
+		return stats.tankLitres() * (1 - tuning.cling().floorPercent() / 100.0);
 	}
 
 	private static Run runWithLoss(Zone zone, PodStats stats, int shaft, double litresLost) {
 		return EarlyRunModel.run(zone, stats.withTankLitres((float) (stats.tankLitres() - litresLost)), shaft);
 	}
 
-	/** The candidates of the re-tune (docs/design/mechanics.md), each measured the same way; the last is the pick, which the bands pin. */
+	/** The pick (docs/design/mechanics.md), measured the way the candidates of #449 were; the bands pin it. */
 	@GameTest
 	public void aGripCostsAStockMoleInLayerOneAShareOfARunAndALitPodCostsNothing(GameTestHelper helper) {
 		PodStats stock = PodStats.base();
 		Zone zone = Zone.load("topsoil_claims");
 		Run whole = EarlyRunModel.run(zone, stock, 0);
-		CreatureTuning.Cling cling = CreatureTuning.DEFAULT.cling();
-		LOGGER.info("[retained-economy] stock Mole, layer 1: whole run {} slabs net ${}", whole.slabs(), whole.net());
-		double[][] candidates = {
-				// drain L/s, shake ticks, reaction s: the first tuning, no cue; the cue alone; a smaller drain and a shorter shake with the cue
-				{0.25, 30, UNCUED_REACTION_SECONDS}, {0.25, 30, CUED_REACTION_SECONDS}, {0.15, 30, CUED_REACTION_SECONDS}, {0.15, 20, CUED_REACTION_SECONDS}};
-		for (double[] candidate : candidates) {
-			double litres = shakenLitres(stock, (float) candidate[0], (int) candidate[1], candidate[2]);
-			Run shaken = runWithLoss(zone, stock, 0, litres);
-			LOGGER.info("[retained-economy] drain {} L/s, shake {} ticks, reaction {} s: {} L, {} of a run's {} L; the model: {} slabs net ${}", candidate[0], candidate[1], candidate[2], litres,
-					litres / whole.litres(), whole.litres(), shaken.slabs(), shaken.net());
-		}
+		CreatureTuning tuning = CreatureTuning.DEFAULT;
+		LOGGER.info("[retained-economy] stock Mole, layer 1: whole run {} slabs net ${}, {} L; the cutter kills a figure in {} s", whole.slabs(), whole.net(), whole.litres(), killSeconds(tuning));
 		// The model counts whole slabs, so its net moves in steps of a slab (6%): the share of a run is the share of the litres the run burns.
-		double cuedShare = shakenLitres(stock, cling.drainLitres(), cling.shakeTicks(), CUED_REACTION_SECONDS) / whole.litres();
-		double uncuedShare = shakenLitres(stock, cling.drainLitres(), cling.shakeTicks(), UNCUED_REACTION_SECONDS) / whole.litres();
-		Run unanswered = runWithLoss(zone, stock, 0, cling.fillLitres());
-		double fillShare = cling.fillLitres() / whole.litres();
+		double cuedLitres = killedLitres(tuning, CUED_REACTION_SECONDS);
+		double uncuedLitres = killedLitres(tuning, UNCUED_REACTION_SECONDS);
+		double cuedShare = cuedLitres / whole.litres();
+		double uncuedShare = uncuedLitres / whole.litres();
+		double unansweredLitres = unansweredLitres(stock, tuning);
+		Run unanswered = runWithLoss(zone, stock, 0, unansweredLitres);
+		double unansweredShare = unansweredLitres / whole.litres();
 		long lights = UpgradeTuning.DEFAULT.price(ComponentTrack.LIGHTS, 1);
-		double fillLoss = whole.net() * fillShare;
-		LOGGER.info("[retained-economy] the tuning: cued {} lost, uncued {} lost, unanswered ({} L) {} slabs net ${} ({} lost); lights ${} = {} unanswered grabs",
-				cuedShare, uncuedShare, cling.fillLitres(), unanswered.slabs(), unanswered.net(), fillShare, lights, lights / fillLoss);
+		double unansweredLoss = whole.net() - Math.max(0, unanswered.net());
+		LOGGER.info("[retained-economy] the pick: cued {} L ({} of a run), uncued {} L ({}), unanswered {} L ({}): {} slabs net ${}; lights ${} = {} unanswered grabs",
+				cuedLitres, cuedShare, uncuedLitres, uncuedShare, unansweredLitres, unansweredShare, unanswered.slabs(), unanswered.net(), lights, lights / unansweredLoss);
 		if (cuedShare > CUED_SHARE_MAX) {
 			throw failure(helper, "a grip met after the cue costs %.1f%% of a layer 1 run, over the %.0f%% allowed", 100 * cuedShare, 100 * CUED_SHARE_MAX);
 		}
 		if (uncuedShare > UNCUED_SHARE_MAX) {
 			throw failure(helper, "a grip met without the cue costs %.1f%% of a layer 1 run, over the %.0f%% allowed", 100 * uncuedShare, 100 * UNCUED_SHARE_MAX);
 		}
-		if (fillShare > FILL_SHARE_MAX || fillShare < FILL_SHARE_MIN) {
-			throw failure(helper, "an unanswered grip costs %.0f%% of a layer 1 run, outside %.0f%% to %.0f%%", 100 * fillShare, 100 * FILL_SHARE_MIN, 100 * FILL_SHARE_MAX);
+		if (unansweredShare < UNANSWERED_SHARE_MIN) {
+			throw failure(helper, "an unanswered grip costs %.0f%% of a layer 1 run, under the %.0f%% that makes answering it worth the trouble", 100 * unansweredShare, 100 * UNANSWERED_SHARE_MIN);
 		}
-		if (unanswered.net() <= 0) {
-			throw failure(helper, "a run that suffers a grip no longer pays: net $%.1f", unanswered.net());
-		}
-		if (lights / fillLoss > LIGHTS_PAYBACK_GRABS_MAX) {
-			throw failure(helper, "a lights part of $%d pays back after %.1f unanswered grabs, over %.0f", lights, lights / fillLoss, LIGHTS_PAYBACK_GRABS_MAX);
+		if (lights / unansweredLoss > LIGHTS_PAYBACK_GRABS_MAX) {
+			throw failure(helper, "a lights part of $%d pays back after %.1f unanswered grabs, over %.0f", lights, lights / unansweredLoss, LIGHTS_PAYBACK_GRABS_MAX);
 		}
 		helper.succeed();
 	}
 
+	/** The floor is what keeps a grip nobody answers from stranding the pod by itself: it leaves a few litres for the way up. */
 	@GameTest
-	public void aGripIsNeverMoreThanAThirdOfAStockTank(GameTestHelper helper) {
+	public void anUnansweredGripLeavesTheStockTankItsFloor(GameTestHelper helper) {
 		PodStats stock = PodStats.base();
-		double fill = CreatureTuning.DEFAULT.cling().fillLitres();
-		if (fill > stock.tankLitres() / 3) {
-			throw failure(helper, "a grip takes %.2f litres of a %.0f litre stock tank", fill, stock.tankLitres());
+		double left = stock.tankLitres() - unansweredLitres(stock, CreatureTuning.DEFAULT);
+		if (left <= 0) {
+			throw failure(helper, "an unanswered grip empties a %.0f litre stock tank", stock.tankLitres());
 		}
 		helper.succeed();
 	}
 
 	@GameTest
-	public void aGripTakesALessShareOfALargerTankAndTheLayerTwoRunStillPays(GameTestHelper helper) {
+	public void aKilledGripTakesALessShareOfALargerTank(GameTestHelper helper) {
+		CreatureTuning tuning = CreatureTuning.DEFAULT;
+		PodStats stock = PodStats.base();
 		PodStats upgraded = EarlyRunModel.mole(2, 2, 2);
-		Zone zone = Zone.load("upper_levels");
-		int shaft = EarlyRunModel.layerOneBlocks();
-		Run whole = EarlyRunModel.run(zone, upgraded, shaft);
-		double fill = CreatureTuning.DEFAULT.cling().fillLitres();
-		Run unanswered = runWithLoss(zone, upgraded, shaft, fill);
-		double share = 1 - unanswered.net() / whole.net();
-		LOGGER.info("[retained-economy] Mole with tier 2 parts, layer 2: whole run {} slabs net ${}; unanswered ({} L of {} L) {} slabs net ${} ({} lost)",
-				whole.slabs(), whole.net(), fill, upgraded.tankLitres(), unanswered.slabs(), unanswered.net(), share);
-		double stockShare = 1 - runWithLoss(Zone.load("topsoil_claims"), PodStats.base(), 0, fill).net() / EarlyRunModel.run(Zone.load("topsoil_claims"), PodStats.base(), 0).net();
-		if (share >= stockShare) {
-			throw failure(helper, "a bigger tank loses %.0f%% to a grip, as much as a stock tank's %.0f%%", 100 * share, 100 * stockShare);
+		double litres = killedLitres(tuning, CUED_REACTION_SECONDS);
+		double stockShare = litres / stock.tankLitres();
+		double upgradedShare = litres / upgraded.tankLitres();
+		LOGGER.info("[retained-economy] a killed grip takes {} L: {} of a stock tank, {} of a tier 2 tank of {} L", litres, stockShare, upgradedShare, upgraded.tankLitres());
+		if (upgradedShare >= stockShare) {
+			throw failure(helper, "a bigger tank loses %.1f%% to a killed grip, as much as a stock tank's %.1f%%", 100 * upgradedShare, 100 * stockShare);
 		}
 		helper.succeed();
 	}

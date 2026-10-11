@@ -30,8 +30,8 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
 /**
  * Evidence scenario "m2-lampless-figure": a rail line like Prospector's Run, closed and dark (the camera has night vision, so the
- * dark can be seen). The lampless figure walks down the rails toward a pod that has no light, parked beside them. The pod's lights come on, the figure
- * walks on until it is near the light, and then fades out.
+ * dark can be seen). The lampless figure walks down the rails toward a pod that has no light, parked beside them. The pod's lights come on and
+ * the figure walks on past the light, whole: light does not fade it (#485). It is then killed, and dissolves.
  */
 public class LamplessFigureScenario extends EvidenceScenario {
 	private static final int HALF_LENGTH = 20;
@@ -39,9 +39,10 @@ public class LamplessFigureScenario extends EvidenceScenario {
 	private static final int HEIGHT = 4;
 	private static final int TICKS_PER_FRAME = 3;
 	private static final int DARK_FRAMES = 12;
-	private static final int WALK_FRAMES_LIMIT = 90;
-	private static final int FADE_FRAMES_LIMIT = 40;
-	private static final int FADE_STILL_AFTER_FRAMES = 4;
+	/** Frames the figure walks past the lit pod, whole: about 8 blocks of its walk. */
+	private static final int LIT_WALK_FRAMES = 45;
+	private static final int DISSOLVE_FRAMES_LIMIT = 40;
+	private static final int DISSOLVE_STILL_AFTER_FRAMES = 4;
 	private static final int EMPTY_FRAMES = 10;
 	private static final int FIGURE_START = -12;
 	private static final int POD_BESIDE_RAIL = 1;
@@ -86,31 +87,30 @@ public class LamplessFigureScenario extends EvidenceScenario {
 				CharterId charter = PodComponents.registration(pod[0]).orElseThrow().owner();
 				PodComponents.install(pod[0], ComponentItems.mint(server, ComponentTrack.LIGHTS, 2, charter));
 			});
-			int walked = 0;
-			while (!isFading(singleplayer, figure[0]) && walked++ < WALK_FRAMES_LIMIT) {
+			record(context, LIT_WALK_FRAMES);
+			if (isDissolving(singleplayer, figure[0])) {
+				throw new AssertionError("the figure faded by the lit pod: a light must not fade it");
+			}
+			screenshot(context, "figure-by-the-lit-pod");
+			singleplayer.getServer().runOnServer(server -> figure[0].kill((ServerLevel) figure[0].level()));
+			record(context, DISSOLVE_STILL_AFTER_FRAMES);
+			screenshot(context, "figure-dissolving");
+			int dissolving = 0;
+			while (!isRemoved(singleplayer, figure[0]) && dissolving++ < DISSOLVE_FRAMES_LIMIT) {
 				record(context, 1);
 			}
-			if (walked > WALK_FRAMES_LIMIT) {
-				throw new AssertionError("the figure had not begun to fade " + WALK_FRAMES_LIMIT + " frames after the pod's lights came on");
-			}
-			record(context, FADE_STILL_AFTER_FRAMES);
-			screenshot(context, "figure-fading-by-the-lit-pod");
-			int fading = 0;
-			while (!isRemoved(singleplayer, figure[0]) && fading++ < FADE_FRAMES_LIMIT) {
-				record(context, 1);
-			}
-			if (fading > FADE_FRAMES_LIMIT) {
-				throw new AssertionError("the figure was still there " + FADE_FRAMES_LIMIT + " frames after it began to fade");
+			if (dissolving > DISSOLVE_FRAMES_LIMIT) {
+				throw new AssertionError("the figure was still there " + DISSOLVE_FRAMES_LIMIT + " frames after it was killed");
 			}
 			record(context, EMPTY_FRAMES);
 			screenshot(context, "figure-gone");
 		}
 	}
 
-	private static boolean isFading(TestSingleplayerContext singleplayer, LamplessFigure figure) {
-		boolean[] fading = {false};
-		singleplayer.getServer().runOnServer(server -> fading[0] = figure.fadeFraction() > 0);
-		return fading[0];
+	private static boolean isDissolving(TestSingleplayerContext singleplayer, LamplessFigure figure) {
+		boolean[] dissolving = {false};
+		singleplayer.getServer().runOnServer(server -> dissolving[0] = figure.fadeFraction() > 0);
+		return dissolving[0];
 	}
 
 	private static boolean isRemoved(TestSingleplayerContext singleplayer, LamplessFigure figure) {
