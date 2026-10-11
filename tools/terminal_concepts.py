@@ -54,8 +54,8 @@ class Sprite:
 class Option:
     """A panel design: its theme/panel.json keys and its sprites by name."""
 
-    def __init__(self, name: str, theme: dict, sprites: dict):
-        self.name, self.theme, self.sprites = name, theme, sprites
+    def __init__(self, theme: dict, sprites: dict):
+        self.theme, self.sprites = theme, sprites
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -401,7 +401,7 @@ def hatch_warning():
     return img
 
 
-def hatch_pip(angle, rim, dot, lit_glow=False):
+def hatch_pip(angle, rim, dot):
     """A selector knob seen from the front, 12 x 12: a shadowed base, a knurled skirt that is lit at the top left, a domed cap and a pointer at `angle`."""
     img = Img(12, 12)
     img.disc(6, 6, 5.7, rgb("#000000"))
@@ -449,7 +449,7 @@ def hatch() -> Option:
     gl, gt, gr, gb, radius = (PORTHOLE[k] for k in ("left", "top", "right", "bottom", "radius"))
     frame = hatch_frame()
     margin = 6  # the content stays this far inside the glass edge, which clears the corner arc (it needs 5.3)
-    return Option("Hatch", {
+    return Option({
         "enabled": 1, "wallColor": "#0a0e0d",
         "insetLeft": gl + margin, "insetTop": gt + margin, "insetRight": gr + margin, "insetBottom": 28,
         "glassLeft": gl, "glassTop": gt, "glassRight": gr, "glassBottom": gb,
@@ -511,35 +511,35 @@ def write() -> None:
 def preview(directory: Path) -> None:
     """A mock of the panel: wall, glass, the frame cut in nine, the decals, and a column of the three button states."""
     directory.mkdir(parents=True, exist_ok=True)
-    for option in [hatch()]:
-        t = option.theme
-        img = Img(SCREEN_W, SCREEN_H, rgb(t["wallColor"].lstrip("#")))
-        img.rect(t["glassLeft"], t["glassTop"], SCREEN_W - t["glassLeft"] - t["glassRight"], SCREEN_H - t["glassTop"] - t["glassBottom"], rgb("#050a06"))
-        frame = option.sprites["frame"]
-        img.blit(nine_slice(frame.img, frame.border, SCREEN_W, SCREEN_H), 0, 0)
-        slots = {"nameplate": "nameplate", "dressA": "dress_a", "dressB": "dress_b", "dressC": "dress_c", "dressD": "dress_d"}
-        for slot, sprite_name in slots.items():
-            if t.get(slot + "W", 0):
-                sw, sh = t[slot + "W"], t[slot + "H"]
-                ax, ay, ox, oy = t[slot + "AnchorX"], t[slot + "AnchorY"], t[slot + "X"], t[slot + "Y"]
-                x = ox if ax == 0 else (SCREEN_W - sw) // 2 + ox if ax == 1 else SCREEN_W - sw - ox
-                y = oy if ay == 0 else (SCREEN_H - sh) // 2 + oy if ay == 1 else SCREEN_H - sh - oy
-                img.blit(option.sprites[sprite_name].img, x, y)
-        # Three buttons, one of each state, at the content's left.
-        x0, y0 = t["insetLeft"] + 4, t["insetTop"] + 20
-        for k, (state, label) in enumerate((("button", "BUY REFURBISHED MOLE"), ("button_hover", "RESTORE NEAREST WRECK"), ("button_off", "CLOSE"))):
-            sprite = option.sprites[state]
-            bw, bh = 200, 20
-            img.blit(nine_slice(sprite.img, sprite.border, bw, bh), x0, y0 + k * 26)
-            if t.get("pipSize"):
-                pip = option.sprites["pip" if state == "button" else "pip_hot" if state == "button_hover" else "pip_off"]
-                img.blit(pip.img, x0 + t["pipX"], y0 + k * 26 + (bh - t["pipSize"]) // 2 + t["pipY"])
-            ink = rgb({"button": t["buttonLabelColor"], "button_hover": t["buttonLabelHotColor"], "button_off": t["buttonLabelOffColor"]}[state])
-            tx = x0 + (bw - 6 * len(label)) // 2 if t["buttonAlign"] == 0 else x0 + (t["pipX"] + t.get("pipSize", 0) if t.get("pipSize") else 0) + t["buttonPad"]
-            img.text(tx, y0 + k * 26 + 6, label, ink)
-        # The content rectangle, outlined, so an overflow is plain to see.
-        img.outline(t["insetLeft"], t["insetTop"], SCREEN_W - t["insetLeft"] - t["insetRight"], SCREEN_H - t["insetTop"] - t["insetBottom"], rgb("#ff00ff", 90))
-        (directory / "preview-hatch.png").write_bytes(big(img, 2).to_png())
+    option = hatch()
+    t = option.theme
+    img = Img(SCREEN_W, SCREEN_H, rgb(t["wallColor"].lstrip("#")))
+    img.rect(t["glassLeft"], t["glassTop"], SCREEN_W - t["glassLeft"] - t["glassRight"], SCREEN_H - t["glassTop"] - t["glassBottom"], rgb("#050a06"))
+    frame = option.sprites["frame"]
+    img.blit(nine_slice(frame.img, frame.border, SCREEN_W, SCREEN_H), 0, 0)
+    slots = {"nameplate": "nameplate", "dressA": "dress_a", "dressB": "dress_b", "dressC": "dress_c", "dressD": "dress_d"}
+    for slot, sprite_name in slots.items():
+        if t.get(slot + "W", 0):
+            sw, sh = t[slot + "W"], t[slot + "H"]
+            ax, ay, ox, oy = t[slot + "AnchorX"], t[slot + "AnchorY"], t[slot + "X"], t[slot + "Y"]
+            x = ox if ax == 0 else (SCREEN_W - sw) // 2 + ox if ax == 1 else SCREEN_W - sw - ox
+            y = oy if ay == 0 else (SCREEN_H - sh) // 2 + oy if ay == 1 else SCREEN_H - sh - oy
+            img.blit(option.sprites[sprite_name].img, x, y)
+    # Three buttons, one of each state, at the content's left.
+    x0, y0 = t["insetLeft"] + 4, t["insetTop"] + 20
+    for k, (state, label) in enumerate((("button", "BUY REFURBISHED MOLE"), ("button_hover", "RESTORE NEAREST WRECK"), ("button_off", "CLOSE"))):
+        sprite = option.sprites[state]
+        bw, bh = 200, 20
+        img.blit(nine_slice(sprite.img, sprite.border, bw, bh), x0, y0 + k * 26)
+        if t.get("pipSize"):
+            pip = option.sprites["pip" if state == "button" else "pip_hot" if state == "button_hover" else "pip_off"]
+            img.blit(pip.img, x0 + t["pipX"], y0 + k * 26 + (bh - t["pipSize"]) // 2 + t["pipY"])
+        ink = rgb({"button": t["buttonLabelColor"], "button_hover": t["buttonLabelHotColor"], "button_off": t["buttonLabelOffColor"]}[state])
+        tx = x0 + (bw - 6 * len(label)) // 2 if t["buttonAlign"] == 0 else x0 + (t["pipX"] + t.get("pipSize", 0) if t.get("pipSize") else 0) + t["buttonPad"]
+        img.text(tx, y0 + k * 26 + 6, label, ink)
+    # The content rectangle, outlined, so an overflow is plain to see.
+    img.outline(t["insetLeft"], t["insetTop"], SCREEN_W - t["insetLeft"] - t["insetRight"], SCREEN_H - t["insetTop"] - t["insetBottom"], rgb("#ff00ff", 90))
+    (directory / "preview-hatch.png").write_bytes(big(img, 2).to_png())
 
 
 def big(img: Img, scale: int) -> Img:

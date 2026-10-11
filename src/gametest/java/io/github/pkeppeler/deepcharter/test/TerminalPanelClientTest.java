@@ -66,26 +66,25 @@ public class TerminalPanelClientTest implements FabricClientGameTest {
 				// A font the game cannot load (a file name with a capital, a bad size) falls back to the missing-glyph font silently, so measure it.
 				require(context.computeOnClient(client -> CrtText.width(client.font, SAMPLE) != client.font.width(SAMPLE)),
 						"Unscii draws the sample text no wider or narrower than the game's own font: the font did not load");
-				context.computeOnClient(client -> check(open, screen, problems, true));
-				smallGui(context, open, screen, problems);
-				TerminalPanelScreens.close(context);
+				checkBothSizes(context, open, screen, problems);
 			}
 		}
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			BlockPos contract = singleplayer.getServer().computeOnServer(TerminalPanelScene::setUpContract);
-			Screen open = TerminalPanelScreens.open(context, TerminalPanelScreens.CONTRACT, null, contract);
-			context.computeOnClient(client -> check(open, TerminalPanelScreens.CONTRACT, problems, true));
-			smallGui(context, open, TerminalPanelScreens.CONTRACT, problems);
-			TerminalPanelScreens.close(context);
+			checkBothSizes(context, TerminalPanelScreens.open(context, TerminalPanelScreens.CONTRACT, null, contract), TerminalPanelScreens.CONTRACT, problems);
 		}
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			BlockPos offline = singleplayer.getServer().computeOnServer(TerminalPanelScene::setUpOffline);
-			Screen open = TerminalPanelScreens.open(context, TerminalPanelScreens.GENERIC, null, offline);
-			context.computeOnClient(client -> check(open, TerminalPanelScreens.GENERIC, problems, true));
-			smallGui(context, open, TerminalPanelScreens.GENERIC, problems);
-			TerminalPanelScreens.close(context);
+			checkBothSizes(context, TerminalPanelScreens.open(context, TerminalPanelScreens.GENERIC, null, offline), TerminalPanelScreens.GENERIC, problems);
 		}
 		require(problems.isEmpty(), "screens that overflow their panel:\n" + String.join("\n", problems));
+	}
+
+	/** Checks the open {@code screen} in the panel, then at the smallest GUI, and closes it. */
+	private static void checkBothSizes(ClientGameTestContext context, Screen screen, String name, List<String> problems) {
+		context.computeOnClient(client -> check(screen, name, problems, true));
+		smallGui(context, screen, name, problems);
+		TerminalPanelScreens.close(context);
 	}
 
 	/**

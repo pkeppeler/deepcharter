@@ -1,6 +1,6 @@
 # Terminal panel: Hatch and Unscii
 
-[Art direction section 7](art-direction.md#7-ui-and-hud) decided that terminals become physical machine panels with one terminal font. [#246](https://github.com/pkeppeler/deepcharter/issues/246) drew four panels (concept round 1, [PR #408](https://github.com/pkeppeler/deepcharter/pull/408)) and the user picked **D, Hatch**, with Hatch's home font, **Unscii**. This page records the pick and what was built. The three panels and two fonts that were not picked are gone from the repo; PR #408 keeps their stills.
+[Art direction section 7](art-direction.md#7-ui-and-hud) decided that terminals become physical machine panels with one terminal font. [#246](https://github.com/pkeppeler/deepcharter/issues/246) drew four panels (concept round 1, [PR #408](https://github.com/pkeppeler/deepcharter/pull/408)) and the user picked **D, Hatch**, with Hatch's home font, **Unscii**. This page records the pick and what was built; PR #408 keeps the stills of the unpicked panels and fonts.
 
 ## Built
 
@@ -57,8 +57,6 @@ For Unscii the author gives no licence text, only a sentence on the official pag
 
 **Size.** The text of every screen is wrapped and laid out for the game's own font, which is not monospaced: it averages about 5.5 pixels a letter on these screens. Unscii is monospaced and is set at `size` 6 in `terminal.json`, which is 6 pixels a letter as the game draws it, with the game's oversampling at 8 so that the letters stay clear (without it an S reads as a 3). Its native size is 8 pixels a letter, 45% wider than today's text: the 40-letter label "BUY REFURBISHED MOLE: $150 + $75 PER POD" would be 320 px in a 260 px button. "ORE PROCESSOR ONLINE 0123456789" is 186 px in Unscii and 178 px in the game's font, so the terminal text is about 5% wider than before the panel.
 
-The other fonts of the round (VT323, Departure Mono) and `tools/font_bitmap.py`, which drew Departure Mono into a bitmap because the game refuses CFF outlines, were removed with the unpicked panels. They are in the history of PR #408.
-
 ## Label room
 
 A button sprite has a 3-pixel border: an outline, a rim, and a shade. The face inside is the button's height less 4, and a line of Unscii capitals is 6 pixels high. On the upgrade screen the 12 tracks close up to fit, to a pitch of 12 pixels, and the rows were 10 high with 2 between, so the face was 6 pixels: the capitals filled it and touched the rim above and the shade below. "SEEP SOUNDER", "SPOIL HOPPER" and the work-order button's first line touched their edges, and the chosen track's "> " marker pushed a label past its button.
@@ -69,7 +67,6 @@ What changed:
 - **The chosen track is lit, not marked.** `CrtButton.marked(true)` draws a button as it is when the cursor is on it (the knob turned, the label yellow). The "> " in front of the label is gone, so a label keeps its room.
 - **Width.** `PanelLook.LABEL_MARGIN` is 4, as the left pad is: the 3-pixel border and one clear column on each side. The track column is as wide as its longest label and 8 pixels (104 for the current names), and the column gap went from 8 to 6 so that the tier column (237) holds "BUY TIER 6  $125000  (WORKS AS TIER 2)" (228 + 8).
 - **Two lines.** The work-order button's lines sit 2 and 10 pixels down (they were 1 and 11), one clear row above the first and one below the second.
-- **Held by a test.** `TerminalPanelClientTest` fails when a button is shorter than 12 pixels (20 for a two-line one), or when its label, by the wider line, is nearer than 4 pixels to an edge.
 
 ## How to look at it
 

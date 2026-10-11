@@ -24,7 +24,6 @@ import terminal_concepts  # noqa: E402
 MOD_ASSETS = ROOT / "src/main/resources/assets/deepcharter"
 SPRITES = MOD_ASSETS / "textures/gui/sprites/panel"
 FONT_DIR = MOD_ASSETS / "font"
-TEST_PACKS = ROOT / "src/gametest/resources/resourcepacks"
 DOC = ROOT / "docs/design/terminal-concepts.md"
 
 BUTTON_SPRITES = ["button", "button_hover", "button_off"]
@@ -58,9 +57,6 @@ class Panel(unittest.TestCase):
 
     def test_the_mod_switches_the_panel_on(self):
         self.assertEqual(1, self.theme["enabled"])
-
-    def test_the_concept_packs_are_gone(self):
-        self.assertEqual([], sorted(p.name for p in TEST_PACKS.iterdir() if p.name.startswith("terminal_")))
 
     def test_the_frame_glass_and_buttons_are_nine_slice_sprites(self):
         for name in ["frame", "glass"] + BUTTON_SPRITES:
