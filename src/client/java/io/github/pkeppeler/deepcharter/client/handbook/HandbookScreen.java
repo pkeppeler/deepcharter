@@ -138,7 +138,7 @@ public class HandbookScreen extends Screen {
 				entry -> ClientPlayNetworking.send(new HandbookReadPayload(entry)), ClientNotes.entries()));
 	}
 
-	/** The pages of the Handbook tab: the chapters the server synced, as far as the progress it last sent. */
+	/** The pages of the Handbook tab, from the chapters and progress the server synced. */
 	public static List<HandbookPage> currentPages(Minecraft client) {
 		Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();
 		HandbookChapters.all(client.getConnection().registryAccess()).forEach(chapter -> chapters.put(chapter.key().identifier(), chapter.value()));

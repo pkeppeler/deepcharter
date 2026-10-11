@@ -140,7 +140,7 @@ public record PodStats(float maxHull, float horizontalSpeed, float enginePower, 
 				idleLitresPerSecond, movingLitresPerSecond, drillingLitresPerSecond);
 	}
 
-	// test-seam: the withers are the whole set, one per stat, because a {@link #MODIFY} listener derives a changed copy through them; a stat no part changes yet has none in production, and the 15-argument constructor is no way to write a listener
+	// test-seam: ADR 0010 names the withers as how a MODIFY listener derives its copy (stats.withEnginePower(...)), so the set stays whole, one per stat
 	public PodStats withHullDamagePerSpeed(float hullDamagePerSpeed) {
 		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingSpeed,
 				hullDamagePerSpeed, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
@@ -153,7 +153,7 @@ public record PodStats(float maxHull, float horizontalSpeed, float enginePower, 
 				idleLitresPerSecond, movingLitresPerSecond, drillingLitresPerSecond);
 	}
 
-	// test-seam: the withers are the whole set, one per stat, because a {@link #MODIFY} listener derives a changed copy through them; a stat no part changes yet has none in production, and the 15-argument constructor is no way to write a listener
+	// test-seam: ADR 0010 names the withers as how a MODIFY listener derives its copy (stats.withEnginePower(...)), so the set stays whole, one per stat
 	public PodStats withCrustHullDamage(float crustHullDamage) {
 		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingSpeed,
 				hullDamagePerSpeed, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,
@@ -178,7 +178,7 @@ public record PodStats(float maxHull, float horizontalSpeed, float enginePower, 
 				idleLitresPerSecond, movingLitresPerSecond, drillingLitresPerSecond);
 	}
 
-	// test-seam: the withers are the whole set, one per stat, because a {@link #MODIFY} listener derives a changed copy through them; a stat no part changes yet has none in production, and the 15-argument constructor is no way to write a listener
+	// test-seam: ADR 0010 names the withers as how a MODIFY listener derives its copy (stats.withEnginePower(...)), so the set stays whole, one per stat
 	public PodStats withIdleLitresPerSecond(float idleLitresPerSecond) {
 		return new PodStats(maxHull, horizontalSpeed, enginePower, thrustAcceleration, maxClimbSpeed, hardLandingSpeed,
 				hullDamagePerSpeed, ticksPerHardness, crustHullDamage, alignSpeed, cargoSlots, tankLitres,

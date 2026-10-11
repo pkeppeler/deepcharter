@@ -73,7 +73,7 @@ public class HangarClientTest implements FabricClientGameTest {
 		if (advanceLeft > 0 == advanceLines.isEmpty()) {
 			return Optional.of("with " + advanceLeft + " advance left the screen shows " + advanceLines.size() + " advance lines");
 		}
-		if (priceLines.stream().anyMatch(line -> line.text().contains("ADVANCES"))) {
+		if (priceLines.stream().anyMatch(advanceLines::contains)) {
 			return Optional.of("the advance runs on in the price lines " + priceLines);
 		}
 		if (!advanceLines.isEmpty()) {
