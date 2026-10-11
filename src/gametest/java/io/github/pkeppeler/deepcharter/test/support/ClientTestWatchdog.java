@@ -13,23 +13,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Wall-clock limit for one client GameTest class (#434). The CI client suite twice hung until its 15-minute job limit, in two
- * classes, with every thread parked (see {@code tests.md}); nothing in the JVM could say which class or where. {@link #arm} starts
- * the clock for a class and drops the previous one, so a class is timed from its start to the start of the next. When the limit
- * passes, the watchdog thread (not a game thread, so a deadlocked game cannot stop it) reports the class and every thread's full
- * stack, then ends the JVM with a failing exit code. It does not interrupt the test thread: a hang like #434's is a deadlock that
- * an interrupt does not break.
- *
- * <p>The clock starts when the client JVM runs the class, so it never counts a wait for the client lock, which Gradle does before
- * the JVM starts. {@link #SECONDS_ENV} sets the default limit, and {@code 0} turns the watchdog off.
+ * Wall-clock limit for one client GameTest class (#434). {@link #arm} starts the clock for a class and drops the previous one. When
+ * the limit passes, the watchdog thread (not a game thread, so a deadlocked game cannot stop it) reports the class and every
+ * thread's full stack, then halts the JVM with a failing exit code. It does not interrupt the test thread: a deadlock does not
+ * break on an interrupt.
  */
 public final class ClientTestWatchdog {
-	/** Environment variable that replaces {@link #DEFAULT_SECONDS}; {@code 0} disables every limit. */
+	/** Environment variable that replaces {@link #DEFAULT_SECONDS}; {@code 0} disables the limit. */
 	public static final String SECONDS_ENV = "DEEPCHARTER_CLIENT_TEST_SECONDS";
-	/** Healthy classes take 3 to 40 s on the CI runner (run 38101621063, the slowest TwoPlayerClientTest), so none needs its own limit. */
+	/** Healthy classes take 3 to 40 s on the CI runner (run 38101621063, the slowest TwoPlayerClientTest). */
 	public static final int DEFAULT_SECONDS = 180;
-	/** Passed as a class's limit to leave it untimed, for a class that is long by design, such as a recording. */
-	public static final int NO_LIMIT = -1;
 	private static final int EXIT_CODE = 1;
 	/** Time for the asynchronous log appenders to write the dump before the JVM is halted. */
 	private static final long FLUSH_MILLIS = 3000;
@@ -38,8 +31,7 @@ public final class ClientTestWatchdog {
 	/** What the watchdog found: the class, its limit and every thread's stack. */
 	public record Timeout(String test, Duration limit, String threads) {
 		public String message() {
-			return "CLIENT-GAMETEST TIMEOUT " + test + " ran longer than " + limit.toSeconds() + " s (" + SECONDS_ENV + " sets the default,"
-					+ " ClientTestLog.start(this, seconds) sets one class); failing the run instead of waiting out the job. Thread dump:\n" + threads;
+			return "CLIENT-GAMETEST TIMEOUT " + test + " ran longer than " + limit.toSeconds() + " s (" + SECONDS_ENV + " sets the limit); failing the run instead of waiting out the job. Thread dump:\n" + threads;
 		}
 	}
 
@@ -53,28 +45,25 @@ public final class ClientTestWatchdog {
 	});
 	private ScheduledFuture<?> pending;
 
-	/** A watchdog that calls {@code onTimeout} on its own thread when a limit passes; the shared one halts the JVM. */
+	/** Calls {@code onTimeout} on the watchdog's thread when a limit passes; the shared one halts the JVM. */
 	public ClientTestWatchdog(Consumer<Timeout> onTimeout) {
 		this.onTimeout = onTimeout;
 	}
 
-	/** The watchdog every client test class is armed on, through {@code ClientTestLog.start}. */
+	/** The watchdog {@code ClientTestLog.start} arms. */
 	public static ClientTestWatchdog shared() {
 		return INSTANCE;
 	}
 
-	/**
-	 * Starts the clock for {@code test}, replacing the previous class's. {@code seconds} is the class's own limit, or 0 for the
-	 * default; {@link #NO_LIMIT} leaves the class untimed. The environment can replace the default or turn every limit off.
-	 */
-	public void armForClass(String test, int seconds) {
+	/** Starts the clock for {@code test} at the default or {@link #SECONDS_ENV} limit; {@code 0} there leaves it untimed. */
+	public void armForClass(String test) {
 		String env = System.getenv(SECONDS_ENV);
-		int fromEnv = env == null || env.isBlank() ? DEFAULT_SECONDS : parseSeconds(env);
-		if (fromEnv == 0 || seconds == NO_LIMIT) {
+		int seconds = env == null || env.isBlank() ? DEFAULT_SECONDS : parseSeconds(env);
+		if (seconds == 0) {
 			disarm();
 			return;
 		}
-		arm(test, Duration.ofSeconds(seconds > 0 ? seconds : fromEnv));
+		arm(test, Duration.ofSeconds(seconds));
 	}
 
 	private static int parseSeconds(String env) {
