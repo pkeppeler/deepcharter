@@ -22,7 +22,7 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param cargo the pod cargo screen
  * @param pod the paint palette of the pods' hulls
  * @param panel the machine panel round the terminals, on in the mod; a pack restyles it or switches it off
- * @param cockpit the cockpit HUD of a seated pilot, style 0 (none) until a pack picks one
+ * @param cockpit the cockpit HUD of a seated pilot: the Ribbon, until a pack turns it off
  */
 public record UiTheme(
 		CrtTuning crt,

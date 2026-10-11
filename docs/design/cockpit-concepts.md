@@ -4,7 +4,7 @@
 
 **Status: round 1, superseded by [round 2](cockpit-concepts-2.md).** The user liked C, Consoles, and asked for far smaller status panels, a see-the-pod view and a front camera ([#448](https://github.com/pkeppeler/deepcharter/issues/448)). Round 2 removed A and B from the game with their sprites, keys and generator code (their stills stay in [pr-media/445](https://github.com/pkeppeler/deepcharter/tree/pr-media/445)) and kept Consoles, as `style` 1, to compare against. This page is how round 1 was shot and what it found; the sections below describe A and B as they were.
 
-**Status of the mod:** it ships `style` 0, so a player sees no change: the plain text HUD, the scanner at top right and the vanilla HUD stay as they were until a pack picks a style.
+**Status of the mod:** round 2 was picked and built: the mod ships the Ribbon ([#247](https://github.com/pkeppeler/deepcharter/issues/247), see [round 2](cockpit-concepts-2.md)). Round 1's Consoles, with the `style` key, the test packs and the generator code for every unpicked look, were removed with the pick. This page stays as the record of round 1.
 
 ## What every option shares (already decided)
 

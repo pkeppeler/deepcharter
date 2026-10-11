@@ -528,7 +528,7 @@ The inventory screen is vanilla, unchanged (the item gallery stills show it). Sw
 
 ### Pod status HUD
 
-Top left, while riding a pod: four white lines of plain text in the vanilla font ("Hull 70/100", "Fuel 61%", "Cargo 2", "Y 77"), and
+Since #247 a seated pilot gets the Ribbon cockpit instead (a band of gauges along the top edge, the scanner hung from its right end, the readout on a plate under it: [cockpit-concepts-2.md](cockpit-concepts-2.md)); what follows is the plain HUD, which shows on foot never, and while seated only when a pack turns the cockpit off or the GUI is under 320 x 240. Top left, while riding a pod: four white lines of plain text in the vanilla font ("Hull 70/100", "Fuel 61%", "Cargo 2", "Y 77"), and
 "STRANDED" when stranded, and a red "HULL BURNING" line while lava burns the hull (`podBurningColor` in `theme/hud.json`). A pod with a seep sounder (#373) adds magenta lines (`podSounderColor`): "SEEPAGE 3" (slabs down to a gas pocket under the pod), "BLEEDING SEEPAGE" while the drill waits on a pocket, and "SEEPAGE BESIDE E S" for the sides a sidestep would meet one on (tier 2). Every pod gets an amber line (`podHardLandingColor`) when its hull would not outlast the breach crust (#378): "CRUST 7 DOWN  HULL 20, IT TAKES 24", or "IN THE CRUST ..." once in it. A pod with a breach brace adds "BRACE WAITS  STOP THE DRILL", "BRACING  BURNING ORE FOR HULL" or "BRACE HAS NO ORE TO BURN". No frame, no icons. Source `client/pod/PodStatusHud.java` (the source calls it "Plain text readout... the real HUD design comes later").
 Vanilla: **no**. Swap **(c)** `PodStatusHud.java:23` (colour), `:54-56` (layout).
 
@@ -577,7 +577,7 @@ jitter), `BreachHud.java:46-52` (a black `fill()`).
 
 ### Other vanilla UI that shows
 
-The "Press Left Shift to dismount" line, the hotbar, health and hunger bars, the crosshair, the chat and the advancement toasts (nine handbook
+The "Press Left Shift to dismount" line (also while seated), the hotbar, health and hunger bars (hidden while seated since #247), the crosshair, the chat and the advancement toasts (nine handbook
 advancements under `data/deepcharter/advancement/handbook/`) are vanilla. Swap **(a)** vanilla GUI assets; the toast text is **(b)** advancement JSON and lang.
 
 ---

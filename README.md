@@ -39,9 +39,9 @@ The hangar holds the founding pod, dark until your charter repairs it.
 
 ### 2. Your pod
 
-![A pod in flight, with the status readout in the corner](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-flying.png?raw=true)
+![A pod in flight, seen from the seat, with the cockpit ribbon along the top of the view](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-flying.png?raw=true)
 
-A pod is a vehicle with seats. It drives on treads, lifts on a rotor and drills down and sideways, never up. The corner readout shows hull, fuel and cargo. The rotor folds flat when the pod is parked, the pilot sits in the canopy, and the paint comes from your charter, so a crew's pods match. The founding pod is the Mole, a machine 2 blocks wide and 3 tall, and wrecks you find deeper down include the Prospector, a second body with its own look.
+A pod is a vehicle with seats. It drives on treads, lifts on a rotor and drills down and sideways, never up. A cockpit ribbon runs along the top of your view: a bar each for fuel, hull, cargo, depth and heat, the altimeter in the middle and four warning lamps at the end, with the scanner hung from its right end. Any warning, such as a burning hull, is written under the scanner. The ribbon follows your GUI Scale setting. The rotor folds flat when the pod is parked, the pilot sits in the canopy, and the paint comes from your charter, so a crew's pods match. The founding pod is the Mole, a machine 2 blocks wide and 3 tall, and wrecks you find deeper down include the Prospector, a second body with its own look.
 
 ### 3. Drilling and fuel
 
@@ -91,7 +91,7 @@ You are not always alone down there. A lampless figure, tall and thin and black,
 
 ![Lava burns the hull of a pod](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-lava.gif?raw=true)
 
-Lava hurts the pod, not the pilot. The hull gauge drops until you leave or repair. At zero the pod is a wreck.
+Lava hurts the pod, not the pilot. The hull bar along the top of your screen drops, and the lamps at its end light, until you leave or repair. At zero the pod is a wreck.
 
 ### 10. Lining the shaft
 
