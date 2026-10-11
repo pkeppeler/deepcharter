@@ -6,6 +6,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
+import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
 /**
@@ -24,7 +25,13 @@ public final class UpgradeShown {
 		String label = Component.translatable("deepcharter.upgrade.track." + track.id()).getString() + "  T";
 		boolean lit = ClientChecks.buttons(screen).stream()
 				.anyMatch(button -> button instanceof CrtButton crt && marked(crt) && crt.getMessage().getString().startsWith(label));
-		return lit && ClientChecks.buttons(screen).size() == ComponentTrack.values().length + track.maxTier() + 1;
+		int trackButtons = screen instanceof UpgradeScreen upgrade ? upgrade.visibleTracks() : ComponentTrack.values().length;
+		return lit && ClientChecks.buttons(screen).size() == trackButtons + track.maxTier() + 1;
+	}
+
+	/** Scrolls the upgrade screen's track list so that the button of {@code track} is shown (the list scrolls when the tracks do not fit). Client thread. */
+	public static void reveal(UpgradeScreen screen, ComponentTrack track) {
+		screen.scrollTo(track.ordinal());
 	}
 
 	private static boolean marked(CrtButton button) {
