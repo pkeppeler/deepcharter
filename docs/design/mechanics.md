@@ -1086,3 +1086,7 @@ Also built: **layer 1 spawns four times rarer than layer 2** (1 in 200 against 2
 - If every crate of a world is broken, the world has no iron. 160 against 26 is a long way off. A part for sale at the contract terminal would be the fix; it is a follow-up if play shows the need.
 - Should a crate be a container that can be opened and left, so that a charter can leave salvage for another? Today it breaks into a loot table and is gone.
 - A wrecked prefab that drops salvage (the issue's other source) is not built; crates in patches stand in for it.
+
+## The deepest point (#476)
+
+A charter's deepest point is the greatest depth any online member in survival or adventure has stood at on the surface or in a layer, read once a second with `Depth.of` (the HUD's depth). `/deepcharter charter info` prints it in feet, like the HUD. "Reach layer 3", which opens the Morale Initiative, currently means reaching the floor of layer 2 (`LayerChain.topDepth(3)`), because layer 3 does not exist yet. The threshold moves down when layer 3 lands.

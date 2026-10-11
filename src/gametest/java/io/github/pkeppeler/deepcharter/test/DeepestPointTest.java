@@ -11,6 +11,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
@@ -125,21 +126,45 @@ public class DeepestPointTest {
 		});
 	}
 
-	/** A spectator flies through rock for free, so a flight proves no dive. */
+	/** A spectator or a creative player moves through rock for free, so being deep proves no dive. */
 	@GameTest(maxTicks = MAX_TICKS)
-	public void aSpectatorSetsNoRecord(GameTestHelper helper) {
+	public void aSpectatorOrACreativePlayerSetsNoRecord(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		ServerLevel two = server.getLevel(LayerChain.dimension(2));
 		MockPlayer ghost = charterMember(helper, "dp-ghost");
 		ghost.player().setGameMode(GameType.SPECTATOR);
 		ghost.teleportTo(two, new Vec3(X + 200.5, two.getMinY() + 4, Z + 200.5), 0, 0);
+		MockPlayer builder = charterMember(helper, "dp-creative");
+		builder.player().setGameMode(GameType.CREATIVE);
+		builder.teleportTo(two, new Vec3(X + 250.5, two.getMinY() + 4, Z + 250.5), 0, 0);
+		expectNoRecordAfterPolls(helper, server, ghost, builder);
+	}
+
+	/** The Nether has a depth of its own, which means nothing in the chain. */
+	@GameTest(maxTicks = MAX_TICKS)
+	public void aMemberInTheNetherSetsNoRecord(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		ServerLevel nether = server.getLevel(Level.NETHER);
+		MockPlayer crew = charterMember(helper, "dp-nether");
+		crew.player().setPermanentlyInvulnerable(true);
+		crew.player().setNoGravity(true);
+		crew.teleportTo(nether, new Vec3(X + 300.5, nether.getMinY() + 4, Z + 300.5), 0, 0);
+		if (Depth.of(nether, nether.getMinY() + 4) <= 0) {
+			throw helper.assertionException("the Nether test position should read as a positive depth, or it proves nothing");
+		}
+		expectNoRecordAfterPolls(helper, server, crew);
+	}
+
+	private static void expectNoRecordAfterPolls(GameTestHelper helper, MinecraftServer server, MockPlayer... members) {
 		int[] ticks = {0};
 		helper.succeedWhen(() -> {
 			if (++ticks[0] < 60) {
 				throw helper.assertionException("waiting for a few polls");
 			}
-			if (deepest(server, ghost) != 0) {
-				throw helper.assertionException("a spectator should not set a record, got %s", deepest(server, ghost));
+			for (MockPlayer member : members) {
+				if (deepest(server, member) != 0) {
+					throw helper.assertionException("%s should set no record, got %s", member.player().getGameProfile().name(), deepest(server, member));
+				}
 			}
 		});
 	}
