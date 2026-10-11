@@ -6,7 +6,7 @@ Standard library only. Colours are (r, g, b, a) tuples of 0 to 255; `rgb("#rrggb
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent / "textures"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import pngio  # noqa: E402
 

@@ -22,10 +22,12 @@ import argparse
 import json
 import math
 import random
-import struct
 import sys
-import zlib
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import pngio  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "src/main/resources/assets/deepcharter"
@@ -407,17 +409,7 @@ class Canvas:
         return tuple(self.pixels[i:i + 4])
 
     def png(self):
-        raw = bytearray()
-        stride = self.size * 4
-        for row in range(self.size):
-            raw.append(0)
-            raw += self.pixels[row * stride:(row + 1) * stride]
-
-        def chunk(kind, body):
-            return struct.pack(">I", len(body)) + kind + body + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
-
-        header = struct.pack(">IIBBBBB", self.size, self.size, 8, 6, 0, 0, 0)
-        return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(bytes(raw), 9)) + chunk(b"IEND", b"")
+        return pngio.encode(pngio.Rgba(self.size, self.size, bytes(self.pixels)))
 
 
 class Face:
@@ -1784,7 +1776,7 @@ def main(argv=None):
         print(describe(model))
         for path, data in files.items():
             if args.check:
-                if not path.exists() or path.read_bytes() != data:
+                if pngio.stale(path, data):
                     stale.append(path.relative_to(ROOT))
             else:
                 path.parent.mkdir(parents=True, exist_ok=True)

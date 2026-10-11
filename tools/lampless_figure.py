@@ -25,14 +25,13 @@ import argparse
 import json
 import math
 import random
-import struct
 import sys
-import zlib
 from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import pngio  # noqa: E402
 import pod_concepts as pc  # noqa: E402
 
 ROOT = pc.ROOT
@@ -560,26 +559,10 @@ def paint_figure(model):
 
 
 def read_png(data):
-    """Reads back a PNG that Canvas.png wrote: 8-bit RGBA, no interlace, filter 0 on every row."""
-    assert data[:8] == b"\x89PNG\r\n\x1a\n"
-    pos = 8
-    size = None
-    idat = b""
-    while pos < len(data):
-        (length,) = struct.unpack(">I", data[pos:pos + 4])
-        kind = data[pos + 4:pos + 8]
-        body = data[pos + 8:pos + 8 + length]
-        if kind == b"IHDR":
-            size = struct.unpack(">I", body[:4])[0]
-        elif kind == b"IDAT":
-            idat += body
-        pos += 12 + length
-    raw = zlib.decompress(idat)
-    canvas = pc.Canvas(size)
-    stride = size * 4 + 1
-    for row in range(size):
-        assert raw[row * stride] == 0
-        canvas.pixels[row * size * 4:(row + 1) * size * 4] = raw[row * stride + 1:(row + 1) * stride]
+    """Reads back a PNG that Canvas.png wrote."""
+    image = pngio.decode(data)
+    canvas = pc.Canvas(image.width)
+    canvas.pixels[:] = image.pixels
     return canvas
 
 
@@ -749,7 +732,7 @@ def main(argv=None):
     print(describe(model))
     for path, data in files.items():
         if args.check:
-            if not path.exists() or path.read_bytes() != data:
+            if pngio.stale(path, data):
                 stale.append(path.relative_to(ROOT))
         else:
             path.parent.mkdir(parents=True, exist_ok=True)

@@ -23,6 +23,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import pngio  # noqa: E402
 from terminal_art import Img, mix, nine_slice, rgb, shade  # noqa: E402
 from terminal_concepts import H, Sprite, big, hex_bolt, mcmeta_for, ramp, screw  # noqa: E402
 
@@ -566,7 +567,7 @@ def build() -> dict[Path, bytes]:
 
 def check() -> list[str]:
     """The paths of files that are missing or differ from what the generator makes, relative to the repo; empty when all is as it should be."""
-    return sorted(str(path.relative_to(ROOT)) for path, body in build().items() if not path.is_file() or path.read_bytes() != body)
+    return sorted(str(path.relative_to(ROOT)) for path, body in build().items() if pngio.stale(path, body))
 
 
 def write() -> None:
