@@ -18,6 +18,7 @@ public class LamplessFigureRenderer extends GeoReplacedEntityRenderer<LamplessFi
 	public LamplessFigureRenderer(EntityRendererProvider.Context context) {
 		super(context, checkedModel(context), new LamplessFigureAnimatable());
 		shadowRadius = SHADOW_RADIUS;
+		withRenderLayer(new LamplessFigureGlowLayer(this));
 	}
 
 	private static LamplessFigureModel checkedModel(EntityRendererProvider.Context context) {
@@ -34,6 +35,8 @@ public class LamplessFigureRenderer extends GeoReplacedEntityRenderer<LamplessFi
 	@Override
 	public void extractRenderState(LamplessFigure figure, LamplessFigureRenderState state, float partialTick) {
 		state.fade = figure.fadeFraction();
+		state.clinging = figure.isClinging();
+		state.lamp = figure.hasLamp();
 		super.extractRenderState(figure, state, partialTick);
 	}
 

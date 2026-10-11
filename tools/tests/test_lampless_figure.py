@@ -1,6 +1,6 @@
-"""Tests tools/lampless_figure.py (#250): the committed files are what it writes, the figure keeps the art-direction rules (too tall
-and thin, matte black, an empty lamp bracket, a hard hat, no face) and the wrongness it claims, and a model or a texture that breaks
-a rule fails."""
+"""Tests tools/lampless_figure.py (#250, #449): the committed files are what it writes, the figure keeps the art-direction rules (too tall
+and thin, matte black, an empty lamp bracket, a hard hat, no face) and the wrongness it claims, the lamp of a lamp-carrier is one small
+glowing piece in each of its three ways to be carried, and a model or a texture that breaks a rule fails."""
 import json
 import re
 import sys
@@ -23,11 +23,18 @@ class CommittedFiles(unittest.TestCase):
                 self.assertTrue(path.exists(), f"{path} is missing: run python3 -I tools/lampless_figure.py")
                 self.assertEqual(path.read_bytes(), data, f"{path} is stale: run python3 -I tools/lampless_figure.py")
 
-    def test_the_figure_is_a_model_a_texture_and_an_animation_and_nothing_glows(self):
+    def test_the_mod_holds_a_model_a_texture_a_glowmask_and_an_animation_and_each_other_lamp_is_a_test_pack(self):
         _, files = lf.build()
-        self.assertEqual(
-            sorted(["lampless_figure.geo.json", "lampless_figure.png", "lampless_figure.animation.json"]),
-            sorted(path.name for path in files), "the figure is three files, and a lampless thing has no glowmask")
+        in_mod = sorted(path.name for path in files if lf.ASSETS in path.parents)
+        self.assertEqual(sorted(["lampless_figure.geo.json", "lampless_figure.png", "lampless_figure_lamp.geo.json", "lampless_figure_lamp.png",
+                                 "lampless_figure_lamp_glowmask.png", "lampless_figure.animation.json"]), in_mod)
+        for option in lf.LAMP_OPTIONS[1:]:
+            held = sorted(path.name for path in files if lf.pack_dir(option) in path.parents)
+            self.assertEqual(sorted(["pack.mcmeta", "lampless_figure_lamp.geo.json", "lampless_figure_lamp.png", "lampless_figure_lamp_glowmask.png"]), held, option)
+        self.assertEqual([], [path for path in files if lf.pack_dir(lf.DEFAULT_LAMP) in path.parents], "the default is in the mod, not a pack")
+        for option in lf.LAMP_OPTIONS[1:]:
+            on_disk = {path for path in lf.pack_dir(option).rglob("*") if path.is_file()}
+            self.assertEqual({path for path in files if lf.pack_dir(option) in path.parents}, on_disk, f"the pack {option} holds a file the script does not write: delete it")
 
     def test_the_files_are_at_the_ids_the_java_names(self):
         java = RENDERER.read_text()
@@ -100,7 +107,7 @@ class Animations(unittest.TestCase):
 
     def test_there_is_an_idle_that_loops_and_a_walk_that_loops(self):
         animations = self.animations()
-        self.assertEqual({"animation.figure.idle", "animation.figure.walk"}, set(animations))
+        self.assertEqual({"animation.figure.idle", "animation.figure.walk", "animation.figure.cling"}, set(animations))
         for animation in animations.values():
             self.assertTrue(animation["loop"])
 
@@ -114,6 +121,84 @@ class Animations(unittest.TestCase):
         frames = self.animations()["animation.figure.idle"]["bones"]["head"]["rotation"]
         self.assertGreaterEqual(max(abs(v[2]) for v in frames.values()), 20)
 
+
+
+class Lamp(unittest.TestCase):
+    """A lamp-carrier shows from far off in the dark: one small piece of glass, dark in the texture and lit in the glowmask."""
+
+    def test_each_way_to_carry_the_lamp_is_a_valid_figure_with_one_lantern_bone_and_a_little_glass(self):
+        for option in lf.LAMP_OPTIONS:
+            with self.subTest(option=option):
+                model = lf.figure(option)
+                lf.check_figure(model)
+                self.assertEqual(1, sum(1 for bone in model.bones if bone.name == lf.LANTERN))
+                self.assertTrue(0 < lf.glass_texels(model) <= lf.MAX_GLASS_TEXELS)
+
+    def test_the_three_ways_hold_the_lamp_in_three_different_places(self):
+        centres = []
+        for option in lf.LAMP_OPTIONS:
+            model = lf.figure(option)
+            bone = lf.bone_named(model, lf.LANTERN)
+            glass = [cube for cube in bone.cubes if cube.material == "glass"]
+            points = [p for cube in glass for p in lf.pc.corners(model, bone, cube)]
+            centres.append(tuple(sum(p[i] for p in points) / len(points) for i in range(3)))
+        for i, a in enumerate(centres):
+            for b in centres[i + 1:]:
+                self.assertGreater(sum((x - y) ** 2 for x, y in zip(a, b)) ** 0.5, 6, "two ways to carry the lamp put it in nearly the same place")
+
+    def test_the_glowmask_is_clear_except_on_the_glass_and_the_glass_is_lit(self):
+        for option in lf.LAMP_OPTIONS:
+            with self.subTest(option=option):
+                model, made = lf.option_files(option)
+                glow = lf.read_png(made["glowmask"])
+                glass_texels = set()
+                for bone, cube in model.cubes():
+                    if cube.material == "glass":
+                        for face in lf.faces_of(cube):
+                            glass_texels |= {(face.x + i, face.y + j) for i in range(face.w) for j in range(face.h)}
+                lit = {(x, y) for y in range(glow.size) for x in range(glow.size) if glow.get(x, y)[3]}
+                self.assertEqual(glass_texels, lit, "the glowmask is lit somewhere other than the glass")
+                self.assertGreaterEqual(min(lf.luma(glow.get(x, y)) for x, y in lit), 120, "the lamp is dim in the glowmask")
+
+    def test_the_glass_is_as_dark_as_the_figure_in_the_texture(self):
+        _, made = lf.option_files(lf.DEFAULT_LAMP)
+        texture = lf.read_png(made["texture"])
+        self.assertLessEqual(max(lf.luma(texture.get(x, y)) for y in range(texture.size) for x in range(texture.size) if texture.get(x, y)[3]), lf.MAX_LUMA)
+
+    def test_glass_outside_the_lantern_bone_fails(self):
+        model = lf.figure(lf.DEFAULT_LAMP)
+        model.bone("window", "spine", (0, 20, 0)).box(-1, 20, -1, 1, 22, 1, "glass")
+        with self.assertRaises(ValueError):
+            lf.check_figure(model)
+
+    def test_a_lamp_that_is_a_floodlight_fails(self):
+        model = lf.figure(lf.DEFAULT_LAMP)
+        lf.bone_named(model, lf.LANTERN).box(-3, 5, -3, 3, 10, 3, "glass")
+        with self.assertRaises(ValueError):
+            lf.check_figure(model)
+
+    def test_the_lampless_figure_has_no_lantern_and_no_glass(self):
+        model = lf.figure()
+        self.assertEqual([], [bone.name for bone in model.bones if bone.name == lf.LANTERN])
+        self.assertEqual(0, lf.glass_texels(model))
+
+    def test_a_lamp_carrier_is_the_lampless_figure_and_the_lantern(self):
+        plain = [(bone.name, bone.pivot, bone.rotation) for bone in lf.figure().bones]
+        for option in lf.LAMP_OPTIONS:
+            with self.subTest(option=option):
+                carrier = [(bone.name, bone.pivot, bone.rotation) for bone in lf.figure(option).bones if bone.name != lf.LANTERN]
+                if option == "hand":
+                    carrier = [entry for entry in carrier if entry[0] not in ("forearm_r", "forearm_low_r", "hand_r")]
+                    plain_arm = [entry for entry in plain if entry[0] not in ("forearm_r", "forearm_low_r", "hand_r")]
+                    self.assertEqual(plain_arm, carrier)
+                else:
+                    self.assertEqual(plain, carrier)
+
+    def test_the_assets_class_names_the_lamp_files_the_generator_writes(self):
+        java = RENDERER.read_text()
+        self.assertEqual(lf.LAMP_MODEL_FILE, lf.ASSETS / f"geckolib/models/{re.search(r'LAMP_RESOURCE = \"([^\"]+)\"', java).group(1)}.geo.json")
+        self.assertEqual(lf.LAMP_TEXTURE_FILE, lf.ASSETS / f"textures/{re.search(r'LAMP_TEXTURE = \"([^\"]+)\"', java).group(1)}.png")
+        self.assertEqual(lf.LAMP_GLOWMASK_FILE, lf.ASSETS / f"textures/{re.search(r'LAMP_TEXTURE = \"([^\"]+)\"', java).group(1)}_glowmask.png")
 
 
 class LampBracketAndFace(unittest.TestCase):

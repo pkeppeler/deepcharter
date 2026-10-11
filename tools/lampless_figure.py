@@ -10,6 +10,11 @@ lamp beam; an empty lamp bracket on the helmet; no face; edges slightly smeared;
 the limbs: arms that reach the knees, a second joint in each forearm and each shin, and a stoop. It was the user's pick of the
 four concepts of round 1 (docs/design/figure-concepts.md).
 
+A figure may carry a lamp (#449), so that it shows from far off in the dark. A lamp-carrier has a model, a texture and a glowmask of its own, the
+Reacher plus one bone, "lantern"; the lampless figure's files are untouched by it. The lamp's glass is dark in the texture and lit in the
+glowmask, drawn at full bright. How the lamp is carried is a choice of three (docs/design/figure-concepts.md): in the hand (the default, written
+into the mod), on a pole, or inside the ribcage. The other two are written as test packs, which replace the three lamp files.
+
 The output is plain Blockbench-compatible data, the same path as the pods (tools/pod_concepts.py): a Bedrock geometry with box UV
 and named bones, a texture, and a GeckoLib animation file with an idle and a walk. The game always draws it
 (client/creature/LamplessFigureRenderer). Model space is Bedrock's: pixels, y up, the floor at y 0, the front toward -z, the
@@ -17,6 +22,7 @@ figure's left toward +x. A bone's rest rotation and an animation's rotation are 
 forward and swings the foot of a hanging bone back.
 """
 import argparse
+import json
 import math
 import random
 import struct
@@ -31,10 +37,21 @@ import pod_concepts as pc  # noqa: E402
 
 ROOT = pc.ROOT
 ASSETS = pc.ASSETS
+PACKS = ROOT / "src/gametest/resources/resourcepacks"
 ID = "lampless_figure"
 MODEL_FILE = ASSETS / f"geckolib/models/creature/{ID}.geo.json"
 TEXTURE_FILE = ASSETS / f"textures/entity/{ID}.png"
+LAMP_ID = f"{ID}_lamp"
+LAMP_MODEL_FILE = ASSETS / f"geckolib/models/creature/{LAMP_ID}.geo.json"
+LAMP_TEXTURE_FILE = ASSETS / f"textures/entity/{LAMP_ID}.png"
+LAMP_GLOWMASK_FILE = ASSETS / f"textures/entity/{LAMP_ID}_glowmask.png"
 ANIMATION_FILE = ASSETS / f"geckolib/animations/creature/{ID}.animation.json"
+# How the lamp is carried: the first is the default, written into the mod; each of the others is a test pack, retained_lamp_<option>.
+LAMP_OPTIONS = ("hand", "pole", "ribs")
+DEFAULT_LAMP = LAMP_OPTIONS[0]
+LANTERN = "lantern"
+# The glass of the lamp is small: a hand lantern, not a floodlight.
+MAX_GLASS_TEXELS = 16
 TEXTURE_SIZE = 128
 
 # Too tall and thin: a miner is about 36 px, the figure is at least 1.2 times that. It is 44 px (2.75 blocks) to within half a pixel,
@@ -45,7 +62,7 @@ MAX_HEIGHT_PX = 44.5
 MAX_WIDTH_PX = 16
 # The box the renderer culls by (LamplessFigureRenderer): the tallest and widest the figure can stand, with its lean and its arms.
 CULL_HEIGHT_PX = 48
-CULL_REACH_PX = 24
+CULL_REACH_PX = 32
 # The figure may share at most this share of its silhouette with a miner's (overlap of the front views, and of the side views).
 MAX_SILHOUETTE_OVERLAP = 0.70
 # Matte black: no texel of the texture is brighter than this (0 to 255), so the figure is black in the beam too.
@@ -73,13 +90,36 @@ def black(base, spread):
     return paint
 
 
+def dark_glass(canvas, face, rng):
+    """The lamp's glass in the texture: as dark as the rest of the figure. The glowmask lights it."""
+    for j in range(face.h):
+        for i in range(face.w):
+            grey = 20 + rng.randint(-2, 2)
+            canvas.set(face.x + i, face.y + j, (grey + 6, grey + 2, grey - 4))
+
+
+def lit_glass(canvas, face, rng):
+    """The lamp's glass in the glowmask: a warm flame, brighter in the middle of each face."""
+    for j in range(face.h):
+        for i in range(face.w):
+            edge = min(i, j, face.w - 1 - i, face.h - 1 - j)
+            heat = 1.0 if edge > 0 or min(face.w, face.h) <= 2 else 0.78
+            heat -= rng.random() * 0.08
+            canvas.set(face.x + i, face.y + j, (round(255 * heat), round(190 * heat), round(92 * heat)))
+
+
 MATERIALS = {
     "cloth": black(11, 2),
+    "iron": black(23, 2),
+    "glass": dark_glass,
     "veil": black(8, 1),
     "hat": black(19, 2),
     "bracket": black(31, 2),
     "fray": black(5, 1),
 }
+
+# What each material adds to the glowmask; a material not here is dark in it.
+GLOWS = {"glass": lit_glass}
 
 
 class FigureBone(pc.Bone):
@@ -177,8 +217,8 @@ def leg_drop(segs):
     return drop + segs[-1].length
 
 
-def build_model(name, spec):
-    model = FigureModel(f"figure_{name}", bore=0, height=MAX_HEIGHT_PX, texture=TEXTURE_SIZE)
+def build_model(name, spec, lamp=None):
+    model = FigureModel(f"figure_{name}" + ("_lamp" if lamp else ""), bore=0, height=MAX_HEIGHT_PX, texture=TEXTURE_SIZE)
     rng = random.Random(name)
     hip_y = leg_drop(spec.legs)
     tw, th, td = spec.torso
@@ -199,9 +239,11 @@ def build_model(name, spec):
     helmet(model, head_top, hw, hd)
     for side, sign in (("l", 1), ("r", -1)):
         pivot = (sign * spec.shoulder_x, torso_top - spec.shoulder_drop, spec.shoulder_z)
-        limb(model, side, "spine", pivot, spec.arms)
+        limb(model, side, "spine", pivot, HELD_ARM if lamp == "hand" and side == "r" else spec.arms)
         sleeve = model.bones[-2]
         frays(sleeve, rng, spec.sleeve_frays, sleeve.cubes[0].size[0] + 2, sleeve.cubes[0].size[2] + 2, sleeve.pivot[1] - sleeve.cubes[0].size[1], x_centre=sleeve.pivot[0], z_centre=sleeve.pivot[2])
+    if lamp is not None:
+        LAMPS[lamp](model, spec)
     return model
 
 
@@ -229,6 +271,51 @@ def helmet(model, head_top, hw, hd):
     bracket.box(1, bottom + 1, front - 3, 2, top - 1, front - 2, "bracket")
     bracket.box(-2, bottom, front - 2, -1, bottom + 1, front, "bracket")
     bracket.box(1, bottom, front - 2, 2, bottom + 1, front, "bracket")
+
+
+def hanging_lantern(bone, x, top, z):
+    """A small lantern hung from (x, top, z): a ring, a cap, 2 x 3 x 2 of glass and a base, 6 px from the ring to the base."""
+    bone.box(x - 0.5, top - 1, z - 0.5, x + 0.5, top, z + 0.5, "iron")
+    bone.box(x - 1.5, top - 2, z - 1.5, x + 1.5, top - 1, z + 1.5, "iron")
+    bone.box(x - 1, top - 5, z - 1, x + 1, top - 2, z + 1, "glass")
+    bone.box(x - 1.5, top - 6, z - 1.5, x + 1.5, top - 5, z + 1.5, "iron")
+
+
+def lamp_in_hand(model, spec):
+    """The default: a lantern on a ring in the right hand, which hangs at the knee and swings with the walk."""
+    hand = bone_named(model, "hand_r")
+    x, y, z = hand.pivot
+    bone = model.bone(LANTERN, "hand_r", (x, y - 3, z))
+    hanging_lantern(bone, x, y - 3, z)
+
+
+def lamp_on_pole(model, spec):
+    """A staff in the right hand with a crook at the top, and the lantern hung from the crook beside the head."""
+    hand = bone_named(model, "hand_r")
+    x, y, z = hand.pivot
+    top = y + POLE_LENGTH
+    bone = model.bone(LANTERN, "hand_r", (x, y - 3, z))
+    bone.box(x - 0.5, y - 3, z - 0.5, x + 0.5, top, z + 0.5, "iron")
+    bone.box(x - 0.5, top, z - 4.5, x + 0.5, top + 1, z + 0.5, "iron")
+    hanging_lantern(bone, x, top, z - 4)
+
+
+def lamp_in_ribs(model, spec):
+    """A lamp inside the ribcage: glass in the chest, and iron ribs across it, so that the light shows between the bars."""
+    spine = bone_named(model, "spine")
+    torso = spine.cubes[0]
+    x0, y0, z0 = torso.origin
+    w, h, d = torso.size
+    bone = model.bone(LANTERN, "spine", (0, y0 + h / 2, z0))
+    bone.box(-1.5, y0 + 2, z0 - 1, 1.5, y0 + 7, z0, "glass")
+    for y in (y0 + 2, y0 + 4, y0 + 6):
+        bone.box(-2.5, y, z0 - 2, 2.5, y + 1, z0 - 1, "iron")
+    bone.box(-0.5, y0 + 2, z0 - 2, 0.5, y0 + 7, z0 - 1, "iron")
+
+
+LAMPS = {"hand": lamp_in_hand, "pole": lamp_on_pole, "ribs": lamp_in_ribs}
+# Blocks of staff above the hand in the pole option, in pixels.
+POLE_LENGTH = 22
 
 
 def frays(bone, rng, count, width, depth, bottom, x_centre=0.0, z_centre=0.0):
@@ -269,6 +356,11 @@ REACHER = Spec(
     legs=(LEG("thigh", 8, rest=6), LEG("shin", 6, rest=-14), LEG("shin_low", 6, rest=16), BOOT),
     arms=arm_segs(("upper_arm", 7, 4, 14), ("forearm", 5, -14, -8), ("forearm_low", 5, 20, 6)),
     walk=Walk(thigh=16, leg_bends=(22, -18), arm=10, arm_bends=(-12, 14)), lean=16)
+
+
+# The right arm of a figure that holds its lamp in the hand: the same bones, with the forearm bent up and forward, so that the lamp hangs
+# in front of the figure at the waist and not behind it.
+HELD_ARM = arm_segs(("upper_arm", 7, 4, 14), ("forearm", 5, -55, -8), ("forearm_low", 5, -35, 6))
 
 
 def miner():
@@ -341,8 +433,8 @@ def posed_extents(model, animations):
 
 
 def animated_bones():
-    """The idle's and the walk's rotation channels, as {bone: {"rotation": {time: [x, y, z]}}}."""
-    return [idle_bones()[1], walk_bones(REACHER)[1]]
+    """The idle's, the walk's and the cling's rotation channels, as {bone: {"rotation": {time: [x, y, z]}}}."""
+    return [idle_bones()[1], walk_bones(REACHER)[1], cling_bones()[1]]
 
 
 def body_width(model):
@@ -387,8 +479,9 @@ CLAIMS = [
 ]
 
 
-def figure():
-    return build_model(ID, REACHER)
+def figure(lamp=None):
+    """The Reacher, with its lamp carried as `lamp` says, or lampless for None."""
+    return build_model(ID, REACHER, lamp)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -416,6 +509,24 @@ def check_figure(model):
     for bone in model.bones:
         if bone.name != "lamp_bracket" and any(word in bone.name for word in FORBIDDEN_BONE_WORDS):
             raise ValueError(f"{model.name} has a bone named {bone.name}: the bracket is empty and the head has no face")
+    check_lamp(model)
+
+
+def glass_texels(model):
+    """The volume, in texels, of the lamp's glass."""
+    return sum(c.size[0] * c.size[1] * c.size[2] for _, c in model.cubes() if c.material == "glass")
+
+
+def check_lamp(model):
+    """Throws unless a lamp is one bone named LANTERN holding a small piece of glass and nothing else is glass, or the figure has no lamp and no glass."""
+    lanterns = sum(1 for bone in model.bones if bone.name == LANTERN)
+    if lanterns > 1:
+        raise ValueError(f"{model.name} has {lanterns} bones named {LANTERN}")
+    if any(c.material == "glass" for bone, c in model.cubes() if bone.name != LANTERN):
+        raise ValueError(f"{model.name} has glass outside the {LANTERN} bone")
+    texels = glass_texels(model)
+    if (lanterns == 1 and not 0 < texels <= MAX_GLASS_TEXELS) or (lanterns == 0 and texels):
+        raise ValueError(f"{model.name}: the lamp's glass is {texels} texels; a small lamp has 1 to {MAX_GLASS_TEXELS} and a lampless figure has none")
 
 
 def check_matte(name, canvas):
@@ -436,12 +547,16 @@ faces_of = pc.faces_of
 
 
 def paint_figure(model):
+    """The texture and the glowmask: the glowmask is clear except on the glass."""
     canvas = pc.Canvas(model.texture)
+    glow = pc.Canvas(model.texture)
     for bone, cube in model.cubes():
         rng = random.Random(f"{model.name}:{bone.name}:{bone.cubes.index(cube)}")
         for face in faces_of(cube):
             MATERIALS[cube.material](canvas, face, rng)
-    return canvas
+            if cube.material in GLOWS:
+                GLOWS[cube.material](glow, face, random.Random(f"glow:{model.name}:{bone.name}:{face.kind}"))
+    return canvas, glow
 
 
 def read_png(data):
@@ -531,17 +646,36 @@ def walk_bones(spec):
     return length, bones
 
 
+def cling_bones():
+    """Pressed to a pod's hull, facing it: the body bent over it, both arms reaching out to the hull, the legs braced, and a shiver as it feeds."""
+    length = 1.0
+    bones = {
+        "spine": frames(sway(length, 4, [14, 0, 0], 1.2, 2)),
+        "neck": frames(hold(length, [0, 0, 6])),
+        "head": frames(sway(length, 4, [10, 0, 14], 2, 0)),
+    }
+    for side, phase in (("l", 0.0), ("r", math.pi)):
+        bones[f"upper_arm_{side}"] = frames(sway(length, 4, [-95, 0, 0], 3, 0, phase))
+        bones[f"forearm_{side}"] = frames(hold(length, [18, 0, 0]))
+        bones[f"forearm_low_{side}"] = frames(hold(length, [-18, 0, 0]))
+        bones[f"hand_{side}"] = frames(hold(length, [-24, 0, 0]))
+        bones[f"thigh_{side}"] = frames(hold(length, [-14 if side == "l" else 8, 0, 0]))
+    return length, bones
+
+
 def vector_text(values):
     return "[" + ", ".join(pc.number(v) for v in values) + "]"
 
 
 def animation_json(spec):
-    """The GeckoLib animation file: animation.figure.idle and animation.figure.walk, both looping, bones as the model names them."""
+    """The GeckoLib animation file: animation.figure.idle, .walk and .cling, all looping, bones as the model names them."""
     idle_length, idle = idle_bones()
     walk_length, walk = walk_bones(spec)
+    cling_length, cling = cling_bones()
     lines = ["{", '\t"format_version": "1.8.0",', '\t"animations": {']
     blocks = []
-    for name, length, bones in (("animation.figure.idle", idle_length, idle), ("animation.figure.walk", walk_length, walk)):
+    for name, length, bones in (("animation.figure.idle", idle_length, idle), ("animation.figure.walk", walk_length, walk),
+                                ("animation.figure.cling", cling_length, cling)):
         block = [f'\t\t"{name}": {{', '\t\t\t"loop": true,', f'\t\t\t"animation_length": {pc.number(length)},', '\t\t\t"bones": {']
         bone_lines = []
         for bone, channels in bones.items():
@@ -560,18 +694,44 @@ def animation_json(spec):
 # ---------------------------------------------------------------------------------------------
 
 
-def build():
-    """Makes the figure: its model and its three files, keyed by path. Throws if the model or the texture breaks a rule."""
-    model = figure()
+def pack_dir(option):
+    """The test pack that shows the lamp carried as `option`."""
+    return PACKS / f"retained_lamp_{option}"
+
+
+def pack_meta(option):
+    return json.dumps({"pack": {"description": f"Deep Charter test pack: the Retained's lamp carried as {option} (#449)", "min_format": 97, "max_format": 97}}, indent=2) + "\n"
+
+
+def option_files(option):
+    """The model, texture and glowmask of the figure with its lamp carried as `option` (None for no lamp), as (model, {name: bytes}). Throws if a rule is broken."""
+    model = figure(option)
     check_figure(model)
     pack(model)
-    canvas = paint_figure(model)
+    canvas, glow = paint_figure(model)
     check_matte(ID, canvas)
+    return model, {"model": pc.geo_json(model).encode(), "texture": canvas.png(), "glowmask": glow.png()}
+
+
+def build():
+    """Makes the lampless figure and the one with the default lamp: their files, keyed by path, and the test packs of the other ways to carry the lamp."""
+    model, plain = option_files(None)
+    _, lamp = option_files(DEFAULT_LAMP)
     files = {
-        MODEL_FILE: pc.geo_json(model).encode(),
-        TEXTURE_FILE: canvas.png(),
+        MODEL_FILE: plain["model"],
+        TEXTURE_FILE: plain["texture"],
+        LAMP_MODEL_FILE: lamp["model"],
+        LAMP_TEXTURE_FILE: lamp["texture"],
+        LAMP_GLOWMASK_FILE: lamp["glowmask"],
         ANIMATION_FILE: animation_json(REACHER).encode(),
     }
+    for option in LAMP_OPTIONS[1:]:
+        _, other = option_files(option)
+        root = pack_dir(option) / "assets/deepcharter"
+        files[pack_dir(option) / "pack.mcmeta"] = pack_meta(option).encode()
+        files[root / LAMP_MODEL_FILE.relative_to(ASSETS)] = other["model"]
+        files[root / LAMP_TEXTURE_FILE.relative_to(ASSETS)] = other["texture"]
+        files[root / LAMP_GLOWMASK_FILE.relative_to(ASSETS)] = other["glowmask"]
     return model, files
 
 

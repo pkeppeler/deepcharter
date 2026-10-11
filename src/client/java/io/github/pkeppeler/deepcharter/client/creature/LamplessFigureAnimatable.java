@@ -5,19 +5,28 @@ import com.geckolib.animatable.instance.AnimatableInstanceCache;
 import com.geckolib.animatable.manager.AnimatableManager;
 import com.geckolib.animation.AnimationController;
 import com.geckolib.animation.RawAnimation;
+import com.geckolib.renderer.base.GeoRenderState;
 import com.geckolib.util.GeckoLibUtil;
 
 /** One shared stand-in for every figure, so the figure stays free of GeckoLib and a server never loads it. */
 public final class LamplessFigureAnimatable implements GeoReplacedEntity {
 	private static final RawAnimation IDLE = RawAnimation.begin().thenLoop(LamplessFigureAssets.IDLE);
 	private static final RawAnimation WALK = RawAnimation.begin().thenLoop(LamplessFigureAssets.WALK);
+	private static final RawAnimation CLING = RawAnimation.begin().thenLoop(LamplessFigureAssets.CLING);
 	private static final int BLEND_TICKS = 6;
 
 	private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
 	@Override
 	public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-		controllers.add(new AnimationController<LamplessFigureAnimatable>("figure", BLEND_TICKS, test -> test.setAndContinue(test.isMoving() ? WALK : IDLE)));
+		controllers.add(new AnimationController<LamplessFigureAnimatable>("figure", BLEND_TICKS, test -> test.setAndContinue(pose(test.renderState(), test.isMoving()))));
+	}
+
+	private static RawAnimation pose(GeoRenderState state, boolean moving) {
+		if (state instanceof LamplessFigureRenderState figure && figure.clinging) {
+			return CLING;
+		}
+		return moving ? WALK : IDLE;
 	}
 
 	@Override
