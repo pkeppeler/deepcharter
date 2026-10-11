@@ -41,7 +41,7 @@ The hangar holds the founding pod, dark until your charter repairs it.
 
 ![A pod in flight, with the status readout in the corner](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-flying.png?raw=true)
 
-A pod is a vehicle with seats. It drives on treads, lifts on a rotor and drills down and sideways, never up. The corner readout shows hull, fuel and cargo. The founding pod is the Mole, and wrecks you find deeper down include the Prospector, a second body with its own look.
+A pod is a vehicle with seats. It drives on treads, lifts on a rotor and drills down and sideways, never up. The corner readout shows hull, fuel and cargo. The rotor folds flat when the pod is parked, the pilot sits in the canopy, and the paint comes from your charter, so a crew's pods match. The founding pod is the Mole, a squat 2-by-3 block machine, and wrecks you find deeper down include the Prospector, a second body with its own look.
 
 ### 3. Drilling and fuel
 
@@ -65,7 +65,7 @@ Ore is heavy and lives in the pod's cargo bay. A heavy load cuts your lift. Park
 
 ![The upgrade terminal showing hull prices](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/upgrade-terminal.png?raw=true)
 
-Money buys better parts: drill, hull, engine, tank, radiator, cargo, scanner, lights, spoil hopper, liner and seep sounder. The hangar holds your pods and sells a new one. Wrecks you find deeper down become better pods.
+Every terminal is a Hatch machine panel: a green screen in a riveted steel frame, with a status strip along the bottom. Money buys better parts there: drill, hull, engine, tank, radiator, cargo, scanner, lights, spoil hopper, liner, seep sounder and breach brace. The hangar holds your pods and sells a new one. Wrecks you find deeper down become better pods.
 
 ![The Mole's cutter changes from a tricone to stacked rings to a fluted auger as two drill upgrades are bought](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-cutter-swap.gif?raw=true)
 
@@ -83,6 +83,10 @@ The repair station fixes the hull. It also sells dynamite to blast a blocked sha
 
 Below the surface there is no sky. An unlit cave is almost black. The pod's lights are the only light you have, and a stranded pod puts them out.
 
+![A lampless figure stands in a dark room beside a lit pod](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/reacher.png?raw=true)
+
+You are not always alone down there. A lampless figure, tall and thin and black, stands at the edge of your light. It never attacks, and it never says what it wants.
+
 ### 9. Lava and the hull
 
 ![Lava burns the hull of a pod](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-lava.gif?raw=true)
@@ -91,13 +95,13 @@ Lava hurts the pod, not the pilot. The hull gauge drops until you leave or repai
 
 ### 10. Lining the shaft
 
-![Looking up a shaft whose walls are lined with slag brick where the lava pockets were](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-lining.png?raw=true)
+![Looking down a shaft whose walls are lined with slag brick where the lava pockets were](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-lining.png?raw=true)
 
 A thermal scanner shows lava pockets beside your shaft before you reach them. Stop a slab above, press R from the seat, and the pod lines the slab walls with slag brick while it stands still. Then drill on. Buy a spoil hopper at the upgrade terminal and the drill keeps the stone it bores. The ore processor fuses that stone into the brick.
 
-The liner part does it for you. Fit one and the pod rings the shaft with slag brick as it drills, every few slabs, which seals the walls against lava pockets the thermal scanner has shown you. Tier 1 rings every 4 slabs, tier 2 every 3 and also in a fall, and it stretches your slag further. The cost is drill speed: a better liner is a slower drill. The readout shows your slag and how many slabs are left to the next ring.
+The liner part does it for you. Fit one and the pod rings the shaft with slag brick as it drills, every few slabs, which seals the walls against lava pockets the thermal scanner has shown you. Tier 1 rings every 4 slabs, tier 2 every 3 and also in a fall, and it stretches your slag further. The cost is drill speed: a better liner is a slower drill. The readout shows your slag and how many slabs are left to the next ring. (These two pictures look down the shaft from above; from the seat the cab frame hides the walls.)
 
-![Looking up a shaft the liner has ringed with slag brick, with the liner readout in the corner](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-liner.png?raw=true)
+![Looking down a shaft the liner has ringed with slag brick, with the pod at the bottom](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-liner.png?raw=true)
 
 ### 11. Gas and the seep sounder
 
@@ -109,13 +113,17 @@ A gas pocket looks like plain stone. Fit the seep sounder and the readout counts
 
 ![A working pod beside a dark wreck](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/wreck.png?raw=true)
 
-A pod with no hull goes dark and stays where it fell, and its owners are told. A crew can rescue each other: hold a tow cable and right-click the wreck to pull it home, as in the picture at the top.
+A pod with no hull goes dark and stays where it fell, and its owners are told. A crew can rescue each other: hold a tow cable and right-click the wreck to pull it home, as in the picture at the top. The cable is long, so the wreck trails behind you like a sling load, and it swings when you stop.
 
 ### 13. The breach
 
 ![A transmission from an unknown signal, on a green screen](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/breach-transmission.png?raw=true)
 
 A crust of hard rock at the floor of each layer is a breach. Any drill can get through, slowly and hot. Crossing is an event: a rumble, then a transmission on a green screen. The words in this picture are stand-ins until the story is written.
+
+![The pod's readout warns CRUST 7 DOWN, HULL 8, IT TAKES 24](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/breach-brace.png?raw=true)
+
+The crust costs hull, so the readout warns you before you reach it: how many slabs down it is, what hull you have, and what the crust will take. Short of hull, you can heal first, or fit the breach brace. Park above the crust with your hands off the controls, and the brace burns ore from the cargo bay to patch the hull (`BRACING  BURNING ORE FOR HULL`).
 
 ### 14. The handbook
 

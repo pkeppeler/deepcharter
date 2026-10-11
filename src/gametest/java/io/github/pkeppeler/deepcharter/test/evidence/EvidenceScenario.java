@@ -5,10 +5,15 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.Set;
 
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions;
+
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.GameType;
 
 import io.github.pkeppeler.deepcharter.test.ClientTestLog;
 
@@ -66,6 +71,20 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
 	protected final void frame(ClientGameTestContext context) {
 		frame++;
 		shoot(context, String.format("frame-%04d", frame), framesDir);
+	}
+
+	/**
+	 * Lets the first player out of the pod and floats them, as a spectator, at ({@code x}, {@code y}, {@code z}) looking {@code pitch}
+	 * degrees down, facing {@code yaw}. The cab frame of the pod blocks a look up from the seat, so a still of a lined shaft is taken from
+	 * above it instead, with the pod at the bottom.
+	 */
+	protected final void floatAbovePod(TestSingleplayerContext singleplayer, double x, double y, double z, float yaw, float pitch) {
+		singleplayer.getServer().runOnServer(server -> {
+			ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+			player.stopRiding();
+			player.setGameMode(GameType.SPECTATOR);
+			player.teleportTo(player.level(), x, y, z, Set.of(), yaw, pitch, true);
+		});
 	}
 
 	/** Take a named still screenshot. */
