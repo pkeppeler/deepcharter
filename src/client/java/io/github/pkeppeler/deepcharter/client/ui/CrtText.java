@@ -26,7 +26,7 @@ public final class CrtText {
 
 	/** The style of terminal text: the terminal font with the panel on, nothing otherwise. */
 	public static Style style() {
-		return PanelLook.current().enabled() ? Style.EMPTY.withFont(new FontDescription.Resource(FONT)) : Style.EMPTY;
+		return PanelLook.drawn() ? Style.EMPTY.withFont(new FontDescription.Resource(FONT)) : Style.EMPTY;
 	}
 
 	/** {@code text} as a component in the terminal style. */

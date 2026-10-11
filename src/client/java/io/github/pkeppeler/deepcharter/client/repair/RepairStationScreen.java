@@ -20,7 +20,9 @@ import net.minecraft.world.item.ItemStack;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.sound.TypewriterSound;
+import io.github.pkeppeler.deepcharter.client.terminal.ShownPod;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
+import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
@@ -35,7 +37,6 @@ import io.github.pkeppeler.deepcharter.repair.RepairTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
-import io.github.pkeppeler.deepcharter.terminal.Terminals;
 
 /**
  * The online repair station: the hull repair buttons, then the shop, in one list under the header. The list is longer than a
@@ -48,6 +49,9 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 	private static final int COLUMN_WIDTH = 190;
 	private static final int BUTTON_HEIGHT = 20;
 	private static final int GAP = 6;
+	/** On the machine panel the content is 16 pixels shorter than the plain CRT's, so the rows are 16 high (a face of 12 for capitals 6 high) and 4 apart: four still fit. */
+	private static final int PANEL_BUTTON_HEIGHT = 16;
+	private static final int PANEL_ROW_GAP = 4;
 	private static final int CLOSE_WIDTH = 90;
 	private static final int[] REPAIR_STEPS = {10, 25, 50};
 
@@ -82,6 +86,10 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 		rebuildWidgets();
 	}
 
+	public TerminalView view() {
+		return view;
+	}
+
 	public Typewriter typewriter() {
 		return typewriter;
 	}
@@ -102,6 +110,14 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 			rows.add(new Row(Component.translatable("screen.deepcharter.repair.buy", name, consumable.price()), RepairStation.BUY, args));
 		}
 		return rows;
+	}
+
+	private static int buttonHeight() {
+		return PanelLook.drawn() ? PANEL_BUTTON_HEIGHT : BUTTON_HEIGHT;
+	}
+
+	private static int rowGap() {
+		return PanelLook.drawn() ? PANEL_ROW_GAP : GAP;
 	}
 
 	/** The y where the intro starts, below the header. */
@@ -136,13 +152,13 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 
 	/** CLOSE sits near the bottom edge, so that the list gets the space above it. */
 	private int closeY() {
-		return contentBottom(GAP) - BUTTON_HEIGHT;
+		return contentBottom(GAP) - buttonHeight();
 	}
 
 	/** How many rows fit between the header and CLOSE, at least one. */
 	public int visibleRows() {
-		int space = closeY() - GAP - listTop();
-		return Math.max(1, (space + GAP) / (BUTTON_HEIGHT + GAP));
+		int space = closeY() - rowGap() - listTop();
+		return Math.max(1, (space + rowGap()) / (buttonHeight() + rowGap()));
 	}
 
 	/** All the rows of the list, shown or not. */
@@ -172,12 +188,12 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 		rowButtons.clear();
 		for (int i = firstRow; i < Math.min(rows.size(), firstRow + visible); i++) {
 			Row row = rows.get(i);
-			CrtButton button = new CrtButton(contentLeft(MARGIN), listTop() + (i - firstRow) * (BUTTON_HEIGHT + GAP), COLUMN_WIDTH, BUTTON_HEIGHT, row.label(),
+			CrtButton button = new CrtButton(contentLeft(MARGIN), listTop() + (i - firstRow) * (buttonHeight() + rowGap()), COLUMN_WIDTH, buttonHeight(), row.label(),
 					pressed -> ClientPlayNetworking.send(new TerminalActionPayload(view.pos(), row.action(), row.args())));
 			rowButtons.add(button);
 			addRenderableWidget(button);
 		}
-		addRenderableWidget(new CrtButton(contentLeft(MARGIN), closeY(), CLOSE_WIDTH, BUTTON_HEIGHT,
+		addRenderableWidget(new CrtButton(contentLeft(MARGIN), closeY(), CLOSE_WIDTH, buttonHeight(),
 				Component.translatable("screen.deepcharter.terminal.close"), button -> onClose()));
 	}
 
@@ -192,7 +208,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 		List<TextLine> lines = new ArrayList<>();
 		lines.add(new TextLine(account, contentLeft(MARGIN), hullY - GAP - font.lineHeight, false));
 		lines.add(new TextLine(hull.getString().toUpperCase(Locale.ROOT), contentLeft(MARGIN), hullY, false));
-		scrollHint().ifPresent(hint -> lines.add(new TextLine(hint, contentLeft(MARGIN) + CLOSE_WIDTH + GAP, closeY() + (BUTTON_HEIGHT - font.lineHeight) / 2, true)));
+		scrollHint().ifPresent(hint -> lines.add(new TextLine(hint, contentLeft(MARGIN) + CLOSE_WIDTH + GAP, closeY() + (buttonHeight() - font.lineHeight) / 2, true)));
 		return lines;
 	}
 
@@ -251,13 +267,13 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 		return super.keyPressed(event);
 	}
 
-	/** The pod the server would repair, as far as the client can tell: the nearest parked at the station. The server decides. */
+	/** The pod the screen shows: the one the server will repair. */
 	private Optional<PodEntity> nearbyPod() {
 		Minecraft client = Minecraft.getInstance();
 		if (client.level == null) {
 			return Optional.empty();
 		}
-		return Terminals.parkedPods(client.level, view.pos()).stream().findFirst();
+		return ShownPod.of(client.level, view);
 	}
 
 	@Override
@@ -266,7 +282,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), contentLeft(MARGIN), contentTop(MARGIN), contentRight(MARGIN));
 		drawTypewriter(graphics, typewriter, contentLeft(MARGIN), introTop(), contentWidth(MARGIN));
 		for (TextLine line : textLines()) {
-			CrtDraw.glowText(graphics, font, line.text(), line.x(), line.y(), line.dim() ? tuning.dimColor() : tuning.phosphorColor());
+			CrtDraw.glowText(graphics, font, line.text(), line.x(), line.y(), line.dim() ? PanelLook.dimText(tuning.dimColor()) : tuning.phosphorColor());
 		}
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 	}

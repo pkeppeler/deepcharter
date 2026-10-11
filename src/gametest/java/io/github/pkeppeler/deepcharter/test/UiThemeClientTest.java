@@ -19,6 +19,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.client.theme.BreachLook;
 import io.github.pkeppeler.deepcharter.client.theme.CargoLook;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
+import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.client.theme.TransmissionLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDemoScreen;
@@ -37,6 +38,8 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 public class UiThemeClientTest implements FabricClientGameTest {
 	private static final int GREEN = 0x7CFC9A;
 	private static final int AMBER = 0xFFB000;
+	/** How far inside the glass the background pixel is sampled with the panel on. */
+	private static final int PANEL_GLASS_CLEAR = 30;
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
@@ -171,13 +174,15 @@ public class UiThemeClientTest implements FabricClientGameTest {
 		ClientWait.screen(context, CrtDemoScreen.class);
 		context.waitTicks(2);
 		int[] gui = context.computeOnClient(client -> new int[] {client.getWindow().getGuiScaledWidth(), client.getWindow().getGuiScaledHeight()});
+		// The pixel is on the CRT glass, clear of the machine panel's frame at the right edge and of its glass vignette (which stops 10 pixels in); the demo has no widget there.
+		int fromRight = context.computeOnClient(client -> PanelLook.drawn() ? PanelLook.current().glass().right() + PANEL_GLASS_CLEAR : 2);
 		Path shot = context.takeScreenshot(shotName);
 		context.setScreen(() -> null);
 		try {
 			BufferedImage image = ImageIO.read(shot.toFile());
 			int scale = image.getWidth() / gui[0];
 			int guiY = (gui[1] / 2) | 1;
-			return image.getRGB(image.getWidth() - 2 * scale, guiY * scale + scale / 2) & 0xFFFFFF;
+			return image.getRGB(image.getWidth() - fromRight * scale, guiY * scale + scale / 2) & 0xFFFFFF;
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}

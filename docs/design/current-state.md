@@ -36,7 +36,7 @@ or `...-as-played` show what a player sees; the other layer stills use night vis
 | HUDs | 6 (pod status, scanner, altimeter, account, transmission overlay, breach fade) |
 | Particles | 1 (`deepcharter:tow_cable`, a mod particle type since #258) |
 | Sound events | 47, all vanilla placeholders; 3 music events |
-| Fonts | 0 (vanilla font) |
+| Fonts | 1 (`deepcharter:terminal`, Unscii, for the terminal screens since #246; everything else is the vanilla font) |
 | Tour stills | 144 |
 
 
@@ -421,10 +421,13 @@ The Conduit's casing runs through every layer at the same X and Z. See the [Cond
 
 ## 6. Screens and HUDs
 
-All terminal screens share one look, the "CRT": near-black background, phosphor-green text in the vanilla font with a glow made by drawing the
-text four times offset by 1 pixel, scanlines every 2 pixels, bloom at the top and bottom edges, boxed buttons, a typewriter that types the text.
-No screen uses a texture: every one is drawn with `fill()` and `text()` at fixed GUI coordinates. Vanilla: **no**.
-**Swap: (c)** for all of them: the colours are `client/ui/CrtTuning.java:36-38`; the draw code is `client/ui/CrtDraw.java:15-43`,
+All terminal screens share one look, the "CRT": near-black glass, phosphor-green text with a glow made by drawing the
+text four times offset by 1 pixel, scanlines every 2 pixels, bloom at the top and bottom edges, a typewriter that types the text.
+**Since #246 the screens are physical machine panels** ([terminal-concepts.md](terminal-concepts.md)): the glass is a porthole in the Hatch bulkhead door
+(a riveted frame with a hinge, a dogging wheel, a gauge, stencils and a chrome Company nameplate), the buttons are sprite plates with a rotary knob, and the text is
+set in Unscii (6 pixels a letter). The stills below were shot before #246 and show the plain CRT: boxed buttons, no frame, the vanilla font. A pack can still switch the
+panel off and the screens are drawn as those stills show. The handbook and the pod cargo screen are not terminals and keep their own look. Vanilla: **no**.
+**Swap: (a)** the frame, the glass, the buttons and the decals (`assets/deepcharter/textures/gui/sprites/panel/`) and `theme/panel.json`, **(c)** the rest: the colours are `client/ui/CrtTuning.java:36-38`; the draw code is `client/ui/CrtDraw.java:15-43`,
 `CrtButton.java:23`, and `CrtScreen.java:144` (the typewriter cursor block); the layout of each screen is in its own file.
 
 ### Handbook
@@ -615,8 +618,10 @@ Only names and uses are given here. No audio is copied, played into a recording,
 
 ### Fonts
 
-The mod ships no font. Every screen and HUD uses vanilla's default font. The CRT look is made by drawing that font in green with a 1-pixel halo
-(`client/ui/CrtDraw.java:29-34`). Vanilla: **yes** (the font). Swap **(a)** a resource-pack font; the halo is **(c)**.
+Since #246 the mod ships one font: Unscii 2.1 (`unscii-8`, public domain), `assets/deepcharter/font/unscii-8.ttf`, as the font id `deepcharter:terminal` (`font/terminal.json`), set at size 6.
+Every terminal screen's text goes through it (`client/ui/CrtText.java`); it is used only while a terminal screen is open with the machine panel on. Every other screen and HUD uses vanilla's default font.
+The CRT glow is made by drawing the font in green with a 1-pixel halo (`client/ui/CrtDraw.java:29-34`). Vanilla: **yes** (the font of everything but the terminals). Swap **(a)** a resource-pack font
+(a pack's own `font/terminal.json` adds providers, which the game tries before Unscii); the halo is **(c)**.
 
 ### Advancements and toasts
 

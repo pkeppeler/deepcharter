@@ -15,6 +15,7 @@ import io.netty.buffer.Unpooled;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -387,12 +388,66 @@ public class UpgradeTerminalTest {
 				double radius = TerminalTuning.DEFAULT.parkedRadius();
 				Vec3 centre = Vec3.atCenterOf(scene.terminal());
 				scene.pod().setPos(centre.x + radius + 0.1, centre.y, centre.z);
-				expectSame(helper, UpgradeTerminal.buy(helper.getLevel().getServer(), scene.player(), scene.terminal(), ComponentTrack.DRILL, 1),
-						Optional.of(UpgradeRefusal.NO_POD.message()), "a pod just outside the radius");
+				expectParked(helper, scene, false, "just outside");
 				scene.pod().setPos(centre.x + radius - 0.1, centre.y, centre.z);
-				expectDone(helper, buy(scene, ComponentTrack.DRILL, 1), "a pod just inside the radius");
+				expectParked(helper, scene, true, "just inside");
 				helper.succeed();
 			} finally {
+				clean(helper, scene);
+			}
+		});
+	}
+
+	/** Checks that the scene's pod, where it is now, is or is not parked at the terminal; failures name the distance, the radius and the other pods. */
+	private static void expectParked(GameTestHelper helper, Scene scene, boolean inside, String where) {
+		double radius = TerminalTuning.DEFAULT.parkedRadius();
+		Vec3 centre = Vec3.atCenterOf(scene.terminal());
+		double distance = scene.pod().position().distanceTo(centre);
+		List<PodEntity> parked = Terminals.parkedPods(helper.getLevel(), scene.terminal());
+		List<String> others = helper.getLevel().getEntitiesOfClass(PodEntity.class, new AABB(scene.terminal()).inflate(radius + 1),
+				pod -> pod != scene.pod()).stream().map(pod -> pod.position() + " " + pod.getUUID()).toList();
+		String context = "(distance " + distance + ", radius " + radius + ", other pods within " + (radius + 1) + ": " + others + ")";
+		if (parked.contains(scene.pod()) != inside) {
+			throw failure(helper, "a pod %s the radius should %sbe parked, parked: %s %s", where, inside ? "" : "not ", parked, context);
+		}
+		if (inside) {
+			expectDone(helper, buy(scene, ComponentTrack.DRILL, 1), "a pod " + where + " the radius " + context);
+			return;
+		}
+		// Outside the radius the terminal has no pod of ours; an unowned stray inside it would be offered instead, and refused as unregistered.
+		Optional<Component> refusal = UpgradeTerminal.buy(helper.getLevel().getServer(), scene.player(), scene.terminal(), ComponentTrack.DRILL, 1);
+		if (refusal.isEmpty() || PodComponents.partOf(scene.pod(), ComponentTrack.DRILL).isPresent()) {
+			throw failure(helper, "a pod %s the radius should be refused and get nothing, got %s %s", where, refusal, context);
+		}
+		if (others.isEmpty()) {
+			expectSame(helper, refusal, Optional.of(UpgradeRefusal.NO_POD.message()), "a pod " + where + " the radius " + context);
+		}
+	}
+
+	@GameTest
+	public void theOwnPodWinsOverANearerUnownedOne(GameTestHelper helper) {
+		withRepairedTerminal(helper, () -> {
+			Scene scene = scene(helper, 10_000);
+			PodEntity stray = helper.spawn(PodRegistry.POD, 1, 1, 0);
+			try {
+				Vec3 centre = Vec3.atCenterOf(scene.terminal());
+				if (stray.position().distanceTo(centre) >= scene.pod().position().distanceTo(centre)) {
+					throw failure(helper, "the unowned pod should be nearer: %s against %s", stray.position(), scene.pod().position());
+				}
+				UpgradeView view = UpgradeTerminal.view(helper.getLevel().getServer(), scene.player(),
+						Charters.charterOfOrThrow(helper.getLevel().getServer(), scene.player().getUUID()), scene.terminal());
+				String serial = PodComponents.registration(scene.pod()).orElseThrow().serial();
+				if (!view.pod().map(UpgradeView.Pod::serial).equals(Optional.of(serial))) {
+					throw failure(helper, "the view should show the own pod %s, got %s", serial, view);
+				}
+				expectDone(helper, buy(scene, ComponentTrack.DRILL, 1), "buying with an unowned pod parked nearer");
+				if (PodComponents.partOf(scene.pod(), ComponentTrack.DRILL).isEmpty() || PodComponents.partOf(stray, ComponentTrack.DRILL).isPresent()) {
+					throw failure(helper, "the part should go in the own pod only: own %s, unowned %s",
+							PodComponents.partOf(scene.pod(), ComponentTrack.DRILL), PodComponents.partOf(stray, ComponentTrack.DRILL));
+				}
+				helper.succeed();
+			} finally {
+				stray.discard();
 				clean(helper, scene);
 			}
 		});

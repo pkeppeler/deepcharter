@@ -18,6 +18,7 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
+import io.github.pkeppeler.deepcharter.client.terminal.ShownPod;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
 import io.github.pkeppeler.deepcharter.charter.CharterView;
 import io.github.pkeppeler.deepcharter.fuel.FuelPump;
@@ -28,7 +29,6 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
-import io.github.pkeppeler.deepcharter.terminal.Terminals;
 
 /**
  * The online screen of the fuel pump: the account, the tank of the pod parked at the pump, and the original's buttons, a few
@@ -79,16 +79,19 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
 	protected void layout() {
 		buyButtons.clear();
 		int closeY = contentBottom(MARGIN) - BUTTON_HEIGHT;
-		addRenderableWidget(new CrtButton(contentLeft(MARGIN), closeY, BUTTON_WIDTH, BUTTON_HEIGHT,
+		// The row of purchases and FILL UP takes the room there is, down to narrower buttons: at the smallest GUI (320 wide) it would leave the screen.
+		int columns = FuelTuning.DEFAULT.purchaseSteps().size() + 1;
+		int buttonWidth = Math.min(BUTTON_WIDTH, (contentWidth(MARGIN) - (columns - 1) * GAP) / columns);
+		addRenderableWidget(new CrtButton(contentLeft(MARGIN), closeY, buttonWidth, BUTTON_HEIGHT,
 				Component.translatable("screen.deepcharter.terminal.close"), button -> onClose()));
 		int rowY = closeY - GAP - BUTTON_HEIGHT;
 		int x = contentLeft(MARGIN);
 		for (int litres : FuelTuning.DEFAULT.purchaseSteps()) {
-			buyButtons.add(addRenderableWidget(new CrtButton(x, rowY, BUTTON_WIDTH, BUTTON_HEIGHT,
+			buyButtons.add(addRenderableWidget(new CrtButton(x, rowY, buttonWidth, BUTTON_HEIGHT,
 					Component.translatable("screen.deepcharter.fuel_pump.buy", litres), button -> buy(litres))));
-			x += BUTTON_WIDTH + GAP;
+			x += buttonWidth + GAP;
 		}
-		fillButton = addRenderableWidget(new CrtButton(x, rowY, BUTTON_WIDTH, BUTTON_HEIGHT,
+		fillButton = addRenderableWidget(new CrtButton(x, rowY, buttonWidth, BUTTON_HEIGHT,
 				Component.translatable("screen.deepcharter.fuel_pump.fill"), button -> fill()));
 	}
 
@@ -102,12 +105,12 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
 		ClientPlayNetworking.send(new TerminalActionPayload(view.pos(), FuelPump.FILL, new CompoundTag()));
 	}
 
-	/** The pod this client sees parked at the pump, if any. The server picks by owner as well, which this client cannot see. */
+	/** The pod the screen shows: the one the server will fuel. */
 	private Optional<PodEntity> pod() {
 		if (minecraft == null || minecraft.level == null) {
 			return Optional.empty();
 		}
-		return Terminals.parkedPods(minecraft.level, view.pos()).stream().findFirst();
+		return ShownPod.of(minecraft.level, view);
 	}
 
 	private long balance() {

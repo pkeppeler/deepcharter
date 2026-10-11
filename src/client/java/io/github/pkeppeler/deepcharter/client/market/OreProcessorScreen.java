@@ -14,6 +14,7 @@ import net.minecraft.resources.Identifier;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.sound.TypewriterSound;
+import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
@@ -243,7 +244,7 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 			for (OreType ore : OreType.values()) {
 				String price = Component.translatable("screen.deepcharter.processor.price",
 						Component.translatable(OreRegistry.item(ore).getDescriptionId()).getString().toUpperCase(Locale.ROOT), ore.value()).getString();
-				CrtDraw.glowText(graphics, font, price, x, y, tuning.dimColor());
+				CrtDraw.glowText(graphics, font, price, x, y, PanelLook.dimText(tuning.dimColor()));
 				y += font.lineHeight + 2;
 			}
 			// The rows are buttons; only the heading (or the reason there are none) is text.

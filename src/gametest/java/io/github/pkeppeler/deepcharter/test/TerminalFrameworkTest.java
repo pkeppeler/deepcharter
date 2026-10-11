@@ -793,7 +793,7 @@ public class TerminalFrameworkTest {
 		}
 		boolean refused = false;
 		try {
-			roundTrip(new TerminalView(pos, TerminalTypes.FUEL_PUMP.id(), true, true, List.of(), Optional.of(new TerminalTestTypes.Note("x"))));
+			roundTrip(new TerminalView(pos, TerminalTestTypes.REPAIRABLE.id(), true, true, List.of(), Optional.of(new TerminalTestTypes.Note("x"))));
 		} catch (IllegalStateException unregistered) {
 			refused = true;
 		}

@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
+import io.github.pkeppeler.deepcharter.terminal.ParkedPodView;
 import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActions;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
@@ -43,6 +44,7 @@ public final class RepairStation {
 		TerminalActions.register(TerminalTypes.REPAIR_STATION, REPAIR, context -> repair(context, context.args().getInt(HP_KEY)));
 		TerminalActions.register(TerminalTypes.REPAIR_STATION, REPAIR_TOTAL, context -> repair(context, Optional.of(Integer.MAX_VALUE)));
 		TerminalActions.register(TerminalTypes.REPAIR_STATION, BUY, RepairStation::buy);
+		ParkedPodView.register(TerminalTypes.REPAIR_STATION);
 	}
 
 	private static Optional<Component> repair(TerminalAction.Context context, Optional<Integer> requested) {

@@ -267,6 +267,23 @@ public class FuelPumpTest {
 	}
 
 	@GameTest
+	public void theOwnPodIsFilledBeforeANearerUnownedOne(GameTestHelper helper) {
+		Scene scene = scene(helper, 50);
+		run(helper, scene, s -> {
+			s.pod().setFuel(0f);
+			PodEntity unowned = helper.spawn(PodRegistry.POD, new Vec3(2.5, 2, 1.5));
+			try {
+				unowned.setFuel(0f);
+				expectDone(helper, buy(s, 2), "buying with an unowned pod parked nearer");
+				expectEqual(helper, "litres in the own pod", 2f, litres(s.pod()));
+				expectEqual(helper, "litres in the unowned pod", 0f, litres(unowned));
+			} finally {
+				unowned.discard();
+			}
+		});
+	}
+
+	@GameTest
 	public void aPodWithUnreadableComponentsIsNotServed(GameTestHelper helper) {
 		Scene scene = scene(helper, 50);
 		CompoundTag future = new CompoundTag();

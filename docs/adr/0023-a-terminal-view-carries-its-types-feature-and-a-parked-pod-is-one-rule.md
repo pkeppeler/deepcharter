@@ -6,6 +6,8 @@ status: accepted
 
 The four pod terminals each built the same two things apart ([ADR 0014](0014-terminal-repair-is-one-world-wide-chain.md), [ADR 0018](0018-the-contract-terminal-sends-its-own-state-by-name.md)): which pods are parked at the terminal, and the data a screen needs beyond a `TerminalView`.
 
+**Amended (#421, PR #430).** The server no longer serves the plain nearest usable pod: it orders the player's own charter pods first, then unowned ones, nearest first within each, so a stranger's unowned pod parked nearer cannot hide the player's own. The fuel pump and the repair station send the chosen pod in `ParkedPodView`, and their screens show that pod, falling back to the nearest parked pod only when none is named. The client cannot choose alike, because it does not know the owner id of its charter. The original text below stays for history.
+
 ## Parked pods
 
 - **`Terminals.parkedPods(level, pos)`** lists the pods within `TerminalTuning.parkedRadius` (8 blocks) of the middle of the terminal block, nearest first, neither flying nor drilling. It knows no owners, so a client can use it to draw a screen. **`Terminals.parkedPods(level, pos, charter)`** keeps the pods `PodComponents.mayAccess` allows. The server serves the first one.
