@@ -10,6 +10,7 @@ public final class PodInit {
 
 	public static void init() {
 		PodRegistry.register();
+		PodRenames.init();
 		PodCommands.init();
 		PodMovement.init();
 		HardLanding.init();
