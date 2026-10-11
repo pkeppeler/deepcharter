@@ -24,8 +24,10 @@ import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.GeoMeasure;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.PodLoads;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
@@ -141,8 +143,8 @@ public class PodSeatsClientTest implements FabricClientGameTest {
 			require(seated.distanceTo(seats.get(i)) < TOLERANCE, chassis.id() + "'s rider " + i + " sits at " + seated + ", not the pinned seat " + seats.get(i));
 		}
 		PodGeoRenderer renderer = (PodGeoRenderer) client.getEntityRenderDispatcher().getRenderer(pod);
-		GeoModel geo = renderer.geometry();
-		List<GeoModel.RestCube> cab = geo.restCubes(bone -> !geo.inCutter(bone, null) && bone.role() != BoneRole.DRILL_MOUNT);
+		GeoModel geo = PodLoads.of(client, renderer, pod).geo();
+		List<GeoModel.RestCube> cab = GeoMeasure.restCubes(geo, bone -> !GeoMeasure.inCutter(geo, bone, null) && bone.role() != BoneRole.DRILL_MOUNT);
 		double[] windows = geo.restBounds(bone -> bone.name().equals("canopy"));
 		for (int i = 0; i < seats.size(); i++) {
 			Entity rider = pod.getPassengers().get(i);
@@ -164,7 +166,7 @@ public class PodSeatsClientTest implements FabricClientGameTest {
 			if (i > 0) {
 				continue;
 			}
-			Vec3 cutter = centre(geo.restBounds(bone -> geo.inCutter(bone, "tricone")));
+			Vec3 cutter = centre(geo.restBounds(bone -> GeoMeasure.inCutter(geo, bone, "tricone")));
 			for (Vec3 target : List.of(eye.add(0, 0, -1), cutter)) {
 				GeoModel.RestCube first = firstHit(cab, eye, target.subtract(eye));
 				require(first != null && first.bone().name().equals("canopy") && isPane(first.box()), who + " should see "

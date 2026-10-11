@@ -20,6 +20,7 @@ import io.github.pkeppeler.deepcharter.client.pod.PodGeoRenderer;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.PodLoads;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
@@ -47,7 +48,7 @@ public class PodLookFallbackClientTest implements FabricClientGameTest {
 				id[0] = mole.getId();
 			});
 			ClientWait.until(context, "the Mole on the client", client -> client.level != null && client.level.getEntity(id[0]) instanceof PodEntity);
-			String builtIn = context.computeOnClient(client -> renderer(client, id[0]).look().source());
+			String builtIn = context.computeOnClient(client -> loadedLook(client, id[0]));
 			require(!builtIn.contains(PACK_ID), "the shipped look should not come from the test pack: " + builtIn);
 			try {
 				for (String broken : new String[] {
@@ -66,7 +67,7 @@ public class PodLookFallbackClientTest implements FabricClientGameTest {
 					ClientWait.until(context, "the broken look reloaded", client -> packLookIsActive(client) && client.gui.overlay() == null);
 					// The client is alive and the Mole draws with the look of the mod, whose source is not the pack.
 					context.waitTick(); // tick-wait: one frame draws the pod with the fallback look
-					String drawn = context.computeOnClient(client -> renderer(client, id[0]).look().source());
+					String drawn = context.computeOnClient(client -> loadedLook(client, id[0]));
 					require(drawn.equals(builtIn), "a broken pack look should fall back to the mod's own look " + builtIn + ", draws " + drawn);
 					context.runOnClient(this::removePack);
 					ClientWait.until(context, "the broken pack gone", client -> !packLookIsActive(client) && client.gui.overlay() == null);
@@ -87,6 +88,12 @@ public class PodLookFallbackClientTest implements FabricClientGameTest {
 		PackRepository repository = client.getResourcePackRepository();
 		repository.removePack(PACK_ID);
 		client.options.updateResourcePacks(repository);
+	}
+
+	/** The source of the look the game loads for the Mole now, held to the look the Mole's renderer draws. */
+	private static String loadedLook(Minecraft client, int id) {
+		PodEntity mole = (PodEntity) client.level.getEntity(id);
+		return PodLoads.of(client, renderer(client, id), mole).look().source();
 	}
 
 	private static PodGeoRenderer renderer(Minecraft client, int id) {

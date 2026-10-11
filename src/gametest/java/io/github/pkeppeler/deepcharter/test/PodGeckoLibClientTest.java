@@ -28,11 +28,15 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.pod.GeoModel;
+import io.github.pkeppeler.deepcharter.client.pod.PodGeoAnimatable;
+import io.github.pkeppeler.deepcharter.client.pod.PodGeoRenderState;
 import io.github.pkeppeler.deepcharter.client.pod.PodGeoRenderer;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.GeoMeasure;
+import io.github.pkeppeler.deepcharter.test.support.PodLoads;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
@@ -47,6 +51,8 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 public class PodGeckoLibClientTest implements FabricClientGameTest {
 	private static final double TOLERANCE = 1e-6;
 	private static final int HEADING_STEP = 15;
+	/** How far ahead of the pod's own animation the spin test dates its two states, in ticks, so the renderer counts the whole tick between them. */
+	private static final float SPIN_LEAD_TICKS = 100f;
 
 	/** The ids of the Mole and the Prospector made for the test, and the charter that owns them. */
 	private record Scene(int mole, int prospector, CharterId charter) {
@@ -63,11 +69,11 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
 			context.runOnClient(client -> {
 				for (int id : List.of(scene.mole(), scene.prospector())) {
 					PodGeoRenderer renderer = renderer(client, id);
-					require(renderer.chassis() == pod(client, id).chassis(), "the renderer of " + id + " is for another chassis: " + renderer.chassis().id());
-					BakedGeoModel baked = GeckoLibResources.getBakedModels().getModel(renderer.look().model());
-					require(!baked.isMissingno(), "GeckoLib did not bake " + renderer.look().model() + ": it draws its missing-model cube");
-					for (GeoModel.Bone bone : renderer.geometry().bones()) {
-						require(baked.getBone(bone.name()).isPresent(), "GeckoLib's " + renderer.look().model() + " lacks the bone " + bone.name());
+					PodGeoRenderer.Loaded loaded = PodLoads.of(client, renderer, pod(client, id));
+					BakedGeoModel baked = GeckoLibResources.getBakedModels().getModel(loaded.look().model());
+					require(!baked.isMissingno(), "GeckoLib did not bake " + loaded.look().model() + ": it draws its missing-model cube");
+					for (GeoModel.Bone bone : loaded.geo().bones()) {
+						require(baked.getBone(bone.name()).isPresent(), "GeckoLib's " + loaded.look().model() + " lacks the bone " + bone.name());
 					}
 				}
 			});
@@ -89,8 +95,8 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
 			// The cutter turns by GeoModel.drillSpinScale: a wider cone turns slower. Both stock cutters are tricones, the Prospector's the wider.
 			double moleRate = spinRate(context, scene.mole());
 			double prospectorRate = spinRate(context, scene.prospector());
-			double expected = context.computeOnClient(client -> renderer(client, scene.prospector()).geometry().drillSpinScale("tricone")
-					/ renderer(client, scene.mole()).geometry().drillSpinScale("tricone"));
+			double expected = context.computeOnClient(client -> geometry(client, scene.prospector()).drillSpinScale("tricone")
+					/ geometry(client, scene.mole()).drillSpinScale("tricone"));
 			require(moleRate > 0 && prospectorRate < moleRate, "the Prospector's wider cutter should turn slower: " + prospectorRate + " against the Mole's " + moleRate);
 			require(Math.abs(prospectorRate / moleRate - expected) < 0.02, "the spin rates should be in the ratio of the drill spin scales, " + expected + ": "
 					+ prospectorRate / moleRate);
@@ -133,7 +139,7 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
 			context.runOnClient(client -> {
 				PodGeoRenderer renderer = renderer(client, mole);
 				PodGeoRenderer.Appearance wreck = renderer.appearanceOf(pod(client, mole));
-				require(wreck.variant().equals(renderer.look().wreck()), "a wreck should draw the look's wreck variant, draws " + wreck);
+				require(wreck.variant().equals(PodLoads.of(client, renderer, pod(client, mole)).look().wreck()), "a wreck should draw the look's wreck variant, draws " + wreck);
 				require("fluted".equals(wreck.cutter()), "a wreck keeps its drill, shows " + wreck.cutter());
 				require(!wreck.glows(true), "the derelict Mole has no light, even when lit");
 				require(renderer.hiddenBones(wreck).contains("rotor"), "the derelict Mole has lost its rotor, hides " + renderer.hiddenBones(wreck));
@@ -150,7 +156,7 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
 			// does not hold a cone's tip, so the check fails if the override is removed.
 			context.runOnClient(client -> {
 				for (int id : List.of(mole, scene.prospector())) {
-					checkCulling(renderer(client, id), pod(client, id));
+					checkCulling(client, renderer(client, id), pod(client, id));
 				}
 			});
 		}
@@ -161,21 +167,21 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
 	 * (where the margin matters), turned to every heading, lies in the renderer's culling box; so does the whole sweep of the rotor,
 	 * and the model shaken by {@link PodGeoRenderer#SHAKE}.
 	 */
-	private static void checkCulling(PodGeoRenderer renderer, PodEntity pod) {
-		GeoModel geo = renderer.geometry();
+	private static void checkCulling(Minecraft client, PodGeoRenderer renderer, PodEntity pod) {
+		GeoModel geo = PodLoads.of(client, renderer, pod).geo();
 		AABB box = renderer.getBoundingBoxForCulling(pod, 0f).inflate(TOLERANCE);
 		AABB plain = pod.getBoundingBox();
 		Vec3 feet = pod.position();
 		for (String cutter : geo.cutters()) {
 			boolean cutterOutsideThePlainBox = false;
 			for (double pitch = 0; pitch <= 90; pitch += GeoModel.SWING_STEP / 2.0) {
-				double[] b = geo.restBounds(bone -> geo.inCutter(bone, cutter), pitch);
+				double[] b = geo.restBounds(bone -> GeoMeasure.inCutter(geo, bone, cutter), pitch);
 				for (double x : new double[] {b[0], b[3]}) {
 					for (double z : new double[] {b[2], b[5]}) {
 						for (double y : new double[] {b[1], b[4]}) {
 							for (int degrees = 0; degrees < 360; degrees += HEADING_STEP) {
 								Vec3 corner = turnedAbout(feet, x, y, z, degrees);
-								require(box.contains(corner), renderer.chassis().id() + "'s " + cutter + " cutter, with its drill turned " + pitch + " degrees, at the heading "
+								require(box.contains(corner), pod.chassis().id() + "'s " + cutter + " cutter, with its drill turned " + pitch + " degrees, at the heading "
 										+ degrees + ", has a corner at " + corner + " outside the renderer's culling box " + box);
 								cutterOutsideThePlainBox |= !plain.contains(corner);
 							}
@@ -183,20 +189,20 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
 					}
 				}
 			}
-			require(cutterOutsideThePlainBox, renderer.chassis().id() + "'s " + cutter + " cutter lies inside the pod's own box " + plain
+			require(cutterOutsideThePlainBox, pod.chassis().id() + "'s " + cutter + " cutter lies inside the pod's own box " + plain
 					+ ", so this test could not tell a missing override");
 		}
-		require(!geo.cutters().isEmpty(), renderer.chassis().id() + " holds no cutters to check");
+		require(!geo.cutters().isEmpty(), pod.chassis().id() + " holds no cutters to check");
 		// The rotor's tips sweep a circle about its own pivot, which is off the pod's middle.
 		double sweep = geo.rotorReach();
 		for (int degrees = 0; degrees < 360; degrees += HEADING_STEP) {
 			Vec3 tip = turnedAbout(feet, sweep, geo.restBounds()[4], 0, degrees);
-			require(box.contains(tip), renderer.chassis().id() + "'s rotor, reaching " + sweep + " pixels, at the heading " + degrees + " is outside the culling box " + box);
+			require(box.contains(tip), pod.chassis().id() + "'s rotor, reaching " + sweep + " pixels, at the heading " + degrees + " is outside the culling box " + box);
 		}
 		// The hull shakes by up to SHAKE while the pod drills, on top of the model's own extent.
 		AABB shaken = geo.cullingBox().move(feet).inflate(PodGeoRenderer.SHAKE - TOLERANCE);
 		require(box.contains(shaken.minX, shaken.minY, shaken.minZ) && box.contains(shaken.maxX, shaken.maxY, shaken.maxZ),
-				renderer.chassis().id() + "'s culling box " + box + " does not hold the model's box " + shaken + " shaken");
+				pod.chassis().id() + "'s culling box " + box + " does not hold the model's box " + shaken + " shaken");
 	}
 
 	/** The point (x, y, z) of the model in pixels, with the pod at {@code feet} turned {@code degrees}. */
@@ -206,20 +212,33 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
 	}
 
 	/**
-	 * The degrees the pod's drill turns in one tick, from the renderer's own motion fed two frames exactly one tick apart. The
-	 * client's copy of the pod is set drilling and set back, as the server does not know. No game frame is sampled, so the rate does
-	 * not depend on frame pacing.
+	 * The degrees the pod's drill turns in one tick, from the renderer's {@code addRenderData} fed two render states exactly one tick
+	 * apart. The client's copy of the pod is set drilling and set back, as the server does not know. No game frame is sampled, so
+	 * the rate does not depend on frame pacing. The states are dated ahead of the pod's own animation, so the renderer counts the
+	 * whole tick between them.
 	 */
 	private static double spinRate(ClientGameTestContext context, int id) {
 		return context.computeOnClient(client -> {
 			PodEntity pod = pod(client, id);
+			PodGeoRenderer renderer = renderer(client, id);
+			PodGeoAnimatable animatable = new PodGeoAnimatable();
+			PodGeoRenderState before = renderer.createRenderState(animatable, pod);
+			PodGeoRenderState after = renderer.createRenderState(animatable, pod);
+			before.ageInTicks = pod.tickCount + SPIN_LEAD_TICKS;
+			after.ageInTicks = before.ageInTicks + 1f;
 			pod.setDrilling(true);
 			try {
-				return (double) renderer(client, id).drillSpinPerTick(pod);
+				renderer.addRenderData(animatable, pod, before, 0f);
+				renderer.addRenderData(animatable, pod, after, 0f);
+				return (double) (after.drillSpin - before.drillSpin);
 			} finally {
 				pod.setDrilling(false);
 			}
 		});
+	}
+
+	private static GeoModel geometry(Minecraft client, int id) {
+		return PodLoads.of(client, renderer(client, id), pod(client, id)).geo();
 	}
 
 	private static void cutterIs(ClientGameTestContext context, int id, String cutter) {

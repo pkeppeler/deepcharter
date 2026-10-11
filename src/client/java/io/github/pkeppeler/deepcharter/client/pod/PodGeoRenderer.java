@@ -57,7 +57,6 @@ public class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimatable, 
 		}
 	}
 
-	private final Chassis chassis;
 	private final PodLook look;
 	private final GeoModel geo;
 	private final PodPose pose;
@@ -72,7 +71,7 @@ public class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimatable, 
 	private final Map<PodEntity, PodMotion> motions = new WeakHashMap<>();
 
 	/** A pod look and the geometry it names, which fit each other and their textures. */
-	private record Loaded(PodLook look, GeoModel geo) {
+	public record Loaded(PodLook look, GeoModel geo) {
 	}
 
 	public PodGeoRenderer(EntityRendererProvider.Context context, Chassis chassis) {
@@ -81,7 +80,6 @@ public class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimatable, 
 
 	private PodGeoRenderer(EntityRendererProvider.Context context, Chassis chassis, Loaded loaded) {
 		super(context, new PodGeckoModel(loaded.look()), new PodGeoAnimatable());
-		this.chassis = chassis;
 		look = loaded.look();
 		geo = loaded.geo();
 		shadowRadius = chassis.width() / 2;
@@ -101,7 +99,7 @@ public class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimatable, 
 	 * own, after one error in the log that names the pack, the file and the place. A broken skin must not stop the client, which a
 	 * renderer that fails to build on a resource reload would.
 	 */
-	static Loaded load(ResourceManager resources, Chassis chassis) {
+	public static Loaded load(ResourceManager resources, Chassis chassis) {
 		try {
 			return validate(resources, PodLook.read(resources, chassis));
 		} catch (RuntimeException e) {
@@ -131,19 +129,6 @@ public class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimatable, 
 		}
 	}
 
-	public Chassis chassis() {
-		return chassis;
-	}
-
-	public PodLook look() {
-		return look;
-	}
-
-	/** The model as the game measures it, which GeckoLib draws from the same file. */
-	public GeoModel geometry() {
-		return geo;
-	}
-
 	/** What {@code pod} shows now: the cutter of its drill tier, and the wreck variant if it is a wreck. */
 	public Appearance appearanceOf(PodEntity pod) {
 		boolean wrecked = Wrecks.isWreck(pod);
@@ -171,23 +156,6 @@ public class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimatable, 
 	/** The share of the full drill spin that the cutter {@code appearance} shows turns at. */
 	private float spinScaleOf(Appearance appearance) {
 		return appearance.cutter() == null ? (float) geo.drillSpinScale() : spinScales.get(appearance.cutter());
-	}
-
-	/**
-	 * The degrees the drill of {@code pod} turns in one tick while it drills: two frames one tick apart, run through a new
-	 * {@link PodMotion} with the scale that {@link #addRenderData} gives it. It touches no frame of the pod's own animation, so it does
-	 * not depend on how often the game draws.
-	 */
-	public float drillSpinPerTick(PodEntity pod) {
-		PodMotion motion = new PodMotion();
-		float scale = spinScaleOf(appearanceOf(pod));
-		PodGeoRenderState before = new PodGeoRenderState();
-		PodGeoRenderState after = new PodGeoRenderState();
-		before.ageInTicks = 0f;
-		after.ageInTicks = 1f;
-		motion.advance(pod, before, pose.mountRestPitch(), scale);
-		motion.advance(pod, after, pose.mountRestPitch(), scale);
-		return after.drillSpin - before.drillSpin;
 	}
 
 	@Override
