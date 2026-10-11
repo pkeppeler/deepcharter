@@ -316,14 +316,14 @@ public class DesignTourScenario extends EvidenceScenario {
 	}
 
 	/**
-	 * Empty when the client reads, in each carved room of the dimension it is in, the light the server holds; otherwise what differs. A room
-	 * is carved with {@link LightSync#holdSendUntilLit} after it, so the client is not sent its chunk before the light is computed (issue
-	 * 427, found in the dark room of PR 422); a room the client still reads wrong is a failure of that, and settle names it.
+	 * Empty when the client reads, in each carved room it holds, the light the server holds; otherwise what differs. A room is carved
+	 * with {@link LightSync#holdSendUntilLit} after it, so the client is not sent its chunk before the light is computed (issue 427, found
+	 * in the dark room of PR 422); a room the client still reads wrong is a failure of that, and settle names it. A room in another
+	 * dimension, or whose chunks the client has dropped since the camera left it, is not checked.
 	 */
 	private Optional<String> roomsInStep() {
-		ResourceKey<Level> here = ctx.computeOnClient(client -> client.level.dimension());
 		for (LitRoom room : litRooms) {
-			if (room.dimension().equals(here)) {
+			if (ClientLight.clientHolds(ctx, room.dimension(), room.box())) {
 				Optional<String> mismatch = ClientLight.describeMismatch(ctx, sp.getServer(), room.dimension(), room.box());
 				if (mismatch.isPresent()) {
 					return mismatch;

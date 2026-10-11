@@ -87,6 +87,11 @@ public final class ClientLight {
 				+ " in " + client.level.dimension().identifier() + ", server maxSky=" + serverSky + " maxBlock=" + serverBlock));
 	}
 
+	/** True when the client is in {@code dimension} and holds every chunk the box touches. */
+	public static boolean clientHolds(ClientGameTestContext context, ResourceKey<Level> dimension, Box box) {
+		return context.computeOnClient(client -> client.level.dimension().equals(dimension) && chunksPresent(client.level, box));
+	}
+
 	/** True when the level holds every chunk the box touches. */
 	public static boolean chunksPresent(Level level, Box box) {
 		for (int chunkX = box.min().getX() >> 4; chunkX <= box.max().getX() >> 4; chunkX++) {
