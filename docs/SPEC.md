@@ -250,7 +250,7 @@ Normal Minecraft 3D, first or third person.
 
 **Provisional until the prototype and playtest.**
 
-Rule: no passengers, only crew. Every seat besides the pilot's has a real-time job that clearly helps. The pilot can do a weaker version alone, so solo play works but a crew is better.
+Goal: crew, not passengers. A seat besides the pilot's should have a real-time job that clearly helps, and the pilot can do a weaker version alone, so solo play works but a crew is better. Passengers are allowed: a seat may carry a rider with no job, for example the Prospector's second seat until the navigator's sonar exists (decided with the user on 2026-10-11, #200).
 
 | Role | Job |
 |------|-----|
