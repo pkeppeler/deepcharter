@@ -1,5 +1,6 @@
 import java.io.IOException;
 import java.lang.classfile.Annotation;
+import java.lang.classfile.AttributedElement;
 import java.lang.classfile.Attributes;
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
@@ -86,17 +87,19 @@ public final class TestOnlyGate {
 
     private record Member(ClassModel owner, String name, String descriptor, boolean field) {
         String refKey() {
-            return owner.thisClass().asInternalName() + "#" + name + (field ? ":" : "") + descriptor;
+            return TestOnlyGate.refKey(owner.thisClass().asInternalName(), name, field, descriptor);
         }
 
         /** {@code pkg.Outer$Inner#name(parameter descriptors)}, or {@code #FIELD}: what the baseline lists. */
         String baselineKey() {
             String binary = owner.thisClass().asInternalName().replace('/', '.');
-            return binary + "#" + (field ? name : name + descriptor.substring(0, descriptor.indexOf(')') + 1));
+            return binary + "#" + (field ? name : name + parameters(descriptor));
         }
     }
 
-    private record Finding(String key, String message) { }
+    private static String refKey(String owner, String name, boolean field, String descriptor) {
+        return owner + "#" + name + (field ? ":" : "") + descriptor;
+    }
 
     /** A member declaration found in a source file: where, in which class, and its parameter types as written. */
     private record Declaration(int line, String classPath, String name, boolean field, List<String> parameters) { }
@@ -139,7 +142,7 @@ public final class TestOnlyGate {
         for (String entry : options.getOrDefault("--classpath", List.of())) {
             gate.addClasspath(Path.of(entry));
         }
-        Map<String, Finding> findings = gate.run(
+        Map<String, String> findings = gate.run(
             options.get("--production").stream().map(Path::of).toList(), options.get("--tests").stream().map(Path::of).toList());
         if (options.containsKey("--list")) {
             findings.keySet().forEach(System.out::println);
@@ -147,7 +150,7 @@ public final class TestOnlyGate {
         }
         Path baselineFile = options.containsKey("--baseline") ? Path.of(options.get("--baseline").getFirst()) : null;
         Set<String> baseline = baselineFile == null ? Set.of() : readBaseline(baselineFile);
-        List<String> fresh = findings.values().stream().filter(finding -> !baseline.contains(finding.key())).map(Finding::message).toList();
+        List<String> fresh = findings.entrySet().stream().filter(finding -> !baseline.contains(finding.getKey())).map(Map.Entry::getValue).toList();
         List<String> stale = baseline.stream().filter(key -> !findings.containsKey(key)).toList();
         if (!fresh.isEmpty()) {
             System.err.println("Members referenced only from src/gametest (" + fresh.size() + "). A test is not a production caller."
@@ -185,22 +188,22 @@ public final class TestOnlyGate {
         }
     }
 
-    /** The findings the markers do not exempt, by baseline key. */
-    Map<String, Finding> run(List<Path> productionDirs, List<Path> testDirs) throws IOException {
+    /** The finding message of each member the markers do not exempt, by baseline key. */
+    Map<String, String> run(List<Path> productionDirs, List<Path> testDirs) throws IOException {
         classDirs.addAll(productionDirs);
         classDirs.addAll(testDirs);
         read(productionDirs, production);
         read(testDirs, tests);
         production.values().forEach(model -> scanReferences(model, true));
         tests.values().forEach(model -> scanReferences(model, false));
-        Map<String, Finding> findings = new TreeMap<>();
+        Map<String, String> findings = new TreeMap<>();
         for (ClassModel model : production.values()) {
             for (Member member : candidates(model)) {
                 Refs found = refs.get(member.refKey());
-                if (found != null && !found.production && found.firstTest != null) {
+                if (found != null && !found.production) {
                     String message = report(member, found);
                     if (message != null) {
-                        findings.put(member.baselineKey(), new Finding(member.baselineKey(), message));
+                        findings.put(member.baselineKey(), message);
                     }
                 }
             }
@@ -223,7 +226,7 @@ public final class TestOnlyGate {
     }
 
     private ClassModel find(String internalName) {
-        ClassModel known = production.containsKey(internalName) ? production.get(internalName) : tests.get(internalName);
+        ClassModel known = production.getOrDefault(internalName, tests.get(internalName));
         if (known != null) {
             return known;
         }
@@ -335,7 +338,7 @@ public final class TestOnlyGate {
                 continue;
             }
             if (production.containsKey(next)) {
-                Refs entry = refs.computeIfAbsent(next + "#" + name + (field ? ":" : "") + descriptor, key -> new Refs());
+                Refs entry = refs.computeIfAbsent(refKey(next, name, field, descriptor), key -> new Refs());
                 if (fromProduction) {
                     entry.production = true;
                 } else if (entry.firstTest == null) {
@@ -348,9 +351,7 @@ public final class TestOnlyGate {
 
     private List<Member> candidates(ClassModel model) {
         List<Member> out = new ArrayList<>();
-        if (model.flags().has(AccessFlag.SYNTHETIC) || annotations(model.findAttribute(Attributes.runtimeVisibleAnnotations())
-            .map(a -> a.annotations()).orElse(List.of()), model.findAttribute(Attributes.runtimeInvisibleAnnotations())
-            .map(a -> a.annotations()).orElse(List.of())).anyMatch(annotation -> simpleName(annotation).equals("Mixin"))
+        if (model.flags().has(AccessFlag.SYNTHETIC) || annotationsOf(model).anyMatch(annotation -> simpleName(annotation).equals("Mixin"))
             || isLocalOrAnonymous(model)) {
             return out;
         }
@@ -363,8 +364,7 @@ public final class TestOnlyGate {
             var flags = field.flags();
             if (flags.has(AccessFlag.PRIVATE) || flags.has(AccessFlag.SYNTHETIC) || flags.has(AccessFlag.ENUM)
                 || field.findAttribute(Attributes.constantValue()).isPresent()
-                || hasSignificantAnnotation(field.findAttribute(Attributes.runtimeVisibleAnnotations()).map(a -> a.annotations()).orElse(List.of()),
-                    field.findAttribute(Attributes.runtimeInvisibleAnnotations()).map(a -> a.annotations()).orElse(List.of()))
+                || hasSignificantAnnotation(field)
                 || (flags.has(AccessFlag.STATIC) && flags.has(AccessFlag.FINAL) && isRegisteredType(field.fieldType().stringValue()))) {
                 continue;
             }
@@ -376,8 +376,7 @@ public final class TestOnlyGate {
             var flags = method.flags();
             if (flags.has(AccessFlag.PRIVATE) || flags.has(AccessFlag.SYNTHETIC) || flags.has(AccessFlag.BRIDGE)
                 || flags.has(AccessFlag.ABSTRACT) || name.equals("<clinit>")
-                || hasSignificantAnnotation(method.findAttribute(Attributes.runtimeVisibleAnnotations()).map(a -> a.annotations()).orElse(List.of()),
-                    method.findAttribute(Attributes.runtimeInvisibleAnnotations()).map(a -> a.annotations()).orElse(List.of()))) {
+                || hasSignificantAnnotation(method)) {
                 continue;
             }
             MethodTypeDesc type = MethodTypeDesc.ofDescriptor(descriptor);
@@ -443,12 +442,14 @@ public final class TestOnlyGate {
                 .anyMatch(parent -> REGISTERED_ROOTS.contains(parent.thisClass().asInternalName()));
     }
 
-    private static Stream<Annotation> annotations(List<Annotation> visible, List<Annotation> invisible) {
-        return Stream.concat(visible.stream(), invisible.stream());
+    private static Stream<Annotation> annotationsOf(AttributedElement element) {
+        return Stream.concat(
+            element.findAttribute(Attributes.runtimeVisibleAnnotations()).stream().flatMap(a -> a.annotations().stream()),
+            element.findAttribute(Attributes.runtimeInvisibleAnnotations()).stream().flatMap(a -> a.annotations().stream()));
     }
 
-    private static boolean hasSignificantAnnotation(List<Annotation> visible, List<Annotation> invisible) {
-        return annotations(visible, invisible).anyMatch(annotation -> !NOT_SIGNIFICANT_ANNOTATIONS.contains(simpleName(annotation)));
+    private static boolean hasSignificantAnnotation(AttributedElement element) {
+        return annotationsOf(element).anyMatch(annotation -> !NOT_SIGNIFICANT_ANNOTATIONS.contains(simpleName(annotation)));
     }
 
     private static String simpleName(Annotation annotation) {
