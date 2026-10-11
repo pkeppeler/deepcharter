@@ -2,7 +2,6 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -64,9 +63,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.charter.terminal.ContractScreen;
 import io.github.pkeppeler.deepcharter.client.fuel.FuelPumpScreen;
-import io.github.pkeppeler.deepcharter.client.handbook.ClientHandbook;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookPage;
-import io.github.pkeppeler.deepcharter.client.handbook.HandbookPages;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.client.hangar.HangarScreen;
@@ -85,8 +82,6 @@ import io.github.pkeppeler.deepcharter.colony.ColonyKit;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
-import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
-import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
 import io.github.pkeppeler.deepcharter.handbook.HandbookItems;
 import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
 import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
@@ -108,7 +103,6 @@ import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
-import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
@@ -116,6 +110,8 @@ import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight.Box;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.ShippedHandbook;
+import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
 import io.github.pkeppeler.deepcharter.transmission.Transmissions;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
@@ -377,16 +373,10 @@ public class DesignTourScenario extends EvidenceScenario {
 		ctx.setScreen(() -> null);
 
 		// Built as HandbookScreen.open builds it: the shipped chapters only, with the progress the server synced.
-		ctx.setScreen(() -> {
-			Map<Identifier, HandbookChapter> shipped = new LinkedHashMap<>();
-			HandbookChapters.all(Minecraft.getInstance().getConnection().registryAccess()).stream()
-					.filter(entry -> !entry.key().identifier().getPath().equals("sample"))
-					.forEach(entry -> shipped.put(entry.key().identifier(), entry.value()));
-			return new HandbookScreen(HandbookPages.of(shipped, ClientHandbook.completed()), id -> true, id -> { }, List.of());
-		});
+		List<HandbookPage> pages = ctx.computeOnClient(ShippedHandbook::pages);
+		ctx.setScreen(() -> new HandbookScreen(pages, id -> true, id -> { }, List.of()));
 		ctx.waitForScreen(HandbookScreen.class);
 		HandbookScreen screen = ctx.computeOnClient(client -> (HandbookScreen) client.gui.screen());
-		List<HandbookPage> pages = ctx.computeOnClient(client -> screen.pages());
 		Set<String> seen = new HashSet<>();
 		for (int index = 0; index < pages.size(); index++) {
 			HandbookPage page = pages.get(index);
@@ -716,7 +706,7 @@ public class DesignTourScenario extends EvidenceScenario {
 			ServerPlayer player = player(server);
 			for (Item part : HangarParts.ALL) {
 				player.getInventory().add(new ItemStack(part));
-				Terminals.insertPart(player, console, part).ifPresent(refusal -> {
+				TerminalParts.insert(player, console, part).ifPresent(refusal -> {
 					throw new AssertionError("inserting " + part + ": " + refusal);
 				});
 			}

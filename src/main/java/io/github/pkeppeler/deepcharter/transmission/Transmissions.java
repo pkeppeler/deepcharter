@@ -62,6 +62,7 @@ public final class Transmissions {
 	 * @throws IllegalStateException if no server is running
 	 * @throws IllegalArgumentException if the charter or the transmission does not exist
 	 */
+	// test-seam: the frozen public signature that features call without a server in hand (ADR 0006, m2-rules.md); the mod itself calls the server forms
 	public static void fire(CharterId charter, Identifier transmission) {
 		Objects.requireNonNull(charter, "charter");
 		Objects.requireNonNull(transmission, "transmission");
@@ -110,16 +111,6 @@ public final class Transmissions {
 	public static void deliver(MinecraftServer server, TransmissionData data, CharterId charter) {
 		if (readable(server, data)) {
 			deliver(server, data, requireCharter(server, charter));
-		}
-	}
-
-	/**
-	 * Sends {@code player} what they have not been sent of the charter's story, in order. Call it when the player logs in, passing the
-	 * player in: the server's lookup by UUID does not find a player in their own join event.
-	 */
-	public static void deliverTo(MinecraftServer server, TransmissionData data, CharterId charter, ServerPlayer player) {
-		if (readable(server, data)) {
-			sendUnsent(server, data, requireCharter(server, charter), player);
 		}
 	}
 

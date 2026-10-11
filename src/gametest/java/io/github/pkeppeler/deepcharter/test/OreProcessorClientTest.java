@@ -36,6 +36,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
@@ -112,7 +113,7 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 			List<String> expectedLines = List.of("WORK ORDERS", "RESTORE THE FOUNDER'S HANDS", "DONE", "MORALE INITIATIVE", "0 / 10 SILVERIUM");
 			require(context.computeOnClient(client -> two.orderLines()).equals(expectedLines),
 					"two orders are listed, got " + context.computeOnClient(client -> two.orderLines()));
-			require(context.computeOnClient(client -> two.orderRows().stream().map(row -> row.active).toList()).equals(List.of(false, true)),
+			require(context.computeOnClient(client -> orderRows(two).stream().map(row -> row.active).toList()).equals(List.of(false, true)),
 					"the finished order's row is inactive and the open one's is not");
 			checkLayout(context, two, "the two orders");
 			singleplayer.getServer().runOnServer(server -> {
@@ -138,7 +139,7 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 				OreProcessorScreen crowded = context.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
 				context.runOnClient(client -> crowded.resize(size[0], size[1]));
 				ClientWait.until(context, "the crowded screen finished typing", client -> crowded.typewriter().done(), client -> "typewriter text '" + crowded.typewriter().text() + "'");
-				int rows = context.computeOnClient(client -> crowded.orderRows().size());
+				int rows = context.computeOnClient(client -> orderRows(crowded).size());
 				require(rows >= 1 && rows < 5, "the rows are bounded by the room: " + rows + " of 5 at " + size[0] + " by " + size[1]);
 				int pages = (5 + rows - 1) / rows;
 				require(context.computeOnClient(client -> crowded.orderLines().getFirst()).equals("WORK ORDERS  1/" + pages),
@@ -150,7 +151,7 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 					ClientWait.until(context, "the crowded screen's first line at the heading", client -> crowded.orderLines().getFirst().equals(heading), client -> "order lines " + crowded.orderLines());
 					checkLayout(context, crowded, "page " + page + " at " + size[0] + " by " + size[1]);
 				}
-				require(context.computeOnClient(client -> crowded.orderRows().size()) == 5 - (pages - 1) * rows, "the last page holds the rest");
+				require(context.computeOnClient(client -> orderRows(crowded).size()) == 5 - (pages - 1) * rows, "the last page holds the rest");
 				require(!context.computeOnClient(client -> ClientChecks.button(crowded, ">").active), "no page after the last");
 				context.clickScreenButton("<");
 				ClientWait.until(context, "the crowded screen back on the previous page", client -> crowded.orderLines().getFirst().equals("WORK ORDERS  " + (pages - 1) + "/" + pages), client -> "order lines " + crowded.orderLines());
@@ -175,14 +176,26 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 					return buttonProblem;
 				}
 			}
-			for (OrderRowButton row : screen.orderRows()) {
-				if (row.getY() < screen.accountBottom()) {
+			for (OrderRowButton row : orderRows(screen)) {
+				if (row.getY() < accountBottom(screen)) {
 					return Optional.of(row.title() + " starts above the account line");
 				}
 			}
 			return Optional.<String>empty();
 		});
 		ClientChecks.requireNone(when, problem);
+	}
+
+	/** The order rows on screen, top to bottom: the screen adds them to its children in that order. */
+	private static List<OrderRowButton> orderRows(OreProcessorScreen screen) {
+		return screen.children().stream().filter(OrderRowButton.class::isInstance).map(OrderRowButton.class::cast).toList();
+	}
+
+	/** The y below the account line as the screen draws it. */
+	private static int accountBottom(OreProcessorScreen screen) {
+		String account = OreProcessorScreen.accountLine();
+		return DrawnText.of(screen).stream().filter(drawn -> drawn.text().equals(account)).findFirst()
+				.orElseThrow(() -> new AssertionError("the screen draws no account line '" + account + "'")).box().bottom();
 	}
 
 	/** The player founds a charter, carries two ores, and has a repaired processor and a pod with two ores in its bay beside them. */

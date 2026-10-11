@@ -37,6 +37,11 @@ public final class HandbookProgressData extends SavedData {
 	// Datafixer type: vanilla applies it to saved data it reads. Our data has a version of its own, so the vanilla fixers find nothing to fix.
 	public static final SavedDataType<HandbookProgressData> TYPE = new SavedDataType<>(ID, HandbookProgressData::new, CODEC, DataFixTypes.SAVED_DATA_COMMAND_STORAGE);
 
+	/** A directive whose id changed, by its old id: a charter that completed the old one has completed the new one (ADR 0047). */
+	private static final Map<Identifier, Identifier> RENAMED = Map.of(
+			Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook/welcome/mine_iron_ore"),
+			Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook/welcome/gather_scrap"));
+
 	private final SavedState<Map<CharterId, Set<Identifier>>> state;
 
 	public HandbookProgressData() {
@@ -46,7 +51,15 @@ public final class HandbookProgressData extends SavedData {
 	private HandbookProgressData(Versioned<List<Entry>> loaded) {
 		this.state = SavedState.load(ID, VERSION, loaded, entries -> {
 			Map<CharterId, Set<Identifier>> progress = new LinkedHashMap<>();
-			entries.forEach(entry -> progress.put(entry.charter(), new LinkedHashSet<>(entry.completed())));
+			entries.forEach(entry -> {
+				Set<Identifier> completed = new LinkedHashSet<>(entry.completed());
+				RENAMED.forEach((old, renamed) -> {
+					if (completed.contains(old)) {
+						completed.add(renamed);
+					}
+				});
+				progress.put(entry.charter(), completed);
+			});
 			return progress;
 		});
 	}

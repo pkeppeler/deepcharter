@@ -245,33 +245,34 @@ public class TransmissionsTest {
 	@GameTest
 	public void everyMemberIsSentWhatTheyMissedOnTheirOwnLogin(GameTestHelper helper) {
 		MinecraftServer server = server(helper);
-		TransmissionData data = new TransmissionData();
-		MockPlayer director = MockPlayers.join(helper, "tx-m1");
-		MockPlayer second = MockPlayers.join(helper, "tx-m2");
-		MockPlayer third = MockPlayers.join(helper, "tx-m3");
-		CharterId charter = directCharter(helper, director.player().getUUID(), second.player().getUUID(), third.player().getUUID());
-		// The two crew members are offline when it fires. They keep the player objects they logged in with, which a login passes in.
-		second.leave();
-		third.leave();
+		withFreshWorldData(helper, data -> {
+			MockPlayer director = MockPlayers.join(helper, "tx-m1");
+			MockPlayer second = MockPlayers.join(helper, "tx-m2");
+			MockPlayer third = MockPlayers.join(helper, "tx-m3");
+			CharterId charter = directCharter(helper, director.player().getUUID(), second.player().getUUID(), third.player().getUUID());
+			// The two crew members are offline when it fires. They keep the player objects they logged in with, which a login passes in.
+			second.leave();
+			third.leave();
 
-		Transmissions.fire(server, data, charter, id("t17"));
-		if (!deliveredTo(director).equals(ids("t17")) || !deliveredTo(second).isEmpty() || !deliveredTo(third).isEmpty()) {
-			throw helper.assertionException("only the online member is sent it at once: %s, %s, %s", deliveredTo(director), deliveredTo(second), deliveredTo(third));
-		}
+			Transmissions.fire(server, charter, id("t17"));
+			if (!deliveredTo(director).equals(ids("t17")) || !deliveredTo(second).isEmpty() || !deliveredTo(third).isEmpty()) {
+				throw helper.assertionException("only the online member is sent it at once: %s, %s, %s", deliveredTo(director), deliveredTo(second), deliveredTo(third));
+			}
 
-		Transmissions.deliverTo(server, data, charter, second.player());
-		Transmissions.deliverTo(server, data, charter, second.player());
-		if (!deliveredTo(second).equals(ids("t17")) || !deliveredTo(third).isEmpty()) {
-			throw helper.assertionException("the second member's login sends it once, and only to them: %s, %s", deliveredTo(second), deliveredTo(third));
-		}
-		Transmissions.fire(server, data, charter, id("t18"));
-		Transmissions.deliverTo(server, data, charter, third.player());
-		Transmissions.deliverTo(server, data, charter, second.player());
-		if (!deliveredTo(third).equals(ids("t17", "t18")) || !deliveredTo(second).equals(ids("t17", "t18"))
-				|| !deliveredTo(director).equals(ids("t17", "t18"))) {
-			throw helper.assertionException("each member has been sent each once, in order: %s, %s, %s",
-					deliveredTo(director), deliveredTo(second), deliveredTo(third));
-		}
+			Transmissions.deliverOnLogin(server, second.player());
+			Transmissions.deliverOnLogin(server, second.player());
+			if (!deliveredTo(second).equals(ids("t17")) || !deliveredTo(third).isEmpty()) {
+				throw helper.assertionException("the second member's login sends it once, and only to them: %s, %s", deliveredTo(second), deliveredTo(third));
+			}
+			Transmissions.fire(server, charter, id("t18"));
+			Transmissions.deliverOnLogin(server, third.player());
+			Transmissions.deliverOnLogin(server, second.player());
+			if (!deliveredTo(third).equals(ids("t17", "t18")) || !deliveredTo(second).equals(ids("t17", "t18"))
+					|| !deliveredTo(director).equals(ids("t17", "t18"))) {
+				throw helper.assertionException("each member has been sent each once, in order: %s, %s, %s",
+						deliveredTo(director), deliveredTo(second), deliveredTo(third));
+			}
+		});
 		helper.succeed();
 	}
 

@@ -1,7 +1,13 @@
 {
   "block.deepcharter.basalt_outcrop": "Basalt Outcrop",
+  "block.deepcharter.fungal_stalk": "Fungal Stalk",
   "block.deepcharter.ochre_regolith": "Ochre Regolith",
   "block.deepcharter.regolith": "Regolith",
   "block.deepcharter.regolith_packed": "Packed Regolith",
-  "block.deepcharter.regolith_rock": "Regolith Rock"
+  "block.deepcharter.regolith_rock": "Regolith Rock",
+  "block.deepcharter.salvage_crate": "Salvage Crate",
+  "block.deepcharter.stalk_planks": "Stalk Planks",
+  "item.deepcharter.salvage_cloth": "Salvage Cloth",
+  "item.deepcharter.scrap_copper": "Scrap Copper",
+  "item.deepcharter.scrap_iron": "Scrap Iron"
 }

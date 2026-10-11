@@ -1,21 +1,18 @@
 {
   "type": "minecraft:block",
+  "random_sequence": "deepcharter:blocks/regolith_packed",
   "pools": [
     {
       "rolls": 1,
-      "bonus_rolls": 0,
+      "condition": {
+        "type": "minecraft:survives_explosion"
+      },
       "entries": [
         {
           "type": "minecraft:item",
           "name": "deepcharter:regolith_packed"
         }
-      ],
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
       ]
     }
-  ],
-  "random_sequence": "deepcharter:blocks/regolith_packed"
+  ]
 }

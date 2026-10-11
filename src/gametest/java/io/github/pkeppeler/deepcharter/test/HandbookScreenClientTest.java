@@ -41,6 +41,8 @@ import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
+import io.github.pkeppeler.deepcharter.test.support.HandbookDrawn;
+import io.github.pkeppeler.deepcharter.test.support.ShippedNotes;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
@@ -315,12 +317,13 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 	private static void notesTabShowsAnEmptyState(ClientGameTestContext context) {
 		context.runOnClient(client -> {
 			HandbookScreen screen = new HandbookScreen(HandbookPages.of(chapters(), Set.of()), id -> false, id -> { }, List.of());
-			require(!screen.onNotesTab(), "the screen opens on the handbook tab");
+			screen.init(DEFAULT_GUI_WIDTH, DEFAULT_GUI_HEIGHT);
+			require(!HandbookDrawn.showsNotesList(screen), "the screen opens on the handbook tab");
 			screen.showNotes();
-			require(screen.onNotesTab(), "the Notes tab opens");
-			require(screen.notesEmpty(), "with no notes the Notes tab shows its empty state");
+			require(HandbookDrawn.showsNotesList(screen), "the Notes tab opens");
+			require(HandbookDrawn.showsNotesEmptyState(screen), "with no notes the Notes tab shows its empty state");
 			screen.showHandbook();
-			require(!screen.onNotesTab(), "the handbook tab opens again");
+			require(!HandbookDrawn.showsNotesList(screen), "the handbook tab opens again");
 		});
 	}
 
@@ -339,7 +342,7 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 	 */
 	private static void aLongNoteRunsOnToMoreSheets(ClientGameTestContext context) {
 		context.runOnClient(client -> {
-			List<HandbookNote> notes = Notes.all().stream().map(ClientNotes::entry).toList();
+			List<HandbookNote> notes = ShippedNotes.ids().stream().map(ClientNotes::entry).toList();
 			HandbookScreen screen = new HandbookScreen(HandbookPages.of(chapters(), Set.of()), id -> true, id -> { }, notes);
 			screen.init(DEFAULT_GUI_WIDTH, DEFAULT_GUI_HEIGHT);
 			Identifier longNote = Notes.id(LONG_NOTE);
@@ -352,31 +355,31 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 			screen.openNote(longNote);
 			int sheets = screen.noteSheets();
 			require(sheets >= 2, "Ines's log takes more than one sheet, got " + sheets);
-			require(screen.noteSheet() == 0 && nextButton(screen).visible, "a long Note opens on its first sheet, with Next shown");
+			require(HandbookDrawn.noteSheet(screen) == 0 && nextButton(screen).visible, "a long Note opens on its first sheet, with Next shown");
 			for (int sheet = 1; sheet < sheets; sheet++) {
 				press(screen, nextButton(screen));
-				require(screen.noteSheet() == sheet, "Next goes to sheet " + (sheet + 1) + ", was " + (screen.noteSheet() + 1));
+				require(HandbookDrawn.noteSheet(screen) == sheet, "Next goes to sheet " + (sheet + 1) + ", was " + (HandbookDrawn.noteSheet(screen) + 1));
 			}
 			press(screen, nextButton(screen));
-			require(screen.noteSheet() == 0, "Next on the last sheet wraps to the first, was " + (screen.noteSheet() + 1));
+			require(HandbookDrawn.noteSheet(screen) == 0, "Next on the last sheet wraps to the first, was " + (HandbookDrawn.noteSheet(screen) + 1));
 
-			require(screen.keyPressed(new KeyEvent(InputConstants.KEY_RIGHT, 0, 0)) && screen.noteSheet() == 1, "the right arrow turns to the next sheet");
-			require(screen.keyPressed(new KeyEvent(InputConstants.KEY_LEFT, 0, 0)) && screen.noteSheet() == 0, "the left arrow turns back");
+			require(screen.keyPressed(new KeyEvent(InputConstants.KEY_RIGHT, 0, 0)) && HandbookDrawn.noteSheet(screen) == 1, "the right arrow turns to the next sheet");
+			require(screen.keyPressed(new KeyEvent(InputConstants.KEY_LEFT, 0, 0)) && HandbookDrawn.noteSheet(screen) == 0, "the left arrow turns back");
 			screen.keyPressed(new KeyEvent(InputConstants.KEY_LEFT, 0, 0));
-			require(screen.noteSheet() == 0, "the left arrow stops at the first sheet");
+			require(HandbookDrawn.noteSheet(screen) == 0, "the left arrow stops at the first sheet");
 			for (int i = 0; i < sheets + 2; i++) {
 				screen.keyPressed(new KeyEvent(InputConstants.KEY_RIGHT, 0, 0));
 			}
-			require(screen.noteSheet() == sheets - 1, "the right arrow stops at the last sheet, was " + (screen.noteSheet() + 1));
+			require(HandbookDrawn.noteSheet(screen) == sheets - 1, "the right arrow stops at the last sheet, was " + (HandbookDrawn.noteSheet(screen) + 1));
 			screen.turnNote(sheets + 5);
-			require(screen.noteSheet() == sheets - 1, "turnNote stops at the last sheet");
+			require(HandbookDrawn.noteSheet(screen) == sheets - 1, "turnNote stops at the last sheet");
 			screen.turnNote(-3);
-			require(screen.noteSheet() == 0, "turnNote stops at the first sheet");
+			require(HandbookDrawn.noteSheet(screen) == 0, "turnNote stops at the first sheet");
 
 			screen.turnNote(sheets - 1);
 			screen.closeNote();
 			screen.openNote(longNote);
-			require(screen.noteSheet() == 0, "opening a Note starts at its first sheet, was " + (screen.noteSheet() + 1));
+			require(HandbookDrawn.noteSheet(screen) == 0, "opening a Note starts at its first sheet, was " + (HandbookDrawn.noteSheet(screen) + 1));
 
 			HandbookNote note = notes.stream().filter(entry -> entry.id().equals(longNote)).findFirst().orElseThrow();
 			requireEveryLineOnce(screen, note);
@@ -387,8 +390,8 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 			require(narrow > sheets, "a short window takes more sheets than the default one: " + narrow + " against " + sheets);
 			screen.turnNote(narrow - 1);
 			screen.init(DEFAULT_GUI_WIDTH, DEFAULT_GUI_HEIGHT);
-			require(screen.noteSheets() == sheets && screen.noteSheet() == sheets - 1,
-					"after a resize to " + sheets + " sheets the screen is on its last, not on a sheet that is gone: sheet " + (screen.noteSheet() + 1) + " of " + screen.noteSheets());
+			require(screen.noteSheets() == sheets && HandbookDrawn.noteSheet(screen) == sheets - 1,
+					"after a resize to " + sheets + " sheets the screen is on its last, not on a sheet that is gone: sheet " + (HandbookDrawn.noteSheet(screen) + 1) + " of " + screen.noteSheets());
 		});
 	}
 
@@ -494,8 +497,8 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 				List<HandbookScreen.ContentsEntry> entries = screen.contentsEntries(contents);
 				require(entries.size() == contents.count(), "a contents page lists its " + contents.count() + " chapters, got " + entries.size());
 				for (HandbookScreen.ContentsEntry entry : entries) {
-					require(entry.bottom() <= screen.contentsBottom(), "entry for page " + entry.page() + " ends at " + entry.bottom()
-							+ ", below the sheet's text area at " + screen.contentsBottom());
+					require(entry.bottom() <= nextButton(screen).getY(), "entry for page " + entry.page() + " ends at " + entry.bottom()
+							+ ", over the Back and Next buttons at " + nextButton(screen).getY());
 					seen.add(((HandbookPage.Chapter) pages.get(entry.page())).number());
 					screen.goTo(index);
 					double x = entry.left() + 2;
@@ -541,7 +544,7 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 			HandbookScreen screen = context.computeOnClient(client -> (HandbookScreen) client.gui.screen());
 
 			int chapterPage = context.computeOnClient(client -> {
-				List<HandbookPage> pages = screen.pages();
+				List<HandbookPage> pages = HandbookScreen.currentPages(client);
 				for (int index = 0; index < pages.size(); index++) {
 					if (pages.get(index) instanceof HandbookPage.Chapter chapter && chapter.id().equals(SAMPLE_CHAPTER)) {
 						return index;
@@ -550,7 +553,7 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
 				return -1;
 			});
 			require(chapterPage >= 0, "the sample chapter has a page");
-			require(context.computeOnClient(client -> screen.pages().get(chapterPage) instanceof HandbookPage.Chapter chapter
+			require(context.computeOnClient(client -> HandbookScreen.currentPages(client).get(chapterPage) instanceof HandbookPage.Chapter chapter
 					&& chapter.visibility() == HandbookVisibility.FULL), "the first chapter is full for a new player");
 			require(!context.computeOnClient(client -> ClientReadMarks.isRead(SAMPLE_CHAPTER)), "the chapter is unread before it is viewed");
 

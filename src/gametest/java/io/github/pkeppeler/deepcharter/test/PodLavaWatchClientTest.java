@@ -22,6 +22,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLavaWatch;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.PodReadout;
 
 /**
  * Client GameTest for the lava watch HUD (#454): a pod with a pilot shows no lava line with no lava about, and a lava line (an ALERT, which lights the cockpit's warning
@@ -55,7 +56,7 @@ public class PodLavaWatchClientTest implements FabricClientGameTest {
 				}
 			});
 			ClientWait.until(context, "the pod status HUD", client -> client.player != null && client.player.getVehicle() instanceof PodEntity pod
-					&& !PodStatusHud.lines(pod).isEmpty());
+					&& !PodReadout.texts(client, pod).isEmpty());
 			context.waitTicks(30); // tick-wait: long enough for a few looks of the watch (every 10 ticks) to have found nothing
 			if (context.computeOnClient(client -> PodStatusHud.lavaNearLine((PodEntity) client.player.getVehicle()).isPresent())) {
 				throw new AssertionError("A pod with no lava about shows no lava line");

@@ -27,6 +27,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.client.pod.BoneRole;
 import io.github.pkeppeler.deepcharter.client.pod.PodGeoRenderState;
 import io.github.pkeppeler.deepcharter.client.pod.PodGeoRenderer;
+import io.github.pkeppeler.deepcharter.client.pod.PodLook;
 import io.github.pkeppeler.deepcharter.client.pod.PodMotion;
 import io.github.pkeppeler.deepcharter.client.pod.PodPaint;
 import io.github.pkeppeler.deepcharter.client.pod.PodPose;
@@ -35,6 +36,7 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.PodLoads;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
@@ -91,7 +93,7 @@ public class PodRotorPaintClientTest implements FabricClientGameTest {
 	/** Both models fold their rotor from two blades that hang from it, each on its own side of the hub. */
 	private static void bladesFoldFromTheRotor(Minecraft client, Scene scene) {
 		for (int id : List.of(scene.ember(), scene.prospector())) {
-			var geo = renderer(client, id).geometry();
+			var geo = PodLoads.of(client, renderer(client, id), pod(client, id)).geo();
 			var blades = geo.bones().stream().filter(bone -> bone.role() == BoneRole.BLADE).toList();
 			require(blades.size() == 2, pod(client, id).chassis().id() + " folds two blades, has " + blades);
 			require(blades.stream().allMatch(blade -> blade.parent().map(parent -> geo.bones().stream()
@@ -232,8 +234,9 @@ public class PodRotorPaintClientTest implements FabricClientGameTest {
 			}
 		}
 		PodGeoRenderer renderer = renderer(client, id);
-		Identifier baseId = renderer.look().intact().texture();
-		Identifier maskId = renderer.look().paintMask().orElseThrow();
+		PodLook look = PodLoads.of(client, renderer, pod(client, id)).look();
+		Identifier baseId = look.intact().texture();
+		Identifier maskId = look.paintMask().orElseThrow();
 		int rgb = PodPaintLook.current().paintOf(EMBER);
 		try (NativeImage base = read(client, baseId); NativeImage mask = read(client, maskId); NativeImage painted = PodPaint.paint(base, mask, rgb)) {
 			int unshaded = 0;
@@ -260,9 +263,10 @@ public class PodRotorPaintClientTest implements FabricClientGameTest {
 	/** A paint whose mask is not the texture's size is refused at load, and a frame that meets one anyway draws the unpainted texture. */
 	private static void aMaskOfAnotherSizeIsRefusedAndNeverCrashesAFrame(Minecraft client, int id) {
 		PodGeoRenderer renderer = renderer(client, id);
-		Identifier maskId = renderer.look().paintMask().orElseThrow();
+		PodLook look = PodLoads.of(client, renderer, pod(client, id)).look();
+		Identifier maskId = look.paintMask().orElseThrow();
 		Identifier small = Identifier.withDefaultNamespace("textures/block/stone.png");
-		PodPaint.check(client.getResourceManager(), renderer.look().intact().texture(), maskId);
+		PodPaint.check(client.getResourceManager(), look.intact().texture(), maskId);
 		String refusal = null;
 		try {
 			PodPaint.check(client.getResourceManager(), small, maskId);

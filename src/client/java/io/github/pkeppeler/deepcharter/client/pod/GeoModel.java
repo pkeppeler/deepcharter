@@ -164,18 +164,6 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 		return Optional.of(bone.name().substring(prefix.length()));
 	}
 
-	/** True for a bone that is a cutter's own, or under one: {@code drill_head}, {@code drill_ring} and what rides them, of the cutter {@code cutter} (null: of any). */
-	public boolean inCutter(Bone bone, String cutter) {
-		Map<String, Bone> byName = new HashMap<>();
-		bones.forEach(each -> byName.put(each.name(), each));
-		for (Bone at = bone; at != null; at = at.parent().map(byName::get).orElse(null)) {
-			if (at.role() == BoneRole.DRILL_HEAD || at.role() == BoneRole.DRILL_RING) {
-				return cutter == null || cutterOf(at).map(cutter::equals).orElse(false);
-			}
-		}
-		return false;
-	}
-
 	/**
 	 * How far the cubes of the spinning drill bones ({@code drill_head} and {@code drill_ring}, not their children) reach from the
 	 * bone's axis across x or y, in pixels: half the width of the cutter at its widest. A turned cube counts at its turned corners,
@@ -235,20 +223,11 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 		return bounds;
 	}
 
-	/** Used by {@code PodSeatsClientTest} to hold a rider to the cab. A cube at rest: its bone, the cube as the file has it, and its box in pixels as {minX, minY, minZ, maxX, maxY, maxZ}. */
+	/** A cube at rest: its bone, the cube as the file has it, and its box in pixels as {minX, minY, minZ, maxX, maxY, maxZ}. */
 	public record RestCube(Bone bone, Cube cube, double[] box) {
 	}
 
-	/**
-	 * Used by {@code PodSeatsClientTest} only. The box of each cube of the bones {@code only} accepts at rest, in pixels, as {minX, minY, minZ, maxX, maxY, maxZ}: the box of the
-	 * cube's corners turned by its own rotation and its bones'. A turned cube is held by the box of its turned corners, which holds it
-	 * and a little more, so a test that a point is clear of every cube errs towards "not clear".
-	 */
-	public List<RestCube> restCubes(Predicate<Bone> only) {
-		return restCubes(only, OptionalDouble.empty());
-	}
-
-	private List<RestCube> restCubes(Predicate<Bone> only, OptionalDouble pitch) {
+	List<RestCube> restCubes(Predicate<Bone> only, OptionalDouble pitch) {
 		Map<String, Bone> byName = new HashMap<>();
 		bones.forEach(bone -> byName.put(bone.name(), bone));
 		List<RestCube> cubes = new ArrayList<>();

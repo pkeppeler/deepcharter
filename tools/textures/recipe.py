@@ -8,7 +8,7 @@ loud and names the recipe.
 import json
 import re
 from dataclasses import dataclass
-from math import ceil, sqrt
+from math import ceil, isqrt, sqrt
 from pathlib import Path
 from typing import Callable
 
@@ -667,6 +667,42 @@ NODULES = {
 }
 
 
+def op_fibres(canvas: Canvas, layer: dict, ctx: Context) -> None:
+    """Fibres that run down a stem: every column draws its own runs of ramp shades from the top of the tile to the bottom, the runs
+    wrap round, and a column's base shade follows its neighbours', so the texture streaks along its length and tiles on both axes.
+    Breaks are the number of changes a column makes down the tile, and spread how many shades a run may stray from the column's base."""
+    ctx.need(layer, "ramp", "seed", "breaks", "spread")
+    ramp = ctx.ramp(layer["ramp"])
+    size = ctx.size
+    rng = Rng(layer["seed"])
+    raw = [rng.below(len(ramp)) for _ in range(size)]
+    base = [(raw[x - 1] + 2 * raw[x] + raw[(x + 1) % size]) // 4 for x in range(size)]
+    x0, y0, w, h = _rect(layer, ctx)
+    for x in range(x0, x0 + w):
+        cuts = sorted({rng.below(size) for _ in range(layer["breaks"])})
+        shades = [min(len(ramp) - 1, max(0, base[x % size] + rng.below(2 * layer["spread"] + 1) - layer["spread"])) for _ in cuts]
+        for y in range(y0, y0 + h):
+            run = max((i for i, cut in enumerate(cuts) if cut <= y % size), default=len(cuts) - 1)
+            canvas.put(x, y, ramp[shades[run]])
+
+
+def op_rings(canvas: Canvas, layer: dict, ctx: Context) -> None:
+    """The cut end of a stem: bands of colour out from the middle of the tile. Each band is [radius, colour], the radius in half
+    pixels, and a pixel takes the first band whose radius it is inside. Jitter moves each pixel's radius by up to that many half
+    pixels, from a hash of its place, so the rings are ragged. Whole numbers only, so every machine draws the same pixels."""
+    ctx.need(layer, "bands", "seed", "jitter")
+    size = ctx.size
+    bands = [(radius, ctx.colour(name)) for radius, name in layer["bands"]]
+    for x, y in _cells(layer, ctx):
+        dx, dy = 2 * x + 1 - size, 2 * y + 1 - size
+        hashed = ((x * 73856093) ^ (y * 19349663) ^ (layer["seed"] * 83492791)) % (2 * layer["jitter"] + 1)
+        reach = isqrt(dx * dx + dy * dy) + hashed - layer["jitter"]
+        for radius, colour in bands:
+            if reach <= radius:
+                canvas.put(x, y, colour)
+                break
+
+
 def op_strata(canvas: Canvas, layer: dict, ctx: Context) -> None:
     """Horizontal rock beds: bands of the given ramp shades and thicknesses (summing to the texture size, so they tile), whose edges
     wobble up and down by up to wobble pixels along a tiling seeded curve."""
@@ -831,6 +867,8 @@ OPS: dict[str, Callable[[Canvas, dict, Context], None]] = {
     "ore": op_ore,
     "cluster": op_cluster,
     "seams": op_seams,
+    "fibres": op_fibres,
+    "rings": op_rings,
     "strata": op_strata,
     "cracks": op_cracks,
     "grime": op_grime,

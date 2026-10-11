@@ -10,7 +10,7 @@
           "parameters": {
             "temperature": [
               -1.0,
-              1.0
+              0.0
             ],
             "humidity": [
               -1.0,
@@ -40,7 +40,7 @@
           "parameters": {
             "temperature": [
               -1.0,
-              1.0
+              0.0
             ],
             "humidity": [
               -1.0,
@@ -70,7 +70,7 @@
           "parameters": {
             "temperature": [
               -1.0,
-              1.0
+              0.0
             ],
             "humidity": [
               -1.0,
@@ -83,6 +83,36 @@
             "erosion": [
               0.5,
               2.0
+            ],
+            "depth": [
+              -1.0,
+              1.0
+            ],
+            "weirdness": [
+              -1.0,
+              1.0
+            ],
+            "offset": 0.0
+          }
+        },
+        {
+          "biome": "deepcharter:salvage_yard",
+          "parameters": {
+            "temperature": [
+              0.5,
+              1.0
+            ],
+            "humidity": [
+              -1.0,
+              1.0
+            ],
+            "continentalness": [
+              -2.0,
+              2.0
+            ],
+            "erosion": [
+              -1.0,
+              1.0
             ],
             "depth": [
               -1.0,

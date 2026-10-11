@@ -85,6 +85,8 @@ public class SurfaceTerrainTest {
 	private static final Set<String> GROUND_BLOCKS = Set.of("minecraft:stone", "deepcharter:regolith", "deepcharter:regolith_packed",
 			"deepcharter:regolith_rock");
 	private static final Set<String> RARE_BLOCKS = Set.of("deepcharter:ochre_regolith", "deepcharter:basalt_outcrop");
+	/** Placed on the ground by the surface features (#245), not by the material rule. */
+	private static final Set<String> FEATURE_BLOCKS = Set.of("deepcharter:salvage_crate", "deepcharter:fungal_stalk");
 
 	@GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
 	public void theGroundHoldsOnlyRegolithRockAndBasalt(GameTestHelper helper) {
@@ -102,6 +104,7 @@ public class SurfaceTerrainTest {
 		}
 		Set<String> allowed = new TreeSet<>(GROUND_BLOCKS);
 		allowed.addAll(RARE_BLOCKS);
+		allowed.addAll(FEATURE_BLOCKS);
 		allowed.add("minecraft:air");
 		Set<String> unexpected = new TreeSet<>(found);
 		unexpected.removeAll(allowed);

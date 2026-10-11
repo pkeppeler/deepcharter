@@ -1,0 +1,104 @@
+{
+  "templates": {},
+  "recipes": {
+    "block/salvage_crate_side": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["timber.2", "timber.3", "timber.3", "timber.4"], "seed": 901, "cell": 8, "octaves": 2, "dither": 0.6},
+      {"op": "speckle", "colours": ["timber.1", "timber.4"], "density": 0.07, "seed": 902},
+      {"op": "rect", "rect": [0, 5, 16, 1], "colour": "timber.0"},
+      {"op": "rect", "rect": [0, 10, 16, 1], "colour": "timber.0"},
+      {"op": "rect", "rect": [0, 0, 16, 1], "colour": "timber.4"},
+      {"op": "rect", "rect": [0, 6, 16, 1], "colour": "timber.4"},
+      {"op": "rect", "rect": [0, 11, 16, 1], "colour": "timber.4"},
+      {"op": "rect", "rect": [0, 0, 2, 16], "colour": "timber.2"},
+      {"op": "rect", "rect": [14, 0, 2, 16], "colour": "timber.2"},
+      {"op": "bevel", "rect": [0, 0, 2, 16], "light": "timber.4", "dark": "timber.0"},
+      {"op": "bevel", "rect": [14, 0, 2, 16], "light": "timber.4", "dark": "timber.0"},
+      {"op": "pixels", "legend": {"r": "company.3", "w": "company.1"}, "at": [5, 6], "rows": [
+        ".rrrrr",
+        "rr....",
+        "rr....",
+        ".rrrrr"]},
+      {"op": "pixels", "legend": {"r": "company.3"}, "at": [11, 7], "rows": ["r", "r"]},
+      {"op": "pixels", "legend": {"n": "steel.5", "s": "steel.2"}, "rows": [
+        "", "", ".n", ".s", "", "", "", "", "", "", "", "", "", ".n", ".s"]},
+      {"op": "pixels", "legend": {"n": "steel.5", "s": "steel.2"}, "at": [13, 0], "rows": [
+        "", "", ".n", ".s", "", "", "", "", "", "", "", "", "", ".n", ".s"]}
+    ]},
+    "block/salvage_crate_top": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["timber.3", "timber.3", "timber.4"], "seed": 911, "cell": 8, "octaves": 2, "dither": 0.6},
+      {"op": "speckle", "colours": ["timber.2", "timber.5"], "density": 0.06, "seed": 912},
+      {"op": "rect", "rect": [5, 0, 1, 16], "colour": "timber.1"},
+      {"op": "rect", "rect": [10, 0, 1, 16], "colour": "timber.1"},
+      {"op": "rect", "rect": [0, 0, 16, 16], "colour": "timber.1", "outline": true},
+      {"op": "rect", "rect": [1, 1, 14, 1], "colour": "timber.4"},
+      {"op": "pixels", "legend": {"n": "steel.5"}, "rows": ["", ".n", "", "", "", "", "", "", "", "", "", "", "", "", ".n"]},
+      {"op": "pixels", "legend": {"n": "steel.5"}, "at": [13, 0], "rows": ["", ".n", "", "", "", "", "", "", "", "", "", "", "", "", ".n"]},
+      {"op": "grime", "colours": ["dust.1", "dust.2"], "density": 0.2, "seed": 913}
+    ]},
+    "block/fungal_stalk_bark": {"kind": "opaque", "layers": [
+      {"op": "fibres", "ramp": ["stalk.2", "stalk.3", "stalk.3", "stalk.4", "stalk.4"], "seed": 30921, "breaks": 4, "spread": 1},
+      {"op": "speckle", "colours": ["stalk.1"], "density": 0.03, "seed": 30922},
+      {"op": "speckle", "colours": ["stalk.5"], "density": 0.04, "seed": 30923}
+    ]},
+    "block/fungal_stalk_end": {"kind": "opaque", "layers": [
+      {"op": "fill", "colour": "stalk.3"},
+      {"op": "rings", "bands": [[2, "stalk.0"], [4, "stalk.2"], [6, "stalk.4"], [8, "stalk.3"], [40, "stalk.2"]], "seed": 931, "jitter": 1},
+      {"op": "speckle", "colours": ["stalk.1", "stalk.5"], "density": 0.07, "seed": 932, "rect": [4, 4, 8, 8]}
+    ]},
+    "block/stalk_planks": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["stalk.3", "stalk.4", "stalk.4", "stalk.5"], "seed": 5941, "cell": 8, "octaves": 2, "dither": 0.7},
+      {"op": "speckle", "colours": ["stalk.2", "stalk.5"], "density": 0.03, "seed": 5942},
+      {"op": "rect", "rect": [0, 3, 16, 1], "colour": "stalk.2"},
+      {"op": "rect", "rect": [0, 7, 16, 1], "colour": "stalk.2"},
+      {"op": "rect", "rect": [0, 11, 16, 1], "colour": "stalk.2"},
+      {"op": "rect", "rect": [0, 15, 16, 1], "colour": "stalk.2"}
+    ]},
+    "block/fungal_shelf_top": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["stalk.3", "stalk.4", "stalk.4", "stalk.5"], "seed": 15971, "cell": 8, "octaves": 3, "dither": 0.6},
+      {"op": "speckle", "colours": ["stalk.2", "stalk.5"], "density": 0.05, "seed": 15972}
+    ]},
+    "block/fungal_shelf_under": {"kind": "opaque", "layers": [
+      {"op": "fibres", "ramp": ["stalk.1", "stalk.2", "stalk.2", "stalk.3"], "seed": 973, "breaks": 3, "spread": 1},
+      {"op": "speckle", "colours": ["stalk.0", "stalk.4"], "density": 0.04, "seed": 974}
+    ]},
+    "item/scrap_iron": {"template": "sprite", "args": {"legend": {
+      "h": "steel.6", "l": "steel.5", "m": "steel.4", "d": "steel.3", "k": "steel.2", "r": "rust.3", "q": "rust.2"}, "rows": [
+      "", "", "",
+      "....hhhh",
+      "...hlllmmh",
+      "..hllmmmmdh",
+      "..hlmmrmdddk",
+      "...hmmmqddk",
+      "....kddddkk..hh",
+      ".....kkkk..hlmd",
+      "..........hmmdk",
+      "..........hrdkk",
+      "...........kk"]}},
+    "item/scrap_copper": {"template": "sprite", "args": {"legend": {
+      "h": "copper.5", "l": "copper.4", "m": "copper.3", "d": "copper.2", "k": "copper.1", "g": "rust.4"}, "rows": [
+      "", "", "",
+      "...hhhhhhh",
+      "..hllllllmh",
+      "..hlmmmmmmd",
+      "..hlm....md",
+      "..hlm.gh.md",
+      "..hlmmmmmmd",
+      "...dmmmmmdd",
+      "....kdddkk",
+      "..........hhhh",
+      ".........hlmmdk",
+      "..........kkkk"]}},
+    "item/salvage_cloth": {"template": "sprite", "args": {"legend": {
+      "h": "tarp.4", "l": "tarp.3", "m": "tarp.2", "d": "tarp.1", "s": "enamel.1", "r": "company.2", "k": "tarp.0"}, "rows": [
+      "", "",
+      "..hhhhhhhhhh",
+      ".hllllllllmhh",
+      ".hlssssssslmd",
+      ".hlllllllllmd",
+      ".hmmmrrrmmmmd",
+      ".hmmmmmmmmmdd",
+      ".hmmmmmmmmddk",
+      "..dmmmmmmdddk",
+      "...ddddddddk"]}}
+  }
+}

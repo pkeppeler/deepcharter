@@ -195,10 +195,7 @@ public class UnreadableAccessTest {
 			paths.put("transmission fire", () -> Transmissions.fire(server, TransmissionData.get(server), charter, TransmissionCatalog.all().getFirst().id()));
 			paths.put("transmission fire for the running server", () -> Transmissions.fire(charter, TransmissionCatalog.all().getFirst().id()));
 			paths.put("transmission replay", () -> Transmissions.replayTo(server, TransmissionData.get(server), charter));
-			paths.put("transmission deliver", () -> {
-				Transmissions.deliver(server, TransmissionData.get(server), charter);
-				Transmissions.deliverTo(server, TransmissionData.get(server), charter, player);
-			});
+			paths.put("transmission deliver", () -> Transmissions.deliver(server, TransmissionData.get(server), charter));
 			paths.put("readable charter forms", () -> {
 				if (Charters.readableCharterOf(server, player.getUUID()).isPresent() || Charters.readableFind(server, charter).isPresent()) {
 					throw new IllegalStateException("unreadable charters read as nothing");

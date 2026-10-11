@@ -1,21 +1,18 @@
 {
   "type": "minecraft:block",
+  "random_sequence": "deepcharter:blocks/ochre_regolith",
   "pools": [
     {
       "rolls": 1,
-      "bonus_rolls": 0,
+      "condition": {
+        "type": "minecraft:survives_explosion"
+      },
       "entries": [
         {
           "type": "minecraft:item",
           "name": "deepcharter:ochre_regolith"
         }
-      ],
-      "conditions": [
-        {
-          "condition": "minecraft:survives_explosion"
-        }
       ]
     }
-  ],
-  "random_sequence": "deepcharter:blocks/ochre_regolith"
+  ]
 }
