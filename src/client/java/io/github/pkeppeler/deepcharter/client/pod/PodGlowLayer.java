@@ -30,6 +30,6 @@ final class PodGlowLayer extends AutoGlowingGeoLayer<PodGeoAnimatable, PodEntity
 
 	@Override
 	protected @Nullable RenderType getRenderType(PodGeoRenderState renderState) {
-		return renderState.appearance.glows(renderState.lit) ? super.getRenderType(renderState) : null;
+		return !renderState.cabHidden && renderState.appearance.glows(renderState.lit) ? super.getRenderType(renderState) : null;
 	}
 }

@@ -43,19 +43,25 @@ public final class PodStatusHud {
 	 * the client works the maximum out itself, from the synced component state ({@link io.github.pkeppeler.deepcharter.pod.PodComponents#STATE}).
 	 */
 	public static List<Component> lines(PodEntity pod) {
-		List<Component> lines = new ArrayList<>();
-		lines.add(Component.translatable("hud.deepcharter.pod.hull", Math.round(pod.hull()), Math.round(pod.maxHull())));
-		lines.add(Component.translatable("hud.deepcharter.pod.fuel", Math.round(pod.fuel())));
-		lines.add(Component.translatable("hud.deepcharter.pod.cargo", pod.cargoUsed()));
-		lines.add(Component.translatable("hud.deepcharter.pod.depth", Math.round(pod.getY())));
+		return statusLines(pod).stream().map(Line::text).toList();
+	}
+
+	/** The pod's own lines: the four of {@link Kind#BASE}, then the slag the lining has and whether the pod is stranded. */
+	private static List<Line> statusLines(PodEntity pod) {
+		HudLook look = HudLook.current();
+		List<Line> lines = new ArrayList<>();
+		lines.add(new Line(Component.translatable("hud.deepcharter.pod.hull", Math.round(pod.hull()), Math.round(pod.maxHull())), look.podStatusColor(), Kind.BASE));
+		lines.add(new Line(Component.translatable("hud.deepcharter.pod.fuel", Math.round(pod.fuel())), look.podStatusColor(), Kind.BASE));
+		lines.add(new Line(Component.translatable("hud.deepcharter.pod.cargo", pod.cargoUsed()), look.podStatusColor(), Kind.BASE));
+		lines.add(new Line(Component.translatable("hud.deepcharter.pod.depth", Math.round(pod.getY())), look.podStatusColor(), Kind.BASE));
 		PodLining.State lining = PodLining.of(pod);
 		if (PodLining.hasHopper(pod)) {
-			lines.add(Component.translatable("hud.deepcharter.pod.slag", lining.bricks(), lining.spoil()));
+			lines.add(new Line(Component.translatable("hud.deepcharter.pod.slag", lining.bricks(), lining.spoil()), look.podStatusColor(), Kind.INFO));
 		} else if (lining.bricks() > 0 || PodLiner.tier(pod) > 0) {
-			lines.add(Component.translatable("hud.deepcharter.pod.slag_only", lining.bricks()));
+			lines.add(new Line(Component.translatable("hud.deepcharter.pod.slag_only", lining.bricks()), look.podStatusColor(), Kind.INFO));
 		}
 		if (pod.stranded()) {
-			lines.add(Component.translatable("hud.deepcharter.pod.stranded"));
+			lines.add(new Line(Component.translatable("hud.deepcharter.pod.stranded"), look.podStatusColor(), Kind.ALERT));
 		}
 		return lines;
 	}
@@ -143,22 +149,28 @@ public final class PodStatusHud {
 		return HardLanding.isHard(PodStats.of(pod), sinkSpeed) ? Optional.of(Component.translatable("hud.deepcharter.pod.hard_landing")) : Optional.empty();
 	}
 
+	/** What a line of the readout is: one of the pod's four values, a note, or a warning (a cockpit lights a lamp for a warning). */
+	public enum Kind {
+		BASE,
+		INFO,
+		ALERT
+	}
+
 	/** A line of the readout and the colour it is drawn in. */
-	public record Line(Component text, int color) {
+	public record Line(Component text, int color, Kind kind) {
 	}
 
 	/** Every line the pilot's readout shows now, in the order it is drawn: the plain HUD's text and the cockpit's plate show the same. */
 	public static List<Line> readout(Minecraft client, PodEntity pod) {
 		HudLook look = HudLook.current();
-		List<Line> readout = new ArrayList<>();
-		lines(pod).forEach(line -> readout.add(new Line(line, look.podStatusColor())));
-		burningLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
-		linerLine(pod).ifPresent(line -> readout.add(new Line(line, look.podLinerColor())));
-		sounderLines(pod).forEach(line -> readout.add(new Line(line, look.podSounderColor())));
-		crustLines(pod, resting(client, pod)).forEach(line -> readout.add(new Line(line, look.podHardLandingColor())));
-		liningLine(pod).ifPresent(line -> readout.add(new Line(line, look.podLiningColor())));
-		outOfBrickLine(pod).ifPresent(line -> readout.add(new Line(line, look.podLiningDryColor())));
-		hardLandingLine(pod).ifPresent(line -> readout.add(new Line(line, look.podHardLandingColor())));
+		List<Line> readout = new ArrayList<>(statusLines(pod));
+		burningLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor(), Kind.ALERT)));
+		linerLine(pod).ifPresent(line -> readout.add(new Line(line, look.podLinerColor(), Kind.INFO)));
+		sounderLines(pod).forEach(line -> readout.add(new Line(line, look.podSounderColor(), Kind.ALERT)));
+		crustLines(pod, resting(client, pod)).forEach(line -> readout.add(new Line(line, look.podHardLandingColor(), Kind.ALERT)));
+		liningLine(pod).ifPresent(line -> readout.add(new Line(line, look.podLiningColor(), Kind.INFO)));
+		outOfBrickLine(pod).ifPresent(line -> readout.add(new Line(line, look.podLiningDryColor(), Kind.ALERT)));
+		hardLandingLine(pod).ifPresent(line -> readout.add(new Line(line, look.podHardLandingColor(), Kind.ALERT)));
 		return readout;
 	}
 

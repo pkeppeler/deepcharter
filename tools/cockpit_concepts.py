@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
-"""Writes the cockpit HUD concepts of #444 (docs/design/cockpit-concepts.md) for #247: three looks for what a seated pilot sees, as GUI sprites and one theme file.
+"""Writes the cockpit HUD concepts of #444 and #448 (docs/design/cockpit-concepts.md, cockpit-concepts-2.md) for #247: looks for what a seated pilot sees, as GUI sprites and one theme file.
 
-Every look is a frame over the whole screen, a few housings, the faces of the gauges the game draws its needles and bars on, a window for the scanner and a
-plate for the text readout. `theme/cockpit.json` says which look is drawn (`style`: 0 none, 1 dials, 2 strip, 3 consoles) and where each piece sits; the sprites are
-under textures/gui/sprites/cockpit/<style>/ in src/main/resources/assets/deepcharter/. A resource pack picks a look, or restyles one, key by key (ADR 0032,
+A look is a few housings, the faces of the gauges the game draws its bars on, a window for the scanner and a plate for the text readout; round 1's look has a frame
+over the whole screen too. `theme/cockpit.json` says which look is drawn (`style`: 0 none, 1 consoles, 2 corners, 3 ribbon, 4 posts, 5 cab) and where each piece sits; the
+sprites are under textures/gui/sprites/cockpit/<style>/ in src/main/resources/assets/deepcharter/. A resource pack picks a look, or restyles one, key by key (ADR 0032,
 docs/design/skins.md).
 
     python3 tools/cockpit_concepts.py              write the sprites and the theme file
     python3 tools/cockpit_concepts.py --check      list the files that differ from what the generator makes (what the test runs)
     python3 tools/cockpit_concepts.py --preview D  write a mock of each look on a 427 x 240 screen into directory D
+    python3 tools/cockpit_concepts.py --coverage   print the share of a 427 x 240 screen each look covers
 
-Standard library only. A sprite is the same bytes on every run: the only randomness is `random.Random` with a fixed seed.
+Standard library only. A sprite is the same bytes on every run: the only randomness is `random.Random` with a fixed seed, and every coordinate is a whole number or goes
+through `nearest`, never `round`, which breaks a tie to the even number on one machine and the other way on another.
 """
 import argparse
 import json
@@ -22,7 +24,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from terminal_art import Img, mix, nine_slice, rgb, shade  # noqa: E402
-from terminal_concepts import H, HAZARD, HAZARD_INK, Sprite, big, hex_bolt, hole_distance, mcmeta_for, ramp, rivet, screw  # noqa: E402
+from terminal_concepts import H, Sprite, big, hex_bolt, mcmeta_for, ramp, screw  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "src/main/resources/assets/deepcharter"
@@ -36,17 +38,25 @@ SCREEN_W, SCREEN_H = 427, 240
 # (tier 1 at 2 pixels a cell, the others at 1) and not tier 4.
 SCANNER_W, SCANNER_H = 98, 82
 TITLE_H = 12
+# The scanner may be big; the status may not (docs/design/cockpit-concepts-2.md): the most of a 427 x 240 screen that the status housings and the plate of a compact look take.
+STATUS_BUDGET = 0.09
 
-STYLES = ("dials", "strip", "consoles")
-GAUGES = ("fuel", "hull", "depth", "heat")
-KIND = {"dial": 0, "across": 1, "up": 2}
+STYLES = ("consoles", "corners", "ribbon", "posts", "cab")
+# The looks whose status is compact: small gauges, a cargo gauge, warning lamps and a one line plate (the tally, then any alert). Consoles is round 1's, kept to compare.
+COMPACT = ("corners", "ribbon", "posts", "cab")
+GAUGES = ("fuel", "hull", "depth", "heat", "cargo")
+LAMPS = 4
+KIND = {"across": 0, "up": 1}
 SHARED = {
-    "needleColor": "#16181A", "fuelColor": "#F0A010", "hullColor": "#B02A1A", "depthColor": "#F2D21E", "heatColor": "#FF6A1E", "lowColor": "#FF3A2A",
+    "fuelColor": "#F0A010", "hullColor": "#B02A1A", "depthColor": "#F2D21E", "heatColor": "#FF6A1E", "cargoColor": "#6FB7C9", "lowColor": "#FF3A2A",
     "offColor": "#141B19", "hullLowFraction": 0.3, "heatRisePerTick": 0.08, "heatFallPerTick": 0.02, "platePad": 3,
-    "needleInset": 3, "hubSize": 3, "heatWarning": 0.5, "scannerTitleGap": 2,
+    "heatWarning": 0.5, "scannerTitleGap": 2, "lampGap": 2, "tallyGap": 6,
+    "cameraInstalled": 0, "cameraStaticPerHull": 4.0, "cameraStaticFallPerTick": 0.03, "cameraStaticDots": 2400, "cameraDotSize": 2,
+    "cameraLensHeatPerTick": 0.01, "cameraLensCoolPerTick": 0.02, "cameraLensDead": 1.0, "cameraLensRecover": 0.6,
+    "cameraFlickerMaxChance": 0.35, "cameraFlickerMinTicks": 2, "cameraFlickerMaxTicks": 6, "cameraHazeLines": 14, "cameraHazeAlpha": 90, "cameraVeilAlpha": 150, "cameraDotAlphaMin": 80, "cameraTearBands": 6, "cameraTearAlpha": 90,
+    "cameraStaticColor": "#D8DCE0", "cameraVeilColor": "#050707", "cameraHazeColor": "#FF8A3A", "cameraLiveColor": "#38F06E",
+    "cameraBadgeStatic": 0.15, "cameraBadgeDot": 5, "cameraBadgeGap": 3, "cameraBadgeAnchorX": 1, "cameraBadgeAnchorY": 0, "cameraBadgeX": 0, "cameraBadgeY": 24,
 }
-CREAM = rgb("#d9d4bd")
-BRASS = [rgb(c) for c in ("#3a2c12", "#6b5222", "#a07e36", "#d1ad54", "#f0d98a")]
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -90,6 +100,8 @@ def anchor_keys(prefix, ax, ay, x, y):
     return {prefix + "AnchorX": ax, prefix + "AnchorY": ay, prefix + "X": x, prefix + "Y": y}
 
 
+
+
 class Look:
     """One style: its sprites by slot and the keys of `theme/cockpit.json` it owns."""
 
@@ -104,21 +116,31 @@ class Look:
     def decal(self, slot, place):
         self.keys.update(place.keys(self.style + _CAMEL[slot]))
 
-    def gauge(self, name, kind, place, start=0, end=0, segments=1):
+    def gauge(self, name, kind, place, segments):
         prefix = self.style + name.capitalize()
-        self.keys.update({prefix + "Kind": KIND[kind], **place.keys(prefix), prefix + "From": start, prefix + "To": end, prefix + "Segments": segments})
+        self.keys.update({prefix + "Kind": KIND[kind], **place.keys(prefix), prefix + "Segments": segments})
+
+    def lamps(self, place):
+        self.keys.update(place.keys(self.style + "Lamps"))
+
+    def flags(self, frame, compact):
+        self.keys.update({self.style + "Frame": frame, self.style + "Compact": compact})
 
     def finish(self):
-        """Fills every decal slot the style leaves off, so the theme file names every key the game reads."""
+        """Fills every slot the style leaves off, so the theme file names every key the game reads."""
         for slot, camel in _CAMEL.items():
             if self.style + camel + "W" not in self.keys:
                 self.decal(slot, OFF)
         for name in GAUGES:
             if self.style + name.capitalize() + "Kind" not in self.keys:
-                self.gauge(name, "dial", OFF)
+                self.gauge(name, "across", OFF, 1)
+        if self.style + "LampsW" not in self.keys:
+            self.lamps(OFF)
+        if self.style + "Frame" not in self.keys:
+            self.flags(0, 0)
 
 
-_CAMEL = {"header": "Header", "part_a": "PartA", "part_b": "PartB", "cap": "Cap", "scanner": "Scanner"}
+_CAMEL = {"header": "Header", "part_a": "PartA", "part_b": "PartB", "part_c": "PartC", "cap": "Cap", "scanner": "Scanner"}
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -225,11 +247,6 @@ def text_width(text):
     return 6 * len(text) - 1
 
 
-def row_of_rivets(img, x0, x1, y, step):
-    for x in range(x0, x1, step):
-        rivet(img, x, y, H[5], H[7], H[1])
-
-
 def pin(img, cx, cy):
     """A 3 x 3 pin for a band too thin for a rivet: a dark ring and a lit head, drawn only on the plate."""
     for j in (-1, 0, 1):
@@ -240,49 +257,15 @@ def pin(img, cx, cy):
         img.set(cx, cy, H[6])
 
 
-def hazard_stripe(img, x, y, w, h):
-    for yy in range(h):
-        for xx in range(w):
-            img.set(x + xx, y + yy, HAZARD_INK if ((xx + yy) // 4) % 2 else HAZARD)
-    img.hline(x, y, w, shade(HAZARD, 0.3))
-    img.hline(x, y + h - 1, w, H[0])
 
 
-# ---------------------------------------------------------------------------------------------------------------------
-# Pieces shared by the looks: dial faces, the scanner bezel, the altimeter tab and the readout plate
-
-
-def dial_face(red_ticks, size=36):
-    """A gauge face, 36 x 36: a steel bezel, a pale dial with ticks every 30 degrees from -120 to 120, and the ticks numbered `red_ticks` (0 to 8) in red.
-    The needle turns about the pixel (18, 18)."""
-    img = Img(size, size)
-    c = size // 2
-    img.disc(c, c, 17.6, H[0])
-    for y in range(size):
-        for x in range(size):
-            d = math.hypot(x - c, y - c)
-            if 15.4 < d <= 17.2:
-                img.set(x, y, ramp([H[7], H[5], H[3], H[1]], (x + y - 6) / 58))
-    img.disc(c, c, 15.2, CREAM)
-    for y in range(size):
-        for x in range(size):
-            if math.hypot(x - c, y - c) <= 15.2:
-                img.set(x, y, shade(CREAM, -0.02 - 0.0045 * max(0, x + y - c)))
-    for k in range(9):
-        angle = math.radians(-120 + 30 * k)
-        major = k % 2 == 0
-        ink = rgb("#b8321c") if k in red_ticks else H[0]
-        for r in (range(10, 15) if major else range(12, 15)):
-            img.set(nearest(c + r * math.sin(angle)), nearest(c - r * math.cos(angle)), ink)
-    return img
-
-
-def scanner_bezel(w, round_radius, rng, cuts=(0, 0, 0, 0), screws=True):
-    """The frame of the scanner window: steel with a see-through window SCANNER_W x SCANNER_H at (7, 7) whose corners are rounded to `round_radius`, a recessed strip
-    under it for the title, and screws in the corners. Returns the image and the window's top left."""
-    h = 7 + SCANNER_H + 4 + TITLE_H + 7
+def scanner_bezel(w, round_radius, rng, cuts=(0, 0, 0, 0), margin=7):
+    """The frame of the scanner window: steel with a see-through window SCANNER_W x SCANNER_H, `margin` pixels from the top, whose corners are rounded to `round_radius`,
+    a recessed strip under it for the title, and screws in the corners. Returns the image and the window's top left."""
+    gap = (margin + 1) // 2
+    h = margin + SCANNER_H + gap + TITLE_H + margin
     img = slab(w, h, cuts, rng)
-    wx, wy = (w - SCANNER_W) // 2, 7
+    wx, wy = (w - SCANNER_W) // 2, margin
     for y in range(SCANNER_H):
         for x in range(SCANNER_W):
             cx = min(max(x + 0.5, round_radius), SCANNER_W - round_radius)
@@ -299,9 +282,9 @@ def scanner_bezel(w, round_radius, rng, cuts=(0, 0, 0, 0), screws=True):
                 img.set(wx + x, wy + y, H[0])
             elif 1.6 <= near < 2.6:
                 img.set(wx + x, wy + y, H[5] if y > SCANNER_H // 2 else H[1])
-    ty = wy + SCANNER_H + 4
+    ty = wy + SCANNER_H + gap
     well(img, wx, ty, SCANNER_W, TITLE_H)
-    if screws:
+    if margin >= 7:  # a slim bezel has no room for a screw between its edge and the window
         for sx, sy in ((4, 4), (w - 5, 4), (4, h - 5), (w - 5, h - 5)):
             if img.get(sx, sy)[3] == 255:
                 screw(img, sx, sy, rgb("#9aa6b0"), rgb("#3c454e"))
@@ -333,137 +316,18 @@ def bar_labels(img, x, y, text):
     engrave(img, x, y, text, H[7])
 
 
-# ---------------------------------------------------------------------------------------------------------------------
-# A: Dials. A canopy ring with rounded shoulders, and four brass-rimmed dials in a binnacle on the sill. The sonar is a rounded porthole at the right.
 
 
-def dials():
-    look = Look("dials")
-    rng = random.Random(444_01)
-    left, top, right, bottom, mid_w, mid_h = 40, 52, 40, 44, 32, 16
-    w, h = left + mid_w + right, top + mid_h + bottom
-    x0, y0, x1, y1, radius = 10, 22, w - 10, h - 12, 30
-    frame = frame_image(w, h, lambda x, y: hole_distance(x, y, x0, y0, x1, y1, radius), rng)
-    row_of_rivets(frame, left + 8, w - right, 11, 16)
-    row_of_rivets(frame, left + 8, w - right, h - 6, 16)
-    for y in range(top + 8, h - bottom, 16):
-        rivet(frame, 5, y, H[5], H[7], H[1])
-        rivet(frame, w - 6, y, H[5], H[7], H[1])
-    for k in range(1, 4):  # bolts round each shoulder, on the arc
-        for sx, sy, ox, oy in ((x0 + radius, y0 + radius, -1, -1), (x1 - radius, y0 + radius, 1, -1)):
-            angle = math.radians(k * 22.5)
-            rivet(frame, nearest(sx + ox * (radius + 6) * math.cos(angle)), nearest(sy + oy * (radius + 6) * math.sin(angle)), H[5], H[7], H[1])
-    look.sprite("frame", Sprite(frame, (left, top, right, bottom)))
-    look.sprite("plate", readout_plate())
-    look.keys.update(anchor_keys("dialsReadout", 0, 0, 16, 30))
-    look.keys["dialsAltimeterY"] = 7
-
-    tab = altimeter_tab(86, 18, (0, 0, 5, 5), random.Random(444_02))
-    tab_place = Placed(86, 18, 1, 0, 0, 2)
-    look.sprite("header", Sprite(tab), tab_place)
-    look.decal("header", tab_place)
-
-    # The binnacle: a slab with sloped shoulders, four wells, each with a brass ring round a dial.
-    bw, bh, dial, pitch = 192, 64, 36, 44
-    binnacle = slab(bw, bh, (10, 10, 0, 0), random.Random(444_03))
-    place = Placed(bw, bh, 1, 2, 0, 0)
-    red_ticks = {"fuel": (0, 1), "hull": (0, 1), "depth": (), "heat": (6, 7, 8)}
-    names = {"fuel": "FUEL", "hull": "HULL", "depth": "DEPTH", "heat": "HEAT"}
-    for k, name in enumerate(GAUGES):
-        dx = 12 + k * pitch
-        binnacle.disc(dx + 18, 8 + 18, 21.6, H[0])
-        binnacle.ring(dx + 18, 8 + 18, 21.2, 19.4, BRASS[2])
-        for y in range(bh):
-            for x in range(bw):
-                d = math.hypot(x - dx - 18, y - 26)
-                if 19.4 < d <= 21.2:
-                    binnacle.set(x, y, ramp(BRASS, (x + y - dx - 16) / 40 + 0.3))
-        binnacle.disc(dx + 18, 26, 19.4, H[0])
-        for sx, sy in ((dx - 4, 4), (dx + 40, 4)):
-            screw(binnacle, sx, sy, rgb("#9aa6b0"), rgb("#3c454e"))
-        binnacle.blit(dial_face(red_ticks[name], dial), dx, 8)
-        bar_labels(binnacle, dx + 18 - text_width(names[name]) // 2, 8 + dial + 8, names[name])
-        look.gauge(name, "dial", place.inner(dx, 8, dial, dial), -120, 120)
-    look.sprite("part_a", Sprite(binnacle), place)
-    look.decal("part_a", place)
-
-    # The sonar: a rounded porthole hung below the right shoulder.
-    cap_w = 112
-    cap, (wx, wy) = scanner_bezel(cap_w, 26, random.Random(444_04), (8, 8, 8, 8))
-    cap_place = Placed(cap_w, cap.h, 2, 0, 10, 54)
-    look.sprite("cap", Sprite(cap), cap_place)
-    look.decal("cap", cap_place)
-    look.decal("scanner", cap_place.inner(wx, wy, SCANNER_W, SCANNER_H))
-    look.finish()
-    return look
+def lamp_well(img, x, y):
+    """The recess for the warning lamps: one dark slot that LAMPS lamps of 5 x 5 light in the game. Returns the slot's width."""
+    width = LAMPS * 5 + (LAMPS - 1) * SHARED["lampGap"]
+    well(img, x, y, width, 5)
+    return width
 
 
 # ---------------------------------------------------------------------------------------------------------------------
-# B: Strip. A riveted instrument strip along the bottom, a thin letterbox round the view, and the scanner docked at the strip's right end as a plain square window.
-
-
-def strip():
-    look = Look("strip")
-    rng = random.Random(444_11)
-    left, top, right, bottom, mid_w, mid_h = 20, 20, 20, 56, 32, 16
-    w, h = left + mid_w + right, top + mid_h + bottom
-    x0, y0, x1, y1 = 6, 8, w - 6, h - 40
-    planes = rect_planes(x0, y0, x1, y1) + [diagonal("tl", x0, y0, x1, y1, 8), diagonal("tr", x0, y0, x1, y1, 8), diagonal("br", x0, y0, x1, y1, 12),
-                                            diagonal("bl", x0, y0, x1, y1, 12)]
-    frame = frame_image(w, h, polygon_distance(planes), rng, 2.0)
-    hazard_stripe(frame, left, y1 + 3, mid_w, 4)
-    for x in range(left, w - right, 32):  # a seam every 32 pixels, with a pair of rivets across it
-        frame.vline(x, y1 + 8, 31, H[0])
-        frame.vline(x + 1, y1 + 8, 31, H[5])
-        rivet(frame, x + 8, y1 + 13, H[5], H[7], H[1])
-        rivet(frame, x + 24, y1 + 13, H[5], H[7], H[1])
-        rivet(frame, x + 8, y1 + 33, H[5], H[7], H[1])
-        rivet(frame, x + 24, y1 + 33, H[5], H[7], H[1])
-    for x in range(left + 8, w - right, 16):
-        pin(frame, x, 4)
-    for y in range(top + 8, h - bottom, 16):
-        pin(frame, 3, y)
-        pin(frame, w - 4, y)
-    look.sprite("frame", Sprite(frame, (left, top, right, bottom)))
-    look.sprite("plate", readout_plate())
-    look.keys.update(anchor_keys("stripReadout", 0, 0, 12, 10))
-    look.keys["stripAltimeterY"] = 7
-
-    tab = altimeter_tab(86, 20, (0, 0, 4, 4), random.Random(444_12))
-    tab_place = Placed(86, 20, 1, 0, 0, 0)
-    look.sprite("header", Sprite(tab), tab_place)
-    look.decal("header", tab_place)
-
-    # Two instrument blocks, each two horizontal bars with their names: fuel and hull at the left, depth and heat beside them.
-    bar_w, bar_h, segments = 40, 9, 8
-    for slot, (names, bx, label_w) in {"part_a": (("fuel", "hull"), 10, 28), "part_b": (("depth", "heat"), 96, 34)}.items():
-        bw, bh = label_w + bar_w + 12, 34
-        block = slab(bw, bh, (0, 0, 0, 0), random.Random(444_13 + len(slot) + bx), H[2])
-        place = Placed(bw, bh, 0, 2, bx, 3)
-        for row, name in enumerate(names):
-            by = 4 + row * 15
-            bar_labels(block, 6, by + 1, name.upper())
-            well(block, 6 + label_w, by, bar_w, bar_h)
-            look.gauge(name, "across", place.inner(6 + label_w, by, bar_w, bar_h), 0, 0, segments)
-        for sx, sy in ((3, 3), (bw - 4, 3), (3, bh - 4), (bw - 4, bh - 4)):
-            screw(block, sx, sy, rgb("#9aa6b0"), rgb("#3c454e"))
-        look.sprite(slot, Sprite(block), place)
-        look.decal(slot, place)
-
-    # The scanner dock at the right end: a square window in a raised bay that stands up out of the strip.
-    cap_w = 124
-    cap, (wx, wy) = scanner_bezel(cap_w, 3, random.Random(444_14), (0, 6, 0, 0))
-    cap_place = Placed(cap_w, cap.h, 2, 2, 6, 0)
-    look.sprite("cap", Sprite(cap), cap_place)
-    look.decal("cap", cap_place)
-    look.decal("scanner", cap_place.inner(wx, wy, SCANNER_W, SCANNER_H))
-    look.finish()
-    return look
-
-
-# ---------------------------------------------------------------------------------------------------------------------
-# C: Consoles. A thin rim with big gussets in the corners keeps the middle clear; two consoles lean in from the bottom corners with tall bar gauges, and the scanner
-# is a square viewscreen at the top of the right one.
+# Consoles (round 1, C, kept to compare against). A thin rim with big gussets in the corners keeps the middle clear; two consoles lean in from the bottom corners with
+# tall bar gauges, and the scanner is a square viewscreen at the top of the right one. Its plate lists every line of the plain readout.
 
 
 def consoles():
@@ -483,6 +347,7 @@ def consoles():
     for cx, cy in ((11, 11), (w - 12, 11), (11, h - 12), (w - 12, h - 12)):  # a hex bolt on each gusset
         hex_bolt(frame, cx, cy, H[4], H[7], H[1], H[0])
     look.sprite("frame", Sprite(frame, (left, top, right, bottom)))
+    look.flags(1, 0)
     look.sprite("plate", readout_plate())
     look.keys.update(anchor_keys("consolesReadout", 0, 0, 36, 8))
     look.keys["consolesAltimeterY"] = 7
@@ -500,7 +365,7 @@ def consoles():
     for name, bx, text in (("fuel", 12, "FUEL"), ("hull", 48, "HULL")):
         well(left_console, bx, 14, bar_w, bar_h)
         bar_labels(left_console, bx + bar_w // 2 - text_width(text) // 2, 14 + bar_h + 6, text)
-        look.gauge(name, "up", left_place.inner(bx, 14, bar_w, bar_h), 0, 0, segments)
+        look.gauge(name, "up", left_place.inner(bx, 14, bar_w, bar_h), segments)
     for sx, sy in ((5, lh - 5), (lw - 6, lh - 5)):
         screw(left_console, sx, sy, rgb("#9aa6b0"), rgb("#3c454e"))
     look.sprite("part_a", Sprite(left_console), left_place)
@@ -517,7 +382,7 @@ def consoles():
         by = cap.h + 8
         well(right_console, bx, by, bar_w, short_h)
         bar_labels(right_console, bx + bar_w // 2 - text_width(text) // 2, by + short_h + 6, text)
-        look.gauge(name, "up", right_place.inner(bx, by, bar_w, short_h), 0, 0, short_segments)
+        look.gauge(name, "up", right_place.inner(bx, by, bar_w, short_h), short_segments)
     look.sprite("part_b", Sprite(right_console), right_place)
     look.decal("part_b", right_place)
     cap_place = right_place.inner(0, 0, rw, cap.h)
@@ -529,11 +394,154 @@ def consoles():
 
 
 # ---------------------------------------------------------------------------------------------------------------------
+# The compact looks (#448). No frame over the screen: the pod's own cab is the frame. The status is small housings, each with the bars of a few gauges, a row of
+# warning lamps, and a one line plate for the numbers (the scanner is the only big piece).
+
+
+def scanner_piece(look, rng, w, cuts, place_at, margin=7):
+    """Draws the scanner bezel w wide into the look and places it by `place_at` (anchorX, anchorY, x, y)."""
+    cap, (wx, wy) = scanner_bezel(w, 3, rng, cuts, margin)
+    cap_place = Placed(w, cap.h, *place_at)
+    look.sprite("cap", Sprite(cap), cap_place)
+    look.decal("cap", cap_place)
+    look.decal("scanner", cap_place.inner(wx, wy, SCANNER_W, SCANNER_H))
+
+
+def corners():
+    """A. Corners: four small housings, one in each corner of the screen. Fuel, hull and cargo bars at the bottom left, depth and heat at the bottom right, the warning
+    lamps at the top left and the scanner at the top right; the middle and the edges between are the pod's own cab."""
+    look = Look("corners")
+    look.flags(0, 1)
+    look.sprite("plate", readout_plate())
+    look.keys.update(anchor_keys("cornersReadout", 1, 2, 0, 3))
+    look.keys["cornersAltimeterY"] = 4
+    bar_w, bar_h, segments = 6, 24, 12
+
+    lw, lh = 52, 44
+    left_box = slab(lw, lh, (0, 8, 0, 0), random.Random(448_01))
+    left_place = Placed(lw, lh, 0, 2, 0, 0)
+    for name, bx, text in (("fuel", 8, "F"), ("hull", 22, "H"), ("cargo", 36, "C")):
+        well(left_box, bx, 6, bar_w, bar_h)
+        bar_labels(left_box, bx + (bar_w - 5) // 2, 6 + bar_h + 4, text)
+        look.gauge(name, "up", left_place.inner(bx, 6, bar_w, bar_h), segments)
+    look.sprite("part_a", Sprite(left_box), left_place)
+    look.decal("part_a", left_place)
+
+    rw, rh = 36, 44
+    right_box = slab(rw, rh, (8, 0, 0, 0), random.Random(448_02))
+    right_place = Placed(rw, rh, 2, 2, 0, 0)
+    for name, bx, text in (("depth", 8, "D"), ("heat", 22, "T")):
+        well(right_box, bx, 6, bar_w, bar_h)
+        bar_labels(right_box, bx + (bar_w - 5) // 2, 6 + bar_h + 4, text)
+        look.gauge(name, "up", right_place.inner(bx, 6, bar_w, bar_h), segments)
+    look.sprite("part_b", Sprite(right_box), right_place)
+    look.decal("part_b", right_place)
+
+    tw, th = 36, 13
+    top_box = slab(tw, th, (0, 0, 4, 0), random.Random(448_03))
+    top_place = Placed(tw, th, 0, 0, 0, 0)
+    lamps_w = lamp_well(top_box, 5, 4)
+    look.lamps(top_place.inner(5, 4, lamps_w, 5))
+    look.sprite("part_c", Sprite(top_box), top_place)
+    look.decal("part_c", top_place)
+
+    scanner_piece(look, random.Random(448_04), 112, (8, 0, 0, 8), (2, 0, 0, 0))
+    look.finish()
+    return look
+
+
+def ribbon():
+    """B. Ribbon: one slim ribbon along the top edge holds every gauge as a short bar, the altimeter in a recess at its middle and the warning lamps at its end. The scanner
+    hangs from the ribbon's right end, and the plate under it."""
+    look = Look("ribbon")
+    look.flags(0, 1)
+    look.sprite("plate", readout_plate())
+    look.keys.update(anchor_keys("ribbonReadout", 2, 0, 6, 128))
+    look.keys["ribbonAltimeterY"] = 3
+    w, h, bar_w, bar_h, segments = 320, 14, 26, 5, 13
+    band = slab(w, h, (0, 0, 6, 6), random.Random(448_11))
+    place = Placed(w, h, 1, 0, 0, 0)
+    for name, ux, text in (("fuel", 8, "F"), ("hull", 46, "H"), ("cargo", 84, "C"), ("depth", 203, "D"), ("heat", 241, "T")):
+        bar_labels(band, ux, 3, text)
+        well(band, ux + 7, 4, bar_w, bar_h)
+        look.gauge(name, "across", place.inner(ux + 7, 4, bar_w, bar_h), segments)
+    well(band, 124, 2, 72, 10)  # the altimeter's recess
+    lamps_w = lamp_well(band, 284, 4)
+    look.lamps(place.inner(284, 4, lamps_w, 5))
+    for sx, sy in ((4, 7), (w - 5, 7)):
+        screw(band, sx, sy, rgb("#9aa6b0"), rgb("#3c454e"))
+    look.sprite("part_a", Sprite(band), place)
+    look.decal("part_a", place)
+    scanner_piece(look, random.Random(448_12), 112, (8, 0, 0, 8), (2, 0, 0, h))
+    look.finish()
+    return look
+
+
+def posts():
+    """C. Posts: a post up each side of the view with two tall bars set in it, a sill with the cargo bar and the warning lamps along the bottom, and the scanner at the top
+    left, over the left post."""
+    look = Look("posts")
+    look.flags(0, 1)
+    look.sprite("plate", readout_plate())
+    look.keys.update(anchor_keys("postsReadout", 1, 2, 0, 14))
+    look.keys["postsAltimeterY"] = 4
+    pw, ph, bar_w, bar_h, segments, top = 20, 106, 5, 80, 40, 116
+    for slot, side, anchor, names, labels, cuts, seed in (
+            ("part_a", "left", 0, ("fuel", "hull"), "FH", (0, 6, 0, 0), 448_21), ("part_b", "right", 2, ("depth", "heat"), "DT", (6, 0, 0, 0), 448_22)):
+        post = slab(pw, ph, cuts, random.Random(seed))
+        place = Placed(pw, ph, anchor, 0, 0, top)
+        for name, bx, text in zip(names, (4, 11), labels):
+            well(post, bx, 8, bar_w, bar_h)
+            bar_labels(post, bx, 8 + bar_h + 4, text)
+            look.gauge(name, "up", place.inner(bx, 8, bar_w, bar_h), segments)
+        look.sprite(slot, Sprite(post), place)
+        look.decal(slot, place)
+
+    sw, sh, cargo_w = 120, 12, 44
+    sill = slab(sw, sh, (6, 6, 0, 0), random.Random(448_23))
+    sill_place = Placed(sw, sh, 1, 2, 0, 0)
+    bar_labels(sill, 6, 2, "C")
+    well(sill, 14, 3, cargo_w, 6)
+    look.gauge("cargo", "across", sill_place.inner(14, 3, cargo_w, 6), cargo_w // 2)
+    lamps_w = lamp_well(sill, 80, 4)
+    look.lamps(sill_place.inner(80, 4, lamps_w, 5))
+    look.sprite("part_c", Sprite(sill), sill_place)
+    look.decal("part_c", sill_place)
+    scanner_piece(look, random.Random(448_24), 112, (0, 8, 8, 0), (0, 0, 0, 0))
+    look.finish()
+    return look
+
+
+def cab():
+    """D. Cab: nothing but a small instrument sill at the bottom middle, two rows of short bars and the lamps, with the one line plate over it, and a slim scanner window at
+    the right edge. The pod's own pillars, roof and sill are the frame, and the view is as wide as the cab allows."""
+    look = Look("cab")
+    look.flags(0, 1)
+    look.sprite("plate", readout_plate())
+    look.keys.update(anchor_keys("cabReadout", 1, 2, 0, 22))
+    look.keys["cabAltimeterY"] = 4
+    w, h, bar_w, bar_h, segments = 168, 22, 40, 4, 20
+    dash = slab(w, h, (6, 6, 0, 0), random.Random(448_31))
+    place = Placed(w, h, 1, 2, 0, 0)
+    for name, ux, uy, text in (("fuel", 6, 2, "F"), ("hull", 60, 2, "H"), ("cargo", 114, 2, "C"), ("depth", 6, 12, "D"), ("heat", 60, 12, "T")):
+        bar_labels(dash, ux, uy, text)
+        well(dash, ux + 7, uy + 2, bar_w, bar_h)
+        look.gauge(name, "across", place.inner(ux + 7, uy + 2, bar_w, bar_h), segments)
+    lamps_w = lamp_well(dash, 114, 14)
+    look.lamps(place.inner(114, 14, lamps_w, 5))
+    look.sprite("part_a", Sprite(dash), place)
+    look.decal("part_a", place)
+    scanner_piece(look, random.Random(448_32), 104, (8, 0, 0, 8), (2, 1, 0, 0), margin=3)
+    look.finish()
+    return look
+
+
+# ---------------------------------------------------------------------------------------------------------------------
 # Files
 
 
 def built_looks():
-    return [dials(), strip(), consoles()]
+    return [consoles(), corners(), ribbon(), posts(), cab()]
 
 
 def theme_json(looks):
@@ -568,11 +576,87 @@ def write() -> None:
 
 
 # ---------------------------------------------------------------------------------------------------------------------
+# What the game draws on top of the sprites, as the preview and the coverage need it
+
+
+# The states the stills are shot in: the pod's real values, the numbers the plate shows and the alert lines (the plain readout's lines after the first four).
+STATES = {
+    "calm": {"fuel": 0.78, "hull": 1.0, "depth": 0.18, "heat": 0.0, "cargo": 0.0, "tally": ["100/100", "78%", "0", "Y150"], "alerts": [], "lamps": [0, 0, 0, 0],
+             "lines": ["Hull 100/100", "Fuel 78%", "Cargo 0", "Y 150"]},
+    "low-fuel": {"fuel": 0.12, "hull": 0.9, "depth": 0.18, "heat": 0.0, "cargo": 0.25, "tally": ["90/100", "12%", "3", "Y150"], "alerts": [], "lamps": [1, 0, 0, 0],
+                 "lines": ["Hull 90/100", "Fuel 12%", "Cargo 3", "Y 150"]},
+    "burning": {"fuel": 0.7, "hull": 0.45, "depth": 0.18, "heat": 1.0, "cargo": 0.25, "tally": ["45/100", "70%", "3", "Y150"], "alerts": ["HULL BURNING"],
+                "lamps": [0, 0, 1, 1], "lines": ["Hull 45/100", "Fuel 70%", "Cargo 3", "Y 150", "HULL BURNING"]},
+    "deep": {"fuel": 0.5, "hull": 0.8, "depth": 0.92, "heat": 0.0, "cargo": 0.9, "tally": ["80/100", "50%", "11", "Y-420"], "alerts": [], "lamps": [0, 0, 0, 0],
+             "lines": ["Hull 80/100", "Fuel 50%", "Cargo 11", "Y -420"]},
+}
+FONT_W = 6  # the preview's glyphs, and the width the coverage assumes for a character of the game's font
+
+
+ACCOUNT = "Scanner Player0  $0"
+
+
+def plate_rows(look, state):
+    """The rows of the readout plate in `state`, top to bottom, each a list of (text, colour): every line for consoles; for a compact look the tally and the account line, and
+    the alerts over them when the plate hangs from the bottom of the screen and under them when it hangs from the top."""
+    account = [[(ACCOUNT, "#6FD99A")]]
+    if not look.keys[look.style + "Compact"]:
+        return [[(s, "#FF5522" if "BURNING" in s else "#FFFFFF")] for s in state["lines"]] + account
+    alerts = [[(s, "#FF5522")] for s in state["alerts"]]
+    tally = [[(text, SHARED[key]) for text, key in zip(state["tally"], ("hullColor", "fuelColor", "cargoColor", "depthColor"))]]
+    return alerts + tally + account if look.keys[look.style + "ReadoutAnchorY"] == 2 else tally + account + alerts
+
+
+def row_width(row):
+    return sum(len(text) * FONT_W - 1 for text, _ in row) + SHARED["tallyGap"] * (len(row) - 1)
+
+
+def plate_size(look, state):
+    """The size of the readout plate a look draws in `state`."""
+    rows = plate_rows(look, state)
+    pad = SHARED["platePad"]
+    return max(row_width(row) for row in rows) + 2 * pad, len(rows) * 11 - 2 + 2 * pad
+
+
+def coverage(look):
+    """The pixels of a 427 x 240 screen a look makes opaque in the calm state, as (status, scanner): status is every housing, the frame and the plate, scanner is its bezel and
+    window. The sprites count by their opaque pixels, so a chamfer or a round corner does not, and a pixel under two pieces counts once."""
+    status, scanner = set(), set()
+
+    def mark(into, img, place):
+        left, top = place.left(SCREEN_W), place.top(SCREEN_H)
+        for j in range(img.h):
+            for i in range(img.w):
+                if img.px[j * img.w + i][3]:
+                    into.add((left + i, top + j))
+
+    if "frame" in look.sprites:
+        sprite = look.sprites["frame"]
+        mark(status, nine_slice(sprite.img, sprite.border, SCREEN_W, SCREEN_H), Placed(SCREEN_W, SCREEN_H, 0, 0, 0, 0))
+    for slot in ("part_a", "part_b", "part_c", "header"):
+        if slot in look.sprites:
+            mark(status, look.sprites[slot].img, look.parts[slot])
+    width, height = plate_size(look, STATES["calm"])
+    t = look.keys
+    plate = Placed(width, height, t[look.style + "ReadoutAnchorX"], t[look.style + "ReadoutAnchorY"], t[look.style + "ReadoutX"], t[look.style + "ReadoutY"])
+    left, top = plate.left(SCREEN_W), plate.top(SCREEN_H)
+    status |= {(left + i, top + j) for j in range(height) for i in range(width)}
+    mark(scanner, look.sprites["cap"].img, look.parts["cap"])
+    window = Placed(t[look.style + "ScannerW"], t[look.style + "ScannerH"], t[look.style + "ScannerAnchorX"], t[look.style + "ScannerAnchorY"],
+                    t[look.style + "ScannerX"], t[look.style + "ScannerY"])
+    scanner |= {(window.left(SCREEN_W) + i, window.top(SCREEN_H) + j) for j in range(window.h) for i in range(window.w)}
+    status -= scanner
+    return len(status), len(scanner)
+
+
+
+
+# ---------------------------------------------------------------------------------------------------------------------
 # Preview
 
 
 def world_backdrop(w, h):
-    """A stand-in for the view from the seat: dark rock with a lamp-lit wall, so a frame and its edges read against something."""
+    """A stand-in for the view from the seat: dark rock with a lamp-lit wall, so a housing and its edges read against something."""
     img = Img(w, h, rgb("#241a14"))
     rng = random.Random(444)
     for y in range(h):
@@ -585,17 +669,11 @@ def world_backdrop(w, h):
 
 
 def preview_gauge(img, prefix, look, value, color):
+    """A bar as the game draws it: segments lit from the start, at least one when the value is above 0, over unlit ones."""
     t = look.keys
     kind = t[prefix + "Kind"]
     place = Placed(t[prefix + "W"], t[prefix + "H"], t[prefix + "AnchorX"], t[prefix + "AnchorY"], t[prefix + "X"], t[prefix + "Y"])
     left, top = place.left(SCREEN_W), place.top(SCREEN_H)
-    if kind == KIND["dial"]:
-        angle = math.radians(t[prefix + "From"] + (t[prefix + "To"] - t[prefix + "From"]) * value)
-        cx, cy = left + place.w // 2, top + place.h // 2
-        for step in range(min(place.w, place.h) // 2 - 2):
-            img.set(cx + round(math.sin(angle) * step), cy - round(math.cos(angle) * step), rgb(SHARED["needleColor"]))
-        img.rect(cx - 1, cy - 1, 3, 3, rgb(SHARED["needleColor"]))
-        return
     n = t[prefix + "Segments"]
     lit = math.ceil(value * n - 1e-9)
     for i in range(n):
@@ -608,21 +686,28 @@ def preview_gauge(img, prefix, look, value, color):
             img.rect(left, start, place.w, bottom - start, shade_color)
 
 
-STATES = {
-    "calm": {"fuel": 0.78, "hull": 1.0, "depth": 0.18, "heat": 0.0, "lines": ["Hull 150/150", "Fuel 78", "Cargo 12", "Y 40"]},
-    "low-fuel": {"fuel": 0.12, "hull": 0.9, "depth": 0.18, "heat": 0.0, "lines": ["Hull 135/150", "Fuel 12", "Cargo 12", "Y 40"]},
-    "burning": {"fuel": 0.7, "hull": 0.45, "depth": 0.18, "heat": 1.0, "lines": ["Hull 68/150", "Fuel 70", "Cargo 12", "Y 40", "HULL BURNING"]},
-    "deep": {"fuel": 0.5, "hull": 0.8, "depth": 0.92, "heat": 0.0, "lines": ["Hull 120/150", "Fuel 50", "Cargo 40", "Y -420"]},
-}
+def preview_lamps(img, look, flags):
+    t = look.keys
+    if not t[look.style + "LampsW"]:
+        return
+    place = Placed(t[look.style + "LampsW"], t[look.style + "LampsH"], t[look.style + "LampsAnchorX"], t[look.style + "LampsAnchorY"], t[look.style + "LampsX"],
+                   t[look.style + "LampsY"])
+    left, top = place.left(SCREEN_W), place.top(SCREEN_H)
+    size = (place.w - SHARED["lampGap"] * (LAMPS - 1)) // LAMPS
+    colors = [SHARED["lowColor"], SHARED["lowColor"], SHARED["heatColor"], SHARED["depthColor"]]
+    for k in range(LAMPS):
+        x = left + k * (size + SHARED["lampGap"])
+        img.rect(x, top, size, place.h, rgb(colors[k]) if flags[k] else rgb(SHARED["offColor"]))
 
 
 def preview_look(look, state):
     img = world_backdrop(SCREEN_W, SCREEN_H)
     sprites = look.sprites
     t = look.keys
-    frame = sprites["frame"]
-    img.blit(nine_slice(frame.img, frame.border, SCREEN_W, SCREEN_H), 0, 0)
-    for slot in ("part_a", "part_b"):
+    if "frame" in sprites:
+        frame = sprites["frame"]
+        img.blit(nine_slice(frame.img, frame.border, SCREEN_W, SCREEN_H), 0, 0)
+    for slot in ("part_a", "part_b", "part_c"):
         if slot in look.parts:
             place = look.parts[slot]
             img.blit(sprites[slot].img, place.left(SCREEN_W), place.top(SCREEN_H))
@@ -640,22 +725,29 @@ def preview_look(look, state):
     img.blit(sprites["cap"].img, cap.left(SCREEN_W), cap.top(SCREEN_H))
     title = "SCANNER MK 1"
     img.text(wl + (window.w - text_width(title)) // 2, wt + window.h + 3, title, rgb("#FFFFFF"))
-    for name, color in (("fuel", SHARED["fuelColor"]), ("hull", SHARED["hullColor"]), ("depth", SHARED["depthColor"]), ("heat", SHARED["heatColor"])):
+    for name in GAUGES:
+        if not t[look.style + name.capitalize() + "W"]:
+            continue
         value = state[name]
         low = (name == "fuel" and value <= 0.2) or (name == "hull" and value <= SHARED["hullLowFraction"])
-        preview_gauge(img, look.style + name.capitalize(), look, value, rgb(SHARED["lowColor"] if low else color))
-    header = look.parts["header"]
-    img.blit(sprites["header"].img, header.left(SCREEN_W), header.top(SCREEN_H))
+        preview_gauge(img, look.style + name.capitalize(), look, value, rgb(SHARED["lowColor"] if low else SHARED[name + "Color"]))
+    preview_lamps(img, look, state["lamps"])
+    if "header" in look.parts:
+        header = look.parts["header"]
+        img.blit(sprites["header"].img, header.left(SCREEN_W), header.top(SCREEN_H))
     img.text(SCREEN_W // 2 - text_width("-1,234 ft.") // 2, t[look.style + "AltimeterY"] + 1, "-1,234 ft.", rgb("#FFFFFF"))
-    lines = state["lines"]
+    width, height = plate_size(look, state)
     pad = SHARED["platePad"]
-    width, height = max(text_width(s) for s in lines) + 2 * pad, len(lines) * 11 - 2 + 2 * pad
-    plate = sprites["plate"]
-    px = [t[look.style + "ReadoutX"], SCREEN_W - width - t[look.style + "ReadoutX"]][t[look.style + "ReadoutAnchorX"] == 2]
-    py = t[look.style + "ReadoutY"]
-    img.blit(nine_slice(plate.img, plate.border, width, height), px, py)
-    for i, s in enumerate(lines):
-        img.text(px + pad, py + pad + i * 11, s, rgb("#FF5522") if "BURNING" in s else rgb("#FFFFFF"))
+    plate = Placed(width, height, t[look.style + "ReadoutAnchorX"], t[look.style + "ReadoutAnchorY"], t[look.style + "ReadoutX"], t[look.style + "ReadoutY"])
+    px, py = plate.left(SCREEN_W), plate.top(SCREEN_H)
+    img.blit(nine_slice(sprites["plate"].img, sprites["plate"].border, width, height), px, py)
+    y = py + pad
+    for row in plate_rows(look, state):
+        x = px + pad
+        for text, color in row:
+            img.text(x, y, text.replace("%", ""), rgb(color))
+            x += len(text) * FONT_W - 1 + SHARED["tallyGap"]
+        y += 11
     return img
 
 
@@ -671,9 +763,15 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--check", action="store_true", help="list files that differ from what the generator makes; exit 1 if any")
     parser.add_argument("--preview", metavar="DIR", help="write a mock of each look into DIR")
+    parser.add_argument("--coverage", action="store_true", help="print the share of a 427 x 240 screen each look covers")
     args = parser.parse_args(argv)
     if args.preview:
         preview(Path(args.preview))
+        return 0
+    if args.coverage:
+        for look in built_looks():
+            status, scanner = coverage(look)
+            print(f"{look.style}: status {status / (SCREEN_W * SCREEN_H):.1%}, scanner {scanner / (SCREEN_W * SCREEN_H):.1%}, total {(status + scanner) / (SCREEN_W * SCREEN_H):.1%}")
         return 0
     if args.check:
         stale = check()

@@ -24,6 +24,8 @@ public class PodGeoRenderState extends EntityRenderState {
 	public boolean drilling;
 	/** The lamps are on: the pod has a pilot and power. */
 	public boolean lit;
+	/** The local pilot looks out through a live front camera in first person, so none of the pod is drawn (#448). */
+	public boolean cabHidden;
 	/** What the pod shows this frame, from its drill tier and whether it is a wreck ({@link PodGeoRenderer#appearanceOf}). */
 	public PodGeoRenderer.Appearance appearance;
 	/** The texture the pod is drawn with this frame: its variant's, or that painted in its charter's colour. */

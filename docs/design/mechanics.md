@@ -846,3 +846,38 @@ The tier 1 part equals its bound to the bore and the tier 2 part beats it by 3, 
 **Open questions.**
 - The towed pod does not turn to face its tower. A wreck hanging from a Mole could pitch and yaw with the line.
 - A pilot in the towed pod cannot steer it. A tow that a rider can brake (a drag on the line) would be a counter to a tower that outpaces its tow.
+
+## Front camera (#448, A)
+
+**Problem.** From the seat of a Mole the pilot looks out through the pod's own cab: two pillars, the roof bar and the cutter stand in the view ([cockpit concepts, round 2](cockpit-concepts-2.md)). The user wants that to be the way every pod looks, and a part, a front camera, that turns the window into a video feed so the view is clear. A part that only switches a model off is a toggle. The camera has to cost something, and the feed has to be something the hazards work on.
+
+**The ladder.**
+1. **By hand, the cab.** Every pod looks out through its cab. The pillars and the cutter hide a sixth of the view and tell the pilot what pod they are in.
+2. **The camera, tier 1.** The pod's own body is not drawn from the seat, so the view is clear to the edges. The picture is a feed: it can be covered, cooked and cut. When the feed is down the cab is back, so a pilot never goes blind.
+3. **Mastery, not built.** A hardened lens (tier 2) that the lava takes longer to cook and that clears static faster, and a later chassis whose canopy has no pillars to hide. The cab keeps its niche on the cheap pod.
+
+**What the part is.** A new component track `camera`, one tier (1, "fitted"), no stock part. The numbers are `CockpitLook.CameraLook` (the theme, `theme/cockpit.json`) for what the feed does and `UpgradeTuning` (when it is built) for the price.
+- **Cost, $350.** A stock Mole's layer 2 run nets $348 (`EarlyRunModel`, [Pod sizes for the cabs](#pod-sizes-for-the-cabs-400)), so it is one layer 2 run, a little under the seep sounder's tier 1 ($400): a view is worth less than a way to survive. It is priced with the part band between the tier 1 parts ($200) and the tier 2 parts ($500), and below the sounder because it does not buy safety.
+- **Tier 1 of 1,** and it fits a Mole (cap 1). A Prospector's cab is a deck with no pillars in the eyes' line, so its pilot gains less: the track is allowed on both, and the Prospector keeps it for the colony's windows.
+- **It draws power.** While the feed is live it burns a quarter of the engine's idle fuel again (a knob, `cameraIdleDrawShare` 0.25, not built in this round). A pod with no power, stranded or out of fuel, has no feed.
+
+**What the feed does under each hazard (built in round 2, behind a test pack).**
+- **A hit leaves static.** A hull hit of any size (a gas blast, a hard landing, the breach crust) puts static on the picture in proportion to the share of the hull it took (4 times the share, so a hit of a quarter of the hull is full static) and the static fades at 0.03 a tick, about 1.5 seconds from full. The pilot can see a blast land, and for a moment cannot see what is next: after a gas blast in a pocket-ridden bore, that moment is the cost. It does not tell a pilot where a pocket is (the sounder does that). The feed stays live under it.
+- **Lava cooks the lens.** While the hull burns the picture shimmers in heat haze, more bands the hotter the gauge reads. The lens heats at 0.01 a tick while the hull burns (5 seconds of lava, half a stock Mole's hull at 10 hull a second) and the feed fails when it is full: the cab is back in the view, the badge reads NO FEED, and the pilot flies by the pillars. The feed comes back when the lens has cooled to 0.6, at 0.02 a tick (a further 20 ticks after the fire is out). A radiator that cuts lava's damage does not slow the lens, so a hot-running pod chooses between a clear view and a longer stay in the lava.
+- **A broken hull drops the feed.** At the low-hull mark (30 %) and below the feed drops out in bursts of 2 to 6 ticks, at a chance each tick that rises to 0.35 at no hull. At half the mark about one tick in 11 is out, at no hull about one in 3. The pilot sees the cab flicker in and out, and the hull gauge tells them why.
+- **No power, no feed.** A stranded pod shows the cab.
+- **The badge.** A small lamp and word at the top of the view: green CAM, amber CAM while static or heat is on the picture, red NO FEED.
+
+**Why these.** They read as the hazards of a camera, not of a window: dread comes from what is almost seen, and a dropping feed shows the pilot their own pod is hurt. Each costs a moment of sight, never a death, and each has the cab as its fall-back, so the camera is a trade (a clear view against a part that fails in the places a pod is hurt) and not a free upgrade.
+
+**Trade-offs.** $350, a share of the idle fuel (when built), and a view that fails when the pod is hurt; against the clear view all the time otherwise. A pod that lives in lava loses the feed and should keep the cab's habits.
+
+**Knobs.** `theme/cockpit.json`: `cameraInstalled` (the stand-in for the part), `cameraStaticPerHull` (4), `cameraStaticFallPerTick` (0.03), `cameraLensHeatPerTick` (0.01), `cameraLensCoolPerTick` (0.02), `cameraLensDead` (1), `cameraLensRecover` (0.6), `cameraFlickerMaxChance` (0.35), `cameraFlickerMinTicks` (2), `cameraFlickerMaxTicks` (6), the haze, static and badge looks. Hull low mark: `hullLowFraction` (0.3).
+
+**Decisions (A).** Recorded in the PR and in [cockpit-concepts-2.md](cockpit-concepts-2.md): the camera is one tier at $350; it hides the whole pod body, cutter included, from the seat while the feed is live; the cab is the fall-back; static comes from any hull hit and haze from the burn, not from the gas; the purchase flow waits for the build after the pick.
+
+**Open questions.**
+- Should the haze start before the burn, from lava within 3 blocks of the nose, so the camera is a lava tell? It would compete with the thermal scanner (tier 2, $500), so it is left out.
+- Should the feed show the drill's cutter, a ghost of it, so the pilot sees the bore's aim without the pod?
+- Tier 2, the hardened lens: slower to cook, faster to clear.
+- What the camera costs in idle fuel, once there is a number to compare with `PodFuel`.

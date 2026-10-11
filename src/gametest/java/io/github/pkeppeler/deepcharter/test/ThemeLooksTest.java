@@ -251,36 +251,48 @@ public class ThemeLooksTest {
 		helper.succeed();
 	}
 
-	/** The cockpit HUD (#444): the mod ships no style, so main looks as it did, and a pack picks one option by naming one key. */
+	/** The cockpit HUD (#444, #448): the mod ships no style and no camera, so main looks as it did, and a pack picks one option by naming one key. */
 	@GameTest
 	public void theCockpitIsOffInTheDefaultThemeAndAPackPicksAStyle(GameTestHelper helper) {
 		CockpitLook shipped = CockpitLook.of(area("cockpit", null));
 		if (shipped.style() != CockpitLook.Style.OFF || shipped.active().isPresent()) {
 			throw fail(helper, "the mod's own theme picks no cockpit style, got " + shipped.style());
 		}
-		CockpitLook strip = CockpitLook.of(area("cockpit", "{ \"style\": 2 }"));
-		if (strip.style() != CockpitLook.Style.STRIP || !strip.active().orElseThrow().name().equals("strip")) {
-			throw fail(helper, "a pack that names style 2 gets the strip, got " + strip.style() + " with " + strip.active());
+		if (shipped.camera().installed()) {
+			throw fail(helper, "no pod has the front camera until a build sells the part");
 		}
-		if (strip.fuelColor() != shipped.fuelColor()) {
+		CockpitLook ribbon = CockpitLook.of(area("cockpit", "{ \"style\": 3 }"));
+		if (ribbon.style() != CockpitLook.Style.RIBBON || !ribbon.active().orElseThrow().name().equals("ribbon")) {
+			throw fail(helper, "a pack that names style 3 gets the ribbon, got " + ribbon.style() + " with " + ribbon.active());
+		}
+		if (ribbon.fuelColor() != shipped.fuelColor()) {
 			throw fail(helper, "a pack that names only the style keeps the mod's colours");
+		}
+		if (!CockpitLook.of(area("cockpit", "{ \"cameraInstalled\": 1 }")).camera().installed()) {
+			throw fail(helper, "a pack that names cameraInstalled puts the camera on the pod");
 		}
 		helper.succeed();
 	}
 
-	/** Each option names its four gauges and a scanner window, and the sprite of a slot is found by the style's name. */
+	/** Each option names its fuel, hull, depth and heat gauges and a scanner window, a compact one also cargo and lamps, and the sprite of a slot is found by the style's name. */
 	@GameTest
-	public void everyCockpitStyleHasFourGaugesAndAScannerWindow(GameTestHelper helper) {
+	public void everyCockpitStyleHasItsGaugesAndAScannerWindow(GameTestHelper helper) {
 		CockpitLook look = CockpitLook.of(area("cockpit", null));
-		for (CockpitLook.Layout layout : List.of(look.dials(), look.strip(), look.consoles())) {
+		for (CockpitLook.Layout layout : List.of(look.consoles(), look.corners(), look.ribbon(), look.posts(), look.cab())) {
 			for (CockpitLook.Gauge gauge : List.of(layout.fuel(), layout.hull(), layout.depth(), layout.heat())) {
 				if (!gauge.on()) {
-					throw fail(helper, "the " + layout.name() + " look must have all four gauges, got " + gauge);
+					throw fail(helper, "the " + layout.name() + " look must have its four gauges, got " + gauge);
 				}
+			}
+			if (layout.compact() && (!layout.cargo().on() || !layout.lamps().on())) {
+				throw fail(helper, "the compact " + layout.name() + " look must have a cargo gauge and warning lamps");
 			}
 			if (layout.scanner().width() != 98 || layout.scanner().height() != 82) {
 				throw fail(helper, "the scanner window holds the slices of tiers 1 to 3 whole, 98 x 82, got " + layout.scanner());
 			}
+		}
+		if (!look.consoles().frame() || look.corners().frame() || look.ribbon().frame() || look.posts().frame() || look.cab().frame()) {
+			throw fail(helper, "only round 1's consoles have a frame over the whole screen");
 		}
 		if (!look.consoles().sprite("frame").toString().equals("deepcharter:cockpit/consoles/frame")) {
 			throw fail(helper, "the frame sprite of the consoles is deepcharter:cockpit/consoles/frame, got " + look.consoles().sprite("frame"));
@@ -290,12 +302,15 @@ public class ThemeLooksTest {
 
 	@GameTest
 	public void theCockpitRejectsValuesOutOfRange(GameTestHelper helper) {
-		rejected(helper, () -> CockpitLook.of(area("cockpit", "{ \"style\": 4 }")), "style");
+		rejected(helper, () -> CockpitLook.of(area("cockpit", "{ \"style\": 6 }")), "style");
 		rejected(helper, () -> CockpitLook.of(area("cockpit", "{ \"style\": -1 }")), "style");
 		rejected(helper, () -> CockpitLook.of(area("cockpit", "{ \"hullLowFraction\": 1.5 }")), "hullLowFraction");
 		rejected(helper, () -> CockpitLook.of(area("cockpit", "{ \"heatRisePerTick\": 0 }")), "heatRisePerTick");
-		rejected(helper, () -> CockpitLook.of(area("cockpit", "{ \"stripFuelSegments\": 0 }")), "stripFuelSegments");
-		rejected(helper, () -> CockpitLook.of(area("cockpit", "{ \"dialsFuelKind\": 3 }")), "dialsFuelKind");
+		rejected(helper, () -> CockpitLook.of(area("cockpit", "{ \"ribbonFuelSegments\": 0 }")), "ribbonFuelSegments");
+		rejected(helper, () -> CockpitLook.of(area("cockpit", "{ \"postsFuelKind\": 2 }")), "postsFuelKind");
+		rejected(helper, () -> CockpitLook.of(area("cockpit", "{ \"cameraInstalled\": 2 }")), "cameraInstalled");
+		rejected(helper, () -> CockpitLook.of(area("cockpit", "{ \"cameraLensRecover\": 1 }")), "cameraLensRecover");
+		rejected(helper, () -> CockpitLook.of(area("cockpit", "{ \"cameraFlickerMinTicks\": 9 }")), "cameraFlickerMinTicks");
 		helper.succeed();
 	}
 

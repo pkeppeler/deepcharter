@@ -31,10 +31,12 @@ import net.minecraft.world.level.block.Blocks;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitReading;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
+import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -110,6 +112,14 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 				} finally {
 					ClientPacks.disable(context, TestPacks.COCKPIT_CONSOLES);
 				}
+				for (String pack : List.of(TestPacks.COCKPIT_CORNERS, TestPacks.COCKPIT_RIBBON, TestPacks.COCKPIT_POSTS, TestPacks.COCKPIT_CAB)) {
+					ClientPacks.enable(context, pack);
+					try {
+						expectACompactStyleKeepsEveryReadout(context, singleplayer, pod, pack);
+					} finally {
+						ClientPacks.disable(context, pack);
+					}
+				}
 			} finally {
 				EvidencePins.reset();
 			}
@@ -120,9 +130,9 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 		Set<Identifier> expected = Set.of(VanillaHudElements.HOTBAR, VanillaHudElements.ARMOR_BAR, VanillaHudElements.HEALTH_BAR, VanillaHudElements.FOOD_BAR,
 				VanillaHudElements.AIR_BAR, VanillaHudElements.MOUNT_HEALTH, VanillaHudElements.INFO_BAR, VanillaHudElements.EXPERIENCE_LEVEL,
 				VanillaHudElements.HELD_ITEM_TOOLTIP, VanillaHudElements.OVERLAY_MESSAGE);
-		if (!Set.copyOf(CockpitHud.hiddenWhileSeated()).equals(expected) || CockpitHud.hiddenWhileSeated().size() != expected.size()) {
+		if (!Set.copyOf(CockpitHud.HIDDEN_WHILE_SEATED).equals(expected) || CockpitHud.HIDDEN_WHILE_SEATED.size() != expected.size()) {
 			throw new AssertionError("The cockpit hides the hotbar, health, armour, food, air, mount health, experience bar and level, held item name and action bar, got "
-					+ CockpitHud.hiddenWhileSeated());
+					+ CockpitHud.HIDDEN_WHILE_SEATED);
 		}
 	}
 
@@ -232,6 +242,54 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 			throw new AssertionError("A pod " + RISE + " blocks higher reads shallower: " + reading.depth() + " then " + higher.depth());
 		}
 		singleplayer.getServer().runOnServer(server -> pod.setPos(0.5, FEET_Y, 0.5));
+	}
+
+	/**
+	 * A compact style (#448) keeps every value and line of the plain readout reachable without the plate listing them all: the four values are the tally, in the order
+	 * of the gauges, and every other line of the readout (a warning, the slag, the account) is a row of its own, over the tally or under it by where the plate is anchored.
+	 * The cargo gauge reads the bay's share.
+	 */
+	private void expectACompactStyleKeepsEveryReadout(ClientGameTestContext context, TestSingleplayerContext singleplayer, PodEntity pod, String pack) {
+		singleplayer.getServer().runOnServer(server -> {
+			pod.setFuel(0f);
+			pod.setStranded(true);
+			pod.setHull(pod.maxHull() / 2f);
+			pod.setCargoUsed(PodStats.of(pod).cargoSlots());
+		});
+		ClientWait.until(context, "the stranded pod with a full bay on the client", client -> client.player.getVehicle() instanceof PodEntity shown && shown.stranded()
+				&& shown.cargoUsed() == PodStats.of(shown).cargoSlots());
+		List<List<String>> rows = context.computeOnClient(client -> {
+			PodEntity shown = (PodEntity) client.player.getVehicle();
+			CockpitLook look = CockpitLook.current();
+			CockpitLook.Layout layout = CockpitHud.seated(client).orElseThrow(() -> new AssertionError(pack + " should be the style"));
+			CockpitReading reading = CockpitReading.of(client, shown, 0);
+			if (Math.abs(reading.cargo() - 1.0) > 1e-9) {
+				throw new AssertionError("A full bay reads 1 on the cargo gauge, got " + reading);
+			}
+			if (!layout.compact() || layout.frame()) {
+				throw new AssertionError(pack + " is a compact style with no frame over the screen");
+			}
+			return CockpitHud.rows(shown, reading, layout, look, PodStatusHud.readout(client, shown)).stream()
+					.map(row -> row.parts().stream().map(part -> ((TranslatableContents) part.text().getContents()).getKey()).toList()).toList();
+		});
+		List<String> tally = List.of("hud.deepcharter.pod.tally_hull", "hud.deepcharter.pod.tally_fuel", "hud.deepcharter.pod.tally_cargo", "hud.deepcharter.pod.tally_depth");
+		if (!rows.contains(tally)) {
+			throw new AssertionError(pack + ": the plate shows the tally of hull, fuel, cargo and depth on one row, got " + rows);
+		}
+		if (!rows.contains(List.of("hud.deepcharter.pod.stranded"))) {
+			throw new AssertionError(pack + ": a stranded pod's warning is a row of the plate, got " + rows);
+		}
+		if (rows.stream().anyMatch(row -> row.contains("hud.deepcharter.pod.hull") || row.contains("hud.deepcharter.pod.fuel"))) {
+			throw new AssertionError(pack + ": the four values are in the tally, not listed again, got " + rows);
+		}
+		singleplayer.getServer().runOnServer(server -> {
+			pod.setStranded(false);
+			pod.setFuel(50f);
+			pod.setHull(pod.maxHull());
+			pod.setCargoUsed(0);
+		});
+		ClientWait.until(context, "the pod ready again on the client", client -> client.player.getVehicle() instanceof PodEntity shown && !shown.stranded()
+				&& shown.cargoUsed() == 0 && shown.fuel() == 50f);
 	}
 
 	private void expectEveryReadoutLineIsOnThePlate(ClientGameTestContext context) {
