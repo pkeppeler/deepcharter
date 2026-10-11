@@ -1,18 +1,19 @@
-"""The block models and blockstates of the layer concept packs: what makes the three options differ in shape and not in colour.
+"""The block models and blockstates of the layer concept packs: the formation of each layer, which is the user's assignment after round 1.
 
-Each option gives the same blocks a different solid form:
+Each layer gives the same blocks a different solid form:
 
-  A. Strata     a block is three beds, each in two halves that split at different heights and stand back by their own amounts on each
-                side, so a wall of them is a stair of broken ledges, never a ruled course
-  B. Fractured  a block is eight plates, each pushed back by its own depth, so every face is a mosaic at several depths
-  C. Columnar   a block is a hexagonal column (three rectangles turned 0, 60 and 120 degrees), cut across by a joint whose upper drum is
+  A. Strata     (layer 1) a cube with beds standing out of its four sides: bands the width of the face, each at its own height and depth, so a
+                wall of them is a stair of broken ledges, never a ruled course
+  B. Fractured  (layer 2) a cube with plates standing out of its six faces, two to a face, so every face is a mosaic of levels
+  C. Columnar   (layer 3) a hexagonal column (three rectangles turned 0, 60 and 120 degrees), cut across by a joint whose upper drum is
                 shifted a little, so a wall is a bundle of basalt columns with hexagonal ends
 
-Every face of every model is drawn (no cullface), and a dark core fills each block, because a block's faces are culled by its
-occlusion shape and not by its model: with culling, the gap between two stepped blocks would show straight through the world.
+A and B are cubes whose relief stands out of a face and never touches the sides between two blocks, because a recess there is a dark line
+round every block (see `proud`). Every face of every model is drawn (no cullface), because a block's faces are culled by its occlusion
+shape and not by its model.
 
-The blocks are stand-ins until layer 1 and layer 2 have rock blocks of their own (#241): vanilla stone and cobblestone are layer 1's
-rock and its rubble, deepslate and cobbled deepslate layer 2's, and the pack redraws their blockstates.
+The blocks are stand-ins until the layers have rock blocks of their own (#241): vanilla granite, tuff and andesite are the rock of layers 1,
+2 and 3, cobblestone, cobbled deepslate and diorite their rubble, and the pack redraws their blockstates.
 """
 import math
 import sys
@@ -41,61 +42,69 @@ def rock_textures(side: str, end: str, core: str) -> dict:
 
 
 FACES = {"*": "#side", "up": "#end", "down": "#end"}
-# The dark body of a block, a hair short of both ends: its top at 16 would fight the top of the beds, plates or columns over it, and show as
-# a black square in the middle of every floor.
-CORE = Box((3, 0.1, 3), (13, 15.9, 13), {"*": "#core"})
+# ---------------------------------------------------------------------------------------------------------------- A and B: relief that stands out of a face
+
+SIDES = ("north", "south", "west", "east", "up", "down")
 
 
-# ---------------------------------------------------------------------------------------------------------------- A: strata
+def proud(side: str, u0: float, v0: float, u1: float, v1: float, depth: float) -> Box:
+    """A piece of relief on one face of the block: the rectangle u0..u1 by v0..v1 of the face, standing out of it by `depth` pixels. u runs
+    along X, or along Z on a face of X; v up the face, or along Z on the top and bottom. It is the only part of a block that is not a cube,
+    and it never touches an edge of the face, or only runs from edge to edge, so nothing is recessed between two blocks: round 1's beds and
+    plates stood back from their block's sides, and the slot between two blocks was a dark line round each one, the outlined square of the
+    user's round 1 feedback. A relief stands out into the cell in front, which is air when the face is seen and rock when it is not."""
+    lo, hi = {
+        "south": ((u0, v0, 16.0), (u1, v1, 16.0 + depth)),
+        "north": ((u0, v0, -depth), (u1, v1, 0.0)),
+        "east": ((16.0, v0, u0), (16.0 + depth, v1, u1)),
+        "west": ((-depth, v0, u0), (0.0, v1, u1)),
+        "up": ((u0, 16.0, v0), (u1, 16.0 + depth, v1)),
+        "down": ((u0, -depth, v0), (u1, 0.0, v1)),
+    }[side]
+    texture = "#end" if side in ("up", "down") else "#side"
+    return Box(lo, hi, {"*": texture, {"south": "north", "north": "south", "east": "west", "west": "east", "up": "down", "down": "up"}[side]: None})
 
-# The most a bed stands back from its block's face, in pixels. Faces recessed deeper than this, or turned off the axes, are not lit (a face
-# inside a solid block takes the block's own light, which is 0) and read as holes, so the shadow under a lip stays a shadow. Round 1 had 1.3:
-# the blockstate turns a block about the vertical, so a recess meant as a depth can land on a side, and where two blocks recess toward each
-# other the slot between them is a dark line round every block, the outlined square of the user's round 1 feedback. At 0.6 the line is a
-# pixel at most.
-INSET = 0.6
+
+def solid_cube() -> Box:
+    return Box((0, 0, 0), (16, 16, 16), FACES)
+
+
+# The most that relief stands out of a face, in pixels, and the least. A relief is a lit face of its own and the step at its edge a shadow,
+# which is all it can be at this size.
+RELIEF_DEPTH = (0.3, 0.6)
+
+
+def depth(variant: int, *keys: int) -> float:
+    return RELIEF_DEPTH[0] + hashf(variant, *keys) * (RELIEF_DEPTH[1] - RELIEF_DEPTH[0])
+
+
+# The three beds of a face: where each starts and how thick it is, in pixels. They are the same on every block and every side, so a ledge runs
+# on across the edge to the next block; the three thicknesses and the three gaps between them all differ, so the beds are not courses.
+BEDS = ((0.5, 2.5), (4.5, 3.5), (10.0, 4.0))
 
 
 def beds(variant: int) -> Model:
-    """Three beds, each in two halves (west and east) that split at their own heights, and stand back by their own amounts on each of
-    their four sides. The bed that stands out hides the lip of the one under it, which makes the shadow; where the halves differ the
-    shadow steps. No bed is tipped: a turned face is not lit (see INSET), so the dip of a bed is in the texture."""
-    boxes = [CORE]
-    for half, (x0, x1) in enumerate(((0.0, 8.0), (8.0, 16.0))):
-        cuts = (0.0, 3.0 + hashf(variant, half, 1) * 4.0, 9.0 + hashf(variant, half, 2) * 4.0, 16.0)
-        for bed in range(3):
-            west, east, north, south = (hashf(variant, half, bed, side) * INSET for side in range(4))
-            lo = (x0 + (west if half == 0 else 0.0), cuts[bed], north)
-            hi = (x1 - (east if half == 1 else 0.0), cuts[bed + 1], 16 - south)
-            boxes.append(Box(lo, hi, FACES))
+    """A cube with beds standing out of each of its four sides: three bands that run the width of the face, at the same heights on every
+    block, each standing out by a depth of its own that changes from block to block. A ledge runs on across the edge to the next block, and
+    where the depths differ it steps: a wall of them is a stair of broken ledges. No band is recessed, so no slot runs between blocks. The top
+    and the bottom are flat."""
+    boxes = [solid_cube()]
+    for index, side in enumerate(SIDES[:4]):
+        for bed, (top, thickness) in enumerate(BEDS):
+            boxes.append(proud(side, 0.0, top, 16.0, top + thickness, depth(variant, bed, index)))
     return Model({}, boxes)
 
 
-# ---------------------------------------------------------------------------------------------------------------- B: fractured
-
-# The set-back of each of the eight plates, as (x, y, z) per octant (i, j, k) in that order, for three blocks.
-PLATE_DEPTHS = (
-    ((0.0, 0.0, 0.0), (0.0, 1.0, 0.5), (0.5, 0.0, 1.0), (1.0, 0.5, 0.0), (0.0, 1.5, 0.0), (1.0, 0.0, 0.5), (0.5, 1.0, 1.5), (0.0, 0.5, 0.0)),
-    ((1.0, 0.0, 0.5), (0.0, 0.0, 1.0), (0.0, 1.5, 0.0), (0.5, 0.5, 0.5), (1.5, 0.0, 0.0), (0.0, 1.0, 1.0), (0.0, 0.0, 0.5), (1.0, 0.5, 0.0)),
-    ((0.5, 1.0, 0.0), (1.5, 0.0, 0.5), (0.0, 0.5, 1.0), (0.0, 0.0, 0.0), (0.0, 1.0, 0.5), (0.5, 0.0, 1.5), (1.0, 0.0, 0.0), (0.0, 1.5, 0.5)),
-)
-
-
-# How much of PLATE_DEPTHS is used: round 1 used all of it, up to 1.5 pixels, and the slots between neighbouring blocks outlined each one.
-PLATE_SCALE = 0.4
-
-
 def plates(variant: int) -> Model:
-    """Eight plates, one to an octant, each set back by its own depth along each outward axis."""
-    boxes = [CORE]
-    depths = iter(PLATE_DEPTHS[variant])
-    for i in (0, 1):
-        for j in (0, 1):
-            for k in (0, 1):
-                d = tuple(PLATE_SCALE * depth for depth in next(depths))
-                lo = tuple(8 * q + (d[a] if q == 0 else 0) for a, q in enumerate((i, j, k)))
-                hi = tuple(8 + 8 * q - (d[a] if q == 1 else 0) for a, q in enumerate((i, j, k)))
-                boxes.append(Box(lo, hi, FACES))
+    """A cube with plates standing out of each of its six faces: two rectangles, 4 to 8 pixels across, at random places inside the face
+    and at their own depth, each at least a pixel from the edge, so the face is a mosaic of levels that does not meet the edge of the face."""
+    boxes = [solid_cube()]
+    for index, side in enumerate(SIDES):
+        for plate in range(2):
+            width, height = (4.0 + hashf(variant, index, plate, k) * 4.0 for k in (1, 2))
+            u0 = 1.0 + hashf(variant, index, plate, 3) * (14.0 - width)
+            v0 = 1.0 + hashf(variant, index, plate, 4) * (14.0 - height)
+            boxes.append(proud(side, u0, v0, u0 + width, v0 + height, depth(variant, index, plate, 5)))
     return Model({}, boxes)
 
 
@@ -104,6 +113,9 @@ def plates(variant: int) -> Model:
 # The circumradius and the offset of each of the three columns, so that the open joints between neighbours are not one width.
 HEX_R = (7.4, 7.8, 7.6)
 COLUMN_SHIFT = (0.0, 0.7, -0.6)
+# The least light of a column's faces. A hexagon's four faces off the axes take the light of the block's own cell, which is none, so without
+# this they are black: round 1's columns were black rectangles with a lit face between them, which in layer 3's dark was most of a wall.
+COLUMN_EMISSION = 9
 JOINTS = (None, 9.0, 6.5)
 HEX_ROTATIONS = (0.0, 60.0, 120.0)
 
@@ -118,7 +130,7 @@ def hex_boxes(y0: float, y1: float, turn: float, shift: float, r: float, texture
         lift = 0.0 if y1 < 16 else -0.015 * i
         sink = 0.0 if y0 > 0 else 0.015 * i
         boxes.append(Box((8 - r / 2 + shift, y0 + sink, 8 - depth + shift), (8 + r / 2 + shift, y1 + lift, 8 + depth + shift), textures,
-                         rotation=(0.0, turn + base, 0.0), pivot=(8.0 + shift, 8.0, 8.0 + shift)))
+                         rotation=(0.0, turn + base, 0.0), pivot=(8.0 + shift, 8.0, 8.0 + shift), emission=COLUMN_EMISSION))
     return boxes
 
 

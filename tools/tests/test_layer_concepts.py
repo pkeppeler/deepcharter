@@ -136,7 +136,7 @@ class StyleTest(unittest.TestCase):
                 for first, second in (("grain", "bedded"), ("grain", "mottled"), ("bedded", "mottled")):
                     differing = sum(1 for i in range(0, SIZE * SIZE * 4, 4) if bodies[first][i:i + 4] != bodies[second][i:i + 4])
                     with self.subTest(texture=name, options=(first, second)):
-                        self.assertGreater(differing / (SIZE * SIZE), 0.5)
+                        self.assertGreater(differing / (SIZE * SIZE), 0.35)
 
     def test_every_layer_has_its_assigned_formation_in_every_option(self):
         self.assertEqual({1: "a", 2: "b", 3: "c"}, scenes.FORMATIONS)

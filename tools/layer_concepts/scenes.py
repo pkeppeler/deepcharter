@@ -60,6 +60,9 @@ CRUST_X = 43
 ROCKS = {1: ("minecraft:granite", "minecraft:cobblestone"), 2: ("minecraft:tuff", "minecraft:cobbled_deepslate"),
          3: ("minecraft:andesite", "minecraft:diorite")}
 REFERENCE = ("minecraft:stone", "minecraft:deepslate")
+# What fills the rock where no air touches it. Nothing there can be seen, and a block of the layer's rock draws dozens of faces that the
+# renderer cannot cull, so the interior of a scene would take most of a chunk mesh. A plain cube is culled against its neighbours.
+FILLER = ("minecraft:stone", {})
 
 
 @dataclass(frozen=True)
@@ -112,6 +115,10 @@ class Cave:
 
     def air(self, x: int, y: int, z: int) -> bool:
         return not self.solid(x, y, z)
+
+    def exposed(self, x: int, y: int, z: int) -> bool:
+        """Whether a block touches air: only such a block can be seen, or have relief that shows."""
+        return any(self.air(x + dx, y + dy, z + dz) for dx, dy, dz in ((1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)))
 
     def block(self, x: int, y: int, z: int) -> State:
         if y < BASE and CRUST_X - 5 <= x < LENGTH:
@@ -527,7 +534,7 @@ def build(layer: int) -> Scene:
         for y in range(Y):
             for z in range(Z):
                 if c.solid(x, y, z):
-                    p.set(x, y, z, c.block(x, y, z))
+                    p.set(x, y, z, c.block(x, y, z) if c.exposed(x, y, z) or c.block(x, y, z) == c.crust else FILLER)
     rock_face = company_rock(c, p)
     d = Dressing(c, p, 0.0 if layer == 1 else 0.3)
     DRESSERS[c.formation](d)
