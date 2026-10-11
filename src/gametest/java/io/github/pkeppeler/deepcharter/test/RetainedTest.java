@@ -596,13 +596,13 @@ public class RetainedTest {
 				if (arena.figure.isClinging()) {
 					leftAt[0] = helper.getTick();
 					fuelAtLeaving[0] = arena.pod.fuel();
-					arena.pilot.leave();
+					arena.pilot.player().stopRiding();
 				} else if (helper.getTick() > APPROACH_BUDGET_TICKS + 20) {
 					throw failure(helper, "the figure had not grabbed the dark pod");
 				}
 				return;
 			}
-			expect(helper, arena.figure.isClinging() && arena.figure.isAlive(), "the figure let go of a pod its pilot left");
+			expect(helper, arena.figure.isClinging() && arena.figure.isAlive(), "the figure let go of a pod its pilot left, %d ticks after (clinging %s, alive %s, removed %s, pod removed %s, fuel %s)".formatted(helper.getTick() - leftAt[0], arena.figure.isClinging(), arena.figure.isAlive(), arena.figure.isRemoved(), arena.pod.isRemoved(), arena.pod.fuel()));
 			if (helper.getTick() - leftAt[0] >= NO_ANSWER_TICKS) {
 				expect(helper, arena.pod.fuel() < fuelAtLeaving[0], "the tank did not drain while the pod stood empty");
 				arena.clear();
