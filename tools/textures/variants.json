@@ -1,5 +1,5 @@
 {
-  "description": "salvage_crate_b, salvage_crate_c, fungal_stalk_a and fungal_stalk_c: the shapes of issue 245 that the mod does not ship (docs/design/salvage-concepts.md); each pack holds a blockstate, models and item definition, and any textures only that shape uses (the shapes' models are written by hand). The texture test packs of round 1, b to d, of issue 336 (docs/design/texture-density.md), and layer_grain, layer_bedded, layer_mottled and layer_form_1 to layer_form_3 of the layer concepts of issue 447 (docs/design/layer-concepts-2.md; their recipes, models and scenes are written by tools/layer_concepts/make.py). Each is a test pack that only its evidence scenario turns on; the mod's own textures are variant A. Paths are from the repo root; a variant's palettes merge over the default palette, and its recipe directories load over the default ones, in order. D loads B's recipes before its own, so B's rock and ores feed D: a change to B changes D's pack too. A variant may also have overlays (host, textures, blocks): each ore block then draws the host block's own texture, by reference, with the pack's cutout overlay over it, so no vanilla texture is copied or replaced. The mod's own ores are built that way from tools/textures/overlays.json (docs/design/ores.md), and no variant uses overlays now.",
+  "description": "salvage_crate_b: the sled crate of issue 245, the one other look of the crate that the mod does not ship (docs/design/salvage-concepts.md); each pack holds a blockstate, models and item definition, and any textures only that shape uses (its models are written by hand). The texture test packs of round 1, b to d, of issue 336 (docs/design/texture-density.md), and layer_grain, layer_bedded, layer_mottled and layer_form_1 to layer_form_3 of the layer concepts of issue 447 (docs/design/layer-concepts-2.md; their recipes, models and scenes are written by tools/layer_concepts/make.py). Each is a test pack that only its evidence scenario turns on; the mod's own textures are variant A. Paths are from the repo root; a variant's palettes merge over the default palette, and its recipe directories load over the default ones, in order. D loads B's recipes before its own, so B's rock and ores feed D: a change to B changes D's pack too. A variant may also have overlays (host, textures, blocks): each ore block then draws the host block's own texture, by reference, with the pack's cutout overlay over it, so no vanilla texture is copied or replaced. The mod's own ores are built that way from tools/textures/overlays.json (docs/design/ores.md), and no variant uses overlays now.",
   "variants": {
     "b": {
       "palettes": [],
@@ -50,21 +50,6 @@
       "palettes": [],
       "recipes": ["tools/textures/variants/salvage_crate_b/recipes"],
       "pack": "src/gametest/resources/resourcepacks/salvage_crate_b"
-    },
-    "salvage_crate_c": {
-      "palettes": [],
-      "recipes": ["tools/textures/variants/salvage_crate_c/recipes"],
-      "pack": "src/gametest/resources/resourcepacks/salvage_crate_c"
-    },
-    "fungal_stalk_a": {
-      "palettes": [],
-      "recipes": ["tools/textures/variants/fungal_stalk_a/recipes"],
-      "pack": "src/gametest/resources/resourcepacks/fungal_stalk_a"
-    },
-    "fungal_stalk_c": {
-      "palettes": [],
-      "recipes": ["tools/textures/variants/fungal_stalk_c/recipes"],
-      "pack": "src/gametest/resources/resourcepacks/fungal_stalk_c"
     }
   }
 }
