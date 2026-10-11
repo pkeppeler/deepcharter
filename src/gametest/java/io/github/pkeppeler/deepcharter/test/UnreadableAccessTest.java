@@ -6,15 +6,19 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.Entity;
 
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charter;
@@ -23,6 +27,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.CharterView;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.charter.CharterSyncPayload;
+import io.github.pkeppeler.deepcharter.colony.ColonyDisplays;
 import io.github.pkeppeler.deepcharter.fuel.ReserveTank;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgress;
 import io.github.pkeppeler.deepcharter.handbook.HandbookReadPayload;
@@ -270,12 +275,37 @@ public class UnreadableAccessTest {
 		MinecraftServer server = helper.getLevel().getServer();
 		Map<String, Runnable> paths = new LinkedHashMap<>();
 		paths.put("derelict lookup", () -> Hangar.derelict(server));
+		paths.put("pod registration and load", () -> {
+			PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
+			try {
+				PodComponents.register(pod, CharterId.random());
+				ServerEntityEvents.ENTITY_LOAD.invoker().onLoad(pod, helper.getLevel());
+			} finally {
+				pod.discard();
+			}
+		});
 		paths.put("readable data", () -> {
 			if (HangarData.readable(server).isPresent()) {
 				throw new IllegalStateException("unreadable hangar data is skipped");
 			}
 		});
 		UnreadableChecks.assertSavedDataNoThrow(helper, "hangar", server, HangarData.TYPE, paths);
+		helper.succeed();
+	}
+
+	/** A colony display loading, and the Host being given his hands, against unreadable build numbers. */
+	@GameTest
+	public void unreadableColonyDisplaysNeverThrowFromALoadOrAWorkOrder(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		// Made and never added to the level: the load listener only reads it.
+		Entity display = BuiltInRegistries.ENTITY_TYPE.getValue(Identifier.withDefaultNamespace("block_display")).create(helper.getLevel(), EntitySpawnReason.COMMAND);
+		display.addTag("deepcharter_colony_build_0");
+		Map<String, Runnable> paths = new LinkedHashMap<>();
+		paths.put("display load", () -> ServerEntityEvents.ENTITY_LOAD.invoker().onLoad(display, helper.getLevel()));
+		UnreadableChecks.assertSavedDataNoThrow(helper, "colony displays", server, ColonyDisplays.TYPE, paths);
+		if (display.isRemoved()) {
+			throw helper.assertionException("a display must be left alone while the build numbers cannot be read");
+		}
 		helper.succeed();
 	}
 

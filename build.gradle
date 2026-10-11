@@ -133,6 +133,7 @@ tasks.named("check") { dependsOn checkGeckoLib, checkNestedGeckoLib }
 
 apply from: "gradle/lang.gradle"
 apply from: "gradle/literals.gradle"
+apply from: "gradle/entity-query-gate.gradle"
 apply from: "gradle/gametest.gradle"
 apply from: "gradle/colour-gate.gradle"
 apply from: "gradle/clientlock.gradle"

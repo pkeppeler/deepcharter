@@ -102,6 +102,7 @@ public final class FounderStatue {
 		ServerLevel overworld = server.overworld();
 		overworld.getChunk(anchor.get());
 		AABB around = new AABB(anchor.get()).inflate(REACH);
+		// entity-query: the displays that are loaded, for a tidy at once and for tests; whether the Host has hands is saved data (the marker, ColonyDisplays)
 		return overworld.getEntitiesOfClass(Display.BlockDisplay.class, around, display -> display.getBlockState().equals(state));
 	}
 
@@ -111,6 +112,8 @@ public final class FounderStatue {
 	 */
 	public static void restoreHands(MinecraftServer server) {
 		ColonySite.Placed colony = Colony.placed(server).orElseThrow(() -> new IllegalStateException("the colony is not built: the Founder has no hands to restore"));
+		// The pair in a chunk that is not loaded is not found: it is of an earlier pair, and discards itself when it loads.
+		ColonyDisplays.readable(server).ifPresent(ColonyDisplays::beginHands);
 		hands(server).forEach(Entity::discard);
 		ServerLevel overworld = server.overworld();
 		overworld.setBlock(markerPos(server).orElseThrow(), Blocks.STRUCTURE_VOID.defaultBlockState(), Block.UPDATE_CLIENTS);

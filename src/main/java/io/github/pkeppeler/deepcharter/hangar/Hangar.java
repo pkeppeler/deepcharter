@@ -2,10 +2,8 @@ package io.github.pkeppeler.deepcharter.hangar;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
@@ -20,7 +18,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -34,6 +31,7 @@ import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.Serials;
 import io.github.pkeppeler.deepcharter.terminal.TerminalEvents;
@@ -58,6 +56,7 @@ public final class Hangar {
 		ColonyEvents.BUILT.register(Hangar::onBuilt);
 		TerminalEvents.REPAIRED.register(Hangar::onRepaired);
 		ServerEntityEvents.ENTITY_LOAD.register(Hangar::onLoad);
+		PodEvents.REGISTERED.register(Hangar::onRegistered);
 	}
 
 	/** Where the console stands: beside the hangar bay. Empty before the colony is built. */
@@ -106,6 +105,7 @@ public final class Hangar {
 	}
 
 	private static Optional<PodEntity> podOf(MinecraftServer server, UUID id) {
+		// entity-query: a miss means the Mole is not loaded, which both callers handle: completeFounding waits for its ENTITY_LOAD and derelict reports it unloaded
 		return Optional.ofNullable(server.overworld().getEntity(id)).filter(PodEntity.class::isInstance).map(PodEntity.class::cast);
 	}
 
@@ -113,20 +113,6 @@ public final class Hangar {
 	static boolean isUnrepairedDerelict(HangarData data, PodEntity pod) {
 		HangarData.State state = data.state();
 		return !state.founded() && state.derelict().equals(Optional.of(pod.getUUID()));
-	}
-
-	/**
-	 * How many pods the charter has: the ones the hangar gave it, and every loaded pod it owns. A pod in an unloaded chunk that
-	 * the hangar did not give it is not counted, because the world keeps no list of pods.
-	 */
-	static int podsOf(MinecraftServer server, HangarData data, CharterId charter) {
-		Set<UUID> pods = new HashSet<>(data.held(charter));
-		for (ServerLevel level : server.getAllLevels()) {
-			for (PodEntity pod : level.getEntities(EntityTypeTest.forClass(PodEntity.class), pod -> true)) {
-				PodComponents.registration(pod).filter(registration -> registration.owner().equals(charter)).ifPresent(registration -> pods.add(pod.getUUID()));
-			}
-		}
-		return pods.size();
 	}
 
 	/**
@@ -149,6 +135,7 @@ public final class Hangar {
 		return slots.stream().filter(slot -> {
 			AABB box = type.getDimensions().makeBoundingBox(slot);
 			return level.hasChunkAt(BlockPos.containing(slot)) && level.noCollision(box)
+					// entity-query: the bay is within a few blocks of the player at the console (a terminal's reach), so its chunks are entity-ticking
 					&& level.getEntitiesOfClass(PodEntity.class, box).isEmpty();
 		}).findFirst();
 	}
@@ -167,12 +154,22 @@ public final class Hangar {
 		completeFounding(server, data.get());
 	}
 
+	/** Records the pod as its owner's the moment it is registered: the price of the next pod counts from saved data, not from the pods that happen to be loaded. */
+	private static void onRegistered(PodEntity pod, CharterId owner) {
+		HangarData.readable(pod.level().getServer()).ifPresent(data -> data.hold(owner, pod.getUUID()));
+	}
+
 	private static void onLoad(Entity entity, ServerLevel level) {
 		if (!(entity instanceof PodEntity pod)) {
 			return;
 		}
 		Optional<HangarData> data = HangarData.readable(level.getServer());
-		if (data.isPresent() && data.get().state().derelict().equals(Optional.of(pod.getUUID()))) {
+		if (data.isEmpty()) {
+			return;
+		}
+		// A pod registered before the hangar recorded every registration is recorded when it loads.
+		PodComponents.registration(pod).ifPresent(registration -> data.get().hold(registration.owner(), pod.getUUID()));
+		if (data.get().state().derelict().equals(Optional.of(pod.getUUID()))) {
 			completeFounding(level.getServer(), data.get());
 		}
 	}

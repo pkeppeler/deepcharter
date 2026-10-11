@@ -1,0 +1,82 @@
+// Entity-query gate (#380, m2-rules.md): an entity query sees only the entities of loaded chunks, so "nothing found" can mean "not
+// loaded". This fails the build on one in code under src/main/java and src/client/java unless the line, or the one above it, carries
+// `// entity-query: <reason>`, a reason that says why the queried area is always loaded where the code runs (around the acting player
+// or pod, say) or that a miss is harmless. A gameplay decision or a cleanup that must not miss goes through saved data instead.
+//
+// What it flags: getEntitiesOfClass(, getEntities(, getNearbyEntities(, getEntityGetter(, getAllEntities( and a lookup of one entity by
+// id, getEntity(<argument>) or getEntityOrPart(. A call with no argument, DamageSource.getEntity(), is not one. Comments and string
+// literals are not scanned, and the marker's reason is required.
+//
+// tools/tests/entity_query_gate_check.py runs the scan over fixture trees (checkGametestFixtures in gametest.gradle), so a change that
+// makes the pattern miss fails there, not silently.
+abstract class EntityQueryGate {
+	static final java.util.regex.Pattern QUERY = ~/\b(?:getEntitiesOfClass|getEntities|getNearbyEntities|getEntityGetter|getAllEntities|getEntityOrPart)\s*\(|\bgetEntity\s*\(\s*[^)\s]/
+	static final java.util.regex.Pattern MARKER = ~/\/\/\s*entity-query:\s*\S/
+
+	/** Lines (1-based) of {@code text}, already passed through blankLiterals, that hold an entity query and no marker on them or the line above. */
+	static List<Integer> violations(String text) {
+		def found = []
+		def inBlockComment = false
+		def lines = text.readLines()
+		lines.eachWithIndex { String line, int index ->
+			def code = line
+			if (inBlockComment) {
+				if (!code.contains("*/")) return
+				code = code.substring(code.indexOf("*/") + 2)
+				inBlockComment = false
+			}
+			def trimmed = code.trim()
+			if (trimmed.startsWith("//")) return
+			if (trimmed.startsWith("/*") && !trimmed.contains("*/")) {
+				inBlockComment = true
+				return
+			}
+			def commentAt = code.indexOf("//")
+			if (commentAt >= 0) code = code.substring(0, commentAt)
+			code = code.replaceAll(/\/\*.*?\*\//, " ")
+			if (!QUERY.matcher(code).find()) return
+			def marked = [index, index - 1].any { it >= 0 && MARKER.matcher(lines[it]).find() }
+			if (!marked) found << (index + 1)
+		}
+		return found
+	}
+}
+
+def blankLiterals = project.ext.blankLiterals
+def projectPath = projectDir.toPath()
+def mainRoot = file("src/main/java")
+def clientRoot = file("src/client/java")
+def productionSources = fileTree(mainRoot) { include "**/*.java" } + fileTree(clientRoot) { include "**/*.java" }
+
+/** The problems (file:line message) in the .java files under {@code root}, relative to {@code base}. */
+def entityQueryProblems = { File root, java.nio.file.Path base ->
+	def problems = []
+	def files = []
+	root.eachFileRecurse(groovy.io.FileType.FILES) { if (it.name.endsWith(".java")) files << it }
+	files.sort().each { source ->
+		def lines = source.readLines()
+		EntityQueryGate.violations(blankLiterals(source.text)).each { n ->
+			problems << "${base.relativize(source.toPath())}:${n} asks an entity query, which sees only loaded chunks, so 'nothing found' can mean 'not loaded': ${lines[n - 1].trim()}"
+		}
+	}
+	return problems
+}
+def entityQueryAdvice = "Decide a gameplay rule or a cleanup from saved data (a SavedData, an attachment), not from an entity query. A query over the " +
+	"area around the acting player or pod, where a miss is harmless, ends with '// entity-query: <reason>'. See m2-rules.md."
+// Shared with checkGametestFixtures (gametest.gradle), which runs the scan over fixture trees.
+project.ext.entityQueryProblems = entityQueryProblems
+project.ext.entityQueryAdvice = entityQueryAdvice
+
+tasks.register("checkEntityQueryGate") {
+	group = "verification"
+	description = "Fails on an entity query in production code that carries no '// entity-query: <reason>' marker."
+	inputs.files(productionSources).withPropertyName("productionSources")
+	doLast {
+		def problems = [mainRoot, clientRoot].collectMany { entityQueryProblems(it, projectPath) }
+		if (!problems.isEmpty()) {
+			throw new GradleException("Entity queries in production code. ${entityQueryAdvice}\n  " + problems.join("\n  "))
+		}
+	}
+}
+
+tasks.named("check") { dependsOn "checkEntityQueryGate" }
