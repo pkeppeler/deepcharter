@@ -8,16 +8,12 @@ import net.minecraft.resources.Identifier;
 final class LamplessFigureModel extends GeoModel<LamplessFigureAnimatable> {
 	@Override
 	public Identifier getModelResource(GeoRenderState renderState) {
-		return LamplessFigureAssets.resource(carriesLamp(renderState));
+		return LamplessFigureAssets.resource();
 	}
 
 	@Override
 	public Identifier getTextureResource(GeoRenderState renderState) {
-		return LamplessFigureAssets.texture(carriesLamp(renderState));
-	}
-
-	private static boolean carriesLamp(GeoRenderState renderState) {
-		return renderState instanceof LamplessFigureRenderState figure && figure.lamp;
+		return LamplessFigureAssets.texture();
 	}
 
 	@Override

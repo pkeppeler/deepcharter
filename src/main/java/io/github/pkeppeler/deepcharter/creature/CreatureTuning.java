@@ -18,7 +18,7 @@ package io.github.pkeppeler.deepcharter.creature;
  */
 public record CreatureTuning(float walkSpeed, int litBlockLight, int senseCheckTicks, int spawnIntervalTicks, double spawnRangeBlocks,
 		double spawnClearanceBlocks, int maxPerSite, int maxPerLevel, int respawnDelayTicks, float maxHealth, Cling cling, Natural natural) {
-	public static final CreatureTuning DEFAULT = new CreatureTuning(0.22f, 3, 5, 100, 96, 16, 1, 3, 400, 12f, Cling.DEFAULT, Natural.DEFAULT);
+	public static final CreatureTuning DEFAULT = new CreatureTuning(0.22f, 3, 5, 100, 96, 16, 1, 5, 400, 12f, Cling.DEFAULT, Natural.DEFAULT);
 
 	public CreatureTuning {
 		if (walkSpeed <= 0 || litBlockLight < 1 || litBlockLight > 15 || senseCheckTicks < 1 || spawnIntervalTicks < 1 || spawnRangeBlocks <= 0
@@ -52,16 +52,15 @@ public record CreatureTuning(float walkSpeed, int litBlockLight, int senseCheckT
 	}
 
 	/**
-	 * @param lampShare          the share of figures that carry a lamp
-	 * @param chancePerTry       the chance that a place the game tries for a natural spawn in layer 2, and that passes every rule, gets a figure
-	 * @param layerOneChancePerTry the same in layer 1, where a pilot is new and the run is short: rarer
+	 * @param chancePerTry       the chance that a place the game tries for a natural spawn in layer 2, and that passes every rule, gets a figure; the deeper layer rolls more often
+	 * @param layerOneChancePerTry the same in layer 1, where a pilot is newer and the runs short: rarer than layer 2, and a real presence all the same (#506)
 	 * @param roomBlocks         air blocks above the floor that a figure needs to appear
 	 */
-	public record Natural(double lampShare, double chancePerTry, double layerOneChancePerTry, int roomBlocks) {
-		public static final Natural DEFAULT = new Natural(0.35, 0.02, 0.005, 3);
+	public record Natural(double chancePerTry, double layerOneChancePerTry, int roomBlocks) {
+		public static final Natural DEFAULT = new Natural(0.05, 0.01, 3);
 
 		public Natural {
-			if (lampShare < 0 || lampShare > 1 || chancePerTry <= 0 || chancePerTry > 1 || layerOneChancePerTry <= 0
+			if (chancePerTry <= 0 || chancePerTry > 1 || layerOneChancePerTry <= 0
 					|| layerOneChancePerTry > chancePerTry || roomBlocks < 1) {
 				throw new IllegalArgumentException("natural spawn tuning out of range: " + this);
 			}
