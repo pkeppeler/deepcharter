@@ -365,10 +365,10 @@ public class SalvageBootstrapTest {
 				ServerPlayer player = mock.player();
 				Bag bag = new Bag(level);
 				for (int stalk = 0; stalk < 3; stalk++) {
-					drops(level, block("fungal_stalk"), stalk).forEach(bag::add);
+					drops(level, block("fungal_stalk"), stalk + 1).forEach(bag::add);
 				}
 				for (int rock = 0; rock < 20; rock++) {
-					drops(level, block("regolith_rock"), rock).forEach(bag::add);
+					drops(level, block("regolith_rock"), rock + 1).forEach(bag::add);
 				}
 				for (int crate = 0; crate < CRATES_FOR_FIRST_GOALS; crate++) {
 					drops(level, block("salvage_crate"), crate + 1).forEach(bag::add);
