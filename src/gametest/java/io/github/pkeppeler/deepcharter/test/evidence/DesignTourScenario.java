@@ -241,6 +241,7 @@ public class DesignTourScenario extends EvidenceScenario {
 		EvidencePins.handsHidden = true;
 		EvidencePins.entitiesPosed = true;
 		EvidencePins.figureSpawningOff = true;
+		EvidencePins.figureAnimationAge = 0f;
 		// The textures go back to their first frame on the next client tick.
 		ctx.waitTicks(2);
 	}

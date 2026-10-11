@@ -26,6 +26,12 @@ public final class EvidencePins {
 	/** The fade (0 whole to 1 gone) of a lampless figure; negative keeps its own. */
 	public static volatile float figureFade = -1f;
 
+	/**
+	 * The age in ticks that GeckoLib reads as the clock of a lampless figure's animation (0 or more); negative keeps the figure's own.
+	 * Pods keep their own.
+	 */
+	public static volatile float figureAnimationAge = -1f;
+
 	private EvidencePins() {
 	}
 
@@ -40,5 +46,6 @@ public final class EvidencePins {
 		entitiesPosed = false;
 		figureSpawningOff = false;
 		figureFade = -1f;
+		figureAnimationAge = -1f;
 	}
 }
