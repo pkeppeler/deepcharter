@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.util.function.BiConsumer;
+
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 
@@ -26,7 +28,6 @@ public class HudHiddenClientTest implements FabricClientGameTest {
 				setHidden(context, startsHidden);
 				requireRestoredAfterThrow(context, startsHidden);
 				requireRestoredAfterReturn(context, startsHidden);
-				requireShownRestoredAfterThrow(context, startsHidden);
 				requireNestingRestoresEachLevel(context, startsHidden);
 			}
 			requireParticlesRestoredAfterThrow(context);
@@ -36,26 +37,19 @@ public class HudHiddenClientTest implements FabricClientGameTest {
 	}
 
 	private static void requireRestoredAfterThrow(ClientGameTestContext context, boolean startsHidden) {
-		try {
-			ClientChecks.withHudHidden(context, () -> {
-				require(hidden(context), "The HUD should be hidden inside the body");
-				throw new Boom();
-			});
-			throw new AssertionError("The body's exception should leave withHudHidden");
-		} catch (Boom expected) {
-			require(hidden(context) == startsHidden, "After a throw the HUD should be back to hidden=" + startsHidden + ", was hidden=" + hidden(context));
-		}
+		requireRestoredAfterThrow(context, startsHidden, ClientChecks::withHudHidden, true);
+		requireRestoredAfterThrow(context, startsHidden, ClientChecks::withHudShown, false);
 	}
 
-	private static void requireShownRestoredAfterThrow(ClientGameTestContext context, boolean startsHidden) {
+	private static void requireRestoredAfterThrow(ClientGameTestContext context, boolean startsHidden, BiConsumer<ClientGameTestContext, Runnable> scope, boolean hiddenInside) {
 		try {
-			ClientChecks.withHudShown(context, () -> {
-				require(!hidden(context), "The HUD should be shown inside the body");
+			scope.accept(context, () -> {
+				require(hidden(context) == hiddenInside, "The HUD should be hidden=" + hiddenInside + " inside the body");
 				throw new Boom();
 			});
-			throw new AssertionError("The body's exception should leave withHudShown");
+			throw new AssertionError("The body's exception should leave the HUD scope");
 		} catch (Boom expected) {
-			require(hidden(context) == startsHidden, "After a throw the HUD should be back to hidden=" + startsHidden + ", was hidden=" + hidden(context));
+			requireHidden(context, startsHidden, "After a throw");
 		}
 	}
 
@@ -71,14 +65,14 @@ public class HudHiddenClientTest implements FabricClientGameTest {
 				require(hidden(context), "The HUD should be hidden again after the inner body threw");
 			}
 		});
-		require(hidden(context) == startsHidden, "After the nested bodies the HUD should be back to hidden=" + startsHidden + ", was hidden=" + hidden(context));
+		requireHidden(context, startsHidden, "After the nested bodies");
 	}
 
 	private static void requireRestoredAfterReturn(ClientGameTestContext context, boolean startsHidden) {
 		ClientChecks.withHudHidden(context, () -> require(hidden(context), "The HUD should be hidden inside the body"));
-		require(hidden(context) == startsHidden, "After the body the HUD should be back to hidden=" + startsHidden + ", was hidden=" + hidden(context));
+		requireHidden(context, startsHidden, "After the body");
 		ClientChecks.withHudShown(context, () -> require(!hidden(context), "The HUD should be shown inside the body"));
-		require(hidden(context) == startsHidden, "After a shown body the HUD should be back to hidden=" + startsHidden + ", was hidden=" + hidden(context));
+		requireHidden(context, startsHidden, "After a shown body");
 	}
 
 	private static void requireParticlesRestoredAfterThrow(ClientGameTestContext context) {
@@ -93,8 +87,12 @@ public class HudHiddenClientTest implements FabricClientGameTest {
 			throw new AssertionError("The body's exception should leave withHudHidden");
 		} catch (Boom expected) {
 			require(particles(context) == before, "After a throw the particle option should be back to " + before + ", was " + particles(context));
-			require(hidden(context) == hudBefore, "After a throw the HUD should be back to hidden=" + hudBefore + ", was hidden=" + hidden(context));
+			requireHidden(context, hudBefore, "After a throw");
 		}
+	}
+
+	private static void requireHidden(ClientGameTestContext context, boolean expected, String when) {
+		require(hidden(context) == expected, when + " the HUD should be back to hidden=" + expected + ", was hidden=" + hidden(context));
 	}
 
 	private static boolean hidden(ClientGameTestContext context) {
