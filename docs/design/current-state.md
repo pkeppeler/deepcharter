@@ -618,7 +618,7 @@ Only names and uses are given here. No audio is copied, played into a recording,
 ### Fonts
 
 Since #246 the mod ships one font: Unscii 2.1 (`unscii-8`, public domain), `assets/deepcharter/font/unscii-8.ttf`, as the font id `deepcharter:terminal` (`font/terminal.json`), set at size 6.
-Every terminal screen's text goes through it (`client/ui/CrtText.java`); it is used only while the machine panel is on. Every other screen and HUD uses vanilla's default font.
+Every terminal screen's text goes through it (`client/ui/CrtText.java`); it is used only while a terminal screen is open with the machine panel on. Every other screen and HUD uses vanilla's default font.
 The CRT glow is made by drawing the font in green with a 1-pixel halo (`client/ui/CrtDraw.java:29-34`). Vanilla: **yes** (the font of everything but the terminals). Swap **(a)** a resource-pack font
 (a pack's own `font/terminal.json` adds providers, which the game tries before Unscii); the halo is **(c)**.
 

@@ -10,6 +10,7 @@
 - `font/terminal.json` points the font id `deepcharter:terminal` at Unscii (below).
 - `tools/terminal_concepts.py` writes the sprites and `panel.json`; `--check` (and a unit test) fails when a committed file differs from what it makes. `--preview DIR` writes a mock of the panel without starting the game.
 - The seven terminal screens: the hangar console, the ore processor, the upgrade terminal, the repair station, the contract terminal, the fuel pump and the generic terminal. The `terminal-panel` evidence scenario shoots them all; `TerminalPanelClientTest` holds each inside the panel's content rectangle.
+- **Only terminal screens.** `CrtScreen` is marked `PanelScreen`; `PanelLook.drawn()` is true only while one is open. The HUD (the account line, the transmission overlay) and every other screen keep the game's font.
 - **Small GUIs.** The screens need 288 x 192 of content, so on a GUI that leaves less inside the panel's insets (the game's smallest, 320 x 240, leaves 240 x 192) a screen is the plain CRT in the game's font. `PanelLook.fits` decides; every screen and button asks `PanelLook.drawn()`. A pack with thinner insets gets the panel on smaller GUIs.
 - The handbook keeps its paper, as section 7 decided. The panel does not touch it.
 
