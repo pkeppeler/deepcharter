@@ -24,7 +24,6 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
-import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonyEvents;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
@@ -57,11 +56,6 @@ public final class Hangar {
 		TerminalEvents.REPAIRED.register(Hangar::onRepaired);
 		ServerEntityEvents.ENTITY_LOAD.register(Hangar::onLoad);
 		PodEvents.REGISTERED.register(Hangar::onRegistered);
-	}
-
-	/** Where the console stands: beside the hangar bay. Empty before the colony is built. */
-	public static Optional<BlockPos> consolePos(MinecraftServer server) {
-		return Colony.anchor(server, ColonyAnchor.HANGAR).map(anchor -> anchor.offset(CONSOLE_OFFSET));
 	}
 
 	/**
@@ -97,11 +91,6 @@ public final class Hangar {
 			BlockState state = HangarTerminal.TYPE.block().defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.WEST);
 			level.setBlock(console, state, 3);
 		}
-	}
-
-	/** The founding Mole, if it is placed and loaded. */
-	public static Optional<PodEntity> derelict(MinecraftServer server) {
-		return HangarData.readable(server).flatMap(data -> data.state().derelict()).flatMap(id -> podOf(server, id));
 	}
 
 	private static Optional<PodEntity> podOf(MinecraftServer server, UUID id) {

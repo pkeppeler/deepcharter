@@ -57,7 +57,6 @@ import io.github.pkeppeler.deepcharter.colony.ColonyEvents;
 import io.github.pkeppeler.deepcharter.colony.ColonyKit;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.colony.ColonyTuning;
-import io.github.pkeppeler.deepcharter.hangar.Hangar;
 import io.github.pkeppeler.deepcharter.hangar.HangarData;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
@@ -74,6 +73,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -379,7 +379,7 @@ public class ColonyTest {
 	public void aBuildThatStoppedHalfWayKeepsTheHangarConsoleItsRepairAndItsDerelict(GameTestHelper helper) {
 		MinecraftServer server = server(helper);
 		ServerLevel overworld = server.overworld();
-		BlockPos console = Hangar.consolePos(server).orElseThrow(() -> failure(helper, "the colony has no hangar"));
+		BlockPos console = HangarConsole.find(server).orElseThrow(() -> failure(helper, "the colony has no hangar"));
 		whenThePadTicks(helper, placed(helper), () -> rebuildKeepingTheHangar(helper, server, overworld, console));
 	}
 

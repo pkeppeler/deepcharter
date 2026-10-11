@@ -55,6 +55,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.M2SliceEndState;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -317,7 +318,7 @@ public class M2SliceTest {
 				pods.forEach(PodEntity::discard);
 				director.leave();
 				crew.leave();
-				FounderStatue.removeHands(server);
+				ColonyChunks.removeHands(server);
 				if (hadHands) {
 					FounderStatue.restoreHands(server);
 				}
