@@ -24,6 +24,7 @@ public final class ColonyBlocks {
 	public static final Block CONDUIT = register("conduit", SoundType.METAL, Block::new);
 
 	/** The Company's caged sodium lamp, lit or dark. Nothing places it yet: the colony rebuild (#244) and lighting (#248) will. */
+	// test-seam: TextureLayersScenario reads the registered handle
 	public static final Block COMPANY_LAMP = register("company_lamp", SoundType.LANTERN, properties -> new CompanyLamp(properties.noOcclusion()));
 
 	private ColonyBlocks() {

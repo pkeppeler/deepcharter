@@ -77,10 +77,12 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 		return view.feature(UpgradeView.class);
 	}
 
+	// test-seam: TerminalPanelUseScenario asserts on it
 	public ComponentTrack selected() {
 		return selected;
 	}
 
+	// test-seam: client tests finish the typewriter before they assert on the screen
 	public Typewriter typewriter() {
 		return typewriter;
 	}

@@ -190,6 +190,7 @@ public final class TransmissionData extends SavedData {
 	}
 
 	/** The repair transmissions fired live so far, in the order they first fired. */
+	// test-seam: TransmissionsTest asserts on it
 	public List<Identifier> replays() {
 		return List.copyOf(live().replays());
 	}

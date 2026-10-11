@@ -48,10 +48,12 @@ public final class ZoneBiomeSource extends BiomeSource implements BiomeResolver 
 		this.biomes = List.copyOf(biomes);
 	}
 
+	// test-seam: LayerTerrainTest asserts on it
 	public int minY() {
 		return minY;
 	}
 
+	// test-seam: LayerTerrainTest asserts on it
 	public int height() {
 		return height;
 	}

@@ -114,6 +114,7 @@ public final class OreCargoMenu extends AbstractContainerMenu {
 	}
 
 	/** The ore the bay holds, in slot order. */
+	// test-seam: OreCargoTest asserts on it
 	public List<ItemStack> shownOre() {
 		return view.getItems().stream().filter(stack -> !stack.isEmpty()).map(ItemStack::copy).toList();
 	}

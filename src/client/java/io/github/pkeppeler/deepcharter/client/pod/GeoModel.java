@@ -165,6 +165,7 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 	}
 
 	/** True for a bone that is a cutter's own, or under one: {@code drill_head}, {@code drill_ring} and what rides them, of the cutter {@code cutter} (null: of any). */
+	// test-seam: PodGeckoLibClientTest asserts on it
 	public boolean inCutter(Bone bone, String cutter) {
 		Map<String, Bone> byName = new HashMap<>();
 		bones.forEach(each -> byName.put(each.name(), each));
@@ -244,6 +245,7 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 	 * cube's corners turned by its own rotation and its bones'. A turned cube is held by the box of its turned corners, which holds it
 	 * and a little more, so a test that a point is clear of every cube errs towards "not clear".
 	 */
+	// test-seam: PodSeatsClientTest asserts on it
 	public List<RestCube> restCubes(Predicate<Bone> only) {
 		return restCubes(only, OptionalDouble.empty());
 	}

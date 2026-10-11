@@ -52,6 +52,7 @@ public final class Notes {
 	}
 
 	/** Every Note that has text, in Note order. */
+	// test-seam: screen and layout tests open every note
 	public static List<Identifier> all() {
 		return ALL;
 	}

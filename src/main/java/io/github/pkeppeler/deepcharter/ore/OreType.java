@@ -33,6 +33,7 @@ public enum OreType {
 	}
 
 	/** The original's mass for one, before scaling to pod units. */
+	// test-seam: OreCargoTest asserts on it
 	public int referenceMass() {
 		return referenceMass;
 	}

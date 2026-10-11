@@ -76,14 +76,17 @@ public final class TerminalScreen extends CrtScreen implements TerminalViewScree
 		rebuildWidgets();
 	}
 
+	// test-seam: TerminalFrameworkScenario reads the view the screen was opened with
 	public TerminalView view() {
 		return view;
 	}
 
+	// test-seam: TerminalFrameworkClientTest asserts on it
 	public boolean online() {
 		return view.repaired();
 	}
 
+	// test-seam: client tests finish the typewriter before they assert on the screen
 	public Typewriter typewriter() {
 		return typewriter;
 	}

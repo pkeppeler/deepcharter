@@ -66,6 +66,7 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 		rebuildWidgets();
 	}
 
+	// test-seam: client tests finish the typewriter before they assert on the screen
 	public Typewriter typewriter() {
 		return typewriter;
 	}
@@ -117,6 +118,7 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 	}
 
 	/** The y below the header text once the welcome has typed out in full: the welcome lines, then the account line. */
+	// test-seam: HangarClientTest asserts on it
 	public int headerBottom() {
 		int welcomeLines = CrtText.wrap(font, typewriter.text(), contentWidth(MARGIN)).size();
 		int welcomeBottom = contentTop(MARGIN) + font.lineHeight + 14 + Math.max(welcomeLines, 1) * (font.lineHeight + CrtTuning.current().lineSpacing());
@@ -124,11 +126,13 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 	}
 
 	/** The restore prices as drawn, one entry per wrapped line. */
+	// test-seam: HangarClientTest asserts on it
 	public List<PriceLine> priceLines() {
 		return priceLines;
 	}
 
 	/** The line of the Company's advance as drawn, one entry per wrapped line; empty once the charter's advance is used. */
+	// test-seam: HangarClientTest asserts on it
 	public List<PriceLine> advanceLines() {
 		return advanceLines;
 	}
