@@ -22,7 +22,6 @@ figure's left toward +x. A bone's rest rotation and an animation's rotation are 
 forward and swings the foot of a hanging bone back.
 """
 import argparse
-import json
 import math
 import random
 import sys
