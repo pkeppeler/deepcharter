@@ -38,6 +38,7 @@ SCREEN_W, SCREEN_H = 427, 240
 # (tier 1 at 2 pixels a cell, the others at 1) and not tier 4.
 SCANNER_W, SCANNER_H = 98, 82
 TITLE_H = 12
+BEZEL_RADIUS = 3
 # The scanner may be big; the status may not (docs/design/cockpit-concepts-2.md): the most of a 427 x 240 screen that the status housings and the plate of a compact look take.
 STATUS_BUDGET = 0.09
 
@@ -177,7 +178,7 @@ def rect_planes(x0, y0, x1, y1):
     return [(-1, 0, -x0), (1, 0, x1), (0, -1, -y0), (0, 1, y1)]
 
 
-def frame_image(w, h, distance, rng, bevel=3.0):
+def frame_image(w, h, distance, rng, bevel):
     """A plate with a see-through opening: a black gasket against the opening, a bevel lit from the top left, then brushed steel. Every pixel depends on its distance
     from the opening, so the edges of a nine-slice tile without a step."""
     img = Img(w, h)
@@ -237,12 +238,6 @@ def well(img, x, y, w, h):
     img.vline(x + w, y - 1, h + 2, H[4])
 
 
-def engrave(img, x, y, text, ink=None):
-    """Engraved capitals: a light edge below and to the right of the dark ink."""
-    img.text(x + 1, y + 1, text, rgb("#ffffff", 70))
-    img.text(x, y, text, ink or H[0])
-
-
 def text_width(text):
     return 6 * len(text) - 1
 
@@ -259,8 +254,8 @@ def pin(img, cx, cy):
 
 
 
-def scanner_bezel(w, round_radius, rng, cuts=(0, 0, 0, 0), margin=7):
-    """The frame of the scanner window: steel with a see-through window SCANNER_W x SCANNER_H, `margin` pixels from the top, whose corners are rounded to `round_radius`,
+def scanner_bezel(w, rng, cuts=(0, 0, 0, 0), margin=7):
+    """The frame of the scanner window: steel with a see-through window SCANNER_W x SCANNER_H, `margin` pixels from the top, whose corners are rounded,
     a recessed strip under it for the title, and screws in the corners. Returns the image and the window's top left."""
     gap = (margin + 1) // 2
     h = margin + SCANNER_H + gap + TITLE_H + margin
@@ -268,16 +263,16 @@ def scanner_bezel(w, round_radius, rng, cuts=(0, 0, 0, 0), margin=7):
     wx, wy = (w - SCANNER_W) // 2, margin
     for y in range(SCANNER_H):
         for x in range(SCANNER_W):
-            cx = min(max(x + 0.5, round_radius), SCANNER_W - round_radius)
-            cy = min(max(y + 0.5, round_radius), SCANNER_H - round_radius)
-            if math.hypot(x + 0.5 - cx, y + 0.5 - cy) <= round_radius:
+            cx = min(max(x + 0.5, BEZEL_RADIUS), SCANNER_W - BEZEL_RADIUS)
+            cy = min(max(y + 0.5, BEZEL_RADIUS), SCANNER_H - BEZEL_RADIUS)
+            if math.hypot(x + 0.5 - cx, y + 0.5 - cy) <= BEZEL_RADIUS:
                 img.set(wx + x, wy + y, (0, 0, 0, 0))
     for y in range(-2, SCANNER_H + 2):  # a black gasket and a lit lower edge round the window
         for x in range(-2, SCANNER_W + 2):
             if img.get(wx + x, wy + y)[3] == 0:
                 continue
-            near = min(math.hypot(x + 0.5 - min(max(x + 0.5, round_radius), SCANNER_W - round_radius),
-                                  y + 0.5 - min(max(y + 0.5, round_radius), SCANNER_H - round_radius)) - round_radius, 9)
+            near = min(math.hypot(x + 0.5 - min(max(x + 0.5, BEZEL_RADIUS), SCANNER_W - BEZEL_RADIUS),
+                                  y + 0.5 - min(max(y + 0.5, BEZEL_RADIUS), SCANNER_H - BEZEL_RADIUS)) - BEZEL_RADIUS, 9)
             if 0 < near < 1.6:
                 img.set(wx + x, wy + y, H[0])
             elif 1.6 <= near < 2.6:
@@ -313,7 +308,9 @@ def readout_plate():
 
 
 def bar_labels(img, x, y, text):
-    engrave(img, x, y, text, H[7])
+    """Engraved capitals: a light edge below and to the right of the dark ink."""
+    img.text(x + 1, y + 1, text, rgb("#ffffff", 70))
+    img.text(x, y, text, H[7])
 
 
 
@@ -373,7 +370,7 @@ def consoles():
 
     # The right console: the scanner viewscreen on top, depth and heat below it.
     rw = 124
-    cap, (wx, wy) = scanner_bezel(rw, 3, random.Random(444_24), (12, 0, 0, 0))
+    cap, (wx, wy) = scanner_bezel(rw, random.Random(444_24), (12, 0, 0, 0))
     rh = cap.h + 8 + bar_h // 2 + 22
     right_console = slab(rw, rh, (12, 0, 0, 0), random.Random(444_25))
     right_place = Placed(rw, rh, 2, 2, 0, 0)
@@ -400,7 +397,7 @@ def consoles():
 
 def scanner_piece(look, rng, w, cuts, place_at, margin=7):
     """Draws the scanner bezel w wide into the look and places it by `place_at` (anchorX, anchorY, x, y)."""
-    cap, (wx, wy) = scanner_bezel(w, 3, rng, cuts, margin)
+    cap, (wx, wy) = scanner_bezel(w, rng, cuts, margin)
     cap_place = Placed(w, cap.h, *place_at)
     look.sprite("cap", Sprite(cap), cap_place)
     look.decal("cap", cap_place)

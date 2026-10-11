@@ -191,6 +191,10 @@ public final class CockpitHud {
 
 	/** One row of the plate: parts drawn side by side, each in its colour, {@link CockpitLook#tallyGap} apart. */
 	public record Row(List<Line> parts) {
+		static Row of(Line line) {
+			return new Row(List.of(line));
+		}
+
 		int width(Font font, int gap) {
 			int width = gap * (parts.size() - 1);
 			for (Line part : parts) {
@@ -208,8 +212,8 @@ public final class CockpitHud {
 	public static List<Row> rows(PodEntity pod, CockpitReading reading, Layout layout, CockpitLook look, List<Line> readout) {
 		Optional<Line> account = AccountHud.text().map(text -> new Line(text, HudLook.current().accountColor()));
 		if (!layout.compact()) {
-			List<Row> rows = new ArrayList<>(readout.stream().map(line -> new Row(List.of(line))).toList());
-			account.ifPresent(line -> rows.add(new Row(List.of(line))));
+			List<Row> rows = new ArrayList<>(readout.stream().map(Row::of).toList());
+			account.ifPresent(line -> rows.add(Row.of(line)));
 			return rows;
 		}
 		boolean fuelLow = PodFuel.isLow(pod.fuel());
@@ -219,8 +223,8 @@ public final class CockpitHud {
 				new Line(Component.translatable("hud.deepcharter.pod.tally_fuel", Math.round(pod.fuel())), fuelLow ? look.lowColor() : look.fuelColor()),
 				new Line(Component.translatable("hud.deepcharter.pod.tally_cargo", pod.cargoUsed()), look.cargoColor()),
 				new Line(Component.translatable("hud.deepcharter.pod.tally_depth", Math.round(pod.getY())), look.depthColor())))));
-		account.ifPresent(line -> base.add(new Row(List.of(line))));
-		List<Row> extra = readout.stream().filter(line -> line.kind() != Kind.BASE).map(line -> new Row(List.of(line))).toList();
+		account.ifPresent(line -> base.add(Row.of(line)));
+		List<Row> extra = readout.stream().filter(line -> line.kind() != Kind.BASE).map(Row::of).toList();
 		List<Row> rows = new ArrayList<>();
 		boolean fromBottom = layout.readout().anchorY() == 2;
 		rows.addAll(fromBottom ? extra : base);
