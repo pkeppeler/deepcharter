@@ -116,7 +116,7 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
 		BlockPos floor = server.computeOnServer(s -> surface(s.overworld(), player(s).blockPosition().offset(-30, 0, 0)));
 		arrive(context, server, Level.OVERWORLD, floor.above(6).offset(6, 0, 0));
 		server.runOnServer(s -> carveRoom(s.overworld(), floor));
-		require(settled(context, server, Level.OVERWORLD, room(floor)).isEmpty(), "the room to be in step before the dig");
+		require(ClientLight.settledMismatch(context, server, Level.OVERWORLD, room(floor)).isEmpty(), "the room to be in step before the dig");
 		BlockPos roof = floor.above(HEIGHT + 1);
 		server.runOnServer(s -> {
 			if (!player(s).gameMode.destroyBlock(roof)) {
@@ -148,18 +148,15 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
 			}
 		});
 		BlockPos stand = floor.above(HEIGHT + 3).offset(10, 0, 0);
-		if (sameTick) {
-			// The breach: the pocket is carved and the player teleported in one server task.
-			server.runOnServer(s -> {
-				carveRoom(s.overworld(), floor);
-				LightSync.holdSendUntilLit(s.overworld(), room(floor).min(), room(floor).max());
+		// The breach (sameTick): the pocket is carved and the player teleported in one server task.
+		server.runOnServer(s -> {
+			carveRoom(s.overworld(), floor);
+			LightSync.holdSendUntilLit(s.overworld(), room(floor).min(), room(floor).max());
+			if (sameTick) {
 				teleport(s, s.overworld(), stand);
-			});
-		} else {
-			server.runOnServer(s -> {
-				carveRoom(s.overworld(), floor);
-				LightSync.holdSendUntilLit(s.overworld(), room(floor).min(), room(floor).max());
-			});
+			}
+		});
+		if (!sameTick) {
 			ClientWait.until(context, "the server's light engine to be idle", () -> ClientLight.serverLightIdle(context, server), () -> "light work pending");
 			server.runOnServer(s -> teleport(s, s.overworld(), stand));
 		}
@@ -206,7 +203,7 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
 				s.overworld().setBlock(pos, Blocks.AIR.defaultBlockState(), 2); // room-carver: the overworld's colony pad, not layer rock
 			}
 		});
-		Optional<String> wiped = settled(context, server, Level.OVERWORLD, box);
+		Optional<String> wiped = ClientLight.settledMismatch(context, server, Level.OVERWORLD, box);
 		require(wiped.isEmpty(), "the wiped piece " + piece.structure() + " to be in step: " + wiped.orElse(""));
 		server.runOnServer(s -> {
 			StructureTemplate template = s.getStructureTemplateManager().get(piece.structure()).orElseThrow();
@@ -268,11 +265,7 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
 	// ---------------------------------------------------------------------------------------------- helpers
 
 	private void record(String path, ClientGameTestContext context, TestServerContext server, ResourceKey<Level> dimension, Box box) {
-		results.add(new Result(path, settled(context, server, dimension, box)));
-	}
-
-	private static Optional<String> settled(ClientGameTestContext context, TestServerContext server, ResourceKey<Level> dimension, Box box) {
-		return ClientLight.settledMismatch(context, server, dimension, box);
+		results.add(new Result(path, ClientLight.settledMismatch(context, server, dimension, box)));
 	}
 
 	/** Moves the player to {@code at} in {@code dimension} and waits until the client has the chunk, so the player is in range. */

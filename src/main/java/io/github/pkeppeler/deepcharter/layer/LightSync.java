@@ -14,11 +14,7 @@ public final class LightSync {
 
 	/** As {@link #holdSendUntilLit(ServerLevel, ChunkPos)}, for every chunk the box touches. */
 	public static void holdSendUntilLit(ServerLevel level, BlockPos min, BlockPos max) {
-		for (int chunkX = min.getX() >> 4; chunkX <= max.getX() >> 4; chunkX++) {
-			for (int chunkZ = min.getZ() >> 4; chunkZ <= max.getZ() >> 4; chunkZ++) {
-				holdSendUntilLit(level, new ChunkPos(chunkX, chunkZ));
-			}
-		}
+		ChunkPos.rangeClosed(ChunkPos.containing(min), ChunkPos.containing(max)).forEach(chunk -> holdSendUntilLit(level, chunk));
 	}
 
 	/**

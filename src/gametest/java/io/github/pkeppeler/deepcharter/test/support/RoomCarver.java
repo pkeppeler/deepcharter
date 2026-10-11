@@ -44,7 +44,6 @@ public final class RoomCarver {
 		for (BlockPos pos : BlockPos.betweenClosed(min, max)) {
 			level.setBlock(pos, fill, flags);
 		}
-		// A client sent a chunk of the room while its light is pending keeps the old light (issue 427).
 		LightSync.holdSendUntilLit(level, min.offset(-1, -1, -1), max.offset(1, 1, 1));
 	}
 

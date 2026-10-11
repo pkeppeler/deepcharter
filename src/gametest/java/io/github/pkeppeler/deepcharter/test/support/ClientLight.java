@@ -9,6 +9,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
 
@@ -94,14 +95,7 @@ public final class ClientLight {
 
 	/** True when the level holds every chunk the box touches. */
 	public static boolean chunksPresent(Level level, Box box) {
-		for (int chunkX = box.min().getX() >> 4; chunkX <= box.max().getX() >> 4; chunkX++) {
-			for (int chunkZ = box.min().getZ() >> 4; chunkZ <= box.max().getZ() >> 4; chunkZ++) {
-				if (!level.getChunkSource().hasChunk(chunkX, chunkZ)) {
-					return false;
-				}
-			}
-		}
-		return true;
+		return ChunkPos.rangeClosed(ChunkPos.containing(box.min()), ChunkPos.containing(box.max())).allMatch(chunk -> level.getChunkSource().hasChunk(chunk.x(), chunk.z()));
 	}
 
 	/** True when no level of the server has light work pending. */
