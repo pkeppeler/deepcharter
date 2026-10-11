@@ -33,7 +33,8 @@ import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 /**
  * Evidence scenario "cockpit-concepts" for #444 (docs/design/cockpit-concepts.md), the concept round of #247: each cockpit HUD option from the seat of a Mole with a
  * scanner, in a sealed stone room, at GUI scale 2, in four states: calm, low fuel, hull burning (lava under the pod) and deep (the last layer's floor); and once on
- * foot beside the pod, where the vanilla HUD is back. The HUD as it is now is shot the same way, as the first option. Then the densest option once at GUI scale 3. The options are
+ * foot beside the pod, where the vanilla HUD is back. The HUD as it is now is shot the same way, as the first option. Each cockpit option is also shot calm at GUI scale 3 (a
+ * 284 x 160 GUI on the 854 x 480 window, smaller than the 320 x 240 the game allows, so a stress shot) and at GUI scale 1. The options are
  * test packs that only this scenario turns on, so nothing a player sees has changed. Stills are named {@code <option>-<state>}; the options are
  * {@code current}, {@code dials}, {@code strip} and {@code consoles}, and {@code DEEPCHARTER_COCKPIT_OPTIONS=strip,consoles} shoots only those.
  */
@@ -44,8 +45,6 @@ public class CockpitConceptsScenario extends EvidenceScenario {
 
 	private static final List<Option> OPTIONS = List.of(new Option("current", null), new Option("dials", TestPacks.COCKPIT_DIALS),
 			new Option("strip", TestPacks.COCKPIT_STRIP), new Option("consoles", TestPacks.COCKPIT_CONSOLES));
-	/** The option that has the most on screen, so the one shot at GUI scale 3. */
-	private static final String DENSEST = "consoles";
 
 	private static final int X = 5000;
 	private static final int Z = 5000;
@@ -56,7 +55,7 @@ public class CockpitConceptsScenario extends EvidenceScenario {
 	private static final int ROOM_HEIGHT = 8;
 	private static final int LAVA_RADIUS = 2;
 	private static final int GUI_SCALE = 2;
-	private static final int DENSE_GUI_SCALE = 3;
+	private static final int LARGE_GUI_SCALE = 3;
 	private static final int SETTLE_TICKS = 25;
 	private static final int COOL_TICKS = 70;
 	private static final int TRANSMISSION_TICKS = 60;
@@ -135,9 +134,11 @@ public class CockpitConceptsScenario extends EvidenceScenario {
 			pod.setFuel(CALM_FUEL);
 		});
 		shoot(context, option.slug() + "-calm");
-		if (option.slug().equals(DENSEST)) {
-			context.runOnClient(client -> client.getWindow().setGuiScale(DENSE_GUI_SCALE));
+		if (option.pack() != null) {
+			context.runOnClient(client -> client.getWindow().setGuiScale(LARGE_GUI_SCALE));
 			shoot(context, option.slug() + "-calm-scale3");
+			context.runOnClient(client -> client.getWindow().setGuiScale(1));
+			shoot(context, option.slug() + "-calm-scale1");
 			context.runOnClient(client -> client.getWindow().setGuiScale(GUI_SCALE));
 		}
 		singleplayer.getServer().runOnServer(server -> pod.setFuel(LOW_FUEL));

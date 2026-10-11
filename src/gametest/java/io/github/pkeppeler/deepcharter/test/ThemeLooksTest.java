@@ -279,7 +279,7 @@ public class ThemeLooksTest {
 				}
 			}
 			if (layout.scanner().width() != 98 || layout.scanner().height() != 82) {
-				throw fail(helper, "the scanner window holds a tier 1 and a tier 2 slice whole, 98 x 82, got " + layout.scanner());
+				throw fail(helper, "the scanner window holds the slices of tiers 1 to 3 whole, 98 x 82, got " + layout.scanner());
 			}
 		}
 		if (!look.consoles().sprite("frame").toString().equals("deepcharter:cockpit/consoles/frame")) {

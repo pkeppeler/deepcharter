@@ -32,7 +32,8 @@ THEME = ASSETS / "theme/cockpit.json"
 # The screen the preview is drawn on and the layouts are made for: an 854 x 480 window at GUI scale 2.
 SCREEN_W, SCREEN_H = 427, 240
 
-# What the scanner needs: the cells of a tier 1 slice are 49 x 41, a tier 2 slice 97 x 81, so a window of 98 x 82 holds either whole (at 2 and 1 pixels a cell).
+# What the scanner needs: a tier 1 slice is 49 x 41 cells, tier 2 73 x 61, tier 3 97 x 81 and tier 4 145 x 121, so a window of 98 x 82 holds tiers 1 to 3 whole
+# (tier 1 at 2 pixels a cell, the others at 1) and not tier 4.
 SCANNER_W, SCANNER_H = 98, 82
 TITLE_H = 12
 
@@ -400,7 +401,7 @@ def dials():
 def strip():
     look = Look("strip")
     rng = random.Random(444_11)
-    left, top, right, bottom, mid_w, mid_h = 20, 20, 20, 48, 32, 16
+    left, top, right, bottom, mid_w, mid_h = 20, 20, 20, 56, 32, 16
     w, h = left + mid_w + right, top + mid_h + bottom
     x0, y0, x1, y1 = 6, 8, w - 6, h - 40
     planes = rect_planes(x0, y0, x1, y1) + [diagonal("tl", x0, y0, x1, y1, 8), diagonal("tr", x0, y0, x1, y1, 8), diagonal("br", x0, y0, x1, y1, 12),

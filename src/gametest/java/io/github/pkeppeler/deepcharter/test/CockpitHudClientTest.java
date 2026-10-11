@@ -52,9 +52,12 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 	/** The middle of the bottom of the screen at GUI scale 2 (427 x 240): where the hotbar, the hearts, the held item name and the action bar are, clear of every console. */
 	private static final int[] VANILLA_BOX = {126, 165, 298, 232};
 	private static final int GUI_SCALE = 2;
-	/** Where a shot of the cockpit and a shot of the bare game may differ in the vanilla box: the pod's own idle sway. The vanilla HUD differs there by far more. */
-	private static final double SAME = 0.005;
-	private static final double DIFFERENT = 0.05;
+	/**
+	 * How much of the vanilla box may differ between a shot of the cockpit and a shot of the bare game (the pod's idle pose moves a few pixels between shots:
+	 * 1.5 % measured), and how much must differ when the vanilla HUD is drawn there (the hotbar and the hearts alone are a third of it).
+	 */
+	private static final double SAME = 0.03;
+	private static final double DIFFERENT = 0.10;
 	private static final String MESSAGE = "Press Left Shift to dismount";
 
 	@Override
