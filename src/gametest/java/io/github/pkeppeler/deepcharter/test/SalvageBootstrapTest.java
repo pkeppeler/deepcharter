@@ -49,6 +49,7 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.colony.ColonyTuning;
 import io.github.pkeppeler.deepcharter.hangar.HangarData;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
@@ -76,7 +77,7 @@ public class SalvageBootstrapTest {
 	/** The crates at least this far out are beyond the colony pad (ADR 0036: flat to 56 blocks), so the crates are not only at the colony. */
 	private static final int PAD_RADIUS = 56;
 	/** What a survey of the sample world found with its fixed seed; the tests allow half of it. */
-	private static final int CRATES_BEYOND_THE_PAD = 150;
+	private static final int CRATES_BEYOND_THE_PAD = 160;
 	private static final int STALK_COLUMNS = 40;
 	/** A plains block's top is no lower than 61 (ground 64 less the rolling plains' 2.6), so a stalk's base this low or lower is a crater's. */
 	private static final int HIGHEST_STALK_BASE = 60;
@@ -105,11 +106,20 @@ public class SalvageBootstrapTest {
 		return BuiltInRegistries.ITEM.getValue(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
 	}
 
-	/** The yard's radius, read from the shipped density function that picks it: the one tuning value. */
+	/** The yard's outer radius, read from the shipped density function that picks it: a tuning value. */
 	private static int yardRadius() {
+		return yardBound("max_exclusive");
+	}
+
+	/** The yard's inner radius: no crate stands nearer the colony, whose pad and graded margin it clears. */
+	private static int yardInnerRadius() {
+		return yardBound("min_inclusive");
+	}
+
+	private static int yardBound(String key) {
 		try (var stream = SalvageBootstrapTest.class.getResourceAsStream("/data/deepcharter/worldgen/density_function/surface/yard.json")) {
 			JsonObject yard = JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8)).getAsJsonObject();
-			return yard.get("max_exclusive").getAsInt();
+			return yard.get(key).getAsInt();
 		} catch (IOException e) {
 			throw new IllegalStateException(e);
 		}
@@ -154,7 +164,17 @@ public class SalvageBootstrapTest {
 		List<BlockPos> crates = find(level, SURVEY_CHUNKS, block("salvage_crate"));
 		List<BlockPos> beyondThePad = crates.stream().filter(pos -> distance(pos) >= PAD_RADIUS).toList();
 		double farthest = crates.stream().mapToDouble(SalvageBootstrapTest::distance).max().orElse(0);
+		int inner = yardInnerRadius();
 		double nearestOutside = crates.stream().filter(pos -> distance(pos) >= radius + EDGE_SLACK).count();
+		long insideTheRing = crates.stream().filter(pos -> distance(pos) < inner - EDGE_SLACK).count();
+		int padCorner = (int) Math.ceil(ColonyTuning.DEFAULT.padSize() / 2.0 * Math.sqrt(2));
+		if (inner - EDGE_SLACK < padCorner + ColonyTuning.DEFAULT.edgeMargin()) {
+			throw helper.assertionException("the yard starts at %s, so a crate can stand %s from the centre: the pad's corner is at %s and its graded margin is %s more",
+					inner, inner - EDGE_SLACK, padCorner, ColonyTuning.DEFAULT.edgeMargin());
+		}
+		if (insideTheRing > 0) {
+			throw helper.assertionException("%s crates stand nearer than %s blocks to the colony, inside its pad or graded margin", insideTheRing, inner - EDGE_SLACK);
+		}
 		LOGGER.info("[salvage] yard radius {}: {} crates, {} beyond the pad, the farthest at {} blocks", radius, crates.size(), beyondThePad.size(), farthest);
 		if (beyondThePad.size() < CRATES_BEYOND_THE_PAD / 2) {
 			throw helper.assertionException("the yard holds %s crates beyond the colony pad, expected at least %s", beyondThePad.size(), CRATES_BEYOND_THE_PAD / 2);
@@ -169,7 +189,7 @@ public class SalvageBootstrapTest {
 		helper.succeed();
 	}
 
-	/** The yard's edge is read in biome cells of 4 blocks, at the corner of each, so it is exact to a cell: a block a cell and a block inside is in, a cell outside is out. */
+	/** The yard's edges are read in biome cells of 4 blocks, at the corner of each, so it is exact to a cell: a block a cell and a block inside is in, a cell outside is out. */
 	@GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
 	public void theYardEndsAtItsRadiusOnTheBlock(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
@@ -177,6 +197,15 @@ public class SalvageBootstrapTest {
 		for (int[] direction : new int[][] {{1, 0}, {0, -1}, {-1, 0}}) {
 			BlockPos inside = new BlockPos(direction[0] * (radius - BIOME_CELL - 1), 64, direction[1] * (radius - BIOME_CELL - 1));
 			BlockPos outside = new BlockPos(direction[0] * (radius + BIOME_CELL), 64, direction[1] * (radius + BIOME_CELL));
+			int inner = yardInnerRadius();
+			BlockPos within = new BlockPos(direction[0] * (inner + 2 * BIOME_CELL), 64, direction[1] * (inner + 2 * BIOME_CELL));
+			BlockPos without = new BlockPos(direction[0] * (inner - 2 * BIOME_CELL), 64, direction[1] * (inner - 2 * BIOME_CELL));
+			level.getChunkAt(within);
+			level.getChunkAt(without);
+			if (!level.getBiome(within).unwrapKey().orElseThrow().identifier().toString().equals("deepcharter:salvage_yard")
+					|| level.getBiome(without).unwrapKey().orElseThrow().identifier().toString().equals("deepcharter:salvage_yard")) {
+				throw helper.assertionException("the yard should begin between %s and %s", without.toShortString(), within.toShortString());
+			}
 			level.getChunkAt(inside);
 			level.getChunkAt(outside);
 			String insideBiome = level.getBiome(inside).unwrapKey().orElseThrow().identifier().toString();

@@ -125,7 +125,7 @@ Rules for all areas:
 - **Tools:** loot tables, worldgen features, handbook chapter data.
 - **Skin and data:** `data/deepcharter/loot_table/**`, `data/deepcharter/worldgen/**`, `data/deepcharter/handbook/**` (chapter 1 directives change).
 - **Not chosen:** a terraformed pocket with imported trees (brings green back into the first frame), a supply drop with a starter crate.
-- **Built in [#245](https://github.com/pkeppeler/deepcharter/issues/245)** ([salvage-concepts.md](salvage-concepts.md), [ADR 0047](../adr/0047-the-surface-has-no-ore-the-bootstraps-metal-is-salvage-and-the-yard-is-a-biome.md)): the crates lie within 120 blocks of the colony, the stalks grow on crater floors and in the caves of layer 1, and early metal is salvage: scrap iron and copper from the crates, melted in a furnace. The surface has no ore. Three shapes of the crate and three of the stalk were shot as options, one of each shipped, the rest test packs.
+- **Built in [#245](https://github.com/pkeppeler/deepcharter/issues/245)** ([salvage-concepts.md](salvage-concepts.md), [ADR 0047](../adr/0047-the-surface-has-no-ore-the-bootstraps-metal-is-salvage-and-the-yard-is-a-biome.md)): the crates lie in a ring 100 to 160 blocks from the colony, clear of its pad, the stalks grow on crater floors and in the caves of layer 1, and early metal is salvage: scrap iron and copper from the crates, melted in a furnace. The surface has no ore. Three shapes of the crate and three of the stalk were shot as options, one of each shipped, the rest test packs.
 
 ## Implementation issues
 

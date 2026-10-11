@@ -36,7 +36,7 @@ You need a Minecraft Java Edition account.
 
 ## Your first hour
 
-There are no trees and no ore on the surface. The Company's salvage crates lie round the colony, out to about 120 blocks: break one by hand for planks, sticks, cloth, scrap iron, scrap copper and a little redstone. Pale stalks grow on the floors of the deeper craters, such as the great pit south of the square: fell them for wood, craft the stalk into planks, and burn planks to melt scrap in a furnace. Regolith rock is your stone. That is enough for tools, a torch and every part the colony's terminals need.
+There are no trees and no ore on the surface. The Company's salvage crates lie in a ring round the colony, 100 to 160 blocks out: break one by hand for planks, sticks, cloth, scrap iron, scrap copper and a little redstone. Pale stalks grow on the floors of the deeper craters, such as the great pit south of the square: fell them for wood, craft the stalk into planks, and burn planks to melt scrap in a furnace. Regolith rock is your stone. That is enough for tools, a torch and every part the colony's terminals need.
 
 ## Private audio pack
 

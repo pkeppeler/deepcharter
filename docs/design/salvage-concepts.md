@@ -6,7 +6,7 @@ Issue [#245](https://github.com/pkeppeler/deepcharter/issues/245), PR [#465](htt
 
 | Piece | What it is | Where it lives |
 |---|---|---|
-| The yard | The biome `deepcharter:salvage_yard`, everything within 120 blocks of the colony's centre. The radius is one number | `data/deepcharter/worldgen/density_function/surface/yard.json` (`max_exclusive`), `worldgen/biome/salvage_yard.json` |
+| The yard | The biome `deepcharter:salvage_yard`, a ring from 100 to 160 blocks from the colony's centre: it starts past the pad (80 blocks square) and its graded margin, so no crate stands in the colony's footprint, its doorways, terminals or hangar. The two radii are two numbers | `data/deepcharter/worldgen/density_function/surface/yard.json` (`min_inclusive`, `max_exclusive`), `worldgen/biome/salvage_yard.json` |
 | Salvage crates | Patches of up to 8 crates round a point of the ground, one patch to every second chunk of the yard. A crate breaks by hand into oak planks (1 to 3), sticks (0 to 2), cloth (0 or 1), scrap iron (0 to 2), scrap copper (0 to 2) and redstone (0 or 1) | `worldgen/placed_feature/salvage_litter.json`, `loot_table/blocks/salvage_crate.json` |
 | Fungal stalks | Stands of columns 2 to 6 high, on the floor of a crater (at least 5 blocks deep, and the great pit) and in the caves of layer 1 | `worldgen/placed_feature/fungal_stalks.json`, `fungal_stalks_cave.json` |
 | What a stalk makes | A log that burns and chars to charcoal; four stalk planks, which are planks to every recipe | `tags/{block,item}/logs.json`, `logs_that_burn.json`, `planks.json`, `recipe/stalk_planks.json` |
@@ -26,7 +26,7 @@ The test `aNewPlayerReachesTheFirstCraftingGoalsFromSalvageAndStalksAlone` walks
 4. A third stalk chars to charcoal. A torch is charcoal and a stick; a lantern is the torch ringed with iron nuggets.
 5. The pump motor and the fuel valve are crafted from iron, copper and redstone, and put into the fuel pump, which comes back online.
 
-`theWholeRepairChainIsWithinReachOfTheCratesAlone` does the same for all four colony terminals from 60 crates. They need 23 iron, 21 copper and 13 redstone in all; 60 crates hold 63 scrap iron, 63 scrap copper and 28 redstone. The redstone is the scarce one (about half a dust to a crate), so the chain takes about 26 crates on average. A survey of 12 chunks round the colony finds 213 crates.
+`theWholeRepairChainIsWithinReachOfTheCratesAlone` does the same for all four colony terminals from 60 crates. They need 23 iron, 21 copper and 13 redstone in all; 60 crates hold 63 scrap iron, 63 scrap copper and 28 redstone. The redstone is the scarce one (about half a dust to a crate), so the chain takes about 26 crates on average. A survey of 12 chunks round the colony finds 160 crates.
 
 ## The options, shapes first
 
@@ -78,26 +78,35 @@ Two new ops draw them: `fibres` (runs of the ramp down a stem, wrapping on both 
 
 ## Feature cost
 
-ADR 0029 bars the surface at 1.15 times the layers-only world per new column. The feature cost is measured by `SurfaceCostTest` with `DEEPCHARTER_SURFACE_COST=3 DEEPCHARTER_SURFACE_COST_ONLY=<world> tools/gametest.sh 'surface_cost_test_every*'`, one world to a JVM so that each heap reading is the first of its JVM.
+ADR 0029 bars the surface at 1.15 times the layers-only world per new column. The feature cost is measured by `SurfaceCostTest`, one world to a JVM so that each heap reading is the first of its JVM.
 
-Four passes, three rounds of 289 columns each (a 17 x 17 chunk square) per world, one JVM per world and pass, on a shared Mac (load average 8 to 23, so CPU varies by up to 30% between passes). Each cell is the median of a pass's three rounds.
+`SurfaceCostTest` with `DEEPCHARTER_SURFACE_COST=5` and `DEEPCHARTER_SURFACE_COST_ONLY=<world>`: two passes of five rounds each, so ten rounds of 289 columns (a 17 x 17 chunk square) per world, one JVM per world and pass. The Mac was not quiet: the load average was 2 to 8 for the first three runs and 15 to 65 after, because other sessions were running (an earlier run of four passes of three rounds, at a load of 5 to 23, gave the same picture). CPU is the process time per new column, in ms.
 
-| World | What it holds | CPU ms per column, passes 1 to 4 | Median | Heap MB per 289 columns, passes 1 to 4 | Median |
-|---|---|---|---|---|---|
-| `tall_baseline_biomes` | layers only; the shipped biome source, so its biomes place stalks on the layer rock too | 119.5, 136.1, 161.6, 143.8 | 139.9 | 380, 340, 393, 333 | 360 |
-| `tall_surface_bare` | the surface, every biome's features taken out | 143.6, 149.8, 155.7, 149.9 | 149.9 | 357, 389, 296, 403 | 373 |
-| `tall_surface_biomes` | the surface with its features: the stalks | 145.1, 151.8, 164.7, 166.3 | 158.3 | 370, 298, 393, 387 | 378.5 |
-| `tall_surface_yard_bare` | every column in the yard, features out | 157.4, 144.5, 149.0, 148.4 | 148.7 | 374, 292, 343, 361 | 352 |
-| `tall_surface_yard` | every column in the yard: the crates and the stalks, the worst case | 141.7, 164.3, 161.6, 148.2 | 154.9 | 373, 380, 393, 338 | 376.5 |
-
-| Ratio of the medians | CPU | Heap | The ADR 0029 bar |
+| World | What it holds | Min | Median |
 |---|---|---|---|
-| The stalks alone: `tall_surface_biomes` over `tall_surface_bare` | **1.06x** | **1.01x** | 1.15x |
-| The crates and the stalks, in the worst case: `tall_surface_yard` over `tall_surface_yard_bare` | **1.04x** | **1.07x** | 1.15x |
-| The whole surface with its features over the layers only: `tall_surface_biomes` over `tall_baseline_biomes` | **1.13x** | **1.05x** | 1.15x |
-| The surface before this PR's features (the same pair as ADR 0036 measured): `tall_surface_bare` over `tall_baseline_biomes` | 1.07x | 1.04x | 1.15x |
+| `tall_baseline` | layers only, 2048 high, the layers' zone biomes | 162.2 | 195.0 |
+| `tall_surface` | the surface over the layers, 2352 high, the zone biomes | 181.3 | 223.9 |
+| `tall_baseline_biomes` | layers only, the shipped biome source (so its biomes place stalks on the layer rock too) | 120.5 | 123.6 |
+| `tall_surface_bare` | the surface, every biome's features taken out | 131.7 | 143.2 |
+| `tall_surface_biomes` | the surface with its features: the stalks | 148.4 | 155.2 |
+| `tall_surface_yard_bare` | every column in the yard, features out | 142.0 | 155.0 |
+| `tall_surface_yard` | every column in the yard: the crates and the stalks, the worst case | 136.6 | 152.5 |
 
-The features add 4 to 6% of CPU and 1 to 7% of heap, both inside the spread of one world's own passes (CPU 144 to 166 for `tall_surface_biomes`). The whole surface is 1.13x the layers on the CPU median and 1.05x on the heap, under the bar of 1.15x; its worst single pass (pass 1, 145.1 over 119.5, a quiet reading of the layers) was 1.21x, as the surface alone was in that pass (143.6 over 119.5, 1.20x), so that excess is the surface's and the machine's, not the features'. The yard is 120 blocks of the 2352-block world's whole extent, so the real cost of the crates is a small share of the yard worst case. The numbers are the machine's on that day: the bar is held, and a quiet machine would settle the second decimal.
+| Pair | CPU, ratio of the medians | CPU, ratio of the minima | The ADR 0029 bar |
+|---|---|---|---|
+| `tall_surface` over `tall_baseline` (the zone biomes: the bar's own pair) | **1.15x** (223.9 over 195.0) | 1.12x | 1.15x |
+| The stalks alone: `tall_surface_biomes` over `tall_surface_bare` | **1.08x** | 1.13x | |
+| The crates and stalks in the worst case: `tall_surface_yard` over `tall_surface_yard_bare` | **0.98x** | 0.96x | |
+| `tall_surface_biomes` over `tall_baseline_biomes` (the biome source over the whole height, which ADR 0036 calls the worst case) | **1.26x** | 1.23x | |
+| The same pair without the features: `tall_surface_bare` over `tall_baseline_biomes` | 1.16x | 1.09x | |
+
+Heap readings are not usable beyond the first round of a JVM: later rounds read 141 to 520 MB and some read negative (a collection ran inside the round), and the layers-only world of the zone pair reads from 219 to 521. The first rounds give: stalks alone 1.00x (409 over 409), crates and stalks in the yard 1.13x (408 over 362), the biome pair 1.25x.
+
+What this shows, plainly:
+- **The bar's own pair is on the bar, not under it.** `tall_surface` over `tall_baseline` is 1.15x on the medians (1.148) and 1.12x on the minima. That pair has the zone biome source, which holds none of the surface biomes, so it cannot show the stalks: its difference is the surface and its cave stalks, which `tall_baseline` places too.
+- **The biome-source pair is over the bar, and it was before this PR.** `tall_surface_bare` over `tall_baseline_biomes`, with no feature of this PR in the surface, is 1.16x on the medians. ADR 0036 read 1.08x for it on a loaded machine and said it did not prove the bar. The surface's biome source over the whole height is that pair's cost, and the real game does not evaluate it so (the layers have their own zone source), which is why the bar's own pair is the first row.
+- **The features' share is small.** The stalks add 8% of CPU on the medians (13% on the minima) in the surface biomes. The crates add nothing that shows, in the worst case of every column in the yard (0.98x). The crates cost nothing outside the yard, because the biome that holds them is not evaluated there.
+- **A cut, if the bar must be held with margin:** the stalk placement tries 6 places in every chunk of every surface biome, and each try scans down 24 blocks and scatters 6 more positions. The stalk columns that result (89 in a 12-chunk survey) are few. Halving `count` to 3, or moving `fungal_stalks` out of the three surface biomes into the craters' own biome (a fifth biome picked by the crater density, as the yard is picked by distance), would remove most of the 8%. The crates need no cut.
 
 ## Not built
 
