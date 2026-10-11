@@ -10,9 +10,18 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import lampless_figure as lf  # noqa: E402
+import pngio  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 RENDERER = ROOT / "src/client/java/io/github/pkeppeler/deepcharter/client/creature/LamplessFigureAssets.java"
+
+
+def canvas_of(data):
+    """The Canvas that a PNG from Canvas.png holds."""
+    image = pngio.decode(data)
+    canvas = lf.pc.Canvas(image.width)
+    canvas.pixels[:] = image.pixels
+    return canvas
 
 
 class CommittedFiles(unittest.TestCase):
@@ -150,7 +159,7 @@ class Lamp(unittest.TestCase):
         for option in lf.LAMP_OPTIONS:
             with self.subTest(option=option):
                 model, made = lf.option_files(option)
-                glow = lf.read_png(made["glowmask"])
+                glow = canvas_of(made["glowmask"])
                 glass_texels = set()
                 for bone, cube in model.cubes():
                     if cube.material == "glass":
@@ -162,7 +171,7 @@ class Lamp(unittest.TestCase):
 
     def test_the_glass_is_as_dark_as_the_figure_in_the_texture(self):
         _, made = lf.option_files(lf.DEFAULT_LAMP)
-        texture = lf.read_png(made["texture"])
+        texture = canvas_of(made["texture"])
         self.assertLessEqual(max(lf.luma(texture.get(x, y)) for y in range(texture.size) for x in range(texture.size) if texture.get(x, y)[3]), lf.MAX_LUMA)
 
     def test_glass_outside_the_lantern_bone_fails(self):
@@ -212,7 +221,7 @@ class LampBracketAndFace(unittest.TestCase):
     def test_the_head_has_no_face(self):
         _, files = lf.build()
         model = lf.figure()
-        png = lf.read_png(files[lf.TEXTURE_FILE])
+        png = canvas_of(files[lf.TEXTURE_FILE])
         head = bone_cubes(model, "head")[0]
         lf.pack(model)
         faces = {face.kind: face for face in lf.faces_of(head)}
@@ -270,7 +279,7 @@ def bone_cubes(model, name):
 class Matte(unittest.TestCase):
     def test_every_texel_of_the_texture_is_black(self):
         _, files = lf.build()
-        png = lf.read_png(files[lf.TEXTURE_FILE])
+        png = canvas_of(files[lf.TEXTURE_FILE])
         brightest = max(lf.luma(png.get(x, y)) for y in range(png.size) for x in range(png.size) if png.get(x, y)[3])
         self.assertLessEqual(brightest, lf.MAX_LUMA)
 
@@ -284,7 +293,7 @@ class Matte(unittest.TestCase):
         model = lf.figure()
         lf.pack(model)
         _, files = lf.build()
-        png = lf.read_png(files[lf.TEXTURE_FILE])
+        png = canvas_of(files[lf.TEXTURE_FILE])
         for bone in model.bones:
             for cube in bone.cubes:
                 for face in lf.faces_of(cube):

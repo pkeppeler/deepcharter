@@ -4,8 +4,14 @@ import importlib.machinery
 import importlib.util
 import io
 import tempfile
+import sys
 import unittest
 from pathlib import Path
+
+TOOLS = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(TOOLS))
+
+import pngio  # noqa: E402
 
 TOOL = Path(__file__).resolve().parent.parent / "diff-stills"
 loader = importlib.machinery.SourceFileLoader("diff_stills", str(TOOL))
@@ -18,11 +24,11 @@ W, H = 4, 3
 
 def png(path, pixel_at):
     """Writes a W x H PNG whose pixel (x, y) is pixel_at(x, y), an (r, g, b) tuple."""
-    rgb = bytearray()
+    rgba = bytearray()
     for y in range(H):
         for x in range(W):
-            rgb += bytes(pixel_at(x, y))
-    Path(path).write_bytes(ds.encode_png(ds.Image(W, H, bytes(rgb))))
+            rgba += bytes((*pixel_at(x, y), 255))
+    Path(path).write_bytes(pngio.encode(pngio.Rgba(W, H, bytes(rgba))))
 
 
 def grey(x, y):
@@ -51,9 +57,9 @@ class DiffStillsTest(unittest.TestCase):
 
     def test_round_trip(self):
         png(self.a / "x.png", grey)
-        image = ds.decode_png(self.a / "x.png")
+        image = ds.read_still(self.a / "x.png")
         self.assertEqual((W, H), (image.width, image.height))
-        self.assertEqual(bytes(grey(2, 1)), image.rgb[3 * (W + 2):3 * (W + 2) + 3])
+        self.assertEqual(bytes((*grey(2, 1), 255)), image.pixels[4 * (W + 2):4 * (W + 2) + 4])
 
     def test_same_stills_report_nothing(self):
         png(self.a / "x.png", grey)
@@ -75,10 +81,10 @@ class DiffStillsTest(unittest.TestCase):
         self.assertIn("16.67%", out)
         self.assertIn("140", out)
         self.assertIn("1 of 2 stills differ", out)
-        side = ds.decode_png(self.out / "moved-side-by-side.png")
+        side = ds.read_still(self.out / "moved-side-by-side.png")
         self.assertEqual((2 * W, H), (side.width, side.height))
-        diff = ds.decode_png(self.out / "moved-diff.png")
-        self.assertEqual(b"\xff\x00\x00", diff.rgb[0:3])
+        diff = ds.read_still(self.out / "moved-diff.png")
+        self.assertEqual(b"\xff\x00\x00\xff", diff.pixels[0:4])
         self.assertFalse((self.out / "same-diff.png").exists())
 
     def test_tolerance_hides_small_differences(self):
@@ -93,7 +99,7 @@ class DiffStillsTest(unittest.TestCase):
         png(self.a / "gone.png", grey)
         png(self.b / "new.png", grey)
         png(self.a / "both.png", grey)
-        Path(self.b / "both.png").write_bytes(ds.encode_png(ds.Image(2, 2, bytes(12))))
+        Path(self.b / "both.png").write_bytes(pngio.encode(pngio.Rgba(2, 2, bytes(16))))
         code, out, _ = run(str(self.a), str(self.b))
         self.assertEqual(1, code)
         self.assertIn("only in A", out)
@@ -141,11 +147,11 @@ class DiffStillsTest(unittest.TestCase):
         self.assertEqual(["colony-aerial-northwest", "screen-pod-cargo"], [prefix for prefix, _, _ in ds.NOISE_FAMILIES])
         # 200 pixels, 2 of them (1%) changed by 60: under the floor of the one noisy still, and a finding anywhere else.
         for name in ("colony-aerial-northwest", "layer-2-cave-south"):
-            (self.a / f"{name}.png").write_bytes(ds.encode_png(ds.Image(20, 10, bytes(600))))
-            changed = bytearray(600)
+            (self.a / f"{name}.png").write_bytes(pngio.encode(pngio.Rgba(20, 10, bytes(800))))
+            changed = bytearray(800)
             for x in (0, 1):
-                changed[3 * x:3 * x + 3] = b"\x3c\x3c\x3c"
-            (self.b / f"{name}.png").write_bytes(ds.encode_png(ds.Image(20, 10, bytes(changed))))
+                changed[4 * x:4 * x + 3] = b"\x3c\x3c\x3c"
+            (self.b / f"{name}.png").write_bytes(pngio.encode(pngio.Rgba(20, 10, bytes(changed))))
         code, out, _ = run(str(self.a), str(self.b), "--design-tour")
         self.assertEqual(1, code)
         table, _, hidden = out.partition("1 stills hidden by floors")
@@ -157,9 +163,9 @@ class DiffStillsTest(unittest.TestCase):
     def test_design_tour_floor_of_screen_pod_cargo_hides_5_levels_not_6(self):
         # Share 0.0: no pixel may change by more than the 5-level tolerance.
         name = "screen-pod-cargo"
-        (self.a / f"{name}.png").write_bytes(ds.encode_png(ds.Image(20, 10, bytes(600))))
+        (self.a / f"{name}.png").write_bytes(pngio.encode(pngio.Rgba(20, 10, bytes(800))))
         for delta, expected_code in ((5, 0), (6, 1)):
-            (self.b / f"{name}.png").write_bytes(ds.encode_png(ds.Image(20, 10, bytes([delta] * 3 + [0] * 597))))
+            (self.b / f"{name}.png").write_bytes(pngio.encode(pngio.Rgba(20, 10, bytes([delta] * 3 + [0] * 797))))
             code, out, _ = run(str(self.a), str(self.b), "--design-tour")
             self.assertEqual(expected_code, code, out)
 
@@ -171,43 +177,31 @@ class DiffStillsTest(unittest.TestCase):
         self.assertIn("--design-tour", err)
 
     def test_equal_rows_are_skipped_and_the_rest_still_compared(self):
-        a = ds.Image(4, 3, bytes(36))
-        changed = bytearray(36)
-        changed[3 * 4 + 5] = 90
-        b = ds.Image(4, 3, bytes(changed))
+        a = pngio.Rgba(4, 3, bytes(48))
+        changed = bytearray(48)
+        changed[4 * 4 + 5] = 90
+        b = pngio.Rgba(4, 3, bytes(changed))
         count, biggest, mask = ds.compare(a, b, 2)
         self.assertEqual((1, 90), (count, biggest))
         self.assertEqual(1, mask[5])
         self.assertEqual(1, sum(mask))
 
+    def test_a_still_with_alpha_is_compared_by_its_colour_alone(self):
+        (self.a / "x.png").write_bytes(pngio.encode(pngio.Rgba(1, 1, bytes((9, 8, 7, 255)))))
+        (self.b / "x.png").write_bytes(pngio.encode(pngio.Rgba(1, 1, bytes((9, 8, 7, 0)))))
+        self.assertEqual(0, run(str(self.a), str(self.b))[0])
+
+    def test_an_unreadable_still_is_a_usage_error(self):
+        png(self.a / "x.png", grey)
+        (self.b / "x.png").write_bytes(b"not a png")
+        code, _, err = run(str(self.a), str(self.b))
+        self.assertEqual(2, code)
+        self.assertIn("not a PNG", err)
+
     def test_bad_noise_spec_is_a_usage_error(self):
         png(self.a / "x.png", grey)
         png(self.b / "x.png", grey)
         self.assertEqual(2, run(str(self.a), str(self.b), "--noise", "oops")[0])
-
-    def test_all_png_filters_decode(self):
-        # A 2 x 2 RGB image written with filter types 1 to 4 on its second row, decoded back to the same pixels.
-        rows = [bytes([10, 20, 30, 40, 50, 60]), bytes([15, 25, 35, 45, 55, 65])]
-        for kind in (1, 2, 3, 4):
-            first = bytearray([0]) + rows[0]
-            second = bytearray([kind])
-            for i in range(6):
-                left = rows[1][i - 3] if i >= 3 else 0
-                up = rows[0][i]
-                upleft = rows[0][i - 3] if i >= 3 else 0
-                if kind == 1:
-                    predictor = left
-                elif kind == 2:
-                    predictor = up
-                elif kind == 3:
-                    predictor = (left + up) >> 1
-                else:
-                    p = left + up - upleft
-                    pa, pb, pc = abs(p - left), abs(p - up), abs(p - upleft)
-                    predictor = left if pa <= pb and pa <= pc else (up if pb <= pc else upleft)
-                second.append((rows[1][i] - predictor) & 255)
-            raw = bytes(first) + bytes(second)
-            self.assertEqual(rows[0] + rows[1], bytes(ds.unfilter(raw, 2, 2, 3, "t")), f"filter {kind}")
 
 
 if __name__ == "__main__":

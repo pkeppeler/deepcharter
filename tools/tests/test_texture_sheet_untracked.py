@@ -47,6 +47,7 @@ class ParallelRecipePrsTest(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.repo = Path(self.tmp.name)
         shutil.copytree(ROOT / "tools/textures", self.repo / "tools/textures", ignore=shutil.ignore_patterns("__pycache__"))
+        shutil.copy(ROOT / "tools/pngio.py", self.repo / "tools/pngio.py")
         shutil.copy(ROOT / ".gitignore", self.repo / ".gitignore")
         git(self.repo, "init", "-q", "-b", "main")
         self.assertEqual(0, texgen(self.repo).returncode)

@@ -1,10 +1,16 @@
-package io.github.pkeppeler.deepcharter.client.ui;
+package io.github.pkeppeler.deepcharter.test.support;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
+
+import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
+import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
+import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
+import io.github.pkeppeler.deepcharter.client.ui.CrtTextField;
+import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 
 /**
  * A small screen that uses every part of the kit, and the example for the screens that build on it. It is test

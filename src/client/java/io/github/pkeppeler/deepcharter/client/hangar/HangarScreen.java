@@ -66,6 +66,7 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 		rebuildWidgets();
 	}
 
+	@Override
 	public Typewriter typewriter() {
 		return typewriter;
 	}

@@ -25,14 +25,13 @@ import argparse
 import json
 import math
 import random
-import struct
 import sys
-import zlib
 from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import pngio  # noqa: E402
 import pod_concepts as pc  # noqa: E402
 
 ROOT = pc.ROOT
@@ -334,14 +333,15 @@ def frays(bone, rng, count, width, depth, bottom, x_centre=0.0, z_centre=0.0):
 # The miner the figure is a counterfeit of, and the figure
 # ---------------------------------------------------------------------------------------------
 
-LEG = lambda name, length, w=3, d=3, rest=0.0: Seg(name, length, w, d, rest)  # noqa: E731
+LEG = lambda name, length, rest=0.0: Seg(name, length, 3, 3, rest)  # noqa: E731
 BOOT = Seg("foot", 3, 3, 6, 0.0, -1.5)
 
 
-def arm_segs(*joints, w=2, d=2):
+def arm_segs(*joints):
     """The segs of an arm from (name, length, rest) or (name, length, rest, splay), and a hand."""
-    segs = [Seg(name, length, w, d, rest, 0.0, *more) for name, length, rest, *more in joints]
-    return tuple(segs) + (Seg("hand", 3, w, d),)
+    thickness = 2
+    segs = [Seg(name, length, thickness, thickness, rest, 0.0, *more) for name, length, rest, *more in joints]
+    return tuple(segs) + (Seg("hand", 3, thickness, thickness),)
 
 
 MINER = Spec(
@@ -382,8 +382,8 @@ def joint(model, name):
     return pc.world_point(model, bone, bone.pivot)
 
 
-def lowest(model, name):
-    bone = bone_named(model, name)
+def lowest_hand(model):
+    bone = bone_named(model, "hand_l")
     return min(p[1] for cube in bone.cubes for p in pc.corners(model, bone, cube))
 
 
@@ -469,12 +469,12 @@ def luma(rgba):
 
 # (text, test(model) -> bool): what the figure says is wrong with it, checked on its model. Each is false of the plain miner.
 CLAIMS = [
-    ("the hands reach the knees", lambda m: lowest(m, "hand_l") <= joint(m, "shin_l")[1] + 1),
+    ("the hands reach the knees", lambda m: lowest_hand(m) <= joint(m, "shin_l")[1] + 1),
     ("the forearm has a second elbow that bends the wrong way",
      lambda m: has_bone(m, "forearm_low_l") and bone_named(m, "forearm_low_l").rotation[0] > 0 > bone_named(m, "forearm_l").rotation[0]),
     ("the shin has a second knee", lambda m: has_bone(m, "shin_low_l") and bone_named(m, "shin_low_l").rotation[0] > 0 > bone_named(m, "shin_l").rotation[0]),
     ("the torso stoops forward 12 degrees or more", lambda m: bone_named(m, "spine").rotation[0] >= 12),
-    ("each arm is at least 1.8 times as long as the torso", lambda m: joint(m, "upper_arm_l")[1] - lowest(m, "hand_l") >= 1.8 * torso_cube(m).size[1]),
+    ("each arm is at least 1.8 times as long as the torso", lambda m: joint(m, "upper_arm_l")[1] - lowest_hand(m) >= 1.8 * torso_cube(m).size[1]),
 ]
 
 
@@ -556,30 +556,6 @@ def paint_figure(model):
             if cube.material in GLOWS:
                 GLOWS[cube.material](glow, face, random.Random(f"glow:{model.name}:{bone.name}:{face.kind}"))
     return canvas, glow
-
-
-def read_png(data):
-    """Reads back a PNG that Canvas.png wrote: 8-bit RGBA, no interlace, filter 0 on every row."""
-    assert data[:8] == b"\x89PNG\r\n\x1a\n"
-    pos = 8
-    size = None
-    idat = b""
-    while pos < len(data):
-        (length,) = struct.unpack(">I", data[pos:pos + 4])
-        kind = data[pos + 4:pos + 8]
-        body = data[pos + 8:pos + 8 + length]
-        if kind == b"IHDR":
-            size = struct.unpack(">I", body[:4])[0]
-        elif kind == b"IDAT":
-            idat += body
-        pos += 12 + length
-    raw = zlib.decompress(idat)
-    canvas = pc.Canvas(size)
-    stride = size * 4 + 1
-    for row in range(size):
-        assert raw[row * stride] == 0
-        canvas.pixels[row * size * 4:(row + 1) * size * 4] = raw[row * stride + 1:(row + 1) * stride]
-    return canvas
 
 
 # ---------------------------------------------------------------------------------------------
@@ -748,7 +724,7 @@ def main(argv=None):
     print(describe(model))
     for path, data in files.items():
         if args.check:
-            if not path.exists() or path.read_bytes() != data:
+            if pngio.stale(path, data):
                 stale.append(path.relative_to(ROOT))
         else:
             path.parent.mkdir(parents=True, exist_ok=True)

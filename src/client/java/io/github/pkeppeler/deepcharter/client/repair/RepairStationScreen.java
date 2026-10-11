@@ -90,6 +90,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 		return view;
 	}
 
+	@Override
 	public Typewriter typewriter() {
 		return typewriter;
 	}
