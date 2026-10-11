@@ -234,10 +234,14 @@ public class PodLinerTest {
 		});
 	}
 
+	private static void removeShaftLava(ServerLevel level, int x) {
+		level.setBlock(lavaPockets(x, false).getFirst(), Blocks.STONE.defaultBlockState(), 3);
+	}
+
 	/** Takes the lava out of the shaft's wall and, if {@code at} is given, puts a source there instead. */
 	private static Consumer<ServerLevel> lavaOnlyAt(int x, BlockPos at) {
 		return level -> {
-			level.setBlock(lavaPockets(x, false).getFirst(), Blocks.STONE.defaultBlockState(), 3);
+			removeShaftLava(level, x);
 			if (at != null) {
 				level.setBlock(at, Blocks.LAVA.defaultBlockState(), 3);
 			}
@@ -289,7 +293,7 @@ public class PodLinerTest {
 	 */
 	private static Consumer<ServerLevel> lavaDownACorridorTo(int x, int to) {
 		return level -> {
-			level.setBlock(lavaPockets(x, false).getFirst(), Blocks.STONE.defaultBlockState(), 3);
+			removeShaftLava(level, x);
 			RoomCarver.carve(level, x + 2, to - 1, FLOOR, FLOOR, Z, Z, Blocks.AIR);
 			level.setBlock(new BlockPos(to, FLOOR, Z), Blocks.LAVA.defaultBlockState(), 3);
 		};

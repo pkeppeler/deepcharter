@@ -37,6 +37,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.AABB;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
@@ -328,7 +329,8 @@ public final class PodLining {
 					boolean floor = insideX && insideZ && y < foot.feetY();
 					BlockPos pos = new BlockPos(x, y, z);
 					// The pod's own riders do not block its lining, even in the cell under the pod (a low seat puts them there); a stranger does.
-					if ((ring || floor) && (floor || !lavaOnly || flooded.contains(pos)) && !level.isOutsideBuildHeight(pos) && blocks.canChange(pos) && needsBrick(blocks.getBlockState(pos), floor)
+					boolean reachedByLava = floor || !lavaOnly || flooded.contains(pos);
+					if ((ring || floor) && reachedByLava && !level.isOutsideBuildHeight(pos) && blocks.canChange(pos) && needsBrick(blocks.getBlockState(pos), floor)
 							&& level.getEntities((Entity) null, new AABB(pos), entity -> !entity.isSpectator() && !pod.hasPassenger(entity)).isEmpty()) {
 						cells.add(pos);
 					}
@@ -345,32 +347,22 @@ public final class PodLining {
 	 */
 	private static Set<BlockPos> lavaReach(LoadedBlocks blocks, PodFootprint foot, int depth) {
 		PodLinerTuning tuning = PodLinerTuning.DEFAULT;
-		int minX = foot.lowX() - 1 - tuning.lavaSpread();
-		int maxX = foot.lowX() + foot.width() + tuning.lavaSpread();
-		int minZ = foot.lowZ() - 1 - tuning.lavaSpread();
-		int maxZ = foot.lowZ() + foot.width() + tuning.lavaSpread();
-		int minY = foot.feetY() - depth;
-		int maxY = foot.feetY() + foot.height() - 1 + tuning.lavaAbove();
+		int spread = tuning.lavaSpread();
+		BoundingBox view = new BoundingBox(foot.lowX() - 1 - spread, foot.feetY() - depth, foot.lowZ() - 1 - spread,
+				foot.lowX() + foot.width() + spread, foot.feetY() + foot.height() - 1 + tuning.lavaAbove(), foot.lowZ() + foot.width() + spread);
 		Set<BlockPos> reached = new HashSet<>();
 		ArrayDeque<BlockPos> frontier = new ArrayDeque<>();
-		for (int y = minY; y <= maxY; y++) {
-			for (int x = minX; x <= maxX; x++) {
-				for (int z = minZ; z <= maxZ; z++) {
-					BlockPos pos = new BlockPos(x, y, z);
-					if (blocks.getFluidState(pos).is(FluidTags.LAVA)) {
-						reached.add(pos);
-						frontier.add(pos);
-					}
-				}
+		for (BlockPos pos : BlockPos.betweenClosed(view.minX(), view.minY(), view.minZ(), view.maxX(), view.maxY(), view.maxZ())) {
+			if (blocks.getFluidState(pos).is(FluidTags.LAVA)) {
+				reached.add(pos.immutable());
+				frontier.add(pos.immutable());
 			}
 		}
 		while (!frontier.isEmpty()) {
 			BlockPos from = frontier.poll();
 			for (Direction direction : Direction.values()) {
 				BlockPos next = from.relative(direction);
-				boolean inside = next.getX() >= minX && next.getX() <= maxX && next.getZ() >= minZ && next.getZ() <= maxZ
-						&& next.getY() >= minY && next.getY() <= maxY;
-				if (inside && !reached.contains(next) && needsBrick(blocks.getBlockState(next), false)) {
+				if (view.isInside(next) && !reached.contains(next) && needsBrick(blocks.getBlockState(next), false)) {
 					reached.add(next);
 					frontier.add(next);
 				}
