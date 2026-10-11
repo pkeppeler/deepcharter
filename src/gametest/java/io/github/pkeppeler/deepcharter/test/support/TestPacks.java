@@ -60,6 +60,13 @@ public final class TestPacks implements ModInitializer {
 	/** The Retained's lamp inside the ribcage. */
 	public static final String RETAINED_LAMP_RIBS = "retained_lamp_ribs";
 
+	/** The salvage crate's other shapes (#245, docs/design/salvage-concepts.md): a low sled crate under a tarp, and a stove-in crate. The default, the freight crate, is the mod's own look. */
+	public static final String SALVAGE_CRATE_B = "salvage_crate_b";
+	public static final String SALVAGE_CRATE_C = "salvage_crate_c";
+	/** The fungal stalk's other shapes: a bare reed, and a beaded puffball. The default, the shelf fungus, is the mod's own look. */
+	public static final String FUNGAL_STALK_A = "fungal_stalk_a";
+	public static final String FUNGAL_STALK_C = "fungal_stalk_c";
+
 	@Override
 	public void onInitialize() {
 		// One shared pin for every test and evidence world that enters a layer (the layers' biomes list the Retained): no natural spawns.
@@ -67,7 +74,7 @@ public final class TestPacks implements ModInitializer {
 		for (String pack : new String[] {AMBER_CRT, BAD_CRT, RED_INK, TEXTURE_DENSITY_B, TEXTURE_DENSITY_C, TEXTURE_DENSITY_D,
 				LAYER_CONCEPT_GRAIN, LAYER_CONCEPT_BEDDED, LAYER_CONCEPT_MOTTLED, LAYER_CONCEPT_FORM_1, LAYER_CONCEPT_FORM_2, LAYER_CONCEPT_FORM_3,
 				COCKPIT_CONSOLES, COCKPIT_CORNERS, COCKPIT_RIBBON, COCKPIT_POSTS, COCKPIT_CAB, COCKPIT_CAMERA, COCKPIT_CAMERA_HOLD, RETAINED_LAMP_HAND,
-				RETAINED_LAMP_RIBS}) {
+				RETAINED_LAMP_RIBS, SALVAGE_CRATE_B, SALVAGE_CRATE_C, FUNGAL_STALK_A, FUNGAL_STALK_C}) {
 			ResourceLoader.registerBuiltinPack(Identifier.fromNamespaceAndPath("deepcharter-test", pack),
 					FabricLoader.getInstance().getModContainer("deepcharter-test").orElseThrow(),
 					Component.literal(pack + " (test pack)"), PackActivationType.NORMAL);

@@ -53,6 +53,14 @@
       {"op": "rect", "rect": [0, 11, 16, 1], "colour": "stalk.2"},
       {"op": "rect", "rect": [0, 15, 16, 1], "colour": "stalk.2"}
     ]},
+    "block/fungal_shelf_top": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["stalk.3", "stalk.4", "stalk.4", "stalk.5"], "seed": 15971, "cell": 8, "octaves": 3, "dither": 0.6},
+      {"op": "speckle", "colours": ["stalk.2", "stalk.5"], "density": 0.05, "seed": 15972}
+    ]},
+    "block/fungal_shelf_under": {"kind": "opaque", "layers": [
+      {"op": "fibres", "ramp": ["stalk.1", "stalk.2", "stalk.2", "stalk.3"], "seed": 973, "breaks": 3, "spread": 1},
+      {"op": "speckle", "colours": ["stalk.0", "stalk.4"], "density": 0.04, "seed": 974}
+    ]},
     "item/scrap_iron": {"template": "sprite", "args": {"legend": {
       "h": "steel.6", "l": "steel.5", "m": "steel.4", "d": "steel.3", "k": "steel.2", "r": "rust.3", "q": "rust.2"}, "rows": [
       "", "", "",

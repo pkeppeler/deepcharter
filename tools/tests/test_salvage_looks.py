@@ -27,14 +27,14 @@ PACKS = ROOT / "src/gametest/resources/resourcepacks"
 NATURAL = {
     "fungal_stalk_bark": MOD / "textures/block/fungal_stalk_bark.png",
     "stalk_planks": MOD / "textures/block/stalk_planks.png",
-    "fungal_shelf_top": PACKS / "fungal_stalk_b/assets/deepcharter/textures/block/fungal_shelf_top.png",
-    "fungal_shelf_under": PACKS / "fungal_stalk_b/assets/deepcharter/textures/block/fungal_shelf_under.png",
+    "fungal_shelf_top": MOD / "textures/block/fungal_shelf_top.png",
+    "fungal_shelf_under": MOD / "textures/block/fungal_shelf_under.png",
     "fungal_bulb": PACKS / "fungal_stalk_c/assets/deepcharter/textures/block/fungal_bulb.png",
 }
-# The mod's own look of each block is one option; the other two options are packs.
+# The mod's own look of each block is one option (a for the crate, b for the stalk); the other two options are packs.
 LOOKS = {
     "salvage_crate": {"a": MOD, "b": PACKS / "salvage_crate_b/assets/deepcharter", "c": PACKS / "salvage_crate_c/assets/deepcharter"},
-    "fungal_stalk": {"a": MOD, "b": PACKS / "fungal_stalk_b/assets/deepcharter", "c": PACKS / "fungal_stalk_c/assets/deepcharter"},
+    "fungal_stalk": {"a": PACKS / "fungal_stalk_a/assets/deepcharter", "b": MOD, "c": PACKS / "fungal_stalk_c/assets/deepcharter"},
 }
 
 
@@ -125,10 +125,11 @@ class ShapesTest(unittest.TestCase):
                 self.assertEqual(next(iter(state["variants"].values()))["model"], item["model"]["model"], f"{block} {option}: the item shows another model than the block")
 
     def test_a_pack_holds_a_look_and_the_textures_only_it_uses(self):
-        for pack in ("salvage_crate_b", "salvage_crate_c", "fungal_stalk_b", "fungal_stalk_c"):
+        """A pack holds a look, and no texture the mod already has: the reed of the stalk draws with the bark the mod ships, and so draws none of its own."""
+        for pack in ("salvage_crate_b", "salvage_crate_c", "fungal_stalk_a", "fungal_stalk_c"):
             self.assertIn(pack, texgen.variants())
-            textures = sorted(path.name for path in (PACKS / pack / "assets/deepcharter/textures").rglob("*.png"))
-            self.assertTrue(textures, f"{pack} draws no texture of its own")
+            for texture in (PACKS / pack / "assets/deepcharter/textures").rglob("*.png"):
+                self.assertFalse((MOD / "textures/block" / texture.name).exists(), f"{pack} redraws {texture.name}, which the mod ships")
 
 
 if __name__ == "__main__":

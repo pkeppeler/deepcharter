@@ -43,17 +43,18 @@ public final class SurfaceBlocks {
 	public static final Block BASALT_OUTCROP = registerBlock(id("basalt_outcrop"),
 			key -> new Block(BlockBehaviour.Properties.of().setId(key).strength(2.0F, 6.0F).sound(SoundType.BASALT)));
 
-	/** A Company salvage crate: scattered round the colony, it breaks into wood, cloth and scrap. */
-	public static final Block SALVAGE_CRATE = registerWoodBlock(id("salvage_crate"),
-			key -> new SalvageCrateBlock(BlockBehaviour.Properties.of().setId(key).strength(1.2F).sound(SoundType.WOOD).noOcclusion()));
-
-	/** A pale fungal stalk, grown in craters and caves: the stand-in for a log. */
-	public static final Block FUNGAL_STALK = registerWoodBlock(id("fungal_stalk"),
-			key -> new FungalStalkBlock(BlockBehaviour.Properties.of().setId(key).strength(1.0F).sound(SoundType.STEM).noOcclusion()));
-
-	/** Planks pressed from stalk: any recipe that takes planks takes them. */
-	public static final Block STALK_PLANKS = registerWoodBlock(id("stalk_planks"),
-			key -> new Block(BlockBehaviour.Properties.of().setId(key).strength(1.5F, 3.0F).sound(SoundType.WOOD)));
+	// The bootstrap's blocks (art direction section 11). Worldgen features and loot tables name them by id, so nothing in code holds one.
+	static {
+		// A Company salvage crate: scattered round the colony, it breaks into wood, cloth and scrap.
+		registerWoodBlock(id("salvage_crate"),
+				key -> new SalvageCrateBlock(BlockBehaviour.Properties.of().setId(key).strength(1.2F).sound(SoundType.WOOD).noOcclusion()));
+		// A pale fungal stalk, grown in craters and caves: the stand-in for a log.
+		registerWoodBlock(id("fungal_stalk"),
+				key -> new FungalStalkBlock(BlockBehaviour.Properties.of().setId(key).strength(1.0F).sound(SoundType.STEM).noOcclusion()));
+		// Planks pressed from stalk: any recipe that takes planks takes them.
+		registerWoodBlock(id("stalk_planks"),
+				key -> new Block(BlockBehaviour.Properties.of().setId(key).strength(1.5F, 3.0F).sound(SoundType.WOOD)));
+	}
 
 	private SurfaceBlocks() {
 	}

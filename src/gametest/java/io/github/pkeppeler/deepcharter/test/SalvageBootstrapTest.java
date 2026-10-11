@@ -23,6 +23,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -440,6 +441,39 @@ public class SalvageBootstrapTest {
 		if (!stack.is(tag)) {
 			throw helper.assertionException("%s should be in %s, it is %s", what, tag.location(), stack);
 		}
+	}
+
+	/** The step of generation at which the features of #245 are placed (vegetal decoration): its index in a biome's list of steps. */
+	private static final int VEGETAL_STEP = 9;
+	private static final Map<String, List<String>> VEGETAL_FEATURES = Map.of(
+			"regolith_plains", List.of("deepcharter:fungal_stalks"), "mesa_country", List.of("deepcharter:fungal_stalks"),
+			"basalt_field", List.of("deepcharter:fungal_stalks"), "salvage_yard", List.of("deepcharter:salvage_litter", "deepcharter:fungal_stalks"),
+			"topsoil_claims", List.of("deepcharter:fungal_stalks_cave"));
+
+	/** A world's chunks, loot and saved progress name these ids, so a rename is a decision (ADR 0047): each is pinned by its literal. */
+	@GameTest
+	public void theIdsThatWorldsAndLootNameArePinned(GameTestHelper helper) {
+		for (String path : List.of("salvage_crate", "fungal_stalk", "stalk_planks")) {
+			Identifier id = Identifier.fromNamespaceAndPath("deepcharter", path);
+			if (!BuiltInRegistries.BLOCK.containsKey(id) || !BuiltInRegistries.ITEM.containsKey(id)) {
+				throw helper.assertionException("%s should be a block and an item", id);
+			}
+		}
+		for (String path : List.of("scrap_iron", "scrap_copper", "salvage_cloth")) {
+			if (!BuiltInRegistries.ITEM.containsKey(Identifier.fromNamespaceAndPath("deepcharter", path))) {
+				throw helper.assertionException("deepcharter:%s should be an item", path);
+			}
+		}
+		var biomes = helper.getLevel().registryAccess().lookupOrThrow(Registries.BIOME);
+		VEGETAL_FEATURES.forEach((biome, expected) -> {
+			var steps = biomes.getOrThrow(ResourceKey.create(Registries.BIOME, Identifier.fromNamespaceAndPath("deepcharter", biome))).value()
+					.getGenerationSettings().features();
+			List<String> listed = steps.get(VEGETAL_STEP).stream().map(feature -> feature.unwrapKey().orElseThrow().identifier().toString()).toList();
+			if (!listed.equals(expected)) {
+				throw helper.assertionException("%s should place %s at step %s, it places %s", biome, expected, VEGETAL_STEP, listed);
+			}
+		});
+		helper.succeed();
 	}
 
 	@GameTest

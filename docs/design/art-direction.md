@@ -125,6 +125,7 @@ Rules for all areas:
 - **Tools:** loot tables, worldgen features, handbook chapter data.
 - **Skin and data:** `data/deepcharter/loot_table/**`, `data/deepcharter/worldgen/**`, `data/deepcharter/handbook/**` (chapter 1 directives change).
 - **Not chosen:** a terraformed pocket with imported trees (brings green back into the first frame), a supply drop with a starter crate.
+- **Built in [#245](https://github.com/pkeppeler/deepcharter/issues/245)** ([salvage-concepts.md](salvage-concepts.md), [ADR 0047](../adr/0047-the-surface-has-no-ore-the-bootstraps-metal-is-salvage-and-the-yard-is-a-biome.md)): the crates lie within 120 blocks of the colony, the stalks grow on crater floors and in the caves of layer 1, and early metal is salvage: scrap iron and copper from the crates, melted in a furnace. The surface has no ore. Three shapes of the crate and three of the stalk were shot as options, one of each shipped, the rest test packs.
 
 ## Implementation issues
 
@@ -155,7 +156,7 @@ SPEC sections 2, 3, 4 and 15 changed in PR #234, and [ADR 0030](../adr/0030-art-
 - **Section 3, "vanilla-style frontier":** replaced by our own bare regolith surface.
 - **Section 3, trees and animals:** removed. The surface has no trees and no animals.
 - **Section 3, "vanilla night monsters":** removed from the SPEC. The creatures session replaces them; until then the surface has none.
-- **Section 3, "vanilla ores near the surface for the bootstrap":** removed. Early ore access (iron and the like) is decided with the bootstrap in [#245](https://github.com/pkeppeler/deepcharter/issues/245).
+- **Section 3, "vanilla ores near the surface for the bootstrap":** removed. Early ore access (iron and the like) was decided with the bootstrap in [#245](https://github.com/pkeppeler/deepcharter/issues/245): the surface has none, and salvage supplies the metal ([ADR 0047](../adr/0047-the-surface-has-no-ore-the-bootstraps-metal-is-salvage-and-the-yard-is-a-biome.md)).
 - **Section 4, "start like normal Minecraft":** replaced by salvage plus fungal wood.
 - **Section 15, "consistent with vanilla (16×)":** now 16× with GTNH-style layers.
 - **Section 15, "AI-assisted, with the user curating":** now spelled out (AI images allowed, curated, with disclosure).

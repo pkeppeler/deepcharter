@@ -1061,3 +1061,28 @@ Also built: **layer 1 spawns four times rarer than layer 2** (1 in 200 against 2
 - Should the lamp cost fuel, and have a switch? Then "run dark to save fuel" is a real choice and the Retained are its price.
 - Should a lamp-carrier grab harder (a longer fill) than one without a lamp, so that the lamp is a warning and a threat at once?
 - The warning sound is a placeholder (the cave ambience); the audio pass should give it a voice.
+
+## Early ore access: salvage (#245, A)
+
+**Problem.** SPEC section 3 no longer promises vanilla ores near the surface (the surface is regolith rock with no ore, [ADR 0036](../adr/0036-the-surface-is-generated-from-data-by-a-replaced-overworld-dimension.md)), and the ten terminal parts are crafted from iron, copper and redstone. A new player has no trees either. The bootstrap has to give wood, metal and stone with nothing in the ground.
+
+**The ladder.**
+1. **By hand: salvage.** A crate breaks into planks, sticks, cloth, scrap iron, scrap copper and a dust of redstone. A furnace melts scrap one for one. A stalk, felled in a crater, is the wood and the fuel: it presses to four planks, burns, and chars to charcoal for a torch. The player learns that iron is something the Company left lying about, and that heat costs wood.
+2. **The pod: the layers' ore.** The first real ore is Ironium in layer 1, sold at the ore processor. The terminals' parts are crafted once per world, so the pod never has to bring scrap-grade metal home.
+3. **Mastery.** None is needed: the scrap stage is the bootstrap, and it ends when the colony is back online.
+
+**Trade-offs.** Every scrap costs a furnace's worth of fuel: 44 scrap for the whole chain is about 30 planks, so a stalk is not only a log. The crates are a shared stock, as the repairs are: a crate one charter breaks is gone for all, and the chain needs about 26 of the 213 within 12 chunks of the colony. The cost of reaching them is a walk of up to 120 blocks across ground with no cover, at dusk.
+
+**Why not the others.**
+- Vanilla ore veins near the surface: ADR 0036 removed them, and they put vanilla's ore textures back in the first frame.
+- The mod's own ore outcrops on the surface: they make the pod the second thing a player meets, and ore is a heavy item for a pod to haul (ADR 0008).
+- Raw iron and copper in the crates: it skips the furnace, which is the first thing the bootstrap teaches.
+
+**Knobs.** The yard's radius (`density_function/surface/yard.json`, `max_exclusive`, 120); the crates' rarity and spread (`placed_feature/salvage_litter.json`: one patch to 2 chunks, 8 tries within 4 blocks); the loot (`loot_table/blocks/salvage_crate.json`: planks 1 to 3, sticks 0 to 2, cloth 0 or 1, scrap iron 0 to 2, scrap copper 0 to 2, redstone 0 or 1); how many stalks and where (`placed_feature/fungal_stalks.json`: heights 36 to 58, 6 tries and 6 scatters to a chunk; `fungal_stalks_cave.json` for layer 1); a stalk's height (`feature/fungal_stalk_column.json`, 2 to 6).
+
+**Measured.** From the data the game runs on, by `SalvageBootstrapTest` with its fixed seeds: 12 crates carry the first goals (tools, a torch and a lantern, the fuel pump's two parts); 60 crates carry all four terminals (63 scrap iron, 63 scrap copper, 28 redstone against 23, 21 and 13 needed). A 12-chunk survey of a fresh world finds 213 crates, 155 beyond the colony pad, the farthest at 125.5 blocks, and 89 stalk columns on crater floors, none with its base above y 60.
+
+**Open questions.**
+- If every crate of a world is broken, the world has no iron. 213 against 26 is a long way off. A part for sale at the contract terminal would be the fix; it is a follow-up if play shows the need.
+- Should a crate be a container that can be opened and left, so that a charter can leave salvage for another? Today it breaks into a loot table and is gone.
+- A wrecked prefab that drops salvage (the issue's other source) is not built; crates in patches stand in for it.

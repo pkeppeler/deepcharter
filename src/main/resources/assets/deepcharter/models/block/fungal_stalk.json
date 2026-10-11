@@ -2,19 +2,21 @@
   "textures": {
     "bark": "deepcharter:block/fungal_stalk_bark",
     "end": "deepcharter:block/fungal_stalk_end",
+    "shelf": "deepcharter:block/fungal_shelf_top",
+    "gills": "deepcharter:block/fungal_shelf_under",
     "particle": "#bark"
   },
   "elements": [
     {
       "from": [
-        4,
+        5,
         0,
-        4
+        5
       ],
       "to": [
-        12,
+        11,
         16,
-        12
+        11
       ],
       "faces": {
         "north": {
@@ -39,65 +41,161 @@
     },
     {
       "from": [
+        11,
         3,
-        6,
         3
       ],
       "to": [
-        13,
+        16,
+        5,
+        13
+      ],
+      "faces": {
+        "north": {
+          "texture": "#shelf"
+        },
+        "south": {
+          "texture": "#shelf"
+        },
+        "east": {
+          "texture": "#shelf"
+        },
+        "west": {
+          "texture": "#shelf"
+        },
+        "up": {
+          "texture": "#shelf"
+        },
+        "down": {
+          "texture": "#gills"
+        }
+      }
+    },
+    {
+      "from": [
+        0,
         8,
+        3
+      ],
+      "to": [
+        5,
+        10,
         13
       ],
       "faces": {
         "north": {
-          "texture": "#bark"
+          "texture": "#shelf"
         },
         "south": {
-          "texture": "#bark"
+          "texture": "#shelf"
         },
         "east": {
-          "texture": "#bark"
+          "texture": "#shelf"
         },
         "west": {
-          "texture": "#bark"
+          "texture": "#shelf"
         },
         "up": {
-          "texture": "#bark"
+          "texture": "#shelf"
         },
         "down": {
-          "texture": "#bark"
+          "texture": "#gills"
         }
       }
     },
     {
       "from": [
         3,
-        13,
-        3
+        11,
+        0
       ],
       "to": [
         13,
-        15,
-        13
+        13,
+        5
       ],
       "faces": {
         "north": {
-          "texture": "#bark"
+          "texture": "#shelf"
         },
         "south": {
-          "texture": "#bark"
+          "texture": "#shelf"
         },
         "east": {
-          "texture": "#bark"
+          "texture": "#shelf"
         },
         "west": {
-          "texture": "#bark"
+          "texture": "#shelf"
         },
         "up": {
-          "texture": "#bark"
+          "texture": "#shelf"
         },
         "down": {
-          "texture": "#bark"
+          "texture": "#gills"
+        }
+      }
+    },
+    {
+      "from": [
+        3,
+        14,
+        11
+      ],
+      "to": [
+        13,
+        16,
+        16
+      ],
+      "faces": {
+        "north": {
+          "texture": "#shelf"
+        },
+        "south": {
+          "texture": "#shelf"
+        },
+        "east": {
+          "texture": "#shelf"
+        },
+        "west": {
+          "texture": "#shelf"
+        },
+        "up": {
+          "texture": "#shelf"
+        },
+        "down": {
+          "texture": "#gills"
+        }
+      }
+    },
+    {
+      "from": [
+        3,
+        0,
+        11
+      ],
+      "to": [
+        13,
+        2,
+        16
+      ],
+      "faces": {
+        "north": {
+          "texture": "#shelf"
+        },
+        "south": {
+          "texture": "#shelf"
+        },
+        "east": {
+          "texture": "#shelf"
+        },
+        "west": {
+          "texture": "#shelf"
+        },
+        "up": {
+          "texture": "#shelf"
+        },
+        "down": {
+          "texture": "#gills"
         }
       }
     }

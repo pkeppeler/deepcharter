@@ -335,7 +335,7 @@ final class TextureTestWorld {
 		});
 	}
 
-	private static BlockState lamp(int level) {
+	static BlockState lamp(int level) {
 		return Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, level);
 	}
 
@@ -381,7 +381,7 @@ final class TextureTestWorld {
 		return high - low <= 3;
 	}
 
-	private static void loadChunks(ServerLevel level, BlockPos at, int radius) {
+	static void loadChunks(ServerLevel level, BlockPos at, int radius) {
 		for (int dx = -radius; dx <= radius; dx++) {
 			for (int dz = -radius; dz <= radius; dz++) {
 				level.getChunk((at.getX() >> 4) + dx, (at.getZ() >> 4) + dz);
@@ -390,7 +390,7 @@ final class TextureTestWorld {
 	}
 
 	/** Puts the camera at {@code eye} in {@code layer}, looking at {@code target}, then waits {@code wait} ticks. */
-	private void view(int layer, Vec3 eye, Vec3 target, int wait) {
+	void view(int layer, Vec3 eye, Vec3 target, int wait) {
 		Vec3 d = target.subtract(eye);
 		float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z));
 		float pitch = (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z)));
@@ -409,7 +409,7 @@ final class TextureTestWorld {
 	 * Waits, on a wall-clock limit, until the light has settled, every chunk section in view is rendered, and no mob or loose item is
 	 * in the world, for {@link #SETTLE_STABLE_POLLS} looks in a row; then shoots the still.
 	 */
-	private void still(String stillName) {
+	void still(String stillName) {
 		long deadline = System.nanoTime() + SETTLE_LIMIT_NANOS;
 		int stable = 0;
 		while (stable < SETTLE_STABLE_POLLS) {
@@ -463,11 +463,11 @@ final class TextureTestWorld {
 		return server.getPlayerList().getPlayers().getFirst();
 	}
 
-	private <T> T serverGet(Function<MinecraftServer, T> action) {
+	<T> T serverGet(Function<MinecraftServer, T> action) {
 		return sp.getServer().computeOnServer(action::apply);
 	}
 
-	private void serverDo(Consumer<MinecraftServer> action) {
+	void serverDo(Consumer<MinecraftServer> action) {
 		sp.getServer().runOnServer(action::accept);
 	}
 }

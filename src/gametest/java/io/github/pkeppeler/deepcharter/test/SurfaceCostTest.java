@@ -41,6 +41,13 @@ import net.minecraft.world.level.Level;
  * <p>The worlds are test dimensions in the test mod's preset. With the layers' zone biomes: {@code tall_baseline} (layers only) and
  * {@code tall_surface} (our surface over the layers). With the surface's own biome source over the whole height, which costs a noise
  * lookup per quart cell and has no zone features: {@code tall_baseline_biomes} and {@code tall_surface_biomes}.
+ *
+ * <p>The surface's features (#245: the salvage crates and the fungal stalks) are measured by three more worlds. {@code tall_surface_bare} is
+ * {@code tall_surface_biomes} with every surface biome's features taken out, so the ratio of the two is what the stalks cost. The yard is
+ * the one biome that holds crates, and it lies within 120 blocks of the origin, where no measured region is, so {@code tall_surface_yard}
+ * puts every column in it (its noise router's temperature is 1), the worst case for the crates, and {@code tall_surface_yard_bare} is the
+ * same world with no features. Each of those four worlds is checked against the shipped files by
+ * {@code theTallFixturesAreTheShippedSurfaceWithTheBandCutOff}.
  */
 public class SurfaceCostTest {
 	private static final Logger LOGGER = LoggerFactory.getLogger(SurfaceCostTest.class);
