@@ -13,9 +13,13 @@ import net.minecraft.resources.Identifier;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
+import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 
-/** The charter's name and balance, at the left edge halfway down so it clears the pod readout and the altimeter. Shown while on a charter. */
+/**
+ * The charter's name and balance, at the left edge halfway down so it clears the pod readout and the altimeter. Shown while on a charter, except in the pilot's
+ * seat under a cockpit style, where it is a line of the cockpit's readout plate.
+ */
 public final class AccountHud {
 	private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "account");
 
@@ -33,7 +37,7 @@ public final class AccountHud {
 
 	private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
 		Optional<Component> text = text();
-		if (text.isEmpty()) {
+		if (text.isEmpty() || CockpitHud.showsReadout(Minecraft.getInstance())) {
 			return;
 		}
 		Font font = Minecraft.getInstance().font;

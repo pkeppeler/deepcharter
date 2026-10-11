@@ -38,11 +38,18 @@ public final class TestPacks implements ModInitializer {
 	public static final String LAYER_CONCEPT_FORM_2 = "layer_concept_form_2";
 	/** The Company Rock and breach crust of layer 3, Columnar. */
 	public static final String LAYER_CONCEPT_FORM_3 = "layer_concept_form_3";
+	/** The cockpit HUD concepts (#444, docs/design/cockpit-concepts.md): each pack sets {@code theme/cockpit.json}'s {@code style} to one option. A, Dials. */
+	public static final String COCKPIT_DIALS = "cockpit_dials";
+	/** Cockpit concept B, Strip. */
+	public static final String COCKPIT_STRIP = "cockpit_strip";
+	/** Cockpit concept C, Consoles. */
+	public static final String COCKPIT_CONSOLES = "cockpit_consoles";
 
 	@Override
 	public void onInitialize() {
 		for (String pack : new String[] {AMBER_CRT, BAD_CRT, RED_INK, TEXTURE_DENSITY_B, TEXTURE_DENSITY_C, TEXTURE_DENSITY_D,
-				LAYER_CONCEPT_GRAIN, LAYER_CONCEPT_BEDDED, LAYER_CONCEPT_MOTTLED, LAYER_CONCEPT_FORM_1, LAYER_CONCEPT_FORM_2, LAYER_CONCEPT_FORM_3}) {
+				LAYER_CONCEPT_GRAIN, LAYER_CONCEPT_BEDDED, LAYER_CONCEPT_MOTTLED, LAYER_CONCEPT_FORM_1, LAYER_CONCEPT_FORM_2, LAYER_CONCEPT_FORM_3,
+				COCKPIT_DIALS, COCKPIT_STRIP, COCKPIT_CONSOLES}) {
 			ResourceLoader.registerBuiltinPack(Identifier.fromNamespaceAndPath("deepcharter-test", pack),
 					FabricLoader.getInstance().getModContainer("deepcharter-test").orElseThrow(),
 					Component.literal(pack + " (test pack)"), PackActivationType.NORMAL);

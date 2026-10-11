@@ -10,7 +10,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.theme.BreachLook;
+import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.Colors;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 
@@ -43,7 +45,8 @@ public final class BreachHud {
 		BreachEffects.Offset jitter = BreachEffects.jitter();
 		int x = (graphics.guiWidth() - client.font.width(reading)) / 2 + jitter.x();
 		HudLook look = HudLook.current();
-		graphics.text(client.font, reading, x, look.altimeterMargin() + jitter.y(), look.altimeterColor());
+		int top = CockpitHud.seated(client).map(CockpitLook.Layout::altimeterY).orElse(look.altimeterMargin());
+		graphics.text(client.font, reading, x, top + jitter.y(), look.altimeterColor());
 	}
 
 	private static void extractBreach(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
