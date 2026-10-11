@@ -74,7 +74,7 @@ def _text_pixels(text: str) -> list[str]:
     return rows
 
 
-def _plate(width_px: int, height_px: int, style: dict) -> list[list[str]]:
+def _plate(width_px: int, height_px: int) -> list[list[str]]:
     """A plate as a grid of legend keys: p plate, b border, i inner line."""
     grid = [["p" for _ in range(width_px)] for _ in range(height_px)]
     for x in range(width_px):
@@ -97,7 +97,7 @@ def text_sign(text: str, style: str) -> tuple[list[list[str]], list[list[str]]]:
     width = len(pixels[0])
     tiles = math.ceil((width + 8) / TILE)
     width_px = tiles * TILE
-    plate = _plate(width_px, TILE, STYLES[style])
+    plate = _plate(width_px, TILE)
     glow = [["." for _ in range(width_px)] for _ in range(TILE)]
     x0 = (width_px - width) // 2
     y0 = 4
@@ -152,7 +152,7 @@ def _layout():
         cut(name, plate, glow, style)
     if len(tiles) > TILES:
         raise ValueError(f"the signs need {len(tiles)} tiles, but enamel_sign has {TILES}: raise SIGN_TILES here and in ColonyKit")
-    blank = _plate(TILE, TILE, STYLES["enamel"])
+    blank = _plate(TILE, TILE)
     while len(tiles) < TILES:
         tiles.append((["".join(r) for r in blank], None, "enamel"))
     return tiles, signs

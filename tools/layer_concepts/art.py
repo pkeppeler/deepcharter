@@ -75,7 +75,7 @@ def strata(shades: list[str], seed: int, scars: bool = False) -> Grid:
         base = (k + 1) * 16 / 5 + (hashf(seed, k, 1) - 0.5) * 3
         bounds.append((base, 0.5 + hashf(seed, k, 2) * 1.5, 1, hashf(seed, k, 4) * 6.2832))
 
-    def edge(k: int, x: float, y: int) -> float:
+    def edge(k: int, x: float) -> float:
         base, amp, freq, phase = bounds[k]
         fold = amp * math.sin(2 * math.pi * freq * x / SIZE + phase)
         return base + fold + (vnoise(seed + 7, int(x) % SIZE, k * 3, 4, 4) - 0.5) * 1.6
@@ -98,7 +98,7 @@ def strata(shades: list[str], seed: int, scars: bool = False) -> Grid:
         for x in range(SIZE):
             step = sum((x > joint_x(j, y)) * (1.0 if j == 0 else -1.0) * joints[j][2] for j in range(2))
             yy = y + step
-            bed = sum(1 for k in range(4) if edge(k, x, y) <= yy)
+            bed = sum(1 for k in range(4) if edge(k, x) <= yy)
             fold = vnoise(seed + 3, x, y, 8, 4)
             lamina = 1 if (int(yy + bed * 5 + math.sin(2 * math.pi * x / SIZE + bed) * 1.0) % 4 == 0 and hashf(seed, x // 4, y, 4) > 0.45) else 0
             fleck = hashf(seed, x, y)
@@ -106,7 +106,7 @@ def strata(shades: list[str], seed: int, scars: bool = False) -> Grid:
             g[y][x] = clamp(shade, shades)
     for k in range(4):
         for x in range(SIZE):
-            y = int(edge(k, x, 0))
+            y = int(edge(k, x))
             if 0 <= y < SIZE and hashf(seed, k, x, 8) > 0.2:
                 g[y][x] = clamp(bed_shade[min(4, k + 1)] - 2, shades)
             if 0 < y < SIZE and hashf(seed, k, x, 6) > 0.55:
