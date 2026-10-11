@@ -164,31 +164,56 @@ public class ThemeLooksTest {
 		helper.succeed();
 	}
 
-	/** The machine panel (#246 concept round): the mod ships it off and with every decal slot empty, so a terminal is the CRT it always was. */
+	/** The machine panel (#246): the mod ships Hatch, on, with the nameplate, the four decals and the pips in place. */
 	@GameTest
-	public void thePanelIsOffAndEmptyInTheDefaultTheme(GameTestHelper helper) {
+	public void thePanelIsOnInTheDefaultTheme(GameTestHelper helper) {
 		PanelLook look = PanelLook.of(area("panel", null));
-		if (look.enabled()) {
-			throw fail(helper, "the panel must be off in the mod's own theme");
+		if (!look.enabled()) {
+			throw fail(helper, "the panel must be on in the mod's own theme");
 		}
 		for (PanelLook.Decal decal : List.of(look.nameplate(), look.dressA(), look.dressB(), look.dressC(), look.dressD())) {
-			if (decal.on()) {
-				throw fail(helper, "a decal slot must be empty in the mod's own theme, got " + decal);
+			if (!decal.on()) {
+				throw fail(helper, "every decal slot is filled in the mod's own theme, got " + decal);
 			}
 		}
-		if (look.pipSize() != 0) {
-			throw fail(helper, "no pip in the mod's own theme, got " + look.pipSize());
+		if (look.pipSize() != 12) {
+			throw fail(helper, "Hatch's pip is 12 pixels, got " + look.pipSize());
 		}
 		helper.succeed();
 	}
 
-	/** A pack switches the panel on and places a decal from the right edge and the bottom edge by naming a few keys. */
+	/** The screens were drawn for 288 x 192 of content: a GUI that leaves less inside the insets (320 x 240 is the game's smallest) draws the plain CRT. */
 	@GameTest
-	public void aPackSwitchesThePanelOnAndAnchorsDecals(GameTestHelper helper) {
+	public void thePanelIsDrawnOnlyWhereTheContentFits(GameTestHelper helper) {
+		PanelLook look = PanelLook.of(area("panel", null));
+		if (!look.fits(427, 240) || !look.fits(854, 480)) {
+			throw fail(helper, "the panel fits the default GUI and larger ones");
+		}
+		if (look.fits(320, 240) || look.fits(427, 200)) {
+			throw fail(helper, "the panel does not fit a 320 x 240 GUI, nor one 200 high");
+		}
+		if (PanelLook.of(area("panel", "{ \"enabled\": 0 }")).fits(854, 480)) {
+			throw fail(helper, "a panel that is off fits nowhere");
+		}
+		helper.succeed();
+	}
+
+	/** A pack switches the panel off by naming one key, and the terminals are the plain CRT again. */
+	@GameTest
+	public void aPackSwitchesThePanelOff(GameTestHelper helper) {
+		if (PanelLook.of(area("panel", "{ \"enabled\": 0 }")).enabled()) {
+			throw fail(helper, "a pack that names enabled 0 turns the panel off");
+		}
+		helper.succeed();
+	}
+
+	/** A pack moves the nameplate and a decal (from the right edge and the bottom edge) by naming a few keys, and keeps the mod's other keys. */
+	@GameTest
+	public void aPackRestylesThePanelKeyByKeyAndAnchorsDecals(GameTestHelper helper) {
 		PanelLook look = PanelLook.of(area("panel", """
-				{ "enabled": 1, "insetTop": 18, "nameplateW": 70, "nameplateH": 14, "nameplateAnchorX": 2, "nameplateX": 6,
+				{ "enabled": 1, "insetTop": 18, "nameplateW": 70, "nameplateH": 14, "nameplateAnchorX": 2, "nameplateAnchorY": 0, "nameplateX": 6, "nameplateY": 0,
 				  "dressAW": 30, "dressAH": 20, "dressAAnchorX": 1, "dressAAnchorY": 2, "dressAX": -10, "dressAY": 3 }"""));
-		if (!look.enabled() || look.content().top() != 18 || look.content().left() != 24) {
+		if (!look.enabled() || look.content().top() != 18 || look.content().left() != 52) {
 			throw fail(helper, "a pack names a key and keeps the rest, got " + look);
 		}
 		PanelLook.Decal plate = look.nameplate();

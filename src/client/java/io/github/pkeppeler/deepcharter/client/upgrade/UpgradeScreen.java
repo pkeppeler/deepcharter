@@ -13,9 +13,11 @@ import net.minecraft.util.Mth;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.sound.TypewriterSound;
+import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
+import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
@@ -39,11 +41,14 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 	/** The rows are this far apart at most; with many tracks they close up to fit the screen, down to {@link #MIN_PITCH}. */
 	private static final int MAX_PITCH = 16;
 	private static final int MIN_PITCH = 11;
+	/** The plain CRT outlines each button, so its rows need a gap; a panel button has an edge of its own and its rows touch, which gives each label the room. */
 	private static final int ROW_GAP = 2;
 	private static final int LIST_TOP = 62;
+	/** A label's room in its button: {@code buttonPad} and {@link PanelLook#LABEL_MARGIN}, 4 each side. */
+	private static final int LABEL_ROOM = 8;
 	private static final int TRACK_WIDTH = 104;
 	private static final int TIER_MAX_WIDTH = 250;
-	private static final int COLUMN_GAP = 8;
+	private static final int COLUMN_GAP = 6;
 	private static final int CLOSE_WIDTH = 70;
 
 	private TerminalView view;
@@ -88,11 +93,13 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 	@Override
 	protected void layout() {
 		int left = contentLeft(MARGIN);
-		int pitch = Mth.clamp((contentBottom(MARGIN) - listTop() + ROW_GAP) / ComponentTrack.values().length, MIN_PITCH, MAX_PITCH);
-		int rowHeight = pitch - ROW_GAP;
-		int tierX = left + TRACK_WIDTH + COLUMN_GAP;
+		int rowGap = PanelLook.drawn() ? 0 : ROW_GAP;
+		int pitch = Mth.clamp((contentBottom(MARGIN) - listTop() + rowGap) / ComponentTrack.values().length, MIN_PITCH, MAX_PITCH);
+		int rowHeight = pitch - rowGap;
+		int trackWidth = Math.max(TRACK_WIDTH, widestTrackLabel() + LABEL_ROOM);
+		int tierX = left + trackWidth + COLUMN_GAP;
 		// Close sits under the longest list of tiers, so it stays on the screen however many tracks the left column holds.
-		int closeY = listTop() + Arrays.stream(ComponentTrack.values()).mapToInt(ComponentTrack::maxTier).max().orElse(0) * pitch + ROW_GAP;
+		int closeY = listTop() + Arrays.stream(ComponentTrack.values()).mapToInt(ComponentTrack::maxTier).max().orElse(0) * pitch + rowGap;
 		addRenderableWidget(new CrtButton(tierX, closeY, CLOSE_WIDTH, rowHeight,
 				Component.translatable("screen.deepcharter.terminal.close"), button -> onClose()));
 		Optional<UpgradeView.Pod> shownPod = upgrade().flatMap(UpgradeView::pod);
@@ -104,8 +111,7 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 		for (UpgradeView.Slot slot : pod.slots()) {
 			ComponentTrack track = slot.track();
 			Component label = Component.translatable("screen.deepcharter.upgrade.track", trackName(track), slot.installed());
-			addRenderableWidget(new CrtButton(left, listTop() + track.ordinal() * pitch,
-					TRACK_WIDTH, rowHeight, track == selected ? Component.literal("> ").append(label) : label, pressed -> select(track)));
+			addRenderableWidget(new CrtButton(left, listTop() + track.ordinal() * pitch, trackWidth, rowHeight, label, pressed -> select(track)).marked(track == selected));
 		}
 		UpgradeView.Slot held = slotOf(pod, selected);
 		long balance = ClientCharter.view().map(charter -> charter.balance()).orElse(0L);
@@ -124,6 +130,13 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 			// An unregistered pod (no serial) takes no parts: they would be void.
 			button.active = !here && balance >= price && !pod.serial().isEmpty();
 		}
+	}
+
+	/** The widest track label in the terminal font, so that its button can leave the label its room however the names are worded. */
+	private int widestTrackLabel() {
+		return Arrays.stream(ComponentTrack.values())
+				.mapToInt(track -> CrtText.width(font, Component.translatable("screen.deepcharter.upgrade.track", trackName(track), track.maxTier()).getString()))
+				.max().orElse(0);
 	}
 
 	private static String trackName(ComponentTrack track) {

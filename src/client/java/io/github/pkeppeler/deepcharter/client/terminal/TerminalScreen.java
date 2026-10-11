@@ -57,7 +57,7 @@ public final class TerminalScreen extends CrtScreen implements TerminalViewScree
 		}
 		if (!shown.unlocked()) {
 			TerminalType first = typeOf(shown).prerequisite().orElseThrow();
-			return Component.translatable("screen.deepcharter.terminal.offline_locked", Component.translatable(first.block().getDescriptionId()));
+			return Component.translatable("screen.deepcharter.terminal.offline_locked", Component.translatable(first.block().getDescriptionId()).getString().toUpperCase(Locale.ROOT));
 		}
 		return Component.translatable("screen.deepcharter.terminal.offline");
 	}
