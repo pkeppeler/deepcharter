@@ -143,37 +143,37 @@ public final class PodStatusHud {
 		return HardLanding.isHard(PodStats.of(pod), sinkSpeed) ? Optional.of(Component.translatable("hud.deepcharter.pod.hard_landing")) : Optional.empty();
 	}
 
+	/** A line of the readout and the colour it is drawn in. */
+	public record Line(Component text, int color) {
+	}
+
+	/** Every line the pilot's readout shows now, in the order it is drawn: the plain HUD's text and the cockpit's plate show the same. */
+	public static List<Line> readout(Minecraft client, PodEntity pod) {
+		HudLook look = HudLook.current();
+		List<Line> readout = new ArrayList<>();
+		lines(pod).forEach(line -> readout.add(new Line(line, look.podStatusColor())));
+		burningLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
+		linerLine(pod).ifPresent(line -> readout.add(new Line(line, look.podLinerColor())));
+		sounderLines(pod).forEach(line -> readout.add(new Line(line, look.podSounderColor())));
+		crustLines(pod, resting(client, pod)).forEach(line -> readout.add(new Line(line, look.podHardLandingColor())));
+		liningLine(pod).ifPresent(line -> readout.add(new Line(line, look.podLiningColor())));
+		outOfBrickLine(pod).ifPresent(line -> readout.add(new Line(line, look.podLiningDryColor())));
+		hardLandingLine(pod).ifPresent(line -> readout.add(new Line(line, look.podHardLandingColor())));
+		return readout;
+	}
+
 	private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
 		Minecraft client = Minecraft.getInstance();
-		if (client.player == null || !(client.player.getVehicle() instanceof PodEntity pod) || !PodSeat.showsPodStatus(pod, client.player)) {
+		if (client.player == null || !(client.player.getVehicle() instanceof PodEntity pod) || !PodSeat.showsPodStatus(pod, client.player)
+				|| CockpitHud.seated(client).isPresent()) {
 			return;
 		}
 		Font font = client.font;
 		HudLook look = HudLook.current();
 		int y = look.podStatusMargin();
-		for (Component line : lines(pod)) {
-			graphics.text(font, line, look.podStatusMargin(), y, look.podStatusColor());
+		for (Line line : readout(client, pod)) {
+			graphics.text(font, line.text(), look.podStatusMargin(), y, line.color());
 			y += font.lineHeight + look.podStatusLineGap();
 		}
-		y = warning(graphics, font, look, burningLine(pod), look.podBurningColor(), y);
-		y = warning(graphics, font, look, linerLine(pod), look.podLinerColor(), y);
-		for (Component line : sounderLines(pod)) {
-			y = warning(graphics, font, look, Optional.of(line), look.podSounderColor(), y);
-		}
-		for (Component line : crustLines(pod, resting(client, pod))) {
-			y = warning(graphics, font, look, Optional.of(line), look.podHardLandingColor(), y);
-		}
-		y = warning(graphics, font, look, liningLine(pod), look.podLiningColor(), y);
-		y = warning(graphics, font, look, outOfBrickLine(pod), look.podLiningDryColor(), y);
-		warning(graphics, font, look, hardLandingLine(pod), look.podHardLandingColor(), y);
-	}
-
-	/** Draws {@code line} at {@code y} in {@code color} if there is one, and returns the y of the next line. */
-	private static int warning(GuiGraphicsExtractor graphics, Font font, HudLook look, Optional<Component> line, int color, int y) {
-		if (line.isEmpty()) {
-			return y;
-		}
-		graphics.text(font, line.get(), look.podStatusMargin(), y, color);
-		return y + font.lineHeight + look.podStatusLineGap();
 	}
 }

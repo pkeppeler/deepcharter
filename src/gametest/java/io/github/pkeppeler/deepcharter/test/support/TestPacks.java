@@ -32,11 +32,17 @@ public final class TestPacks implements ModInitializer {
 	public static final String LAYER_CONCEPT_B = "layer_concept_b";
 	/** Layer concept C, Columnar. */
 	public static final String LAYER_CONCEPT_C = "layer_concept_c";
+	/** The cockpit HUD concepts (#444, docs/design/cockpit-concepts.md): each pack sets {@code theme/cockpit.json}'s {@code style} to one option. A, Dials. */
+	public static final String COCKPIT_DIALS = "cockpit_dials";
+	/** Cockpit concept B, Strip. */
+	public static final String COCKPIT_STRIP = "cockpit_strip";
+	/** Cockpit concept C, Consoles. */
+	public static final String COCKPIT_CONSOLES = "cockpit_consoles";
 
 	@Override
 	public void onInitialize() {
 		for (String pack : new String[] {AMBER_CRT, BAD_CRT, RED_INK, TEXTURE_DENSITY_B, TEXTURE_DENSITY_C, TEXTURE_DENSITY_D,
-				LAYER_CONCEPT_A, LAYER_CONCEPT_B, LAYER_CONCEPT_C}) {
+				LAYER_CONCEPT_A, LAYER_CONCEPT_B, LAYER_CONCEPT_C, COCKPIT_DIALS, COCKPIT_STRIP, COCKPIT_CONSOLES}) {
 			ResourceLoader.registerBuiltinPack(Identifier.fromNamespaceAndPath("deepcharter-test", pack),
 					FabricLoader.getInstance().getModContainer("deepcharter-test").orElseThrow(),
 					Component.literal(pack + " (test pack)"), PackActivationType.NORMAL);

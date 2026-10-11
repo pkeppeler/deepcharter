@@ -13,6 +13,9 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.block.Block;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
+import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
+import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
@@ -89,11 +92,11 @@ public final class ScannerHud {
 	}
 
 	private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+		Minecraft client = Minecraft.getInstance();
 		ScanSlice scanned = slice;
-		if (scanned == null) {
+		if (scanned == null || CockpitHud.seated(client).isPresent()) {
 			return;
 		}
-		Minecraft client = Minecraft.getInstance();
 		int guiWidth = client.getWindow().getGuiScaledWidth();
 		int guiHeight = client.getWindow().getGuiScaledHeight();
 		ScannerLook look = ScannerLook.current();
@@ -105,27 +108,74 @@ public final class ScannerHud {
 		int bottom = cellTop(guiWidth, guiHeight, area, -area.down()) + cell;
 
 		graphics.fill(left - FRAME, look.margin(), right + FRAME, bottom + FRAME, look.frameColor());
-		graphics.text(client.font, Component.translatable("deepcharter.scanner.title", scanned.tier()), left, look.margin() + 1, look.titleColor());
-		graphics.fill(left, top, right, bottom, look.airColor());
+		graphics.text(client.font, title(scanned), left, look.margin() + 1, look.titleColor());
+		drawCells(graphics, client, scanned, cell, left, top);
+	}
+
+	/**
+	 * Draws the map in the cockpit's scanner window instead of at top right: the cells as large as fit whole in {@code window}, centred in it,
+	 * on the air colour. Draws nothing without a slice, that is without a working scanner.
+	 */
+	public static void drawInWindow(GuiGraphicsExtractor graphics, Minecraft client, Decal window) {
+		ScanSlice scanned = slice;
+		if (scanned == null) {
+			return;
+		}
+		ScannerLook look = ScannerLook.current();
+		ScanArea area = scanned.area();
+		int cell = Math.max(1, Math.min(look.cellPixels(), Math.min(window.width() / area.columns(), window.height() / area.rows())));
+		int windowLeft = window.left(graphics.guiWidth());
+		int windowTop = window.top(graphics.guiHeight());
+		int left = windowLeft + (window.width() - area.columns() * cell) / 2;
+		int top = windowTop + (window.height() - area.rows() * cell) / 2;
+		graphics.fill(windowLeft, windowTop, windowLeft + window.width(), windowTop + window.height(), look.airColor());
+		// A slice larger than the window (tier 4) is cut at the window's edge, never drawn over the gauges beside it.
+		graphics.enableScissor(windowLeft, windowTop, windowLeft + window.width(), windowTop + window.height());
+		try {
+			drawCells(graphics, client, scanned, cell, left, top);
+		} finally {
+			graphics.disableScissor();
+		}
+	}
+
+	/** The title of the cockpit's window, centred just under it. It is drawn after the bezel, which has a recess for it. */
+	public static void drawTitleUnder(GuiGraphicsExtractor graphics, Minecraft client, Decal window) {
+		ScanSlice scanned = slice;
+		if (scanned == null) {
+			return;
+		}
+		Component title = title(scanned);
+		graphics.text(client.font, title, window.left(graphics.guiWidth()) + (window.width() - client.font.width(title)) / 2,
+				window.top(graphics.guiHeight()) + window.height() + CockpitLook.current().scannerTitleGap(), ScannerLook.current().titleColor());
+	}
+
+	private static Component title(ScanSlice scanned) {
+		return Component.translatable("deepcharter.scanner.title", scanned.tier());
+	}
+
+	/** The cells of {@code scanned} and the pod, {@code cell} pixels each, the top left cell of the area at ({@code left}, {@code top}). */
+	private static void drawCells(GuiGraphicsExtractor graphics, Minecraft client, ScanSlice scanned, int cell, int left, int top) {
+		ScannerLook look = ScannerLook.current();
+		ScanArea area = scanned.area();
+		graphics.fill(left, top, left + area.columns() * cell, top + area.rows() * cell, look.airColor());
 		for (int up = area.up(); up >= -area.down(); up--) {
 			for (int ahead = -area.halfWidth(); ahead <= area.halfWidth(); ahead++) {
 				Cell found = scanned.cell(ahead, up);
 				if (!(found instanceof Cell.Air)) {
-					fillCell(graphics, guiWidth, guiHeight, area, ahead, up, colour(look, found));
+					fillCell(graphics, area, cell, left, top, ahead, up, colour(look, found));
 				}
 			}
 		}
 		// The cells above the feet cell that the ridden pod fills: 1 for a Mole (two blocks tall), 2 for a Prospector.
 		int podCellsUp = client.player.getVehicle() instanceof PodEntity pod ? pod.chassis().boreHeight() - 1 : 0;
 		for (int up = 0; up <= podCellsUp; up++) {
-			fillCell(graphics, guiWidth, guiHeight, area, 0, up, look.podColor());
+			fillCell(graphics, area, cell, left, top, 0, up, look.podColor());
 		}
 	}
 
-	private static void fillCell(GuiGraphicsExtractor graphics, int guiWidth, int guiHeight, ScanArea area, int ahead, int up, int colour) {
-		int cell = cellSize(guiWidth, guiHeight, area);
-		int x = cellLeft(guiWidth, guiHeight, area, ahead);
-		int y = cellTop(guiWidth, guiHeight, area, up);
+	private static void fillCell(GuiGraphicsExtractor graphics, ScanArea area, int cell, int left, int top, int ahead, int up, int colour) {
+		int x = left + (ahead + area.halfWidth()) * cell;
+		int y = top + (area.up() - up) * cell;
 		graphics.fill(x, y, x + cell, y + cell, colour);
 	}
 

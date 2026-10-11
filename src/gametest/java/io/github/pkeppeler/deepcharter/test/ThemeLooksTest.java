@@ -24,6 +24,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.client.theme.BreachLook;
 import io.github.pkeppeler.deepcharter.client.theme.CargoLook;
+import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.theme.PodPaintLook;
@@ -250,6 +251,54 @@ public class ThemeLooksTest {
 		helper.succeed();
 	}
 
+	/** The cockpit HUD (#444): the mod ships no style, so main looks as it did, and a pack picks one option by naming one key. */
+	@GameTest
+	public void theCockpitIsOffInTheDefaultThemeAndAPackPicksAStyle(GameTestHelper helper) {
+		CockpitLook shipped = CockpitLook.of(area("cockpit", null));
+		if (shipped.style() != CockpitLook.Style.OFF || shipped.active().isPresent()) {
+			throw fail(helper, "the mod's own theme picks no cockpit style, got " + shipped.style());
+		}
+		CockpitLook strip = CockpitLook.of(area("cockpit", "{ \"style\": 2 }"));
+		if (strip.style() != CockpitLook.Style.STRIP || !strip.active().orElseThrow().name().equals("strip")) {
+			throw fail(helper, "a pack that names style 2 gets the strip, got " + strip.style() + " with " + strip.active());
+		}
+		if (strip.fuelColor() != shipped.fuelColor()) {
+			throw fail(helper, "a pack that names only the style keeps the mod's colours");
+		}
+		helper.succeed();
+	}
+
+	/** Each option names its four gauges and a scanner window, and the sprite of a slot is found by the style's name. */
+	@GameTest
+	public void everyCockpitStyleHasFourGaugesAndAScannerWindow(GameTestHelper helper) {
+		CockpitLook look = CockpitLook.of(area("cockpit", null));
+		for (CockpitLook.Layout layout : List.of(look.dials(), look.strip(), look.consoles())) {
+			for (CockpitLook.Gauge gauge : List.of(layout.fuel(), layout.hull(), layout.depth(), layout.heat())) {
+				if (!gauge.on()) {
+					throw fail(helper, "the " + layout.name() + " look must have all four gauges, got " + gauge);
+				}
+			}
+			if (layout.scanner().width() != 98 || layout.scanner().height() != 82) {
+				throw fail(helper, "the scanner window holds the slices of tiers 1 to 3 whole, 98 x 82, got " + layout.scanner());
+			}
+		}
+		if (!look.consoles().sprite("frame").toString().equals("deepcharter:cockpit/consoles/frame")) {
+			throw fail(helper, "the frame sprite of the consoles is deepcharter:cockpit/consoles/frame, got " + look.consoles().sprite("frame"));
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void theCockpitRejectsValuesOutOfRange(GameTestHelper helper) {
+		rejected(helper, () -> CockpitLook.of(area("cockpit", "{ \"style\": 4 }")), "style");
+		rejected(helper, () -> CockpitLook.of(area("cockpit", "{ \"style\": -1 }")), "style");
+		rejected(helper, () -> CockpitLook.of(area("cockpit", "{ \"hullLowFraction\": 1.5 }")), "hullLowFraction");
+		rejected(helper, () -> CockpitLook.of(area("cockpit", "{ \"heatRisePerTick\": 0 }")), "heatRisePerTick");
+		rejected(helper, () -> CockpitLook.of(area("cockpit", "{ \"stripFuelSegments\": 0 }")), "stripFuelSegments");
+		rejected(helper, () -> CockpitLook.of(area("cockpit", "{ \"dialsFuelKind\": 3 }")), "dialsFuelKind");
+		helper.succeed();
+	}
+
 	@GameTest
 	public void thePanelRejectsValuesOutOfRange(GameTestHelper helper) {
 		rejected(helper, () -> PanelLook.of(area("panel", "{ \"enabled\": 2 }")), "enabled");
@@ -262,7 +311,7 @@ public class ThemeLooksTest {
 
 	private static Map<String, ThemeData> defaultAreas() {
 		Map<String, ThemeData> areas = new LinkedHashMap<>();
-		for (String name : List.of("crt", "handbook", "scanner", "hud", "transmission", "breach", "cargo", "pod", "panel")) {
+		for (String name : List.of("crt", "handbook", "scanner", "hud", "transmission", "breach", "cargo", "pod", "panel", "cockpit")) {
 			areas.put(name, area(name, null));
 		}
 		return areas;
