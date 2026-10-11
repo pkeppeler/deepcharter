@@ -17,6 +17,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -29,6 +30,7 @@ import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 
 /**
  * Evidence scenario "deepest-point": the charter's deepest point rises as the player goes down, with nothing written by hand. The player
@@ -42,6 +44,11 @@ public class DeepestPointScenario extends EvidenceScenario {
 	/** Longer than the poll of the deepest point (20 ticks), so the next read sees the record. */
 	private static final int POLL_TICKS = 30;
 	private static final int ARRIVAL_TICKS = 40;
+	private static final int ARRIVAL_WAIT_TICKS = 400;
+	private static final int ROOM_RADIUS = 4;
+	private static final int ROOM_HEIGHT = 5;
+	/** Tilted up, so the floor row of layer 2, which has no rock under it, stays out of the frame. */
+	private static final float LOOK_UP = -25f;
 	private static final int SETTLE_TICKS = 60;
 	private static final int TYPING_FRAMES = 45;
 
@@ -133,14 +140,23 @@ public class DeepestPointScenario extends EvidenceScenario {
 				minecraftServer.getPlayerList().getPlayers().getFirst().teleportTo(minecraftServer.overworld(), at.x, at.y, at.z, Set.of(), yaw, pitch, true));
 	}
 
-	/** Puts the player {@code rowsAboveFloor} rows above the floor of {@code layer}, held in place, and waits for the next poll to see them. */
+	/**
+	 * Puts the player {@code rowsAboveFloor} rows above the floor of {@code layer}, held in place in a sealed room of air cut into the
+	 * layer's rock (so a still shows rock and never the void), and waits until the client sees the room's wall and the next poll saw the player.
+	 */
 	private void descend(ClientGameTestContext context, TestServerContext server, int layer, int rowsAboveFloor) {
-		server.runOnServer(minecraftServer -> {
+		BlockPos wall = server.computeOnServer(minecraftServer -> {
 			ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
 			ServerLevel level = minecraftServer.getLevel(LayerChain.dimension(layer));
+			int y = level.getMinY() + rowsAboveFloor;
+			RoomCarver.carve(level, new BlockPos(-ROOM_RADIUS, y, -ROOM_RADIUS), new BlockPos(ROOM_RADIUS, y + ROOM_HEIGHT, ROOM_RADIUS),
+					Blocks.AIR.defaultBlockState());
 			player.setNoGravity(true);
-			player.teleportTo(level, 0.5, level.getMinY() + rowsAboveFloor, 0.5, Set.of(), 0f, 0f, true);
+			player.teleportTo(level, 0.5, y, 0.5, Set.of(), 0f, LOOK_UP, true);
+			return new BlockPos(0, y + 1, ROOM_RADIUS + 1);
 		});
+		context.waitFor(client -> client.level != null && client.level.dimension().equals(LayerChain.dimension(layer))
+				&& !client.level.getBlockState(wall).isAir(), ARRIVAL_WAIT_TICKS);
 		context.waitTicks(ARRIVAL_TICKS);
 		frame(context);
 		context.waitTicks(POLL_TICKS);
