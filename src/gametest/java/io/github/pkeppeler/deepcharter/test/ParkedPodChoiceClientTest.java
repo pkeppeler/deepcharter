@@ -8,6 +8,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
@@ -19,12 +20,14 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.fuel.FuelPumpScreen;
 import io.github.pkeppeler.deepcharter.client.repair.RepairStationScreen;
+import io.github.pkeppeler.deepcharter.client.terminal.ShownPod;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
+import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
@@ -48,8 +51,8 @@ public class ParkedPodChoiceClientTest implements FabricClientGameTest {
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.pump())));
 			ClientWait.screen(context, FuelPumpScreen.class);
 			FuelPumpScreen pump = context.computeOnClient(client -> (FuelPumpScreen) client.gui.screen());
-			ClientWait.until(context, "both pods tracked at the pump", client -> shown(pump.pod()).isPresent(), client -> "shown " + shown(pump.pod()));
-			Optional<UUID> onPump = context.computeOnClient(client -> shown(pump.pod()));
+			ClientWait.until(context, "both pods tracked at the pump", client -> shown(client, pump.view()).isPresent(), client -> "shown " + shown(client, pump.view()));
+			Optional<UUID> onPump = context.computeOnClient(client -> shown(client, pump.view()));
 			require(onPump.equals(Optional.of(scene.own())), "the pump screen should show the own pod " + scene.own()
 					+ " and not the nearer unowned pod " + scene.unowned() + ", shows " + onPump);
 			context.setScreen(() -> null);
@@ -57,16 +60,16 @@ public class ParkedPodChoiceClientTest implements FabricClientGameTest {
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.station())));
 			ClientWait.screen(context, RepairStationScreen.class);
 			RepairStationScreen station = context.computeOnClient(client -> (RepairStationScreen) client.gui.screen());
-			ClientWait.until(context, "the pod tracked at the station", client -> shown(station.nearbyPod()).isPresent(), client -> "shown " + shown(station.nearbyPod()));
-			Optional<UUID> onStation = context.computeOnClient(client -> shown(station.nearbyPod()));
+			ClientWait.until(context, "the pod tracked at the station", client -> shown(client, station.view()).isPresent(), client -> "shown " + shown(client, station.view()));
+			Optional<UUID> onStation = context.computeOnClient(client -> shown(client, station.view()));
 			require(onStation.equals(Optional.of(scene.own())), "the station screen should show the own pod " + scene.own()
 					+ " and not the nearer unowned pod " + scene.unowned() + ", shows " + onStation);
 			context.setScreen(() -> null);
 		}
 	}
 
-	private static Optional<UUID> shown(Optional<PodEntity> pod) {
-		return pod.map(PodEntity::getUUID);
+	private static Optional<UUID> shown(Minecraft client, TerminalView view) {
+		return ShownPod.of(client.level, view).map(PodEntity::getUUID);
 	}
 
 	/** A repaired pump east of the player and a repaired station north; the own pod three blocks west, an unowned one a block east. */

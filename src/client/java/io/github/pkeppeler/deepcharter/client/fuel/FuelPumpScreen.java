@@ -103,7 +103,7 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
 	}
 
 	/** The pod the screen shows: the one the server will fuel. */
-	public Optional<PodEntity> pod() {
+	private Optional<PodEntity> pod() {
 		if (minecraft == null || minecraft.level == null) {
 			return Optional.empty();
 		}

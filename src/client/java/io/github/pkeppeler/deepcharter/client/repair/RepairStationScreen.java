@@ -82,6 +82,10 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 		rebuildWidgets();
 	}
 
+	public TerminalView view() {
+		return view;
+	}
+
 	public Typewriter typewriter() {
 		return typewriter;
 	}
@@ -252,7 +256,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 	}
 
 	/** The pod the screen shows: the one the server will repair. */
-	public Optional<PodEntity> nearbyPod() {
+	private Optional<PodEntity> nearbyPod() {
 		Minecraft client = Minecraft.getInstance();
 		if (client.level == null) {
 			return Optional.empty();
