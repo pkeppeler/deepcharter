@@ -1,12 +1,13 @@
 {
   "size": [
-    48,
+    104,
     20,
     21
   ],
   "scenes": {
-    "a_1": {
-      "structure": "deepcharter-test:layer_concepts/a_1",
+    "layer_1": {
+      "structure": "deepcharter-test:layer_concepts/layer_1",
+      "dimension": 1,
       "lava": [
         [
           30,
@@ -146,146 +147,50 @@
           "wait": 40,
           "light": "company",
           "lamp": 14
-        }
-      ]
-    },
-    "a_2": {
-      "structure": "deepcharter-test:layer_concepts/a_2",
-      "lava": [
-        [
-          30,
-          11,
-          2
-        ],
-        [
-          31,
-          11,
-          2
-        ],
-        [
-          32,
-          11,
-          2
-        ],
-        [
-          33,
-          11,
-          2
-        ],
-        [
-          34,
-          11,
-          2
-        ]
-      ],
-      "views": [
+        },
         {
-          "name": "silhouette",
+          "name": "wide-wall",
           "eye": [
-            2.5,
-            8.4,
-            11.0
+            60.5,
+            6.4,
+            6.1
           ],
           "target": [
-            44.0,
-            4.5,
-            9.0
+            60.5,
+            6.4,
+            16.0
           ],
           "wait": 40,
           "light": "company",
           "lamp": 0
         },
         {
-          "name": "lamp-lit",
+          "name": "vanilla-reference",
           "eye": [
-            2.5,
+            60.5,
+            6.4,
+            14.6
+          ],
+          "target": [
+            60.5,
+            6.4,
+            5.0
+          ],
+          "wait": 40,
+          "light": "company",
+          "lamp": 0
+        },
+        {
+          "name": "cave",
+          "eye": [
+            81.5,
             6.2,
-            12.5
-          ],
-          "target": [
-            10,
-            7.0,
-            5
-          ],
-          "wait": 30,
-          "light": "company",
-          "lamp": 0
-        },
-        {
-          "name": "fog-edge",
-          "eye": [
-            2.5,
-            5.6,
             10.5
           ],
           "target": [
-            45,
+            96.0,
             5.0,
-            10.5
-          ],
-          "wait": 40,
-          "light": "company",
-          "lamp": 0
-        },
-        {
-          "name": "company-rock",
-          "eye": [
-            20.5,
-            7.0,
-            10.5
-          ],
-          "target": [
-            20.5,
-            6.5,
-            5.5
-          ],
-          "wait": 30,
-          "light": "company",
-          "lamp": 0
-        },
-        {
-          "name": "lava-flow",
-          "eye": [
-            32.5,
-            8.5,
-            13.5
-          ],
-          "target": [
-            32.5,
-            9.5,
-            4.5
-          ],
-          "wait": 140,
-          "light": "company",
-          "lamp": 0
-        },
-        {
-          "name": "breach-crust",
-          "eye": [
-            39.5,
-            7.2,
-            10.5
-          ],
-          "target": [
-            43.5,
-            1.8,
-            10.5
-          ],
-          "wait": 40,
-          "light": "deep",
-          "lamp": 0
-        },
-        {
-          "name": "close-up",
-          "eye": [
-            12.5,
-            7.5,
-            8.0
-          ],
-          "target": [
-            12.5,
-            7.5,
-            6.0
+            9.0
           ],
           "wait": 40,
           "light": "company",
@@ -293,142 +198,9 @@
         }
       ]
     },
-    "b_1": {
-      "structure": "deepcharter-test:layer_concepts/b_1",
-      "lava": [
-        [
-          31,
-          14,
-          10
-        ],
-        [
-          32,
-          14,
-          10
-        ],
-        [
-          33,
-          14,
-          10
-        ]
-      ],
-      "views": [
-        {
-          "name": "silhouette",
-          "eye": [
-            2.5,
-            8.4,
-            11.0
-          ],
-          "target": [
-            44.0,
-            4.5,
-            9.0
-          ],
-          "wait": 40,
-          "light": "company",
-          "lamp": 0
-        },
-        {
-          "name": "lamp-lit",
-          "eye": [
-            2.5,
-            6.2,
-            12.5
-          ],
-          "target": [
-            10,
-            7.0,
-            5
-          ],
-          "wait": 30,
-          "light": "company",
-          "lamp": 0
-        },
-        {
-          "name": "fog-edge",
-          "eye": [
-            2.5,
-            5.6,
-            10.5
-          ],
-          "target": [
-            45,
-            5.0,
-            10.5
-          ],
-          "wait": 40,
-          "light": "company",
-          "lamp": 0
-        },
-        {
-          "name": "company-rock",
-          "eye": [
-            20.5,
-            6.0,
-            9.5
-          ],
-          "target": [
-            20.5,
-            5.5,
-            4.5
-          ],
-          "wait": 30,
-          "light": "company",
-          "lamp": 0
-        },
-        {
-          "name": "lava-flow",
-          "eye": [
-            27.5,
-            6.2,
-            14.5
-          ],
-          "target": [
-            32.5,
-            5.5,
-            10.5
-          ],
-          "wait": 140,
-          "light": "company",
-          "lamp": 0
-        },
-        {
-          "name": "breach-crust",
-          "eye": [
-            39.5,
-            7.2,
-            10.5
-          ],
-          "target": [
-            43.5,
-            1.8,
-            10.5
-          ],
-          "wait": 40,
-          "light": "deep",
-          "lamp": 0
-        },
-        {
-          "name": "close-up",
-          "eye": [
-            13.5,
-            8.5,
-            12.0
-          ],
-          "target": [
-            13.5,
-            8.5,
-            14.0
-          ],
-          "wait": 40,
-          "light": "company",
-          "lamp": 14
-        }
-      ]
-    },
-    "b_2": {
-      "structure": "deepcharter-test:layer_concepts/b_2",
+    "layer_2": {
+      "structure": "deepcharter-test:layer_concepts/layer_2",
+      "dimension": 2,
       "lava": [
         [
           31,
@@ -558,136 +330,50 @@
           "wait": 40,
           "light": "company",
           "lamp": 14
-        }
-      ]
-    },
-    "c_1": {
-      "structure": "deepcharter-test:layer_concepts/c_1",
-      "lava": [
-        [
-          29,
-          16,
-          3
-        ],
-        [
-          32,
-          16,
-          3
-        ],
-        [
-          35,
-          16,
-          3
-        ]
-      ],
-      "views": [
+        },
         {
-          "name": "silhouette",
+          "name": "wide-wall",
           "eye": [
-            2.5,
-            8.4,
-            11.0
+            60.5,
+            6.4,
+            6.1
           ],
           "target": [
-            44.0,
-            4.5,
-            9.0
+            60.5,
+            6.4,
+            16.0
           ],
           "wait": 40,
           "light": "company",
           "lamp": 0
         },
         {
-          "name": "lamp-lit",
+          "name": "vanilla-reference",
           "eye": [
-            2.5,
+            60.5,
+            6.4,
+            14.6
+          ],
+          "target": [
+            60.5,
+            6.4,
+            5.0
+          ],
+          "wait": 40,
+          "light": "company",
+          "lamp": 0
+        },
+        {
+          "name": "cave",
+          "eye": [
+            81.5,
             6.2,
-            12.5
-          ],
-          "target": [
-            10,
-            7.0,
-            5
-          ],
-          "wait": 30,
-          "light": "company",
-          "lamp": 0
-        },
-        {
-          "name": "fog-edge",
-          "eye": [
-            2.5,
-            5.6,
             10.5
           ],
           "target": [
-            45,
+            96.0,
             5.0,
-            10.5
-          ],
-          "wait": 40,
-          "light": "company",
-          "lamp": 0
-        },
-        {
-          "name": "company-rock",
-          "eye": [
-            20.5,
-            6.0,
-            11.5
-          ],
-          "target": [
-            20.5,
-            5.5,
-            6.5
-          ],
-          "wait": 30,
-          "light": "company",
-          "lamp": 0
-        },
-        {
-          "name": "lava-flow",
-          "eye": [
-            32.5,
-            6.6,
-            13.5
-          ],
-          "target": [
-            32.5,
-            7.8,
-            4.5
-          ],
-          "wait": 140,
-          "light": "company",
-          "lamp": 0
-        },
-        {
-          "name": "breach-crust",
-          "eye": [
-            39.5,
-            7.2,
-            10.5
-          ],
-          "target": [
-            43.5,
-            1.8,
-            10.5
-          ],
-          "wait": 40,
-          "light": "deep",
-          "lamp": 0
-        },
-        {
-          "name": "close-up",
-          "eye": [
-            12.5,
-            6.5,
-            8.0
-          ],
-          "target": [
-            12.5,
-            6.5,
-            6.0
+            9.0
           ],
           "wait": 40,
           "light": "company",
@@ -695,8 +381,9 @@
         }
       ]
     },
-    "c_2": {
-      "structure": "deepcharter-test:layer_concepts/c_2",
+    "layer_3": {
+      "structure": "deepcharter-test:layer_concepts/layer_3",
+      "dimension": 2,
       "lava": [
         [
           29,
@@ -822,6 +509,54 @@
             12.5,
             6.5,
             7.0
+          ],
+          "wait": 40,
+          "light": "company",
+          "lamp": 14
+        },
+        {
+          "name": "wide-wall",
+          "eye": [
+            60.5,
+            6.4,
+            6.1
+          ],
+          "target": [
+            60.5,
+            6.4,
+            16.0
+          ],
+          "wait": 40,
+          "light": "company",
+          "lamp": 0
+        },
+        {
+          "name": "vanilla-reference",
+          "eye": [
+            60.5,
+            6.4,
+            14.6
+          ],
+          "target": [
+            60.5,
+            6.4,
+            5.0
+          ],
+          "wait": 40,
+          "light": "company",
+          "lamp": 0
+        },
+        {
+          "name": "cave",
+          "eye": [
+            81.5,
+            6.2,
+            10.5
+          ],
+          "target": [
+            96.0,
+            5.0,
+            9.0
           ],
           "wait": 40,
           "light": "company",

@@ -1,7 +1,11 @@
-"""The scenes of the layer concepts: for each option and each of layers 1 and 2, one sealed gallery in the rock, 48 blocks long, built as a
-structure file (docs/design/layer-concepts.md). Along it, west to east: a stretch lit by a lamp, a Company Rock, a lava flow, and a
-chamber whose floor is the breach crust. The evidence scenario puts a camera at each (the `views`), so every option is shot at the
-same five things.
+"""The scenes of the layer concepts (docs/design/layer-concepts-2.md): for each of layers 1, 2 and 3, one sealed box of rock with a gallery, a
+flat-walled hall and a natural cave in it. The formation is the layer's, as the user assigned it after round 1: Strata for layer 1, Fractured
+for layer 2, Columnar for layer 3 (layer 3 does not exist yet, so its scene is built in layer 2's dimension, with layer 3's atmosphere). The
+evidence scenario puts a camera at each of the `views`, so every layer is shot at the same things.
+
+The gallery, 48 blocks long. Along it, west to east: a stretch lit by a lamp, a Company Rock, a lava flow, and a chamber whose floor is the
+breach crust. East of it a hall with flat walls (the wide wall, and the wall that holds vanilla stone and deepslate beside the layer's rock),
+and east of that a natural cave.
 
 The rock is a height field: for each column (x, z) the rock stands below `floor` and above `ceil`, and the air is between. That is enough
 for ledges, undercuts, hanging slabs, columns and pits, and it cannot leave a hole to the outside. Local coordinates: X along the
@@ -9,12 +13,13 @@ gallery (east), Z across it (south), Y up. Y 0 to 2 is the layer's floor (the br
 
 What differs, in shape:
 
-  A. Strata     the walls step back in benches, and a slot is cut under every bench, as a drift follows a bed. Lava runs down the benches.
-  B. Fractured  the walls, floor and roof are broken into blocks; a fault drops the floor; rubble lies in heaps. Lava falls from a crack in the
-                roof into a basin of rubble.
-  C. Columnar   the rock is a field of columns of different heights, the roof hangs in stumps, and the joints between columns are open.
+  A. Strata     (layer 1) the walls step back in benches, and a slot is cut under every bench, as a drift follows a bed. Lava runs down the benches.
+  B. Fractured  (layer 2) the walls, floor and roof are broken into blocks; a fault drops the floor; rubble lies in heaps. Lava falls from a crack in
+                the roof into a basin of rubble.
+  C. Columnar   (layer 3) the rock is a field of columns of different heights, the roof hangs in stumps, and the joints between columns are open.
                 Lava runs down the joints and gathers in a channel at the foot.
 """
+import math
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -26,19 +31,35 @@ import parts  # noqa: E402
 from art import hashf  # noqa: E402
 from piece import Piece, State, state  # noqa: E402
 
-X, Y, Z = 48, 20, 21
+LENGTH = 48
+HALL_X0, HALL_X1 = 49, 71
+CAVE_X0, CAVE_X1 = 76, 102
+X, Y, Z = 104, 20, 21
 BASE = 3
 CZ = 10
 TOP = BASE + 7
 LAMP_LEVEL = 14
-OPTIONS = ("a", "b", "c")
-LAYERS = (1, 2)
+LAYERS = (1, 2, 3)
+# The formation of each layer, by the letter the shapes, art and dressing use.
+FORMATIONS = {1: "a", 2: "b", 3: "c"}
+FORMATION_LETTERS = "abc"
+# The layer whose dimension a layer's scene is built in: layer 3 has no dimension yet, so its scene stands in layer 2's.
+DIMENSION = {1: 1, 2: 2, 3: 2}
+HALL_PANELS = ((50, 56), (57, 63), (64, 70))
+HALL_HEIGHT = 9
 
 # Where the five things are along the gallery.
 LAMP_X = 9
 ROCK_X = 20
 LAVA_X = 32
 CRUST_X = 43
+
+
+# The vanilla blocks that stand in for each layer's rock and its rubble. None is stone or deepslate, so the pack redraws neither and the hall
+# can set the real ones beside the layer's rock.
+ROCKS = {1: ("minecraft:granite", "minecraft:cobblestone"), 2: ("minecraft:tuff", "minecraft:cobbled_deepslate"),
+         3: ("minecraft:andesite", "minecraft:diorite")}
+REFERENCE = ("minecraft:stone", "minecraft:deepslate")
 
 
 @dataclass(frozen=True)
@@ -57,7 +78,6 @@ class View:
 
 @dataclass
 class Scene:
-    option: str
     layer: int
     piece: Piece
     views: list[View] = field(default_factory=list)
@@ -68,16 +88,16 @@ class Scene:
 class Cave:
     """The rock as a height field, and what rock each cell is."""
 
-    def __init__(self, option: str, layer: int):
-        self.option = option
+    def __init__(self, layer: int):
+        self.formation = FORMATIONS[layer]
         self.layer = layer
         self.floor = [[Y] * Z for _ in range(X)]
         self.ceil = [[Y] * Z for _ in range(X)]
         # (x, z) -> how many blocks at the top of the floor (or the foot of the roof, for the ceiling dict) are rubble.
         self.floor_rubble: dict[tuple[int, int], int] = {}
         self.roof_rubble: dict[tuple[int, int], int] = {}
-        self.main: State = ("minecraft:stone", {}) if layer == 1 else ("minecraft:deepslate", {"axis": "y"})
-        self.rubble: State = ("minecraft:cobblestone", {}) if layer == 1 else ("minecraft:cobbled_deepslate", {})
+        self.main: State = (ROCKS[layer][0], {})
+        self.rubble: State = (ROCKS[layer][1], {})
         self.crust: State = ("deepcharter:breach_crust", {})
 
     def open(self, x: int, z: int, floor: int, ceil: int) -> None:
@@ -94,7 +114,7 @@ class Cave:
         return not self.solid(x, y, z)
 
     def block(self, x: int, y: int, z: int) -> State:
-        if y < BASE and x >= CRUST_X - 5:
+        if y < BASE and CRUST_X - 5 <= x < LENGTH:
             return self.crust
         if y < self.floor[x][z]:
             depth = self.floor[x][z] - 1 - y
@@ -116,7 +136,7 @@ def side_z(c: Cave, x: int, y: int, side: int) -> int:
 def carve_a(c: Cave) -> None:
     """Benches and slots. The centre of the gallery is 7 wide; on each side a bench stands 2 or 3 blocks up, with a slot cut one block
     back under the next bed, as a drift follows a bed."""
-    for x in range(1, X - 1):
+    for x in range(1, LENGTH - 1):
         for z in range(1, Z - 1):
             d = abs(z - CZ)
             bench = 2 if z < CZ else 3
@@ -148,7 +168,7 @@ def carve_a_lava(c: Cave) -> None:
 
 def carve_a_crust(c: Cave) -> None:
     """The breach chamber: the floor steps down in two terraces to the crust at its heart, so the three layers of the crust show in the steps."""
-    for x in range(CRUST_X - 4, X - 1):
+    for x in range(CRUST_X - 4, LENGTH - 1):
         for z in range(CZ - 6, CZ + 7):
             ring = max(abs(x - CRUST_X - 1), abs(z - CZ)) // 2
             c.open(x, z, BASE - (2 if ring == 0 else 1 if ring == 1 else 0), TOP + 1)
@@ -157,7 +177,7 @@ def carve_a_crust(c: Cave) -> None:
 def carve_b(c: Cave) -> None:
     """Broken rock: the walls are rough (each column's wall is one or two blocks out or in), the roof hangs in slabs, a fault drops the
     floor by two blocks along a diagonal, and heaps of rubble lie against the walls."""
-    for x in range(1, X - 1):
+    for x in range(1, LENGTH - 1):
         for z in range(1, Z - 1):
             d = abs(z - CZ)
             wall = 4 + int(hashf(layer_seed(c, 11), x // 2, 1 if z > CZ else 0) * 3)
@@ -175,7 +195,7 @@ def carve_b(c: Cave) -> None:
         for dx in range(-2, 3):
             for dz in range(0, 3):
                 x, z = hx + dx, hz - side * dz
-                if 0 < x < X - 1 and c.air(x, BASE, z):
+                if 0 < x < LENGTH - 1 and c.air(x, BASE, z):
                     height = max(0, 3 - abs(dx) - dz)
                     if height and (hashf(layer_seed(c, 14), x, z) > 0.2):
                         c.floor[x][z] = max(c.floor[x][z], BASE + height)
@@ -204,7 +224,7 @@ def carve_b_lava(c: Cave) -> None:
 
 def carve_b_crust(c: Cave) -> None:
     """The breach chamber: a flat floor of crust, cracked into plates, with one plate-wide step up at the west."""
-    for x in range(CRUST_X - 4, X - 1):
+    for x in range(CRUST_X - 4, LENGTH - 1):
         for z in range(CZ - 6, CZ + 7):
             c.open(x, z, BASE - 1 if x >= CRUST_X - 1 else BASE, TOP + 2 + int(hashf(layer_seed(c, 21), x, z) * 3))
 
@@ -212,7 +232,7 @@ def carve_b_crust(c: Cave) -> None:
 def carve_c(c: Cave) -> None:
     """A field of columns. Every 2 x 2 patch of the floor is one column top at its own height, the roof hangs in stumps of different
     lengths, and the walls are a ragged bundle of columns."""
-    for x in range(1, X - 1):
+    for x in range(1, LENGTH - 1):
         for z in range(1, Z - 1):
             d = abs(z - CZ)
             wall = 4 + int(hashf(layer_seed(c, 31), x // 2, 1 if z > CZ else 0) * 2)
@@ -238,14 +258,57 @@ def carve_c_lava(c: Cave) -> None:
 
 def carve_c_crust(c: Cave) -> None:
     """The breach chamber: a level floor of crust, with a ring of columns round it."""
-    for x in range(CRUST_X - 4, X - 1):
+    for x in range(CRUST_X - 4, LENGTH - 1):
         for z in range(CZ - 6, CZ + 7):
             ring = max(abs(x - CRUST_X - 1), abs(z - CZ))
             c.open(x, z, BASE - 1 if ring <= 4 else BASE + 1, TOP + 2)
 
 
+def carve_hall(c: Cave) -> None:
+    """A hall with flat walls, 23 long and 11 wide, nine high: the layer's rock on all six sides and nothing else, so that a grid in a
+    texture would show on its wall."""
+    for x in range(HALL_X0, HALL_X1 + 1):
+        for z in range(CZ - 5, CZ + 6):
+            c.open(x, z, BASE, BASE + HALL_HEIGHT)
+
+
+def soft_noise(seed: int, x: float, z: float, scale: float) -> float:
+    """Smooth noise in [0, 1) with a feature size of `scale` blocks: a bilinear blend of hashed lattice points."""
+    fx, fz = x / scale, z / scale
+    x0, z0 = int(fx // 1), int(fz // 1)
+    tx, tz = fx - x0, fz - z0
+    tx, tz = tx * tx * (3 - 2 * tx), tz * tz * (3 - 2 * tz)
+    top = hashf(seed, x0, z0) * (1 - tx) + hashf(seed, x0 + 1, z0) * tx
+    bottom = hashf(seed, x0, z0 + 1) * (1 - tx) + hashf(seed, x0 + 1, z0 + 1) * tx
+    return top * (1 - tz) + bottom * tz
+
+
+def carve_cave(c: Cave) -> None:
+    """A natural cave through the layer's rock: an irregular void, not a bored shaft. Its outline is noise on an ellipse, its floor rises and
+    falls in mounds, and its roof is a dome that comes down in places; the formation shapes the floor (A in benches two blocks high, B with
+    heaps of rubble, C in 2 x 2 columns). The middle of it is always open, because the cave camera stands there."""
+    cx, cz = (CAVE_X0 + CAVE_X1) / 2, CZ
+    for x in range(CAVE_X0, CAVE_X1 + 1):
+        for z in range(1, Z - 1):
+            dx, dz = (x - cx) / 13.5, (z - cz) / 9.0
+            shape = 1.0 - math.sqrt(dx * dx + dz * dz) + (soft_noise(layer_seed(c, 41), x, z, 4.0) - 0.5) * 0.9
+            if shape <= 0.12:
+                continue
+            fx, fz = (x // 2 * 2, z // 2 * 2) if c.formation == "c" else (x, z)
+            mound = soft_noise(layer_seed(c, 42), fx, fz, 3.5)
+            floor = BASE + (int(mound * 2) * 2 if c.formation == "a" else int(mound * 3)) - (1 if shape > 0.55 else 0)
+            roof = min(Y - 2, floor + 5 + int(shape * 5) + int(soft_noise(layer_seed(c, 43), x, z, 3.0) * 3))
+            c.open(x, z, floor, roof)
+            if c.formation == "b" and floor >= BASE + 2:
+                c.floor_rubble[(x, z)] = 1
+    for x in range(CAVE_X0 + 3, CAVE_X1 - 3):
+        for z in range(CZ - 3, CZ + 4):
+            c.open(x, z, BASE, BASE + 8)
+            c.floor_rubble.pop((x, z), None)
+
+
 def layer_seed(c: Cave, salt: int) -> int:
-    return salt * 7 + c.layer * 131 + OPTIONS.index(c.option) * 1009
+    return salt * 7 + c.layer * 131 + FORMATION_LETTERS.index(c.formation) * 1009
 
 
 CARVERS = {"a": carve_a, "b": carve_b, "c": carve_c}
@@ -389,7 +452,7 @@ DRESSERS = {"a": dress_a, "b": dress_b, "c": dress_c}
 def company_rock(c: Cave, p: Piece) -> tuple[int, int, int]:
     """Sets the Company Rock into the north wall at ROCK_X, as the option has it, and returns a block of its face."""
     rock = state("deepcharter:company_rock")
-    if c.option == "a":
+    if c.formation == "a":
         # A basalt plug that fills a slot of the wall: 3 wide, 2 high.
         z = CZ - 5
         for x in range(ROCK_X - 1, ROCK_X + 2):
@@ -398,7 +461,7 @@ def company_rock(c: Cave, p: Piece) -> tuple[int, int, int]:
                 p.set(x, y, z, rock)
         return ROCK_X, BASE + 3, z
     zs = side_z(c, ROCK_X, BASE + 3, -1)
-    if c.option == "b":
+    if c.formation == "b":
         # A block of stencilled concrete set in the face: 3 wide, 3 high, with a hazard-band lintel.
         for x in range(ROCK_X - 1, ROCK_X + 2):
             for y in range(BASE + 1, BASE + 4):
@@ -416,19 +479,36 @@ def company_rock(c: Cave, p: Piece) -> tuple[int, int, int]:
 
 def lava_sources(c: Cave) -> list[tuple[int, int, int]]:
     """The source blocks, where the option puts them: they are all that is placed, the flow is the game's."""
-    if c.option == "a":
+    if c.formation == "a":
         return [(x, BASE + 8, 2) for x in range(LAVA_X - 2, LAVA_X + 3)]
-    if c.option == "b":
+    if c.formation == "b":
         return [(x, TOP + 4, CZ) for x in range(LAVA_X - 1, LAVA_X + 2)]
     return [(jx, TOP + 6, CZ - 7) for jx in (LAVA_X - 3, LAVA_X, LAVA_X + 3)]
 
 
 # ---------------------------------------------------------------------------------------------------------------- the scene
 
-def build(option: str, layer: int) -> Scene:
-    c = Cave(option, layer)
-    CARVERS[option](c)
-    p = Piece(f"{option}{layer}")
+# The north wall of the hall is z = CZ - 6: the first panel is the layer's rock, the second vanilla stone and the third vanilla deepslate.
+HALL_NORTH_WALL = CZ - 6
+# A light block in the middle of each panel's span, the same height and distance from every panel, so the three are lit alike.
+HALL_LIGHT_LEVEL = 15
+
+
+def hall_dressing(p: Piece) -> None:
+    for (x0, x1), vanilla in zip(HALL_PANELS[1:], REFERENCE):
+        for x in range(x0, x1 + 1):
+            for y in range(BASE, BASE + HALL_HEIGHT):
+                p.set(x, y, HALL_NORTH_WALL, (vanilla, {}))
+    for x0, x1 in HALL_PANELS:
+        p.set((x0 + x1) // 2, BASE + 5, CZ, light(HALL_LIGHT_LEVEL))
+
+
+def build(layer: int) -> Scene:
+    c = Cave(layer)
+    CARVERS[c.formation](c)
+    carve_hall(c)
+    carve_cave(c)
+    p = Piece(f"layer{layer}")
     for x in range(X):
         for y in range(Y):
             for z in range(Z):
@@ -436,14 +516,15 @@ def build(option: str, layer: int) -> Scene:
                     p.set(x, y, z, c.block(x, y, z))
     rock_face = company_rock(c, p)
     d = Dressing(c, p, 0.0 if layer == 1 else 0.3)
-    DRESSERS[option](d)
+    DRESSERS[c.formation](d)
+    hall_dressing(p)
     # The breach chamber has a hanging work light of its own, so the crust is lit as the rest of the gallery is.
     p.set(CRUST_X, BASE + 3, CZ, light(15))
     lava = lava_sources(c)
     for at in lava:
         if not c.air(*at):
-            raise ValueError(f"{option}{layer}: the lava source {at} is in rock")
-    scene = Scene(option, layer, p, [], lava)
+            raise ValueError(f"layer {layer}: the lava source {at} is in rock")
+    scene = Scene(layer, p, [], lava)
     scene.views = views(c, rock_face)
     return scene
 
@@ -452,11 +533,12 @@ def build(option: str, layer: int) -> Scene:
 # the Company's dressing: B's north wall is shotcrete and its Company Rock, so its close-up is on the south wall, above the catwalk.
 CLOSE_UP = {"a": (LAMP_X + 3, BASE + 4, -1), "b": (LAMP_X + 4, BASE + 5, 1), "c": (LAMP_X + 3, BASE + 3, -1)}
 CLOSE_UP_DISTANCE = 2.0
+HALL_MIDDLE = (HALL_PANELS[1][0] + HALL_PANELS[1][1]) // 2
 
 
 def close_up(c: Cave) -> View:
     """The camera two blocks from the rock, looking straight at it, with a lamp at the camera: the texture is what the still is for."""
-    x, y, side = CLOSE_UP[c.option]
+    x, y, side = CLOSE_UP[c.formation]
     wall = side_z(c, x, y, side)
     face = wall + 1.0 if side < 0 else float(wall)
     return View("close-up", (x + 0.5, y + 0.5, face - side * CLOSE_UP_DISTANCE), (x + 0.5, y + 0.5, face), 40, "company", LAMP_LEVEL)
@@ -468,18 +550,21 @@ def views(c: Cave, rock_face: tuple[int, int, int]) -> list[View]:
         "a": ((LAVA_X + 0.5, BASE + 5.5, CZ + 3.5), (LAVA_X + 0.5, BASE + 6.5, 4.5)),
         "b": ((LAVA_X - 4.5, BASE + 3.2, CZ + 4.5), (LAVA_X + 0.5, BASE + 2.5, CZ + 0.5)),
         "c": ((LAVA_X + 0.5, BASE + 3.6, CZ + 3.5), (LAVA_X + 0.5, BASE + 4.8, CZ - 5.5)),
-    }[c.option]
+    }[c.formation]
     found = [
-        View("silhouette", (2.5, TOP - 1.6, CZ + 1.0), (X - 4.0, BASE + 1.5, CZ - 1.0), 40),
+        View("silhouette", (2.5, TOP - 1.6, CZ + 1.0), (LENGTH - 4.0, BASE + 1.5, CZ - 1.0), 40),
         View("lamp-lit", (LAMP_X - 6.5, BASE + 3.2, CZ + 2.5), (LAMP_X + 1, BASE + 4.0, CZ - 5)),
-        View("fog-edge", (2.5, BASE + 2.6, CZ + 0.5), (X - 3, BASE + 2.0, CZ + 0.5), 40),
+        View("fog-edge", (2.5, BASE + 2.6, CZ + 0.5), (LENGTH - 3, BASE + 2.0, CZ + 0.5), 40),
         View("company-rock", (rx + 0.5, ry + 1.0, min(CZ + 3.5, rz + 5.5)), (rx + 0.5, ry + 0.5, rz + 0.5)),
         View("lava-flow", lava_eye, lava_target, 140),
         View("breach-crust", (CRUST_X - 3.5, BASE + 4.2, CZ + 0.5), (CRUST_X + 0.5, BASE - 1.2, CZ + 0.5), 40, "deep"),
         close_up(c),
+        View("wide-wall", (HALL_MIDDLE + 0.5, BASE + 3.4, CZ - 3.9), (HALL_MIDDLE + 0.5, BASE + 3.4, CZ + 6.0), 40),
+        View("vanilla-reference", (HALL_MIDDLE + 0.5, BASE + 3.4, CZ + 4.6), (HALL_MIDDLE + 0.5, BASE + 3.4, HALL_NORTH_WALL + 1.0), 40),
+        View("cave", (CAVE_X0 + 5.5, BASE + 3.2, CZ + 0.5), (CAVE_X1 - 6.0, BASE + 2.0, CZ - 1.0), 40, "company", LAMP_LEVEL),
     ]
     for view in found:
         x, y, z = (int(v // 1) for v in view.eye)
         if not c.air(x, y, z):
-            raise ValueError(f"{c.option}{c.layer}: the camera of {view.name} at {view.eye} is in rock")
+            raise ValueError(f"layer {c.layer}: the camera of {view.name} at {view.eye} is in rock")
     return found

@@ -36,8 +36,8 @@ def model_id(name: str) -> str:
     return f"{NS}:block/{name}"
 
 
-def rock_textures(side: str, end: str, layer: int) -> dict:
-    return {"side": tex(side), "end": tex(end), "core": tex(f"lc_core_{layer}"), "particle": tex(side)}
+def rock_textures(side: str, end: str, core: str) -> dict:
+    return {"side": tex(side), "end": tex(end), "core": tex(core), "particle": tex(side)}
 
 
 FACES = {"*": "#side", "up": "#end", "down": "#end"}
@@ -194,12 +194,3 @@ def crust_c() -> Model:
 def variants_y(models: list[str]) -> list[dict]:
     """Every model turned four ways about the vertical: all of them symmetrical about it."""
     return [{"model": model_id(m), **({"y": y} if y else {})} for m in models for y in ROTATIONS]
-
-
-def pillar_variants(models: list[str]) -> dict:
-    """A pillar block (deepslate): the models are drawn along Y and laid down for the other two axes, as vanilla does."""
-    return {
-        "axis=y": variants_y(models),
-        "axis=z": [{"model": model_id(m), "x": 90} for m in models],
-        "axis=x": [{"model": model_id(m), "x": 90, "y": 90} for m in models],
-    }

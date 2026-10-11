@@ -63,113 +63,18 @@ def clamp(index: int, shades: list[str]) -> str:
     return shades[max(0, min(len(shades) - 1, index))]
 
 
-# ---------------------------------------------------------------------------------------------------------------- strata (A)
+# ---------------------------------------------------------------------------------------------------------------- how the rock tiles
 
-def strata(shades: list[str], seed: int, scars: bool = False) -> Grid:
-    """Folded, pinching beds, not ruled courses: each bed boundary is a wave that crosses the face (so a bed is thick at one edge and a
-    sliver at the other), the beds differ by a shade or three, fine laminae follow the folds, the shadow under a bed and its lit lip break
-    off, and two steep joints cut across the beds and step them where they cross, as a cleaved face does. Nothing in it is a horizontal
-    plank or a brick. scars draws the marks of old workings: two drill holes with a lit rim."""
-    bounds = []
-    for k in range(4):
-        base = (k + 1) * 16 / 5 + (hashf(seed, k, 1) - 0.5) * 3
-        bounds.append((base, 0.5 + hashf(seed, k, 2) * 1.5, 1, hashf(seed, k, 4) * 6.2832))
-
-    def edge(k: int, x: float) -> float:
-        base, amp, freq, phase = bounds[k]
-        fold = amp * math.sin(2 * math.pi * freq * x / SIZE + phase)
-        return base + fold + (vnoise(seed + 7, int(x) % SIZE, k * 3, 4, 4) - 0.5) * 1.6
-
-    # Two joints, steep, each shifting the bed on its far side by a pixel or two.
-    joints = []
-    for j in range(2):
-        start = 2 + hashf(seed, 50 + j) * 12
-        slope = (0.35 + hashf(seed, 52 + j) * 0.4) * (1 if hashf(seed, 54 + j) > 0.5 else -1)
-        joints.append((start, slope, 1 + int(hashf(seed, 56 + j) * 2)))
-
-    def joint_x(j: int, y: int) -> float:
-        start, slope, _ = joints[j]
-        return start + slope * (y - 8)
-
-    # Neighbouring beds differ by two shades or more, so the beds read at a glance; one is pale.
-    bed_shade = [(1, 3, 2, 4, 1)[(b + seed) % 5] for b in range(5)]
-    g = blank(shades[2])
-    for y in range(SIZE):
-        for x in range(SIZE):
-            step = sum((x > joint_x(j, y)) * (1.0 if j == 0 else -1.0) * joints[j][2] for j in range(2))
-            yy = y + step
-            bed = sum(1 for k in range(4) if edge(k, x) <= yy)
-            fold = vnoise(seed + 3, x, y, 8, 4)
-            lamina = 1 if (int(yy + bed * 5 + math.sin(2 * math.pi * x / SIZE + bed) * 1.0) % 4 == 0 and hashf(seed, x // 4, y, 4) > 0.45) else 0
-            fleck = hashf(seed, x, y)
-            shade = bed_shade[bed] + (1 if fold > 0.8 else -1 if fold < 0.2 else 0) - lamina + (1 if fleck > 0.985 else -1 if fleck < 0.015 else 0)
-            g[y][x] = clamp(shade, shades)
-    for k in range(4):
-        for x in range(SIZE):
-            y = int(edge(k, x))
-            if 0 <= y < SIZE and hashf(seed, k, x, 8) > 0.2:
-                g[y][x] = clamp(bed_shade[min(4, k + 1)] - 2, shades)
-            if 0 < y < SIZE and hashf(seed, k, x, 6) > 0.55:
-                g[y - 1][x] = clamp(bed_shade[k] + 2, shades)
-    for j in range(2):
-        for y in range(SIZE):
-            x = int(round(joint_x(j, y))) % SIZE
-            if hashf(seed, j, y, 12) > 0.12:
-                g[y][x] = shades[0]
-                if hashf(seed, j, y, 13) > 0.5:
-                    g[y][(x + 1) % SIZE] = clamp(4, shades)
-    for k in range(3):
-        cx, cy = int(hashf(seed, 70 + k) * 14), int(hashf(seed, 73 + k) * 14)
-        g[cy][cx] = shades[0]
-        g[cy][cx + 1] = shades[0]
-        g[cy + 1][cx] = shades[1]
-    if scars:
-        for cx, cy in ((4, 5), (11, 9)):
-            for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1)):
-                g[cy + dy][cx + dx] = shades[0]
-            g[cy - 1][cx] = shades[-1]
-            g[cy - 1][cx + 1] = shades[-2]
-    return g
+TAU = 2 * math.pi
 
 
-def ledge(shades: list[str], seed: int) -> Grid:
-    """The top of a bed, which a floor, a bench or a roof shows: grained, with a few fissures along it. No plates, no cracks to speak of."""
-    g = blank(shades[2])
-    for y in range(SIZE):
-        for x in range(SIZE):
-            n = vnoise(seed, x, y, 4, 4)
-            fleck = hashf(seed, x, y)
-            g[y][x] = clamp(2 + (1 if n > 0.6 else -1 if n < 0.3 else 0) + (2 if fleck > 0.95 else -2 if fleck < 0.04 else 0), shades)
-    for k in range(2):
-        y = 3 + int(hashf(seed, 90 + k) * 10)
-        x0 = int(hashf(seed, 91 + k) * 8)
-        for x in range(x0, x0 + 4 + int(hashf(seed, 92 + k) * 4)):
-            g[y][x % SIZE] = shades[1]
-    return g
+def grain(seed: int, x: int, y: int, low: float = 0.47, high: float = 0.53) -> int:
+    """Clustered grain as vanilla stone has it: a shade up or down where a soft, tiling noise runs high or low, and a speck in a few pixels. No
+    pixel is told apart from its neighbours by where it is in the texture, so the grain runs on across every edge."""
+    n = 0.4 * vnoise(seed, x, y, 4, 4) + 0.6 * vnoise(seed + 1, x, y, 2, 2)
+    speck = hashf(seed + 2, x, y)
+    return (1 if n > high else -1 if n < low else 0) + (1 if speck > 0.96 else -1 if speck < 0.04 else 0)
 
-
-def slabs(shades: list[str], seed: int) -> Grid:
-    """Broken beds, the rubble of A: flat, angular flags lying at all angles, each its own shade, split by dark gaps and lit on one edge.
-    Not courses: no flag is a brick."""
-    field = voronoi(seed, 8, aspect=1.7, shear=0.6)
-    g = blank(shades[1])
-    crack = [[field[y][x][1] < 1.3 for x in range(SIZE)] for y in range(SIZE)]
-    for y in range(SIZE):
-        for x in range(SIZE):
-            cell = field[y][x][0]
-            fleck = hashf(seed, x, y)
-            shade = 1 + int(hashf(seed, cell, 5) * 3) + (1 if fleck > 0.93 else -1 if fleck < 0.06 else 0)
-            g[y][x] = clamp(shade, shades)
-    for y in range(SIZE):
-        for x in range(SIZE):
-            if crack[y][x]:
-                g[y][x] = shades[0]
-            elif crack[y - 1][x]:
-                g[y][x] = clamp(4, shades)
-    return g
-
-
-# ---------------------------------------------------------------------------------------------------------------- fractured (B)
 
 def voronoi(seed: int, cells: int, aspect: float = 1.0, shear: float = 0.0) -> list[list[tuple[int, float]]]:
     """For each pixel the nearest of `cells` seeded points on the tiling texture, and how much closer it is than the second
@@ -181,7 +86,7 @@ def voronoi(seed: int, cells: int, aspect: float = 1.0, shear: float = 0.0) -> l
         for x in range(SIZE):
             best = []
             for i, (px, py) in enumerate(points):
-                d = min((((x - px + ox + shear * (y - py + oy)) / aspect) ** 2 + (y - py + oy) ** 2) ** 0.5 for ox in (-SIZE, 0, SIZE) for oy in (-SIZE, 0, SIZE))
+                d = min(math.sqrt(((x - px + ox + shear * (y - py + oy)) / aspect) ** 2 + (y - py + oy) ** 2) for ox in (-SIZE, 0, SIZE) for oy in (-SIZE, 0, SIZE))
                 best.append((d, i))
             best.sort()
             row.append((best[0][1], best[1][0] - best[0][0]))
@@ -189,83 +94,160 @@ def voronoi(seed: int, cells: int, aspect: float = 1.0, shear: float = 0.0) -> l
     return out
 
 
-def fractured(shades: list[str], seed: int, cells: int = 7, width: float = 1.1, angular: bool = False) -> Grid:
-    """Polygons of breccia: each plate a shade of the ramp, split by dark cracks, with a lit lip on the plate's upper left. angular slants and
-    stretches the plates, so no two are alike, lets the plates differ by up to three shades and breaks the lip, so the face reads as split
-    rock and not as a wall of cobbles or bricks."""
-    field = voronoi(seed, cells, aspect=1.5 if angular else 1.0, shear=0.7 if angular else 0.0)
-    g = blank(shades[2])
-    crack = [[field[y][x][1] < width for x in range(SIZE)] for y in range(SIZE)]
-    for y in range(SIZE):
-        for x in range(SIZE):
-            cell = field[y][x][0]
-            shade = 2 + int(hashf(seed, cell, 5) * (5 if angular else 3)) - (2 if angular else 1)
-            shade += 1 if vnoise(seed, x, y, 4, 4) > 0.7 else 0
-            if angular:
-                # A faint cleavage across each plate, at the plate's own angle.
-                shade += 1 if (x + y * (1 + cell % 3)) % 7 == 0 and hashf(seed, x, y, 7) > 0.4 else 0
-            g[y][x] = clamp(shade, shades)
-    for y in range(SIZE):
-        for x in range(SIZE):
-            if crack[y][x]:
-                g[y][x] = shades[0]
-            elif (crack[y - 1][x] or crack[y][x - 1]) and (not angular or hashf(seed, x, y, 8) > 0.45):
-                g[y][x] = clamp(4, shades)
+# ---------------------------------------------------------------------------------------------------------------- bedded (A)
+
+# Where the five beds of a face start, in pixels from its top. They are the same in every variant of a layer, so a bed runs on from block to
+# block, and the five thicknesses (3.5, 1.5, 4, 3, 4) are all different.
+BED_STARTS = (1.0, 4.5, 6.0, 10.0, 13.0)
+# The shade of each bed against the middle shade. The neighbours differ by one, apart from the pair that meets where the face wraps.
+BED_SHADES = (-1, 0, 1, 0, 1)
+
+
+def bedded(shades: list[str], seed: int, form: int, mid: int = 2) -> Grid:
+    """Beds of sediment, side on. Each bed's top is a wave that goes once or twice across the face, so a bed is thick at one edge of a block and
+    thin at the other, and the waves are the layer's own (`form`): every variant shares them, give or take a half turn of phase, so a bed
+    runs on across the edge to the next block and over the top of the one below. The beds differ by a shade, the first row of a bed is a
+    shade darker in places, and a grain runs through all of it. The face wraps on itself, so the sixth bed is the first."""
+    edges = []
+    for k, start in enumerate(BED_STARTS):
+        edges.append((start + (hashf(form, k, 1) - 0.5) * 0.8, 0.5 + hashf(form, k, 2) * 1.0, 1 + int(hashf(form, k, 3) * 2),
+                      hashf(form, k, 4) * TAU + (hashf(seed, k, 5) - 0.5)))
+    turn = int(hashf(seed, 9) * len(BED_SHADES))
+    g = blank(shades[mid])
+    for x in range(SIZE):
+        tops = sorted((y0 + amp * math.sin(TAU * turns * (x + 0.5) / SIZE + phase)) % SIZE for y0, amp, turns, phase in edges)
+        for y in range(SIZE):
+            above = [t for t in tops if t <= y + 0.5]
+            bed = len(above) - 1
+            lip = y + 0.5 - above[-1] if above else y + 0.5 + SIZE - tops[-1]
+            shade = mid + BED_SHADES[(bed + turn) % len(BED_SHADES)] - (1 if lip < 1.0 and hashf(seed, x, y, 6) > 0.5 else 0)
+            g[y][x] = clamp(shade + grain(seed + 10, x, y, 0.36, 0.64), shades)
     return g
 
 
+def grained(shades: list[str], seed: int, mid: int = 2) -> Grid:
+    """Fine clustered grain and nothing else, as vanilla stone is: soft clusters a shade up or down, and a speck here and there."""
+    g = blank(shades[mid])
+    for y in range(SIZE):
+        for x in range(SIZE):
+            g[y][x] = clamp(mid + grain(seed, x, y), shades)
+    return g
+
+
+def ledge(shades: list[str], seed: int, mid: int = 2) -> Grid:
+    """The top of a bed, which a floor, a bench or a roof shows: grain, and two short fissures that run on across the edge."""
+    g = grained(shades, seed, mid)
+    for k in range(2):
+        y = 3 + int(hashf(seed, 90 + k) * 10)
+        x0 = int(hashf(seed, 91 + k) * SIZE)
+        for x in range(x0, x0 + 3 + int(hashf(seed, 92 + k) * 4)):
+            g[y][x % SIZE] = clamp(mid - 1, shades)
+    return g
+
+
+# ---------------------------------------------------------------------------------------------------------------- mottled
+
+def mottled(shades: list[str], seed: int, mid: int = 2, veins: bool = True) -> Grid:
+    """Large soft mottles, patches a few pixels across that are a shade or two lighter or darker than the rest, and thin lighter veins that
+    follow the contour of a second noise, so a vein is one unbroken line that wraps round the face and runs on across every edge."""
+    g = blank(shades[mid])
+    for y in range(SIZE):
+        for x in range(SIZE):
+            n = 0.6 * vnoise(seed, x, y, 4, 4) + 0.4 * vnoise(seed + 1, x, y, 2, 2)
+            patch = (1 if n > 0.58 else -1 if n < 0.42 else 0) + (1 if n > 0.68 else -1 if n < 0.32 else 0)
+            shade = mid + patch + grain(seed + 2, x, y, 0.3, 0.7)
+            if veins:
+                v = 0.5 * vnoise(seed + 5, x, y, 8, 8) + 0.5 * vnoise(seed + 6, x, y, 4, 4)
+                if abs(v - 0.5) < 0.025 and hashf(seed, x, y, 7) < 0.85:
+                    shade = mid + 2
+            g[y][x] = clamp(shade, shades)
+    return g
+
+
+# ---------------------------------------------------------------------------------------------------------------- breccia (B)
+
+def breccia(shades: list[str], seed: int, cells: int = 9, aspect: float = 1.4, shear: float = 0.5, mid: int = 2, spread: int = 1,
+            seam_gap: float = 0.9, seam_p: float = 0.5) -> Grid:
+    """Angular clasts in a matrix, as tuff and breccia are: polygons that stretch and slant, each a shade of its own (spread shades either
+    way), and a dark seam where two meet in about half the places they do, and in none of the others, so no polygon is outlined. The
+    clasts wrap round the face, so they run on across every edge."""
+    field = voronoi(seed, cells, aspect, shear)
+    clast = tuple(range(-spread, spread + 1))
+    g = blank(shades[mid])
+    for y in range(SIZE):
+        for x in range(SIZE):
+            cell, gap = field[y][x]
+            shade = mid + clast[int(hashf(seed, cell, 5) * len(clast))] + grain(seed + 10, x, y, 0.3, 0.7)
+            if gap < seam_gap and hashf(seed, x, y, 6) < seam_p:
+                shade -= 1
+            g[y][x] = clamp(shade, shades)
+    return g
+
+
+def flags(shades: list[str], seed: int) -> Grid:
+    """The rubble of A: flat flags, long and slanted, broken from a bed, each darker or paler than the next."""
+    return breccia(shades, seed, cells=7, aspect=2.0, shear=0.6, mid=1, spread=2, seam_gap=1.2, seam_p=0.8)
+
+
 def shards(shades: list[str], seed: int) -> Grid:
-    """Rubble of B: a finer fracture, more and smaller plates, darker."""
-    g = fractured(shades, seed, cells=11, width=0.9, angular=True)
-    return [[shades[max(0, shades.index(c) - 1)] for c in row] for row in g]
+    """The rubble of B and C: fine, angular shards, darker than the rock."""
+    return breccia(shades, seed, cells=13, aspect=1.4, shear=0.7, mid=1, spread=2, seam_gap=1.0, seam_p=0.8)
 
 
 # ---------------------------------------------------------------------------------------------------------------- columnar (C)
 
-def columnar(shades: list[str], seed: int, scars: bool = False) -> Grid:
-    """One flat facet of a basalt column, seen from the side: dense and fine-grained, with mineral flecks, a few chipped pits, and one
-    cross-joint that steps across the face (the column breaks into drums). No streaks: it must not read as bark, so nothing runs the
-    length of it. The facet's edges are the model's (its hexagon), not the texture's. scars draws a row of jackhammer holes."""
-    g = blank(shades[2])
-    for y in range(SIZE):
-        for x in range(SIZE):
-            n = vnoise(seed, x, y, 5, 5)
-            fleck = hashf(seed, x, y)
-            shade = 2 + (1 if n > 0.68 else -1 if n < 0.25 else 0)
-            g[y][x] = clamp(shade + (2 if fleck > 0.965 else -1 if fleck < 0.07 else 0), shades)
-    # A cross-joint: one dark step-line across the face with a lit lip over it, and a second faint one.
-    r = 4 + int(hashf(seed, 40) * 6)
-    for x in range(SIZE):
-        y = r + (1 if hashf(seed, 41, x // 3) > 0.5 else 0) + (x // 8)
-        if hashf(seed, 42, x) > 0.1:
-            g[y][x] = shades[0]
-            g[y - 1][x] = clamp(4, shades)
-            if hashf(seed, 43, x) > 0.6:
-                g[y + 1][x] = shades[1]
-    # Chips: a conchoidal bite, a lit rim on its upper edge and a shadow on its lower.
-    for k in range(3):
-        cx, cy = 2 + int(hashf(seed, 60 + k) * 11), 1 + int(hashf(seed, 63 + k) * 12)
-        for dx, dy in ((0, 0), (1, 0), (0, 1)):
-            g[cy + dy][cx + dx] = shades[1]
-        g[cy - 1][cx] = clamp(4, shades)
-        g[cy - 1][cx + 1] = clamp(3, shades)
-        g[cy + 2][cx] = shades[0]
-    if scars:
-        for cy in (4, 9, 14):
-            g[cy][8] = shades[0]
-            g[cy][9] = shades[0]
-    return g
-
-
 HEX_APOTHEM = 6.93
 
 
+# How far a joint strays from its place, row by row, by whole pixels: a table, so no rounding of a float decides a pixel.
+WIGGLE = (0, 1, 1, 0, 0, -1, -1, 0)
+
+
+def column_joints(seed: int) -> tuple[int, int, int]:
+    """Where the three joints of a face are, in pixels: 2 to 13, so none is on an edge and none draws a line at the edge of the block, and
+    4 to 7 apart, the last from the first once the face wraps. Fails if no draw gives a legal set, which none of the seeds in use does."""
+    for attempt in range(64):
+        first = 2 + int(hashf(seed, attempt, 1) * 3)
+        gap_a, gap_b = (4 + int(hashf(seed, attempt, n) * 4) for n in (2, 3))
+        last = first + gap_a + gap_b
+        if 9 <= gap_a + gap_b <= 12 and last <= 13:
+            return first, first + gap_a, last
+    raise ValueError(f"no joints for seed {seed}")
+
+
+def columns(shades: list[str], seed: int, mid: int = 2) -> Grid:
+    """Basalt columns, side on: three columns across the face, 4 to 7 pixels wide, split by thin dark joints that wander a pixel and break
+    in places, each column a shade of its own, with a cross-joint across it where it breaks into a drum, and a fine grain. The face wraps,
+    so the column that leaves the right edge is the one that enters on the left; the joints are never on an edge."""
+    joints = column_joints(seed)
+    tones = [(-1, 0, 1)[(i + int(hashf(seed, 7) * 3)) % 3] for i in range(3)]
+    wander = [(int(hashf(seed, 11 + j, 1) * len(WIGGLE)), 1 + int(hashf(seed, 11 + j, 2) * 2)) for j in range(3)]
+    drums = [3 + int(hashf(seed, 20 + c) * 9) for c in range(3)]
+    g = blank(shades[mid])
+    for y in range(SIZE):
+        at = [joint + WIGGLE[(phase + turns * y) % len(WIGGLE)] for joint, (phase, turns) in zip(joints, wander)]
+        for x in range(SIZE):
+            column = (sum(1 for a in at if a <= x) - 1) % 3
+            shade = mid + tones[column] + grain(seed + 30, x, y, 0.38, 0.62)
+            if x in at and hashf(seed, x, y, 8) < 0.88:
+                shade = mid + tones[column] - 2
+            elif y == drums[column] and hashf(seed, x, y, 9) < 0.75:
+                shade -= 1
+            g[y][x] = clamp(shade, shades)
+    return g
+
+
+def plated(shades: list[str], seed: int) -> Grid:
+    """The cut end of a column, seen from above: five polygon plates inside a face that wraps, with the hairline cracks of cooled basalt, a
+    thin dark line, in most of the places two plates meet."""
+    return breccia(shades, seed, cells=5, aspect=1.0, shear=0.0, mid=2, spread=1, seam_gap=0.8, seam_p=0.85)
+
+
 def hex_cap(shades: list[str], seed: int) -> Grid:
-    """The cut end of a hexagonal column: polygon plates split by hairline cracks (cooled basalt cracks on its top as it does down its
-    sides), inside a dark one pixel outline along the hexagon's edge, and dark outside it. The model builds the hexagon from three
-    rectangles at 0, 60 and 120 degrees, each showing this texture turned; the plates are not drawn to match across them, because on a
-    cap a seam between plates is a crack. Nothing in it is a ring: rings read as the end of a log."""
-    g = fractured(shades, seed, cells=5, width=0.9)
+    """The cut end of the hexagonal column of the Company Rock: polygon plates inside a dark one pixel outline along the hexagon's edge,
+    and dark outside it. The model builds the hexagon from three rectangles at 0, 60 and 120 degrees, each showing this texture turned;
+    the plates are not drawn to match across them, because on a cap a seam between plates is a crack."""
+    g = plated(shades, seed)
     normals = [(math.cos(math.radians(a)), math.sin(math.radians(a))) for a in (30, 90, 150)]
     for y in range(SIZE):
         for x in range(SIZE):
@@ -273,9 +255,8 @@ def hex_cap(shades: list[str], seed: int) -> Grid:
             inside = HEX_APOTHEM - max(abs(px * ax + py * ay) for ax, ay in normals)
             if inside < 0.9:
                 g[y][x] = shades[0]
-            elif g[y][x] != shades[0]:
-                # The plates are a shade lighter than the rock's sides, so the hexagon stands out of the dark outline and cracks.
-                g[y][x] = clamp(shades.index(g[y][x]) + 2, shades)
+            else:
+                g[y][x] = clamp(shades.index(g[y][x]) + 1, shades)
     return g
 
 
@@ -309,7 +290,7 @@ def basalt_plug(seed: int, cross: tuple[int, int] | None) -> Grid:
 
 def brass_collar_plug(seed: int) -> Grid:
     """C's plug: a basalt prism with a stamped brass collar round it."""
-    g = columnar(ramp("plug", 6), seed)
+    g = columns(ramp("plug", 6), seed)
     for y, shade in ((6, "brass.2"), (7, "brass.5"), (8, "brass.4"), (9, "brass.2")):
         for x in range(SIZE):
             g[y][x] = shade
@@ -369,26 +350,6 @@ def stencilled_concrete(seed: int, text: str, band: bool = True) -> Grid:
 
 
 # ---------------------------------------------------------------------------------------------------------------- breach crust
-
-def laminae(seed: int) -> Grid:
-    """A crust cut across: thin layers 2 or 3 pixels thick, each its own shade, with ragged edges and a lit lip."""
-    shades = ramp("crust", 6)
-    g = blank(shades[2])
-    row = 0
-    n = 0
-    while row < SIZE:
-        height = 2 + int(hashf(seed, n) * 2)
-        shade = 2 + int(hashf(seed, n, 3) * 3)
-        for x in range(SIZE):
-            drift = 1 if hashf(seed, n, x, 9) > 0.8 else 0
-            for y in range(row, min(SIZE, row + height)):
-                g[y][x] = clamp(shade + (2 if y == row else 0), shades)
-            if row + height - 1 < SIZE and drift:
-                g[min(SIZE - 1, row + height)][x] = shades[0]
-        row += height
-        n += 1
-    return g
-
 
 def crust_plates(seed: int, cells: int, width: float = 1.2, lift: int = 0) -> tuple[Grid, list[list[bool]]]:
     """Plates of crust split by cracks, lift shades lighter; the crack mask is returned so a seamed crust can glow in it."""

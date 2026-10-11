@@ -28,8 +28,8 @@ import io.github.pkeppeler.deepcharter.test.support.LayerConceptScenes.Size;
 import io.github.pkeppeler.deepcharter.test.support.LayerConceptScenes.View;
 
 /**
- * Server GameTests for the layer concepts (#241, docs/design/layer-concepts.md): each of the six scenes that {@code tools/layer_concepts/make.py}
- * writes builds in its layer as a sealed box that holds the five things the evidence scenario shoots, and its lava sources start a flow. The
+ * Server GameTests for the layer concepts (#447, docs/design/layer-concepts-2.md): each of the three scenes that {@code tools/layer_concepts/make.py}
+ * writes builds as a sealed box that holds the things the evidence scenario shoots, and its lava sources start a flow. The
  * packs that draw them are files, checked by {@code tools/tests/test_layer_concepts.py} and the client test.
  */
 public class LayerConceptsTest {
@@ -42,8 +42,8 @@ public class LayerConceptsTest {
 		MinecraftServer server = helper.getLevel().getServer();
 		Size size = LayerConceptScenes.size(server);
 		List<Scene> scenes = LayerConceptScenes.read(server);
-		if (scenes.size() != LayerConceptScenes.OPTIONS.size() * LayerConceptScenes.LAYERS.size()) {
-			throw helper.assertionException("%s scenes, not one for each option and layer", scenes.size());
+		if (scenes.size() != LayerConceptScenes.LAYERS.size()) {
+			throw helper.assertionException("%s scenes, not one for each layer", scenes.size());
 		}
 		for (Scene scene : scenes) {
 			LayerConceptScenes.place(server, scene, size);

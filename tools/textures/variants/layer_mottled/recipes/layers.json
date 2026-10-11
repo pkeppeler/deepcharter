@@ -1,0 +1,1037 @@
+{
+  "recipes": {
+    "block/lc_rock_1_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4",
+            "f": "shale1.5"
+          },
+          "rows": [
+            "eccaaebabaaaabbc",
+            "eeccbebbbaaebccd",
+            "eeedeeaabbbceebd",
+            "eddeeecaaedeeddd",
+            "cbdeeecbabddddec",
+            "dcdfeedcbcedeeed",
+            "ccdefeddbdddeddc",
+            "ecedcddfdddcccee",
+            "cbbbcccdeddccccd",
+            "edddddeededcdccc",
+            "eefffffececcecce",
+            "edddeeeeeecedcdd",
+            "dddddcceededdded",
+            "cdcdcccdedbcedbc",
+            "cddccbccecbcdcbc",
+            "cdcbaebcdbabcbbc"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_1_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4",
+            "f": "shale1.5"
+          },
+          "rows": [
+            "aaaeeeaaaabbbaaa",
+            "abcedeebabebbaaa",
+            "bceeeedeeeeecbab",
+            "dedddceddceccebc",
+            "dedcbbdcedbbbace",
+            "eeecbaceedebcecf",
+            "fedcceeedbccccee",
+            "ecebbceddccbeddd",
+            "eeaaaccdcdbedded",
+            "eeccbcdddcceceed",
+            "eeddddeebbccdfee",
+            "ddcdddddddecceee",
+            "ccccdddeedeccded",
+            "ccceedccedeccded",
+            "eeceeebbccdccdee",
+            "aaceedabbccbabba"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_1_2": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4",
+            "f": "shale1.5"
+          },
+          "rows": [
+            "aaaeaaeeeeeaaaaa",
+            "baabeceddeeaaabb",
+            "dbacdceeedebabcc",
+            "bacdeecedecccccc",
+            "abddddcedcddddcb",
+            "aceeeecceedefeeb",
+            "cdeeeeeebbbeeecc",
+            "bdeeccceaabcddce",
+            "bdedcbbaaacabdcc",
+            "eeeeedbeaabbccbe",
+            "eeeefedbeeeeddde",
+            "eedeeedcbdcdddcd",
+            "dcccdeeccceeeecc",
+            "ccccbdddddcdecbc",
+            "ccbbabeeeddedcac",
+            "bbaaaceeeeebaaaa"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_1_3": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4",
+            "f": "shale1.5"
+          },
+          "rows": [
+            "cbabcbaaaabeedbb",
+            "bbbbcbaababdedbb",
+            "dcdcbaccdcacdcbc",
+            "ccceaeccdcbcdccc",
+            "ecaaaaacdddcccdd",
+            "edeaaeaacddccdcd",
+            "ecbbbbbbcccbbbce",
+            "ebbcdcaaaabaaaec",
+            "ebacdcbcaaaaaaab",
+            "ccccedbbaaaaaaeb",
+            "bceeceecbbbabbbc",
+            "cccddddbdccccccc",
+            "ccbdedbcedcccccc",
+            "dbbddcccedccdddd",
+            "dcccccbcdcdefeed",
+            "ccbbdbaaabceeebc"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_1_4": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4"
+          },
+          "rows": [
+            "cccaabcdccbaaecd",
+            "dedcbcddbccbabed",
+            "dcbcddecbdecabcc",
+            "abccdddbececaabb",
+            "aabcccccddccbbba",
+            "abccbceccbebbbaa",
+            "aacbabbbbaabbaaa",
+            "aacbaaeaaaaaaaaa",
+            "aacaaaeaaaaaeaaa",
+            "bbaaaaeaaaaaeaaa",
+            "ccbadaaeeeeaaaac",
+            "ccbaaabaaaaaaabd",
+            "bbbaaabbbbbaaabc",
+            "bccbababcccbbbcc",
+            "eddaabbddddccced",
+            "dedbabcccbccbced"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_1_5": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4",
+            "f": "shale1.5"
+          },
+          "rows": [
+            "bbbeedbccbbcdccc",
+            "bcceccbccbbcecdb",
+            "edabbcdcbbcefdbc",
+            "dccbbbbbbbbdeedd",
+            "cccaaaaaabacdddd",
+            "cbbbbbabbbcceecc",
+            "aaabcbbbbbcbaaaa",
+            "aaaabaaaaaaaaaaa",
+            "aaabbaaaaaaaabaa",
+            "aaabbaaaaaaaaaaa",
+            "aabccdbaabaaaaaa",
+            "aabcccbaaaaaaaba",
+            "eebcccaaaaabcbaa",
+            "ebbcdcbaabccccab",
+            "bbadeedcccddecbb",
+            "bbceedccbcccdccb"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_1_end": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4",
+            "f": "shale1.5"
+          },
+          "rows": [
+            "eefedefffffeeeee",
+            "ddeebeffffeeeeee",
+            "ccedccdeedcdedbc",
+            "bbcdddcdddccccbb",
+            "bbbdedcddccbbcbb",
+            "aabccccccccccccb",
+            "aaabbbabbccdddcb",
+            "ccbaabaabcbeeecc",
+            "ddcabaaabbbeeedd",
+            "ddcbbbbbabbddccd",
+            "ddddbcdcbcbbbccc",
+            "bccccdedbcbbaabb",
+            "bcccddccccaaabbb",
+            "dccdeedeedccccbc",
+            "fddeeedefedeedcd",
+            "eeeeeeefffeeeeee"
+          ]
+        }
+      ]
+    },
+    "block/lc_rubble_1_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4"
+          },
+          "rows": [
+            "aaaacdcbceddcaaa",
+            "aaaacdcdecbabaaa",
+            "aaaacddccacbbaaa",
+            "bbbbaaababbbaaaa",
+            "cbbbbaaaaaabbbaa",
+            "bbbabaababaaacab",
+            "baaacdcddccccbba",
+            "aaaacedddebbddba",
+            "aaaacddcbcccccaa",
+            "aaaacccbcccccbaa",
+            "aaaaabdccccccaaa",
+            "aaaaabbccbbbaaab",
+            "aaaabbbabcbbbaaa",
+            "aabbcbabccbbccaa",
+            "aabbcbacbbbbdcda",
+            "aaabcabcbacdccaa"
+          ]
+        }
+      ]
+    },
+    "block/lc_rubble_1_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4",
+            "f": "shale1.5"
+          },
+          "rows": [
+            "aaabbfaccddddaaa",
+            "aaaadedccdaaaaaa",
+            "aaaacddccabbaaaa",
+            "bbbbaabaabbbaaaa",
+            "cdbbaaaaabbacabb",
+            "bbbaabacaabcdccb",
+            "abaacdddcbcbbccc",
+            "aaaaedddebbbccca",
+            "aaaadddccbbabaaa",
+            "aaaaccccdccbbbaa",
+            "aaaaaccddcbbbaaa",
+            "baaaaacbccbaaaba",
+            "bbaabbbaaaaacaab",
+            "abbbbbbaaaacbbaa",
+            "aabbabbaaadcbcca",
+            "aaaabbaaaadcccaa"
+          ]
+        }
+      ]
+    },
+    "block/lc_rubble_1_end": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4"
+          },
+          "rows": [
+            "aaaabcdbaeeecaaa",
+            "aaaacdeedcbaaaaa",
+            "aabacdedcabbaaaa",
+            "bbbbabaabbbbbaab",
+            "abcbaababbbbaaab",
+            "abbaaabcaaababac",
+            "aabacdddddbbcbaa",
+            "aaaaceeedbbdccca",
+            "aaaadeecbccccaaa",
+            "aaaaddcbcccccbaa",
+            "aaaabcccccddcaaa",
+            "aaabacbccccbabaa",
+            "bbabcccaaaaacaaa",
+            "aacccbbabaacccaa",
+            "aabbbbbabbccdcca",
+            "aaabbbaabccccdaa"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_2_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.1",
+            "c": "shale2.2",
+            "d": "shale2.3",
+            "e": "shale2.4",
+            "f": "shale2.5"
+          },
+          "rows": [
+            "dddfccdffeddcded",
+            "cddfabdefedddded",
+            "cccbfcdefeddeeed",
+            "cccbbfdedddfcccd",
+            "eedbbcddddbfccbd",
+            "edcbbceeddccbccd",
+            "ddcccfeeeeddedfd",
+            "ffdddeffeeeefedd",
+            "dffeffffffffffff",
+            "ffffffffffffeffd",
+            "fffffffffffedede",
+            "fffeefffeededfff",
+            "fcceefeeedccfdbd",
+            "cceddffeedccdcdc",
+            "cdecfcfeeddddddd",
+            "ddefadeeeedddddd"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_2_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.1",
+            "b": "shale2.2",
+            "c": "shale2.3",
+            "d": "shale2.4",
+            "e": "shale2.5"
+          },
+          "rows": [
+            "bbeddeccdebccddc",
+            "eeddbcbcdebccccc",
+            "bbbcdbaccecdcceb",
+            "abbcccbcbeddccba",
+            "aaacccccbcecceaa",
+            "bcbbbccdacddcbbb",
+            "cbbbbcceeeddcecc",
+            "ddccbeedddeedddd",
+            "eedceeeeeeeeeede",
+            "eedeeeedeeeeeece",
+            "eedeeeeeeedeeeee",
+            "eececbceeceddeee",
+            "dddbbabeeecccedc",
+            "dcbbcbbbecccbccd",
+            "dcaebcbeeedddcec",
+            "cbeceeecceccdccc"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_2_2": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.1",
+            "b": "shale2.2",
+            "c": "shale2.3",
+            "d": "shale2.4",
+            "e": "shale2.5"
+          },
+          "rows": [
+            "dddcbceccceccbbc",
+            "dddcbcdbccecbbbc",
+            "dddcecdccccbbabc",
+            "dcdebcccccbaaaac",
+            "ddcccccccbaabbac",
+            "ccecdccccbaeaaac",
+            "cdcdccbcccbebbcc",
+            "deeedcccdcceccdd",
+            "eeeeecccdddeddee",
+            "eeeeddcccddedeee",
+            "eedddddcccdedeee",
+            "eeecccbbbdddeeee",
+            "eeccbababbceeeee",
+            "cdecbbbbccceccdb",
+            "cdeceecbcceebcdc",
+            "cdecbceccceccbbc"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_2_3": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.1",
+            "b": "shale2.2",
+            "c": "shale2.3",
+            "d": "shale2.4",
+            "e": "shale2.5"
+          },
+          "rows": [
+            "ccedccbbbbbcddcc",
+            "ccdeddbbaaacddcc",
+            "cdddddcbaaaeeccc",
+            "bbcdcccbbaaccceb",
+            "abbcbbbabbecccec",
+            "bbcdbccbbaccccea",
+            "bcddbddcabccccec",
+            "ddddeeecdcccccee",
+            "eddeeeeddcddcdde",
+            "eedeeeedeeddcdee",
+            "edddeedeeedddcdd",
+            "cdcdeedeeeecdccc",
+            "cbcddedcedccbaca",
+            "abcddddcdcbcccaa",
+            "bccdcdccdcacdcab",
+            "bcddcdcbcbbbdccc"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_2_4": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.1",
+            "c": "shale2.2",
+            "d": "shale2.3",
+            "e": "shale2.4",
+            "f": "shale2.5"
+          },
+          "rows": [
+            "dccdefeedddccccd",
+            "ccceffeddddcccdd",
+            "dccefeedcddddddf",
+            "bbcdfeeeddeffeec",
+            "bbfdedcefeefffec",
+            "bcddedddeeceefdc",
+            "cabcdccccddddddc",
+            "bbbccccddccdddcc",
+            "bbccccddcccdeddc",
+            "cddcdcdddddfeeee",
+            "cdddceedcdefffed",
+            "ccfdedddcceeffed",
+            "ffccdeddbbcdffdf",
+            "cccdeecdcceddffd",
+            "cccdfedcbeedbded",
+            "dcdeffdccdecbcde"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_2_end": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.1",
+            "c": "shale2.2",
+            "d": "shale2.3",
+            "e": "shale2.4",
+            "f": "shale2.5"
+          },
+          "rows": [
+            "ddcdddddddccccdd",
+            "edcdedddddcbccdd",
+            "dccdedcdddddccbd",
+            "ccdddddcabbccddb",
+            "acddeedaabbccccb",
+            "abddeeebbcccccdc",
+            "bceeeeebbbbdcddc",
+            "dcdefedbcbccdddd",
+            "ddcefebbcdccdddd",
+            "ddddfdcbccdccdde",
+            "bddbbcccccddbdec",
+            "abcbbbdccccdddcc",
+            "abcaabdddcbddcbb",
+            "bbbbbccdeccddcbb",
+            "cbccddcdccddeddc",
+            "dccdeddddddddccd"
+          ]
+        }
+      ]
+    },
+    "block/lc_rubble_2_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.1",
+            "c": "shale2.2",
+            "d": "shale2.3",
+            "e": "shale2.4"
+          },
+          "rows": [
+            "baaaaaccccdbcccc",
+            "cbaacdddddcccccc",
+            "bbacddbddeccbccc",
+            "aaaccdddddbbcccb",
+            "aaaaaaccaaaaaaaa",
+            "aaaaaaabaaaaaaaa",
+            "aaaaaaaaaababaaa",
+            "aaabaaaacbaaaaaa",
+            "abababaabbaaabab",
+            "abbaccbcdcababbb",
+            "aaaccdcccecbabab",
+            "ccaaddcdbbdcbbcc",
+            "cbaaaabbbcccaddc",
+            "caaabccbccccdddd",
+            "aaaaabccdccbcddc",
+            "aaaaaacccccbdcbb"
+          ]
+        }
+      ]
+    },
+    "block/lc_rubble_2_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.1",
+            "c": "shale2.2",
+            "d": "shale2.3",
+            "e": "shale2.4"
+          },
+          "rows": [
+            "bbbaaaadbbbbdccc",
+            "bcbaaabaabdeddbc",
+            "abaaaaaaadeeddab",
+            "aaaaaaaacddddcaa",
+            "aaaaaaacddddcaaa",
+            "aaacbccacdccaaaa",
+            "bbccccbabbbbdcbb",
+            "ccdcbbabbbaccccb",
+            "bcccaaabcbcbbbad",
+            "ccaaaaaaacddcccc",
+            "bbbaaaaadcccbacc",
+            "babaaaadccccbcbb",
+            "aaabbadccbcdddcd",
+            "aabbcacbccccdcbb",
+            "cccbbaaabbccccbc",
+            "bcbbaaaaaabacbcc"
+          ]
+        }
+      ]
+    },
+    "block/lc_rubble_2_end": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.1",
+            "c": "shale2.2",
+            "d": "shale2.3",
+            "e": "shale2.4"
+          },
+          "rows": [
+            "bbbabaaaabbacbdd",
+            "cbaaaabaaaccccbc",
+            "bbaaaaaadbcddcab",
+            "aaaaaaabbcdddeaa",
+            "aaaaabccabccbaaa",
+            "aaacaccbcccbaaaa",
+            "cbbbcbbabbbabccb",
+            "bbcccbabcbabcccb",
+            "cbbccaaaccccdabc",
+            "cbaaaaaaabbbcccc",
+            "cbaaaaaaabaaaabc",
+            "baaabaaacccccbcb",
+            "aaaaaabcccccccbb",
+            "aabbbabcccccccbb",
+            "bccbbaaabbcbbbbb",
+            "bbcbaaaaaabbbbcc"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_3_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.0",
+            "b": "basalt3.1",
+            "c": "basalt3.2",
+            "d": "basalt3.3",
+            "e": "basalt3.4",
+            "f": "basalt3.5"
+          },
+          "rows": [
+            "aabcbbccbbaaaaaa",
+            "bccebdccdcaaabbb",
+            "bccceeccdcbbbbcc",
+            "edccbcbeceebabcd",
+            "eddccbaeeeeeaaed",
+            "eecddcbbeeeabbed",
+            "ddccdcccdcabeccd",
+            "bccdcdcbbabbebbc",
+            "acddbccaaabbbaab",
+            "cccdeecbaabbeccc",
+            "dcbefdebbccededd",
+            "ccbcedccccedcedd",
+            "dcbcedcbbdecbedd",
+            "bbceccccbccceccb",
+            "abcabcccccebbccb",
+            "abccbcccbcbaaaaa"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_3_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.0",
+            "b": "basalt3.1",
+            "c": "basalt3.2",
+            "d": "basalt3.3",
+            "e": "basalt3.4",
+            "f": "basalt3.5"
+          },
+          "rows": [
+            "cbaaaaceeaacbccc",
+            "ccabdbbaeabcccdc",
+            "ccbcecbbbbcbbcdc",
+            "ecccfecbaacbccce",
+            "acccdddbaadcccde",
+            "ccecdecbeececccc",
+            "ddcdcccbacdcbedd",
+            "eddcbcbaabccbbcd",
+            "edecccaaaabccaad",
+            "dddcccdcbbbbcbac",
+            "cddcbceeedccebbc",
+            "ccdcbcddedcdccbc",
+            "dddbbcedecabcbcc",
+            "dccccabcdcbbccbb",
+            "ccbeebabccbccccc",
+            "ccbbbaaaaabccccc"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_3_2": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.0",
+            "b": "basalt3.1",
+            "c": "basalt3.2",
+            "d": "basalt3.3",
+            "e": "basalt3.4",
+            "f": "basalt3.5"
+          },
+          "rows": [
+            "fffeddcceeedbccd",
+            "eedcbcdddeedbbcd",
+            "cddcccccddfddbbc",
+            "dcbaeaacccddcccc",
+            "ddbaaaabdbbbcbed",
+            "dcbaaabbcbbcccbc",
+            "cbbeeecccdbecebb",
+            "cceccecbbbbbeaab",
+            "dceddcbbcbbaaabd",
+            "ccecdeccbbbaeabc",
+            "bbbcbcccccaeacec",
+            "cbbcabcdeeccbccc",
+            "caaaaabeefedccbb",
+            "eeeabbccdecccccb",
+            "ccccccbbbbcccdcc",
+            "eeedecacccdcbccd"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_3_3": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.0",
+            "b": "basalt3.1",
+            "c": "basalt3.2",
+            "d": "basalt3.3",
+            "e": "basalt3.4"
+          },
+          "rows": [
+            "eeeeeecccdbbeeee",
+            "cecceecdccccccee",
+            "aabdddccdcdccbeb",
+            "aabcddcedcdcdcbb",
+            "baabdcbeedbcecaa",
+            "aaccddcceeccdebb",
+            "bcdcdcccdcccbbab",
+            "ccdccccbabbbbbbc",
+            "bcecbccaababbccc",
+            "bcdcbccbaabbabbc",
+            "babaaabbeabbbbab",
+            "babaaabcceccddcc",
+            "cbaaaaaceceddeec",
+            "bbbaaaeccccedddc",
+            "ddccccecccbeedcc",
+            "eeeddecbccbbeeee"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_3_4": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.0",
+            "b": "basalt3.1",
+            "c": "basalt3.2",
+            "d": "basalt3.3",
+            "e": "basalt3.4",
+            "f": "basalt3.5"
+          },
+          "rows": [
+            "ccbbbabdeecddecc",
+            "cdbbabcceeeeedcc",
+            "ccdbacdeeecddcec",
+            "cdebbcbeeedcdcbc",
+            "ceacdbbdfedccbbe",
+            "ecbcccbeeedcdccb",
+            "ccbcdcabddcddccc",
+            "abcccbbbcbbbbccb",
+            "aaccabcbaaaaabba",
+            "bccdccbaaabbbccb",
+            "dcddfebaaadccced",
+            "ddededdaaaccccee",
+            "cdedddcaaaccdccb",
+            "bdedddcaaabcedcc",
+            "ddcccbbaccceeeee",
+            "ccebbabceceeeedc"
+          ]
+        }
+      ]
+    },
+    "block/lc_rock_3_end": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.0",
+            "b": "basalt3.1",
+            "c": "basalt3.2",
+            "d": "basalt3.3",
+            "e": "basalt3.4",
+            "f": "basalt3.5"
+          },
+          "rows": [
+            "aaacccabbbacecaa",
+            "aaacdcabcccdedca",
+            "cbacdcbbcceddddd",
+            "deccccccccdccded",
+            "deedccdeacdcbdee",
+            "eeedddcccddcddee",
+            "fdedddcdfdccdcce",
+            "feeccccdedccccde",
+            "eeecaacdfdcbcbbd",
+            "eedcbcddccbbbbcd",
+            "deeedddedcbbacdd",
+            "cdfedefedccccccc",
+            "bcffcefecbbccbab",
+            "bcfedefdcccccccc",
+            "bcdeeeccccbcdddc",
+            "aaccddbcbbccedba"
+          ]
+        }
+      ]
+    },
+    "block/lc_rubble_3_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.0",
+            "b": "basalt3.1",
+            "c": "basalt3.2",
+            "d": "basalt3.3",
+            "e": "basalt3.4"
+          },
+          "rows": [
+            "abbabccaaaaaaaaa",
+            "bbaaaaaaaaaaaabc",
+            "baaabaaaaaaaaacb",
+            "aabbcbabccbbaaaa",
+            "abbbcabcbcbcbbba",
+            "abbbacbcccbabbba",
+            "aaacdccdcbbaaaab",
+            "bcdddddbbabaaaaa",
+            "ddddddddaaabbcca",
+            "cdddddddbbcdcccb",
+            "cceddcccbcccdcac",
+            "dddeddbbccccaacd",
+            "dddeedcbbaaaaacd",
+            "cccccdaaaaaaaabd",
+            "cbbbbbaadcccaaab",
+            "bbbbbcccdcaaaaab"
+          ]
+        }
+      ]
+    },
+    "block/lc_rubble_3_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.0",
+            "b": "basalt3.1",
+            "c": "basalt3.2",
+            "d": "basalt3.3",
+            "e": "basalt3.4",
+            "f": "basalt3.5"
+          },
+          "rows": [
+            "bbabbcbcbdcaaaaa",
+            "bbbaaaccdcaaaacb",
+            "ababbbacaaaaaacc",
+            "bbbbbbacccbbaabb",
+            "bcbbaaaccccbabbb",
+            "aabbbbbcccbabacb",
+            "aaacddcccbaaaaca",
+            "acddddcccaaaaabb",
+            "edddeddcaaaabccc",
+            "cdddddddbcdcccdd",
+            "ccddccbbcccddccc",
+            "ddedccbcccddcadd",
+            "ddddcdddeefaaade",
+            "ccdbcdedecaaaaec",
+            "bcbbaddddccdddab",
+            "abbbbccccddbaaac"
+          ]
+        }
+      ]
+    },
+    "block/lc_rubble_3_end": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.0",
+            "b": "basalt3.1",
+            "c": "basalt3.2",
+            "d": "basalt3.3",
+            "e": "basalt3.4"
+          },
+          "rows": [
+            "baabacdddcdaaaab",
+            "bbbaaaddbdaaaabc",
+            "babbbbabcbcdcbab",
+            "bacbbbbcbcccdbaa",
+            "bccbaabbbcbbbaaa",
+            "abababbccccacabb",
+            "aaacddccdbaaabab",
+            "acdddddbaaaaaaaa",
+            "ddedddecaaabbbcb",
+            "cddddddccccccccb",
+            "ecbbbccccccccccd",
+            "ddccbbbcddcbaacd",
+            "ddddcccbcaaaaacd",
+            "cdbbbcaaaaaaaacd",
+            "bbbbbbaadddcccab",
+            "bbabbcccbcecaaab"
+          ]
+        }
+      ]
+    },
+    "block/lc_core_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2"
+          },
+          "rows": [
+            "bbaaaaaaaaabbbbb",
+            "bbaaaaaaaaabbbbb",
+            "aaabbbaaaaabbbaa",
+            "aabbbbbaaaaaaaaa",
+            "aabbcbbaaaaaaaaa",
+            "aabbcbbaaaaaaaaa",
+            "aabbbbbaaaaaaaaa",
+            "bbbbbbaaaaaaaaab",
+            "bbbbbbaaaaaaaaab",
+            "bbbbbbaaaaaaaaab",
+            "bbaaaaaaaaaaaaaa",
+            "aaaaaaabbbbaaaaa",
+            "aaaaaaabbbbbbaaa",
+            "aaaaaaabbbbbbbaa",
+            "aaaaaaaaaabbbbbb",
+            "bbaaaaaaaaabbbbb"
+          ]
+        }
+      ]
+    },
+    "block/lc_core_2": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.1",
+            "c": "shale2.2"
+          },
+          "rows": [
+            "aaaaaaaabbbbbbba",
+            "baaaaaaaabbbbbbb",
+            "bbaaaaaaaabbbbbb",
+            "bbaaaaaaaabbccbb",
+            "bbaaaaaaaabccccb",
+            "bbbaaaaaaabccccc",
+            "cbbaaaaaaabccccc",
+            "ccbaaaaaaabccccc",
+            "ccbaaaaaaabccccc",
+            "ccbaaaaaaabbcccc",
+            "cbbaaaaaaabbbbbc",
+            "bbbbbbbaabbbbbbb",
+            "bbbbbbbbbbbbbbbb",
+            "bbbbbbbbbbbbbbbb",
+            "bbbbaabbbbbbbbbb",
+            "aaaaaaaabbbbbbbb"
+          ]
+        }
+      ]
+    },
+    "block/lc_core_3": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.0",
+            "b": "basalt3.1",
+            "c": "basalt3.2"
+          },
+          "rows": [
+            "bbbbbbbbbbbaaaaa",
+            "bbbbbbbbbbbaaaab",
+            "bbbbbbbbbbbaaabb",
+            "ccbbbbbbbbbaaabc",
+            "cccbbbbbbbbaaabc",
+            "cccbbbbbbbbaaabc",
+            "ccbbbbbbbbbaaabc",
+            "ccbbbbcccbbaaabb",
+            "cbbbbbcccbbaaabb",
+            "ccbbbbcccbbaaabb",
+            "cccbbbbbbbbbbbbc",
+            "cccbbbbbbbbccccc",
+            "cccbbbbbbbcccccc",
+            "ccbbbbbbbbbccccc",
+            "bbbbbbbbbbbbbbbb",
+            "bbbbbbbbbbbbaabb"
+          ]
+        }
+      ]
+    }
+  }
+}
