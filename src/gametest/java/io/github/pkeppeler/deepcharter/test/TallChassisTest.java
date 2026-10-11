@@ -29,6 +29,11 @@ public class TallChassisTest {
 	}
 
 	@GameTest(maxTicks = ChassisChecks.TICKS)
+	public void aTallPodLinerLinesTheWholeRingLavaCanReachAndNothingElse(GameTestHelper helper) {
+		CHECKS.linerLinesTheWholeRingLavaCanReachAndNothingElse(helper);
+	}
+
+	@GameTest(maxTicks = ChassisChecks.TICKS)
 	public void aTallPodSounderHearsAPocketInTheFarCornerOfItsFootprint(GameTestHelper helper) {
 		CHECKS.soundsAPocketInTheFarCornerOfTheFootprint(helper);
 	}

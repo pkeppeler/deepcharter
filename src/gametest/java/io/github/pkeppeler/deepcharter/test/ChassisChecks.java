@@ -20,6 +20,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
+import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.hangar.Hangar;
 import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
@@ -27,6 +28,7 @@ import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodLiner;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodSounder;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
@@ -246,6 +248,48 @@ final class ChassisChecks {
 				pod[0].discard();
 				helper.succeed();
 			}
+		});
+	}
+
+	/**
+	 * The liner of a chassis of any size lines the whole ring that lava can reach and nothing when none can: the flood and the view are
+	 * measured from the footprint (#432), not from the Mole's box. The ring is the {@code 4 x width x height} cells of an open room round the
+	 * pod. With no lava in the room the first ring lays nothing; lava 3 blocks beside the ring, in the room, floods all of it.
+	 */
+	void linerLinesTheWholeRingLavaCanReachAndNothingElse(GameTestHelper helper) {
+		int x = 9480 + shift;
+		ServerLevel level = layer(helper);
+		site(level, x);
+		MockPlayer owner = MockPlayers.join(helper, chassis.id() + "-liner-" + OWNERS.incrementAndGet());
+		owner.player().setGameMode(GameType.SURVIVAL);
+		int ring = 4 * width * height;
+		int lowX = x - width / 2;
+		int lowZ = Z - width / 2;
+		PodEntity[] pod = {null};
+		Runnable due = () -> pod[0].setAttached(PodLiner.STATE, Versioned.of(new PodLiner.State(Optional.of(new PodLiner.Anchor(FLOOR + 4, lowX, lowZ)))));
+		FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+			pod[0] = spawn(level, new Vec3(x + middle, FLOOR, Z + middle));
+			ScannerPods.fit(helper.getLevel().getServer(), owner.player(), pod[0], ComponentTrack.LINER, 1);
+			PodLining.modify(pod[0], state -> new PodLining.State(0, ring + 10, 0, false, false));
+			due.run();
+		});
+		boolean[] lavaPlaced = {false};
+		helper.onEachTick(() -> {
+			if (pod[0] == null || Versioned.readable(pod[0], PodLiner.STATE).orElseThrow().anchor().orElseThrow().feetY() != FLOOR) {
+				return;
+			}
+			int bricks = count(level, lowX - 1, lowX + width, FLOOR, FLOOR + height - 1, lowZ - 1, lowZ + width, SlagBrick.BLOCK);
+			if (!lavaPlaced[0]) {
+				expect(helper, bricks == 0 && PodLining.of(pod[0]).bricks() == ring + 10, "a room with no lava is not lined: %d bricks laid, %d left", bricks, PodLining.of(pod[0]).bricks());
+				level.setBlock(new BlockPos(lowX + width + 3, FLOOR, lowZ), Blocks.LAVA.defaultBlockState(), 3);
+				lavaPlaced[0] = true;
+				due.run();
+				return;
+			}
+			expect(helper, bricks == ring && PodLining.of(pod[0]).bricks() == 10,
+					"lava 3 blocks beside the ring of a %d x %d footprint, %d tall, floods all %d cells: %d bricks laid, %d left", width, width, height, ring, bricks, PodLining.of(pod[0]).bricks());
+			pod[0].discard();
+			helper.succeed();
 		});
 	}
 
