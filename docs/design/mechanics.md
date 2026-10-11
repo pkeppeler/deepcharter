@@ -764,6 +764,61 @@ The tier 1 part equals its bound to the bore, as before. The tier 2 part now bea
 
 **Open questions.** Why a taller pod dies more to lava, and what the ring should cost it (a brick for each 6 cells, a bigger rack for a taller chassis, or a taller box that shrugs off the top row). Answered by [Lava and the taller Mole's lining (#432)](#lava-and-the-taller-moles-lining-432-a).
 
+## Lava and the taller Mole's lining (#432, A)
+
+**Problem.** After [#424](#gas-on-the-taller-mole-424-a) the pack columns were back (47 and 53 of 100 reach layer 2, against 50 and 60 before [#400](#pod-sizes-for-the-cabs-400)), but the columns without a pack were not: 21 and 30 against 36 and 46. Lava ended 64 and 55 bores of the 100 (it was 42 and 37). The user asked for the taller cab for ergonomics and not for a harder game. The box meets more lava (box physics, kept), and a ring of the taller box costs 32 bricks by hand and 24 at tier 2 (it was 24 and 20), so a rack of 32 runs dry sooner. What should the liner's ring cost a taller pod?
+
+**Candidates.** `LavaBoreTest`, `DEEPCHARTER_LAVA_BORES=100`, seed 0, liner 2, rack 32 unless the row says more, the sounder part of the tier named (the bot reacts only to what the part tells it). Reach is bores that reached layer 2. Deaths are by last cause: lava / gas / landing / crust. The runs are deterministic.
+
+| Candidate | Tier 1 | Tier 2 | Lava deaths (1, 2) | Racks that ran dry (1, 2) | Bricks a bore (1, 2) |
+|---|---|---|---|---|---|
+| Before #400 | 36 | 46 | 42, 37 | | |
+| Baseline: #424, a ring of every open cell | 21 | 30 | 64, 55 | 37 (liner alone) | 24.5 (liner alone) |
+| R. Rack scaled with the ring: 43 bricks (32 x 32 / 24) | 28 | 35 | 46, 44 | 38, 36 | 32.8, 30.9 |
+| S. A lining cost per 6 cells | not run: the same as R | not run | | | |
+| W. Only cells lava can reach, wide view (8 blocks, not 3 and 4) | 42 | not run | 25 | 11 | 15.2 |
+| **L. Only cells lava can reach (the pick)** | **46** | **54** | **21, 19** | **7, 7** | **14.8, 14.4** |
+
+| Other columns | Reach, baseline | Reach, L | Deaths lava / gas / landing / crust, L |
+|---|---|---|---|
+| No part, no lining | 0 | 0 | 98 / 2 / 0 / 0 (as before: nothing changed) |
+| Liner 2, no sounder | 7 | 14 | 15 / 60 / 0 / 10 (baseline 41 / 44 / 0 / 7) |
+| Tier 1 + pack 64 | 47 | 48 | 15 / 24 / 0 / 11 |
+| Tier 2 + pack 64 | 53 | 58 | 15 / 21 / 0 / 5 |
+| Braced (`BRACE=1`, tier 1 + pack) | 62 | 63 | 15 / 20 / 0 / 0 |
+
+- **A bigger rack alone (R) does not do it.** 43 bricks gave 28 and 35, and 38 of 100 racks still ran dry. A ring is as tall as the pod's box plus the stretch below it, and most of its open cells hold air that no lava will ever flow into: the rack spent on them is the rack that is dry when lava comes. That is the cause the rack does not answer, and a rack that scales with the chassis is also a mass and a cargo cost on every pod that carries it.
+- **S is R.** A brick for each 6 cells of the ring instead of each 4 is the same bricks spent for the same cells as a rack a third larger. It was not run for that reason.
+- **L lines what lava can flood.** `PodLining.cellsToLine(pod, reach, lavaOnly)` finds every lava block in a view round the ring (`PodLinerTuning.lavaSpread` blocks beyond it on each side, 3 as far as lava spreads over open ground; `lavaAbove` blocks above the box, 4, because lava pours down an open shaft and never up) and floods from each through open cells (air, fluid, a plant) inside the view. The ring keeps the open cells that flood, and its order is as before: lava first, then cells beside lava, then the rest, lowest first. The pod's own bore counts as open, so lava that can run down the shaft into the box is lined against. Rock, ore and company rock stop the flood. Hand lining is not changed: the pilot lines the whole ring and keeps the control of what it costs.
+- **W** widens the view to 8 blocks on every side and above. It gave 42 and lava ended 25 bores, so the wider view bought nothing, and it floods a bigger volume at each ring.
+- **A taller pod pays no more for its lining.** The ring's cost no longer follows the height of the box but the lava in view: a bore lays 12 to 16 bricks (24.5 with a ring of every open cell), and only 7 of 100 racks run dry (37 before). The taller Mole of the same part, rack and bot is better off than the old one (lava ended 42 and 37 bores of 100 before #400, 21 and 19 now).
+
+**The pick: L, and it overshoots (A).** The no-pack columns reach layer 2 in 46 and 54 of 100, ten and eight above the 36 and 46 of before #400. This is the honest result of a mechanic that fits the cause, and not a tuning to a number:
+- The old numbers came from a ring that spent half of its bricks on air (24.5 bricks a bore with the liner alone, 12.5 with L). With the bricks spent where lava is, lava ends 21 and 19 bores, which is what an unlimited rack gave on the old Mole (18, [Liner](#liner-vs-hand-lining-vs-a-straight-bore-measured)). More lining cannot bring it lower. What is left is lava that outruns the ring, and the gas and the crust.
+- The only ways down to 36 and 46 are a smaller rack, a smaller view or a worse order, each a way to make lining worse on purpose. W (a wider view) did the opposite of what a smaller one would, and gave less than L. The #433 pack columns are kept or better (48 and 58 against 47 and 53, braced 63 against 62).
+- Lava is not trivial. A pod with no part or no lining dies in it (98 of 100); with the liner alone 15 die in lava and 60 in gas; with the sounder 19 to 21 die in lava and 20 to 24 in gas.
+- The cost is that a pack of bricks is worth little now: the pack adds 2 to 4 bores on the sounder columns, where it added 14 before #400 and 23 to 26 on the build of #424. The rack of 32 is enough for a bore (it runs dry in 7 of 100 bores), so a pilot has no reason to carry the 64 for the liner. It still pays for hand lining and for the liner of a pod with no hopper. The spoil bill falls with it: 12 to 16 bricks a bore against 25 to 33, so one bay of spoil (32 bricks) lines two bores.
+
+**The bounds moved, so the bars move (A).** The omniscient bots (`GAS=sounder1` and `GAS=sounder`) on this build, with the #373 rule again (the bound minus 5 reach, plus 5 gas deaths and gas hull). The bars of #424 (16 / 42 / 23 / 45) are replaced.
+
+| Column | Reach: bound / bar / measured | Gas deaths: bound / bar / measured | Gas hull: bound / bar / measured |
+|---|---|---|---|
+| Tier 1, rack 32 | 46 / 41 / **46** | 23 / 28 / **23** | 56.5 / 61.5 / **56.5** |
+| Tier 1, rack 32 + pack 64 | 48 / 43 / **48** | 24 / 29 / **24** | 58.2 / 63.2 / **58.2** |
+| Tier 2, rack 32 | 51 / 46 / **54** | 20 / 25 / **21** | 48.6 / 53.6 / **48.4** |
+| Tier 2, rack 32 + pack 64 | 55 / 50 / **58** | 21 / 26 / **21** | 49.8 / 54.8 / **49.4** |
+
+The tier 1 part equals its bound to the bore and the tier 2 part beats it by 3, as in #424. The bars are design-log numbers: `LavaBoreTest` prints the figures and asserts none.
+
+**Pins.** `PodLinerTest`: a ring with no lava to reach lays nothing and leaves the rack full and not dry; lava 4 blocks over the box floods the ring and is lined against, 5 blocks over is not in the view; lava sealed behind rock calls for nothing. The existing ring, pack split, drill and fall cases keep their brick counts with a lava source set in the shaft (a drilling pod has one in view for each ring, since the first ring lines the lava that is in its view). `EconomyAffordabilityTest` and `EarlyRunModel` read no brick count, so no pin moved.
+
+**Trade-offs and tuning knobs.** `PodLinerTuning.lavaSpread` (3) and `lavaAbove` (4). Lava in an unloaded chunk reads as air, so a ring does not see it; the view is at most 3 blocks beyond the ring and a few more above the box, so the loaded chunks of a pod cover it. A pocket of lava further than the view away is not lined against until the pod bores near it, which is the cost of a view that is not the whole cave.
+
+**Open questions.**
+- Is a liner whose rack does not run dry and whose pack is idle still a rung that asks for spoil? A bore lays 12 to 16 bricks, so the hopper is needed for one bay in two bores. The lava ladder's rung 3 (the heat-shield hull) may make the liner a niche part either way.
+- Hand lining reaches one slab below the pod and lines the whole ring, 32 bricks for the taller Mole. It was not measured here and may want the same view as an option the pilot can choose.
+- Lava that flows into a lined stretch later, from beyond the view, lines nothing: the liner counts what it sees at the ring. A hairline-crack warning (rung 4 of the ladder) would give a pilot a reason to re-line.
+
 ## The tow line (#425, A)
 
 **Problem.** A towed pod trailed its tower with 0.6 blocks between the hulls, and the cable was a straight, stiff stick. The user found it claustrophobic and asked for a line "somewhere between a helicopter carrying something else, and tow rope".
