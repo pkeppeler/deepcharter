@@ -121,6 +121,8 @@ public final class HangarTerminal {
 		}
 		Optional<CharterRefusal> refusal = Charters.spend(server, charter.id(), price);
 		if (refusal.isPresent()) {
+			// The pod entered the world, so the hangar recorded it; an undone purchase must not raise the next price.
+			data.get().release(charter.id(), pod.getUUID());
 			pod.discard();
 			throw new IllegalStateException("a purchase that passed the funds check was refused: " + refusal.get());
 		}
@@ -139,7 +141,7 @@ public final class HangarTerminal {
 		Charter charter = context.charter().orElseThrow(() -> new IllegalStateException("the hangar console is for charters only"));
 		ServerPlayer player = context.player();
 		Vec3 console = Vec3.atCenterOf(context.pos());
-		// entity-query: wreckRadius round the console the player stands within reach of is within the 32 blocks round a player that always tick; a miss refuses before anything is spent
+		// entity-query: wreckRadius round the console the player stands within reach of is within 30 blocks of the player, which tick at the lowest simulation distance (EntityQueryAuditTest measures it); a miss refuses before anything is spent
 		List<PodEntity> inReach = player.level().getEntitiesOfClass(PodEntity.class, new AABB(context.pos()).inflate(tuning.wreckRadius())).stream()
 				.filter(pod -> Wrecks.isWreck(pod) && !Hangar.isUnrepairedDerelict(data.get(), pod) && pod.position().distanceTo(console) <= tuning.wreckRadius())
 				.sorted(Comparator.comparingDouble(pod -> pod.position().distanceToSqr(console)))

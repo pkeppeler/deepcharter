@@ -39,15 +39,20 @@ public final class FounderStatue {
 	public static void init() {
 		ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
 			if (entity instanceof Display.BlockDisplay display && display.getBlockState().equals(handsState())
-					&& !level.getBlockState(display.blockPosition().below(MARKER_DEPTH)).is(Blocks.STRUCTURE_VOID)) {
+					&& !level.getBlockState(markerFor(display.blockPosition())).is(Blocks.STRUCTURE_VOID)) {
 				display.discard();
 			}
 		});
 	}
 
+	/** Where the state of a hands display at {@code hands} is kept: {@link #MARKER_DEPTH} blocks under it. It also names the place that the display's pair number is scoped to. */
+	static BlockPos markerFor(BlockPos hands) {
+		return hands.below(MARKER_DEPTH);
+	}
+
 	/** Where the state of the hands is kept: inside the plinth, {@link #MARKER_DEPTH} blocks under the Host's feet, which is under any hands display. Empty before the colony is built. */
 	public static Optional<BlockPos> markerPos(MinecraftServer server) {
-		return Colony.anchor(server, ColonyAnchor.STATUE).map(anchor -> anchor.below(MARKER_DEPTH));
+		return Colony.anchor(server, ColonyAnchor.STATUE).map(anchor -> markerFor(anchor));
 	}
 
 	/** Takes the hands away: the displays that are found and the marker, which gives the plinth its plate back. For tests and for a dev who wants them gone. */
@@ -113,7 +118,8 @@ public final class FounderStatue {
 	public static void restoreHands(MinecraftServer server) {
 		ColonySite.Placed colony = Colony.placed(server).orElseThrow(() -> new IllegalStateException("the colony is not built: the Founder has no hands to restore"));
 		// The pair in a chunk that is not loaded is not found: it is of an earlier pair, and discards itself when it loads.
-		ColonyDisplays.readable(server).ifPresent(ColonyDisplays::beginHands);
+		BlockPos site = markerPos(server).orElseThrow();
+		ColonyDisplays.readable(server).ifPresent(displays -> displays.beginHands(site));
 		hands(server).forEach(Entity::discard);
 		ServerLevel overworld = server.overworld();
 		overworld.setBlock(markerPos(server).orElseThrow(), Blocks.STRUCTURE_VOID.defaultBlockState(), Block.UPDATE_CLIENTS);

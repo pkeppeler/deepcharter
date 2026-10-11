@@ -42,6 +42,8 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
+import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.UnloadedChunk;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 
@@ -58,6 +60,9 @@ public class EntityQueryAuditTest {
 	private static final int ENTITIES_LOAD_TICKS = 80;
 	private static final UUID STALE_UUID = UUID.fromString("0f3380e1-2380-4380-8380-000000000380");
 	/** The UUID as the int array that a summon command reads. */
+	private static final UUID OTHER_UUID = UUID.fromString("0f3380e1-2380-4380-8380-000000000381");
+	private static final String OTHER_UUID_NBT = "[I;" + (int) (OTHER_UUID.getMostSignificantBits() >> 32) + "," + (int) OTHER_UUID.getMostSignificantBits() + ","
+			+ (int) (OTHER_UUID.getLeastSignificantBits() >> 32) + "," + (int) OTHER_UUID.getLeastSignificantBits() + "]";
 	private static final String STALE_UUID_NBT = "[I;" + (int) (STALE_UUID.getMostSignificantBits() >> 32) + "," + (int) STALE_UUID.getMostSignificantBits() + ","
 			+ (int) (STALE_UUID.getLeastSignificantBits() >> 32) + "," + (int) STALE_UUID.getLeastSignificantBits() + "]";
 
@@ -189,29 +194,141 @@ public class EntityQueryAuditTest {
 				}));
 	}
 
-	/** A display that an earlier build of the colony left, and that a rebuild could not find, discards itself when its chunk loads. */
+	/**
+	 * A display that an earlier build of the colony left, and that a rebuild could not find, discards itself when its chunk loads. A display
+	 * numbered for another place is not the colony's to retire, so it stays.
+	 */
 	@GameTest(maxTicks = CYCLE_TICKS)
 	public void aDisplayOfAnEarlierColonyBuildDiscardsItselfWhenItsChunkLoads(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		ServerLevel level = server.overworld();
+		BlockPos centre = Colony.placed(server).orElseThrow(() -> failure(helper, "the colony was not built")).center();
 		BlockPos far = new BlockPos(16_200, 140, 16_200);
-		UUID[] stale = {null};
 		UnloadedChunk.cycle(helper, level, far, new UnloadedChunk.Stages(
 				() -> {
-					server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), String.format(
-							"summon minecraft:block_display %d %d %d {UUID:%s,Tags:[\"deepcharter_colony_build_0\"]}", far.getX(), far.getY(), far.getZ(), STALE_UUID_NBT));
-					stale[0] = STALE_UUID;
+					summonDisplay(server, far, STALE_UUID_NBT, String.format("deepcharter_colony_build_%d_%d_%d_0", centre.getX(), centre.getY(), centre.getZ()));
+					summonDisplay(server, far, OTHER_UUID_NBT, "deepcharter_colony_build_90000_0_90000_0");
 				},
 				() -> {
 				},
-				after(ENTITIES_LOAD_TICKS, () -> level.isPositionEntityTicking(far)), () -> "the display",
+				after(ENTITIES_LOAD_TICKS, () -> level.isPositionEntityTicking(far)), () -> "the displays",
 				() -> {
-					Entity left = level.getEntity(stale[0]);
+					Entity other = level.getEntity(OTHER_UUID);
+					if (other != null) {
+						other.discard();
+					}
+					Entity left = level.getEntity(STALE_UUID);
 					if (left != null) {
 						left.discard();
-						throw failure(helper, "a display of colony build 0 survived the load of its chunk, though the colony is of a later build");
+						throw failure(helper, "a display of build 0 of the colony survived the load of its chunk, though the colony is of a later build");
+					}
+					if (other == null) {
+						throw failure(helper, "a display numbered for another place was voided by the colony's build");
 					}
 				}));
+	}
+
+	private static void summonDisplay(MinecraftServer server, BlockPos at, String uuidNbt, String tag) {
+		server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), String.format(
+				"summon minecraft:block_display %d %d %d {UUID:%s,Tags:[\"%s\"]}", at.getX(), at.getY(), at.getZ(), uuidNbt, tag));
+	}
+
+	/**
+	 * Hands given at one statue never void the pair at another: the pair number is scoped to its place. A chunk with the first pair is
+	 * not loaded while the second statue is given its hands, as a work order of another test does at the same time.
+	 */
+	@GameTest(maxTicks = CYCLE_TICKS)
+	public void handsGivenAtOneStatueLeaveThePairAtAnotherStanding(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		ServerLevel level = server.overworld();
+		ColonySite first = shifted(ColonySite.get(server), 40_000, 40_000);
+		ColonySite second = shifted(ColonySite.get(server), 50_000, 50_000);
+		BlockPos statue = first.placed().orElseThrow().anchors().get(ColonyAnchor.STATUE);
+		AABB around = new AABB(statue).inflate(6);
+		UnloadedChunk.cycle(helper, level, statue, new UnloadedChunk.Stages(
+				() -> WorldData.with(server, ColonySite.TYPE, first, () -> FounderStatue.restoreHands(server)),
+				() -> WorldData.with(server, ColonySite.TYPE, second, () -> FounderStatue.restoreHands(server)),
+				after(ENTITIES_LOAD_TICKS, () -> level.isPositionEntityTicking(statue)), () -> "the first pair of hands",
+				() -> {
+					List<Display.BlockDisplay> hands = level.getEntitiesOfClass(Display.BlockDisplay.class, around, display -> display.getBlockState().equals(FounderStatue.handsState()));
+					hands.forEach(Entity::discard);
+					if (hands.size() != 1) {
+						throw failure(helper, "giving the Host at another statue his hands changed the pair here: %d pairs stand, not 1", hands.size());
+					}
+				}));
+	}
+
+	/** A pod that is registered and then refused entry to the world is not one of the charter's, so a failed purchase leaves the price alone. */
+	@GameTest
+	public void aRegisteredPodThatNeverEntersTheWorldIsNotCounted(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		CharterId charter = CharterId.random();
+		PodEntity pod = PodRegistry.POD.create(helper.getLevel(), EntitySpawnReason.TRIGGERED);
+		PodComponents.register(pod, charter);
+		if (HangarData.get(server).podCount(charter) != 0) {
+			throw failure(helper, "a pod that never entered the world counts for its charter");
+		}
+		pod.setPos(helper.absoluteVec(new Vec3(2.5, 2, 2.5)));
+		helper.getLevel().addFreshEntity(pod);
+		try {
+			if (HangarData.get(server).podCount(charter) != 1) {
+				throw failure(helper, "a pod in the world should count once, counted %d", HangarData.get(server).podCount(charter));
+			}
+		} finally {
+			pod.discard();
+		}
+		helper.succeed();
+	}
+
+	/**
+	 * The (a) comments rely on the area round a player ticking at the server's lowest simulation distance, 3. The worst reach is a console
+	 * 6 blocks from the player with a wreck 24 blocks beyond it, so this puts a pod 30 blocks from a player standing at a chunk's edge.
+	 */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+	public void anEntityThirtyBlocksFromAPlayerTicksAtTheLowestSimulationDistance(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		ServerLevel level = server.getLevel(Level.NETHER);
+		int before = server.getPlayerList().getSimulationDistance();
+		server.getPlayerList().setSimulationDistance(3);
+		MockPlayer mock = MockPlayers.join(helper, "simulation-distance");
+		// The player stands in the last block column of its chunk, so 30 blocks east is the far end of the second chunk beyond.
+		Vec3 at = new Vec3(17_007.5, 100, 17_000.5);
+		BlockPos podPos = BlockPos.containing(at.x + 30, at.y, at.z);
+		FarChunks.Deadline deadline = FarChunks.deadline();
+		boolean[] moved = {false};
+		PodEntity[] pod = {null};
+		Runnable restore = () -> {
+			server.getPlayerList().setSimulationDistance(before);
+			mock.leave();
+			if (pod[0] != null) {
+				pod[0].discard();
+			}
+		};
+		helper.onEachTick(() -> {
+			try {
+				if (!moved[0]) {
+					mock.teleportTo(level, at, 0, 0);
+					moved[0] = true;
+					return;
+				}
+				boolean ticking = level.isPositionEntityTicking(podPos);
+				deadline.await(helper, level, ticking, () -> "the chunk 30 blocks from the player did not tick at simulation distance 3");
+				if (!ticking) {
+					return;
+				}
+				pod[0] = PodRegistry.POD.create(level, EntitySpawnReason.TRIGGERED);
+				pod[0].setPos(Vec3.atBottomCenterOf(podPos));
+				level.addFreshEntity(pod[0]);
+				if (level.getEntitiesOfClass(PodEntity.class, new AABB(podPos).inflate(2)).isEmpty()) {
+					throw failure(helper, "a query did not see a pod 30 blocks from a player at simulation distance 3");
+				}
+				restore.run();
+				helper.succeed();
+			} catch (RuntimeException e) {
+				restore.run();
+				throw e;
+			}
+		});
 	}
 
 	/** The displays that the colony's build made carry the number of the build, as the tag that lets a later build find them in a chunk that is not loaded. */

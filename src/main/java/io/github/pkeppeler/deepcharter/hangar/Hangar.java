@@ -154,9 +154,16 @@ public final class Hangar {
 		completeFounding(server, data.get());
 	}
 
-	/** Records the pod as its owner's the moment it is registered: the price of the next pod counts from saved data, not from the pods that happen to be loaded. */
+	/**
+	 * Records a pod that is in the world as its owner's the moment it is registered: the price of the next pod counts from saved data, not
+	 * from the pods that happen to be loaded. A pod registered before it is added is recorded when it loads ({@link #onLoad}), so a pod
+	 * that is never added (a refused purchase) is never counted.
+	 */
 	private static void onRegistered(PodEntity pod, CharterId owner) {
-		HangarData.readable(pod.level().getServer()).ifPresent(data -> data.hold(owner, pod.getUUID()));
+		// entity-query: asks only whether the pod in hand is in its level yet: a miss means "not added", and onLoad records it when it is
+		if (pod.level() instanceof ServerLevel level && level.getEntity(pod.getUUID()) == pod) {
+			HangarData.readable(pod.level().getServer()).ifPresent(data -> data.hold(owner, pod.getUUID()));
+		}
 	}
 
 	private static void onLoad(Entity entity, ServerLevel level) {

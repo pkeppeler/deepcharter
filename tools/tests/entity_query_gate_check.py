@@ -1,5 +1,5 @@
 """Tests the entity-query gate in gradle/entity-query-gate.gradle: an entity query (getEntitiesOfClass, getEntities, getNearbyEntities,
-getEntityGetter, getAllEntities, or getEntity with an id) in production code fails the build unless a `// entity-query: <reason>` marker with a
+getNearestEntity, getEntityGetter, getAllEntities, or getEntity with an id) in production code fails the build unless a `// entity-query: <reason>` marker with a
 reason sits on its line or the one above.
 
 Its fixture trees go through checkGametestFixtures in one Gradle run (gate_checks.py, gate_batch.py), so it needs the repo's Gradle wrapper
@@ -49,6 +49,8 @@ QUERIES = {
     "getEntities": ("return level.getEntities(EntityTypeTest.forClass(PodEntity.class), pod -> true).isEmpty();", 4),
     "getEntities null": ("return level.getEntities((Entity) null, box, entity -> true).isEmpty();", 4),
     "getNearbyEntities": ("return level.getNearbyEntities(PodEntity.class, TargetingConditions.DEFAULT, null, box).isEmpty();", 4),
+    "getNearestEntity": ("return level.getNearestEntity(PodEntity.class, TargetingConditions.DEFAULT, null, 0, 0, 0, box) == null;", 4),
+    "getEntity with its argument on the next line": ("return level.getEntity(\n            id) == null;", 4),
     "getEntityGetter": ("return level.getEntityGetter().getEntities(null, box).isEmpty();", 4),
     "getAllEntities": ("return level.getAllEntities().iterator().hasNext();", 4),
     "getEntity by id": ("return level.getEntity(id) == null;", 4),

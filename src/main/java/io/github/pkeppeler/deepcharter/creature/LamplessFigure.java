@@ -265,7 +265,7 @@ public class LamplessFigure extends PathfinderMob {
 	}
 
 	private boolean isHeldByAnother(ServerLevel level, PodEntity pod, CreatureTuning.Cling cling) {
-		// entity-query: the figures within reach of a pod that has a pilot, so all within the 32 blocks round the pilot that always tick
+		// entity-query: the figures within reach of a pod that has a pilot, so all within 30 blocks of the pilot, which tick at the lowest simulation distance (EntityQueryAuditTest measures it)
 		return !level.getEntitiesOfClass(LamplessFigure.class, pod.getBoundingBox().inflate(cling.reachBlocks() + 1), other -> other != this && other.grip == pod).isEmpty();
 	}
 
