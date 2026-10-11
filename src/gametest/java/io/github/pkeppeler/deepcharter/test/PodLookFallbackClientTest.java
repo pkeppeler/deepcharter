@@ -50,11 +50,13 @@ public class PodLookFallbackClientTest implements FabricClientGameTest {
 			ClientWait.until(context, "the Mole on the client", client -> client.level != null && client.level.getEntity(id[0]) instanceof PodEntity);
 			String builtIn = context.computeOnClient(client -> loadedLook(client, id[0]));
 			require(!builtIn.contains(PACK_ID), "the shipped look should not come from the test pack: " + builtIn);
+			Identifier builtInTexture = context.computeOnClient(client -> drawnTexture(client, id[0]));
 			try {
 				for (String broken : new String[] {
 						"{ this is not json",
-						"{\"model\": \"deepcharter:pod/mole\", \"texture\": \"deepcharter:textures/entity/pod/mole.png\", \"cutters\": {\"0\": \"flute\"},"
-								+ " \"wreck\": {\"texture\": \"deepcharter:textures/entity/pod/mole_wreck.png\"}}"}) {
+						// The textures are swapped, so a renderer that kept this look would draw the wreck texture on an intact pod.
+						"{\"model\": \"deepcharter:pod/mole\", \"texture\": \"deepcharter:textures/entity/pod/mole_wreck.png\", \"cutters\": {\"0\": \"flute\"},"
+								+ " \"wreck\": {\"texture\": \"deepcharter:textures/entity/pod/mole.png\"}}"}) {
 					writePack(pack, broken);
 					context.runOnClient(client -> {
 						PackRepository repository = client.getResourcePackRepository();
@@ -69,6 +71,8 @@ public class PodLookFallbackClientTest implements FabricClientGameTest {
 					context.waitTick(); // tick-wait: one frame draws the pod with the fallback look
 					String drawn = context.computeOnClient(client -> loadedLook(client, id[0]));
 					require(drawn.equals(builtIn), "a broken pack look should fall back to the mod's own look " + builtIn + ", draws " + drawn);
+					Identifier texture = context.computeOnClient(client -> drawnTexture(client, id[0]));
+					require(texture.equals(builtInTexture), "the Mole's renderer should draw the mod's own texture " + builtInTexture + " after the fallback, draws " + texture);
 					context.runOnClient(this::removePack);
 					ClientWait.until(context, "the broken pack gone", client -> !packLookIsActive(client) && client.gui.overlay() == null);
 				}
@@ -94,6 +98,11 @@ public class PodLookFallbackClientTest implements FabricClientGameTest {
 	private static String loadedLook(Minecraft client, int id) {
 		PodEntity mole = (PodEntity) client.level.getEntity(id);
 		return PodLoads.of(client, renderer(client, id), mole).look().source();
+	}
+
+	/** The texture the Mole's renderer draws it with now, which only the look the renderer holds decides. */
+	private static Identifier drawnTexture(Minecraft client, int id) {
+		return renderer(client, id).appearanceOf((PodEntity) client.level.getEntity(id)).variant().texture();
 	}
 
 	private static PodGeoRenderer renderer(Minecraft client, int id) {

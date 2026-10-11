@@ -18,13 +18,13 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.client.pod.BoneRole;
+import io.github.pkeppeler.deepcharter.client.pod.GeoMeasure;
 import io.github.pkeppeler.deepcharter.client.pod.GeoModel;
 import io.github.pkeppeler.deepcharter.client.pod.PodGeoRenderer;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
-import io.github.pkeppeler.deepcharter.test.support.GeoMeasure;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.PodLoads;

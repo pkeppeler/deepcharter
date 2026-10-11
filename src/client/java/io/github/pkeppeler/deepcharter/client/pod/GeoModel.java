@@ -227,7 +227,7 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 	public record RestCube(Bone bone, Cube cube, double[] box) {
 	}
 
-	private List<RestCube> restCubes(Predicate<Bone> only, OptionalDouble pitch) {
+	List<RestCube> restCubes(Predicate<Bone> only, OptionalDouble pitch) {
 		Map<String, Bone> byName = new HashMap<>();
 		bones.forEach(bone -> byName.put(bone.name(), bone));
 		List<RestCube> cubes = new ArrayList<>();
@@ -329,13 +329,13 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 	}
 
 	/** Corner {@code corner} (0 to 7) of {@code cube}, turned by the cube's own rotation if it has one. */
-	public static Vec3 turnedCorner(Cube cube, int corner) {
+	private static Vec3 turnedCorner(Cube cube, int corner) {
 		Vec3 point = cube.origin().add((corner & 1) * cube.size().x, (corner >> 1 & 1) * cube.size().y, (corner >> 2 & 1) * cube.size().z);
 		return cube.turn().map(turn -> turn(point, turn.pivot(), turn.rotation())).orElse(point);
 	}
 
 	/** Bedrock's rotation in y-up space: x, then y, then z, as the file means it (a positive x angle tips a cutter at -z downward). */
-	public static Vec3 turn(Vec3 point, Vec3 pivot, Vec3 degrees) {
+	private static Vec3 turn(Vec3 point, Vec3 pivot, Vec3 degrees) {
 		return point.subtract(pivot).xRot((float) Math.toRadians(degrees.x)).yRot((float) Math.toRadians(degrees.y))
 				.zRot((float) Math.toRadians(degrees.z)).add(pivot);
 	}

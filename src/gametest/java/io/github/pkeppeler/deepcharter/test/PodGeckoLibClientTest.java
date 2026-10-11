@@ -27,15 +27,15 @@ import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.client.pod.GeoMeasure;
 import io.github.pkeppeler.deepcharter.client.pod.GeoModel;
-import io.github.pkeppeler.deepcharter.client.pod.PodGeoAnimatable;
 import io.github.pkeppeler.deepcharter.client.pod.PodGeoRenderState;
 import io.github.pkeppeler.deepcharter.client.pod.PodGeoRenderer;
+import io.github.pkeppeler.deepcharter.client.pod.PodMotion;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
-import io.github.pkeppeler.deepcharter.test.support.GeoMeasure;
 import io.github.pkeppeler.deepcharter.test.support.PodLoads;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -51,8 +51,6 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 public class PodGeckoLibClientTest implements FabricClientGameTest {
 	private static final double TOLERANCE = 1e-6;
 	private static final int HEADING_STEP = 15;
-	/** How far ahead of the pod's own animation the spin test dates its two states, in ticks, so the renderer counts the whole tick between them. */
-	private static final float SPIN_LEAD_TICKS = 100f;
 
 	/** The ids of the Mole and the Prospector made for the test, and the charter that owns them. */
 	private record Scene(int mole, int prospector, CharterId charter) {
@@ -212,25 +210,26 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
 	}
 
 	/**
-	 * The degrees the pod's drill turns in one tick, from the renderer's {@code addRenderData} fed two render states exactly one tick
-	 * apart. The client's copy of the pod is set drilling and set back, as the server does not know. No game frame is sampled, so
-	 * the rate does not depend on frame pacing. The states are dated ahead of the pod's own animation, so the renderer counts the
-	 * whole tick between them.
+	 * The degrees the pod's drill turns in one tick: a new {@link PodMotion}, with the spin scale of the pod's cutter, fed two frames
+	 * exactly one tick apart. It touches no animation of the pod's own, and no game frame is sampled, so the rate does not depend on
+	 * frame pacing. The client's copy of the pod is set drilling and set back, as the server does not know. The first frame turns
+	 * nothing, so the second one's spin is one tick's worth, far under the 360 degrees at which the spin wraps.
 	 */
 	private static double spinRate(ClientGameTestContext context, int id) {
 		return context.computeOnClient(client -> {
 			PodEntity pod = pod(client, id);
-			PodGeoRenderer renderer = renderer(client, id);
-			PodGeoAnimatable animatable = new PodGeoAnimatable();
-			PodGeoRenderState before = renderer.createRenderState(animatable, pod);
-			PodGeoRenderState after = renderer.createRenderState(animatable, pod);
-			before.ageInTicks = pod.tickCount + SPIN_LEAD_TICKS;
-			after.ageInTicks = before.ageInTicks + 1f;
+			String cutter = renderer(client, id).appearanceOf(pod).cutter();
+			float scale = (float) (cutter == null ? geometry(client, id).drillSpinScale() : geometry(client, id).drillSpinScale(cutter));
+			PodMotion motion = new PodMotion();
+			PodGeoRenderState before = new PodGeoRenderState();
+			PodGeoRenderState after = new PodGeoRenderState();
+			after.ageInTicks = 1f;
 			pod.setDrilling(true);
 			try {
-				renderer.addRenderData(animatable, pod, before, 0f);
-				renderer.addRenderData(animatable, pod, after, 0f);
-				return (double) (after.drillSpin - before.drillSpin);
+				motion.advance(pod, before, 0f, scale);
+				motion.advance(pod, after, 0f, scale);
+				require(before.drillSpin == 0f, "the first frame of a motion turns nothing, turned " + before.drillSpin);
+				return (double) after.drillSpin;
 			} finally {
 				pod.setDrilling(false);
 			}

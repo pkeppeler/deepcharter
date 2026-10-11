@@ -22,10 +22,10 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.AABB;
 
 import io.github.pkeppeler.deepcharter.client.pod.BoneRole;
+import io.github.pkeppeler.deepcharter.client.pod.GeoMeasure;
 import io.github.pkeppeler.deepcharter.client.pod.GeoModel;
 import io.github.pkeppeler.deepcharter.client.pod.PodLook;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
-import io.github.pkeppeler.deepcharter.test.support.GeoMeasure;
 
 /**
  * Server GameTests for #334 and #243: every pod's Bedrock geometry parses with its rig, has the parts of a machine, holds the
