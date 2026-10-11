@@ -41,6 +41,12 @@ public class StaleLightScenario extends EvidenceScenario {
 	/** The first spacing cell to try, far from the colony's Conduit. */
 	private static final int FIRST_CELL = 3;
 	private static final int CELLS = 10;
+	/**
+	 * Optional: the one cell to show. The camera stands at a fixed offset from the gallery of a cell with a fixed yaw, so a recording on
+	 * the base commit (which goes through the cells until one is stale and logs it) and one on a branch (with this set to that cell) show
+	 * the same view.
+	 */
+	private static final String CELL_VARIABLE = "DEEPCHARTER_STALE_LIGHT_CELL";
 	/** Blocks back along the gallery from its middle, where the camera stands. */
 	private static final double BACK = 8;
 
@@ -62,7 +68,10 @@ public class StaleLightScenario extends EvidenceScenario {
 				}
 			});
 			server.runOnServer(s -> s.getPlayerList().getPlayers().getFirst().setGameMode(GameType.SPECTATOR));
-			for (int cell = FIRST_CELL; cell < FIRST_CELL + CELLS; cell++) {
+			String pinned = System.getenv(CELL_VARIABLE);
+			int first = pinned == null ? FIRST_CELL : Integer.parseInt(pinned);
+			int count = pinned == null ? CELLS : 1;
+			for (int cell = first; cell < first + count; cell++) {
 				int at = cell;
 				StructureSite site = server.computeOnServer(s -> {
 					BlockPos conduit = Colony.anchor(s, ColonyAnchor.CONDUIT).orElseThrow();
@@ -80,7 +89,7 @@ public class StaleLightScenario extends EvidenceScenario {
 						client -> client.level.dimension().equals(layer) && ClientLight.chunksPresent(client.level, box), ClientWait::describe);
 				ClientWait.until(context, "the client's chunks to render", client -> client.levelRenderer.hasRenderedAllSections(), ClientWait::describe);
 				Optional<String> mismatch = ClientLight.settledMismatch(context, server, layer, box);
-				boolean last = cell == FIRST_CELL + CELLS - 1;
+				boolean last = cell == first + count - 1;
 				if (mismatch.isPresent() || last) {
 					context.waitTicks(20);
 					screenshot(context, "gallery-as-sent");

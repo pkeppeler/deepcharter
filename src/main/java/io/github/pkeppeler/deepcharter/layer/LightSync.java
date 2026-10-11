@@ -5,20 +5,14 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 
 /**
- * Keeps a client from being sent a chunk before the light of blocks just placed in it is computed (issue 427). Light is computed off the
- * server thread, after {@code setBlock} returns. A chunk that is sent while that work is pending carries the old light, and vanilla then
- * drops the change that would correct it: {@code ChunkHolder.sectionLightChanged} ignores a chunk that is not yet ticking, so no
- * light packet follows. The client keeps the old light (the sky light of the open air in a sealed room, the glow of lava that is gone).
- *
- * <p>Vanilla's own answer is {@code ChunkMap.waitForLightBeforeSending}, which worldgen uses: a chunk is sent only after the light
- * engine has run the tasks queued for it. A caller that places blocks in a chunk a player may still be sent (a structure drawn as its
- * chunk loads, a pocket carved as a player crosses into it) calls {@link #holdSendUntilLit} after the last block.
+ * Light is computed off the server thread, and vanilla drops the light update of a chunk that is not yet ticking (issue 427), so a client
+ * sent a chunk while light is pending keeps the old light; call this after the last block placed in a chunk a player may be sent.
  */
 public final class LightSync {
 	private LightSync() {
 	}
 
-	/** Holds the sending of every chunk the box touches, and of their neighbours that the light spreads into, until the light queued so far is computed. Call after the last block is set. */
+	/** As {@link #holdSendUntilLit(ServerLevel, ChunkPos)}, for every chunk the box touches. */
 	public static void holdSendUntilLit(ServerLevel level, BlockPos min, BlockPos max) {
 		for (int chunkX = min.getX() >> 4; chunkX <= max.getX() >> 4; chunkX++) {
 			for (int chunkZ = min.getZ() >> 4; chunkZ <= max.getZ() >> 4; chunkZ++) {
@@ -27,7 +21,10 @@ public final class LightSync {
 		}
 	}
 
-	/** As {@link #holdSendUntilLit(ServerLevel, BlockPos, BlockPos)}, for one chunk and its neighbours. */
+	/**
+	 * Holds the sending of the chunk, and of each of its eight neighbours that has a loaded holder (light spreads at most 15 blocks, so
+	 * one ring is enough), until the light tasks queued so far are done. It is vanilla's {@code ChunkMap.waitForLightBeforeSending}.
+	 */
 	public static void holdSendUntilLit(ServerLevel level, ChunkPos chunk) {
 		level.getChunkSource().chunkMap.waitForLightBeforeSending(chunk, 0);
 	}
