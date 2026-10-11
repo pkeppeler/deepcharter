@@ -278,7 +278,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), contentLeft(MARGIN), contentTop(MARGIN), contentRight(MARGIN));
 		drawTypewriter(graphics, typewriter, contentLeft(MARGIN), introTop(), contentWidth(MARGIN));
 		for (TextLine line : textLines()) {
-			CrtDraw.glowText(graphics, font, line.text(), line.x(), line.y(), line.dim() ? tuning.dimColor() : tuning.phosphorColor());
+			CrtDraw.glowText(graphics, font, line.text(), line.x(), line.y(), line.dim() ? PanelLook.dimText(tuning.dimColor()) : tuning.phosphorColor());
 		}
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 	}

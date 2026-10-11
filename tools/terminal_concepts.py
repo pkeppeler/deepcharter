@@ -459,6 +459,7 @@ def hatch() -> Option:
         "dressCW": 72, "dressCH": 11, "dressCAnchorX": 0, "dressCAnchorY": 2, "dressCX": 68, "dressCY": 2,
         "dressDW": 105, "dressDH": 12, "dressDAnchorX": 2, "dressDAnchorY": 2, "dressDX": 46, "dressDY": 1,
         "buttonUnderColor": "#0a0e0d", "buttonLabelColor": "#e4e6d8", "buttonLabelHotColor": "#ffd45a", "buttonLabelOffColor": "#98a094",
+        "dimTextColor": "#5cba75",
         "buttonAlign": 1, "buttonPad": 4, "pipSize": 12, "pipX": 3, "pipY": 0,
     }, {
         "frame": Sprite(frame, (gl + radius, gt + radius, gr + radius, gb + radius)),

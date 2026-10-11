@@ -27,6 +27,7 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param buttonLabelColor a button label, idle
  * @param buttonLabelHotColor a button label under the mouse or focus
  * @param buttonLabelOffColor the label of a button that cannot be pressed
+ * @param dimTextColor the dim text of a screen (the ore prices, the repair station's notes) while the panel is drawn: lighter than the plain CRT's dim colour, which the glass and its scanlines swallow
  * @param buttonAlign 0 centres a button's label, 1 sets it to the left after the pip
  * @param buttonPad pixels between a button's edge (or its pip) and a left-set label
  * @param pipSize the side of the square pip drawn inside a button (a lamp, a toggle lever, a knob), 0 for none
@@ -47,6 +48,7 @@ public record PanelLook(
 		int buttonLabelColor,
 		int buttonLabelHotColor,
 		int buttonLabelOffColor,
+		int dimTextColor,
 		int buttonAlign,
 		int buttonPad,
 		int pipSize,
@@ -143,6 +145,11 @@ public record PanelLook(
 		return screen instanceof PanelScreen && current().fits(screen.width, screen.height);
 	}
 
+	/** The colour of a screen's dim text: the panel's {@link #dimTextColor} while the panel is drawn, else the CRT's own dim colour. */
+	public static int dimText(int crtDim) {
+		return drawn() ? current().dimTextColor() : crtDim;
+	}
+
 	/** The colour of a button's label for its state. */
 	public int labelColor(boolean active, boolean lit) {
 		return !active ? buttonLabelOffColor : lit ? buttonLabelHotColor : buttonLabelColor;
@@ -167,7 +174,7 @@ public record PanelLook(
 	public static PanelLook of(ThemeData d) {
 		return new PanelLook(d.integer("enabled", 0, 1) == 1, d.color("wallColor"), Insets.of(d, "inset"), Insets.of(d, "glass"),
 				Decal.of(d, "nameplate"), Decal.of(d, "dressA"), Decal.of(d, "dressB"), Decal.of(d, "dressC"), Decal.of(d, "dressD"),
-				d.color("buttonUnderColor"), d.color("buttonLabelColor"), d.color("buttonLabelHotColor"), d.color("buttonLabelOffColor"),
+				d.color("buttonUnderColor"), d.color("buttonLabelColor"), d.color("buttonLabelHotColor"), d.color("buttonLabelOffColor"), d.color("dimTextColor"),
 				d.integer("buttonAlign", 0, 1), d.integer("buttonPad", 0, 64), d.integer("pipSize", 0, 64), d.integer("pipX", 0, 256), d.integer("pipY", -32, 32));
 	}
 }

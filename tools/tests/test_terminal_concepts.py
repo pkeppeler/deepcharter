@@ -101,6 +101,14 @@ class Panel(unittest.TestCase):
         face = "#%02x%02x%02x" % tuple(sprite.pixels[centre:centre + 3])
         self.assertGreaterEqual(contrast(self.theme["buttonLabelOffColor"], face), 4.5)
 
+    def test_dim_text_is_readable_under_a_scanline(self):
+        # Dim text is drawn under the glass, so every second row of it is darkened by the scanline (crt.json: alpha 0x58). It must still stand out of the backdrop.
+        crt = load(MOD_ASSETS / "theme/crt.json")
+        keep = 1 - 0x58 / 255
+        dim = self.theme["dimTextColor"].lstrip("#")
+        under_scanline = "#" + "".join("%02x" % round(int(dim[i:i + 2], 16) * keep) for i in (0, 2, 4))
+        self.assertGreaterEqual(contrast(under_scanline, "#" + crt["backgroundColor"].lstrip("#")), 3.5)
+
     def test_the_generator_has_nothing_to_rewrite(self):
         self.assertEqual([], terminal_concepts.check(), "run `python3 tools/terminal_concepts.py` to rewrite the panel")
 

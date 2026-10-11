@@ -43,6 +43,7 @@
   "buttonLabelColor": "#e4e6d8",
   "buttonLabelHotColor": "#ffd45a",
   "buttonLabelOffColor": "#98a094",
+  "dimTextColor": "#5cba75",
   "buttonAlign": 1,
   "buttonPad": 4,
   "pipSize": 12,
