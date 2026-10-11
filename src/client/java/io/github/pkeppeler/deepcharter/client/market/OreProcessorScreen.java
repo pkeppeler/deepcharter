@@ -33,7 +33,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 
 /**
- * The online screen of the ore processor: the price of each ore, the charter's account, the two "sell all" buttons and, at the foot of the price column, the button that makes slag brick. A button
+ * The online screen of the ore processor: the price of each ore, the charter's account, the two "sell all" buttons and, at the foot of the price column, the two buttons that use a pod's spoil: slag brick and salvage crates. A button
  * only asks the server; the server decides, and the account shown is the one it last synced, so it changes when a sale goes through.
  */
 public final class OreProcessorScreen extends CrtScreen implements TerminalViewScreen {
@@ -103,6 +103,10 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 		// Not beside the cargo button: the prices run down the right column to there and past it, and a button on that row hides the last of them.
 		addRenderableWidget(new CrtButton(rightColumn(), closeY, Math.min(BUTTON_WIDTH, contentRight(MARGIN) - rightColumn()), BUTTON_HEIGHT,
 				Component.translatable("screen.deepcharter.processor.fuse"), button -> sell(OreProcessor.FUSE_SPOIL)));
+		// On the close button's row, between the two: the right column above it holds the prices, the heading and the pager.
+		int pressLeft = left + CLOSE_WIDTH + GAP;
+		addRenderableWidget(new CrtButton(pressLeft, closeY, rightColumn() - GAP - pressLeft, BUTTON_HEIGHT,
+				Component.translatable("screen.deepcharter.processor.press"), button -> sell(OreProcessor.PRESS_CRATES)));
 		layoutOrders(cargoY);
 	}
 

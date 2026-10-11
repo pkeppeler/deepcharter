@@ -11,6 +11,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
@@ -24,11 +25,12 @@ import io.github.pkeppeler.deepcharter.pod.PodCargo;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodLiningTuning;
+import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 
 /**
- * The actions of the ore processor terminal: two sales of ore at {@link OreType#value()}, and the fuse of spoil into slag brick. A sale is
+ * The actions of the ore processor terminal: two sales of ore at {@link OreType#value()}, and the two uses of spoil: the fuse into slag brick and the press into salvage crates. A sale is
  * all or nothing: the account is credited first, and the ore is taken once the credit went through, so a refused credit (a full account)
  * leaves the ore where it was. The terminal has already checked the player's range, the charter and the repair state.
  */
@@ -40,6 +42,9 @@ public final class OreProcessor {
 
 	/** Fuses the spoil of every pod the player may access parked at the processor into slag brick, at a price for each brick. */
 	public static final Identifier FUSE_SPOIL = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "fuse_spoil");
+
+	/** Presses the spoil of every pod the player may access parked at the processor into salvage crates, at no price but the spoil (#470). */
+	public static final Identifier PRESS_CRATES = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "press_crates");
 
 	/** Pods whose unreadable cargo was logged, so each is logged once. */
 	private static final Set<PodEntity> SKIPPED_LOGGED = Collections.newSetFromMap(new WeakHashMap<>());
@@ -137,7 +142,7 @@ public final class OreProcessor {
 				racked.add(new Fusion(pod, makeable, toRack, 0));
 			}
 		}
-		int packRoom = packRoom(inventory);
+		int packRoom = packRoom(inventory, SlagBrick.item());
 		List<Fusion> fusions = new ArrayList<>();
 		for (Fusion fusion : racked) {
 			int toPack = (int) Math.min(fusion.makeable() - fusion.toRack(), packRoom);
@@ -157,25 +162,78 @@ public final class OreProcessor {
 			// The state was read above, and nothing has changed it since: this cannot fail.
 			PodLining.modify(fusion.pod(), state -> state.fused(fusion.bricks() * tuning.spoilPerBrick(), fusion.toRack()));
 		}
-		if (packTotal > 0) {
-			ItemStack bricks = new ItemStack(SlagBrick.item(), packTotal);
-			inventory.add(bricks);
-			if (!bricks.isEmpty()) {
-				context.player().spawnAtLocation(context.player().level(), bricks);
-			}
-		}
+		giveToPack(context.player(), SlagBrick.item(), packTotal);
 		context.player().sendOverlayMessage(Component.translatable("deepcharter.market.fused", made, rackTotal, packTotal));
 		return Optional.empty();
 	}
 
-	/** How many slag brick the pack can take: the room in its stacks of them and in its empty slots. */
-	private static int packRoom(Inventory inventory) {
-		int max = SlagBrick.item().getDefaultMaxStackSize();
+	/** What pressing does for one pod: the crates it can make from the pod's spoil that have room in the pack. */
+	private record Pressing(PodEntity pod, int crates) {
+	}
+
+	/**
+	 * Turns spoil into salvage crates (#470): {@link MarketTuning#spoilPerCrate()} spoil for a crate, and no money. The crates go to the player's
+	 * pack, the only place a crate can be, and breaking one drops the loot of a crate of the yard. It makes only the crates the pack has room
+	 * for, and refuses when that is none.
+	 */
+	public static Optional<Component> pressCrates(TerminalAction.Context context) {
+		Charter charter = context.charter().orElseThrow();
+		List<PodEntity> pods = podsAt(context, charter);
+		if (pods.isEmpty()) {
+			return Optional.of(Component.translatable("deepcharter.market.refusal.no_pod"));
+		}
+		int spoilPerCrate = MarketTuning.DEFAULT.spoilPerCrate();
+		Item crate = SurfaceBlocks.SALVAGE_CRATE.asItem();
+		Inventory inventory = context.player().getInventory();
+		int room = packRoom(inventory, crate);
+		int makeable = 0;
+		List<Pressing> pressings = new ArrayList<>();
+		for (PodEntity pod : pods) {
+			// A pod whose lining state cannot be read has nothing to press and is left as it is.
+			Optional<PodLining.State> state = PodLining.readable(pod);
+			if (state.isPresent()) {
+				int fromPod = state.get().spoil() / spoilPerCrate;
+				makeable += fromPod;
+				int crates = Math.min(fromPod, room);
+				room -= crates;
+				pressings.add(new Pressing(pod, crates));
+			}
+		}
+		if (makeable == 0) {
+			return Optional.of(Component.translatable("deepcharter.market.refusal.no_spoil_for_crate"));
+		}
+		int made = pressings.stream().mapToInt(Pressing::crates).sum();
+		if (made == 0) {
+			return Optional.of(Component.translatable("deepcharter.market.refusal.no_room_for_crate"));
+		}
+		for (Pressing pressing : pressings) {
+			// The state was read above, and nothing has changed it since: this cannot fail.
+			PodLining.modify(pressing.pod(), state -> state.withSpoil(state.spoil() - pressing.crates() * spoilPerCrate));
+		}
+		giveToPack(context.player(), crate, made);
+		context.player().sendOverlayMessage(Component.translatable("deepcharter.market.pressed", made, made * spoilPerCrate));
+		return Optional.empty();
+	}
+
+	/** Puts {@code count} of {@code item} in the player's pack; what does not fit is dropped at their feet. */
+	private static void giveToPack(ServerPlayer player, Item item, int count) {
+		if (count > 0) {
+			ItemStack stack = new ItemStack(item, count);
+			player.getInventory().add(stack);
+			if (!stack.isEmpty()) {
+				player.spawnAtLocation(player.level(), stack);
+			}
+		}
+	}
+
+	/** How many of {@code item} the pack can take: the room in its stacks of them and in its empty slots. */
+	private static int packRoom(Inventory inventory, Item item) {
+		int max = item.getDefaultMaxStackSize();
 		int room = 0;
 		for (ItemStack stack : inventory.getNonEquipmentItems()) {
 			if (stack.isEmpty()) {
 				room += max;
-			} else if (stack.is(SlagBrick.item())) {
+			} else if (stack.is(item)) {
 				room += max - stack.getCount();
 			}
 		}
