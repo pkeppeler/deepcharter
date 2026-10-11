@@ -181,18 +181,6 @@ public final class HangarData extends SavedData {
 		});
 	}
 
-	/** Takes a pod back out of the charter's record: for a purchase that was undone after the pod entered the world. */
-	void release(CharterId charter, UUID pod) {
-		change(old -> {
-			List<Held> held = new ArrayList<>(old.held());
-			Set<UUID> pods = new LinkedHashSet<>(held(old, charter));
-			pods.remove(pod);
-			held.removeIf(entry -> entry.charter().equals(charter));
-			held.add(new Held(charter, List.copyOf(pods)));
-			return new State(old.derelict(), old.founder(), old.founded(), held, old.advanced());
-		});
-	}
-
 	/** How many pods the charter has: every pod registered to it, recorded when it was registered or first loaded. */
 	public int podCount(CharterId charter) {
 		return held(charter).size();

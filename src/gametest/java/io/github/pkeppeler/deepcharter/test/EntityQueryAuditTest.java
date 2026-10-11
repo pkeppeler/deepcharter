@@ -56,8 +56,6 @@ import io.github.pkeppeler.deepcharter.test.support.WorldData;
 public class EntityQueryAuditTest {
 	private static final int CYCLE_TICKS = 2 * FarChunks.AWAIT_BUDGET_TICKS + 400;
 	private static final CreatureTuning CREATURES = CreatureTuning.DEFAULT;
-	/** Ticks after a chunk ticks in which its entities must have loaded. */
-	private static final int ENTITIES_LOAD_TICKS = 80;
 	private static final UUID STALE_UUID = UUID.fromString("0f3380e1-2380-4380-8380-000000000380");
 	/** The UUID as the int array that a summon command reads. */
 	private static final UUID OTHER_UUID = UUID.fromString("0f3380e1-2380-4380-8380-000000000381");
@@ -70,10 +68,10 @@ public class EntityQueryAuditTest {
 		return helper.assertionException(Component.literal(String.format(format, args)));
 	}
 
-	/** A condition that holds from the {@code ticks}th time it is asked. */
-	private static BooleanSupplier after(int ticks, BooleanSupplier condition) {
-		int[] asked = {0};
-		return () -> condition.getAsBoolean() && ++asked[0] > ticks;
+	/** Holds once the entities saved with the chunk at {@code pos} have loaded into the world, which is later than the chunk ticking. */
+	private static BooleanSupplier entitiesLoaded(ServerLevel level, BlockPos pos) {
+		ChunkPos chunk = ChunkPos.containing(pos);
+		return () -> level.areEntitiesActuallyLoadedAndTicking(chunk);
 	}
 
 	/** The price of a pod rises with the pods a charter has, so a pod in a chunk that is not loaded must still count. */
@@ -130,7 +128,7 @@ public class EntityQueryAuditTest {
 						throw failure(helper, "the figures of a chunk that unloaded still use up the level's room");
 					}
 				},
-				after(ENTITIES_LOAD_TICKS, () -> level.isPositionEntityTicking(far)), () -> "the chunk to tick",
+				entitiesLoaded(level, far), () -> "the chunk's entities to load",
 				() -> {
 					long back = figures.stream().filter(id -> level.getEntity(id) != null).count();
 					if (back != 0) {
@@ -184,7 +182,7 @@ public class EntityQueryAuditTest {
 		UnloadedChunk.cycle(helper, level, statue, new UnloadedChunk.Stages(
 				() -> WorldData.with(server, ColonySite.TYPE, moved, () -> FounderStatue.restoreHands(server)),
 				() -> WorldData.with(server, ColonySite.TYPE, moved, () -> FounderStatue.restoreHands(server)),
-				after(ENTITIES_LOAD_TICKS, () -> level.isPositionEntityTicking(statue)), () -> "the first pair of hands",
+				entitiesLoaded(level, statue), () -> "the first pair of hands",
 				() -> {
 					List<Display.BlockDisplay> hands = level.getEntitiesOfClass(Display.BlockDisplay.class, around, display -> display.getBlockState().equals(FounderStatue.handsState()));
 					hands.forEach(Entity::discard);
@@ -211,7 +209,7 @@ public class EntityQueryAuditTest {
 				},
 				() -> {
 				},
-				after(ENTITIES_LOAD_TICKS, () -> level.isPositionEntityTicking(far)), () -> "the displays",
+				entitiesLoaded(level, far), () -> "the displays",
 				() -> {
 					Entity other = level.getEntity(OTHER_UUID);
 					if (other != null) {
@@ -248,7 +246,7 @@ public class EntityQueryAuditTest {
 		UnloadedChunk.cycle(helper, level, statue, new UnloadedChunk.Stages(
 				() -> WorldData.with(server, ColonySite.TYPE, first, () -> FounderStatue.restoreHands(server)),
 				() -> WorldData.with(server, ColonySite.TYPE, second, () -> FounderStatue.restoreHands(server)),
-				after(ENTITIES_LOAD_TICKS, () -> level.isPositionEntityTicking(statue)), () -> "the first pair of hands",
+				entitiesLoaded(level, statue), () -> "the first pair of hands",
 				() -> {
 					List<Display.BlockDisplay> hands = level.getEntitiesOfClass(Display.BlockDisplay.class, around, display -> display.getBlockState().equals(FounderStatue.handsState()));
 					hands.forEach(Entity::discard);

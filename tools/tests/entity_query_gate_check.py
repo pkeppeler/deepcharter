@@ -39,6 +39,7 @@ public class MentionsFixture {
         String text = "level.getEntitiesOfClass(PodEntity.class, box) and level.getEntity(id)";
         Entity cause = source.getEntity();
         List<ServerPlayer> players = level.players();
+        Function<DamageSource, String> name = DamageSource::getMsgId;
     }
 }
 """,
@@ -54,6 +55,8 @@ QUERIES = {
     "getEntityGetter": ("return level.getEntityGetter().getEntities(null, box).isEmpty();", 4),
     "getAllEntities": ("return level.getAllEntities().iterator().hasNext();", 4),
     "getEntity by id": ("return level.getEntity(id) == null;", 4),
+    "getEntity method reference": ("return ids.stream().map(level::getEntity).anyMatch(Objects::nonNull);", 4),
+    "getEntitiesOfClass method reference": ("return boxes.stream().map(this::getEntitiesOfClass).anyMatch(List::isEmpty);", 4),
     "getEntity by id on a second line": ("return level\n            .getEntity (id) == null;", 5),
 }
 TWO_ABOVE = "// entity-query: too far above\n        int gap = 0;\n        return level.getEntitiesOfClass(PodEntity.class, box).isEmpty();"

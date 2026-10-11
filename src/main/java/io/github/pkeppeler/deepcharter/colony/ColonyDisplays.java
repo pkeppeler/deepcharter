@@ -143,8 +143,10 @@ public final class ColonyDisplays extends SavedData {
 		}
 	}
 
-	private static Stream<Stamp> stampsOf(Entity display, String prefix) {
-		Pattern pattern = Pattern.compile(Pattern.quote(prefix) + Stamp.TAIL);
+	private static final Pattern BUILD_STAMP = Pattern.compile(Pattern.quote(BUILD_TAG) + Stamp.TAIL);
+	private static final Pattern HANDS_STAMP = Pattern.compile(Pattern.quote(HANDS_TAG) + Stamp.TAIL);
+
+	private static Stream<Stamp> stampsOf(Entity display, Pattern pattern) {
 		return display.entityTags().stream().map(pattern::matcher).filter(Matcher::matches)
 				.map(m -> new Stamp(new BlockPos(Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)), Integer.parseInt(m.group(3))), Integer.parseInt(m.group(4))));
 	}
@@ -158,16 +160,16 @@ public final class ColonyDisplays extends SavedData {
 			return;
 		}
 		boolean hands = display.getBlockState().equals(FounderStatue.handsState());
-		boolean staleBuild = stampsOf(display, BUILD_TAG).anyMatch(stamp -> stamp.number() < data.get().buildsAt(stamp.site()));
-		boolean stalePair = hands && stampsOf(display, HANDS_TAG).anyMatch(stamp -> stamp.number() < data.get().handsAt(stamp.site()));
+		boolean staleBuild = stampsOf(display, BUILD_STAMP).anyMatch(stamp -> stamp.number() < data.get().buildsAt(stamp.site()));
+		boolean stalePair = hands && stampsOf(display, HANDS_STAMP).anyMatch(stamp -> stamp.number() < data.get().handsAt(stamp.site()));
 		if (staleBuild || stalePair) {
 			display.discard();
 			return;
 		}
-		if (stampsOf(display, BUILD_TAG).findAny().isEmpty()) {
+		if (stampsOf(display, BUILD_STAMP).findAny().isEmpty()) {
 			clearedPadAround(level.getServer(), display).ifPresent(centre -> display.addTag(new Stamp(centre, data.get().buildsAt(centre)).tag(BUILD_TAG)));
 		}
-		if (hands && stampsOf(display, HANDS_TAG).findAny().isEmpty()) {
+		if (hands && stampsOf(display, HANDS_STAMP).findAny().isEmpty()) {
 			BlockPos site = FounderStatue.markerFor(display.blockPosition());
 			display.addTag(new Stamp(site, data.get().handsAt(site)).tag(HANDS_TAG));
 		}

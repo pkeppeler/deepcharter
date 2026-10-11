@@ -4,14 +4,14 @@
 // or pod, say) or that a miss is harmless. A gameplay decision or a cleanup that must not miss goes through saved data instead.
 //
 // What it flags: getEntitiesOfClass(, getEntities(, getNearbyEntities(, getNearestEntity(, getEntityGetter(, getAllEntities( and a lookup of
-// one entity by id, getEntity(<argument>) or getEntityOrPart(. A call with no argument, DamageSource.getEntity(), is not one; a getEntity(
+// one entity by id, getEntity(<argument>) or getEntityOrPart(, or a method reference to any of them (level::getEntity). A call with no argument, DamageSource.getEntity(), is not one; a getEntity(
 // that ends its line is, because its argument is on the next. Comments and string literals are not scanned, and the marker's reason is
 // required. Known blind spot: the scan is line by line, so a name split from its own parenthesis by a line break slips through.
 //
 // tools/tests/entity_query_gate_check.py runs the scan over fixture trees (checkGametestFixtures in gametest.gradle), so a change that
 // makes the pattern miss fails there, not silently.
 abstract class EntityQueryGate {
-	static final java.util.regex.Pattern QUERY = ~/\b(?:getEntitiesOfClass|getEntities|getNearbyEntities|getNearestEntity|getEntityGetter|getAllEntities|getEntityOrPart)\s*\(|\bgetEntity\s*\(\s*(?:[^)\s]|$)/
+	static final java.util.regex.Pattern QUERY = ~/\b(?:getEntitiesOfClass|getEntities|getNearbyEntities|getNearestEntity|getEntityGetter|getAllEntities|getEntityOrPart)\s*\(|\bgetEntity\s*\(\s*(?:[^)\s]|$)|::\s*(?:getEntitiesOfClass|getEntities|getNearbyEntities|getNearestEntity|getEntityGetter|getAllEntities|getEntityOrPart|getEntity)\b/
 	static final java.util.regex.Pattern MARKER = ~/\/\/\s*entity-query:\s*\S/
 
 	/** Lines (1-based) of {@code text}, already passed through blankLiterals, that hold an entity query and no marker on them or the line above. */

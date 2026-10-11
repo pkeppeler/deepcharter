@@ -116,15 +116,16 @@ public final class HangarTerminal {
 		}
 		PodComponents.register(pod, charter.id());
 		String serial = PodComponents.registration(pod).orElseThrow().serial();
-		if (!level.addFreshEntity(pod)) {
-			return refuse("pod_failed");
-		}
+		// Spend before the pod enters the world: the hangar records a pod when it loads, so a refused spend leaves nothing to undo.
 		Optional<CharterRefusal> refusal = Charters.spend(server, charter.id(), price);
 		if (refusal.isPresent()) {
-			// The pod entered the world, so the hangar recorded it; an undone purchase must not raise the next price.
-			data.get().release(charter.id(), pod.getUUID());
-			pod.discard();
 			throw new IllegalStateException("a purchase that passed the funds check was refused: " + refusal.get());
+		}
+		if (!level.addFreshEntity(pod)) {
+			Charters.deposit(server, charter.id(), price).ifPresent(failed -> {
+				throw new IllegalStateException("the refund of a pod that did not spawn was refused: " + failed);
+			});
+			return refuse("pod_failed");
 		}
 		context.player().sendOverlayMessage(Component.translatable("deepcharter.hangar.bought", pod.chassis().id().toUpperCase(Locale.ROOT), serial, price));
 		return Optional.empty();
