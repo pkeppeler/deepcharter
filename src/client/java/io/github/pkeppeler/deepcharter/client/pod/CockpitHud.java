@@ -124,8 +124,7 @@ public final class CockpitHud {
 			gauge(graphics, layout.depth(), reading.depth(), look.depthColor(), look);
 			gauge(graphics, layout.heat(), reading.heat(), look.heatColor(), look);
 			gauge(graphics, layout.cargo(), reading.cargo(), look.cargoColor(), look);
-			boolean anyAlert = lines.stream().anyMatch(line -> line.kind() == Kind.ALERT);
-			lamps(graphics, layout.lamps(), new boolean[] {fuelLow, hullLow, pod.hullBurning(), anyAlert},
+			lamps(graphics, layout.lamps(), lampsLit(fuelLow, hullLow, pod.hullBurning(), lines),
 					new int[] {look.lowColor(), look.lowColor(), look.heatColor(), look.depthColor()}, look);
 		}
 		decal(graphics, layout, "header", layout.header(), width, height);
@@ -168,6 +167,11 @@ public final class CockpitHud {
 		}
 	}
 
+	/** Which of the {@link #LAMPS} are lit: low fuel, low hull, the hull burning, and any line of the readout that is a warning ({@link Kind#ALERT}). */
+	public static boolean[] lampsLit(boolean fuelLow, boolean hullLow, boolean burning, List<Line> readout) {
+		return new boolean[] {fuelLow, hullLow, burning, readout.stream().anyMatch(line -> line.kind() == Kind.ALERT)};
+	}
+
 	/** The warning lamps: {@link #LAMPS} squares in a row (a slot wider than it is tall) or a column, each lit in its colour or off. */
 	private static void lamps(GuiGraphicsExtractor graphics, Decal slot, boolean[] lit, int[] colors, CockpitLook look) {
 		if (!slot.on()) {
@@ -202,7 +206,7 @@ public final class CockpitHud {
 	 * the tally stays where it is as lines come and go.
 	 */
 	public static List<Row> rows(PodEntity pod, CockpitReading reading, Layout layout, CockpitLook look, List<Line> readout) {
-		Optional<Line> account = AccountHud.text().map(text -> new Line(text, HudLook.current().accountColor(), Kind.INFO));
+		Optional<Line> account = AccountHud.text().map(text -> new Line(text, HudLook.current().accountColor()));
 		if (!layout.compact()) {
 			List<Row> rows = new ArrayList<>(readout.stream().map(line -> new Row(List.of(line))).toList());
 			account.ifPresent(line -> rows.add(new Row(List.of(line))));
@@ -211,10 +215,10 @@ public final class CockpitHud {
 		boolean fuelLow = PodFuel.isLow(pod.fuel());
 		boolean hullLow = reading.hull() <= look.hullLowFraction();
 		List<Row> base = new ArrayList<>(List.of(new Row(List.of(
-				new Line(Component.translatable("hud.deepcharter.pod.tally_hull", Math.round(pod.hull()), Math.round(pod.maxHull())), hullLow ? look.lowColor() : look.hullColor(), Kind.BASE),
-				new Line(Component.translatable("hud.deepcharter.pod.tally_fuel", Math.round(pod.fuel())), fuelLow ? look.lowColor() : look.fuelColor(), Kind.BASE),
-				new Line(Component.translatable("hud.deepcharter.pod.tally_cargo", pod.cargoUsed()), look.cargoColor(), Kind.BASE),
-				new Line(Component.translatable("hud.deepcharter.pod.tally_depth", Math.round(pod.getY())), look.depthColor(), Kind.BASE)))));
+				new Line(Component.translatable("hud.deepcharter.pod.tally_hull", Math.round(pod.hull()), Math.round(pod.maxHull())), hullLow ? look.lowColor() : look.hullColor()),
+				new Line(Component.translatable("hud.deepcharter.pod.tally_fuel", Math.round(pod.fuel())), fuelLow ? look.lowColor() : look.fuelColor()),
+				new Line(Component.translatable("hud.deepcharter.pod.tally_cargo", pod.cargoUsed()), look.cargoColor()),
+				new Line(Component.translatable("hud.deepcharter.pod.tally_depth", Math.round(pod.getY())), look.depthColor())))));
 		account.ifPresent(line -> base.add(new Row(List.of(line))));
 		List<Row> extra = readout.stream().filter(line -> line.kind() != Kind.BASE).map(line -> new Row(List.of(line))).toList();
 		List<Row> rows = new ArrayList<>();

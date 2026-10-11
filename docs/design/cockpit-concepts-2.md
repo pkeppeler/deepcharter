@@ -11,16 +11,17 @@
 3. **Five gauges and four lamps.** Fuel, hull, depth, heat and now **cargo** (the ore aboard, a share of the bay's slots), each a short segmented bar in its own colour, and a row of four **warning lamps**: low fuel, low hull, hull burning, and any other warning of the readout (a crust or seep warning, a hard landing, stranded, out of brick).
 4. **A one line plate.** The four values the old readout listed as lines (hull, fuel, cargo, depth) are one row of numbers, each in its gauge's colour: `100/100  77%  0  Y150`. The account line is a second row. Every other line of the plain readout (the slag, the liner, the seep and crust warnings, the lining, "HULL BURNING", a hard landing, stranded) is a row of its own, over the numbers when the plate hangs from the bottom of the screen and under them when it hangs from the top, so the numbers do not jump when a warning comes and goes. The plate is as wide as its widest row.
 5. **The altimeter stays at the top centre,** in a recess in the ribbon for B and plain text for the others.
-6. **The scanner stays big.** The same 98 x 82 window as round 1: tiers 1 to 3 whole, tier 4 cut at its edge.
+6. **Colour is state.** A full hull is green and turns red at the low-hull mark (30 %), as fuel turns red at the low-fuel beep: a full bar never reads as a warning.
+7. **The scanner stays big.** The same 98 x 82 window as round 1: tiers 1 to 3 whole, tier 4 cut at its edge.
 
 ## The four options
 
 | | Shape | Status housings | Scanner | Status | Scanner | Total |
 |---|---|---|---|---|---|---|
-| **A. Corners** | A small housing in each corner. | Fuel, hull and cargo bars (6 x 24, 12 steps) bottom left, 52 x 44; depth and heat bars bottom right, 36 x 44; the four lamps top left, 36 x 13. Plate at the bottom centre. | 112 x 112 bezel, top right. | 7.2 % | 12.2 % | 19.4 % |
+| **A. Corners** | A small housing in each corner. | Fuel, hull and cargo bars (6 x 24, 12 steps) bottom left, 52 x 44; depth and heat bars bottom right, 36 x 44; the four lamps, each with a letter under it (F, H, T, W), top left, 36 x 20. Plate at the bottom centre. | 112 x 112 bezel, top right. | 7.4 % | 12.2 % | 19.6 % |
 | **B. Ribbon** | One slim ribbon along the top edge. | Every gauge as a 26 x 5 bar (13 steps) with a letter, the altimeter in a recess at the middle, the lamps at the end: 320 x 14. Plate under the scanner. | 112 x 112 bezel hung from the ribbon's right end. | 7.4 % | 12.2 % | 19.5 % |
 | **C. Posts** | A post up each side of the view, a sill along the bottom. | Two bars (5 x 80, 40 steps) in each of two posts of 20 x 106, fuel and hull left, depth and heat right; the sill, 120 x 12, has the cargo bar and the lamps. Plate over the sill. | 112 x 112 bezel, top left, over the left post. | 8.5 % | 12.2 % | 20.7 % |
-| **D. Cab** | Nothing but a small instrument sill. | One slab of 168 x 22 at the bottom centre: fuel, hull and cargo bars over depth, heat and the lamps (40 x 4, 20 steps). Plate over it. | A slim 104 x 104 bezel, middle of the right edge. | 6.6 % | 10.3 % | 16.9 % |
+| **D. Cab** | Nothing but a small instrument sill. | One slab of 144 x 28 at the bottom centre: fuel, hull and cargo bars over depth, heat and the lamps (32 x 6, 16 steps). Plate over it. | A slim 104 x 104 bezel, middle of the right edge. | 6.9 % | 10.3 % | 17.2 % |
 | *Round 1, Consoles* | A rim and two consoles. | 76 x 108 and 124 x 178. | In the right console. | 29.0 % | 13.5 % | 42.4 % |
 | *The plain HUD* | Text and a scanner. | None. | 147 x 123, top right. | text only | 17.6 % | 17.6 % |
 
@@ -45,7 +46,7 @@ The first-person view from the Mole's seat ([#382](https://github.com/pkeppeler/
 
 **Shape.** Four small housings, one in each corner: bars bottom left and bottom right on the pod's dark lower cab, the lamps top left, the scanner top right. Nothing on the top or the sides between them.
 
-**From the seat.** The bars are tall (24 pixels, 12 steps of 8 %), so a low tank is one red step and reads at the corner of the eye, and the cab's pillars and cutter keep the middle and both sides. The cost is spread: the pilot looks at three corners, and the lamps at top left are small. Status is 7.2 %.
+**From the seat.** The bars are tall (24 pixels, 12 steps of 8 %), so a low tank is one red step and reads at the corner of the eye, and the cab's pillars and cutter keep the middle and both sides. The cost is spread: the pilot looks at three corners, and the lamps at top left are small, labelled F, H, T and W. Status is 7.4 %.
 
 ### B. Ribbon
 
@@ -53,7 +54,7 @@ The first-person view from the Mole's seat ([#382](https://github.com/pkeppeler/
 
 **Shape.** One 14 pixel ribbon across the top, the altimeter at its middle, the scanner hung from its end.
 
-**From the seat.** Everything is one glance along one line, and the ribbon is a roof beam over a view that is otherwise clear. The bars are the weakest of the four, 26 x 5 pixels in 13 steps, small to read at a glance, and the plate is under the scanner, far from the bars it explains (the plate has to sit clear of a long crust warning at the smallest GUI, which the scanner's end of the ribbon does not leave room for). Status is 7.4 %.
+**From the seat.** Everything is one glance along one line, and the ribbon is a roof beam over a view that is otherwise clear. The bars are the weakest of the four, 26 x 5 pixels in 13 steps, small to read at a glance, and the plate is under the scanner, far from the bars it explains, and close to the cab's right pillar (it has to sit clear of a long crust warning at the smallest GUI, which the scanner's end of the ribbon does not leave room for). Status is 7.4 %.
 
 ### C. Posts
 
@@ -69,11 +70,11 @@ The first-person view from the Mole's seat ([#382](https://github.com/pkeppeler/
 
 **Shape.** A single instrument sill at the bottom centre, the numbers over it and a slim scanner window at the right edge. No frame, no posts.
 
-**From the seat.** The clearest view and the smallest status (6.6 %): the pod's cab is the frame and the screen has nothing else on it. It is also the hardest to read, with bars 4 pixels tall, so it relies on the lamps and the numbers. It is the option for the see-the-pod view, and the one that does the most with the front camera: with the cab gone, a sill and a window are all that is left.
+**From the seat.** The clearest view and the smallest status (6.9 %): the pod's cab is the frame and the screen has nothing else on it. It is also the hardest to read, with bars 6 pixels tall, so it relies on the lamps and the numbers. It is the option for the see-the-pod view, and the one that does the most with the front camera: with the cab gone, a sill and a window are all that is left.
 
 ## The front camera
 
-The pod's body is not drawn from the seat while the camera's feed is live, so the view is clear; the camera and its price and hazards are designed in [mechanics.md](mechanics.md#front-camera-448-a). In short: one tier, $350 (a layer 2 run), a share of the idle fuel (not built yet), and a feed that a hull hit covers with static, that lava heats until it fails (the cab is back and the badge reads NO FEED) and that drops out in bursts when the hull is nearly gone.
+The pod's body is not drawn from the seat while the camera's feed is live, so the view is clear; the camera and its price and hazards are designed in [mechanics.md](mechanics.md#front-camera-448-a). In short: one tier, $350 (about three early layer 1 runs, or one layer 2 run with tier 2 parts), a share of the idle fuel (not built yet), and a feed that a hull hit covers with static, that lava heats until it fails (the cab is back and the badge reads NO FEED) and that drops out in bursts when the hull is nearly gone.
 
 Without the camera (left) and with it (right), on the plain HUD and on the Cab option:
 
@@ -89,7 +90,7 @@ Under hazards (heat haze while the hull burns, then the dead feed once the lens 
 
 ## What none of them does yet, and what the pick has to settle
 
-- **The purchase flow.** The camera is a stand-in (`cameraInstalled` in the theme). The build adds the component track `camera`, its price in `UpgradeTuning`, the part item and the terminal's row, an `EconomyAffordabilityTest` pin of the price, and the idle fuel draw.
+- **The purchase flow.** The camera is a stand-in (`cameraInstalled` in the theme): while the purchase is deferred any resource pack turns it on for free and sets the lens, static and flicker numbers too. The build adds the component track `camera`, its price in `UpgradeTuning`, the part item and the terminal's row, an `EconomyAffordabilityTest` pin of the price, and the idle fuel draw.
 - **Small and large GUIs.** The layouts hold at 320 x 240 and at 427 x 240 (the layout tests check housings, gauges, lamps, scanner window and the plate in every state and with the longest warning line). Under 320 x 240 they would overlap, so, like the terminal panel, the build should draw the plain HUD when the GUI is smaller than the style needs.
 - **Scanner tier 4** is cut at the window's edge: the pick needs a rule (clip, zoom out, or a larger window).
 - **The navigator.** A second seat gets the housings and the scanner and no gauges or plate, as it gets no readout today, and loses the vanilla hotbar under a style. The build must decide if that is right.

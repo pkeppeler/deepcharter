@@ -40,9 +40,10 @@ public final class FrontCameraFeed {
 	 * @param hull the pod's hull the last tick, to see a hit; meaningful once {@code seen}
 	 * @param seen whether the feed has watched a tick of this pod yet
 	 * @param powered whether the pod had power the last tick
+	 * @param podId the pod the feed has been watching, so that a pilot who changes pods starts a new feed
 	 */
-	public record State(double staticLevel, double lens, boolean lensFailed, int dropTicks, float hull, boolean seen, boolean powered) {
-		public static final State START = new State(0, 0, false, 0, 0f, false, false);
+	public record State(double staticLevel, double lens, boolean lensFailed, int dropTicks, float hull, boolean seen, boolean powered, int podId) {
+		public static final State START = new State(0, 0, false, 0, 0f, false, false, -1);
 
 		/** The feed shows the world: it has power, the lens works and it is not in a drop-out. */
 		public boolean live() {
@@ -51,7 +52,7 @@ public final class FrontCameraFeed {
 	}
 
 	/** What the pod does that the feed answers to, as of this tick. */
-	public record Inputs(float hull, float maxHull, boolean burning, boolean powered) {
+	public record Inputs(int podId, float hull, float maxHull, boolean burning, boolean powered) {
 	}
 
 	private static final RandomSource TICK_RANDOM = RandomSource.create();
@@ -68,7 +69,8 @@ public final class FrontCameraFeed {
 	}
 
 	/** The next state of the feed, one tick on. */
-	public static State step(State previous, Inputs in, CameraLook look, double hullLowFraction, RandomSource random) {
+	public static State step(State watched, Inputs in, CameraLook look, double hullLowFraction, RandomSource random) {
+		State previous = watched.podId() == in.podId() ? watched : State.START;
 		double hit = previous.seen() && !in.burning() && in.maxHull() > 0f ? Math.max(0f, previous.hull() - in.hull()) / in.maxHull() : 0.0;
 		double staticLevel = Math.min(1.0, Math.max(0.0, previous.staticLevel() - look.staticFallPerTick()) + hit * look.staticPerHull());
 		double lens = in.burning() ? Math.min(1.0, previous.lens() + look.lensHeatPerTick()) : Math.max(0.0, previous.lens() - look.lensCoolPerTick());
@@ -83,7 +85,7 @@ public final class FrontCameraFeed {
 				dropTicks = look.flickerMinTicks() + random.nextInt(look.flickerMaxTicks() - look.flickerMinTicks() + 1);
 			}
 		}
-		return new State(staticLevel, lens, failed, dropTicks, in.hull(), true, in.powered());
+		return new State(staticLevel, lens, failed, dropTicks, in.hull(), true, in.powered(), in.podId());
 	}
 
 	private static void tick(Minecraft client) {
@@ -92,16 +94,17 @@ public final class FrontCameraFeed {
 			return;
 		}
 		CockpitLook look = CockpitLook.current();
-		state = step(state, new Inputs(pod.hull(), pod.maxHull(), pod.hullBurning(), PodEvents.isPowered(pod)), look.camera(), look.hullLowFraction(), TICK_RANDOM);
+		state = step(state, new Inputs(pod.getId(), pod.hull(), pod.maxHull(), pod.hullBurning(), PodEvents.isPowered(pod)), look.camera(), look.hullLowFraction(), TICK_RANDOM);
 	}
 
+	/** Where the feed is now: the badge, the haze and the static draw from it. */
 	public static State state() {
 		return state;
 	}
 
 	/** Whether the local pilot of {@code pod} sees through a live feed: the camera is on the pod, and the picture is clear of failure. */
 	public static boolean live(Minecraft client, PodEntity pod) {
-		return CockpitLook.current().camera().installed() && client.player != null && client.player.getVehicle() == pod && state.live();
+		return CockpitLook.current().camera().installed() && client.player != null && client.player.getVehicle() == pod && state().live();
 	}
 
 	/** Whether the pod's cab is left out of the picture: the local pilot sits in {@code pod}, looks out of it in first person, and the feed is live. */
@@ -119,12 +122,12 @@ public final class FrontCameraFeed {
 		}
 		int width = graphics.guiWidth();
 		int height = graphics.guiHeight();
-		boolean live = state.live() && client.options.getCameraType().isFirstPerson();
+		boolean live = state().live() && client.options.getCameraType().isFirstPerson();
 		if (live) {
 			haze(graphics, camera, CockpitHud.heat(), width, height, pod.tickCount + deltaTracker.getGameTimeDeltaPartialTick(false));
-			noise(graphics, camera, state.staticLevel(), width, height);
+			noise(graphics, camera, state().staticLevel(), width, height);
 		}
-		badge(graphics, client, look, camera, state.live(), width, height);
+		badge(graphics, client, look, camera, state().live(), width, height);
 	}
 
 	/** The heat haze: a warm tint, and bands that drift up and sway, as many as the heat says. */
@@ -164,10 +167,12 @@ public final class FrontCameraFeed {
 	private static void badge(GuiGraphicsExtractor graphics, Minecraft client, CockpitLook look, CameraLook camera, boolean live, int width, int height) {
 		Font font = client.font;
 		Component text = Component.translatable(live ? "hud.deepcharter.pod.camera" : "hud.deepcharter.pod.camera_dead");
-		int color = !live ? look.lowColor() : state.staticLevel() > camera.badgeStatic() || CockpitHud.heat() > look.heatWarning() ? look.fuelColor() : camera.liveColor();
+		int color = !live ? look.lowColor() : state().staticLevel() > camera.badgeStatic() || CockpitHud.heat() > look.heatWarning() ? look.fuelColor() : camera.liveColor();
 		int boxWidth = camera.badgeDot() + camera.badgeGap() + font.width(text);
 		int left = camera.badge().left(width, boxWidth);
 		int top = camera.badge().top(height, font.lineHeight);
+		int pad = camera.badgePad();
+		graphics.fill(left - pad, top - pad, left + boxWidth + pad, top + font.lineHeight + pad, camera.badgeBack());
 		int dotTop = top + (font.lineHeight - camera.badgeDot()) / 2;
 		graphics.fill(left, dotTop, left + camera.badgeDot(), dotTop + camera.badgeDot(), color);
 		graphics.text(font, text, left + camera.badgeDot() + camera.badgeGap(), top, color);

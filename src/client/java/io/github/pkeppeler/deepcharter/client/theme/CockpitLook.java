@@ -205,6 +205,8 @@ public record CockpitLook(
 	 * @param badgeStatic the static from which the badge is amber and not green
 	 * @param badgeDot the side of the badge's lamp
 	 * @param badgeGap the space between the lamp and its word
+	 * @param badgePad the space between the badge and the edge of its backing plate
+	 * @param badgeBack the badge's backing plate, so the badge reads over any wall
 	 * @param badge where the feed's badge sits
 	 */
 	public record CameraLook(
@@ -233,6 +235,8 @@ public record CockpitLook(
 			double badgeStatic,
 			int badgeDot,
 			int badgeGap,
+			int badgePad,
+			int badgeBack,
 			Anchor badge) {
 		/** {@code color}'s red, green and blue with the opacity {@code alpha}, 0 to 255. */
 		public static int withAlpha(int alpha, int color) {
@@ -258,7 +262,7 @@ public record CockpitLook(
 					d.integer("cameraHazeLines", 0, 64), d.integer("cameraHazeAlpha", 0, 255), d.integer("cameraVeilAlpha", 0, 255),
 					d.integer("cameraDotAlphaMin", 0, 255), d.integer("cameraTearBands", 0, 32), d.integer("cameraTearAlpha", 0, 255), d.color("cameraStaticColor"),
 					d.color("cameraVeilColor"), d.color("cameraHazeColor"), d.color("cameraLiveColor"), d.decimal("cameraBadgeStatic", 0, 1),
-					d.integer("cameraBadgeDot", 1, 16), d.integer("cameraBadgeGap", 0, 16), Anchor.of(d, "cameraBadge"));
+					d.integer("cameraBadgeDot", 1, 16), d.integer("cameraBadgeGap", 0, 16), d.integer("cameraBadgePad", 0, 8), d.color("cameraBadgeBack"), Anchor.of(d, "cameraBadge"));
 		}
 	}
 

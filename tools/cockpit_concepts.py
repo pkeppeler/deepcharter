@@ -48,14 +48,14 @@ GAUGES = ("fuel", "hull", "depth", "heat", "cargo")
 LAMPS = 4
 KIND = {"across": 0, "up": 1}
 SHARED = {
-    "fuelColor": "#F0A010", "hullColor": "#B02A1A", "depthColor": "#F2D21E", "heatColor": "#FF6A1E", "cargoColor": "#6FB7C9", "lowColor": "#FF3A2A",
+    "fuelColor": "#F0A010", "hullColor": "#58B05A", "depthColor": "#F2D21E", "heatColor": "#FF6A1E", "cargoColor": "#6FB7C9", "lowColor": "#FF3A2A",
     "offColor": "#141B19", "hullLowFraction": 0.3, "heatRisePerTick": 0.08, "heatFallPerTick": 0.02, "platePad": 3,
-    "heatWarning": 0.5, "scannerTitleGap": 2, "lampGap": 2, "tallyGap": 6,
+    "heatWarning": 0.5, "scannerTitleGap": 2, "lampGap": 2, "tallyGap": 5,
     "cameraInstalled": 0, "cameraStaticPerHull": 4.0, "cameraStaticFallPerTick": 0.03, "cameraStaticDots": 2400, "cameraDotSize": 2,
     "cameraLensHeatPerTick": 0.01, "cameraLensCoolPerTick": 0.02, "cameraLensDead": 1.0, "cameraLensRecover": 0.6,
     "cameraFlickerMaxChance": 0.35, "cameraFlickerMinTicks": 2, "cameraFlickerMaxTicks": 6, "cameraHazeLines": 14, "cameraHazeAlpha": 90, "cameraVeilAlpha": 150, "cameraDotAlphaMin": 80, "cameraTearBands": 6, "cameraTearAlpha": 90,
     "cameraStaticColor": "#D8DCE0", "cameraVeilColor": "#050707", "cameraHazeColor": "#FF8A3A", "cameraLiveColor": "#38F06E",
-    "cameraBadgeStatic": 0.15, "cameraBadgeDot": 5, "cameraBadgeGap": 3, "cameraBadgeAnchorX": 1, "cameraBadgeAnchorY": 0, "cameraBadgeX": 0, "cameraBadgeY": 24,
+    "cameraBadgeStatic": 0.15, "cameraBadgeDot": 5, "cameraBadgeGap": 3, "cameraBadgePad": 2, "cameraBadgeBack": "#C0050707", "cameraBadgeAnchorX": 1, "cameraBadgeAnchorY": 0, "cameraBadgeX": 0, "cameraBadgeY": 24,
 }
 
 
@@ -437,11 +437,13 @@ def corners():
     look.sprite("part_b", Sprite(right_box), right_place)
     look.decal("part_b", right_place)
 
-    tw, th = 36, 13
+    tw, th = 36, 20
     top_box = slab(tw, th, (0, 0, 4, 0), random.Random(448_03))
     top_place = Placed(tw, th, 0, 0, 0, 0)
     lamps_w = lamp_well(top_box, 5, 4)
     look.lamps(top_place.inner(5, 4, lamps_w, 5))
+    for k, text in enumerate("FHTW"):  # fuel, hull, heat (burning), any other warning: a letter under each lamp, 7 pixels apart like the lamps
+        bar_labels(top_box, 5 + k * (5 + SHARED["lampGap"]), 11, text)
     look.sprite("part_c", Sprite(top_box), top_place)
     look.decal("part_c", top_place)
 
@@ -456,7 +458,7 @@ def ribbon():
     look = Look("ribbon")
     look.flags(0, 1)
     look.sprite("plate", readout_plate())
-    look.keys.update(anchor_keys("ribbonReadout", 2, 0, 6, 128))
+    look.keys.update(anchor_keys("ribbonReadout", 2, 0, 2, 128))
     look.keys["ribbonAltimeterY"] = 3
     w, h, bar_w, bar_h, segments = 320, 14, 26, 5, 13
     band = slab(w, h, (0, 0, 6, 6), random.Random(448_11))
@@ -513,22 +515,22 @@ def posts():
 
 
 def cab():
-    """D. Cab: nothing but a small instrument sill at the bottom middle, two rows of short bars and the lamps, with the one line plate over it, and a slim scanner window at
+    """D. Cab: nothing but a small instrument sill at the bottom middle, two rows of bars 6 pixels tall and the lamps, with the one line plate over it, and a slim scanner window at
     the right edge. The pod's own pillars, roof and sill are the frame, and the view is as wide as the cab allows."""
     look = Look("cab")
     look.flags(0, 1)
     look.sprite("plate", readout_plate())
-    look.keys.update(anchor_keys("cabReadout", 1, 2, 0, 22))
+    look.keys.update(anchor_keys("cabReadout", 1, 2, 0, 28))
     look.keys["cabAltimeterY"] = 4
-    w, h, bar_w, bar_h, segments = 168, 22, 40, 4, 20
+    w, h, bar_w, bar_h, segments = 144, 28, 32, 6, 16
     dash = slab(w, h, (6, 6, 0, 0), random.Random(448_31))
     place = Placed(w, h, 1, 2, 0, 0)
-    for name, ux, uy, text in (("fuel", 6, 2, "F"), ("hull", 60, 2, "H"), ("cargo", 114, 2, "C"), ("depth", 6, 12, "D"), ("heat", 60, 12, "T")):
+    for name, ux, uy, text in (("fuel", 6, 2, "F"), ("hull", 52, 2, "H"), ("cargo", 98, 2, "C"), ("depth", 6, 15, "D"), ("heat", 52, 15, "T")):
         bar_labels(dash, ux, uy, text)
-        well(dash, ux + 7, uy + 2, bar_w, bar_h)
-        look.gauge(name, "across", place.inner(ux + 7, uy + 2, bar_w, bar_h), segments)
-    lamps_w = lamp_well(dash, 114, 14)
-    look.lamps(place.inner(114, 14, lamps_w, 5))
+        well(dash, ux + 7, uy + 1, bar_w, bar_h)
+        look.gauge(name, "across", place.inner(ux + 7, uy + 1, bar_w, bar_h), segments)
+    lamps_w = lamp_well(dash, 98, 17)
+    look.lamps(place.inner(98, 17, lamps_w, 5))
     look.sprite("part_a", Sprite(dash), place)
     look.decal("part_a", place)
     scanner_piece(look, random.Random(448_32), 104, (8, 0, 0, 8), (2, 1, 0, 0), margin=3)

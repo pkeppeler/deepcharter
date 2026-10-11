@@ -54,6 +54,9 @@ public class FrontCameraClientTest implements FabricClientGameTest {
 	private static final double CHANGED = 0.10;
 	private static final double COVERED = 0.50;
 	private static final int DROP_SAMPLE = 2000;
+	private static final int POD = 1;
+	private static final int OTHER_POD = 2;
+	private static final double OTHER_POD_EAST = 4.0;
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
@@ -74,6 +77,7 @@ public class FrontCameraClientTest implements FabricClientGameTest {
 				ClientPacks.enable(context, TestPacks.COCKPIT_CAMERA);
 				try {
 					BufferedImage clear = expectTheCabLeavesTheView(context, withoutCamera);
+					expectTheFeedAnswersOnlyToItsPilotInFirstPerson(context, singleplayer, pod);
 					expectLavaCooksTheLensAndTheCabComesBack(context, singleplayer, pod, clear);
 				} finally {
 					ClientPacks.disable(context, TestPacks.COCKPIT_CAMERA);
@@ -98,47 +102,49 @@ public class FrontCameraClientTest implements FabricClientGameTest {
 		RandomSource random = RandomSource.create(7);
 		float max = 100f;
 
-		State state = FrontCameraFeed.step(State.START, new Inputs(max, max, false, true), look, low, random);
+		State state = FrontCameraFeed.step(State.START, new Inputs(POD, max, max, false, true), look, low, random);
+		State swapped = FrontCameraFeed.step(state, new Inputs(OTHER_POD, max / 2, max, false, true), look, low, random);
+		require(swapped.staticLevel() == 0.0 && swapped.podId() == OTHER_POD, "A pilot who changes pods straight to another pod has a new feed and no hit from the other pod's hull: " + swapped);
 		require(state.staticLevel() == 0.0 && state.live(), "A pod that has not been hit has a clear, live feed: " + state);
 		float hit = 5f;
-		State hurt = FrontCameraFeed.step(state, new Inputs(max - hit, max, false, true), look, low, random);
+		State hurt = FrontCameraFeed.step(state, new Inputs(POD, max - hit, max, false, true), look, low, random);
 		double expected = hit / max * look.staticPerHull();
 		require(Math.abs(hurt.staticLevel() - expected) < 1e-9, "A hit of " + hit + " of " + max + " leaves static of " + expected + ": " + hurt);
 		require(hurt.live(), "Static does not end the feed, only covers it: " + hurt);
 		State fading = hurt;
 		int ticks = 3;
 		for (int i = 0; i < ticks; i++) {
-			fading = FrontCameraFeed.step(fading, new Inputs(max - hit, max, false, true), look, low, random);
+			fading = FrontCameraFeed.step(fading, new Inputs(POD, max - hit, max, false, true), look, low, random);
 		}
 		require(Math.abs(fading.staticLevel() - (expected - ticks * look.staticFallPerTick())) < 1e-9, "Static falls by the fade each tick: " + fading);
-		State blast = FrontCameraFeed.step(state, new Inputs(max / 2, max, false, true), look, low, random);
+		State blast = FrontCameraFeed.step(state, new Inputs(POD, max / 2, max, false, true), look, low, random);
 		require(blast.staticLevel() == 1.0, "A hit of half the hull is full static, not more: " + blast);
 
-		State lava = FrontCameraFeed.step(state, new Inputs(max - hit, max, true, true), look, low, random);
+		State lava = FrontCameraFeed.step(state, new Inputs(POD, max - hit, max, true, true), look, low, random);
 		require(lava.staticLevel() == 0.0, "Lava's burn is heat, not an impact: no static from the hull it takes: " + lava);
 
 		State burning = state;
 		int toFail = (int) Math.ceil(look.lensDead() / look.lensHeatPerTick());
 		for (int i = 0; i < toFail - 2; i++) {
-			burning = FrontCameraFeed.step(burning, new Inputs(max, max, true, true), look, low, random);
+			burning = FrontCameraFeed.step(burning, new Inputs(POD, max, max, true, true), look, low, random);
 		}
 		require(!burning.lensFailed() && burning.live(), "The lens holds a little under " + toFail + " ticks of lava: " + burning);
 		for (int i = 0; i < 4; i++) {
-			burning = FrontCameraFeed.step(burning, new Inputs(max, max, true, true), look, low, random);
+			burning = FrontCameraFeed.step(burning, new Inputs(POD, max, max, true, true), look, low, random);
 		}
 		require(burning.lensFailed() && !burning.live(), "The lens fails after " + toFail + " ticks of lava, and a failed feed is not live: " + burning);
 		State cooling = burning;
 		int toRecover = (int) Math.ceil((look.lensDead() - look.lensRecover()) / look.lensCoolPerTick());
 		for (int i = 0; i < toRecover - 3; i++) {
-			cooling = FrontCameraFeed.step(cooling, new Inputs(max, max, false, true), look, low, random);
+			cooling = FrontCameraFeed.step(cooling, new Inputs(POD, max, max, false, true), look, low, random);
 		}
 		require(cooling.lensFailed(), "A failed lens stays failed until it has cooled to " + look.lensRecover() + ": " + cooling);
 		for (int i = 0; i < 6; i++) {
-			cooling = FrontCameraFeed.step(cooling, new Inputs(max, max, false, true), look, low, random);
+			cooling = FrontCameraFeed.step(cooling, new Inputs(POD, max, max, false, true), look, low, random);
 		}
 		require(!cooling.lensFailed() && cooling.live(), "A cooled lens brings the feed back: " + cooling);
 
-		State unpowered = FrontCameraFeed.step(state, new Inputs(max, max, false, false), look, low, random);
+		State unpowered = FrontCameraFeed.step(state, new Inputs(POD, max, max, false, false), look, low, random);
 		require(!unpowered.live(), "A pod with no power has no feed: " + unpowered);
 
 		int healthy = droppedTicks(look, low, max * (float) (low + 0.2), max);
@@ -155,7 +161,7 @@ public class FrontCameraClientTest implements FabricClientGameTest {
 		State state = State.START;
 		int dropped = 0;
 		for (int i = 0; i < DROP_SAMPLE; i++) {
-			state = FrontCameraFeed.step(state, new Inputs(hull, max, false, true), look, low, random);
+			state = FrontCameraFeed.step(state, new Inputs(POD, hull, max, false, true), look, low, random);
 			if (!state.live()) {
 				dropped++;
 			}
@@ -208,6 +214,46 @@ public class FrontCameraClientTest implements FabricClientGameTest {
 			throw new AssertionError("With the front camera the pod's cab is not in the view from the seat: only " + changed + " of the middle of the view differs from the view without it");
 		}
 		return clear;
+	}
+
+	/**
+	 * The cab is hidden only for the pilot looking out of their own pod in first person: from outside, in third person and from another pod it is drawn. A pilot who
+	 * gets out starts the feed again, and one who boards starts it clear.
+	 */
+	private void expectTheFeedAnswersOnlyToItsPilotInFirstPerson(ClientGameTestContext context, TestSingleplayerContext singleplayer, PodEntity pod) {
+		context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
+		boolean hiddenInThirdPerson = context.computeOnClient(client -> FrontCameraFeed.hidesCab((PodEntity) client.player.getVehicle()));
+		context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+		if (hiddenInThirdPerson) {
+			throw new AssertionError("In third person the pod is outside the view and is drawn: the camera hides the cab only from the seat in first person");
+		}
+		int[] otherId = {0};
+		singleplayer.getServer().runOnServer(server -> {
+			ServerLevel one = server.getLevel(LayerChain.dimension(1));
+			PodEntity other = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
+			other.setPos(0.5 + OTHER_POD_EAST, FEET_Y, 0.5);
+			other.setNoGravity(true);
+			one.addFreshEntity(other);
+			otherId[0] = other.getId();
+		});
+		ClientWait.until(context, "the other pod on the client", client -> client.level.getEntity(otherId[0]) instanceof PodEntity);
+		boolean hidesOther = context.computeOnClient(client -> FrontCameraFeed.hidesCab((PodEntity) client.level.getEntity(otherId[0])));
+		boolean hidesOwn = context.computeOnClient(client -> FrontCameraFeed.hidesCab((PodEntity) client.player.getVehicle()));
+		if (hidesOther || !hidesOwn) {
+			throw new AssertionError("The camera hides the pilot's own pod and not a pod beside it: own " + hidesOwn + ", other " + hidesOther);
+		}
+		singleplayer.getServer().runOnServer(server -> {
+			server.getPlayerList().getPlayers().getFirst().stopRiding();
+			server.getLevel(LayerChain.dimension(1)).getEntity(otherId[0]).discard();
+		});
+		ClientWait.until(context, "the feed reset after the pilot got out", client -> client.player.getVehicle() == null && FrontCameraFeed.state().equals(State.START),
+				client -> FrontCameraFeed.state().toString());
+		singleplayer.getServer().runOnServer(server -> {
+			if (!server.getPlayerList().getPlayers().getFirst().startRiding(pod)) {
+				throw new AssertionError("the pilot could not board the pod again");
+			}
+		});
+		ClientWait.until(context, "a live feed once the pilot is back", client -> client.player.getVehicle() instanceof PodEntity shown && FrontCameraFeed.hidesCab(shown));
 	}
 
 	private void expectLavaCooksTheLensAndTheCabComesBack(ClientGameTestContext context, TestSingleplayerContext singleplayer, PodEntity pod, BufferedImage clear) {
