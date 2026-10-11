@@ -382,6 +382,11 @@ public final class PodLining {
 		return !state.is(Blocks.LIGHT) && (state.isAir() || state.getBlock() instanceof LiquidBlock || state.canBeReplaced());
 	}
 
+	/** Whether a cell is open to a flow: the cells a ring takes a brick in, and the cells lava runs through. */
+	static boolean open(BlockState state) {
+		return needsBrick(state, false);
+	}
+
 	/** 0 for lava, 1 for an open cell beside lava, 2 for any other. */
 	private static int urgency(LoadedBlocks blocks, BlockPos pos) {
 		if (blocks.getFluidState(pos).is(FluidTags.LAVA)) {

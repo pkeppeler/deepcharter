@@ -23,6 +23,7 @@ import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.pod.HardLanding;
 import io.github.pkeppeler.deepcharter.pod.PodBrace;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodLavaWatch;
 import io.github.pkeppeler.deepcharter.pod.PodLiner;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodSeat;
@@ -71,6 +72,11 @@ public final class PodStatusHud {
 	/** The warning line shown, in its own colour, while lava burns the hull. */
 	public static Optional<Component> burningLine(PodEntity pod) {
 		return pod.hullBurning() ? Optional.of(Component.translatable("hud.deepcharter.pod.burning")) : Optional.empty();
+	}
+
+	/** The warning line shown, in the burning colour, while flowing lava is joined to the pod by open cells ({@link PodLavaWatch}): how many blocks off it is. */
+	public static Optional<Component> lavaNearLine(PodEntity pod) {
+		return PodLavaWatch.blocksOff(pod).map(blocks -> Component.translatable("hud.deepcharter.pod.lava_near", blocks));
 	}
 
 	/**
@@ -169,7 +175,7 @@ public final class PodStatusHud {
 			Map.entry("hud.deepcharter.pod.crust_in", Kind.ALERT), Map.entry("hud.deepcharter.pod.brace_waits", Kind.ALERT), Map.entry("hud.deepcharter.pod.brace_dry", Kind.ALERT),
 			Map.entry("hud.deepcharter.pod.brace_dear", Kind.ALERT), Map.entry("hud.deepcharter.pod.seepage", Kind.ALERT), Map.entry("hud.deepcharter.pod.seepage_beside", Kind.ALERT),
 			Map.entry("hud.deepcharter.pod.seepage_bleeding", Kind.ALERT), Map.entry("hud.deepcharter.pod.lining_dry", Kind.ALERT),
-			Map.entry("hud.deepcharter.pod.hard_landing", Kind.ALERT));
+			Map.entry("hud.deepcharter.pod.hard_landing", Kind.ALERT), Map.entry("hud.deepcharter.pod.lava_near", Kind.ALERT));
 
 	/** A line of the readout and the colour it is drawn in. */
 	public record Line(Component text, int color) {
@@ -191,6 +197,7 @@ public final class PodStatusHud {
 		HudLook look = HudLook.current();
 		List<Line> readout = new ArrayList<>(statusLines(pod));
 		burningLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
+		lavaNearLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
 		linerLine(pod).ifPresent(line -> readout.add(new Line(line, look.podLinerColor())));
 		sounderLines(pod).forEach(line -> readout.add(new Line(line, look.podSounderColor())));
 		crustLines(pod, resting(client, pod)).forEach(line -> readout.add(new Line(line, look.podHardLandingColor())));

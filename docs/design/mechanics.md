@@ -34,7 +34,7 @@ Mechanics invented under the creative liberty of the `designing-mechanics` skill
 - A wreck in lava makes no burning flag and no sound.
 - The cue. The pod flags `hullBurning` (synced) while lava touches it. The status HUD shows a line, "HULL BURNING", in the `podBurningColor` of `theme/hud.json`, and the pod hisses (`pod.hull_burning`, default asset `entity.generic.burn`, every `lavaCueTicks` = 15 ticks). A pilot sees the hull number fall and has a few seconds to turn the pod out of the lava.
 
-**The ladder (#232).** By hand: lining blocks placed from the seat. Then a liner upgrade that lines a ring every few slabs. Then a heat-shield hull track: it cuts the hull damage, and now it matters, because the hull is what lava takes. See the lava example in the `designing-mechanics` skill.
+**The ladder (#232).** By hand: lining blocks placed from the seat. Then a liner upgrade that lines a ring every few slabs. Then a heat-shield hull track: it cuts the hull damage, and now it matters, because the hull is what lava takes. See the lava example in the `designing-mechanics` skill. Rung 4, a warning when lava reaches the shaft behind the pod, is [the lava watch](#the-lava-watch-454-a).
 
 ### Lava vs. a straight bore: measured
 
@@ -821,7 +821,7 @@ The tier 1 part equals its bound to the bore and the tier 2 part beats it by 3, 
 **Open questions.**
 - Is a liner whose rack does not run dry and whose pack is idle still a rung that asks for spoil? A bore lays 12 to 16 bricks, so the hopper is needed for one bay in two bores. Answered by [#442](#liner-economy-after-432-442-a): a rack of 24 runs dry in 10 bores of 100, and the pack brings that to 0 or 1. The lava ladder's rung 3 (the heat-shield hull) may make the liner a niche part either way.
 - Hand lining reaches one slab below the pod and lines the whole ring, 32 bricks for the taller Mole. It was not measured here and may want the same view as an option the pilot can choose.
-- Lava that flows into a lined stretch later, from beyond the view, lines nothing: the liner counts what it sees at the ring. A hairline-crack warning (rung 4 of the ladder) would give a pilot a reason to re-line.
+- Lava that flows into a lined stretch later, from beyond the view, lines nothing: the liner counts what it sees at the ring. Answered by [#454](#the-lava-watch-454-a), the warning of rung 4 of the ladder.
 
 ## Liner economy after #432 (#442, A)
 
@@ -903,9 +903,40 @@ The tier 1 part equals its bound to the bore and the tier 2 part beats it by 3, 
 **Tuning knob.** `PodLiningTuning.brickCapacity` (24). A rack above the capacity (an old save) keeps what it has and is not topped up.
 
 **Open questions.**
-- Lava that flows into a lined stretch from beyond the view is not lined: [#454](https://github.com/pkeppeler/deepcharter/issues/454). The thermal scanner shows it, and a hairline-crack warning (rung 4 of the ladder) would give a pilot a reason to re-line. One argument against a HUD cue is that it would repeat the thermal scanner for a pod that has it. That is an argument, not a measurement.
+- Lava that flows into a lined stretch from beyond the view is not lined. Answered by [#454](#the-lava-watch-454-a): every pod warns its pilot, and the liner stays as it is.
 - Rung 3 (the heat-shield hull): candidate C is a start, bricks from the pack as ablative plating. It needs a pilot that leaves the lava to be measured, and a number that does not make lining optional ([#232](https://github.com/pkeppeler/deepcharter/issues/232)).
 - Does hand lining want a rack of its own, now that the rack is smaller than the 32 bricks a Mole's hand ring costs?
+
+## The lava watch (#454, A)
+
+**Problem.** The liner lines only the cells lava can reach within its view (3 beside the ring, 4 over the box). Lava from beyond it, or from a chunk that was not loaded at the ring, can run into a stretch the pod has passed, and nothing told the pilot: the thermal scanner shows lava 36 blocks ahead and nothing behind. A wider view was measured and made things worse (candidate D of [#442](#liner-economy-after-432-442-a): reach 50 against 55, with more dry racks). So the gap becomes rung 4 of the ladder (#232): a warning, with seconds to act.
+
+**The design.**
+- **Trigger.** Flowing lava (not a still source) joined to the pod's box by open cells (air, fluid, a plant: the cells a ring takes a brick in) within 12 blocks of path. Rock, ore and lining cut the path, so sealed lava never warns. A source warns the moment it flows, which a bore that opens it makes happen at once.
+- **Who has it.** Every pod with a pilot, with no part and no price. The pilot who most needs the warning is the one who bought no liner, and a part to hear lava behind would make the cheapest pod the blindest. A pod with no pilot, and a wreck, read nothing.
+- **Cost.** One breadth-first walk of at most 12 blocks of open cells (about 2,300 cells in an open cave, a few dozen in a bore) every 10 ticks, so twice a second. It reads through `LoadedBlocks`: a chunk that is not loaded reads as air and is never loaded for it.
+- **The cue.** An ALERT line in the `podBurningColor`, `LAVA IN THE SHAFT <n> OFF  LINE OR LEAVE`, where `<n>` is the blocks of open cells to the lava (lava beside the box is 1). It lights the cockpit's warning lamp in the compact styles. The state is a synced attachment (`pod_lava_watch`, version 1), so the client draws it from the same number.
+- **Time to act.** Lava flows a block in about 1.5 seconds. The staged flow (below) measured the watch speaking 360 ticks, 18 seconds, before the hull first lost a point, with the lava first seen 12 blocks off. At 10 hull per second a stock Mole has 10 seconds in lava on top.
+- **What the pilot does.** Line the slab by hand (a brick between the lava and the pod silences the line), move out of the shaft (a sidestep opens a new branch the lava follows slowly), or pull up and out. A pod with a liner lines its next ring by itself and the line goes out when the ring cuts the path. Lava that falls on the pod from straight above has no lining answer yet: the pilot moves.
+
+**Ladder.** By hand (#313), the liner (#339), the heat-shield hull (open), and now the warning that gives them a reason to be used on the stretch already passed. It makes the default build no harder: it only tells.
+
+**Pins.** `PodLavaWatchTest`:
+- lava flowing down a 19-cell shaft from outside the liner's view warns before the first hull loss, and with the lava at least 2 blocks off;
+- a pod with no lava about, and a pod with lava above a rock plug in the shaft (within reach as the crow flies, joined to nothing), read nothing for 400 ticks and keep the whole hull;
+- flowing lava 12 blocks along a corridor reads 12, 13 blocks reads nothing, lava beside the box reads 1;
+- a brick between the lava and the pod reads nothing;
+- a pod with no pilot reads nothing;
+- the state survives a save, and an unreadable version is kept and never throws.
+
+`CockpitHudClientTest` pins `lava_near` as an ALERT that lights the fourth lamp.
+
+**Tuning knobs.** `PodLavaWatchTuning.reach` (12) and `scanEveryTicks` (10).
+
+**Open questions.**
+- A lava-proof lining for the shaft above the pod: hand lining covers the ring beside the box, not the open shaft over it.
+- Should the line point at the side the lava comes from, as the seepage line names a side? A path walk knows the first step.
+- Does the heat-shield hull (rung 3) make the warning moot for a late pod? It should not: the hull only buys time.
 
 ## The tow line (#425, A)
 
