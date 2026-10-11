@@ -3,27 +3,33 @@
 
 Compares every five-word sequence in our docs and in-game text with section 6 (Story) of the git-ignored
 original_flash_game/REFERENCE.md and prints each shared one with its file and line. Exits 1 when any is shared, 0 when none is
-or when REFERENCE.md is missing (CI, another machine, a worktree), 2 when REFERENCE.md has no section 6.
+or when REFERENCE.md is missing (CI, another machine, a worktree), 2 when REFERENCE.md has no usable section 6 or the allow-list is malformed.
 
 The only text of REFERENCE.md that is ever printed is the shared sequence itself. See docs/tooling/homage-check.md.
 """
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import re
 import sys
+import unicodedata
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 REFERENCE = ROOT / "original_flash_game" / "REFERENCE.md"
 ALLOW_LIST = Path(__file__).resolve().parent / "homage-allowlist.txt"
 WINDOW = 5
-SCANNED = (("docs", "*.md"), ("src/lang", "*.json"), ("src/main/resources/data", "*.json"))
+SCANNED = (("docs", "*.md"), (".", "README.md"), (".", "CONTEXT.md"), ("src/lang", "*.json"), ("src/main/resources/data", "*.json"))
 
 Segment = list[tuple[str, int]]  # (word, line) pairs that read as one run of prose
 
 WORD = re.compile(r"[a-z0-9]+")
+APOSTROPHE = re.compile(r"['`\u2019\u02bc]")
+LINK = re.compile(r"!?\[([^\]]*)\](?:\([^)]*\)|\[[^\]]*\])")
+LINK_DEFINITION = re.compile(r"^\s{0,3}\[[^\]]+\]:\s")
+URL = re.compile(r"<https?://[^>]*>|https?://[^\s)>]+")
 HEADING = re.compile(r"^\s{0,3}#{1,6}(\s|$)")
 FENCE = re.compile(r"^\s{0,3}(```|~~~)")
 LIST_ITEM = re.compile(r"^\s*([-*+]|\d+[.)])\s")
@@ -33,8 +39,16 @@ SECTION = re.compile(r"^##\s")
 
 
 def words(text: str) -> list[str]:
-    """Lower-case words: apostrophes vanish (don't -> dont), every other non-alphanumeric run, hyphens included, splits."""
-    return WORD.findall(re.sub(r"['’]", "", text.lower()))
+    """Lower-case ASCII words: accents fold (cafe), apostrophes vanish (don't -> dont), every other non-alphanumeric run splits."""
+    folded = "".join(c for c in unicodedata.normalize("NFKD", text.lower()) if not unicodedata.combining(c))
+    return WORD.findall(APOSTROPHE.sub("", folded))
+
+
+def prose(line: str) -> str:
+    """A markdown line as readable text: links keep their label, URLs and link definitions go, entities are decoded."""
+    if LINK_DEFINITION.match(line):
+        return ""
+    return html.unescape(URL.sub(" ", LINK.sub(r"\1", line)))
 
 
 def markdown_segments(text: str) -> list[Segment]:
@@ -49,6 +63,7 @@ def markdown_segments(text: str) -> list[Segment]:
         current = []
 
     for number, line in enumerate(text.splitlines(), 1):
+        line = prose(line)
         if not line.strip() or HEADING.match(line) or FENCE.match(line):
             close()
             if HEADING.match(line):
@@ -97,11 +112,22 @@ def story_section(text: str) -> str | None:
 
 
 def allowed(path: Path) -> set[tuple[str, ...]]:
-    """Five-word sequences exempt from the check, one per line; blank lines and # comments are ignored."""
+    """Five-word sequences exempt from the check, one per line; blank lines and # comments are ignored.
+
+    Raises ValueError naming the file and line for an entry that is not exactly five words.
+    """
     if not path.is_file():
         return set()
-    lines = (line.strip() for line in path.read_text().splitlines())
-    return {tuple(words(line)) for line in lines if line and not line.startswith("#")}
+    entries = set()
+    for number, raw in enumerate(path.read_text().splitlines(), 1):
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        entry = tuple(words(line))
+        if len(entry) != WINDOW:
+            raise ValueError(f"{path}:{number}: allow-list entry must be exactly {WINDOW} words, got {len(entry)}")
+        entries.add(entry)
+    return entries
 
 
 def scanned_files(root: Path) -> list[Path]:
@@ -139,7 +165,15 @@ def main(argv: list[str]) -> int:
     if story is None:
         print(f"check-homage: {args.reference} has no '## 6.' section.", file=sys.stderr)
         return 2
-    theirs = {seq for segment in markdown_segments(story) for seq in sequences(segment)} - allowed(args.allow)
+    ours = {seq for segment in markdown_segments(story) for seq in sequences(segment)}
+    if not ours:
+        print(f"check-homage: section 6 of {args.reference} has no {WINDOW}-word sequences.", file=sys.stderr)
+        return 2
+    try:
+        theirs = ours - allowed(args.allow)
+    except ValueError as error:
+        print(f"check-homage: {error}", file=sys.stderr)
+        return 2
 
     total = 0
     for path in scanned_files(args.root):
