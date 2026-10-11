@@ -20,9 +20,9 @@ import org.slf4j.LoggerFactory;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -30,13 +30,13 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.crafting.SingleRecipeInput;
-import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
@@ -218,7 +218,7 @@ public class SalvageBootstrapTest {
 			throw helper.assertionException("the caves of layer 1 hold no fungal stalk");
 		}
 		for (BlockPos pos : stalks) {
-			if (!level.getBlockState(pos.below()).isFaceSturdy(level, pos.below(), net.minecraft.core.Direction.UP)
+			if (!level.getBlockState(pos.below()).isFaceSturdy(level, pos.below(), Direction.UP)
 					&& !level.getBlockState(pos.below()).is(block("fungal_stalk"))) {
 				throw helper.assertionException("the stalk at %s does not stand on a floor", pos.toShortString());
 			}
@@ -436,7 +436,7 @@ public class SalvageBootstrapTest {
 		helper.succeed();
 	}
 
-	private static void requireTagged(GameTestHelper helper, ItemStack stack, net.minecraft.tags.TagKey<Item> tag, String what) {
+	private static void requireTagged(GameTestHelper helper, ItemStack stack, TagKey<Item> tag, String what) {
 		if (!stack.is(tag)) {
 			throw helper.assertionException("%s should be in %s, it is %s", what, tag.location(), stack);
 		}
