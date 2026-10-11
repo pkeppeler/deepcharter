@@ -52,6 +52,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalEvents;
 import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
 import io.github.pkeppeler.deepcharter.test.support.HangarPods;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -505,7 +506,7 @@ public class FoundingMoleHangarTest {
 		inTheHangar(helper, before -> withFreshRepairs(helper, () -> {
 			insertTheParts(helper);
 			MinecraftServer server = server(helper);
-			BlockPos console = Hangar.consolePos(server).orElseThrow(() -> failure(helper, "the hangar should have a console"));
+			BlockPos console = HangarConsole.find(server).orElseThrow(() -> failure(helper, "the hangar should have a console"));
 			PodEntity derelict = HangarPods.derelict(server).orElseThrow();
 			MockPlayer owner = member(helper, "Bay Salvager");
 			stand(helper, owner, console);
@@ -566,7 +567,7 @@ public class FoundingMoleHangarTest {
 			try {
 				Hangar.onBuilt(server(helper), Colony.placed(server(helper)).orElseThrow());
 				PodEntity derelict = HangarPods.derelict(server(helper)).orElseThrow();
-				BlockPos hangarConsole = Hangar.consolePos(server(helper)).orElseThrow(() -> failure(helper, "the hangar should have a console"));
+				BlockPos hangarConsole = HangarConsole.find(server(helper)).orElseThrow(() -> failure(helper, "the hangar should have a console"));
 				expect(helper, server(helper).overworld().getBlockState(hangarConsole).is(HangarTerminal.TYPE.block()), "the colony stands a console in the hangar");
 				stand(helper, stranger, hangarConsole);
 				expectRefused(helper, act(stranger.player(), hangarConsole, HangarTerminal.RESTORE_WRECK), "restoring the derelict Mole");
@@ -656,7 +657,7 @@ public class FoundingMoleHangarTest {
 			// The hangar record is unreadable: the colony event, the repair event and both actions skip it.
 			WorldData.replace(server, HangarData.TYPE, unreadable);
 			// Only the derelict is skipped: the console is a block and is placed even when the hangar record cannot be read.
-			BlockPos hangarConsole = Hangar.consolePos(server).orElseThrow();
+			BlockPos hangarConsole = HangarConsole.find(server).orElseThrow();
 			server.overworld().setBlock(hangarConsole, Blocks.AIR.defaultBlockState(), 3);
 			Hangar.onBuilt(server, placed);
 			expect(helper, server.overworld().getBlockState(hangarConsole).is(HangarTerminal.TYPE.block()), "the console is placed although the hangar data is unreadable");

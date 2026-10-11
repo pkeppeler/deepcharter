@@ -17,7 +17,6 @@ import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.hangar.HangarScreen;
-import io.github.pkeppeler.deepcharter.hangar.Hangar;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
@@ -25,6 +24,7 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
+import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
 import io.github.pkeppeler.deepcharter.test.support.HangarPods;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
 
@@ -160,7 +160,7 @@ public class HangarScenario extends EvidenceScenario {
 		player.getInventory().clearContent();
 		server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), "time set noon");
 		server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), "weather clear");
-		return Hangar.consolePos(server).orElseThrow(() -> new AssertionError("the colony has no hangar"));
+		return HangarConsole.find(server).orElseThrow(() -> new AssertionError("the colony has no hangar"));
 	}
 
 	private static long balance(MinecraftServer server) {

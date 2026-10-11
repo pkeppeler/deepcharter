@@ -24,7 +24,6 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
-import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonyEvents;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
@@ -59,12 +58,6 @@ public final class Hangar {
 		PodEvents.REGISTERED.register(Hangar::onRegistered);
 	}
 
-	/** Where the console stands: beside the hangar bay. Empty before the colony is built. */
-	// test-seam: the console's place is the hangar anchor plus the one offset placeConsole uses; tests and evidence scenarios walk to it, and a copy of the offset in each would drift from where it is placed
-	public static Optional<BlockPos> consolePos(MinecraftServer server) {
-		return Colony.anchor(server, ColonyAnchor.HANGAR).map(Hangar::consoleAt);
-	}
-
 	/**
 	 * Places the console on every build, since a rebuild clears the pad (its repair lives in {@code RepairState}), and the
 	 * derelict Mole once. A colony built before the hangar existed is not given one.
@@ -92,12 +85,8 @@ public final class Hangar {
 		DeepCharter.LOGGER.info("Placed the derelict Mole {} in the hangar at {}", pod.getUUID(), anchor.toShortString());
 	}
 
-	private static BlockPos consoleAt(BlockPos anchor) {
-		return anchor.offset(CONSOLE_OFFSET);
-	}
-
 	private static void placeConsole(ServerLevel level, BlockPos anchor) {
-		BlockPos console = consoleAt(anchor);
+		BlockPos console = anchor.offset(CONSOLE_OFFSET);
 		if (!level.getBlockState(console).is(HangarTerminal.TYPE.block())) {
 			BlockState state = HangarTerminal.TYPE.block().defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.WEST);
 			level.setBlock(console, state, 3);

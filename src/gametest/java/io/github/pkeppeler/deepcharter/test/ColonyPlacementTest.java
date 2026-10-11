@@ -65,6 +65,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
 import io.github.pkeppeler.deepcharter.test.support.TestRegions;
 
 /**
@@ -221,7 +222,7 @@ public class ColonyPlacementTest {
 				ColonyAnchor.CONTRACT_TERMINAL, ColonyAnchor.CHAPEL_CANDLE, ColonyAnchor.CONDUIT)) {
 			places.put(anchor.getSerializedName(), colony.anchors().get(anchor));
 		}
-		places.put("hangar console", io.github.pkeppeler.deepcharter.hangar.Hangar.consolePos(server).orElseThrow());
+		places.put("hangar console", HangarConsole.find(server).orElseThrow());
 		places.put("the Host's plinth", colony.center().offset(0, 1, 4));
 		for (ColonyAnchor anchor : List.of(ColonyAnchor.HANGAR, ColonyAnchor.BUNKHOUSE, ColonyAnchor.PAY_OFFICE, ColonyAnchor.PERSONNEL_OFFICE, ColonyAnchor.LAMP_AND_PICK)) {
 			BlockPos inside = colony.anchors().get(anchor);

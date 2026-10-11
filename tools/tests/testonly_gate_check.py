@@ -1,7 +1,6 @@
 """Tests the test-only gate (tools/TestOnlyGate.java, gradle/test-only-gate.gradle): a non-private mod member that only src/gametest references
 fails the build, unless production references it too, it overrides a supertype's method, it is a registered object's field, or a
-`// test-seam: <reason>` marker with a reason binds to its exact declaration. A baseline lists the findings that exist already: a finding
-outside it fails, and so does an entry that is no longer a finding.
+`// test-seam: <reason>` marker with a reason binds to its exact declaration. Nothing is grandfathered.
 
 Each tree is compiled with javac (a mod tree, then a test tree against it) and scanned by the gate, so it needs JDK 25 on PATH. It does not use the
 Gradle batch of the other checks, so CASES is empty. Its name (testonly, not test_only) misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job
@@ -280,7 +279,7 @@ RED_USES = """
         new fx.Hooks().nullable();
 """
 BARE = "; its '// test-seam:' marker has no reason"
-# (file, declaration text, how the gate names it, baseline key)
+# (file, declaration text, how the gate names it, its --list key)
 RED = [
     ("fx/Reds.java", "public Reds(int size)", "new Reds(int)", "fx.Reds#<init>(I)", ""),
     ("fx/Reds.java", "public int testOnlyField", "Reds.testOnlyField", "fx.Reds#testOnlyField", ""),
@@ -340,13 +339,9 @@ class Tree:
         lines = self.mod[file].splitlines()
         return next(number for number, line in enumerate(lines, 1) if text in line)
 
-    def scan(self, baseline: list[str] | None = None) -> subprocess.CompletedProcess[str]:
+    def scan(self) -> subprocess.CompletedProcess[str]:
         command = ["java", str(REPO / "tools/TestOnlyGate.java"), "--production", str(self.work / "classes/mod"),
                    "--tests", str(self.work / "classes/test"), "--sources", str(self.work / "mod"), "--root", str(self.work)]
-        if baseline is not None:
-            baseline_file = self.work / "baseline.txt"
-            baseline_file.write_text("# header\n" + "".join(f"{key}\n" for key in baseline))
-            command += ["--baseline", str(baseline_file)]
         done = subprocess.run(command, capture_output=True, text=True, check=False)
         done.stderr = "".join(line for line in done.stderr.splitlines(keepends=True) if not line.startswith("Picked up"))
         return done
@@ -357,8 +352,7 @@ class Tree:
 
 
 def findings(done: subprocess.CompletedProcess[str]) -> set[str]:
-    section = done.stderr.split("Stale entries")[0]
-    return {line.strip() for line in section.splitlines() if line.startswith("  ")}
+    return {line.strip() for line in done.stderr.splitlines() if line.startswith("  ")}
 
 
 def require_jdk_25() -> None:
@@ -400,29 +394,3 @@ class TestOnlyGateTest(unittest.TestCase):
         done = self.missing.scan()
         self.assertEqual(1, done.returncode)
         self.assertIn("cannot load fx/Missing, a supertype of fx/Child", done.stderr)
-
-    def test_no_baseline_grandfathers_nothing(self):
-        done = self.red.scan()
-        self.assertEqual(1, done.returncode)
-        self.assertEqual(set(self.red.expected()), findings(done))
-
-    def test_a_baseline_entry_still_passes(self):
-        done = self.red.scan([key for *_, key, _ in RED])
-        self.assertEqual(0, done.returncode, done.stderr)
-
-    def test_a_finding_outside_the_baseline_fails(self):
-        keys = [key for *_, key, _ in RED]
-        done = self.red.scan(keys[1:])
-        self.assertEqual(1, done.returncode)
-        self.assertEqual({line for line in self.red.expected() if "new Reds(int)" in line}, findings(done))
-
-    def test_a_baseline_entry_that_is_no_longer_a_finding_fails(self):
-        done = self.green.scan(["fx.Seams#markedAbove()", "fx.Seams#calledByMod()"])
-        self.assertEqual(1, done.returncode)
-        self.assertIn("Stale entries", done.stderr)
-        self.assertEqual({"fx.Seams#markedAbove()", "fx.Seams#calledByMod()"}, findings_after_stale(done))
-        self.assertNotIn("Members referenced only", done.stderr)
-
-
-def findings_after_stale(done: subprocess.CompletedProcess[str]) -> set[str]:
-    return {line.strip() for line in done.stderr.split("Stale entries")[1].splitlines() if line.startswith("  ")}

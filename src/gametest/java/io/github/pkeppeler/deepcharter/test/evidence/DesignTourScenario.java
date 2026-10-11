@@ -86,7 +86,6 @@ import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.handbook.HandbookItems;
 import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
 import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
-import io.github.pkeppeler.deepcharter.hangar.Hangar;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.layer.BreachService;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
@@ -110,6 +109,7 @@ import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight.Box;
+import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
 import io.github.pkeppeler.deepcharter.test.support.HangarPods;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ShippedHandbook;
@@ -663,7 +663,7 @@ public class DesignTourScenario extends EvidenceScenario {
 
 	private void terminalScreens() {
 		Vec3 derelict = serverGet(server -> HangarPods.derelict(server).orElseThrow().position());
-		BlockPos console = serverGet(server -> Hangar.consolePos(server).orElseThrow());
+		BlockPos console = serverGet(server -> HangarConsole.find(server).orElseThrow());
 		Vec3 consoleEye = Vec3.atBottomCenterOf(console.west(2)).add(0, EYE, 0);
 		view(0, consoleEye, derelict.add(0, 1, 0), 60);
 		still("hangar-derelict-mole");

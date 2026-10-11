@@ -67,7 +67,6 @@ import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
-import io.github.pkeppeler.deepcharter.hangar.Hangar;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgress;
@@ -90,6 +89,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.HandbookChaptersOneToFiveTest;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
 import io.github.pkeppeler.deepcharter.test.support.HangarPods;
 import io.github.pkeppeler.deepcharter.test.support.M2SliceEndState;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
@@ -245,7 +245,7 @@ public class M2SliceScenario extends EvidenceScenario {
 
 	private void repairFoundingMole() {
 		say("4. Handbook chapter 3. The hangar console takes its four parts, and the derelict Mole is repaired and registered to the charter.");
-		BlockPos console = onServer(server -> Hangar.consolePos(server).orElseThrow(() -> new AssertionError("the colony has no hangar")));
+		BlockPos console = onServer(server -> HangarConsole.find(server).orElseThrow(() -> new AssertionError("the colony has no hangar")));
 		Vec3 derelict = onServer(server -> HangarPods.derelict(server).orElseThrow(() -> new AssertionError("the founding Mole is not in the hangar")).position());
 		stand(Vec3.atBottomCenterOf(console.west(2)), derelict.add(0, 1, 0));
 		ctx.waitTicks(60);
@@ -698,7 +698,7 @@ public class M2SliceScenario extends EvidenceScenario {
 			}
 			return null;
 		});
-		BlockPos console = onServer(server -> Hangar.consolePos(server).orElseThrow());
+		BlockPos console = onServer(server -> HangarConsole.find(server).orElseThrow());
 		openTerminal(Vec3.atBottomCenterOf(console.west(2)), console, HangarScreen.class);
 		snap(HOLD_FRAMES);
 		still("46-hangar-console-with-a-wreck-in-reach");
