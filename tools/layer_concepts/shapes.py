@@ -66,8 +66,8 @@ JOINTS = (None, 9.0, 6.5, 8.0, None, 7.5)
 HEX_ROTATIONS = (0.0, 60.0, 120.0)
 
 
-def hex_boxes(y0: float, y1: float, turn: float, shift: tuple[float, float], r: float, textures: dict) -> list[Box]:
-    """A hexagonal prism of circumradius r between y0 and y1, turned by `turn` degrees about the vertical: the union of three rectangles,
+def hex_boxes(y0: float, y1: float, shift: tuple[float, float], r: float, textures: dict) -> list[Box]:
+    """A hexagonal prism of circumradius r between y0 and y1, the union of three rectangles,
     each r wide and r * sqrt(3) deep, turned 60 degrees apart (their corners are the hexagon's corners). The tops are a hair apart in
     height so the overlapping caps do not fight."""
     depth = r * math.sqrt(3) / 2
@@ -77,7 +77,7 @@ def hex_boxes(y0: float, y1: float, turn: float, shift: tuple[float, float], r: 
         lift = 0.0 if y1 < 16 else -0.015 * i
         sink = 0.0 if y0 > 0 else 0.015 * i
         boxes.append(Box((8 - r / 2 + sx, y0 + sink, 8 - depth + sz), (8 + r / 2 + sx, y1 + lift, 8 + depth + sz), textures,
-                         rotation=(0.0, turn + base, 0.0), pivot=(8.0 + sx, 8.0, 8.0 + sz)))
+                         rotation=(0.0, base, 0.0), pivot=(8.0 + sx, 8.0, 8.0 + sz)))
     return boxes
 
 
@@ -92,12 +92,12 @@ def prism(variant: int, collar: bool = False) -> Model:
     r, (sx, sz) = HEX_R[variant], COLUMN_SHIFT[variant]
     boxes = [Box((4, 0.1, 4), (12, 15.9, 12), {"*": "#core"})]
     if joint:
-        boxes += hex_boxes(0, joint, 0.0, (sx, sz), r, FACES)
-        boxes += hex_boxes(joint, 16, 0.0, (sx + 0.4, sz + 0.4), r, FACES)
+        boxes += hex_boxes(0, joint, (sx, sz), r, FACES)
+        boxes += hex_boxes(joint, 16, (sx + 0.4, sz + 0.4), r, FACES)
     else:
-        boxes += hex_boxes(0, 16, 0.0, (sx, sz), r, FACES)
+        boxes += hex_boxes(0, 16, (sx, sz), r, FACES)
     if collar:
-        boxes += hex_boxes(6, 9, 0.0, (sx, sz), r + 0.6, {"*": "#side", "up": "#end", "down": "#end"})
+        boxes += hex_boxes(6, 9, (sx, sz), r + 0.6, {"*": "#side", "up": "#end", "down": "#end"})
     return Model({}, boxes)
 
 

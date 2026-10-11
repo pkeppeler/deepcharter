@@ -169,7 +169,7 @@ def form_grids(layer: int) -> dict[str, art.Grid]:
         for name, seed in (("lc_crust_side", 41), ("lc_crust_top", 42)):
             out[name] = fitted(lambda s: art.breccia(CRUST, s, cells=5, aspect=1.3, shear=0.4, mid=3, seam_gap=1.0, seam_p=0.8), seed, seams.MAX_RUBBLE_INSIDE)
     else:
-        plates, _ = art.crust_plates(CRUST_SEED, 3, 1.0, 1)
+        plates, _ = art.crust_plates(CRUST_SEED)
         out["lc_crust_side"] = plates
         out["lc_crust_top"] = plates
     return out
@@ -188,8 +188,8 @@ def form_textures(layer: int) -> dict[str, dict]:
         put("lc_company_rock_end", art.basalt_plug(13, None))
     elif layer == 2:
         # The Company's shotcrete in the mod's own colony wall blocks, over the colony kit's pale concrete, so the wall is not the palest thing in a frame.
-        put("colony/concrete_footing", art.shotcrete(81))
-        put("colony/concrete_footing_cracked", art.shotcrete(81, cracked=True))
+        put("colony/concrete_footing", art.shotcrete())
+        put("colony/concrete_footing_cracked", art.shotcrete(cracked=True))
         put("lc_company_rock_0", art.stencilled_concrete(21, "CO"))
         put("lc_company_rock_1", art.stencilled_concrete(22, "07"))
         put("lc_company_rock_end", art.stencilled_concrete(23, "", band=False))
@@ -197,7 +197,7 @@ def form_textures(layer: int) -> dict[str, dict]:
         put("lc_company_rock_0", art.brass_collar_plug(51))
         put("lc_company_rock_1", art.brass_collar_plug(52))
         put("lc_company_rock_end", art.hex_cap(art.ramp("plug", 6), 53))
-        _, crack = art.crust_plates(CRUST_SEED, 3, 1.0, 1)
+        _, crack = art.crust_plates(CRUST_SEED)
         put("lc_crust_seam_glow", art.seam_glow(crack, 62), kind="cutout", glow_over="block/lc_crust_top")
     return out
 

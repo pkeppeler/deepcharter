@@ -73,8 +73,8 @@ SINE16 = (0.0, 0.3826834324, 0.7071067812, 0.9238795325, 1.0, 0.9238795325, 0.70
 
 
 @lru_cache(maxsize=None)
-def zfield(seed: int, passes: int) -> tuple[tuple[float, ...], ...]:
-    """Soft noise, with a mean of 0 and a spread of 1: white noise blurred `passes` times by a 3 x 3 kernel on the tiling texture. A noise of lattice cells
+def zfield(seed: int) -> tuple[tuple[float, ...], ...]:
+    """Soft noise, with a mean of 0 and a spread of 1: white noise blurred twice by a 3 x 3 kernel on the tiling texture. A noise of lattice cells
     has its extremes at the lattice, and a texture made of it has more going on at every 2nd, 4th and 8th pixel than between them; this has none, so no
     pixel is told apart by where it is. Every row and column of the white noise is first made to have the mean of the whole, and the blur keeps that, so no row
     or column of the soft noise is dark or light all along: such a row is the top of every block, and comes back as a dark line across the wall."""
@@ -83,7 +83,7 @@ def zfield(seed: int, passes: int) -> tuple[tuple[float, ...], ...]:
     rows = [sum(row) / SIZE for row in field]
     columns = [sum(field[y][x] for y in range(SIZE)) / SIZE for x in range(SIZE)]
     field = [[field[y][x] - rows[y] - columns[x] + mean for x in range(SIZE)] for y in range(SIZE)]
-    for _ in range(passes):
+    for _ in range(2):
         field = [[sum(wx * wy * field[(y + dy) % SIZE][(x + dx) % SIZE] for dy, wy in ((-1, 1), (0, 2), (1, 1)) for dx, wx in ((-1, 1), (0, 2), (1, 1)))
                   / 16 for x in range(SIZE)] for y in range(SIZE)]
     mean = sum(map(sum, field)) / (SIZE * SIZE)
@@ -104,13 +104,13 @@ def edge_weight(x: int, y: int) -> float:
     return EDGE_OWN + (1 - EDGE_OWN) * min(min(x, y, SIZE - 1 - x, SIZE - 1 - y), EDGE_RAMP) / EDGE_RAMP
 
 
-def soft(seed: int, base: int, x: int, y: int, passes: int) -> float:
+def soft(seed: int, base: int, x: int, y: int) -> float:
     """Soft noise of this variant (`seed`), blended into the noise that every variant of its layer shares (`base`) towards the edge, and equal to it on the
     outermost ring. Each variant then meets any other, at an edge, where the shared noise meets itself across the wrap, and not where two noises that have
     nothing to do with each other meet: that is a line at the edge of every block. Vanilla stone gets this by having one texture, mirrored. The weights
     keep the spread the same everywhere, so no band along the edge is calmer than the rest."""
     w = edge_weight(x, y)
-    return math.sqrt(1 - w) * zfield(base, passes)[y][x] + math.sqrt(w) * zfield(seed, passes)[y][x]
+    return math.sqrt(1 - w) * zfield(base)[y][x] + math.sqrt(w) * zfield(seed)[y][x]
 
 
 def pinned(seed: int, base: int, x: int, y: int, *keys: int) -> float:
@@ -121,7 +121,7 @@ def pinned(seed: int, base: int, x: int, y: int, *keys: int) -> float:
 def grain(seed: int, base: int, x: int, y: int, spread: float = 0.52) -> int:
     """Clustered grain as vanilla stone has it: a shade down where a soft noise is more than `spread` below its mean and up where it is that much above it,
     and a speck in a few pixels. No pixel is told apart from its neighbours by where it is in the texture, so the grain runs on across every edge."""
-    n = soft(seed + 1, base + 1, x, y, 2)
+    n = soft(seed + 1, base + 1, x, y)
     speck = pinned(seed + 2, base + 2, x, y)
     return (1 if n > spread else -1 if n < -spread else 0) + (1 if speck > 0.96 else -1 if speck < 0.04 else 0)
 
@@ -217,7 +217,7 @@ def mottled(shades: list[str], seed: int, mid: int = 2, veins: bool = True, base
     g = blank(shades[mid])
     for y in range(SIZE):
         for x in range(SIZE):
-            n = soft(seed, base, x, y, 2)
+            n = soft(seed, base, x, y)
             g[y][x] = clamp(mid + (2 if n > 1.3 else 1 if n > 0.45 else -2 if n < -1.3 else -1 if n < -0.45 else 0) + grain(seed + 2, base + 2, x, y, 1.1), shades)
     for k in range(1 if veins and hashf(seed, 80) < 0.15 else 0):
         x0, y0 = 2 + int(hashf(seed, 81, k) * 7), 3 + int(hashf(seed, 82, k) * 8)
@@ -416,20 +416,20 @@ def stencilled_concrete(seed: int, text: str, band: bool = True) -> Grid:
 
 # ---------------------------------------------------------------------------------------------------------------- breach crust
 
-def crust_plates(seed: int, cells: int, width: float = 1.2, lift: int = 0) -> tuple[Grid, list[list[bool]]]:
-    """Plates of crust split by cracks, lift shades lighter; the crack mask is returned so a seamed crust can glow in it."""
+def crust_plates(seed: int) -> tuple[Grid, list[list[bool]]]:
+    """Plates of crust split by cracks, one shade lighter; the crack mask is returned so a seamed crust can glow in it."""
     shades = ramp("crust", 6)
-    field = voronoi(seed, cells)
-    crack = [[field[y][x][1] < width for x in range(SIZE)] for y in range(SIZE)]
+    field = voronoi(seed, 3)
+    crack = [[field[y][x][1] < 1.0 for x in range(SIZE)] for y in range(SIZE)]
     g = blank(shades[2])
     for y in range(SIZE):
         for x in range(SIZE):
-            shade = 2 + int(hashf(seed, field[y][x][0], 4) * 3) - 1 + lift
+            shade = 2 + int(hashf(seed, field[y][x][0], 4) * 3)
             g[y][x] = clamp(shade, shades)
             if crack[y][x]:
                 g[y][x] = shades[0]
             elif crack[y - 1][x] or crack[y][x - 1]:
-                g[y][x] = clamp(4 + lift, shades)
+                g[y][x] = clamp(5, shades)
     return g, crack
 
 
@@ -527,31 +527,34 @@ def core(shades: list[str], seed: int) -> Grid:
     return g
 
 
-def shotcrete(seed: int, cracked: bool = False) -> Grid:
+SHOTCRETE_SEED = 81
+
+
+def shotcrete(cracked: bool = False) -> Grid:
     """Sprayed concrete on a mine wall, the Company's, old: rough, a dark grey (not the palest thing in a frame), with broad stains,
     dark rain streaks running down from above, a few rust spots and, if cracked, a crack. Tiles on all four sides."""
     shades = ramp("concrete", 6)
     g = blank(shades[3])
     for y in range(SIZE):
         for x in range(SIZE):
-            n = vnoise(seed, x, y, 4, 4)
-            stain = vnoise(seed + 5, x, y, 8, 8)
-            fleck = hashf(seed, x, y)
+            n = vnoise(SHOTCRETE_SEED, x, y, 4, 4)
+            stain = vnoise(SHOTCRETE_SEED + 5, x, y, 8, 8)
+            fleck = hashf(SHOTCRETE_SEED, x, y)
             shade = 4 + (1 if n > 0.66 else -1 if n < 0.3 else 0) - (1 if stain > 0.5 else 0) - (1 if stain > 0.78 else 0)
             g[y][x] = clamp(shade + (1 if fleck > 0.95 else -1 if fleck < 0.06 else 0), shades)
     for x in range(SIZE):
-        if hashf(seed, x, 31) > 0.62:
-            top = int(hashf(seed, x, 32) * SIZE)
-            for d in range(2 + int(hashf(seed, x, 33) * 6)):
+        if hashf(SHOTCRETE_SEED, x, 31) > 0.62:
+            top = int(hashf(SHOTCRETE_SEED, x, 32) * SIZE)
+            for d in range(2 + int(hashf(SHOTCRETE_SEED, x, 33) * 6)):
                 g[(top + d) % SIZE][x] = "grime.2" if d % 3 else "grime.1"
     for k in range(3):
-        g[int(hashf(seed, 40 + k) * SIZE)][int(hashf(seed, 43 + k) * SIZE)] = "rust.1"
+        g[int(hashf(SHOTCRETE_SEED, 40 + k) * SIZE)][int(hashf(SHOTCRETE_SEED, 43 + k) * SIZE)] = "rust.1"
     if cracked:
         x, y = 3, 1
         for _ in range(14):
             g[y % SIZE][x % SIZE] = shades[0]
             g[y % SIZE][(x + 1) % SIZE] = shades[2]
             y += 1
-            x += 1 if hashf(seed, x, y) > 0.55 else 0
+            x += 1 if hashf(SHOTCRETE_SEED, x, y) > 0.55 else 0
     return g
 
