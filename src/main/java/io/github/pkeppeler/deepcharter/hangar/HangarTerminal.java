@@ -157,7 +157,7 @@ public final class HangarTerminal {
 		}
 		PodEntity wreck = usable.get();
 		HangarTuning.RestoreCost cost = tuning.restoreCost(wreck.chassis());
-		// A wreck nobody owns is registered to the charter that restores it. The lore wreck keeps its own serial; any other takes one. Both need the serials readable.
+		// A wreck nobody owns is registered to the charter that restores it. The lore wreck keeps its own serial; any other takes one.
 		boolean unowned = PodComponents.registration(wreck).isEmpty();
 		boolean lore = PodComponents.isFamousProspector(wreck);
 		if (unowned && !Serials.get(server).isReadable()) {

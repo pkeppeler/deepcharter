@@ -213,16 +213,16 @@ public final class PodComponents {
 	}
 
 	/**
-	 * Server only: makes {@code owner} the owner of the marked wreck under {@link Serials#FAMOUS_PROSPECTOR}, which no counter issues,
-	 * and clears the mark. The number is claimed in {@link Serials}, so a second registration of it, on any pod, throws, as does a pod that is not the marked wreck or is registered already.
+	 * Server only: registers the marked wreck to {@code owner} under {@link Serials#FAMOUS_PROSPECTOR} and clears the mark. Throws
+	 * for a pod that is not the marked wreck or is registered already, and on a second claim of the number on any pod.
 	 */
 	public static void registerLoreWreck(PodEntity pod, CharterId owner) {
-		requireServer(pod);
+		MinecraftServer server = requireServer(pod);
 		if (!Versioned.orThrow(pod, LORE).famousProspector()) {
 			throw new IllegalStateException("pod " + pod.getUUID() + " is not the wreck that holds " + Serials.FAMOUS_PROSPECTOR);
 		}
 		requireUnregistered(pod);
-		Serials.get(requireServer(pod)).claimFamousProspector();
+		Serials.get(server).claimFamousProspector();
 		change(pod, state -> new State(Optional.of(new Registration(owner, Serials.FAMOUS_PROSPECTOR)), state.parts()));
 		Versioned.modifyOrThrow(pod, LORE, lore -> PodLore.NONE);
 		PodEvents.REGISTERED.invoker().onRegistered(pod, owner);
