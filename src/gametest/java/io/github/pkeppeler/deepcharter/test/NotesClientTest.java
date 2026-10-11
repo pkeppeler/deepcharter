@@ -28,6 +28,8 @@ import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
 import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.HandbookDrawn;
+import io.github.pkeppeler.deepcharter.test.support.ShippedNotes;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
@@ -75,39 +77,40 @@ public class NotesClientTest implements FabricClientGameTest {
 		context.runOnClient(client -> {
 			List<Identifier> viewed = new ArrayList<>();
 			Set<Identifier> read = Set.of(FIRST);
-			HandbookScreen screen = new HandbookScreen(noPages(), read::contains, viewed::add, notes(3));
+			List<HandbookNote> listed = notes(3);
+			HandbookScreen screen = new HandbookScreen(noPages(), read::contains, viewed::add, listed);
 			screen.init(WINDOW_WIDTH, WINDOW_HEIGHT);
 			screen.showNotes();
-			require(!screen.notesEmpty(), "with notes the Notes tab is not empty");
-			require(screen.openNote() == null, "the Notes tab opens on the list");
+			require(!HandbookDrawn.showsNotesEmptyState(screen), "with notes the Notes tab is not empty");
+			require(HandbookDrawn.showsNotesList(screen), "the Notes tab opens on the list");
 			require(!screen.noteUnread(FIRST) && screen.noteUnread(Notes.id(2)), "a read note and an unread note are told apart");
 			List<HandbookScreen.NoteRow> rows = screen.noteRows();
 			require(rows.size() == 3, "the list has a row for each note, got " + rows.size());
 
 			require(screen.mouseClicked(clickOn(rows.get(1)), false), "a row is a click target");
-			require(Notes.id(2).equals(screen.openNote()), "clicking a row opens that note, opened " + screen.openNote());
+			require(HandbookDrawn.showsNote(screen, listed.get(1)), "clicking a row opens that note");
 			require(viewed.equals(List.of(Notes.id(2))), "opening an unread note reports it, got " + viewed);
 			screen.closeNote();
-			require(screen.openNote() == null, "back returns to the list");
+			require(HandbookDrawn.showsNotesList(screen), "back returns to the list");
 			screen.openNote(Notes.id(2));
 			require(viewed.size() == 1, "opening a note again reports nothing more, got " + viewed);
 			screen.openNote(FIRST);
 			require(viewed.size() == 1, "opening a note that is read reports nothing, got " + viewed);
 			screen.openNote(Notes.id(9));
-			require(FIRST.equals(screen.openNote()), "a note the tab does not list cannot be opened");
+			require(HandbookDrawn.showsNote(screen, listed.get(0)), "a note the tab does not list cannot be opened");
 			require(viewed.size() == 1, "an unlisted note is never reported, got " + viewed);
 
 			HandbookScreen empty = new HandbookScreen(noPages(), id -> false, id -> { }, List.of());
 			empty.init(WINDOW_WIDTH, WINDOW_HEIGHT);
 			empty.showNotes();
-			require(empty.notesEmpty() && empty.noteRows().isEmpty(), "with no notes the tab shows its empty state");
+			require(HandbookDrawn.showsNotesEmptyState(empty) && empty.noteRows().isEmpty(), "with no notes the tab shows its empty state");
 		});
 	}
 
 	/** Every shipped note has an entry for its row and fits when opened, and a long list scrolls at the smallest sheet. */
 	private static void everyNoteOfTheSliceHasTextAndFitsTheListAtMinimumSize(ClientGameTestContext context) {
 		context.runOnClient(client -> {
-			List<HandbookNote> shipped = Notes.all().stream().map(ClientNotes::entry).toList();
+			List<HandbookNote> shipped = ShippedNotes.ids().stream().map(ClientNotes::entry).toList();
 			HandbookScreen screen = new HandbookScreen(noPages(), id -> false, id -> { }, shipped);
 			screen.init(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT);
 			screen.showNotes();
@@ -119,7 +122,7 @@ public class NotesClientTest implements FabricClientGameTest {
 					"scrolling moves the next note into the first row");
 			for (HandbookNote note : shipped) {
 				screen.openNote(note.id());
-				require(note.id().equals(screen.openNote()), "note " + note.number() + " opens");
+				require(HandbookDrawn.showsNote(screen, note), "note " + note.number() + " opens");
 			}
 		});
 	}
@@ -147,7 +150,7 @@ public class NotesClientTest implements FabricClientGameTest {
 			context.runOnClient(client -> screen.mouseClicked(clickOn(screen.noteRows().getFirst()), false));
 			context.waitTicks(2);
 			context.takeScreenshot("notes-open");
-			require(context.computeOnClient(client -> FIRST.equals(screen.openNote())), "clicking the first row opens the first note");
+			require(context.computeOnClient(client -> HandbookDrawn.showsNote(screen, ClientNotes.entries().getFirst())), "clicking the first row opens the first note");
 			ClientWait.until(context, "the first note marked read", client -> ClientReadMarks.isRead(FIRST), client -> "read mark " + ClientReadMarks.isRead(FIRST));
 			require(singleplayer.getServer().computeOnServer(server -> ReadMarks.isRead(server.getPlayerList().getPlayers().getFirst(), FIRST)),
 					"the server holds the read mark");

@@ -160,11 +160,6 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 		return contentTop(MARGIN) + font.lineHeight + 14 + introLines * (font.lineHeight + CrtTuning.current().lineSpacing()) + GAP * 2;
 	}
 
-	/** The y below the account line: the order rows start under it. */
-	public int accountBottom() {
-		return accountTop() + font.lineHeight;
-	}
-
 	private int rightColumn() {
 		return contentLeft(MARGIN) + BUTTON_WIDTH + 2 * GAP;
 	}
@@ -195,11 +190,6 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 		String ore = entry.order().oreName().getString().toUpperCase(Locale.ROOT);
 		return entry.rounds() == 0 ? Component.translatable("screen.deepcharter.processor.order", entry.delivered(), entry.order().quantity(), ore).getString()
 				: Component.translatable("screen.deepcharter.processor.order_repeat", entry.delivered(), entry.order().quantity(), ore, entry.rounds()).getString();
-	}
-
-	/** The order rows on screen, top to bottom. */
-	public List<OrderRowButton> orderRows() {
-		return List.copyOf(orderRows);
 	}
 
 	/** The heading of the work order block, with the page when the orders take more than one. */

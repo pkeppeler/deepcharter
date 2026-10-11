@@ -26,6 +26,8 @@ import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.DrawnText;
+import io.github.pkeppeler.deepcharter.test.support.HangarDrawn;
 import io.github.pkeppeler.deepcharter.test.support.TerminalPanelScene;
 import io.github.pkeppeler.deepcharter.test.support.TerminalPanelScene.Scene;
 import io.github.pkeppeler.deepcharter.test.support.TerminalPanelScreens;
@@ -171,11 +173,11 @@ public class TerminalPanelClientTest implements FabricClientGameTest {
 	private static List<String[]> textLines(Screen screen) {
 		List<String[]> lines = new ArrayList<>();
 		if (screen instanceof HangarScreen hangar) {
-			for (HangarScreen.PriceLine line : hangar.priceLines()) {
-				lines.add(new String[] {line.text(), String.valueOf(line.x()), String.valueOf(line.y())});
+			for (DrawnText.Drawn line : HangarDrawn.priceLines(hangar)) {
+				lines.add(new String[] {line.text(), String.valueOf(line.box().x()), String.valueOf(line.box().y())});
 			}
-			for (HangarScreen.PriceLine line : hangar.advanceLines()) {
-				lines.add(new String[] {line.text(), String.valueOf(line.x()), String.valueOf(line.y())});
+			for (DrawnText.Drawn line : HangarDrawn.advanceLines(hangar)) {
+				lines.add(new String[] {line.text(), String.valueOf(line.box().x()), String.valueOf(line.box().y())});
 			}
 		} else if (screen instanceof RepairStationScreen repair) {
 			for (RepairStationScreen.TextLine line : repair.textLines()) {

@@ -44,11 +44,12 @@ public class HandbookScreenScenario extends EvidenceScenario {
 			context.waitTicks(HandbookScreenTuning.current().flipTicks());
 			hold(context);
 
-			context.setScreen(() -> new HandbookScreen(HandbookPages.of(chapters(), done(1)), id -> id.getPath().equals("test2"), id -> { }, List.of()));
+			List<HandbookPage> pages = HandbookPages.of(chapters(), done(1));
+			context.setScreen(() -> new HandbookScreen(pages, id -> id.getPath().equals("test2"), id -> { }, List.of()));
 			context.waitForScreen(HandbookScreen.class);
 			context.waitTicks(2);
 			HandbookScreen screen = context.computeOnClient(client -> (HandbookScreen) client.gui.screen());
-			int last = context.computeOnClient(client -> screen.pages().size() - 1);
+			int last = pages.size() - 1;
 			for (int page = 1; page <= last; page++) {
 				int target = page;
 				context.runOnClient(client -> screen.goTo(target));
@@ -59,7 +60,7 @@ public class HandbookScreenScenario extends EvidenceScenario {
 				if (page == 3) {
 					screenshot(context, "contents");
 				}
-				if (screen.pages().get(page) instanceof HandbookPage.Chapter chapter) {
+				if (pages.get(page) instanceof HandbookPage.Chapter chapter) {
 					screenshot(context, "chapter-" + chapter.number());
 				}
 			}

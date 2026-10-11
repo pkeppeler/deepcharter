@@ -55,6 +55,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.wreck.WreckRegistry;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
@@ -330,12 +331,12 @@ public class FoundingMoleHangarTest {
 			give(second.player(), PARTS.get(3), 1);
 			expect(helper, PARTS.size() == 4, "the founding Mole needs four parts, it lists %s", PARTS.size());
 
-			expectDone(helper, Terminals.insertPart(first.player(), console, PARTS.get(0)), "the first part");
-			expectDone(helper, Terminals.insertPart(first.player(), console, PARTS.get(1)), "the second part");
-			expectDone(helper, Terminals.insertPart(second.player(), console, PARTS.get(2)), "the third part");
+			expectDone(helper, TerminalParts.insert(first.player(), console, PARTS.get(0)), "the first part");
+			expectDone(helper, TerminalParts.insert(first.player(), console, PARTS.get(1)), "the second part");
+			expectDone(helper, TerminalParts.insert(second.player(), console, PARTS.get(2)), "the third part");
 			expect(helper, Wrecks.isWreck(derelict) && PodComponents.registration(derelict).isEmpty() && REPAIRED_BY.isEmpty(),
 					"three parts leave the Mole a wreck that nobody owns");
-			expectDone(helper, Terminals.insertPart(second.player(), console, PARTS.get(3)), "the last part");
+			expectDone(helper, TerminalParts.insert(second.player(), console, PARTS.get(3)), "the last part");
 
 			PodComponents.Registration registration = PodComponents.registration(derelict).orElseThrow(() -> failure(helper, "the repaired Mole should be registered"));
 			expect(helper, registration.owner().equals(charterOf(helper, second).id()),
@@ -348,7 +349,7 @@ public class FoundingMoleHangarTest {
 			expect(helper, HangarData.get(server).state().founded(), "the hangar records the founding");
 
 			// The first to repair it owns it: nobody repairs it a second time.
-			expect(helper, Terminals.insertPart(first.player(), console, PARTS.get(0)).equals(Optional.of(TerminalRefusal.ALREADY_REPAIRED)),
+			expect(helper, TerminalParts.insert(first.player(), console, PARTS.get(0)).equals(Optional.of(TerminalRefusal.ALREADY_REPAIRED)),
 					"a repaired console takes no part");
 			expect(helper, PodComponents.registration(derelict).orElseThrow().owner().equals(charterOf(helper, second).id()), "the owner stays");
 			clearFloor(helper);

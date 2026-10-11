@@ -25,7 +25,7 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
-import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
 
 /**
  * Evidence scenario "m2-hangar" for #77: the derelict Mole stands dark in the colony hangar. A charter puts the four parts into the
@@ -62,7 +62,7 @@ public class HangarScenario extends EvidenceScenario {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 				for (Item part : HangarParts.ALL) {
 					player.getInventory().add(new ItemStack(part));
-					Terminals.insertPart(player, console, part).ifPresent(refusal -> {
+					TerminalParts.insert(player, console, part).ifPresent(refusal -> {
 						throw new AssertionError("inserting " + part + ": " + refusal);
 					});
 				}

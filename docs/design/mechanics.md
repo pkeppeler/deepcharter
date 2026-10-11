@@ -1087,6 +1087,7 @@ Also built: **layer 1 spawns four times rarer than layer 2** (1 in 200 against 2
 - Should a crate be a container that can be opened and left, so that a charter can leave salvage for another? Today it breaks into a loot table and is gone.
 - A wrecked prefab that drops salvage (the issue's other source) is not built; crates in patches stand in for it.
 
+<<<<<<< HEAD
 
 ## Renewable salvage (#470, A)
 
@@ -1134,3 +1135,8 @@ Also built: **layer 1 spawns four times rarer than layer 2** (1 in 200 against 2
 - Should a pressed crate be told from the yard's, for a pack that wants to (a stencil, a different lid)? Today it is the same block and item.
 - Should the press take spoil from the player's pack as well as from parked pods? Spoil is a pod attachment, so it does not today.
 - Spore regrowth (A) would still give stalks back to a world with a crew camped by a crater. It is a follow-up if play shows wood, not metal, to be the gap.
+=======
+## The deepest point (#476)
+
+A charter's deepest point is the greatest depth any online member in survival or adventure has stood at on the surface or in a layer, read once a second with `Depth.of` (the HUD's depth). `/deepcharter charter info` prints it in feet, like the HUD. "Reach layer 3", which opens the Morale Initiative, currently means reaching the floor of layer 2 (`LayerChain.topDepth(3)`), because layer 3 does not exist yet. The threshold moves down when layer 3 lands.
+>>>>>>> origin/main

@@ -11,10 +11,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
 
-import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.PodReadout;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
@@ -45,7 +45,7 @@ public class PodShellClientTest implements FabricClientGameTest {
 			float hull = context.computeOnClient(client -> ((PodEntity) client.player.getVehicle()).hull());
 			require(hull == DAMAGED_HULL, "The client should see the pod's synced hull " + DAMAGED_HULL + ", saw " + hull);
 			List<Component> lines = context.computeOnClient(
-					client -> PodStatusHud.lines((PodEntity) client.player.getVehicle()));
+					client -> PodReadout.texts(client, (PodEntity) client.player.getVehicle()));
 			require(lines.getFirst().getString().contains("42"), "The HUD should show hull 42 first, showed " + lines);
 			boolean sameEntity = context.computeOnClient(client -> client.player.getVehicle() == client.level.getEntity(
 					client.player.getVehicle().getId()));

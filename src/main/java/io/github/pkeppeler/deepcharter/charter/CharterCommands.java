@@ -20,6 +20,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
 import io.github.pkeppeler.deepcharter.command.FeatureCommands;
+import io.github.pkeppeler.deepcharter.layer.Depth;
 
 /**
  * Operator commands under {@code /deepcharter charter}. They act as the player who runs them, through the same {@link Charters}
@@ -111,7 +112,7 @@ public final class CharterCommands {
 		Charter found = charter.get();
 		context.getSource().sendSuccess(() -> Component.translatable("deepcharter.charter.info",
 				found.name(), count(Noun.PERSON, found.roster().size()), count(Noun.APPLICATION, found.applications().size()),
-				found.account(), found.deepestPoint()), false);
+				found.account(), Depth.feet(found.deepestPoint())), false);
 		return 1;
 	}
 
