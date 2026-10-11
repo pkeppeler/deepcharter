@@ -29,8 +29,7 @@ def _limb(parent: Bone, pivot, rotation, length: float, width: float, depth: flo
 
 
 def _open_hand(parent: Bone, pivot, rotation, side: int) -> Bone:
-    """An open hand of the hands piece: palm toward local +Z, fingers along local -Y, thumb toward local +X for the left hand (side
-    +1) and -X for the right (side -1), held apart so it reads as open and empty, never a fist."""
+    """An open hand: palm toward +Z, fingers along -Y, thumb toward +X for the left hand (side 1) and -X for the right (-1)."""
     s = 1.45
     hand = parent.child(pivot, rotation)
     hand.box((-1.6 * s, 0.4 * s, -0.9 * s), (1.6 * s, 1.2 * s, 0.9 * s), D, piece=HANDS)          # the wrist

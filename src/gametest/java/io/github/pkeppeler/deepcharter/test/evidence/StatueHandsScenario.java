@@ -81,9 +81,11 @@ public class StatueHandsScenario extends EvidenceScenario {
 		for (int i = 0; i < FRAMES_PER_HAND; i++) {
 			double angle = Math.toRadians(ARC * i / (FRAMES_PER_HAND - 1));
 			look(singleplayer, hand.add(Math.sin(angle) * RADIUS, 0.2, Math.cos(angle) * RADIUS), hand);
-			context.waitTicks(i == 0 ? SETTLE_TICKS : TICKS_PER_FRAME);
 			if (i == 0) {
+				context.waitTicks(SETTLE_TICKS);
 				screenshot(context, still);
+			} else {
+				context.waitTicks(TICKS_PER_FRAME);
 			}
 			frame(context);
 		}
