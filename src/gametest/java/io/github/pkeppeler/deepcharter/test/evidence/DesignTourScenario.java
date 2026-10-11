@@ -1108,7 +1108,7 @@ public class DesignTourScenario extends EvidenceScenario {
 			last = current;
 			ctx.waitTick();
 		}
-		ClientWait.until(ctx, "the client in layer " + 2, client -> client.level.dimension().equals(LayerChain.dimension(2)));
+		ClientWait.until(ctx, "the client in layer 2", client -> client.level.dimension().equals(LayerChain.dimension(2)));
 		clearTransmissions();
 	}
 

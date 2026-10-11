@@ -71,7 +71,7 @@ public class BreachCrossingScenario extends EvidenceScenario {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 				player.teleportTo(one, X, SHAFT_TOP - 1, Z, Set.of(), 0, 70, true);
 			});
-			ClientWait.until(context, "the client in layer " + 1, client -> client.level.dimension().equals(LayerChain.dimension(1)));
+			ClientWait.until(context, "the client in layer 1", client -> client.level.dimension().equals(LayerChain.dimension(1)));
 
 			int typedAt = -1;
 			for (int tick = 0; tick < PATIENCE; tick++) {

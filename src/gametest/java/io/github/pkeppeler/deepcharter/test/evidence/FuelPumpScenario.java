@@ -43,14 +43,16 @@ public class FuelPumpScenario extends EvidenceScenario {
 
 			long start = FuelPumpClientTest.START_BALANCE;
 			context.clickScreenButton("BUY 5 L");
-			ClientWait.until(context, "a balance of " + (start - 5), client -> ClientCharter.view().get().balance() == start - 5,
-					client -> "a balance of " + ClientCharter.view().get().balance());
+			ClientWait.until(context, "the charter's balance of " + (start - 5),
+					client -> ClientCharter.view().map(view -> view.balance() == start - 5).orElse(false),
+					client -> "the charter's balance of " + ClientCharter.view().map(view -> String.valueOf(view.balance())).orElse("(none)"));
 			hold(context);
 			screenshot(context, "pump-bought-5");
 
 			context.clickScreenButton("FILL UP");
-			ClientWait.until(context, "a balance of " + (start - 8), client -> ClientCharter.view().get().balance() == start - 8,
-					client -> "a balance of " + ClientCharter.view().get().balance());
+			ClientWait.until(context, "the charter's balance of " + (start - 8),
+					client -> ClientCharter.view().map(view -> view.balance() == start - 8).orElse(false),
+					client -> "the charter's balance of " + ClientCharter.view().map(view -> String.valueOf(view.balance())).orElse("(none)"));
 			hold(context);
 			screenshot(context, "pump-full");
 			context.setScreen(() -> null);

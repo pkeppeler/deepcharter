@@ -474,7 +474,7 @@ public class M2SliceScenario extends EvidenceScenario {
 		recordUntil(server -> podIn(server, mole, LayerChain.dimension(2)), WAIT_TICKS * 5, "The Mole did not cross into layer 2",
 				stillOnce(server -> findPod(server, mole).filter(pod -> pod.getY() < FLOOR_Y - 1).isPresent(), "31-boring-through-the-crust"));
 		ctx.getInput().releaseKey(options -> options.keySprint);
-		ClientWait.until(ctx, "the client in layer " + 2, client -> client.level.dimension().equals(LayerChain.dimension(2)));
+		ClientWait.until(ctx, "the client in layer 2", client -> client.level.dimension().equals(LayerChain.dimension(2)));
 		say("10. Layer 2, the Old Workings. The first breach is crossed.");
 		awaitServer(server -> directiveDone(server, "first_breach/breach_workings"));
 		refuelWithCoal();

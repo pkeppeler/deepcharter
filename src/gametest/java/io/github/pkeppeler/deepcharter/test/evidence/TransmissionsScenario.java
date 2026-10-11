@@ -61,7 +61,7 @@ public class TransmissionsScenario extends EvidenceScenario {
 				player.teleportTo(one, X, one.getMinY() + 40, Z, Set.of(), 0, 0, true);
 				return Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id();
 			});
-			ClientWait.until(context, "the client in layer " + 1, client -> client.level.dimension().equals(LayerChain.dimension(1)));
+			ClientWait.until(context, "the client in layer 1", client -> client.level.dimension().equals(LayerChain.dimension(1)));
 			context.waitTicks(SETTLE_TICKS);
 
 			singleplayer.getServer().runOnServer(server -> {
