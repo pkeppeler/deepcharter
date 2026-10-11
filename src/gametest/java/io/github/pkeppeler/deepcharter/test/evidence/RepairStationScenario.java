@@ -44,7 +44,7 @@ public class RepairStationScenario extends EvidenceScenario {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			RepairStationClientTest.Scene scene = singleplayer.getServer().computeOnServer(RepairStationClientTest::setUp);
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.station())));
-			context.waitForScreen(RepairStationScreen.class);
+			ClientWait.screen(context, RepairStationScreen.class);
 			hold(context);
 			screenshot(context, "station");
 

@@ -9,6 +9,7 @@ import net.minecraft.world.level.block.Blocks;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 
 /**
@@ -43,7 +44,7 @@ public class ScannerHudScenario extends EvidenceScenario {
 
 			ScannerHudTest.leavePod(context, server);
 			ScannerHudTest.goToLayer(server, 2);
-			context.waitFor(client -> client.level.dimension().identifier().getPath().equals("layer_2"));
+			ClientWait.until(context, "the client in layer 2", client -> client.level.dimension().identifier().getPath().equals("layer_2"));
 			context.waitTicks(40);
 			RoomCarver.carveAroundFirstPlayer(server);
 			ScannerHudTest.rideWithGoldAhead(context, server, 1);
@@ -66,7 +67,7 @@ public class ScannerHudScenario extends EvidenceScenario {
 
 	private void mountAndShoot(ClientGameTestContext context, TestServerContext server, int scannerTier, String screenshotName) {
 		ScannerHudTest.mountFirstPlayer(server, scannerTier);
-		context.waitFor(client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
+		ClientWait.until(context, "the player riding a pod", client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
 		// A transmission can play over the map just after a mount; the shot waits it out. The pod stands in lava and burns, but 100 hull outlasts the wait.
 		context.waitTicks(LAVA_SHOT_TICKS);
 		screenshot(context, screenshotName);

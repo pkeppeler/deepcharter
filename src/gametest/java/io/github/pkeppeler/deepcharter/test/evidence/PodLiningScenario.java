@@ -23,6 +23,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -77,7 +78,7 @@ public class PodLiningScenario extends EvidenceScenario {
 					throw new AssertionError("the player could not mount the pod");
 				}
 			});
-			context.waitFor(client -> client.player != null && client.player.getVehicle() instanceof PodEntity
+			ClientWait.until(context, "the player riding a pod in layer 1", client -> client.player != null && client.player.getVehicle() instanceof PodEntity
 					&& client.level.dimension().equals(LayerChain.dimension(1)));
 			context.runOnClient(client -> {
 				client.options.setCameraType(CameraType.FIRST_PERSON);

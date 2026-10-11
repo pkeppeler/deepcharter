@@ -9,6 +9,7 @@ import net.minecraft.world.level.block.Blocks;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 
 /**
@@ -38,13 +39,13 @@ public class ScannerTiersScenario extends EvidenceScenario {
 			server.runCommand("time set midnight");
 			context.waitTicks(40);
 			ScannerHudTest.goToLayer(server, 2);
-			context.waitFor(client -> client.level.dimension().identifier().getPath().equals("layer_2"));
+			ClientWait.until(context, "the client in layer 2", client -> client.level.dimension().identifier().getPath().equals("layer_2"));
 			context.waitTicks(40);
 			RoomCarver.carveAroundFirstPlayer(server);
 
 			for (int tier = 0; tier <= 2; tier++) {
 				ScannerHudTest.mountFirstPlayer(server, tier);
-				context.waitFor(client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
+				ClientWait.until(context, "the player riding a pod", client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
 				if (tier == 1) {
 					// Joining a charter plays its layer 2 transmission over the map; let it finish.
 					context.waitTicks(TRANSMISSION_TICKS);

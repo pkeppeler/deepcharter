@@ -15,6 +15,7 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.client.charter.terminal.ContractScreen;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ContractShown;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
@@ -29,7 +30,6 @@ public class ContractTerminalScenario extends EvidenceScenario {
 	private static final int TICKS_PER_FRAME = 3;
 	private static final int TYPING_FRAMES = 30;
 	private static final int HOLD_FRAMES = 8;
-	private static final int WAIT_TICKS = 200;
 
 	@Override
 	protected String name() {
@@ -48,7 +48,7 @@ public class ContractTerminalScenario extends EvidenceScenario {
 			});
 
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(terminal)));
-			context.waitForScreen(ContractScreen.class);
+			ClientWait.screen(context, ContractScreen.class);
 			awaitState(context, ContractShown::hasNoCharter);
 			ContractScreen screen = context.computeOnClient(client -> (ContractScreen) client.gui.screen());
 			for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
@@ -89,7 +89,7 @@ public class ContractTerminalScenario extends EvidenceScenario {
 	}
 
 	private static void awaitState(ClientGameTestContext context, Predicate<ContractScreen> wanted) {
-		context.waitFor(client -> client.gui.screen() instanceof ContractScreen open && wanted.test(open), WAIT_TICKS);
+		ClientWait.until(context, "the contract screen in the wanted state", client -> client.gui.screen() instanceof ContractScreen open && wanted.test(open));
 	}
 
 	/** The dedicated server's join toasts ("chat messages can't be verified") would cover the screen. */

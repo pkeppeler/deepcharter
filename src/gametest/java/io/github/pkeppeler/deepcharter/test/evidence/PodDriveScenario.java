@@ -7,6 +7,7 @@ import net.minecraft.client.CameraType;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.test.PodShellClientTest;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /** Evidence scenario "pod-drive": a bot-driven recording of a pod driving along the ground, climbing on its rotor and falling back. */
 public class PodDriveScenario extends EvidenceScenario {
@@ -25,7 +26,7 @@ public class PodDriveScenario extends EvidenceScenario {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			context.waitTicks(40);
 			PodShellClientTest.mountFirstPlayer(singleplayer.getServer());
-			context.waitFor(client -> client.player.getVehicle() instanceof PodEntity);
+			ClientWait.until(context, "the player riding a pod", client -> client.player.getVehicle() instanceof PodEntity);
 			// The shared mount helper starts the pod damaged; the picture is of a sound pod.
 			singleplayer.getServer().runOnServer(server -> {
 				PodEntity pod = (PodEntity) server.getPlayerList().getPlayers().getFirst().getVehicle();
