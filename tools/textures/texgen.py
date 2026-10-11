@@ -37,6 +37,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parent))
 
 import pngio  # noqa: E402
 import sheet  # noqa: E402
@@ -137,14 +138,7 @@ def outputs(target: Target) -> dict[str, bytes | pngio.Rgba]:
 
 
 def differs(path: Path, want: bytes | pngio.Rgba) -> bool:
-    if not path.is_file():
-        return True
-    if isinstance(want, bytes):
-        return path.read_bytes() != want
-    try:
-        return pngio.decode(path.read_bytes(), str(path)) != want
-    except ValueError:
-        return True
+    return pngio.stale(path, want if isinstance(want, bytes) else pngio.encode(want))
 
 
 def strays(target: Target) -> list[str]:

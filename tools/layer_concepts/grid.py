@@ -26,7 +26,7 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE.parent / "textures"))
+sys.path.insert(0, str(HERE.parent))
 
 import pngio  # noqa: E402
 

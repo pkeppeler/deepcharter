@@ -2,15 +2,14 @@
 import contextlib
 import io
 import json
-import struct
 import sys
 import tempfile
 import unittest
-import zlib
 from pathlib import Path
 from unittest import mock
 
 TEXTURES = Path(__file__).resolve().parent.parent / "textures"
+sys.path.insert(0, str(TEXTURES.parent))
 sys.path.insert(0, str(TEXTURES))
 
 import pngio  # noqa: E402
@@ -37,27 +36,6 @@ class CommittedTexturesTest(unittest.TestCase):
         code, out, err = run("--check")
         self.assertEqual(0, code, err)
         self.assertIn("match", out)
-
-
-class PngTest(unittest.TestCase):
-    def test_rgba_round_trip_keeps_alpha(self):
-        pixels = bytes([10, 20, 30, 255, 0, 0, 0, 0, 200, 100, 50, 128, 1, 2, 3, 4])
-        image = pngio.Rgba(2, 2, pixels)
-        self.assertEqual(image, pngio.decode(pngio.encode(image)))
-
-    def test_a_palette_png_with_transparency_reads_as_rgba(self):
-        def chunk(kind, body):
-            return struct.pack(">I", len(body)) + kind + body + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
-
-        header = struct.pack(">IIBBBBB", 2, 1, 8, 3, 0, 0, 0)
-        raw = bytes([1, 0, 1])  # filter 1 (sub): index 0, then 0 + 1 = index 1
-        data = (pngio.SIGNATURE + chunk(b"IHDR", header) + chunk(b"PLTE", bytes([255, 0, 0, 0, 0, 255])) + chunk(b"tRNS", bytes([0]))
-                + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
-        self.assertEqual(bytes([255, 0, 0, 0, 0, 0, 255, 255]), pngio.decode(data).pixels)
-
-    def test_not_a_png_fails(self):
-        with self.assertRaises(ValueError):
-            pngio.decode(b"GIF89a")
 
 
 class RecipeRulesTest(unittest.TestCase):

@@ -8,13 +8,14 @@ Usage: tools/colony/preview.py <piece> [--out DIR] [--size N]
 """
 import argparse
 import math
-import struct
 import sys
-import zlib
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parent))
+
+import pngio  # noqa: E402
 
 Vec = tuple[float, float, float]
 
@@ -117,13 +118,9 @@ def _fill(img, pts, colour) -> None:
 
 def write_png(path: Path, img) -> None:
     height, width = len(img), len(img[0])
-    raw = b"".join(b"\x00" + bytes(c for px in row for c in px) for row in img)
-    def chunk(kind, data):
-        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
-    png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
-    png += chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b"")
+    pixels = bytes(c for row in img for px in row for c in (*px, 255))
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(png)
+    path.write_bytes(pngio.encode(pngio.Rgba(width, height, pixels)))
 
 
 def sheet(images: list, columns: int) -> list:
