@@ -1148,6 +1148,44 @@ The lights part ($125) pays back after 1.08 unanswered grabs, because an unanswe
 - Should the press take spoil from the player's pack as well as from parked pods? Spoil is a pod attachment, so it does not today.
 - Spore regrowth (A) would still give stalks back to a world with a crew camped by a crater. It is a follow-up if play shows wood, not metal, to be the gap.
 
+## The crafted scanner (#483, A)
+
+**Problem.** Until now the scanner was a $200 purchase at the upgrade terminal with no free tier: a Mole showed no scanner until its charter had earned two layer 1 runs blind. The user decided on 2026-10-11 (M2 demo, #200) that the first scanner is a crafted item, like the first-tier pieces of the first mining pod, and every tier after it is a purchase, so that mining by hand, which is too slow by then, pushes the player into the pod and its economy.
+
+**The ladder.**
+1. **By hand: crafted.** A scanner unit, 4 iron, 2 copper and 2 redstone in a 3 by 3 grid (`recipe/scanner_unit.json`), made in the bootstrap from the yard's scrap. Using it on the player's own charter's pod fits a tier 1 scanner stamped for the charter ([ADR 0048](../adr/0048-the-tier-1-scanner-is-a-crafted-unit-fitted-by-use.md)).
+2. **The pod: bought.** Tier 2 (the thermal tier, $500) and above are bought at the upgrade terminal and need the tier 1 part fitted first. A tier 2 purchase replaces the tier 1 part, which drops.
+3. **Mastery.** None: no chassis makes the scanner unnecessary.
+
+**What the other first-tier pieces are today.** The Mole's own first-tier pieces are not separately crafted: the hangar's four parts (tread assembly, rotor hub, drill head, fuel injector, `HangarParts`) repair the founding Mole, and the Mole then has its stock tier 0 parts. They go into the hangar console. The scanner has no stock tier, so it is the one first-tier piece with a crafted item of its own, and nothing else is changed here.
+
+**Trade-offs.** The scanner costs crates before the first run instead of dollars after two. A charter that does not craft and fit it digs blind and finds ore by luck, which is the slowness that tier 2 then sells the cure to.
+
+**Measured.** By `ScannerCostTest`, from the shipped recipe files, the real crate loot table (crate `n` of a start is seed `n`, 1,500 starts) and the game's own block and furnace numbers. The kit is what a charter makes before its first run: the parts of the fuel pump, the ore processor and the upgrade terminal, and the Mole's four hangar parts. The minutes are one trip to the yard and back, the crates, the furnace and the crafting, with (A) marking what the model assumes.
+
+| Number | Value |
+|---|---|
+| The recipe | 4 iron, 2 copper, 2 redstone (8 items, 6 ingots to smelt) |
+| The kit before the first run | 30 iron, 22 copper, 12 redstone |
+| Crates for the scanner alone | mean 4.8, median 5, 90th percentile 7 (one patch holds up to 8) |
+| Crates for the kit | mean 30.6, median 30, 90th percentile 37 |
+| Crates for the kit and the scanner | mean 34.5, median 34, 90th percentile 41: the scanner adds 13% |
+| Minutes, the scanner alone | 2.2 |
+| Minutes, the kit | 12.3 |
+| Minutes, the kit and the scanner | 13.6: the scanner adds 1.3 |
+| The old price | $200: 2 layer 1 runs of $115 before the first run |
+| Tier 2 | $500, as before; 2 layer 2 runs at most |
+
+The minutes use these (A) assumptions: the player sprints at 5.612 blocks a second; the trip is to the middle of the yard (130 blocks from the colony) and back, once; each crate costs 2 seconds to reach (a patch spreads over 4 blocks) and 1.8 to break by hand (1.5 times its 1.2 hardness); one furnace cooks one ingot at a time at 10 seconds each, which dominates; crafting is 5 seconds a part. A second furnace halves the smelting, which takes the scanner's added minutes from 1.3 to 0.8. The kit before the scanner is about 12 minutes from the colony, so the scanner is made on the same trip, about a tenth later, and is fitted before the first run instead of after the second.
+
+**Knobs.** `recipe/scanner_unit.json` (the metal); `UpgradeTuning` (scanner tier 1 price 0, tier 2 $500); `ComponentTrack.SCANNER`'s `firstTierCrafted` flag. The guards: `ScannerCostTest` (at most 8 crates in 9 starts of 10, at most 25% more crates than the kit and at most 2 minutes more), and `EconomyAffordabilityTest`'s tier 2 band.
+
+**Economy impact.** The total a charter pays for a tier 2 scanner falls by $200 (it no longer buys tier 1), and a charter's first run is now seen. No other price moves, so `EarlyRunModel` and the early-run bands of `EconomyAffordabilityTest` are unchanged: the scanner's tier 1 is skipped in the early tier 1 band (it costs no money), and the tier 2 band is the one that guards it. This makes the default **easier** on the dollars and **harder** on the bootstrap: +4 iron, +2 copper and +2 redstone to the 30, 22 and 12 of the kit (+13% crates, +1.3 minutes). Unpacked and early-game columns for the run itself are unchanged.
+
+**Open questions.**
+- Should a charter be able to take a unit back out of a pod (to move it to a spare)? Today a tier 2 purchase drops the replaced part and a chassis change carries the parts over (SPEC section 7), so a unit is not needed for that.
+- Should the unit be craftable by a second charter member who has no pod yet? Today it needs only the player's own charter's pod, so anyone can craft one.
+
 ## The deepest point (#476)
 
 A charter's deepest point is the greatest depth any online member in survival or adventure has stood at on the surface or in a layer, read once a second with `Depth.of` (the HUD's depth). `/deepcharter charter info` prints it in feet, like the HUD. "Reach layer 3", which opens the Morale Initiative, currently means reaching the floor of layer 2 (`LayerChain.topDepth(3)`), because layer 3 does not exist yet. The threshold moves down when layer 3 lands.

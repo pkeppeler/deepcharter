@@ -28,6 +28,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
@@ -157,6 +158,11 @@ public final class PodComponents {
 		return Optional.ofNullable(read(pod).parts().get(track));
 	}
 
+	/** The part of {@code track} on the pod, if it is stamped for {@code charter}. */
+	public static Optional<PartLabel> partOf(PodEntity pod, ComponentTrack track, CharterId charter) {
+		return partOf(pod, track).filter(label -> label.charter().equals(charter));
+	}
+
 	/**
 	 * The tier the pod gets from {@code track}: 0 for no part or a void one, and never above the chassis' cap. The scanner,
 	 * lights and radiator read this to know what they do.
@@ -212,6 +218,18 @@ public final class PodComponents {
 		track.requirePartTier(label.tier());
 		Optional<PartLabel> replaced = Optional.ofNullable(Versioned.orThrow(pod, STATE).parts().get(track));
 		change(pod, state -> state.with(track, label));
+		return replaced;
+	}
+
+	/**
+	 * As {@link #install}, and the part it replaces drops as an item at the pod, so no part is lost to a fit or a purchase. The one
+	 * place that rule lives: the upgrade terminal and the scanner unit both install through it.
+	 */
+	public static Optional<PartLabel> installAndDropReplaced(PodEntity pod, ItemStack stack) {
+		Optional<PartLabel> replaced = install(pod, stack);
+		ComponentTrack track = ComponentItems.trackOf(stack).orElseThrow();
+		replaced.ifPresent(label -> pod.level().addFreshEntity(
+				new ItemEntity(pod.level(), pod.getX(), pod.getY() + pod.getBbHeight(), pod.getZ(), ComponentItems.stackOf(track, label))));
 		return replaced;
 	}
 

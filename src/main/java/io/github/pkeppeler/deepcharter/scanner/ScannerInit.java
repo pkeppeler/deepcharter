@@ -10,5 +10,6 @@ public final class ScannerInit {
 
 	public static void init() {
 		ScannerRegistry.register();
+		ScannerFitting.init();
 	}
 }
