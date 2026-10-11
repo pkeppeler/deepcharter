@@ -15,8 +15,8 @@ import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 
 /**
  * While {@link EvidencePins#figureFade} is set, a lampless figure is drawn that far faded, however far it has really faded: the real
- * fade runs on the server's ticks. While {@link EvidencePins#figureAnimationAge} is set, GeckoLib reads that age as the clock of the
- * figure's animation, so the figure stands in one frame of its animation in every shot. Pods keep their own animation. Test code only.
+ * fade runs on the server's ticks. While {@link EvidencePins#figureAnimationAge} is set, its animation clock is held at that age. Test
+ * code only.
  */
 @Mixin(value = LamplessFigureRenderer.class, remap = false)
 public abstract class LamplessFigureRendererMixin {
