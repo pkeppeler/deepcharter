@@ -84,6 +84,7 @@ public final class TerminalScreen extends CrtScreen implements TerminalViewScree
 		return view.repaired();
 	}
 
+	@Override
 	public Typewriter typewriter() {
 		return typewriter;
 	}

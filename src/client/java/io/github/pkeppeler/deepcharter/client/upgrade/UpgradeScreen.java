@@ -81,6 +81,7 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 		return selected;
 	}
 
+	@Override
 	public Typewriter typewriter() {
 		return typewriter;
 	}

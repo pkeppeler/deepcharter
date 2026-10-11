@@ -4,7 +4,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 
 import net.minecraft.client.input.CharacterEvent;
 
-import io.github.pkeppeler.deepcharter.client.ui.CrtDemoScreen;
+import io.github.pkeppeler.deepcharter.test.support.CrtDemoScreen;
 
 /**
  * Evidence scenario "m2-crt-ui-kit" for #53: the demo screen types its text out, then a name is typed into the

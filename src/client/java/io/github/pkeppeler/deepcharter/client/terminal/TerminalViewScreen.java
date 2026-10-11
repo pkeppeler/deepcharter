@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.client.terminal;
 
+import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 
 /**
@@ -13,4 +14,7 @@ public interface TerminalViewScreen {
 
 	/** Shows {@code view}. Only called after {@link #accepts} returned true. */
 	void update(TerminalView view);
+
+	/** The typewriter of the screen's text. A client test waits for it to finish before it reads the screen. */
+	Typewriter typewriter();
 }
