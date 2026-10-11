@@ -31,6 +31,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Evidence scenario "m2-work-orders-repeat" for #188: the Founder's hands are done, the charter has reached the top of layer 3, and a
@@ -43,7 +44,6 @@ public class WorkOrdersRepeatScenario extends EvidenceScenario {
 	private static final int TYPING_FRAMES = 45;
 	private static final int HOLD_FRAMES = 8;
 	private static final int SETTLE_TICKS = 60;
-	private static final int WAIT_TICKS = 200;
 	private static final int ORDER_LINES = 5;
 	private static final int HOLD_SILVERIUM = 7;
 	private static final int PODS = 2;
@@ -58,7 +58,7 @@ public class WorkOrdersRepeatScenario extends EvidenceScenario {
 	@Override
 	protected void run(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			context.waitFor(client -> client.player != null && client.level != null);
+			ClientWait.until(context, "the player and level of the world", client -> client.player != null && client.level != null);
 			ColonySite.Placed colony = singleplayer.getServer().computeOnServer(server -> {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 				player.setPermanentlyInvulnerable(true);
@@ -84,7 +84,8 @@ public class WorkOrdersRepeatScenario extends EvidenceScenario {
 			OreProcessorScreen screen = open(context, processor);
 			give(singleplayer, OreType.BRONZIUM, 10);
 			context.clickScreenButton("DELIVER BRONZIUM");
-			context.waitFor(client -> screen.orderLines().getLast().endsWith("DONE"), WAIT_TICKS);
+			ClientWait.until(context, "the last order line ending DONE", client -> screen.orderLines().getLast().endsWith("DONE"),
+					client -> "the order lines " + screen.orderLines());
 			context.setScreen(() -> null);
 
 			// The charter reaches the top of layer 3, and a pod of its own parks at the processor with 10 Silverium in its holds.
@@ -100,12 +101,14 @@ public class WorkOrdersRepeatScenario extends EvidenceScenario {
 			});
 
 			OreProcessorScreen second = open(context, processor);
-			context.waitFor(client -> second.orderLines().size() == ORDER_LINES, WAIT_TICKS);
+			ClientWait.until(context, ORDER_LINES + " order lines on the second screen", client -> second.orderLines().size() == ORDER_LINES,
+					client -> "the order lines " + second.orderLines());
 			hold(context);
 			screenshot(context, "two-orders-listed");
 
 			context.clickScreenButton("DELIVER SILVERIUM");
-			context.waitFor(client -> second.orderLines().getLast().equals("0 / 10 SILVERIUM  DONE x1"), WAIT_TICKS);
+			ClientWait.until(context, "the last order line 0 / 10 SILVERIUM  DONE x1", client -> second.orderLines().getLast().equals("0 / 10 SILVERIUM  DONE x1"),
+					client -> "the order lines " + second.orderLines());
 			singleplayer.getServer().runOnServer(server -> {
 				if (Terminals.parkedPods(server.overworld(), processor).stream().anyMatch(pod -> pod.cargoUsed() != 0)) {
 					throw new AssertionError("the delivery should have emptied the holds");
@@ -120,7 +123,7 @@ public class WorkOrdersRepeatScenario extends EvidenceScenario {
 	/** Opens the ore processor's screen and lets its intro type out. */
 	private OreProcessorScreen open(ClientGameTestContext context, BlockPos processor) {
 		context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(processor)));
-		context.waitForScreen(OreProcessorScreen.class);
+		ClientWait.screen(context, OreProcessorScreen.class);
 		OreProcessorScreen screen = context.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
 		for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
 			context.waitTicks(TICKS_PER_FRAME);

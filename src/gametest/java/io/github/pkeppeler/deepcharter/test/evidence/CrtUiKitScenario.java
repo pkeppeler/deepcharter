@@ -4,6 +4,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 
 import net.minecraft.client.input.CharacterEvent;
 
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.CrtDemoScreen;
 
 /**
@@ -23,7 +24,7 @@ public class CrtUiKitScenario extends EvidenceScenario {
 	@Override
 	protected void run(ClientGameTestContext context) {
 		context.setScreen(CrtDemoScreen::new);
-		context.waitForScreen(CrtDemoScreen.class);
+		ClientWait.screen(context, CrtDemoScreen.class);
 		CrtDemoScreen screen = context.computeOnClient(client -> (CrtDemoScreen) client.gui.screen());
 		for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
 			context.waitTicks(TICKS_PER_FRAME);

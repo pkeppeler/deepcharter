@@ -20,6 +20,7 @@ import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -105,6 +106,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
@@ -144,7 +146,6 @@ public class DesignTourScenario extends EvidenceScenario {
 	private static final double EYE = 1.62;
 	/** The Host's plinth is this many blocks high (tools/colony/town.py PLINTH_TOP): his anchor is the block over it. */
 	private static final int PLINTH_TOP = 5;
-	private static final int WAIT = 400;
 	private static final int ORBIT_FRAMES = 26;
 	private static final int ORBIT_RADIUS = 58;
 	private static final int ORBIT_HEIGHT = 34;
@@ -203,7 +204,7 @@ public class DesignTourScenario extends EvidenceScenario {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().setUseConsistentSettings(false)
 				.adjustSettings(state -> state.setSeed("deepcharter-design-tour")).create()) {
 			sp = singleplayer;
-			context.waitFor(client -> client.player != null && client.level != null);
+			ClientWait.until(context, "the player and level of the world", client -> client.player != null && client.level != null);
 			context.waitTicks(80);
 			ColonySite.Placed colony = serverGet(server -> Colony.placed(server).orElseThrow(() -> new AssertionError("no colony")));
 			ground = colony.center();
@@ -364,10 +365,10 @@ public class DesignTourScenario extends EvidenceScenario {
 	// ------------------------------------------------------------------------------------------------ handbook, items
 
 	private void handbook() {
-		ctx.waitFor(client -> handbookSlot(client) >= 0, WAIT);
+		ClientWait.until(ctx, "the handbook in the hotbar", client -> handbookSlot(client) >= 0);
 		ctx.runOnClient(client -> client.player.getInventory().setSelectedSlot(handbookSlot(client)));
 		ctx.getInput().pressKey(options -> options.keyUse);
-		ctx.waitForScreen(HandbookScreen.class);
+		ClientWait.screen(ctx, HandbookScreen.class);
 		ctx.waitTicks(HandbookScreenTuning.current().flipTicks() + 10);
 		still("handbook-opened-from-the-item");
 		ctx.setScreen(() -> null);
@@ -375,7 +376,7 @@ public class DesignTourScenario extends EvidenceScenario {
 		// Built as HandbookScreen.open builds it: the shipped chapters only, with the progress the server synced.
 		List<HandbookPage> pages = ctx.computeOnClient(ShippedHandbook::pages);
 		ctx.setScreen(() -> new HandbookScreen(pages, id -> true, id -> { }, List.of()));
-		ctx.waitForScreen(HandbookScreen.class);
+		ClientWait.screen(ctx, HandbookScreen.class);
 		HandbookScreen screen = ctx.computeOnClient(client -> (HandbookScreen) client.gui.screen());
 		Set<String> seen = new HashSet<>();
 		for (int index = 0; index < pages.size(); index++) {
@@ -424,7 +425,7 @@ public class DesignTourScenario extends EvidenceScenario {
 			});
 			ctx.waitTicks(4);
 			ctx.setScreen(() -> new InventoryScreen(Minecraft.getInstance().player));
-			ctx.waitForScreen(InventoryScreen.class);
+			ClientWait.screen(ctx, InventoryScreen.class);
 			ctx.waitTicks(6);
 			still("items-gallery-" + (page + 1));
 			ctx.setScreen(() -> null);
@@ -728,7 +729,7 @@ public class DesignTourScenario extends EvidenceScenario {
 	private void openAt(BlockPos terminal, Vec3 eye, Class<?> screen) {
 		view(0, eye, Vec3.atCenterOf(terminal), 20);
 		ctx.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(terminal)));
-		ctx.waitFor(client -> screen.isInstance(client.gui.screen()), WAIT);
+		ClientWait.screen(ctx, screen.asSubclass(Screen.class));
 		if (!TerminalViewScreen.class.isAssignableFrom(screen)) {
 			throw new AssertionError(screen + " is not a terminal screen");
 		}
@@ -950,7 +951,7 @@ public class DesignTourScenario extends EvidenceScenario {
 					.interact(player, player.level(), InteractionHand.MAIN_HAND, pod, null);
 			player.setShiftKeyDown(false);
 		});
-		ctx.waitForScreen(OreCargoScreen.class);
+		ClientWait.screen(ctx, OreCargoScreen.class);
 		ctx.waitTicks(10);
 		still("screen-pod-cargo");
 		ctx.setScreen(() -> null);
@@ -962,7 +963,7 @@ public class DesignTourScenario extends EvidenceScenario {
 		Vec3 stage = stage();
 		view(0, stage.add(0, EYE, 0), stage.add(0, EYE, 20), 60);
 		ScannerHudTest.mountFirstPlayer(sp.getServer(), 0);
-		ctx.waitFor(client -> client.player.getVehicle() instanceof PodEntity, WAIT);
+		ClientWait.until(ctx, "the player riding a pod", client -> client.player.getVehicle() instanceof PodEntity);
 		fillPodForHud();
 		hud(true);
 		ctx.waitTicks(20);
@@ -990,7 +991,7 @@ public class DesignTourScenario extends EvidenceScenario {
 				pod.discard();
 			}
 		});
-		ctx.waitFor(client -> client.player.getVehicle() == null, WAIT);
+		ClientWait.until(ctx, "the player out of the pod", client -> client.player.getVehicle() == null);
 	}
 
 	private void fillPodForHud() {
@@ -1087,8 +1088,8 @@ public class DesignTourScenario extends EvidenceScenario {
 			ServerLevel one = server.getLevel(LayerChain.dimension(1));
 			player(server).teleportTo(one, x + 0.5, one.getMinY() - 1, z + 0.5, Set.of(), 0, 60, true);
 		});
-		ctx.waitFor(client -> client.level.dimension().equals(LayerChain.dimension(2)) && client.gui.screen() == null
-				&& BreachEffects.fadeAlpha(0f) > 0f, WAIT);
+		ClientWait.until(ctx, "layer 2 with the breach fade running and no screen", client -> client.level.dimension().equals(LayerChain.dimension(2)) && client.gui.screen() == null
+				&& BreachEffects.fadeAlpha(0f) > 0f);
 		settle("hud-breach-fade");
 		screenshot(ctx, "hud-breach-fade");
 		EvidencePins.breachFadeAlpha = -1f;
@@ -1107,7 +1108,7 @@ public class DesignTourScenario extends EvidenceScenario {
 			last = current;
 			ctx.waitTick();
 		}
-		ctx.waitFor(client -> client.level.dimension().equals(LayerChain.dimension(2)), WAIT);
+		ClientWait.until(ctx, "the client in layer " + 2, client -> client.level.dimension().equals(LayerChain.dimension(2)));
 		clearTransmissions();
 	}
 
@@ -1138,7 +1139,7 @@ public class DesignTourScenario extends EvidenceScenario {
 		hud(true);
 		serverDo(server -> player(server).removeEffect(MobEffects.NIGHT_VISION));
 		ScannerHudTest.mountFirstPlayer(sp.getServer(), 4);
-		ctx.waitFor(client -> client.player.getVehicle() instanceof PodEntity, WAIT);
+		ClientWait.until(ctx, "the player riding a pod", client -> client.player.getVehicle() instanceof PodEntity);
 		fillPodForHud();
 		ctx.waitTicks(80);
 		still("hud-scanner-tier-4-layer-2");
@@ -1339,10 +1340,13 @@ public class DesignTourScenario extends EvidenceScenario {
 			player.teleportTo(server.getLevel(LayerChain.dimension(layer)), eye.x, eye.y - EYE, eye.z, Set.of(), yaw, pitch, true);
 		});
 		// Arrived exactly, looking exactly: a camera still a block short, or a turn short, makes a different picture.
-		ctx.waitFor(client -> client.level.dimension().equals(LayerChain.dimension(layer))
+		ClientWait.until(ctx, "the camera at the eye in layer " + layer + ", facing yaw " + yaw + " and pitch " + pitch,
+				client -> client.level.dimension().equals(LayerChain.dimension(layer))
 				&& client.player.distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
 				&& Math.abs(Mth.wrapDegrees(client.player.getYRot() - yaw)) < 0.01f
-				&& Math.abs(client.player.getXRot() - pitch) < 0.01f, WAIT);
+				&& Math.abs(client.player.getXRot() - pitch) < 0.01f,
+				client -> "the player at " + client.player.position() + " in " + client.level.dimension().identifier()
+						+ " facing yaw " + client.player.getYRot() + " and pitch " + client.player.getXRot());
 		ctx.waitTicks(wait);
 	}
 

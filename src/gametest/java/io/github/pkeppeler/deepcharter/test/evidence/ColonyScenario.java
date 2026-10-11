@@ -11,6 +11,7 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Evidence scenario "m2-colony" for #64: a fly-over of the colony the world built at its spawn. One lap above the pad, then a
@@ -36,7 +37,7 @@ public class ColonyScenario extends EvidenceScenario {
 	@Override
 	protected void run(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			context.waitFor(client -> client.player != null && client.level != null);
+			ClientWait.until(context, "the player and level of the world", client -> client.player != null && client.level != null);
 			ColonySite.Placed colony = singleplayer.getServer().computeOnServer(server -> {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 				player.setPermanentlyInvulnerable(true);

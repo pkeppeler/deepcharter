@@ -25,6 +25,7 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
 
 /**
@@ -48,7 +49,7 @@ public class HangarScenario extends EvidenceScenario {
 	@Override
 	protected void run(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			context.waitFor(client -> client.player != null && client.level != null);
+			ClientWait.until(context, "the player and level of the world", client -> client.player != null && client.level != null);
 			BlockPos console = singleplayer.getServer().computeOnServer(HangarScenario::setUp);
 			// The derelict is an entity of the hangar's chunk, which loads a tick or more after the player arrives.
 			await(context, singleplayer, server -> Hangar.derelict(server).isPresent());
@@ -77,7 +78,7 @@ public class HangarScenario extends EvidenceScenario {
 			screenshot(context, "founding-mole-repaired");
 
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(console)));
-			context.waitForScreen(HangarScreen.class);
+			ClientWait.screen(context, HangarScreen.class);
 			HangarScreen screen = context.computeOnClient(client -> (HangarScreen) client.gui.screen());
 			for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
 				context.waitTicks(TICKS_PER_FRAME);
@@ -113,7 +114,7 @@ public class HangarScenario extends EvidenceScenario {
 			hold(context);
 			screenshot(context, "a-prospector-wreck-by-the-console");
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(console)));
-			context.waitForScreen(HangarScreen.class);
+			ClientWait.screen(context, HangarScreen.class);
 			HangarScreen advance = context.computeOnClient(client -> (HangarScreen) client.gui.screen());
 			for (int i = 0; i < TYPING_FRAMES && !advance.typewriter().done(); i++) {
 				context.waitTicks(TICKS_PER_FRAME);

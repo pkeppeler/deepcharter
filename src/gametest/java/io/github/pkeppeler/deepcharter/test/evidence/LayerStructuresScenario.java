@@ -26,6 +26,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Evidence scenario "m2-layer-structures" for #79: stills of the four Notes in the colony, then a fly-through of every
@@ -55,7 +56,7 @@ public class LayerStructuresScenario extends EvidenceScenario {
 	@Override
 	protected void run(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			context.waitFor(client -> client.player != null && client.level != null);
+			ClientWait.until(context, "the player and level of the world", client -> client.player != null && client.level != null);
 			singleplayer.getServer().runOnServer(server -> {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 				player.setPermanentlyInvulnerable(true);

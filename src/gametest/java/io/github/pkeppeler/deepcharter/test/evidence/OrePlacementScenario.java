@@ -14,6 +14,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Evidence scenario "m2-ore-placement": a room cut into the rock of Deep Claim (layer 1) and of Prospector's Run
@@ -40,7 +41,7 @@ public class OrePlacementScenario extends EvidenceScenario {
 	@Override
 	protected void run(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			context.waitFor(client -> client.player != null && client.level != null);
+			ClientWait.until(context, "the player and level of the world", client -> client.player != null && client.level != null);
 			singleplayer.getServer().runOnServer(server -> {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 				player.setGameMode(GameType.CREATIVE);
@@ -76,7 +77,7 @@ public class OrePlacementScenario extends EvidenceScenario {
 			ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 			player.teleportTo(level, room.getX() - 5.5, room.getY(), room.getZ() + 0.5, Set.of(), EAST, 0f, true);
 		});
-		context.waitFor(client -> client.level.dimension().equals(LayerChain.dimension(layer)));
+		ClientWait.until(context, "the client in layer " + layer, client -> client.level.dimension().equals(LayerChain.dimension(layer)));
 		context.waitTicks(40);
 		screenshot(context, shot);
 		if (pan) {

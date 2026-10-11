@@ -16,6 +16,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
 import io.github.pkeppeler.deepcharter.transmission.Transmissions;
 
@@ -42,7 +43,7 @@ public class TransmissionsScenario extends EvidenceScenario {
 	@Override
 	protected void run(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			context.waitFor(client -> client.player != null && client.level != null);
+			ClientWait.until(context, "the player and level of the world", client -> client.player != null && client.level != null);
 			CharterId charter = singleplayer.getServer().computeOnServer(server -> {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 				player.setPermanentlyInvulnerable(true);
@@ -60,7 +61,7 @@ public class TransmissionsScenario extends EvidenceScenario {
 				player.teleportTo(one, X, one.getMinY() + 40, Z, Set.of(), 0, 0, true);
 				return Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id();
 			});
-			context.waitFor(client -> client.level.dimension().equals(LayerChain.dimension(1)));
+			ClientWait.until(context, "the client in layer " + 1, client -> client.level.dimension().equals(LayerChain.dimension(1)));
 			context.waitTicks(SETTLE_TICKS);
 
 			singleplayer.getServer().runOnServer(server -> {

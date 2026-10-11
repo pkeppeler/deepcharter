@@ -27,6 +27,7 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Evidence scenario "m2-wreck-respawn" for #127: a player with a bed set rides a pod far from the colony, the pod becomes a
@@ -45,7 +46,7 @@ public class WreckRespawnScenario extends EvidenceScenario {
 	@Override
 	protected void run(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			context.waitFor(client -> client.player != null && client.level != null);
+			ClientWait.until(context, "the player and level of the world", client -> client.player != null && client.level != null);
 			context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
 			GlobalPos office = singleplayer.getServer().computeOnServer(server -> {
 				GlobalPos at = Colony.respawnPoint(server).orElseThrow(() -> new AssertionError("the colony was not built"));
@@ -100,14 +101,14 @@ public class WreckRespawnScenario extends EvidenceScenario {
 
 			// The pod loses its hull and the crew die.
 			singleplayer.getServer().runOnServer(server -> pod[0].damageHull(pod[0].maxHull()));
-			context.waitForScreen(DeathScreen.class);
+			ClientWait.screen(context, DeathScreen.class);
 			context.waitTicks(25);
 			beat(context);
 			screenshot(context, "death-screen");
 
 			// The player clicks Respawn.
 			context.runOnClient(client -> client.player.respawn());
-			context.waitFor(client -> client.gui.screen() == null && client.player != null && client.player.isAlive());
+			ClientWait.until(context, "the death screen closed and the player alive", client -> client.gui.screen() == null && client.player != null && client.player.isAlive());
 			context.waitTicks(40);
 			singleplayer.getServer().runOnServer(server -> {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();

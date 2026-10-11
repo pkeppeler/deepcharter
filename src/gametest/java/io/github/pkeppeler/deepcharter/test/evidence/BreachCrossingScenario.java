@@ -14,6 +14,7 @@ import net.minecraft.world.level.block.Blocks;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 
 /**
@@ -41,7 +42,7 @@ public class BreachCrossingScenario extends EvidenceScenario {
 	@Override
 	protected void run(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			context.waitFor(client -> client.player != null && client.level != null);
+			ClientWait.until(context, "the player and level of the world", client -> client.player != null && client.level != null);
 			// A transmission goes to a charter, so the player founds one: the crossing then brings its transmission.
 			singleplayer.getServer().runOnServer(server -> {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
@@ -70,7 +71,7 @@ public class BreachCrossingScenario extends EvidenceScenario {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 				player.teleportTo(one, X, SHAFT_TOP - 1, Z, Set.of(), 0, 70, true);
 			});
-			context.waitFor(client -> client.level.dimension().equals(LayerChain.dimension(1)));
+			ClientWait.until(context, "the client in layer " + 1, client -> client.level.dimension().equals(LayerChain.dimension(1)));
 
 			int typedAt = -1;
 			for (int tick = 0; tick < PATIENCE; tick++) {
@@ -119,7 +120,7 @@ public class BreachCrossingScenario extends EvidenceScenario {
 			// Yaw -90 faces east, towards the pillars.
 			player.teleportTo(level, X, standing, Z, Set.of(), -90, 0, true);
 		});
-		context.waitFor(client -> client.level.dimension().equals(LayerChain.dimension(layer)));
+		ClientWait.until(context, "the client in layer " + layer, client -> client.level.dimension().equals(LayerChain.dimension(layer)));
 		context.waitTicks(60);
 	}
 }
