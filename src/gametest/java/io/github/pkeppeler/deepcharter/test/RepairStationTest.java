@@ -299,6 +299,22 @@ public class RepairStationTest {
 	}
 
 	@GameTest
+	public void repairTakesTheOwnPodBeforeANearerUnownedOne(GameTestHelper helper) {
+		withStation(helper, station -> {
+			PodEntity pod = station.pod();
+			pod.setHull(pod.maxHull() - 20f);
+			fund(helper, station, 1_000);
+			PodEntity unowned = helper.spawn(PodRegistry.POD, new Vec3(1.5, 1, 0.5));
+			unowned.setHull(unowned.maxHull() - 20f);
+			expectDone(helper, Terminals.act(station.pilot().player(), station.pos(), RepairStation.REPAIR, hp(5)), "repairing with an unowned pod parked nearer");
+			expectHull(helper, pod, pod.maxHull() - 15f, "the own pod");
+			expectHull(helper, unowned, unowned.maxHull() - 20f, "the unowned pod");
+			unowned.discard();
+			helper.succeed();
+		});
+	}
+
+	@GameTest
 	public void repairRejectsBadArguments(GameTestHelper helper) {
 		withStation(helper, station -> {
 			PodEntity pod = station.pod();

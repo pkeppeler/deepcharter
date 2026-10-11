@@ -89,8 +89,8 @@ public final class Terminals {
 
 	/**
 	 * The pods parked at the terminal at {@code pos}, nearest first: within {@link TerminalTuning#parkedRadius()} blocks of its
-	 * middle, and neither flying nor drilling. Safe on both sides, but it knows no owners: a client uses it to draw a screen,
-	 * and the server serves from {@link #parkedPods(ServerLevel, BlockPos, Optional)}.
+	 * middle, and neither flying nor drilling. Safe on both sides, but it knows no owners: the server serves from
+	 * {@link #parkedPods(ServerLevel, BlockPos, Optional)}, and a pod terminal's screen shows the pod that names ({@link ParkedPodView}).
 	 */
 	public static List<PodEntity> parkedPods(Level level, BlockPos pos) {
 		double radius = TerminalTuning.DEFAULT.parkedRadius();
@@ -100,9 +100,14 @@ public final class Terminals {
 				.stream().sorted(Comparator.comparingDouble(pod -> pod.position().distanceToSqr(centre))).toList();
 	}
 
-	/** The pods of {@link #parkedPods(Level, BlockPos)} that {@code charter}, the acting player's if on one, may use ({@link PodComponents#mayAccess}). */
+	/**
+	 * The pods of {@link #parkedPods(Level, BlockPos)} that {@code charter}, the acting player's if on one, may use
+	 * ({@link PodComponents#mayAccess}). The charter's own pods come first, then unowned ones, each nearest first: a stranger's
+	 * unowned pod parked nearer never hides the player's own.
+	 */
 	public static List<PodEntity> parkedPods(ServerLevel level, BlockPos pos, Optional<Charter> charter) {
-		return parkedPods(level, pos).stream().filter(pod -> PodComponents.mayAccess(pod, charter)).toList();
+		return parkedPods(level, pos).stream().filter(pod -> PodComponents.mayAccess(pod, charter))
+				.sorted(Comparator.comparing(pod -> PodComponents.ownerCharter(pod).isEmpty())).toList();
 	}
 
 	private sealed interface Access {

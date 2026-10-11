@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
@@ -62,6 +63,7 @@ import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalFeature;
 import io.github.pkeppeler.deepcharter.terminal.TerminalFeatureProbe;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
+import io.github.pkeppeler.deepcharter.terminal.ParkedPodView;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
@@ -137,6 +139,8 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
 		Map<TerminalType, TerminalFeature> features = new LinkedHashMap<>();
 		features.put(HangarTerminal.TYPE, new HangarView(999));
 		features.put(TerminalTypes.UPGRADE_TERMINAL, upgradeView());
+		features.put(TerminalTypes.FUEL_PUMP, new ParkedPodView(Optional.of(UUID.randomUUID())));
+		features.put(TerminalTypes.REPAIR_STATION, new ParkedPodView(Optional.of(UUID.randomUUID())));
 		List<WorkOrdersView.Entry> orders = new ArrayList<>();
 		for (WorkOrder order : WorkOrder.values()) {
 			orders.add(new WorkOrdersView.Entry(order, Math.max(0, order.quantity() - 1), 99));
