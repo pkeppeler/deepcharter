@@ -23,6 +23,7 @@ import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.pod.HardLanding;
 import io.github.pkeppeler.deepcharter.pod.PodBrace;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodHeatShield;
 import io.github.pkeppeler.deepcharter.pod.PodLavaWatch;
 import io.github.pkeppeler.deepcharter.pod.PodLiner;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
@@ -65,9 +66,18 @@ public final class PodStatusHud {
 		return lines;
 	}
 
-	/** The warning line shown, in its own colour, while lava burns the hull. */
+	/** The warning line shown, in its own colour, while lava burns the hull. A heat shield with bricks left soaks the lava: the hull is not burning then, and {@link #glazeLine} says so. */
 	public static Optional<Component> burningLine(PodEntity pod) {
-		return pod.hullBurning() ? Optional.of(Component.translatable("hud.deepcharter.pod.burning")) : Optional.empty();
+		boolean soaked = PodHeatShield.tier(pod) > 0 && pod.glazeBricks() > 0;
+		return pod.hullBurning() && !soaked ? Optional.of(Component.translatable("hud.deepcharter.pod.burning")) : Optional.empty();
+	}
+
+	/** The warning line shown, in the burning colour, while lava touches a pod with a heat shield (#482): the bricks it has left to burn, or that they are spent. */
+	public static Optional<Component> glazeLine(PodEntity pod) {
+		if (!pod.hullBurning() || PodHeatShield.tier(pod) == 0) {
+			return Optional.empty();
+		}
+		return Optional.of(pod.glazeBricks() > 0 ? Component.translatable("hud.deepcharter.pod.glaze_holding", pod.glazeBricks()) : Component.translatable("hud.deepcharter.pod.glaze_spent"));
 	}
 
 	/**
@@ -170,7 +180,8 @@ public final class PodStatusHud {
 			Map.entry("hud.deepcharter.pod.tally_cargo", Kind.BASE), Map.entry("hud.deepcharter.pod.tally_depth", Kind.BASE),
 			Map.entry("hud.deepcharter.pod.slag", Kind.INFO), Map.entry("hud.deepcharter.pod.slag_only", Kind.INFO), Map.entry("hud.deepcharter.pod.liner", Kind.INFO),
 			Map.entry("hud.deepcharter.pod.lining", Kind.INFO), Map.entry("hud.deepcharter.pod.brace_working", Kind.INFO),
-			Map.entry("hud.deepcharter.pod.burning", Kind.ALERT), Map.entry("hud.deepcharter.pod.stranded", Kind.ALERT), Map.entry("hud.deepcharter.pod.crust_ahead", Kind.ALERT),
+			Map.entry("hud.deepcharter.pod.burning", Kind.ALERT), Map.entry("hud.deepcharter.pod.glaze_holding", Kind.ALERT),
+			Map.entry("hud.deepcharter.pod.glaze_spent", Kind.ALERT), Map.entry("hud.deepcharter.pod.stranded", Kind.ALERT), Map.entry("hud.deepcharter.pod.crust_ahead", Kind.ALERT),
 			Map.entry("hud.deepcharter.pod.crust_in", Kind.ALERT), Map.entry("hud.deepcharter.pod.brace_waits", Kind.ALERT), Map.entry("hud.deepcharter.pod.brace_dry", Kind.ALERT),
 			Map.entry("hud.deepcharter.pod.brace_dear", Kind.ALERT), Map.entry("hud.deepcharter.pod.seepage", Kind.ALERT), Map.entry("hud.deepcharter.pod.seepage_beside", Kind.ALERT),
 			Map.entry("hud.deepcharter.pod.seepage_bleeding", Kind.ALERT), Map.entry("hud.deepcharter.pod.lining_dry", Kind.ALERT),
@@ -197,6 +208,7 @@ public final class PodStatusHud {
 		HudLook look = HudLook.current();
 		List<Line> readout = new ArrayList<>(statusLines(pod));
 		burningLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
+		glazeLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
 		lavaNearLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
 		linerLine(pod).ifPresent(line -> readout.add(new Line(line, look.podLinerColor())));
 		sounderLines(pod).forEach(line -> readout.add(new Line(line, look.podSounderColor())));

@@ -28,6 +28,8 @@
   "hud.deepcharter.pod.crust_in": "IN THE CRUST  HULL %s, IT TAKES %s",
   "hud.deepcharter.pod.depth": "Y %s",
   "hud.deepcharter.pod.fuel": "Fuel %s%%",
+  "hud.deepcharter.pod.glaze_holding": "GLAZE HOLDING  %s BRICKS LEFT",
+  "hud.deepcharter.pod.glaze_spent": "GLAZE SPENT",
   "hud.deepcharter.pod.hard_landing": "HARD LANDING",
   "hud.deepcharter.pod.hull": "Hull %s/%s",
   "hud.deepcharter.pod.lava_above": "LAVA ABOVE %s OFF  CAP THE SHAFT OR LEAVE",

@@ -48,6 +48,8 @@ public class EconomyAffordabilityTest {
 	/** The seep sounder's tiers, in runs of a Mole with tier 2 parts in layer 2, at most. */
 	private static final int SOUNDER_TIER_ONE_RUNS = 2;
 	private static final int SOUNDER_TIER_TWO_RUNS = 4;
+	/** The heat shield (#482), a layer 2 buy, is dearer than the liner's tier 1 and under its tier 2. */
+	private static final int HEAT_SHIELD_RUNS = 3;
 	/** The radiator matters from layer 3 on, and its tier 1 costs what the others' tier 2 does in the original. */
 	private static final int RADIATOR_RUNS = 5;
 	/** The Prospector restore takes this many runs of a Mole with tier 2 parts in layer 2, at least and at most. */
@@ -104,6 +106,9 @@ public class EconomyAffordabilityTest {
 			}
 			if (track == ComponentTrack.SOUNDER) {
 				continue; // A layer 2 buy with its own band: theSounderTiersAreAffordableAfterTheirLayerTwoRuns.
+			}
+			if (track == ComponentTrack.HEAT_SHIELD) {
+				continue; // A layer 2 buy with its own band: theHeatShieldIsAffordableAfterThreeLayerTwoRunsAndPricedBetweenTheLinerTiers.
 			}
 			if (track == ComponentTrack.SCANNER) {
 				continue; // Tier 1 is crafted and costs no money (#483): its cost is in crates, ScannerCostTest. Tier 2 has its own band below.
@@ -162,6 +167,26 @@ public class EconomyAffordabilityTest {
 		}
 		if (allowed.length != ComponentTrack.LINER.maxTier()) {
 			throw failure(helper, "the test has bands for %d liner tiers, the track has %d", allowed.length, ComponentTrack.LINER.maxTier());
+		}
+		helper.succeed();
+	}
+
+	/**
+	 * The heat shield (#482) is the lava ladder's third rung and is bought in layer 2 by a pod that already lines: a run there, with the hopper pod's mass and no
+	 * drill penalty (the shield slows nothing), pays for it in {@value #HEAT_SHIELD_RUNS} runs. It costs more than the liner's tier 1, whose pod it lets stay
+	 * in lava, and less than its tier 2, so a charter that can afford the shield can already line.
+	 */
+	@GameTest
+	public void theHeatShieldIsAffordableAfterThreeLayerTwoRunsAndPricedBetweenTheLinerTiers(GameTestHelper helper) {
+		Run run = EarlyRunModel.run(Zone.load("upper_levels"), EarlyRunModel.mole(2, 2, 2), EarlyRunModel.layerOneBlocks(), EarlyRunModel.hopperMass());
+		long price = UpgradeTuning.DEFAULT.price(ComponentTrack.HEAT_SHIELD, 1);
+		LOGGER.info("[economy] heat shield ${}: {} layer 2 runs of {}", price, run.toAfford(price), run);
+		if (run.toAfford(price) != HEAT_SHIELD_RUNS) {
+			throw failure(helper, "the heat shield costs $%d, which is %d layer 2 runs of $%.0f; %d expected", price, run.toAfford(price), run.net(), HEAT_SHIELD_RUNS);
+		}
+		if (price <= UpgradeTuning.DEFAULT.price(ComponentTrack.LINER, 1) || price >= UpgradeTuning.DEFAULT.price(ComponentTrack.LINER, 2)) {
+			throw failure(helper, "the heat shield costs $%d, which must be over the liner's tier 1 ($%d) and under its tier 2 ($%d)", price,
+					UpgradeTuning.DEFAULT.price(ComponentTrack.LINER, 1), UpgradeTuning.DEFAULT.price(ComponentTrack.LINER, 2));
 		}
 		helper.succeed();
 	}

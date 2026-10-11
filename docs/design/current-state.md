@@ -188,6 +188,7 @@ All item textures in one sheet (nearest-neighbour, 5 times scale; alphabetical o
 | Matter Transmitter | `matter_transmitter` | Consumable | `main/repair/Consumable.java` | `textures/item/matter_transmitter.png` (16x16) | **(a)** `assets/deepcharter/textures/item/matter_transmitter.png` |
 | Ore Feeder | `ore_feeder` | Terminal repair part | `main/terminal/TerminalParts.java` | `textures/item/ore_feeder.png` (16x16) | **(a)** `assets/deepcharter/textures/item/ore_feeder.png` |
 | Breach brace part | `part_brace` | Pod part (one item per component track; tier is data on the stack) | `main/upgrade/ComponentItems.java` | `textures/item/part_brace.png` (16x16, a brass frame round a steel plate crossed by a brace, a hazard strip below) | **(a)** `assets/deepcharter/textures/item/part_brace.png` |
+| Heat shield part | `part_heat_shield` | Pod part (one item per component track; tier is data on the stack) | `main/upgrade/ComponentItems.java` | `textures/item/part_heat_shield.png` (16x16, a brass frame round a basalt plate with an orange glaze) | **(a)** `assets/deepcharter/textures/item/part_heat_shield.png` |
 | Cargo bay part | `part_cargo_bay` | Pod part (one item per component track; tier is data on the stack) | `main/upgrade/ComponentItems.java` | `textures/item/part_cargo_bay.png` (16x16) | **(a)** `assets/deepcharter/textures/item/part_cargo_bay.png` |
 | Drill part | `part_drill` | Pod part (one item per component track; tier is data on the stack) | `main/upgrade/ComponentItems.java` | `textures/item/part_drill.png` (16x16) | **(a)** `assets/deepcharter/textures/item/part_drill.png` |
 | Engine part | `part_engine` | Pod part (one item per component track; tier is data on the stack) | `main/upgrade/ComponentItems.java` | `textures/item/part_engine.png` (16x16) | **(a)** `assets/deepcharter/textures/item/part_engine.png` |
@@ -479,7 +480,7 @@ Swap **(c)**. Prices are data-like tuning in `main/ore/OreType.java:12-18`.
 
 ### Upgrade Terminal screen
 
-Source `client/upgrade/UpgradeScreen.java`. The twelve part tracks of the parked pod (the breach brace, #378, is the last).
+Source `client/upgrade/UpgradeScreen.java`. The thirteen part tracks of the parked pod (the heat shield, #482, is the last).
 
 ![screen-upgrade-terminal-online](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/screen-upgrade-terminal-online.png?raw=true)
 
@@ -529,7 +530,7 @@ The inventory screen is vanilla, unchanged (the item gallery stills show it). Sw
 ### Pod status HUD
 
 Top left, while riding a pod: four white lines of plain text in the vanilla font ("Hull 70/100", "Fuel 61%", "Cargo 2", "Y 77"), and
-"STRANDED" when stranded, and a red "HULL BURNING" line while lava burns the hull (`podBurningColor` in `theme/hud.json`). A pod with a seep sounder (#373) adds magenta lines (`podSounderColor`): "SEEPAGE 3" (slabs down to a gas pocket under the pod), "BLEEDING SEEPAGE" while the drill waits on a pocket, and "SEEPAGE BESIDE E S" for the sides a sidestep would meet one on (tier 2). Every pod gets an amber line (`podHardLandingColor`) when its hull would not outlast the breach crust (#378): "CRUST 7 DOWN  HULL 20, IT TAKES 24", or "IN THE CRUST ..." once in it. A pod with a breach brace adds "BRACE WAITS  STOP THE DRILL", "BRACING  BURNING ORE FOR HULL" or "BRACE HAS NO ORE TO BURN". No frame, no icons. Source `client/pod/PodStatusHud.java` (the source calls it "Plain text readout... the real HUD design comes later").
+"STRANDED" when stranded, and a red "HULL BURNING" line while lava burns the hull (`podBurningColor` in `theme/hud.json`). A pod with a heat shield (#482) swaps it, while the glaze has bricks, for "GLAZE HOLDING  12 BRICKS LEFT" in the same colour, and adds "GLAZE SPENT" to "HULL BURNING" when they run out. A pod with a seep sounder (#373) adds magenta lines (`podSounderColor`): "SEEPAGE 3" (slabs down to a gas pocket under the pod), "BLEEDING SEEPAGE" while the drill waits on a pocket, and "SEEPAGE BESIDE E S" for the sides a sidestep would meet one on (tier 2). Every pod gets an amber line (`podHardLandingColor`) when its hull would not outlast the breach crust (#378): "CRUST 7 DOWN  HULL 20, IT TAKES 24", or "IN THE CRUST ..." once in it. A pod with a breach brace adds "BRACE WAITS  STOP THE DRILL", "BRACING  BURNING ORE FOR HULL" or "BRACE HAS NO ORE TO BURN". No frame, no icons. Source `client/pod/PodStatusHud.java` (the source calls it "Plain text readout... the real HUD design comes later").
 Vanilla: **no**. Swap **(c)** `PodStatusHud.java:23` (colour), `:54-56` (layout).
 
 ![hud-pod-status-and-altimeter-surface](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hud-pod-status-and-altimeter-surface.png?raw=true) ![hud-pod-in-third-person-surface](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hud-pod-in-third-person-surface.png?raw=true)
@@ -607,7 +608,7 @@ Only names and uses are given here. No audio is copied, played into a recording,
 - 47 sound events in `main/sound/DeepSound.java`, registered in `main/sound/SoundRegistry.java`. Each is mapped in `assets/deepcharter/sounds.json` to a **vanilla Minecraft
   sound** as a placeholder, with pitch or volume tweaks. A private audio pack (built by `tools/build-audio-pack.sh` from files that stay out of the repo) replaces them
   at play time through `tools/audio-pack-map.txt`. Vanilla: **partly** (vanilla sounds as placeholders).
-- Groups and where they play: pod (engine idle, drive, drill side and down, rotor, transform land and launch, crash, explosion, the seep sounder's hiss `pod.seep_hiss`, repeating faster as a gas pocket nears), drill (dig, blocked, lava, dynamite,
+- Groups and where they play: pod (engine idle, drive, drill side and down, rotor, transform land and launch, crash, explosion, the seep sounder's hiss `pod.seep_hiss`, repeating faster as a gas pocket nears, the heat shield's crackle `pod.glaze_burn` for each brick it burns), drill (dig, blocked, lava, dynamite,
   plastic), cargo (collect, jettison, full), fuel (low, refuel), repair (nanobots), breach (rumble, cross), scanner (ping, sweep), UI (typewriter, hover, select, confirm,
   purchase, sale, error, refused), terminal (power on, teleport), transmission (incoming, menace), mothership (arrive, idle, leave), alarms (fuel critical, hull critical).
 - Music: `deepcharter:music.layer_1` plays in layer 1 (mapped to vanilla `music.overworld.deep_dark`) and `music.layer_2` in layer 2 (vanilla `music.end`), each every

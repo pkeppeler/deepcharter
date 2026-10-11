@@ -24,6 +24,7 @@ public final class PodInit {
 		PodSounder.init();
 		PodLavaWatch.init();
 		PodBrace.init();
+		PodHeatShield.init();
 		PodTowing.init();
 	}
 }
