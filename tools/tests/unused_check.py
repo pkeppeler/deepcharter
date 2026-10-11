@@ -53,7 +53,7 @@ NEUTRAL_DECORATORS = {
     "abstractmethod", "dataclass", "total_ordering", "final", "override", "overload",
 }
 PLAIN_BASES = {"object", "NamedTuple", "Enum", "IntEnum", "StrEnum", "Flag", "IntFlag", "Generic", "Protocol", "TypedDict"}
-TEST_HOOKS = {"setUp", "tearDown", "setUpClass", "tearDownClass", "setUpModule", "tearDownModule", "load_tests", "main"}
+TEST_HOOKS = {"setUp", "tearDown", "setUpClass", "tearDownClass", "main"} | FIXED_SIGNATURE_FUNCTIONS
 
 
 @dataclass(frozen=True)
@@ -167,18 +167,22 @@ def index_by_name(references: list[tuple[str, int]]) -> dict[str, list[int]]:
 def import_candidates(path: str, tree: ast.AST, local_reads: set[str]) -> list[Candidate]:
     found = []
     for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            bound = [(alias.asname or alias.name.split(".")[0]) for alias in node.names]
-        elif isinstance(node, ast.ImportFrom) and node.module != "__future__":
-            bound = [(alias.asname or alias.name) for alias in node.names]
-        else:
+        if not isinstance(node, (ast.Import, ast.ImportFrom)) or getattr(node, "module", None) == "__future__":
             continue
         span = (node.lineno, node.end_lineno or node.lineno)
         found += [
             Candidate(path, "import", name, node.lineno, span, span)
-            for name in bound if name not in local_reads and name != "*"
+            for name in bound_by_import(node) if name not in local_reads and name != "*"
         ]
     return found
+
+
+def bound_by_import(node: ast.AST) -> list[str]:
+    if isinstance(node, ast.Import):
+        return [alias.asname or alias.name.split(".")[0] for alias in node.names]
+    if isinstance(node, ast.ImportFrom):
+        return [alias.asname or alias.name for alias in node.names]
+    return []
 
 
 def definition_candidates(path: str, tree: ast.Module) -> list[Candidate]:
@@ -222,7 +226,7 @@ def assigned_names(target: ast.expr) -> list[str]:
 
 
 def exempt_name(name: str) -> bool:
-    return (name.startswith("__") and name.endswith("__")) or name.startswith("test_") or name in TEST_HOOKS
+    return is_dunder(name) or name.startswith("test_") or name in TEST_HOOKS
 
 
 def is_test_class(node: ast.AST) -> bool:
@@ -262,13 +266,7 @@ def registers(node: ast.AST) -> bool:
 
 
 def imported_names(tree: ast.AST) -> set[str]:
-    names: set[str] = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            names |= {(alias.asname or alias.name.split(".")[0]) for alias in node.names}
-        elif isinstance(node, ast.ImportFrom):
-            names |= {(alias.asname or alias.name) for alias in node.names}
-    return names
+    return {name for node in ast.walk(tree) for name in bound_by_import(node)}
 
 
 def has_outside_base(cls: ast.ClassDef, imported: set[str]) -> bool:
