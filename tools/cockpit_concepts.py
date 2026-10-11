@@ -80,10 +80,6 @@ class Placed:
 OFF = Placed(0, 0, 0, 0, 0, 0)
 
 
-def gauge_keys(prefix, kind, place, start=0, end=0, segments=1):
-    return {prefix + "Kind": KIND[kind], **place.keys(prefix), prefix + "From": start, prefix + "To": end, prefix + "Segments": segments}
-
-
 def anchor_keys(prefix, ax, ay, x, y):
     return {prefix + "AnchorX": ax, prefix + "AnchorY": ay, prefix + "X": x, prefix + "Y": y}
 
@@ -103,7 +99,8 @@ class Look:
         self.keys.update(place.keys(self.style + _CAMEL[slot]))
 
     def gauge(self, name, kind, place, start=0, end=0, segments=1):
-        self.keys.update(gauge_keys(self.style + name.capitalize(), kind, place, start, end, segments))
+        prefix = self.style + name.capitalize()
+        self.keys.update({prefix + "Kind": KIND[kind], **place.keys(prefix), prefix + "From": start, prefix + "To": end, prefix + "Segments": segments})
 
     def finish(self):
         """Fills every decal slot the style leaves off, so the theme file names every key the game reads."""
@@ -581,8 +578,7 @@ def world_backdrop(w, h):
     return img
 
 
-def preview_gauge(img, gauge_keys_, look, value, color):
-    prefix = gauge_keys_
+def preview_gauge(img, prefix, look, value, color):
     t = look.keys
     kind = t[prefix + "Kind"]
     place = Placed(t[prefix + "W"], t[prefix + "H"], t[prefix + "AnchorX"], t[prefix + "AnchorY"], t[prefix + "X"], t[prefix + "Y"])

@@ -114,12 +114,12 @@ public final class CockpitHud {
 			gauge(graphics, layout.hull(), reading.hull(), hullLow ? look.lowColor() : look.hullColor(), hullLow, look);
 			gauge(graphics, layout.depth(), reading.depth(), look.depthColor(), false, look);
 			gauge(graphics, layout.heat(), reading.heat(), look.heatColor(), reading.heat() > look.heatWarning(), look);
-			decal(graphics, layout, "header", layout.header(), width, height);
+		}
+		decal(graphics, layout, "header", layout.header(), width, height);
+		if (showsReadout(client)) {
 			List<Line> readout = new ArrayList<>(PodStatusHud.readout(client, pod));
 			AccountHud.text().ifPresent(account -> readout.add(new Line(account, HudLook.current().accountColor())));
 			plate(graphics, client, layout, look, readout);
-		} else {
-			decal(graphics, layout, "header", layout.header(), width, height);
 		}
 	}
 
@@ -141,11 +141,11 @@ public final class CockpitHud {
 		int top = gauge.area().top(graphics.guiHeight());
 		int width = gauge.area().width();
 		int height = gauge.area().height();
+		int lit = (int) Math.ceil(value * gauge.segments() - 1e-9);
 		switch (gauge.kind()) {
 			case DIAL -> needle(graphics, left + width / 2, top + height / 2, Math.min(width, height) / 2 - look.needleInset(),
 					Math.toRadians(gauge.from() + (gauge.to() - gauge.from()) * value), warning ? look.lowColor() : look.needleColor(), look.hubSize());
 			case ACROSS -> {
-				int lit = (int) Math.ceil(value * gauge.segments() - 1e-9);
 				for (int i = 0; i < gauge.segments(); i++) {
 					int from = left + i * width / gauge.segments();
 					int to = left + (i + 1) * width / gauge.segments() - 1;
@@ -153,7 +153,6 @@ public final class CockpitHud {
 				}
 			}
 			case UP -> {
-				int lit = (int) Math.ceil(value * gauge.segments() - 1e-9);
 				for (int i = 0; i < gauge.segments(); i++) {
 					int bottom = top + height - i * height / gauge.segments();
 					int from = top + height - (i + 1) * height / gauge.segments() + 1;
