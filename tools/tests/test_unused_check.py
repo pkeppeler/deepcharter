@@ -186,7 +186,6 @@ class FindingsAreRed(unittest.TestCase):
     def test_call_through_an_imported_module_is_a_call_site(self):
         self.assertEqual(found(a="def f(a, b=1):\n    return a + b\n", b="import a\na.f(x)\n"), {("a.py", 1, "default", "b")})
 
-
     def test_a_name_is_alive_when_another_file_reads_it(self):
         self.assertEqual(found(a="def helper():\n    return 1\nLIMIT = 3\n", b="import a\nprint(a.helper(), a.LIMIT)\n"), set())
 

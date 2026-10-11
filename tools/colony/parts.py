@@ -216,7 +216,6 @@ def xbraced_face(p: Piece, a0: int, a1: int, fixed: int, y0: int, y1: int, along
             p.set(fixed, y, a, s)
     up, down = ("east", "west") if along == "x" else ("south", "north")
     every = 6
-    brace = "brace"
     levels = list(range(y0, y1 + 1, every))
     if levels[-1] != y1:
         levels.append(y1)
@@ -228,8 +227,8 @@ def xbraced_face(p: Piece, a0: int, a1: int, fixed: int, y0: int, y1: int, along
         height = hi - lo - 1
         steps = min(width, height)
         for i in range(steps):
-            put(a0 + 1 + i, lo + 1 + i, state(brace, facing=up))
-            put(a1 - 1 - i, lo + 1 + i, state(brace, facing=down))
+            put(a0 + 1 + i, lo + 1 + i, state("brace", facing=up))
+            put(a1 - 1 - i, lo + 1 + i, state("brace", facing=down))
 
 
 def cylinder(p: Piece, cx: float, cz: float, r: float, y0: int, y1: int, wall) -> None:
@@ -305,13 +304,12 @@ def statue(p: Piece, figure: str, plinth_top: int, height: float) -> None:
     """The Founder on top of a plinth, height blocks tall: the body, standing on the block above plinth_top with his feet at the
     centre of the block. His hands are a piece of their own (statue_hands): the colony stands him without them."""
     scale = _statue_display(p, figure, figure, plinth_top, height)
-    x = z = STATUE_CENTRE
     lo, hi = sculptures.figure_bounds(figure)
     # Invisible collision inside the figure, so a pod cannot fly through the Founder. It never replaces a block of the plinth
     # (the floodlights that light the statue at night stand on it).
     s = scale / 16
-    for bx in range(math.floor(x + lo[0] * s * 0.6), math.ceil(x + hi[0] * s * 0.6)):
-        for bz in range(math.floor(z + lo[2] * s * 0.5), math.ceil(z + hi[2] * s * 0.5)):
+    for bx in range(math.floor(STATUE_CENTRE + lo[0] * s * 0.6), math.ceil(STATUE_CENTRE + hi[0] * s * 0.6)):
+        for bz in range(math.floor(STATUE_CENTRE + lo[2] * s * 0.5), math.ceil(STATUE_CENTRE + hi[2] * s * 0.5)):
             for by in range(plinth_top + 1, plinth_top + 1 + int(hi[1] * s * 0.85)):
                 if p.get(bx, by, bz) is None:
                     p.set(bx, by, bz, state("minecraft:barrier", waterlogged="false"))

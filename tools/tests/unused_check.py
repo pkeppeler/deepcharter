@@ -9,11 +9,12 @@ Scans every tools/**/*.py plus tools/diff-stills and reports five kinds of findi
 - constant: a module-level function's parameter that every call site passes the same literal (a constant, string or number), when the
   function has two or more call sites. One call site is a one-off part whose parameters name its size and place; it is not judged.
 
-default and constant resolve call sites by bare name: `f(...)`, or `m.f(...)` where `m` is a plain `import m` of a scanned file (a call into any other module is ignored). A default needs at least one call site outside the function, a constant at least two. Both are skipped, not flagged, when any use of the name is unresolvable: a call with `*args` or
-`**kwargs`, the function passed as a value, a `getattr` string, an `__all__` entry, an attribute use on anything but an imported module
-(a method call on an instance), a second definition of the name, or an import of it under another name. The usual exemptions apply (`main`, test hooks, stubs,
-decorated definitions); a method is never checked. To fix a finding, inline the constant or drop the parameter. Files under
-PENDING_PATHS are not judged for these two kinds until the open PRs that edit them land.
+default and constant resolve call sites by bare name, `f(...)`, or `m.f(...)` where `m` is a plain `import m` of a scanned file (a call into
+any other module is ignored). A default needs one call site outside the function, a constant two. Both are skipped when any use of the name
+is unresolvable: a call with `*args` or `**kwargs`, the function passed as a value, a `getattr` string, an `__all__` entry, an attribute use
+on anything but an imported module (a method call on an instance), a second definition of the name, or an import of it under another name.
+Neither kind checks `main`, test hooks, stubs, decorated definitions or methods. To fix a finding, inline the constant or drop the
+parameter. Files under PENDING_PATHS are not judged for these two kinds until the open PRs that edit them land.
 
 A reference is a bare name, an attribute name, an imported name, a `getattr(x, "name")` string or an `__all__` entry, in any scanned file
 (tests included). Matching is by name, not by module, so a same-named definition elsewhere hides a dead one; a reviewer still looks.
@@ -431,7 +432,7 @@ def constant_candidates(path: str, tree: ast.Module, usage: Mapping[str, CallUsa
         if not isinstance(function, (ast.FunctionDef, ast.AsyncFunctionDef)) or path.startswith(PENDING_PATHS):
             continue
         uses = usage.get(function.name)
-        if registers(function) or is_stub(function) or exempt_name(function.name) or fixed_signature(function, None, set()):
+        if registers(function) or is_stub(function) or exempt_name(function.name):
             continue
         own = (function.lineno, function.end_lineno or function.lineno)
         if uses is None or uses.unresolved or uses.definitions != 1:
