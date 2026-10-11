@@ -2,6 +2,8 @@
 
 The lampless figure walks the dark rails of the deep layers, and today it is a black zombie ([#250](https://github.com/pkeppeler/deepcharter/issues/250)). [Art direction section 10](art-direction.md#10-the-lampless-figure) decided what it is: a counterfeit of a miner, almost right and wrong in its proportions. This round gives you **four figures to pick from**. Each is a real model in the game, with its own texture and its own animations, and every picture below was shot in the game by the `figure-concepts` evidence scenario, in a sealed chamber of layer-1 rock with a pod's lamp. The build of the one you pick comes in a later pull request.
 
+**Built.** The pick was **C, the Reacher** ([#250](https://github.com/pkeppeler/deepcharter/issues/250)), and it is now the figure the game draws, with no switch ([PR #423](https://github.com/pkeppeler/deepcharter/pull/423), [ADR 0044](../adr/0044-the-lampless-figure-is-a-geckolib-model-and-the-reacher.md)). The files, the dev switch and the generator code of Candle, Heron and Misfit are removed; they stay in this page's pictures, in [PR #407](https://github.com/pkeppeler/deepcharter/pull/407) and in the history. Below is the record of the round as it stood when the pick was made.
+
 The figure is a counterfeit in the old sense of the word: it copies the shape of a man and gets it wrong, and it makes nothing of its own. It is hollow, and it is not strong. That is why every option keeps the human parts (a coat, a hard hat, boots, two arms, two legs) and moves them: the wrongness is in how the parts join. Nothing on it is a real-world symbol of any kind, and there is no gore.
 
 ## What every option shares (already decided)
@@ -95,15 +97,11 @@ Reply on [#250](https://github.com/pkeppeler/deepcharter/issues/250) or on the p
 
 Then the build gives the one you pick its final animations, its fade and its place in the game.
 
-## Try one in the game
+## Where the figure is now
 
-```sh
-JAVA_TOOL_OPTIONS=-Ddeepcharter.figureConcept=heron tools/play.sh
-```
+The Reacher is the lampless figure. In the game, `/summon deepcharter:lampless_figure ~ ~ ~` puts one next to you (it fades when you stand within 8 blocks), and the rails of layer 2 have them.
 
-The four switches are `-Ddeepcharter.figureConcept=candle`, `-Ddeepcharter.figureConcept=heron`, `-Ddeepcharter.figureConcept=reacher` and `-Ddeepcharter.figureConcept=misfit`. Without the switch, the figure looks as it does today. A name that is none of the four fails at startup and lists the four. In the game, `/summon deepcharter:lampless_figure ~ ~ ~` puts one next to you (it fades when you stand within 8 blocks, as it does today), and the rails of layer 2 have them.
-
-The files of an option are `geckolib/models/creature/figure/<id>.geo.json`, `textures/entity/creature/figure/<id>.png` and `geckolib/animations/creature/figure/<id>.animation.json`. A resource pack replaces any of them and F3+T applies it ([skins.md](skins.md)). `python3 -I tools/figure_concepts.py` writes them, and `--check` fails on a stale file.
+Its files are `geckolib/models/creature/lampless_figure.geo.json`, `textures/entity/lampless_figure.png` and `geckolib/animations/creature/lampless_figure.animation.json`. A resource pack replaces any of them and F3+T applies it ([skins.md](skins.md)). `python3 -I tools/lampless_figure.py` writes them, and `--check` fails on a stale file. The pictures of the figure as built are in [PR #423](https://github.com/pkeppeler/deepcharter/pull/423).
 
 ## References
 

@@ -12,6 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -25,6 +26,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundLightUpdatePacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -43,7 +45,10 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -106,6 +111,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest;
+import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
@@ -129,7 +135,9 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
  *
  * <p>Two runs of one commit give the same stills (tools/diff-stills compares them): the world is pinned by {@link EvidenceWorld#pin} (seed,
  * clock, weather, random ticks, mob spawning, particles) and every still goes through {@link #settle} first, which clears the mobs
- * and the particles, parks the cursor off the window, and waits until the chunks have rendered. See docs/design/skins.md.
+ * and the particles, parks the cursor off the window, and waits until the chunks have rendered. {@link #pinTheClient} holds still
+ * what moves on client ticks (lava, light flicker, the HUD vignette, the rider's arm, entity animation), and the charter has a fixed
+ * id so that the pods are painted the same colour. See .claude/skills/deepcharter-conventions/evidence.md for what still differs.
  *
  * <p>The order: handbook and item gallery, the surface by day, dusk and night, the colony, the terminal screens, the pods by day,
  * a dark room (pods lit and unlit, the lampless figure), the HUDs, layer 1, the breach into layer 2, layer 2 and its structures.
@@ -160,14 +168,20 @@ public class DesignTourScenario extends EvidenceScenario {
 	private static final int SETTLE_STABLE_POLLS = 5;
 	/** Where the cursor is parked when a screen is open: well outside the window, so that no slot or button is hovered. */
 	private static final double OFF_SCREEN = -10_000;
-	/** The breach fade is shot at the first client tick where it is half black: tick 4 of its 8 ticks of fading in. */
+	/** The breach fade is shot held half black. */
 	private static final float FADE_SHOT_ALPHA = 0.5f;
+	/** The tour's charter has this id on every run, so that its pods are painted the same colour on every run (ADR 0041: the slot is the id's hash). */
+	private static final CharterId TOUR_CHARTER = new CharterId(new UUID(0L, 0L));
+	/** How far the figure by the lit pod has faded in its still: half way. */
+	private static final float FIGURE_SHOT_FADE = 0.5f;
 
 	private ClientGameTestContext ctx;
 	private TestSingleplayerContext sp;
 	private BlockPos ground;
 	private Map<ColonyAnchor, BlockPos> anchors;
 	private CharterId charter;
+	/** The floor of the dark room while it stands: settle also waits until the client reads the light the server holds in it. Null otherwise. */
+	private BlockPos lightRoom;
 	/** The mobs the tour made itself (the lampless figures it poses): settle leaves them, and clears every other mob. */
 	private final Set<UUID> tourMobs = ConcurrentHashMap.newKeySet();
 
@@ -190,6 +204,7 @@ public class DesignTourScenario extends EvidenceScenario {
 			anchors = colony.anchors();
 
 			EvidenceWorld.pin(ctx, sp);
+			pinTheClient();
 			handbook();
 			itemGallery();
 			setUpCamera();
@@ -204,7 +219,25 @@ public class DesignTourScenario extends EvidenceScenario {
 			breachToLayerTwo();
 			layerTwo();
 			remainingTransmissions();
+		} finally {
+			EvidencePins.reset();
 		}
+	}
+
+	/**
+	 * Holds still what moves on client ticks and frames and that no wait can settle (issue 309). The switches are in
+	 * {@link EvidencePins}. The breach fade and the fading figure are held only for their own still.
+	 */
+	private void pinTheClient() {
+		EvidencePins.spritesFrozen = true;
+		EvidencePins.vignetteHidden = true;
+		EvidencePins.itemNameHidden = true;
+		EvidencePins.lightFlickerOff = true;
+		EvidencePins.handsHidden = true;
+		EvidencePins.entitiesPosed = true;
+		EvidencePins.figureSpawningOff = true;
+		// The textures go back to their first frame on the next client tick.
+		ctx.waitTicks(2);
 	}
 
 	// ------------------------------------------------------------------------------------------------ determinism
@@ -260,6 +293,9 @@ public class DesignTourScenario extends EvidenceScenario {
 				}
 				return chunksLoaded(client) && client.levelRenderer.hasRenderedAllSections();
 			});
+			if (ready && lightRoom != null) {
+				ready = roomLightMatches(lightRoom);
+			}
 			String pose = ctx.computeOnClient(DesignTourScenario::pose);
 			stable = ready && pose.equals(lastPose) ? stable + 1 : 0;
 			lastPose = pose;
@@ -267,10 +303,54 @@ public class DesignTourScenario extends EvidenceScenario {
 				return;
 			}
 			if (System.nanoTime() > deadline) {
-				throw new AssertionError("still " + stillName + ": the world did not settle (mobs gone, chunks rendered) in "
+				BlockPos room = lightRoom;
+				String light = room == null ? "" : " or the room's light on the client still differs from the server's (client maxSky="
+						+ ctx.computeOnClient(c -> maxSky(c.level, room)) + ", server maxSky=" + serverGet(srv -> maxSky(srv.overworld(), room)) + ")";
+				throw new AssertionError("still " + stillName + ": the world did not settle (mobs gone, chunks rendered)" + light + " in "
 						+ SETTLE_LIMIT_NANOS / 1_000_000_000L + " s");
 			}
 		}
+	}
+
+	/**
+	 * True when the client reads, in every cell of the sealed room, the sky and block light that the server holds. When it does not,
+	 * the server sends the room's light again: a client that was sent the chunk while the light engine still worked on the room keeps
+	 * the light of the open sky (sky light 15 in a sealed room), and nothing sends the change that would clear it. That stale light
+	 * lit the dark room in some runs and not in others (issue 309).
+	 */
+	private boolean roomLightMatches(BlockPos floor) {
+		int server = serverGet(srv -> lightOf(srv.overworld(), floor));
+		int client = ctx.computeOnClient(c -> lightOf(c.level, floor));
+		if (server == client) {
+			return true;
+		}
+		serverDo(srv -> {
+			ServerLevel level = srv.overworld();
+			int reach = ROOM_RADIUS + 1;
+			for (int x = (floor.getX() - reach) >> 4; x <= (floor.getX() + reach) >> 4; x++) {
+				for (int z = (floor.getZ() - reach) >> 4; z <= (floor.getZ() + reach) >> 4; z++) {
+					// Null filters: every section of the chunk.
+					player(srv).connection.send(new ClientboundLightUpdatePacket(new ChunkPos(x, z), level.getLightEngine(), null, null));
+				}
+			}
+		});
+		return false;
+	}
+
+	/** The highest sky light in the room: 15 in a sealed room is the stale light of issue 309. */
+	private static int maxSky(Level level, BlockPos floor) {
+		return roomCells(floor).mapToInt(pos -> level.getBrightness(LightLayer.SKY, pos)).max().orElse(0);
+	}
+
+	/** One number for the sky and block light of every cell of the room, so that two levels with the same light give the same number. */
+	private static int lightOf(Level level, BlockPos floor) {
+		return roomCells(floor)
+				.mapToInt(pos -> level.getBrightness(LightLayer.SKY, pos) * 16 + level.getBrightness(LightLayer.BLOCK, pos))
+				.reduce(1, (hash, light) -> 31 * hash + light);
+	}
+
+	private static Stream<BlockPos> roomCells(BlockPos floor) {
+		return BlockPos.betweenClosedStream(floor.offset(-ROOM_RADIUS, 1, -ROOM_RADIUS), floor.offset(ROOM_RADIUS, ROOM_HEIGHT, ROOM_RADIUS));
 	}
 
 	/** Where the camera is, and the pod it rides if it rides one: a pod still gliding to a halt is not settled. */
@@ -383,7 +463,7 @@ public class DesignTourScenario extends EvidenceScenario {
 			player.getAbilities().flying = true;
 			player.onUpdateAbilities();
 			player.setPermanentlyInvulnerable(true);
-			if (Charters.found(server, player.getUUID(), "Design Tour Co.").isPresent()) {
+			if (Charters.found(server, player.getUUID(), "Design Tour Co.", TOUR_CHARTER).isPresent()) {
 				throw new AssertionError("founding the charter should succeed");
 			}
 			charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id();
@@ -787,6 +867,7 @@ public class DesignTourScenario extends EvidenceScenario {
 				}
 			}
 		});
+		lightRoom = floor;
 		Vec3 base = Vec3.atBottomCenterOf(floor.above());
 		view(0, base.add(0, 1.8, 6), base.add(0, 1, 0), 120);
 
@@ -818,6 +899,10 @@ public class DesignTourScenario extends EvidenceScenario {
 			LamplessFigure f = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
 			f.setPos(base);
 			f.setNoAi(true);
+			// A new entity gets a random yaw: face south, as the pods do, or the figure stands turned a little differently in each run.
+			f.setYRot(0f);
+			f.setYBodyRot(0f);
+			f.setYHeadRot(0f);
 			tourMobs.add(f.getUUID());
 			level.addFreshEntity(f);
 			return f;
@@ -839,28 +924,32 @@ public class DesignTourScenario extends EvidenceScenario {
 		still("lampless-figure-close");
 		serverDo(server -> figure.discard());
 
-		// Walking toward a lit pod: it fades near the light.
+		// A figure half faded by a lit pod. It stands at rest beside the pod and is drawn half faded, because a figure that walks into the
+		// light fades on its own clock and stands at a different place in every run.
 		PodEntity lamp = spawnPod(PodRegistry.POD, 0, base.add(3, 0, 0), 0f, true);
+		awaitLight(lamp);
 		LamplessFigure walker = serverGet(server -> {
 			ServerLevel level = server.overworld();
 			LamplessFigure f = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
-			f.setPos(base.add(-6, 0, 0));
-			f.setHeading(Direction.EAST);
+			f.setPos(base.add(-1, 0, 0));
+			f.setNoAi(true);
+			f.setYRot(-90f);
+			f.setYBodyRot(-90f);
+			f.setYHeadRot(-90f);
 			tourMobs.add(f.getUUID());
 			level.addFreshEntity(f);
 			return f;
 		});
-		view(0, base.add(-1, 2.2, 7), base.add(-1, 1.2, 0), 10);
-		for (int frames = 0; frames < 80 && !serverGet(server -> walker.fadeFraction() > 0 || walker.isRemoved()); frames++) {
-			ctx.waitTicks(3);
-		}
-		ctx.waitTicks(4);
+		view(0, base.add(-1, 2.2, 7), base.add(-1, 1.2, 0), 30);
+		EvidencePins.figureFade = FIGURE_SHOT_FADE;
 		still("lampless-figure-fading-by-a-lit-pod");
+		EvidencePins.figureFade = -1f;
 		serverDo(server -> {
 			walker.discard();
 			lamp.discard();
 			player(server).removeEffect(MobEffects.NIGHT_VISION);
 		});
+		lightRoom = null;
 	}
 
 	// ------------------------------------------------------------------------------------------------ HUDs
@@ -1009,22 +1098,24 @@ public class DesignTourScenario extends EvidenceScenario {
 		view(1, new Vec3(x + 0.5, 4.0, z + 0.5), new Vec3(x + 0.5, 0.5, z + 1.5), 30);
 		clearTransmissions();
 		still("hud-altimeter-layer-1-floor");
+		// The fade, held: with the pin set, the fade and the typing of the transmission stand still from the moment the crossing begins,
+		// so the still does not depend on the client tick that it lands on, or on how long the new level takes to load.
+		EvidencePins.breachFadeAlpha = FADE_SHOT_ALPHA;
 		serverDo(server -> {
 			ServerLevel one = server.getLevel(LayerChain.dimension(1));
 			player(server).teleportTo(one, x + 0.5, one.getMinY() - 1, z + 0.5, Set.of(), 0, 60, true);
 		});
+		ctx.waitFor(client -> client.level.dimension().equals(LayerChain.dimension(2)) && client.gui.screen() == null
+				&& BreachEffects.fadeAlpha(0f) > 0f, WAIT);
+		settle("hud-breach-fade");
+		screenshot(ctx, "hud-breach-fade");
+		EvidencePins.breachFadeAlpha = -1f;
 
-		// The fade, then the two transmissions of the crossing, each shot once it has typed out.
-		boolean faded = false;
+		// Then the two transmissions of the crossing, each shot once it has typed out.
 		Set<Identifier> shot = new HashSet<>();
 		int tail = 0;
 		Identifier last = null;
 		for (int tick = 0; tick < 1500 && !(shot.size() >= 2 && tail >= 12); tick++) {
-			float alpha = ctx.computeOnClient(client -> BreachEffects.fadeAlpha(0f));
-			if (!faded && alpha >= FADE_SHOT_ALPHA && ctx.computeOnClient(client -> client.gui.screen() == null)) {
-				faded = true;
-				screenshot(ctx, "hud-breach-fade");
-			}
 			Identifier current = ctx.computeOnClient(client -> TransmissionOverlay.transmission().map(Transmission::id).orElse(null));
 			boolean typed = ctx.computeOnClient(client -> TransmissionOverlay.typed());
 			if (typed && current != null && shot.add(current)) {
