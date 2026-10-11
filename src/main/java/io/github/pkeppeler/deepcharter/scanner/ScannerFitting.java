@@ -17,6 +17,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.EntityHitResult;
 
 import io.github.pkeppeler.deepcharter.charter.Charter;
+import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -70,21 +71,20 @@ public final class ScannerFitting {
 			// The client guesses a hit and the server settles it.
 			return InteractionResult.SUCCESS;
 		}
-		Optional<Refusal> refusal = fit(serverPlayer, pod);
+		Optional<Refusal> refusal = check(serverPlayer, pod);
 		if (refusal.isPresent()) {
 			serverPlayer.sendOverlayMessage(refusal.get().message());
 			return InteractionResult.FAIL;
 		}
+		// The unit goes first: a listener that throws after the fit must not leave a fitted pod and a kept unit.
 		stack.consume(1, player);
+		install(serverPlayer, pod);
 		serverPlayer.sendOverlayMessage(Component.translatable("message.deepcharter.scanner.fitted"));
 		return InteractionResult.SUCCESS;
 	}
 
-	/**
-	 * Fits a tier 1 scanner to {@code pod} for {@code player}'s charter, and says why it did not. Server only. The unit itself is the
-	 * caller's to take. Fires {@link UpgradeEvents#FITTED} after the change.
-	 */
-	public static Optional<Refusal> fit(ServerPlayer player, PodEntity pod) {
+	/** Why a unit would not fit {@code pod} for {@code player}, if it would not. Server only; changes nothing. */
+	private static Optional<Refusal> check(ServerPlayer player, PodEntity pod) {
 		MinecraftServer server = player.level().getServer();
 		if (!Charters.isReadable(server)) {
 			return Optional.of(Refusal.CHARTERS_UNREADABLE);
@@ -97,6 +97,7 @@ public final class ScannerFitting {
 		if (registration.isEmpty()) {
 			return Optional.of(Refusal.NOT_REGISTERED);
 		}
+		// Stricter than PodComponents.mayAccess on purpose: the part is stamped for the fitter's charter and counts only for the pod's owner, so a pod of a dormant or gone owner (anyone's by mayAccess) must not be fitted by an outsider, who would fit a void part.
 		if (!registration.get().owner().equals(charter.get().id())) {
 			return Optional.of(Refusal.NOT_YOUR_POD);
 		}
@@ -107,8 +108,14 @@ public final class ScannerFitting {
 		if (!Serials.get(server).isReadable()) {
 			return Optional.of(Refusal.SERIALS_UNREADABLE);
 		}
-		PodComponents.install(pod, ComponentItems.mint(server, ComponentTrack.SCANNER, 1, charter.get().id()));
-		UpgradeEvents.FITTED.invoker().onFitted(server, player, pod, ComponentTrack.SCANNER, 1);
 		return Optional.empty();
+	}
+
+	/** Only after {@link #check}. Fires {@link UpgradeEvents#FITTED} after the change. A replaced scanner (a void one of another charter, say) drops as an item. */
+	private static void install(ServerPlayer player, PodEntity pod) {
+		MinecraftServer server = player.level().getServer();
+		CharterId charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id();
+		PodComponents.installAndDropReplaced(pod, ComponentItems.mint(server, ComponentTrack.SCANNER, 1, charter));
+		UpgradeEvents.FITTED.invoker().onFitted(server, player, pod, ComponentTrack.SCANNER, 1);
 	}
 }

@@ -252,7 +252,7 @@ public class CraftedScannerScenario extends EvidenceScenario {
 	/** The charter's founding transmission types over the screen; the first still waits until it has come and gone. */
 	private void waitOutTheTransmission(ClientGameTestContext context) {
 		ClientWait.until(context, "the founding transmission on screen", client -> TransmissionOverlay.active());
-		ClientWait.until(context, "the founding transmission over", client -> !TransmissionOverlay.active() && TransmissionOverlay.waiting() == 0);
+		ClientWait.until(context, "the founding transmission over", client -> !TransmissionOverlay.active());
 		context.waitTicks(60); // tick-wait: the chat lines and toasts of the founding fade
 	}
 

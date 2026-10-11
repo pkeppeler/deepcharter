@@ -11,7 +11,6 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
@@ -124,9 +123,8 @@ public final class UpgradeTerminal {
 		if (unpaid.isPresent()) {
 			return Optional.of(unpaid.get().message());
 		}
-		Optional<PartLabel> replaced = PodComponents.install(pod, part);
+		PodComponents.installAndDropReplaced(pod, part);
 		refill(pod, track);
-		replaced.ifPresent(label -> drop(pod, ComponentItems.stackOf(track, label)));
 		UpgradeEvents.BOUGHT.invoker().onBought(server, player, pod, track, tier);
 		return Optional.empty();
 	}
@@ -144,10 +142,6 @@ public final class UpgradeTerminal {
 			case DRILL, ENGINE, RADIATOR, CARGO_BAY, SCANNER, LIGHTS, SPOIL_HOPPER, LINER, SOUNDER, BRACE -> {
 			}
 		}
-	}
-
-	private static void drop(PodEntity pod, ItemStack stack) {
-		pod.level().addFreshEntity(new ItemEntity(pod.level(), pod.getX(), pod.getY() + pod.getBbHeight(), pod.getZ(), stack));
 	}
 
 	private static Parked parked(ServerPlayer player, Charter charter, BlockPos terminal) {

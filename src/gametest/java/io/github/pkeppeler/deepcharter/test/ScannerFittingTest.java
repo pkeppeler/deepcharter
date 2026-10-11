@@ -9,12 +9,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -204,6 +207,49 @@ public class ScannerFittingTest {
 		if (!PodComponents.partOf(pod, ComponentTrack.SCANNER).equals(before)) {
 			throw failure(helper, "%s: the pod's scanner changed to %s", what, PodComponents.partOf(pod, ComponentTrack.SCANNER));
 		}
+	}
+
+	/** A scanner the fit replaces (a void one of another charter, higher than tier 1) drops as an item, as a purchase's replaced part does. */
+	@GameTest
+	public void aUnitFittedOverAForeignScannerDropsTheOldPart(GameTestHelper helper) {
+		Scene scene = scene(helper, true);
+		try {
+			CharterId charter = charterOf(helper, scene.player());
+			PodEntity pod = pod(helper, scene, Optional.of(charter));
+			PodComponents.install(pod, ComponentItems.mint(helper.getLevel().getServer(), ComponentTrack.SCANNER, 3, otherCharter(helper)));
+			PartLabel foreign = PodComponents.partOf(pod, ComponentTrack.SCANNER).orElseThrow();
+			if (!useUnit(scene, pod).consumesAction()) {
+				throw failure(helper, "a void scanner does not stop a fit");
+			}
+			PartLabel now = PodComponents.partOf(pod, ComponentTrack.SCANNER).orElseThrow();
+			if (now.tier() != 1 || !now.charter().equals(charter)) {
+				throw failure(helper, "the pod should hold the new tier 1 part, got %s", now);
+			}
+			// entity-query: the pod stands in the test's own box and its drop falls beside it
+			List<PartLabel> dropped = helper.getLevel().getEntitiesOfClass(ItemEntity.class, pod.getBoundingBox().inflate(4)).stream()
+					.flatMap(item -> ComponentItems.labelOf(item.getItem()).stream()).toList();
+			if (!dropped.equals(List.of(foreign))) {
+				throw failure(helper, "the replaced foreign scanner should drop as it was, got %s", dropped);
+			}
+			helper.getLevel().getEntitiesOfClass(ItemEntity.class, pod.getBoundingBox().inflate(4)).forEach(ItemEntity::discard);
+			helper.succeed();
+		} finally {
+			scene.clean();
+		}
+	}
+
+	/** A world's inventories and saved handbook progress name these ids, so a rename is a decision (ADR 0048): each is pinned by its literal. */
+	@GameTest
+	public void theIdsThatPacksAndProgressNameArePinned(GameTestHelper helper) {
+		Identifier unit = BuiltInRegistries.ITEM.getKey(ScannerRegistry.SCANNER_UNIT);
+		if (!unit.toString().equals("deepcharter:scanner_unit")) {
+			throw failure(helper, "the scanner unit's id is permanent, got %s", unit);
+		}
+		Identifier directive = Identifier.parse("deepcharter:handbook/welcome/craft_scanner");
+		if (helper.getLevel().getServer().getAdvancements().get(directive) == null) {
+			throw failure(helper, "the craft_scanner directive needs its advancement %s", directive);
+		}
+		helper.succeed();
 	}
 
 	/** Anything else held on a pod is left to the other features (fuel, towing); only the unit fits a scanner. */
