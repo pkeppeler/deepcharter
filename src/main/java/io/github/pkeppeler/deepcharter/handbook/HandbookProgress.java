@@ -17,7 +17,6 @@ import net.minecraft.server.level.ServerPlayer;
 
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterEvents;
-import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 
 /**
@@ -30,8 +29,8 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
  * alone, or on another charter, earns this charter nothing, and the player can earn it again here.
  *
  * <p>Everything on a tick, join or sync path reads through {@link #readableData}: when the saved charters or the saved progress
- * are of a version this build cannot read, it logs once and does nothing, and {@link #completedFor} is empty. {@link #completed}
- * is an explicit call and throws instead.
+ * are of a version this build cannot read, it logs once and does nothing, and {@link #completedFor} is empty.
+ * {@link HandbookProgressData#completed} is an explicit call and throws instead.
  */
 public final class HandbookProgress {
 	private HandbookProgress() {
@@ -52,15 +51,6 @@ public final class HandbookProgress {
 				}
 			}
 		});
-	}
-
-	/**
-	 * The directives {@code charter} has completed.
-	 *
-	 * @throws IllegalStateException if the saved progress is of a version this build cannot read
-	 */
-	public static Set<Identifier> completed(MinecraftServer server, CharterId charter) {
-		return HandbookProgressData.get(server).completed(charter);
 	}
 
 	/**

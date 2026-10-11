@@ -137,7 +137,7 @@ public class LamplessFigure extends PathfinderMob {
 			}
 		}
 		if (target != null && !target.isRemoved()) {
-			approach(target, tuning.cling(), checking);
+			approach(level, target, tuning.cling(), checking);
 		} else {
 			wander();
 		}
@@ -161,8 +161,13 @@ public class LamplessFigure extends PathfinderMob {
 		getMoveControl().setWantedPosition(ahead.x, ahead.y, ahead.z, 1.0);
 	}
 
-	private void approach(PodEntity pod, CreatureTuning.Cling cling, boolean checking) {
+	private void approach(ServerLevel level, PodEntity pod, CreatureTuning.Cling cling, boolean checking) {
 		if (pod.getBoundingBox().inflate(cling.reachBlocks()).intersects(getBoundingBox())) {
+			// The target was picked up to a look ago: another figure may have taken hold since, and a pod has one grip.
+			if (isHeldByAnother(level, pod, cling)) {
+				target = null;
+				return;
+			}
 			latch(pod);
 		} else if (checking) {
 			getNavigation().moveTo(pod.getX(), pod.getY(), pod.getZ(), 1.0);
@@ -241,11 +246,13 @@ public class LamplessFigure extends PathfinderMob {
 	/** The nearest pod in sense that this figure would grab, or null. */
 	private @Nullable PodEntity nearestDarkPod(ServerLevel level, CreatureTuning.Cling cling) {
 		double sense = cling.senseBlocks();
+		// entity-query: round a ticking figure, for a pod with a pilot; a pod it does not see only goes undrawn this check
 		return level.getEntitiesOfClass(PodEntity.class, getBoundingBox().inflate(sense), pod -> pod.distanceToSqr(this) <= sense * sense && draws(pod) && !isHeldByAnother(level, pod, cling))
 				.stream().min(Comparator.comparingDouble(pod -> pod.distanceToSqr(this))).orElse(null);
 	}
 
 	private boolean isHeldByAnother(ServerLevel level, PodEntity pod, CreatureTuning.Cling cling) {
+		// entity-query: the figures within reach of a pod that has a pilot, so all within 30 blocks of the pilot, which tick at the lowest simulation distance (EntityQueryAuditTest measures it)
 		return !level.getEntitiesOfClass(LamplessFigure.class, pod.getBoundingBox().inflate(cling.reachBlocks() + 1), other -> other != this && other.grip == pod).isEmpty();
 	}
 

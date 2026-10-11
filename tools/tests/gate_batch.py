@@ -9,6 +9,7 @@ import tempfile
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 REPO = Path(__file__).resolve().parents[2]
 PACKAGE = "io/github/pkeppeler/deepcharter/test"
@@ -17,9 +18,11 @@ EXCHANGE = REPO / "build/gate-checks"
 
 @dataclass(frozen=True)
 class Case:
-    """One tree for the scan: `files` (relative to the test package) are written into a fresh tree, or a Path is scanned where it is."""
+    """One tree for the scan: `files` (relative to the test package) are written into a fresh tree, or a Path is scanned where it is.
+    `gate` names a gate to run over the tree instead of the gametest entrypoint scan (`entity_query`)."""
     files: Mapping[str, str] | Path
     client_tests: str | None
+    gate: Literal["entity_query"] | None = None
 
 
 @dataclass(frozen=True)
@@ -52,7 +55,7 @@ def run(cases: Mapping[str, Case]) -> Mapping[str, Result]:
                     path = root / PACKAGE / relative
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_text(body)
-            manifest.append({"name": name, "root": str(root), "clientTests": case.client_tests})
+            manifest.append({"name": name, "root": str(root), "clientTests": case.client_tests, "gate": case.gate})
         # Fixed paths: the properties are inputs of Gradle's configuration cache, so a new path each run would add a cache entry each run.
         cases_file = EXCHANGE / "cases.json"
         results_file = EXCHANGE / "results.json"

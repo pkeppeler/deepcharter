@@ -111,6 +111,7 @@ public final class LamplessFigures {
 	public static Optional<LamplessFigure> spawnAt(ServerLevel level, StructureSite site) {
 		CreatureTuning tuning = CreatureTuning.DEFAULT;
 		BoundingBox bounds = site.bounds();
+		// entity-query: a figure is not saved (CreatureRegistry noSave), so it lives exactly while its chunk is loaded and the query sees every one
 		if (!levelHasRoom(level, false) || level.getEntities(CreatureRegistry.LAMPLESS_FIGURE, figure -> bounds.isInside(figure.blockPosition())).size() >= tuning.maxPerSite()) {
 			return Optional.empty();
 		}
@@ -140,6 +141,7 @@ public final class LamplessFigures {
 		CreatureTuning tuning = CreatureTuning.DEFAULT;
 		Long lastKill = (natural ? LAST_NATURAL_KILL : LAST_KILL).get(level.dimension());
 		return (lastKill == null || level.getGameTime() - lastKill >= tuning.respawnDelayTicks())
+				// entity-query: a figure is not saved (CreatureRegistry noSave), so it lives exactly while its chunk is loaded and the query sees every one
 				&& level.getEntities(CreatureRegistry.LAMPLESS_FIGURE, figure -> figure.isNatural() == natural).size() < tuning.maxPerLevel();
 	}
 

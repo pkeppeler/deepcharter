@@ -41,6 +41,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OddPods;
+import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 
 /**
@@ -305,8 +306,8 @@ public class PodDrillTest {
 		int floor = 60;
 		ServerLevel level = layer(helper, 1);
 		room(level, x, floor, 4);
-		level.setBlock(new BlockPos(x - 1, floor - 1, Z - 1), OreRegistry.block(OreType.IRONIUM).defaultBlockState(), 3);
-		level.setBlock(new BlockPos(x, floor - 1, Z), OreRegistry.block(OreType.EINSTEINIUM).defaultBlockState(), 3);
+		level.setBlock(new BlockPos(x - 1, floor - 1, Z - 1), OreBlocks.of(OreType.IRONIUM).defaultBlockState(), 3);
+		level.setBlock(new BlockPos(x, floor - 1, Z), OreBlocks.of(OreType.EINSTEINIUM).defaultBlockState(), 3);
 		Rig rig = Rig.await(helper, level, new Vec3(x, floor, Z), 0f, "drill-ore", SPRINT);
 		helper.onEachTick(() -> {
 			if (!rig.ready()) {
@@ -334,7 +335,7 @@ public class PodDrillTest {
 		int floor = 60;
 		ServerLevel level = layer(helper, 1);
 		room(level, x, floor, 4);
-		level.setBlock(new BlockPos(x, floor - 1, Z), OreRegistry.block(OreType.EINSTEINIUM).defaultBlockState(), 3);
+		level.setBlock(new BlockPos(x, floor - 1, Z), OreBlocks.of(OreType.EINSTEINIUM).defaultBlockState(), 3);
 		int slots = PodTuning.DEFAULT.cargo().slots();
 		Rig rig = Rig.await(helper, level, new Vec3(x, floor, Z), 0f, "drill-full", SPRINT, pod -> {
 			for (int i = 0; i < slots; i++) {

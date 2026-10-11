@@ -1014,8 +1014,9 @@ The tier 1 part equals its bound to the bore and the tier 2 part beats it by 3, 
 
 **The rule.**
 - **Where.** The game's spawner places them in the open dark of layers 1 and 2 (every biome of the two lists them: weight 1, one at a time). Never on the surface, and never where it is lit: the spawn needs block light under 3, a solid floor and 3 blocks of air. The colony, the hangar and the founding Mole's bay stand in the surface level, so they are out whatever their light. The roll is cheap and comes first: 2 tries in 100 pass in layer 2, and 1 in 200 in layer 1, where the pilot is new. At most 3 of the game's figures in a level, and a delay (400 ticks) after one is killed. The rail line of layer 2 keeps its own spawner (a figure on a rail site when a player is within 96 blocks) with its own cap and delay: the caverns' figures never hold back the figure of Prospector's Run, which is fixed lore. About a third of figures carry a lamp. On Peaceful the game's own spawner makes no monsters, so a Peaceful world has only the rail's figure ([ADR 0046](../adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md)).
-- **Draw, and the warning.** A pod draws a Retained that is within 20 blocks when it has a pilot, power and fuel above 5 per cent, and no lights part that counts. A parked pod is left alone, and so are wrecks and lit pods. The figure walks to the pod (about 3 blocks a second; a Mole drives at 4). When it first sets off, the pilot reads "Something walks toward the pod. Drill it off, or light the pod." and hears a low rumble (`creature.approach`, a placeholder sound). That is seconds of warning, and a pod that drives away is not caught on the way.
-- **Grab.** A figure whose box is within 2.5 blocks of the hull takes hold: it closes on its place on the side of the hull that it came from, faces the pod and clings in a pose of its own, and the pilot reads "Something has hold of the hull. Drill it off." It never hurts the pilot, the hull or itself: nothing in it attacks.
+- **Draw, and the warning.** A pod draws a Retained that is within 20 blocks when it has a pilot, power and fuel above 5 per cent, and no lights part that counts. A parked pod is left alone, and so are wrecks and lit pods. The figure walks to the pod (about 3 blocks a second; a Mole drives at 4). When it first sets off, the pilot reads "Something walks toward the pod. Light the pod, or be ready to drill." and hears a low rumble (`creature.approach`, a placeholder sound). That is seconds of warning, and a pod that drives away is not caught on the way.
+- **One grip.** A pod has at most one figure on it: a second figure that picked the same pod drops its target as it arrives.
+- **Grab.** A figure whose box is within 2.5 blocks of the hull takes hold: it closes on its place on the side of the hull that it came from, faces the pod and clings in a pose of its own, and the pilot reads "Something has hold of the hull. Drill into rock to cut it off, or get out and strike it." It never hurts the pilot, the hull or itself: nothing in it attacks.
 - **Drain.** It takes 0.15 litres a second (1.5 points of a stock tank), and never under 5 per cent of the tank, so it cannot strand a pod by itself. There is no fill: it takes until the floor, and then it holds on. **The grip ends only when the figure dies, or the pod is gone** (destroyed or removed). Driving, the rotor and a light do not end it. A pilot who leaves the seat does not end it either: the pod stays held, and a person on foot can kill the figure there. A grip does not outlast its chunk: a figure is not saved, so a pod left far from every player is let go when the figure goes.
 - **Health.** A Retained has 12 health. Nothing in the world hurts it, a fall, fire and an explosion included; only the void and `/kill`, which bypass invulnerability, kill it. Two things hurt it: **the pod's cutter** and **a person's hand**.
 - **The cutter (from the seat).** While the pod drills, in any direction (a bore straight down is the main one), the cutter bites the figure on the hull for 2 health, the first bite as the drill starts and one more each 10 ticks. It needs no aim: the figure is on the pod. Six bites kill it, 2.5 seconds after the drill starts. A pod that stops drilling stops biting (the next drill bites at once). The pilot reads "The cutter bites it." at the first bite, hears it hurt and sees ash shaken off it at each bite.
@@ -1095,9 +1096,57 @@ The lights part ($125) pays back after 1.08 unanswered grabs, because an unanswe
 **Measured.** From the data the game runs on, by `SalvageBootstrapTest` with its fixed seeds: 12 crates carry the first goals (tools, a torch and a lantern, the fuel pump's two parts); 60 crates carry all four terminals (63 scrap iron, 63 scrap copper, 28 redstone against 23, 21 and 13 needed). A 12-chunk survey of a fresh world finds 160 crates, none nearer than 100 blocks, the farthest at 162.8 blocks, and 47 stalk columns on crater floors, none with its base above y 60.
 
 **Open questions.**
-- If every crate of a world is broken, the world has no iron. 160 against 26 is a long way off. A part for sale at the contract terminal would be the fix; it is a follow-up if play shows the need.
+- If every crate of a world is broken, the world has no iron. 160 against 26 is a long way off, and [#470](#renewable-salvage-470-a) answers it: the ore processor presses a pod's spoil into crates.
 - Should a crate be a container that can be opened and left, so that a charter can leave salvage for another? Today it breaks into a loot table and is gone.
 - A wrecked prefab that drops salvage (the issue's other source) is not built; crates in patches stand in for it.
+
+
+## Renewable salvage (#470, A)
+
+**Problem.** Neither crates nor stalks regrow ([ADR 0047](../adr/0047-the-surface-has-no-ore-the-bootstraps-metal-is-salvage-and-the-yard-is-a-biome.md)). The yard holds about 6 times what the colony's repairs take, but a long multiplayer world breaks every crate in the end, and then it has no scrap iron, scrap copper, redstone or cloth, and wood only from the few stalks of the craters and of layer 1. Iron is not only the repairs: a tow cable takes 6, a reserve tank 10 with its bucket, and the vanilla tools take it too.
+
+**Candidates.** Numbers are from `SalvageRenewalTest` (the real loot table over 4000 seeds, and `EarlyRunModel` for a stock Mole's run) and, for the first two rows, from the game's own tick rules by arithmetic. A layer 1 run of a stock Mole with a hopper nets $115 and brings home 42 spoil of the bay's 64. A crate holds on average 2.0 planks, 1.0 sticks, 0.5 cloth, 1.0 scrap iron, 1.0 scrap copper and 0.5 redstone.
+
+| | What it is | Renews | Pace | Why not, or why |
+|---|---|---|---|---|
+| **A. Spore regrowth** | A felled stalk leaves a spore cap that grows a block back on a random tick | Wood only | At 1 growth in 8 random ticks (vanilla's 3 per 4096 ticks a block): 10,900 ticks, 9 minutes, a block; a 4-block stalk in 36 minutes, 16 planks | Nothing for scrap, cloth or redstone. It runs only in a loaded chunk, and stalks stand 129 to 281 blocks from the colony, where nobody stays: it grows when a player is there, which is the walk the stalks already cost. A new block, a new look (a cap and its stages), and a random tick the evidence worlds pin off |
+| **B. Scrap reclaimer** | The ore processor turns spoil into scrap iron or scrap copper | Metal only | At the crate's own rate of metal (2 scrap for 24 spoil, 12 a scrap): 3.5 scrap a layer 1 run | Nothing for wood, cloth or redstone, and the terminals' parts need 13 redstone, so it cannot rebuild a colony. Fix those and it is C's crate with extra steps |
+| **C. Contract bundle** | A purchase of a crate's worth of wood and scrap at the contract terminal | All | At the press's pace ($1,725 for the 26-crate chain over 15 runs of $115) a bundle is $66; at $20 the chain is $520, 4.5 runs | A price low enough to feel fair lets a first run buy the colony past the yard, and one high enough to hold the pace costs 2.2 Ironium for 1 iron and 1 copper. It is a new sink on the money the upgrades, the fuel and SPEC section 11's teleporters ($690 and $1,390) all draw on, and it re-opens their balance |
+| **D. Crate press** | The ore processor presses spoil into a salvage crate, which breaks into the yard's loot | All | 24 spoil a crate: a layer 1 run presses 1.75 crates (a full bay 2.67): 1.75 iron, 1.75 copper, 3.5 planks, 0.9 redstone | **The pick** |
+
+**Pick: D.** It uses the loops that exist and adds none:
+- **Spoil** is the rock the hopper keeps from every bore, which today has one use (brick) and is lost past 64. A press gives the same rock a second use and a trade: 24 spoil is 12 bricks, half a rack. A charter that lines its shaft has less to press, and one that bores in safe rock has crates to spare, so the lava ladder and the renewal pull on one stock ([#313](#hand-lining-313-a)).
+- **The hopper** is the gate. It is bought, for $100, which is a whole stock layer 1 run (`EconomyAffordabilityTest`), so no spoil, and no crate from the press, exists in a charter's first run. The yard's crates stay the start (ADR 0047), and the press is for the second hour on.
+- **Money** is not touched. Nothing a crate drops sells at the processor (`noCrateDropIsAnOreAndSoThePressAddsNoIncome`), the press costs no dollar, and so the early-run income, the upgrade prices and the teleport items of SPEC section 11 stay as `EconomyAffordabilityTest` pins them. Nothing in SPEC changes.
+- **One crate, one loot table.** The pressed crate is the yard's block and item, and it breaks into the yard's table, so wood, cloth, copper and redstone come as they do from the ground and no recipe or rate is a second copy. A crate's planks smelt 3.0 items and its scrap needs 2.0, so the press pays for its own fuel and a long world never needs a stalk for the furnace.
+- **Co-op.** Spoil of every pod parked at the processor that belongs to the charter, or to no charter, is pressed (as for the fuse), and the crates are items a crew can hand over. A crate placed and broken is the same loot for any charter.
+
+**The ladder.** By hand: the yard's crates (the bootstrap). The pod: a hopper, bore, press at the processor. Mastery: none is needed, the press is the long game and a charter that has the metal it needs stops pressing.
+
+**Trade-offs.** Spoil spent on crates is not brick for lining. A crate is slow: the colony's whole repair chain by the press alone is 26 crates, 15 layer 1 runs, so it is not the first hour; a tow cable's 6 iron is 4 runs. The crates go to the pack only (a pack with no room makes none, as for brick), and a full bay is lost past 64 if it is not pressed.
+
+**Knobs.** `MarketTuning.spoilPerCrate` (24). The action `deepcharter:press_crates` and the button `PRESS CRATE` (`screen.deepcharter.processor.press`). The crate's loot, `loot_table/blocks/salvage_crate.json`, is shared with the yard, so retuning it retunes both.
+
+**Looks.** None are new. The crate is the yard's crate, in whichever look the pack gives it. The only new thing on screen is the button on the processor's screen, between CLOSE and MAKE SLAG BRICK, drawn by the CRT button the screen already uses.
+
+**Measured.**
+
+| Number | Value | By |
+|---|---|---|
+| Spoil of a stock hopper Mole's layer 1 run | 42 of 64 | `aHopperRunInLayerOneBringsHomeMoreThanACratesSpoil` |
+| The hopper's price against a run's net | $100 against $115: one run | `thePressNeedsTheHopperWhichTakesAWholeRunToBuy` |
+| The colony's repair chain by the press alone | 26 crates, 15 layer 1 runs (at least 10) | `pressingTheWholeRepairChainTakesTenRunsOrMore` |
+| A tow cable's 6 iron | 4 layer 1 runs (at most 4) | `aTowCablesIronIsPressedWithinAFewRuns` |
+| A crate's planks and its scrap | 3.0 smelts against 2.0 | `aCratesPlanksSmeltMoreThanItsScrap` |
+| Money added | $0 | `noCrateDropIsAnOreAndSoThePressAddsNoIncome` |
+| The conversion on a real pod and terminal | 55 spoil to 2 crates and 7 left; 23 to none; 24 to 1; room-limited; one crate from each of two pods and none from a rival's | `OreProcessorTest` |
+
+**Economy impact.** None in dollars, and no change to the first hour: a charter's first run cannot press, and what a layer 1 run pays ($115) is the same. Early-game and unpacked columns are unchanged, so no default is harder than on main.
+
+**Open questions.**
+- Should a pressed crate be told from the yard's, for a pack that wants to (a stencil, a different lid)? Today it is the same block and item.
+- Should the press take spoil from the player's pack as well as from parked pods? Spoil is a pod attachment, so it does not today.
+- Spore regrowth (A) would still give stalks back to a world with a crew camped by a crater. It is a follow-up if play shows wood, not metal, to be the gap.
 
 ## The deepest point (#476)
 

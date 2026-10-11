@@ -344,9 +344,6 @@ public class TransmissionsTest {
 		Transmissions.fire(server, data, first, id("t08"));
 		Transmissions.fire(server, data, first, id("t03"));
 		Transmissions.fire(server, data, first, id("t02"));
-		if (!data.replays().equals(ids("t08", "t02"))) {
-			throw helper.assertionException("the repair transmissions that fired are replayed in order, and t03 is not one: %s", data.replays());
-		}
 
 		MockPlayer founder = MockPlayers.join(helper, "tx-replay");
 		CharterId later = directCharter(helper, founder.player().getUUID());
@@ -523,8 +520,9 @@ public class TransmissionsTest {
 						|| !progress.pending().equals(List.of(Transmission.Bonus.B2))) {
 					throw helper.assertionException("the state should load as saved: %s", progress);
 				}
-				if (!data.replays().equals(ids("t02"))) {
-					throw helper.assertionException("the replay list should load as saved: %s", data.replays());
+				List<Identifier> replayed = data.replayTo(CharterId.random());
+				if (!replayed.equals(ids("t02"))) {
+					throw helper.assertionException("the replay list should load as saved, a new charter is replayed %s", replayed);
 				}
 				requireFired(helper, data, charter, "t02", false);
 				requireFired(helper, data, charter, "t03", false);
@@ -553,7 +551,7 @@ public class TransmissionsTest {
 		CompoundTag brokenBody = versioned(TransmissionData.VERSION);
 		brokenBody.putString("charters", "not a list");
 		TransmissionData data = TransmissionData.CODEC.parse(NbtOps.INSTANCE, brokenBody).getOrThrow();
-		expectThrows(helper, "using a body that does not parse", data::replays);
+		expectThrows(helper, "using a body that does not parse", () -> data.replayTo(CharterId.random()));
 		if (data.isReadable() || !brokenBody.equals(TransmissionData.CODEC.encodeStart(NbtOps.INSTANCE, data).getOrThrow())) {
 			throw helper.assertionException("a body that does not parse is unusable and must be written back unchanged");
 		}

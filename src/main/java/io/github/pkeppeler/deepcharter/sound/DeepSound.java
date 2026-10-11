@@ -62,16 +62,10 @@ public enum DeepSound {
 	MUSIC_LAYER_2("music.layer_2"),
 	MUSIC_TERMINAL("music.terminal");
 
-	private final String path;
 	private final SoundEvent event;
 
 	DeepSound(String path) {
-		this.path = path;
 		this.event = SoundEvent.createVariableRangeEvent(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
-	}
-
-	public String path() {
-		return path;
 	}
 
 	public SoundEvent event() {

@@ -86,6 +86,8 @@ public class RetainedTest {
 	private static final int KILL_BUDGET_TICKS = 150;
 	/** Ticks a dead figure has to be gone: the dissolve (20 ticks) and a margin. */
 	private static final int DISSOLVE_BUDGET_TICKS = 60;
+	/** Ticks the two-figure tests run: the walk to the hull, and time for a second grip to show. */
+	private static final int TWO_FIGURES_TICKS = 120;
 	/** Ticks a pilot's answer that does not kill (the rotor, the treads, a light) is watched: far over the old shake of 20. */
 	private static final int NO_ANSWER_TICKS = 120;
 	/** Ticks between two blows by hand: a hurt mob ignores a blow that is no stronger than the last for 10 ticks. */
@@ -508,6 +510,106 @@ public class RetainedTest {
 	private static void strike(ServerLevel level, Arena arena, MockPlayer walker, int[] blows) {
 		arena.figure.hurtServer(level, level.damageSources().playerAttack(walker.player()), 6f);
 		blows[0]++;
+	}
+
+	/**
+	 * Two figures that pick one pod a few ticks apart, both just out of reach: the first grips it, and the second, whose target was set before
+	 * that, must not grip it too. Only one holds a pod at a time, or the drain doubles and two kills are needed (a grip is permanent now).
+	 */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + TWO_FIGURES_TICKS)
+	public void twoFiguresThatPickOnePodDoNotBothGripIt(GameTestHelper helper) {
+		expectOneGrip(helper, slot(10), 3, 1.35, 0.9);
+	}
+
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + TWO_FIGURES_TICKS)
+	public void twoFiguresThatPickOnePodAHandCloserDoNotBothGripIt(GameTestHelper helper) {
+		expectOneGrip(helper, slot(13), 3, 1.5, 1.0);
+	}
+
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + TWO_FIGURES_TICKS)
+	public void twoFiguresThatPickOnePodAHandFurtherDoNotBothGripIt(GameTestHelper helper) {
+		expectOneGrip(helper, slot(14), 3, 1.2, 0.75);
+	}
+
+	private static void expectOneGrip(GameTestHelper helper, BlockPos origin, int ticksApart, double firstGap, double secondGap) {
+		ServerLevel level = helper.getLevel();
+		Arena[] made = {null};
+		LamplessFigure[] first = {null};
+		LamplessFigure[] second = {null};
+		long[] since = {0};
+		helper.onEachTick(() -> {
+			Arena arena = made[0];
+			if (arena == null) {
+				return;
+			}
+			long waited = helper.getTick() - since[0];
+			if (waited == ticksApart) {
+				second[0] = placeNextToPod(level, arena, 1.0, secondGap);
+			}
+			if (second[0] == null) {
+				return;
+			}
+			if (first[0].isClinging() && second[0].isClinging()) {
+				throw failure(helper, "both figures clung to one pod, %d ticks after they were placed", waited);
+			}
+			if (waited >= TWO_FIGURES_TICKS - 20) {
+				expect(helper, first[0].isClinging() || second[0].isClinging(), "neither figure gripped the pod");
+				first[0].discard();
+				second[0].discard();
+				arena.clear();
+				helper.succeed();
+			}
+		});
+		FarChunks.awaitEntityTicking(helper, level, origin, () -> {
+			made[0] = Arena.build(helper, level, origin, false);
+			// The arena's own figure is far away at the west end; the two that matter stand a little out of reach of the hull, the second nearer, so that the second sets its target before the first grips and arrives before its next look.
+			made[0].figure.discard();
+			first[0] = placeNextToPod(level, made[0], -1.0, firstGap);
+			since[0] = helper.getTick();
+		});
+	}
+
+	/** A figure on the west side of the pod, {@code gap} blocks outside the reach at which it grips, {@code dz} blocks to the side. */
+	private static LamplessFigure placeNextToPod(ServerLevel level, Arena arena, double dz, double gap) {
+		LamplessFigure figure = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
+		double x = arena.pod.getX() - arena.pod.getBbWidth() / 2 - CLING.reachBlocks() - gap;
+		figure.setPos(x, arena.pod.getY(), arena.pod.getZ() + dz);
+		figure.setHeading(Direction.NORTH);
+		level.addFreshEntity(figure);
+		return figure;
+	}
+
+	/** A grip outlasts the pilot: the pod left empty stays held and keeps draining, and a person on foot is who kills it. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + NO_ANSWER_TICKS + 60)
+	public void aPodLeftEmptyStaysGripped(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos origin = slot(11);
+		Arena[] made = {null};
+		long[] leftAt = {-1};
+		float[] fuelAtLeaving = {0};
+		helper.onEachTick(() -> {
+			Arena arena = made[0];
+			if (arena == null) {
+				return;
+			}
+			if (leftAt[0] < 0) {
+				if (arena.figure.isClinging()) {
+					leftAt[0] = helper.getTick();
+					fuelAtLeaving[0] = arena.pod.fuel();
+					arena.pilot.leave();
+				} else if (helper.getTick() > APPROACH_BUDGET_TICKS + 20) {
+					throw failure(helper, "the figure had not grabbed the dark pod");
+				}
+				return;
+			}
+			expect(helper, arena.figure.isClinging() && arena.figure.isAlive(), "the figure let go of a pod its pilot left");
+			if (helper.getTick() - leftAt[0] >= NO_ANSWER_TICKS) {
+				expect(helper, arena.pod.fuel() < fuelAtLeaving[0], "the tank did not drain while the pod stood empty");
+				arena.clear();
+				helper.succeed();
+			}
+		});
+		FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, false));
 	}
 
 	/** A pod that is destroyed (or taken away) ends the grip; the figure is not hurt by it and goes on. */
