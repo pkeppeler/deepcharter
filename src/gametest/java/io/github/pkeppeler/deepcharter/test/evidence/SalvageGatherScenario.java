@@ -14,6 +14,8 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.chunk.LevelChunk;
@@ -41,7 +43,6 @@ public class SalvageGatherScenario extends EvidenceScenario {
 	private static final int HOLD_FRAMES = 10;
 	/** How far in front of the block the player starts, and how near the walk ends. */
 	private static final int START_DISTANCE = 4;
-	private static final int ATTACK = 0;
 
 	private ClientGameTestContext ctx;
 	private TestSingleplayerContext world;
@@ -62,6 +63,7 @@ public class SalvageGatherScenario extends EvidenceScenario {
 			context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
 			BlockPos crate = world.getServer().computeOnServer(server -> nearest(server, "salvage_crate", false));
 			BlockPos stalk = world.getServer().computeOnServer(server -> nearest(server, "fungal_stalk", true));
+			world.getServer().runOnServer(server -> server.getPlayerList().getPlayers().getFirst().getInventory().clearContent());
 			gather(crate, false);
 			gather(stalk, true);
 			screenshot(context, "gathered");
@@ -116,22 +118,31 @@ public class SalvageGatherScenario extends EvidenceScenario {
 		ctx.getInput().releaseKey(options -> options.keyUp);
 	}
 
-	/** Looks at the block and holds the attack button until the block is gone, a frame every {@link #TICKS_PER_FRAME}. */
+	/**
+	 * Looks at the block and mines it as the attack button does, through the game mode: one start and then one continue on every tick, with a
+	 * swing, so the crack shows. A frame every {@link #TICKS_PER_FRAME}. (The test client's mouse is not grabbed, so a held button does nothing.)
+	 */
 	private void breakBlock(BlockPos target) {
 		ctx.getInput().lookAt(target);
-		ctx.getInput().holdMouse(ATTACK);
-		try {
-			for (int tick = 0; tick < BREAK_LIMIT_TICKS; tick += TICKS_PER_FRAME) {
-				ctx.waitTicks(TICKS_PER_FRAME); // tick-wait: the frame cadence of the clip
-				frame(ctx);
-				if (world.getServer().computeOnServer(server -> server.overworld().getBlockState(target).isAir())) {
-					return;
+		for (int tick = 0; tick < BREAK_LIMIT_TICKS; tick++) {
+			boolean first = tick == 0;
+			ctx.runOnClient(client -> {
+				if (first) {
+					client.gameMode.startDestroyBlock(target, Direction.SOUTH);
+				} else {
+					client.gameMode.continueDestroyBlock(target, Direction.SOUTH);
 				}
+				client.player.swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, false);
+			});
+			ctx.waitTicks(1); // tick-wait: the mining is one call a tick
+			if (tick % TICKS_PER_FRAME == 1) {
+				frame(ctx);
 			}
-			throw new AssertionError("the block at " + target.toShortString() + " was not broken in " + BREAK_LIMIT_TICKS + " ticks bare handed");
-		} finally {
-			ctx.getInput().releaseMouse(ATTACK);
+			if (world.getServer().computeOnServer(server -> server.overworld().getBlockState(target).isAir())) {
+				return;
+			}
 		}
+		throw new AssertionError("the block at " + target.toShortString() + " was not broken in " + BREAK_LIMIT_TICKS + " ticks bare handed");
 	}
 
 	/**

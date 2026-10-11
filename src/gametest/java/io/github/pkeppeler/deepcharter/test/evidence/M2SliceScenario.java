@@ -93,6 +93,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.HandbookChaptersOneToFiveTest;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.M2SliceEndState;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -212,13 +213,13 @@ public class M2SliceScenario extends EvidenceScenario {
 	}
 
 	private void starterItems() {
-		say("2. Handbook chapter 1. SHORTCUT: a log, a crafting table, stone tools and iron are handed over, not gathered.");
+		say("2. Handbook chapter 1. SHORTCUT: a stalk, a crafting table, stone tools, scrap and iron are handed over, not gathered.");
 		onServer(server -> {
 			ServerPlayer real = real(server);
-			stash(real, new ItemStack(Items.OAK_LOG, 4));
+			stash(real, new ItemStack(HandbookChaptersOneToFiveTest.ours("fungal_stalk"), 4));
 			stash(real, new ItemStack(Items.CRAFTING_TABLE));
 			stash(real, new ItemStack(Items.STONE_PICKAXE));
-			stash(real, new ItemStack(Items.RAW_IRON, 3));
+			stash(real, new ItemStack(HandbookChaptersOneToFiveTest.ours("scrap_iron"), 3));
 			stash(real, new ItemStack(Items.IRON_INGOT, 3));
 			return null;
 		});

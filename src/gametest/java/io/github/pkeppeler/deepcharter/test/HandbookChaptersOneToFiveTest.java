@@ -206,7 +206,7 @@ public class HandbookChaptersOneToFiveTest {
 	}
 
 	/** One of the mod's own items, by id: the salvage of the bootstrap (#245) is registered by the surface feature. */
-	static Item ours(String path) {
+	public static Item ours(String path) {
 		return BuiltInRegistries.ITEM.getValue(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
 	}
 
