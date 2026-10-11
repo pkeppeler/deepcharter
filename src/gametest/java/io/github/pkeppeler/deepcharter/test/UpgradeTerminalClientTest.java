@@ -7,14 +7,17 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
@@ -25,6 +28,7 @@ import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
@@ -90,6 +94,35 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
 			CrtButton unaffordable = context.computeOnClient(client -> screen.children().stream().filter(CrtButton.class::isInstance)
 					.map(CrtButton.class::cast).filter(button -> button.getMessage().getString().startsWith("BUY TIER 6")).findFirst().orElseThrow());
 			require(!unaffordable.active, "a part the account cannot pay for is dead");
+
+			// #483: the scanner's tier 1 is crafted, so its row is not for sale and the next tier waits for it to be fitted.
+			context.clickScreenButton("SCANNER  T0");
+			ClientWait.until(context, "the scanner track selected", client -> UpgradeShown.isChosen(screen, ComponentTrack.SCANNER));
+			List<String> bare = labels(context, screen);
+			require(bare.contains("TIER 1  CRAFTED, NOT SOLD") && bare.contains("BUY TIER 2  $500  (FIT TIER 1 FIRST)"),
+					"the scanner shows tier 1 as crafted and tier 2 as waiting for it, got " + bare);
+			require(!button(context, screen, "TIER 1  CRAFTED, NOT SOLD").active && !button(context, screen, "BUY TIER 2  $500  (FIT TIER 1 FIRST)").active,
+					"neither scanner row can be bought");
+
+			singleplayer.getServer().runOnServer(server2 -> {
+				ServerPlayer player = server2.getPlayerList().getPlayers().getFirst();
+				player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ScannerRegistry.SCANNER_UNIT));
+				require(UseEntityCallback.EVENT.invoker().interact(player, player.level(), InteractionHand.MAIN_HAND, pod(server2, scene), null).consumesAction(),
+						"using the crafted unit on the pod should fit it");
+			});
+			context.setScreen(() -> null);
+			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.terminal())));
+			ClientWait.screen(context, UpgradeScreen.class);
+			UpgradeScreen fitted = context.computeOnClient(client -> (UpgradeScreen) client.gui.screen());
+			ClientWait.until(context, "the upgrade screen finished typing", client -> fitted.typewriter().done(), client -> "typewriter text '" + fitted.typewriter().text() + "'");
+			context.clickScreenButton("SCANNER  T1");
+			ClientWait.until(context, "the scanner track selected again", client -> UpgradeShown.isChosen(fitted, ComponentTrack.SCANNER));
+			List<String> after = labels(context, fitted);
+			require(after.contains("TIER 1  INSTALLED") && after.contains("BUY TIER 2  $500"), "a fitted scanner shows tier 1 installed and tier 2 for sale, got " + after);
+			context.clickScreenButton("BUY TIER 2  $500");
+			ClientWait.until(context, "the tier 2 install label", client -> labels(client, fitted).contains("TIER 2  INSTALLED"));
+			require(singleplayer.getServer().computeOnServer(server2 -> PodComponents.effectiveTier(pod(server2, scene), ComponentTrack.SCANNER) == 2),
+					"the server installed the tier 2 scanner over the crafted one");
 			context.setScreen(() -> null);
 		}
 	}
@@ -119,6 +152,11 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
 
 	private static PodEntity pod(MinecraftServer server, Scene scene) {
 		return (PodEntity) server.overworld().getEntity(scene.pod());
+	}
+
+	private static CrtButton button(ClientGameTestContext context, UpgradeScreen screen, String label) {
+		return context.computeOnClient(client -> screen.children().stream().filter(CrtButton.class::isInstance).map(CrtButton.class::cast)
+				.filter(button -> button.getMessage().getString().replaceFirst("^> ", "").equals(label)).findFirst().orElseThrow());
 	}
 
 	private static List<String> labels(ClientGameTestContext context, UpgradeScreen screen) {

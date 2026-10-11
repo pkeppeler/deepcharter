@@ -108,12 +108,12 @@ public class SalvageBootstrapTest {
 	}
 
 	/** The yard's outer radius, read from the shipped density function that picks it: a tuning value. */
-	private static int yardRadius() {
+	static int yardRadius() {
 		return yardBound("max_exclusive");
 	}
 
 	/** The yard's inner radius: no crate stands nearer the colony, whose pad and graded margin it clears. */
-	private static int yardInnerRadius() {
+	static int yardInnerRadius() {
 		return yardBound("min_inclusive");
 	}
 
