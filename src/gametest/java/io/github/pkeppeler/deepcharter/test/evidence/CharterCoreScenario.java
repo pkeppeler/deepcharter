@@ -32,7 +32,7 @@ public class CharterCoreScenario extends EvidenceScenario {
 	protected void run(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			TestServerContext server = singleplayer.getServer();
-			context.waitFor(client -> client.player != null && client.level != null);
+			awaitWorld(context);
 			context.waitTicks(20);
 			frame(context);
 

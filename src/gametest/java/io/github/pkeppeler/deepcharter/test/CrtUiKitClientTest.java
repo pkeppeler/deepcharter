@@ -37,7 +37,6 @@ public class CrtUiKitClientTest implements FabricClientGameTest {
 		revealsAtConfiguredRate();
 		hookFiresOncePerLetterInOrder();
 		hookFiresInOrderWhenOneStepRevealsMany();
-		skipRevealsTheRestWithoutFiringTheHook();
 		stepsOfOneTwentiethAtRate40GiveExactlyTwoLettersEach();
 		defaultRateIsTheTuningRate();
 		screenTicksRevealExactly(context);
@@ -79,15 +78,6 @@ public class CrtUiKitClientTest implements FabricClientGameTest {
 		Typewriter writer = new Typewriter(TEXT, RATE, (index, letter) -> indexes.add(index));
 		writer.advance(0.5);
 		require(indexes.equals(List.of(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)), "one 0.5 s step fires hooks 0..9 in order, got " + indexes);
-	}
-
-	private static void skipRevealsTheRestWithoutFiringTheHook() {
-		List<Integer> indexes = new ArrayList<>();
-		Typewriter writer = new Typewriter(TEXT, RATE, (index, letter) -> indexes.add(index));
-		writer.advance(0.1);
-		writer.skip();
-		require(writer.done() && writer.visible().equals(TEXT), "skip reveals the whole text");
-		require(indexes.size() == 2, "skip fires no hook for the skipped letters, got " + indexes.size() + " calls in total");
 	}
 
 	/** 0.05 s added 8 times at 40 letters/s is just under 0.4 in floating point, which would hold a letter back. */

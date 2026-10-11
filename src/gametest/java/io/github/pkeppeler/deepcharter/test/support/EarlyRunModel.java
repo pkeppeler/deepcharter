@@ -17,7 +17,6 @@ import net.minecraft.world.level.block.Blocks;
 
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
-import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodDrill;
@@ -222,7 +221,7 @@ public final class EarlyRunModel {
 	/** Seconds to drill one slab at {@code depthBlocks} below the surface. A slab with ore in it takes as long as its hardest block; the zone fill replaces vanilla stone. */
 	private static double slabSeconds(Chassis chassis, Zone zone, PodStats stats, double depthBlocks) {
 		float stoneHardness = Blocks.STONE.defaultDestroyTime();
-		float oreHardness = zone.chances().keySet().stream().map(type -> OreRegistry.block(type).defaultDestroyTime()).max(Float::compare).orElseThrow();
+		float oreHardness = zone.chances().keySet().stream().map(type -> OreBlocks.of(type).defaultDestroyTime()).max(Float::compare).orElseThrow();
 		double slabHasOre = 1 - Math.pow(1 - zone.oreChance(), chassis.slabCells());
 		int depthFeet = (int) (depthBlocks * LayerTuning.DEFAULT.feetPerBlock());
 		double stoneTicks = PodDrill.drillTicks(stats, stoneHardness, depthFeet);

@@ -45,7 +45,6 @@ import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
-import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
@@ -55,6 +54,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 
 /**
@@ -91,25 +91,25 @@ final class TextureTestWorld {
 	private static final int REFERENCE_HALF_WIDTH = 7;
 	/** The ores in the cavern wall, by their place in it: blocks east of the room's middle, and up from its floor. */
 	private static final Map<BlockPos, Block> WALL_BLOCKS = Map.ofEntries(
-			Map.entry(new BlockPos(-4, 3, 0), OreRegistry.block(OreType.IRONIUM)),
-			Map.entry(new BlockPos(-3, 3, 0), OreRegistry.block(OreType.IRONIUM)),
-			Map.entry(new BlockPos(-5, 0, 0), OreRegistry.block(OreType.CICATRIUM)),
-			Map.entry(new BlockPos(-3, 1, 0), OreRegistry.block(OreType.BRONZIUM)),
-			Map.entry(new BlockPos(-1, 2, 0), OreRegistry.block(OreType.EINSTEINIUM)),
-			Map.entry(new BlockPos(1, 1, 0), OreRegistry.block(OreType.GOLDIUM)),
-			Map.entry(new BlockPos(2, 3, 0), OreRegistry.block(OreType.SILVERIUM)),
-			Map.entry(new BlockPos(4, 2, 0), OreRegistry.block(OreType.PLATINIUM)),
+			Map.entry(new BlockPos(-4, 3, 0), OreBlocks.of(OreType.IRONIUM)),
+			Map.entry(new BlockPos(-3, 3, 0), OreBlocks.of(OreType.IRONIUM)),
+			Map.entry(new BlockPos(-5, 0, 0), OreBlocks.of(OreType.CICATRIUM)),
+			Map.entry(new BlockPos(-3, 1, 0), OreBlocks.of(OreType.BRONZIUM)),
+			Map.entry(new BlockPos(-1, 2, 0), OreBlocks.of(OreType.EINSTEINIUM)),
+			Map.entry(new BlockPos(1, 1, 0), OreBlocks.of(OreType.GOLDIUM)),
+			Map.entry(new BlockPos(2, 3, 0), OreBlocks.of(OreType.SILVERIUM)),
+			Map.entry(new BlockPos(4, 2, 0), OreBlocks.of(OreType.PLATINIUM)),
 			Map.entry(new BlockPos(5, 0, 0), HazardBlocks.COMPANY_ROCK));
 	/** The ores in the seam wall, 5 wide and 3 high from the floor, each with plain stone on all four sides. */
 	private static final Map<BlockPos, Block> SEAM_BLOCKS = Map.ofEntries(
-			Map.entry(new BlockPos(-2, 0, 0), OreRegistry.block(OreType.BRONZIUM)),
-			Map.entry(new BlockPos(0, 0, 0), OreRegistry.block(OreType.SILVERIUM)),
-			Map.entry(new BlockPos(2, 0, 0), OreRegistry.block(OreType.PLATINIUM)),
-			Map.entry(new BlockPos(-1, 1, 0), OreRegistry.block(OreType.IRONIUM)),
-			Map.entry(new BlockPos(1, 1, 0), OreRegistry.block(OreType.GOLDIUM)),
-			Map.entry(new BlockPos(-2, 2, 0), OreRegistry.block(OreType.EINSTEINIUM)),
-			Map.entry(new BlockPos(0, 2, 0), OreRegistry.block(OreType.CICATRIUM)),
-			Map.entry(new BlockPos(2, 2, 0), OreRegistry.block(OreType.IRONIUM)));
+			Map.entry(new BlockPos(-2, 0, 0), OreBlocks.of(OreType.BRONZIUM)),
+			Map.entry(new BlockPos(0, 0, 0), OreBlocks.of(OreType.SILVERIUM)),
+			Map.entry(new BlockPos(2, 0, 0), OreBlocks.of(OreType.PLATINIUM)),
+			Map.entry(new BlockPos(-1, 1, 0), OreBlocks.of(OreType.IRONIUM)),
+			Map.entry(new BlockPos(1, 1, 0), OreBlocks.of(OreType.GOLDIUM)),
+			Map.entry(new BlockPos(-2, 2, 0), OreBlocks.of(OreType.EINSTEINIUM)),
+			Map.entry(new BlockPos(0, 2, 0), OreBlocks.of(OreType.CICATRIUM)),
+			Map.entry(new BlockPos(2, 2, 0), OreBlocks.of(OreType.IRONIUM)));
 	/** The wall-clock limit of one settle. */
 	private static final long SETTLE_LIMIT_NANOS = 120_000_000_000L;
 	private static final int SETTLE_POLL_TICKS = 2;
@@ -196,7 +196,7 @@ final class TextureTestWorld {
 			OreType[] ores = OreType.values();
 			for (int column = 0; column < ores.length; column++) {
 				for (int row = 0; row < 3; row++) {
-					blocks.put(new BlockPos(-6 + 2 * column, 2 * row, 0), OreRegistry.block(ores[column]));
+					blocks.put(new BlockPos(-6 + 2 * column, 2 * row, 0), OreBlocks.of(ores[column]));
 				}
 			}
 			buildWall(level, REFERENCE_ROOM, REFERENCE_HALF_WIDTH, blocks);

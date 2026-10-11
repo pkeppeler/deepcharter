@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 
 /**
@@ -54,7 +55,7 @@ public class PodDrillScenario extends EvidenceScenario {
 					throw new AssertionError("the player could not mount the pod");
 				}
 			});
-			context.waitFor(client -> client.player != null && client.player.getVehicle() instanceof PodEntity
+			ClientWait.until(context, "the player riding a pod in layer 1", client -> client.player != null && client.player.getVehicle() instanceof PodEntity
 					&& client.level.dimension().equals(LayerChain.dimension(1)));
 			context.runOnClient(client -> {
 				client.options.setCameraType(CameraType.THIRD_PERSON_BACK);

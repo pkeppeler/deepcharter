@@ -86,10 +86,6 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 		rebuildWidgets();
 	}
 
-	public TerminalView view() {
-		return view;
-	}
-
 	@Override
 	public Typewriter typewriter() {
 		return typewriter;
@@ -165,11 +161,6 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 	/** All the rows of the list, shown or not. */
 	public int rowCount() {
 		return rows().size();
-	}
-
-	/** The index of the first row shown. */
-	public int firstRow() {
-		return firstRow;
 	}
 
 	/** Shows the list from row {@code first}, kept inside the list, and lays the buttons out again. */

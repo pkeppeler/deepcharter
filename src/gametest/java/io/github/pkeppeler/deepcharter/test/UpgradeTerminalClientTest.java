@@ -31,6 +31,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.UpgradeShown;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
@@ -64,7 +65,7 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
 					"every track is listed with its installed tier, got " + labels(context, screen));
 
 			context.clickScreenButton("HULL  T0");
-			ClientWait.until(context, "the hull track selected", client -> screen.selected() == ComponentTrack.HULL);
+			ClientWait.until(context, "the hull track lit", client -> UpgradeShown.isChosen(screen, ComponentTrack.HULL));
 			List<String> hull = labels(context, screen);
 			require(hull.contains("BUY TIER 1  $200") && hull.contains("BUY TIER 2  $500"), "the hull parts show their prices, got " + hull);
 			require(hull.contains("BUY TIER 3  $1250  (WORKS AS TIER 2)") && hull.contains("BUY TIER 4  $5000  (WORKS AS TIER 2)"),

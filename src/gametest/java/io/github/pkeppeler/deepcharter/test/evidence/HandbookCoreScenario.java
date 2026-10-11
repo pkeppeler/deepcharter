@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.world.entity.player.Inventory;
 
 import io.github.pkeppeler.deepcharter.handbook.HandbookItems;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /** Evidence scenario "m2-handbook-core" for #61: a new player holds the Employee Handbook in the hotbar. */
 public class HandbookCoreScenario extends EvidenceScenario {
@@ -17,7 +18,7 @@ public class HandbookCoreScenario extends EvidenceScenario {
 	@Override
 	protected void run(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			context.waitFor(client -> handbookSlot(client.player.getInventory()) >= 0);
+			ClientWait.until(context, "the handbook in the hotbar", client -> handbookSlot(client.player.getInventory()) >= 0);
 			context.runOnClient(client -> client.player.getInventory().setSelectedSlot(handbookSlot(client.player.getInventory())));
 			context.waitTicks(2);
 			screenshot(context, "handbook-in-hotbar");

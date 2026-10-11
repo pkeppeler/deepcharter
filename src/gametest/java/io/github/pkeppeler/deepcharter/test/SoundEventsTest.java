@@ -46,7 +46,7 @@ public class SoundEventsTest {
 	public void theMapAndTheSoundEventsListTheSameIds(GameTestHelper helper) throws IOException {
 		Set<String> mapped = mappedIds(helper);
 		Set<String> declared = new TreeSet<>();
-		Arrays.stream(DeepSound.values()).forEach(sound -> declared.add(sound.path()));
+		Arrays.stream(DeepSound.values()).forEach(sound -> declared.add(sound.event().location().getPath()));
 		Set<String> onlyDeclared = new TreeSet<>(declared);
 		onlyDeclared.removeAll(mapped);
 		if (!onlyDeclared.isEmpty()) {
@@ -71,8 +71,9 @@ public class SoundEventsTest {
 			placeholders = JsonParser.parseReader(reader).getAsJsonObject().keySet();
 		}
 		for (DeepSound sound : DeepSound.values()) {
-			if (!placeholders.contains(sound.path())) {
-				throw failure(helper, "sounds.json has no placeholder for %s", sound.path());
+			String path = sound.event().location().getPath();
+			if (!placeholders.contains(path)) {
+				throw failure(helper, "sounds.json has no placeholder for %s", path);
 			}
 		}
 		helper.succeed();

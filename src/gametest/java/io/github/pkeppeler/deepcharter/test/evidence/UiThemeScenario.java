@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.CrtDemoScreen;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 
@@ -19,9 +20,9 @@ public class UiThemeScenario extends EvidenceScenario {
 	@Override
 	protected void run(ClientGameTestContext context) {
 		context.setScreen(CrtDemoScreen::new);
-		context.waitForScreen(CrtDemoScreen.class);
+		ClientWait.screen(context, CrtDemoScreen.class);
 		CrtDemoScreen screen = context.computeOnClient(client -> (CrtDemoScreen) client.gui.screen());
-		context.waitFor(client -> screen.typewriter().done());
+		ClientWait.until(context, "the typewriter done", client -> screen.typewriter().done());
 		context.waitTicks(5);
 		screenshot(context, "crt-default");
 		frame(context);

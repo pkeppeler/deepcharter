@@ -61,7 +61,7 @@ public class DeepestPointScenario extends EvidenceScenario {
 	protected void run(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			TestServerContext server = singleplayer.getServer();
-			context.waitFor(client -> client.player != null && client.level != null);
+			awaitWorld(context);
 			context.waitTicks(20);
 			frame(context);
 
@@ -121,7 +121,7 @@ public class DeepestPointScenario extends EvidenceScenario {
 	/** Opens the ore processor's screen, lets its intro type out, and returns how many order lines it lists. */
 	private int orderLines(ClientGameTestContext context, BlockPos processor) {
 		context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(processor)));
-		context.waitForScreen(OreProcessorScreen.class);
+		ClientWait.screen(context, OreProcessorScreen.class);
 		OreProcessorScreen screen = context.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
 		for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
 			context.waitTicks(TICKS_PER_FRAME);

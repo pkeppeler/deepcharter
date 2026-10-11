@@ -19,6 +19,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
 import io.github.pkeppeler.deepcharter.handbook.HandbookItems;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Evidence scenario "m2-handbook-screen" for #66: the handbook opens from the item, then a four-chapter handbook (the first done,
@@ -37,16 +38,16 @@ public class HandbookScreenScenario extends EvidenceScenario {
 	@Override
 	protected void run(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			context.waitFor(client -> handbookSlot(client.player.getInventory()) >= 0);
+			ClientWait.until(context, "the handbook in the hotbar", client -> handbookSlot(client.player.getInventory()) >= 0);
 			context.runOnClient(client -> client.player.getInventory().setSelectedSlot(handbookSlot(client.player.getInventory())));
 			context.getInput().pressKey(options -> options.keyUse);
-			context.waitForScreen(HandbookScreen.class);
+			ClientWait.screen(context, HandbookScreen.class);
 			context.waitTicks(HandbookScreenTuning.current().flipTicks());
 			hold(context);
 
 			List<HandbookPage> pages = HandbookPages.of(chapters(), done(1));
 			context.setScreen(() -> new HandbookScreen(pages, id -> id.getPath().equals("test2"), id -> { }, List.of()));
-			context.waitForScreen(HandbookScreen.class);
+			ClientWait.screen(context, HandbookScreen.class);
 			context.waitTicks(2);
 			HandbookScreen screen = context.computeOnClient(client -> (HandbookScreen) client.gui.screen());
 			int last = pages.size() - 1;

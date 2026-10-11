@@ -7,6 +7,7 @@ import net.minecraft.client.CameraType;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.test.PodShellClientTest;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /** Evidence scenario "pod-shell": a screenshot of the pod and its rider. */
 public class PodShellScenario extends EvidenceScenario {
@@ -20,7 +21,7 @@ public class PodShellScenario extends EvidenceScenario {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			context.waitTicks(40);
 			PodShellClientTest.mountFirstPlayer(singleplayer.getServer());
-			context.waitFor(client -> client.player.getVehicle() instanceof PodEntity);
+			ClientWait.until(context, "the player riding a pod", client -> client.player.getVehicle() instanceof PodEntity);
 			context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
 			context.waitTicks(20);
 			screenshot(context, "pod-rider-third-person");

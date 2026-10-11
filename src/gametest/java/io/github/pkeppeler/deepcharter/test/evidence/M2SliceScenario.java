@@ -90,8 +90,10 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.HandbookChaptersOneToFiveTest;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.M2SliceEndState;
+import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ShippedHandbook;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
@@ -254,14 +256,14 @@ public class M2SliceScenario extends EvidenceScenario {
 		stand(Vec3.atBottomCenterOf(console.west(2)), Vec3.atCenterOf(console));
 		ctx.waitTicks(20);
 		useKey();
-		ctx.waitForScreen(TerminalScreen.class);
+		ClientWait.screen(ctx, TerminalScreen.class);
 		snap(HOLD_FRAMES);
 		for (var part : HangarParts.ALL) {
 			click("INSERT " + new ItemStack(part).getHoverName().getString().toUpperCase(Locale.ROOT));
 			ctx.waitTicks(8);
 			snap(2);
 		}
-		ctx.waitFor(client -> client.gui.screen() instanceof HangarScreen, WAIT_TICKS);
+		ClientWait.screen(ctx, HangarScreen.class);
 		snap(HOLD_FRAMES);
 		still("10-hangar-console-online");
 		ctx.setScreen(() -> null);
@@ -314,10 +316,10 @@ public class M2SliceScenario extends EvidenceScenario {
 					overworld.setBlock(new BlockPos(lowX + dx, -64, lowZ + dz), Blocks.AIR.defaultBlockState(), 3);
 				}
 			}
-			overworld.setBlock(new BlockPos(lowX, -62, lowZ), OreRegistry.block(OreType.IRONIUM).defaultBlockState(), 3);
-			overworld.setBlock(new BlockPos(lowX + 1, -62, lowZ + 1), OreRegistry.block(OreType.BRONZIUM).defaultBlockState(), 3);
-			overworld.setBlock(new BlockPos(lowX + 1, -63, lowZ), OreRegistry.block(OreType.IRONIUM).defaultBlockState(), 3);
-			overworld.setBlock(new BlockPos(lowX, -63, lowZ + 1), OreRegistry.block(OreType.SILVERIUM).defaultBlockState(), 3);
+			overworld.setBlock(new BlockPos(lowX, -62, lowZ), OreBlocks.of(OreType.IRONIUM).defaultBlockState(), 3);
+			overworld.setBlock(new BlockPos(lowX + 1, -62, lowZ + 1), OreBlocks.of(OreType.BRONZIUM).defaultBlockState(), 3);
+			overworld.setBlock(new BlockPos(lowX + 1, -63, lowZ), OreBlocks.of(OreType.IRONIUM).defaultBlockState(), 3);
+			overworld.setBlock(new BlockPos(lowX, -63, lowZ + 1), OreBlocks.of(OreType.SILVERIUM).defaultBlockState(), 3);
 			return null;
 		});
 		Vec3 at = onServer(server -> pod(server, mole).position());
@@ -326,7 +328,7 @@ public class M2SliceScenario extends EvidenceScenario {
 		snap(HOLD_FRAMES);
 		still("14-the-mole-in-the-colony");
 		useKey();
-		ctx.waitFor(client -> client.player.getVehicle() instanceof PodEntity, WAIT_TICKS);
+		ClientWait.until(ctx, "the player riding a pod", client -> client.player.getVehicle() instanceof PodEntity);
 		ctx.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
 		ctx.waitTicks(20);
 		still("15-boarded-the-mole");
@@ -383,7 +385,7 @@ public class M2SliceScenario extends EvidenceScenario {
 		snap(2);
 		still("21a-at-the-processor");
 		useKey();
-		ctx.waitForScreen(OreProcessorScreen.class);
+		ClientWait.screen(ctx, OreProcessorScreen.class);
 		OreProcessorScreen screen = ctx.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
 		recordUntilTyped(screen.typewriter()::done, 45);
 		snap(HOLD_FRAMES);
@@ -466,7 +468,7 @@ public class M2SliceScenario extends EvidenceScenario {
 			}
 			return null;
 		});
-		ctx.waitFor(client -> client.level.dimension().equals(LayerChain.dimension(1)) && client.player.getVehicle() instanceof PodEntity, WAIT_TICKS);
+		ClientWait.until(ctx, "the player riding a pod in layer 1", client -> client.level.dimension().equals(LayerChain.dimension(1)) && client.player.getVehicle() instanceof PodEntity);
 		ctx.runOnClient(client -> client.player.setYRot(-90f));
 		ctx.waitTicks(60);
 		snap(HOLD_FRAMES);
@@ -491,7 +493,7 @@ public class M2SliceScenario extends EvidenceScenario {
 		recordUntil(server -> podIn(server, mole, LayerChain.dimension(2)), WAIT_TICKS * 5, "The Mole did not cross into layer 2",
 				stillOnce(server -> findPod(server, mole).filter(pod -> pod.getY() < FLOOR_Y - 1).isPresent(), "31-boring-through-the-crust"));
 		ctx.getInput().releaseKey(options -> options.keySprint);
-		ctx.waitFor(client -> client.level.dimension().equals(LayerChain.dimension(2)), WAIT_TICKS);
+		ClientWait.until(ctx, "the client in layer 2", client -> client.level.dimension().equals(LayerChain.dimension(2)));
 		say("10. Layer 2, the Old Workings. The first breach is crossed.");
 		awaitServer(server -> directiveDone(server, "first_breach/breach_workings"));
 		refuelWithCoal();
@@ -538,7 +540,7 @@ public class M2SliceScenario extends EvidenceScenario {
 			return null;
 		});
 		board(mole);
-		ctx.waitFor(client -> client.gui.screen() == null, WAIT_TICKS);
+		ClientWait.until(ctx, "no screen open", client -> client.gui.screen() == null);
 		float towardFigure = yawToward(moleAt, figureStart);
 		// From the pilot's own eyes: from behind, the Mole and its rider would stand in front of the drift.
 		ctx.runOnClient(client -> {
@@ -664,7 +666,7 @@ public class M2SliceScenario extends EvidenceScenario {
 			}
 			return null;
 		});
-		ctx.waitFor(client -> client.level.dimension().equals(Level.OVERWORLD) && client.player.getVehicle() instanceof PodEntity, WAIT_TICKS);
+		ClientWait.until(ctx, "the player riding a pod in the overworld", client -> client.level.dimension().equals(Level.OVERWORLD) && client.player.getVehicle() instanceof PodEntity);
 		ctx.runOnClient(client -> {
 			client.player.setYRot(-90f);
 			client.player.setXRot(10f);
@@ -764,13 +766,14 @@ public class M2SliceScenario extends EvidenceScenario {
 		stand(viewpoint, Vec3.atCenterOf(processor));
 		ctx.waitTicks(30);
 		useKey();
-		ctx.waitForScreen(OreProcessorScreen.class);
+		ClientWait.screen(ctx, OreProcessorScreen.class);
 		OreProcessorScreen screen = ctx.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
 		recordUntilTyped(screen.typewriter()::done, 45);
 		snap(HOLD_FRAMES);
 		still("50-the-work-order-on-the-processor");
 		click("DELIVER BRONZIUM");
-		ctx.waitFor(client -> screen.orderLines().getLast().startsWith("4 / 10"), WAIT_TICKS);
+		ClientWait.until(ctx, "the last order line starting 4 / 10", client -> screen.orderLines().getLast().startsWith("4 / 10"),
+				client -> "the order lines " + screen.orderLines());
 		snap(HOLD_FRAMES);
 		still("51-four-handed-in-by-the-player");
 		ctx.setScreen(() -> null);
@@ -791,9 +794,10 @@ public class M2SliceScenario extends EvidenceScenario {
 		stand(viewpoint, Vec3.atCenterOf(processor));
 		ctx.waitTicks(20);
 		useKey();
-		ctx.waitForScreen(OreProcessorScreen.class);
+		ClientWait.screen(ctx, OreProcessorScreen.class);
 		OreProcessorScreen done = ctx.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
-		ctx.waitFor(client -> done.orderLines().getLast().endsWith("DONE"), WAIT_TICKS);
+		ClientWait.until(ctx, "the last order line ending DONE", client -> done.orderLines().getLast().endsWith("DONE"),
+				client -> "the order lines " + done.orderLines());
 		recordUntilTyped(done.typewriter()::done, 45);
 		snap(HOLD_FRAMES);
 		still("52-work-order-done");
@@ -835,7 +839,7 @@ public class M2SliceScenario extends EvidenceScenario {
 			}
 			return null;
 		});
-		ctx.waitFor(client -> client.level.dimension().equals(LayerChain.dimension(2)) && client.player.getVehicle() instanceof PodEntity, WAIT_TICKS);
+		ClientWait.until(ctx, "the player riding a pod in layer 2", client -> client.level.dimension().equals(LayerChain.dimension(2)) && client.player.getVehicle() instanceof PodEntity);
 		awaitServer(server -> directiveDone(server, "company_property/reach_workings_floor"));
 		ctx.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
 		ctx.waitTicks(60);
@@ -879,7 +883,7 @@ public class M2SliceScenario extends EvidenceScenario {
 			ctx.waitTicks(8);
 			snap(2);
 		}
-		ctx.waitFor(client -> online.isInstance(client.gui.screen()), WAIT_TICKS);
+		ClientWait.screen(ctx, online);
 		snap(HOLD_FRAMES);
 		still(name);
 		ctx.setScreen(() -> null);
@@ -892,7 +896,7 @@ public class M2SliceScenario extends EvidenceScenario {
 		// So the screen is built as HandbookScreen.open builds it, from the shipped chapters only and the progress the server synced.
 		List<HandbookPage> pages = ctx.computeOnClient(ShippedHandbook::pages);
 		ctx.setScreen(() -> new HandbookScreen(pages, id -> true, id -> { }, List.of()));
-		ctx.waitForScreen(HandbookScreen.class);
+		ClientWait.screen(ctx, HandbookScreen.class);
 		HandbookScreen screen = ctx.computeOnClient(client -> (HandbookScreen) client.gui.screen());
 		int page = ctx.computeOnClient(client -> {
 			for (int index = 0; index < pages.size(); index++) {
@@ -943,7 +947,7 @@ public class M2SliceScenario extends EvidenceScenario {
 		stand(feet, Vec3.atCenterOf(terminal));
 		ctx.waitTicks(30);
 		useKey();
-		ctx.waitForScreen(screen);
+		ClientWait.screen(ctx, screen);
 	}
 
 	/** The pilot uses a tow cable on the wreck, which fits it or takes it off; {@code outcome} names which, for the failure message. */
@@ -1163,7 +1167,7 @@ public class M2SliceScenario extends EvidenceScenario {
 			real.teleportTo(server.getLevel(LayerChain.dimension(layer)), feet.x, feet.y, feet.z, Set.of(), yaw, pitch, true);
 			return null;
 		});
-		ctx.waitFor(client -> client.level.dimension().equals(LayerChain.dimension(layer)) && client.player.distanceToSqr(feet) < 1.0, WAIT_TICKS);
+		ClientWait.until(ctx, "the player at the feet in layer " + layer, client -> client.level.dimension().equals(LayerChain.dimension(layer)) && client.player.distanceToSqr(feet) < 1.0);
 		ctx.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
 		ctx.waitTicks(4);
 	}
@@ -1173,7 +1177,7 @@ public class M2SliceScenario extends EvidenceScenario {
 			real(server).stopRiding();
 			return null;
 		});
-		ctx.waitFor(client -> client.player.getVehicle() == null, WAIT_TICKS);
+		ClientWait.until(ctx, "the player out of the pod", client -> client.player.getVehicle() == null);
 		ctx.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
 	}
 
@@ -1185,7 +1189,7 @@ public class M2SliceScenario extends EvidenceScenario {
 			}
 			return null;
 		});
-		ctx.waitFor(client -> client.player.getVehicle() instanceof PodEntity, WAIT_TICKS);
+		ClientWait.until(ctx, "the player riding a pod", client -> client.player.getVehicle() instanceof PodEntity);
 		ctx.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
 	}
 
@@ -1231,10 +1235,10 @@ public class M2SliceScenario extends EvidenceScenario {
 			level.setBlock(new BlockPos(x, FLOOR_Y + 3, Z - 4), Blocks.GLOWSTONE.defaultBlockState(), 3);
 		}
 		// Ore under the Mole (it is drilled and collected) and in the walls (the scanner sees it).
-		level.setBlock(new BlockPos(X, FLOOR_Y - 1, Z), OreRegistry.block(OreType.GOLDIUM).defaultBlockState(), 3);
-		level.setBlock(new BlockPos(X + 6, FLOOR_Y + 1, Z + ROOM_RADIUS_Z + 1), OreRegistry.block(OreType.PLATINIUM).defaultBlockState(), 3);
-		level.setBlock(new BlockPos(X + 9, FLOOR_Y, Z - ROOM_RADIUS_Z - 1), OreRegistry.block(OreType.SILVERIUM).defaultBlockState(), 3);
-		level.setBlock(new BlockPos(X + ROOM_EAST + 1, FLOOR_Y + 1, Z), OreRegistry.block(OreType.IRONIUM).defaultBlockState(), 3);
+		level.setBlock(new BlockPos(X, FLOOR_Y - 1, Z), OreBlocks.of(OreType.GOLDIUM).defaultBlockState(), 3);
+		level.setBlock(new BlockPos(X + 6, FLOOR_Y + 1, Z + ROOM_RADIUS_Z + 1), OreBlocks.of(OreType.PLATINIUM).defaultBlockState(), 3);
+		level.setBlock(new BlockPos(X + 9, FLOOR_Y, Z - ROOM_RADIUS_Z - 1), OreBlocks.of(OreType.SILVERIUM).defaultBlockState(), 3);
+		level.setBlock(new BlockPos(X + ROOM_EAST + 1, FLOOR_Y + 1, Z), OreBlocks.of(OreType.IRONIUM).defaultBlockState(), 3);
 	}
 
 	private static void box(ServerLevel level, int yFrom, int yTo, Block block) {

@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import java.util.Optional;
-import java.util.UUID;
+import java.util.List;
+import java.util.Locale;
 
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -11,6 +11,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
@@ -20,16 +21,17 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.fuel.FuelPumpScreen;
 import io.github.pkeppeler.deepcharter.client.repair.RepairStationScreen;
-import io.github.pkeppeler.deepcharter.client.terminal.ShownPod;
+import io.github.pkeppeler.deepcharter.fuel.FuelPump;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
-import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
@@ -38,8 +40,20 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
  * nearer. The fuel pump and the repair station each have the unowned pod nearer than the own one.
  */
 public class ParkedPodChoiceClientTest implements FabricClientGameTest {
-	/** What the scene gives the test. */
-	private record Scene(BlockPos pump, BlockPos station, UUID own, UUID unowned) {
+	private static final float OWN_FUEL = 30f;
+	private static final float UNOWNED_FUEL = 60f;
+	private static final float OWN_DAMAGE = 30f;
+	private static final float UNOWNED_DAMAGE = 10f;
+
+	/** The line the pump draws for a pod, and the line the station draws. */
+	private record Lines(String tank, String hull) {
+	}
+
+	/**
+	 * What the scene gives the test: the two terminals, and the lines they draw for the own pod and for the unowned one. The pods differ in
+	 * fuel and in hull, so the drawn line says which pod a screen shows.
+	 */
+	private record Scene(BlockPos pump, BlockPos station, Lines own, Lines unowned) {
 	}
 
 	@Override
@@ -50,26 +64,25 @@ public class ParkedPodChoiceClientTest implements FabricClientGameTest {
 
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.pump())));
 			ClientWait.screen(context, FuelPumpScreen.class);
-			FuelPumpScreen pump = context.computeOnClient(client -> (FuelPumpScreen) client.gui.screen());
-			ClientWait.until(context, "both pods tracked at the pump", client -> shown(client, pump.view()).isPresent(), client -> "shown " + shown(client, pump.view()));
-			Optional<UUID> onPump = context.computeOnClient(client -> shown(client, pump.view()));
-			require(onPump.equals(Optional.of(scene.own())), "the pump screen should show the own pod " + scene.own()
-					+ " and not the nearer unowned pod " + scene.unowned() + ", shows " + onPump);
+			requireOwnPodShown(context, scene.own().tank(), scene.unowned().tank(), "pump");
 			context.setScreen(() -> null);
 
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.station())));
 			ClientWait.screen(context, RepairStationScreen.class);
-			RepairStationScreen station = context.computeOnClient(client -> (RepairStationScreen) client.gui.screen());
-			ClientWait.until(context, "the pod tracked at the station", client -> shown(client, station.view()).isPresent(), client -> "shown " + shown(client, station.view()));
-			Optional<UUID> onStation = context.computeOnClient(client -> shown(client, station.view()));
-			require(onStation.equals(Optional.of(scene.own())), "the station screen should show the own pod " + scene.own()
-					+ " and not the nearer unowned pod " + scene.unowned() + ", shows " + onStation);
+			requireOwnPodShown(context, scene.own().hull(), scene.unowned().hull(), "station");
 			context.setScreen(() -> null);
 		}
 	}
 
-	private static Optional<UUID> shown(Minecraft client, TerminalView view) {
-		return ShownPod.of(client.level, view).map(PodEntity::getUUID);
+	/** Waits for the open screen to draw the own pod's line, then holds it to not drawing the nearer unowned pod's. */
+	private static void requireOwnPodShown(ClientGameTestContext context, String own, String unowned, String terminal) {
+		ClientWait.until(context, "the own pod drawn at the " + terminal, client -> drawn(client).contains(own), client -> "drawn " + drawn(client));
+		List<String> drawn = context.computeOnClient(ParkedPodChoiceClientTest::drawn);
+		require(!drawn.contains(unowned), "the " + terminal + " screen should show the own pod (" + own + ") and not the nearer unowned pod (" + unowned + "), draws " + drawn);
+	}
+
+	private static List<String> drawn(Minecraft client) {
+		return DrawnText.of(client.gui.screen()).stream().map(DrawnText.Drawn::text).toList();
 	}
 
 	/** A repaired pump east of the player and a repaired station north; the own pod three blocks west, an unowned one a block east. */
@@ -87,8 +100,20 @@ public class ParkedPodChoiceClientTest implements FabricClientGameTest {
 		server.overworld().setBlock(station, TerminalTypes.REPAIR_STATION.block().defaultBlockState(), 3);
 		PodEntity own = spawn(player, player.position().relative(Direction.WEST, 3));
 		PodComponents.register(own, charter);
+		own.setFuel(OWN_FUEL);
+		own.setHull(own.maxHull() - OWN_DAMAGE);
 		PodEntity unowned = spawn(player, player.position().relative(Direction.EAST, 1));
-		return new Scene(pump, station, own.getUUID(), unowned.getUUID());
+		unowned.setFuel(UNOWNED_FUEL);
+		unowned.setHull(unowned.maxHull() - UNOWNED_DAMAGE);
+		return new Scene(pump, station, linesOf(own), linesOf(unowned));
+	}
+
+	/** The tank line the pump draws for {@code pod}, and the hull line the station draws, as their screens build them. */
+	private static Lines linesOf(PodEntity pod) {
+		String tank = Component.translatable("screen.deepcharter.fuel_pump.tank", String.format(Locale.ROOT, "%.1f", FuelPump.litres(pod)),
+				String.format(Locale.ROOT, "%.0f", PodStats.of(pod).tankLitres())).getString();
+		String hull = Component.translatable("screen.deepcharter.repair.hull", Math.round(pod.hull()), Math.round(pod.maxHull())).getString().toUpperCase(Locale.ROOT);
+		return new Lines(tank, hull);
 	}
 
 	private static PodEntity spawn(ServerPlayer player, Vec3 at) {

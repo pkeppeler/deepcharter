@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.test.UpgradeTerminalClientTest;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Evidence scenario "m2-upgrade-terminal" for #73: a charter with a pod parked at the upgrade terminal reads the hull prices, buys a
@@ -16,7 +17,6 @@ public class UpgradeTerminalScenario extends EvidenceScenario {
 	private static final int TICKS_PER_FRAME = 3;
 	private static final int TYPING_FRAMES = 30;
 	private static final int HOLD_FRAMES = 8;
-	private static final int WAIT_TICKS = 200;
 
 	@Override
 	protected String name() {
@@ -29,7 +29,7 @@ public class UpgradeTerminalScenario extends EvidenceScenario {
 			UpgradeTerminalClientTest.Scene scene = singleplayer.getServer().computeOnServer(UpgradeTerminalClientTest::setUp);
 
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.terminal())));
-			context.waitForScreen(UpgradeScreen.class);
+			ClientWait.screen(context, UpgradeScreen.class);
 			UpgradeScreen screen = context.computeOnClient(client -> (UpgradeScreen) client.gui.screen());
 			for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
 				context.waitTicks(TICKS_PER_FRAME);
@@ -43,13 +43,13 @@ public class UpgradeTerminalScenario extends EvidenceScenario {
 			screenshot(context, "hull-prices");
 
 			context.clickScreenButton("BUY TIER 1  $200");
-			context.waitFor(client -> screen.upgrade().orElseThrow().pod().orElseThrow().slots().stream()
-					.anyMatch(slot -> slot.installed() == 1), WAIT_TICKS);
+			ClientWait.until(context, "a part installed at tier 1", client -> screen.upgrade().orElseThrow().pod().orElseThrow().slots().stream()
+					.anyMatch(slot -> slot.installed() == 1));
 			hold(context);
 
 			context.clickScreenButton("BUY TIER 4  $5000  (WORKS AS TIER 2)");
-			context.waitFor(client -> screen.upgrade().orElseThrow().pod().orElseThrow().slots().stream()
-					.anyMatch(slot -> slot.installed() == 4), WAIT_TICKS);
+			ClientWait.until(context, "a part installed at tier 4", client -> screen.upgrade().orElseThrow().pod().orElseThrow().slots().stream()
+					.anyMatch(slot -> slot.installed() == 4));
 			hold(context);
 			screenshot(context, "capped-hull");
 			context.setScreen(() -> null);

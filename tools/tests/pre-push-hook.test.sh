@@ -21,7 +21,11 @@ cat >"$work/bin/python3" <<'S'
 #!/usr/bin/env bash
 echo "python3 $*" >>"$STUB_LOG"
 [[ -z ${STUB_GIT_INIT:-} ]] || { git init -q "$STUB_GIT_INIT" && git -C "$STUB_GIT_INIT" config deepcharter.leak 1; }
-[[ ${STUB_FAIL:-} != python ]]
+case "$*" in
+  *conflict_markers*) [[ ${STUB_FAIL:-} != conflict ]] ;;
+  *unittest*) [[ ${STUB_FAIL:-} != unittest ]] ;;
+  *) true ;;
+esac
 S
 cat >"$work/bin/shellcheck" <<'S'
 #!/usr/bin/env bash
@@ -49,24 +53,26 @@ run_hook() {
 }
 
 nl=$'\n'
-check "normal push runs gradle and python" "0:4" "$(run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
+check "normal push runs gradle and python" "0:5" "$(run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "branch delete is skipped" "0:0" "$(run_hook "(delete) $zero refs/heads/b $sha$nl")"
 check "push to pr-media is skipped" "0:0" "$(run_hook "refs/heads/pr-media $sha refs/heads/pr-media $zero$nl")"
 check "empty push is skipped" "0:0" "$(run_hook "")"
-check "delete plus normal push still runs checks" "0:4" "$(run_hook "(delete) $zero refs/heads/a $sha${nl}refs/heads/b $sha refs/heads/b $zero$nl")"
-check "gradle failure blocks, python not reached" "1:1" "$(STUB_FAIL=gradle run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
+check "delete plus normal push still runs checks" "0:5" "$(run_hook "(delete) $zero refs/heads/a $sha${nl}refs/heads/b $sha refs/heads/b $zero$nl")"
+check "conflict-marker failure blocks, gradle not reached" "1:1" "$(STUB_FAIL=conflict run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
+check "conflict-marker failure message names the reason" "yes" "$(grep -q 'conflict markers failed' "$work/out" && echo yes || echo no)"
+check "gradle failure blocks, tool unit tests not reached" "1:2" "$(STUB_FAIL=gradle run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "failure message names the reason" "yes" "$(grep -q 'compile or checkstyle failed' "$work/out" && echo yes || echo no)"
-check "python failure blocks" "1:2" "$(STUB_FAIL=python run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
-check "python failure message names the reason" "yes" "$(grep -q 'tool unit tests failed' "$work/out" && echo yes || echo no)"
+check "tool unit test failure blocks" "1:3" "$(STUB_FAIL=unittest run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
+check "tool unit test failure message names the reason" "yes" "$(grep -q 'tool unit tests failed' "$work/out" && echo yes || echo no)"
 STUB_SC_VERSION='' run_hook "refs/heads/b $sha refs/heads/b $zero$nl" >/dev/null
 check "unreadable local version warns clearly" "yes" "$(grep -q 'could not read the local shellcheck version; CI pins 0.11.0' "$work/out" && echo yes || echo no)"
-check "shellcheck failure blocks, gate checks not reached" "1:3" "$(STUB_FAIL=shellcheck run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
+check "shellcheck failure blocks, gate checks not reached" "1:4" "$(STUB_FAIL=shellcheck run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "shellcheck failure message names the reason" "yes" "$(grep -q 'shellcheck failed' "$work/out" && echo yes || echo no)"
 run_hook "refs/heads/b $sha refs/heads/b $zero$nl" >/dev/null
 check "pinned local version prints no warning" "no" "$(grep -q 'CI pins' "$work/out" && echo yes || echo no)"
 STUB_SC_VERSION=0.9.0 run_hook "refs/heads/b $sha refs/heads/b $zero$nl" >/dev/null
 check "other local version warns with both versions" "yes" "$(grep -q 'local version is 0.9.0 but CI pins 0.11.0' "$work/out" && echo yes || echo no)"
-check "last line without a newline still counts" "0:4" "$(run_hook "refs/heads/b $sha refs/heads/b $zero")"
+check "last line without a newline still counts" "0:5" "$(run_hook "refs/heads/b $sha refs/heads/b $zero")"
 
 # Git hands a hook GIT_DIR. A test that runs `git init` must hit its own temp dir, never the repo GIT_DIR names: here a sacrificial
 # bare repo stands in for the real one, and the stub python3 plays the test.
@@ -112,7 +118,7 @@ git -C "$tr_repo" -c user.name=t -c user.email=t@example.com commit -q -m init
 git -C "$tr_repo" worktree add -q -b wt "$work/wt"
 : >"$work/calls"
 STUB_LOG="$work/calls" PATH="$work/bin:$PATH" git -C "$work/wt" push -q origin wt >"$work/out" 2>&1 || true
-check "hook runs from a second worktree, in that worktree" "gradlew in $(cd "$work/wt" && pwd -P)" "$(sed -n 1p "$work/calls")"
+check "hook runs from a second worktree, in that worktree" "gradlew in $(cd "$work/wt" && pwd -P)" "$(sed -n 2p "$work/calls")"
 
 # An absolute core.hooksPath shared by every worktree: the hook of the pushing worktree runs, and git's stdin reaches it.
 cat >"$work/wt/.githooks/pre-push" <<'S'

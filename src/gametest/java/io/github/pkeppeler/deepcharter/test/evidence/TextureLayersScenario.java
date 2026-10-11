@@ -27,13 +27,14 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
-import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActivity;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.texture.TextureProperties;
 
 /**
@@ -162,7 +163,7 @@ public class TextureLayersScenario extends EvidenceScenario {
 		}
 		OreType[] oresInWall = OreType.values();
 		for (int i = 0; i < oresInWall.length; i++) {
-			level.setBlock(floor.offset(-RADIUS - 1, 2 + (i % 2), -3 + i), OreRegistry.block(oresInWall[i]).defaultBlockState(), Block.UPDATE_ALL);
+			level.setBlock(floor.offset(-RADIUS - 1, 2 + (i % 2), -3 + i), OreBlocks.of(oresInWall[i]).defaultBlockState(), Block.UPDATE_ALL);
 		}
 		for (int dz = -2; dz <= 2; dz++) {
 			for (int dy = 1; dy <= 4; dy++) {
@@ -199,8 +200,9 @@ public class TextureLayersScenario extends EvidenceScenario {
 			ServerPlayer player = player(server);
 			player.teleportTo(player.level(), eye.x, eye.y - EYE, eye.z, Set.of(), yaw, pitch, true);
 		});
-		ctx.waitFor(client -> client.player.distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
-				&& Math.abs(Mth.wrapDegrees(client.player.getYRot() - yaw)) < 0.01f && Math.abs(client.player.getXRot() - pitch) < 0.01f, 400);
+		ClientWait.until(ctx, "the camera at the eye, facing yaw " + yaw + " and pitch " + pitch, client -> client.player.distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
+				&& Math.abs(Mth.wrapDegrees(client.player.getYRot() - yaw)) < 0.01f && Math.abs(client.player.getXRot() - pitch) < 0.01f,
+				client -> "the player at " + client.player.position() + " facing yaw " + client.player.getYRot() + " and pitch " + client.player.getXRot());
 		ctx.waitTicks(wait);
 	}
 

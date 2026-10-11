@@ -18,6 +18,7 @@ import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Evidence scenario "pod-lava": a pod sits in a closed room, lava appears under it, and the hull gauge drops until the hull
@@ -63,7 +64,7 @@ public class PodLavaScenario extends EvidenceScenario {
 					throw new AssertionError("the player could not mount the pod");
 				}
 			});
-			context.waitFor(client -> client.player != null && client.player.getVehicle() instanceof PodEntity
+			ClientWait.until(context, "the player riding a pod in layer 1", client -> client.player != null && client.player.getVehicle() instanceof PodEntity
 					&& client.level.dimension().equals(LayerChain.dimension(1)));
 			context.runOnClient(client -> {
 				client.options.setCameraType(CameraType.THIRD_PERSON_BACK);

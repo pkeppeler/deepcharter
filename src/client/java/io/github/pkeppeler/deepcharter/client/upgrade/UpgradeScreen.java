@@ -77,10 +77,6 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 		return view.feature(UpgradeView.class);
 	}
 
-	public ComponentTrack selected() {
-		return selected;
-	}
-
 	@Override
 	public Typewriter typewriter() {
 		return typewriter;
