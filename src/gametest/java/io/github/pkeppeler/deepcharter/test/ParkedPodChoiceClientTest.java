@@ -49,16 +49,18 @@ public class ParkedPodChoiceClientTest implements FabricClientGameTest {
 			ClientWait.screen(context, FuelPumpScreen.class);
 			FuelPumpScreen pump = context.computeOnClient(client -> (FuelPumpScreen) client.gui.screen());
 			ClientWait.until(context, "both pods tracked at the pump", client -> shown(pump.pod()).isPresent(), client -> "shown " + shown(pump.pod()));
-			require(shown(pump.pod()).equals(Optional.of(scene.own())), "the pump screen should show the own pod " + scene.own()
-					+ " and not the nearer unowned pod " + scene.unowned() + ", shows " + shown(pump.pod()));
+			Optional<UUID> onPump = context.computeOnClient(client -> shown(pump.pod()));
+			require(onPump.equals(Optional.of(scene.own())), "the pump screen should show the own pod " + scene.own()
+					+ " and not the nearer unowned pod " + scene.unowned() + ", shows " + onPump);
 			context.setScreen(() -> null);
 
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.station())));
 			ClientWait.screen(context, RepairStationScreen.class);
 			RepairStationScreen station = context.computeOnClient(client -> (RepairStationScreen) client.gui.screen());
 			ClientWait.until(context, "the pod tracked at the station", client -> shown(station.nearbyPod()).isPresent(), client -> "shown " + shown(station.nearbyPod()));
-			require(shown(station.nearbyPod()).equals(Optional.of(scene.own())), "the station screen should show the own pod " + scene.own()
-					+ " and not the nearer unowned pod " + scene.unowned() + ", shows " + shown(station.nearbyPod()));
+			Optional<UUID> onStation = context.computeOnClient(client -> shown(station.nearbyPod()));
+			require(onStation.equals(Optional.of(scene.own())), "the station screen should show the own pod " + scene.own()
+					+ " and not the nearer unowned pod " + scene.unowned() + ", shows " + onStation);
 			context.setScreen(() -> null);
 		}
 	}
@@ -73,7 +75,7 @@ public class ParkedPodChoiceClientTest implements FabricClientGameTest {
 		require(Charters.found(server, player.getUUID(), "Pod Choice Charter").isEmpty(), "founding the charter should succeed");
 		CharterId charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id();
 		RepairState repairs = RepairState.get(server);
-		for (TerminalType type : new TerminalType[] {TerminalTypes.FUEL_PUMP, TerminalTypes.REPAIR_STATION}) {
+		for (TerminalType type : new TerminalType[] {TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL, TerminalTypes.REPAIR_STATION}) {
 			type.parts().forEach(part -> repairs.insert(type, part));
 		}
 		BlockPos pump = player.blockPosition().relative(Direction.EAST, 2);
