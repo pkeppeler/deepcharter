@@ -1,25 +1,31 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.util.Optional;
+
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.block.Blocks;
 
+import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodLavaWatch;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Client GameTest for the lava watch HUD (#454): a pod with a pilot shows no lava line with no lava about, and a lava line (an ALERT, which lights the cockpit's warning
- * lamp) once lava flows within reach of it.
+ * lamp) once lava flows toward it. The number on the line is the number the server's watch reads, and lava from above gets its own line.
  */
 public class PodLavaWatchClientTest implements FabricClientGameTest {
 	private static final int LAVA_AT = 3;
@@ -61,17 +67,52 @@ public class PodLavaWatchClientTest implements FabricClientGameTest {
 				// The source flows over the stone bed at once; the flowing lava stays while the source does.
 				player.level().setBlock(feet.offset(LAVA_AT, 0, 0), Blocks.LAVA.defaultBlockState(), 3);
 			});
-			ClientWait.until(context, "the lava line", client -> client.player.getVehicle() instanceof PodEntity pod && PodStatusHud.lavaNearLine(pod).isPresent());
+			// The client's number must be the server's: wait for the two to agree, and say where the pod and the lava were if they never do.
+			ClientWait.until(context, "the client's lava line to show the server's reading",
+					() -> serverReading(singleplayer).isPresent() && serverReading(singleplayer).equals(clientReading(context)),
+					() -> "the server reads " + serverReading(singleplayer) + ", the client " + clientReading(context) + "; " + surroundings(singleplayer));
 			PodStatusHud.Line line = context.computeOnClient(client -> PodStatusHud.readout(client, (PodEntity) client.player.getVehicle()).stream()
-					.filter(shown -> shown.text().getContents() instanceof TranslatableContents contents && contents.getKey().equals("hud.deepcharter.pod.lava_near"))
+					.filter(shown -> key(shown.text()).equals("hud.deepcharter.pod.lava_near"))
 					.findFirst().orElseThrow(() -> new AssertionError("The readout should hold the lava line")));
 			if (line.kind() != PodStatusHud.Kind.ALERT) {
 				throw new AssertionError("The lava line is a warning, it is " + line.kind());
 			}
-			int blocksOff = (Integer) ((TranslatableContents) line.text().getContents()).getArgs()[0];
-			if (blocksOff < 1 || blocksOff > LAVA_AT + 1) {
-				throw new AssertionError("The first flowing lava is next to the source, within " + (LAVA_AT + 1) + " blocks of the pod, the line says " + blocksOff);
+
+			// Lava over the pod gets its own line, which names the cap. It is read from a pod of the client's own, so that the server's next look cannot overwrite it.
+			String above = context.computeOnClient(client -> {
+				PodEntity pod = PodRegistry.POD.create(client.level, EntitySpawnReason.COMMAND);
+				pod.setAttached(PodLavaWatch.STATE, Versioned.of(new PodLavaWatch.State(5, true, 5, 0)));
+				return PodStatusHud.lavaNearLine(pod).map(PodLavaWatchClientTest::key).orElse("none");
+			});
+			if (!above.equals("hud.deepcharter.pod.lava_above")) {
+				throw new AssertionError("Lava from above has its own line, it shows " + above);
 			}
 		}
+	}
+
+	private static String key(Component line) {
+		return line.getContents() instanceof TranslatableContents contents ? contents.getKey() : line.getString();
+	}
+
+	private static Optional<Integer> serverReading(TestSingleplayerContext singleplayer) {
+		return singleplayer.getServer().computeOnServer(server -> PodLavaWatch.blocksOff((PodEntity) server.getPlayerList().getPlayers().getFirst().getVehicle()));
+	}
+
+	private static Optional<Integer> clientReading(ClientGameTestContext context) {
+		return context.computeOnClient(client -> client.player.getVehicle() instanceof PodEntity pod ? PodLavaWatch.blocksOff(pod) : Optional.empty());
+	}
+
+	/** The pod's position and the lava cells within 5 blocks of it, as the server has them, for a failure message. */
+	private static String surroundings(TestSingleplayerContext singleplayer) {
+		return singleplayer.getServer().computeOnServer(server -> {
+			PodEntity pod = (PodEntity) server.getPlayerList().getPlayers().getFirst().getVehicle();
+			StringBuilder lava = new StringBuilder();
+			for (BlockPos pos : BlockPos.betweenClosed(pod.blockPosition().offset(-5, -2, -5), pod.blockPosition().offset(8, 3, 5))) {
+				if (pod.level().getFluidState(pos).is(FluidTags.LAVA)) {
+					lava.append(pos.toShortString()).append(pod.level().getFluidState(pos).isSource() ? "S " : "F ");
+				}
+			}
+			return "pod at " + pod.position() + " (cell " + pod.blockPosition().toShortString() + "), state " + Versioned.readable(pod, PodLavaWatch.STATE) + ", lava " + lava;
+		});
 	}
 }

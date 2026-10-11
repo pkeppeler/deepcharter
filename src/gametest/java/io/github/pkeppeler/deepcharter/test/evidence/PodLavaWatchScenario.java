@@ -24,17 +24,15 @@ import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 
 /**
- * Evidence scenario "pod-lava-watch" (#454): a pilot sits in a pod that faces down a stone tunnel. Far down the tunnel a shaft goes up, with
- * lava at the top of it, well past the 3 blocks the liner sees. The lava falls down the shaft and runs along the tunnel toward the pod. The plain HUD shows
- * "LAVA IN THE SHAFT 12 OFF  LINE OR LEAVE" as the first lava comes within 12 blocks, and a compact cockpit (the ribbon) shows the same line and lights its warning lamp.
- * The hull is untouched at both stills.
+ * Evidence scenario "pod-lava-watch" (#454): a pilot sits in a pod that faces down a stone tunnel. At the far end of the tunnel, 9 blocks off and past the 3 blocks
+ * the liner sees, lava pours out of the wall, falls to the floor and runs toward the pod. The plain HUD shows "LAVA IN THE SHAFT 6 OFF  LINE OR LEAVE" while the lava glows
+ * dead ahead, and a compact cockpit (the ribbon) shows the same line and lights its warning lamp. The hull is untouched at every still.
  */
 public class PodLavaWatchScenario extends EvidenceScenario {
 	private static final int X = 5600;
 	private static final int Z = 5600;
 	private static final int FLOOR_Y = 100;
-	private static final int TUNNEL = 14;
-	private static final int SHAFT_TOP = 10;
+	private static final int TUNNEL = 9;
 	private static final int TICKS_PER_FRAME = 4;
 	private static final int MAX_TICKS = 2400;
 	private static final float FACING_EAST = -90f;
@@ -75,10 +73,14 @@ public class PodLavaWatchScenario extends EvidenceScenario {
 			}
 			screenshot(context, "pod-lava-watch-clear");
 
-			singleplayer.getServer().runOnServer(server ->
-					server.getLevel(LayerChain.dimension(1)).setBlock(new BlockPos(X + TUNNEL, FLOOR_Y + SHAFT_TOP, Z), Blocks.LAVA.defaultBlockState(), 3));
+			// Two lava sources in the end wall at head height: they fall to the floor and run west along the tunnel.
+			singleplayer.getServer().runOnServer(server -> {
+				for (int z = Z - 1; z <= Z; z++) {
+					server.getLevel(LayerChain.dimension(1)).setBlock(new BlockPos(X + TUNNEL, FLOOR_Y + 2, z), Blocks.LAVA.defaultBlockState(), 3);
+				}
+			});
 			waitForWarning(context, "the plain HUD's lava line");
-			for (int i = 0; i < 6; i++) {
+			for (int i = 0; i < 20; i++) {
 				frame(context);
 				context.waitTicks(TICKS_PER_FRAME);
 			}
@@ -118,14 +120,12 @@ public class PodLavaWatchScenario extends EvidenceScenario {
 		}
 	}
 
-	/** A stone block with a tunnel of air east from the pod, and at its far end a shaft up, lit by lamps in the rock; the lava is placed at the top by the scenario. */
+	/** A stone block with a tunnel of air east from the pod, lit by lamps in the rock; the scenario places the lava in its end wall. */
 	private static void build(ServerLevel level) {
-		RoomCarver.carve(level, X - 4, X + TUNNEL + 4, FLOOR_Y - 4, FLOOR_Y + SHAFT_TOP + 3, Z - 4, Z + 4, Blocks.STONE);
+		RoomCarver.carve(level, X - 4, X + TUNNEL + 4, FLOOR_Y - 4, FLOOR_Y + 6, Z - 4, Z + 4, Blocks.STONE);
 		RoomCarver.carve(level, X - 2, X + TUNNEL, FLOOR_Y, FLOOR_Y + 2, Z - 1, Z, Blocks.AIR);
-		RoomCarver.carve(level, X + TUNNEL - 1, X + TUNNEL, FLOOR_Y, FLOOR_Y + SHAFT_TOP, Z - 1, Z, Blocks.AIR);
 		for (int x = X + 3; x < X + TUNNEL - 1; x += 3) {
 			level.setBlock(new BlockPos(x, FLOOR_Y + 3, Z), Blocks.GLOWSTONE.defaultBlockState(), 3);
 		}
-		level.setBlock(new BlockPos(X + TUNNEL - 2, FLOOR_Y + 5, Z), Blocks.GLOWSTONE.defaultBlockState(), 3);
 	}
 }

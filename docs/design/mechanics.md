@@ -912,30 +912,36 @@ The tier 1 part equals its bound to the bore and the tier 2 part beats it by 3, 
 **Problem.** The liner lines only the cells lava can reach within its view (3 beside the ring, 4 over the box). Lava from beyond it, or from a chunk that was not loaded at the ring, can run into a stretch the pod has passed, and nothing told the pilot: the thermal scanner shows lava 36 blocks ahead and nothing behind. A wider view was measured and made things worse (candidate D of [#442](#liner-economy-after-432-442-a): reach 50 against 55, with more dry racks). So the gap becomes rung 4 of the ladder (#232): a warning, with seconds to act.
 
 **The design.**
-- **Trigger.** Flowing lava (not a still source) joined to the pod's box by open cells (air, fluid, a plant: the cells a ring takes a brick in) within 12 blocks of path. Rock, ore and lining cut the path, so sealed lava never warns. A source warns the moment it flows, which a bore that opens it makes happen at once.
+- **Trigger.** Flowing lava (not a still source) joined to the pod's box by open cells (air, fluid, a plant: the cells a ring takes a brick in) within 12 blocks of path. Rock, ore and lining cut the path, so sealed lava never warns. A source warns the moment it flows, which a bore that opens it makes happen at once. Lava inside the box itself is not read: the pod is burning then, and "HULL BURNING" says so.
+- **Only lava that comes nearer.** A lavafall that has settled would keep the line and the lamp on for as long as the pod stayed near it, which teaches the pilot to ignore both. So the watch remembers the nearest lava of its last look. It warns when the lava is nearer than at the last look (or is new), and always when the lava is within 6 blocks. Farther lava that has come no nearer for 6 looks (60 ticks, two flow steps) falls quiet, and warns again when it next comes nearer. The line is latched for those 6 looks, so a front that moves once in 30 ticks does not flicker it.
 - **Who has it.** Every pod with a pilot, with no part and no price. The pilot who most needs the warning is the one who bought no liner, and a part to hear lava behind would make the cheapest pod the blindest. A pod with no pilot, and a wreck, read nothing.
 - **Cost.** One breadth-first walk of at most 12 blocks of open cells (about 2,300 cells in an open cave, a few dozen in a bore) every 10 ticks, so twice a second. It reads through `LoadedBlocks`: a chunk that is not loaded reads as air and is never loaded for it.
-- **The cue.** An ALERT line in the `podBurningColor`, `LAVA IN THE SHAFT <n> OFF  LINE OR LEAVE`, where `<n>` is the blocks of open cells to the lava (lava beside the box is 1). It lights the cockpit's warning lamp in the compact styles. The state is a synced attachment (`pod_lava_watch`, version 1), so the client draws it from the same number.
-- **Time to act.** Lava flows a block in about 1.5 seconds. The staged flow (below) measured the watch speaking 360 ticks, 18 seconds, before the hull first lost a point, with the lava first seen 12 blocks off. At 10 hull per second a stock Mole has 10 seconds in lava on top.
-- **What the pilot does.** Line the slab by hand (a brick between the lava and the pod silences the line), move out of the shaft (a sidestep opens a new branch the lava follows slowly), or pull up and out. A pod with a liner lines its next ring by itself and the line goes out when the ring cuts the path. Lava that falls on the pod from straight above has no lining answer yet: the pilot moves.
+- **The cue.** An ALERT line in the `podBurningColor`, which lights the cockpit's warning lamp in the compact styles. `<n>` is the blocks of open cells to the lava (lava beside the box is 1). The walk remembers the first step of the path to the nearest lava, and the text follows it:
+  - `LAVA IN THE SHAFT <n> OFF  LINE OR LEAVE` when the path leaves the box sideways or down: the ring of hand lining cuts it;
+  - `LAVA ABOVE <n> OFF  CAP THE SHAFT OR LEAVE` when it leaves upward: lava falls down the shaft the pod bored.
+  The state is a synced attachment (`pod_lava_watch`, version 1), so the client draws it from the same numbers.
+- **The cap (rung 4's counter for lava from above).** A ring of hand lining reaches the cells beside the box and one slab down, so no brick of it can stop lava that comes from above. While the watch says "above", hand lining first lays a lid of slag brick over the box, one brick for each cell of the bore (`Chassis.slabCells`: 4 for the Mole), then goes on with the ring. The liner (`lavaOnly`) does not cap: its ring still follows lava in its own view. The lid cells are open cells one above the box, and lava or air in them is replaced. The lid is bricks the pilot already carries or the rack holds, so it costs no new item. **Cost:** 4 bricks for a Mole is one sixth of the 24-brick rack of [#452](#liner-economy-after-432-442-a), and 4 bricks at 8 ticks a brick is 32 ticks (1.6 s) of lining, well inside the 360 ticks the warning gives. A Prospector (3 x 3 bore) pays 9.
+- **Time to act.** Lava flows a block in about 1.5 seconds. The staged flow measured the watch speaking 360 ticks, 18 seconds, before the hull first lost a point, with the lava first seen 12 blocks off. At 10 hull per second a stock Mole has 10 seconds in lava on top.
+- **What the pilot does.** Lava from above: cap it by hand. Lava from beside or below: line the slab by hand (a brick between the lava and the pod silences the line), move out of the shaft (a sidestep opens a new branch the lava follows slowly), or pull up and out. A pod with a liner lines its next ring by itself and the line goes out when the ring cuts the path.
 
-**Ladder.** By hand (#313), the liner (#339), the heat-shield hull (open), and now the warning that gives them a reason to be used on the stretch already passed. It makes the default build no harder: it only tells.
+**Ladder.** By hand (#313), the liner (#339), the heat-shield hull (open), and now the warning that gives them a reason to be used on the stretch already passed, with the cap for what falls from above. It makes the default build no harder: it only tells, and the cap costs 4 bricks.
 
-**Pins.** `PodLavaWatchTest`:
-- lava flowing down a 19-cell shaft from outside the liner's view warns before the first hull loss, and with the lava at least 2 blocks off;
+**Pins.** `PodLavaWatchTest`, 17 tests:
+- lava flowing down a 19-cell shaft from outside the liner's view warns, as lava from above, before the first hull loss, and with the lava at least 2 blocks off;
 - a pod with no lava about, and a pod with lava above a rock plug in the shaft (within reach as the crow flies, joined to nothing), read nothing for 400 ticks and keep the whole hull;
-- flowing lava 12 blocks along a corridor reads 12, 13 blocks reads nothing, lava beside the box reads 1;
-- a brick between the lava and the pod reads nothing;
-- a pod with no pilot reads nothing;
+- flowing lava put in place directly reads exactly: 12 blocks along a corridor reads 12, 13 blocks reads nothing, beside the box reads 1; over the box it reads 1, 5 blocks up the shaft 5, 12 up 12 and 13 up nothing, all from above;
+- a brick between the lava and the pod reads nothing, and a pod with no pilot reads nothing;
+- lava that settles beyond the near band warns, then falls quiet with the lava still flowing; lava that settles within it keeps warning;
+- hand lining after the warning from above lays 4 bricks over the box, the warning goes out, and the lava runs on over the lid with the hull never burned;
 - the state survives a save, and an unreadable version is kept and never throws.
 
-`CockpitHudClientTest` pins `lava_near` as an ALERT that lights the fourth lamp.
+`PodLavaWatchClientTest` waits until the client's line shows the number the server's watch reads and checks that lava from above has its own line. `CockpitHudClientTest` pins `lava_near` and `lava_above` as ALERTs that light the fourth lamp.
 
-**Tuning knobs.** `PodLavaWatchTuning.reach` (12) and `scanEveryTicks` (10).
+**Tuning knobs.** `PodLavaWatchTuning.reach` (12), `scanEveryTicks` (10), `nearBand` (6) and `quietScans` (6).
 
 **Open questions.**
-- A lava-proof lining for the shaft above the pod: hand lining covers the ring beside the box, not the open shaft over it.
-- Should the line point at the side the lava comes from, as the seepage line names a side? A path walk knows the first step.
+- Should the line point at the side the lava comes from, as the seepage line names a side? A path walk knows the first step, so only the vertical one is used now.
+- A cap that stops further lava needs bricks the pilot may not have: lava from above is then a reason to carry a few.
 - Does the heat-shield hull (rung 3) make the warning moot for a late pod? It should not: the hull only buys time.
 
 ## The tow line (#425, A)

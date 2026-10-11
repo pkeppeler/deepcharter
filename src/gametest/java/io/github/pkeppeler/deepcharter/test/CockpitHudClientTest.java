@@ -166,9 +166,9 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 		}
 		Set<String> alerts = PodStatusHud.KINDS.entrySet().stream().filter(entry -> entry.getValue() == PodStatusHud.Kind.ALERT).map(Map.Entry::getKey).collect(Collectors.toSet());
 		Set<String> expected = Stream.of("burning", "stranded", "crust_ahead", "crust_in", "brace_waits", "brace_dry", "brace_dear", "seepage", "seepage_beside", "seepage_bleeding",
-				"lining_dry", "hard_landing", "lava_near").map(name -> "hud.deepcharter.pod." + name).collect(Collectors.toSet());
+				"lining_dry", "hard_landing", "lava_near", "lava_above").map(name -> "hud.deepcharter.pod." + name).collect(Collectors.toSet());
 		if (!alerts.equals(expected)) {
-			throw new AssertionError("The warnings that light the fourth lamp are the burning hull, stranded, the crust, the brace that cannot work, the seepage, no brick, a hard landing and lava in the shaft: got " + alerts);
+			throw new AssertionError("The warnings that light the fourth lamp are the burning hull, stranded, the crust, the brace that cannot work, the seepage, no brick, a hard landing and lava in or above the shaft: got " + alerts);
 		}
 		PodStatusHud.Line note = new PodStatusHud.Line(Component.translatable("hud.deepcharter.pod.slag", 0, 0), 0);
 		PodStatusHud.Line warning = new PodStatusHud.Line(Component.translatable("hud.deepcharter.pod.burning"), 0);
