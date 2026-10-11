@@ -75,11 +75,11 @@ flowchart LR
   l_core_loop["The core loop<br/>11 of 11 built"]
   l_economy["Money, fuel and spoil<br/>10 of 13 built"]
   l_ores["The ore ladder<br/>7 of 7 built"]
-  l_bootstrap["Bootstrap: salvage to the first run<br/>11 of 12 built"]
+  l_bootstrap["Bootstrap: salvage to the first run<br/>12 of 12 built"]
   l_terminals["The colony's terminals<br/>7 of 8 built"]
   l_handbook["The Employee Handbook<br/>11 of 14 built"]
   l_layers["Layers, breaches and the story<br/>13 of 24 built"]
-  l_charter["Charters, crews and accounts<br/>5 of 9 built"]
+  l_charter["Charters, crews and accounts<br/>6 of 9 built"]
   l_colony["The colony: Prosperity<br/>8 of 9 built"]
   l_pods["The pod chassis ladder<br/>6 of 10 built"]
   l_drill["Drill<br/>4 of 7 built"]
@@ -154,11 +154,11 @@ flowchart LR
 | [The core loop](#the-core-loop) | 11 | 0 | 0 | 0 |
 | [Money, fuel and spoil](#money-fuel-and-spoil) | 10 | 0 | 1 | 2 |
 | [The ore ladder](#the-ore-ladder) | 7 | 0 | 0 | 0 |
-| [Bootstrap: salvage to the first run](#bootstrap-salvage-to-the-first-run) | 11 | 1 | 0 | 0 |
+| [Bootstrap: salvage to the first run](#bootstrap-salvage-to-the-first-run) | 12 | 0 | 0 | 0 |
 | [The colony's terminals](#the-colonys-terminals) | 7 | 0 | 1 | 0 |
 | [The Employee Handbook](#the-employee-handbook) | 11 | 0 | 3 | 0 |
 | [Layers, breaches and the story](#layers-breaches-and-the-story) | 13 | 0 | 10 | 1 |
-| [Charters, crews and accounts](#charters-crews-and-accounts) | 5 | 1 | 2 | 1 |
+| [Charters, crews and accounts](#charters-crews-and-accounts) | 6 | 0 | 2 | 1 |
 | [The colony: Prosperity](#the-colony-prosperity) | 8 | 0 | 0 | 1 |
 | [The pod chassis ladder](#the-pod-chassis-ladder) | 6 | 0 | 4 | 0 |
 | [Drill](#drill) | 4 | 0 | 3 | 0 |
@@ -185,8 +185,6 @@ flowchart LR
 
 ### In progress
 
-- **Craft the first scanner** (bootstrap): A scanner unit crafted from 4 iron, 2 copper and 2 redstone replaces the $200 first buy. [#483](https://github.com/pkeppeler/deepcharter/issues/483), [#500](https://github.com/pkeppeler/deepcharter/issues/500)
-- **A restored wreck keeps its serial** (charter): PROSPECTOR-0002 stays 0002 and its name tag after the restore. [#484](https://github.com/pkeppeler/deepcharter/issues/484), [#499](https://github.com/pkeppeler/deepcharter/issues/499)
 - **Heat shield hull** (lava): A hull part whose slag glaze soaks lava, spending brick, so lava costs far less hull. [#482](https://github.com/pkeppeler/deepcharter/issues/482), [#501](https://github.com/pkeppeler/deepcharter/issues/501), [#232](https://github.com/pkeppeler/deepcharter/issues/232)
 
 ### Planned
@@ -617,8 +615,8 @@ flowchart LR
 
 | Icon | Still | Feature | What it is | Status | Links |
 |---|---|---|---|---|---|
-| <img src="../src/main/resources/assets/deepcharter/textures/item/part_scanner.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/scanner-map.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/scanner-map.png?raw=true" width="160" alt=""></a> | <a id="scanner-t1"></a>**Scanner tier 1**<br>upgrade | The first map: ore in range. Bought for $200 today; crafted from scrap once #500 lands. A Mole fits it. | ✅ Built | [SPEC.md](SPEC.md#components), [#483](https://github.com/pkeppeler/deepcharter/issues/483), [#500](https://github.com/pkeppeler/deepcharter/issues/500) |
-| <img src="../src/main/resources/assets/deepcharter/textures/item/part_scanner.png" width="32" alt=""> | no still yet | <a id="scanner-t2"></a>**Scanner tier 2**<br>upgrade | The thermal tier: lava shows bright red, lava in the wall dim red. $500. The best a Mole takes. | ✅ Built | [SPEC.md](SPEC.md#components), [mechanics.md](design/mechanics.md#the-thermal-scanner-tier-300-a) |
+| <img src="../src/main/resources/assets/deepcharter/textures/item/part_scanner.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/scanner-map.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/scanner-map.png?raw=true" width="160" alt=""></a> | <a id="scanner-t1"></a>**Scanner tier 1**<br>upgrade | The first map: ore in range. Crafted as a scanner unit and fitted by use, never sold at the terminal; every later tier is a purchase. A Mole fits it. | ✅ Built | [SPEC.md](SPEC.md#components), [#483](https://github.com/pkeppeler/deepcharter/issues/483), [#500](https://github.com/pkeppeler/deepcharter/issues/500) |
+| <img src="../src/main/resources/assets/deepcharter/textures/item/part_scanner.png" width="32" alt=""> | no still yet | <a id="scanner-t2"></a>**Scanner tier 2**<br>upgrade | The thermal tier: lava shows bright red, lava in the wall dim red. $500, and tier 1 must be fitted first. The best a Mole takes. | ✅ Built | [SPEC.md](SPEC.md#components), [mechanics.md](design/mechanics.md#the-thermal-scanner-tier-300-a) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_scanner.png" width="32" alt=""> | no still yet | <a id="scanner-t3"></a>**Scanner tier 3**<br>upgrade | Gas pockets show on the map. $1,250. The Prospector's tier. The best a Prospector takes. | ✅ Built | [SPEC.md](SPEC.md#components), [mechanics.md](design/mechanics.md#decision-gas-is-a-cap-and-gets-a-rung-a) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_scanner.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/hud-scanner-tier-4-layer-2.jpg?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/hud-scanner-tier-4-layer-2.jpg?raw=true" width="160" alt=""></a> | <a id="scanner-t4"></a>**Scanner tier 4**<br>upgrade | The widest, clearest map. $5,000. No chassis built yet can fit it (a Badger or later). | 📋 Planned | [SPEC.md](SPEC.md#components) |
 
@@ -1170,8 +1168,7 @@ flowchart TB
   classDef planned fill:#2e2e2e,stroke:#9e9e9e,stroke-width:1px,color:#d6d6d6
   classDef idea fill:#1a1a1a,stroke:#757575,stroke-width:1px,stroke-dasharray:4 3,color:#a0a0a0
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
-  class n_fungal_stalks,n_salvage_crate,n_salvage_cloth,n_scrap_metal,n_furnace_scrap,n_craft_tools,n_craft_terminal_parts,n_repair_terminals,n_craft_mole_parts,n_repair_mole,n_first_run built
-  class n_scanner_from_crafting progress
+  class n_fungal_stalks,n_salvage_crate,n_salvage_cloth,n_scrap_metal,n_furnace_scrap,n_craft_tools,n_craft_terminal_parts,n_repair_terminals,n_craft_mole_parts,n_scanner_from_crafting,n_repair_mole,n_first_run built
   class n_crate_press,n_fuel_pump,n_mole ext
 ```
 
@@ -1186,7 +1183,7 @@ flowchart TB
 | 🎯 | no still yet | <a id="craft-terminal-parts"></a>**Craft the terminal parts**<br>goal | Ten crafted parts, from iron, copper and redstone, repair the four colony terminals. | ✅ Built | [ADR 0014](adr/0014-terminal-repair-is-one-world-wide-chain.md) |
 | <img src="../src/main/resources/assets/deepcharter/textures/block/fuel_pump_front.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/colony-terminals.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/colony-terminals.png?raw=true" width="160" alt=""></a> | <a id="repair-terminals"></a>**Repair the terminals in order**<br>goal | Pump, processor, upgrade terminal, repair station, each once per world. | ✅ Built | [ADR 0014](adr/0014-terminal-repair-is-one-world-wide-chain.md) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/drill_head.png" width="32" alt=""> | no still yet | <a id="craft-mole-parts"></a>**Craft the Mole's parts**<br>goal | A drill head, a fuel injector, a rotor hub and a tread assembly bring the founding Mole back. | ✅ Built | [ADR 0021](adr/0021-the-hangar-is-a-terminal-and-its-repair-founds-the-mole.md) |
-| <img src="../src/main/resources/assets/deepcharter/textures/item/part_scanner.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/500/crafted-scanner.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/500/crafted-scanner.gif?raw=true" width="160" alt=""></a> | <a id="scanner-from-crafting"></a>**Craft the first scanner**<br>goal | A scanner unit crafted from 4 iron, 2 copper and 2 redstone replaces the $200 first buy. | 🔨 In progress | [#483](https://github.com/pkeppeler/deepcharter/issues/483), [#500](https://github.com/pkeppeler/deepcharter/issues/500) |
+| <img src="../src/main/resources/assets/deepcharter/textures/item/scanner_unit.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/500/crafted-scanner.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/500/crafted-scanner.gif?raw=true" width="160" alt=""></a> | <a id="scanner-from-crafting"></a>**Craft the first scanner**<br>goal | Craft a scanner unit from 4 iron, 2 copper and 2 redstone and use it on your pod: that fits the tier 1 scanner. The terminal does not sell tier 1. | ✅ Built | [#483](https://github.com/pkeppeler/deepcharter/issues/483), [#500](https://github.com/pkeppeler/deepcharter/issues/500) |
 | 🎯 | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/hangar-founding-mole-repaired.jpg?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/hangar-founding-mole-repaired.jpg?raw=true" width="160" alt=""></a> | <a id="repair-mole"></a>**Repair the founding Mole**<br>goal | The first charter fixes the hangar's Mole; the Company advances the pod. | ✅ Built | [ADR 0021](adr/0021-the-hangar-is-a-terminal-and-its-repair-founds-the-mole.md) |
 | 🎯 | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/hero.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/hero.gif?raw=true" width="160" alt=""></a> | <a id="first-run"></a>**The first run**<br>goal | Refuel, scan, drill layer 1, sell, buy a first part. | ✅ Built | [PLAYING.md](PLAYING.md) |
 
@@ -1301,7 +1298,7 @@ flowchart TB
 | Icon | Still | Feature | What it is | Status | Links |
 |---|---|---|---|---|---|
 | <img src="../src/main/resources/assets/deepcharter/textures/item/handbook.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/handbook.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/handbook.png?raw=true" width="160" alt=""></a> | <a id="handbook-item"></a>**The handbook item**<br>mechanic | Issued when you sign your contract, bound to you, opened with H. | ✅ Built | [ADR 0005](adr/0005-build-our-own-handbook.md) |
-| <img src="../src/main/resources/assets/deepcharter/textures/item/handbook.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/handbook.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/handbook.png?raw=true" width="160" alt=""></a> | <a id="hb-welcome"></a>**1. Welcome to Prosperity**<br>goal | Gather wood, craft tools, gather scrap, smelt iron (and craft a scanner unit, once #500 lands). | ✅ Built | [ADR 0013](adr/0013-handbook-chapters-are-data-and-directives-are-advancements.md), [ADR 0028](adr/0028-chapters-one-to-five-complete-from-the-events-that-own-the-deed.md), [SPEC.md](SPEC.md#chapters) |
+| <img src="../src/main/resources/assets/deepcharter/textures/item/handbook.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/handbook.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/handbook.png?raw=true" width="160" alt=""></a> | <a id="hb-welcome"></a>**1. Welcome to Prosperity**<br>goal | Gather wood, craft tools, gather scrap, smelt iron, craft a scanner unit. | ✅ Built | [ADR 0013](adr/0013-handbook-chapters-are-data-and-directives-are-advancements.md), [ADR 0028](adr/0028-chapters-one-to-five-complete-from-the-events-that-own-the-deed.md), [SPEC.md](SPEC.md#chapters) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/handbook.png" width="32" alt=""> | no still yet | <a id="hb-back-online"></a>**2. Bringing Prosperity Back Online**<br>goal | Repair the pump, the processor and the upgrade terminal. | ✅ Built | [ADR 0013](adr/0013-handbook-chapters-are-data-and-directives-are-advancements.md), [ADR 0028](adr/0028-chapters-one-to-five-complete-from-the-events-that-own-the-deed.md), [SPEC.md](SPEC.md#chapters) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/handbook.png" width="32" alt=""> | no still yet | <a id="hb-meet-the-mole"></a>**3. Meet the Mole**<br>goal | Repair the Mole and board it. | ✅ Built | [ADR 0013](adr/0013-handbook-chapters-are-data-and-directives-are-advancements.md), [ADR 0028](adr/0028-chapters-one-to-five-complete-from-the-events-that-own-the-deed.md), [SPEC.md](SPEC.md#chapters) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/handbook.png" width="32" alt=""> | no still yet | <a id="hb-fuel-is-life"></a>**4. Fuel Is Life**<br>goal | Refuel, fly, drill down and return to the colony. | ✅ Built | [ADR 0013](adr/0013-handbook-chapters-are-data-and-directives-are-advancements.md), [ADR 0028](adr/0028-chapters-one-to-five-complete-from-the-events-that-own-the-deed.md), [SPEC.md](SPEC.md#chapters) |
@@ -1436,8 +1433,7 @@ flowchart LR
   classDef planned fill:#2e2e2e,stroke:#9e9e9e,stroke-width:1px,color:#d6d6d6
   classDef idea fill:#1a1a1a,stroke:#757575,stroke-width:1px,stroke-dasharray:4 3,color:#a0a0a0
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
-  class n_found_charter,n_company_parts,n_sign_on,n_dormant_charters,n_serials built
-  class n_wreck_keeps_serial progress
+  class n_found_charter,n_company_parts,n_sign_on,n_dormant_charters,n_serials,n_wreck_keeps_serial built
   class n_revive_at_terminal,n_share_outposts planned
   class n_charter_competition idea
   class n_contract_terminal,n_handbook_item ext
@@ -1451,7 +1447,7 @@ flowchart LR
 | ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/164/m2-charter-revive.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/164/m2-charter-revive.gif?raw=true" width="160" alt=""></a> | <a id="dormant-charters"></a>**Dormant charters**<br>mechanic | A charter nobody belongs to goes dormant and keeps its name; an operator command revives it. | ✅ Built | [ADR 0026](adr/0026-a-dormant-charter-is-revived-by-the-first-player-who-asks.md), [#164](https://github.com/pkeppeler/deepcharter/issues/164) |
 | ⚙️ | no still yet | <a id="serials"></a>**Serial numbers**<br>mechanic | Each pod and part has a world-wide serial; a restored wreck keeps its own number. | ✅ Built | [ADR 0027](adr/0027-a-chassis-is-an-entity-type-and-an-unowned-wreck-is-registered-when-restored.md) |
 | ⚙️ | no still yet | <a id="revive-at-terminal"></a>**Revive at the contract terminal**<br>mechanic | Players revive a dormant charter, but who may revive first (former members?) is not decided. | 📋 Planned | [#168](https://github.com/pkeppeler/deepcharter/issues/168) |
-| ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/499/restored-prospector-0002-keeps-its-name.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/499/restored-prospector-0002-keeps-its-name.png?raw=true" width="160" alt=""></a> | <a id="wreck-keeps-serial"></a>**A restored wreck keeps its serial**<br>mechanic | PROSPECTOR-0002 stays 0002 and its name tag after the restore. | 🔨 In progress | [#484](https://github.com/pkeppeler/deepcharter/issues/484), [#499](https://github.com/pkeppeler/deepcharter/issues/499) |
+| ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/499/restored-prospector-0002-keeps-its-name.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/499/restored-prospector-0002-keeps-its-name.png?raw=true" width="160" alt=""></a> | <a id="wreck-keeps-serial"></a>**A restored wreck keeps its serial**<br>mechanic | The famous wreck carries a lore mark and keeps PROSPECTOR-0002 and its name tag when restored; a charter's own Prospectors skip 0002. | ✅ Built | [#484](https://github.com/pkeppeler/deepcharter/issues/484), [#499](https://github.com/pkeppeler/deepcharter/issues/499), [ADR 0027](adr/0027-a-chassis-is-an-entity-type-and-an-unowned-wreck-is-registered-when-restored.md) |
 | ⚙️ | no still yet | <a id="share-outposts"></a>**Outposts and pads shared**<br>mechanic | A toggle to share a charter's outposts and pads with other charters. | 📋 Planned | [SPEC.md](SPEC.md#6-charters) |
 | ⚙️ | no still yet | <a id="charter-competition"></a>**Competition between charters**<br>mechanic | A later update might add rivalry; today charters are friendly. | 💭 Idea | [SPEC.md](SPEC.md#18-open-questions) |
 
