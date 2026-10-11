@@ -103,6 +103,9 @@ public final class CharterData extends SavedData {
 		if (trimmed.isEmpty() || trimmed.length() > CharterTuning.DEFAULT.maxNameLength()) {
 			return Optional.of(CharterRefusal.INVALID_NAME);
 		}
+		if (find(id).isPresent()) {
+			throw new IllegalArgumentException("a charter with id " + id + " already exists; found with a fresh id");
+		}
 		if (charterOf(founder).isPresent() || applicationOf(founder).isPresent()) {
 			return Optional.of(CharterRefusal.ALREADY_ON_A_CHARTER);
 		}

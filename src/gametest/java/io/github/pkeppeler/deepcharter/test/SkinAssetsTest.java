@@ -20,6 +20,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.client.creature.LamplessFigureAssets;
 import io.github.pkeppeler.deepcharter.client.pod.PodLook;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 
@@ -74,10 +75,14 @@ public class SkinAssetsTest {
 		helper.succeed();
 	}
 
-	/** The figure's model is the vanilla zombie's (ADR 0033), so its look is its texture, which a pack replaces. */
+	/** The figure's look is a model, a texture and an animation file, which a pack replaces (#250). */
 	@GameTest
-	public void theLamplessFigureHasItsTexture(GameTestHelper helper) {
-		checkTexture(helper, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "entity/lampless_figure"), "textures/");
+	public void theLamplessFigureHasItsFiles(GameTestHelper helper) {
+		for (Identifier file : List.of(LamplessFigureAssets.modelFile(), LamplessFigureAssets.animationFile(), LamplessFigureAssets.texture())) {
+			if (SkinAssetsTest.class.getResource("/assets/%s/%s".formatted(file.getNamespace(), file.getPath())) == null) {
+				throw failure(helper, "the lampless figure's file %s is not on the classpath", file);
+			}
+		}
 		helper.succeed();
 	}
 

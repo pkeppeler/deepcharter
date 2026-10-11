@@ -1,0 +1,21 @@
+{
+  "variants": {
+    "": [
+      {
+        "model": "deepcharter:block/lc_breach_crust_0"
+      },
+      {
+        "model": "deepcharter:block/lc_breach_crust_0",
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/lc_breach_crust_0",
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/lc_breach_crust_0",
+        "y": 270
+      }
+    ]
+  }
+}
