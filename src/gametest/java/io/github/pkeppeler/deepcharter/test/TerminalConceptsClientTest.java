@@ -46,7 +46,8 @@ public class TerminalConceptsClientTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
-		ClientTestLog.start(this);
+		// 267 s on the CI runner (run 38087496837): it renders every screen under every pack and font on software GL. The default 180 s would fail it.
+		ClientTestLog.start(this, 480);
 		require(!context.computeOnClient(client -> PanelLook.current().enabled()), "the panel is off with no pack");
 		require(context.computeOnClient(client -> CrtText.style().equals(Style.EMPTY)), "the terminal text is the game's own font with no pack");
 		List<String> problems = new ArrayList<>();

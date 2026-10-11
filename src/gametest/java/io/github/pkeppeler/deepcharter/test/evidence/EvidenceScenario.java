@@ -11,6 +11,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions;
 
 import io.github.pkeppeler.deepcharter.test.ClientTestLog;
+import io.github.pkeppeler.deepcharter.test.support.ClientTestWatchdog;
 
 /**
  * Base class for PR evidence scenarios. Run with tools/record-evidence.sh, which sets
@@ -41,7 +42,8 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
 		if (!name().equals(System.getenv("DEEPCHARTER_EVIDENCE"))) {
 			return;
 		}
-		ClientTestLog.start(this);
+		// A recording is long by design and the CI job limit bounds it, so it is untimed here.
+		ClientTestLog.start(this, ClientTestWatchdog.NO_LIMIT);
 		String root = System.getenv("DEEPCHARTER_EVIDENCE_DIR");
 		if (root == null) {
 			throw new IllegalStateException("DEEPCHARTER_EVIDENCE_DIR is not set; run via tools/record-evidence.sh");
