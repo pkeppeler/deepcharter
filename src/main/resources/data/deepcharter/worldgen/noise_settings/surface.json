@@ -15,7 +15,7 @@
     "erosion": "deepcharter:surface/basalt_noise",
     "final_density": "deepcharter:surface/density",
     "ridges": 0.0,
-    "temperature": 0.0,
+    "temperature": "deepcharter:surface/yard",
     "vegetation": 0.0
   },
   "sea_level": -64,

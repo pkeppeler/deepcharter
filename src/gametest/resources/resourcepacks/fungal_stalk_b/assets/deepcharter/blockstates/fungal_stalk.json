@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "axis=y": {
+      "model": "deepcharter:block/fungal_stalk_b"
+    },
+    "axis=x": {
+      "model": "deepcharter:block/fungal_stalk_b",
+      "x": 90,
+      "y": 90
+    },
+    "axis=z": {
+      "model": "deepcharter:block/fungal_stalk_b",
+      "x": 90
+    }
+  }
+}

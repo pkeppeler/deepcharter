@@ -23,9 +23,9 @@
       }
     },
     {
-      "id": "deepcharter:handbook/welcome/mine_iron_ore",
+      "id": "deepcharter:handbook/welcome/gather_scrap",
       "text": {
-        "translate": "deepcharter.handbook.directive.welcome.mine_iron_ore"
+        "translate": "deepcharter.handbook.directive.welcome.gather_scrap"
       }
     },
     {

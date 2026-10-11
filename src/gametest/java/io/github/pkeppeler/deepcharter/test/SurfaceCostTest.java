@@ -57,10 +57,13 @@ public class SurfaceCostTest {
 	private static final int COOL_DOWN_TICKS = 100;
 	/** The smoke case only checks that the worlds generate: no heap readings (each is a few collections) and no wait between worlds. */
 	private static final boolean SMOKE = REQUESTED_ROUNDS == null;
-	private static final List<String> ALL_WORLDS = List.of("tall_baseline", "tall_surface", "tall_baseline_biomes", "tall_surface_biomes");
+	private static final List<String> ALL_WORLDS = List.of("tall_baseline", "tall_surface", "tall_baseline_biomes", "tall_surface_biomes",
+			"tall_surface_bare", "tall_surface_yard", "tall_surface_yard_bare");
 	private static final List<String> WORLDS = REQUESTED_WORLD == null ? ALL_WORLDS : List.of(REQUESTED_WORLD);
 	/** Each surface world, and the layers-only world it is compared with. */
 	private static final Map<String, String> BASELINES = Map.of("tall_surface", "tall_baseline", "tall_surface_biomes", "tall_baseline_biomes");
+	/** Each world whose biomes place features, and the same world with the features taken out: the ratio is what the features alone cost (#245). */
+	private static final Map<String, String> WITHOUT_FEATURES = Map.of("tall_surface_biomes", "tall_surface_bare", "tall_surface_yard", "tall_surface_yard_bare");
 	/** A region counts as unloaded when this few chunks of a world are left, such as those around a spawn. */
 	private static final int UNLOADED_CHUNKS = 30;
 	private static final int MAX_TICKS = 200_000;
@@ -139,6 +142,37 @@ public class SurfaceCostTest {
 				throw helper.assertionException(Component.literal(world + " does not use the shipped overworld's biome source"));
 			}
 		}
+		for (String biome : List.of("regolith_plains", "mesa_country", "basalt_field", "salvage_yard")) {
+			JsonObject shipped = read(helper, "/data/deepcharter/worldgen/biome/" + biome + ".json").getAsJsonObject();
+			JsonObject bare = read(helper, "/data/deepcharter-test/worldgen/biome/bare_" + biome + ".json").getAsJsonObject();
+			JsonArray noFeatures = new JsonArray();
+			shipped.getAsJsonArray("features").forEach(step -> noFeatures.add(new JsonArray()));
+			shipped.add("features", noFeatures);
+			if (!shipped.equals(bare)) {
+				throw helper.assertionException(Component.literal("bare_" + biome + " is not the shipped biome with its features taken out"));
+			}
+		}
+		JsonObject yardSettings = read(helper, "/data/deepcharter/worldgen/noise_settings/tall_surface_yard.json").getAsJsonObject();
+		JsonObject surfaceSettings = read(helper, "/data/deepcharter/worldgen/noise_settings/tall_surface.json").getAsJsonObject();
+		surfaceSettings.getAsJsonObject("noise_router").addProperty("temperature", 1.0);
+		if (!yardSettings.equals(surfaceSettings)) {
+			throw helper.assertionException(Component.literal("tall_surface_yard is not tall_surface with the temperature at 1.0, which puts every column in the yard"));
+		}
+		for (String world : List.of("tall_surface_yard", "tall_surface_bare", "tall_surface_yard_bare")) {
+			JsonObject generator = dimensions.getAsJsonObject("deepcharter:" + world).getAsJsonObject("generator");
+			JsonElement source = generator.get("biome_source");
+			boolean bareWorld = world.endsWith("bare");
+			JsonElement expected = shippedBiomes.deepCopy();
+			if (bareWorld) {
+				expected.getAsJsonObject().getAsJsonArray("biomes").forEach(entry -> {
+					String id = entry.getAsJsonObject().get("biome").getAsString();
+					entry.getAsJsonObject().addProperty("biome", "deepcharter-test:bare_" + id.substring(id.indexOf(':') + 1));
+				});
+			}
+			if (!source.equals(expected)) {
+				throw helper.assertionException(Component.literal(world + " does not use the shipped biome source" + (bareWorld ? " with its biomes bare" : "")));
+			}
+		}
 		helper.succeed();
 	}
 
@@ -159,9 +193,13 @@ public class SurfaceCostTest {
 			String against = results.containsKey(BASELINES.get(world)) ? "; vs " + BASELINES.get(world) + ": CPU "
 					+ format(m.cpuMsPerColumn / median(results.get(BASELINES.get(world))).cpuMsPerColumn) + "x, heap "
 					+ format(m.heapMb / median(results.get(BASELINES.get(world))).heapMb) + "x" : "";
-			LOGGER.info("[surface-cost] {}: {} CPU ms per column (rounds {}), {} MB heap (rounds {}), {} wall ms per column{}",
+			String bare = WITHOUT_FEATURES.get(world);
+			String features = results.containsKey(bare) ? "; vs " + bare + " (the features alone): CPU "
+					+ format(m.cpuMsPerColumn / median(results.get(bare)).cpuMsPerColumn) + "x, heap "
+					+ format(m.heapMb / median(results.get(bare)).heapMb) + "x" : "";
+			LOGGER.info("[surface-cost] {}: {} CPU ms per column (rounds {}), {} MB heap (rounds {}), {} wall ms per column{}{}",
 					world, format(m.cpuMsPerColumn), all.stream().map(a -> format(a.cpuMsPerColumn)).toList(), Math.round(m.heapMb),
-					all.stream().map(a -> Math.round(a.heapMb)).toList(), format(m.wallMsPerColumn), against);
+					all.stream().map(a -> Math.round(a.heapMb)).toList(), format(m.wallMsPerColumn), against, features);
 		});
 	}
 

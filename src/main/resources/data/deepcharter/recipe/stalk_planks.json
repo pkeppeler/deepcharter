@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "group": "planks",
+  "ingredients": [
+    "deepcharter:fungal_stalk"
+  ],
+  "result": {
+    "id": "deepcharter:stalk_planks",
+    "count": 4
+  }
+}

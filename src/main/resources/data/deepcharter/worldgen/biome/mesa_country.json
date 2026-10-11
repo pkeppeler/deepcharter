@@ -71,7 +71,9 @@
     [],
     [],
     [],
-    [],
+    [
+      "deepcharter:fungal_stalks"
+    ],
     []
   ],
   "has_precipitation": false,

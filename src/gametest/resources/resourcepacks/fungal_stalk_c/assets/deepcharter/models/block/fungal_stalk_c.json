@@ -1,0 +1,171 @@
+{
+  "textures": {
+    "bulb": "deepcharter:block/fungal_bulb",
+    "end": "deepcharter:block/fungal_stalk_end",
+    "particle": "#bulb"
+  },
+  "elements": [
+    {
+      "from": [
+        5,
+        0,
+        5
+      ],
+      "to": [
+        11,
+        2,
+        11
+      ],
+      "faces": {
+        "north": {
+          "texture": "#bulb"
+        },
+        "south": {
+          "texture": "#bulb"
+        },
+        "east": {
+          "texture": "#bulb"
+        },
+        "west": {
+          "texture": "#bulb"
+        },
+        "down": {
+          "texture": "#end"
+        }
+      }
+    },
+    {
+      "from": [
+        3,
+        2,
+        3
+      ],
+      "to": [
+        13,
+        5,
+        13
+      ],
+      "faces": {
+        "north": {
+          "texture": "#bulb"
+        },
+        "south": {
+          "texture": "#bulb"
+        },
+        "east": {
+          "texture": "#bulb"
+        },
+        "west": {
+          "texture": "#bulb"
+        }
+      }
+    },
+    {
+      "from": [
+        2,
+        5,
+        2
+      ],
+      "to": [
+        14,
+        8,
+        14
+      ],
+      "faces": {
+        "north": {
+          "texture": "#bulb"
+        },
+        "south": {
+          "texture": "#bulb"
+        },
+        "east": {
+          "texture": "#bulb"
+        },
+        "west": {
+          "texture": "#bulb"
+        }
+      }
+    },
+    {
+      "from": [
+        3,
+        8,
+        3
+      ],
+      "to": [
+        13,
+        11,
+        13
+      ],
+      "faces": {
+        "north": {
+          "texture": "#bulb"
+        },
+        "south": {
+          "texture": "#bulb"
+        },
+        "east": {
+          "texture": "#bulb"
+        },
+        "west": {
+          "texture": "#bulb"
+        }
+      }
+    },
+    {
+      "from": [
+        5,
+        11,
+        5
+      ],
+      "to": [
+        11,
+        13,
+        11
+      ],
+      "faces": {
+        "north": {
+          "texture": "#bulb"
+        },
+        "south": {
+          "texture": "#bulb"
+        },
+        "east": {
+          "texture": "#bulb"
+        },
+        "west": {
+          "texture": "#bulb"
+        }
+      }
+    },
+    {
+      "from": [
+        6,
+        13,
+        6
+      ],
+      "to": [
+        10,
+        16,
+        10
+      ],
+      "faces": {
+        "north": {
+          "texture": "#bulb"
+        },
+        "south": {
+          "texture": "#bulb"
+        },
+        "east": {
+          "texture": "#bulb"
+        },
+        "west": {
+          "texture": "#bulb"
+        },
+        "up": {
+          "texture": "#end"
+        }
+      }
+    }
+  ]
+}

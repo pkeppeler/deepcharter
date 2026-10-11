@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "deepcharter:block/salvage_crate_b"
+    },
+    "facing=east": {
+      "model": "deepcharter:block/salvage_crate_b",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "deepcharter:block/salvage_crate_b",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "deepcharter:block/salvage_crate_b",
+      "y": 270
+    }
+  }
+}
