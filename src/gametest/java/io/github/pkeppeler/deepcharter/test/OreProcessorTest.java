@@ -527,41 +527,31 @@ public class OreProcessorTest {
 	/** A full bay is 64 spoil, 32 bricks: the rack of 24 takes 24 and the pack the other 8, so a hopper dive refills both stores (#442). */
 	@GameTest
 	public void aFullBayFusesItsFirstTwentyFourBricksIntoAnEmptyRackAndTheRestIntoThePack(GameTestHelper helper) {
-		MinecraftServer server = helper.getLevel().getServer();
-		withProcessorOnline(server, () -> {
-			MockPlayer mock = player(helper, "Full bay", true);
-			ServerPlayer player = mock.player();
-			BlockPos processor = processorFor(helper, mock);
-			PodEntity pod = podAt(helper, beside(processor, 4));
-			withSpoil(pod, 64, 0);
-			try {
-				expectDone(helper, Terminals.act(player, processor, OreProcessor.FUSE_SPOIL, new CompoundTag()), "fusing a full bay into an empty rack");
-				PodLining.State after = PodLining.of(pod);
-				if (after.bricks() != 24 || after.spoil() != 0 || bricksCarried(player) != 8) {
-					throw helper.assertionException("a full bay makes 32 bricks, 24 for the rack and 8 for the pack: rack %s, spoil %s, carried %s", after.bricks(), after.spoil(), bricksCarried(player));
-				}
-			} finally {
-				pod.discard();
-			}
-		});
-		helper.succeed();
+		expectFuse(helper, "Full bay", 64, 0, 24, 8, "fusing a full bay into an empty rack",
+				"a full bay makes 32 bricks, 24 for the rack and 8 for the pack: rack %s, spoil %s, carried %s");
 	}
 
 	/** A save from before #442 can hold more bricks than the rack now takes: fusing leaves the rack as it is, sends every brick to the pack and loses none. */
 	@GameTest
 	public void aRackOverTheCapacityKeepsItsBricksAndFusesEverythingIntoThePack(GameTestHelper helper) {
+		expectFuse(helper, "Old save", 20, 30, 30, 10, "fusing into a rack over its capacity",
+				"the rack of 30 keeps its 30 and the 10 new bricks go to the pack: rack %s, spoil %s, carried %s");
+	}
+
+	/** Fuses all of a pod's spoil and expects the rack and the pack to hold the given bricks and no spoil to remain. */
+	private static void expectFuse(GameTestHelper helper, String player, int spoil, int rack, int expectedRack, int expectedCarried, String what, String failure) {
 		MinecraftServer server = helper.getLevel().getServer();
 		withProcessorOnline(server, () -> {
-			MockPlayer mock = player(helper, "Old save", true);
-			ServerPlayer player = mock.player();
+			MockPlayer mock = player(helper, player, true);
+			ServerPlayer serverPlayer = mock.player();
 			BlockPos processor = processorFor(helper, mock);
 			PodEntity pod = podAt(helper, beside(processor, 4));
-			withSpoil(pod, 20, 30);
+			withSpoil(pod, spoil, rack);
 			try {
-				expectDone(helper, Terminals.act(player, processor, OreProcessor.FUSE_SPOIL, new CompoundTag()), "fusing into a rack over its capacity");
+				expectDone(helper, Terminals.act(serverPlayer, processor, OreProcessor.FUSE_SPOIL, new CompoundTag()), what);
 				PodLining.State after = PodLining.of(pod);
-				if (after.bricks() != 30 || after.spoil() != 0 || bricksCarried(player) != 10) {
-					throw helper.assertionException("the rack of 30 keeps its 30 and the 10 new bricks go to the pack: rack %s, spoil %s, carried %s", after.bricks(), after.spoil(), bricksCarried(player));
+				if (after.bricks() != expectedRack || after.spoil() != 0 || bricksCarried(serverPlayer) != expectedCarried) {
+					throw helper.assertionException(failure, after.bricks(), after.spoil(), bricksCarried(serverPlayer));
 				}
 			} finally {
 				pod.discard();

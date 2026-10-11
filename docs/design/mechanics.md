@@ -856,7 +856,7 @@ The tier 1 part equals its bound to the bore and the tier 2 part beats it by 3, 
 - **C.** A pod in lava burns bricks from the pilot's pack to cut the hull it loses. The bot never leaves the lava (the flood follows the shaft), so the bricks only stretch the time in it: contact ticks per encounter go from 132 to 367, lava deaths stay at 15 and reach stays at 58. The pack pays 10 more bricks a bore (26.0 against 15.7). A pilot who reacts could use those seconds; the bot cannot show it. It is a candidate for rung 3 of the lava ladder ([#232](https://github.com/pkeppeler/deepcharter/issues/232)), where it is noted. Not built.
 - **D.** A view of 8 blocks (what #432 called W) on today's build: reach 50 (55), lava deaths 23 (18), racks dry 11 (6). More bricks go to lava that does not reach the pod. This measures a wider lining, not a HUD cue: the bot reads no HUD, so the cue itself has no number. Lava from outside the view is [#454](https://github.com/pkeppeler/deepcharter/issues/454).
 
-**The pick: A, a rack of 24 (A).** The pack and the hopper each add a measured 2 to 6 bores, and the unpacked pod is closer to main than at 16. The default build is still a little harder than main when the pilot carries no bricks: tier 1 reaches layer 2 in 44 bores of 100 (46 on main), tier 2 in 51 (55); lava ends 24 and 22 (21 and 18); 10 racks in 100 run dry (7 and 6). The pre-#400 shape is context only: its no-pack columns (36 and 46) are 8 and 5 bores under the pick. The cost is on purpose and small, and a pack of 16 bricks removes it.
+**The pick: A, a rack of 24 (A).** The pack and the hopper each add a measured 2 to 6 bores, and the unpacked pod is closer to main than at 16. The default build is still a little harder than main when the pilot carries no bricks: tier 1 reaches layer 2 in 44 bores of 100 (46 on main), tier 2 in 51 (55); lava ends 24 and 22 (21 and 18); 10 racks in 100 run dry (7 and 6). The cost is on purpose and small, and a pack of 16 bricks removes it.
 
 **What each part is for, on the pick** (tier 2 sounder, 100 bores):
 
@@ -900,7 +900,7 @@ The tier 1 part equals its bound to the bore and the tier 2 part beats it by 3, 
 
 `PodLinerTest` pack-split cases set the rack by hand and pin the draw on the pack after the rack. The evidence scenarios `pod-liner` and `pod-liner-dry` start with a full rack of 24.
 
-**Trade-offs and tuning knobs.** `PodLiningTuning.brickCapacity` (24). A pilot with no stack of bricks in the pack runs dry in 1 bore of 10 and reaches layer 2 in 2 to 4 bores fewer than on main; the hopper, the processor and a trip home fix that. A rack above the capacity (an old save) keeps what it has and is not topped up.
+**Tuning knob.** `PodLiningTuning.brickCapacity` (24). A rack above the capacity (an old save) keeps what it has and is not topped up.
 
 **Open questions.**
 - Lava that flows into a lined stretch from beyond the view is not lined: [#454](https://github.com/pkeppeler/deepcharter/issues/454). The thermal scanner shows it, and a hairline-crack warning (rung 4 of the ladder) would give a pilot a reason to re-line. One argument against a HUD cue is that it would repeat the thermal scanner for a pod that has it. That is an argument, not a measurement.
