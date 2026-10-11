@@ -452,7 +452,7 @@ def shade(ramp, level):
 def plate(ramp, rivets=True, dusty=True, seams=True):
     """Riveted plate: lit top edge, shadowed bottom edge, seams on big faces, rivets with rust, chips and dust."""
 
-    def paint(canvas, glow, face, rng):
+    def paint(canvas, _glow, face, rng):
         w, h = face.w, face.h
         rivet_at = set()
         streaks = set()
@@ -511,7 +511,7 @@ def plate(ramp, rivets=True, dusty=True, seams=True):
 def metal(ramp, banded=False):
     """Cast or polished metal: soft noise, a highlight column on side faces, optional straps."""
 
-    def paint(canvas, glow, face, rng):
+    def paint(canvas, _glow, face, rng):
         w, h = face.w, face.h
         for j in range(h):
             for i in range(w):
@@ -535,7 +535,7 @@ def metal(ramp, banded=False):
     return paint
 
 
-def rubber(canvas, glow, face, rng):
+def rubber(canvas, _glow, face, rng):
     """A tread belt: grouser bars across every face, dusty at the bottom."""
     w, h = face.w, face.h
     for j in range(h):
@@ -568,7 +568,7 @@ def glass(canvas, glow, face, rng):
                 glow.set(face.x + i, face.y + j, mix(CAB_GLOW, (0, 0, 0), rng.random() * 0.5))
 
 
-def pane(canvas, glow, face, rng):
+def pane(canvas, _glow, face, _rng):
     """Clear glass (#382): the pilot shows through it. A wide face is see-through (alpha 0, which the renderer cuts out) apart from
     two diagonal glints; the thin edge faces are dark glass, so the pane keeps an outline. It has no glow, which would draw over the pilot."""
     w, h = face.w, face.h
@@ -608,7 +608,7 @@ def porthole(canvas, glow, face, rng):
                 canvas.set(face.x + i, face.y + j, shade("paint", 2 if j else 3))
 
 
-def lens(canvas, glow, face, rng):
+def lens(canvas, glow, face, _rng):
     """A lamp lens: dark glass in a steel ring when unlit; the glowmask lights it warm white."""
     w, h = face.w, face.h
     cx, cy = (w - 1) / 2, (h - 1) / 2
@@ -626,7 +626,7 @@ def lens(canvas, glow, face, rng):
                 glow.set(face.x + i, face.y + j, LAMP_GLOW[0] if r < 0.5 else LAMP_GLOW[1])
 
 
-def grille(canvas, glow, face, rng):
+def grille(canvas, _glow, face, _rng):
     """Vent slats on the sides, a plain iron frame elsewhere."""
     w, h = face.w, face.h
     for j in range(h):
@@ -638,7 +638,7 @@ def grille(canvas, glow, face, rng):
             canvas.set(face.x + i, face.y + j, shade("iron", level))
 
 
-def hazard(canvas, glow, face, rng):
+def hazard(canvas, _glow, face, rng):
     """Company hazard stripes, amber and black, worn at the edges."""
     w, h = face.w, face.h
     for j in range(h):
@@ -652,7 +652,7 @@ def hazard(canvas, glow, face, rng):
             canvas.set(face.x + i, face.y + j, rgb)
 
 
-def drill(canvas, glow, face, rng):
+def drill(canvas, _glow, face, _rng):
     """Toothed spiral steel: diagonal flutes along the length, concentric rings on the tip face."""
     w, h = face.w, face.h
     for j in range(h):
@@ -666,7 +666,7 @@ def drill(canvas, glow, face, rng):
             canvas.set(face.x + i, face.y + j, shade("steel", level))
 
 
-def teeth(canvas, glow, face, rng):
+def teeth(canvas, _glow, face, _rng):
     w, h = face.w, face.h
     for j in range(h):
         for i in range(w):
@@ -679,7 +679,7 @@ def cone_metal(base, groove=None):
     core. No noise: the cones are smooth machined metal, and noise reads as a pile of rock. The cones are the one part of the pod
     painted in blue steel, so they stand out from the red rock, the dusk sky and the hull's paint."""
 
-    def paint(canvas, glow, face, rng):
+    def paint(canvas, _glow, face, _rng):
         w, h = face.w, face.h
         for j in range(h):
             for i in range(w):
@@ -697,14 +697,14 @@ def cone_metal(base, groove=None):
     return paint
 
 
-def tip(canvas, glow, face, rng):
+def tip(canvas, _glow, face, _rng):
     """A bright brass point: the lightest brass on every face but the underside."""
     for j in range(face.h):
         for i in range(face.w):
             canvas.set(face.x + i, face.y + j, shade("brass", 3 if face.kind == "bottom" else 4))
 
 
-def wheel(canvas, glow, face, rng):
+def wheel(canvas, _glow, face, _rng):
     """A road wheel: a ring with two spokes and a brass hub, so its turn shows from the side."""
     w, h = face.w, face.h
     cx, cy = (w - 1) / 2, (h - 1) / 2
@@ -725,7 +725,7 @@ def wheel(canvas, glow, face, rng):
             canvas.set(face.x + i, face.y + j, rgb)
 
 
-def flame(canvas, glow, face, rng):
+def flame(canvas, glow, face, _rng):
     """A jet's hot throat; drawn only while the pod flies."""
     w, h = face.w, face.h
     for j in range(h):
@@ -735,7 +735,7 @@ def flame(canvas, glow, face, rng):
             glow.set(face.x + i, face.y + j, FLAME_GLOW[2] if edge and min(w, h) > 2 else FLAME_GLOW[0 if face.kind == "bottom" else 1])
 
 
-def exhaust(canvas, glow, face, rng):
+def exhaust(canvas, _glow, face, rng):
     """A stack: soot black at the mouth, rust down the iron."""
     w, h = face.w, face.h
     for j in range(h):

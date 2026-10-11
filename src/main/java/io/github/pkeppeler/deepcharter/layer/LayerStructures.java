@@ -63,8 +63,9 @@ public final class LayerStructures {
 			}
 			return;
 		}
+		List<StructureSite> sites = sitesIn(level.getSeed(), layer.getAsInt(), level.getMinY(), level.getHeight(), chunk.getPos(), conduit.get());
 		try {
-			for (StructureSite site : sitesIn(level.getSeed(), layer.getAsInt(), level.getMinY(), level.getHeight(), chunk.getPos(), conduit.get())) {
+			for (StructureSite site : sites) {
 				StructurePlan plan = new StructurePlan(site, level, chunk);
 				plan.seal();
 				site.kind().draw(plan, site.height());
@@ -79,6 +80,11 @@ public final class LayerStructures {
 		} catch (RuntimeException e) {
 			if (LOGGED_FAILURE.compareAndSet(false, true)) {
 				DeepCharter.LOGGER.error("Layer structures failed in chunk {} of layer {}; this and later chunks may lack theirs", chunk.getPos(), layer.getAsInt(), e);
+			}
+		} finally {
+			// A site that was drawn before a failure is held too: the chunk may be sent at once, before its light is computed.
+			if (!sites.isEmpty()) {
+				LightSync.holdSendUntilLit(level, chunk.getPos());
 			}
 		}
 	}

@@ -47,7 +47,6 @@ public class PodLiningScenario extends EvidenceScenario {
 	private static final int MAX_TICKS = 4000;
 	private static final int BRICKS = 16;
 	private static final float LOOK_DOWN = 35f;
-	private static final float LOOK_UP = -50f;
 	private static final float FACING_EAST = -90f;
 	private static final int THERMAL_TIER = 2;
 
@@ -109,13 +108,6 @@ public class PodLiningScenario extends EvidenceScenario {
 			line(context, singleplayer);
 			screenshot(context, "pod-lining-second-slab");
 			boreUntilFeetAt(context, singleplayer, POCKET_BOTTOM - 3);
-			// Look back up the shaft: the slag brick stands in its walls where the lava pockets are.
-			context.runOnClient(client -> client.player.setXRot(LOOK_UP));
-			for (int i = 0; i < 8; i++) {
-				frame(context);
-				context.waitTicks(TICKS_PER_FRAME);
-			}
-			screenshot(context, "pod-lining-past");
 
 			String result = singleplayer.getServer().computeOnServer(server -> {
 				PodEntity pod = (PodEntity) server.getPlayerList().getPlayers().getFirst().getVehicle();
@@ -124,6 +116,14 @@ public class PodLiningScenario extends EvidenceScenario {
 			if (!result.isEmpty()) {
 				throw new AssertionError("The pod should be past the lava with no hull lost, but: " + result);
 			}
+
+			// Float above the lined slabs and look down the shaft: the slag brick stands in its walls where the lava pockets were.
+			floatAbovePod(singleplayer, X, POCKET_TOP + 1, Z);
+			for (int i = 0; i < 8; i++) {
+				frame(context);
+				context.waitTicks(TICKS_PER_FRAME);
+			}
+			screenshot(context, "pod-lining-past");
 		}
 	}
 
