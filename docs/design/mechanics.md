@@ -34,7 +34,7 @@ Mechanics invented under the creative liberty of the `designing-mechanics` skill
 - A wreck in lava makes no burning flag and no sound.
 - The cue. The pod flags `hullBurning` (synced) while lava touches it. The status HUD shows a line, "HULL BURNING", in the `podBurningColor` of `theme/hud.json`, and the pod hisses (`pod.hull_burning`, default asset `entity.generic.burn`, every `lavaCueTicks` = 15 ticks). A pilot sees the hull number fall and has a few seconds to turn the pod out of the lava.
 
-**The ladder (#232).** By hand: lining blocks placed from the seat. Then a liner upgrade that lines a ring every few slabs. Then a heat-shield hull track: it cuts the hull damage, and now it matters, because the hull is what lava takes. See the lava example in the `designing-mechanics` skill. Rung 4, a warning when lava reaches the shaft behind the pod, is [the lava watch](#the-lava-watch-454-a).
+**The ladder (#232).** By hand: lining blocks placed from the seat. Then a liner upgrade that lines a ring every few slabs. Then a heat-shield hull track: it cuts the hull damage, and now it matters, because the hull is what lava takes. See the lava example in the `designing-mechanics` skill. Rung 3 is [the heat shield](#the-heat-shield-482-a). Rung 4, a warning when lava reaches the shaft behind the pod, is [the lava watch](#the-lava-watch-454-a).
 
 ### Lava vs. a straight bore: measured
 
@@ -904,7 +904,7 @@ The tier 1 part equals its bound to the bore and the tier 2 part beats it by 3, 
 
 **Open questions.**
 - Lava that flows into a lined stretch from beyond the view is not lined. Answered by [#454](#the-lava-watch-454-a): every pod warns its pilot, and the liner stays as it is.
-- Rung 3 (the heat-shield hull): candidate C is a start, bricks from the pack as ablative plating. It needs a pilot that leaves the lava to be measured, and a number that does not make lining optional ([#232](https://github.com/pkeppeler/deepcharter/issues/232)).
+- ~~Rung 3 (the heat-shield hull): candidate C is a start.~~ Answered by [#482](#the-heat-shield-482-a): built as the heat shield, and measured with a pilot that leaves the lava.
 - Does hand lining want a rack of its own, now that the rack is smaller than the 32 bricks a Mole's hand ring costs?
 
 ## The lava watch (#454, A)
@@ -942,7 +942,62 @@ The tier 1 part equals its bound to the bore and the tier 2 part beats it by 3, 
 **Open questions.**
 - Should the line point at the side the lava comes from, as the seepage line names a side? A path walk knows the first step, so only the vertical one is used now.
 - A cap that stops further lava needs bricks the pilot may not have: lava from above is then a reason to carry a few.
-- Does the heat-shield hull (rung 3) make the warning moot for a late pod? It should not: the hull only buys time.
+- ~~Does the heat-shield hull (rung 3) make the warning moot for a late pod?~~ No: [the heat shield](#the-heat-shield-482-a) only buys seconds, and the warning is what tells the pilot to use them.
+
+## The heat shield (#482, A)
+
+**Problem.** Rung 3 of the lava ladder ([#232](https://github.com/pkeppeler/deepcharter/issues/232)). Since #288 lava takes the hull, so a stock Mole has 10 seconds in lava. Hand lining, the liner and the lava watch keep lava out or say it is coming. Nothing buys a pod seconds once it is in the lava. Candidate C of [#442](#liner-economy-after-432-442-a) (the pack's bricks absorb lava hull damage) raised contact ticks from 132 to 367 on the bore bot and added no reach, because that bot never leaves the lava. This rung builds it as a part, and measures it with a pilot that does.
+
+**The ladder.**
+1. By hand ([Hand lining](#hand-lining-313-a)): cheap, slow, teaches the danger.
+2. The liner ([Liner](#liner-339-a)): lines the stretch the pod is about to bore.
+3. The heat shield (this rung): the pod burns slag brick in place of hull while lava touches it. It buys seconds and spends the bricks that would have lined the next stretch.
+4. The top tier is a later part, with the heat-leaning Crawler chassis (SPEC section 7): the pod shrugs off brief lava and lining becomes optional. This tier is not that. It keeps lining necessary on layers 1 and 2 (measured below).
+
+**The mechanic (slag glaze).**
+- **The part.** A track of its own, `heat_shield`, one tier, $750 at the upgrade terminal, any chassis.
+- **While lava touches the pod,** each tick's lava damage (10 hull a second, times the radiator ratio) is soaked by burning slag brick, 4 hull a brick (`hullPerBrick`). The brick comes from the rack first, then from the seated pilot's pack if `PodLining.mayUseStores` lets that pilot use the pod's stores (the same rule as the liner). With no brick left the lava takes the hull at the full rate. A full rack of 24 bricks soaks 96 hull, so it doubles a stock Mole's 10 seconds.
+- **It soaks lava only.** A fall, gas and the crust are not its business. A radiator still counts: a cooler pod burns fewer bricks.
+- **Feedback.** While the glaze has bricks the HUD swaps "HULL BURNING" for "GLAZE HOLDING  14 BRICKS LEFT" (the same alert colour, so the cockpit lamp stays lit: the pod is still in lava). When the bricks are spent it shows "GLAZE SPENT" over "HULL BURNING". Each brick burned plays a crackle (`pod.glaze_burn`; vanilla `block.fire.ambient` as the placeholder). The hull hiss plays only when lava reaches the hull. The count is a synced pod field (`glazeBricks`), kept by the server each tick, so the HUD reads one number.
+
+**Trade-offs.** The bricks are the liner's: a pod that glazes has fewer bricks to line with, and a rack of 24 holds one usual bore of lining (12 to 14 bricks). So the shield is a reason to carry a pack, and to keep the spoil hopper. It adds no weight and slows nothing. It costs $750, three runs of layer 2 (`EconomyAffordabilityTest`), more than the liner's tier 1 ($500) and less than its tier 2 ($1,000).
+
+**Tuning knobs.** `PodHeatShieldTuning.hullPerBrick` (4). The price: `UpgradeTuning` `HEAT_SHIELD` ($750). The sound `pod.glaze_burn`. Skins: the part's item icon, model and lang keys, the two HUD lines.
+
+### The heat shield vs. the ladder: measured
+
+#482. `LavaBoreTest`, `DEEPCHARTER_LAVA_BORES=100`, seed 0, a stock Mole with the tier 2 seep sounder (so the bot meets gas as the pick of [#442](#liner-economy-after-432-442-a) does), rack of 24, braking on. The runs are deterministic. New switches: `DEEPCHARTER_LAVA_BORES_SHIELD=1` (the part) and `DEEPCHARTER_LAVA_BORES_PILOT=leave|ignore`.
+
+**The pilot that leaves the lava (`leave`).** It reacts after half a second of lava contact (10 ticks, the time to read the HUD line). It pulls the rotor and climbs until it has been clear of lava for half a second and 2 slabs above the contact, then turns back: the bore ends alive. A pilot that is still in lava after 3 seconds of climbing is trapped (it has sidestepped, and rock is over it): it lets go of the rotor, lines by hand, and drills on. `ignore` is the old bot that never reacts. A bore that turns back reaches nothing, so "reach" for `leave` is the bores that never needed to turn back or that lined out. The pilot has no sense of the shield: the glaze only pays for its climb.
+
+| 100 bores, tier 2 sounder, rack 24 | Reach | Touched lava | Contacts a bore | Ticks in lava a bore | Hull lost to lava a bore | Hull a contact (mean / p50) | Lava deaths | Turned back | Bricks a bore (glaze) |
+|---|---|---|---|---|---|---|---|---|---|
+| Never reacts, liner 2 (the pick of #442) | 51 | 23 | 0.24 | 34.0 | 17.0 | 70.7 / 71.5 | 22 | 0 | 13.7 (0) |
+| Never reacts, shield alone | 0 | 100 | 1.01 | 382.8 | 97.5 | 96.5 / 100.0 | 100 | 0 | 24.0 (24.0) |
+| Leaves, no part, no bricks | 0 | 100 | 1.06 | 55.3 | 27.8 | 26.2 / 9.5 | 23 | 77 | 0.0 (0) |
+| Leaves, rack only (hand lining out of a trap) | 0 | 100 | 1.18 | 54.4 | 27.2 | 23.0 / 10.5 | 22 | 77 | 1.7 (0) |
+| **Leaves, shield alone** | 0 | 100 | 1.21 | 84.9 | 20.3 | 16.8 / 0.0 | 23 | 77 | 7.6 (7.1) |
+| Leaves, liner 2 | 51 | 23 | 0.23 | 22.5 | 11.2 | 48.8 / 39.2 | 15 | 7 | 14.4 (0) |
+| **Leaves, liner 2 + shield** | 51 | 23 | 0.24 | 36.1 | 11.2 | 46.7 / 38.7 | 16 | 7 | 15.8 (2.1) |
+| Leaves, liner 2, pack 16 | 55 | 19 | 0.19 | 21.7 | 10.8 | 57.1 / 68.5 | 15 | 3 | 15.5 (0) |
+| **Leaves, liner 2 + shield, pack 16** | 55 | 19 | 0.21 | 49.4 | 10.8 | 51.6 / 39.2 | 16 | 3 | 19.4 (4.5) |
+| Leaves, liner 2, pack 64 | 57 | 17 | 0.17 | 21.3 | 10.6 | 62.6 / 70.6 | 15 | 1 | 16.4 (0) |
+| **Leaves, liner 2 + shield, pack 64** | 59 | 17 | 0.17 | 91.3 | 8.7 | 51.0 / 66.4 | 11 | 1 | 27.0 (10.7) |
+
+**Reading.**
+- **It buys time in lava.** Alone, the shield takes the median hull lost in a lava contact from 9.5 to 0, and the hull lost to lava a bore from 27.8 to 20.3, while the pod spends 85 ticks a bore in lava against 55 without it. A bore that turned back keeps its whole hull instead of about 90.
+- **It does not make lining optional.** The shield alone reaches layer 2 in 0 of 100 bores, as the pod with no part does, and the pod touches lava in every bore. The liner reaches it in 51. Every bore with no liner meets Deep Claim's lava and has to turn back. Seconds in lava do not cross it, because the flood follows the shaft: even a never-reacting pilot with the shield (which lives 19 seconds in lava instead of 10) reaches nothing.
+- **It cannot save a trapped pod, and does not pretend to.** 23 bores die in lava with or without the shield. Those are pods that sidestepped and have rock overhead: the climb is blocked, and a Mole's hand ring is 32 bricks, 256 ticks, more than 96 hull of glaze and more than a rack of 24. Both need more bricks than the rack holds.
+- **Under a liner it is nearly idle at the default rack.** The liner spends the rack, and the bores that touch lava are mostly those whose rack ran dry (2.1 bricks a bore go to the glaze). Reach stays 51 and the hull lost a bore is 11.2 with or without it.
+- **It pays for a big pack.** With a pack of 16 bricks the shield changes nothing in reach (55 either way). With 64 it reaches layer 2 in 59 bores against 57 with the pack alone, and lava deaths fall from 15 to 11. The glaze converts spare bricks into seconds, which gives the pack and the spoil hopper another job after #442.
+- **A flat cut was not built.** A part that cut lava damage by a share would duplicate the radiator, spend nothing, and have no tension with lining. Burning the liner's own brick is what keeps lining the better buy.
+
+**The pick (A).** `hullPerBrick` 4, $750, rack then pack. 3 was measured too (3 hull a brick, shield alone: same reach and hull lost a bore, 20.3, and 78 ticks in lava against 85): a full rack soaks 72 hull, 7 seconds. 4 makes the sentence "a full rack doubles the time in lava". The default build is no harder than on main: the part is a new buy and changes nothing for a pod without it.
+
+**Open questions.**
+- Should the glaze draw the pack before the rack, so the rack stays for lining? It would make the pack the armour reserve. Not built: a pilot's spare bricks should not vanish without a choice.
+- The top tier with the Crawler (SPEC section 7): a flat cut on top of the glaze, or a glaze that costs nothing. Not designed here.
+- A trapped pilot needs lining that is cheaper than 32 bricks. The lava watch's cap (4 bricks) is the nearest thing today.
 
 ## The tow line (#425, A)
 
