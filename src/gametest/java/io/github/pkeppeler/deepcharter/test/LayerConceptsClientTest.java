@@ -9,12 +9,13 @@ import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 /**
- * Client GameTest for the layer concepts (#241, docs/design/layer-concepts.md): the three option packs are off by default, each turns on
+ * Client GameTest for the layer concepts (#447, docs/design/layer-concepts-2.md): the three texture packs and the three form packs are off by default, each turns on
  * and reloads without the game dropping it (a pack with a bad blockstate, model or texture is unselected by a failed reload), and each
  * turns off again, so a run of the scenario leaves the game as it found it.
  */
 public class LayerConceptsClientTest implements FabricClientGameTest {
-	private static final String[] PACKS = {TestPacks.LAYER_CONCEPT_A, TestPacks.LAYER_CONCEPT_B, TestPacks.LAYER_CONCEPT_C};
+	private static final String[] PACKS = {TestPacks.LAYER_CONCEPT_GRAIN, TestPacks.LAYER_CONCEPT_BEDDED, TestPacks.LAYER_CONCEPT_MOTTLED,
+			TestPacks.LAYER_CONCEPT_FORM_1, TestPacks.LAYER_CONCEPT_FORM_2, TestPacks.LAYER_CONCEPT_FORM_3};
 
 	@Override
 	public void runTest(ClientGameTestContext context) {

@@ -31,20 +31,21 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 
 /**
- * The scenes of the layer concepts (#241, docs/design/layer-concepts.md): for each of the three options and each of layers 1 and 2, one
- * gallery in the rock, written as a structure file by {@code tools/layer_concepts/make.py}, with the cameras to shoot it from and the
- * lava sources that start its flows, which {@code scenes.json} beside the structures lists. Nothing here says what a scene looks like:
- * the shape is in the structure file and the look is in the option's test pack.
+ * The scenes of the layer concepts (#447, docs/design/layer-concepts-2.md; round 1 was #241): for each of layers 1, 2 and 3, one box of rock
+ * with a gallery, a hall and a natural cave, written as a structure file by {@code tools/layer_concepts/make.py}, with the cameras to shoot it
+ * from and the lava sources that start its flows, which {@code scenes.json} beside the structures lists. Layer 3 does not exist yet, so its
+ * scene is built in layer 2's dimension. Nothing here says what a scene looks like: the shape is in the structure file and the look is in the
+ * test packs.
  */
 public final class LayerConceptScenes {
-	/** The options, in the order the evidence scenario shoots them, each with the test pack that draws it. */
-	public static final List<String> OPTIONS = List.of("a", "b", "c");
-	public static final List<Integer> LAYERS = List.of(1, 2);
+	/** The texture options, in the order the evidence scenario shoots them. */
+	public static final List<String> STYLES = List.of("grain", "bedded", "mottled");
+	public static final List<Integer> LAYERS = List.of(1, 2, 3);
 	private static final String NAMESPACE = "deepcharter-test";
 	private static final Identifier SCENES = Identifier.fromNamespaceAndPath(NAMESPACE, "layer_concepts/scenes.json");
-	/** Where the first scene stands in each layer (on a chunk boundary, so a scene touches as few chunks as it can), and the gap between two options' scenes along X. */
+	/** Where the first scene stands (on a chunk boundary, so a scene touches as few chunks as it can), and the gap between two layers' scenes along X. */
 	private static final BlockPos ORIGIN = new BlockPos(3008, 40, 3008);
-	private static final int GAP = 80;
+	private static final int GAP = 128;
 	private static final int ATMOSPHERE_MARGIN = 8;
 	private static final int FILL_SLICE = 16;
 
@@ -67,20 +68,20 @@ public final class LayerConceptScenes {
 	/**
 	 * One scene.
 	 *
-	 * @param option    {@code a}, {@code b} or {@code c}
-	 * @param layer     1 or 2
+	 * @param layer     1, 2 or 3: the layer whose rock, light and fog the scene shows
+	 * @param dimension the layer whose dimension the scene is built in: its own, except that layer 3 has none yet and uses layer 2's
 	 * @param structure the structure file the scene is built from
 	 * @param origin    where its lowest corner goes in the layer's dimension
 	 * @param lava      its lava sources, in blocks from its corner
 	 * @param views     the cameras, in the order they are shot
 	 */
-	public record Scene(String option, int layer, Identifier structure, BlockPos origin, List<BlockPos> lava, List<View> views) {
+	public record Scene(int layer, int dimension, Identifier structure, BlockPos origin, List<BlockPos> lava, List<View> views) {
 		public String key() {
-			return option + "_" + layer;
+			return "layer_" + layer;
 		}
 
 		public ServerLevel level(MinecraftServer server) {
-			return server.getLevel(LayerChain.dimension(layer));
+			return server.getLevel(LayerChain.dimension(dimension));
 		}
 
 		public Vec3 absolute(Vec3 local) {
@@ -98,17 +99,15 @@ public final class LayerConceptScenes {
 			JsonObject root = JsonParser.parseReader(reader).getAsJsonObject();
 			JsonObject scenes = root.getAsJsonObject("scenes");
 			List<Scene> out = new ArrayList<>();
-			for (String option : OPTIONS) {
-				for (int layer : LAYERS) {
-					String key = option + "_" + layer;
-					if (!scenes.has(key)) {
-						throw new IllegalStateException(SCENES + " has no scene " + key + "; it has " + scenes.keySet());
-					}
-					out.add(parse(option, layer, scenes.getAsJsonObject(key)));
+			for (int layer : LAYERS) {
+				String key = "layer_" + layer;
+				if (!scenes.has(key)) {
+					throw new IllegalStateException(SCENES + " has no scene " + key + "; it has " + scenes.keySet());
 				}
+				out.add(parse(layer, scenes.getAsJsonObject(key)));
 			}
 			if (scenes.size() != out.size()) {
-				throw new IllegalStateException(SCENES + " has scenes " + scenes.keySet() + ", not just " + out.size() + " of the options and layers");
+				throw new IllegalStateException(SCENES + " has scenes " + scenes.keySet() + ", not just " + out.size() + " of the layers");
 			}
 			return out;
 		} catch (IOException e) {
@@ -126,8 +125,8 @@ public final class LayerConceptScenes {
 		}
 	}
 
-	private static Scene parse(String option, int layer, JsonObject body) {
-		BlockPos origin = ORIGIN.offset(GAP * OPTIONS.indexOf(option), 0, 0);
+	private static Scene parse(int layer, JsonObject body) {
+		BlockPos origin = ORIGIN.offset(GAP * (layer - 1), 0, 0);
 		List<BlockPos> lava = new ArrayList<>();
 		for (JsonElement at : body.getAsJsonArray("lava")) {
 			JsonArray xyz = at.getAsJsonArray();
@@ -138,7 +137,7 @@ public final class LayerConceptScenes {
 			JsonObject view = element.getAsJsonObject();
 			views.add(new View(view.get("name").getAsString(), vec(view.getAsJsonArray("eye")), vec(view.getAsJsonArray("target")), view.get("wait").getAsInt(), view.get("light").getAsString(), view.get("lamp").getAsInt()));
 		}
-		return new Scene(option, layer, Identifier.parse(body.get("structure").getAsString()), origin, List.copyOf(lava), List.copyOf(views));
+		return new Scene(layer, body.get("dimension").getAsInt(), Identifier.parse(body.get("structure").getAsString()), origin, List.copyOf(lava), List.copyOf(views));
 	}
 
 	private static Vec3 vec(JsonArray xyz) {
@@ -191,7 +190,7 @@ public final class LayerConceptScenes {
 	/**
 	 * Puts the scene's box, and {@link #ATMOSPHERE_MARGIN} blocks round it (so the biome blend at the walls is still this biome), in the
 	 * atmosphere biome of its layer for {@code light}, with {@code /fillbiome}, which resends the biomes to the client. The one entry per
-	 * layer is the same for all three options, so only the shapes differ. Fails if the biome did not take, because the command reports
+	 * layer is the same for every texture option, so only the textures differ. Fails if the biome did not take, because the command reports
 	 * a failure only in the log.
 	 */
 	public static void setAtmosphere(MinecraftServer server, Scene scene, Size size, String light) {
