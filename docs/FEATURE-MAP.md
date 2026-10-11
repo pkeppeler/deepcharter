@@ -98,7 +98,7 @@ flowchart LR
   l_crust["The breach crust and hard landings<br/>5 of 8 built"]
   l_getting_out["Stranded, rescue and the way home<br/>5 of 11 built"]
   l_consumables["The repair station's shelf<br/>6 of 6 built"]
-  l_crew["Crew roles and seats<br/>1 of 6 built"]
+  l_crew["Crew roles and seats<br/>2 of 6 built"]
   l_interface["Cockpit, screens and HUD<br/>8 of 10 built"]
   l_art["Look and sound<br/>3 of 6 built"]
   l_bootstrap --> l_pods
@@ -177,7 +177,7 @@ flowchart LR
 | [The breach crust and hard landings](#the-breach-crust-and-hard-landings) | 5 | 0 | 1 | 2 |
 | [Stranded, rescue and the way home](#stranded-rescue-and-the-way-home) | 5 | 0 | 5 | 1 |
 | [The repair station's shelf](#the-repair-stations-shelf) | 6 | 0 | 0 | 0 |
-| [Crew roles and seats](#crew-roles-and-seats) | 1 | 0 | 1 | 4 |
+| [Crew roles and seats](#crew-roles-and-seats) | 2 | 0 | 0 | 4 |
 | [Cockpit, screens and HUD](#cockpit-screens-and-hud) | 8 | 0 | 2 | 0 |
 | [Look and sound](#look-and-sound) | 3 | 0 | 2 | 1 |
 
@@ -204,7 +204,6 @@ flowchart LR
 - **A drill tier that bites Company Rock** (company-rock): A late drill that cuts it slowly at a cost in heat and fuel, so charges keep a niche. [#509](https://github.com/pkeppeler/deepcharter/issues/509)
 - **More common deep, facing the pod, a dim helmet light** (creatures): Spawns rise with depth, the figure faces the pod it holds, and a tiny light shines in its helmet. [#506](https://github.com/pkeppeler/deepcharter/issues/506)
 - **Creatures and combat session** (creatures): A session with the user on rare unsettling creatures per layer and bosses; pod combat uses mining gear first. [#13](https://github.com/pkeppeler/deepcharter/issues/13), [SPEC.md](SPEC.md#13-creatures-and-combat)
-- **Passengers** (crew): Extra seats on bigger pods may carry passengers who have no job. [#507](https://github.com/pkeppeler/deepcharter/issues/507)
 - **Heat, pressure and flooding** (crust): Later layers add heat (the Magma Belt), pressure and flooding (the Drowned Deep) that the hull and radiator must answer. [SPEC.md](SPEC.md#story-layers)
 - **Smooth moving light** (darkness): Glow accents, beams, an optional dynamic-lights mod and an opt-in shader pack. [#248](https://github.com/pkeppeler/deepcharter/issues/248)
 - **HUD signal decay** (darkness): Near the bottom of a layer the readouts flicker, jump and finally drop out; the deeper, the more often. [#502](https://github.com/pkeppeler/deepcharter/issues/502)
@@ -700,7 +699,7 @@ flowchart LR
 
 ### Crew roles and seats
 
-One pilot today. The plan: each extra seat has a real-time job that helps, and a pilot can do a weaker version alone. Provisional until a playtest.
+The goal is crew, not passengers: each extra seat should have a real-time job that helps, and a pilot can do a weaker version alone. Passengers are allowed until the jobs exist. Provisional until a playtest.
 
 ```mermaid
 flowchart LR
@@ -719,15 +718,14 @@ flowchart LR
   classDef planned fill:#2e2e2e,stroke:#9e9e9e,stroke-width:1px,color:#d6d6d6
   classDef idea fill:#1a1a1a,stroke:#757575,stroke-width:1px,stroke-dasharray:4 3,color:#a0a0a0
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
-  class n_pilot built
-  class n_passengers planned
+  class n_pilot,n_passengers built
   class n_navigator,n_operator,n_robot_crew,n_co_op_runs idea
 ```
 
 | Icon | Still | Feature | What it is | Status | Links |
 |---|---|---|---|---|---|
 | ⚙️ | no still yet | <a id="pilot"></a>**Pilot**<br>mechanic | The legs: movement, flight, fuel. | ✅ Built | [SPEC.md](SPEC.md#8-crew-roles-and-co-op-between-pods) |
-| ⚙️ | no still yet | <a id="passengers"></a>**Passengers**<br>mechanic | Extra seats on bigger pods may carry passengers who have no job. | 📋 Planned | [#507](https://github.com/pkeppeler/deepcharter/issues/507) |
+| ⚙️ | no still yet | <a id="passengers"></a>**Passengers**<br>mechanic | A seat with no job is allowed: the Prospector's second seat carries a passenger until the navigator's sonar exists. | ✅ Built | [#507](https://github.com/pkeppeler/deepcharter/issues/507), [#511](https://github.com/pkeppeler/deepcharter/issues/511), [SPEC.md](SPEC.md#8-crew-roles-and-co-op-between-pods) |
 | ⚙️ | no still yet | <a id="navigator"></a>**Navigator**<br>mechanic | The eyes: active sonar, pings that cost power, echoes that must be read, targets marked on the pilot's HUD. | 💭 Idea | [SPEC.md](SPEC.md#8-crew-roles-and-co-op-between-pods) |
 | ⚙️ | no still yet | <a id="operator"></a>**Operator**<br>mechanic | The hands: a manipulator arm and a charge launcher; a turret later. | 💭 Idea | [SPEC.md](SPEC.md#8-crew-roles-and-co-op-between-pods) |
 | ⬆️ | no still yet | <a id="robot-crew"></a>**Robots fill empty seats**<br>upgrade | A component that fills the navigator or operator seat with less skill. | 💭 Idea | [SPEC.md](SPEC.md#8-crew-roles-and-co-op-between-pods) |
