@@ -211,20 +211,21 @@ def square_crossbar_scores(roots, plinth_top: int, scale: float) -> list[tuple[f
     s = scale / 16
     size = 200
     quads = []
+    from parts import STATUE_CENTRE
     from sculpt import world_points
     points = []
     for root in roots:
         for corners in world_points(root):
-            placed = [(0.5 + p[0] * s, plinth_top + 1 + p[1] * s, 0.5 + p[2] * s) for p in corners]
+            placed = [(STATUE_CENTRE + p[0] * s, plinth_top + 1 + p[1] * s, STATUE_CENTRE + p[2] * s) for p in corners]
             points += placed
             quads += box_quads(placed, BRONZE_RGB)
     ground = (235, 228, 214)
-    mid = (0.5, plinth_top + 1 + 0.45 * (max(p[1] for p in points) - plinth_top - 1), 0.5)
+    mid = (STATUE_CENTRE, plinth_top + 1 + 0.45 * (max(p[1] for p in points) - plinth_top - 1), STATUE_CENTRE)
     scores = []
     for yaw in (i * 22.5 for i in range(16)):
         for distance in SQUARE_DISTANCES:
             a = math.radians(yaw)
-            eye = (0.5 + math.sin(a) * distance, EYE_HEIGHT, 0.5 + math.cos(a) * distance)
+            eye = (STATUE_CENTRE + math.sin(a) * distance, EYE_HEIGHT, STATUE_CENTRE + math.cos(a) * distance)
             img = perspective(quads, eye, mid, size, size, background=ground)
             scores.append((float(yaw), distance, crossbar(img, ground)))
     return scores

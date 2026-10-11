@@ -90,7 +90,8 @@ def pillar(name: str, english: str, build: Callable[[], Model]) -> KitBlock:
 
 def framed_cube(front: str, glow: str | None = None) -> Model:
     """A full block whose north face is front (with an optional glow layer over it) and whose other faces are side."""
-    textures = {"front": tex(front), "side": tex("riveted_plate"), "particle": tex("riveted_plate")}
+    side = "riveted_plate"
+    textures = {"front": tex(front), "side": tex(side), "particle": tex(side)}
     boxes = [Box((0, 0, 0), (16, 16, 16), {"north": "#front", "*": "#side"}, cull=True)]
     if glow:
         textures["glow"] = tex(glow)

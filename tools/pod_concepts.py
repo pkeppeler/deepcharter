@@ -876,22 +876,23 @@ def road_wheel(bone, x, y, z, width, size):
 
 def bevelled_box(bone, x0, y0, z0, x1, y1, z1, s):
     """A box whose twelve edges are cut at 45 degrees by s pixels: three crossed boxes, and a turned slab on each edge."""
-    bone.box(x0 + s, y0, z0 + s, x1 - s, y1, z1 - s, "paint")
-    bone.box(x0, y0 + s, z0 + s, x1, y1 - s, z1 - s, "paint")
-    bone.box(x0 + s, y0 + s, z0, x1 - s, y1 - s, z1, "paint")
+    material = "paint"
+    bone.box(x0 + s, y0, z0 + s, x1 - s, y1, z1 - s, material)
+    bone.box(x0, y0 + s, z0 + s, x1, y1 - s, z1 - s, material)
+    bone.box(x0 + s, y0 + s, z0, x1 - s, y1 - s, z1, material)
     width = round(s * math.sqrt(2))
     inset = 1 / math.sqrt(2)
     for y_edge, dy in ((y1, 1), (y0, -1)):
         for z_edge, dz in ((z0, -1), (z1, 1)):
             cy, cz = y_edge - dy * s / 2 - dy * inset, z_edge - dz * s / 2 - dz * inset
-            bone.centred((x0 + x1) / 2, cy, cz, x1 - x0 - 2 * s, 2, width, "paint", (math.degrees(math.atan2(-dz, dy)), 0, 0))
+            bone.centred((x0 + x1) / 2, cy, cz, x1 - x0 - 2 * s, 2, width, material, (math.degrees(math.atan2(-dz, dy)), 0, 0))
         for x_edge, dx in ((x0, -1), (x1, 1)):
             cx, cy = x_edge - dx * s / 2 - dx * inset, y_edge - dy * s / 2 - dy * inset
-            bone.centred(cx, cy, (z0 + z1) / 2, width, 2, z1 - z0 - 2 * s, "paint", (0, 0, math.degrees(math.atan2(dx, dy))))
+            bone.centred(cx, cy, (z0 + z1) / 2, width, 2, z1 - z0 - 2 * s, material, (0, 0, math.degrees(math.atan2(dx, dy))))
     for x_edge, dx in ((x0, -1), (x1, 1)):
         for z_edge, dz in ((z0, -1), (z1, 1)):
             cx, cz = x_edge - dx * s / 2 - dx * inset, z_edge - dz * s / 2 - dz * inset
-            bone.centred(cx, (y0 + y1) / 2, cz, width, y1 - y0 - 2 * s, 2, "paint", (0, math.degrees(math.atan2(dx, dz)), 0))
+            bone.centred(cx, (y0 + y1) / 2, cz, width, y1 - y0 - 2 * s, 2, material, (0, math.degrees(math.atan2(dx, dz)), 0))
 
 
 def thruster(model, side, pivot, length):

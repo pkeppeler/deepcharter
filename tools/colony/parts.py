@@ -207,7 +207,7 @@ def lattice_post(p: Piece, x: int, z: int, y0: int, y1: int, girder: str) -> Non
 
 
 def xbraced_face(p: Piece, a0: int, a1: int, fixed: int, y0: int, y1: int, along: str) -> None:
-    """One face of a lattice tower between posts at a0 and a1: girders across it every few blocks, and an X of 45-degree braces
+    """One face of a lattice tower between posts at a0 and a1: girders across it every 6 blocks, and an X of 45-degree braces
     in each panel. along is the axis the face runs along ("x" or "z"); fixed is its other coordinate."""
     def put(a, y, s):
         if along == "x":
@@ -215,7 +215,9 @@ def xbraced_face(p: Piece, a0: int, a1: int, fixed: int, y0: int, y1: int, along
         else:
             p.set(fixed, y, a, s)
     up, down = ("east", "west") if along == "x" else ("south", "north")
-    levels = list(range(y0, y1 + 1, 6))
+    every = 6
+    brace = "brace"
+    levels = list(range(y0, y1 + 1, every))
     if levels[-1] != y1:
         levels.append(y1)
     for y in levels:
@@ -226,8 +228,8 @@ def xbraced_face(p: Piece, a0: int, a1: int, fixed: int, y0: int, y1: int, along
         height = hi - lo - 1
         steps = min(width, height)
         for i in range(steps):
-            put(a0 + 1 + i, lo + 1 + i, state("brace", facing=up))
-            put(a1 - 1 - i, lo + 1 + i, state("brace", facing=down))
+            put(a0 + 1 + i, lo + 1 + i, state(brace, facing=up))
+            put(a1 - 1 - i, lo + 1 + i, state(brace, facing=down))
 
 
 def cylinder(p: Piece, cx: float, cz: float, r: float, y0: int, y1: int, wall) -> None:

@@ -181,6 +181,7 @@ def rect_planes(x0, y0, x1, y1):
 def frame_image(w, h, distance, rng):
     """A plate with a see-through opening: a black gasket against the opening, a bevel lit from the top left, then brushed steel. Every pixel depends on its distance
     from the opening, so the edges of a nine-slice tile without a step."""
+    bevel = 2.5
     img = Img(w, h)
     for y in range(h):
         for x in range(w):
@@ -190,8 +191,8 @@ def frame_image(w, h, distance, rng):
             lit = (normal[0] + normal[1]) / math.sqrt(2)
             if d < 1.2:
                 img.set(x, y, H[0])
-            elif d < 1.2 + 2.5:
-                t = (d - 1.2) / 2.5
+            elif d < 1.2 + bevel:
+                t = (d - 1.2) / bevel
                 img.set(x, y, ramp(H, 0.5 + 0.38 * lit * (1 - 0.55 * t)))
             else:
                 img.set(x, y, shade(H[3], 0.04 - 0.05 * min(1.0, (d - 4) / 30)))

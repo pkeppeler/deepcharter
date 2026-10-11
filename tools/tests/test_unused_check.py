@@ -321,6 +321,8 @@ class NewKindsSkipWhatTheyCannotResolve(unittest.TestCase):
                 return a + b
             def dup(a, b=1):
                 return a + b
+            def aliased(a, b=1):
+                return a + b
             def other():
                 def dup(a, b=1):
                     return a + b
@@ -332,8 +334,24 @@ class NewKindsSkipWhatTheyCannotResolve(unittest.TestCase):
             exported(x)
             dup(x)
             other()
+            from a import aliased as renamed
+            renamed(x)
             __all__ = ["exported"]
         """), set())
+
+    def test_call_into_a_module_outside_the_tree_is_not_a_call_site(self):
+        self.assertEqual(found(a="""
+            import json
+            def dumps(x, indent=2):
+                return x + indent
+            json.dumps(x)
+            dumps(x, indent=y)
+        """), set())
+
+    def test_pending_paths_are_not_judged_for_the_new_kinds_but_a_sibling_is(self):
+        source = "def {name}(a, b=1):\n    return a + b\n{name}(x)\n{name}(y)\n"
+        sources = {unused_check.PENDING_PATHS[1] + "art.py": source.format(name="f"), "tools/other.py": source.format(name="g")}
+        self.assertEqual({(f.path, f.kind) for f in unused_check.check(sources)}, {("tools/other.py", "default")})
 
     def test_method_call_on_an_instance_is_unresolved(self):
         self.assertEqual(found(a="def f(a, b=1):\n    return a + b\nf(x)\n", b="obj.f(x)\n"), set())

@@ -9,7 +9,7 @@ Scans every tools/**/*.py plus tools/diff-stills and reports five kinds of findi
 - constant: a module-level function's parameter that every call site passes the same literal (a constant, string or number), when the
   function has two or more call sites. One call site is a one-off part whose parameters name its size and place; it is not judged.
 
-default and constant resolve call sites by bare name: `f(...)`, or `m.f(...)` where `m` is a plain `import m` in that file. A default needs at least one call site outside the function, a constant at least two. Both are skipped, not flagged, when any use of the name is unresolvable: a call with `*args` or
+default and constant resolve call sites by bare name: `f(...)`, or `m.f(...)` where `m` is a plain `import m` of a scanned file (a call into any other module is ignored). A default needs at least one call site outside the function, a constant at least two. Both are skipped, not flagged, when any use of the name is unresolvable: a call with `*args` or
 `**kwargs`, the function passed as a value, a `getattr` string, an `__all__` entry, an attribute use on anything but an imported module
 (a method call on an instance), a second definition of the name, or an import of it under another name. The usual exemptions apply (`main`, test hooks, stubs,
 decorated definitions); a method is never checked. To fix a finding, inline the constant or drop the parameter. Files under
@@ -31,7 +31,7 @@ Opt out with `# unused-ok: <reason>` on the finding's line, or on the line above
 assignment's span is the whole statement. The reason is required: one word, or a stock phrase such as "not used", is itself a finding and
 suppresses nothing.
 
-Known blind spots: a parameter every caller passes the same non-literal value, a method nothing calls, a parameter
+Known blind spots: a parameter every caller passes the same non-literal value, a call through `globals()['f'](...)`, a method nothing calls, a parameter
 overwritten before its first read (any later Load counts), a base class that is imported but is not an outside API, and a decorator
 not in NEUTRAL_DECORATORS that does not register anything.
 
@@ -62,7 +62,7 @@ NEUTRAL_DECORATORS = {
     "abstractmethod", "dataclass", "total_ordering", "final", "override", "overload",
 }
 PLAIN_BASES = {"object", "NamedTuple", "Enum", "IntEnum", "StrEnum", "Flag", "IntFlag", "Generic", "Protocol", "TypedDict"}
-PENDING_PATHS = ("tools/lampless_figure.py", "tools/layer_concepts/")  # default and constant findings wait for #450/#451; delete when both merge
+PENDING_PATHS = ("tools/lampless_figure.py", "tools/layer_concepts/")  # default and constant findings wait for #450/#451; #459 deletes this
 TEST_HOOKS = {"setUp", "tearDown", "setUpClass", "tearDownClass", "main"} | FIXED_SIGNATURE_FUNCTIONS
 
 
@@ -374,14 +374,21 @@ def call_usage(trees: Mapping[str, ast.Module]) -> dict[str, CallUsage]:
     def of(name: str) -> CallUsage:
         return usage.setdefault(name, CallUsage([]))
 
+    stems = {Path(path).stem for path in trees}
     for path, tree in trees.items():
-        modules = {alias.asname or alias.name.split(".")[0] for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names}
+        modules = {
+            alias.asname or alias.name.split(".")[0]: alias.name.split(".")[0]
+            for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names
+        }
         resolved: set[int] = set()
         for node in ast.walk(tree):
             if isinstance(node, ast.Call):
                 target = node.func
-                module_call = isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name) and target.value.id in modules
-                if isinstance(target, ast.Name) or module_call:
+                module = target.value.id if isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name) else None
+                if module in modules and modules[module] not in stems:
+                    resolved.add(id(target))  # a call into a module outside the scanned tree
+                    continue
+                if isinstance(target, ast.Name) or module in modules:
                     name = target.id if isinstance(target, ast.Name) else target.attr
                     resolved.add(id(target))
                     of(name).calls.append((node, path, node.lineno))
