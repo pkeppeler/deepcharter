@@ -852,7 +852,7 @@ The tier 1 part equals its bound to the bore and the tier 2 part beats it by 3, 
 **Problem.** From the seat of a Mole the pilot looks out through the pod's own cab: two pillars, the roof bar and the cutter stand in the view ([cockpit concepts, round 2](cockpit-concepts-2.md)). The user wants that to be the way every pod looks, and a part, a front camera, that turns the window into a video feed so the view is clear. A part that only switches a model off is a toggle. The camera has to cost something, and the feed has to be something the hazards work on.
 
 **The ladder.**
-1. **By hand, the cab.** Every pod looks out through its cab. The pillars and the cutter hide a sixth of the view and tell the pilot what pod they are in.
+1. **By hand, the cab.** Every pod looks out through its cab. The pillars, the cutter and the body hide the view: taking the pod out of a still of the Mole's seat changes 51% of its pixels (76% of the middle of the view). They also tell the pilot what pod they are in.
 2. **The camera, tier 1.** The pod's own body is not drawn from the seat, so the view is clear to the edges. The picture is a feed: it can be covered, cooked and cut. When the feed is down the cab is back, so a pilot never goes blind.
 3. **Mastery, not built.** A hardened lens (tier 2) that the lava takes longer to cook and that clears static faster, and a later chassis whose canopy has no pillars to hide. The cab keeps its niche on the cheap pod.
 

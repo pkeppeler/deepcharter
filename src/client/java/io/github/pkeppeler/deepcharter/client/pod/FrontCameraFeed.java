@@ -9,7 +9,6 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import net.minecraft.util.ARGB;
 import net.minecraft.util.RandomSource;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
@@ -133,12 +132,12 @@ public final class FrontCameraFeed {
 		if (heat < 0.01) {
 			return;
 		}
-		graphics.fill(0, 0, width, height, ARGB.color((int) (heat * camera.hazeAlpha() / 2), camera.hazeColor()));
+		graphics.fill(0, 0, width, height, CameraLook.withAlpha((int) (heat * camera.hazeAlpha() / 2), camera.hazeColor()));
 		int lines = (int) Math.ceil(heat * camera.hazeLines());
 		for (int k = 0; k < lines; k++) {
 			int y = (int) ((k * height / (double) camera.hazeLines() + time * 1.5) % height);
 			int sway = (int) (Math.sin(time * 0.35 + k * 1.7) * 6 * heat);
-			graphics.fill(sway, y, width + sway, y + 2 + k % 3, ARGB.color((int) (heat * camera.hazeAlpha()), camera.hazeColor()));
+			graphics.fill(sway, y, width + sway, y + 2 + k % 3, CameraLook.withAlpha((int) (heat * camera.hazeAlpha()), camera.hazeColor()));
 		}
 	}
 
@@ -147,17 +146,17 @@ public final class FrontCameraFeed {
 		if (level < 0.01) {
 			return;
 		}
-		graphics.fill(0, 0, width, height, ARGB.color((int) (level * camera.veilAlpha()), camera.veilColor()));
+		graphics.fill(0, 0, width, height, CameraLook.withAlpha((int) (level * camera.veilAlpha()), camera.veilColor()));
 		int dots = (int) (level * camera.staticDots());
 		for (int i = 0; i < dots; i++) {
 			int x = DRAW_RANDOM.nextInt(width);
 			int y = DRAW_RANDOM.nextInt(height);
-			graphics.fill(x, y, x + camera.dotSize(), y + camera.dotSize(), ARGB.color(camera.dotAlphaMin() + DRAW_RANDOM.nextInt(256 - camera.dotAlphaMin()), camera.staticColor()));
+			graphics.fill(x, y, x + camera.dotSize(), y + camera.dotSize(), CameraLook.withAlpha(camera.dotAlphaMin() + DRAW_RANDOM.nextInt(256 - camera.dotAlphaMin()), camera.staticColor()));
 		}
 		int bands = (int) (level * camera.tearBands());
 		for (int i = 0; i < bands; i++) {
 			int y = DRAW_RANDOM.nextInt(height);
-			graphics.fill(0, y, width, y + 1 + DRAW_RANDOM.nextInt(3), ARGB.color(camera.tearAlpha(), camera.staticColor()));
+			graphics.fill(0, y, width, y + 1 + DRAW_RANDOM.nextInt(3), CameraLook.withAlpha(camera.tearAlpha(), camera.staticColor()));
 		}
 	}
 
