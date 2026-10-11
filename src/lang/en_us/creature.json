@@ -1,1 +1,4 @@
-{}
+{
+  "creature.deepcharter.approach": "Something walks toward the pod. Keep moving, or light it.",
+  "creature.deepcharter.grab": "Something has hold of the hull. Move, or light it."
+}

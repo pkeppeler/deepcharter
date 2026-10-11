@@ -113,6 +113,8 @@ What it explains:
 
 - **Lamps.** A lamp is life, and quietly, faith.
   - The Retained are lampless. "Things come to dark pods."
+    - A Retained never attacks anyone. It comes to a dark pod (one with a pilot and no lights), clings to the hull and drains the fuel, until it has had its fill or the pod moves or is lit. A lit pod is left alone, and the Retained fade into its light. The user's call (pkeppeler, 2026-10-11, #449): "them grabbing and draining a pod, its gas, but not attacking is good."
+    - Some carry a small lamp, and are seen from far off in the dark. They are "even creepier": a lamp that gives no light to the one who carries it, and the bracket on the helmet still empty. The lamp is carried on a pole, in the hand or in the ribs (the user picks, [figure-concepts.md](design/figure-concepts.md#the-lamp-carrier-449)).
   - The colony chapel's candle has burned for 38 years with nobody tending it. Nobody ever comments.
   - Ines left the Prospector's lights on for her brother; one is still burning.
   - Convoy Nine's lamps are still lit under the water.
@@ -200,7 +202,7 @@ Zones: **Upper Levels → Shift Change → Prospector's Run.**
 
 - **Upper Levels:** collapsed galleries, timber props, ore carts loaded and never hauled.
 - **Shift Change:** the colony's underground rail hub. A punch clock still ticking; 400 time cards: all but one punched IN at 23:00 on the Friday, none OUT. The unpunched card is Roz's.
-- **Prospector's Run:** the rail line to the breach, the Prospector wreck with one light still on, and **something moving in the dark**: a lampless figure walking the rails. It never attacks. It never stops.
+- **Prospector's Run:** the rail line to the breach, the Prospector wreck with one light still on, and **something moving in the dark**: a lampless figure walking the rails. It never attacks. It never stops. More of them walk the caverns and shafts of layers 1 and 2, rare, and some carry a lamp; they come to a dark pod, cling to it and drain its fuel (section 6). They are the deep's ordinary mob, a thing to avoid: not a boss.
 - Relays with loop counters. Personnel: *"Crosstalk is a known fault on the Company side. No action is required!"*
 - The handbook ends here: *"Further documentation is restricted to Senior Personnel,"* and Roz's margin: *"Nobody's ever been promoted."*
 - Altimeter: the digits flicker now and then.
@@ -272,7 +274,7 @@ Zones: **Intake → the Works → the Boardroom.** The Ramp lies below.
 
 ## 12. The finale
 
-Combat details belong to the creatures session ([#13](https://github.com/pkeppeler/deepcharter/issues/13)); this is the story's shape.
+Combat details belong to the creatures session ([#13](https://github.com/pkeppeler/deepcharter/issues/13)); this is the story's shape. The Retained are not the finale's fight: they are the ordinary mob of layers 1 and 2 (section 6, #449). The boss is the Chairman.
 
 1. **Phase 1, the Chairman.** Fell in a frock coat and the smiling bronze mask, hands always open. The sender field's letters slide into MOLOCH. He is pompous and ridiculous, and mocking him is the right response.
 2. **Phase 2, Head Office stands up.** The bronze figure rises, built from what *this charter* sold, so each charter fights its own. You break it with drill and charge, but you cannot kill it: everything it is made of was given to it.
@@ -313,4 +315,4 @@ Three families:
 - **The Sleeper's defences:** things that treat drills as an infection.
 - **The gnawers:** post-game only.
 
-Fixed beats: something moving in the dark (layer 2, never attacks), listeners drawn to resonance (layer 5), THE EYES that never attack (layer 7), and the two-phase finale (layer 8).
+Fixed beats: something moving in the dark (layers 1 and 2, never attacks a person, comes to dark pods and drains their fuel, some carry a lamp), listeners drawn to resonance (layer 5), THE EYES that never attack (layer 7), and the two-phase finale (layer 8).

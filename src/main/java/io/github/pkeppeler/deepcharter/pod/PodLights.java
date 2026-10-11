@@ -62,6 +62,11 @@ public final class PodLights {
 		}
 	}
 
+	/** Whether the pod shines: powered, with a lights part that counts. A dark pod draws the Retained (ADR 0046). */
+	public static boolean isLit(PodEntity pod) {
+		return lightLevel(pod) > 0;
+	}
+
 	/** 0 when the pod is dark: unpowered, or no lights part that counts. */
 	private static int lightLevel(PodEntity pod) {
 		if (!PodEvents.isPowered(pod)) {

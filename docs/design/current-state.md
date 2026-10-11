@@ -296,13 +296,14 @@ Swap: as the Mole.
 
 | | |
 |---|---|
-| Source | `main/creature/LamplessFigure.java` (the behaviour is marked PLACEHOLDER until the creatures session, #13), `client/creature/LamplessFigureRenderer.java` (built in #250: the Reacher) |
+| Source | `main/creature/LamplessFigure.java` (a normal mob since #449: it comes to a dark pod, clings and drains the tank, [ADR 0046](../adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md); the creatures session, #13, is for the rest), `client/creature/LamplessFigureRenderer.java` (built in #250: the Reacher) |
 | Model | `assets/deepcharter/geckolib/models/creature/lampless_figure.geo.json`: 22 bones, 46 cubes, 44 px (2.75 blocks) tall, a hard hat with an empty lamp bracket, no face; written by `tools/lampless_figure.py` |
 | Texture | `assets/deepcharter/textures/entity/lampless_figure.png`, 128 x 128: matte black, no texel brighter than 36 of 255, no glowmask |
-| Animations | `assets/deepcharter/geckolib/animations/creature/lampless_figure.animation.json`: `animation.figure.idle` (stooped, head tipped over) and `animation.figure.walk`, both looping |
-| Variants | 1; it goes translucent as it fades near light, and its shadow goes with it |
+| Lamp-carrier | `lampless_figure_lamp.geo.json` (23 bones: the lampless figure and the `lantern`), `textures/entity/lampless_figure_lamp.png` and `lampless_figure_lamp_glowmask.png`: the same figure with a lamp on a pole; about a third of the figures carry one. The lantern in the hand and the lamp in the ribs are the test packs `retained_lamp_hand` and `retained_lamp_ribs` |
+| Animations | `assets/deepcharter/geckolib/animations/creature/lampless_figure.animation.json`: `animation.figure.idle` (stooped, head tipped over), `animation.figure.walk` and `animation.figure.cling` (pressed to a pod's hull), all looping |
+| Variants | 2: the lampless figure and the lamp-carrier; it goes translucent as it fades near light, and its shadow goes with it |
 | Vanilla | **no** |
-| Swap | **(a)** the texture, model and animation files, each a pack file ([skins.md](skins.md)); **(c)** nothing: the renderer only names the three ids in `LamplessFigureAssets.java` |
+| Swap | **(a)** the texture, model and animation files, and the three lamp files, each a pack file ([skins.md](skins.md)); **(c)** nothing: the renderer only names the ids in `LamplessFigureAssets.java` |
 
 Built from the user's pick, C, the Reacher, of [figure-concepts.md](figure-concepts.md) (#250, [ADR 0044](../adr/0044-the-lampless-figure-is-a-geckolib-model-and-the-reacher.md)). The pictures above are the figure as built, from the design tour; the zombie it replaced is on the left of the before and after pictures in [PR #423](https://github.com/pkeppeler/deepcharter/pull/423).
 
@@ -642,7 +643,7 @@ Nothing of these exists yet, so there is nothing to restyle and each one is new 
 Already marked placeholder in code or issues:
 
 - ~~**Pod model (Mole, Prospector, wrecks):** `client/pod/PodRenderer.java:19`: "Placeholder model", a scaled vanilla block~~ Done in #243: GeckoLib models, see [ADR 0040](../adr/0040-a-pod-look-is-a-file-per-chassis-and-the-drill-tier-picks-the-cutter.md)
-- **Lampless figure (behaviour):** `main/creature/LamplessFigure.java:20` ("PLACEHOLDER until the creatures session (#13)"), `CreatureRegistry.java:19`; its look is built since #250; issue #83 "M2 (placeholder): the lampless figure"
+- ~~**Lampless figure (behaviour):** `main/creature/LamplessFigure.java:20` ("PLACEHOLDER until the creatures session (#13)"), `CreatureRegistry.java:19`; its look is built since #250; issue #83 "M2 (placeholder): the lampless figure"~~ Done in #449 for the Retained as a mob: [ADR 0046](../adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md); the other creatures, and the Chairman, are the creatures session (#13)
 - **Pod status HUD:** `client/pod/PodStatusHud.java:19`: "Plain text readout of the ridden pod; the real HUD design comes later"
 - **Transmission texts:** `src/lang/en_us/transmission.json:10-27`: every body of T01 to T18 starts "[PLACEHOLDER Txx: the lore session writes this text]"
 - **All sounds and music:** `main/sound/DeepSound.java:10`, `main/sound/SoundRegistry.java:10`, `assets/deepcharter/sounds.json`: vanilla sounds stand in until the private audio pack (issue #57)

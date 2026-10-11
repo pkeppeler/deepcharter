@@ -231,8 +231,12 @@ The night in Colony Year 23 when the Employer called every worker down and Prosp
 _Avoid_: the incident, the evacuation
 
 **Retained**:
-A miner rebuilt after death so many times that they went hollow and lampless, and still work in the deep. The word comes from the Employer's own records.
+A miner rebuilt after death so many times that they went hollow and lampless, and still work in the deep. The word comes from the Employer's own records. In the game they are a normal mob of layers 1 and 2: they never attack, they come to a dark pod, cling to it and drain its fuel, and some carry a lamp (a lamp-carrier).
 _Avoid_: zombie, undead, Long-Term Staff (the Employer's older euphemism)
+
+**Dark pod**:
+A pod with a pilot and power but no lights part that counts. A Retained comes to a dark pod; a lit pod is left alone.
+_Avoid_: unlit pod, pod with the lamp off (a pod has no lamp switch)
 
 **Continuity Event**:
 The Employer's name for a death and the rebuild that follows it.

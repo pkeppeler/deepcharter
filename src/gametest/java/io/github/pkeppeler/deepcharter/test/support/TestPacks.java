@@ -1,15 +1,17 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.resource.v1.ResourceLoader;
 import net.fabricmc.fabric.api.resource.v1.pack.PackActivationType;
 import net.fabricmc.loader.api.FabricLoader;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.level.gamerules.GameRules;
 
 /**
- * Registers the resource packs under {@code src/gametest/resources/resourcepacks/} as built-in packs that nothing turns on by itself: a
+ * Pins natural spawning off in every world a test starts, and registers the resource packs under {@code src/gametest/resources/resourcepacks/} as built-in packs that nothing turns on by itself: a
  * test turns one on with {@link ClientPacks}, as a player does in the pack screen. Used by the UI theme test and its evidence scenario.
  */
 public final class TestPacks implements ModInitializer {
@@ -47,11 +49,18 @@ public final class TestPacks implements ModInitializer {
 	/** The front camera, with static that does not fade, so a still can hold a hit's static. */
 	public static final String COCKPIT_CAMERA_HOLD = "cockpit_camera_hold";
 
+	/** The Retained's lamp (#449, docs/design/figure-concepts.md): a lantern in the hand. The default, the lamp on a pole, is the mod's own look. */
+	public static final String RETAINED_LAMP_HAND = "retained_lamp_hand";
+	/** The Retained's lamp inside the ribcage. */
+	public static final String RETAINED_LAMP_RIBS = "retained_lamp_ribs";
+
 	@Override
 	public void onInitialize() {
+		// One shared pin for every test and evidence world that enters a layer (the layers' biomes list the Retained): no natural spawns.
+		ServerLifecycleEvents.SERVER_STARTED.register(server -> server.getGameRules().set(GameRules.SPAWN_MOBS, false, server));
 		for (String pack : new String[] {AMBER_CRT, BAD_CRT, RED_INK, TEXTURE_DENSITY_B, TEXTURE_DENSITY_C, TEXTURE_DENSITY_D,
 				LAYER_CONCEPT_A, LAYER_CONCEPT_B, LAYER_CONCEPT_C, COCKPIT_CONSOLES, COCKPIT_CORNERS, COCKPIT_RIBBON, COCKPIT_POSTS, COCKPIT_CAB,
-				COCKPIT_CAMERA, COCKPIT_CAMERA_HOLD}) {
+				COCKPIT_CAMERA, COCKPIT_CAMERA_HOLD, RETAINED_LAMP_HAND, RETAINED_LAMP_RIBS}) {
 			ResourceLoader.registerBuiltinPack(Identifier.fromNamespaceAndPath("deepcharter-test", pack),
 					FabricLoader.getInstance().getModContainer("deepcharter-test").orElseThrow(),
 					Component.literal(pack + " (test pack)"), PackActivationType.NORMAL);

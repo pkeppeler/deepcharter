@@ -968,3 +968,59 @@ The tier 1 part equals its bound to the bore and the tier 2 part beats it by 3, 
 - Should the feed show the drill's cutter, a ghost of it, so the pilot sees the bore's aim without the pod?
 - Tier 2, the hardened lens: slower to cook, faster to clear.
 - What the camera costs in idle fuel, once there is a number to compare with `PodFuel`.
+
+## The Retained at dark pods (#449, A)
+
+**Problem.** The lore says "Things come to dark pods" ([LORE.md](../LORE.md#6-motifs)) and the game had a placeholder that walked the rails and faded. The user (pkeppeler, 2026-10-11) wants the Retained as a normal mob: scary, to be avoided, never a boss, never an attack. "Them grabbing and draining a pod, its gas, but not attacking is good." They are seen "in caverns and shafts", and "even creepier, if they had a small glowing lamp so you could see them from a distance in the dark". The decisions are in [ADR 0046](../adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md).
+
+**The rule.**
+- **Where.** The game's spawner places them in the open dark of layers 1 and 2 (every biome of the two lists them: weight 1, one at a time). Never on the surface, and never where it is lit: the spawn needs block light under 3, a solid floor and 3 blocks of air. The colony, the hangar and the founding Mole's bay stand in the surface level, so they are out whatever their light. The roll is cheap and comes first: 2 tries in 100 pass in layer 2, and 1 in 200 in layer 1, where the pilot is new. At most 3 of the game's figures in a level, and a delay (400 ticks) after one fades. The rail line of layer 2 keeps its own spawner (a figure on a rail site when a player is within 96 blocks) with its own cap and delay: the caverns' figures never hold back the figure of Prospector's Run, which is fixed lore. About a third of figures carry a lamp. On Peaceful the game's own spawner makes no monsters, so a Peaceful world has only the rail's figure ([ADR 0046](../adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md)).
+- **Draw, and the warning.** A pod draws a Retained that is within 20 blocks when it has a pilot, power and fuel above 5 per cent, and no lights part that counts. A parked pod is left alone, and so are wrecks and lit pods. The figure walks to the pod (about 3 blocks a second; a Mole drives at 4). When it first sets off, the pilot reads "Something walks toward the pod. Keep moving, or light it." and hears a low rumble (`creature.approach`, a placeholder sound). That is seconds of warning, and a pod that drives away is not caught.
+- **Grab.** A figure whose box is within 2.5 blocks of the hull takes hold: it closes on its place on the side of the hull that it came from, faces the pod and clings in a pose of its own, and the pilot reads "Something has hold of the hull. Move, or light it." It never hurts the pilot, the hull or itself: nothing in it attacks, and nothing hurts it.
+- **Drain.** It takes 0.15 litres a second (1.5 points of a stock tank), until it has had its fill of 2.5 litres (a quarter of a stock tank; a tenth of a tier 2 tank of 25 litres), and never under 5 per cent of the tank, so it cannot strand a pod by itself. Then it lets go and fades. Left alone, a grip lasts 333 ticks (17 seconds).
+- **Let go.** The pod moves for 20 ticks (1 second), by the rotor, by the treads or by the drill (any bore progress counts, a bore straight down included, because drilling down is the main loop): a tick standing still gives one tick back. A light: a lights part fitted, or any light of 3 or more at the figure's feet. The figure then fades and does not come back.
+- **Fade, reconciled.** The rule of #83 stands for people on foot: a figure fades when one comes within 8 blocks or when it stands in light. A pilot in a pod is not "on foot", and a figure that has hold of a pod ignores people on foot as well, so stepping out of the pod frees nothing. A pod's own light still fades it, as it always did.
+
+**Counterplay, on the ladder.**
+1. **By hand: move.** Drive, lift or drill for a second. The warning gives the time to start, the drain runs while the pilot reads, and the rotor or the treads burn at the moving rate (0.19 litres a second) in place of the idle one (0.063). In a bore the rotor lifts the pod for the 20 ticks, and a pilot who does not brake the way down pays the hard landing (see [Hard landings](#hard-landings-319-a)); drilling on does not. That is the price of the by-hand answer, and a reason to buy the next rung.
+2. **A part: lights.** A lights part (tier 1, $125) makes the pod lit. A lit pod draws nothing, and a figure that clings to a pod that is lit lets go on the next tick. A pilot with lights is safe from this mechanic, whatever the tier.
+3. **Mastery: a bigger tank.** The fill is litres, not a share, so a bigger tank shrugs it: the same 2.5 litres is a quarter of a stock tank and a tenth of a tier 2 tank. The old tool keeps its niche: a spare stock pod without lights is still a pod the pilot must watch.
+
+**First-hour fairness (the re-tune).** Every stock pod counts as dark, because no pod starts with a lights part, and the stock lamp must not count as light or "dark" would mean nothing. The first tuning cost a pilot who reacted 12.5 per cent of a layer 1 run per grab (a reaction of 2 seconds, no warning), and a stock pilot in the dark could meet one every few minutes. The user said bigger pods are for ergonomics, not a harder game, so a first-hour pilot who reacts to the approach should lose about 5 per cent or less of a layer 1 run per grab, and an ignored grab should still sting enough to make the lights part worth buying. Candidates, measured on a stock Mole in layer 1 (a run burns 9.66 litres of its 10; the model counts whole slabs, so the share is the share of those litres):
+
+| Candidate | Litres taken | Share of a run | Verdict |
+|---|---|---|---|
+| The first tuning: drain 0.25 L/s, shake 30 ticks, a reaction of 2 s, no warning | 1.07 | 11.0% (12.5% in the model's slabs) | Too much for the first hour |
+| An approach cue (a line and a rumble) alone: reaction 0.5 s | 0.69 | 7.1% | Not enough alone |
+| The cue and a drain of 0.15 L/s | 0.49 | 5.1% | Just over |
+| **The cue, a drain of 0.15 L/s and a shake of 20 ticks (the pick)** | 0.35 | 3.6% | Under 5% |
+| The pick without the cue: a reaction of 2 s | 0.58 | 6.0% | Under the 10% bound |
+| The pick, nobody answers: the whole fill | 2.5 | 25.9% (12 slabs, $86.5 of $115) | Still stings |
+| A smaller fill (1.5 L) | 1.5 | 15.5% | Rejected: a lights part ($125) would pay back after 7 grabs |
+| A slower first grab of a run only | n/a | n/a | Not built: it needs a record of each pilot's runs, and the cue already gives the time |
+
+Also built: **layer 1 spawns four times rarer than layer 2** (1 in 200 against 2 in 100 per try), because a pilot who is new is in layer 1 and the run is short there.
+
+**Candidates not built.**
+
+| Candidate | Cost | Why not |
+|---|---|---|
+| A lamp toggle (lamp off to save fuel) | an input, a packet and a cost on `PodFuel` | The lamp costs no fuel today, so there is nothing to save; the lights part is the choice. A follow-up if the lamp is given a fuel cost |
+| A flare (a consumable thrown to draw it away) | an item, a recipe, a repair-station price | A good rung 2.5 for a pilot with no lights. A follow-up |
+| A dynamic light that moves with a lamp-carrier | a light block that follows it and a ledger | The glowmask already shows from afar with vanilla lighting; a follow-up |
+| Outrun it | none | It is already true: 3 against 4 blocks a second |
+
+**Measured.** All from the data the game runs on; the run model is `EarlyRunModel` (see [Fuel per descent](#fuel-per-descent-289-a)) and the tests are `RetainedEconomyTest` and `RetainedTest`.
+- **A stock Mole in layer 1** (whole run: 16 slabs, $115 net): a grip met after the cue takes 0.35 litres (3.6 per cent of the run); without the cue, 0.58 (6.0); nobody answers, 2.5 (25.9 per cent: 12 slabs, $86.5 net). A lights part costs $125, which is 4.2 unanswered grabs.
+- **A Mole with tier 2 parts in layer 2** (whole run: 31 slabs, $348 net): a grip nobody answers takes 2.5 of 25 litres: 26 slabs, $291 net (16.5 per cent of the run).
+- **In the game.** A figure placed 10 blocks from a dark pod reaches it in 67 ticks. A grip left alone takes 2.50 litres in 334 ticks, and the tank lost 35.6 points in that time with the pod's own idle burn. A grip shaken off took 0.14 litres in 20 ticks, by the rotor, the treads and the drill alike.
+- **How often.** The game's spawner, with a player standing in 81 chunks of layer 2 and each figure removed the moment it appeared (so that the cap did not hold it back), made 6 figures in 12,000 ticks (10 minutes) at the first tuning (2 in 100, the layer 2 rate), all in the upper part of the layer where the caverns are. Layer 1 is four times rarer. The rail site made one more each 100 ticks, as it does on its own. A careful pilot meets one rarely.
+
+**Verdict (A).** A lit, careful pilot is never grabbed. A first-hour pilot who reads the warning and moves loses under 4 per cent of a layer 1 run, and one who did not see it come about 6. A pilot who ignores a grab loses a quarter of the run, and the stock tank is never emptied by it. The lights part pays for itself after 4 unanswered grabs, so a pilot who is grabbed and ignores it has a reason to buy it, and one who never meets a figure has none. That is the shop decision this mechanic was to give.
+
+**Knobs.** `CreatureTuning.Cling`: `senseBlocks` (20), `reachBlocks` (2.5), `latchSpeed` (0.4 blocks a tick), `drainLitres` (0.15 a second), `fillLitres` (2.5), `floorPercent` (5), `shakeTicks` (20). `CreatureTuning.Natural`: `lampShare` (0.35), `chancePerTry` (0.02), `layerOneChancePerTry` (0.005), `roomBlocks` (3). `CreatureTuning`: `maxPerLevel` (3, for the rail's figures and the game's own each), `respawnDelayTicks` (400), `walkSpeed` (0.22), `fadeBlockLight` (3). The biome files' `spawns_by_category.monster` weight (1) sets how often the spawner picks it among the biome's monsters. `DeepSound.CREATURE_APPROACH` and the line `creature.deepcharter.approach` are the warning.
+
+**Open questions.**
+- Should the lamp cost fuel, and have a switch? Then "run dark to save fuel" is a real choice and the Retained are its price.
+- Should a lamp-carrier grab harder (a longer fill) than one without a lamp, so that the lamp is a warning and a threat at once?
+- The warning sound is a placeholder (the cave ambience); the audio pass should give it a voice.
