@@ -21,24 +21,24 @@ B, D, S, P = "#bronze", "#dark", "#slot", "#brass"
 HANDS = "hands"
 
 
-def _limb(parent: Bone, pivot, rotation, length: float, width: float, depth: float, texture=B) -> Bone:
+def _limb(parent: Bone, pivot, rotation, length: float, width: float, depth: float) -> Bone:
     """A limb hanging from pivot along its local -Y."""
     bone = parent.child(pivot, rotation)
-    bone.box((-width / 2, -length, -depth / 2), (width / 2, 0.0, depth / 2), texture)
+    bone.box((-width / 2, -length, -depth / 2), (width / 2, 0.0, depth / 2), B)
     return bone
 
 
-def _open_hand(parent: Bone, pivot, rotation, side: int, scale: float) -> Bone:
-    """An open hand of the hands piece: palm toward local +Z, fingers along local -Y, thumb toward local -X for the right hand
-    (side -1) and +X for the left, held apart so it reads as open and empty, never a fist."""
-    s = scale
+def _open_hand(parent: Bone, pivot, rotation) -> Bone:
+    """An open hand of the hands piece: palm toward local +Z, fingers along local -Y, thumb toward local +X, held apart so it reads
+    as open and empty, never a fist."""
+    s = 1.45
     hand = parent.child(pivot, rotation)
     hand.box((-1.6 * s, 0.4 * s, -0.9 * s), (1.6 * s, 1.2 * s, 0.9 * s), D, piece=HANDS)          # the wrist
     hand.box((-1.9 * s, -3.0 * s, -0.75 * s), (1.9 * s, 0.4 * s, 0.6 * s), piece=HANDS)          # the palm
     for i, (x, length) in enumerate(((1.45, 2.7), (0.5, 3.1), (-0.45, 2.9), (-1.4, 2.2))):
-        finger = hand.child((-side * x * s, -3.0 * s, 0.0), (-(5.0 + 3.0 * i), 0.0, -side * (i - 1.5) * 4.0))
+        finger = hand.child((x * s, -3.0 * s, 0.0), (-(5.0 + 3.0 * i), 0.0, (i - 1.5) * 4.0))
         finger.box((-0.43 * s, -length * s, -0.45 * s), (0.43 * s, 0.2 * s, 0.4 * s), piece=HANDS)
-    thumb = hand.child((-side * 1.9 * s, -0.6 * s, 0.1 * s), (-12.0, 0.0, -side * 50.0))
+    thumb = hand.child((1.9 * s, -0.6 * s, 0.1 * s), (-12.0, 0.0, 50.0))
     thumb.box((-0.55 * s, -2.5 * s, -0.5 * s), (0.55 * s, 0.0, 0.5 * s), piece=HANDS)
     return hand
 
@@ -100,7 +100,8 @@ def _standing_coat(root: Bone, hem: float, waist: float, flare: float, stride: f
     root.box((-0.25, hem + 1.0, -4.9), (0.25, waist - 2.0, -4.4), D)                       # the vent behind
 
 
-def _torso(root: Bone, waist: float, height: float, chest: float = 3.9) -> Bone:
+def _torso(root: Bone, waist: float, height: float) -> Bone:
+    chest = 3.9
     torso = root.child((0.0, waist, 0.0))
     torso.box((-6.4, 0.0, -3.9), (6.4, height, 3.5))
     torso.box((-7.3, height - 3.4, -3.5), (7.3, height, 3.1))                              # shoulders
@@ -131,20 +132,20 @@ def host() -> Bone:
     upper.box((-2.1, -10.6, -2.1), (2.1, -8.4, 2.1))
     fore = _limb(upper, (0.0, -10.0, 0.0), (-128.0, 0.0, 26.0), 8.6, 3.3, 3.4)
     fore.box((-1.95, -8.6, -1.95), (1.95, -6.8, 1.95), D)
-    _open_hand(fore, (0.0, -8.6, 0.0), (8.0, 180.0, 0.0), -1, 1.45)
+    _open_hand(fore, (0.0, -8.6, 0.0), (8.0, 180.0, 0.0))
     # The left arm: lowered at his side, a little out and forward, the open palm turned out.
     upper = _limb(torso, (7.0, 10.6, -0.2), (-6.0, 0.0, 8.0), 10.0, 3.8, 4.0)
     upper.box((-2.1, -10.6, -2.1), (2.1, -8.4, 2.1))
     fore = _limb(upper, (0.0, -10.0, 0.0), (-24.0, 0.0, 3.0), 8.6, 3.3, 3.4)
     fore.box((-1.95, -8.6, -1.95), (1.95, -6.8, 1.95), D)
-    _open_hand(fore, (0.0, -8.6, 0.0), (-6.0, 34.0, 4.0), -1, 1.45)
+    _open_hand(fore, (0.0, -8.6, 0.0), (-6.0, 34.0, 4.0))
     return body
 
 
 FIGURES = {"founder_c": host}
 
 
-def figure_model(name: str, piece: str) -> Model:
+def figure_model(name: str, piece: str) -> Model:  # unused-ok: FIGURES is a registry; it holds one figure today
     root = FIGURES[name]()
     boxes = flatten(root, FIGURE_OFFSET, piece)
     if not boxes:

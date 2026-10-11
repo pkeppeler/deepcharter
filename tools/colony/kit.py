@@ -88,8 +88,9 @@ def pillar(name: str, english: str, build: Callable[[], Model]) -> KitBlock:
 
 # ---------------------------------------------------------------------------------------------------------------- shapes
 
-def framed_cube(front: str, side: str, glow: str | None = None) -> Model:
+def framed_cube(front: str, glow: str | None = None) -> Model:
     """A full block whose north face is front (with an optional glow layer over it) and whose other faces are side."""
+    side = "riveted_plate"
     textures = {"front": tex(front), "side": tex(side), "particle": tex(side)}
     boxes = [Box((0, 0, 0), (16, 16, 16), {"north": "#front", "*": "#side"}, cull=True)]
     if glow:
@@ -283,8 +284,8 @@ CATALOGUE: dict[str, KitBlock] = {block.name: block for block in [
     cube("brass_trim", "Brass Trim"),
     facing("window_ribbon_lit", "Lit Ribbon Window", lambda: window("window_ribbon", "riveted_plate", "window_ribbon_glow")),
     facing("window_ribbon_dark", "Dark Ribbon Window", lambda: window("window_ribbon_dark", "riveted_plate", None)),
-    facing("furnace_hatch", "Crusher Hatch", lambda: framed_cube("furnace_hatch", "riveted_plate", "furnace_hatch_glow")),
-    facing("gauge_panel", "Gauge Panel", lambda: framed_cube("gauge_panel", "riveted_plate", "gauge_panel_glow")),
+    facing("furnace_hatch", "Crusher Hatch", lambda: framed_cube("furnace_hatch", "furnace_hatch_glow")),
+    facing("gauge_panel", "Gauge Panel", lambda: framed_cube("gauge_panel", "gauge_panel_glow")),
     facing("wall_lamp", "Company Wall Lamp", wall_lamp),
     facing("floodlight", "Company Floodlight", floodlight),
     facing("railing", "Catwalk Railing", railing),

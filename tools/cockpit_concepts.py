@@ -178,9 +178,10 @@ def rect_planes(x0, y0, x1, y1):
     return [(-1, 0, -x0), (1, 0, x1), (0, -1, -y0), (0, 1, y1)]
 
 
-def frame_image(w, h, distance, rng, bevel):
+def frame_image(w, h, distance, rng):
     """A plate with a see-through opening: a black gasket against the opening, a bevel lit from the top left, then brushed steel. Every pixel depends on its distance
     from the opening, so the edges of a nine-slice tile without a step."""
+    bevel = 2.5
     img = Img(w, h)
     for y in range(h):
         for x in range(w):
@@ -334,7 +335,7 @@ def consoles():
     w, h = left + mid_w + right, top + mid_h + bottom
     x0, y0, x1, y1, gusset = 5, 5, w - 5, h - 5, 30
     planes = rect_planes(x0, y0, x1, y1) + [diagonal(c, x0, y0, x1, y1, gusset) for c in ("tl", "tr", "br", "bl")]
-    frame = frame_image(w, h, polygon_distance(planes), rng, 2.5)
+    frame = frame_image(w, h, polygon_distance(planes), rng)
     for x in range(left + 8, w - right, 16):
         pin(frame, x, 2)
         pin(frame, x, h - 3)
