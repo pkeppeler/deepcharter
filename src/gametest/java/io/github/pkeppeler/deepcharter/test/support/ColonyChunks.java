@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test.support;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 
@@ -12,12 +13,20 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Display;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 
+import io.github.pkeppeler.deepcharter.colony.Colony;
+import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
+import io.github.pkeppeler.deepcharter.colony.ColonyKit;
 import io.github.pkeppeler.deepcharter.colony.ColonyLayout;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.colony.ColonyTuning;
 import io.github.pkeppeler.deepcharter.colony.FounderStatue;
+import io.github.pkeppeler.deepcharter.colony.HostBody;
 
 /**
  * The chunks of the colony's pad, and a wait for them to tick. An entity in a chunk that does not tick is not found by a query (the
@@ -97,5 +106,33 @@ public final class ColonyChunks {
 		AABB pad = new AABB(centre.getX() - half, centre.getY(), centre.getZ() - half, centre.getX() + half, centre.getY() + ColonyTuning.DEFAULT.clearHeight(),
 				centre.getZ() + half);
 		return level.getEntitiesOfClass(Display.BlockDisplay.class, pad, display -> !display.getBlockState().equals(FounderStatue.handsState())).size();
+	}
+
+	/** The displays of the Host's body, loading the chunk he stands in; empty before the colony is built. */
+	public static List<Display.BlockDisplay> hostBody(MinecraftServer server) {
+		return statueDisplays(server, HostBody.state());
+	}
+
+	/** Takes the Host's hands away: the displays that are found and the marker, which gives the plinth its plate back. */
+	public static void removeHands(MinecraftServer server) {
+		FounderStatue.markerPos(server).ifPresent(pos -> {
+			ServerLevel overworld = server.overworld();
+			overworld.getChunk(pos);
+			if (overworld.getBlockState(pos).is(Blocks.STRUCTURE_VOID)) {
+				overworld.setBlock(pos, ColonyKit.RIVETED_PLATE_RED.defaultBlockState(), Block.UPDATE_CLIENTS);
+			}
+		});
+		FounderStatue.hands(server).forEach(Entity::discard);
+	}
+
+	private static List<Display.BlockDisplay> statueDisplays(MinecraftServer server, BlockState state) {
+		Optional<BlockPos> anchor = Colony.anchor(server, ColonyAnchor.STATUE);
+		if (anchor.isEmpty()) {
+			return List.of();
+		}
+		ServerLevel overworld = server.overworld();
+		overworld.getChunk(anchor.get());
+		// entity-query: the statue's displays that are loaded, for a test that counts his body; whether he has hands is saved data
+		return overworld.getEntitiesOfClass(Display.BlockDisplay.class, new AABB(anchor.get()).inflate(12), display -> display.getBlockState().equals(state));
 	}
 }
