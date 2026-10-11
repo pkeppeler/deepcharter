@@ -304,9 +304,8 @@ def lamp_in_ribs(model):
     """A lamp inside the ribcage: glass in the chest, and iron ribs across it, so that the light shows between the bars."""
     spine = bone_named(model, "spine")
     torso = spine.cubes[0]
-    x0, y0, z0 = torso.origin
-    w, h, d = torso.size
-    bone = model.bone(LANTERN, "spine", (0, y0 + h / 2, z0))
+    _, y0, z0 = torso.origin
+    bone = model.bone(LANTERN, "spine", (0, y0 + torso.size[1] / 2, z0))
     bone.box(-2.5, y0 + 1, z0 - 1, 2.5, y0 + 8, z0, "glass")
     for y in (y0 + 1, y0 + 4, y0 + 7):
         bone.box(-3, y, z0 - 2, 3, y + 1, z0 - 1, "iron")

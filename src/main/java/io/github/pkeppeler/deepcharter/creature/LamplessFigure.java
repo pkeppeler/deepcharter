@@ -344,11 +344,6 @@ public class LamplessFigure extends PathfinderMob {
 		entityData.set(LAMP, lamp);
 	}
 
-	/** The pod this figure holds, or null. Server only. */
-	public @Nullable PodEntity grip() {
-		return grip;
-	}
-
 	/** Litres taken from the pod it holds now. Server only. */
 	public float taken() {
 		return taken;
