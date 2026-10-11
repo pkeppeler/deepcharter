@@ -30,6 +30,7 @@ import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 
 /**
@@ -44,7 +45,6 @@ public class DeepestPointScenario extends EvidenceScenario {
 	/** Longer than the poll of the deepest point (20 ticks), so the next read sees the record. */
 	private static final int POLL_TICKS = 30;
 	private static final int ARRIVAL_TICKS = 40;
-	private static final int ARRIVAL_WAIT_TICKS = 400;
 	private static final int ROOM_RADIUS = 4;
 	private static final int ROOM_HEIGHT = 5;
 	/** Tilted up, so the floor row of layer 2, which has no rock under it, stays out of the frame. */
@@ -155,8 +155,8 @@ public class DeepestPointScenario extends EvidenceScenario {
 			player.teleportTo(level, 0.5, y, 0.5, Set.of(), 0f, LOOK_UP, true);
 			return new BlockPos(0, y + 1, ROOM_RADIUS + 1);
 		});
-		context.waitFor(client -> client.level != null && client.level.dimension().equals(LayerChain.dimension(layer))
-				&& !client.level.getBlockState(wall).isAir(), ARRIVAL_WAIT_TICKS);
+		ClientWait.until(context, "the client to see the room's wall in layer " + layer, client -> client.level != null
+				&& client.level.dimension().equals(LayerChain.dimension(layer)) && !client.level.getBlockState(wall).isAir());
 		context.waitTicks(ARRIVAL_TICKS);
 		frame(context);
 		context.waitTicks(POLL_TICKS);
