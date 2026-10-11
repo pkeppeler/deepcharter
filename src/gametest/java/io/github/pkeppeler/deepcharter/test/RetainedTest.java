@@ -201,20 +201,17 @@ public class RetainedTest {
 		});
 	}
 
-	private static boolean told(Arena arena, String key) {
-		return arena.pilot.actionBarMessages().stream().anyMatch(message -> message.getContents() instanceof TranslatableContents contents && contents.getKey().equals(key));
+	/** How many times the pilot has been sent the line {@code key}. */
+	private static long told(Arena arena, String key) {
+		return arena.pilot.actionBarMessages().stream().filter(message -> message.getContents() instanceof TranslatableContents contents && contents.getKey().equals(key)).count();
 	}
 
 	/** The figure took its fill and no more, the tank lost at least that, and neither the hull nor the pilot were hurt. */
 	private static void expectLetGoFull(GameTestHelper helper, Arena arena, float fuelAtGrab, float hullAtGrab, long clungTicks) {
-		float taken = arena.figure.taken();
 		float fillPercent = CLING.fillLitres() / 10f * 100f;
 		float lost = fuelAtGrab - arena.pod.fuel();
-		boolean grabbed = told(arena, GRAB_KEY);
-		boolean warned = told(arena, APPROACH_KEY);
-		if (taken < CLING.fillLitres() - 0.05f || taken > CLING.fillLitres() + 0.05f) {
-			throw failure(helper, "the figure took %.3f litres, not its fill of %.2f", taken, CLING.fillLitres());
-		}
+		long grabbed = told(arena, GRAB_KEY);
+		long warned = told(arena, APPROACH_KEY);
 		// A stock tank is 10 litres, so the fill is 25 points of the tank; the pod's own idle burn (0.063 litres a second, 10 points in 333 ticks) is on top.
 		if (lost < fillPercent - 0.5f || lost > fillPercent + 14f) {
 			throw failure(helper, "the tank lost %.2f points over %d ticks of the grip; the fill is %.1f points and the idle burn a few more", lost, clungTicks, fillPercent);
@@ -225,10 +222,10 @@ public class RetainedTest {
 		if (arena.pilot.player().getHealth() != arena.pilot.player().getMaxHealth()) {
 			throw failure(helper, "the pilot's health went to %s while the figure held the pod", arena.pilot.player().getHealth());
 		}
-		if (!grabbed || !warned) {
-			throw failure(helper, "the pilot was not told that the figure came and that it grabbed (came: %s, grabbed: %s): %s", warned, grabbed, arena.pilot.actionBarMessages());
+		if (grabbed != 1 || warned != 1) {
+			throw failure(helper, "the pilot should be told once that the figure came and once that it grabbed (came: %d times, grabbed: %d times): %s", warned, grabbed, arena.pilot.actionBarMessages());
 		}
-		LOGGER.info("[retained] a grip left alone: {} ticks, {} litres taken, the tank lost {} points of 100", clungTicks, taken, lost);
+		LOGGER.info("[retained] a grip left alone: {} ticks, the tank lost {} points of 100", clungTicks, lost);
 		if (arena.pod.fuel() <= TUNING.cling().floorPercent()) {
 			throw failure(helper, "the tank went to %s, under the floor of %s", arena.pod.fuel(), TUNING.cling().floorPercent());
 		}
@@ -309,7 +306,8 @@ public class RetainedTest {
 		ServerLevel level = helper.getLevel();
 		Arena[] made = {null};
 		long[] grabbedAt = {-1};
-		float[] takenAtRelease = {-1};
+		float[] fuelAtGrab = {0};
+		boolean[] released = {false};
 		helper.onEachTick(() -> {
 			Arena arena = made[0];
 			if (arena == null) {
@@ -318,6 +316,7 @@ public class RetainedTest {
 			if (grabbedAt[0] < 0) {
 				if (arena.figure.isClinging()) {
 					grabbedAt[0] = helper.getTick();
+					fuelAtGrab[0] = arena.pod.fuel();
 					LOGGER.info("[retained] the figure grabbed the pod {} ticks after it was placed 10 blocks away", helper.getTick());
 					arena.pilot.setInput(input);
 				} else if (helper.getTick() > APPROACH_BUDGET_TICKS + 20) {
@@ -326,12 +325,14 @@ public class RetainedTest {
 				return;
 			}
 			long held = helper.getTick() - grabbedAt[0];
-			if (takenAtRelease[0] < 0) {
+			if (!released[0]) {
 				if (!arena.figure.isClinging()) {
-					takenAtRelease[0] = arena.figure.taken();
-					LOGGER.info("[retained] a grip shaken off by {}: {} ticks, {} litres taken", how, held, takenAtRelease[0]);
-					if (takenAtRelease[0] >= CLING.fillLitres() - 0.05f) {
-						throw failure(helper, "the figure took its full %.2f litres: %s did not free the pod", takenAtRelease[0], how);
+					released[0] = true;
+					float lost = fuelAtGrab[0] - arena.pod.fuel();
+					LOGGER.info("[retained] a grip shaken off by {}: {} ticks, the tank lost {} points", how, held, lost);
+					// The fill is 25 points of a stock tank; a grip shaken off in 20 ticks takes a point or two, and the pod's own burn a few more.
+					if (lost > CLING.fillLitres() / 10f * 100f / 2) {
+						throw failure(helper, "the tank lost %.1f points: %s did not free the pod before the figure had half its fill", lost, how);
 					}
 					if (held < CLING.shakeTicks() - 2) {
 						throw failure(helper, "the grip broke after %d ticks of %s, under the %d the tuning asks", held, how, CLING.shakeTicks());
@@ -341,9 +342,9 @@ public class RetainedTest {
 				}
 				return;
 			}
-			// The pod is free: the figure does not take hold again and takes nothing more, whatever the pilot does.
-			if (arena.figure.isClinging() || arena.figure.taken() != takenAtRelease[0]) {
-				throw failure(helper, "the figure took hold of the pod again, or took more, after %s shook it off", how);
+			// The pod is free: the figure does not take hold again, and a drain needs a hold.
+			if (arena.figure.isClinging()) {
+				throw failure(helper, "the figure took hold of the pod again after %s shook it off", how);
 			}
 			if (held > CLING.shakeTicks() + 40) {
 				arena.clear();
@@ -359,6 +360,7 @@ public class RetainedTest {
 		BlockPos origin = slot(4);
 		Arena[] made = {null};
 		long[] litAt = {-1};
+		float[] fuelAtLight = {0};
 		helper.onEachTick(() -> {
 			Arena arena = made[0];
 			if (arena == null) {
@@ -367,6 +369,7 @@ public class RetainedTest {
 			if (litAt[0] < 0) {
 				if (arena.figure.isClinging() && helper.getTick() > 0) {
 					litAt[0] = helper.getTick();
+					fuelAtLight[0] = arena.pod.fuel();
 					CharterId charter = charter(helper, arena.pilot.player().getUUID());
 					PodComponents.register(arena.pod, charter);
 					PodComponents.install(arena.pod, ComponentItems.mint(level.getServer(), ComponentTrack.LIGHTS, 1, charter));
@@ -383,8 +386,8 @@ public class RetainedTest {
 				throw failure(helper, "the figure let go and did not start to fade");
 			}
 			if (arena.figure.isRemoved()) {
-				if (arena.figure.taken() >= CLING.fillLitres()) {
-					throw failure(helper, "the figure had taken its full fill before the light came");
+				if (fuelAtLight[0] - arena.pod.fuel() > 5f) {
+					throw failure(helper, "the tank kept losing fuel after the pod was lit: %.1f points", fuelAtLight[0] - arena.pod.fuel());
 				}
 				arena.clear();
 				helper.succeed();

@@ -145,8 +145,7 @@ public class LamplessFigure extends PathfinderMob {
 			} else {
 				target = nearestDarkPod(level, tuning.cling());
 				if (target != null && !cued) {
-					cued = true;
-					warn(target);
+					cued = warn(target);
 				}
 			}
 		}
@@ -157,12 +156,14 @@ public class LamplessFigure extends PathfinderMob {
 		}
 	}
 
-	/** The pilot hears it and reads it before it arrives: a pod drives faster than it walks. */
-	private void warn(PodEntity pod) {
-		if (pod.getControllingPassenger() instanceof ServerPlayer pilot) {
-			pilot.sendOverlayMessage(Component.translatable("creature.deepcharter.approach"));
-			pod.level().playSound(null, pod.getX(), pod.getY(), pod.getZ(), DeepSound.CREATURE_APPROACH.event(), SoundSource.HOSTILE);
+	/** The pilot hears it and reads it before it arrives: a pod drives faster than it walks. True once a pilot has been told. */
+	private boolean warn(PodEntity pod) {
+		if (!(pod.getControllingPassenger() instanceof ServerPlayer pilot)) {
+			return false;
 		}
+		pilot.sendOverlayMessage(Component.translatable("creature.deepcharter.approach"));
+		pod.level().playSound(null, pod.getX(), pod.getY(), pod.getZ(), DeepSound.CREATURE_APPROACH.event(), SoundSource.HOSTILE);
+		return true;
 	}
 
 	private void wander() {
@@ -342,10 +343,5 @@ public class LamplessFigure extends PathfinderMob {
 
 	public void setLamp(boolean lamp) {
 		entityData.set(LAMP, lamp);
-	}
-
-	/** Litres taken from the pod it holds now. Server only. */
-	public float taken() {
-		return taken;
 	}
 }
