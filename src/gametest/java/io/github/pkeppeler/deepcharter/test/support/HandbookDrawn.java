@@ -28,7 +28,6 @@ public final class HandbookDrawn {
 		return texts(screen).contains(Component.translatable("deepcharter.handbook.notes.heading").getString());
 	}
 
-	/** The Notes tab shows its empty state: no notes yet. */
 	public static boolean showsNotesEmptyState(HandbookScreen screen) {
 		return texts(screen).contains(Component.translatable("deepcharter.handbook.notes.empty").getString());
 	}

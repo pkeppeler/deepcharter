@@ -12,7 +12,6 @@ public final class ShippedNotes {
 	private ShippedNotes() {
 	}
 
-	/** Every Note that has text, in Note order. */
 	public static List<Identifier> ids() {
 		return IntStream.rangeClosed(1, Notes.MAX_NUMBER).mapToObj(Notes::id).filter(Notes::exists).toList();
 	}

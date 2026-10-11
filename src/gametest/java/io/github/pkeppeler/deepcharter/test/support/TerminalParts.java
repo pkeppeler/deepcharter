@@ -16,7 +16,6 @@ public final class TerminalParts {
 	private TerminalParts() {
 	}
 
-	/** {@link Terminals#act} with {@link Terminals#INSERT_PART} and {@code part}. */
 	public static Optional<TerminalRefusal> insert(ServerPlayer player, BlockPos pos, Item part) {
 		CompoundTag args = new CompoundTag();
 		args.putString(Terminals.PART_KEY, BuiltInRegistries.ITEM.getKey(part).toString());
