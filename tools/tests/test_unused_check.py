@@ -58,6 +58,101 @@ class FindingsAreRed(unittest.TestCase):
             f(1)
         """), set())
 
+    def test_plain_store_is_not_a_read(self):
+        self.assertEqual(found(a="""
+            def r(a):
+                a = 2
+            r(1)
+        """), {("a.py", 1, "parameter", "a")})
+
+    def test_augmented_assignment_reads(self):
+        self.assertEqual(found(a="""
+            def r(a):
+                a += 1
+            r(1)
+        """), set())
+
+    def test_inner_function_that_rebinds_the_name_is_not_a_read(self):
+        self.assertEqual(found(a="""
+            def outer(a):
+                def inner(a):
+                    return a
+                return inner
+            def comp(a):
+                return [a for a in range(3)]
+            def local(a):
+                def inner():
+                    a = 1
+                    return a
+                return inner
+            outer(1)
+            comp(1)
+            local(1)
+        """), {("a.py", 1, "parameter", "a"), ("a.py", 5, "parameter", "a"), ("a.py", 7, "parameter", "a")})
+
+    def test_closure_read_of_the_outer_name_counts(self):
+        self.assertEqual(found(a="""
+            def outer(a, b):
+                def inner():
+                    return a
+                return [b for _ in range(2)], inner
+            outer(1, 2)
+        """), set())
+
+    def test_method_of_a_local_base_is_checked(self):
+        self.assertEqual(found(a="""
+            class Base:
+                def run(self):
+                    return 1
+            class Child(Base):
+                def run(self, unused):
+                    return 2
+            Child().run(1)
+        """), {("a.py", 5, "parameter", "unused")})
+
+    def test_plain_enum_namedtuple_and_private_override_are_checked(self):
+        self.assertEqual(found(a="""
+            from enum import Enum
+            from typing import NamedTuple
+            from unittest import TestCase
+            class Kind(Enum):
+                A = 1
+                def label(self, unused):
+                    return 1
+            class Pair(NamedTuple):
+                x: int
+                def total(self, unused):
+                    return self.x
+            class Case(TestCase):
+                def _helper(self, unused):
+                    return 1
+            print(Kind.A.label(1), Pair(1).total(1), Case)
+        """), {("a.py", 6, "parameter", "unused"), ("a.py", 10, "parameter", "unused"), ("a.py", 13, "parameter", "unused")})
+
+    def test_neutral_decorators_are_checked(self):
+        self.assertEqual(found(a="""
+            from contextlib import contextmanager
+            from functools import lru_cache
+            class K:
+                @staticmethod
+                def s(unused):
+                    return 1
+                @classmethod
+                def c(cls, unused):
+                    return 1
+                @property
+                def p(self):
+                    return 1
+            @contextmanager
+            def cm(unused):
+                yield 1
+            @lru_cache(maxsize=None)
+            def cached(unused):
+                return 1
+            print(K, cm, cached)
+        """), {("a.py", 5, "parameter", "unused"), ("a.py", 8, "parameter", "unused"),
+               ("a.py", 14, "parameter", "unused"), ("a.py", 17, "parameter", "unused")})
+
     def test_a_name_is_alive_when_another_file_reads_it(self):
         self.assertEqual(found(a="def helper():\n    return 1\nLIMIT = 3\n", b="import a\nprint(a.helper(), a.LIMIT)\n"), set())
 
@@ -129,9 +224,10 @@ class OptOutsAreGreen(unittest.TestCase):
 
     def test_exempt_parameters(self):
         self.assertEqual(found(a="""
+            from http.server import BaseHTTPRequestHandler
             def paint(canvas, _glow, _rng):
                 return canvas
-            class Handler(Base):
+            class Handler(BaseHTTPRequestHandler):
                 def do_GET(self, request):
                     return 1
             class Plain:

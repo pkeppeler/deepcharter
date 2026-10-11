@@ -9,18 +9,27 @@ Scans every tools/**/*.py plus tools/diff-stills and reports three kinds of find
 A reference is a bare name, an attribute name, an imported name, a `getattr(x, "name")` string or an `__all__` entry, in any scanned file
 (tests included). Matching is by name, not by module, so a same-named definition elsewhere hides a dead one; a reviewer still looks.
 Exempt without a marker: `main`, dunder names, `test_*` and `setUp`/`tearDown` style test discovery, `unittest` test classes, decorated
-definitions, `self`/`cls`, parameters starting with `_`, methods of a class that has bases (they may override a fixed signature),
-dunder methods, and stub bodies (docstring, `pass`, `...` or `raise NotImplementedError`).
+definitions (see below), `self`/`cls`, parameters starting with `_`, and stub bodies (docstring, `pass`, `...` or `raise NotImplementedError`).
+A method's parameters are exempt when it is a dunder, or a public method of a class with a base that is imported or builtin (an override of an
+outside API such as `BaseHTTPRequestHandler` or `TestCase`). A local base, `object`, `NamedTuple`, `Enum`, and a private `_helper` method
+are checked. A decorator exempts the definition unless it is one of `NEUTRAL_DECORATORS` (`staticmethod`, `classmethod`, `property`, `cache`,
+`lru_cache`, `contextmanager` and the like): those change no signature and register nothing, so the definition is checked.
+
+A parameter is read by a Load or Del of its name in the function or in a nested function, lambda or comprehension that does not rebind
+the name, or by an augmented assignment (`a += 1` reads `a`). A plain store (`a = 2`) is not a read.
 
 Opt out with `# unused-ok: <reason>` on the finding's line, or on the line above it. A definition's span is its header; an import or
 assignment's span is the whole statement. The reason is required: one word, or a stock phrase such as "not used", is itself a finding and
 suppresses nothing.
 
-Not caught: a parameter that every caller passes the same value (needs a call graph), and a method nothing calls.
+Known blind spots: a parameter that every caller passes the same value (needs a call graph), a method nothing calls, a parameter
+overwritten before its first read (any later Load counts), a base class that is imported but is not an outside API, and a decorator
+not in NEUTRAL_DECORATORS that does not register anything.
 
 Usage: python3 -I tools/tests/unused_check.py
 """
 import ast
+import builtins
 import io
 import re
 import sys
@@ -38,6 +47,12 @@ GENERIC_REASONS = {
     "not used", "unused", "needed", "needed later", "used later", "keep", "keep it", "ok", "fine", "todo", "n/a", "later",
     "required", "intentional", "on purpose", "no reason", "because", "future use", "for later", "might need",
 }
+FIXED_SIGNATURE_FUNCTIONS = {"load_tests", "setUpModule", "tearDownModule"}
+NEUTRAL_DECORATORS = {
+    "staticmethod", "classmethod", "property", "cache", "lru_cache", "cached_property", "contextmanager", "asynccontextmanager",
+    "abstractmethod", "dataclass", "total_ordering", "final", "override", "overload",
+}
+PLAIN_BASES = {"object", "NamedTuple", "Enum", "IntEnum", "StrEnum", "Flag", "IntFlag", "Generic", "Protocol", "TypedDict"}
 TEST_HOOKS = {"setUp", "tearDown", "setUpClass", "tearDownClass", "setUpModule", "tearDownModule", "load_tests", "main"}
 
 
@@ -170,7 +185,7 @@ def definition_candidates(path: str, tree: ast.Module) -> list[Candidate]:
     found = []
     for node in module_statements(tree.body):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-            if node.decorator_list or exempt_name(node.name) or is_test_class(node):
+            if registers(node) or exempt_name(node.name) or is_test_class(node):
                 continue
             span = (node.lineno, node.end_lineno or node.lineno)
             found.append(Candidate(path, "name", node.name, node.lineno, (node.lineno, header_end(node)), span))
@@ -236,25 +251,110 @@ def referenced_elsewhere(candidate: Candidate, references: Mapping[str, Mapping[
     )
 
 
+def decorator_name(decorator: ast.expr) -> str:
+    target = decorator.func if isinstance(decorator, ast.Call) else decorator
+    return target.attr if isinstance(target, ast.Attribute) else target.id if isinstance(target, ast.Name) else ""
+
+
+def registers(node: ast.AST) -> bool:
+    """True when a decorator may register the definition or fix its signature: any decorator outside NEUTRAL_DECORATORS."""
+    return any(decorator_name(d) not in NEUTRAL_DECORATORS for d in getattr(node, "decorator_list", ()))
+
+
+def imported_names(tree: ast.AST) -> set[str]:
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names |= {(alias.asname or alias.name.split(".")[0]) for alias in node.names}
+        elif isinstance(node, ast.ImportFrom):
+            names |= {(alias.asname or alias.name) for alias in node.names}
+    return names
+
+
+def has_outside_base(cls: ast.ClassDef, imported: set[str]) -> bool:
+    for base in cls.bases:
+        expression = base.value if isinstance(base, ast.Subscript) else base
+        if base_name(expression) in PLAIN_BASES:
+            continue
+        while isinstance(expression, ast.Attribute):
+            expression = expression.value
+        if isinstance(expression, ast.Name) and (expression.id in imported or hasattr(builtins, expression.id)):
+            return True
+    return False
+
+
+COMPREHENSIONS = (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
+
+
+def scope_reads(scope: ast.AST) -> tuple[set[str], set[str]]:
+    """(names the scope reads, names it binds). Reads include the free reads of nested scopes; a nested scope's own bindings do not leak."""
+    reads: set[str] = set()
+    bound: set[str] = set()
+    declared: set[str] = set()
+    if isinstance(scope, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+        arguments = scope.args
+        bound |= {a.arg for a in arguments.posonlyargs + arguments.args + arguments.kwonlyargs}
+        bound |= {a.arg for a in (arguments.vararg, arguments.kwarg) if a}
+        pending: list[ast.AST] = [scope.body] if isinstance(scope, ast.Lambda) else list(scope.body)
+    else:
+        pending = list(ast.iter_child_nodes(scope))
+    while pending:
+        node = pending.pop()
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, *COMPREHENSIONS)):
+            if not isinstance(node, COMPREHENSIONS):
+                pending += node.args.defaults + [d for d in node.args.kw_defaults if d]
+                pending += getattr(node, "decorator_list", [])
+                if not isinstance(node, ast.Lambda):
+                    bound.add(node.name)
+            inner_reads, inner_bound = scope_reads(node)
+            reads |= inner_reads - inner_bound
+            continue
+        if isinstance(node, ast.Name):
+            if isinstance(node.ctx, ast.Store):
+                bound.add(node.id)
+            else:
+                reads.add(node.id)
+            continue
+        if isinstance(node, ast.AugAssign) and isinstance(node.target, ast.Name):
+            reads.add(node.target.id)
+            pending.append(node.value)
+            continue
+        if isinstance(node, (ast.Global, ast.Nonlocal)):
+            declared |= set(node.names)
+        pending += ast.iter_child_nodes(node)
+    return reads, bound - declared
+
+
 def parameter_candidates(path: str, tree: ast.AST) -> list[Candidate]:
     found = []
-    classes_with_bases = [node for node in ast.walk(tree) if isinstance(node, ast.ClassDef) and node.bases]
-    overriding = {id(item) for cls in classes_with_bases for item in cls.body}
+    imported = imported_names(tree)
+    owner = {id(item): cls for cls in ast.walk(tree) if isinstance(cls, ast.ClassDef) for item in cls.body}
     for node in ast.walk(tree):
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
-        if id(node) in overriding or node.decorator_list or is_stub(node) or exempt_name(node.name):
+        if registers(node) or is_stub(node) or fixed_signature(node, owner.get(id(node)), imported):
             continue
         arguments = node.args
         every = arguments.posonlyargs + arguments.args + arguments.kwonlyargs + [a for a in (arguments.vararg, arguments.kwarg) if a]
         own_span = (node.lineno, node.end_lineno or node.lineno)
-        read = {child.id for child in ast.walk(node) if isinstance(child, ast.Name)}
+        read = scope_reads(node)[0]
         for argument in every:
             if argument.arg in ("self", "cls", *read) or argument.arg.startswith("_"):
                 continue
             span = (argument.lineno, argument.end_lineno or argument.lineno)
             found.append(Candidate(path, "parameter", argument.arg, argument.lineno, span, own_span))
     return found
+
+
+def is_dunder(name: str) -> bool:
+    return name.startswith("__") and name.endswith("__")
+
+
+def fixed_signature(function: ast.FunctionDef | ast.AsyncFunctionDef, cls: ast.ClassDef | None, imported: set[str]) -> bool:
+    """True when something outside the file fixes the signature: a dunder, a unittest hook, or a public override of an outside base."""
+    if is_dunder(function.name) or function.name in FIXED_SIGNATURE_FUNCTIONS:
+        return True
+    return cls is not None and not function.name.startswith("_") and has_outside_base(cls, imported)
 
 
 def is_stub(function: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
