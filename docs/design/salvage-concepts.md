@@ -78,7 +78,26 @@ Two new ops draw them: `fibres` (runs of the ramp down a stem, wrapping on both 
 
 ## Feature cost
 
-ADR 0029 bars the surface at 1.15 times the layers-only world per new column. The feature cost is measured by `SurfaceCostTest` with `DEEPCHARTER_SURFACE_COST=3 DEEPCHARTER_SURFACE_COST_ONLY=<world> tools/gametest.sh 'surface_cost_test_every*'`, one world to a JVM so that each heap reading is the first of its JVM. COST_TABLE
+ADR 0029 bars the surface at 1.15 times the layers-only world per new column. The feature cost is measured by `SurfaceCostTest` with `DEEPCHARTER_SURFACE_COST=3 DEEPCHARTER_SURFACE_COST_ONLY=<world> tools/gametest.sh 'surface_cost_test_every*'`, one world to a JVM so that each heap reading is the first of its JVM.
+
+Four passes, three rounds of 289 columns each (a 17 x 17 chunk square) per world, one JVM per world and pass, on a shared Mac (load average 8 to 23, so CPU varies by up to 30% between passes). Each cell is the median of a pass's three rounds.
+
+| World | What it holds | CPU ms per column, passes 1 to 4 | Median | Heap MB per 289 columns, passes 1 to 4 | Median |
+|---|---|---|---|---|---|
+| `tall_baseline_biomes` | layers only; the shipped biome source, so its biomes place stalks on the layer rock too | 119.5, 136.1, 161.6, 143.8 | 139.9 | 380, 340, 393, 333 | 360 |
+| `tall_surface_bare` | the surface, every biome's features taken out | 143.6, 149.8, 155.7, 149.9 | 149.9 | 357, 389, 296, 403 | 373 |
+| `tall_surface_biomes` | the surface with its features: the stalks | 145.1, 151.8, 164.7, 166.3 | 158.3 | 370, 298, 393, 387 | 378.5 |
+| `tall_surface_yard_bare` | every column in the yard, features out | 157.4, 144.5, 149.0, 148.4 | 148.7 | 374, 292, 343, 361 | 352 |
+| `tall_surface_yard` | every column in the yard: the crates and the stalks, the worst case | 141.7, 164.3, 161.6, 148.2 | 154.9 | 373, 380, 393, 338 | 376.5 |
+
+| Ratio of the medians | CPU | Heap | The ADR 0029 bar |
+|---|---|---|---|
+| The stalks alone: `tall_surface_biomes` over `tall_surface_bare` | **1.06x** | **1.01x** | 1.15x |
+| The crates and the stalks, in the worst case: `tall_surface_yard` over `tall_surface_yard_bare` | **1.04x** | **1.07x** | 1.15x |
+| The whole surface with its features over the layers only: `tall_surface_biomes` over `tall_baseline_biomes` | **1.13x** | **1.05x** | 1.15x |
+| The surface before this PR's features (the same pair as ADR 0036 measured): `tall_surface_bare` over `tall_baseline_biomes` | 1.07x | 1.04x | 1.15x |
+
+The features add 4 to 6% of CPU and 1 to 7% of heap, both inside the spread of one world's own passes (CPU 144 to 166 for `tall_surface_biomes`). The whole surface is 1.13x the layers on the CPU median and 1.05x on the heap, under the bar of 1.15x; its worst single pass (pass 1, 145.1 over 119.5, a quiet reading of the layers) was 1.21x, as the surface alone was in that pass (143.6 over 119.5, 1.20x), so that excess is the surface's and the machine's, not the features'. The yard is 120 blocks of the 2352-block world's whole extent, so the real cost of the crates is a small share of the yard worst case. The numbers are the machine's on that day: the bar is held, and a quiet machine would settle the second decimal.
 
 ## Not built
 

@@ -40,4 +40,12 @@ The ladder of `designing-mechanics`: by hand, then the pod, then mastery. Scrap 
 
 ## Measured cost
 
-See the table in [salvage-concepts.md](../design/salvage-concepts.md#feature-cost).
+`SurfaceCostTest` measured the features on four passes (the method and every reading are in [salvage-concepts.md](../design/salvage-concepts.md#feature-cost)). Medians against the 1.15x bar of ADR 0029:
+
+| Pair | CPU | Heap |
+|---|---|---|
+| The stalks alone (the surface with its features over the surface with none) | 1.06x | 1.01x |
+| The crates and stalks in the worst case (every column in the yard, with over without) | 1.04x | 1.07x |
+| The whole surface with its features over the layers only | 1.13x | 1.05x |
+
+This shows that the features add 4 to 6% of CPU and 1 to 7% of heap per new column, and that the whole surface holds the bar on both medians. It does not show the second decimal: the Mac was shared (load average 8 to 23), CPU moved by up to 30% between passes of one world, and a single pass read 1.21x for the surface with or without its features. A quiet machine would settle it.
