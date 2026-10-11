@@ -30,9 +30,9 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 
 /**
- * The actions of the ore processor terminal: two sales of ore at {@link OreType#value()}, and the two uses of spoil: the fuse into slag brick and the press into salvage crates. A sale is
- * all or nothing: the account is credited first, and the ore is taken once the credit went through, so a refused credit (a full account)
- * leaves the ore where it was. The terminal has already checked the player's range, the charter and the repair state.
+ * The actions of the ore processor terminal: two sales of ore at {@link OreType#value()}, and the two uses of spoil: the fuse into slag
+ * brick and the press into salvage crates. A sale is all or nothing: the account is credited first, and the ore is taken once the
+ * credit went through, so a refused credit (a full account) leaves the ore where it was. The terminal has already checked the player's range, the charter and the repair state.
  */
 public final class OreProcessor {
 	/** Sells the cargo of every pod the player may access parked at the processor ({@link Terminals#parkedPods}). */

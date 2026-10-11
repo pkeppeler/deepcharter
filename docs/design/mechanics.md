@@ -1087,7 +1087,6 @@ Also built: **layer 1 spawns four times rarer than layer 2** (1 in 200 against 2
 - Should a crate be a container that can be opened and left, so that a charter can leave salvage for another? Today it breaks into a loot table and is gone.
 - A wrecked prefab that drops salvage (the issue's other source) is not built; crates in patches stand in for it.
 
-<<<<<<< HEAD
 
 ## Renewable salvage (#470, A)
 
@@ -1107,7 +1106,7 @@ Also built: **layer 1 spawns four times rarer than layer 2** (1 in 200 against 2
 - **The hopper** is the gate. It is bought, for $100, which is a whole stock layer 1 run (`EconomyAffordabilityTest`), so no spoil, and no crate from the press, exists in a charter's first run. The yard's crates stay the start (ADR 0047), and the press is for the second hour on.
 - **Money** is not touched. Nothing a crate drops sells at the processor (`noCrateDropIsAnOreAndSoThePressAddsNoIncome`), the press costs no dollar, and so the early-run income, the upgrade prices and the teleport items of SPEC section 11 stay as `EconomyAffordabilityTest` pins them. Nothing in SPEC changes.
 - **One crate, one loot table.** The pressed crate is the yard's block and item, and it breaks into the yard's table, so wood, cloth, copper and redstone come as they do from the ground and no recipe or rate is a second copy. A crate's planks smelt 3.0 items and its scrap needs 2.0, so the press pays for its own fuel and a long world never needs a stalk for the furnace.
-- **Co-op.** Spoil of every pod of the charter parked at the processor is pressed, and the crates are items a crew can hand over. A crate placed and broken is the same loot for any charter.
+- **Co-op.** Spoil of every pod parked at the processor that belongs to the charter, or to no charter, is pressed (as for the fuse), and the crates are items a crew can hand over. A crate placed and broken is the same loot for any charter.
 
 **The ladder.** By hand: the yard's crates (the bootstrap). The pod: a hopper, bore, press at the processor. Mastery: none is needed, the press is the long game and a charter that has the metal it needs stops pressing.
 
@@ -1135,8 +1134,7 @@ Also built: **layer 1 spawns four times rarer than layer 2** (1 in 200 against 2
 - Should a pressed crate be told from the yard's, for a pack that wants to (a stencil, a different lid)? Today it is the same block and item.
 - Should the press take spoil from the player's pack as well as from parked pods? Spoil is a pod attachment, so it does not today.
 - Spore regrowth (A) would still give stalks back to a world with a crew camped by a crater. It is a follow-up if play shows wood, not metal, to be the gap.
-=======
+
 ## The deepest point (#476)
 
 A charter's deepest point is the greatest depth any online member in survival or adventure has stood at on the surface or in a layer, read once a second with `Depth.of` (the HUD's depth). `/deepcharter charter info` prints it in feet, like the HUD. "Reach layer 3", which opens the Morale Initiative, currently means reaching the floor of layer 2 (`LayerChain.topDepth(3)`), because layer 3 does not exist yet. The threshold moves down when layer 3 lands.
->>>>>>> origin/main
