@@ -49,7 +49,7 @@ public class HangarScenario extends EvidenceScenario {
 	@Override
 	protected void run(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			ClientWait.until(context, "the player and level of the world", client -> client.player != null && client.level != null);
+			awaitWorld(context);
 			BlockPos console = singleplayer.getServer().computeOnServer(HangarScenario::setUp);
 			// The derelict is an entity of the hangar's chunk, which loads a tick or more after the player arrives.
 			await(context, singleplayer, server -> Hangar.derelict(server).isPresent());

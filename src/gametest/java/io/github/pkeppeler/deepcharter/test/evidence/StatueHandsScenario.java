@@ -16,7 +16,6 @@ import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.FounderStatue;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
-import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Evidence scenario "statue-hands" for #458: a close orbit of each of the Host's hands, so the thumbs show. The hands sit where
@@ -43,7 +42,7 @@ public class StatueHandsScenario extends EvidenceScenario {
 	@Override
 	protected void run(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			ClientWait.until(context, "the player and level of the world", client -> client.player != null && client.level != null);
+			awaitWorld(context);
 			Vec3 feet = singleplayer.getServer().computeOnServer(server -> {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 				player.setGameMode(GameType.SPECTATOR);

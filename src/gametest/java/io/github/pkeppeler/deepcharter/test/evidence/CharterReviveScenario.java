@@ -12,7 +12,6 @@ import net.minecraft.server.permissions.LevelBasedPermissionSet;
 
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.Charters;
-import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 
 /**
@@ -35,7 +34,7 @@ public class CharterReviveScenario extends EvidenceScenario {
 	protected void run(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			TestServerContext server = singleplayer.getServer();
-			ClientWait.until(context, "the player and level of the world", client -> client.player != null && client.level != null);
+			awaitWorld(context);
 			context.waitTicks(20);
 			frame(context);
 

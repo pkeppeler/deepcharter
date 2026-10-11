@@ -41,7 +41,7 @@ public class OrePlacementScenario extends EvidenceScenario {
 	@Override
 	protected void run(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			ClientWait.until(context, "the player and level of the world", client -> client.player != null && client.level != null);
+			awaitWorld(context);
 			singleplayer.getServer().runOnServer(server -> {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 				player.setGameMode(GameType.CREATIVE);

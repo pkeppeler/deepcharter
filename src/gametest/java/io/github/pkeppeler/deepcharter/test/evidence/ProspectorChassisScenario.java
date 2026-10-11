@@ -70,7 +70,7 @@ public class ProspectorChassisScenario extends EvidenceScenario {
 	/** The wreck at the site nearest the Conduit: the pod, the lamp that still burns, and Ines's log. */
 	private void wreck(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			ClientWait.until(context, "the player and level of the world", client -> client.player != null && client.level != null);
+			awaitWorld(context);
 			StructureSite site = singleplayer.getServer().computeOnServer(server -> {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 				player.setPermanentlyInvulnerable(true);

@@ -204,7 +204,7 @@ public class DesignTourScenario extends EvidenceScenario {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().setUseConsistentSettings(false)
 				.adjustSettings(state -> state.setSeed("deepcharter-design-tour")).create()) {
 			sp = singleplayer;
-			ClientWait.until(context, "the player and level of the world", client -> client.player != null && client.level != null);
+			awaitWorld(context);
 			context.waitTicks(80);
 			ColonySite.Placed colony = serverGet(server -> Colony.placed(server).orElseThrow(() -> new AssertionError("no colony")));
 			ground = colony.center();
