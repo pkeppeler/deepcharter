@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
+import io.github.pkeppeler.deepcharter.terminal.ParkedPodView;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActions;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
@@ -42,6 +43,7 @@ public final class FuelPump {
 	static void init() {
 		TerminalActions.register(TerminalTypes.FUEL_PUMP, BUY, FuelPump::buy);
 		TerminalActions.register(TerminalTypes.FUEL_PUMP, FILL, FuelPump::fill);
+		ParkedPodView.register(TerminalTypes.FUEL_PUMP);
 	}
 
 	/** The litres in the tank now. */

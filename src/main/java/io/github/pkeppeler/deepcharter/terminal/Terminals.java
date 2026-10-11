@@ -90,8 +90,8 @@ public final class Terminals {
 
 	/**
 	 * The pods parked at the terminal at {@code pos}, nearest first: within {@link TerminalTuning#parkedRadius()} blocks of its
-	 * middle, and neither flying nor drilling. Safe on both sides, but it knows no owners: a client uses it to draw a screen,
-	 * and the server serves from {@link #parkedPods(ServerLevel, BlockPos, Optional)}.
+	 * middle, and neither flying nor drilling. Safe on both sides, but it knows no owners: the server serves from
+	 * {@link #parkedPods(ServerLevel, BlockPos, Optional)}, and a pod terminal's screen shows the pod that names ({@link ParkedPodView}).
 	 */
 	public static List<PodEntity> parkedPods(Level level, BlockPos pos) {
 		double radius = TerminalTuning.DEFAULT.parkedRadius();

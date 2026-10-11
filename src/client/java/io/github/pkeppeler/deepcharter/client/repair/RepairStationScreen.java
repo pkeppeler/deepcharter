@@ -20,6 +20,7 @@ import net.minecraft.world.item.ItemStack;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.sound.TypewriterSound;
+import io.github.pkeppeler.deepcharter.client.terminal.ShownPod;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
@@ -35,7 +36,6 @@ import io.github.pkeppeler.deepcharter.repair.RepairTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
-import io.github.pkeppeler.deepcharter.terminal.Terminals;
 
 /**
  * The online repair station: the hull repair buttons, then the shop, in one list under the header. The list is longer than a
@@ -251,13 +251,13 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 		return super.keyPressed(event);
 	}
 
-	/** The pod the server would repair, as far as the client can tell: the nearest parked at the station. The server decides. */
-	private Optional<PodEntity> nearbyPod() {
+	/** The pod the screen shows: the one the server will repair. */
+	public Optional<PodEntity> nearbyPod() {
 		Minecraft client = Minecraft.getInstance();
 		if (client.level == null) {
 			return Optional.empty();
 		}
-		return Terminals.parkedPods(client.level, view.pos()).stream().findFirst();
+		return ShownPod.of(client.level, view);
 	}
 
 	@Override
