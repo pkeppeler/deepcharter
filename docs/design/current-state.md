@@ -786,7 +786,7 @@ Two runs of one commit give the same stills, apart from two that can differ a li
 88. `lampless-figure-side`
 89. `lampless-figure-back`
 90. `lampless-figure-close`
-91. `lampless-figure-fading-by-a-lit-pod`
+91. `lampless-figure-by-a-lit-pod`
 92. `screen-pod-cargo`
 93. `hud-pod-status-and-altimeter-surface`
 94. `hud-pod-in-third-person-surface`

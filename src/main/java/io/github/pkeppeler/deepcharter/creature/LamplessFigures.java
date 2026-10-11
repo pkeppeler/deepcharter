@@ -36,7 +36,7 @@ import io.github.pkeppeler.deepcharter.layer.StructureSite;
 /**
  * Puts a {@link LamplessFigure} on the rail site of Prospector's Run that a player is near, when the site has none: at most
  * {@link CreatureTuning#maxPerSite} on a site and {@link CreatureTuning#maxPerLevel} in the level, and none until
- * {@link CreatureTuning#respawnDelayTicks} after the last one faded. Nothing is saved: a figure is made from the rails as they stand.
+ * {@link CreatureTuning#respawnDelayTicks} after the last one was killed. Nothing is saved: a figure is made from the rails as they stand.
  */
 public final class LamplessFigures {
 	/** The rail level, kept so that a tick does not build the key again. */
@@ -51,22 +51,22 @@ public final class LamplessFigures {
 	/** The failures already logged, each as a level and an exception class, so that a later and different one is not silent. Server thread only. */
 	private static final Set<String> LOGGED_FAILURES = new HashSet<>();
 
-	/** Game time at which the last figure of each level faded, for the rail's figures and for the game's spawner's apart. Server thread only. */
-	private static final Map<ResourceKey<Level>, Long> LAST_FADE = new HashMap<>();
-	private static final Map<ResourceKey<Level>, Long> LAST_NATURAL_FADE = new HashMap<>();
+	/** Game time at which the last figure of each level was killed, for the rail's figures and for the game's spawner's apart. Server thread only. */
+	private static final Map<ResourceKey<Level>, Long> LAST_KILL = new HashMap<>();
+	private static final Map<ResourceKey<Level>, Long> LAST_NATURAL_KILL = new HashMap<>();
 
 	private LamplessFigures() {
 	}
 
 	public static void init() {
-		ServerLifecycleEvents.SERVER_STARTING.register(server -> clearFadeDelays());
+		ServerLifecycleEvents.SERVER_STARTING.register(server -> clearRespawnDelays());
 		ServerTickEvents.END_LEVEL_TICK.register(LamplessFigures::tick);
 	}
 
-	/** Forgets when figures last faded, as a new server does: the game time of the last one means nothing to it. */
-	public static void clearFadeDelays() {
-		LAST_FADE.clear();
-		LAST_NATURAL_FADE.clear();
+	/** Forgets when figures were last killed, as a new server does: the game time of the last one means nothing to it. */
+	public static void clearRespawnDelays() {
+		LAST_KILL.clear();
+		LAST_NATURAL_KILL.clear();
 	}
 
 	/** Whether a level looks for sites to put a figure on at this game time: the rail level, every {@link CreatureTuning#spawnIntervalTicks}. */
@@ -74,8 +74,8 @@ public final class LamplessFigures {
 		return dimension.equals(RAIL_LEVEL) && gameTime % CreatureTuning.DEFAULT.spawnIntervalTicks() == 0;
 	}
 
-	static void faded(ServerLevel level, boolean natural) {
-		(natural ? LAST_NATURAL_FADE : LAST_FADE).put(level.dimension(), level.getGameTime());
+	static void killed(ServerLevel level, boolean natural) {
+		(natural ? LAST_NATURAL_KILL : LAST_KILL).put(level.dimension(), level.getGameTime());
 	}
 
 	/** A tick path: it logs each kind of failure once for a level and carries on. */
@@ -105,7 +105,7 @@ public final class LamplessFigures {
 
 	/**
 	 * Puts one figure on a rail of {@code site}, walking either way along it, when the site and the level have room for it and the
-	 * last figure faded long enough ago. It goes where the rail is loaded and ticking, unlit, and clear of every player; empty when
+	 * last figure was killed long enough ago. It goes where the rail is loaded and ticking, unlit, and clear of every player; empty when
 	 * there is no such place.
 	 */
 	public static Optional<LamplessFigure> spawnAt(ServerLevel level, StructureSite site) {
@@ -134,13 +134,13 @@ public final class LamplessFigures {
 
 	/**
 	 * Whether the level may take one more figure now, of the game's spawner ({@code natural}) or of the rail: under the cap, and long
-	 * enough since the last of that kind faded. The two kinds are counted apart, so that the rail's figure of Prospector's Run, which is
+	 * enough since the last of that kind was killed. The two kinds are counted apart, so that the rail's figure of Prospector's Run, which is
 	 * fixed lore, is never held back by the figures of the caverns.
 	 */
 	public static boolean levelHasRoom(ServerLevel level, boolean natural) {
 		CreatureTuning tuning = CreatureTuning.DEFAULT;
-		Long lastFade = (natural ? LAST_NATURAL_FADE : LAST_FADE).get(level.dimension());
-		return (lastFade == null || level.getGameTime() - lastFade >= tuning.respawnDelayTicks())
+		Long lastKill = (natural ? LAST_NATURAL_KILL : LAST_KILL).get(level.dimension());
+		return (lastKill == null || level.getGameTime() - lastKill >= tuning.respawnDelayTicks())
 				// entity-query: a figure is not saved (CreatureRegistry noSave), so it lives exactly while its chunk is loaded and the query sees every one
 				&& level.getEntities(CreatureRegistry.LAMPLESS_FIGURE, figure -> figure.isNatural() == natural).size() < tuning.maxPerLevel();
 	}
@@ -158,13 +158,12 @@ public final class LamplessFigures {
 	}
 
 	/**
-	 * Whether a figure may appear of itself with its feet at {@code pos}: in layer 1 or 2, in the dark (under the light at which a figure
-	 * fades), and on a solid floor with room to stand. Never the surface, and never a lit space.
+	 * Whether a figure may appear of itself with its feet at {@code pos}: in layer 1 or 2, in the dark (under the light at which a place counts as lit), and on a solid floor with room to stand. Never the surface, and never a lit space.
 	 */
 	public static boolean canAppearAt(ServerLevel level, BlockPos pos) {
 		CreatureTuning tuning = CreatureTuning.DEFAULT;
 		if (!NATURAL_LEVELS.contains(level.dimension()) || !level.isPositionEntityTicking(pos)
-				|| level.getBrightness(LightLayer.BLOCK, pos) >= tuning.fadeBlockLight()) {
+				|| level.getBrightness(LightLayer.BLOCK, pos) >= tuning.litBlockLight()) {
 			return false;
 		}
 		BlockPos floor = pos.below();
@@ -186,14 +185,14 @@ public final class LamplessFigures {
 		BoundingBox bounds = site.bounds();
 		int from = site.alongZ() ? bounds.minZ() : bounds.minX();
 		int to = site.alongZ() ? bounds.maxZ() : bounds.maxX();
-		double clearance = tuning.spawnClearance();
+		double clearance = tuning.spawnClearanceBlocks();
 		List<BlockPos> places = new ArrayList<>();
 		for (int along = from; along <= to; along++) {
 			BlockPos pos = site.alongZ() ? new BlockPos(site.origin().getX(), site.origin().getY(), along) : new BlockPos(along, site.origin().getY(), site.origin().getZ());
 			if (level.isPositionEntityTicking(pos)
 					&& level.getBlockState(pos).is(BlockTags.RAILS)
 					&& level.getBlockState(pos.above()).isAir()
-					&& level.getBrightness(LightLayer.BLOCK, pos) < tuning.fadeBlockLight()
+					&& level.getBrightness(LightLayer.BLOCK, pos) < tuning.litBlockLight()
 					&& level.getNearestPlayer(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, clearance, EntitySelector.NO_SPECTATORS) == null) {
 				places.add(pos);
 			}

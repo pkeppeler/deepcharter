@@ -37,7 +37,7 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 /**
  * Client GameTest for #250: the figure is drawn by {@link LamplessFigureRenderer} with no switch; GeckoLib bakes every bone and both
- * animations of its files; it draws in view; a whole figure has its full shadow, a cutout type and alpha 1 while a fading one has a smaller
+ * animations of its files; it draws in view; a whole figure has its full shadow, a cutout type and alpha 1 while a dissolving one has a smaller
  * shadow, a translucent type and alpha under 1; and it is not culled at the edge of the screen while any part of it is still in view.
  */
 public class LamplessFigureClientTest implements FabricClientGameTest {
@@ -48,6 +48,8 @@ public class LamplessFigureClientTest implements FabricClientGameTest {
 	/** The figure's middle is this far past the edge at its own depth; its hand, which reaches 0.8 blocks from the middle in the walk, is still on screen. */
 	private static final double JUST_PAST_THE_EDGE = 0.7;
 	private static final double FAR_PAST_THE_EDGE = 6;
+	/** The death clock of a figure half dissolved: the dissolve takes 20 ticks. */
+	private static final int HALF_DISSOLVED_TICKS = 10;
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
@@ -76,20 +78,11 @@ public class LamplessFigureClientTest implements FabricClientGameTest {
 			context.runOnClient(client -> notCulledAtTheEdge(client, figureId[0]));
 			context.runOnClient(client -> require(drawnWhole(client, figureId[0]).isEmpty(), "a whole figure is drawn wrong: " + drawnWhole(client, figureId[0])));
 
-			// A second figure with its AI on fades as the player stands near it; its AI is then stopped, which freezes the fade part way.
-			int[] fadingId = {0};
-			singleplayer.getServer().runOnServer(server -> {
-				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-				LamplessFigure figure = CreatureRegistry.LAMPLESS_FIGURE.create(player.level(), EntitySpawnReason.COMMAND);
-				figure.setPos(player.position().add(3, 0, 0));
-				player.level().addFreshEntity(figure);
-				fadingId[0] = figure.getId();
+			// A figure that is dissolving, half way (its death clock is set and read in one client step, so that the client's own tick cannot move it): see-through.
+			context.runOnClient(client -> {
+				((LamplessFigure) client.level.getEntity(figureId[0])).deathTime = HALF_DISSOLVED_TICKS;
+				require(drawnDissolving(client, figureId[0]).isEmpty(), "a dissolving figure is drawn wrong: " + drawnDissolving(client, figureId[0]));
 			});
-			ClientWait.until(context, "the second figure part way through its fade",
-					client -> client.level.getEntity(fadingId[0]) instanceof LamplessFigure f && f.fadeFraction() > 0);
-			singleplayer.getServer().runOnServer(server -> ((LamplessFigure) server.getPlayerList().getPlayers().getFirst().level().getEntity(fadingId[0])).setNoAi(true));
-			context.waitTick(); // tick-wait: the freeze reaches the client before the figure is read
-			context.runOnClient(client -> require(drawnFading(client, fadingId[0]).isEmpty(), "a fading figure is drawn wrong: " + drawnFading(client, fadingId[0])));
 		} finally {
 			context.runOnClient(client -> client.options.entityShadows().set(shadows));
 		}
@@ -117,8 +110,8 @@ public class LamplessFigureClientTest implements FabricClientGameTest {
 		return wrong;
 	}
 
-	/** What is wrong with the way a figure with fade above 0 is drawn: a smaller shadow, a translucent type, alpha under 255. */
-	private static List<String> drawnFading(Minecraft client, int id) {
+	/** What is wrong with the way a figure that is dissolving (fade above 0) is drawn: a smaller shadow, a translucent type, alpha under 255. */
+	private static List<String> drawnDissolving(Minecraft client, int id) {
 		LamplessFigure figure = (LamplessFigure) client.level.getEntity(id);
 		LamplessFigureRenderer renderer = (LamplessFigureRenderer) renderer(client, id);
 		LamplessFigureRenderState state = extract(client, figure);
