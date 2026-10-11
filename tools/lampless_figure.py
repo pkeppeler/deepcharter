@@ -334,14 +334,15 @@ def frays(bone, rng, count, width, depth, bottom, x_centre=0.0, z_centre=0.0):
 # The miner the figure is a counterfeit of, and the figure
 # ---------------------------------------------------------------------------------------------
 
-LEG = lambda name, length, w=3, d=3, rest=0.0: Seg(name, length, w, d, rest)  # noqa: E731
+LEG = lambda name, length, rest=0.0: Seg(name, length, 3, 3, rest)  # noqa: E731
 BOOT = Seg("foot", 3, 3, 6, 0.0, -1.5)
 
 
-def arm_segs(*joints, w=2, d=2):
+def arm_segs(*joints):
     """The segs of an arm from (name, length, rest) or (name, length, rest, splay), and a hand."""
-    segs = [Seg(name, length, w, d, rest, 0.0, *more) for name, length, rest, *more in joints]
-    return tuple(segs) + (Seg("hand", 3, w, d),)
+    thickness = 2
+    segs = [Seg(name, length, thickness, thickness, rest, 0.0, *more) for name, length, rest, *more in joints]
+    return tuple(segs) + (Seg("hand", 3, thickness, thickness),)
 
 
 MINER = Spec(
@@ -382,8 +383,8 @@ def joint(model, name):
     return pc.world_point(model, bone, bone.pivot)
 
 
-def lowest(model, name):
-    bone = bone_named(model, name)
+def lowest_hand(model):
+    bone = bone_named(model, "hand_l")
     return min(p[1] for cube in bone.cubes for p in pc.corners(model, bone, cube))
 
 
@@ -469,12 +470,12 @@ def luma(rgba):
 
 # (text, test(model) -> bool): what the figure says is wrong with it, checked on its model. Each is false of the plain miner.
 CLAIMS = [
-    ("the hands reach the knees", lambda m: lowest(m, "hand_l") <= joint(m, "shin_l")[1] + 1),
+    ("the hands reach the knees", lambda m: lowest_hand(m) <= joint(m, "shin_l")[1] + 1),
     ("the forearm has a second elbow that bends the wrong way",
      lambda m: has_bone(m, "forearm_low_l") and bone_named(m, "forearm_low_l").rotation[0] > 0 > bone_named(m, "forearm_l").rotation[0]),
     ("the shin has a second knee", lambda m: has_bone(m, "shin_low_l") and bone_named(m, "shin_low_l").rotation[0] > 0 > bone_named(m, "shin_l").rotation[0]),
     ("the torso stoops forward 12 degrees or more", lambda m: bone_named(m, "spine").rotation[0] >= 12),
-    ("each arm is at least 1.8 times as long as the torso", lambda m: joint(m, "upper_arm_l")[1] - lowest(m, "hand_l") >= 1.8 * torso_cube(m).size[1]),
+    ("each arm is at least 1.8 times as long as the torso", lambda m: joint(m, "upper_arm_l")[1] - lowest_hand(m) >= 1.8 * torso_cube(m).size[1]),
 ]
 
 
