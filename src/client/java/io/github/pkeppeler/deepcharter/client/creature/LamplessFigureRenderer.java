@@ -1,8 +1,10 @@
 package io.github.pkeppeler.deepcharter.client.creature;
 
 import com.geckolib.renderer.GeoReplacedEntityRenderer;
+import com.geckolib.renderer.base.GeoRenderState;
 
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.resources.Identifier;
@@ -11,7 +13,7 @@ import net.minecraft.world.phys.AABB;
 
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 
-/** Draws the lampless figure, the Reacher of #250, from the model, texture and animations of {@link LamplessFigureAssets}; it fades by going see-through. */
+/** Draws the lampless figure, the Reacher of #250, from the model, texture and animations of {@link LamplessFigureAssets}; a dead one dissolves by going see-through. */
 public class LamplessFigureRenderer extends GeoReplacedEntityRenderer<LamplessFigureAnimatable, LamplessFigure, LamplessFigureRenderState> {
 	public static final float SHADOW_RADIUS = 0.4f;
 
@@ -54,6 +56,18 @@ public class LamplessFigureRenderer extends GeoReplacedEntityRenderer<LamplessFi
 		return super.getBoundingBoxForCulling(figure, partialTick).minmax(new AABB(
 				x - LamplessFigureAssets.CULL_REACH_BLOCKS, figure.getY(), z - LamplessFigureAssets.CULL_REACH_BLOCKS,
 				x + LamplessFigureAssets.CULL_REACH_BLOCKS, figure.getY() + LamplessFigureAssets.CULL_HEIGHT_BLOCKS, z + LamplessFigureAssets.CULL_REACH_BLOCKS));
+	}
+
+	/** A dead figure dissolves where it stands: it does not fall over, as a clinging figure on a hull would have to. */
+	@Override
+	protected float getDeathMaxRotation(GeoRenderState renderState) {
+		return 0f;
+	}
+
+	/** No red flash when it is hurt or dies: the tone is dread, not blood. A hit shows as ash and a sound instead. */
+	@Override
+	public int getPackedOverlay(LamplessFigureAnimatable animatable, LamplessFigure figure, float u, float partialTick) {
+		return OverlayTexture.NO_OVERLAY;
 	}
 
 	@Override

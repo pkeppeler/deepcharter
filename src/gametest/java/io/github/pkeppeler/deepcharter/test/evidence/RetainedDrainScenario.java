@@ -26,32 +26,37 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
 /**
- * Evidence scenario "retained-drain" (#449): a Retained comes to a dark pod, grabs it and drains the tank, and two ways free the pod.
+ * Evidence scenario "retained-drain" (#449, #485): a Retained comes to a dark pod, grabs it and drains the tank, and only its death frees the pod.
  *
  * <p>The scene is a sealed chamber of layer 2's rock, dark, with the camera in front of a pilot's pod (third person, the HUD on so that the fuel
- * reads) and night vision so that the dark can be seen. A figure walks 10 blocks across the view to the pod and clings to the hull; the
- * tank drops; the pilot drives away and the figure is shaken off and fades. A second figure comes and clings; a lights part is fitted and
- * the figure lets go and fades. The segments are logged as {@code [retained-drain-segment] <name> <first>-<last>}, which is how the GIFs are cut.
+ * reads) and night vision so that the dark can be seen. A figure walks to the pod and clings to the hull; the
+ * tank drops; the pilot drives west, and the figure rides along; at the west wall the pod drills into the rock and the cutter bites the figure
+ * until it dissolves and the pod is free. A second figure comes to the pod once it is lit: it does not, and walks on. The segments are logged as
+ * {@code [retained-drain-segment] <name> <first>-<last>}, which is how the GIFs are cut.
  */
 public class RetainedDrainScenario extends EvidenceScenario {
 	private static final int LENGTH = 30;
 	private static final int HALF_WIDTH = 4;
 	private static final int HEIGHT = 8;
-	private static final double POD_X = 14.5;
-	/** The pod stands against the south side of the chamber and faces north across it, so that the camera in front of it has room, and the figure walks across the view. */
-	private static final double POD_Z = 3.0;
-	private static final double FIGURE_X = 24.5;
+	private static final double POD_X = 18.5;
+	/** The pod stands in the middle of the chamber and faces west, down its length, with the camera behind it; the figure comes from the north wall. */
+	private static final double POD_Z = 0.5;
+	private static final double FIGURE_X = 18.5;
+	private static final double FIGURE_Z = -3.5;
 	private static final int TICKS_PER_FRAME = 2;
 	/** The approach still is taken when the figure is this close to the pod: in view: the camera stands 4 blocks in front of the pod, looking at it. */
 	private static final double APPROACH_STILL_BLOCKS = 4;
 	private static final int APPROACH_FRAMES_LIMIT = 150;
 	private static final int DRAIN_FRAMES = 30;
 	private static final int FREED_FRAMES_LIMIT = 150;
-	private static final int FADE_TAIL_FRAMES = 20;
-	/** Frames after the grip breaks, for the pod to stop, so that the still holds the pod and the figure fading where it clung. */
-	private static final int SETTLE_AFTER_RELEASE_FRAMES = 2;
-	/** Yaw 180 faces -z, north across the chamber. */
-	private static final float ACROSS_THE_CHAMBER = 180f;
+	private static final int DISSOLVE_TAIL_FRAMES = 20;
+	/** Frames a lit pod is watched while a figure walks the chamber. */
+	private static final int LIT_WATCH_FRAMES = 60;
+	/** Yaw 90 faces -x, west down the chamber. */
+	private static final float DOWN_THE_CHAMBER = 90f;
+	/** Frames of the drive before the still of the ride, and the frames after the drill starts before the still of the cutter. */
+	private static final int RIDE_STILL_FRAMES = 12;
+	private static final int BITE_STILL_FRAMES = 6;
 
 	private int framesTaken;
 	private int podId;
@@ -80,8 +85,8 @@ public class RetainedDrainScenario extends EvidenceScenario {
 			try {
 				setUp();
 				approachAndDrain();
-				driveAway();
-				secondFigureAndLights();
+				driveAndKill();
+				litPodIsLeftAlone();
 			} finally {
 				EvidencePins.reset();
 				context.runOnClient(client -> client.options.setCameraType(cameraType));
@@ -90,7 +95,7 @@ public class RetainedDrainScenario extends EvidenceScenario {
 	}
 
 	private void setUp() {
-		chamber.enterLayer(RetainedChamber.FLOOR.getX() + POD_X, RetainedChamber.FLOOR.getY() + 3, RetainedChamber.FLOOR.getZ() + POD_Z, ACROSS_THE_CHAMBER, 12f);
+		chamber.enterLayer(RetainedChamber.FLOOR.getX() + POD_X, RetainedChamber.FLOOR.getY() + 3, RetainedChamber.FLOOR.getZ() + POD_Z, DOWN_THE_CHAMBER, 12f);
 		chamber.serverDo(server -> {
 			ServerLevel level = RetainedChamber.layer(server);
 			RetainedChamber.buildChamber(level, LENGTH, HALF_WIDTH, HEIGHT);
@@ -98,17 +103,17 @@ public class RetainedDrainScenario extends EvidenceScenario {
 			Charters.found(server, player.getUUID(), "Demo Charter");
 			PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
 			pod.setPos(RetainedChamber.at(POD_X, 1, POD_Z));
-			pod.setYRot(ACROSS_THE_CHAMBER);
+			pod.setYRot(DOWN_THE_CHAMBER);
 			level.addFreshEntity(pod);
 			podId = pod.getId();
-			player.teleportTo(level, pod.getX(), pod.getY(), pod.getZ(), Set.of(), ACROSS_THE_CHAMBER, 12f, true);
+			player.teleportTo(level, pod.getX(), pod.getY(), pod.getZ(), Set.of(), DOWN_THE_CHAMBER, 12f, true);
 			if (!player.startRiding(pod)) {
 				throw new AssertionError("the player could not mount the pod");
 			}
 		});
 		chamber.nightVision(true);
 		ClientWait.until(ctx, "the pilot seated", client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
-		ctx.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_FRONT));
+		ctx.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
 		chamber.settle();
 		ctx.waitTicks(20); // tick-wait: the transmission and the camera settle
 	}
@@ -121,8 +126,12 @@ public class RetainedDrainScenario extends EvidenceScenario {
 		return chamber.serverGet(server -> ((LamplessFigure) RetainedChamber.layer(server).getEntity(figureId)).isClinging());
 	}
 
-	private boolean fading() {
-		return chamber.serverGet(server -> RetainedChamber.layer(server).getEntity(figureId) instanceof LamplessFigure figure && figure.fadeFraction() > 0);
+	private boolean drilling() {
+		return chamber.serverGet(server -> ((PodEntity) RetainedChamber.layer(server).getEntity(podId)).drilling());
+	}
+
+	private boolean dying() {
+		return chamber.serverGet(server -> RetainedChamber.layer(server).getEntity(figureId) instanceof LamplessFigure figure && !figure.isAlive());
 	}
 
 	private boolean gone() {
@@ -133,8 +142,8 @@ public class RetainedDrainScenario extends EvidenceScenario {
 		chamber.serverDo(server -> {
 			ServerLevel level = RetainedChamber.layer(server);
 			LamplessFigure figure = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
-			figure.setPos(RetainedChamber.at(FIGURE_X, 1, POD_Z));
-			figure.setHeading(Direction.WEST);
+			figure.setPos(RetainedChamber.at(FIGURE_X, 1, FIGURE_Z));
+			figure.setHeading(Direction.SOUTH);
 			level.addFreshEntity(figure);
 			figureId = figure.getId();
 		});
@@ -174,70 +183,73 @@ public class RetainedDrainScenario extends EvidenceScenario {
 		System.out.println("[retained-drain-segment] retained-grab " + first + "-" + framesTaken);
 	}
 
-	/** The pilot drives north across the chamber: the figure is shaken off, and fades. */
-	private void driveAway() {
+	/**
+	 * The pilot drives west with the figure on the hull, and nothing frees the pod: the figure rides along. At the wall the pod drills into the
+	 * rock, the cutter bites the figure until it dies, and the figure dissolves. Two segments, the ride and the kill.
+	 */
+	private void driveAndKill() {
 		int first = framesTaken + 1;
 		ctx.getInput().holdKey(options -> options.keyUp);
 		int driven = 0;
-		while (clinging()) {
+		boolean shotRide = false;
+		while (!drilling()) {
 			record(1);
-			if (++driven > FREED_FRAMES_LIMIT) {
-				throw new AssertionError("the figure still clung " + FREED_FRAMES_LIMIT + " frames after the pilot drove off");
+			if (!shotRide && ++driven == RIDE_STILL_FRAMES) {
+				if (!clinging()) {
+					throw new AssertionError("the figure let go of a pod that drove off: driving must not free it");
+				}
+				screenshot(ctx, "retained-rides-along");
+				shotRide = true;
+			}
+			if (driven > FREED_FRAMES_LIMIT) {
+				throw new AssertionError("the pod had not reached the wall " + FREED_FRAMES_LIMIT + " frames after it set off");
+			}
+		}
+		System.out.println("[retained-drain-segment] retained-ride " + first + "-" + framesTaken);
+		first = framesTaken + 1;
+		record(BITE_STILL_FRAMES);
+		screenshot(ctx, "retained-bitten");
+		int bitten = 0;
+		while (!dying()) {
+			record(1);
+			if (++bitten > FREED_FRAMES_LIMIT) {
+				throw new AssertionError("the figure still lived " + FREED_FRAMES_LIMIT + " frames after the cutter began to bite");
 			}
 		}
 		ctx.getInput().releaseKey(options -> options.keyUp);
-		record(SETTLE_AFTER_RELEASE_FRAMES);
-		screenshot(ctx, "retained-shaken-off");
-		int fading = 0;
+		record(3);
+		screenshot(ctx, "retained-dissolving");
+		int dissolving = 0;
 		while (!gone()) {
 			record(1);
-			if (++fading > FREED_FRAMES_LIMIT) {
-				throw new AssertionError("the figure had not faded " + FREED_FRAMES_LIMIT + " frames after it let go");
+			if (++dissolving > FREED_FRAMES_LIMIT) {
+				throw new AssertionError("the figure had not dissolved " + FREED_FRAMES_LIMIT + " frames after it died");
 			}
 		}
-		record(FADE_TAIL_FRAMES);
+		record(DISSOLVE_TAIL_FRAMES);
 		screenshot(ctx, "retained-gone");
-		System.out.println("[retained-drain-segment] retained-shake " + first + "-" + framesTaken);
+		System.out.println("[retained-drain-segment] retained-kill " + first + "-" + framesTaken);
 	}
 
-	/** A second figure clings; the pod's lights part is fitted and the figure lets go and fades. */
-	private void secondFigureAndLights() {
-		sendFigure();
-		int first = framesTaken + 1;
-		int walked = 0;
-		while (!clinging()) {
-			record(1);
-			if (++walked > APPROACH_FRAMES_LIMIT) {
-				throw new AssertionError("the second figure had not grabbed the pod " + APPROACH_FRAMES_LIMIT + " frames after it set off");
-			}
-		}
-		record(10);
+	/** The pod's lights part is fitted, and a second figure walks the chamber and does not come to it. */
+	private void litPodIsLeftAlone() {
 		chamber.serverDo(server -> {
 			PodEntity pod = (PodEntity) RetainedChamber.layer(server).getEntity(podId);
 			ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 			CharterId charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id();
 			PodComponents.register(pod, charter);
 			PodComponents.install(pod, ComponentItems.mint(server, ComponentTrack.LIGHTS, 2, charter));
+			// Back to the middle of the chamber, so that the figure walks in view of the camera behind the pod.
+			pod.teleportTo(RetainedChamber.at(POD_X, 1, POD_Z).x, RetainedChamber.at(POD_X, 1, POD_Z).y, RetainedChamber.at(POD_X, 1, POD_Z).z);
 		});
-		chamber.nightVision(false);
-		int lit = 0;
-		while (!fading()) {
-			record(1);
-			if (++lit > FREED_FRAMES_LIMIT) {
-				throw new AssertionError("the figure had not let go " + FREED_FRAMES_LIMIT + " frames after the pod was lit");
-			}
+		chamber.settle();
+		int first = framesTaken + 1;
+		sendFigure();
+		record(LIT_WATCH_FRAMES);
+		if (clinging()) {
+			throw new AssertionError("a figure clung to a lit pod");
 		}
-		record(8);
-		screenshot(ctx, "retained-lit-lets-go");
-		int fading = 0;
-		while (!gone()) {
-			record(1);
-			if (++fading > FREED_FRAMES_LIMIT) {
-				throw new AssertionError("the second figure had not faded " + FREED_FRAMES_LIMIT + " frames after the pod was lit");
-			}
-		}
-		record(FADE_TAIL_FRAMES);
-		screenshot(ctx, "retained-lit-gone");
+		screenshot(ctx, "retained-lit-left-alone");
 		System.out.println("[retained-drain-segment] retained-light " + first + "-" + framesTaken);
 	}
 }

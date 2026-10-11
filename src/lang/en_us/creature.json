@@ -1,4 +1,6 @@
 {
-  "creature.deepcharter.approach": "Something walks toward the pod. Keep moving, or light it.",
-  "creature.deepcharter.grab": "Something has hold of the hull. Move, or light it."
+  "creature.deepcharter.approach": "Something walks toward the pod. Light the pod, or be ready to drill.",
+  "creature.deepcharter.grab": "Something has hold of the hull. Drill into rock to cut it off, or get out and strike it.",
+  "creature.deepcharter.bitten": "The cutter bites it.",
+  "creature.deepcharter.dead": "It is gone. The hull is clear."
 }

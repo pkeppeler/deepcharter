@@ -113,7 +113,7 @@ What it explains:
 
 - **Lamps.** A lamp is life, and quietly, faith.
   - The Retained are lampless. "Things come to dark pods."
-    - A Retained never attacks anyone. It comes to a dark pod (one with a pilot and no lights), clings to the hull and drains the fuel, until it has had its fill or the pod moves or is lit. A lit pod is left alone, and the Retained fade into its light. The user's call (pkeppeler, 2026-10-11, #449): "them grabbing and draining a pod, its gas, but not attacking is good."
+    - A Retained never attacks anyone. It comes to a dark pod (one with a pilot and no lights), clings to the hull and drains the fuel, and does not let go until it is killed (the drill kills it from the seat; a person on foot can kill it too). A lit pod is left alone, but light does not make a Retained fade or free a pod it holds, and neither does a person near it. The user's calls (pkeppeler, 2026-10-11, #449 and #485): "them grabbing and draining a pod, its gas, but not attacking is good"; and they "must be killed", or they keep draining the fuel.
     - Some carry a small lamp, and are seen from far off in the dark. They are "even creepier": a lamp that gives no light to the one who carries it, and the bracket on the helmet still empty. The lamp is carried on a pole, in the hand or in the ribs (the user picks, [figure-concepts.md](design/figure-concepts.md#the-lamp-carrier-449)).
   - The colony chapel's candle has burned for 38 years with nobody tending it. Nobody ever comments.
   - Ines left the Prospector's lights on for her brother; one is still burning.
