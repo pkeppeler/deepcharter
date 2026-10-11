@@ -9,6 +9,7 @@ import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
+import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.Serials;
@@ -19,7 +20,7 @@ import io.github.pkeppeler.deepcharter.pod.Serials;
  * PROSPECTOR-0002, with one lamp still burning and Note N10. Any charter may tow a wreck nobody owns to the hangar and restore it.
  */
 final class ProspectorWrecks {
-	/** The name the nearest wreck carries and keeps when a charter restores it: its registration holds the same serial. */
+	/** The name the nearest wreck carries for display; the lore mark ({@link PodComponents#markFamousProspector}) is what the restore reads. */
 	static final String FAMOUS_NAME = Serials.FAMOUS_PROSPECTOR;
 	private static final int NOTE = 10;
 
@@ -44,6 +45,7 @@ final class ProspectorWrecks {
 		if (famous) {
 			pod.setCustomName(Component.literal(FAMOUS_NAME));
 			pod.setCustomNameVisible(true);
+			PodComponents.markFamousProspector(pod);
 		}
 		if (!level.addFreshEntity(pod)) {
 			DeepCharter.LOGGER.error("Could not place the Prospector at {}: the world refused the entity", site.origin().toShortString());

@@ -108,6 +108,7 @@ public class ProspectorChassisScenario extends EvidenceScenario {
 				pod.setHull(0f);
 				pod.setCustomName(Component.literal(Serials.FAMOUS_PROSPECTOR));
 				pod.setCustomNameVisible(true);
+				PodComponents.markFamousProspector(pod);
 				level.addFreshEntity(pod);
 				wreck[0] = pod.getUUID();
 				Charters.found(server, player.getUUID(), "Riggs and Sons");

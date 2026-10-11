@@ -417,6 +417,7 @@ public class ProspectorChassisTest {
 			CharterId charter = FoundingMoleHangarTest.charterOf(helper, owner).id();
 			PodEntity wreck = prospectorWreck(helper);
 			wreck.setCustomName(Component.literal("PROSPECTOR-0002"));
+			PodComponents.markFamousProspector(wreck);
 			FoundingMoleHangarTest.deposit(helper, owner, FoundingMoleHangarTest.RICH);
 			FoundingMoleHangarTest.give(owner.player(), FoundingMoleHangarTest.CATALYST, CATALYSTS + 1);
 			expect(helper, !fired(helper, charter), "T17 has not fired yet");
@@ -432,6 +433,7 @@ public class ProspectorChassisTest {
 					"the Prospector is registered to the restoring charter and keeps its own serial PROSPECTOR-0002, it is %s", registration);
 			expect(helper, wreck.getCustomName() != null && wreck.getCustomName().getString().equals("PROSPECTOR-0002"),
 					"the restored wreck keeps its name tag, it is %s", wreck.getCustomName());
+			expect(helper, !PodComponents.isFamousProspector(wreck), "the lore mark is spent by the restore, so the number is held once");
 			PodEntity bought = helper.spawn(PodRegistry.PROSPECTOR, new Vec3(8.5, 2, 5.5));
 			PodComponents.register(bought, charter);
 			PodEntity boughtNext = helper.spawn(PodRegistry.PROSPECTOR, new Vec3(11.5, 2, 5.5));
@@ -441,6 +443,48 @@ public class ProspectorChassisTest {
 					"the charter's own Prospectors are 0001 and 0003: no second PROSPECTOR-0002, they are %s and %s",
 					PodComponents.registration(bought), PodComponents.registration(boughtNext));
 			expect(helper, fired(helper, charter), "restoring a Prospector fires T17");
+			FoundingMoleHangarTest.clearFloor(helper);
+			helper.succeed();
+		}));
+	}
+
+	/** The lore serial is registered once, and only for the pod the world marked. */
+	@GameTest(maxTicks = FoundingMoleHangarTest.MAX_TICKS)
+	public void theLoreSerialIsRegisteredOnlyForTheMarkedWreckAndOnlyOnce(GameTestHelper helper) {
+		FoundingMoleHangarTest.inTheHangar(helper, before -> FoundingMoleHangarTest.withFreshWorld(helper, () -> {
+			CharterId charter = FoundingMoleHangarTest.charterOf(helper, FoundingMoleHangarTest.member(helper, "Lore Holder")).id();
+			PodEntity unmarked = prospectorWreck(helper);
+			expectThrows(helper, () -> PodComponents.registerLoreWreck(unmarked, charter), "registering an unmarked wreck under the lore serial");
+			expect(helper, PodComponents.registration(unmarked).isEmpty(), "the refused registration left the wreck unowned");
+			PodEntity marked = prospectorWreck(helper);
+			PodComponents.markFamousProspector(marked);
+			PodComponents.registerLoreWreck(marked, charter);
+			expect(helper, PodComponents.registration(marked).orElseThrow().serial().equals("PROSPECTOR-0002"), "the marked wreck holds PROSPECTOR-0002");
+			expectThrows(helper, () -> PodComponents.registerLoreWreck(marked, charter), "registering the lore serial a second time");
+			PodComponents.markFamousProspector(unmarked);
+			expectThrows(helper, () -> PodComponents.registerLoreWreck(unmarked, charter), "a second pod registering the lore serial, though it carries the mark");
+			expect(helper, PodComponents.registration(unmarked).isEmpty(), "the second pod stayed unowned");
+			helper.succeed();
+		}));
+	}
+
+	/** The lore number is a mark on the pod, not its name: a wreck that only carries the name takes a fresh serial, and its name goes. */
+	@GameTest(maxTicks = FoundingMoleHangarTest.MAX_TICKS)
+	public void aWreckWithoutTheLoreMarkTakesAFreshSerialAndLosesItsNameEvenWhenItIsCalledPROSPECTOR0002(GameTestHelper helper) {
+		FoundingMoleHangarTest.inTheHangar(helper, before -> FoundingMoleHangarTest.withFreshWorld(helper, () -> {
+			FoundingMoleHangarTest.repairTheConsole(helper);
+			MockPlayer owner = FoundingMoleHangarTest.member(helper, "Namesake");
+			BlockPos console = FoundingMoleHangarTest.console(helper, owner);
+			CharterId charter = FoundingMoleHangarTest.charterOf(helper, owner).id();
+			PodEntity namesake = prospectorWreck(helper);
+			namesake.setCustomName(Component.literal("PROSPECTOR-0002"));
+			FoundingMoleHangarTest.deposit(helper, owner, FoundingMoleHangarTest.RICH);
+			FoundingMoleHangarTest.give(owner.player(), FoundingMoleHangarTest.CATALYST, CATALYSTS);
+			FoundingMoleHangarTest.expectDone(helper, FoundingMoleHangarTest.act(owner.player(), console, HangarTerminal.RESTORE_WRECK), "restoring the namesake");
+			PodComponents.Registration registration = PodComponents.registration(namesake).orElseThrow(() -> failure(helper, "the namesake should be registered"));
+			expect(helper, registration.owner().equals(charter) && registration.serial().equals("PROSPECTOR-0001"),
+					"a wreck that only carries the name takes the charter's next serial, it is %s", registration);
+			expect(helper, namesake.getCustomName() == null, "an ordinary wreck's name goes: the registration names the pod, it is %s", namesake.getCustomName());
 			FoundingMoleHangarTest.clearFloor(helper);
 			helper.succeed();
 		}));
@@ -709,6 +753,15 @@ public class ProspectorChassisTest {
 
 	private static void expect(GameTestHelper helper, boolean condition, String format, Object... args) {
 		FoundingMoleHangarTest.expect(helper, condition, format, args);
+	}
+
+	private static void expectThrows(GameTestHelper helper, Runnable body, String what) {
+		try {
+			body.run();
+		} catch (IllegalStateException expected) {
+			return;
+		}
+		throw failure(helper, "%s should throw", what);
 	}
 
 	private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {

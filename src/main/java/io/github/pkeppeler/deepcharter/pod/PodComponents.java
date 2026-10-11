@@ -114,6 +114,13 @@ public final class PodComponents {
 					.initializer(() -> Versioned.of(State.EMPTY))
 					.syncWith(Versioned.streamCodec(VERSION, State.STREAM), AttachmentSyncPredicate.all()));
 
+	/** The lore mark of a pod, saved and not synced: only the server reads it. */
+	public static final AttachmentType<Versioned<PodLore>> LORE = AttachmentRegistry.create(
+			Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "pod_lore"),
+			builder -> builder
+					.persistent(Versioned.codec(PodLore.VERSION, PodLore.BODY))
+					.initializer(() -> Versioned.of(PodLore.NONE)));
+
 	/**
 	 * One stat a track moves, and which way is better. A part scales the stat by the tier's ratio against the stock part, so it
 	 * composes with other listeners. A drill is better when its ticks for each hardness are fewer, so it divides.
@@ -189,16 +196,35 @@ public final class PodComponents {
 	 */
 	public static void register(PodEntity pod, CharterId owner) {
 		requireUnregistered(pod);
-		register(pod, owner, Serials.get(requireServer(pod)).next(pod.chassis().id().toUpperCase(Locale.ROOT)));
+		String serial = Serials.get(requireServer(pod)).next(pod.chassis().id().toUpperCase(Locale.ROOT));
+		change(pod, state -> new State(Optional.of(new Registration(owner, serial)), state.parts()));
+		PodEvents.REGISTERED.invoker().onRegistered(pod, owner);
+	}
+
+	/** Server only: marks the pod as the wreck that holds {@link Serials#FAMOUS_PROSPECTOR}, for {@link #registerLoreWreck}. */
+	public static void markFamousProspector(PodEntity pod) {
+		requireServer(pod);
+		Versioned.modifyOrThrow(pod, LORE, lore -> PodLore.FAMOUS_PROSPECTOR);
+	}
+
+	/** True for the wreck marked by {@link #markFamousProspector} that no restore has registered yet. Unreadable lore reads as false (logged once). */
+	public static boolean isFamousProspector(PodEntity pod) {
+		return Versioned.readable(pod, LORE).map(PodLore::famousProspector).orElse(false);
 	}
 
 	/**
-	 * Server only: makes {@code owner} the pod's owner under the serial the pod already holds, such as a lore wreck's. The serial
-	 * counter is not touched. A second registration throws.
+	 * Server only: makes {@code owner} the owner of the marked wreck under {@link Serials#FAMOUS_PROSPECTOR}, which no counter issues,
+	 * and clears the mark. The number is claimed in {@link Serials}, so a second registration of it, on any pod, throws, as does a pod that is not the marked wreck or is registered already.
 	 */
-	public static void register(PodEntity pod, CharterId owner, String serial) {
+	public static void registerLoreWreck(PodEntity pod, CharterId owner) {
+		requireServer(pod);
+		if (!Versioned.orThrow(pod, LORE).famousProspector()) {
+			throw new IllegalStateException("pod " + pod.getUUID() + " is not the wreck that holds " + Serials.FAMOUS_PROSPECTOR);
+		}
 		requireUnregistered(pod);
-		change(pod, state -> new State(Optional.of(new Registration(owner, serial)), state.parts()));
+		Serials.get(requireServer(pod)).claimFamousProspector();
+		change(pod, state -> new State(Optional.of(new Registration(owner, Serials.FAMOUS_PROSPECTOR)), state.parts()));
+		Versioned.modifyOrThrow(pod, LORE, lore -> PodLore.NONE);
 		PodEvents.REGISTERED.invoker().onRegistered(pod, owner);
 	}
 

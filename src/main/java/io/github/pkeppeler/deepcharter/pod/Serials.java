@@ -29,6 +29,7 @@ public final class Serials extends SavedData {
 	 * {@link #next} never hands it out, and a restore of that wreck registers it under this serial (ADR 0027).
 	 */
 	public static final String FAMOUS_PROSPECTOR = "PROSPECTOR-0002";
+	private static final String FAMOUS_CLAIM = "claimed:" + FAMOUS_PROSPECTOR;
 	private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "serials");
 	private static final Codec<Versioned<Map<String, Integer>>> VERSIONED_CODEC =
 			Versioned.codec(VERSION, Codec.unboundedMap(Codec.STRING, Codec.INT).fieldOf("issued"));
@@ -62,8 +63,8 @@ public final class Serials extends SavedData {
 	/** The next serial of {@code prefix}, such as {@code MOLE-0001}. Throws if the saved serials are unreadable. */
 	public String next(String prefix) {
 		Map<String, Integer> issued = state.orThrow();
-		if (prefix.isBlank()) {
-			throw new IllegalArgumentException("a serial needs a prefix");
+		if (prefix.isBlank() || prefix.contains(":")) {
+			throw new IllegalArgumentException("a serial needs a prefix with no colon, got '" + prefix + "'");
 		}
 		int number = issued.getOrDefault(prefix, 0) + 1;
 		if (format(prefix, number).equals(FAMOUS_PROSPECTOR)) {
@@ -72,6 +73,19 @@ public final class Serials extends SavedData {
 		issued.put(prefix, number);
 		setDirty();
 		return format(prefix, number);
+	}
+
+	/**
+	 * Records that a charter registered the lore wreck under {@link #FAMOUS_PROSPECTOR}: the number is held once in the world, so a
+	 * second claim throws. The claim is a count under a key no prefix can have (a prefix has no colon), so the saved shape is still
+	 * version 1. Throws if the saved serials are unreadable.
+	 */
+	public void claimFamousProspector() {
+		Map<String, Integer> issued = state.orThrow();
+		if (issued.putIfAbsent(FAMOUS_CLAIM, 1) != null) {
+			throw new IllegalStateException(FAMOUS_PROSPECTOR + " is already held by a pod");
+		}
+		setDirty();
 	}
 
 	private static String format(String prefix, int number) {
