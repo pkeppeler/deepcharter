@@ -5,10 +5,15 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.Set;
 
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions;
+
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.GameType;
 
 import io.github.pkeppeler.deepcharter.test.ClientTestLog;
 
@@ -25,6 +30,8 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
 	/** The size of a player's default window, which is also the size of every frame and still. */
 	private static final int WIDTH = 854;
 	private static final int HEIGHT = 480;
+	private static final float FLOAT_YAW_EAST = -90f;
+	private static final float FLOAT_PITCH_DOWN = 85f;
 
 	private int frame;
 	private Path framesDir;
@@ -67,6 +74,19 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
 	protected final void frame(ClientGameTestContext context) {
 		frame++;
 		shoot(context, String.format("frame-%04d", frame), framesDir);
+	}
+
+	/**
+	 * Lets the first player out of the pod and floats them, as a spectator, at ({@code x}, {@code y}, {@code z}) looking nearly straight
+	 * down, facing east: the cab frame blocks a look up the shaft from the seat. Terminal: only frames and stills may follow.
+	 */
+	protected final void floatAbovePod(TestSingleplayerContext singleplayer, double x, double y, double z) {
+		singleplayer.getServer().runOnServer(server -> {
+			ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+			player.stopRiding();
+			player.setGameMode(GameType.SPECTATOR);
+			player.teleportTo(player.level(), x, y, z, Set.of(), FLOAT_YAW_EAST, FLOAT_PITCH_DOWN, true);
+		});
 	}
 
 	/** Take a named still screenshot. */
