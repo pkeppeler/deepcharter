@@ -22,6 +22,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.AABB;
 
 import io.github.pkeppeler.deepcharter.client.pod.BoneRole;
+import io.github.pkeppeler.deepcharter.client.pod.GeoMeasure;
 import io.github.pkeppeler.deepcharter.client.pod.GeoModel;
 import io.github.pkeppeler.deepcharter.client.pod.PodLook;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
@@ -70,8 +71,8 @@ public class PodGeoModelTest {
 		long hatches = prospector.bones().stream().filter(bone -> bone.name().equals("hatch")).flatMap(bone -> bone.cubes().stream()).count();
 		require(helper, hatches == 2, "the Prospector has one hatch for each of its two seats in tandem, has " + hatches);
 		GeoModel mole = read(helper, look(helper, Chassis.MOLE).modelFile());
-		double[] longHull = prospector.restBounds(bone -> !prospector.inCutter(bone, null));
-		double[] shortHull = mole.restBounds(bone -> !mole.inCutter(bone, null));
+		double[] longHull = prospector.restBounds(bone -> !GeoMeasure.inCutter(prospector, bone, null));
+		double[] shortHull = mole.restBounds(bone -> !GeoMeasure.inCutter(mole, bone, null));
 		require(helper, longHull[5] - longHull[2] > 1.3 * (shortHull[5] - shortHull[2]),
 				"the Prospector's hull should be a third longer than the Mole's, %.1f and %.1f pixels".formatted(longHull[5] - longHull[2], shortHull[5] - shortHull[2]));
 		helper.succeed();
@@ -89,12 +90,12 @@ public class PodGeoModelTest {
 			double half = chassis.boreWidth() * 16 / 2.0;
 			double top = chassis.height() * 16;
 			GeoModel model = read(helper, look(helper, chassis).modelFile());
-			double[] hull = model.restBounds(bone -> !model.inCutter(bone, null));
+			double[] hull = model.restBounds(bone -> !GeoMeasure.inCutter(model, bone, null));
 			require(helper, hull[0] >= -half - slack && hull[3] <= half + slack && hull[5] <= half + slack && hull[2] >= -half - slack,
 					chassis.id() + "'s hull spans x %.2f..%.2f, z %.2f..%.2f, outside its %.0f-pixel bore".formatted(hull[0], hull[3], hull[2], hull[5], 2 * half));
 			for (String cutter : model.cutters()) {
-				double[] bounds = model.restBounds(bone -> !model.inCutter(bone, null) || model.inCutter(bone, cutter));
-				double[] cone = model.restBounds(bone -> model.inCutter(bone, cutter));
+				double[] bounds = model.restBounds(bone -> !GeoMeasure.inCutter(model, bone, null) || GeoMeasure.inCutter(model, bone, cutter));
+				double[] cone = model.restBounds(bone -> GeoMeasure.inCutter(model, bone, cutter));
 				String what = chassis.id() + "'s " + cutter + " cutter";
 				require(helper, bounds[0] >= -half - slack && bounds[3] <= half + slack && bounds[5] <= half + slack,
 						what + " at rest spans x %.2f..%.2f and back z %.2f, wider than its %.0f-pixel bore".formatted(bounds[0], bounds[3], bounds[5], 2 * half));
@@ -205,7 +206,7 @@ public class PodGeoModelTest {
 			AABB box = model.cullingBox();
 			for (String cutter : model.cutters()) {
 				for (double pitch = 0; pitch <= 90; pitch += GeoModel.SWING_STEP / 2.0) {
-					double[] b = model.restBounds(bone -> model.inCutter(bone, cutter), pitch);
+					double[] b = model.restBounds(bone -> GeoMeasure.inCutter(model, bone, cutter), pitch);
 					for (double x : new double[] {b[0], b[3]}) {
 						for (double z : new double[] {b[2], b[5]}) {
 							for (int degrees = 0; degrees < 360; degrees += 15) {
