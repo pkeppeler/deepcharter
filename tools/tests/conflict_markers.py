@@ -2,7 +2,7 @@
 
 A marker is a line that starts with seven `<`, `|` or `>` followed by a space or the end of the line. A bare line of seven `=` counts only
 between an opening `<<<<<<<` and the next `>>>>>>>`, so Markdown setext headings and ASCII rules pass. Binary files (a NUL byte) are skipped.
-Usage: python3 -I tools/tests/conflict_markers.py   (run from anywhere; it scans the repository that holds this file)
+Usage: python3 -I tools/tests/conflict_markers.py (scans the repository that holds this file)
 """
 import os
 import subprocess
@@ -29,12 +29,9 @@ def scan_text(path: str, text: str) -> list[Finding]:
     in_block = False
     for number, line in enumerate(text.splitlines(), start=1):
         head = line[:7]
-        labelled = head in LABELLED and (len(line) == 7 or line[7] == " ")
-        if labelled:
+        if head in LABELLED and (len(line) == 7 or line[7] == " "):
             in_block = head == OPEN or (in_block and head != CLOSE)
-        elif head == SEPARATOR and len(line) == 7 and in_block:
-            pass
-        else:
+        elif not (in_block and line == SEPARATOR):
             continue
         found.append(Finding(path, number, head))
     return found
