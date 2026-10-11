@@ -347,10 +347,25 @@ public class PodLavaWatchTest {
 	 */
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + FLOW_TICKS)
 	public void handLiningCapsTheShaftAndSilencesLavaFromAbove(GameTestHelper helper) {
-		int x = 7896;
+		capTheShaft(helper, 7896, false);
+	}
+
+	/**
+	 * As above, in an open cave: the row of the lid has open cells beside it all round (a wide breach). The lid is still 4 bricks, laid first, and no brick of the
+	 * ring goes in the lid's row.
+	 */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + FLOW_TICKS)
+	public void handLiningInAnOpenCaveLaysOnlyTheLidInItsRow(GameTestHelper helper) {
+		capTheShaft(helper, 7960, true);
+	}
+
+	private static void capTheShaft(GameTestHelper helper, int x, boolean openBeside) {
 		ServerLevel level = layer(helper);
 		site(level, x);
 		int capY = FLOOR + BOX;
+		if (openBeside) {
+			RoomCarver.carve(level, x - 2, x + 1, capY, capY, Z - 2, Z + 1, Blocks.AIR);
+		}
 		float[] startHull = {0f};
 		boolean[] lining = {false};
 		int[] cappedAt = {-1};
@@ -378,6 +393,14 @@ public class PodLavaWatchTest {
 			}
 			if (cappedAt[0] < 0 && capped) {
 				cappedAt[0] = ticks;
+				for (int cx = x - 2; cx <= x + 1; cx++) {
+					for (int cz = Z - 2; cz <= Z + 1; cz++) {
+						boolean lid = cx >= x - 1 && cx <= x && cz >= Z - 1 && cz <= Z;
+						if (!lid && level.getBlockState(new BlockPos(cx, capY, cz)).is(SlagBrick.BLOCK)) {
+							throw failure(helper, "a ring brick was laid in the lid's row at %s %s", cx, cz);
+						}
+					}
+				}
 				int used = BRICKS - carried(staged);
 				if (used != 4) {
 					throw failure(helper, "the cap over a 2 x 2 bore takes 4 bricks, the pilot used %s", used);

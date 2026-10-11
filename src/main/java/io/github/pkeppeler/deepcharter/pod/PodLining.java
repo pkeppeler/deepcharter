@@ -329,7 +329,7 @@ public final class PodLining {
 				for (int z = foot.lowZ() - 1; z <= foot.lowZ() + foot.width(); z++) {
 					boolean insideX = x >= foot.lowX() && x < foot.lowX() + foot.width();
 					boolean insideZ = z >= foot.lowZ() && z < foot.lowZ() + foot.width();
-					boolean ring = insideX != insideZ && y >= foot.feetY() - reach;
+					boolean ring = insideX != insideZ && y >= foot.feetY() - reach && y < capY;
 					boolean floor = insideX && insideZ && y < foot.feetY();
 					boolean lid = insideX && insideZ && y == capY;
 					BlockPos pos = new BlockPos(x, y, z);
