@@ -1,0 +1,14 @@
+{
+  "criteria": {
+    "unit": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "deepcharter:scanner_unit"
+          }
+        ]
+      }
+    }
+  }
+}
