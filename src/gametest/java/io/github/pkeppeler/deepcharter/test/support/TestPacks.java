@@ -34,12 +34,20 @@ public final class TestPacks implements ModInitializer {
 	public static final String LAYER_CONCEPT_B = "layer_concept_b";
 	/** Layer concept C, Columnar. */
 	public static final String LAYER_CONCEPT_C = "layer_concept_c";
-	/** The cockpit HUD concepts (#444, docs/design/cockpit-concepts.md): each pack sets {@code theme/cockpit.json}'s {@code style} to one option. A, Dials. */
-	public static final String COCKPIT_DIALS = "cockpit_dials";
-	/** Cockpit concept B, Strip. */
-	public static final String COCKPIT_STRIP = "cockpit_strip";
-	/** Cockpit concept C, Consoles. */
+	/** The cockpit HUD concepts (#444, #448, docs/design/cockpit-concepts.md and cockpit-concepts-2.md): each pack sets {@code theme/cockpit.json}'s {@code style} to one option. Round 1's Consoles, kept to compare. */
 	public static final String COCKPIT_CONSOLES = "cockpit_consoles";
+	/** Cockpit concept A, Corners. */
+	public static final String COCKPIT_CORNERS = "cockpit_corners";
+	/** Cockpit concept B, Ribbon. */
+	public static final String COCKPIT_RIBBON = "cockpit_ribbon";
+	/** Cockpit concept C, Posts. */
+	public static final String COCKPIT_POSTS = "cockpit_posts";
+	/** Cockpit concept D, Cab. */
+	public static final String COCKPIT_CAB = "cockpit_cab";
+	/** The front camera is on the pod (#448): a stand-in for the part, which a later build buys at the upgrade terminal. */
+	public static final String COCKPIT_CAMERA = "cockpit_camera";
+	/** The front camera, with static that does not fade, so a still can hold a hit's static. */
+	public static final String COCKPIT_CAMERA_HOLD = "cockpit_camera_hold";
 
 	/** The Retained's lamp (#449, docs/design/figure-concepts.md): a lantern in the hand. The default, the lamp on a pole, is the mod's own look. */
 	public static final String RETAINED_LAMP_HAND = "retained_lamp_hand";
@@ -51,7 +59,8 @@ public final class TestPacks implements ModInitializer {
 		// One shared pin for every test and evidence world that enters a layer (the layers' biomes list the Retained): no natural spawns.
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> server.getGameRules().set(GameRules.SPAWN_MOBS, false, server));
 		for (String pack : new String[] {AMBER_CRT, BAD_CRT, RED_INK, TEXTURE_DENSITY_B, TEXTURE_DENSITY_C, TEXTURE_DENSITY_D,
-				LAYER_CONCEPT_A, LAYER_CONCEPT_B, LAYER_CONCEPT_C, COCKPIT_DIALS, COCKPIT_STRIP, COCKPIT_CONSOLES, RETAINED_LAMP_HAND, RETAINED_LAMP_RIBS}) {
+				LAYER_CONCEPT_A, LAYER_CONCEPT_B, LAYER_CONCEPT_C, COCKPIT_CONSOLES, COCKPIT_CORNERS, COCKPIT_RIBBON, COCKPIT_POSTS, COCKPIT_CAB,
+				COCKPIT_CAMERA, COCKPIT_CAMERA_HOLD, RETAINED_LAMP_HAND, RETAINED_LAMP_RIBS}) {
 			ResourceLoader.registerBuiltinPack(Identifier.fromNamespaceAndPath("deepcharter-test", pack),
 					FabricLoader.getInstance().getModContainer("deepcharter-test").orElseThrow(),
 					Component.literal(pack + " (test pack)"), PackActivationType.NORMAL);
