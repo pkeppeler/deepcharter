@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 public final class ClientTestWatchdog {
 	/** Environment variable that replaces {@link #DEFAULT_SECONDS}; {@code 0} disables every limit. */
 	public static final String SECONDS_ENV = "DEEPCHARTER_CLIENT_TEST_SECONDS";
-	/** Healthy classes take 3 to 40 s on the CI runner; TerminalConceptsClientTest takes 270 s and has its own limit. */
+	/** Healthy classes take 3 to 40 s on the CI runner (run 38101621063, the slowest TwoPlayerClientTest), so none needs its own limit. */
 	public static final int DEFAULT_SECONDS = 180;
 	/** Passed as a class's limit to leave it untimed, for a class that is long by design, such as a recording. */
 	public static final int NO_LIMIT = -1;

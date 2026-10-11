@@ -34,8 +34,8 @@ public class TowSizesScenario extends EvidenceScenario {
 	private static final int FLOOR_Y = 200;
 	/** Blocks between the rows of pods. */
 	private static final int ROW_SPACING = 7;
-	/** Centre to centre, inside the cable's reach and past every trail. */
-	private static final double FAR = 6.0;
+	/** Centre to centre, inside the cable's reach and past every trail (7.9 for two Prospectors, 6.9 for two Moles). */
+	private static final double FAR = 8.2;
 	private static final double EYE_HEIGHT = 13;
 	private static final int SETTLE_TICKS = 80;
 
@@ -53,8 +53,8 @@ public class TowSizesScenario extends EvidenceScenario {
 			TOWED.clear();
 			singleplayer.getServer().runOnServer(server -> {
 				ServerLevel level = server.overworld();
-				for (int x = X - 12; x <= X + 6; x++) {
-					for (int z = Z - 6; z <= Z + 3 * ROW_SPACING; z++) {
+				for (int x = X - 40; x <= X + 30; x++) {
+					for (int z = Z - 40; z <= Z + 3 * ROW_SPACING + 40; z++) {
 						level.setBlock(new BlockPos(x, FLOOR_Y - 1, z), Blocks.STONE.defaultBlockState(), 3);
 						for (int y = FLOOR_Y; y <= FLOOR_Y + 8; y++) {
 							level.setBlock(new BlockPos(x, y, z), Blocks.AIR.defaultBlockState(), 3);
