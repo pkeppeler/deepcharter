@@ -51,11 +51,6 @@ public final class Notes {
 		return Integer.parseInt(note.getPath().substring(PATH_PREFIX.length()));
 	}
 
-	/** Every Note that has text, in Note order. */
-	public static List<Identifier> all() {
-		return ALL;
-	}
-
 	public static boolean exists(Identifier note) {
 		return ALL.contains(note);
 	}

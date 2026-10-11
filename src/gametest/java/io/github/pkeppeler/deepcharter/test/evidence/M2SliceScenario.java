@@ -1,8 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
@@ -54,9 +52,7 @@ import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.fuel.FuelPumpScreen;
-import io.github.pkeppeler.deepcharter.client.handbook.ClientHandbook;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookPage;
-import io.github.pkeppeler.deepcharter.client.handbook.HandbookPages;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.client.hangar.HangarScreen;
@@ -73,7 +69,6 @@ import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.hangar.Hangar;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
-import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgress;
 import io.github.pkeppeler.deepcharter.handbook.Notes;
@@ -97,6 +92,7 @@ import io.github.pkeppeler.deepcharter.test.HandbookChaptersOneToFiveTest;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.M2SliceEndState;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.ShippedHandbook;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
@@ -876,17 +872,11 @@ public class M2SliceScenario extends EvidenceScenario {
 		ctx.waitTicks(20);
 		// The test pack adds a sample chapter that is never finished, which would classify every real chapter after it.
 		// So the screen is built as HandbookScreen.open builds it, from the shipped chapters only and the progress the server synced.
-		ctx.setScreen(() -> {
-			Map<Identifier, HandbookChapter> shipped = new LinkedHashMap<>();
-			HandbookChapters.all(Minecraft.getInstance().getConnection().registryAccess()).stream()
-					.filter(entry -> !entry.key().identifier().getPath().equals("sample"))
-					.forEach(entry -> shipped.put(entry.key().identifier(), entry.value()));
-			return new HandbookScreen(HandbookPages.of(shipped, ClientHandbook.completed()), id -> true, id -> { }, List.of());
-		});
+		List<HandbookPage> pages = ctx.computeOnClient(ShippedHandbook::pages);
+		ctx.setScreen(() -> new HandbookScreen(pages, id -> true, id -> { }, List.of()));
 		ctx.waitForScreen(HandbookScreen.class);
 		HandbookScreen screen = ctx.computeOnClient(client -> (HandbookScreen) client.gui.screen());
 		int page = ctx.computeOnClient(client -> {
-			List<HandbookPage> pages = screen.pages();
 			for (int index = 0; index < pages.size(); index++) {
 				if (pages.get(index) instanceof HandbookPage.Chapter found && found.id().getPath().equals(chapter)) {
 					return index;

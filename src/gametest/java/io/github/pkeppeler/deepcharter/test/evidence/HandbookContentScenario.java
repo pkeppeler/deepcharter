@@ -47,11 +47,11 @@ public class HandbookContentScenario extends EvidenceScenario {
 			Set<Identifier> done = new HashSet<>();
 			chapters.values().stream().limit(CHAPTERS_DONE).forEach(chapter -> chapter.directives().forEach(entry -> done.add(entry.id())));
 
-			context.setScreen(() -> new HandbookScreen(HandbookPages.of(chapters, done), id -> true, id -> { }, List.of()));
+			List<HandbookPage> pages = HandbookPages.of(chapters, done);
+			context.setScreen(() -> new HandbookScreen(pages, id -> true, id -> { }, List.of()));
 			context.waitForScreen(HandbookScreen.class);
 			context.waitTicks(2);
 			HandbookScreen screen = context.computeOnClient(client -> (HandbookScreen) client.gui.screen());
-			List<HandbookPage> pages = screen.pages();
 			for (int page = 0; page < pages.size(); page++) {
 				int target = page;
 				if (page > 0) {

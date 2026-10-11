@@ -20,6 +20,8 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalFeature;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.DrawnText;
+import io.github.pkeppeler.deepcharter.test.support.HangarDrawn;
 
 /**
  * Client GameTest for #222: the hangar console shows the price of every action inside the screen, at the GUI size of an
@@ -63,27 +65,29 @@ public class HangarClientTest implements FabricClientGameTest {
 				return problem;
 			}
 		}
-		if (screen.priceLines().isEmpty()) {
+		List<DrawnText.Drawn> priceLines = HangarDrawn.priceLines(screen);
+		List<DrawnText.Drawn> advanceLines = HangarDrawn.advanceLines(screen);
+		if (priceLines.isEmpty()) {
 			return Optional.of("the screen shows no restore prices");
 		}
-		if (advanceLeft > 0 == screen.advanceLines().isEmpty()) {
-			return Optional.of("with " + advanceLeft + " advance left the screen shows " + screen.advanceLines().size() + " advance lines");
+		if (advanceLeft > 0 == advanceLines.isEmpty()) {
+			return Optional.of("with " + advanceLeft + " advance left the screen shows " + advanceLines.size() + " advance lines");
 		}
-		if (screen.priceLines().stream().anyMatch(line -> line.text().contains("ADVANCES"))) {
-			return Optional.of("the advance runs on in the price lines " + screen.priceLines());
+		if (priceLines.stream().anyMatch(line -> line.text().contains("ADVANCES"))) {
+			return Optional.of("the advance runs on in the price lines " + priceLines);
 		}
-		if (!screen.advanceLines().isEmpty()) {
-			int lastPrice = screen.priceLines().stream().mapToInt(HangarScreen.PriceLine::y).max().orElseThrow();
-			int firstAdvance = screen.advanceLines().stream().mapToInt(HangarScreen.PriceLine::y).min().orElseThrow();
+		if (!advanceLines.isEmpty()) {
+			int lastPrice = priceLines.stream().mapToInt(line -> line.box().y()).max().orElseThrow();
+			int firstAdvance = advanceLines.stream().mapToInt(line -> line.box().y()).min().orElseThrow();
 			if (firstAdvance < lastPrice + font.lineHeight) {
 				return Optional.of("the advance starts at " + firstAdvance + ", not on a line of its own below the prices that end at " + (lastPrice + font.lineHeight));
 			}
 		}
-		List<HangarScreen.PriceLine> drawn = new ArrayList<>(screen.priceLines());
-		drawn.addAll(screen.advanceLines());
-		for (HangarScreen.PriceLine line : drawn) {
-			Optional<String> problem = ClientChecks.textLeavesScreen(screen, "the price line", line.x(), line.y(), line.text())
-					.or(() -> ClientChecks.textUnderButton("the price line", line.x(), line.y(), line.text(), buttons));
+		List<DrawnText.Drawn> drawn = new ArrayList<>(priceLines);
+		drawn.addAll(advanceLines);
+		for (DrawnText.Drawn line : drawn) {
+			Optional<String> problem = ClientChecks.textLeavesScreen(screen, "the price line", line.box().x(), line.box().y(), line.text())
+					.or(() -> ClientChecks.textUnderButton("the price line", line.box().x(), line.box().y(), line.text(), buttons));
 			if (problem.isPresent()) {
 				return problem;
 			}

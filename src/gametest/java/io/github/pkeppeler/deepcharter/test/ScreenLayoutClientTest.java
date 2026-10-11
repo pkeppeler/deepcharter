@@ -38,10 +38,8 @@ import io.github.pkeppeler.deepcharter.charter.terminal.ContractState;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminalTuning;
 import io.github.pkeppeler.deepcharter.client.charter.terminal.ContractScreen;
-import io.github.pkeppeler.deepcharter.client.handbook.ClientHandbook;
 import io.github.pkeppeler.deepcharter.client.handbook.ClientNotes;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookNote;
-import io.github.pkeppeler.deepcharter.client.handbook.HandbookPages;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreens;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
@@ -49,8 +47,6 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
-import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
-import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
 import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.hangar.HangarView;
@@ -71,6 +67,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.CrtDemoScreen;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
+import io.github.pkeppeler.deepcharter.test.support.ShippedNotes;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeView;
@@ -528,12 +525,9 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
 		List<Case> cases = new ArrayList<>();
 		cases.add(new Case("ui demo", CrtDemoScreen::new));
 		// The notes the game ships, all found: the longest real one is what the page must hold.
-		List<HandbookNote> notes = Notes.all().stream().map(ClientNotes::entry).toList();
+		List<HandbookNote> notes = ShippedNotes.ids().stream().map(ClientNotes::entry).toList();
 		cases.add(new Case("handbook", () -> {
-			Minecraft client = Minecraft.getInstance();
-			Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();
-			HandbookChapters.all(client.getConnection().registryAccess()).forEach(chapter -> chapters.put(chapter.key().identifier(), chapter.value()));
-			return new HandbookScreen(HandbookPages.of(chapters, ClientHandbook.completed()), id -> true, id -> { }, notes);
+			return new HandbookScreen(HandbookScreen.currentPages(Minecraft.getInstance()), id -> true, id -> { }, notes);
 		}, handbookVariants(notes)));
 		return cases;
 	}
@@ -544,7 +538,8 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
 		variants.add(new Variant("every page", (context, screen) -> {
 			HandbookScreen handbook = (HandbookScreen) screen;
 			List<String> problems = new ArrayList<>();
-			for (int page = 0; page < handbook.pages().size(); page++) {
+			int pages = context.computeOnClient(client -> HandbookScreen.currentPages(client).size());
+			for (int page = 0; page < pages; page++) {
 				int turned = page;
 				context.runOnClient(client -> handbook.goTo(turned));
 				problems.addAll(context.computeOnClient(client -> problemsOf("handbook / page " + turned, handbook, List.of())));

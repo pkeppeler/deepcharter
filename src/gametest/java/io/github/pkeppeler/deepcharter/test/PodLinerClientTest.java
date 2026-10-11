@@ -20,6 +20,7 @@ import io.github.pkeppeler.deepcharter.pod.PodLiner;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.PodReadout;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
@@ -47,7 +48,7 @@ public class PodLinerClientTest implements FabricClientGameTest {
 				PodLining.modify(pod, state -> new PodLining.State(0, RACK, 0, false, false));
 			});
 			ClientWait.until(context, "the stock line on the pod HUD", client -> client.player != null && client.player.getVehicle() instanceof PodEntity pod
-					&& keys(PodStatusHud.lines(pod)).contains("hud.deepcharter.pod.slag_only"));
+					&& keys(PodReadout.texts(client, pod)).contains("hud.deepcharter.pod.slag_only"));
 			boolean shownWithoutPart = context.computeOnClient(client -> PodStatusHud.linerLine((PodEntity) client.player.getVehicle()).isPresent());
 			if (shownWithoutPart) {
 				throw new AssertionError("A pod with no liner shows no liner line");
@@ -72,7 +73,7 @@ public class PodLinerClientTest implements FabricClientGameTest {
 			});
 			ClientWait.until(context, "one slab to the next ring on the pod HUD", client -> client.player.getVehicle() instanceof PodEntity pod
 					&& PodStatusHud.linerLine(pod).map(PodLinerClientTest::slabsOf).orElse(-1) == RING_EVERY - SUNK);
-			List<Component> lines = context.computeOnClient(client -> PodStatusHud.lines((PodEntity) client.player.getVehicle()));
+			List<Component> lines = context.computeOnClient(client -> PodReadout.texts(client, (PodEntity) client.player.getVehicle()));
 			boolean rackShown = lines.stream().anyMatch(line -> line.getContents() instanceof TranslatableContents contents
 					&& contents.getKey().equals("hud.deepcharter.pod.slag_only") && contents.getArgs()[0].equals(RACK));
 			if (!rackShown) {

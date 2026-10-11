@@ -41,7 +41,7 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 	private static final int CLOSE_WIDTH = 90;
 
 	/** One wrapped line of the restore prices, where it is drawn. */
-	public record PriceLine(String text, int x, int y) {
+	private record PriceLine(String text, int x, int y) {
 	}
 
 	private TerminalView view;
@@ -118,20 +118,11 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 	}
 
 	/** The y below the header text once the welcome has typed out in full: the welcome lines, then the account line. */
+	// test-seam: the account line is drawn blank in a world without a charter, so no drawn text marks where the header ends; the layout test pins that no button starts above it
 	public int headerBottom() {
 		int welcomeLines = CrtText.wrap(font, typewriter.text(), contentWidth(MARGIN)).size();
 		int welcomeBottom = contentTop(MARGIN) + font.lineHeight + 14 + Math.max(welcomeLines, 1) * (font.lineHeight + CrtTuning.current().lineSpacing());
 		return welcomeBottom + GAP + font.lineHeight;
-	}
-
-	/** The restore prices as drawn, one entry per wrapped line. */
-	public List<PriceLine> priceLines() {
-		return priceLines;
-	}
-
-	/** The line of the Company's advance as drawn, one entry per wrapped line; empty once the charter's advance is used. */
-	public List<PriceLine> advanceLines() {
-		return advanceLines;
 	}
 
 	private void send(Identifier action) {

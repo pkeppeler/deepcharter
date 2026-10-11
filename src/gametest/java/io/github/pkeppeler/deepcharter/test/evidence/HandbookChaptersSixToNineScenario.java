@@ -52,11 +52,11 @@ public class HandbookChaptersSixToNineScenario extends EvidenceScenario {
 			chapters.values().stream().skip(CHAPTERS_DONE).findFirst()
 					.ifPresent(chapter -> chapter.directives().stream().limit(LAST_CHAPTER_DIRECTIVES_DONE).forEach(entry -> done.add(entry.id())));
 
-			context.setScreen(() -> new HandbookScreen(HandbookPages.of(chapters, done), id -> true, id -> { }, List.of()));
+			List<HandbookPage> pages = HandbookPages.of(chapters, done);
+			context.setScreen(() -> new HandbookScreen(pages, id -> true, id -> { }, List.of()));
 			context.waitForScreen(HandbookScreen.class);
 			context.waitTicks(2);
 			HandbookScreen screen = context.computeOnClient(client -> (HandbookScreen) client.gui.screen());
-			List<HandbookPage> pages = screen.pages();
 			boolean first = true;
 			for (int page = 0; page < pages.size(); page++) {
 				String label = label(pages.get(page));

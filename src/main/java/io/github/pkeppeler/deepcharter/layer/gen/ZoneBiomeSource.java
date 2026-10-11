@@ -48,14 +48,6 @@ public final class ZoneBiomeSource extends BiomeSource implements BiomeResolver 
 		this.biomes = List.copyOf(biomes);
 	}
 
-	public int minY() {
-		return minY;
-	}
-
-	public int height() {
-		return height;
-	}
-
 	public static void register() {
 		Registry.register(BuiltInRegistries.BIOME_SOURCE, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "zones"), CODEC);
 	}

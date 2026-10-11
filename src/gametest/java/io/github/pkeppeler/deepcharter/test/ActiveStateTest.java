@@ -32,10 +32,10 @@ import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActivity;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
-import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.texture.TextureProperties;
@@ -146,7 +146,7 @@ public class ActiveStateTest {
 					expectActive(helper, other, false, "the other pump, with " + i + " parts in");
 					Item part = PUMP.parts().get(i);
 					player.getInventory().add(new ItemStack(part));
-					if (Terminals.insertPart(player, taker, part).isPresent()) {
+					if (TerminalParts.insert(player, taker, part).isPresent()) {
 						throw helper.assertionException("inserting part %s of the fuel pump should succeed", i);
 					}
 				}
