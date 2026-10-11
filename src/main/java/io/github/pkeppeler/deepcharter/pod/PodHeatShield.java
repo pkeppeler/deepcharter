@@ -13,7 +13,8 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 /**
  * The heat shield (#482), rung 3 of the lava ladder: a hull glaze of slag brick. While lava touches a shielded pod, each tick's lava damage is soaked by
  * burning a brick, {@link PodHeatShieldTuning#hullPerBrick} of hull at a time, in place of the hull. The bricks are the liner's: the rack first, then the seated
- * pilot's pack if {@link PodLining#mayUseStores} lets the pilot use the pod's stores. So the shield buys seconds in lava and spends the bricks that would line the
+ * pilot's pack if {@link PodLining#mayUseStores} lets the pilot use the pod's stores. The rack is the pod's own part, so it burns for any pilot or none, as the liner draws on it
+ * (hand lining, which a pilot asks for, is the one that checks the pilot); only the pack, which belongs to the pilot, is gated (decision A, #482). So the shield buys seconds in lava and spends the bricks that would line the
  * next stretch. With none left the lava takes the hull at the full rate. It soaks lava only: a fall, gas and the crust are not its business.
  */
 public final class PodHeatShield {

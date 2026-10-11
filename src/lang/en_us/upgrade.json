@@ -41,6 +41,7 @@
   "screen.deepcharter.upgrade.intro": "UPGRADE TERMINAL ONLINE. CHOOSE A PART.",
   "screen.deepcharter.upgrade.no_pod": "NO POD OF YOURS IS PARKED AT THE TERMINAL.",
   "screen.deepcharter.upgrade.pod": "POD %s   TIER CAP %s",
+  "screen.deepcharter.upgrade.scroll": "TRACKS %s-%s OF %s",
   "screen.deepcharter.upgrade.track": "%s  T%s",
   "screen.deepcharter.upgrade.pod_unregistered": "POD (UNREGISTERED)   TIER CAP %s"
 }

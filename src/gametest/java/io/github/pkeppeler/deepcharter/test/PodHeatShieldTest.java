@@ -160,6 +160,20 @@ public class PodHeatShieldTest {
 	}
 
 	@GameTest(maxTicks = LAVA_TICKS + 20)
+	public void aPodsOwnRackBurnsForAPilotOfAnotherCrew(GameTestHelper helper) {
+		Scene scene = scene(helper, true, RACK, 0, false, true);
+		helper.runAfterDelay(LAVA_TICKS, () -> {
+			int burned = RACK - PodLining.of(scene.pod()).bricks();
+			if (scene.pod().hull() != scene.pod().maxHull() || burned != bricksFor(scene.ticks() * lavaPerTick())) {
+				throw failure(helper, "the rack is the pod's own and burns for a stranger too: hull should be full and %d bricks burned, found hull %s and %d burned",
+						bricksFor(scene.ticks() * lavaPerTick()), scene.pod().hull(), burned);
+			}
+			scene.pod().discard();
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = LAVA_TICKS + 20)
 	public void aPodWithoutTheShieldKeepsItsBricksAndLosesHull(GameTestHelper helper) {
 		Scene scene = scene(helper, false, RACK, 0, false, false);
 		helper.runAfterDelay(LAVA_TICKS, () -> {

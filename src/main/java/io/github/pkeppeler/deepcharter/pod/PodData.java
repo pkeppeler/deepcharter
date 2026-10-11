@@ -18,9 +18,9 @@ public final class PodData {
 	public static final EntityDataAccessor<Boolean> HULL_BURNING = define(EntityDataSerializers.BOOLEAN);
 	/** The bay holds an ore the breach brace may burn (#378); the server works it out each tick for a braced pod, and it is not saved. */
 	public static final EntityDataAccessor<Boolean> BRACE_ORE = define(EntityDataSerializers.BOOLEAN);
+	public static final EntityDataAccessor<Direction> DRILL_DIRECTION = define(EntityDataSerializers.DIRECTION);
 	/** Slag brick the heat shield can still burn now (#482); the server works it out each tick for a shielded pod, and it is not saved. */
 	public static final EntityDataAccessor<Integer> GLAZE_BRICKS = define(EntityDataSerializers.INT);
-	public static final EntityDataAccessor<Direction> DRILL_DIRECTION = define(EntityDataSerializers.DIRECTION);
 
 	private PodData() {
 	}
@@ -40,8 +40,8 @@ public final class PodData {
 		builder.define(DRILLING, false);
 		builder.define(HULL_BURNING, false);
 		builder.define(BRACE_ORE, false);
-		builder.define(GLAZE_BRICKS, 0);
 		builder.define(DRILL_DIRECTION, Direction.DOWN);
+		builder.define(GLAZE_BRICKS, 0);
 	}
 
 	private static <T> EntityDataAccessor<T> define(EntityDataSerializer<T> serializer) {

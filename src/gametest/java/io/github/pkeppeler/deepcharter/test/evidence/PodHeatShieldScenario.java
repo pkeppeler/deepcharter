@@ -14,6 +14,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
+import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
@@ -76,6 +77,8 @@ public class PodHeatShieldScenario extends EvidenceScenario {
 				client.player.setXRot(LOOK_DOWN);
 			});
 			context.waitTicks(30);
+			// Founding the charter queued the employer's transmission; it would cover the HUD lines this scenario shows.
+			context.runOnClient(client -> TransmissionOverlay.reset());
 			for (int i = 0; i < 6; i++) {
 				frame(context);
 				context.waitTicks(TICKS_PER_FRAME);
@@ -92,6 +95,7 @@ public class PodHeatShieldScenario extends EvidenceScenario {
 			});
 			// The glaze holds: the bricks count down and the hull stays full.
 			ClientWait.until(context, "the glaze holding", client -> client.player.getVehicle() instanceof PodEntity pod && pod.hullBurning() && pod.glazeBricks() > 0);
+			context.runOnClient(client -> TransmissionOverlay.reset());
 			int ticks = 0;
 			boolean shot = false;
 			while (bricks(singleplayer) > 0 && ticks < MAX_TICKS) {
