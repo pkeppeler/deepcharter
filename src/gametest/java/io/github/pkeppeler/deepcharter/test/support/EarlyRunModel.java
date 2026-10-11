@@ -72,7 +72,7 @@ public final class EarlyRunModel {
 			return new Zone(chances, catalystChance);
 		}
 
-		double oreChance() {
+		public double oreChance() {
 			return chances.values().stream().mapToDouble(Double::doubleValue).sum();
 		}
 
@@ -208,6 +208,15 @@ public final class EarlyRunModel {
 		double gross = averageOre * Math.min(ores, stats.cargoSlots());
 		double catalysts = slabs * cells * zone.catalystChance() * YIELD;
 		return new Run(slabs, litres, ores, gross, gross - litres * FuelTuning.DEFAULT.pricePerLitre(), catalysts);
+	}
+
+	/**
+	 * The spoil a run brings home in a hopper pod (#470): one for each block of waste rock bored, and no more than the bay holds. (A) Every
+	 * block that is not ore is waste rock (stone and dirt, the tag {@code waste_rock}), and {@link #YIELD} of the bored blocks count, as it does for ore.
+	 */
+	public static int spoil(Chassis chassis, Zone zone, Run run) {
+		double wasteBlocks = run.slabs() * chassis.slabCells() * (1 - zone.oreChance()) * YIELD;
+		return (int) Math.min(PodLiningTuning.DEFAULT.spoilCapacity(), Math.floor(wasteBlocks));
 	}
 
 	/** Seconds to drill one slab at {@code depthBlocks} below the surface. A slab with ore in it takes as long as its hardest block; the zone fill replaces vanilla stone. */
