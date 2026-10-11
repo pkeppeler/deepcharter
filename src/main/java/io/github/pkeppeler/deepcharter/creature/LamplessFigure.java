@@ -11,6 +11,7 @@ import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.DifficultyInstance;
@@ -33,6 +34,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodFuel;
 import io.github.pkeppeler.deepcharter.pod.PodLights;
+import io.github.pkeppeler.deepcharter.sound.DeepSound;
 
 /**
  * A Retained: a veteran of the Workings that the Company rebuilt too often, and that stopped using its lamp. A normal mob of the deep
@@ -60,8 +62,10 @@ public class LamplessFigure extends PathfinderMob {
 	private @Nullable PodEntity grip;
 	/** The pod this figure walks to, null when none draws it. Server only. */
 	private @Nullable PodEntity target;
-	/** Whether the game's spawner made this figure: only those go when no player is near, so that the level's cap is not held by figures nobody will meet. */
+	/** Whether the game's spawner made this figure: only those go when no player is near, so that the level's cap is not held by figures nobody will meet. Naturals have a cap and a delay of their own. */
 	private boolean natural;
+	/** Whether the pilot of a pod has been told that this figure comes. Server only. */
+	private boolean cued;
 	/** The side of the hull the figure holds, as the direction from the pod to the figure. */
 	private Direction side = Direction.NORTH;
 	/** Litres taken from the pod this grip. */
@@ -93,7 +97,9 @@ public class LamplessFigure extends PathfinderMob {
 	@Override
 	public @Nullable SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty, EntitySpawnReason reason, @Nullable SpawnGroupData groupData) {
 		setLamp(level.getRandom().nextDouble() < CreatureTuning.DEFAULT.natural().lampShare());
-		natural = reason == EntitySpawnReason.NATURAL;
+		if (reason == EntitySpawnReason.NATURAL) {
+			markNatural();
+		}
 		return super.finalizeSpawn(level, difficulty, reason, groupData);
 	}
 
@@ -121,7 +127,7 @@ public class LamplessFigure extends PathfinderMob {
 		if (fade >= tuning.fadeTicks()) {
 			release();
 			discard();
-			LamplessFigures.faded(level);
+			LamplessFigures.faded(level, natural);
 			return;
 		}
 		if (fade > 0) {
@@ -138,12 +144,24 @@ public class LamplessFigure extends PathfinderMob {
 				target = null;
 			} else {
 				target = nearestDarkPod(level, tuning.cling());
+				if (target != null && !cued) {
+					cued = true;
+					warn(target);
+				}
 			}
 		}
 		if (fade == 0 && target != null && !target.isRemoved()) {
 			approach(target, tuning.cling(), checking);
 		} else {
 			wander();
+		}
+	}
+
+	/** The pilot hears it and reads it before it arrives: a pod drives faster than it walks. */
+	private void warn(PodEntity pod) {
+		if (pod.getControllingPassenger() instanceof ServerPlayer pilot) {
+			pilot.sendOverlayMessage(Component.translatable("creature.deepcharter.approach"));
+			pod.level().playSound(null, pod.getX(), pod.getY(), pod.getZ(), DeepSound.CREATURE_APPROACH.event(), SoundSource.HOSTILE);
 		}
 	}
 
@@ -204,9 +222,9 @@ public class LamplessFigure extends PathfinderMob {
 		holdTo(pod, cling);
 	}
 
-	/** Whether the pod is under way: the rotor is on, or the treads carry it along. A pod that only sinks as its drill bites is not. */
+	/** Whether the pod is under way: the rotor is on, the treads carry it, or its drill bites in any direction, down a bore included. */
 	private static boolean isMoving(PodEntity pod) {
-		return pod.flying() || pod.getDeltaMovement().horizontalDistanceSqr() > MOVING_SPEED_SQR;
+		return pod.flying() || pod.drilling() || pod.getDeltaMovement().horizontalDistanceSqr() > MOVING_SPEED_SQR;
 	}
 
 	/** Closes on its place on the hull, side by side with the pod, and faces the pod. */
@@ -307,6 +325,15 @@ public class LamplessFigure extends PathfinderMob {
 	/** Whether the figure holds a pod's hull. */
 	public boolean isClinging() {
 		return entityData.get(CLINGING);
+	}
+
+	/** Marks a figure the game's spawner made. */
+	public void markNatural() {
+		natural = true;
+	}
+
+	public boolean isNatural() {
+		return natural;
 	}
 
 	public boolean hasLamp() {

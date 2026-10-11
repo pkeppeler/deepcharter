@@ -8,10 +8,10 @@ Builds on [ADR 0044](0044-the-lampless-figure-is-a-geckolib-model-and-the-reache
 
 ## Decision
 
-- **The Retained are a `MobCategory.MONSTER` entity that has no attack.** The game's own spawner places them, from the six biome files of layers 1 and 2 (`spawns_by_category.monster`, weight 1, count 1), so the surface biomes list none and a pack or a later layer retunes the spawns as data. The rules a spawn must pass are the entity's (`LamplessFigure.checkSpawnRules`, `LamplessFigures.canAppearAt`): layer 1 or 2, block light under the light at which a figure fades, a solid floor with room to stand, and room in the level (3 at most, a delay after a fade). The rail line of layer 2 keeps its own spawner, which counts against the same cap. The colony, the hangar and the founding Mole's bay are in the surface level; an outpost is lit.
+- **The Retained are a `MobCategory.MONSTER` entity that has no attack.** The game's own spawner places them, from the six biome files of layers 1 and 2 (`spawns_by_category.monster`, weight 1, count 1), so the surface biomes list none and a pack or a later layer retunes the spawns as data. The rules a spawn must pass are the entity's (`LamplessFigure.checkSpawnRules`, `LamplessFigures.canAppearAt`): layer 1 or 2, block light under the light at which a figure fades, a solid floor with room to stand, a roll that is rarer in layer 1, and room in the level (3 of the game's own figures at most, a delay after a fade). The rail line of layer 2 keeps its own spawner, with a cap and a delay of its own, so that the figure of Prospector's Run (fixed lore) is never held back by the caverns' figures. The colony, the hangar and the founding Mole's bay are in the surface level; an outpost is lit.
 - **A dark pod with a pilot draws a figure that grabs the hull and drains the tank.** Dark means no lights part that counts, or no power ([`PodLights.isLit`](../../src/main/java/io/github/pkeppeler/deepcharter/pod/PodLights.java)). The numbers and the counterplay are in [mechanics.md](../design/mechanics.md#the-retained-at-dark-pods-449-a); they are tuning and may change without a new decision.
 - **A figure that carries a lamp has a model, a texture and a glowmask of its own**, `creature/lampless_figure_lamp` and `entity/lampless_figure_lamp` with `_glowmask`, beside the three files of the lampless figure, which are unchanged. The lamp is one bone, `lantern`. The glass is dark in the texture and lit in the glowmask, drawn at full bright, so it works with vanilla lighting. A pack replaces the three lamp files to change how the lamp is carried; the shipped way is a lamp on a pole, and the lantern in the hand and the lamp in the ribcage are the test packs `retained_lamp_hand` and `retained_lamp_ribs`.
-- **On foot, a person near a figure still makes it fade; a pilot does not.** A pilot in a pod is what draws it. A figure that has hold of a pod ignores people on foot: only a light, the pod moving, a full belly or an empty tank lets go.
+- **On foot, a person near a figure still makes it fade; a pilot does not.** A pilot in a pod is what draws it. A figure that has hold of a pod ignores people on foot: only a light, the pod moving (the rotor, the treads or the drill), a full belly or an empty tank lets go.
 
 ## Considered Options
 
@@ -22,6 +22,7 @@ Builds on [ADR 0044](0044-the-lampless-figure-is-a-geckolib-model-and-the-reache
 
 ## Consequences
 
+- On Peaceful difficulty the game's spawner makes no monsters, so a Peaceful world has only the rail line's figure and a player there does not meet the Retained in the caverns.
 - A Retained that is never freed takes 2.5 litres, a quarter of a stock tank, and never takes the tank under 5 per cent, so it cannot strand a pod by itself.
 - The lamp-carrier's three file ids are a contract with skins, as the lampless figure's are: a pack keeps the bone names the animations use, and the lamp model has `lantern` as well.
 - The cull box of the figure is 2 blocks to each side (it was 1.5), because the cling pose reaches out.

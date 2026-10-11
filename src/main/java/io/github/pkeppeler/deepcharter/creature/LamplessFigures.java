@@ -51,8 +51,9 @@ public final class LamplessFigures {
 	/** The failures already logged, each as a level and an exception class, so that a later and different one is not silent. Server thread only. */
 	private static final Set<String> LOGGED_FAILURES = new HashSet<>();
 
-	/** Game time at which the last figure of each level faded. Server thread only. */
+	/** Game time at which the last figure of each level faded, for the rail's figures and for the game's spawner's apart. Server thread only. */
 	private static final Map<ResourceKey<Level>, Long> LAST_FADE = new HashMap<>();
+	private static final Map<ResourceKey<Level>, Long> LAST_NATURAL_FADE = new HashMap<>();
 
 	private LamplessFigures() {
 	}
@@ -65,6 +66,7 @@ public final class LamplessFigures {
 	/** Forgets when figures last faded, as a new server does: the game time of the last one means nothing to it. */
 	public static void clearFadeDelays() {
 		LAST_FADE.clear();
+		LAST_NATURAL_FADE.clear();
 	}
 
 	/** Whether a level looks for sites to put a figure on at this game time: the rail level, every {@link CreatureTuning#spawnIntervalTicks}. */
@@ -72,8 +74,8 @@ public final class LamplessFigures {
 		return dimension.equals(RAIL_LEVEL) && gameTime % CreatureTuning.DEFAULT.spawnIntervalTicks() == 0;
 	}
 
-	static void faded(ServerLevel level) {
-		LAST_FADE.put(level.dimension(), level.getGameTime());
+	static void faded(ServerLevel level, boolean natural) {
+		(natural ? LAST_NATURAL_FADE : LAST_FADE).put(level.dimension(), level.getGameTime());
 	}
 
 	/** A tick path: it logs each kind of failure once for a level and carries on. */
@@ -109,7 +111,7 @@ public final class LamplessFigures {
 	public static Optional<LamplessFigure> spawnAt(ServerLevel level, StructureSite site) {
 		CreatureTuning tuning = CreatureTuning.DEFAULT;
 		BoundingBox bounds = site.bounds();
-		if (!levelHasRoom(level) || level.getEntities(CreatureRegistry.LAMPLESS_FIGURE, figure -> bounds.isInside(figure.blockPosition())).size() >= tuning.maxPerSite()) {
+		if (!levelHasRoom(level, false) || level.getEntities(CreatureRegistry.LAMPLESS_FIGURE, figure -> bounds.isInside(figure.blockPosition())).size() >= tuning.maxPerSite()) {
 			return Optional.empty();
 		}
 		List<BlockPos> places = places(level, site, tuning);
@@ -129,22 +131,28 @@ public final class LamplessFigures {
 		return Optional.of(figure);
 	}
 
-	/** Whether the level may take one more figure now: under the cap, and long enough since the last one faded. */
-	public static boolean levelHasRoom(ServerLevel level) {
+	/**
+	 * Whether the level may take one more figure now, of the game's spawner ({@code natural}) or of the rail: under the cap, and long
+	 * enough since the last of that kind faded. The two kinds are counted apart, so that the rail's figure of Prospector's Run, which is
+	 * fixed lore, is never held back by the figures of the caverns.
+	 */
+	public static boolean levelHasRoom(ServerLevel level, boolean natural) {
 		CreatureTuning tuning = CreatureTuning.DEFAULT;
-		Long lastFade = LAST_FADE.get(level.dimension());
+		Long lastFade = (natural ? LAST_NATURAL_FADE : LAST_FADE).get(level.dimension());
 		return (lastFade == null || level.getGameTime() - lastFade >= tuning.respawnDelayTicks())
-				&& level.getEntities(CreatureRegistry.LAMPLESS_FIGURE, figure -> true).size() < tuning.maxPerLevel();
+				&& level.getEntities(CreatureRegistry.LAMPLESS_FIGURE, figure -> figure.isNatural() == natural).size() < tuning.maxPerLevel();
 	}
 
-	/** What the game's own spawner asks of a try at {@code pos}: the rules of {@link #canAppearAt}, room in the level, and a roll that keeps them rare. */
+	/** What the game's own spawner asks of a try at {@code pos}: a roll that keeps them rare, then the rules of {@link #canAppearAt} and room in the level. */
 	static boolean mayAppearNaturally(ServerLevel level, BlockPos pos, RandomSource random) {
-		return canAppearAt(level, pos) && levelHasRoom(level) && rolls(random);
+		return rolls(level, random) && canAppearAt(level, pos) && levelHasRoom(level, true);
 	}
 
-	/** One try in {@link CreatureTuning.Natural#chancePerTry} passes. */
-	public static boolean rolls(RandomSource random) {
-		return random.nextDouble() < CreatureTuning.DEFAULT.natural().chancePerTry();
+	/** The cheap check, first: one try in {@link CreatureTuning.Natural#chancePerTry} passes in layer 2, and fewer in layer 1. */
+	public static boolean rolls(ServerLevel level, RandomSource random) {
+		CreatureTuning.Natural natural = CreatureTuning.DEFAULT.natural();
+		double chance = level.dimension().equals(LayerChain.dimension(1)) ? natural.layerOneChancePerTry() : natural.chancePerTry();
+		return random.nextDouble() < chance;
 	}
 
 	/**

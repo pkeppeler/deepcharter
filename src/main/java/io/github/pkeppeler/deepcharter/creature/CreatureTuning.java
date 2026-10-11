@@ -46,7 +46,7 @@ public record CreatureTuning(float walkSpeed, double approachBlocks, int fadeBlo
 	 */
 	public record Cling(double senseBlocks, double reachBlocks, double latchSpeed, float drainLitres, float fillLitres, float floorPercent,
 			int shakeTicks) {
-		public static final Cling DEFAULT = new Cling(20, 2.5, 0.4, 0.25f, 2.5f, 5f, 30);
+		public static final Cling DEFAULT = new Cling(20, 2.5, 0.4, 0.15f, 2.5f, 5f, 20);
 
 		public Cling {
 			if (senseBlocks <= 0 || reachBlocks <= 0 || latchSpeed <= 0 || drainLitres <= 0 || fillLitres <= 0 || floorPercent < 0 || floorPercent >= 100
@@ -54,23 +54,20 @@ public record CreatureTuning(float walkSpeed, double approachBlocks, int fadeBlo
 				throw new IllegalArgumentException("cling tuning out of range: " + this);
 			}
 		}
-
-		/** Ticks a figure that is never shaken off and finds fuel to take clings for. */
-		public int fillTicks() {
-			return Math.round(fillLitres / drainLitres * 20f);
-		}
 	}
 
 	/**
-	 * @param lampShare    the share of figures that carry a lamp
-	 * @param chancePerTry the chance that a place the game tries for a natural spawn, and that passes every rule, gets a figure
-	 * @param roomBlocks   air blocks above the floor that a figure needs to appear
+	 * @param lampShare          the share of figures that carry a lamp
+	 * @param chancePerTry       the chance that a place the game tries for a natural spawn in layer 2, and that passes every rule, gets a figure
+	 * @param layerOneChancePerTry the same in layer 1, where a pilot is new and the run is short: rarer
+	 * @param roomBlocks         air blocks above the floor that a figure needs to appear
 	 */
-	public record Natural(double lampShare, double chancePerTry, int roomBlocks) {
-		public static final Natural DEFAULT = new Natural(0.35, 0.02, 3);
+	public record Natural(double lampShare, double chancePerTry, double layerOneChancePerTry, int roomBlocks) {
+		public static final Natural DEFAULT = new Natural(0.35, 0.02, 0.005, 3);
 
 		public Natural {
-			if (lampShare < 0 || lampShare > 1 || chancePerTry <= 0 || chancePerTry > 1 || roomBlocks < 1) {
+			if (lampShare < 0 || lampShare > 1 || chancePerTry <= 0 || chancePerTry > 1 || layerOneChancePerTry <= 0
+					|| layerOneChancePerTry > chancePerTry || roomBlocks < 1) {
 				throw new IllegalArgumentException("natural spawn tuning out of range: " + this);
 			}
 		}

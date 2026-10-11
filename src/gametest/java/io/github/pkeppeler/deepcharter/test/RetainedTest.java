@@ -6,6 +6,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -73,17 +74,19 @@ public class RetainedTest {
 	private static final int FLOOR_Y = 100;
 	/** Ticks for a figure to walk 11 blocks to a pod: the slowest walk is 1 block a second. */
 	private static final int APPROACH_BUDGET_TICKS = 11 * 20;
-	/** Ticks a figure that is never freed clings for (200: 2.5 litres at 0.25 a second), with a margin for a loaded runner. */
-	private static final int FILL_BUDGET_TICKS = 300;
+	/** Ticks a figure that is never freed clings for (333: 2.5 litres at 0.15 a second), with a margin for a loaded runner. */
+	private static final int FILL_BUDGET_TICKS = 450;
 	/** The fade (40 ticks) of a figure that let go, with a margin. */
 	private static final int FADE_BUDGET_TICKS = 80;
-	/** Ticks, once the rotor is held, in which the grip must break: the shake (30), a tick of lag and the check. */
-	private static final int SHAKE_BUDGET_TICKS = 40;
+	/** Ticks, once the pod moves, in which the grip must break: the shake (20), a tick of lag and the check. */
+	private static final int SHAKE_BUDGET_TICKS = 30;
 	private static final Input JUMP = new Input(false, false, false, false, true, false, false);
+	private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
 	private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
 	/** The yaw at which forward is west, along the arena toward the figure's end. */
 	private static final float WEST = 90f;
 	private static final String GRAB_KEY = "creature.deepcharter.grab";
+	private static final String APPROACH_KEY = "creature.deepcharter.approach";
 	/** Ticks for the light of a block to spread through a sealed room, or to go out of it: slow on a loaded runner. */
 	private static final int LIGHT_BUDGET_TICKS = 200;
 	private static final AtomicInteger CHARTERS = new AtomicInteger();
@@ -198,17 +201,22 @@ public class RetainedTest {
 		});
 	}
 
+	private static boolean told(Arena arena, String key) {
+		return arena.pilot.actionBarMessages().stream().anyMatch(message -> message.getContents() instanceof TranslatableContents contents && contents.getKey().equals(key));
+	}
+
 	/** The figure took its fill and no more, the tank lost at least that, and neither the hull nor the pilot were hurt. */
 	private static void expectLetGoFull(GameTestHelper helper, Arena arena, float fuelAtGrab, float hullAtGrab, long clungTicks) {
 		float taken = arena.figure.taken();
 		float fillPercent = CLING.fillLitres() / 10f * 100f;
 		float lost = fuelAtGrab - arena.pod.fuel();
-		boolean grabbed = arena.pilot.actionBarMessages().stream().anyMatch(message -> message.getContents() instanceof TranslatableContents contents && contents.getKey().equals(GRAB_KEY));
+		boolean grabbed = told(arena, GRAB_KEY);
+		boolean warned = told(arena, APPROACH_KEY);
 		if (taken < CLING.fillLitres() - 0.05f || taken > CLING.fillLitres() + 0.05f) {
 			throw failure(helper, "the figure took %.3f litres, not its fill of %.2f", taken, CLING.fillLitres());
 		}
-		// A stock tank is 10 litres, so the fill is 25 points of the tank; the pod's own idle burn (0.063 litres a second) is on top.
-		if (lost < fillPercent - 0.5f || lost > fillPercent + 8f) {
+		// A stock tank is 10 litres, so the fill is 25 points of the tank; the pod's own idle burn (0.063 litres a second, 10 points in 333 ticks) is on top.
+		if (lost < fillPercent - 0.5f || lost > fillPercent + 14f) {
 			throw failure(helper, "the tank lost %.2f points over %d ticks of the grip; the fill is %.1f points and the idle burn a few more", lost, clungTicks, fillPercent);
 		}
 		if (arena.pod.hull() != hullAtGrab) {
@@ -217,8 +225,8 @@ public class RetainedTest {
 		if (arena.pilot.player().getHealth() != arena.pilot.player().getMaxHealth()) {
 			throw failure(helper, "the pilot's health went to %s while the figure held the pod", arena.pilot.player().getHealth());
 		}
-		if (!grabbed) {
-			throw failure(helper, "the pilot was told nothing when the figure grabbed the pod: %s", arena.pilot.actionBarMessages());
+		if (!grabbed || !warned) {
+			throw failure(helper, "the pilot was not told that the figure came and that it grabbed (came: %s, grabbed: %s): %s", warned, grabbed, arena.pilot.actionBarMessages());
 		}
 		LOGGER.info("[retained] a grip left alone: {} ticks, {} litres taken, the tank lost {} points of 100", clungTicks, taken, lost);
 		if (arena.pod.fuel() <= TUNING.cling().floorPercent()) {
@@ -289,6 +297,12 @@ public class RetainedTest {
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + 60 + SHAKE_BUDGET_TICKS + 100)
 	public void drivingTheTreadsShakesTheFigureOffToo(GameTestHelper helper) {
 		expectShakenOff(helper, slot(6), FORWARD, "the treads");
+	}
+
+	/** The pilot drills down: a pod that bores is under way, so the figure is shaken off by the main verb of the game. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + 60 + SHAKE_BUDGET_TICKS + 100)
+	public void drillingDownShakesTheFigureOffToo(GameTestHelper helper) {
+		expectShakenOff(helper, slot(7), SPRINT, "the drill");
 	}
 
 	private static void expectShakenOff(GameTestHelper helper, BlockPos origin, Input input, String how) {
@@ -379,6 +393,49 @@ public class RetainedTest {
 			}
 		});
 		FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, false));
+	}
+
+	/**
+	 * The rail's figure of Prospector's Run is fixed lore: a level full of the game's own figures, or one that just lost one, still takes it.
+	 * Run in the Nether, where no other figure test counts and the spawner does not tick.
+	 */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 40)
+	public void theRailsFigureIsNotHeldBackByTheFiguresOfTheCaverns(GameTestHelper helper) {
+		ServerLevel nether = helper.getLevel().getServer().getLevel(Level.NETHER);
+		BlockPos spot = slot(12);
+		FarChunks.awaitEntityTicking(helper, nether, spot, () -> {
+			List<LamplessFigure> naturals = new ArrayList<>();
+			for (int i = 0; i < TUNING.maxPerLevel(); i++) {
+				LamplessFigure figure = CreatureRegistry.LAMPLESS_FIGURE.create(nether, EntitySpawnReason.COMMAND);
+				figure.markNatural();
+				figure.setNoAi(true);
+				figure.setPos(Vec3.atBottomCenterOf(spot.east(i * 2)));
+				nether.addFreshEntity(figure);
+				naturals.add(figure);
+			}
+			boolean naturalRoom = LamplessFigures.levelHasRoom(nether, true);
+			boolean railRoom = LamplessFigures.levelHasRoom(nether, false);
+			naturals.forEach(LamplessFigure::discard);
+			expect(helper, !naturalRoom, "a level that holds " + TUNING.maxPerLevel() + " natural figures takes another");
+			expect(helper, railRoom, "the rail's figure is held back by natural figures");
+			helper.succeed();
+		});
+	}
+
+	@GameTest
+	public void layerOneRollsRarerThanLayerTwo(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		ServerLevel one = server.getLevel(LayerChain.dimension(1));
+		ServerLevel two = server.getLevel(LayerChain.dimension(2));
+		int tries = 20000;
+		int inOne = 0;
+		int inTwo = 0;
+		for (int i = 0; i < tries; i++) {
+			inOne += LamplessFigures.rolls(one, one.getRandom()) ? 1 : 0;
+			inTwo += LamplessFigures.rolls(two, two.getRandom()) ? 1 : 0;
+		}
+		expect(helper, inOne * 2 < inTwo, "layer 1 rolled %d of %d and layer 2 %d: layer 1 is not clearly rarer".formatted(inOne, tries, inTwo));
+		helper.succeed();
 	}
 
 	/** The grip test above holds that a clinging figure hurts neither the pilot nor the hull; a figure that cannot attack is why. */
@@ -498,7 +555,7 @@ public class RetainedTest {
 				LamplessFigures.clearFadeDelays();
 				int rolled = 0;
 				for (int i = 0; i < tries; i++) {
-					rolled += LamplessFigures.rolls(two.getRandom()) ? 1 : 0;
+					rolled += LamplessFigures.rolls(two, two.getRandom()) ? 1 : 0;
 				}
 				double expected = tries * TUNING.natural().chancePerTry();
 				expect(helper, rolled > expected * 0.4 && rolled < expected * 1.8,

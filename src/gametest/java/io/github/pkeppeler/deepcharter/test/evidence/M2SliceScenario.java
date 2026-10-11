@@ -559,7 +559,7 @@ public class M2SliceScenario extends EvidenceScenario {
 			throw new AssertionError("the figure never began to fade near the Mole: "
 					+ onServer(server -> figure[0].position() + ", " + figure[0].tickCount + " ticks old, removed " + figure[0].isRemoved() + ", Mole at " + pod(server, mole).position()));
 		}
-		say("11. It never attacks and never stops. It fades when it is lit or approached.");
+		say("11. It never attacks. It fades when it is lit or when someone on foot comes near; a dark pod with a pilot draws it instead, and it grabs the hull and drains the tank.");
 		snap(3);
 		still("34-the-figure-fades");
 		for (int frames = 0; frames < 40 && !onServer(server -> figure[0].isRemoved()); frames++) {

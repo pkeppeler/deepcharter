@@ -51,7 +51,7 @@ LAMP_OPTIONS = ("pole", "hand", "ribs")
 DEFAULT_LAMP = LAMP_OPTIONS[0]
 LANTERN = "lantern"
 # The glass of the lamp is small: a hand lantern, not a floodlight.
-MAX_GLASS_TEXELS = 40
+MAX_GLASS_TEXELS = 80
 TEXTURE_SIZE = 128
 
 # Too tall and thin: a miner is about 36 px, the figure is at least 1.2 times that. It is 44 px (2.75 blocks) to within half a pixel,
@@ -105,7 +105,7 @@ def lit_glass(canvas, face, rng):
             edge = min(i, j, face.w - 1 - i, face.h - 1 - j)
             heat = 1.0 if edge > 0 or min(face.w, face.h) <= 2 else 0.8
             heat -= rng.random() * 0.06
-            canvas.set(face.x + i, face.y + j, (round(255 * heat), round(214 * heat), round(130 * heat)))
+            canvas.set(face.x + i, face.y + j, (round(255 * heat), round(236 * heat), round(176 * heat)))
 
 
 MATERIALS = {
@@ -274,11 +274,11 @@ def helmet(model, head_top, hw, hd):
 
 
 def hanging_lantern(bone, x, top, z):
-    """A small lantern hung from (x, top, z): a ring, a cap, 3 x 4 x 3 of glass and a base, 7 px from the ring to the base."""
+    """A small lantern hung from (x, top, z): a ring, a cap, 4 x 5 x 4 of glass and a base, 8 px from the ring to the base."""
     bone.box(x - 0.5, top - 1, z - 0.5, x + 0.5, top, z + 0.5, "iron")
-    bone.box(x - 2, top - 2, z - 2, x + 2, top - 1, z + 2, "iron")
-    bone.box(x - 1.5, top - 6, z - 1.5, x + 1.5, top - 2, z + 1.5, "glass")
-    bone.box(x - 2, top - 7, z - 2, x + 2, top - 6, z + 2, "iron")
+    bone.box(x - 2.5, top - 2, z - 2.5, x + 2.5, top - 1, z + 2.5, "iron")
+    bone.box(x - 2, top - 7, z - 2, x + 2, top - 2, z + 2, "glass")
+    bone.box(x - 2.5, top - 8, z - 2.5, x + 2.5, top - 7, z + 2.5, "iron")
 
 
 def lamp_in_hand(model):
@@ -307,10 +307,10 @@ def lamp_in_ribs(model):
     x0, y0, z0 = torso.origin
     w, h, d = torso.size
     bone = model.bone(LANTERN, "spine", (0, y0 + h / 2, z0))
-    bone.box(-2, y0 + 1, z0 - 1, 2, y0 + 7, z0, "glass")
-    for y in (y0 + 1, y0 + 3, y0 + 5):
+    bone.box(-2.5, y0 + 1, z0 - 1, 2.5, y0 + 8, z0, "glass")
+    for y in (y0 + 1, y0 + 4, y0 + 7):
         bone.box(-3, y, z0 - 2, 3, y + 1, z0 - 1, "iron")
-    bone.box(-0.5, y0 + 1, z0 - 2, 0.5, y0 + 7, z0 - 1, "iron")
+    bone.box(-0.5, y0 + 1, z0 - 2, 0.5, y0 + 8, z0 - 1, "iron")
 
 
 LAMPS = {"hand": lamp_in_hand, "pole": lamp_on_pole, "ribs": lamp_in_ribs}
@@ -439,7 +439,7 @@ def animated_bones():
 
 def body_width(model):
     """How wide the figure stands across, not counting its arms and the frays on their sleeves."""
-    lo, hi = extent(model, skip=ARM_BONES)
+    lo, hi = extent(model, skip=ARM_BONES + ("lantern",))
     return hi[0] - lo[0]
 
 

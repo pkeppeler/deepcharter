@@ -15,7 +15,6 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
@@ -23,8 +22,8 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 
 /**
- * The room of the Retained's evidence scenarios (#449): a long, closed chamber of layer 2's rock, dark but for what a scenario puts in it,
- * with the world's mobs off. A scenario holds one and delegates to it (a scenario extends {@code EvidenceScenario} directly). Layer 2 is where the rail line is and where the figures are met; its fog ends at 32 blocks. A chamber runs
+ * The room of the Retained's evidence scenarios (#449): a long, closed chamber of layer 2's rock, dark but for what a scenario puts in it
+ * (the world's mobs are off: {@code TestPacks} pins that for every world). A scenario holds one and delegates to it (a scenario extends {@code EvidenceScenario} directly). Layer 2 is where the rail line is and where the figures are met; its fog ends at 32 blocks. A chamber runs
  * along x from its floor block, {@code z} across it.
  */
 final class RetainedChamber {
@@ -46,9 +45,6 @@ final class RetainedChamber {
 	void enterLayer(double x, double y, double z, float yaw, float pitch) {
 		ctx.waitTicks(40); // tick-wait: the world's spawn settles before the player is moved
 		serverDo(server -> {
-			GameRules rules = server.getGameRules();
-			rules.set(GameRules.SPAWN_MOBS, false, server);
-			rules.set(GameRules.SPAWN_MONSTERS, false, server);
 			ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 			player.teleportTo(layer(server), x, y, z, Set.of(), yaw, pitch, true);
 		});

@@ -105,9 +105,9 @@ Its files are `geckolib/models/creature/lampless_figure.geo.json`, `textures/ent
 
 ## The lamp-carrier (#449)
 
-Some of the Retained carry a small lamp, so that you see them from far off in the dark. The user's words (pkeppeler, 2026-10-11): "even creepier, if they had a small glowing lamp so you could see them from a distance in the dark". This round gives you **three ways to carry it** to pick from. Each is a real model with its own texture and glowmask, and every picture below was shot in the game by the `retained-lamp` evidence scenario, in a sealed chamber of layer 2's rock with no night vision and no pod's light: the lamp is the only light. The lamp is a small piece of glass in all three (3 by 4 by 3 pixels in the two lanterns, 4 by 6 by 1 in the ribs: under a quarter of a block across), dark in the texture and lit in a glowmask that the game draws at full bright, so it works with the game's own lighting and needs no light source. Each way carries the figure's own black, and the helmet's bracket stays empty.
+Some of the Retained carry a small lamp, so that you see them from far off in the dark. The user's words (pkeppeler, 2026-10-11): "even creepier, if they had a small glowing lamp so you could see them from a distance in the dark". This round gives you **three ways to carry it** to pick from. Each is a real model with its own texture and glowmask, and every picture below was shot in the game by the `retained-lamp` evidence scenario, in a sealed chamber of layer 2's rock with no night vision and no pod's light: the lamp is the only light. The lamp is a small piece of glass in all three (4 by 5 by 4 pixels in the two lanterns, 5 by 7 by 1 in the ribs: under a third of a block across), dark in the texture and lit in a glowmask that the game draws at full bright, so it works with the game's own lighting and needs no light source. Each way carries the figure's own black, and the helmet's bracket stays empty.
 
-| | Far (18 blocks), near (4.5) and near with night vision | How it is carried |
+| | Far (20 blocks), near (4.5) and near with night vision | How it is carried |
 |---|---|---|
 | **Pole** (the default) | ![pole, far, near and near with night vision](https://github.com/pkeppeler/deepcharter/blob/pr-media/451/retained-lamp-pole-row.png?raw=true) | A staff in the right hand with a crook at the top, and a lantern hung from the crook beside the head. The lamp is at the height of the head, so it is the one seen over rock and rubble; it stands out of the figure's black like a will-o'-the-wisp. |
 | **Hand** | ![hand, far, near and near with night vision](https://github.com/pkeppeler/deepcharter/blob/pr-media/451/retained-lamp-hand-row.png?raw=true) | A lantern on a ring in the right hand, the forearm bent so that it hangs in front at the waist. The most like a miner, and the lowest: it shows at knee height, so it is lost behind a rise in the floor. |
@@ -117,7 +117,7 @@ The default is the **pole**. The reasons: its lamp is the highest (about 2 block
 
 ![The lampless figure, far, for the control: nothing to see](https://github.com/pkeppeler/deepcharter/blob/pr-media/451/lampless-far.png?raw=true)
 
-The control above is a figure with no lamp, at the same 18 blocks and in the same dark: a shape against the faint far wall, and no more. The three lamp-carriers are the same figure with a lamp.
+The control above is a figure with no lamp, at the same 20 blocks and in the same dark: a shape against the faint far wall, and no more. The three lamp-carriers are the same figure with a lamp.
 
 A clip of the pole option walking toward the camera in the dark, from 28 blocks: [GIF](https://github.com/pkeppeler/deepcharter/blob/pr-media/451/retained-lamp-walk.gif?raw=true), [MP4](https://github.com/pkeppeler/deepcharter/blob/pr-media/451/retained-lamp.mp4?raw=true). Layer 2's fog ends at 32 blocks, so the lamp dims into the fog beyond 25 or so. A dynamic light source that lights the rock around the lamp would show it further and light the cavern it walks in; it is a follow-up.
 

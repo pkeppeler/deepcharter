@@ -48,6 +48,8 @@ public class RetainedDrainScenario extends EvidenceScenario {
 	private static final int DRAIN_FRAMES = 30;
 	private static final int FREED_FRAMES_LIMIT = 150;
 	private static final int FADE_TAIL_FRAMES = 20;
+	/** Frames after the grip breaks, for the pod to stop, so that the still holds the pod and the figure fading where it clung. */
+	private static final int SETTLE_AFTER_RELEASE_FRAMES = 2;
 	/** Yaw 180 faces -z, north across the chamber. */
 	private static final float ACROSS_THE_CHAMBER = 180f;
 
@@ -183,8 +185,9 @@ public class RetainedDrainScenario extends EvidenceScenario {
 				throw new AssertionError("the figure still clung " + FREED_FRAMES_LIMIT + " frames after the pilot drove off");
 			}
 		}
-		screenshot(ctx, "retained-shaken-off");
 		ctx.getInput().releaseKey(options -> options.keyUp);
+		record(SETTLE_AFTER_RELEASE_FRAMES);
+		screenshot(ctx, "retained-shaken-off");
 		int fading = 0;
 		while (!gone()) {
 			record(1);

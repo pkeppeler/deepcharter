@@ -32,7 +32,7 @@ public class RetainedLampScenario extends EvidenceScenario {
 	private static final int HEIGHT = 5;
 	/** Where the camera stands, at the west end, and how far the figure stands from it in the far and near stills. */
 	private static final double CAMERA_X = 0.8;
-	private static final double FAR = 18;
+	private static final double FAR = 20;
 	private static final double FARTHEST = 28;
 	private static final int WALK_FRAMES_LIMIT = 200;
 	private static final int TICKS_PER_FRAME = 3;
