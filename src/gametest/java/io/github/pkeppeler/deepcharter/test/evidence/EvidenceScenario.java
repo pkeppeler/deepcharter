@@ -41,7 +41,8 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
 		if (!name().equals(System.getenv("DEEPCHARTER_EVIDENCE"))) {
 			return;
 		}
-		ClientTestLog.start(this);
+		// A recording is long by design and the CI job limit bounds it.
+		ClientTestLog.startUntimed(this);
 		String root = System.getenv("DEEPCHARTER_EVIDENCE_DIR");
 		if (root == null) {
 			throw new IllegalStateException("DEEPCHARTER_EVIDENCE_DIR is not set; run via tools/record-evidence.sh");
