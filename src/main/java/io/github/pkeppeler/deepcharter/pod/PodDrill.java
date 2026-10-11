@@ -219,7 +219,7 @@ public final class PodDrill {
 					}
 					level.destroyBlock(pos, false);
 					if (state.is(HazardBlocks.GAS_POCKET)) {
-						GasHazard.vent(level, pos, pod);
+						GasHazard.vent(level, pos, pod, pod.chassis().blastShare(pod.drillDirection()));
 					}
 				}
 			}

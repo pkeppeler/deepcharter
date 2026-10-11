@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.pod;
 
 import java.util.List;
 
+import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
 
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -50,6 +51,27 @@ public record Chassis(String id, int seats, int tierCap, float width, float heig
 	/** Blocks tall the bore is for a sideways step: the whole blocks that clear the hitbox. */
 	public int boreHeight() {
 		return Mth.ceil(height);
+	}
+
+	/**
+	 * The share of a gas blast a pod takes when its drill opens the pocket in a sideways bore (#424): the blast is spread over the open
+	 * face of {@code boreWidth x boreHeight} cells, so the pod pays it per cell of its slab, 1 at most (2/3 for a 2 x 3 Mole). Per pocket.
+	 */
+	public float sidewaysBlastShare() {
+		return Math.min(1f, (float) slabCells() / (boreWidth() * boreHeight()));
+	}
+
+	/**
+	 * The share of a gas blast the pod takes when its drill opens a pocket while boring in {@code direction}: 1 for down, {@link #sidewaysBlastShare()} for a horizontal direction.
+	 *
+	 * @throws IllegalArgumentException for up, which a pod never bores
+	 */
+	public float blastShare(Direction direction) {
+		return switch (direction) {
+			case DOWN -> 1f;
+			case NORTH, SOUTH, EAST, WEST -> sidewaysBlastShare();
+			case UP -> throw new IllegalArgumentException("a pod never bores up");
+		};
 	}
 
 	/** Blocks in one slab of a downward bore: the cells, and so the ore, a step takes. */

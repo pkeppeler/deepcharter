@@ -696,7 +696,73 @@ The no-brace columns were measured again on the merged code and give the sounder
 
 **The economy pins.** `EarlyRunModel` and `EconomyAffordabilityTest` read the slab only, so none of their numbers move (Mole layer 2 run $348 net, Prospector restore 4 runs, tier prices). No pin was re-pinned.
 
-**Open questions.** What gives the Mole back some of the sidestep's exposure without the small cab (tier 1 `sideReach`, a 2-row sidestep, longer tier 2 strips, a cheaper bleed)? That is [#424](https://github.com/pkeppeler/deepcharter/issues/424).
+**Open questions.** What gives the Mole back some of the sidestep's exposure without the small cab (tier 1 `sideReach`, a 2-row sidestep, longer tier 2 strips, a cheaper bleed)? Answered by [Gas on the taller Mole (#424)](#gas-on-the-taller-mole-424-a), which also sets the bars back to the #373 rule and replaces the re-based bars above.
+
+## Gas on the taller Mole (#424, A)
+
+**Problem.** The 1.9 x 2.9 Mole of [#400](#pod-sizes-for-the-cabs-400) bores a sideways face of 6 cells and a downward slab of 4. The sounder columns lost 15 to 21 bores of reach, and the cause was gas: 1.5 times as many blasts a sidestep, the 6 cells over 4. The user asked for the taller cab for ergonomics, not a harder game. Which lever gives the exposure back?
+
+**Candidates.** `LavaBoreTest`, `DEEPCHARTER_LAVA_BORES=100`, seed 0, liner 2 with a rack of 32, and a pack of 64 where marked; reach is bores that reached layer 2. "After #400" is the build before this change (the table in #400). Each candidate was measured alone on that build. The runs are deterministic.
+
+| Candidate | Tier 1 | Tier 1 + pack | Tier 2 | Tier 2 + pack | Verdict |
+|---|---|---|---|---|---|
+| Before #400 | 36 | 50 | 46 | 60 | |
+| After #400 | 16 | 30 | 22 | 39 | |
+| A. Blast shared over the open face (the pick) | **21** | **47** | **30** | **53** | Both tiers; no new part number |
+| B. Tier 1 `sideReach` 1, the bot reads the marks | 21 | 38 | | | Half of a 2-block step; blurs tier 1 into tier 2 |
+| C. Tier 2 strips 3 blocks (not 2) | | | 25 | 40 | A sidestep is 2 blocks; the extra block only marks more sides |
+| D. Cheaper bleed (30% of the hull, 0.4 of the blast, not 45% and 0.5) | | | 31 | 54 | Tier 2 only; beats the omniscient bot |
+| E. A 2-row sidestep | rejected | | | | The 2.9 box would sit in rock |
+| A + D | | | 31 | 54 | No better than D alone |
+
+- **E, rejected without a run.** A pod 2.9 tall in a bore 2 rows tall has its top row inside the rock. The box is real (the lining ring, the hard landing and the lava touch all read it), so a bore smaller than the box is a bug and not a mechanic.
+- **B** needs tier 1 to see half of the step, so it still bores blind into the other half, and it makes tier 1 the cheap tier 2. It adds 5 and 8 bores, a third of what A adds at the pack.
+- **C** adds 3 and 1: the tier 2 strips already cover every cell a 2-block step bores and the slab it lands on. A longer strip only marks more sides, so more pods find all four sides marked and bore the pocket.
+- **D** adds 9 and 15 on tier 2 and nothing on tier 1. It also puts the part 9 and 15 bores over its omniscient bound, which is the state [#373](#seep-sounder-373-a) tuned the bleed away from: drilling on beats stepping aside.
+- **A + D** gave the same 31 and 54 as D alone, which is the first sign that tier 2 is not capped by gas any more (see below).
+
+**The pick: A, the blast shared over the open face.** A sideways step bores a face of `boreWidth x boreHeight` cells, a downward one a slab of `boreWidth^2`. The pocket's gas vents along the open face and not into the slab, so the drilling pod takes the blast per cell of its slab: `Chassis.sidewaysBlastShare()` is the slab's cells over the face's, 1 at most (a 2 x 3 Mole: 4 over 6, 2/3; a 3 x 3 Prospector: 1). `GasHazard.vent` takes it for the pod whose drill opened the pocket, before the sounder's bleed (`PodSounder.drilledBlast`) caps it. A pod beside the blast, and every downward bore, takes the whole blast. It is the cause the measurement named (6 cells over 4), scaled by the same ratio, so on average a pocket in a sidestep of the taller Mole costs the hull it cost the old one. The share is per pocket: a single bore that opens two pockets pays 2/3 for each.
+
+**Measured: the part against its new bound.** The omniscient bots on this build (`GAS=sounder1`, `GAS=sounder`). The bars are the #373 rule again: the bound minus 5 reach, and plus 5 gas deaths and gas hull. The bars of #400 (bound minus 5 of the old bounds: 11 / 25 / 17 / 34) are replaced.
+
+| Column | Reach: bound / bar / measured | Gas deaths: bound / bar / measured | Gas hull: bound / bar / measured |
+|---|---|---|---|
+| Tier 1, rack 32 | 21 / 16 / **21** | 11 / 16 / **11** | 45.0 / 50 / **45.0** |
+| Tier 1, rack 32 + pack 64 | 47 / 42 / **47** | 22 / 27 / **22** | 55.6 / 60.6 / **55.6** |
+| Tier 2, rack 32 | 28 / 23 / **30** | 11 / 16 / **12** | 38.3 / 43.3 / **38.0** |
+| Tier 2, rack 32 + pack 64 | 50 / 45 / **53** | 20 / 25 / **20** | 46.9 / 51.9 / **46.5** |
+
+The tier 1 part equals its bound to the bore, as before. The tier 2 part now beats its bound by 2 and 3: the bleed drills on through a pocket the omniscient bot steps round, and a shared blast makes that cheaper. That is within the bar's room and is not tuned away.
+
+**Measured: the four columns against the pre-#400 numbers.**
+
+| 100 bores | Reach layer 2 | Deaths: lava / gas / landing / crust | Hull lost per bore: lava / gas / landing / crust |
+|---|---|---|---|
+| Tier 1, before #400 | 36 | 42 / 6 / 0 / 16 | 30 / 45 / 0 / 10 |
+| Tier 1, after #400 | 16 | 51 / 26 / 0 / 5 | 31.5 / 55.7 / 0 / 4.2 |
+| Tier 1, this change | 21 | 64 / 11 / 0 / 2 | 38.6 / 45.0 / 0 / 5.3 |
+| Tier 1 + pack, before #400 | 50 | 20 / 9 / 0 / 21 | 12 / 50 / 0 / 14 |
+| Tier 1 + pack, after #400 | 30 | 17 / 35 / 0 / 16 | 9.3 / 66.9 / 0 / 8.5 |
+| Tier 1 + pack, this change | 47 | 18 / 22 / 0 / 11 | 11.6 / 55.6 / 0 / 12.3 |
+| Tier 2, before #400 | 46 | 37 / 7 / 0 / 10 | 31 / 33 / 0 / 12 |
+| Tier 2, after #400 | 22 | 50 / 18 / 0 / 9 | 36.8 / 45.8 / 0 / 6.3 |
+| Tier 2, this change | 30 | 55 / 12 / 0 / 2 | 41.0 / 38.0 / 0 / 7.5 |
+| Tier 2 + pack, before #400 | 60 | 18 / 10 / 0 / 12 | 14 / 36 / 0 / 16 |
+| Tier 2 + pack, after #400 | 39 | 21 / 24 / 0 / 15 | 13.1 / 55.1 / 0 / 11.0 |
+| Tier 2 + pack, this change | 53 | 21 / 20 / 0 / 5 | 15.3 / 46.5 / 0 / 13.3 |
+
+- **The pack columns are back within 3 and 7 bores** (47 against 50, 53 against 60), and gas hull a bore is near the old values (55.6 against 50, 46.5 against 36). The gas deaths still run higher than before (22 against 9, 20 against 10), because the pods that gas no longer ends go on to die to something else.
+- **The columns without a pack are not back: 21 against 36, and 30 against 46. The rest of the gap is lava, not gas.** Lava ends 64 and 55 of the 100 bores (it was 42 and 37) and the ring of the taller box costs 24 bricks and not 20, so a rack of 32 runs out sooner. A rack of 38 (32 x 24 / 20), which is a diagnosis and not a change, gives only 24 and 35. A touch of lava is box physics, as the issue said, and stays. It is a lava and lining question and not a gas one: [#432](https://github.com/pkeppeler/deepcharter/issues/432).
+- **Gas still decides.** A Mole with no sounder: 7 reach layer 2 and 44 die of gas (hull 69 a bore of gas); with the pack 15 and 57 (81). Before #400: 5 and 41 (72), 13 and 47 (79). The part still matters (21 to 53 against 7 and 15), and the unprepared pilot dies to gas about as often as before.
+- **The braced column** (`BRACE=1`, tier 1, rack 32 + pack): 62 of 100 reach layer 2 (46 after #400, 30 without the brace).
+
+**Decisions (A).**
+- The Mole's cab stays tall; the answer is in how a blast spreads, and not in the size of the bore, the sounder parts or the bleed. No sounder number changed.
+- The share is the ratio of the cells, not a tuned number, so a chassis added later pays what its shape says (a 2 x 4 pays 1/2, a 3 x 3 pays the whole blast).
+- The pass bars are the #373 rule against the new bounds: 16 / 42 / 23 / 45. They are design-log numbers; `LavaBoreTest` prints the figures and asserts none.
+- Not a HUD change and not a new look, so no demo.
+
+**Open questions.** Why a taller pod dies more to lava, and what the ring should cost it (a brick for each 6 cells, a bigger rack for a taller chassis, or a taller box that shrugs off the top row). Filed as [#432](https://github.com/pkeppeler/deepcharter/issues/432).
 
 ## The tow line (#425, A)
 
