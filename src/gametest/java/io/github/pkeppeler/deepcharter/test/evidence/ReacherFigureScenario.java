@@ -48,7 +48,7 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
  * {@code reacher-rock-lit} (side-on, in the same rock, with the lamp lighting the wall behind the figure so that it reads as a silhouette),
  * {@code reacher-front} (from the far end, with the pod's wall lit behind it), {@code reacher-head} (a close-up of the hat and the empty
  * bracket) and {@code reacher-scale} (a miner beside it); a clip of the front view as it idles, a clip of it walking in the dark, and the
- * fade: it walks into the pod's light from the dark end of the chamber and fades out, with stills at a fifth, a half and four fifths of the fade.
+ * dissolve: a figure killed at the edge of the pod's light dissolves, with stills at a fifth, a half and four fifths of the dissolve.
  *
  * <p>Every segment's frames are logged as {@code [reacher-figure-segment] <name> <first>-<last>}, which is how the GIFs are cut.
  */
@@ -83,11 +83,9 @@ public class ReacherFigureScenario extends EvidenceScenario {
 	private static final int IDLE_TICKS = 40;
 	private static final int CLIP_FRAMES = 36;
 	private static final int TICKS_PER_FRAME = 3;
-	/** The fade is recorded at one frame a tick: it lasts 40 ticks. */
+	/** The dissolve is recorded at one frame a tick: it lasts 20 ticks. */
 	private static final int FADE_FRAMES_LIMIT = 120;
 	private static final int FADE_LEAD_FRAMES = 10;
-	/** Where the figure starts its walk into the light, at the dark end of the chamber, heading toward the pod. */
-	private static final Vec3 FADE_START = new Vec3(11.5, 1, 0.5);
 
 	private ClientGameTestContext ctx;
 	private TestSingleplayerContext world;
@@ -117,8 +115,8 @@ public class ReacherFigureScenario extends EvidenceScenario {
 				showcase();
 				darkenForWalk();
 				walk();
-				lightForFade();
-				fade();
+				lightForDissolve();
+				dissolve();
 			} finally {
 				context.runOnClient(client -> client.options.setCameraType(cameraType));
 			}
@@ -257,7 +255,7 @@ public class ReacherFigureScenario extends EvidenceScenario {
 
 	/**
 	 * The figure with its AI on walks across the chamber from one wall toward the other, seen from the far end: far enough off that it does
-	 * not fade for a player near it, and in the dark so it does not fade for a light. Its walk is the walk of the animation file.
+	 * not near the camera, and in the dark. Its walk is the walk of the animation file.
 	 */
 	private void walk() {
 		serverDo(server -> {
@@ -279,7 +277,7 @@ public class ReacherFigureScenario extends EvidenceScenario {
 	}
 
 	/** The pod's lights come back on and the night vision goes: the camera sees as a player does. */
-	private void lightForFade() {
+	private void lightForDissolve() {
 		serverDo(server -> {
 			((PodEntity) layer(server).getEntity(podId)).setStranded(false);
 			server.getPlayerList().getPlayers().getFirst().removeEffect(MobEffects.NIGHT_VISION);
@@ -288,25 +286,24 @@ public class ReacherFigureScenario extends EvidenceScenario {
 	}
 
 	/**
-	 * The figure with its AI on walks out of the dark end of the chamber toward the pod, seen from behind the pod, 9 blocks off at the start
-	 * (past the 8 at which a player's nearness fades it). Where the lamp's light reaches it, it fades. The frames run from before the fade
-	 * to the figure's end, one frame a tick, with a still at a fifth, a half and four fifths of the fade.
+	 * The figure stands at the edge of the pod's light, seen from behind the pod, and is killed. The frames run from before the kill to the
+	 * figure's end, one frame a tick, with a still at a fifth, a half and four fifths of the dissolve.
 	 */
-	private void fade() {
+	private void dissolve() {
 		serverDo(server -> {
 			LamplessFigure figure = (LamplessFigure) layer(server).getEntity(figureId);
-			figure.setPos(at(FADE_START));
-			figure.setHeading(Direction.WEST);
-			figure.setNoAi(false);
+			figure.setPos(at(EDGE));
+			figure.setNoAi(true);
 		});
 		look(at(new Vec3(0.9, 3.7, 0.5)), at(EDGE).add(0, 1.4, 0));
 		settle();
+		serverDo(server -> layer(server).getEntity(figureId).kill(layer(server)));
 		int first = framesTaken + 1;
 		boolean[] shot = new boolean[3];
 		float[] at = {0.2f, 0.5f, 0.8f};
 		String[] names = {"reacher-fade-early", "reacher-fade-half", "reacher-fade-late"};
 		for (int i = 0; i < FADE_FRAMES_LIMIT; i++) {
-			ctx.waitTick(); // tick-wait: the fade is cut at one frame a tick
+			ctx.waitTick(); // tick-wait: the dissolve is cut at one frame a tick
 			frame(ctx);
 			framesTaken++;
 			float fade = ctx.computeOnClient(client -> client.level.getEntity(figureId) instanceof LamplessFigure f ? f.fadeFraction() : 1f);
@@ -319,7 +316,7 @@ public class ReacherFigureScenario extends EvidenceScenario {
 			}
 			if (gone) {
 				for (int tail = 0; tail < FADE_LEAD_FRAMES; tail++) {
-					ctx.waitTick(); // tick-wait: the empty chamber after the fade
+					ctx.waitTick(); // tick-wait: the empty chamber after the dissolve
 					frame(ctx);
 					framesTaken++;
 				}
@@ -328,7 +325,7 @@ public class ReacherFigureScenario extends EvidenceScenario {
 				return;
 			}
 		}
-		throw new AssertionError("the figure had not faded out " + FADE_FRAMES_LIMIT + " frames after it set off");
+		throw new AssertionError("the figure had not dissolved " + FADE_FRAMES_LIMIT + " frames after it was killed");
 	}
 
 	/** A point in the chamber as a world position. */

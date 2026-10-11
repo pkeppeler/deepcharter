@@ -14,9 +14,7 @@ import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 
 /**
- * While {@link EvidencePins#figureFade} is set, a lampless figure is drawn that far faded, however far it has really faded: the real
- * fade runs on the server's ticks. While {@link EvidencePins#figureAnimationAge} is set, its animation clock is held at that age. Test
- * code only.
+ * While {@link EvidencePins#figureAnimationAge} is set, the animation clock of a lampless figure is held at that age. Test code only.
  */
 @Mixin(value = LamplessFigureRenderer.class, remap = false)
 public abstract class LamplessFigureRendererMixin {
@@ -28,13 +26,6 @@ public abstract class LamplessFigureRendererMixin {
 	private void deepcharter$pinTheClock(LamplessFigure figure, LamplessFigureRenderState state, float partialTick, CallbackInfo ci) {
 		if (EvidencePins.figureAnimationAge >= 0f) {
 			((GeoRenderState) state).addGeckolibData(DataTickets.TICK, (double) EvidencePins.figureAnimationAge);
-		}
-	}
-
-	@Inject(method = "extractRenderState(Lio/github/pkeppeler/deepcharter/creature/LamplessFigure;Lio/github/pkeppeler/deepcharter/client/creature/LamplessFigureRenderState;F)V", at = @At("RETURN"))
-	private void deepcharter$fade(LamplessFigure figure, LamplessFigureRenderState state, float partialTick, CallbackInfo ci) {
-		if (EvidencePins.figureFade >= 0f) {
-			state.fade = EvidencePins.figureFade;
 		}
 	}
 }
