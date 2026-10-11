@@ -312,32 +312,37 @@ public final class PodLining {
 	 * As {@link #cellsToLine(PodEntity)} for a lining that reaches {@code reach} slabs below the pod's feet: the ring starts that far down
 	 * (the liner lines the stretch it is about to bore), and the floor reaches that far if it is more than {@link #FLOOR_DEPTH}. With
 	 * {@code lavaOnly} the ring keeps only the cells lava can reach: those joined to lava by open cells ({@link #lavaReach}). The rest of
-	 * the open ring is air that cannot flood, so a brick there is wasted.
+	 * the open ring is air that cannot flood, so a brick there is wasted. A hand lining (not {@code lavaOnly}) of a pod whose lava watch warns of lava
+	 * from above also takes the cells of the box's width over it, the lid, first: one brick for each cell of the bore ({@link Chassis#slabCells}).
 	 */
 	static List<BlockPos> cellsToLine(PodEntity pod, int reach, boolean lavaOnly) {
 		ServerLevel level = (ServerLevel) pod.level();
 		LoadedBlocks blocks = new LoadedBlocks(level);
 		PodFootprint foot = PodFootprint.of(pod);
 		Set<BlockPos> flooded = lavaOnly ? lavaReach(blocks, foot, Math.max(FLOOR_DEPTH, reach)) : Set.of();
+		// Lava that falls down the shaft from above (the lava watch sees it, the ring cannot reach it) is stopped by a cap over the box.
+		boolean cap = !lavaOnly && PodLavaWatch.lavaAbove(pod);
+		int capY = foot.feetY() + foot.height();
 		List<BlockPos> cells = new ArrayList<>();
-		for (int y = foot.feetY() - Math.max(FLOOR_DEPTH, reach); y < foot.feetY() + foot.height(); y++) {
+		for (int y = foot.feetY() - Math.max(FLOOR_DEPTH, reach); y < capY + (cap ? 1 : 0); y++) {
 			for (int x = foot.lowX() - 1; x <= foot.lowX() + foot.width(); x++) {
 				for (int z = foot.lowZ() - 1; z <= foot.lowZ() + foot.width(); z++) {
 					boolean insideX = x >= foot.lowX() && x < foot.lowX() + foot.width();
 					boolean insideZ = z >= foot.lowZ() && z < foot.lowZ() + foot.width();
-					boolean ring = insideX != insideZ && y >= foot.feetY() - reach;
+					boolean ring = insideX != insideZ && y >= foot.feetY() - reach && y < capY;
 					boolean floor = insideX && insideZ && y < foot.feetY();
+					boolean lid = insideX && insideZ && y == capY;
 					BlockPos pos = new BlockPos(x, y, z);
 					// The pod's own riders do not block its lining, even in the cell under the pod (a low seat puts them there); a stranger does.
 					boolean reachedByLava = floor || !lavaOnly || flooded.contains(pos);
-					if ((ring || floor) && reachedByLava && !level.isOutsideBuildHeight(pos) && blocks.canChange(pos) && needsBrick(blocks.getBlockState(pos), floor)
+					if ((ring || floor || lid) && reachedByLava && !level.isOutsideBuildHeight(pos) && blocks.canChange(pos) && needsBrick(blocks.getBlockState(pos), floor)
 							&& level.getEntities((Entity) null, new AABB(pos), entity -> !entity.isSpectator() && !pod.hasPassenger(entity)).isEmpty()) {
 						cells.add(pos);
 					}
 				}
 			}
 		}
-		cells.sort(Comparator.comparingInt((BlockPos pos) -> urgency(blocks, pos)).thenComparingInt(BlockPos::getY).thenComparingLong(BlockPos::asLong));
+		cells.sort(Comparator.comparingInt((BlockPos pos) -> pos.getY() == capY && cap ? -1 : urgency(blocks, pos)).thenComparingInt(BlockPos::getY).thenComparingLong(BlockPos::asLong));
 		return cells;
 	}
 
@@ -380,6 +385,11 @@ public final class PodLining {
 			return state.getBlock() instanceof LiquidBlock && state.getFluidState().is(FluidTags.LAVA);
 		}
 		return !state.is(Blocks.LIGHT) && (state.isAir() || state.getBlock() instanceof LiquidBlock || state.canBeReplaced());
+	}
+
+	/** Whether a cell is open to a flow: the cells a ring takes a brick in, and the cells lava runs through. */
+	static boolean open(BlockState state) {
+		return needsBrick(state, false);
 	}
 
 	/** 0 for lava, 1 for an open cell beside lava, 2 for any other. */
