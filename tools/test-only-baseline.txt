@@ -3,7 +3,6 @@
 # a line here that is no longer a finding. New code gets no line. Fix the member, or mark a deliberate seam '// test-seam: <reason>'.
 # One Class#member(parameter descriptors) per line, sorted.
 
-io.github.pkeppeler.deepcharter.charter.Charters#recordDeepestPoint(Lnet/minecraft/server/MinecraftServer;Lio/github/pkeppeler/deepcharter/charter/CharterId;I)
 io.github.pkeppeler.deepcharter.client.charter.terminal.ContractScreen#nameField()
 io.github.pkeppeler.deepcharter.client.charter.terminal.ContractScreen#state()
 io.github.pkeppeler.deepcharter.client.fuel.FuelPumpScreen#view()
