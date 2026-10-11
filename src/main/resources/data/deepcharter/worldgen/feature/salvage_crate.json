@@ -1,0 +1,44 @@
+{
+  "type": "minecraft:simple_block",
+  "to_place": {
+    "type": "minecraft:weighted",
+    "entries": [
+      {
+        "data": {
+          "id": "deepcharter:salvage_crate",
+          "properties": {
+            "facing": "north"
+          }
+        },
+        "weight": 1
+      },
+      {
+        "data": {
+          "id": "deepcharter:salvage_crate",
+          "properties": {
+            "facing": "east"
+          }
+        },
+        "weight": 1
+      },
+      {
+        "data": {
+          "id": "deepcharter:salvage_crate",
+          "properties": {
+            "facing": "south"
+          }
+        },
+        "weight": 1
+      },
+      {
+        "data": {
+          "id": "deepcharter:salvage_crate",
+          "properties": {
+            "facing": "west"
+          }
+        },
+        "weight": 1
+      }
+    ]
+  }
+}

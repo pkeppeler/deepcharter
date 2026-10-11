@@ -1,0 +1,52 @@
+{
+  "templates": {},
+  "recipes": {
+    "block/salvage_tarp": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "noise",
+          "ramp": [
+            "tarp.1",
+            "tarp.2",
+            "tarp.2",
+            "tarp.3"
+          ],
+          "seed": 951,
+          "cell": 4,
+          "octaves": 2,
+          "dither": 0.4
+        },
+        {
+          "op": "speckle",
+          "colours": [
+            "tarp.0",
+            "tarp.4"
+          ],
+          "density": 0.06,
+          "seed": 952
+        },
+        {
+          "op": "rect",
+          "rect": [
+            0,
+            7,
+            16,
+            1
+          ],
+          "colour": "timber.4"
+        },
+        {
+          "op": "rect",
+          "rect": [
+            0,
+            8,
+            16,
+            1
+          ],
+          "colour": "timber.1"
+        }
+      ]
+    }
+  }
+}

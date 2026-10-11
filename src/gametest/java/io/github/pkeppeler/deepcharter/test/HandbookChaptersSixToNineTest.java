@@ -265,7 +265,7 @@ public class HandbookChaptersSixToNineTest {
 						&& Charters.deposit(server, charter, 20_000).isEmpty(), "the second player should join the charter, which is then funded");
 				List<ServerPlayer> both = List.of(first, second);
 				// Chapters 1 to 5 are done by their own test; here they are done so that chapter 6 is the one the crew is on.
-				for (Item item : List.of(Items.OAK_LOG, Items.CRAFTING_TABLE, Items.STONE_AXE, Items.RAW_IRON, Items.IRON_INGOT)) {
+				for (Item item : List.of(HandbookChaptersOneToFiveTest.ours("fungal_stalk"), Items.CRAFTING_TABLE, Items.STONE_AXE, HandbookChaptersOneToFiveTest.ours("scrap_iron"), Items.IRON_INGOT)) {
 					HandbookChaptersOneToFiveTest.give(first, item);
 				}
 				for (String directive : through(5)) {

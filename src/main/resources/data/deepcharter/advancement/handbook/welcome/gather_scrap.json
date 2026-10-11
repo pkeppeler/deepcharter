@@ -1,21 +1,21 @@
 {
   "criteria": {
-    "raw": {
+    "iron": {
       "trigger": "minecraft:inventory_changed",
       "conditions": {
         "items": [
           {
-            "items": "minecraft:raw_iron"
+            "items": "deepcharter:scrap_iron"
           }
         ]
       }
     },
-    "ore": {
+    "copper": {
       "trigger": "minecraft:inventory_changed",
       "conditions": {
         "items": [
           {
-            "items": "#minecraft:iron_ores"
+            "items": "deepcharter:scrap_copper"
           }
         ]
       }
@@ -23,8 +23,8 @@
   },
   "requirements": [
     [
-      "raw",
-      "ore"
+      "iron",
+      "copper"
     ]
   ]
 }

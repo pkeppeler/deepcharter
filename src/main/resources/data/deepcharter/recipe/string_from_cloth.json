@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "deepcharter:salvage_cloth"
+  ],
+  "result": {
+    "id": "minecraft:string",
+    "count": 4
+  }
+}

@@ -26,9 +26,11 @@ import net.minecraft.advancements.triggers.CriteriaTriggers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.Tag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -88,10 +90,13 @@ public class HandbookChaptersOneToFiveTest {
 	private static final String SAMPLE = "sample";
 	private static final BlockPos TERMINAL = new BlockPos(0, 1, 0);
 
-	/** The permanent ids: a world's saved progress names these directives. */
+	/**
+	 * The permanent ids: a world's saved progress names these directives. The one change since they were pinned is chapter 1's {@code mine_iron_ore},
+	 * now {@code gather_scrap} (#245, ADR 0047); {@link HandbookProgressData} reads the old id as the new one.
+	 */
 	static final Map<String, List<String>> PINNED = Map.of(
 			"deepcharter:welcome", List.of("deepcharter:handbook/welcome/gather_wood", "deepcharter:handbook/welcome/craft_crafting_table",
-					"deepcharter:handbook/welcome/craft_stone_tools", "deepcharter:handbook/welcome/mine_iron_ore",
+					"deepcharter:handbook/welcome/craft_stone_tools", "deepcharter:handbook/welcome/gather_scrap",
 					"deepcharter:handbook/welcome/smelt_iron"),
 			"deepcharter:back_online", List.of("deepcharter:handbook/back_online/repair_fuel_pump",
 					"deepcharter:handbook/back_online/repair_ore_processor", "deepcharter:handbook/back_online/repair_upgrade_terminal"),
@@ -116,6 +121,23 @@ public class HandbookChaptersOneToFiveTest {
 
 	static List<String> directivesOf(HandbookChapter chapter) {
 		return chapter.directives().stream().map(entry -> entry.id().toString()).toList();
+	}
+
+	/** A world saved before #245 holds chapter 1's old directive; its charter counts the renamed one as done, and a save writes both. */
+	@GameTest
+	public void aCharterThatCompletedTheOldIronDirectiveHasCompletedTheScrapOne(GameTestHelper helper) {
+		CharterId charter = new CharterId(UUID.randomUUID());
+		Identifier old = id(directive("welcome", "mine_iron_ore"));
+		HandbookProgressData saved = new HandbookProgressData();
+		saved.complete(charter, old);
+		saved.complete(charter, id(directive("welcome", "gather_wood")));
+		Tag tag = HandbookProgressData.CODEC.encodeStart(NbtOps.INSTANCE, saved).getOrThrow();
+		HandbookProgressData loaded = HandbookProgressData.CODEC.parse(NbtOps.INSTANCE, tag).getOrThrow();
+		Set<Identifier> expected = Set.of(old, id(directive("welcome", "gather_wood")), id(directive("welcome", "gather_scrap")));
+		if (!loaded.completed(charter).equals(expected)) {
+			throw helper.assertionException("the old save should read as %s, got %s", expected, loaded.completed(charter));
+		}
+		helper.succeed();
 	}
 
 	@GameTest
@@ -202,6 +224,11 @@ public class HandbookChaptersOneToFiveTest {
 
 	private static Identifier id(String id) {
 		return Identifier.parse(id);
+	}
+
+	/** One of the mod's own items, by id: the salvage of the bootstrap (#245) is registered by the surface feature. */
+	public static Item ours(String path) {
+		return BuiltInRegistries.ITEM.getValue(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
 	}
 
 	static void give(ServerPlayer player, Item item) {
@@ -319,13 +346,13 @@ public class HandbookChaptersOneToFiveTest {
 				expectRoadAt(helper, server, first, 0);
 
 				// Chapter 1: bootstrap crafting, shared between the two.
-				give(first, Items.OAK_LOG);
-				expectCompleted(helper, server, "gathering wood", both, Set.of(directive("welcome", "gather_wood")));
+				give(first, ours("fungal_stalk"));
+				expectCompleted(helper, server, "cutting a stalk", both, Set.of(directive("welcome", "gather_wood")));
 				give(second, Items.CRAFTING_TABLE);
 				give(second, Items.STONE_AXE);
-				give(first, Items.RAW_IRON);
-				expectCompleted(helper, server, "mining iron", both, Set.of(directive("welcome", "gather_wood"), directive("welcome", "craft_crafting_table"),
-						directive("welcome", "craft_stone_tools"), directive("welcome", "mine_iron_ore")));
+				give(first, ours("scrap_iron"));
+				expectCompleted(helper, server, "gathering scrap", both, Set.of(directive("welcome", "gather_wood"), directive("welcome", "craft_crafting_table"),
+						directive("welcome", "craft_stone_tools"), directive("welcome", "gather_scrap")));
 				expectRoadAt(helper, server, second, 0);
 				give(second, Items.IRON_INGOT);
 				expectCompleted(helper, server, "chapter 1", both, through(1));

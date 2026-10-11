@@ -9,6 +9,22 @@
           }
         ]
       }
+    },
+    "planks": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "#minecraft:planks"
+          }
+        ]
+      }
     }
-  }
+  },
+  "requirements": [
+    [
+      "logs",
+      "planks"
+    ]
+  ]
 }

@@ -35,7 +35,9 @@
     ],
     [],
     [],
-    [],
+    [
+      "deepcharter:fungal_stalks_cave"
+    ],
     []
   ],
   "has_precipitation": false,

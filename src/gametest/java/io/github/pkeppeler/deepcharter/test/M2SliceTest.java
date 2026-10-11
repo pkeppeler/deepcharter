@@ -167,7 +167,7 @@ public class M2SliceTest {
 						&& Charters.deposit(server, charter, FUNDS).isEmpty(), "the crewmate should join the charter, which is then funded");
 
 				// Chapter 1.
-				for (var item : List.of(Items.OAK_LOG, Items.CRAFTING_TABLE, Items.STONE_PICKAXE, Items.RAW_IRON, Items.IRON_INGOT)) {
+				for (var item : List.of(HandbookChaptersOneToFiveTest.ours("fungal_stalk"), Items.CRAFTING_TABLE, Items.STONE_PICKAXE, HandbookChaptersOneToFiveTest.ours("scrap_iron"), Items.IRON_INGOT)) {
 					HandbookChaptersOneToFiveTest.give(first, item);
 				}
 
