@@ -1,9 +1,9 @@
-"""Tests the layer concept round (docs/design/layer-concepts-2.md, #447): the packs and scenes that tools/layer_concepts/make.py writes.
+"""Tests the layers' rock and lava (#241) and the layer concept round (docs/design/layer-concepts-2.md, #447): the files that tools/layer_concepts/make.py writes.
 
 The guards, in the order of the user's rules for the round: the written files are current; every rock texture tiles the way vanilla's do (the
-seam check, with a red fixture for each way a texture fails it); the texture options differ in structure and not only in colour; a scene
-is a sealed box, so no still can show the void; every scene has what it is shot at; no model culls a face (a stepped block shows through to
-the world if it does); and the options are test packs that nothing turns on by default.
+seam check, with a red fixture for each way a texture fails it); a scene is a sealed box, so no still can show the void; every scene has what it is
+shot at; no model culls a face (a stepped block shows through to the world if it does); the lava is animated and wraps, so no two blocks of it meet at a
+seam; and the concept packs are test packs that nothing turns on by default.
 """
 import json
 import re
@@ -35,6 +35,18 @@ def pixels(grid) -> bytes:
 
 def texture_path(pack: str, name: str) -> Path:
     return make.pack_dir(pack) / f"assets/deepcharter/textures/block/{name}.png"
+
+
+SHIPPED_TEXTURES = make.MOD_ASSETS / "deepcharter/textures/block"
+
+
+def shipped_path(name: str) -> Path:
+    return SHIPPED_TEXTURES / f"{name}.png"
+
+
+def rock_path(layer: int, name: str) -> Path:
+    """Where the texture of a layer's rock or rubble is written: the mod for layers 1 and 2, the Grain pack for layer 3."""
+    return shipped_path(name) if layer in make.SHIPPED_LAYERS else texture_path(make.GRAIN, name)
 
 
 def tiling_textures(pack: str) -> dict[str, Path]:
@@ -82,12 +94,14 @@ class SeamCheckTest(unittest.TestCase):
         self.assertFalse(found.seamless())
 
     def test_every_rock_texture_tiles_at_a_contrast_near_vanillas(self):
-        for pack in make.PACKS:
-            textures = tiling_textures(pack)
+        shipped = {p.stem: p for p in SHIPPED_TEXTURES.glob("*_shale*.png")}
+        self.assertEqual(2 * (make.ROCK_VARIANTS[1] + make.END_VARIANTS + make.RUBBLE_VARIANTS + 1), len(shipped))
+        groups = {"mod": shipped} | {pack: tiling_textures(pack) for pack in make.PACKS}
+        for pack, textures in groups.items():
             self.assertTrue(textures, f"{pack} has no rock texture to check")
             for name, path in textures.items():
                 found = measure(path)
-                ceiling = seams.MAX_INSIDE if re.fullmatch(r"lc_rock_\d_(\d|end_\d)", name) else seams.MAX_RUBBLE_INSIDE
+                ceiling = seams.MAX_INSIDE if re.fullmatch(r"(lc_rock_\d|(packed|green)_shale)_(\d|end_\d)", name) else seams.MAX_RUBBLE_INSIDE
                 with self.subTest(pack=pack, texture=name):
                     self.assertLessEqual(found.wrap_ratio, 1 + seams.MARGIN, "does not run on across its wrap seams")
                     self.assertLessEqual(found.rim_ratio, 1 + seams.MARGIN, "has an edge of its own")
@@ -96,11 +110,18 @@ class SeamCheckTest(unittest.TestCase):
 
     def test_the_written_textures_are_the_pixels_the_sources_draw(self):
         """A PNG is compared by its pixels, not its bytes: another zlib on another machine writes other bytes of the same image."""
-        for style in make.STYLES:
-            for name, grid in make.rock_grids(style).items():
-                with self.subTest(style=style, texture=name):
-                    decoded = pngio.decode(texture_path(style, name).read_bytes(), name)
+        for layer in LAYERS:
+            for name, grid in make.rock_grids(layer).items():
+                with self.subTest(layer=layer, texture=name):
+                    decoded = pngio.decode(rock_path(layer, name).read_bytes(), name)
                     self.assertEqual(make.image(grid), decoded)
+
+    def test_the_shared_noise_of_every_layer_tiles(self):
+        """The edges of a layer's variants are drawn from one noise, so it must tile itself: the seeds the user's pick was made with."""
+        for (layer, top), base in make.SHARED_NOISE.items():
+            plain = make.image(art.grained(make.SHADES[layer], base, make.MID[layer]))
+            with self.subTest(layer=layer, top=top):
+                self.assertTrue(seams.measure(plain.pixels, SIZE).seamless())
 
 
 class StyleTest(unittest.TestCase):
@@ -118,51 +139,39 @@ class StyleTest(unittest.TestCase):
             return same / (len(pairs) * len(places))
 
         shares = []
-        for style in make.STYLES:
-            for layer in LAYERS:
-                images = [pngio.decode(p.read_bytes(), n) for n, p in tiling_textures(style).items() if re.fullmatch(rf"lc_rock_{layer}_\d", n)]
-                self.assertGreater(len(images), 3)
-                shares.append((share(images, ring), share(images, inside)))
-                with self.subTest(style=style, layer=layer):
-                    self.assertLess(shares[-1][0], 0.9, "the edges are one pattern")
-        self.assertGreater(sum(r for r, _ in shares) / len(shares), sum(i for _, i in shares) / len(shares) + 0.05)
-
-    def test_two_options_draw_the_same_block_with_different_pixels_in_the_same_colours(self):
-        """The options share each layer's colour ramp, so they differ in where the pixels are, which is structure. (A top is grain in Grain and
-        Bedded alike, with fissures in Bedded.)"""
         for layer in LAYERS:
-            for name in ("lc_rock_%d_%d" % (layer, i) for i in range(3)):
-                bodies = {style: pngio.decode(texture_path(style, name).read_bytes(), name).pixels for style in make.STYLES}
-                for first, second in (("grain", "bedded"), ("grain", "mottled"), ("bedded", "mottled")):
-                    differing = sum(1 for i in range(0, SIZE * SIZE * 4, 4) if bodies[first][i:i + 4] != bodies[second][i:i + 4])
-                    with self.subTest(texture=name, options=(first, second)):
-                        self.assertGreater(differing / (SIZE * SIZE), 0.35)
+            rock = make.stems(layer)[0]
+            images = [pngio.decode(rock_path(layer, f"{rock}_{i}").read_bytes(), rock) for i in range(make.ROCK_VARIANTS[layer])]
+            self.assertGreater(len(images), 3)
+            shares.append((share(images, ring), share(images, inside)))
+            with self.subTest(layer=layer):
+                self.assertLess(shares[-1][0], 0.9, "the edges are one pattern")
+        self.assertGreater(sum(r for r, _ in shares) / len(shares), sum(i for _, i in shares) / len(shares) + 0.05)
 
     def test_layer_1_and_2_rock_is_a_plain_cube_and_layer_3_is_the_column(self):
         self.assertEqual({1: "a", 2: "b", 3: "c"}, scenes.FORMATIONS)
         files, _ = make.outputs()
-        for style in make.STYLES:
-            models = {p.stem: json.loads(b) for p, b in files.items() if make.pack_dir(style) in p.parents and "/models/block/" in p.as_posix()}
-            for layer in (1, 2):
-                with self.subTest(style=style, layer=layer):
-                    self.assertTrue(all("elements" not in models[name] for name in models if name.startswith(f"lc_rock_{layer}_")))
-            self.assertTrue(all("elements" in models[name] for name in models if name.startswith("lc_rock_3_")), "layer 3 is the hexagonal column")
+        models = {p.stem: json.loads(b) for p, b in files.items() if p.parent.name == "block" and p.parent.parent.name == "models"}
+        for layer in make.SHIPPED_LAYERS:
+            for block in make.BLOCKS[layer]:
+                with self.subTest(layer=layer, block=block):
+                    self.assertTrue(all("elements" not in models[name] for name in models if re.fullmatch(rf"{block}_\d", name)))
+        self.assertTrue(all("elements" in models[name] for name in models if name.startswith("lc_rock_3_")), "layer 3 is the hexagonal column")
 
     def test_a_cube_is_never_turned_or_mirrored_because_its_textures_share_their_edges_only_so(self):
         files, _ = make.outputs()
-        for style in make.STYLES:
-            entries = json.loads(files[make.pack_dir(style) / "assets/minecraft/blockstates/granite.json"])["variants"][""]
-            with self.subTest(style=style):
+        for layer in make.SHIPPED_LAYERS:
+            entries = json.loads(files[make.MOD_ASSETS / f"deepcharter/blockstates/{make.BLOCKS[layer][0]}.json"])["variants"][""]
+            with self.subTest(layer=layer):
                 self.assertFalse([e for e in entries if "x" in e or "y" in e])
-                self.assertEqual(make.ROCK_VARIANTS[1], len(entries))
+                self.assertEqual(make.ROCK_VARIANTS[layer], len(entries))
 
     def test_a_rock_block_has_many_ways_to_look(self):
         files, _ = make.outputs()
-        for style in make.STYLES:
-            for layer, (rock, _) in make.STAND_INS.items():
-                entries = json.loads(files[make.pack_dir(style) / f"assets/minecraft/blockstates/{rock}.json"])["variants"][""]
-                with self.subTest(style=style, layer=layer):
-                    self.assertGreaterEqual(len(entries), 6, "the rock repeats at the size of a block")
+        for layer in make.SHIPPED_LAYERS:
+            entries = json.loads(files[make.MOD_ASSETS / f"deepcharter/blockstates/{make.BLOCKS[layer][0]}.json"])["variants"][""]
+            with self.subTest(layer=layer):
+                self.assertGreaterEqual(len(entries), 6, "the rock repeats at the size of a block")
 
 
 class ModelGuardTest(unittest.TestCase):
@@ -198,7 +207,7 @@ class ModelGuardTest(unittest.TestCase):
                 checked += 1
                 with self.subTest(model=f"{path.parent.parent.parent.parent.name}/{path.name}"):
                     self.assertEqual([], shapes.faults(json.loads(body)))
-        self.assertGreater(checked, 60)
+        self.assertGreaterEqual(checked, 24, "the 24 models of the mod's rock and rubble")
 
 
 class GridTest(unittest.TestCase):
@@ -290,13 +299,16 @@ class LayerConceptsTest(unittest.TestCase):
                     for x in range(x0, x1 + 1):
                         self.assertNotIn((x, y, south - 1), blocks, "the wide wall is not flat: a block stands out of it")
 
-    def test_the_rock_stands_in_for_vanilla_blocks_that_a_pack_redraws_and_stone_and_deepslate_are_not_among_them(self):
-        redrawn_by_style = {"minecraft/blockstates/" + n + ".json" for pair in make.STAND_INS.values() for n in pair}
-        for style in make.STYLES:
-            pack = make.pack_dir(style) / "assets"
-            redrawn = {p.relative_to(pack).as_posix() for p in self.files if p.is_relative_to(pack) and "/blockstates/" in p.as_posix()}
-            self.assertEqual(redrawn_by_style, redrawn)
-        self.assertTrue({"minecraft/blockstates/stone.json", "minecraft/blockstates/deepslate.json"}.isdisjoint(redrawn_by_style))
+    def test_layers_1_and_2_have_blocks_of_their_own_and_the_packs_redraw_only_what_they_must(self):
+        """The mod's rock is its own blocks (no vanilla file is redrawn), layer 3's stand-ins are vanilla andesite and diorite, and stone and deepslate,
+        which the hall of each scene shows untouched, are never redrawn."""
+        shipped = {p.relative_to(make.MOD_ASSETS).as_posix() for p in self.files if p.is_relative_to(make.MOD_ASSETS) and "/blockstates/" in p.as_posix()}
+        self.assertEqual({f"deepcharter/blockstates/{block}.json" for pair in make.BLOCKS.values() for block in pair}, shipped)
+        redrawn_by_grain = {f"minecraft/blockstates/{n}.json" for n in make.LAYER_3}
+        pack = make.pack_dir(make.GRAIN) / "assets"
+        redrawn = {p.relative_to(pack).as_posix() for p in self.files if p.is_relative_to(pack) and "/blockstates/" in p.as_posix()}
+        self.assertEqual(redrawn_by_grain, redrawn)
+        self.assertTrue({"minecraft/blockstates/stone.json", "minecraft/blockstates/deepslate.json"}.isdisjoint(redrawn_by_grain))
         for form in make.FORMS:
             pack = make.pack_dir(form) / "assets"
             redrawn = {p.relative_to(pack).as_posix() for p in self.files if p.is_relative_to(pack) and "/blockstates/" in p.as_posix()}
@@ -310,7 +322,7 @@ class LayerConceptsTest(unittest.TestCase):
                 with self.subTest(model=path.name):
                     self.assertNotIn("cullface", body.decode())
 
-    def test_the_options_are_test_packs_that_nothing_turns_on_by_default(self):
+    def test_the_concept_packs_are_test_packs_that_nothing_turns_on_by_default(self):
         main = (ROOT / "src/main/resources").rglob("*")
         self.assertEqual([], [p for p in main if "layer_concept" in p.as_posix()], "a concept pack ships in the mod")
         java = (ROOT / "src/gametest/java/io/github/pkeppeler/deepcharter/test/support/TestPacks.java").read_text()
@@ -319,9 +331,9 @@ class LayerConceptsTest(unittest.TestCase):
         self.assertIn("PackActivationType.NORMAL", java)
         self.assertNotIn("DEFAULT_ENABLED", java)
 
-    def test_every_option_is_shot_under_the_same_atmosphere_so_only_the_textures_differ(self):
+    def test_every_layer_is_shot_under_the_atmosphere_of_section_6(self):
         """The decided look of section 6 of the art direction (fog, ambient colour, lamp tint) is one biome per layer and kind of light, shared by
-        all the options; the options carry none of it, and neither does src/main."""
+        the three; the packs carry none of it, and neither does src/main."""
         for layer in LAYERS:
             bodies = {light: json.loads(self.files[make.BIOMES / f"lc_layer_{layer}_{light}.json"]) for light in make.TINTS}
             for light, body in bodies.items():
@@ -340,12 +352,26 @@ class LayerConceptsTest(unittest.TestCase):
             self.assertEqual([], assets, "a pack must not carry its own atmosphere")
         self.assertEqual([], [p for p in (ROOT / "src/main/resources").rglob("lc_layer_*")], "the atmosphere ships in the mod")
 
-    def test_the_lava_is_one_crusted_texture_for_every_option(self):
-        for name in make.LAVA_TEXTURES:
-            bodies = {s: self.files[make.pack_dir(s) / f"assets/minecraft/textures/block/{name}.png"] for s in make.STYLES}
+    def test_the_lava_is_animated_in_lava_colours_and_wraps_so_no_two_blocks_meet_at_a_seam(self):
+        """The renderer shows a flowing face as a window of half the 32 x 32 sprite, so two neighbours meet at the window's edge: only a pattern that repeats
+        every 16 pixels has no seam there. The frames loop, and a skin of cooled lava is dark red, never grey."""
+        ramp = {make.palette()[f"lavaglow.{i}"] for i in range(6)}
+        for name, size, frames in (("lava_still", 16, art.LAVA_STILL_FRAMES), ("lava_flow", 32, art.LAVA_FLOW_FRAMES)):
+            image = pngio.decode(self.files[make.LAVA_DIR / f"{name}.png"], name)
             with self.subTest(texture=name):
-                self.assertEqual(1, len(set(bodies.values())), "lava's texture is shared; its shape is what differs")
-                self.assertFalse((make.pack_dir("grain") / f"assets/minecraft/textures/block/{name}.png.mcmeta").exists(), "one frame, so no animation")
+                self.assertEqual((size, size * frames), (image.width, image.height))
+                self.assertEqual({"animation": {"frametime": make.LAVA_FRAMETIME[name]}}, json.loads(self.files[make.LAVA_DIR / f"{name}.png.mcmeta"]))
+                rows = [[tuple(image.pixels[4 * (y * size + x):4 * (y * size + x) + 3]) for x in range(size)] for y in range(image.height)]
+                colours = {"#%02x%02x%02x" % c for row in rows for c in row}
+                self.assertLessEqual(colours, ramp, "a pixel is not in the lava ramp")
+                made = [rows[f * size:(f + 1) * size] for f in range(frames)]
+                for frame in made:
+                    for y in range(size):
+                        for x in range(size):
+                            self.assertEqual(frame[y][x], frame[y % 16][x % 16], "the frame does not repeat on the 16-pixel block")
+                self.assertEqual(frames, len({str(f) for f in made}), "two frames are the same")
+                steps = [sum(a != b for ra, rb in zip(made[i], made[(i + 1) % frames]) for a, b in zip(ra, rb)) for i in range(frames)]
+                self.assertLess(max(steps), 0.5 * size * size, "a frame jumps to the next, loop included")
 
     def test_the_close_up_is_two_blocks_from_the_rock_and_the_hall_views_look_at_flat_walls_from_mid_range(self):
         for layer, scene in self.built.items():
@@ -362,7 +388,7 @@ class LayerConceptsTest(unittest.TestCase):
 
     def test_the_page_names_every_option_and_its_references(self):
         page = (ROOT / "docs/design/layer-concepts-2.md").read_text()
-        for style, name in make.NAMES.items():
+        for name in ("Grain", "Bedded", "Mottled"):
             self.assertRegex(page, rf"(?m)^#+ .*{name}")
         self.assertGreaterEqual(len(re.findall(r"https://", page)), 6, "the options need real references")
 

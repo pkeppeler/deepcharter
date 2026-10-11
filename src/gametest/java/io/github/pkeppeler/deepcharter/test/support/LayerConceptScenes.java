@@ -38,8 +38,6 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
  * test packs.
  */
 public final class LayerConceptScenes {
-	/** The texture options, in the order the evidence scenario shoots them. */
-	public static final List<String> STYLES = List.of("grain", "bedded", "mottled");
 	public static final List<Integer> LAYERS = List.of(1, 2, 3);
 	private static final String NAMESPACE = "deepcharter-test";
 	private static final Identifier SCENES = Identifier.fromNamespaceAndPath(NAMESPACE, "layer_concepts/scenes.json");

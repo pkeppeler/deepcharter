@@ -54,7 +54,7 @@ final class StructurePlan {
 				for (int y = Math.max(bounds.minY() - 1, level.getMinY()); y <= Math.min(bounds.maxY() + 1, level.getMaxY()); y++) {
 					pos.set(x, y, z);
 					if (RoomSeal.needsSealing(chunk.getBlockState(pos))) {
-						chunk.setBlockState(pos, Blocks.STONE.defaultBlockState(), FLAGS);
+						chunk.setBlockState(pos, LayerBlocks.groundOf(level).defaultBlockState(), FLAGS);
 						level.getLightEngine().checkBlock(pos);
 					}
 				}

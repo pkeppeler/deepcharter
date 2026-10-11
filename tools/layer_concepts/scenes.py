@@ -55,9 +55,9 @@ LAVA_X = 32
 CRUST_X = 43
 
 
-# The vanilla blocks that stand in for each layer's rock and its rubble. None is stone or deepslate, so the pack redraws neither and the hall
-# can set the real ones beside the layer's rock.
-ROCKS = {1: ("minecraft:granite", "minecraft:cobblestone"), 2: ("minecraft:tuff", "minecraft:cobbled_deepslate"),
+# The rock of each layer and its rubble. Layers 1 and 2 are the mod's own blocks (#241); layer 3 has none yet, so vanilla andesite and diorite stand in for
+# its rock and the test pack redraws them. None is stone or deepslate, so the hall can set the real ones beside the layer's rock.
+ROCKS = {1: ("deepcharter:packed_shale", "deepcharter:packed_shale_rubble"), 2: ("deepcharter:green_shale", "deepcharter:green_shale_rubble"),
          3: ("minecraft:andesite", "minecraft:diorite")}
 REFERENCE = ("minecraft:stone", "minecraft:deepslate")
 # What fills the rock where no air touches it. Nothing there can be seen, and a block of the layer's rock draws dozens of faces that the

@@ -164,7 +164,7 @@ public final class BreachService {
 				BlockPos floor = bottom.offset(dx, -1, dz);
 				BlockState below = level.getBlockState(floor);
 				if (below.isAir() || !below.getFluidState().isEmpty()) {
-					level.setBlock(floor, Blocks.STONE.defaultBlockState(), 3);
+					level.setBlock(floor, LayerBlocks.groundOf(level).defaultBlockState(), 3);
 				}
 				for (int dy = 0; dy < tuning.pocketHeight(); dy++) {
 					BlockPos pos = bottom.offset(dx, dy, dz);

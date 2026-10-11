@@ -3,7 +3,6 @@ package io.github.pkeppeler.deepcharter.layer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
@@ -26,7 +25,7 @@ public final class RoomSeal {
 			boolean inside = pos.getX() >= min.getX() && pos.getX() <= max.getX() && pos.getY() >= min.getY()
 					&& pos.getY() <= max.getY() && pos.getZ() >= min.getZ() && pos.getZ() <= max.getZ();
 			if (!inside && !level.isOutsideBuildHeight(pos) && needsSealing(level.getBlockState(pos))) {
-				level.setBlock(pos.immutable(), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
+				level.setBlock(pos.immutable(), LayerBlocks.groundOf(level).defaultBlockState(), Block.UPDATE_CLIENTS);
 			}
 		}
 	}

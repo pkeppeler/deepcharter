@@ -28,12 +28,8 @@ public final class TestPacks implements ModInitializer {
 	public static final String TEXTURE_DENSITY_C = "texture_density_c";
 	/** Texture density D: B, with crystals and a glint standing out of every ore. */
 	public static final String TEXTURE_DENSITY_D = "texture_density_d";
-	/** The layer concepts (#447, docs/design/layer-concepts-2.md): the texture of the rock of layers 1 to 3 as fine clustered grain. */
+	/** The layer concepts (#447, docs/design/layer-concepts-2.md): Grain, the user's pick, for the rock of layer 3, which has no block of its own until M3. */
 	public static final String LAYER_CONCEPT_GRAIN = "layer_concept_grain";
-	/** Layer concept texture: bedding streaks that run across blocks. */
-	public static final String LAYER_CONCEPT_BEDDED = "layer_concept_bedded";
-	/** Layer concept texture: large mottles and veins. */
-	public static final String LAYER_CONCEPT_MOTTLED = "layer_concept_mottled";
 	/** The Company Rock and breach crust of layer 1, in its formation, Strata. A block has one blockstate, so a scene turns on its layer's form. */
 	public static final String LAYER_CONCEPT_FORM_1 = "layer_concept_form_1";
 	/** The Company Rock and breach crust of layer 2, Fractured. */
@@ -72,7 +68,7 @@ public final class TestPacks implements ModInitializer {
 		// One shared pin for every test and evidence world that enters a layer (the layers' biomes list the Retained): no natural spawns.
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> server.getGameRules().set(GameRules.SPAWN_MOBS, false, server));
 		for (String pack : new String[] {AMBER_CRT, BAD_CRT, RED_INK, TEXTURE_DENSITY_B, TEXTURE_DENSITY_C, TEXTURE_DENSITY_D,
-				LAYER_CONCEPT_GRAIN, LAYER_CONCEPT_BEDDED, LAYER_CONCEPT_MOTTLED, LAYER_CONCEPT_FORM_1, LAYER_CONCEPT_FORM_2, LAYER_CONCEPT_FORM_3,
+				LAYER_CONCEPT_GRAIN, LAYER_CONCEPT_FORM_1, LAYER_CONCEPT_FORM_2, LAYER_CONCEPT_FORM_3,
 				COCKPIT_CONSOLES, COCKPIT_CORNERS, COCKPIT_RIBBON, COCKPIT_POSTS, COCKPIT_CAB, COCKPIT_CAMERA, COCKPIT_CAMERA_HOLD, RETAINED_LAMP_HAND,
 				RETAINED_LAMP_RIBS, SALVAGE_CRATE_B, SALVAGE_CRATE_C, FUNGAL_STALK_A, FUNGAL_STALK_C}) {
 			ResourceLoader.registerBuiltinPack(Identifier.fromNamespaceAndPath("deepcharter-test", pack),

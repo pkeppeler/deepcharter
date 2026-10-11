@@ -2,6 +2,10 @@
   "values": [
     "#minecraft:base_stone_overworld",
     "#c:ores",
-    "deepcharter:gas_pocket"
+    "deepcharter:gas_pocket",
+    "deepcharter:packed_shale",
+    "deepcharter:green_shale",
+    "deepcharter:packed_shale_rubble",
+    "deepcharter:green_shale_rubble"
   ]
 }
