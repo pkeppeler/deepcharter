@@ -131,7 +131,7 @@ public final class UpgradeTerminal {
 				}
 			}
 			case FUEL_TANK -> pod.setFuel(PodTuning.DEFAULT.shell().fullFuel());
-			case DRILL, ENGINE, RADIATOR, CARGO_BAY, SCANNER, LIGHTS, SPOIL_HOPPER, LINER, SOUNDER, BRACE -> {
+			case DRILL, ENGINE, RADIATOR, CARGO_BAY, SCANNER, LIGHTS, SPOIL_HOPPER, LINER, SOUNDER, BRACE, HEAT_SHIELD -> {
 			}
 		}
 	}

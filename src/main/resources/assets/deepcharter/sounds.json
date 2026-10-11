@@ -10,6 +10,7 @@
 	"pod.explosion": { "sounds": [{ "name": "minecraft:entity.generic.explode", "type": "event" }] },
 	"pod.hull_burning": { "sounds": [{ "name": "minecraft:entity.generic.burn", "type": "event" }] },
 	"pod.lining_place": { "sounds": [{ "name": "minecraft:block.deepslate_bricks.place", "type": "event" }] },
+	"pod.glaze_burn": { "sounds": [{ "name": "minecraft:block.fire.ambient", "type": "event", "pitch": 1.5, "volume": 0.7 }] },
 	"pod.seep_hiss": { "sounds": [{ "name": "minecraft:block.fire.extinguish", "type": "event", "pitch": 1.6, "volume": 0.5 }] },
 	"creature.approach": { "sounds": [{ "name": "minecraft:ambient.cave", "type": "event", "pitch": 0.7 }] },
 

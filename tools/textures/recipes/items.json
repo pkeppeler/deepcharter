@@ -237,6 +237,22 @@
       "..bsutsutsutsb",
       "..BBBBBBBBBBBB",
       "..dddddddddddd"]}},
+    "item/part_heat_shield": {"template": "sprite", "args": {"legend": {
+      "C": "brass.5", "b": "brass.4", "B": "brass.3", "k": "basalt.2", "m": "basalt.4", "w": "sodium.3", "g": "sodium.5", "d": "steel.2"}, "rows": [
+      "",
+      "..CCCCCCCCCCCC",
+      "..bmmmmmmmmmmb",
+      "..bmkkkkkkkkmb",
+      "..bmkwwwwwwkmb",
+      "..bmkwggggwkmb",
+      "..bmkwggggwkmb",
+      "..bmkwgwwgwkmb",
+      "..bmkwwwwwwkmb",
+      "..bmkkkkkkkkmb",
+      "...bmmmmmmmmb",
+      "....bmmmmmmb",
+      ".....BBBBBB",
+      "......dddd"]}},
     "item/part_brace": {"template": "sprite", "args": {"legend": {
       "C": "brass.5", "b": "brass.4", "B": "brass.3", "m": "steel.4", "k": "steel.2", "h": "hazard.3"}, "rows": [
       "",

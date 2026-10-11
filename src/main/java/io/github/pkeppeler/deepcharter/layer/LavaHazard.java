@@ -12,6 +12,7 @@ import net.minecraft.world.entity.LivingEntity;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
+import io.github.pkeppeler.deepcharter.pod.PodHeatShield;
 import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
@@ -48,8 +49,9 @@ public final class LavaHazard {
 			return;
 		}
 		float radiator = PodComponents.radiatorRatio(pod);
-		pod.damageHull(LayerTuning.DEFAULT.lavaHullPerSecond() / TICKS_PER_SECOND * radiator);
-		if (pod.tickCount % LayerTuning.DEFAULT.lavaCueTicks() == 0) {
+		float damage = PodHeatShield.absorb(pod, LayerTuning.DEFAULT.lavaHullPerSecond() / TICKS_PER_SECOND * radiator);
+		pod.damageHull(damage);
+		if (damage > 0f && pod.tickCount % LayerTuning.DEFAULT.lavaCueTicks() == 0) {
 			pod.level().playSound(null, pod.getX(), pod.getY(), pod.getZ(), DeepSound.POD_HULL_BURNING.event(), SoundSource.NEUTRAL);
 		}
 	}

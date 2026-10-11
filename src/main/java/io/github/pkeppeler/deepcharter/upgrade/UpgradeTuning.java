@@ -98,6 +98,9 @@ public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks) {
 		// Invented (#378): the breach brace has no stock part. One tier, 1 for "fitted"; what it does is in PodBraceTuning. $200 is two stock layer-1 runs,
 		// and the crust it answers ends layer 1 (EconomyAffordabilityTest).
 		tracks.put(ComponentTrack.BRACE, new Tiers(List.of(0f, 1f), List.of(0L, 200L)));
+		// Invented (#482): the heat shield has no stock part. One tier, 1 for "fitted"; what it does is in PodHeatShieldTuning. $750 is three layer 2 runs of a hopper pod
+		// (EconomyAffordabilityTest): dearer than the liner's tier 1, because it is the pod that stays in lava, and under the liner's tier 2.
+		tracks.put(ComponentTrack.HEAT_SHIELD, new Tiers(List.of(0f, 1f), List.of(0L, 750L)));
 		return tracks;
 	}
 }
