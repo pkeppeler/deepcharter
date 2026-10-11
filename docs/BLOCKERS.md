@@ -92,7 +92,7 @@ M2 (#51-#85) ends with a playable build for you and your friends (#85: v0.2.0). 
 - **The lore text:** your lore session (PR #34) supplies the transmission, Note and handbook text. The agents use placeholders until it merges.
 - **The creatures session (#13):** the lampless figure (#83) is a placeholder until then.
 - **Roadmap note:** the Prospector chassis (#82) moves from M3 to M2. SPEC §5 (chapter 9) and §16 put its salvage in the onboarding. This is not a change to the SPEC, but you should know.
-- **SPEC §8 (provisional):** the Prospector navigator seat strains the "no passengers" rule. I will raise it at the demo.
+- **SPEC §8 (provisional):** the Prospector navigator seat strains the "no passengers" rule. **Answered 2026-10-11 (#200, #507):** passengers are allowed; crew roles stay the goal.
 
 ## 2026-10-07: How should the scanner show fluids? (a question, not a blocker)
 
