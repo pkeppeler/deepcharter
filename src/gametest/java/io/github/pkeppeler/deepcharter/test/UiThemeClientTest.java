@@ -22,10 +22,10 @@ import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.client.theme.TransmissionLook;
-import io.github.pkeppeler.deepcharter.client.ui.CrtDemoScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.CrtDemoScreen;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 

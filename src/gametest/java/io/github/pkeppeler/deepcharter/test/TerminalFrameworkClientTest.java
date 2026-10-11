@@ -24,6 +24,7 @@ import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTextField;
+import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
@@ -177,10 +178,16 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
 		private TerminalView view;
 		private CrtTextField field;
 		private int updates;
+		private final Typewriter typewriter = typewriter(Component.literal("IN PLACE"), (index, letter) -> { });
 
 		private InPlaceScreen(TerminalView view) {
 			super(Component.literal("IN PLACE"));
 			this.view = view;
+		}
+
+		@Override
+		public Typewriter typewriter() {
+			return typewriter;
 		}
 
 		@Override

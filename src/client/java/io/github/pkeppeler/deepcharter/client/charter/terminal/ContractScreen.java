@@ -82,6 +82,7 @@ public final class ContractScreen extends CrtScreen implements TerminalViewScree
 		return state;
 	}
 
+	@Override
 	public Typewriter typewriter() {
 		return typewriter;
 	}
