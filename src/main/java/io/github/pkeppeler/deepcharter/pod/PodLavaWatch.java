@@ -21,6 +21,7 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.Identifier;
 import net.minecraft.tags.FluidTags;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
@@ -109,11 +110,6 @@ public final class PodLavaWatch {
 		return Versioned.readable(pod, STATE).filter(state -> !state.isQuiet());
 	}
 
-	/** Blocks of open cells between the pod and the nearest flowing lava it warns of, or empty. */
-	public static Optional<Integer> blocksOff(PodEntity pod) {
-		return warning(pod).map(State::blocksOff);
-	}
-
 	/** Whether the pod warns of lava that comes down the shaft from above. */
 	static boolean lavaAbove(PodEntity pod) {
 		return warning(pod).filter(State::above).isPresent();
@@ -156,11 +152,12 @@ public final class PodLavaWatch {
 						continue;
 					}
 					Direction first = from.first() == null ? direction : from.first();
-					FluidState fluid = blocks.getFluidState(to);
+					BlockState state = blocks.getBlockState(to);
+					FluidState fluid = state.getFluidState();
 					if (fluid.is(FluidTags.LAVA) && !fluid.isSource()) {
 						return Optional.of(new Sighting(distance, first == Direction.UP));
 					}
-					if (PodLining.open(blocks.getBlockState(to))) {
+					if (PodLining.open(state)) {
 						next.add(new Step(to, first));
 					}
 				}

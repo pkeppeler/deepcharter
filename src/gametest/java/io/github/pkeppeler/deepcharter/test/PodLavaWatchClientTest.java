@@ -95,11 +95,11 @@ public class PodLavaWatchClientTest implements FabricClientGameTest {
 	}
 
 	private static Optional<Integer> serverReading(TestSingleplayerContext singleplayer) {
-		return singleplayer.getServer().computeOnServer(server -> PodLavaWatch.blocksOff((PodEntity) server.getPlayerList().getPlayers().getFirst().getVehicle()));
+		return singleplayer.getServer().computeOnServer(server -> PodLavaWatch.warning((PodEntity) server.getPlayerList().getPlayers().getFirst().getVehicle()).map(PodLavaWatch.State::blocksOff));
 	}
 
 	private static Optional<Integer> clientReading(ClientGameTestContext context) {
-		return context.computeOnClient(client -> client.player.getVehicle() instanceof PodEntity pod ? PodLavaWatch.blocksOff(pod) : Optional.empty());
+		return context.computeOnClient(client -> client.player.getVehicle() instanceof PodEntity pod ? PodLavaWatch.warning(pod).map(PodLavaWatch.State::blocksOff) : Optional.empty());
 	}
 
 	/** The pod's position and the lava cells within 5 blocks of it, as the server has them, for a failure message. */

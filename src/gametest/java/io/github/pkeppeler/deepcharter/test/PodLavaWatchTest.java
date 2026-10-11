@@ -108,7 +108,7 @@ public class PodLavaWatchTest {
 	}
 
 	private static Optional<Integer> reading(PodEntity pod) {
-		return PodLavaWatch.blocksOff(pod);
+		return PodLavaWatch.warning(pod).map(PodLavaWatch.State::blocksOff);
 	}
 
 	private static PodLavaWatch.State state(PodEntity pod) {
@@ -430,7 +430,7 @@ public class PodLavaWatchTest {
 		PodEntity pod = PodRegistry.POD.create(helper.getLevel(), EntitySpawnReason.COMMAND);
 		UnreadableChecks.makeUnreadable(pod, PodLavaWatch.STATE);
 		UnreadableChecks.assertNoThrow(helper, "pod lava watch", Map.of(
-				"the reading", () -> PodLavaWatch.blocksOff(pod),
+				"the reading", () -> reading(pod),
 				"the tick", () -> PodEvents.AFTER_TICK.invoker().afterTick(pod)));
 		if (!(pod.getAttached(PodLavaWatch.STATE) instanceof Versioned.Unreadable<PodLavaWatch.State>)) {
 			throw failure(helper, "unreadable watch state is left as it was read");
