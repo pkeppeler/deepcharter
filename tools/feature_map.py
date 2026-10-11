@@ -361,6 +361,8 @@ def render_markdown(data, root, images):
     for status in ("in-progress", "planned", "idea"):
         out.append("### %s" % STATUSES[status][0])
         out.append("")
+        if not any(n["status"] == status for n in data["nodes"]):
+            out.extend(["Nothing right now.", ""])
         for n in sorted(data["nodes"], key=lambda n: (n["ladder"], n["rung"], n["id"])):
             if n["status"] == status:
                 links = ", ".join("[%s](%s)" % ref_label_and_url(r, root, True) for r in n.get("refs", []))

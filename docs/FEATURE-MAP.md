@@ -90,7 +90,7 @@ flowchart LR
   l_cargo_bay["Cargo bay<br/>4 of 6 built"]
   l_scanner["Scanner<br/>3 of 4 built"]
   l_lights["Lights<br/>3 of 4 built"]
-  l_lava["Lava and its counters<br/>7 of 8 built"]
+  l_lava["Lava and its counters<br/>8 of 8 built"]
   l_gas["Gas and its counters<br/>6 of 6 built"]
   l_company_rock["Company Rock and its counters<br/>2 of 6 built"]
   l_creatures["The Retained and other creatures<br/>4 of 8 built"]
@@ -169,7 +169,7 @@ flowchart LR
 | [Cargo bay](#cargo-bay) | 4 | 0 | 2 | 0 |
 | [Scanner](#scanner) | 3 | 0 | 1 | 0 |
 | [Lights](#lights) | 3 | 0 | 1 | 0 |
-| [Lava and its counters](#lava-and-its-counters) | 7 | 1 | 0 | 0 |
+| [Lava and its counters](#lava-and-its-counters) | 8 | 0 | 0 | 0 |
 | [Gas and its counters](#gas-and-its-counters) | 6 | 0 | 0 | 0 |
 | [Company Rock and its counters](#company-rock-and-its-counters) | 2 | 0 | 4 | 0 |
 | [The Retained and other creatures](#the-retained-and-other-creatures) | 4 | 0 | 2 | 2 |
@@ -185,7 +185,8 @@ flowchart LR
 
 ### In progress
 
-- **Heat shield hull** (lava): A hull part whose slag glaze soaks lava, spending brick, so lava costs far less hull. [#482](https://github.com/pkeppeler/deepcharter/issues/482), [#501](https://github.com/pkeppeler/deepcharter/issues/501), [#232](https://github.com/pkeppeler/deepcharter/issues/232)
+Nothing right now.
+
 
 ### Planned
 
@@ -783,7 +784,7 @@ flowchart LR
   n_liner_t1["⬆️ Liner tier 1"]
   n_liner_t2["⬆️ Liner tier 2"]
   n_lava_watch["🛡️ The lava watch"]
-  n_heat_shield["🛡️ Heat shield hull"]
+  n_heat_shield["⬆️ Heat shield"]
   n_hb_staying_safe["7. Staying Safe on the Claim"]
   n_radiator_t1["Radiator tier 1"]
   n_scanner_t2["Scanner tier 2"]
@@ -805,6 +806,7 @@ flowchart LR
   n_scanner_t2 --> n_hand_lining
   n_scanner_t2 -. counters .-> n_lava
   n_slag_brick == feeds ==> n_hand_lining
+  n_slag_brick == feeds ==> n_heat_shield
   n_slag_brick == feeds ==> n_liner_t1
   n_spoil_hopper --> n_hand_lining
   n_spoil_hopper --> n_spoil
@@ -814,8 +816,7 @@ flowchart LR
   classDef planned fill:#2e2e2e,stroke:#9e9e9e,stroke-width:1px,color:#d6d6d6
   classDef idea fill:#1a1a1a,stroke:#757575,stroke-width:1px,stroke-dasharray:4 3,color:#a0a0a0
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
-  class n_lava,n_pilot_shield,n_spoil_hopper,n_hand_lining,n_liner_t1,n_liner_t2,n_lava_watch built
-  class n_heat_shield progress
+  class n_lava,n_pilot_shield,n_spoil_hopper,n_hand_lining,n_liner_t1,n_liner_t2,n_lava_watch,n_heat_shield built
   class n_hb_staying_safe,n_radiator_t1,n_scanner_t2,n_slag_brick,n_spoil,n_the_deep_bites ext
 ```
 
@@ -828,7 +829,7 @@ flowchart LR
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_liner.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-liner.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-liner.png?raw=true" width="160" alt=""></a> | <a id="liner-t1"></a>**Liner tier 1**<br>upgrade | Lines the shaft with brick as the pod drills, every 4 slabs, only where lava can reach. $500. | ✅ Built | [#339](https://github.com/pkeppeler/deepcharter/issues/339), [mechanics.md](design/mechanics.md#liner-339-a) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_liner.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-liner.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-liner.png?raw=true" width="160" alt=""></a> | <a id="liner-t2"></a>**Liner tier 2**<br>upgrade | Rings every 3 slabs, also in a fall, and each brick lines more. $1,000. The best a Mole takes. | ✅ Built | [#339](https://github.com/pkeppeler/deepcharter/issues/339), [#432](https://github.com/pkeppeler/deepcharter/issues/432) |
 | 🛡️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/460/pod-lava-watch-plain.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/460/pod-lava-watch-plain.png?raw=true" width="160" alt=""></a> | <a id="lava-watch"></a>**The lava watch**<br>counter | A HUD line and lamp when flowing lava closes on the pod from behind; every pod has it, free. | ✅ Built | [#454](https://github.com/pkeppeler/deepcharter/issues/454), [mechanics.md](design/mechanics.md#the-lava-watch-454-a) |
-| <img src="../src/main/resources/assets/deepcharter/textures/item/part_hull.png" width="32" alt=""> | no still yet | <a id="heat-shield"></a>**Heat shield hull**<br>counter | A hull part whose slag glaze soaks lava, spending brick, so lava costs far less hull. | 🔨 In progress | [#482](https://github.com/pkeppeler/deepcharter/issues/482), [#501](https://github.com/pkeppeler/deepcharter/issues/501), [#232](https://github.com/pkeppeler/deepcharter/issues/232) |
+| <img src="../src/main/resources/assets/deepcharter/textures/item/part_heat_shield.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/501/pod-heat-shield.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/501/pod-heat-shield.gif?raw=true" width="160" alt=""></a> | <a id="heat-shield"></a>**Heat shield**<br>upgrade | A one-tier part, $750. While lava touches the pod, burning slag bricks soak its damage at 4 hull a brick, from the rack first and then the pilot's pack. The HUD shows GLAZE HOLDING or GLAZE SPENT. | ✅ Built | [#482](https://github.com/pkeppeler/deepcharter/issues/482), [#501](https://github.com/pkeppeler/deepcharter/issues/501), [#232](https://github.com/pkeppeler/deepcharter/issues/232) |
 
 ### Gas and its counters
 
@@ -1555,6 +1556,7 @@ flowchart TB
   n_fuel_pump["Fuel pump"]
   n_goldium["Goldium"]
   n_hand_lining["Hand lining"]
+  n_heat_shield["Heat shield"]
   n_ironium["Ironium"]
   n_liner_t1["Liner tier 1"]
   n_ore_processor["Ore processor"]
@@ -1582,6 +1584,7 @@ flowchart TB
   n_sell_ore == feeds ==> n_charter_account
   n_silverium == feeds ==> n_ore_in_bay
   n_slag_brick == feeds ==> n_hand_lining
+  n_slag_brick == feeds ==> n_heat_shield
   n_slag_brick == feeds ==> n_liner_t1
   n_spoil == feeds ==> n_crate_press
   n_spoil == feeds ==> n_slag_brick
@@ -1596,7 +1599,7 @@ flowchart TB
   class n_ore_in_bay,n_sell_ore,n_spoil,n_work_orders,n_charter_account,n_crate_press,n_slag_brick,n_buy_consumables,n_buy_fuel,n_buy_parts built
   class n_catalysts planned
   class n_records_board,n_registration_fees idea
-  class n_bronzium,n_cicatrium,n_deepest_point,n_einsteinium,n_fuel_pump,n_goldium,n_hand_lining,n_ironium,n_liner_t1,n_ore_processor,n_platinium,n_repair_station,n_salvage_crate,n_silverium,n_spoil_hopper,n_upgrade_terminal ext
+  class n_bronzium,n_cicatrium,n_deepest_point,n_einsteinium,n_fuel_pump,n_goldium,n_hand_lining,n_heat_shield,n_ironium,n_liner_t1,n_ore_processor,n_platinium,n_repair_station,n_salvage_crate,n_silverium,n_spoil_hopper,n_upgrade_terminal ext
 ```
 
 | Icon | Still | Feature | What it is | Status | Links |

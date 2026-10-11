@@ -48,8 +48,11 @@ class TheCommittedMap(unittest.TestCase):
         for url in sources:
             self.assertRegex(url, r"^https://cdn\.jsdelivr\.net/npm/[a-z-]+@[0-9.]+/")
 
-    def test_the_game_has_every_status_and_ladder_kind(self):
-        self.assertEqual(set(fm.STATUSES), {n["status"] for n in DATA["nodes"]})
+    def test_the_map_has_built_and_unbuilt_nodes_and_every_ladder_kind(self):
+        statuses = {n["status"] for n in DATA["nodes"]}
+        self.assertLessEqual(statuses, set(fm.STATUSES))
+        self.assertIn("built", statuses)
+        self.assertGreater(len(statuses), 1, "a map with only built nodes shows no plan")
         self.assertEqual(set(fm.LADDER_KINDS), {l["kind"] for l in DATA["ladders"]})
 
     def test_poster_draws_every_node(self):
