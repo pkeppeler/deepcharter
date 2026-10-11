@@ -4,6 +4,7 @@ import com.geckolib.renderer.GeoReplacedEntityRenderer;
 import com.geckolib.renderer.base.GeoRenderState;
 
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.resources.Identifier;
@@ -61,6 +62,12 @@ public class LamplessFigureRenderer extends GeoReplacedEntityRenderer<LamplessFi
 	@Override
 	protected float getDeathMaxRotation(GeoRenderState renderState) {
 		return 0f;
+	}
+
+	/** No red flash when it is hurt or dies: the tone is dread, not blood. A hit shows as ash and a sound instead. */
+	@Override
+	public int getPackedOverlay(LamplessFigureAnimatable animatable, LamplessFigure figure, float u, float partialTick) {
+		return OverlayTexture.NO_OVERLAY;
 	}
 
 	@Override
