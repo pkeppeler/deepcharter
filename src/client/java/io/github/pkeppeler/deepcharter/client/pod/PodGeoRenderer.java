@@ -200,6 +200,7 @@ public class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimatable, 
 		Appearance appearance = appearanceOf(pod);
 		state.appearance = appearance;
 		state.texture = textureOf(appearance);
+		state.cabHidden = FrontCameraFeed.hidesCab(pod);
 		motions.computeIfAbsent(pod, ignored -> new PodMotion()).advance(pod, state, pose.mountRestPitch(), spinScaleOf(appearance));
 		// The pod turns as its motion says (towards where it drives or drills), not as its entity yaw does.
 		state.addGeckolibData(DataTickets.ENTITY_BODY_YAW, state.heading);
@@ -218,6 +219,10 @@ public class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimatable, 
 	public void adjustModelBonesForRender(RenderPassInfo<PodGeoRenderState> renderPassInfo, BoneSnapshots snapshots) {
 		PodGeoRenderState state = renderPassInfo.renderState();
 		pose.apply(state, snapshots);
+		if (state.cabHidden) {
+			// The pilot looks through the front camera: nothing of the pod's own body, cab or cutter stands in the view.
+			geo.bones().forEach(bone -> snapshots.ifPresent(bone.name(), snapshot -> snapshot.skipRender(true)));
+		}
 		for (String name : hiddenBones(state.appearance)) {
 			snapshots.ifPresent(name, snapshot -> snapshot.skipRender(true).skipChildrenRender(true));
 		}
