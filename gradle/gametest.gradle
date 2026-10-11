@@ -50,6 +50,12 @@ def tickWaitCall = ~/\bwaitFor(?:Screen)?\s*\(/
 // Client tests and evidence scenarios run in their own world and are exempt. TestClocks.java is the one file that writes a clock directly.
 def worldClockMarker = "// world-clock:"
 def worldClockWrite = ~/\.\s*(?:setTotalTicks|setPaused|addTicks|setRate)\s*\(/
+// A client test shares one client with every test after it, so a HUD it hides (F1) and never shows again fails the next test that draws on
+// it (PR 330). A HUD toggle (keyToggleGui, hideGui, the 26.3 hud.toggle(), an F1 key code) goes through ClientChecks.withHudHidden or withHudShown,
+// which restore it in a finally, or carries the marker below, with a reason, on its line or the one above. ClientChecks.java is the one file
+// that toggles directly. The scan matches the names, not the receiver.
+def hudToggleMarker = "// hud-toggle:"
+def hudToggle = ~/\b(?:keyToggleGui|hideGui|KEY_F1)\b|\bhud\s*\.\s*toggle\s*\(/
 def guardSource = file("src/gametest/java/io/github/pkeppeler/deepcharter/test/support/WorldDataGuard.java")
 // One scan of a source tree: the entrypoint lists, ordered, or a GradleException naming every problem. The task below writes the lists to
 // the mod json; checkGametestFixtures runs it over many fixture trees in one Gradle run (tools/tests/gate_batch.py).
@@ -95,6 +101,16 @@ def scan = { File javaRoot, String clientFilter, String order ->
 				def marked = [line, line - 1].any { it >= 0 && hasMarker(rawLines[it], tickWaitMarker) }
 				if (!marked) {
 					problems << "${className}:${line + 1} waits with waitFor or waitForScreen, a tick budget; poll the wall clock with ClientWait.until or ClientWait.screen, or mark a deliberate fixed-tick wait with '${tickWaitMarker} <reason>'"
+				}
+			}
+		}
+		if (source.name != "ClientChecks.java") {
+			def hud = text =~ hudToggle
+			while (hud.find()) {
+				def line = text.substring(0, hud.start()).count("\n")
+				def marked = [line, line - 1].any { it >= 0 && hasMarker(rawLines[it], hudToggleMarker) }
+				if (!marked) {
+					problems << "${className}:${line + 1} toggles the HUD directly, which the next client test inherits; hide it with ClientChecks.withHudHidden (or show it with withHudShown), which restore it in a finally, or mark a deliberate toggle with '${hudToggleMarker} <reason>'"
 				}
 			}
 		}

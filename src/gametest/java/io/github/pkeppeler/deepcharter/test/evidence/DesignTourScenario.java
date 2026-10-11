@@ -111,6 +111,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -192,6 +193,10 @@ public class DesignTourScenario extends EvidenceScenario {
 
 	@Override
 	protected void run(ClientGameTestContext context) {
+		ClientChecks.withHudHidden(context, () -> runHidden(context));
+	}
+
+	private void runHidden(ClientGameTestContext context) {
 		ctx = context;
 		// A real world, as a new player gets one: the vanilla terrain of the seed, not the flat world of the other scenarios.
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().setUseConsistentSettings(false)
@@ -1024,7 +1029,7 @@ public class DesignTourScenario extends EvidenceScenario {
 
 	private static void setHidden(Minecraft client, boolean hidden) {
 		if (client.gui.hud.isHidden() != hidden) {
-			client.gui.hud.toggle();
+			client.gui.hud.toggle(); // hud-toggle: the tour shows and hides the HUD between stills; run() restores the starting state through ClientChecks.withHudHidden
 		}
 	}
 

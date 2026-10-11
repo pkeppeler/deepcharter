@@ -32,6 +32,7 @@ import io.github.pkeppeler.deepcharter.client.theme.PodPaintLook;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -79,6 +80,10 @@ public class PodRotorPaintScenario extends EvidenceScenario {
 
 	@Override
 	protected void run(ClientGameTestContext context) {
+		ClientChecks.withHudHidden(context, () -> runHidden(context));
+	}
+
+	private void runHidden(ClientGameTestContext context) {
 		ctx = context;
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			world = singleplayer;
@@ -176,9 +181,6 @@ public class PodRotorPaintScenario extends EvidenceScenario {
 		});
 		ctx.runOnClient(client -> {
 			client.options.setCameraType(CameraType.FIRST_PERSON);
-			if (!client.gui.hud.isHidden()) {
-				client.gui.hud.toggle();
-			}
 		});
 	}
 

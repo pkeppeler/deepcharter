@@ -52,6 +52,7 @@ import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActivity;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -129,6 +130,10 @@ final class TextureTestWorld {
 	 * HUD comes back in a finally, because a full-suite run goes on to tests that draw on it.
 	 */
 	static void open(ClientGameTestContext ctx, Consumer<String> shoot, Consumer<TextureTestWorld> body) {
+		ClientChecks.withHudHidden(ctx, () -> openHidden(ctx, shoot, body));
+	}
+
+	private static void openHidden(ClientGameTestContext ctx, Consumer<String> shoot, Consumer<TextureTestWorld> body) {
 		try (TestSingleplayerContext singleplayer = ctx.worldBuilder().setUseConsistentSettings(false)
 				.adjustSettings(state -> state.setSeed("deepcharter-design-tour")).create()) {
 			ClientWait.until(ctx, "the player in the world", client -> client.player != null && client.level != null);
@@ -138,17 +143,8 @@ final class TextureTestWorld {
 				client.options.setCameraType(CameraType.FIRST_PERSON);
 				client.options.particles().set(ParticleStatus.MINIMAL);
 				client.options.bobView().set(false);
-				if (!client.gui.hud.isHidden()) {
-					client.gui.hud.toggle();
-				}
 			});
 			body.accept(world);
-		} finally {
-			ctx.runOnClient(client -> {
-				if (client.gui.hud.isHidden()) {
-					client.gui.hud.toggle();
-				}
-			});
 		}
 	}
 

@@ -31,6 +31,7 @@ import io.github.pkeppeler.deepcharter.layer.BreachService;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -76,18 +77,9 @@ public class BreachVoidClientTest implements FabricClientGameTest {
 		List<String> failures = new ArrayList<>();
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			ClientWait.until(context, "the client in the world", client -> client.player != null && client.level != null);
-			// F1: no crosshair over the middle of the picture, where the hole is. The client is shared with the next test, so the HUD is put back.
-			boolean hudWasHidden = context.computeOnClient(client -> client.gui.hud.isHidden());
-			// MINIMAL drops the sky's ambient dust motes, so none lights the patch. Put back with the HUD.
-			ParticleStatus particlesWere = context.computeOnClient(client -> client.options.particles().get());
-			context.runOnClient(client -> {
-				client.options.particles().set(ParticleStatus.MINIMAL);
-				client.particleEngine.clearParticles();
-			});
-			if (!hudWasHidden) {
-				context.runOnClient(client -> client.gui.hud.toggle());
-			}
-			try {
+			// No crosshair over the middle of the picture, where the hole is. MINIMAL drops the sky's ambient dust motes, so none lights the patch.
+			// The client is shared with the next test, so the helper puts the HUD and the particles back.
+			ClientChecks.withHudHidden(context, ParticleStatus.MINIMAL, () -> {
 				singleplayer.getServer().runOnServer(server -> {
 					ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 					player.setGameMode(GameType.CREATIVE);
@@ -124,14 +116,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
 						podUnderTheBottom(context, singleplayer, layer, minY).ifPresent(failures::add);
 					}
 				}
-			} finally {
-				context.runOnClient(client -> {
-					client.options.particles().set(particlesWere);
-					if (client.gui.hud.isHidden() != hudWasHidden) {
-						client.gui.hud.toggle();
-					}
-				});
-			}
+			});
 		}
 		// Every view is taken first, so one run names all the views that show the void.
 		if (!failures.isEmpty()) {
