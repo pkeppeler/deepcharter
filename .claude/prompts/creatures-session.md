@@ -17,6 +17,7 @@ Hard constraints from the spec:
 - co-op roles: pilot, navigator, operator, with robots filling empty seats
 - solo play stays viable
 - LORE.md's guardrails (section 2) bind creatures too: no children, no gore by default, the dead keep their dignity, and no new real-world demonic or occult references without asking me. The finale's shape (the Chairman, then Head Office standing up, and only renunciation can kill him) is settled lore
+- before you finish, run `python3 -I tools/check-homage.py --reference <main checkout>/original_flash_game/REFERENCE.md` (docs/tooling/homage-check.md) and fix every shared sequence
 
 Deliverables, drafted in chat first and written to files only after I approve:
 - docs/CREATURES.md: design principles, a per-layer bestiary, bosses, pod and on-foot combat, and uncharted remixes

@@ -258,7 +258,7 @@ public class SalvageBootstrapTest {
 	}
 
 	/** The items a block drops, from its real loot table with a fixed seed: the same drops on every run. */
-	private static List<ItemStack> drops(ServerLevel level, Block broken, long seed) {
+	static List<ItemStack> drops(ServerLevel level, Block broken, long seed) {
 		ResourceKey<LootTable> key = broken.getLootTable().orElseThrow();
 		LootTable table = level.getServer().reloadableRegistries().getLootTable(key);
 		LootParams params = new LootParams.Builder(level).withParameter(LootContextParams.ORIGIN, Vec3.ZERO)

@@ -88,6 +88,7 @@ public final class Terminals {
 	public static List<PodEntity> parkedPods(Level level, BlockPos pos) {
 		double radius = TerminalTuning.DEFAULT.parkedRadius();
 		Vec3 centre = Vec3.atCenterOf(pos);
+		// entity-query: 8 blocks round a terminal the player stands within reach of (and the client's own world), so the chunks are entity-ticking
 		return level.getEntitiesOfClass(PodEntity.class, new AABB(pos).inflate(radius),
 						pod -> !pod.flying() && !pod.drilling() && pod.position().distanceToSqr(centre) <= radius * radius)
 				.stream().sorted(Comparator.comparingDouble(pod -> pod.position().distanceToSqr(centre))).toList();

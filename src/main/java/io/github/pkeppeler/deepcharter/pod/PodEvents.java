@@ -5,6 +5,8 @@ import net.fabricmc.fabric.api.event.EventFactory;
 
 import net.minecraft.world.entity.Entity;
 
+import io.github.pkeppeler.deepcharter.charter.CharterId;
+
 /**
  * The hooks other features use to change what a pod does, so that they never edit {@link PodEntity}.
  * With no listener registered, every hook leaves the pod's M1 behaviour as it was.
@@ -22,6 +24,7 @@ import net.minecraft.world.entity.Entity;
  *   <li>{@link #EXTRA_MASS}: towing (#76)</li>
  *   <li>{@link #IGNORES_BLOCK_COLLISION}: towing (#76)</li>
  *   <li>{@link #AFTER_TICK}: lights (#75), towing (#76)</li>
+ *   <li>{@link #REGISTERED}: the hangar's list of a charter's pods (#380)</li>
  * </ul>
  *
  * <p>Pod stats (#60) and components (#65) are not events of this class: {@code PodStats.of(pod)} is the seam for
@@ -82,6 +85,13 @@ public final class PodEvents {
 		}
 	});
 
+	/** A pod has just been registered to its owner charter. Server only. */
+	public static final Event<Registered> REGISTERED = EventFactory.createArrayBacked(Registered.class, listeners -> (pod, owner) -> {
+		for (Registered listener : listeners) {
+			listener.onRegistered(pod, owner);
+		}
+	});
+
 	private PodEvents() {
 	}
 
@@ -135,6 +145,11 @@ public final class PodEvents {
 	@FunctionalInterface
 	public interface IgnoresBlockCollision {
 		boolean ignoresBlockCollision(PodEntity pod);
+	}
+
+	@FunctionalInterface
+	public interface Registered {
+		void onRegistered(PodEntity pod, CharterId owner);
 	}
 
 	@FunctionalInterface
