@@ -80,6 +80,12 @@ class Placed:
 OFF = Placed(0, 0, 0, 0, 0, 0)
 
 
+def nearest(value):
+    """The whole number nearest `value`, a half going up. A tick on a dial lands on a half pixel at 30 degrees (sin is 0.5), and the last bit of a libm's sin differs
+    between machines, so plain `round` put that pixel on either side: a sprite must be the same bytes everywhere."""
+    return math.floor(value + 0.5 + 1e-6)
+
+
 def anchor_keys(prefix, ax, ay, x, y):
     return {prefix + "AnchorX": ax, prefix + "AnchorY": ay, prefix + "X": x, prefix + "Y": y}
 
@@ -267,7 +273,7 @@ def dial_face(red_ticks, size=36):
         major = k % 2 == 0
         ink = rgb("#b8321c") if k in red_ticks else H[0]
         for r in (range(10, 15) if major else range(12, 15)):
-            img.set(round(c + r * math.sin(angle)), round(c - r * math.cos(angle)), ink)
+            img.set(nearest(c + r * math.sin(angle)), nearest(c - r * math.cos(angle)), ink)
     return img
 
 
@@ -346,7 +352,7 @@ def dials():
     for k in range(1, 4):  # bolts round each shoulder, on the arc
         for sx, sy, ox, oy in ((x0 + radius, y0 + radius, -1, -1), (x1 - radius, y0 + radius, 1, -1)):
             angle = math.radians(k * 22.5)
-            rivet(frame, round(sx + ox * (radius + 6) * math.cos(angle)), round(sy + oy * (radius + 6) * math.sin(angle)), H[5], H[7], H[1])
+            rivet(frame, nearest(sx + ox * (radius + 6) * math.cos(angle)), nearest(sy + oy * (radius + 6) * math.sin(angle)), H[5], H[7], H[1])
     look.sprite("frame", Sprite(frame, (left, top, right, bottom)))
     look.sprite("plate", readout_plate())
     look.keys.update(anchor_keys("dialsReadout", 0, 0, 16, 30))
