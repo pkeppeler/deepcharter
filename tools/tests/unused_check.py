@@ -6,10 +6,10 @@ Scans every tools/**/*.py plus tools/diff-stills and reports five kinds of findi
 - name: a module-level function, class or constant that no scanned file references outside its own definition.
 - parameter: a function parameter the function body never reads.
 - default: a module-level function's parameter with a default that no call site overrides.
-- constant: a module-level function's parameter that every call site passes the same literal (a constant, string or number).
+- constant: a module-level function's parameter that every call site passes the same literal (a constant, string or number), when the
+  function has two or more call sites. One call site is a one-off part whose parameters name its size and place; it is not judged.
 
-default and constant resolve call sites by bare name: `f(...)`, or `m.f(...)` where `m` is a plain `import m` in that file. They need at
-least one call site outside the function and are skipped, not flagged, when any use of the name is unresolvable: a call with `*args` or
+default and constant resolve call sites by bare name: `f(...)`, or `m.f(...)` where `m` is a plain `import m` in that file. A default needs at least one call site outside the function, a constant at least two. Both are skipped, not flagged, when any use of the name is unresolvable: a call with `*args` or
 `**kwargs`, the function passed as a value, a `getattr` string, an `__all__` entry, an attribute use on anything but an imported module
 (a method call on an instance), a second definition of the name, or an import of it under another name. The usual exemptions apply (`main`, test hooks, stubs,
 decorated definitions); a method is never checked. To fix a finding, inline the constant or drop the parameter. Files under
@@ -427,7 +427,10 @@ def constant_candidates(path: str, tree: ast.Module, usage: Mapping[str, CallUsa
         if registers(function) or is_stub(function) or exempt_name(function.name) or fixed_signature(function, None, set()):
             continue
         own = (function.lineno, function.end_lineno or function.lineno)
-        if uses is None or uses.unresolved or uses.definitions != 1 or not any(call_path != path or not own[0] <= line <= own[1] for _, call_path, line in uses.calls):
+        if uses is None or uses.unresolved or uses.definitions != 1:
+            continue
+        outside = sum(1 for _, call_path, line in uses.calls if call_path != path or not own[0] <= line <= own[1])
+        if outside == 0:
             continue
         arguments = function.args
         positional = arguments.posonlyargs + arguments.args
@@ -444,7 +447,7 @@ def constant_candidates(path: str, tree: ast.Module, usage: Mapping[str, CallUsa
                 found.append(Candidate(path, "default", argument.arg, argument.lineno, span, own, ": no caller overrides the default"))
                 continue
             literals = [value and literal_of(value) for value in passed]
-            if literals[0] and all(literal == literals[0] for literal in literals):
+            if outside >= 2 and literals[0] and all(literal == literals[0] for literal in literals):
                 found.append(Candidate(path, "constant", argument.arg, argument.lineno, span, own, f": every caller passes {literals[0][1]!r}"))
     return found
 

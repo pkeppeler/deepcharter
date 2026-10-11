@@ -170,12 +170,18 @@ class FindingsAreRed(unittest.TestCase):
             f(y, b="k", c=-2, d=True, e=4, g=x)
         """), {("a.py", 1, "constant", "b"), ("a.py", 1, "constant", "c"), ("a.py", 1, "constant", "d")})
 
-    def test_one_call_site_is_enough_for_a_constant(self):
+    def test_constant_needs_two_call_sites_but_a_default_needs_one(self):
         self.assertEqual(found(a="""
             def f(a, b):
                 return a + b
+            def g(a, b=1):
+                return a + b
             f(x, 2.5)
-        """), {("a.py", 1, "constant", "b")})
+            g(x)
+        """), {("a.py", 3, "default", "b")})
+
+    def test_two_call_sites_in_two_files_count(self):
+        self.assertEqual(found(a="def f(a, b):\n    return a + b\nf(x, 2)\n", b="import a\na.f(y, 2)\n"), {("a.py", 1, "constant", "b")})
 
     def test_call_through_an_imported_module_is_a_call_site(self):
         self.assertEqual(found(a="def f(a, b=1):\n    return a + b\n", b="import a\na.f(x)\n"), {("a.py", 1, "default", "b")})

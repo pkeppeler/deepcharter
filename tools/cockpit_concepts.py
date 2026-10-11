@@ -286,10 +286,10 @@ def scanner_bezel(w, rng, cuts=(0, 0, 0, 0), margin=7):
     return img, (wx, wy)
 
 
-def altimeter_tab(cuts, rng):
+def altimeter_tab(w, h, cuts, rng):
     """The tab the altimeter is written on: a dark glass recess in a steel plate."""
-    img = slab(86, 20, cuts, rng, H[2])
-    well(img, 4, 4, 78, 12)
+    img = slab(w, h, cuts, rng, H[2])
+    well(img, 4, 4, w - 8, h - 8)
     return img
 
 
@@ -349,7 +349,7 @@ def consoles():
     look.keys.update(anchor_keys("consolesReadout", 0, 0, 36, 8))
     look.keys["consolesAltimeterY"] = 7
 
-    tab = altimeter_tab((0, 0, 8, 8), random.Random(444_22))
+    tab = altimeter_tab(86, 20, (0, 0, 8, 8), random.Random(444_22))
     tab_place = Placed(86, 20, 1, 0, 0, 0)
     look.sprite("header", Sprite(tab), tab_place)
     look.decal("header", tab_place)

@@ -86,7 +86,7 @@ def works_hall(p: Piece, x0: int, z0: int, x1: int, z1: int, top: int, pilasters
     return walls
 
 
-def machine_house(p: Piece, x0: int, z0: int, x1: int, z1: int, y0: int, y1: int, hatch_y: int) -> dict[str, Wall]:  # unused-ok: the only house; the parameters are its size and place
+def machine_house(p: Piece, x0: int, z0: int, x1: int, z1: int, y0: int, y1: int, hatch_y: int) -> dict[str, Wall]:
     """A plain riveted box from y0 to y1 (a crusher house on a roof, a bin house): red corners, a row of glowing crusher
     hatches at hatch_y, a hazard band at its top and a grating roof over it."""
     walls = box_walls(x0, z0, x1, z1)
@@ -196,14 +196,14 @@ def track(p: Piece, x: int, z0: int, z1: int, facing: str = "south") -> None:
         p.set(x, 1, z, state("mine_track", facing=facing))
 
 
-def ore_cars(p: Piece, x: int, z: int, count: int) -> None:  # unused-ok: the only train; the parameters are its place and length
+def ore_cars(p: Piece, x: int, z: int, count: int) -> None:
     """A train of ore cars on the track along Z, coupled end to end from x, z."""
     for i in range(count):
         p.set(x, 1, z + i, state("ore_car", facing="south"))
 
 
-def lattice_post(p: Piece, x: int, z: int, y1: int) -> None:
-    p.fill(x, 2, z, x, y1, z, state("lattice_girder", axis="y"))
+def lattice_post(p: Piece, x: int, z: int, y0: int, y1: int, girder: str) -> None:
+    p.fill(x, y0, z, x, y1, z, state(girder, axis="y"))
 
 
 def xbraced_face(p: Piece, a0: int, a1: int, fixed: int, y0: int, y1: int, along: str) -> None:
@@ -260,7 +260,7 @@ def stack(p: Piece, cx: float, cz: float, r: float, top: int) -> None:
         p.set(ix + dx, top - 1, iz + dz, state("wall_lamp", facing=facing))
 
 
-def silo(p: Piece, cx: float, cz: float, r: float, legs: int, top: int) -> None:  # unused-ok: the only silo; the parameters are its size and place
+def silo(p: Piece, cx: float, cz: float, r: float, legs: int, top: int) -> None:
     """A riveted ore bin on four steel legs: a hopper narrowing to its gate, a banded body and a red cap."""
     ix, iz = math.floor(cx), math.floor(cz)
     leg = math.floor(r)
@@ -280,9 +280,8 @@ def sign(p: Piece, name: str, x: int, y: int, z: int, facing: str) -> None:
             p.set(x + rx * col, y - row, z + rz * col, state("enamel_sign", facing=facing, tile=str(tile)))
 
 
-def lamp_post(p: Piece, x: int, z: int, facings) -> None:
+def lamp_post(p: Piece, x: int, z: int, height: int, facings) -> None:
     """A steel post with a caged sodium lamp on each named side at its top."""
-    height = 4
     p.fill(x, 1, z, x, height, z, state("pipe", axis="y"))
     p.set(x, 0, z, state("concrete_footing"))
     for facing in facings:
@@ -359,8 +358,8 @@ def clear(p: Piece, x0, y0, z0, x1, y1, z1) -> None:
                 p.clear(x, y, z)
 
 
-def square_paving(p: Piece, half: int) -> None:  # unused-ok: the only paving; half is the Works square's size
+def square_paving(p: Piece, half: int, flag: str, trim: str) -> None:
     for x in range(-half, half + 1):
         for z in range(-half, half + 1):
             edge = abs(x) == half or abs(z) == half
-            p.set(x, 0, z, state("hazard_band") if edge else state("riveted_plate"))
+            p.set(x, 0, z, state(trim) if edge else state(flag))

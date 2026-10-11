@@ -68,14 +68,14 @@ def _head(neck: Bone, nod: float, turn: float = 0.0) -> Bone:
     return head
 
 
-def _chest_slot(torso: Bone, y: float, z: float) -> None:  # unused-ok: a part of the one figure; the parameters are its dimensions
+def _chest_slot(torso: Bone, y: float, z: float) -> None:
     """The slot in the chest: a dark mouth in a thin brass lip, flush with the waistcoat, a small brass plate under it."""
     torso.box((-1.7, y + 0.1, z - 0.1), (1.7, y + 1.3, z + 0.12), P)
     torso.box((-1.4, y + 0.35, z + 0.05), (1.4, y + 1.05, z + 0.16), S)
     torso.box((-0.9, y - 0.9, z - 0.1), (0.9, y - 0.4, z + 0.1), P)
 
 
-def _waistcoat(torso: Bone, top: float, front: float) -> None:  # unused-ok: a part of the one figure; the parameters are its dimensions
+def _waistcoat(torso: Bone, top: float, front: float) -> None:
     for side in (-1, 1):
         lapel = torso.child((side * 2.6, top, front - 0.1), (0.0, 0.0, side * 16.0))
         lapel.box((-1.1, -6.0, -0.2), (1.1, 0.0, 0.4), D)
@@ -84,7 +84,7 @@ def _waistcoat(torso: Bone, top: float, front: float) -> None:  # unused-ok: a p
     torso.box((-3.6, 2.6, front - 0.1), (1.4, 2.9, front + 0.15), P)                      # watch chain
 
 
-def _standing_coat(root: Bone, hem: float, waist: float, flare: float, stride: float = 0.0) -> None:  # unused-ok: a part of the one figure; the parameters are its dimensions
+def _standing_coat(root: Bone, hem: float, waist: float, flare: float, stride: float = 0.0) -> None:
     """Trouser legs and boots, and a frock-coat skirt widening from the waist to the hem."""
     for side, forward in ((-1, -stride), (1, stride)):
         leg = root.child((side * 2.5, hem + 1.0, forward * 0.2), (-forward * 6.0, 0.0, 0.0))
@@ -101,7 +101,7 @@ def _standing_coat(root: Bone, hem: float, waist: float, flare: float, stride: f
     root.box((-0.25, hem + 1.0, -4.9), (0.25, waist - 2.0, -4.4), D)                       # the vent behind
 
 
-def _torso(root: Bone, waist: float, height: float) -> Bone:  # unused-ok: a part of the one figure; the parameters are its dimensions
+def _torso(root: Bone, waist: float, height: float) -> Bone:
     chest = 3.9
     torso = root.child((0.0, waist, 0.0))
     torso.box((-6.4, 0.0, -3.9), (6.4, height, 3.5))
@@ -111,7 +111,7 @@ def _torso(root: Bone, waist: float, height: float) -> Bone:  # unused-ok: a par
     return torso
 
 
-def _neck_and_head(torso: Bone, height: float, nod: float, turn: float = 0.0) -> Bone:  # unused-ok: a part of the one figure; the parameters are its dimensions
+def _neck_and_head(torso: Bone, height: float, nod: float, turn: float = 0.0) -> Bone:
     neck = torso.child((0.0, height, 0.2))
     neck.box((-1.8, 0.0, -1.8), (1.8, 2.6, 1.8))
     neck.box((-2.4, 0.0, 1.2), (2.4, 1.1, 2.9), D)                                         # cravat

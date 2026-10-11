@@ -110,8 +110,8 @@ def window(glass: str, side: str, glow: str | None) -> Model:
     return Model(textures, boxes)
 
 
-def i_beam() -> Model:
-    t = {"flange": tex("beam"), "web": tex("beam_web"), "end": tex("beam_end"), "particle": tex("beam")}
+def i_beam(paint: str) -> Model:
+    t = {"flange": tex(paint), "web": tex(paint + "_web"), "end": tex(paint + "_end"), "particle": tex(paint)}
     return Model(t, [
         Box((2, 0, 2), (14, 16, 4.5), {"*": "#flange", "up": "#end", "down": "#end"}, cull=True),
         Box((2, 0, 11.5), (14, 16, 14), {"*": "#flange", "up": "#end", "down": "#end"}, cull=True),
@@ -147,10 +147,10 @@ def cable() -> Model:
     return Model(t, [Box((7, 0, 7), (9, 16, 9), {"*": "#cable"}, cull=True)], ambient_occlusion=False)
 
 
-def brace() -> Model:
+def brace(texture: str) -> Model:
     """A 45-degree lattice brace rising toward the north: one member along the block's diagonal, so braces set diagonally in a
     line join end to end."""
-    t = {"lattice": tex("lattice"), "end": tex("lattice_end"), "particle": tex("lattice")}
+    t = {"lattice": tex(texture), "end": tex(texture + "_end"), "particle": tex(texture)}
     half = 8 * 2 ** 0.5
     return Model(t, [
         Box((3, 3, 8 - half), (13, 13, 8 + half), {"*": "#lattice", "north": "#end", "south": "#end"}, rotation=(45, 0, 0)),
@@ -289,10 +289,10 @@ CATALOGUE: dict[str, KitBlock] = {block.name: block for block in [
     facing("floodlight", "Company Floodlight", floodlight),
     facing("railing", "Catwalk Railing", railing),
     facing("steel_ladder", "Steel Ladder", steel_ladder),
-    facing("brace", "Lattice Brace", brace),
+    facing("brace", "Lattice Brace", lambda: brace("lattice")),
     facing("mine_track", "Mine Track", mine_track),
     facing("ore_car", "Ore Car", ore_car),
-    pillar("steel_beam", "Steel Beam", i_beam),
+    pillar("steel_beam", "Steel Beam", lambda: i_beam("beam")),
     pillar("lattice_girder", "Lattice Girder", lambda: lattice("lattice")),
     pillar("pipe", "Steel Pipe", lambda: pipe("pipe")),
     pillar("pipe_brass", "Brass Pipe", lambda: pipe("pipe_brass")),

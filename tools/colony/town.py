@@ -79,7 +79,7 @@ def square() -> Piece:
     shaft with the brass plaque, a brass cornice with floodlights at its corners. Pipe lamp posts stand round it. He stands without
     his hands (HANDS)."""
     p = Piece("square")
-    parts.square_paving(p, 10)
+    parts.square_paving(p, 10, "riveted_plate", "hazard_band")
     for x in range(-9, 10, 3):
         for z in (-6, 0, 6):
             if abs(x) > 4 or abs(z) > 4:
@@ -93,7 +93,7 @@ def square() -> Piece:
         p.set(x, PLINTH_TOP + 1, z, state("floodlight", facing=facing))
     parts.statue(p, FIGURE, PLINTH_TOP, float(HOST))
     for x, z, faces in ((-10, 4, ("east",)), (10, 4, ("west",)), (-10, 10, ("east", "north")), (10, 10, ("west", "north"))):
-        parts.lamp_post(p, x, z, faces)
+        parts.lamp_post(p, x, z, 4, faces)
     return p
 
 
@@ -152,7 +152,7 @@ def headframe(bin_y: int) -> Piece:
     for x in POSTS_X:
         for z in POSTS_Z:
             p.fill(x - 1, 0, z - 1, x + 1, 1, z + 1, state("concrete_footing"))
-            parts.lattice_post(p, x, z, DECK - 1)
+            parts.lattice_post(p, x, z, 2, DECK - 1, "lattice_girder")
     # The front face is open below 8, where the skips land at the collar.
     parts.xbraced_face(p, x0, x1, z1, 8, DECK - 2, "x")
     parts.xbraced_face(p, x0, x1, z0, 2, DECK - 2, "x")
