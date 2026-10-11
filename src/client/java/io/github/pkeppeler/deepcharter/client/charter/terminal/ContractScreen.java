@@ -78,18 +78,9 @@ public final class ContractScreen extends CrtScreen implements TerminalViewScree
 		rebuildWidgets();
 	}
 
-	public Optional<ContractState> state() {
-		return state;
-	}
-
 	@Override
 	public Typewriter typewriter() {
 		return typewriter;
-	}
-
-	/** The field a new charter's name is typed in, or null when the player has a charter. */
-	public CrtTextField nameField() {
-		return nameField;
 	}
 
 	/** The refusal the server last sent, as the screen shows it. */

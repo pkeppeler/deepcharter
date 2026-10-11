@@ -189,11 +189,6 @@ public final class TransmissionData extends SavedData {
 		return live().charters().getOrDefault(charter, Progress.EMPTY);
 	}
 
-	/** The repair transmissions fired live so far, in the order they first fired. */
-	public List<Identifier> replays() {
-		return List.copyOf(live().replays());
-	}
-
 	/**
 	 * Fires {@code transmission} for {@code charter}: it joins the end of the fired set. Returns false, and changes nothing, when the
 	 * charter has it already. A repair transmission also joins the world's replay list. This is the one place that decides "once", so a

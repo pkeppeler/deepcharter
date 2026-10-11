@@ -66,7 +66,7 @@ public final class TerminalPanelScreens {
 			case UpgradeScreen upgrade -> done(upgrade.typewriter()) && upgrade.upgrade().flatMap(view -> view.pod()).isPresent();
 			case RepairStationScreen repair -> done(repair.typewriter());
 			case FuelPumpScreen pump -> done(pump.typewriter());
-			case ContractScreen contract -> done(contract.typewriter()) && contract.state().isPresent();
+			case ContractScreen contract -> done(contract.typewriter()) && ContractShown.loaded(contract);
 			case TerminalScreen generic -> done(generic.typewriter());
 			default -> false;
 		};

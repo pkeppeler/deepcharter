@@ -23,6 +23,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.RepairRows;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
@@ -77,7 +78,7 @@ public class RepairStationFitClientTest implements FabricClientGameTest {
 			screen.scrollTo(first);
 			Optional<String> problem = stepProblem(screen, seen);
 			if (problem.isPresent()) {
-				return Optional.of("scrolled to row " + screen.firstRow() + ": " + problem.get());
+				return Optional.of("scrolled to row " + RepairRows.firstRow(screen) + ": " + problem.get());
 			}
 		}
 		if (!seen.contains(LAST_ROW)) {
@@ -97,13 +98,13 @@ public class RepairStationFitClientTest implements FabricClientGameTest {
 		Button last = buttons.get(screen.visibleRows() - 1);
 		screen.setFocused(last);
 		screen.keyPressed(new KeyEvent(InputConstants.KEY_DOWN, 0, 0));
-		if (screen.firstRow() != 1 || !(screen.getFocused() instanceof Button now) || now.getY() != last.getY()) {
+		if (RepairRows.firstRow(screen) != 1 || !(screen.getFocused() instanceof Button now) || now.getY() != last.getY()) {
 			return Optional.of("Down from the last row did not scroll one row and focus the row that came into view");
 		}
 		Button first = ClientChecks.buttons(screen).getFirst();
 		screen.setFocused(first);
 		screen.keyPressed(new KeyEvent(InputConstants.KEY_TAB, 0, InputConstants.MOD_SHIFT));
-		if (screen.firstRow() != 0 || !(screen.getFocused() instanceof Button back) || back.getY() != first.getY()) {
+		if (RepairRows.firstRow(screen) != 0 || !(screen.getFocused() instanceof Button back) || back.getY() != first.getY()) {
 			return Optional.of("Shift+Tab from the first row did not scroll back one row and focus it");
 		}
 		return Optional.empty();

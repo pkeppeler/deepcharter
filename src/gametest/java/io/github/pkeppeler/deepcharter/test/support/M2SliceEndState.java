@@ -11,7 +11,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.colony.FounderStatue;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
-import io.github.pkeppeler.deepcharter.handbook.HandbookProgress;
+import io.github.pkeppeler.deepcharter.handbook.HandbookProgressData;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.market.WorkOrderData;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
@@ -35,7 +35,7 @@ public final class M2SliceEndState {
 	 * @throws AssertionError naming what is still open
 	 */
 	public static void require(MinecraftServer server, CharterId charter, PodEntity prospector) {
-		Set<Identifier> done = HandbookProgress.completed(server, charter);
+		Set<Identifier> done = HandbookProgressData.get(server).completed(charter);
 		List<Identifier> open = shippedDirectives(server).stream().filter(id -> !done.contains(id)).toList();
 		if (!open.isEmpty()) {
 			throw new AssertionError("directives still open at the end of the slice: " + open);

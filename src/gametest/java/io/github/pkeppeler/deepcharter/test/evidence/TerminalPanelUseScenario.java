@@ -9,6 +9,8 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TerminalPanelScene;
 import io.github.pkeppeler.deepcharter.test.support.TerminalPanelScene.Scene;
 import io.github.pkeppeler.deepcharter.test.support.TerminalPanelScreens;
+import io.github.pkeppeler.deepcharter.test.support.UpgradeShown;
+import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
 /**
  * Evidence scenario "terminal-panel-use" for #246: two terminals used on the machine panel. At the upgrade terminal the hull track is chosen
@@ -33,7 +35,7 @@ public class TerminalPanelUseScenario extends EvidenceScenario {
 			UpgradeScreen upgrade = (UpgradeScreen) TerminalPanelScreens.open(context, "upgrade", scene, null);
 			hold(context);
 			context.clickScreenButton("HULL  T0");
-			ClientWait.until(context, "the hull track chosen", client -> upgrade.selected().id().equals("hull"));
+			ClientWait.until(context, "the hull track lit", client -> UpgradeShown.isChosen(upgrade, ComponentTrack.HULL));
 			hold(context);
 			screenshot(context, "upgrade-hull");
 			context.clickScreenButton("BUY TIER 1  $200");

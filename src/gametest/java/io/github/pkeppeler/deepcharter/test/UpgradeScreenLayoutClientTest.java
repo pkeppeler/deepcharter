@@ -15,6 +15,7 @@ import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.UpgradeShown;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
@@ -44,11 +45,9 @@ public class UpgradeScreenLayoutClientTest implements FabricClientGameTest {
 			ClientWait.until(context, "the track list", client -> screen.upgrade().flatMap(view -> view.pod()).isPresent() && ClientChecks.buttons(screen).size() > ComponentTrack.values().length);
 
 			for (ComponentTrack track : ComponentTrack.values()) {
-				if (screen.selected() != track) {
-					String name = context.computeOnClient(client -> Component.translatable("deepcharter.upgrade.track." + track.id()).getString());
-					context.clickScreenButton(name + "  T0");
-				}
-				ClientWait.until(context, "the track " + track.id() + " selected", client -> screen.selected() == track);
+				String name = context.computeOnClient(client -> Component.translatable("deepcharter.upgrade.track." + track.id()).getString());
+				context.clickScreenButton(name + "  T0");
+				ClientWait.until(context, "the track " + track.id(), client -> UpgradeShown.isChosen(screen, track));
 				context.runOnClient(client -> checkLayout(screen, track));
 			}
 			context.setScreen(() -> null);

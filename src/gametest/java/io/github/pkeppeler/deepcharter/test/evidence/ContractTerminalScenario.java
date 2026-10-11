@@ -12,11 +12,10 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
 
 import io.github.pkeppeler.deepcharter.charter.Charters;
-import io.github.pkeppeler.deepcharter.charter.terminal.ContractState;
-import io.github.pkeppeler.deepcharter.charter.terminal.ContractState.Role;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.client.charter.terminal.ContractScreen;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
+import io.github.pkeppeler.deepcharter.test.support.ContractShown;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
 /**
@@ -50,7 +49,7 @@ public class ContractTerminalScenario extends EvidenceScenario {
 
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(terminal)));
 			context.waitForScreen(ContractScreen.class);
-			awaitState(context, state -> state.role() == Role.NONE);
+			awaitState(context, ContractShown::hasNoCharter);
 			ContractScreen screen = context.computeOnClient(client -> (ContractScreen) client.gui.screen());
 			for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
 				context.waitTicks(TICKS_PER_FRAME);
@@ -62,26 +61,26 @@ public class ContractTerminalScenario extends EvidenceScenario {
 
 			for (int length = 1; length <= CHARTER.length(); length++) {
 				String typed = CHARTER.substring(0, length);
-				context.runOnClient(client -> ((ContractScreen) client.gui.screen()).nameField().setValue(typed));
+				context.runOnClient(client -> ContractShown.nameField((ContractScreen) client.gui.screen()).setValue(typed));
 				context.waitTicks(TICKS_PER_FRAME);
 				clearToastsAndFrame(context);
 			}
 			hold(context);
 			context.clickScreenButton("FOUND CHARTER");
-			awaitState(context, state -> state.role() == Role.DIRECTOR);
+			awaitState(context, open -> ContractShown.directs(open, CHARTER));
 			hold(context);
 
 			two.server().runOnServer(server -> {
 				UUID director = server.getPlayerList().getPlayers().stream().map(ServerPlayer::getUUID).filter(uuid -> !uuid.equals(mock)).findFirst().orElseThrow();
 				Charters.apply(server, mock, Charters.charterOfOrThrow(server, director).orElseThrow().id());
 			});
-			awaitState(context, state -> state.applicants().equals(List.of(MOCK_NAME)));
+			awaitState(context, open -> ContractShown.applicants(open).equals(List.of(MOCK_NAME.toUpperCase())));
 			hold(context);
 			clearToasts(context);
 			screenshot(context, "contract-application");
 
 			context.clickScreenButton("APPROVE " + MOCK_NAME.toUpperCase());
-			awaitState(context, state -> state.applicants().isEmpty());
+			awaitState(context, open -> ContractShown.applicants(open).isEmpty());
 			hold(context);
 			clearToasts(context);
 			screenshot(context, "contract-approved");
@@ -89,8 +88,8 @@ public class ContractTerminalScenario extends EvidenceScenario {
 		}
 	}
 
-	private static void awaitState(ClientGameTestContext context, Predicate<ContractState> wanted) {
-		context.waitFor(client -> client.gui.screen() instanceof ContractScreen open && open.state().filter(wanted).isPresent(), WAIT_TICKS);
+	private static void awaitState(ClientGameTestContext context, Predicate<ContractScreen> wanted) {
+		context.waitFor(client -> client.gui.screen() instanceof ContractScreen open && wanted.test(open), WAIT_TICKS);
 	}
 
 	/** The dedicated server's join toasts ("chat messages can't be verified") would cover the screen. */
