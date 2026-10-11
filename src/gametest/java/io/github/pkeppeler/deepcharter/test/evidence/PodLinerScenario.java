@@ -21,6 +21,7 @@ import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLiner;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
+import io.github.pkeppeler.deepcharter.pod.PodLiningTuning;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -47,7 +48,8 @@ public class PodLinerScenario extends EvidenceScenario {
 	private static final int BOTTOM_Y = FLOOR_Y - 14;
 	private static final int TICKS_PER_FRAME = 4;
 	private static final int MAX_TICKS = 6000;
-	private static final int BRICKS = 24;
+	/** A full rack. */
+	private static final int BRICKS = PodLiningTuning.DEFAULT.brickCapacity();
 	private static final float LOOK_DOWN = 30f;
 	private static final float FACING_EAST = -90f;
 	private static final int THERMAL_TIER = 2;

@@ -12,10 +12,12 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.market.AccountHud;
+import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud.Kind;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud.Line;
 import io.github.pkeppeler.deepcharter.client.scanner.ScannerHud;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
@@ -29,14 +31,16 @@ import io.github.pkeppeler.deepcharter.pod.PodFuel;
 import io.github.pkeppeler.deepcharter.pod.PodSeat;
 
 /**
- * The cockpit HUD (#247, {@link CockpitLook}): while the local player sits in a pod and the theme picks a style, the frame, housings, gauges, scanner
- * window and text readout of that style are the HUD, and the vanilla hotbar, hearts, held item name and the dismount hint are not drawn. On foot, and
- * with style 0, nothing here draws or hides anything.
+ * The cockpit HUD (#247, {@link CockpitLook}): while the local player sits in a pod and the theme picks a style, the housings, gauges, warning lamps, scanner
+ * window and readout plate of that style are the HUD (and round 1's style a frame over the whole screen), and the vanilla hotbar, hearts, held item name and the
+ * dismount hint are not drawn. On foot, and with style 0, nothing here draws or hides anything.
  */
 public final class CockpitHud {
+	/** How many warning lamps a style has: low fuel, low hull, burning, and any other warning of the readout. */
+	public static final int LAMPS = 4;
 	private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "cockpit");
 	/** The vanilla elements a seated pilot does not get: the cluster of hotbar, health, armour, hunger, air, experience, the held item's name and the action bar (which holds the dismount hint). */
-	private static final List<Identifier> HIDDEN_WHILE_SEATED = List.of(VanillaHudElements.HOTBAR, VanillaHudElements.ARMOR_BAR, VanillaHudElements.HEALTH_BAR,
+	public static final List<Identifier> HIDDEN_WHILE_SEATED = List.of(VanillaHudElements.HOTBAR, VanillaHudElements.ARMOR_BAR, VanillaHudElements.HEALTH_BAR,
 			VanillaHudElements.FOOD_BAR, VanillaHudElements.AIR_BAR, VanillaHudElements.MOUNT_HEALTH, VanillaHudElements.INFO_BAR,
 			VanillaHudElements.EXPERIENCE_LEVEL, VanillaHudElements.HELD_ITEM_TOOLTIP, VanillaHudElements.OVERLAY_MESSAGE);
 
@@ -71,9 +75,9 @@ public final class CockpitHud {
 		return seated(client).isPresent() && client.player.getVehicle() instanceof PodEntity pod && PodSeat.showsPodStatus(pod, client.player);
 	}
 
-	/** The vanilla elements the cockpit replaces, for a test to hold to the list. */
-	public static List<Identifier> hiddenWhileSeated() {
-		return HIDDEN_WHILE_SEATED;
+	/** The heat gauge's reading, 0 to 1: the burning of the hull, eased. */
+	public static double heat() {
+		return heat;
 	}
 
 	private static void tick(Minecraft client) {
@@ -95,9 +99,12 @@ public final class CockpitHud {
 		CockpitLook look = CockpitLook.current();
 		int width = graphics.guiWidth();
 		int height = graphics.guiHeight();
-		CrtDraw.sprite(graphics, layout.sprite("frame"), 0, 0, width, height);
+		if (layout.frame()) {
+			CrtDraw.sprite(graphics, layout.sprite("frame"), 0, 0, width, height);
+		}
 		decal(graphics, layout, "part_a", layout.partA(), width, height);
 		decal(graphics, layout, "part_b", layout.partB(), width, height);
+		decal(graphics, layout, "part_c", layout.partC(), width, height);
 		if (layout.scanner().on()) {
 			ScannerHud.drawInWindow(graphics, client, layout.scanner());
 		}
@@ -106,20 +113,23 @@ public final class CockpitHud {
 			ScannerHud.drawTitleUnder(graphics, client, layout.scanner());
 		}
 		PodEntity pod = (PodEntity) client.player.getVehicle();
-		if (showsReadout(client)) {
-			CockpitReading reading = CockpitReading.of(client, pod, heat);
+		CockpitReading reading = CockpitReading.of(client, pod, heat);
+		boolean readout = showsReadout(client);
+		List<Line> lines = readout ? PodStatusHud.readout(client, pod) : List.of();
+		if (readout) {
 			boolean fuelLow = PodFuel.isLow(pod.fuel());
 			boolean hullLow = reading.hull() <= look.hullLowFraction();
-			gauge(graphics, layout.fuel(), reading.fuel(), fuelLow ? look.lowColor() : look.fuelColor(), fuelLow, look);
-			gauge(graphics, layout.hull(), reading.hull(), hullLow ? look.lowColor() : look.hullColor(), hullLow, look);
-			gauge(graphics, layout.depth(), reading.depth(), look.depthColor(), false, look);
-			gauge(graphics, layout.heat(), reading.heat(), look.heatColor(), reading.heat() > look.heatWarning(), look);
+			gauge(graphics, layout.fuel(), reading.fuel(), fuelLow ? look.lowColor() : look.fuelColor(), look);
+			gauge(graphics, layout.hull(), reading.hull(), hullLow ? look.lowColor() : look.hullColor(), look);
+			gauge(graphics, layout.depth(), reading.depth(), look.depthColor(), look);
+			gauge(graphics, layout.heat(), reading.heat(), look.heatColor(), look);
+			gauge(graphics, layout.cargo(), reading.cargo(), look.cargoColor(), look);
+			lamps(graphics, layout.lamps(), lampsLit(fuelLow, hullLow, pod.hullBurning(), lines),
+					new int[] {look.lowColor(), look.lowColor(), look.heatColor(), look.depthColor()}, look);
 		}
 		decal(graphics, layout, "header", layout.header(), width, height);
-		if (showsReadout(client)) {
-			List<Line> readout = new ArrayList<>(PodStatusHud.readout(client, pod));
-			AccountHud.text().ifPresent(account -> readout.add(new Line(account, HudLook.current().accountColor())));
-			plate(graphics, client, layout, look, readout);
+		if (readout) {
+			plate(graphics, client, layout, look, rows(pod, reading, layout, look, lines));
 		}
 	}
 
@@ -129,11 +139,8 @@ public final class CockpitHud {
 		}
 	}
 
-	/**
-	 * Draws one gauge at {@code value} (0 to 1). A dial turns its needle, which is {@code color} in a warning and the needle colour otherwise; a bar lights
-	 * segments of {@code color} from its start, at least one when the value is above 0, over unlit ones.
-	 */
-	private static void gauge(GuiGraphicsExtractor graphics, Gauge gauge, double value, int color, boolean warning, CockpitLook look) {
+	/** Draws one bar gauge at {@code value} (0 to 1): segments of {@code color} lit from its start, at least one when the value is above 0, over unlit ones. */
+	private static void gauge(GuiGraphicsExtractor graphics, Gauge gauge, double value, int color, CockpitLook look) {
 		if (!gauge.on()) {
 			return;
 		}
@@ -143,8 +150,6 @@ public final class CockpitHud {
 		int height = gauge.area().height();
 		int lit = (int) Math.ceil(value * gauge.segments() - 1e-9);
 		switch (gauge.kind()) {
-			case DIAL -> needle(graphics, left + width / 2, top + height / 2, Math.min(width, height) / 2 - look.needleInset(),
-					Math.toRadians(gauge.from() + (gauge.to() - gauge.from()) * value), warning ? look.lowColor() : look.needleColor(), look.hubSize());
 			case ACROSS -> {
 				for (int i = 0; i < gauge.segments(); i++) {
 					int from = left + i * width / gauge.segments();
@@ -162,33 +167,92 @@ public final class CockpitHud {
 		}
 	}
 
-	/** A needle one pixel thick from ({@code cx}, {@code cy}) {@code length} pixels out at {@code angle} radians clockwise from straight up, and a square hub of {@code hub} pixels. */
-	private static void needle(GuiGraphicsExtractor graphics, int cx, int cy, int length, double angle, int color, int hub) {
-		for (int step = 0; step <= length; step++) {
-			int x = cx + (int) Math.round(Math.sin(angle) * step);
-			int y = cy - (int) Math.round(Math.cos(angle) * step);
-			graphics.fill(x, y, x + 1, y + 1, color);
-		}
-		graphics.fill(cx - hub / 2, cy - hub / 2, cx - hub / 2 + hub, cy - hub / 2 + hub, color);
+	/** Which of the {@link #LAMPS} are lit: low fuel, low hull, the hull burning, and any line of the readout that is a warning ({@link Kind#ALERT}). */
+	public static boolean[] lampsLit(boolean fuelLow, boolean hullLow, boolean burning, List<Line> readout) {
+		return new boolean[] {fuelLow, hullLow, burning, readout.stream().anyMatch(line -> line.kind() == Kind.ALERT)};
 	}
 
-	/** The text readout, on a plate that is as big as its longest line and the number of lines. */
-	private static void plate(GuiGraphicsExtractor graphics, Minecraft client, Layout layout, CockpitLook look, List<Line> lines) {
+	/** The warning lamps: {@link #LAMPS} squares in a row (a slot wider than it is tall) or a column, each lit in its colour or off. */
+	private static void lamps(GuiGraphicsExtractor graphics, Decal slot, boolean[] lit, int[] colors, CockpitLook look) {
+		if (!slot.on()) {
+			return;
+		}
+		boolean row = slot.width() >= slot.height();
+		int size = ((row ? slot.width() : slot.height()) - look.lampGap() * (LAMPS - 1)) / LAMPS;
+		int left = slot.left(graphics.guiWidth());
+		int top = slot.top(graphics.guiHeight());
+		for (int k = 0; k < LAMPS; k++) {
+			int offset = k * (size + look.lampGap());
+			int x = row ? left + offset : left;
+			int y = row ? top : top + offset;
+			graphics.fill(x, y, row ? x + size : left + slot.width(), row ? top + slot.height() : y + size, lit[k] ? colors[k] : look.offColor());
+		}
+	}
+
+	/** One row of the plate: parts drawn side by side, each in its colour, {@link CockpitLook#tallyGap} apart. */
+	public record Row(List<Line> parts) {
+		static Row of(Line line) {
+			return new Row(List.of(line));
+		}
+
+		int width(Font font, int gap) {
+			int width = gap * (parts.size() - 1);
+			for (Line part : parts) {
+				width += font.width(part.text());
+			}
+			return width;
+		}
+	}
+
+	/**
+	 * The rows of the plate. A style that lists every line (round 1's) draws each line of the readout and the account line. A compact style draws the tally on one row (hull,
+	 * fuel, cargo and depth, each in its gauge's colour) and the account line, and every other line of the readout over them or under them, by where the plate is anchored:
+	 * the tally stays where it is as lines come and go.
+	 */
+	public static List<Row> rows(PodEntity pod, CockpitReading reading, Layout layout, CockpitLook look, List<Line> readout) {
+		Optional<Line> account = AccountHud.text().map(text -> new Line(text, HudLook.current().accountColor()));
+		if (!layout.compact()) {
+			List<Row> rows = new ArrayList<>(readout.stream().map(Row::of).toList());
+			account.ifPresent(line -> rows.add(Row.of(line)));
+			return rows;
+		}
+		boolean fuelLow = PodFuel.isLow(pod.fuel());
+		boolean hullLow = reading.hull() <= look.hullLowFraction();
+		List<Row> base = new ArrayList<>(List.of(new Row(List.of(
+				new Line(Component.translatable("hud.deepcharter.pod.tally_hull", Math.round(pod.hull()), Math.round(pod.maxHull())), hullLow ? look.lowColor() : look.hullColor()),
+				new Line(Component.translatable("hud.deepcharter.pod.tally_fuel", Math.round(pod.fuel())), fuelLow ? look.lowColor() : look.fuelColor()),
+				new Line(Component.translatable("hud.deepcharter.pod.tally_cargo", pod.cargoUsed()), look.cargoColor()),
+				new Line(Component.translatable("hud.deepcharter.pod.tally_depth", Math.round(pod.getY())), look.depthColor())))));
+		account.ifPresent(line -> base.add(Row.of(line)));
+		List<Row> extra = readout.stream().filter(line -> line.kind() != Kind.BASE).map(Row::of).toList();
+		List<Row> rows = new ArrayList<>();
+		boolean fromBottom = layout.readout().anchorY() == 2;
+		rows.addAll(fromBottom ? extra : base);
+		rows.addAll(fromBottom ? base : extra);
+		return rows;
+	}
+
+	/** The readout, on a plate that is as big as its longest row and the number of rows. */
+	private static void plate(GuiGraphicsExtractor graphics, Minecraft client, Layout layout, CockpitLook look, List<Row> rows) {
 		Font font = client.font;
 		int gap = HudLook.current().podStatusLineGap();
 		int widest = 0;
-		for (Line line : lines) {
-			widest = Math.max(widest, font.width(line.text()));
+		for (Row row : rows) {
+			widest = Math.max(widest, row.width(font, look.tallyGap()));
 		}
 		int pad = look.platePad();
 		int plateWidth = widest + 2 * pad;
-		int plateHeight = lines.size() * (font.lineHeight + gap) - gap + 2 * pad;
+		int plateHeight = rows.size() * (font.lineHeight + gap) - gap + 2 * pad;
 		int left = layout.readout().left(graphics.guiWidth(), plateWidth);
 		int top = layout.readout().top(graphics.guiHeight(), plateHeight);
 		CrtDraw.sprite(graphics, layout.sprite("plate"), left, top, plateWidth, plateHeight);
 		int y = top + pad;
-		for (Line line : lines) {
-			graphics.text(font, line.text(), left + pad, y, line.color());
+		for (Row row : rows) {
+			int x = left + pad;
+			for (Line part : row.parts()) {
+				graphics.text(font, part.text(), x, y, part.color());
+				x += font.width(part.text()) + look.tallyGap();
+			}
 			y += font.lineHeight + gap;
 		}
 	}

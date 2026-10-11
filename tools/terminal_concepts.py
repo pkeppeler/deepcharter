@@ -539,10 +539,11 @@ def preview(directory: Path) -> None:
         img.text(tx, y0 + k * 26 + 6, label, ink)
     # The content rectangle, outlined, so an overflow is plain to see.
     img.outline(t["insetLeft"], t["insetTop"], SCREEN_W - t["insetLeft"] - t["insetRight"], SCREEN_H - t["insetTop"] - t["insetBottom"], rgb("#ff00ff", 90))
-    (directory / "preview-hatch.png").write_bytes(big(img, 2).to_png())
+    (directory / "preview-hatch.png").write_bytes(big(img).to_png())
 
 
-def big(img: Img, scale: int) -> Img:
+def big(img: Img) -> Img:
+    scale = 2
     out = Img(img.w * scale, img.h * scale)
     for y in range(img.h):
         for x in range(img.w):

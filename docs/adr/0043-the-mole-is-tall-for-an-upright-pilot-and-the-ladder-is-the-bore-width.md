@@ -19,6 +19,6 @@ Amends [ADR 0030](0030-art-direction-decisions.md) (the pod ladder) and [ADR 004
 
 ## Consequences
 
-- A Mole's sideways step bores 6 cells instead of 4, and its hand lining ring is 32 bricks instead of 24. A slab is still 4 cells, so ore per slab, the drill time per slab, fuel and the `EarlyRunModel` pins do not move.
+- A Mole's sideways step bores 6 cells instead of 4, and its hand lining ring is 32 bricks instead of 24. (Amended by #442: the rack no longer holds a whole ring, so a Mole that lines by hand draws on the pilot's pack for each ring. See [mechanics.md](../design/mechanics.md#liner-economy-after-432-442-a).) A slab is still 4 cells, so ore per slab, the drill time per slab, fuel and the `EarlyRunModel` pins do not move.
 - A 3 x 3 Mole was rejected: it would earn exactly what a Prospector earns (2.25 times the ore per slab), so the Prospector's restore would take 2 runs of a Mole and not 4, and no chassis would be left between 3 x 3 and the 4 x 4 doors.
 - `ChassisChecks` runs on both shipped chassis (`ShippedChassisTest`), and its harness stands an odd-width pod on a block's middle, as the drill centres it. Until #400 only even widths ran those checks.

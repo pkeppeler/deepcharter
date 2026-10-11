@@ -154,10 +154,10 @@ def headframe(bin_y: int) -> Piece:
             p.fill(x - 1, 0, z - 1, x + 1, 1, z + 1, state("concrete_footing"))
             parts.lattice_post(p, x, z, 2, DECK - 1, "lattice_girder")
     # The front face is open below 8, where the skips land at the collar.
-    parts.xbraced_face(p, x0, x1, z1, 8, DECK - 2, "x", "lattice_girder", "brace", 6)
-    parts.xbraced_face(p, x0, x1, z0, 2, DECK - 2, "x", "lattice_girder", "brace", 6)
+    parts.xbraced_face(p, x0, x1, z1, 8, DECK - 2, "x")
+    parts.xbraced_face(p, x0, x1, z0, 2, DECK - 2, "x")
     for x in POSTS_X:
-        parts.xbraced_face(p, z0, z1, x, 2, DECK - 2, "z", "lattice_girder", "brace", 6)
+        parts.xbraced_face(p, z0, z1, x, 2, DECK - 2, "z")
     # The deck, railed, and the bearings and axle of the wheels.
     p.fill(x0 - 1, DECK, z0 - 1, x1 + 1, DECK, z1 + 1, state("grating"))
     parts.railing_round(p, x0 - 1, z0 - 1, x1 + 1, z1 + 1, DECK + 1)
@@ -243,7 +243,7 @@ def hoist_house(doors: list[Door]) -> Piece:
     for wx in WHEELS_X:
         p.clear(int(wx // 1), 6, -30)
     doors.append(Door("hoist_house", parts.door(p, walls["west"], -33), "west"))
-    parts.ladder(p, walls["east"], -33, 1, 7)
+    parts.ladder(p, walls["east"], -33, 7)
     parts.wall_sign(p, south, "slogan", -4, 4)
     parts.stack(p, 5.5, -33.5, 1.3, 18)
     return p
@@ -266,7 +266,7 @@ def works(doors: list[Door]) -> Piece:
     for x in range(4, 16):
         if p.get(x, 8, z1 + 1) is None:
             p.set(x, 8, z1 + 1, state("pipe_brass", axis="x"))
-    parts.ladder(p, walls["east"], -13, 1, 9)
+    parts.ladder(p, walls["east"], -13, 9)
     # The crusher house on the roof, its hatches glowing, the conveyor from the tipple bin into its west wall.
     parts.machine_house(p, 9, -19, 14, -14, 10, 13, 12)
     for x in (10, 13):

@@ -6,6 +6,8 @@ import signs
 import sculptures
 from piece import Piece, quaternion_axis_angle, quaternion_mul, state
 
+# A statue stands on the centre of its block.
+STATUE_CENTRE = 0.5
 FACING_DIR = {"north": (0, -1), "south": (0, 1), "east": (1, 0), "west": (-1, 0)}
 # The viewer's right as they read a sign facing this way.
 READING = {"north": (-1, 0), "south": (1, 0), "east": (0, -1), "west": (0, 1)}
@@ -173,9 +175,9 @@ def door(p: Piece, wall: Wall, a: int) -> tuple[int, int, int]:
     return wall.outside(a, 1)
 
 
-def ladder(p: Piece, wall: Wall, a: int, y0: int, y1: int) -> None:
+def ladder(p: Piece, wall: Wall, a: int, y1: int) -> None:
     """A steel ladder up the outside of a wall."""
-    for y in range(y0, y1 + 1):
+    for y in range(1, y1 + 1):
         p.set(*wall.outside(a, y), state("steel_ladder", facing=wall.facing))
 
 
@@ -204,8 +206,8 @@ def lattice_post(p: Piece, x: int, z: int, y0: int, y1: int, girder: str) -> Non
     p.fill(x, y0, z, x, y1, z, state(girder, axis="y"))
 
 
-def xbraced_face(p: Piece, a0: int, a1: int, fixed: int, y0: int, y1: int, along: str, girder: str, brace: str, every: int) -> None:
-    """One face of a lattice tower between posts at a0 and a1: girders across it every few blocks, and an X of 45-degree braces
+def xbraced_face(p: Piece, a0: int, a1: int, fixed: int, y0: int, y1: int, along: str) -> None:
+    """One face of a lattice tower between posts at a0 and a1: girders across it every 6 blocks, and an X of 45-degree braces
     in each panel. along is the axis the face runs along ("x" or "z"); fixed is its other coordinate."""
     def put(a, y, s):
         if along == "x":
@@ -213,22 +215,23 @@ def xbraced_face(p: Piece, a0: int, a1: int, fixed: int, y0: int, y1: int, along
         else:
             p.set(fixed, y, a, s)
     up, down = ("east", "west") if along == "x" else ("south", "north")
+    every = 6
     levels = list(range(y0, y1 + 1, every))
     if levels[-1] != y1:
         levels.append(y1)
     for y in levels:
         for a in range(a0 + 1, a1):
-            put(a, y, state(girder, axis=along))
+            put(a, y, state("lattice_girder", axis=along))
     width = a1 - a0 - 1
     for lo, hi in zip(levels, levels[1:]):
         height = hi - lo - 1
         steps = min(width, height)
         for i in range(steps):
-            put(a0 + 1 + i, lo + 1 + i, state(brace, facing=up))
-            put(a1 - 1 - i, lo + 1 + i, state(brace, facing=down))
+            put(a0 + 1 + i, lo + 1 + i, state("brace", facing=up))
+            put(a1 - 1 - i, lo + 1 + i, state("brace", facing=down))
 
 
-def cylinder(p: Piece, cx: float, cz: float, r: float, y0: int, y1: int, wall, inside=None) -> None:
+def cylinder(p: Piece, cx: float, cz: float, r: float, y0: int, y1: int, wall) -> None:
     for x in range(math.floor(cx - r - 1), math.ceil(cx + r + 1) + 1):
         for z in range(math.floor(cz - r - 1), math.ceil(cz + r + 1) + 1):
             d = math.hypot(x + 0.5 - cx, z + 0.5 - cz)
@@ -237,8 +240,6 @@ def cylinder(p: Piece, cx: float, cz: float, r: float, y0: int, y1: int, wall, i
                 for y in range(y0, y1 + 1):
                     if edge:
                         p.set(x, y, z, wall)
-                    elif inside is not None:
-                        p.set(x, y, z, inside)
 
 
 def cone(p: Piece, cx: float, cz: float, r0: float, r1: float, y0: int, y1: int, wall) -> None:
@@ -280,43 +281,43 @@ def sign(p: Piece, name: str, x: int, y: int, z: int, facing: str) -> None:
             p.set(x + rx * col, y - row, z + rz * col, state("enamel_sign", facing=facing, tile=str(tile)))
 
 
-def lamp_post(p: Piece, x: int, z: int, height: int, facings, post: str = "pipe") -> None:
+def lamp_post(p: Piece, x: int, z: int, height: int, facings) -> None:
     """A steel post with a caged sodium lamp on each named side at its top."""
-    p.fill(x, 1, z, x, height, z, state(post, axis="y"))
+    p.fill(x, 1, z, x, height, z, state("pipe", axis="y"))
     p.set(x, 0, z, state("concrete_footing"))
     for facing in facings:
         dx, dz = FACING_DIR[facing]
         p.set(x + dx, height, z + dz, state("wall_lamp", facing=facing))
 
 
-def _statue_display(p: Piece, model: str, figure: str, plinth_top: int, height: float, x: float, z: float) -> float:
-    """One display of a figure's piece, height blocks tall, its feet at the centre of block (x, z) over plinth_top. Returns the
+def _statue_display(p: Piece, model: str, figure: str, plinth_top: int, height: float) -> float:
+    """One display of a figure's piece, height blocks tall, its feet at the centre of the block over plinth_top. Returns the
     display's scale."""
     scale = sculptures.scale_for(figure, height)
-    at = (x, plinth_top + 1.0, z)
+    at = (STATUE_CENTRE, plinth_top + 1.0, STATUE_CENTRE)
     pivot = (sculptures.FIGURE_OFFSET[0] / 16, sculptures.FIGURE_OFFSET[1] / 16, sculptures.FIGURE_OFFSET[2] / 16)
     p.display(state("colony_sculpture", piece=model), at, (scale, scale, scale), pivot=pivot, view_range=8.0)
     return scale
 
 
-def statue(p: Piece, figure: str, plinth_top: int, height: float, x: float = 0.5, z: float = 0.5) -> None:
+def statue(p: Piece, figure: str, plinth_top: int, height: float) -> None:
     """The Founder on top of a plinth, height blocks tall: the body, standing on the block above plinth_top with his feet at the
-    centre of block (x, z). His hands are a piece of their own (statue_hands): the colony stands him without them."""
-    scale = _statue_display(p, figure, figure, plinth_top, height, x, z)
+    centre of the block. His hands are a piece of their own (statue_hands): the colony stands him without them."""
+    scale = _statue_display(p, figure, figure, plinth_top, height)
     lo, hi = sculptures.figure_bounds(figure)
     # Invisible collision inside the figure, so a pod cannot fly through the Founder. It never replaces a block of the plinth
     # (the floodlights that light the statue at night stand on it).
     s = scale / 16
-    for bx in range(math.floor(x + lo[0] * s * 0.6), math.ceil(x + hi[0] * s * 0.6)):
-        for bz in range(math.floor(z + lo[2] * s * 0.5), math.ceil(z + hi[2] * s * 0.5)):
+    for bx in range(math.floor(STATUE_CENTRE + lo[0] * s * 0.6), math.ceil(STATUE_CENTRE + hi[0] * s * 0.6)):
+        for bz in range(math.floor(STATUE_CENTRE + lo[2] * s * 0.5), math.ceil(STATUE_CENTRE + hi[2] * s * 0.5)):
             for by in range(plinth_top + 1, plinth_top + 1 + int(hi[1] * s * 0.85)):
                 if p.get(bx, by, bz) is None:
                     p.set(bx, by, bz, state("minecraft:barrier", waterlogged="false"))
 
 
-def statue_hands(p: Piece, figure: str, plinth_top: int, height: float, x: float = 0.5, z: float = 0.5) -> None:
+def statue_hands(p: Piece, figure: str, plinth_top: int, height: float) -> None:
     """The Founder's hands, the same scale and place as his body: one display, which a work order places."""
-    _statue_display(p, figure + "_hands", figure, plinth_top, height, x, z)
+    _statue_display(p, figure + "_hands", figure, plinth_top, height)
 
 
 def sheave(p: Piece, centre, axle: str, diameter: float) -> None:

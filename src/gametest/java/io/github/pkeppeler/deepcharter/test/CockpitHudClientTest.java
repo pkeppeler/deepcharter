@@ -2,11 +2,21 @@ package io.github.pkeppeler.deepcharter.test;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import javax.imageio.ImageIO;
 
@@ -31,10 +41,12 @@ import net.minecraft.world.level.block.Blocks;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitReading;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
+import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -101,6 +113,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 				context.waitTicks(40); // tick-wait: the charter's first transmission arrives a moment after the mount, and is cleared below
 
 				expectTheCockpitHidesExactlyTheVanillaBottomCluster();
+				expectEveryReadoutLineHasAKindAndTheWarningsAreTheAlerts();
 				expectNoCockpitWithoutAStyle(context);
 				ClientPacks.enable(context, TestPacks.COCKPIT_CONSOLES);
 				try {
@@ -109,6 +122,14 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 					expectEveryReadoutLineIsOnThePlate(context);
 				} finally {
 					ClientPacks.disable(context, TestPacks.COCKPIT_CONSOLES);
+				}
+				for (String pack : List.of(TestPacks.COCKPIT_CORNERS, TestPacks.COCKPIT_RIBBON, TestPacks.COCKPIT_POSTS, TestPacks.COCKPIT_CAB)) {
+					ClientPacks.enable(context, pack);
+					try {
+						expectACompactStyleKeepsEveryReadout(context, singleplayer, pod, pack);
+					} finally {
+						ClientPacks.disable(context, pack);
+					}
 				}
 			} finally {
 				EvidencePins.reset();
@@ -120,10 +141,50 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 		Set<Identifier> expected = Set.of(VanillaHudElements.HOTBAR, VanillaHudElements.ARMOR_BAR, VanillaHudElements.HEALTH_BAR, VanillaHudElements.FOOD_BAR,
 				VanillaHudElements.AIR_BAR, VanillaHudElements.MOUNT_HEALTH, VanillaHudElements.INFO_BAR, VanillaHudElements.EXPERIENCE_LEVEL,
 				VanillaHudElements.HELD_ITEM_TOOLTIP, VanillaHudElements.OVERLAY_MESSAGE);
-		if (!Set.copyOf(CockpitHud.hiddenWhileSeated()).equals(expected) || CockpitHud.hiddenWhileSeated().size() != expected.size()) {
+		if (!Set.copyOf(CockpitHud.HIDDEN_WHILE_SEATED).equals(expected) || CockpitHud.HIDDEN_WHILE_SEATED.size() != expected.size()) {
 			throw new AssertionError("The cockpit hides the hotbar, health, armour, food, air, mount health, experience bar and level, held item name and action bar, got "
-					+ CockpitHud.hiddenWhileSeated());
+					+ CockpitHud.HIDDEN_WHILE_SEATED);
 		}
+	}
+
+	/**
+	 * The fourth lamp lights for a line of kind ALERT, so the set of alerts is pinned: every readout line the mod has (the lang keys under {@code hud.deepcharter.pod.} that are
+	 * lines) has a kind, and the alerts are the warnings. A new readout line fails this until it says what it is.
+	 */
+	private static void expectEveryReadoutLineHasAKindAndTheWarningsAreTheAlerts() {
+		JsonObject lang;
+		try (Reader reader = new InputStreamReader(CockpitHudClientTest.class.getResourceAsStream("/assets/deepcharter/lang/en_us.json"), StandardCharsets.UTF_8)) {
+			lang = JsonParser.parseReader(reader).getAsJsonObject();
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+		Set<String> lines = lang.keySet().stream().filter(key -> key.startsWith("hud.deepcharter.pod.") && !key.startsWith("hud.deepcharter.pod.seepage_side.")
+				&& !key.startsWith("hud.deepcharter.pod.camera")).collect(Collectors.toSet());
+		if (!lines.equals(PodStatusHud.KINDS.keySet())) {
+			throw new AssertionError("Every line of the pod's readout has a kind and every kind is a line: lines without a kind " + difference(lines, PodStatusHud.KINDS.keySet())
+					+ ", kinds without a line " + difference(PodStatusHud.KINDS.keySet(), lines));
+		}
+		Set<String> alerts = PodStatusHud.KINDS.entrySet().stream().filter(entry -> entry.getValue() == PodStatusHud.Kind.ALERT).map(Map.Entry::getKey).collect(Collectors.toSet());
+		Set<String> expected = Stream.of("burning", "stranded", "crust_ahead", "crust_in", "brace_waits", "brace_dry", "brace_dear", "seepage", "seepage_beside", "seepage_bleeding",
+				"lining_dry", "hard_landing").map(name -> "hud.deepcharter.pod." + name).collect(Collectors.toSet());
+		if (!alerts.equals(expected)) {
+			throw new AssertionError("The warnings that light the fourth lamp are the burning hull, stranded, the crust, the brace that cannot work, the seepage, no brick and a hard landing: got " + alerts);
+		}
+		PodStatusHud.Line note = new PodStatusHud.Line(Component.translatable("hud.deepcharter.pod.slag", 0, 0), 0);
+		PodStatusHud.Line warning = new PodStatusHud.Line(Component.translatable("hud.deepcharter.pod.burning"), 0);
+		if (CockpitHud.lampsLit(false, false, false, List.of(note))[3] || !CockpitHud.lampsLit(false, false, false, List.of(note, warning))[3]) {
+			throw new AssertionError("The fourth lamp is lit by a warning and not by a note");
+		}
+		boolean[] lit = CockpitHud.lampsLit(true, false, true, List.of());
+		if (!lit[0] || lit[1] || !lit[2] || lit[3]) {
+			throw new AssertionError("The lamps are low fuel, low hull, burning and any other warning, got " + Arrays.toString(lit));
+		}
+	}
+
+	private static Set<String> difference(Set<String> a, Set<String> b) {
+		Set<String> only = new TreeSet<>(a);
+		only.removeAll(b);
+		return only;
 	}
 
 	private static void expectNoCockpitWithoutAStyle(ClientGameTestContext context) {
@@ -232,6 +293,58 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 			throw new AssertionError("A pod " + RISE + " blocks higher reads shallower: " + reading.depth() + " then " + higher.depth());
 		}
 		singleplayer.getServer().runOnServer(server -> pod.setPos(0.5, FEET_Y, 0.5));
+	}
+
+	/**
+	 * A compact style (#448) keeps every value and line of the plain readout reachable without the plate listing them all: the four values are the tally, in the order
+	 * of the gauges, and every other line of the readout (a warning, the slag, the account) is a row of its own, over the tally or under it by where the plate is anchored.
+	 * The cargo gauge reads the bay's share.
+	 */
+	private void expectACompactStyleKeepsEveryReadout(ClientGameTestContext context, TestSingleplayerContext singleplayer, PodEntity pod, String pack) {
+		singleplayer.getServer().runOnServer(server -> {
+			pod.setFuel(0f);
+			pod.setStranded(true);
+			pod.setHull(pod.maxHull() / 2f);
+			pod.setCargoUsed(PodStats.of(pod).cargoSlots());
+		});
+		ClientWait.until(context, "the stranded pod with a full bay on the client", client -> client.player.getVehicle() instanceof PodEntity shown && shown.stranded()
+				&& shown.cargoUsed() == PodStats.of(shown).cargoSlots());
+		List<List<String>> rows = context.computeOnClient(client -> {
+			PodEntity shown = (PodEntity) client.player.getVehicle();
+			CockpitLook look = CockpitLook.current();
+			CockpitLook.Layout layout = CockpitHud.seated(client).orElseThrow(() -> new AssertionError(pack + " should be the style"));
+			CockpitReading reading = CockpitReading.of(client, shown, 0);
+			if (Math.abs(reading.cargo() - 1.0) > 1e-9) {
+				throw new AssertionError("A full bay reads 1 on the cargo gauge, got " + reading);
+			}
+			if (!layout.compact() || layout.frame()) {
+				throw new AssertionError(pack + " is a compact style with no frame over the screen");
+			}
+			List<PodStatusHud.Line> readout = PodStatusHud.readout(client, shown);
+			if (!CockpitHud.lampsLit(false, false, false, readout)[3]) {
+				throw new AssertionError(pack + ": a stranded pod's warning lights the fourth lamp, the readout is " + readout);
+			}
+			return CockpitHud.rows(shown, reading, layout, look, readout).stream()
+					.map(row -> row.parts().stream().map(part -> ((TranslatableContents) part.text().getContents()).getKey()).toList()).toList();
+		});
+		List<String> tally = List.of("hud.deepcharter.pod.tally_hull", "hud.deepcharter.pod.tally_fuel", "hud.deepcharter.pod.tally_cargo", "hud.deepcharter.pod.tally_depth");
+		if (!rows.contains(tally)) {
+			throw new AssertionError(pack + ": the plate shows the tally of hull, fuel, cargo and depth on one row, got " + rows);
+		}
+		if (!rows.contains(List.of("hud.deepcharter.pod.stranded"))) {
+			throw new AssertionError(pack + ": a stranded pod's warning is a row of the plate, got " + rows);
+		}
+		if (rows.stream().anyMatch(row -> row.contains("hud.deepcharter.pod.hull") || row.contains("hud.deepcharter.pod.fuel"))) {
+			throw new AssertionError(pack + ": the four values are in the tally, not listed again, got " + rows);
+		}
+		singleplayer.getServer().runOnServer(server -> {
+			pod.setStranded(false);
+			pod.setFuel(50f);
+			pod.setHull(pod.maxHull());
+			pod.setCargoUsed(0);
+		});
+		ClientWait.until(context, "the pod ready again on the client", client -> client.player.getVehicle() instanceof PodEntity shown && !shown.stranded()
+				&& shown.cargoUsed() == 0 && shown.fuel() == 50f);
 	}
 
 	private void expectEveryReadoutLineIsOnThePlate(ClientGameTestContext context) {

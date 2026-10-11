@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.client.pod;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
@@ -14,6 +15,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.Identifier;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
@@ -43,19 +45,25 @@ public final class PodStatusHud {
 	 * the client works the maximum out itself, from the synced component state ({@link io.github.pkeppeler.deepcharter.pod.PodComponents#STATE}).
 	 */
 	public static List<Component> lines(PodEntity pod) {
-		List<Component> lines = new ArrayList<>();
-		lines.add(Component.translatable("hud.deepcharter.pod.hull", Math.round(pod.hull()), Math.round(pod.maxHull())));
-		lines.add(Component.translatable("hud.deepcharter.pod.fuel", Math.round(pod.fuel())));
-		lines.add(Component.translatable("hud.deepcharter.pod.cargo", pod.cargoUsed()));
-		lines.add(Component.translatable("hud.deepcharter.pod.depth", Math.round(pod.getY())));
+		return statusLines(pod).stream().map(Line::text).toList();
+	}
+
+	/** The pod's own lines: the four of {@link Kind#BASE}, then the slag the lining has and whether the pod is stranded. */
+	private static List<Line> statusLines(PodEntity pod) {
+		HudLook look = HudLook.current();
+		List<Line> lines = new ArrayList<>();
+		lines.add(new Line(Component.translatable("hud.deepcharter.pod.hull", Math.round(pod.hull()), Math.round(pod.maxHull())), look.podStatusColor()));
+		lines.add(new Line(Component.translatable("hud.deepcharter.pod.fuel", Math.round(pod.fuel())), look.podStatusColor()));
+		lines.add(new Line(Component.translatable("hud.deepcharter.pod.cargo", pod.cargoUsed()), look.podStatusColor()));
+		lines.add(new Line(Component.translatable("hud.deepcharter.pod.depth", Math.round(pod.getY())), look.podStatusColor()));
 		PodLining.State lining = PodLining.of(pod);
 		if (PodLining.hasHopper(pod)) {
-			lines.add(Component.translatable("hud.deepcharter.pod.slag", lining.bricks(), lining.spoil()));
+			lines.add(new Line(Component.translatable("hud.deepcharter.pod.slag", lining.bricks(), lining.spoil()), look.podStatusColor()));
 		} else if (lining.bricks() > 0 || PodLiner.tier(pod) > 0) {
-			lines.add(Component.translatable("hud.deepcharter.pod.slag_only", lining.bricks()));
+			lines.add(new Line(Component.translatable("hud.deepcharter.pod.slag_only", lining.bricks()), look.podStatusColor()));
 		}
 		if (pod.stranded()) {
-			lines.add(Component.translatable("hud.deepcharter.pod.stranded"));
+			lines.add(new Line(Component.translatable("hud.deepcharter.pod.stranded"), look.podStatusColor()));
 		}
 		return lines;
 	}
@@ -143,15 +151,45 @@ public final class PodStatusHud {
 		return HardLanding.isHard(PodStats.of(pod), sinkSpeed) ? Optional.of(Component.translatable("hud.deepcharter.pod.hard_landing")) : Optional.empty();
 	}
 
+	/** What a line of the readout is: one of the pod's four values, a note, or a warning (a cockpit lights a lamp for a warning). */
+	public enum Kind {
+		BASE,
+		INFO,
+		ALERT
+	}
+
+	/** The kind of each line of the readout, by its lang key. A line with a key not here fails the readout, so a new line must say what it is. */
+	public static final Map<String, Kind> KINDS = Map.ofEntries(
+			Map.entry("hud.deepcharter.pod.hull", Kind.BASE), Map.entry("hud.deepcharter.pod.fuel", Kind.BASE), Map.entry("hud.deepcharter.pod.cargo", Kind.BASE),
+			Map.entry("hud.deepcharter.pod.depth", Kind.BASE), Map.entry("hud.deepcharter.pod.tally_hull", Kind.BASE), Map.entry("hud.deepcharter.pod.tally_fuel", Kind.BASE),
+			Map.entry("hud.deepcharter.pod.tally_cargo", Kind.BASE), Map.entry("hud.deepcharter.pod.tally_depth", Kind.BASE),
+			Map.entry("hud.deepcharter.pod.slag", Kind.INFO), Map.entry("hud.deepcharter.pod.slag_only", Kind.INFO), Map.entry("hud.deepcharter.pod.liner", Kind.INFO),
+			Map.entry("hud.deepcharter.pod.lining", Kind.INFO), Map.entry("hud.deepcharter.pod.brace_working", Kind.INFO),
+			Map.entry("hud.deepcharter.pod.burning", Kind.ALERT), Map.entry("hud.deepcharter.pod.stranded", Kind.ALERT), Map.entry("hud.deepcharter.pod.crust_ahead", Kind.ALERT),
+			Map.entry("hud.deepcharter.pod.crust_in", Kind.ALERT), Map.entry("hud.deepcharter.pod.brace_waits", Kind.ALERT), Map.entry("hud.deepcharter.pod.brace_dry", Kind.ALERT),
+			Map.entry("hud.deepcharter.pod.brace_dear", Kind.ALERT), Map.entry("hud.deepcharter.pod.seepage", Kind.ALERT), Map.entry("hud.deepcharter.pod.seepage_beside", Kind.ALERT),
+			Map.entry("hud.deepcharter.pod.seepage_bleeding", Kind.ALERT), Map.entry("hud.deepcharter.pod.lining_dry", Kind.ALERT),
+			Map.entry("hud.deepcharter.pod.hard_landing", Kind.ALERT));
+
 	/** A line of the readout and the colour it is drawn in. */
 	public record Line(Component text, int color) {
+		/** The kind of a line from its key in {@link #KINDS}; a line of plain text (the account line) is a note. */
+		public Kind kind() {
+			if (!(text.getContents() instanceof TranslatableContents contents)) {
+				return Kind.INFO;
+			}
+			Kind kind = KINDS.get(contents.getKey());
+			if (kind == null) {
+				throw new IllegalStateException("The readout line " + contents.getKey() + " has no kind in PodStatusHud.KINDS");
+			}
+			return kind;
+		}
 	}
 
 	/** Every line the pilot's readout shows now, in the order it is drawn: the plain HUD's text and the cockpit's plate show the same. */
 	public static List<Line> readout(Minecraft client, PodEntity pod) {
 		HudLook look = HudLook.current();
-		List<Line> readout = new ArrayList<>();
-		lines(pod).forEach(line -> readout.add(new Line(line, look.podStatusColor())));
+		List<Line> readout = new ArrayList<>(statusLines(pod));
 		burningLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
 		linerLine(pod).ifPresent(line -> readout.add(new Line(line, look.podLinerColor())));
 		sounderLines(pod).forEach(line -> readout.add(new Line(line, look.podSounderColor())));
