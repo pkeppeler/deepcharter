@@ -2,6 +2,8 @@
 
 Issue [#241](https://github.com/pkeppeler/deepcharter/issues/241), [art-direction.md section 6](art-direction.md#6-layers-1-and-2). This page is a concept round, not the build. Three looks are drawn in the game for you to pick from, or to mix. The build comes in a later PR, after your pick. Every still was shot in the game by the `layer-concepts` evidence scenario (`tools/record-evidence.sh layer-concepts`).
 
+**Round 2** ([layer-concepts-2.md](layer-concepts-2.md), #447): the user gave A, Strata to layer 1, B, Fractured to layer 2 and C, Columnar to layer 3, and asked for rock textures that tile like vanilla's. Round 2 draws three textures for each layer.
+
 ## What is already decided, and the same in all three
 
 [Section 6](art-direction.md#6-layers-1-and-2) is settled, so no option changes it:

@@ -28,9 +28,6 @@ class Box:
     rotation: tuple[float, float, float] | None = None
     pivot: tuple[float, float, float] = (8.0, 8.0, 8.0)
     glow: bool = False
-    # A least light, 0 to 15, that the element shows whatever light its cell has: for a face turned off the axes, which takes the light of
-    # the block's own, solid, cell and so would be black. A glow element is 15.
-    emission: int = 0
     cull: bool = False
     uv_scale: float = 1.0
 
@@ -56,8 +53,6 @@ class Box:
         if self.glow:
             out["light_emission"] = 15
             out["shade"] = False
-        elif self.emission:
-            out["light_emission"] = self.emission
         return out
 
     def _on_block_face(self, face: str) -> bool:

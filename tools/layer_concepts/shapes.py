@@ -113,9 +113,6 @@ def plates(variant: int) -> Model:
 # The circumradius and the offset of each of the three columns, so that the open joints between neighbours are not one width.
 HEX_R = (7.4, 7.8, 7.6)
 COLUMN_SHIFT = (0.0, 0.7, -0.6)
-# The least light of a column's faces. A hexagon's four faces off the axes take the light of the block's own cell, which is none, so without
-# this they are black: round 1's columns were black rectangles with a lit face between them, which in layer 3's dark was most of a wall.
-COLUMN_EMISSION = 9
 JOINTS = (None, 9.0, 6.5)
 HEX_ROTATIONS = (0.0, 60.0, 120.0)
 
@@ -130,7 +127,7 @@ def hex_boxes(y0: float, y1: float, turn: float, shift: float, r: float, texture
         lift = 0.0 if y1 < 16 else -0.015 * i
         sink = 0.0 if y0 > 0 else 0.015 * i
         boxes.append(Box((8 - r / 2 + shift, y0 + sink, 8 - depth + shift), (8 + r / 2 + shift, y1 + lift, 8 + depth + shift), textures,
-                         rotation=(0.0, turn + base, 0.0), pivot=(8.0 + shift, 8.0, 8.0 + shift), emission=COLUMN_EMISSION))
+                         rotation=(0.0, turn + base, 0.0), pivot=(8.0 + shift, 8.0, 8.0 + shift)))
     return boxes
 
 
