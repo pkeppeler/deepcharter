@@ -27,9 +27,9 @@ public final class EvidencePins {
 	public static volatile float figureFade = -1f;
 
 	/**
-	 * The age in ticks that a lampless figure's GeckoLib animation reads (0 or more); negative keeps its own. GeckoLib clocks a figure
-	 * by the age in its render state, the entity's ticks plus the frame's partial tick, so the pose of its head and claws differs in
-	 * every shot until the age is held.
+	 * The age in ticks that GeckoLib reads as the clock of a lampless figure's animation (0 or more); negative keeps the figure's own.
+	 * GeckoLib clocks an animation by the entity's ticks plus the frame's partial tick, so the pose of the head and claws differs in
+	 * every shot until the clock is held. Pods keep their own animation.
 	 */
 	public static volatile float figureAnimationAge = -1f;
 
