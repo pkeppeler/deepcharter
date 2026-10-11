@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "side": "deepcharter:block/lc_rock_2_5",
+    "end": "deepcharter:block/lc_rock_2_end_1"
+  }
+}

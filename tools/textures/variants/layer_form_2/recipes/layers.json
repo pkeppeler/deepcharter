@@ -1,0 +1,291 @@
+{
+  "recipes": {
+    "block/lc_core": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.1",
+            "b": "shale2.2",
+            "c": "shale2.3"
+          },
+          "rows": [
+            "ccbbbbbbbbbbbbcc",
+            "ccbbbbbbbbbbbbcc",
+            "cccbbbbbbbbbbbbc",
+            "cccccbbbbbbaaabb",
+            "ccccccbbbbaaaabb",
+            "ccccccbbbbbaaabb",
+            "ccccccbbbbbaaabb",
+            "cccccccbbbbaaabb",
+            "cccccccccbbaaabb",
+            "bbbcccbbbbbaaabb",
+            "bbbbbbbbbbaaaaab",
+            "aaabbbbaaaaaaaaa",
+            "aaaaaaaaaaaaaaaa",
+            "aaaabaaaaaaaaaaa",
+            "bbbbbbbbaabbbbbb",
+            "cbbbbbbbbbbbbbbb"
+          ]
+        }
+      ]
+    },
+    "block/lc_crust_side": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "crust.0",
+            "b": "crust.1",
+            "c": "crust.2",
+            "d": "crust.3",
+            "e": "crust.4",
+            "f": "crust.5"
+          },
+          "rows": [
+            "dddedefeeddeeddd",
+            "deeeddeeeedeedcc",
+            "eeffdacbdbbbdedd",
+            "effeabbbbccbdeee",
+            "effddccabbbbdeee",
+            "ffedddcbabbadffe",
+            "efdccccaaaaaefff",
+            "ecbcbbabbabadeff",
+            "ebabbbbbbbbcdefe",
+            "cbaabbbbbcdeddcd",
+            "ddcacdccdeeeecdd",
+            "eeccdddcddeecddf",
+            "edcceeddddddcdef",
+            "feccddddeddcddef",
+            "fedcccddefcecddf",
+            "ffedcdeeeceedede"
+          ]
+        }
+      ]
+    },
+    "block/lc_crust_top": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "crust.0",
+            "b": "crust.1",
+            "c": "crust.2",
+            "d": "crust.3",
+            "e": "crust.4",
+            "f": "crust.5"
+          },
+          "rows": [
+            "ccbabcdccacdeecb",
+            "cccabcdcbcdeeddc",
+            "dbcccccbcddcdcdd",
+            "dbbbbbedddddccbd",
+            "ccffeeeedeedcccc",
+            "bdefeedbcbdddbbb",
+            "defffedbcbbceddb",
+            "ddefeebccbbdefed",
+            "dddeecccccdddeee",
+            "ddddcaccdcdddeed",
+            "dddddbcccceddecd",
+            "feeebcdabcdddcde",
+            "edcccbbaacbccddf",
+            "dddddccbbaabbbbc",
+            "ddcccccdbbbbcbbc",
+            "ddcbbcccccccddcc"
+          ]
+        }
+      ]
+    },
+    "block/colony/concrete_footing": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "concrete.0",
+            "b": "concrete.1",
+            "c": "concrete.2",
+            "d": "concrete.3",
+            "e": "concrete.4",
+            "f": "concrete.5",
+            "g": "grime.1",
+            "h": "grime.2",
+            "i": "rust.1"
+          },
+          "rows": [
+            "ffdccbbbbbcgdcdf",
+            "fdcccbcbbbahcddc",
+            "dddddbbbbbahccdd",
+            "dddcdcbbbbbgcccc",
+            "ccgddcgbbbbhcccc",
+            "cdhdcchbbibhbccc",
+            "ddhdcchccccgbddd",
+            "edgdcdgcdddeidee",
+            "dehccchddeddddee",
+            "ddhccchdddddddee",
+            "ddgdccgccccccddg",
+            "cdceddcdcccbbcch",
+            "ccceedccccbbccch",
+            "cddcecccccbbdccg",
+            "edddccccdcbbbcdh",
+            "fdddcbbabbibcddd"
+          ]
+        }
+      ]
+    },
+    "block/colony/concrete_footing_cracked": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "concrete.0",
+            "b": "concrete.1",
+            "c": "concrete.2",
+            "d": "concrete.3",
+            "e": "concrete.4",
+            "f": "concrete.5",
+            "g": "grime.1",
+            "h": "grime.2",
+            "i": "rust.1"
+          },
+          "rows": [
+            "ffdccbbbbbcgdcdf",
+            "fdcacbcbbbahcddc",
+            "ddddacbbbbahccdd",
+            "dddcdacbbbbgcccc",
+            "ccgddacbbbbhcccc",
+            "cdhdcacbbibhbccc",
+            "ddhdcacccccgbddd",
+            "edgdcdacdddeidee",
+            "dehcccacdeddddee",
+            "ddhccchacdddddee",
+            "ddgdccgcaccccddg",
+            "cdceddcdcacbbcch",
+            "ccceedcccacbccch",
+            "cddcecccccacdccg",
+            "edddccccdcbaccdh",
+            "fdddcbbabbibcddd"
+          ]
+        }
+      ]
+    },
+    "block/lc_company_rock_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "company.2",
+            "b": "concrete.0",
+            "c": "concrete.1",
+            "d": "concrete.2",
+            "e": "concrete.3",
+            "f": "concrete.4",
+            "g": "grime.1",
+            "h": "grime.2",
+            "i": "hazard.1",
+            "j": "rust.1",
+            "k": "steel.0"
+          },
+          "rows": [
+            "ccccdddeeeeeeddc",
+            "hhhchdeeeehhhdhh",
+            "gggcgeeeeegggbgg",
+            "hhhdaaaeeeaaaehh",
+            "eggaeeeaeeggejge",
+            "bhbabbbbbahhbahb",
+            "dddeeeeeddegdddd",
+            "dddaeeeddddeddcd",
+            "ddbaeeeadadedbcd",
+            "dddeeaedddaaadcd",
+            "eejeeeeeeeeeejee",
+            "bbhbbbbbbbbbbhbb",
+            "ddeeefffffeedded",
+            "ikggikhiikkgghhg",
+            "kkghgghhkhhihkii",
+            "hihhkiighhikkiik"
+          ]
+        }
+      ]
+    },
+    "block/lc_company_rock_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "company.2",
+            "b": "concrete.0",
+            "c": "concrete.1",
+            "d": "concrete.2",
+            "e": "concrete.3",
+            "f": "concrete.4",
+            "g": "grime.1",
+            "h": "grime.2",
+            "i": "hazard.1",
+            "j": "rust.1",
+            "k": "steel.0"
+          },
+          "rows": [
+            "eeeeedccccccddee",
+            "fhhheddhhhcchheh",
+            "fgggeddgggddggcg",
+            "fhhheaahhaaahafh",
+            "eggaeeeeggeeeaee",
+            "bbhbbbbahhbbahbb",
+            "eehdcdccgddeeffe",
+            "eedacccaddaeefee",
+            "eebacccaddaeebce",
+            "eeddaaadddaeefee",
+            "eejeeeeeeeeeejee",
+            "bbhbbbbbbbbbbhbb",
+            "eeefeeedddeeehfe",
+            "ggkiihkigkkighhg",
+            "hgiihhggkhhikkih",
+            "hhihgiikkihhkiik"
+          ]
+        }
+      ]
+    },
+    "block/lc_company_rock_end": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "concrete.0",
+            "b": "concrete.1",
+            "c": "concrete.2",
+            "d": "concrete.3",
+            "e": "concrete.4",
+            "f": "grime.1",
+            "g": "grime.2",
+            "h": "rust.1"
+          },
+          "rows": [
+            "dddddddccccccccd",
+            "gdggedgdggccgggd",
+            "fdffeefdffddfffd",
+            "gdggeegeggddgggd",
+            "fdhfddddffddfhdd",
+            "aaggaaaaggaaggaa",
+            "aagcccdddfdddgbb",
+            "aaabbccdddddcbba",
+            "aaabbbcddddccaba",
+            "aaabbccdddddccba",
+            "ddhddddddddddhdd",
+            "aagaaaaaaaaaagaa",
+            "ddgcddeeeeeeegdd",
+            "eedddddeeeeeeeee",
+            "dddddddddddddddd",
+            "ddddddddccccccdd"
+          ]
+        }
+      ]
+    }
+  }
+}

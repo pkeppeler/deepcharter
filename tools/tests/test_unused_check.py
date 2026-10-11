@@ -347,11 +347,6 @@ class NewKindsSkipWhatTheyCannotResolve(unittest.TestCase):
             dumps(x, indent=y)
         """), set())
 
-    def test_pending_paths_are_not_judged_for_the_new_kinds_but_a_sibling_is(self):
-        source = "def {name}(a, b=1):\n    return a + b\n{name}(x)\n{name}(y)\n"
-        sources = {unused_check.PENDING_PATHS[1] + "art.py": source.format(name="f"), "tools/other.py": source.format(name="g")}
-        self.assertEqual({(f.path, f.kind) for f in unused_check.check(sources)}, {("tools/other.py", "default")})
-
     def test_method_call_on_an_instance_is_unresolved(self):
         self.assertEqual(found(a="def f(a, b=1):\n    return a + b\nf(x)\n", b="obj.f(x)\n"), set())
 

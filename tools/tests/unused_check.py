@@ -14,7 +14,7 @@ any other module is ignored). A default needs one call site outside the function
 is unresolvable: a call with `*args` or `**kwargs`, the function passed as a value, a `getattr` string, an `__all__` entry, an attribute use
 on anything but an imported module (a method call on an instance), a second definition of the name, or an import of it under another name.
 Neither kind checks `main`, test hooks, stubs, decorated definitions or methods. To fix a finding, inline the constant or drop the
-parameter. Files under PENDING_PATHS are not judged for these two kinds until the open PRs that edit them land.
+parameter.
 
 A reference is a bare name, an attribute name, an imported name, a `getattr(x, "name")` string or an `__all__` entry, in any scanned file
 (tests included). Matching is by name, not by module, so a same-named definition elsewhere hides a dead one; a reviewer still looks.
@@ -63,7 +63,6 @@ NEUTRAL_DECORATORS = {
     "abstractmethod", "dataclass", "total_ordering", "final", "override", "overload",
 }
 PLAIN_BASES = {"object", "NamedTuple", "Enum", "IntEnum", "StrEnum", "Flag", "IntFlag", "Generic", "Protocol", "TypedDict"}
-PENDING_PATHS = ("tools/lampless_figure.py", "tools/layer_concepts/")  # default and constant findings wait for #450/#451; #459 deletes this
 TEST_HOOKS = {"setUp", "tearDown", "setUpClass", "tearDownClass", "main"} | FIXED_SIGNATURE_FUNCTIONS
 
 
@@ -429,7 +428,7 @@ def constant_candidates(path: str, tree: ast.Module, usage: Mapping[str, CallUsa
     """Parameters of module-level functions that no caller overrides (default) or every caller passes as one literal (constant)."""
     found = []
     for function in module_statements(tree.body):
-        if not isinstance(function, (ast.FunctionDef, ast.AsyncFunctionDef)) or path.startswith(PENDING_PATHS):
+        if not isinstance(function, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
         uses = usage.get(function.name)
         if registers(function) or is_stub(function) or exempt_name(function.name):

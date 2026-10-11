@@ -1,0 +1,197 @@
+{
+  "recipes": {
+    "block/lc_core": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3"
+          },
+          "rows": [
+            "ccbbbbbbbbbbbbcc",
+            "ccbbbbbbbbbbbbcc",
+            "cccbbbbbbbbbbbbc",
+            "cccccbbbbbbaaabb",
+            "ccccccbbbbaaaabb",
+            "ccccccbbbbbaaabb",
+            "ccccccbbbbbaaabb",
+            "cccccccbbbbaaabb",
+            "cccccccccbbaaabb",
+            "bbbcccbbbbbaaabb",
+            "bbbbbbbbbbaaaaab",
+            "aaabbbbaaaaaaaaa",
+            "aaaaaaaaaaaaaaaa",
+            "aaaabaaaaaaaaaaa",
+            "bbbbbbbbaabbbbbb",
+            "cbbbbbbbbbbbbbbb"
+          ]
+        }
+      ]
+    },
+    "block/lc_crust_side": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "crust.0",
+            "b": "crust.1",
+            "c": "crust.2",
+            "d": "crust.3",
+            "e": "crust.4",
+            "f": "crust.5"
+          },
+          "rows": [
+            "cdddbccccdbbbbbc",
+            "bbcdfeddcdcbbcbc",
+            "cbbcddabccccccdd",
+            "cbbacdccdfccbccc",
+            "bbbbcddfffeeddcb",
+            "bbbcdddffeefdeca",
+            "bcedcdddddefffdb",
+            "ffffedddddeefdbc",
+            "eeeeeeefeedcedcc",
+            "deeddefffccccccc",
+            "cdeedeeedcddcccc",
+            "febecdecccdedefe",
+            "dccbddbbcddedeff",
+            "dcbdddcdbbffffcd",
+            "ccccdddddcdcccdd",
+            "ddddcbbccccbbbdd"
+          ]
+        }
+      ]
+    },
+    "block/lc_crust_top": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "crust.1",
+            "b": "crust.2",
+            "c": "crust.3",
+            "d": "crust.4",
+            "e": "crust.5"
+          },
+          "rows": [
+            "bcdddddbbddcbbab",
+            "bcdddccbcddcbbbb",
+            "cdddcbbaccbbcddc",
+            "cddccabbccbbcddd",
+            "cbbccccccabbdddd",
+            "bbbbccddcbbccddd",
+            "bbbbbcdddcccdddc",
+            "bbbbbbbdecccbbbb",
+            "dccdcccbbbbbbbcc",
+            "cccdddcddccbbbbb",
+            "accbccccddddcbbb",
+            "bcbbbbbcddedcbbb",
+            "dcbbbbbbcddddccc",
+            "ddccbccbbbcddcdd",
+            "dddddddcbbbccbbc",
+            "cdddcddcbaccbbbb"
+          ]
+        }
+      ]
+    },
+    "block/lc_company_rock_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "hazard.3",
+            "b": "plug.0",
+            "c": "plug.2",
+            "d": "plug.3"
+          },
+          "rows": [
+            "bddddddddcccdddb",
+            "bddddddddcccdddb",
+            "bddddddddcccdddb",
+            "bddddddddcccdddb",
+            "bddddddddcccdddb",
+            "bddddddadcccdddb",
+            "bddddddadcccdddb",
+            "bddddaaaaaccdddb",
+            "bddddddadcccdddb",
+            "bddddddadcccdddb",
+            "bddddddddcccdddb",
+            "bddddddddcccdddb",
+            "bddddddddcccdddb",
+            "bddddddddcccdddb",
+            "bddddddddcccdddb",
+            "bddddddddcccdddb"
+          ]
+        }
+      ]
+    },
+    "block/lc_company_rock_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "hazard.3",
+            "b": "plug.0",
+            "c": "plug.2",
+            "d": "plug.3"
+          },
+          "rows": [
+            "bddcccddddddddcb",
+            "bddcccddddddddcb",
+            "bddcccddddddddcb",
+            "bddcccddddddddcb",
+            "bddcccddddddddcb",
+            "bddcccddddddddcb",
+            "bddcccddddddddcb",
+            "bddccaddddddddcb",
+            "bddccaddddddddcb",
+            "bddaaaaaddddddcb",
+            "bddccaddddddddcb",
+            "bddccaddddddddcb",
+            "bddcccddddddddcb",
+            "bddcccddddddddcb",
+            "bddcccddddddddcb",
+            "bddcccddddddddcb"
+          ]
+        }
+      ]
+    },
+    "block/lc_company_rock_end": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "plug.0",
+            "b": "plug.2",
+            "c": "plug.3"
+          },
+          "rows": [
+            "accccbbccccbbcca",
+            "accccbbccccbbcca",
+            "accccbbccccbbcca",
+            "accccbbccccbbcca",
+            "accccbbccccbbcca",
+            "accccbbccccbbcca",
+            "accccbbccccbbcca",
+            "accccbbccccbbcca",
+            "accccbbccccbbcca",
+            "accccbbccccbbcca",
+            "accccbbccccbbcca",
+            "accccbbccccbbcca",
+            "accccbbccccbbcca",
+            "accccbbccccbbcca",
+            "accccbbccccbbcca",
+            "accccbbccccbbcca"
+          ]
+        }
+      ]
+    }
+  }
+}
