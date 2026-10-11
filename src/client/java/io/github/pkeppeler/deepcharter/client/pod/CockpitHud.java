@@ -72,8 +72,9 @@ public final class CockpitHud {
 				}
 			});
 		}
-		// The first element, so that what other mods and features draw (the altimeter, a transmission, the crosshair) is over the frame and never under it.
-		HudElementRegistry.addFirst(ID, CockpitHud::extract);
+		// After the vanilla overlays (the vignette darkens the corners of whatever is under it, and the scanner sits in one) and the front camera's feed, which is the first element,
+		// and before the crosshair and everything the other features draw (the altimeter, a transmission), which stay over the Ribbon.
+		HudElementRegistry.attachElementAfter(VanillaHudElements.MISC_OVERLAYS, ID, CockpitHud::extract);
 		ClientTickEvents.END_CLIENT_TICK.register(CockpitHud::tick);
 	}
 

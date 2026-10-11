@@ -146,7 +146,7 @@ public class CockpitRibbonScenario extends EvidenceScenario {
 		context.waitTicks(WINDOW_SETTLE_TICKS); // tick-wait: the window resizes over a few frames
 		try {
 			context.runOnClient(client -> client.getWindow().setGuiScale(client.getWindow().calculateScale(4, false)));
-			shoot(context, "ribbon-calm-gui4");
+			shoot(context, "ribbon-calm-gui4", false);
 		} finally {
 			context.runOnClient(client -> client.getWindow().setWindowed(854, 480));
 			context.waitTicks(WINDOW_SETTLE_TICKS); // tick-wait: the window resizes back
@@ -253,6 +253,11 @@ public class CockpitRibbonScenario extends EvidenceScenario {
 	}
 
 	private void shoot(ClientGameTestContext context, String still) {
+		shoot(context, still, true);
+	}
+
+	/** Takes a still, and a frame of the GIF too when {@code asFrame} (both must be the default window's size). */
+	private void shoot(ClientGameTestContext context, String still, boolean asFrame) {
 		context.runOnClient(client -> {
 			client.player.setYRot(client.player.getYRot());
 			client.player.setXRot(EYE_PITCH);
@@ -262,7 +267,12 @@ public class CockpitRibbonScenario extends EvidenceScenario {
 		});
 		ClientWait.until(context, "every section in view rendered", client -> client.levelRenderer.hasRenderedAllSections());
 		context.waitTicks(SETTLE_TICKS); // tick-wait: the scanner rescans, the gauges ease and the pod settles over client ticks
-		screenshot(context, still);
-		frame(context);
+		if (asFrame) {
+			screenshot(context, still);
+			frame(context);
+		} else {
+			// A still of another window size: the scenario's own screenshot refuses it, so it goes to the client's screenshot folder, build/run/clientGameTest/screenshots.
+			context.takeScreenshot(still);
+		}
 	}
 }
