@@ -157,7 +157,7 @@ flowchart LR
 | [Bootstrap: salvage to the first run](#bootstrap-salvage-to-the-first-run) | 12 | 0 | 0 | 0 |
 | [The colony's terminals](#the-colonys-terminals) | 7 | 0 | 1 | 0 |
 | [The Employee Handbook](#the-employee-handbook) | 11 | 0 | 3 | 0 |
-| [Layers, breaches and the story](#layers-breaches-and-the-story) | 13 | 0 | 10 | 1 |
+| [Layers, breaches and the story](#layers-breaches-and-the-story) | 13 | 1 | 9 | 1 |
 | [Charters, crews and accounts](#charters-crews-and-accounts) | 6 | 0 | 2 | 1 |
 | [The colony: Prosperity](#the-colony-prosperity) | 8 | 0 | 0 | 1 |
 | [The pod chassis ladder](#the-pod-chassis-ladder) | 6 | 0 | 4 | 0 |
@@ -171,36 +171,36 @@ flowchart LR
 | [Lights](#lights) | 3 | 0 | 1 | 0 |
 | [Lava and its counters](#lava-and-its-counters) | 8 | 0 | 0 | 0 |
 | [Gas and its counters](#gas-and-its-counters) | 6 | 0 | 0 | 0 |
-| [Company Rock and its counters](#company-rock-and-its-counters) | 2 | 0 | 4 | 0 |
-| [The Retained and other creatures](#the-retained-and-other-creatures) | 4 | 0 | 2 | 2 |
+| [Company Rock and its counters](#company-rock-and-its-counters) | 2 | 1 | 3 | 0 |
+| [The Retained and other creatures](#the-retained-and-other-creatures) | 4 | 1 | 1 | 2 |
 | [Darkness and sight](#darkness-and-sight) | 3 | 0 | 4 | 1 |
 | [The breach crust and hard landings](#the-breach-crust-and-hard-landings) | 5 | 0 | 1 | 2 |
 | [Stranded, rescue and the way home](#stranded-rescue-and-the-way-home) | 5 | 0 | 5 | 1 |
 | [The repair station's shelf](#the-repair-stations-shelf) | 6 | 0 | 0 | 0 |
 | [Crew roles and seats](#crew-roles-and-seats) | 2 | 0 | 0 | 4 |
-| [Cockpit, screens and HUD](#cockpit-screens-and-hud) | 8 | 0 | 2 | 0 |
-| [Look and sound](#look-and-sound) | 3 | 0 | 2 | 1 |
+| [Cockpit, screens and HUD](#cockpit-screens-and-hud) | 8 | 1 | 1 | 0 |
+| [Look and sound](#look-and-sound) | 3 | 1 | 1 | 1 |
 
 ## What is coming
 
 ### In progress
 
-Nothing right now.
-
+- **Salvage looks** (art): Keep salvage crate A and B and stalk B; drop the other looks. [#505](https://github.com/pkeppeler/deepcharter/issues/505), [#472](https://github.com/pkeppeler/deepcharter/issues/472), [#519](https://github.com/pkeppeler/deepcharter/issues/519)
+- **Company Rock look** (company-rock): A concept round for how Company Rock looks is under way; the chosen look is built later. [#503](https://github.com/pkeppeler/deepcharter/issues/503)
+- **More common deep, facing the pod, a dim helmet light** (creatures): Spawns rise with depth, the figure faces the pod it holds, and a tiny light shines in its helmet. [#506](https://github.com/pkeppeler/deepcharter/issues/506), [#515](https://github.com/pkeppeler/deepcharter/issues/515)
+- **Cockpit HUD with gauges** (interface): A cockpit HUD with gauges that hides the vanilla hotbar while seated. [#247](https://github.com/pkeppeler/deepcharter/issues/247), [#520](https://github.com/pkeppeler/deepcharter/issues/520)
+- **Layer rock textures and grades** (layers): Grained rock textures for layers 1 and 2, a lava redraw and an I-beam fix; depth palettes and colour grades follow. [#241](https://github.com/pkeppeler/deepcharter/issues/241)
 
 ### Planned
 
 - **Lighting art** (art): Glow accents and beams; see Darkness and sight. [#248](https://github.com/pkeppeler/deepcharter/issues/248)
-- **Salvage looks** (art): Pick the crate and stalk looks and drop the rest. [#505](https://github.com/pkeppeler/deepcharter/issues/505), [#472](https://github.com/pkeppeler/deepcharter/issues/472)
 - **Cargo bay tier 4** (cargo-bay): 70 ore slots, $5,000. No chassis built yet can fit it (a Badger or later). [SPEC.md](SPEC.md#components)
 - **Cargo bay tier 5** (cargo-bay): 120 ore slots, $25,000. No chassis built yet can fit it (a Badger or later). [SPEC.md](SPEC.md#components)
 - **Revive at the contract terminal** (charter): Players revive a dormant charter, but who may revive first (former members?) is not decided. [#168](https://github.com/pkeppeler/deepcharter/issues/168)
 - **Outposts and pads shared** (charter): A toggle to share a charter's outposts and pads with other charters. [SPEC.md](SPEC.md#6-charters)
-- **Company Rock look** (company-rock): A concept round for how Company Rock looks. [#503](https://github.com/pkeppeler/deepcharter/issues/503)
 - **Blasting charge** (company-rock): A bought charge set from the seat with a fuse: clears Company Rock in a small radius, and hurts a pod that is too close. [#509](https://github.com/pkeppeler/deepcharter/issues/509)
 - **Shaped charge** (company-rock): A dearer, directed blast that clears a whole slab column. [#509](https://github.com/pkeppeler/deepcharter/issues/509)
 - **A drill tier that bites Company Rock** (company-rock): A late drill that cuts it slowly at a cost in heat and fuel, so charges keep a niche. [#509](https://github.com/pkeppeler/deepcharter/issues/509)
-- **More common deep, facing the pod, a dim helmet light** (creatures): Spawns rise with depth, the figure faces the pod it holds, and a tiny light shines in its helmet. [#506](https://github.com/pkeppeler/deepcharter/issues/506)
 - **Creatures and combat session** (creatures): A session with the user on rare unsettling creatures per layer and bosses; pod combat uses mining gear first. [#13](https://github.com/pkeppeler/deepcharter/issues/13), [SPEC.md](SPEC.md#13-creatures-and-combat)
 - **Heat, pressure and flooding** (crust): Later layers add heat (the Magma Belt), pressure and flooding (the Drowned Deep) that the hull and radiator must answer. [SPEC.md](SPEC.md#story-layers)
 - **Smooth moving light** (darkness): Glow accents, beams, an optional dynamic-lights mod and an opt-in shader pack. [#248](https://github.com/pkeppeler/deepcharter/issues/248)
@@ -228,9 +228,7 @@ Nothing right now.
 - **Hull tier 4** (hull): Hull 8.0x stock, $5,000. No chassis built yet can fit it (a Badger or later). [SPEC.md](SPEC.md#components)
 - **Hull tier 5** (hull): Hull 12.0x stock, $25,000. No chassis built yet can fit it (a Badger or later). [SPEC.md](SPEC.md#components)
 - **Hull tier 6** (hull): Hull 18.0x stock, $125,000. No chassis built yet can fit it (a Badger or later). [SPEC.md](SPEC.md#components)
-- **Cockpit HUD with gauges** (interface): A cockpit HUD with gauges that hides the vanilla hotbar while seated. [#247](https://github.com/pkeppeler/deepcharter/issues/247)
 - **Front camera** (interface): A part that turns the cab window into a video feed, clear to the edges, that lava can cook and static can cut. [#448](https://github.com/pkeppeler/deepcharter/issues/448), [mechanics.md](design/mechanics.md#front-camera-448-a)
-- **Layer palettes and grades** (layers): Depth palettes and colour grades for layers 1 and 2. [#241](https://github.com/pkeppeler/deepcharter/issues/241)
 - **Breach crossing with no teleport** (layers): Crossing a breach inside the campaign world is a pure dig, with a rumble and a transmission. [#215](https://github.com/pkeppeler/deepcharter/issues/215)
 - **One tall campaign world** (layers): The surface and story layers share one dimension, each a Y band with its own light and fog. [#214](https://github.com/pkeppeler/deepcharter/issues/214), [ADR 0029](adr/0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md)
 - **Layer 3: Fungal Hollows** (layers): Huge fungal caverns lit by their own glow, spore gas, the first real on-foot exploring. [#214](https://github.com/pkeppeler/deepcharter/issues/214), [#504](https://github.com/pkeppeler/deepcharter/issues/504), [SPEC.md](SPEC.md#story-layers)
@@ -753,7 +751,8 @@ flowchart TB
   classDef idea fill:#1a1a1a,stroke:#757575,stroke-width:1px,stroke-dasharray:4 3,color:#a0a0a0
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
   class n_altimeter,n_pod_status_hud,n_account_hud,n_scanner_hud,n_breach_fade,n_transmission_overlay,n_crt_terminals,n_skins built
-  class n_ribbon_hud,n_front_camera planned
+  class n_ribbon_hud progress
+  class n_front_camera planned
 ```
 
 | Icon | Still | Feature | What it is | Status | Links |
@@ -766,7 +765,7 @@ flowchart TB
 | ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/breach-transmission.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/breach-transmission.png?raw=true" width="160" alt=""></a> | <a id="transmission-overlay"></a>**Transmission overlay**<br>mechanic | Employer messages on a green CRT screen that types out its text. | ✅ Built | [ADR 0012](adr/0012-transmissions-fire-once-per-charter-and-each-member-has-a-place.md) |
 | ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/upgrade-terminal.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/upgrade-terminal.png?raw=true" width="160" alt=""></a> | <a id="crt-terminals"></a>**Green-screen terminal panels**<br>mechanic | Every terminal is a Hatch machine panel: a green screen in a riveted frame with a status strip. | ✅ Built | [ADR 0042](adr/0042-the-terminal-panel-is-a-theme-area-with-fixed-sprite-slots.md), [ADR 0032](adr/0032-the-ui-theme-is-resource-pack-data-merged-key-by-key.md) |
 | ⚙️ | no still yet | <a id="skins"></a>**Skins**<br>mechanic | Colours, sizes and timings are theme data; a resource pack restyles them with F3+T. | ✅ Built | [skins.md](design/skins.md), [ADR 0032](adr/0032-the-ui-theme-is-resource-pack-data-merged-key-by-key.md) |
-| ⚙️ | no still yet | <a id="ribbon-hud"></a>**Cockpit HUD with gauges**<br>mechanic | A cockpit HUD with gauges that hides the vanilla hotbar while seated. | 📋 Planned | [#247](https://github.com/pkeppeler/deepcharter/issues/247) |
+| ⚙️ | no still yet | <a id="ribbon-hud"></a>**Cockpit HUD with gauges**<br>mechanic | A cockpit HUD with gauges that hides the vanilla hotbar while seated. | 🔨 In progress | [#247](https://github.com/pkeppeler/deepcharter/issues/247), [#520](https://github.com/pkeppeler/deepcharter/issues/520) |
 | ⬆️ | no still yet | <a id="front-camera"></a>**Front camera**<br>upgrade | A part that turns the cab window into a video feed, clear to the edges, that lava can cook and static can cut. | 📋 Planned | [#448](https://github.com/pkeppeler/deepcharter/issues/448), [mechanics.md](design/mechanics.md#front-camera-448-a) |
 
 ## Challenge ladders
@@ -905,14 +904,15 @@ flowchart LR
   classDef idea fill:#1a1a1a,stroke:#757575,stroke-width:1px,stroke-dasharray:4 3,color:#a0a0a0
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
   class n_company_rock,n_sidestep built
-  class n_company_rock_look,n_blasting_charge,n_shaped_charge,n_rock_drill_tier planned
+  class n_company_rock_look progress
+  class n_blasting_charge,n_shaped_charge,n_rock_drill_tier planned
   class n_drill_t5,n_scanner_t1,n_the_deep_bites ext
 ```
 
 | Icon | Still | Feature | What it is | Status | Links |
 |---|---|---|---|---|---|
 | <img src="../src/main/resources/assets/deepcharter/textures/block/company_rock.png" width="32" alt=""> | no still yet | <a id="company-rock"></a>**Company Rock**<br>hazard | Rock the drill refuses; a bore must step aside two blocks, which costs fuel and time and risks the next pocket. | ✅ Built | [ADR 0015](adr/0015-zones-are-filled-block-by-block-from-the-originals-rows.md), [#509](https://github.com/pkeppeler/deepcharter/issues/509), [#503](https://github.com/pkeppeler/deepcharter/issues/503) |
-| ⚙️ | no still yet | <a id="company-rock-look"></a>**Company Rock look**<br>mechanic | A concept round for how Company Rock looks. | 📋 Planned | [#503](https://github.com/pkeppeler/deepcharter/issues/503) |
+| ⚙️ | no still yet | <a id="company-rock-look"></a>**Company Rock look**<br>mechanic | A concept round for how Company Rock looks is under way; the chosen look is built later. | 🔨 In progress | [#503](https://github.com/pkeppeler/deepcharter/issues/503) |
 | 🛡️ | no still yet | <a id="sidestep"></a>**Steer round it**<br>counter | Step the pod aside and drill on; the scanner shows nothing of it. | ✅ Built |  |
 | 🧪 | no still yet | <a id="blasting-charge"></a>**Blasting charge**<br>consumable | A bought charge set from the seat with a fuse: clears Company Rock in a small radius, and hurts a pod that is too close. | 📋 Planned | [#509](https://github.com/pkeppeler/deepcharter/issues/509) |
 | 🧪 | no still yet | <a id="shaped-charge"></a>**Shaped charge**<br>consumable | A dearer, directed blast that clears a whole slab column. | 📋 Planned | [#509](https://github.com/pkeppeler/deepcharter/issues/509) |
@@ -948,7 +948,8 @@ flowchart LR
   classDef idea fill:#1a1a1a,stroke:#757575,stroke-width:1px,stroke-dasharray:4 3,color:#a0a0a0
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
   class n_retained,n_retained_grab,n_retained_lights,n_retained_kill built
-  class n_retained_tuning,n_creatures_session planned
+  class n_retained_tuning progress
+  class n_creatures_session planned
   class n_layer_bosses,n_the_chairman idea
   class n_lights_t1,n_the_deep_bites ext
 ```
@@ -959,7 +960,7 @@ flowchart LR
 | ☠️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/reacher.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/reacher.png?raw=true" width="160" alt=""></a> | <a id="retained-grab"></a>**The grab and the drain**<br>hazard | It walks to a pod within 20 blocks, clings to the hull and drains fuel, never below 5 percent. The grip ends only when the figure dies. | ✅ Built | [ADR 0046](adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md), [mechanics.md](design/mechanics.md#the-retained-at-dark-pods-449-a) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_lights.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-lights.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-lights.gif?raw=true" width="160" alt=""></a> | <a id="retained-lights"></a>**Lights keep them away**<br>counter | A pod with a lights part draws no Retained. Lights do not free a pod that is already held. | ✅ Built | [#449](https://github.com/pkeppeler/deepcharter/issues/449) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_drill.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/498/retained-drain.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/498/retained-drain.gif?raw=true" width="160" alt=""></a> | <a id="retained-kill"></a>**Kill it with the drill**<br>counter | No fading: a grab ends only when the Retained dies. The cutter bites it while the pod drills rock, and a sword kills it on foot. | ✅ Built | [#485](https://github.com/pkeppeler/deepcharter/issues/485), [#498](https://github.com/pkeppeler/deepcharter/issues/498), [ADR 0046](adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md) |
-| ⚙️ | no still yet | <a id="retained-tuning"></a>**More common deep, facing the pod, a dim helmet light**<br>mechanic | Spawns rise with depth, the figure faces the pod it holds, and a tiny light shines in its helmet. | 📋 Planned | [#506](https://github.com/pkeppeler/deepcharter/issues/506) |
+| ⚙️ | no still yet | <a id="retained-tuning"></a>**More common deep, facing the pod, a dim helmet light**<br>mechanic | Spawns rise with depth, the figure faces the pod it holds, and a tiny light shines in its helmet. | 🔨 In progress | [#506](https://github.com/pkeppeler/deepcharter/issues/506), [#515](https://github.com/pkeppeler/deepcharter/issues/515) |
 | ⚙️ | no still yet | <a id="creatures-session"></a>**Creatures and combat session**<br>mechanic | A session with the user on rare unsettling creatures per layer and bosses; pod combat uses mining gear first. | 📋 Planned | [#13](https://github.com/pkeppeler/deepcharter/issues/13), [SPEC.md](SPEC.md#13-creatures-and-combat) |
 | 👁️ | no still yet | <a id="layer-bosses"></a>**Layer bosses**<br>creature | Bosses that mix pod fights and on-foot fights, by layer. | 💭 Idea | [SPEC.md](SPEC.md#13-creatures-and-combat) |
 | 👁️ | no still yet | <a id="the-chairman"></a>**The Chairman**<br>creature | The two-phase finale boss, broken but never killed. | 💭 Idea | [ADR 0031](adr/0031-the-finale-is-won-by-renunciation.md) |
@@ -1329,7 +1330,7 @@ flowchart TB
   n_deepest_point["⚙️ Deepest point"]
   n_transmissions["⚙️ Transmissions"]
   n_layer_2["📍 Layer 2: The Old Workings"]
-  n_layer_depth_look["⚙️ Layer palettes and grades"]
+  n_layer_depth_look["⚙️ Layer rock textures and grades"]
   n_l2_upper["📍 Upper Levels"]
   n_l2_shift["📍 Shift Change"]
   n_l2_run["📍 Prospector's Run"]
@@ -1373,7 +1374,8 @@ flowchart TB
   classDef idea fill:#1a1a1a,stroke:#757575,stroke-width:1px,stroke-dasharray:4 3,color:#a0a0a0
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
   class n_surface,n_layer_1,n_l1_topsoil,n_l1_benches,n_l1_deep,n_layer_structures,n_breach_1,n_deepest_point,n_transmissions,n_layer_2,n_l2_upper,n_l2_shift,n_l2_run built
-  class n_layer_depth_look,n_breach_in_world,n_campaign_world,n_layer_3,n_layer_4,n_layers_5_8,n_finale,n_ramp,n_seams,n_splice planned
+  class n_layer_depth_look progress
+  class n_breach_in_world,n_campaign_world,n_layer_3,n_layer_4,n_layers_5_8,n_finale,n_ramp,n_seams,n_splice planned
   class n_uncharted idea
   class n_breach_crust,n_signal_decay,n_work_orders ext
 ```
@@ -1390,7 +1392,7 @@ flowchart TB
 | ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/480/deepest-point-layer-1.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/480/deepest-point-layer-1.png?raw=true" width="160" alt=""></a> | <a id="deepest-point"></a>**Deepest point**<br>mechanic | A charter's deepest point sets which orders and transmissions open. | ✅ Built | [#476](https://github.com/pkeppeler/deepcharter/issues/476), [mechanics.md](design/mechanics.md#the-deepest-point-476) |
 | ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/breach-transmission.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/breach-transmission.png?raw=true" width="160" alt=""></a> | <a id="transmissions"></a>**Transmissions**<br>mechanic | The story arrives as green-screen messages that fire once per charter, mostly at its deepest point. | ✅ Built | [ADR 0012](adr/0012-transmissions-fire-once-per-charter-and-each-member-has-a-place.md), [transmissions.md](lore/transmissions.md) |
 | 📍 | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/layer-2-cave-north.jpg?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/layer-2-cave-north.jpg?raw=true" width="160" alt=""></a> | <a id="layer-2"></a>**Layer 2: The Old Workings**<br>place | Collapsed mine levels, rails, a salvageable Prospector wreck, garbled transmissions. | ✅ Built | [SPEC.md](SPEC.md#story-layers) |
-| ⚙️ | no still yet | <a id="layer-depth-look"></a>**Layer palettes and grades**<br>mechanic | Depth palettes and colour grades for layers 1 and 2. | 📋 Planned | [#241](https://github.com/pkeppeler/deepcharter/issues/241) |
+| ⚙️ | no still yet | <a id="layer-depth-look"></a>**Layer rock textures and grades**<br>mechanic | Grained rock textures for layers 1 and 2, a lava redraw and an I-beam fix; depth palettes and colour grades follow. | 🔨 In progress | [#241](https://github.com/pkeppeler/deepcharter/issues/241) |
 | <img src="../src/main/resources/assets/deepcharter/textures/block/regolith_rock_0.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/structure-rails-long-drift.jpg?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/structure-rails-long-drift.jpg?raw=true" width="160" alt=""></a> | <a id="l2-upper"></a>**Upper Levels**<br>place | The top third of layer 2. | ✅ Built |  |
 | <img src="../src/main/resources/assets/deepcharter/textures/block/regolith_rock_0.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/structure-punch-clock-overview.jpg?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/structure-punch-clock-overview.jpg?raw=true" width="160" alt=""></a> | <a id="l2-shift"></a>**Shift Change**<br>place | The middle third of layer 2, where Cicatrium first appears. | ✅ Built |  |
 | <img src="../src/main/resources/assets/deepcharter/textures/block/regolith_rock_0.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/structure-wreck-prospector-0002.jpg?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/structure-wreck-prospector-0002.jpg?raw=true" width="160" alt=""></a> | <a id="l2-run"></a>**Prospector's Run**<br>place | The bottom third of layer 2, with the Prospector wreck. | ✅ Built |  |
@@ -1515,7 +1517,8 @@ flowchart LR
   classDef idea fill:#1a1a1a,stroke:#757575,stroke-width:1px,stroke-dasharray:4 3,color:#a0a0a0
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
   class n_dusk_sky,n_texture_recipes,n_placeholder_sound built
-  class n_art_lighting,n_salvage_looks planned
+  class n_salvage_looks progress
+  class n_art_lighting planned
   class n_public_release idea
 ```
 
@@ -1525,7 +1528,7 @@ flowchart LR
 | ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/texture-reference.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/texture-reference.png?raw=true" width="160" alt=""></a> | <a id="texture-recipes"></a>**Textures from recipes**<br>mechanic | Every 16 pixel texture is generated from data by tools/textures; no hand-painted files to drift. | ✅ Built | [ADR 0037](adr/0037-texture-layers-are-generated-data-and-casings-connect-through-one-model-type.md) |
 | ⚙️ | no still yet | <a id="placeholder-sound"></a>**Placeholder sound**<br>mechanic | 47 sound events, all vanilla stand-ins; a private audio pack carries the original sounds for friends. | ✅ Built | [PLAYING.md](PLAYING.md#private-audio-pack) |
 | ⚙️ | no still yet | <a id="art-lighting"></a>**Lighting art**<br>mechanic | Glow accents and beams; see Darkness and sight. | 📋 Planned | [#248](https://github.com/pkeppeler/deepcharter/issues/248) |
-| ⚙️ | no still yet | <a id="salvage-looks"></a>**Salvage looks**<br>mechanic | Pick the crate and stalk looks and drop the rest. | 📋 Planned | [#505](https://github.com/pkeppeler/deepcharter/issues/505), [#472](https://github.com/pkeppeler/deepcharter/issues/472) |
+| ⚙️ | no still yet | <a id="salvage-looks"></a>**Salvage looks**<br>mechanic | Keep salvage crate A and B and stalk B; drop the other looks. | 🔨 In progress | [#505](https://github.com/pkeppeler/deepcharter/issues/505), [#472](https://github.com/pkeppeler/deepcharter/issues/472), [#519](https://github.com/pkeppeler/deepcharter/issues/519) |
 | 🎯 | no still yet | <a id="public-release"></a>**A public release**<br>goal | A name, a licence and a soundtrack the project may publish; Modrinth, with its AI-content disclosure. | 💭 Idea | [SPEC.md](SPEC.md#18-open-questions) |
 
 ## Flows
