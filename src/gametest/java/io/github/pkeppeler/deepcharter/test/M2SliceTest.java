@@ -55,6 +55,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.M2SliceEndState;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTerminal;
@@ -139,7 +140,7 @@ public class M2SliceTest {
 		helper.getLevel().setBlock(terminal, type.block().defaultBlockState(), 3);
 		for (var part : type.parts()) {
 			player.getInventory().add(new net.minecraft.world.item.ItemStack(part));
-			expectDone(helper, Terminals.insertPart(player, terminal, part), "putting " + part + " into " + type.id());
+			expectDone(helper, TerminalParts.insert(player, terminal, part), "putting " + part + " into " + type.id());
 		}
 	}
 

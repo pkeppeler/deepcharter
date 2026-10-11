@@ -42,14 +42,10 @@ public final class PodStatusHud {
 	}
 
 	/**
-	 * Public so tests can check the text without reading pixels. The hull is shown as points out of the most the pod's parts allow:
-	 * the client works the maximum out itself, from the synced component state ({@link io.github.pkeppeler.deepcharter.pod.PodComponents#STATE}).
+	 * The pod's own lines: the four of {@link Kind#BASE}, then the slag the lining has and whether the pod is stranded. The hull is shown as points out of
+	 * the most the pod's parts allow: the client works the maximum out itself, from the synced component state
+	 * ({@link io.github.pkeppeler.deepcharter.pod.PodComponents#STATE}).
 	 */
-	public static List<Component> lines(PodEntity pod) {
-		return statusLines(pod).stream().map(Line::text).toList();
-	}
-
-	/** The pod's own lines: the four of {@link Kind#BASE}, then the slag the lining has and whether the pod is stranded. */
 	private static List<Line> statusLines(PodEntity pod) {
 		HudLook look = HudLook.current();
 		List<Line> lines = new ArrayList<>();

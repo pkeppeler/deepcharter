@@ -50,10 +50,10 @@ import io.github.pkeppeler.deepcharter.hangar.HangarData;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
-import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.BlockSurvey;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 
 /**
@@ -434,7 +434,7 @@ public class SalvageBootstrapTest {
 				for (Item part : TerminalTypes.FUEL_PUMP.parts()) {
 					bag.take(part, 1, helper, "the fuel pump");
 					player.getInventory().add(new ItemStack(part));
-					HandbookChaptersOneToFiveTest.expectDone(helper, Terminals.insertPart(player, terminal, part), "putting " + part + " into the fuel pump");
+					HandbookChaptersOneToFiveTest.expectDone(helper, TerminalParts.insert(player, terminal, part), "putting " + part + " into the fuel pump");
 				}
 				done.add(HandbookChaptersOneToFiveTest.directive("back_online", "repair_fuel_pump"));
 				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "the first terminal", List.of(player), done);

@@ -80,6 +80,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
 import io.github.pkeppeler.deepcharter.test.support.TerminalTestTypes;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
@@ -206,7 +207,7 @@ public class TerminalFrameworkTest {
 				TerminalType early = COLONY.get(step);
 				Item part = early.parts().getFirst();
 				int held = count(player, part);
-				expectRefused(helper, TerminalRefusal.PREREQUISITE_UNREPAIRED, Terminals.insertPart(player, positions.get(step), part),
+				expectRefused(helper, TerminalRefusal.PREREQUISITE_UNREPAIRED, TerminalParts.insert(player, positions.get(step), part),
 						"a part of " + early.id() + " before its predecessor is repaired");
 				if (!state.inserted(early).isEmpty() || count(player, part) != held) {
 					throw helper.assertionException("a refused insert must keep the part and change no state for %s", early.id());
@@ -219,7 +220,7 @@ public class TerminalFrameworkTest {
 					if (state.repaired(type)) {
 						throw helper.assertionException("%s is repaired before its last part: %s of %s", type.id(), i, type.parts().size());
 					}
-					expectDone(helper, Terminals.insertPart(player, positions.get(step), type.parts().get(i)), "inserting part " + i + " of " + type.id());
+					expectDone(helper, TerminalParts.insert(player, positions.get(step), type.parts().get(i)), "inserting part " + i + " of " + type.id());
 				}
 				if (!state.repaired(type)) {
 					throw helper.assertionException("%s should be repaired with all its parts in", type.id());
@@ -230,14 +231,14 @@ public class TerminalFrameworkTest {
 				if (step + 2 < COLONY.size()) {
 					TerminalType skipped = COLONY.get(step + 2);
 					expectRefused(helper, TerminalRefusal.PREREQUISITE_UNREPAIRED,
-							Terminals.insertPart(player, positions.get(step + 2), skipped.parts().getFirst()),
+							TerminalParts.insert(player, positions.get(step + 2), skipped.parts().getFirst()),
 							"a part of " + skipped.id() + " while " + COLONY.get(step + 1).id() + " is not repaired");
 				}
 			}
 			if (REPAIRED_LOG.size() != COLONY.size()) {
 				throw helper.assertionException("REPAIRED fires once per terminal, log is %s", REPAIRED_LOG);
 			}
-			expectRefused(helper, TerminalRefusal.ALREADY_REPAIRED, Terminals.insertPart(player, positions.getFirst(), TerminalTypes.FUEL_PUMP.parts().getFirst()),
+			expectRefused(helper, TerminalRefusal.ALREADY_REPAIRED, TerminalParts.insert(player, positions.getFirst(), TerminalTypes.FUEL_PUMP.parts().getFirst()),
 					"a part into a repaired terminal");
 		});
 		helper.succeed();
@@ -255,18 +256,18 @@ public class TerminalFrameworkTest {
 			Item foreign = TerminalTypes.ORE_PROCESSOR.parts().getFirst();
 
 			give(player, foreign, 1);
-			expectRefused(helper, TerminalRefusal.NOT_A_PART, Terminals.insertPart(player, pump, foreign), "another terminal's part");
-			expectRefused(helper, TerminalRefusal.MISSING_PART, Terminals.insertPart(player, pump, own), "a part the player does not hold");
+			expectRefused(helper, TerminalRefusal.NOT_A_PART, TerminalParts.insert(player, pump, foreign), "another terminal's part");
+			expectRefused(helper, TerminalRefusal.MISSING_PART, TerminalParts.insert(player, pump, own), "a part the player does not hold");
 			if (count(player, foreign) != 1 || !state.inserted(TerminalTypes.FUEL_PUMP).isEmpty()) {
 				throw helper.assertionException("refused inserts change nothing");
 			}
 
 			give(player, own, 2);
-			expectDone(helper, Terminals.insertPart(player, pump, own), "inserting a part");
+			expectDone(helper, TerminalParts.insert(player, pump, own), "inserting a part");
 			if (count(player, own) != 1 || !state.inserted(TerminalTypes.FUEL_PUMP).equals(List.of(own))) {
 				throw helper.assertionException("an insert takes one part from the player and records it");
 			}
-			expectRefused(helper, TerminalRefusal.ALREADY_INSERTED, Terminals.insertPart(player, pump, own), "the same part twice");
+			expectRefused(helper, TerminalRefusal.ALREADY_INSERTED, TerminalParts.insert(player, pump, own), "the same part twice");
 			if (count(player, own) != 1) {
 				throw helper.assertionException("the refused second insert must keep the part");
 			}
@@ -295,7 +296,7 @@ public class TerminalFrameworkTest {
 			expectRefused(helper, TerminalRefusal.UNREPAIRED, Terminals.act(second.player(), terminal, TerminalTestTypes.PING, new CompoundTag()),
 					"the second charter's action before any repair");
 
-			expectDone(helper, Terminals.insertPart(first.player(), terminal, Items.FLINT), "the first charter inserting");
+			expectDone(helper, TerminalParts.insert(first.player(), terminal, Items.FLINT), "the first charter inserting");
 
 			expectDone(helper, Terminals.act(second.player(), terminal, TerminalTestTypes.PING, new CompoundTag()), "the second charter's action after the first repaired");
 			if (TerminalTestTypes.pings() != before + 1
@@ -359,7 +360,7 @@ public class TerminalFrameworkTest {
 		expectRefused(helper, TerminalRefusal.NO_SUCH_TERMINAL, Terminals.open(member.player(), chest), "opening a chest as a terminal");
 		expectRefused(helper, TerminalRefusal.NO_SUCH_TERMINAL, Terminals.act(member.player(), chest, TerminalTestTypes.PING, new CompoundTag()),
 				"an action at a chest");
-		expectRefused(helper, TerminalRefusal.NO_SUCH_TERMINAL, Terminals.insertPart(member.player(), chest, Items.FLINT), "a part into a chest");
+		expectRefused(helper, TerminalRefusal.NO_SUCH_TERMINAL, TerminalParts.insert(member.player(), chest, Items.FLINT), "a part into a chest");
 		helper.succeed();
 	}
 
@@ -384,7 +385,7 @@ public class TerminalFrameworkTest {
 				throw helper.assertionException("the action runs with no charter and the open is announced once: pings %s -> %s, charter %s, opened %s",
 						before, TerminalTestTypes.pings(), TerminalTestTypes.lastPinger(), OPENED_LOG);
 			}
-			expectRefused(helper, TerminalRefusal.ALREADY_REPAIRED, Terminals.insertPart(outsider.player(), terminal, Items.FLINT), "a part into a terminal that needs none");
+			expectRefused(helper, TerminalRefusal.ALREADY_REPAIRED, TerminalParts.insert(outsider.player(), terminal, Items.FLINT), "a part into a terminal that needs none");
 
 			stand(helper, outsider, terminal, 6.5);
 			expectRefused(helper, TerminalRefusal.TOO_FAR, Terminals.open(outsider.player(), terminal), "opening it from too far");
@@ -435,7 +436,7 @@ public class TerminalFrameworkTest {
 		paths.put("open", () -> expectRefused(helper, TerminalRefusal.STATE_UNREADABLE, Terminals.open(member.player(), pump),
 				"opening with unreadable repair data"));
 		paths.put("insert", () -> expectRefused(helper, TerminalRefusal.STATE_UNREADABLE,
-				Terminals.insertPart(member.player(), pump, TerminalTypes.FUEL_PUMP.parts().getFirst()), "inserting with unreadable repair data"));
+				TerminalParts.insert(member.player(), pump, TerminalTypes.FUEL_PUMP.parts().getFirst()), "inserting with unreadable repair data"));
 		paths.put("use", () -> helper.getLevel().getBlockState(pump).useWithoutItem(helper.getLevel(), member.player(),
 				new BlockHitResult(Vec3.atCenterOf(pump), Direction.UP, pump, false)));
 		paths.put("handbook repair credit", () -> HandbookTriggers.creditRepairs(server, member.player()));
@@ -465,7 +466,7 @@ public class TerminalFrameworkTest {
 		paths.put("open", () -> expectRefused(helper, TerminalRefusal.STATE_UNREADABLE, Terminals.open(member.player(), pump),
 				"opening with unreadable charter data"));
 		paths.put("insert", () -> expectRefused(helper, TerminalRefusal.STATE_UNREADABLE,
-				Terminals.insertPart(member.player(), pump, TerminalTypes.FUEL_PUMP.parts().getFirst()), "inserting with unreadable charter data"));
+				TerminalParts.insert(member.player(), pump, TerminalTypes.FUEL_PUMP.parts().getFirst()), "inserting with unreadable charter data"));
 		paths.put("action at a terminal for anyone", () -> expectRefused(helper, TerminalRefusal.STATE_UNREADABLE,
 				Terminals.act(member.player(), open, TerminalTestTypes.PING, new CompoundTag()), "an action at a terminal for anyone, which still needs the charter lookup"));
 		paths.put("use", () -> helper.getLevel().getBlockState(pump).useWithoutItem(helper.getLevel(), member.player(),

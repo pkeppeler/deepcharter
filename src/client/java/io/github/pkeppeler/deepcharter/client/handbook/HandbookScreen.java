@@ -134,10 +134,15 @@ public class HandbookScreen extends Screen {
 		if (client.player == null || client.getConnection() == null) {
 			return;
 		}
+		client.gui.setScreen(new HandbookScreen(currentPages(client), ClientReadMarks::isRead,
+				entry -> ClientPlayNetworking.send(new HandbookReadPayload(entry)), ClientNotes.entries()));
+	}
+
+	/** The pages of the Handbook tab, from the chapters and progress the server synced. */
+	public static List<HandbookPage> currentPages(Minecraft client) {
 		Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();
 		HandbookChapters.all(client.getConnection().registryAccess()).forEach(chapter -> chapters.put(chapter.key().identifier(), chapter.value()));
-		client.gui.setScreen(new HandbookScreen(HandbookPages.of(chapters, ClientHandbook.completed()), ClientReadMarks::isRead,
-				entry -> ClientPlayNetworking.send(new HandbookReadPayload(entry)), ClientNotes.entries()));
+		return HandbookPages.of(chapters, ClientHandbook.completed());
 	}
 
 	/**
@@ -167,12 +172,9 @@ public class HandbookScreen extends Screen {
 		return "deepcharter.handbook.chapter." + chapter.getNamespace() + "." + chapter.getPath().replace('/', '.');
 	}
 
+	// test-seam: the page in view is navigation state that reaches the player only as a flipping sheet (the counter shows the page being left until the flip ends), and goTo's clamping at the cover and the end is what tests pin
 	public int page() {
 		return page;
-	}
-
-	public List<HandbookPage> pages() {
-		return pages;
 	}
 
 	/** Flips to page {@code index}, stopping at the cover and the end page. */
@@ -195,10 +197,6 @@ public class HandbookScreen extends Screen {
 		updateButtons();
 	}
 
-	public boolean onNotesTab() {
-		return notesTab;
-	}
-
 	public void showNotes() {
 		notesTab = true;
 		openNote = null;
@@ -210,19 +208,9 @@ public class HandbookScreen extends Screen {
 		updateButtons();
 	}
 
-	/** Whether the Notes tab shows its empty state. */
-	public boolean notesEmpty() {
-		return notes.isEmpty();
-	}
-
 	/** Whether the player has yet to read {@code note}, which the Notes list marks. */
 	public boolean noteUnread(Identifier note) {
 		return !isRead.test(note);
-	}
-
-	/** The Note being read on the Notes tab, or null while the tab shows the list. */
-	public Identifier openNote() {
-		return openNote;
 	}
 
 	/** Opens {@code note} on the Notes tab. Reports it as viewed the first time, if it is not read yet. An id the tab does not list is ignored. */
@@ -316,11 +304,6 @@ public class HandbookScreen extends Screen {
 	/** How many sheets the open Note takes, or 0 while no Note is open. */
 	public int noteSheets() {
 		return openNote == null ? 0 : notePages(note(openNote));
-	}
-
-	/** The sheet of the open Note on screen, from 0. */
-	public int noteSheet() {
-		return notePage;
 	}
 
 	/** Turns the open Note to sheet {@code sheet}, from 0, stopping at its first and last sheet. Does nothing while no Note is open. */
@@ -497,11 +480,6 @@ public class HandbookScreen extends Screen {
 		y = PaperDraw.wrapped(graphics, font, tr("letter.body.2"), textLeft, y, textWidth, tuning().inkColor()) + tuning().paragraphGap();
 		PaperDraw.centered(graphics, font, tr("letter.signature"), textLeft + textWidth * 3 / 4, y, 1, tuning().inkColor());
 		margin(graphics, "deepcharter.handbook.letter.margin", paperTop + tuning().contentTop() * 2);
-	}
-
-	/** The lowest y a contents entry may reach: the top of the Back and Next buttons, less a gap. */
-	public int contentsBottom() {
-		return bottom();
 	}
 
 	/**

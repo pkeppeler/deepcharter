@@ -27,6 +27,7 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
 import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.ShippedNotes;
 
 /**
  * Evidence scenario "m2-layout-gate" for #411: the screens the drawn-text layout gate found overflowing, at the default window. A
@@ -55,7 +56,7 @@ public class LayoutGateScenario extends EvidenceScenario {
 			hold(context);
 			screenshot(context, "contract-director-long-name");
 
-			List<HandbookNote> notes = Notes.all().stream().map(ClientNotes::entry).toList();
+			List<HandbookNote> notes = ShippedNotes.ids().stream().map(ClientNotes::entry).toList();
 			context.setScreen(() -> {
 				Minecraft client = Minecraft.getInstance();
 				Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();

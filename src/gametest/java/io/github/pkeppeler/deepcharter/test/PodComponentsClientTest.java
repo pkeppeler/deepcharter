@@ -13,7 +13,6 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.ore.OreCargoScreen;
-import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
 import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -21,6 +20,7 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.PodReadout;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
@@ -70,7 +70,7 @@ public class PodComponentsClientTest implements FabricClientGameTest {
 
 			int maxHull = context.computeOnClient(client -> Math.round(((PodEntity) client.player.getVehicle()).maxHull()));
 			require(maxHull == HULL_MAX, "The client should work out the pod's maximum hull " + HULL_MAX + " from the synced parts, got " + maxHull);
-			List<Component> lines = context.computeOnClient(client -> PodStatusHud.lines((PodEntity) client.player.getVehicle()));
+			List<Component> lines = context.computeOnClient(client -> PodReadout.texts(client, (PodEntity) client.player.getVehicle()));
 			require(lines.getFirst().getString().equals("Hull 150/300"), "The HUD should show the hull as 150/300, showed " + lines.getFirst().getString());
 			context.waitTicks(10);
 			context.takeScreenshot("m2-pod-components-hud");

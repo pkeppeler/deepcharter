@@ -12,6 +12,7 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.QuartPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -315,9 +316,16 @@ public class LayerTerrainTest {
 				throw failure(helper, "layer_%d noise range %d+%d differs from the dimension's %d+%d",
 						layer, noise.minY(), noise.height(), level.getMinY(), level.getHeight());
 			}
-			if (!(generator.getBiomeSource() instanceof ZoneBiomeSource zones)
-					|| zones.minY() != level.getMinY() || zones.height() != level.getHeight()) {
-				throw failure(helper, "layer_%d biome source does not use the dimension's range", layer);
+			if (!(generator.getBiomeSource() instanceof ZoneBiomeSource zones)) {
+				throw failure(helper, "layer_%d is not given its biomes by zone", layer);
+			}
+			for (int quartY = QuartPos.fromBlock(level.getMinY()); quartY <= QuartPos.fromBlock(level.getMaxY()); quartY++) {
+				int y = Math.clamp(QuartPos.toBlock(quartY) + 2, level.getMinY(), level.getMaxY());
+				Identifier drawn = zones.getNoiseBiome(0, quartY, 0).unwrapKey().orElseThrow().identifier();
+				Identifier expected = Zones.of(level, y).orElseThrow().id();
+				if (!drawn.equals(expected)) {
+					throw failure(helper, "layer_%d biome source gives y=%d the biome %s, the dimension's zone there is %s", layer, y, drawn, expected);
+				}
 			}
 		}
 		helper.succeed();

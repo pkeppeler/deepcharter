@@ -20,6 +20,7 @@ import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.PodReadout;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
@@ -55,7 +56,7 @@ public class PodSounderClientTest implements FabricClientGameTest {
 				}
 			});
 			ClientWait.until(context, "the pod status HUD", client -> client.player != null && client.player.getVehicle() instanceof PodEntity pod
-					&& !PodStatusHud.lines(pod).isEmpty());
+					&& !PodReadout.texts(client, pod).isEmpty());
 			context.waitTicks(10);
 			if (!sounderLines(context).isEmpty()) {
 				throw new AssertionError("A pod with no sounder shows no seepage line, the lines are " + keys(sounderLines(context)));

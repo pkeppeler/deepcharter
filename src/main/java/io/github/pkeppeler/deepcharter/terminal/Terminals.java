@@ -80,13 +80,6 @@ public final class Terminals {
 		};
 	}
 
-	/** {@link #act} with {@link #INSERT_PART} and {@code part}. */
-	public static Optional<TerminalRefusal> insertPart(ServerPlayer player, BlockPos pos, Item part) {
-		CompoundTag args = new CompoundTag();
-		args.putString(PART_KEY, BuiltInRegistries.ITEM.getKey(part).toString());
-		return act(player, pos, INSERT_PART, args);
-	}
-
 	/**
 	 * The pods parked at the terminal at {@code pos}, nearest first: within {@link TerminalTuning#parkedRadius()} blocks of its
 	 * middle, and neither flying nor drilling. Safe on both sides, but it knows no owners: the server serves from

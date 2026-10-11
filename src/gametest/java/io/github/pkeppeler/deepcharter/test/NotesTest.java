@@ -46,6 +46,7 @@ import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.handbook.NotesData;
 import io.github.pkeppeler.deepcharter.handbook.NotesSyncPayload;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
+import io.github.pkeppeler.deepcharter.test.support.ShippedNotes;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 
@@ -283,8 +284,8 @@ public class NotesTest {
 		if (!Notes.id(1).toString().equals("deepcharter:note/n01") || !Notes.id(11).toString().equals("deepcharter:note/n11")) {
 			throw helper.assertionException("Notes.id(1) and Notes.id(11) changed: %s, %s", Notes.id(1), Notes.id(11));
 		}
-		if (!Notes.all().stream().map(Identifier::toString).toList().equals(expectedIds)) {
-			throw helper.assertionException("Notes.all() changed: %s", Notes.all());
+		if (!ShippedNotes.ids().stream().map(Identifier::toString).toList().equals(expectedIds)) {
+			throw helper.assertionException("ShippedNotes.ids() changed: %s", ShippedNotes.ids());
 		}
 		Collection<Integer> numbers = NoteBlock.NOTE.getPossibleValues();
 		if (Collections.min(numbers) != 1 || Collections.max(numbers) != 29 || numbers.size() != 29 || Notes.MAX_NUMBER != 29) {
@@ -300,7 +301,7 @@ public class NotesTest {
 
 	@GameTest
 	public void everyShippedNoteHasATitleAndATextInTheLanguageFile(GameTestHelper helper) {
-		List<Identifier> all = Notes.all();
+		List<Identifier> all = ShippedNotes.ids();
 		if (all.size() != 11) {
 			throw helper.assertionException("N01 to N11 ship in M2, found %s notes", all.size());
 		}
