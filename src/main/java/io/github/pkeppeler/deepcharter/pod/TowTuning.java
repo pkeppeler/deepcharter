@@ -22,7 +22,7 @@ package io.github.pkeppeler.deepcharter.pod;
  */
 public record TowTuning(double reach, double lineLength, double reachSpare, float baseMass, double gravity, double drag, double groundFriction,
 		int cableInterval, int cableLifetime, double cableSpacing, float cableScale, int cableMaxParticles) {
-	public static final TowTuning DEFAULT = new TowTuning(8.0, 5.0, 0.5, 25f, 0.08, 0.97, 0.6, 2, 4, 0.3, 1.5f, 40);
+	public static final TowTuning DEFAULT = new TowTuning(8.0, 5.0, 0.5, 25f, 0.08, 0.97, 0.6, 4, 5, 0.5, 1.8f, 40);
 
 	public TowTuning {
 		if (!(lineLength > 0)) {

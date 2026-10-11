@@ -44,7 +44,9 @@ public class TowLineShaftScenario extends EvidenceScenario {
 			two.server().runOnServer(server -> {
 				ServerLevel level = server.overworld();
 				int top = FLOOR_Y + ROCK_HEIGHT;
-				TowStage.fill(level, X - 14, X + 14, FLOOR_Y - 4, FLOOR_Y - 1, Z - 14, Z + 24, Blocks.STONE);
+				// A floor and a wall behind the shaft reach past the camera's view, so it never sees the edge of the stage.
+				TowStage.fill(level, X - 40, X + 40, FLOOR_Y - 4, FLOOR_Y - 1, Z - 40, Z + 70, Blocks.STONE);
+				TowStage.fill(level, X + 22, X + 23, FLOOR_Y, FLOOR_Y + 60, Z - 40, Z + 70, Blocks.STONE);
 				TowStage.fill(level, X - 14, X + 14, FLOOR_Y, FLOOR_Y + 40, Z - 14, Z + 24, Blocks.AIR);
 				TowStage.fill(level, X, X + 4, FLOOR_Y, top, Z - 1, Z + TUNNEL_LENGTH, Blocks.STONE);
 				// The west wall of the cut is barrier, solid and invisible, so the camera, west of it and looking east away from the sun, sees into the tunnel and the shaft.

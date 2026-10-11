@@ -78,6 +78,8 @@ public class TowingTest {
 	private static final int GROUND_X = 15000;
 	private static final int SKY_X = 15100;
 	private static final int SHAFT_X = 15300;
+	private static final int RELOAD_X = 15500;
+	private static final int CHUNK_X = 15600;
 	/** Blocks that the floor of a shaft's gallery is above the floor of its shaft. */
 	private static final int GALLERY_FLOOR = 10;
 	private static final Input JUMP = new Input(false, false, false, false, true, false, false);
@@ -299,6 +301,105 @@ public class TowingTest {
 				throw failure(helper, "the towed pod should have been carried round the bend into the gallery, it is at %s", towed.position());
 			}
 			return true;
+		});
+	}
+
+	/**
+	 * After a reload the pod has no path behind its tower, and a Prospector (2.9 wide) towed by a Mole (1.9 wide) is not in open space where the Mole
+	 * is, beside a pillar the Mole just clears. The pod must still follow, and never hang further than the line while the tower leaves.
+	 */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+	public void aPodWithNoPathBehindItsTowerStillFollowsAfterAReload(GameTestHelper helper) {
+		ServerLevel level = layer(helper, 1);
+		int x = RELOAD_X;
+		RoomCarver.carve(level, x, x + 40, TOW_FLOOR - 12, TOW_FLOOR - 1, TOW_Z, TOW_Z + 10, Blocks.STONE);
+		RoomCarver.carve(level, x, x + 40, TOW_FLOOR, TOW_FLOOR + 8, TOW_Z, TOW_Z + 10, Blocks.AIR);
+		// A Mole at z + 5.0 clears this pillar by 0.05, a Prospector does not.
+		RoomCarver.carve(level, x + 10, x + 10, TOW_FLOOR, TOW_FLOOR + 6, TOW_Z + 6, TOW_Z + 6, Blocks.STONE);
+		Vec3 start = new Vec3(x + 10.5, TOW_FLOOR, TOW_Z + 5.0);
+		double[] widest = {0};
+		towScene(helper, level, columns(x, x + 40, TOW_Z), PodRegistry.typeOf(Chassis.PROSPECTOR), start, start.add(-7.4, 0, 0), step -> start.add(0.2 * Math.min(step, 100), 0, 0), (tower, towed, age) -> {
+			if (age == 1) {
+				// The same as a reload for the line: the transient state of the cable is gone and the link is not.
+				PodTowing.detach(towed);
+				PodTowing.attach(tower, towed);
+			}
+			double trail = TowTuning.DEFAULT.trailDistance(tower, towed);
+			double gap = tower.position().distanceTo(towed.position());
+			widest[0] = Math.max(widest[0], gap);
+			if (gap > trail + 0.3) {
+				throw failure(helper, "the tower left a pod with no path behind it: the line is %s long and the pod is %s away on tick %s", trail, gap, age);
+			}
+			requireNoWalls(helper, towed);
+			if (age < 100) {
+				return false;
+			}
+			if (Math.abs(gap - trail) > 0.3) {
+				throw failure(helper, "the pod should trail on a taut line of %s, it is %s away", trail, gap);
+			}
+			return true;
+		});
+	}
+
+	/** A pod that hangs below a tower falling 20 blocks fast, and swings when it stops, takes no hard landing: the line holds it. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
+	public void aTowedPodTakesNoDamageWhenItsTowerDropsFast(GameTestHelper helper) {
+		ServerLevel level = layer(helper, 1);
+		Vec3 high = skyRoom(level, SKY_X + 128).add(0, 5, 0);
+		float[] hullStart = {0f};
+		towScene(helper, level, columns(SKY_X + 128, SKY_X + 168, TOW_Z), high, high.add(0, -7, 0), step -> high.add(0, -0.9 * Math.min(step, 24), 0), (tower, towed, age) -> {
+			if (age == 1) {
+				hullStart[0] = towed.hull();
+			}
+			if (towed.hull() != hullStart[0]) {
+				throw failure(helper, "the towed pod took a hard landing on tick %s: hull went from %s to %s", age, hullStart[0], towed.hull());
+			}
+			if (age < 120) {
+				return false;
+			}
+			if (high.y - tower.getY() < 20) {
+				throw failure(helper, "the tower should have dropped 20 blocks or more, it dropped %s", high.y - tower.getY());
+			}
+			return true;
+		});
+	}
+
+	/** The pod's chunk is kept ticking by its tower: at a chunk's edge the long line leaves the pod across the border. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+	public void aTowedPodInANeighbouringChunkKeepsTicking(GameTestHelper helper) {
+		ServerLevel level = layer(helper, 1);
+		int x = CHUNK_X;
+		BlockPos towerColumn = new BlockPos(x + 15, TOW_FLOOR, TOW_Z);
+		BlockPos podColumn = new BlockPos(x + 16 + 6, TOW_FLOOR, TOW_Z);
+		PodEntity[] pods = {null, null};
+		int[] ready = {0};
+		FarChunks.awaitEntityTicking(helper, level, List.of(towerColumn, podColumn), index -> {
+			if (++ready[0] == 2) {
+				RoomCarver.carve(level, x + 4, x + 28, TOW_FLOOR - 12, TOW_FLOOR - 1, TOW_Z, TOW_Z + 8, Blocks.STONE);
+				RoomCarver.carve(level, x + 4, x + 28, TOW_FLOOR, TOW_FLOOR + 6, TOW_Z, TOW_Z + 8, Blocks.AIR);
+				pods[0] = spawn(level, x + 15.5, TOW_FLOOR, TOW_Z + 5.0);
+				pods[1] = spawn(level, x + 16 + 6.5, TOW_FLOOR, TOW_Z + 5.0);
+				PodTowing.attach(pods[0], pods[1]);
+				// Only the tower's chunk is forced from here on: the chunk of the pod is loaded and does not tick unless the tower asks.
+				level.setChunkForced(podColumn.getX() >> 4, podColumn.getZ() >> 4, false);
+			}
+		});
+		int[] since = {0};
+		helper.onEachTick(() -> {
+			if (pods[1] == null) {
+				return;
+			}
+			pods[0].setPos(x + 15.5, TOW_FLOOR, TOW_Z + 5.0);
+			pods[0].setDeltaMovement(Vec3.ZERO);
+			if (++since[0] == 60) {
+				int ticked = pods[1].tickCount;
+				pods[0].discard();
+				pods[1].discard();
+				if (ticked < 40) {
+					throw failure(helper, "the towed pod, a chunk from its tower, should tick on, it ticked %s times in 60 ticks", ticked);
+				}
+				helper.succeed();
+			}
 		});
 	}
 
@@ -899,7 +1000,11 @@ public class TowingTest {
 	}
 
 	private static PodEntity spawn(ServerLevel level, double x, double y, double z) {
-		PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+		return spawn(level, PodRegistry.POD, x, y, z);
+	}
+
+	private static PodEntity spawn(ServerLevel level, EntityType<PodEntity> type, double x, double y, double z) {
+		PodEntity pod = type.create(level, EntitySpawnReason.COMMAND);
 		pod.setPos(x, y, z);
 		level.addFreshEntity(pod);
 		return pod;
@@ -925,13 +1030,19 @@ public class TowingTest {
 	 */
 	private static void towScene(GameTestHelper helper, ServerLevel level, List<BlockPos> columns, Vec3 towerAt, Vec3 towedAt,
 			IntFunction<Vec3> path, TowWatch watch) {
+		towScene(helper, level, columns, PodRegistry.POD, towerAt, towedAt, path, watch);
+	}
+
+	/** As {@link #towScene(GameTestHelper, ServerLevel, List, Vec3, Vec3, IntFunction, TowWatch)} with a towed pod of {@code towedType}. */
+	private static void towScene(GameTestHelper helper, ServerLevel level, List<BlockPos> columns, EntityType<PodEntity> towedType, Vec3 towerAt,
+			Vec3 towedAt, IntFunction<Vec3> path, TowWatch watch) {
 		PodEntity[] pods = {null, null};
 		int[] ready = {0};
 		int[] age = {0};
 		FarChunks.awaitEntityTicking(helper, level, columns, index -> {
 			if (++ready[0] == columns.size()) {
 				pods[0] = spawn(level, towerAt.x, towerAt.y, towerAt.z);
-				pods[1] = spawn(level, towedAt.x, towedAt.y, towedAt.z);
+				pods[1] = spawn(level, towedType, towedAt.x, towedAt.y, towedAt.z);
 				PodTowing.attach(pods[0], pods[1]);
 			}
 		});

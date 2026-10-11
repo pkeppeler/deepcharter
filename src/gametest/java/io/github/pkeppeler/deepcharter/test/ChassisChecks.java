@@ -350,7 +350,7 @@ final class ChassisChecks {
 		int x = 9336 + shift;
 		ServerLevel level = layer(helper);
 		site(level, x);
-		Vec3 start = new Vec3(x - 4, FLOOR + 6, Z);
+		Vec3 start = new Vec3(x - 4, FLOOR + 10, Z);
 		PodEntity[] pods = {null, null};
 		// The pods hang and swing over the whole room, which spans two chunks: the towed pod ticks only while its chunk does.
 		List<BlockPos> chunks = List.of(new BlockPos(x - RADIUS, FLOOR, Z), new BlockPos(x + RADIUS, FLOOR, Z));
@@ -371,12 +371,12 @@ final class ChassisChecks {
 			step[0] = Math.min(step[0] + 1, 24);
 			pods[0].setPos(start.x + 0.25 * step[0], start.y, start.z);
 			pods[0].setDeltaMovement(Vec3.ZERO);
-			if (step[0] == 24 && pods[1].tickCount > 40) {
+			if (step[0] == 24 && pods[1].tickCount > 150) {
 				expect(helper, !pods[0].getBoundingBox().intersects(pods[1].getBoundingBox()), "the towed pod's hull overlaps its tower's: %s and %s", pods[0].getBoundingBox(), pods[1].getBoundingBox());
 				double gap = pods[0].position().distanceTo(pods[1].position());
 				double trail = TowTuning.DEFAULT.trailDistance(chassis, chassis);
 				expect(helper, gap <= trail + 0.1, "the towed pod should hang within the line of %s from its tower, it is %s away", trail, gap);
-				expect(helper, gap > chassis.width(), "the towed pod should hang clear of its tower, it is %s away", gap);
+				expect(helper, gap > trail - 1.0, "the towed pod should hang on the line of %s from its tower, it is %s away", trail, gap);
 				pods[0].discard();
 				pods[1].discard();
 				helper.succeed();

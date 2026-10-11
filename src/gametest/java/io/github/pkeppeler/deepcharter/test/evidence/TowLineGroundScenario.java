@@ -38,7 +38,8 @@ public class TowLineGroundScenario extends EvidenceScenario {
 			UUID[][] pods = {null};
 			two.server().runOnServer(server -> {
 				ServerLevel level = server.overworld();
-				TowStage.fill(level, X - 12, X + 40, FLOOR_Y - 4, FLOOR_Y - 1, Z - 12, Z + 70, Blocks.STONE);
+				// The pad reaches past everything the camera, which looks down, can see of it, so the edge of the stage is never in a frame.
+				TowStage.fill(level, X - 45, X + 60, FLOOR_Y - 4, FLOOR_Y - 1, Z - 50, Z + 75, Blocks.STONE);
 				TowStage.fill(level, X - 12, X + 40, FLOOR_Y, FLOOR_Y + 10, Z - 12, Z + 70, Blocks.AIR);
 				TowStage.prepare(level, two, new Vec3(X - 15, FLOOR_Y + 3, Z));
 				Vec3 at = new Vec3(X + 0.5, FLOOR_Y, Z + 0.5);

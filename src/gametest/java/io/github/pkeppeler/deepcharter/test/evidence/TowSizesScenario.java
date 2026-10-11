@@ -53,8 +53,8 @@ public class TowSizesScenario extends EvidenceScenario {
 			TOWED.clear();
 			singleplayer.getServer().runOnServer(server -> {
 				ServerLevel level = server.overworld();
-				for (int x = X - 12; x <= X + 6; x++) {
-					for (int z = Z - 6; z <= Z + 3 * ROW_SPACING; z++) {
+				for (int x = X - 40; x <= X + 30; x++) {
+					for (int z = Z - 40; z <= Z + 3 * ROW_SPACING + 40; z++) {
 						level.setBlock(new BlockPos(x, FLOOR_Y - 1, z), Blocks.STONE.defaultBlockState(), 3);
 						for (int y = FLOOR_Y; y <= FLOOR_Y + 8; y++) {
 							level.setBlock(new BlockPos(x, y, z), Blocks.AIR.defaultBlockState(), 3);

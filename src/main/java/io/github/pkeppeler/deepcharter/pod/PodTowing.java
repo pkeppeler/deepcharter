@@ -33,10 +33,12 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.TicketType;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.level.portal.TeleportTransition;
@@ -94,6 +96,10 @@ public final class PodTowing {
 	private static final double PATH_JUMP = 4.0;
 	/** Blocks a breach crossing shortens the towed pod's arrival distance by, for each try, when the place is not open. */
 	private static final double ARRIVAL_STEP = 0.5;
+	/** Ticks between two renewals of the ticket that keeps a towed pod's chunk ticking: well under the ticket's 40. */
+	private static final int TICKET_INTERVAL = 5;
+	/** The ticket radius that makes its chunk tick entities, as an ender pearl's does. */
+	private static final int TICKET_RADIUS = 2;
 	/** Blocks of solid ground a cable particle is lifted out of. */
 	private static final int CABLE_FLOOR_LIFT = 3;
 
@@ -181,6 +187,7 @@ public final class PodTowing {
 		PodEvents.EXTRA_MASS.register(PodTowing::towedMass);
 		PodEvents.IGNORES_BLOCK_COLLISION.register(pod -> tower(pod).isPresent());
 		PodEvents.AFTER_TICK.register(PodTowing::follow);
+		PodEvents.AFTER_TICK.register(PodTowing::keepTowedChunksTicking);
 		BreachEvents.CROSSED.register(PodTowing::carryAcross);
 		UseEntityCallback.EVENT.register(PodTowing::onUse);
 	}
@@ -298,12 +305,25 @@ public final class PodTowing {
 	}
 
 	/**
-	 * Moves the towed pod as a weight on the line of {@link TowTuning#trailDistance} from its tower. It falls and swings under its own
-	 * speed ({@link TowTuning#gravity()}, {@link TowTuning#drag()}) and the line stops it at its length, so it hangs below the tower in
-	 * the air and trails on the ground, slack until the tower walks off. Its fall and its swing stop at floors and walls like any
-	 * pod's, but the line never drags it into one: where the straight line to the tower, or the place the pull would put it, is not open
-	 * space, it is carried along the path the tower has taken instead ({@link Line#pathPoints}), which is open space. It has no block
-	 * collision of its own, so nothing else stops it, and its gravity as a pod is undone here.
+	 * A towed pod moves only on its own tick, and a line of 7 blocks or more leaves it in a chunk that does not tick when its tower
+	 * is at a chunk's edge. So the tower asks, every {@link #TICKET_INTERVAL} ticks, for the chunks of the pods it tows to tick, with
+	 * the ticket an ender pearl takes. It runs out on its own {@link TicketType#ENDER_PEARL} timeout, so there is nothing to release.
+	 */
+	private static void keepTowedChunksTicking(PodEntity tower) {
+		if (tower.tickCount % TICKET_INTERVAL != 0 || !(tower.level() instanceof ServerLevel level) || isTowed(tower)) {
+			return;
+		}
+		for (PodEntity towed : towedBy(tower, TowTuning.DEFAULT)) {
+			ChunkPos chunk = towed.chunkPosition();
+			if (!chunk.equals(tower.chunkPosition())) {
+				level.getChunkSource().addTicketWithRadius(TicketType.ENDER_PEARL, chunk, TICKET_RADIUS);
+			}
+		}
+	}
+
+	/**
+	 * Moves the towed pod as a weight on the line. Where the pod or the line to the tower is not in open space it goes along the
+	 * tower's path, or failing that to the nearest open place on the line, so that the line never drags it into rock.
 	 */
 	private static void follow(PodEntity towed) {
 		Optional<PodEntity> found = tower(towed);
@@ -336,13 +356,11 @@ public final class PodTowing {
 		}
 		Vec3 carried = null;
 		if (!fits(towed, anchor, next)) {
-			carried = held;
-			for (Vec3 point : line.pathPoints(anchor, rope)) {
-				if (inOpenSpace(towed.level(), towed, towed.getBoundingBox().move(point.subtract(towed.position())))) {
-					carried = point;
-					break;
-				}
-			}
+			carried = line.pathPoints(anchor, rope).stream()
+					.filter(point -> inOpenSpace(towed.level(), towed, towed.getBoundingBox().move(point.subtract(towed.position()))))
+					.findFirst()
+					.or(() -> held.distanceToSqr(anchor) > rope * rope ? nearestOpenOnLine(towed, anchor, held, rope) : Optional.empty())
+					.orElse(held);
 			next = carried;
 			line.resting = false;
 		}
@@ -351,6 +369,22 @@ public final class PodTowing {
 		towed.setDeltaMovement(Vec3.ZERO);
 		towed.resetFallDistance();
 		drawCable(tower, towed, rope);
+	}
+
+	/**
+	 * The open place farthest from {@code anchor} that is at most {@code rope} from it, on the line toward {@code toward}: for a pod
+	 * that no point of the path suits, so that it is not left behind as its tower leaves.
+	 */
+	private static Optional<Vec3> nearestOpenOnLine(PodEntity towed, Vec3 anchor, Vec3 toward, double rope) {
+		Vec3 direction = toward.subtract(anchor);
+		direction = direction.lengthSqr() < EPSILON ? new Vec3(0, -1, 0) : direction.normalize();
+		for (double distance = rope; distance > OPEN_STEP; distance -= OPEN_STEP) {
+			Vec3 spot = anchor.add(direction.scale(distance));
+			if (inOpenSpace(towed.level(), towed, towed.getBoundingBox().move(spot.subtract(towed.position())))) {
+				return Optional.of(spot);
+			}
+		}
+		return Optional.empty();
 	}
 
 	/** How far {@code box} moves along {@code move} before the {@code blocks}, one axis at a time as a pod does: up or down first, then the longer of the two horizontal ones. */
@@ -408,11 +442,7 @@ public final class PodTowing {
 		return true;
 	}
 
-	/**
-	 * Particles from the tower to the towed pod every {@link TowTuning#cableInterval()} ticks, at most {@link TowTuning#cableMaxParticles()}.
-	 * The cable is the line of length {@code rope} between the pods' middles: straight when it is taut and hanging in a curve when the pod
-	 * is nearer, deeper the more line there is to spare. It is not drawn through either hull, and not through a floor.
-	 */
+	/** Draws the cable as a chain of particles, hanging in a curve when slack. One packet each, so the count is bounded by spacing, interval and cap. */
 	private static void drawCable(PodEntity tower, PodEntity towed, double rope) {
 		TowTuning tuning = TowTuning.DEFAULT;
 		if (towed.tickCount % tuning.cableInterval() != 0 || !(towed.level() instanceof ServerLevel level)) {

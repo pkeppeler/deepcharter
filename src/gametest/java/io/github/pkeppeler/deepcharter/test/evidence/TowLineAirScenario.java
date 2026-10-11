@@ -25,8 +25,8 @@ public class TowLineAirScenario extends EvidenceScenario {
 	private static final int LEG_TICKS = 50;
 	private static final int HOVER_TICKS = 30;
 	private static final int GROUND_FRAMES = 8;
-	/** The camera: west of the pods, level with the tower, looking east at the tower and the line below it (not into the setting sun). */
-	private static final double CAMERA_WEST = -13;
+	/** The camera: east of the pods, level with the tower, looking west at the tower and the line below it (not into the setting sun). */
+	private static final double CAMERA_EAST = 13;
 	private static final double CAMERA_ABOVE = 0;
 	/** The camera aims this far below the tower, at the middle of the tower and the wreck on its line. */
 	private static final double AIM_BELOW = 3.5;
@@ -42,7 +42,9 @@ public class TowLineAirScenario extends EvidenceScenario {
 			UUID[][] pods = {null};
 			two.server().runOnServer(server -> {
 				ServerLevel level = server.overworld();
-				TowStage.fill(level, X - 10, X + 10, FLOOR_Y - 4, FLOOR_Y - 1, Z - 14, Z + 60, Blocks.STONE);
+				// A floor and a wall behind the flight reach past the camera's view, so it never sees the edge of the stage.
+				TowStage.fill(level, X - 45, X + 45, FLOOR_Y - 4, FLOOR_Y - 1, Z - 80, Z + 120, Blocks.STONE);
+				TowStage.fill(level, X - 26, X - 25, FLOOR_Y, FLOOR_Y + 50, Z - 80, Z + 120, Blocks.STONE);
 				TowStage.fill(level, X - 10, X + 10, FLOOR_Y, FLOOR_Y + 40, Z - 14, Z + 60, Blocks.AIR);
 				TowStage.prepare(level, two, new Vec3(X - 15, FLOOR_Y + 3, Z));
 				Vec3 at = new Vec3(X + 0.5, FLOOR_Y, Z + 0.5);
@@ -96,7 +98,7 @@ public class TowLineAirScenario extends EvidenceScenario {
 	private void look(ClientGameTestContext context, TwoPlayerServer two, UUID tower) {
 		two.server().runOnServer(server -> {
 			Vec3 at = server.overworld().getEntity(tower).position();
-			TowStage.film(server.overworld(), two, new Vec3(X - CAMERA_WEST, at.y + CAMERA_ABOVE, at.z), at.add(0, -AIM_BELOW, 0));
+			TowStage.film(server.overworld(), two, new Vec3(X + CAMERA_EAST, at.y + CAMERA_ABOVE, at.z), at.add(0, -AIM_BELOW, 0));
 		});
 		context.runOnClient(client -> client.gui.toastManager().clear());
 		frame(context);
