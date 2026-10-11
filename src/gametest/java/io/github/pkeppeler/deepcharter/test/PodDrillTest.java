@@ -9,6 +9,7 @@ import java.util.function.Consumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -420,7 +421,16 @@ public class PodDrillTest {
 				throw failure(helper, "the shares of a 2 x 3 Mole, a 3 x 3 Prospector, a 2 x 4 and a 4 x 3 pod should be %s, got %s", Arrays.toString(want), Arrays.toString(got));
 			}
 		}
-		helper.succeed();
+		if (Chassis.MOLE.blastShare(Direction.DOWN) != 1f || Chassis.MOLE.blastShare(Direction.EAST) != Chassis.MOLE.sidewaysBlastShare()
+				|| Chassis.MOLE.blastShare(Direction.NORTH) != Chassis.MOLE.sidewaysBlastShare()) {
+			throw failure(helper, "a Mole takes the whole blast down and the sideways share to the sides");
+		}
+		try {
+			Chassis.MOLE.blastShare(Direction.UP);
+			throw failure(helper, "a pod never bores up, so the share for up should throw");
+		} catch (IllegalArgumentException expected) {
+			helper.succeed();
+		}
 	}
 
 	/** A pod with no sounder bores a pocket as soon as the slab is done; {@code sideways} says whether the pocket is in the wall or under the pod. The check gets the hull the blast cost and the whole blast. */

@@ -87,7 +87,7 @@ public final class PodDrill {
 			return;
 		}
 		pod.setDrillProgress(null);
-		slab.bore(pod, stats, wanted == Direction.DOWN ? 1f : pod.chassis().sidewaysBlastShare());
+		slab.bore(pod, stats, pod.chassis().blastShare(wanted));
 	}
 
 	private static void stop(PodEntity pod) {
