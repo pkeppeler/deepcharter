@@ -31,7 +31,7 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 /**
  * Evidence scenario "pod-liner-dry" (#432): a pilot in a pod with a tier 2 liner holds the drill down a shaft. An open gallery runs down
  * the south side of the bore, with a lens of lava on its floor. The liner lines only the cells that lava can reach. The first ring has
- * no lava in view, so it lays no brick and the rack on the HUD does not move. The second ring sees the lava, and lines the gallery wall.
+ * no lava within the liner's view, so it lays no brick and the rack on the HUD does not move. The second ring sees the lava, and lines the gallery wall.
  * The camera is the third person view from behind and above the pod, which looks down into the gallery.
  */
 public class PodLinerDryScenario extends EvidenceScenario {
@@ -107,12 +107,12 @@ public class PodLinerDryScenario extends EvidenceScenario {
 				frame(context);
 				if (!dryShot && ringedAtOrBelow(singleplayer, FIRST_RING_Y)) {
 					dryShot = true;
-					expectLining(singleplayer, "after the first ring, with no lava in view", true);
+					expectLining(singleplayer, "after the first ring, with no lava within the liner's view", true);
 					screenshot(context, "pod-liner-dry-first-ring");
 				}
 				if (!linedShot && ringedAtOrBelow(singleplayer, SECOND_RING_Y)) {
 					linedShot = true;
-					expectLining(singleplayer, "after the second ring, with the lava in view", false);
+					expectLining(singleplayer, "after the second ring, with the lava within the liner's view", false);
 					screenshot(context, "pod-liner-dry-second-ring");
 				}
 			}
@@ -130,7 +130,7 @@ public class PodLinerDryScenario extends EvidenceScenario {
 		}
 	}
 
-	/** Before the lava is in view the gallery wall is bare and the rack is full; after it, the wall from the lens up holds slag brick and the rack has paid for them. */
+	/** Before the lava is within the liner's view the gallery wall is bare and the rack is full; after it, the wall from the lens up holds slag brick and the rack has paid for them. */
 	private static void expectLining(TestSingleplayerContext singleplayer, String when, boolean dry) {
 		int[] seen = singleplayer.getServer().computeOnServer(server -> {
 			PodEntity pod = (PodEntity) server.getPlayerList().getPlayers().getFirst().getVehicle();

@@ -498,17 +498,17 @@ public class OreProcessorTest {
 			ServerPlayer player = mock.player();
 			BlockPos processor = processorFor(helper, mock);
 			PodEntity pod = podAt(helper, beside(processor, 4));
-			// The rack holds 16: 14 in it leaves room for 2 of the 10 bricks, and the other 8 go to the pack.
-			withSpoil(pod, 20, 14);
+			// The rack holds 24: 22 in it leaves room for 2 of the 10 bricks, and the other 8 go to the pack.
+			withSpoil(pod, 20, 22);
 			try {
 				fund(server, player, 1000);
 				expectDone(helper, Terminals.act(player, processor, OreProcessor.FUSE_SPOIL, new CompoundTag()), "fusing into a nearly full rack");
 				PodLining.State after = PodLining.of(pod);
-				if (after.bricks() != 16 || after.spoil() != 0 || bricksCarried(player) != 8) {
+				if (after.bricks() != 24 || after.spoil() != 0 || bricksCarried(player) != 8) {
 					throw helper.assertionException("2 bricks fill the rack and 8 go to the pack: rack %s, spoil %s, carried %s", after.bricks(), after.spoil(), bricksCarried(player));
 				}
 				// A full rack and a pack with no room: nothing is made, nothing is charged.
-				withSpoil(pod, 10, 16);
+				withSpoil(pod, 10, 24);
 				for (int slot = 0; slot < player.getInventory().getNonEquipmentItems().size(); slot++) {
 					player.getInventory().setItem(slot, new ItemStack(SlagBrick.item(), 64));
 				}
@@ -524,9 +524,9 @@ public class OreProcessorTest {
 		helper.succeed();
 	}
 
-	/** A full bay is 64 spoil, 32 bricks: the rack of 16 takes half and the pack the other half, so a hopper dive refills both stores (#442). */
+	/** A full bay is 64 spoil, 32 bricks: the rack of 24 takes 24 and the pack the other 8, so a hopper dive refills both stores (#442). */
 	@GameTest
-	public void aFullBayFusesHalfIntoAnEmptyRackAndHalfIntoThePack(GameTestHelper helper) {
+	public void aFullBayFusesItsFirstTwentyFourBricksIntoAnEmptyRackAndTheRestIntoThePack(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		withProcessorOnline(server, () -> {
 			MockPlayer mock = player(helper, "Full bay", true);
@@ -537,8 +537,31 @@ public class OreProcessorTest {
 			try {
 				expectDone(helper, Terminals.act(player, processor, OreProcessor.FUSE_SPOIL, new CompoundTag()), "fusing a full bay into an empty rack");
 				PodLining.State after = PodLining.of(pod);
-				if (after.bricks() != 16 || after.spoil() != 0 || bricksCarried(player) != 16) {
-					throw helper.assertionException("a full bay makes 32 bricks, 16 for the rack and 16 for the pack: rack %s, spoil %s, carried %s", after.bricks(), after.spoil(), bricksCarried(player));
+				if (after.bricks() != 24 || after.spoil() != 0 || bricksCarried(player) != 8) {
+					throw helper.assertionException("a full bay makes 32 bricks, 24 for the rack and 8 for the pack: rack %s, spoil %s, carried %s", after.bricks(), after.spoil(), bricksCarried(player));
+				}
+			} finally {
+				pod.discard();
+			}
+		});
+		helper.succeed();
+	}
+
+	/** A save from before #442 can hold more bricks than the rack now takes: fusing leaves the rack as it is, sends every brick to the pack and loses none. */
+	@GameTest
+	public void aRackOverTheCapacityKeepsItsBricksAndFusesEverythingIntoThePack(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		withProcessorOnline(server, () -> {
+			MockPlayer mock = player(helper, "Old save", true);
+			ServerPlayer player = mock.player();
+			BlockPos processor = processorFor(helper, mock);
+			PodEntity pod = podAt(helper, beside(processor, 4));
+			withSpoil(pod, 20, 30);
+			try {
+				expectDone(helper, Terminals.act(player, processor, OreProcessor.FUSE_SPOIL, new CompoundTag()), "fusing into a rack over its capacity");
+				PodLining.State after = PodLining.of(pod);
+				if (after.bricks() != 30 || after.spoil() != 0 || bricksCarried(player) != 10) {
+					throw helper.assertionException("the rack of 30 keeps its 30 and the 10 new bricks go to the pack: rack %s, spoil %s, carried %s", after.bricks(), after.spoil(), bricksCarried(player));
 				}
 			} finally {
 				pod.discard();
