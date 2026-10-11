@@ -486,8 +486,11 @@ public class M2SliceScenario extends EvidenceScenario {
 	private static final int DRIFT_LENGTH = 40;
 	/** Where the Mole is set in the drift, in {@code u}: the bay's west wall is at -7. */
 	private static final double MOLE_AT_U = -10;
-	/** Where the figure starts: the far end of the drift is lit by the lava behind it (a figure fades when it is lit), so it starts where the drift is dark. */
+	/** Where the figure starts: the far end of the drift is lit by the lava behind it, so it starts where the drift is dark. */
 	private static final int FIGURE_AT_U = -27;
+	/** The figure walks about 2 blocks a second: the 17 blocks to the Mole take about 8 seconds, and the loop stops when it is this near. */
+	private static final double FIGURE_NEAR_BLOCKS = 6;
+	private static final int FIGURE_WALK_FRAMES_LIMIT = 200;
 
 	private void lamplessFigure() {
 		say("11. SHORTCUT: the Mole is carried to Prospector's Run, the floor of layer 2, to a rail drift cut beside a wreck bay.");
@@ -544,7 +547,7 @@ public class M2SliceScenario extends EvidenceScenario {
 		});
 		ctx.waitTicks(10);
 		boolean shotWalk = false;
-		for (int frames = 0; frames < 200 && !onServer(server -> figure[0].fadeFraction() > 0); frames++) {
+		for (int frames = 0; frames < FIGURE_WALK_FRAMES_LIMIT && !onServer(server -> figure[0].position().distanceTo(pod(server, mole).position()) < FIGURE_NEAR_BLOCKS); frames++) {
 			ctx.waitTicks(TICKS_PER_FRAME);
 			capture();
 			if (!shotWalk && onServer(server -> figure[0].position().distanceTo(pod(server, mole).position()) < 16)) {
@@ -552,13 +555,17 @@ public class M2SliceScenario extends EvidenceScenario {
 				shotWalk = true;
 			}
 		}
-		if (!onServer(server -> figure[0].fadeFraction() > 0)) {
-			throw new AssertionError("the figure never began to fade near the Mole: "
+		if (!onServer(server -> figure[0].position().distanceTo(pod(server, mole).position()) < FIGURE_NEAR_BLOCKS)) {
+			throw new AssertionError("the figure never came near the Mole: "
 					+ onServer(server -> figure[0].position() + ", " + figure[0].tickCount + " ticks old, removed " + figure[0].isRemoved() + ", Mole at " + pod(server, mole).position()));
 		}
-		say("11. It never attacks. It fades when it is lit or when someone on foot comes near; a dark pod with a pilot draws it instead, and it grabs the hull and drains the tank.");
+		say("11. It never attacks, and neither a light nor a person near it makes it fade. A dark pod with a pilot draws it: it grabs the hull and drains the tank until it is killed, by the drill or by hand. Here it is killed.");
 		snap(3);
-		still("34-the-figure-fades");
+		still("34-the-figure-comes-to-the-mole");
+		onServer(server -> {
+			figure[0].kill(server.getLevel(LayerChain.dimension(2)));
+			return null;
+		});
 		for (int frames = 0; frames < 40 && !onServer(server -> figure[0].isRemoved()); frames++) {
 			ctx.waitTicks(TICKS_PER_FRAME);
 			capture();

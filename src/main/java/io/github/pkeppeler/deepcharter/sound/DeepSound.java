@@ -24,6 +24,8 @@ public enum DeepSound {
 	POD_LINING_PLACE("pod.lining_place"),
 	POD_SEEP_HISS("pod.seep_hiss"),
 	CREATURE_APPROACH("creature.approach"),
+	CREATURE_HURT("creature.hurt"),
+	CREATURE_DEATH("creature.death"),
 	DRILL_DIG("drill.dig"),
 	DRILL_BLOCKED("drill.blocked"),
 	DRILL_LAVA("drill.lava"),

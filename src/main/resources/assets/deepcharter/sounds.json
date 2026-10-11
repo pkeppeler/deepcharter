@@ -12,6 +12,8 @@
 	"pod.lining_place": { "sounds": [{ "name": "minecraft:block.deepslate_bricks.place", "type": "event" }] },
 	"pod.seep_hiss": { "sounds": [{ "name": "minecraft:block.fire.extinguish", "type": "event", "pitch": 1.6, "volume": 0.5 }] },
 	"creature.approach": { "sounds": [{ "name": "minecraft:ambient.cave", "type": "event", "pitch": 0.7 }] },
+	"creature.hurt": { "sounds": [{ "name": "minecraft:block.sculk_sensor.clicking", "type": "event", "pitch": 0.6 }] },
+	"creature.death": { "sounds": [{ "name": "minecraft:particle.soul_escape", "type": "event", "pitch": 0.6 }] },
 
 	"drill.dig": { "sounds": [{ "name": "minecraft:block.stone.break", "type": "event" }] },
 	"drill.blocked": { "sounds": [{ "name": "minecraft:block.chain.hit", "type": "event" }] },

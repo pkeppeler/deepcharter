@@ -69,17 +69,27 @@ public class RetainedTest {
 	/** The arena's half width; it is 13 blocks across with its walls, inside the one chunk that is forced. */
 	private static final int HALF = 6;
 	private static final int ARENA_HEIGHT = 14;
+	/** How deep, below the arena floor, the drilling test lays stone (negative). */
+	private static final int BORE_DEPTH = -12;
 	private static final int FIRST_SLOT_X = 6408;
 	private static final int SLOT_Z_SPACING = 64;
 	private static final int FLOOR_Y = 100;
 	/** Ticks for a figure to walk 11 blocks to a pod: the slowest walk is 1 block a second. */
 	private static final int APPROACH_BUDGET_TICKS = 11 * 20;
-	/** Ticks a figure that is never freed clings for (333: 2.5 litres at 0.15 a second), with a margin for a loaded runner. */
-	private static final int FILL_BUDGET_TICKS = 450;
-	/** The fade (40 ticks) of a figure that let go, with a margin. */
-	private static final int FADE_BUDGET_TICKS = 80;
-	/** Ticks, once the pod moves, in which the grip must break: the shake (20), a tick of lag and the check. */
-	private static final int SHAKE_BUDGET_TICKS = 30;
+	/** Ticks for a grip on a tank filled to {@link #LOW_TANK_PERCENT} to reach the floor: 15 points of a stock tank is 1.5 litres, 10 seconds at 0.15 a second, with a margin for a loaded runner. */
+	private static final int DRAIN_TO_FLOOR_BUDGET_TICKS = 400;
+	/** Ticks the grip is watched after the tank reached the floor: it must not let go. */
+	private static final int HOLD_AT_FLOOR_TICKS = 100;
+	/** Tank level a grip test starts at, so that the drain to the floor takes seconds and not a minute. */
+	private static final float LOW_TANK_PERCENT = 20f;
+	/** Ticks of drilling in which the figure must be dead: the bites (one in ten ticks), the first at once, and a margin for a loaded runner. */
+	private static final int KILL_BUDGET_TICKS = 150;
+	/** Ticks a dead figure has to be gone: the dissolve (20 ticks) and a margin. */
+	private static final int DISSOLVE_BUDGET_TICKS = 60;
+	/** Ticks a pilot's answer that does not kill (the rotor, the treads, a light) is watched: far over the old shake of 20. */
+	private static final int NO_ANSWER_TICKS = 120;
+	/** Ticks between two blows by hand: a hurt mob ignores a blow that is no stronger than the last for 10 ticks. */
+	private static final int BLOW_SPACING_TICKS = 12;
 	private static final Input JUMP = new Input(false, false, false, false, true, false, false);
 	private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
 	private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
@@ -87,6 +97,8 @@ public class RetainedTest {
 	private static final float WEST = 90f;
 	private static final String GRAB_KEY = "creature.deepcharter.grab";
 	private static final String APPROACH_KEY = "creature.deepcharter.approach";
+	private static final String BITTEN_KEY = "creature.deepcharter.bitten";
+	private static final String DEAD_KEY = "creature.deepcharter.dead";
 	/** Ticks for the light of a block to spread through a sealed room, or to go out of it: slow on a loaded runner. */
 	private static final int LIGHT_BUDGET_TICKS = 200;
 	private static final AtomicInteger CHARTERS = new AtomicInteger();
@@ -139,14 +151,17 @@ public class RetainedTest {
 		}
 	}
 
-	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + 60 + 2 * 400 + FADE_BUDGET_TICKS)
-	public void aDarkPodDrawsAFigureThatClingsAndDrainsItAndThenLetsGo(GameTestHelper helper) {
+	/**
+	 * A grip is not let go: nobody answers, the figure drains the tank to the floor and holds on there (ADR 0046, amended for #485). It
+	 * hurts neither the hull nor the pilot. (The pod's own idle burn can take the tank under the floor; the figure takes nothing there.)
+	 */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + DRAIN_TO_FLOOR_BUDGET_TICKS + HOLD_AT_FLOOR_TICKS + 60)
+	public void aDarkPodDrawsAFigureThatClingsAndDrainsItToTheFloorAndNeverLetsGo(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		BlockPos origin = slot(0);
 		Arena[] made = {null};
 		int[] phase = {0};
 		long[] since = {0};
-		float[] fuelAtGrab = {0};
 		float[] hullAtGrab = {0};
 		helper.onEachTick(() -> {
 			Arena arena = made[0];
@@ -158,7 +173,6 @@ public class RetainedTest {
 				case 0 -> {
 					if (arena.figure.isClinging()) {
 						LOGGER.info("[retained] the figure walked 10 blocks to a dark pod and grabbed it in {} ticks", waited);
-						fuelAtGrab[0] = arena.pod.fuel();
 						hullAtGrab[0] = arena.pod.hull();
 						phase[0] = 1;
 						since[0] = helper.getTick();
@@ -168,67 +182,64 @@ public class RetainedTest {
 					}
 				}
 				case 1 -> {
-					if (arena.figure.isClinging()) {
-						if (waited > 10 && !arena.touchesHull()) {
-							throw failure(helper, "the clinging figure at %s is off the hull %s", arena.figure.position(), arena.pod.getBoundingBox());
-						}
-						if (waited > FILL_BUDGET_TICKS) {
-							throw failure(helper, "the figure was still clinging %d ticks after the grab", waited);
-						}
-						return;
+					expectHolding(helper, arena, waited);
+					if (arena.pod.fuel() <= CLING.floorPercent() + 0.01f) {
+						LOGGER.info("[retained] a grip left alone drained the tank to the floor in {} ticks", waited);
+						phase[0] = 2;
+						since[0] = helper.getTick();
+					} else if (waited > DRAIN_TO_FLOOR_BUDGET_TICKS) {
+						throw failure(helper, "the tank was at %s of 100 %d ticks after the grab; the floor is %s", arena.pod.fuel(), waited, CLING.floorPercent());
 					}
-					expectLetGoFull(helper, arena, fuelAtGrab[0], hullAtGrab[0], waited);
-					phase[0] = 2;
-					since[0] = helper.getTick();
 				}
 				default -> {
-					if (arena.figure.isRemoved()) {
+					expectHolding(helper, arena, waited);
+					if (waited >= HOLD_AT_FLOOR_TICKS) {
+						expectUnharmed(helper, arena, hullAtGrab[0]);
 						arena.clear();
 						helper.succeed();
-					} else if (waited > FADE_BUDGET_TICKS) {
-						arena.clear();
-						throw failure(helper, "the figure had not faded out %d ticks after it let go", waited);
 					}
 				}
 			}
 		});
 		FarChunks.awaitEntityTicking(helper, level, origin, () -> {
 			made[0] = Arena.build(helper, level, origin, false);
+			made[0].pod.setFuel(LOW_TANK_PERCENT);
 			since[0] = helper.getTick();
 			if (!LamplessFigure.draws(made[0].pod)) {
-				throw failure(helper, "a powered pod with a pilot, no lights and a full tank does not draw a figure");
+				throw failure(helper, "a powered pod with a pilot, no lights and a tank over the floor does not draw a figure");
 			}
 		});
 	}
 
-	/** How many times the pilot has been sent the line {@code key}. */
-	private static long told(Arena arena, String key) {
-		return arena.pilot.actionBarMessages().stream().filter(message -> message.getContents() instanceof TranslatableContents contents && contents.getKey().equals(key)).count();
+	/** The figure is on the hull and alive after {@code ticks} of a grip nobody ended. */
+	private static void expectHolding(GameTestHelper helper, Arena arena, long ticks) {
+		if (!arena.figure.isClinging() || !arena.figure.isAlive()) {
+			throw failure(helper, "the figure let go %d ticks after the grab, with no one to answer it (clinging %s, alive %s, fuel %s)",
+					ticks, arena.figure.isClinging(), arena.figure.isAlive(), arena.pod.fuel());
+		}
+		if (ticks > 10 && !arena.touchesHull()) {
+			throw failure(helper, "the clinging figure at %s is off the hull %s", arena.figure.position(), arena.pod.getBoundingBox());
+		}
 	}
 
-	/** The figure took its fill and no more, the tank lost at least that, and neither the hull nor the pilot were hurt. */
-	private static void expectLetGoFull(GameTestHelper helper, Arena arena, float fuelAtGrab, float hullAtGrab, long clungTicks) {
-		float fillPercent = CLING.fillLitres() / 10f * 100f;
-		float lost = fuelAtGrab - arena.pod.fuel();
-		long grabbed = told(arena, GRAB_KEY);
-		long warned = told(arena, APPROACH_KEY);
-		// A stock tank is 10 litres, so the fill is 25 points of the tank; the pod's own idle burn (0.063 litres a second, 10 points in 333 ticks) is on top.
-		if (lost < fillPercent - 0.5f || lost > fillPercent + 14f) {
-			throw failure(helper, "the tank lost %.2f points over %d ticks of the grip; the fill is %.1f points and the idle burn a few more", lost, clungTicks, fillPercent);
-		}
+	/** Neither the hull nor the pilot were hurt, and the pilot was told once that the figure came and once that it grabbed. */
+	private static void expectUnharmed(GameTestHelper helper, Arena arena, float hullAtGrab) {
 		if (arena.pod.hull() != hullAtGrab) {
 			throw failure(helper, "the pod's hull went from %s to %s while the figure held it", hullAtGrab, arena.pod.hull());
 		}
 		if (arena.pilot.player().getHealth() != arena.pilot.player().getMaxHealth()) {
 			throw failure(helper, "the pilot's health went to %s while the figure held the pod", arena.pilot.player().getHealth());
 		}
+		long grabbed = told(arena, GRAB_KEY);
+		long warned = told(arena, APPROACH_KEY);
 		if (grabbed != 1 || warned != 1) {
 			throw failure(helper, "the pilot should be told once that the figure came and once that it grabbed (came: %d times, grabbed: %d times): %s", warned, grabbed, arena.pilot.actionBarMessages());
 		}
-		LOGGER.info("[retained] a grip left alone: {} ticks, the tank lost {} points of 100", clungTicks, lost);
-		if (arena.pod.fuel() <= TUNING.cling().floorPercent()) {
-			throw failure(helper, "the tank went to %s, under the floor of %s", arena.pod.fuel(), TUNING.cling().floorPercent());
-		}
+	}
+
+	/** How many times the pilot has been sent the line {@code key}. */
+	private static long told(Arena arena, String key) {
+		return arena.pilot.actionBarMessages().stream().filter(message -> message.getContents() instanceof TranslatableContents contents && contents.getKey().equals(key)).count();
 	}
 
 	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
@@ -285,29 +296,61 @@ public class RetainedTest {
 		}
 	}
 
-	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + 60 + SHAKE_BUDGET_TICKS + 100)
-	public void shakingTheFigureOffWithTheRotorFreesThePodBeforeItIsFull(GameTestHelper helper) {
-		expectShakenOff(helper, slot(3), JUMP, "the rotor");
+	/** The rotor lifts the pod: it is not an answer any more (it freed the pod before #485). */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + NO_ANSWER_TICKS + 60)
+	public void liftingTheRotorDoesNotFreeThePod(GameTestHelper helper) {
+		expectStillHeld(helper, slot(3), JUMP, "the rotor");
 	}
 
-	/** The pilot drives west: the treads move the pod, which shakes the figure off as the rotor does. */
-	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + 60 + SHAKE_BUDGET_TICKS + 100)
-	public void drivingTheTreadsShakesTheFigureOffToo(GameTestHelper helper) {
-		expectShakenOff(helper, slot(6), FORWARD, "the treads");
+	/** The pilot drives west: the treads move the pod, and the figure rides along. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + NO_ANSWER_TICKS + 60)
+	public void drivingTheTreadsDoesNotFreeThePod(GameTestHelper helper) {
+		expectStillHeld(helper, slot(6), FORWARD, "the treads");
 	}
 
-	/** The pilot drills down: a pod that bores is under way, so the figure is shaken off by the main verb of the game. */
-	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + 60 + SHAKE_BUDGET_TICKS + 100)
-	public void drillingDownShakesTheFigureOffToo(GameTestHelper helper) {
-		expectShakenOff(helper, slot(7), SPRINT, "the drill");
-	}
-
-	private static void expectShakenOff(GameTestHelper helper, BlockPos origin, Input input, String how) {
+	private static void expectStillHeld(GameTestHelper helper, BlockPos origin, Input input, String how) {
 		ServerLevel level = helper.getLevel();
 		Arena[] made = {null};
 		long[] grabbedAt = {-1};
+		helper.onEachTick(() -> {
+			Arena arena = made[0];
+			if (arena == null) {
+				return;
+			}
+			if (grabbedAt[0] < 0) {
+				if (arena.figure.isClinging()) {
+					grabbedAt[0] = helper.getTick();
+					arena.pilot.setInput(input);
+				} else if (helper.getTick() > APPROACH_BUDGET_TICKS + 20) {
+					throw failure(helper, "the figure had not grabbed the dark pod");
+				}
+				return;
+			}
+			long held = helper.getTick() - grabbedAt[0];
+			if (!arena.figure.isClinging() || !arena.figure.isAlive()) {
+				throw failure(helper, "the figure let go %d ticks after the pilot used %s (the pod is at %s)", held, how, arena.pod.position());
+			}
+			if (held >= NO_ANSWER_TICKS) {
+				arena.clear();
+				helper.succeed();
+			}
+		});
+		FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, false));
+	}
+
+	/**
+	 * The pilot drills down, and the cutter kills the figure: the answer from the seat. It dies in a handful of bites, lets go, the pod
+	 * keeps almost all its fuel, and the pilot is told the cutter bites and that it is gone. Nothing on the pod, the hull or the pilot is hurt.
+	 */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + KILL_BUDGET_TICKS + DISSOLVE_BUDGET_TICKS + 60)
+	public void drillingKillsTheFigureAndFreesThePod(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos origin = slot(7);
+		Arena[] made = {null};
+		long[] grabbedAt = {-1};
+		long[] diedAt = {-1};
 		float[] fuelAtGrab = {0};
-		boolean[] released = {false};
+		float[] hullAtGrab = {0};
 		helper.onEachTick(() -> {
 			Arena arena = made[0];
 			if (arena == null) {
@@ -317,50 +360,65 @@ public class RetainedTest {
 				if (arena.figure.isClinging()) {
 					grabbedAt[0] = helper.getTick();
 					fuelAtGrab[0] = arena.pod.fuel();
-					LOGGER.info("[retained] the figure grabbed the pod {} ticks after it was placed 10 blocks away", helper.getTick());
-					arena.pilot.setInput(input);
+					hullAtGrab[0] = arena.pod.hull();
+					arena.pilot.setInput(SPRINT);
 				} else if (helper.getTick() > APPROACH_BUDGET_TICKS + 20) {
 					throw failure(helper, "the figure had not grabbed the dark pod");
 				}
 				return;
 			}
 			long held = helper.getTick() - grabbedAt[0];
-			if (!released[0]) {
-				if (!arena.figure.isClinging()) {
-					released[0] = true;
+			if (diedAt[0] < 0) {
+				if (!arena.figure.isAlive()) {
+					diedAt[0] = helper.getTick();
 					float lost = fuelAtGrab[0] - arena.pod.fuel();
-					LOGGER.info("[retained] a grip shaken off by {}: {} ticks, the tank lost {} points", how, held, lost);
-					// The fill is 25 points of a stock tank; a grip shaken off in 20 ticks takes a point or two, and the pod's own burn a few more.
-					if (lost > CLING.fillLitres() / 10f * 100f / 2) {
-						throw failure(helper, "the tank lost %.1f points: %s did not free the pod before the figure had half its fill", lost, how);
-					}
-					if (held < CLING.shakeTicks() - 2) {
-						throw failure(helper, "the grip broke after %d ticks of %s, under the %d the tuning asks", held, how, CLING.shakeTicks());
-					}
-				} else if (held > SHAKE_BUDGET_TICKS) {
-					throw failure(helper, "the figure still clung %d ticks after the pilot used %s (the pod is at %s)", held, how, arena.pod.position());
+					LOGGER.info("[retained] a figure killed by the drill: {} ticks after the grab, the tank lost {} points", held, lost);
+					expect(helper, !arena.figure.isClinging(), "the figure still clings to the hull as it dies");
+					expect(helper, lost < 15f, "the tank lost " + lost + " points before the drill killed the figure");
+					expect(helper, arena.pod.hull() == hullAtGrab[0], "the hull was hurt");
+					expect(helper, arena.pilot.player().getHealth() == arena.pilot.player().getMaxHealth(), "the pilot was hurt");
+				} else if (held > KILL_BUDGET_TICKS) {
+					throw failure(helper, "the figure still lived %d ticks after the pilot drilled (health %s)", held, arena.figure.getHealth());
 				}
 				return;
 			}
-			// The pod is free: the figure does not take hold again, and a drain needs a hold.
+			long dead = helper.getTick() - diedAt[0];
 			if (arena.figure.isClinging()) {
-				throw failure(helper, "the figure took hold of the pod again after %s shook it off", how);
+				throw failure(helper, "the dead figure clings to the hull again");
 			}
-			if (held > CLING.shakeTicks() + 40) {
+			// The mock pilot's lines reach it a tick after the server sends them.
+			if (dead == 2) {
+				expect(helper, told(arena, BITTEN_KEY) == 1, "the pilot was not told once that the cutter bites: " + arena.pilot.actionBarMessages());
+				expect(helper, told(arena, DEAD_KEY) == 1, "the pilot was not told once that it is gone: " + arena.pilot.actionBarMessages());
+			}
+			if (arena.figure.isRemoved()) {
 				arena.clear();
 				helper.succeed();
+			} else if (dead > DISSOLVE_BUDGET_TICKS) {
+				throw failure(helper, "the dead figure was still there %d ticks after it died", dead);
 			}
 		});
-		FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, false));
+		FarChunks.awaitEntityTicking(helper, level, origin, () -> {
+			made[0] = Arena.build(helper, level, origin, false);
+			// A bore of stone under the pod, so that it drills for as long as the test needs and does not fall into the void.
+			for (int u = -HALF; u <= HALF; u++) {
+				for (int v = -HALF; v <= HALF; v++) {
+					for (int y = BORE_DEPTH; y < 0; y++) {
+						// room-carver: the stone under this test's own arena, in the overworld test structure, not layer rock
+						level.setBlock(origin.offset(u, y, v), Blocks.STONE.defaultBlockState(), 3);
+					}
+				}
+			}
+		});
 	}
 
-	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + 60 + 60 + FADE_BUDGET_TICKS)
-	public void aLightFreesAClingingFigureAtOnceAndItFades(GameTestHelper helper) {
+	/** A light keeps a figure away from a pod, but no longer frees a pod it already holds, and nothing fades. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + NO_ANSWER_TICKS + 60)
+	public void aLightDoesNotFreeAClingingFigureAndItDoesNotFade(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		BlockPos origin = slot(4);
 		Arena[] made = {null};
 		long[] litAt = {-1};
-		float[] fuelAtLight = {0};
 		helper.onEachTick(() -> {
 			Arena arena = made[0];
 			if (arena == null) {
@@ -369,7 +427,6 @@ public class RetainedTest {
 			if (litAt[0] < 0) {
 				if (arena.figure.isClinging() && helper.getTick() > 0) {
 					litAt[0] = helper.getTick();
-					fuelAtLight[0] = arena.pod.fuel();
 					CharterId charter = charter(helper, arena.pilot.player().getUUID());
 					PodComponents.register(arena.pod, charter);
 					PodComponents.install(arena.pod, ComponentItems.mint(level.getServer(), ComponentTrack.LIGHTS, 1, charter));
@@ -379,20 +436,108 @@ public class RetainedTest {
 				return;
 			}
 			long since = helper.getTick() - litAt[0];
-			if (arena.figure.isClinging() && since > 5) {
-				throw failure(helper, "the figure still clung %d ticks after the pod's lights part was fitted", since);
+			if (!arena.figure.isClinging() || arena.figure.fadeFraction() != 0f || arena.figure.isRemoved()) {
+				throw failure(helper, "the figure let go or faded %d ticks after the pod's lights part was fitted", since);
 			}
-			if (!arena.figure.isClinging() && arena.figure.fadeFraction() == 0f && !arena.figure.isRemoved()) {
-				throw failure(helper, "the figure let go and did not start to fade");
-			}
-			if (arena.figure.isRemoved()) {
-				if (fuelAtLight[0] - arena.pod.fuel() > 5f) {
-					throw failure(helper, "the tank kept losing fuel after the pod was lit: %.1f points", fuelAtLight[0] - arena.pod.fuel());
-				}
+			if (since >= NO_ANSWER_TICKS) {
 				arena.clear();
 				helper.succeed();
-			} else if (since > FADE_BUDGET_TICKS + 20) {
-				throw failure(helper, "the figure was still there %d ticks after the lights part was fitted", since);
+			}
+		});
+		FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, false));
+	}
+
+	/**
+	 * A person on foot kills it by hand, and a clinging figure killed so lets go and takes no more. A sword hits for 6, so two blows kill
+	 * a figure of 12; the blows are made as the game makes a player's, so that the player's attack is what hurts it.
+	 */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + DISSOLVE_BUDGET_TICKS + 60)
+	public void aPersonOnFootKillsAClingingFigureByHand(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos origin = slot(8);
+		Arena[] made = {null};
+		MockPlayer[] walker = {null};
+		long[] diedAt = {-1};
+		long[] blowAt = {0};
+		int[] blows = {0};
+		float[] fuelAtDeath = {0};
+		helper.onEachTick(() -> {
+			Arena arena = made[0];
+			if (arena == null) {
+				return;
+			}
+			if (walker[0] == null) {
+				if (arena.figure.isClinging()) {
+					arena.pilot.leave();
+					walker[0] = MockPlayers.join(helper, "retained-walker");
+					walker[0].teleportTo(level, arena.figure.position().add(0, 0, 1), 0f, 0f);
+					blowAt[0] = helper.getTick();
+					strike(level, arena, walker[0], blows);
+				} else if (helper.getTick() > APPROACH_BUDGET_TICKS + 20) {
+					throw failure(helper, "the figure had not grabbed the dark pod");
+				}
+				return;
+			}
+			if (diedAt[0] < 0) {
+				// A figure hurt is proof against the next blow for a short while; the second comes after it.
+				if (helper.getTick() - blowAt[0] >= BLOW_SPACING_TICKS) {
+					blowAt[0] = helper.getTick();
+					strike(level, arena, walker[0], blows);
+				}
+				if (!arena.figure.isAlive()) {
+					diedAt[0] = helper.getTick();
+					fuelAtDeath[0] = arena.pod.fuel();
+					expect(helper, blows[0] == 2, "a figure of " + arena.figure.getMaxHealth() + " health took " + blows[0] + " blows of 6 to die");
+				}
+				return;
+			}
+			expect(helper, !arena.figure.isClinging(), "the dead figure clings to the hull");
+			expect(helper, arena.pod.fuel() >= fuelAtDeath[0] - 0.5f, "the tank went on draining after the figure died");
+			if (arena.figure.isRemoved()) {
+				walker[0].leave();
+				arena.clear();
+				helper.succeed();
+			} else if (helper.getTick() - diedAt[0] > DISSOLVE_BUDGET_TICKS) {
+				throw failure(helper, "the dead figure was still there %d ticks after it died", helper.getTick() - diedAt[0]);
+			}
+		});
+		FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, false));
+	}
+
+	/** One blow of 6, as a sword makes it, from {@code walker}. */
+	private static void strike(ServerLevel level, Arena arena, MockPlayer walker, int[] blows) {
+		arena.figure.hurtServer(level, level.damageSources().playerAttack(walker.player()), 6f);
+		blows[0]++;
+	}
+
+	/** A pod that is destroyed (or taken away) ends the grip; the figure is not hurt by it and goes on. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + 100)
+	public void aFigureLetsGoWhenThePodIsGone(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos origin = slot(9);
+		Arena[] made = {null};
+		long[] goneAt = {-1};
+		helper.onEachTick(() -> {
+			Arena arena = made[0];
+			if (arena == null) {
+				return;
+			}
+			if (goneAt[0] < 0) {
+				if (arena.figure.isClinging()) {
+					goneAt[0] = helper.getTick();
+					arena.pilot.leave();
+					arena.pod.discard();
+				} else if (helper.getTick() > APPROACH_BUDGET_TICKS + 20) {
+					throw failure(helper, "the figure had not grabbed the dark pod");
+				}
+				return;
+			}
+			if (!arena.figure.isClinging() && helper.getTick() - goneAt[0] > 40) {
+				expect(helper, arena.figure.isAlive() && arena.figure.fadeFraction() == 0f, "the figure died or faded with the pod");
+				arena.figure.discard();
+				helper.succeed();
+			} else if (arena.figure.isClinging() && helper.getTick() - goneAt[0] > 20) {
+				throw failure(helper, "the figure still clings to a pod that is gone");
 			}
 		});
 		FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, false));
@@ -471,7 +616,7 @@ public class RetainedTest {
 			since[0]++;
 			switch (phase[0]) {
 				case 0 -> {
-					LamplessFigures.clearFadeDelays();
+					LamplessFigures.clearRespawnDelays();
 					for (ServerLevel layer : layers) {
 						expect(helper, LamplessFigures.canAppearAt(layer, column), "a figure may not appear in the dark room of " + layer.dimension().identifier());
 						layer.setBlock(column.above(), light(15), 3);
@@ -481,7 +626,7 @@ public class RetainedTest {
 					since[0] = 0;
 				}
 				case 1 -> {
-					if (layers.stream().allMatch(layer -> layer.getBrightness(LightLayer.BLOCK, column) >= TUNING.fadeBlockLight())) {
+					if (layers.stream().allMatch(layer -> layer.getBrightness(LightLayer.BLOCK, column) >= TUNING.litBlockLight())) {
 						for (ServerLevel layer : layers) {
 							expect(helper, !LamplessFigures.canAppearAt(layer, column), "a figure may appear beside a light of level 15 in " + layer.dimension().identifier());
 							// room-carver: removes the light block this test placed itself in its own sealed room
@@ -494,7 +639,7 @@ public class RetainedTest {
 					}
 				}
 				default -> {
-					if (layers.stream().allMatch(layer -> layer.getBrightness(LightLayer.BLOCK, column) < TUNING.fadeBlockLight())) {
+					if (layers.stream().allMatch(layer -> layer.getBrightness(LightLayer.BLOCK, column) < TUNING.litBlockLight())) {
 						for (ServerLevel layer : layers) {
 							expect(helper, LamplessFigures.canAppearAt(layer, column), "the room is dark again and a figure may not appear in " + layer.dimension().identifier());
 							expectNotOverAir(helper, layer, column);
@@ -555,7 +700,7 @@ public class RetainedTest {
 			}
 			since[0]++;
 			if (phase[0] == 0) {
-				LamplessFigures.clearFadeDelays();
+				LamplessFigures.clearRespawnDelays();
 				int rolled = 0;
 				for (int i = 0; i < tries; i++) {
 					rolled += LamplessFigures.rolls(two, two.getRandom()) ? 1 : 0;
@@ -567,7 +712,7 @@ public class RetainedTest {
 				two.setBlock(column.above(), light(15), 3);
 				phase[0] = 1;
 				since[0] = 0;
-			} else if (two.getBrightness(LightLayer.BLOCK, column) >= TUNING.fadeBlockLight()) {
+			} else if (two.getBrightness(LightLayer.BLOCK, column) >= TUNING.litBlockLight()) {
 				for (int i = 0; i < tries; i++) {
 					expect(helper, !figure[0].checkSpawnRules(two, EntitySpawnReason.NATURAL), "a natural spawn was allowed beside a light of level 15");
 				}

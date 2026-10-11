@@ -34,7 +34,8 @@ public class RetainedLampScenario extends EvidenceScenario {
 	private static final double CAMERA_X = 0.8;
 	private static final double FAR = 20;
 	private static final double FARTHEST = 28;
-	private static final int WALK_FRAMES_LIMIT = 200;
+	/** Frames of the lamp walk: 20 blocks of its walk, about 9 blocks short of the camera. */
+	private static final int WALK_FRAMES = 60;
 	private static final int TICKS_PER_FRAME = 3;
 	private int framesTaken;
 	private static final double NEAR = 4.5;
@@ -134,7 +135,7 @@ public class RetainedLampScenario extends EvidenceScenario {
 
 	/**
 	 * The lamp-carrier of the default look walks toward the camera from the far end of the chamber, in the dark, with no night vision: a lamp bobbing
-	 * in the black. It fades when it comes within 8 blocks of the camera, as it does of anyone on foot. The clip is logged as
+	 * in the black. The clip stops while it is still some way off, and the walker is taken away. It is logged as
 	 * {@code [retained-lamp-segment] retained-lamp-walk <first>-<last>}.
 	 */
 	private void walk() {
@@ -146,21 +147,17 @@ public class RetainedLampScenario extends EvidenceScenario {
 			figure.setNoAi(false);
 		});
 		int first = framesTaken + 1;
-		for (int i = 0; i < WALK_FRAMES_LIMIT; i++) {
+		for (int i = 0; i < WALK_FRAMES; i++) {
 			ctx.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
 			frame(ctx);
 			framesTaken++;
-			boolean gone = chamber.serverGet(server -> RetainedChamber.layer(server).getEntity(figureId) == null);
-			if (gone) {
-				System.out.println("[retained-lamp-segment] retained-lamp-walk " + first + "-" + framesTaken);
-				resetFigure();
-				return;
-			}
 		}
-		throw new AssertionError("the figure had not faded " + WALK_FRAMES_LIMIT + " frames after it set off");
+		System.out.println("[retained-lamp-segment] retained-lamp-walk " + first + "-" + framesTaken);
+		chamber.serverDo(server -> RetainedChamber.layer(server).getEntity(figureId).discard());
+		resetFigure();
 	}
 
-	/** The walker faded out; a new figure stands in for the stills that follow. */
+	/** The walker is taken away; a new figure stands in for the stills that follow. */
 	private void resetFigure() {
 		chamber.serverDo(server -> {
 			ServerLevel level = RetainedChamber.layer(server);

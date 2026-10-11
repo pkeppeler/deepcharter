@@ -99,7 +99,7 @@ Then the build gives the one you pick its final animations, its fade and its pla
 
 ## Where the figure is now
 
-The Reacher is the lampless figure. In the game, `/summon deepcharter:lampless_figure ~ ~ ~` puts one next to you (it fades when you stand within 8 blocks on foot), and the rails of layers 1 and 2 have them, with the caverns and shafts. It is a mob now ([#449](https://github.com/pkeppeler/deepcharter/issues/449), [ADR 0046](../adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md)): it comes to a dark pod, clings to it and drains the tank. The rule and the numbers are in [mechanics.md](mechanics.md#the-retained-at-dark-pods-449-a).
+The Reacher is the lampless figure. In the game, `/summon deepcharter:lampless_figure ~ ~ ~` puts one next to you (it does not fade, and you can kill it: [ADR 0046](../adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md)), and the rails of layers 1 and 2 have them, with the caverns and shafts. It is a mob now ([#449](https://github.com/pkeppeler/deepcharter/issues/449), [ADR 0046](../adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md)): it comes to a dark pod, clings to it and drains the tank. The rule and the numbers are in [mechanics.md](mechanics.md#the-retained-at-dark-pods-449-a).
 
 Its files are `geckolib/models/creature/lampless_figure.geo.json`, `textures/entity/lampless_figure.png` and `geckolib/animations/creature/lampless_figure.animation.json`. A resource pack replaces any of them and F3+T applies it ([skins.md](skins.md)). `python3 -I tools/lampless_figure.py` writes them, and `--check` fails on a stale file. The pictures of the figure as built are in [PR #423](https://github.com/pkeppeler/deepcharter/pull/423).
 
@@ -123,7 +123,7 @@ A clip of the pole option walking toward the camera in the dark, from 28 blocks:
 
 **Open questions.**
 - Pole, hand or ribs? Or another way: a lamp hung on the belt, or two lamps?
-- Should the lamp go out when the figure fades (it does today), or burn on for a moment after?
+- Should the lamp go out when the figure dies (it does today, as it dissolves), or burn on for a moment after?
 
 ## References
 

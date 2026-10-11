@@ -5,18 +5,19 @@ import java.util.Comparator;
 import org.jspecify.annotations.Nullable;
 
 import net.minecraft.core.Direction;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
@@ -26,7 +27,6 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
-import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.phys.Vec3;
 
@@ -38,22 +38,24 @@ import io.github.pkeppeler.deepcharter.sound.DeepSound;
 
 /**
  * A Retained: a veteran of the Workings that the Company rebuilt too often, and that stopped using its lamp. A normal mob of the deep
- * layers (never a boss, ADR 0046): it never attacks anyone and nothing hurts it. It walks on whatever happens, fades when it is lit or
- * a person on foot comes near, and comes to a dark pod, one with a pilot, power and no lights. It grabs the hull and takes fuel until it
- * has had its fill; the pilot shakes it off by moving the pod, or a lit pod frees itself. Some carry a lamp, so that they show from afar.
- * It is not saved: a figure whose chunk unloads is gone, and the level makes another.
+ * layers (never a boss, ADR 0046): it never attacks anyone, and it does not fade for a light or for a person near it. It walks on
+ * whatever happens and comes to a dark pod, one with a pilot, power and no lights. It grabs the hull and takes fuel, and does not let go
+ * until it is dead (ADR 0046, amended for #485): the pod's cutter bites it while the pod drills, and a person's blow hurts it too.
+ * Some carry a lamp, so that they show from afar. It is not saved: a figure whose chunk unloads is gone, and the level makes another.
  */
 public class LamplessFigure extends PathfinderMob {
-	/** Ticks of fade so far; 0 when the figure is not fading. Synced, for the client's alpha. */
-	private static final EntityDataAccessor<Integer> FADE = SynchedEntityData.defineId(LamplessFigure.class, EntityDataSerializers.INT);
 	/** Whether the figure holds a pod's hull. Synced, for the client's pose. */
 	private static final EntityDataAccessor<Boolean> CLINGING = SynchedEntityData.defineId(LamplessFigure.class, EntityDataSerializers.BOOLEAN);
 	/** Whether the figure carries a lamp. Synced, for the client's model and glow. */
 	private static final EntityDataAccessor<Boolean> LAMP = SynchedEntityData.defineId(LamplessFigure.class, EntityDataSerializers.BOOLEAN);
 	/** How far ahead along its heading the figure aims, so that it never reaches the point it walks to. */
 	private static final double LOOK_AHEAD = 4;
-	/** Blocks per tick, squared, over which a pod counts as driving: a quarter of its walk (0.2) is far above a drift or a push. */
-	private static final double MOVING_SPEED_SQR = 0.05 * 0.05;
+	/** Ticks a dead figure takes to dissolve: the game's own length of a death. */
+	private static final int DISSOLVE_TICKS = 20;
+	/** Flecks of ash a hit shakes off, and what a death gives: smoke and ash. */
+	private static final int HURT_ASH = 8;
+	private static final int DEATH_SMOKE = 14;
+	private static final int DEATH_ASH = 30;
 	/** How far off the hull the figure stands, beyond the half width of the pod. */
 	private static final double HULL_GAP = 0.3;
 
@@ -68,17 +70,18 @@ public class LamplessFigure extends PathfinderMob {
 	private boolean cued;
 	/** The side of the hull the figure holds, as the direction from the pod to the figure. */
 	private Direction side = Direction.NORTH;
-	/** Litres taken from the pod this grip. */
-	private float taken;
-	/** Ticks of rotor thrust against the grip, less the ticks without. */
-	private int shake;
+	/** Ticks until the cutter bites again; 0 bites at once. */
+	private int biteIn;
+	/** Whether the pilot has been told that the cutter bites, this grip. */
+	private boolean bitten;
 
 	public LamplessFigure(EntityType<? extends LamplessFigure> type, Level level) {
 		super(type, level);
 	}
 
 	public static AttributeSupplier.Builder attributes() {
-		return createMobAttributes().add(Attributes.MOVEMENT_SPEED, CreatureTuning.DEFAULT.walkSpeed());
+		return createMobAttributes().add(Attributes.MOVEMENT_SPEED, CreatureTuning.DEFAULT.walkSpeed())
+				.add(Attributes.MAX_HEALTH, CreatureTuning.DEFAULT.maxHealth()).add(Attributes.KNOCKBACK_RESISTANCE, 1.0);
 	}
 
 	/** Loads the class so that the data id is assigned at startup, the same way on both sides. */
@@ -88,7 +91,6 @@ public class LamplessFigure extends PathfinderMob {
 	@Override
 	protected void defineSynchedData(SynchedEntityData.Builder builder) {
 		super.defineSynchedData(builder);
-		builder.define(FADE, 0);
 		builder.define(CLINGING, false);
 		builder.define(LAMP, false);
 	}
@@ -116,40 +118,25 @@ public class LamplessFigure extends PathfinderMob {
 	}
 
 	/**
-	 * Walks on whatever happens, turning at a wall; a light or a person on foot near it starts a fade, which does not turn back. A dark
-	 * pod within reach of its senses draws it, and it grabs the hull and takes fuel until it is shaken off, lit or full.
+	 * Walks on whatever happens, turning at a wall. A dark pod within reach of its senses draws it, and it grabs the hull and takes fuel
+	 * until it dies.
 	 */
 	@Override
 	protected void customServerAiStep(ServerLevel level) {
 		super.customServerAiStep(level);
 		CreatureTuning tuning = CreatureTuning.DEFAULT;
-		int fade = entityData.get(FADE);
-		if (fade >= tuning.fadeTicks()) {
-			release();
-			discard();
-			LamplessFigures.faded(level, natural);
-			return;
-		}
-		if (fade > 0) {
-			entityData.set(FADE, fade + 1);
-		}
 		if (grip != null) {
-			cling(level, tuning);
+			cling(tuning);
 			return;
 		}
-		boolean checking = tickCount % tuning.fadeCheckTicks() == 0;
-		if (fade == 0 && checking) {
-			if (isLit(level, tuning) || isApproached(level, tuning)) {
-				entityData.set(FADE, 1);
-				target = null;
-			} else {
-				target = nearestDarkPod(level, tuning.cling());
-				if (target != null && !cued) {
-					cued = warn(target);
-				}
+		boolean checking = tickCount % tuning.senseCheckTicks() == 0;
+		if (checking) {
+			target = nearestDarkPod(level, tuning.cling());
+			if (target != null && !cued) {
+				cued = warn(target);
 			}
 		}
-		if (fade == 0 && target != null && !target.isRemoved()) {
+		if (target != null && !target.isRemoved()) {
 			approach(target, tuning.cling(), checking);
 		} else {
 			wander();
@@ -185,8 +172,8 @@ public class LamplessFigure extends PathfinderMob {
 	private void latch(PodEntity pod) {
 		grip = pod;
 		target = null;
-		taken = 0;
-		shake = 0;
+		biteIn = 0;
+		bitten = false;
 		side = Direction.getApproximateNearest(getX() - pod.getX(), 0, getZ() - pod.getZ());
 		if (side.getAxis().isVertical()) {
 			side = Direction.NORTH;
@@ -200,32 +187,34 @@ public class LamplessFigure extends PathfinderMob {
 		}
 	}
 
-	/** Holds the hull, takes its fuel, and lets go when lit, shaken off, full, or when there is nothing left to take. */
-	private void cling(ServerLevel level, CreatureTuning tuning) {
+	/** Holds the hull and takes its fuel, until the pod is gone or the figure is dead. The cutter bites it while the pod drills. */
+	private void cling(CreatureTuning tuning) {
 		CreatureTuning.Cling cling = tuning.cling();
 		PodEntity pod = grip;
 		if (pod.isRemoved()) {
-			letGo();
+			release();
 			return;
 		}
-		boolean lit = PodLights.isLit(pod) || (tickCount % tuning.fadeCheckTicks() == 0 && isLit(level, tuning));
-		shake = isMoving(pod) ? shake + 1 : Math.max(0, shake - 1);
-		if (lit || shake >= cling.shakeTicks()) {
-			letGo();
-			return;
-		}
-		float took = PodFuel.drain(pod, cling.drainLitres() / 20f, cling.floorPercent());
-		taken += took;
-		if (took <= 0 || taken >= cling.fillLitres()) {
-			letGo();
-			return;
+		PodFuel.drain(pod, cling.drainLitres() / 20f, cling.floorPercent());
+		if (pod.drilling()) {
+			cut(pod, cling);
+		} else {
+			biteIn = 0;
 		}
 		holdTo(pod, cling);
 	}
 
-	/** Whether the pod is under way: the rotor is on, the treads carry it, or its drill bites in any direction, down a bore included. */
-	private static boolean isMoving(PodEntity pod) {
-		return pod.flying() || pod.drilling() || pod.getDeltaMovement().horizontalDistanceSqr() > MOVING_SPEED_SQR;
+	/** The pod's cutter bites the figure on its hull: the first bite as the drill starts, then one each {@code biteTicks}. */
+	private void cut(PodEntity pod, CreatureTuning.Cling cling) {
+		if (biteIn-- > 0) {
+			return;
+		}
+		biteIn = cling.biteTicks() - 1;
+		if (hurtServer((ServerLevel) level(), new DamageSource(level().damageSources().generic().typeHolder(), pod), cling.biteDamage()) && !bitten
+				&& pod.getControllingPassenger() instanceof ServerPlayer pilot) {
+			bitten = true;
+			pilot.sendOverlayMessage(Component.translatable("creature.deepcharter.bitten"));
+		}
 	}
 
 	/** Closes on its place on the hull, side by side with the pod, and faces the pod. */
@@ -240,13 +229,6 @@ public class LamplessFigure extends PathfinderMob {
 		setYRot(yaw);
 		setYHeadRot(yaw);
 		setYBodyRot(yaw);
-	}
-
-	private void letGo() {
-		release();
-		if (entityData.get(FADE) == 0) {
-			entityData.set(FADE, 1);
-		}
 	}
 
 	private void release() {
@@ -276,19 +258,47 @@ public class LamplessFigure extends PathfinderMob {
 				&& pod.fuel() > CreatureTuning.DEFAULT.cling().floorPercent();
 	}
 
-	private boolean isLit(ServerLevel level, CreatureTuning tuning) {
-		return level.getBrightness(LightLayer.BLOCK, blockPosition()) >= tuning.fadeBlockLight();
-	}
-
-	/** A person on foot near it. A pilot in a pod is not approaching: the pod is what draws it. */
-	private boolean isApproached(ServerLevel level, CreatureTuning tuning) {
-		return level.getNearestPlayer(getX(), getY(), getZ(), tuning.approachBlocks(), EntitySelector.NO_SPECTATORS.and(player -> !(player.getVehicle() instanceof PodEntity))) != null;
-	}
-
-	/** Nothing hurts it, a fall and an explosion included; only what bypasses invulnerability does: the void and /kill. */
+	/** Only a person's hand (a blow, an arrow) and the cutter of a pod hurt it; what the world does to it, a fall and an explosion included, does not. */
 	@Override
 	public boolean isInvulnerableTo(ServerLevel level, DamageSource source) {
-		return !source.is(DamageTypeTags.BYPASSES_INVULNERABILITY);
+		return !(source.is(DamageTypeTags.BYPASSES_INVULNERABILITY) || source.getEntity() instanceof Player || source.getDirectEntity() instanceof PodEntity);
+	}
+
+	/** A hit shows as ash shaken off it; the sound is {@link #getHurtSound}. */
+	@Override
+	public boolean hurtServer(ServerLevel level, DamageSource source, float damage) {
+		boolean hurt = super.hurtServer(level, source, damage);
+		if (hurt) {
+			level.sendParticles(ParticleTypes.ASH, getX(), getY() + 1.0, getZ(), HURT_ASH, 0.25, 0.6, 0.25, 0.02);
+		}
+		return hurt;
+	}
+
+	/** It lets go of the hull, the pilot is told, and it dissolves into smoke and ash. */
+	@Override
+	public void die(DamageSource source) {
+		boolean alreadyDead = dead;
+		super.die(source);
+		if (alreadyDead || !(level() instanceof ServerLevel level)) {
+			return;
+		}
+		if (grip != null && grip.getControllingPassenger() instanceof ServerPlayer pilot) {
+			pilot.sendOverlayMessage(Component.translatable("creature.deepcharter.dead"));
+		}
+		release();
+		level.sendParticles(ParticleTypes.LARGE_SMOKE, getX(), getY() + 1.0, getZ(), DEATH_SMOKE, 0.3, 0.8, 0.3, 0.02);
+		level.sendParticles(ParticleTypes.ASH, getX(), getY() + 1.0, getZ(), DEATH_ASH, 0.4, 0.9, 0.4, 0.02);
+		LamplessFigures.killed(level, natural);
+	}
+
+	@Override
+	protected SoundEvent getHurtSound(DamageSource source) {
+		return DeepSound.CREATURE_HURT.event();
+	}
+
+	@Override
+	protected SoundEvent getDeathSound() {
+		return DeepSound.CREATURE_DEATH.event();
 	}
 
 	@Override
@@ -318,9 +328,9 @@ public class LamplessFigure extends PathfinderMob {
 		this.heading = heading;
 	}
 
-	/** 0 when whole, up to 1 as it goes. */
+	/** 0 while it lives, up to 1 as a dead figure dissolves. */
 	public float fadeFraction() {
-		return Math.min(1f, entityData.get(FADE) / (float) CreatureTuning.DEFAULT.fadeTicks());
+		return Math.min(1f, deathTime / (float) DISSOLVE_TICKS);
 	}
 
 	/** Whether the figure holds a pod's hull. */

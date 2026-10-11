@@ -170,8 +170,6 @@ public class DesignTourScenario extends EvidenceScenario {
 	private static final float FADE_SHOT_ALPHA = 0.5f;
 	/** The tour's charter has this id on every run, so that its pods are painted the same colour on every run (ADR 0041: the slot is the id's hash). */
 	private static final CharterId TOUR_CHARTER = new CharterId(new UUID(0L, 0L));
-	/** How far the figure by the lit pod has faded in its still: half way. */
-	private static final float FIGURE_SHOT_FADE = 0.5f;
 
 	/** A room carved by the tour, in its dimension. */
 	private record LitRoom(ResourceKey<Level> dimension, Box box) {
@@ -235,7 +233,7 @@ public class DesignTourScenario extends EvidenceScenario {
 
 	/**
 	 * Holds still what moves on client ticks and frames and that no wait can settle (issue 309). The switches are in
-	 * {@link EvidencePins}. The breach fade and the fading figure are held only for their own still.
+	 * {@link EvidencePins}. The breach fade is held only for its own still.
 	 */
 	private void pinTheClient() {
 		EvidencePins.spritesFrozen = true;
@@ -905,8 +903,7 @@ public class DesignTourScenario extends EvidenceScenario {
 		still("lampless-figure-close");
 		serverDo(server -> figure.discard());
 
-		// A figure half faded by a lit pod. It stands at rest beside the pod and is drawn half faded, because a figure that walks into the
-		// light fades on its own clock and stands at a different place in every run.
+		// A figure beside a lit pod. It stands at rest beside the pod and stays whole: a light does not fade it (#485).
 		PodEntity lamp = spawnPod(PodRegistry.POD, 0, base.add(3, 0, 0), 0f, true);
 		awaitLight(lamp);
 		LamplessFigure walker = serverGet(server -> {
@@ -922,9 +919,7 @@ public class DesignTourScenario extends EvidenceScenario {
 			return f;
 		});
 		view(0, base.add(-1, 2.2, 7), base.add(-1, 1.2, 0), 30);
-		EvidencePins.figureFade = FIGURE_SHOT_FADE;
-		still("lampless-figure-fading-by-a-lit-pod");
-		EvidencePins.figureFade = -1f;
+		still("lampless-figure-by-a-lit-pod");
 		serverDo(server -> {
 			walker.discard();
 			lamp.discard();
