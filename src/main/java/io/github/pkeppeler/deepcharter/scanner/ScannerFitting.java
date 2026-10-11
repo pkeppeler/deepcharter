@@ -24,7 +24,6 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.Serials;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
-import io.github.pkeppeler.deepcharter.upgrade.PartLabel;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeEvents;
 
 /**
@@ -101,8 +100,7 @@ public final class ScannerFitting {
 		if (!registration.get().owner().equals(charter.get().id())) {
 			return Optional.of(Refusal.NOT_YOUR_POD);
 		}
-		Optional<PartLabel> held = PodComponents.partOf(pod, ComponentTrack.SCANNER);
-		if (held.isPresent() && held.get().charter().equals(charter.get().id())) {
+		if (PodComponents.partOf(pod, ComponentTrack.SCANNER, charter.get().id()).isPresent()) {
 			return Optional.of(Refusal.ALREADY_FITTED);
 		}
 		if (!Serials.get(server).isReadable()) {

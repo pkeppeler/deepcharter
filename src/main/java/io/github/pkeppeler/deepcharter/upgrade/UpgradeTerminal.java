@@ -106,12 +106,12 @@ public final class UpgradeTerminal {
 			// A part there would be void, and the refill would make the purchase a repair.
 			return Optional.of(UpgradeRefusal.NOT_REGISTERED.message());
 		}
-		Optional<PartLabel> held = PodComponents.partOf(pod, track);
-		if (track.firstTierCrafted() && (held.isEmpty() || !held.get().charter().equals(charter.id()))) {
+		Optional<PartLabel> held = PodComponents.partOf(pod, track, charter.id());
+		if (track.firstTierCrafted() && held.isEmpty()) {
 			// The crafted first tier is what a later tier replaces: buying past it would sell a scanner to a pod that never had one.
 			return Optional.of(UpgradeRefusal.NEEDS_FIRST_TIER.message());
 		}
-		if (held.isPresent() && held.get().charter().equals(charter.id()) && held.get().tier() >= tier) {
+		if (held.isPresent() && held.get().tier() >= tier) {
 			return Optional.of(UpgradeRefusal.NOT_AN_UPGRADE.message());
 		}
 		// Everything that can throw or refuse comes before the spend, so a charge always buys an install. A serial burnt by a later refusal is harmless.

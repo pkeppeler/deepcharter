@@ -158,6 +158,11 @@ public final class PodComponents {
 		return Optional.ofNullable(read(pod).parts().get(track));
 	}
 
+	/** The part of {@code track} on the pod, if it is stamped for {@code charter}. */
+	public static Optional<PartLabel> partOf(PodEntity pod, ComponentTrack track, CharterId charter) {
+		return partOf(pod, track).filter(label -> label.charter().equals(charter));
+	}
+
 	/**
 	 * The tier the pod gets from {@code track}: 0 for no part or a void one, and never above the chassis' cap. The scanner,
 	 * lights and radiator read this to know what they do.
