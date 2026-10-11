@@ -230,7 +230,7 @@
 <g><title>Layer 2: The Old Workings (Built)</title><rect x="408" y="426" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
 <text x="426" y="451" class="k" text-anchor="middle">📍</text>
 </g>
-<g><title>Layer palettes and grades (Planned)</title><rect x="450" y="426" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<g><title>Layer rock textures and grades (In progress)</title><rect x="450" y="426" width="36" height="36" rx="5" fill="#2a2018" stroke="#f0b429" stroke-width="3"/>
 <text x="468" y="451" class="k" text-anchor="middle">⚙️</text>
 </g>
 <g><title>Upper Levels (Built)</title><rect x="492" y="426" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
@@ -559,7 +559,7 @@
 <g><title>Company Rock (Built)</title><rect x="30" y="1098" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
 <image x="34" y="1102" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAwUlEQVR42mMws/P4TwlmABEyCmr/NfTMwDQyFhKRwBCDYZB6Lk5uhAGJuVX/YWx8GFkdigEgGp+NMIysDsUAEHZX4IdL4nMNSB2KAdgUI7sGl2FgA9bWmvynBDPE2Un9h2FbdaH/yHx8GKYWbEBrlApOA7KNRP7js4QBJEAJZsAVQOiBiE0dRjTiSnEg2svKACNGcKZEkGJkNnL8Y02JIAmQQlgCgSlG5iN7BeQ9kHq4ATBnohsAYyO7AiMlgghKMABcC4lSAdv9uQAAAABJRU5ErkJggg=="/>
 </g>
-<g><title>Company Rock look (Planned)</title><rect x="72" y="1098" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<g><title>Company Rock look (In progress)</title><rect x="72" y="1098" width="36" height="36" rx="5" fill="#2a2018" stroke="#f0b429" stroke-width="3"/>
 <text x="90" y="1123" class="k" text-anchor="middle">⚙️</text>
 </g>
 <g><title>Steer round it (Built)</title><rect x="114" y="1098" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
@@ -587,7 +587,7 @@
 <g><title>Kill it with the drill (Built)</title><rect x="752" y="1098" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
 <image x="756" y="1102" width="28" height="28" image-rendering="pixelated" style="image-rendering:pixelated" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAbElEQVR42mNgQAMyUir/8WEGfACkYG2tCV6M1xCYAXF2UlgxXgNAEu1TFvxPzK2CY4+gOBRsZufxX0ZBDbshyAZg04hXMzGuIMkAsmzH5QqibcflCpI04wpQsg0gSzO6IQNrANmakQ1hoDUAAJJ0w3fvUZ0NAAAAAElFTkSuQmCC"/>
 </g>
-<g><title>More common deep, facing the pod, a dim helmet light (Planned)</title><rect x="794" y="1098" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<g><title>More common deep, facing the pod, a dim helmet light (In progress)</title><rect x="794" y="1098" width="36" height="36" rx="5" fill="#2a2018" stroke="#f0b429" stroke-width="3"/>
 <text x="812" y="1123" class="k" text-anchor="middle">⚙️</text>
 </g>
 <g><title>Creatures and combat session (Planned)</title><rect x="836" y="1098" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
@@ -746,7 +746,7 @@
 <g><title>Skins (Built)</title><rect x="920" y="1368" width="36" height="36" rx="5" fill="#2a2018" stroke="#6fbf73" stroke-width="3"/>
 <text x="938" y="1393" class="k" text-anchor="middle">⚙️</text>
 </g>
-<g><title>Cockpit HUD with gauges (Planned)</title><rect x="962" y="1368" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<g><title>Cockpit HUD with gauges (In progress)</title><rect x="962" y="1368" width="36" height="36" rx="5" fill="#2a2018" stroke="#f0b429" stroke-width="3"/>
 <text x="980" y="1393" class="k" text-anchor="middle">⚙️</text>
 </g>
 <g><title>Front camera (Planned)</title><rect x="1004" y="1368" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
@@ -765,7 +765,7 @@
 <g><title>Lighting art (Planned)</title><rect x="156" y="1458" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
 <text x="174" y="1483" class="k" text-anchor="middle">⚙️</text>
 </g>
-<g><title>Salvage looks (Planned)</title><rect x="198" y="1458" width="36" height="36" rx="5" fill="#2a2018" stroke="#9e9e9e" stroke-width="3"/>
+<g><title>Salvage looks (In progress)</title><rect x="198" y="1458" width="36" height="36" rx="5" fill="#2a2018" stroke="#f0b429" stroke-width="3"/>
 <text x="216" y="1483" class="k" text-anchor="middle">⚙️</text>
 </g>
 <g><title>A public release (Idea)</title><rect x="240" y="1458" width="36" height="36" rx="5" fill="#2a2018" stroke="#757575" stroke-width="3" stroke-dasharray="3 2" opacity="0.7"/>
