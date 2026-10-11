@@ -16,18 +16,18 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
  * tier 1 or more. The scanner, lights, spoil hopper, liner, sounder and brace have no stock part: their tier 0 is "none".
  */
 public enum ComponentTrack implements StringRepresentable {
-	DRILL("drill", 6),
-	HULL("hull", 6),
-	ENGINE("engine", 6),
-	FUEL_TANK("fuel_tank", 6),
-	RADIATOR("radiator", 5),
-	CARGO_BAY("cargo_bay", 5),
-	SCANNER("scanner", 4),
-	LIGHTS("lights", 4),
-	SPOIL_HOPPER("spoil_hopper", 1),
-	LINER("liner", 2),
-	SOUNDER("sounder", 2),
-	BRACE("brace", 1);
+	DRILL("drill", 6, false),
+	HULL("hull", 6, false),
+	ENGINE("engine", 6, false),
+	FUEL_TANK("fuel_tank", 6, false),
+	RADIATOR("radiator", 5, false),
+	CARGO_BAY("cargo_bay", 5, false),
+	SCANNER("scanner", 4, true),
+	LIGHTS("lights", 4, false),
+	SPOIL_HOPPER("spoil_hopper", 1, false),
+	LINER("liner", 2, false),
+	SOUNDER("sounder", 2, false),
+	BRACE("brace", 1, false);
 
 	public static final Codec<ComponentTrack> CODEC = StringRepresentable.fromEnum(ComponentTrack::values);
 	public static final StreamCodec<ByteBuf, ComponentTrack> STREAM_CODEC =
@@ -35,10 +35,12 @@ public enum ComponentTrack implements StringRepresentable {
 
 	private final String id;
 	private final int maxTier;
+	private final boolean firstTierCrafted;
 
-	ComponentTrack(String id, int maxTier) {
+	ComponentTrack(String id, int maxTier, boolean firstTierCrafted) {
 		this.id = id;
 		this.maxTier = maxTier;
+		this.firstTierCrafted = firstTierCrafted;
 	}
 
 	@Override
@@ -53,6 +55,14 @@ public enum ComponentTrack implements StringRepresentable {
 	/** The best tier a part of this track comes in. */
 	public int maxTier() {
 		return maxTier;
+	}
+
+	/**
+	 * True when tier 1 of this track is made by the player and fitted from an item, and only the tiers above it are sold at the upgrade
+	 * terminal, each needing the one fitted first. The scanner: by the time a pilot needs a better one, hand mining is too slow.
+	 */
+	public boolean firstTierCrafted() {
+		return firstTierCrafted;
 	}
 
 	/** The id of this track's part item. */

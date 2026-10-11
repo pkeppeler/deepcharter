@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.gson.JsonObject;
+import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.core.BlockPos;
@@ -20,9 +21,11 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
@@ -52,6 +55,7 @@ import io.github.pkeppeler.deepcharter.pod.PodTowing;
 import io.github.pkeppeler.deepcharter.repair.RepairStation;
 import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
+import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalEvents;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
@@ -225,7 +229,7 @@ public class HandbookChaptersSixToNineTest {
 
 	/**
 	 * The scripted run: two players on one charter do what each chapter asks, and the chapters complete one after the other, for both
-	 * of them at each step. The scanner is bought at the upgrade terminal and the hull repaired at the repair station, through the
+	 * of them at each step. The scanner is fitted from the unit chapter 1 crafted and the hull repaired at the repair station, through the
 	 * real terminal actions; the breach crossing and the restore are the events those features fire (a real crossing is
 	 * {@code BreachCrossingTest}'s, a real restore is the next test's), and the pods and the players are really in the layers.
 	 */
@@ -265,7 +269,7 @@ public class HandbookChaptersSixToNineTest {
 						&& Charters.deposit(server, charter, 20_000).isEmpty(), "the second player should join the charter, which is then funded");
 				List<ServerPlayer> both = List.of(first, second);
 				// Chapters 1 to 5 are done by their own test; here they are done so that chapter 6 is the one the crew is on.
-				for (Item item : List.of(HandbookChaptersOneToFiveTest.ours("fungal_stalk"), Items.CRAFTING_TABLE, Items.STONE_AXE, HandbookChaptersOneToFiveTest.ours("scrap_iron"), Items.IRON_INGOT)) {
+				for (Item item : List.of(HandbookChaptersOneToFiveTest.ours("fungal_stalk"), Items.CRAFTING_TABLE, Items.STONE_AXE, HandbookChaptersOneToFiveTest.ours("scrap_iron"), Items.IRON_INGOT, HandbookChaptersOneToFiveTest.ours("scanner_unit"))) {
 					HandbookChaptersOneToFiveTest.give(first, item);
 				}
 				for (String directive : through(5)) {
@@ -278,7 +282,7 @@ public class HandbookChaptersSixToNineTest {
 				HandbookChaptersOneToFiveTest.stand(helper, director, terminal);
 				HandbookChaptersOneToFiveTest.stand(helper, crew, terminal);
 
-				// Chapter 6: the scanner is bought at the upgrade terminal, then finds ore.
+				// Chapter 6: the scanner crafted in chapter 1 is fitted to the Mole, then finds ore.
 				PodEntity mole = helper.spawn(PodRegistry.POD, 2, 1, 2);
 				pods.add(mole);
 				PodComponents.register(mole, charter);
@@ -289,9 +293,9 @@ public class HandbookChaptersSixToNineTest {
 				args.putInt(UpgradeTerminal.TIER_KEY, 1);
 				HandbookChaptersOneToFiveTest.expectDone(helper, Terminals.act(first, terminal, UpgradeTerminal.BUY, args), "buying a hull");
 				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "buying a part that is not a scanner", both, through(5));
-				args.putString(UpgradeTerminal.TRACK_KEY, ComponentTrack.SCANNER.id());
-				HandbookChaptersOneToFiveTest.expectDone(helper, Terminals.act(first, terminal, UpgradeTerminal.BUY, args), "buying a scanner");
-				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "buying a scanner", both, through(5, directive("seeing_below", "install_scanner")));
+				first.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ScannerRegistry.SCANNER_UNIT));
+				expect(helper, UseEntityCallback.EVENT.invoker().interact(first, mole.level(), InteractionHand.MAIN_HAND, mole, null).consumesAction(), "the scanner unit should fit the Mole");
+				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "fitting a scanner", both, through(5, directive("seeing_below", "install_scanner")));
 				BlockPos ore = mole.blockPosition().above(2);
 				helper.getLevel().setBlock(ore, Blocks.GOLD_ORE.defaultBlockState(), 3);
 				poll(mole);

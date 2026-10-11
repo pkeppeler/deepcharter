@@ -53,7 +53,7 @@ import io.github.pkeppeler.deepcharter.wreck.Wrecks;
  *       {@link #creditRepairs} completes the repair directives of every online player whose charter has not done them.</li>
  *   <li>A Mole with a pilot is polled every {@link HandbookTuning#triggerPollTicks()} ticks: boarding, flying, drilling down
  *       {@link HandbookTuning#drillDownBlocks()} blocks below the colony's ground, and returning to the colony after that.</li>
- *   <li>A scanner bought ({@link UpgradeEvents#BOUGHT}), a hull repaired at the repair station, the first breach crossed
+ *   <li>A scanner fitted from the crafted unit ({@link UpgradeEvents#FITTED}) or bought ({@link UpgradeEvents#BOUGHT}), a hull repaired at the repair station, the first breach crossed
  *       ({@link BreachEvents#CROSSED}) and a Prospector restored ({@link HangarEvents#RESTORED}) complete the directive of the
  *       player who did it.</li>
  *   <li>A pod with a pilot who has a working scanner is polled on the same ticks, until its charter has found ore: the scanner's own
@@ -107,6 +107,11 @@ public final class HandbookTriggers {
 		TerminalEvents.ACTED.register((server, type, player, action) -> onActed(type, player, action));
 		PodEvents.AFTER_TICK.register(HandbookTriggers::onPodTick);
 		UpgradeEvents.BOUGHT.register((server, player, pod, track, tier) -> {
+			if (track == ComponentTrack.SCANNER) {
+				Directives.fire(player, INSTALL_SCANNER);
+			}
+		});
+		UpgradeEvents.FITTED.register((server, player, pod, track, tier) -> {
 			if (track == ComponentTrack.SCANNER) {
 				Directives.fire(player, INSTALL_SCANNER);
 			}
