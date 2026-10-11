@@ -52,7 +52,7 @@ public final class FounderStatue {
 
 	/** Where the state of the hands is kept: inside the plinth, {@link #MARKER_DEPTH} blocks under the Host's feet, which is under any hands display. Empty before the colony is built. */
 	public static Optional<BlockPos> markerPos(MinecraftServer server) {
-		return Colony.anchor(server, ColonyAnchor.STATUE).map(anchor -> markerFor(anchor));
+		return Colony.anchor(server, ColonyAnchor.STATUE).map(FounderStatue::markerFor);
 	}
 
 	/** Takes the hands away: the displays that are found and the marker, which gives the plinth its plate back. For tests and for a dev who wants them gone. */

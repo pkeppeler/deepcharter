@@ -3,10 +3,11 @@
 // `// entity-query: <reason>`, a reason that says why the queried area is always loaded where the code runs (around the acting player
 // or pod, say) or that a miss is harmless. A gameplay decision or a cleanup that must not miss goes through saved data instead.
 //
-// What it flags: getEntitiesOfClass(, getEntities(, getNearbyEntities(, getNearestEntity(, getEntityGetter(, getAllEntities( and a lookup of
-// one entity by id, getEntity(<argument>) or getEntityOrPart(, or a method reference to any of them (level::getEntity). A call with no argument, DamageSource.getEntity(), is not one; a getEntity(
-// that ends its line is, because its argument is on the next. Comments and string literals are not scanned, and the marker's reason is
-// required. Known blind spot: the scan is line by line, so a name split from its own parenthesis by a line break slips through.
+// What it flags: getEntitiesOfClass(, getEntities(, getNearbyEntities(, getNearestEntity(, getEntityGetter(, getAllEntities(, getEntityOrPart(,
+// a lookup of one entity by id, getEntity(<argument>), and a method reference to any of them (level::getEntity). A call with no argument,
+// DamageSource.getEntity(), is not one; a getEntity( that ends its line is, because its argument is on the next. Comments and string
+// literals are not scanned, and the marker's reason is required. Known blind spot: the scan is line by line, so a name split from its own
+// parenthesis by a line break slips through.
 //
 // tools/tests/entity_query_gate_check.py runs the scan over fixture trees (checkGametestFixtures in gametest.gradle), so a change that
 // makes the pattern miss fails there, not silently.
