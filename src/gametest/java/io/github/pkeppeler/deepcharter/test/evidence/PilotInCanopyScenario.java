@@ -23,6 +23,7 @@ import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -70,13 +71,12 @@ public class PilotInCanopyScenario extends EvidenceScenario {
 
 	@Override
 	protected void run(ClientGameTestContext context) {
+		ClientChecks.withHudHidden(context, () -> runHidden(context));
+	}
+
+	private void runHidden(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			EvidenceWorld.pin(context, singleplayer);
-			context.runOnClient(client -> {
-				if (!client.gui.hud.isHidden()) {
-					client.gui.hud.toggle();
-				}
-			});
 			singleplayer.getServer().runOnServer(server -> {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 				player.setGameMode(GameType.CREATIVE);

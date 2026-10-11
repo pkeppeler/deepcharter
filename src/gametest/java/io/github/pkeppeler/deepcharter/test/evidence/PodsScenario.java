@@ -47,6 +47,7 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -152,6 +153,10 @@ public class PodsScenario extends EvidenceScenario {
 
 	@Override
 	protected void run(ClientGameTestContext context) {
+		ClientChecks.withHudHidden(context, () -> runHidden(context));
+	}
+
+	private void runHidden(ClientGameTestContext context) {
 		ctx = context;
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().setUseConsistentSettings(false)
 				.adjustSettings(state -> state.setSeed(SEED)).create()) {
@@ -174,7 +179,7 @@ public class PodsScenario extends EvidenceScenario {
 		}
 	}
 
-	/** Puts back, newest first, everything {@link #setUp} changed: the client's HUD and camera, the clocks, the weather, the game rules and the camera player. */
+	/** Puts back, newest first, everything {@link #setUp} changed: the client's camera, the clocks, the weather, the game rules and the camera player. */
 	private void undo() {
 		ctx.runOnClient(client -> clientUndo.reversed().forEach(step -> step.accept(client)));
 		serverDo(server -> serverUndo.reversed().forEach(step -> step.accept(server)));
@@ -254,17 +259,8 @@ public class PodsScenario extends EvidenceScenario {
 		});
 		ctx.runOnClient(client -> {
 			CameraType cameraType = client.options.getCameraType();
-			boolean hudHidden = client.gui.hud.isHidden();
-			clientUndo.add(undoClient -> {
-				undoClient.options.setCameraType(cameraType);
-				if (undoClient.gui.hud.isHidden() != hudHidden) {
-					undoClient.gui.hud.toggle();
-				}
-			});
+			clientUndo.add(undoClient -> undoClient.options.setCameraType(cameraType));
 			client.options.setCameraType(CameraType.FIRST_PERSON);
-			if (!hudHidden) {
-				client.gui.hud.toggle();
-			}
 		});
 	}
 

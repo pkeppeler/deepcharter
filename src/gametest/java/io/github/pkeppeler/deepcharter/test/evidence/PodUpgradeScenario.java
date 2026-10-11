@@ -18,6 +18,7 @@ import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.test.UpgradeTerminalClientTest;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
@@ -50,42 +51,31 @@ public class PodUpgradeScenario extends EvidenceScenario {
 
 	@Override
 	protected void run(ClientGameTestContext context) {
+		ClientChecks.withHudHidden(context, () -> runHidden(context));
+	}
+
+	private void runHidden(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			UpgradeTerminalClientTest.Scene scene = singleplayer.getServer().computeOnServer(UpgradeTerminalClientTest::setUp);
-			boolean[] hudWasHidden = {false};
-			context.runOnClient(client -> {
-				client.options.setCameraType(CameraType.FIRST_PERSON);
-				hudWasHidden[0] = client.gui.hud.isHidden();
-				if (!hudWasHidden[0]) {
-					client.gui.hud.toggle();
+			context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+			Vec3 pod = singleplayer.getServer().computeOnServer(server -> server.overworld().getEntity(scene.pod()).position());
+			singleplayer.getServer().runOnServer(server -> lookAt(server.getPlayerList().getPlayers().getFirst(), pod));
+			ClientWait.until(context, "the stock Mole drawn with the tricone", client -> cutter(client, scene).equals("tricone"), client -> cutter(client, scene));
+			context.waitTicks(10); // tick-wait: the view settles before the first frame
+			for (int i = 0; i < BEFORE_FRAMES; i++) {
+				turn(context, singleplayer, scene);
+				context.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
+				frame(context);
+				if (i == BEFORE_FRAMES / 2) {
+					screenshot(context, "before-tricone");
 				}
-			});
-			try {
-				Vec3 pod = singleplayer.getServer().computeOnServer(server -> server.overworld().getEntity(scene.pod()).position());
-				singleplayer.getServer().runOnServer(server -> lookAt(server.getPlayerList().getPlayers().getFirst(), pod));
-				ClientWait.until(context, "the stock Mole drawn with the tricone", client -> cutter(client, scene).equals("tricone"), client -> cutter(client, scene));
-				context.waitTicks(10); // tick-wait: the view settles before the first frame
-				for (int i = 0; i < BEFORE_FRAMES; i++) {
-					turn(context, singleplayer, scene);
-					context.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
-					frame(context);
-					if (i == BEFORE_FRAMES / 2) {
-						screenshot(context, "before-tricone");
-					}
-				}
-
-				// T0 to T1: the tricone becomes the stacked rings. T1 to T2: the stacked rings become the fluted auger (the Mole's cap).
-				buyAtTheTerminal(context, singleplayer, scene, 1, "stacked");
-				afterFrames(context, singleplayer, scene, "after-stacked");
-				buyAtTheTerminal(context, singleplayer, scene, 2, "fluted");
-				afterFrames(context, singleplayer, scene, "after-fluted");
-			} finally {
-				context.runOnClient(client -> {
-					if (client.gui.hud.isHidden() != hudWasHidden[0]) {
-						client.gui.hud.toggle();
-					}
-				});
 			}
+
+			// T0 to T1: the tricone becomes the stacked rings. T1 to T2: the stacked rings become the fluted auger (the Mole's cap).
+			buyAtTheTerminal(context, singleplayer, scene, 1, "stacked");
+			afterFrames(context, singleplayer, scene, "after-stacked");
+			buyAtTheTerminal(context, singleplayer, scene, 2, "fluted");
+			afterFrames(context, singleplayer, scene, "after-fluted");
 		}
 	}
 

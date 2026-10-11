@@ -16,6 +16,7 @@ import net.minecraft.world.level.block.Blocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 
 /**
@@ -45,6 +46,10 @@ public class MoleBoreScenario extends EvidenceScenario {
 
 	@Override
 	protected void run(ClientGameTestContext context) {
+		ClientChecks.withHudHidden(context, () -> runHidden(context));
+	}
+
+	private void runHidden(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			context.waitTicks(40);
 			singleplayer.getServer().runOnServer(server -> {
@@ -65,7 +70,6 @@ public class MoleBoreScenario extends EvidenceScenario {
 			context.runOnClient(client -> {
 				client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
 				client.player.setXRot(LOOK_DOWN);
-				client.gui.hud.toggle();
 			});
 			context.waitTicks(20);
 			frame(context);

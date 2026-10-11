@@ -33,6 +33,7 @@ import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActivity;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.texture.TextureProperties;
 
 /**
@@ -62,16 +63,8 @@ public class TextureLayersScenario extends EvidenceScenario {
 	@Override
 	protected void run(ClientGameTestContext context) {
 		ctx = context;
-		try {
-			shoot(context);
-		} finally {
-			// The HUD is hidden for the stills; a full-suite run goes on to tests that draw on it.
-			context.runOnClient(client -> {
-				if (client.gui.hud.isHidden()) {
-					client.gui.hud.toggle();
-				}
-			});
-		}
+		// The HUD is hidden for the stills; a full-suite run goes on to tests that draw on it.
+		ClientChecks.withHudHidden(context, () -> shoot(context));
 	}
 
 	private void shoot(ClientGameTestContext context) {
@@ -95,9 +88,6 @@ public class TextureLayersScenario extends EvidenceScenario {
 				client.options.setCameraType(CameraType.FIRST_PERSON);
 				client.options.particles().set(ParticleStatus.MINIMAL);
 				client.options.bobView().set(false);
-				if (!client.gui.hud.isHidden()) {
-					client.gui.hud.toggle();
-				}
 			});
 
 			Vec3 terminals = centre(0, 1.5, RADIUS);

@@ -32,6 +32,7 @@ import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -102,11 +103,14 @@ public class ReacherFigureScenario extends EvidenceScenario {
 
 	@Override
 	protected void run(ClientGameTestContext context) {
+		ClientChecks.withHudHidden(context, () -> runHidden(context));
+	}
+
+	private void runHidden(ClientGameTestContext context) {
 		ctx = context;
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			world = singleplayer;
 			CameraType cameraType = context.computeOnClient(client -> client.options.getCameraType());
-			boolean hudHidden = context.computeOnClient(client -> client.gui.hud.isHidden());
 			try {
 				setUp();
 				logLight();
@@ -116,12 +120,7 @@ public class ReacherFigureScenario extends EvidenceScenario {
 				lightForFade();
 				fade();
 			} finally {
-				context.runOnClient(client -> {
-					client.options.setCameraType(cameraType);
-					if (client.gui.hud.isHidden() != hudHidden) {
-						client.gui.hud.toggle();
-					}
-				});
+				context.runOnClient(client -> client.options.setCameraType(cameraType));
 			}
 		}
 	}
@@ -164,12 +163,7 @@ public class ReacherFigureScenario extends EvidenceScenario {
 		});
 		stand(EDGE, TOWARD_POD);
 		ClientWait.until(ctx, "the figure on the client", client -> client.level != null && client.level.getEntity(figureId) instanceof LamplessFigure);
-		ctx.runOnClient(client -> {
-			client.options.setCameraType(CameraType.FIRST_PERSON);
-			if (!client.gui.hud.isHidden()) {
-				client.gui.hud.toggle();
-			}
-		});
+		ctx.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
 	}
 
 	/**
