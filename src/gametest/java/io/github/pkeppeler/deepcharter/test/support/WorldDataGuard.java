@@ -13,6 +13,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
 
 import io.github.pkeppeler.deepcharter.charter.CharterData;
+import io.github.pkeppeler.deepcharter.colony.ColonyDisplays;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgressData;
 import io.github.pkeppeler.deepcharter.handbook.NotesData;
@@ -37,7 +38,8 @@ import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
  */
 public final class WorldDataGuard implements ModInitializer {
 	private static final List<SavedDataType<?>> WATCHED = List.of(CharterData.TYPE, ColonySite.TYPE, HandbookProgressData.TYPE,
-			NotesData.TYPE, HangarData.TYPE, WorkOrderData.TYPE, PodLightLedger.TYPE, Serials.TYPE, RepairState.TYPE, TransmissionData.TYPE);
+			NotesData.TYPE, HangarData.TYPE, WorkOrderData.TYPE, PodLightLedger.TYPE, Serials.TYPE, RepairState.TYPE, TransmissionData.TYPE,
+			ColonyDisplays.TYPE);
 	private static final Map<SavedDataType<?>, SavedData> SEEN = new HashMap<>();
 
 	@Override

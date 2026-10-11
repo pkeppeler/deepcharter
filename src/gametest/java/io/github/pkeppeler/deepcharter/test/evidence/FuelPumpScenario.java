@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.client.fuel.FuelPumpScreen;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.FuelPumpClientTest;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Evidence scenario "m2-fuel-pump" for #69: a charter with $20 opens the pump beside its pod, which has 2 of 10 litres, buys 5
@@ -18,7 +19,6 @@ public class FuelPumpScenario extends EvidenceScenario {
 	private static final int TICKS_PER_FRAME = 3;
 	private static final int TYPING_FRAMES = 45;
 	private static final int HOLD_FRAMES = 8;
-	private static final int WAIT_TICKS = 200;
 
 	@Override
 	protected String name() {
@@ -30,9 +30,10 @@ public class FuelPumpScenario extends EvidenceScenario {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
 			FuelPumpClientTest.Scene scene = singleplayer.getServer().computeOnServer(FuelPumpClientTest::setUp);
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.pump())));
-			context.waitForScreen(FuelPumpScreen.class);
+			ClientWait.screen(context, FuelPumpScreen.class);
 			FuelPumpScreen screen = context.computeOnClient(client -> (FuelPumpScreen) client.gui.screen());
-			context.waitFor(client -> ClientCharter.view().isPresent() && !Terminals.parkedPods(client.level, scene.pump()).isEmpty(), WAIT_TICKS);
+			ClientWait.until(context, "the charter view and a pod parked at the pump", client -> ClientCharter.view().isPresent() && !Terminals.parkedPods(client.level, scene.pump()).isEmpty(),
+					client -> "charter " + ClientCharter.view().isPresent() + ", parked pods " + Terminals.parkedPods(client.level, scene.pump()).size());
 			for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
 				context.waitTicks(TICKS_PER_FRAME);
 				frame(context);
@@ -42,12 +43,16 @@ public class FuelPumpScenario extends EvidenceScenario {
 
 			long start = FuelPumpClientTest.START_BALANCE;
 			context.clickScreenButton("BUY 5 L");
-			context.waitFor(client -> ClientCharter.view().get().balance() == start - 5, WAIT_TICKS);
+			ClientWait.until(context, "the charter's balance of " + (start - 5),
+					client -> ClientCharter.view().map(view -> view.balance() == start - 5).orElse(false),
+					client -> "the charter's balance of " + ClientCharter.view().map(view -> String.valueOf(view.balance())).orElse("(none)"));
 			hold(context);
 			screenshot(context, "pump-bought-5");
 
 			context.clickScreenButton("FILL UP");
-			context.waitFor(client -> ClientCharter.view().get().balance() == start - 8, WAIT_TICKS);
+			ClientWait.until(context, "the charter's balance of " + (start - 8),
+					client -> ClientCharter.view().map(view -> view.balance() == start - 8).orElse(false),
+					client -> "the charter's balance of " + ClientCharter.view().map(view -> String.valueOf(view.balance())).orElse("(none)"));
 			hold(context);
 			screenshot(context, "pump-full");
 			context.setScreen(() -> null);

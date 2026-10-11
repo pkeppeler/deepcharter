@@ -32,12 +32,11 @@ def directSwapMarker = "// world-data:"
 // and one in a file that reaches a layer level without LayerChain.dimension(.
 def carveMarker = "// room-carver:"
 def carveWrite = ~/\b(?:setBlock|setBlockState|setBlockAndUpdate|box|fill|fillFloor|fillRock)\s*\([^;]*\bBlocks\.(?:CAVE_)?AIR\b/
-// A client GameTest or client test support file that waits with context.waitFor(pred[, ticks]) or waitForScreen waits on a tick budget
+// A client GameTest, client test support file or evidence scenario (anything under test/evidence) that waits with context.waitFor(pred[, ticks]) or waitForScreen waits on a tick budget
 // (Fabric's default is 200 ticks). The client and server tick unthrottled, so the same budget is a different wall time under load,
 // and the test flakes (issues 262, 277). Wait with ClientWait.until or ClientWait.screen, which poll a wall-clock deadline and name
 // what they awaited and what they saw. A fixed span of ticks that is not a poll uses waitTicks. A waitFor that must stay carries the
 // comment below, with a reason, on its line or the one above; a bare marker, or one inside a string, does not count.
-// Evidence scenarios are not scanned.
 def tickWaitMarker = "// tick-wait:"
 // One rule for every marker in this file: `// <name>:` then a reason, on the line with literals blanked (blankLiterals), so a bare
 // marker or one inside a string, text block or char literal never counts. A gate asks hasMarker, never a plain contains.
@@ -56,6 +55,9 @@ def worldClockWrite = ~/\.\s*(?:setTotalTicks|setPaused|addTicks|setRate)\s*\(/
 // that toggles directly. The scan matches the names, not the receiver.
 def hudToggleMarker = "// hud-toggle:"
 def hudToggle = ~/\b(?:keyToggleGui|hideGui|KEY_F1)\b|\bhud\s*\.\s*toggle\s*\(/
+// The entity-query gate's scan (entity-query-gate.gradle), which checkGametestFixtures runs over fixture trees.
+def entityQueryProblems = project.ext.entityQueryProblems
+def entityQueryAdvice = project.ext.entityQueryAdvice
 def guardSource = file("src/gametest/java/io/github/pkeppeler/deepcharter/test/support/WorldDataGuard.java")
 // One scan of a source tree: the entrypoint lists, ordered, or a GradleException naming every problem. The task below writes the lists to
 // the mod json; checkGametestFixtures runs it over many fixture trees in one Gradle run (tools/tests/gate_batch.py).
@@ -94,7 +96,7 @@ def scan = { File javaRoot, String clientFilter, String order ->
 				}
 			}
 		}
-		if ((text =~ /\bimplements\s+[^{]*\bFabricClientGameTest\b/).find() || className.contains(".test.support.")) {
+		if ((text =~ /\bimplements\s+[^{]*\bFabricClientGameTest\b/).find() || className.contains(".test.support.") || className.contains(".test.evidence.")) {
 			def tickWait = text =~ tickWaitCall
 			while (tickWait.find()) {
 				def line = text.substring(0, tickWait.start()).count("\n")
@@ -214,7 +216,7 @@ def generateGametestModJson = tasks.register("generateGametestModJson") {
 	}
 }
 
-// -PfixtureCases=<json file>: [{"name", "root", "clientTests" (string or null)}, ...]. Runs the scan over each tree and writes
+// -PfixtureCases=<json file>: [{"name", "root", "clientTests" (string or null), "gate" (absent, or "entity_query" to run the entity-query gate over the tree instead)}, ...]. Runs the scan over each tree and writes
 // -PfixtureResults=<json file>: {name: {"ok", "message", "server", "client"}}. A tree the scan rejects is a result, not a build failure.
 tasks.register("checkGametestFixtures") {
 	def cases = file(providers.gradleProperty("fixtureCases").getOrElse("missing -PfixtureCases"))
@@ -227,6 +229,15 @@ tasks.register("checkGametestFixtures") {
 		def report = [:]
 		new groovy.json.JsonSlurper().parse(cases).each { c ->
 			try {
+				if (c.gate == "entity_query") {
+					def root = new File(c.root)
+					def problems = entityQueryProblems(root, root.toPath())
+					if (!problems.isEmpty()) {
+						throw new GradleException("Entity queries in production code. ${entityQueryAdvice}\n  " + problems.join("\n  "))
+					}
+					report[c.name] = [ok: true, message: "", server: [], client: []]
+					return
+				}
 				def found = scan(new File(c.root), c.clientTests, "name")
 				report[c.name] = [ok: true, message: "", server: found.server, client: found.client]
 			} catch (GradleException e) {

@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Evidence scenario "m2-ore-cargo": a pod loaded with six kinds of ore, and the player sneak-using it. The
@@ -43,7 +44,7 @@ public class OreCargoScenario extends EvidenceScenario {
 				UseEntityCallback.EVENT.invoker().interact(player, player.level(), InteractionHand.MAIN_HAND, pod, null);
 				player.setShiftKeyDown(false);
 			});
-			context.waitForScreen(OreCargoScreen.class);
+			ClientWait.screen(context, OreCargoScreen.class);
 			context.waitTicks(10);
 			frame(context);
 			screenshot(context, "ore-cargo-screen");

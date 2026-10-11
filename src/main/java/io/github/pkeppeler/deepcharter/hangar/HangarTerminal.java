@@ -96,7 +96,7 @@ public final class HangarTerminal {
 			return refuse("no_bay");
 		}
 		Charter charter = context.charter().orElseThrow(() -> new IllegalStateException("the hangar console is for charters only"));
-		long price = HangarTuning.DEFAULT.refurbishedPrice(Hangar.podsOf(server, data.get(), charter.id()));
+		long price = HangarTuning.DEFAULT.refurbishedPrice(data.get().podCount(charter.id()));
 		if (charter.account() < price) {
 			return refuse("insufficient_funds", price);
 		}
@@ -116,15 +116,17 @@ public final class HangarTerminal {
 		}
 		PodComponents.register(pod, charter.id());
 		String serial = PodComponents.registration(pod).orElseThrow().serial();
-		if (!level.addFreshEntity(pod)) {
-			return refuse("pod_failed");
-		}
+		// Spend before the pod enters the world: the hangar records a pod when it loads, so a refused spend leaves nothing to undo.
 		Optional<CharterRefusal> refusal = Charters.spend(server, charter.id(), price);
 		if (refusal.isPresent()) {
-			pod.discard();
 			throw new IllegalStateException("a purchase that passed the funds check was refused: " + refusal.get());
 		}
-		data.get().hold(charter.id(), pod.getUUID());
+		if (!level.addFreshEntity(pod)) {
+			Charters.deposit(server, charter.id(), price).ifPresent(failed -> {
+				throw new IllegalStateException("the refund of a pod that did not spawn was refused: " + failed);
+			});
+			return refuse("pod_failed");
+		}
 		context.player().sendOverlayMessage(Component.translatable("deepcharter.hangar.bought", pod.chassis().id().toUpperCase(Locale.ROOT), serial, price));
 		return Optional.empty();
 	}
@@ -140,6 +142,7 @@ public final class HangarTerminal {
 		Charter charter = context.charter().orElseThrow(() -> new IllegalStateException("the hangar console is for charters only"));
 		ServerPlayer player = context.player();
 		Vec3 console = Vec3.atCenterOf(context.pos());
+		// entity-query: wreckRadius round the console the player stands within reach of is within 30 blocks of the player, which tick at the lowest simulation distance (EntityQueryAuditTest measures it); a miss refuses before anything is spent
 		List<PodEntity> inReach = player.level().getEntitiesOfClass(PodEntity.class, new AABB(context.pos()).inflate(tuning.wreckRadius())).stream()
 				.filter(pod -> Wrecks.isWreck(pod) && !Hangar.isUnrepairedDerelict(data.get(), pod) && pod.position().distanceTo(console) <= tuning.wreckRadius())
 				.sorted(Comparator.comparingDouble(pod -> pod.position().distanceToSqr(console)))

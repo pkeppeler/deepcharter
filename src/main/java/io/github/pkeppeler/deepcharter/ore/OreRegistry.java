@@ -63,10 +63,6 @@ public final class OreRegistry {
 		return ITEMS.get(type);
 	}
 
-	public static Block block(OreType type) {
-		return BLOCKS.get(type);
-	}
-
 	/** A new stack of one ore. */
 	public static ItemStack stack(OreType type) {
 		return new ItemStack(item(type));

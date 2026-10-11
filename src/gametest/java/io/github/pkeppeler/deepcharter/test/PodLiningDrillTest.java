@@ -24,6 +24,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -95,7 +96,7 @@ public class PodLiningDrillTest {
 		int x = 3700;
 		ServerLevel level = layer(helper);
 		room(level, x);
-		level.setBlock(new BlockPos(x - 1, FLOOR - 1, Z - 1), OreRegistry.block(OreType.IRONIUM).defaultBlockState(), 3);
+		level.setBlock(new BlockPos(x - 1, FLOOR - 1, Z - 1), OreBlocks.of(OreType.IRONIUM).defaultBlockState(), 3);
 		Rig rig = Rig.await(helper, level, x, "spoil-ore", (pod, pilot) -> fitHopper(helper, pod, pilot));
 		helper.onEachTick(() -> {
 			if (!rig.ready() || !slabBored(level, x)) {
@@ -117,7 +118,7 @@ public class PodLiningDrillTest {
 		int x = 3892;
 		ServerLevel level = layer(helper);
 		room(level, x);
-		level.setBlock(new BlockPos(x - 1, FLOOR - 1, Z - 1), OreRegistry.block(OreType.IRONIUM).defaultBlockState(), 3);
+		level.setBlock(new BlockPos(x - 1, FLOOR - 1, Z - 1), OreBlocks.of(OreType.IRONIUM).defaultBlockState(), 3);
 		Rig rig = Rig.await(helper, level, x, "spoil-none", (pod, pilot) -> {
 		});
 		helper.onEachTick(() -> {

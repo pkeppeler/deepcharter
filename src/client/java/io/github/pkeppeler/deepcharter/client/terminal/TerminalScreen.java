@@ -76,14 +76,6 @@ public final class TerminalScreen extends CrtScreen implements TerminalViewScree
 		rebuildWidgets();
 	}
 
-	public TerminalView view() {
-		return view;
-	}
-
-	public boolean online() {
-		return view.repaired();
-	}
-
 	@Override
 	public Typewriter typewriter() {
 		return typewriter;

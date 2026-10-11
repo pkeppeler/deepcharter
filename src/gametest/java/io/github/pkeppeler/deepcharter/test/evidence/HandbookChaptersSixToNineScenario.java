@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Evidence scenario "m2-handbook-chapters-6-9" for #84: the pages of chapters 6 to 9 and the end page that follows them. Chapters 1 to
@@ -54,7 +55,7 @@ public class HandbookChaptersSixToNineScenario extends EvidenceScenario {
 
 			List<HandbookPage> pages = HandbookPages.of(chapters, done);
 			context.setScreen(() -> new HandbookScreen(pages, id -> true, id -> { }, List.of()));
-			context.waitForScreen(HandbookScreen.class);
+			ClientWait.screen(context, HandbookScreen.class);
 			context.waitTicks(2);
 			HandbookScreen screen = context.computeOnClient(client -> (HandbookScreen) client.gui.screen());
 			boolean first = true;

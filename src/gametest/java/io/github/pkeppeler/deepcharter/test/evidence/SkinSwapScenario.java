@@ -23,6 +23,7 @@ import net.minecraft.world.level.block.Blocks;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Evidence scenario "skin-swap" (#258, #243, ADR 0040): the Mole as shipped, then the same Mole after a throwaway resource pack is
@@ -69,7 +70,8 @@ public class SkinSwapScenario extends EvidenceScenario {
 					}
 					client.options.updateResourcePacks(repository);
 				});
-				context.waitFor(client -> moleModelPack(client).equals(PACK_ID));
+				ClientWait.until(context, "the mole model from pack " + PACK_ID, client -> moleModelPack(client).equals(PACK_ID),
+					client -> "the mole model from pack " + moleModelPack(client));
 				// The loading overlay is still fading out for a moment after the reload.
 				context.waitTicks(100);
 				screenshot(context, "skin-swapped");
@@ -87,7 +89,8 @@ public class SkinSwapScenario extends EvidenceScenario {
 			} finally {
 				context.runOnClient(client -> removePack(client));
 				// Let the reload finish before the world closes; a reload still running at shutdown crashes the client.
-				context.waitFor(client -> !moleModelPack(client).equals(PACK_ID));
+				ClientWait.until(context, "the mole model back from pack " + PACK_ID, client -> !moleModelPack(client).equals(PACK_ID),
+					client -> "the mole model from pack " + moleModelPack(client));
 				context.waitTicks(100);
 				deleteTree(pack);
 			}

@@ -31,6 +31,9 @@ fail() {
   echo "pre-push: $1 failed. Fix it, or skip the hook once with: git push --no-verify" >&2
   exit 1
 }
+echo "pre-push: conflict markers" >&2
+python3 -I tools/tests/conflict_markers.py \
+  || fail "conflict markers"
 echo "pre-push: compile and checkstyle (waits if another Gradle build holds the lock; Ctrl-C and push with --no-verify to skip)" >&2
 ./gradlew -q compileJava compileClientJava compileGametestJava checkstyleMain checkstyleClient checkstyleGametest \
   || fail "compile or checkstyle"
@@ -43,6 +46,6 @@ if command -v shellcheck >/dev/null 2>&1; then
 else
   echo "pre-push: shellcheck not found, skipping it (CI runs it)" >&2
 fi
-echo "pre-push: gate checks on fixtures: room-carver, client-test filter, tick-wait, world-data, world-clock, hud-toggle (one Gradle run)" >&2
+echo "pre-push: gate checks on fixtures: room-carver, client-test filter, tick-wait, world-data, world-clock, hud-toggle, test-only, entity-query (one Gradle run)" >&2
 python3 -I tools/tests/gate_checks.py \
-  || fail "gate checks (room-carver, client-test filter, tick-wait, world-data, world-clock, hud-toggle)"
+  || fail "gate checks (room-carver, client-test filter, tick-wait, world-data, world-clock, hud-toggle, test-only, entity-query)"

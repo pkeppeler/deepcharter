@@ -45,6 +45,7 @@ import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.Serials;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.OreCargoSlots;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -686,9 +687,9 @@ public class PodComponentsTest {
 			if (!(player.player().containerMenu instanceof OreCargoMenu menu) || menu.cargoSlots() != 25) {
 				throw failure(helper, "a tier 2 bay's menu should have 25 slots, got %s", player.player().containerMenu);
 			}
-			if (menu.slots.size() != 25 || menu.shownOre().size() != 12) {
+			if (menu.slots.size() != 25 || OreCargoSlots.shown(menu).size() != 12) {
 				throw failure(helper, "the menu should have 25 slots and show all 12 ore, has %d slots and shows %d",
-						menu.slots.size(), menu.shownOre().size());
+						menu.slots.size(), OreCargoSlots.shown(menu).size());
 			}
 			helper.succeed();
 		} finally {

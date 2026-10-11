@@ -202,6 +202,7 @@ public final class HandbookTriggers {
 	}
 
 	private static boolean prospectorWreckNear(ServerLevel level, ServerPlayer player) {
+		// entity-query: 10 blocks round the player, whose chunks are entity-ticking; a miss only delays a one-way directive to the next poll
 		return !level.getEntitiesOfClass(PodEntity.class, player.getBoundingBox().inflate(HandbookTuning.DEFAULT.findProspectorBlocks()),
 				pod -> pod.chassis().equals(Chassis.PROSPECTOR) && Wrecks.isWreck(pod)).isEmpty();
 	}

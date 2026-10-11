@@ -12,10 +12,15 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.level.GameType;
 
 import io.github.pkeppeler.deepcharter.test.ClientTestLog;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Base class for PR evidence scenarios. Run with tools/record-evidence.sh, which sets
@@ -32,6 +37,7 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
 	private static final int HEIGHT = 480;
 	private static final float FLOAT_YAW_EAST = -90f;
 	private static final float FLOAT_PITCH_DOWN = 85f;
+	private static final int MINE_LIMIT_TICKS = 160;
 
 	private int frame;
 	private Path framesDir;
@@ -87,6 +93,38 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
 			player.setGameMode(GameType.SPECTATOR);
 			player.teleportTo(player.level(), x, y, z, Set.of(), FLOAT_YAW_EAST, FLOAT_PITCH_DOWN, true);
 		});
+	}
+
+	/** Waits for the client to have joined the world: a player and a level. */
+	protected static void awaitWorld(ClientGameTestContext context) {
+		ClientWait.until(context, "the player and level of the world", client -> client.player != null && client.level != null);
+	}
+
+	/**
+	 * Looks at the block and mines it as the attack button does, through the game mode: one start and then one continue on every tick, with a
+	 * swing, so the crack shows. A frame every {@code ticksPerFrame} ticks. (The test client's mouse is not grabbed, so a held button does nothing.)
+	 */
+	protected final void mineBlock(ClientGameTestContext context, TestSingleplayerContext singleplayer, BlockPos target, int ticksPerFrame) {
+		context.getInput().lookAt(target);
+		for (int tick = 0; tick < MINE_LIMIT_TICKS; tick++) {
+			boolean first = tick == 0;
+			context.runOnClient(client -> {
+				if (first) {
+					client.gameMode.startDestroyBlock(target, Direction.SOUTH);
+				} else {
+					client.gameMode.continueDestroyBlock(target, Direction.SOUTH);
+				}
+				client.player.swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, false);
+			});
+			context.waitTicks(1); // tick-wait: the mining is one call a tick
+			if (tick % ticksPerFrame == 1) {
+				frame(context);
+			}
+			if (singleplayer.getServer().computeOnServer(server -> server.overworld().getBlockState(target).isAir())) {
+				return;
+			}
+		}
+		throw new AssertionError("the block at " + target.toShortString() + " was not broken in " + MINE_LIMIT_TICKS + " ticks bare handed");
 	}
 
 	/** Take a named still screenshot. */
