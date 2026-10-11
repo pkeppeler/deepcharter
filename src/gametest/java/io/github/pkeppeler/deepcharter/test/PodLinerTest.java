@@ -29,7 +29,6 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
-import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -41,6 +40,7 @@ import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
@@ -342,10 +342,10 @@ public class PodLinerTest {
 		BlockPos ore = new BlockPos(x + 1, FLOOR + 1, Z);
 		ringTest(helper, x, 1, 10, level -> {
 			level.setBlock(companyRock, HazardBlocks.COMPANY_ROCK.defaultBlockState(), 3);
-			level.setBlock(ore, OreRegistry.block(OreType.IRONIUM).defaultBlockState(), 3);
+			level.setBlock(ore, OreBlocks.of(OreType.IRONIUM).defaultBlockState(), 3);
 		}, state -> {
 			ServerLevel level = layer(helper);
-			if (!level.getBlockState(companyRock).is(HazardBlocks.COMPANY_ROCK) || !level.getBlockState(ore).is(OreRegistry.block(OreType.IRONIUM))
+			if (!level.getBlockState(companyRock).is(HazardBlocks.COMPANY_ROCK) || !level.getBlockState(ore).is(OreBlocks.of(OreType.IRONIUM))
 					|| bricksIn(level, ringCells(x)) != 2 || state.bricks() != 8) {
 				throw failure(helper, "company rock and ore stay and the two open cells are lined with 2 bricks, lined %s, rack %s", bricksIn(level, ringCells(x)), state.bricks());
 			}
@@ -467,7 +467,7 @@ public class PodLinerTest {
 		ServerLevel level = layer(helper);
 		shaft(level, x, 8, false);
 		for (BlockPos cell : ringCells(x).subList(0, blocked)) {
-			level.setBlock(cell, OreRegistry.block(OreType.IRONIUM).defaultBlockState(), 3);
+			level.setBlock(cell, OreBlocks.of(OreType.IRONIUM).defaultBlockState(), 3);
 		}
 		MockPlayer pilot = owner(helper);
 		pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);

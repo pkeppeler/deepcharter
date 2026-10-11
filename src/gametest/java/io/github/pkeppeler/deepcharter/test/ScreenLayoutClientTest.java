@@ -67,6 +67,7 @@ import io.github.pkeppeler.deepcharter.test.support.CrtDemoScreen;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
 import io.github.pkeppeler.deepcharter.test.support.ShippedNotes;
+import io.github.pkeppeler.deepcharter.test.support.UpgradeShown;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeView;
@@ -96,6 +97,8 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
 	private static final int WIDTH = 427;
 	private static final int HEIGHT = 240;
 	private static final BlockPos POS = new BlockPos(0, 64, 0);
+	/** A step that types out any intro in one go. */
+	private static final double TYPING_SECONDS = 3600;
 	/** The longest a charter or player name can be. */
 	private static final int NAME_LENGTH = CharterTuning.DEFAULT.maxNameLength();
 
@@ -375,7 +378,7 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
 		return problems;
 	}
 
-	/** A typewriter draws the text it has revealed, so the layout is checked with all of it revealed. The screen keeps its typewriters in a private map. */
+	/** A typewriter draws the text it has revealed, so the layout is checked with all of it revealed: a step long enough to type any intro. The screen keeps its typewriters in a private map. */
 	private static void finishTyping(Screen screen) {
 		if (!(screen instanceof CrtScreen)) {
 			return;
@@ -383,7 +386,7 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
 		try {
 			Field field = CrtScreen.class.getDeclaredField("typewriters");
 			field.setAccessible(true);
-			((Map<?, ?>) field.get(screen)).keySet().forEach(writer -> ((Typewriter) writer).skip());
+			((Map<?, ?>) field.get(screen)).keySet().forEach(writer -> ((Typewriter) writer).advance(TYPING_SECONDS));
 		} catch (ReflectiveOperationException e) {
 			throw new AssertionError("CrtScreen has no field typewriters; the gate reads it by name", e);
 		}
@@ -461,10 +464,8 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
 				String label = context.computeOnClient(client -> Component.translatable("screen.deepcharter.upgrade.track",
 						Component.translatable("deepcharter.upgrade.track." + track.id()).getString(), track.maxTier()).getString());
 				UpgradeScreen upgrade = (UpgradeScreen) screen;
-				if (upgrade.selected() != track) {
-					context.clickScreenButton(label);
-				}
-				ClientWait.until(context, "the track " + track.id() + " selected", client -> upgrade.selected() == track);
+				context.clickScreenButton(label);
+				ClientWait.until(context, "the track " + track.id(), client -> UpgradeShown.isChosen(upgrade, track));
 				return List.of();
 			}));
 		}

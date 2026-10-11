@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -171,6 +172,8 @@ public class DesignTourScenario extends EvidenceScenario {
 	private static final float FADE_SHOT_ALPHA = 0.5f;
 	/** The tour's charter has this id on every run, so that its pods are painted the same colour on every run (ADR 0041: the slot is the id's hash). */
 	private static final CharterId TOUR_CHARTER = new CharterId(new UUID(0L, 0L));
+	/** The kit's blocks: the public block fields of {@link ColonyKit}. */
+	private static final Set<Block> KIT = kitBlocks();
 	/** How far the figure by the lit pod has faded in its still: half way. */
 	private static final float FIGURE_SHOT_FADE = 0.5f;
 
@@ -552,9 +555,23 @@ public class DesignTourScenario extends EvidenceScenario {
 		EvidenceWorld.skyPhase(ctx, sp, EvidenceWorld.SKY_BRIGHTEST);
 	}
 
+	private static Set<Block> kitBlocks() {
+		Set<Block> blocks = new HashSet<>();
+		for (Field field : ColonyKit.class.getFields()) {
+			if (Block.class.isAssignableFrom(field.getType())) {
+				try {
+					blocks.add((Block) field.get(null));
+				} catch (IllegalAccessException e) {
+					throw new IllegalStateException("cannot read the kit block " + field.getName(), e);
+				}
+			}
+		}
+		return blocks;
+	}
+
 	/** A block of the colony's kit: what the colony is made of, so a view of the town or of a wall of it has a subject. */
 	private static boolean isColony(BlockState state) {
-		return ColonyKit.all().contains(state.getBlock()) || state.is(ColonyBlocks.CONDUIT) || state.is(ColonyBlocks.COMPANY_LAMP);
+		return KIT.contains(state.getBlock()) || state.is(ColonyBlocks.CONDUIT) || state.is(ColonyBlocks.COMPANY_LAMP);
 	}
 
 	private void colonyTour() {

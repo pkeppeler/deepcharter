@@ -27,7 +27,6 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
-import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
@@ -39,6 +38,7 @@ import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OddPods;
+import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 
 /**
@@ -157,7 +157,7 @@ public class PodLiningTest {
 		BlockPos ore = new BlockPos(5, 3, 6);
 		BlockPos stone = new BlockPos(5, 2, 3);
 		helper.setBlock(companyRock, HazardBlocks.COMPANY_ROCK);
-		helper.setBlock(ore, OreRegistry.block(OreType.IRONIUM));
+		helper.setBlock(ore, OreBlocks.of(OreType.IRONIUM));
 		Rig rig = seat(helper, "Lining pilot", 20);
 
 		List<BlockPos> plan = PodLining.cellsToLine(rig.pod);
@@ -183,7 +183,7 @@ public class PodLiningTest {
 			if (!isBrick(helper, lava) || bricksIn(helper, ringEast()) != 4) {
 				throw failure(helper, "the lava cell and the four cave cells should be slag brick now");
 			}
-			if (!helper.getBlockState(companyRock).is(HazardBlocks.COMPANY_ROCK) || !helper.getBlockState(ore).is(OreRegistry.block(OreType.IRONIUM))
+			if (!helper.getBlockState(companyRock).is(HazardBlocks.COMPANY_ROCK) || !helper.getBlockState(ore).is(OreBlocks.of(OreType.IRONIUM))
 					|| !helper.getBlockState(stone).is(Blocks.STONE)) {
 				throw failure(helper, "company rock, ore and stone must be left as they are");
 			}

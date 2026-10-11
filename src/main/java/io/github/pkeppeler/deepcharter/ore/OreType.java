@@ -32,11 +32,6 @@ public enum OreType {
 		return value;
 	}
 
-	/** The original's mass for one, before scaling to pod units. */
-	public int referenceMass() {
-		return referenceMass;
-	}
-
 	/** Mass of one in pod units, the unit of engine power: what it adds to a pod's cargo mass and to a carrier's load. */
 	public float mass() {
 		return referenceMass * OreTuning.DEFAULT.massScale();

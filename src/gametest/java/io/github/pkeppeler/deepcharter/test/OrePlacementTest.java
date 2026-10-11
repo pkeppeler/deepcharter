@@ -45,6 +45,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -136,11 +137,11 @@ public class OrePlacementTest {
 			expectPresence(helper, zone, sample[zone], HazardBlocks.COMPANY_ROCK, rock);
 			expectPresence(helper, zone, sample[zone], Blocks.LAVA, lavaAndGas);
 			expectPresence(helper, zone, sample[zone], HazardBlocks.GAS_POCKET, lavaAndGas);
-			expectPresence(helper, zone, sample[zone], OreRegistry.block(OreType.CICATRIUM), zone >= 4);
+			expectPresence(helper, zone, sample[zone], OreBlocks.of(OreType.CICATRIUM), zone >= 4);
 		}
 		for (int zone = 4; zone < 6; zone++) {
-			int cicatrium = sample[zone].of(OreRegistry.block(OreType.CICATRIUM));
-			int platinium = sample[zone].of(OreRegistry.block(OreType.PLATINIUM));
+			int cicatrium = sample[zone].of(OreBlocks.of(OreType.CICATRIUM));
+			int platinium = sample[zone].of(OreBlocks.of(OreType.PLATINIUM));
 			if (cicatrium >= platinium) {
 				throw failure(helper, "%s has %d cicatrium and %d platinium: cicatrium is the rarer", ZONE_NAMES[zone], cicatrium, platinium);
 			}
@@ -187,7 +188,7 @@ public class OrePlacementTest {
 		kept.put(centre.west(), HazardBlocks.COMPANY_ROCK);
 		kept.put(centre.south(), Blocks.LAVA);
 		kept.put(centre.east().north().below(), Blocks.DIRT);
-		cleared.put(centre.east().above(), OreRegistry.block(OreType.IRONIUM));
+		cleared.put(centre.east().above(), OreBlocks.of(OreType.IRONIUM));
 		cleared.put(centre.west().above(), HazardBlocks.GAS_POCKET);
 		cleared.put(centre.north(), Blocks.STONE);
 		cleared.put(centre.east().south().above(), Blocks.DEEPSLATE);
@@ -222,7 +223,7 @@ public class OrePlacementTest {
 	@GameTest
 	public void theBlastIsNaturalRockByTagAndCompanyRockIsNot(GameTestHelper helper) {
 		BlockState[] natural = {Blocks.STONE.defaultBlockState(), Blocks.DEEPSLATE.defaultBlockState(),
-				OreRegistry.block(OreType.EINSTEINIUM).defaultBlockState(), HazardBlocks.GAS_POCKET.defaultBlockState()};
+				OreBlocks.of(OreType.EINSTEINIUM).defaultBlockState(), HazardBlocks.GAS_POCKET.defaultBlockState()};
 		BlockState[] other = {Blocks.OAK_PLANKS.defaultBlockState(), Blocks.STONE_BRICKS.defaultBlockState(),
 				HazardBlocks.COMPANY_ROCK.defaultBlockState(), Blocks.LAVA.defaultBlockState(), Blocks.AIR.defaultBlockState()};
 		for (BlockState state : natural) {
@@ -352,7 +353,7 @@ public class OrePlacementTest {
 		ServerLevel one = layer(helper, 1);
 		ServerLevel two = layer(helper, 2);
 		BlockPos pos = new BlockPos(7200, 80, Z);
-		Block ironium = OreRegistry.block(OreType.IRONIUM);
+		Block ironium = OreBlocks.of(OreType.IRONIUM);
 		mock.teleportTo(two, Vec3.atBottomCenterOf(pos.above(4)), 0, 0);
 		mock.player().setGameMode(GameType.SURVIVAL);
 		two.setBlock(pos, ironium.defaultBlockState(), 3);
@@ -361,8 +362,8 @@ public class OrePlacementTest {
 		}
 		for (OreType type : OreType.values()) {
 			BlockPos other = pos.east(1 + type.ordinal());
-			two.setBlock(other, OreRegistry.block(type).defaultBlockState(), 3);
-			if (mock.player().gameMode.destroyBlock(other) || !two.getBlockState(other).is(OreRegistry.block(type))) {
+			two.setBlock(other, OreBlocks.of(type).defaultBlockState(), 3);
+			if (mock.player().gameMode.destroyBlock(other) || !two.getBlockState(other).is(OreBlocks.of(type))) {
 				throw failure(helper, "a survival player broke %s by hand in layer_2", type.blockId());
 			}
 		}
@@ -639,7 +640,7 @@ public class OrePlacementTest {
 		OreType[] types = OreType.values();
 		Block[] blocks = new Block[types.length];
 		for (int i = 0; i < types.length; i++) {
-			blocks[i] = OreRegistry.block(types[i]);
+			blocks[i] = OreBlocks.of(types[i]);
 		}
 		return blocks;
 	}

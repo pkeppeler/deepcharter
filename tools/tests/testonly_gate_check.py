@@ -401,6 +401,11 @@ class TestOnlyGateTest(unittest.TestCase):
         self.assertEqual(1, done.returncode)
         self.assertIn("cannot load fx/Missing, a supertype of fx/Child", done.stderr)
 
+    def test_no_baseline_grandfathers_nothing(self):
+        done = self.red.scan()
+        self.assertEqual(1, done.returncode)
+        self.assertEqual(set(self.red.expected()), findings(done))
+
     def test_a_baseline_entry_still_passes(self):
         done = self.red.scan([key for *_, key, _ in RED])
         self.assertEqual(0, done.returncode, done.stderr)
