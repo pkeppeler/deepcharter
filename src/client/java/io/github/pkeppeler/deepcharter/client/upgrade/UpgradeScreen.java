@@ -105,15 +105,14 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 	protected void layout() {
 		int left = contentLeft(MARGIN);
 		int rowGap = PanelLook.drawn() ? 0 : ROW_GAP;
-		int pitch = PITCH;
-		int rowHeight = pitch - rowGap;
+		int rowHeight = PITCH - rowGap;
 		int visible = visibleTracks();
 		firstTrack = Mth.clamp(firstTrack, 0, Math.max(0, ComponentTrack.values().length - visible));
 		trackButtons.clear();
 		int trackWidth = Math.max(TRACK_WIDTH, widestTrackLabel() + LABEL_ROOM);
 		int tierX = left + trackWidth + COLUMN_GAP;
 		// Close sits under the longest list of tiers, so it stays on the screen however many tracks the left column holds.
-		int closeY = listTop() + Arrays.stream(ComponentTrack.values()).mapToInt(ComponentTrack::maxTier).max().orElse(0) * pitch + rowGap;
+		int closeY = listTop() + Arrays.stream(ComponentTrack.values()).mapToInt(ComponentTrack::maxTier).max().orElse(0) * PITCH + rowGap;
 		hintX = tierX + CLOSE_WIDTH + COLUMN_GAP;
 		hintY = closeY + (rowHeight - font.lineHeight) / 2;
 		addRenderableWidget(new CrtButton(tierX, closeY, CLOSE_WIDTH, rowHeight,
@@ -130,7 +129,7 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 			if (track.ordinal() < firstTrack || track.ordinal() >= firstTrack + visible) {
 				continue;
 			}
-			CrtButton button = addRenderableWidget(new CrtButton(left, listTop() + (track.ordinal() - firstTrack) * pitch, trackWidth, rowHeight, label, pressed -> select(track)).marked(track == selected));
+			CrtButton button = addRenderableWidget(new CrtButton(left, listTop() + (track.ordinal() - firstTrack) * PITCH, trackWidth, rowHeight, label, pressed -> select(track)).marked(track == selected));
 			trackButtons.add(button);
 		}
 		UpgradeView.Slot held = slotOf(pod, selected);
@@ -150,7 +149,7 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 					: crafted ? Component.translatable("screen.deepcharter.upgrade.crafted", tier)
 					: needsFirst ? Component.translatable("screen.deepcharter.upgrade.needs_first", tier, price)
 					: Component.translatable("screen.deepcharter.upgrade.buy", tier, price, capped);
-			CrtButton button = addRenderableWidget(new CrtButton(tierX, listTop() + (tier - 1) * pitch,
+			CrtButton button = addRenderableWidget(new CrtButton(tierX, listTop() + (tier - 1) * PITCH,
 					tierWidth, rowHeight, label, pressed -> buy(selected, offered)));
 			// An unregistered pod (no serial) takes no parts: they would be void.
 			button.active = !here && !crafted && !needsFirst && balance >= price && !pod.serial().isEmpty();

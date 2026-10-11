@@ -11,11 +11,10 @@ import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
 /**
- * The heat shield (#482), rung 3 of the lava ladder: a hull glaze of slag brick. While lava touches a shielded pod, each tick's lava damage is soaked by
- * burning a brick, {@link PodHeatShieldTuning#hullPerBrick} of hull at a time, in place of the hull. The bricks are the liner's: the rack first, then the seated
- * pilot's pack if {@link PodLining#mayUseStores} lets the pilot use the pod's stores. The rack is the pod's own part, so it burns for any pilot or none, as the liner draws on it
- * (hand lining, which a pilot asks for, is the one that checks the pilot); only the pack, which belongs to the pilot, is gated (decision A, #482). So the shield buys seconds in lava and spends the bricks that would line the
- * next stretch. With none left the lava takes the hull at the full rate. It soaks lava only: a fall, gas and the crust are not its business.
+ * The heat shield (#482), rung 3 of the lava ladder: while lava touches a shielded pod, each tick's lava damage is soaked by burning a slag brick,
+ * {@link PodHeatShieldTuning#hullPerBrick} of hull at a time, in place of the hull. The bricks are the liner's, rack first, then the seated pilot's pack if
+ * {@link PodLining#mayUseStores} allows. The rack burns for any pilot or none; only the pack is gated (decision A, #482). With no brick left the lava takes
+ * the hull at the full rate. It soaks lava only.
  */
 public final class PodHeatShield {
 	/** Hull the brick now burning can still soak, for each shielded pod, server side. A pod with no entry is on a fresh brick. */
@@ -50,13 +49,14 @@ public final class PodHeatShield {
 
 	/** Burns one brick, the rack's or the pilot's pack's, and says so; false when there is none to burn. */
 	private static boolean burnBrick(PodEntity pod) {
-		Optional<ServerPlayer> pack = pilotWithPack(pod);
 		if (PodLining.readable(pod).filter(state -> state.bricks() > 0).isPresent()) {
 			PodLining.modify(pod, state -> new PodLining.State(state.spoil(), state.bricks() - 1, state.used(), state.working(), state.dry()));
-		} else if (pack.isPresent()) {
-			PodLining.takeCarried(pack.get().getInventory());
 		} else {
-			return false;
+			Optional<ServerPlayer> pack = pilotWithPack(pod);
+			if (pack.isEmpty()) {
+				return false;
+			}
+			PodLining.takeCarried(pack.get().getInventory());
 		}
 		pod.level().playSound(null, pod.getX(), pod.getY(), pod.getZ(), DeepSound.POD_GLAZE_BURN.event(), SoundSource.NEUTRAL);
 		return true;
