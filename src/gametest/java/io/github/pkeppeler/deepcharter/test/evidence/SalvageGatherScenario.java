@@ -1,6 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
-import java.util.Optional;
+import java.util.Comparator;
 import java.util.Set;
 
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -18,11 +18,10 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.chunk.LevelChunk;
-import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.test.support.BlockSurvey;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 
@@ -152,30 +151,9 @@ public class SalvageGatherScenario extends EvidenceScenario {
 	private static BlockPos nearest(MinecraftServer server, String path, boolean foot) {
 		Block wanted = BuiltInRegistries.BLOCK.getValue(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
 		ServerLevel level = server.overworld();
-		Optional<BlockPos> best = Optional.empty();
-		for (int chunkX = -SURVEY_CHUNKS; chunkX <= SURVEY_CHUNKS; chunkX++) {
-			for (int chunkZ = -SURVEY_CHUNKS; chunkZ <= SURVEY_CHUNKS; chunkZ++) {
-				LevelChunk chunk = level.getChunk(chunkX, chunkZ);
-				LevelChunkSection[] sections = chunk.getSections();
-				for (int index = 0; index < sections.length; index++) {
-					if (!sections[index].maybeHas(state -> state.is(wanted))) {
-						continue;
-					}
-					int baseY = chunk.getSectionYFromSectionIndex(index) << 4;
-					for (int x = 0; x < 16; x++) {
-						for (int y = 0; y < 16; y++) {
-							for (int z = 0; z < 16; z++) {
-								BlockPos at = new BlockPos((chunkX << 4) + x, baseY + y, (chunkZ << 4) + z);
-								if (sections[index].getBlockState(x, y, z).is(wanted) && reachable(level, at, foot)) {
-									best = best.isEmpty() || distance(at) < distance(best.get()) ? Optional.of(at) : best;
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		return best.orElseThrow(() -> new AssertionError("no " + path + " within " + SURVEY_CHUNKS + " chunks of the colony that a player can walk up to"));
+		return BlockSurvey.find(level, SURVEY_CHUNKS, wanted).stream().filter(at -> reachable(level, at, foot))
+				.min(Comparator.comparingDouble(SalvageGatherScenario::distance))
+				.orElseThrow(() -> new AssertionError("no " + path + " within " + SURVEY_CHUNKS + " chunks of the colony that a player can walk up to"));
 	}
 
 	private static boolean reachable(ServerLevel level, BlockPos at, boolean foot) {

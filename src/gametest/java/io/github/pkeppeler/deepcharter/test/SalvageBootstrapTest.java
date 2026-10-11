@@ -9,7 +9,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import com.google.gson.JsonObject;
@@ -39,9 +38,6 @@ import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.LevelChunk;
-import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
@@ -55,6 +51,7 @@ import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.support.BlockSurvey;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
@@ -68,6 +65,7 @@ import io.github.pkeppeler.deepcharter.test.support.WorldData;
 public class SalvageBootstrapTest {
 	private static final Logger LOGGER = LoggerFactory.getLogger(SalvageBootstrapTest.class);
 	private static final String SAMPLE = "deepcharter:surface_sample";
+	private static final String YARD = "deepcharter:salvage_yard";
 	private static final int MAX_TICKS = 12_000;
 	/** The survey covers the chunks within this many of the origin, a little past the yard so that its edge shows. */
 	private static final int SURVEY_CHUNKS = 12;
@@ -128,32 +126,16 @@ public class SalvageBootstrapTest {
 		}
 	}
 
-	/** Every position of {@code wanted} in the chunks within {@code chunks} of the origin, generating them. */
-	private static List<BlockPos> find(ServerLevel level, int chunks, Block wanted) {
-		List<BlockPos> found = new ArrayList<>();
-		Predicate<BlockState> isIt = state -> state.is(wanted);
-		for (int chunkX = -chunks; chunkX <= chunks; chunkX++) {
-			for (int chunkZ = -chunks; chunkZ <= chunks; chunkZ++) {
-				LevelChunk chunk = level.getChunk(chunkX, chunkZ);
-				LevelChunkSection[] sections = chunk.getSections();
-				for (int index = 0; index < sections.length; index++) {
-					if (!sections[index].maybeHas(isIt)) {
-						continue;
-					}
-					int baseY = chunk.getSectionYFromSectionIndex(index) << 4;
-					for (int x = 0; x < 16; x++) {
-						for (int y = 0; y < 16; y++) {
-							for (int z = 0; z < 16; z++) {
-								if (isIt.test(sections[index].getBlockState(x, y, z))) {
-									found.add(new BlockPos((chunkX << 4) + x, baseY + y, (chunkZ << 4) + z));
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		return found;
+	/** The lowest block of each column of stalk blocks. */
+	private static List<BlockPos> columnBases(List<BlockPos> stalks) {
+		Set<BlockPos> all = new LinkedHashSet<>(stalks);
+		return stalks.stream().filter(pos -> !all.contains(pos.below())).toList();
+	}
+
+	/** The id of the biome at a position, generating its chunk. */
+	private static String biomeAt(ServerLevel level, BlockPos pos) {
+		level.getChunkAt(pos);
+		return level.getBiome(pos).unwrapKey().orElseThrow().identifier().toString();
 	}
 
 	private static double distance(BlockPos pos) {
@@ -164,7 +146,7 @@ public class SalvageBootstrapTest {
 	public void cratesLieAroundTheColonyWithinTheYardRadiusAndNoFurther(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		int radius = yardRadius();
-		List<BlockPos> crates = find(level, SURVEY_CHUNKS, block("salvage_crate"));
+		List<BlockPos> crates = BlockSurvey.find(level, SURVEY_CHUNKS, block("salvage_crate"));
 		List<BlockPos> beyondThePad = crates.stream().filter(pos -> distance(pos) >= PAD_RADIUS).toList();
 		double farthest = crates.stream().mapToDouble(SalvageBootstrapTest::distance).max().orElse(0);
 		int inner = yardInnerRadius();
@@ -203,17 +185,12 @@ public class SalvageBootstrapTest {
 			int inner = yardInnerRadius();
 			BlockPos within = new BlockPos(direction[0] * (inner + 2 * BIOME_CELL), 64, direction[1] * (inner + 2 * BIOME_CELL));
 			BlockPos without = new BlockPos(direction[0] * (inner - 2 * BIOME_CELL), 64, direction[1] * (inner - 2 * BIOME_CELL));
-			level.getChunkAt(within);
-			level.getChunkAt(without);
-			if (!level.getBiome(within).unwrapKey().orElseThrow().identifier().toString().equals("deepcharter:salvage_yard")
-					|| level.getBiome(without).unwrapKey().orElseThrow().identifier().toString().equals("deepcharter:salvage_yard")) {
+			if (!biomeAt(level, within).equals(YARD) || biomeAt(level, without).equals(YARD)) {
 				throw helper.assertionException("the yard should begin between %s and %s", without.toShortString(), within.toShortString());
 			}
-			level.getChunkAt(inside);
-			level.getChunkAt(outside);
-			String insideBiome = level.getBiome(inside).unwrapKey().orElseThrow().identifier().toString();
-			String outsideBiome = level.getBiome(outside).unwrapKey().orElseThrow().identifier().toString();
-			if (!insideBiome.equals("deepcharter:salvage_yard") || outsideBiome.equals("deepcharter:salvage_yard")) {
+			String insideBiome = biomeAt(level, inside);
+			String outsideBiome = biomeAt(level, outside);
+			if (!insideBiome.equals(YARD) || outsideBiome.equals(YARD)) {
 				throw helper.assertionException("at %s the block %s is %s and the block %s is %s: the yard should hold the first and not the second",
 						List.of(direction[0], direction[1]), inside.toShortString(), insideBiome, outside.toShortString(), outsideBiome);
 			}
@@ -224,9 +201,8 @@ public class SalvageBootstrapTest {
 	@GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
 	public void stalksStandOnlyInCraters(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
-		List<BlockPos> stalks = find(level, SURVEY_CHUNKS, block("fungal_stalk"));
-		Set<BlockPos> all = new LinkedHashSet<>(stalks);
-		List<BlockPos> bases = stalks.stream().filter(pos -> !all.contains(pos.below())).toList();
+		List<BlockPos> stalks = BlockSurvey.find(level, SURVEY_CHUNKS, block("fungal_stalk"));
+		List<BlockPos> bases = columnBases(stalks);
 		LOGGER.info("[salvage] {} stalk blocks in {} columns", stalks.size(), bases.size());
 		if (bases.size() < STALK_COLUMNS / 2) {
 			throw helper.assertionException("the survey found %s stalk columns, expected at least %s", bases.size(), STALK_COLUMNS / 2);
@@ -246,10 +222,8 @@ public class SalvageBootstrapTest {
 	@GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
 	public void aStalkColumnIsAWalkFromEveryCrate(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
-		List<BlockPos> stalks = find(level, SURVEY_CHUNKS, block("fungal_stalk"));
-		Set<BlockPos> all = new LinkedHashSet<>(stalks);
-		List<BlockPos> bases = stalks.stream().filter(pos -> !all.contains(pos.below())).toList();
-		List<BlockPos> crates = find(level, SURVEY_CHUNKS, block("salvage_crate"));
+		List<BlockPos> bases = columnBases(BlockSurvey.find(level, SURVEY_CHUNKS, block("fungal_stalk")));
+		List<BlockPos> crates = BlockSurvey.find(level, SURVEY_CHUNKS, block("salvage_crate"));
 		double[] nearest = crates.stream().mapToDouble(crate -> bases.stream().mapToDouble(base -> Math.sqrt(horizontalDistanceSqr(crate, base))).min().orElse(Double.MAX_VALUE))
 				.sorted().toArray();
 		double nearestToTheOrigin = bases.stream().mapToDouble(SalvageBootstrapTest::distance).min().orElse(Double.MAX_VALUE);
@@ -269,7 +243,7 @@ public class SalvageBootstrapTest {
 	@GameTest(dimension = "deepcharter:layer_1", maxTicks = MAX_TICKS)
 	public void stalksGrowOnTheFloorsOfLayerOneCaves(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
-		List<BlockPos> stalks = find(level, 6, block("fungal_stalk"));
+		List<BlockPos> stalks = BlockSurvey.find(level, 6, block("fungal_stalk"));
 		LOGGER.info("[salvage] layer 1: {} stalk blocks", stalks.size());
 		if (stalks.isEmpty()) {
 			throw helper.assertionException("the caves of layer 1 hold no fungal stalk");

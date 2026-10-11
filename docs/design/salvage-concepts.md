@@ -102,10 +102,10 @@ ADR 0029 bars the surface at 1.15 times the layers-only world per new column. Th
 
 Heap readings are not usable beyond the first round of a JVM: later rounds read 141 to 520 MB and some read negative (a collection ran inside the round), and the layers-only world of the zone pair reads from 219 to 521. The first rounds give: stalks alone 1.00x (409 over 409), crates and stalks in the yard 1.13x (408 over 362), the biome pair 1.25x.
 
-What the first measurement showed (before the cut), plainly:
-- **The bar's own pair is on the bar, not under it.** `tall_surface` over `tall_baseline` is 1.15x on the medians (1.148) and 1.12x on the minima. That pair has the zone biome source, which holds none of the surface biomes, so it cannot show the stalks: its difference is the surface and its cave stalks, which `tall_baseline` places too.
-- **The biome-source pair is over the bar, and it was before this PR.** `tall_surface_bare` over `tall_baseline_biomes`, with no feature of this PR in the surface, is 1.16x on the medians. ADR 0036 read 1.08x for it on a loaded machine and said it did not prove the bar. The surface's biome source over the whole height is that pair's cost, and the real game does not evaluate it so (the layers have their own zone source), which is why the bar's own pair is the first row.
-- **The features' share is small.** The stalks add 8% of CPU on the medians (13% on the minima) in the surface biomes. The crates add nothing that shows, in the worst case of every column in the yard (0.98x). The crates cost nothing outside the yard, because the biome that holds them is not evaluated there.
+Before the cut:
+- **The bar's own pair is on the bar, not under it** (1.148x on the medians). It has the zone biome source, which holds none of the surface biomes, so it cannot show the stalks.
+- **The biome-source pair is over the bar, and it was before this PR**: 1.16x with no feature of this PR in the surface. ADR 0036 read 1.08x on a loaded machine. The real game does not evaluate that source over the whole height (the layers have their own zone source), which is why the bar's own pair is the first row.
+- **The stalks were the features' only cost** (8% of CPU on the medians, 13% on the minima). The crates add nothing in the worst case of every column in the yard (0.98x), and cost nothing outside the yard, because the biome that holds them is not evaluated there.
 
 ### The cut
 
@@ -128,10 +128,10 @@ After the first measurement (below, "before the cut") the stalks were the only f
 | `tall_surface_biomes` over `tall_baseline_biomes` | 1.11x | 1.14x | |
 | The same pair with no features | 1.13x | 1.12x | |
 
-- **The stalks now cost nothing that shows** (0.98x on the medians, 1.01x on the minima, against 1.08x and 1.13x before the cut).
-- **The bar's own pair is noise-bound and does not hold in the medians.** The zone-biome worlds hold no stalk of the surface biomes, so the cut cannot move this pair. Its rounds spread from 164 to 209 ms for `tall_baseline` and 179 to 248 ms for `tall_surface`, and the rounds of `tall_surface` rise from the first round to the fifth in each pass. The pair read 1.15x before the cut (1.12x on the minima) and 1.21x now (1.09x on the minima): that is the machine's spread, not a change in the code. The minima, which the load disturbs least, are under the bar; the medians are not, and the 2352-block world is 1.15x as tall as the 2048-block one, which is the whole of the bar on its own. Only a quiet machine settles it, and one was not to be had.
-- **The biome-source pair is pre-existing and load-sensitive.** `tall_surface_biomes` over `tall_baseline_biomes` read 1.26x before the cut and 1.11x after it, and 1.16x and 1.13x with no feature of this PR in the surface, against ADR 0036's 1.08x. The surface, not the features, is what it measures, and it moves by 0.1 with the load. Its quiet re-measurement is a follow-up.
-- Heap is unreadable beyond each JVM's first round (later rounds read 141 to 520 MB and some read negative).
+- **The stalks now cost nothing that shows** (0.98x on the medians, against 1.08x before the cut).
+- **The bar's own pair is noise-bound and does not hold in the medians.** The cut cannot move it: its worlds hold no stalk. Its rounds spread from 164 to 209 ms for `tall_baseline` and 179 to 248 ms for `tall_surface`, and the rounds of `tall_surface` rise from the first round to the fifth in each pass. The minima, which the load disturbs least, are under the bar; the medians are not, and the 2352-block world is 1.15x as tall as the 2048-block one, which is the whole of the bar on its own. Only a quiet machine settles it, and one was not to be had.
+- **The biome-source pair is pre-existing and load-sensitive**: it moves by 0.1 with the load, and the surface, not the features, is what it measures. Its quiet re-measurement is a follow-up.
+- Heap is unreadable beyond each JVM's first round.
 
 ## Not built
 

@@ -40,23 +40,6 @@ The ladder of `designing-mechanics`: by hand, then the pod, then mastery. Scrap 
 
 ## Measured cost
 
-`SurfaceCostTest` measured the features in two passes of five rounds, one JVM per world, and earlier in four passes of three. The method and every reading are in [salvage-concepts.md](../design/salvage-concepts.md#feature-cost). CPU per new column, minimum and median over ten rounds, against the 1.15x bar of ADR 0029:
+`SurfaceCostTest` measured the features, one JVM per world; the method and every reading, before and after the cut, are in [salvage-concepts.md](../design/salvage-concepts.md#feature-cost). The stalks were the only measurable cost (1.08x on the medians), so **the stalk placement was cut from 6 tries to 3 a chunk** (`fungal_stalks.json`), which a crater biome of the stalks' own would have done at the price of a fourth biome and a second density function. A 12-chunk survey now finds 47 stalk columns (89 before): the nearest is 129 blocks from the colony's centre, and from a crate the nearest column is 167 blocks at the median (281 at most). Crates also drop planks and sticks, so the first hour needs a stalk for fuel and charcoal only.
 
-| Pair | Ratio of the medians | Ratio of the minima |
-|---|---|---|
-| `tall_surface` over `tall_baseline` (the bar's own pair, the zone biomes) | 1.15x (1.148) | 1.12x |
-| The stalks alone (the surface with its features over the surface with none) | 1.08x | 1.13x |
-| The crates and stalks in the worst case (every column in the yard, with over without) | 0.98x | 0.96x |
-| `tall_surface_biomes` over `tall_baseline_biomes` (the biome source over the whole height) | 1.26x | 1.23x |
-| The same pair with no features in the surface | 1.16x | 1.09x |
-
-Before the cut the stalks were the only measurable cost, so **the stalk placement was cut from 6 tries to 3 a chunk** (`fungal_stalks.json`), which a crater biome of the stalks' own would have done at the price of a fourth biome and a second density function. A 12-chunk survey now finds 47 stalk columns (89 before): the nearest is 129 blocks from the colony's centre, and from a crate the nearest column is 167 blocks at the median (281 at most). Crates also drop planks and sticks, so the first hour needs a stalk for fuel and charcoal only. After the cut, two passes of five rounds, each run started at a one-minute load under 6:
-
-| Pair | Ratio of the medians | Ratio of the minima |
-|---|---|---|
-| The stalks alone | 0.98x | 1.01x |
-| `tall_surface` over `tall_baseline` (the bar's own pair) | 1.21x | 1.09x |
-| `tall_surface_biomes` over `tall_baseline_biomes` | 1.11x | 1.14x |
-| The same pair with no features | 1.13x | 1.12x |
-
-This shows that the stalks now cost nothing that shows and the crates never did. It does not show that the bar holds in the medians. The bar's own pair has no stalk in it (the zone biomes hold none of the surface biomes), so the cut cannot move it. It read 1.15x before the cut and 1.21x after, from the spread of its own rounds (164 to 209 ms for the layers, 179 to 248 for the surface). Its minima are 1.12x and 1.09x, under the bar. The biome-source pair is pre-existing and load-sensitive: 1.16x and 1.13x with no feature of this PR in the surface, against ADR 0036's 1.08x. A quiet machine would settle both; the full method and the readings before the cut are in [salvage-concepts.md](../design/salvage-concepts.md#feature-cost). Heap is unreadable beyond each JVM's first round.
+After the cut the stalks cost 0.98x on the medians and the crates in the worst case (every column in the yard) 0.98x. The bar's own pair (`tall_surface` over `tall_baseline`) has no stalk in it, so the cut cannot move it: it read 1.15x before and 1.21x after, from the spread of its own rounds, and its minima are 1.12x and 1.09x, under the bar. The biome-source pair is pre-existing and load-sensitive: 1.13x with no feature of this PR in the surface, against ADR 0036's 1.08x. A quiet machine would settle both.
