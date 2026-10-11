@@ -1,4 +1,4 @@
-"""Tests the tick-wait gate in gradle/gametest.gradle: a waitFor or waitForScreen in a client GameTest or client test support file fails the build.
+"""Tests the tick-wait gate in gradle/gametest.gradle: a waitFor or waitForScreen in a client GameTest, client test support file or evidence scenario fails the build.
 
 Its fixture trees go through the scan of generateGametestModJson in one Gradle run (gate_checks.py, gate_batch.py), so it needs the
 repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
@@ -19,7 +19,7 @@ public class FixtureTest {
 CLIENT_SCENARIO = """
 public class FixtureScenario extends EvidenceScenario {
     void wait(ClientGameTestContext context) {
-        context.waitFor(client -> client.player != null, 40);
+        ClientWait.until(context, "a player", client -> client.player != null);
     }
 }
 """
@@ -53,6 +53,16 @@ public class MentionsClientTest implements FabricClientGameTest {
     }
 }
 """,
+    "evidence/MarkedScenario.java": """
+public class MarkedScenario extends EvidenceScenario {
+    void wait(ClientGameTestContext context) {
+        ClientWait.screen(context, SomeScreen.class);
+        context.waitTicks(20);
+        // tick-wait: the clip holds on a fixed number of ticks
+        context.waitFor(client -> true, 5);
+    }
+}
+""",
     "support/ServerSideHelper.java": """
 public class ServerSideHelper {
     void settle(GameTestHelper helper) {
@@ -82,6 +92,10 @@ BAD = {
     "marker/a marker in a string": ("TicksClientTest.java", CLIENT_CLASS, IN_STRING, 4),
     "marker/a marker in a text block": ("TicksClientTest.java", CLIENT_CLASS, IN_TEXT_BLOCK, 6),
     "support": ("support/TicksSupport.java", "public class TicksSupport", VIOLATIONS["tick budget"], 4),
+    "evidence/scenario": ("evidence/TicksScenario.java", "public class TicksScenario extends EvidenceScenario", VIOLATIONS["tick budget"], 4),
+    "evidence/screen": ("evidence/ScreenScenario.java", "public class ScreenScenario extends EvidenceScenario", VIOLATIONS["screen"], 4),
+    "evidence/helper": ("evidence/TicksHelper.java", "public class TicksHelper", VIOLATIONS["default budget"], 4),
+    "evidence/bare marker": ("evidence/BareScenario.java", "public class BareScenario extends EvidenceScenario", BARE, 5),
 }
 
 
@@ -119,6 +133,7 @@ class TickWaitGateTest(unittest.TestCase):
         self.assertIn("ClientWait.until", result.message)
         self.assertNotIn("MarkedClientTest", result.message)
         self.assertNotIn("FixtureScenario", result.message)
+        self.assertNotIn("MarkedScenario", result.message)
 
     def test_clean_files_pass(self):
         result = outcome("clean")
@@ -136,3 +151,8 @@ class TickWaitGateTest(unittest.TestCase):
 
     def test_tick_wait_in_client_test_support_fails(self):
         self.check_fails("support")
+
+    def test_tick_wait_in_an_evidence_scenario_fails(self):
+        for label in ("scenario", "screen", "helper", "bare marker"):
+            with self.subTest(label):
+                self.check_fails(f"evidence/{label}")

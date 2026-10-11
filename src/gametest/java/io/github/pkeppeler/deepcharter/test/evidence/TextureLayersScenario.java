@@ -33,6 +33,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalActivity;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.texture.TextureProperties;
 
@@ -199,8 +200,9 @@ public class TextureLayersScenario extends EvidenceScenario {
 			ServerPlayer player = player(server);
 			player.teleportTo(player.level(), eye.x, eye.y - EYE, eye.z, Set.of(), yaw, pitch, true);
 		});
-		ctx.waitFor(client -> client.player.distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
-				&& Math.abs(Mth.wrapDegrees(client.player.getYRot() - yaw)) < 0.01f && Math.abs(client.player.getXRot() - pitch) < 0.01f, 400);
+		ClientWait.until(ctx, "the camera at the eye, facing yaw " + yaw + " and pitch " + pitch, client -> client.player.distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
+				&& Math.abs(Mth.wrapDegrees(client.player.getYRot() - yaw)) < 0.01f && Math.abs(client.player.getXRot() - pitch) < 0.01f,
+				client -> "the player at " + client.player.position() + " facing yaw " + client.player.getYRot() + " and pitch " + client.player.getXRot());
 		ctx.waitTicks(wait);
 	}
 

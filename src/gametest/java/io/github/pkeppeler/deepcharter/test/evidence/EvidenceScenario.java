@@ -20,6 +20,7 @@ import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.level.GameType;
 
 import io.github.pkeppeler.deepcharter.test.ClientTestLog;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Base class for PR evidence scenarios. Run with tools/record-evidence.sh, which sets
@@ -92,6 +93,11 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
 			player.setGameMode(GameType.SPECTATOR);
 			player.teleportTo(player.level(), x, y, z, Set.of(), FLOAT_YAW_EAST, FLOAT_PITCH_DOWN, true);
 		});
+	}
+
+	/** Waits for the client to have joined the world: a player and a level. */
+	protected static void awaitWorld(ClientGameTestContext context) {
+		ClientWait.until(context, "the player and level of the world", client -> client.player != null && client.level != null);
 	}
 
 	/**

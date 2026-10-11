@@ -8,6 +8,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
 
@@ -22,6 +23,7 @@ import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Evidence scenario "m2-ore-processor" for #68: a charter with an empty account opens its repaired ore processor, sells the ore in
@@ -31,7 +33,6 @@ public class OreProcessorScenario extends EvidenceScenario {
 	private static final int TICKS_PER_FRAME = 3;
 	private static final int TYPING_FRAMES = 45;
 	private static final int HOLD_FRAMES = 8;
-	private static final int WAIT_TICKS = 200;
 
 	@Override
 	protected String name() {
@@ -62,9 +63,9 @@ public class OreProcessorScenario extends EvidenceScenario {
 				return at;
 			});
 
-			context.waitFor(client -> AccountHud.text().isPresent(), WAIT_TICKS);
+			ClientWait.until(context, "the account line", client -> AccountHud.text().isPresent());
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(processor)));
-			context.waitForScreen(OreProcessorScreen.class);
+			ClientWait.screen(context, OreProcessorScreen.class);
 			OreProcessorScreen screen = context.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
 			for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
 				context.waitTicks(TICKS_PER_FRAME);
@@ -75,13 +76,15 @@ public class OreProcessorScenario extends EvidenceScenario {
 
 			long cargo = OreType.GOLDIUM.value() + OreType.PLATINIUM.value();
 			context.clickScreenButton("SELL ALL POD CARGO");
-			context.waitFor(client -> AccountHud.text().map(text -> text.getString().endsWith("$" + cargo)).orElse(false), WAIT_TICKS);
+			ClientWait.until(context, "an account line ending $" + cargo, client -> AccountHud.text().map(text -> text.getString().endsWith("$" + cargo)).orElse(false),
+					client -> "the account line " + AccountHud.text().map(Component::getString).orElse("(none)"));
 			hold(context);
 			screenshot(context, "processor-after-cargo-sale");
 
 			long total = cargo + OreType.IRONIUM.value() + OreType.SILVERIUM.value();
 			context.clickScreenButton("SELL ALL CARRIED ORE");
-			context.waitFor(client -> AccountHud.text().map(text -> text.getString().endsWith("$" + total)).orElse(false), WAIT_TICKS);
+			ClientWait.until(context, "an account line ending $" + total, client -> AccountHud.text().map(text -> text.getString().endsWith("$" + total)).orElse(false),
+					client -> "the account line " + AccountHud.text().map(Component::getString).orElse("(none)"));
 			hold(context);
 			screenshot(context, "processor-after-inventory-sale");
 			context.setScreen(() -> null);

@@ -22,6 +22,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Evidence scenario "m2-layer-terrain": a fly-through of the noise caves of layer 1 and then layer 2. The route is
@@ -53,7 +54,7 @@ public class LayerTerrainScenario extends EvidenceScenario {
 	@Override
 	protected void run(ClientGameTestContext context) {
 		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			context.waitFor(client -> client.player != null && client.level != null);
+			awaitWorld(context);
 			singleplayer.getServer().runOnServer(server -> {
 				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 				player.setGameMode(GameType.CREATIVE);
@@ -94,7 +95,7 @@ public class LayerTerrainScenario extends EvidenceScenario {
 				player.teleportTo(level, at.x, at.y - EYE_HEIGHT, at.z, Set.of(), shownYaw, shownPitch, true);
 			});
 			if (first) {
-				context.waitFor(client -> client.level.dimension().equals(LayerChain.dimension(layer)));
+				ClientWait.until(context, "the client in layer " + layer, client -> client.level.dimension().equals(LayerChain.dimension(layer)));
 				context.waitTicks(40);
 				first = false;
 			}

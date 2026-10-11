@@ -16,6 +16,7 @@ import io.github.pkeppeler.deepcharter.client.fuel.FuelPumpScreen;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreen;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 
 /**
@@ -26,7 +27,6 @@ public class TerminalFrameworkScenario extends EvidenceScenario {
 	private static final int TICKS_PER_FRAME = 3;
 	private static final int TYPING_FRAMES = 45;
 	private static final int HOLD_FRAMES = 6;
-	private static final int WAIT_TICKS = 200;
 
 	@Override
 	protected String name() {
@@ -48,7 +48,7 @@ public class TerminalFrameworkScenario extends EvidenceScenario {
 			});
 
 			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(pump)));
-			context.waitForScreen(TerminalScreen.class);
+			ClientWait.screen(context, TerminalScreen.class);
 			TerminalScreen screen = context.computeOnClient(client -> (TerminalScreen) client.gui.screen());
 			for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
 				context.waitTicks(TICKS_PER_FRAME);
@@ -62,12 +62,13 @@ public class TerminalFrameworkScenario extends EvidenceScenario {
 				context.clickScreenButton(label);
 				int inserted = part + 1;
 				// The repaired pump opens its own screen (#69).
-				context.waitFor(client -> client.gui.screen() instanceof FuelPumpScreen || client.gui.screen() instanceof TerminalScreen open
-						&& ClientChecks.buttons(open).stream().filter(button -> button.getMessage().getString().startsWith("[X] ")).count() == inserted, WAIT_TICKS);
+				ClientWait.until(context, "the fuel pump screen, or the terminal with " + inserted + " parts inserted",
+						client -> client.gui.screen() instanceof FuelPumpScreen || client.gui.screen() instanceof TerminalScreen open
+						&& ClientChecks.buttons(open).stream().filter(button -> button.getMessage().getString().startsWith("[X] ")).count() == inserted);
 				hold(context);
 			}
 
-			context.waitForScreen(FuelPumpScreen.class);
+			ClientWait.screen(context, FuelPumpScreen.class);
 			FuelPumpScreen online = context.computeOnClient(client -> (FuelPumpScreen) client.gui.screen());
 			for (int i = 0; i < TYPING_FRAMES && !online.typewriter().done(); i++) {
 				context.waitTicks(TICKS_PER_FRAME);
