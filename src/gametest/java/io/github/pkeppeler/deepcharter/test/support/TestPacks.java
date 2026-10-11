@@ -66,6 +66,11 @@ public final class TestPacks implements ModInitializer {
 	/** The fungal stalk's other shapes: a bare reed, and a beaded puffball. The default, the shelf fungus, is the mod's own look. */
 	public static final String FUNGAL_STALK_A = "fungal_stalk_a";
 	public static final String FUNGAL_STALK_C = "fungal_stalk_c";
+	/** The four looks of Company Rock (#503, docs/design/company-rock-concepts.md); the shipped steel plate is the mod's own look until one is picked. */
+	public static final String COMPANY_ROCK_JOINT = "company_rock_joint";
+	public static final String COMPANY_ROCK_STRAP = "company_rock_strap";
+	public static final String COMPANY_ROCK_CRYSTAL = "company_rock_crystal";
+	public static final String COMPANY_ROCK_FUSED = "company_rock_fused";
 
 	@Override
 	public void onInitialize() {
@@ -74,7 +79,8 @@ public final class TestPacks implements ModInitializer {
 		for (String pack : new String[] {AMBER_CRT, BAD_CRT, RED_INK, TEXTURE_DENSITY_B, TEXTURE_DENSITY_C, TEXTURE_DENSITY_D,
 				LAYER_CONCEPT_GRAIN, LAYER_CONCEPT_BEDDED, LAYER_CONCEPT_MOTTLED, LAYER_CONCEPT_FORM_1, LAYER_CONCEPT_FORM_2, LAYER_CONCEPT_FORM_3,
 				COCKPIT_CONSOLES, COCKPIT_CORNERS, COCKPIT_RIBBON, COCKPIT_POSTS, COCKPIT_CAB, COCKPIT_CAMERA, COCKPIT_CAMERA_HOLD, RETAINED_LAMP_HAND,
-				RETAINED_LAMP_RIBS, SALVAGE_CRATE_B, SALVAGE_CRATE_C, FUNGAL_STALK_A, FUNGAL_STALK_C}) {
+				RETAINED_LAMP_RIBS, SALVAGE_CRATE_B, SALVAGE_CRATE_C, FUNGAL_STALK_A, FUNGAL_STALK_C,
+				COMPANY_ROCK_JOINT, COMPANY_ROCK_STRAP, COMPANY_ROCK_CRYSTAL, COMPANY_ROCK_FUSED}) {
 			ResourceLoader.registerBuiltinPack(Identifier.fromNamespaceAndPath("deepcharter-test", pack),
 					FabricLoader.getInstance().getModContainer("deepcharter-test").orElseThrow(),
 					Component.literal(pack + " (test pack)"), PackActivationType.NORMAL);

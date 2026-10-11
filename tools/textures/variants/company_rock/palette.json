@@ -1,0 +1,9 @@
+{
+  "description": "Company Rock concept round (docs/design/company-rock-concepts.md, #503): hardpan, the dense cold rock of the joint and strap options; slag, the burnt rock under the fused glass; obsidian, that glass; quartz, the crystal cap. Ramps run dark to light. Cool and fine-grained against the warm, coarse layer rock, so the block reads as harder at a glance.",
+  "colours": {
+    "hardpan": ["#090b0f", "#10131a", "#191d27", "#242a37", "#333b4d", "#49536a"],
+    "slag": ["#0b090a", "#151012", "#201719", "#2d2124", "#3f3034", "#56424a"],
+    "obsidian": ["#030405", "#080b0f", "#101620", "#1b2634", "#3a5068", "#9cc2dc"],
+    "quartz": ["#16222e", "#2a4560", "#4a7898", "#82b4cf", "#c4e8f4", "#ffffff"]
+  }
+}

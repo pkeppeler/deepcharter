@@ -1,0 +1,227 @@
+{
+  "templates": {},
+  "recipes": {
+    "block/company_rock_joint_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "noise",
+          "ramp": [
+            "hardpan.2",
+            "hardpan.3",
+            "hardpan.3",
+            "hardpan.4"
+          ],
+          "seed": 7111,
+          "cell": 4,
+          "octaves": 2,
+          "dither": 0.5
+        },
+        {
+          "op": "speckle",
+          "colours": [
+            "hardpan.0"
+          ],
+          "density": 0.07,
+          "seed": 7211
+        },
+        {
+          "op": "speckle",
+          "colours": [
+            "hardpan.4",
+            "hardpan.5"
+          ],
+          "density": 0.03,
+          "seed": 7311
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "x": "hardpan.0",
+            "l": "hardpan.4"
+          },
+          "rows": [
+            "xx.xx.x.l......x",
+            "........x.x....x",
+            "...............x",
+            ".........x....lx",
+            "...lx.....l...x.",
+            "x..x......xx....",
+            "...x......x.....",
+            "..xx.....l......",
+            ".lxx.l..lx......",
+            ".xx..x..x.ll....",
+            "..........xxl.l.",
+            "......l.....x.x.",
+            "......x.........",
+            "......x.......x.",
+            ".....l......l...",
+            "l....xl.....xx.."
+          ]
+        }
+      ]
+    },
+    "block/company_rock_joint_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "noise",
+          "ramp": [
+            "hardpan.2",
+            "hardpan.3",
+            "hardpan.3",
+            "hardpan.4"
+          ],
+          "seed": 7112,
+          "cell": 4,
+          "octaves": 2,
+          "dither": 0.5
+        },
+        {
+          "op": "speckle",
+          "colours": [
+            "hardpan.0"
+          ],
+          "density": 0.07,
+          "seed": 7212
+        },
+        {
+          "op": "speckle",
+          "colours": [
+            "hardpan.4",
+            "hardpan.5"
+          ],
+          "density": 0.03,
+          "seed": 7312
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "x": "hardpan.0",
+            "l": "hardpan.4"
+          },
+          "rows": [
+            "...........l.l..",
+            "........l..x.xx.",
+            ".......xx..l.xx.",
+            "...........xxx.l",
+            "......l.....x..x",
+            "lll...x.xl..xl..",
+            "xxxx.x...xl.lx.l",
+            ".....l....x.xxlx",
+            ".....x.......xx.",
+            ".....x.....l.xx.",
+            "......l....xxx..",
+            ".....xxx.x....l.",
+            "....lx........x.",
+            "...lx...........",
+            "xxxxl..........x",
+            "....x..........."
+          ]
+        }
+      ]
+    },
+    "block/company_rock_joint_2": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "noise",
+          "ramp": [
+            "hardpan.2",
+            "hardpan.3",
+            "hardpan.3",
+            "hardpan.4"
+          ],
+          "seed": 7113,
+          "cell": 4,
+          "octaves": 2,
+          "dither": 0.5
+        },
+        {
+          "op": "speckle",
+          "colours": [
+            "hardpan.0"
+          ],
+          "density": 0.07,
+          "seed": 7213
+        },
+        {
+          "op": "speckle",
+          "colours": [
+            "hardpan.4",
+            "hardpan.5"
+          ],
+          "density": 0.03,
+          "seed": 7313
+        },
+        {
+          "op": "pixels",
+          "legend": {
+            "x": "hardpan.0",
+            "l": "hardpan.4"
+          },
+          "rows": [
+            "..........l....x",
+            ".......x..xx....",
+            ".........x.....l",
+            ".......lx......x",
+            ".......x.l......",
+            ".........xll....",
+            "...ll....lxx....",
+            "xx.xx....x......",
+            "....x.....l.....",
+            "....x.....x....l",
+            "....l....x.....x",
+            "....x...x.....x.",
+            "....xl.........l",
+            "....xx.x.......x",
+            "..llxll.........",
+            "..xxxxx........l"
+          ]
+        },
+        {
+          "op": "pixels",
+          "at": [
+            9,
+            8
+          ],
+          "legend": {
+            "x": "hardpan.0",
+            "l": "hardpan.4"
+          },
+          "rows": [
+            "..........l....x",
+            ".......x..xx....",
+            ".........x.....l",
+            ".......lx......x",
+            ".......x.l......",
+            ".........xll....",
+            "...ll....lxx....",
+            "xx.xx....x......",
+            "....x.....l.....",
+            "....x.....x....l",
+            "....l....x.....x",
+            "....x...x.....x.",
+            "....xl.........l",
+            "....xx.x.......x",
+            "..llxll.........",
+            "..xxxxx........l"
+          ]
+        },
+        {
+          "op": "pixels",
+          "at": [
+            9,
+            12
+          ],
+          "legend": {
+            "l": "hardpan.4"
+          },
+          "rows": [
+            "l...l"
+          ]
+        }
+      ]
+    }
+  }
+}

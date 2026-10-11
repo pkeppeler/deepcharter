@@ -65,6 +65,26 @@
       "palettes": [],
       "recipes": ["tools/textures/variants/fungal_stalk_c/recipes"],
       "pack": "src/gametest/resources/resourcepacks/fungal_stalk_c"
+    },
+    "company_rock_joint": {
+      "palettes": ["tools/textures/variants/company_rock/palette.json"],
+      "recipes": ["tools/textures/variants/company_rock_joint/recipes"],
+      "pack": "src/gametest/resources/resourcepacks/company_rock_joint"
+    },
+    "company_rock_strap": {
+      "palettes": ["tools/textures/variants/company_rock/palette.json"],
+      "recipes": ["tools/textures/variants/company_rock_strap/recipes"],
+      "pack": "src/gametest/resources/resourcepacks/company_rock_strap"
+    },
+    "company_rock_crystal": {
+      "palettes": ["tools/textures/variants/company_rock/palette.json"],
+      "recipes": ["tools/textures/variants/company_rock_crystal/recipes"],
+      "pack": "src/gametest/resources/resourcepacks/company_rock_crystal"
+    },
+    "company_rock_fused": {
+      "palettes": ["tools/textures/variants/company_rock/palette.json"],
+      "recipes": ["tools/textures/variants/company_rock_fused/recipes"],
+      "pack": "src/gametest/resources/resourcepacks/company_rock_fused"
     }
   }
 }
