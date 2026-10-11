@@ -74,7 +74,7 @@ def flatten(root: Bone, offset: Vec = (0.0, 0.0, 0.0), piece: str | None = None)
     return out
 
 
-def world_points(root: Bone, offset: Vec = (0.0, 0.0, 0.0), piece: str | None = None) -> list[list[Vec]]:
+def world_points(root: Bone) -> list[list[Vec]]:
     """The eight world corners of every box: for silhouettes and bounds checks."""
     boxes: list[list[Vec]] = []
 
@@ -82,8 +82,6 @@ def world_points(root: Bone, offset: Vec = (0.0, 0.0, 0.0), piece: str | None = 
         origin = tuple(parent_origin[i] + v for i, v in enumerate(apply(parent_rot, bone.pivot)))
         rot = matmul(parent_rot, rotation_matrix(*bone.rotation))
         for part in bone.parts:
-            if piece is not None and part.piece != piece:
-                continue
             corners = []
             for x in (part.lo[0], part.hi[0]):
                 for y in (part.lo[1], part.hi[1]):
@@ -94,5 +92,5 @@ def world_points(root: Bone, offset: Vec = (0.0, 0.0, 0.0), piece: str | None = 
         for child in bone.children:
             walk(child, rot, origin)
 
-    walk(root, IDENTITY, offset)
+    walk(root, IDENTITY, (0.0, 0.0, 0.0))
     return boxes

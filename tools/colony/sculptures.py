@@ -21,17 +21,18 @@ B, D, S, P = "#bronze", "#dark", "#slot", "#brass"
 HANDS = "hands"
 
 
-def _limb(parent: Bone, pivot, rotation, length: float, width: float, depth: float, texture=B) -> Bone:
+def _limb(parent: Bone, pivot, rotation, length: float, width: float, depth: float) -> Bone:
     """A limb hanging from pivot along its local -Y."""
     bone = parent.child(pivot, rotation)
-    bone.box((-width / 2, -length, -depth / 2), (width / 2, 0.0, depth / 2), texture)
+    bone.box((-width / 2, -length, -depth / 2), (width / 2, 0.0, depth / 2), B)
     return bone
 
 
-def _open_hand(parent: Bone, pivot, rotation, side: int, scale: float) -> Bone:
-    """An open hand of the hands piece: palm toward local +Z, fingers along local -Y, thumb toward local -X for the right hand
-    (side -1) and +X for the left, held apart so it reads as open and empty, never a fist."""
-    s = scale
+def _open_hand(parent: Bone, pivot, rotation) -> Bone:
+    """An open hand of the hands piece: palm toward local +Z, fingers along local -Y, thumb toward local +X, held apart so it reads
+    as open and empty, never a fist."""
+    side = -1
+    s = 1.45
     hand = parent.child(pivot, rotation)
     hand.box((-1.6 * s, 0.4 * s, -0.9 * s), (1.6 * s, 1.2 * s, 0.9 * s), D, piece=HANDS)          # the wrist
     hand.box((-1.9 * s, -3.0 * s, -0.75 * s), (1.9 * s, 0.4 * s, 0.6 * s), piece=HANDS)          # the palm
@@ -67,14 +68,14 @@ def _head(neck: Bone, nod: float, turn: float = 0.0) -> Bone:
     return head
 
 
-def _chest_slot(torso: Bone, y: float, z: float) -> None:
+def _chest_slot(torso: Bone, y: float, z: float) -> None:  # unused-ok: a part of the one figure; the parameters are its dimensions
     """The slot in the chest: a dark mouth in a thin brass lip, flush with the waistcoat, a small brass plate under it."""
     torso.box((-1.7, y + 0.1, z - 0.1), (1.7, y + 1.3, z + 0.12), P)
     torso.box((-1.4, y + 0.35, z + 0.05), (1.4, y + 1.05, z + 0.16), S)
     torso.box((-0.9, y - 0.9, z - 0.1), (0.9, y - 0.4, z + 0.1), P)
 
 
-def _waistcoat(torso: Bone, top: float, front: float) -> None:
+def _waistcoat(torso: Bone, top: float, front: float) -> None:  # unused-ok: a part of the one figure; the parameters are its dimensions
     for side in (-1, 1):
         lapel = torso.child((side * 2.6, top, front - 0.1), (0.0, 0.0, side * 16.0))
         lapel.box((-1.1, -6.0, -0.2), (1.1, 0.0, 0.4), D)
@@ -83,7 +84,7 @@ def _waistcoat(torso: Bone, top: float, front: float) -> None:
     torso.box((-3.6, 2.6, front - 0.1), (1.4, 2.9, front + 0.15), P)                      # watch chain
 
 
-def _standing_coat(root: Bone, hem: float, waist: float, flare: float, stride: float = 0.0) -> None:
+def _standing_coat(root: Bone, hem: float, waist: float, flare: float, stride: float = 0.0) -> None:  # unused-ok: a part of the one figure; the parameters are its dimensions
     """Trouser legs and boots, and a frock-coat skirt widening from the waist to the hem."""
     for side, forward in ((-1, -stride), (1, stride)):
         leg = root.child((side * 2.5, hem + 1.0, forward * 0.2), (-forward * 6.0, 0.0, 0.0))
@@ -100,7 +101,8 @@ def _standing_coat(root: Bone, hem: float, waist: float, flare: float, stride: f
     root.box((-0.25, hem + 1.0, -4.9), (0.25, waist - 2.0, -4.4), D)                       # the vent behind
 
 
-def _torso(root: Bone, waist: float, height: float, chest: float = 3.9) -> Bone:
+def _torso(root: Bone, waist: float, height: float) -> Bone:  # unused-ok: a part of the one figure; the parameters are its dimensions
+    chest = 3.9
     torso = root.child((0.0, waist, 0.0))
     torso.box((-6.4, 0.0, -3.9), (6.4, height, 3.5))
     torso.box((-7.3, height - 3.4, -3.5), (7.3, height, 3.1))                              # shoulders
@@ -109,7 +111,7 @@ def _torso(root: Bone, waist: float, height: float, chest: float = 3.9) -> Bone:
     return torso
 
 
-def _neck_and_head(torso: Bone, height: float, nod: float, turn: float = 0.0) -> Bone:
+def _neck_and_head(torso: Bone, height: float, nod: float, turn: float = 0.0) -> Bone:  # unused-ok: a part of the one figure; the parameters are its dimensions
     neck = torso.child((0.0, height, 0.2))
     neck.box((-1.8, 0.0, -1.8), (1.8, 2.6, 1.8))
     neck.box((-2.4, 0.0, 1.2), (2.4, 1.1, 2.9), D)                                         # cravat
@@ -131,20 +133,20 @@ def host() -> Bone:
     upper.box((-2.1, -10.6, -2.1), (2.1, -8.4, 2.1))
     fore = _limb(upper, (0.0, -10.0, 0.0), (-128.0, 0.0, 26.0), 8.6, 3.3, 3.4)
     fore.box((-1.95, -8.6, -1.95), (1.95, -6.8, 1.95), D)
-    _open_hand(fore, (0.0, -8.6, 0.0), (8.0, 180.0, 0.0), -1, 1.45)
+    _open_hand(fore, (0.0, -8.6, 0.0), (8.0, 180.0, 0.0))
     # The left arm: lowered at his side, a little out and forward, the open palm turned out.
     upper = _limb(torso, (7.0, 10.6, -0.2), (-6.0, 0.0, 8.0), 10.0, 3.8, 4.0)
     upper.box((-2.1, -10.6, -2.1), (2.1, -8.4, 2.1))
     fore = _limb(upper, (0.0, -10.0, 0.0), (-24.0, 0.0, 3.0), 8.6, 3.3, 3.4)
     fore.box((-1.95, -8.6, -1.95), (1.95, -6.8, 1.95), D)
-    _open_hand(fore, (0.0, -8.6, 0.0), (-6.0, 34.0, 4.0), -1, 1.45)
+    _open_hand(fore, (0.0, -8.6, 0.0), (-6.0, 34.0, 4.0))
     return body
 
 
 FIGURES = {"founder_c": host}
 
 
-def figure_model(name: str, piece: str) -> Model:
+def figure_model(name: str, piece: str) -> Model:  # unused-ok: FIGURES is a registry; it holds one figure today
     root = FIGURES[name]()
     boxes = flatten(root, FIGURE_OFFSET, piece)
     if not boxes:

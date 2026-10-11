@@ -178,7 +178,7 @@ def rect_planes(x0, y0, x1, y1):
     return [(-1, 0, -x0), (1, 0, x1), (0, -1, -y0), (0, 1, y1)]
 
 
-def frame_image(w, h, distance, rng, bevel):
+def frame_image(w, h, distance, rng):
     """A plate with a see-through opening: a black gasket against the opening, a bevel lit from the top left, then brushed steel. Every pixel depends on its distance
     from the opening, so the edges of a nine-slice tile without a step."""
     img = Img(w, h)
@@ -190,8 +190,8 @@ def frame_image(w, h, distance, rng, bevel):
             lit = (normal[0] + normal[1]) / math.sqrt(2)
             if d < 1.2:
                 img.set(x, y, H[0])
-            elif d < 1.2 + bevel:
-                t = (d - 1.2) / bevel
+            elif d < 1.2 + 2.5:
+                t = (d - 1.2) / 2.5
                 img.set(x, y, ramp(H, 0.5 + 0.38 * lit * (1 - 0.55 * t)))
             else:
                 img.set(x, y, shade(H[3], 0.04 - 0.05 * min(1.0, (d - 4) / 30)))
@@ -286,10 +286,10 @@ def scanner_bezel(w, rng, cuts=(0, 0, 0, 0), margin=7):
     return img, (wx, wy)
 
 
-def altimeter_tab(w, h, cuts, rng):
+def altimeter_tab(cuts, rng):
     """The tab the altimeter is written on: a dark glass recess in a steel plate."""
-    img = slab(w, h, cuts, rng, H[2])
-    well(img, 4, 4, w - 8, h - 8)
+    img = slab(86, 20, cuts, rng, H[2])
+    well(img, 4, 4, 78, 12)
     return img
 
 
@@ -334,7 +334,7 @@ def consoles():
     w, h = left + mid_w + right, top + mid_h + bottom
     x0, y0, x1, y1, gusset = 5, 5, w - 5, h - 5, 30
     planes = rect_planes(x0, y0, x1, y1) + [diagonal(c, x0, y0, x1, y1, gusset) for c in ("tl", "tr", "br", "bl")]
-    frame = frame_image(w, h, polygon_distance(planes), rng, 2.5)
+    frame = frame_image(w, h, polygon_distance(planes), rng)
     for x in range(left + 8, w - right, 16):
         pin(frame, x, 2)
         pin(frame, x, h - 3)
@@ -349,7 +349,7 @@ def consoles():
     look.keys.update(anchor_keys("consolesReadout", 0, 0, 36, 8))
     look.keys["consolesAltimeterY"] = 7
 
-    tab = altimeter_tab(86, 20, (0, 0, 8, 8), random.Random(444_22))
+    tab = altimeter_tab((0, 0, 8, 8), random.Random(444_22))
     tab_place = Placed(86, 20, 1, 0, 0, 0)
     look.sprite("header", Sprite(tab), tab_place)
     look.decal("header", tab_place)

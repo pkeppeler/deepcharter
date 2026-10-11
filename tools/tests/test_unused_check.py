@@ -47,7 +47,7 @@ class FindingsAreRed(unittest.TestCase):
         self.assertEqual(found(a="""
             def f(a, b, *rest, key=1, **extra):
                 return a
-            f(1, 2)
+            f(x, y)
         """), {("a.py", 1, "parameter", "b"), ("a.py", 1, "parameter", "rest"), ("a.py", 1, "parameter", "key"),
                ("a.py", 1, "parameter", "extra")})
 
@@ -55,21 +55,21 @@ class FindingsAreRed(unittest.TestCase):
         self.assertEqual(found(a="""
             def f(a):
                 return lambda: a
-            f(1)
+            f(x)
         """), set())
 
     def test_plain_store_is_not_a_read(self):
         self.assertEqual(found(a="""
             def r(a):
                 a = 2
-            r(1)
+            r(x)
         """), {("a.py", 1, "parameter", "a")})
 
     def test_augmented_assignment_reads(self):
         self.assertEqual(found(a="""
             def r(a):
                 a += 1
-            r(1)
+            r(x)
         """), set())
 
     def test_inner_function_that_rebinds_the_name_is_not_a_read(self):
@@ -85,9 +85,9 @@ class FindingsAreRed(unittest.TestCase):
                     a = 1
                     return a
                 return inner
-            outer(1)
-            comp(1)
-            local(1)
+            outer(x)
+            comp(x)
+            local(x)
         """), {("a.py", 1, "parameter", "a"), ("a.py", 5, "parameter", "a"), ("a.py", 7, "parameter", "a")})
 
     def test_closure_read_of_the_outer_name_counts(self):
@@ -96,7 +96,7 @@ class FindingsAreRed(unittest.TestCase):
                 def inner():
                     return a
                 return [b for _ in range(2)], inner
-            outer(1, 2)
+            outer(x, y)
         """), set())
 
     def test_method_of_a_local_base_is_checked(self):
@@ -153,6 +153,34 @@ class FindingsAreRed(unittest.TestCase):
         """), {("a.py", 5, "parameter", "unused"), ("a.py", 8, "parameter", "unused"),
                ("a.py", 14, "parameter", "unused"), ("a.py", 17, "parameter", "unused")})
 
+    def test_default_no_caller_overrides(self):
+        self.assertEqual(found(a="""
+            def f(a, b=1, *, c=2, d=3):
+                return a + b + c + d
+            f(x)
+            f(x, c=y)
+            f(x, d=y)
+        """), {("a.py", 1, "default", "b")})
+
+    def test_parameter_every_caller_passes_the_same_literal(self):
+        self.assertEqual(found(a="""
+            def f(a, b, c, d, e, g):
+                return a + b + c + d + e + g
+            f(x, "k", -2, True, 3, x)
+            f(y, b="k", c=-2, d=True, e=4, g=x)
+        """), {("a.py", 1, "constant", "b"), ("a.py", 1, "constant", "c"), ("a.py", 1, "constant", "d")})
+
+    def test_one_call_site_is_enough_for_a_constant(self):
+        self.assertEqual(found(a="""
+            def f(a, b):
+                return a + b
+            f(x, 2.5)
+        """), {("a.py", 1, "constant", "b")})
+
+    def test_call_through_an_imported_module_is_a_call_site(self):
+        self.assertEqual(found(a="def f(a, b=1):\n    return a + b\n", b="import a\na.f(x)\n"), {("a.py", 1, "default", "b")})
+
+
     def test_a_name_is_alive_when_another_file_reads_it(self):
         self.assertEqual(found(a="def helper():\n    return 1\nLIMIT = 3\n", b="import a\nprint(a.helper(), a.LIMIT)\n"), set())
 
@@ -168,7 +196,7 @@ class OptOutsAreGreen(unittest.TestCase):
             LIMIT = 3
             def f(a, b):  # unused-ok: callback signature fixed by the caller
                 return 1
-            f(1, 2)
+            f(x, y)
         """), set())
 
     def test_marker_covers_a_whole_multiline_statement(self):
@@ -237,7 +265,7 @@ class OptOutsAreGreen(unittest.TestCase):
                     return 1
             def abstract(value):
                 ...
-            paint(1, 2, 3)
+            paint(x, y, z)
             print(Plain, Handler, abstract)
         """), set())
 
@@ -247,6 +275,106 @@ class OptOutsAreGreen(unittest.TestCase):
             def helper(value):
                 return 1
         """), set())
+
+
+class NewKindsSkipWhatTheyCannotResolve(unittest.TestCase):
+    def test_overridden_by_position_or_keyword_or_a_differing_value_is_green(self):
+        self.assertEqual(found(a="""
+            def f(a, b=1, c=2, d=3):
+                return a + b + c + d
+            def g(a, b=0):
+                return a + b
+            f(x, 5)
+            f(x, c=4)
+            f(x, d=y)
+            g(x, 1)
+            g(x)
+        """), set())
+
+    def test_recursive_call_that_changes_the_parameter_is_an_override(self):
+        self.assertEqual(found(a="""
+            def f(n, depth=0):
+                return f(n - 1, depth + 1) if n else depth
+            f(x)
+        """), set())
+
+    def test_function_without_a_call_site_is_not_judged(self):
+        self.assertEqual(found(a="def f(a, b=1):\n    return a + b\n", b="from a import f\nprint(f)\n"), set())
+
+    def test_unresolvable_uses_skip_the_check(self):
+        self.assertEqual(found(a="""
+            def star(a, b=1):
+                return a + b
+            def kw(a, b=1):
+                return a + b
+            def value(a, b=1):
+                return a + b
+            def dyn(a, b=1):
+                return a + b
+            def exported(a, b=1):
+                return a + b
+            def dup(a, b=1):
+                return a + b
+            def other():
+                def dup(a, b=1):
+                    return a + b
+                return dup
+            star(*args)
+            kw(x, **options)
+            run(value)
+            getattr(mod, "dyn")(x)
+            exported(x)
+            dup(x)
+            other()
+            __all__ = ["exported"]
+        """), set())
+
+    def test_method_call_on_an_instance_is_unresolved(self):
+        self.assertEqual(found(a="def f(a, b=1):\n    return a + b\nf(x)\n", b="obj.f(x)\n"), set())
+
+    def test_exempt_functions_are_not_judged(self):
+        self.assertEqual(found(a="""
+            @register
+            def decorated(a, b=1):
+                return a + b
+            def stub(a, b=1):
+                raise NotImplementedError
+            def main(a, b=1):
+                return a + b
+            def _private(_a, _b=1):
+                return 0
+            class K:
+                def method(self, a, b=1):
+                    return a + b
+            decorated(x)
+            stub(x)
+            main(x)
+            _private(x)
+            K().method(x)
+        """), set())
+
+    def test_marker_on_the_parameter_line_or_the_line_above(self):
+        self.assertEqual(found(a="""
+            def f(a, b=1, c=2):
+                return a + b + c
+            def g(
+                a,
+                # unused-ok: the plugin passes it by name
+                b=1,
+                c=2,  # unused-ok: the plugin passes it by name
+            ):
+                return a + b + c
+            f(x, c=y)
+            g(x)
+        """), {("a.py", 1, "default", "b")})
+
+    def test_a_parameter_the_body_never_reads_is_only_the_old_finding(self):
+        self.assertEqual(found(a="""
+            def f(a, b=1):
+                return a
+            f(x)
+        """), {("a.py", 1, "parameter", "b")})
+
 
 
 class RealTree(unittest.TestCase):

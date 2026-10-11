@@ -169,10 +169,11 @@ def crossbar(img, background) -> float:
     return worst
 
 
-def crossbar_scores(roots, size: int = 160) -> list[tuple[float, float, float]]:
+def crossbar_scores(roots) -> list[tuple[float, float, float]]:
     """(yaw, pitch, score) of every horizontal and raised view of VIEWS, black on a plain ground."""
     quads = sculpture_quads(roots)
     ground = (235, 228, 214)
+    size = 160
     return [(yaw, pitch, crossbar(render(quads, yaw, pitch, size, silhouette=True, background=ground), ground))
             for yaw, pitch in VIEWS if pitch < 80]
 
@@ -182,35 +183,33 @@ SQUARE_DISTANCES = (10.0, 16.0, 24.0)
 EYE_HEIGHT = 2.6
 
 
-def perspective(quads, eye, target, width: int, height: int, fov: float = 70.0, silhouette: bool = False,
-                background=(150, 90, 60)) -> list[list[tuple]]:
-    """A pinhole render of the quads from eye toward target, as the game's camera sees them (vertical field of view fov)."""
+def perspective(quads, eye, target, width: int, height: int, background=(150, 90, 60)) -> list[list[tuple]]:
+    """A pinhole render of the quads from eye toward target as black silhouettes, as the game's camera sees them (vertical field of view 70)."""
     forward = _normalise(_sub(target, eye))
     right = _normalise(_cross(forward, (0.0, 1.0, 0.0)))
     up = _cross(right, forward)
-    k = (height / 2) / math.tan(math.radians(fov / 2))
-    light = _normalise((-0.4, 0.85, 0.35))
+    k = (height / 2) / math.tan(math.radians(70.0 / 2))
     faces = []
-    for pts, normal, colour in quads:
+    for pts, normal, _ in quads:
         if _dot(normal, _sub(pts[0], eye)) >= 0:
             continue
         depths = [_dot(_sub(p, eye), forward) for p in pts]
         if min(depths) <= 0.1:
             continue
         proj = [(width / 2 + k * _dot(_sub(p, eye), right) / d, height / 2 - k * _dot(_sub(p, eye), up) / d) for p, d in zip(pts, depths)]
-        shade = (0, 0, 0) if silhouette else tuple(min(255, int(c * (0.45 + 0.55 * max(0.0, _dot(normal, light))))) for c in colour)
-        faces.append((sum(depths) / 4, proj, shade))
+        faces.append((sum(depths) / 4, proj, (0, 0, 0)))
     img = [[background] * width for _ in range(height)]
     for _, proj, shade in sorted(faces, key=lambda f: -f[0]):
         _fill(img, proj, shade)
     return img
 
 
-def square_crossbar_scores(roots, plinth_top: int, scale: float, size: int = 200) -> list[tuple[float, float, float]]:
+def square_crossbar_scores(roots, plinth_top: int, scale: float) -> list[tuple[float, float, float]]:
     """(yaw, distance, score) of the figure on its plinth seen in perspective from the square at eye height, looking at a point
     0.45 of the way up the figure: from below, the way a player sees it, where a hand held out in front can rise to the height of
     the head."""
     s = scale / 16
+    size = 200
     quads = []
     from sculpt import world_points
     points = []
@@ -226,7 +225,7 @@ def square_crossbar_scores(roots, plinth_top: int, scale: float, size: int = 200
         for distance in SQUARE_DISTANCES:
             a = math.radians(yaw)
             eye = (0.5 + math.sin(a) * distance, EYE_HEIGHT, 0.5 + math.cos(a) * distance)
-            img = perspective(quads, eye, mid, size, size, silhouette=True, background=ground)
+            img = perspective(quads, eye, mid, size, size, background=ground)
             scores.append((float(yaw), distance, crossbar(img, ground)))
     return scores
 

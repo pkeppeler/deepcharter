@@ -88,9 +88,9 @@ def pillar(name: str, english: str, build: Callable[[], Model]) -> KitBlock:
 
 # ---------------------------------------------------------------------------------------------------------------- shapes
 
-def framed_cube(front: str, side: str, glow: str | None = None) -> Model:
+def framed_cube(front: str, glow: str | None = None) -> Model:
     """A full block whose north face is front (with an optional glow layer over it) and whose other faces are side."""
-    textures = {"front": tex(front), "side": tex(side), "particle": tex(side)}
+    textures = {"front": tex(front), "side": tex("riveted_plate"), "particle": tex("riveted_plate")}
     boxes = [Box((0, 0, 0), (16, 16, 16), {"north": "#front", "*": "#side"}, cull=True)]
     if glow:
         textures["glow"] = tex(glow)
@@ -110,8 +110,8 @@ def window(glass: str, side: str, glow: str | None) -> Model:
     return Model(textures, boxes)
 
 
-def i_beam(paint: str) -> Model:
-    t = {"flange": tex(paint), "web": tex(paint + "_web"), "end": tex(paint + "_end"), "particle": tex(paint)}
+def i_beam() -> Model:
+    t = {"flange": tex("beam"), "web": tex("beam_web"), "end": tex("beam_end"), "particle": tex("beam")}
     return Model(t, [
         Box((2, 0, 2), (14, 16, 4.5), {"*": "#flange", "up": "#end", "down": "#end"}, cull=True),
         Box((2, 0, 11.5), (14, 16, 14), {"*": "#flange", "up": "#end", "down": "#end"}, cull=True),
@@ -147,10 +147,10 @@ def cable() -> Model:
     return Model(t, [Box((7, 0, 7), (9, 16, 9), {"*": "#cable"}, cull=True)], ambient_occlusion=False)
 
 
-def brace(texture: str) -> Model:
+def brace() -> Model:
     """A 45-degree lattice brace rising toward the north: one member along the block's diagonal, so braces set diagonally in a
     line join end to end."""
-    t = {"lattice": tex(texture), "end": tex(texture + "_end"), "particle": tex(texture)}
+    t = {"lattice": tex("lattice"), "end": tex("lattice_end"), "particle": tex("lattice")}
     half = 8 * 2 ** 0.5
     return Model(t, [
         Box((3, 3, 8 - half), (13, 13, 8 + half), {"*": "#lattice", "north": "#end", "south": "#end"}, rotation=(45, 0, 0)),
@@ -283,16 +283,16 @@ CATALOGUE: dict[str, KitBlock] = {block.name: block for block in [
     cube("brass_trim", "Brass Trim"),
     facing("window_ribbon_lit", "Lit Ribbon Window", lambda: window("window_ribbon", "riveted_plate", "window_ribbon_glow")),
     facing("window_ribbon_dark", "Dark Ribbon Window", lambda: window("window_ribbon_dark", "riveted_plate", None)),
-    facing("furnace_hatch", "Crusher Hatch", lambda: framed_cube("furnace_hatch", "riveted_plate", "furnace_hatch_glow")),
-    facing("gauge_panel", "Gauge Panel", lambda: framed_cube("gauge_panel", "riveted_plate", "gauge_panel_glow")),
+    facing("furnace_hatch", "Crusher Hatch", lambda: framed_cube("furnace_hatch", "furnace_hatch_glow")),
+    facing("gauge_panel", "Gauge Panel", lambda: framed_cube("gauge_panel", "gauge_panel_glow")),
     facing("wall_lamp", "Company Wall Lamp", wall_lamp),
     facing("floodlight", "Company Floodlight", floodlight),
     facing("railing", "Catwalk Railing", railing),
     facing("steel_ladder", "Steel Ladder", steel_ladder),
-    facing("brace", "Lattice Brace", lambda: brace("lattice")),
+    facing("brace", "Lattice Brace", brace),
     facing("mine_track", "Mine Track", mine_track),
     facing("ore_car", "Ore Car", ore_car),
-    pillar("steel_beam", "Steel Beam", lambda: i_beam("beam")),
+    pillar("steel_beam", "Steel Beam", i_beam),
     pillar("lattice_girder", "Lattice Girder", lambda: lattice("lattice")),
     pillar("pipe", "Steel Pipe", lambda: pipe("pipe")),
     pillar("pipe_brass", "Brass Pipe", lambda: pipe("pipe_brass")),

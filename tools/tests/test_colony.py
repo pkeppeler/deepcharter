@@ -209,10 +209,6 @@ class KitIsAllUsedTest(unittest.TestCase):
                                 "with a piece that hangs it.")
 
 
-def java_constants(name: str, pattern: str) -> tuple[int, ...]:
-    return tuple(int(v) for v in re.search(pattern, (JAVA / name).read_text()).groups())
-
-
 FACING = {"north": (0, -1), "south": (0, 1), "east": (1, 0), "west": (-1, 0)}
 TOUCHING = [(dx, dy, dz) for dx in (-1, 0, 1) for dy in (-1, 0, 1) for dz in (-1, 0, 1) if abs(dx) + abs(dy) + abs(dz) in (1, 2)]
 TRACK = ("deepcharter:mine_track", "deepcharter:ore_car")
@@ -232,7 +228,7 @@ class TownTest(unittest.TestCase):
         return (x, y, z) not in self.cells
 
     def test_the_pad_the_game_flattens_is_the_pad_the_town_is_drawn_for(self):
-        size, height = java_constants("ColonyTuning.java", r"DEFAULT = new ColonyTuning\((\d+), (\d+),")
+        size, height = (int(v) for v in re.search(r"DEFAULT = new ColonyTuning\((\d+), (\d+),", (JAVA / "ColonyTuning.java").read_text()).groups())
         self.assertEqual(size // 2, town.PAD_HALF)
         self.assertEqual(height, town.CLEAR_HEIGHT)
 

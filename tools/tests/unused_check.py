@@ -1,10 +1,19 @@
 """Unused-code gate for the Python tools (#362): stdlib `ast` only, no third-party linter.
 
-Scans every tools/**/*.py plus tools/diff-stills and reports three kinds of finding:
+Scans every tools/**/*.py plus tools/diff-stills and reports five kinds of finding:
 
 - import: an imported name the file never reads.
 - name: a module-level function, class or constant that no scanned file references outside its own definition.
 - parameter: a function parameter the function body never reads.
+- default: a module-level function's parameter with a default that no call site overrides.
+- constant: a module-level function's parameter that every call site passes the same literal (a constant, string or number).
+
+default and constant resolve call sites by bare name: `f(...)`, or `m.f(...)` where `m` is a plain `import m` in that file. They need at
+least one call site outside the function and are skipped, not flagged, when any use of the name is unresolvable: a call with `*args` or
+`**kwargs`, the function passed as a value, a `getattr` string, an `__all__` entry, an attribute use on anything but an imported module
+(a method call on an instance), a second definition of the name, or an import of it under another name. The usual exemptions apply (`main`, test hooks, stubs,
+decorated definitions); a method is never checked. To fix a finding, inline the constant or drop the parameter. Files under
+PENDING_PATHS are not judged for these two kinds until the open PRs that edit them land.
 
 A reference is a bare name, an attribute name, an imported name, a `getattr(x, "name")` string or an `__all__` entry, in any scanned file
 (tests included). Matching is by name, not by module, so a same-named definition elsewhere hides a dead one; a reviewer still looks.
@@ -22,7 +31,7 @@ Opt out with `# unused-ok: <reason>` on the finding's line, or on the line above
 assignment's span is the whole statement. The reason is required: one word, or a stock phrase such as "not used", is itself a finding and
 suppresses nothing.
 
-Known blind spots: a parameter that every caller passes the same value (needs a call graph), a method nothing calls, a parameter
+Known blind spots: a parameter every caller passes the same non-literal value, a method nothing calls, a parameter
 overwritten before its first read (any later Load counts), a base class that is imported but is not an outside API, and a decorator
 not in NEUTRAL_DECORATORS that does not register anything.
 
@@ -53,6 +62,7 @@ NEUTRAL_DECORATORS = {
     "abstractmethod", "dataclass", "total_ordering", "final", "override", "overload",
 }
 PLAIN_BASES = {"object", "NamedTuple", "Enum", "IntEnum", "StrEnum", "Flag", "IntFlag", "Generic", "Protocol", "TypedDict"}
+PENDING_PATHS = ("tools/lampless_figure.py", "tools/layer_concepts/")  # default and constant findings wait for #450/#451; delete when both merge
 TEST_HOOKS = {"setUp", "tearDown", "setUpClass", "tearDownClass", "main"} | FIXED_SIGNATURE_FUNCTIONS
 
 
@@ -76,6 +86,7 @@ class Candidate:
     line: int
     span: tuple[int, int]
     own_span: tuple[int, int]
+    detail: str = ""
 
 
 def scanned_sources() -> dict[str, str]:
@@ -87,18 +98,22 @@ def scanned_sources() -> dict[str, str]:
 def check(sources: Mapping[str, str]) -> list[Finding]:
     trees = {path: ast.parse(source, filename=path) for path, source in sources.items()}
     references = {path: index_by_name(references_in(tree)) for path, tree in trees.items()}
+    usage = call_usage(trees)
     findings: list[Finding] = []
     for path, tree in trees.items():
         markers, bad_markers = parse_markers(sources[path])
         findings += [Finding(path, line, "marker", "unused-ok", f": reason {reason!r} is empty or generic") for line, reason in bad_markers]
         local_reads = {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)} | exported_names(tree)
-        candidates = import_candidates(path, tree, local_reads) + definition_candidates(path, tree) + parameter_candidates(path, tree)
+        candidates = (
+            import_candidates(path, tree, local_reads) + definition_candidates(path, tree) + parameter_candidates(path, tree)
+            + constant_candidates(path, tree, usage)
+        )
         for candidate in candidates:
             if candidate.kind == "name" and referenced_elsewhere(candidate, references):
                 continue
             if suppressed(candidate.span, markers):
                 continue
-            findings.append(Finding(path, candidate.line, candidate.kind, candidate.name))
+            findings.append(Finding(path, candidate.line, candidate.kind, candidate.name, candidate.detail))
     return sorted(findings, key=lambda finding: (finding.path, finding.line, finding.name))
 
 
@@ -342,6 +357,106 @@ def parameter_candidates(path: str, tree: ast.AST) -> list[Candidate]:
             span = (argument.lineno, argument.end_lineno or argument.lineno)
             found.append(Candidate(path, "parameter", argument.arg, argument.lineno, span, own_span))
     return found
+
+
+@dataclass
+class CallUsage:
+    """Every use of one function name across the scanned tree."""
+    calls: list[tuple[ast.Call, str, int]]
+    definitions: int = 0
+    unresolved: bool = False
+
+
+def call_usage(trees: Mapping[str, ast.Module]) -> dict[str, CallUsage]:
+    """Per function name: its resolvable call sites (with the file and line), and whether any use of the name cannot be resolved."""
+    usage: dict[str, CallUsage] = {}
+
+    def of(name: str) -> CallUsage:
+        return usage.setdefault(name, CallUsage([]))
+
+    for path, tree in trees.items():
+        modules = {alias.asname or alias.name.split(".")[0] for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names}
+        resolved: set[int] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call):
+                target = node.func
+                module_call = isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name) and target.value.id in modules
+                if isinstance(target, ast.Name) or module_call:
+                    name = target.id if isinstance(target, ast.Name) else target.attr
+                    resolved.add(id(target))
+                    of(name).calls.append((node, path, node.lineno))
+                    if any(isinstance(a, ast.Starred) for a in node.args) or any(k.arg is None for k in node.keywords):
+                        of(name).unresolved = True
+                if is_getattr(node):
+                    of(node.args[1].value).unresolved = True
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Load, ast.Del)) and id(node) not in resolved:
+                of(node.id).unresolved = True
+            elif isinstance(node, ast.Attribute) and id(node) not in resolved:
+                of(node.attr).unresolved = True
+            elif isinstance(node, ast.ImportFrom):
+                for alias in node.names:
+                    if alias.asname:
+                        of(alias.name).unresolved = True
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                of(node.name).definitions += 1
+        for name in exported_names(tree):
+            of(name).unresolved = True
+    return usage
+
+
+def literal_of(node: ast.expr) -> tuple[str, object] | None:
+    """(type name, value) when the expression is a literal constant, a signed number included; else None."""
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)) and isinstance(node.operand, ast.Constant):
+        value = node.operand.value
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return type(value).__name__, -value if isinstance(node.op, ast.USub) else value
+        return None
+    if isinstance(node, ast.Constant):
+        return type(node.value).__name__, node.value
+    return None
+
+
+def constant_candidates(path: str, tree: ast.Module, usage: Mapping[str, CallUsage]) -> list[Candidate]:
+    """Parameters of module-level functions that no caller overrides (default) or every caller passes as one literal (constant)."""
+    found = []
+    for function in module_statements(tree.body):
+        if not isinstance(function, (ast.FunctionDef, ast.AsyncFunctionDef)) or path.startswith(PENDING_PATHS):
+            continue
+        uses = usage.get(function.name)
+        if registers(function) or is_stub(function) or exempt_name(function.name) or fixed_signature(function, None, set()):
+            continue
+        own = (function.lineno, function.end_lineno or function.lineno)
+        if uses is None or uses.unresolved or uses.definitions != 1 or not any(call_path != path or not own[0] <= line <= own[1] for _, call_path, line in uses.calls):
+            continue
+        arguments = function.args
+        positional = arguments.posonlyargs + arguments.args
+        defaulted = {a.arg for a in positional[len(positional) - len(arguments.defaults):]} | {
+            a.arg for a, default in zip(arguments.kwonlyargs, arguments.kw_defaults) if default is not None
+        }
+        read = scope_reads(function)[0]
+        for index, argument in enumerate(positional + arguments.kwonlyargs):
+            if argument.arg in ("self", "cls") or argument.arg.startswith("_") or argument.arg not in read:
+                continue
+            passed = [passed_value(call, argument.arg, index if argument in positional else None) for call, _, _ in uses.calls]
+            span = (argument.lineno, argument.end_lineno or argument.lineno)
+            if argument.arg in defaulted and all(value is None for value in passed):
+                found.append(Candidate(path, "default", argument.arg, argument.lineno, span, own, ": no caller overrides the default"))
+                continue
+            literals = [value and literal_of(value) for value in passed]
+            if literals[0] and all(literal == literals[0] for literal in literals):
+                found.append(Candidate(path, "constant", argument.arg, argument.lineno, span, own, f": every caller passes {literals[0][1]!r}"))
+    return found
+
+
+def passed_value(call: ast.Call, name: str, position: int | None) -> ast.expr | None:
+    """The expression a call passes for the parameter, or None when the call leaves it at its default."""
+    for keyword in call.keywords:
+        if keyword.arg == name:
+            return keyword.value
+    if position is not None and position < len(call.args):
+        return call.args[position]
+    return None
 
 
 def is_dunder(name: str) -> bool:

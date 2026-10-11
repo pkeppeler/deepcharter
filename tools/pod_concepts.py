@@ -833,14 +833,14 @@ def caged_lamp(bone, cx, cy, zf):
     bone.box(cx - 0.5, cy - 2, zf - 2, cx + 0.5, cy + 2, zf - 1, "steel")
 
 
-def spiral_drill(model, parent, pivot, tiers, teeth_tiers=()):
+def spiral_drill(model, pivot, tiers, teeth_tiers=()):
     """A drill pointing forward (-z) from pivot, spinning about z.
 
     Each wide tier is a cross of two bars, and a copy of the cross turned 45 degrees: eight bars that read as a disc.
     tiers: (width, length) from the base to the tip. Teeth sit on the eight arm ends of the tiers named in teeth_tiers.
     """
     px, py, pz = pivot
-    drill_bone = model.bone("drill_head", parent, pivot)
+    drill_bone = model.bone("drill_head", "drill_mount", pivot)
     cutter = model.bone("cutter", "drill_head", pivot, (0, 0, 45))
     z = pz
     for index, (width, length) in enumerate(tiers):
@@ -874,33 +874,34 @@ def road_wheel(bone, x, y, z, width, size):
     bone.centred(x, y, z + (size - 1) / 2, width, size - 2, 1, "wheel")
 
 
-def bevelled_box(bone, x0, y0, z0, x1, y1, z1, s, material):
+def bevelled_box(bone, x0, y0, z0, x1, y1, z1, s):
     """A box whose twelve edges are cut at 45 degrees by s pixels: three crossed boxes, and a turned slab on each edge."""
-    bone.box(x0 + s, y0, z0 + s, x1 - s, y1, z1 - s, material)
-    bone.box(x0, y0 + s, z0 + s, x1, y1 - s, z1 - s, material)
-    bone.box(x0 + s, y0 + s, z0, x1 - s, y1 - s, z1, material)
+    bone.box(x0 + s, y0, z0 + s, x1 - s, y1, z1 - s, "paint")
+    bone.box(x0, y0 + s, z0 + s, x1, y1 - s, z1 - s, "paint")
+    bone.box(x0 + s, y0 + s, z0, x1 - s, y1 - s, z1, "paint")
     width = round(s * math.sqrt(2))
     inset = 1 / math.sqrt(2)
     for y_edge, dy in ((y1, 1), (y0, -1)):
         for z_edge, dz in ((z0, -1), (z1, 1)):
             cy, cz = y_edge - dy * s / 2 - dy * inset, z_edge - dz * s / 2 - dz * inset
-            bone.centred((x0 + x1) / 2, cy, cz, x1 - x0 - 2 * s, 2, width, material, (math.degrees(math.atan2(-dz, dy)), 0, 0))
+            bone.centred((x0 + x1) / 2, cy, cz, x1 - x0 - 2 * s, 2, width, "paint", (math.degrees(math.atan2(-dz, dy)), 0, 0))
         for x_edge, dx in ((x0, -1), (x1, 1)):
             cx, cy = x_edge - dx * s / 2 - dx * inset, y_edge - dy * s / 2 - dy * inset
-            bone.centred(cx, cy, (z0 + z1) / 2, width, 2, z1 - z0 - 2 * s, material, (0, 0, math.degrees(math.atan2(dx, dy))))
+            bone.centred(cx, cy, (z0 + z1) / 2, width, 2, z1 - z0 - 2 * s, "paint", (0, 0, math.degrees(math.atan2(dx, dy))))
     for x_edge, dx in ((x0, -1), (x1, 1)):
         for z_edge, dz in ((z0, -1), (z1, 1)):
             cx, cz = x_edge - dx * s / 2 - dx * inset, z_edge - dz * s / 2 - dz * inset
-            bone.centred(cx, (y0 + y1) / 2, cz, width, y1 - y0 - 2 * s, 2, material, (0, math.degrees(math.atan2(dx, dz)), 0))
+            bone.centred(cx, (y0 + y1) / 2, cz, width, y1 - y0 - 2 * s, 2, "paint", (0, math.degrees(math.atan2(dx, dz)), 0))
 
 
-def thruster(model, side, parent, pivot, length, width):
+def thruster(model, side, pivot, length):
     """A jet nacelle pointing back (+z) from its pivot, with a brass intake and nozzle and a flame bone in the nozzle.
 
     The game swings it to point down while the pod flies, and shows the flame only then.
     """
     px, py, pz = pivot
-    bone = model.bone(f"thruster_{side}", parent, pivot)
+    width = 3
+    bone = model.bone(f"thruster_{side}", "body", pivot)
     bone.box(px - width / 2, py - width / 2, pz, px + width / 2, py + width / 2, pz + length, "frame")
     bone.box(px - width / 2 - 0.5, py - width / 2 - 0.5, pz - 1, px + width / 2 + 0.5, py + width / 2 + 0.5, pz, "brass")
     bone.box(px - width / 2 + 0.5, py - width / 2 + 0.5, pz + length, px + width / 2 - 0.5, py + width / 2 - 0.5, pz + length + 1, "brass")
@@ -935,9 +936,9 @@ def capsule_hull(m, dz=0, brow_lamps=True):
     """The Capsule above its running gear, dz pixels back from where concept 1 has it: the bevelled hull and roof, the
     wrap-around window band, the brow lamps (unless brow_lamps is false), side tanks, exhaust, two whip antennae and the mast propeller."""
     body = m.bone("body")
-    bevelled_box(body, -10, 7, -5 + dz, 10, 21, 12 + dz, 2, "paint")
+    bevelled_box(body, -10, 7, -5 + dz, 10, 21, 12 + dz, 2)
     body.box(-10.5, 12, -5.5 + dz, 10.5, 13, 12.5 + dz, "trim")
-    bevelled_box(body, -7, 21, -2 + dz, 7, 24, 9 + dz, 1, "paint")
+    bevelled_box(body, -7, 21, -2 + dz, 7, 24, 9 + dz, 1)
     body.box(-6, 9, 12 + dz, 6, 18, 13 + dz, "grille")
     body.box(-8, 6, -3 + dz, 8, 7, 10 + dz, "iron")
     canopy = m.bone("canopy", "body")
@@ -999,7 +1000,7 @@ def capsule():
     mount.box(-5, 8, -8, -4, 13, -3, "frame")
     mount.box(4, 8, -8, 5, 13, -3, "frame")
     mount.box(-4, 9, -7, 4, 13, -5, "hazard")
-    spiral_drill(m, "drill_mount", (0, 11, -8), ((9, 2), (7, 3), (5, 3), (3, 2), (1, 1)), teeth_tiers=(0, 1))
+    spiral_drill(m, (0, 11, -8), ((9, 2), (7, 3), (5, 3), (3, 2), (1, 1)), teeth_tiers=(0, 1))
     capsule_running_gear(m)
     return m
 
@@ -1010,12 +1011,12 @@ def borer():
     m = Model("borer")
     body = m.bone("body")
     body.box(-8, 3, -7, 8, 10, 13, "iron")
-    bevelled_box(body, -14, 10, -7, 14, 15, 14, 2, "paint")
+    bevelled_box(body, -14, 10, -7, 14, 15, 14, 2)
     body.box(-14.5, 11, -7.5, 14.5, 12, 14.5, "trim")
     body.box(-7, 4, 13, 7, 10, 14, "grille")
     body.box(-8, 2, 14, 8, 4, 15, "hazard")
     cab = m.bone("canopy", "body")
-    bevelled_box(cab, -7, 15, -1, 7, 22, 10, 1, "paint")
+    bevelled_box(cab, -7, 15, -1, 7, 22, 10, 1)
     cab.box(-6, 18, -2, 6, 20, -1, "glass")
     cab.box(-7, 20, -3, 7, 21, -1, "iron")
     cab.box(-8, 16, 2, -7, 21, 7, "porthole")
@@ -1035,14 +1036,14 @@ def borer():
     mount.box(-8, 5, -9, -6, 11, -5, "frame")
     mount.box(6, 5, -9, 8, 11, -5, "frame")
     mount.box(-6, 6, -8, 6, 10, -6, "iron")
-    spiral_drill(m, "drill_mount", (0, 9.5, -8), ((14, 3), (10, 1), (6, 2), (3, 2)), teeth_tiers=(0, 1))
+    spiral_drill(m, (0, 9.5, -8), ((14, 3), (10, 1), (6, 2), (3, 2)), teeth_tiers=(0, 1))
     track(m, "l", "body", 8, 15, -8, 14, 9, ((-5, 5), (0, 4), (5, 4), (10, 5)))
     track(m, "r", "body", -15, -8, -8, 14, 9, ((-5, 5), (0, 4), (5, 4), (10, 5)))
     skirt = m.bone("fender", "body")
     skirt.box(15, 7, -7, 16, 10, 13, "paint")
     skirt.box(-16, 7, -7, -15, 10, 13, "paint")
-    thruster(m, "l", "body", (12, 17, 6), 6, 3)
-    thruster(m, "r", "body", (-12, 17, 6), 6, 3)
+    thruster(m, "l", (12, 17, 6), 6)
+    thruster(m, "r", (-12, 17, 6), 6)
     fan = m.bone("fan", "body", (0, 7, 14.5))
     fan.box(-3, 6.5, 14, 3, 7.5, 15, "frame")
     fan.box(-0.5, 4, 14, 0.5, 10, 15, "frame")
@@ -1054,7 +1055,7 @@ def strider():
     shoulders, a belly drill that hangs straight down between the legs, and two belly jets."""
     m = Model("strider")
     body = m.bone("body")
-    bevelled_box(body, -8, 11, -8, 8, 25, 8, 3, "paint")
+    bevelled_box(body, -8, 11, -8, 8, 25, 8, 3)
     body.box(-8.5, 15, -8.5, 8.5, 16, 8.5, "trim")
     body.box(-5, 25, -5, 5, 26, 5, "paint")
     body.box(-3, 26, -3, 3, 27, 3, "paint")
@@ -1089,9 +1090,9 @@ def strider():
         foot.box(ankle[0] - 2, ankle[1] - 1, ankle[2] - 2, ankle[0] + 2, ankle[1], ankle[2] + 2, "rubber")
     mount = m.bone("drill_mount", "body", (0, 12, -2), (90, 0, 0))
     mount.box(-3, 10, -4, 3, 13, 0, "frame")
-    spiral_drill(m, "drill_mount", (0, 12, -4), ((7, 2), (5, 3), (3, 3), (1, 2)), teeth_tiers=(0,))
-    thruster(m, "l", "body", (5, 12, 1), 5, 3)
-    thruster(m, "r", "body", (-5, 12, 1), 5, 3)
+    spiral_drill(m, (0, 12, -4), ((7, 2), (5, 3), (3, 3), (1, 2)), teeth_tiers=(0,))
+    thruster(m, "l", (5, 12, 1), 5)
+    thruster(m, "r", (-5, 12, 1), 5)
     return m
 
 
@@ -1100,7 +1101,7 @@ def gyro():
     a slim drill hung from a gimbal under the belly, and four wheeled landing struts."""
     m = Model("gyro")
     body = m.bone("body")
-    bevelled_box(body, -8, 8, -8, 8, 24, 8, 3, "paint")
+    bevelled_box(body, -8, 8, -8, 8, 24, 8, 3)
     body.box(-8.5, 10, -8.5, 8.5, 11, 8.5, "trim")
     body.box(-6, 24, -6, 6, 25, 6, "iron")
     canopy = m.bone("canopy", "body")
@@ -1135,12 +1136,12 @@ def gyro():
     arms = m.bone("frame", "body")
     arms.box(8, 15, -1, 11, 17, 1, "frame")
     arms.box(-11, 15, -1, -8, 17, 1, "frame")
-    thruster(m, "l", "body", (12.5, 16, -3), 8, 3)
-    thruster(m, "r", "body", (-12.5, 16, -3), 8, 3)
+    thruster(m, "l", (12.5, 16, -3), 8)
+    thruster(m, "r", (-12.5, 16, -3), 8)
     mount = m.bone("drill_mount", "body", (0, 9, -2), (90, 0, 0))
     mount.box(-2.5, 8, -4, 2.5, 10, 0, "frame")
     mount.box(-3.5, 8.5, -3, 3.5, 9.5, -1, "brass")
-    spiral_drill(m, "drill_mount", (0, 9, -4), ((5, 2), (4, 2), (2, 2), (1, 1)), teeth_tiers=(0,))
+    spiral_drill(m, (0, 9, -4), ((5, 2), (4, 2), (2, 2), (1, 1)), teeth_tiers=(0,))
     struts = m.bone("strut", "body")
     for sx in (-1, 1):
         for sz in (-1, 1):
@@ -1194,13 +1195,13 @@ class Rig:
         return max(1, round(pixels * self.kz))
 
 
-def teeth_ring(bone, cx, cy, z_face, radius, count, size=(2, 3, 2), phase=0.0, material="teeth"):
+def teeth_ring(bone, cy, z_face, radius, count, size=(2, 3, 2), phase=0.0):
     """count teeth standing proud of a face at z_face, round the axis at radius, each turned to point out from it."""
     w, h, d = size
     for n in range(count):
         a = phase + 360.0 * n / count
         r = math.radians(a)
-        bone.centred(round(cx + radius * math.sin(r), 4), round(cy + radius * math.cos(r), 4), z_face - d / 2, w, h, d, material, (0, 0, a))
+        bone.centred(round(radius * math.sin(r), 4), round(cy + radius * math.cos(r), 4), z_face - d / 2, w, h, d, "cone_tooth", (0, 0, a))
 
 
 def mount_pivot(axis_y, tip_z, down_tip_y):
@@ -1256,8 +1257,8 @@ def cone_mount(m, rig):
     return mount
 
 
-def spinner(m, name, rig, parent="drill_mount"):
-    return m.bone(name, parent, (0, rig.axis_y, rig.back_z))
+def spinner(m, name, rig):
+    return m.bone(name, "drill_mount", (0, rig.axis_y, rig.back_z))
 
 
 def collar(bone, rig):
@@ -1309,7 +1310,7 @@ def stacked_cutter(m, rig, sfx=""):
         dark = k % 2 == 0
         slab(bone, z, depth, radius, "cone_dark" if dark else "cone_steel", "cone_dark" if dark else "cone_steel", cy=ay)
         if radius >= 4:
-            teeth_ring(bone, 0, ay, z, radius - 1.5, 8, (2, 3, 2), 22.5 * (k % 2), "cone_tooth")
+            teeth_ring(bone, ay, z, radius - 1.5, 8, (2, 3, 2), 22.5 * (k % 2))
         if k + 1 < len(steps):
             # The shaft in the gap is a pixel narrower than the next ring, so the cone still narrows to its tip.
             shaft = max(2, round((steps[k + 1] * rig.kr - 1.5) * 1.414))
@@ -1327,7 +1328,7 @@ def tricone_cutter(m, rig, sfx=""):
     head = spinner(m, "drill_head" + sfx, rig)
     ring = spinner(m, "drill_ring" + sfx, rig)
     slab(ring, rig.back_z - 3, 3, 12.5 * rig.kr, "hazard", "iron", cy=ay)
-    teeth_ring(ring, 0, ay, rig.back_z - 3, 11 * rig.kr, 8, (2, 3, 3), 22.5, "cone_tooth")
+    teeth_ring(ring, ay, rig.back_z - 3, 11 * rig.kr, 8, (2, 3, 3), 22.5)
     hub_z = rig.back_z - 3 - 3
     slab(head, hub_z, 3, 9.5 * rig.kr, "cone_dark", "cone_dark", cy=ay)
     steps = (9, 8, 6, 4, 3, 2)
@@ -1376,7 +1377,7 @@ def cluster_cutter(m, rig, sfx=""):
         zc -= depth
         slab(head, zc, depth, radius, "cone_steel", "cone_dark", cy=ay)
         if k < 4:
-            teeth_ring(head, 0, ay, zc, radius - 1, 6, (2, 2, 2), 30 * (k % 2), "cone_tooth")
+            teeth_ring(head, ay, zc, radius - 1, 6, (2, 2, 2), 30 * (k % 2))
     head.centred(0, ay, zc, 2, 2, 2, "tip")
 
 
@@ -1460,7 +1461,7 @@ def mole_hull(m):
     standing on the roof."""
     dz = MOLE_DZ
     body = m.bone("body")
-    bevelled_box(body, -10, 7, -5 + dz, 10, 13, 12 + dz, 2, "paint")
+    bevelled_box(body, -10, 7, -5 + dz, 10, 13, 12 + dz, 2)
     body.box(-10, 13, -5 + dz, 10, MOLE_SILL, 12 + dz, "paint")
     body.box(-10.5, 12, -5.5 + dz, 10.5, 13, 12.5 + dz, "trim")
     body.box(-6, 9, 12 + dz, 6, 18, 13 + dz, "grille")
@@ -1540,7 +1541,7 @@ def prospector_body(m):
     and hook."""
     sill, deck = PROSPECTOR_SILL, PROSPECTOR_DECK
     body = m.bone("body")
-    bevelled_box(body, -17, 9, -4, 17, 16, 21, 3, "paint")
+    bevelled_box(body, -17, 9, -4, 17, 16, 21, 3)
     body.box(-17, 16, -4, 17, sill, 21, "paint")
     body.box(-17.5, 14, -4.5, 17.5, 15, 21.5, "trim")
     # The back wall, a seat back for each seat, the deck and the roof.
@@ -1548,7 +1549,7 @@ def prospector_body(m):
     for z in PROSPECTOR_SEAT_Z:
         body.box(-6, sill, z + 4, 6, 30, z + 6, "steel")
     body.box(-18, deck, -5, 18, deck + 1, 22, "trim")
-    bevelled_box(body, -13, deck + 1, -1, 13, deck + 6, 18, 2, "paint")
+    bevelled_box(body, -13, deck + 1, -1, 13, deck + 6, 18, 2)
     body.box(-14, 8, -2, 14, 9, 19, "iron")
     body.box(-10, 25, 21, 10, 31, 22, "grille")
     canopy = m.bone("canopy", "body")

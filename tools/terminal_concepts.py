@@ -124,26 +124,28 @@ def screw(img, cx, cy, face, dark):
     img.set(cx + 1, cy, shade(face, -0.15))
 
 
-def chrome(img, x, y, w, h, rng):
-    """A bevelled chrome plate: bright at the top, darker toward the bottom, a mirror line, a white and a dark edge, brushed."""
-    img.vgrad(x, y, w, h, rgb("#e9eff3"), rgb("#7a8691"))
-    img.hline(x, y + h // 2, w, rgb("#a9b5bf"))
-    img.hline(x, y + h // 2 + 1, w, rgb("#f6fafc"))
-    img.streaks(x + 1, y + 1, w - 2, h - 2, rng, 0.05, 10)
-    img.bevel(x, y, w, h, rgb("#ffffff"), rgb("#323b44"))
-    img.set(x, y + h - 1, rgb("#232a31"))
-    img.set(x + w - 1, y, rgb("#8a97a2"))
+def chrome(img, w, h, rng):
+    """A bevelled chrome plate from the top left corner: bright at the top, darker toward the bottom, a mirror line, a white and a dark edge, brushed."""
+    img.vgrad(0, 0, w, h, rgb("#e9eff3"), rgb("#7a8691"))
+    img.hline(0, h // 2, w, rgb("#a9b5bf"))
+    img.hline(0, h // 2 + 1, w, rgb("#f6fafc"))
+    img.streaks(1, 1, w - 2, h - 2, rng, 0.05, 10)
+    img.bevel(0, 0, w, h, rgb("#ffffff"), rgb("#323b44"))
+    img.set(0, h - 1, rgb("#232a31"))
+    img.set(w - 1, 0, rgb("#8a97a2"))
 
 
 def bull(img, x, y, ink):
     img.mask(BULL, x, y, ink)
 
 
-def nameplate(height, text, ink):
+def nameplate(ink):
     """The Company's chrome nameplate, as wide as its text needs: screws in the corners, the bull's head, then the name, engraved (a light edge below the ink)."""
+    height = 12
+    text = "COLOM & CO."
     width = 7 + 16 + 6 * len(text) - 1 + 7
     img = Img(width, height)
-    chrome(img, 0, 0, width, height, random.Random(246_77))
+    chrome(img, width, height, random.Random(246_77))
     for sx in (3, width - 4):
         screw(img, sx, 3 if height > 14 else 2, rgb("#9aa6b0"), rgb("#3c454e"))
         screw(img, sx, height - 4 if height > 14 else height - 3, rgb("#9aa6b0"), rgb("#3c454e"))
@@ -157,9 +159,11 @@ def nameplate(height, text, ink):
     return img
 
 
-def glass_sprite(size, border, vignette, shadow=(0, 0), depth=(0, 0)):
+def glass_sprite(border, shadow=(0, 0), depth=(0, 0)):
     """The CRT glass over the content: a soft dark edge, the bezel's shadow cast on the top and left of the glass (`shadow` alphas, `depth` pixels), a thin
     light line where the glass catches the light along the bottom and right, and a pale reflection in the top-left corner cell."""
+    size = 32
+    vignette = 170
     img = Img(size, size)
     left, top, right, bottom = border
     for y in range(size):
@@ -380,8 +384,9 @@ def hatch_wheel():
     return img
 
 
-def hatch_stencil(text, width):
-    img = Img(width, 11)
+def hatch_stencil():
+    text = "H-04  DECK 3"
+    img = Img(72, 11)
     img.text(1, 3, text, HAZARD_INK)
     img.text(0, 2, text, HAZARD)
     return img
@@ -445,7 +450,7 @@ def hatch_button(plate, rim, edge, sink=0):
 
 
 def hatch() -> Option:
-    plate = nameplate(12, "COLOM & CO.", rgb("#232a31"))
+    plate = nameplate(rgb("#232a31"))
     gl, gt, gr, gb, radius = (PORTHOLE[k] for k in ("left", "top", "right", "bottom", "radius"))
     frame = hatch_frame()
     margin = 6  # the content stays this far inside the glass edge, which clears the corner arc (it needs 5.3)
@@ -463,9 +468,9 @@ def hatch() -> Option:
         "buttonAlign": 1, "buttonPad": 4, "pipSize": 12, "pipX": 3, "pipY": 0,
     }, {
         "frame": Sprite(frame, (gl + radius, gt + radius, gr + radius, gb + radius)),
-        "glass": Sprite(glass_sprite(32, (10, 10, 10, 10), 170, (110, 80), (6, 5)), (10, 10, 10, 10)),
+        "glass": Sprite(glass_sprite((10, 10, 10, 10), (110, 80), (6, 5)), (10, 10, 10, 10)),
         "nameplate": Sprite(plate), "dress_a": Sprite(hatch_gauge()), "dress_b": Sprite(hatch_wheel()),
-        "dress_c": Sprite(hatch_stencil("H-04  DECK 3", 72)), "dress_d": Sprite(hatch_warning()),
+        "dress_c": Sprite(hatch_stencil()), "dress_d": Sprite(hatch_warning()),
         "button": Sprite(hatch_button(H[3], H[6], H[0]), (3, 3, 3, 3)),
         "button_hover": Sprite(hatch_button(rgb("#4a5a3a"), rgb("#ffd45a"), H[0], 1), (3, 3, 3, 3)),
         "button_off": Sprite(hatch_button(H[1], H[2], H[0], 1), (3, 3, 3, 3)),
@@ -539,10 +544,11 @@ def preview(directory: Path) -> None:
         img.text(tx, y0 + k * 26 + 6, label, ink)
     # The content rectangle, outlined, so an overflow is plain to see.
     img.outline(t["insetLeft"], t["insetTop"], SCREEN_W - t["insetLeft"] - t["insetRight"], SCREEN_H - t["insetTop"] - t["insetBottom"], rgb("#ff00ff", 90))
-    (directory / "preview-hatch.png").write_bytes(big(img, 2).to_png())
+    (directory / "preview-hatch.png").write_bytes(big(img).to_png())
 
 
-def big(img: Img, scale: int) -> Img:
+def big(img: Img) -> Img:
+    scale = 2
     out = Img(img.w * scale, img.h * scale)
     for y in range(img.h):
         for x in range(img.w):
