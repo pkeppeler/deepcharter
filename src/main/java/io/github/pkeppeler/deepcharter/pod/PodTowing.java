@@ -1,9 +1,13 @@
 package io.github.pkeppeler.deepcharter.pod;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -19,6 +23,8 @@ import net.fabricmc.fabric.api.attachment.v1.AttachmentSyncPredicate;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -27,16 +33,20 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.TicketType;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
@@ -53,11 +63,12 @@ import io.github.pkeppeler.deepcharter.layer.BreachEvents;
  *
  * <p>The link is one versioned attachment on the towed pod, {@link #STATE}, holding the tower's UUID. It is saved and synced, and a
  * pod keeps its UUID when a breach recreates it, so the link outlives unloading and crossing. While the tower is in the towed pod's
- * level the towed pod passes through blocks ({@link PodEvents#IGNORES_BLOCK_COLLISION}), is held still or pulled in to
- * {@link TowTuning#trailDistance} from the tower at the end of each tick ({@link PodEvents#AFTER_TICK}), and its mass and its
- * cargo's cut the tower's lift ({@link PodEvents#EXTRA_MASS}). With no tower in the level it is an ordinary pod that still remembers
- * the cable. A pod freed, or left by its tower, inside blocks is moved to the nearest open space. A tower with a player crossing a
- * breach carries the pod it tows across with it, to the trail distance from the tower. The cable is drawn as particles.
+ * level the towed pod passes through blocks ({@link PodEvents#IGNORES_BLOCK_COLLISION}), hangs or trails on a line of
+ * {@link TowTuning#trailDistance} from the tower, moved at the end of each tick ({@link PodEvents#AFTER_TICK}, see {@link #follow}),
+ * and its mass and its cargo's cut the tower's lift ({@link PodEvents#EXTRA_MASS}). With no tower in the level it is an ordinary pod
+ * that still remembers the cable. A pod freed, or left by its tower, inside blocks is moved to the nearest open space. A tower with a
+ * player crossing a breach carries the pod it tows across with it, to the trail distance from the tower or the nearest open place
+ * to it. The cable is drawn as particles.
  *
  * <p>A tower tows one pod, a towed pod tows none, and a pod is on one cable. The listeners run every tick and on a crossing, so they
  * never throw on an unreadable state: they log once for each pod and read it as no cable. {@link #attach} and {@link #detach} are
@@ -74,6 +85,76 @@ public final class PodTowing {
 
 	/** Pods that found no open space to leave rock for, so a tick path logs once for each pod. */
 	private static final Set<PodEntity> STUCK_LOGGED = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
+	/** The motion of each towed pod on its line. Server only and not saved: a loaded pod starts at rest with no path behind its tower. */
+	private static final Map<PodEntity, Line> LINES = Collections.synchronizedMap(new WeakHashMap<>());
+	private static final double EPSILON = 1e-7;
+	/** Blocks along the line between the samples that test it for rock: less than any wall is thick. */
+	private static final double FIT_STEP = 0.5;
+	/** Blocks the tower moves between two points of the path it leaves. */
+	private static final double PATH_STEP = 0.25;
+	/** Blocks the tower moves in one tick, at the least, for it to count as having been carried across a breach: the path starts over. */
+	private static final double PATH_JUMP = 4.0;
+	/** Blocks a breach crossing shortens the towed pod's arrival distance by, for each try, when the place is not open. */
+	private static final double ARRIVAL_STEP = 0.5;
+	/** Ticks between two renewals of the ticket that keeps a towed pod's chunk ticking: well under the ticket's 40. */
+	private static final int TICKET_INTERVAL = 5;
+	/** The ticket radius that makes its chunk tick entities, as an ender pearl's does. */
+	private static final int TICKET_RADIUS = 2;
+	/** Blocks of solid ground a cable particle is lifted out of. */
+	private static final int CABLE_FLOOR_LIFT = 3;
+
+	/** How a towed pod moves on its line: its speed, whether it rests on a floor, and the path its tower has taken. */
+	private static final class Line {
+		Vec3 velocity = Vec3.ZERO;
+		boolean resting;
+		/** Where the tower has been, newest first, {@link #PATH_STEP} apart, for as far back as the line is long. */
+		private final ArrayDeque<Vec3> path = new ArrayDeque<>();
+
+		/** Adds the tower's place to the path and drops what lies further back than {@code rope}. */
+		void remember(Vec3 anchor, double rope) {
+			Vec3 last = path.peekFirst();
+			if (last != null && last.distanceToSqr(anchor) > PATH_JUMP * PATH_JUMP) {
+				path.clear();
+				last = null;
+			}
+			if (last == null || last.distanceToSqr(anchor) >= PATH_STEP * PATH_STEP) {
+				path.addFirst(anchor);
+			}
+			double arc = 0;
+			Vec3 previous = anchor;
+			boolean past = false;
+			for (Iterator<Vec3> it = path.iterator(); it.hasNext();) {
+				Vec3 point = it.next();
+				if (past) {
+					it.remove();
+					continue;
+				}
+				arc += previous.distanceTo(point);
+				previous = point;
+				past = arc > rope + PATH_STEP;
+			}
+		}
+
+		/**
+		 * Where on the path the towed pod may be put, best first: the point {@code rope} blocks back along it from {@code anchor}, and the
+		 * two points of the path either side of that, which are places the tower itself has been, so a corner that the straight
+		 * piece between them cuts is not. If the path is shorter than {@code rope}, its oldest point. Empty if there is no path.
+		 */
+		List<Vec3> pathPoints(Vec3 anchor, double rope) {
+			Vec3 previous = anchor;
+			double left = rope;
+			for (Vec3 point : path) {
+				double segment = previous.distanceTo(point);
+				if (segment >= left) {
+					Vec3 between = segment < EPSILON ? previous : previous.add(point.subtract(previous).scale(left / segment));
+					return List.of(between, point, previous);
+				}
+				left -= segment;
+				previous = point;
+			}
+			return path.isEmpty() ? List.of() : List.of(previous);
+		}
+	}
 
 	/** The pod this one is towed by, if any. */
 	public record State(Optional<UUID> tower) {
@@ -106,6 +187,7 @@ public final class PodTowing {
 		PodEvents.EXTRA_MASS.register(PodTowing::towedMass);
 		PodEvents.IGNORES_BLOCK_COLLISION.register(pod -> tower(pod).isPresent());
 		PodEvents.AFTER_TICK.register(PodTowing::follow);
+		PodEvents.AFTER_TICK.register(PodTowing::keepTowedChunksTicking);
 		BreachEvents.CROSSED.register(PodTowing::carryAcross);
 		UseEntityCallback.EVENT.register(PodTowing::onUse);
 	}
@@ -180,6 +262,7 @@ public final class PodTowing {
 		}
 		Optional<Vec3> toward = tower(towed).map(PodEntity::position);
 		Versioned.modifyOrThrow(towed, STATE, state -> State.EMPTY);
+		LINES.remove(towed);
 		leaveRock(towed, toward);
 		return true;
 	}
@@ -222,40 +305,179 @@ public final class PodTowing {
 	}
 
 	/**
-	 * Holds the towed pod where it started the tick, or pulls it in along the line to its tower until it is
-	 * {@link TowTuning#trailDistance} away. It has no block collision, so nothing else stops it, and its own gravity is undone here.
+	 * A towed pod moves only on its own tick, and a line of 7 blocks or more leaves it in a chunk that does not tick when its tower
+	 * is at a chunk's edge. So the tower asks, every {@link #TICKET_INTERVAL} ticks, for the chunks of the pods it tows to tick, with
+	 * the ticket an ender pearl takes. It runs out on its own {@link TicketType#ENDER_PEARL} timeout, so there is nothing to release.
+	 */
+	private static void keepTowedChunksTicking(PodEntity tower) {
+		if (tower.tickCount % TICKET_INTERVAL != 0 || !(tower.level() instanceof ServerLevel level) || isTowed(tower)) {
+			return;
+		}
+		for (PodEntity towed : towedBy(tower, TowTuning.DEFAULT)) {
+			ChunkPos chunk = towed.chunkPosition();
+			if (!chunk.equals(tower.chunkPosition())) {
+				level.getChunkSource().addTicketWithRadius(TicketType.ENDER_PEARL, chunk, TICKET_RADIUS);
+			}
+		}
+	}
+
+	/**
+	 * Moves the towed pod as a weight on the line. Where the pod or the line to the tower is not in open space it goes along the
+	 * tower's path, or failing that to the nearest open place on the line, so that the line never drags it into rock.
 	 */
 	private static void follow(PodEntity towed) {
-		Optional<PodEntity> tower = tower(towed);
-		if (tower.isEmpty()) {
+		Optional<PodEntity> found = tower(towed);
+		if (found.isEmpty()) {
+			LINES.remove(towed);
 			if (isTowed(towed)) {
 				leaveRock(towed, Optional.empty());
 			}
 			return;
 		}
-		Vec3 anchor = tower.get().position();
+		PodEntity tower = found.get();
+		TowTuning tuning = TowTuning.DEFAULT;
+		Line line = LINES.computeIfAbsent(towed, pod -> new Line());
+		double rope = tuning.trailDistance(tower, towed);
+		Vec3 anchor = tower.position();
 		Vec3 held = new Vec3(towed.xo, towed.yo, towed.zo);
-		Vec3 away = held.subtract(anchor);
-		double trail = TowTuning.DEFAULT.trailDistance(tower.get(), towed);
-		towed.setPos(away.lengthSqr() > trail * trail ? anchor.add(away.normalize().scale(trail)) : held);
+		line.remember(anchor, rope);
+
+		double slowing = line.resting ? tuning.groundFriction() : tuning.drag();
+		Vec3 wanted = new Vec3(line.velocity.x * slowing, (line.velocity.y - tuning.gravity()) * tuning.drag(), line.velocity.z * slowing);
+		AABB box = towed.getBoundingBox().move(held.subtract(towed.position()));
+		List<VoxelShape> blocks = new ArrayList<>();
+		towed.level().getBlockCollisions(towed, box.expandTowards(wanted)).forEach(blocks::add);
+		Vec3 moved = collide(wanted, box, blocks);
+		line.resting = wanted.y < 0 && moved.y > wanted.y + EPSILON;
+		Vec3 next = restOnTower(tower, towed, held.add(moved));
+		Vec3 out = next.subtract(anchor);
+		if (out.lengthSqr() > rope * rope) {
+			next = anchor.add(out.normalize().scale(rope));
+		}
+		Vec3 carried = null;
+		if (!fits(towed, anchor, next)) {
+			carried = line.pathPoints(anchor, rope).stream()
+					.filter(point -> openAt(towed.level(), towed, point))
+					.findFirst()
+					.or(() -> held.distanceToSqr(anchor) > rope * rope ? nearestOpenOnLine(towed, anchor, held, rope) : Optional.empty())
+					.orElse(held);
+			next = carried;
+			line.resting = false;
+		}
+		line.velocity = carried == null ? withoutPullAgainstLine(moved, next.subtract(anchor)) : Vec3.ZERO;
+		towed.setPos(next);
 		towed.setDeltaMovement(Vec3.ZERO);
 		towed.resetFallDistance();
-		drawCable(tower.get(), towed);
+		drawCable(tower, towed, rope);
 	}
 
-	/** Particles along the line between the two pods' middles every {@link TowTuning#cableInterval()} ticks, at most {@link TowTuning#cableMaxParticles()}. */
-	private static void drawCable(PodEntity tower, PodEntity towed) {
+	/**
+	 * The open place farthest from {@code anchor} that is at most {@code rope} from it, on the line toward {@code toward}: for a pod
+	 * that no point of the path suits, so that it is not left behind as its tower leaves.
+	 */
+	private static Optional<Vec3> nearestOpenOnLine(PodEntity towed, Vec3 anchor, Vec3 toward, double rope) {
+		Vec3 direction = toward.subtract(anchor);
+		direction = direction.lengthSqr() < EPSILON ? new Vec3(0, -1, 0) : direction.normalize();
+		for (double distance = rope; distance > OPEN_STEP; distance -= OPEN_STEP) {
+			Vec3 spot = anchor.add(direction.scale(distance));
+			if (openAt(towed.level(), towed, spot)) {
+				return Optional.of(spot);
+			}
+		}
+		return Optional.empty();
+	}
+
+	/** How far {@code box} moves along {@code move} before the {@code blocks}, one axis at a time as a pod does: up or down first, then the longer of the two horizontal ones. */
+	private static Vec3 collide(Vec3 move, AABB box, List<VoxelShape> blocks) {
+		double y = Shapes.collide(Direction.Axis.Y, box, blocks, move.y);
+		box = box.move(0, y, 0);
+		boolean zFirst = Math.abs(move.z) > Math.abs(move.x);
+		double x = zFirst ? 0 : Shapes.collide(Direction.Axis.X, box, blocks, move.x);
+		box = box.move(x, 0, 0);
+		double z = Shapes.collide(Direction.Axis.Z, box, blocks, move.z);
+		if (zFirst) {
+			box = box.move(0, 0, z);
+			x = Shapes.collide(Direction.Axis.X, box, blocks, move.x);
+		}
+		return new Vec3(x, y, z);
+	}
+
+	/** {@code speed} less the part of it that points away from the tower along {@code line}, which the line takes up. The pull of the line gives the pod no speed of its own. */
+	private static Vec3 withoutPullAgainstLine(Vec3 speed, Vec3 line) {
+		double length = line.length();
+		if (length < EPSILON) {
+			return speed;
+		}
+		Vec3 along = line.scale(1.0 / length);
+		return speed.subtract(along.scale(Math.max(0.0, speed.dot(along))));
+	}
+
+	/** Lifts {@code at} onto the roof of the tower when the towed pod is falling on it, so a pod that drops down a shaft the tower is drilling rests on the tower and not in it. */
+	private static Vec3 restOnTower(PodEntity tower, PodEntity towed, Vec3 at) {
+		AABB roof = tower.getBoundingBox();
+		AABB box = towed.getBoundingBox().move(at.subtract(towed.position()));
+		boolean above = box.minY >= roof.getCenter().y && box.minY < roof.maxY;
+		return above && box.intersects(roof) ? new Vec3(at.x, roof.maxY, at.z) : at;
+	}
+
+	/** True when no block meets {@code box}. Pods and other entities do not count: the towed pod and its tower overlap by design at times. */
+	private static boolean inOpenSpace(Level level, PodEntity pod, AABB box) {
+		return !level.getBlockCollisions(pod, box).iterator().hasNext();
+	}
+
+	/** {@link #inOpenSpace} for {@code pod}'s box moved to stand at {@code spot} in {@code level}. */
+	private static boolean openAt(Level level, PodEntity pod, Vec3 spot) {
+		return inOpenSpace(level, pod, pod.getBoundingBox().move(spot.subtract(pod.position())));
+	}
+
+	/**
+	 * True when the towed pod's box is in open space at {@code at} and all along the line from {@code anchor} to it, so the line does
+	 * not cut through rock. Sampled every {@link #FIT_STEP} blocks, closer than the narrowest wall.
+	 */
+	private static boolean fits(PodEntity towed, Vec3 anchor, Vec3 at) {
+		Vec3 line = at.subtract(anchor);
+		int samples = (int) Math.ceil(line.length() / FIT_STEP);
+		AABB box = towed.getBoundingBox().move(anchor.subtract(towed.position()));
+		for (int i = samples; i >= 0; i--) {
+			Vec3 sample = line.scale(samples == 0 ? 0 : (double) i / samples);
+			if (!inOpenSpace(towed.level(), towed, box.move(sample))) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/** Draws the cable as a chain of particles, hanging in a curve when slack. One packet each, so the count is bounded by spacing, interval and cap. */
+	private static void drawCable(PodEntity tower, PodEntity towed, double rope) {
 		TowTuning tuning = TowTuning.DEFAULT;
 		if (towed.tickCount % tuning.cableInterval() != 0 || !(towed.level() instanceof ServerLevel level)) {
 			return;
 		}
 		Vec3 from = tower.getBoundingBox().getCenter();
 		Vec3 line = towed.getBoundingBox().getCenter().subtract(from);
-		int count = Math.min(tuning.cableMaxParticles(), (int) Math.ceil(line.length() / tuning.cableSpacing()));
+		double chord = line.length();
+		// A rope of length rope hung over a chord is a curve whose depth is about sqrt(3 * chord * spare / 8).
+		double sag = Math.sqrt(3.0 * chord * Math.max(0.0, rope - chord) / 8.0);
+		int count = Math.min(tuning.cableMaxParticles(), (int) Math.ceil(chord / tuning.cableSpacing()));
 		for (int i = 1; i <= count; i++) {
-			Vec3 at = from.add(line.scale((double) i / (count + 1)));
+			double along = (double) i / (count + 1);
+			Vec3 at = from.add(line.scale(along)).add(0, -4.0 * sag * along * (1.0 - along), 0);
+			if (tower.getBoundingBox().contains(at) || towed.getBoundingBox().contains(at)) {
+				continue;
+			}
+			at = aboveFloor(level, at);
 			level.sendParticles(PodRegistry.TOW_CABLE_PARTICLE, at.x, at.y, at.z, 1, 0, 0, 0, 0);
 		}
+	}
+
+	/** {@code at}, or the top of the solid block it is in, so a slack cable lies on the floor and does not sink into it. */
+	private static Vec3 aboveFloor(ServerLevel level, Vec3 at) {
+		BlockPos pos = BlockPos.containing(at);
+		for (int i = 0; i < CABLE_FLOOR_LIFT && !level.getBlockState(pos).getCollisionShape(level, pos).isEmpty(); i++) {
+			at = new Vec3(at.x, pos.getY() + 1.0 + EPSILON, at.z);
+			pos = pos.above();
+		}
+		return at;
 	}
 
 	/**
@@ -308,7 +530,7 @@ public final class PodTowing {
 				DeepCharter.LOGGER.error("Pod {} cannot cross to {} with its tower {}: it stays behind on its cable", pod.getUUID(), to.dimension(), tower.getUUID());
 				continue;
 			}
-			Entity arrived = pod.teleport(new TeleportTransition(to, trailSpot(tower, pod), Vec3.ZERO, pod.getYRot(), pod.getXRot(), TeleportTransition.DO_NOTHING));
+			Entity arrived = pod.teleport(new TeleportTransition(to, trailSpot(to, tower, pod), Vec3.ZERO, pod.getYRot(), pod.getXRot(), TeleportTransition.DO_NOTHING));
 			if (arrived == null) {
 				DeepCharter.LOGGER.error("Vanilla refused to take pod {} to {} with its tower {}: it stays behind on its cable", pod.getUUID(), to.dimension(), tower.getUUID());
 				continue;
@@ -320,13 +542,30 @@ public final class PodTowing {
 		}
 	}
 
-	/** {@link TowTuning#trailDistance} from the tower, level with it, on the side the pod was on, or behind the tower if it was straight above or below. */
-	private static Vec3 trailSpot(PodEntity tower, PodEntity towed) {
+	/**
+	 * Where the towed pod arrives: {@link TowTuning#trailDistance} from the tower, level with it on the side the pod was on (behind
+	 * the tower if it was straight above or below), or hanging straight below it. If the box does not fit there in the level it
+	 * arrives in, the distance shortens by {@link #ARRIVAL_STEP} until it does, down to the hulls just apart, and then the pod arrives
+	 * in the tower's place, which is open space.
+	 */
+	private static Vec3 trailSpot(ServerLevel to, PodEntity tower, PodEntity towed) {
 		Vec3 side = new Vec3(towed.getX() - tower.getX(), 0, towed.getZ() - tower.getZ());
 		if (side.lengthSqr() < 1e-6) {
 			side = Vec3.directionFromRotation(0, tower.getYRot()).scale(-1);
 		}
-		return tower.position().add(side.normalize().scale(TowTuning.DEFAULT.trailDistance(tower, towed)));
+		side = side.normalize();
+		double full = TowTuning.DEFAULT.trailDistance(tower, towed);
+		double least = (tower.chassis().width() + towed.chassis().width()) / 2.0 + ARRIVAL_STEP;
+		Vec3[] directions = {side, new Vec3(0, -1, 0)};
+		for (double distance = full; distance >= least; distance -= ARRIVAL_STEP) {
+			for (Vec3 direction : directions) {
+				Vec3 spot = tower.position().add(direction.scale(distance));
+				if (openAt(to, towed, spot)) {
+					return spot;
+				}
+			}
+		}
+		return tower.position();
 	}
 
 	private static InteractionResult onUse(Player player, Level level, InteractionHand hand, Entity entity, EntityHitResult hit) {
