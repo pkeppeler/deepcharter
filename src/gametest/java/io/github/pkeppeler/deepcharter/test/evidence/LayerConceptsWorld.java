@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -34,10 +35,11 @@ import io.github.pkeppeler.deepcharter.test.support.LayerConceptScenes.Size;
 import io.github.pkeppeler.deepcharter.test.support.LayerConceptScenes.View;
 
 /**
- * The world and the views of the {@code layer-concepts} scenario (#241): one real world, the six scenes of {@link LayerConceptScenes}
- * built in layers 1 and 2, and a creative, flying camera with the HUD hidden, under the pins of {@link EvidenceWorld}. The camera stands
- * where the scene file says and the still is shot once the light has settled, every chunk in view has rendered and no mob or loose
- * item is in the world. An option's test pack is turned on, as a player does in the pack screen, and off again.
+ * The world and the views of the {@code layer-concepts} scenario (#447): one real world, the three scenes of {@link LayerConceptScenes}
+ * built in layers 1 and 2 (layer 3's in layer 2's dimension), and a creative, flying camera with the HUD hidden, under the pins of
+ * {@link EvidenceWorld}. The camera stands where the scene file says and the still is shot once the light has settled, every chunk in view
+ * has rendered and no mob or loose item is in the world. A texture option's test pack is turned on, as a player does in the pack screen, and
+ * so is the form pack of the layer being shot, and both are turned off again.
  */
 final class LayerConceptsWorld {
 	private static final double EYE = 1.62;
@@ -98,14 +100,23 @@ final class LayerConceptsWorld {
 		}
 	}
 
-	/** Shoots every view of both layers of {@code option} with its test pack on, and off again after, in a finally. */
-	void shootOption(String option, String pack) {
+	/**
+	 * Shoots every view of the three layers with the texture option's pack on, and off again after, in a finally. A block has one blockstate,
+	 * so each layer is shot with its own form pack (its Company Rock and breach crust) on as well, and off again after it.
+	 */
+	void shootStyle(String style, String pack, Map<Integer, String> formPacks) {
 		park();
 		ClientPacks.enable(ctx, pack);
 		try {
 			for (Scene scene : scenes) {
-				if (scene.option().equals(option)) {
-					shootScene(scene);
+				String form = formPacks.get(scene.layer());
+				park();
+				ClientPacks.enable(ctx, form);
+				try {
+					shootScene(style, scene);
+				} finally {
+					park();
+					ClientPacks.disable(ctx, form);
 				}
 			}
 		} finally {
@@ -126,13 +137,13 @@ final class LayerConceptsWorld {
 				client -> client.level.dimension().equals(parkDimension) && client.player.distanceToSqr(parkPosition) < 1.0);
 	}
 
-	private void shootScene(Scene scene) {
+	private void shootScene(String style, Scene scene) {
 		serverDo(server -> LayerConceptScenes.startLava(server, scene));
 		for (View view : scene.views()) {
 			serverDo(server -> LayerConceptScenes.setAtmosphere(server, scene, size, view.light()));
 			serverDo(server -> LayerConceptScenes.setCameraLamp(server, scene, view, true));
 			look(scene, view);
-			still("%s-layer%d-%s".formatted(scene.option(), scene.layer(), view.name()));
+			still("%s-layer%d-%s".formatted(style, scene.layer(), view.name()));
 			serverDo(server -> LayerConceptScenes.setCameraLamp(server, scene, view, false));
 		}
 		// Build the scene again, which wipes its lava: a flow that nobody watches any more would go on costing ticks while the later scenes
@@ -172,8 +183,8 @@ final class LayerConceptsWorld {
 			ServerLevel level = scene.level(server);
 			player.teleportTo(level, eye.x, eye.y - EYE, eye.z, Set.of(), yaw, pitch, true);
 		});
-		ClientWait.until(ctx, "the camera at " + eye + " in layer " + scene.layer(),
-				client -> client.level.dimension().equals(LayerChain.dimension(scene.layer()))
+		ClientWait.until(ctx, "the camera at " + eye + " in the scene of layer " + scene.layer(),
+				client -> client.level.dimension().equals(LayerChain.dimension(scene.dimension()))
 						&& client.player.distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
 						&& Math.abs(Mth.wrapDegrees(client.player.getYRot() - yaw)) < 0.01f && Math.abs(client.player.getXRot() - pitch) < 0.01f);
 		ctx.waitTicks(view.settle());

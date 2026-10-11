@@ -1,5 +1,5 @@
 {
-  "description": "salvage_crate_b, salvage_crate_c, fungal_stalk_b and fungal_stalk_c: the shapes of issue 245 that the mod does not ship (docs/design/salvage-concepts.md); each pack holds a blockstate, models and item definition, and the textures only that shape uses (the shapes' models are written by hand). The texture test packs of round 1, b to d, of issue 336 (docs/design/texture-density.md), and layer_a to layer_c of the layer concepts of issue 241 (docs/design/layer-concepts.md; their recipes, models and scenes are written by tools/layer_concepts/make.py). Each is a test pack that only its evidence scenario turns on; the mod's own textures are variant A. Paths are from the repo root; a variant's palettes merge over the default palette, and its recipe directories load over the default ones, in order. D loads B's recipes before its own, so B's rock and ores feed D: a change to B changes D's pack too. A variant may also have overlays (host, textures, blocks): each ore block then draws the host block's own texture, by reference, with the pack's cutout overlay over it, so no vanilla texture is copied or replaced. The mod's own ores are built that way from tools/textures/overlays.json (docs/design/ores.md), and no variant uses overlays now.",
+  "description": "salvage_crate_b, salvage_crate_c, fungal_stalk_b and fungal_stalk_c: the shapes of issue 245 that the mod does not ship (docs/design/salvage-concepts.md); each pack holds a blockstate, models and item definition, and the textures only that shape uses (the shapes' models are written by hand). The texture test packs of round 1, b to d, of issue 336 (docs/design/texture-density.md), and layer_grain, layer_bedded, layer_mottled and layer_form_1 to layer_form_3 of the layer concepts of issue 447 (docs/design/layer-concepts-2.md; their recipes, models and scenes are written by tools/layer_concepts/make.py). Each is a test pack that only its evidence scenario turns on; the mod's own textures are variant A. Paths are from the repo root; a variant's palettes merge over the default palette, and its recipe directories load over the default ones, in order. D loads B's recipes before its own, so B's rock and ores feed D: a change to B changes D's pack too. A variant may also have overlays (host, textures, blocks): each ore block then draws the host block's own texture, by reference, with the pack's cutout overlay over it, so no vanilla texture is copied or replaced. The mod's own ores are built that way from tools/textures/overlays.json (docs/design/ores.md), and no variant uses overlays now.",
   "variants": {
     "b": {
       "palettes": [],
@@ -16,20 +16,35 @@
       "recipes": ["tools/textures/variants/b/recipes", "tools/textures/variants/d/recipes"],
       "pack": "src/gametest/resources/resourcepacks/texture_density_d"
     },
-    "layer_a": {
+    "layer_grain": {
       "palettes": ["tools/textures/variants/layers/palette.json"],
-      "recipes": ["tools/textures/variants/layer_a/recipes"],
-      "pack": "src/gametest/resources/resourcepacks/layer_concept_a"
+      "recipes": ["tools/textures/variants/layer_grain/recipes"],
+      "pack": "src/gametest/resources/resourcepacks/layer_concept_grain"
     },
-    "layer_b": {
+    "layer_bedded": {
       "palettes": ["tools/textures/variants/layers/palette.json"],
-      "recipes": ["tools/textures/variants/layer_b/recipes"],
-      "pack": "src/gametest/resources/resourcepacks/layer_concept_b"
+      "recipes": ["tools/textures/variants/layer_bedded/recipes"],
+      "pack": "src/gametest/resources/resourcepacks/layer_concept_bedded"
     },
-    "layer_c": {
+    "layer_mottled": {
       "palettes": ["tools/textures/variants/layers/palette.json"],
-      "recipes": ["tools/textures/variants/layer_c/recipes"],
-      "pack": "src/gametest/resources/resourcepacks/layer_concept_c"
+      "recipes": ["tools/textures/variants/layer_mottled/recipes"],
+      "pack": "src/gametest/resources/resourcepacks/layer_concept_mottled"
+    },
+    "layer_form_1": {
+      "palettes": ["tools/textures/variants/layers/palette.json"],
+      "recipes": ["tools/textures/variants/layer_form_1/recipes"],
+      "pack": "src/gametest/resources/resourcepacks/layer_concept_form_1"
+    },
+    "layer_form_2": {
+      "palettes": ["tools/textures/variants/layers/palette.json"],
+      "recipes": ["tools/textures/variants/layer_form_2/recipes"],
+      "pack": "src/gametest/resources/resourcepacks/layer_concept_form_2"
+    },
+    "layer_form_3": {
+      "palettes": ["tools/textures/variants/layers/palette.json"],
+      "recipes": ["tools/textures/variants/layer_form_3/recipes"],
+      "pack": "src/gametest/resources/resourcepacks/layer_concept_form_3"
     },
     "salvage_crate_b": {
       "palettes": [],

@@ -11,6 +11,7 @@ from pathlib import Path
 
 TOOLS = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(TOOLS / "textures"))
+sys.path.insert(0, str(TOOLS / "layer_concepts"))
 
 import pngio  # noqa: E402
 import seams  # noqa: E402
@@ -57,6 +58,9 @@ class NaturalTexturesTest(unittest.TestCase):
                 image = pngio.decode(path.read_bytes(), name)
                 measured = seams.measure(image.pixels, image.width)
                 self.assertTrue(measured.seamless(), f"{name}: wrap {measured.wrap_ratio:.2f}, rim {measured.rim_ratio:.2f}: it shows its edge")
+                # Planks are busier than bark, as vanilla's are: its board lines are in the texture.
+                busiest = seams.MAX_RUBBLE_INSIDE if name == "stalk_planks" else seams.MAX_INSIDE
+                self.assertTrue(seams.MIN_INSIDE <= measured.inside <= busiest, f"{name}: mean step {measured.inside:.1f} is outside vanilla's range")
 
     def test_a_texture_with_an_outlined_edge_is_caught(self):
         """The check is not blind: a bark with a dark one-pixel outline, which is the outlined-square look, fails it."""
