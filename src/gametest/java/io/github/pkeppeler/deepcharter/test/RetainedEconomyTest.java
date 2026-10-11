@@ -39,6 +39,19 @@ public class RetainedEconomyTest {
 	/** A lights part must pay for itself in this many unanswered grabs, at most: a part the dark pilot can believe in. */
 	private static final double LIGHTS_PAYBACK_GRABS_MAX = 10;
 
+	/** Figures the game's spawner placed per minute of play for each unit of roll chance: 6 in 12,000 ticks (10 minutes) at 0.02 in #449, so 30. */
+	private static final double PLACED_PER_MINUTE_PER_CHANCE = 30;
+	/** (A) Minutes of a first-hour run in layer 1, down and back up; and of a run in layer 2, which is as long. */
+	private static final double RUN_MINUTES = 4;
+	/** (A) Share of placed figures that find the pod: they appear 24 or more blocks off, sense 20, and the pod moves. */
+	private static final double MEET_SHARE = 0.5;
+	/** The expected loss to figures over a layer 1 run stays under this share of the run, so that a first-hour pilot who answers each is never worn down. */
+	private static final double LAYER_ONE_EXPECTED_SHARE_MAX = 0.05;
+	/** A deep run meets at least this many figures: a presence and not a rare sight (#506). */
+	private static final double LAYER_TWO_GRABS_MIN = 1;
+	/** A deep run meets at most this many figures on average, or the Retained are the whole run and not a hazard in it. */
+	private static final double LAYER_TWO_GRABS_MAX = 5;
+
 	private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
 		return helper.assertionException(Component.literal(String.format(format, args)));
 	}
@@ -120,6 +133,39 @@ public class RetainedEconomyTest {
 		LOGGER.info("[retained-economy] a killed grip takes {} L: {} of a stock tank, {} of a tier 2 tank of {} L", litres, stockShare, upgradedShare, upgraded.tankLitres());
 		if (upgradedShare >= stockShare) {
 			throw failure(helper, "a bigger tank loses %.1f%% to a killed grip, as much as a stock tank's %.1f%%", 100 * upgradedShare, 100 * stockShare);
+		}
+		helper.succeed();
+	}
+
+	/** Grabs a run of {@code RUN_MINUTES} meets in a layer whose roll passes {@code chance} of the spawner's tries. */
+	private static double grabsPerRun(double chance) {
+		return PLACED_PER_MINUTE_PER_CHANCE * chance * RUN_MINUTES * MEET_SHARE;
+	}
+
+	/**
+	 * (A, #506) The Retained are a presence in the deep and a minor cost in layer 1. Layer 1: the expected cost of the grabs a run meets, each
+	 * answered after the cue, stays under 5 per cent of the run. Layer 2: a run meets at least one and at most five.
+	 */
+	@GameTest
+	public void theFiguresRiseWithDepthAndStayFairInLayerOne(GameTestHelper helper) {
+		CreatureTuning tuning = CreatureTuning.DEFAULT;
+		PodStats stock = PodStats.base();
+		double whole = EarlyRunModel.run(Zone.load("topsoil_claims"), stock, 0).litres();
+		double grabLitres = killedLitres(tuning, CUED_REACTION_SECONDS);
+		double oneGrabs = grabsPerRun(tuning.natural().layerOneChancePerTry());
+		double twoGrabs = grabsPerRun(tuning.natural().chancePerTry());
+		double oneShare = oneGrabs * grabLitres / whole;
+		PodStats deep = EarlyRunModel.mole(2, 2, 2);
+		double twoShare = twoGrabs * grabLitres / deep.tankLitres();
+		LOGGER.info("[retained-economy] #506: layer 1 {} grabs a run, {} of a run lost; layer 2 {} grabs a run, {} of a tier 2 tank lost", oneGrabs, oneShare, twoGrabs, twoShare);
+		if (oneShare > LAYER_ONE_EXPECTED_SHARE_MAX) {
+			throw failure(helper, "the grabs of a layer 1 run cost %.1f%% of it on average, over the %.0f%% allowed", 100 * oneShare, 100 * LAYER_ONE_EXPECTED_SHARE_MAX);
+		}
+		if (twoGrabs < LAYER_TWO_GRABS_MIN || twoGrabs > LAYER_TWO_GRABS_MAX) {
+			throw failure(helper, "a layer 2 run meets %.2f figures on average, outside %.0f to %.0f", twoGrabs, LAYER_TWO_GRABS_MIN, LAYER_TWO_GRABS_MAX);
+		}
+		if (twoGrabs <= oneGrabs) {
+			throw failure(helper, "a layer 2 run meets %.2f figures and layer 1 %.2f: they do not rise with depth", twoGrabs, oneGrabs);
 		}
 		helper.succeed();
 	}

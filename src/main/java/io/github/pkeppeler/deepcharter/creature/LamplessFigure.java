@@ -41,12 +41,12 @@ import io.github.pkeppeler.deepcharter.sound.DeepSound;
  * layers (never a boss, ADR 0046): it never attacks anyone, and it does not fade for a light or for a person near it. It walks on
  * whatever happens and comes to a dark pod, one with a pilot, power and no lights. It grabs the hull and takes fuel, and does not let go
  * until it is dead (ADR 0046, amended for #485): the pod's cutter bites it while the pod drills, and a person's blow hurts it too.
- * Some carry a lamp, so that they show from afar. It is not saved: a figure whose chunk unloads is gone, and the level makes another.
+ * A lit lamp in the helmet, tiny and dim, shows them from afar. It is not saved: a figure whose chunk unloads is gone, and the level makes another.
  */
 public class LamplessFigure extends PathfinderMob {
 	/** Whether the figure holds a pod's hull. Synced, for the client's pose. */
 	private static final EntityDataAccessor<Boolean> CLINGING = SynchedEntityData.defineId(LamplessFigure.class, EntityDataSerializers.BOOLEAN);
-	/** Whether the figure carries a lamp. Synced, for the client's model and glow. */
+	/** Whether the lamp in the figure's helmet is lit. Synced, for the client's glow. */
 	private static final EntityDataAccessor<Boolean> LAMP = SynchedEntityData.defineId(LamplessFigure.class, EntityDataSerializers.BOOLEAN);
 	/** How far ahead along its heading the figure aims, so that it never reaches the point it walks to. */
 	private static final double LOOK_AHEAD = 4;
@@ -95,10 +95,10 @@ public class LamplessFigure extends PathfinderMob {
 		builder.define(LAMP, false);
 	}
 
-	/** A natural spawn rolls whether it carries a lamp. */
+	/** A figure the spawner or a command makes carries the dim light in its helmet (ADR 0046, amended for #506); the rail's figure of Prospector's Run does not. */
 	@Override
 	public @Nullable SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty, EntitySpawnReason reason, @Nullable SpawnGroupData groupData) {
-		setLamp(level.getRandom().nextDouble() < CreatureTuning.DEFAULT.natural().lampShare());
+		setLamp(true);
 		if (reason == EntitySpawnReason.NATURAL) {
 			markNatural();
 		}
@@ -229,7 +229,8 @@ public class LamplessFigure extends PathfinderMob {
 		double distance = gap.length();
 		setPos(distance <= cling.latchSpeed() ? place : position().add(gap.scale(cling.latchSpeed() / distance)));
 		setDeltaMovement(Vec3.ZERO);
-		float yaw = (float) (Mth.atan2(pod.getX() - getX(), getZ() - pod.getZ()) * Mth.RAD_TO_DEG);
+		// Yaw 0 looks toward +z and yaw 90 toward -x, so the direction to the pod (dx, dz) is atan2(-dx, dz): the figure looks at the pod, not away from it (#506).
+		float yaw = (float) (Mth.atan2(getX() - pod.getX(), pod.getZ() - getZ()) * Mth.RAD_TO_DEG);
 		setYRot(yaw);
 		setYHeadRot(yaw);
 		setYBodyRot(yaw);

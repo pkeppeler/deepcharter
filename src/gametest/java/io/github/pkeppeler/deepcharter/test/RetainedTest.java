@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -105,6 +106,11 @@ public class RetainedTest {
 	private static final int LIGHT_BUDGET_TICKS = 200;
 	private static final AtomicInteger CHARTERS = new AtomicInteger();
 
+	/** (A, #506) The least share of natural-spawn tries that pass the roll: a Retained is a presence, not a rare sight. */
+	private static final double LAYER_ONE_MIN_ROLL_SHARE = 0.008;
+	private static final double LAYER_TWO_MIN_ROLL_SHARE = 0.04;
+	/** The figure stands within this much of facing the pod's centre (the cosine of the angle; 0.97 is 14 degrees). */
+	private static final double FACING_COSINE_MIN = 0.97;
 	private static final CreatureTuning TUNING = CreatureTuning.DEFAULT;
 	private static final CreatureTuning.Cling CLING = TUNING.cling();
 
@@ -221,6 +227,21 @@ public class RetainedTest {
 		}
 		if (ticks > 10 && !arena.touchesHull()) {
 			throw failure(helper, "the clinging figure at %s is off the hull %s", arena.figure.position(), arena.pod.getBoundingBox());
+		}
+		if (ticks > 10) {
+			expectFacesPod(helper, arena);
+		}
+	}
+
+	/** (#506) The body, the head and the heading of a clinging figure all point at the pod's centre: it holds the pod, it does not turn its back on it. */
+	private static void expectFacesPod(GameTestHelper helper, Arena arena) {
+		Vec3 toPod = arena.pod.position().subtract(arena.figure.position()).multiply(1, 0, 1).normalize();
+		for (var look : Map.of("body", arena.figure.yBodyRot, "head", arena.figure.getYHeadRot(), "heading", arena.figure.getYRot()).entrySet()) {
+			double cosine = Vec3.directionFromRotation(0, look.getValue()).dot(toPod);
+			if (cosine < FACING_COSINE_MIN) {
+				throw failure(helper, "the clinging figure's %s faces %s (yaw %s), not the pod: cosine %s toward %s", look.getKey(),
+						Vec3.directionFromRotation(0, look.getValue()), look.getValue(), cosine, toPod);
+			}
 		}
 	}
 
@@ -672,19 +693,27 @@ public class RetainedTest {
 		});
 	}
 
+	/**
+	 * (A, #506) The roll rises with depth and is not rare once the pilot is deep: layer 2 passes at least 4 tries in 100 (it was 2), layer 1
+	 * at least 8 in 1,000 (it was 5), and layer 2 passes at least three times as many as layer 1. The bounds are the knobs of
+	 * docs/design/mechanics.md; the fairness of the numbers is {@code RetainedEconomyTest}.
+	 */
 	@GameTest
-	public void layerOneRollsRarerThanLayerTwo(GameTestHelper helper) {
+	public void rollsRiseWithDepthAndTheDeepIsNotRare(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		ServerLevel one = server.getLevel(LayerChain.dimension(1));
 		ServerLevel two = server.getLevel(LayerChain.dimension(2));
-		int tries = 20000;
+		int tries = 40000;
 		int inOne = 0;
 		int inTwo = 0;
 		for (int i = 0; i < tries; i++) {
 			inOne += LamplessFigures.rolls(one, one.getRandom()) ? 1 : 0;
 			inTwo += LamplessFigures.rolls(two, two.getRandom()) ? 1 : 0;
 		}
-		expect(helper, inOne * 2 < inTwo, "layer 1 rolled %d of %d and layer 2 %d: layer 1 is not clearly rarer".formatted(inOne, tries, inTwo));
+		LOGGER.info("[retained] rolls in {} tries: layer 1 {} ({}), layer 2 {} ({})", tries, inOne, (double) inOne / tries, inTwo, (double) inTwo / tries);
+		expect(helper, inOne >= tries * LAYER_ONE_MIN_ROLL_SHARE, "layer 1 rolled %d of %d: under %s, rare for a pilot who is still shallow".formatted(inOne, tries, LAYER_ONE_MIN_ROLL_SHARE));
+		expect(helper, inTwo >= tries * LAYER_TWO_MIN_ROLL_SHARE, "layer 2 rolled %d of %d: under %s, rare for a pilot who is deep".formatted(inTwo, tries, LAYER_TWO_MIN_ROLL_SHARE));
+		expect(helper, inTwo >= inOne * 3, "layer 1 rolled %d of %d and layer 2 %d: the roll does not rise with depth".formatted(inOne, tries, inTwo));
 		helper.succeed();
 	}
 
