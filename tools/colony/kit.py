@@ -8,7 +8,7 @@ conveyor) are states of one block, colony_sculpture, which is never placed: bloc
 from dataclasses import dataclass
 from typing import Callable
 
-from models import Box, Model, cube_all, cube_column
+from models import Box, Model, cube_all
 
 NS = "deepcharter"
 TEX = f"{NS}:block/colony/"
