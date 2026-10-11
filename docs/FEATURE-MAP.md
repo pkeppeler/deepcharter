@@ -93,7 +93,7 @@ flowchart LR
   l_lava["Lava and its counters<br/>8 of 8 built"]
   l_gas["Gas and its counters<br/>6 of 6 built"]
   l_company_rock["Company Rock and its counters<br/>2 of 6 built"]
-  l_creatures["The Retained and other creatures<br/>4 of 8 built"]
+  l_creatures["The Retained and other creatures<br/>5 of 8 built"]
   l_darkness["Darkness and sight<br/>3 of 8 built"]
   l_crust["The breach crust and hard landings<br/>5 of 8 built"]
   l_getting_out["Stranded, rescue and the way home<br/>5 of 11 built"]
@@ -172,7 +172,7 @@ flowchart LR
 | [Lava and its counters](#lava-and-its-counters) | 8 | 0 | 0 | 0 |
 | [Gas and its counters](#gas-and-its-counters) | 6 | 0 | 0 | 0 |
 | [Company Rock and its counters](#company-rock-and-its-counters) | 2 | 1 | 3 | 0 |
-| [The Retained and other creatures](#the-retained-and-other-creatures) | 4 | 1 | 1 | 2 |
+| [The Retained and other creatures](#the-retained-and-other-creatures) | 5 | 0 | 1 | 2 |
 | [Darkness and sight](#darkness-and-sight) | 3 | 0 | 4 | 1 |
 | [The breach crust and hard landings](#the-breach-crust-and-hard-landings) | 5 | 0 | 1 | 2 |
 | [Stranded, rescue and the way home](#stranded-rescue-and-the-way-home) | 5 | 0 | 5 | 1 |
@@ -187,7 +187,6 @@ flowchart LR
 
 - **Salvage looks** (art): Keep salvage crate A and B and stalk B; drop the other looks. [#505](https://github.com/pkeppeler/deepcharter/issues/505), [#472](https://github.com/pkeppeler/deepcharter/issues/472), [#519](https://github.com/pkeppeler/deepcharter/issues/519)
 - **Company Rock look** (company-rock): A concept round for how Company Rock looks is under way; the chosen look is built later. [#503](https://github.com/pkeppeler/deepcharter/issues/503)
-- **More common deep, facing the pod, a dim helmet light** (creatures): Spawns rise with depth, the figure faces the pod it holds, and a tiny light shines in its helmet. [#506](https://github.com/pkeppeler/deepcharter/issues/506), [#515](https://github.com/pkeppeler/deepcharter/issues/515)
 - **Cockpit HUD with gauges** (interface): A cockpit HUD with gauges that hides the vanilla hotbar while seated. [#247](https://github.com/pkeppeler/deepcharter/issues/247), [#520](https://github.com/pkeppeler/deepcharter/issues/520)
 - **Layer rock textures and grades** (layers): Grained rock textures for layers 1 and 2, a lava redraw and an I-beam fix; depth palettes and colour grades follow. [#241](https://github.com/pkeppeler/deepcharter/issues/241)
 
@@ -928,7 +927,7 @@ flowchart LR
   n_retained_grab["☠️ The grab and the drain"]
   n_retained_lights["🛡️ Lights keep them away"]
   n_retained_kill["🛡️ Kill it with the drill"]
-  n_retained_tuning["⚙️ More common deep, facing the pod, a dim helmet light"]
+  n_retained_tuning["⚙️ More common deep, facing the pod, a helmet lens"]
   n_creatures_session["⚙️ Creatures and combat session"]
   n_layer_bosses["👁️ Layer bosses"]
   n_the_chairman["👁️ The Chairman"]
@@ -947,8 +946,7 @@ flowchart LR
   classDef planned fill:#2e2e2e,stroke:#9e9e9e,stroke-width:1px,color:#d6d6d6
   classDef idea fill:#1a1a1a,stroke:#757575,stroke-width:1px,stroke-dasharray:4 3,color:#a0a0a0
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
-  class n_retained,n_retained_grab,n_retained_lights,n_retained_kill built
-  class n_retained_tuning progress
+  class n_retained,n_retained_grab,n_retained_lights,n_retained_kill,n_retained_tuning built
   class n_creatures_session planned
   class n_layer_bosses,n_the_chairman idea
   class n_lights_t1,n_the_deep_bites ext
@@ -960,7 +958,7 @@ flowchart LR
 | ☠️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/reacher.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/reacher.png?raw=true" width="160" alt=""></a> | <a id="retained-grab"></a>**The grab and the drain**<br>hazard | It walks to a pod within 20 blocks, clings to the hull and drains fuel, never below 5 percent. The grip ends only when the figure dies. | ✅ Built | [ADR 0046](adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md), [mechanics.md](design/mechanics.md#the-retained-at-dark-pods-449-a) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_lights.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-lights.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-lights.gif?raw=true" width="160" alt=""></a> | <a id="retained-lights"></a>**Lights keep them away**<br>counter | A pod with a lights part draws no Retained. Lights do not free a pod that is already held. | ✅ Built | [#449](https://github.com/pkeppeler/deepcharter/issues/449) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_drill.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/498/retained-drain.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/498/retained-drain.gif?raw=true" width="160" alt=""></a> | <a id="retained-kill"></a>**Kill it with the drill**<br>counter | No fading: a grab ends only when the Retained dies. The cutter bites it while the pod drills rock, and a sword kills it on foot. | ✅ Built | [#485](https://github.com/pkeppeler/deepcharter/issues/485), [#498](https://github.com/pkeppeler/deepcharter/issues/498), [ADR 0046](adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md) |
-| ⚙️ | no still yet | <a id="retained-tuning"></a>**More common deep, facing the pod, a dim helmet light**<br>mechanic | Spawns rise with depth, the figure faces the pod it holds, and a tiny light shines in its helmet. | 🔨 In progress | [#506](https://github.com/pkeppeler/deepcharter/issues/506), [#515](https://github.com/pkeppeler/deepcharter/issues/515) |
+| ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/515/retained-drain.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/515/retained-drain.gif?raw=true" width="160" alt=""></a> | <a id="retained-tuning"></a>**More common deep, facing the pod, a helmet lens**<br>mechanic | Layer 1 rolls 1 percent and layer 2 5 percent, up to 5 at once; a figure faces the pod it grips; a tiny dim amber lens shines in its helmet. | ✅ Built | [#506](https://github.com/pkeppeler/deepcharter/issues/506), [#515](https://github.com/pkeppeler/deepcharter/issues/515), [ADR 0046](adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md) |
 | ⚙️ | no still yet | <a id="creatures-session"></a>**Creatures and combat session**<br>mechanic | A session with the user on rare unsettling creatures per layer and bosses; pod combat uses mining gear first. | 📋 Planned | [#13](https://github.com/pkeppeler/deepcharter/issues/13), [SPEC.md](SPEC.md#13-creatures-and-combat) |
 | 👁️ | no still yet | <a id="layer-bosses"></a>**Layer bosses**<br>creature | Bosses that mix pod fights and on-foot fights, by layer. | 💭 Idea | [SPEC.md](SPEC.md#13-creatures-and-combat) |
 | 👁️ | no still yet | <a id="the-chairman"></a>**The Chairman**<br>creature | The two-phase finale boss, broken but never killed. | 💭 Idea | [ADR 0031](adr/0031-the-finale-is-won-by-renunciation.md) |
