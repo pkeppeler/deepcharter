@@ -77,6 +77,7 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
 	 * Lets the first player out of the pod and floats them, as a spectator, at ({@code x}, {@code y}, {@code z}) looking {@code pitch}
 	 * degrees down, facing {@code yaw}. The cab frame of the pod blocks a look up from the seat, so a still of a lined shaft is taken from
 	 * above it instead, with the pod at the bottom.
+	 * This is a terminal step: it leaves the player a spectator, out of the pod, so nothing may follow it in a scenario but frames and stills.
 	 */
 	protected final void floatAbovePod(TestSingleplayerContext singleplayer, double x, double y, double z, float yaw, float pitch) {
 		singleplayer.getServer().runOnServer(server -> {

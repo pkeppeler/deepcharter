@@ -49,7 +49,7 @@ public class PodLinerScenario extends EvidenceScenario {
 	private static final int MAX_TICKS = 6000;
 	private static final int BRICKS = 24;
 	private static final float LOOK_DOWN = 30f;
-	private static final float LOOK_DOWN_THE_SHAFT = 75f;
+	private static final float LOOK_DOWN_THE_SHAFT = 85f;
 	private static final float FACING_EAST = -90f;
 	private static final int THERMAL_TIER = 2;
 	private static final int LINER_TIER = 2;
@@ -135,7 +135,7 @@ public class PodLinerScenario extends EvidenceScenario {
 			}
 
 			// Float above the lined slabs and look down the shaft: the slag brick stands in its walls where the lava pockets were.
-			floatAbovePod(singleplayer, X, FIRST_POCKET_Y + 3, Z, FACING_EAST, LOOK_DOWN_THE_SHAFT);
+			floatAbovePod(singleplayer, X, FIRST_POCKET_Y + 1, Z, FACING_EAST, LOOK_DOWN_THE_SHAFT);
 			for (int i = 0; i < 12; i++) {
 				context.waitTicks(TICKS_PER_FRAME);
 				frame(context);

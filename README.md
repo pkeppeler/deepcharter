@@ -41,7 +41,7 @@ The hangar holds the founding pod, dark until your charter repairs it.
 
 ![A pod in flight, with the status readout in the corner](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-flying.png?raw=true)
 
-A pod is a vehicle with seats. It drives on treads, lifts on a rotor and drills down and sideways, never up. The corner readout shows hull, fuel and cargo. The rotor folds flat when the pod is parked, the pilot sits in the canopy, and the paint comes from your charter, so a crew's pods match. The founding pod is the Mole, a squat 2-by-3 block machine, and wrecks you find deeper down include the Prospector, a second body with its own look.
+A pod is a vehicle with seats. It drives on treads, lifts on a rotor and drills down and sideways, never up. The corner readout shows hull, fuel and cargo. The rotor folds flat when the pod is parked, the pilot sits in the canopy, and the paint comes from your charter, so a crew's pods match. The founding pod is the Mole, a machine 2 blocks wide and 3 tall, and wrecks you find deeper down include the Prospector, a second body with its own look.
 
 ### 3. Drilling and fuel
 
@@ -99,9 +99,9 @@ Lava hurts the pod, not the pilot. The hull gauge drops until you leave or repai
 
 A thermal scanner shows lava pockets beside your shaft before you reach them. Stop a slab above, press R from the seat, and the pod lines the slab walls with slag brick while it stands still. Then drill on. Buy a spoil hopper at the upgrade terminal and the drill keeps the stone it bores. The ore processor fuses that stone into the brick.
 
-The liner part does it for you. Fit one and the pod rings the shaft with slag brick as it drills, every few slabs, which seals the walls against lava pockets the thermal scanner has shown you. Tier 1 rings every 4 slabs, tier 2 every 3 and also in a fall, and it stretches your slag further. The cost is drill speed: a better liner is a slower drill. The readout shows your slag and how many slabs are left to the next ring. (These two pictures look down the shaft from above; from the seat the cab frame hides the walls.)
+The liner part does it for you. Fit one and the pod lines the shaft with slag brick as it drills, wherever lava could get in, which seals the walls against lava pockets the thermal scanner has shown you. Tier 1 acts every 4 slabs, tier 2 every 3 and also in a fall, and it stretches your slag further. The cost is drill speed: a better liner is a slower drill. The readout shows your slag and how many slabs are left to the next lining. (These two pictures look down the shaft from above; from the seat the cab frame hides the walls.)
 
-![Looking down a shaft the liner has ringed with slag brick, with the pod at the bottom](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-liner.png?raw=true)
+![Looking down a shaft the liner has lined with slag brick](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-liner.png?raw=true)
 
 ### 11. Gas and the seep sounder
 
@@ -113,7 +113,7 @@ A gas pocket looks like plain stone. Fit the seep sounder and the readout counts
 
 ![A working pod beside a dark wreck](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/wreck.png?raw=true)
 
-A pod with no hull goes dark and stays where it fell, and its owners are told. A crew can rescue each other: hold a tow cable and right-click the wreck to pull it home, as in the picture at the top. The cable is long, so the wreck trails behind you like a sling load, and it swings when you stop.
+A pod with no hull goes dark and stays where it fell, and its owners are told. A crew can rescue each other: hold a tow cable and right-click the wreck to pull it home, as in the picture at the top. The cable is long, so the wreck trails well behind you.
 
 ### 13. The breach
 
