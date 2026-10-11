@@ -126,7 +126,7 @@ public class LamplessFigure extends PathfinderMob {
 		super.customServerAiStep(level);
 		CreatureTuning tuning = CreatureTuning.DEFAULT;
 		if (grip != null) {
-			cling(tuning);
+			cling(tuning.cling());
 			return;
 		}
 		boolean checking = tickCount % tuning.senseCheckTicks() == 0;
@@ -193,8 +193,7 @@ public class LamplessFigure extends PathfinderMob {
 	}
 
 	/** Holds the hull and takes its fuel, until the pod is gone or the figure is dead. The cutter bites it while the pod drills. */
-	private void cling(CreatureTuning tuning) {
-		CreatureTuning.Cling cling = tuning.cling();
+	private void cling(CreatureTuning.Cling cling) {
 		PodEntity pod = grip;
 		if (pod.isRemoved()) {
 			release();
