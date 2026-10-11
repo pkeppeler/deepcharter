@@ -167,7 +167,7 @@ The no-lining column is a new run of the #300 bot: a pod with no hopper keeps no
 **The mechanic.**
 - **The part.** A track of its own, `liner`, with two tiers that the upgrade terminal sells. A tier 2 fits a Mole (the tier cap of a Mole is 2), so both are Mole parts. It has no stock part. The liner takes bricks from the rack that the spoil hopper and the ore processor fill ([Hand lining](#hand-lining-313-a)); it needs the rack, not the hopper itself.
 - **When.** The liner keeps an anchor: the pod's column and the highest feet Y it has had in it since the last ring. A ring is due when the pod has sunk the tier's slabs below the anchor, or when it is in another column (a sidestep starts a stretch of bore of its own). A climb moves the anchor up. The HUD counts the slabs to the next ring.
-- **What.** The cells of `PodLining.cellsToLine`, the same rule as by hand (air, fluid or replaceable only; never a cell with an entity; never rock, ore or company rock; lava first, then open cells beside lava), but the ring reaches as many slabs below the pod's feet as the tier's interval, so it covers the stretch the pod is about to bore, and the next ring starts where it ends. Hand lining's ring reaches one slab below. The floor is the lava in the footprint down to the same depth.
+- **What.** The cells of `PodLining.cellsToLine`, the same rule as by hand (air, fluid or replaceable only; never a cell with an entity; never rock, ore or company rock; lava first, then open cells beside lava), **but only the cells lava can reach** ([#432](#lava-and-the-taller-moles-lining-432-a): a cell joined to lava by open cells; hand lining lines them all), and the ring reaches as many slabs below the pod's feet as the tier's interval, so it covers the stretch the pod is about to bore, and the next ring starts where it ends. Hand lining's ring reaches one slab below. The floor is the lava in the footprint down to the same depth.
 - **Bricks.** The rack first, then the seated pilot's pack if `PodComponents.mayAccess` lets the pilot use the pod's stores, as hand lining does. A pod with no pilot uses its rack only. One brick lines `cellsPerBrick` cells (1 at tier 1, as by hand; 2 at tier 2, the cheaper fused lining). If the bricks pay for fewer cells than the ring needs, the liner lines the first ones in the order above (lava first), the rest stay open and are not caught up later, and the HUD shows OUT OF SLAG BRICK until the processor fills the rack.
 - **Rest and fall.** Tier 1 lines only when the pod is on the ground: a ring that falls due in a fall waits, and is laid where the pod lands. Tier 2 also lines in the air, which is the gap by-hand lining cannot reach.
 - **Where.** Only in a layer dimension. Above ground a ring would wall the sky and spend the rack. It never lines while the pilot lines by hand, or when the pod has no power.
@@ -185,7 +185,7 @@ The no-lining column is a new run of the #300 bot: a pod with no hopper keeps no
 - Cargo and mass: the rack is the one the hopper has; the liner adds none.
 - Honest limits: the liner holds lava and nothing else. Most of the bores it saves from lava die of gas (below).
 
-**Tuning knobs.** `PodLinerTuning`: for each tier `ringEverySlabs` (4, 3), `cellsPerBrick` (1, 2), `drillSpeedPenalty` (0.10, 0.15), `linesWhileFalling` (false, true). The prices: `UpgradeTuning` `LINER`, $500 and $1,000. The rack: `PodLiningTuning.brickCapacity` (32). `PodLining.cellsToLine(pod, reach)`. Skins: the part's item icon, model and lang keys, the HUD line `hud.deepcharter.pod.liner` and its colour, `theme/hud.json` `podLinerColor`.
+**Tuning knobs.** `PodLinerTuning`: for each tier `ringEverySlabs` (4, 3), `cellsPerBrick` (1, 2), `drillSpeedPenalty` (0.10, 0.15), `linesWhileFalling` (false, true). The prices: `UpgradeTuning` `LINER`, $500 and $1,000. The rack: `PodLiningTuning.brickCapacity` (32). The liner's view of lava ([#432](#lava-and-the-taller-moles-lining-432-a)): `PodLinerTuning.lavaSpread` (3) and `lavaAbove` (4). `PodLining.cellsToLine(pod, reach, lavaOnly)`. Skins: the part's item icon, model and lang keys, the HUD line `hud.deepcharter.pod.liner` and its colour, `theme/hud.json` `podLinerColor`.
 
 ### Liner vs. hand lining vs. a straight bore: measured
 
@@ -291,7 +291,7 @@ Net for lava-only is $300 less 6.8 bricks scaled to the layer 2 bores; it is an 
 
 **Open questions.**
 - Is the 3-trip pack a slow loop for the dearest bores? A bigger bay costs mass, so lift.
-- Should lava-only lining be the default, with full rings as a toggle? It saves 75% of the bricks for 8 more lava deaths in 100.
+- Should lava-only lining be the default, with full rings as a toggle? It saves 75% of the bricks for 8 more lava deaths in 100. Answered by [#432](#lava-and-the-taller-moles-lining-432-a) for the liner, with a better rule (cells joined to lava, not only cells beside it); hand lining keeps its full ring.
 
 ## Gas and the bore (#368, A)
 
@@ -762,4 +762,4 @@ The tier 1 part equals its bound to the bore, as before. The tier 2 part now bea
 - The pass bars are the #373 rule against the new bounds: 16 / 42 / 23 / 45. They are design-log numbers; `LavaBoreTest` prints the figures and asserts none.
 - Not a HUD change and not a new look, so no demo.
 
-**Open questions.** Why a taller pod dies more to lava, and what the ring should cost it (a brick for each 6 cells, a bigger rack for a taller chassis, or a taller box that shrugs off the top row). Filed as [#432](https://github.com/pkeppeler/deepcharter/issues/432).
+**Open questions.** Why a taller pod dies more to lava, and what the ring should cost it (a brick for each 6 cells, a bigger rack for a taller chassis, or a taller box that shrugs off the top row). Answered by [Lava and the taller Mole's lining (#432)](#lava-and-the-taller-moles-lining-432-a).

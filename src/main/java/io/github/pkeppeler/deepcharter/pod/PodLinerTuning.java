@@ -4,11 +4,14 @@ import java.util.List;
 
 /**
  * Tunables for the liner part (#339), read as {@code PodLinerTuning.DEFAULT.thing()}. A liner lines a ring round the bore with the
- * rack's slag brick each time the pod has sunk a number of slabs. Its prices are {@code UpgradeTuning}'s.
+ * rack's slag brick each time the pod has sunk a number of slabs, in the open cells that lava can reach (#432). Its prices are
+ * {@code UpgradeTuning}'s.
  *
- * @param tiers one entry for each part tier from 1
+ * @param tiers     one entry for each part tier from 1
+ * @param lavaSpread blocks beyond the ring, on each side, in which the liner looks for lava: how far lava flows over open ground
+ * @param lavaAbove  blocks above the pod's box in which the liner looks for lava: lava pours down an open shaft, and never up
  */
-public record PodLinerTuning(List<Tier> tiers) {
+public record PodLinerTuning(List<Tier> tiers, int lavaSpread, int lavaAbove) {
 	/**
 	 * What one tier of the liner does.
 	 *
@@ -36,10 +39,13 @@ public record PodLinerTuning(List<Tier> tiers) {
 	/** (A) Tier 1 rings every 4 slabs, at rest only. Tier 2 rings every 3, also in a fall, and a brick lines 2 cells. A better liner is the slower drill. */
 	public static final PodLinerTuning DEFAULT = new PodLinerTuning(List.of(
 			new Tier(4, 1, 0.10f, false),
-			new Tier(3, 2, 0.15f, true)));
+			new Tier(3, 2, 0.15f, true)), 3, 4);
 
 	public PodLinerTuning {
 		tiers = List.copyOf(tiers);
+		if (lavaSpread < 0 || lavaAbove < 0) {
+			throw new IllegalArgumentException("the liner's view of lava is 0 blocks or more: " + lavaSpread + ", " + lavaAbove);
+		}
 	}
 
 	/** The tier's numbers; {@code tier} is 1 or more and no more than the part's best. */

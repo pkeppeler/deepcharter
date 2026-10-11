@@ -68,6 +68,23 @@ public class PodLinerTest {
 	 * pod's two Z). With {@code column} that column runs down through the bed, so a ring that reaches below the pod has cells to line there.
 	 */
 	private static void shaft(ServerLevel level, int x, int depth, boolean column) {
+		shaftWithoutLava(level, x, depth, column);
+		// A liner lines only what lava can reach (#432): a source in the wall beside the east column floods it. A ring test lays its ring on the
+		// first tick, before the lava has flowed a block. A drilling pod has a source in view for each ring: the first ring bricks the lava
+		// that is in its view, so the next stretch has a source of its own, 4 slabs further down than the ring before it can see.
+		for (BlockPos pocket : lavaPockets(x, column)) {
+			level.setBlock(pocket, Blocks.LAVA.defaultBlockState(), 3);
+		}
+	}
+
+	/** The wall cells that hold the lava of {@link #shaft}: level with the pod's feet, or at 5, 9 and 12 slabs under them where the pod drills down the column. */
+	private static List<BlockPos> lavaPockets(int x, boolean column) {
+		return column
+				? List.of(new BlockPos(x + 2, FLOOR - 5, Z), new BlockPos(x + 2, FLOOR - 9, Z), new BlockPos(x + 2, FLOOR - 12, Z))
+				: List.of(new BlockPos(x + 2, FLOOR, Z));
+	}
+
+	private static void shaftWithoutLava(ServerLevel level, int x, int depth, boolean column) {
 		RoomCarver.carve(level, x - RADIUS, x + RADIUS + 1, FLOOR - depth, FLOOR - 1, Z - RADIUS, Z + RADIUS, Blocks.STONE);
 		RoomCarver.carve(level, x - RADIUS, x + RADIUS + 1, FLOOR, FLOOR + 10, Z - RADIUS, Z + RADIUS, Blocks.AIR);
 		if (column) {
@@ -213,6 +230,64 @@ public class PodLinerTest {
 			ServerLevel level = layer(helper);
 			if (bricksIn(level, ringCells(x)) != 0 || !state.dry()) {
 				throw failure(helper, "an empty rack lines nothing and shows dry, it lined %s (dry %s)", bricksIn(level, ringCells(x)), state.dry());
+			}
+		});
+	}
+
+	/** Takes the lava out of the shaft's wall and, if {@code at} is given, puts a source there instead. */
+	private static Consumer<ServerLevel> lavaOnlyAt(int x, BlockPos at) {
+		return level -> {
+			level.setBlock(lavaPockets(x, false).getFirst(), Blocks.STONE.defaultBlockState(), 3);
+			if (at != null) {
+				level.setBlock(at, Blocks.LAVA.defaultBlockState(), 3);
+			}
+		};
+	}
+
+	/** A ring whose open cells no lava can reach lays nothing and does not call the rack dry: the cells are not waiting for bricks. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + RING_TICKS)
+	public void aRingWithNoLavaToReachItLaysNothingAndLeavesTheRackFull(GameTestHelper helper) {
+		int x = 6020;
+		ringTest(helper, x, 2, 10, lavaOnlyAt(x, null), state -> {
+			ServerLevel level = layer(helper);
+			if (bricksIn(level, ringCells(x)) != 0 || state.bricks() != 10 || state.dry()) {
+				throw failure(helper, "air that lava cannot reach is not lined, it lined %s and left %s (dry %s)", bricksIn(level, ringCells(x)), state.bricks(), state.dry());
+			}
+		});
+	}
+
+	/** Lava in the pod's own shaft, 4 blocks over the top of its box, runs down it into the ring: the open cells are lined. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + RING_TICKS)
+	public void aRingJoinedToLavaByOpenCellsIsLinedLavaFourBlocksAboveTheBox(GameTestHelper helper) {
+		int x = 6068;
+		ringTest(helper, x, 1, 10, lavaOnlyAt(x, new BlockPos(x, FLOOR + 3 + 4, Z)), state -> {
+			ServerLevel level = layer(helper);
+			if (bricksIn(level, ringCells(x)) != 4 || state.bricks() != 6) {
+				throw failure(helper, "lava 4 blocks over the box floods the ring, so its 4 cells are lined, it lined %s and left %s", bricksIn(level, ringCells(x)), state.bricks());
+			}
+		});
+	}
+
+	/** Lava 5 blocks over the box is too far to matter before the pod has bored on: nothing is lined. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + RING_TICKS)
+	public void lavaFiveBlocksAboveTheBoxDoesNotCallForARing(GameTestHelper helper) {
+		int x = 6116;
+		ringTest(helper, x, 1, 10, lavaOnlyAt(x, new BlockPos(x, FLOOR + 3 + 5, Z)), state -> {
+			ServerLevel level = layer(helper);
+			if (bricksIn(level, ringCells(x)) != 0 || state.bricks() != 10) {
+				throw failure(helper, "lava 5 blocks over the box is out of the liner's view, it lined %s and left %s", bricksIn(level, ringCells(x)), state.bricks());
+			}
+		});
+	}
+
+	/** Lava sealed behind rock, with no open cell between it and the ring, cannot flood it. */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + RING_TICKS)
+	public void lavaSealedBehindRockDoesNotCallForARing(GameTestHelper helper) {
+		int x = 6164;
+		ringTest(helper, x, 1, 10, lavaOnlyAt(x, new BlockPos(x + 3, FLOOR, Z)), state -> {
+			ServerLevel level = layer(helper);
+			if (bricksIn(level, ringCells(x)) != 0 || state.bricks() != 10) {
+				throw failure(helper, "lava behind a wall of rock floods nothing, it lined %s and left %s", bricksIn(level, ringCells(x)), state.bricks());
 			}
 		});
 	}
@@ -571,11 +646,13 @@ public class PodLinerTest {
 		drillTenSlabs(helper, 2, 5636, List.of(new Ring(-3, 6, true), new Ring(-6, 3, true), new Ring(-9, 3, true)));
 	}
 
-	/** A room of open air with a stone bed 8 blocks under the pod, which the pod falls onto. */
+	/** A room of open air with a stone bed 8 blocks under the pod, which the pod falls onto, and a lava source high on its east side. */
 	private void fall(GameTestHelper helper, int tier, int x, Consumer<List<Ring>> check) {
 		ServerLevel level = layer(helper);
 		RoomCarver.carve(level, x - RADIUS, x + RADIUS + 1, FLOOR - 8, FLOOR - 1, Z - RADIUS, Z + RADIUS, Blocks.STONE);
 		RoomCarver.carve(level, x - RADIUS, x + RADIUS + 1, FLOOR, FLOOR + 10, Z - RADIUS, Z + RADIUS, Blocks.AIR);
+		// Lava high on the east wall: in the liner's view at the landing and in the fall, and a stream that has not reached the pod when it lands.
+		level.setBlock(new BlockPos(x + 4, FLOOR + 7, Z), Blocks.LAVA.defaultBlockState(), 3);
 		Rig rig = Rig.await(helper, level, new Vec3(x, FLOOR + 8, Z), tier, false);
 		boolean[] airborne = {false};
 		int[] settled = {0};

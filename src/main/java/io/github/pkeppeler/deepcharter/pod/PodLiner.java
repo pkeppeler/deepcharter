@@ -30,8 +30,8 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 /**
  * The liner (#339): a part that lines the stretch of bore it is about to drill with slag brick from the rack, then the seated pilot's pack. The ring is as many slabs
  * tall as its tier's interval, so the next ring starts where this one ends. A ring is due each time the pod has sunk that many slabs,
- * and when the bore turns into another column (a sidestep). The cells and the brick accounting are hand lining's
- * ({@link PodLining#cellsToLine}, the rack in {@link PodLining.State}). A tier that does not line in a fall waits until the pod rests,
+ * and when the bore turns into another column (a sidestep). The cells are hand lining's, but only those that lava can reach (#432: open
+ * cells joined to lava by open cells), and the brick accounting is its too ({@link PodLining#cellsToLine}, the rack in {@link PodLining.State}). A tier that does not line in a fall waits until the pod rests,
  * then lines the ring that fell due. The liner works only in a layer: above ground a ring would wall the sky.
  */
 public final class PodLiner {
@@ -159,11 +159,11 @@ public final class PodLiner {
 	}
 
 	/**
-	 * Lines as many of the cells hand lining would line as the bricks pay for, and marks the rack dry when they paid for fewer than all. The
+	 * Lines as many of the cells that lava can reach as the bricks pay for, and marks the rack dry when they paid for fewer than all. The
 	 * bricks are the rack's first, then the seated pilot's pack, as by hand ({@link PodLining.State}).
 	 */
 	private static void ring(PodEntity pod, PodLinerTuning.Tier spec) {
-		List<BlockPos> cells = PodLining.cellsToLine(pod, spec.ringEverySlabs());
+		List<BlockPos> cells = PodLining.cellsToLine(pod, spec.ringEverySlabs(), true);
 		if (cells.isEmpty()) {
 			return;
 		}

@@ -1,9 +1,12 @@
 package io.github.pkeppeler.deepcharter.pod;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.UnaryOperator;
 
 import com.mojang.serialization.Codec;
@@ -301,17 +304,20 @@ public final class PodLining {
 	 * are never in the list.
 	 */
 	public static List<BlockPos> cellsToLine(PodEntity pod) {
-		return cellsToLine(pod, HAND_REACH);
+		return cellsToLine(pod, HAND_REACH, false);
 	}
 
 	/**
 	 * As {@link #cellsToLine(PodEntity)} for a lining that reaches {@code reach} slabs below the pod's feet: the ring starts that far down
-	 * (the liner lines the stretch it is about to bore), and the floor reaches that far if it is more than {@link #FLOOR_DEPTH}.
+	 * (the liner lines the stretch it is about to bore), and the floor reaches that far if it is more than {@link #FLOOR_DEPTH}. With
+	 * {@code lavaOnly} the ring keeps only the cells lava can reach: those joined to lava by open cells ({@link #lavaReach}). The rest of
+	 * the open ring is air that cannot flood, so a brick there is wasted.
 	 */
-	static List<BlockPos> cellsToLine(PodEntity pod, int reach) {
+	static List<BlockPos> cellsToLine(PodEntity pod, int reach, boolean lavaOnly) {
 		ServerLevel level = (ServerLevel) pod.level();
 		LoadedBlocks blocks = new LoadedBlocks(level);
 		PodFootprint foot = PodFootprint.of(pod);
+		Set<BlockPos> flooded = lavaOnly ? lavaReach(blocks, foot, Math.max(FLOOR_DEPTH, reach)) : Set.of();
 		List<BlockPos> cells = new ArrayList<>();
 		for (int y = foot.feetY() - Math.max(FLOOR_DEPTH, reach); y < foot.feetY() + foot.height(); y++) {
 			for (int x = foot.lowX() - 1; x <= foot.lowX() + foot.width(); x++) {
@@ -322,7 +328,7 @@ public final class PodLining {
 					boolean floor = insideX && insideZ && y < foot.feetY();
 					BlockPos pos = new BlockPos(x, y, z);
 					// The pod's own riders do not block its lining, even in the cell under the pod (a low seat puts them there); a stranger does.
-					if ((ring || floor) && !level.isOutsideBuildHeight(pos) && blocks.canChange(pos) && needsBrick(blocks.getBlockState(pos), floor)
+					if ((ring || floor) && (floor || !lavaOnly || flooded.contains(pos)) && !level.isOutsideBuildHeight(pos) && blocks.canChange(pos) && needsBrick(blocks.getBlockState(pos), floor)
 							&& level.getEntities((Entity) null, new AABB(pos), entity -> !entity.isSpectator() && !pod.hasPassenger(entity)).isEmpty()) {
 						cells.add(pos);
 					}
@@ -331,6 +337,46 @@ public final class PodLining {
 		}
 		cells.sort(Comparator.comparingInt((BlockPos pos) -> urgency(blocks, pos)).thenComparingInt(BlockPos::getY).thenComparingLong(BlockPos::asLong));
 		return cells;
+	}
+
+	/**
+	 * The open cells that lava can flow into: every cell joined by open cells (air, fluid, a plant) to lava, within
+	 * {@link PodLinerTuning#lavaSpread} blocks of the ring and {@link PodLinerTuning#lavaAbove} above the pod's box, down to the lowest row the ring covers. Lava is in the set itself.
+	 */
+	private static Set<BlockPos> lavaReach(LoadedBlocks blocks, PodFootprint foot, int depth) {
+		PodLinerTuning tuning = PodLinerTuning.DEFAULT;
+		int minX = foot.lowX() - 1 - tuning.lavaSpread();
+		int maxX = foot.lowX() + foot.width() + tuning.lavaSpread();
+		int minZ = foot.lowZ() - 1 - tuning.lavaSpread();
+		int maxZ = foot.lowZ() + foot.width() + tuning.lavaSpread();
+		int minY = foot.feetY() - depth;
+		int maxY = foot.feetY() + foot.height() + tuning.lavaAbove();
+		Set<BlockPos> reached = new HashSet<>();
+		ArrayDeque<BlockPos> frontier = new ArrayDeque<>();
+		for (int y = minY; y <= maxY; y++) {
+			for (int x = minX; x <= maxX; x++) {
+				for (int z = minZ; z <= maxZ; z++) {
+					BlockPos pos = new BlockPos(x, y, z);
+					if (blocks.getFluidState(pos).is(FluidTags.LAVA)) {
+						reached.add(pos);
+						frontier.add(pos);
+					}
+				}
+			}
+		}
+		while (!frontier.isEmpty()) {
+			BlockPos from = frontier.poll();
+			for (Direction direction : Direction.values()) {
+				BlockPos next = from.relative(direction);
+				boolean inside = next.getX() >= minX && next.getX() <= maxX && next.getZ() >= minZ && next.getZ() <= maxZ
+						&& next.getY() >= minY && next.getY() <= maxY;
+				if (inside && !reached.contains(next) && needsBrick(blocks.getBlockState(next), false)) {
+					reached.add(next);
+					frontier.add(next);
+				}
+			}
+		}
+		return reached;
 	}
 
 	/**
