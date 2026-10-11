@@ -30,6 +30,8 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
 	/** The size of a player's default window, which is also the size of every frame and still. */
 	private static final int WIDTH = 854;
 	private static final int HEIGHT = 480;
+	private static final float FLOAT_YAW_EAST = -90f;
+	private static final float FLOAT_PITCH_DOWN = 85f;
 
 	private int frame;
 	private Path framesDir;
@@ -74,17 +76,15 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
 	}
 
 	/**
-	 * Lets the first player out of the pod and floats them, as a spectator, at ({@code x}, {@code y}, {@code z}) looking {@code pitch}
-	 * degrees down, facing {@code yaw}. The cab frame of the pod blocks a look up from the seat, so a still of a lined shaft is taken from
-	 * above it instead, with the pod at the bottom.
-	 * This is a terminal step: it leaves the player a spectator, out of the pod, so nothing may follow it in a scenario but frames and stills.
+	 * Lets the first player out of the pod and floats them, as a spectator, at ({@code x}, {@code y}, {@code z}) looking nearly straight
+	 * down, facing east: the cab frame blocks a look up the shaft from the seat. Terminal: only frames and stills may follow.
 	 */
-	protected final void floatAbovePod(TestSingleplayerContext singleplayer, double x, double y, double z, float yaw, float pitch) {
+	protected final void floatAbovePod(TestSingleplayerContext singleplayer, double x, double y, double z) {
 		singleplayer.getServer().runOnServer(server -> {
 			ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 			player.stopRiding();
 			player.setGameMode(GameType.SPECTATOR);
-			player.teleportTo(player.level(), x, y, z, Set.of(), yaw, pitch, true);
+			player.teleportTo(player.level(), x, y, z, Set.of(), FLOAT_YAW_EAST, FLOAT_PITCH_DOWN, true);
 		});
 	}
 
