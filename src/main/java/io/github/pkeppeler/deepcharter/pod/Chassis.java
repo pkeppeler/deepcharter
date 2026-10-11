@@ -54,10 +54,8 @@ public record Chassis(String id, int seats, int tierCap, float width, float heig
 	}
 
 	/**
-	 * The share of a gas blast a pod takes when its drill opens the pocket in a sideways bore (#424). A sideways step bores a face of
-	 * {@code boreWidth x boreHeight} cells and a downward one a slab of {@code slabCells()}; the blast is spread over the open face, so a pod
-	 * pays it per cell of the slab: 1 for a pod whose face is no bigger than its slab, 2/3 for a 2 x 3 Mole. The cost is per pocket: a bore
-	 * that opens two pockets pays the share for each.
+	 * The share of a gas blast a pod takes when its drill opens the pocket in a sideways bore (#424): the blast is spread over the open
+	 * face of {@code boreWidth x boreHeight} cells, so the pod pays it per cell of its slab, 1 at most (2/3 for a 2 x 3 Mole). Per pocket.
 	 */
 	public float sidewaysBlastShare() {
 		return Math.min(1f, (float) slabCells() / (boreWidth() * boreHeight()));
