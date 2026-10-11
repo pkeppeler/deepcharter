@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import java.util.List;
+import java.util.Map;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
@@ -23,6 +24,7 @@ import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodRenames;
 
 /**
  * Server GameTests for #416: a pod saved under the id of a renamed pod entity type loads as the new type with its chassis and cargo.
@@ -87,6 +89,29 @@ public class PodRenamesTest {
 		if (!loaded.isEmpty()) {
 			throw helper.assertionException(Component.literal("an unknown id outside the table must not load, got " + loaded));
 		}
+		helper.succeed();
+	}
+
+	private static void requireRejected(GameTestHelper helper, String old, String current, String expected) {
+		try {
+			PodRenames.validate(Map.of(Identifier.parse(old), Identifier.parse(current)));
+		} catch (IllegalStateException e) {
+			if (!expected.equals(e.getMessage())) {
+				throw helper.assertionException(Component.literal("expected \"" + expected + "\", got \"" + e.getMessage() + "\""));
+			}
+			return;
+		}
+		throw helper.assertionException(Component.literal("the table entry " + old + " -> " + current + " must be rejected"));
+	}
+
+	@GameTest
+	public void aTableEntryThatCannotWorkIsRejectedNamingBothIds(GameTestHelper helper) {
+		requireRejected(helper, "deepcharter:gone", "deepcharter:missing",
+				"PodRenames: deepcharter:gone -> deepcharter:missing: new id is not a registered pod type");
+		requireRejected(helper, "deepcharter:gone", "minecraft:pig",
+				"PodRenames: deepcharter:gone -> minecraft:pig: new id is not a registered pod type");
+		requireRejected(helper, "deepcharter:pod", "deepcharter:prospector",
+				"PodRenames: deepcharter:pod -> deepcharter:prospector: the old id is still registered, so it is not renamed");
 		helper.succeed();
 	}
 }

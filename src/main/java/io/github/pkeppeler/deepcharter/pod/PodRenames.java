@@ -24,11 +24,24 @@ public final class PodRenames {
 	}
 
 	public static void init() {
-		RENAMES.forEach((old, current) -> {
+		validate(RENAMES);
+	}
+
+	/** Throws, naming both ids, unless every old id is unregistered and every new id is a registered pod type. */
+	public static void validate(Map<Identifier, Identifier> renames) {
+		renames.forEach((old, current) -> {
+			String entry = "PodRenames: " + old + " -> " + current + ": ";
 			if (BuiltInRegistries.ENTITY_TYPE.containsKey(old)) {
-				throw new IllegalStateException("the pod type " + old + " is still registered, so it is not renamed");
+				throw new IllegalStateException(entry + "the old id is still registered, so it is not renamed");
 			}
-			PodRegistry.chassisOf(BuiltInRegistries.ENTITY_TYPE.getValue(current));
+			if (!BuiltInRegistries.ENTITY_TYPE.containsKey(current)) {
+				throw new IllegalStateException(entry + "new id is not a registered pod type");
+			}
+			try {
+				PodRegistry.chassisOf(BuiltInRegistries.ENTITY_TYPE.getValue(current));
+			} catch (IllegalArgumentException e) {
+				throw new IllegalStateException(entry + "new id is not a registered pod type", e);
+			}
 		});
 	}
 
