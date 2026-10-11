@@ -28,17 +28,16 @@ def _limb(parent: Bone, pivot, rotation, length: float, width: float, depth: flo
     return bone
 
 
-def _open_hand(parent: Bone, pivot, rotation) -> Bone:
-    """An open hand of the hands piece: palm toward local +Z, fingers along local -Y, thumb toward local +X, held apart so it reads
-    as open and empty, never a fist."""
+def _open_hand(parent: Bone, pivot, rotation, side: int) -> Bone:
+    """An open hand: palm toward +Z, fingers along -Y, thumb toward +X for the left hand (side 1) and -X for the right (-1)."""
     s = 1.45
     hand = parent.child(pivot, rotation)
     hand.box((-1.6 * s, 0.4 * s, -0.9 * s), (1.6 * s, 1.2 * s, 0.9 * s), D, piece=HANDS)          # the wrist
     hand.box((-1.9 * s, -3.0 * s, -0.75 * s), (1.9 * s, 0.4 * s, 0.6 * s), piece=HANDS)          # the palm
     for i, (x, length) in enumerate(((1.45, 2.7), (0.5, 3.1), (-0.45, 2.9), (-1.4, 2.2))):
-        finger = hand.child((x * s, -3.0 * s, 0.0), (-(5.0 + 3.0 * i), 0.0, (i - 1.5) * 4.0))
+        finger = hand.child((side * x * s, -3.0 * s, 0.0), (-(5.0 + 3.0 * i), 0.0, side * (i - 1.5) * 4.0))
         finger.box((-0.43 * s, -length * s, -0.45 * s), (0.43 * s, 0.2 * s, 0.4 * s), piece=HANDS)
-    thumb = hand.child((1.9 * s, -0.6 * s, 0.1 * s), (-12.0, 0.0, 50.0))
+    thumb = hand.child((side * 1.9 * s, -0.6 * s, 0.1 * s), (-12.0, 0.0, side * 50.0))
     thumb.box((-0.55 * s, -2.5 * s, -0.5 * s), (0.55 * s, 0.0, 0.5 * s), piece=HANDS)
     return hand
 
@@ -132,13 +131,13 @@ def host() -> Bone:
     upper.box((-2.1, -10.6, -2.1), (2.1, -8.4, 2.1))
     fore = _limb(upper, (0.0, -10.0, 0.0), (-128.0, 0.0, 26.0), 8.6, 3.3, 3.4)
     fore.box((-1.95, -8.6, -1.95), (1.95, -6.8, 1.95), D)
-    _open_hand(fore, (0.0, -8.6, 0.0), (8.0, 180.0, 0.0))
+    _open_hand(fore, (0.0, -8.6, 0.0), (8.0, 180.0, 0.0), -1)
     # The left arm: lowered at his side, a little out and forward, the open palm turned out.
     upper = _limb(torso, (7.0, 10.6, -0.2), (-6.0, 0.0, 8.0), 10.0, 3.8, 4.0)
     upper.box((-2.1, -10.6, -2.1), (2.1, -8.4, 2.1))
     fore = _limb(upper, (0.0, -10.0, 0.0), (-24.0, 0.0, 3.0), 8.6, 3.3, 3.4)
     fore.box((-1.95, -8.6, -1.95), (1.95, -6.8, 1.95), D)
-    _open_hand(fore, (0.0, -8.6, 0.0), (-6.0, 34.0, 4.0))
+    _open_hand(fore, (0.0, -8.6, 0.0), (-6.0, 34.0, 4.0), 1)
     return body
 
 
