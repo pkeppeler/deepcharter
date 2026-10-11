@@ -33,7 +33,6 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookProgress;
 import io.github.pkeppeler.deepcharter.handbook.HandbookReadPayload;
 import io.github.pkeppeler.deepcharter.handbook.HandbookRegistry;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
-import io.github.pkeppeler.deepcharter.hangar.Hangar;
 import io.github.pkeppeler.deepcharter.hangar.HangarData;
 import io.github.pkeppeler.deepcharter.market.WorkOrderData;
 import io.github.pkeppeler.deepcharter.market.WorkOrders;
@@ -44,6 +43,7 @@ import io.github.pkeppeler.deepcharter.pod.PodLightLedger;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
+import io.github.pkeppeler.deepcharter.test.support.HangarPods;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionCatalog;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionTriggers;
@@ -271,7 +271,7 @@ public class UnreadableAccessTest {
 	public void unreadableHangarNeverThrowsFromACallback(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		Map<String, Runnable> paths = new LinkedHashMap<>();
-		paths.put("derelict lookup", () -> Hangar.derelict(server));
+		paths.put("derelict lookup", () -> HangarPods.derelict(server));
 		paths.put("pod registration and load", () -> {
 			PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
 			try {

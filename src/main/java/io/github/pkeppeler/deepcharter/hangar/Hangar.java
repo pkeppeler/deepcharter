@@ -60,8 +60,9 @@ public final class Hangar {
 	}
 
 	/** Where the console stands: beside the hangar bay. Empty before the colony is built. */
+	// test-seam: the console's place is the hangar anchor plus the one offset placeConsole uses; tests and evidence scenarios walk to it, and a copy of the offset in each would drift from where it is placed
 	public static Optional<BlockPos> consolePos(MinecraftServer server) {
-		return Colony.anchor(server, ColonyAnchor.HANGAR).map(anchor -> anchor.offset(CONSOLE_OFFSET));
+		return Colony.anchor(server, ColonyAnchor.HANGAR).map(Hangar::consoleAt);
 	}
 
 	/**
@@ -91,17 +92,16 @@ public final class Hangar {
 		DeepCharter.LOGGER.info("Placed the derelict Mole {} in the hangar at {}", pod.getUUID(), anchor.toShortString());
 	}
 
+	private static BlockPos consoleAt(BlockPos anchor) {
+		return anchor.offset(CONSOLE_OFFSET);
+	}
+
 	private static void placeConsole(ServerLevel level, BlockPos anchor) {
-		BlockPos console = anchor.offset(CONSOLE_OFFSET);
+		BlockPos console = consoleAt(anchor);
 		if (!level.getBlockState(console).is(HangarTerminal.TYPE.block())) {
 			BlockState state = HangarTerminal.TYPE.block().defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.WEST);
 			level.setBlock(console, state, 3);
 		}
-	}
-
-	/** The founding Mole, if it is placed and loaded. */
-	public static Optional<PodEntity> derelict(MinecraftServer server) {
-		return HangarData.readable(server).flatMap(data -> data.state().derelict()).flatMap(id -> podOf(server, id));
 	}
 
 	private static Optional<PodEntity> podOf(MinecraftServer server, UUID id) {

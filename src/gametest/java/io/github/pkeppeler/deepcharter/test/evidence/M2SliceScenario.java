@@ -90,6 +90,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.HandbookChaptersOneToFiveTest;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.HangarPods;
 import io.github.pkeppeler.deepcharter.test.support.M2SliceEndState;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ShippedHandbook;
@@ -244,7 +245,7 @@ public class M2SliceScenario extends EvidenceScenario {
 	private void repairFoundingMole() {
 		say("4. Handbook chapter 3. The hangar console takes its four parts, and the derelict Mole is repaired and registered to the charter.");
 		BlockPos console = onServer(server -> Hangar.consolePos(server).orElseThrow(() -> new AssertionError("the colony has no hangar")));
-		Vec3 derelict = onServer(server -> Hangar.derelict(server).orElseThrow(() -> new AssertionError("the founding Mole is not in the hangar")).position());
+		Vec3 derelict = onServer(server -> HangarPods.derelict(server).orElseThrow(() -> new AssertionError("the founding Mole is not in the hangar")).position());
 		stand(Vec3.atBottomCenterOf(console.west(2)), derelict.add(0, 1, 0));
 		ctx.waitTicks(60);
 		snap(HOLD_FRAMES);
@@ -263,9 +264,9 @@ public class M2SliceScenario extends EvidenceScenario {
 		snap(HOLD_FRAMES);
 		still("10-hangar-console-online");
 		ctx.setScreen(() -> null);
-		awaitServer(server -> Hangar.derelict(server).flatMap(PodComponents::registration).isPresent());
+		awaitServer(server -> HangarPods.derelict(server).flatMap(PodComponents::registration).isPresent());
 		mole = onServer(server -> {
-			PodEntity pod = Hangar.derelict(server).orElseThrow();
+			PodEntity pod = HangarPods.derelict(server).orElseThrow();
 			String serial = PodComponents.registration(pod).orElseThrow().serial();
 			if (!serial.equals("MOLE-0001")) {
 				throw new AssertionError("the founding Mole should be MOLE-0001, it is " + serial);

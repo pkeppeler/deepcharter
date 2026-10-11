@@ -25,6 +25,7 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
+import io.github.pkeppeler.deepcharter.test.support.HangarPods;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
 
 /**
@@ -51,8 +52,8 @@ public class HangarScenario extends EvidenceScenario {
 			context.waitFor(client -> client.player != null && client.level != null);
 			BlockPos console = singleplayer.getServer().computeOnServer(HangarScenario::setUp);
 			// The derelict is an entity of the hangar's chunk, which loads a tick or more after the player arrives.
-			await(context, singleplayer, server -> Hangar.derelict(server).isPresent());
-			Vec3 derelict = singleplayer.getServer().computeOnServer(server -> Hangar.derelict(server).orElseThrow().position());
+			await(context, singleplayer, server -> HangarPods.derelict(server).isPresent());
+			Vec3 derelict = singleplayer.getServer().computeOnServer(server -> HangarPods.derelict(server).orElseThrow().position());
 			lookAt(singleplayer, console, derelict);
 			context.waitTicks(60);
 			hold(context);
@@ -67,9 +68,9 @@ public class HangarScenario extends EvidenceScenario {
 					});
 				}
 			});
-			await(context, singleplayer, server -> Hangar.derelict(server).flatMap(PodComponents::registration).isPresent());
+			await(context, singleplayer, server -> HangarPods.derelict(server).flatMap(PodComponents::registration).isPresent());
 			String serial = singleplayer.getServer().computeOnServer(server ->
-					PodComponents.registration(Hangar.derelict(server).orElseThrow()).orElseThrow().serial());
+					PodComponents.registration(HangarPods.derelict(server).orElseThrow()).orElseThrow().serial());
 			if (!serial.equals("MOLE-0001")) {
 				throw new AssertionError("the founding Mole should be MOLE-0001, it is " + serial);
 			}
@@ -94,7 +95,7 @@ public class HangarScenario extends EvidenceScenario {
 			screenshot(context, "bought-a-refurbished-mole");
 			context.setScreen(() -> null);
 
-			Vec3 bay = singleplayer.getServer().computeOnServer(server -> Hangar.derelict(server).orElseThrow().position());
+			Vec3 bay = singleplayer.getServer().computeOnServer(server -> HangarPods.derelict(server).orElseThrow().position());
 			lookAt(singleplayer, console, bay.add(0, 0, 3));
 			context.waitTicks(40);
 			hold(context);

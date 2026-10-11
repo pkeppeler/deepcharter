@@ -173,7 +173,7 @@ public class ColonyPlacementTest {
 	}
 
 	private static void checkTheHost(GameTestHelper helper, MinecraftServer server, ServerLevel level, BlockPos feet) {
-		List<Display.BlockDisplay> found = FounderStatue.body(server);
+		List<Display.BlockDisplay> found = ColonyChunks.hostBody(server);
 		if (found.size() != 1) {
 			throw failure(helper, "one body of the Host should stand at %s, found %s", feet.toShortString(), found.size());
 		}

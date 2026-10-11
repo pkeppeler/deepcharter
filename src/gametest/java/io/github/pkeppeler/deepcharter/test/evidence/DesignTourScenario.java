@@ -109,6 +109,7 @@ import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight.Box;
+import io.github.pkeppeler.deepcharter.test.support.HangarPods;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ShippedHandbook;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
@@ -644,7 +645,7 @@ public class DesignTourScenario extends EvidenceScenario {
 	// ------------------------------------------------------------------------------------------------ terminals
 
 	private void terminalScreens() {
-		Vec3 derelict = serverGet(server -> Hangar.derelict(server).orElseThrow().position());
+		Vec3 derelict = serverGet(server -> HangarPods.derelict(server).orElseThrow().position());
 		BlockPos console = serverGet(server -> Hangar.consolePos(server).orElseThrow());
 		Vec3 consoleEye = Vec3.atBottomCenterOf(console.west(2)).add(0, EYE, 0);
 		view(0, consoleEye, derelict.add(0, 1, 0), 60);

@@ -52,6 +52,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalEvents;
 import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.HangarPods;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -124,7 +125,7 @@ public class FoundingMoleHangarTest {
 			if (!chunkTicks[0] || done[0]) {
 				return;
 			}
-			if (Hangar.derelict(server(helper)).isEmpty()) {
+			if (HangarPods.derelict(server(helper)).isEmpty()) {
 				expect(helper, helper.getTick() - chunkReadyTick[0] <= MOLE_LOAD_TICKS, "the derelict Mole did not load in %s ticks", MOLE_LOAD_TICKS);
 				return;
 			}
@@ -287,7 +288,7 @@ public class FoundingMoleHangarTest {
 	public void theDerelictMoleIsPlacedInTheHangarExactlyOnce(GameTestHelper helper) {
 		inTheHangar(helper, before -> {
 			MinecraftServer server = server(helper);
-			PodEntity derelict = Hangar.derelict(server).orElseThrow(() -> failure(helper, "the colony's world should hold the derelict Mole"));
+			PodEntity derelict = HangarPods.derelict(server).orElseThrow(() -> failure(helper, "the colony's world should hold the derelict Mole"));
 			expect(helper, Wrecks.isWreck(derelict) && PodComponents.registration(derelict).isEmpty(),
 					"the derelict Mole is a wreck that nobody owns");
 			expect(helper, derelict.blockPosition().closerThan(hangarAnchor(helper), 2), "the derelict stands at the hangar anchor, it is at %s", derelict.blockPosition());
@@ -296,7 +297,7 @@ public class FoundingMoleHangarTest {
 			// The colony was built once, so it is not built again: the event fires again only here.
 			ColonySite.Placed placed = Colony.placed(server).orElseThrow();
 			ColonyEvents.BUILT.invoker().onBuilt(server, placed);
-			expect(helper, podsInTheHangar(helper).size() == pods && Hangar.derelict(server).orElseThrow() == derelict,
+			expect(helper, podsInTheHangar(helper).size() == pods && HangarPods.derelict(server).orElseThrow() == derelict,
 					"a second BUILT must not place a second derelict: %s pods before, %s after", pods, podsInTheHangar(helper).size());
 
 			// A world saved and loaded again remembers it, so it places none on a restart.
@@ -320,7 +321,7 @@ public class FoundingMoleHangarTest {
 			MinecraftServer server = server(helper);
 			REPAIRED_BY.clear();
 			Hangar.onBuilt(server, Colony.placed(server).orElseThrow());
-			PodEntity derelict = Hangar.derelict(server).orElseThrow();
+			PodEntity derelict = HangarPods.derelict(server).orElseThrow();
 			MockPlayer first = member(helper, "Founder");
 			MockPlayer second = member(helper, "Latecomer");
 			BlockPos console = console(helper, first);
@@ -505,7 +506,7 @@ public class FoundingMoleHangarTest {
 			insertTheParts(helper);
 			MinecraftServer server = server(helper);
 			BlockPos console = Hangar.consolePos(server).orElseThrow(() -> failure(helper, "the hangar should have a console"));
-			PodEntity derelict = Hangar.derelict(server).orElseThrow();
+			PodEntity derelict = HangarPods.derelict(server).orElseThrow();
 			MockPlayer owner = member(helper, "Bay Salvager");
 			stand(helper, owner, console);
 			BlockPos anchor = hangarAnchor(helper);
@@ -564,7 +565,7 @@ public class FoundingMoleHangarTest {
 			WorldData.replace(server(helper), HangarData.TYPE, new HangarData());
 			try {
 				Hangar.onBuilt(server(helper), Colony.placed(server(helper)).orElseThrow());
-				PodEntity derelict = Hangar.derelict(server(helper)).orElseThrow();
+				PodEntity derelict = HangarPods.derelict(server(helper)).orElseThrow();
 				BlockPos hangarConsole = Hangar.consolePos(server(helper)).orElseThrow(() -> failure(helper, "the hangar should have a console"));
 				expect(helper, server(helper).overworld().getBlockState(hangarConsole).is(HangarTerminal.TYPE.block()), "the colony stands a console in the hangar");
 				stand(helper, stranger, hangarConsole);
@@ -663,7 +664,7 @@ public class FoundingMoleHangarTest {
 			TerminalEvents.REPAIRED.invoker().onRepaired(server, HangarTerminal.TYPE, charterOf(helper, player), player.player());
 			expectRefused(helper, act(player.player(), console, HangarTerminal.BUY_MOLE), "buying with an unreadable hangar");
 			expectRefused(helper, act(player.player(), console, HangarTerminal.RESTORE_WRECK), "restoring with an unreadable hangar");
-			expect(helper, Hangar.derelict(server).isEmpty(), "an unreadable hangar knows no derelict");
+			expect(helper, HangarPods.derelict(server).isEmpty(), "an unreadable hangar knows no derelict");
 			expect(helper, hangarLog.errors().size() == 1, "unreadable hangar data is logged once, it was logged %s times: %s", hangarLog.errors().size(), hangarLog.errors());
 			expect(helper, podsInTheHangar(helper).size() == pods && Wrecks.isWreck(wreck) && balance(helper, player) == RICH && count(player.player(), CATALYST) == 2,
 					"nothing changed while the hangar was unreadable");
