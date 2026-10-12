@@ -8,6 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import feature_map as fm  # noqa: E402
+import git_env  # noqa: E402
 
 ROOT = fm.repo_root()
 DATA = fm.load(ROOT)
@@ -26,7 +27,7 @@ class TheCommittedMap(unittest.TestCase):
     def test_outputs_render_and_are_not_committed(self):
         made = fm.outputs(DATA, ROOT, False)
         self.assertEqual({fm.MARKDOWN, fm.PAGE}, set(made))
-        tracked = subprocess.run(["git", "ls-files", "--", *made], cwd=ROOT, capture_output=True, text=True, check=True).stdout
+        tracked = subprocess.run(["git", "ls-files", "--", *made], cwd=ROOT, env=git_env.clean_env(ROOT), capture_output=True, text=True, check=True).stdout
         self.assertEqual("", tracked, "generated map outputs are git-ignored: they conflict on every merge (#544)")
 
     def test_every_still_is_a_pr_media_path(self):

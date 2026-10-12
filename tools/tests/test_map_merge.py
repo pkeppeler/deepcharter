@@ -8,12 +8,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import feature_map as fm  # noqa: E402
+import git_env  # noqa: E402
 
 ROOT = fm.repo_root()
 
 
 def git(cwd, *args):
-    return subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *args], cwd=cwd, capture_output=True, text=True)
+    return subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *args], cwd=cwd, env=git_env.clean_env(cwd), capture_output=True, text=True)
 
 
 def node(node_id):
