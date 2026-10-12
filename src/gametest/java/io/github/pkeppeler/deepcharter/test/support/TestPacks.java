@@ -58,6 +58,9 @@ public final class TestPacks implements ModInitializer {
 	/** The salvage crate's other look (#245, #505, docs/design/salvage-concepts.md): a low sled crate under a tarp. The default, the freight crate, is the mod's own look. */
 	public static final String SALVAGE_CRATE_B = "salvage_crate_b";
 
+	/** The tow line as a braided steel cable (#508), the alternative to the mod's chain; it names the keys of {@code theme/tow.json} that change and redraws the texture. */
+	public static final String TOW_CABLE_BRAID = "tow_cable_braid";
+
 	@Override
 	public void onInitialize() {
 		// One shared pin for every test and evidence world that enters a layer (the layers' biomes list the Retained): no natural spawns.
@@ -65,7 +68,7 @@ public final class TestPacks implements ModInitializer {
 		for (String pack : new String[] {AMBER_CRT, BAD_CRT, RED_INK, TEXTURE_DENSITY_B, TEXTURE_DENSITY_C, TEXTURE_DENSITY_D,
 				LAYER_CONCEPT_GRAIN, LAYER_CONCEPT_BEDDED, LAYER_CONCEPT_MOTTLED, LAYER_CONCEPT_FORM_1, LAYER_CONCEPT_FORM_2, LAYER_CONCEPT_FORM_3,
 				COCKPIT_CONSOLES, COCKPIT_CORNERS, COCKPIT_RIBBON, COCKPIT_POSTS, COCKPIT_CAB, COCKPIT_CAMERA, COCKPIT_CAMERA_HOLD,
-				SALVAGE_CRATE_B}) {
+				SALVAGE_CRATE_B, TOW_CABLE_BRAID}) {
 			ResourceLoader.registerBuiltinPack(Identifier.fromNamespaceAndPath("deepcharter-test", pack),
 					FabricLoader.getInstance().getModContainer("deepcharter-test").orElseThrow(),
 					Component.literal(pack + " (test pack)"), PackActivationType.NORMAL);

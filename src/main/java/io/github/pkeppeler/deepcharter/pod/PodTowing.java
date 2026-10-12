@@ -23,7 +23,6 @@ import net.fabricmc.fabric.api.attachment.v1.AttachmentSyncPredicate;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.chat.Component;
@@ -68,7 +67,7 @@ import io.github.pkeppeler.deepcharter.layer.BreachEvents;
  * and its mass and its cargo's cut the tower's lift ({@link PodEvents#EXTRA_MASS}). With no tower in the level it is an ordinary pod
  * that still remembers the cable. A pod freed, or left by its tower, inside blocks is moved to the nearest open space. A tower with a
  * player crossing a breach carries the pod it tows across with it, to the trail distance from the tower or the nearest open place
- * to it. The cable is drawn as particles.
+ * to it. The client draws the cable as a chain of links between the two pods (see {@code TowChainRenderer}).
  *
  * <p>A tower tows one pod, a towed pod tows none, and a pod is on one cable. The listeners run every tick and on a crossing, so they
  * never throw on an unreadable state: they log once for each pod and read it as no cable. {@link #attach} and {@link #detach} are
@@ -100,8 +99,6 @@ public final class PodTowing {
 	private static final int TICKET_INTERVAL = 5;
 	/** The ticket radius that makes its chunk tick entities, as an ender pearl's does. */
 	private static final int TICKET_RADIUS = 2;
-	/** Blocks of solid ground a cable particle is lifted out of. */
-	private static final int CABLE_FLOOR_LIFT = 3;
 
 	/** How a towed pod moves on its line: its speed, whether it rests on a floor, and the path its tower has taken. */
 	private static final class Line {
@@ -370,7 +367,6 @@ public final class PodTowing {
 		towed.setPos(next);
 		towed.setDeltaMovement(Vec3.ZERO);
 		towed.resetFallDistance();
-		drawCable(tower, towed, rope);
 	}
 
 	/**
@@ -447,39 +443,6 @@ public final class PodTowing {
 			}
 		}
 		return true;
-	}
-
-	/** Draws the cable as a chain of particles, hanging in a curve when slack. One packet each, so the count is bounded by spacing, interval and cap. */
-	private static void drawCable(PodEntity tower, PodEntity towed, double rope) {
-		TowTuning tuning = TowTuning.DEFAULT;
-		if (towed.tickCount % tuning.cableInterval() != 0 || !(towed.level() instanceof ServerLevel level)) {
-			return;
-		}
-		Vec3 from = tower.getBoundingBox().getCenter();
-		Vec3 line = towed.getBoundingBox().getCenter().subtract(from);
-		double chord = line.length();
-		// A rope of length rope hung over a chord is a curve whose depth is about sqrt(3 * chord * spare / 8).
-		double sag = Math.sqrt(3.0 * chord * Math.max(0.0, rope - chord) / 8.0);
-		int count = Math.min(tuning.cableMaxParticles(), (int) Math.ceil(chord / tuning.cableSpacing()));
-		for (int i = 1; i <= count; i++) {
-			double along = (double) i / (count + 1);
-			Vec3 at = from.add(line.scale(along)).add(0, -4.0 * sag * along * (1.0 - along), 0);
-			if (tower.getBoundingBox().contains(at) || towed.getBoundingBox().contains(at)) {
-				continue;
-			}
-			at = aboveFloor(level, at);
-			level.sendParticles(PodRegistry.TOW_CABLE_PARTICLE, at.x, at.y, at.z, 1, 0, 0, 0, 0);
-		}
-	}
-
-	/** {@code at}, or the top of the solid block it is in, so a slack cable lies on the floor and does not sink into it. */
-	private static Vec3 aboveFloor(ServerLevel level, Vec3 at) {
-		BlockPos pos = BlockPos.containing(at);
-		for (int i = 0; i < CABLE_FLOOR_LIFT && !level.getBlockState(pos).getCollisionShape(level, pos).isEmpty(); i++) {
-			at = new Vec3(at.x, pos.getY() + 1.0 + EPSILON, at.z);
-			pos = pos.above();
-		}
-		return at;
 	}
 
 	/**

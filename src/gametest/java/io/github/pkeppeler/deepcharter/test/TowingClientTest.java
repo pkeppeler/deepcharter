@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -17,6 +18,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
+import io.github.pkeppeler.deepcharter.client.pod.TowChainRenderer;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
@@ -67,11 +69,33 @@ public class TowingClientTest implements FabricClientGameTest {
 			double trail = context.computeOnClient(client -> TowTuning.DEFAULT.trailDistance(pod(client, rig.tower()), pod(client, rig.towed())));
 			require(!(gap > trail + CLIENT_LAG_BLOCKS), "The client should see the towed pod within the cable's trail of its tower, it is " + gap + " blocks away");
 
+			context.runOnClient(client -> {
+				PodEntity tower = pod(client, rig.tower());
+				PodEntity towed = pod(client, rig.towed());
+				List<PodEntity> pods = List.of(tower, towed);
+				Vec3 camera = client.player.position();
+				TowChainRenderer.Chain chain = TowChainRenderer.chainFor(client.level, towed, pods, 1f, camera.x, camera.y, camera.z);
+				require(chain != null && chain.curve.links > 0, "The renderer should draw a line for the towed pod");
+				double hitchGap = Math.sqrt(Math.pow(chain.curve.x[0] - chain.curve.x[chain.curve.links], 2) + Math.pow(chain.curve.y[0] - chain.curve.y[chain.curve.links], 2)
+						+ Math.pow(chain.curve.z[0] - chain.curve.z[chain.curve.links], 2));
+				double trailLine = TowTuning.DEFAULT.lineLength();
+				require(hitchGap < trailLine + CLIENT_LAG_BLOCKS, "The line between the hitches is at most the rope and a little lag, it is " + hitchGap);
+				require(TowChainRenderer.chainFor(client.level, tower, pods, 1f, camera.x, camera.y, camera.z) == null, "The renderer should draw no line for the tower");
+				require(TowChainRenderer.chainFor(client.level, towed, List.of(towed), 1f, camera.x, camera.y, camera.z) == null,
+						"The renderer should draw no line while the tower is not loaded on the client");
+			});
+
 			two.server().runOnServer(server -> {
 				require(PodTowing.detach((PodEntity) server.overworld().getEntity(rig.towed())), "the towed pod should have a cable to take off");
 			});
 			ClientWait.until(context, "the client sees the cable come off the towed pod", client -> pod(client, rig.towed()) != null
 					&& !PodTowing.isTowed(pod(client, rig.towed())));
+			context.runOnClient(client -> {
+				PodEntity towed = pod(client, rig.towed());
+				Vec3 camera = client.player.position();
+				require(TowChainRenderer.chainFor(client.level, towed, List.of(pod(client, rig.tower()), towed), 1f, camera.x, camera.y, camera.z) == null,
+						"The renderer should draw no line once the cable is off");
+			});
 		}
 	}
 
