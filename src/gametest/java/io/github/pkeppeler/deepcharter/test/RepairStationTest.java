@@ -71,7 +71,7 @@ import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 
 /**
- * Server GameTests for #70: hull repair, the shop, and the seven items the shop sells.
+ * Server GameTests for #70: hull repair, the shop, and the eight items the shop sells.
  *
  * <p>The repair state is one per world, so a test that needs a working repair station swaps in a fresh {@link RepairState} with
  * the whole chain repaired for its own duration ({@link #withStation}), and does all its work inside its first tick.
@@ -84,6 +84,7 @@ public class RepairStationTest {
 			Consumable.DYNAMITE, 100L,
 			Consumable.PLASTIC_EXPLOSIVES, 300L,
 			Consumable.BLASTING_CHARGE, 40L,
+			Consumable.SHAPED_CHARGE, 100L,
 			Consumable.QUANTUM_TELEPORTER, 690L,
 			Consumable.MATTER_TRANSMITTER, 1_390L);
 	private static final long PER_HP = 1L;
@@ -338,7 +339,7 @@ public class RepairStationTest {
 	public void theShopSellsTheSevenItemsAtTheirTunedPrices(GameTestHelper helper) {
 		withStation(helper, station -> {
 			if (SHOP_PRICES.size() != Consumable.values().length) {
-				throw helper.assertionException("the shop sells %d items, the seven are %d", Consumable.values().length, SHOP_PRICES.size());
+				throw helper.assertionException("the shop sells %d items, the eight are %d", Consumable.values().length, SHOP_PRICES.size());
 			}
 			ServerPlayer player = station.pilot().player();
 			fund(helper, station, 100_000);

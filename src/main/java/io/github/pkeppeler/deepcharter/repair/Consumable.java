@@ -8,7 +8,7 @@ import net.minecraft.resources.Identifier;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 
 /**
- * The seven items the repair station sells. The original's debug Core Teleporter is not sold, so it is not here.
+ * The items the repair station sells. The original's debug Core Teleporter is not sold, so it is not here.
  *
  * <p>Prices follow issue 201's scale (PR 206), not the original's $2,000 to $10,000. The tools cost a quarter of a run to one run's net
  * of the layer where they start to matter; SPEC section 11 calls the two teleport items expensive, so they cost about 2 and 4 layer 2
@@ -26,6 +26,8 @@ public enum Consumable {
 	PLASTIC_EXPLOSIVES("plastic_explosives", 300),
 	// Layer 1 tool (#509): the only thing that clears Company rock. A straight layer 1 bore needs several, so one costs a fraction of a stock layer 1 run.
 	BLASTING_CHARGE("blasting_charge", 40),
+	// Layer 2 and 3 tool (#526): the same set-up as the blasting charge, but it clears a whole Company rock column. $100 is under three blasting charges ($120), the three it replaces in a thick stretch.
+	SHAPED_CHARGE("shaped_charge", 100),
 	// SPEC section 11: an expensive escape, about 2 layer-2 runs; the cargo drop is the rest of the cost.
 	QUANTUM_TELEPORTER("quantum_teleporter", 690),
 	// SPEC section 11: a layer-3 item measured as about 4 layer-2 runs; the cargo drop is the rest of the cost.

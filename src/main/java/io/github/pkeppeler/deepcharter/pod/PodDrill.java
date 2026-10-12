@@ -68,9 +68,9 @@ public final class PodDrill {
 		// Centre before judging the slab: a pod straddling a third column can see an all-air footprint, and
 		// sliding onto it (off a ledge, past a wall's edge) is how it reaches something to drill.
 		boolean centred = centre(pod, slab, stats);
-		if (!slab.hasWork() || !slab.allowed()) {
+		if (!slab.hasWork() || !slab.allowed(pod)) {
 			if (slab.hasCompanyRock() && pod.getControllingPassenger() instanceof ServerPlayer pilot && pod.tickCount % 40 == 0) {
-				pilot.sendOverlayMessage(Component.translatable("deepcharter.ore.company_rock_refused"));
+				pilot.sendOverlayMessage(Component.translatable(PodRockBite.canBite(pod) && PodRockBite.tooHot(pod) ? "deepcharter.ore.company_rock_cutter_hot" : "deepcharter.ore.company_rock_refused"));
 			}
 			stop(pod);
 			return;
@@ -79,6 +79,11 @@ public final class PodDrill {
 		pod.setDrillDirection(wanted);
 		if (!centred) {
 			return;
+		}
+		if (slab.hasCompanyRock()) {
+			// Every tick of the slab, the first and the last included (#526): the cutter's heat and its extra fuel.
+			PodRockBite.heat(pod);
+			PodFuel.burnForBite(pod, stats, PodRockBite.fuelMultiplier());
 		}
 		int ticks = progress != null ? progress.ticks() + 1 : 1;
 		// A sounder that bleeds makes the drill wait before it bores a pocket; the blast then costs the pod at most a share of its hull (PodSounder).
@@ -164,18 +169,22 @@ public final class PodDrill {
 		}
 
 		/**
-		 * A slab is refused whole, so the bore is never ragged: unbreakable, outside the world, the ceiling row, last-layer crust, or
+		 * A slab is refused whole, so the bore is never ragged: unbreakable, Company rock to a drill that cannot bite it or a hull too hot to (#526), outside the world, the ceiling row, last-layer crust, or
 		 * a cell that cannot change without loading a chunk (breaking a block tells its four sides, so a bore at the edge of the
 		 * loaded chunks waits until the next one is loaded; a pilot's view keeps the chunks around a bore loaded).
 		 */
-		boolean allowed() {
+		boolean allowed(PodEntity pod) {
 			LoadedBlocks blocks = blocks();
 			for (BlockPos pos : cells) {
 				BlockState state = blocks.getBlockState(pos);
 				if (level.isOutsideBuildHeight(pos) || pos.getY() >= level.getMaxY() || !blocks.canChange(pos)) {
 					return false;
 				}
-				if (breakable(state) && (state.getDestroySpeed(level, pos) < 0 || state.is(HazardBlocks.UNDIGGABLE)
+				if (state.is(HazardBlocks.UNDIGGABLE)) {
+					if (!PodRockBite.canBite(pod) || PodRockBite.tooHot(pod)) {
+						return false;
+					}
+				} else if (breakable(state) && (state.getDestroySpeed(level, pos) < 0
 						|| state.is(LayerBlocks.BREACH_CRUST) && !crustLeadsOn())) {
 					return false;
 				}
@@ -188,7 +197,9 @@ public final class PodDrill {
 			int ticks = 1;
 			for (BlockPos pos : cells) {
 				BlockState state = state(pos);
-				if (breakable(state)) {
+				if (state.is(HazardBlocks.UNDIGGABLE)) {
+					ticks = Math.max(ticks, PodRockBite.drillTicks(stats, depth));
+				} else if (breakable(state)) {
 					ticks = Math.max(ticks, PodDrill.drillTicks(stats, state.getDestroySpeed(level, pos), depth));
 				}
 			}
