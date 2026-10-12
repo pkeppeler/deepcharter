@@ -93,7 +93,9 @@ public final class MockPlayer {
 
 	public void teleportTo(ServerLevel level, Vec3 pos, float yRot, float xRot) {
 		if (!player.teleportTo(level, pos.x, pos.y, pos.z, Set.of(), yRot, xRot, true)) {
-			throw new IllegalStateException("Mock player " + player.getGameProfile().name() + " could not teleport to " + pos);
+			throw new IllegalStateException("Mock player " + player.getGameProfile().name() + " could not teleport to " + pos + " in " + level.dimension().identifier()
+					+ " (it is at " + player.position() + " in " + player.level().dimension().identifier() + ", removed " + player.isRemoved()
+					+ ", alive " + player.isAlive() + ", online " + isOnline() + ")");
 		}
 		confirmDimensionChange();
 	}

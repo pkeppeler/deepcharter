@@ -12,6 +12,9 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerConnection;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerContext;
 
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
+
 /**
  * A real {@code DedicatedServer} with two players: the real client, joined with
  * {@code connect()}, and one {@link MockPlayer}. Use it from a client GameTest or an evidence
@@ -61,7 +64,7 @@ public final class TwoPlayerServer implements AutoCloseable {
 		try {
 			connection = server.connect();
 			stage = "the mock player joining the server";
-			MockPlayer mock = server.computeOnServer(minecraftServer -> MockPlayers.join(minecraftServer, MOCK_NAME));
+			MockPlayer mock = server.computeOnServer(minecraftServer -> joinAtSpawn(minecraftServer));
 			stage = "the real client seeing both players";
 			ClientWait.until(context, "the real client and the mock both in the level",
 					client -> client.level != null && client.level.players().size() == 2,
@@ -74,6 +77,17 @@ public final class TwoPlayerServer implements AutoCloseable {
 			server.close();
 			throw new AssertionError("TwoPlayerServer.start failed during " + stage, e);
 		}
+	}
+
+	/**
+	 * Joins the mock where the real player stands. A mock joins at the origin, which is inside the rock of the surface (the ground is at
+	 * y 63), where it suffocates within seconds, and a dead mock cannot be teleported.
+	 */
+	private static MockPlayer joinAtSpawn(MinecraftServer server) {
+		ServerPlayer real = server.getPlayerList().getPlayers().getFirst();
+		MockPlayer mock = MockPlayers.join(server, MOCK_NAME);
+		mock.teleportTo(real.level(), real.position(), real.getYRot(), real.getXRot());
+		return mock;
 	}
 
 	private static int freePort() {
