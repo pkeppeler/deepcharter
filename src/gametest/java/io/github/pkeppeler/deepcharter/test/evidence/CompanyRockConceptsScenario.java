@@ -79,8 +79,8 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 			new View("cave", new Vec3(19.5, 3.0, 5.5), new Vec3(19.0, 3.0, -1)),
 			new View("lava", new Vec3(40.0, 2.7, 6.5), new Vec3(39.4, 1.8, -1)));
 	/** The pod: it stands at the south end of the hall and looks south at the patch on the far wall. */
-	private static final Vec3 SEAT_POD = new Vec3(54.5, 1, 5.5);
-	private static final Vec3 SEAT_TARGET = new Vec3(54.5, 2.6, -1);
+	private static final Vec3 SEAT_POD = new Vec3(51.5, 1, 5.5);
+	private static final Vec3 SEAT_TARGET = new Vec3(53.5, 2.6, -1);
 
 	@Override
 	protected String name() {
@@ -233,7 +233,7 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 		for (View view : VIEWS) {
 			lamp(level, view.eye());
 		}
-		lamp(level, SEAT_POD.add(0, 2, 1));
+		lamp(level, SEAT_POD.add(0, 2, -1));
 	}
 
 	private static void air(ServerLevel level, int x1, int x2, int y1, int y2, int z1, int z2) {
