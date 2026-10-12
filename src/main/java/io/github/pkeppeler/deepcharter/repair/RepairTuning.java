@@ -14,12 +14,11 @@ package io.github.pkeppeler.deepcharter.repair;
  * @param quantumScatter    blocks, at most, that the Quantum Teleporter lands from the destination ("results may vary")
  * @param chargeFuseTicks   ticks from setting a blasting charge to its blast (3 s: time to climb clear, not time to wait)
  * @param chargeDepth       slab rows below the pod that a blasting charge clears, 2 so that one charge leaves a straight 2-slab step
- * @param chargeMargin      blocks beyond the pod's bore square, on each side, that a blasting charge clears
  * @param chargeDamage      hull points a pod takes from a blast that touches it; less with distance
  * @param chargeReach       blocks from the blast, at most, that a pod is hurt; the damage falls to 0 there
  */
 public record RepairTuning(long repairCostPerHp, int itemCooldownTicks, float reserveLitres, float nanobotHp,
-		int dynamiteRadius, int plasticRadius, double quantumScatter, int chargeFuseTicks, int chargeDepth, int chargeMargin,
+		int dynamiteRadius, int plasticRadius, double quantumScatter, int chargeFuseTicks, int chargeDepth,
 		float chargeDamage, double chargeReach) {
-	public static final RepairTuning DEFAULT = new RepairTuning(1L, 10, 25f, 30f, 1, 2, 8.0, 60, 2, 0, 20f, 3.0);
+	public static final RepairTuning DEFAULT = new RepairTuning(1L, 10, 25f, 30f, 1, 2, 8.0, 60, 2, 20f, 3.0);
 }

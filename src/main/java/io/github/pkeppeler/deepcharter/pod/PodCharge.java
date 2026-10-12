@@ -21,8 +21,7 @@ import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 /**
  * The blasting charge (#509, ADR 0015): set from the seat on the slab under the pod, a fuse, then a blast that clears
  * {@code deepcharter:undiggable} (Company rock) and the natural rock round it. It is the one thing that does. The blast
- * volume is the pod's bore square with no margin ({@code chargeMargin} 0: a margin of 1 opened a 4 x 4 chamber that drained the liner's rack),
- * {@code chargeDepth} slab rows deep.
+ * volume is the pod's bore square, {@code chargeDepth} slab rows deep.
  *
  * <p>Rules: only blocks of {@link HazardBlocks#UNDIGGABLE} and {@link HazardBlocks#NATURAL_ROCK} go (so bricks, lining,
  * liner rings, structures, bedrock, crust and every fluid stay), and only in loaded chunks. A gas pocket in the volume
@@ -63,8 +62,8 @@ public final class PodCharge {
 		}
 		PodFootprint foot = PodFootprint.of(pod);
 		int top = Mth.ceil(pod.getY() - PodFootprint.EPSILON) - 1;
-		BlockPos low = new BlockPos(foot.lowX() - tuning.chargeMargin(), top - tuning.chargeDepth() + 1, foot.lowZ() - tuning.chargeMargin());
-		BlockPos high = new BlockPos(foot.lowX() + foot.width() - 1 + tuning.chargeMargin(), top, foot.lowZ() + foot.width() - 1 + tuning.chargeMargin());
+		BlockPos low = new BlockPos(foot.lowX(), top - tuning.chargeDepth() + 1, foot.lowZ());
+		BlockPos high = new BlockPos(foot.lowX() + foot.width() - 1, top, foot.lowZ() + foot.width() - 1);
 		ServerLevel level = (ServerLevel) pod.level();
 		if (BlockPos.betweenClosedStream(low, high).noneMatch(cell -> new LoadedBlocks(level).getBlockState(cell).is(HazardBlocks.UNDIGGABLE))) {
 			return refusal("charge_no_company_rock");

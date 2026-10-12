@@ -35,8 +35,7 @@ import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
  * Server GameTests for the blasting charge (#509, ADR 0015): set from the seat on the slab under the pod, a fuse, then a blast that
  * clears Company rock and the natural rock round it, and hurts a pod that is too close. Each test has its own X in layer 1.
  *
- * <p>The scene: a Mole 2 x 2 resting on a stone bed, at {@code (x, FLOOR, Z)}. The blast volume is the bore square plus a margin of
- * {@link RepairTuning#chargeMargin()} (none), so {@code x - 1 .. x} and {@code Z - 1 .. Z}, the rows {@code FLOOR - 2 .. FLOOR - 1}.
+ * <p>The scene: a Mole 2 x 2 resting on a stone bed, at {@code (x, FLOOR, Z)}. The blast volume is the bore square, so {@code x - 1 .. x} and {@code Z - 1 .. Z}, the rows {@code FLOOR - 2 .. FLOOR - 1}.
  */
 public class BlastingChargeTest {
 	private static final RepairTuning TUNING = RepairTuning.DEFAULT;
