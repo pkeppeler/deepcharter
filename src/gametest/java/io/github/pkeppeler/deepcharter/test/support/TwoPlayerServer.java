@@ -64,7 +64,7 @@ public final class TwoPlayerServer implements AutoCloseable {
 		try {
 			connection = server.connect();
 			stage = "the mock player joining the server";
-			MockPlayer mock = server.computeOnServer(minecraftServer -> joinAtSpawn(minecraftServer));
+			MockPlayer mock = server.computeOnServer(TwoPlayerServer::joinAtSpawn);
 			stage = "the real client seeing both players";
 			ClientWait.until(context, "the real client and the mock both in the level",
 					client -> client.level != null && client.level.players().size() == 2,
