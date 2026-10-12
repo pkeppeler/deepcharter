@@ -1,5 +1,6 @@
 import copy
 import re
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -22,15 +23,11 @@ class TheCommittedMap(unittest.TestCase):
     def test_validates(self):
         self.assertEqual([], fm.validate(DATA, ROOT))
 
-    def test_markdown_is_what_the_generator_makes(self):
-        made = fm.render_markdown(DATA, ROOT, False)
-        self.assertEqual(made, (ROOT / fm.MARKDOWN).read_text(encoding="utf-8"),
-                         "docs/FEATURE-MAP.md is stale: run python3 -I tools/feature_map.py")
-
-    def test_page_is_what_the_generator_makes(self):
-        made = fm.render_page(DATA, ROOT)
-        self.assertEqual(made, (ROOT / fm.PAGE).read_text(encoding="utf-8"),
-                         "docs/feature-map/index.html is stale: run python3 -I tools/feature_map.py")
+    def test_outputs_render_and_are_not_committed(self):
+        made = fm.outputs(DATA, ROOT, False)
+        self.assertEqual({fm.MARKDOWN, fm.PAGE}, set(made))
+        tracked = subprocess.run(["git", "ls-files", "--", *made], cwd=ROOT, capture_output=True, text=True, check=True).stdout
+        self.assertEqual("", tracked, "generated map outputs are git-ignored: they conflict on every merge (#544)")
 
     def test_every_still_is_a_pr_media_path(self):
         stills = [n["still"] for n in DATA["nodes"] if "still" in n]
@@ -40,7 +37,7 @@ class TheCommittedMap(unittest.TestCase):
             self.assertTrue(fm.still_url(still).startswith("https://github.com/pkeppeler/deepcharter/blob/pr-media/"))
 
     def test_page_uses_relative_paths_and_pinned_libraries_only(self):
-        page = (ROOT / fm.PAGE).read_text(encoding="utf-8")
+        page = fm.render_page(DATA, ROOT)
         self.assertNotRegex(page, r'(?:src|href)="/', "an absolute path breaks the page on GitHub Pages and as a local file")
         self.assertNotIn("file://", page)
         sources = re.findall(r'<script src="([^"]+)" integrity="sha384-', page)
@@ -76,7 +73,7 @@ class ThePage(unittest.TestCase):
         page = fm.render_page(data, ROOT)
         self.assertNotIn("</script><img", page)
         self.assertIn("<\\/script><img", page)
-        self.assertEqual((ROOT / fm.PAGE).read_text(encoding="utf-8").count("</script>"), page.count("</script>"))
+        self.assertEqual(fm.render_page(DATA, ROOT).count("</script>"), page.count("</script>"))
 
 
 class TheValidator(unittest.TestCase):

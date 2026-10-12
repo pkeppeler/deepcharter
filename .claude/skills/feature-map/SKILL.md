@@ -1,11 +1,11 @@
 ---
 name: feature-map
-description: Deep Charter's feature map, the one graph of every mechanic, upgrade ladder, hazard and counter, goal, resource, creature and terminal, built or planned (docs/FEATURE-MAP.md and the live page). Load when a PR adds, changes or removes anything a player can meet, when an issue or a user pick changes the plan, when a status moves (planned to in progress to built), before writing a `No map change:` line, and when reviewing a gameplay PR.
+description: Deep Charter's feature map, the one graph of every mechanic, upgrade ladder, hazard and counter, goal, resource, creature and terminal, built or planned (the live page). Load when a PR adds, changes or removes anything a player can meet, when an issue or a user pick changes the plan, when a status moves (planned to in progress to built), before writing a `No map change:` line, and when reviewing a gameplay PR.
 ---
 
 # The feature map
 
-The user reads this to see the whole game at a glance. It is generated from one file, [docs/feature-map/map.json](../../../docs/feature-map/map.json), and gated so it cannot go stale. Outputs: [docs/FEATURE-MAP.md](../../../docs/FEATURE-MAP.md) (Mermaid graphs and gallery tables, on GitHub), [docs/feature-map/index.html](../../../docs/feature-map/index.html) (the interactive page, live at https://pkeppeler.github.io/deepcharter/) and a poster image on `pr-media/readme/`. Edit only `map.json`; never edit the outputs.
+The user reads this to see the whole game at a glance. It is generated from one file, [docs/feature-map/map.json](../../../docs/feature-map/map.json), and gated so it cannot go stale. Outputs, none committed ([ADR 0054](../../../docs/adr/0054-the-feature-map-outputs-are-generated-not-committed.md)): the interactive page (live at https://pkeppeler.github.io/deepcharter/, built by the Pages workflow), `docs/FEATURE-MAP.md` and `docs/feature-map/index.html` (git-ignored local copies) and a poster image on `pr-media/readme/`. Edit only `map.json`.
 
 ## When to update
 
@@ -48,16 +48,16 @@ A node lacking an icon or still is fine, and the gallery says "no still yet". Ev
 
 ## Regenerate and publish
 
-1. `python3 -I tools/feature_map.py` validates the map and rewrites both outputs. Commit them with `map.json`.
+1. `python3 -I tools/feature_map.py` validates the map and writes the git-ignored local outputs; `--check` validates only. Commit `map.json` alone. When you merge main into a branch that still tracks the old outputs, take main's deletion of both files.
 2. `python3 -I tools/feature_map.py --check-stills` also checks every still is on `origin/pr-media` (local ref, no network; `git fetch origin pr-media` first).
 3. After a PR that moves several nodes: `tools/feature-map.sh --publish` draws the poster and publishes `feature-map.svg` (and a `.png` when Chrome is installed) to `pr-media/readme/`. The README shows it; it is never committed.
 4. `--mermaid-images` draws icons on the Mermaid nodes. GitHub may not render that shape, so the committed output uses text nodes with an emoji per kind.
 
-The page redeploys by itself when `docs/feature-map/**` changes on `main` (`.github/workflows/pages.yml`). Before the merge it only works as a local file.
+The page is generated and redeployed by itself when `docs/feature-map/**` changes on `main` (`.github/workflows/pages.yml`). Before the merge, open your local `index.html`.
 
 ## Gates
 
-- `tools/tests/test_feature_map.py` (CI `tool-tests`, pre-push): the map validates (unique ids, edges, refs and headings, icons, statuses, stills are `pr-media` paths) and both outputs equal what the generator makes.
+- `tools/tests/test_feature_map.py` (CI `tool-tests`, pre-push): the map validates (unique ids, edges, refs and headings, icons, statuses, stills are `pr-media` paths), the outputs render, and neither output is tracked.
 - `FeatureMapCoverageTest` (server GameTest): the registered game and the map's `covers` agree.
 - `tools/merge-pr.sh`, two rules, both skipped by a body line `No map change: <reason>` at the start of a line:
   - a PR labelled `gameplay` must change `docs/feature-map/map.json`;
