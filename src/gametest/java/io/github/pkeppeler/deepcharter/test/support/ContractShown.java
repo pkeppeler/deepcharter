@@ -15,6 +15,7 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtTextField;
 public final class ContractShown {
 	private static final String DENY = "DENY ";
 	private static final String APPLY = "APPLY: ";
+	private static final String REVIVE = "REVIVE: ";
 
 	private ContractShown() {
 	}
@@ -47,6 +48,11 @@ public final class ContractShown {
 	/** True when the Director's list offers {@code charter} to apply to. */
 	public static boolean offers(ContractScreen screen, String charter) {
 		return labels(screen).contains(APPLY + charter.toUpperCase());
+	}
+
+	/** True when the screen has a button to revive {@code charter}. */
+	public static boolean offersRevive(ContractScreen screen, String charter) {
+		return labels(screen).contains(REVIVE + charter.toUpperCase());
 	}
 
 	/** The applicants on the Director's list, in capitals as the buttons show them. */

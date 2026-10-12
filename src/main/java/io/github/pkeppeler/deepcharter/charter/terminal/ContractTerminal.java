@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;
@@ -19,6 +20,7 @@ import net.minecraft.server.players.NameAndId;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterData;
+import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
@@ -28,8 +30,8 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 
 /**
  * The contract terminal (lore canon section 8): the one terminal that never went dark. It is always online and any player may
- * use it, charter or not, because a player with no charter founds one here. A player can found a charter, apply to one, answer
- * an application as Director, and leave. Every action goes through {@link Charters}, the same calls as the operator commands.
+ * use it, charter or not, because a player with no charter founds one here. A player can found a charter, apply to one, revive a dormant
+ * one they were once a member of, answer an application as Director, and leave. Every action goes through {@link Charters}, the same calls as the operator commands.
  *
  * <p>The block is {@code deepcharter:contract_terminal} ({@link #TYPE}). The colony places it at its plinth.
  *
@@ -52,9 +54,9 @@ public final class ContractTerminal {
 	static {
 		TerminalActions.register(TYPE, ContractActions.FOUND, context -> byName(context, CharterRefusal.INVALID_NAME,
 				name -> Charters.found(context.server(), context.player().getUUID(), name)));
-		TerminalActions.register(TYPE, ContractActions.APPLY, context -> byName(context, CharterRefusal.NO_SUCH_CHARTER, name -> Charters.findByName(context.server(), name)
-				.map(charter -> Charters.apply(context.server(), context.player().getUUID(), charter.id()))
-				.orElse(Optional.of(CharterRefusal.NO_SUCH_CHARTER))));
+		TerminalActions.register(TYPE, ContractActions.APPLY, context -> onCharterNamed(context, id -> Charters.apply(context.server(), context.player().getUUID(), id)));
+		// Only a former member may revive; the rule is CharterData's, so a name typed by hand gets the same refusal as a button.
+		TerminalActions.register(TYPE, ContractActions.REVIVE, context -> onCharterNamed(context, id -> Charters.revive(context.server(), context.player().getUUID(), id)));
 		TerminalActions.register(TYPE, ContractActions.APPROVE, context -> answer(context, applicantNamed(context), Charters::approve));
 		TerminalActions.register(TYPE, ContractActions.DENY, context -> {
 			Optional<UUID> applicant = applicantNamed(context);
@@ -95,6 +97,13 @@ public final class ContractTerminal {
 
 	private static Optional<Component> byName(TerminalAction.Context context, CharterRefusal missing, Function<String, Optional<CharterRefusal>> run) {
 		return report(context, nameArg(context).map(run).orElse(Optional.of(missing)));
+	}
+
+	/** Runs {@code run} on the charter the args name; a name no charter has is refused. */
+	private static Optional<Component> onCharterNamed(TerminalAction.Context context, Function<CharterId, Optional<CharterRefusal>> run) {
+		return byName(context, CharterRefusal.NO_SUCH_CHARTER, name -> Charters.findByName(context.server(), name)
+				.map(charter -> run.apply(charter.id()))
+				.orElse(Optional.of(CharterRefusal.NO_SUCH_CHARTER)));
 	}
 
 	private static Optional<Component> answer(TerminalAction.Context context, Optional<UUID> applicant, Answer answer) {
@@ -146,18 +155,23 @@ public final class ContractTerminal {
 		if (own.isPresent()) {
 			Charter charter = own.get();
 			if (!charter.isDirector(player)) {
-				return new ContractState(ContractState.Role.CREW, charter.name(), List.of(), 0, List.of(), 0, Optional.empty());
+				return new ContractState(ContractState.Role.CREW, charter.name(), List.of(), 0, List.of(), 0, List.of(), 0, Optional.empty());
 			}
 			List<String> applicants = charter.applications().stream().map(applicant -> displayName(server, applicant)).limit(rows).toList();
-			return new ContractState(ContractState.Role.DIRECTOR, charter.name(), List.of(), 0, applicants, charter.applications().size(), Optional.empty());
+			return new ContractState(ContractState.Role.DIRECTOR, charter.name(), List.of(), 0, List.of(), 0, applicants, charter.applications().size(), Optional.empty());
 		}
 		Optional<Charter> applied = CharterData.get(server).applicationOf(player);
 		if (applied.isPresent()) {
-			return new ContractState(ContractState.Role.APPLICANT, applied.get().name(), List.of(), 0, List.of(), 0, Optional.empty());
+			return new ContractState(ContractState.Role.APPLICANT, applied.get().name(), List.of(), 0, List.of(), 0, List.of(), 0, Optional.empty());
 		}
-		List<String> open = Charters.allOrThrow(server).stream().filter(charter -> !charter.dormant()).map(Charter::name)
-				.sorted(Comparator.comparing(String::toLowerCase)).toList();
-		return new ContractState(ContractState.Role.NONE, "", open.stream().limit(rows).toList(), open.size(), List.of(), 0, Optional.empty());
+		List<String> open = names(server, charter -> !charter.dormant());
+		List<String> revivable = names(server, charter -> charter.dormant() && charter.formerMember(player));
+		return new ContractState(ContractState.Role.NONE, "", open.stream().limit(rows).toList(), open.size(),
+				revivable.stream().limit(ContractTerminalTuning.DEFAULT.revivableRows()).toList(), revivable.size(), List.of(), 0, Optional.empty());
+	}
+
+	private static List<String> names(MinecraftServer server, Predicate<Charter> wanted) {
+		return Charters.allOrThrow(server).stream().filter(wanted).map(Charter::name).sorted(Comparator.comparing(String::toLowerCase)).toList();
 	}
 
 	/** Refreshes every online player on no charter and no application: their list of charters just changed. */

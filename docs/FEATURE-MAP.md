@@ -79,7 +79,7 @@ flowchart LR
   l_terminals["The colony's terminals<br/>7 of 8 built"]
   l_handbook["The Employee Handbook<br/>11 of 14 built"]
   l_layers["Layers, breaches and the story<br/>13 of 24 built"]
-  l_charter["Charters, crews and accounts<br/>6 of 9 built"]
+  l_charter["Charters, crews and accounts<br/>7 of 9 built"]
   l_colony["The colony: Prosperity<br/>8 of 9 built"]
   l_pods["The pod chassis ladder<br/>6 of 10 built"]
   l_drill["Drill<br/>4 of 7 built"]
@@ -158,7 +158,7 @@ flowchart LR
 | [The colony's terminals](#the-colonys-terminals) | 7 | 0 | 1 | 0 |
 | [The Employee Handbook](#the-employee-handbook) | 11 | 0 | 3 | 0 |
 | [Layers, breaches and the story](#layers-breaches-and-the-story) | 13 | 1 | 9 | 1 |
-| [Charters, crews and accounts](#charters-crews-and-accounts) | 6 | 0 | 2 | 1 |
+| [Charters, crews and accounts](#charters-crews-and-accounts) | 7 | 0 | 1 | 1 |
 | [The colony: Prosperity](#the-colony-prosperity) | 8 | 0 | 0 | 1 |
 | [The pod chassis ladder](#the-pod-chassis-ladder) | 6 | 0 | 4 | 0 |
 | [Drill](#drill) | 4 | 0 | 3 | 0 |
@@ -194,7 +194,6 @@ flowchart LR
 - **Lighting art** (art): Glow accents and beams; see Darkness and sight. [#248](https://github.com/pkeppeler/deepcharter/issues/248)
 - **Cargo bay tier 4** (cargo-bay): 70 ore slots, $5,000. No chassis built yet can fit it (a Badger or later). [SPEC.md](SPEC.md#components)
 - **Cargo bay tier 5** (cargo-bay): 120 ore slots, $25,000. No chassis built yet can fit it (a Badger or later). [SPEC.md](SPEC.md#components)
-- **Revive at the contract terminal** (charter): Players revive a dormant charter, but who may revive first (former members?) is not decided. [#168](https://github.com/pkeppeler/deepcharter/issues/168)
 - **Outposts and pads shared** (charter): A toggle to share a charter's outposts and pads with other charters. [SPEC.md](SPEC.md#6-charters)
 - **Blasting charge** (company-rock): A bought charge set from the seat with a fuse: clears Company Rock in a small radius, and hurts a pod that is too close. [#509](https://github.com/pkeppeler/deepcharter/issues/509)
 - **Shaped charge** (company-rock): A dearer, directed blast that clears a whole slab column. [#509](https://github.com/pkeppeler/deepcharter/issues/509)
@@ -1432,8 +1431,8 @@ flowchart LR
   classDef planned fill:#2e2e2e,stroke:#9e9e9e,stroke-width:1px,color:#d6d6d6
   classDef idea fill:#1a1a1a,stroke:#757575,stroke-width:1px,stroke-dasharray:4 3,color:#a0a0a0
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
-  class n_found_charter,n_company_parts,n_sign_on,n_dormant_charters,n_serials,n_wreck_keeps_serial built
-  class n_revive_at_terminal,n_share_outposts planned
+  class n_found_charter,n_company_parts,n_sign_on,n_dormant_charters,n_serials,n_revive_at_terminal,n_wreck_keeps_serial built
+  class n_share_outposts planned
   class n_charter_competition idea
   class n_contract_terminal,n_handbook_item ext
 ```
@@ -1443,9 +1442,9 @@ flowchart LR
 | 🎯 | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/129/contract-approved.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/129/contract-approved.png?raw=true" width="160" alt=""></a> | <a id="found-charter"></a>**Found a charter**<br>goal | Name it at the contract terminal and become its Director; it gets an account. | ✅ Built | [SPEC.md](SPEC.md#6-charters), [ADR 0007](adr/0007-charters-are-one-versioned-saved-data.md) |
 | ⚙️ | no still yet | <a id="company-parts"></a>**Parts are company property**<br>mechanic | Parts are bound to the charter and serial-numbered; another charter's parts are void. | ✅ Built | [SPEC.md](SPEC.md#6-charters) |
 | 🎯 | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/129/contract-application.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/129/contract-application.png?raw=true" width="160" alt=""></a> | <a id="sign-on"></a>**Sign on as crew**<br>goal | Apply with an Employment Contract; the Director approves. | ✅ Built | [ADR 0018](adr/0018-the-contract-terminal-sends-its-own-state-by-name.md), [#129](https://github.com/pkeppeler/deepcharter/issues/129) |
-| ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/164/m2-charter-revive.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/164/m2-charter-revive.gif?raw=true" width="160" alt=""></a> | <a id="dormant-charters"></a>**Dormant charters**<br>mechanic | A charter nobody belongs to goes dormant and keeps its name; an operator command revives it. | ✅ Built | [ADR 0026](adr/0026-a-dormant-charter-is-revived-by-the-first-player-who-asks.md), [#164](https://github.com/pkeppeler/deepcharter/issues/164) |
+| ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/164/m2-charter-revive.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/164/m2-charter-revive.gif?raw=true" width="160" alt=""></a> | <a id="dormant-charters"></a>**Dormant charters**<br>mechanic | A charter nobody belongs to goes dormant and keeps its name, account and pods; its former members can revive it. | ✅ Built | [ADR 0026](adr/0026-a-dormant-charter-is-revived-by-the-first-player-who-asks.md), [#164](https://github.com/pkeppeler/deepcharter/issues/164) |
 | ⚙️ | no still yet | <a id="serials"></a>**Serial numbers**<br>mechanic | Each pod and part has a world-wide serial; a restored wreck keeps its own number. | ✅ Built | [ADR 0027](adr/0027-a-chassis-is-an-entity-type-and-an-unowned-wreck-is-registered-when-restored.md) |
-| ⚙️ | no still yet | <a id="revive-at-terminal"></a>**Revive at the contract terminal**<br>mechanic | Players revive a dormant charter, but who may revive first (former members?) is not decided. | 📋 Planned | [#168](https://github.com/pkeppeler/deepcharter/issues/168) |
+| ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/525/dormant-offered.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/525/dormant-offered.png?raw=true" width="160" alt=""></a> | <a id="revive-at-terminal"></a>**Revive at the contract terminal**<br>mechanic | The contract terminal lists the dormant charters you once belonged to; REVIVE makes you its Director. Strangers are refused. | ✅ Built | [#168](https://github.com/pkeppeler/deepcharter/issues/168), [ADR 0026](adr/0026-a-dormant-charter-is-revived-by-the-first-player-who-asks.md) |
 | ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/499/restored-prospector-0002-keeps-its-name.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/499/restored-prospector-0002-keeps-its-name.png?raw=true" width="160" alt=""></a> | <a id="wreck-keeps-serial"></a>**A restored wreck keeps its serial**<br>mechanic | The famous wreck carries a lore mark and keeps PROSPECTOR-0002 and its name tag when restored; a charter's own Prospectors skip 0002. | ✅ Built | [#484](https://github.com/pkeppeler/deepcharter/issues/484), [#499](https://github.com/pkeppeler/deepcharter/issues/499), [ADR 0027](adr/0027-a-chassis-is-an-entity-type-and-an-unowned-wreck-is-registered-when-restored.md) |
 | ⚙️ | no still yet | <a id="share-outposts"></a>**Outposts and pads shared**<br>mechanic | A toggle to share a charter's outposts and pads with other charters. | 📋 Planned | [SPEC.md](SPEC.md#6-charters) |
 | ⚙️ | no still yet | <a id="charter-competition"></a>**Competition between charters**<br>mechanic | A later update might add rivalry; today charters are friendly. | 💭 Idea | [SPEC.md](SPEC.md#18-open-questions) |

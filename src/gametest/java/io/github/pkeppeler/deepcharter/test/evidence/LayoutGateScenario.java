@@ -52,7 +52,7 @@ public class LayoutGateScenario extends EvidenceScenario {
 			context.setScreen(() -> TerminalScreens.create(view));
 			ClientWait.screen(context, ContractScreen.class);
 			context.runOnClient(client -> ((ContractScreen) client.gui.screen())
-					.show(new ContractState(ContractState.Role.DIRECTOR, name, List.of(), 0, List.of(), 7, Optional.empty())));
+					.show(new ContractState(ContractState.Role.DIRECTOR, name, List.of(), 0, List.of(), 0, List.of(), 7, Optional.empty())));
 			hold(context);
 			screenshot(context, "contract-director-long-name");
 
