@@ -88,6 +88,11 @@ public final class Serials extends SavedData {
 		setDirty();
 	}
 
+	/** True once a pod holds {@link #FAMOUS_PROSPECTOR}, see {@link #claimFamousProspector}. Throws if the saved serials are unreadable. */
+	public boolean isFamousProspectorHeld() {
+		return state.orThrow().containsKey(FAMOUS_CLAIM);
+	}
+
 	private static String format(String prefix, int number) {
 		return String.format("%s-%04d", prefix, number);
 	}
