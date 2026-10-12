@@ -22,6 +22,7 @@ import net.minecraft.world.item.crafting.SingleRecipeInput;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
+import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
@@ -52,12 +53,15 @@ final class BootstrapCost {
 	private BootstrapCost() {
 	}
 
-	/** What a recipe asks, by ingredient. An iron or copper block is nine ingots of its metal, made at a crafting table from nine. */
-	record Needs(int iron, int copper, int redstone) {
-		static final Needs NONE = new Needs(0, 0, 0);
+	/**
+	 * What a recipe asks, by ingredient. An iron or copper block is nine ingots of its metal, made at a crafting table from nine. {@code ore} is the
+	 * dollars the ore items in it would have sold for (hand-mined ore, which the crates do not give).
+	 */
+	record Needs(int iron, int copper, int redstone, int ore) {
+		static final Needs NONE = new Needs(0, 0, 0, 0);
 
 		Needs plus(Needs other) {
-			return new Needs(iron + other.iron, copper + other.copper, redstone + other.redstone);
+			return new Needs(iron + other.iron, copper + other.copper, redstone + other.redstone, ore + other.ore);
 		}
 
 		/** The ingots a furnace must cook. */
@@ -94,11 +98,12 @@ final class BootstrapCost {
 		return cells;
 	}
 
-	/** The iron, copper and redstone the shipped shaped recipe of {@code item} asks for; any other ingredient fails the test. */
+	/** The iron, copper, redstone and ore the shipped shaped recipe of {@code item} asks for; any other ingredient fails the test. */
 	static Needs needs(String item) {
 		int iron = 0;
 		int copper = 0;
 		int redstone = 0;
+		int ore = 0;
 		for (String cell : cells(recipe(item))) {
 			switch (cell) {
 				case "" -> {
@@ -108,10 +113,20 @@ final class BootstrapCost {
 				case "minecraft:copper_ingot" -> copper++;
 				case "minecraft:copper_block" -> copper += 9;
 				case "minecraft:redstone" -> redstone++;
-				default -> throw new IllegalStateException(item + " asks for " + cell + ", not iron, copper or redstone");
+				default -> ore += oreValue(item, cell);
 			}
 		}
-		return new Needs(iron, copper, redstone);
+		return new Needs(iron, copper, redstone, ore);
+	}
+
+	/** The sale value of an ore item named by a recipe cell; any other ingredient fails the test. */
+	private static int oreValue(String item, String cell) {
+		for (OreType type : OreType.values()) {
+			if (type.itemId().toString().equals(cell)) {
+				return type.value();
+			}
+		}
+		throw new IllegalStateException(item + " asks for " + cell + ", not iron, copper, redstone or an ore");
 	}
 
 	static String path(Item item) {

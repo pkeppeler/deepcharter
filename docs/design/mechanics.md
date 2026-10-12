@@ -1255,16 +1255,16 @@ The minutes use these (A) assumptions: the player sprints at 5.612 blocks a seco
 
 ## Crafted first-tier parts (#536, A)
 
-**Problem.** The user decided on 2026-10-12 that every first-tier pod part is crafted, not bought, as the scanner's is ([above](#the-crafted-scanner-483-a)). A Mole's drill, hull, engine, tank, radiator and bay are tier 0 stock parts; tier 1 of each was a $200 purchase ($500 for the radiator), two early runs away. Crafting must not make the opening noticeably cheaper or slower by accident.
+**Problem.** The user decided on 2026-10-12 that every first-tier pod part is crafted, not bought, as the scanner's is ([above](#the-crafted-scanner-483-a)). A Mole's drill, hull, engine, tank, radiator and bay are tier 0 stock parts, and the lights, hopper, liner, sounder, brace and heat shield have none; tier 1 of each was a purchase ($100 to $750). Crafting must not make the opening noticeably cheaper or slower by accident.
 
 **The ladder.**
-1. **By hand: crafted.** A unit for each of the six tracks, from salvage metal (`recipe/<track>_unit.json`), fitted by using it on the player's own charter's pod ([ADR 0053](../adr/0053-tier-1-of-a-moles-six-stock-tracks-is-a-crafted-unit-fitted-by-use-like-the-scanners.md)). The part is a tier 1 `part_<track>`, stamped and numbered like a bought one.
-2. **The pod: bought.** Tier 2 and up are purchases at the upgrade terminal, at the standard ladder's prices, over a fitted tier 1 or over the stock part (only the scanner needs its tier 1 first, as it has no stock part).
+1. **By hand: crafted.** A unit for each track, from salvage metal and, for the hazard answers, ore broken by hand (`recipe/<track>_unit.json`), fitted by using it on the player's own charter's pod ([ADR 0053](../adr/0053-tier-1-of-every-pod-part-is-a-crafted-unit-fitted-by-use-like-the-scanners.md)). The part is a tier 1 `part_<track>`, stamped and numbered like a bought one.
+2. **The pod: bought.** Tier 2 and up are purchases at the upgrade terminal, at the prices they had, with no tier 1 needed (only the scanner needs its tier 1 first).
 3. **Mastery.** Unchanged: a later chassis' higher cap makes the tier 1 and 2 parts a cheaper spare pod's.
 
-**The recipes** (I iron ingot, C copper ingot, R redstone, B block of copper, nine ingots at a bench). Every ingredient is the yard's: scrap melts to ingots, and redstone is a crate's.
+**The recipes** (I iron ingot, C copper ingot, R redstone, B block of copper, nine ingots at a bench; N Ironium, Z Bronzium, S Silverium, G Goldium). Metal is the yard's: scrap melts to ingots, and redstone is a crate's. Ore drops from its block when broken by hand, with no tool.
 
-| Unit | Grid | Metal | Why it takes what it takes |
+| Unit | Grid | Materials | Why |
 |---|---|---|---|
 | Fuel tank | `ICI` `I I` `III` | 7 iron, 1 copper | A can: a ring of iron round a copper valve |
 | Drill | `III` `ICI` ` R ` | 5 iron, 1 copper, 1 redstone | A cutter head on a copper shaft with a spark |
@@ -1272,37 +1272,51 @@ The minutes use these (A) assumptions: the player sprints at 5.612 blocks a seco
 | Hull | `III` `ICI` `I I` | 7 iron, 1 copper | Plate with a copper weld |
 | Engine | `IRI` `ICI` ` R ` | 4 iron, 1 copper, 2 redstone | A rotor with its coil: the redstone-heavy one |
 | Radiator | `CBC` `CRC` `CCC` | 16 copper (a block and 7 ingots), 1 redstone | Copper fins: the heat part, dear as its old $500 |
+| Lights | ` Z ` `CRC` ` C ` | 1 Bronzium, 3 copper, 1 redstone | A lamp: ore for the glow, copper for the wiring (layer 1) |
+| Spoil hopper | `N N` `C C` | 2 Ironium, 2 copper | A funnel of the rock it keeps (layer 1) |
+| Breach brace | `ZCZ` ` Z ` | 3 Bronzium, 1 copper | A strut of the cheap ore the brace burns (layer 1, the crust) |
+| Seep sounder | `ZCZ` `CRC` `ZNZ` | 4 Bronzium, 1 Ironium, 3 copper, 1 redstone | A listening ring (layer 1) |
+| Liner | `SSS` `ZCZ` ` Z ` | 3 Silverium, 3 Bronzium, 1 copper | Rings of the layer 2 ore (layer 2, upper levels) |
+| Heat shield | `GSG` `CSC` | 2 Goldium, 2 Silverium, 2 copper | The dear ore for the one part that stands in lava (layer 2, upper levels) |
 
-**What a new pilot builds first.** The kit (the terminals' parts and the Mole's four, 12.3 minutes) and the scanner come first, as before, and the first run of a stock Mole needs no unit. Then, by what each adds to a layer 1 run of a stock Mole (115 dollars net, 16 slabs): the **fuel tank** (24 slabs, $173), the **drill** (22 slabs, $162), the **cargo bay** (nothing alone, because the stock bay's 7 slots hold a stock run's ore; with the tank and drill, 32 slabs and $235), then the **hull** for the depth, the **engine** for the weight and the **radiator** for the Magma Belt. The terminal's first purchase is a tier 2 part over any of them.
+**Where the ore comes from.** Ore leaves a pod only as money, so the pilot breaks it out of the rock on foot, beside the shaft, and keeps it: a Bronzium kept is $60 not sold. A layer 1 block is Ironium at 2 percent and Bronzium at 2.4, Silverium at 0.5 and Goldium at 0.1; a layer 2 upper levels block is Silverium at 1.6 and Goldium at 0.3. So the lights, hopper, brace and sounder (layer 1 ores) come first, and the liner and heat shield wait for layer 2, where their hazard is. The hazard units' metal is copper and redstone, which the crates give beyond the iron the first six use, so they add almost no crates.
 
-**Measured.** By `FirstTierPartsCostTest`, from the shipped recipe files, the real crate loot table (1,500 starts) and `EarlyRunModel`. A run of a stock Mole is 71 seconds ((A) 26 seconds of bore, drive and climb by the model, and 45 seconds of walk to the pump and the processor, boarding, fuel and sale), so a $200 part took 2.1 minutes of runs and a $500 one 5.1.
+**What a new pilot builds first.** The kit (the terminals' parts and the Mole's four, 12.3 minutes) and the scanner come first, as before, and the first run of a stock Mole needs no unit. Then, by what each adds to a layer 1 run of a stock Mole (115 dollars net, 16 slabs): the **fuel tank** (24 slabs, $173), the **drill** (22 slabs, $162), the **cargo bay** (nothing alone, because the stock bay's 7 slots hold a stock run's ore; with the tank and drill, 32 slabs and $235), then the **hull** for the depth, the **engine** for the weight, and the lights, **spoil hopper** and **brace** with the layer 1 hazards they answer. The **sounder**, **liner**, **heat shield** and **radiator** come with layer 2. The terminal's first purchase is a tier 2 part over any of them.
 
-| Unit | Minutes to make (alone) | Its old price at the stock run's pace | Share |
-|---|---|---|---|
-| Fuel tank | 1.9 | 2.1 | 0.92 |
-| Drill | 1.4 | 2.1 | 0.69 |
-| Cargo bay | 1.7 | 2.1 | 0.83 |
-| Hull | 1.9 | 2.1 | 0.92 |
-| Engine | 1.2 | 2.1 | 0.59 |
-| Radiator | 3.8 | 5.1 | 0.73 |
+**Measured.** By `FirstTierPartsCostTest`, from the shipped recipe files, the real crate loot table (1,500 starts), the ore values and `EarlyRunModel`. A run of a stock Mole is 71 seconds ((A) 26 seconds of bore, drive and climb by the model, and 45 seconds of walk to the pump and the processor, boarding, fuel and sale), so a $200 part took 2.1 minutes of runs and a $500 one 5.1. A run of a Mole with tier 2 parts in layer 2, where the sounder, liner and heat shield were priced, earns more in about as long. Ore counts at the run's rate, as the sales it forgoes.
+
+| Unit | Minutes to make | Of which ore | Its old price | The old price's minutes | Share |
+|---|---|---|---|---|---|
+| Fuel tank | 1.9 | none | $200 | 2.1 | 0.92 |
+| Drill | 1.4 | none | $200 | 2.1 | 0.69 |
+| Cargo bay | 1.7 | none | $200 | 2.1 | 0.83 |
+| Hull | 1.9 | none | $200 | 2.1 | 0.92 |
+| Engine | 1.2 | none | $200 | 2.1 | 0.59 |
+| Radiator | 3.8 | none | $500 | 5.1 | 0.73 |
+| Lights | 1.4 | 0.6 ($60) | $125 | 1.3 | 1.10 |
+| Spoil hopper | 1.2 | 0.6 ($60) | $100 | 1.0 | 1.14 |
+| Breach brace | 2.2 | 1.8 ($180) | $200 | 2.1 | 1.07 |
+| Seep sounder | 2.5 | 1.7 ($270) | $400 | 2.5 | 0.99 |
+| Liner | 3.4 | 3.0 ($480) | $500 | 3.1 | 1.07 |
+| Heat shield | 4.9 | 4.4 ($700) | $750 | 4.7 | 1.05 |
 
 | The opening | Before (bought) | After (crafted) |
 |---|---|---|
 | The kit, then the first full layer 1 run of a stock Mole | 12.3 minutes, then 71 seconds, $115 | The same: no unit is needed for it |
-| All six tier 1 parts | 8 runs, 10.9 minutes, **$1,500 spent** (the runs speed up as parts come in) | 11.9 minutes of crates, furnace and bench, **$0 spent** (10.7 if the kit's leftover metal is counted); 1.09 of the minutes of buying |
-| Crates for the kit and all six units | 30.6 mean, 37 at the 90th percentile (the kit) | 59.7 mean, 69 at the 90th percentile, of the 160 crates a 12-chunk survey holds |
+| The first six tier 1 parts | 8 runs, 10.9 minutes, **$1,500 spent** (the runs speed up as parts come in) | 11.9 minutes of crates, furnace and bench, **$0 spent** (10.7 if the kit's leftover metal is counted); 1.09 of the minutes of buying |
+| Crates for the kit and all twelve units | 30.6 mean, 37 at the 90th percentile (the kit) | 60.8 mean, 69 at the 90th percentile, of the 160 crates a 12-chunk survey holds |
 | A whole layer 1 bore by the bore bot (`DEEPCHARTER_LAVA_BORES=12`) | 6,306 pod ticks (5.3 minutes) and 10 tanks per bore of a stock Mole | Unchanged: the bot's pod and its parts are the same; the units only change how a part arrives |
 
-The six crafted units take 1.09 of the minutes the six bought took, inside the 0.75 to 1.25 the test allows, and each is inside 0.5 to 1.5 of its own price. The money moves, not the time: a charter spends no dollars on a first-tier part, so its first sales buy tier 2.
+The first six crafted take 1.09 of the minutes the six bought took, inside the 0.75 to 1.25 the test allows, and each of the twelve is inside 0.5 to 1.5 of its own old price's minutes. The money moves, not the time: a charter spends no dollars on a first-tier part, so its first sales buy tier 2. The hazard units cost ore a pilot would have sold, $1,750 of it for all six.
 
-**Knobs.** `recipe/<track>_unit.json` (the metal); `ComponentTrack`'s `firstTierCrafted` and `needsFirstTier` flags; `UpgradeTuning` (tier 1 prices 0, tier 2 from $500). The guards: `FirstTierPartsCostTest` (the recipes' ingredients, the crates for the whole set, the minutes against the old prices), `PartFittingTest`, `UpgradeTerminalTest`, and `EconomyAffordabilityTest`'s tier 2 bands.
+**Knobs.** `recipe/<track>_unit.json` (the materials); `ComponentTrack`'s `needsFirstTier` flag (the scanner); `UpgradeTuning` (tier 1 prices 0, tier 2 from $375). The guards: `FirstTierPartsCostTest` (the recipes' ingredients, that each ore drops by hand and lies in its hazard's zone, the crates for the whole set, the minutes against the old prices), `PartFittingTest`, `UpgradeTerminalTest`, and `EconomyAffordabilityTest`'s tier 2 bands.
 
-**Economy impact.** The default is **easier** on the dollars (about $1,500 not spent on tier 1 parts) and **harder** on the bootstrap (about 30 more crates, 12 minutes, for the whole set, and none before the first run). The early-game column of `EconomyAffordabilityTest` skips the crafted tracks' tier 1; the radiator's first purchase is its tier 2, $1,250, four layer 2 runs. The unpacked column is unchanged: no part is needed to start.
+**Economy impact.** The default is **easier** on the dollars (about $1,500 not spent on the first six, and every hazard answer's old price too) and **harder** on the bootstrap and the dig (about 30 more crates, 12 minutes, for the first six, and ore kept out of the sales for the hazard units). None before the first run. The early-game column of `EconomyAffordabilityTest` is now "every tier 1 costs no money"; the radiator's first purchase is its tier 2, $1,250, four layer 2 runs. The unpacked column is unchanged: no part is needed to start.
 
 **Open questions.**
-- Should the lights and the hazard answers (liner, sounder, brace, heat shield) be crafted too? Today they are priced against a hazard and stay bought ([ADR 0053](../adr/0053-tier-1-of-a-moles-six-stock-tracks-is-a-crafted-unit-fitted-by-use-like-the-scanners.md)).
 - Should a unit be reclaimable from a pod, to move it to a spare? Not today: a tier 2 purchase drops the part it replaces as an item, and a chassis change carries the parts over (SPEC section 7).
 - A second charter breaks the same shared crates, so salvage thins with the crew; the press (#470) renews it. Watch the 160-crate survey.
+- Ore broken by hand is a new way to play the layer: a pilot who leaves the pod to mine beside the shaft. Does the Retained or the lava make that too dangerous in layer 2? Watch it at the milestone demo.
 
 ## The deepest point (#476)
 

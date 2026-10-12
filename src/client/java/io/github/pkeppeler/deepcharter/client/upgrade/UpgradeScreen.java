@@ -131,8 +131,8 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 			long price = UpgradeTuning.DEFAULT.price(selected, tier);
 			boolean counts = held.effective() > 0;
 			boolean here = counts && held.installed() >= tier;
-			// The crafted first tier is not sold (ADR 0048, ADR 0053); where no stock part is under it (the scanner), the tiers above it wait for it to be fitted.
-			boolean crafted = selected.firstTierCrafted() && tier == 1;
+			// The crafted first tier is not sold (ADR 0048, ADR 0053); on the scanner, the tiers above it wait for it to be fitted.
+			boolean crafted = tier == 1;
 			boolean needsFirst = selected.needsFirstTier() && tier > 1 && !counts;
 			String capped = tier > pod.cap()
 					? Component.translatable("screen.deepcharter.upgrade.capped", pod.cap()).getString() : "";

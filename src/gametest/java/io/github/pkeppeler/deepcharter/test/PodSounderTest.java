@@ -661,8 +661,8 @@ public class PodSounderTest {
 	public void theTiersHaveTheirPrices(GameTestHelper helper) {
 		long one = UpgradeTuning.DEFAULT.price(ComponentTrack.SOUNDER, 1);
 		long two = UpgradeTuning.DEFAULT.price(ComponentTrack.SOUNDER, 2);
-		if (one != 400 || two != 1000 || ComponentTrack.SOUNDER.maxTier() != 2) {
-			throw failure(helper, "the sounder costs $400 and $1,000 over 2 tiers, it costs $%s and $%s over %s", one, two, ComponentTrack.SOUNDER.maxTier());
+		if (one != 0 || two != 1000 || ComponentTrack.SOUNDER.maxTier() != 2) {
+			throw failure(helper, "the sounder's tier 1 is crafted ($0) and its tier 2 costs $1,000 over 2 tiers, it costs $%s and $%s over %s", one, two, ComponentTrack.SOUNDER.maxTier());
 		}
 		helper.succeed();
 	}

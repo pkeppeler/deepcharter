@@ -43,17 +43,19 @@ import io.github.pkeppeler.deepcharter.upgrade.UpgradeEvents;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 
 /**
- * Server GameTests for #536 (ADR 0053): tier 1 of a Mole's six stock tracks (drill, hull, engine, fuel tank, radiator, cargo bay) is a crafted
- * unit, made from the shipped recipe and fitted by using it on the pod of the player's own charter, as the scanner's is
+ * Server GameTests for #536 (ADR 0053): tier 1 of every track but the scanner (drill, hull, engine, fuel tank, radiator, cargo bay, lights, spoil
+ * hopper, liner, sounder, brace, heat shield) is a crafted unit, made from the shipped recipe and fitted by using it on the pod of the player's own
+ * charter, as the scanner's is
  * ({@link ScannerFittingTest}). A fit is stamped for the charter, moves the pod's stats like a bought part, and a refused use changes nothing.
  * The terminal's side (tier 1 is not sold, tier 2 is) is in {@link UpgradeTerminalTest}, and the cost of the recipes in {@link FirstTierPartsCostTest}.
  */
 public class PartFittingTest {
 	private static final AtomicInteger PLAYERS = new AtomicInteger();
 
-	/** The six tracks with a stock part, whose tier 1 is a crafted unit. */
+	/** Every track but the scanner, whose unit is {@link ScannerFittingTest}'s. */
 	private static final List<ComponentTrack> TRACKS = List.of(ComponentTrack.DRILL, ComponentTrack.HULL, ComponentTrack.ENGINE,
-			ComponentTrack.FUEL_TANK, ComponentTrack.RADIATOR, ComponentTrack.CARGO_BAY);
+			ComponentTrack.FUEL_TANK, ComponentTrack.RADIATOR, ComponentTrack.CARGO_BAY, ComponentTrack.LIGHTS, ComponentTrack.SPOIL_HOPPER,
+			ComponentTrack.LINER, ComponentTrack.SOUNDER, ComponentTrack.BRACE, ComponentTrack.HEAT_SHIELD);
 
 	/** What a fit moves, by track: the pod's number for the track, which a tier 1 part must improve on the stock part's. */
 	private static final Map<ComponentTrack, Function<PodEntity, Float>> STATS = Map.of(
@@ -63,6 +65,11 @@ public class PartFittingTest {
 			ComponentTrack.FUEL_TANK, pod -> PodStats.of(pod).tankLitres(),
 			ComponentTrack.RADIATOR, PodComponents::radiatorRatio,
 			ComponentTrack.CARGO_BAY, pod -> (float) PodStats.of(pod).cargoSlots());
+
+	/** The pod's number a fit moves, or 0 for a hazard answer, which moves no stat of PodStats. */
+	private static float stat(ComponentTrack track, PodEntity pod) {
+		return STATS.containsKey(track) ? STATS.get(track).apply(pod) : 0f;
+	}
 
 	/** The pods a fit fired the event for, and the track and tier it named. The listener acts only on pods it was told about, as a Fabric event cannot be unregistered. */
 	private static final Map<UUID, List<String>> FITTED = new HashMap<>();
@@ -136,7 +143,8 @@ public class PartFittingTest {
 	@GameTest
 	public void theUnitIdsThatPacksAndChestsNameArePinned(GameTestHelper helper) {
 		List<String> expected = List.of("deepcharter:drill_unit", "deepcharter:hull_unit", "deepcharter:engine_unit", "deepcharter:fuel_tank_unit",
-				"deepcharter:radiator_unit", "deepcharter:cargo_bay_unit");
+				"deepcharter:radiator_unit", "deepcharter:cargo_bay_unit", "deepcharter:lights_unit", "deepcharter:spoil_hopper_unit",
+				"deepcharter:liner_unit", "deepcharter:sounder_unit", "deepcharter:brace_unit", "deepcharter:heat_shield_unit");
 		List<String> actual = TRACKS.stream().map(track -> BuiltInRegistries.ITEM.getKey(unit(track)).toString()).toList();
 		if (!actual.equals(expected) || TRACKS.stream().anyMatch(track -> unit(track) == Items.AIR)) {
 			throw failure(helper, "the units' ids are permanent, got %s", actual);
@@ -178,7 +186,7 @@ public class PartFittingTest {
 			CharterId charter = charterOf(helper, scene.player());
 			for (ComponentTrack track : TRACKS) {
 				PodEntity pod = pod(helper, scene, Optional.of(charter));
-				float before = STATS.get(track).apply(pod);
+				float before = stat(track, pod);
 				InteractionResult result = useUnit(scene, pod, track);
 				if (!result.consumesAction()) {
 					throw failure(helper, "using the %s unit on the pod should be consumed, got %s", track, result);
@@ -187,8 +195,8 @@ public class PartFittingTest {
 				if (part.tier() != 1 || !part.charter().equals(charter) || !part.serial().startsWith(track.id().toUpperCase())) {
 					throw failure(helper, "the %s part should be tier 1 of the charter with its own serial, got %s", track, part);
 				}
-				float after = STATS.get(track).apply(pod);
-				boolean better = track == ComponentTrack.DRILL || track == ComponentTrack.RADIATOR ? after < before : after > before;
+				float after = stat(track, pod);
+				boolean better = !STATS.containsKey(track) || (track == ComponentTrack.DRILL || track == ComponentTrack.RADIATOR ? after < before : after > before);
 				if (!better) {
 					throw failure(helper, "a tier 1 %s should improve on the stock part: %s before, %s after", track, before, after);
 				}
@@ -208,9 +216,9 @@ public class PartFittingTest {
 		}
 	}
 
-	/** The six units go on one pod in any order: each takes its own track and leaves the others. */
+	/** The twelve units go on one pod in any order: each takes its own track and leaves the others. */
 	@GameTest
-	public void allSixUnitsFitOneMoleAndEachLeavesTheOthersAlone(GameTestHelper helper) {
+	public void allTheUnitsFitOneMoleAndEachLeavesTheOthersAlone(GameTestHelper helper) {
 		Scene scene = scene(helper, true);
 		try {
 			PodEntity pod = pod(helper, scene, Optional.of(charterOf(helper, scene.player())));
@@ -307,13 +315,13 @@ public class PartFittingTest {
 		try {
 			CharterId charter = charterOf(helper, scene.player());
 			for (ComponentTrack track : TRACKS) {
-				for (int tier : new int[] {1, 2}) {
+				for (int tier = 1; tier <= Math.min(2, track.maxTier()); tier++) {
 					PodEntity pod = pod(helper, scene, Optional.of(charter));
 					PodComponents.install(pod, ComponentItems.mint(helper.getLevel().getServer(), track, tier, charter));
 					PartLabel bought = PodComponents.partOf(pod, track).orElseThrow();
-					float stat = STATS.get(track).apply(pod);
+					float stat = stat(track, pod);
 					expectKept(helper, scene, pod, track, "a pod with its bought tier " + tier + " " + track);
-					if (!PodComponents.partOf(pod, track).equals(Optional.of(bought)) || STATS.get(track).apply(pod) != stat) {
+					if (!PodComponents.partOf(pod, track).equals(Optional.of(bought)) || stat(track, pod) != stat) {
 						throw failure(helper, "the bought tier %d %s must stay as it was", tier, track);
 					}
 				}
@@ -364,15 +372,18 @@ public class PartFittingTest {
 		}
 	}
 
-	/** The tier 1 price is gone from the table of a track whose tier 1 is crafted, and the tier 2 price is the standard ladder's. */
+	/** The tier 1 price is gone from the table of every track, and tier 2 keeps its price: the standard ladder's, or the one the track had. */
 	@GameTest
-	public void theTierTwoPricesAreTheStandardLadder(GameTestHelper helper) {
-		for (ComponentTrack track : TRACKS) {
-			long tierOne = UpgradeTuning.DEFAULT.price(track, 1);
-			long tierTwo = UpgradeTuning.DEFAULT.price(track, 2);
-			long expected = track == ComponentTrack.RADIATOR ? 1250 : 500;
-			if (tierOne != 0 || tierTwo != expected) {
-				throw failure(helper, "%s: tier 1 is crafted (price 0) and tier 2 costs $%d, got $%d and $%d", track, expected, tierOne, tierTwo);
+	public void theTierTwoPricesAreTheOnesTheTracksHad(GameTestHelper helper) {
+		Map<ComponentTrack, Long> tierTwo = Map.of(ComponentTrack.DRILL, 500L, ComponentTrack.HULL, 500L, ComponentTrack.ENGINE, 500L,
+				ComponentTrack.FUEL_TANK, 500L, ComponentTrack.RADIATOR, 1250L, ComponentTrack.CARGO_BAY, 500L, ComponentTrack.LIGHTS, 375L,
+				ComponentTrack.LINER, 1000L, ComponentTrack.SOUNDER, 1000L, ComponentTrack.SCANNER, 500L);
+		for (ComponentTrack track : ComponentTrack.values()) {
+			if (UpgradeTuning.DEFAULT.price(track, 1) != 0) {
+				throw failure(helper, "%s: tier 1 is crafted (price 0), got $%d", track, UpgradeTuning.DEFAULT.price(track, 1));
+			}
+			if (track.maxTier() > 1 && UpgradeTuning.DEFAULT.price(track, 2) != tierTwo.get(track)) {
+				throw failure(helper, "%s: tier 2 costs $%d, got $%d", track, tierTwo.get(track), UpgradeTuning.DEFAULT.price(track, 2));
 			}
 		}
 		helper.succeed();

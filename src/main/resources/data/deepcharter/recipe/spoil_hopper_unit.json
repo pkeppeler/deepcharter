@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "N N",
+    "C C"
+  ],
+  "key": {
+    "N": "deepcharter:ironium",
+    "C": "minecraft:copper_ingot"
+  },
+  "result": {
+    "id": "deepcharter:spoil_hopper_unit",
+    "count": 1
+  }
+}

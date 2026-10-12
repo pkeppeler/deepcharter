@@ -39,18 +39,11 @@ import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 public class EconomyAffordabilityTest {
 	private static final Logger LOGGER = LoggerFactory.getLogger(EconomyAffordabilityTest.class);
 
-	/** A tier 1 part of a hazard answer and the lights are an early buy (tier 1 of the scanner and of a Mole's six stock tracks is crafted, #483, #536): this many runs of a stock Mole in layer 1, at most. */
+	/** The thermal scanner tier, tier 2, is bought with this many layer 2 runs at most (tier 1 of every track is crafted, #483, #536). */
 	private static final int EARLY_BUY_RUNS = 2;
-	/** The spoil hopper is the entry to the lava ladder: a stock Mole buys it with one layer 1 run. */
-	private static final int HOPPER_RUNS = 1;
-	/** The liner's tiers, in runs of a Mole with tier 2 parts in layer 2, at most. */
-	private static final int LINER_TIER_ONE_RUNS = 2;
+	/** The liner's tier 2 and the seep sounder's, in runs of a Mole with tier 2 parts in layer 2, at most. Tier 1 of each is crafted. */
 	private static final int LINER_TIER_TWO_RUNS = 4;
-	/** The seep sounder's tiers, in runs of a Mole with tier 2 parts in layer 2, at most. */
-	private static final int SOUNDER_TIER_ONE_RUNS = 2;
 	private static final int SOUNDER_TIER_TWO_RUNS = 4;
-	/** The heat shield (#482), a layer 2 buy, is dearer than the liner's tier 1 and under its tier 2. */
-	private static final int HEAT_SHIELD_RUNS = 3;
 	/** The radiator matters from layer 3 on, and its first purchase, tier 2 now that tier 1 is crafted, costs what the others' tier 3 does: this many layer 2 runs of a Mole with tier 2 parts, at most. */
 	private static final int RADIATOR_RUNS = 5;
 	/** The Prospector restore takes this many runs of a Mole with tier 2 parts in layer 2, at least and at most. */
@@ -100,48 +93,31 @@ public class EconomyAffordabilityTest {
 		return helper.assertionException(Component.literal(String.format(format, args)));
 	}
 
+	/**
+	 * Tier 1 of every track is a crafted unit (#483, #536): the terminal charges nothing for it. What it costs is crates, a furnace, a bench and hand-mined
+	 * ore, in minutes against the minutes its old price took to earn (FirstTierPartsCostTest, ScannerCostTest). Tier 2 and up have their own bands below.
+	 */
 	@GameTest
-	public void earlyPartsScannerAndLightsAreAffordableAfterOneOrTwoRuns(GameTestHelper helper) {
-		Run run = stockRunInLayerOne();
-		LOGGER.info("[economy] stock Mole, layer 1 topsoil: {}", run);
+	public void everyTierOneIsCraftedAndCostsNoMoney(GameTestHelper helper) {
+		LOGGER.info("[economy] stock Mole, layer 1 topsoil: {}", stockRunInLayerOne());
 		for (ComponentTrack track : ComponentTrack.values()) {
-			if (track == ComponentTrack.LINER) {
-				continue; // A layer 2 buy with its own band: theLinerTiersAreAffordableAfterTheirLayerTwoRuns.
-			}
-			if (track == ComponentTrack.SOUNDER) {
-				continue; // A layer 2 buy with its own band: theSounderTiersAreAffordableAfterTheirLayerTwoRuns.
-			}
-			if (track == ComponentTrack.HEAT_SHIELD) {
-				continue; // A layer 2 buy with its own band: theHeatShieldIsAffordableAfterThreeLayerTwoRunsAndPricedBetweenTheLinerTiers.
-			}
-			if (track.firstTierCrafted()) {
-				continue; // Tier 1 is crafted and costs no money (#483, #536): its cost is in crates, ScannerCostTest and FirstTierPartsCostTest. Tier 2 has its own band below.
-			}
-			long price = UpgradeTuning.DEFAULT.price(track, 1);
-			int runs = run.toAfford(price);
-			LOGGER.info("[economy] tier 1 {} ${}: {} runs", track.id(), price, runs);
-			if (runs > EARLY_BUY_RUNS) {
-				throw failure(helper, "tier 1 %s costs $%d, which is %d runs of $%.0f; at most %d are allowed",
-						track.id(), price, runs, run.net(), EARLY_BUY_RUNS);
+			if (UpgradeTuning.DEFAULT.price(track, 1) != 0) {
+				throw failure(helper, "tier 1 %s costs $%d, but it is crafted and costs no money", track.id(), UpgradeTuning.DEFAULT.price(track, 1));
 			}
 		}
 		helper.succeed();
 	}
 
 	/**
-	 * The spoil hopper (#313) is the first lava counterplay and is bought before Deep Claim, so a stock Mole pays for it with one early layer 1
-	 * run. It carries a full bay and rack, which cut lift (W2): the climb and the Prospector's layer 2 runs must come out as they do without it.
+	 * The spoil hopper (#313) is the first lava counterplay. It carries a full bay and rack, which cut lift (W2): the climb and the Prospector's layer 2 runs
+	 * must come out as they do without it. Its unit takes about the minute of the one layer 1 run its $100 took (FirstTierPartsCostTest).
 	 */
 	@GameTest
-	public void theSpoilHopperIsAffordableAfterOneLayerOneRunAndAFullBayDoesNotSlowTheClimb(GameTestHelper helper) {
+	public void aFullHopperBayDoesNotSlowTheClimb(GameTestHelper helper) {
 		float mass = EarlyRunModel.hopperMass();
 		PodStats stock = PodStats.base();
 		Run run = EarlyRunModel.run(Zone.load("topsoil_claims"), stock, 0, mass);
-		long price = UpgradeTuning.DEFAULT.price(ComponentTrack.SPOIL_HOPPER, 1);
-		LOGGER.info("[economy] spoil hopper ${}: {} layer 1 runs of {}; a full bay and rack weigh {} of {} engine power", price, run.toAfford(price), run, mass, stock.enginePower());
-		if (run.toAfford(price) != HOPPER_RUNS) {
-			throw failure(helper, "the spoil hopper costs $%d, which is %d layer 1 runs of $%.0f with a full bay; %d expected", price, run.toAfford(price), run.net(), HOPPER_RUNS);
-		}
+		LOGGER.info("[economy] spoil hopper: a layer 1 run with a full bay is {}; a full bay and rack weigh {} of {} engine power", run, mass, stock.enginePower());
 		if (EarlyRunModel.climbSpeed(stock, mass) != stock.maxClimbSpeed()) {
 			throw failure(helper, "a full bay and rack of mass %.1f slow the climb to %.3f from the rotor's %.3f", mass, EarlyRunModel.climbSpeed(stock, mass), stock.maxClimbSpeed());
 		}
@@ -153,43 +129,16 @@ public class EconomyAffordabilityTest {
 	}
 
 	/**
-	 * The liner (#339) is the lava ladder's second rung and is bought in layer 2: a run there pays for tier 1 in at most
-	 * {@value #LINER_TIER_ONE_RUNS} runs and for tier 2 in at most {@value #LINER_TIER_TWO_RUNS}. The run is a hopper pod's (the liner lines from
-	 * its rack, which the hopper fills) with the liner's drill penalty, so a dearer liner is a slower income.
+	 * The liner (#339) is the lava ladder's second rung and is bought in layer 2: a run there pays for tier 2 in at most {@value #LINER_TIER_TWO_RUNS} runs.
+	 * Tier 1 is a crafted unit (#536). The run is a hopper pod's (the liner lines from its rack, which the hopper fills) with the liner's drill penalty, so a dearer liner is a slower income.
 	 */
 	@GameTest
-	public void theLinerTiersAreAffordableAfterTheirLayerTwoRuns(GameTestHelper helper) {
-		int[] allowed = {LINER_TIER_ONE_RUNS, LINER_TIER_TWO_RUNS};
-		for (int tier = 1; tier <= ComponentTrack.LINER.maxTier(); tier++) {
-			Run run = EarlyRunModel.run(Zone.load("upper_levels"), EarlyRunModel.withLiner(EarlyRunModel.mole(2, 2, 2), tier), EarlyRunModel.layerOneBlocks(), EarlyRunModel.hopperMass());
-			long price = UpgradeTuning.DEFAULT.price(ComponentTrack.LINER, tier);
-			LOGGER.info("[economy] liner tier {} ${}: {} layer 2 runs of {}", tier, price, run.toAfford(price), run);
-			if (run.toAfford(price) > allowed[tier - 1]) {
-				throw failure(helper, "liner tier %d costs $%d, which is %d layer 2 runs of $%.0f; at most %d are allowed", tier, price, run.toAfford(price), run.net(), allowed[tier - 1]);
-			}
-		}
-		if (allowed.length != ComponentTrack.LINER.maxTier()) {
-			throw failure(helper, "the test has bands for %d liner tiers, the track has %d", allowed.length, ComponentTrack.LINER.maxTier());
-		}
-		helper.succeed();
-	}
-
-	/**
-	 * The heat shield (#482) is the lava ladder's third rung and is bought in layer 2 by a pod that already lines: a run there, with the hopper pod's mass and no
-	 * drill penalty (the shield slows nothing), pays for it in {@value #HEAT_SHIELD_RUNS} runs. It costs more than the liner's tier 1, whose pod it lets stay
-	 * in lava, and less than its tier 2, so a charter that can afford the shield can already line.
-	 */
-	@GameTest
-	public void theHeatShieldIsAffordableAfterThreeLayerTwoRunsAndPricedBetweenTheLinerTiers(GameTestHelper helper) {
-		Run run = EarlyRunModel.run(Zone.load("upper_levels"), EarlyRunModel.mole(2, 2, 2), EarlyRunModel.layerOneBlocks(), EarlyRunModel.hopperMass());
-		long price = UpgradeTuning.DEFAULT.price(ComponentTrack.HEAT_SHIELD, 1);
-		LOGGER.info("[economy] heat shield ${}: {} layer 2 runs of {}", price, run.toAfford(price), run);
-		if (run.toAfford(price) != HEAT_SHIELD_RUNS) {
-			throw failure(helper, "the heat shield costs $%d, which is %d layer 2 runs of $%.0f; %d expected", price, run.toAfford(price), run.net(), HEAT_SHIELD_RUNS);
-		}
-		if (price <= UpgradeTuning.DEFAULT.price(ComponentTrack.LINER, 1) || price >= UpgradeTuning.DEFAULT.price(ComponentTrack.LINER, 2)) {
-			throw failure(helper, "the heat shield costs $%d, which must be over the liner's tier 1 ($%d) and under its tier 2 ($%d)", price,
-					UpgradeTuning.DEFAULT.price(ComponentTrack.LINER, 1), UpgradeTuning.DEFAULT.price(ComponentTrack.LINER, 2));
+	public void theLinerTierTwoIsAffordableAfterItsLayerTwoRuns(GameTestHelper helper) {
+		Run run = EarlyRunModel.run(Zone.load("upper_levels"), EarlyRunModel.withLiner(EarlyRunModel.mole(2, 2, 2), 2), EarlyRunModel.layerOneBlocks(), EarlyRunModel.hopperMass());
+		long price = UpgradeTuning.DEFAULT.price(ComponentTrack.LINER, 2);
+		LOGGER.info("[economy] liner tier 2 ${}: {} layer 2 runs of {}", price, run.toAfford(price), run);
+		if (run.toAfford(price) > LINER_TIER_TWO_RUNS) {
+			throw failure(helper, "liner tier 2 costs $%d, which is %d layer 2 runs of $%.0f; at most %d are allowed", price, run.toAfford(price), run.net(), LINER_TIER_TWO_RUNS);
 		}
 		helper.succeed();
 	}
@@ -235,23 +184,16 @@ public class EconomyAffordabilityTest {
 	}
 
 	/**
-	 * The seep sounder (#373) is the gas ladder's second rung and is bought in layer 2: a run there pays for tier 1 in at most
-	 * {@value #SOUNDER_TIER_ONE_RUNS} runs and for tier 2 in at most {@value #SOUNDER_TIER_TWO_RUNS}. The run is a Mole's with tier 2 parts and the sounder's
-	 * drill penalty, so a dearer sounder is a slower income.
+	 * The seep sounder (#373) is the gas ladder's second rung and is bought in layer 2: a run there pays for tier 2 in at most
+	 * {@value #SOUNDER_TIER_TWO_RUNS} runs. Tier 1 is a crafted unit (#536). The run is a Mole's with tier 2 parts and the sounder's drill penalty, so a dearer sounder is a slower income.
 	 */
 	@GameTest
-	public void theSounderTiersAreAffordableAfterTheirLayerTwoRuns(GameTestHelper helper) {
-		int[] allowed = {SOUNDER_TIER_ONE_RUNS, SOUNDER_TIER_TWO_RUNS};
-		for (int tier = 1; tier <= ComponentTrack.SOUNDER.maxTier(); tier++) {
-			Run run = EarlyRunModel.run(Zone.load("upper_levels"), EarlyRunModel.withSounder(EarlyRunModel.mole(2, 2, 2), tier), EarlyRunModel.layerOneBlocks());
-			long price = UpgradeTuning.DEFAULT.price(ComponentTrack.SOUNDER, tier);
-			LOGGER.info("[economy] sounder tier {} ${}: {} layer 2 runs of {}", tier, price, run.toAfford(price), run);
-			if (run.toAfford(price) > allowed[tier - 1]) {
-				throw failure(helper, "sounder tier %d costs $%d, which is %d layer 2 runs of $%.0f; at most %d are allowed", tier, price, run.toAfford(price), run.net(), allowed[tier - 1]);
-			}
-		}
-		if (allowed.length != ComponentTrack.SOUNDER.maxTier()) {
-			throw failure(helper, "the test has bands for %d sounder tiers, the track has %d", allowed.length, ComponentTrack.SOUNDER.maxTier());
+	public void theSounderTierTwoIsAffordableAfterItsLayerTwoRuns(GameTestHelper helper) {
+		Run run = EarlyRunModel.run(Zone.load("upper_levels"), EarlyRunModel.withSounder(EarlyRunModel.mole(2, 2, 2), 2), EarlyRunModel.layerOneBlocks());
+		long price = UpgradeTuning.DEFAULT.price(ComponentTrack.SOUNDER, 2);
+		LOGGER.info("[economy] sounder tier 2 ${}: {} layer 2 runs of {}", price, run.toAfford(price), run);
+		if (run.toAfford(price) > SOUNDER_TIER_TWO_RUNS) {
+			throw failure(helper, "sounder tier 2 costs $%d, which is %d layer 2 runs of $%.0f; at most %d are allowed", price, run.toAfford(price), run.net(), SOUNDER_TIER_TWO_RUNS);
 		}
 		helper.succeed();
 	}

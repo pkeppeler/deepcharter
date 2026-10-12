@@ -1,11 +1,9 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -270,26 +268,13 @@ public class UpgradeTerminalTest {
 		});
 	}
 
-	/** The tracks whose tier 1 is crafted (ADR 0048, ADR 0053): a Mole's six stock tracks and the scanner. */
-	private static final Set<ComponentTrack> CRAFTED = EnumSet.of(ComponentTrack.DRILL, ComponentTrack.HULL, ComponentTrack.ENGINE,
-			ComponentTrack.FUEL_TANK, ComponentTrack.RADIATOR, ComponentTrack.CARGO_BAY, ComponentTrack.SCANNER);
-
-	/** #483, #536: tier 1 of a crafted track is fitted from the unit, so the terminal does not sell it, whatever the account holds. */
+	/** #483, #536: tier 1 of every track is fitted from a crafted unit, so the terminal does not sell it, whatever the account holds. */
 	@GameTest
-	public void theTierOneOfEveryCraftedTrackIsCraftedAndNotSoldAtTheTerminal(GameTestHelper helper) {
+	public void theTierOneOfEveryTrackIsCraftedAndNotSoldAtTheTerminal(GameTestHelper helper) {
 		withRepairedTerminal(helper, () -> {
 			Scene scene = scene(helper, 10_000);
 			try {
 				for (ComponentTrack track : ComponentTrack.values()) {
-					if (track.firstTierCrafted() != CRAFTED.contains(track)) {
-						throw failure(helper, "%s: firstTierCrafted is %s, the crafted tracks are %s", track, track.firstTierCrafted(), CRAFTED);
-					}
-					if (!track.firstTierCrafted()) {
-						if (UpgradeTuning.DEFAULT.price(track, 1) <= 0) {
-							throw failure(helper, "%s is bought from tier 1 and needs a price", track);
-						}
-						continue;
-					}
 					expectEqual(helper, track + ": the price table has no price for the crafted tier", 0, UpgradeTuning.DEFAULT.price(track, 1));
 					expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(scene, track, 1), "a tier 1 " + track);
 					expectSame(helper, UpgradeTerminal.buy(helper.getLevel().getServer(), scene.player(), scene.terminal(), track, 1),
@@ -297,6 +282,9 @@ public class UpgradeTerminalTest {
 					expectEqual(helper, "the account", 10_000, balance(helper, scene));
 					if (PodComponents.partOf(scene.pod(), track).isPresent()) {
 						throw failure(helper, "a refused %s must not be installed", track);
+					}
+					if (track.needsFirstTier() != (track == ComponentTrack.SCANNER)) {
+						throw failure(helper, "only the scanner needs its tier 1 fitted before tier 2 is sold, %s says %s", track, track.needsFirstTier());
 					}
 				}
 				helper.succeed();
@@ -307,27 +295,27 @@ public class UpgradeTerminalTest {
 	}
 
 	/**
-	 * #536: tier 2 and up of a track with a stock part is still sold, to a Mole that never fitted the crafted tier 1 (a stock part is under it), at the
-	 * standard price. Only the scanner, which has no stock part, needs its tier 1 first.
+	 * #536: tier 2 of every track but the scanner is sold to a pod that never fitted tier 1 (over the stock part, or over nothing), at the price it always had.
+	 * Only the scanner, whose crafted tier is the first map a Mole has, needs it first.
 	 */
 	@GameTest
-	public void tierTwoOfAStockTrackIsSoldToAPodThatNeverFittedTierOne(GameTestHelper helper) {
+	public void tierTwoIsSoldToAPodThatNeverFittedTierOne(GameTestHelper helper) {
 		withRepairedTerminal(helper, () -> {
 			Scene scene = scene(helper, 100_000);
 			try {
 				long spent = 0;
 				int tracks = 0;
 				for (ComponentTrack track : ComponentTrack.values()) {
-					if (!track.firstTierCrafted() || track.needsFirstTier()) {
+					if (track.needsFirstTier() || track.maxTier() < 2) {
 						continue;
 					}
 					tracks++;
-					expectDone(helper, buy(scene, track, 2), "buying tier 2 " + track + " over the stock part");
+					expectDone(helper, buy(scene, track, 2), "buying tier 2 " + track + " with no tier 1 fitted");
 					spent += UpgradeTuning.DEFAULT.price(track, 2);
 					expectEqual(helper, track + " at its price", 100_000 - spent, balance(helper, scene));
 					expectEqual(helper, track + " works as tier 2", 2, PodComponents.effectiveTier(scene.pod(), track));
 				}
-				expectEqual(helper, "a Mole's stock tracks", 6, tracks);
+				expectEqual(helper, "the tracks with a tier 2 that needs no tier 1", 9, tracks);
 				helper.succeed();
 			} finally {
 				clean(helper, scene);

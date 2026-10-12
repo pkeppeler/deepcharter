@@ -36,8 +36,8 @@ import io.github.pkeppeler.deepcharter.terminal.Terminals;
  * <p>A pod is parked at the terminal as {@link Terminals#parkedPods} says, and is the player's to use as
  * {@link PodComponents#mayAccess} says. The charter's own pod wins over an unowned one; within each, the nearer wins.
  *
- * <p>A track whose first tier is crafted ({@link ComponentTrack#firstTierCrafted}) does not sell that tier. If it also has no stock part
- * ({@link ComponentTrack#needsFirstTier}, the scanner), it sells the ones above only to a pod that has the crafted part fitted for the buying charter.
+ * <p>Tier 1 of every track is crafted ({@link PartUnits}), so the terminal does not sell it. The scanner ({@link ComponentTrack#needsFirstTier})
+ * sells the tiers above only to a pod that has the crafted part fitted for the buying charter.
  *
  * <p>Terminals have already checked distance, membership and repair when a handler here runs. The args are untrusted: the track
  * and tier are read defensively, and a part above the chassis' cap is allowed (it is shown and applied as capped).
@@ -88,7 +88,7 @@ public final class UpgradeTerminal {
 		if (tier < 1 || tier > track.maxTier()) {
 			return Optional.of(UpgradeRefusal.BAD_REQUEST.message());
 		}
-		if (track.firstTierCrafted() && tier == 1) {
+		if (tier == 1) {
 			return Optional.of(UpgradeRefusal.CRAFTED.message());
 		}
 		Charter charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow();

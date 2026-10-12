@@ -16,7 +16,7 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 
 /**
- * The crafted units: one item for each track whose tier 1 is crafted ({@link ComponentTrack#firstTierCrafted}), which {@link PartFitting}
+ * The crafted units: one item for each track, since tier 1 of every track is crafted, which {@link PartFitting}
  * turns into a tier 1 part when it is used on the player's pod (ADR 0048, ADR 0053). The scanner's unit is {@link ScannerRegistry#SCANNER_UNIT}
  * and the others are registered here as {@code <track>_unit}. A unit carries no label: its serial and charter are stamped when it is fitted.
  */
@@ -27,7 +27,7 @@ public final class PartUnits {
 		for (ComponentTrack track : ComponentTrack.values()) {
 			if (track == ComponentTrack.SCANNER) {
 				UNITS.put(track, ScannerRegistry.SCANNER_UNIT);
-			} else if (track.firstTierCrafted()) {
+			} else {
 				ResourceKey<Item> key = ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, track.id() + "_unit"));
 				UNITS.put(track, Registry.register(BuiltInRegistries.ITEM, key, new Item(new Item.Properties().setId(key).stacksTo(1))));
 			}

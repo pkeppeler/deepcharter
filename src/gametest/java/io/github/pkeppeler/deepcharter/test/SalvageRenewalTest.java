@@ -26,8 +26,6 @@ import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel.Run;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel.Zone;
-import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
-import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 
 /**
  * Server GameTests for #470, the renewable wood and scrap (mechanics.md, "Renewable salvage"): the ore processor presses a pod's spoil
@@ -39,6 +37,8 @@ public class SalvageRenewalTest {
 
 	/** Seeds to roll a crate's table with: enough that the mean of its uniform counts is within a few per cent of the exact value. */
 	private static final int SAMPLED_CRATES = 4000;
+	/** What the hopper cost at the terminal before its tier 1 became a crafted unit (#536): the recipe takes about the minutes that price took to earn. */
+	private static final long HOPPER_OLD_PRICE = 100;
 
 	/** The iron, copper and redstone of the four colony terminals (SalvageBootstrapTest, ADR 0047). */
 	private static final int CHAIN_IRON = 23;
@@ -107,14 +107,15 @@ public class SalvageRenewalTest {
 	}
 
 	/**
-	 * The press needs spoil, spoil needs the hopper, and the hopper costs a whole early run: the first run of a charter cannot press a
+	 * The press needs spoil, spoil needs the hopper, and the hopper takes the minutes of a whole early run: the first run of a charter cannot press a
 	 * crate. The yard's crates are the start (ADR 0047), and the press is the long game.
 	 */
 	@GameTest
 	public void thePressNeedsTheHopperWhichTakesAWholeRunToBuy(GameTestHelper helper) {
 		Run firstRun = EarlyRunModel.run(Zone.load("topsoil_claims"), PodStats.base(), 0);
-		long hopper = UpgradeTuning.DEFAULT.price(ComponentTrack.SPOIL_HOPPER, 1);
-		LOGGER.info("[renewal] the hopper costs ${}, a stock run nets ${}", hopper, Math.round(firstRun.net()));
+		// The hopper's tier 1 is a crafted unit (#536); its recipe is tuned to the minutes its old $100 took to earn (FirstTierPartsCostTest).
+		long hopper = HOPPER_OLD_PRICE;
+		LOGGER.info("[renewal] the hopper took ${} to earn, a stock run nets ${}", hopper, Math.round(firstRun.net()));
 		if (firstRun.toAfford(hopper) != 1) {
 			throw failure(helper, "the hopper costs $%d, which is %d stock runs of $%.0f; one expected", hopper, firstRun.toAfford(hopper), firstRun.net());
 		}
