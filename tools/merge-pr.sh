@@ -231,6 +231,8 @@ if [[ -n $in_game ]]; then
   fi
 fi
 
+no_map_change() { grep -qE '^No map change:[[:space:]]*[^[:space:]]' <<<"$body"; }
+
 # A `gameplay` PR changes what the game has, so it must change the feature map
 # (docs/feature-map/map.json, #510) or say why not with a body line `No map change: <reason>`.
 # Reuses pr_files, so an unreadable list has already refused.
@@ -240,7 +242,7 @@ if has_label gameplay; then
     [[ $path == docs/feature-map/map.json ]] && map_changed=1
   done <<<"$pr_files"
   if [[ -z $map_changed ]]; then
-    grep -qE '^No map change:[[:space:]]*[^[:space:]]' <<<"$body" \
+    no_map_change \
       || refuse "is labelled 'gameplay' but does not change docs/feature-map/map.json: update the map (skill .claude/skills/feature-map/SKILL.md) or add a body line 'No map change: <reason>'"
   fi
 fi
@@ -249,7 +251,7 @@ fi
 # `built` in the map at the PR head, so whoever merges a feature also flips its node. A body line `No map change: <reason>`
 # skips this. A branch from before the map exists has no map.json at its head and is not checked. The gh --jq filter runs on
 # the file's JSON; the stub in the tests answers with the lines it would print: node id, status, the ref that matched.
-if ! grep -qE '^No map change:[[:space:]]*[^[:space:]]' <<<"$body"; then
+if ! no_map_change; then
   cited_any=". == \"#$issue\" or . == \"#$pr\""
   map_read=0
   stale_nodes=$(gh api "repos/$repo/contents/docs/feature-map/map.json?ref=$sha" -H "Accept: application/vnd.github.raw+json" \

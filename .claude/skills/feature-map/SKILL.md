@@ -45,7 +45,6 @@ A node lacking an icon or still is fine, and the gallery says "no still yet". Ev
 
 - Icons: pick an existing texture; do not add art for the map.
 - Stills: use evidence media the PR already published. `git ls-tree --name-only origin/pr-media <n>/` lists a PR's folder, and `readme/` holds the tour. Never check out `pr-media`. Copy the path after `pr-media/`, for example `500/crafted-scanner.gif`. Prefer a still that shows the feature on its own.
-- When the README tour is refreshed (`docs/tooling/readme-tour.md`), nothing here changes: the paths are stable.
 
 ## Regenerate and publish
 

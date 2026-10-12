@@ -80,7 +80,7 @@ def heading_slugs(text):
     for line in text.splitlines():
         match = re.match(r"^#{1,6}\s+(.*?)\s*#*\s*$", line)
         if match:
-            slugs.add(re.sub(r"[^\w\- ]", "", match.group(1).lower().replace("`", "")).replace(" ", "-"))
+            slugs.add(anchor(match.group(1)))
     return slugs
 
 
@@ -226,6 +226,14 @@ def ref_label_and_url(ref, root, relative):
 # ---------------------------------------------------------------- markdown
 
 
+def ref_links(node, root):
+    return ", ".join("[%s](%s)" % ref_label_and_url(r, root, True) for r in node.get("refs", []))
+
+
+def built_count(nodes):
+    return sum(1 for n in nodes if n["status"] == "built")
+
+
 def mid(node_id):
     return "n_" + node_id.replace("-", "_")
 
@@ -281,7 +289,7 @@ def ladder_overview(data):
     lines = ["flowchart LR"]
     for ladder in data["ladders"]:
         members = ladder_nodes(data, ladder["id"])
-        built = sum(1 for n in members if n["status"] == "built")
+        built = built_count(members)
         lines.append('  l_%s["%s<br/>%d of %d built"]' % (ladder["id"].replace("-", "_"), mlabel(ladder["title"]), built, len(members)))
     lines.extend("  l_%s --> l_%s" % (a.replace("-", "_"), b.replace("-", "_")) for a, b in pairs)
     return "\n".join(lines)
@@ -296,10 +304,9 @@ def gallery(data, lid, root):
     for n in ladder_nodes(data, lid):
         icon = '<img src="../%s" width="32" alt="">' % n["icon"] if n.get("icon") else KINDS[n["kind"]]
         still = '<a href="%s"><img src="%s" width="160" alt=""></a>' % ((still_url(n["still"]),) * 2) if n.get("still") else "no still yet"
-        name, mark = STATUSES[n["status"]][0], STATUSES[n["status"]][1]
-        links = ", ".join("[%s](%s)" % ref_label_and_url(r, root, True) for r in n.get("refs", []))
+        name, mark = STATUSES[n["status"]]
         rows.append("| %s | %s | <a id=\"%s\"></a>**%s**<br>%s | %s | %s %s | %s |" % (
-            icon, still, n["id"], cell(n["title"]), n["kind"], cell(n["summary"]), mark, name, links))
+            icon, still, n["id"], cell(n["title"]), n["kind"], cell(n["summary"]), mark, name, ref_links(n, root)))
     return "\n".join(rows)
 
 
@@ -365,7 +372,7 @@ def render_markdown(data, root, images):
             out.extend(["Nothing right now.", ""])
         for n in sorted(data["nodes"], key=lambda n: (n["ladder"], n["rung"], n["id"])):
             if n["status"] == status:
-                links = ", ".join("[%s](%s)" % ref_label_and_url(r, root, True) for r in n.get("refs", []))
+                links = ref_links(n, root)
                 out.append("- **%s** (%s): %s%s" % (n["title"], n["ladder"], n["summary"], " " + links if links else ""))
         out.append("")
     for kind, heading in LADDER_KINDS.items():
@@ -562,7 +569,7 @@ def render_page(data, root):
     payload = {"ladders": data["ladders"], "nodes": nodes, "edges": [list(e) for e in edges(data)], "icons": icons}
     blob = json.dumps(payload, sort_keys=True, ensure_ascii=True, separators=(",", ":")).replace("</", "<\\/")
     libs = "".join('<script src="%s" integrity="%s" crossorigin="anonymous"></script>\n' % cdn for cdn in CDN)
-    built = sum(1 for n in data["nodes"] if n["status"] == "built")
+    built = built_count(data["nodes"])
     counts = "%d features (%d built) on %d ladders" % (len(data["nodes"]), built, len(data["ladders"]))
     return (PAGE_TEMPLATE.replace("__LIBS__", libs)
             .replace("__COUNTS__", counts).replace("__REPO__", REPO).replace("__DATA__", blob))
@@ -600,7 +607,7 @@ def render_poster(data, root):
         columns[side] = y0 + 26 + rows * TILE + 22
     height = max(columns)
     width = margin * 3 + PANEL_WIDTH * 2
-    built = sum(1 for n in data["nodes"] if n["status"] == "built")
+    built = built_count(data["nodes"])
     head = [
         '<text x="%d" y="52" class="title">Deep Charter feature map</text>' % margin,
         '<text x="%d" y="80" class="d">%d features on %d ladders, %d built. Frame: green built, amber in progress, grey planned, dashed idea.</text>'
