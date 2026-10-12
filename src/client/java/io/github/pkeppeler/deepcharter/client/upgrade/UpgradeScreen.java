@@ -1,12 +1,8 @@
 package io.github.pkeppeler.deepcharter.client.upgrade;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-
-import com.mojang.blaze3d.platform.InputConstants;
 
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 
@@ -24,6 +20,7 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
+import io.github.pkeppeler.deepcharter.client.ui.ScrollList;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
@@ -60,13 +57,10 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 
 	private TerminalView view;
 	private ComponentTrack selected = ComponentTrack.values()[0];
-	/** The index of the first track shown in the list. */
-	private int firstTrack;
 	/** Where the scroll hint is drawn, beside Close: set by the last layout. */
 	private int hintX;
 	private int hintY;
-	/** The buttons of the tracks shown, top to bottom, made by the last layout. */
-	private final List<CrtButton> trackButtons = new ArrayList<>();
+	private final ScrollList scroll = new ScrollList("screen.deepcharter.upgrade.scroll", () -> ComponentTrack.values().length, this::visibleTracks, this::rebuildWidgets);
 	private final Typewriter typewriter;
 
 	public UpgradeScreen(TerminalView view) {
@@ -107,8 +101,7 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 		int rowGap = PanelLook.drawn() ? 0 : ROW_GAP;
 		int rowHeight = PITCH - rowGap;
 		int visible = visibleTracks();
-		firstTrack = Mth.clamp(firstTrack, 0, Math.max(0, ComponentTrack.values().length - visible));
-		trackButtons.clear();
+		scroll.beginLayout();
 		int trackWidth = Math.max(TRACK_WIDTH, widestTrackLabel() + LABEL_ROOM);
 		int tierX = left + trackWidth + COLUMN_GAP;
 		// Close sits under the longest list of tiers, so it stays on the screen however many tracks the left column holds.
@@ -126,11 +119,10 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 		for (UpgradeView.Slot slot : pod.slots()) {
 			ComponentTrack track = slot.track();
 			Component label = Component.translatable("screen.deepcharter.upgrade.track", trackName(track), slot.installed());
-			if (track.ordinal() < firstTrack || track.ordinal() >= firstTrack + visible) {
+			if (track.ordinal() < scroll.first() || track.ordinal() >= scroll.first() + visible) {
 				continue;
 			}
-			CrtButton button = addRenderableWidget(new CrtButton(left, listTop() + (track.ordinal() - firstTrack) * PITCH, trackWidth, rowHeight, label, pressed -> select(track)).marked(track == selected));
-			trackButtons.add(button);
+			addRenderableWidget(scroll.shown(new CrtButton(left, listTop() + (track.ordinal() - scroll.first()) * PITCH, trackWidth, rowHeight, label, pressed -> select(track)).marked(track == selected)));
 		}
 		UpgradeView.Slot held = slotOf(pod, selected);
 		long balance = ClientCharter.view().map(charter -> charter.balance()).orElse(0L);
@@ -162,65 +154,20 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 		return Mth.clamp(space / PITCH, 1, ComponentTrack.values().length);
 	}
 
-	/** Shows the track list from the track at index {@code first}, kept inside the list, and lays the buttons out again. */
-	public void scrollTo(int first) {
-		int clamped = Mth.clamp(first, 0, Math.max(0, ComponentTrack.values().length - visibleTracks()));
-		if (clamped != firstTrack) {
-			firstTrack = clamped;
-			rebuildWidgets();
-		}
-	}
-
-	/** Which tracks are shown, when the list is longer than the screen. */
-	private Optional<String> scrollHint() {
-		int visible = visibleTracks();
-		if (visible >= ComponentTrack.values().length) {
-			return Optional.empty();
-		}
-		return Optional.of(Component.translatable("screen.deepcharter.upgrade.scroll", firstTrack + 1, firstTrack + visible, ComponentTrack.values().length).getString());
-	}
-
 	/** The narrator also tells which tracks are shown, so that a player who cannot see the screen knows that there are more. */
 	@Override
 	public Component getNarrationMessage() {
-		Component narration = super.getNarrationMessage();
-		return scrollHint().<Component>map(hint -> Component.literal(narration.getString() + ". " + hint)).orElse(narration);
+		return scroll.narrate(super.getNarrationMessage());
 	}
 
 	@Override
 	public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-		if (scrollY != 0) {
-			scrollTo(firstTrack - (int) Math.signum(scrollY));
-			return true;
-		}
-		return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+		return scroll.mouseScrolled(scrollY) || super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
 	}
 
-	/** A button off the screen cannot take focus, so keys scroll the list: Page Up and Page Down a page, Down or Tab from the last row (Up or Shift+Tab from the first) one row. */
 	@Override
 	public boolean keyPressed(KeyEvent event) {
-		int focused = trackButtons.indexOf(getFocused());
-		boolean forward = event.isDown() || (event.isCycleFocus() && !event.hasShiftDown());
-		boolean backward = event.isUp() || (event.isCycleFocus() && event.hasShiftDown());
-		if (focused >= 0 && forward && focused == trackButtons.size() - 1 && firstTrack + trackButtons.size() < ComponentTrack.values().length) {
-			scrollTo(firstTrack + 1);
-			setFocused(trackButtons.getLast());
-			return true;
-		}
-		if (focused == 0 && backward && firstTrack > 0) {
-			scrollTo(firstTrack - 1);
-			setFocused(trackButtons.getFirst());
-			return true;
-		}
-		if (event.key() == InputConstants.KEY_PAGEDOWN) {
-			scrollTo(firstTrack + visibleTracks());
-			return true;
-		}
-		if (event.key() == InputConstants.KEY_PAGEUP) {
-			scrollTo(firstTrack - visibleTracks());
-			return true;
-		}
-		return super.keyPressed(event);
+		return scroll.keyPressed(event, this) || super.keyPressed(event);
 	}
 
 	/** The widest track label in the terminal font, so that its button can leave the label its room however the names are worded. */
@@ -257,7 +204,7 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), contentLeft(MARGIN), contentTop(MARGIN), contentRight(MARGIN));
 		int below = drawTypewriter(graphics, typewriter, contentLeft(MARGIN), contentTop(MARGIN) + font.lineHeight + 10, contentWidth(MARGIN));
 		CrtDraw.glowText(graphics, font, status(), contentLeft(MARGIN), below, tuning.phosphorColor());
-		scrollHint().ifPresent(hint -> CrtDraw.glowText(graphics, font, hint, hintX, hintY, tuning.phosphorColor()));
+		scroll.hint().ifPresent(hint -> CrtDraw.glowText(graphics, font, hint, hintX, hintY, tuning.phosphorColor()));
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 	}
 

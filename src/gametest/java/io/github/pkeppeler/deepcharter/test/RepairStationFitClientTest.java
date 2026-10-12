@@ -24,6 +24,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RepairRows;
+import io.github.pkeppeler.deepcharter.test.support.ScreenScroll;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
@@ -73,9 +74,9 @@ public class RepairStationFitClientTest implements FabricClientGameTest {
 			return Optional.of("the narration does not say which rows are shown: " + screen.getNarrationMessage().getString());
 		}
 		Set<String> seen = new HashSet<>();
-		screen.scrollTo(0);
+		ScreenScroll.scrollTo(screen, 0);
 		for (int first = 0; first < screen.rowCount(); first++) {
-			screen.scrollTo(first);
+			ScreenScroll.scrollTo(screen, first);
 			Optional<String> problem = stepProblem(screen, seen);
 			if (problem.isPresent()) {
 				return Optional.of("scrolled to row " + RepairRows.firstRow(screen) + ": " + problem.get());
@@ -93,7 +94,7 @@ public class RepairStationFitClientTest implements FabricClientGameTest {
 
 	/** Down from the last shown row scrolls one row and focuses the row that came into view; Up from the first row goes back. */
 	private static Optional<String> keyProblem(RepairStationScreen screen) {
-		screen.scrollTo(0);
+		ScreenScroll.scrollTo(screen, 0);
 		List<Button> buttons = ClientChecks.buttons(screen);
 		Button last = buttons.get(screen.visibleRows() - 1);
 		screen.setFocused(last);

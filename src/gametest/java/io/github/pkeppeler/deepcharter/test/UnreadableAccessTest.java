@@ -13,6 +13,7 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -142,6 +143,22 @@ public class UnreadableAccessTest {
 			helper.succeed();
 		} finally {
 			mock.leave();
+			pod.discard();
+		}
+	}
+
+	@GameTest
+	public void unreadablePodLoreReadsAsNotTheFamousProspectorAndNeverThrows(GameTestHelper helper) {
+		PodEntity pod = helper.spawn(PodRegistry.PROSPECTOR, 2, 2, 2);
+		try {
+			PodComponents.markFamousProspector(pod);
+			UnreadableChecks.makeUnreadable(pod, PodComponents.LORE);
+			UnreadableChecks.assertNoThrow(helper, "pod lore", Map.of("famous prospector", () -> PodComponents.isFamousProspector(pod)));
+			if (PodComponents.isFamousProspector(pod)) {
+				throw helper.assertionException(Component.literal("unreadable lore should read as not the famous Prospector"));
+			}
+			helper.succeed();
+		} finally {
 			pod.discard();
 		}
 	}

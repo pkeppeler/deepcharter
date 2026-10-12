@@ -43,7 +43,7 @@ public class RetainedEconomyTest {
 	 * Measured in #449, pinned: the game's spawner placed 6 figures in 12,000 ticks (10 minutes) of one player in layer 2 at a roll of 0.02, so
 	 * 300 tries in 10 minutes passed every rule but the roll, which is 30 a minute for each unit of chance. It depends on the spawner's tries
 	 * reaching a dark floor with room, 24 or more blocks from the player, and not on the cap while the level is under it; it does not move
-	 * when the roll or the cap changes. The cap and the delay after a kill are applied by {@link #placedPerMinute}, from the tuning.
+	 * when the roll or the cap changes. The cap and the delay after a kill are applied by {@link #placedPerRun}, from the tuning.
 	 */
 	private static final double PLACED_PER_MINUTE_PER_CHANCE = 30;
 	/** (A) Minutes of a first-hour run in layer 1, down and back up; and of a run in layer 2, which is as long. */
