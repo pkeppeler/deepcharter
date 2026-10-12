@@ -4,10 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import net.fabricmc.fabric.api.particle.v1.FabricParticleTypes;
-
 import net.minecraft.core.Registry;
-import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
@@ -37,10 +34,6 @@ public final class PodRegistry {
 
 	/** Used on a pod, it fits a tow cable from the pod the player rides, or takes one off (see {@link PodTowing}). */
 	public static final Item TOW_CABLE = item("tow_cable");
-
-	/** The spark along a tow cable (see {@link PodTowing}). Its look is the resource files {@code particles/tow_cable.json} and its texture. */
-	public static final SimpleParticleType TOW_CABLE_PARTICLE = Registry.register(BuiltInRegistries.PARTICLE_TYPE,
-			Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "tow_cable"), FabricParticleTypes.simple());
 
 	private PodRegistry() {
 	}

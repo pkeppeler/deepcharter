@@ -73,6 +73,7 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
 			anotherPlayerAppliesAndIsDenied(context, two, mock, charter);
 			anotherPlayerAppliesAndIsApproved(context, two, mock, real, charter);
 			aDirectorLeavesAndAMemberLeaves(context, two, mock, real);
+			aFormerMemberSeesTheDormantCharterAndRevivesIt(context, two, mock, real);
 		}
 	}
 
@@ -100,13 +101,13 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
 			ContractScreen screen = (ContractScreen) TerminalScreens.create(view);
 			screen.init(GUI_WIDTH, GUI_HEIGHT);
 			String name = "W".repeat(LONG_NAME);
-			screen.show(new ContractState(Role.DIRECTOR, name, List.of(), 0, List.of(), 7, Optional.empty()));
+			screen.show(new ContractState(Role.DIRECTOR, name, List.of(), 0, List.of(), 0, List.of(), 7, Optional.empty()));
 			String line = screen.statusLine().getString();
 			require(line.startsWith("DIRECTOR OF W") && line.contains("...") && !line.contains(name), "a 32-letter name is cut and ended in '...', got '" + line + "'");
 			require(line.contains(". APPLICATIONS WAITING: 7."), "the text after the name survives the cut, got '" + line + "'");
 			require(CrtText.width(client.font, line) <= GUI_WIDTH - 2 * MARGIN, "the cut line fits the content width, '" + line + "' is " + CrtText.width(client.font, line));
 			require(screen.statusLine().getString().equals(line), "the second read of the line is the same");
-			screen.show(new ContractState(Role.DIRECTOR, "ACME", List.of(), 0, List.of(), 7, Optional.empty()));
+			screen.show(new ContractState(Role.DIRECTOR, "ACME", List.of(), 0, List.of(), 0, List.of(), 7, Optional.empty()));
 			require(screen.statusLine().getString().startsWith("DIRECTOR OF ACME. APPLICATIONS WAITING: 7."), "a short name is left whole, got '" + screen.statusLine().getString() + "'");
 		});
 	}
@@ -158,6 +159,32 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
 		require(after.id().equals(charter.id()) && !after.isDirector(mock) && after.isDirector(real), "the mock is crew of the client's charter");
 	}
 
+	/**
+	 * #168: the mock, now the only Director of the charter the client left, leaves too, and the charter is dormant. The client was crew
+	 * of it, so it offers REVIVE for it and no APPLY; a dormant charter the client was never in offers nothing. REVIVE makes the client
+	 * its Director.
+	 */
+	private static void aFormerMemberSeesTheDormantCharterAndRevivesIt(ClientGameTestContext context, TwoPlayerServer two, UUID mock, UUID real) {
+		String strangers = "Strangers Hold";
+		two.server().runOnServer(server -> {
+			require(Charters.leave(server, mock).isEmpty(), "the mock Director leaving should succeed");
+			require(Charters.found(server, UUID.randomUUID(), strangers).isEmpty(), "the stranger's charter should be founded");
+			UUID founder = Charters.findByName(server, strangers).orElseThrow().director().orElseThrow();
+			require(Charters.leave(server, founder).isEmpty(), "the stranger's charter should go dormant");
+		});
+		awaitState(context, open -> ContractShown.hasNoCharter(open) && ContractShown.offersRevive(open, CHARTER));
+		require(context.computeOnClient(client -> {
+			ContractScreen open = (ContractScreen) client.gui.screen();
+			return !ContractShown.offersRevive(open, strangers) && !ContractShown.offers(open, strangers) && !ContractShown.offers(open, CHARTER);
+		}), "a dormant charter the player was never in is not offered, and a dormant one is not offered to apply to");
+
+		context.clickScreenButton("REVIVE: " + CHARTER.toUpperCase());
+		awaitState(context, open -> ContractShown.directs(open, CHARTER));
+		boolean directs = two.server().computeOnServer(server -> Charters.charterOfOrThrow(server, real).orElseThrow().isDirector(real));
+		require(directs, "the former member now directs the revived charter on the server");
+		context.setScreen(() -> null);
+	}
+
 	/** The Director leaves, so the mock takes over; the client applies to the mock's charter, is approved, and leaves as crew. */
 	private static void aDirectorLeavesAndAMemberLeaves(ClientGameTestContext context, TwoPlayerServer two, UUID mock, UUID real) {
 		context.clickScreenButton("LEAVE CHARTER");
@@ -181,6 +208,5 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
 		awaitState(context, ContractShown::hasNoCharter);
 		boolean left = two.server().computeOnServer(server -> Charters.charterOfOrThrow(server, real).isEmpty());
 		require(left, "the member left the charter on the server");
-		context.setScreen(() -> null);
 	}
 }

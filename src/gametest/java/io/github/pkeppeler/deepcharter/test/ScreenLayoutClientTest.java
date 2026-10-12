@@ -448,11 +448,12 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
 		String name = "W".repeat(NAME_LENGTH);
 		List<String> names = Collections.nCopies(ContractTerminalTuning.DEFAULT.listedRows(), name);
 		int total = names.size() + 5;
+		List<String> revivable = Collections.nCopies(ContractTerminalTuning.DEFAULT.revivableRows(), name);
 		return List.of(
-				new ContractState(ContractState.Role.NONE, "", names, total, List.of(), 0, Optional.of("screen.deepcharter.contract.refused")),
-				new ContractState(ContractState.Role.APPLICANT, name, List.of(), 0, List.of(), 0, Optional.empty()),
-				new ContractState(ContractState.Role.CREW, name, List.of(), 0, List.of(), 0, Optional.empty()),
-				new ContractState(ContractState.Role.DIRECTOR, name, List.of(), 0, names, total, Optional.empty()));
+				new ContractState(ContractState.Role.NONE, "", names, total, revivable, revivable.size() + 2, List.of(), 0, Optional.of("screen.deepcharter.contract.refused")),
+				new ContractState(ContractState.Role.APPLICANT, name, List.of(), 0, List.of(), 0, List.of(), 0, Optional.empty()),
+				new ContractState(ContractState.Role.CREW, name, List.of(), 0, List.of(), 0, List.of(), 0, Optional.empty()),
+				new ContractState(ContractState.Role.DIRECTOR, name, List.of(), 0, List.of(), 0, names, total, Optional.empty()));
 	}
 
 	/** Chooses each track in turn: the right column lists that track's tiers, so its length changes. */

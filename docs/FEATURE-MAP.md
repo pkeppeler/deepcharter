@@ -79,7 +79,7 @@ flowchart LR
   l_terminals["The colony's terminals<br/>7 of 8 built"]
   l_handbook["The Employee Handbook<br/>11 of 14 built"]
   l_layers["Layers, breaches and the story<br/>14 of 24 built"]
-  l_charter["Charters, crews and accounts<br/>6 of 9 built"]
+  l_charter["Charters, crews and accounts<br/>7 of 9 built"]
   l_colony["The colony: Prosperity<br/>8 of 9 built"]
   l_pods["The pod chassis ladder<br/>6 of 10 built"]
   l_drill["Drill<br/>4 of 7 built"]
@@ -96,11 +96,11 @@ flowchart LR
   l_creatures["The Retained and other creatures<br/>5 of 8 built"]
   l_darkness["Darkness and sight<br/>3 of 8 built"]
   l_crust["The breach crust and hard landings<br/>5 of 8 built"]
-  l_getting_out["Stranded, rescue and the way home<br/>5 of 11 built"]
+  l_getting_out["Stranded, rescue and the way home<br/>6 of 11 built"]
   l_consumables["The repair station's shelf<br/>6 of 6 built"]
   l_crew["Crew roles and seats<br/>2 of 6 built"]
   l_interface["Cockpit, screens and HUD<br/>8 of 10 built"]
-  l_art["Look and sound<br/>3 of 6 built"]
+  l_art["Look and sound<br/>4 of 6 built"]
   l_bootstrap --> l_pods
   l_bootstrap --> l_terminals
   l_cargo_bay --> l_core_loop
@@ -158,7 +158,7 @@ flowchart LR
 | [The colony's terminals](#the-colonys-terminals) | 7 | 0 | 1 | 0 |
 | [The Employee Handbook](#the-employee-handbook) | 11 | 0 | 3 | 0 |
 | [Layers, breaches and the story](#layers-breaches-and-the-story) | 14 | 0 | 9 | 1 |
-| [Charters, crews and accounts](#charters-crews-and-accounts) | 6 | 0 | 2 | 1 |
+| [Charters, crews and accounts](#charters-crews-and-accounts) | 7 | 0 | 1 | 1 |
 | [The colony: Prosperity](#the-colony-prosperity) | 8 | 0 | 0 | 1 |
 | [The pod chassis ladder](#the-pod-chassis-ladder) | 6 | 0 | 4 | 0 |
 | [Drill](#drill) | 4 | 0 | 3 | 0 |
@@ -175,18 +175,17 @@ flowchart LR
 | [The Retained and other creatures](#the-retained-and-other-creatures) | 5 | 0 | 1 | 2 |
 | [Darkness and sight](#darkness-and-sight) | 3 | 0 | 4 | 1 |
 | [The breach crust and hard landings](#the-breach-crust-and-hard-landings) | 5 | 0 | 1 | 2 |
-| [Stranded, rescue and the way home](#stranded-rescue-and-the-way-home) | 5 | 0 | 5 | 1 |
+| [Stranded, rescue and the way home](#stranded-rescue-and-the-way-home) | 6 | 0 | 4 | 1 |
 | [The repair station's shelf](#the-repair-stations-shelf) | 6 | 0 | 0 | 0 |
 | [Crew roles and seats](#crew-roles-and-seats) | 2 | 0 | 0 | 4 |
 | [Cockpit, screens and HUD](#cockpit-screens-and-hud) | 8 | 1 | 1 | 0 |
-| [Look and sound](#look-and-sound) | 3 | 1 | 1 | 1 |
+| [Look and sound](#look-and-sound) | 4 | 0 | 1 | 1 |
 
 ## What is coming
 
 ### In progress
 
-- **Salvage looks** (art): Keep salvage crate A and B and stalk B; drop the other looks. [#505](https://github.com/pkeppeler/deepcharter/issues/505), [#472](https://github.com/pkeppeler/deepcharter/issues/472), [#519](https://github.com/pkeppeler/deepcharter/issues/519)
-- **Company Rock look** (company-rock): A concept round for how Company Rock looks is under way; the chosen look is built later. [#503](https://github.com/pkeppeler/deepcharter/issues/503)
+- **Company Rock look** (company-rock): A concept round for how Company Rock looks is under way; the chosen look is built later. [#503](https://github.com/pkeppeler/deepcharter/issues/503), [company-rock-concepts.md](design/company-rock-concepts.md)
 - **Cockpit HUD with gauges** (interface): A cockpit HUD with gauges that hides the vanilla hotbar while seated. [#247](https://github.com/pkeppeler/deepcharter/issues/247), [#520](https://github.com/pkeppeler/deepcharter/issues/520)
 
 ### Planned
@@ -194,7 +193,6 @@ flowchart LR
 - **Lighting art** (art): Glow accents and beams; see Darkness and sight. [#248](https://github.com/pkeppeler/deepcharter/issues/248)
 - **Cargo bay tier 4** (cargo-bay): 70 ore slots, $5,000. No chassis built yet can fit it (a Badger or later). [SPEC.md](SPEC.md#components)
 - **Cargo bay tier 5** (cargo-bay): 120 ore slots, $25,000. No chassis built yet can fit it (a Badger or later). [SPEC.md](SPEC.md#components)
-- **Revive at the contract terminal** (charter): Players revive a dormant charter, but who may revive first (former members?) is not decided. [#168](https://github.com/pkeppeler/deepcharter/issues/168)
 - **Outposts and pads shared** (charter): A toggle to share a charter's outposts and pads with other charters. [SPEC.md](SPEC.md#6-charters)
 - **Blasting charge** (company-rock): A bought charge set from the seat with a fuse: clears Company Rock in a small radius, and hurts a pod that is too close. [#509](https://github.com/pkeppeler/deepcharter/issues/509)
 - **Shaped charge** (company-rock): A dearer, directed blast that clears a whole slab column. [#509](https://github.com/pkeppeler/deepcharter/issues/509)
@@ -215,7 +213,6 @@ flowchart LR
 - **Fuel tank tier 4** (fuel-tank): Tank 6.0x stock, $5,000. No chassis built yet can fit it (a Badger or later). [SPEC.md](SPEC.md#components)
 - **Fuel tank tier 5** (fuel-tank): Tank 10.0x stock, $25,000. No chassis built yet can fit it (a Badger or later). [SPEC.md](SPEC.md#components)
 - **Fuel tank tier 6** (fuel-tank): Tank 15.0x stock, $125,000. No chassis built yet can fit it (a Badger or later). [SPEC.md](SPEC.md#components)
-- **A chain, not smoke** (getting-out): Draw the tow line as real chain links on a sagging curve instead of a particle trail. [#508](https://github.com/pkeppeler/deepcharter/issues/508)
 - **Wrecked prefabs that drop salvage** (getting-out): Ruined buildings and vehicles in the world that give scrap when broken. [#471](https://github.com/pkeppeler/deepcharter/issues/471)
 - **Outposts at depth** (getting-out): Built shelters with fuel and sell terminals, beds and storage; the first goes at the layer 1 floor. [#320](https://github.com/pkeppeler/deepcharter/issues/320), [SPEC.md](SPEC.md#outposts-and-ratings)
 - **Environment ratings** (getting-out): Each depth rates heat, pressure, flooding and quakes; an outpost under the rating is uninhabitable but never destroyed. [SPEC.md](SPEC.md#outposts-and-ratings)
@@ -910,7 +907,7 @@ flowchart LR
 | Icon | Still | Feature | What it is | Status | Links |
 |---|---|---|---|---|---|
 | <img src="../src/main/resources/assets/deepcharter/textures/block/company_rock.png" width="32" alt=""> | no still yet | <a id="company-rock"></a>**Company Rock**<br>hazard | Rock the drill refuses; a bore must step aside two blocks, which costs fuel and time and risks the next pocket. | ✅ Built | [ADR 0015](adr/0015-zones-are-filled-block-by-block-from-the-originals-rows.md), [#509](https://github.com/pkeppeler/deepcharter/issues/509), [#503](https://github.com/pkeppeler/deepcharter/issues/503) |
-| ⚙️ | no still yet | <a id="company-rock-look"></a>**Company Rock look**<br>mechanic | A concept round for how Company Rock looks is under way; the chosen look is built later. | 🔨 In progress | [#503](https://github.com/pkeppeler/deepcharter/issues/503) |
+| ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/523/place-bore.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/523/place-bore.png?raw=true" width="160" alt=""></a> | <a id="company-rock-look"></a>**Company Rock look**<br>mechanic | A concept round for how Company Rock looks is under way; the chosen look is built later. | 🔨 In progress | [#503](https://github.com/pkeppeler/deepcharter/issues/503), [company-rock-concepts.md](design/company-rock-concepts.md) |
 | 🛡️ | no still yet | <a id="sidestep"></a>**Steer round it**<br>counter | Step the pod aside and drill on; the scanner shows nothing of it. | ✅ Built |  |
 | 🧪 | no still yet | <a id="blasting-charge"></a>**Blasting charge**<br>consumable | A bought charge set from the seat with a fuse: clears Company Rock in a small radius, and hurts a pod that is too close. | 📋 Planned | [#509](https://github.com/pkeppeler/deepcharter/issues/509) |
 | 🧪 | no still yet | <a id="shaped-charge"></a>**Shaped charge**<br>consumable | A dearer, directed blast that clears a whole slab column. | 📋 Planned | [#509](https://github.com/pkeppeler/deepcharter/issues/509) |
@@ -1105,8 +1102,8 @@ flowchart TB
   classDef planned fill:#2e2e2e,stroke:#9e9e9e,stroke-width:1px,color:#d6d6d6
   classDef idea fill:#1a1a1a,stroke:#757575,stroke-width:1px,stroke-dasharray:4 3,color:#a0a0a0
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
-  class n_stranded,n_refuel_by_hand,n_reserve_tank,n_tow_line,n_wreck built
-  class n_tow_chain_look,n_wreck_salvage_prefabs,n_outpost,n_outpost_ratings,n_pads planned
+  class n_stranded,n_refuel_by_hand,n_reserve_tank,n_tow_line,n_wreck,n_tow_chain_look built
+  class n_wreck_salvage_prefabs,n_outpost,n_outpost_ratings,n_pads planned
   class n_anchor_mode idea
   class n_behemoth,n_fuel_tank_t1,n_matter_transmitter,n_quantum_teleporter,n_reserve_fuel_tank,n_restore_wreck,n_the_deep_bites ext
 ```
@@ -1118,7 +1115,7 @@ flowchart TB
 | <img src="../src/main/resources/assets/deepcharter/textures/item/reserve_tank.png" width="32" alt=""> | no still yet | <a id="reserve-tank"></a>**Reserve tank**<br>counter | A tank crafted from iron and a bucket that restarts a stranded pod. | ✅ Built | [ADR 0019](adr/0019-the-reserve-tank-is-a-separate-pod-attachment.md) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/tow_cable.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/towing.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/towing.gif?raw=true" width="160" alt=""></a> | <a id="tow-line"></a>**The tow line**<br>counter | Hold a tow cable and right-click another pod; the towed pod hangs below and behind on a 5 block line, across breaches. | ✅ Built | [ADR 0022](adr/0022-a-tow-cable-is-an-attachment-on-the-towed-pod-and-the-tower-carries-it-across.md), [#425](https://github.com/pkeppeler/deepcharter/issues/425), [mechanics.md](design/mechanics.md#the-tow-line-425-a) |
 | ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/wreck.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/wreck.png?raw=true" width="160" alt=""></a> | <a id="wreck"></a>**Wrecks**<br>mechanic | A pod with no hull goes dark where it fell, with its cargo, and its owners are told. | ✅ Built | [ADR 0027](adr/0027-a-chassis-is-an-entity-type-and-an-unowned-wreck-is-registered-when-restored.md), [SPEC.md](SPEC.md#12-death-and-failure) |
-| ⚙️ | no still yet | <a id="tow-chain-look"></a>**A chain, not smoke**<br>mechanic | Draw the tow line as real chain links on a sagging curve instead of a particle trail. | 📋 Planned | [#508](https://github.com/pkeppeler/deepcharter/issues/508) |
+| <img src="../src/main/resources/assets/deepcharter/textures/item/tow_chain.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/522/chain-hanging-close.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/522/chain-hanging-close.png?raw=true" width="160" alt=""></a> | <a id="tow-chain-look"></a>**A chain, not smoke**<br>mechanic | The tow line is a real chain of links on a sagging curve: it hangs when slack, goes straight when pulled, and shows in the dark of a layer. | ✅ Built | [#508](https://github.com/pkeppeler/deepcharter/issues/508), [#522](https://github.com/pkeppeler/deepcharter/issues/522), [ADR 0049](adr/0049-the-rock-of-layers-1-and-2-is-the-mods-own-blocks-and-the-lava-is-redrawn.md) |
 | ⚙️ | no still yet | <a id="wreck-salvage-prefabs"></a>**Wrecked prefabs that drop salvage**<br>mechanic | Ruined buildings and vehicles in the world that give scrap when broken. | 📋 Planned | [#471](https://github.com/pkeppeler/deepcharter/issues/471) |
 | 📍 | no still yet | <a id="outpost"></a>**Outposts at depth**<br>place | Built shelters with fuel and sell terminals, beds and storage; the first goes at the layer 1 floor. | 📋 Planned | [#320](https://github.com/pkeppeler/deepcharter/issues/320), [SPEC.md](SPEC.md#outposts-and-ratings) |
 | ⚙️ | no still yet | <a id="outpost-ratings"></a>**Environment ratings**<br>mechanic | Each depth rates heat, pressure, flooding and quakes; an outpost under the rating is uninhabitable but never destroyed. | 📋 Planned | [SPEC.md](SPEC.md#outposts-and-ratings) |
@@ -1173,7 +1170,7 @@ flowchart TB
 
 | Icon | Still | Feature | What it is | Status | Links |
 |---|---|---|---|---|---|
-| <img src="../src/main/resources/assets/deepcharter/textures/block/stalk_planks.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/465/stalk-a-near.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/465/stalk-a-near.png?raw=true" width="160" alt=""></a> | <a id="fungal-stalks"></a>**Fungal stalks**<br>resource | Pale stalks on crater floors are the wood: press to planks, burn for heat, char to charcoal. | ✅ Built | [#245](https://github.com/pkeppeler/deepcharter/issues/245), [ADR 0047](adr/0047-the-surface-has-no-ore-the-bootstraps-metal-is-salvage-and-the-yard-is-a-biome.md) |
+| <img src="../src/main/resources/assets/deepcharter/textures/block/stalk_planks.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/519/stalk-b-crater.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/519/stalk-b-crater.png?raw=true" width="160" alt=""></a> | <a id="fungal-stalks"></a>**Fungal stalks**<br>resource | Pale stalks on crater floors are the wood: press to planks, burn for heat, char to charcoal. | ✅ Built | [#245](https://github.com/pkeppeler/deepcharter/issues/245), [ADR 0047](adr/0047-the-surface-has-no-ore-the-bootstraps-metal-is-salvage-and-the-yard-is-a-biome.md) |
 | <img src="../src/main/resources/assets/deepcharter/textures/block/salvage_crate_side.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/465/salvage-gather.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/465/salvage-gather.gif?raw=true" width="160" alt=""></a> | <a id="salvage-crate"></a>**Salvage crates**<br>resource | Company crates in a ring 100 to 160 blocks out; break one for planks, sticks, cloth, scrap and redstone. | ✅ Built | [#245](https://github.com/pkeppeler/deepcharter/issues/245), [ADR 0047](adr/0047-the-surface-has-no-ore-the-bootstraps-metal-is-salvage-and-the-yard-is-a-biome.md), [mechanics.md](design/mechanics.md#early-ore-access-salvage-245-a) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/salvage_cloth.png" width="32" alt=""> | no still yet | <a id="salvage-cloth"></a>**Salvage cloth**<br>resource | Cloth from a crate; it crafts into string. | ✅ Built |  |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/scrap_iron.png" width="32" alt=""> | no still yet | <a id="scrap-metal"></a>**Scrap iron and copper**<br>resource | The crate's metal; melted one for one in a furnace. | ✅ Built |  |
@@ -1432,8 +1429,8 @@ flowchart LR
   classDef planned fill:#2e2e2e,stroke:#9e9e9e,stroke-width:1px,color:#d6d6d6
   classDef idea fill:#1a1a1a,stroke:#757575,stroke-width:1px,stroke-dasharray:4 3,color:#a0a0a0
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
-  class n_found_charter,n_company_parts,n_sign_on,n_dormant_charters,n_serials,n_wreck_keeps_serial built
-  class n_revive_at_terminal,n_share_outposts planned
+  class n_found_charter,n_company_parts,n_sign_on,n_dormant_charters,n_serials,n_revive_at_terminal,n_wreck_keeps_serial built
+  class n_share_outposts planned
   class n_charter_competition idea
   class n_contract_terminal,n_handbook_item ext
 ```
@@ -1443,9 +1440,9 @@ flowchart LR
 | 🎯 | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/129/contract-approved.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/129/contract-approved.png?raw=true" width="160" alt=""></a> | <a id="found-charter"></a>**Found a charter**<br>goal | Name it at the contract terminal and become its Director; it gets an account. | ✅ Built | [SPEC.md](SPEC.md#6-charters), [ADR 0007](adr/0007-charters-are-one-versioned-saved-data.md) |
 | ⚙️ | no still yet | <a id="company-parts"></a>**Parts are company property**<br>mechanic | Parts are bound to the charter and serial-numbered; another charter's parts are void. | ✅ Built | [SPEC.md](SPEC.md#6-charters) |
 | 🎯 | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/129/contract-application.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/129/contract-application.png?raw=true" width="160" alt=""></a> | <a id="sign-on"></a>**Sign on as crew**<br>goal | Apply with an Employment Contract; the Director approves. | ✅ Built | [ADR 0018](adr/0018-the-contract-terminal-sends-its-own-state-by-name.md), [#129](https://github.com/pkeppeler/deepcharter/issues/129) |
-| ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/164/m2-charter-revive.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/164/m2-charter-revive.gif?raw=true" width="160" alt=""></a> | <a id="dormant-charters"></a>**Dormant charters**<br>mechanic | A charter nobody belongs to goes dormant and keeps its name; an operator command revives it. | ✅ Built | [ADR 0026](adr/0026-a-dormant-charter-is-revived-by-the-first-player-who-asks.md), [#164](https://github.com/pkeppeler/deepcharter/issues/164) |
+| ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/164/m2-charter-revive.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/164/m2-charter-revive.gif?raw=true" width="160" alt=""></a> | <a id="dormant-charters"></a>**Dormant charters**<br>mechanic | A charter nobody belongs to goes dormant and keeps its name, account and pods; its former members can revive it. | ✅ Built | [ADR 0026](adr/0026-a-dormant-charter-is-revived-by-the-first-player-who-asks.md), [#164](https://github.com/pkeppeler/deepcharter/issues/164) |
 | ⚙️ | no still yet | <a id="serials"></a>**Serial numbers**<br>mechanic | Each pod and part has a world-wide serial; a restored wreck keeps its own number. | ✅ Built | [ADR 0027](adr/0027-a-chassis-is-an-entity-type-and-an-unowned-wreck-is-registered-when-restored.md) |
-| ⚙️ | no still yet | <a id="revive-at-terminal"></a>**Revive at the contract terminal**<br>mechanic | Players revive a dormant charter, but who may revive first (former members?) is not decided. | 📋 Planned | [#168](https://github.com/pkeppeler/deepcharter/issues/168) |
+| ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/525/dormant-offered.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/525/dormant-offered.png?raw=true" width="160" alt=""></a> | <a id="revive-at-terminal"></a>**Revive at the contract terminal**<br>mechanic | The contract terminal lists the dormant charters you once belonged to; REVIVE makes you its Director. Strangers are refused. | ✅ Built | [#168](https://github.com/pkeppeler/deepcharter/issues/168), [ADR 0026](adr/0026-a-dormant-charter-is-revived-by-the-first-player-who-asks.md) |
 | ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/499/restored-prospector-0002-keeps-its-name.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/499/restored-prospector-0002-keeps-its-name.png?raw=true" width="160" alt=""></a> | <a id="wreck-keeps-serial"></a>**A restored wreck keeps its serial**<br>mechanic | The famous wreck carries a lore mark and keeps PROSPECTOR-0002 and its name tag when restored; a charter's own Prospectors skip 0002. | ✅ Built | [#484](https://github.com/pkeppeler/deepcharter/issues/484), [#499](https://github.com/pkeppeler/deepcharter/issues/499), [ADR 0027](adr/0027-a-chassis-is-an-entity-type-and-an-unowned-wreck-is-registered-when-restored.md) |
 | ⚙️ | no still yet | <a id="share-outposts"></a>**Outposts and pads shared**<br>mechanic | A toggle to share a charter's outposts and pads with other charters. | 📋 Planned | [SPEC.md](SPEC.md#6-charters) |
 | ⚙️ | no still yet | <a id="charter-competition"></a>**Competition between charters**<br>mechanic | A later update might add rivalry; today charters are friendly. | 💭 Idea | [SPEC.md](SPEC.md#18-open-questions) |
@@ -1512,8 +1509,7 @@ flowchart LR
   classDef planned fill:#2e2e2e,stroke:#9e9e9e,stroke-width:1px,color:#d6d6d6
   classDef idea fill:#1a1a1a,stroke:#757575,stroke-width:1px,stroke-dasharray:4 3,color:#a0a0a0
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
-  class n_dusk_sky,n_texture_recipes,n_placeholder_sound built
-  class n_salvage_looks progress
+  class n_dusk_sky,n_texture_recipes,n_placeholder_sound,n_salvage_looks built
   class n_art_lighting planned
   class n_public_release idea
 ```
@@ -1524,7 +1520,7 @@ flowchart LR
 | ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/texture-reference.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/texture-reference.png?raw=true" width="160" alt=""></a> | <a id="texture-recipes"></a>**Textures from recipes**<br>mechanic | Every 16 pixel texture is generated from data by tools/textures; no hand-painted files to drift. | ✅ Built | [ADR 0037](adr/0037-texture-layers-are-generated-data-and-casings-connect-through-one-model-type.md) |
 | ⚙️ | no still yet | <a id="placeholder-sound"></a>**Placeholder sound**<br>mechanic | 47 sound events, all vanilla stand-ins; a private audio pack carries the original sounds for friends. | ✅ Built | [PLAYING.md](PLAYING.md#private-audio-pack) |
 | ⚙️ | no still yet | <a id="art-lighting"></a>**Lighting art**<br>mechanic | Glow accents and beams; see Darkness and sight. | 📋 Planned | [#248](https://github.com/pkeppeler/deepcharter/issues/248) |
-| ⚙️ | no still yet | <a id="salvage-looks"></a>**Salvage looks**<br>mechanic | Keep salvage crate A and B and stalk B; drop the other looks. | 🔨 In progress | [#505](https://github.com/pkeppeler/deepcharter/issues/505), [#472](https://github.com/pkeppeler/deepcharter/issues/472), [#519](https://github.com/pkeppeler/deepcharter/issues/519) |
+| ⚙️ | no still yet | <a id="salvage-looks"></a>**Salvage looks**<br>mechanic | The salvage crate is the freight crate, with the low sled crate as an alternative resource pack; the fungal stalk is the shelf fungus. The other looks are gone. | ✅ Built | [#505](https://github.com/pkeppeler/deepcharter/issues/505), [#472](https://github.com/pkeppeler/deepcharter/issues/472), [#519](https://github.com/pkeppeler/deepcharter/issues/519) |
 | 🎯 | no still yet | <a id="public-release"></a>**A public release**<br>goal | A name, a licence and a soundtrack the project may publish; Modrinth, with its AI-content disclosure. | 💭 Idea | [SPEC.md](SPEC.md#18-open-questions) |
 
 ## Flows

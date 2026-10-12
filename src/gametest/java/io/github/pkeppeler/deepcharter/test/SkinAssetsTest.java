@@ -59,10 +59,6 @@ public class SkinAssetsTest {
 				ours.add(id);
 			}
 		}
-		Identifier cable = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "tow_cable");
-		if (!ours.contains(cable)) {
-			throw failure(helper, "the particle %s is not registered; mod particles are %s", cable, ours);
-		}
 		for (Identifier id : ours) {
 			JsonObject description = json(helper, "/assets/%s/particles/%s.json".formatted(id.getNamespace(), id.getPath()));
 			if (!description.has("textures") || description.getAsJsonArray("textures").isEmpty()) {

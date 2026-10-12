@@ -118,6 +118,7 @@ final class TextureTestWorld {
 	private final ClientGameTestContext ctx;
 	private final TestSingleplayerContext sp;
 	private final Consumer<String> shoot;
+	private long settleLimitNanos = SETTLE_LIMIT_NANOS;
 
 	private TextureTestWorld(ClientGameTestContext ctx, TestSingleplayerContext sp, Consumer<String> shoot) {
 		this.ctx = ctx;
@@ -146,6 +147,11 @@ final class TextureTestWorld {
 			});
 			body.accept(world);
 		}
+	}
+
+	/** Sets how long a still waits for the world to settle, for a scenario whose first view needs more than the default. */
+	void settleLimit(int seconds) {
+		settleLimitNanos = seconds * 1_000_000_000L;
 	}
 
 	/** Shoots {@code views} once for each variant, with its pack on (and off again after, in a finally). */
@@ -410,7 +416,7 @@ final class TextureTestWorld {
 	 * in the world, for {@link #SETTLE_STABLE_POLLS} looks in a row; then shoots the still.
 	 */
 	void still(String stillName) {
-		long deadline = System.nanoTime() + SETTLE_LIMIT_NANOS;
+		long deadline = System.nanoTime() + settleLimitNanos;
 		int stable = 0;
 		while (stable < SETTLE_STABLE_POLLS) {
 			serverDo(server -> server.getAllLevels().forEach(level -> level.getAllEntities().forEach(entity -> {
@@ -428,18 +434,21 @@ final class TextureTestWorld {
 				}
 				return true;
 			});
-			stable = lit && ctx.computeOnClient(TextureTestWorld::rendered) ? stable + 1 : 0;
+			String pending = ctx.computeOnClient(TextureTestWorld::pending);
+			stable = lit && pending == null ? stable + 1 : 0;
 			if (System.nanoTime() > deadline) {
-				throw new AssertionError("still " + stillName + ": the world did not settle in " + SETTLE_LIMIT_NANOS / 1_000_000_000L + " s");
+				throw new AssertionError("still " + stillName + ": the world did not settle in " + settleLimitNanos / 1_000_000_000L + " s (light settled: " + lit
+						+ ", the client waits for: " + pending + ")");
 			}
 		}
 		shoot.accept(stillName);
 	}
 
-	private static boolean rendered(Minecraft client) {
+	/** What the client still waits for before a still, or null when it waits for nothing: a stray entity, a chunk, or a section to render. */
+	private static String pending(Minecraft client) {
 		for (Entity entity : client.level.entitiesForRendering()) {
 			if (stray(entity)) {
-				return false;
+				return "the stray entity " + entity.getType() + " at " + entity.blockPosition().toShortString();
 			}
 		}
 		int radius = client.options.getEffectiveRenderDistance();
@@ -448,11 +457,11 @@ final class TextureTestWorld {
 		for (int x = centreX - radius; x <= centreX + radius; x++) {
 			for (int z = centreZ - radius; z <= centreZ + radius; z++) {
 				if (client.level.getChunkSource().getChunk(x, z, ChunkStatus.FULL, false) == null) {
-					return false;
+					return "the chunk " + x + ", " + z;
 				}
 			}
 		}
-		return client.levelRenderer.hasRenderedAllSections();
+		return client.levelRenderer.hasRenderedAllSections() ? null : "the sections of the level renderer";
 	}
 
 	private static boolean stray(Entity entity) {

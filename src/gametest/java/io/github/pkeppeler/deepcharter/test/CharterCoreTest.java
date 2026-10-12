@@ -15,8 +15,10 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.commands.CommandSource;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtOps;
@@ -272,48 +274,173 @@ public class CharterCoreTest {
 		helper.succeed();
 	}
 
+	/** The Director and one crew member, both of whom then leave: the charter is dormant and both are its former members. */
+	private static CharterId dormantWithFormerMembers(GameTestHelper helper, CharterData data, UUID director, UUID crew) {
+		CharterId id = crewed(helper, data, director, crew);
+		expectDone(helper, data.leave(director), "the Director leaving");
+		expectDone(helper, data.leave(crew), "the last person leaving");
+		return id;
+	}
+
 	@GameTest
-	public void aPlayerRevivesADormantCharterAndBecomesItsDirector(GameTestHelper helper) {
+	public void aFormerMemberRevivesADormantCharterAndBecomesItsDirector(GameTestHelper helper) {
 		CharterData data = new CharterData();
 		UUID director = UUID.randomUUID();
-		UUID reviver = UUID.randomUUID();
 		UUID crew = UUID.randomUUID();
-		CharterId id = crewed(helper, data, director);
+		UUID applicant = UUID.randomUUID();
+		CharterId id = crewed(helper, data, director, crew);
 		expectDone(helper, data.deposit(id, 40), "depositing");
 		expectDone(helper, data.recordDeepestPoint(id, 120), "recording depth");
 		String name = data.find(id).orElseThrow().name();
 
-		expectRefused(helper, CharterRefusal.NOT_DORMANT, data.revive(reviver, id), "reviving a charter that has a Director");
-		expectDone(helper, data.leave(director), "the last person leaving");
-		expectRefused(helper, CharterRefusal.NO_SUCH_CHARTER, data.revive(reviver, CharterId.random()), "reviving nothing");
-		crewed(helper, data, reviver);
-		expectRefused(helper, CharterRefusal.ALREADY_ON_A_CHARTER, data.revive(reviver, id), "reviving as the Director of another charter");
+		expectRefused(helper, CharterRefusal.NOT_DORMANT, data.revive(director, id), "reviving a charter that has a Director");
+		expectDone(helper, data.leave(director), "the Director leaving");
+		expectDone(helper, data.leave(crew), "the last person leaving");
+		expectRefused(helper, CharterRefusal.NO_SUCH_CHARTER, data.revive(director, CharterId.random()), "reviving nothing");
+		CharterId other = crewed(helper, data, director);
+		expectRefused(helper, CharterRefusal.ALREADY_ON_A_CHARTER, data.revive(director, id), "reviving as the Director of another charter");
+		expectDone(helper, data.leave(director), "leaving the other charter");
 
-		UUID second = UUID.randomUUID();
-		expectDone(helper, data.revive(second, id), "reviving");
+		expectDone(helper, data.revive(crew, id), "a former crew member reviving");
 		Charter revived = data.find(id).orElseThrow();
-		if (!revived.director().equals(Optional.of(second)) || !revived.crew().isEmpty() || !revived.applications().isEmpty()
+		if (!revived.director().equals(Optional.of(crew)) || !revived.crew().isEmpty() || !revived.applications().isEmpty()
 				|| !revived.name().equals(name) || revived.account() != 40 || revived.deepestPoint() != 120) {
 			throw helper.assertionException("the reviver should be Director of the same charter with its account and depth: %s", revived);
 		}
-		expectDone(helper, data.apply(crew, id), "applying to the revived charter");
-		expectDone(helper, data.approve(second, crew), "the new Director approving");
+		if (revived.formerMember(crew) || !revived.formerMember(director)) {
+			throw helper.assertionException("the reviver stops being former and the other former member stays: %s", revived.formerMembers());
+		}
+		if (!data.find(other).orElseThrow().dormant()) {
+			throw helper.assertionException("the other charter is untouched");
+		}
+		expectDone(helper, data.apply(applicant, id), "applying to the revived charter");
+		expectDone(helper, data.approve(crew, applicant), "the new Director approving");
 		helper.succeed();
 	}
 
 	@GameTest
-	public void aRevivingPlayerWithAnApplicationOpenIsRefused(GameTestHelper helper) {
+	public void aPlayerWhoWasNeverAMemberCannotReviveAndNothingChanges(GameTestHelper helper) {
 		CharterData data = new CharterData();
 		UUID director = UUID.randomUUID();
-		UUID applicant = UUID.randomUUID();
-		CharterId dormant = crewed(helper, data, director);
-		CharterId open = crewed(helper, data, UUID.randomUUID());
-		expectDone(helper, data.leave(director), "the last person leaving");
-		expectDone(helper, data.apply(applicant, open), "applying");
+		UUID crew = UUID.randomUUID();
+		UUID stranger = UUID.randomUUID();
+		UUID withdrawn = UUID.randomUUID();
+		CharterId id = crewed(helper, data, director, crew);
+		expectDone(helper, data.apply(withdrawn, id), "applying");
+		expectDone(helper, data.leave(withdrawn), "withdrawing the application");
+		expectDone(helper, data.leave(director), "the Director leaving");
+		expectDone(helper, data.leave(crew), "the last person leaving");
+		Charter before = data.find(id).orElseThrow();
 
-		expectRefused(helper, CharterRefusal.ALREADY_ON_A_CHARTER, data.revive(applicant, dormant), "reviving with an application open");
-		if (!data.find(dormant).orElseThrow().dormant()) {
-			throw helper.assertionException("a refused revival changes nothing");
+		expectRefused(helper, CharterRefusal.NOT_A_FORMER_MEMBER, data.revive(stranger, id), "a stranger reviving");
+		expectRefused(helper, CharterRefusal.NOT_A_FORMER_MEMBER, data.revive(withdrawn, id), "a withdrawn applicant reviving");
+		if (!data.find(id).orElseThrow().equals(before)) {
+			throw helper.assertionException("a refused revival changes nothing, got %s", data.find(id));
+		}
+		expectDone(helper, data.reviveAsOperator(stranger, id), "an operator reviving for a stranger");
+		if (!data.find(id).orElseThrow().isDirector(stranger)) {
+			throw helper.assertionException("the operator's revival makes the player Director");
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void formerMembersAreKeptInOrderAndStopWhenTheyRejoin(GameTestHelper helper) {
+		CharterData data = new CharterData();
+		UUID director = UUID.randomUUID();
+		UUID first = UUID.randomUUID();
+		UUID second = UUID.randomUUID();
+		CharterId id = crewed(helper, data, director, first, second);
+		expectDone(helper, data.leave(first), "crew leaving");
+		expectDone(helper, data.leave(director), "the Director leaving");
+		if (!data.find(id).orElseThrow().formerMembers().equals(List.of(first, director))) {
+			throw helper.assertionException("former members in the order they left, got %s", data.find(id).orElseThrow().formerMembers());
+		}
+		expectDone(helper, data.apply(first, id), "a former member applying");
+		expectDone(helper, data.approve(second, first), "the Director approving");
+		if (!data.find(id).orElseThrow().formerMembers().equals(List.of(director))) {
+			throw helper.assertionException("a player who rejoins is no longer former, got %s", data.find(id).orElseThrow().formerMembers());
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aCharterListingAPlayerAsFormerAndOnTheRosterIsRejected(GameTestHelper helper) {
+		UUID player = UUID.randomUUID();
+		boolean threw = false;
+		try {
+			new Charter(CharterId.random(), "Doubled", Optional.of(player), List.of(), List.of(), List.of(player), 0, 0);
+		} catch (IllegalArgumentException e) {
+			threw = e.getMessage().contains("former member");
+		}
+		if (!threw) {
+			throw helper.assertionException("a former member on the roster should be rejected");
+		}
+		helper.succeed();
+	}
+
+	/** Saved version 1 kept no former members. */
+	private static CompoundTag versionOne(CharterId id, UUID director, boolean dormant) {
+		CompoundTag charter = new CompoundTag();
+		charter.put("id", CharterId.CODEC.encodeStart(NbtOps.INSTANCE, id).getOrThrow());
+		charter.putString("name", "Old Charter");
+		if (!dormant) {
+			charter.put("director", UUIDUtil.CODEC.encodeStart(NbtOps.INSTANCE, director).getOrThrow());
+		}
+		charter.put("crew", new ListTag());
+		charter.put("applications", new ListTag());
+		charter.putLong("account", 300);
+		charter.putInt("deepest_point", 50);
+		ListTag charters = new ListTag();
+		charters.add(charter);
+		CompoundTag saved = new CompoundTag();
+		saved.putInt("version", 1);
+		saved.put("charters", charters);
+		return saved;
+	}
+
+	@GameTest
+	public void aVersionOneWorldLoadsWithNoFormerMembersAndOnlyAnOperatorRevivesItsDormantCharters(GameTestHelper helper) {
+		CharterId id = CharterId.random();
+		UUID oldDirector = UUID.randomUUID();
+		UUID stranger = UUID.randomUUID();
+		CharterData data = CharterData.CODEC.parse(NbtOps.INSTANCE, versionOne(id, oldDirector, true)).getOrThrow();
+		if (!data.isReadable()) {
+			throw helper.assertionException("version 1 is still read");
+		}
+		Charter old = data.find(id).orElseThrow();
+		if (!old.dormant() || !old.formerMembers().isEmpty() || old.account() != 300 || old.deepestPoint() != 50) {
+			throw helper.assertionException("a version 1 charter keeps everything and starts with no former members: %s", old);
+		}
+		expectRefused(helper, CharterRefusal.NOT_A_FORMER_MEMBER, data.revive(oldDirector, id), "the old Director, who is not known to be one");
+		Tag written = CharterData.CODEC.encodeStart(NbtOps.INSTANCE, data).getOrThrow();
+		if (!(written instanceof CompoundTag compound) || compound.getIntOr("version", 0) != CharterData.VERSION) {
+			throw helper.assertionException("the data is written back as version %s, got %s", CharterData.VERSION, written);
+		}
+		expectDone(helper, data.reviveAsOperator(stranger, id), "the operator reviving an old dormant charter");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aVersionOneLiveCharterRecordsFormerMembersFromNowOn(GameTestHelper helper) {
+		CharterId id = CharterId.random();
+		UUID director = UUID.randomUUID();
+		CharterData data = CharterData.CODEC.parse(NbtOps.INSTANCE, versionOne(id, director, false)).getOrThrow();
+		expectDone(helper, data.leave(director), "the old Director leaving");
+		expectDone(helper, data.revive(director, id), "the old Director, now a former member, reviving");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void formerMembersSurviveASaveAndALoad(GameTestHelper helper) {
+		CharterData data = new CharterData();
+		UUID director = UUID.randomUUID();
+		UUID crew = UUID.randomUUID();
+		CharterId id = dormantWithFormerMembers(helper, data, director, crew);
+		Tag written = CharterData.CODEC.encodeStart(NbtOps.INSTANCE, data).getOrThrow();
+		CharterData loaded = CharterData.CODEC.parse(NbtOps.INSTANCE, written).getOrThrow();
+		if (!loaded.find(id).orElseThrow().formerMembers().equals(List.of(director, crew))) {
+			throw helper.assertionException("former members survive a save and load, got %s", loaded.find(id).orElseThrow().formerMembers());
 		}
 		helper.succeed();
 	}
@@ -328,19 +455,23 @@ public class CharterCoreTest {
 		CharterId[] mine = new CharterId[1];
 		CharterEvents.REVIVED.register((s, charter, director) -> {
 			if (charter.id().equals(mine[0])) {
-				seen.add("revived " + director.equals(second.player().getUUID()) + " " + charter.director().equals(Optional.of(director)));
+				seen.add("revived " + director.equals(first.player().getUUID()) + " " + charter.director().equals(Optional.of(director)));
 			}
 		});
 		try {
 			expectDone(helper, Charters.found(server, first.player().getUUID(), name), "found");
 			mine[0] = Charters.findByName(server, name).orElseThrow().id();
-			expectRefused(helper, CharterRefusal.NOT_DORMANT, Charters.revive(server, second.player().getUUID(), mine[0]), "reviving a live charter");
+			expectRefused(helper, CharterRefusal.NOT_DORMANT, Charters.revive(server, first.player().getUUID(), mine[0]), "reviving a live charter");
 			expectDone(helper, Charters.leave(server, first.player().getUUID()), "leave");
-			expectDone(helper, Charters.revive(server, second.player().getUUID(), mine[0]), "revive");
+			expectRefused(helper, CharterRefusal.NOT_A_FORMER_MEMBER, Charters.revive(server, second.player().getUUID(), mine[0]), "a stranger reviving");
+			if (!seen.isEmpty()) {
+				throw helper.assertionException("a refused revival fires no event: %s", seen);
+			}
+			expectDone(helper, Charters.revive(server, first.player().getUUID(), mine[0]), "revive");
 			if (!seen.equals(List.of("revived true true"))) {
 				throw helper.assertionException("exactly one revived event, after the change: %s", seen);
 			}
-			if (!Charters.charterOfOrThrow(server, second.player().getUUID()).orElseThrow().id().equals(mine[0])) {
+			if (!Charters.charterOfOrThrow(server, first.player().getUUID()).orElseThrow().id().equals(mine[0])) {
 				throw helper.assertionException("the reviver should be on the charter");
 			}
 			helper.succeed();
@@ -350,6 +481,7 @@ public class CharterCoreTest {
 		}
 	}
 
+	/** The command is the operator's override (ADR 0026): the reviver was never a member, and the command revives for them anyway. */
 	@GameTest
 	public void theReviveCommandAnswersInChat(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();

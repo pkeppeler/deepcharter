@@ -24,10 +24,10 @@ import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 
 /**
- * Evidence scenario "salvage-concepts" (#245, docs/design/salvage-concepts.md): the three shapes of the salvage crate and the three shapes
- * of the fungal stalk, each seen where a player meets it, near and from a way off on the open plain, in a crater (the great pit, the one
+ * Evidence scenario "salvage-concepts" (#245, docs/design/salvage-concepts.md): the two looks of the salvage crate (the default and the sled pack)
+ * and the fungal stalk, each seen where a player meets it, near and from a way off on the open plain, in a crater (the great pit, the one
  * crater every colony has in sight), and in a cave (a room carved in layer 1, lit by a pod lamp). The default of each (crate a, stalk b) is the mod's own look;
- * the other two are test packs. Every still is {@code <block>-<option>-<place>}: {@code crate-a-near}, {@code stalk-c-cave}.
+ * the sled crate is a test pack (#505 dropped the other round-1 options). Every still is {@code <block>-<option>-<place>}: {@code crate-a-near}, {@code stalk-b-cave}.
  *
  * <p>A cluster is placed the way the features place one: crates in a patch, a few lying on the ground and one stacked, stalks in a stand of
  * different heights. The crates in a crater and in a cave are put there for the look: the features place crates only in the colony's
@@ -39,8 +39,7 @@ public class SalvageConceptsScenario extends EvidenceScenario {
 	}
 
 	private static final List<Option> OPTIONS = List.of(
-			new Option("crate", "a", null), new Option("crate", "b", TestPacks.SALVAGE_CRATE_B), new Option("crate", "c", TestPacks.SALVAGE_CRATE_C),
-			new Option("stalk", "a", TestPacks.FUNGAL_STALK_A), new Option("stalk", "b", null), new Option("stalk", "c", TestPacks.FUNGAL_STALK_C));
+			new Option("crate", "a", null), new Option("crate", "b", TestPacks.SALVAGE_CRATE_B), new Option("stalk", "b", null));
 	/** The great pit's middle, south of the colony (ADR 0036): its floor is the crater. */
 	private static final BlockPos PIT = new BlockPos(24, 0, 150);
 	/** The carved cave's floor, in layer 1: a lamp-lit room, 32 wide and 16 deep, with the scene in its west half. */

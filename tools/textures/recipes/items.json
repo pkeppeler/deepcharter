@@ -699,6 +699,23 @@
       ".........xy.l",
       "........xy..l",
       "........yk.ld",
-      ".........kkd"]}}
+      ".........kkd"]}},
+    "item/tow_chain": {"kind": "cutout", "layers": [{"op": "pixels", "legend": {"h": "steel.5", "l": "steel.4", "m": "steel.3", "d": "steel.2", "k": "steel.1"}, "rows": [
+      "..hhhh.....hh...",
+      ".hllllm....hl...",
+      "hllllmmk...hl...",
+      "hl....mk...lm...",
+      "hl....mk...hl...",
+      "hl....mk...lm...",
+      "hl....mk...hl...",
+      "hl....mk...lm...",
+      "hl....mk...hl...",
+      "hl....mk...lm...",
+      "hl....mk...hl...",
+      "hl....mk...lm...",
+      "hl....mk...hl...",
+      "hmmmmddk...lm...",
+      ".mddddk....hl...",
+      "..kkkk.....kk..."]}]}
   }
 }

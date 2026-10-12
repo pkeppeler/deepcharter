@@ -17,11 +17,15 @@ import net.minecraft.network.codec.StreamCodec;
  * @param charter    the charter the player is on or applied to, empty for {@link Role#NONE}
  * @param charters   for {@link Role#NONE}: the charters that can take an application, at most {@link ContractTerminalTuning#listedRows()}
  * @param charterCount every charter that can take an application, so a screen can say that more exist than it lists
+ * @param revivable  for {@link Role#NONE}: the dormant charters the player was once a member of and may revive, at most
+ *                   {@link ContractTerminalTuning#revivableRows()}
+ * @param revivableCount every such charter, listed or not
  * @param applicants for {@link Role#DIRECTOR}: the names of the players waiting for an answer, at most {@link ContractTerminalTuning#listedRows()}
  * @param applicantCount every application waiting, listed or not
  * @param notice     the translation key of the refusal the last request met, or empty
  */
-public record ContractState(Role role, String charter, List<String> charters, int charterCount, List<String> applicants, int applicantCount,
+public record ContractState(Role role, String charter, List<String> charters, int charterCount, List<String> revivable, int revivableCount,
+		List<String> applicants, int applicantCount,
 		Optional<String> notice) {
 	/** Longest name or key sent: a player name is at most 16 characters, and a charter name is capped by {@code CharterTuning}. */
 	private static final int MAX_TEXT = 128;
@@ -42,6 +46,8 @@ public record ContractState(Role role, String charter, List<String> charters, in
 			ByteBufCodecs.stringUtf8(MAX_TEXT), ContractState::charter,
 			ByteBufCodecs.stringUtf8(MAX_TEXT).apply(ByteBufCodecs.list(MAX_LIST)), ContractState::charters,
 			ByteBufCodecs.VAR_INT, ContractState::charterCount,
+			ByteBufCodecs.stringUtf8(MAX_TEXT).apply(ByteBufCodecs.list(MAX_LIST)), ContractState::revivable,
+			ByteBufCodecs.VAR_INT, ContractState::revivableCount,
 			ByteBufCodecs.stringUtf8(MAX_TEXT).apply(ByteBufCodecs.list(MAX_LIST)), ContractState::applicants,
 			ByteBufCodecs.VAR_INT, ContractState::applicantCount,
 			ByteBufCodecs.optional(ByteBufCodecs.stringUtf8(MAX_TEXT)), ContractState::notice,
@@ -55,14 +61,15 @@ public record ContractState(Role role, String charter, List<String> charters, in
 	}
 
 	public ContractState {
-		if (charterCount < charters.size() || applicantCount < applicants.size()) {
+		if (charterCount < charters.size() || revivableCount < revivable.size() || applicantCount < applicants.size()) {
 			throw new IllegalArgumentException("a total cannot be below the names listed");
 		}
 		charters = List.copyOf(charters);
+		revivable = List.copyOf(revivable);
 		applicants = List.copyOf(applicants);
 	}
 
 	public ContractState withNotice(String key) {
-		return new ContractState(role, charter, charters, charterCount, applicants, applicantCount, Optional.of(key));
+		return new ContractState(role, charter, charters, charterCount, revivable, revivableCount, applicants, applicantCount, Optional.of(key));
 	}
 }

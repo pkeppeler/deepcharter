@@ -30,6 +30,8 @@ VANILLA_FILES = {"textures/environment/celestial/sun.png", *(f"textures/block/{n
 # The vanilla blocks a pack may redraw: the texture density packs redraw stone and deepslate. The layer concept packs (docs/design/layer-concepts-2.md)
 # stand in vanilla andesite and diorite for the rock and rubble of layer 3, which has no blocks of its own until M3 (#504).
 VANILLA_BLOCKSTATES = {f"minecraft/blockstates/{name}.json" for name in ("stone", "deepslate", "andesite", "diorite")}
+# The test mod's own blockstates a pack may draw: the stand-in for Company Rock of the concept round (#503), which test/support/ConceptRock registers.
+TEST_BLOCKSTATES = {"deepcharter_test/blockstates/company_rock.json"}
 
 
 def resolve(pack_assets: Path, ref: str, kind: str, suffix: str) -> Path | None:
@@ -180,11 +182,12 @@ class TexturePacksTest(unittest.TestCase):
         used_models: set[Path] = set()
         used_textures: set[Path] = set()
         blockstates = sorted(assets.glob("*/blockstates/*.json"))
-        if not blockstates:
+        # A pack of textures alone (the tow chain's braided cable, #508) redraws textures the mod already has, and the loop below checks each.
+        if not blockstates and not any(assets.glob("*/textures/**/*.png")):
             problems.append(f"{pack}: no blockstates")
         for blockstate in blockstates:
             relative = blockstate.relative_to(assets).as_posix()
-            if not (MOD_ASSETS / relative).is_file() and relative not in VANILLA_BLOCKSTATES:
+            if not (MOD_ASSETS / relative).is_file() and relative not in VANILLA_BLOCKSTATES | TEST_BLOCKSTATES:
                 problems.append(f"{relative}: the mod has no such blockstate to replace")
             refs = model_refs(json.loads(blockstate.read_text()))
             if not refs:
