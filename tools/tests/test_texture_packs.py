@@ -184,7 +184,8 @@ class TexturePacksTest(unittest.TestCase):
         used_models: set[Path] = set()
         used_textures: set[Path] = set()
         blockstates = sorted(assets.glob("*/blockstates/*.json"))
-        if not blockstates:
+        # A pack of textures alone (the tow chain's braided cable, #508) redraws textures the mod already has, and the loop below checks each.
+        if not blockstates and not any(assets.glob("*/textures/**/*.png")):
             problems.append(f"{pack}: no blockstates")
         for blockstate in blockstates:
             relative = blockstate.relative_to(assets).as_posix()
