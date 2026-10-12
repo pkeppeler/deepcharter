@@ -14,19 +14,17 @@ import net.minecraft.world.phys.Vec3;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
-import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
-import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 
 /**
- * Evidence scenario "retained-lamp" (#449): the three ways a Retained carries its lamp, each seen in the dark of layer 2 (no night vision, no
- * pod's light: the lamp is the only light) from near and from far, and once from near with night vision to read the shape. The default,
- * the lamp on a pole, is the mod's own look; the lantern in the hand and the lamp in the ribcage are test packs. A lampless figure from far is the control.
+ * Evidence scenario "retained-helmet-light" (#449, #506): the dim lamp in a Retained's helmet, seen in the dark of layer 2 (no night vision, no
+ * pod's light: the lamp is the only light) from 20 blocks and from near, and once from near with night vision to read the shape. A figure whose
+ * lamp is not lit, from the same 20 blocks, is the control. A clip follows a figure walking toward the camera from 28 blocks.
  *
- * <p>Stills: {@code lamp-<option>-far}, {@code lamp-<option>-near}, {@code lamp-<option>-near-seen}, and {@code lampless-far}.
+ * <p>Stills: {@code lamp-far}, {@code lamp-near}, {@code lamp-near-seen}, and {@code lamp-off-far}.
  */
-public class RetainedLampScenario extends EvidenceScenario {
+public class RetainedHelmetLightScenario extends EvidenceScenario {
 	private static final int LENGTH = 40;
 	private static final int HALF_WIDTH = 4;
 	private static final int HEIGHT = 5;
@@ -49,7 +47,7 @@ public class RetainedLampScenario extends EvidenceScenario {
 
 	@Override
 	protected String name() {
-		return "retained-lamp";
+		return "retained-helmet-light";
 	}
 
 	@Override
@@ -67,21 +65,9 @@ public class RetainedLampScenario extends EvidenceScenario {
 			EvidencePins.figureAnimationAge = 0f;
 			try {
 				setUp();
-				lampless();
-				option("pole");
+				unlit();
+				lit();
 				walk();
-				ClientPacks.enable(context, TestPacks.RETAINED_LAMP_HAND);
-				try {
-					option("hand");
-				} finally {
-					ClientPacks.disable(context, TestPacks.RETAINED_LAMP_HAND);
-				}
-				ClientPacks.enable(context, TestPacks.RETAINED_LAMP_RIBS);
-				try {
-					option("ribs");
-				} finally {
-					ClientPacks.disable(context, TestPacks.RETAINED_LAMP_RIBS);
-				}
 			} finally {
 				EvidencePins.reset();
 				context.runOnClient(client -> client.options.setCameraType(cameraType));
@@ -127,16 +113,16 @@ public class RetainedLampScenario extends EvidenceScenario {
 		chamber.settle();
 	}
 
-	private void lampless() {
+	private void unlit() {
 		chamber.nightVision(false);
 		stand(FAR, false);
-		screenshot(ctx, "lampless-far");
+		screenshot(ctx, "lamp-off-far");
 	}
 
 	/**
-	 * The lamp-carrier of the default look walks toward the camera from the far end of the chamber, in the dark, with no night vision: a lamp bobbing
+	 * A figure with its lamp lit walks toward the camera from the far end of the chamber, in the dark, with no night vision: a dim lamp bobbing
 	 * in the black. The clip stops while it is still some way off, and the walker is taken away. It is logged as
-	 * {@code [retained-lamp-segment] retained-lamp-walk <first>-<last>}.
+	 * {@code [retained-helmet-light-segment] retained-helmet-light-walk <first>-<last>}.
 	 */
 	private void walk() {
 		chamber.nightVision(false);
@@ -152,7 +138,7 @@ public class RetainedLampScenario extends EvidenceScenario {
 			frame(ctx);
 			framesTaken++;
 		}
-		System.out.println("[retained-lamp-segment] retained-lamp-walk " + first + "-" + framesTaken);
+		System.out.println("[retained-helmet-light-segment] retained-helmet-light-walk " + first + "-" + framesTaken);
 		chamber.serverDo(server -> RetainedChamber.layer(server).getEntity(figureId).discard());
 		resetFigure();
 	}
@@ -170,17 +156,17 @@ public class RetainedLampScenario extends EvidenceScenario {
 		ClientWait.until(ctx, "the new figure on the client", client -> client.level != null && client.level.getEntity(figureId) instanceof LamplessFigure);
 	}
 
-	private void option(String option) {
+	private void lit() {
 		chamber.nightVision(false);
 		stand(FAR, true);
-		screenshot(ctx, "lamp-" + option + "-far");
+		screenshot(ctx, "lamp-far");
 		stand(NEAR, true);
-		screenshot(ctx, "lamp-" + option + "-near");
+		screenshot(ctx, "lamp-near");
 		chamber.nightVision(true);
 		ctx.waitTicks(10); // tick-wait: the effect reaches the client
 		Vec3 eye = RetainedChamber.at(CAMERA_X, 1.9, 0.5);
 		chamber.look(eye, RetainedChamber.at(CAMERA_X + NEAR, 1.3, 0.5));
 		chamber.settle();
-		screenshot(ctx, "lamp-" + option + "-near-seen");
+		screenshot(ctx, "lamp-near-seen");
 	}
 }

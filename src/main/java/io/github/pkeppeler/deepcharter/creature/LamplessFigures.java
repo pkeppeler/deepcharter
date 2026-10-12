@@ -125,7 +125,6 @@ public final class LamplessFigures {
 			throw new IllegalStateException("The lampless figure could not be created in " + level.dimension().identifier());
 		}
 		figure.setPos(place.getX() + 0.5, place.getY(), place.getZ() + 0.5);
-		figure.setLamp(level.getRandom().nextDouble() < tuning.natural().lampShare());
 		Direction along = site.alongZ() ? Direction.SOUTH : Direction.EAST;
 		figure.setHeading(level.getRandom().nextBoolean() ? along : along.getOpposite());
 		level.addFreshEntity(figure);
