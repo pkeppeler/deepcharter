@@ -97,16 +97,18 @@ Whichever is built, the shipped `company_rock` texture and model are replaced an
 
 Option A shipped in [#535](https://github.com/pkeppeler/deepcharter/issues/535), as three textures `company_rock_joint_0` to `_2` made by `tools/textures` from the recipes in `recipes/blocks.json` (palette `hardpan`), a blockstate of three models (one block in five is `_2`, the survey chevron) and no Java. What changed from the concept:
 
-- **A lighter fracture line.** Each joint pixel has a lip of `hardpan.5` on its lower right, on every second pixel, so the joints read as cracks at range and not only as a dark patch. The joints are `hardpan.1`, a step lighter than the concept's, so the texture stays inside vanilla's contrast range.
-- **A second pass on the chevron.** A lighter outline over a dark inner line, drawn as a two-pixel-step chevron, so it shows close up and stays faint.
+- **A flatter base, so the joints read.** The first build kept the concept's noise and speckle and drowned the joints (the close still read as coal-like noise). The base is now a nearly flat slate (a few darker cells, no light speckle) with the hand-drawn joints on it, so a close still shows the crack network of the concept. Texture edges that would have cut a joint at the wrap seam are cleared, so the joints run on across block edges.
+- **A cool slate cast.** The `hardpan` ramp is bluer and a step lighter than the concept's, so the block stays apart from the brown of layer 1 and the green of layer 2 at range, and is still a dark, dense rock. The lamp and fog grade of layer 2 keep it dim from the pod; it shows in the cave as a slate patch against the green.
+- **A lighter fracture line.** A lip of `hardpan.4` on the lower right of every second joint pixel (every third on the chevron texture), never across a wrap seam. The lips cannot be brighter without leaving vanilla's range for the mean step (22).
+- **A second pass on the chevron.** A lighter outline over a dark inner line, two pixels per step, on texture `_2`: visible close up, faint.
 - **No lava glow in the joints.** Company Rock is one block with one blockstate in every layer, so a glow would show in layer 1 as well; a layer-2 look needs a per-layer block or a block-state property, which is Java. Left out; see [#539](https://github.com/pkeppeler/deepcharter/issues/539).
 - **The blast.** [#509](https://github.com/pkeppeler/deepcharter/issues/509)'s charge breaks the block with `destroyBlock`, whose break particles take the block's texture, so the crumble already uses the Joint. Joints that widen first need an animated block or a block entity, which is new Java; left out, same issue.
 - Its seam numbers are in the table below.
 
 | Texture | Mean step inside | wrap | rim |
 |---|---|---|---|
-| `company_rock_joint_0` | 17.0 | 1.04 | 0.99 |
-| `company_rock_joint_1` | 17.8 | 1.15 | 1.16 |
-| `company_rock_joint_2` (with the chevron) | 20.1 | 0.88 | 1.02 |
+| `company_rock_joint_0` | 18.3 | 0.67 | 0.94 |
+| `company_rock_joint_1` | 17.9 | 0.49 | 1.18 |
+| `company_rock_joint_2` (with the chevron) | 20.7 | 0.24 | 1.05 |
 
 `tools/tests/test_company_rock_look.py` holds the three textures to the seam check, the models to plain cubes and the blockstate to one block in five.
