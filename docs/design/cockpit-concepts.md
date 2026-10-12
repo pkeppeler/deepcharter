@@ -26,6 +26,8 @@
 
 ## How they are drawn, and how to see them
 
+> **Superseded by the Ribbon build ([#247](https://github.com/pkeppeler/deepcharter/issues/247)):** the `style` key, the packs `cockpit_dials`, `cockpit_strip` and `cockpit_consoles`, `tools/cockpit_concepts.py` and its test are gone. See [cockpit-concepts-2.md](cockpit-concepts-2.md). The list below is how round 1 was built.
+
 - **`theme/cockpit.json`** has `style` (0 none, 1 dials, 2 strip, 3 consoles in round 1; round 2 renumbered it, 1 is the consoles), the colours and easing shared by all three, and each style's decals, gauges, scanner window, readout plate and altimeter position under the style's name (`dialsFuelX`, `stripScannerW`). **A pick is a data change:** a pack with `{"style": 2}` is the strip, and F3+T applies it. The three test packs `cockpit_dials`, `cockpit_strip` and `cockpit_consoles` do exactly that; only the evidence scenario turns them on.
 - **`tools/cockpit_concepts.py`** writes the sprites and the theme file with the Python standard library only; `--check` (and `tools/tests/test_cockpit_concepts.py`) fails when a committed file differs from what it makes, and `--preview DIR` writes a mock of each look in four states without starting the game.
 - **`client/pod/CockpitHud`** draws the style as the first HUD element, so the altimeter, a transmission and the crosshair draw over it. `client/theme/CockpitLook` reads it. The scanner draws in the style's window through `ScannerHud.drawInWindow`, and the plain readout's lines come from `PodStatusHud.readout`, the list the plain HUD draws too.
