@@ -9,6 +9,11 @@
   "lavaColor": "#FF2A10",
   "lavaNearColor": "#78463A",
   "gasColor": "#E040E0",
+  "rockShadeColor": "#55000000",
+  "oreLiftColor": "#70FFFFFF",
+  "goldOreLiftColor": "#99FFD21E",
+  "lavaNearShadeColor": "#99000000",
+  "gasTintColor": "#99E040E0",
   "podColor": "#38F06E",
   "frameColor": "#000000"
 }

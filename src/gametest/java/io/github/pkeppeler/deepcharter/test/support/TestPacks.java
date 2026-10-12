@@ -66,6 +66,11 @@ public final class TestPacks implements ModInitializer {
 	/** The tow line as a braided steel cable (#508), the alternative to the mod's chain; it names the keys of {@code theme/tow.json} that change and redraws the texture. */
 	public static final String TOW_CABLE_BRAID = "tow_cable_braid";
 
+	/** Stone as one flat magenta texture (#537): the scanner must draw it, because the active pack's block textures drive the scanner's cells. */
+	public static final String SCANNER_STONE_MAGENTA = "scanner_stone_magenta";
+	/** Stone whose model names a texture the pack does not have (#537): the scanner falls back to the theme's flat colour for it. */
+	public static final String SCANNER_STONE_MISSING = "scanner_stone_missing";
+
 	@Override
 	public void onInitialize() {
 		// One shared pin for every test and evidence world that enters a layer (the layers' biomes list the Retained): no natural spawns.
@@ -74,7 +79,8 @@ public final class TestPacks implements ModInitializer {
 				LAYER_CONCEPT_GRAIN, LAYER_CONCEPT_BEDDED, LAYER_CONCEPT_MOTTLED, LAYER_CONCEPT_FORM_1, LAYER_CONCEPT_FORM_2, LAYER_CONCEPT_FORM_3,
 				COCKPIT_CONSOLES, COCKPIT_CORNERS, COCKPIT_RIBBON, COCKPIT_POSTS, COCKPIT_CAB, COCKPIT_CAMERA, COCKPIT_CAMERA_HOLD,
 				SALVAGE_CRATE_B, TOW_CABLE_BRAID,
-				COMPANY_ROCK_JOINT, COMPANY_ROCK_STRAP, COMPANY_ROCK_CRYSTAL, COMPANY_ROCK_FUSED}) {
+				COMPANY_ROCK_JOINT, COMPANY_ROCK_STRAP, COMPANY_ROCK_CRYSTAL, COMPANY_ROCK_FUSED,
+				SCANNER_STONE_MAGENTA, SCANNER_STONE_MISSING}) {
 			ResourceLoader.registerBuiltinPack(Identifier.fromNamespaceAndPath("deepcharter-test", pack),
 					FabricLoader.getInstance().getModContainer("deepcharter-test").orElseThrow(),
 					Component.literal(pack + " (test pack)"), PackActivationType.NORMAL);

@@ -1,0 +1,115 @@
+package io.github.pkeppeler.deepcharter.test;
+
+import java.util.Arrays;
+
+import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
+import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+
+import net.minecraft.client.Options;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.scanner.ScanArea;
+import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
+
+/**
+ * #537: a measurement more than a regression test. Frame time at the largest scan the game allows (the top scanner tier) against a pod with no
+ * scanner, in a world whose scan area is full of mixed rock and ore, so that every cell the scanner can read is drawn. It logs
+ * {@code [scanner-frame]} lines and asserts nothing: wall time under load is not a stable pass line.
+ */
+public class ScannerFrameTimeClientTest implements FabricClientGameTest {
+	private static final Logger LOGGER = LoggerFactory.getLogger("ScannerFrameTime");
+	private static final ScannerTuning TUNING = ScannerTuning.DEFAULT;
+	/** Blocks each side of the pod, at its height and above, left as they are so that the rock does not smother it. */
+	private static final int POD_CLEARANCE = 3;
+	private static final int WARMUP_TICKS = 60;
+	private static final int MEASURED_FRAMES = 200;
+	private static final int ROUNDS = 5;
+	private static final Block[] MIX = {Blocks.STONE, Blocks.STONE, Blocks.DEEPSLATE, Blocks.IRON_ORE, Blocks.COAL_ORE, Blocks.GOLD_ORE,
+			Blocks.DIAMOND_ORE, Blocks.COBBLESTONE, Blocks.STONE, Blocks.DEEPSLATE};
+
+	/**
+	 * Median wall milliseconds per frame over {@link #ROUNDS} rounds. The frames are drawn back to back on the render thread
+	 * ({@code renderFrame}), because a client tick waits for the 20 ticks a second and would time that wait instead.
+	 */
+	private static double millisPerFrame(ClientGameTestContext context) {
+		context.waitTicks(WARMUP_TICKS);
+		double[] rounds = new double[ROUNDS];
+		for (int i = 0; i < ROUNDS; i++) {
+			rounds[i] = context.computeOnClient(client -> {
+				long start = System.nanoTime();
+				for (int frame = 0; frame < MEASURED_FRAMES; frame++) {
+					client.renderFrame(false);
+				}
+				return (System.nanoTime() - start) / 1e6 / MEASURED_FRAMES;
+			});
+		}
+		Arrays.sort(rounds);
+		LOGGER.info("[scanner-frame] rounds ms/frame: {}", Arrays.toString(rounds));
+		return rounds[ROUNDS / 2];
+	}
+
+	@Override
+	public void runTest(ClientGameTestContext context) {
+		ClientTestLog.startUntimed(this);
+		int tier = ComponentTrack.SCANNER.maxTier();
+		ScanArea area = TUNING.area(tier);
+		boolean vsync = context.computeOnClient(client -> client.options.enableVsync().get());
+		int frameLimit = context.computeOnClient(client -> client.options.framerateLimit().get());
+		// Unpaced, or the frames time the display's refresh and the scanner cannot show in them.
+		context.runOnClient(client -> {
+			client.options.enableVsync().set(false);
+			client.options.framerateLimit().set(Options.UNLIMITED_FRAMERATE_CUTOFF);
+		});
+		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+			TestServerContext server = singleplayer.getServer();
+			server.runCommand("time set midnight");
+			context.waitTicks(20);
+
+			ScannerHudTest.mountFirstPlayer(server, 0);
+			ClientWait.until(context, "the client riding a pod", client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
+			int filled = server.computeOnServer(minecraftServer -> {
+				PodEntity pod = (PodEntity) minecraftServer.getPlayerList().getPlayers().getFirst().getVehicle();
+				ServerLevel level = (ServerLevel) pod.level();
+				Direction facing = pod.getDirection();
+				int count = 0;
+				for (int up = area.up(); up >= -area.down(); up--) {
+					for (int ahead = -area.halfWidth(); ahead <= area.halfWidth(); ahead++) {
+						BlockPos at = pod.blockPosition().relative(facing, ahead).above(up);
+						if (level.hasChunkAt(at) && level.isInsideBuildHeight(at.getY()) && (up < 0 || Math.abs(ahead) > POD_CLEARANCE)) {
+							level.setBlock(at, MIX[Math.floorMod(ahead * 7 + up * 13, MIX.length)].defaultBlockState(), 2);
+							count++;
+						}
+					}
+				}
+				return count;
+			});
+			LOGGER.info("[scanner-frame] filled {} of {} cells of the tier {} area ({} x {})", filled, area.columns() * area.rows(), tier, area.columns(), area.rows());
+			context.waitTicks(100);
+			double without = millisPerFrame(context);
+
+			ScannerHudTest.leavePod(context, server);
+			ScannerHudTest.mountFirstPlayer(server, tier);
+			ClientWait.until(context, "the client riding a pod", client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
+			context.waitTicks(2 * TUNING.rescanTicks() + 2);
+			double with = millisPerFrame(context);
+			LOGGER.info("[scanner-frame] no scanner {} ms/frame, tier {} scanner {} ms/frame, scanner costs {} ms/frame", without, tier, with, with - without);
+		} finally {
+			context.runOnClient(client -> {
+				client.options.enableVsync().set(vsync);
+				client.options.framerateLimit().set(frameLimit);
+			});
+		}
+	}
+}

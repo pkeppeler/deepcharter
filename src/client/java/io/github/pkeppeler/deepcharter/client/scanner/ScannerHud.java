@@ -1,11 +1,15 @@
 package io.github.pkeppeler.deepcharter.client.scanner;
 
+import java.util.Optional;
+
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -27,8 +31,8 @@ import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
  * Side-view minimap of the ridden pod's surroundings, top right. Pod facing runs left to right. Drawn only while the pod has a
  * working scanner; its reach and detail follow the scanner's tier ({@link ScanSlice}).
  *
- * <p>Draws only with fill() and text(), in the fixed colours of {@link ScannerLook}: neither reads
- * world light, so the map is as readable in the dark of a deep layer as on the surface. It reads the
+ * <p>Draws cells as the block's own atlas sprite (see {@link ScannerSprites}) and everything else with fill() and text(), in the
+ * fixed colours of {@link ScannerLook}: none of it reads world light, so the map is as readable in the dark of a deep layer as on the surface. It reads the
  * client's own chunk data and rescans every {@link ScannerTuning#rescanTicks()} ticks.
  */
 public final class ScannerHud {
@@ -153,7 +157,11 @@ public final class ScannerHud {
 		return Component.translatable("deepcharter.scanner.title", scanned.tier());
 	}
 
-	/** The cells of {@code scanned} and the pod, {@code cell} pixels each, the top left cell of the area at ({@code left}, {@code top}). */
+	/**
+	 * The cells of {@code scanned} and the pod, {@code cell} pixels each, the top left cell of the area at ({@code left}, {@code top}). A
+	 * known cell is the block's own atlas sprite scaled down to the cell ({@link ScannerSprites}), with the theme's shade, lift or tint over
+	 * it; one with no usable sprite is its flat theme colour. Every sprite is of the one block atlas, so the draws batch into one texture bind.
+	 */
 	private static void drawCells(GuiGraphicsExtractor graphics, Minecraft client, ScanSlice scanned, int cell, int left, int top) {
 		ScannerLook look = ScannerLook.current();
 		ScanArea area = scanned.area();
@@ -162,7 +170,7 @@ public final class ScannerHud {
 			for (int ahead = -area.halfWidth(); ahead <= area.halfWidth(); ahead++) {
 				Cell found = scanned.cell(ahead, up);
 				if (!(found instanceof Cell.Air)) {
-					fillCell(graphics, area, cell, left, top, ahead, up, colour(look, found));
+					drawCell(graphics, scanned, look, cell, left, top, ahead, up, found);
 				}
 			}
 		}
@@ -173,14 +181,42 @@ public final class ScannerHud {
 		}
 	}
 
+	private static void drawCell(GuiGraphicsExtractor graphics, ScanSlice scanned, ScannerLook look, int cell, int left, int top, int ahead, int up, Cell found) {
+		ScanArea area = scanned.area();
+		Optional<TextureAtlasSprite> sprite = ScannerSprites.of(scanned, found, ahead, up);
+		if (sprite.isEmpty()) {
+			fillCell(graphics, area, cell, left, top, ahead, up, flatColour(look, found));
+			return;
+		}
+		int x = left + (ahead + area.halfWidth()) * cell;
+		int y = top + (area.up() - up) * cell;
+		graphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite.get(), x, y, cell, cell);
+		int overlay = overlay(look, found);
+		if ((overlay >>> 24) != 0) {
+			graphics.fill(x, y, x + cell, y + cell, overlay);
+		}
+	}
+
 	private static void fillCell(GuiGraphicsExtractor graphics, ScanArea area, int cell, int left, int top, int ahead, int up, int colour) {
 		int x = left + (ahead + area.halfWidth()) * cell;
 		int y = top + (area.up() - up) * cell;
 		graphics.fill(x, y, x + cell, y + cell, colour);
 	}
 
-	/** Opaque ARGB for a cell; ore gets its own colour per ore, falling back to a generic one. */
-	private static int colour(ScannerLook look, Cell cell) {
+	/** The colour laid over a cell's texture; transparent for a cell that has none. */
+	private static int overlay(ScannerLook look, Cell cell) {
+		return switch (cell) {
+			case Cell.Air air -> 0;
+			case Cell.Rock rock -> look.rockShadeColor();
+			case Cell.Lava lava -> 0;
+			case Cell.LavaNear near -> look.lavaNearShadeColor();
+			case Cell.Gas gas -> look.gasTintColor();
+			case Cell.Ore ore -> ore.block().defaultBlockState().is(GOLD_ORES) ? look.goldOreLiftColor() : look.oreLiftColor();
+		};
+	}
+
+	/** Opaque ARGB for a cell with no usable sprite; ore gets its own colour per ore, falling back to a generic one. */
+	private static int flatColour(ScannerLook look, Cell cell) {
 		return switch (cell) {
 			case Cell.Air air -> look.airColor();
 			case Cell.Rock rock -> look.rockColor();

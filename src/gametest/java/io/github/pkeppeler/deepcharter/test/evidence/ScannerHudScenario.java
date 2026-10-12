@@ -14,7 +14,7 @@ import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 
 /**
  * Evidence scenario "scanner-hud": the scanner on the surface at midnight, ore appearing in the
- * map as it is placed, then the same in the dark of layer 2. There, lava in the rock shows as open space on a tier 1 scanner and
+ * map as it is placed, then the same in the shallow layer 1 with an ore-rich patch (#537), then in the dark of layer 2. There, lava in the rock shows as open space on a tier 1 scanner and
  * in its own colour on a tier 2 one (#300).
  */
 public class ScannerHudScenario extends EvidenceScenario {
@@ -41,6 +41,19 @@ public class ScannerHudScenario extends EvidenceScenario {
 			frames(context);
 			// The flat surface world has only 4 blocks of ground under the pod.
 			addOre(context, server, -2, -3);
+
+			// #537: the same scan in the shallow layer, then an ore-rich patch in it.
+			ScannerHudTest.leavePod(context, server);
+			ScannerHudTest.goToLayer(server, 1);
+			ClientWait.until(context, "the client in layer 1", client -> client.level.dimension().identifier().getPath().equals("layer_1"));
+			context.waitTicks(40);
+			RoomCarver.carveAroundFirstPlayer(server);
+			ScannerHudTest.rideWithGoldAhead(context, server, 1);
+			screenshot(context, "scanner-layer-1");
+			frames(context);
+			addOrePatch(context, server);
+			screenshot(context, "scanner-ore-patch");
+			frames(context);
 
 			ScannerHudTest.leavePod(context, server);
 			ScannerHudTest.goToLayer(server, 2);
@@ -85,6 +98,15 @@ public class ScannerHudScenario extends EvidenceScenario {
 		frames(context);
 		ScannerHudTest.placeBesidePod(server, 12, ironUp, Blocks.IRON_ORE);
 		ScannerHudTest.placeBesidePod(server, 13, ironUp, Blocks.IRON_ORE);
+		frames(context);
+	}
+
+	/** A vein of mixed ore a few blocks below and ahead of the pod, inside tier 1's panel. */
+	private void addOrePatch(ClientGameTestContext context, TestServerContext server) {
+		Block[] vein = {Blocks.COAL_ORE, Blocks.IRON_ORE, Blocks.COPPER_ORE, Blocks.REDSTONE_ORE, Blocks.LAPIS_ORE, Blocks.DIAMOND_ORE, Blocks.EMERALD_ORE};
+		for (int i = 0; i < 12; i++) {
+			ScannerHudTest.placeBesidePod(server, -10 + (i * 5) % 7, -6 - i / 3, vein[i % vein.length]);
+		}
 		frames(context);
 	}
 

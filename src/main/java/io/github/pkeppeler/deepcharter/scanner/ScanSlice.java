@@ -36,11 +36,13 @@ public final class ScanSlice {
 	private final int tier;
 	private final ScanArea area;
 	private final Cell[] cells;
+	private final Block[] blocks;
 
-	private ScanSlice(int tier, ScanArea area, Cell[] cells) {
+	private ScanSlice(int tier, ScanArea area, Cell[] cells, Block[] blocks) {
 		this.tier = tier;
 		this.area = area;
 		this.cells = cells;
+		this.blocks = blocks;
 	}
 
 	/**
@@ -86,13 +88,17 @@ public final class ScanSlice {
 		boolean showsGas = TUNING.showsGas(tier);
 		int lavaSpread = TUNING.lavaSpread(chassis);
 		Cell[] cells = new Cell[area.columns() * area.rows()];
+		Block[] blocks = new Block[cells.length];
 		for (int up = area.up(); up >= -area.down(); up--) {
 			for (int ahead = -area.halfWidth(); ahead <= area.halfWidth(); ahead++) {
 				BlockPos pos = origin.relative(facing, ahead).above(up);
-				cells[index(area, ahead, up)] = classify(level, pos, level.getBlockState(pos), facing, showsLava, showsGas, lavaSpread);
+				BlockState state = level.getBlockState(pos);
+				int index = index(area, ahead, up);
+				cells[index] = classify(level, pos, state, facing, showsLava, showsGas, lavaSpread);
+				blocks[index] = state.getBlock();
 			}
 		}
-		return new ScanSlice(tier, area, cells);
+		return new ScanSlice(tier, area, cells, blocks);
 	}
 
 	public int tier() {
@@ -108,6 +114,17 @@ public final class ScanSlice {
 			throw new IllegalArgumentException("cell (ahead %d, up %d) is outside the slice".formatted(ahead, up));
 		}
 		return cells[index(area, ahead, up)];
+	}
+
+	/**
+	 * The block in a cell, whatever the cell reads as: the client draws a rock or ore cell with this block's own texture. For a lava cell it is
+	 * the lava, or air for lava only beside the plane, and for water or a plant on a scanner that reads them as open space it is that block.
+	 */
+	public Block block(int ahead, int up) {
+		if (!area.contains(ahead, up)) {
+			throw new IllegalArgumentException("cell (ahead %d, up %d) is outside the slice".formatted(ahead, up));
+		}
+		return blocks[index(area, ahead, up)];
 	}
 
 	/** Row-major, top row first, so the HUD can walk the array in draw order. */
