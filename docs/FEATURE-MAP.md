@@ -185,7 +185,7 @@ flowchart LR
 
 ### In progress
 
-- **Company Rock look** (company-rock): A concept round for how Company Rock looks is under way; the chosen look is built later. [#503](https://github.com/pkeppeler/deepcharter/issues/503)
+- **Company Rock look** (company-rock): A concept round for how Company Rock looks is under way; the chosen look is built later. [#503](https://github.com/pkeppeler/deepcharter/issues/503), [company-rock-concepts.md](design/company-rock-concepts.md)
 - **Cockpit HUD with gauges** (interface): A cockpit HUD with gauges that hides the vanilla hotbar while seated. [#247](https://github.com/pkeppeler/deepcharter/issues/247), [#520](https://github.com/pkeppeler/deepcharter/issues/520)
 - **Layer rock textures and grades** (layers): Grained rock textures for layers 1 and 2, a lava redraw and an I-beam fix; depth palettes and colour grades follow. [#241](https://github.com/pkeppeler/deepcharter/issues/241)
 
@@ -909,7 +909,7 @@ flowchart LR
 | Icon | Still | Feature | What it is | Status | Links |
 |---|---|---|---|---|---|
 | <img src="../src/main/resources/assets/deepcharter/textures/block/company_rock.png" width="32" alt=""> | no still yet | <a id="company-rock"></a>**Company Rock**<br>hazard | Rock the drill refuses; a bore must step aside two blocks, which costs fuel and time and risks the next pocket. | ✅ Built | [ADR 0015](adr/0015-zones-are-filled-block-by-block-from-the-originals-rows.md), [#509](https://github.com/pkeppeler/deepcharter/issues/509), [#503](https://github.com/pkeppeler/deepcharter/issues/503) |
-| ⚙️ | no still yet | <a id="company-rock-look"></a>**Company Rock look**<br>mechanic | A concept round for how Company Rock looks is under way; the chosen look is built later. | 🔨 In progress | [#503](https://github.com/pkeppeler/deepcharter/issues/503) |
+| ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/523/place-bore.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/523/place-bore.png?raw=true" width="160" alt=""></a> | <a id="company-rock-look"></a>**Company Rock look**<br>mechanic | A concept round for how Company Rock looks is under way; the chosen look is built later. | 🔨 In progress | [#503](https://github.com/pkeppeler/deepcharter/issues/503), [company-rock-concepts.md](design/company-rock-concepts.md) |
 | 🛡️ | no still yet | <a id="sidestep"></a>**Steer round it**<br>counter | Step the pod aside and drill on; the scanner shows nothing of it. | ✅ Built |  |
 | 🧪 | no still yet | <a id="blasting-charge"></a>**Blasting charge**<br>consumable | A bought charge set from the seat with a fuse: clears Company Rock in a small radius, and hurts a pod that is too close. | 📋 Planned | [#509](https://github.com/pkeppeler/deepcharter/issues/509) |
 | 🧪 | no still yet | <a id="shaped-charge"></a>**Shaped charge**<br>consumable | A dearer, directed blast that clears a whole slab column. | 📋 Planned | [#509](https://github.com/pkeppeler/deepcharter/issues/509) |

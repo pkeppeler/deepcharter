@@ -1,0 +1,144 @@
+{
+  "templates": {},
+  "recipes": {
+    "block/company_rock_crystal_base_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "noise",
+          "ramp": [
+            "hardpan.0",
+            "hardpan.1",
+            "hardpan.1",
+            "hardpan.2"
+          ],
+          "seed": 7600,
+          "cell": 4,
+          "octaves": 2,
+          "dither": 0.4
+        },
+        {
+          "op": "speckle",
+          "colours": [
+            "quartz.0",
+            "quartz.1"
+          ],
+          "density": 0.08,
+          "seed": 7610
+        },
+        {
+          "op": "speckle",
+          "colours": [
+            "quartz.3"
+          ],
+          "density": 0.02,
+          "seed": 7620
+        },
+        {
+          "op": "cracks",
+          "colour": "hardpan.0",
+          "lip": "quartz.1",
+          "seed": 7630,
+          "count": 3,
+          "length": 9
+        }
+      ]
+    },
+    "block/company_rock_crystal_base_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "noise",
+          "ramp": [
+            "hardpan.0",
+            "hardpan.1",
+            "hardpan.1",
+            "hardpan.2"
+          ],
+          "seed": 7601,
+          "cell": 4,
+          "octaves": 2,
+          "dither": 0.4
+        },
+        {
+          "op": "speckle",
+          "colours": [
+            "quartz.0",
+            "quartz.1"
+          ],
+          "density": 0.08,
+          "seed": 7611
+        },
+        {
+          "op": "speckle",
+          "colours": [
+            "quartz.3"
+          ],
+          "density": 0.02,
+          "seed": 7621
+        },
+        {
+          "op": "cracks",
+          "colour": "hardpan.0",
+          "lip": "quartz.1",
+          "seed": 7631,
+          "count": 3,
+          "length": 9
+        }
+      ]
+    },
+    "block/company_rock_crystal_facet": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "fibres",
+          "ramp": [
+            "quartz.2",
+            "quartz.3",
+            "quartz.3",
+            "quartz.4"
+          ],
+          "seed": 7640,
+          "breaks": 3,
+          "spread": 1
+        },
+        {
+          "op": "rect",
+          "rect": [
+            1,
+            0,
+            1,
+            16
+          ],
+          "colour": "quartz.5"
+        },
+        {
+          "op": "rect",
+          "rect": [
+            14,
+            0,
+            2,
+            16
+          ],
+          "colour": "quartz.0"
+        },
+        {
+          "op": "speckle",
+          "colours": [
+            "quartz.5"
+          ],
+          "density": 0.06,
+          "seed": 7641
+        },
+        {
+          "op": "speckle",
+          "colours": [
+            "quartz.0"
+          ],
+          "density": 0.05,
+          "seed": 7642
+        }
+      ]
+    }
+  }
+}
