@@ -27,12 +27,10 @@ import io.github.pkeppeler.deepcharter.test.support.ConceptRock;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 
 /**
- * Evidence scenario "company-rock-concepts" (#503, docs/design/company-rock-concepts.md): the four looks of Company Rock, and the steel plate
- * it has today, in layers 1 and 2, each shot where a player meets it: in the wall of a bore, close up, in a cave, beside lava, and from the
- * pod at range. Every room is sealed in the layer's rock (granite and tuff, which the Grain test pack of the layer concepts draws as
- * Grain rock, the look #241 is building), so the void is never in a frame, and the pod's lamp is a level 12 light where the camera is.
- * Each still is {@code <option>-l<layer>-<place>}: {@code crystal-l2-lava}. The options are test packs that only this scenario turns on.
- * A look that is more than a cube is drawn on {@link ConceptRock}, Company Rock that lets light in, which the shipped block must be too if it is picked.
+ * Evidence scenario "company-rock-concepts" (#503, docs/design/company-rock-concepts.md): the four looks of Company Rock and today's steel plate,
+ * in layers 1 and 2, each shot in the places a player meets it. Every room is sealed in the layer's rock (granite and tuff in the Grain test pack),
+ * so the void is never in a frame. Each still is {@code <option>-l<layer>-<place>}: {@code crystal-l2-lava}. A look that is more than a cube is
+ * drawn on {@link ConceptRock}.
  */
 public class CompanyRockConceptsScenario extends EvidenceScenario {
 	/** One look: its still prefix and its test pack (none for the shipped plate, which is drawn on the shipped block). */
@@ -46,21 +44,17 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 	private static final BlockPos ORIGIN = new BlockPos(3616, 40, 3616);
 	private static final BlockPos ROCK_LOW = new BlockPos(-16, -3, -16);
 	private static final BlockPos ROCK_HIGH = new BlockPos(63, 12, 15);
-	/** Company Rock, in blocks from the origin: a patch of four in the wall of each room, as the worldgen scatters it. */
-	private static final List<BlockPos> BORE_PATCH = List.of(new BlockPos(3, 5, -1), new BlockPos(4, 5, -1), new BlockPos(4, 6, -1), new BlockPos(2, 4, -1));
-	private static final List<BlockPos> CAVE_PATCH = List.of(new BlockPos(19, 3, -1), new BlockPos(20, 3, -1), new BlockPos(20, 4, -1), new BlockPos(18, 2, -1),
-			new BlockPos(16, 3, 8));
-	private static final List<BlockPos> LAVA_PATCH = List.of(new BlockPos(39, 1, -1), new BlockPos(40, 1, -1), new BlockPos(40, 2, -1), new BlockPos(38, 2, -1));
-	private static final List<BlockPos> HALL_PATCH = List.of(new BlockPos(53, 2, -1), new BlockPos(54, 2, -1), new BlockPos(54, 3, -1), new BlockPos(56, 3, -1),
-			new BlockPos(52, 1, -1));
+	/** Company Rock, in blocks from the origin: a patch in the wall of each of the four rooms (bore, cave, lava, hall), as the worldgen scatters it. */
+	private static final List<BlockPos> PATCHES = List.of(
+			new BlockPos(3, 5, -1), new BlockPos(4, 5, -1), new BlockPos(4, 6, -1), new BlockPos(2, 4, -1),
+			new BlockPos(19, 3, -1), new BlockPos(20, 3, -1), new BlockPos(20, 4, -1), new BlockPos(18, 2, -1), new BlockPos(16, 3, 8),
+			new BlockPos(39, 1, -1), new BlockPos(40, 1, -1), new BlockPos(40, 2, -1), new BlockPos(38, 2, -1),
+			new BlockPos(53, 2, -1), new BlockPos(54, 2, -1), new BlockPos(54, 3, -1), new BlockPos(56, 3, -1), new BlockPos(52, 1, -1));
 	private static final int LAMP = 12;
 	private static final int SETTLE_TICKS = 20;
 	/** Longer than the default 120 s: the first still waits for the layer's chunks to generate on a loaded machine. */
 	private static final int SETTLE_LIMIT_SECONDS = 300;
-	/**
-	 * The render distance, in chunks, while the scenario runs. Not measured as a speed-up: it means fewer tall-world chunks to generate round the rooms,
-	 * and every run that finished used it. Every room is sealed in rock, so no still shows the difference.
-	 */
+	/** The render distance, in chunks, while the scenario runs: fewer tall-world chunks to generate round the rooms. Every room is sealed in rock, so no still shows it. */
 	private static final int RENDER_DISTANCE = 2;
 	/** The first frame after the player mounts is tinted, so the pod still waits for the mount's fade. */
 	private static final int MOUNT_TICKS = 80;
@@ -211,10 +205,8 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 
 	/** Sets every patch of Company Rock of a layer to {@code rock}: the shipped block, or the stand-in of the options. */
 	private static void place(ServerLevel level, Block rock) {
-		for (List<BlockPos> patch : List.of(BORE_PATCH, CAVE_PATCH, LAVA_PATCH, HALL_PATCH)) {
-			for (BlockPos at : patch) {
-				level.setBlock(absolute(at), rock.defaultBlockState(), Block.UPDATE_ALL);
-			}
+		for (BlockPos at : PATCHES) {
+			level.setBlock(absolute(at), rock.defaultBlockState(), Block.UPDATE_ALL);
 		}
 	}
 

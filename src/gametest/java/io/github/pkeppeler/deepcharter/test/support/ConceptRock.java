@@ -12,13 +12,9 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 
 /**
- * A stand-in for Company Rock that the Company Rock concept round (#503, docs/design/company-rock-concepts.md) places for the options that are
- * more than a cube. It is Company Rock with {@code noOcclusion()}, the way the mod's other shaped blocks are: the game lights a quad that is not
- * on a block's own face from the block's own cell, an opaque cell holds no light, so a stud, a strap or a crystal on an opaque block is drawn black.
- * A block that lets light in has the cell lit from its neighbours. The shipped Company Rock stays opaque until a look is picked; the pick's build
- * sets {@code noOcclusion()} on it if the look needs it. The test packs of the round draw this block's blockstate. Registered by the test mod
- * only, so no asset test asks for its files and the game never places it. A block can only be registered while mods initialise, which is why
- * this is an entrypoint.
+ * A stand-in for Company Rock for the concept round (#503, docs/design/company-rock-concepts.md): the same block with {@code noOcclusion()}, so a
+ * stud, strap or crystal is lit from its neighbours and not drawn black. Registered by the test mod only, in an entrypoint because a block can only be
+ * registered while mods initialise.
  */
 public final class ConceptRock implements ModInitializer {
 	public static final Block BLOCK = register();
