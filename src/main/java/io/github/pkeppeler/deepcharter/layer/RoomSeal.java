@@ -21,11 +21,12 @@ public final class RoomSeal {
 
 	/** Seals the shell around the box from {@code min} to {@code max}, both inclusive; the box itself is left alone. */
 	public static void seal(ServerLevel level, BlockPos min, BlockPos max) {
+		BlockState ground = LayerBlocks.groundOf(level).defaultBlockState();
 		for (BlockPos pos : BlockPos.betweenClosed(min.offset(-1, -1, -1), max.offset(1, 1, 1))) {
 			boolean inside = pos.getX() >= min.getX() && pos.getX() <= max.getX() && pos.getY() >= min.getY()
 					&& pos.getY() <= max.getY() && pos.getZ() >= min.getZ() && pos.getZ() <= max.getZ();
 			if (!inside && !level.isOutsideBuildHeight(pos) && needsSealing(level.getBlockState(pos))) {
-				level.setBlock(pos.immutable(), LayerBlocks.groundOf(level).defaultBlockState(), Block.UPDATE_CLIENTS);
+				level.setBlock(pos.immutable(), ground, Block.UPDATE_CLIENTS);
 			}
 		}
 	}

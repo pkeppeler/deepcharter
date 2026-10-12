@@ -48,13 +48,14 @@ final class StructurePlan {
 	 */
 	void seal() {
 		BoundingBox bounds = site.bounds();
+		BlockState ground = LayerBlocks.groundOf(level).defaultBlockState();
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
 		for (int x = Math.max(bounds.minX() - 1, chunkPos.getMinBlockX()); x <= Math.min(bounds.maxX() + 1, chunkPos.getMaxBlockX()); x++) {
 			for (int z = Math.max(bounds.minZ() - 1, chunkPos.getMinBlockZ()); z <= Math.min(bounds.maxZ() + 1, chunkPos.getMaxBlockZ()); z++) {
 				for (int y = Math.max(bounds.minY() - 1, level.getMinY()); y <= Math.min(bounds.maxY() + 1, level.getMaxY()); y++) {
 					pos.set(x, y, z);
 					if (RoomSeal.needsSealing(chunk.getBlockState(pos))) {
-						chunk.setBlockState(pos, LayerBlocks.groundOf(level).defaultBlockState(), FLAGS);
+						chunk.setBlockState(pos, ground, FLAGS);
 						level.getLightEngine().checkBlock(pos);
 					}
 				}

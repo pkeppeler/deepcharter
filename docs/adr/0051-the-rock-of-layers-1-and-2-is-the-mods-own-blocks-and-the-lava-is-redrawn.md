@@ -26,4 +26,5 @@ Builds on [ADR 0037](0037-texture-layers-are-generated-data-and-casings-connect-
 ## Consequences
 
 - The four block ids are permanent: a world's chunks and loot name them.
+- Old worlds need no migration, but show a seam: chunks generated before this change keep vanilla `minecraft:stone`, because the zone fill runs only at chunk generation and `#layer_ground` excludes stone, so a border of stone against the new rock shows where old chunks meet new ones.
 - Layer 3's rock will need `groundOf` to name it, and the stand-in test pack of its look (`layer_concept_grain`) goes with it.
