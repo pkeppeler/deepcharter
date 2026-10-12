@@ -162,7 +162,6 @@ def bedded(shades: list[str], seed: int, form: int, mid: int = 2) -> Grid:
     thin at the other, and the waves are the layer's own (`form`): every variant shares them, give or take a turn of phase and a pixel or
     two of height, so a bed runs on across the edge to the next block and over the top of the one below. The beds differ by a shade, the first row of a bed is a
     shade darker in places, and a grain runs through all of it. The face wraps on itself, so the sixth bed is the first."""
-    base = seed
     edges = []
     for k, start in enumerate(BED_STARTS):
         edges.append((start + (hashf(form, k, 1) - 0.5) * 0.8, 0.8 + hashf(form, k, 2) * 0.8, 1 + int(hashf(form, k, 3) * 2),
@@ -175,12 +174,12 @@ def bedded(shades: list[str], seed: int, form: int, mid: int = 2) -> Grid:
             w = edge_weight(x, y)
             tops = sorted(((y0 + lift * w + amp * sine_at(turns * x + phase + jitter * w)) % SIZE, k) for k, (y0, amp, turns, phase, jitter, lift) in enumerate(edges))
             # A bed's edge is frayed: each pixel is a little above or below where it is, so the edge is a band two rows deep and not a line.
-            place = y + 0.5 + (pinned(seed, base, x, y, 7) - 0.5) * 1.6
+            place = y + 0.5 + (pinned(seed, seed, x, y, 7) - 0.5) * 1.6
             above = [t for t in tops if t[0] <= place % SIZE]
             top, bed = above[-1] if above else (tops[-1][0] - SIZE, tops[-1][1])
             lip = place % SIZE - top
-            shade = mid + BED_SHADES[bed] - (1 if lip < 1.0 and pinned(seed, base, x, y, 6) > 0.75 else 0)
-            g[y][x] = clamp(shade + grain(seed + 10, base + 10, x, y, 0.58), shades)
+            shade = mid + BED_SHADES[bed] - (1 if lip < 1.0 and pinned(seed, seed, x, y, 6) > 0.75 else 0)
+            g[y][x] = clamp(shade + grain(seed + 10, seed + 10, x, y, 0.58), shades)
     return g
 
 

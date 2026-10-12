@@ -48,11 +48,15 @@ public final class LayerBlocks {
 
 	/** Vanilla stone's strength and sound: the rock is the ground the pod drills and a hand mines, and only its look is the layer's. */
 	private static Block rock(ResourceKey<Block> key) {
-		return new Block(BlockBehaviour.Properties.of().setId(key).strength(1.5F, 6.0F).sound(SoundType.STONE).requiresCorrectToolForDrops());
+		return stone(key, 1.5F);
 	}
 
 	private static Block rubble(ResourceKey<Block> key) {
-		return new Block(BlockBehaviour.Properties.of().setId(key).strength(2.0F, 6.0F).sound(SoundType.STONE).requiresCorrectToolForDrops());
+		return stone(key, 2.0F);
+	}
+
+	private static Block stone(ResourceKey<Block> key, float destroyTime) {
+		return new Block(BlockBehaviour.Properties.of().setId(key).strength(destroyTime, 6.0F).sound(SoundType.STONE).requiresCorrectToolForDrops());
 	}
 
 	/** The rock that a layer's noise settings fill the ground with, and that the zone fill (ADR 0015) turns into ore and hazards. */

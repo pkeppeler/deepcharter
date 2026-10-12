@@ -122,11 +122,7 @@ def i_beam() -> Model:
     t = {"flange": tex("beam"), "web": tex("beam_web"), "end": tex("beam_end"), "particle": tex("beam")}
     profile = (((2, 2), (14, 4.5), {"*": "#flange"}), ((2, 11.5), (14, 14), {"*": "#flange"}),
                ((6.75, 4.5), (9.25, 11.5), {"*": "#web", "north": None, "south": None}))
-    boxes = [
-        Box((2, 0, 2), (14, 16, 4.5), {"*": "#flange", "up": "#end", "down": "#end"}, cull=True),
-        Box((2, 0, 11.5), (14, 16, 14), {"*": "#flange", "up": "#end", "down": "#end"}, cull=True),
-        Box((6.75, 0, 4.5), (9.25, 16, 11.5), {"*": "#web", "north": None, "south": None, "up": "#end", "down": "#end"}, cull=True),
-    ]
+    boxes = [Box((lo[0], 0, lo[1]), (hi[0], 16, hi[1]), {**faces, "up": "#end", "down": "#end"}, cull=True) for lo, hi, faces in profile]
     for lo, hi, faces in profile:
         for y0, y1 in ((-BEAM_REACH, 0), (16, 16 + BEAM_REACH)):
             boxes.append(Box((lo[0], y0, lo[1]), (hi[0], y1, hi[1]), {**faces, "up": None, "down": None}))
