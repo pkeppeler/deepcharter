@@ -53,8 +53,8 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 	private static final List<BlockPos> CAVE_PATCH = List.of(new BlockPos(19, 3, -1), new BlockPos(20, 3, -1), new BlockPos(20, 4, -1), new BlockPos(18, 2, -1),
 			new BlockPos(16, 3, 8));
 	private static final List<BlockPos> LAVA_PATCH = List.of(new BlockPos(39, 1, -1), new BlockPos(40, 1, -1), new BlockPos(40, 2, -1), new BlockPos(38, 2, -1));
-	private static final List<BlockPos> HALL_PATCH = List.of(new BlockPos(53, 2, 11), new BlockPos(54, 2, 11), new BlockPos(54, 3, 11), new BlockPos(56, 3, 11),
-			new BlockPos(52, 1, 11));
+	private static final List<BlockPos> HALL_PATCH = List.of(new BlockPos(53, 2, -1), new BlockPos(54, 2, -1), new BlockPos(54, 3, -1), new BlockPos(56, 3, -1),
+			new BlockPos(52, 1, -1));
 	private static final int LAMP = 12;
 	private static final int SETTLE_TICKS = 20;
 	/**
@@ -80,7 +80,7 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 			new View("lava", new Vec3(40.0, 2.7, 6.5), new Vec3(39.4, 1.8, -1)));
 	/** The pod: it stands at the south end of the hall and looks south at the patch on the far wall. */
 	private static final Vec3 SEAT_POD = new Vec3(54.5, 1, 5.5);
-	private static final Vec3 SEAT_TARGET = new Vec3(54.5, 2.6, 11);
+	private static final Vec3 SEAT_TARGET = new Vec3(54.5, 2.6, -1);
 
 	@Override
 	protected String name() {
@@ -260,10 +260,11 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 		ServerPlayer player = level.getServer().getPlayerList().getPlayers().getFirst();
 		Vec3 at = absolute(SEAT_POD);
 		Vec3 target = absolute(SEAT_TARGET);
-		player.teleportTo(level, at.x, at.y, at.z, Set.of(), 0.0f, 0.0f, true);
+		player.teleportTo(level, at.x, at.y, at.z, Set.of(), 180.0f, 0.0f, true);
 		player.setNoGravity(false);
 		PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
 		pod.setPos(at.x, at.y, at.z);
+		pod.setYRot(180.0f);
 		pod.setFuel(100f);
 		level.addFreshEntity(pod);
 		if (!player.startRiding(pod)) {

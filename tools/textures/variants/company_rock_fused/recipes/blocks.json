@@ -184,10 +184,10 @@
         {
           "op": "noise",
           "ramp": [
-            "obsidian.2",
             "obsidian.3",
-            "obsidian.3",
-            "obsidian.4"
+            "obsidian.4",
+            "obsidian.4",
+            "obsidian.5"
           ],
           "seed": 7740,
           "cell": 4,
