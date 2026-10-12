@@ -41,10 +41,10 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 	private static final List<Option> OPTIONS = List.of(new Option("now", null), new Option("joint", TestPacks.COMPANY_ROCK_JOINT),
 			new Option("strap", TestPacks.COMPANY_ROCK_STRAP), new Option("crystal", TestPacks.COMPANY_ROCK_CRYSTAL),
 			new Option("fused", TestPacks.COMPANY_ROCK_FUSED));
-	/** Where the rooms stand in each layer's dimension, on a chunk boundary, and the box of rock round all of them. */
-	private static final BlockPos ORIGIN = new BlockPos(3600, 40, 3600);
-	private static final BlockPos ROCK_LOW = new BlockPos(-2, -3, -3);
-	private static final BlockPos ROCK_HIGH = new BlockPos(62, 12, 14);
+	/** Where the rooms stand in each layer's dimension, on a chunk boundary, and the box of whole chunks of rock round all of them (a chunk the box covers in part never reached the client in two runs of three). */
+	private static final BlockPos ORIGIN = new BlockPos(3616, 40, 3616);
+	private static final BlockPos ROCK_LOW = new BlockPos(-16, -3, -16);
+	private static final BlockPos ROCK_HIGH = new BlockPos(63, 12, 15);
 	/** Company Rock, in blocks from the origin: a patch of four in the wall of each room, as the worldgen scatters it. */
 	private static final List<BlockPos> BORE_PATCH = List.of(new BlockPos(3, 5, -1), new BlockPos(4, 5, -1), new BlockPos(4, 6, -1), new BlockPos(2, 4, -1));
 	private static final List<BlockPos> CAVE_PATCH = List.of(new BlockPos(19, 3, -1), new BlockPos(20, 3, -1), new BlockPos(20, 4, -1), new BlockPos(18, 2, -1),
