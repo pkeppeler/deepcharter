@@ -112,6 +112,11 @@ public final class ScannerHud {
 		drawCells(graphics, client, scanned, cell, left, top);
 	}
 
+	/** Whether the ridden pod has a working scanner, so there is a map to show; the cockpit draws its scanner bezel only then. */
+	public static boolean hasMap() {
+		return slice != null;
+	}
+
 	/**
 	 * Draws the map in the cockpit's scanner window instead of at top right: the cells as large as fit whole in {@code window}, centred in it,
 	 * on the air colour. Draws nothing without a slice, that is without a working scanner.
@@ -123,19 +128,34 @@ public final class ScannerHud {
 		}
 		ScannerLook look = ScannerLook.current();
 		ScanArea area = scanned.area();
-		int cell = Math.max(1, Math.min(look.cellPixels(), Math.min(window.width() / area.columns(), window.height() / area.rows())));
 		int windowLeft = window.left(graphics.guiWidth());
 		int windowTop = window.top(graphics.guiHeight());
-		int left = windowLeft + (window.width() - area.columns() * cell) / 2;
-		int top = windowTop + (window.height() - area.rows() * cell) / 2;
 		graphics.fill(windowLeft, windowTop, windowLeft + window.width(), windowTop + window.height(), look.airColor());
 		// A slice larger than the window (tier 4) is cut at the window's edge, never drawn over the gauges beside it.
 		graphics.enableScissor(windowLeft, windowTop, windowLeft + window.width(), windowTop + window.height());
 		try {
-			drawCells(graphics, client, scanned, cell, left, top);
+			drawCells(graphics, client, scanned, windowCellSize(window, area), windowCellLeft(graphics.guiWidth(), window, area, -area.halfWidth()),
+					windowCellTop(graphics.guiHeight(), window, area, area.up()));
 		} finally {
 			graphics.disableScissor();
 		}
+	}
+
+	/** GUI pixels per cell in the cockpit's window: the tuned size, or the largest that holds the area whole, down to 1. */
+	public static int windowCellSize(Decal window, ScanArea area) {
+		return Math.max(1, Math.min(ScannerLook.current().cellPixels(), Math.min(window.width() / area.columns(), window.height() / area.rows())));
+	}
+
+	/** Left edge in GUI pixels of the cell {@code ahead} blocks along the facing, in the cockpit's window (the area is centred in it). */
+	public static int windowCellLeft(int guiWidth, Decal window, ScanArea area, int ahead) {
+		int cell = windowCellSize(window, area);
+		return window.left(guiWidth) + (window.width() - area.columns() * cell) / 2 + (ahead + area.halfWidth()) * cell;
+	}
+
+	/** Top edge in GUI pixels of the cell {@code up} blocks above the pod's feet, in the cockpit's window. */
+	public static int windowCellTop(int guiHeight, Decal window, ScanArea area, int up) {
+		int cell = windowCellSize(window, area);
+		return window.top(guiHeight) + (window.height() - area.rows() * cell) / 2 + (area.up() - up) * cell;
 	}
 
 	/** The title of the cockpit's window, centred just under it. It is drawn after the bezel, which has a recess for it. */

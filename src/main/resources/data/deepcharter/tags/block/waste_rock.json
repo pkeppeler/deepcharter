@@ -1,6 +1,10 @@
 {
   "values": [
     "#minecraft:base_stone_overworld",
-    "#minecraft:dirt"
+    "#minecraft:dirt",
+    "deepcharter:packed_shale",
+    "deepcharter:green_shale",
+    "deepcharter:packed_shale_rubble",
+    "deepcharter:green_shale_rubble"
   ]
 }

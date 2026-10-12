@@ -1,4 +1,8 @@
 {
+  "block.deepcharter.green_shale": "Green Shale",
+  "block.deepcharter.green_shale_rubble": "Green Shale Rubble",
+  "block.deepcharter.packed_shale": "Packed Shale",
+  "block.deepcharter.packed_shale_rubble": "Packed Shale Rubble",
   "deepcharter.layer.goto.no_such_layer": "No layer %s: the chain has %s layers",
   "deepcharter.layer.goto.success": "Moved to layer %s"
 }

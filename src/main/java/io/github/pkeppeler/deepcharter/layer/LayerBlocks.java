@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.layer;
 
+import java.util.OptionalInt;
 import java.util.function.Function;
 
 import net.minecraft.core.Registry;
@@ -7,15 +8,21 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 
-/** Blocks of the layer feature. */
+/**
+ * Blocks of the layer feature: the breach crust, and the rock of layers 1 and 2 with its rubble. Their looks (ten textures of the rock, two of the
+ * rubble) are blockstate variants in the resource pack, written by {@code tools/layer_concepts/make.py}.
+ */
 public final class LayerBlocks {
 	private static final Identifier BREACH_CRUST_ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "breach_crust");
 
@@ -23,7 +30,52 @@ public final class LayerBlocks {
 	public static final Block BREACH_CRUST = registerBlock(BREACH_CRUST_ID,
 			key -> new Block(BlockBehaviour.Properties.of().setId(key).strength(5.0F, 6.0F).sound(SoundType.STONE).noLootTable()));
 
+	/** The rust-brown rock of layer 1, which the layer's noise settings fill the ground with. */
+	public static final Block PACKED_SHALE = registerBlock(id("packed_shale"), LayerBlocks::rock);
+	/** The grey-green rock of layer 2, which the layer's noise settings fill the ground with. */
+	public static final Block GREEN_SHALE = registerBlock(id("green_shale"), LayerBlocks::rock);
+	/** Broken rock of layer 1, for the rubble heaps of its formation. */
+	public static final Block PACKED_SHALE_RUBBLE = registerBlock(id("packed_shale_rubble"), LayerBlocks::rubble);
+	/** Broken rock of layer 2, for the rubble heaps of its formation. */
+	public static final Block GREEN_SHALE_RUBBLE = registerBlock(id("green_shale_rubble"), LayerBlocks::rubble);
+
 	private LayerBlocks() {
+	}
+
+	private static Identifier id(String path) {
+		return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path);
+	}
+
+	/** Vanilla stone's strength and sound: the rock is the ground the pod drills and a hand mines, and only its look is the layer's. */
+	private static Block rock(ResourceKey<Block> key) {
+		return stone(key, 1.5F);
+	}
+
+	private static Block rubble(ResourceKey<Block> key) {
+		return stone(key, 2.0F);
+	}
+
+	private static Block stone(ResourceKey<Block> key, float destroyTime) {
+		return new Block(BlockBehaviour.Properties.of().setId(key).strength(destroyTime, 6.0F).sound(SoundType.STONE).requiresCorrectToolForDrops());
+	}
+
+	/** The rock that a layer's noise settings fill the ground with, and that the zone fill (ADR 0015) turns into ore and hazards. */
+	public static final TagKey<Block> GROUND = TagKey.create(Registries.BLOCK, id("layer_ground"));
+
+	/**
+	 * The ground of the layer that a level is, for a room that is sealed or filled in it: the layer's own rock, so that no block of vanilla stone shows
+	 * in it. Any other level (the surface, a test's) has vanilla stone.
+	 */
+	public static Block groundOf(Level level) {
+		OptionalInt layer = LayerChain.layerOf(level.dimensionTypeRegistration().unwrapKey().orElseThrow().identifier());
+		if (layer.isEmpty()) {
+			return Blocks.STONE;
+		}
+		return switch (layer.getAsInt()) {
+			case 1 -> PACKED_SHALE;
+			case 2 -> GREEN_SHALE;
+			default -> throw new IllegalStateException("Layer " + layer.getAsInt() + " has no rock block yet (layer 3 waits for M3, #504)");
+		};
 	}
 
 	/** Loads the class, which registers the blocks. */

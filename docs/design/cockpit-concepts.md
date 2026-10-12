@@ -4,7 +4,7 @@
 
 **Status: round 1, superseded by [round 2](cockpit-concepts-2.md).** The user liked C, Consoles, and asked for far smaller status panels, a see-the-pod view and a front camera ([#448](https://github.com/pkeppeler/deepcharter/issues/448)). Round 2 removed A and B from the game with their sprites, keys and generator code (their stills stay in [pr-media/445](https://github.com/pkeppeler/deepcharter/tree/pr-media/445)) and kept Consoles, as `style` 1, to compare against. This page is how round 1 was shot and what it found; the sections below describe A and B as they were.
 
-**Status of the mod:** it ships `style` 0, so a player sees no change: the plain text HUD, the scanner at top right and the vanilla HUD stay as they were until a pack picks a style.
+**Status of the mod:** round 2 was picked and built: the mod ships the Ribbon ([#247](https://github.com/pkeppeler/deepcharter/issues/247), see [round 2](cockpit-concepts-2.md)). Round 1's Consoles, with the `style` key, the test packs and the generator code for every unpicked look, were removed with the pick. This page stays as the record of round 1.
 
 ## What every option shares (already decided)
 
@@ -25,6 +25,8 @@
 "Covers" is the share of a 427 x 240 GUI (an 854 x 480 window at GUI scale 2) that the option's sprites make opaque; the scanner window, 98 x 82, adds 8 %. The plain HUD's scanner at top right is 147 x 123 (18 %), so every option has a smaller scanner than today: the window holds a tier 1 slice (49 x 41 cells) at 2 pixels a cell, and a tier 2 (73 x 61) or tier 3 slice (97 x 81) at 1 pixel.
 
 ## How they are drawn, and how to see them
+
+> **Superseded by the Ribbon build ([#247](https://github.com/pkeppeler/deepcharter/issues/247)):** the `style` key, the packs `cockpit_dials`, `cockpit_strip` and `cockpit_consoles`, `tools/cockpit_concepts.py` and its test are gone. See [cockpit-concepts-2.md](cockpit-concepts-2.md). The list below is how round 1 was built.
 
 - **`theme/cockpit.json`** has `style` (0 none, 1 dials, 2 strip, 3 consoles in round 1; round 2 renumbered it, 1 is the consoles), the colours and easing shared by all three, and each style's decals, gauges, scanner window, readout plate and altimeter position under the style's name (`dialsFuelX`, `stripScannerW`). **A pick is a data change:** a pack with `{"style": 2}` is the strip, and F3+T applies it. The three test packs `cockpit_dials`, `cockpit_strip` and `cockpit_consoles` do exactly that; only the evidence scenario turns them on.
 - **`tools/cockpit_concepts.py`** writes the sprites and the theme file with the Python standard library only; `--check` (and `tools/tests/test_cockpit_concepts.py`) fails when a committed file differs from what it makes, and `--preview DIR` writes a mock of each look in four states without starting the game.
