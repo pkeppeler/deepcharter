@@ -99,8 +99,8 @@ Option A shipped in [#535](https://github.com/pkeppeler/deepcharter/issues/535),
 
 - **A lighter fracture line.** Each joint pixel has a lip of `hardpan.5` on its lower right, on every second pixel, so the joints read as cracks at range and not only as a dark patch. The joints are `hardpan.1`, a step lighter than the concept's, so the texture stays inside vanilla's contrast range.
 - **A second pass on the chevron.** A lighter outline over a dark inner line, drawn as a two-pixel-step chevron, so it shows close up and stays faint.
-- **No lava glow in the joints.** Company Rock is one block with one blockstate in every layer, so a glow would show in layer 1 as well; a layer-2 look needs a per-layer block or a block-state property, which is Java. Left out; see the follow-up issue on the PR.
-- **The blast.** [#509](https://github.com/pkeppeler/deepcharter/issues/509)'s charge breaks the block with `destroyBlock`, whose break particles take the block's texture, so the crumble already uses the Joint. Joints that widen first need an animated block or a block entity, which is new Java; left out, same follow-up.
+- **No lava glow in the joints.** Company Rock is one block with one blockstate in every layer, so a glow would show in layer 1 as well; a layer-2 look needs a per-layer block or a block-state property, which is Java. Left out; see [#539](https://github.com/pkeppeler/deepcharter/issues/539).
+- **The blast.** [#509](https://github.com/pkeppeler/deepcharter/issues/509)'s charge breaks the block with `destroyBlock`, whose break particles take the block's texture, so the crumble already uses the Joint. Joints that widen first need an animated block or a block entity, which is new Java; left out, same issue.
 - Its seam numbers are in the table below.
 
 | Texture | Mean step inside | wrap | rim |
