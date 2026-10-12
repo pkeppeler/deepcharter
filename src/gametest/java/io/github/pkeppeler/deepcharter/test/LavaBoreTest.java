@@ -32,6 +32,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
@@ -63,6 +64,9 @@ import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
+import io.github.pkeppeler.deepcharter.repair.Consumable;
+import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
+import io.github.pkeppeler.deepcharter.repair.RepairTuning;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
@@ -95,6 +99,11 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
  * lines only on the way down and only while the pod rests on its slab: it never flies, so it cannot stop in a fall. The rack starts with {@value #BRICKS_ENV} bricks (the rack's size by
  * default); the bot never fuses more, because a pilot cannot reach the processor mid-dive. The run prints a {@code [lava-bore] lining}
  * block with the bricks and the time it cost, to read against the same run without lining.
+ *
+ * <p>With {@value #CHARGES_ENV}{@code =1} (#509) the bot blasts instead of sidestepping when the slab under it holds Company rock: it sets a blasting charge from the seat (the real item, through
+ * the real use path), holds the rotor to hover {@code chargeReach} above where it was so the blast does not touch the hull, and drills on when the fuse has run out. It carries as many charges as it
+ * needs and counts them, so the run prints a {@code [lava-bore] charges} block with the charges, their cost and the share of bores that never left their column. A refusal that is not Company rock below
+ * (there is none today) still sidesteps. The straight-column figure is printed for every run, to read the other modes against.
  *
  * <p>With {@value #LINER_ENV}{@code =<tier>} the pod carries a liner part (#339) of that tier and a rack of {@value #BRICKS_ENV} bricks, and the bot does
  * nothing more: the liner lines its ring by itself as the pod drills and falls. The run prints a {@code [lava-bore] liner} block with the rings
@@ -130,6 +139,15 @@ public class LavaBoreTest {
 	/** The bot brakes unless this is {@code off}: a real pilot feathers the rotor in a fall, so the hard landings of an unbraked bot are not what is measured. */
 	private static final boolean BRAKING = !"off".equalsIgnoreCase(System.getenv(BRAKING_ENV));
 	/** {@code avoid} makes the bot steer round a gas pocket that a scanner of the gas tier shows in its way; {@code ignore} (the default) bores straight through. */
+	/** {@code 1} makes the bot blast Company rock with a charge in place of sidestepping it (#509). */
+	static final String CHARGES_ENV = "DEEPCHARTER_LAVA_BORES_CHARGES";
+	private static final boolean CHARGES = "1".equals(System.getenv(CHARGES_ENV));
+	/** Blocks past {@code chargeReach} that the hovering bot holds above the blast, for its overshoot on the rotor. */
+	private static final double HOVER_MARGIN = 0.6;
+	/** The charging bot waits this many times {@link #STUCK_TICKS} for a still pod with no Company rock under it before it sidesteps. */
+	private static final int WAIT_FOR_NO_ROCK = 10;
+	/** Ticks after the fuse has run out that a hull loss is booked to the charge. */
+	private static final int BLAST_WINDOW_TICKS = 3;
 	static final String GAS_ENV = "DEEPCHARTER_LAVA_BORES_GAS";
 	private static final String REQUESTED_GAS = System.getenv(GAS_ENV);
 	/** What the bot does about gas (the class comment says what each mode knows, #368). */
@@ -148,9 +166,9 @@ public class LavaBoreTest {
 	/**
 	 * What took hull: lava (the pod touched it), a gas blast (a gas pocket in range was mined this tick), a hard landing, the breach crust (a loss
 	 * with the pod at the foot of the layer, #378), or the rest.
-	 * A tick takes one cause, in that order of priority: a tick with lava contact and a gas blast books all its hull to lava, which undercounts gas.
+	 * A tick takes one cause, in that order of priority (a charge's blast, #509, comes after gas): a tick with lava contact and a gas blast books all its hull to lava, which undercounts gas.
 	 */
-	private enum Cause { LAVA, GAS, LANDING, CRUST, OTHER }
+	private enum Cause { LAVA, GAS, LANDING, CRUST, OTHER, CHARGE }
 	/** Blocks per tick of sink above which the braking bot holds the rotor on: the sink that {@code EarlyRunModel.driveDownLitres} models. */
 	private static final double BRAKE_ABOVE_SINK = EarlyRunModel.DRIVE_DOWN_SINK;
 	/** The tier of the real seep sounder part (#373) the pod carries; the bot reads what the part tells it and nothing else about gas. */
@@ -421,6 +439,15 @@ public class LavaBoreTest {
 		int tanks = 1;
 		int pilotTicks;
 		int sidesteps;
+		/** Sidesteps the bot began because the pod stood still on a refused slab (Company rock, or a liner or lining that held it), not for a pocket of gas. */
+		int sidestepsForStall;
+		/** Sidesteps begun, finished or not: a bore with none never left its column. */
+		int sidestepsBegun;
+		/** Blasting charges set (#509), the pod tick the live one was set on, the Y the pod was at, and whether the bot is hovering clear of it. */
+		int charges;
+		int chargeSetTick;
+		double chargeBaseY;
+		boolean charging;
 		int lowestFeetY = Integer.MAX_VALUE;
 		int lastProgressTick;
 
@@ -725,7 +752,7 @@ public class LavaBoreTest {
 			bore.biggestOtherHitY = pod.blockPosition().getY();
 		}
 		boolean inCrust = pod.blockPosition().getY() <= level.getMinY() + CRUST_BAND;
-		Cause cause = touching ? Cause.LAVA : gasPocketVanished(level, pod, bore) ? Cause.GAS : -bore.prevVy > LANDING_SINK ? Cause.LANDING : inCrust ? Cause.CRUST : Cause.OTHER;
+		Cause cause = touching ? Cause.LAVA : gasPocketVanished(level, pod, bore) ? Cause.GAS : blastTick(bore, pod) ? Cause.CHARGE : -bore.prevVy > LANDING_SINK ? Cause.LANDING : inCrust ? Cause.CRUST : Cause.OTHER;
 		if (hullLost > 0) {
 			if (cause == Cause.CRUST && bore.hullAtCrust == NO_CRUST) {
 				bore.hullAtCrust = pod.hull() + hullLost;
@@ -951,6 +978,9 @@ public class LavaBoreTest {
 
 	/** The bot: sprint down; on a refused slab, move two blocks to a side and sprint down again. */
 	private static void drive(Bore bore, PodEntity pod) {
+		if (bore.charging && hoverClearOfCharge(bore, pod)) {
+			return;
+		}
 		if (BRAKING) {
 			brake(bore, pod);
 		}
@@ -970,7 +1000,17 @@ public class LavaBoreTest {
 			case DOWN -> {
 				bore.idleTicks = pod.onGround() && !pod.drilling() ? bore.idleTicks + 1 : 0;
 				if (bore.idleTicks >= STUCK_TICKS) {
+					if (CHARGES && bore.shaftBottomY == NO_SHAFT) {
+						if (podHasCompanyRock(pod) && setCharge(bore, pod)) {
+							return;
+						}
+						if (!podHasCompanyRock(pod) && bore.idleTicks < STUCK_TICKS * WAIT_FOR_NO_ROCK) {
+							// Not Company rock: the liner or the lining holds the pod still. A bot that blasts waits for it as a pilot does, and sidesteps only after a long stall.
+							break;
+						}
+					}
 					bore.refused.clear();
+					bore.sidestepsForStall++;
 					startSidestep(bore, pod, firstSide(bore, pod, pod.blockPosition().getY() == bore.lastSideY));
 				}
 			}
@@ -1135,7 +1175,67 @@ public class LavaBoreTest {
 		return false;
 	}
 
+	private static double hullLostToAll(Bore bore) {
+		double sum = 0;
+		for (float lost : bore.hullBy) {
+			sum += lost;
+		}
+		return sum;
+	}
+
+	private static boolean podHasCompanyRock(PodEntity pod) {
+		ServerLevel level = (ServerLevel) pod.level();
+		return footprintSlab(pod, 0, 0, -1).stream().anyMatch(pos -> level.getBlockState(pos).is(HazardBlocks.UNDIGGABLE));
+	}
+
+	/** The pilot sets a blasting charge as a player does: the item in the hand, a right click. True when it was set; a refusal leaves the item and the bot goes round. */
+	private static boolean setCharge(Bore bore, PodEntity pod) {
+		ServerPlayer player = bore.pilot.player();
+		player.getInventory().setItem(player.getInventory().getSelectedSlot(), new ItemStack(RepairRegistry.item(Consumable.BLASTING_CHARGE)));
+		player.getCooldowns().removeCooldown(player.getCooldowns().getCooldownGroup(player.getItemInHand(InteractionHand.MAIN_HAND)));
+		if (!player.gameMode.useItem(player, player.level(), player.getItemInHand(InteractionHand.MAIN_HAND), InteractionHand.MAIN_HAND).consumesAction()) {
+			player.getInventory().clearContent();
+			return false;
+		}
+		bore.charges++;
+		bore.charging = true;
+		bore.chargeSetTick = pod.tickCount;
+		bore.chargeBaseY = pod.getY();
+		bore.idleTicks = 0;
+		return true;
+	}
+
+	/**
+	 * The bot holds the rotor while it is under {@code chargeReach} (and a margin) above the charge, and lets go above it, until the fuse has run out and the
+	 * blast has gone. Returns whether it is still hovering; once it is not, the bot drills on and brakes in the drop as it always does.
+	 */
+	private static boolean hoverClearOfCharge(Bore bore, PodEntity pod) {
+		if (!chargeBurning(bore, pod)) {
+			bore.charging = false;
+			bore.pilot.setInput(SPRINT);
+			return false;
+		}
+		bore.idleTicks = 0;
+		if (pod.getY() < bore.chargeBaseY + RepairTuning.DEFAULT.chargeReach() + HOVER_MARGIN) {
+			bore.pilot.setInput(ROTOR);
+		} else {
+			bore.pilot.releaseInput();
+		}
+		return true;
+	}
+
+	private static boolean chargeBurning(Bore bore, PodEntity pod) {
+		return pod.tickCount - bore.chargeSetTick <= RepairTuning.DEFAULT.chargeFuseTicks() + BLAST_WINDOW_TICKS;
+	}
+
+	/** True on the ticks where a hull loss is the charge's: the blast comes on the pod tick the fuse runs out. */
+	private static boolean blastTick(Bore bore, PodEntity pod) {
+		int age = pod.tickCount - bore.chargeSetTick;
+		return bore.charges > 0 && age >= RepairTuning.DEFAULT.chargeFuseTicks() - 1 && age <= RepairTuning.DEFAULT.chargeFuseTicks() + BLAST_WINDOW_TICKS;
+	}
+
 	private static void startSidestep(Bore bore, PodEntity pod, Side side) {
+		bore.sidestepsBegun++;
 		bore.phase = Phase.SIDEWAYS;
 		bore.side = side;
 		bore.sideStart = side.along(pod);
@@ -1369,7 +1469,7 @@ public class LavaBoreTest {
 					bores.stream().mapToInt(b -> b.bigHitsBy[cause.ordinal()]).sum(), BIG_HIT_HULL,
 					bores.stream().filter(b -> b.outcome == Outcome.DIED && b.lastCause == cause).count(), BRAKING ? "on" : "off", GAS.name().toLowerCase(Locale.ROOT));
 		}
-		LOGGER.info("[lava-bore] causes are priority-ordered (lava, then gas, then landing, then crust): a tick takes one cause, so a tick with lava contact and a gas blast books all its hull to lava");
+		LOGGER.info("[lava-bore] causes are priority-ordered (lava, then gas, then charge, then landing, then crust): a tick takes one cause, so a tick with lava contact and a gas blast books all its hull to lava");
 		LOGGER.info("[lava-bore] gas {}: {} steps aside from a pocket per bore, {} ticks lost hull to a gas blast per bore ({} of them while sidestepping); {}",
 				GAS.name().toLowerCase(Locale.ROOT), String.format("%.1f", bores.stream().mapToInt(b -> b.gasAvoids).average().orElse(0)),
 				String.format("%.1f", bores.stream().mapToInt(b -> b.gasHits).average().orElse(0)),
@@ -1379,6 +1479,21 @@ public class LavaBoreTest {
 				String.format("%.1f", bores.stream().mapToInt(b -> b.sidesteps).average().orElse(0)),
 				String.format("%.1f", bores.stream().mapToInt(b -> b.tanks).average().orElse(0)),
 				String.format("%.0f", bores.stream().mapToInt(b -> b.pilotTicks).average().orElse(0)));
+		long straight = bores.stream().filter(b -> b.sidestepsBegun == 0).count();
+		long straightThrough = bores.stream().filter(b -> b.sidestepsBegun == 0 && b.outcome == Outcome.SURVIVED).count();
+		long noStall = bores.stream().filter(b -> b.sidestepsForStall == 0).count();
+		LOGGER.info("[lava-bore] straight shafts: {} of {} bores never left their column ({}), {} of them reached layer 2 ({} of all bores); {} never stepped aside from a refused slab ({}), which leaves out the steps a sounder bot takes round gas",
+				straight, n, percent(straight, n), straightThrough, percent(straightThrough, n), noStall, percent(noStall, n));
+		if (CHARGES) {
+			long perBoreCost = Math.round(bores.stream().mapToInt(b -> b.charges).average().orElse(0) * Consumable.BLASTING_CHARGE.price());
+			LOGGER.info("[lava-bore] charges: {} per bore ({}), ${} each, ${} per bore; bores that set none {}; deaths whose last loss was a charge {}; hull lost to charges {} per bore; hull lost to the other causes {} per bore; {} sidesteps per bore left",
+					String.format("%.1f", bores.stream().mapToInt(b -> b.charges).average().orElse(0)), distributionOf(bores.stream().mapToDouble(b -> b.charges).toArray()),
+					Consumable.BLASTING_CHARGE.price(), perBoreCost, bores.stream().filter(b -> b.charges == 0).count(),
+					bores.stream().filter(b -> b.outcome == Outcome.DIED && b.lastCause == Cause.CHARGE).count(),
+					String.format("%.1f", bores.stream().mapToDouble(b -> b.hullBy[Cause.CHARGE.ordinal()]).average().orElse(0)),
+					String.format("%.1f", bores.stream().mapToDouble(b -> hullLostToAll(b) - b.hullBy[Cause.CHARGE.ordinal()]).average().orElse(0)),
+					String.format("%.1f", bores.stream().mapToInt(b -> b.sidesteps).average().orElse(0)));
+		}
 		for (Bore b : bores) {
 			LOGGER.info("[lava-bore] bore {}: {} {} lava hull {} pilot {} hull {}/{} hp {} encounters {} start y {} lowest y {} sidesteps {} tanks {} worst non-lava hit {} at y {}",
 					b.index, b.outcome, b.cause, String.format("%.1f", b.lavaHull), String.format("%.1f", b.lavaPilot),

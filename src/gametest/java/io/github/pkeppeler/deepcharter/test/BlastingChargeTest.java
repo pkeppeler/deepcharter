@@ -36,7 +36,7 @@ import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
  * clears Company rock and the natural rock round it, and hurts a pod that is too close. Each test has its own X in layer 1.
  *
  * <p>The scene: a Mole 2 x 2 resting on a stone bed, at {@code (x, FLOOR, Z)}. The blast volume is the bore square plus a margin of
- * {@link RepairTuning#chargeMargin()}, so {@code x - 2 .. x + 1} and {@code Z - 2 .. Z + 1}, the rows {@code FLOOR - 2 .. FLOOR - 1}.
+ * {@link RepairTuning#chargeMargin()} (none), so {@code x - 1 .. x} and {@code Z - 1 .. Z}, the rows {@code FLOOR - 2 .. FLOOR - 1}.
  */
 public class BlastingChargeTest {
 	private static final RepairTuning TUNING = RepairTuning.DEFAULT;
@@ -139,20 +139,20 @@ public class BlastingChargeTest {
 	public void aChargeClearsCompanyRockAndNaturalRockInItsVolumeAndNothingElse(GameTestHelper helper) {
 		int x = 3008;
 		scene(helper, x, level -> {
-			level.setBlock(cell(x - 2, -2, -2), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2); // a corner of the volume
-			level.setBlock(cell(x + 2, -2, 0), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2); // just outside it
-			level.setBlock(cell(x + 2, -1, 0), Blocks.STONE.defaultBlockState(), 2);
+			level.setBlock(cell(x - 1, -2, -1), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2); // a corner of the volume
+			level.setBlock(cell(x + 1, -2, 0), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2); // just outside it
+			level.setBlock(cell(x + 1, -1, 0), Blocks.STONE.defaultBlockState(), 2);
 			level.setBlock(cell(x, -3, 0), Blocks.STONE.defaultBlockState(), 2); // one row under it
 		}, pod -> pod.setPos(pod.getX() + FAR, pod.getY(), pod.getZ()), (helper2, level, pod, pilot, hull) -> {
-			for (int dx = -2; dx <= 1; dx++) {
-				for (int dz = -2; dz <= 1; dz++) {
+			for (int dx = -1; dx <= 0; dx++) {
+				for (int dz = -1; dz <= 0; dz++) {
 					for (int dy = -2; dy <= -1; dy++) {
 						expectAir(helper2, level, cell(x + dx, dy, dz), "inside the volume");
 					}
 				}
 			}
-			expectBlock(helper2, level, cell(x + 2, -2, 0), HazardBlocks.COMPANY_ROCK, "Company rock beside the volume stays");
-			expectBlock(helper2, level, cell(x + 2, -1, 0), Blocks.STONE, "stone beside the volume stays");
+			expectBlock(helper2, level, cell(x + 1, -2, 0), HazardBlocks.COMPANY_ROCK, "Company rock beside the volume stays");
+			expectBlock(helper2, level, cell(x + 1, -1, 0), Blocks.STONE, "stone beside the volume stays");
 			expectBlock(helper2, level, cell(x, -3, 0), Blocks.STONE, "stone under the volume stays");
 		});
 	}
@@ -161,19 +161,19 @@ public class BlastingChargeTest {
 	public void aChargeSparesWhatIsBuiltFluidsBedrockAndVentsNoGas(GameTestHelper helper) {
 		int x = 3072;
 		scene(helper, x, level -> {
-			level.setBlock(cell(x - 2, -2, -2), Blocks.OAK_PLANKS.defaultBlockState(), 2);
-			level.setBlock(cell(x - 2, -1, 1), SlagBrick.BLOCK.defaultBlockState(), 2);
-			level.setBlock(cell(x + 1, -1, -2), Blocks.BEDROCK.defaultBlockState(), 2);
-			level.setBlock(cell(x + 1, -2, -2), Blocks.LAVA.defaultBlockState(), 2);
-			level.setBlock(cell(x + 1, -1, 1), HazardBlocks.GAS_POCKET.defaultBlockState(), 2); // a corner of the volume
-			level.setBlock(cell(x + 2, -1, 1), Blocks.STONE.defaultBlockState(), 2); // a gas blast would clear it
+			level.setBlock(cell(x - 1, -2, -1), Blocks.OAK_PLANKS.defaultBlockState(), 2);
+			level.setBlock(cell(x - 1, -1, 0), SlagBrick.BLOCK.defaultBlockState(), 2);
+			level.setBlock(cell(x, -1, -1), Blocks.BEDROCK.defaultBlockState(), 2);
+			level.setBlock(cell(x, -2, -1), Blocks.LAVA.defaultBlockState(), 2);
+			level.setBlock(cell(x, -2, 0), HazardBlocks.GAS_POCKET.defaultBlockState(), 2); // a corner of the volume
+			level.setBlock(cell(x + 1, -2, 0), Blocks.STONE.defaultBlockState(), 2); // a gas blast would clear it
 		}, pod -> pod.setPos(pod.getX() + FAR, pod.getY(), pod.getZ()), (helper2, level, pod, pilot, hull) -> {
-			expectBlock(helper2, level, cell(x - 2, -2, -2), Blocks.OAK_PLANKS, "planks");
-			expectBlock(helper2, level, cell(x - 2, -1, 1), SlagBrick.BLOCK, "a slag brick");
-			expectBlock(helper2, level, cell(x + 1, -1, -2), Blocks.BEDROCK, "bedrock");
-			expectBlock(helper2, level, cell(x + 1, -2, -2), Blocks.LAVA, "lava");
-			expectAir(helper2, level, cell(x + 1, -1, 1), "the gas pocket goes with the blast");
-			expectBlock(helper2, level, cell(x + 2, -1, 1), Blocks.STONE, "a pocket in the blast vents no more");
+			expectBlock(helper2, level, cell(x - 1, -2, -1), Blocks.OAK_PLANKS, "planks");
+			expectBlock(helper2, level, cell(x - 1, -1, 0), SlagBrick.BLOCK, "a slag brick");
+			expectBlock(helper2, level, cell(x, -1, -1), Blocks.BEDROCK, "bedrock");
+			expectBlock(helper2, level, cell(x, -2, -1), Blocks.LAVA, "lava");
+			expectAir(helper2, level, cell(x, -2, 0), "the gas pocket goes with the blast");
+			expectBlock(helper2, level, cell(x + 1, -2, 0), Blocks.STONE, "a pocket in the blast vents no more");
 		});
 	}
 
@@ -192,10 +192,10 @@ public class BlastingChargeTest {
 
 	@GameTest(maxTicks = MAX_TICKS)
 	public void theDamageFallsInStraightLineWithTheDistance(GameTestHelper helper) {
-		// The pod's box (1.9 wide) starts exactly 3 blocks past the volume's edge (x + 2): half of chargeReach (6).
+		// The pod's box (1.9 wide) starts exactly 1.5 blocks past the volume's edge (x + 1): half of chargeReach (3).
 		scene(helper, 3264, level -> {
-		}, pod -> pod.setPos(pod.getX() + 5.95, pod.getY(), pod.getZ()),
-				(helper2, level, pod, pilot, hull) -> expectHullLost(helper2, pod, hull, TUNING.chargeDamage() * (1 - 3.0 / TUNING.chargeReach()), "a pod 3 blocks off"));
+		}, pod -> pod.setPos(pod.getX() + 3.45, pod.getY(), pod.getZ()),
+				(helper2, level, pod, pilot, hull) -> expectHullLost(helper2, pod, hull, TUNING.chargeDamage() * (1 - 1.5 / TUNING.chargeReach()), "a pod 1.5 blocks off"));
 	}
 
 	@GameTest(maxTicks = MAX_TICKS)

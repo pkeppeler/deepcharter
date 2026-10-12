@@ -21,5 +21,5 @@ package io.github.pkeppeler.deepcharter.repair;
 public record RepairTuning(long repairCostPerHp, int itemCooldownTicks, float reserveLitres, float nanobotHp,
 		int dynamiteRadius, int plasticRadius, double quantumScatter, int chargeFuseTicks, int chargeDepth, int chargeMargin,
 		float chargeDamage, double chargeReach) {
-	public static final RepairTuning DEFAULT = new RepairTuning(1L, 10, 25f, 30f, 1, 2, 8.0, 60, 2, 1, 40f, 6.0);
+	public static final RepairTuning DEFAULT = new RepairTuning(1L, 10, 25f, 30f, 1, 2, 8.0, 60, 2, 0, 20f, 3.0);
 }
