@@ -110,8 +110,7 @@
       "layers": [
         {"op": "noise", "ramp": ["hardpan.2", "hardpan.3", "hardpan.3", "hardpan.3", "hardpan.3", "hardpan.3"], "seed": 7111, "cell": 4, "octaves": 2, "dither": 0.1},
         {"op": "speckle", "colours": ["hardpan.2"], "density": 0.02, "seed": 7211},
-        {"op": "speckle", "colours": ["hardpan.5"], "density": 0.0, "seed": 7311},
-        {"op": "pixels", "legend": {"x": "hardpan.1", "l": "hardpan.4", "L": "hardpan.4"}, "rows": [".l...xx..l......", ".xl.x.xLxx..x...", ".xx.x.lxxxL.....", ".xxx.Lxxxx......", ".xx.L...xxl.....", ".xxL....xxxl....", "..xx.......x....", "...l...........l", "x..x..........xx", ".L...l.......l..", ".....x.....l.x..", ".....xl....x....", "......xl.x..L.x.", "......xx.......L", ".....xl.L.......", "l...lxxll.....ll"]}
+        {"op": "pixels", "legend": {"x": "hardpan.1", "l": "hardpan.4"}, "rows": [".l...xx..l......", ".xl.x.xlxx..x...", ".xx.x.lxxxl.....", ".xxx.lxxxx......", ".xx.l...xxl.....", ".xxl....xxxl....", "..xx.......x....", "...l...........l", "x..x..........xx", ".l...l.......l..", ".....x.....l.x..", ".....xl....x....", "......xl.x..l.x.", "......xx.......l", ".....xl.l.......", "l...lxxll.....ll"]}
       ]
     },
     "block/company_rock_joint_1": {
@@ -119,8 +118,7 @@
       "layers": [
         {"op": "noise", "ramp": ["hardpan.2", "hardpan.3", "hardpan.3", "hardpan.3", "hardpan.3", "hardpan.3"], "seed": 7112, "cell": 4, "octaves": 2, "dither": 0.1},
         {"op": "speckle", "colours": ["hardpan.2"], "density": 0.02, "seed": 7212},
-        {"op": "speckle", "colours": ["hardpan.5"], "density": 0.0, "seed": 7312},
-        {"op": "pixels", "legend": {"x": "hardpan.1", "l": "hardpan.4", "L": "hardpan.4"}, "rows": ["x..............x", ".x.l.....x......", ".xLx.....lL.....", "...lll...x......", "...xxxll.xL.....", "..ll.xxxxxx.....", "..xxl.lx.....l.l", "..xxxxx......x..", ".....x.l......x.", ".......x......xL", "...x....L.....x.", ".lx.....l.....xL", ".x......x.....x.", ".........L.....l", "l......lx...l.x.", "x........l.....x"]}
+        {"op": "pixels", "legend": {"x": "hardpan.1", "l": "hardpan.4"}, "rows": ["x..............x", ".x.l.....x......", ".xlx.....ll.....", "...lll...x......", "...xxxll.xl.....", "..ll.xxxxxx.....", "..xxl.lx.....l.l", "..xxxxx......x..", ".....x.l......x.", ".......x......xl", "...x....l.....x.", ".lx.....l.....xl", ".x......x.....x.", ".........l.....l", "l......lx...l.x.", "x........l.....x"]}
       ]
     },
     "block/company_rock_joint_2": {
@@ -128,8 +126,7 @@
       "layers": [
         {"op": "noise", "ramp": ["hardpan.2", "hardpan.3", "hardpan.3", "hardpan.3", "hardpan.3", "hardpan.3"], "seed": 7113, "cell": 4, "octaves": 2, "dither": 0.1},
         {"op": "speckle", "colours": ["hardpan.2"], "density": 0.02, "seed": 7213},
-        {"op": "speckle", "colours": ["hardpan.5"], "density": 0.0, "seed": 7313},
-        {"op": "pixels", "legend": {"x": "hardpan.1", "l": "hardpan.4", "L": "hardpan.4"}, "rows": ["lx.l.x..........", "xxxx.x........xx", "x.....Ll.......x", ".......x........", "........l.....l.", "........xll...x.", ".l.......xx..l..", ".x.l...l.l...x..", "..xx...xxx......", "..x....xx....l..", "..xll...l....xl.", "..xxxl..x.....x.", "..x..x.lx.......", ".l...l.xxl......", "lx...xl.xx.....l", ".xl..x.........."]},
+        {"op": "pixels", "legend": {"x": "hardpan.1", "l": "hardpan.4"}, "rows": ["lx.l.x..........", "xxxx.x........xx", "x.....ll.......x", ".......x........", "........l.....l.", "........xll...x.", ".l.......xx..l..", ".x.l...l.l...x..", "..xx...xxx......", "..x....xx....l..", "..xll...l....xl.", "..xxxl..x.....x.", "..x..x.lx.......", ".l...l.xxl......", "lx...xl.xx.....l", ".xl..x.........."]},
         {"op": "pixels", "at": [4, 3], "legend": {"x": "hardpan.2", "L": "hardpan.4"}, "rows": ["....LL....", "..LLxxLL..", "LLxx..xxLL", "xx......xx"]}
       ]
     },
