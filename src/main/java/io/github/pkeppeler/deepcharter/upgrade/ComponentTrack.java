@@ -69,11 +69,6 @@ public enum ComponentTrack implements StringRepresentable {
 		return firstTierCrafted;
 	}
 
-	/** True when every pod has a stock part at tier 0. The others (the scanner, the lights and the hazard answers) have none: tier 0 is "none". */
-	public boolean hasStockPart() {
-		return hasStockPart;
-	}
-
 	/**
 	 * True when a later tier is sold only to a pod that has the crafted first tier fitted. A track with a stock part sells tier 2 to a pod
 	 * that still has the stock part, so only a crafted first tier with no stock part under it (the scanner) is needed first.

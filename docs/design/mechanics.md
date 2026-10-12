@@ -1295,7 +1295,7 @@ The minutes use these (A) assumptions: the player sprints at 5.612 blocks a seco
 
 The six crafted units take 1.09 of the minutes the six bought took, inside the 0.75 to 1.25 the test allows, and each is inside 0.5 to 1.5 of its own price. The money moves, not the time: a charter spends no dollars on a first-tier part, so its first sales buy tier 2.
 
-**Knobs.** `recipe/<track>_unit.json` (the metal); `ComponentTrack`'s `firstTierCrafted` and `hasStockPart` flags; `UpgradeTuning` (tier 1 prices 0, tier 2 from $500). The guards: `FirstTierPartsCostTest` (the recipes' ingredients, the crates for the whole set, the minutes against the old prices), `PartFittingTest`, `UpgradeTerminalTest`, and `EconomyAffordabilityTest`'s tier 2 bands.
+**Knobs.** `recipe/<track>_unit.json` (the metal); `ComponentTrack`'s `firstTierCrafted` and `needsFirstTier` flags; `UpgradeTuning` (tier 1 prices 0, tier 2 from $500). The guards: `FirstTierPartsCostTest` (the recipes' ingredients, the crates for the whole set, the minutes against the old prices), `PartFittingTest`, `UpgradeTerminalTest`, and `EconomyAffordabilityTest`'s tier 2 bands.
 
 **Economy impact.** The default is **easier** on the dollars (about $1,500 not spent on tier 1 parts) and **harder** on the bootstrap (about 30 more crates, 12 minutes, for the whole set, and none before the first run). The early-game column of `EconomyAffordabilityTest` skips the crafted tracks' tier 1; the radiator's first purchase is its tier 2, $1,250, four layer 2 runs. The unpacked column is unchanged: no part is needed to start.
 

@@ -318,7 +318,7 @@ public class UpgradeTerminalTest {
 				long spent = 0;
 				int tracks = 0;
 				for (ComponentTrack track : ComponentTrack.values()) {
-					if (!track.firstTierCrafted() || !track.hasStockPart()) {
+					if (!track.firstTierCrafted() || track.needsFirstTier()) {
 						continue;
 					}
 					tracks++;
