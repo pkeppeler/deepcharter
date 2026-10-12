@@ -6,13 +6,11 @@ import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 
 import net.minecraft.client.CameraType;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -57,15 +55,13 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 			new BlockPos(52, 1, -1));
 	private static final int LAMP = 12;
 	private static final int SETTLE_TICKS = 20;
+	/** Longer than the default 120 s: the first still waits for the layer's chunks to generate on a loaded machine. */
+	private static final int SETTLE_LIMIT_SECONDS = 300;
 	/**
-	 * The render distance, in chunks, while the scenario runs: a still waits for every chunk in view, and the layers' tall worlds generate slowly
-	 * on a loaded machine, so the default distance did not settle in two minutes. 2 chunks is 32 blocks, and every room is sealed in rock, so no still differs.
+	 * The render distance, in chunks, while the scenario runs. Not measured as a speed-up: it means fewer tall-world chunks to generate round the rooms,
+	 * and every run that finished used it. Every room is sealed in rock, so no still shows the difference.
 	 */
 	private static final int RENDER_DISTANCE = 2;
-	private static final long CHUNK_WAIT_NANOS = 40_000_000_000L;
-	private static final int CHUNK_ATTEMPTS = 4;
-	/** Where the camera waits while the chunks are sent again: inside the box of rock, far from every room, 3 blocks up so it is in no block. */
-	private static final Vec3 FAR_EYE = new Vec3(-8, 4, -8);
 	/** The first frame after the player mounts is tinted, so the pod still waits for the mount's fade. */
 	private static final int MOUNT_TICKS = 80;
 
@@ -91,6 +87,7 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 	protected void run(ClientGameTestContext context) {
 		int renderDistance = context.computeOnClient(client -> client.options.renderDistance().get());
 		TextureTestWorld.open(context, shot -> screenshot(context, shot), world -> {
+			world.settleLimit(SETTLE_LIMIT_SECONDS);
 			context.runOnClient(client -> client.options.renderDistance().set(RENDER_DISTANCE));
 			ClientPacks.enable(context, TestPacks.LAYER_CONCEPT_GRAIN);
 			try {
@@ -122,7 +119,7 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 
 	private void shoot(ClientGameTestContext context, TextureTestWorld world, Option option, int layer) {
 		for (View view : VIEWS) {
-			arrive(context, world, layer, view);
+			world.view(layer, absolute(view.eye()), absolute(view.target()), SETTLE_TICKS);
 			world.still(still(option, layer, view.place()));
 		}
 		world.serverDo(server -> mount(server.getLevel(LayerChain.dimension(layer))));
@@ -134,40 +131,6 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 		context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
 		world.serverDo(CompanyRockConceptsScenario::dismount);
 		ClientWait.until(context, "the player out of the pod", client -> client.player != null && client.player.getVehicle() == null);
-	}
-
-	/**
-	 * Puts the camera at the view. A chunk of the built box that the server holds back for its light was, in three runs of five, never sent to
-	 * the client (the still then waited out its limit for it), so when a chunk in view has not come in {@link #CHUNK_WAIT_NANOS}, the camera
-	 * goes away and comes back, which the server answers by sending the chunks round the player again.
-	 */
-	private static void arrive(ClientGameTestContext context, TextureTestWorld world, int layer, View view) {
-		for (int attempt = 1; attempt <= CHUNK_ATTEMPTS; attempt++) {
-			world.view(layer, absolute(view.eye()), absolute(view.target()), SETTLE_TICKS);
-			long deadline = System.nanoTime() + CHUNK_WAIT_NANOS;
-			while (System.nanoTime() < deadline) {
-				if (context.computeOnClient(CompanyRockConceptsScenario::chunksInView)) {
-					return;
-				}
-				context.waitTicks(SETTLE_TICKS);
-			}
-			world.view(layer, absolute(FAR_EYE), absolute(FAR_EYE.add(0, 0, 1)), SETTLE_TICKS);
-		}
-		throw new AssertionError("the chunks round the " + view.place() + " view in layer " + layer + " did not reach the client in " + CHUNK_ATTEMPTS + " tries");
-	}
-
-	private static boolean chunksInView(Minecraft client) {
-		int radius = client.options.getEffectiveRenderDistance();
-		int centreX = client.player.chunkPosition().x();
-		int centreZ = client.player.chunkPosition().z();
-		for (int x = centreX - radius; x <= centreX + radius; x++) {
-			for (int z = centreZ - radius; z <= centreZ + radius; z++) {
-				if (client.level.getChunkSource().getChunk(x, z, ChunkStatus.FULL, false) == null) {
-					return false;
-				}
-			}
-		}
-		return true;
 	}
 
 	private static String still(Option option, int layer, String place) {
@@ -196,9 +159,9 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 				level.getChunk(cx, cz);
 			}
 		}
-		// RoomCarver would hold the sending of every chunk it touches until the light tasks queued so far are done, and in four runs of six a held chunk of
-		// the box was never sent to the client. Nobody is in the dimension while the box is built and the light is done long before the camera comes, so
-		// the box is sealed here and written directly.
+		// Suspected (#524, not shown): RoomCarver holds the sending of every chunk it touches until the light tasks queued so far are done, and in six runs
+		// of seven a chunk of the box never reached the client. Nobody is in the dimension while the box is built and the light is done long before the
+		// camera comes, so the box is sealed here and written directly.
 		RoomSeal.seal(level, low, high);
 		BlockState stone = rock.defaultBlockState();
 		for (BlockPos at : BlockPos.betweenClosed(low, high)) {
@@ -238,7 +201,7 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 
 	private static void air(ServerLevel level, int x1, int x2, int y1, int y2, int z1, int z2) {
 		for (BlockPos at : BlockPos.betweenClosed(absolute(new BlockPos(x1, y1, z1)), absolute(new BlockPos(x2, y2, z2)))) {
-			level.setBlock(at, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS); // room-carver: inside the box that build() sealed with RoomSeal, with no player in the dimension
+			level.setBlock(at, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS); // room-carver: inside the box that build() sealed with RoomSeal, no player in the dimension; temporary, #524 switches this back to RoomCarver
 		}
 	}
 

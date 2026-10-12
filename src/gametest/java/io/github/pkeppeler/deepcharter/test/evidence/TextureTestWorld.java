@@ -111,13 +111,14 @@ final class TextureTestWorld {
 			Map.entry(new BlockPos(0, 2, 0), OreBlocks.of(OreType.CICATRIUM)),
 			Map.entry(new BlockPos(2, 2, 0), OreBlocks.of(OreType.IRONIUM)));
 	/** The wall-clock limit of one settle. */
-	private static final long SETTLE_LIMIT_NANOS = 300_000_000_000L;
+	private static final long SETTLE_LIMIT_NANOS = 120_000_000_000L;
 	private static final int SETTLE_POLL_TICKS = 2;
 	private static final int SETTLE_STABLE_POLLS = 5;
 
 	private final ClientGameTestContext ctx;
 	private final TestSingleplayerContext sp;
 	private final Consumer<String> shoot;
+	private long settleLimitNanos = SETTLE_LIMIT_NANOS;
 
 	private TextureTestWorld(ClientGameTestContext ctx, TestSingleplayerContext sp, Consumer<String> shoot) {
 		this.ctx = ctx;
@@ -146,6 +147,11 @@ final class TextureTestWorld {
 			});
 			body.accept(world);
 		}
+	}
+
+	/** Sets how long a still waits for the world to settle, for a scenario whose first view needs more than the default. */
+	void settleLimit(int seconds) {
+		settleLimitNanos = seconds * 1_000_000_000L;
 	}
 
 	/** Shoots {@code views} once for each variant, with its pack on (and off again after, in a finally). */
@@ -410,7 +416,7 @@ final class TextureTestWorld {
 	 * in the world, for {@link #SETTLE_STABLE_POLLS} looks in a row; then shoots the still.
 	 */
 	void still(String stillName) {
-		long deadline = System.nanoTime() + SETTLE_LIMIT_NANOS;
+		long deadline = System.nanoTime() + settleLimitNanos;
 		int stable = 0;
 		while (stable < SETTLE_STABLE_POLLS) {
 			serverDo(server -> server.getAllLevels().forEach(level -> level.getAllEntities().forEach(entity -> {
@@ -431,7 +437,7 @@ final class TextureTestWorld {
 			String pending = ctx.computeOnClient(TextureTestWorld::pending);
 			stable = lit && pending == null ? stable + 1 : 0;
 			if (System.nanoTime() > deadline) {
-				throw new AssertionError("still " + stillName + ": the world did not settle in " + SETTLE_LIMIT_NANOS / 1_000_000_000L + " s (light settled: " + lit
+				throw new AssertionError("still " + stillName + ": the world did not settle in " + settleLimitNanos / 1_000_000_000L + " s (light settled: " + lit
 						+ ", the client waits for: " + pending + ")");
 			}
 		}
