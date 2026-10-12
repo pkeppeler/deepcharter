@@ -115,7 +115,7 @@ public class OddChassisTest {
 	 */
 	@GameTest
 	public void theTowReachCoversTheTrailOfTheWidestChassis(GameTestHelper helper) {
-		TowTuning shortReach = new TowTuning(1.0, 0.6, 0.6, 25f, 0.08, 0.97, 0.6, 4, 6, 0.4, 1f, 16);
+		TowTuning shortReach = new TowTuning(1.0, 0.6, 0.6, 25f, 0.08, 0.97, 0.6);
 		double reach = shortReach.reachFor(OddPods.CHASSIS);
 		if (Math.abs(reach - 5.1) > 1e-4) {
 			throw failure(helper, "the tow reach should be 5.1 for a widest hull of 3.9 and a configured reach of 1, it is %s", reach);

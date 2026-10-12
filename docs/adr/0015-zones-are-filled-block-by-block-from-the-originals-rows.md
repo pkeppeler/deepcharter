@@ -4,6 +4,8 @@ status: accepted
 
 # Zones are filled block by block from the original's rows
 
+Amended by [ADR 0050](0050-company-rock-can-be-blasted-and-the-drill-still-refuses-it.md): Company rock is destroyable. A blasting charge clears it; hand and drill still refuse it.
+
 Ore and hazards (SPEC sections 4 and 10) are placed by one worldgen feature per zone, `deepcharter:zone_fill`, whose chances come from the original game's generator (REFERENCE.md section 4). #63 builds it.
 
 ## Decision

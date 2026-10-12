@@ -11,7 +11,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
-/** One of the six items of the repair station. A right click uses it, and only the server decides what that does. */
+/** One of the seven items of the repair station. A right click uses it, and only the server decides what that does. */
 public final class ConsumableItem extends Item {
 	private final Consumable consumable;
 

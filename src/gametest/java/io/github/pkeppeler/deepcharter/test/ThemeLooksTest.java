@@ -29,6 +29,7 @@ import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.theme.PodPaintLook;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
+import io.github.pkeppeler.deepcharter.client.theme.TowChainLook;
 import io.github.pkeppeler.deepcharter.client.theme.TransmissionLook;
 import io.github.pkeppeler.deepcharter.client.theme.UiTheme;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
@@ -87,6 +88,7 @@ public class ThemeLooksTest {
 				TransmissionLook.of(area("transmission", null)));
 		expect(helper, "breach", new BreachLook(20, 8, 4, 10, 3, 0xFF000000), BreachLook.of(area("breach", null)));
 		expect(helper, "cargo", new CargoLook(0xFF404040), CargoLook.of(area("cargo", null)));
+		expect(helper, "tow", new TowChainLook(0.28, 0.2, 1.35, 0xFFFFFFFF, 7), TowChainLook.of(area("tow", null)));
 		helper.succeed();
 	}
 
@@ -325,7 +327,7 @@ public class ThemeLooksTest {
 
 	private static Map<String, ThemeData> defaultAreas() {
 		Map<String, ThemeData> areas = new LinkedHashMap<>();
-		for (String name : List.of("crt", "handbook", "scanner", "hud", "transmission", "breach", "cargo", "pod", "panel", "cockpit")) {
+		for (String name : List.of("crt", "handbook", "scanner", "hud", "transmission", "breach", "cargo", "pod", "panel", "cockpit", "tow")) {
 			areas.put(name, area(name, null));
 		}
 		return areas;
@@ -338,6 +340,15 @@ public class ThemeLooksTest {
 		rejected(helper, () -> CrtTuning.of(area("crt", "{ \"lettersPerSecond\": 0 }")), "lettersPerSecond");
 		rejected(helper, () -> CrtTuning.of(area("crt", "{ \"lettersPerSecond\": -5 }")), "lettersPerSecond");
 		rejected(helper, () -> CrtTuning.of(area("crt", "{ \"scanlineSpacing\": 0 }")), "scanlineSpacing");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aTowChainLinkStaysWithinItsBounds(GameTestHelper helper) {
+		rejected(helper, () -> TowChainLook.of(area("tow", "{ \"linkLength\": 0.01 }")), "linkLength");
+		rejected(helper, () -> TowChainLook.of(area("tow", "{ \"linkWidth\": 0.6 }")), "linkWidth");
+		rejected(helper, () -> TowChainLook.of(area("tow", "{ \"linkOverlap\": 0.9 }")), "linkOverlap");
+		rejected(helper, () -> TowChainLook.of(area("tow", "{ \"minBlockLight\": 16 }")), "minBlockLight");
 		helper.succeed();
 	}
 

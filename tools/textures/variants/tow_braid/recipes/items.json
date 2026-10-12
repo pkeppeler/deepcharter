@@ -1,0 +1,37 @@
+{
+ "templates": {},
+ "recipes": {
+  "item/tow_chain": {
+   "kind": "cutout",
+   "layers": [
+    {
+     "op": "pixels",
+     "legend": {
+      "h": "steel.6",
+      "l": "steel.5",
+      "m": "steel.4",
+      "d": "steel.3"
+     },
+     "rows": [
+      ".lmdhlm...mdhl..",
+      ".mdhlmd...dhlm..",
+      ".dhlmdh...hlmd..",
+      ".hlmdhl...lmdh..",
+      ".lmdhlm...mdhl..",
+      ".mdhlmd...dhlm..",
+      ".dhlmdh...hlmd..",
+      ".hlmdhl...lmdh..",
+      ".lmdhlm...mdhl..",
+      ".mdhlmd...dhlm..",
+      ".dhlmdh...hlmd..",
+      ".hlmdhl...lmdh..",
+      ".lmdhlm...mdhl..",
+      ".mdhlmd...dhlm..",
+      ".dhlmdh...hlmd..",
+      ".hlmdhl...lmdh.."
+     ]
+    }
+   ]
+  }
+ }
+}

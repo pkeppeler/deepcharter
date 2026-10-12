@@ -1,4 +1,5 @@
 {
+  "item.deepcharter.blasting_charge": "Blasting Charge",
   "item.deepcharter.dynamite": "Dynamite",
   "item.deepcharter.hull_nanobots": "Hull Repair Nanobots",
   "item.deepcharter.matter_transmitter": "Matter Transmitter",
@@ -7,6 +8,12 @@
   "item.deepcharter.reserve_fuel_tank": "Reserve Fuel Tank",
   "message.deepcharter.repair.bad_amount": "That is not an amount of hull to repair",
   "message.deepcharter.repair.cargo_unreadable": "The cargo bay cannot be read, so nothing can be teleported",
+  "message.deepcharter.repair.charge_burning": "A charge is already burning",
+  "message.deepcharter.repair.charge_count": "Charge: blast in %s",
+  "message.deepcharter.repair.charge_hull_low": "Hull too low to set a charge: it would cost the hull",
+  "message.deepcharter.repair.charge_no_company_rock": "No Company rock below to blast: use dynamite for plain rock",
+  "message.deepcharter.repair.charge_not_resting": "Set the charge while the pod rests on its slab",
+  "message.deepcharter.repair.charge_set": "Charge set: CLIMB CLEAR, blast in %s",
   "message.deepcharter.repair.hull_full": "The hull is already whole",
   "message.deepcharter.repair.no_pod": "No pod of your charter is parked at the station",
   "message.deepcharter.repair.no_room": "Your inventory is full",

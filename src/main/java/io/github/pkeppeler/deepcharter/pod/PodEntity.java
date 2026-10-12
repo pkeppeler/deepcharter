@@ -31,6 +31,8 @@ public class PodEntity extends Entity {
 	private final PodCargo cargo = new PodCargo();
 	// Neither saved nor synced: a loaded pod starts its slab over. Server only.
 	private PodDrill.Progress drillProgress;
+	// Neither saved nor synced: the burning fuse of a blasting charge (PodCharge); a pod that unloads loses it. Server only.
+	private PodCharge.Fuse fuse;
 
 	public PodEntity(EntityType<? extends PodEntity> type, Level level) {
 		super(type, level);
@@ -52,6 +54,15 @@ public class PodEntity extends Entity {
 
 	void setDrillProgress(PodDrill.Progress progress) {
 		drillProgress = progress;
+	}
+
+	/** The blasting charge this pod has set and that is still burning, or null. Written only by PodCharge. */
+	PodCharge.Fuse fuse() {
+		return fuse;
+	}
+
+	void setFuse(PodCharge.Fuse fuse) {
+		this.fuse = fuse;
 	}
 
 	/** Hull points left. At most {@link #maxHull} after any change here; a pod loaded with more keeps it until the next change. */
@@ -223,6 +234,7 @@ public class PodEntity extends Entity {
 		PodMovement.tick(this, stats);
 		PodDrill.tick(this, stats);
 		PodFuel.tick(this, stats);
+		PodCharge.tick(this);
 		PodEvents.AFTER_TICK.invoker().afterTick(this);
 	}
 

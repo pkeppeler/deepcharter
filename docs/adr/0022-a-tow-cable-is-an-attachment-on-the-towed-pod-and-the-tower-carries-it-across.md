@@ -16,7 +16,7 @@ A tow cable links two pods. The link is the attachment `deepcharter:pod_towing` 
 - **Ownership: a player tows a pod only if `PodComponents.mayAccess(target, theirCharter)` lets them**, so their own charter's pods, unowned pods, and pods whose owner charter is gone or dormant. A refused attach says so and changes nothing. A pod is freed by anyone `mayAccess` lets at the towed pod, or at its tower, so the owner can always recover a pod someone else towed. Taking the cable off an unowned or orphaned pod is open to anyone for the same reason.
 - **A freed pod is never left in rock.** A towed pod passes through blocks; when the cable comes off, or its tower is gone, unloaded or in another level, a pod whose box collides with blocks is moved to the nearest open position along the line toward the tower (or, without one, the nearest along an axis). If none is open within 8 blocks it is logged once and left.
 - **A crossing places the towed pod at the trail distance from the tower**, on the side it was on, so it does not arrive inside the tower. Its riders cross with it and `CROSSED` fires for them: they did cross.
-- **The cable is drawn as server-side particles** along the line between the pods every `TowTuning.cableInterval` ticks, at most `cableMaxParticles` each, so a client sees a tow without a model.
+- **The cable is drawn on the client**, from the attachment, as a chain of links between the two pods ([ADR 0049](0049-the-tow-line-is-a-chain-the-client-draws-from-the-attachment.md)). It first was server-side particles; the server draws nothing.
 - **Tunables are `TowTuning`, not a record of `PodTuning`**, which takes no more changes.
 
 ## Consequences

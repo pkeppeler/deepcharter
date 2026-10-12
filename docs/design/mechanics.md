@@ -1009,7 +1009,7 @@ The tier 1 part equals its bound to the bore and the tier 2 part beats it by 3, 
 
 **On the ground** it rests on the floor (`groundFriction` 0.6), slack while the tower is nearer than the line, and is pulled along with the line taut once the tower drives it out, so it trails exactly `trailDistance` behind. It stops at floors and walls as any pod does; it has no block collision while towed only so the line can never wedge it, and it is never counted as on the ground (the drill stops, as before).
 
-**The cable** is drawn from the tower to the towed pod with the line's length in mind: straight when taut, and a hanging curve (depth `sqrt(3 x chord x spare / 8)`, the depth of a rope of that length hung over that chord) when the pod is nearer, so a slack line sags and a taut one does not. It is drawn from hull to hull and not through them, and lifted off a floor it would sink into. A particle lives `cableLifetime` (5) ticks and the cable is drawn every `cableInterval` (4), so a swinging line leaves no trail of old lines; the end rod it was drawn with lived three seconds. The sprite is the pack's `particle/tow_cable.png`, and `cableScale` (1.8) its size. Each particle is one packet to each player who tracks the pod, because `sendParticles` places one point (a count with spread 0 stacks them on one spot), so the cost is the particles in a draw times the draws a second. A taut Mole line (6.9 between the middles) was 23 particles every 2 ticks, 230 packets a second a player; at `cableSpacing` 0.5 and every 4 ticks it is 14 every 4, 70 a second, about the rate of the old short cable.
+**The cable** (#508) is a chain of links the client draws from the attachment ([ADR 0049](../adr/0049-the-tow-line-is-a-chain-the-client-draws-from-the-attachment.md)): straight when taut, and a hanging curve (depth `sqrt(3 x chord x spare / 8)`, the depth of a rope of that length hung over that chord) when the pod is nearer, so a slack line sags and a taut one does not. It runs from hitch to hitch, a half width from each pod's middle toward the other, the same measure the server's line uses, so a taut pod shows a taut line at any `lineLength`. The server sends nothing for it; a client with both pods loaded builds at most 96 links a frame into reused buffers.
 
 **In a shaft.** The line never drags the towed pod into rock, by one rule: the towed pod is only where open space is. Its own fall and swing stop at walls like a pod's. Then, if the pod's box or the straight line from the tower to it is not in open space (the line would cut a corner), the pod is carried along the path the tower took instead, the point `lineLength` plus the hulls back along it (`PodTowing.Line.pathPoints`), which is open space because the tower has been there. Up a straight shaft the line is straight and the pod hangs below the tower; round a bend it follows the tower round it; out of the shaft's top it hangs below the tower in the shaft. If no point of the path is open (a pod wider than the tower's shaft, towed by the tower's path alone), a pod farther than the line from its tower is put at the open place farthest from the tower on the line toward where it was, at most the line away (`nearestOpenOnLine`), so it is never left behind as the tower leaves; and `leaveRock` still moves it into open space when it is freed. A pod too wide for the tower's shaft stays where it fits and cannot follow into it. The other rule considered was shortening the line to fit the shaft. It was not built: on paper it pulls the pod to the tower's side at every bend, where following the path moves it only as the tower moves.
 
@@ -1019,7 +1019,7 @@ The tier 1 part equals its bound to the bore and the tier 2 part beats it by 3, 
 
 **Tests.** `TowingTest` pins the distance on the ground, the hang below and behind in the air, the swing dying away, a tow up a 2-wide shaft and out of its top and one round a bend with the hull never in a wall, a pod with no path behind its tower after a reload following, a tower dropping 20 blocks fast costing the towed pod no hull, the chunk of the pod ticking, and the reach covering the longest line.
 
-**Knobs.** `TowTuning`: `lineLength` (5), `reachSpare` (0.5), `gravity` (0.08), `drag` (0.97), `groundFriction` (0.6), `cableInterval` (4), `cableLifetime` (5), `cableSpacing` (0.5), `cableScale` (1.8), `cableMaxParticles` (40).
+**Knobs.** `TowTuning`: `lineLength` (5), `reachSpare` (0.5), `gravity` (0.08), `drag` (0.97), `groundFriction` (0.6). The chain's own look is `theme/tow.json` (`linkLength` 0.28, `linkWidth` 0.2, `linkOverlap` 1.35, `tint`, `minBlockLight` 7).
 
 **Open questions.**
 - The towed pod does not turn to face its tower. A wreck hanging from a Mole could pitch and yaw with the line.
@@ -1256,3 +1256,67 @@ The minutes use these (A) assumptions: the player sprints at 5.612 blocks a seco
 ## The deepest point (#476)
 
 A charter's deepest point is the greatest depth any online member in survival or adventure has stood at on the surface or in a layer, read once a second with `Depth.of` (the HUD's depth). `/deepcharter charter info` prints it in feet, like the HUD. "Reach layer 3", which opens the Morale Initiative, currently means reaching the floor of layer 2 (`LayerChain.topDepth(3)`), because layer 3 does not exist yet. The threshold moves down when layer 3 lands.
+
+## Company Rock and the straight shaft (#509, A)
+
+**Problem.** Company Rock is the one block the drill refuses ([ADR 0015](../adr/0015-zones-are-filled-block-by-block-from-the-originals-rows.md)). A Mole's 2 x 2 bore meets it in about 1 slab in 13 in Stone Benches and 1 in 10 in Deep Claim, so a straight shaft is one in ten thousand and the only answer is the bot's: step two blocks aside and drill on. That costs fuel and time, breaks the shaft the charter would like to keep as a highway, and sends the pod into the next pocket of gas. The user (2026-10-11) asked for the rock to be destroyable and for a straight shaft to be possible with enough purchases. Motherload cleared rocks with dynamite and C4, and the Company sells you the means to break its own rock ([ADR 0050](../adr/0050-company-rock-can-be-blasted-and-the-drill-still-refuses-it.md)).
+
+**The ladder.**
+1. **The blasting charge** (built, this section): $40, set from the seat on the slab under the pod, a 3 second fuse, clears Company Rock and natural rock in the bore square, 2 slab rows deep. The pilot climbs clear or takes the hull hit.
+2. **The shaped charge** (planned, [#526](https://github.com/pkeppeler/deepcharter/issues/526)): $100, the same rules, 6 rows deep (three slabs), for the thick stretches of Company Rock in layers 2 and 3 (about 1 slab in 5 and 1 in 3). It costs less than three blasting charges ($120) and needs one climb and one fuse, not three. Nothing else changes: same fuse, same reach, same damage.
+3. **A late drill tier** (planned, #526): a tier of the drill (tier 5 or 6) that bites Company Rock itself, slowly: about 10 seconds a slab against 1.2 for stone, fuel drain tripled while it bites, and the cutter overheats (1 hull a second, cut by the radiator). It is free of consumables, so a pilot who digs a lot buys the tier once; a pilot who needs one slab and no more still buys a charge. Charges keep their niche as the cheap answer, and a spare pod keeps the old steer-round.
+
+**The mechanic (rung 1).**
+- **Where it is sold.** The repair station, with dynamite and plastic explosives. Dynamite and plastic still skip Company Rock (they are the answer to stone and gas); the charge is the one thing that does not.
+- **Setting it.** A right click with the charge in hand, while piloting a pod that rests on the ground (`PodCharge.set`). It is refused, and kept, when the pod is in the air, when a charge is already burning, when the hull is no more than the blast's damage (a charge is never a suicide button), or when no Company Rock is in the blast: dynamite is the tool for plain rock.
+- **The blast volume** is the bore square (2 x 2 for a Mole) under the pod's feet, `chargeDepth` 2 rows deep. A margin of 1 was built first and measured worse: the 4 x 4 chamber it opens is more air for the liner to ring (rack ran dry in 61 bores of 100 against 6 with no margin, below).
+- **What goes.** Blocks of `deepcharter:undiggable` (Company Rock) and `deepcharter:natural_rock` (stone, deepslate, tuff, ores and gas pockets), and only in loaded chunks and under the ceiling row. Spared: slag bricks, lining, liner rings, any structure or build, the breach crust, bedrock, every fluid. A gas pocket in the volume goes with the blast and vents no more (the same rule as a pocket in a gas blast, so a charge is also a safe way to clear a pocket the pilot knows of). Lava is not touched, and the hole lets it flow in as a bore does. Ore in the volume is destroyed, not collected: the cost of the rule that a blast does not gather (dynamite does the same).
+- **Hurts the pod too close.** A pod within `chargeReach` (3 blocks) of the volume takes `chargeDamage` (20 hull) times its share of the way in: 20 for a pod that sat on the blast, 10 for one 1.5 blocks away, none beyond 3. Every pod in reach takes it, the setter's too, and another charter's (the risk of a shared shaft); a wreck takes nothing. The action bar warns "Charge set: CLIMB CLEAR" when the charge is set. The seated pilot is shielded, as from lava (#288).
+- **Feedback.** The action bar counts the fuse down once a second ("Charge set: blast in 3"), flames and smoke rise from the slab every fourth tick, the fuse sound is dynamite's primed sound and the blast is the plastic explosives' (no new audio). The fuse lives on the pod and is not saved: a pod that unloads before the blast loses its charge.
+- **The way out is the rotor.** A pod climbs by its rotor, and the rotor's lift is the engine power less the bay's mass, so a pod with a light bay clears the reach in about a second and a pod with a full bay of heavy ore barely moves in 3 seconds. That is the trade-off: sell or jettison before you blast, or pay hull. The measurements below hold the bot to a bot's skill: it holds the rotor and never jettisons.
+
+**Trade-offs.** $40 a charge, a 3 second stop with the rotor held (fuel), and hull for a pod that is slow to leave. The default build is no harder than on main: the charge is a new purchase and changes nothing for a pod without it. Steering round the rock stays free, and costs a ragged shaft.
+
+**Tuning knobs.** `RepairTuning` `chargeFuseTicks` (60), `chargeDepth` (2), `chargeDamage` (20), `chargeReach` (3). The price: `Consumable.BLASTING_CHARGE` ($40), held by `EconomyAffordabilityTest` to a quarter to one stock layer 1 run ($115), and a straight layer 1 shaft (5.4 refused slabs counted from the zone tables, $217) to at most two. Skins: the item icon (`item/blasting_charge`), its lang keys, the three refusal messages.
+
+### Blasting charges vs. a straight shaft: measured
+
+#509. `LavaBoreTest`, `DEEPCHARTER_LAVA_BORES=100`, seed 0, braking on, the bot that never reacts to lava, gas `ignore` (the sounder column steps round gas as the bot of #442 does). Switch: `DEEPCHARTER_LAVA_BORES_CHARGES=1` (the bot sets a real blasting charge through the item's use path whenever Company Rock refuses the slab under it, holds the rotor to hover clear, drills on after the blast; a bot without the switch sidesteps). The runs are deterministic. Every run now prints a `straight shafts` line.
+
+| 100 bores | Sidestep (main) | Charges | Liner 2 + sounder 2, rack 24, sidestep | Liner 2 + sounder 2, rack 24, charges |
+|---|---|---|---|---|
+| Never left their column | 0 | **100** | 0 | 8 |
+| Never stepped aside from a refused slab | 0 | **100** | 0 | **100** |
+| Charges a bore (p10 / p50 / p90) | 0 | 5.3 (3 / 5 / 8) | 0 | 8.9 (5 / 9 / 12) |
+| Cost a bore | $0 | $211 | $0 | $357 |
+| Reached layer 2 | 0 | 0 | 51 | **77** |
+| Died | 100 | 100 | 48 | 23 |
+| of them, in lava | 98 | 98 | 22 | 11 |
+| Hull lost to charges a bore | 0 | 2.2 | 0 | 42.2 |
+| Deaths whose last loss was a charge | 0 | 0 | 0 | 3 |
+| Sidesteps a bore | 6.1 | 0.0 | 13.3 | 2.5 |
+| Fuel tanks a bore | 10.0 | 8.4 | 20.8 | 17.4 |
+| Pod ticks a bore | 6,211 | 5,378 | 13,008 | 11,110 |
+| Liner rack ran dry | n/a | n/a | 10 | 6 |
+
+**Reading.**
+- **A charge makes the shaft straight.** Without a liner every bore stays in its column and no bore steps aside from a refused slab: 5.3 charges, $211, about 1.8 stock layer 1 runs. The counted figure from the zone tables is 5.4 slabs, so one charge answers one refused slab, as designed (measured 5.3 charges, counted 5.4) (`EconomyAffordabilityTest` holds a straight shaft to at most two stock runs).
+- **A straight shaft is faster and thriftier on fuel than the detour:** 5,378 pod ticks against 6,211, and 8.4 tanks against 10.0, because the bot no longer climbs out of a side step and re-bores.
+- **A straight shaft is what the liner wants.** With the liner and the tier 2 sounder (the pick of #442) the bot reaches layer 2 in 77 bores of 100 against 51: the sidestepping bot of that column (13.3 steps a bore) leaves the lined column, so it re-lines it and bores into the pockets and the lava beside it, and 22 of its 48 deaths are in lava against 11 of 23. Only 8 of those bores never left their column, though none stepped aside from a refused slab: the sounder bot still steps aside from gas, as on main, and a charge could clear the pocket instead (not built, see below).
+- **Lava still ends the stock Mole.** Without a liner every bore dies, 98 in lava, as on main. A charge does not touch the lava ladder.
+- **The loaded pod pays.** The liner and rack weigh the pod down, and the bot never jettisons ore, so its rotor lifts it 2 blocks in the fuse and the charge costs it 42 hull a bore (4.7 a charge) and 3 deaths. The bot without a liner has a lighter pod and loses 2.2. A pilot who sells before blasting loses nothing.
+- **The first builds had a margin of 1** (a 4 x 4 blast). With the liner column, 20 hull within 3 blocks reached layer 2 in 31 bores with the rack dry in 61: the wider chamber is more air to ring. Margin 0 is the pick.
+
+**The pick (A).** $40, fuse 60 ticks, 2 rows deep, no margin, 20 hull within 3 blocks. How it got there, on the liner column (reached layer 2 / hull lost to charges a bore):
+- 40 hull within 6 blocks, margin 1: 8 / 79.1, and 42 deaths whose last loss was a charge. A loaded pod cannot climb 6 blocks in 3 seconds.
+- 30 hull within 3 blocks, margin 1: 20 / 53.6.
+- 20 hull within 3 blocks, margin 1: 31 / 36.9. An 80 tick fuse was tried at 30 hull and made no difference: a loaded pod's lift, not time, is the limit.
+- 20 hull within 3 blocks, margin 0: 77 / 42.2. The pick.
+
+The price was not run at $60: counted from the zone tables, 5.4 charges at $60 are 2.8 stock layer 1 runs and break the guard of two.
+
+**Open questions.**
+- **Gas.** A charge clears a pocket without hurting the pod. Should the sounder bot blast the pockets it hears, in place of stepping aside? It would make the sounder a reason to buy charges, and a straight shaft a whole-column promise. Not built: it changes the gas ladder (#368, #373), which has its own numbers.
+- **Sideways.** Rung 1 blasts only down. A drift that meets Company Rock still steps round it. The shaped charge could take the pod's facing.
+- **Jettison.** A pilot who must hover could drop ore first (the cargo jettison exists). The bot never does, so the loaded-pod figure above is a bound.
+- **The look.** The Company Rock look is its own round ([#503](https://github.com/pkeppeler/deepcharter/issues/503), PR #523); it should read as blastable. Not touched here.

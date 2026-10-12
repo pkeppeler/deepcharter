@@ -285,14 +285,14 @@ Passengers are allowed. Example: the Prospector's second seat, until the navigat
 
 ## 10. Hazards
 
-- Baseline from the original: undiggable rock, visible lava, invisible gas pockets (damage grows with depth), fall damage, earthquakes. Each layer adds its own.
+- Baseline from the original: Company Rock (the drill refuses it; a bought blasting charge clears it, [ADR 0050](adr/0050-company-rock-can-be-blasted-and-the-drill-still-refuses-it.md)), visible lava, invisible gas pockets (damage grows with depth), fall damage, earthquakes. Each layer adds its own.
 - Earthquakes (in certain layers) and local cave-ins block a stretch of shaft, small or large, rather than erasing it.
 - Ways to clear a blockage:
   1. Climb out and plant explosives, with the suit timer running.
   2. A pod-mounted charge launcher.
   3. Crewmates clearing from above.
   4. Emergency teleport items.
-- The original's dynamite and plastic explosives (3×3 and 5×5) return as consumables.
+- The original's dynamite and plastic explosives (3×3 and 5×5) return as consumables. Neither clears Company Rock. The blasting charge does: set from the seat under the pod, a fuse, a blast.
 - Hazards never delete player-built blocks.
 
 ## 11. Getting back up

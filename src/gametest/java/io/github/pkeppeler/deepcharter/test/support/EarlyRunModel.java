@@ -229,6 +229,16 @@ public final class EarlyRunModel {
 		return (stoneTicks * (1 - slabHasOre) + oreTicks * slabHasOre) / 20;
 	}
 
+	/** The chance that one block of the zone is Company rock, read from the same JSON that the world generator reads (0 for a zone with none). */
+	public static double companyRockChance(String zoneName) {
+		for (JsonElement entry : json("/data/deepcharter/worldgen/feature/fill_" + zoneName + ".json").getAsJsonArray("hazards")) {
+			if (entry.getAsJsonObject().get("block").getAsString().equals("deepcharter:company_rock")) {
+				return entry.getAsJsonObject().get("chance").getAsDouble();
+			}
+		}
+		return 0;
+	}
+
 	private static JsonObject json(String resource) {
 		InputStream stream = EarlyRunModel.class.getResourceAsStream(resource);
 		if (stream == null) {

@@ -2,13 +2,21 @@
 status: accepted
 ---
 
-# A dormant charter is revived by the first player who asks, and keeps its name
+# A dormant charter is revived by a former member, and keeps its name
 
-A player who is on no charter and has no open application can revive a dormant charter by name (`/deepcharter charter revive "<name>"`, the name quoted; `Charters.revive`) and becomes its Director. The charter keeps its name, account and deepest point. It has no crew and no applications, as when it went dormant. `CharterEvents.REVIVED` fires after the change.
+A player who is on no charter, has no open application and was once a member of a dormant charter (its Director or crew) can revive it and becomes its Director. The contract terminal lists the dormant charters the player may revive and a REVIVE button revives one (`ContractActions.REVIVE`; `Charters.revive`). The charter keeps its name, account and deepest point. It has no crew and no applications, as when it went dormant. `CharterEvents.REVIVED` fires after the change.
+
+## Amended 2026-10-11 (#168): former members only
+
+The first version of this ADR let the first player who asked revive any dormant charter, because the charter kept no record of its people. **The user decided at the M2 demo (#200, 2026-10-11): only a former member may revive.** Anyone-may-revive would hand a stranger the charter's account, which is a money transfer between charters (SPEC section 6 forbids it).
+
+- **The charter remembers its former members.** `Charter.formerMembers` is every player who was Director or crew and left, in the order they left. A player who rejoins, or revives, is no longer in it. `CharterData.VERSION` is 2; version 1 is still read, and its charters start with no former members.
+- **A charter that went dormant under version 1 has no former members, so no player can revive it from the terminal.** Its people are unknown. It stays dormant, and its pods stay usable by anyone (below), until an operator revives it.
+- **The operator command is an override.** `/deepcharter charter revive "<name>"` needs operator rights and calls `Charters.reviveAsOperator`, which skips the former-member check. It is for version 1 charters and for support. The terminal and `Charters.revive` apply the rule; there is no other way around it.
+- **A refusal says why** (`NOT_A_FORMER_MEMBER`) and is made before any change. A name typed by hand to the terminal gets the same refusal as a button.
 
 - **Releasing the name after a set time**: rejected. Another charter could take the name, and the old account, progress and pods would have no owner. Reviving returns all of it to one Director.
-- **Anyone may revive, not only a former member**: a dormant charter holds no roster to check against. The first to ask wins.
-- **No saved-shape change**: a dormant charter already has no Director, so `CharterData.VERSION` stays 1.
+- **Anyone may revive, the first to ask wins**: the first version of this ADR. Rejected by the user on 2026-10-11 (see above).
 
 ## What reviving does to pods and wrecks
 
@@ -21,5 +29,5 @@ Pod ownership is the charter id in the pod's registration, and `PodComponents.ow
 ## Consequences
 
 - A feature that reacts to a person gaining a charter listens to `REVIVED` as well as `FOUNDED` and `JOINED`.
-- The contract terminal does not list dormant charters, so reviving is an operator command until it does.
-- "Anyone may revive" hands a newcomer the charter's account, progress and pods. That is safe only while reviving is an operator command. Before revive reaches players (#168), decide who may revive first, for example former members first.
+- A dormant charter whose people never return stays dormant, and its pods stay anyone's while it is. That is the accepted cost of the rule.
+- The terminal list is capped at `ContractTerminalTuning.revivableRows` and says how many more exist.

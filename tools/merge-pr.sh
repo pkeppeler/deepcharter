@@ -6,7 +6,9 @@
 # current head (see tools/mark-review-passed.sh), closes exactly its branch's
 # issue (GitHub's closingIssuesReferences set is {N} for branch `<N>-<slug>`),
 # adds no docs/adr/NNNN-*.md whose NNNN is already on origin/main (any slug) or twice in the PR,
-# mergeable, shows a demo if it changes in-game code (see the demo check below), and every check is
+# mergeable, shows a demo if it changes in-game code (see the demo check below), changes docs/feature-map/map.json
+# or says `No map change: <reason>` if it is labelled `gameplay`, has no map node that cites its issue and is not built
+# (both #510), and every check is
 # `pass` or `skipping` (at least one check, and all of REQUIRED_CHECKS passing). A
 # check's state is its newest non-skipped run, so a later skipped run cannot hide
 # a failure.
@@ -226,6 +228,40 @@ if [[ -n $in_game ]]; then
       || refuse "changes in-game code ($in_game) with the 'no-demo' label but its body has no 'No demo: <reason>' line"
   else
     refuse "changes in-game code ($in_game) with no demo: $demo_fix"
+  fi
+fi
+
+no_map_change() { grep -qE '^No map change:[[:space:]]*[^[:space:]]' <<<"$body"; }
+
+# A `gameplay` PR changes what the game has, so it must change the feature map
+# (docs/feature-map/map.json, #510) or say why not with a body line `No map change: <reason>`.
+# Reuses pr_files, so an unreadable list has already refused.
+if has_label gameplay; then
+  map_changed=
+  while IFS=$'\t' read -r _ path _; do
+    [[ $path == docs/feature-map/map.json ]] && map_changed=1
+  done <<<"$pr_files"
+  if [[ -z $map_changed ]]; then
+    no_map_change \
+      || refuse "is labelled 'gameplay' but does not change docs/feature-map/map.json: update the map (skill .claude/skills/feature-map/SKILL.md) or add a body line 'No map change: <reason>'"
+  fi
+fi
+
+# The map's content must not go stale (#510): a node whose refs cite the issue this PR closes (or the PR itself) must be
+# `built` in the map at the PR head, so whoever merges a feature also flips its node. A body line `No map change: <reason>`
+# skips this. A branch from before the map exists has no map.json at its head and is not checked. The gh --jq filter runs on
+# the file's JSON; the stub in the tests answers with the lines it would print: node id, status, the ref that matched.
+if ! no_map_change; then
+  cited_any=". == \"#$issue\" or . == \"#$pr\""
+  map_read=0
+  stale_nodes=$(gh api "repos/$repo/contents/docs/feature-map/map.json?ref=$sha" -H "Accept: application/vnd.github.raw+json" \
+    --jq ".nodes[] | select(.status != \"built\") | select(any(.refs[]?; $cited_any)) | [.id, .status, (.refs | map(select($cited_any)) | .[0])] | @tsv" 2>&1) \
+    || map_read=1
+  if [[ $map_read -eq 1 ]]; then
+    [[ $stale_nodes == *"HTTP 404"* ]] || refuse "has no readable docs/feature-map/map.json at $sha: $stale_nodes"
+  elif [[ -n $stale_nodes ]]; then
+    IFS=$'\t' read -r stale_id stale_status stale_ref <<<"$(head -1 <<<"$stale_nodes")"
+    refuse "has the feature map node '$stale_id' citing $stale_ref, which this PR closes or is, but the node is still $stale_status: set it built in docs/feature-map/map.json (skill .claude/skills/feature-map/SKILL.md), drop the ref, or add a body line 'No map change: <reason>'"
   fi
 fi
 
