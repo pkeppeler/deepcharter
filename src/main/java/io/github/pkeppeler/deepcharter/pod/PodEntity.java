@@ -94,6 +94,15 @@ public class PodEntity extends Entity {
 		entityData.set(PodData.BRACE_ORE, braceOre);
 	}
 
+	/** Slag brick the heat shield can still burn; kept by the shield on the server, synced for the HUD. */
+	public int glazeBricks() {
+		return entityData.get(PodData.GLAZE_BRICKS);
+	}
+
+	public void setGlazeBricks(int glazeBricks) {
+		entityData.set(PodData.GLAZE_BRICKS, glazeBricks);
+	}
+
 	/** True while lava is burning the hull (set each tick by LavaHazard); the HUD shows it. Not saved: a loaded pod starts cool. */
 	public boolean hullBurning() {
 		return entityData.get(PodData.HULL_BURNING);

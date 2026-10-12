@@ -8,6 +8,6 @@ public class LamplessFigureRenderState extends EntityRenderState {
 	public float fade;
 	/** The figure holds a pod's hull. */
 	public boolean clinging;
-	/** The figure carries a lamp. */
+	/** The lamp in the figure's helmet is lit. */
 	public boolean lamp;
 }

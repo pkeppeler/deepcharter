@@ -15,6 +15,8 @@ For each item the script records its scenario with `tools/record-evidence.sh` (o
 
 The texture reference sheet is not a tour item. Publish it with `tools/texture-sheet.sh` (it renders `texgen.py --sheet` and publishes `texture-reference.png` to the same folder) after a PR that changes the palette or a recipe.
 
+The feature map poster is not a tour item either. Publish it with `tools/feature-map.sh --publish` (it draws the poster from `docs/feature-map/map.json` and publishes `feature-map.svg`, and `feature-map.png` when Chrome is installed, to the same folder) after a PR that moves several nodes of the map ([skill](../../.claude/skills/feature-map/SKILL.md)).
+
 After a run, open each new image before you trust it. GitHub caches `raw.githubusercontent.com` for a few minutes, so an old image can show for a while.
 
 ## When to run it

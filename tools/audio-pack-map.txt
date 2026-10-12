@@ -15,6 +15,7 @@ pod.crash              1975_crash2.wav.mp3
 pod.explosion          1423_explosion.wav.mp3
 pod.hull_burning       2006_lava.wav.mp3
 pod.lining_place       1971_clink.wav.mp3
+pod.glaze_burn         2006_lava.wav.mp3
 pod.seep_hiss          2006_lava.wav.mp3
 
 # Creatures

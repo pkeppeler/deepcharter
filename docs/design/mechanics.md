@@ -34,7 +34,7 @@ Mechanics invented under the creative liberty of the `designing-mechanics` skill
 - A wreck in lava makes no burning flag and no sound.
 - The cue. The pod flags `hullBurning` (synced) while lava touches it. The status HUD shows a line, "HULL BURNING", in the `podBurningColor` of `theme/hud.json`, and the pod hisses (`pod.hull_burning`, default asset `entity.generic.burn`, every `lavaCueTicks` = 15 ticks). A pilot sees the hull number fall and has a few seconds to turn the pod out of the lava.
 
-**The ladder (#232).** By hand: lining blocks placed from the seat. Then a liner upgrade that lines a ring every few slabs. Then a heat-shield hull track: it cuts the hull damage, and now it matters, because the hull is what lava takes. See the lava example in the `designing-mechanics` skill. Rung 4, a warning when lava reaches the shaft behind the pod, is [the lava watch](#the-lava-watch-454-a).
+**The ladder (#232).** By hand: lining blocks placed from the seat. Then a liner upgrade that lines a ring every few slabs. Then a heat-shield hull track: it cuts the hull damage, and now it matters, because the hull is what lava takes. See the lava example in the `designing-mechanics` skill. Rung 3 is [the heat shield](#the-heat-shield-482-a). Rung 4, a warning when lava reaches the shaft behind the pod, is [the lava watch](#the-lava-watch-454-a).
 
 ### Lava vs. a straight bore: measured
 
@@ -904,7 +904,7 @@ The tier 1 part equals its bound to the bore and the tier 2 part beats it by 3, 
 
 **Open questions.**
 - Lava that flows into a lined stretch from beyond the view is not lined. Answered by [#454](#the-lava-watch-454-a): every pod warns its pilot, and the liner stays as it is.
-- Rung 3 (the heat-shield hull): candidate C is a start, bricks from the pack as ablative plating. It needs a pilot that leaves the lava to be measured, and a number that does not make lining optional ([#232](https://github.com/pkeppeler/deepcharter/issues/232)).
+- ~~Rung 3 (the heat-shield hull): candidate C is a start.~~ Answered by [#482](#the-heat-shield-482-a): built as the heat shield, and measured with a pilot that leaves the lava.
 - Does hand lining want a rack of its own, now that the rack is smaller than the 32 bricks a Mole's hand ring costs?
 
 ## The lava watch (#454, A)
@@ -942,7 +942,62 @@ The tier 1 part equals its bound to the bore and the tier 2 part beats it by 3, 
 **Open questions.**
 - Should the line point at the side the lava comes from, as the seepage line names a side? A path walk knows the first step, so only the vertical one is used now.
 - A cap that stops further lava needs bricks the pilot may not have: lava from above is then a reason to carry a few.
-- Does the heat-shield hull (rung 3) make the warning moot for a late pod? It should not: the hull only buys time.
+- ~~Does the heat-shield hull (rung 3) make the warning moot for a late pod?~~ No: [the heat shield](#the-heat-shield-482-a) only buys seconds, and the warning is what tells the pilot to use them.
+
+## The heat shield (#482, A)
+
+**Problem.** Rung 3 of the lava ladder ([#232](https://github.com/pkeppeler/deepcharter/issues/232)). Since #288 lava takes the hull, so a stock Mole has 10 seconds in lava. Hand lining, the liner and the lava watch keep lava out or say it is coming. Nothing buys a pod seconds once it is in the lava. Candidate C of [#442](#liner-economy-after-432-442-a) (the pack's bricks absorb lava hull damage) raised contact ticks from 132 to 367 on the bore bot and added no reach, because that bot never leaves the lava. This rung builds it as a part, and measures it with a pilot that does.
+
+**The ladder.**
+1. By hand ([Hand lining](#hand-lining-313-a)): cheap, slow, teaches the danger.
+2. The liner ([Liner](#liner-339-a)): lines the stretch the pod is about to bore.
+3. The heat shield (this rung): the pod burns slag brick in place of hull while lava touches it. It buys seconds and spends the bricks that would have lined the next stretch.
+4. The top tier is a later part, with the heat-leaning Crawler chassis (SPEC section 7): the pod shrugs off brief lava and lining becomes optional. This tier is not that. It keeps lining necessary on layers 1 and 2 (measured below).
+
+**The mechanic (slag glaze).**
+- **The part.** A track of its own, `heat_shield`, one tier, $750 at the upgrade terminal, any chassis.
+- **While lava touches the pod,** each tick's lava damage (10 hull a second, times the radiator ratio) is soaked by burning slag brick, 4 hull a brick (`hullPerBrick`). The brick comes from the rack first, then from the seated pilot's pack if `PodLining.mayUseStores` lets that pilot use the pod's stores. The rack is the pod's own part, so it burns for any pilot or none (as the liner draws on it; `PodHeatShieldTest` pins a stranger's pod); only the pack, which is the pilot's, is gated (A). With no brick left the lava takes the hull at the full rate. A full rack of 24 bricks soaks 96 hull, so it doubles a stock Mole's 10 seconds.
+- **It soaks lava only.** A fall, gas and the crust are not its business. A radiator still counts: a cooler pod burns fewer bricks.
+- **Feedback.** While the glaze has bricks the HUD swaps "HULL BURNING" for "GLAZE HOLDING  14 BRICKS LEFT" (the same alert colour, so the cockpit lamp stays lit: the pod is still in lava). When the bricks are spent it shows "GLAZE SPENT" over "HULL BURNING". Each brick burned plays a crackle (`pod.glaze_burn`; vanilla `block.fire.ambient` as the placeholder). The hull hiss plays only when lava reaches the hull. The count is a synced pod field (`glazeBricks`), kept by the server each tick, so the HUD reads one number.
+
+**Trade-offs.** The bricks are the liner's: a pod that glazes has fewer bricks to line with, and a rack of 24 holds one usual bore of lining (12 to 14 bricks). So the shield is a reason to carry a pack, and to keep the spoil hopper. It adds no weight and slows nothing. It costs $750, three runs of layer 2 (`EconomyAffordabilityTest`), more than the liner's tier 1 ($500) and less than its tier 2 ($1,000).
+
+**Tuning knobs.** `PodHeatShieldTuning.hullPerBrick` (4). The price: `UpgradeTuning` `HEAT_SHIELD` ($750). The sound `pod.glaze_burn`. Skins: the part's item icon, model and lang keys, the two HUD lines.
+
+### The heat shield vs. the ladder: measured
+
+#482. `LavaBoreTest`, `DEEPCHARTER_LAVA_BORES=100`, seed 0, a stock Mole with the tier 2 seep sounder (so the bot meets gas as the pick of [#442](#liner-economy-after-432-442-a) does), rack of 24, braking on. The runs are deterministic. New switches: `DEEPCHARTER_LAVA_BORES_SHIELD=1` (the part) and `DEEPCHARTER_LAVA_BORES_PILOT=leave|ignore`.
+
+**The pilot that leaves the lava (`leave`).** It reacts after half a second of lava contact (10 ticks, the time to read the HUD line). It pulls the rotor and climbs until it has been clear of lava for half a second and 2 slabs above the contact, then turns back: the bore ends alive. A pilot that is still in lava after 3 seconds of climbing is trapped (it has sidestepped, and rock is over it): it lets go of the rotor, lines by hand, and drills on. `ignore` is the old bot that never reacts. A bore that turns back reaches nothing, so "reach" for `leave` is the bores that never needed to turn back or that lined out. The pilot has no sense of the shield: the glaze only pays for its climb.
+
+| 100 bores, tier 2 sounder, rack 24 | Reach | Touched lava | Contacts a bore | Ticks in lava a bore | Hull lost to lava a bore | Hull a contact (mean / p50) | Lava deaths | Turned back | Bricks a bore (glaze) |
+|---|---|---|---|---|---|---|---|---|---|
+| Never reacts, liner 2 (the pick of #442) | 51 | 23 | 0.24 | 34.0 | 17.0 | 70.7 / 71.5 | 22 | 0 | 13.7 (0) |
+| Never reacts, shield alone | 0 | 100 | 1.01 | 382.8 | 97.5 | 96.5 / 100.0 | 100 | 0 | 24.0 (24.0) |
+| Leaves, no part, no bricks | 0 | 100 | 1.06 | 55.3 | 27.8 | 26.2 / 9.5 | 23 | 77 | 0.0 (0) |
+| Leaves, rack only (hand lining out of a trap) | 0 | 100 | 1.18 | 54.4 | 27.2 | 23.0 / 10.5 | 22 | 77 | 1.7 (0) |
+| **Leaves, shield alone** | 0 | 100 | 1.21 | 84.9 | 20.3 | 16.8 / 0.0 | 23 | 77 | 7.6 (7.1) |
+| Leaves, liner 2 | 51 | 23 | 0.23 | 22.5 | 11.2 | 48.8 / 39.2 | 15 | 7 | 14.4 (0) |
+| **Leaves, liner 2 + shield** | 51 | 23 | 0.24 | 36.1 | 11.2 | 46.7 / 38.7 | 16 | 7 | 15.8 (2.1) |
+| Leaves, liner 2, pack 16 | 55 | 19 | 0.19 | 21.7 | 10.8 | 57.1 / 68.5 | 15 | 3 | 15.5 (0) |
+| **Leaves, liner 2 + shield, pack 16** | 55 | 19 | 0.21 | 49.4 | 10.8 | 51.6 / 39.2 | 16 | 3 | 19.4 (4.5) |
+| Leaves, liner 2, pack 64 | 57 | 17 | 0.17 | 21.3 | 10.6 | 62.6 / 70.6 | 15 | 1 | 16.4 (0) |
+| **Leaves, liner 2 + shield, pack 64** | 59 | 17 | 0.17 | 91.3 | 8.7 | 51.0 / 66.4 | 11 | 1 | 27.0 (10.7) |
+
+**Reading.**
+- **It buys time in lava.** Alone, the shield takes the median hull lost in a lava contact from 9.5 to 0, and the hull lost to lava a bore from 27.8 to 20.3, while the pod spends 85 ticks a bore in lava against 55 without it. A bore that turned back keeps its whole hull instead of about 90.
+- **It does not make lining optional.** The shield alone reaches layer 2 in 0 of 100 bores, as the pod with no part does, and the pod touches lava in every bore. The liner reaches it in 51. Every bore with no liner meets Deep Claim's lava and has to turn back. Seconds in lava do not cross it, because the flood follows the shaft: even a never-reacting pilot with the shield (which lives 19 seconds in lava instead of 10) reaches nothing.
+- **It cannot save a trapped pod, and does not pretend to.** 23 bores die in lava with or without the shield. Those are pods that sidestepped and have rock overhead: the climb is blocked, and a Mole's hand ring is 32 bricks, 256 ticks, more than 96 hull of glaze and more than a rack of 24. Both need more bricks than the rack holds.
+- **Under a liner it is nearly idle at the default rack.** The liner spends the rack, and the bores that touch lava are mostly those whose rack ran dry (2.1 bricks a bore go to the glaze). Reach stays 51 and the hull lost a bore is 11.2 with or without it.
+- **It pays for a big pack.** With a pack of 16 bricks the shield changes nothing in reach (55 either way). With 64 it reaches layer 2 in 59 bores against 57 with the pack alone, and lava deaths fall from 15 to 11. The glaze converts spare bricks into seconds, which gives the pack and the spoil hopper another job after #442.
+- **A flat cut was not built.** A part that cut lava damage by a share would duplicate the radiator, spend nothing, and have no tension with lining. Burning the liner's own brick is what keeps lining the better buy.
+
+**The pick (A).** `hullPerBrick` 4, $750, rack then pack. 3 was measured too (3 hull a brick, shield alone: same reach and hull lost a bore, 20.3, and 78 ticks in lava against 85): a full rack soaks 72 hull, 7 seconds. 4 makes the sentence "a full rack doubles the time in lava". The default build is no harder than on main: the part is a new buy and changes nothing for a pod without it.
+
+**Open questions.**
+- Should the glaze draw the pack before the rack, so the rack stays for lining? It would make the pack the armour reserve. Not built: a pilot's spare bricks should not vanish without a choice.
+- The top tier with the Crawler (SPEC section 7): a flat cut on top of the glaze, or a glaze that costs nothing. Not designed here.
+- A trapped pilot needs lining that is cheaper than 32 bricks. The lava watch's cap (4 bricks) is the nearest thing today.
 
 ## The tow line (#425, A)
 
@@ -1013,7 +1068,7 @@ The tier 1 part equals its bound to the bore and the tier 2 part beats it by 3, 
 **Amended for #485 (A).** The user's call (pkeppeler, 2026-10-11, the M2 demo): the Retained must be killed. Otherwise they keep draining the pod's fuel. They do not fade away on approach or when lit. Everything below is the rule as it stands after #485; the first tuning of #449 (a figure took its fill, then let go; moving or lights freed the pod; light and people on foot faded it) is gone, and so are the numbers that went with it.
 
 **The rule.**
-- **Where.** The game's spawner places them in the open dark of layers 1 and 2 (every biome of the two lists them: weight 1, one at a time). Never on the surface, and never where it is lit: the spawn needs block light under 3, a solid floor and 3 blocks of air. The colony, the hangar and the founding Mole's bay stand in the surface level, so they are out whatever their light. The roll is cheap and comes first: 2 tries in 100 pass in layer 2, and 1 in 200 in layer 1, where the pilot is new. At most 3 of the game's figures in a level, and a delay (400 ticks) after one is killed. The rail line of layer 2 keeps its own spawner (a figure on a rail site when a player is within 96 blocks) with its own cap and delay: the caverns' figures never hold back the figure of Prospector's Run, which is fixed lore. About a third of figures carry a lamp. On Peaceful the game's own spawner makes no monsters, so a Peaceful world has only the rail's figure ([ADR 0046](../adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md)).
+- **Where.** The game's spawner places them in the open dark of layers 1 and 2 (every biome of the two lists them: weight 1, one at a time). Never on the surface, and never where it is lit: the spawn needs block light under 3, a solid floor and 3 blocks of air. The colony, the hangar and the founding Mole's bay stand in the surface level, so they are out whatever their light. The roll is cheap and comes first: 5 tries in 100 pass in layer 2, and 1 in 100 in layer 1, where the pilot is newer (#506: it was 2 in 100 and 1 in 200). At most 5 of the game's figures in a level, and a delay (400 ticks) after one is killed. The rail line of layer 2 keeps its own spawner (a figure on a rail site when a player is within 96 blocks) with its own cap and delay: the caverns' figures never hold back the figure of Prospector's Run, which is fixed lore. Every figure the spawner makes carries a tiny, dim lamp in its helmet (#506), so it shows from far off in the dark. On Peaceful the game's own spawner makes no monsters, so a Peaceful world has only the rail's figure ([ADR 0046](../adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md)).
 - **Draw, and the warning.** A pod draws a Retained that is within 20 blocks when it has a pilot, power and fuel above 5 per cent, and no lights part that counts. A parked pod is left alone, and so are wrecks and lit pods. The figure walks to the pod (about 3 blocks a second; a Mole drives at 4). When it first sets off, the pilot reads "Something walks toward the pod. Light the pod, or be ready to drill." and hears a low rumble (`creature.approach`, a placeholder sound). That is seconds of warning, and a pod that drives away is not caught on the way.
 - **One grip.** A pod has at most one figure on it: a second figure that picked the same pod drops its target as it arrives.
 - **Grab.** A figure whose box is within 2.5 blocks of the hull takes hold: it closes on its place on the side of the hull that it came from, faces the pod and clings in a pose of its own, and the pilot reads "Something has hold of the hull. Drill into rock to cut it off, or get out and strike it." It never hurts the pilot, the hull or itself: nothing in it attacks.
@@ -1047,6 +1102,19 @@ The lights part ($125) pays back after 1.08 unanswered grabs, because an unanswe
 
 **This makes the default harder than main** (the pick of #449, a grip that ends by itself, gave 25.9% for a pilot who never answered). Stock Mole, layer 1: the reacted grab goes from 3.6% to 4.7% of a run, the unreacted one from 6.0% to 7.0%, and the unanswered one from 25.9% to 98.4%. The early game is no harder for a pilot who reads the line and drills; it is much harder for one who ignores a grab. That is the user's decision, "they must be killed", made as the numbers.
 
+**Frequency, depth and the helmet lamp (#506, A).** The user (pkeppeler, 2026-10-11): the Retained are "not rare", a real presence once the player is fairly deep; they face the pod while they drain it; the lamp is a tiny, dim light in the helmet. Measured against the #498 rules (a grip drains until it is killed; a reacted grab costs 0.45 litres, 4.7% of a layer 1 run; unanswered it drains to the 5% floor). The model is in `RetainedEconomyTest.theFiguresRiseWithDepthAndStayFairInLayerOne`: placements a minute are 30 times the roll chance (measured in #449), a run is 4 minutes (assumed, down and back), and half the figures placed find the pod (assumed: they appear 24 or more blocks off, sense 20 blocks, and the pod moves). The 30 is pinned from #449 and does not depend on the roll or the cap; the model holds it down by the delay after a kill (one placement per 400 ticks, 3 a minute) and by the cap (figures that are not met are not killed, so a run places at most the cap over the unmet share: 10 with a cap of 5, and only 6 with the old cap of 3, which is why the cap rose). Neither limit binds in the table below; the test fails if the cap does.
+
+| Layer | Roll chance | Placed a minute | Grabs a run (4 min, half meet) | Cost of those grabs, each reacted |
+|---|---|---|---|---|
+| 1, before #506 | 0.5% | 0.15 | 0.3 | 1.4% of a run |
+| **1, now** | **1%** | **0.3** | **0.6** | **2.8% of a run (bar: under 5%)** |
+| 2, before #506 | 2% | 0.6 | 1.2 | 2.2% of a tier 2 tank |
+| **2, now** | **5%** | **1.5** | **3.0** | **5.4% of a tier 2 tank of 25 litres (bar: 1 to 5 grabs)** |
+
+Layer 2 is five times as common as layer 1 (it was four times), and both are twice or more as common as before, so a pilot who is deep meets about three figures a run and one who is shallow meets about one in two runs. A pilot who answers each grab by drilling pays 2.8% of a layer 1 run on average, which stays under the 5% bar of #449; a pilot who ignores one still loses the run (98.4%), so a lit pod is worth more than before. **This makes the default harder than main:** layer 1 grabs per run go from 0.3 to 0.6 and layer 2 from 1.2 to 3.0, and the expected cost of a layer 1 run goes from 1.4% to 2.8% for a pilot who reacts (early game: the stock Mole, unpacked; a pilot with lights is unaffected). The cap of figures in a level rises from 3 to 5 so that the deep layer can hold its presence. The gain is a placement rate that is a guess for how many reach a pod; the first demo shows if it is right.
+
+The helmet lamp is a 2 by 2 pixel lens in the hard hat's bracket, dull amber, no texel brighter than 170 of 255, drawn at full bright. In the layer 2 fog, with no night vision, it shows as a small amber point on the helmet from 20 blocks (`retained-helmet-light`: `lamp-far`), and from 4.5 blocks as an orange lens on a black head (`lamp-near`). It lights nothing around it. It reads as dim and wrong, a counterfeit of the miner's lamp, not a beacon.
+
 **Candidates not built.**
 
 | Candidate | Cost | Why not |
@@ -1056,22 +1124,21 @@ The lights part ($125) pays back after 1.08 unanswered grabs, because an unanswe
 | A tool in the hand that hits harder than the hand | a new item, a recipe | The sword and the axe do. A follow-up if the creatures session (#13) wants a weapon of its own |
 | A lamp toggle (lamp off to save fuel) | an input, a packet and a cost on `PodFuel` | The lamp costs no fuel today, so there is nothing to save; the lights part is the choice. A follow-up if the lamp is given a fuel cost |
 | A flare (a consumable thrown to draw it away) | an item, a recipe, a repair-station price | A good rung 2.5 for a pilot with no lights. A follow-up |
-| A dynamic light that moves with a lamp-carrier | a light block that follows it and a ledger | The glowmask already shows from afar with vanilla lighting; a follow-up |
+| A dynamic light that moves with the helmet lamp | a light block that follows it and a ledger | The glowmask already shows from afar with vanilla lighting; a follow-up |
 | Outrun it | none | It is already true on the way to the pod: 3 against 4 blocks a second |
 
 **Measured.** All from the data the game runs on; the run model is `EarlyRunModel` (see [Fuel per descent](#fuel-per-descent-289-a)) and the tests are `RetainedEconomyTest` and `RetainedTest`.
 - **A stock Mole in layer 1** (whole run: 16 slabs, $115 net, 9.66 litres): a grip met after the cue and killed by the cutter takes 0.45 litres (4.7 per cent of the run); without the cue, 0.68 (7.0); nobody answers, 9.5 (98.4 per cent: 0 slabs). A lights part costs $125, which is 1.08 unanswered grabs.
 - **A Mole with tier 2 parts in layer 2** (a 25 litre tank): the same reacted grab takes 0.45 litres, 1.8 per cent of the tank.
 - **In the game.** A figure placed 10 blocks from a dark pod reaches it in 67 ticks. A grip left alone on a tank at 20 per cent drains it to the floor in 121 ticks and goes on holding for the 100 ticks the test watches. The rotor held for 120 ticks and the treads held for 120 ticks do not break it. A pod that drills down kills the figure 53 ticks after the grab, and the tank lost 11.9 points of 100 in that time (the drain, the drill's own burn and the idle burn together). Two blows of 6 from a player kill one; every other source of damage in the world does nothing.
-- **How often.** Unchanged from #449: the game's spawner made 6 figures in 12,000 ticks (10 minutes) in layer 2 at 2 tries in 100, and layer 1 is four times rarer. Figures no longer leave of themselves, so the cap of 3 holds them until they are killed or despawn (a natural figure is removed by the game's usual despawn rules once every player is far from it).
+- **How often.** #449 measured the game's spawner at 6 figures in 12,000 ticks (10 minutes) in layer 2 at 2 tries in 100, which is 30 figures per minute for each unit of roll chance. #506 re-measured the roll in 40,000 tries each: layer 1 passed 391 (0.98%) and layer 2 passed 2,053 (5.1%). At that rate the spawner places about 0.3 figures a minute in layer 1 and 1.5 in layer 2 (scaled from the 10 minute measurement, not re-run), up to the cap. Figures no longer leave of themselves, so the cap of 3 holds them until they are killed or despawn (a natural figure is removed by the game's usual despawn rules once every player is far from it).
 
 **Verdict (A).** A lit, careful pilot is never grabbed. A first-hour pilot who reads the warning and drills loses under 5 per cent of a layer 1 run, and one who did not see it come about 7. A pilot who ignores a grab loses the run. The lights part pays for itself after one unanswered grab, so a pilot who is grabbed and ignores it has a reason to buy it, and one who never meets a figure has none.
 
-**Knobs.** `CreatureTuning`: `maxHealth` (12), `walkSpeed` (0.22), `litBlockLight` (3), `maxPerLevel` (3, for the rail's figures and the game's own each), `respawnDelayTicks` (400), `senseCheckTicks` (5), `spawnClearanceBlocks` (16). `CreatureTuning.Cling`: `senseBlocks` (20), `reachBlocks` (2.5), `latchSpeed` (0.4 blocks a tick), `drainLitres` (0.15 a second), `floorPercent` (5), `biteDamage` (2), `biteTicks` (10). `CreatureTuning.Natural`: `lampShare` (0.35), `chancePerTry` (0.02), `layerOneChancePerTry` (0.005), `roomBlocks` (3). The biome files' `spawns_by_category.monster` weight (1) sets how often the spawner picks it among the biome's monsters. `DeepSound.CREATURE_APPROACH`, `CREATURE_HURT` and `CREATURE_DEATH` (placeholders) and the lines `creature.deepcharter.approach`, `grab`, `bitten` and `dead` are the feedback.
+**Knobs.** `CreatureTuning`: `maxHealth` (12), `walkSpeed` (0.22), `litBlockLight` (3), `maxPerLevel` (5, for the rail's figures and the game's own each), `respawnDelayTicks` (400), `senseCheckTicks` (5), `spawnClearanceBlocks` (16). `CreatureTuning.Cling`: `senseBlocks` (20), `reachBlocks` (2.5), `latchSpeed` (0.4 blocks a tick), `drainLitres` (0.15 a second), `floorPercent` (5), `biteDamage` (2), `biteTicks` (10). `CreatureTuning.Natural`: `chancePerTry` (0.05), `layerOneChancePerTry` (0.01), `roomBlocks` (3). The biome files' `spawns_by_category.monster` weight (1) sets how often the spawner picks it among the biome's monsters. `DeepSound.CREATURE_APPROACH`, `CREATURE_HURT` and `CREATURE_DEATH` (placeholders) and the lines `creature.deepcharter.approach`, `grab`, `bitten` and `dead` are the feedback.
 
 **Open questions.**
 - Should the lamp cost fuel, and have a switch? Then "run dark to save fuel" is a real choice and the Retained are its price.
-- Should a lamp-carrier have more health than one without a lamp, so that the lamp is a warning and a threat at once?
 - Should a killed figure drop something (a lamp, a scrap of company cloth), so that killing them pays? The creatures session (#13) may rework combat; this is the minimum that makes the decision true.
 - The warning, hurt and death sounds are placeholders (vanilla sculk and soul sounds); the audio pass should give them a voice.
 

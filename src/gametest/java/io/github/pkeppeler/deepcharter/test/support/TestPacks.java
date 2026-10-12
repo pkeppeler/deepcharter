@@ -55,11 +55,6 @@ public final class TestPacks implements ModInitializer {
 	/** The front camera, with static that does not fade, so a still can hold a hit's static. */
 	public static final String COCKPIT_CAMERA_HOLD = "cockpit_camera_hold";
 
-	/** The Retained's lamp (#449, docs/design/figure-concepts.md): a lantern in the hand. The default, the lamp on a pole, is the mod's own look. */
-	public static final String RETAINED_LAMP_HAND = "retained_lamp_hand";
-	/** The Retained's lamp inside the ribcage. */
-	public static final String RETAINED_LAMP_RIBS = "retained_lamp_ribs";
-
 	/** The salvage crate's other shapes (#245, docs/design/salvage-concepts.md): a low sled crate under a tarp, and a stove-in crate. The default, the freight crate, is the mod's own look. */
 	public static final String SALVAGE_CRATE_B = "salvage_crate_b";
 	public static final String SALVAGE_CRATE_C = "salvage_crate_c";
@@ -78,8 +73,8 @@ public final class TestPacks implements ModInitializer {
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> server.getGameRules().set(GameRules.SPAWN_MOBS, false, server));
 		for (String pack : new String[] {AMBER_CRT, BAD_CRT, RED_INK, TEXTURE_DENSITY_B, TEXTURE_DENSITY_C, TEXTURE_DENSITY_D,
 				LAYER_CONCEPT_GRAIN, LAYER_CONCEPT_BEDDED, LAYER_CONCEPT_MOTTLED, LAYER_CONCEPT_FORM_1, LAYER_CONCEPT_FORM_2, LAYER_CONCEPT_FORM_3,
-				COCKPIT_CONSOLES, COCKPIT_CORNERS, COCKPIT_RIBBON, COCKPIT_POSTS, COCKPIT_CAB, COCKPIT_CAMERA, COCKPIT_CAMERA_HOLD, RETAINED_LAMP_HAND,
-				RETAINED_LAMP_RIBS, SALVAGE_CRATE_B, SALVAGE_CRATE_C, FUNGAL_STALK_A, FUNGAL_STALK_C,
+				COCKPIT_CONSOLES, COCKPIT_CORNERS, COCKPIT_RIBBON, COCKPIT_POSTS, COCKPIT_CAB, COCKPIT_CAMERA, COCKPIT_CAMERA_HOLD,
+				SALVAGE_CRATE_B, SALVAGE_CRATE_C, FUNGAL_STALK_A, FUNGAL_STALK_C,
 				COMPANY_ROCK_JOINT, COMPANY_ROCK_STRAP, COMPANY_ROCK_CRYSTAL, COMPANY_ROCK_FUSED}) {
 			ResourceLoader.registerBuiltinPack(Identifier.fromNamespaceAndPath("deepcharter-test", pack),
 					FabricLoader.getInstance().getModContainer("deepcharter-test").orElseThrow(),
