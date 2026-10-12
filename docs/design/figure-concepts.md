@@ -12,7 +12,7 @@ These come from section 10, so none of them is a choice.
 
 1. **Wrong proportions.** Each is 44 pixels tall (2.75 blocks) and 9 to 10 pixels across the body. A miner built from the same parts is 36 pixels tall (2.25 blocks) and 16 across at the shoulders. Each has joints where a miner has none, or none where a miner has one.
 2. **Matte black.** Every texel of every texture is darker than 36 of 255, so the figure is black in the lamp beam too. There is no glowmask and no lit shading to speak of.
-3. **A hard hat with an empty lamp bracket.** The hat is a miner's: a domed shell with a ridge along the top, a brim all round and a peak at the front, and the dome is narrower than the brim so it is not a stovepipe. A frame 4 pixels square stands 2 pixels off the front of the dome on two stays, with a bar above and below and a post at each side, and a hole where the lamp would sit. Nothing is in it. The frame is a little lighter than the hat (still black), so that it shows in the lamp light.
+3. **A hard hat with a lamp bracket.** The hat is a miner's: a domed shell with a ridge along the top, a brim all round and a peak at the front, and the dome is narrower than the brim so it is not a stovepipe. A frame 4 pixels square stands 2 pixels off the front of the dome on two stays, with a bar above and below and a post at each side, and a hole where the lamp sits (empty when it was drawn; since #506 it holds a tiny dark lens that glows dim amber on a figure whose lamp is lit). The frame is a little lighter than the hat (still black), so that it shows in the lamp light.
 4. **No face.** The head is a plain black block. The sides of the head differ by less than 6 levels of brightness.
 5. **Smeared edges.** Sixteen thin slivers hang past the hem of the coat and the sleeve ends, so no edge is clean.
 6. **Look only.** The figure still walks, never attacks, and fades as before. Only how it is drawn changes.
@@ -101,29 +101,22 @@ Then the build gives the one you pick its final animations, its fade and its pla
 
 The Reacher is the lampless figure. In the game, `/summon deepcharter:lampless_figure ~ ~ ~` puts one next to you (it does not fade, and you can kill it: [ADR 0046](../adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md)), and the rails of layers 1 and 2 have them, with the caverns and shafts. It is a mob now ([#449](https://github.com/pkeppeler/deepcharter/issues/449), [ADR 0046](../adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md)): it comes to a dark pod, clings to it and drains the tank. The rule and the numbers are in [mechanics.md](mechanics.md#the-retained-at-dark-pods-449-a).
 
-Its files are `geckolib/models/creature/lampless_figure.geo.json`, `textures/entity/lampless_figure.png` and `geckolib/animations/creature/lampless_figure.animation.json`. A resource pack replaces any of them and F3+T applies it ([skins.md](skins.md)). `python3 -I tools/lampless_figure.py` writes them, and `--check` fails on a stale file. The pictures of the figure as built are in [PR #423](https://github.com/pkeppeler/deepcharter/pull/423).
+Its files are `geckolib/models/creature/lampless_figure.geo.json`, `textures/entity/lampless_figure.png`, `textures/entity/lampless_figure_glowmask.png` and `geckolib/animations/creature/lampless_figure.animation.json`. A resource pack replaces any of them and F3+T applies it ([skins.md](skins.md)). `python3 -I tools/lampless_figure.py` writes them, and `--check` fails on a stale file. The pictures of the figure as built are in [PR #423](https://github.com/pkeppeler/deepcharter/pull/423).
 
-## The lamp-carrier (#449)
+## The helmet lamp (#506)
 
-Some of the Retained carry a small lamp, so that you see them from far off in the dark. The user's words (pkeppeler, 2026-10-11): "even creepier, if they had a small glowing lamp so you could see them from a distance in the dark". This round gives you **three ways to carry it** to pick from. Each is a real model with its own texture and glowmask, and every picture below was shot in the game by the `retained-lamp` evidence scenario, in a sealed chamber of layer 2's rock with no night vision and no pod's light: the lamp is the only light. The lamp is a small piece of glass in all three (4 by 5 by 4 pixels in the two lanterns, 5 by 7 by 1 in the ribs: under a third of a block across), dark in the texture and lit in a glowmask that the game draws at full bright, so it works with the game's own lighting and needs no light source. Each way carries the figure's own black, and the helmet's bracket stays empty.
+Round 1 of the lamp (#449) offered three ways to carry a lamp: on a pole, in the hand, in the ribs. The user rejected all three (pkeppeler, 2026-10-11): "It should be a tiny, dim light in its helmet", in the empty lamp bracket of the hard hat. So the Retained carry no lamp in the hand or on a pole, and the packs for them (`retained_lamp_hand`, `retained_lamp_ribs`) and the lamp-carrier's own files are gone. The bracket holds a 2 by 2 pixel lens, dark in the texture and a dull amber in the glowmask, drawn at full bright by the glow layer. It lights nothing around it. It is a counterfeit of a miner's lamp: a point of orange on a black head, in a bracket made for one. The three rejected options, with their pictures, stay in [PR #451](https://github.com/pkeppeler/deepcharter/pull/451).
 
-| | Far (20 blocks), near (4.5) and near with night vision | How it is carried |
+Shot in the game by the `retained-helmet-light` scenario, in a sealed chamber of layer 2's rock with no night vision and no pod light:
+
+| Far (20 blocks) | Near (4.5 blocks) | Lamp not lit, far (control) |
 |---|---|---|
-| **Pole** (the default) | ![pole, far, near and near with night vision](https://github.com/pkeppeler/deepcharter/blob/pr-media/451/retained-lamp-pole-row.png?raw=true) | A staff in the right hand with a crook at the top, and a lantern hung from the crook beside the head. The lamp is at the height of the head, so it is the one seen over rock and rubble; it stands out of the figure's black like a will-o'-the-wisp. |
-| **Hand** | ![hand, far, near and near with night vision](https://github.com/pkeppeler/deepcharter/blob/pr-media/451/retained-lamp-hand-row.png?raw=true) | A lantern on a ring in the right hand, the forearm bent so that it hangs in front at the waist. The most like a miner, and the lowest: it shows at knee height, so it is lost behind a rise in the floor. |
-| **Ribs** | ![ribs, far, near and near with night vision](https://github.com/pkeppeler/deepcharter/blob/pr-media/451/retained-lamp-ribs-row.png?raw=true) | A lamp inside the ribcage: glass in the chest and iron ribs across it, so that the light shows between the bars. The strangest, and the hardest to read from afar: it is a pale mark in the middle of a dark body. |
-
-The default is the **pole**. The reasons: its lamp is the highest (about 2 blocks up, at the head, against about 0.7 for the hand and 1.6 for the ribs), so it is the one seen over rock and rubble from furthest; it reads as a lantern at a glance; and it keeps the Reacher's body as it was, where the hand option bends the right arm to hold the lantern out. You can pick another. The pole is in the mod; the other two are test packs, and a pack swaps the three lamp files ([skins.md](skins.md)): turn on `retained_lamp_hand` or `retained_lamp_ribs` in the pack screen and press F3+T. `python3 -I tools/lampless_figure.py` writes all three, and `--check` fails on a stale file.
-
-![The lampless figure, far, for the control: nothing to see](https://github.com/pkeppeler/deepcharter/blob/pr-media/451/lampless-far.png?raw=true)
-
-The control above is a figure with no lamp, at the same 20 blocks and in the same dark: a shape against the faint far wall, and no more. The three lamp-carriers are the same figure with a lamp.
-
-A clip of the pole option walking toward the camera in the dark, from 28 blocks: [GIF](https://github.com/pkeppeler/deepcharter/blob/pr-media/451/retained-lamp-walk.gif?raw=true), [MP4](https://github.com/pkeppeler/deepcharter/blob/pr-media/451/retained-lamp.mp4?raw=true). Layer 2's fog ends at 32 blocks, so the lamp dims into the fog beyond 25 or so. A dynamic light source that lights the rock around the lamp would show it further and light the cavern it walks in; it is a follow-up.
+| ![the helmet lamp from 20 blocks](https://github.com/pkeppeler/deepcharter/blob/pr-media/515/lamp-far.png?raw=true) | ![the helmet lamp from 4.5 blocks](https://github.com/pkeppeler/deepcharter/blob/pr-media/515/lamp-near.png?raw=true) | ![a figure with no lit lamp from 20 blocks](https://github.com/pkeppeler/deepcharter/blob/pr-media/515/lamp-off-far.png?raw=true) |
 
 **Open questions.**
-- Pole, hand or ribs? Or another way: a lamp hung on the belt, or two lamps?
+- Should the lamp flicker, or gutter as a grip drains the pod?
 - Should the lamp go out when the figure dies (it does today, as it dissolves), or burn on for a moment after?
+- A faint real light that moves with the figure (a follow-up: it needs a light block and a ledger).
 
 ## References
 

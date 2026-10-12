@@ -11,8 +11,8 @@ import net.minecraft.resources.Identifier;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 
 /**
- * Draws the glowmask of the figure's lamp at full bright, so that a lamp-carrier shows from far off in the dark with vanilla lighting and no
- * light source. A figure without a lamp, or one that is dying, draws nothing: the lamp goes out as the figure goes.
+ * Draws the glowmask of the lamp in the figure's helmet at full bright, so that a dim amber point shows from far off in the dark with vanilla
+ * lighting and no light source. A figure whose lamp is not lit, or one that is dying, draws nothing: the lamp goes out as the figure goes.
  *
  * <p>GeckoLib draws it with vanilla's {@code eyes} render type on macOS and Linux and with its own emissive pipeline on Windows
  * (docs/tooling/geckolib-audit.md), so a mask is designed for {@code eyes}.

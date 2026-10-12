@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -105,12 +106,24 @@ public class RetainedTest {
 	private static final int LIGHT_BUDGET_TICKS = 200;
 	private static final AtomicInteger CHARTERS = new AtomicInteger();
 
+	/** (A, #506) The least share of natural-spawn tries that pass the roll: a Retained is a presence, not a rare sight. */
+	private static final double LAYER_ONE_MIN_ROLL_SHARE = 0.008;
+	private static final double LAYER_TWO_MIN_ROLL_SHARE = 0.04;
+	/** The figure stands within this much of facing the pod's centre (the cosine of the angle; 0.97 is 14 degrees). */
+	private static final double FACING_COSINE_MIN = 0.97;
+	/** Ticks after the grab before the facing is read: the figure closes on its place on the hull at 0.4 blocks a tick. */
+	private static final int FACING_SETTLE_TICKS = 20;
 	private static final CreatureTuning TUNING = CreatureTuning.DEFAULT;
 	private static final CreatureTuning.Cling CLING = TUNING.cling();
 
 	/** A closed arena with a pod at its east end and a pilot aboard, and a figure at its west end. */
 	private record Arena(ServerLevel level, BlockPos origin, PodEntity pod, MockPlayer pilot, LamplessFigure figure) {
 		static Arena build(GameTestHelper helper, ServerLevel level, BlockPos origin, boolean lights) {
+			return build(helper, level, origin, lights, origin.west(HALF - 1));
+		}
+
+		/** As above, with the figure placed at {@code figureAt} (inside the arena), so that it comes to the hull from any side. */
+		static Arena build(GameTestHelper helper, ServerLevel level, BlockPos origin, boolean lights, BlockPos figureAt) {
 			for (int u = -HALF - 1; u <= HALF + 1; u++) {
 				for (int v = -HALF - 1; v <= HALF + 1; v++) {
 					for (int y = -1; y <= ARENA_HEIGHT; y++) {
@@ -135,7 +148,7 @@ public class RetainedTest {
 				throw failure(helper, "the pilot could not mount the pod");
 			}
 			LamplessFigure figure = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
-			figure.setPos(Vec3.atBottomCenterOf(origin.west(HALF - 1)));
+			figure.setPos(Vec3.atBottomCenterOf(figureAt));
 			figure.setHeading(Direction.NORTH);
 			level.addFreshEntity(figure);
 			return new Arena(level, origin, pod, pilot, figure);
@@ -213,6 +226,47 @@ public class RetainedTest {
 		});
 	}
 
+	/**
+	 * (#506) A figure that comes to the pod from the north, and one from the south and a little west, each turns to face the pod's centre.
+	 * The first test comes from the west (no z offset), which a wrong sign on z would not show.
+	 */
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + 100)
+	public void aClingingFigureFacesThePodWhenItComesFromTheNorth(GameTestHelper helper) {
+		expectFacingFrom(helper, slot(15), 0, -(HALF - 1));
+	}
+
+	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + 100)
+	public void aClingingFigureFacesThePodWhenItComesFromTheSouthAndWest(GameTestHelper helper) {
+		expectFacingFrom(helper, slot(16), 2, HALF - 1);
+	}
+
+	/** Builds the arena with the figure at {@code (u, v)} from its centre, waits for the grip and for the turn to settle, then checks the facing. */
+	private static void expectFacingFrom(GameTestHelper helper, BlockPos origin, int u, int v) {
+		ServerLevel level = helper.getLevel();
+		Arena[] made = {null};
+		long[] clungAt = {-1};
+		helper.onEachTick(() -> {
+			Arena arena = made[0];
+			if (arena == null) {
+				return;
+			}
+			if (clungAt[0] < 0) {
+				if (arena.figure.isClinging()) {
+					clungAt[0] = helper.getTick();
+				} else if (helper.getTick() > APPROACH_BUDGET_TICKS + FarChunks.AWAIT_BUDGET_TICKS) {
+					throw failure(helper, "the figure from (%d, %d) had not grabbed the pod", u, v);
+				}
+				return;
+			}
+			if (helper.getTick() - clungAt[0] >= FACING_SETTLE_TICKS) {
+				expectFacesPod(helper, arena);
+				arena.clear();
+				helper.succeed();
+			}
+		});
+		FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, false, origin.offset(u, 0, v)));
+	}
+
 	/** The figure is on the hull and alive after {@code ticks} of a grip nobody ended. */
 	private static void expectHolding(GameTestHelper helper, Arena arena, long ticks) {
 		if (!arena.figure.isClinging() || !arena.figure.isAlive()) {
@@ -221,6 +275,21 @@ public class RetainedTest {
 		}
 		if (ticks > 10 && !arena.touchesHull()) {
 			throw failure(helper, "the clinging figure at %s is off the hull %s", arena.figure.position(), arena.pod.getBoundingBox());
+		}
+		if (ticks > 10) {
+			expectFacesPod(helper, arena);
+		}
+	}
+
+	/** (#506) The body, the head and the heading of a clinging figure all point at the pod's centre: it holds the pod, it does not turn its back on it. */
+	private static void expectFacesPod(GameTestHelper helper, Arena arena) {
+		Vec3 toPod = arena.pod.position().subtract(arena.figure.position()).multiply(1, 0, 1).normalize();
+		for (var look : Map.of("body", arena.figure.yBodyRot, "head", arena.figure.getYHeadRot(), "heading", arena.figure.getYRot()).entrySet()) {
+			double cosine = Vec3.directionFromRotation(0, look.getValue()).dot(toPod);
+			if (cosine < FACING_COSINE_MIN) {
+				throw failure(helper, "the clinging figure's %s faces %s (yaw %s), not the pod: cosine %s toward %s", look.getKey(),
+						Vec3.directionFromRotation(0, look.getValue()), look.getValue(), cosine, toPod);
+			}
 		}
 	}
 
@@ -672,19 +741,27 @@ public class RetainedTest {
 		});
 	}
 
+	/**
+	 * (A, #506) The roll rises with depth and is not rare once the pilot is deep: layer 2 passes at least 4 tries in 100 (it was 2), layer 1
+	 * at least 8 in 1,000 (it was 5), and layer 2 passes at least three times as many as layer 1. The bounds are the knobs of
+	 * docs/design/mechanics.md; the fairness of the numbers is {@code RetainedEconomyTest}.
+	 */
 	@GameTest
-	public void layerOneRollsRarerThanLayerTwo(GameTestHelper helper) {
+	public void rollsRiseWithDepthAndTheDeepIsNotRare(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		ServerLevel one = server.getLevel(LayerChain.dimension(1));
 		ServerLevel two = server.getLevel(LayerChain.dimension(2));
-		int tries = 20000;
+		int tries = 40000;
 		int inOne = 0;
 		int inTwo = 0;
 		for (int i = 0; i < tries; i++) {
 			inOne += LamplessFigures.rolls(one, one.getRandom()) ? 1 : 0;
 			inTwo += LamplessFigures.rolls(two, two.getRandom()) ? 1 : 0;
 		}
-		expect(helper, inOne * 2 < inTwo, "layer 1 rolled %d of %d and layer 2 %d: layer 1 is not clearly rarer".formatted(inOne, tries, inTwo));
+		LOGGER.info("[retained] rolls in {} tries: layer 1 {} ({}), layer 2 {} ({})", tries, inOne, (double) inOne / tries, inTwo, (double) inTwo / tries);
+		expect(helper, inOne >= tries * LAYER_ONE_MIN_ROLL_SHARE, "layer 1 rolled %d of %d: under %s, rare for a pilot who is still shallow".formatted(inOne, tries, LAYER_ONE_MIN_ROLL_SHARE));
+		expect(helper, inTwo >= tries * LAYER_TWO_MIN_ROLL_SHARE, "layer 2 rolled %d of %d: under %s, rare for a pilot who is deep".formatted(inTwo, tries, LAYER_TWO_MIN_ROLL_SHARE));
+		expect(helper, inTwo >= inOne * 3, "layer 1 rolled %d of %d and layer 2 %d: the roll does not rise with depth".formatted(inOne, tries, inTwo));
 		helper.succeed();
 	}
 

@@ -142,6 +142,7 @@ public class RetainedDrainScenario extends EvidenceScenario {
 		chamber.serverDo(server -> {
 			ServerLevel level = RetainedChamber.layer(server);
 			LamplessFigure figure = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
+			figure.setLamp(true);
 			figure.setPos(RetainedChamber.at(FIGURE_X, 1, FIGURE_Z));
 			figure.setHeading(Direction.SOUTH);
 			level.addFreshEntity(figure);

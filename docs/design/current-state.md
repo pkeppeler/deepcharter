@@ -298,13 +298,13 @@ Swap: as the Mole.
 | | |
 |---|---|
 | Source | `main/creature/LamplessFigure.java` (a normal mob since #449: it comes to a dark pod, clings and drains the tank, [ADR 0046](../adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md); the creatures session, #13, is for the rest), `client/creature/LamplessFigureRenderer.java` (built in #250: the Reacher) |
-| Model | `assets/deepcharter/geckolib/models/creature/lampless_figure.geo.json`: 22 bones, 46 cubes, 44 px (2.75 blocks) tall, a hard hat with an empty lamp bracket, no face; written by `tools/lampless_figure.py` |
-| Texture | `assets/deepcharter/textures/entity/lampless_figure.png`, 128 x 128: matte black, no texel brighter than 36 of 255, no glowmask |
-| Lamp-carrier | `lampless_figure_lamp.geo.json` (23 bones: the lampless figure and the `lantern`), `textures/entity/lampless_figure_lamp.png` and `lampless_figure_lamp_glowmask.png`: the same figure with a lamp on a pole; about a third of the figures carry one. The lantern in the hand and the lamp in the ribs are the test packs `retained_lamp_hand` and `retained_lamp_ribs` |
+| Model | `assets/deepcharter/geckolib/models/creature/lampless_figure.geo.json`: 23 bones, 47 cubes, 44 px (2.75 blocks) tall, a hard hat with a lamp bracket holding a 2 by 2 pixel lens (the `lantern` bone), no face; written by `tools/lampless_figure.py` |
+| Texture | `assets/deepcharter/textures/entity/lampless_figure.png`, 128 x 128: matte black, no texel brighter than 36 of 255 |
+| Helmet lamp | `textures/entity/lampless_figure_glowmask.png`: clear except on the lens in the helmet's bracket, a dim amber (no texel brighter than 170 of 255), drawn at full bright for a figure whose lamp is lit (#506: every figure the spawner makes; the rail's figure has none lit) |
 | Animations | `assets/deepcharter/geckolib/animations/creature/lampless_figure.animation.json`: `animation.figure.idle` (stooped, head tipped over), `animation.figure.walk` and `animation.figure.cling` (pressed to a pod's hull), all looping |
-| Variants | 2: the lampless figure and the lamp-carrier; it goes translucent as it fades near light, and its shadow goes with it |
+| Variants | 1 look; the lamp is lit or not; a dead figure goes translucent as it dissolves, and its shadow goes with it |
 | Vanilla | **no** |
-| Swap | **(a)** the texture, model and animation files, and the three lamp files, each a pack file ([skins.md](skins.md)); **(c)** nothing: the renderer only names the ids in `LamplessFigureAssets.java` |
+| Swap | **(a)** the texture, model and animation files, and the glowmask, each a pack file ([skins.md](skins.md)); **(c)** nothing: the renderer only names the ids in `LamplessFigureAssets.java` |
 
 Built from the user's pick, C, the Reacher, of [figure-concepts.md](figure-concepts.md) (#250, [ADR 0044](../adr/0044-the-lampless-figure-is-a-geckolib-model-and-the-reacher.md)). The pictures above are the figure as built, from the design tour; the zombie it replaced is on the left of the before and after pictures in [PR #423](https://github.com/pkeppeler/deepcharter/pull/423).
 
