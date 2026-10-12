@@ -56,6 +56,13 @@ review-passed}" ;;
       printf '%s' "${STUB_FILES-}"
       exit 0
     fi
+    if [[ $2 == */contents/docs/feature-map/map.json* ]]; then
+      # STUB_MAP_FAIL: 404 (no map at that head) or 500 (unreadable). STUB_MAP_STALE: the lines the gate's --jq prints.
+      [[ ${STUB_MAP_FAIL-0} == 404 ]] && { echo "gh: Not Found (HTTP 404)"; exit 1; }
+      [[ ${STUB_MAP_FAIL-0} == 500 ]] && { echo "gh: Server Error (HTTP 500)"; exit 1; }
+      printf '%s' "${STUB_MAP_STALE-}"
+      exit 0
+    fi
     if [[ $2 == */actions/runs\?* ]]; then
       [[ ${STUB_CI_RUNS_FAIL-0} == 1 ]] && exit 1
       # STUB_CI_RUNS: "<id>[:<conclusion>]" lines (default success). Like the real
@@ -329,6 +336,39 @@ run_script "STUB_LABELS=$demo_labels" "STUB_BODY=$gif"
 exited "non-game PR with demo label and media merges" 0
 run_script "STUB_FILES=$(files modified:tools/merge-pr.sh added:src/test/java/T.java added:src/mainly/x.java)"
 exited "non-game files need no demo" 0
+
+# Map gate (#510): a `gameplay` PR must change docs/feature-map/map.json or carry a `No map change: <reason>` body line.
+gameplay_labels="infra${nl}review-passed${nl}gameplay"
+refusal "gameplay PR with no map change" "does not change docs/feature-map/map.json" "STUB_LABELS=$gameplay_labels"
+refusal "refusal names the skill and the escape" "or add a body line 'No map change: <reason>'" "STUB_LABELS=$gameplay_labels"
+refusal "generated map files alone are not a map change" "does not change docs/feature-map/map.json" "STUB_LABELS=$gameplay_labels" \
+  "STUB_FILES=$(files modified:docs/FEATURE-MAP.md modified:docs/feature-map/index.html)"
+refusal "no-map-change reason empty" "does not change docs/feature-map/map.json" "STUB_LABELS=$gameplay_labels" "STUB_BODY=Closes #12${nl}No map change:   "
+refusal "no-map-change reason not at line start" "does not change docs/feature-map/map.json" "STUB_LABELS=$gameplay_labels" \
+  "STUB_BODY=Closes #12${nl}- No map change: tooling only"
+run_script "STUB_LABELS=$gameplay_labels" "STUB_FILES=$(files modified:docs/feature-map/map.json)"
+exited "gameplay PR that changes the map merges" 0
+run_script "STUB_LABELS=$gameplay_labels" "STUB_BODY=Closes #12${nl}No map change: a tuning number, no new feature."
+exited "gameplay PR with a no-map-change reason merges" 0
+run_script "STUB_LABELS=$gameplay_labels" "STUB_BODY=Closes #12"$'\r'"${nl}No map change: tuning"$'\r'
+exited "no-map-change reason line with CRLF merges" 0
+run_script "STUB_LABELS=infra${nl}review-passed${nl}gameplays"
+exited "gameplay label lookalike needs no map change" 0
+run_script "STUB_FILES=$(files modified:README.md)"
+exited "PR without the gameplay label needs no map change" 0
+
+# Stale-node gate (#510): a map node that cites the PR's issue or the PR must be built at the PR head.
+stale=$'retained-kill\tin-progress\t#12'
+refusal "node citing the closed issue is not built" "the feature map node 'retained-kill' citing #12, which this PR closes or is, but the node is still in-progress" "STUB_MAP_STALE=$stale"
+refusal "stale-node refusal names the escape" "or add a body line 'No map change: <reason>'" "STUB_MAP_STALE=$stale"
+refusal "node citing the PR itself is not built" "citing #7" "STUB_MAP_STALE=$(printf 'scanner-t1\tplanned\t#7')"
+refusal "map unreadable at the PR head" "has no readable docs/feature-map/map.json" STUB_MAP_FAIL=500
+run_script "STUB_MAP_STALE=$stale" "STUB_BODY=Closes #12${nl}No map change: the node is flipped in a follow-up."
+exited "no-map-change line skips the stale-node check" 0
+run_script "STUB_MAP_STALE="
+exited "no stale node merges" 0
+run_script STUB_MAP_FAIL=404
+exited "branch with no map at its head merges" 0
 
 refusal "missing label" "REFUSED: PR #7 lacks the review-passed label" STUB_LABELS=infra
 refusal "no labels at all" "REFUSED: PR #7 lacks the review-passed label" STUB_LABELS=
