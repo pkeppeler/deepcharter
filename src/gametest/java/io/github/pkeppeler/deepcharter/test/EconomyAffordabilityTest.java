@@ -76,6 +76,7 @@ public class EconomyAffordabilityTest {
 			Consumable.DYNAMITE, new Target(false, 0.25, 1),
 			Consumable.QUANTUM_TELEPORTER, new Target(true, 1.5, 2),
 			Consumable.PLASTIC_EXPLOSIVES, new Target(true, 0.25, 1),
+			Consumable.BLASTING_CHARGE, new Target(false, 0.25, 1),
 			Consumable.HULL_NANOBOTS, new Target(true, 0.25, 1),
 			Consumable.MATTER_TRANSMITTER, new Target(true, 3.5, 4));
 
