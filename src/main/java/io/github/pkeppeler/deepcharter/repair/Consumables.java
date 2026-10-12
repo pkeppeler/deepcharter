@@ -17,7 +17,7 @@ import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 
 /**
- * What each of the eight items does (SPEC sections 10 and 11). All of them work on the pod the player is piloting, and
+ * What each item does (SPEC sections 10 and 11). All of them work on the pod the player is piloting, and
  * on no other: an item used on foot, or in a wreck, is refused and kept.
  */
 final class Consumables {

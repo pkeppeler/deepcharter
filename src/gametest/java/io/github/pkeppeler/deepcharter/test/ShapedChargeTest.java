@@ -8,13 +8,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
@@ -25,6 +21,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
+import io.github.pkeppeler.deepcharter.test.support.ChargeUse;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -90,7 +87,7 @@ public class ShapedChargeTest {
 			}
 			if (setAt[0] < 0) {
 				hull[0] = pod[0].hull();
-				InteractionResult result = use(pilot.player());
+				InteractionResult result = ChargeUse.use(pilot.player(), Consumable.SHAPED_CHARGE);
 				if (!result.consumesAction()) {
 					throw failure(helper, "the shaped charge should be set, the use gave %s and the bar says %s", result, pilot.actionBarMessages());
 				}
@@ -107,18 +104,6 @@ public class ShapedChargeTest {
 				helper.succeed();
 			}
 		});
-	}
-
-	private static InteractionResult use(ServerPlayer player) {
-		player.getInventory().setItem(player.getInventory().getSelectedSlot(), new ItemStack(RepairRegistry.item(Consumable.SHAPED_CHARGE)));
-		player.getCooldowns().removeCooldown(player.getCooldowns().getCooldownGroup(player.getItemInHand(InteractionHand.MAIN_HAND)));
-		return player.gameMode.useItem(player, player.level(), player.getItemInHand(InteractionHand.MAIN_HAND), InteractionHand.MAIN_HAND);
-	}
-
-	private static void expectBlock(GameTestHelper helper, ServerLevel level, BlockPos pos, Block expected, String what) {
-		if (!level.getBlockState(pos).is(expected)) {
-			throw failure(helper, "%s: %s should be %s, was %s", what, pos, expected, level.getBlockState(pos).getBlock());
-		}
 	}
 
 	private static void expectAir(GameTestHelper helper, ServerLevel level, BlockPos pos, String what) {
@@ -143,18 +128,18 @@ public class ShapedChargeTest {
 			for (int dy = -1; dy >= -7; dy--) {
 				expectAir(helper2, level, cell(x - 1, dy, -1), "the 7 row column");
 			}
-			expectBlock(helper2, level, cell(x - 1, -8, -1), Blocks.STONE, "the stone that ends the column stays");
-			expectBlock(helper2, level, cell(x - 1, -9, -1), HazardBlocks.COMPANY_ROCK, "rock under the stone stays");
+			ChargeUse.expectBlock(helper2, level, cell(x - 1, -8, -1), Blocks.STONE, "the stone that ends the column stays");
+			ChargeUse.expectBlock(helper2, level, cell(x - 1, -9, -1), HazardBlocks.COMPANY_ROCK, "rock under the stone stays");
 			for (int dy = -1; dy >= -3; dy--) {
 				expectAir(helper2, level, cell(x, dy, -1), "the 3 row column");
 			}
-			expectBlock(helper2, level, cell(x, -4, -1), HazardBlocks.GAS_POCKET, "a pocket under the run stays shut");
+			ChargeUse.expectBlock(helper2, level, cell(x, -4, -1), HazardBlocks.GAS_POCKET, "a pocket under the run stays shut");
 			expectAir(helper2, level, cell(x - 1, -1, 0), "the 1 row column");
-			expectBlock(helper2, level, cell(x - 1, -2, 0), Blocks.STONE, "the stone under a short run stays");
+			ChargeUse.expectBlock(helper2, level, cell(x - 1, -2, 0), Blocks.STONE, "the stone under a short run stays");
 			for (int dy = -1; dy >= -TUNING.shapedDepth(); dy--) {
 				expectAir(helper2, level, cell(x, dy, 0), "the deep column");
 			}
-			expectBlock(helper2, level, cell(x + 1, -1, 0), HazardBlocks.COMPANY_ROCK, "rock beside the footprint stays");
+			ChargeUse.expectBlock(helper2, level, cell(x + 1, -1, 0), HazardBlocks.COMPANY_ROCK, "rock beside the footprint stays");
 		});
 	}
 
@@ -167,9 +152,9 @@ public class ShapedChargeTest {
 			level.setBlock(cell(x - 1, -1, 0), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2);
 		}, pod -> pod.setPos(pod.getX() + FAR, pod.getY(), pod.getZ()), (helper2, level, pod, hull) -> {
 			expectAir(helper2, level, cell(x, -depth, 0), "the last row it reaches");
-			expectBlock(helper2, level, cell(x, -depth - 1, 0), HazardBlocks.COMPANY_ROCK, "a row beyond its depth");
-			expectBlock(helper2, level, cell(x - 1, -2, 0), Blocks.STONE, "plain stone under the rock is the drill's");
-			expectBlock(helper2, level, cell(x - 1, -2, -1), Blocks.STONE, "a column with no Company rock is not touched");
+			ChargeUse.expectBlock(helper2, level, cell(x, -depth - 1, 0), HazardBlocks.COMPANY_ROCK, "a row beyond its depth");
+			ChargeUse.expectBlock(helper2, level, cell(x - 1, -2, 0), Blocks.STONE, "plain stone under the rock is the drill's");
+			ChargeUse.expectBlock(helper2, level, cell(x - 1, -2, -1), Blocks.STONE, "a column with no Company rock is not touched");
 		});
 	}
 
@@ -246,7 +231,7 @@ public class ShapedChargeTest {
 				pending[0] = expectRefusedAndKept(helper, pilot, "a pod in the air", "charge_not_resting");
 				step[0] = 5;
 			} else if (step[0] == 5 && pod[0].onGround()) {
-				if (!use(pilot.player()).consumesAction()) {
+				if (!ChargeUse.use(pilot.player(), Consumable.SHAPED_CHARGE).consumesAction()) {
 					throw failure(helper, "the charge should be set once the pod rests on a run of Company rock; the bar says %s", pilot.actionBarMessages());
 				}
 				if (pilot.player().getInventory().countItem(RepairRegistry.item(Consumable.SHAPED_CHARGE)) != 0) {
@@ -287,7 +272,7 @@ public class ShapedChargeTest {
 				return;
 			}
 			if (!used[0]) {
-				if (use(pilot.player()).consumesAction()) {
+				if (ChargeUse.use(pilot.player(), Consumable.SHAPED_CHARGE).consumesAction()) {
 					throw failure(helper, "a run that ends on lava in one column must refuse the charge");
 				}
 				used[0] = true;
@@ -307,7 +292,7 @@ public class ShapedChargeTest {
 
 	/** Uses a shaped charge that must be refused and stay in the pack; returns the message that the bar should show. */
 	private static Component expectRefusedAndKept(GameTestHelper helper, MockPlayer pilot, String what, String key) {
-		if (use(pilot.player()).consumesAction()) {
+		if (ChargeUse.use(pilot.player(), Consumable.SHAPED_CHARGE).consumesAction()) {
 			throw failure(helper, "a shaped charge should be refused with %s", what);
 		}
 		if (pilot.player().getInventory().countItem(RepairRegistry.item(Consumable.SHAPED_CHARGE)) != 1) {

@@ -8,7 +8,7 @@ import net.minecraft.resources.Identifier;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 
 /**
- * The eight items the repair station sells. The original's debug Core Teleporter is not sold, so it is not here.
+ * The items the repair station sells. The original's debug Core Teleporter is not sold, so it is not here.
  *
  * <p>Prices follow issue 201's scale (PR 206), not the original's $2,000 to $10,000. The tools cost a quarter of a run to one run's net
  * of the layer where they start to matter; SPEC section 11 calls the two teleport items expensive, so they cost about 2 and 4 layer 2

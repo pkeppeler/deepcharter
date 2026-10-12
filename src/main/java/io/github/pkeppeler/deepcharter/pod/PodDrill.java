@@ -68,9 +68,9 @@ public final class PodDrill {
 		// Centre before judging the slab: a pod straddling a third column can see an all-air footprint, and
 		// sliding onto it (off a ledge, past a wall's edge) is how it reaches something to drill.
 		boolean centred = centre(pod, slab, stats);
-		if (!slab.hasWork() || !slab.allowed()) {
+		if (!slab.hasWork() || !slab.allowed(pod)) {
 			if (slab.hasCompanyRock() && pod.getControllingPassenger() instanceof ServerPlayer pilot && pod.tickCount % 40 == 0) {
-				pilot.sendOverlayMessage(Component.translatable(slab.canBite() && slab.tooHot() ? "deepcharter.ore.company_rock_cutter_hot" : "deepcharter.ore.company_rock_refused"));
+				pilot.sendOverlayMessage(Component.translatable(PodRockBite.canBite(pod) && PodRockBite.tooHot(pod) ? "deepcharter.ore.company_rock_cutter_hot" : "deepcharter.ore.company_rock_refused"));
 			}
 			stop(pod);
 			return;
@@ -123,7 +123,7 @@ public final class PodDrill {
 	}
 
 	/** The cells one bore step removes, and what is in them. */
-	private record Slab(ServerLevel level, List<BlockPos> cells, double centreX, double centreZ, boolean canBite, boolean tooHot) {
+	private record Slab(ServerLevel level, List<BlockPos> cells, double centreX, double centreZ) {
 		static Slab of(PodEntity pod, Direction direction) {
 			PodFootprint foot = PodFootprint.of(pod);
 			int width = foot.width();
@@ -149,7 +149,7 @@ public final class PodDrill {
 					}
 				}
 			}
-			return new Slab((ServerLevel) pod.level(), cells, lowX + width / 2.0, lowZ + width / 2.0, PodRockBite.canBite(pod), PodRockBite.tooHot(pod));
+			return new Slab((ServerLevel) pod.level(), cells, lowX + width / 2.0, lowZ + width / 2.0);
 		}
 
 		BlockPos origin() {
@@ -173,7 +173,7 @@ public final class PodDrill {
 		 * a cell that cannot change without loading a chunk (breaking a block tells its four sides, so a bore at the edge of the
 		 * loaded chunks waits until the next one is loaded; a pilot's view keeps the chunks around a bore loaded).
 		 */
-		boolean allowed() {
+		boolean allowed(PodEntity pod) {
 			LoadedBlocks blocks = blocks();
 			for (BlockPos pos : cells) {
 				BlockState state = blocks.getBlockState(pos);
@@ -181,7 +181,7 @@ public final class PodDrill {
 					return false;
 				}
 				if (state.is(HazardBlocks.UNDIGGABLE)) {
-					if (!canBite || tooHot) {
+					if (!PodRockBite.canBite(pod) || PodRockBite.tooHot(pod)) {
 						return false;
 					}
 				} else if (breakable(state) && (state.getDestroySpeed(level, pos) < 0
