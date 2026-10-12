@@ -495,7 +495,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 	private static List<List<CockpitHud.Row>> plateCases() {
 		List<PodStatusHud.Line> alerts = List.of(line("burning"), line("stranded"), line("crust_ahead", 7, 20, 24), line("crust_in", 20, 24), line("brace_waits"), line("brace_dry"),
 				line("brace_dear"), line("seepage", 3), line("seepage_beside", "E S"), line("seepage_bleeding"), line("lining_dry"), line("hard_landing"), line("lava_near", 6),
-				line("lava_above", 6));
+				line("lava_above", 6), line("glaze_holding", 12), line("glaze_spent"));
 		List<PodStatusHud.Line> notes = List.of(line("slag", 12, 8), line("liner", 3), line("lining", 5));
 		PodStatusHud.Line tally = line("tally_hull", 100, 100);
 		List<CockpitHud.Row> head = List.of(new CockpitHud.Row(List.of(tally, line("tally_fuel", 78), line("tally_cargo", 24), line("tally_depth", -420))),
