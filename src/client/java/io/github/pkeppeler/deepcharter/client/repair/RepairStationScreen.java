@@ -5,8 +5,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
-import com.mojang.blaze3d.platform.InputConstants;
-
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 
 import net.minecraft.client.Minecraft;
@@ -15,7 +13,6 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
@@ -28,6 +25,7 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
+import io.github.pkeppeler.deepcharter.client.ui.ScrollList;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
@@ -64,9 +62,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 	}
 
 	private TerminalView view;
-	private int firstRow;
-	/** The buttons of the rows shown, top to bottom, made by the last layout. */
-	private final List<CrtButton> rowButtons = new ArrayList<>();
+	private final ScrollList scroll = new ScrollList("screen.deepcharter.repair.scroll", this::rowCount, this::visibleRows, this::rebuildWidgets);
 	private final Typewriter typewriter;
 
 	public RepairStationScreen(TerminalView view) {
@@ -163,27 +159,17 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 		return rows().size();
 	}
 
-	/** Shows the list from row {@code first}, kept inside the list, and lays the buttons out again. */
-	public void scrollTo(int first) {
-		int clamped = Mth.clamp(first, 0, Math.max(0, rowCount() - visibleRows()));
-		if (clamped != firstRow) {
-			firstRow = clamped;
-			rebuildWidgets();
-		}
-	}
-
 	@Override
 	protected void layout() {
 		List<Row> rows = rows();
 		int visible = visibleRows();
-		firstRow = Mth.clamp(firstRow, 0, Math.max(0, rows.size() - visible));
-		rowButtons.clear();
+		scroll.beginLayout();
+		int firstRow = scroll.first();
 		for (int i = firstRow; i < Math.min(rows.size(), firstRow + visible); i++) {
 			Row row = rows.get(i);
 			CrtButton button = new CrtButton(contentLeft(MARGIN), listTop() + (i - firstRow) * (buttonHeight() + rowGap()), COLUMN_WIDTH, buttonHeight(), row.label(),
 					pressed -> ClientPlayNetworking.send(new TerminalActionPayload(view.pos(), row.action(), row.args())));
-			rowButtons.add(button);
-			addRenderableWidget(button);
+			addRenderableWidget(scroll.shown(button));
 		}
 		addRenderableWidget(new CrtButton(contentLeft(MARGIN), closeY(), CLOSE_WIDTH, buttonHeight(),
 				Component.translatable("screen.deepcharter.terminal.close"), button -> onClose()));
@@ -200,63 +186,24 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 		List<TextLine> lines = new ArrayList<>();
 		lines.add(new TextLine(account, contentLeft(MARGIN), hullY - GAP - font.lineHeight, false));
 		lines.add(new TextLine(hull.getString().toUpperCase(Locale.ROOT), contentLeft(MARGIN), hullY, false));
-		scrollHint().ifPresent(hint -> lines.add(new TextLine(hint, contentLeft(MARGIN) + CLOSE_WIDTH + GAP, closeY() + (buttonHeight() - font.lineHeight) / 2, true)));
+		scroll.hint().ifPresent(hint -> lines.add(new TextLine(hint, contentLeft(MARGIN) + CLOSE_WIDTH + GAP, closeY() + (buttonHeight() - font.lineHeight) / 2, true)));
 		return lines;
-	}
-
-	/** Which rows are shown, when the list is longer than the screen. */
-	private Optional<String> scrollHint() {
-		int visible = visibleRows();
-		if (visible >= rowCount()) {
-			return Optional.empty();
-		}
-		return Optional.of(Component.translatable("screen.deepcharter.repair.scroll", firstRow + 1, firstRow + visible, rowCount()).getString());
 	}
 
 	/** The narrator also tells which rows are shown, so that a player who cannot see the screen knows that there are more. */
 	@Override
 	public Component getNarrationMessage() {
-		Component narration = super.getNarrationMessage();
-		return scrollHint().<Component>map(hint -> Component.literal(narration.getString() + ". " + hint)).orElse(narration);
+		return scroll.narrate(super.getNarrationMessage());
 	}
 
 	@Override
 	public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-		if (scrollY != 0) {
-			scrollTo(firstRow - (int) Math.signum(scrollY));
-			return true;
-		}
-		return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+		return scroll.mouseScrolled(scrollY) || super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
 	}
 
-	/**
-	 * A button off the screen cannot take focus, so keys scroll the list: Page Up and Page Down move it a page, and Down or Tab
-	 * from the last row (Up or Shift+Tab from the first) moves it one row and focuses the row that came into view.
-	 */
 	@Override
 	public boolean keyPressed(KeyEvent event) {
-		int focused = rowButtons.indexOf(getFocused());
-		boolean forward = event.isDown() || (event.isCycleFocus() && !event.hasShiftDown());
-		boolean backward = event.isUp() || (event.isCycleFocus() && event.hasShiftDown());
-		if (focused >= 0 && forward && focused == rowButtons.size() - 1 && firstRow + rowButtons.size() < rowCount()) {
-			scrollTo(firstRow + 1);
-			setFocused(rowButtons.getLast());
-			return true;
-		}
-		if (focused == 0 && backward && firstRow > 0) {
-			scrollTo(firstRow - 1);
-			setFocused(rowButtons.getFirst());
-			return true;
-		}
-		if (event.key() == InputConstants.KEY_PAGEDOWN) {
-			scrollTo(firstRow + visibleRows());
-			return true;
-		}
-		if (event.key() == InputConstants.KEY_PAGEUP) {
-			scrollTo(firstRow - visibleRows());
-			return true;
-		}
-		return super.keyPressed(event);
+		return scroll.keyPressed(event, this) || super.keyPressed(event);
 	}
 
 	/** The pod the screen shows: the one the server will repair. */

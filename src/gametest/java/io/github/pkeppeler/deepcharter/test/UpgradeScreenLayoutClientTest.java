@@ -15,6 +15,7 @@ import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.ScreenScroll;
 import io.github.pkeppeler.deepcharter.test.support.UpgradeShown;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
@@ -63,16 +64,16 @@ public class UpgradeScreenLayoutClientTest implements FabricClientGameTest {
 		if (screen.visibleTracks() == total) {
 			return;
 		}
-		screen.scrollTo(0);
+		ScreenScroll.scrollTo(screen, 0);
 		require(screen.mouseScrolled(0, 0, 0, -1), "the wheel scrolls the list");
 		require(ClientChecks.buttons(screen).stream().noneMatch(button -> button.getMessage().getString().startsWith("DRILL  T")), "one wheel notch down moves the list one track: the first is gone");
-		screen.scrollTo(total);
+		ScreenScroll.scrollTo(screen, total);
 		String last = Component.translatable("deepcharter.upgrade.track." + ComponentTrack.values()[total - 1].id()).getString() + "  T";
 		String first = Component.translatable("deepcharter.upgrade.track." + ComponentTrack.values()[0].id()).getString() + "  T";
 		List<String> labels = ClientChecks.buttons(screen).stream().map(button -> button.getMessage().getString()).toList();
 		require(labels.stream().anyMatch(label -> label.contains(last)), "scrolled to the end, the last track is shown: " + labels);
 		require(labels.stream().noneMatch(label -> label.contains(first)), "scrolled to the end, the first track is gone: " + labels);
-		screen.scrollTo(0);
+		ScreenScroll.scrollTo(screen, 0);
 		require(ClientChecks.buttons(screen).stream().anyMatch(button -> button.getMessage().getString().contains(first)), "scrolled back, the first track is shown again");
 		require(screen.getNarrationMessage().getString().contains("OF " + total), "the narration tells which tracks are shown: " + screen.getNarrationMessage().getString());
 	}
