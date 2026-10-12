@@ -12,6 +12,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 
 import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
+import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
@@ -60,6 +61,8 @@ public class EconomyAffordabilityTest {
 	 * about a fifth today). Half is room for a retune of the ore and still a stop for one that makes selling it the main income.
 	 */
 	private static final double CATALYST_SALE_SHARE = 0.5;
+	/** A straight layer 1 shaft, paid in blasting charges, costs this many stock layer 1 runs at most (#509). */
+	private static final int STRAIGHT_SHAFT_RUNS = 2;
 	/** A later charter's first refurbished Mole, with no pod yet, and its second one. */
 	private static final int REFURBISHED_FIRST_RUNS = 2;
 	private static final int REFURBISHED_SECOND_RUNS = 3;
@@ -76,6 +79,7 @@ public class EconomyAffordabilityTest {
 			Consumable.DYNAMITE, new Target(false, 0.25, 1),
 			Consumable.QUANTUM_TELEPORTER, new Target(true, 1.5, 2),
 			Consumable.PLASTIC_EXPLOSIVES, new Target(true, 0.25, 1),
+			Consumable.BLASTING_CHARGE, new Target(false, 0.25, 1),
 			Consumable.HULL_NANOBOTS, new Target(true, 0.25, 1),
 			Consumable.MATTER_TRANSMITTER, new Target(true, 3.5, 4));
 
@@ -456,6 +460,37 @@ public class EconomyAffordabilityTest {
 		if (Consumable.QUANTUM_TELEPORTER.price() >= Consumable.MATTER_TRANSMITTER.price()) {
 			throw failure(helper, "the transmitter must cost more than the teleporter's $%d, not $%d",
 					Consumable.QUANTUM_TELEPORTER.price(), Consumable.MATTER_TRANSMITTER.price());
+		}
+		helper.succeed();
+	}
+
+	/**
+	 * The blasting charge (#509) is the price of a straight shaft. A straight layer 1 bore needs one charge for each slab the drill refuses (one charge clears 2
+	 * slab rows, so a refusal under a hole already blasted costs nothing more; the bore bot measured 5.3 a bore against the 5.4 counted here). The whole shaft must cost a
+	 * few stock layer 1 runs at most: a shaft is a one-off the charter keeps, but a price that no run could pay for would make the answer a joke.
+	 */
+	@GameTest
+	public void aStraightLayerOneShaftCostsAtMostTwoStockRunsInCharges(GameTestHelper helper) {
+		int height = EarlyRunModel.layerOneBlocks();
+		double slabCells = Chassis.MOLE.slabCells();
+		double refusedSlabs = 0;
+		for (int zone = 0; zone < Zones.COUNT; zone++) {
+			String name = zone == 0 ? "topsoil_claims" : zone == 1 ? "stone_benches" : "deep_claim";
+			Zones.Span span = Zones.span(0, height, zone);
+			// Layer 1's crust (3 blocks) is bored by hand through the breach, not blasted.
+			int blocks = span.size() - (zone == Zones.COUNT - 1 ? 3 : 0);
+			double slabs = blocks / 2.0;
+			refusedSlabs += slabs * (1 - Math.pow(1 - EarlyRunModel.companyRockChance(name), slabCells));
+		}
+		double cost = refusedSlabs * Consumable.BLASTING_CHARGE.price();
+		Run run = stockRunInLayerOne();
+		LOGGER.info("[economy] straight layer 1 shaft: {} refused slabs, ${} in blasting charges, {} runs of ${}", refusedSlabs, Math.round(cost), cost / run.net(), Math.round(run.net()));
+		if (refusedSlabs < 1) {
+			throw failure(helper, "a layer 1 shaft meets %.2f refused slabs, so the charge has nothing to answer", refusedSlabs);
+		}
+		if (cost > STRAIGHT_SHAFT_RUNS * run.net()) {
+			throw failure(helper, "a straight layer 1 shaft needs about %.1f charges at $%d, $%.0f, more than %d stock runs of $%.0f", refusedSlabs,
+					Consumable.BLASTING_CHARGE.price(), cost, STRAIGHT_SHAFT_RUNS, run.net());
 		}
 		helper.succeed();
 	}
