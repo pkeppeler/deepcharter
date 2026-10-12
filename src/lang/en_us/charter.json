@@ -39,7 +39,6 @@
   "screen.deepcharter.contract.leave": "LEAVE CHARTER",
   "screen.deepcharter.contract.loading": "RETRIEVING YOUR FILE...",
   "screen.deepcharter.contract.more": "+%s MORE",
-  "screen.deepcharter.contract.more_revivable": "+%s MORE CHARTERS YOU CAN REVIVE.",
   "screen.deepcharter.contract.name_hint": "CHARTER NAME",
   "screen.deepcharter.contract.refused": "REFUSED: %s",
   "screen.deepcharter.contract.revive": "REVIVE: %s",

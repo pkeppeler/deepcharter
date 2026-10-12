@@ -160,9 +160,6 @@ public final class ContractScreen extends CrtScreen implements TerminalViewScree
 			case NONE -> Component.translatable("screen.deepcharter.contract.status.none")
 					.append(shown.charterCount() > shown.charters().size()
 							? Component.literal(" ").append(Component.translatable("screen.deepcharter.contract.more", shown.charterCount() - shown.charters().size()))
-							: Component.empty())
-					.append(shown.revivableCount() > shown.revivable().size()
-							? Component.literal(" ").append(Component.translatable("screen.deepcharter.contract.more_revivable", shown.revivableCount() - shown.revivable().size()))
 							: Component.empty());
 			case APPLICANT -> fitted(shown.charter(), name -> Component.translatable("screen.deepcharter.contract.status.applicant", name));
 			case CREW -> fitted(shown.charter(), name -> Component.translatable("screen.deepcharter.contract.status.crew", name));
@@ -205,6 +202,9 @@ public final class ContractScreen extends CrtScreen implements TerminalViewScree
 		drawTypewriter(graphics, typewriter, contentLeft(MARGIN), contentTop(MARGIN) + font.lineHeight + 14, contentWidth(MARGIN));
 		CrtDraw.glowText(graphics, font, statusLine().getString(), contentLeft(MARGIN), statusY(), tuning.phosphorColor());
 		refusal().ifPresent(message -> CrtDraw.glowText(graphics, font, message.getString().toUpperCase(Locale.ROOT), contentLeft(MARGIN), statusY() + font.lineHeight + 4, tuning.refusalColor()));
+		state.filter(shown -> shown.revivableCount() > shown.revivable().size()).ifPresent(shown -> CrtDraw.glowText(graphics, font,
+				Component.translatable("screen.deepcharter.contract.more", shown.revivableCount() - shown.revivable().size()).getString(),
+				contentLeft(MARGIN), rowsTop() + BELOW_FOUND + shown.revivable().size() * ROW_PITCH + 3, tuning.phosphorColor()));
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 	}
 }

@@ -7,7 +7,7 @@ package io.github.pkeppeler.deepcharter.charter.terminal;
  * @param revivableRows the most dormant charters the screen offers to revive at once, under the found button. The server sends no more than this.
  */
 public record ContractTerminalTuning(int listedRows, int revivableRows) {
-	public static final ContractTerminalTuning DEFAULT = new ContractTerminalTuning(5, 3);
+	public static final ContractTerminalTuning DEFAULT = new ContractTerminalTuning(5, 2);
 
 	public ContractTerminalTuning {
 		if (listedRows < 1) {
