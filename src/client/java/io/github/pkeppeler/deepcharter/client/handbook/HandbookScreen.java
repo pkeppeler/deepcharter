@@ -26,6 +26,7 @@ import net.minecraft.util.Mth;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.theme.Colors;
+import io.github.pkeppeler.deepcharter.client.ui.ScrollList;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
 import io.github.pkeppeler.deepcharter.handbook.HandbookReadPayload;
@@ -79,7 +80,7 @@ public class HandbookScreen extends Screen {
 	private int flipTicks;
 	private boolean notesTab;
 	private Identifier openNote;
-	private int noteScroll;
+	private final ScrollList noteScroll = new ScrollList(this::noteCount, () -> Math.max(1, noteRows().size()), () -> { });
 	/** The sheet of the open Note being read, from 0: a Note longer than one sheet runs on to the next. */
 	private int notePage;
 
@@ -240,11 +241,15 @@ public class HandbookScreen extends Screen {
 	public List<NoteRow> noteRows() {
 		List<NoteRow> rows = new ArrayList<>();
 		int y = notesTop();
-		for (int index = noteScroll; index < notes.size() && y + font.lineHeight + 2 <= bottom(); index++) {
+		for (int index = noteScroll.first(); index < notes.size() && y + font.lineHeight + 2 <= bottom(); index++) {
 			rows.add(new NoteRow(notes.get(index).id(), textLeft, y - 1, textLeft + textWidth, y + font.lineHeight + 2));
 			y += font.lineHeight + 4;
 		}
 		return rows;
+	}
+
+	private int noteCount() {
+		return notes.size();
 	}
 
 	private int notesTop() {
@@ -395,9 +400,7 @@ public class HandbookScreen extends Screen {
 	@Override
 	public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
 		if (notesTab && openNote == null && scrollY != 0) {
-			int visible = Math.max(1, noteRows().size());
-			noteScroll = Mth.clamp(noteScroll - (int) Math.signum(scrollY), 0, Math.max(0, notes.size() - visible));
-			return true;
+			return noteScroll.mouseScrolled(scrollY);
 		}
 		return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
 	}
