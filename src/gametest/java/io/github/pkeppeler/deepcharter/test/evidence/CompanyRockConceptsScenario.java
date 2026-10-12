@@ -5,6 +5,7 @@ import java.util.Set;
 
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 
+import net.minecraft.client.CameraType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -27,7 +28,7 @@ import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 /**
  * Evidence scenario "company-rock-concepts" (#503, docs/design/company-rock-concepts.md): the four looks of Company Rock, and the steel plate
  * it has today, in layers 1 and 2, each shot where a player meets it: in the wall of a bore, close up, in a cave, beside lava, and from the
- * pod's seat at range. Every room is sealed in the layer's rock (granite and tuff, which the Grain test pack of the layer concepts draws as
+ * pod at range. Every room is sealed in the layer's rock (granite and tuff, which the Grain test pack of the layer concepts draws as
  * Grain rock, the look #241 is building), so the void is never in a frame, and the pod's lamp is a level 12 light where the camera is.
  * Each still is {@code <option>-l<layer>-<place>}: {@code crystal-l2-lava}. The options are test packs that only this scenario turns on.
  * A look that is more than a cube is drawn on {@link ConceptRock}, Company Rock that lets light in, which the shipped block must be too if it is picked.
@@ -53,7 +54,12 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 			new BlockPos(52, 1, 11));
 	private static final int LAMP = 12;
 	private static final int SETTLE_TICKS = 20;
-	/** The first frame after the player mounts is tinted, so the seat still waits for the mount's fade. */
+	/**
+	 * The render distance, in chunks, while the scenario runs: a still waits for every chunk in view, and the layers' tall worlds generate slowly
+	 * on a loaded machine, so the default distance did not settle in two minutes. 4 chunks is 64 blocks, past the fog, so no still differs.
+	 */
+	private static final int RENDER_DISTANCE = 4;
+	/** The first frame after the player mounts is tinted, so the pod still waits for the mount's fade. */
 	private static final int MOUNT_TICKS = 80;
 
 	/** A view: its still suffix, the eye and the target in blocks from the origin. */
@@ -63,10 +69,10 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 	private static final List<View> VIEWS = List.of(
 			new View("bore", new Vec3(4.5, 5.6, 2.6), new Vec3(3.6, 5.4, -1)),
 			new View("close", new Vec3(3.9, 5.4, 1.3), new Vec3(3.6, 5.4, -1)),
-			new View("cave", new Vec3(19.5, 3.0, 8.0), new Vec3(19.0, 3.0, -1)),
+			new View("cave", new Vec3(19.5, 3.0, 5.5), new Vec3(19.0, 3.0, -1)),
 			new View("lava", new Vec3(40.0, 2.7, 6.5), new Vec3(39.4, 1.8, -1)));
-	/** The seat: the pod stands at the south end of the hall and looks south at the patch on the far wall. */
-	private static final Vec3 SEAT_POD = new Vec3(54.5, 1, 2.5);
+	/** The pod: it stands at the south end of the hall and looks south at the patch on the far wall. */
+	private static final Vec3 SEAT_POD = new Vec3(54.5, 1, 5.5);
 	private static final Vec3 SEAT_TARGET = new Vec3(54.5, 2.6, 11);
 
 	@Override
@@ -76,7 +82,9 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 
 	@Override
 	protected void run(ClientGameTestContext context) {
+		int renderDistance = context.computeOnClient(client -> client.options.renderDistance().get());
 		TextureTestWorld.open(context, shot -> screenshot(context, shot), world -> {
+			context.runOnClient(client -> client.options.renderDistance().set(RENDER_DISTANCE));
 			ClientPacks.enable(context, TestPacks.LAYER_CONCEPT_GRAIN);
 			try {
 				for (int layer : List.of(1, 2)) {
@@ -100,6 +108,7 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 				frame(context);
 			} finally {
 				ClientPacks.disable(context, TestPacks.LAYER_CONCEPT_GRAIN);
+				context.runOnClient(client -> client.options.renderDistance().set(renderDistance));
 			}
 		});
 	}
@@ -110,10 +119,12 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 			world.still(still(option, layer, view.place()));
 		}
 		world.serverDo(server -> mount(server.getLevel(LayerChain.dimension(layer))));
-		ClientWait.until(context, "the player seated in the pod in layer " + layer,
+		context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
+		ClientWait.until(context, "the player in the pod in layer " + layer,
 				client -> client.player != null && client.player.getVehicle() instanceof PodEntity && client.level.dimension().equals(LayerChain.dimension(layer)));
 		context.waitTicks(MOUNT_TICKS);
-		world.still(still(option, layer, "seat"));
+		world.still(still(option, layer, "pod"));
+		context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
 		world.serverDo(CompanyRockConceptsScenario::dismount);
 		ClientWait.until(context, "the player out of the pod", client -> client.player != null && client.player.getVehicle() == null);
 	}

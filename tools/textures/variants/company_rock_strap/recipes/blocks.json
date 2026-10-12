@@ -124,10 +124,10 @@
         {
           "op": "noise",
           "ramp": [
-            "iron.1",
             "iron.2",
-            "iron.2",
-            "iron.3"
+            "iron.3",
+            "iron.3",
+            "iron.4"
           ],
           "seed": 7520,
           "cell": 4,
@@ -176,11 +176,11 @@
         {
           "op": "speckle",
           "colours": [
+            "rust.0",
             "rust.1",
-            "rust.2",
-            "rust.3"
+            "iron.1"
           ],
-          "density": 0.3,
+          "density": 0.2,
           "seed": 7521,
           "rect": [
             0,

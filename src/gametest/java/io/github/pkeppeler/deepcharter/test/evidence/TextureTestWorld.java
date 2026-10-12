@@ -111,7 +111,7 @@ final class TextureTestWorld {
 			Map.entry(new BlockPos(0, 2, 0), OreBlocks.of(OreType.CICATRIUM)),
 			Map.entry(new BlockPos(2, 2, 0), OreBlocks.of(OreType.IRONIUM)));
 	/** The wall-clock limit of one settle. */
-	private static final long SETTLE_LIMIT_NANOS = 120_000_000_000L;
+	private static final long SETTLE_LIMIT_NANOS = 300_000_000_000L;
 	private static final int SETTLE_POLL_TICKS = 2;
 	private static final int SETTLE_STABLE_POLLS = 5;
 
@@ -428,18 +428,21 @@ final class TextureTestWorld {
 				}
 				return true;
 			});
-			stable = lit && ctx.computeOnClient(TextureTestWorld::rendered) ? stable + 1 : 0;
+			String pending = ctx.computeOnClient(TextureTestWorld::pending);
+			stable = lit && pending == null ? stable + 1 : 0;
 			if (System.nanoTime() > deadline) {
-				throw new AssertionError("still " + stillName + ": the world did not settle in " + SETTLE_LIMIT_NANOS / 1_000_000_000L + " s");
+				throw new AssertionError("still " + stillName + ": the world did not settle in " + SETTLE_LIMIT_NANOS / 1_000_000_000L + " s (light settled: " + lit
+						+ ", the client waits for: " + pending + ")");
 			}
 		}
 		shoot.accept(stillName);
 	}
 
-	private static boolean rendered(Minecraft client) {
+	/** What the client still waits for before a still, or null when it waits for nothing: a stray entity, a chunk, or a section to render. */
+	private static String pending(Minecraft client) {
 		for (Entity entity : client.level.entitiesForRendering()) {
 			if (stray(entity)) {
-				return false;
+				return "the stray entity " + entity.getType() + " at " + entity.blockPosition().toShortString();
 			}
 		}
 		int radius = client.options.getEffectiveRenderDistance();
@@ -448,11 +451,11 @@ final class TextureTestWorld {
 		for (int x = centreX - radius; x <= centreX + radius; x++) {
 			for (int z = centreZ - radius; z <= centreZ + radius; z++) {
 				if (client.level.getChunkSource().getChunk(x, z, ChunkStatus.FULL, false) == null) {
-					return false;
+					return "the chunk " + x + ", " + z;
 				}
 			}
 		}
-		return client.levelRenderer.hasRenderedAllSections();
+		return client.levelRenderer.hasRenderedAllSections() ? null : "the sections of the level renderer";
 	}
 
 	private static boolean stray(Entity entity) {
