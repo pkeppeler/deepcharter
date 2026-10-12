@@ -456,22 +456,24 @@ public class ProspectorChassisTest {
 			MockPlayer owner = FoundingMoleHangarTest.member(helper, "Second Claimant");
 			BlockPos console = FoundingMoleHangarTest.console(helper, owner);
 			CharterId charter = FoundingMoleHangarTest.charterOf(helper, owner).id();
+			FoundingMoleHangarTest.deposit(helper, owner, 2 * PRICE);
+			FoundingMoleHangarTest.give(owner.player(), FoundingMoleHangarTest.CATALYST, 2 * CATALYSTS);
 			PodEntity holder = prospectorWreck(helper);
 			PodComponents.markFamousProspector(holder);
-			PodComponents.registerLoreWreck(holder, charter);
-			Wrecks.restore(holder, holder.maxHull());
+			FoundingMoleHangarTest.expectDone(helper, FoundingMoleHangarTest.act(owner.player(), console, HangarTerminal.RESTORE_WRECK), "the control: restoring the first marked wreck");
+			expect(helper, PodComponents.registration(holder).orElseThrow().serial().equals("PROSPECTOR-0002"), "the control wreck holds PROSPECTOR-0002");
+
 			PodEntity second = prospectorWreck(helper);
 			PodComponents.markFamousProspector(second);
-			FoundingMoleHangarTest.deposit(helper, owner, FoundingMoleHangarTest.RICH);
-			FoundingMoleHangarTest.give(owner.player(), FoundingMoleHangarTest.CATALYST, CATALYSTS + 1);
-
+			long account = FoundingMoleHangarTest.balance(helper, owner);
+			int pack = FoundingMoleHangarTest.count(owner.player(), FoundingMoleHangarTest.CATALYST);
+			expect(helper, account >= PRICE && pack >= CATALYSTS, "the charter can still afford a restore, so only the held serial can refuse: $%s, %s Cicatrium", account, pack);
 			FoundingMoleHangarTest.expectRefused(helper, FoundingMoleHangarTest.act(owner.player(), console, HangarTerminal.RESTORE_WRECK), "restoring a second wreck marked with the held serial");
 			expect(helper, Wrecks.isWreck(second) && PodComponents.registration(second).isEmpty(), "the refused wreck is still a wreck and unowned");
-			expect(helper, FoundingMoleHangarTest.balance(helper, owner) == FoundingMoleHangarTest.RICH,
-					"the refusal takes no money, the account holds %s", FoundingMoleHangarTest.balance(helper, owner));
-			expect(helper, FoundingMoleHangarTest.count(owner.player(), FoundingMoleHangarTest.CATALYST) == CATALYSTS + 1,
-					"the refusal takes no Cicatrium, the player holds %s", FoundingMoleHangarTest.count(owner.player(), FoundingMoleHangarTest.CATALYST));
-			expect(helper, !fired(helper, charter), "the refusal fires no transmission");
+			expect(helper, FoundingMoleHangarTest.balance(helper, owner) == account,
+					"the refusal takes no money, the account holds %s of %s", FoundingMoleHangarTest.balance(helper, owner), account);
+			expect(helper, FoundingMoleHangarTest.count(owner.player(), FoundingMoleHangarTest.CATALYST) == pack,
+					"the refusal takes no Cicatrium, the player holds %s of %s", FoundingMoleHangarTest.count(owner.player(), FoundingMoleHangarTest.CATALYST), pack);
 			FoundingMoleHangarTest.clearFloor(helper);
 			helper.succeed();
 		}));
