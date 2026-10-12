@@ -518,12 +518,12 @@ public class EconomyAffordabilityTest {
 	}
 
 	/**
-	 * The drill that bites Company rock (#526) is slow and dear to run but cheaper for each slab than a blasting charge, so a pilot who digs a lot buys the tier and a pilot who needs one slab
-	 * still buys a charge. A bitten slab at layer 2 depth must cost between a quarter and the whole of a blasting charge's share of a slab (its price over the rows it clears), and take at
-	 * least five times as long as a stone slab. The tier's price is in the log: it is the Prospector's best drill, which a pilot buys for its speed.
+	 * The drill that bites Company rock (#526) is slow and no cheaper per slab than a blasting charge: the tier buys freedom from carrying charges, not a discount, so charges stay the
+	 * cheaper, quicker answer for a few slabs. A bitten slab at layer 2 depth, in fuel and hull repair, must cost between one and two times a blasting charge's share of a slab (its price
+	 * over the rows it clears), and take at least five times as long as a stone slab. The tier's price is in the log: it is the Prospector's best drill, which a pilot buys for its speed.
 	 */
 	@GameTest
-	public void aBittenCompanyRockSlabCostsLessThanABlastingChargeSlabAndTakesMuchLongerThanStone(GameTestHelper helper) {
+	public void aBittenCompanyRockSlabCostsOneToTwoBlastingChargeSlabsAndTakesMuchLongerThanStone(GameTestHelper helper) {
 		int tier = PodRockBiteTuning.DEFAULT.minTier();
 		PodStats drill = EarlyRunModel.mole(tier, 0, 0);
 		double depth = EarlyRunModel.layerOneBlocks() + 50;
@@ -534,8 +534,8 @@ public class EconomyAffordabilityTest {
 		Run layerTwo = upgradedRunInLayerTwo();
 		LOGGER.info("[economy] bitten slab at depth {}: {} s, {} L, {} hull, ${} against ${} a slab of a blasting charge and {} s of stone; the tier {} drill costs ${}, {} layer 2 runs of ${}",
 				depth, bite.seconds(), bite.litres(), bite.hull(), bite.dollars(), chargePerSlab, stoneSeconds, tier, price, price / layerTwo.net(), Math.round(layerTwo.net()));
-		if (bite.dollars() >= chargePerSlab || bite.dollars() < chargePerSlab / 4) {
-			throw failure(helper, "a bitten slab costs $%.2f, it must be under a blasting charge's $%.2f a slab and over a quarter of it", bite.dollars(), chargePerSlab);
+		if (bite.dollars() < chargePerSlab || bite.dollars() > 2 * chargePerSlab) {
+			throw failure(helper, "a bitten slab costs $%.2f, it must be between one and two times a blasting charge's $%.2f a slab", bite.dollars(), chargePerSlab);
 		}
 		if (bite.seconds() < 5 * stoneSeconds) {
 			throw failure(helper, "a bitten slab takes %.1f s, it must take at least five times a stone slab's %.1f s", bite.seconds(), stoneSeconds);

@@ -36,6 +36,11 @@ public final class PodFuel {
 		return litresToPercent(stats, litresPerSecond / TICKS_PER_SECOND);
 	}
 
+	/** One tick of the extra fuel a Company rock bite burns (#526): the drilling rate times {@code multiplier - 1}, on top of the tick's own burn. */
+	static void burnForBite(PodEntity pod, PodStats stats, float multiplier) {
+		pod.setFuel(Math.max(0f, pod.fuel() - drainPercentPerTick(stats, Activity.DRILLING) * (multiplier - 1f)));
+	}
+
 	/** True at the beep threshold and below. */
 	public static boolean isLow(float fuelPercent) {
 		return fuelPercent <= PodTuning.DEFAULT.fuel().lowFuelPercent();
@@ -46,13 +51,7 @@ public final class PodFuel {
 		if (!PodEvents.isPowered(pod)) {
 			return;
 		}
-		Activity activity = activity(pod);
-		float drain = drainPercentPerTick(stats, activity);
-		if (activity == Activity.DRILLING && pod.drillProgress() != null && pod.drillProgress().biting()) {
-			// A Company rock slab under the cutter (#526): it burns more than stone does.
-			drain *= PodRockBite.fuelMultiplier();
-		}
-		float fuel = Math.max(0f, pod.fuel() - drain);
+		float fuel = Math.max(0f, pod.fuel() - drainPercentPerTick(stats, activity(pod)));
 		pod.setFuel(fuel);
 		if (fuel <= 0f) {
 			pod.setStranded(true);

@@ -13,10 +13,11 @@ public record PodRockBiteTuning(int minTier, float hardness, float fuelMultiplie
 	/**
 	 * (A) Tier 3 is the Prospector's best drill (a Mole is capped at 2, so it never bites), the one tier a shipped chassis can reach. A tier 3 drill takes 6.4
 	 * ticks for each point of hardness, so hardness 15 is 96 ticks, 4.8 s at the surface, against 0.5 s for stone: ten times slower. Fuel burns at three times the
-	 * drilling rate and the cutter costs half a hull a second, so a slab costs about $13 at layer 2 depth against $20 a slab of a blasting charge
-	 * (EconomyAffordabilityTest). A hull of 20 or less stops the bite, as it stops a charge.
+	 * drilling rate and the cutter costs 1.5 hull a second, so a slab costs about $22 at layer 2 depth in fuel and hull repair, a little over the $20 a slab of a blasting
+	 * charge (EconomyAffordabilityTest): the tier buys freedom from carrying charges, not a discount, and the heat is what binds (about 6 slabs from a full stock hull to the floor).
+	 * A hull of 20 or less stops the bite, as it stops a charge.
 	 */
-	public static final PodRockBiteTuning DEFAULT = new PodRockBiteTuning(3, 15f, 3f, 0.5f, 20f);
+	public static final PodRockBiteTuning DEFAULT = new PodRockBiteTuning(3, 15f, 3f, 1.5f, 20f);
 
 	public PodRockBiteTuning {
 		if (minTier < 1) {

@@ -1351,7 +1351,7 @@ The price was not run at $60: counted from the zone tables, 5.4 charges at $60 a
 
 **Problem.** Charges are a running cost. A charter that digs layer 3 for a season buys dozens. The user asked for enough upgrades to resolve the rock, not only consumables.
 
-**The mechanic.** A drill whose tier (`PodComponents.effectiveTier`, so the chassis' cap applies and a part of another charter is void) is at least `PodRockBiteTuning.minTier` bores a slab with Company Rock in it. `PodDrill` reads the rock as hardness 15 (stone is 1.5), so the usual timing and depth factor apply. While a slab with Company Rock is under the cutter, the fuel rate is multiplied by 3 (`PodFuel`) and the hull takes half a point a second, less by the radiator's ratio. A hull of 20 or less stops the bite with the action bar line "the cutter runs hot" (`company_rock_cutter_hot`), so it is never a way to burn the hull to nothing. A drill below the tier, a Mole (cap 2) with any part, and a hand all still refuse, with the old message.
+**The mechanic.** A drill whose tier (`PodComponents.effectiveTier`, so the chassis' cap applies and a part of another charter is void) is at least `PodRockBiteTuning.minTier` bores a slab with Company Rock in it. `PodDrill` reads the rock as hardness 15 (stone is 1.5), so the usual timing and depth factor apply. While a slab with Company Rock is under the cutter, the fuel rate is multiplied by 3 (`PodFuel`) and the hull takes 1.5 points a second, less by the radiator's ratio. A hull of 20 or less stops the bite with the action bar line "the cutter runs hot" (`company_rock_cutter_hot`), so it is never a way to burn the hull to nothing. A drill below the tier, a Mole (cap 2) with any part, and a hand all still refuse, with the old message.
 
 **Why tier 3.** The design log said tier 5 or 6. No chassis fits them: the Mole caps at 2, the Prospector at 3 (the others are an open SPEC question). A tier 5 bite would be unreachable and "enough upgrades resolve it" would be false. Tier 3 is the Prospector's best drill, $1,250. The Mole keeps the charges as its answer, the Prospector's pilot digs through. When a later chassis allows tier 4 or more, the bite can move up: `minTier` is one number.
 
@@ -1361,8 +1361,8 @@ The price was not run at $60: counted from the zone tables, 5.4 charges at $60 a
 |---|---|---|---|
 | Time | 0.9 s | 8.65 s | 3 s fuse plus the climb |
 | Fuel | 1x | 3x | |
-| Hull | 0 | 4.3 (no radiator) | up to 20 a charge, 10 a slab |
-| Dollars | | $13.17 (8.85 L at $1, 4.3 hull at $1) | $20 |
+| Hull | 0 | 13.0 (no radiator) | up to 20 a charge, 10 a slab |
+| Dollars | | $21.82 (8.85 L at $1, 12.98 hull at $1) | $20 |
 
-The bite is 9.6 times slower than stone and two thirds of a charge's price per slab ($13.17 against $20); the tier 3 drill itself costs $1,250, 3.6 layer 2 runs of $348, so it is the long-run answer and the charge stays the cheap one-off. A radiator cuts the heat (tier 3: 0.6). Tuning knobs: `PodRockBiteTuning` (`minTier` 3, `hardness` 15, `fuelMultiplier` 3, `heatHullPerSecond` 0.5, `hullFloor` 20).
+The bite is 9.6 times slower than stone and costs about a charge's price per slab ($21.82 against $20, in fuel and hull repair); the tier 3 drill itself costs $1,250, 3.6 layer 2 runs of $348. The tier buys freedom from carrying charges, not a discount: charges stay the cheaper, quicker answer for a few slabs (3 s fuse against an 8.65 s bite), and the bite is the one that never runs out. A full stock hull reaches the 20 hull floor after about 6 slabs, so a long bite wants repair stops. The first tuning had 1 and then 0.5 hull a second ($17.50 and $13.17 a slab), and made the bite cheaper and handier than a charge, so charges had no niche. A radiator cuts the heat (tier 3: 0.6). The test holds a bitten slab between one and two times a charge's price per slab. Tuning knobs: `PodRockBiteTuning` (`minTier` 3, `hardness` 15, `fuelMultiplier` 3, `heatHullPerSecond` 1.5, `hullFloor` 20).
 

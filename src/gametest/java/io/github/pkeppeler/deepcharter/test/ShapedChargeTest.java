@@ -261,6 +261,50 @@ public class ShapedChargeTest {
 		});
 	}
 
+	@GameTest(maxTicks = MAX_TICKS)
+	public void aShapedChargeIsRefusedWhenOnlyTheFarColumnOfTheFootprintEndsOnLava(GameTestHelper helper) {
+		int x = 4336;
+		ServerLevel level = layer(helper);
+		RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - BED, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
+		RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
+		rock(level, x - 1, -1, 3); // a run that ends on stone
+		rock(level, x, 0, 2); // the last column of the footprint: its run ends on lava
+		level.setBlock(cell(x, -3, 0), Blocks.LAVA.defaultBlockState(), 2);
+		MockPlayer pilot = MockPlayers.join(helper, "shaped-far-lava");
+		pilot.player().setGameMode(GameType.SURVIVAL);
+		Vec3 at = new Vec3(x, FLOOR, Z);
+		pilot.teleportTo(level, at, 0f, 0f);
+		PodEntity[] pod = new PodEntity[1];
+		FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
+			pod[0] = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+			pod[0].setPos(at);
+			level.addFreshEntity(pod[0]);
+			pilot.player().startRiding(pod[0]);
+		});
+		boolean[] used = {false};
+		helper.onEachTick(() -> {
+			if (pod[0] == null || !pod[0].onGround()) {
+				return;
+			}
+			if (!used[0]) {
+				if (use(pilot.player()).consumesAction()) {
+					throw failure(helper, "a run that ends on lava in one column must refuse the charge");
+				}
+				used[0] = true;
+				return;
+			}
+			String wanted = Component.translatable("message.deepcharter.repair.charge_opens_lava").getString();
+			if (pilot.actionBarMessages().isEmpty() || !pilot.actionBarMessages().getLast().getString().equals(wanted)) {
+				throw failure(helper, "the refusal should read '%s', the bar says %s", wanted, pilot.actionBarMessages());
+			}
+			if (pilot.player().getInventory().countItem(RepairRegistry.item(Consumable.SHAPED_CHARGE)) != 1) {
+				throw failure(helper, "a refused charge must stay in the pack");
+			}
+			pod[0].discard();
+			helper.succeed();
+		});
+	}
+
 	/** Uses a shaped charge that must be refused and stay in the pack; returns the message that the bar should show. */
 	private static Component expectRefusedAndKept(GameTestHelper helper, MockPlayer pilot, String what, String key) {
 		if (use(pilot.player()).consumesAction()) {
