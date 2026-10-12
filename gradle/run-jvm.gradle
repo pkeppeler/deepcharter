@@ -1,0 +1,64 @@
+// JVM args of every Loom run (the server and client GameTests, the play-test client): an OutOfMemoryError must end the JVM
+// at once with a non-zero exit, so the Gradle task fails (#541). Without the flag a harness or the server's crash handler
+// catches the error and the JVM exits 0 (build passed after an OOM) or hangs on its other threads (23 min and 1 h).
+def exitOnOom = "-XX:+ExitOnOutOfMemoryError"
+
+loom.runs.configureEach {
+	vmArg exitOnOom
+}
+
+// Server GameTest heap. No -Xmx was set, so the JVM took a quarter of RAM: 4 GB on the 16 GB Mac, and the suite (1050 tests) ran
+// out of it at about 80% (#541). HEAP_NOTE
+loom.runs.named("gameTest") {
+	vmArg "-Xmx6G"
+}
+
+// Proof the gate holds: every run carries the flag, and a JVM that catches its OutOfMemoryError exits non-zero with the flag and
+// 0 without it. The second half fails if the JVM ever stops honouring the flag; the first, if a run drops it.
+def probeDir = layout.buildDirectory.dir("oom-probe")
+def probeSource = layout.projectDirectory.file("gradle/OomProbe.java")
+def javaBin = new File(System.getProperty("java.home"), "bin/java").path
+
+def probeTasks = [flagged: [exitOnOom], bare: []].collectEntries { name, flags ->
+	[name, tasks.register("oomProbe${name.capitalize()}", Exec) {
+		inputs.file(probeSource)
+		outputs.file(probeDir.map { it.file("${name}.exit") })
+		ignoreExitValue = true
+		commandLine([javaBin, "-Xmx16m"] + flags + [probeSource.asFile.path])
+		def captured = probeDir.map { it.file("${name}.log") }
+		doFirst {
+			probeDir.get().asFile.mkdirs()
+			standardOutput = captured.get().asFile.newOutputStream()
+			errorOutput = standardOutput
+		}
+		def exitFile = probeDir.map { it.file("${name}.exit") }
+		doLast {
+			exitFile.get().asFile.text = "${executionResult.get().exitValue}"
+		}
+	}]
+}
+
+tasks.register("checkRunJvmOom") {
+	group = "verification"
+	description = "Fails unless every Loom run exits on OutOfMemoryError and a JVM given that flag does exit non-zero."
+	dependsOn probeTasks.values()
+	def runArgs = providers.provider { loom.runs.collectEntries { [it.name, it.vmArgs.collect { String a -> a }] } }
+	inputs.property("runArgs", runArgs)
+	def flagged = probeDir.map { it.file("flagged.exit") }
+	def bare = probeDir.map { it.file("bare.exit") }
+	doLast {
+		def missing = runArgs.get().findAll { name, args -> !args.contains(exitOnOom) }.keySet()
+		if (!missing.isEmpty()) {
+			throw new GradleException("run(s) ${missing} lack ${exitOnOom}: an OutOfMemoryError there would not end the JVM, so the build could pass after one (#541)")
+		}
+		def withFlag = flagged.get().asFile.text.trim() as int
+		def without = bare.get().asFile.text.trim() as int
+		if (withFlag == 0) {
+			throw new GradleException("a JVM run with ${exitOnOom} exited 0 after a caught OutOfMemoryError; the flag no longer fails the run")
+		}
+		if (without != 0) {
+			throw new GradleException("the control JVM (no flag) exited ${without}, not 0; the probe no longer shows the silent exit 0 the flag exists to prevent")
+		}
+	}
+}
+tasks.named("check") { dependsOn "checkRunJvmOom" }
