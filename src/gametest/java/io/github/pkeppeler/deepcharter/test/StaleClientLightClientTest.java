@@ -43,6 +43,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight.Box;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
+import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
 
 /**
  * Client GameTest for #427: can a real player be left with a client light that differs from the server's? Each case places blocks as the
@@ -221,7 +222,7 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
 		BlockPos hangar = colony.anchors().get(ColonyAnchor.HANGAR);
 		server.runOnServer(s -> FounderStatue.restoreHands(s));
 		record("the Host's hands restored with the client in the colony", context, server, Level.OVERWORLD, Box.around(statue, 8, 2, 8));
-		BlockPos console = server.computeOnServer(s -> Hangar.consolePos(s).orElseThrow());
+		BlockPos console = server.computeOnServer(s -> HangarConsole.find(s).orElseThrow());
 		server.runOnServer(s -> {
 			s.overworld().setBlock(console, Blocks.AIR.defaultBlockState(), 3); // room-carver: the overworld's colony pad, not layer rock
 			Hangar.onBuilt(s, colony);

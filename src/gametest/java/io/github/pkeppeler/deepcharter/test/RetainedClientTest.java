@@ -1,8 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
@@ -14,11 +12,13 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
 import net.minecraft.client.Minecraft;
+import com.mojang.blaze3d.platform.NativeImage;
+
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.ARGB;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
@@ -31,21 +31,27 @@ import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
-import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 /**
- * Client GameTest for #449: a figure that carries a lamp is drawn from the lamp-carrier's own model, texture and glowmask, in each of the three
- * ways to carry the lamp (the default and the two test packs); a lampless figure is drawn from the lampless model, which has no lantern; and a
- * figure that holds a pod's hull is drawn in the cling pose, with its animation loaded.
+ * Client GameTest for #449 and #506: a figure whose lamp is lit draws the dim lamp in its helmet (a one-texel-deep lens in the lamp bracket of
+ * the baked model, and a glowmask that is clear except on that lens, dim and amber), a figure whose lamp is not lit does not, and a figure that
+ * holds a pod's hull is drawn in the cling pose, with its animation loaded, and its body turned toward the pod.
  */
 public class RetainedClientTest implements FabricClientGameTest {
 	private static final int HALF = 7;
 	private static final int APPROACH = 6;
 	private static final String LANTERN = "lantern";
+	private static final String BRACKET = "lamp_bracket";
+	/** The lens is at most this many texels: the hole of the bracket, not a floodlight. */
+	private static final int MAX_LENS_TEXELS = 8;
+	/** A dim lamp: no lit texel of the glowmask is brighter than this (0 to 255 of the larger channel), and none is darker than the least. */
+	private static final int MAX_GLOW = 200;
+	private static final int MIN_GLOW = 60;
+	/** The cosine of the angle between the way a clinging figure looks and the way to the pod's centre: 0.97 is 14 degrees. */
+	private static final double FACING_COSINE_MIN = 0.97;
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
@@ -57,59 +63,56 @@ public class RetainedClientTest implements FabricClientGameTest {
 				ids[0] = spawn(player, true, 4).getId();
 				ids[1] = spawn(player, false, -4).getId();
 			});
-			ClientWait.until(context, "both figures on the client", client -> client.level != null && client.level.getEntity(ids[0]) instanceof LamplessFigure lamp && lamp.hasLamp()
+			ClientWait.until(context, "both figures on the client", client -> client.level != null && client.level.getEntity(ids[0]) instanceof LamplessFigure lit && lit.hasLamp()
 					&& client.level.getEntity(ids[1]) instanceof LamplessFigure);
-			context.runOnClient(client -> expectModels(client, ids[0], ids[1]));
-			List<Integer> looks = new ArrayList<>();
-			looks.add(context.computeOnClient(RetainedClientTest::lampLook));
-			for (String pack : List.of(TestPacks.RETAINED_LAMP_HAND, TestPacks.RETAINED_LAMP_RIBS)) {
-				ClientPacks.enable(context, pack);
-				try {
-					context.runOnClient(client -> expectModels(client, ids[0], ids[1]));
-					int look = context.computeOnClient(RetainedClientTest::lampLook);
-					require(!looks.contains(look), pack + " did not change the lamp's model, texture and glowmask from the other ways to carry it");
-					looks.add(look);
-				} finally {
-					ClientPacks.disable(context, pack);
-				}
-			}
+			context.runOnClient(client -> expectTheHelmetLight(client, ids[0], ids[1]));
 			expectTheClingPose(context, singleplayer, ids);
 		}
 	}
 
-	/** The lamp-carrier has the lantern in its baked model and a model of its own; the lampless figure has none. */
-	private static void expectModels(Minecraft client, int lampId, int plainId) {
-		EntityRenderer<?, ?> renderer = client.getEntityRenderDispatcher().getRenderer(client.level.getEntity(lampId));
+	/** One model draws both figures; its lens sits in the helmet's bracket; its glowmask lights only the lens, dimly; the render state says whether the lamp is lit. */
+	private static void expectTheHelmetLight(Minecraft client, int litId, int unlitId) {
+		EntityRenderer<?, ?> renderer = client.getEntityRenderDispatcher().getRenderer(client.level.getEntity(litId));
 		var model = ((LamplessFigureRenderer) renderer).getGeoModel();
-		LamplessFigureRenderState lamp = state(client, lampId);
-		LamplessFigureRenderState plain = state(client, plainId);
-		require(lamp.lamp && !plain.lamp, "the render state does not carry whether the figure has a lamp: lamp " + lamp.lamp + ", plain " + plain.lamp);
-		require(model.getModelResource(lamp).equals(LamplessFigureAssets.resource(true)) && model.getTextureResource(lamp).equals(LamplessFigureAssets.lampTexture()),
-				"a lamp-carrier is not drawn from the lamp model and texture");
-		require(model.getModelResource(plain).equals(LamplessFigureAssets.resource()) && model.getTextureResource(plain).equals(LamplessFigureAssets.texture()),
-				"a lampless figure is not drawn from the lampless model and texture");
-		BakedGeoModel carrier = GeckoLibResources.getBakedModels().getModel(LamplessFigureAssets.resource(true));
-		BakedGeoModel lampless = GeckoLibResources.getBakedModels().getModel(LamplessFigureAssets.resource());
-		require(!carrier.isMissingno(), "GeckoLib did not bake the lamp-carrier model " + LamplessFigureAssets.resource(true));
-		require(carrier.getBone(LANTERN).isPresent(), "the lamp-carrier has no lantern");
-		require(!lampless.isMissingno(), "GeckoLib did not bake the lampless model " + LamplessFigureAssets.resource());
-		require(lampless.getBone(LANTERN).isEmpty(), "the lampless figure has a lantern");
-		require(client.getResourceManager().getResource(LamplessFigureAssets.glowmask()).isPresent(), "the glowmask of the lamp is missing");
+		LamplessFigureRenderState lit = state(client, litId);
+		LamplessFigureRenderState unlit = state(client, unlitId);
+		require(lit.lamp && !unlit.lamp, "the render state does not carry whether the lamp is lit: lit " + lit.lamp + ", unlit " + unlit.lamp);
+		for (LamplessFigureRenderState figure : List.of(lit, unlit)) {
+			require(model.getModelResource(figure).equals(LamplessFigureAssets.resource()) && model.getTextureResource(figure).equals(LamplessFigureAssets.texture()),
+					"a figure is not drawn from the one model and texture");
+		}
+		BakedGeoModel baked = GeckoLibResources.getBakedModels().getModel(LamplessFigureAssets.resource());
+		require(!baked.isMissingno(), "GeckoLib did not bake the model " + LamplessFigureAssets.resource());
+		require(baked.getBone(BRACKET).isPresent(), "the figure has no lamp bracket on its helmet");
+		var lantern = baked.getBone(LANTERN);
+		require(lantern.isPresent() && lantern.get().parent() != null && BRACKET.equals(lantern.get().parent().name()), "the lamp is not in the helmet's bracket");
+		require(renderer.getClass() == LamplessFigureRenderer.class && ((LamplessFigureRenderer) renderer).getRenderLayers().stream().anyMatch(layer -> layer.getClass().getSimpleName().equals("LamplessFigureGlowLayer")),
+				"the figure's renderer draws no glow layer for the lamp");
+		expectADimLens(client);
 		require(GeckoLibResources.getBakedAnimations().cache().get(LamplessFigureAssets.resource()).animations().containsKey(LamplessFigureAssets.CLING),
 				"GeckoLib did not load the cling animation");
 	}
 
-	/** A hash of the three files of the lamp-carrier's look as the client reads them now: the winning pack's, or the mod's own. */
-	private static int lampLook(Minecraft client) {
-		int hash = 1;
-		for (Identifier file : List.of(LamplessFigureAssets.lampModelFile(), LamplessFigureAssets.lampTexture(), LamplessFigureAssets.glowmask())) {
-			try (var stream = client.getResourceManager().getResourceOrThrow(file).open()) {
-				hash = 31 * hash + Arrays.hashCode(stream.readAllBytes());
-			} catch (IOException e) {
-				throw new AssertionError("could not read " + file, e);
+	/** The glowmask is clear except on a few texels, all dim amber: it shows from far in the dark and does not read as a beacon. */
+	private static void expectADimLens(Minecraft client) {
+		try (var stream = client.getResourceManager().getResourceOrThrow(LamplessFigureAssets.glowmask()).open(); NativeImage glow = NativeImage.read(stream)) {
+			int lit = 0;
+			for (int y = 0; y < glow.getHeight(); y++) {
+				for (int x = 0; x < glow.getWidth(); x++) {
+					int argb = glow.getPixel(x, y);
+					if (ARGB.alpha(argb) == 0) {
+						continue;
+					}
+					lit++;
+					int brightest = Math.max(ARGB.red(argb), Math.max(ARGB.green(argb), ARGB.blue(argb)));
+					require(brightest >= MIN_GLOW && brightest <= MAX_GLOW, "the glowmask has a texel at " + x + "," + y + " with brightness " + brightest + ", not a dim lamp");
+					require(ARGB.red(argb) > ARGB.blue(argb), "the glowmask has a texel at " + x + "," + y + " that is not warm");
+				}
 			}
+			require(lit > 0 && lit <= MAX_LENS_TEXELS * 6, "the glowmask lights " + lit + " texels, not a tiny lens");
+		} catch (IOException e) {
+			throw new AssertionError("could not read the glowmask", e);
 		}
-		return hash;
 	}
 
 	private static LamplessFigureRenderState state(Minecraft client, int id) {
@@ -129,6 +132,7 @@ public class RetainedClientTest implements FabricClientGameTest {
 	/** A pilot in a dark pod on a flat floor, and a figure that walks to the hull: its client copy holds the hull and is drawn in the cling pose. */
 	private static void expectTheClingPose(ClientGameTestContext context, TestSingleplayerContext singleplayer, int[] ids) {
 		int[] clinging = {0};
+		int[] pods = {0};
 		singleplayer.getServer().runOnServer(server -> {
 			ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
 			ServerLevel level = player.level();
@@ -156,8 +160,19 @@ public class RetainedClientTest implements FabricClientGameTest {
 			figure.setPos(Vec3.atBottomCenterOf(origin.west(APPROACH)));
 			level.addFreshEntity(figure);
 			clinging[0] = figure.getId();
+			pods[0] = pod.getId();
 		});
 		ClientWait.until(context, "the figure clinging to the pod on the client", client -> client.level != null && client.level.getEntity(clinging[0]) instanceof LamplessFigure figure && figure.isClinging());
 		context.runOnClient(client -> require(state(client, clinging[0]).clinging, "a clinging figure's render state is not clinging"));
+		ClientWait.until(context, "the clinging figure turned to face the pod on the client", client -> faces(client, clinging[0], pods[0]));
+	}
+
+	/** Whether the client's copy of the figure looks at the pod's centre with its body and its head: what is drawn is what the server holds. */
+	private static boolean faces(Minecraft client, int figureId, int podId) {
+		if (!(client.level.getEntity(figureId) instanceof LamplessFigure figure) || client.level.getEntity(podId) == null) {
+			return false;
+		}
+		Vec3 toPod = client.level.getEntity(podId).position().subtract(figure.position()).multiply(1, 0, 1).normalize();
+		return Vec3.directionFromRotation(0, figure.yBodyRot).dot(toPod) >= FACING_COSINE_MIN && Vec3.directionFromRotation(0, figure.getYHeadRot()).dot(toPod) >= FACING_COSINE_MIN;
 	}
 }

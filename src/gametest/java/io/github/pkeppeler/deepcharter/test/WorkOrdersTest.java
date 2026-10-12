@@ -34,6 +34,7 @@ import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.colony.FounderStatue;
+import io.github.pkeppeler.deepcharter.colony.HostBody;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.market.WorkOrderData;
 import io.github.pkeppeler.deepcharter.market.WorkOrders;
@@ -83,7 +84,7 @@ public class WorkOrdersTest {
 	}
 
 	private static void clearHands(MinecraftServer server) {
-		FounderStatue.removeHands(server);
+		ColonyChunks.removeHands(server);
 	}
 
 	static MockPlayer player(GameTestHelper helper, String name, boolean onCharter) {
@@ -161,7 +162,7 @@ public class WorkOrdersTest {
 	/** Runs {@code body} once, when the chunk the Host stands in ticks: his displays are entities, found only in a chunk that does. */
 	static void whenTheHostTicks(GameTestHelper helper, MinecraftServer server, Runnable body) {
 		BlockPos statue = Colony.anchor(server, ColonyAnchor.STATUE).orElseThrow(() -> helper.assertionException("the colony was not built"));
-		ColonyChunks.whenTicking(helper, server.overworld(), List.of(statue), () -> !FounderStatue.body(server).isEmpty(), body);
+		ColonyChunks.whenTicking(helper, server.overworld(), List.of(statue), () -> !ColonyChunks.hostBody(server).isEmpty(), body);
 	}
 
 	/**
@@ -188,7 +189,7 @@ public class WorkOrdersTest {
 				throw helper.assertionException("waiting for the far chunk to tick");
 			}
 			List<Display.BlockDisplay> found = level.getEntitiesOfClass(Display.BlockDisplay.class, around);
-			if (found.stream().noneMatch(display -> display.getBlockState().equals(FounderStatue.bodyState()))) {
+			if (found.stream().noneMatch(display -> display.getBlockState().equals(HostBody.state()))) {
 				throw helper.assertionException("waiting for the body display, which stays, to be found");
 			}
 			if (found.stream().anyMatch(display -> display.getBlockState().equals(FounderStatue.handsState()))) {
@@ -249,7 +250,7 @@ public class WorkOrdersTest {
 					}
 					case 4 -> {
 						List<Display.BlockDisplay> found = level.getEntitiesOfClass(Display.BlockDisplay.class, around);
-						boolean body = found.stream().anyMatch(d -> d.getBlockState().equals(FounderStatue.bodyState()));
+						boolean body = found.stream().anyMatch(d -> d.getBlockState().equals(HostBody.state()));
 						boolean hands = found.stream().anyMatch(d -> d.getBlockState().equals(FounderStatue.handsState()));
 						// The chunk's entities come in a few ticks: the hands are gone only when the body has stood without them for a while.
 						missing[0] = body && !hands ? missing[0] + 1 : 0;
@@ -308,8 +309,8 @@ public class WorkOrdersTest {
 			if (Colony.placed(server).isEmpty()) {
 				throw helper.assertionException("the colony was not built, so the Host has no hands to lack");
 			}
-			if (FounderStatue.body(server).size() != 1) {
-				throw helper.assertionException("the Host's body should stand in the square, found %s", FounderStatue.body(server).size());
+			if (ColonyChunks.hostBody(server).size() != 1) {
+				throw helper.assertionException("the Host's body should stand in the square, found %s", ColonyChunks.hostBody(server).size());
 			}
 			if (!FounderStatue.hands(server).isEmpty()) {
 				throw helper.assertionException("the built colony should leave the Host without hands, found %s", FounderStatue.hands(server));

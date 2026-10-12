@@ -55,23 +55,6 @@ public final class FounderStatue {
 		return Colony.anchor(server, ColonyAnchor.STATUE).map(FounderStatue::markerFor);
 	}
 
-	/** Takes the hands away: the displays that are found and the marker, which gives the plinth its plate back. For tests and for a dev who wants them gone. */
-	public static void removeHands(MinecraftServer server) {
-		markerPos(server).ifPresent(pos -> {
-			ServerLevel overworld = server.overworld();
-			overworld.getChunk(pos);
-			if (overworld.getBlockState(pos).is(Blocks.STRUCTURE_VOID)) {
-				overworld.setBlock(pos, ColonyKit.RIVETED_PLATE_RED.defaultBlockState(), Block.UPDATE_CLIENTS);
-			}
-		});
-		hands(server).forEach(Entity::discard);
-	}
-
-	/** The block state of the display of the body: the sculpture block's piece of him. */
-	public static BlockState bodyState() {
-		return ColonyKit.SCULPTURE.defaultBlockState().setValue(KitSculptureBlock.PIECE, KitSculptureBlock.Piece.FOUNDER_C);
-	}
-
 	/** The block state of the display of the hands: the sculpture block's piece of them. */
 	public static BlockState handsState() {
 		return ColonyKit.SCULPTURE.defaultBlockState().setValue(KitSculptureBlock.PIECE, KitSculptureBlock.Piece.FOUNDER_C_HANDS);
@@ -92,11 +75,6 @@ public final class FounderStatue {
 	/** The displays of the statue's hands, loading the chunk they stand in; empty before the colony is built or while he has none. */
 	public static List<Display.BlockDisplay> hands(MinecraftServer server) {
 		return displays(server, handsState());
-	}
-
-	/** The displays of the statue's body, loading the chunk it stands in; empty before the colony is built. */
-	public static List<Display.BlockDisplay> body(MinecraftServer server) {
-		return displays(server, bodyState());
 	}
 
 	private static List<Display.BlockDisplay> displays(MinecraftServer server, BlockState state) {

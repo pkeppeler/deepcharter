@@ -8,6 +8,8 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 
 import net.minecraft.client.CameraType;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -15,18 +17,32 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.Vec3;
 
+import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
+import io.github.pkeppeler.deepcharter.hangar.HangarData;
+import io.github.pkeppeler.deepcharter.hangar.HangarParts;
+import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
+import io.github.pkeppeler.deepcharter.ore.OreRegistry;
+import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.Serials;
+import io.github.pkeppeler.deepcharter.terminal.RepairState;
+import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 
 /**
@@ -64,7 +80,73 @@ public class ProspectorChassisScenario extends EvidenceScenario {
 	@Override
 	protected void run(ClientGameTestContext context) {
 		wreck(context);
+		restore(context);
 		ride(context);
+	}
+
+	/**
+	 * A charter restores PROSPECTOR-0002 at the hangar console, in a sealed room: the pod keeps its number and its name tag.
+	 * SHORTCUT: the hangar is marked founded, and the charter is granted $1,390 and 3 Cicatrium, as if earned elsewhere.
+	 */
+	private void restore(ClientGameTestContext context) {
+		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+			ClientWait.until(context, "the player in the world", client -> client.player != null && client.level != null);
+			context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+			BlockPos console = new BlockPos(X + 2, FLOOR_Y, Z - 4);
+			UUID[] wreck = {null};
+			singleplayer.getServer().runOnServer(server -> {
+				ServerLevel level = server.overworld();
+				fill(level, FLOOR_Y - SLAB_DEPTH, FLOOR_Y - 1, Blocks.STONE);
+				RoomCarver.carve(level, X - SLAB_RADIUS, X + SLAB_RADIUS, FLOOR_Y, FLOOR_Y + 10, Z - SLAB_RADIUS, Z + SLAB_RADIUS, Blocks.AIR);
+				level.setBlock(console, HangarTerminal.TYPE.block().defaultBlockState(), 3);
+				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+				player.setPermanentlyInvulnerable(true);
+				player.getInventory().clearContent();
+				player.teleportTo(level, X + 0.5, FLOOR_Y, Z - 4.5, Set.of(), 0f, 10f, true);
+				PodEntity pod = PodRegistry.PROSPECTOR.create(level, EntitySpawnReason.COMMAND);
+				pod.setPos(X + 0.5, FLOOR_Y, Z + 0.5);
+				pod.setHull(0f);
+				pod.setCustomName(Component.literal(Serials.FAMOUS_PROSPECTOR));
+				pod.setCustomNameVisible(true);
+				PodComponents.markFamousProspector(pod);
+				level.addFreshEntity(pod);
+				wreck[0] = pod.getUUID();
+				Charters.found(server, player.getUUID(), "Riggs and Sons");
+				Charters.deposit(server, Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id(), 1_390);
+				for (int i = 0; i < 3; i++) {
+					player.getInventory().add(OreRegistry.stack(OreType.CICATRIUM));
+				}
+			});
+			ClientWait.until(context, "the wreck in the client's world", client -> client.level.getEntity(wreck[0]) != null);
+			context.waitTicks(SETTLE_TICKS); // tick-wait: lets the room's light and the pod's model settle
+			screenshot(context, "wreck-before-the-restore");
+			frame(context);
+			String serial = singleplayer.getServer().computeOnServer(server -> {
+				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+				CompoundTag founded = ((CompoundTag) HangarData.CODEC.encodeStart(NbtOps.INSTANCE, new HangarData()).getOrThrow()).copy();
+				founded.putBoolean("founded", true);
+				// The swap is undone when the body ends: the restore is the one action that reads the hangar's data.
+				WorldData.swap(server).with(HangarData.TYPE, HangarData.CODEC.parse(NbtOps.INSTANCE, founded).getOrThrow()).with(RepairState.TYPE, new RepairState()).run(() -> {
+					for (Item part : HangarParts.ALL) {
+						RepairState.get(server).insert(HangarTerminal.TYPE, part);
+					}
+					Terminals.act(player, console, HangarTerminal.RESTORE_WRECK, new CompoundTag()).ifPresent(refusal -> {
+						throw new AssertionError("the restore was refused: " + refusal);
+					});
+				});
+				return PodComponents.registration((PodEntity) server.overworld().getEntity(wreck[0])).orElseThrow().serial();
+			});
+			if (!serial.equals(Serials.FAMOUS_PROSPECTOR)) {
+				throw new AssertionError("the restored wreck should keep PROSPECTOR-0002, it is " + serial);
+			}
+			ClientWait.until(context, "the restored pod whole in the client's world", client -> client.level.getEntity(wreck[0]) instanceof PodEntity pod && pod.hull() > 0);
+			context.setScreen(() -> null);
+			ClientWait.until(context, "the T17 transmission to arrive", client -> TransmissionOverlay.transmission().isPresent());
+			ClientWait.until(context, "the T17 transmission to clear from the screen", client -> TransmissionOverlay.transmission().isEmpty());
+			context.waitTicks(SETTLE_TICKS); // tick-wait: lets the restored model settle
+			screenshot(context, "restored-prospector-0002-keeps-its-name");
+			frame(context);
+		}
 	}
 
 	/** The wreck at the site nearest the Conduit: the pod, the lamp that still burns, and Ines's log. */

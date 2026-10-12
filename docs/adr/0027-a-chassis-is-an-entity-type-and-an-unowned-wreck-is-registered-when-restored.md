@@ -18,6 +18,15 @@ Builds on [ADR 0004](0004-pods-are-vehicles.md) (pods are vehicles), [ADR 0021](
 
 ## Consequences
 
-- The Prospector wreck is `PROSPECTOR-0002` in the world and `PROSPECTOR-0001` once a charter has restored it. The lore number is the wreck's; the serial is the charter's.
+- ~~The Prospector wreck is `PROSPECTOR-0002` in the world and `PROSPECTOR-0001` once a charter has restored it.~~ Superseded: see Amended, 2026-10-11.
 - A world whose layer 2 chunks were generated before this build has no Prospector wrecks, like any structure (ADR 0025).
 - A new chassis is a `Chassis` constant, a `PodRegistry` line, a tier cap in `UpgradeTuning`, a restore price in `HangarTuning` and a renderer line.
+
+## Amended, 2026-10-11
+
+User decision (M2 demo, issue #484): a restored wreck keeps its own number. PROSPECTOR-0002 stays PROSPECTOR-0002.
+
+- **The lore wreck is a mark on the pod, not its name.** `ProspectorWrecks.place` calls `PodComponents.markFamousProspector` on the wreck at the site nearest the Conduit: a `Versioned<PodLore>` attachment (`PodComponents.LORE`, version 1, saved and not synced). The hangar's restore reads it (`PodComponents.isFamousProspector`) and registers that wreck to the restoring charter through `registerLoreWreck`, under `Serials.FAMOUS_PROSPECTOR` (PROSPECTOR-0002) and no other serial, and keeps its name tag, which is for display only. A wreck without the mark, whatever it is called, takes the charter's next serial of its chassis and loses its name, as before. This replaces the bullet "A restore registers an unowned wreck to the restoring charter" for the marked wreck only.
+- **The number is held once.** `registerLoreWreck` clears the mark and claims the number in `Serials` (`claimFamousProspector`), so a second registration of PROSPECTOR-0002 on any pod throws.
+- **Serials are world-wide, one counter for each prefix (`Serials`), and the counter skips `PROSPECTOR-0002`.** The number is the lore wreck's from the day the world is made, so no Prospector bought or restored by any charter is ever handed it, whether or not the wreck has been restored yet. The first new Prospector is `PROSPECTOR-0001`, the next `PROSPECTOR-0003`. A collision cannot happen by construction.
+- **Saved data: one new attachment, no changed shape.** `Registration` is still an owner and a serial string, and `Serials` still saves the count issued for each prefix (version 1); the skip is in `next`, and the claim is one more entry in that map under the key `claimed:PROSPECTOR-0002` (a prefix has no colon). `PodLore` is new: a pod saved before it reads as no mark, so a wreck placed before this change (in a world whose layer 2 chunks were generated earlier, see ADR 0025) is an ordinary wreck and takes a charter serial when restored, because the name is not read. Only a wreck placed from this build on carries the mark. This is accepted: that wreck is still unrestored in few worlds, and a name that is only display must not decide a serial. A wreck restored before this change keeps the serial it has. A world where an earlier Prospector already holds `PROSPECTOR-0002` from the counter, and that has not yet restored the wreck, can hold the number twice. This is accepted: the restore does not rename either pod.

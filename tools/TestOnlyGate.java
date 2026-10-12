@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -60,12 +59,10 @@ import java.util.zip.ZipFile;
  * the reason is required. The marker binds to the exact declaration: the same name in another class of the file, or another overload,
  * is not exempted by it.
  *
- * <p>A baseline (--baseline) lists the findings that exist already, one {@code Class#member(parameters)} per line, {@code #} for comments.
- * A finding outside it fails the build, and so does an entry that is no longer a finding: the baseline only shrinks.
- * --list prints the key of every finding and exits 0.
+ * <p>Every finding fails; nothing is grandfathered. --list prints the key of every finding ({@code Class#member(parameters)}) and exits 0.
  *
  * <p>Usage: java TestOnlyGate.java --production dir... --tests dir... --sources dir... [--classpath entry...] [--root dir]
- * [--baseline file] [--list]. Production and test dirs are class output dirs; sources are the java roots of the production source sets;
+ * [--list]. Production and test dirs are class output dirs; sources are the java roots of the production source sets;
  * the classpath is the jars and dirs that supertypes are loaded from. Exit 1 prints the failures.
  */
 public final class TestOnlyGate {
@@ -90,8 +87,8 @@ public final class TestOnlyGate {
             return TestOnlyGate.refKey(owner.thisClass().asInternalName(), name, field, descriptor);
         }
 
-        /** {@code pkg.Outer$Inner#name(parameter descriptors)}, or {@code #FIELD}: what the baseline lists. */
-        String baselineKey() {
+        /** {@code pkg.Outer$Inner#name(parameter descriptors)}, or {@code #FIELD}: what --list prints. */
+        String key() {
             String binary = owner.thisClass().asInternalName().replace('/', '.');
             return binary + "#" + (field ? name : name + parameters(descriptor));
         }
@@ -148,36 +145,15 @@ public final class TestOnlyGate {
             findings.keySet().forEach(System.out::println);
             return;
         }
-        Path baselineFile = options.containsKey("--baseline") ? Path.of(options.get("--baseline").getFirst()) : null;
-        Set<String> baseline = baselineFile == null ? Set.of() : readBaseline(baselineFile);
-        List<String> fresh = findings.entrySet().stream().filter(finding -> !baseline.contains(finding.getKey())).map(Map.Entry::getValue).toList();
-        List<String> stale = baseline.stream().filter(key -> !findings.containsKey(key)).toList();
+        List<String> fresh = List.copyOf(findings.values());
         if (!fresh.isEmpty()) {
             System.err.println("Members referenced only from src/gametest (" + fresh.size() + "). A test is not a production caller."
                 + " Fix the member: delete it and have the test use the seam production uses, or make it private."
                 + " A deliberate, permanent seam ends its declaration line, or sits on the comment line above, with"
                 + " '// test-seam: <why it is deliberate>'.");
             fresh.forEach(message -> System.err.println("  " + message));
-        }
-        if (!stale.isEmpty()) {
-            System.err.println("Stale entries in " + baselineFile + " (" + stale.size() + "). These members are no longer test-only:"
-                + " delete each line, so the baseline only shrinks.");
-            stale.forEach(key -> System.err.println("  " + key));
-        }
-        if (!fresh.isEmpty() || !stale.isEmpty()) {
             System.exit(1);
         }
-    }
-
-    private static Set<String> readBaseline(Path file) throws IOException {
-        Set<String> keys = new TreeSet<>();
-        for (String line : Files.readAllLines(file)) {
-            String key = line.strip();
-            if (!key.isEmpty() && !key.startsWith("#")) {
-                keys.add(key);
-            }
-        }
-        return keys;
     }
 
     private void addClasspath(Path entry) throws IOException {
@@ -188,7 +164,7 @@ public final class TestOnlyGate {
         }
     }
 
-    /** The finding message of each member the markers do not exempt, by baseline key. */
+    /** The finding message of each member the markers do not exempt, by key. */
     Map<String, String> run(List<Path> productionDirs, List<Path> testDirs) throws IOException {
         classDirs.addAll(productionDirs);
         classDirs.addAll(testDirs);
@@ -203,7 +179,7 @@ public final class TestOnlyGate {
                 if (found != null && !found.production) {
                     String message = report(member, found);
                     if (message != null) {
-                        findings.put(member.baselineKey(), message);
+                        findings.put(member.key(), message);
                     }
                 }
             }

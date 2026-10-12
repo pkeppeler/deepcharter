@@ -12,6 +12,7 @@
   "deepcharter.upgrade.track.drill": "DRILL",
   "deepcharter.upgrade.track.engine": "ENGINE",
   "deepcharter.upgrade.track.fuel_tank": "FUEL TANK",
+  "deepcharter.upgrade.track.heat_shield": "HEAT SHIELD",
   "deepcharter.upgrade.track.hull": "HULL",
   "deepcharter.upgrade.track.lights": "LIGHTS",
   "deepcharter.upgrade.track.liner": "LINER",
@@ -27,6 +28,7 @@
   "item.deepcharter.part_drill": "Drill part",
   "item.deepcharter.part_engine": "Engine part",
   "item.deepcharter.part_fuel_tank": "Fuel tank part",
+  "item.deepcharter.part_heat_shield": "Heat shield part",
   "item.deepcharter.part_hull": "Hull part",
   "item.deepcharter.part_lights": "Lights part",
   "item.deepcharter.part_liner": "Liner part",
@@ -43,6 +45,7 @@
   "screen.deepcharter.upgrade.intro": "UPGRADE TERMINAL ONLINE. CHOOSE A PART.",
   "screen.deepcharter.upgrade.no_pod": "NO POD OF YOURS IS PARKED AT THE TERMINAL.",
   "screen.deepcharter.upgrade.pod": "POD %s   TIER CAP %s",
+  "screen.deepcharter.upgrade.scroll": "TRACKS %s-%s OF %s",
   "screen.deepcharter.upgrade.track": "%s  T%s",
   "screen.deepcharter.upgrade.pod_unregistered": "POD (UNREGISTERED)   TIER CAP %s"
 }
