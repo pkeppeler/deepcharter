@@ -455,8 +455,8 @@ def lava_still(seed: int) -> list[Grid]:
         g = blank("lavaglow.3")
         for y in range(SIZE):
             for x in range(SIZE):
-                heat = (0.30 * lava_noise(seed, x, y, t, cells[0], LAVA_STILL_FRAMES) + 0.45 * lava_noise(seed + 1, x, y, t, cells[1], LAVA_STILL_FRAMES)
-                        + 0.25 * lava_noise(seed + 2, x, y, t, cells[2], LAVA_STILL_FRAMES))
+                heat = (0.15 * lava_noise(seed, x, y, t, cells[0], LAVA_STILL_FRAMES) + 0.45 * lava_noise(seed + 1, x, y, t, cells[1], LAVA_STILL_FRAMES)
+                        + 0.40 * lava_noise(seed + 2, x, y, t, cells[2], LAVA_STILL_FRAMES))
                 g[y][x] = lava_colour((heat - 0.5) * 1.3 + 0.5, seed, x, y)
         frames.append(g)
     return frames
@@ -466,14 +466,14 @@ def lava_flow(seed: int) -> list[Grid]:
     """The frames of lava_flow, 32 x 32 like vanilla's: the block's pattern twice across and twice down, because the renderer takes a window of it. Two
     layers of stretched heat slide down the frame at one and at two pixels a frame (16 frames, so the loop closes on the 16-pixel block), and a
     third, finer one swells and fades in place, so the lava runs and is not a texture that is dragged."""
-    cells = ((4, 4, 1), (2, 4, 1), (4, 4, 8))
+    cells = ((4, 8, 1), (2, 4, 1), (2, 2, 8))
     frames = []
     for t in range(LAVA_FLOW_FRAMES):
         block = blank("lavaglow.3")
         for y in range(SIZE):
             for x in range(SIZE):
-                heat = (0.40 * lava_noise(seed, x, y - t, 0, cells[0], 1) + 0.35 * lava_noise(seed + 1, x, y - 2 * t, 0, cells[1], 1)
-                        + 0.25 * lava_noise(seed + 2, x, y, t, cells[2], LAVA_FLOW_FRAMES))
+                heat = (0.20 * lava_noise(seed, x, y - t, 0, cells[0], 1) + 0.40 * lava_noise(seed + 1, x, y - 2 * t, 0, cells[1], 1)
+                        + 0.40 * lava_noise(seed + 2, x, y, t, cells[2], LAVA_FLOW_FRAMES))
                 block[y][x] = lava_colour((heat - 0.5) * 1.5 + 0.5, seed, x, y)
         frames.append([row * 2 for row in block] * 2)
     return frames
