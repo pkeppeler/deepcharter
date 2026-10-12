@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
@@ -632,7 +633,7 @@ public class M2SliceScenario extends EvidenceScenario {
 			pod(server, mole).teleportTo(level, moleAt.x, moleAt.y, moleAt.z, Set.of(), yawToward(moleAt, figureStart), 0f, true);
 			return null;
 		});
-		// The carve holds the sending of the drift's chunks until their light is computed. A player who is brought into a chunk before that is never sent it.
+		// Workaround for #524 (RoomCarver holds the chunk send; delete this wait when it is fixed).
 		ClientWait.until(ctx, "the drift's chunks lit and ready to send to the player", () -> onServer(server -> driftChunksReady(server.getLevel(LayerChain.dimension(2)), site)),
 				() -> "the chunks " + onServer(server -> driftChunks(site).stream().filter(chunk -> !chunkReady(server.getLevel(LayerChain.dimension(2)), chunk)).toList()) + " were not ready");
 		standInLayer(2, at(site, MOLE_AT_U - 2.5, 0, 0), moleAt);
@@ -702,6 +703,7 @@ public class M2SliceScenario extends EvidenceScenario {
 		return driftChunks(site).stream().allMatch(chunk -> chunkReady(level, chunk));
 	}
 
+	// #524: the chunk is sent only once its light is computed; a player brought in before that is never sent it.
 	private static boolean chunkReady(ServerLevel level, ChunkPos chunk) {
 		return level.getChunkSource().chunkMap.getChunkToSend(chunk.pack()) != null;
 	}
@@ -1212,7 +1214,7 @@ public class M2SliceScenario extends EvidenceScenario {
 		}
 	}
 
-	private static String describe(java.util.Optional<PodEntity> found) {
+	private static String describe(Optional<PodEntity> found) {
 		return found.map(pod -> "at " + pod.position() + " in " + pod.level().dimension().identifier() + ", fuel " + pod.fuel() + ", on ground " + pod.onGround()
 				+ ", drilling " + pod.drilling() + ", over " + pod.level().getBlockState(pod.blockPosition().below()).getBlock()).orElse("in no level");
 	}
@@ -1285,20 +1287,20 @@ public class M2SliceScenario extends EvidenceScenario {
 	}
 
 	/** The pod, wherever it is. Empty for the tick or two in which a crossing has taken it out of one level and not yet put it in the next. */
-	private static java.util.Optional<PodEntity> findPod(MinecraftServer server, UUID id) {
+	private static Optional<PodEntity> findPod(MinecraftServer server, UUID id) {
 		for (ServerLevel level : server.getAllLevels()) {
 			if (level.getEntity(id) instanceof PodEntity pod) {
-				return java.util.Optional.of(pod);
+				return Optional.of(pod);
 			}
 		}
-		return java.util.Optional.empty();
+		return Optional.empty();
 	}
 
 	private static boolean podIn(MinecraftServer server, UUID id, net.minecraft.resources.ResourceKey<Level> dimension) {
 		return findPod(server, id).filter(pod -> pod.level().dimension().equals(dimension)).isPresent();
 	}
 
-	private static void expectNoRefusal(java.util.Optional<? extends Object> refusal, String what) {
+	private static void expectNoRefusal(Optional<? extends Object> refusal, String what) {
 		refusal.ifPresent(found -> {
 			throw new AssertionError(what + " was refused: " + found);
 		});
