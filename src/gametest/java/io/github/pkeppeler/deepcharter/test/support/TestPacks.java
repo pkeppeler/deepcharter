@@ -36,16 +36,8 @@ public final class TestPacks implements ModInitializer {
 	public static final String LAYER_CONCEPT_FORM_2 = "layer_concept_form_2";
 	/** The Company Rock and breach crust of layer 3, Columnar. */
 	public static final String LAYER_CONCEPT_FORM_3 = "layer_concept_form_3";
-	/** The cockpit HUD concepts (#444, #448, docs/design/cockpit-concepts.md and cockpit-concepts-2.md): each pack sets {@code theme/cockpit.json}'s {@code style} to one option. Round 1's Consoles, kept to compare. */
-	public static final String COCKPIT_CONSOLES = "cockpit_consoles";
-	/** Cockpit concept A, Corners. */
-	public static final String COCKPIT_CORNERS = "cockpit_corners";
-	/** Cockpit concept B, Ribbon. */
-	public static final String COCKPIT_RIBBON = "cockpit_ribbon";
-	/** Cockpit concept C, Posts. */
-	public static final String COCKPIT_POSTS = "cockpit_posts";
-	/** Cockpit concept D, Cab. */
-	public static final String COCKPIT_CAB = "cockpit_cab";
+	/** The cockpit HUD is off ({@code theme/cockpit.json}'s {@code enabled} 0): the plain HUD shows while seated. The Ribbon is the mod's own look (#247). */
+	public static final String COCKPIT_OFF = "cockpit_off";
 	/** The front camera is on the pod (#448): a stand-in for the part, which a later build buys at the upgrade terminal. */
 	public static final String COCKPIT_CAMERA = "cockpit_camera";
 	/** The front camera, with static that does not fade, so a still can hold a hit's static. */
@@ -68,7 +60,7 @@ public final class TestPacks implements ModInitializer {
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> server.getGameRules().set(GameRules.SPAWN_MOBS, false, server));
 		for (String pack : new String[] {AMBER_CRT, BAD_CRT, RED_INK, TEXTURE_DENSITY_B, TEXTURE_DENSITY_C, TEXTURE_DENSITY_D,
 				LAYER_CONCEPT_GRAIN, LAYER_CONCEPT_FORM_1, LAYER_CONCEPT_FORM_2, LAYER_CONCEPT_FORM_3,
-				COCKPIT_CONSOLES, COCKPIT_CORNERS, COCKPIT_RIBBON, COCKPIT_POSTS, COCKPIT_CAB, COCKPIT_CAMERA, COCKPIT_CAMERA_HOLD,
+				COCKPIT_OFF, COCKPIT_CAMERA, COCKPIT_CAMERA_HOLD,
 				SALVAGE_CRATE_B, TOW_CABLE_BRAID,
 				COMPANY_ROCK_JOINT, COMPANY_ROCK_STRAP, COMPANY_ROCK_CRYSTAL, COMPANY_ROCK_FUSED}) {
 			ResourceLoader.registerBuiltinPack(Identifier.fromNamespaceAndPath("deepcharter-test", pack),

@@ -2,7 +2,7 @@
 
 [Round 1](cockpit-concepts.md) drew three looks. The user liked Consoles best and wrote ([#448](https://github.com/pkeppeler/deepcharter/issues/448)): every status panel must take far less of the screen (only the scanner may be large), the pod should show as the form around a clear window, and a front camera upgrade should turn that window into a video feed so the pod becomes invisible. This round draws **four compact looks** built on Consoles, designs the **front camera** as a mechanic ([mechanics.md](mechanics.md#front-camera-448-a)) and builds just enough of it, behind a test pack, to be seen in the game. The build of the one you pick comes in a later pull request.
 
-**Status: concepts.** The mod ships `style` 0 and no camera, so a player sees no change: the plain text HUD and the pod's cab as they were.
+**Status: picked and built.** The user picked **B, the Ribbon** on 2026-10-11 and [#247](https://github.com/pkeppeler/deepcharter/issues/247) built it: the mod ships the Ribbon as the HUD of a seated pilot (see [What the build settled](#what-the-build-settled)). Corners, Posts, Cab and round 1's Consoles were removed with their sprites, keys, test packs and generator code; the stills below stay as the record of the choice. The mod ships no camera: the front camera is kept (`cameraInstalled` 0) and waits for its purchase flow.
 
 ## What every option shares (already decided)
 
@@ -29,7 +29,7 @@
 
 ## How they are drawn, and how to see them
 
-- **`theme/cockpit.json`** `style`: 0 none (the default), 1 Consoles (round 1), 2 Corners, 3 Ribbon, 4 Posts, 5 Cab. **A pick is a data change:** a pack with `{"style": 4}` is Posts, and F3+T applies it. The test packs `cockpit_consoles`, `cockpit_corners`, `cockpit_ribbon`, `cockpit_posts` and `cockpit_cab` do exactly that, and `cockpit_camera` (and `cockpit_camera_hold`, whose static does not fade, for a still) sets `cameraInstalled` to 1. Only the evidence scenario and the tests turn them on.
+- **`theme/cockpit.json`** `style` (as drawn in this round): 0 none, 1 Consoles (round 1), 2 Corners, 3 Ribbon, 4 Posts, 5 Cab. The pick replaced it with `enabled`; the test packs below were removed except `cockpit_camera` (and `cockpit_camera_hold`, whose static does not fade, for a still), which sets `cameraInstalled` to 1, and the new `cockpit_off`.
 - **`tools/cockpit_concepts.py`** writes the sprites and the theme file with the Python standard library only; `--check` (and `tools/tests/test_cockpit_concepts.py`) fails when a committed file differs from what it makes, `--preview DIR` writes a mock of each look, `--coverage` prints the table above. Every coordinate is a whole number or goes through `nearest`, and a test fails on a bare `round(`: #445 failed CI on Linux for a pixel that `round` put on the other side of a tie.
 - **`client/pod/CockpitHud`** draws the style as the first HUD element; `CockpitLook` reads it; the plate's rows are `CockpitHud.rows`. **`client/pod/FrontCameraFeed`** is the camera.
 - **The stills** are in the PR that carries this page ([#453](https://github.com/pkeppeler/deepcharter/pull/453)) and in [pr-media/453](https://github.com/pkeppeler/deepcharter/tree/pr-media/453), named `<option>-<state>.png`: the options `current` (the plain HUD), `consoles`, `corners`, `ribbon`, `posts` and `cab`; the states `calm`, `low-fuel`, `burning` (the hull burning in lava), `deep` and `on-foot`; each option also `-calm-scale1` (an 854 x 480 GUI) and `-camera-calm` (the same seat through the front camera), and `current` and `cab` also `-camera-haze`, `-camera-dead` and `-camera-static`. `<option>-<state>-vs-current.png` puts the plain HUD beside the option and `<option>-<state>-vs-consoles.png` round 1's Consoles. A still that is not there (an option on foot, which is the vanilla HUD again) did not differ from what it is compared with. `tools/record-evidence.sh cockpit-concepts` makes them; `DEEPCHARTER_COCKPIT_OPTIONS=cab,posts` shoots only those. Every still came from one run on one renderer (Vulkan), in a sealed stone room.
@@ -97,6 +97,19 @@ Under hazards (heat haze while the hull burns, then the dead feed once the lens 
 - **Heat** is the burning of the hull, eased (+0.08 and -0.02 a tick). If heat becomes a pod value, the gauge reads that. The easing still has no test.
 - **Depth** is a share of the floor of the last layer. A new layer moves every reading.
 
-## Pick one
+## What the build settled
+
+The Ribbon is `theme/cockpit.json` with `enabled` 1 (it replaced the `style` number: a pack that sets `enabled` to 0 gets the plain HUD back). The sprites are under `textures/gui/sprites/cockpit/ribbon/` and are written, with the theme file, by `tools/cockpit_ribbon.py`.
+
+- **GUI Scale.** The HUD is in GUI pixels, so it follows Options > Video Settings > GUI Scale. Vanilla never makes a GUI smaller than 320 x 240 while the window is that big (a requested scale that would is capped), and the Ribbon needs 320 x 240 (`minGuiWidth`, `minGuiHeight`), so every scale a player can pick, 1 to 4 and Auto, fits. The plain HUD is drawn instead only when the GUI is smaller (the Force Unicode Font option can round a scale up, and a window under 320 x 240 has no other). A 854 x 480 window gives a GUI of 854 x 480, 427 x 240 and, for 3, 4 and Auto, 427 x 240 again; GUI scale 4 needs a window of 1280 x 960 or more (1920 x 1080 gives 480 x 270). `CockpitHudClientTest` checks the layout for every scale of eight window sizes.
+- **Alerts.** The plate under the scanner has the tally (hull, fuel, cargo, depth) and every other readout line as a row, in its colour; the fourth lamp lights for any alert. On a short GUI the plate drops notes (slag, liner, lining) from the bottom before it drops a warning. Fuel and hull turn red on the bar and light their lamp (the low-fuel beep's mark and the hull-low mark).
+- **The action bar stays.** The game talks to a seated pilot there (a grab on the hull, a refusal, the towing messages), and the Ribbon has no place for those, so the cockpit hides the hotbar, hearts and held item name but leaves the action bar. It also shows vanilla's "Press Left Shift to dismount" for the moment after boarding.
+- **The navigator.** A second seat gets the band, the scanner and no gauges or plate, as it got no readout before, and loses the vanilla hotbar. A passenger is treated the same.
+- **Scanner tier 4** is cut at the window's edge (the window shows its middle); the pod is in the middle.
+- **Heat** is the burning of the hull, eased (+0.08 and -0.02 a tick). If heat becomes a pod value, the gauge reads that.
+- **The front camera is kept.** It was Cab's idea, but it is a mechanic of its own ([mechanics.md](mechanics.md#front-camera-448-a)) that the user asked for in [#448](https://github.com/pkeppeler/deepcharter/issues/448), and it works under any HUD: its badge sits under the altimeter. Its purchase flow is still to build.
+- **Signal decay** (a later effect near the bottom of a layer, [#502](https://github.com/pkeppeler/deepcharter/issues/502)) wraps `CockpitHud.draw`, which every piece of the Ribbon goes through.
+
+## Pick one (history)
 
 [#247](https://github.com/pkeppeler/deepcharter/issues/247) is built from the option you pick: its `style` number becomes the mod's, and the other styles' sprites and keys are removed, as round 2 removed Dials and Strip. Round 1's Consoles is kept only to compare against and goes with the pick.
