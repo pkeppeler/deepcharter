@@ -40,7 +40,9 @@ public class LootTableDropsTest {
 			Map.entry("platinium_ore", "platinium"), Map.entry("regolith", "regolith"),
 			Map.entry("regolith_packed", "regolith_packed"), Map.entry("regolith_rock", "regolith_rock"),
 			Map.entry("silverium_ore", "silverium"), Map.entry("slag_brick", "slag_brick"),
-			Map.entry("stalk_planks", "stalk_planks"));
+			Map.entry("stalk_planks", "stalk_planks"), Map.entry("packed_shale", "packed_shale"),
+			Map.entry("packed_shale_rubble", "packed_shale_rubble"), Map.entry("green_shale", "green_shale"),
+			Map.entry("green_shale_rubble", "green_shale_rubble"));
 
 	/** The salvage crate's pools: item to its fewest and most per roll. */
 	private record Range(String item, int min, int max) {

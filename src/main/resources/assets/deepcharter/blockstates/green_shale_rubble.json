@@ -1,0 +1,12 @@
+{
+  "variants": {
+    "": [
+      {
+        "model": "deepcharter:block/green_shale_rubble_0"
+      },
+      {
+        "model": "deepcharter:block/green_shale_rubble_1"
+      }
+    ]
+  }
+}

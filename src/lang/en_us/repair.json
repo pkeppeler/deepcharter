@@ -10,7 +10,7 @@
   "message.deepcharter.repair.cargo_unreadable": "The cargo bay cannot be read, so nothing can be teleported",
   "message.deepcharter.repair.charge_burning": "A charge is already burning",
   "message.deepcharter.repair.charge_count": "Charge: blast in %s",
-  "message.deepcharter.repair.charge_hull_low": "Hull too low to set a charge: it would cost the hull",
+  "message.deepcharter.repair.charge_hull_low": "Hull too low to set a charge: the blast would wreck you, so repair first",
   "message.deepcharter.repair.charge_no_company_rock": "No Company rock below to blast: use dynamite for plain rock",
   "message.deepcharter.repair.charge_not_resting": "Set the charge while the pod rests on its slab",
   "message.deepcharter.repair.charge_set": "Charge set: CLIMB CLEAR, blast in %s",

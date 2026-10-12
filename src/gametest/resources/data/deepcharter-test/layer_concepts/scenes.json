@@ -195,6 +195,22 @@
           "wait": 40,
           "light": "company",
           "lamp": 14
+        },
+        {
+          "name": "beam-corner",
+          "eye": [
+            14.0,
+            8.0,
+            10.5
+          ],
+          "target": [
+            11.5,
+            9.0,
+            7.5
+          ],
+          "wait": 40,
+          "light": "company",
+          "lamp": 14
         }
       ]
     },

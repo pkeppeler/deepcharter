@@ -15,6 +15,8 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
+import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
+import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -39,9 +41,6 @@ public class ProspectorChassisClientTest implements FabricClientGameTest {
 	private static final int ROOM_HEIGHT = 8;
 	private static final int POD_CELLS = 3;
 	private static final int RGB = 0xFFFFFF;
-	/** The status lines are white text in the top left corner of the GUI; this is the box (in GUI pixels) that holds them. */
-	private static final int STATUS_WIDTH = 90;
-	private static final int STATUS_HEIGHT = 50;
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
@@ -70,14 +69,14 @@ public class ProspectorChassisClientTest implements FabricClientGameTest {
 				expectPixel(navigator, "the navigator's scanner marks cell " + up + " of the Prospector", up, ScannerLook.current().podColor());
 			}
 			expectPixel(navigator, "the cell above the Prospector is air", POD_CELLS, ScannerLook.current().airColor());
-			int navigatorText = whitePixels(navigator);
-			require(navigatorText == 0, "The navigator should see the scanner only, but " + navigatorText + " pixels of status text are on screen");
+			int navigatorBars = hullBarPixels(navigator);
+			require(navigatorBars == 0, "The navigator should see the scanner only, but " + navigatorBars + " pixels of lit hull bar are on screen");
 
 			two.server().runOnServer(server -> two.mock().player().stopRiding());
 			ClientWait.until(context, "the pod with one passenger", client -> client.player.getVehicle() instanceof PodEntity pod && pod.getPassengers().size() == 1);
 			context.waitTicks(2);
 			ScannerHudTest.HudShot pilot = ScannerHudTest.HudShot.take(context, "prospector-pilot", ScannerHudTest.TIER_ONE);
-			require(whitePixels(pilot) != 0, "With the pilot gone the client takes the controls and should see the pod status lines");
+			require(hullBarPixels(pilot) != 0, "With the pilot gone the client takes the controls and should see the Ribbon's lit hull bar");
 		}
 	}
 
@@ -125,17 +124,22 @@ public class ProspectorChassisClientTest implements FabricClientGameTest {
 		require(actual == (colour & RGB), "%s: the pixel should be %06X, it is %06X".formatted(what, colour & RGB, actual));
 	}
 
-	/** The pure white pixels in the top left corner, where the pod status text is drawn. */
-	private static int whitePixels(ScannerHudTest.HudShot shot) {
+	/** The pixels of the hull gauge's colour on the Ribbon along the top edge: the lit segments of a full hull, which only the pilot's Ribbon draws. */
+	private static int hullBarPixels(ScannerHudTest.HudShot shot) {
+		CockpitLook look = CockpitLook.current();
+		Decal band = look.ribbon().band();
 		BufferedImage image = shot.image();
-		int white = 0;
-		for (int x = 0; x < STATUS_WIDTH * shot.scale(); x++) {
-			for (int y = 0; y < STATUS_HEIGHT * shot.scale(); y++) {
-				if ((image.getRGB(x, y) & RGB) == RGB) {
-					white++;
+		int hull = look.hullColor() & RGB;
+		int left = band.left(shot.guiWidth()) * shot.scale();
+		int top = band.top(shot.guiHeight()) * shot.scale();
+		int count = 0;
+		for (int x = left; x < left + band.width() * shot.scale(); x++) {
+			for (int y = top; y < top + band.height() * shot.scale(); y++) {
+				if ((image.getRGB(x, y) & RGB) == hull) {
+					count++;
 				}
 			}
 		}
-		return white;
+		return count;
 	}
 }

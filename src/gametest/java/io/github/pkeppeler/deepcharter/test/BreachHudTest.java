@@ -20,6 +20,8 @@ import net.minecraft.server.level.ServerPlayer;
 
 import io.github.pkeppeler.deepcharter.client.layer.Altimeter;
 import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
+import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
+import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -30,9 +32,6 @@ public class BreachHudTest implements FabricClientGameTest {
 	private static final double Z = 2000.5;
 	/** Real ticks to wait for something that should take a handful. */
 	private static final int PATIENCE = 200;
-	/** Pixels of the screen's top-left corner that the pod readout's four lines cover, at any GUI scale up to 4. */
-	private static final int POD_READOUT_WIDTH = 60;
-	private static final int POD_READOUT_HEIGHT = 40;
 
 	/** Written out here, not read from Depth, so the test checks the maths rather than repeating it. */
 	private static final int SEA_LEVEL = 63;
@@ -99,34 +98,41 @@ public class BreachHudTest implements FabricClientGameTest {
 
 	/**
 	 * The fade is a full blackout, so it must draw over the pod readout (registered by another part of
-	 * the mod). The registry does not expose its order, so this looks at pixels: the readout's corner
-	 * has bright text before the fade and none at its black plateau.
+	 * the mod). The registry does not expose its order, so this looks at pixels: the Ribbon along the top
+	 * edge has lit gauge segments before the fade and nothing at its black plateau.
 	 */
 	private static void assertFadeCoversPodHud(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
 		PodShellClientTest.mountFirstPlayer(singleplayer.getServer());
 		ClientWait.until(context, "the client riding a pod", client -> client.player.getVehicle() instanceof PodEntity);
 		context.waitTicks(5);
-		if (brightestInPodReadout(context.takeScreenshot("breach-hud-before-fade")) < 200) {
-			throw new AssertionError("The pod readout should be visible before the fade, or this check proves nothing");
+		if (brightestInRibbon(context, context.takeScreenshot("breach-hud-before-fade")) < 200) {
+			throw new AssertionError("The Ribbon should be visible before the fade, or this check proves nothing");
 		}
 		context.runOnClient(client -> BreachEffects.begin());
 		ClientWait.until(context, "the breach fade complete", client -> BreachEffects.fadeAlpha(0f) >= 1f);
-		int brightest = brightestInPodReadout(context.takeScreenshot("breach-hud-fade-peak"));
+		int brightest = brightestInRibbon(context, context.takeScreenshot("breach-hud-fade-peak"));
 		if (brightest > 8) {
-			throw new AssertionError("The fade should black out the pod readout, but a pixel of brightness " + brightest + " shows through");
+			throw new AssertionError("The fade should black out the Ribbon, but a pixel of brightness " + brightest + " shows through");
 		}
 		context.runOnClient(client -> BreachEffects.reset());
 		singleplayer.getServer().runOnServer(server -> server.getPlayerList().getPlayers().getFirst().stopRiding());
 		ClientWait.until(context, "the player out of the pod", client -> client.player.getVehicle() == null);
 	}
 
-	/** The brightest colour channel in the top-left corner of the screenshot, where the pod readout draws. */
-	private static int brightestInPodReadout(Path screenshot) {
+	/** The brightest colour channel in the screenshot where the Ribbon draws, along the top edge. */
+	private static int brightestInRibbon(ClientGameTestContext context, Path screenshot) {
+		int[] box = context.computeOnClient(client -> {
+			Decal band = CockpitLook.current().ribbon().band();
+			int scale = client.getWindow().getGuiScale();
+			int left = band.left(client.getWindow().getGuiScaledWidth());
+			int top = band.top(client.getWindow().getGuiScaledHeight());
+			return new int[] {left * scale, top * scale, (left + band.width()) * scale, (top + band.height()) * scale};
+		});
 		try {
 			BufferedImage image = ImageIO.read(screenshot.toFile());
 			int brightest = 0;
-			for (int x = 0; x < POD_READOUT_WIDTH; x++) {
-				for (int y = 0; y < POD_READOUT_HEIGHT; y++) {
+			for (int x = box[0]; x < box[2]; x++) {
+				for (int y = box[1]; y < box[3]; y++) {
 					int argb = image.getRGB(x, y);
 					brightest = Math.max(brightest, Math.max((argb >> 16) & 0xFF, Math.max((argb >> 8) & 0xFF, argb & 0xFF)));
 				}
