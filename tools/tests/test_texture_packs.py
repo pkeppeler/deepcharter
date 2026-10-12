@@ -32,8 +32,6 @@ VANILLA_FILES = {"textures/environment/celestial/sun.png"}
 # untouched.
 VANILLA_BLOCKSTATES = {f"minecraft/blockstates/{name}.json" for name in
                        ("stone", "cobblestone", "deepslate", "cobbled_deepslate", "granite", "tuff", "andesite", "diorite")}
-# The test mod's own blockstates a pack may draw: the stand-in for Company Rock of the concept round (#503), which test/support/ConceptRock registers.
-TEST_BLOCKSTATES = {"deepcharter_test/blockstates/company_rock.json"}
 # The vanilla textures a pack may redraw by file: the layer concept packs give all three texture options one crusted lava (a test pack only).
 VANILLA_TEXTURES = {"minecraft/textures/block/lava_still.png", "minecraft/textures/block/lava_flow.png"}
 
@@ -191,7 +189,7 @@ class TexturePacksTest(unittest.TestCase):
             problems.append(f"{pack}: no blockstates")
         for blockstate in blockstates:
             relative = blockstate.relative_to(assets).as_posix()
-            if not (MOD_ASSETS / relative).is_file() and relative not in VANILLA_BLOCKSTATES | TEST_BLOCKSTATES:
+            if not (MOD_ASSETS / relative).is_file() and relative not in VANILLA_BLOCKSTATES:
                 problems.append(f"{relative}: the mod has no such blockstate to replace")
             refs = model_refs(json.loads(blockstate.read_text()))
             if not refs:

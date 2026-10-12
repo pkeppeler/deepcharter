@@ -1,7 +1,63 @@
 {
   "variants": {
-    "": {
-      "model": "deepcharter:block/company_rock"
-    }
+    "": [
+      {
+        "model": "deepcharter:block/company_rock_joint_0",
+        "weight": 4
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_0",
+        "weight": 4,
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_0",
+        "weight": 4,
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_0",
+        "weight": 4,
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1",
+        "weight": 4
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1",
+        "weight": 4,
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1",
+        "weight": 4,
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1",
+        "weight": 4,
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2",
+        "weight": 2
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2",
+        "weight": 2,
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2",
+        "weight": 2,
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2",
+        "weight": 2,
+        "y": 270
+      }
+    ]
   }
 }
