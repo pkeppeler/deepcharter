@@ -99,7 +99,7 @@ flowchart LR
   l_getting_out["Stranded, rescue and the way home<br/>6 of 11 built"]
   l_consumables["The repair station's shelf<br/>6 of 6 built"]
   l_crew["Crew roles and seats<br/>2 of 6 built"]
-  l_interface["Cockpit, screens and HUD<br/>8 of 10 built"]
+  l_interface["Cockpit, screens and HUD<br/>9 of 10 built"]
   l_art["Look and sound<br/>4 of 6 built"]
   l_bootstrap --> l_pods
   l_bootstrap --> l_terminals
@@ -178,7 +178,7 @@ flowchart LR
 | [Stranded, rescue and the way home](#stranded-rescue-and-the-way-home) | 6 | 0 | 4 | 1 |
 | [The repair station's shelf](#the-repair-stations-shelf) | 6 | 0 | 0 | 0 |
 | [Crew roles and seats](#crew-roles-and-seats) | 2 | 0 | 0 | 4 |
-| [Cockpit, screens and HUD](#cockpit-screens-and-hud) | 8 | 1 | 1 | 0 |
+| [Cockpit, screens and HUD](#cockpit-screens-and-hud) | 9 | 0 | 1 | 0 |
 | [Look and sound](#look-and-sound) | 4 | 0 | 1 | 1 |
 
 ## What is coming
@@ -186,7 +186,6 @@ flowchart LR
 ### In progress
 
 - **Company Rock look** (company-rock): A concept round for how Company Rock looks is under way; the chosen look is built later. [#503](https://github.com/pkeppeler/deepcharter/issues/503), [company-rock-concepts.md](design/company-rock-concepts.md)
-- **Cockpit HUD with gauges** (interface): A cockpit HUD with gauges that hides the vanilla hotbar while seated. [#247](https://github.com/pkeppeler/deepcharter/issues/247), [#520](https://github.com/pkeppeler/deepcharter/issues/520)
 - **Layer rock textures and grades** (layers): Grained rock textures for layers 1 and 2, a lava redraw and an I-beam fix; depth palettes and colour grades follow. [#241](https://github.com/pkeppeler/deepcharter/issues/241)
 
 ### Planned
@@ -736,7 +735,7 @@ flowchart TB
   n_transmission_overlay["⚙️ Transmission overlay"]
   n_crt_terminals["⚙️ Green-screen terminal panels"]
   n_skins["⚙️ Skins"]
-  n_ribbon_hud["⚙️ Cockpit HUD with gauges"]
+  n_ribbon_hud["⚙️ The Ribbon cockpit HUD"]
   n_front_camera["⬆️ Front camera"]
   n_pod_status_hud --> n_scanner_hud
   n_ribbon_hud --> n_front_camera
@@ -745,8 +744,7 @@ flowchart TB
   classDef planned fill:#2e2e2e,stroke:#9e9e9e,stroke-width:1px,color:#d6d6d6
   classDef idea fill:#1a1a1a,stroke:#757575,stroke-width:1px,stroke-dasharray:4 3,color:#a0a0a0
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
-  class n_altimeter,n_pod_status_hud,n_account_hud,n_scanner_hud,n_breach_fade,n_transmission_overlay,n_crt_terminals,n_skins built
-  class n_ribbon_hud progress
+  class n_altimeter,n_pod_status_hud,n_account_hud,n_scanner_hud,n_breach_fade,n_transmission_overlay,n_crt_terminals,n_skins,n_ribbon_hud built
   class n_front_camera planned
 ```
 
@@ -760,7 +758,7 @@ flowchart TB
 | ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/breach-transmission.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/breach-transmission.png?raw=true" width="160" alt=""></a> | <a id="transmission-overlay"></a>**Transmission overlay**<br>mechanic | Employer messages on a green CRT screen that types out its text. | ✅ Built | [ADR 0012](adr/0012-transmissions-fire-once-per-charter-and-each-member-has-a-place.md) |
 | ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/upgrade-terminal.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/upgrade-terminal.png?raw=true" width="160" alt=""></a> | <a id="crt-terminals"></a>**Green-screen terminal panels**<br>mechanic | Every terminal is a Hatch machine panel: a green screen in a riveted frame with a status strip. | ✅ Built | [ADR 0042](adr/0042-the-terminal-panel-is-a-theme-area-with-fixed-sprite-slots.md), [ADR 0032](adr/0032-the-ui-theme-is-resource-pack-data-merged-key-by-key.md) |
 | ⚙️ | no still yet | <a id="skins"></a>**Skins**<br>mechanic | Colours, sizes and timings are theme data; a resource pack restyles them with F3+T. | ✅ Built | [skins.md](design/skins.md), [ADR 0032](adr/0032-the-ui-theme-is-resource-pack-data-merged-key-by-key.md) |
-| ⚙️ | no still yet | <a id="ribbon-hud"></a>**Cockpit HUD with gauges**<br>mechanic | A cockpit HUD with gauges that hides the vanilla hotbar while seated. | 🔨 In progress | [#247](https://github.com/pkeppeler/deepcharter/issues/247), [#520](https://github.com/pkeppeler/deepcharter/issues/520) |
+| ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/520/cockpit-ribbon.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/520/cockpit-ribbon.gif?raw=true" width="160" alt=""></a> | <a id="ribbon-hud"></a>**The Ribbon cockpit HUD**<br>mechanic | While seated, a slim ribbon of gauges and warning lamps along the screen edge replaces the vanilla hotbar and shows the pod's readout lines, warnings included. | ✅ Built | [#247](https://github.com/pkeppeler/deepcharter/issues/247), [#520](https://github.com/pkeppeler/deepcharter/issues/520) |
 | ⬆️ | no still yet | <a id="front-camera"></a>**Front camera**<br>upgrade | A part that turns the cab window into a video feed, clear to the edges, that lava can cook and static can cut. | 📋 Planned | [#448](https://github.com/pkeppeler/deepcharter/issues/448), [mechanics.md](design/mechanics.md#front-camera-448-a) |
 
 ## Challenge ladders
