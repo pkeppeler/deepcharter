@@ -65,6 +65,11 @@
       "palettes": [],
       "recipes": ["tools/textures/variants/fungal_stalk_c/recipes"],
       "pack": "src/gametest/resources/resourcepacks/fungal_stalk_c"
+    },
+    "tow_braid": {
+      "palettes": [],
+      "recipes": ["tools/textures/variants/tow_braid/recipes"],
+      "pack": "src/gametest/resources/resourcepacks/tow_cable_braid"
     }
   }
 }
