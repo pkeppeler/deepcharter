@@ -448,6 +448,55 @@ public class ProspectorChassisTest {
 		}));
 	}
 
+	/** A charter that holds the lore serial already: a second marked wreck is refused before it is restored or anything is spent. */
+	@GameTest(maxTicks = FoundingMoleHangarTest.MAX_TICKS)
+	public void restoringASecondMarkedWreckIsRefusedBeforeAnythingIsSpent(GameTestHelper helper) {
+		FoundingMoleHangarTest.inTheHangar(helper, before -> FoundingMoleHangarTest.withFreshWorld(helper, () -> {
+			FoundingMoleHangarTest.repairTheConsole(helper);
+			MockPlayer owner = FoundingMoleHangarTest.member(helper, "Second Claimant");
+			BlockPos console = FoundingMoleHangarTest.console(helper, owner);
+			CharterId charter = FoundingMoleHangarTest.charterOf(helper, owner).id();
+			FoundingMoleHangarTest.deposit(helper, owner, 2 * PRICE);
+			FoundingMoleHangarTest.give(owner.player(), FoundingMoleHangarTest.CATALYST, 2 * CATALYSTS);
+			PodEntity holder = prospectorWreck(helper);
+			PodComponents.markFamousProspector(holder);
+			FoundingMoleHangarTest.expectDone(helper, FoundingMoleHangarTest.act(owner.player(), console, HangarTerminal.RESTORE_WRECK), "the control: restoring the first marked wreck");
+			expect(helper, PodComponents.registration(holder).orElseThrow().serial().equals("PROSPECTOR-0002"), "the control wreck holds PROSPECTOR-0002");
+
+			PodEntity second = prospectorWreck(helper);
+			PodComponents.markFamousProspector(second);
+			long account = FoundingMoleHangarTest.balance(helper, owner);
+			int pack = FoundingMoleHangarTest.count(owner.player(), FoundingMoleHangarTest.CATALYST);
+			expect(helper, account >= PRICE && pack >= CATALYSTS, "the charter can still afford a restore, so only the held serial can refuse: $%s, %s Cicatrium", account, pack);
+			FoundingMoleHangarTest.expectRefused(helper, FoundingMoleHangarTest.act(owner.player(), console, HangarTerminal.RESTORE_WRECK), "restoring a second wreck marked with the held serial");
+			expect(helper, Wrecks.isWreck(second) && PodComponents.registration(second).isEmpty(), "the refused wreck is still a wreck and unowned");
+			expect(helper, FoundingMoleHangarTest.balance(helper, owner) == account,
+					"the refusal takes no money, the account holds %s of %s", FoundingMoleHangarTest.balance(helper, owner), account);
+			expect(helper, FoundingMoleHangarTest.count(owner.player(), FoundingMoleHangarTest.CATALYST) == pack,
+					"the refusal takes no Cicatrium, the player holds %s of %s", FoundingMoleHangarTest.count(owner.player(), FoundingMoleHangarTest.CATALYST), pack);
+			FoundingMoleHangarTest.clearFloor(helper);
+			helper.succeed();
+		}));
+	}
+
+	@GameTest
+	public void theLoreMarkSurvivesSaveAndLoad(GameTestHelper helper) {
+		PodEntity wreck = helper.spawn(PodRegistry.PROSPECTOR, 2, 2, 2);
+		PodComponents.markFamousProspector(wreck);
+		ServerLevel level = helper.getLevel();
+		TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
+		wreck.saveWithoutId(output);
+		wreck.discard();
+		Entity loaded = EntityType.create(PodRegistry.PROSPECTOR, TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), output.buildResult()),
+				level, EntitySpawnReason.LOAD).orElseThrow(() -> failure(helper, "the saved wreck did not load"));
+		try {
+			expect(helper, loaded instanceof PodEntity copy && PodComponents.isFamousProspector(copy), "a saved marked wreck loads still marked, it loaded as %s", loaded);
+			helper.succeed();
+		} finally {
+			loaded.discard();
+		}
+	}
+
 	/** The lore serial is registered once, and only for the pod the world marked. */
 	@GameTest(maxTicks = FoundingMoleHangarTest.MAX_TICKS)
 	public void theLoreSerialIsRegisteredOnlyForTheMarkedWreckAndOnlyOnce(GameTestHelper helper) {

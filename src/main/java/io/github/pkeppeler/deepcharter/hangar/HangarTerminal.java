@@ -163,6 +163,9 @@ public final class HangarTerminal {
 		if (unowned && !Serials.get(server).isReadable()) {
 			return refuse("serials_unreadable");
 		}
+		if (unowned && lore && Serials.get(server).isFamousProspectorHeld()) {
+			return refuse("serial_held", Serials.FAMOUS_PROSPECTOR);
+		}
 		if (charter.account() < cost.money()) {
 			return refuse("insufficient_funds", cost.money());
 		}
@@ -180,7 +183,6 @@ public final class HangarTerminal {
 		}
 		if (unowned) {
 			if (lore) {
-				// The name tag stays: it is the same number the registration holds.
 				PodComponents.registerLoreWreck(wreck, charter.id());
 			} else {
 				PodComponents.register(wreck, charter.id());
