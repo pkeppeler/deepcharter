@@ -75,7 +75,7 @@ flowchart LR
   l_core_loop["The core loop<br/>11 of 11 built"]
   l_economy["Money, fuel and spoil<br/>10 of 13 built"]
   l_ores["The ore ladder<br/>7 of 7 built"]
-  l_bootstrap["Bootstrap: salvage to the first run<br/>12 of 12 built"]
+  l_bootstrap["Bootstrap: salvage to the first run<br/>13 of 13 built"]
   l_terminals["The colony's terminals<br/>7 of 8 built"]
   l_handbook["The Employee Handbook<br/>11 of 14 built"]
   l_layers["Layers, breaches and the story<br/>13 of 24 built"]
@@ -101,7 +101,13 @@ flowchart LR
   l_crew["Crew roles and seats<br/>2 of 6 built"]
   l_interface["Cockpit, screens and HUD<br/>8 of 10 built"]
   l_art["Look and sound<br/>4 of 6 built"]
+  l_bootstrap --> l_cargo_bay
+  l_bootstrap --> l_drill
+  l_bootstrap --> l_engine
+  l_bootstrap --> l_fuel_tank
+  l_bootstrap --> l_hull
   l_bootstrap --> l_pods
+  l_bootstrap --> l_radiator
   l_bootstrap --> l_terminals
   l_cargo_bay --> l_core_loop
   l_charter --> l_handbook
@@ -154,7 +160,7 @@ flowchart LR
 | [The core loop](#the-core-loop) | 11 | 0 | 0 | 0 |
 | [Money, fuel and spoil](#money-fuel-and-spoil) | 10 | 0 | 1 | 2 |
 | [The ore ladder](#the-ore-ladder) | 7 | 0 | 0 | 0 |
-| [Bootstrap: salvage to the first run](#bootstrap-salvage-to-the-first-run) | 12 | 0 | 0 | 0 |
+| [Bootstrap: salvage to the first run](#bootstrap-salvage-to-the-first-run) | 13 | 0 | 0 | 0 |
 | [The colony's terminals](#the-colonys-terminals) | 7 | 0 | 1 | 0 |
 | [The Employee Handbook](#the-employee-handbook) | 11 | 0 | 3 | 0 |
 | [Layers, breaches and the story](#layers-breaches-and-the-story) | 13 | 1 | 9 | 1 |
@@ -338,6 +344,7 @@ flowchart LR
   n_drill_t5["⬆️ Drill tier 5"]
   n_drill_t6["⬆️ Drill tier 6"]
   n_dig_down["Drive and drill down"]
+  n_parts_from_crafting["Craft the first-tier parts"]
   n_rock_drill_tier["A drill tier that bites Company Rock"]
   n_drill_stock == feeds ==> n_dig_down
   n_drill_stock --> n_drill_t1
@@ -347,6 +354,7 @@ flowchart LR
   n_drill_t4 --> n_drill_t5
   n_drill_t5 --> n_drill_t6
   n_drill_t5 --> n_rock_drill_tier
+  n_parts_from_crafting --> n_drill_t1
   classDef built fill:#1f3d2b,stroke:#6fbf73,stroke-width:2px,color:#e8f5e9
   classDef progress fill:#4a3a10,stroke:#f0b429,stroke-width:2px,color:#fff3d6
   classDef planned fill:#2e2e2e,stroke:#9e9e9e,stroke-width:1px,color:#d6d6d6
@@ -354,13 +362,13 @@ flowchart LR
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
   class n_drill_stock,n_drill_t1,n_drill_t2,n_drill_t3 built
   class n_drill_t4,n_drill_t5,n_drill_t6 planned
-  class n_dig_down,n_rock_drill_tier ext
+  class n_dig_down,n_parts_from_crafting,n_rock_drill_tier ext
 ```
 
 | Icon | Still | Feature | What it is | Status | Links |
 |---|---|---|---|---|---|
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_drill.png" width="32" alt=""> | no still yet | <a id="drill-stock"></a>**Drill: stock**<br>upgrade | The stock tricone cutter. Speed 1x. | ✅ Built |  |
-| <img src="../src/main/resources/assets/deepcharter/textures/item/part_drill.png" width="32" alt=""> | no still yet | <a id="drill-t1"></a>**Drill tier 1**<br>upgrade | Drill speed 1.4x stock, $200. A Mole fits it. | ✅ Built | [SPEC.md](SPEC.md#components) |
+| <img src="../src/main/resources/assets/deepcharter/textures/item/part_drill.png" width="32" alt=""> | no still yet | <a id="drill-t1"></a>**Drill tier 1**<br>upgrade | Drill speed 1.4x stock. Crafted as a drill unit and fitted by use, never sold at the terminal. A Mole fits it. | ✅ Built | [SPEC.md](SPEC.md#components), [#536](https://github.com/pkeppeler/deepcharter/issues/536), [ADR 0053](adr/0053-tier-1-of-a-moles-six-stock-tracks-is-a-crafted-unit-fitted-by-use-like-the-scanners.md) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_drill.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-cutter-swap.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-cutter-swap.gif?raw=true" width="160" alt=""></a> | <a id="drill-t2"></a>**Drill tier 2**<br>upgrade | Stacked rings on the cutter, $500. The best a Mole takes. | ✅ Built | [SPEC.md](SPEC.md#components) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_drill.png" width="32" alt=""> | no still yet | <a id="drill-t3"></a>**Drill tier 3**<br>upgrade | Drill speed 2.5x stock, $1,250. The best a Prospector takes. | ✅ Built | [SPEC.md](SPEC.md#components) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_drill.png" width="32" alt=""> | no still yet | <a id="drill-t4"></a>**Drill tier 4**<br>upgrade | Drill speed 3.5x stock, $5,000. No chassis built yet can fit it (a Badger or later). | 📋 Planned | [SPEC.md](SPEC.md#components) |
@@ -382,6 +390,7 @@ flowchart LR
   n_hull_t6["⬆️ Hull tier 6"]
   n_breach_crust["The breach crust"]
   n_hard_landing["Hard landings"]
+  n_parts_from_crafting["Craft the first-tier parts"]
   n_hull_stock --> n_hull_t1
   n_hull_t1 -. counters .-> n_breach_crust
   n_hull_t1 -. counters .-> n_hard_landing
@@ -390,6 +399,7 @@ flowchart LR
   n_hull_t3 --> n_hull_t4
   n_hull_t4 --> n_hull_t5
   n_hull_t5 --> n_hull_t6
+  n_parts_from_crafting --> n_hull_t1
   classDef built fill:#1f3d2b,stroke:#6fbf73,stroke-width:2px,color:#e8f5e9
   classDef progress fill:#4a3a10,stroke:#f0b429,stroke-width:2px,color:#fff3d6
   classDef planned fill:#2e2e2e,stroke:#9e9e9e,stroke-width:1px,color:#d6d6d6
@@ -397,13 +407,13 @@ flowchart LR
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
   class n_hull_stock,n_hull_t1,n_hull_t2,n_hull_t3 built
   class n_hull_t4,n_hull_t5,n_hull_t6 planned
-  class n_breach_crust,n_hard_landing ext
+  class n_breach_crust,n_hard_landing,n_parts_from_crafting ext
 ```
 
 | Icon | Still | Feature | What it is | Status | Links |
 |---|---|---|---|---|---|
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_hull.png" width="32" alt=""> | no still yet | <a id="hull-stock"></a>**Hull: stock**<br>upgrade | The stock hull. 1x. | ✅ Built |  |
-| <img src="../src/main/resources/assets/deepcharter/textures/item/part_hull.png" width="32" alt=""> | no still yet | <a id="hull-t1"></a>**Hull tier 1**<br>upgrade | Hull 1.7x stock, $200. A Mole fits it. | ✅ Built | [SPEC.md](SPEC.md#components) |
+| <img src="../src/main/resources/assets/deepcharter/textures/item/part_hull.png" width="32" alt=""> | no still yet | <a id="hull-t1"></a>**Hull tier 1**<br>upgrade | Hull 1.7x stock. Crafted as a hull unit and fitted by use, never sold at the terminal. A Mole fits it. | ✅ Built | [SPEC.md](SPEC.md#components), [#536](https://github.com/pkeppeler/deepcharter/issues/536), [ADR 0053](adr/0053-tier-1-of-a-moles-six-stock-tracks-is-a-crafted-unit-fitted-by-use-like-the-scanners.md) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_hull.png" width="32" alt=""> | no still yet | <a id="hull-t2"></a>**Hull tier 2**<br>upgrade | Hull 3.0x stock, $500. The best a Mole takes. | ✅ Built | [SPEC.md](SPEC.md#components) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_hull.png" width="32" alt=""> | no still yet | <a id="hull-t3"></a>**Hull tier 3**<br>upgrade | Hull 5.0x stock, $1,250. The best a Prospector takes. | ✅ Built | [SPEC.md](SPEC.md#components) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_hull.png" width="32" alt=""> | no still yet | <a id="hull-t4"></a>**Hull tier 4**<br>upgrade | Hull 8.0x stock, $5,000. No chassis built yet can fit it (a Badger or later). | 📋 Planned | [SPEC.md](SPEC.md#components) |
@@ -424,6 +434,7 @@ flowchart LR
   n_engine_t5["⬆️ Engine tier 5"]
   n_engine_t6["⬆️ Engine tier 6"]
   n_fly_home["Fly home"]
+  n_parts_from_crafting["Craft the first-tier parts"]
   n_engine_stock --> n_engine_t1
   n_engine_stock == feeds ==> n_fly_home
   n_engine_t1 --> n_engine_t2
@@ -431,6 +442,7 @@ flowchart LR
   n_engine_t3 --> n_engine_t4
   n_engine_t4 --> n_engine_t5
   n_engine_t5 --> n_engine_t6
+  n_parts_from_crafting --> n_engine_t1
   classDef built fill:#1f3d2b,stroke:#6fbf73,stroke-width:2px,color:#e8f5e9
   classDef progress fill:#4a3a10,stroke:#f0b429,stroke-width:2px,color:#fff3d6
   classDef planned fill:#2e2e2e,stroke:#9e9e9e,stroke-width:1px,color:#d6d6d6
@@ -438,13 +450,13 @@ flowchart LR
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
   class n_engine_stock,n_engine_t1,n_engine_t2,n_engine_t3 built
   class n_engine_t4,n_engine_t5,n_engine_t6 planned
-  class n_fly_home ext
+  class n_fly_home,n_parts_from_crafting ext
 ```
 
 | Icon | Still | Feature | What it is | Status | Links |
 |---|---|---|---|---|---|
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_engine.png" width="32" alt=""> | no still yet | <a id="engine-stock"></a>**Engine: stock**<br>upgrade | The stock engine. 1x. | ✅ Built |  |
-| <img src="../src/main/resources/assets/deepcharter/textures/item/part_engine.png" width="32" alt=""> | no still yet | <a id="engine-t1"></a>**Engine tier 1**<br>upgrade | Engine 1.07x stock, $200. A Mole fits it. | ✅ Built | [SPEC.md](SPEC.md#components) |
+| <img src="../src/main/resources/assets/deepcharter/textures/item/part_engine.png" width="32" alt=""> | no still yet | <a id="engine-t1"></a>**Engine tier 1**<br>upgrade | Engine 1.07x stock. Crafted as an engine unit and fitted by use, never sold at the terminal. A Mole fits it. | ✅ Built | [SPEC.md](SPEC.md#components), [#536](https://github.com/pkeppeler/deepcharter/issues/536), [ADR 0053](adr/0053-tier-1-of-a-moles-six-stock-tracks-is-a-crafted-unit-fitted-by-use-like-the-scanners.md) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_engine.png" width="32" alt=""> | no still yet | <a id="engine-t2"></a>**Engine tier 2**<br>upgrade | Engine 1.13x stock, $500. The best a Mole takes. | ✅ Built | [SPEC.md](SPEC.md#components) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_engine.png" width="32" alt=""> | no still yet | <a id="engine-t3"></a>**Engine tier 3**<br>upgrade | Engine 1.2x stock, $1,250. The best a Prospector takes. | ✅ Built | [SPEC.md](SPEC.md#components) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_engine.png" width="32" alt=""> | no still yet | <a id="engine-t4"></a>**Engine tier 4**<br>upgrade | Engine 1.27x stock, $5,000. No chassis built yet can fit it (a Badger or later). | 📋 Planned | [SPEC.md](SPEC.md#components) |
@@ -465,6 +477,7 @@ flowchart LR
   n_fuel_tank_t5["⬆️ Fuel tank tier 5"]
   n_fuel_tank_t6["⬆️ Fuel tank tier 6"]
   n_fuel_clock["Fuel is the clock"]
+  n_parts_from_crafting["Craft the first-tier parts"]
   n_stranded["Stranded"]
   n_fuel_tank_stock == feeds ==> n_fuel_clock
   n_fuel_tank_stock --> n_fuel_tank_t1
@@ -474,6 +487,7 @@ flowchart LR
   n_fuel_tank_t3 --> n_fuel_tank_t4
   n_fuel_tank_t4 --> n_fuel_tank_t5
   n_fuel_tank_t5 --> n_fuel_tank_t6
+  n_parts_from_crafting --> n_fuel_tank_t1
   classDef built fill:#1f3d2b,stroke:#6fbf73,stroke-width:2px,color:#e8f5e9
   classDef progress fill:#4a3a10,stroke:#f0b429,stroke-width:2px,color:#fff3d6
   classDef planned fill:#2e2e2e,stroke:#9e9e9e,stroke-width:1px,color:#d6d6d6
@@ -481,13 +495,13 @@ flowchart LR
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
   class n_fuel_tank_stock,n_fuel_tank_t1,n_fuel_tank_t2,n_fuel_tank_t3 built
   class n_fuel_tank_t4,n_fuel_tank_t5,n_fuel_tank_t6 planned
-  class n_fuel_clock,n_stranded ext
+  class n_fuel_clock,n_parts_from_crafting,n_stranded ext
 ```
 
 | Icon | Still | Feature | What it is | Status | Links |
 |---|---|---|---|---|---|
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_fuel_tank.png" width="32" alt=""> | no still yet | <a id="fuel-tank-stock"></a>**Fuel tank: stock**<br>upgrade | The stock 10 litre tank. | ✅ Built |  |
-| <img src="../src/main/resources/assets/deepcharter/textures/item/part_fuel_tank.png" width="32" alt=""> | no still yet | <a id="fuel-tank-t1"></a>**Fuel tank tier 1**<br>upgrade | Tank 1.5x stock, $200. A Mole fits it. | ✅ Built | [SPEC.md](SPEC.md#components) |
+| <img src="../src/main/resources/assets/deepcharter/textures/item/part_fuel_tank.png" width="32" alt=""> | no still yet | <a id="fuel-tank-t1"></a>**Fuel tank tier 1**<br>upgrade | Tank 1.5x stock. Crafted as a fuel tank unit and fitted by use, never sold at the terminal. A Mole fits it. | ✅ Built | [SPEC.md](SPEC.md#components), [#536](https://github.com/pkeppeler/deepcharter/issues/536), [ADR 0053](adr/0053-tier-1-of-a-moles-six-stock-tracks-is-a-crafted-unit-fitted-by-use-like-the-scanners.md) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_fuel_tank.png" width="32" alt=""> | no still yet | <a id="fuel-tank-t2"></a>**Fuel tank tier 2**<br>upgrade | Tank 2.5x stock, $500. The best a Mole takes. | ✅ Built | [SPEC.md](SPEC.md#components) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_fuel_tank.png" width="32" alt=""> | no still yet | <a id="fuel-tank-t3"></a>**Fuel tank tier 3**<br>upgrade | Tank 4.0x stock, $1,250. The best a Prospector takes. | ✅ Built | [SPEC.md](SPEC.md#components) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_fuel_tank.png" width="32" alt=""> | no still yet | <a id="fuel-tank-t4"></a>**Fuel tank tier 4**<br>upgrade | Tank 6.0x stock, $5,000. No chassis built yet can fit it (a Badger or later). | 📋 Planned | [SPEC.md](SPEC.md#components) |
@@ -507,6 +521,8 @@ flowchart LR
   n_radiator_t4["⬆️ Radiator tier 4"]
   n_radiator_t5["⬆️ Radiator tier 5"]
   n_lava["Lava in the rock"]
+  n_parts_from_crafting["Craft the first-tier parts"]
+  n_parts_from_crafting --> n_radiator_t1
   n_radiator_stock --> n_radiator_t1
   n_radiator_t1 -. counters .-> n_lava
   n_radiator_t1 --> n_radiator_t2
@@ -520,13 +536,13 @@ flowchart LR
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
   class n_radiator_stock,n_radiator_t1,n_radiator_t2,n_radiator_t3 built
   class n_radiator_t4,n_radiator_t5 planned
-  class n_lava ext
+  class n_lava,n_parts_from_crafting ext
 ```
 
 | Icon | Still | Feature | What it is | Status | Links |
 |---|---|---|---|---|---|
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_radiator.png" width="32" alt=""> | no still yet | <a id="radiator-stock"></a>**Radiator: stock**<br>upgrade | The stock radiator. Takes all the heat. | ✅ Built |  |
-| <img src="../src/main/resources/assets/deepcharter/textures/item/part_radiator.png" width="32" alt=""> | no still yet | <a id="radiator-t1"></a>**Radiator tier 1**<br>upgrade | Lava costs 90 percent of stock, $500. A Mole fits it. | ✅ Built | [SPEC.md](SPEC.md#components) |
+| <img src="../src/main/resources/assets/deepcharter/textures/item/part_radiator.png" width="32" alt=""> | no still yet | <a id="radiator-t1"></a>**Radiator tier 1**<br>upgrade | Lava costs 90 percent of stock. Crafted as a radiator unit and fitted by use, never sold at the terminal. A Mole fits it. | ✅ Built | [SPEC.md](SPEC.md#components), [#536](https://github.com/pkeppeler/deepcharter/issues/536), [ADR 0053](adr/0053-tier-1-of-a-moles-six-stock-tracks-is-a-crafted-unit-fitted-by-use-like-the-scanners.md) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_radiator.png" width="32" alt=""> | no still yet | <a id="radiator-t2"></a>**Radiator tier 2**<br>upgrade | Lava costs 75 percent of stock, $1,250. The best a Mole takes. | ✅ Built | [SPEC.md](SPEC.md#components) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_radiator.png" width="32" alt=""> | no still yet | <a id="radiator-t3"></a>**Radiator tier 3**<br>upgrade | Lava costs 60 percent of stock, $5,000. The best a Prospector takes. | ✅ Built | [SPEC.md](SPEC.md#components) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_radiator.png" width="32" alt=""> | no still yet | <a id="radiator-t4"></a>**Radiator tier 4**<br>upgrade | Lava costs 40 percent of stock, $25,000. No chassis built yet can fit it (a Badger or later). | 📋 Planned | [SPEC.md](SPEC.md#components) |
@@ -545,12 +561,14 @@ flowchart LR
   n_cargo_bay_t4["⬆️ Cargo bay tier 4"]
   n_cargo_bay_t5["⬆️ Cargo bay tier 5"]
   n_haul_ore["Haul ore in the cargo bay"]
+  n_parts_from_crafting["Craft the first-tier parts"]
   n_cargo_bay_stock --> n_cargo_bay_t1
   n_cargo_bay_stock == feeds ==> n_haul_ore
   n_cargo_bay_t1 --> n_cargo_bay_t2
   n_cargo_bay_t2 --> n_cargo_bay_t3
   n_cargo_bay_t3 --> n_cargo_bay_t4
   n_cargo_bay_t4 --> n_cargo_bay_t5
+  n_parts_from_crafting --> n_cargo_bay_t1
   classDef built fill:#1f3d2b,stroke:#6fbf73,stroke-width:2px,color:#e8f5e9
   classDef progress fill:#4a3a10,stroke:#f0b429,stroke-width:2px,color:#fff3d6
   classDef planned fill:#2e2e2e,stroke:#9e9e9e,stroke-width:1px,color:#d6d6d6
@@ -558,13 +576,13 @@ flowchart LR
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
   class n_cargo_bay_stock,n_cargo_bay_t1,n_cargo_bay_t2,n_cargo_bay_t3 built
   class n_cargo_bay_t4,n_cargo_bay_t5 planned
-  class n_haul_ore ext
+  class n_haul_ore,n_parts_from_crafting ext
 ```
 
 | Icon | Still | Feature | What it is | Status | Links |
 |---|---|---|---|---|---|
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_cargo_bay.png" width="32" alt=""> | no still yet | <a id="cargo-bay-stock"></a>**Cargo bay: stock**<br>upgrade | The stock bay, 7 ore slots. | ✅ Built |  |
-| <img src="../src/main/resources/assets/deepcharter/textures/item/part_cargo_bay.png" width="32" alt=""> | no still yet | <a id="cargo-bay-t1"></a>**Cargo bay tier 1**<br>upgrade | 15 ore slots, $200. A Mole fits it. | ✅ Built | [SPEC.md](SPEC.md#components) |
+| <img src="../src/main/resources/assets/deepcharter/textures/item/part_cargo_bay.png" width="32" alt=""> | no still yet | <a id="cargo-bay-t1"></a>**Cargo bay tier 1**<br>upgrade | 15 ore slots. Crafted as a cargo bay unit and fitted by use, never sold at the terminal. A Mole fits it. | ✅ Built | [SPEC.md](SPEC.md#components), [#536](https://github.com/pkeppeler/deepcharter/issues/536), [ADR 0053](adr/0053-tier-1-of-a-moles-six-stock-tracks-is-a-crafted-unit-fitted-by-use-like-the-scanners.md) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_cargo_bay.png" width="32" alt=""> | no still yet | <a id="cargo-bay-t2"></a>**Cargo bay tier 2**<br>upgrade | 25 ore slots, $500. The best a Mole takes. | ✅ Built | [SPEC.md](SPEC.md#components) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_cargo_bay.png" width="32" alt=""> | no still yet | <a id="cargo-bay-t3"></a>**Cargo bay tier 3**<br>upgrade | 40 ore slots, $1,250. The best a Prospector takes. | ✅ Built | [SPEC.md](SPEC.md#components) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/part_cargo_bay.png" width="32" alt=""> | no still yet | <a id="cargo-bay-t4"></a>**Cargo bay tier 4**<br>upgrade | 70 ore slots, $5,000. No chassis built yet can fit it (a Badger or later). | 📋 Planned | [SPEC.md](SPEC.md#components) |
@@ -1140,17 +1158,30 @@ flowchart TB
   n_repair_terminals["🎯 Repair the terminals in order"]
   n_craft_mole_parts["🎯 Craft the Mole's parts"]
   n_scanner_from_crafting["🎯 Craft the first scanner"]
+  n_parts_from_crafting["🎯 Craft the first-tier parts"]
   n_repair_mole["🎯 Repair the founding Mole"]
   n_first_run["🎯 The first run"]
+  n_cargo_bay_t1["Cargo bay tier 1"]
   n_crate_press["Press spoil into salvage crates"]
+  n_drill_t1["Drill tier 1"]
+  n_engine_t1["Engine tier 1"]
   n_fuel_pump["Fuel pump"]
+  n_fuel_tank_t1["Fuel tank tier 1"]
+  n_hull_t1["Hull tier 1"]
   n_mole["Mole"]
+  n_radiator_t1["Radiator tier 1"]
   n_craft_mole_parts --> n_repair_mole
   n_craft_terminal_parts --> n_repair_terminals
   n_craft_tools --> n_craft_terminal_parts
   n_crate_press == feeds ==> n_salvage_crate
   n_fungal_stalks --> n_furnace_scrap
   n_furnace_scrap --> n_craft_tools
+  n_parts_from_crafting --> n_cargo_bay_t1
+  n_parts_from_crafting --> n_drill_t1
+  n_parts_from_crafting --> n_engine_t1
+  n_parts_from_crafting --> n_fuel_tank_t1
+  n_parts_from_crafting --> n_hull_t1
+  n_parts_from_crafting --> n_radiator_t1
   n_repair_mole --> n_first_run
   n_repair_mole --> n_mole
   n_repair_terminals --> n_craft_mole_parts
@@ -1158,14 +1189,15 @@ flowchart TB
   n_salvage_crate --> n_salvage_cloth
   n_salvage_crate --> n_scrap_metal
   n_scanner_from_crafting --> n_first_run
+  n_scanner_from_crafting --> n_parts_from_crafting
   n_scrap_metal --> n_furnace_scrap
   classDef built fill:#1f3d2b,stroke:#6fbf73,stroke-width:2px,color:#e8f5e9
   classDef progress fill:#4a3a10,stroke:#f0b429,stroke-width:2px,color:#fff3d6
   classDef planned fill:#2e2e2e,stroke:#9e9e9e,stroke-width:1px,color:#d6d6d6
   classDef idea fill:#1a1a1a,stroke:#757575,stroke-width:1px,stroke-dasharray:4 3,color:#a0a0a0
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
-  class n_fungal_stalks,n_salvage_crate,n_salvage_cloth,n_scrap_metal,n_furnace_scrap,n_craft_tools,n_craft_terminal_parts,n_repair_terminals,n_craft_mole_parts,n_scanner_from_crafting,n_repair_mole,n_first_run built
-  class n_crate_press,n_fuel_pump,n_mole ext
+  class n_fungal_stalks,n_salvage_crate,n_salvage_cloth,n_scrap_metal,n_furnace_scrap,n_craft_tools,n_craft_terminal_parts,n_repair_terminals,n_craft_mole_parts,n_scanner_from_crafting,n_parts_from_crafting,n_repair_mole,n_first_run built
+  class n_cargo_bay_t1,n_crate_press,n_drill_t1,n_engine_t1,n_fuel_pump,n_fuel_tank_t1,n_hull_t1,n_mole,n_radiator_t1 ext
 ```
 
 | Icon | Still | Feature | What it is | Status | Links |
@@ -1180,6 +1212,7 @@ flowchart TB
 | <img src="../src/main/resources/assets/deepcharter/textures/block/fuel_pump_front.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/colony-terminals.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/colony-terminals.png?raw=true" width="160" alt=""></a> | <a id="repair-terminals"></a>**Repair the terminals in order**<br>goal | Pump, processor, upgrade terminal, repair station, each once per world. | ✅ Built | [ADR 0014](adr/0014-terminal-repair-is-one-world-wide-chain.md) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/drill_head.png" width="32" alt=""> | no still yet | <a id="craft-mole-parts"></a>**Craft the Mole's parts**<br>goal | A drill head, a fuel injector, a rotor hub and a tread assembly bring the founding Mole back. | ✅ Built | [ADR 0021](adr/0021-the-hangar-is-a-terminal-and-its-repair-founds-the-mole.md) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/scanner_unit.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/500/crafted-scanner.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/500/crafted-scanner.gif?raw=true" width="160" alt=""></a> | <a id="scanner-from-crafting"></a>**Craft the first scanner**<br>goal | Craft a scanner unit from 4 iron, 2 copper and 2 redstone and use it on your pod: that fits the tier 1 scanner. The terminal does not sell tier 1. | ✅ Built | [#483](https://github.com/pkeppeler/deepcharter/issues/483), [#500](https://github.com/pkeppeler/deepcharter/issues/500) |
+| <img src="../src/main/resources/assets/deepcharter/textures/item/drill_unit.png" width="32" alt=""> | no still yet | <a id="parts-from-crafting"></a>**Craft the first-tier parts**<br>goal | Craft a drill, hull, engine, fuel tank, radiator or cargo bay unit from salvage iron, copper and redstone and use it on your pod: that fits the tier 1 part. The terminal does not sell tier 1; tier 2 and up are purchases. | ✅ Built | [#536](https://github.com/pkeppeler/deepcharter/issues/536), [ADR 0053](adr/0053-tier-1-of-a-moles-six-stock-tracks-is-a-crafted-unit-fitted-by-use-like-the-scanners.md), [mechanics.md](design/mechanics.md#crafted-first-tier-parts-536-a) |
 | 🎯 | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/hangar-founding-mole-repaired.jpg?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/hangar-founding-mole-repaired.jpg?raw=true" width="160" alt=""></a> | <a id="repair-mole"></a>**Repair the founding Mole**<br>goal | The first charter fixes the hangar's Mole; the Company advances the pod. | ✅ Built | [ADR 0021](adr/0021-the-hangar-is-a-terminal-and-its-repair-founds-the-mole.md) |
 | 🎯 | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/hero.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/hero.gif?raw=true" width="160" alt=""></a> | <a id="first-run"></a>**The first run**<br>goal | Refuel, scan, drill layer 1, sell, buy a first part. | ✅ Built | [PLAYING.md](PLAYING.md) |
 
@@ -1609,7 +1642,7 @@ flowchart TB
 | <img src="../src/main/resources/assets/deepcharter/textures/block/slag_brick.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-lining.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-lining.png?raw=true" width="160" alt=""></a> | <a id="slag-brick"></a>**Slag brick**<br>resource | The processor fuses 2 spoil into 1 brick for no money; bricks line shafts against lava. | ✅ Built | [mechanics.md](design/mechanics.md#liner-bricks-363-a) |
 | <img src="../src/main/resources/assets/deepcharter/textures/block/repair_station_front.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/repair-station.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/repair-station.png?raw=true" width="160" alt=""></a> | <a id="buy-consumables"></a>**Buy repairs and consumables**<br>mechanic | Hull nanobots, dynamite, explosives, teleport items and a reserve tank at the repair station. | ✅ Built |  |
 | <img src="../src/main/resources/assets/deepcharter/textures/block/fuel_pump_front.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/fuel-pump.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/fuel-pump.png?raw=true" width="160" alt=""></a> | <a id="buy-fuel"></a>**Buy fuel at the pump**<br>mechanic | Early fuel is crafted; later it is bought at the fuel pump. | ✅ Built |  |
-| <img src="../src/main/resources/assets/deepcharter/textures/item/upgrade_board.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/upgrade-terminal.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/upgrade-terminal.png?raw=true" width="160" alt=""></a> | <a id="buy-parts"></a>**Buy pod parts**<br>mechanic | Tiered parts for drill, hull, engine, tank, radiator, cargo, scanner, lights and more. | ✅ Built | [SPEC.md](SPEC.md#components) |
+| <img src="../src/main/resources/assets/deepcharter/textures/item/upgrade_board.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/upgrade-terminal.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/upgrade-terminal.png?raw=true" width="160" alt=""></a> | <a id="buy-parts"></a>**Buy pod parts**<br>mechanic | Tier 2 and up of drill, hull, engine, tank, radiator, cargo and scanner, and every tier of lights and the hazard answers. Tier 1 of the first seven is crafted. | ✅ Built | [SPEC.md](SPEC.md#components) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/cicatrium.png" width="32" alt=""> | no still yet | <a id="catalysts"></a>**Catalysts**<br>resource | Every chassis and every couple of tiers also needs a rare material from one layer; Cicatrium is the first. | 📋 Planned | [SPEC.md](SPEC.md#economy) |
 | ⚙️ | no still yet | <a id="records-board"></a>**Records board**<br>mechanic | One entry per charter at the colony: deepest breach, wealth hauled, wrecks salvaged. | 💭 Idea | [SPEC.md](SPEC.md#economy) |
 | ⚙️ | no still yet | <a id="registration-fees"></a>**Registration fees grow**<br>mechanic | Each extra pod a charter registers costs more, so a free second Mole is no cheap deep miner. | 💭 Idea | [SPEC.md](SPEC.md#getting-more-pods) |

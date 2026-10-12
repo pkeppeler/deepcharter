@@ -210,6 +210,17 @@ public final class EarlyRunModel {
 	}
 
 	/**
+	 * The seconds {@code run} takes, a Mole's, from {@link #run(Zone, PodStats, int)} with the same arguments (#536): the braked drive down the shaft,
+	 * the bore of each slab, and the climb. (A) It leaves out the walk to the pump and the processor, which a run of any pod pays alike.
+	 */
+	public static double runSeconds(Zone zone, PodStats stats, int shaftBlocks, Run run) {
+		double drive = shaftBlocks / (DRIVE_DOWN_SINK * TICKS_PER_SECOND);
+		double bore = slabSeconds(Chassis.MOLE, zone, stats, shaftBlocks + run.slabs() / 2.0) * run.slabs();
+		double climb = (shaftBlocks + run.slabs()) / (climbSpeed(stats, 0f) * TICKS_PER_SECOND);
+		return drive + bore + climb;
+	}
+
+	/**
 	 * The spoil a run brings home in a hopper pod (#470): one for each block of waste rock bored, and no more than the bay holds. (A) Every
 	 * block that is not ore is waste rock (stone and dirt, the tag {@code waste_rock}), and {@link #YIELD} of the bored blocks count, as it does for ore.
 	 */

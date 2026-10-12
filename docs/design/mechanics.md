@@ -1253,6 +1253,57 @@ The minutes use these (A) assumptions: the player sprints at 5.612 blocks a seco
 - Should a charter be able to take a unit back out of a pod (to move it to a spare)? Today a tier 2 purchase drops the replaced part and a chassis change carries the parts over (SPEC section 7), so a unit is not needed for that.
 - Should the unit be craftable by a second charter member who has no pod yet? Today it needs only the player's own charter's pod, so anyone can craft one.
 
+## Crafted first-tier parts (#536, A)
+
+**Problem.** The user decided on 2026-10-12 that every first-tier pod part is crafted, not bought, as the scanner's is ([above](#the-crafted-scanner-483-a)). A Mole's drill, hull, engine, tank, radiator and bay are tier 0 stock parts; tier 1 of each was a $200 purchase ($500 for the radiator), two early runs away. Crafting must not make the opening noticeably cheaper or slower by accident.
+
+**The ladder.**
+1. **By hand: crafted.** A unit for each of the six tracks, from salvage metal (`recipe/<track>_unit.json`), fitted by using it on the player's own charter's pod ([ADR 0053](../adr/0053-tier-1-of-a-moles-six-stock-tracks-is-a-crafted-unit-fitted-by-use-like-the-scanners.md)). The part is a tier 1 `part_<track>`, stamped and numbered like a bought one.
+2. **The pod: bought.** Tier 2 and up are purchases at the upgrade terminal, at the standard ladder's prices, over a fitted tier 1 or over the stock part (only the scanner needs its tier 1 first, as it has no stock part).
+3. **Mastery.** Unchanged: a later chassis' higher cap makes the tier 1 and 2 parts a cheaper spare pod's.
+
+**The recipes** (I iron ingot, C copper ingot, R redstone, B block of copper, nine ingots at a bench). Every ingredient is the yard's: scrap melts to ingots, and redstone is a crate's.
+
+| Unit | Grid | Metal | Why it takes what it takes |
+|---|---|---|---|
+| Fuel tank | `ICI` `I I` `III` | 7 iron, 1 copper | A can: a ring of iron round a copper valve |
+| Drill | `III` `ICI` ` R ` | 5 iron, 1 copper, 1 redstone | A cutter head on a copper shaft with a spark |
+| Cargo bay | `III` `I I` `I I` | 7 iron | An open box: iron and nothing else |
+| Hull | `III` `ICI` `I I` | 7 iron, 1 copper | Plate with a copper weld |
+| Engine | `IRI` `ICI` ` R ` | 4 iron, 1 copper, 2 redstone | A rotor with its coil: the redstone-heavy one |
+| Radiator | `CBC` `CRC` `CCC` | 16 copper (a block and 7 ingots), 1 redstone | Copper fins: the heat part, dear as its old $500 |
+
+**What a new pilot builds first.** The kit (the terminals' parts and the Mole's four, 12.3 minutes) and the scanner come first, as before, and the first run of a stock Mole needs no unit. Then, by what each adds to a layer 1 run of a stock Mole (115 dollars net, 16 slabs): the **fuel tank** (24 slabs, $173), the **drill** (22 slabs, $162), the **cargo bay** (nothing alone, because the stock bay's 7 slots hold a stock run's ore; with the tank and drill, 32 slabs and $235), then the **hull** for the depth, the **engine** for the weight and the **radiator** for the Magma Belt. The terminal's first purchase is a tier 2 part over any of them.
+
+**Measured.** By `FirstTierPartsCostTest`, from the shipped recipe files, the real crate loot table (1,500 starts) and `EarlyRunModel`. A run of a stock Mole is 71 seconds ((A) 26 seconds of bore, drive and climb by the model, and 45 seconds of walk to the pump and the processor, boarding, fuel and sale), so a $200 part took 2.1 minutes of runs and a $500 one 5.1.
+
+| Unit | Minutes to make (alone) | Its old price at the stock run's pace | Share |
+|---|---|---|---|
+| Fuel tank | 1.9 | 2.1 | 0.92 |
+| Drill | 1.4 | 2.1 | 0.69 |
+| Cargo bay | 1.7 | 2.1 | 0.83 |
+| Hull | 1.9 | 2.1 | 0.92 |
+| Engine | 1.2 | 2.1 | 0.59 |
+| Radiator | 3.8 | 5.1 | 0.73 |
+
+| The opening | Before (bought) | After (crafted) |
+|---|---|---|
+| The kit, then the first full layer 1 run of a stock Mole | 12.3 minutes, then 71 seconds, $115 | The same: no unit is needed for it |
+| All six tier 1 parts | 8 runs, 10.9 minutes, **$1,500 spent** (the runs speed up as parts come in) | 11.9 minutes of crates, furnace and bench, **$0 spent** (10.7 if the kit's leftover metal is counted); 1.09 of the minutes of buying |
+| Crates for the kit and all six units | 30.6 mean, 37 at the 90th percentile (the kit) | 59.7 mean, 69 at the 90th percentile, of the 160 crates a 12-chunk survey holds |
+| A whole layer 1 bore by the bore bot (`DEEPCHARTER_LAVA_BORES=12`) | 6,306 pod ticks (5.3 minutes) and 10 tanks per bore of a stock Mole | Unchanged: the bot's pod and its parts are the same; the units only change how a part arrives |
+
+The six crafted units take 1.09 of the minutes the six bought took, inside the 0.75 to 1.25 the test allows, and each is inside 0.5 to 1.5 of its own price. The money moves, not the time: a charter spends no dollars on a first-tier part, so its first sales buy tier 2.
+
+**Knobs.** `recipe/<track>_unit.json` (the metal); `ComponentTrack`'s `firstTierCrafted` and `hasStockPart` flags; `UpgradeTuning` (tier 1 prices 0, tier 2 from $500). The guards: `FirstTierPartsCostTest` (the recipes' ingredients, the crates for the whole set, the minutes against the old prices), `PartFittingTest`, `UpgradeTerminalTest`, and `EconomyAffordabilityTest`'s tier 2 bands.
+
+**Economy impact.** The default is **easier** on the dollars (about $1,500 not spent on tier 1 parts) and **harder** on the bootstrap (about 30 more crates, 12 minutes, for the whole set, and none before the first run). The early-game column of `EconomyAffordabilityTest` skips the crafted tracks' tier 1; the radiator's first purchase is its tier 2, $1,250, four layer 2 runs. The unpacked column is unchanged: no part is needed to start.
+
+**Open questions.**
+- Should the lights and the hazard answers (liner, sounder, brace, heat shield) be crafted too? Today they are priced against a hazard and stay bought ([ADR 0053](../adr/0053-tier-1-of-a-moles-six-stock-tracks-is-a-crafted-unit-fitted-by-use-like-the-scanners.md)).
+- Should a unit be reclaimable from a pod, to move it to a spare? Not today: a tier 2 purchase drops the part it replaces as an item, and a chassis change carries the parts over (SPEC section 7).
+- A second charter breaks the same shared crates, so salvage thins with the crew; the press (#470) renews it. Watch the 160-crate survey.
+
 ## The deepest point (#476)
 
 A charter's deepest point is the greatest depth any online member in survival or adventure has stood at on the surface or in a layer, read once a second with `Depth.of` (the HUD's depth). `/deepcharter charter info` prints it in feet, like the HUD. "Reach layer 3", which opens the Morale Initiative, currently means reaching the floor of layer 2 (`LayerChain.topDepth(3)`), because layer 3 does not exist yet. The threshold moves down when layer 3 lands.

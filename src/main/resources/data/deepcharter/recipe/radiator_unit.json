@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "CBC",
+    "CRC",
+    "CCC"
+  ],
+  "key": {
+    "B": "minecraft:copper_block",
+    "C": "minecraft:copper_ingot",
+    "R": "minecraft:redstone"
+  },
+  "result": {
+    "id": "deepcharter:radiator_unit",
+    "count": 1
+  }
+}

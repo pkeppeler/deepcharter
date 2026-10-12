@@ -4,6 +4,8 @@ status: accepted
 
 # The tier 1 scanner is a crafted unit, fitted by using it on the pod
 
+Extended by [ADR 0053](0053-tier-1-of-a-moles-six-stock-tracks-is-a-crafted-unit-fitted-by-use-like-the-scanners.md): the same rule now covers a Mole's six stock tracks, `ScannerFitting` became `upgrade/PartFitting`, and `firstTierCrafted()` is true for seven tracks. The scanner stays the one track whose tier 2 needs the unit fitted first.
+
 Builds on [ADR 0047](0047-the-surface-has-no-ore-the-bootstraps-metal-is-salvage-and-the-yard-is-a-biome.md) (the bootstrap's metal) and [ADR 0010](0010-pod-stats-are-a-modifier-pipeline.md) (parts move a pod's stats). Issue #483. The user decided the rule on 2026-10-11, at the M2 demo (#200): the first scanner is an item the player crafts, like the first-tier pieces of the first mining pod, and every tier after it is a purchase, because by then mining by hand is too slow and the game pushes the player into the pod and its economy. The calls below are the implementer's, under the creative liberty of `designing-mechanics`.
 
 ## Decision

@@ -72,15 +72,17 @@ public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks) {
 	 */
 	private static Map<ComponentTrack, Tiers> defaultTracks() {
 		Map<ComponentTrack, Tiers> tracks = new EnumMap<>(ComponentTrack.class);
-		List<Long> standardPrices = List.of(0L, 200L, 500L, 1250L, 5000L, 25000L, 125000L);
+		// Tier 1 of these six tracks is crafted from salvage metal and fitted by use (#536, ADR 0053), so its price is 0 and the terminal does not sell it. It was $200
+		// ($500 for the radiator): the crafting cost is in the recipes (FirstTierPartsCostTest), and tier 2 is still the standard ladder's $500.
+		List<Long> standardPrices = List.of(0L, 0L, 500L, 1250L, 5000L, 25000L, 125000L);
 		tracks.put(ComponentTrack.DRILL, new Tiers(List.of(2f, 2.8f, 4f, 5f, 7f, 9.5f, 12f), standardPrices));
 		tracks.put(ComponentTrack.HULL, new Tiers(List.of(10f, 17f, 30f, 50f, 80f, 120f, 180f), standardPrices));
 		tracks.put(ComponentTrack.ENGINE, new Tiers(List.of(150f, 160f, 170f, 180f, 190f, 200f, 210f), standardPrices));
 		tracks.put(ComponentTrack.FUEL_TANK, new Tiers(List.of(10f, 15f, 25f, 40f, 60f, 100f, 150f), standardPrices));
 		tracks.put(ComponentTrack.RADIATOR, new Tiers(List.of(1.0f, 0.9f, 0.75f, 0.6f, 0.4f, 0.2f),
-				List.of(0L, 500L, 1250L, 5000L, 25000L, 125000L)));
+				List.of(0L, 0L, 1250L, 5000L, 25000L, 125000L)));
 		tracks.put(ComponentTrack.CARGO_BAY, new Tiers(List.of(7f, 15f, 25f, 40f, 70f, 120f),
-				List.of(0L, 200L, 500L, 1250L, 5000L, 25000L)));
+				List.of(0L, 0L, 500L, 1250L, 5000L, 25000L)));
 		// Invented: the original has no scanner and no lights. The scanner's tier 1 is crafted from the bootstrap's metal (#483, ADR 0048), so its
 		// price is 0 and the terminal does not sell it; the tiers above it take the standard ladder. Tier 2, $500, is the thermal tier that marks lava
 		// (#300): priced with the other tier 2 parts, it takes two runs in layer 2 at most (EconomyAffordabilityTest), and a Mole can fit it. Lights are the

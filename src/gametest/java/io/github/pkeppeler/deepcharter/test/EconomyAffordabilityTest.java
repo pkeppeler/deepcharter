@@ -39,7 +39,7 @@ import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 public class EconomyAffordabilityTest {
 	private static final Logger LOGGER = LoggerFactory.getLogger(EconomyAffordabilityTest.class);
 
-	/** A tier 1 part and the lights are an early buy (the scanner's tier 1 is crafted, #483): this many runs of a stock Mole in layer 1, at most. */
+	/** A tier 1 part of a hazard answer and the lights are an early buy (tier 1 of the scanner and of a Mole's six stock tracks is crafted, #483, #536): this many runs of a stock Mole in layer 1, at most. */
 	private static final int EARLY_BUY_RUNS = 2;
 	/** The spoil hopper is the entry to the lava ladder: a stock Mole buys it with one layer 1 run. */
 	private static final int HOPPER_RUNS = 1;
@@ -51,7 +51,7 @@ public class EconomyAffordabilityTest {
 	private static final int SOUNDER_TIER_TWO_RUNS = 4;
 	/** The heat shield (#482), a layer 2 buy, is dearer than the liner's tier 1 and under its tier 2. */
 	private static final int HEAT_SHIELD_RUNS = 3;
-	/** The radiator matters from layer 3 on, and its tier 1 costs what the others' tier 2 does in the original. */
+	/** The radiator matters from layer 3 on, and its first purchase, tier 2 now that tier 1 is crafted, costs what the others' tier 3 does: this many layer 2 runs of a Mole with tier 2 parts, at most. */
 	private static final int RADIATOR_RUNS = 5;
 	/** The Prospector restore takes this many runs of a Mole with tier 2 parts in layer 2, at least and at most. */
 	private static final int RESTORE_RUNS_MIN = 3;
@@ -114,16 +114,15 @@ public class EconomyAffordabilityTest {
 			if (track == ComponentTrack.HEAT_SHIELD) {
 				continue; // A layer 2 buy with its own band: theHeatShieldIsAffordableAfterThreeLayerTwoRunsAndPricedBetweenTheLinerTiers.
 			}
-			if (track == ComponentTrack.SCANNER) {
-				continue; // Tier 1 is crafted and costs no money (#483): its cost is in crates, ScannerCostTest. Tier 2 has its own band below.
+			if (track.firstTierCrafted()) {
+				continue; // Tier 1 is crafted and costs no money (#483, #536): its cost is in crates, ScannerCostTest and FirstTierPartsCostTest. Tier 2 has its own band below.
 			}
 			long price = UpgradeTuning.DEFAULT.price(track, 1);
 			int runs = run.toAfford(price);
 			LOGGER.info("[economy] tier 1 {} ${}: {} runs", track.id(), price, runs);
-			int allowed = track == ComponentTrack.RADIATOR ? RADIATOR_RUNS : EARLY_BUY_RUNS;
-			if (runs > allowed) {
+			if (runs > EARLY_BUY_RUNS) {
 				throw failure(helper, "tier 1 %s costs $%d, which is %d runs of $%.0f; at most %d are allowed",
-						track.id(), price, runs, run.net(), allowed);
+						track.id(), price, runs, run.net(), EARLY_BUY_RUNS);
 			}
 		}
 		helper.succeed();
@@ -253,6 +252,19 @@ public class EconomyAffordabilityTest {
 		}
 		if (allowed.length != ComponentTrack.SOUNDER.maxTier()) {
 			throw failure(helper, "the test has bands for %d sounder tiers, the track has %d", allowed.length, ComponentTrack.SOUNDER.maxTier());
+		}
+		helper.succeed();
+	}
+
+	/** The radiator's first purchase is its tier 2 (#536), a layer 2 buy: a run there, with tier 2 parts, pays for it in {@value #RADIATOR_RUNS} runs at most. */
+	@GameTest
+	public void theRadiatorsFirstPurchaseIsAffordableInAFewLayerTwoRuns(GameTestHelper helper) {
+		Run run = upgradedRunInLayerTwo();
+		long price = UpgradeTuning.DEFAULT.price(ComponentTrack.RADIATOR, 2);
+		int runs = run.toAfford(price);
+		LOGGER.info("[economy] radiator tier 2 ${}: {} layer 2 runs of {}", price, runs, run);
+		if (runs > RADIATOR_RUNS) {
+			throw failure(helper, "the radiator's tier 2 costs $%d, which is %d layer 2 runs of $%.0f; at most %d are allowed", price, runs, run.net(), RADIATOR_RUNS);
 		}
 		helper.succeed();
 	}
