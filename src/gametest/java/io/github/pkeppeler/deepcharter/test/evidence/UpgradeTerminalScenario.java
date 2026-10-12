@@ -11,7 +11,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
  * Evidence scenario "m2-upgrade-terminal" for #73: a charter with a pod parked at the upgrade terminal reads the hull prices, buys a
- * tier 1 hull, then a tier 4 hull, which the Mole works at tier 2 and the screen says so. Stills of the prices and of the cap.
+ * tier 2 hull (tier 1 is crafted, not sold), then a tier 4 hull, which the Mole works at tier 2 and the screen says so. Stills of the prices and of the cap.
  */
 public class UpgradeTerminalScenario extends EvidenceScenario {
 	private static final int TICKS_PER_FRAME = 3;
@@ -42,9 +42,10 @@ public class UpgradeTerminalScenario extends EvidenceScenario {
 			hold(context);
 			screenshot(context, "hull-prices");
 
-			context.clickScreenButton("BUY TIER 1  $200");
-			ClientWait.until(context, "a part installed at tier 1", client -> screen.upgrade().orElseThrow().pod().orElseThrow().slots().stream()
-					.anyMatch(slot -> slot.installed() == 1));
+			// Tier 1 is crafted and not sold (#536): the row says so, and the first purchase is tier 2.
+			context.clickScreenButton("BUY TIER 2  $500");
+			ClientWait.until(context, "a part installed at tier 2", client -> screen.upgrade().orElseThrow().pod().orElseThrow().slots().stream()
+					.anyMatch(slot -> slot.installed() == 2));
 			hold(context);
 
 			context.clickScreenButton("BUY TIER 4  $5000  (WORKS AS TIER 2)");

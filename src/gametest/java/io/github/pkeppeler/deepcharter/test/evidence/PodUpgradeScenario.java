@@ -5,11 +5,16 @@ import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.client.pod.PodGeoRenderer;
@@ -22,11 +27,11 @@ import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 
 /**
- * Evidence scenario "pod-upgrade" (#243): a Mole with its stock drill stands beside the upgrade terminal and turns slowly; the pilot
- * opens the terminal, buys a tier 1 drill and shuts it, then buys a tier 2 drill. The Mole's cutter is the tricone before, the stacked
- * rings after the first and the fluted auger after the second: the cutter is picked by the drill tier, and the swap is at once. Frames
- * before, with the terminal open and after each; stills {@code before-tricone}, {@code terminal-buy-drill}, {@code after-stacked} and
- * {@code after-fluted}.
+ * Evidence scenario "pod-upgrade" (#243, #536): a Mole with its stock drill stands beside the upgrade terminal and turns slowly; the pilot
+ * fits a crafted drill unit (tier 1 is not sold), then opens the terminal, buys a tier 2 drill and shuts it. The Mole's cutter is the
+ * tricone before, the stacked rings after the unit and the fluted auger after the purchase: the cutter is picked by the drill tier, and the
+ * swap is at once. Frames before, with the terminal open and after each; stills {@code before-tricone}, {@code terminal-buy-drill},
+ * {@code after-stacked} and {@code after-fluted}.
  */
 public class PodUpgradeScenario extends EvidenceScenario {
 	private static final int TICKS_PER_FRAME = 2;
@@ -71,12 +76,26 @@ public class PodUpgradeScenario extends EvidenceScenario {
 				}
 			}
 
-			// T0 to T1: the tricone becomes the stacked rings. T1 to T2: the stacked rings become the fluted auger (the Mole's cap).
-			buyAtTheTerminal(context, singleplayer, scene, 1, "stacked");
+			// T0 to T1 (a crafted unit fitted by use): the tricone becomes the stacked rings. T1 to T2 (bought): the stacked rings become the fluted auger (the Mole's cap).
+			fitTheDrillUnit(context, singleplayer, scene);
 			afterFrames(context, singleplayer, scene, "after-stacked");
 			buyAtTheTerminal(context, singleplayer, scene, 2, "fluted");
 			afterFrames(context, singleplayer, scene, "after-fluted");
 		}
+	}
+
+	/** The pilot uses a drill unit on the Mole, as a click does, and waits until the Mole draws the stacked rings. */
+	private void fitTheDrillUnit(ClientGameTestContext context, TestSingleplayerContext singleplayer, UpgradeTerminalClientTest.Scene scene) {
+		singleplayer.getServer().runOnServer(server -> {
+			ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+			Entity pod = server.overworld().getEntity(scene.pod());
+			player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(BuiltInRegistries.ITEM.getValue(Identifier.fromNamespaceAndPath("deepcharter", "drill_unit"))));
+			if (!UseEntityCallback.EVENT.invoker().interact(player, pod.level(), InteractionHand.MAIN_HAND, pod, null).consumesAction()) {
+				throw new AssertionError("the drill unit should fit the Mole");
+			}
+		});
+		ClientWait.until(context, "the Mole drawn with the stacked rings", client -> cutter(client, scene).equals("stacked"), client -> cutter(client, scene));
+		hold(context, singleplayer, scene);
 	}
 
 	/** Opens the terminal, buys the drill of {@code tier}, waits until the Mole draws {@code cutter}, and shuts the terminal. */
@@ -92,9 +111,7 @@ public class PodUpgradeScenario extends EvidenceScenario {
 		}
 		hold(context, singleplayer, scene);
 		String buy = context.computeOnClient(client -> label(screen, "BUY TIER " + tier));
-		if (tier == 1) {
-			screenshot(context, "terminal-buy-drill");
-		}
+		screenshot(context, "terminal-buy-drill");
 		context.clickScreenButton(buy);
 		// The server installs the part and the client's pod is told: the cutter changes with the next frame.
 		ClientWait.until(context, "the Mole drawn with the " + cutter, client -> cutter(client, scene).equals(cutter), client -> cutter(client, scene));

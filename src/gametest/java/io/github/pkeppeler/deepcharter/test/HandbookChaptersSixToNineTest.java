@@ -290,7 +290,7 @@ public class HandbookChaptersSixToNineTest {
 				helper.getLevel().setBlock(terminal, TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(), 3);
 				CompoundTag args = new CompoundTag();
 				args.putString(UpgradeTerminal.TRACK_KEY, ComponentTrack.HULL.id());
-				args.putInt(UpgradeTerminal.TIER_KEY, 1);
+				args.putInt(UpgradeTerminal.TIER_KEY, 2); // tier 1 is crafted and not sold (#536)
 				HandbookChaptersOneToFiveTest.expectDone(helper, Terminals.act(first, terminal, UpgradeTerminal.BUY, args), "buying a hull");
 				HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "buying a part that is not a scanner", both, through(5));
 				first.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ScannerRegistry.SCANNER_UNIT));

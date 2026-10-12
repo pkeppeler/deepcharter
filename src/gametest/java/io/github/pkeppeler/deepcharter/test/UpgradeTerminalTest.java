@@ -106,8 +106,14 @@ public class UpgradeTerminalTest {
 			Scene scene = scene(helper, 10_000);
 			PodEntity pod = scene.pod();
 			try {
+				// The shared install keeps litres and damage: only a purchase refills.
 				pod.setHull(40f);
 				pod.setFuel(30f);
+				PodComponents.install(pod, ComponentItems.mint(helper.getLevel().getServer(), ComponentTrack.HULL, 1, scene.charter()));
+				expectEqual(helper, "a plain install keeps the damage", 40f + 70f, pod.hull());
+				expectEqual(helper, "a plain install keeps the fuel", 30f, pod.fuel());
+
+				pod.setHull(40f);
 				expectDone(helper, buy(scene, ComponentTrack.HULL, 2), "buying a hull");
 				expectEqual(helper, "hull refilled to the new maximum", 300f, pod.hull());
 				expectEqual(helper, "a hull does not refill the tank", 30f, pod.fuel());
@@ -116,12 +122,6 @@ public class UpgradeTerminalTest {
 				expectDone(helper, buy(scene, ComponentTrack.FUEL_TANK, 2), "buying a tank");
 				expectEqual(helper, "tank refilled", 100f, pod.fuel());
 				expectEqual(helper, "a tank does not repair the hull", 50f, pod.hull());
-
-				// The shared install keeps litres and damage: only a purchase refills.
-				pod.setHull(60f);
-				pod.setFuel(30f);
-				PodComponents.install(pod, ComponentItems.mint(helper.getLevel().getServer(), ComponentTrack.HULL, 3, scene.charter()));
-				expectEqual(helper, "a plain install keeps the damage", 60f + 200f, pod.hull());
 				helper.succeed();
 			} finally {
 				clean(helper, scene);

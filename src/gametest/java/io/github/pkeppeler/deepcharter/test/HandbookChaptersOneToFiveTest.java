@@ -432,7 +432,7 @@ public class HandbookChaptersOneToFiveTest {
 				helper.getLevel().setBlock(terminal, TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(), 3);
 				CompoundTag args = new CompoundTag();
 				args.putString(UpgradeTerminal.TRACK_KEY, ComponentTrack.HULL.id());
-				args.putInt(UpgradeTerminal.TIER_KEY, 1);
+				args.putInt(UpgradeTerminal.TIER_KEY, 2); // tier 1 is crafted and not sold (#536)
 				expectDone(helper, Terminals.act(first, terminal, UpgradeTerminal.BUY, args), "buying a hull");
 				expectCompleted(helper, server, "chapter 5", both, through(5));
 				expectRoadAt(helper, server, second, 5);
