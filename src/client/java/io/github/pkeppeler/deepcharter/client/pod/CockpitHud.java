@@ -117,7 +117,11 @@ public final class CockpitHud {
 		int width = graphics.guiWidth();
 		int height = graphics.guiHeight();
 		decal(graphics, layout.sprite("part_a"), layout.band(), width, height);
+		// A pod with no scanner has no map to show, so it hangs no bezel either.
 		draw(Part.SCANNER, () -> {
+			if (!ScannerHud.hasMap()) {
+				return;
+			}
 			ScannerHud.drawInWindow(graphics, client, layout.scanner());
 			decal(graphics, layout.sprite("cap"), layout.cap(), width, height);
 			ScannerHud.drawTitleUnder(graphics, client, layout.scanner());

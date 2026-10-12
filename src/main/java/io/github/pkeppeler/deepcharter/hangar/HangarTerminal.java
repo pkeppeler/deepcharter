@@ -157,8 +157,9 @@ public final class HangarTerminal {
 		}
 		PodEntity wreck = usable.get();
 		HangarTuning.RestoreCost cost = tuning.restoreCost(wreck.chassis());
-		// A wreck nobody owns is registered to the charter that restores it, and that takes a serial.
+		// A wreck nobody owns is registered to the charter that restores it. The lore wreck keeps its own serial; any other takes one.
 		boolean unowned = PodComponents.registration(wreck).isEmpty();
+		boolean lore = PodComponents.isFamousProspector(wreck);
 		if (unowned && !Serials.get(server).isReadable()) {
 			return refuse("serials_unreadable");
 		}
@@ -178,9 +179,14 @@ public final class HangarTerminal {
 			return refuse("restore_failed");
 		}
 		if (unowned) {
-			PodComponents.register(wreck, charter.id());
-			// The name a wreck site gave it (PROSPECTOR-0002) is the wreck's: the registration names the pod now.
-			wreck.setCustomName(null);
+			if (lore) {
+				// The name tag stays: it is the same number the registration holds.
+				PodComponents.registerLoreWreck(wreck, charter.id());
+			} else {
+				PodComponents.register(wreck, charter.id());
+				// The name a wreck was given is the wreck's: the registration names the pod now.
+				wreck.setCustomName(null);
+			}
 		}
 		take(player.getInventory(), catalyst, fromPack);
 		if (advanced > 0) {

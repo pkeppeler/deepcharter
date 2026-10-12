@@ -112,6 +112,11 @@ public final class ScannerHud {
 		drawCells(graphics, client, scanned, cell, left, top);
 	}
 
+	/** Whether the ridden pod has a working scanner, so there is a map to show; the cockpit draws its scanner bezel only then. */
+	public static boolean hasMap() {
+		return slice != null;
+	}
+
 	/**
 	 * Draws the map in the cockpit's scanner window instead of at top right: the cells as large as fit whole in {@code window}, centred in it,
 	 * on the air colour. Draws nothing without a slice, that is without a working scanner.
