@@ -23,7 +23,6 @@ import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActions;
-import io.github.pkeppeler.deepcharter.terminal.TerminalFeatures;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 
@@ -49,7 +48,6 @@ public final class WorkOrders {
 
 	static void register() {
 		TerminalActions.register(TerminalTypes.ORE_PROCESSOR, DELIVER, WorkOrders::runDeliver);
-		TerminalFeatures.register(TerminalTypes.ORE_PROCESSOR, WorkOrdersView.STREAM_CODEC, WorkOrders::view);
 	}
 
 	private static Optional<Component> runDeliver(TerminalAction.Context context) {

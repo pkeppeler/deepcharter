@@ -94,8 +94,8 @@ public class EconomyAffordabilityTest {
 	}
 
 	/**
-	 * Tier 1 of every track is a crafted unit (#483, #536): the terminal charges nothing for it. What it costs is crates, a furnace, a bench and hand-mined
-	 * ore, in minutes against the minutes its old price took to earn (FirstTierPartsCostTest, ScannerCostTest). Tier 2 and up have their own bands below.
+	 * Tier 1 of every track is a crafted unit (#483, #536): the terminal charges nothing for it. What it costs is crates, a furnace, a bench and ore withdrawn
+	 * from the pod's cargo, in minutes against the minutes its old price took to earn (FirstTierPartsCostTest, ScannerCostTest). Tier 2 and up have their own bands below.
 	 */
 	@GameTest
 	public void everyTierOneIsCraftedAndCostsNoMoney(GameTestHelper helper) {

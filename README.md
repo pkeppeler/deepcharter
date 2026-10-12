@@ -74,7 +74,7 @@ Ore is heavy and lives in the pod's cargo bay. A heavy load cuts your lift. Park
 
 ![The upgrade terminal showing hull prices](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/upgrade-terminal.png?raw=true)
 
-Every terminal is a Hatch machine panel: a green screen in a riveted steel frame, with a status strip along the bottom. Money buys better parts there: drill, hull, engine, tank, radiator, cargo, scanner, lights, spoil hopper, liner, seep sounder and breach brace. The first scanner is not sold: you craft a scanner unit from salvage metal and fit it by using it on your pod. The hangar holds your pods and sells a new one. Wrecks you find deeper down become better pods.
+Every terminal is a Hatch machine panel: a green screen in a riveted steel frame, with a status strip along the bottom. Money buys better parts there: tier 2 and up of the drill, hull, engine, tank, radiator, cargo, scanner, lights, liner, seep sounder and breach brace. Tier 1 of every part is crafted, not sold: you craft a unit from salvage metal, and for the lights, hopper, brace, sounder, liner and heat shield a little ore that you withdraw from your pod's cargo at the ore processor, and fit it by using it on your pod. The spoil hopper, breach brace and heat shield are crafted only. The hangar holds your pods and sells a new one. Wrecks you find deeper down become better pods.
 
 ![The Mole's cutter changes from a tricone to stacked rings to a fluted auger as two drill upgrades are bought](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-cutter-swap.gif?raw=true)
 
@@ -106,7 +106,7 @@ Lava hurts the pod, not the pilot. The hull gauge drops until you leave or repai
 
 ![Looking down a shaft whose walls are lined with slag brick where the lava pockets were](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-lining.png?raw=true)
 
-A thermal scanner shows lava pockets beside your shaft before you reach them. Stop a slab above, press R from the seat, and the pod lines the slab walls with slag brick while it stands still. Then drill on. Buy a spoil hopper at the upgrade terminal and the drill keeps the stone it bores. The ore processor fuses that stone into the brick.
+A thermal scanner shows lava pockets beside your shaft before you reach them. Stop a slab above, press R from the seat, and the pod lines the slab walls with slag brick while it stands still. Then drill on. Craft a spoil hopper unit, fit it to your pod, and the drill keeps the stone it bores. The ore processor fuses that stone into the brick.
 
 The liner part does it for you. Fit one and the pod lines the shaft with slag brick as it drills, wherever lava could get in, which seals the walls against lava pockets the thermal scanner has shown you. Tier 1 acts every 4 slabs, tier 2 every 3 and also in a fall, and it stretches your slag further. The cost is drill speed: a better liner is a slower drill. The readout shows your slag and how many slabs are left to the next lining. (These two pictures look down the shaft from above; from the seat the cab frame hides the walls.)
 

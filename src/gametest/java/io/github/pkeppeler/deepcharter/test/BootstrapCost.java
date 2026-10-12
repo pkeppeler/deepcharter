@@ -55,7 +55,7 @@ final class BootstrapCost {
 
 	/**
 	 * What a recipe asks, by ingredient. An iron or copper block is nine ingots of its metal, made at a crafting table from nine. {@code ore} is the
-	 * dollars the ore items in it would have sold for (hand-mined ore, which the crates do not give).
+	 * dollars the ore items in it would have sold for (ore withdrawn from a pod's cargo, which the crates do not give).
 	 */
 	record Needs(int iron, int copper, int redstone, int ore) {
 		static final Needs NONE = new Needs(0, 0, 0, 0);

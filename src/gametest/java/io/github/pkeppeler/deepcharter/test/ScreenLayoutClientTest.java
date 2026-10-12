@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -49,10 +50,12 @@ import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.hangar.HangarView;
+import io.github.pkeppeler.deepcharter.market.ProcessorView;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.market.WorkOrdersView;
 import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
+import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalFeature;
 import io.github.pkeppeler.deepcharter.terminal.TerminalFeatureProbe;
@@ -144,7 +147,7 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
 		for (WorkOrder order : WorkOrder.values()) {
 			orders.add(new WorkOrdersView.Entry(order, Math.max(0, order.quantity() - 1), 99));
 		}
-		features.put(TerminalTypes.ORE_PROCESSOR, new WorkOrdersView(true, orders));
+		features.put(TerminalTypes.ORE_PROCESSOR, new ProcessorView(new WorkOrdersView(true, orders), Arrays.stream(OreType.values()).map(ore -> new ProcessorView.Hold(ore, 99999)).toList()));
 		return features;
 	}
 
@@ -437,6 +440,12 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
 				})).toList();
 			} else if (type == TerminalTypes.UPGRADE_TERMINAL) {
 				variants = upgradeTrackVariants();
+			} else if (type == TerminalTypes.ORE_PROCESSOR) {
+				// WITHDRAW ORE swaps the sheet for the list of ores, here all seven at the largest count.
+				variants = List.of(new Variant("withdraw list", (context, screen) -> {
+					context.clickScreenButton("WITHDRAW ORE");
+					return List.of();
+				}));
 			}
 			cases.add(new Case(id + " online", () -> TerminalScreens.create(online), variants));
 		}

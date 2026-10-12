@@ -26,6 +26,7 @@ import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.market.OreProcessor;
+import io.github.pkeppeler.deepcharter.market.ProcessorView;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
@@ -785,6 +786,187 @@ public class OreProcessorTest {
 					throw helper.assertionException("the unreadable lining state must be left as it was read");
 				}
 			} finally {
+				bad.discard();
+			}
+		});
+		helper.succeed();
+	}
+	// ---- withdrawing ore (#536) ----
+
+	private static final String BAD_WITHDRAWAL = "deepcharter.market.refusal.bad_withdrawal";
+	private static final String NO_ORE_IN_CARGO = "deepcharter.market.refusal.no_ore_in_cargo";
+	private static final String NO_ROOM_FOR_ORE = "deepcharter.market.refusal.no_room_for_ore";
+
+	private static TerminalAction.Context withdrawal(MinecraftServer server, ServerPlayer player, BlockPos pos, String ore, int count) {
+		return new TerminalAction.Context(server, player, Charters.charterOfOrThrow(server, player.getUUID()), TerminalTypes.ORE_PROCESSOR, pos, withdrawalArgs(ore, count));
+	}
+
+	private static CompoundTag withdrawalArgs(String ore, int count) {
+		CompoundTag args = new CompoundTag();
+		args.putString(OreProcessor.ORE_KEY, ore);
+		args.putInt(OreProcessor.COUNT_KEY, count);
+		return args;
+	}
+
+	private static int carried(ServerPlayer player, OreType ore) {
+		return player.getInventory().countItem(OreRegistry.item(ore));
+	}
+
+	/**
+	 * Withdrawing moves ore from the cargo of the pods parked here into the pack and nothing else: the account is not paid, the other ores stay, and a
+	 * request for more than the cargo holds takes what it holds.
+	 */
+	@GameTest
+	public void withdrawingMovesCargoOreToThePackAndPaysNothing(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		withProcessorOnline(server, () -> {
+			MockPlayer mock = player(helper, "Withdrawer", true);
+			ServerPlayer player = mock.player();
+			BlockPos processor = processorFor(helper, mock);
+			PodEntity pod = podAt(helper, beside(processor, 4), OreType.BRONZIUM, OreType.BRONZIUM, OreType.BRONZIUM, OreType.IRONIUM);
+			PodEntity second = podAt(helper, beside(processor, -4), OreType.BRONZIUM);
+			try {
+				fund(server, player, 500);
+				long before = balance(server, player);
+				expectDone(helper, Terminals.act(player, processor, OreProcessor.WITHDRAW_ORE, withdrawalArgs("bronzium", 2)), "withdrawing 2 Bronzium");
+				if (carried(player, OreType.BRONZIUM) != 2 || pod.cargo().count(OreType.BRONZIUM) + second.cargo().count(OreType.BRONZIUM) != 2
+						|| pod.cargo().count(OreType.IRONIUM) != 1 || balance(server, player) != before) {
+					throw helper.assertionException("2 Bronzium move to the pack and pay nothing: packed %s, cargo %s and %s, iron %s, balance %s -> %s", carried(player, OreType.BRONZIUM),
+							pod.cargo().count(OreType.BRONZIUM), second.cargo().count(OreType.BRONZIUM), pod.cargo().count(OreType.IRONIUM), before, balance(server, player));
+				}
+				if (pod.cargoUsed() != pod.cargo().entries().size()) {
+					throw helper.assertionException("the pod's synced cargo count must follow its cargo: %s of %s", pod.cargoUsed(), pod.cargo().entries().size());
+				}
+				expectDone(helper, Terminals.act(player, processor, OreProcessor.WITHDRAW_ORE, withdrawalArgs("bronzium", 50)), "withdrawing more Bronzium than the pods hold");
+				if (carried(player, OreType.BRONZIUM) != 4 || pod.cargo().count(OreType.BRONZIUM) != 0 || second.cargo().count(OreType.BRONZIUM) != 0
+						|| pod.cargo().count(OreType.IRONIUM) != 1 || balance(server, player) != before) {
+					throw helper.assertionException("asking for more takes what the pods hold, from both: packed %s, cargo %s and %s", carried(player, OreType.BRONZIUM),
+							pod.cargo().count(OreType.BRONZIUM), second.cargo().count(OreType.BRONZIUM));
+				}
+				expectKey(helper, NO_ORE_IN_CARGO, OreProcessor.withdrawOre(withdrawal(server, player, processor, "bronzium", 1)), "withdrawing an ore the pods no longer hold");
+			} finally {
+				pod.discard();
+				second.discard();
+			}
+		});
+		helper.succeed();
+	}
+
+	/** A request the client could not make honestly, an empty hold, no pod and a pod of another charter are refused, and each leaves the cargo and the pack as they were. */
+	@GameTest
+	public void withdrawingRefusesBadRequestsAndAnotherChartersPod(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		withProcessorOnline(server, () -> {
+			MockPlayer mock = player(helper, "Asker", true);
+			MockPlayer rival = player(helper, "Neighbour", true);
+			ServerPlayer player = mock.player();
+			BlockPos processor = processorFor(helper, mock);
+			expectKey(helper, NO_POD, OreProcessor.withdrawOre(withdrawal(server, player, processor, "bronzium", 1)), "withdrawing with no pod parked");
+			PodEntity theirs = podAt(helper, beside(processor, 4), OreType.BRONZIUM);
+			register(server, theirs, rival.player());
+			PodEntity mine = podAt(helper, beside(processor, -4), OreType.IRONIUM);
+			register(server, mine, player);
+			try {
+				expectKey(helper, NO_ORE_IN_CARGO, OreProcessor.withdrawOre(withdrawal(server, player, processor, "bronzium", 1)),
+						"withdrawing the Bronzium of another charter's pod");
+				expectKey(helper, NO_ORE_IN_CARGO, OreProcessor.withdrawOre(withdrawal(server, player, processor, "goldium", 1)), "withdrawing an ore no pod holds");
+				expectKey(helper, BAD_WITHDRAWAL, OreProcessor.withdrawOre(withdrawal(server, player, processor, "stone", 1)), "withdrawing a thing that is no ore");
+				expectKey(helper, BAD_WITHDRAWAL, OreProcessor.withdrawOre(withdrawal(server, player, processor, "ironium", 0)), "withdrawing none");
+				expectKey(helper, BAD_WITHDRAWAL, OreProcessor.withdrawOre(withdrawal(server, player, processor, "ironium", -3)), "withdrawing a negative count");
+				expectKey(helper, BAD_WITHDRAWAL, OreProcessor.withdrawOre(new TerminalAction.Context(server, player, Charters.charterOfOrThrow(server, player.getUUID()),
+						TerminalTypes.ORE_PROCESSOR, processor, new CompoundTag())), "withdrawing with no arguments");
+				if (carried(player, OreType.IRONIUM) + carried(player, OreType.BRONZIUM) != 0 || theirs.cargo().count(OreType.BRONZIUM) != 1 || mine.cargo().count(OreType.IRONIUM) != 1) {
+					throw helper.assertionException("a refused withdrawal changes nothing");
+				}
+			} finally {
+				theirs.discard();
+				mine.discard();
+			}
+		});
+		helper.succeed();
+	}
+
+	/** A player on no charter is refused by the terminal, and a pack with room for one takes one and a full pack none; the rest stays in the cargo. */
+	@GameTest
+	public void withdrawingStopsAtTheRoomInThePackAndNeedsACharter(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		withProcessorOnline(server, () -> {
+			MockPlayer drifter = player(helper, "Wanderer", false);
+			BlockPos processor = processorFor(helper, drifter);
+			PodEntity unowned = podAt(helper, beside(processor, 4), OreType.BRONZIUM);
+			try {
+				expectRefused(helper, TerminalRefusal.NOT_ON_A_CHARTER, Terminals.act(drifter.player(), processor, OreProcessor.WITHDRAW_ORE, withdrawalArgs("bronzium", 1)),
+						"a withdrawal by a player on no charter");
+				if (unowned.cargo().count(OreType.BRONZIUM) != 1) {
+					throw helper.assertionException("a refused withdrawal leaves the cargo");
+				}
+			} finally {
+				unowned.discard();
+			}
+			MockPlayer mock = player(helper, "Packed Up", true);
+			ServerPlayer player = mock.player();
+			BlockPos near = processorFor(helper, mock);
+			PodEntity pod = podAt(helper, beside(near, 4), OreType.IRONIUM, OreType.IRONIUM, OreType.IRONIUM);
+			try {
+				int slots = player.getInventory().getNonEquipmentItems().size();
+				for (int slot = 0; slot < slots; slot++) {
+					player.getInventory().setItem(slot, new ItemStack(SlagBrick.item(), 64));
+				}
+				player.getInventory().setItem(0, new ItemStack(OreRegistry.item(OreType.IRONIUM), OreRegistry.item(OreType.IRONIUM).getDefaultMaxStackSize() - 1));
+				int packed = carried(player, OreType.IRONIUM);
+				expectDone(helper, Terminals.act(player, near, OreProcessor.WITHDRAW_ORE, withdrawalArgs("ironium", 3)), "withdrawing with room for one");
+				if (carried(player, OreType.IRONIUM) != packed + 1 || pod.cargo().count(OreType.IRONIUM) != 2) {
+					throw helper.assertionException("room for one takes one and leaves 2 in the cargo: packed %s of %s, cargo %s", carried(player, OreType.IRONIUM), packed + 1,
+							pod.cargo().count(OreType.IRONIUM));
+				}
+				expectKey(helper, NO_ROOM_FOR_ORE, OreProcessor.withdrawOre(withdrawal(server, player, near, "ironium", 1)), "withdrawing into a full pack");
+				if (pod.cargo().count(OreType.IRONIUM) != 2) {
+					throw helper.assertionException("a refused withdrawal takes nothing, the cargo holds %s", pod.cargo().count(OreType.IRONIUM));
+				}
+			} finally {
+				pod.discard();
+			}
+		});
+		helper.succeed();
+	}
+
+	/** Cargo the build cannot read is refused and kept, and the processor's view skips it instead of throwing; the view counts the ores of the readable pods by ore. */
+	@GameTest
+	public void withdrawingLeavesUnreadableCargoAloneAndTheViewListsTheRest(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		ServerLevel level = helper.getLevel();
+		withProcessorOnline(server, () -> {
+			MockPlayer mock = player(helper, "Lister", true);
+			ServerPlayer player = mock.player();
+			BlockPos processor = processorFor(helper, mock);
+			PodEntity good = podAt(helper, beside(processor, -4), OreType.SILVERIUM, OreType.BRONZIUM, OreType.BRONZIUM);
+			PodEntity bad = podAt(helper, beside(processor, 4), OreType.BRONZIUM);
+			try {
+				var charter = Charters.charterOfOrThrow(server, player.getUUID());
+				ProcessorView view = OreProcessor.view(server, player, charter, processor);
+				if (!view.cargo().equals(List.of(new ProcessorView.Hold(OreType.BRONZIUM, 3), new ProcessorView.Hold(OreType.SILVERIUM, 1)))) {
+					throw helper.assertionException("the view lists the ore of the pods, by ore: %s", view.cargo());
+				}
+				TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
+				bad.saveWithoutId(output);
+				CompoundTag tag = output.buildResult();
+				tag.putInt("cargo_version", 99);
+				bad.cargo().load(TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), tag), bad);
+				ProcessorView skipped = OreProcessor.view(server, player, charter, processor);
+				if (!skipped.cargo().equals(List.of(new ProcessorView.Hold(OreType.BRONZIUM, 2), new ProcessorView.Hold(OreType.SILVERIUM, 1)))) {
+					throw helper.assertionException("the view skips a pod whose cargo it cannot read and lists the other: %s", skipped.cargo());
+				}
+				expectDone(helper, Terminals.act(player, processor, OreProcessor.WITHDRAW_ORE, withdrawalArgs("bronzium", 5)), "withdrawing beside a pod with unreadable cargo");
+				if (carried(player, OreType.BRONZIUM) != 2 || good.cargo().count(OreType.BRONZIUM) != 0) {
+					throw helper.assertionException("the readable pod gives its 2 Bronzium: packed %s", carried(player, OreType.BRONZIUM));
+				}
+				good.discard();
+				expectKey(helper, UNREADABLE_CARGO, OreProcessor.withdrawOre(withdrawal(server, player, processor, "bronzium", 1)), "withdrawing when only unreadable cargo is parked");
+				if (bad.cargo().isReadable()) {
+					throw helper.assertionException("the unreadable cargo must be left as it was read");
+				}
+			} finally {
+				good.discard();
 				bad.discard();
 			}
 		});

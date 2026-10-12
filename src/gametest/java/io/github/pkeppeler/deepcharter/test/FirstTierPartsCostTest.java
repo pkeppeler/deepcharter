@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -24,7 +25,6 @@ import net.minecraft.world.item.crafting.RecipeType;
 
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
-import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.BootstrapCost.Needs;
 import io.github.pkeppeler.deepcharter.test.BootstrapCost.Spread;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
@@ -35,12 +35,12 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 /**
  * Server GameTests for #536 (ADR 0053, mechanics.md "Crafted first-tier parts"): what the twelve crafted units cost a pilot, and that the
  * opening the first six make is no cheaper and no slower than the one the $200 purchases made. The six hazard answers (lights, hopper, brace, sounder, liner,
- * heat shield) are tuned to the minutes their old prices took, and take hand-mined ore, which the crates do not give. What a recipe asks comes from the shipped file,
+ * heat shield) are tuned to the minutes their old prices took, and take ore from the pod's cargo, which the crates do not give. What a recipe asks comes from the shipped file,
  * what a crate holds from the real loot table, and a run's money and seconds from {@link EarlyRunModel} (the expected ore of a bore, so it
  * never flakes). {@link BootstrapCost} holds the method; no world is built.
  *
  * <p>The yardstick is time. A purchase cost money, which a run earns at {@code net} dollars in {@code seconds}; a crafted unit costs
- * crates, a furnace and a bench, which take minutes, and ore, which is what a run would have sold: its dollars are minutes at the run's rate. A unit is "as dear as" its old price when its minutes are the minutes of the runs that earned
+ * crates, a furnace and a bench, which take minutes, and ore withdrawn from the cargo, which is what a run would have sold: its dollars are minutes at the run's rate. A unit is "as dear as" its old price when its minutes are the minutes of the runs that earned
  * that price. The money it saves is spent on the tiers above (a tier 2 part is still $500).
  */
 public class FirstTierPartsCostTest {
@@ -56,7 +56,7 @@ public class FirstTierPartsCostTest {
 
 	/**
 	 * The six hazard answers, by the layer of the hazard each meets first: the lights, the hopper and the brace in layer 1 (the dark, the lava
-	 * ladder's first rung, the crust), the sounder, liner and heat shield in layer 2 (gas, lava). Each is bought, before #536, with the layer's runs.
+	 * ladder's first rung, the crust), the sounder, liner and heat shield in layer 2 (gas, lava). Each was bought, before #536, with the layer's runs.
 	 */
 	private static final List<ComponentTrack> HAZARDS = List.of(ComponentTrack.LIGHTS, ComponentTrack.SPOIL_HOPPER, ComponentTrack.BRACE,
 			ComponentTrack.SOUNDER, ComponentTrack.LINER, ComponentTrack.HEAT_SHIELD);
@@ -78,7 +78,7 @@ public class FirstTierPartsCostTest {
 	/** The ingredients a salvage crate gives or a bench makes from them: iron and copper ingots (melted scrap), redstone, and a block of nine ingots. */
 	private static final Set<String> FROM_SALVAGE = Set.of("minecraft:iron_ingot", "minecraft:copper_ingot", "minecraft:redstone",
 			"minecraft:iron_block", "minecraft:copper_block");
-	/** The ores a hazard answer may take: broken by hand where the pilot already digs, and no more than the five a layer 1 or 2 zone holds in numbers. */
+	/** The ores a hazard answer may take: the ones a layer 1 or 2 haul holds in numbers. */
 	private static final Set<OreType> ORES = Set.of(OreType.IRONIUM, OreType.BRONZIUM, OreType.SILVERIUM, OreType.GOLDIUM);
 
 	/**
@@ -86,6 +86,9 @@ public class FirstTierPartsCostTest {
 	 * boarding, the fuel purchase and the sale. About 100 blocks of sprint at 5.6 blocks a second and a few screens; a run of any pod pays it alike.
 	 */
 	private static final double RUN_OVERHEAD_SECONDS = 45;
+
+	/** A hazard unit's ore is in the expected haul of this many runs of its layer, at most (the heat shield's 2 Goldium are about 7: the rarest ore asked for). */
+	private static final int MOST_RUNS_FOR_THE_ORE = 8;
 
 	/** The kit and all six parts take fewer than this many crates in 90 starts of 100 (the kit alone takes 37, and the scanner about 7 more). */
 	private static final int MOST_CRATES_OF_ALL_UNITS = 80;
@@ -123,6 +126,16 @@ public class FirstTierPartsCostTest {
 		Zone zone = Zone.load("topsoil_claims");
 		Run run = EarlyRunModel.run(zone, PodStats.base(), 0);
 		return new Pace(run.net(), EarlyRunModel.runSeconds(zone, PodStats.base(), 0, run) + RUN_OVERHEAD_SECONDS);
+	}
+
+	/** The run of a stock Mole in the zone {@code name} of layer 1. */
+	private static Run layerOneRun(String name) {
+		return EarlyRunModel.run(Zone.load(name), PodStats.base(), 0);
+	}
+
+	/** The run of a Mole with tier 2 parts in layer 2, whose ore is the liner's and heat shield's. */
+	private static Run layerTwoRun() {
+		return EarlyRunModel.run(Zone.load("upper_levels"), EarlyRunModel.mole(2, 2, 2), EarlyRunModel.layerOneBlocks());
 	}
 
 	/** The run of a Mole with tier 2 parts in layer 2, which the layer 2 hazard answers were priced against (EconomyAffordabilityTest). */
@@ -192,30 +205,38 @@ public class FirstTierPartsCostTest {
 	}
 
 	/**
-	 * A hazard unit's ore is reachable by a pilot who has not yet bought anything from the hazard: each ore it asks for drops from its block when
-	 * broken by hand (no tool is asked for, the block does not need a correct tool), and the ore lies in the zone where the hazard first bites.
+	 * A hazard unit's ore comes out of the pod's cargo at the processor (WITHDRAW ORE), so it is part of the haul of the zone where the hazard first bites: each ore it
+	 * asks for lies in that zone, and the expected haul of the runs the unit was priced against holds it in at most {@link #MOST_RUNS_FOR_THE_ORE} runs. The runs are priced
+	 * at their net, which counts that ore as sold, and a kept ore is that sale forgone.
 	 */
 	@GameTest
-	public void theOreOfAHazardUnitIsBrokenByHandAndLiesWhereTheHazardDoes(GameTestHelper helper) {
-		ServerLevel level = helper.getLevel();
+	public void theOreOfAHazardUnitIsInTheHaulWhereTheHazardDoes(GameTestHelper helper) {
 		for (ComponentTrack track : HAZARDS) {
 			Zone zone = Zone.load(ORE_ZONE.get(track));
+			Run run = ORE_ZONE.get(track).equals("upper_levels") ? layerTwoRun() : layerOneRun(ORE_ZONE.get(track));
+			Map<String, Integer> asked = new HashMap<>();
 			for (String cell : BootstrapCost.cells(BootstrapCost.recipe(unitPath(track)))) {
-				for (OreType type : ORES) {
-					if (!type.itemId().toString().equals(cell)) {
-						continue;
-					}
-					if (OreBlocks.of(type).defaultBlockState().requiresCorrectToolForDrops()) {
-						throw failure(helper, "the %s unit asks for %s, whose block needs a tool to drop it", track, type);
-					}
-					boolean drops = SalvageBootstrapTest.drops(level, OreBlocks.of(type), 1).stream().anyMatch(stack -> stack.is(BuiltInRegistries.ITEM.getValue(type.itemId())));
-					if (!drops) {
-						throw failure(helper, "a broken %s block does not drop the %s the %s unit asks for", type, type, track);
-					}
-					if (!(zone.chances().getOrDefault(type, 0.0) > 0)) {
-						throw failure(helper, "the %s unit asks for %s, which the %s zone of its hazard does not hold", track, type, ORE_ZONE.get(track));
-					}
+				if (!cell.isEmpty() && cell.startsWith("deepcharter:")) {
+					asked.merge(cell, 1, Integer::sum);
 				}
+			}
+			double runs = 0;
+			for (OreType type : ORES) {
+				int need = asked.getOrDefault(type.itemId().toString(), 0);
+				if (need == 0) {
+					continue;
+				}
+				double chance = zone.chances().getOrDefault(type, 0.0);
+				if (!(chance > 0)) {
+					throw failure(helper, "the %s unit asks for %s, which the %s zone of its hazard does not hold", track, type, ORE_ZONE.get(track));
+				}
+				double perRun = run.ores() * chance / zone.oreChance();
+				runs = Math.max(runs, need / perRun);
+				LOGGER.info("[first-tier] {} unit: {} {} is {} runs of {} ({} {} a run)", track.id(), need, type, String.format("%.1f", need / perRun), ORE_ZONE.get(track),
+						String.format("%.2f", perRun), type);
+			}
+			if (runs > MOST_RUNS_FOR_THE_ORE) {
+				throw failure(helper, "the %s unit's ore takes %.1f runs of %s to haul, over the %d allowed", track, runs, ORE_ZONE.get(track), MOST_RUNS_FOR_THE_ORE);
 			}
 		}
 		helper.succeed();

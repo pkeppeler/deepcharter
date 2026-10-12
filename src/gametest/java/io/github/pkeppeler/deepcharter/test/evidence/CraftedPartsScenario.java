@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Set;
 
 import com.google.gson.JsonObject;
@@ -13,6 +14,7 @@ import com.google.gson.JsonParser;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
@@ -39,10 +41,17 @@ import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.client.market.OreProcessorScreen;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
+import io.github.pkeppeler.deepcharter.ore.OreRegistry;
+import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.terminal.RepairState;
+import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
+import io.github.pkeppeler.deepcharter.terminal.TerminalType;
+import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
@@ -52,7 +61,8 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 /**
  * Evidence scenario "crafted-parts" (#536): in a sealed room of layer 1 rock, a player lays the fuel tank unit's recipe and then the drill unit's
  * out in a crafting table (iron, copper and redstone, from the shipped recipe files) and takes each unit. Each is used on the Mole from outside,
- * the client's own interaction, and the pod holds a tier 1 fuel tank and a tier 1 drill, which the terminal no longer sells.
+ * the client's own interaction, and the pod holds a tier 1 fuel tank and a tier 1 drill, which the terminal no longer sells. Then a hazard unit: the pod, parked at the ore processor
+ * with Bronzium in its cargo, gives one to the pack through WITHDRAW ORE (the account is not paid), and the lights unit made of it is fitted too.
  */
 public class CraftedPartsScenario extends EvidenceScenario {
 	private static final int TICKS_PER_FRAME = 3;
@@ -67,6 +77,9 @@ public class CraftedPartsScenario extends EvidenceScenario {
 	private static final double OFF_SCREEN = -10_000;
 	/** What the pack holds: enough for the two recipes (12 iron, 2 copper, 1 redstone), and a little more as a player's pack would. */
 	private static final int INGREDIENTS_EACH = 16;
+	/** The Bronzium a dig left in the pod's cargo: the lights unit takes one. */
+	private static final int ORE_IN_CARGO = 3;
+	private static final int TYPING_FRAMES = 40;
 
 	@Override
 	protected String name() {
@@ -105,7 +118,75 @@ public class CraftedPartsScenario extends EvidenceScenario {
 				hold(context);
 				screenshot(context, track.id() + "-unit-used-on-the-mole");
 			}
+			withdrawTheOreAndCraftTheLights(context, server, table, pod);
 		}
+	}
+
+	/**
+	 * A hazard unit's ore: a pod parked at the ore processor holds Bronzium from the dig, WITHDRAW ORE moves one into the pack (the account is not paid), the
+	 * pilot crafts the lights unit from it, and fits it to the Mole.
+	 */
+	private void withdrawTheOreAndCraftTheLights(ClientGameTestContext context, TestServerContext server, BlockPos table, PodEntity pod) {
+		BlockPos processor = server.computeOnServer(CraftedPartsScenario::setUpTheProcessor);
+		ClientWait.until(context, "the ore processor in the client's world", client -> client.level.getBlockState(processor).is(TerminalTypes.ORE_PROCESSOR.block()));
+		context.getInput().lookAt(processor);
+		hold(context);
+		context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(processor)));
+		ClientWait.screen(context, OreProcessorScreen.class);
+		OreProcessorScreen screen = context.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
+		for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
+			context.waitTicks(TICKS_PER_FRAME); // tick-wait: one frame of the processor's typing
+			frame(context);
+		}
+		hold(context);
+		screenshot(context, "processor-with-bronzium-in-cargo");
+		context.clickScreenButton("WITHDRAW ORE");
+		ClientWait.until(context, "the withdraw list", client -> screen.withdrawing() && !screen.cargo().isEmpty());
+		hold(context);
+		screenshot(context, "withdraw-ore-list");
+		context.clickScreenButton("TAKE ONE");
+		ClientWait.until(context, "a Bronzium in the pack", () -> server.computeOnServer(minecraft -> minecraft.getPlayerList().getPlayers().getFirst().getInventory()
+				.countItem(OreRegistry.item(OreType.BRONZIUM))) == 1, () -> "no Bronzium in the pack");
+		hold(context);
+		screenshot(context, "bronzium-withdrawn");
+		context.setScreen(() -> null);
+
+		Item unit = BuiltInRegistries.ITEM.getValue(Identifier.fromNamespaceAndPath("deepcharter", ComponentTrack.LIGHTS.id() + "_unit"));
+		layOutTheRecipe(context, server, table, ComponentTrack.LIGHTS, unit);
+		takeTheUnit(context, server, ComponentTrack.LIGHTS, unit);
+		// The recipe was laid out by the test, so the pack's Bronzium is spent here, as the table would have taken it.
+		server.runOnServer(minecraft -> {
+			Inventory pack = minecraft.getPlayerList().getPlayers().getFirst().getInventory();
+			for (int slot = 0; slot < pack.getContainerSize(); slot++) {
+				if (pack.getItem(slot).is(OreRegistry.item(OreType.BRONZIUM))) {
+					pack.setItem(slot, ItemStack.EMPTY);
+				}
+			}
+		});
+		context.getInput().lookAt(pod.blockPosition().above());
+		hold(context);
+		useTheUnit(context, pod);
+		ClientWait.until(context, "the lights fitted to the pod",
+				() -> server.computeOnServer(minecraft -> PodComponents.effectiveTier(podOnServer(minecraft), ComponentTrack.LIGHTS) == 1), () -> "no lights on the pod");
+		hold(context);
+		screenshot(context, "lights-unit-used-on-the-mole");
+	}
+
+	/** Repairs the pump and the processor, stands the processor between the table and the pod, and puts three Bronzium in the pod's cargo, where a dig leaves them. */
+	private static BlockPos setUpTheProcessor(MinecraftServer server) {
+		ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+		ServerLevel level = player.level();
+		RepairState state = RepairState.get(server);
+		for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR)) {
+			type.parts().forEach(part -> state.insert(type, part));
+		}
+		BlockPos processor = player.blockPosition().offset(0, 0, POD_AHEAD);
+		level.setBlock(processor, TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(), 3);
+		PodEntity pod = podOnServer(server);
+		for (int i = 0; i < ORE_IN_CARGO; i++) {
+			pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.BRONZIUM));
+		}
+		return processor;
 	}
 
 	/** Lights the sealed room, stands a crafting table and a registered pod in it, and puts the ingredients in the pack. */

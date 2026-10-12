@@ -23,7 +23,7 @@ public final class UpgradeEvents {
 	});
 
 	/**
-	 * A player fitted a part they made, not bought, to {@code pod} (the scanner unit, {@code ScannerFitting}). Fires after the part is
+	 * A player fitted a part they made, not bought, to {@code pod} (a unit, {@code PartFitting}). Fires after the part is
 	 * installed. A listener that throws stops the call: the part is fitted and the unit is not consumed, so listeners must not throw.
 	 */
 	public static final Event<Fitted> FITTED = EventFactory.createArrayBacked(Fitted.class, listeners -> (server, player, pod, track, tier) -> {

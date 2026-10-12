@@ -73,7 +73,7 @@ flowchart TB
 ```mermaid
 flowchart LR
   l_core_loop["The core loop<br/>11 of 11 built"]
-  l_economy["Money, fuel and spoil<br/>10 of 13 built"]
+  l_economy["Money, fuel and spoil<br/>11 of 14 built"]
   l_ores["The ore ladder<br/>7 of 7 built"]
   l_bootstrap["Bootstrap: salvage to the first run<br/>13 of 13 built"]
   l_terminals["The colony's terminals<br/>7 of 8 built"]
@@ -162,7 +162,7 @@ flowchart LR
 | Ladder | Built | In progress | Planned | Idea |
 |---|---|---|---|---|
 | [The core loop](#the-core-loop) | 11 | 0 | 0 | 0 |
-| [Money, fuel and spoil](#money-fuel-and-spoil) | 10 | 0 | 1 | 2 |
+| [Money, fuel and spoil](#money-fuel-and-spoil) | 11 | 0 | 1 | 2 |
 | [The ore ladder](#the-ore-ladder) | 7 | 0 | 0 | 0 |
 | [Bootstrap: salvage to the first run](#bootstrap-salvage-to-the-first-run) | 13 | 0 | 0 | 0 |
 | [The colony's terminals](#the-colonys-terminals) | 7 | 0 | 1 | 0 |
@@ -1190,6 +1190,7 @@ flowchart TB
   n_radiator_t1["Radiator tier 1"]
   n_sounder_t1["Seep sounder tier 1"]
   n_spoil_hopper["Spoil hopper"]
+  n_withdraw_ore["Withdraw ore from the cargo"]
   n_craft_mole_parts --> n_repair_mole
   n_craft_terminal_parts --> n_repair_terminals
   n_craft_tools --> n_craft_terminal_parts
@@ -1217,13 +1218,14 @@ flowchart TB
   n_scanner_from_crafting --> n_first_run
   n_scanner_from_crafting --> n_parts_from_crafting
   n_scrap_metal --> n_furnace_scrap
+  n_withdraw_ore == feeds ==> n_parts_from_crafting
   classDef built fill:#1f3d2b,stroke:#6fbf73,stroke-width:2px,color:#e8f5e9
   classDef progress fill:#4a3a10,stroke:#f0b429,stroke-width:2px,color:#fff3d6
   classDef planned fill:#2e2e2e,stroke:#9e9e9e,stroke-width:1px,color:#d6d6d6
   classDef idea fill:#1a1a1a,stroke:#757575,stroke-width:1px,stroke-dasharray:4 3,color:#a0a0a0
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
   class n_fungal_stalks,n_salvage_crate,n_salvage_cloth,n_scrap_metal,n_furnace_scrap,n_craft_tools,n_craft_terminal_parts,n_repair_terminals,n_craft_mole_parts,n_scanner_from_crafting,n_parts_from_crafting,n_repair_mole,n_first_run built
-  class n_brace_t1,n_cargo_bay_t1,n_crate_press,n_drill_t1,n_engine_t1,n_fuel_pump,n_fuel_tank_t1,n_heat_shield,n_hull_t1,n_lights_t1,n_liner_t1,n_mole,n_radiator_t1,n_sounder_t1,n_spoil_hopper ext
+  class n_brace_t1,n_cargo_bay_t1,n_crate_press,n_drill_t1,n_engine_t1,n_fuel_pump,n_fuel_tank_t1,n_heat_shield,n_hull_t1,n_lights_t1,n_liner_t1,n_mole,n_radiator_t1,n_sounder_t1,n_spoil_hopper,n_withdraw_ore ext
 ```
 
 | Icon | Still | Feature | What it is | Status | Links |
@@ -1238,7 +1240,7 @@ flowchart TB
 | <img src="../src/main/resources/assets/deepcharter/textures/block/fuel_pump_front.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/colony-terminals.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/colony-terminals.png?raw=true" width="160" alt=""></a> | <a id="repair-terminals"></a>**Repair the terminals in order**<br>goal | Pump, processor, upgrade terminal, repair station, each once per world. | ✅ Built | [ADR 0014](adr/0014-terminal-repair-is-one-world-wide-chain.md) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/drill_head.png" width="32" alt=""> | no still yet | <a id="craft-mole-parts"></a>**Craft the Mole's parts**<br>goal | A drill head, a fuel injector, a rotor hub and a tread assembly bring the founding Mole back. | ✅ Built | [ADR 0021](adr/0021-the-hangar-is-a-terminal-and-its-repair-founds-the-mole.md) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/scanner_unit.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/500/crafted-scanner.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/500/crafted-scanner.gif?raw=true" width="160" alt=""></a> | <a id="scanner-from-crafting"></a>**Craft the first scanner**<br>goal | Craft a scanner unit from 4 iron, 2 copper and 2 redstone and use it on your pod: that fits the tier 1 scanner. The terminal does not sell tier 1. | ✅ Built | [#483](https://github.com/pkeppeler/deepcharter/issues/483), [#500](https://github.com/pkeppeler/deepcharter/issues/500) |
-| <img src="../src/main/resources/assets/deepcharter/textures/item/drill_unit.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/542/crafted-parts.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/542/crafted-parts.gif?raw=true" width="160" alt=""></a> | <a id="parts-from-crafting"></a>**Craft the first-tier parts**<br>goal | Craft a unit for any part from salvage iron, copper and redstone, and for the lights, hopper, brace, sounder, liner and heat shield some ore broken by hand too. Use it on your pod: that fits the tier 1 part. The terminal does not sell tier 1; tier 2 and up are purchases. | ✅ Built | [#536](https://github.com/pkeppeler/deepcharter/issues/536), [ADR 0053](adr/0053-tier-1-of-every-pod-part-is-a-crafted-unit-fitted-by-use-like-the-scanners.md), [mechanics.md](design/mechanics.md#crafted-first-tier-parts-536-a) |
+| <img src="../src/main/resources/assets/deepcharter/textures/item/drill_unit.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/542/crafted-parts.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/542/crafted-parts.gif?raw=true" width="160" alt=""></a> | <a id="parts-from-crafting"></a>**Craft the first-tier parts**<br>goal | Craft a unit for any part from salvage iron, copper and redstone, and for the lights, hopper, brace, sounder, liner and heat shield some ore too, which you withdraw from your pod's cargo at the ore processor instead of selling it. Use it on your pod: that fits the tier 1 part. The terminal does not sell tier 1; tier 2 and up are purchases. | ✅ Built | [#536](https://github.com/pkeppeler/deepcharter/issues/536), [ADR 0053](adr/0053-tier-1-of-every-pod-part-is-a-crafted-unit-fitted-by-use-like-the-scanners.md), [mechanics.md](design/mechanics.md#crafted-first-tier-parts-536-a) |
 | 🎯 | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/hangar-founding-mole-repaired.jpg?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/hangar-founding-mole-repaired.jpg?raw=true" width="160" alt=""></a> | <a id="repair-mole"></a>**Repair the founding Mole**<br>goal | The first charter fixes the hangar's Mole; the Company advances the pod. | ✅ Built | [ADR 0021](adr/0021-the-hangar-is-a-terminal-and-its-repair-founds-the-mole.md) |
 | 🎯 | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/hero.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/hero.gif?raw=true" width="160" alt=""></a> | <a id="first-run"></a>**The first run**<br>goal | Refuel, scan, drill layer 1, sell, buy a first part. | ✅ Built | [PLAYING.md](PLAYING.md) |
 
@@ -1293,7 +1295,7 @@ flowchart LR
 |---|---|---|---|---|---|
 | <img src="../src/main/resources/assets/deepcharter/textures/block/contract_terminal_front.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/screen-contract-terminal.jpg?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/screen-contract-terminal.jpg?raw=true" width="160" alt=""></a> | <a id="contract-terminal"></a>**Contract terminal**<br>terminal | Works from the start: found a charter or sign on as crew. | ✅ Built | [ADR 0018](adr/0018-the-contract-terminal-sends-its-own-state-by-name.md), [#129](https://github.com/pkeppeler/deepcharter/issues/129) |
 | <img src="../src/main/resources/assets/deepcharter/textures/block/fuel_pump_front.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/fuel-pump.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/fuel-pump.png?raw=true" width="160" alt=""></a> | <a id="fuel-pump"></a>**Fuel pump**<br>terminal | Sells fuel to a parked pod. The first repair. | ✅ Built | [ADR 0014](adr/0014-terminal-repair-is-one-world-wide-chain.md), [ADR 0023](adr/0023-a-terminal-view-carries-its-types-feature-and-a-parked-pod-is-one-rule.md) |
-| <img src="../src/main/resources/assets/deepcharter/textures/block/ore_processor_front.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/screen-ore-processor-online.jpg?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/screen-ore-processor-online.jpg?raw=true" width="160" alt=""></a> | <a id="ore-processor"></a>**Ore processor**<br>terminal | Buys ore, fuses slag brick, presses crates, lists work orders. | ✅ Built | [ADR 0014](adr/0014-terminal-repair-is-one-world-wide-chain.md), [ADR 0023](adr/0023-a-terminal-view-carries-its-types-feature-and-a-parked-pod-is-one-rule.md) |
+| <img src="../src/main/resources/assets/deepcharter/textures/block/ore_processor_front.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/screen-ore-processor-online.jpg?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/screen-ore-processor-online.jpg?raw=true" width="160" alt=""></a> | <a id="ore-processor"></a>**Ore processor**<br>terminal | Buys ore, lets you keep ore from a pod's cargo, fuses slag brick, presses crates, lists work orders. | ✅ Built | [ADR 0014](adr/0014-terminal-repair-is-one-world-wide-chain.md), [ADR 0023](adr/0023-a-terminal-view-carries-its-types-feature-and-a-parked-pod-is-one-rule.md) |
 | <img src="../src/main/resources/assets/deepcharter/textures/block/upgrade_terminal_front.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/upgrade-terminal.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/upgrade-terminal.png?raw=true" width="160" alt=""></a> | <a id="upgrade-terminal"></a>**Upgrade terminal**<br>terminal | Sells tiered pod parts. | ✅ Built | [ADR 0014](adr/0014-terminal-repair-is-one-world-wide-chain.md), [ADR 0023](adr/0023-a-terminal-view-carries-its-types-feature-and-a-parked-pod-is-one-rule.md) |
 | <img src="../src/main/resources/assets/deepcharter/textures/block/repair_station_front.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/repair-station.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/repair-station.png?raw=true" width="160" alt=""></a> | <a id="repair-station"></a>**Repair station**<br>terminal | Mends the hull and sells consumables. | ✅ Built | [ADR 0014](adr/0014-terminal-repair-is-one-world-wide-chain.md), [ADR 0023](adr/0023-a-terminal-view-carries-its-types-feature-and-a-parked-pod-is-one-rule.md) |
 | <img src="../src/main/resources/assets/deepcharter/textures/block/hangar_console_front.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/screen-hangar-console-online.jpg?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/screen-hangar-console-online.jpg?raw=true" width="160" alt=""></a> | <a id="hangar-console"></a>**Hangar console**<br>terminal | Founds the Mole, restores wrecks into pods and buys a refurbished Mole for later charters. | ✅ Built | [ADR 0021](adr/0021-the-hangar-is-a-terminal-and-its-repair-founds-the-mole.md), [ADR 0027](adr/0027-a-chassis-is-an-entity-type-and-an-unowned-wreck-is-registered-when-restored.md) |
@@ -1598,6 +1600,7 @@ flowchart TB
   n_charter_account["💎 The charter's account"]
   n_crate_press["⚙️ Press spoil into salvage crates"]
   n_slag_brick["💎 Slag brick"]
+  n_withdraw_ore["⚙️ Withdraw ore from the cargo"]
   n_buy_consumables["⚙️ Buy repairs and consumables"]
   n_buy_fuel["⚙️ Buy fuel at the pump"]
   n_buy_parts["⚙️ Buy pod parts"]
@@ -1615,6 +1618,7 @@ flowchart TB
   n_ironium["Ironium"]
   n_liner_t1["Liner tier 1"]
   n_ore_processor["Ore processor"]
+  n_parts_from_crafting["Craft the first-tier parts"]
   n_platinium["Platinium"]
   n_repair_station["Repair station"]
   n_salvage_crate["Salvage crates"]
@@ -1637,6 +1641,7 @@ flowchart TB
   n_platinium == feeds ==> n_ore_in_bay
   n_repair_station --> n_buy_consumables
   n_sell_ore == feeds ==> n_charter_account
+  n_sell_ore --> n_withdraw_ore
   n_silverium == feeds ==> n_ore_in_bay
   n_slag_brick == feeds ==> n_hand_lining
   n_slag_brick == feeds ==> n_heat_shield
@@ -1645,16 +1650,17 @@ flowchart TB
   n_spoil == feeds ==> n_slag_brick
   n_spoil_hopper --> n_spoil
   n_upgrade_terminal --> n_buy_parts
+  n_withdraw_ore == feeds ==> n_parts_from_crafting
   n_work_orders == feeds ==> n_charter_account
   classDef built fill:#1f3d2b,stroke:#6fbf73,stroke-width:2px,color:#e8f5e9
   classDef progress fill:#4a3a10,stroke:#f0b429,stroke-width:2px,color:#fff3d6
   classDef planned fill:#2e2e2e,stroke:#9e9e9e,stroke-width:1px,color:#d6d6d6
   classDef idea fill:#1a1a1a,stroke:#757575,stroke-width:1px,stroke-dasharray:4 3,color:#a0a0a0
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
-  class n_ore_in_bay,n_sell_ore,n_spoil,n_work_orders,n_charter_account,n_crate_press,n_slag_brick,n_buy_consumables,n_buy_fuel,n_buy_parts built
+  class n_ore_in_bay,n_sell_ore,n_spoil,n_work_orders,n_charter_account,n_crate_press,n_slag_brick,n_withdraw_ore,n_buy_consumables,n_buy_fuel,n_buy_parts built
   class n_catalysts planned
   class n_records_board,n_registration_fees idea
-  class n_bronzium,n_cicatrium,n_deepest_point,n_einsteinium,n_fuel_pump,n_goldium,n_hand_lining,n_heat_shield,n_ironium,n_liner_t1,n_ore_processor,n_platinium,n_repair_station,n_salvage_crate,n_silverium,n_spoil_hopper,n_upgrade_terminal ext
+  class n_bronzium,n_cicatrium,n_deepest_point,n_einsteinium,n_fuel_pump,n_goldium,n_hand_lining,n_heat_shield,n_ironium,n_liner_t1,n_ore_processor,n_parts_from_crafting,n_platinium,n_repair_station,n_salvage_crate,n_silverium,n_spoil_hopper,n_upgrade_terminal ext
 ```
 
 | Icon | Still | Feature | What it is | Status | Links |
@@ -1666,6 +1672,7 @@ flowchart TB
 | 💎 | no still yet | <a id="charter-account"></a>**The charter's account**<br>resource | One shared pot of money for the whole crew. | ✅ Built | [ADR 0007](adr/0007-charters-are-one-versioned-saved-data.md), [SPEC.md](SPEC.md#6-charters) |
 | <img src="../src/main/resources/assets/deepcharter/textures/block/salvage_crate_side.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/489/processor-after-press.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/489/processor-after-press.png?raw=true" width="160" alt=""></a> | <a id="crate-press"></a>**Press spoil into salvage crates**<br>mechanic | The processor presses spoil into new salvage crates, so wood and scrap renew. | ✅ Built | [#470](https://github.com/pkeppeler/deepcharter/issues/470), [#489](https://github.com/pkeppeler/deepcharter/issues/489), [mechanics.md](design/mechanics.md#renewable-salvage-470-a) |
 | <img src="../src/main/resources/assets/deepcharter/textures/block/slag_brick.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-lining.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-lining.png?raw=true" width="160" alt=""></a> | <a id="slag-brick"></a>**Slag brick**<br>resource | The processor fuses 2 spoil into 1 brick for no money; bricks line shafts against lava. | ✅ Built | [mechanics.md](design/mechanics.md#liner-bricks-363-a) |
+| <img src="../src/main/resources/assets/deepcharter/textures/block/ore_processor_front.png" width="32" alt=""> | no still yet | <a id="withdraw-ore"></a>**Withdraw ore from the cargo**<br>mechanic | Move ore from a parked pod's cargo to your pack for no money: the ore the hazard units are crafted from. A kept ore is a sale given up. | ✅ Built | [#536](https://github.com/pkeppeler/deepcharter/issues/536), [ADR 0053](adr/0053-tier-1-of-every-pod-part-is-a-crafted-unit-fitted-by-use-like-the-scanners.md), [mechanics.md](design/mechanics.md#crafted-first-tier-parts-536-a) |
 | <img src="../src/main/resources/assets/deepcharter/textures/block/repair_station_front.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/repair-station.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/repair-station.png?raw=true" width="160" alt=""></a> | <a id="buy-consumables"></a>**Buy repairs and consumables**<br>mechanic | Hull nanobots, dynamite, explosives, teleport items and a reserve tank at the repair station. | ✅ Built |  |
 | <img src="../src/main/resources/assets/deepcharter/textures/block/fuel_pump_front.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/fuel-pump.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/fuel-pump.png?raw=true" width="160" alt=""></a> | <a id="buy-fuel"></a>**Buy fuel at the pump**<br>mechanic | Early fuel is crafted; later it is bought at the fuel pump. | ✅ Built |  |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/upgrade_board.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/upgrade-terminal.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/upgrade-terminal.png?raw=true" width="160" alt=""></a> | <a id="buy-parts"></a>**Buy pod parts**<br>mechanic | Tier 2 and up of every part. Tier 1 of every part is crafted. | ✅ Built | [SPEC.md](SPEC.md#components) |
