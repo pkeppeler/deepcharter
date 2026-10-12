@@ -20,11 +20,14 @@ import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodDrill;
+import io.github.pkeppeler.deepcharter.pod.PodRockBite;
+import io.github.pkeppeler.deepcharter.pod.PodRockBiteTuning;
 import io.github.pkeppeler.deepcharter.pod.PodLinerTuning;
 import io.github.pkeppeler.deepcharter.pod.PodLiningTuning;
 import io.github.pkeppeler.deepcharter.pod.PodSounderTuning;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
+import io.github.pkeppeler.deepcharter.repair.RepairTuning;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 
@@ -227,6 +230,24 @@ public final class EarlyRunModel {
 		double stoneTicks = PodDrill.drillTicks(stats, stoneHardness, depthFeet);
 		double oreTicks = PodDrill.drillTicks(stats, oreHardness, depthFeet);
 		return (stoneTicks * (1 - slabHasOre) + oreTicks * slabHasOre) / 20;
+	}
+
+	/**
+	 * One Company rock slab bored by a drill that bites it (#526): the seconds it takes, the litres it burns (the drilling rate times the bite's multiplier, and the
+	 * idle rate), the hull the cutter's heat costs (no radiator), and what those cost in dollars at the pump and at the repair station.
+	 */
+	public record Bite(double seconds, double litres, double hull, double dollars) {
+	}
+
+	/** (A) The drill's own stats and a slab {@code depthBlocks} below the surface; the heat is repaired at the station's price. */
+	public static Bite biteSlab(PodStats stats, double depthBlocks) {
+		PodRockBiteTuning bite = PodRockBiteTuning.DEFAULT;
+		int depthFeet = (int) (depthBlocks * LayerTuning.DEFAULT.feetPerBlock());
+		double seconds = PodRockBite.drillTicks(stats, depthFeet) / (double) TICKS_PER_SECOND;
+		double litres = seconds * (stats.drillingLitresPerSecond() * bite.fuelMultiplier() + stats.idleLitresPerSecond());
+		double hull = seconds * bite.heatHullPerSecond();
+		double dollars = litres * FuelTuning.DEFAULT.pricePerLitre() + hull * RepairTuning.DEFAULT.repairCostPerHp();
+		return new Bite(seconds, litres, hull, dollars);
 	}
 
 	/** The chance that one block of the zone is Company rock, read from the same JSON that the world generator reads (0 for a zone with none). */

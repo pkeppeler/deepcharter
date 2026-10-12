@@ -16,9 +16,10 @@ package io.github.pkeppeler.deepcharter.repair;
  * @param chargeDepth       slab rows below the pod that a blasting charge clears, 2 so that one charge leaves a straight 2-slab step
  * @param chargeDamage      hull points a pod takes from a blast that touches it; less with distance
  * @param chargeReach       blocks from the blast, at most, that a pod is hurt; the damage falls to 0 there
+ * @param shapedDepth       slab rows below the pod, at most, that a shaped charge clears down a Company rock column
  */
 public record RepairTuning(long repairCostPerHp, int itemCooldownTicks, float reserveLitres, float nanobotHp,
 		int dynamiteRadius, int plasticRadius, double quantumScatter, int chargeFuseTicks, int chargeDepth,
-		float chargeDamage, double chargeReach) {
-	public static final RepairTuning DEFAULT = new RepairTuning(1L, 10, 25f, 30f, 1, 2, 8.0, 60, 2, 20f, 3.0);
+		float chargeDamage, double chargeReach, int shapedDepth) {
+	public static final RepairTuning DEFAULT = new RepairTuning(1L, 10, 25f, 30f, 1, 2, 8.0, 60, 2, 20f, 3.0, 8);
 }

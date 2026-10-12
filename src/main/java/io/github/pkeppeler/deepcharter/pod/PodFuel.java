@@ -46,7 +46,13 @@ public final class PodFuel {
 		if (!PodEvents.isPowered(pod)) {
 			return;
 		}
-		float fuel = Math.max(0f, pod.fuel() - drainPercentPerTick(stats, activity(pod)));
+		Activity activity = activity(pod);
+		float drain = drainPercentPerTick(stats, activity);
+		if (activity == Activity.DRILLING && pod.drillProgress() != null && pod.drillProgress().biting()) {
+			// A Company rock slab under the cutter (#526): it burns more than stone does.
+			drain *= PodRockBite.fuelMultiplier();
+		}
+		float fuel = Math.max(0f, pod.fuel() - drain);
 		pod.setFuel(fuel);
 		if (fuel <= 0f) {
 			pod.setStranded(true);

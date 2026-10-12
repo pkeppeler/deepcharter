@@ -31,8 +31,8 @@ import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 public final class PodDrill {
 	private static final double ALIGNED = 1e-6;
 
-	/** Ticks spent on one slab; a different slab or direction starts over, as soon as the pod faces it. */
-	record Progress(Direction direction, BlockPos slabOrigin, int ticks) {
+	/** Ticks spent on one slab; a different slab or direction starts over, as soon as the pod faces it. {@code biting} is true while the slab has Company rock in it (#526). */
+	record Progress(Direction direction, BlockPos slabOrigin, int ticks, boolean biting) {
 		boolean continues(Direction direction, BlockPos slabOrigin) {
 			return this.direction == direction && this.slabOrigin.equals(slabOrigin);
 		}
@@ -70,7 +70,7 @@ public final class PodDrill {
 		boolean centred = centre(pod, slab, stats);
 		if (!slab.hasWork() || !slab.allowed()) {
 			if (slab.hasCompanyRock() && pod.getControllingPassenger() instanceof ServerPlayer pilot && pod.tickCount % 40 == 0) {
-				pilot.sendOverlayMessage(Component.translatable("deepcharter.ore.company_rock_refused"));
+				pilot.sendOverlayMessage(Component.translatable(slab.canBite() && slab.tooHot() ? "deepcharter.ore.company_rock_cutter_hot" : "deepcharter.ore.company_rock_refused"));
 			}
 			stop(pod);
 			return;
@@ -80,10 +80,14 @@ public final class PodDrill {
 		if (!centred) {
 			return;
 		}
+		boolean biting = slab.hasCompanyRock();
+		if (biting) {
+			PodRockBite.heat(pod);
+		}
 		int ticks = progress != null ? progress.ticks() + 1 : 1;
 		// A sounder that bleeds makes the drill wait before it bores a pocket; the blast then costs the pod at most a share of its hull (PodSounder).
 		if (ticks < slab.drillTicks(stats) + (slab.hasGasPocket() ? PodSounder.bleedPauseTicks(pod) : 0)) {
-			pod.setDrillProgress(new Progress(wanted, slab.origin(), ticks));
+			pod.setDrillProgress(new Progress(wanted, slab.origin(), ticks, biting));
 			return;
 		}
 		pod.setDrillProgress(null);
@@ -118,7 +122,7 @@ public final class PodDrill {
 	}
 
 	/** The cells one bore step removes, and what is in them. */
-	private record Slab(ServerLevel level, List<BlockPos> cells, double centreX, double centreZ) {
+	private record Slab(ServerLevel level, List<BlockPos> cells, double centreX, double centreZ, boolean canBite, boolean tooHot) {
 		static Slab of(PodEntity pod, Direction direction) {
 			PodFootprint foot = PodFootprint.of(pod);
 			int width = foot.width();
@@ -144,7 +148,7 @@ public final class PodDrill {
 					}
 				}
 			}
-			return new Slab((ServerLevel) pod.level(), cells, lowX + width / 2.0, lowZ + width / 2.0);
+			return new Slab((ServerLevel) pod.level(), cells, lowX + width / 2.0, lowZ + width / 2.0, PodRockBite.canBite(pod), PodRockBite.tooHot(pod));
 		}
 
 		BlockPos origin() {
@@ -164,7 +168,7 @@ public final class PodDrill {
 		}
 
 		/**
-		 * A slab is refused whole, so the bore is never ragged: unbreakable, outside the world, the ceiling row, last-layer crust, or
+		 * A slab is refused whole, so the bore is never ragged: unbreakable, Company rock to a drill that cannot bite it or a hull too hot to (#526), outside the world, the ceiling row, last-layer crust, or
 		 * a cell that cannot change without loading a chunk (breaking a block tells its four sides, so a bore at the edge of the
 		 * loaded chunks waits until the next one is loaded; a pilot's view keeps the chunks around a bore loaded).
 		 */
@@ -175,7 +179,11 @@ public final class PodDrill {
 				if (level.isOutsideBuildHeight(pos) || pos.getY() >= level.getMaxY() || !blocks.canChange(pos)) {
 					return false;
 				}
-				if (breakable(state) && (state.getDestroySpeed(level, pos) < 0 || state.is(HazardBlocks.UNDIGGABLE)
+				if (state.is(HazardBlocks.UNDIGGABLE)) {
+					if (!canBite || tooHot) {
+						return false;
+					}
+				} else if (breakable(state) && (state.getDestroySpeed(level, pos) < 0
 						|| state.is(LayerBlocks.BREACH_CRUST) && !crustLeadsOn())) {
 					return false;
 				}
@@ -188,7 +196,9 @@ public final class PodDrill {
 			int ticks = 1;
 			for (BlockPos pos : cells) {
 				BlockState state = state(pos);
-				if (breakable(state)) {
+				if (state.is(HazardBlocks.UNDIGGABLE)) {
+					ticks = Math.max(ticks, PodRockBite.drillTicks(stats, depth));
+				} else if (breakable(state)) {
 					ticks = Math.max(ticks, PodDrill.drillTicks(stats, state.getDestroySpeed(level, pos), depth));
 				}
 			}
