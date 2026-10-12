@@ -37,7 +37,8 @@ public class PodChargeScenario extends EvidenceScenario {
 	private static final int FLOOR_Y = 40;
 	private static final int TICKS_PER_FRAME = 3;
 	private static final int MAX_TICKS = 900;
-	private static final float LOOK_DOWN = 35f;
+	/** The front camera mirrors the pitch: a negative pitch puts it above the pod, looking down at it and at the slab behind it. */
+	private static final float LOOK_DOWN = -35f;
 	/** Past the reach of the blast: the pod's box (1.9 wide) is more than the 3 blocks of chargeReach from the volume (it ends at Z + 1). */
 	private static final double SAFE_Z = Z + 5.5;
 	private static final int BORED_SLABS = 3;
@@ -85,7 +86,7 @@ public class PodChargeScenario extends EvidenceScenario {
 					&& client.level.dimension().equals(LayerChain.dimension(1)));
 			ClientWait.until(context, "the pod resting on its slab", client -> client.player.getVehicle().onGround());
 			context.runOnClient(client -> {
-				client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+				client.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
 				client.player.setXRot(LOOK_DOWN);
 			});
 			context.waitTicks(30);
@@ -155,16 +156,24 @@ public class PodChargeScenario extends EvidenceScenario {
 			context.getInput().holdKey(options -> options.keySprint);
 			ticks = 0;
 			double bottom = FLOOR_Y - 2 - BORED_SLABS;
+			boolean inHole = false;
 			while (podY(singleplayer) > bottom + 0.1 && ticks < MAX_TICKS) {
 				context.waitTicks(TICKS_PER_FRAME);
 				ticks += TICKS_PER_FRAME;
 				frame(context);
+				if (!inHole && podY(singleplayer) <= FLOOR_Y - 1.5) {
+					inHole = true;
+					screenshot(context, "pod-charge-hole");
+				}
 			}
 			context.getInput().releaseKey(options -> options.keySprint);
 			if (podY(singleplayer) > bottom + 0.1) {
 				throw new AssertionError("the pod should bore on down the straight shaft, it is at y " + podY(singleplayer));
 			}
-			for (int i = 0; i < 6; i++) {
+			// Float above the room, looking down the shaft the pod bored.
+			context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+			floatAbovePod(singleplayer, X + 1.0, FLOOR_Y + 3.0, Z + 1.0);
+			for (int i = 0; i < 10; i++) {
 				context.waitTicks(TICKS_PER_FRAME);
 				frame(context);
 			}
