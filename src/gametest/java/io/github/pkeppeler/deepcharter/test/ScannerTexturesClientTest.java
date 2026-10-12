@@ -10,14 +10,22 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
+import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
+import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest.HudShot;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
+import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
@@ -28,16 +36,50 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
  * sprite falls back to the theme's flat rock colour.
  */
 public class ScannerTexturesClientTest implements FabricClientGameTest {
+	private static final Logger LOGGER = LoggerFactory.getLogger("ScannerTextures");
 	private static final ScannerTuning TUNING = ScannerTuning.DEFAULT;
 	private static final int RGB = 0xFFFFFF;
 	private static final int ROW = ScannerHudTest.GOLD_UP;
-	/** The blocks of the row, one cell each, from {@link #FIRST} ahead. Stone is the first. */
-	private static final List<Block> BLOCKS = List.of(Blocks.STONE, Blocks.DEEPSLATE, HazardBlocks.COMPANY_ROCK, Blocks.IRON_ORE,
-			Blocks.GOLD_ORE, Blocks.DIAMOND_ORE, Blocks.COAL_ORE);
-	private static final double MIN_ORE_RATIO = 2.0;
+	/** The blocks of the row, one cell each, from {@link #FIRST} ahead: the layers' own rock first, then Company Rock, then four of the mod's ores. */
+	private static final List<Block> BLOCKS = List.of(block("packed_shale"), block("green_shale"), HazardBlocks.COMPANY_ROCK,
+			OreBlocks.of(OreType.IRONIUM), OreBlocks.of(OreType.BRONZIUM), OreBlocks.of(OreType.SILVERIUM), OreBlocks.of(OreType.GOLDIUM));
+	private static final double MIN_CONTRASTING_SHARE = 0.4;
+	/** How far (RGB distance, of 441) a pixel must be from the rock's mean colour to count as standing out of it. */
+	private static final double CONTRAST = 48;
 	private static final int FIRST = 1;
+	/** A plain vanilla stone cell after the row: the test packs restyle stone. */
+	private static final int STONE_AHEAD = FIRST + BLOCKS.size();
 	/** Index in {@link #BLOCKS} of the first ore. */
 	private static final int FIRST_ORE = 3;
+
+	private static Block block(String path) {
+		return BuiltInRegistries.BLOCK.getValue(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
+	}
+
+	/** The mean RGB of the pixels. */
+	private static double[] mean(int[] pixels) {
+		double[] mean = new double[3];
+		for (int pixel : pixels) {
+			mean[0] += (pixel >> 16) & 0xFF;
+			mean[1] += (pixel >> 8) & 0xFF;
+			mean[2] += pixel & 0xFF;
+		}
+		for (int i = 0; i < 3; i++) {
+			mean[i] /= pixels.length;
+		}
+		return mean;
+	}
+
+	/** The share of the pixels whose colour is {@link #CONTRAST} or more from {@code reference}. */
+	private static double contrastingShare(int[] pixels, double[] reference) {
+		long far = Arrays.stream(pixels).filter(pixel -> {
+			double dr = ((pixel >> 16) & 0xFF) - reference[0];
+			double dg = ((pixel >> 8) & 0xFF) - reference[1];
+			double db = (pixel & 0xFF) - reference[2];
+			return Math.sqrt(dr * dr + dg * dg + db * db) >= CONTRAST;
+		}).count();
+		return (double) far / pixels.length;
+	}
 
 	private static HudShot shot(ClientGameTestContext context, String name) {
 		return HudShot.take(context, name, ScannerHudTest.TIER_ONE);
@@ -54,6 +96,7 @@ public class ScannerTexturesClientTest implements FabricClientGameTest {
 			for (int i = 0; i < BLOCKS.size(); i++) {
 				ScannerHudTest.placeBesidePod(server, FIRST + i, ROW, BLOCKS.get(i));
 			}
+			ScannerHudTest.placeBesidePod(server, STONE_AHEAD, ROW, Blocks.STONE);
 			context.waitTicks(2 * TUNING.rescanTicks() + 2);
 
 			// Each block is its own texture, and a texture keeps its grain: more than one colour in a cell, not their average.
@@ -65,28 +108,24 @@ public class ScannerTexturesClientTest implements FabricClientGameTest {
 				require(colours > 1, "%s: the cell should keep the block's grain, but it is one flat colour (%06X)".formatted(BLOCKS.get(i), pixels[0]));
 				require(seen.add(Arrays.stream(pixels).boxed().toList()), "%s: the cell should look unlike the other blocks' cells".formatted(BLOCKS.get(i)));
 			}
-			// Ore stays easy to spot: the frame and lift make every ore cell at least MIN_ORE_RATIO times as bright as the rock beside it. A
-			// flat ore colour was 2.8 times as bright as the flat rock, but it was also all there was of the cell; the frame carries the ore
-			// and leaves the texture inside it to show.
-			double brightestRock = Math.max(textured.brightness(FIRST, ROW), textured.brightness(FIRST + 1, ROW));
+			// Ore stays easy to spot, by its own texture: at least MIN_CONTRASTING_SHARE of every ore cell's pixels stand out of the rock's mean colour
+			// (a flat ore colour stood out in all of them, but it was all there was of the cell), and the four ores differ from each other.
+			double[] rock = mean(textured.cellPixels(FIRST, ROW));
 			for (int i = FIRST_ORE; i < BLOCKS.size(); i++) {
-				double ratio = textured.brightness(FIRST + i, ROW) / brightestRock;
-				require(ratio >= MIN_ORE_RATIO, "%s: the ore cell should be %.1f times as bright as the rock, it is %.2f".formatted(BLOCKS.get(i), MIN_ORE_RATIO, ratio));
+				double share = contrastingShare(textured.cellPixels(FIRST + i, ROW), rock);
+				LOGGER.info("[scanner-textures] {}: {} of its pixels stand out of the rock", BLOCKS.get(i), share);
+				require(share >= MIN_CONTRASTING_SHARE, "%s: at least %.0f%% of the ore cell should stand out of the rock, %.0f%% does".formatted(BLOCKS.get(i), MIN_CONTRASTING_SHARE * 100, share * 100));
 			}
-			// The frame is there on a cell big enough for it: the ore cell's corner pixel is the frame colour, laid over the texture.
-			int[] ore = textured.cellPixels(FIRST + FIRST_ORE, ROW);
-			require((ore[0] & RGB) == (ScannerLook.current().oreOutlineColor() & RGB), "the iron ore cell should be framed in %06X, its corner is %06X"
-					.formatted(ScannerLook.current().oreOutlineColor() & RGB, ore[0]));
 
 			// The active pack's texture drives the cell: stone as flat magenta draws magenta.
 			ClientPacks.enable(context, TestPacks.SCANNER_STONE_MAGENTA);
 			try {
 				context.waitTicks(2 * TUNING.rescanTicks() + 2);
 				HudShot magenta = shot(context, "scanner-textures-magenta");
-				require(magenta.channel(FIRST, ROW, 16) > 3 * magenta.channel(FIRST, ROW, 8) && magenta.channel(FIRST, ROW, 0) > 3 * magenta.channel(FIRST, ROW, 8),
+				require(magenta.channel(STONE_AHEAD, ROW, 16) > 3 * magenta.channel(STONE_AHEAD, ROW, 8) && magenta.channel(STONE_AHEAD, ROW, 0) > 3 * magenta.channel(STONE_AHEAD, ROW, 8),
 						"the pack's magenta stone should draw magenta in the cell, red %.1f green %.1f blue %.1f".formatted(
-								magenta.channel(FIRST, ROW, 16), magenta.channel(FIRST, ROW, 8), magenta.channel(FIRST, ROW, 0)));
-				require(!Arrays.equals(magenta.cellPixels(FIRST + 1, ROW), magenta.cellPixels(FIRST, ROW)), "the deepslate cell should not change with the stone pack");
+								magenta.channel(STONE_AHEAD, ROW, 16), magenta.channel(STONE_AHEAD, ROW, 8), magenta.channel(STONE_AHEAD, ROW, 0)));
+				require(Arrays.equals(magenta.cellPixels(FIRST, ROW), textured.cellPixels(FIRST, ROW)), "the shale cell should not change with the stone pack");
 			} finally {
 				ClientPacks.disable(context, TestPacks.SCANNER_STONE_MAGENTA);
 			}
@@ -96,9 +135,9 @@ public class ScannerTexturesClientTest implements FabricClientGameTest {
 			try {
 				context.waitTicks(2 * TUNING.rescanTicks() + 2);
 				HudShot missing = shot(context, "scanner-textures-missing");
-				int rock = ScannerLook.current().rockColor() & RGB;
-				require(Arrays.stream(missing.cellPixels(FIRST, ROW)).allMatch(pixel -> pixel == rock),
-						"a stone with no usable sprite should fall back to the flat rock colour %06X".formatted(rock));
+				int flatRock = ScannerLook.current().rockColor() & RGB;
+				require(Arrays.stream(missing.cellPixels(STONE_AHEAD, ROW)).allMatch(pixel -> pixel == flatRock),
+						"a stone with no usable sprite should fall back to the flat rock colour %06X".formatted(flatRock));
 			} finally {
 				ClientPacks.disable(context, TestPacks.SCANNER_STONE_MISSING);
 			}

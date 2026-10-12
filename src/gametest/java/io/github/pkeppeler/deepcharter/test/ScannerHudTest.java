@@ -141,11 +141,16 @@ public class ScannerHudTest implements FabricClientGameTest {
 			return image.getRGB(x, y) & RGB;
 		}
 
+		/** The screen pixels' side of one cell: GUI pixels per cell times the GUI scale. */
+		private int cellSize() {
+			return (window == null ? ScannerHud.cellSize(guiWidth, guiHeight, area) : ScannerHud.windowCellSize(window, area)) * scale;
+		}
+
 		/** The RGB of every screen pixel of the HUD cell {@code ahead} and {@code up} from the pod. */
 		public int[] cellPixels(int ahead, int up) {
-			int size = ScannerHud.cellSize(guiWidth, guiHeight, area) * scale;
-			int left = ScannerHud.cellLeft(guiWidth, guiHeight, area, ahead) * scale;
-			int top = ScannerHud.cellTop(guiWidth, guiHeight, area, up) * scale;
+			int size = cellSize();
+			int left = (window == null ? ScannerHud.cellLeft(guiWidth, guiHeight, area, ahead) : ScannerHud.windowCellLeft(guiWidth, window, area, ahead)) * scale;
+			int top = (window == null ? ScannerHud.cellTop(guiWidth, guiHeight, area, up) : ScannerHud.windowCellTop(guiHeight, window, area, up)) * scale;
 			int[] pixels = new int[size * size];
 			for (int y = 0; y < size; y++) {
 				for (int x = 0; x < size; x++) {

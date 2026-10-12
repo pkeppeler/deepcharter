@@ -1,13 +1,19 @@
 package io.github.pkeppeler.deepcharter.client.scanner;
 
+import java.util.ArrayList;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.block.BlockStateModelSet;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.resources.model.geometry.BakedQuad;
+import net.minecraft.core.Direction;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
@@ -16,26 +22,28 @@ import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice.Cell;
 
 /**
- * The block-atlas sprite that draws a scanner cell: the one sprite the active resource pack's model of the block names as its particle
- * sprite, which is the texture the block breaks into. That is the block's own face for stone, ores, Company Rock and wreck blocks, and the
- * one-sprite summary the pack chose for a block with several faces. Reading it from the model, not the texture file, means a pack that
- * restyles a block restyles its scanner cell.
+ * The block-atlas sprites that draw a scanner cell, bottom layer first: the layers the active resource pack's model of the block puts on its
+ * {@value #FACE} face, which is the block as the world shows it from the side. A plain block is one sprite (stone, Company Rock, a wreck
+ * block). An ore is two: the host rock, then the ore's own overlay of flecks, which is why the particle sprite, always the host, is not
+ * enough. Reading the layers from the model, not the texture files, means a pack that restyles a block restyles its scanner cell.
+ * The layers come from the model's first variant (a seeded pick), so a block looks the same in every cell.
  *
- * <p>A block with no model, or whose model names the missing-texture sprite, has no usable sprite: {@link #of} is empty and the HUD
- * draws the theme's flat colour.
+ * <p>A block with no quads on that face (a model that is not a cube) uses its particle sprite. A block with no model, or whose sprites
+ * are all the missing-texture sprite, has no usable layers: {@link #of} is empty and the HUD draws the theme's flat colour.
  */
 final class ScannerSprites {
-	/** Sprites by block for the model set they were read from; a resource reload bakes a new set, which drops them all. */
-	private static final Map<Block, Optional<TextureAtlasSprite>> BY_BLOCK = new IdentityHashMap<>();
+	private static final Direction FACE = Direction.NORTH;
+	/** Layers by block for the model set they were read from; a resource reload bakes a new set, which drops them all. */
+	private static final Map<Block, List<TextureAtlasSprite>> BY_BLOCK = new IdentityHashMap<>();
 	private static BlockStateModelSet readFrom;
 
 	private ScannerSprites() {
 	}
 
-	/** The sprite for the cell {@code (ahead, up)} of {@code slice}, which holds {@code cell}; empty for open space and for a cell with no usable sprite. */
-	static Optional<TextureAtlasSprite> of(ScanSlice slice, Cell cell, int ahead, int up) {
+	/** The layers for the cell {@code (ahead, up)} of {@code slice}, which holds {@code cell}; empty for open space and for a cell with no usable sprite. */
+	static List<TextureAtlasSprite> of(ScanSlice slice, Cell cell, int ahead, int up) {
 		return switch (cell) {
-			case Cell.Air air -> Optional.empty();
+			case Cell.Air air -> List.of();
 			case Cell.Rock rock -> ofBlock(slice.block(ahead, up));
 			case Cell.Ore ore -> ofBlock(ore.block());
 			case Cell.Lava lava -> lava();
@@ -44,21 +52,42 @@ final class ScannerSprites {
 		};
 	}
 
-	private static Optional<TextureAtlasSprite> ofBlock(Block block) {
+	private static List<TextureAtlasSprite> ofBlock(Block block) {
 		BlockStateModelSet models = Minecraft.getInstance().getModelManager().getBlockStateModelSet();
 		if (models != readFrom) {
 			BY_BLOCK.clear();
 			readFrom = models;
 		}
-		return BY_BLOCK.computeIfAbsent(block, b -> usable(models.getParticleMaterial(b.defaultBlockState()).sprite()));
+		return BY_BLOCK.computeIfAbsent(block, b -> layers(models.get(b.defaultBlockState())));
+	}
+
+	private static List<TextureAtlasSprite> layers(BlockStateModel model) {
+		List<BlockStateModelPart> parts = new ArrayList<>();
+		model.collectParts(RandomSource.create(0), parts);
+		List<TextureAtlasSprite> layers = new ArrayList<>();
+		for (BlockStateModelPart part : parts) {
+			// Quads with a cull face and quads without one, which an overlay element usually is.
+			for (Direction cull : new Direction[] {FACE, null}) {
+				for (BakedQuad quad : part.getQuads(cull)) {
+					if (quad.direction() == FACE) {
+						layers.add(quad.materialInfo().sprite());
+					}
+				}
+			}
+		}
+		if (layers.isEmpty()) {
+			layers.add(model.particleMaterial().sprite());
+		}
+		return layers.stream().distinct().filter(ScannerSprites::usable).toList();
 	}
 
 	/** Lava is a fluid: its sprite is the fluid model's still one, not a block model's. */
-	private static Optional<TextureAtlasSprite> lava() {
-		return usable(Minecraft.getInstance().getModelManager().getFluidStateModelSet().get(Blocks.LAVA.defaultBlockState().getFluidState()).stillMaterial().sprite());
+	private static List<TextureAtlasSprite> lava() {
+		TextureAtlasSprite still = Minecraft.getInstance().getModelManager().getFluidStateModelSet().get(Blocks.LAVA.defaultBlockState().getFluidState()).stillMaterial().sprite();
+		return usable(still) ? List.of(still) : List.of();
 	}
 
-	private static Optional<TextureAtlasSprite> usable(TextureAtlasSprite sprite) {
-		return sprite.contents().name().equals(MissingTextureAtlasSprite.getLocation()) ? Optional.empty() : Optional.of(sprite);
+	private static boolean usable(TextureAtlasSprite sprite) {
+		return !sprite.contents().name().equals(MissingTextureAtlasSprite.getLocation());
 	}
 }

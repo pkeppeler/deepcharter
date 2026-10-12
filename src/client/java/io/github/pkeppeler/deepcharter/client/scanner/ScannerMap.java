@@ -2,7 +2,9 @@ package io.github.pkeppeler.deepcharter.client.scanner;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -33,7 +35,7 @@ import io.github.pkeppeler.deepcharter.scanner.ScanSlice.Cell;
  *
  * <p>A cell's pixels are read from the active resource pack's texture file for the sprite that {@link ScannerSprites} names, because the block
  * atlas lives on the graphics card and cannot be read back. The first frame of an animated texture is the cell's. Each texture is
- * scaled to the cell by a small supersample (see {@link #scale(int[], int, int, int, int)}), so the grain stays where it is and keeps its contrast. The scaled tiles are kept until the resources reload.
+ * scaled to the cell by a small supersample (see {@link #scale(int[], int, int, int)}), so the grain stays where it is and keeps its contrast. The scaled tiles are kept until the resources reload.
  */
 final class ScannerMap {
 	private static final Logger LOGGER = LoggerFactory.getLogger("ScannerMap");
@@ -55,7 +57,7 @@ final class ScannerMap {
 	private static final Map<TileKey, Optional<int[]>> TILES = new HashMap<>();
 	private static BlockStateModelSet tilesFrom;
 
-	private record TileKey(Identifier sprite, int pixels) {
+	private record TileKey(List<Identifier> sprites, int pixels, int backdrop) {
 	}
 
 	private ScannerMap() {
@@ -102,7 +104,7 @@ final class ScannerMap {
 				if (found instanceof Cell.Air) {
 					fillTile(image, x, y, pixels, 0);
 				} else {
-					Optional<int[]> tile = ScannerSprites.of(slice, found, ahead, up).flatMap(sprite -> tile(sprite, pixels, look.airColor()));
+					Optional<int[]> tile = tile(ScannerSprites.of(slice, found, ahead, up), pixels, look.airColor());
 					if (tile.isEmpty()) {
 						fillTile(image, x, y, pixels, ScannerHud.flatColour(look, found));
 					} else {
@@ -147,16 +149,35 @@ final class ScannerMap {
 		return result;
 	}
 
-	private static Optional<int[]> tile(TextureAtlasSprite sprite, int pixels, int backdrop) {
-		return TILES.computeIfAbsent(new TileKey(sprite.contents().name(), pixels), key -> read(sprite, pixels, backdrop));
+	/** The layers laid over each other, bottom first, over {@code backdrop}, each scaled to {@code pixels} square; empty when there are none or one cannot be read. */
+	private static Optional<int[]> tile(List<TextureAtlasSprite> layers, int pixels, int backdrop) {
+		if (layers.isEmpty()) {
+			return Optional.empty();
+		}
+		return TILES.computeIfAbsent(new TileKey(layers.stream().map(sprite -> sprite.contents().name()).toList(), pixels, backdrop), key -> compose(layers, pixels, backdrop));
 	}
 
-	/** The first frame of the sprite's texture file in the active packs, scaled to {@code pixels} square and laid over {@code backdrop}; empty when the file cannot be read. */
-	private static Optional<int[]> read(TextureAtlasSprite sprite, int pixels, int backdrop) {
+	private static Optional<int[]> compose(List<TextureAtlasSprite> layers, int pixels, int backdrop) {
+		int[] tile = new int[pixels * pixels];
+		Arrays.fill(tile, OPAQUE | backdrop);
+		for (TextureAtlasSprite layer : layers) {
+			Optional<int[]> scaled = read(layer, pixels);
+			if (scaled.isEmpty()) {
+				return Optional.empty();
+			}
+			for (int i = 0; i < tile.length; i++) {
+				tile[i] = over(scaled.get()[i], tile[i]);
+			}
+		}
+		return Optional.of(tile);
+	}
+
+	/** The first frame of the sprite's texture file in the active packs, scaled to {@code pixels} square, with alpha; empty when the file cannot be read. */
+	private static Optional<int[]> read(TextureAtlasSprite sprite, int pixels) {
 		Identifier name = sprite.contents().name();
 		Identifier file = name.withPrefix("textures/").withSuffix(".png");
 		try (InputStream stream = Minecraft.getInstance().getResourceManager().getResourceOrThrow(file).open(); NativeImage source = NativeImage.read(stream)) {
-			return Optional.of(scale(source, sprite.contents().width(), sprite.contents().height(), pixels, backdrop));
+			return Optional.of(scale(source, sprite.contents().width(), sprite.contents().height(), pixels));
 		} catch (IOException | RuntimeException e) {
 			LOGGER.warn("The scanner cannot read {} to draw it: {}", file, e.toString());
 			return Optional.empty();
@@ -164,25 +185,25 @@ final class ScannerMap {
 	}
 
 	/**
-	 * The top left {@code frameWidth} by {@code frameHeight} pixels of {@code source} scaled to {@code size} square by supersample, each
-	 * result pixel laid over {@code backdrop} by its coverage. Opaque ARGB.
+	 * The top left {@code frameWidth} by {@code frameHeight} pixels of {@code source} scaled to {@code size} square by supersample. ARGB: each result pixel's
+	 * alpha is how much of the frame under it is not see-through.
 	 */
-	static int[] scale(NativeImage source, int frameWidth, int frameHeight, int size, int backdrop) {
+	static int[] scale(NativeImage source, int frameWidth, int frameHeight, int size) {
 		int[] argb = new int[frameWidth * frameHeight];
 		for (int y = 0; y < frameHeight; y++) {
 			for (int x = 0; x < frameWidth; x++) {
 				argb[y * frameWidth + x] = source.getPixel(x, y);
 			}
 		}
-		return scale(argb, frameWidth, frameHeight, size, backdrop);
+		return scale(argb, frameWidth, frameHeight, size);
 	}
 
 	/**
-	 * As {@link #scale(NativeImage, int, int, int, int)}, for the pixels of the frame, row by row. Each result pixel is the mean of a
+	 * As {@link #scale(NativeImage, int, int, int)}, for the pixels of the frame, row by row. Each result pixel is the mean of a
 	 * {@value #SUPERSAMPLE} by {@value #SUPERSAMPLE} grid of points over the part of the frame it covers: smoother than one point, where a
 	 * speck of the grain is kept or lost by luck, and crisper than the mean of the whole part, which flattens a fine grain to grey.
 	 */
-	static int[] scale(int[] argb, int frameWidth, int frameHeight, int size, int backdrop) {
+	static int[] scale(int[] argb, int frameWidth, int frameHeight, int size) {
 		int[] scaled = new int[size * size];
 		for (int oy = 0; oy < size; oy++) {
 			for (int ox = 0; ox < size; ox++) {
@@ -205,7 +226,7 @@ final class ScannerMap {
 				}
 				int colour = alpha == 0 ? 0 : ((int) Math.round(red / alpha) << 16) | ((int) Math.round(green / alpha) << 8) | (int) Math.round(blue / alpha);
 				int coverage = (int) Math.round(255 * alpha / (SUPERSAMPLE * SUPERSAMPLE));
-				scaled[oy * size + ox] = over(coverage << 24 | colour, OPAQUE | backdrop);
+				scaled[oy * size + ox] = coverage << 24 | colour;
 			}
 		}
 		return scaled;
