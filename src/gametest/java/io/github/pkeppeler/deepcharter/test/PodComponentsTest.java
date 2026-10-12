@@ -571,7 +571,6 @@ public class PodComponentsTest {
 	public void aRevivedCharterTakesItsPodsBackAndTheirWreckStateStays(GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		MockPlayer director = MockPlayers.join(helper, "components-revive-director");
-		MockPlayer reviver = MockPlayers.join(helper, "components-revive-new");
 		MockPlayer stranger = MockPlayers.join(helper, "components-revive-stranger");
 		PodEntity pod = null;
 		try {
@@ -587,7 +586,7 @@ public class PodComponentsTest {
 				throw failure(helper, "a dormant charter owns no pod for the others");
 			}
 
-			expectNoRefusal(helper, Charters.revive(server, reviver.player().getUUID(), owner));
+			expectNoRefusal(helper, Charters.revive(server, director.player().getUUID(), owner));
 			if (PodComponents.ownerCharter(pod).map(Charter::id).filter(owner::equals).isEmpty()) {
 				throw failure(helper, "the revived charter owns its pod again");
 			}
@@ -597,13 +596,12 @@ public class PodComponentsTest {
 			if (!Wrecks.isWreck(pod)) {
 				throw failure(helper, "reviving a charter does not repair its wrecked pod");
 			}
-			if (!PodComponents.mayAccess(pod, Charters.charterOfOrThrow(server, reviver.player().getUUID()))) {
-				throw failure(helper, "the new Director may act on the pod");
+			if (!PodComponents.mayAccess(pod, Charters.charterOfOrThrow(server, director.player().getUUID()))) {
+				throw failure(helper, "the former member who revived may act on the pod");
 			}
 			helper.succeed();
 		} finally {
 			director.leave();
-			reviver.leave();
 			stranger.leave();
 			if (pod != null) {
 				pod.discard();
