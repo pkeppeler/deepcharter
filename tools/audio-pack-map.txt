@@ -17,6 +17,8 @@ pod.hull_burning       2006_lava.wav.mp3
 pod.lining_place       1971_clink.wav.mp3
 pod.glaze_burn         2006_lava.wav.mp3
 pod.seep_hiss          2006_lava.wav.mp3
+pod.signal_crackle     1971_clink.wav.mp3
+pod.signal_lost        2006_lava.wav.mp3
 
 # Creatures
 creature.approach      2006_lava.wav.mp3

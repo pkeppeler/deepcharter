@@ -102,6 +102,11 @@ public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks) {
 		// Invented (#482): the heat shield has no stock part. One tier, 1 for "fitted"; what it does is in PodHeatShieldTuning. $750 is three layer 2 runs of a hopper pod
 		// (EconomyAffordabilityTest): dearer than the liner's tier 1, because it is the pod that stays in lava, and under the liner's tier 2.
 		tracks.put(ComponentTrack.HEAT_SHIELD, new Tiers(List.of(0f, 1f), List.of(0L, 750L)));
+		// Invented (#502): the console is the cab's signal gear and every pod ships with the stock one (tier 0). Its value is the share of the signal decay's
+		// distance from the floor that is left (SignalDecayTuning): 1 is the stock reach, 0 is none, so the top tier is immune. Tier 1, $200, is two stock layer 1
+		// runs (EconomyAffordabilityTest); tier 2, $500, is priced with the other tier 2 parts; tier 3, $1,250, with the other tier 3 parts. A Mole (cap 2) cannot
+		// be immune: that is a Prospector's.
+		tracks.put(ComponentTrack.CONSOLE, new Tiers(List.of(1f, 0.6f, 0.3f, 0f), List.of(0L, 200L, 500L, 1250L)));
 		return tracks;
 	}
 }

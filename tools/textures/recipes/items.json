@@ -253,6 +253,22 @@
       "....bmmmmmmb",
       ".....BBBBBB",
       "......dddd"]}},
+    "item/part_console": {"template": "sprite", "args": {"legend": {
+      "h": "steel.5", "l": "steel.4", "m": "steel.3", "d": "steel.2", "k": "steel.1", "p": "phosphor.3", "q": "phosphor.5", "g": "glass.1", "t": "signal.3"}, "rows": [
+      "",
+      "..hhhhhhhhhhhh",
+      "..hllllllllllm",
+      "..hlkkkkkkkklm",
+      "..hlkpppqpppkm",
+      "..hlkpqpppqpkm",
+      "..hlktttttttkm",
+      "..hlkppqpppqkm",
+      "..hlkpppppqpkm",
+      "..hlkkkkkkkklm",
+      "..hllllllllllm",
+      "...mmmmmmmmmmd",
+      "....kkddddkk",
+      "...kkkkkkkkkk"]}},
     "item/part_brace": {"template": "sprite", "args": {"legend": {
       "C": "brass.5", "b": "brass.4", "B": "brass.3", "m": "steel.4", "k": "steel.2", "h": "hazard.3"}, "rows": [
       "",

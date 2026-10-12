@@ -15,6 +15,7 @@ public final class PodClientInit {
 		CockpitHud.init();
 		FrontCameraFeed.init();
 		LowFuelBeep.init();
+		SignalDecayCue.init();
 		PilotFire.init();
 		LiningKeys.register();
 	}
