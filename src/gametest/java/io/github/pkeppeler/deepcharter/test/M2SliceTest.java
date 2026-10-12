@@ -219,11 +219,11 @@ public class M2SliceTest {
 				first.getInventory().add(OreRegistry.stack(OreType.IRONIUM));
 				expectDone(helper, Terminals.act(first, terminal, OreProcessor.SELL_INVENTORY, new CompoundTag()), "selling the ore");
 
-				// Chapter 5 again: a part is bought at the upgrade terminal (the scanner is not sold: its first tier is crafted).
+				// Chapter 5 again: a part is bought at the upgrade terminal (tier 1 of every part is crafted, so the first purchase is a tier 2).
 				helper.getLevel().setBlock(terminal, TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(), 3);
 				CompoundTag args = new CompoundTag();
 				args.putString(UpgradeTerminal.TRACK_KEY, ComponentTrack.LIGHTS.id());
-				args.putInt(UpgradeTerminal.TIER_KEY, 1);
+				args.putInt(UpgradeTerminal.TIER_KEY, 2); // tier 1 is crafted and not sold (#536)
 				expectDone(helper, Terminals.act(first, terminal, UpgradeTerminal.BUY, args), "buying lights");
 
 				// Chapter 6: the scanner crafted in chapter 1 is fitted to the Mole, then ore in view from the pilot's seat.
