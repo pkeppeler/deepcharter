@@ -23,19 +23,15 @@ import texgen  # noqa: E402
 
 MOD_ASSETS = texgen.ROOT / "src/main/resources/assets"
 ORES_DOC = texgen.ROOT / "docs/design/ores.md"
-# The one vanilla file the mod ships: the sky's sun (ADR 0030). Anything else under assets/minecraft/ overrides vanilla art the mod
-# promised not to touch, an ore's host stone first.
-VANILLA_FILES = {"textures/environment/celestial/sun.png"}
-# The vanilla blocks a pack may redraw: layer rock is vanilla stone until it has blocks of its own (#241), which the texture density packs
-# redraw. The layer concept packs (docs/design/layer-concepts-2.md) stand in vanilla granite, tuff and andesite for the rock of layers 1, 2
-# and 3 and cobblestone, cobbled deepslate and diorite for their rubble, and never stone or deepslate, which the hall of each scene shows
-# untouched.
-VANILLA_BLOCKSTATES = {f"minecraft/blockstates/{name}.json" for name in
-                       ("stone", "cobblestone", "deepslate", "cobbled_deepslate", "granite", "tuff", "andesite", "diorite")}
+# The vanilla files the mod ships: the sky's sun (ADR 0030) and the animated lava of the layers (#241). Anything else under assets/minecraft/
+# overrides vanilla art the mod promised not to touch, an ore's host stone first.
+VANILLA_FILES = {"textures/environment/celestial/sun.png", *(f"textures/block/{name}{suffix}" for name in ("lava_still", "lava_flow")
+                                                           for suffix in (".png", ".png.mcmeta"))}
+# The vanilla blocks a pack may redraw: the texture density packs redraw stone and deepslate. The layer concept packs (docs/design/layer-concepts-2.md)
+# stand in vanilla andesite and diorite for the rock and rubble of layer 3, which has no blocks of its own until M3 (#504).
+VANILLA_BLOCKSTATES = {f"minecraft/blockstates/{name}.json" for name in ("stone", "deepslate", "andesite", "diorite")}
 # The test mod's own blockstates a pack may draw: the stand-in for Company Rock of the concept round (#503), which test/support/ConceptRock registers.
 TEST_BLOCKSTATES = {"deepcharter_test/blockstates/company_rock.json"}
-# The vanilla textures a pack may redraw by file: the layer concept packs give all three texture options one crusted lava (a test pack only).
-VANILLA_TEXTURES = {"minecraft/textures/block/lava_still.png", "minecraft/textures/block/lava_flow.png"}
 
 
 def resolve(pack_assets: Path, ref: str, kind: str, suffix: str) -> Path | None:
@@ -76,7 +72,7 @@ class TexturePacksTest(unittest.TestCase):
             with self.subTest(variant=name):
                 self.assertEqual([], self.problems(texgen.ROOT / entry["pack"]))
 
-    def test_the_mod_ships_no_vanilla_file_but_the_sun(self):
+    def test_the_mod_ships_no_vanilla_file_but_the_sun_and_the_lava(self):
         root = MOD_ASSETS / "minecraft"
         shipped = {path.relative_to(root).as_posix() for path in root.rglob("*") if path.is_file()}
         self.assertEqual(VANILLA_FILES, shipped, "a file under assets/minecraft/ overrides a vanilla one; draw over it by reference")
@@ -203,7 +199,7 @@ class TexturePacksTest(unittest.TestCase):
                 problems.append(f"{model.relative_to(assets)}: no blockstate of the pack uses it")
         for texture in sorted(assets.glob("*/textures/**/*.png")):
             relative = texture.relative_to(assets).as_posix()
-            if texture not in used_textures and not (MOD_ASSETS / relative).is_file() and relative not in VANILLA_TEXTURES:
+            if texture not in used_textures and not (MOD_ASSETS / relative).is_file():
                 problems.append(f"{relative}: no model of the pack uses it, and it replaces no texture of the mod")
         return problems
 

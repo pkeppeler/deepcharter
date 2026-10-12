@@ -1,5 +1,9 @@
 {
   "values": [
-    "deepcharter:regolith_rock"
+    "deepcharter:regolith_rock",
+    "deepcharter:packed_shale",
+    "deepcharter:green_shale",
+    "deepcharter:packed_shale_rubble",
+    "deepcharter:green_shale_rubble"
   ]
 }

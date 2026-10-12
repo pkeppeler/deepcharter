@@ -104,6 +104,29 @@ class ModelUvTest(unittest.TestCase):
         self.assertEqual(pipe["north"]["uv"], [5, 0, 11, 16])
 
 
+class SteelBeamJoinTest(unittest.TestCase):
+    """A steel beam is inset from the sides of its block, so a beam that meets another at a right angle stopped short of it (#241): its profile runs
+    on past each end into the next block, and the run has no cap."""
+
+    def elements(self):
+        return kit.i_beam().json("steel beam")["elements"]
+
+    def test_the_profile_runs_on_past_both_ends_by_the_reach_and_the_beam_itself_still_spans_its_block(self):
+        elements = self.elements()
+        self.assertEqual(3 + 6, len(elements))
+        for y0, y1 in ((-kit.BEAM_REACH, 0), (16, 16 + kit.BEAM_REACH)):
+            self.assertEqual(3, sum(1 for e in elements if (e["from"][1], e["to"][1]) == (y0, y1)))
+        self.assertEqual(3, sum(1 for e in elements if (e["from"][1], e["to"][1]) == (0, 16)))
+
+    def test_the_run_has_no_cap_and_shows_the_rows_of_texture_that_the_next_beam_shows_there(self):
+        for e in self.elements():
+            if e["from"][1] < 0 or e["to"][1] > 16:
+                self.assertTrue(e["faces"].keys().isdisjoint({"up", "down"}), "a cap inside the channel of the beam above")
+                for face in e["faces"].values():
+                    rows = face["uv"][1::2]
+                    self.assertEqual([0.0, kit.BEAM_REACH] if e["from"][1] < 0 else [16 - kit.BEAM_REACH, 16.0], rows)
+
+
 class KitAgreesWithJavaTest(unittest.TestCase):
     def test_the_kit_registers_exactly_the_blocks_the_catalogue_draws(self):
         source = (JAVA / "ColonyKit.java").read_text()

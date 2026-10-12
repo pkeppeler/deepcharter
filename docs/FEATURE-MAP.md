@@ -78,7 +78,7 @@ flowchart LR
   l_bootstrap["Bootstrap: salvage to the first run<br/>12 of 12 built"]
   l_terminals["The colony's terminals<br/>7 of 8 built"]
   l_handbook["The Employee Handbook<br/>11 of 14 built"]
-  l_layers["Layers, breaches and the story<br/>13 of 24 built"]
+  l_layers["Layers, breaches and the story<br/>14 of 24 built"]
   l_charter["Charters, crews and accounts<br/>7 of 9 built"]
   l_colony["The colony: Prosperity<br/>8 of 9 built"]
   l_pods["The pod chassis ladder<br/>6 of 10 built"]
@@ -157,7 +157,7 @@ flowchart LR
 | [Bootstrap: salvage to the first run](#bootstrap-salvage-to-the-first-run) | 12 | 0 | 0 | 0 |
 | [The colony's terminals](#the-colonys-terminals) | 7 | 0 | 1 | 0 |
 | [The Employee Handbook](#the-employee-handbook) | 11 | 0 | 3 | 0 |
-| [Layers, breaches and the story](#layers-breaches-and-the-story) | 13 | 1 | 9 | 1 |
+| [Layers, breaches and the story](#layers-breaches-and-the-story) | 14 | 0 | 9 | 1 |
 | [Charters, crews and accounts](#charters-crews-and-accounts) | 7 | 0 | 1 | 1 |
 | [The colony: Prosperity](#the-colony-prosperity) | 8 | 0 | 0 | 1 |
 | [The pod chassis ladder](#the-pod-chassis-ladder) | 6 | 0 | 4 | 0 |
@@ -186,7 +186,6 @@ flowchart LR
 ### In progress
 
 - **Company Rock look** (company-rock): A concept round for how Company Rock looks is under way; the chosen look is built later. [#503](https://github.com/pkeppeler/deepcharter/issues/503), [company-rock-concepts.md](design/company-rock-concepts.md)
-- **Layer rock textures and grades** (layers): Grained rock textures for layers 1 and 2, a lava redraw and an I-beam fix; depth palettes and colour grades follow. [#241](https://github.com/pkeppeler/deepcharter/issues/241)
 
 ### Planned
 
@@ -1322,7 +1321,7 @@ flowchart TB
   n_deepest_point["⚙️ Deepest point"]
   n_transmissions["⚙️ Transmissions"]
   n_layer_2["📍 Layer 2: The Old Workings"]
-  n_layer_depth_look["⚙️ Layer rock textures and grades"]
+  n_layer_depth_look["⚙️ Layer rock and lava look"]
   n_l2_upper["📍 Upper Levels"]
   n_l2_shift["📍 Shift Change"]
   n_l2_run["📍 Prospector's Run"]
@@ -1365,8 +1364,7 @@ flowchart TB
   classDef planned fill:#2e2e2e,stroke:#9e9e9e,stroke-width:1px,color:#d6d6d6
   classDef idea fill:#1a1a1a,stroke:#757575,stroke-width:1px,stroke-dasharray:4 3,color:#a0a0a0
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
-  class n_surface,n_layer_1,n_l1_topsoil,n_l1_benches,n_l1_deep,n_layer_structures,n_breach_1,n_deepest_point,n_transmissions,n_layer_2,n_l2_upper,n_l2_shift,n_l2_run built
-  class n_layer_depth_look progress
+  class n_surface,n_layer_1,n_l1_topsoil,n_l1_benches,n_l1_deep,n_layer_structures,n_breach_1,n_deepest_point,n_transmissions,n_layer_2,n_layer_depth_look,n_l2_upper,n_l2_shift,n_l2_run built
   class n_breach_in_world,n_campaign_world,n_layer_3,n_layer_4,n_layers_5_8,n_finale,n_ramp,n_seams,n_splice planned
   class n_uncharted idea
   class n_breach_crust,n_signal_decay,n_work_orders ext
@@ -1384,7 +1382,7 @@ flowchart TB
 | ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/480/deepest-point-layer-1.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/480/deepest-point-layer-1.png?raw=true" width="160" alt=""></a> | <a id="deepest-point"></a>**Deepest point**<br>mechanic | A charter's deepest point sets which orders and transmissions open. | ✅ Built | [#476](https://github.com/pkeppeler/deepcharter/issues/476), [mechanics.md](design/mechanics.md#the-deepest-point-476) |
 | ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/breach-transmission.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/breach-transmission.png?raw=true" width="160" alt=""></a> | <a id="transmissions"></a>**Transmissions**<br>mechanic | The story arrives as green-screen messages that fire once per charter, mostly at its deepest point. | ✅ Built | [ADR 0012](adr/0012-transmissions-fire-once-per-charter-and-each-member-has-a-place.md), [transmissions.md](lore/transmissions.md) |
 | 📍 | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/layer-2-cave-north.jpg?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/layer-2-cave-north.jpg?raw=true" width="160" alt=""></a> | <a id="layer-2"></a>**Layer 2: The Old Workings**<br>place | Collapsed mine levels, rails, a salvageable Prospector wreck, garbled transmissions. | ✅ Built | [SPEC.md](SPEC.md#story-layers) |
-| ⚙️ | no still yet | <a id="layer-depth-look"></a>**Layer rock textures and grades**<br>mechanic | Grained rock textures for layers 1 and 2, a lava redraw and an I-beam fix; depth palettes and colour grades follow. | 🔨 In progress | [#241](https://github.com/pkeppeler/deepcharter/issues/241) |
+| <img src="../src/main/resources/assets/deepcharter/textures/block/packed_shale_0.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/521/grain-layer1-wide-wall.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/521/grain-layer1-wide-wall.png?raw=true" width="160" alt=""></a> | <a id="layer-depth-look"></a>**Layer rock and lava look**<br>mechanic | Layers 1 and 2 have their own fine-grained rock, rust-brown and grey-green, that runs on across block edges like vanilla stone. Lava flows and glows, and steel beams that meet at a right angle meet with no gap. | ✅ Built | [#241](https://github.com/pkeppeler/deepcharter/issues/241), [ADR 0051](adr/0051-the-rock-of-layers-1-and-2-is-the-mods-own-blocks-and-the-lava-is-redrawn.md), [layer-concepts-2.md](design/layer-concepts-2.md) |
 | <img src="../src/main/resources/assets/deepcharter/textures/block/regolith_rock_0.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/structure-rails-long-drift.jpg?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/structure-rails-long-drift.jpg?raw=true" width="160" alt=""></a> | <a id="l2-upper"></a>**Upper Levels**<br>place | The top third of layer 2. | ✅ Built |  |
 | <img src="../src/main/resources/assets/deepcharter/textures/block/regolith_rock_0.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/structure-punch-clock-overview.jpg?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/structure-punch-clock-overview.jpg?raw=true" width="160" alt=""></a> | <a id="l2-shift"></a>**Shift Change**<br>place | The middle third of layer 2, where Cicatrium first appears. | ✅ Built |  |
 | <img src="../src/main/resources/assets/deepcharter/textures/block/regolith_rock_0.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/structure-wreck-prospector-0002.jpg?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/looks/a-dusk-company/structure-wreck-prospector-0002.jpg?raw=true" width="160" alt=""></a> | <a id="l2-run"></a>**Prospector's Run**<br>place | The bottom third of layer 2, with the Prospector wreck. | ✅ Built |  |
