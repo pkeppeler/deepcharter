@@ -103,7 +103,7 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 	@Override
 	protected void layout() {
 		orderRows.clear();
-		if (withdrawing) {
+		if (withdrawing()) {
 			layoutWithdrawal();
 			return;
 		}
@@ -194,11 +194,6 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 		ClientPlayNetworking.send(new TerminalActionPayload(view.pos(), OreProcessor.WITHDRAW_ORE, args));
 	}
 
-	private static String holdLine(ProcessorView.Hold hold) {
-		return Component.translatable("screen.deepcharter.processor.withdraw_row",
-				Component.translatable(OreRegistry.item(hold.ore()).getDescriptionId()).getString().toUpperCase(Locale.ROOT), hold.count()).getString();
-	}
-
 	/** The text of the withdraw list: what it does, then the ore and its count in the cargo of each row shown, or the line that says there is none. */
 	public List<String> withdrawLines() {
 		List<String> lines = new ArrayList<>();
@@ -206,23 +201,26 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 		if (cargo().isEmpty()) {
 			lines.add(Component.translatable("screen.deepcharter.processor.withdraw_none").getString());
 		}
-		listedHolds.forEach(hold -> lines.add(holdLine(hold)));
+		for (ProcessorView.Hold hold : listedHolds) {
+			lines.add(Component.translatable("screen.deepcharter.processor.withdraw_row",
+					Component.translatable(OreRegistry.item(hold.ore()).getDescriptionId()).getString().toUpperCase(Locale.ROOT), hold.count()).getString());
+		}
 		return lines;
 	}
 
 	@Override
 	public Component getNarrationMessage() {
-		return withdrawing ? holds.narrate(super.getNarrationMessage()) : super.getNarrationMessage();
+		return withdrawing() ? holds.narrate(super.getNarrationMessage()) : super.getNarrationMessage();
 	}
 
 	@Override
 	public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-		return (withdrawing && holds.mouseScrolled(scrollY)) || super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+		return (withdrawing() && holds.mouseScrolled(scrollY)) || super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
 	}
 
 	@Override
 	public boolean keyPressed(KeyEvent event) {
-		return (withdrawing && holds.keyPressed(event, this)) || super.keyPressed(event);
+		return (withdrawing() && holds.keyPressed(event, this)) || super.keyPressed(event);
 	}
 
 	/**
@@ -341,20 +339,19 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 		return lines;
 	}
 
-	/** The one line that says what the list does, and the ore of each row at the left of its buttons. */
+	/** What the list does, then the ore of each row at the left of its buttons, or the line that says there is none. */
 	private void extractWithdrawal(GuiGraphicsExtractor graphics, CrtTuning tuning) {
+		List<String> lines = withdrawLines();
 		int y = contentTop(MARGIN) + font.lineHeight + 14;
-		for (String line : CrtText.wrap(font, Component.translatable("screen.deepcharter.processor.withdraw_heading").getString(), contentWidth(MARGIN))) {
+		for (String line : CrtText.wrap(font, lines.getFirst(), contentWidth(MARGIN))) {
 			CrtDraw.glowText(graphics, font, line, contentLeft(MARGIN), y, tuning.phosphorColor());
 			y += font.lineHeight + tuning.lineSpacing();
 		}
 		if (cargo().isEmpty()) {
-			CrtDraw.glowText(graphics, font, Component.translatable("screen.deepcharter.processor.withdraw_none").getString(), contentLeft(MARGIN), holdsTop(),
-					PanelLook.dimText(tuning.dimColor()));
+			CrtDraw.glowText(graphics, font, lines.get(1), contentLeft(MARGIN), holdsTop(), PanelLook.dimText(tuning.dimColor()));
 		}
 		for (int row = 0; row < listedHolds.size(); row++) {
-			CrtDraw.glowText(graphics, font, holdLine(listedHolds.get(row)), contentLeft(MARGIN),
-					holdRows.get(row) + (BUTTON_HEIGHT - font.lineHeight) / 2, tuning.phosphorColor());
+			CrtDraw.glowText(graphics, font, lines.get(1 + row), contentLeft(MARGIN), holdRows.get(row) + (BUTTON_HEIGHT - font.lineHeight) / 2, tuning.phosphorColor());
 		}
 		holds.hint().ifPresent(hint -> CrtDraw.glowText(graphics, font, hint, contentLeft(MARGIN) + CLOSE_WIDTH + GAP,
 				contentBottom(MARGIN) - BUTTON_HEIGHT + (BUTTON_HEIGHT - font.lineHeight) / 2, tuning.phosphorColor()));
@@ -364,7 +361,7 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		CrtTuning tuning = CrtTuning.current();
 		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), contentLeft(MARGIN), contentTop(MARGIN), contentRight(MARGIN));
-		if (withdrawing) {
+		if (withdrawing()) {
 			extractWithdrawal(graphics, tuning);
 			super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 			return;
