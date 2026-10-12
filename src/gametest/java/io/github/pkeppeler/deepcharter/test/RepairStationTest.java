@@ -335,7 +335,7 @@ public class RepairStationTest {
 	}
 
 	@GameTest
-	public void theShopSellsTheSixItemsAtTheirTunedPrices(GameTestHelper helper) {
+	public void theShopSellsTheSevenItemsAtTheirTunedPrices(GameTestHelper helper) {
 		withStation(helper, station -> {
 			if (SHOP_PRICES.size() != Consumable.values().length) {
 				throw helper.assertionException("the shop sells %d items, the seven are %d", Consumable.values().length, SHOP_PRICES.size());

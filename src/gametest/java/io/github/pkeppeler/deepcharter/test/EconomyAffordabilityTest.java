@@ -466,7 +466,7 @@ public class EconomyAffordabilityTest {
 
 	/**
 	 * The blasting charge (#509) is the price of a straight shaft. A straight layer 1 bore needs one charge for each slab the drill refuses (one charge clears 2
-	 * slab rows, so a refusal under a hole already blasted costs nothing more; the bore bot measured 5.2 a bore against the 5.4 counted here). The whole shaft must cost a
+	 * slab rows, so a refusal under a hole already blasted costs nothing more; the bore bot measured 5.3 a bore against the 5.4 counted here). The whole shaft must cost a
 	 * few stock layer 1 runs at most: a shaft is a one-off the charter keeps, but a price that no run could pay for would make the answer a joke.
 	 */
 	@GameTest

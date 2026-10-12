@@ -202,9 +202,14 @@ public class BlastingChargeTest {
 	public void aChargeCountsDownOnTheActionBar(GameTestHelper helper) {
 		scene(helper, 3328, level -> {
 		}, pod -> pod.setPos(pod.getX() + FAR, pod.getY(), pod.getZ()), (helper2, level, pod, pilot, hull) -> {
-			String first = Component.translatable("message.deepcharter.repair.charge_count", 3).getString();
-			if (pilot.actionBarMessages().stream().noneMatch(message -> message.getString().equals(first))) {
-				throw failure(helper2, "the bar should have said '%s', it said %s", first, pilot.actionBarMessages());
+			String first = Component.translatable("message.deepcharter.repair.charge_set", 3).getString();
+			String second = Component.translatable("message.deepcharter.repair.charge_count", 2).getString();
+			if (pilot.actionBarMessages().stream().filter(message -> message.getString().equals(first)).count() != 1
+					|| pilot.actionBarMessages().stream().filter(message -> message.getString().equals("Charge: blast in 3")).count() != 0) {
+				throw failure(helper2, "the first count should print once, as the set warning: %s", pilot.actionBarMessages());
+			}
+			if (pilot.actionBarMessages().stream().noneMatch(message -> message.getString().equals(second))) {
+				throw failure(helper2, "the bar should go on to '%s', it said %s", second, pilot.actionBarMessages());
 			}
 		});
 	}
@@ -242,6 +247,13 @@ public class BlastingChargeTest {
 			if (step[0] == 0 && pod[0].onGround()) {
 				pending[0] = expectRefusedAndKept(helper, pilot, "no Company rock under the pod", "charge_no_company_rock");
 				level.setBlock(cell(x, -1, 0), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2);
+				step[0] = 10;
+			} else if (step[0] == 10) {
+				pod[0].setHull(TUNING.chargeDamage());
+				pending[0] = expectRefusedAndKept(helper, pilot, "a hull no more than the blast", "charge_hull_low");
+				pod[0].setHull(pod[0].maxHull());
+				step[0] = 11;
+			} else if (step[0] == 11) {
 				pod[0].setPos(pod[0].getX(), pod[0].getY() + 3, pod[0].getZ());
 				step[0] = 1;
 			} else if (step[0] == 1 && !pod[0].onGround()) {

@@ -16,16 +16,20 @@ import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
 import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
+import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 
 /**
  * The blasting charge (#509, ADR 0015): set from the seat on the slab under the pod, a fuse, then a blast that clears
  * {@code deepcharter:undiggable} (Company rock) and the natural rock round it. It is the one thing that does. The blast
- * volume is the pod's bore square plus a margin, {@code chargeDepth} slab rows deep.
+ * volume is the pod's bore square with no margin ({@code chargeMargin} 0: a margin of 1 opened a 4 x 4 chamber that drained the liner's rack),
+ * {@code chargeDepth} slab rows deep.
  *
  * <p>Rules: only blocks of {@link HazardBlocks#UNDIGGABLE} and {@link HazardBlocks#NATURAL_ROCK} go (so bricks, lining,
  * liner rings, structures, bedrock, crust and every fluid stay), and only in loaded chunks. A gas pocket in the volume
  * goes with the blast and vents no more, as in a gas blast. Lava next to the hole is not touched; the hole lets it
- * flow, as a bore does. Every pod within {@code chargeReach} of the volume takes {@code chargeDamage} less its distance share.
+ * flow, as a bore does. Every pod within {@code chargeReach} of the volume takes {@code chargeDamage} less its distance share, the setter's too
+ * unless it climbs clear (a wreck takes nothing; another charter's pod in reach is hurt, the risk of a shared shaft). A pod with no more hull
+ * than {@code chargeDamage} cannot set a charge.
  * The fuse belongs to the pod and is neither saved nor synced: a pod that is discarded or unloaded before the blast loses it.
  */
 public final class PodCharge {
@@ -33,9 +37,9 @@ public final class PodCharge {
 	private static final int SPARK_EVERY_TICKS = 4;
 
 	/** A burning fuse: the volume it will clear (inclusive corners) and the numbers of the tuning it was set with. */
-	record Fuse(BlockPos low, BlockPos high, int ticksLeft, float damage, double reach) {
+	record Fuse(BlockPos low, BlockPos high, int ticksLeft, int startTicks, float damage, double reach) {
 		Fuse burned() {
-			return new Fuse(low, high, ticksLeft - 1, damage, reach);
+			return new Fuse(low, high, ticksLeft - 1, startTicks, damage, reach);
 		}
 
 		AABB volume() {
@@ -54,6 +58,9 @@ public final class PodCharge {
 		if (!pod.onGround()) {
 			return refusal("charge_not_resting");
 		}
+		if (pod.hull() <= tuning.chargeDamage()) {
+			return refusal("charge_hull_low");
+		}
 		PodFootprint foot = PodFootprint.of(pod);
 		int top = Mth.ceil(pod.getY() - PodFootprint.EPSILON) - 1;
 		BlockPos low = new BlockPos(foot.lowX() - tuning.chargeMargin(), top - tuning.chargeDepth() + 1, foot.lowZ() - tuning.chargeMargin());
@@ -62,10 +69,10 @@ public final class PodCharge {
 		if (BlockPos.betweenClosedStream(low, high).noneMatch(cell -> new LoadedBlocks(level).getBlockState(cell).is(HazardBlocks.UNDIGGABLE))) {
 			return refusal("charge_no_company_rock");
 		}
-		Fuse fuse = new Fuse(low, high, tuning.chargeFuseTicks(), tuning.chargeDamage(), tuning.chargeReach());
+		Fuse fuse = new Fuse(low, high, tuning.chargeFuseTicks(), tuning.chargeFuseTicks(), tuning.chargeDamage(), tuning.chargeReach());
 		pod.setFuse(fuse);
 		level.playSound(null, pod.getX(), pod.getY(), pod.getZ(), DeepSound.DRILL_DYNAMITE.event(), SoundSource.PLAYERS);
-		count(pod, fuse);
+		count(pod, fuse, "charge_set");
 		return Optional.empty();
 	}
 
@@ -81,8 +88,8 @@ public final class PodCharge {
 			blast(level, fuse);
 			return;
 		}
-		if (fuse.ticksLeft() % TICKS_PER_SECOND == 0) {
-			count(pod, fuse);
+		if (fuse.ticksLeft() % TICKS_PER_SECOND == 0 && fuse.ticksLeft() < fuse.startTicks()) {
+			count(pod, fuse, "charge_count");
 		}
 		if (fuse.ticksLeft() % SPARK_EVERY_TICKS == 0) {
 			AABB volume = fuse.volume();
@@ -93,9 +100,9 @@ public final class PodCharge {
 	}
 
 	/** The seconds left, on the pilot's action bar. */
-	private static void count(PodEntity pod, Fuse fuse) {
+	private static void count(PodEntity pod, Fuse fuse, String key) {
 		if (pod.getControllingPassenger() instanceof ServerPlayer pilot) {
-			pilot.sendOverlayMessage(Component.translatable("message.deepcharter.repair.charge_count", Mth.ceil(fuse.ticksLeft() / (double) TICKS_PER_SECOND)));
+			pilot.sendOverlayMessage(Component.translatable("message.deepcharter.repair." + key, Mth.ceil(fuse.ticksLeft() / (double) TICKS_PER_SECOND)));
 		}
 	}
 
@@ -104,6 +111,9 @@ public final class PodCharge {
 		Vec3 middle = volume.getCenter();
 		// entity-query: the blast reaches chargeReach round a charge that a ticking pod set, so its chunks are entity-ticking
 		for (PodEntity pod : level.getEntitiesOfClass(PodEntity.class, volume.inflate(fuse.reach()))) {
+			if (Wrecks.isWreck(pod)) {
+				continue;
+			}
 			double share = 1 - Math.sqrt(distanceSqr(volume, pod.getBoundingBox())) / fuse.reach();
 			if (share > 0) {
 				pod.damageHull((float) (fuse.damage() * share));
