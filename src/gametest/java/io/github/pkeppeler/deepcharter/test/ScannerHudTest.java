@@ -161,7 +161,8 @@ public class ScannerHudTest implements FabricClientGameTest {
 			return Arrays.stream(cellPixels(ahead, up)).mapToDouble(pixel -> (pixel >> shift) & 0xFF).average().orElseThrow();
 		}
 
-		private static double luma(int rgb) {
+		/** Brightness (0 to 255) of an RGB colour. */
+		public static double luma(int rgb) {
 			return 0.2126 * ((rgb >> 16) & 0xFF) + 0.7152 * ((rgb >> 8) & 0xFF) + 0.0722 * (rgb & 0xFF);
 		}
 	}

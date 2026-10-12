@@ -62,7 +62,7 @@ Sprint to drill down, or push into a wall to drill sideways. Ore goes into the c
 
 ![The Scanner Mk 2 map of the rock around a pod](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/scanner-map.png?raw=true)
 
-The scanner is a side-view map of the rock around your pod, with ore as bright dots. A better scanner sees farther, and higher tiers also show hazards, such as lava, that you cannot see in the dark.
+The scanner is a side-view map of the rock around your pod, drawn as tiny copies of the blocks' own textures, with each ore framed in white. A better scanner sees farther, and higher tiers also show hazards, such as lava, that you cannot see in the dark.
 
 ### 5. Ore and selling
 

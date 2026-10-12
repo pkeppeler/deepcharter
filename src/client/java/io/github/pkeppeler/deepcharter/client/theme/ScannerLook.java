@@ -20,6 +20,10 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param rockShadeColor laid over the texture of every rock cell, so that the flecks of an ore stand out from the grain around it
  * @param oreLiftColor laid over the texture of every ore cell: the brightness lift that keeps ore as easy to spot as its flat colour was
  * @param goldOreLiftColor as {@code oreLiftColor}, for gold ore
+ * @param oreOutlineColor a one-pixel frame round every ore cell, drawn over the texture: it is what makes an ore stand out of the rock
+ * @param goldOreOutlineColor as {@code oreOutlineColor}, for gold ore
+ * @param oreOutlineMinPixels the smallest cell, in screen pixels, that gets the frame; a smaller cell is all frame, so its lift carries the ore alone
+ * @param lavaTintColor laid over the texture of a cell with lava in the plane: red, so that lava is not mistaken for the orange flecks of an ore
  * @param lavaNearShadeColor laid over the texture of a cell with lava only beside the plane: dim, so that it recedes behind the lava in the plane
  * @param gasTintColor laid over the texture of a gas pocket, which looks like stone and so needs a colour to read as gas
  * @param podColor the ridden pod
@@ -39,6 +43,10 @@ public record ScannerLook(
 		int rockShadeColor,
 		int oreLiftColor,
 		int goldOreLiftColor,
+		int oreOutlineColor,
+		int goldOreOutlineColor,
+		int oreOutlineMinPixels,
+		int lavaTintColor,
 		int lavaNearShadeColor,
 		int gasTintColor,
 		int podColor,
@@ -50,7 +58,7 @@ public record ScannerLook(
 	public static ScannerLook of(ThemeData d) {
 		return new ScannerLook(d.integer("cellPixels", 1), d.integer("margin", 0), d.color("titleColor"), d.color("airColor"),
 				d.color("rockColor"), d.color("oreColor"), d.color("goldOreColor"), d.color("lavaColor"), d.color("lavaNearColor"), d.color("gasColor"),
-				d.color("rockShadeColor"), d.color("oreLiftColor"), d.color("goldOreLiftColor"), d.color("lavaNearShadeColor"), d.color("gasTintColor"), d.color("podColor"),
+				d.color("rockShadeColor"), d.color("oreLiftColor"), d.color("goldOreLiftColor"), d.color("oreOutlineColor"), d.color("goldOreOutlineColor"), d.integer("oreOutlineMinPixels", 4), d.color("lavaTintColor"), d.color("lavaNearShadeColor"), d.color("gasTintColor"), d.color("podColor"),
 				d.color("frameColor"));
 	}
 }

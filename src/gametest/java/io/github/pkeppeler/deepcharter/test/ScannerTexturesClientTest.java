@@ -34,7 +34,10 @@ public class ScannerTexturesClientTest implements FabricClientGameTest {
 	/** The blocks of the row, one cell each, from {@link #FIRST} ahead. Stone is the first. */
 	private static final List<Block> BLOCKS = List.of(Blocks.STONE, Blocks.DEEPSLATE, HazardBlocks.COMPANY_ROCK, Blocks.IRON_ORE,
 			Blocks.GOLD_ORE, Blocks.DIAMOND_ORE, Blocks.COAL_ORE);
+	private static final double MIN_ORE_RATIO = 2.0;
 	private static final int FIRST = 1;
+	/** Index in {@link #BLOCKS} of the first ore. */
+	private static final int FIRST_ORE = 3;
 
 	private static HudShot shot(ClientGameTestContext context, String name) {
 		return HudShot.take(context, name, ScannerHudTest.TIER_ONE);
@@ -62,12 +65,18 @@ public class ScannerTexturesClientTest implements FabricClientGameTest {
 				require(colours > 1, "%s: the cell should keep the block's grain, but it is one flat colour (%06X)".formatted(BLOCKS.get(i), pixels[0]));
 				require(seen.add(Arrays.stream(pixels).boxed().toList()), "%s: the cell should look unlike the other blocks' cells".formatted(BLOCKS.get(i)));
 			}
-			// Ore stays easy to spot: every ore of the row is brighter than the stone and the deepslate beside the row.
+			// Ore stays easy to spot: the frame and lift make every ore cell at least MIN_ORE_RATIO times as bright as the rock beside it. A
+			// flat ore colour was 2.8 times as bright as the flat rock, but it was also all there was of the cell; the frame carries the ore
+			// and leaves the texture inside it to show.
 			double brightestRock = Math.max(textured.brightness(FIRST, ROW), textured.brightness(FIRST + 1, ROW));
-			for (int i = 3; i < BLOCKS.size(); i++) {
-				double ore = textured.brightness(FIRST + i, ROW);
-				require(ore > brightestRock, "%s: the ore cell (%.1f) should be brighter than the rock cells (%.1f)".formatted(BLOCKS.get(i), ore, brightestRock));
+			for (int i = FIRST_ORE; i < BLOCKS.size(); i++) {
+				double ratio = textured.brightness(FIRST + i, ROW) / brightestRock;
+				require(ratio >= MIN_ORE_RATIO, "%s: the ore cell should be %.1f times as bright as the rock, it is %.2f".formatted(BLOCKS.get(i), MIN_ORE_RATIO, ratio));
 			}
+			// The frame is there on a cell big enough for it: the ore cell's corner pixel is the frame colour, laid over the texture.
+			int[] ore = textured.cellPixels(FIRST + FIRST_ORE, ROW);
+			require((ore[0] & RGB) == (ScannerLook.current().oreOutlineColor() & RGB), "the iron ore cell should be framed in %06X, its corner is %06X"
+					.formatted(ScannerLook.current().oreOutlineColor() & RGB, ore[0]));
 
 			// The active pack's texture drives the cell: stone as flat magenta draws magenta.
 			ClientPacks.enable(context, TestPacks.SCANNER_STONE_MAGENTA);

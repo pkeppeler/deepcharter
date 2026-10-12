@@ -17,11 +17,16 @@ import net.minecraft.world.level.block.Blocks;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.test.ScannerHudTest.HudShot;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
+
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 /**
  * #537: a measurement more than a regression test. Frame time at the largest scan the game allows (the top scanner tier) against a pod with no
@@ -35,13 +40,15 @@ public class ScannerFrameTimeClientTest implements FabricClientGameTest {
 	private static final int POD_CLEARANCE = 3;
 	private static final int WARMUP_TICKS = 60;
 	private static final int MEASURED_FRAMES = 200;
-	private static final int ROUNDS = 5;
+	private static final int ROUNDS = 9;
 	private static final Block[] MIX = {Blocks.STONE, Blocks.STONE, Blocks.DEEPSLATE, Blocks.IRON_ORE, Blocks.COAL_ORE, Blocks.GOLD_ORE,
 			Blocks.DIAMOND_ORE, Blocks.COBBLESTONE, Blocks.STONE, Blocks.DEEPSLATE};
 
 	/**
-	 * Median wall milliseconds per frame over {@link #ROUNDS} rounds. The frames are drawn back to back on the render thread
-	 * ({@code renderFrame}), because a client tick waits for the 20 ticks a second and would time that wait instead.
+	 * Median wall milliseconds per frame, the median of {@link #ROUNDS} rounds, of the CPU side of a frame: the extraction of the whole
+	 * render state, the HUD with its scanner panel in it, run back to back on the render thread. A client tick waits for the 20 ticks a
+	 * second and would time that wait instead, and {@code renderFrame} cannot be driven from a test (it returns at once without a
+	 * surface to draw to), so it times nothing. The GUI state is reset after each frame, as the renderer does after drawing one.
 	 */
 	private static double millisPerFrame(ClientGameTestContext context) {
 		context.waitTicks(WARMUP_TICKS);
@@ -50,7 +57,8 @@ public class ScannerFrameTimeClientTest implements FabricClientGameTest {
 			rounds[i] = context.computeOnClient(client -> {
 				long start = System.nanoTime();
 				for (int frame = 0; frame < MEASURED_FRAMES; frame++) {
-					client.renderFrame(false);
+					client.gameRenderer.extract(client.getDeltaTracker(), true);
+					client.gameRenderer.gameRenderState().guiRenderState.reset();
 				}
 				return (System.nanoTime() - start) / 1e6 / MEASURED_FRAMES;
 			});
@@ -58,6 +66,12 @@ public class ScannerFrameTimeClientTest implements FabricClientGameTest {
 		Arrays.sort(rounds);
 		LOGGER.info("[scanner-frame] rounds ms/frame: {}", Arrays.toString(rounds));
 		return rounds[ROUNDS / 2];
+	}
+
+	private static double hiddenMillis(ClientGameTestContext context) {
+		double[] result = new double[1];
+		ClientChecks.withHudHidden(context, () -> result[0] = millisPerFrame(context));
+		return result[0];
 	}
 
 	@Override
@@ -104,6 +118,12 @@ public class ScannerFrameTimeClientTest implements FabricClientGameTest {
 			ClientWait.until(context, "the client riding a pod", client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
 			context.waitTicks(2 * TUNING.rescanTicks() + 2);
 			double with = millisPerFrame(context);
+			// The scanner arm must have drawn its panel: its pod marker is in the screenshot.
+			HudShot shot = HudShot.take(context, "scanner-frame-time", area);
+			require(shot.pixel(0, 0) == (ScannerLook.current().podColor() & 0xFFFFFF), "the tier %d panel should be drawn in the scanner arm".formatted(tier));
+			// A control: the same scene with the whole HUD hidden. It shows that the frames timed here include the HUD, and so the scanner.
+			double hudHidden = hiddenMillis(context);
+			LOGGER.info("[scanner-frame] control, scanner pod with the HUD hidden: {} ms/frame", hudHidden);
 			LOGGER.info("[scanner-frame] no scanner {} ms/frame, tier {} scanner {} ms/frame, scanner costs {} ms/frame", without, tier, with, with - without);
 		} finally {
 			context.runOnClient(client -> {

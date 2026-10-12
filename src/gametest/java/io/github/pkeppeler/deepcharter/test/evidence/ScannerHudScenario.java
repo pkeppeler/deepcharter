@@ -21,6 +21,8 @@ public class ScannerHudScenario extends EvidenceScenario {
 	private static final int FRAMES_PER_STEP = 6;
 	private static final int TICKS_PER_FRAME = 3;
 	private static final int LAVA_SHOT_TICKS = 100;
+	/** The charter's transmission types and holds over the map for about this long after a layer is entered; the stills of the map wait it out. */
+	private static final int TRANSMISSION_TICKS = 260;
 	/** Lava at (ahead, up), down in the rock and inside both tiers' reach. */
 	private static final int[][] LAVA = {{3, -9}, {4, -9}, {4, -10}, {-8, -15}, {-7, -15}};
 
@@ -37,6 +39,7 @@ public class ScannerHudScenario extends EvidenceScenario {
 			context.waitTicks(40);
 
 			ScannerHudTest.rideWithGoldAhead(context, server, 1);
+			context.waitTicks(TRANSMISSION_TICKS);
 			screenshot(context, "scanner-surface-midnight");
 			frames(context);
 			// The flat surface world has only 4 blocks of ground under the pod.
@@ -49,6 +52,7 @@ public class ScannerHudScenario extends EvidenceScenario {
 			context.waitTicks(40);
 			RoomCarver.carveAroundFirstPlayer(server);
 			ScannerHudTest.rideWithGoldAhead(context, server, 1);
+			context.waitTicks(TRANSMISSION_TICKS);
 			screenshot(context, "scanner-layer-1");
 			frames(context);
 			addOrePatch(context, server);
@@ -61,6 +65,7 @@ public class ScannerHudScenario extends EvidenceScenario {
 			context.waitTicks(40);
 			RoomCarver.carveAroundFirstPlayer(server);
 			ScannerHudTest.rideWithGoldAhead(context, server, 1);
+			context.waitTicks(TRANSMISSION_TICKS);
 			screenshot(context, "scanner-layer-2");
 			frames(context);
 			addOre(context, server, -12, -20);
