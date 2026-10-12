@@ -11,6 +11,8 @@ import net.minecraft.client.Options;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
@@ -18,18 +20,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
+import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest.HudShot;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
-import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
-
+import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 /**
- * #537: a measurement more than a regression test. Frame time at the largest scan the game allows (the top scanner tier) against a pod with no
+ * #537: a measurement more than a regression test. Frame time at the largest scan the game allows (a tier 3 scanner on the Prospector: the Mole's cap is 2) against a pod with no
  * scanner, in a world whose scan area is full of mixed rock and ore, so that every cell the scanner can read is drawn. It logs
  * {@code [scanner-frame]} lines and asserts nothing: wall time under load is not a stable pass line.
  */
@@ -74,10 +77,28 @@ public class ScannerFrameTimeClientTest implements FabricClientGameTest {
 		return result[0];
 	}
 
+	/** Mounts the first player on a new pod of {@code chassis} with a scanner of {@code scannerTier}, or with none for 0. */
+	private static void mount(TestServerContext server, Chassis chassis, int scannerTier) {
+		server.runOnServer(minecraftServer -> {
+			ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
+			PodEntity pod = (chassis == Chassis.PROSPECTOR ? PodRegistry.PROSPECTOR : PodRegistry.POD).create(player.level(), EntitySpawnReason.COMMAND);
+			pod.setPos(player.position());
+			player.level().addFreshEntity(pod);
+			if (scannerTier > 0) {
+				ScannerPods.fit(minecraftServer, player, pod, scannerTier);
+			}
+			if (!player.startRiding(pod)) {
+				throw new AssertionError("the player could not mount the new pod");
+			}
+		});
+	}
+
 	@Override
 	public void runTest(ClientGameTestContext context) {
 		ClientTestLog.startUntimed(this);
-		int tier = ComponentTrack.SCANNER.maxTier();
+		// The largest scan the game allows: the best chassis' tier cap, which is below the scanner track's own top tier.
+		Chassis chassis = Chassis.PROSPECTOR;
+		int tier = chassis.tierCap();
 		ScanArea area = TUNING.area(tier);
 		boolean vsync = context.computeOnClient(client -> client.options.enableVsync().get());
 		int frameLimit = context.computeOnClient(client -> client.options.framerateLimit().get());
@@ -91,7 +112,7 @@ public class ScannerFrameTimeClientTest implements FabricClientGameTest {
 			server.runCommand("time set midnight");
 			context.waitTicks(20);
 
-			ScannerHudTest.mountFirstPlayer(server, 0);
+			mount(server, chassis, 0);
 			ClientWait.until(context, "the client riding a pod", client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
 			int filled = server.computeOnServer(minecraftServer -> {
 				PodEntity pod = (PodEntity) minecraftServer.getPlayerList().getPlayers().getFirst().getVehicle();
@@ -114,7 +135,7 @@ public class ScannerFrameTimeClientTest implements FabricClientGameTest {
 			double without = millisPerFrame(context);
 
 			ScannerHudTest.leavePod(context, server);
-			ScannerHudTest.mountFirstPlayer(server, tier);
+			mount(server, chassis, tier);
 			ClientWait.until(context, "the client riding a pod", client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
 			context.waitTicks(2 * TUNING.rescanTicks() + 2);
 			double with = millisPerFrame(context);
