@@ -88,7 +88,7 @@ public class ThemeLooksTest {
 				TransmissionLook.of(area("transmission", null)));
 		expect(helper, "breach", new BreachLook(20, 8, 4, 10, 3, 0xFF000000), BreachLook.of(area("breach", null)));
 		expect(helper, "cargo", new CargoLook(0xFF404040), CargoLook.of(area("cargo", null)));
-		expect(helper, "tow", new TowChainLook(0.2, 0.14, 1.35, 0xFFFFFFFF, 5), TowChainLook.of(area("tow", null)));
+		expect(helper, "tow", new TowChainLook(0.28, 0.2, 1.35, 0xFFFFFFFF, 7), TowChainLook.of(area("tow", null)));
 		helper.succeed();
 	}
 

@@ -1019,7 +1019,7 @@ The tier 1 part equals its bound to the bore and the tier 2 part beats it by 3, 
 
 **Tests.** `TowingTest` pins the distance on the ground, the hang below and behind in the air, the swing dying away, a tow up a 2-wide shaft and out of its top and one round a bend with the hull never in a wall, a pod with no path behind its tower after a reload following, a tower dropping 20 blocks fast costing the towed pod no hull, the chunk of the pod ticking, and the reach covering the longest line.
 
-**Knobs.** `TowTuning`: `lineLength` (5), `reachSpare` (0.5), `gravity` (0.08), `drag` (0.97), `groundFriction` (0.6). The chain's own look is `theme/tow.json` (`linkLength` 0.2, `linkWidth` 0.14, `linkOverlap` 1.35, `tint`, `minBlockLight` 5).
+**Knobs.** `TowTuning`: `lineLength` (5), `reachSpare` (0.5), `gravity` (0.08), `drag` (0.97), `groundFriction` (0.6). The chain's own look is `theme/tow.json` (`linkLength` 0.28, `linkWidth` 0.2, `linkOverlap` 1.35, `tint`, `minBlockLight` 7).
 
 **Open questions.**
 - The towed pod does not turn to face its tower. A wreck hanging from a Mole could pitch and yaw with the line.
