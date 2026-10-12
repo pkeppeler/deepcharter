@@ -6,11 +6,13 @@ import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 
 import net.minecraft.client.CameraType;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
@@ -59,6 +61,10 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 	 * on a loaded machine, so the default distance did not settle in two minutes. 4 chunks is 64 blocks, past the fog, so no still differs.
 	 */
 	private static final int RENDER_DISTANCE = 4;
+	private static final long CHUNK_WAIT_NANOS = 40_000_000_000L;
+	private static final int CHUNK_ATTEMPTS = 4;
+	/** Where the camera waits while the chunks are sent again: inside the box of rock, far from every room, 3 blocks up so it is in no block. */
+	private static final Vec3 FAR_EYE = new Vec3(-8, 4, -8);
 	/** The first frame after the player mounts is tinted, so the pod still waits for the mount's fade. */
 	private static final int MOUNT_TICKS = 80;
 
@@ -115,7 +121,7 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 
 	private void shoot(ClientGameTestContext context, TextureTestWorld world, Option option, int layer) {
 		for (View view : VIEWS) {
-			world.view(layer, absolute(view.eye()), absolute(view.target()), SETTLE_TICKS);
+			arrive(context, world, layer, view);
 			world.still(still(option, layer, view.place()));
 		}
 		world.serverDo(server -> mount(server.getLevel(LayerChain.dimension(layer))));
@@ -127,6 +133,40 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 		context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
 		world.serverDo(CompanyRockConceptsScenario::dismount);
 		ClientWait.until(context, "the player out of the pod", client -> client.player != null && client.player.getVehicle() == null);
+	}
+
+	/**
+	 * Puts the camera at the view. A chunk of the built box that the server holds back for its light was, in three runs of five, never sent to
+	 * the client (the still then waited out its limit for it), so when a chunk in view has not come in {@link #CHUNK_WAIT_NANOS}, the camera
+	 * goes away and comes back, which the server answers by sending the chunks round the player again.
+	 */
+	private static void arrive(ClientGameTestContext context, TextureTestWorld world, int layer, View view) {
+		for (int attempt = 1; attempt <= CHUNK_ATTEMPTS; attempt++) {
+			world.view(layer, absolute(view.eye()), absolute(view.target()), SETTLE_TICKS);
+			long deadline = System.nanoTime() + CHUNK_WAIT_NANOS;
+			while (System.nanoTime() < deadline) {
+				if (context.computeOnClient(CompanyRockConceptsScenario::chunksInView)) {
+					return;
+				}
+				context.waitTicks(SETTLE_TICKS);
+			}
+			world.view(layer, absolute(FAR_EYE), absolute(FAR_EYE.add(0, 0, 1)), SETTLE_TICKS);
+		}
+		throw new AssertionError("the chunks round the " + view.place() + " view in layer " + layer + " did not reach the client in " + CHUNK_ATTEMPTS + " tries");
+	}
+
+	private static boolean chunksInView(Minecraft client) {
+		int radius = client.options.getEffectiveRenderDistance();
+		int centreX = client.player.chunkPosition().x();
+		int centreZ = client.player.chunkPosition().z();
+		for (int x = centreX - radius; x <= centreX + radius; x++) {
+			for (int z = centreZ - radius; z <= centreZ + radius; z++) {
+				if (client.level.getChunkSource().getChunk(x, z, ChunkStatus.FULL, false) == null) {
+					return false;
+				}
+			}
+		}
+		return true;
 	}
 
 	private static String still(Option option, int layer, String place) {
