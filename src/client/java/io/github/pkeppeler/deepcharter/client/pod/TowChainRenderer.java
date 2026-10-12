@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.client.pod;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -49,7 +48,7 @@ public final class TowChainRenderer {
 	private static final double DRAW_DISTANCE = 160.0;
 
 	/** The chain of each towed pod, kept while the pod is. */
-	private static final Map<PodEntity, Chain> CHAINS = Collections.synchronizedMap(new WeakHashMap<>());
+	private static final Map<PodEntity, Chain> CHAINS = new WeakHashMap<>();
 	private static final List<PodEntity> PODS = new ArrayList<>();
 	private static final BlockPos.MutableBlockPos LIGHT_AT = new BlockPos.MutableBlockPos();
 
