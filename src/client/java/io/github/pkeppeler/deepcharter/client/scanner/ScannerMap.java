@@ -39,6 +39,8 @@ final class ScannerMap {
 	private static final Logger LOGGER = LoggerFactory.getLogger("ScannerMap");
 	private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "scanner_map");
 
+	/** The alpha byte of an opaque ARGB colour: a mask, not a colour. */
+	private static final int OPAQUE = 255 << 24;
 	private static final int SUPERSAMPLE = 2;
 
 	private static DynamicTexture texture;
@@ -137,7 +139,7 @@ final class ScannerMap {
 		if (alpha == 0) {
 			return bottom;
 		}
-		int result = 0xFF000000;
+		int result = OPAQUE;
 		for (int shift = 0; shift <= 16; shift += 8) {
 			int blended = (((top >> shift) & 0xFF) * alpha + ((bottom >> shift) & 0xFF) * (255 - alpha) + 127) / 255;
 			result |= blended << shift;
@@ -203,7 +205,7 @@ final class ScannerMap {
 				}
 				int colour = alpha == 0 ? 0 : ((int) Math.round(red / alpha) << 16) | ((int) Math.round(green / alpha) << 8) | (int) Math.round(blue / alpha);
 				int coverage = (int) Math.round(255 * alpha / (SUPERSAMPLE * SUPERSAMPLE));
-				scaled[oy * size + ox] = over(coverage << 24 | colour, 0xFF000000 | backdrop);
+				scaled[oy * size + ox] = over(coverage << 24 | colour, OPAQUE | backdrop);
 			}
 		}
 		return scaled;
