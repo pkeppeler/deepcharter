@@ -1,5 +1,5 @@
 {
-  "default_block": "minecraft:stone",
+  "default_block": "deepcharter:green_shale",
   "default_fluid": "minecraft:air",
   "disable_mob_generation": true,
   "legacy_random_source": false,

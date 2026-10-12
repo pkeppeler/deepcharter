@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """The feature map: one graph of the whole game, generated from docs/feature-map/map.json (#510).
 
-    python3 -I tools/feature_map.py                 write docs/FEATURE-MAP.md and docs/feature-map/index.html
-    python3 -I tools/feature_map.py --check         fail when the map is invalid or either output is stale
+    python3 -I tools/feature_map.py                 write docs/FEATURE-MAP.md and docs/feature-map/index.html (git-ignored, #544)
+    python3 -I tools/feature_map.py --check         fail when the map is invalid or an output cannot be rendered; writes nothing
     python3 -I tools/feature_map.py --poster FILE   also write the poster SVG (tools/feature-map.sh publishes it)
     python3 -I tools/feature_map.py --check-stills  fail when a still is not on origin/pr-media (needs git, no network)
     python3 -I tools/feature_map.py --mermaid-images  draw the icons on the Mermaid nodes (GitHub may not render them)
@@ -209,7 +209,7 @@ def icon_uri(root, icon):
 
 
 def ref_label_and_url(ref, root, relative):
-    """(label, url) of a ref. relative=True gives a link from docs/FEATURE-MAP.md, False an absolute GitHub link."""
+    """(label, url) of a ref. relative=True gives a link relative to the generated docs/FEATURE-MAP.md, False an absolute GitHub link."""
     if ISSUE_RE.match(ref):
         return ref, "https://github.com/%s/issues/%s" % (REPO, ref[1:])
     if ADR_RE.match(ref):
@@ -418,7 +418,7 @@ PAGE_TEMPLATE = """<!doctype html>
 <body>
 <aside id="side">
   <h1>Deep Charter feature map</h1>
-  <div class="hint">__COUNTS__ &middot; <a href="https://github.com/__REPO__/blob/main/docs/FEATURE-MAP.md">markdown map</a></div>
+  <div class="hint">__COUNTS__ &middot; <a href="https://github.com/__REPO__/blob/main/docs/feature-map/map.json">map.json</a></div>
   <h2>Search</h2><input id="q" type="search" placeholder="title or summary">
   <h2>Ladder</h2><select id="ladder"></select>
   <h2>Status</h2><div id="statuses"></div>
@@ -629,10 +629,10 @@ def outputs(data, root, images):
 
 def main(argv):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--check", action="store_true", help="fail when the map is invalid or an output is stale")
+    parser.add_argument("--check", action="store_true", help="fail when the map is invalid or an output cannot be rendered; writes nothing")
     parser.add_argument("--check-stills", action="store_true", help="fail when a still is not on origin/pr-media")
     parser.add_argument("--poster", metavar="FILE", help="also write the poster SVG to FILE")
-    parser.add_argument("--mermaid-images", action="store_true", help="draw icons on the Mermaid nodes (committed output uses text nodes)")
+    parser.add_argument("--mermaid-images", action="store_true", help="draw icons on the Mermaid nodes (default output uses text nodes)")
     args = parser.parse_args(argv)
     root = repo_root()
     data = load(root)
@@ -646,12 +646,7 @@ def main(argv):
             print("not on origin/pr-media: " + ", ".join(gone), file=sys.stderr)
             return 1
     made = outputs(data, root, args.mermaid_images)
-    if args.check:
-        stale = [p for p, text in made.items() if not (root / p).is_file() or (root / p).read_text(encoding="utf-8") != text]
-        if stale:
-            print("stale, run python3 -I tools/feature_map.py: " + ", ".join(stale), file=sys.stderr)
-            return 1
-    else:
+    if not args.check:
         for path, text in made.items():
             (root / path).write_text(text, encoding="utf-8")
     if args.poster:

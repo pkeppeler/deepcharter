@@ -36,6 +36,8 @@ WALL = {"pixels": 30.2, "patches": ((110, 80, 302, 330), (331, 80, 523, 330), (5
 REFERENCE = {"pixels": 31.1, "rock": (115, 80, 308, 330), "stone": (333, 80, 525, 330), "deepslate": (551, 80, 743, 330)}
 # The layer whose formation is columns one block wide, which is reported and not judged.
 COLUMNS_LAYER = 3
+# The name the scenario gives the stills of its one look, the Grain of the pick (the stills are `<option>-layer<n>-<place>.png`).
+OPTION = "grain"
 # How far above the score of the vanilla deepslate patch in the same still a rock patch may score. Deepslate, the more regular of vanilla's two, is the
 # limit and not stone, which has no pattern to speak of: a 16 pixel texture that repeats with a strong, fixed pattern scores 0.6 and passes the eye of
 # every Minecraft player. Measured on the stills of this round, vanilla stone scores 0.30 to 0.32 and deepslate 0.61 to 0.62.
@@ -101,27 +103,19 @@ def reference_scores(still: list[list[float]]) -> dict[str, float]:
 
 def main() -> int:
     directory = Path(sys.argv[1])
-    failed = judged = nears = 0
+    failed = nears = 0
     print("| Option | Layer | Wide wall | Reference: rock | Reference: vanilla stone | Reference: vanilla deepslate | Verdict |")
     print("|---|---|---|---|---|---|---|")
-    for option in ("grain", "bedded", "mottled"):
-        if not (directory / f"{option}-layer1-wide-wall.png").is_file():
-            # A recording of some of the options (DEEPCHARTER_LAYER_OPTIONS) has no stills of the others.
-            continue
-        for layer in (1, 2, 3):
-            judged += 1
-            wall = wall_score(read(directory / f"{option}-layer{layer}-wide-wall.png"))
-            reference = reference_scores(read(directory / f"{option}-layer{layer}-vanilla-reference.png"))
-            limit = reference["deepslate"] + MARGIN
-            clean = wall <= limit and reference["rock"] <= limit
-            failed += not clean and layer != COLUMNS_LAYER
-            worst = max(wall, reference["rock"])
-            verdict = "columns" if layer == COLUMNS_LAYER and not clean else "ok" if clean and worst <= limit - NEAR else "near" if clean else "grid"
-            nears += verdict == "near"
-            print(f"| {option} | {layer} | {wall:.2f} | {reference['rock']:.2f} | {reference['stone']:.2f} | {reference['deepslate']:.2f} | {verdict} |")
-    if not judged:
-        print(f"grid.py: no wide-wall still in {directory}", file=sys.stderr)
-        return 1
+    for layer in (1, 2, 3):
+        wall = wall_score(read(directory / f"{OPTION}-layer{layer}-wide-wall.png"))
+        reference = reference_scores(read(directory / f"{OPTION}-layer{layer}-vanilla-reference.png"))
+        limit = reference["deepslate"] + MARGIN
+        clean = wall <= limit and reference["rock"] <= limit
+        failed += not clean and layer != COLUMNS_LAYER
+        worst = max(wall, reference["rock"])
+        verdict = "columns" if layer == COLUMNS_LAYER and not clean else "ok" if clean and worst <= limit - NEAR else "near" if clean else "grid"
+        nears += verdict == "near"
+        print(f"| {OPTION} | {layer} | {wall:.2f} | {reference['rock']:.2f} | {reference['stone']:.2f} | {reference['deepslate']:.2f} | {verdict} |")
     if nears:
         print("grid.py: warning: a score is near its limit; look at that still", file=sys.stderr)
     return 1 if failed else 0

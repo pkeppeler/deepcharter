@@ -28,12 +28,8 @@ public final class TestPacks implements ModInitializer {
 	public static final String TEXTURE_DENSITY_C = "texture_density_c";
 	/** Texture density D: B, with crystals and a glint standing out of every ore. */
 	public static final String TEXTURE_DENSITY_D = "texture_density_d";
-	/** The layer concepts (#447, docs/design/layer-concepts-2.md): the texture of the rock of layers 1 to 3 as fine clustered grain. */
+	/** The layer concepts (#447, docs/design/layer-concepts-2.md): Grain, the user's pick, for the rock of layer 3, which has no block of its own until M3. */
 	public static final String LAYER_CONCEPT_GRAIN = "layer_concept_grain";
-	/** Layer concept texture: bedding streaks that run across blocks. */
-	public static final String LAYER_CONCEPT_BEDDED = "layer_concept_bedded";
-	/** Layer concept texture: large mottles and veins. */
-	public static final String LAYER_CONCEPT_MOTTLED = "layer_concept_mottled";
 	/** The Company Rock and breach crust of layer 1, in its formation, Strata. A block has one blockstate, so a scene turns on its layer's form. */
 	public static final String LAYER_CONCEPT_FORM_1 = "layer_concept_form_1";
 	/** The Company Rock and breach crust of layer 2, Fractured. */
@@ -49,12 +45,6 @@ public final class TestPacks implements ModInitializer {
 
 	/** The salvage crate's other look (#245, #505, docs/design/salvage-concepts.md): a low sled crate under a tarp. The default, the freight crate, is the mod's own look. */
 	public static final String SALVAGE_CRATE_B = "salvage_crate_b";
-	/** The four looks of Company Rock (#503, docs/design/company-rock-concepts.md); the shipped steel plate is the mod's own look until one is picked. */
-	public static final String COMPANY_ROCK_JOINT = "company_rock_joint";
-	public static final String COMPANY_ROCK_STRAP = "company_rock_strap";
-	public static final String COMPANY_ROCK_CRYSTAL = "company_rock_crystal";
-	public static final String COMPANY_ROCK_FUSED = "company_rock_fused";
-
 	/** The tow line as a braided steel cable (#508), the alternative to the mod's chain; it names the keys of {@code theme/tow.json} that change and redraws the texture. */
 	public static final String TOW_CABLE_BRAID = "tow_cable_braid";
 
@@ -63,10 +53,9 @@ public final class TestPacks implements ModInitializer {
 		// One shared pin for every test and evidence world that enters a layer (the layers' biomes list the Retained): no natural spawns.
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> server.getGameRules().set(GameRules.SPAWN_MOBS, false, server));
 		for (String pack : new String[] {AMBER_CRT, BAD_CRT, RED_INK, TEXTURE_DENSITY_B, TEXTURE_DENSITY_C, TEXTURE_DENSITY_D,
-				LAYER_CONCEPT_GRAIN, LAYER_CONCEPT_BEDDED, LAYER_CONCEPT_MOTTLED, LAYER_CONCEPT_FORM_1, LAYER_CONCEPT_FORM_2, LAYER_CONCEPT_FORM_3,
+				LAYER_CONCEPT_GRAIN, LAYER_CONCEPT_FORM_1, LAYER_CONCEPT_FORM_2, LAYER_CONCEPT_FORM_3,
 				COCKPIT_OFF, COCKPIT_CAMERA, COCKPIT_CAMERA_HOLD,
-				SALVAGE_CRATE_B, TOW_CABLE_BRAID,
-				COMPANY_ROCK_JOINT, COMPANY_ROCK_STRAP, COMPANY_ROCK_CRYSTAL, COMPANY_ROCK_FUSED}) {
+				SALVAGE_CRATE_B, TOW_CABLE_BRAID}) {
 			ResourceLoader.registerBuiltinPack(Identifier.fromNamespaceAndPath("deepcharter-test", pack),
 					FabricLoader.getInstance().getModContainer("deepcharter-test").orElseThrow(),
 					Component.literal(pack + " (test pack)"), PackActivationType.NORMAL);

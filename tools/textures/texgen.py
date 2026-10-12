@@ -54,8 +54,10 @@ VARIANTS = HERE / "variants.json"
 OVERLAYS = HERE / "overlays.json"
 MOD_ASSETS = ROOT / "src/main/resources/assets"
 # The parts of the vanilla namespace in the mod's assets where no file may be: the mod draws vanilla stone by name and overrides no
-# block or item texture or model. (The sky's sun texture, ADR 0030, is the one vanilla file it ships, and test_texture_packs pins it.)
+# block or item texture or model. (The sky's sun texture, ADR 0030, and the lava of the layers, #241, which tools/layer_concepts/make.py draws as
+# animated strips, are the vanilla files it ships, and test_texture_packs pins them.)
 MOD_OWNED = tuple(MOD_ASSETS / "minecraft" / part for part in ("textures/block", "textures/item", "models", "blockstates", "items"))
+LAVA = tuple(MOD_ASSETS / f"minecraft/textures/block/{name}{suffix}" for name in ("lava_still", "lava_flow") for suffix in (".png", ".png.mcmeta"))
 # Where a variant pack keeps its textures, under its pack directory.
 PACK_TEXTURES = Path("assets/deepcharter/textures")
 # Directories of --out whose every PNG must come from a recipe.
@@ -155,7 +157,7 @@ def strays(target: Target) -> list[str]:
 def unmade(target: Target) -> list[str]:
     """Every file in the target's owned directories that it does not make, by its path from the repo root."""
     return [path.relative_to(ROOT).as_posix() for directory in target.owned for path in sorted(directory.rglob("*"))
-            if path.is_file() and path not in target.models]
+            if path.is_file() and path not in target.models and path not in LAVA]
 
 
 def unmade_help(files: list[str]) -> str:

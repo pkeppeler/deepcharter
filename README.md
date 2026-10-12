@@ -19,7 +19,7 @@ Everything in the game on one page: every part you can buy, every hazard and wha
 [![The feature map poster: every feature of the game as a tile, grouped by ladder](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/feature-map.png?raw=true)](https://pkeppeler.github.io/deepcharter/)
 
 - [The interactive map](https://pkeppeler.github.io/deepcharter/): pan, zoom, filter by ladder, status and kind, click a feature for a screenshot and its links.
-- [The map in the repo](docs/FEATURE-MAP.md): a graph for each ladder, with icons and screenshots, that GitHub shows as it is.
+- [The map source](docs/feature-map/map.json): the one file the page is generated from.
 
 ## What is in the pack
 

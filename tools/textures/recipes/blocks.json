@@ -105,18 +105,29 @@
         {"op": "speckle", "colours": ["regolith.3", "crust.1"], "density": 0.03, "seed": 204}
       ]
     },
-    "block/company_rock": {
+    "block/company_rock_joint_0": {
       "kind": "opaque",
       "layers": [
-        {"op": "noise", "ramp": ["steel.1", "steel.1", "steel.2"], "seed": 301, "cell": 8, "octaves": 2, "dither": 0.8},
-        {"op": "speckle", "colours": ["steel.0", "steel.3"], "density": 0.06, "seed": 302},
-        {"op": "bevel", "rect": [0, 0, 16, 16], "light": "steel.3", "dark": "void"},
-        {"op": "rect", "rect": [0, 6, 16, 4], "colour": "brass.2"},
-        {"op": "rect", "rect": [0, 6, 16, 1], "colour": "brass.4"},
-        {"op": "rect", "rect": [0, 9, 16, 1], "colour": "brass.1"},
-        {"op": "speckle", "colours": ["brass.3", "brass.1", "rust.2"], "density": 0.2, "seed": 303, "rect": [0, 7, 16, 2]},
-        {"op": "rivets", "at": [[2, 2], [12, 2], [2, 12], [12, 12]], "ramp": ["steel.0", "steel.3", "steel.5"], "rust": "rust.1"},
-        {"op": "grime", "colours": ["rust.1", "dust.0"], "density": 0.3, "seed": 304, "rect": [1, 11, 14, 4]}
+        {"op": "noise", "ramp": ["hardpan.2", "hardpan.3", "hardpan.3", "hardpan.3", "hardpan.3", "hardpan.3"], "seed": 7111, "cell": 4, "octaves": 2, "dither": 0.1},
+        {"op": "speckle", "colours": ["hardpan.2"], "density": 0.02, "seed": 7211},
+        {"op": "pixels", "legend": {"x": "hardpan.1", "l": "hardpan.4"}, "rows": [".l...xx..l......", ".xl.x.xlxx..x...", ".xx.x.lxxxl.....", ".xxx.lxxxx......", ".xx.l...xxl.....", ".xxl....xxxl....", "..xx.......x....", "...l...........l", "x..x..........xx", ".l...l.......l..", ".....x.....l.x..", ".....xl....x....", "......xl.x..l.x.", "......xx.......l", ".....xl.l.......", "l...lxxll.....ll"]}
+      ]
+    },
+    "block/company_rock_joint_1": {
+      "kind": "opaque",
+      "layers": [
+        {"op": "noise", "ramp": ["hardpan.2", "hardpan.3", "hardpan.3", "hardpan.3", "hardpan.3", "hardpan.3"], "seed": 7112, "cell": 4, "octaves": 2, "dither": 0.1},
+        {"op": "speckle", "colours": ["hardpan.2"], "density": 0.02, "seed": 7212},
+        {"op": "pixels", "legend": {"x": "hardpan.1", "l": "hardpan.4"}, "rows": ["x..............x", ".x.l.....x......", ".xlx.....ll.....", "...lll...x......", "...xxxll.xl.....", "..ll.xxxxxx.....", "..xxl.lx.....l.l", "..xxxxx......x..", ".....x.l......x.", ".......x......xl", "...x....l.....x.", ".lx.....l.....xl", ".x......x.....x.", ".........l.....l", "l......lx...l.x.", "x........l.....x"]}
+      ]
+    },
+    "block/company_rock_joint_2": {
+      "kind": "opaque",
+      "layers": [
+        {"op": "noise", "ramp": ["hardpan.2", "hardpan.3", "hardpan.3", "hardpan.3", "hardpan.3", "hardpan.3"], "seed": 7113, "cell": 4, "octaves": 2, "dither": 0.1},
+        {"op": "speckle", "colours": ["hardpan.2"], "density": 0.02, "seed": 7213},
+        {"op": "pixels", "legend": {"x": "hardpan.1", "l": "hardpan.4"}, "rows": ["lx.l.x..........", "xxxx.x........xx", "x.....ll.......x", ".......x........", "........l.....l.", "........xll...x.", ".l.......xx..l..", ".x.l...l.l...x..", "..xx...xxx......", "..x....xx....l..", "..xll...l....xl.", "..xxxl..x.....x.", "..x..x.lx.......", ".l...l.xxl......", "lx...xl.xx.....l", ".xl..x.........."]},
+        {"op": "pixels", "at": [4, 3], "legend": {"x": "hardpan.2", "L": "hardpan.4"}, "rows": ["....LL....", "..LLxxLL..", "LLxx..xxLL", "xx......xx"]}
       ]
     },
     "block/conduit": {"template": "conduit_tile", "args": {"edges": "tblr", "corners": ""}},
