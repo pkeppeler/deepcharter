@@ -31,7 +31,7 @@ public final class UpgradeShown {
 
 	/** Scrolls the upgrade screen's track list so that the button of {@code track} is shown (the list scrolls when the tracks do not fit). Client thread. */
 	public static void reveal(UpgradeScreen screen, ComponentTrack track) {
-		screen.scrollTo(track.ordinal());
+		ScreenScroll.scrollTo(screen, track.ordinal());
 	}
 
 	private static boolean marked(CrtButton button) {

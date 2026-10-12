@@ -154,11 +154,6 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 		return Mth.clamp(space / PITCH, 1, ComponentTrack.values().length);
 	}
 
-	/** Shows the track list from the track at index {@code first}, kept inside the list, and lays the buttons out again. */
-	public void scrollTo(int first) {
-		scroll.scrollTo(first);
-	}
-
 	/** The narrator also tells which tracks are shown, so that a player who cannot see the screen knows that there are more. */
 	@Override
 	public Component getNarrationMessage() {

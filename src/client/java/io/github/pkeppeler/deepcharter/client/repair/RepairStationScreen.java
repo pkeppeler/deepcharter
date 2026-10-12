@@ -159,11 +159,6 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 		return rows().size();
 	}
 
-	/** Shows the list from row {@code first}, kept inside the list, and lays the buttons out again. */
-	public void scrollTo(int first) {
-		scroll.scrollTo(first);
-	}
-
 	@Override
 	protected void layout() {
 		List<Row> rows = rows();
