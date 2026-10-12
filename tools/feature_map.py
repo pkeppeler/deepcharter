@@ -209,7 +209,7 @@ def icon_uri(root, icon):
 
 
 def ref_label_and_url(ref, root, relative):
-    """(label, url) of a ref. relative=True gives a link from docs/FEATURE-MAP.md, False an absolute GitHub link."""
+    """(label, url) of a ref. relative=True gives a link relative to the generated docs/FEATURE-MAP.md, False an absolute GitHub link."""
     if ISSUE_RE.match(ref):
         return ref, "https://github.com/%s/issues/%s" % (REPO, ref[1:])
     if ADR_RE.match(ref):
@@ -632,7 +632,7 @@ def main(argv):
     parser.add_argument("--check", action="store_true", help="fail when the map is invalid or an output cannot be rendered; writes nothing")
     parser.add_argument("--check-stills", action="store_true", help="fail when a still is not on origin/pr-media")
     parser.add_argument("--poster", metavar="FILE", help="also write the poster SVG to FILE")
-    parser.add_argument("--mermaid-images", action="store_true", help="draw icons on the Mermaid nodes (committed output uses text nodes)")
+    parser.add_argument("--mermaid-images", action="store_true", help="draw icons on the Mermaid nodes (default output uses text nodes)")
     args = parser.parse_args(argv)
     root = repo_root()
     data = load(root)

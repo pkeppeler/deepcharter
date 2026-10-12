@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Usage: tools/feature-map.sh [--publish]
 #
-# Regenerates docs/FEATURE-MAP.md and docs/feature-map/index.html from docs/feature-map/map.json
+# Regenerates docs/FEATURE-MAP.md and docs/feature-map/index.html (git-ignored local copies) from docs/feature-map/map.json
 # (tools/feature_map.py validates the map first). With --publish it also draws the poster of the whole
 # map and publishes it to pr-media/readme/ with tools/pr-media.sh: feature-map.svg always, and
 # feature-map.png when headless Google Chrome (or Chromium) is installed. The poster is generated and
