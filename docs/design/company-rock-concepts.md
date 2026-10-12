@@ -2,7 +2,7 @@
 
 Issue [#503](https://github.com/pkeppeler/deepcharter/issues/503), PR [#523](https://github.com/pkeppeler/deepcharter/pull/523). The user's note of 2026-10-11: in the layer concepts ([layer-concepts-2.md](layer-concepts-2.md)) Company Rock "looks kind of weird": machined, studded columns and black panels with orange crosses read as man-made objects in natural rock. [ADR 0015](../adr/0015-zones-are-filled-block-by-block-from-the-originals-rows.md) made it undiggable; issue [#509](https://github.com/pkeppeler/deepcharter/issues/509) (the user's direction of the same day) makes it breakable by a charge and then a late drill tier. So the look has two jobs: harder than the rock round it, so the drill will not take it, and blastable, so a charge might. It must also fit the lore (the Company's claim on the deep: dread, not a sci-fi panel), tile like vanilla where it is a full block, and work in layers 1 and 2.
 
-Nothing a player sees has changed: each option is a test pack that only the scenario `company-rock-concepts` turns on. The shipped look is still the steel plate (the first row of every set below, `now`).
+**Picked: A, the Joint, built in [#535](https://github.com/pkeppeler/deepcharter/issues/535).** The options B to D, their test packs and the stand-in block are gone; the shipped Company Rock is A (see [What was built](#what-was-built)). The text below is the round as it stood when the pick was made, with the steel plate as `now` (the first row of every set).
 
 ## How the stills were made
 
@@ -60,7 +60,7 @@ Left to right: now, joint, strap, crystal, fused. Top row layer 1, bottom row la
 
 ## Tiling
 
-A is a plain cube, and its three textures are held by `tools/tests/test_company_rock_looks.py` to tile like vanilla's (the seam check of [layer-concepts-2.md](layer-concepts-2.md#why-vanilla-tiles-and-the-seam-check)). B, C and D are cubes with something on them; their *base* textures are noise and cracks drawn the same way, and the models are not held to a seam check (the shaped looks are exempt from the cube guard by name, as the Company Rock of the layer concepts was).
+A is a plain cube, and its three textures were held to tile like vanilla's (the seam check of [layer-concepts-2.md](layer-concepts-2.md#why-vanilla-tiles-and-the-seam-check)). B, C and D are cubes with something on them; their *base* textures are noise and cracks drawn the same way, and the models are not held to a seam check (the shaped looks are exempt from the cube guard by name, as the Company Rock of the layer concepts was).
 
 | Texture | Mean step inside | wrap | rim |
 |---|---|---|---|
@@ -92,3 +92,21 @@ What to try if A is picked: a second pass on the survey chevron (it is faint by 
 | C, D | As B, plus a model of 37 (C) or 40 to 52 (D) elements, and a second round on the look |
 
 Whichever is built, the shipped `company_rock` texture and model are replaced and the gallery of [current-state.md](current-state.md) gets its row updated.
+
+## What was built
+
+Option A shipped in [#535](https://github.com/pkeppeler/deepcharter/issues/535), as three textures `company_rock_joint_0` to `_2` made by `tools/textures` from the recipes in `recipes/blocks.json` (palette `hardpan`), a blockstate of three models (one block in five is `_2`, the survey chevron) and no Java. What changed from the concept:
+
+- **A lighter fracture line.** Each joint pixel has a lip of `hardpan.5` on its lower right, on every second pixel, so the joints read as cracks at range and not only as a dark patch. The joints are `hardpan.1`, a step lighter than the concept's, so the texture stays inside vanilla's contrast range.
+- **A second pass on the chevron.** A lighter outline over a dark inner line, drawn as a two-pixel-step chevron, so it shows close up and stays faint.
+- **No lava glow in the joints.** Company Rock is one block with one blockstate in every layer, so a glow would show in layer 1 as well; a layer-2 look needs a per-layer block or a block-state property, which is Java. Left out; see the follow-up issue on the PR.
+- **The blast.** [#509](https://github.com/pkeppeler/deepcharter/issues/509)'s charge breaks the block with `destroyBlock`, whose break particles take the block's texture, so the crumble already uses the Joint. Joints that widen first need an animated block or a block entity, which is new Java; left out, same follow-up.
+- Its seam numbers are in the table below.
+
+| Texture | Mean step inside | wrap | rim |
+|---|---|---|---|
+| `company_rock_joint_0` | 17.0 | 1.04 | 0.99 |
+| `company_rock_joint_1` | 17.8 | 1.15 | 1.16 |
+| `company_rock_joint_2` (with the chevron) | 20.1 | 0.88 | 1.02 |
+
+`tools/tests/test_company_rock_look.py` holds the three textures to the seam check, the models to plain cubes and the blockstate to one block in five.
