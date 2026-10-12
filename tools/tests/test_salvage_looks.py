@@ -104,14 +104,9 @@ class StemOpsTest(unittest.TestCase):
 
 class ShapesTest(unittest.TestCase):
     def test_the_crates_two_looks_differ_in_shape(self):
-        for block, looks in LOOKS.items():
-            shapes = {option: silhouette(model_of(assets, block)) for option, assets in looks.items()}
-            self.assertEqual(len(looks), len(shapes))
-            for first in shapes:
-                for second in shapes:
-                    if first < second:
-                        shared = len(shapes[first] & shapes[second]) / len(shapes[first] | shapes[second])
-                        self.assertLess(shared, 0.5, f"{block} {first} and {second} share most of their geometry: the options differ in colour, not shape")
+        freight, sled = (silhouette(model_of(assets, "salvage_crate")) for assets in LOOKS["salvage_crate"].values())
+        shared = len(freight & sled) / len(freight | sled)
+        self.assertLess(shared, 0.5, "the freight and sled crates share most of their geometry: the options differ in colour, not shape")
 
     def test_every_look_names_the_same_states_and_its_own_models(self):
         for block, looks in LOOKS.items():
@@ -126,10 +121,10 @@ class ShapesTest(unittest.TestCase):
 
     def test_a_pack_holds_a_look_and_the_textures_only_it_uses(self):
         """A pack holds a look, and no texture the mod already has: the sled draws with the planks and cloth the mod ships, and so draws none of its own."""
-        for pack in ("salvage_crate_b",):
-            self.assertIn(pack, texgen.variants())
-            for texture in (PACKS / pack / "assets/deepcharter/textures").rglob("*.png"):
-                self.assertFalse((MOD / "textures/block" / texture.name).exists(), f"{pack} redraws {texture.name}, which the mod ships")
+        pack = "salvage_crate_b"
+        self.assertIn(pack, texgen.variants())
+        for texture in (PACKS / pack / "assets/deepcharter/textures").rglob("*.png"):
+            self.assertFalse((MOD / "textures/block" / texture.name).exists(), f"{pack} redraws {texture.name}, which the mod ships")
 
 
 if __name__ == "__main__":
