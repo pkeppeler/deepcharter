@@ -23,6 +23,7 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param pod the paint palette of the pods' hulls
  * @param panel the machine panel round the terminals, on in the mod; a pack restyles it or switches it off
  * @param cockpit the cockpit HUD of a seated pilot, style 0 (none) until a pack picks one
+ * @param tow the chain links of the tow line between two pods
  */
 public record UiTheme(
 		CrtTuning crt,
@@ -34,9 +35,10 @@ public record UiTheme(
 		CargoLook cargo,
 		PodPaintLook pod,
 		PanelLook panel,
-		CockpitLook cockpit) {
+		CockpitLook cockpit,
+		TowChainLook tow) {
 	/** The areas, each one a file {@code theme/<name>.json}. */
-	static final Set<String> AREAS = Set.of("crt", "handbook", "scanner", "hud", "transmission", "breach", "cargo", "pod", "panel", "cockpit");
+	static final Set<String> AREAS = Set.of("crt", "handbook", "scanner", "hud", "transmission", "breach", "cargo", "pod", "panel", "cockpit", "tow");
 
 	private static volatile UiTheme current;
 
@@ -68,7 +70,8 @@ public record UiTheme(
 				CargoLook.of(areas.get("cargo")),
 				PodPaintLook.of(areas.get("pod")),
 				PanelLook.of(areas.get("panel")),
-				CockpitLook.of(areas.get("cockpit")));
+				CockpitLook.of(areas.get("cockpit")),
+				TowChainLook.of(areas.get("tow")));
 		if (theme.transmission().maxWidth() <= 2 * theme.crt().padding()) {
 			throw new IllegalArgumentException(areas.get("transmission").conflict("maxWidth must be more than twice the padding of the crt area, "
 					+ "or the panel has no room for text", "maxWidth").getMessage()

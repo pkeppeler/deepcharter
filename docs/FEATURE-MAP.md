@@ -96,7 +96,7 @@ flowchart LR
   l_creatures["The Retained and other creatures<br/>5 of 8 built"]
   l_darkness["Darkness and sight<br/>3 of 8 built"]
   l_crust["The breach crust and hard landings<br/>5 of 8 built"]
-  l_getting_out["Stranded, rescue and the way home<br/>5 of 11 built"]
+  l_getting_out["Stranded, rescue and the way home<br/>6 of 11 built"]
   l_consumables["The repair station's shelf<br/>6 of 6 built"]
   l_crew["Crew roles and seats<br/>2 of 6 built"]
   l_interface["Cockpit, screens and HUD<br/>8 of 10 built"]
@@ -175,7 +175,7 @@ flowchart LR
 | [The Retained and other creatures](#the-retained-and-other-creatures) | 5 | 0 | 1 | 2 |
 | [Darkness and sight](#darkness-and-sight) | 3 | 0 | 4 | 1 |
 | [The breach crust and hard landings](#the-breach-crust-and-hard-landings) | 5 | 0 | 1 | 2 |
-| [Stranded, rescue and the way home](#stranded-rescue-and-the-way-home) | 5 | 0 | 5 | 1 |
+| [Stranded, rescue and the way home](#stranded-rescue-and-the-way-home) | 6 | 0 | 4 | 1 |
 | [The repair station's shelf](#the-repair-stations-shelf) | 6 | 0 | 0 | 0 |
 | [Crew roles and seats](#crew-roles-and-seats) | 2 | 0 | 0 | 4 |
 | [Cockpit, screens and HUD](#cockpit-screens-and-hud) | 8 | 1 | 1 | 0 |
@@ -215,7 +215,6 @@ flowchart LR
 - **Fuel tank tier 4** (fuel-tank): Tank 6.0x stock, $5,000. No chassis built yet can fit it (a Badger or later). [SPEC.md](SPEC.md#components)
 - **Fuel tank tier 5** (fuel-tank): Tank 10.0x stock, $25,000. No chassis built yet can fit it (a Badger or later). [SPEC.md](SPEC.md#components)
 - **Fuel tank tier 6** (fuel-tank): Tank 15.0x stock, $125,000. No chassis built yet can fit it (a Badger or later). [SPEC.md](SPEC.md#components)
-- **A chain, not smoke** (getting-out): Draw the tow line as real chain links on a sagging curve instead of a particle trail. [#508](https://github.com/pkeppeler/deepcharter/issues/508)
 - **Wrecked prefabs that drop salvage** (getting-out): Ruined buildings and vehicles in the world that give scrap when broken. [#471](https://github.com/pkeppeler/deepcharter/issues/471)
 - **Outposts at depth** (getting-out): Built shelters with fuel and sell terminals, beds and storage; the first goes at the layer 1 floor. [#320](https://github.com/pkeppeler/deepcharter/issues/320), [SPEC.md](SPEC.md#outposts-and-ratings)
 - **Environment ratings** (getting-out): Each depth rates heat, pressure, flooding and quakes; an outpost under the rating is uninhabitable but never destroyed. [SPEC.md](SPEC.md#outposts-and-ratings)
@@ -1105,8 +1104,8 @@ flowchart TB
   classDef planned fill:#2e2e2e,stroke:#9e9e9e,stroke-width:1px,color:#d6d6d6
   classDef idea fill:#1a1a1a,stroke:#757575,stroke-width:1px,stroke-dasharray:4 3,color:#a0a0a0
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
-  class n_stranded,n_refuel_by_hand,n_reserve_tank,n_tow_line,n_wreck built
-  class n_tow_chain_look,n_wreck_salvage_prefabs,n_outpost,n_outpost_ratings,n_pads planned
+  class n_stranded,n_refuel_by_hand,n_reserve_tank,n_tow_line,n_wreck,n_tow_chain_look built
+  class n_wreck_salvage_prefabs,n_outpost,n_outpost_ratings,n_pads planned
   class n_anchor_mode idea
   class n_behemoth,n_fuel_tank_t1,n_matter_transmitter,n_quantum_teleporter,n_reserve_fuel_tank,n_restore_wreck,n_the_deep_bites ext
 ```
@@ -1118,7 +1117,7 @@ flowchart TB
 | <img src="../src/main/resources/assets/deepcharter/textures/item/reserve_tank.png" width="32" alt=""> | no still yet | <a id="reserve-tank"></a>**Reserve tank**<br>counter | A tank crafted from iron and a bucket that restarts a stranded pod. | ✅ Built | [ADR 0019](adr/0019-the-reserve-tank-is-a-separate-pod-attachment.md) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/tow_cable.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/towing.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/towing.gif?raw=true" width="160" alt=""></a> | <a id="tow-line"></a>**The tow line**<br>counter | Hold a tow cable and right-click another pod; the towed pod hangs below and behind on a 5 block line, across breaches. | ✅ Built | [ADR 0022](adr/0022-a-tow-cable-is-an-attachment-on-the-towed-pod-and-the-tower-carries-it-across.md), [#425](https://github.com/pkeppeler/deepcharter/issues/425), [mechanics.md](design/mechanics.md#the-tow-line-425-a) |
 | ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/wreck.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/wreck.png?raw=true" width="160" alt=""></a> | <a id="wreck"></a>**Wrecks**<br>mechanic | A pod with no hull goes dark where it fell, with its cargo, and its owners are told. | ✅ Built | [ADR 0027](adr/0027-a-chassis-is-an-entity-type-and-an-unowned-wreck-is-registered-when-restored.md), [SPEC.md](SPEC.md#12-death-and-failure) |
-| ⚙️ | no still yet | <a id="tow-chain-look"></a>**A chain, not smoke**<br>mechanic | Draw the tow line as real chain links on a sagging curve instead of a particle trail. | 📋 Planned | [#508](https://github.com/pkeppeler/deepcharter/issues/508) |
+| <img src="../src/main/resources/assets/deepcharter/textures/item/tow_chain.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/522/chain-hanging-close.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/522/chain-hanging-close.png?raw=true" width="160" alt=""></a> | <a id="tow-chain-look"></a>**A chain, not smoke**<br>mechanic | The tow line is a real chain of links on a sagging curve: it hangs when slack, goes straight when pulled, and shows in the dark of a layer. | ✅ Built | [#508](https://github.com/pkeppeler/deepcharter/issues/508), [#522](https://github.com/pkeppeler/deepcharter/issues/522), [ADR 0049](adr/0049-the-tow-line-is-a-chain-the-client-draws-from-the-attachment.md) |
 | ⚙️ | no still yet | <a id="wreck-salvage-prefabs"></a>**Wrecked prefabs that drop salvage**<br>mechanic | Ruined buildings and vehicles in the world that give scrap when broken. | 📋 Planned | [#471](https://github.com/pkeppeler/deepcharter/issues/471) |
 | 📍 | no still yet | <a id="outpost"></a>**Outposts at depth**<br>place | Built shelters with fuel and sell terminals, beds and storage; the first goes at the layer 1 floor. | 📋 Planned | [#320](https://github.com/pkeppeler/deepcharter/issues/320), [SPEC.md](SPEC.md#outposts-and-ratings) |
 | ⚙️ | no still yet | <a id="outpost-ratings"></a>**Environment ratings**<br>mechanic | Each depth rates heat, pressure, flooding and quakes; an outpost under the rating is uninhabitable but never destroyed. | 📋 Planned | [SPEC.md](SPEC.md#outposts-and-ratings) |

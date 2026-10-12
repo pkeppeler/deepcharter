@@ -51,6 +51,11 @@
       "recipes": ["tools/textures/variants/salvage_crate_b/recipes"],
       "pack": "src/gametest/resources/resourcepacks/salvage_crate_b"
     },
+    "tow_braid": {
+      "palettes": [],
+      "recipes": ["tools/textures/variants/tow_braid/recipes"],
+      "pack": "src/gametest/resources/resourcepacks/tow_cable_braid"
+    },
     "company_rock_joint": {
       "palettes": ["tools/textures/variants/company_rock/palette.json"],
       "recipes": ["tools/textures/variants/company_rock_joint/recipes"],

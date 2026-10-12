@@ -34,7 +34,7 @@ or `...-as-played` show what a player sees; the other layer stills use night vis
 | Structures | 14 colony structure files (the square with the Host, the terminal plinths, the streets, the Works, the headframe, the hoist house, the hangar, the Continuity Office, the chapel, the bunkhouse, the two offices, the Lamp and Pick, and the Host's hands) placed from one layout file, the Conduit, and 7 layer structure kinds; the colony kit of 24 blocks and 12 signs they are built from |
 | Screens | 10 shot (handbook, offline terminal, fuel pump, ore processor, upgrade, repair station, hangar console, contract, pod cargo, vanilla inventory), 1 not reachable (CRT demo) |
 | HUDs | 6 (pod status, scanner, altimeter, account, transmission overlay, breach fade) |
-| Particles | 1 (`deepcharter:tow_cable`, a mod particle type since #258) |
+| Particles | 1 (`deepcharter:dust_mote`; the tow line is a rendered chain since #508) |
 | Sound events | 47, all vanilla placeholders; 3 music events |
 | Fonts | 1 (`deepcharter:terminal`, Unscii, for the terminal screens since #246; everything else is the vanilla font) |
 | Tour stills | 144 |
@@ -310,8 +310,8 @@ Built from the user's pick, C, the Reacher, of [figure-concepts.md](figure-conce
 
 ### Other entities
 
-The mod registers exactly three entity types: `pod`, `prospector`, `lampless_figure`. The Notes are blocks, not entities. The tow cable is drawn with
-particles ([Other](#7-other)).
+The mod registers exactly three entity types: `pod`, `prospector`, `lampless_figure`. The Notes are blocks, not entities. The tow cable is drawn as a chain
+of links ([Other](#7-other)).
 
 ---
 
@@ -587,8 +587,7 @@ advancements under `data/deepcharter/advancement/handbook/`) are vanilla. Swap *
 
 ### Particles
 
-The mod defines one particle type, `deepcharter:tow_cable` (#258), along the tow cable between two pods
-(`main/pod/PodTowing.java:240`, density in `TowTuning.java`). It moves like the vanilla end rod it replaced. Vanilla: **no** (the sprite). Swap: **(a)** `assets/deepcharter/particles/tow_cable.json` and `textures/particle/tow_cable.png`.
+The mod defines one particle type, `deepcharter:dust_mote`. The tow line is not a particle since #508: `client/pod/TowChainRenderer` draws links along a hanging curve (`TowChain`) from `textures/item/tow_chain.png` and `theme/tow.json`. Vanilla: **no**. Swap: **(a)** that texture, or **(b)** the `tow` theme area.
 Not shot: it needs two pods and a tow cable in motion (the `m2-towing` scenario shows it).
 
 ### Lighting
@@ -677,7 +676,7 @@ Every look that is fixed in Java and cannot be replaced by swapping a resource-p
 | Colony layout and buildings | Every building, its size, position and blocks, the paving, the Host and the pipe | `tools/colony/town.py` (then `tools/colony/build.py`), `data/deepcharter/colony/layout.json`, `data/deepcharter/structure/colony/*.nbt`; the ground noise in `main/colony/ColonyBuilder.java`, the Host's hands in `main/colony/FounderStatue.java`, the Conduit in `main/colony/Conduit.java` |
 | Layer structures | The size, blocks and layout of the 7 structures, and where Notes and candles sit | `main/layer/StructureKind.java:21-150` |
 | Pod lights | A vanilla light block at the pod's position; the level comes from the part's tier value; no lamp is drawn | `main/pod/PodLights.java:25-90`, `main/upgrade/UpgradeTuning.java` |
-| ~~Tow cable~~ | Done in #258: the mod particle `deepcharter:tow_cable` (`particles/tow_cable.json`, `textures/particle/tow_cable.png`), drawn along the line between the pods | `main/pod/PodTowing.java:240` |
+| ~~Tow cable~~ | Done in #508: a rendered chain of links (`client/pod/TowChainRenderer.java`, `TowChain.java`) between the two pods, from the attachment | `client/pod/TowChainRenderer.java` |
 | Colony terminals' facing and place | All face south on a plinth row at z -8 | `main/colony/ColonyBuilder.java` (`terminals`), the plinths in `tools/colony/town.py` (`terminals`) |
 
 ---
