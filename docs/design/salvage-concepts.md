@@ -1,5 +1,7 @@
 # The bootstrap: salvage crates and fungal stalks
 
+**Built.** The user's pick (2026-10-11, [#505](https://github.com/pkeppeler/deepcharter/issues/505)): the crate is **A, freight**, the default, and **B, sled**, stays as the alternative look, the test pack `salvage_crate_b` (a drop-in skin pack, [skins.md](skins.md)). The stalk is **B, shelf**, the default, with no alternative. **C, stove-in**, **A, reed** and **C, bead** are dropped: their packs, models, blockstates, textures and generator recipes are removed, and they stay in this page's pictures and in [PR #465](https://github.com/pkeppeler/deepcharter/pull/465). Below is the record of the round as it stood when the pick was made.
+
 Issue [#245](https://github.com/pkeppeler/deepcharter/issues/245), PR [#465](https://github.com/pkeppeler/deepcharter/pull/465). The art direction is [section 11](art-direction.md#11-bootstrap), the user's decision of 2026-10-08 (issue #225, PR #234): colony salvage plus fungal "wood" replaces "start like normal Minecraft". [ADR 0047](../adr/0047-the-surface-has-no-ore-the-bootstraps-metal-is-salvage-and-the-yard-is-a-biome.md) records the calls that are hard to reverse, including how a new player gets metal with no ore in the ground.
 
 ## What the bootstrap is
@@ -30,15 +32,15 @@ The test `aNewPlayerReachesTheFirstCraftingGoalsFromSalvageAndStalksAlone` walks
 
 ## The options, shapes first
 
-The user's standing rules for looks: options differ in **shape and structure, not colour**, at a GTNH and Create quality bar, and the void is never shown. Natural textures tile seamlessly as vanilla's do. So each of the three crates and each of the three stalks has its own silhouette, and they share a palette: the Company's timber, tarp and stencil for the crates, the pale `stalk` ramp for the stalks. Each is the `elements` of one model. The mod ships one of each, and a test pack holds each of the other two, as [skins.md](skins.md) describes. Every still is `<block>-<option>-<place>`: `near`, `mid` (from 15 blocks), `crater` (the great pit, among the stalks it grows) and `cave` (a room carved in layer 1 and lit by a pod lamp, level 12). The crates in a crater and a cave are put there for the look; the features place crates only in the yard. The scenario `salvage-concepts` shoots them.
+The user's standing rules for looks: options differ in **shape and structure, not colour**, at a GTNH and Create quality bar, and the void is never shown. Natural textures tile seamlessly as vanilla's do. So each of the three crates and each of the three stalks has its own silhouette, and they share a palette: the Company's timber, tarp and stencil for the crates, the pale `stalk` ramp for the stalks. Each is the `elements` of one model. The mod shipped one of each, and a test pack held each of the other two, as [skins.md](skins.md) describes (only the sled crate pack is left). Every still is `<block>-<option>-<place>`: `near`, `mid` (from 15 blocks), `crater` (the great pit, among the stalks it grows) and `cave` (a room carved in layer 1 and lit by a pod lamp, level 12). The crates in a crater and a cave are put there for the look; the features place crates only in the yard. The scenario `salvage-concepts` shoots them.
 
 ### Crates
 
 | | Shape | The idea | Default |
 |---|---|---|---|
 | **A. Freight** | A lidded box with an inset waist and four corner posts, 16 high | The Company's freight, stencilled with its mark. Reads as a crate from any distance; stacks and sits square on a slope | **Yes** |
-| **B. Sled** | A low box on skids, under a lashed tarp in two humps | Cargo that was dragged: the cloth is on show, so the crate says what it holds. Low, so it is lost against the ground from far off | `salvage_crate_b` |
-| **C. Stove-in** | An open box, its lid thrown back on a hinge, a plank standing out of it and one hanging off the front | A crate that has been broken into: tells the story of the wreckage best. An open box is a poor thing to hold loot, and from afar it reads as clutter | `salvage_crate_c` |
+| **B. Sled** | A low box on skids, under a lashed tarp in two humps | Cargo that was dragged: the cloth is on show, so the crate says what it holds. Low, so it is lost against the ground from far off | `salvage_crate_b` (kept) |
+| **C. Stove-in** | An open box, its lid thrown back on a hinge, a plank standing out of it and one hanging off the front | A crate that has been broken into: tells the story of the wreckage best. An open box is a poor thing to hold loot, and from afar it reads as clutter | Dropped (#505) |
 
 | | Near | Mid | Crater | Cave |
 |---|---|---|---|---|
@@ -50,9 +52,9 @@ The user's standing rules for looks: options differ in **shape and structure, no
 
 | | Shape | The idea | Default |
 |---|---|---|---|
-| **A. Reed** | A slim bare column with two swollen rings to a block | A bone pillar. Tidy and cheap, and from far off it reads as a post or a cactus, not a tree | `fungal_stalk_a` |
+| **A. Reed** | A slim bare column with two swollen rings to a block | A bone pillar. Tidy and cheap, and from far off it reads as a post or a cactus, not a tree | Dropped (#505) |
 | **B. Shelf** | A trunk with a flat bracket on a different side every few pixels of height | Bracket fungus: a stand reads as a tree, which is what the stalk stands in for, and as something that should not grow here | **Yes** |
-| **C. Bead** | A stack of swollen, rounded bulbs on a thin neck | A puffball. The softest of the three, and the most alien against the rock; a stand is a string of pearls | `fungal_stalk_c` |
+| **C. Bead** | A stack of swollen, rounded bulbs on a thin neck | A puffball. The softest of the three, and the most alien against the rock; a stand is a string of pearls | Dropped (#505) |
 
 | | Near | Mid | Crater | Cave |
 |---|---|---|---|---|
@@ -60,18 +62,18 @@ The user's standing rules for looks: options differ in **shape and structure, no
 | B | ![stalk-b-near](https://github.com/pkeppeler/deepcharter/blob/pr-media/465/stalk-b-near.png?raw=true) | ![stalk-b-mid](https://github.com/pkeppeler/deepcharter/blob/pr-media/465/stalk-b-mid.png?raw=true) | ![stalk-b-crater](https://github.com/pkeppeler/deepcharter/blob/pr-media/465/stalk-b-crater.png?raw=true) | ![stalk-b-cave](https://github.com/pkeppeler/deepcharter/blob/pr-media/465/stalk-b-cave.png?raw=true) |
 | C | ![stalk-c-near](https://github.com/pkeppeler/deepcharter/blob/pr-media/465/stalk-c-near.png?raw=true) | ![stalk-c-mid](https://github.com/pkeppeler/deepcharter/blob/pr-media/465/stalk-c-mid.png?raw=true) | ![stalk-c-crater](https://github.com/pkeppeler/deepcharter/blob/pr-media/465/stalk-c-crater.png?raw=true) | ![stalk-c-cave](https://github.com/pkeppeler/deepcharter/blob/pr-media/465/stalk-c-cave.png?raw=true) |
 
-The pick is crate A and stalk B, both because they read at the distance a player first sees them (a crate beside the headframe, a stand of stalks across a crater), and they are the two that the rest of the bootstrap leans on: a crate is the thing you break, and a stalk is the thing you fell. The others are one pack away. To try one, copy a test pack's `assets/` into a resource pack of your own, or turn on `salvage_crate_b`, `salvage_crate_c`, `fungal_stalk_a` or `fungal_stalk_c` from the pack screen (the test mod lists them).
+The pick is crate A and stalk B, both because they read at the distance a player first sees them (a crate beside the headframe, a stand of stalks across a crater), and they are the two that the rest of the bootstrap leans on: a crate is the thing you break, and a stalk is the thing you fell. To try the sled crate, copy the test pack's `assets/` into a resource pack of your own, or turn on `salvage_crate_b` from the pack screen (the test mod lists it). The dropped options are in git history before #505.
 
 ## The natural textures tile
 
-The bark of the stalk, the shelf's top and underside, the bead's skin and the planks tile as vanilla's natural blocks do. The seam check of [layer-concepts-2.md](layer-concepts-2.md#why-vanilla-tiles-and-the-seam-check) (`tools/layer_concepts/seams.py`) is run on each by `tools/tests/test_salvage_looks.py`, and the same test fails on a bark with a one pixel outline, which is the outlined-square look. The grid check of `grid.py` reads stills of a flat wall, and none of these is a wall, so it is not run.
+The bark of the stalk, the shelf's top and underside, the bead's skin (dropped with its option) and the planks tile as vanilla's natural blocks do. The seam check of [layer-concepts-2.md](layer-concepts-2.md#why-vanilla-tiles-and-the-seam-check) (`tools/layer_concepts/seams.py`) is run on each by `tools/tests/test_salvage_looks.py`, and the same test fails on a bark with a one pixel outline, which is the outlined-square look. The grid check of `grid.py` reads stills of a flat wall, and none of these is a wall, so it is not run.
 
 | Texture | Mean step inside | wrap | rim |
 |---|---|---|---|
 | `fungal_stalk_bark` | 18.3 | 0.37 | 0.66 |
 | `fungal_shelf_top` | 8.2 | 0.42 | 0.59 |
 | `fungal_shelf_under` | 18.6 | 0.22 | 0.65 |
-| `fungal_bulb` | 13.4 | 0.47 | 0.72 |
+| `fungal_bulb` (dropped) | 13.4 | 0.47 | 0.72 |
 | `stalk_planks` (busier, as vanilla's planks are, its board lines are in it) | 24.5 | 1.16 | 0.80 |
 
 Two new ops draw them: `fibres` (runs of the ramp down a stem, wrapping on both axes) and `rings` (the cut end of a stem, in whole numbers, so every machine draws the same pixels). The crate's textures are made things, with edges and a stencil, and are not held to the check.

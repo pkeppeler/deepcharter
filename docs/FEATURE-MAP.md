@@ -100,7 +100,7 @@ flowchart LR
   l_consumables["The repair station's shelf<br/>6 of 6 built"]
   l_crew["Crew roles and seats<br/>2 of 6 built"]
   l_interface["Cockpit, screens and HUD<br/>8 of 10 built"]
-  l_art["Look and sound<br/>3 of 6 built"]
+  l_art["Look and sound<br/>4 of 6 built"]
   l_bootstrap --> l_pods
   l_bootstrap --> l_terminals
   l_cargo_bay --> l_core_loop
@@ -179,13 +179,12 @@ flowchart LR
 | [The repair station's shelf](#the-repair-stations-shelf) | 6 | 0 | 0 | 0 |
 | [Crew roles and seats](#crew-roles-and-seats) | 2 | 0 | 0 | 4 |
 | [Cockpit, screens and HUD](#cockpit-screens-and-hud) | 8 | 1 | 1 | 0 |
-| [Look and sound](#look-and-sound) | 3 | 1 | 1 | 1 |
+| [Look and sound](#look-and-sound) | 4 | 0 | 1 | 1 |
 
 ## What is coming
 
 ### In progress
 
-- **Salvage looks** (art): Keep salvage crate A and B and stalk B; drop the other looks. [#505](https://github.com/pkeppeler/deepcharter/issues/505), [#472](https://github.com/pkeppeler/deepcharter/issues/472), [#519](https://github.com/pkeppeler/deepcharter/issues/519)
 - **Company Rock look** (company-rock): A concept round for how Company Rock looks is under way; the chosen look is built later. [#503](https://github.com/pkeppeler/deepcharter/issues/503)
 - **Cockpit HUD with gauges** (interface): A cockpit HUD with gauges that hides the vanilla hotbar while seated. [#247](https://github.com/pkeppeler/deepcharter/issues/247), [#520](https://github.com/pkeppeler/deepcharter/issues/520)
 - **Layer rock textures and grades** (layers): Grained rock textures for layers 1 and 2, a lava redraw and an I-beam fix; depth palettes and colour grades follow. [#241](https://github.com/pkeppeler/deepcharter/issues/241)
@@ -1173,7 +1172,7 @@ flowchart TB
 
 | Icon | Still | Feature | What it is | Status | Links |
 |---|---|---|---|---|---|
-| <img src="../src/main/resources/assets/deepcharter/textures/block/stalk_planks.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/465/stalk-a-near.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/465/stalk-a-near.png?raw=true" width="160" alt=""></a> | <a id="fungal-stalks"></a>**Fungal stalks**<br>resource | Pale stalks on crater floors are the wood: press to planks, burn for heat, char to charcoal. | ✅ Built | [#245](https://github.com/pkeppeler/deepcharter/issues/245), [ADR 0047](adr/0047-the-surface-has-no-ore-the-bootstraps-metal-is-salvage-and-the-yard-is-a-biome.md) |
+| <img src="../src/main/resources/assets/deepcharter/textures/block/stalk_planks.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/519/stalk-b-crater.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/519/stalk-b-crater.png?raw=true" width="160" alt=""></a> | <a id="fungal-stalks"></a>**Fungal stalks**<br>resource | Pale stalks on crater floors are the wood: press to planks, burn for heat, char to charcoal. | ✅ Built | [#245](https://github.com/pkeppeler/deepcharter/issues/245), [ADR 0047](adr/0047-the-surface-has-no-ore-the-bootstraps-metal-is-salvage-and-the-yard-is-a-biome.md) |
 | <img src="../src/main/resources/assets/deepcharter/textures/block/salvage_crate_side.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/465/salvage-gather.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/465/salvage-gather.gif?raw=true" width="160" alt=""></a> | <a id="salvage-crate"></a>**Salvage crates**<br>resource | Company crates in a ring 100 to 160 blocks out; break one for planks, sticks, cloth, scrap and redstone. | ✅ Built | [#245](https://github.com/pkeppeler/deepcharter/issues/245), [ADR 0047](adr/0047-the-surface-has-no-ore-the-bootstraps-metal-is-salvage-and-the-yard-is-a-biome.md), [mechanics.md](design/mechanics.md#early-ore-access-salvage-245-a) |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/salvage_cloth.png" width="32" alt=""> | no still yet | <a id="salvage-cloth"></a>**Salvage cloth**<br>resource | Cloth from a crate; it crafts into string. | ✅ Built |  |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/scrap_iron.png" width="32" alt=""> | no still yet | <a id="scrap-metal"></a>**Scrap iron and copper**<br>resource | The crate's metal; melted one for one in a furnace. | ✅ Built |  |
@@ -1513,8 +1512,7 @@ flowchart LR
   classDef planned fill:#2e2e2e,stroke:#9e9e9e,stroke-width:1px,color:#d6d6d6
   classDef idea fill:#1a1a1a,stroke:#757575,stroke-width:1px,stroke-dasharray:4 3,color:#a0a0a0
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
-  class n_dusk_sky,n_texture_recipes,n_placeholder_sound built
-  class n_salvage_looks progress
+  class n_dusk_sky,n_texture_recipes,n_placeholder_sound,n_salvage_looks built
   class n_art_lighting planned
   class n_public_release idea
 ```
@@ -1525,7 +1523,7 @@ flowchart LR
 | ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/texture-reference.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/texture-reference.png?raw=true" width="160" alt=""></a> | <a id="texture-recipes"></a>**Textures from recipes**<br>mechanic | Every 16 pixel texture is generated from data by tools/textures; no hand-painted files to drift. | ✅ Built | [ADR 0037](adr/0037-texture-layers-are-generated-data-and-casings-connect-through-one-model-type.md) |
 | ⚙️ | no still yet | <a id="placeholder-sound"></a>**Placeholder sound**<br>mechanic | 47 sound events, all vanilla stand-ins; a private audio pack carries the original sounds for friends. | ✅ Built | [PLAYING.md](PLAYING.md#private-audio-pack) |
 | ⚙️ | no still yet | <a id="art-lighting"></a>**Lighting art**<br>mechanic | Glow accents and beams; see Darkness and sight. | 📋 Planned | [#248](https://github.com/pkeppeler/deepcharter/issues/248) |
-| ⚙️ | no still yet | <a id="salvage-looks"></a>**Salvage looks**<br>mechanic | Keep salvage crate A and B and stalk B; drop the other looks. | 🔨 In progress | [#505](https://github.com/pkeppeler/deepcharter/issues/505), [#472](https://github.com/pkeppeler/deepcharter/issues/472), [#519](https://github.com/pkeppeler/deepcharter/issues/519) |
+| ⚙️ | no still yet | <a id="salvage-looks"></a>**Salvage looks**<br>mechanic | The salvage crate is the freight crate, with the low sled crate as an alternative resource pack; the fungal stalk is the shelf fungus. The other looks are gone. | ✅ Built | [#505](https://github.com/pkeppeler/deepcharter/issues/505), [#472](https://github.com/pkeppeler/deepcharter/issues/472), [#519](https://github.com/pkeppeler/deepcharter/issues/519) |
 | 🎯 | no still yet | <a id="public-release"></a>**A public release**<br>goal | A name, a licence and a soundtrack the project may publish; Modrinth, with its AI-content disclosure. | 💭 Idea | [SPEC.md](SPEC.md#18-open-questions) |
 
 ## Flows
