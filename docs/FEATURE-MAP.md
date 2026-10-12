@@ -92,7 +92,7 @@ flowchart LR
   l_lights["Lights<br/>3 of 4 built"]
   l_lava["Lava and its counters<br/>8 of 8 built"]
   l_gas["Gas and its counters<br/>6 of 6 built"]
-  l_company_rock["Company Rock and its counters<br/>3 of 6 built"]
+  l_company_rock["Company Rock and its counters<br/>4 of 6 built"]
   l_creatures["The Retained and other creatures<br/>5 of 8 built"]
   l_darkness["Darkness and sight<br/>3 of 8 built"]
   l_crust["The breach crust and hard landings<br/>5 of 8 built"]
@@ -171,7 +171,7 @@ flowchart LR
 | [Lights](#lights) | 3 | 0 | 1 | 0 |
 | [Lava and its counters](#lava-and-its-counters) | 8 | 0 | 0 | 0 |
 | [Gas and its counters](#gas-and-its-counters) | 6 | 0 | 0 | 0 |
-| [Company Rock and its counters](#company-rock-and-its-counters) | 3 | 1 | 2 | 0 |
+| [Company Rock and its counters](#company-rock-and-its-counters) | 4 | 0 | 2 | 0 |
 | [The Retained and other creatures](#the-retained-and-other-creatures) | 5 | 0 | 1 | 2 |
 | [Darkness and sight](#darkness-and-sight) | 3 | 0 | 4 | 1 |
 | [The breach crust and hard landings](#the-breach-crust-and-hard-landings) | 5 | 0 | 1 | 2 |
@@ -185,7 +185,8 @@ flowchart LR
 
 ### In progress
 
-- **Company Rock look** (company-rock): A concept round for how Company Rock looks is under way; the chosen look is built later. [#503](https://github.com/pkeppeler/deepcharter/issues/503), [company-rock-concepts.md](design/company-rock-concepts.md)
+Nothing right now.
+
 
 ### Planned
 
@@ -895,16 +896,15 @@ flowchart LR
   classDef planned fill:#2e2e2e,stroke:#9e9e9e,stroke-width:1px,color:#d6d6d6
   classDef idea fill:#1a1a1a,stroke:#757575,stroke-width:1px,stroke-dasharray:4 3,color:#a0a0a0
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
-  class n_company_rock,n_sidestep,n_blasting_charge built
-  class n_company_rock_look progress
+  class n_company_rock,n_company_rock_look,n_sidestep,n_blasting_charge built
   class n_shaped_charge,n_rock_drill_tier planned
   class n_drill_t5,n_scanner_t1,n_the_deep_bites ext
 ```
 
 | Icon | Still | Feature | What it is | Status | Links |
 |---|---|---|---|---|---|
-| <img src="../src/main/resources/assets/deepcharter/textures/block/company_rock.png" width="32" alt=""> | no still yet | <a id="company-rock"></a>**Company Rock**<br>hazard | Rock the drill refuses. Steer round it (fuel, time, the next pocket) or blast it with a charge to keep the shaft straight. | ✅ Built | [ADR 0015](adr/0015-zones-are-filled-block-by-block-from-the-originals-rows.md), [#509](https://github.com/pkeppeler/deepcharter/issues/509), [#503](https://github.com/pkeppeler/deepcharter/issues/503) |
-| ⚙️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/523/place-bore.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/523/place-bore.png?raw=true" width="160" alt=""></a> | <a id="company-rock-look"></a>**Company Rock look**<br>mechanic | A concept round for how Company Rock looks is under way; the chosen look is built later. | 🔨 In progress | [#503](https://github.com/pkeppeler/deepcharter/issues/503), [company-rock-concepts.md](design/company-rock-concepts.md) |
+| <img src="../src/main/resources/assets/deepcharter/textures/block/company_rock_joint_0.png" width="32" alt=""> | no still yet | <a id="company-rock"></a>**Company Rock**<br>hazard | Rock the drill refuses. Steer round it (fuel, time, the next pocket) or blast it with a charge to keep the shaft straight. | ✅ Built | [ADR 0015](adr/0015-zones-are-filled-block-by-block-from-the-originals-rows.md), [#509](https://github.com/pkeppeler/deepcharter/issues/509), [#503](https://github.com/pkeppeler/deepcharter/issues/503) |
+| <img src="../src/main/resources/assets/deepcharter/textures/block/company_rock_joint_2.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/538/l1-bore.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/538/l1-bore.png?raw=true" width="160" alt=""></a> | <a id="company-rock-look"></a>**Company Rock look**<br>mechanic | Company Rock looks like dense, cool rock crazed by shrinkage joints, with a faint survey chevron on one block in five: nothing made, and cracked enough to read as blastable. | ✅ Built | [#503](https://github.com/pkeppeler/deepcharter/issues/503), [#535](https://github.com/pkeppeler/deepcharter/issues/535), [company-rock-concepts.md](design/company-rock-concepts.md) |
 | 🛡️ | no still yet | <a id="sidestep"></a>**Steer round it**<br>counter | Step the pod aside and drill on; the scanner shows nothing of it. | ✅ Built |  |
 | <img src="../src/main/resources/assets/deepcharter/textures/item/blasting_charge.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/527/pod-charge-hole.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/527/pod-charge-hole.png?raw=true" width="160" alt=""></a> | <a id="blasting-charge"></a>**Blasting charge**<br>consumable | A $40 charge set from the seat under the pod. After a 3 second fuse it clears Company Rock and the rock round it, and hurts a pod that stays within 3 blocks. About 5 a straight layer 1 shaft. | ✅ Built | [#509](https://github.com/pkeppeler/deepcharter/issues/509), [ADR 0050](adr/0050-company-rock-can-be-blasted-and-the-drill-still-refuses-it.md), [mechanics.md](design/mechanics.md#company-rock-and-the-straight-shaft-509-a) |
 | 🧪 | no still yet | <a id="shaped-charge"></a>**Shaped charge**<br>consumable | A dearer, directed blast that clears a whole slab column. | 📋 Planned | [#526](https://github.com/pkeppeler/deepcharter/issues/526), [mechanics.md](design/mechanics.md#company-rock-and-the-straight-shaft-509-a) |

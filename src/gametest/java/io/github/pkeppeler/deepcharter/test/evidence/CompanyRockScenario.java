@@ -23,23 +23,14 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
-import io.github.pkeppeler.deepcharter.test.support.ConceptRock;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 
 /**
- * Evidence scenario "company-rock-concepts" (#503, docs/design/company-rock-concepts.md): the four looks of Company Rock and today's steel plate,
- * in layers 1 and 2, each shot in the places a player meets it. Every room is sealed in the layer's rock (granite and tuff in the Grain test pack),
- * so the void is never in a frame. Each still is {@code <option>-l<layer>-<place>}: {@code crystal-l2-lava}. A look that is more than a cube is
- * drawn on {@link ConceptRock}.
+ * Evidence scenario "company-rock" (#535, docs/design/company-rock-concepts.md): the shipped Company Rock, in layers 1 and 2, shot in the places a
+ * player meets it. Every room is sealed in the layer's rock (granite and tuff in the Grain test pack), so the void is never in a frame. Each still is
+ * {@code l<layer>-<place>}: {@code l2-lava}. The places are those of the concept round (#503), so a still compares with that round's {@code now-*} stills.
  */
-public class CompanyRockConceptsScenario extends EvidenceScenario {
-	/** One look: its still prefix and its test pack (none for the shipped plate, which is drawn on the shipped block). */
-	private record Option(String name, String pack) {
-	}
-
-	private static final List<Option> OPTIONS = List.of(new Option("now", null), new Option("joint", TestPacks.COMPANY_ROCK_JOINT),
-			new Option("strap", TestPacks.COMPANY_ROCK_STRAP), new Option("crystal", TestPacks.COMPANY_ROCK_CRYSTAL),
-			new Option("fused", TestPacks.COMPANY_ROCK_FUSED));
+public class CompanyRockScenario extends EvidenceScenario {
 	/** Where the rooms stand in each layer's dimension, on a chunk boundary, and the box of whole chunks of rock round all of them (a chunk the box covers in part never reached the client in two runs of three). */
 	private static final BlockPos ORIGIN = new BlockPos(3616, 40, 3616);
 	private static final BlockPos ROCK_LOW = new BlockPos(-16, -3, -16);
@@ -74,7 +65,7 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 
 	@Override
 	protected String name() {
-		return "company-rock-concepts";
+		return "company-rock";
 	}
 
 	@Override
@@ -88,20 +79,9 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 				for (int layer : List.of(1, 2)) {
 					world.serverDo(server -> build(server.getLevel(LayerChain.dimension(layer)), layer));
 				}
-				for (Option option : OPTIONS) {
-					if (option.pack() != null) {
-						ClientPacks.enable(context, option.pack());
-					}
-					try {
-						for (int layer : List.of(1, 2)) {
-							world.serverDo(server -> place(server.getLevel(LayerChain.dimension(layer)), option.pack() == null ? HazardBlocks.COMPANY_ROCK : ConceptRock.BLOCK));
-							shoot(context, world, option, layer);
-						}
-					} finally {
-						if (option.pack() != null) {
-							ClientPacks.disable(context, option.pack());
-						}
-					}
+				for (int layer : List.of(1, 2)) {
+					world.serverDo(server -> place(server.getLevel(LayerChain.dimension(layer))));
+					shoot(context, world, layer);
 				}
 				frame(context);
 			} finally {
@@ -111,24 +91,24 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 		});
 	}
 
-	private void shoot(ClientGameTestContext context, TextureTestWorld world, Option option, int layer) {
+	private void shoot(ClientGameTestContext context, TextureTestWorld world, int layer) {
 		for (View view : VIEWS) {
 			world.view(layer, absolute(view.eye()), absolute(view.target()), SETTLE_TICKS);
-			world.still(still(option, layer, view.place()));
+			world.still(still(layer, view.place()));
 		}
 		world.serverDo(server -> mount(server.getLevel(LayerChain.dimension(layer))));
 		context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
 		ClientWait.until(context, "the player in the pod in layer " + layer,
 				client -> client.player != null && client.player.getVehicle() instanceof PodEntity && client.level.dimension().equals(LayerChain.dimension(layer)));
 		context.waitTicks(MOUNT_TICKS);
-		world.still(still(option, layer, "pod"));
+		world.still(still(layer, "pod"));
 		context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
-		world.serverDo(CompanyRockConceptsScenario::dismount);
+		world.serverDo(CompanyRockScenario::dismount);
 		ClientWait.until(context, "the player out of the pod", client -> client.player != null && client.player.getVehicle() == null);
 	}
 
-	private static String still(Option option, int layer, String place) {
-		return "%s-l%d-%s".formatted(option.name(), layer, place);
+	private static String still(int layer, String place) {
+		return "l%d-%s".formatted(layer, place);
 	}
 
 	private static Vec3 absolute(Vec3 local) {
@@ -203,10 +183,10 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 		level.setBlock(BlockPos.containing(absolute(eye)), TextureTestWorld.lamp(LAMP), Block.UPDATE_ALL);
 	}
 
-	/** Sets every patch of Company Rock of a layer to {@code rock}: the shipped block, or the stand-in of the options. */
-	private static void place(ServerLevel level, Block rock) {
+	/** Sets every patch of Company Rock of a layer. */
+	private static void place(ServerLevel level) {
 		for (BlockPos at : PATCHES) {
-			level.setBlock(absolute(at), rock.defaultBlockState(), Block.UPDATE_ALL);
+			level.setBlock(absolute(at), HazardBlocks.COMPANY_ROCK.defaultBlockState(), Block.UPDATE_ALL);
 		}
 	}
 
