@@ -1,6 +1,6 @@
 """Tests the looks of the salvage crate and the fungal stalk (#245, docs/design/salvage-concepts.md).
 
-The mod ships one shape of each and a test pack holds each other shape (tools/textures/variants.json), so a skin restyles either by file.
+The mod ships one shape of each and a test pack holds the crate's other look, the sled (tools/textures/variants.json), so a skin restyles either by file.
 Three things are held here: the natural textures of the stalk tile like vanilla's, the shapes differ in their geometry (not in their colour),
 and the pack data (blockstates, models, item definitions) agrees with the ids the code registers.
 """
@@ -23,19 +23,18 @@ from recipe import Book, Context, OPS, Palette  # noqa: E402
 ROOT = texgen.ROOT
 MOD = ROOT / "src/main/resources/assets/deepcharter"
 PACKS = ROOT / "src/gametest/resources/resourcepacks"
-# The natural textures: a stem's bark, the cut of its shelf and its gills, a bulb's skin, and the planks pressed from it. Each is the texture of a block
+# The natural textures: a stem's bark, the cut of its shelf and its gills, and the planks pressed from it. Each is the texture of a block
 # a player stands in front of, so each must tile.
 NATURAL = {
     "fungal_stalk_bark": MOD / "textures/block/fungal_stalk_bark.png",
     "stalk_planks": MOD / "textures/block/stalk_planks.png",
     "fungal_shelf_top": MOD / "textures/block/fungal_shelf_top.png",
     "fungal_shelf_under": MOD / "textures/block/fungal_shelf_under.png",
-    "fungal_bulb": PACKS / "fungal_stalk_c/assets/deepcharter/textures/block/fungal_bulb.png",
 }
-# The mod's own look of each block is one option (a for the crate, b for the stalk); the other two options are packs.
+# The mod's own look of each block is its default (crate a, stalk b); the sled crate is the one pack, and the stalk has only its default.
 LOOKS = {
-    "salvage_crate": {"a": MOD, "b": PACKS / "salvage_crate_b/assets/deepcharter", "c": PACKS / "salvage_crate_c/assets/deepcharter"},
-    "fungal_stalk": {"a": PACKS / "fungal_stalk_a/assets/deepcharter", "b": MOD, "c": PACKS / "fungal_stalk_c/assets/deepcharter"},
+    "salvage_crate": {"a": MOD, "b": PACKS / "salvage_crate_b/assets/deepcharter"},
+    "fungal_stalk": {"b": MOD},
 }
 
 
@@ -104,15 +103,10 @@ class StemOpsTest(unittest.TestCase):
 
 
 class ShapesTest(unittest.TestCase):
-    def test_each_block_has_three_looks_that_differ_in_shape(self):
-        for block, looks in LOOKS.items():
-            shapes = {option: silhouette(model_of(assets, block)) for option, assets in looks.items()}
-            self.assertEqual(3, len(shapes))
-            for first in shapes:
-                for second in shapes:
-                    if first < second:
-                        shared = len(shapes[first] & shapes[second]) / len(shapes[first] | shapes[second])
-                        self.assertLess(shared, 0.5, f"{block} {first} and {second} share most of their geometry: the options differ in colour, not shape")
+    def test_the_crates_two_looks_differ_in_shape(self):
+        freight, sled = (silhouette(model_of(assets, "salvage_crate")) for assets in LOOKS["salvage_crate"].values())
+        shared = len(freight & sled) / len(freight | sled)
+        self.assertLess(shared, 0.5, "the freight and sled crates share most of their geometry: the options differ in colour, not shape")
 
     def test_every_look_names_the_same_states_and_its_own_models(self):
         for block, looks in LOOKS.items():
@@ -126,11 +120,11 @@ class ShapesTest(unittest.TestCase):
                 self.assertEqual(next(iter(state["variants"].values()))["model"], item["model"]["model"], f"{block} {option}: the item shows another model than the block")
 
     def test_a_pack_holds_a_look_and_the_textures_only_it_uses(self):
-        """A pack holds a look, and no texture the mod already has: the reed of the stalk draws with the bark the mod ships, and so draws none of its own."""
-        for pack in ("salvage_crate_b", "salvage_crate_c", "fungal_stalk_a", "fungal_stalk_c"):
-            self.assertIn(pack, texgen.variants())
-            for texture in (PACKS / pack / "assets/deepcharter/textures").rglob("*.png"):
-                self.assertFalse((MOD / "textures/block" / texture.name).exists(), f"{pack} redraws {texture.name}, which the mod ships")
+        """A pack holds a look, and no texture the mod already has: the sled draws with the planks and cloth the mod ships, and so draws none of its own."""
+        pack = "salvage_crate_b"
+        self.assertIn(pack, texgen.variants())
+        for texture in (PACKS / pack / "assets/deepcharter/textures").rglob("*.png"):
+            self.assertFalse((MOD / "textures/block" / texture.name).exists(), f"{pack} redraws {texture.name}, which the mod ships")
 
 
 if __name__ == "__main__":
